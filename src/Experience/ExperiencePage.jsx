@@ -1,173 +1,217 @@
 import {
   motion,
-  useScroll,
-  useTransform,
   AnimatePresence,
+  useMotionValue,
+  useTransform,
 } from "framer-motion";
 import {
   RiSwordLine,
   RiTimeLine,
   RiStarLine,
-  RiMedalLine,
 } from "react-icons/ri";
-import { useState, useRef } from "react";
+import { useState, useRef, memo, useMemo, useCallback } from "react";
 
-const ParticleEffect = () => {
+const ParticleEffect = memo(() => {
+  const particles = useMemo(() => {
+    const count = window.innerWidth < 640 ? 5 : 10;
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      duration: 3 + Math.random() * 2,
+      delay: i * 0.5,
+    }));
+  }, []);
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {[...Array(30)].map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 0 }}
-          animate={{
-            opacity: [0, 1, 0],
-            y: [-20, -100],
-            x: Math.random() * 20 - 10,
-          }}
-          transition={{
-            duration: 3,
-            delay: i * 0.2,
-            repeat: Infinity,
-            repeatType: "loop",
-          }}
-          className="absolute w-1 h-1 bg-force-500/30 rounded-full"
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="absolute w-1 h-1 bg-force-400/30 rounded-full animate-twinkle"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
+            animationDuration: `${particle.duration}s`,
+            animationDelay: `${particle.delay}s`,
           }}
         />
       ))}
     </div>
   );
-};
+});
 
-const CompanyLogo = ({ company }) => {
+ParticleEffect.displayName = "ParticleEffect";
+
+const CompanyLogo = memo(({ company }) => {
   const logoMap = {
     "Northeastern High Performance Computing Lab": "/hpclogo.jpg",
     Later: "/later.png",
     "Empowerreg AI": "/empower.png",
+    "SRC" : "/src-logo.png"
   };
 
   return (
     <div className="relative flex-shrink-0">
-      <motion.div
-        whileHover={{ scale: 1.1 }}
-        className="p-4 rounded-lg bg-force-500/10 border border-force-500/20
-                  group-hover:border-force-500/50 transition-all duration-500"
+      <div
+        className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-force-500/10 to-saber-500/10 
+                  border border-white/10 backdrop-blur-xs
+                  group-hover:border-force-400/30 
+                  transition-all duration-300 transform-gpu"
       >
         {logoMap[company] ? (
           <img
             src={logoMap[company]}
             alt={`${company} logo`}
-            className="w-12 h-12 object-contain"
+            className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
           />
         ) : (
-          <RiSwordLine className="w-6 h-6 text-force-400" />
+          <RiSwordLine className="w-5 h-5 sm:w-6 sm:h-6 text-force-400" />
         )}
-      </motion.div>
-      <div
-        className="absolute inset-0 bg-force-500/20 blur-xl 
-                     opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-      />
+      </div>
     </div>
   );
-};
+});
 
-const ExperienceCard = ({ experience, index, isSelected, onClick }) => {
+CompanyLogo.displayName = "CompanyLogo";
+
+const ExperienceCard = memo(({ experience, index, isSelected, onClick }) => {
   const cardRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: cardRef,
-    offset: ["start end", "end start"],
-  });
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const rafId = useRef(null);
+  
+  const handleMouseMove = useCallback((e) => {
+    if (rafId.current) return;
+    
+    rafId.current = requestAnimationFrame(() => {
+      const rect = cardRef.current?.getBoundingClientRect();
+      if (rect) {
+        mouseX.set((e.clientX - rect.left) / rect.width);
+        mouseY.set((e.clientY - rect.top) / rect.height);
+      }
+      rafId.current = null;
+    });
+  }, [mouseX, mouseY]);
 
-  const scale = useTransform(scrollYProgress, [0, 0.5], [0.98, 1]);
-  const opacity = useTransform(scrollYProgress, [0, 0.3], [0.6, 1]);
+  const backgroundX = useTransform(mouseX, [0, 1], [0, 100]);
+  const backgroundY = useTransform(mouseY, [0, 1], [0, 100]);
 
   return (
     <motion.div
       ref={cardRef}
-      style={{ scale, opacity }}
-      className={`group relative ${isSelected ? "z-20" : "z-10"}`}
-      layout
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ 
+        duration: 0.4,
+        delay: index * 0.08,
+        ease: "easeOut"
+      }}
+      className="group relative"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => {
+        mouseX.set(0.5);
+        mouseY.set(0.5);
+      }}
     >
-      <motion.div
+      <div
         onClick={onClick}
-        className={`relative rounded-xl border backdrop-blur-lg cursor-pointer
-                   transition-all duration-500 hover:border-force-500/50
+        className={`relative rounded-2xl border backdrop-blur-sm cursor-pointer
+                   overflow-hidden transition-all duration-300 transform-gpu
                    ${
                      isSelected
-                       ? "p-8 border-force-500/30 bg-black/80"
-                       : "p-6 border-white/10 bg-black/60"
+                       ? "p-6 sm:p-8 border-force-400/40 bg-black/70 shadow-red-saber"
+                       : "p-4 sm:p-6 border-white/10 bg-black/50 hover:border-force-500/30"
                    }`}
       >
-        <div
-          className="absolute inset-0 rounded-xl bg-force-500/5 filter blur-xl 
-                       opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        {/* Simplified gradient background */}
+        <motion.div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at ${backgroundX}% ${backgroundY}%, rgba(220, 38, 38, 0.2), transparent 60%)`,
+          }}
         />
+
+        {/* Static hologram effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.01] to-transparent pointer-events-none" />
 
         {index !== 0 && (
           <div
-            className="absolute -top-8 left-12 w-0.5 h-8 
-                         bg-gradient-to-b from-transparent to-force-500/30"
+            className="absolute -top-8 left-8 sm:left-12 w-0.5 h-8 
+                       bg-gradient-to-b from-transparent via-force-400/40 to-force-400/20"
           />
         )}
 
-        <div className="flex items-start gap-6 relative z-10">
+        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative z-10">
           <CompanyLogo company={experience.company} />
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-3 sm:space-y-4">
             <div>
               <h3
-                className="text-2xl font-bold text-white group-hover:text-force-400 
-                           transition-colors duration-300"
+                className="text-xl sm:text-2xl font-bold text-white group-hover:text-force-300 
+                         transition-colors duration-300"
               >
                 {experience.title}
               </h3>
 
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-lg text-white/70">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-2">
+                <span className="text-base sm:text-lg text-white/70">
                   {experience.company}
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-force-500/50" />
-                <span className="flex items-center gap-2 text-white/70">
-                  <RiTimeLine className="w-4 h-4" />
+                <span className="hidden sm:block w-1.5 h-1.5 rounded-full bg-force-400/50" />
+                <span className="flex items-center gap-2 text-sm sm:text-base text-white/60">
+                  <RiTimeLine className="w-3 h-3 sm:w-4 sm:h-4" />
                   {experience.period}
                 </span>
               </div>
             </div>
 
-            <p className="text-white/80 leading-relaxed">
+            <p className="text-sm sm:text-base text-white/80 leading-relaxed">
               {experience.description}
             </p>
 
-            {isSelected && experience.achievements && (
-              <motion.ul
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="space-y-3 pt-2"
-              >
-                {experience.achievements.map((achievement, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.1 }}
-                    className="flex items-start gap-3 text-white/70"
-                  >
-                    <RiStarLine className="w-5 h-5 mt-1 text-force-400" />
-                    <span>{achievement}</span>
-                  </motion.li>
-                ))}
-              </motion.ul>
-            )}
+            <AnimatePresence>
+              {isSelected && experience.achievements && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ 
+                    duration: 0.3,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <ul className="space-y-2 sm:space-y-3 pt-3 border-t border-white/10">
+                    {experience.achievements.map((achievement, i) => (
+                      <motion.li
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ 
+                          delay: i * 0.05,
+                          duration: 0.2
+                        }}
+                        className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm text-white/70"
+                      >
+                        <RiStarLine className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-force-400 flex-shrink-0" />
+                        <span>{achievement}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-3">
               {experience.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="px-3 py-1 text-sm rounded-full bg-white/5 text-white/90
-                           border border-white/10 group-hover:border-force-500/30
-                           transition-all duration-300"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm rounded-full 
+                           bg-gradient-to-r from-white/5 to-white/10 text-white/90
+                           border border-white/10 hover:border-force-400/40
+                           transition-colors duration-200
+                           backdrop-blur-xs"
                 >
                   {skill}
                 </span>
@@ -175,12 +219,36 @@ const ExperienceCard = ({ experience, index, isSelected, onClick }) => {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
-};
+});
+
+ExperienceCard.displayName = "ExperienceCard";
 
 const experiences = [
+  {
+    title: "Machine Learning Engineer Intern",
+    company: "SRC",
+    period: "Apr 2025 - Jul 2025",
+    description:
+      "Building intelligent document processing systems for radar analysis, leveraging LLMs and knowledge graphs to automate technical document extraction and analysis workflows.",
+    achievements: [
+      "Enabled knowledge graph population by extracting structured facts and triplets from technical documents using a LangGraph-Pydantic-based system with 90% accuracy",
+      "Reduced manual analysis time by 70% by automating document metadata and fact extraction from radar documents, improving speed and consistency for radar analysts",
+      "Extracted document metadata (title, author, date, etc.) with 80% accuracy using regex and document libraries, while designing modular components to avoid LLM overhead",
+    ],
+    skills: [
+      "LangGraph",
+      "Pydantic",
+      "Knowledge Graphs",
+      "Document Processing",
+      "LLMs",
+      "Python",
+      "Regex",
+      "NLP",
+    ],
+  },
   {
     title: "Researcher",
     company: "Northeastern High Performance Computing Lab",
@@ -247,62 +315,51 @@ const ExperiencePage = () => {
   const [selectedCard, setSelectedCard] = useState(null);
 
   return (
-    <section className="relative min-h-screen pt-24 pb-16 bg-black overflow-hidden">
+    <section className="relative min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 bg-imperial-black overflow-hidden">
       <div className="fixed inset-0 z-0">
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-cover opacity-70"
+          className="w-full h-full object-cover opacity-40 sm:opacity-60"
         >
           <source src="/spaceclonewars.mp4" type="video/mp4" />
         </video>
         <div
-          className="absolute inset-0 bg-gradient-to-b from-black/90 
-                       via-black/70 to-black/90"
+          className="absolute inset-0 bg-gradient-to-b from-imperial-black/90 
+                     via-imperial-black/70 to-imperial-black/90"
         />
         <ParticleEffect />
       </div>
-      <div className="container mx-auto px-4 relative z-10">
+      
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12 sm:mb-20"
         >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-block"
+          <h2
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6
+                     [text-shadow:_0_0_30px_rgba(220,38,38,0.3)]"
           >
-            <h2
-              className="text-5xl md:text-6xl font-bold text-white mb-6
-               [text-shadow:_0_0_30px_rgba(220,38,38,0.3)]"
-            >
-              Professional Experience
-            </h2>
+            Professional Experience
+          </h2>
 
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: "120px" }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="h-0.5 bg-gradient-to-r from-force-500/30 via-force-400/50 to-force-500/30 mx-auto"
-            />
-          </motion.div>
+          <div
+            className="w-32 h-0.5 bg-gradient-to-r from-force-500/0 via-force-400 to-force-500/0 
+                     mx-auto shadow-red-saber"
+          />
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-xl text-white/80 max-w-2xl mx-auto mt-6"
+          <p
+            className="text-base sm:text-lg md:text-xl text-white/70 max-w-2xl mx-auto mt-4 sm:mt-6 px-4"
           >
             A timeline of my professional journey and technical accomplishments
-          </motion.p>
+          </p>
         </motion.div>
 
-        <div className="space-y-12 max-w-4xl mx-auto">
+        <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
           {experiences.map((experience, index) => (
             <ExperienceCard
               key={index}

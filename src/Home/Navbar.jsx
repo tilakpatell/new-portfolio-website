@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bars3Icon as MenuIcon, XMarkIcon as XIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon as MenuIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { 
   RiHomeLine, 
@@ -27,18 +27,18 @@ const NavItem = ({ to, item, icon: Icon, index }) => {
                  relative py-3 px-4 group"
       >
         <span className="relative">
-          <Icon className="w-5 h-5 group-hover:animate-pulse" />
+          <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
           <span className="absolute inset-0 blur-lg bg-brand-400/30 opacity-0 
-                        group-hover:opacity-100 transition-opacity duration-300" />
+                        group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </span>
         
         <span className="relative z-10 text-sm font-medium tracking-wide">{item}</span>
         
         <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-gradient-to-r from-brand-400 via-accent-400 to-brand-400 
-                      transition-all duration-500 ease-out group-hover:w-full" />
+                      transition-all duration-500 ease-out group-hover:w-full transform-gpu" />
         
         <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 
-                      transition-all duration-300 bg-gradient-to-r from-brand-400/5 to-accent-400/5" />
+                      transition-all duration-300 bg-gradient-to-r from-brand-400/5 to-accent-400/5 pointer-events-none" />
       </button>
     </motion.div>
   );
@@ -56,14 +56,15 @@ const SocialIcon = ({ href, icon: Icon, label }) => (
   >
     <Icon className="w-5 h-5 text-white/70 group-hover:text-brand-400 transition-colors duration-300" />
     <span className="absolute inset-0 blur-md bg-brand-400/20 opacity-0 
-                  group-hover:opacity-100 transition-opacity duration-300" />
+                  group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
   </motion.a>
 );
 
 export default function Navigation({ isScrolled }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const progressRef = useRef(null);
   const navigate = useNavigate();
+  const rafRef = useRef(null);
 
   const navItems = [
     { name: 'Home', icon: RiHomeLine, to: '/' },
@@ -77,31 +78,43 @@ export default function Navigation({ isScrolled }) {
     { href: "https://linkedin.com/in/tilakpatell", icon: RiLinkedinBoxLine, label: "LinkedIn" },
   ];
 
-  useEffect(() => {
-    const handleScroll = () => {
+  const updateScrollProgress = useCallback(() => {
+    if (progressRef.current) {
       const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
       const progress = (window.scrollY / totalScroll) * 100;
-      setScrollProgress(progress);
+      progressRef.current.style.width = `${progress}%`;
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(updateScrollProgress);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [updateScrollProgress]);
 
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 will-change-transform ${
         isScrolled ? 'bg-neutral-950/80 backdrop-blur-xl' : 'bg-transparent'
       }`}
     >
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-400/50 to-transparent" />
       
-      <motion.div 
-        className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-brand-400 to-accent-400"
-        style={{ width: `${scrollProgress}%` }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+      <div 
+        ref={progressRef}
+        className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-brand-400 to-accent-400 transition-none transform-gpu"
+        style={{ width: '0%' }}
       />
 
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,7 +127,7 @@ export default function Navigation({ isScrolled }) {
           >
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10">
-                <div className="absolute inset-0 rounded-lg bg-gradient-to-tr from-brand-400 to-accent-400 blur-md animate-pulse" />
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-tr from-brand-400 to-accent-400 blur-md opacity-50" />
                 <div className="relative flex items-center justify-center w-full h-full rounded-lg bg-neutral-950/50 border border-white/10">
                   <span className="text-xl font-bold text-white">TP</span>
                 </div>
@@ -154,28 +167,32 @@ export default function Navigation({ isScrolled }) {
             whileTap={{ scale: 0.95 }}
             className="md:hidden relative group p-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
           >
             <div className="relative">
               <span className="relative z-10 text-white/90">
-                {isMenuOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+                <MenuIcon className="h-6 w-6" />
               </span>
               <span className="absolute inset-0 blur-lg bg-brand-400/20 opacity-0 
-                           group-hover:opacity-100 transition-opacity duration-300" />
+                           group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             </div>
           </motion.button>
         </div>
+      </nav>
 
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="md:hidden overflow-hidden"
-            >
+      {/* Mobile Menu - Moved outside of nav container */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden overflow-hidden absolute top-20 left-0 right-0"
+          >
+            <div className="mx-4 sm:mx-6">
               <div className="px-2 py-4 space-y-1 backdrop-blur-xl bg-neutral-950/90 
-                           rounded-2xl border border-white/10 shadow-lg mb-4">
+                           rounded-2xl border border-white/10 shadow-lg">
                 {navItems.map((item, index) => (
                   <motion.div
                     key={item.name}
@@ -204,10 +221,10 @@ export default function Navigation({ isScrolled }) {
                   ))}
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

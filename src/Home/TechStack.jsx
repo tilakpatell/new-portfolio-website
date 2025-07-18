@@ -1,6 +1,5 @@
-// TechStack.jsx
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, memo, useMemo } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { 
   CodeBracketIcon,
@@ -9,12 +8,9 @@ import {
   CommandLineIcon,
   CpuChipIcon,
   BeakerIcon,
-  WrenchScrewdriverIcon,
-  WindowIcon,
-  CubeTransparentIcon
 } from '@heroicons/react/24/outline';
 
-const HologramBackground = () => {
+const HologramBackground = memo(() => {
   return (
     <div className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-black/50" />
@@ -23,16 +19,18 @@ const HologramBackground = () => {
         muted
         loop
         playsInline
-        className="w-full h-full object-cover opacity-30"
+        className="w-full h-full object-cover opacity-20 sm:opacity-30"
       >
         <source src="/death_star.mp4" type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,_rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,_rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] hidden sm:block" />
     </div>
   );
-};
+});
 
-const SkillCard = ({ title, icon: Icon, skills, delay }) => {
+HologramBackground.displayName = 'HologramBackground';
+
+const SkillCard = memo(({ title, icon: Icon, skills, delay }) => {
   const [ref, inView] = useInView({
     threshold: 0.1,
     triggerOnce: true,
@@ -44,30 +42,30 @@ const SkillCard = ({ title, icon: Icon, skills, delay }) => {
       initial={{ opacity: 0, y: 50 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay }}
-      className="h-full"
+      className="h-full transform-gpu"
     >
-      <div className="h-full rounded-2xl p-6 
+      <div className="h-full rounded-2xl p-4 sm:p-6 
                     border border-white/20 hover:border-white/40
                     transition-all duration-500 group relative overflow-hidden
                     bg-white/10">
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-3 rounded-xl bg-white/10 border border-white/20
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="p-2 sm:p-3 rounded-xl bg-white/10 border border-white/20
                           group-hover:bg-white/20 transition-colors duration-300">
-              <Icon className="h-6 w-6 text-white" />
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <h3 className="text-xl font-semibold text-white">{title}</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-white">{title}</h3>
           </div>
           
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {skills.map((skill, index) => (
               <motion.span
                 key={skill}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: delay + (index * 0.1) }}
-                className="px-3 py-1.5 bg-white/10 text-white 
-                         rounded-full text-sm border border-white/20
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: delay + (index * 0.05) }}
+                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 text-white 
+                         rounded-full text-xs sm:text-sm border border-white/20
                          hover:border-white/40 hover:bg-white/20 
                          transition-all duration-300"
               >
@@ -79,7 +77,9 @@ const SkillCard = ({ title, icon: Icon, skills, delay }) => {
       </div>
     </motion.div>
   );
-};
+});
+
+SkillCard.displayName = 'SkillCard';
 
 const categories = [
   {
@@ -114,32 +114,53 @@ const categories = [
   },
 ];
 
-const FloatingParticle = ({ delay }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ 
-        opacity: [0, 1, 0],
-        scale: [0, 1, 0],
-        y: [-20, -40],
-      }}
-      transition={{
-        duration: 2,
-        delay,
-        repeat: Infinity,
-        repeatDelay: Math.random() * 2
-      }}
-      className="absolute w-1 h-1 bg-white/20 rounded-full"
-      style={{
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`
-      }}
-    />
+const ParticleField = memo(() => {
+  const particles = useMemo(() => 
+    Array.from({ length: 10 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      delay: i * 0.2
+    })), []
   );
-};
+
+  return (
+    <div className="absolute inset-0 pointer-events-none hidden sm:block">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          initial={{ opacity: 0 }}
+          animate={{
+            opacity: [0, 1, 0],
+            y: [-20, -40],
+            x: Math.random() * 10
+          }}
+          transition={{
+            duration: 3,
+            delay: particle.delay,
+            repeat: Infinity,
+            repeatType: "reverse"
+          }}
+          className="absolute w-1 h-1 bg-white/20 rounded-full"
+          style={{
+            left: particle.left,
+            top: particle.top
+          }}
+        />
+      ))}
+    </div>
+  );
+});
+
+ParticleField.displayName = 'ParticleField';
 
 const TechStack = () => {
-  const { scrollYProgress } = useScroll();
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+  
   const smoothProgress = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,
@@ -147,36 +168,37 @@ const TechStack = () => {
   });
  
   return (
-    <section className="relative min-h-screen py-24 overflow-hidden bg-black">
+    <section ref={containerRef} className="relative min-h-screen py-16 sm:py-24 overflow-hidden bg-black">
       <HologramBackground />
  
       <motion.div
         style={{
-          opacity: smoothProgress,
-          y: useTransform(smoothProgress, [0, 1], [100, 0])
+          opacity: useTransform(smoothProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]),
+          y: useTransform(smoothProgress, [0, 0.2], [50, 0])
         }}
-        className="relative container mx-auto px-4 z-20"
+        className="relative container mx-auto px-4 sm:px-6 lg:px-8 z-20"
       >
-        <div className="text-center mb-20">
+        <div className="text-center mb-12 sm:mb-20">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
             className="inline-block"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-6
                          [text-shadow:_0_0_10px_rgba(255,255,255,0.5)]">
               Technical Arsenal
             </h2>
             <div className="h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
           </motion.div>
           
-          <p className="text-xl text-white/90 max-w-3xl mx-auto mt-6">
+          <p className="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto mt-4 sm:mt-6 px-4">
             Command center of cutting-edge technologies and tools
           </p>
         </div>
  
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-12 sm:mt-20">
           {categories.map((category, index) => (
             <SkillCard
               key={index}
@@ -186,38 +208,11 @@ const TechStack = () => {
           ))}
         </div>
  
-        <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: [0, 1, 0],
-                y: [-20, -40],
-                x: Math.random() * 10
-              }}
-              transition={{
-                duration: 2,
-                delay: i * 0.1,
-                repeat: Infinity,
-                repeatType: "reverse"
-              }}
-              className="absolute w-1 h-1 bg-white/20 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`
-              }}
-            />
-          ))}
-        </div>
+        <ParticleField />
+        
         <div className="absolute inset-0 bg-gradient-radial from-transparent to-black/50 pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,_rgba(255,255,255,0.02)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20" />
+        <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,_rgba(255,255,255,0.02)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 hidden sm:block" />
       </motion.div>
-       <motion.div 
-        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 pointer-events-none"
-        whileHover={{ opacity: 0.1 }}
-        transition={{ duration: 0.3 }}
-      />
     </section>
   );
 };
