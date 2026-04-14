@@ -208,7 +208,7 @@ const HeroSection = () => {
         </motion.div>
 
         {/* Social links */}
-        <div className="flex justify-center gap-2.5">
+        <div className="flex justify-center gap-2.5 pb-8">
           {socialLinks.map((link, i) => (
             <SocialLink key={link.href} {...link} index={i} />
           ))}
