@@ -1,18 +1,69 @@
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useInView } from 'react-intersection-observer';
+import { useAchievements } from '../components/Achievements';
+
+/* ── Animated counter — counts up from 0 on scroll into view ─────────── */
+const AnimatedNum = ({ target, inView, suffix = '+' }) => {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    const num = parseInt(target, 10);
+    if (isNaN(num)) { setVal(target); return; }
+    const dur = 1200;
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      setVal(Math.round(num * ease));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [inView, target]);
+  return <>{val}{suffix}</>;
+};
+
+const stats = [
+  { label: 'Languages', value: 6 },
+  { label: 'Projects',  value: 9 },
+  { label: 'Co-ops',    value: 4 },
+];
+
+/* ── GitHub profile stats (fetched once on mount) ────────────────────── */
+const useGitHubProfile = () => {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [profile, repos] = await Promise.all([
+          fetch('https://api.github.com/users/tilakpatell').then(r => r.ok ? r.json() : null),
+          fetch('https://api.github.com/users/tilakpatell/repos?per_page=100').then(r => r.ok ? r.json() : []),
+        ]);
+        if (!profile) return;
+        const stars = repos.reduce((s, r) => s + r.stargazers_count, 0);
+        setData({ repos: profile.public_repos, followers: profile.followers, stars });
+      } catch { /* silent */ }
+    })();
+  }, []);
+  return data;
+};
 
 const AboutSection = () => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const containerRef = useRef(null);
+  const [ref, inView] = useInView({ threshold: 0.10, triggerOnce: true });
+  const gh = useGitHubProfile();
+  const { unlock } = useAchievements();
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end end"],
+    offset: ['start end', 'end start'],
   });
-
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
+  const parallaxY = useTransform(scrollYProgress, [0, 1], [30, -30]);
 
   const handleDownloadCV = () => {
+    unlock('resume');
     const link = document.createElement('a');
     link.href = '/Resume.pdf';
     link.download = 'Tilak_Patel_Resume.pdf';
@@ -22,125 +73,161 @@ const AboutSection = () => {
   };
 
   return (
-    <section
-      ref={containerRef}
-      className="relative min-h-screen overflow-hidden bg-imperial-black"
-    >
-      <motion.div style={{ scale }} className="absolute inset-0 w-full h-full">
+    <section ref={containerRef} className="relative overflow-hidden py-24 sm:py-36">
+      {/* Video background */}
+      <motion.div style={{ y: parallaxY }} className="absolute inset-0 -top-16 -bottom-16">
         <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-60"
+          autoPlay muted loop playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.22]"
         >
           <source src="/star-destroyer.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-imperial-black/30 via-imperial-black/50 to-imperial-black/90" />
+        <div className="absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 90% 80% at 50% 40%, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.92) 100%)' }}
+        />
       </motion.div>
 
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+      <div ref={ref} className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen py-16 sm:py-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.5fr] gap-8 sm:gap-12 lg:gap-16 items-center">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="relative group mx-auto w-full max-w-sm lg:max-w-none"
-              >
-                <div
-                  className="relative aspect-square w-full max-w-[280px] sm:max-w-[320px] md:max-w-[384px] mx-auto
-                             rounded-2xl overflow-hidden 
-                             border-2 border-white/20
-                             z-10 group-hover:border-white/40 
-                             transition-all duration-500 transform
-                             group-hover:translate-y-[-8px]"
-                >
-                  <img
-                    src="/profile-pic.jpeg"
-                    alt="Profile"
-                    className="w-full h-full object-cover 
-                             transition-transform duration-700
-                             group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                </div>
-                <div
-                  className="absolute inset-0 bg-white/10 blur-2xl 
-                             opacity-0 scale-110 group-hover:opacity-30 
-                             transition-all duration-700"
-                />
-              </motion.div>
+        {/* ── Two-column layout ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-10 lg:gap-20 items-start max-w-5xl mx-auto">
 
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-center lg:text-left space-y-6 sm:space-y-8"
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full 
-                           bg-white/5 backdrop-blur-sm border border-white/10"
-                >
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  <span className="text-xs sm:text-sm text-white/80">
-                    Available for Work
-                  </span>
-                </motion.div>
-
-                <h2
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r 
-                             from-white via-white/90 to-white/80 
-                             bg-clip-text text-transparent"
-                >
-                  About Me
-                </h2>
-
-                <div className="space-y-4 sm:space-y-6">
-                  <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/80 leading-relaxed">
-                    I'm a dedicated software engineer with expertise in AI,
-                    machine learning, and high-performance computing. With a
-                    strong background in full-stack development, embedded
-                    systems, and distributed computing, I enjoy tackling complex
-                    challenges and building cutting-edge solutions.
-                  </p>
-                  <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/80 leading-relaxed">
-                    My work spans HPC research, artificial intelligence, and
-                    robotics. I develop intelligent, high-performance
-                    applications using Python, C, and modern frameworks like
-                    React and CUDA, pushing the boundaries of innovation in
-                    software and hardware integration.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 pt-4 sm:pt-6 justify-center lg:justify-start">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleDownloadCV} 
-                    className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg bg-white text-black font-medium 
-                             hover:bg-white/90 transition-colors duration-200 shadow-lg"
-                  >
-                    Download CV
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate('/contact')} 
-                    className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg border-2 border-white text-white 
-                             hover:bg-white/10 transition-colors duration-200 shadow-lg"
-                  >
-                    Contact Me
-                  </motion.button>
-                </div>
-              </motion.div>
+          {/* Left: Photo */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="mx-auto w-full max-w-[260px] lg:max-w-none space-y-3"
+          >
+            <div className="relative aspect-[3/4] w-full corner-brackets overflow-hidden">
+              <img
+                src="/profile-pic.jpg"
+                alt="Tilak Patel"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
-          </div>
+
+            {/* Status below photo */}
+            <div className="border border-white/10 px-3 py-2.5 flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 bg-white/55 rounded-full animate-pulse shrink-0" />
+              <span className="font-mono text-[0.58rem] tracking-[0.18em] text-white/45 uppercase">
+                Open to Opportunities
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Right: Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.65, delay: 0.25 }}
+            className="space-y-7"
+          >
+            {/* Name */}
+            <div>
+              <h3
+                className="font-display font-bold text-white leading-none tracking-wide"
+                style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
+              >
+                TILAK PATEL
+              </h3>
+              <span
+                className="font-mono text-xs tracking-[0.3em] text-white/35 mt-1.5 block select-none uppercase"
+              >
+                Software Engineer
+              </span>
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-3 border-l border-white/[0.10] pl-4">
+              <p className="text-sm sm:text-base text-white/75 leading-relaxed">
+                Dedicated software engineer with expertise in AI,
+                machine learning, and high-performance computing. Strong
+                background in full-stack development, embedded systems,
+                and distributed computing.
+              </p>
+              <p className="text-sm text-white/55 leading-relaxed">
+                My work spans HPC research, artificial intelligence, and
+                robotics — building intelligent, high-performance applications
+                using Python, C, and modern frameworks, pushing the boundaries
+                of software and hardware integration.
+              </p>
+            </div>
+
+            {/* Stats — animated counters */}
+            <div className="grid grid-cols-3 divide-x divide-white/[0.08] border border-white/[0.08]">
+              {stats.map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={inView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ delay: 0.45 + i * 0.08 }}
+                  className="px-4 py-4 text-center"
+                >
+                  <div className="font-display text-2xl sm:text-3xl font-bold text-white leading-none">
+                    <AnimatedNum target={stat.value} inView={inView} />
+                  </div>
+                  <div className="font-mono text-[0.58rem] tracking-[0.16em] text-white/35 uppercase mt-1.5">
+                    {stat.label}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* GitHub live stats strip */}
+            {gh && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.7 }}
+                className="flex items-center gap-3 border border-white/[0.08] px-4 py-3"
+              >
+                <span className="font-mono text-xs tracking-[0.18em] text-white/38 uppercase flex-shrink-0">
+                  ◈ GitHub
+                </span>
+                <div className="flex-1 flex items-center gap-4 overflow-x-auto">
+                  {[
+                    { label: 'Repos', value: gh.repos },
+                    { label: 'Stars', value: gh.stars },
+                    { label: 'Followers', value: gh.followers },
+                  ].map(s => (
+                    <div key={s.label} className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="font-display text-sm font-bold text-white/70">
+                        <AnimatedNum target={s.value} inView={inView} suffix="" />
+                      </span>
+                      <span className="font-mono text-xs text-white/42 uppercase">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="https://github.com/tilakpatell" target="_blank" rel="noopener noreferrer"
+                  className="font-mono text-xs text-white/38 hover:text-white/60 transition-colors uppercase tracking-wider flex-shrink-0">
+                  View →
+                </a>
+              </motion.div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={handleDownloadCV}
+                className="btn-imperial-solid"
+              >
+                Download CV
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => navigate('/contact')}
+                className="btn-imperial"
+              >
+                Contact Me
+              </motion.button>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>

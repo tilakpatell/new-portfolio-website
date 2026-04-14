@@ -1,53 +1,32 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 
+const PLAYBACK_RATE = 2.5;
+const MAX_DURATION = 15000; // safety timeout (ms)
+
 const HyperspaceIntro = ({ onComplete }) => {
   const [isAnimating, setIsAnimating] = useState(true);
-  const [showFallback, setShowFallback] = useState(false);
   const videoRef = useRef(null);
   const timerRef = useRef(null);
-  const fallbackTimerRef = useRef(null);
-
-  useEffect(() => {
-    // fallback loading if video doesn't load within 2 seconds
-    fallbackTimerRef.current = setTimeout(() => {
-      setShowFallback(true);
-    }, 2000);
-
-    timerRef.current = setTimeout(() => {
-      handleComplete();
-    }, 7000);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-    };
-  }, []);
+  const doneRef = useRef(false);
 
   const handleComplete = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    timerRef.current = null;
     setIsAnimating(false);
-    setTimeout(() => {
-      onComplete();
-    }, 300);
+    setTimeout(onComplete, 600);
   };
 
-  const handleVideoCanPlay = () => {
-    // Clear fallback timer since video is ready
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      setShowFallback(false);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.playbackRate = PLAYBACK_RATE;
     }
-    
-    if (videoRef.current) {
-      videoRef.current.playbackRate = 1.8;
-      videoRef.current.play().catch(err => {
-        console.error('Video play failed:', err);
-        handleComplete();
-      });
-    }
-  };
+    timerRef.current = setTimeout(handleComplete, MAX_DURATION);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   return (
     <AnimatePresence>
@@ -55,61 +34,36 @@ const HyperspaceIntro = ({ onComplete }) => {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ 
-            duration: 0.8,
-            ease: "easeInOut"
-          }} 
+          transition={{ duration: 0.8, ease: 'easeInOut' }}
           className="fixed inset-0 z-[100] bg-black overflow-hidden"
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh'
-          }}
         >
           <video
             ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ 
-              width: '100%', 
-              height: '100%',
-              objectFit: 'cover'
-            }}
-            onCanPlayThrough={handleVideoCanPlay}
+            autoPlay muted playsInline
+            className="absolute inset-0 w-full h-full object-contain border-0 outline-none"
+            style={{ border: 'none', background: '#000' }}
             onEnded={handleComplete}
             onError={handleComplete}
           >
             <source src="/hyperspace.mp4" type="video/mp4" />
           </video>
-          
-          <AnimatePresence>
-            {showFallback && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-black/50"
-              >
-                <div className="w-12 h-12 border-3 border-saber-400/30 border-t-saber-400 
-                              rounded-full animate-spin"></div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
+
+          {/* Vignette to blend edges into the background */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(circle at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%)' }}
+          />
+
+          {/* Skip button */}
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 2 }}
+            transition={{ delay: 0.5 }}
             onClick={handleComplete}
-            className="absolute bottom-8 right-8 px-4 py-2 bg-white/10 backdrop-blur-sm
-                     text-white text-sm rounded-lg border border-white/20
-                     hover:bg-white/20 transition-all duration-300 z-10"
+            className="absolute bottom-6 right-6 z-20 px-4 py-2
+                       text-xs font-medium tracking-wider uppercase
+                       text-white/40 hover:text-white/72
+                       border border-white/15 hover:border-white/28
+                       bg-black/40 backdrop-blur-sm transition-all duration-300"
           >
             Skip
           </motion.button>

@@ -1,193 +1,254 @@
-@import url('https://rsms.me/inter/inter.css');
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://db.onlinewebfonts.com/c/591a1311200119eefe5df87892d876be?family=Aurebesh');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens ───────────────────────────────────────────────────────── */
+:root {
+  --bg:           #000000;
+  --surface:      #0e0e0e;
+  --surface-2:    #1a1a1a;
+  --border:       rgba(255,255,255,0.10);
+  --border-hi:    rgba(255,255,255,0.22);
+  --text:         #ffffff;
+  --text-dim:     rgba(255,255,255,0.68);
+  --text-muted:   rgba(255,255,255,0.42);
+}
+
+@font-face {
+  font-family: 'Aurebesh';
+  src: url('https://db.onlinewebfonts.com/t/591a1311200119eefe5df87892d876be.woff2') format('woff2'),
+       url('https://db.onlinewebfonts.com/t/591a1311200119eefe5df87892d876be.woff') format('woff');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 @layer base {
+  /* FIX: Only apply overflow-x to body, NOT html.
+     Setting overflow on html propagates to the viewport in most browsers
+     and kills vertical scrolling on iOS Safari and some desktop browsers. */
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
-  
   body {
-    @apply text-imperial-white;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    font-family: 'Barlow', system-ui, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    overflow: hidden;
   }
+  ::selection { background: rgba(255,255,255,0.14); color: #fff; }
+  :focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(255,255,255,0.28); }
 
-  :focus-visible {
-    @apply outline-none ring-2 ring-saber-500 ring-offset-2;
-  }
-
-  ::selection {
-    @apply bg-saber-500 text-imperial-white;
-  }
+  * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+  *::-webkit-scrollbar { width: 4px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 0; }
 }
 
+/* ─── Components ──────────────────────────────────────────────────────────── */
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+
+  /* Fonts */
+  .font-display  { font-family: 'Rajdhani', system-ui, sans-serif; }
+  .font-body     { font-family: 'Barlow', system-ui, sans-serif; }
+  .font-mono     { font-family: 'JetBrains Mono', monospace; }
+  .font-orbitron { font-family: 'Orbitron', monospace; }
+  .font-aurebesh { font-family: 'Aurebesh', sans-serif; }
+
+  /* ── Cards ─────────────────────────────────────────────────────── */
+  .imperial-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    position: relative;
+    transition: border-color 0.22s ease, background 0.22s ease;
+  }
+  .imperial-panel::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(145deg, rgba(255,255,255,0.022) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .imperial-panel:hover {
+    border-color: var(--border-hi);
+    background: var(--surface-2);
   }
 
-  .btn-primary {
-    @apply btn bg-saber-600 text-imperial-white hover:bg-saber-700 active:bg-saber-800 focus:ring-saber-500;
+  /* ── Accent Lines ──────────────────────────────────────────────── */
+  /* gold-line is now white — class name kept for semantic meaning */
+  .gold-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.32),
+                rgba(255,255,255,0.52), rgba(255,255,255,0.32), transparent);
+  }
+  .white-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.20),
+                rgba(255,255,255,0.36), rgba(255,255,255,0.20), transparent);
   }
 
-  .btn-secondary {
-    @apply btn bg-imperial-gray text-imperial-white hover:bg-imperial-space active:bg-imperial-black focus:ring-saber-500;
+  /* ── Buttons ───────────────────────────────────────────────────── */
+  .btn-imperial-solid {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.75rem;
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    color: #000000;
+    border-radius: 0;
+    transition: all 0.20s ease;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .btn-imperial-solid:hover {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(255,255,255,0.85);
+    color: #000000;
   }
 
-  .btn-outline {
-    @apply btn border-2 border-saber-600 text-saber-600 hover:bg-saber-600 hover:text-imperial-white focus:ring-saber-500;
+  .btn-imperial {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.75rem;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.70);
+    border-radius: 0;
+    transition: all 0.20s ease;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .btn-imperial:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.65);
+    color: #ffffff;
   }
 
-  .input {
-    @apply block w-full rounded-lg border-imperial-gray shadow-sm focus:border-saber-500 focus:ring-saber-500 dark:border-imperial-space dark:bg-imperial-black dark:text-imperial-white;
+  /* ── Tech Tags ─────────────────────────────────────────────────── */
+  .tech-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 400;
+    padding: 0.18rem 0.5rem;
+    border: 1px solid rgba(255,255,255,0.09);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.45);
+    border-radius: 0;
+    transition: all 0.16s ease;
+    display: inline-block;
+    letter-spacing: 0.03em;
+  }
+  .tech-tag:hover {
+    border-color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.82);
   }
 
-  .card {
-    @apply bg-imperial-white dark:bg-imperial-space rounded-xl shadow-soft p-6;
+  /* ── Section Label ─────────────────────────────────────────────── */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.30);
+    font-weight: 400;
   }
 
-  .container {
-    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  /* ── Corner Brackets ────────────────────────────────────────────── */
+  .corner-brackets { position: relative; }
+  .corner-brackets::before, .corner-brackets::after {
+    content: '';
+    position: absolute; width: 18px; height: 18px;
+    border-color: rgba(255,255,255,0.22); border-style: solid;
+    pointer-events: none; z-index: 2;
+  }
+  .corner-brackets::before { top: -1px; left: -1px;  border-width: 1px 0 0 1px; }
+  .corner-brackets::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  /* ── Hero Name ──────────────────────────────────────────────── */
+  .hero-name-wrapper {
+    filter: drop-shadow(0 0 50px rgba(255,255,255,0.04));
+  }
+  .hero-name {
+    background: linear-gradient(180deg, #ffffff 20%, rgba(255,255,255,0.62) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Hero Divider ──────────────────────────────────────────── */
+  .hero-divider {
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255,255,255,0.25) 15%,
+      rgba(255,255,255,0.60) 50%,
+      rgba(255,255,255,0.25) 85%,
+      transparent
+    );
+    box-shadow: 0 0 16px 1px rgba(255,255,255,0.08);
   }
 }
 
+/* ─── Utilities ───────────────────────────────────────────────────────────── */
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .text-balance { text-wrap: balance; }
+  /* stat value gradient — white */
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.60) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
-@layer utilities {
-  .backdrop-blur-4xl {
-    backdrop-filter: blur(24px);
-  }
-  
-  .bg-gradient-blur {
-    backdrop-filter: blur(100px);
-  }
+/* ─── Global Noise Overlay ────────────────────────────────────────────────── */
+.noise-overlay {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat; background-size: 200px;
+  mix-blend-mode: overlay;
 }
 
-/* Optional: Add this if you want to prevent any potential overflow issues */
-html, body {
-  overflow-x: hidden;
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes drift     { from { transform: translateY(0); }  to { transform: translateY(-50%); } }
+@keyframes pulse-dim { 0%, 100% { opacity: 0.3; }          50% { opacity: 0.85; } }
+@keyframes float     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+.animate-drift     { animation: drift 80s linear infinite; }
+.animate-pulse-dim { animation: pulse-dim 3s ease-in-out infinite; }
+.animate-float     { animation: float 6s ease-in-out infinite; }
+
+/* ─── Custom cursor (hide default on fine-pointer desktop) ───────────────── */
+@media (pointer: fine) and (hover: hover) {
+  *, *::before, *::after { cursor: none !important; }
 }
 
-@keyframes hyperspace {
-  0% {
-    transform: translateZ(0) scale(1);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  95% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateZ(400px) scale(0);
-    opacity: 0;
-  }
+/* ─── Marquee ─────────────────────────────────────────────────────────────── */
+@keyframes marquee-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
-
-.hyperspace-container {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  perspective: 400px;
-  overflow: hidden;
-  background: black;
+@keyframes marquee-right {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
 }
-
-.hyperspace-star {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  left: 50%;
-  top: 50%;
-  background: #0967D2; /* Updated to saber blue */
-  transform-origin: 50% 50%;
-  animation: hyperspace 2s linear infinite;
-  animation-delay: var(--delay);
-}
-
-.hyperspace-star::before {
-  content: '';
-  position: absolute;
-  width: 100px;
-  height: 2px;
-  background: linear-gradient(90deg, #0967D2, transparent); /* Updated to saber blue */
-  transform: translateX(-100%);
-}
-
-@keyframes hyperspace {
-  0% {
-    transform: 
-      rotate(calc(var(--position) * 3.6deg))
-      translateX(0px)
-      scale(1);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  95% {
-    opacity: 1;
-  }
-  100% {
-    transform: 
-      rotate(calc(var(--position) * 3.6deg))
-      translateX(1000px)
-      scale(0.01);
-    opacity: 0;
-  }
-}
-
-/* Add these styles to your global CSS file */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-.animate-float {
-  animation: float 10s ease-in-out infinite;
-}
-
-.bg-grid-pattern {
-  background-image: 
-    linear-gradient(to right, rgba(9, 103, 210, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(9, 103, 210, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-.typewriter-wrapper {
-  min-height: 2em;
-  display: flex;
-  align-items: center;
-}
-
-/* Add Star Wars fonts */
-@font-face {
-  font-family: 'Star Jedi';
-  src: url('/fonts/Starjedi.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
+.marquee-left  { animation: marquee-left  45s linear infinite; will-change: transform; }
+.marquee-right { animation: marquee-right 32s linear infinite; will-change: transform; }
+/* Pause on parent hover */
+.marquee-wrapper:hover .marquee-left,
+.marquee-wrapper:hover .marquee-right { animation-play-state: paused; }
