@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { THEMES } from '../theme/themes';
 import { prefersReducedMotion } from '../lib/hooks';
+import '@fontsource/cinzel/600.css';
 import AutobotMark from './AutobotMark';
+import DecepticonMark from './DecepticonMark';
 
-// the Autobots wear the insignia; the Decepticons don't
+// each Transformer wears their faction's insignia
 const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 
 // The moment a theme is picked: a short scene in its own style, a line it's
@@ -21,6 +23,8 @@ const SCENES = {
   heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), clip: ['bbIntro', 6] },
   dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() },
   raga: { kind: 'ripple', color: '#e8871e', quote: 'Sa. Where every raga begins and ends.', by: 'Raga', sound: null },
+  shire: { kind: 'ring', color: '#e8b44c', quote: 'Even the smallest person can change the course of the future.', by: 'Galadriel', clip: ['lotr', 7] },
+  mordor: { kind: 'ring', color: '#ff6a1a', quote: 'One Ring to rule them all.', by: 'J.R.R. Tolkien', clip: ['lotr', 7] },
   optimus: { kind: 'transform', color: '#c8102e', quote: 'Autobots, roll out!', by: 'Optimus Prime', sound: (s) => s.transform(), clip: ['transform'] },
   megatron: { kind: 'transform', color: '#8b5cf6', quote: 'Peace through tyranny.', by: 'Megatron', sound: (s) => s.transform(), clip: ['transform'] },
   bumblebee: { kind: 'transform', color: '#f7c600', quote: 'Bumblebee, ready to roll.', by: 'Bumblebee', sound: (s) => s.transform(), clip: ['transform'] },
@@ -28,7 +32,7 @@ const SCENES = {
   soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'] },
 };
 
-const LENGTH = { saber: 1700, hud: 1700, pixels: 1500, tiles: 1700, memo: 1800, ripple: 1800, transform: 1800, wipe: 1300 };
+const LENGTH = { saber: 1700, hud: 1700, pixels: 1500, tiles: 1700, memo: 1800, ripple: 1800, transform: 1800, ring: 2400, wipe: 1300 };
 
 function Scene({ kind, color }) {
   if (kind === 'saber')
@@ -77,6 +81,30 @@ function Scene({ kind, color }) {
   return null;
 }
 
+// The One Ring with its inscription in fire, written around it.
+function OneRing() {
+  return (
+    <svg viewBox="-160 -90 320 180" className="tt-ring-svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="tt-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff1b8" />
+          <stop offset="0.35" stopColor="#e8b44c" />
+          <stop offset="0.7" stopColor="#a8741f" />
+          <stop offset="1" stopColor="#f6d27a" />
+        </linearGradient>
+        <path id="tt-ring-path" d="M -128 0 A 128 62 0 1 1 128 0 A 128 62 0 1 1 -128 0" />
+      </defs>
+      <ellipse cx="0" cy="0" rx="128" ry="62" fill="none" stroke="url(#tt-gold)" strokeWidth="16" />
+      <ellipse cx="0" cy="-3" rx="122" ry="56" fill="none" stroke="#fff6d6" strokeWidth="1.4" opacity="0.6" />
+      <text className="tt-ring-text">
+        <textPath href="#tt-ring-path" startOffset="2%">
+          Ash nazg durbatulûk · ash nazg gimbatul · ash nazg thrakatulûk · agh burzum-ishi krimpatul
+        </textPath>
+      </text>
+    </svg>
+  );
+}
+
 // What sits just above the words, in the flow, so it never covers them.
 function Badge({ kind, color, autobot }) {
   if (kind === 'tiles')
@@ -109,7 +137,8 @@ function Badge({ kind, color, autobot }) {
         सा
       </b>
     );
-  if (kind === 'transform' && autobot) return <AutobotMark className="tt-insignia" />;
+  if (kind === 'transform') return autobot ? <AutobotMark className="tt-insignia" /> : <DecepticonMark className="tt-insignia tt-insignia-dc" />;
+  if (kind === 'ring') return <OneRing />;
   return null;
 }
 

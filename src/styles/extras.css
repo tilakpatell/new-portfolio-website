@@ -1250,6 +1250,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 @keyframes tt-plate-r { 0% { transform: translateX(102%); } 22%, 72% { transform: none; } 100% { transform: translateX(-102%); } }
 .tt-insignia { display: block; width: 104px; height: 104px; margin: 0 auto 1.1rem; color: var(--tt-insignia, #d8202f); filter: drop-shadow(0 0 18px rgba(216, 32, 47, 0.45)); animation: tt-face var(--tt-len) ease both; }
 .tt[data-id='bumblebee'] .tt-insignia { --tt-insignia: #f7c600; filter: drop-shadow(0 0 18px rgba(247, 198, 0, 0.4)); }
+.tt-insignia-dc { --tt-insignia: #8b5cf6; filter: drop-shadow(0 0 18px rgba(139, 92, 246, 0.45)); }
 .tt-face { display: block; width: 88px; height: 88px; margin: 0 auto 1rem; fill: none; stroke: #e8ebf0; stroke-width: 1.6; stroke-linejoin: round; opacity: 0; animation: tt-face var(--tt-len) ease both; }
 .tt-face .tt-eyes { stroke: var(--c); stroke-width: 2.4; filter: drop-shadow(0 0 3px var(--c)); }
 @keyframes tt-face { 0%, 18% { opacity: 0; transform: scale(0.8); } 32%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
@@ -1340,3 +1341,103 @@ html[data-mode='dark'] .nu-logo-dark { display: block; }
 .role-banner-play { display: inline-flex; align-items: center; gap: 0.55rem; color: inherit; font: inherit; }
 .role-banner-play:focus-visible { outline: 2px solid #ffffff; outline-offset: 4px; border-radius: 999px; }
 .role-banner-chip:has(.role-banner-play) { cursor: pointer; }
+
+/* ─── Middle-earth themes ────────────────────────────────────────────────── */
+[data-theme='shire'] {
+  --bg: #fbfaf3; --bg-deep: #f2f0e2; --surface: #fffefa; --surface-2: #f1efe2; --border: #e2dfcd; --border-strong: #9c9478;
+  --text: #1d1c12; --text-body: #3a3826; --muted: #66624a;
+  --accent: #4f7c2a; --accent-text: #3f6a1f; --btn-bg: #3f6a1f; --btn-ink: #fffef5; --saber: #a3d977; --nav-bg: #1d1c12;
+  --route-plan: #d4d0b8; --marker: circle(50%); --r-card: 18px; --r-panel: 12px; --r-chip: 999px; --r-photo: 24px;
+}
+[data-theme='mordor'] {
+  --bg: #fcfaf9; --bg-deep: #f3eeec; --surface: #ffffff; --surface-2: #f3eeec; --border: #e3dad6; --border-strong: #9a8a84;
+  --text: #1a0f0c; --text-body: #3a2622; --muted: #6a5650;
+  --accent: #c2410c; --accent-text: #a8360a; --btn-bg: #b4320a; --btn-ink: #ffffff; --saber: #ff7a1a; --nav-bg: #1a0f0c;
+  --route-plan: #dbcdc8; --marker: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); --r-card: 2px; --r-panel: 2px; --r-btn: 2px; --r-chip: 2px; --r-photo: 2px;
+}
+
+/* the One Ring, its inscription burning */
+.tt-ring-svg { display: block; width: min(300px, 70vw); height: auto; margin: 0 auto 1rem; overflow: visible; animation: tt-face var(--tt-len) ease both; }
+.tt-ring-text { font-family: 'Cinzel', 'Times New Roman', serif; font-size: 13px; letter-spacing: 1.5px; fill: #ffb347; opacity: 0; animation: tt-burn var(--tt-len) ease both; }
+@keyframes tt-burn { 0%, 20% { opacity: 0; filter: none; } 40%, 80% { opacity: 1; filter: drop-shadow(0 0 4px #ff7a1a) drop-shadow(0 0 10px #ff4d00); } 100% { opacity: 0; } }
+.tt[data-kind='ring'] { background: radial-gradient(ellipse at 50% 40%, rgba(60, 22, 4, 0.92), rgba(6, 4, 3, 0.95) 70%); }
+
+/* You shall not pass: the page takes the staff's blow */
+html.stand-ground main { animation: stand-ground 0.9s cubic-bezier(0.3, 0.7, 0.3, 1); }
+@keyframes stand-ground { 0% { transform: none; } 8% { transform: translateY(6px) scale(0.995); } 20% { transform: translateY(-3px); } 34% { transform: translateY(2px); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { html.stand-ground main { animation: none; } }
+
+/* ─── Fan themes speak in their own type ─────────────────────────────────── */
+/* The company themes keep the house style. Each fan theme changes the
+   headings (and for Star Wars the body too); everything stays real text. */
+@font-face {
+  font-family: 'Cybertron Script';
+  src: url('/fonts/cybertron-script/CybertronScript.woff') format('woff');
+  font-display: swap;
+}
+
+/* Star Wars: headings in Aurebesh, the rest in the crawl's News Gothic (News Cycle) */
+:is([data-theme='jedi'], [data-theme='sith']) { --font-sans: 'News Cycle', 'Archivo Variable', ui-sans-serif, system-ui, sans-serif; }
+:is([data-theme='jedi'], [data-theme='sith']) :is(.display, .title) { font-family: 'Basic Script', var(--font-mono); font-stretch: normal; font-weight: 400; letter-spacing: 0.03em; line-height: 1.05; }
+[data-theme='sith'] .display { text-shadow: 0 0 22px color-mix(in srgb, var(--saber) 35%, transparent); }
+
+/* Transformers: headings in Cybertron Script, labels in Orbitron, a chrome finish */
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.display, .title) {
+  font-family: 'Cybertron Script', 'Orbitron', sans-serif; font-stretch: normal; font-weight: 400; letter-spacing: 0.06em; line-height: 1.05;
+}
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.eyebrow, .label, .btn) { font-family: 'Orbitron', var(--font-sans); letter-spacing: 0.06em; }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  :is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) h1.display {
+    background: linear-gradient(180deg, var(--text) 0%, color-mix(in srgb, var(--accent) 75%, #000) 52%, var(--text) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  html[data-mode='dark']:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) h1.display {
+    background: linear-gradient(180deg, #ffffff 0%, #c9d1dc 44%, #6b7686 52%, #e6ebf1 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+}
+
+/* Middle-earth: Cinzel, as carved; the Shire in gold, Mordor smouldering */
+:is([data-theme='shire'], [data-theme='mordor']) .display { font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif; font-stretch: normal; font-weight: 700; letter-spacing: 0; line-height: 1.04; }
+:is([data-theme='shire'], [data-theme='mordor']) .title { font-family: 'Cinzel', Georgia, serif; font-stretch: normal; font-weight: 700; letter-spacing: 0.01em; }
+:is([data-theme='shire'], [data-theme='mordor']) .eyebrow { font-family: 'Cinzel', Georgia, serif; font-weight: 600; letter-spacing: 0.14em; }
+[data-theme='shire'] .display { color: #2e4419; }
+html[data-mode='dark'][data-theme='shire'] .display { color: #e9dfb8; }
+[data-theme='mordor'] .display { text-shadow: 0 0 24px rgba(255, 106, 26, 0.32); }
+
+/* Stark: Marvel's tall capitals */
+[data-theme='stark'] :is(.display, .title) { font-family: 'Bebas Neue', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0.015em; line-height: 0.92; }
+[data-theme='stark'] .title { font-size: clamp(2rem, 1.4rem + 2vw, 3rem); }
+
+/* Heisenberg: every heading opens on an element from the periodic table */
+[data-theme='heisenberg'] :is(.display, .title)::first-letter {
+  padding: 0 0.07em; margin-right: 0.03em; border: 0.04em solid #3fae5c; color: #ffffff;
+  background: linear-gradient(135deg, #2f8f4e, #14532d);
+}
+
+/* Dunder Mifflin: typed on the office typewriter */
+[data-theme='dunder'] :is(.display, .title) { font-family: 'Courier Prime', var(--font-mono); font-stretch: normal; font-weight: 700; letter-spacing: -0.025em; }
+
+/* Arcade: pixels, smaller so they fit */
+[data-theme='arcade'] .display { font-family: 'Press Start 2P', var(--font-mono); font-stretch: normal; font-weight: 400; letter-spacing: 0; line-height: 1.3; font-size: clamp(1.4rem, 0.7rem + 3.6vw, 3.4rem) !important; }
+[data-theme='arcade'] .title { font-family: 'Press Start 2P', var(--font-mono); font-stretch: normal; font-weight: 400; letter-spacing: 0; line-height: 1.45; font-size: clamp(1rem, 0.8rem + 1vw, 1.5rem); }
+
+/* Raga: a display face drawn from Devanagari */
+[data-theme='raga'] :is(.display, .title) { font-family: 'Yatra One', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0; line-height: 1.08; }
+
+/* ─── World backdrops: Middle-earth and Cybertron on the horizon ─────────── */
+.backdrop { display: block; pointer-events: none; }
+.hero-backdrop { position: absolute; left: 50%; bottom: 0; z-index: -1; width: 100vw; height: clamp(160px, 24vw, 330px); translate: -50% 0; opacity: 0.95; }
+.backdrop-me[data-variant='shire'] { --me-sky-top: #fbfaf3; --me-sky-bottom: #f1edd6; --me-far: #dcdfca; --me-mid: #bccba0; --me-near: #93b065; --me-mist: #fbfaf3; }
+html[data-mode='dark'] .backdrop-me[data-variant='shire'] { --me-sky-top: #09090b; --me-sky-bottom: #11160c; --me-far: #1b2215; --me-mid: #233019; --me-near: #2c3f1e; --me-mist: #09090b; }
+.backdrop-me[data-variant='mordor'] { --me-sky-top: #fcfaf9; --me-sky-bottom: #f6e0d2; --me-far: #ddcdc6; --me-mid: #ad958d; --me-near: #3b2a26; --me-mist: #fcfaf9; }
+html[data-mode='dark'] .backdrop-me[data-variant='mordor'] { --me-sky-top: #09090b; --me-sky-bottom: #2c0e05; --me-far: #1d120e; --me-mid: #170d0a; --me-near: #0c0605; --me-mist: #09090b; }
+.me-eye, .me-lava { animation: me-flicker 3s ease-in-out infinite; }
+@keyframes me-flicker { 50% { opacity: 0.55; } }
+.backdrop-cy[data-faction='autobot'] { --cy-light: #2fb7e6; --cy-far: #e3e8ef; --cy-mid: #cfd7e2; --cy-near: #b9c4d3; }
+.backdrop-cy[data-faction='decepticon'] { --cy-light: #9a6cf0; --cy-far: #e6e3ee; --cy-mid: #d3cee0; --cy-near: #bdb6d0; }
+html[data-mode='dark'] .backdrop-cy[data-faction='autobot'] { --cy-light: #4fd8ff; --cy-far: #121a26; --cy-mid: #0e151f; --cy-near: #0a0f16; }
+html[data-mode='dark'] .backdrop-cy[data-faction='decepticon'] { --cy-light: #b48cff; --cy-far: #171326; --cy-mid: #120f1f; --cy-near: #0c0a15; }
+.cy-blink { animation: cy-blink 2.8s steps(2, jump-none) infinite; }
+@keyframes cy-blink { 50% { opacity: 0.15; } }
+@media (prefers-reduced-motion: reduce) { .me-eye, .me-lava, .cy-blink { animation: none; } }

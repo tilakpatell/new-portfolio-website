@@ -13,7 +13,8 @@ import { ClaudeFeature, GameBoyFeature } from '../stages';
 import { ClaudeSpark } from '../stages/ClaudeStage';
 import ProjectThumb from '../components/ProjectThumb';
 import { useDocumentTitle } from '../lib/hooks';
-import { useSectionThemes } from '../theme/ThemeProvider';
+import { useSectionThemes, useTheme } from '../theme/ThemeProvider';
+import { ThemeBackdrop } from '../components/worlds/Backdrops';
 import { useFun } from '../fun/FunProvider';
 import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
@@ -79,6 +80,7 @@ export default function Home() {
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
   const { heisenberg } = useFun();
+  const { active } = useTheme();
   const gameboy = projectById('gameboy-emulator');
   const translator = projectById('swaminarayan-translator');
   const others = featuredProjects.filter((p) => p.id !== gameboy.id && p.id !== translator.id);
@@ -90,6 +92,8 @@ export default function Home() {
       {/* Hero */}
       <section data-theme-section="aws" className="shell relative z-10 pb-16 pt-[calc(var(--nav-h)+40px)] md:pb-24 md:pt-[calc(var(--nav-h)+72px)]">
         <div className="hero-wash pointer-events-none" aria-hidden="true" />
+        {/* Middle-earth or Cybertron on the horizon, when their themes are on */}
+        <ThemeBackdrop theme={active} className="hero-backdrop" />
         <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.6rem" />

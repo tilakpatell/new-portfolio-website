@@ -25,6 +25,11 @@ const WORDS = [
   ['bumblebee', 'bumblebee'],
   ['shockwave', 'shockwave'],
   ['soundwave', 'soundwave'],
+  ['mellon', 'shire'],
+  ['mordor', 'mordor'],
+  ['sauron', 'mordor'],
+  ['youshallnotpass', 'gandalf'],
+  ['precious', 'gollum'],
 ];
 const TRANSFORMERS = ['optimus', 'megatron', 'bumblebee', 'shockwave', 'soundwave'];
 
@@ -162,16 +167,46 @@ export function FunProvider({ children }) {
     [pin, unlock],
   );
 
+  // Middle-earth: mellon opens the doors (and both themes); Mordor goes dark.
+  const speakFriend = useCallback(
+    (where = 'shire') => {
+      unlock('mellon');
+      pin(where === 'mordor' ? 'mordor' : 'shire');
+    },
+    [pin, unlock],
+  );
+  const gandalf = useCallback(() => {
+    import('../lib/sfx').then((s) => s.thunder());
+    notify('You shall not pass!', 'Gandalf, on the Bridge of Khazad-dûm', 'note');
+    const root = document.documentElement;
+    root.classList.remove('stand-ground');
+    void root.offsetWidth;
+    root.classList.add('stand-ground');
+    setTimeout(() => root.classList.remove('stand-ground'), 900);
+  }, [notify]);
+  const gollum = useCallback(() => notify('My precious.', 'Gollum', 'note'), [notify]);
+
   // Typed anywhere outside a text field.
   useEffect(() => {
     let buffer = '';
-    const actions = { aurebesh: toggleAurebesh, heisenberg: sayMyName, snap, twss, parkour, ...Object.fromEntries(TRANSFORMERS.map((t) => [t, () => rollOut(t)])) };
+    const actions = {
+      aurebesh: toggleAurebesh,
+      heisenberg: sayMyName,
+      snap,
+      twss,
+      parkour,
+      shire: () => speakFriend('shire'),
+      mordor: () => speakFriend('mordor'),
+      gandalf,
+      gollum,
+      ...Object.fromEntries(TRANSFORMERS.map((t) => [t, () => rollOut(t)])),
+    };
     const onKey = (e) => {
       const t = e.target;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (!/^[a-z]$/i.test(e.key)) return;
-      buffer = (buffer + e.key.toLowerCase()).slice(-12);
+      buffer = (buffer + e.key.toLowerCase()).slice(-16);
       const hit = WORDS.find(([word]) => buffer.endsWith(word));
       if (hit) {
         buffer = '';
@@ -180,11 +215,11 @@ export function FunProvider({ children }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [parkour, rollOut, sayMyName, snap, toggleAurebesh, twss]);
+  }, [gandalf, gollum, parkour, rollOut, sayMyName, snap, speakFriend, toggleAurebesh, twss]);
 
   const value = useMemo(
-    () => ({ aurebesh, setAurebesh, toggleAurebesh, heisenberg, setHeisenberg, sayMyName, snap, twss, parkour, rollOut }),
-    [aurebesh, heisenberg, parkour, rollOut, sayMyName, setAurebesh, snap, toggleAurebesh, twss],
+    () => ({ aurebesh, setAurebesh, toggleAurebesh, heisenberg, setHeisenberg, sayMyName, snap, twss, parkour, rollOut, speakFriend, gandalf }),
+    [aurebesh, heisenberg, parkour, rollOut, sayMyName, setAurebesh, snap, toggleAurebesh, twss, speakFriend, gandalf],
   );
 
   return (

@@ -5,6 +5,41 @@ import { CUSTOM_DEFAULT, CUSTOM_KEY, customTokens, isHex } from './custom';
 
 const ThemeTransition = lazy(() => import('../components/ThemeTransition'));
 
+// Fan themes bring their own type (see the end of styles/extras.css). The
+// fonts load the first time their theme is on, not before.
+const both = (...loaders) => () => Promise.all(loaders.map((l) => l()));
+const newsCycle = both(
+  () => import('@fontsource/news-cycle/400.css'),
+  () => import('@fontsource/news-cycle/700.css'),
+);
+const cinzel = both(
+  () => import('@fontsource/cinzel/600.css'),
+  () => import('@fontsource/cinzel/700.css'),
+  () => import('@fontsource/cinzel-decorative/700.css'),
+);
+const orbitron = both(
+  () => import('@fontsource/orbitron/600.css'),
+  () => import('@fontsource/orbitron/800.css'),
+);
+const THEME_FONTS = {
+  jedi: newsCycle,
+  sith: newsCycle,
+  stark: () => import('@fontsource/bebas-neue/400.css'),
+  dunder: both(
+    () => import('@fontsource/courier-prime/400.css'),
+    () => import('@fontsource/courier-prime/700.css'),
+  ),
+  arcade: () => import('@fontsource/press-start-2p/400.css'),
+  raga: () => import('@fontsource/yatra-one/400.css'),
+  shire: cinzel,
+  mordor: cinzel,
+  optimus: orbitron,
+  megatron: orbitron,
+  bumblebee: orbitron,
+  shockwave: orbitron,
+  soundwave: orbitron,
+};
+
 // One active theme re-skins the whole site. It flows on its own — AWS by
 // default, the company whose chapter is on screen on the Experience page, and
 // each project's own theme on its page — unless the visitor pins a company
@@ -59,6 +94,10 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     setScrollTheme(null);
   }, [pathname]);
+
+  useEffect(() => {
+    THEME_FONTS[active]?.().catch(() => {});
+  }, [active]);
 
   useEffect(() => {
     const root = document.documentElement;

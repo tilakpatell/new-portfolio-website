@@ -32,6 +32,8 @@ export const THEMES = {
   bumblebee: { id: 'bumblebee', label: 'Bumblebee', company: 'Bumblebee', swatch: '#F7C600', fan: true },
   shockwave: { id: 'shockwave', label: 'Shockwave', company: 'Shockwave', swatch: '#7A2FB8', fan: true },
   soundwave: { id: 'soundwave', label: 'Soundwave', company: 'Soundwave', swatch: '#1F6FB2', fan: true },
+  shire: { id: 'shire', label: 'Shire', company: 'The Shire', swatch: '#4F7C2A', fan: true },
+  mordor: { id: 'mordor', label: 'Mordor', company: 'Mordor', swatch: '#C2410C', fan: true },
   // the visitor's own colour (see theme/custom.js); its swatch follows their pick
   custom: { id: 'custom', label: 'Yours', company: 'Your color', swatch: 'var(--custom-accent, #7c3aed)' },
 };
@@ -52,6 +54,9 @@ export const FAN_THEMES = [
   { id: 'bumblebee', achievement: 'rollout', hint: 'Roll out' },
   { id: 'shockwave', achievement: 'rollout', hint: 'Roll out' },
   { id: 'soundwave', achievement: 'rollout', hint: 'Roll out' },
+  // speak, friend, and enter: type mellon anywhere
+  { id: 'shire', achievement: 'mellon', hint: 'Speak, friend, and enter' },
+  { id: 'mordor', achievement: 'mellon', hint: 'Speak, friend, and enter' },
 ];
 
 export const THEME_ORDER = ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src'];
@@ -70,4 +75,6 @@ export const ROUTE_THEMES = {
   '/projects/gpu-checkpoint-restart': 'nvidia',
   '/travel': 'travel',
   '/music': 'raga',
+  '/middle-earth': 'shire',
+  '/cybertron': 'optimus',
 };
