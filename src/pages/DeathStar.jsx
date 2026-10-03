@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import Readout from '../components/deathstar/Readout';
+import TrenchRun from '../components/deathstar/TrenchRun';
+import { PLANETS, PLANET_AT as PLANET, PlanetArt } from '../components/deathstar/Planets';
+import { AurebeshLine } from '../components/Wordmark';
 import { useDocumentTitle, useReducedMotion } from '../lib/hooks';
 
 // The hidden page. Reachable from the terminal ('deathstar'), the footer and the Konami code.
 const DS = { x: 520, y: 220, r: 150 };
 const DISH = { x: 462, y: 160, r: 36 };
 const FOCUS = { x: 432, y: 138 };
-const PLANET = { x: 120, y: 112, r: 46 };
 const BEAM = '#8dff6b';
 
 export default function DeathStar() {
@@ -15,6 +18,39 @@ export default function DeathStar() {
   // idle → charging → firing → boom → gone
   const [phase, setPhase] = useState('idle');
   const [shots, setShots] = useState(0);
+  const [destroyed, setDestroyed] = useState(false);
+  const [planet, setPlanet] = useState('alderaan');
+  const [jumping, setJumping] = useState(false);
+  const [arrivals, setArrivals] = useState(0);
+  const { hash } = useLocation();
+
+  // Set a course: the station makes the jump to lightspeed and arrives at the new planet.
+  const travel = (id) => {
+    if (id === planet || jumping || destroyed || (phase !== 'idle' && phase !== 'gone')) return;
+    setJumping(true);
+    setTimeout(
+      () => {
+        setPlanet(id);
+        setPhase('idle');
+        setArrivals((n) => n + 1);
+        setJumping(false);
+      },
+      reduced ? 0 : 1150,
+    );
+  };
+
+  useEffect(() => {
+    if (hash !== '#trench') return undefined;
+    const t = setTimeout(() => document.getElementById('trench')?.scrollIntoView({ block: 'start' }), 120);
+    return () => clearTimeout(t);
+  }, [hash]);
+
+  const onWin = () => {
+    setTimeout(() => {
+      setDestroyed(true);
+      window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    }, 1400);
+  };
 
   useEffect(() => {
     const next = { charging: ['firing', 1100], firing: ['boom', 380], boom: ['gone', 1500] }[phase];
@@ -52,7 +88,17 @@ export default function DeathStar() {
       <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
       {phase === 'boom' && !reduced && <div className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
       <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
-        <svg viewBox="0 0 680 400" className="block h-auto w-full overflow-visible" role="img" aria-label="The Death Star facing the planet Alderaan">
+        <div className="relative">
+        {jumping && (
+          <svg className="hyperspace" viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            {Array.from({ length: 70 }).map((_, i) => {
+              const a = (i * 137.5 * Math.PI) / 180;
+              const r0 = 3 + ((i * 7) % 16);
+              return <line key={i} x1={Math.cos(a) * r0} y1={Math.sin(a) * r0} x2={Math.cos(a) * 75} y2={Math.sin(a) * 75} pathLength="1" style={{ animationDelay: `${(i % 9) * 15}ms` }} />;
+            })}
+          </svg>
+        )}
+        <svg viewBox="0 0 680 400" className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${PLANETS[planet].name}`}>
           <defs>
             <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
               <stop offset="0" stopColor="#b9bec4" />
@@ -65,35 +111,16 @@ export default function DeathStar() {
               <stop offset="0.7" stopColor="#5d6268" />
               <stop offset="1" stopColor="#3c4046" />
             </radialGradient>
-            <radialGradient id="alderaan" cx="35%" cy="30%" r="80%">
-              <stop offset="0" stopColor="#bfe3ff" />
-              <stop offset="0.35" stopColor="#4f8fd8" />
-              <stop offset="0.75" stopColor="#24548f" />
-              <stop offset="1" stopColor="#0d223d" />
-            </radialGradient>
             <clipPath id="ds-clip">
               <circle cx={DS.x} cy={DS.y} r={DS.r} />
-            </clipPath>
-            <clipPath id="planet-clip">
-              <circle cx={PLANET.x} cy={PLANET.y} r={PLANET.r} />
             </clipPath>
             <filter id="ds-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="4" />
             </filter>
           </defs>
 
-          {/* Alderaan */}
-          {planetVisible && (
-            <g className={phase === 'firing' ? 'planet-hit' : ''}>
-              <circle cx={PLANET.x} cy={PLANET.y} r={PLANET.r + 6} fill="#6aa8ff" opacity="0.12" />
-              <circle cx={PLANET.x} cy={PLANET.y} r={PLANET.r} fill="url(#alderaan)" />
-              <g clipPath="url(#planet-clip)" opacity="0.85">
-                <path d={`M ${PLANET.x - 40} ${PLANET.y - 14} q 18 -12 34 -2 q 14 8 30 -4 q 10 -6 20 2`} fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" opacity="0.7" />
-                <path d={`M ${PLANET.x - 30} ${PLANET.y + 16} q 22 8 40 -2 q 12 -6 26 4`} fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-                <path d={`M ${PLANET.x - 12} ${PLANET.y - 2} q 10 -10 22 -4 q 8 4 4 12 q -10 10 -22 2 z`} fill="#3f8a4a" opacity="0.8" />
-              </g>
-            </g>
-          )}
+          {/* The planet in range */}
+          {planetVisible && <PlanetArt key={planet} id={planet} className={phase === 'firing' ? 'planet-hit' : 'planet-in'} />}
           {(phase === 'boom' || phase === 'gone') && (
             <g key={shots}>
               {phase === 'boom' && (
@@ -117,6 +144,13 @@ export default function DeathStar() {
           )}
 
           {/* Death Star */}
+          {destroyed && (
+            <g key="boom">
+              <circle className="ds-core" cx={DS.x} cy={DS.y} r={DS.r * 0.6} fill="#fff6d8" />
+              <ellipse className="ds-ring" cx={DS.x} cy={DS.y} rx={DS.r * 0.8} ry={DS.r * 0.2} fill="none" stroke="#ffe7a8" strokeWidth="3" />
+            </g>
+          )}
+          <g key={`ds-${arrivals}`} className={destroyed ? 'ds-gone' : arrivals ? 'ds-arrive' : undefined}>
           <circle cx={DS.x} cy={DS.y} r={DS.r} fill="url(#ds-body)" />
           <g clipPath="url(#ds-clip)" opacity="0.5">
             {[90, 120, 150, 260, 290, 320, 345].map((y) => (
@@ -142,36 +176,84 @@ export default function DeathStar() {
             </g>
           )}
           {charging && <circle cx={FOCUS.x} cy={FOCUS.y} r="7" fill="#eaffdf" filter="url(#ds-glow)" />}
+          </g>
           <text x={PLANET.x} y={PLANET.y + PLANET.r + 26} textAnchor="middle" fill="#9aa0a9" fontFamily="var(--font-mono)" fontSize="12" letterSpacing="2">
-            {planetVisible ? 'ALDERAAN' : ''}
+            {planetVisible ? PLANETS[planet].name.toUpperCase() : ''}
           </text>
         </svg>
+        </div>
 
         <div>
-          <p className="eyebrow">Classified · DS-1 Orbital Battle Station</p>
-          <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">That’s no moon.</h1>
-          <p className="lead mt-6 max-w-xl">It’s a space station, and you found the hidden page. Alderaan is in range.</p>
+          <p className="eyebrow">
+            <AurebeshLine>Classified</AurebeshLine> · DS-1 Orbital Battle Station
+          </p>
+          <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">{destroyed ? 'It was a moon after all.' : 'That’s no moon.'}</h1>
+          <p className="lead mt-6 max-w-xl">
+            {destroyed
+              ? 'The station is gone. The Rebellion thanks you, and so does Alderaan’s insurance company.'
+              : `It’s a space station, and you found the hidden page. ${PLANETS[planet].name} is in range. ${PLANETS[planet].line}`}
+          </p>
           <div className="mt-8 flex flex-wrap gap-3">
             {phase === 'gone' ? (
               <button type="button" className="btn btn-primary" onClick={() => setPhase('idle')}>
-                Restore Alderaan from checkpoint
+                Restore {PLANETS[planet].name} from checkpoint
               </button>
             ) : (
               <button type="button" className="btn btn-primary" onClick={fire} disabled={phase !== 'idle'}>
                 Fire the superlaser
               </button>
             )}
+            {destroyed ? (
+              <button type="button" className="btn btn-ghost" onClick={() => setDestroyed(false)}>
+                Rebuild the station
+              </button>
+            ) : (
+              <a href="#trench" className="btn btn-ghost" onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('trench')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+              }}>
+                Fly the trench run
+              </a>
+            )}
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>
           </div>
+          <div className="mt-8">
+            <p className="label">Set course for</p>
+            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Planets">
+              {Object.entries(PLANETS).map(([id, pl]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="place-chip"
+                  aria-pressed={planet === id}
+                  disabled={jumping || destroyed || (phase !== 'idle' && phase !== 'gone')}
+                  onClick={() => travel(id)}
+                >
+                  {pl.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <p className="mono mt-6 min-h-[1.5em] text-sm text-accent" role="status">
             {phase === 'charging' && 'Charging the main reactor…'}
             {phase === 'firing' && 'Fire at will.'}
-            {(phase === 'boom' || phase === 'gone') && 'Fully operational. Alderaan is no more.'}
+            {(phase === 'boom' || phase === 'gone') && `Fully operational. ${PLANETS[planet].name} is no more.`}
+            {jumping && 'Jumping to lightspeed…'}
           </p>
         </div>
       </div>
+      <Readout />
+      <section id="trench" className="shell relative z-10 scroll-mt-24 pb-28" aria-labelledby="trench-title">
+        <h2 id="trench-title" className="title">
+          Trench run
+        </h2>
+        <p className="lead mt-4 max-w-[54ch]">Two torpedoes, three shields, one exhaust port. Switching off the targeting computer is optional.</p>
+        <div className="mt-8">
+          <TrenchRun onWin={onWin} />
+        </div>
+      </section>
     </div>
   );
 }

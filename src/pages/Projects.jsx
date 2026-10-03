@@ -9,7 +9,6 @@ import { profile } from '../data/profile';
 import { ROUTE_THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { useDocumentTitle } from '../lib/hooks';
-import Art from '../components/Art';
 import PeriodicStack from '../components/projects/PeriodicStack';
 import SitarDivider from '../components/SitarDivider';
 
@@ -101,7 +100,6 @@ export default function Projects() {
               demos.
             </p>
           </div>
-          <Art name="akshardham-delhi" className="projects-hero-art hidden lg:block" priority />
         </div>
       </header>
 

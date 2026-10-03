@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { RiFileTextLine, RiMovie2Line } from 'react-icons/ri';
-import Art from '../components/Art';
 import Dundies from '../components/experience/Dundies';
+import ChapterScene from '../components/experience/Scenes';
 import RouteLine from '../components/RouteLine';
 import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
@@ -42,8 +42,10 @@ function CurrentRole({ role, onCrawl }) {
   return (
     <section id={role.id} data-theme-section={role.id} className="exp-hero relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
       <div className="exp-hero-bg" aria-hidden="true" />
-      <Art name="mountains" className="exp-hero-art" priority />
-      <div className="shell relative pb-14 pt-[calc(var(--nav-h)+32px)] md:pb-20 md:pt-[calc(var(--nav-h)+52px)]">
+      <div aria-hidden="true">
+        <ChapterScene kind={role.id} className="is-hero" />
+      </div>
+      <div className="shell relative pb-14 pt-6 md:pb-20 md:pt-8">
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow hero-in text-center">
@@ -108,6 +110,7 @@ function Chapter({ role, episode, last }) {
   return (
     <section id={role.id} data-theme-section={role.id} className="relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
       <div className="shell relative pt-16 md:pt-24">
+        <ChapterScene kind={role.id} className="mb-10 md:mb-14" />
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <div className="relative lg:sticky lg:top-[calc(var(--nav-h)+32px)] lg:self-start">
             <Waypoint top="0.45rem" />
@@ -214,9 +217,6 @@ export default function Experience() {
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
       <CurrentRole role={roles[0]} onCrawl={() => setCrawl(true)} />
-      <div className="frieze" aria-hidden="true">
-        <Art name="frieze" />
-      </div>
       {roles.slice(1).map((r, i) => (
         <Chapter key={r.id} role={r} episode={roles.length - 1 - i} last={i === roles.length - 2} />
       ))}
