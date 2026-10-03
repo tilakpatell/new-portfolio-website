@@ -12,6 +12,13 @@ import { prefersReducedMotion } from '../../lib/hooks';
 import Gif from '../Gif';
 import Gauntlet from './Gauntlet';
 import { STONES, VIEW } from './stones';
+import { EGGS, EGG_KEY } from '../../fun/eggs';
+import { local } from '../../lib/hooks';
+
+const eggsFound = () => {
+  const saved = local.get(EGG_KEY, []);
+  return Array.isArray(saved) ? saved.filter((id) => EGGS[id]).length : 0;
+};
 
 // What I'm into when I'm not writing code, one interactive card each.
 
@@ -99,7 +106,9 @@ function Gaming() {
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">
         Games got me into code. This site keeps score: {unlocked.length} of {total} achievements unlocked.
       </p>
-      <p className="mt-2 text-sm text-muted">Hint: ↑ ↑ ↓ ↓ ← → ← → B A</p>
+      <p className="mt-2 text-sm text-muted">
+        Hint: ↑ ↑ ↓ ↓ ← → ← → B A. And there’s a hidden easter egg on every page: {eggsFound()} of {Object.keys(EGGS).length} found.
+      </p>
       <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm mt-auto self-start">
         Press Start
       </Link>

@@ -11,6 +11,7 @@ import { useSectionThemes } from '../theme/ThemeProvider';
 import { useDocumentTitle } from '../lib/hooks';
 import PeriodicStack from '../components/projects/PeriodicStack';
 import SitarDivider from '../components/SitarDivider';
+import Egg from '../components/Egg';
 
 const CTA = {
   'gameboy-emulator': 'Play it and see how it works',
@@ -126,6 +127,7 @@ export default function Projects() {
         <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost mt-10">
           <RiGithubFill className="h-4 w-4" aria-hidden="true" /> Everything else is on GitHub
         </a>
+        <Egg id="saul" className="egg-corner" />
       </section>
     </div>
   );

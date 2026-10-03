@@ -1,6 +1,7 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DEFAULT_THEME, ROUTE_THEMES, THEMES } from './themes';
+import { CUSTOM_DEFAULT, CUSTOM_KEY, customTokens, isHex } from './custom';
 
 const ThemeTransition = lazy(() => import('../components/ThemeTransition'));
 
@@ -121,9 +122,36 @@ export function ThemeProvider({ children }) {
     });
   }, []);
 
+  // The visitor's own colour: kept across visits, applied as CSS variables.
+  const [customColor, setCustomColorState] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem(CUSTOM_KEY);
+      return isHex(saved) ? saved : CUSTOM_DEFAULT;
+    } catch {
+      return CUSTOM_DEFAULT;
+    }
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    Object.entries(customTokens(customColor)).forEach(([k, v]) => root.style.setProperty(k, v));
+  }, [customColor]);
+  const setCustomColor = useCallback(
+    (hex) => {
+      if (!isHex(hex)) return;
+      setCustomColorState(hex);
+      try {
+        window.localStorage.setItem(CUSTOM_KEY, hex);
+      } catch {
+        /* storage unavailable */
+      }
+      pin('custom');
+    },
+    [pin],
+  );
+
   const value = useMemo(
-    () => ({ active, theme: THEMES[active], pinned, pin, setScrollTheme, seen, mode, toggleMode }),
-    [active, pinned, pin, seen, mode, toggleMode],
+    () => ({ active, theme: THEMES[active], pinned, pin, setScrollTheme, seen, mode, toggleMode, customColor, setCustomColor }),
+    [active, pinned, pin, seen, mode, toggleMode, customColor, setCustomColor],
   );
   return (
     <ThemeSetterContext.Provider value={setScrollTheme}>

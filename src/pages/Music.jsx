@@ -26,6 +26,7 @@ import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
 import Tabla from '../components/music/Tabla';
+import Egg from '../components/Egg';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
 const hz = (f) => `${f.toFixed(1)} Hz`;
@@ -319,6 +320,7 @@ export default function Music() {
       </section>
 
       <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="tabla-title">
+        <Egg id="cassette" className="egg-corner" />
         <div className="grid items-end gap-8 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] md:gap-12">
           <div className="relative">
             <Waypoint top="0.9rem" />

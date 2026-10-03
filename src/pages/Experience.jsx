@@ -16,6 +16,7 @@ import { roles, fmtRange, fmtMonth, monthIndex, nowMonth } from '../data/roles';
 import { THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import Egg from '../components/Egg';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
@@ -244,6 +245,7 @@ export default function Experience() {
           <Link className="btn btn-ghost" to="/projects">
             See projects
           </Link>
+          <Egg id="mjolnir" className="ml-auto self-center" />
         </div>
       </section>
       <PhotoCredits ids={roles.map((r) => `exp-${r.id}`)} note="The photos at the top of each role are freely licensed, from Wikimedia Commons." />

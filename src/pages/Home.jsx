@@ -20,6 +20,7 @@ import PhotoBand from '../components/travel/PhotoBand';
 import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
 import HeroDock from '../components/HeroDock';
+import Egg from '../components/Egg';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -149,6 +150,7 @@ export default function Home() {
 
       {/* Featured: the Game Boy */}
       <section data-theme-section="gameboy" className="shell relative z-10 py-14 md:py-20" aria-labelledby="gb-title">
+        <Egg id="oneup" className="egg-corner" />
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-20">
           <div className="relative">
             <Waypoint top="0.9rem" />

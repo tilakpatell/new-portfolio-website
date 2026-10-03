@@ -9,6 +9,7 @@ import { useAchievements } from './Achievements';
 import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import Wordmark from './Wordmark';
+import { CUSTOM_PRESETS } from '../theme/custom';
 
 const LINKS = [
   { to: '/experience', label: 'Experience' },
@@ -16,6 +17,36 @@ const LINKS = [
   { to: '/travel', label: 'Travel' },
   { to: '/contact', label: 'Contact' },
 ];
+
+// Your own colour: a few presets, or any colour at all. The text drawn in it
+// and on it is kept readable (see theme/custom.js).
+function CustomColor({ onPick }) {
+  const { pinned, customColor, setCustomColor } = useTheme();
+  const on = pinned === 'custom';
+  return (
+    <div className="color-pick" role="group" aria-label="Your own color">
+      {CUSTOM_PRESETS.map(([hex, name]) => (
+        <button
+          key={hex}
+          type="button"
+          className="color-dot"
+          style={{ background: hex }}
+          aria-pressed={on && customColor === hex}
+          aria-label={name}
+          title={name}
+          onClick={() => {
+            setCustomColor(hex);
+            onPick?.();
+          }}
+        />
+      ))}
+      <label className="color-input" title="Any color">
+        <span className="sr-only">Pick any color</span>
+        <input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} />
+      </label>
+    </div>
+  );
+}
 
 // Site colours: a small "Auto" control that explains what the colours mean.
 // Auto follows the page; picking a company keeps its colours everywhere.
@@ -43,6 +74,8 @@ function ThemeOptions({ onPick, compact = false }) {
           {THEME_ORDER.map((id) => chip(id, THEMES[id].label, THEMES[id].fill || THEMES[id].swatch))}
           {fans.map((f) => chip(f.id, THEMES[f.id].label, THEMES[f.id].swatch))}
         </div>
+        <p className="label mt-4">Your color</p>
+        <CustomColor onPick={onPick} />
         {locked > 0 && (
           <p className="mt-3 text-xs text-muted">
             {locked} more {locked === 1 ? 'scheme unlocks' : 'schemes unlock'} through easter eggs.
@@ -76,6 +109,9 @@ function ThemeOptions({ onPick, compact = false }) {
           </button>
         );
       })}
+      <div className="my-1 h-px bg-[var(--border)]" />
+      <p className="px-2.5 pb-0.5 pt-2 text-xs text-muted">Your color</p>
+      <CustomColor onPick={onPick} />
       <div className="my-1 h-px bg-[var(--border)]" />
       <p className="px-2.5 pb-1 pt-2 text-xs text-muted">
         Unlocked by easter eggs: {FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).length} of {FAN_THEMES.length}

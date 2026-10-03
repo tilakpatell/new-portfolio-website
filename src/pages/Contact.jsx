@@ -8,6 +8,7 @@ import { fmtMonth } from '../data/roles';
 import { useDocumentTitle } from '../lib/hooks';
 import { useFun } from '../fun/FunProvider';
 import { AurebeshLine } from '../components/Wordmark';
+import Egg from '../components/Egg';
 
 function CopyEmail() {
   const [copied, setCopied] = useState(false);
@@ -160,6 +161,7 @@ export default function Contact() {
       </header>
 
       <section className="shell relative z-10 pb-28" aria-label="Ways to reach me">
+        <Egg id="hologram" className="egg-corner" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
           <Waypoint top="1.6rem" />
           <div className="grid content-start gap-4">

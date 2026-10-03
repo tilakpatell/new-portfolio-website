@@ -15,6 +15,7 @@ import { PHOTOS } from '../data/photos';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import { jumpTo } from '../lib/anchors';
+import Egg from '../components/Egg';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);
@@ -59,6 +60,7 @@ function HomeBase() {
   const school = PHOTOS['west-genesee'];
   return (
     <section data-theme-section="travel" className="shell relative z-10 py-16 md:py-24" aria-labelledby="home-base-title">
+      <Egg id="mug" className="egg-corner" />
       <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
         <div className="relative">
           <Waypoint top="0.9rem" />

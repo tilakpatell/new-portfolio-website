@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useDocumentTitle } from '../lib/hooks';
 import { AurebeshLine } from '../components/Wordmark';
+import Egg from '../components/Egg';
 
 export default function NotFound() {
   useDocumentTitle('Page not found');
@@ -17,6 +18,7 @@ export default function NotFound() {
           <Link to="/" className="btn btn-primary">
             Go to home
           </Link>
+          <Egg id="lost" className="order-last self-center" />
           <Link to="/experience" className="btn btn-ghost">
             Experience
           </Link>

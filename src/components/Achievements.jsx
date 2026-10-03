@@ -25,6 +25,7 @@ export const ACHIEVEMENTS = {
   raga: { name: 'Raga', desc: 'Played eight notes on the sitar' },
   jugalbandi: { name: 'Jugalbandi', desc: 'Played the sitar, harmonium and tabla' },
   rollout: { name: 'Roll out', desc: 'Transformed the site' },
+  collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };

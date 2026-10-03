@@ -698,6 +698,77 @@ function transformRaw(acIn, destIn, when = 0) {
   return 1.2;
 }
 
+// ── Easter eggs ─────────────────────────────────────────────────────────────
+// Thunder for the hammer: a crack, then a long low roll.
+function thunderRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.4, 0.55);
+  const crack = noiseSource(ac, 'white', 1);
+  const cf = ac.createBiquadFilter();
+  cf.type = 'highpass';
+  cf.frequency.value = 900;
+  const cg = ac.createGain();
+  env(cg.gain, t, [[0, 0.0001], [0.005, 0.5, 'lin'], [0.18, 0.0001]]);
+  crack.connect(cf).connect(cg).connect(out);
+  crack.start(t);
+  crack.stop(t + 0.2);
+  const roll = noiseSource(ac, 'brown', 4);
+  const rf = ac.createBiquadFilter();
+  rf.type = 'lowpass';
+  env(rf.frequency, t, [[0, 900], [1.8, 160]]);
+  const rg = ac.createGain();
+  env(rg.gain, t, [[0, 0.0001], [0.08, 0.7, 'lin'], [0.5, 0.45, 'lin'], [2.2, 0.0001]]);
+  roll.connect(rf).connect(rg).connect(out);
+  roll.start(t);
+  roll.stop(t + 2.3);
+  return 2.3;
+}
+
+// A little droid's chirps: quick sine glides, never the same twice.
+function beepsRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.15, 0.4);
+  let at = t;
+  for (let i = 0; i < 7; i++) {
+    const o = ac.createOscillator();
+    const f0 = 900 + Math.random() * 1800;
+    const f1 = f0 * (0.6 + Math.random() * 1.1);
+    const len = 0.05 + Math.random() * 0.09;
+    o.frequency.setValueAtTime(f0, at);
+    o.frequency.exponentialRampToValueAtTime(f1, at + len);
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.006, 0.2, 'lin'], [len, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + len + 0.01);
+    at += len + 0.02 + Math.random() * 0.04;
+  }
+  return at - t;
+}
+
+// One more life: a bright run up the scale.
+function oneUpRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  [659.25, 783.99, 1318.51, 1046.5, 1174.66, 1567.98].forEach((hz, i) => {
+    const o = ac.createOscillator();
+    o.type = 'square';
+    o.frequency.value = hz;
+    const g = ac.createGain();
+    const at = t + i * 0.085;
+    env(g.gain, at, [[0, 0.0001], [0.004, 0.09, 'lin'], [0.08, 0.0001]]);
+    o.connect(g).connect(dest);
+    o.start(at);
+    o.stop(at + 0.09);
+  });
+  return 0.6;
+}
+
 // ── Trench run ──────────────────────────────────────────────────────────────
 function torpedoRaw(acIn, destIn) {
   const [ac, dest] = ready(acIn, destIn);
@@ -795,3 +866,6 @@ export const repulsor = once('repulsor', repulsorRaw);
 export const ding = once('ding', dingRaw);
 export const knock = once('knock', knockRaw);
 export const transform = once('transform', transformRaw);
+export const thunder = once('thunder', thunderRaw);
+export const beeps = once('beeps', beepsRaw);
+export const oneUp = once('oneUp', oneUpRaw);

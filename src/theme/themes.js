@@ -32,6 +32,8 @@ export const THEMES = {
   bumblebee: { id: 'bumblebee', label: 'Bumblebee', company: 'Bumblebee', swatch: '#F7C600', fan: true },
   shockwave: { id: 'shockwave', label: 'Shockwave', company: 'Shockwave', swatch: '#7A2FB8', fan: true },
   soundwave: { id: 'soundwave', label: 'Soundwave', company: 'Soundwave', swatch: '#1F6FB2', fan: true },
+  // the visitor's own colour (see theme/custom.js); its swatch follows their pick
+  custom: { id: 'custom', label: 'Yours', company: 'Your color', swatch: 'var(--custom-accent, #7c3aed)' },
 };
 
 // Fan themes and the achievement that unlocks each. The hint shows on the

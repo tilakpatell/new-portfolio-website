@@ -5,6 +5,7 @@ import ResumeSheet from '../components/ResumeSheet';
 import { profile } from '../data/profile';
 import { skillCount, skillFromSlug, skillSlug } from '../data/resume';
 import { useDocumentTitle } from '../lib/hooks';
+import Egg from '../components/Egg';
 
 const VIEWS = [
   { id: 'interactive', label: 'Interactive' },
@@ -94,6 +95,7 @@ export default function Resume() {
           <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
             <RiPrinterLine className="h-4 w-4" aria-hidden="true" /> Print
           </button>
+          <Egg id="reactor" className="self-center" />
         </div>
       </header>
 
