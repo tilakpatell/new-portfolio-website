@@ -41,7 +41,7 @@ function Zoomable({ index, onOpen, className = '', children }) {
 export default function Heritage() {
   const [open, setOpen] = useState(-1);
   return (
-    <section data-theme-section="travel" className="heritage relative z-10 py-16 md:py-28" aria-labelledby="heritage-title">
+    <section id="heritage" data-theme-section="travel" className="heritage relative z-10 scroll-mt-20 py-16 md:py-28" aria-labelledby="heritage-title">
       <div className="jali" aria-hidden="true">
         <div className="jali-pattern" />
       </div>

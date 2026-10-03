@@ -19,6 +19,7 @@ import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
 import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
+import HeroDock from '../components/HeroDock';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -126,6 +127,9 @@ export default function Home() {
               <Link to="/resume" className="btn btn-ghost btn-lg">
                 <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
               </Link>
+            </Reveal>
+            <Reveal delay={240} className="mt-10">
+              <HeroDock />
             </Reveal>
           </div>
           <Reveal delay={90} className="mx-auto w-full max-w-[300px] sm:max-w-[340px] lg:mx-0 lg:ml-auto lg:max-w-[380px]">

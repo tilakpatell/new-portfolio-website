@@ -1160,3 +1160,24 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .drone-pill-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 @media (max-width: 639px) { .drone-pill-raga { display: none; } }
 @media (prefers-reduced-motion: reduce) { .tanpura-string[data-lit] .tanpura-wire, .tb-struck, .drone-pill { animation: none; } }
+
+/* ─── Hero: off the clock ────────────────────────────────────────────────── */
+.dock-btn { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.18s ease, background-color 0.18s ease; }
+.dock-btn svg { width: 22px; height: 22px; overflow: visible; }
+.dock-btn:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.dock-btn:active { transform: translateY(0) scale(0.96); }
+.dock-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* the label, above on hover or focus */
+.dock-btn::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 8px); translate: -50% 4px; padding: 0.3rem 0.6rem; border-radius: 6px; background: var(--text); color: var(--bg); font-size: 0.75rem; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s ease, translate 0.15s ease; z-index: 5; }
+.dock-btn:hover::after,
+.dock-btn:focus-visible::after { opacity: 1; translate: -50% 0; }
+@media (hover: none) { .dock-btn::after { display: none; } }
+/* each icon hints at what it does */
+.dock-btn .dock-blade { stroke: var(--saber); transition: filter 0.2s ease; }
+.dock-btn[data-icon='saber']:hover .dock-blade { filter: drop-shadow(0 0 3px var(--saber)); }
+.dock-btn .dock-gem { color: #ffc400; }
+.dock-btn[data-icon='gauntlet']:hover .dock-gem { filter: drop-shadow(0 0 2px #ffc400); }
+.dock-btn .dock-string { opacity: 0.55; transform-box: fill-box; transform-origin: center; }
+.dock-btn[data-icon='sitar']:hover .dock-string { animation: dock-shiver 0.5s ease-out; }
+@keyframes dock-shiver { 0%, 100% { transform: none; } 25% { transform: translate(0.4px, -0.4px); } 50% { transform: translate(-0.4px, 0.4px); } 75% { transform: translate(0.2px, -0.2px); } }
+@media (prefers-reduced-motion: reduce) { .dock-btn, .dock-btn::after { transition: none; } .dock-btn[data-icon='sitar']:hover .dock-string { animation: none; } }

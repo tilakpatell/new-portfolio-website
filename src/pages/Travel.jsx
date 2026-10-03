@@ -130,6 +130,14 @@ export default function Travel() {
     return () => clearTimeout(t);
   }, [params]);
 
+  // /travel?section=heritage opens at that section (the hero's temple icon)
+  useEffect(() => {
+    const id = params.get('section');
+    if (!id) return undefined;
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 350);
+    return () => clearTimeout(t);
+  }, [params]);
+
   const flyTo = useCallback((id) => {
     setSelected(id);
     document.getElementById('globe')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
