@@ -118,6 +118,9 @@ export function RecoveryStage() {
           </div>
         </div>
       </StageWindow>
+      <div className="mt-3">
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => player.setIndex(1)}>Drop the connection</button>
+      </div>
       <PhaseBar phases={RECOVERY} {...player} />
     </div>
   );
@@ -385,5 +388,73 @@ export function FlamegraphStage() {
         </div>
       </StageWindow>
     </div>
+  );
+}
+
+// ─── DevSpace: edit the kernel and run it on the "GPU" ──────────────────────
+const OPS = { '+': (x, y) => x + y, '-': (x, y) => x - y, '*': (x, y) => x * y, max: (x, y) => Math.max(x, y) };
+
+export function KernelPlay() {
+  const [op, setOp] = useState('+');
+  const [a, setA] = useState('1, 2, 3, 4');
+  const [b, setB] = useState('10, 20, 30, 40');
+  const [run, setRun] = useState(null);
+  const parse = (s) => s.split(/[\s,]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n)).slice(0, 8);
+  const go = () => {
+    const xs = parse(a);
+    const ys = parse(b);
+    const n = Math.min(xs.length, ys.length);
+    const out = Array.from({ length: n }, (_, i) => OPS[op](xs[i], ys[i]));
+    setRun({ n, out, t: Date.now() });
+  };
+  const expr = op === 'max' ? 'max(a[i], b[i])' : `a[i] ${op} b[i]`;
+  return (
+    <StageWindow title="kernel.cu — your turn" right={<span>{run ? `${run.n} threads` : 'not run yet'}</span>}>
+      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr]">
+        <div>
+          <pre className="stage-code whitespace-pre-wrap text-body">
+            <span className="text-accent">__global__ void</span> op(int *a, int *b, int *c) {'{'}
+            {'\n'}  int i = threadIdx.x;
+            {'\n'}  c[i] = <span className="text-white">{expr}</span>;
+            {'\n'}{'}'}
+          </pre>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="mono text-xs text-muted">operation</span>
+            {Object.keys(OPS).map((k) => (
+              <button key={k} type="button" onClick={() => setOp(k)} aria-pressed={op === k}
+                className="mono rounded px-3 py-1 text-sm"
+                style={{ background: op === k ? 'var(--accent)' : 'var(--surface-2)', color: op === k ? '#0f1111' : 'var(--text-body)' }}>
+                {k}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <label className="mono text-xs text-muted">a[]
+              <input value={a} onChange={(e) => setA(e.target.value)} className="mt-1 w-full rounded border border-line bg-[var(--bg-deep)] px-2 py-1.5 text-sm text-white outline-none focus:border-[var(--accent)]" />
+            </label>
+            <label className="mono text-xs text-muted">b[]
+              <input value={b} onChange={(e) => setB(e.target.value)} className="mt-1 w-full rounded border border-line bg-[var(--bg-deep)] px-2 py-1.5 text-sm text-white outline-none focus:border-[var(--accent)]" />
+            </label>
+          </div>
+          <button type="button" className="btn btn-sm btn-primary mt-4" onClick={go}>Run on the Jetson</button>
+        </div>
+        <div>
+          <p className="eyebrow">GPU threads</p>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {Array.from({ length: 8 }).map((_, i) => {
+              const on = run && i < run.n;
+              return (
+                <div key={`${i}-${run?.t}`} className="rounded-md border p-2 text-center transition-colors duration-300"
+                  style={{ borderColor: on ? 'var(--accent)' : 'var(--border)', background: on ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'transparent', transitionDelay: `${i * 70}ms` }}>
+                  <p className="mono text-[0.65rem] text-muted">t{i}</p>
+                  <p className="mono text-sm text-white tabular">{on ? run.out[i] : '·'}</p>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mono mt-3 text-xs text-muted">{run ? `c = [${run.out.join(', ')}]` : 'Pick an operation, edit the arrays, run it.'}</p>
+        </div>
+      </div>
+    </StageWindow>
   );
 }

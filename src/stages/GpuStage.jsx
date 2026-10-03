@@ -122,6 +122,11 @@ export default function GpuStage() {
           )}
         </svg>
       </StageWindow>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => player.setIndex(1)}>Checkpoint now</button>
+        <button type="button" className="btn btn-sm btn-ghost" onClick={() => player.setIndex(3)}>Inject a GPU fault</button>
+        <button type="button" className="btn btn-sm btn-ghost" onClick={() => player.setIndex(4)}>Restart from checkpoint</button>
+      </div>
       <PhaseBar phases={PHASES} {...player} />
     </div>
   );

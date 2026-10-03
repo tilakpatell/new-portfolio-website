@@ -4,11 +4,12 @@ const pick = (loader, name) => lazy(() => loader().then((m) => ({ default: m[nam
 const extras = () => import('./GameBoyExtras');
 const terminal = () => import('./TerminalStages');
 const more = () => import('./MoreStages');
+const play = () => import('./PlayStages');
 
 // Each project page loads only its own stages, top to bottom.
 export const PROJECT_STAGES = {
   'gameboy-emulator': [
-    { key: 'game', title: 'Play it', caption: 'Super Tilak Land — a Mario-style level on the handheld. The plumber runs on his own; jump to grab coins.', C: lazy(() => import('./GameBoyStage')) },
+    { key: 'game', title: 'Play it', caption: 'A cartridge with three games: Super Tilak Land — four worlds (overground, underground, sky, castle) with mushrooms, shells and firebars — plus Block Drop and Snake. Pick a world with ← → in the menu.', C: lazy(() => import('./GameBoyStage')) },
     { key: 'cpu', title: 'Step the CPU', caption: 'A small LR35902 program, one instruction at a time: registers, flags and cycle counts as the emulator sees them.', C: pick(extras, 'CpuStage') },
     { key: 'ppu', title: 'Watch the PPU draw', caption: 'The picture-processing unit builds each frame one scanline at a time — 144 visible lines, then VBlank.', C: pick(extras, 'PpuStage') },
     { key: 'blargg', title: 'Pass the tests', caption: 'Blargg’s cpu_instrs ROM exercises every instruction group. All eleven pass.', C: pick(extras, 'BlarggStage') },
@@ -19,6 +20,7 @@ export const PROJECT_STAGES = {
   ],
   devspace: [
     { key: 'editor', title: 'Edit together', caption: 'Two people typing into the same CUDA file, then running it on the Jetson.', C: lazy(() => import('./DevSpaceStage')) },
+    { key: 'kernel', title: 'Your turn', caption: 'Edit the kernel and run it — one GPU thread per element.', C: pick(more, 'KernelPlay') },
     { key: 'scheduler', title: 'Share one GPU', caption: 'Run requests from every editor are queued onto isolated containers on the Jetson Nano.', C: pick(more, 'SchedulerStage') },
   ],
   'awesome-copilot': [
@@ -26,19 +28,19 @@ export const PROJECT_STAGES = {
     { key: 'recovery', title: 'What the hook does', caption: 'An error-recovery hook turns a dropped connection into a retry the user never notices.', C: pick(more, 'RecoveryStage') },
   ],
   'unix-shell': [
-    { key: 'shell', title: 'Use it', caption: 'Pipes, redirection and job control.', C: pick(terminal, 'ShellStage') },
+    { key: 'try', title: 'Try it', caption: 'A small shell running in your browser: pipes, redirection and the classic text tools. Type help, or click an example.', C: lazy(() => import('./ShellPlay')) },
     { key: 'pipeline', title: 'How a pipeline runs', caption: 'One process per command, joined by pipes.', C: pick(more, 'PipelineStage') },
   ],
   'fuse-fs': [
     { key: 'tree', title: 'Mount it', caption: 'Files and directories appear as inodes and blocks in a memory-mapped disk image.', C: pick(terminal, 'TreeStage') },
-    { key: 'inodes', title: 'Inside the image', caption: 'Each file gets an inode; its data lands in blocks tracked by a bitmap.', C: pick(more, 'InodeStage') },
+    { key: 'inodes', title: 'Make some files', caption: 'Create, write and delete files — each gets an inode, and its data lands in blocks tracked by a bitmap.', C: pick(play, 'InodePlay') },
   ],
   'finance-platform': [
     { key: 'api', title: 'Call it', caption: 'Auth, market data, recommendations and chat over FastAPI.', C: pick(terminal, 'ApiStage') },
-    { key: 'portfolio', title: 'A recommendation', caption: 'The recommend route returns a portfolio split for the user’s risk profile.', C: pick(more, 'PortfolioStage') },
+    { key: 'portfolio', title: 'Pick a risk level', caption: 'Drag the slider: the recommend route returns a portfolio split for the user’s risk profile.', C: pick(play, 'PortfolioPlay') },
   ],
   'smart-summarizer': [
-    { key: 'summarizer', title: 'Summarize', caption: 'Score every sentence, keep the best three.', C: pick(terminal, 'SummarizerStage') },
+    { key: 'summarizer', title: 'Summarize anything', caption: 'Paste any text: every sentence is scored, and the best ones become the summary.', C: pick(play, 'SummarizerPlay') },
     { key: 'attention', title: 'What the model looks at', caption: 'Attention from one token to the rest of the sentence.', C: pick(more, 'AttentionStage') },
   ],
   'gpu-checkpoint-restart': [

@@ -217,7 +217,7 @@ export default function Home() {
             </h2>
             <p className="lead mt-5 max-w-xl">{gameboy.summary}</p>
             <p className="mt-4 max-w-xl text-body">
-              The handheld on the right runs a Mario-style level I wrote for this site — tap A or press Space to jump.
+              The handheld runs Super Tilak Land — a four-world, Mario-style platformer I wrote for this site — plus Block Drop and Snake. Press Start to play.
             </p>
             <Chips items={gameboy.stack} className="mt-6" />
             <div className="mt-8 flex flex-wrap gap-3">

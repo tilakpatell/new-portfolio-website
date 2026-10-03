@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { PhaseBar, StageWindow, useStagePlayer } from './StageKit';
 
 // One page through the translator: scan → OCR boxes → layout labels →
@@ -38,6 +39,9 @@ export default function TranslatorStage() {
   const player = useStagePlayer(PHASES);
   const at = ORDER.indexOf(player.phase.id);
   const past = (id) => at >= ORDER.indexOf(id);
+  const [hover, setHover] = useState(-1);
+  const pair = (i) => ({ onMouseEnter: () => setHover(i), onMouseLeave: () => setHover(-1), onFocus: () => setHover(i), onBlur: () => setHover(-1), tabIndex: 0 });
+  const lit = (i) => (hover === i ? { background: 'rgba(217,119,87,0.22)', borderRadius: 3 } : undefined);
 
   return (
     <div ref={player.ref}>
@@ -66,7 +70,9 @@ export default function TranslatorStage() {
             {SOURCE.map((l, i) => (
               <div
                 key={i}
-                className={`relative mb-2 ${l.kind === 'heading' ? 'text-center text-lg font-bold' : ''} ${l.kind === 'verse' ? 'text-center' : ''} ${l.kind === 'footnote' ? 'mt-5 border-t border-[#2b211833] pt-2 text-xs' : 'text-[0.95rem]'}`}
+                {...pair(i)}
+                style={lit(i)}
+                className={`relative mb-2 cursor-default outline-none ${l.kind === 'heading' ? 'text-center text-lg font-bold' : ''} ${l.kind === 'verse' ? 'text-center' : ''} ${l.kind === 'footnote' ? 'mt-5 border-t border-[#2b211833] pt-2 text-xs' : 'text-[0.95rem]'}`}
               >
                 <span
                   className="relative inline-block px-1 transition-[box-shadow] duration-200"
@@ -106,8 +112,9 @@ export default function TranslatorStage() {
               return (
                 <p
                   key={i}
-                  className={`mb-2 transition-opacity duration-300 ${l.kind === 'heading' ? 'text-center text-xl' : ''} ${l.kind === 'verse' ? 'text-center italic' : ''} ${l.kind === 'footnote' ? 'mt-5 border-t border-[#0000001f] pt-2 text-xs' : 'text-[0.95rem] leading-relaxed'}`}
-                  style={{ opacity: shown ? 1 : 0, transitionDelay: at === 3 ? `${i * 220}ms` : '0ms', fontVariant: l.kind === 'heading' && past('structure') ? 'small-caps' : 'normal' }}
+                  {...pair(i)}
+                  className={`mb-2 cursor-default outline-none transition-opacity duration-300 ${l.kind === 'heading' ? 'text-center text-xl' : ''} ${l.kind === 'verse' ? 'text-center italic' : ''} ${l.kind === 'footnote' ? 'mt-5 border-t border-[#0000001f] pt-2 text-xs' : 'text-[0.95rem] leading-relaxed'}`}
+                  style={{ ...lit(i), opacity: shown ? 1 : 0, transitionDelay: at === 3 ? `${i * 220}ms` : '0ms', fontVariant: l.kind === 'heading' && past('structure') ? 'small-caps' : 'normal' }}
                 >
                   {l.runs.map(([t, gloss], k) => (
                     <span
@@ -138,6 +145,7 @@ export default function TranslatorStage() {
           </div>
         </div>
       </StageWindow>
+      <p className="mt-3 text-sm text-muted">Hover a line on either page to see its counterpart.</p>
       <PhaseBar phases={PHASES} {...player} />
     </div>
   );

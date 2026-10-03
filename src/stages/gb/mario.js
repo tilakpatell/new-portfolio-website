@@ -1,44 +1,67 @@
-// "Super Tilak Land" — a playable Mario-style platformer at 160×144.
-// Tile-based levels, run and variable-height jump, stompable walkers, coin
-// blocks, pits, a timer, lives, and a flagpole at the end of every course.
-// In attract mode a simple pilot plays it until someone presses a button.
-import { DMG, H, W, rng, text } from './font';
+// "Super Tilak Land" — a Mario-style platformer at the Game Boy's 160×144.
+// Four hand-designed courses (overground, underground, sky, castle) with
+// mushrooms, stompable walkers, kickable turtle shells, coin blocks, pits,
+// lava, firebars, a flagpole finish and a bridge-and-axe ending.
+// In attract mode a simple pilot plays until someone presses a button.
+import { DMG, H, W, centerText, text } from './font';
+import { COURSES, ROWS, buildCourse } from './levels';
 
 const T = 8;
-const ROWS = 18;
-const COLS = 224;
-const GROUND_ROW = 16;
 
-export const PALETTES = {
+// ─── Colours ────────────────────────────────────────────────────────────────
+const SPRITE = {
   color: {
     R: '#e52521', O: '#2840e8', S: '#ffc890', H: '#6b3a1e', Y: '#fce000', K: '#101010', W: '#fcfcfc',
     B: '#a0522d', T: '#fcc890', G: '#fc9838', D: '#7c3c00', L: '#fcfcfc', P: '#80d010', Q: '#00a800', N: '#005800',
-    sky: '#5c94fc', cloud: '#fcfcfc', cloudShade: '#bcd4fc', hill: '#00a800', hillDark: '#005800', bush: '#80d010',
-    ground: '#c84c0c', groundLight: '#fcbcb0', groundDark: '#000000', hud: '#fcfcfc', shadow: '#0f1111', castle: '#c84c0c',
+    E: '#00a800', F: '#d8f878', V: '#fcfcfc', A: '#e52521',
   },
   dmg: {
     R: DMG[3], O: DMG[2], S: DMG[1], H: DMG[3], Y: DMG[0], K: DMG[3], W: DMG[0],
     B: DMG[2], T: DMG[1], G: DMG[1], D: DMG[3], L: DMG[0], P: DMG[1], Q: DMG[2], N: DMG[3],
-    sky: DMG[0], cloud: DMG[1], cloudShade: DMG[1], hill: DMG[1], hillDark: DMG[2], bush: DMG[1],
-    ground: DMG[2], groundLight: DMG[1], groundDark: DMG[3], hud: DMG[3], shadow: null, castle: DMG[2],
+    E: DMG[2], F: DMG[1], V: DMG[0], A: DMG[3],
   },
 };
+const LOOKS = {
+  color: {
+    over: { sky: '#5c94fc', g: '#c84c0c', gl: '#fcbcb0', gd: '#000000', hills: true, clouds: true },
+    sky: { sky: '#7cc4fc', g: '#c84c0c', gl: '#fcbcb0', gd: '#000000', clouds: true, puffs: true },
+    under: { sky: '#000000', g: '#1c5cb8', gl: '#8cc0fc', gd: '#000000' },
+    castle: { sky: '#000000', g: '#8c8c8c', gl: '#d8d8d8', gd: '#3c3c3c', lava: '#f83800', lavaHi: '#fca044' },
+  },
+  dmg: {
+    over: { sky: DMG[0], g: DMG[2], gl: DMG[1], gd: DMG[3], hills: true, clouds: true },
+    sky: { sky: DMG[0], g: DMG[2], gl: DMG[1], gd: DMG[3], clouds: true, puffs: true },
+    under: { sky: DMG[3], g: DMG[1], gl: DMG[0], gd: DMG[2] },
+    castle: { sky: DMG[3], g: DMG[1], gl: DMG[0], gd: DMG[2], lava: DMG[0], lavaHi: DMG[1] },
+  },
+};
+const HUD = { color: { ink: '#fcfcfc', shadow: '#0f1111' }, dmg: { ink: DMG[3], shadow: null } };
+const hudFor = (pal, look) => (pal === 'dmg' && (look === 'under' || look === 'castle') ? { ink: DMG[0], shadow: null } : HUD[pal]);
 
 // ─── Sprites (my own pixel art) ─────────────────────────────────────────────
 const fit = (rows, w) => rows.map((r) => r.padEnd(w, '.').slice(0, w));
 const HEAD = ['....RRRRR...', '...RRRRRRRRR', '...HHHSSKS..', '..HSHSSSKSSS', '..HSHHSSSHSS', '..HHSSSSHHHH', '....SSSSSS..'];
-const PLUMBER = {
+const SMALL = {
   stand: fit([...HEAD, '...RROORR...', '..RRROORRR..', '.RRRROOOORRR', '.WWROYOOYOWW', '.WWWOOOOOOWW', '.WWOOOOOOOOW', '...OOO..OOO.', '..HHH....HHH', '.HHHH....HHH'], 12),
   run1: fit([...HEAD, '...RROORR...', '..RRROORRWW.', '..RRROOOOWW.', '..RRYOOYOO..', '...OOOOOOO..', '...OOOOOO...', '....OOHHH...', '....HHHHH...', '.....HHH....'], 12),
   run2: fit([...HEAD, '...RROORR...', '.WWRRROORR..', '.WWRROOOOORR', '...OOYOOYOOO', '..OOOOOOOOOO', '.HHOOO..OOO.', '.HHH.....HHH', '..........HH', '............'], 12),
   jump: fit([...HEAD.slice(0, 6), '....SSSSSSWW', '..RROORRRRWW', '.RRRROORRR..', 'WWRRROOOORR.', 'WW.OYOOYOO..', '...OOOOOOOO.', '..OOOOOOOOOH', '.HHHOO..OOHH', '.HHH........', '.HH.........'], 12),
   dead: fit(['....RRRRR...', '..WRRRRRRRW.', '.WWHHSSKSSWW', '.WWSHSSSKSWW', '..HSHHSSSHS.', '..HHSSSSHHH.', '....SSSSSS..', '..RRROORRR..', '.RRRROOOORRR', '..ROYOOYOR..', '..OOOOOOOO..', '.OOOOOOOOOO.', '..OOO..OOO..', '..HHH..HHH..', '.HHHH..HHHH.', '............'], 12),
 };
+// Big frames: the same plumber with a taller body.
+const tall = (rows) => [...rows.slice(0, 7), ...rows.slice(7, 15).flatMap((r) => [r, r]), rows[15]];
+const BIG = Object.fromEntries(Object.entries(SMALL).filter(([k]) => k !== 'dead').map(([k, v]) => [k, tall(v)]));
 const WALKER = [
   fit(['...BBBB...', '..BBBBBB..', '.BKWBBWKB.', '.BKKBBKKB.', 'BBBBBBBBBB', 'BBBTTTTBBB', '..TTTTTT..', '.KKK..KK..'], 10),
   fit(['...BBBB...', '..BBBBBB..', '.BKWBBWKB.', '.BKKBBKKB.', 'BBBBBBBBBB', 'BBBTTTTBBB', '..TTTTTT..', '..KK..KKK.'], 10),
 ];
 const FLAT = fit(['..BBBBBB..', 'BKWBBBBWKB', 'BBBBBBBBBB', '.KKK..KKK.'], 10);
+const TURTLE = [
+  fit(['.......FF.', '......FKFF', '......FFFF', '..EEEE.FF.', '.EFEEFE.F.', 'EEFEEFEEF.', 'EFEEEEFEF.', 'EEEEEEEE..', '.VVVVVVV..', '.FF...FF..', 'FF.....FF.', '..........'], 10),
+  fit(['.......FF.', '......FKFF', '......FFFF', '..EEEE.FF.', '.EFEEFE.F.', 'EEFEEFEEF.', 'EFEEEEFEF.', 'EEEEEEEE..', '.VVVVVVV..', '..FF.FF...', '..FF.FF...', '..........'], 10),
+];
+const SHELL = fit(['...EEEE...', '..EFEEFE..', '.EEFEEFEE.', 'EFEEEEEEFE', 'EEEEEEEEEE', '.VVVVVVVV.', '..VVVVVV..'], 10);
+const MUSHROOM = fit(['...AAAA...', '..AVVAAA..', '.AVVAAVVA.', 'AAAAAVVVAA', 'AVVAAAAAAA', '.VVTTTTVV.', '..TKTTKT..', '..TTTTTT..'], 10);
 const COIN = [fit(['.DDD.', 'DGGLD', 'DGLGD', 'DGLGD', 'DGLGD', 'DGLGD', 'DGGGD', '.DDD.'], 5), fit(['.D.', 'DGD', 'DLD', 'DLD', 'DLD', 'DLD', 'DGD', '.D.'], 3)];
 const QBLOCK = fit(['DDDDDDDD', 'DGGGGGGD', 'DGGKKGGD', 'DGGGGKGD', 'DGGGKGGD', 'DGGGGGGD', 'DGGGKGGD', 'DDDDDDDD'], 8);
 const USED = fit(['DDDDDDDD', 'DBBBBBBD', 'DBDBBDBD', 'DBBBBBBD', 'DBBBBBBD', 'DBDBBDBD', 'DBBBBBBD', 'DDDDDDDD'], 8);
@@ -51,11 +74,10 @@ function sprite(rows, pal, key) {
   c.width = rows[0].length;
   c.height = rows.length;
   const g = c.getContext('2d');
-  const colors = PALETTES[pal];
   rows.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) {
       if (row[x] === '.') continue;
-      g.fillStyle = colors[row[x]];
+      g.fillStyle = SPRITE[pal][row[x]];
       g.fillRect(x, y, 1, 1);
     }
   });
@@ -64,211 +86,249 @@ function sprite(rows, pal, key) {
 }
 const flipH = (rows) => rows.map((r) => [...r].reverse().join(''));
 
-// ─── Level generation ───────────────────────────────────────────────────────
-// 0 empty · 1 ground · 2 brick · 3 coin block · 4 used · 5 hard block · 6–9 pipe
-const SOLID = (t) => t > 0;
+// ─── Tiles ──────────────────────────────────────────────────────────────────
+const SOLID = new Set(['#', 'B', '?', 'M', 'U', 'H', '[', ']', '(', ')', '=']);
 
-function buildLevel(seed) {
-  const r = rng(seed);
-  const g = Array.from({ length: ROWS }, () => new Uint8Array(COLS));
-  for (let c = 0; c < COLS; c++) {
-    g[GROUND_ROW][c] = 1;
-    g[GROUND_ROW + 1][c] = 1;
-  }
-  const coins = [];
-  const walkers = [];
-  const gap = (c, w) => {
-    for (let k = 0; k < w; k++) {
-      g[GROUND_ROW][c + k] = 0;
-      g[GROUND_ROW + 1][c + k] = 0;
-    }
-  };
-  let c = 18;
-  const end = COLS - 34;
-  while (c < end) {
-    const roll = r();
-    if (roll < 0.17) {
-      const w = 2 + Math.floor(r() * 2);
-      gap(c, w);
-      c += w + 6 + Math.floor(r() * 5);
-    } else if (roll < 0.37) {
-      const h = 2 + Math.floor(r() * 2);
-      for (let k = 0; k < h; k++) {
-        const row = GROUND_ROW - 1 - k;
-        const top = k === h - 1;
-        g[row][c] = top ? 6 : 8;
-        g[row][c + 1] = top ? 7 : 9;
-      }
-      if (r() < 0.6) walkers.push({ x: (c + 5) * T, y: (GROUND_ROW - 1) * T });
-      c += 2 + 6 + Math.floor(r() * 5);
-    } else if (roll < 0.63) {
-      const n = 3 + Math.floor(r() * 3);
-      const q = Math.floor(r() * n);
-      for (let k = 0; k < n; k++) g[11][c + k] = k === q || (n > 4 && k === n - 2) ? 3 : 2;
-      if (r() < 0.45) g[7][c + Math.floor(n / 2)] = 3;
-      if (r() < 0.7) walkers.push({ x: (c + n + 1) * T, y: (GROUND_ROW - 1) * T });
-      c += n + 5 + Math.floor(r() * 4);
-    } else if (roll < 0.78) {
-      const s = 3 + Math.floor(r() * 2);
-      for (let k = 0; k < s; k++) for (let h = 0; h <= k; h++) g[GROUND_ROW - 1 - h][c + k] = 5;
-      if (r() < 0.5) {
-        for (let k = 0; k < s; k++) for (let h = 0; h < s - k; h++) g[GROUND_ROW - 1 - h][c + s + 2 + k] = 5;
-        c += s * 2 + 2 + 6;
-      } else c += s + 6;
-    } else {
-      for (let k = 0; k < 4; k++) coins.push({ x: (c + k) * T + 1, y: (11 - (k === 1 || k === 2 ? 1 : 0)) * T });
-      walkers.push({ x: (c + 7) * T, y: (GROUND_ROW - 1) * T });
-      c += 11;
-    }
-  }
-  const flagCol = COLS - 26;
-  for (let k = flagCol - 6; k < COLS; k++) {
-    g[GROUND_ROW][k] = 1;
-    g[GROUND_ROW + 1][k] = 1;
-  }
-  g[GROUND_ROW - 1][flagCol] = 5;
-  return {
-    g,
-    coins,
-    walkers: walkers.map((w) => ({ ...w, vx: -22, vy: 0, alive: true, flat: 0 })),
-    flagX: flagCol * T + 3,
-    castleX: (flagCol + 6) * T,
-  };
-}
-
-const tileAt = (lv, px, py) => {
+function tileAt(g, px, py) {
   const c = Math.floor(px / T);
   const r = Math.floor(py / T);
-  if (c < 0 || c >= COLS) return 5;
-  if (r < 0 || r >= ROWS) return 0;
-  return lv.g[r][c];
-};
+  if (c < 0) return '#';
+  if (c >= g.cols) return '#';
+  if (r < 0 || r >= ROWS) return '.';
+  return g.grid[r][c];
+}
+const solid = (g, px, py) => SOLID.has(tileAt(g, px, py));
 
-// ─── Game state ─────────────────────────────────────────────────────────────
-export function newMario({ attract = false, seed = 1989 } = {}) {
-  const g = { seed, world: [1, 1], score: 0, coins: 0, lives: 3, t: 0, attract, mode: 'play', modeT: 0, palette: 'color', fx: [], bumps: {} };
-  startLevel(g);
+// ─── State ──────────────────────────────────────────────────────────────────
+export function newMario({ attract = false, course = 0 } = {}) {
+  const g = { course, score: 0, coins: 0, lives: 3, t: 0, attract, palette: 'color', mode: 'card', modeT: 0, big: false };
+  startCourse(g, course);
+  if (attract) g.mode = 'play';
   return g;
 }
 
-function startLevel(g) {
-  g.level = buildLevel(g.seed + g.world[0] * 97 + g.world[1] * 13);
-  g.cam = 0;
-  g.time = 300;
-  g.timeAcc = 0;
-  g.flagY = 40;
-  g.p = { x: 28, y: (GROUND_ROW - 2) * T, w: 10, h: 15, vx: 0, vy: 0, onGround: false, face: 1, dead: false, deathT: 0, jumpT: 0 };
+function startCourse(g, index) {
+  const c = buildCourse(index);
+  g.course = index;
+  g.name = c.name;
+  g.look = c.look;
+  g.cols = c.cols;
+  g.grid = c.grid.map((row) => [...row]);
+  const s = c.spawns;
+  g.coinsOnMap = s.coins.map(({ c: cc, r }) => ({ x: cc * T + 1, y: r * T, taken: false }));
+  g.walkers = s.walkers.map(({ c: cc, r }) => ({ x: cc * T, y: r * T, vx: -22, vy: 0, alive: true, flat: 0 }));
+  g.turtles = s.turtles.map(({ c: cc, r }) => ({ x: cc * T, y: r * T - 4, vx: -20, vy: 0, alive: true, state: 'walk', wake: 0 }));
+  g.firebars = s.firebars.map(({ c: cc, r }, i) => ({ cx: cc * T + 4, cy: r * T + 4, ang: i * 1.3, speed: i % 2 ? -1.7 : 1.7 }));
+  g.mushrooms = [];
+  g.flagX = s.flag ? s.flag.c * T + 3 : null;
+  g.castleX = s.castle ? s.castle.c * T : null;
+  g.axe = s.axe ? { x: s.axe.c * T, y: s.axe.r * T } : null;
   g.fx = [];
   g.bumps = {};
-  g.mode = 'play';
+  g.cam = 0;
+  g.time = g.look === 'castle' ? 300 : 400;
+  g.timeAcc = 0;
+  g.flagY = 40;
+  g.p = { x: 24, y: 0, w: 10, h: g.big ? 23 : 15, vx: 0, vy: 0, onGround: false, face: 1, dead: false, deathT: 0, inv: 0, jumpT: 0 };
+  g.p.y = 16 * T - g.p.h;
+  g.mode = 'card';
   g.modeT = 0;
 }
 
+const restart = (g) => {
+  g.big = false;
+  startCourse(g, g.course);
+};
+
 function die(g) {
-  if (g.p.dead) return;
-  g.p.dead = true;
-  g.p.deathT = 0;
-  g.p.vy = -300;
-  g.p.vx = 0;
+  const p = g.p;
+  if (p.dead) return;
+  p.dead = true;
+  p.deathT = 0;
+  p.vy = -300;
+  p.vx = 0;
+  g.big = false;
+}
+
+function hurt(g) {
+  const p = g.p;
+  if (p.inv > 0 || p.dead || g.attract) return; // the demo pilot shrugs off hits
+  if (g.big) {
+    g.big = false;
+    p.h = 15;
+    p.y += 8;
+    p.inv = 1.6;
+  } else die(g);
+}
+
+function grow(g) {
+  const p = g.p;
+  if (g.big) {
+    g.score += 1000;
+    return;
+  }
+  g.big = true;
+  p.h = 23;
+  p.y -= 8;
+  p.inv = 0.6;
+  g.score += 1000;
 }
 
 function hitBlock(g, c, r, events) {
-  const t = g.level.g[r][c];
-  if (t !== 2 && t !== 3) return;
-  g.bumps[`${c},${r}`] = 0.16;
-  if (t === 3) {
-    g.level.g[r][c] = 4;
-    g.coins += 1;
-    g.score += 200;
-    g.fx.push({ kind: 'coin', x: c * T + 1, y: r * T - 8, t: 0, life: 0.45 });
-    g.fx.push({ kind: 'pts', text: '200', x: c * T - 2, y: r * T - 12, t: 0, life: 0.7 });
-    events?.coin?.(g.coins);
-    if (g.coins % 100 === 0) g.lives += 1;
-  }
-  for (const w of g.level.walkers) {
-    if (w.alive && !w.flat && Math.abs(w.x + 5 - (c * T + 4)) < 9 && Math.abs(w.y + 8 - r * T) < 3) {
+  const t = g.grid[r][c];
+  if (t === '?' || t === 'M') {
+    g.grid[r][c] = 'U';
+    g.bumps[`${c},${r}`] = 0.16;
+    if (t === '?') {
+      g.coins += 1;
+      g.score += 200;
+      g.fx.push({ kind: 'coin', x: c * T + 1, y: r * T - 8, t: 0, life: 0.45 });
+      g.fx.push({ kind: 'pts', text: '200', x: c * T - 2, y: r * T - 12, t: 0, life: 0.7 });
+      events?.coin?.(g.coins);
+      if (g.coins % 100 === 0) g.lives += 1;
+    } else g.mushrooms.push({ x: c * T - 1, y: r * T, vx: 0, vy: 0, rise: 0.5, alive: true });
+  } else if (t === 'B') {
+    if (g.big) {
+      g.grid[r][c] = '.';
+      g.score += 50;
+      for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 0], [1, 0]]) g.fx.push({ kind: 'debris', x: c * T + 4, y: r * T + 4, vx: dx * 40, vy: dy * 120 - 60, t: 0, life: 0.8 });
+    } else g.bumps[`${c},${r}`] = 0.16;
+  } else return;
+  for (const w of [...g.walkers, ...g.turtles]) {
+    if (w.alive && Math.abs(w.x + 5 - (c * T + 4)) < 9 && Math.abs(w.y + (w.state ? 12 : 8) - r * T) < 3) {
       w.alive = false;
       g.score += 100;
-      g.fx.push({ kind: 'pts', text: '100', x: w.x, y: w.y - 6, t: 0, life: 0.6 });
     }
   }
 }
 
-// AI pilot for attract mode
+// Simple pilot for the demo: run right, jump at walls, ledges and enemies.
 function pilot(g) {
   const p = g.p;
   const front = p.x + p.w + 2;
   const feet = p.y + p.h;
-  const input = { right: true, b: true, a: false };
-  const wall = SOLID(tileAt(g.level, front + 6, feet - 4)) || SOLID(tileAt(g.level, front + 6, feet - 12));
-  const pit = !SOLID(tileAt(g.level, front + 4, GROUND_ROW * T + 2));
-  const foe = g.level.walkers.some((w) => w.alive && !w.flat && w.x - front > -2 && w.x - front < 30 && Math.abs(w.y - p.y) < 12);
-  if (p.onGround && (wall || pit || foe)) input.a = true;
-  if (!p.onGround && p.vy < 0) input.a = true;
-  return input;
+  const ctl = { right: true, b: true, a: false };
+  const wall = solid(g, front + 6, feet - 4) || solid(g, front + 6, feet - 12);
+  const ledge = !solid(g, front + 2, feet + 3) || tileAt(g, front + 6, feet + 3) === 'L';
+  const foe = [...g.walkers, ...g.turtles].some((w) => w.alive && !w.flat && w.state !== 'shell' && w.x - front > -2 && w.x - front < 30 && Math.abs(w.y - p.y) < 14);
+  if (p.onGround && (wall || ledge || foe)) ctl.a = true;
+  if (!p.onGround && p.vy < 0) ctl.a = true;
+  return ctl;
 }
+
+// Move a body with tile collisions. Returns { wall, ground }.
+function moveBody(g, b, w, h, dt) {
+  let wall = false;
+  b.x += b.vx * dt;
+  for (const yy of [b.y + 1, b.y + h / 2, b.y + h - 1]) {
+    if (b.vx > 0 && solid(g, b.x + w, yy)) {
+      b.x = Math.floor((b.x + w) / T) * T - w - 0.01;
+      wall = true;
+    } else if (b.vx < 0 && solid(g, b.x, yy)) {
+      b.x = Math.floor(b.x / T + 1) * T + 0.01;
+      wall = true;
+    }
+  }
+  b.vy = Math.min(320, b.vy + 950 * dt);
+  b.y += b.vy * dt;
+  let ground = false;
+  if (b.vy >= 0 && (solid(g, b.x + 1, b.y + h) || solid(g, b.x + w - 1, b.y + h))) {
+    b.y = Math.floor((b.y + h) / T) * T - h;
+    b.vy = 0;
+    ground = true;
+  }
+  return { wall, ground };
+}
+
+const overlap = (a, aw, ah, b, bw, bh) => a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
 
 export function stepMario(g, dt, input, events) {
   g.t += dt;
   g.modeT += dt;
   const p = g.p;
-  const lv = g.level;
 
-  if (g.mode === 'over') return g.modeT > 3 ? 'exit' : null;
-  if (g.mode === 'clear') {
-    if (g.modeT > 2) {
-      g.world = g.world[1] === 4 ? [g.world[0] + 1, 1] : [g.world[0], g.world[1] + 1];
-      startLevel(g);
+  switch (g.mode) {
+    case 'card':
+      if (g.modeT > 2.2) {
+        g.mode = 'play';
+        g.modeT = 0;
+      }
+      return null;
+    case 'over':
+      return g.modeT > 3.5 ? 'exit' : null;
+    case 'win':
+      return g.modeT > 6 ? 'exit' : null;
+    case 'clear':
+      if (g.modeT > 2.2) {
+        if (g.course + 1 >= COURSES.length) {
+          g.mode = 'win';
+          g.modeT = 0;
+          events?.win?.(g);
+        } else startCourse(g, g.course + 1);
+      }
+      return null;
+    case 'flag':
+      p.y = Math.min(16 * T - p.h - T, p.y + 80 * dt);
+      g.flagY = Math.min(16 * T - 30, g.flagY + 80 * dt);
+      if (g.modeT > 1.1) {
+        g.mode = 'walk';
+        g.modeT = 0;
+        p.y = 16 * T - p.h;
+      }
+      return null;
+    case 'walk':
+      p.x += 42 * dt;
+      p.face = 1;
+      if (p.x > g.castleX + 18) {
+        g.mode = 'clear';
+        g.modeT = 0;
+        g.score += Math.ceil(g.time) * 10;
+      }
+      return null;
+    case 'bridge': {
+      // the bridge falls away beneath the lava's rising heat, right to left
+      const k = Math.floor(g.modeT / 0.05);
+      let removed = 0;
+      for (let c = g.cols - 1; c >= 0 && removed <= k; c--) {
+        if (g.grid[13][c] === '=' || g.grid[13][c] === '_') {
+          if (removed === k) g.grid[13][c] = '_';
+          removed++;
+        }
+      }
+      if (g.modeT > 1.6) {
+        g.mode = 'clear';
+        g.modeT = 0;
+        g.score += Math.ceil(g.time) * 10;
+      }
+      return null;
     }
-    return null;
-  }
-  if (g.mode === 'flag') {
-    p.y = Math.min((GROUND_ROW - 1) * T - p.h, p.y + 80 * dt);
-    g.flagY = Math.min(GROUND_ROW * T - 30, g.flagY + 80 * dt);
-    if (g.modeT > 1.1) {
-      g.mode = 'walk';
-      g.modeT = 0;
-      p.y = GROUND_ROW * T - p.h - 1;
-    }
-    return null;
-  }
-  if (g.mode === 'walk') {
-    p.x += 42 * dt;
-    p.face = 1;
-    if (p.x > lv.castleX + 18) {
-      g.mode = 'clear';
-      g.modeT = 0;
-      g.score += Math.ceil(g.time) * 10;
-      events?.clear?.(g);
-    }
-    return null;
+    default:
   }
 
-  // death animation
   if (p.dead) {
     p.deathT += dt;
     if (p.deathT > 0.45) {
       p.vy += 900 * dt;
       p.y += p.vy * dt;
     }
-    if (p.deathT > 2.2) {
+    if (p.deathT > 2.4) {
+      if (g.attract) {
+        restart(g);
+        g.mode = 'play';
+        return null;
+      }
       g.lives -= 1;
-      if (g.lives <= 0 && !g.attract) {
+      if (g.lives <= 0) {
         g.mode = 'over';
         g.modeT = 0;
-      } else {
-        if (g.attract) g.lives = 3;
-        const keep = { world: g.world, score: g.score, coins: g.coins, lives: g.lives };
-        startLevel(g);
-        Object.assign(g, keep);
-      }
+      } else restart(g);
     }
     return null;
   }
 
   const ctl = g.attract ? pilot(g) : input;
+  if (p.inv > 0) p.inv -= dt;
 
-  // timer
   g.timeAcc += dt;
   if (g.timeAcc > 0.4) {
     g.timeAcc -= 0.4;
@@ -276,7 +336,7 @@ export function stepMario(g, dt, input, events) {
     if (g.time === 0) die(g);
   }
 
-  // horizontal movement
+  // run / walk
   const run = !!ctl.b;
   const max = run ? 112 : 72;
   const acc = (run ? 480 : 380) * (p.onGround ? 1 : 0.8);
@@ -290,49 +350,51 @@ export function stepMario(g, dt, input, events) {
   }
   p.vx = Math.max(-max, Math.min(max, p.vx));
 
-  // jump (hold for higher)
+  // jump — hold for height
   if (ctl.a && p.onGround && !p.jumpLatch) {
-    p.vy = Math.abs(p.vx) > 90 ? -355 : -335;
+    p.vy = Math.abs(p.vx) > 90 ? -255 : -240;
     p.onGround = false;
     p.jumpT = 0;
     p.jumpLatch = true;
   }
   if (!ctl.a) p.jumpLatch = false;
-  const holding = ctl.a && p.vy < 0 && p.jumpT < 0.28;
+  // holding A keeps the jump going a little longer: ~5 tiles held, ~1.5 tapped
+  const holding = ctl.a && p.vy < 0 && p.jumpT < 0.2;
   p.jumpT += dt;
-  p.vy = Math.min(320, p.vy + (holding ? 520 : 1000) * dt);
-  if (!ctl.a && p.vy < -140) p.vy = -140;
+  p.vy = Math.min(300, p.vy + (holding ? 600 : 1100) * dt);
+  if (!ctl.a && p.vy < -170) p.vy = -170;
 
-  // move X and resolve
+  // X
   p.x += p.vx * dt;
   if (p.x < g.cam) {
     p.x = g.cam;
     p.vx = Math.max(0, p.vx);
   }
-  for (const yy of [p.y + 1, p.y + p.h / 2, p.y + p.h - 1]) {
-    if (p.vx > 0 && SOLID(tileAt(lv, p.x + p.w, yy))) {
+  const ys = g.big ? [p.y + 1, p.y + 8, p.y + 16, p.y + p.h - 1] : [p.y + 1, p.y + p.h / 2, p.y + p.h - 1];
+  for (const yy of ys) {
+    if (p.vx >= 0 && solid(g, p.x + p.w, yy)) {
       p.x = Math.floor((p.x + p.w) / T) * T - p.w - 0.01;
-      p.vx = 0;
-    } else if (p.vx < 0 && SOLID(tileAt(lv, p.x, yy))) {
+      p.vx = Math.min(0, p.vx);
+    } else if (p.vx <= 0 && solid(g, p.x, yy)) {
       p.x = Math.floor(p.x / T + 1) * T + 0.01;
-      p.vx = 0;
+      p.vx = Math.max(0, p.vx);
     }
   }
 
-  // move Y and resolve
+  // Y
   p.y += p.vy * dt;
   p.onGround = false;
   if (p.vy >= 0) {
     for (const xx of [p.x + 1, p.x + p.w - 1]) {
-      if (SOLID(tileAt(lv, xx, p.y + p.h))) {
+      if (solid(g, xx, p.y + p.h)) {
         p.y = Math.floor((p.y + p.h) / T) * T - p.h;
         p.vy = 0;
         p.onGround = true;
       }
     }
   } else {
-    for (const xx of [p.x + 2, p.x + p.w - 2]) {
-      if (SOLID(tileAt(lv, xx, p.y))) {
+    for (const xx of [p.x + p.w / 2, p.x + 2, p.x + p.w - 2]) {
+      if (solid(g, xx, p.y)) {
         const c = Math.floor(xx / T);
         const r = Math.floor(p.y / T);
         p.y = (r + 1) * T;
@@ -342,47 +404,118 @@ export function stepMario(g, dt, input, events) {
       }
     }
   }
-  if (p.y > H + 10) die(g);
+  if (tileAt(g, p.x + p.w / 2, p.y + p.h - 1) === 'L' || p.y > H + 10) die(g);
 
-  // camera only scrolls forward
-  g.cam = Math.max(g.cam, Math.min(COLS * T - W, p.x - 64));
+  g.cam = Math.max(g.cam, Math.min(g.cols * T - W, p.x - 64));
+  const awake = (x) => x < g.cam + W + 24 && x > g.cam - 40;
+
+  // mushrooms
+  for (const m of g.mushrooms) {
+    if (!m.alive) continue;
+    if (m.rise > 0) {
+      m.rise -= dt;
+      m.y -= 16 * dt;
+      if (m.rise <= 0) m.vx = 40;
+    } else {
+      const { wall } = moveBody(g, m, 10, 8, dt);
+      if (wall) m.vx = -m.vx;
+      if (m.y > H) m.alive = false;
+    }
+    if (overlap(p, p.w, p.h, m, 10, 8)) {
+      m.alive = false;
+      grow(g);
+      g.fx.push({ kind: 'pts', text: '1000', x: m.x - 2, y: m.y - 8, t: 0, life: 0.8 });
+    }
+  }
 
   // walkers
-  for (const w of lv.walkers) {
+  for (const w of g.walkers) {
     if (!w.alive) continue;
     if (w.flat) {
       w.flat -= dt;
       if (w.flat <= 0) w.alive = false;
       continue;
     }
-    if (w.x > g.cam + W + 24) continue; // asleep until on screen
-    w.vy = Math.min(300, w.vy + 900 * dt);
-    w.x += w.vx * dt;
-    const ahead = w.vx < 0 ? w.x : w.x + 10;
-    if (SOLID(tileAt(lv, ahead, w.y + 4))) {
-      w.vx = -w.vx;
-      w.x += w.vx * dt * 2;
-    }
-    w.y += w.vy * dt;
-    if (SOLID(tileAt(lv, w.x + 2, w.y + 8)) || SOLID(tileAt(lv, w.x + 8, w.y + 8))) {
-      w.y = Math.floor((w.y + 8) / T) * T - 8;
-      w.vy = 0;
-    }
-    if (w.y > H + 8) w.alive = false;
-    // player contact
-    if (p.x + p.w > w.x + 1 && p.x < w.x + 9 && p.y + p.h > w.y + 1 && p.y < w.y + 8) {
+    if (!awake(w.x)) continue;
+    const { wall } = moveBody(g, w, 10, 8, dt);
+    if (wall) w.vx = -w.vx;
+    if (w.y > H || tileAt(g, w.x + 5, w.y + 7) === 'L') w.alive = false;
+    if (overlap(p, p.w, p.h, w, 10, 8)) {
       if (p.vy > 30 && p.y + p.h - w.y < 7) {
         w.flat = 0.4;
-        p.vy = ctl.a ? -300 : -210;
+        p.vy = ctl.a ? -250 : -180;
         g.score += 100;
         g.fx.push({ kind: 'pts', text: '100', x: w.x, y: w.y - 8, t: 0, life: 0.6 });
-      } else die(g);
+      } else if (g.attract) w.flat = 0.4;
+      else hurt(g);
+    }
+  }
+
+  // turtles and shells
+  for (const k of g.turtles) {
+    if (!k.alive || !awake(k.x)) continue;
+    const h = k.state === 'walk' ? 12 : 7;
+    const oy = k.state === 'walk' ? 0 : 5;
+    const box = { x: k.x, y: k.y + oy };
+    if (k.state === 'shell') {
+      k.wake += dt;
+      if (k.wake > 6) {
+        k.state = 'walk';
+        k.vx = -20;
+      }
+    }
+    const body = { x: k.x, y: k.y + oy, vx: k.state === 'shell' ? 0 : k.vx, vy: k.vy };
+    const { wall } = moveBody(g, body, 10, h, dt);
+    k.x = body.x;
+    k.y = body.y - oy;
+    k.vy = body.vy;
+    if (wall) k.vx = -k.vx;
+    if (k.y > H || tileAt(g, k.x + 5, k.y + 11) === 'L') k.alive = false;
+    if (k.state === 'spin') {
+      for (const o of [...g.walkers, ...g.turtles]) {
+        if (o !== k && o.alive && !o.flat && Math.abs(o.x - k.x) < 9 && Math.abs(o.y + (o.state ? 6 : 4) - (k.y + 9)) < 9) {
+          o.alive = false;
+          g.score += 200;
+          g.fx.push({ kind: 'pts', text: '200', x: o.x, y: o.y - 6, t: 0, life: 0.6 });
+        }
+      }
+    }
+    if (overlap(p, p.w, p.h, box, 10, h)) {
+      const stomp = p.vy > 30 && p.y + p.h - box.y < 7;
+      if (stomp) {
+        p.vy = ctl.a ? -250 : -180;
+        g.score += 100;
+        if (k.state === 'walk' || k.state === 'spin') {
+          k.state = 'shell';
+          k.wake = 0;
+          k.vx = 0;
+        } else {
+          k.state = 'spin';
+          k.vx = p.x + p.w / 2 < k.x + 5 ? 150 : -150;
+        }
+      } else if (k.state === 'shell') {
+        k.state = 'spin';
+        k.vx = p.x + p.w / 2 < k.x + 5 ? 150 : -150;
+        k.x += Math.sign(k.vx) * 4;
+        p.inv = Math.max(p.inv, 0.25);
+      } else if (g.attract) k.alive = false;
+      else hurt(g);
+    }
+  }
+
+  // firebars
+  for (const f of g.firebars) {
+    f.ang += f.speed * dt;
+    for (let i = 0; i < 5; i++) {
+      const bx = f.cx + Math.cos(f.ang) * i * 6;
+      const by = f.cy + Math.sin(f.ang) * i * 6;
+      if (bx > p.x - 2 && bx < p.x + p.w + 2 && by > p.y - 2 && by < p.y + p.h + 2) hurt(g);
     }
   }
 
   // coins
-  for (const c of lv.coins) {
-    if (!c.taken && p.x + p.w > c.x && p.x < c.x + 5 && p.y + p.h > c.y && p.y < c.y + 8) {
+  for (const c of g.coinsOnMap) {
+    if (!c.taken && overlap(p, p.w, p.h, c, 5, 8)) {
       c.taken = true;
       g.coins += 1;
       g.score += 200;
@@ -395,137 +528,246 @@ export function stepMario(g, dt, input, events) {
     g.bumps[k] -= dt;
     if (g.bumps[k] <= 0) delete g.bumps[k];
   }
-  for (const f of g.fx) f.t += dt;
+  for (const f of g.fx) {
+    f.t += dt;
+    if (f.kind === 'debris') {
+      f.vy += 600 * dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+    }
+  }
   g.fx = g.fx.filter((f) => f.t < f.life);
 
-  // flagpole
-  if (p.x + p.w >= lv.flagX) {
+  // finishes
+  if (g.flagX != null && p.x + p.w >= g.flagX) {
     g.mode = 'flag';
     g.modeT = 0;
-    p.x = lv.flagX - p.w + 1;
+    p.x = g.flagX - p.w + 1;
     p.vx = 0;
     p.vy = 0;
-    g.score += Math.max(100, Math.round((GROUND_ROW * T - p.y) * 20));
+    g.score += Math.max(100, Math.round((16 * T - p.y) * 20));
+  }
+  if (g.axe && overlap(p, p.w, p.h, g.axe, 8, 8)) {
+    g.mode = 'bridge';
+    g.modeT = 0;
+    g.axe = null;
+    p.vx = 0;
   }
   return null;
 }
 
 // ─── Rendering ──────────────────────────────────────────────────────────────
-function cloud(ctx, c, x, y) {
-  ctx.fillStyle = c.cloud;
+function cloud(ctx, x, y, color, shade) {
+  ctx.fillStyle = color;
   ctx.fillRect(x + 4, y, 10, 3);
   ctx.fillRect(x + 1, y + 3, 22, 4);
   ctx.fillRect(x, y + 6, 26, 4);
-  ctx.fillStyle = c.cloudShade;
+  ctx.fillStyle = shade;
   ctx.fillRect(x + 2, y + 9, 22, 1);
 }
-function hill(ctx, c, x, h) {
-  const base = GROUND_ROW * T;
-  for (let s = 0; s < h; s += 2) {
-    const w = Math.max(4, (h - s) * 2.2);
-    ctx.fillStyle = s >= h - 2 ? c.hillDark : c.hill;
-    ctx.fillRect(Math.round(x - w / 2), base - s - 2, Math.round(w), 2);
-  }
-}
 
-function drawTile(ctx, c, pal, t, x, y) {
-  if (t === 1 || t === 2 || t === 5) {
-    ctx.fillStyle = c.ground;
-    ctx.fillRect(x, y, 8, 8);
-    ctx.fillStyle = c.groundLight;
-    ctx.fillRect(x, y, 7, 1);
-    if (t !== 2) ctx.fillRect(x, y, 1, 7);
-    ctx.fillStyle = c.groundDark;
-    if (t === 2) {
+function drawTile(ctx, g, L, t, x, y) {
+  const pal = g.palette;
+  switch (t) {
+    case '#':
+    case 'H':
+      ctx.fillStyle = L.g;
+      ctx.fillRect(x, y, 8, 8);
+      ctx.fillStyle = L.gl;
+      ctx.fillRect(x, y, 7, 1);
+      ctx.fillRect(x, y, 1, 7);
+      ctx.fillStyle = L.gd;
+      ctx.fillRect(x + 7, y, 1, 8);
+      ctx.fillRect(x, y + 7, 8, 1);
+      if (t === 'H') ctx.fillRect(x + 2, y + 2, 4, 4);
+      return;
+    case 'B':
+      ctx.fillStyle = L.g;
+      ctx.fillRect(x, y, 8, 8);
+      ctx.fillStyle = L.gd;
       ctx.fillRect(x, y + 3, 8, 1);
       ctx.fillRect(x, y + 7, 8, 1);
       ctx.fillRect(x + 7, y, 1, 3);
       ctx.fillRect(x + 3, y + 4, 1, 3);
-    } else {
-      ctx.fillRect(x + 7, y, 1, 8);
-      ctx.fillRect(x, y + 7, 8, 1);
-      if (t === 5) ctx.fillRect(x + 2, y + 2, 3, 3);
+      ctx.fillStyle = L.gl;
+      ctx.fillRect(x, y, 7, 1);
+      return;
+    case '?':
+    case 'M':
+      ctx.drawImage(sprite(QBLOCK, pal, 'q'), x, y);
+      return;
+    case 'U':
+      ctx.drawImage(sprite(USED, pal, 'used'), x, y);
+      return;
+    case '=':
+      ctx.fillStyle = pal === 'color' ? '#c84c0c' : DMG[1];
+      ctx.fillRect(x, y, 8, 5);
+      ctx.fillStyle = pal === 'color' ? '#fca044' : DMG[0];
+      ctx.fillRect(x, y, 8, 1);
+      ctx.fillRect(x + 3, y + 2, 2, 1);
+      return;
+    case 'L': {
+      const top = Math.round(Math.sin(g.t * 3 + x * 0.3) * 1.5);
+      ctx.fillStyle = L.lava;
+      ctx.fillRect(x, y + 2 + top, 8, 8);
+      ctx.fillStyle = L.lavaHi;
+      ctx.fillRect(x, y + 2 + top, 8, 1);
+      return;
     }
-  } else if (t === 3) ctx.drawImage(sprite(QBLOCK, pal, 'q'), x, y);
-  else if (t === 4) ctx.drawImage(sprite(USED, pal, 'used'), x, y);
-  else if (t >= 6) {
-    const top = t === 6 || t === 7;
-    const left = t === 6 || t === 8;
-    ctx.fillStyle = c.groundDark;
-    ctx.fillRect(x, y, 8, 8);
-    ctx.fillStyle = c.Q;
-    if (top) ctx.fillRect(left ? x + 1 : x, y + 1, 7, 6);
-    else ctx.fillRect(left ? x + 2 : x, y, left ? 6 : 6, 8);
-    ctx.fillStyle = c.P;
-    if (left) ctx.fillRect(x + (top ? 2 : 3), y + (top ? 1 : 0), 2, top ? 6 : 8);
-    ctx.fillStyle = c.N;
-    if (!left) ctx.fillRect(x + (top ? 4 : 3), y + (top ? 1 : 0), 2, top ? 6 : 8);
+    case '[':
+    case ']':
+    case '(':
+    case ')': {
+      const top = t === '[' || t === ']';
+      const left = t === '[' || t === '(';
+      const S = SPRITE[pal];
+      ctx.fillStyle = pal === 'color' ? '#000000' : DMG[3];
+      ctx.fillRect(x, y, 8, 8);
+      ctx.fillStyle = S.Q;
+      if (top) ctx.fillRect(left ? x + 1 : x, y + 1, 7, 6);
+      else ctx.fillRect(left ? x + 2 : x, y, 6, 8);
+      ctx.fillStyle = S.P;
+      if (left) ctx.fillRect(x + (top ? 2 : 3), y + (top ? 1 : 0), 2, top ? 6 : 8);
+      ctx.fillStyle = S.N;
+      if (!left) ctx.fillRect(x + (top ? 4 : 3), y + (top ? 1 : 0), 2, top ? 6 : 8);
+      return;
+    }
+    default:
   }
+}
+
+function drawCastle(ctx, L, cx, base) {
+  ctx.fillStyle = L.g;
+  ctx.fillRect(cx, base - 32, 40, 32);
+  ctx.fillRect(cx + 8, base - 46, 24, 14);
+  ctx.fillStyle = L.gd;
+  ctx.fillRect(cx + 16, base - 14, 8, 14);
+  for (let i = 0; i < 5; i++) ctx.fillRect(cx + i * 9, base - 35, 5, 3);
+  for (let i = 0; i < 3; i++) ctx.fillRect(cx + 9 + i * 9, base - 49, 5, 3);
+  ctx.fillRect(cx + 17, base - 40, 6, 6);
 }
 
 export function renderMario(ctx, g, { paused, hint } = {}) {
   const pal = g.palette;
-  const c = PALETTES[pal];
-  const sh = c.shadow;
-  const lv = g.level;
+  const L = LOOKS[pal][g.look];
+  const hud = hudFor(pal, g.look);
   const cam = Math.floor(g.cam);
-  ctx.fillStyle = c.sky;
+
+  if (g.mode === 'card' && !g.attract) {
+    ctx.fillStyle = pal === 'color' ? '#000000' : DMG[3];
+    ctx.fillRect(0, 0, W, H);
+    const ink = pal === 'color' ? '#fcfcfc' : DMG[0];
+    centerText(ctx, `WORLD ${g.name}`, 52, ink, 2);
+    ctx.drawImage(sprite(SMALL.stand, pal, 'stand'), 62, 74);
+    text(ctx, `x ${g.lives}`, 80, 80, ink);
+    centerText(ctx, ['OVERGROUND', 'UNDERGROUND', 'SKY', 'CASTLE'][g.course], 104, pal === 'color' ? '#8fa0bf' : DMG[1]);
+    return;
+  }
+  if (g.mode === 'win') {
+    ctx.fillStyle = pal === 'color' ? '#000000' : DMG[3];
+    ctx.fillRect(0, 0, W, H);
+    const ink = pal === 'color' ? '#fcfcfc' : DMG[0];
+    centerText(ctx, 'YOU WIN!', 40, pal === 'color' ? '#fc9838' : DMG[0], 2);
+    centerText(ctx, 'THANKS FOR PLAYING', 66, ink);
+    centerText(ctx, `SCORE ${String(g.score).padStart(6, '0')}`, 82, ink);
+    centerText(ctx, `COINS ${g.coins}`, 92, ink);
+    ctx.drawImage(sprite(BIG.stand, pal, 'big-stand'), 74, 104);
+    return;
+  }
+
+  ctx.fillStyle = L.sky;
   ctx.fillRect(0, 0, W, H);
-
-  for (let i = -1; i < 4; i++) cloud(ctx, c, i * 72 - (Math.floor(cam * 0.25) % 72) + 12, 22 + (((i + 8) * 7) % 3) * 9);
-  for (let i = -1; i < 3; i++) hill(ctx, c, i * 110 - (Math.floor(cam * 0.5) % 110) + 40, i % 2 ? 20 : 30);
-
-  // tiles
-  const c0 = Math.floor(cam / T);
-  for (let col = c0; col <= c0 + 21 && col < COLS; col++) {
-    for (let r = 0; r < ROWS; r++) {
-      const t = lv.g[r][col];
-      if (!t) continue;
-      const bump = g.bumps[`${col},${r}`];
-      const dy = bump ? -Math.round(Math.sin((bump / 0.16) * Math.PI) * 3) : 0;
-      drawTile(ctx, c, pal, t, col * T - cam, r * T + dy);
+  if (L.clouds) {
+    const cc = pal === 'color' ? '#fcfcfc' : DMG[1];
+    const cs = pal === 'color' ? '#bcd4fc' : DMG[1];
+    for (let i = -1; i < 4; i++) cloud(ctx, i * 72 - (Math.floor(cam * 0.25) % 72) + 12, 24 + (((i + 8) * 7) % 3) * 10, cc, cs);
+    if (L.puffs) for (let i = -1; i < 5; i++) cloud(ctx, i * 48 - (Math.floor(cam * 0.5) % 48), 128, cc, cs);
+  }
+  if (L.hills) {
+    const hc = pal === 'color' ? '#00a800' : DMG[1];
+    for (let i = -1; i < 3; i++) {
+      const hx = i * 110 - (Math.floor(cam * 0.5) % 110) + 40;
+      const hh = i % 2 ? 20 : 30;
+      ctx.fillStyle = hc;
+      for (let s = 0; s < hh; s += 2) {
+        const w = Math.max(4, (hh - s) * 2.2);
+        ctx.fillRect(Math.round(hx - w / 2), 16 * T - s - 2, Math.round(w), 2);
+      }
     }
   }
 
-  // flag + castle
-  const fx = lv.flagX - cam;
-  if (fx > -40 && fx < W + 60) {
-    ctx.fillStyle = c.Q;
-    ctx.fillRect(fx, 38, 2, GROUND_ROW * T - 46);
-    ctx.fillStyle = c.N;
-    ctx.fillRect(fx - 1, 35, 4, 4);
-    ctx.fillStyle = c.cloud;
-    for (let i = 0; i < 6; i++) ctx.fillRect(fx - 2 - (10 - i * 2), Math.round(g.flagY) + i, 10 - i * 2 + 1, 1);
-    for (let i = 0; i < 5; i++) ctx.fillRect(fx - 2 - (10 - (5 - i) * 2), Math.round(g.flagY) + 6 + i, 10 - (5 - i) * 2 + 1, 1);
-    const cx = lv.castleX - cam;
-    const base = GROUND_ROW * T;
-    ctx.fillStyle = c.castle;
-    ctx.fillRect(cx, base - 32, 40, 32);
-    ctx.fillRect(cx + 8, base - 46, 24, 14);
-    ctx.fillStyle = c.groundDark;
-    ctx.fillRect(cx + 16, base - 14, 8, 14);
-    for (let i = 0; i < 5; i++) ctx.fillRect(cx + i * 9, base - 35, 5, 3);
-    for (let i = 0; i < 3; i++) ctx.fillRect(cx + 9 + i * 9, base - 49, 5, 3);
-    ctx.fillRect(cx + 17, base - 40, 6, 6);
+  // tiles
+  const c0 = Math.floor(cam / T);
+  for (let col = c0; col <= c0 + 21 && col < g.cols; col++) {
+    for (let r = 0; r < ROWS; r++) {
+      const t = g.grid[r][col];
+      if (t === '.' || t === '_') continue;
+      const bump = g.bumps[`${col},${r}`];
+      const dy = bump ? -Math.round(Math.sin((bump / 0.16) * Math.PI) * 3) : 0;
+      drawTile(ctx, g, L, t, col * T - cam, r * T + dy);
+    }
   }
 
-  // coins
+  // flag, castle, axe
+  if (g.flagX != null) {
+    const fx = g.flagX - cam;
+    if (fx > -40 && fx < W + 60) {
+      ctx.fillStyle = pal === 'color' ? '#00a800' : DMG[2];
+      ctx.fillRect(fx, 38, 2, 15 * T - 38);
+      ctx.fillStyle = pal === 'color' ? '#005800' : DMG[3];
+      ctx.fillRect(fx - 1, 35, 4, 4);
+      ctx.fillStyle = pal === 'color' ? '#fcfcfc' : DMG[1];
+      for (let i = 0; i < 6; i++) ctx.fillRect(fx - 2 - (10 - i * 2), Math.round(g.flagY) + i, 10 - i * 2 + 1, 1);
+      for (let i = 0; i < 5; i++) ctx.fillRect(fx - 2 - (10 - (5 - i) * 2), Math.round(g.flagY) + 6 + i, 10 - (5 - i) * 2 + 1, 1);
+    }
+  }
+  if (g.castleX != null) {
+    const cx = g.castleX - cam;
+    if (cx > -50 && cx < W + 10) drawCastle(ctx, L, cx, 16 * T);
+  }
+  if (g.axe) {
+    const ax = g.axe.x - cam;
+    ctx.fillStyle = pal === 'color' ? '#6b3a1e' : DMG[1];
+    ctx.fillRect(ax + 3, g.axe.y, 2, 8);
+    ctx.fillStyle = pal === 'color' ? '#d8d8d8' : DMG[0];
+    ctx.fillRect(ax, g.axe.y, 4, 5);
+  }
+
+  // coins, mushrooms
   const spin = Math.floor(g.t * 8) % 4 === 2 ? 1 : 0;
-  for (const coin of lv.coins) {
+  for (const coin of g.coinsOnMap) {
     if (coin.taken) continue;
     const x = Math.round(coin.x - cam);
     if (x > -8 && x < W) ctx.drawImage(sprite(COIN[spin], pal, `coin${spin}`), spin ? x + 1 : x, coin.y);
   }
+  for (const m of g.mushrooms) if (m.alive) ctx.drawImage(sprite(MUSHROOM, pal, 'mush'), Math.round(m.x - cam), Math.round(m.y));
 
-  // walkers
-  for (const w of lv.walkers) {
+  // enemies
+  for (const w of g.walkers) {
     if (!w.alive) continue;
     const x = Math.round(w.x - cam);
     if (x < -12 || x > W + 4) continue;
     if (w.flat) ctx.drawImage(sprite(FLAT, pal, 'flat'), x, Math.round(w.y) + 4);
-    else {
+    else ctx.drawImage(sprite(WALKER[Math.floor(g.t * 6) % 2], pal, `walker${Math.floor(g.t * 6) % 2}`), x, Math.round(w.y));
+  }
+  for (const k of g.turtles) {
+    if (!k.alive) continue;
+    const x = Math.round(k.x - cam);
+    if (x < -12 || x > W + 4) continue;
+    if (k.state === 'walk') {
       const f = Math.floor(g.t * 6) % 2;
-      ctx.drawImage(sprite(WALKER[f], pal, `walker${f}`), x, Math.round(w.y));
+      const rows = k.vx > 0 ? flipH(TURTLE[f]) : TURTLE[f];
+      ctx.drawImage(sprite(rows, pal, `turtle${f}${k.vx > 0 ? 'r' : ''}`), x, Math.round(k.y));
+    } else ctx.drawImage(sprite(SHELL, pal, 'shell'), x, Math.round(k.y) + 5);
+  }
+  for (const f of g.firebars) {
+    for (let i = 0; i < 5; i++) {
+      const bx = Math.round(f.cx + Math.cos(f.ang) * i * 6 - cam);
+      const by = Math.round(f.cy + Math.sin(f.ang) * i * 6);
+      ctx.fillStyle = pal === 'color' ? '#fca044' : DMG[0];
+      ctx.fillRect(bx - 2, by - 2, 4, 4);
+      ctx.fillStyle = pal === 'color' ? '#f83800' : DMG[1];
+      ctx.fillRect(bx - 1, by - 1, 2, 2);
     }
   }
 
@@ -534,33 +776,42 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     const x = Math.round(f.x - cam);
     const k = f.t / f.life;
     if (f.kind === 'coin') ctx.drawImage(sprite(COIN[Math.floor(f.t * 16) % 2], pal, `coin${Math.floor(f.t * 16) % 2}`), x + 1, Math.round(f.y - Math.sin(k * Math.PI) * 14));
-    else if (f.kind === 'pts') text(ctx, f.text, x, Math.round(f.y - k * 8), c.hud, 1, sh);
+    else if (f.kind === 'pts') text(ctx, f.text, x, Math.round(f.y - k * 8), hud.ink, 1, hud.shadow);
+    else if (f.kind === 'debris') {
+      ctx.fillStyle = L.g;
+      ctx.fillRect(x - 2, Math.round(f.y) - 2, 4, 4);
+    }
   }
 
   // player
   const p = g.p;
-  let frame = 'stand';
-  if (p.dead) frame = 'dead';
-  else if (g.mode === 'flag' || !p.onGround) frame = 'jump';
-  else if (Math.abs(p.vx) > 4 || g.mode === 'walk') frame = ['stand', 'run1', 'run2', 'run1'][Math.floor(g.t * (Math.abs(p.vx) > 90 ? 16 : 11)) % 4];
-  const rows = p.face < 0 && !p.dead ? flipH(PLUMBER[frame]) : PLUMBER[frame];
-  ctx.drawImage(sprite(rows, pal, `${frame}${p.face < 0 && !p.dead ? '-l' : ''}`), Math.round(p.x - cam) - 1, Math.round(p.y) - 1);
+  if (!(p.inv > 0 && Math.floor(g.t * 16) % 2)) {
+    const set = g.big && !p.dead ? BIG : SMALL;
+    let frame = 'stand';
+    if (p.dead) frame = 'dead';
+    else if (g.mode === 'flag' || !p.onGround) frame = 'jump';
+    else if (Math.abs(p.vx) > 4 || g.mode === 'walk') frame = ['stand', 'run1', 'run2', 'run1'][Math.floor(g.t * (Math.abs(p.vx) > 90 ? 16 : 11)) % 4];
+    const left = p.face < 0 && !p.dead;
+    const rows = left ? flipH(set[frame]) : set[frame];
+    ctx.drawImage(sprite(rows, pal, `${g.big && !p.dead ? 'big-' : ''}${frame}${left ? '-l' : ''}`), Math.round(p.x - cam) - 1, Math.round(p.y) - 1);
+  }
 
   // HUD
-  text(ctx, 'TILAK', 6, 4, c.hud, 1, sh);
-  text(ctx, String(g.score).padStart(6, '0'), 6, 11, c.hud, 1, sh);
+  const { ink, shadow } = hud;
+  text(ctx, 'TILAK', 6, 4, ink, 1, shadow);
+  text(ctx, String(g.score).padStart(6, '0'), 6, 11, ink, 1, shadow);
   ctx.drawImage(sprite(COIN[0], pal, 'coin0'), 44, 9);
-  text(ctx, `x${String(g.coins % 100).padStart(2, '0')}`, 51, 11, c.hud, 1, sh);
-  text(ctx, 'WORLD', 80, 4, c.hud, 1, sh);
-  text(ctx, `${g.world[0]}-${g.world[1]}`, 84, 11, c.hud, 1, sh);
-  text(ctx, 'TIME', 126, 4, c.hud, 1, sh);
-  text(ctx, String(Math.ceil(g.time)).padStart(3, '0'), 128, 11, c.hud, 1, sh);
-  if (!g.attract) text(ctx, `x${g.lives}`, 66, 4, c.hud, 1, sh);
+  text(ctx, `x${String(g.coins % 100).padStart(2, '0')}`, 51, 11, ink, 1, shadow);
+  if (!g.attract) text(ctx, `x${g.lives}`, 66, 4, ink, 1, shadow);
+  text(ctx, 'WORLD', 80, 4, ink, 1, shadow);
+  text(ctx, g.name, 84, 11, ink, 1, shadow);
+  text(ctx, 'TIME', 126, 4, ink, 1, shadow);
+  text(ctx, String(Math.ceil(g.time)).padStart(3, '0'), 128, 11, ink, 1, shadow);
 
-  if (g.mode === 'clear') text(ctx, 'COURSE CLEAR!', 30, 56, c.hud, 2, sh);
-  if (g.mode === 'over') text(ctx, 'GAME OVER', 44, 62, c.hud, 2, sh);
-  if (g.attract && Math.floor(g.t * 2) % 2 === 0) text(ctx, 'DEMO - PRESS START', 44, 26, c.hud, 1, sh);
-  if (hint && !g.attract && g.t < 6) text(ctx, '<> MOVE  A JUMP  B RUN', 36, 26, c.hud, 1, sh);
+  if (g.mode === 'clear') text(ctx, 'COURSE CLEAR!', 30, 56, ink, 2, shadow);
+  if (g.mode === 'over') text(ctx, 'GAME OVER', 44, 62, ink, 2, shadow);
+  if (g.attract && Math.floor(g.t * 2) % 2 === 0) text(ctx, 'DEMO - PRESS START', 44, 26, ink, 1, shadow);
+  if (hint && !g.attract && g.mode === 'play' && g.modeT < 5 && g.course === 0) text(ctx, '<> MOVE  A JUMP  B RUN', 36, 26, ink, 1, shadow);
   if (paused) {
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(0, 0, W, H);
@@ -568,7 +819,9 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
   }
 }
 
+export const WORLDS = COURSES.map((c) => c.name);
+
 // Small plumber for the cartridge menu.
 export function drawPlumberIcon(ctx, x, y, pal = 'color') {
-  ctx.drawImage(sprite(PLUMBER.stand, pal, 'stand'), x, y);
+  ctx.drawImage(sprite(SMALL.stand, pal, 'stand'), x, y);
 }

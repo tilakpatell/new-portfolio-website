@@ -1,7 +1,7 @@
 // The handheld's "operating system": boot logo, cartridge menu, demo mode,
 // pause and back-to-menu, routing input to whichever game is running.
 import { DMG, H, W, centerText, text } from './font';
-import { drawPlumberIcon, newMario, renderMario, stepMario } from './mario';
+import { WORLDS, drawPlumberIcon, newMario, renderMario, stepMario } from './mario';
 import { newBlocks, renderBlocks, stepBlocks } from './blocks';
 import { newSnake, renderSnake, stepSnake } from './snake';
 
@@ -12,14 +12,14 @@ export const GAMES = [
 ];
 
 export function newConsole({ start = 'boot' } = {}) {
-  const c = { mode: 'boot', t: 0, modeT: 0, sel: 0, palette: 'color', game: null, def: null, paused: false, idle: 0, attract: false, best: 0 };
+  const c = { mode: 'boot', t: 0, modeT: 0, sel: 0, world: 0, palette: 'color', game: null, def: null, paused: false, idle: 0, attract: false, best: 0 };
   if (start === 'attract') startGame(c, 0, { attract: true });
   return c;
 }
 
 function startGame(c, idx, { attract = false } = {}) {
   const def = GAMES[idx];
-  if (def.id === 'mario') c.game = newMario({ attract, seed: 1989 + Math.floor(Math.random() * 1000) });
+  if (def.id === 'mario') c.game = newMario({ attract, course: attract ? 0 : c.world });
   else if (def.id === 'blocks') c.game = newBlocks();
   else c.game = newSnake(Date.now(), c.best);
   c.game.palette = c.palette;
@@ -52,6 +52,8 @@ export function stepConsole(c, dt, input, events) {
   if (c.mode === 'menu') {
     if (p.has('up')) c.sel = (c.sel + GAMES.length - 1) % GAMES.length;
     if (p.has('down')) c.sel = (c.sel + 1) % GAMES.length;
+    if (c.sel === 0 && p.has('left')) c.world = (c.world + WORLDS.length - 1) % WORLDS.length;
+    if (c.sel === 0 && p.has('right')) c.world = (c.world + 1) % WORLDS.length;
     if (p.has('select') || p.has('b')) c.palette = c.palette === 'color' ? 'dmg' : 'color';
     if (p.has('a') || p.has('start')) return startGame(c, c.sel);
     c.idle = any ? 0 : c.idle + dt;
@@ -111,7 +113,7 @@ function renderMenu(ctx, c) {
       ctx.fillRect(ix + 12, y + 2, 2, 2);
     }
     text(ctx, g.name, 40, y + 1, on ? ink : dim);
-    text(ctx, g.blurb, 40, y + 9, dim);
+    text(ctx, g.id === 'mario' && on ? `< WORLD ${WORLDS[c.world]} >` : g.blurb, 40, y + 9, g.id === 'mario' && on ? hi : dim);
   });
   centerText(ctx, 'A START   SELECT COLORS', 124, dim);
   centerText(ctx, color ? 'COLOR' : 'CLASSIC', 133, hi);

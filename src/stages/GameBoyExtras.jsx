@@ -94,9 +94,23 @@ export function CpuStage() {
   const sim = useRef(fresh());
   const [, force] = useState(0);
   const slowSteps = useRef(0);
+  const [auto, setAuto] = useState(!reduced);
+
+  const stepOnce = () => {
+    setAuto(false);
+    const s = sim.current;
+    if (s.halted) sim.current = fresh();
+    else exec(s);
+    force((n) => n + 1);
+  };
+  const reset = () => {
+    sim.current = fresh();
+    slowSteps.current = 0;
+    force((n) => n + 1);
+  };
 
   useEffect(() => {
-    if (!inView || reduced) return undefined;
+    if (!inView || !auto) return undefined;
     let t;
     const tick = () => {
       const s = sim.current;
@@ -124,7 +138,7 @@ export function CpuStage() {
     };
     t = setTimeout(tick, 400);
     return () => clearTimeout(t);
-  }, [inView, reduced]);
+  }, [inView, auto]);
 
   const s = sim.current;
   const pc = PROGRAM[s.i].addr;
@@ -194,7 +208,14 @@ export function CpuStage() {
                 <div className="h-full rounded-full" style={{ width: `${(s.cleared / 8192) * 100}%`, background: 'var(--accent)' }} />
               </div>
             </div>
-            <p className="mono text-xs text-muted">{s.halted ? 'HALT — waiting for an interrupt' : s.fast && s.i < 7 ? 'fast-forwarding the loop…' : 'stepping'}</p>
+            <p className="mono text-xs text-muted">{s.halted ? 'HALT — waiting for an interrupt' : s.fast && s.i < 7 ? 'fast-forwarding the loop…' : auto ? 'running' : 'paused — step it yourself'}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-sm btn-primary" onClick={stepOnce}>Step</button>
+              <button type="button" className="btn btn-sm border border-[var(--border-strong)] text-white hover:bg-[var(--surface-2)]" onClick={() => setAuto((a) => !a)}>
+                {auto ? 'Pause' : 'Run'}
+              </button>
+              <button type="button" className="btn btn-sm text-muted hover:text-white" onClick={reset}>Reset</button>
+            </div>
           </div>
         </div>
       </StageWindow>
