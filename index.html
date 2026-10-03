@@ -1,35 +1,50 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="aws" data-mode="light">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- SEO -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Tilak Patel — Software Engineer</title>
-    <meta name="description" content="Tilak Patel — Software Engineer specializing in systems programming, AI/ML, and backend infrastructure. Northeastern University '27. Portfolio with interactive 3D visualizations and an Imperial terminal." />
+    <meta name="description" content="Tilak Patel — Northeastern CS ’27 and Technical Infrastructure Program Manager Intern at AWS. Infrastructure tooling, AI pipelines and systems software." />
     <meta name="author" content="Tilak Patel" />
-    <meta name="keywords" content="Tilak Patel, software engineer, portfolio, systems programming, AI, ML, HPC, backend, Northeastern University, Bose, React, Python, C++" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="canonical" href="https://tilakpatell.com/" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Open Graph (Slack, LinkedIn, iMessage, Discord) -->
-    <meta property="og:title" content="Tilak Patel — Software Engineer" />
-    <meta property="og:description" content="Systems, AI/ML, and backend infrastructure. Interactive portfolio with 3D visualizations and a terminal." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/profile-pic.jpeg" />
-
-    <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:site_name" content="Tilak Patel" />
+    <meta property="og:url" content="https://tilakpatell.com/" />
+    <meta property="og:title" content="Tilak Patel — Software Engineer" />
+    <meta property="og:description" content="Infrastructure tooling, AI pipelines and systems software. Now at AWS; previously RTX, Bose, Pendar and SRC." />
+    <meta property="og:image" content="https://tilakpatell.com/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Tilak Patel — Software Engineer" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Tilak Patel — Software Engineer" />
-    <meta name="twitter:description" content="Systems, AI/ML, and backend infrastructure. Interactive portfolio." />
-    <meta name="twitter:image" content="/profile-pic.jpeg" />
+    <meta name="twitter:description" content="Infrastructure tooling, AI pipelines and systems software. Now at AWS." />
+    <meta name="twitter:image" content="https://tilakpatell.com/og-image.jpg" />
 
-    <!-- Fonts (actually used by the site — Inter/Fira Code not needed, loaded in index.css) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <script>
+      try {
+        if (localStorage.getItem('tp-mode') === 'dark') document.documentElement.dataset.mode = 'dark';
+      } catch (e) {}
+    </script>
+    <style>
+      html { background: #ffffff; }
+      html[data-mode='dark'] { background: #000000; }
+    </style>
   </head>
   <body>
-    <!-- Built by Tilak Patel. If you're reading this, try /#/terminal and type 'order66'. -->
+    <!-- Looking around? The terminal at /#/terminal has a few more things to find. -->
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 40rem">
+        Tilak Patel — software engineer. This site needs JavaScript. Email tilakny@gmail.com, or see
+        <a href="https://github.com/tilakpatell" style="color: #fff">GitHub</a> and
+        <a href="https://www.linkedin.com/in/tilakpatell" style="color: #fff">LinkedIn</a>.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,0 +1,368 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAchievements, ACHIEVEMENTS } from '../components/Achievements';
+import { useTheme } from '../theme/ThemeProvider';
+import { THEMES } from '../theme/themes';
+import { education, profile, skills } from '../data/profile';
+import { roles, fmtShortRange, fmtMonth } from '../data/roles';
+import { projects } from '../data/projects';
+import { useDocumentTitle } from '../lib/hooks';
+
+// The Imperial terminal — the one place on the site that stays fully in character.
+const L = (text, kind = 'out') => ({ text, kind });
+const BLANK = L('', 'blank');
+const PROMPT = 'visitor@tilakpatell:~$';
+
+const box = (lines, width = 46) => {
+  const inner = width - 4;
+  return [
+    L(`┌${'─'.repeat(width - 2)}┐`, 'ascii'),
+    ...lines.map((t) => L(`│ ${t.padEnd(inner).slice(0, inner)} │`, 'ascii')),
+    L(`└${'─'.repeat(width - 2)}┘`, 'ascii'),
+  ];
+};
+
+const QUOTES = [
+  ['Do. Or do not. There is no try.', 'Yoda'],
+  ['I find your lack of faith disturbing.', 'Darth Vader'],
+  ['Never tell me the odds!', 'Han Solo'],
+  ['Rebellions are built on hope.', 'Jyn Erso'],
+  ['This is the way.', 'Din Djarin'],
+  ['In my experience, there’s no such thing as luck.', 'Obi-Wan Kenobi'],
+  ['I am one with the Force, and the Force is with me.', 'Chirrut Îmwe'],
+  ['We are what they grow beyond.', 'Yoda'],
+];
+const quote = () => {
+  const [q, who] = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  return [BLANK, L(`  “${q}”`), L(`   — ${who}`, 'dim')];
+};
+
+const pad = (s, n) => String(s).padEnd(n);
+
+const HELP = [
+  BLANK,
+  L('  COMMANDS', 'head'),
+  L('  about            who I am'),
+  L('  experience       roles, newest first'),
+  L('  projects         projects and research'),
+  L('  open <project>   open a project page   (try: open gameboy)'),
+  L('  skills           languages, frameworks, tools'),
+  L('  education        Northeastern University'),
+  L('  contact          email, GitHub, LinkedIn'),
+  L('  resume           download my résumé (PDF)'),
+  L('  github           live stats from the GitHub API'),
+  L('  achievements     what you have unlocked'),
+  L('  clear            clear the screen'),
+  BLANK,
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
+  L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force', 'dim'),
+];
+
+const PROJECT_ALIASES = {
+  gameboy: 'gameboy-emulator',
+  gb: 'gameboy-emulator',
+  gpu: 'gpu-checkpoint-restart',
+  research: 'gpu-checkpoint-restart',
+  devspace: 'devspace',
+  copilot: 'awesome-copilot',
+  fuse: 'fuse-fs',
+  shell: 'unix-shell',
+  finance: 'finance-platform',
+  summarizer: 'smart-summarizer',
+  translator: 'swaminarayan-translator',
+  swaminarayan: 'swaminarayan-translator',
+};
+
+async function githubReport() {
+  try {
+    const [user, repos] = await Promise.all([
+      fetch('https://api.github.com/users/tilakpatell').then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+      fetch('https://api.github.com/users/tilakpatell/repos?per_page=100&sort=pushed').then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+    ]);
+    const langs = {};
+    repos.forEach((r) => {
+      if (r.language && !r.fork) langs[r.language] = (langs[r.language] || 0) + 1;
+    });
+    const top = Object.entries(langs).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return [
+      BLANK,
+      L('  GITHUB — LIVE', 'head'),
+      L(`  handle        @${user.login}`),
+      L(`  public repos  ${user.public_repos}`),
+      BLANK,
+      L('  TOP LANGUAGES (by repo)', 'head'),
+      ...top.map(([n, c]) => L(`  ${pad(n, 18)}${'█'.repeat(Math.min(24, c * 2))} ${c}`)),
+      BLANK,
+      L('  RECENTLY PUSHED', 'head'),
+      ...repos
+        .filter((r) => !r.fork)
+        .slice(0, 5)
+        .map((r) => L(`  ${pad(r.name.slice(0, 30), 32)}${new Date(r.pushed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`)),
+    ];
+  } catch {
+    return [L('  GitHub isn’t answering right now (the public API allows 60 requests an hour). Try again later.', 'err')];
+  }
+}
+
+export default function Terminal() {
+  useDocumentTitle('Terminal');
+  const navigate = useNavigate();
+  const { active } = useTheme();
+  const { unlock, unlocked } = useAchievements();
+  const [lines, setLines] = useState(() => [
+    L('  IMPERIAL TERMINAL · tilakpatell.com', 'sys'),
+    L('  Secure channel established. Clearance: visitor.', 'ok'),
+    BLANK,
+    L("  Type 'help' to list commands. Tab completes, ↑ ↓ walk history.", 'sys'),
+  ]);
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState([]);
+  const [cursor, setCursor] = useState(-1);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+  const scrollRef = useRef(null);
+  const started = useRef(Date.now());
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines, busy]);
+
+  useEffect(() => {
+    if (!busy) inputRef.current?.focus({ preventScroll: true });
+  }, [busy]);
+
+  const print = useCallback((more) => setLines((prev) => [...prev, ...more]), []);
+
+  const commands = useCallback(
+    () => ({
+      help: () => HELP,
+      about: () => [
+        BLANK,
+        ...box([profile.name.toUpperCase(), 'Software engineer · Northeastern ’27', `Now: ${roles[0].shortTitle} @ ${roles[0].short}`]),
+        BLANK,
+        L(`  ${profile.focus}`),
+        L(`  ${profile.offClock}`, 'dim'),
+      ],
+      experience: () => [
+        BLANK,
+        L('  EXPERIENCE — newest first', 'head'),
+        ...roles.flatMap((r) => [L(`  ${pad(r.short, 12)}${pad(r.shortTitle, 36)}${fmtShortRange(r)}`), L(`  ${' '.repeat(12)}${r.summary}`, 'dim')]),
+        BLANK,
+        L("  Full timeline: 'open experience'", 'dim'),
+      ],
+      projects: () => [
+        BLANK,
+        L('  PROJECTS', 'head'),
+        ...projects.map((p) => L(`  ${pad(p.id, 24)}${pad(p.kind, 13)}${p.title}`)),
+        BLANK,
+        L("  Open one with 'open <project>', e.g. open gameboy", 'dim'),
+      ],
+      skills: () => [BLANK, ...skills.flatMap((g) => [L(`  ${g.label.toUpperCase()}`, 'head'), L(`  ${g.items.join(' · ')}`), BLANK])],
+      education: () => [
+        BLANK,
+        L(`  ${education.school.toUpperCase()}`, 'head'),
+        L(`  ${education.degree} · ${fmtMonth(education.graduation)} · GPA ${education.gpa}`),
+        L(`  ${education.coursework.join(' · ')}`, 'dim'),
+      ],
+      contact: () => [
+        BLANK,
+        L(`  email     ${profile.email}`),
+        L(`  github    github.com/${profile.github.handle}`),
+        L(`  linkedin  linkedin.com/in/${profile.linkedin.handle}`),
+      ],
+      resume: () => {
+        const a = Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        unlock('resume');
+        return [L('  Transmitting résumé…', 'ok')];
+      },
+      github: githubReport,
+      achievements: () => [
+        BLANK,
+        L(`  ACHIEVEMENTS — ${unlocked.length}/${Object.keys(ACHIEVEMENTS).length}`, 'head'),
+        ...Object.entries(ACHIEVEMENTS).map(([id, a]) =>
+          L(`  ${unlocked.includes(id) ? '■' : '□'} ${pad(a.name, 20)}${unlocked.includes(id) ? a.desc : '???'}`, unlocked.includes(id) ? 'out' : 'dim'),
+        ),
+      ],
+      whoami: () => [L('  visitor')],
+      date: () => [L(`  ${new Date().toString()}`)],
+      pwd: () => [L('  /home/visitor')],
+      ls: () => [L('  about.txt  experience/  projects/  resume.pdf  deathstar.plans')],
+      neofetch: () => [
+        BLANK,
+        ...box(['tilakpatell.com', 'React 18 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`]),
+      ],
+      order66: () => {
+        unlock('order66');
+        return [BLANK, ...box(['EXECUTING ORDER 66…', '“Execute Order 66.” — Darth Sidious'], 46).map((l) => ({ ...l, kind: 'err' })), L('  (It’s just a portfolio. Everyone is fine.)', 'dim')];
+      },
+      force: quote,
+      starwars: quote,
+      vader: () => [BLANK, L('  “No, I am your father.”'), L('   — Darth Vader, The Empire Strikes Back', 'dim')],
+      yoda: () => [BLANK, L('  “Size matters not.”'), L('   — Yoda, The Empire Strikes Back', 'dim')],
+      lightsaber: () => [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L('  “An elegant weapon for a more civilized age.”'), L('   — Obi-Wan Kenobi', 'dim')],
+      hello: () => [L('  Hello there!'), L('  — General Kenobi', 'dim')],
+      sudo: () => [L('  visitor is not in the sudoers file. This incident will be reported to Lord Vader.', 'err')],
+      rm: () => [L('  Permission denied. Dark side clearance required.', 'err')],
+      deathstar: () => {
+        setTimeout(() => navigate('/deathstar'), 500);
+        return [L('  Retrieving the Death Star plans…', 'ok')];
+      },
+      exit: () => {
+        setTimeout(() => navigate('/'), 300);
+        return [L('  Closing channel.', 'sys')];
+      },
+    }),
+    [active, navigate, unlock, unlocked],
+  );
+
+  const run = useCallback(
+    async (raw) => {
+      const text = raw.trim();
+      print([L(`${PROMPT} ${text}`, 'cmd')]);
+      if (!text) return;
+      setHistory((h) => [...h, text]);
+      setCursor(-1);
+      const [name, ...args] = text.split(/\s+/);
+      const cmd = name.toLowerCase();
+      const arg = args.join(' ').toLowerCase();
+
+      if (cmd === 'clear') return setLines([]);
+      if (cmd === 'echo') return print([L(`  ${args.join(' ')}`)]);
+      if (cmd === 'history') return print(history.concat(text).slice(-20).map((h, i) => L(`  ${String(i + 1).padStart(3)}  ${h}`)));
+      if (cmd === 'cat') {
+        if (arg === 'about.txt') return print(commands().about());
+        if (arg === 'resume.pdf') return print([L('  Binary file. Try: resume', 'dim')]);
+        if (arg === 'deathstar.plans') return print([L('  ACCESS DENIED. Try: deathstar', 'err')]);
+        return print([L(`  cat: ${args[0] || ''}: No such file`, 'err')]);
+      }
+      if (cmd === 'open' || cmd === 'cd') {
+        const pages = { home: '/', experience: '/experience', projects: '/projects', contact: '/contact', '~': '/', '..': '/' };
+        if (pages[arg]) {
+          setTimeout(() => navigate(pages[arg]), 250);
+          return print([L(`  Opening ${arg}…`, 'ok')]);
+        }
+        const id = PROJECT_ALIASES[arg] || arg;
+        if (projects.some((p) => p.id === id)) {
+          setTimeout(() => navigate(`/projects/${id}`), 250);
+          return print([L(`  Opening ${id}…`, 'ok')]);
+        }
+        return print([L(`  ${cmd}: ${arg || '(nothing)'}: not found. Try 'projects'.`, 'err')]);
+      }
+      const fn = commands()[cmd];
+      if (!fn) return print([L(`  ${cmd}: command not found. Type 'help'.`, 'err')]);
+      setBusy(true);
+      try {
+        print(await fn());
+      } finally {
+        setBusy(false);
+      }
+      return undefined;
+    },
+    [commands, history, navigate, print],
+  );
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = input;
+      setInput('');
+      run(value);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!history.length) return;
+      const next = Math.min(history.length - 1, cursor + 1);
+      setCursor(next);
+      setInput(history[history.length - 1 - next]);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = cursor - 1;
+      setCursor(Math.max(-1, next));
+      setInput(next >= 0 ? history[history.length - 1 - next] : '');
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const names = [...Object.keys(commands()), 'clear', 'echo', 'history', 'cat', 'open'];
+      const hits = names.filter((n) => n.startsWith(input.toLowerCase()) && n !== input.toLowerCase());
+      if (hits.length === 1) setInput(`${hits[0]} `);
+      else if (hits.length > 1) print([L(`${PROMPT} ${input}`, 'cmd'), L(`  ${hits.sort().join('  ')}`, 'dim')]);
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      setLines([]);
+    }
+  };
+
+  const tone = {
+    sys: 'text-muted',
+    ok: 'text-accent',
+    err: 'text-[#ff8a8a]',
+    head: 'font-semibold text-ink',
+    dim: 'text-muted',
+    ascii: 'text-body',
+    cmd: 'text-ink',
+    out: 'text-body',
+  };
+
+  return (
+    <div className="shell relative z-10 pb-20 pt-[calc(var(--nav-h)+32px)] md:pt-[calc(var(--nav-h)+48px)]">
+      <p className="eyebrow">Imperial terminal</p>
+      <h1 className="sr-only">Terminal</h1>
+      <div
+        className="dark-scope mt-5 overflow-hidden rounded-card border border-line-strong shadow-2xl shadow-black/30"
+        style={{ background: 'var(--bg)' }}
+        onClick={() => inputRef.current?.focus({ preventScroll: true })}
+      >
+        <div className="flex items-center gap-3 border-b border-line px-4 py-2.5" style={{ background: 'var(--surface)' }}>
+          <span className="flex gap-1.5" aria-hidden="true">
+            <i className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
+            <i className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
+            <i className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
+          </span>
+          <span className="mono truncate text-xs text-muted">{PROMPT.replace(':~$', '')} — imperial-sh</span>
+          <span className="mono ml-auto flex items-center gap-2 text-xs text-muted">
+            <span className="status-dot" aria-hidden="true" /> connected
+          </span>
+        </div>
+        <div
+          ref={scrollRef}
+          className="mono h-[min(68vh,640px)] overflow-y-auto px-4 py-4 text-[0.8125rem] leading-relaxed sm:px-6 sm:text-sm"
+          role="log"
+          aria-live="polite"
+          aria-label="Terminal output"
+        >
+          {lines.map((l, i) =>
+            l.kind === 'blank' ? (
+              <div key={i} className="h-3" />
+            ) : (
+              <p key={i} className={`whitespace-pre-wrap break-words ${tone[l.kind] || tone.out} ${l.kind === 'ascii' ? 'whitespace-pre' : ''}`}>
+                {l.text}
+              </p>
+            ),
+          )}
+          <div className="mt-1 flex items-center gap-2">
+            <label htmlFor="term-input" className="flex-none text-accent">
+              {busy ? '…' : PROMPT}
+            </label>
+            <input
+              id="term-input"
+              ref={inputRef}
+              value={input}
+              disabled={busy}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 text-ink caret-[color:var(--accent)] outline-none focus-visible:outline-none"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Command"
+            />
+          </div>
+        </div>
+      </div>
+      <p className="mono mt-3 text-xs text-muted">Tab completes · ↑ ↓ history · Ctrl+L clears · try “open gameboy” or “deathstar”</p>
+    </div>
+  );
+}

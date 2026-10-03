@@ -1,0 +1,30 @@
+import { Link, useLocation } from 'react-router-dom';
+import { useDocumentTitle } from '../lib/hooks';
+
+export default function NotFound() {
+  useDocumentTitle('Page not found');
+  const { pathname } = useLocation();
+  return (
+    <div className="shell relative z-10 flex min-h-[100svh] items-center pb-20 pt-[calc(var(--nav-h)+40px)]">
+      <div className="max-w-3xl">
+        <p className="eyebrow">Error 404</p>
+        <h1 className="display mt-6 text-[clamp(2.6rem,1.5rem+4.6vw,5.2rem)]">This isn’t the page you’re looking for.</h1>
+        <p className="lead mt-6 max-w-xl">
+          Nothing lives at <span className="mono break-all text-ink">{pathname}</span>. It may have moved when the site was rebuilt.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link to="/" className="btn btn-primary">
+            Go to home
+          </Link>
+          <Link to="/experience" className="btn btn-ghost">
+            Experience
+          </Link>
+          <Link to="/projects" className="btn btn-ghost">
+            Projects
+          </Link>
+        </div>
+        <p className="mono mt-10 text-xs text-muted">Move along. Move along.</p>
+      </div>
+    </div>
+  );
+}

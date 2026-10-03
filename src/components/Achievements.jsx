@@ -1,92 +1,86 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { storage } from '../lib/hooks';
+import { useTheme } from '../theme/ThemeProvider';
+import { THEME_ORDER } from '../theme/themes';
 
-const ACHIEVEMENTS = {
-  explorer:  { name: 'Explorer',     desc: 'Visited all 5 main pages',    icon: '◇' },
-  hacker:    { name: 'Hacker',       desc: 'Accessed the Imperial Terminal', icon: '◈' },
-  order66:   { name: 'Contingency',  desc: 'Executed Order 66',           icon: '▲' },
-  konami:    { name: 'Cheat Code',   desc: 'Entered the Konami Code',     icon: '▣' },
-  deathstar: { name: 'Architect',    desc: 'Found the Death Star plans',  icon: '●' },
-  resume:    { name: 'Recruited',    desc: 'Downloaded the dossier',      icon: '◆' },
+// eslint-disable-next-line react-refresh/only-export-components
+export const ACHIEVEMENTS = {
+  explorer: { name: 'Explorer', desc: 'Visited every page' },
+  hacker: { name: 'Slicer', desc: 'Opened the Imperial terminal' },
+  order66: { name: 'Contingency', desc: 'Executed Order 66' },
+  konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
+  deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
+  resume: { name: 'Recruited', desc: 'Downloaded the résumé' },
+  cartographer: { name: 'Cartographer', desc: 'Saw all six company themes' },
+  player: { name: 'High score', desc: 'Collected 10 coins on the Game Boy' },
 };
 
-const ALL_PAGES = ['/', '/projects', '/experience', '/terminal', '/contact'];
+const PAGES = ['/', '/experience', '/projects', '/contact', '/terminal'];
 
-const AchievementCtx = createContext(null);
-export const useAchievements = () => useContext(AchievementCtx);
+const AchievementContext = createContext({ unlock: () => {}, unlocked: [] });
 
-/* ── Page visit tracker (for "Explorer" achievement) ────────────────────── */
-const usePageTracker = (unlock) => {
-  const location = useLocation();
-  useEffect(() => {
-    const visited = JSON.parse(sessionStorage.getItem('visited') || '[]');
-    const path = location.pathname;
-    if (!visited.includes(path)) {
-      const next = [...visited, path];
-      sessionStorage.setItem('visited', JSON.stringify(next));
-      if (ALL_PAGES.every(p => next.includes(p))) unlock('explorer');
-    }
-    if (path === '/terminal') unlock('hacker');
-    if (path === '/deathstar') unlock('deathstar');
-  }, [location.pathname, unlock]);
-};
-
-/* ── Provider + Toast ───────────────────────────────────────────────────── */
-export const AchievementProvider = ({ children }) => {
-  const [unlocked, setUnlocked] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('achievements') || '[]'); }
-    catch { return []; }
-  });
+export function AchievementProvider({ children }) {
+  const [unlocked, setUnlocked] = useState(() => storage.get('tp-achievements', []));
   const [toast, setToast] = useState(null);
+  const { pathname } = useLocation();
+  const { seen } = useTheme();
 
   const unlock = useCallback((id) => {
-    setUnlocked(prev => {
-      if (prev.includes(id) || !ACHIEVEMENTS[id]) return prev;
+    if (!ACHIEVEMENTS[id]) return;
+    setUnlocked((prev) => {
+      if (prev.includes(id)) return prev;
       const next = [...prev, id];
-      sessionStorage.setItem('achievements', JSON.stringify(next));
-      setToast(ACHIEVEMENTS[id]);
+      storage.set('tp-achievements', next);
+      setToast({ id, ...ACHIEVEMENTS[id] });
       return next;
     });
   }, []);
 
-  /* Auto-dismiss toast */
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
+    const top = pathname.startsWith('/projects') ? '/projects' : pathname;
+    const visited = storage.get('tp-visited', []);
+    if (!visited.includes(top)) {
+      const next = [...visited, top];
+      storage.set('tp-visited', next);
+      if (PAGES.every((p) => next.includes(p))) unlock('explorer');
+    }
+    if (pathname === '/terminal') unlock('hacker');
+    if (pathname === '/deathstar') unlock('deathstar');
+  }, [pathname, unlock]);
+
+  useEffect(() => {
+    if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
+  }, [seen, unlock]);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3600);
     return () => clearTimeout(t);
   }, [toast]);
 
-  usePageTracker(unlock);
+  const value = useMemo(() => ({ unlock, unlocked }), [unlock, unlocked]);
 
   return (
-    <AchievementCtx.Provider value={{ unlock, unlocked, achievements: ACHIEVEMENTS }}>
+    <AchievementContext.Provider value={value}>
       {children}
-
-      {/* Achievement toast */}
-      <AnimatePresence>
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4" aria-live="polite">
         {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 60, x: '-50%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="fixed bottom-6 left-1/2 z-[99999] pointer-events-none"
-          >
-            <div className="bg-[#0a0a0a]/95 border border-white/[0.14] px-5 py-3 flex items-center gap-3.5
-                            shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-sm min-w-[240px]">
-              <span className="text-white/50 text-lg font-mono leading-none">{toast.icon}</span>
-              <div>
-                <div className="font-mono text-[0.46rem] tracking-[0.20em] text-white/28 uppercase">
-                  Achievement Unlocked
-                </div>
-                <div className="font-display text-sm font-bold text-white/85 mt-0.5">{toast.name}</div>
-                <div className="font-mono text-[0.54rem] text-white/32 mt-0.5">{toast.desc}</div>
-              </div>
+          <div key={toast.id} className="toast card flex items-center gap-3 px-4 py-3 shadow-2xl shadow-black/50" style={{ background: 'var(--surface-2)' }}>
+            <span className="grid h-9 w-9 place-items-center rounded-full border border-line-strong">
+              <span className="status-dot" />
+            </span>
+            <div>
+              <p className="eyebrow">Achievement unlocked</p>
+              <p className="font-semibold text-ink">{toast.name}</p>
+              <p className="text-sm text-muted">{toast.desc}</p>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-    </AchievementCtx.Provider>
+      </div>
+    </AchievementContext.Provider>
   );
-};
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAchievements = () => useContext(AchievementContext);
