@@ -19,7 +19,6 @@ import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
 import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
-import HeroDock from '../components/HeroDock';
 import Egg from '../components/Egg';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
@@ -91,7 +90,7 @@ export default function Home() {
       {/* Hero */}
       <section data-theme-section="aws" className="shell relative z-10 pb-16 pt-[calc(var(--nav-h)+40px)] md:pb-24 md:pt-[calc(var(--nav-h)+72px)]">
         <div className="hero-wash pointer-events-none" aria-hidden="true" />
-        <div className="relative grid items-end gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-16">
+        <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.6rem" />
             <Reveal>
@@ -129,11 +128,8 @@ export default function Home() {
                 <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
               </Link>
             </Reveal>
-            <Reveal delay={240} className="mt-10">
-              <HeroDock />
-            </Reveal>
           </div>
-          <Reveal delay={90} className="mx-auto w-full max-w-[300px] sm:max-w-[340px] lg:mx-0 lg:ml-auto lg:max-w-[380px]">
+          <Reveal delay={90} className="mx-auto w-full max-w-[220px] sm:max-w-[300px] lg:mx-0 lg:ml-auto lg:max-w-[380px]">
             <Portrait />
           </Reveal>
         </div>
@@ -284,6 +280,8 @@ export default function Home() {
         </dl>
         <Reveal className="panel mt-12 grid gap-8 p-6 sm:p-8 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-12">
           <div>
+            <img src="/logos/northeastern.svg" width="247" height="79" alt="" className="nu-logo nu-logo-light mb-5 h-12 w-auto" loading="lazy" decoding="async" />
+            <img src="/logos/northeastern-white.svg" width="247" height="79" alt="" className="nu-logo nu-logo-dark mb-5 h-12 w-auto" loading="lazy" decoding="async" />
             <h3 className="stretch-semi text-2xl font-semibold text-ink">{education.school}</h3>
             <p className="mt-2 text-body">
               {education.degree}, graduating {fmtMonth(education.graduation)}

@@ -194,6 +194,10 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     const g = game.current;
     if (!g || g.phase !== 'running') return;
     g.computer = !g.computer;
+    if (!g.computer) {
+      audioContext();
+      import('../../lib/clips').then((c) => c.playClip('useTheForce'));
+    }
     setUi((u) => ({ ...u, computer: g.computer, message: g.computer ? 'Targeting computer on.' : 'You switched off your targeting computer. Use the Force.' }));
   }, []);
 

@@ -19,6 +19,7 @@ export const PARTS = [
     name: 'Thermal exhaust port',
     text: 'Two metres wide, right below the main port. The shaft leads straight down to the reactor.',
     quote: ['Use the Force, Luke.', 'Obi-Wan Kenobi'],
+    clip: 'useTheForce',
     gif: 'yavin',
     action: 'trench',
   },

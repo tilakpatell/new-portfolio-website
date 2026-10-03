@@ -261,7 +261,11 @@ export default function RouteLine({ containerRef }) {
         ) : null,
       )}
       {!reduced.current && (
-        <svg ref={kyberRef} className="kyber" viewBox="0 0 12 18" style={{ opacity: 0 }}>
+        // the glow is drawn in, not a CSS filter: a filtered element that moves
+        // every frame can leave a ghost of itself behind in some browsers
+        <svg ref={kyberRef} className="kyber" viewBox="-6 -6 24 30" style={{ opacity: 0 }}>
+          <polygon points="6,-4 15,3.5 12,22 0,22 -3,3.5" style={{ fill: 'var(--saber)', opacity: 0.18 }} />
+          <polygon points="6,-2 13.5,4.2 10.8,20 1.2,20 -1.5,4.2" style={{ fill: 'var(--saber)', opacity: 0.22 }} />
           <polygon points="6,0 12,5 9.5,18 2.5,18 0,5" style={{ fill: 'var(--saber)' }} />
           <polygon points="6,0.8 8.6,5 6,16.5 3.4,5" style={{ fill: '#ffffff', opacity: 0.6 }} />
         </svg>

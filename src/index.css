@@ -562,12 +562,10 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     position: absolute;
     left: 0;
     top: 0;
-    width: 12px;
-    height: 18px;
-    margin: -9px 0 0 -6px;
-    will-change: transform;
+    width: 24px;
+    height: 30px;
+    margin: -15px 0 0 -12px;
     pointer-events: none;
-    filter: drop-shadow(0 0 4px var(--saber));
     transition: opacity 0.2s ease;
   }
 

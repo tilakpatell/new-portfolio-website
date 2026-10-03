@@ -278,22 +278,29 @@ export default function Music() {
             <Photo id="music-tarab" sizes="(min-width: 768px) 36vw, 100vw" className="h-full w-full object-cover" />
           </figure>
           <div className="max-w-[62ch] text-[0.95rem] leading-relaxed text-body">
-            <h3 className="stretch-semi text-xl font-semibold text-ink">No recordings: every string is simulated</h3>
+            <h3 className="stretch-semi text-xl font-semibold text-ink">Real notes, retuned to every fret</h3>
             <p className="mt-3">
-              The sitar’s bridge, the jawari, is a wide, gently curved bone. As the string swings onto it, the point where it leaves the bridge slides along the
-              curve, so the string is a little shorter for part of every cycle. That is the buzz: it throws energy up into the overtones and holds it there. Here
-              each string is a model of exactly that.
+              Each pluck is a recording of a real sitar, retuned to the fret you touch, so the jawari’s buzz and the ring of the sympathetic strings are the
+              instrument’s own. Meend glides the note the way a pulled string bends. The tanpura is a real pluck too, retuned to each of its four strings.
             </p>
             <p className="mt-3">
-              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {RAGAS[tuning.raga].name}. Nobody plucks them. They ring when a
-              note you play matches one, and glow on the neck above as they do. The two high chikari strings are struck for rhythm.
+              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {RAGAS[tuning.raga].name}. Nobody plucks them; they ring when a
+              note you play matches one, and glow on the neck above as they would.
             </p>
             <p className="mt-3 text-sm text-muted">
-              The recording is by{' '}
+              Sitar recordings by{' '}
               <a className="link" href={CREDIT} target="_blank" rel="noopener noreferrer">
                 Sanath311
-              </a>
-              , CC BY-SA 3.0. I checked the model against it, overtone by overtone.
+              </a>{' '}
+              (CC BY-SA 3.0) and{' '}
+              <a className="link" href="https://freesound.org/people/chinpen/sounds/42268/" target="_blank" rel="noopener noreferrer">
+                chinpen
+              </a>{' '}
+              (CC BY 3.0). Tanpura pluck by{' '}
+              <a className="link" href="https://freesound.org/people/luckylittleraven/sounds/416606/" target="_blank" rel="noopener noreferrer">
+                luckylittleraven
+              </a>{' '}
+              (CC0).
             </p>
           </div>
         </div>
@@ -342,7 +349,7 @@ export default function Music() {
 
       <PhotoCredits
         ids={['music-sitar', 'music-tanpura', 'music-tarab', 'music-harmonium', 'music-tabla']}
-        note="Freely licensed photos from Wikimedia Commons. The sitar, tanpura, harmonium and tabla you can play here are synthesised in your browser; the one recording is credited above."
+        note="Freely licensed photos from Wikimedia Commons. The sitar and tanpura play real recordings, credited above; the harmonium and tabla are synthesised in your browser."
       />
 
       {(pastHero || drone.on) && (

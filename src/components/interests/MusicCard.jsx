@@ -4,9 +4,9 @@ import { RiArrowRightLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 
-// Indian classical music: a sitar you can play (the same physical model as the
-// music room, on the notes of Raga Yaman), a tanpura drone underneath, and a
-// real recording to listen to. Everything shares the music room's Sa.
+// Indian classical music: a sitar you can play (real recorded notes, retuned to
+// Raga Yaman's frets), a real tanpura pluck as the drone underneath, and a
+// recording to listen to. Everything shares the music room's Sa.
 //
 // Mouse: click a fret, or hold and drag up to pull the string (meend).
 // Touch: tap a fret, or slide along the neck to glide across notes; vertical
@@ -256,7 +256,7 @@ export default function MusicCard() {
           Open the music room: sitar, harmonium and tabla <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
         </Link>
         <p className="mt-3 text-xs text-muted">
-          Sitar and tanpura: modelled in your browser. Listen: a real recording by{' '}
+          Sitar and tanpura: real recordings, retuned to the frets. Listen: a performance by{' '}
           <a className="underline underline-offset-2" href={CREDIT} target="_blank" rel="noopener noreferrer">
             Sanath311
           </a>

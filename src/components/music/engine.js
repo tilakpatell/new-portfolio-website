@@ -1,16 +1,14 @@
 // The music room's instruments, all tuned to one Sa.
 //
-// Sitar: a physical model on the audio thread (see sitar.worklet.js), with a
-// real recorded note as the fallback where AudioWorklet isn't available.
-// Tanpura: four plucked strings with a jawari bridge, rendered once per tuning.
-// Harmonium: free reeds, two to a key. Tabla: each stroke built from the
-// drum's own modes, so the dayan rings at Sa.
+// Sitar: real recorded notes, retuned to each fret. Tanpura: a real recorded
+// pluck, retuned to each of its four strings. Harmonium: free reeds, two to a
+// key. Tabla: each stroke built from the drum's own modes, so the dayan rings
+// at Sa.
 //
 // Pitches are just intonation against Sa. Every function that makes a sound
 // needs `audioContext()` to have run inside the visitor's click or key press.
 
 import { audioContext, loadBuffer, output, prefetch } from '../../lib/audio';
-import workletCode from './sitar.worklet.js?raw';
 
 // ── Tuning ─────────────────────────────────────────────────────────────────
 // Sa can be any note from C3 to B3. The tanpura's middle strings sound it.
@@ -52,7 +50,7 @@ export function frets(ragaId) {
 }
 
 // The tarab are tuned to the raga's notes, eleven of them from Sa up.
-function tarabRatios(ragaId) {
+export function tarabRatios(ragaId) {
   const notes = [...RAGAS[ragaId].notes].map((s) => SWARA[s]);
   const out = [];
   for (let oct = 1; out.length < 11; oct *= 2) for (const r of notes) if (out.length < 11) out.push(r * oct);
@@ -83,7 +81,6 @@ export function setTuning(next) {
   } catch {
     /* storage unavailable */
   }
-  retuneSitar();
   tuningListeners.forEach((fn) => fn(tuning));
 }
 export const sa = () => saHz(tuning.sa);
@@ -122,118 +119,119 @@ function roomImpulse(ac, seconds) {
 }
 
 // ── Sitar ──────────────────────────────────────────────────────────────────
-const SAMPLE_URL = '/audio/sitar-sa.mp3';
-const SAMPLE_HZ = 294.0;
+// Real notes: four takes of one note (D4) on a sitar, Sanath311's (CC BY-SA 3.0)
+// and three strokes by chinpen (CC BY 3.0), taken in turn so a repeated note
+// never sounds quite the same, each retuned to its fret. A new note on the main
+// string stops the last, as the plectrum does; meend glides the playback rate,
+// the way a pulled string bends.
+const TAKES = [
+  { url: '/audio/sitar-sa.mp3', hz: 293.3 },
+  { url: '/audio/sitar-d4-1.mp3', hz: 292.4 },
+  { url: '/audio/sitar-d4-2.mp3', hz: 291.9 },
+  { url: '/audio/sitar-d4-3.mp3', hz: 291.0 },
+];
 export const LISTEN_URL = '/audio/sitar-listen.mp3';
 
-let node = null;
-let loading = null;
-const meters = new Set();
-
-// The worklet, loaded once. Resolves to null where AudioWorklet is missing.
-function sitarNode() {
-  const ac = audioContext();
-  if (!ac) return Promise.resolve(null);
-  if (node) return Promise.resolve(node);
-  if (!loading) {
-    loading = (async () => {
-      if (!ac.audioWorklet || typeof AudioWorkletNode === 'undefined') return null;
-      const url = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
-      try {
-        await ac.audioWorklet.addModule(url);
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-      const n = new AudioWorkletNode(ac, 'sitar', { numberOfInputs: 0, outputChannelCount: [2] });
-      const level = ac.createGain();
-      level.gain.value = 0.72;
-      n.connect(level).connect(mix(ac));
-      n.port.onmessage = (e) => e.data?.type === 'meter' && meters.forEach((fn) => fn(e.data));
-      node = n;
-      retuneSitar();
-      return n;
-    })().catch(() => null);
-  }
-  return loading;
-}
-
-function retuneSitar() {
-  if (!node) return;
+// The sitar plays an octave above the tanpura's Sa while that keeps it close
+// to the recorded note, so the retuning stays gentle.
+export const sitarSa = () => {
   const s = sa();
-  node.port.postMessage({ type: 'tune', tarab: tarabRatios(tuning.raga).map((r) => r * s), chikari: [2 * s, 4 * s] });
-}
-
-export const onSitarMeter = (fn) => {
-  meters.add(fn);
-  return () => meters.delete(fn);
+  return s * 2 <= 330 ? s * 2 : s;
 };
 
-// Download what the sitar needs ahead of time, without starting audio.
-export const warm = () => prefetch(SAMPLE_URL).catch(() => null);
+let takes = null;
+let next = 0;
+let voice = null; // the note ringing on the main string
+const pluckListeners = new Set();
 
-// Pluck a note `ratio` above Sa (2 is taar Sa). Returns a handle: bend(semitones)
-// pulls the string (meend), slide(ratio) moves to another fret without plucking.
+// Every take decoded, in order (one shared promise, so plucks resume in the order asked).
+function loadTakes() {
+  if (!takes)
+    takes = Promise.all(TAKES.map((t) => loadBuffer(t.url).then((buf) => ({ buf, hz: t.hz })).catch(() => null))).then((list) => {
+      const ok = list.filter(Boolean);
+      if (!ok.length) takes = null; // try again next time
+      return ok;
+    });
+  return takes;
+}
+
+// Download the notes early (on hover, say) without starting audio.
+export const warm = () => Promise.all(TAKES.map((t) => prefetch(t.url).catch(() => null)));
+
+// Called with each note's ratio as it sounds, for the sympathetic strings' glow.
+export const onSitarPluck = (fn) => {
+  pluckListeners.add(fn);
+  return () => pluckListeners.delete(fn);
+};
+const told = (ratio, at) => {
+  const ac = audioContext();
+  const ms = ac ? Math.max(0, (at - ac.currentTime) * 1000) : 0;
+  setTimeout(() => pluckListeners.forEach((fn) => fn(ratio)), ms);
+};
+
+function note(ac, take, freq, at, vel, dest) {
+  const src = ac.createBufferSource();
+  src.buffer = take.buf;
+  src.playbackRate.setValueAtTime(freq / take.hz, at);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(vel * 0.6, at); // level with the tanpura and harmonium
+  src.connect(g).connect(dest);
+  src.start(at);
+  return { src, g, hz: take.hz };
+}
+
+// the plectrum stops what was ringing on the main string
+function stopVoice(v, at) {
+  if (!v) return;
+  v.g.gain.setTargetAtTime(0.0001, at, 0.03);
+  v.src.stop(at + 0.25);
+}
+
+// Pluck a note `ratio` above the sitar's Sa (2 is taar Sa). Returns a handle:
+// bend(semitones) pulls the string (meend); slide(ratio) moves to another fret
+// without plucking again.
 export async function pluck(ratio, { when = 0, vel = 0.9 } = {}) {
   const ac = audioContext();
   if (!ac) return null;
-  const freq = ratio * sa();
-  const n = await sitarNode();
-  if (n) {
-    const t = ac.currentTime + when;
-    n.port.postMessage({ type: 'pluck', time: t, freq, vel });
-    let base = freq;
-    return {
-      bend(semitones) {
-        n.port.postMessage({ type: 'glide', time: ac.currentTime, freq: base * 2 ** (semitones / 12), tau: 0.035 });
-      },
-      slide(r) {
-        base = r * sa();
-        n.port.postMessage({ type: 'glide', time: ac.currentTime, freq: base, tau: 0.045 });
-      },
-    };
-  }
-  return samplePluck(ac, freq, when, vel);
-}
-
-// The fallback: the real recorded note, resampled. Meend is a glide of its playback rate.
-async function samplePluck(ac, freq, when, vel) {
-  const buf = await loadBuffer(SAMPLE_URL).catch(() => null);
-  if (!buf) return null;
-  const src = ac.createBufferSource();
-  src.buffer = buf;
-  let rate = freq / SAMPLE_HZ;
+  const list = await loadTakes();
+  if (!list.length) return null;
   const at = ac.currentTime + when + 0.005;
-  src.playbackRate.setValueAtTime(rate, at);
-  const g = ac.createGain();
-  g.gain.value = vel;
-  src.connect(g).connect(mix(ac));
-  src.start(at);
+  const freq = ratio * sitarSa();
+  const v = note(ac, list[next++ % list.length], freq, at, vel, mix(ac));
+  stopVoice(voice, at);
+  voice = v;
+  told(ratio, at);
+  const glide = (hz, tau) => v.src.playbackRate.setTargetAtTime(hz / v.hz, ac.currentTime, tau);
   return {
     bend(semitones) {
-      src.playbackRate.setTargetAtTime(rate * 2 ** (semitones / 12), ac.currentTime, 0.035);
+      glide(freq * 2 ** (semitones / 12), 0.04);
     },
     slide(r) {
-      rate = (r * sa()) / SAMPLE_HZ;
-      src.playbackRate.setTargetAtTime(rate, ac.currentTime, 0.045);
+      glide(r * sitarSa(), 0.05);
     },
   };
+}
+
+// The chikari: the high drone strings, struck for rhythm (they don't stop the melody).
+function strum(ac, list, at, vel, dest) {
+  const s = sitarSa();
+  note(ac, list[next++ % list.length], 2 * s, at, vel * 0.55, dest);
+  note(ac, list[next++ % list.length], s, at + 0.014, vel * 0.3, dest);
 }
 
 export async function chikari({ when = 0, vel = 0.7 } = {}) {
   const ac = audioContext();
   if (!ac) return false;
-  const n = await sitarNode();
-  if (n) {
-    n.port.postMessage({ type: 'chikari', time: ac.currentTime + when, vel });
-    return true;
-  }
-  return Boolean(await samplePluck(ac, 2 * sa(), when, vel * 0.4));
+  const list = await loadTakes();
+  if (!list.length) return false;
+  strum(ac, list, ac.currentTime + when + 0.005, vel, mix(ac));
+  return true;
 }
 
-export async function damp() {
+export function damp() {
   const ac = audioContext();
-  const n = ac && (await sitarNode());
-  n?.port.postMessage({ type: 'damp', time: ac.currentTime });
+  if (ac) stopVoice(voice, ac.currentTime);
+  voice = null;
 }
 
 // Parse a phrase into timed events (see RAGAS for the notation).
@@ -273,19 +271,23 @@ export async function playPhrase(ragaId = tuning.raga) {
   if (!ac) return 0;
   const raga = RAGAS[ragaId];
   const { events, seconds } = parsePhrase(raga.phrase, raga.beat);
-  const n = await sitarNode();
-  const s = sa();
+  const list = await loadTakes();
+  if (!list.length) return 0;
+  const s = sitarSa();
   const t0 = ac.currentTime + 0.05;
-  if (n) {
-    for (const e of events) {
-      if (e.kind === 'pluck') n.port.postMessage({ type: 'pluck', time: t0 + e.t, freq: e.ratio * s, vel: 0.88 });
-      else if (e.kind === 'glide') n.port.postMessage({ type: 'glide', time: t0 + e.t, freq: e.ratio * s, tau: e.tau });
-      else n.port.postMessage({ type: 'chikari', time: t0 + e.t, vel: 0.6 });
-    }
-    return seconds;
+  const dest = mix(ac);
+  let cur = voice;
+  for (const e of events) {
+    const at = t0 + e.t;
+    if (e.kind === 'pluck') {
+      const v = note(ac, list[next++ % list.length], e.ratio * s, at, 0.88, dest);
+      stopVoice(cur, at);
+      cur = v;
+      told(e.ratio, at);
+    } else if (e.kind === 'glide' && cur) cur.src.playbackRate.setTargetAtTime((e.ratio * s) / cur.hz, at, e.tau);
+    else if (e.kind === 'chikari') strum(ac, list, at, 0.6, dest);
   }
-  // fallback: plucks only
-  for (const e of events) if (e.kind === 'pluck') samplePluck(ac, e.ratio * s, e.t + 0.05, 0.9);
+  voice = cur;
   return seconds;
 }
 
@@ -353,6 +355,12 @@ export function tanpuraStrings(t = tuning) {
   ];
 }
 
+// The real pluck: one tanpura string (A♯2, 116.35 Hz) recorded by
+// luckylittleraven (CC0), retuned to each string. The modelled string below is
+// only the fallback if it can't load.
+const PLUCK = { url: '/audio/tanpura-pluck.mp3', hz: 116.35 };
+let pluckBuf; // undefined while loading, null if it failed
+
 const stringCache = new Map();
 function stringBuffer(ac, hz) {
   const key = hz.toFixed(3);
@@ -377,23 +385,32 @@ export function startTanpura(onPluck) {
   level.gain.setValueAtTime(0, ac.currentTime);
   level.gain.linearRampToValueAtTime(0.75, ac.currentTime + 0.6);
   level.connect(mix(ac));
-  let next = ac.currentTime + 0.08;
+  if (pluckBuf === undefined)
+    loadBuffer(PLUCK.url)
+      .then((buf) => (pluckBuf = buf))
+      .catch(() => (pluckBuf = null));
+  let at = ac.currentTime + 0.12;
   let n = 0;
   const timers = [];
   const schedule = () => {
+    if (pluckBuf === undefined && at < ac.currentTime + 0.5) return; // still loading the pluck
     // keep a second of plucks queued ahead of the clock
-    while (next < ac.currentTime + 1) {
+    while (at < ac.currentTime + 1) {
       const i = n % 4;
       const str = tanpuraStrings()[i];
       const src = ac.createBufferSource();
-      src.buffer = stringBuffer(ac, str.hz);
+      if (pluckBuf) {
+        src.buffer = pluckBuf;
+        // retuned to the string, with a hair of drift so no two plucks are identical
+        src.playbackRate.value = (str.hz / PLUCK.hz) * (1 + (Math.random() - 0.5) * 0.003);
+      } else src.buffer = stringBuffer(ac, str.hz);
       const g = ac.createGain();
-      g.gain.value = str.gain * (0.92 + Math.random() * 0.12); // no two plucks quite alike
+      g.gain.value = str.gain * (pluckBuf ? 1.15 : 1) * (0.92 + Math.random() * 0.12);
       src.connect(g).connect(level);
-      src.start(next);
-      const delay = Math.max(0, (next - ac.currentTime) * 1000);
+      src.start(Math.max(at, ac.currentTime + 0.01));
+      const delay = Math.max(0, (at - ac.currentTime) * 1000);
       timers.push(setTimeout(() => drone?.onPluck?.(i), delay));
-      next += (i === 3 ? 1.55 : 1.05) + (Math.random() - 0.5) * 0.06;
+      at += (i === 3 ? 1.55 : 1.05) + (Math.random() - 0.5) * 0.06;
       n++;
     }
     if (timers.length > 40) timers.splice(0, 20);

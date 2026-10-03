@@ -31,7 +31,12 @@ export default function Hyperspace({ onPeak, onDone, sound = false, entry = fals
 
   useEffect(() => {
     if (!sound) return;
-    import('../lib/sfx').then((sfx) => sfx.hyperspace());
+    // the real jump, started 1.17 s in so its boom lands on the flash; the
+    // synthesised one if the clip can't play
+    import('../lib/clips').then(async ({ playClip }) => {
+      const clip = await playClip('hyperspaceEnter', { offset: 1.17 });
+      if (!clip) import('../lib/sfx').then((sfx) => sfx.hyperspace());
+    });
   }, [sound]);
 
   useEffect(() => {

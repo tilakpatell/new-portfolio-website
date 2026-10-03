@@ -1100,7 +1100,9 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .sitar-neck-svg:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
 .sn-slot { fill: transparent; transition: fill 0.2s ease; }
 .sn-slot[data-lit] { fill: rgba(255, 210, 122, 0.16); }
-.sn-tarab { stroke: #f2d79b; stroke-width: 0.8; fill: none; transition: opacity 0.12s linear; }
+.sn-tarab { stroke: #f2d79b; stroke-width: 0.8; fill: none; opacity: 0.16; }
+.sn-tarab[data-ring] { animation: tarab-ring 2.6s ease-out; }
+@keyframes tarab-ring { 0% { opacity: 1; filter: drop-shadow(0 0 2px #ffd27a); } 100% { opacity: 0.16; } }
 .sn-labels { position: relative; height: 2.4rem; margin-top: 0.25rem; }
 .sn-labels > span { position: absolute; top: 0.2rem; translate: -50% 0; font-size: clamp(0.68rem, 0.55rem + 0.5vw, 0.9rem); font-weight: 600; color: var(--muted); transition: color 0.15s ease; }
 .sn-labels > span[data-lit] { color: var(--accent-text); }
@@ -1178,8 +1180,8 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .dock-btn .dock-gem { color: #ffc400; }
 .dock-btn[data-icon='gauntlet']:hover .dock-gem { filter: drop-shadow(0 0 2px #ffc400); }
 .dock-btn .dock-string { opacity: 0.55; transform-box: fill-box; transform-origin: center; }
-.dock-btn .dock-eyes { stroke: #4fb3ff; }
-.dock-btn[data-icon='robot']:hover .dock-eyes { filter: drop-shadow(0 0 2px #4fb3ff); }
+.dock-btn .dock-autobot { width: 20px; height: 20px; color: #c8102e; }
+.dock-btn[data-icon='robot']:hover .dock-autobot { filter: drop-shadow(0 0 3px rgba(200, 16, 46, 0.6)); }
 .dock-btn[data-icon='sitar']:hover .dock-string { animation: dock-shiver 0.5s ease-out; }
 @keyframes dock-shiver { 0%, 100% { transform: none; } 25% { transform: translate(0.4px, -0.4px); } 50% { transform: translate(-0.4px, 0.4px); } 75% { transform: translate(0.2px, -0.2px); } }
 @media (prefers-reduced-motion: reduce) { .dock-btn, .dock-btn::after { transition: none; } .dock-btn[data-icon='sitar']:hover .dock-string { animation: none; } }
@@ -1246,6 +1248,8 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .tt-plates span:nth-child(odd) { animation-name: tt-plate-r; }
 @keyframes tt-plate { 0% { transform: translateX(-102%); } 22%, 72% { transform: none; } 100% { transform: translateX(102%); } }
 @keyframes tt-plate-r { 0% { transform: translateX(102%); } 22%, 72% { transform: none; } 100% { transform: translateX(-102%); } }
+.tt-insignia { display: block; width: 104px; height: 104px; margin: 0 auto 1.1rem; color: var(--tt-insignia, #d8202f); filter: drop-shadow(0 0 18px rgba(216, 32, 47, 0.45)); animation: tt-face var(--tt-len) ease both; }
+.tt[data-id='bumblebee'] .tt-insignia { --tt-insignia: #f7c600; filter: drop-shadow(0 0 18px rgba(247, 198, 0, 0.4)); }
 .tt-face { display: block; width: 88px; height: 88px; margin: 0 auto 1rem; fill: none; stroke: #e8ebf0; stroke-width: 1.6; stroke-linejoin: round; opacity: 0; animation: tt-face var(--tt-len) ease both; }
 .tt-face .tt-eyes { stroke: var(--c); stroke-width: 2.4; filter: drop-shadow(0 0 3px var(--c)); }
 @keyframes tt-face { 0%, 18% { opacity: 0; transform: scale(0.8); } 32%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
@@ -1327,3 +1331,12 @@ html[data-mode='dark'][data-theme='custom'] { --btn-ink: #0b0b0b; }
 .color-input { position: relative; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444); box-shadow: 0 0 0 1px var(--border-strong); cursor: pointer; }
 .color-input input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .color-input:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+/* Northeastern's lockup: black wordmark in light mode, white in dark */
+.nu-logo-dark { display: none; }
+html[data-mode='dark'] .nu-logo-light { display: none; }
+html[data-mode='dark'] .nu-logo-dark { display: block; }
+
+.role-banner-play { display: inline-flex; align-items: center; gap: 0.55rem; color: inherit; font: inherit; }
+.role-banner-play:focus-visible { outline: 2px solid #ffffff; outline-offset: 4px; border-radius: 999px; }
+.role-banner-chip:has(.role-banner-play) { cursor: pointer; }

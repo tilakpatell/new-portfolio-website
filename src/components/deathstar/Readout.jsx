@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { RiArrowLeftLine } from 'react-icons/ri';
+import { RiArrowLeftLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
+import { audioContext } from '../../lib/audio';
 import Gif from '../Gif';
 import { PARTS } from './parts';
 
@@ -66,6 +67,39 @@ function Blueprint() {
   );
 }
 
+// Hear the scene the quote comes from, where there's a clip of it.
+function Hear({ clip }) {
+  const [playing, setPlaying] = useState(false);
+  const handle = useRef(null);
+  useEffect(() => () => handle.current?.stop(), []);
+  const toggle = async () => {
+    if (handle.current) {
+      handle.current.stop();
+      handle.current = null;
+      setPlaying(false);
+      return;
+    }
+    audioContext();
+    const { playClip } = await import('../../lib/clips');
+    const h = await playClip(clip);
+    if (!h) return;
+    handle.current = h;
+    setPlaying(true);
+    h.ended.then(() => {
+      if (handle.current === h) {
+        handle.current = null;
+        setPlaying(false);
+      }
+    });
+  };
+  return (
+    <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={toggle} aria-pressed={playing}>
+      {playing ? <RiPauseFill className="h-4 w-4" aria-hidden="true" /> : <RiPlayFill className="h-4 w-4" aria-hidden="true" />}
+      {playing ? 'Stop the scene' : 'Hear the scene'}
+    </button>
+  );
+}
+
 function PartDetails({ part, onBack, onAction }) {
   const back = useRef(null);
   useEffect(() => {
@@ -88,6 +122,7 @@ function PartDetails({ part, onBack, onAction }) {
         <blockquote className="text-lg text-ink">“{part.quote[0]}”</blockquote>
         <figcaption className="mt-1 text-sm text-muted">{part.quote[1]}</figcaption>
       </figure>
+      {part.clip && <Hear key={part.id} clip={part.clip} />}
       {part.action && (
         <button type="button" className="btn btn-primary btn-sm mt-5" onClick={() => onAction(part.action)}>
           {part.action === 'fire' ? 'Fire the superlaser' : 'Fly the trench run'}

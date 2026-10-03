@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFun } from '../fun/FunProvider';
-import { audioContext } from '../lib/audio';
+import { useFun } from '../../fun/FunProvider';
+import { audioContext } from '../../lib/audio';
+import AutobotMark from '../AutobotMark';
 
-// "Off the clock" in the hero: one small line icon for each thing I'm into,
-// and each one does something. Drawn on a 24-unit grid with one stroke weight
-// so they read as a set.
+// The "Off the clock" row: one small line icon for each thing I'm into, and
+// each one does something. Drawn on a 24-unit grid with one stroke weight so
+// they read as a set.
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
@@ -75,14 +76,7 @@ const ICONS = {
       <path d="M11 18 v-2.6 a1 1 0 0 1 2 0 V18" />
     </svg>
   ),
-  robot: (
-    <svg viewBox="0 0 24 24" {...S}>
-      <path d="M12 2.8 L18.6 6.2 V13 L16.4 19.6 H7.6 L5.4 13 V6.2 Z" />
-      <path d="M12 2.8 V7.4" />
-      <path className="dock-eyes" d="M8.2 10.4 h3 M12.8 10.4 h3" strokeWidth="1.9" />
-      <path d="M9.6 15.4 h4.8 M10.6 17.4 h2.8" />
-    </svg>
-  ),
+  robot: <AutobotMark className="dock-autobot" />,
   aurebesh: (
     <svg viewBox="0 0 24 24" {...S}>
       <circle cx="12" cy="12" r="8.6" />
@@ -93,7 +87,7 @@ const ICONS = {
   ),
 };
 
-export default function HeroDock() {
+export default function InterestDock() {
   const navigate = useNavigate();
   const { snap, sayMyName, twss, toggleAurebesh, aurebesh, rollOut } = useFun();
   const [say, setSay] = useState('');
@@ -102,7 +96,7 @@ export default function HeroDock() {
   const sitar = async () => {
     if (!audioContext()) return navigate('/music'); // inside the click, so it can sound
     setSay('Tuning up. Opening the music room…');
-    const m = await import('./music/engine');
+    const m = await import('../music/engine');
     m.pluck(1, { vel: 0.85 });
     m.pluck(3 / 2, { when: 0.16, vel: 0.8 });
     m.pluck(2, { when: 0.32, vel: 0.9 });
@@ -167,8 +161,8 @@ export default function HeroDock() {
 
   return (
     <div className="hero-dock">
-      <p className="label">Off the clock</p>
-      <ul className="mt-3 flex flex-wrap gap-2" aria-label="Off the clock">
+      <p className="label">Each of these does something</p>
+      <ul className="mt-3 flex flex-wrap gap-2" aria-label="Quick tricks">
         {items.map((it) => (
           <li key={it.id}>
             <button type="button" className="dock-btn" data-icon={it.id} data-label={it.label} aria-label={it.label} onClick={it.run}>

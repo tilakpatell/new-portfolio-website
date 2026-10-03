@@ -1,5 +1,6 @@
 // Employer logos: the official AWS and RTX marks (SVG, from Wikimedia Commons)
-// and the original logo files for the others, trimmed and compressed.
+// and the original logo files for the others, trimmed and compressed. And
+// Northeastern's N (public domain, Wikimedia Commons).
 const FILES = {
   aws: { src: '/logos/aws.svg', w: 304, h: 182, pad: '16%' },
   rtx: { src: '/logos/rtx.svg', w: 186, h: 72, pad: '12%' },
@@ -7,6 +8,7 @@ const FILES = {
   pendar: { src: '/logos/pendar.webp', w: 137, h: 160, pad: '14%' },
   empowerreg: { src: '/logos/empowerreg.webp', w: 127, h: 128, pad: '0' },
   src: { src: '/logos/src.webp', w: 240, h: 77, pad: '12%' },
+  northeastern: { src: '/logos/northeastern-n.svg', w: 96, h: 75, pad: '10%' },
 };
 
 export default function CompanyLogo({ id, className = '' }) {

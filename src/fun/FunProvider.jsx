@@ -122,14 +122,17 @@ export function FunProvider({ children }) {
     }
     if (pathRef.current !== '/') navigate('/');
     setHeisenberg(true);
+    import('../lib/clips').then((c) => c.playClip('sayMyName'));
     unlock('heisenberg');
     notify('Say my name.', 'Ti is titanium, element 22. Pa is protactinium, element 91.');
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' }));
   }, [navigate, notify, unlock]);
 
   const snap = useCallback(async () => {
+    const clips = import('../lib/clips');
     const { snapPage } = await import('./effects');
     if (!snapPage()) return;
+    clips.then((c) => c.playClip('snap'));
     unlock('snap');
     notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
   }, [notify, unlock]);
@@ -138,6 +141,7 @@ export function FunProvider({ children }) {
   const twss = useCallback(
     (withGif = true) => {
       unlock('dundie');
+      import('../lib/clips').then((c) => c.playClip('twss'));
       notify('That’s what she said.', 'Michael Scott, Regional Manager', 'note', withGif === false ? null : 'twss');
     },
     [notify, unlock],

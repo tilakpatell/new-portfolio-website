@@ -99,6 +99,8 @@ export default function DeathStar() {
   const travel = (id) => {
     if (id === planet || jumping || destroyed || (phase !== 'idle' && phase !== 'gone')) return;
     audioContext(); // in the click, so the jump can be heard
+    // dropping out of lightspeed as the tunnel ends
+    import('../lib/clips').then((c) => c.playClip('hyperspaceExit', { when: 1.47 }));
     setBattle(false);
     setOutcome(null);
     setCall('');

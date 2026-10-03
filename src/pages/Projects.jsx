@@ -21,13 +21,15 @@ const CTA = {
 };
 
 // A featured project tile. `wide` tiles put the demo beside the text; the
-// others stack it on top. Each tile carries its project's colours.
-function Feature({ project, wide, flip, className = '', dim = false }) {
+// others stack it on top. Each tile carries its project's colours. Only tiles
+// in the left column take a stop on the route line (`waypoint`), so the line
+// stays in the gutter instead of cutting across the grid.
+function Feature({ project, wide, flip, className = '', dim = false, waypoint = true }) {
   const themeId = ROUTE_THEMES[`/projects/${project.id}`];
   const credit = project.credits?.find((c) => c.role === 'Built with' && c.people[0].name !== 'Claude');
   return (
     <div data-theme-section={themeId} className={`project-item relative ${className}`} data-dim={dim || undefined}>
-      <Waypoint top="2.2rem" />
+      {waypoint && <Waypoint top="2.2rem" />}
       <Reveal className="h-full">
         <Link to={`/projects/${project.id}`} className={`card card-lift group grid h-full grid-cols-[minmax(0,1fr)] overflow-hidden ${wide ? 'md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid-rows-[auto_1fr]'}`}>
           <ProjectThumb
@@ -109,7 +111,7 @@ export default function Projects() {
       <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" aria-label="Featured projects">
         <Feature project={gameboy} wide className="md:col-span-2" dim={dim(gameboy)} />
         <Feature project={translator} dim={dim(translator)} />
-        <Feature project={devspace} dim={dim(devspace)} />
+        <Feature project={devspace} dim={dim(devspace)} waypoint={false} />
         <Feature project={copilot} wide flip className="md:col-span-2" dim={dim(copilot)} />
       </section>
 

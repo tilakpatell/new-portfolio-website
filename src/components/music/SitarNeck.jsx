@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
-import { chikari, frets, onSitarMeter, pluck } from './engine';
+import { chikari, frets, onSitarPluck, pluck, tarabRatios } from './engine';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 
@@ -17,6 +17,12 @@ const MAIN_Y = 132;
 const BRIDGE = 878;
 const MAX_BEND = 5; // semitones: a meend can pull up a whole fourth
 
+// the same note in any octave, within a quarter of a semitone
+const sameNote = (a, b) => {
+  const c = (((1200 * Math.log2(a / b)) % 1200) + 1200) % 1200;
+  return c < 25 || c > 1175;
+};
+
 export default function SitarNeck({ onPlay }) {
   const [tuning] = useTuning();
   const list = useMemo(() => frets(tuning.raga), [tuning.raga]);
@@ -30,11 +36,22 @@ export default function SitarNeck({ onPlay }) {
   const [lit, setLit] = useState(-1);
   const [pull, setPull] = useState(0);
   const [plucks, setPlucks] = useState(0);
-  const [tarab, setTarab] = useState(() => new Array(11).fill(0));
+  // a count per sympathetic string, so its glow restarts each time it's set ringing
+  const [ring, setRing] = useState(() => new Array(11).fill(0));
   const svg = useRef(null);
   const press = useRef(null);
+  const raga = useRef(tuning.raga);
+  raga.current = tuning.raga;
 
-  useEffect(() => onSitarMeter((m) => setTarab(m.tarab)), []);
+  // a note sets ringing the tarab tuned to it: they glow as they would sound
+  useEffect(
+    () =>
+      onSitarPluck((r) => {
+        const tr = tarabRatios(raga.current);
+        setRing((prev) => prev.map((count, j) => (tr[j] && sameNote(tr[j], r) ? count + 1 : count)));
+      }),
+    [],
+  );
   // the frets change with the raga; let go of whatever was held
   useEffect(() => {
     press.current = null;
@@ -162,13 +179,8 @@ export default function SitarNeck({ onPlay }) {
         ))}
 
         {/* the tarab, under the frets, glowing as they ring */}
-        {tarab.map((level, i) => (
-          <path
-            key={i}
-            d={`M${150 + i * 6} ${178 + i * 1.8} L${BRIDGE} ${178 + i * 1.8}`}
-            className="sn-tarab"
-            style={{ opacity: Math.min(1, 0.16 + level * 9) }}
-          />
+        {ring.map((count, i) => (
+          <path key={`${i}-${count}`} d={`M${150 + i * 6} ${178 + i * 1.8} L${BRIDGE} ${178 + i * 1.8}`} className="sn-tarab" data-ring={count > 0 || undefined} />
         ))}
         {/* the chikari, the two high drones */}
         <path d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`} stroke="#e6dcc2" strokeWidth="0.9" opacity="0.8" />

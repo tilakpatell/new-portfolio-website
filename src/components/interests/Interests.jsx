@@ -8,6 +8,7 @@ import { ACHIEVEMENTS, useAchievements } from '../Achievements';
 import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
 import MusicCard from './MusicCard';
+import InterestDock from './InterestDock';
 import { prefersReducedMotion } from '../../lib/hooks';
 import Gif from '../Gif';
 import Gauntlet from './Gauntlet';
@@ -309,6 +310,9 @@ export default function Interests() {
             Off the clock
           </h2>
           <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, games, Marvel, The Office, Breaking Bad and a lot of travel.</p>
+          <div className="mt-6">
+            <InterestDock />
+          </div>
         </div>
         <div className="flex gap-2">
           <button type="button" className="globe-btn" onClick={() => scroll(-1)} aria-label="Previous interests">
