@@ -1,6 +1,6 @@
 # tilakpatell.com
 
-Personal site of Tilak Patel — React 18, Vite 5 and Tailwind 3, deployed to GitHub Pages from `main` by `.github/workflows/deploy.yml`.
+Personal site of Tilak Patel — React 18, Vite 5 and Tailwind 3. Every push to `main` is linted, built and deployed to GitHub Pages at https://tilakpatell.com by `.github/workflows/deploy.yml`.
 
 ```bash
 npm install
