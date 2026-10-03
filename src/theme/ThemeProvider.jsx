@@ -47,12 +47,12 @@ export function ThemeProvider({ children }) {
     }
   });
 
-  const onExperience = pathname === '/experience';
-  const active = pinned || ROUTE_THEMES[pathname] || (onExperience && scrollTheme) || DEFAULT_THEME;
+  const active = pinned || scrollTheme || ROUTE_THEMES[pathname] || DEFAULT_THEME;
 
+  // A new page starts from its own theme until one of its sections takes over.
   useEffect(() => {
-    if (!onExperience) setScrollTheme(null);
-  }, [onExperience]);
+    setScrollTheme(null);
+  }, [pathname]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = active;
@@ -96,3 +96,23 @@ export function ThemeProvider({ children }) {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => useContext(ThemeContext);
+
+// Auto theming for a page: whichever [data-theme-section] crosses the middle of
+// the screen sets the site's colours.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSectionThemes() {
+  const { setScrollTheme } = useTheme();
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const sections = [...document.querySelectorAll('[data-theme-section]')];
+    if (!sections.length || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setScrollTheme(e.target.dataset.themeSection || null);
+      },
+      { rootMargin: '-50% 0px -50% 0px' },
+    );
+    sections.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [setScrollTheme, pathname]);
+}

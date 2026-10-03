@@ -12,19 +12,6 @@ const LINKS = [
   { to: '/contact', label: 'Contact' },
 ];
 
-// The mark: a kyber crystal, cut in the theme's colour.
-export function Monogram({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 32" className={className} aria-hidden="true">
-      <polygon points="12,1 22.5,10 18.5,31 5.5,31 1.5,10" style={{ fill: 'var(--logo-accent, var(--saber))' }} />
-      <polygon points="12,1 22.5,10 12,12.5 1.5,10" style={{ fill: '#ffffff', opacity: 0.38 }} />
-      <polygon points="12,12.5 22.5,10 18.5,31 12,31" style={{ fill: '#000000', opacity: 0.16 }} />
-      <polygon points="12,3.5 14.6,10.5 12,28.5 9.4,10.5" style={{ fill: '#ffffff', opacity: 0.55 }} />
-      <polygon points="12,1 22.5,10 18.5,31 5.5,31 1.5,10" fill="none" style={{ stroke: 'color-mix(in srgb, var(--logo-accent, var(--saber)) 60%, #000)' }} strokeWidth="1" />
-    </svg>
-  );
-}
-
 // Site colours: a small "Auto" control that explains what the colours mean.
 // Auto follows the page; picking a company keeps its colours everywhere.
 function ThemeOptions({ onPick }) {
@@ -123,25 +110,20 @@ export default function Nav() {
   }, [open]);
 
   const linkClass = ({ isActive }) =>
-    `nav-link relative px-3 py-2 text-[0.9375rem] font-medium transition-colors after:absolute after:inset-x-3 after:-bottom-[3px] after:h-[2px] after:rounded-full after:bg-[var(--accent)] after:transition-transform after:duration-200 after:origin-left ${
-      isActive ? 'after:scale-x-100' : 'after:scale-x-0'
-    }`;
-  const iconBtn = 'btn btn-ghost btn-sm w-9 px-0';
+    `nav-link rounded-full px-3.5 py-1.5 text-[0.9rem] font-medium transition-colors ${isActive ? 'is-active' : ''}`;
+  const iconBtn = 'nav-icon grid h-9 w-9 place-items-center rounded-full transition-colors';
 
   return (
-    <header className="site-nav fixed inset-x-0 top-0 z-40" style={{ height: 'var(--nav-h)' }}>
+    <header className="site-nav fixed inset-x-0 top-0 z-40 px-3 pt-3 md:px-6 md:pt-4">
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-4 px-5 md:px-14" aria-label="Main">
-        <Link to="/" className="group flex items-center gap-3 rounded-lg" aria-label="Tilak Patel, home">
-          <Monogram className="h-8 w-6 transition-transform duration-300 group-hover:-rotate-12" />
-          <span className="stretch-wide text-[1.05rem] font-bold tracking-tight text-ink">
-            Tilak Patel
-          </span>
+      <nav className="nav-bar mx-auto flex h-[52px] max-w-[1200px] items-center justify-between gap-3 rounded-full pl-5 pr-2 md:h-14 md:pl-6" aria-label="Main">
+        <Link to="/" className="wordmark rounded-md" aria-label="Tilak Patel, home">
+          Tilak Patel
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
             <NavLink key={l.to} to={l.to} className={linkClass}>
               {l.label}
@@ -155,20 +137,20 @@ export default function Nav() {
           </NavLink>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <div className="hidden lg:block">
             <ThemePicker />
           </div>
-          <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:inline-flex`} aria-label="LinkedIn" title="LinkedIn">
-            <RiLinkedinBoxFill className="h-4 w-4" />
+          <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:grid`} aria-label="LinkedIn" title="LinkedIn">
+            <RiLinkedinBoxFill className="h-[18px] w-[18px]" />
           </a>
-          <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:inline-flex`} aria-label="GitHub" title="GitHub">
-            <RiGithubFill className="h-4 w-4" />
+          <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:grid`} aria-label="GitHub" title="GitHub">
+            <RiGithubFill className="h-[18px] w-[18px]" />
           </a>
           <button type="button" className={iconBtn} onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
-            {mode === 'dark' ? <RiSunLine className="h-4 w-4" /> : <RiMoonClearLine className="h-4 w-4" />}
+            {mode === 'dark' ? <RiSunLine className="h-[18px] w-[18px]" /> : <RiMoonClearLine className="h-[18px] w-[18px]" />}
           </button>
-          <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-primary btn-sm hidden sm:inline-flex">
+          <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-primary btn-sm ml-1 hidden !rounded-full sm:inline-flex">
             Résumé
           </a>
           <button
@@ -185,7 +167,7 @@ export default function Nav() {
       </nav>
 
       {open && (
-        <div id="mobile-menu" className="absolute inset-x-0 top-full max-h-[calc(100dvh-var(--nav-h))] overflow-y-auto border-b border-line px-5 pb-6 pt-2 md:hidden" style={{ background: 'var(--bg)' }}>
+        <div id="mobile-menu" className="nav-bar mx-auto mt-2 max-h-[calc(100dvh-90px)] max-w-[1200px] overflow-y-auto rounded-3xl px-5 pb-6 pt-2 md:hidden">
           <ul className="divide-y divide-[var(--border)]">
             {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
@@ -209,11 +191,11 @@ export default function Nav() {
             <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-primary">
               Download résumé
             </a>
-            <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost w-11 px-0" aria-label="GitHub">
-              <RiGithubFill className="h-5 w-5" />
-            </a>
             <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost w-11 px-0" aria-label="LinkedIn">
               <RiLinkedinBoxFill className="h-5 w-5" />
+            </a>
+            <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost w-11 px-0" aria-label="GitHub">
+              <RiGithubFill className="h-5 w-5" />
             </a>
           </div>
         </div>

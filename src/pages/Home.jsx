@@ -15,6 +15,7 @@ import { ClaudeFeature, GameBoyFeature } from '../stages';
 import { ClaudeSpark } from '../stages/ClaudeStage';
 import ProjectThumb from '../components/ProjectThumb';
 import { storage, useDocumentTitle } from '../lib/hooks';
+import { useSectionThemes } from '../theme/ThemeProvider';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -88,7 +89,7 @@ function RecentRepos() {
   const repos = useRecentRepos();
   if (!repos || repos.length === 0) return null; // never show zeros or placeholders
   return (
-    <section className="shell relative z-10 py-16 md:py-20" aria-labelledby="gh-title">
+    <section data-theme-section="github" className="shell relative z-10 py-10 md:py-14" aria-labelledby="gh-title">
       <SectionHeading eyebrow="Live from GitHub" title="Recently pushed" id="gh-title" />
       <ul className="mt-10 grid gap-4 sm:grid-cols-2">
         {repos.map((r) => (
@@ -116,6 +117,7 @@ function RecentRepos() {
 
 export default function Home() {
   useDocumentTitle(null);
+  useSectionThemes();
   const page = useRef(null);
   const { unlock } = useAchievements();
   const gameboy = projectById('gameboy-emulator');
@@ -127,7 +129,7 @@ export default function Home() {
       <RouteLine containerRef={page} />
 
       {/* Hero */}
-      <section className="shell relative z-10 pb-14 pt-[calc(var(--nav-h)+36px)] md:pb-20 md:pt-[calc(var(--nav-h)+64px)]">
+      <section data-theme-section="aws" className="shell relative z-10 pb-14 pt-[calc(var(--nav-h)+36px)] md:pb-20 md:pt-[calc(var(--nav-h)+64px)]">
         <div className="hero-grid pointer-events-none" aria-hidden="true" />
         <div className="relative grid items-center gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:gap-16">
           <div className="relative">
@@ -186,7 +188,7 @@ export default function Home() {
       </section>
 
       {/* Career route */}
-      <section className="shell relative z-10 pb-6 md:pb-0" aria-label="Experience, newest first">
+      <section data-theme-section="aws" className="shell relative z-10 pb-6 md:pb-0" aria-label="Experience, newest first">
         <CareerStrip />
         {/* The route line turns back across the page here, in clear space below the strip */}
         <div className="relative hidden h-20 md:block" aria-hidden="true">
@@ -195,7 +197,7 @@ export default function Home() {
       </section>
 
       {/* Featured: the Game Boy */}
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="gb-title">
+      <section data-theme-section="gameboy" className="shell relative z-10 py-12 md:py-16" aria-labelledby="gb-title">
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.45rem" />
@@ -226,10 +228,12 @@ export default function Home() {
       </section>
 
       {/* Featured: the translator, with Claude */}
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="tr-title">
+      <section data-theme-section="claude" className="shell relative z-10 py-12 md:py-16" aria-labelledby="tr-title">
+        <div className="relative">
+          <Waypoint top="0.45rem" />
+        </div>
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-14">
           <div className="relative order-1 lg:order-2">
-            <Waypoint top="0.45rem" />
             <p className="eyebrow flex items-center gap-2">
               <ClaudeSpark className="h-4 w-4" /> Built with Claude
             </p>
@@ -259,7 +263,7 @@ export default function Home() {
       </div>
 
       {/* More work */}
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="work-title">
+      <section data-theme-section="devspace" className="shell relative z-10 py-10 md:py-14" aria-labelledby="work-title">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <SectionHeading eyebrow="More work" title="A winning hackathon build, open source and systems code." id="work-title">
             Every project page has a live demo of how it works.
@@ -290,7 +294,7 @@ export default function Home() {
       </section>
 
       {/* Focus */}
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="focus-title">
+      <section data-theme-section="aws" className="shell relative z-10 py-10 md:py-14" aria-labelledby="focus-title">
         <SectionHeading eyebrow="What I work on" title="Close to the infrastructure, the data and the hardware." id="focus-title" />
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {focusAreas.map((f, i) => (
@@ -311,7 +315,7 @@ export default function Home() {
       </section>
 
       {/* Toolkit + education */}
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="toolkit-title">
+      <section data-theme-section="aws" className="shell relative z-10 py-10 md:py-14" aria-labelledby="toolkit-title">
         <SectionHeading eyebrow="Toolkit" title="What I build with." id="toolkit-title" />
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:gap-14">
           <dl className="grid content-start gap-7">
@@ -341,7 +345,7 @@ export default function Home() {
       <RecentRepos />
 
       {/* Closing */}
-      <section className="shell relative z-10 pb-24 pt-12 md:pt-20" aria-labelledby="closing-title">
+      <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-10 md:pt-16" aria-labelledby="closing-title">
         <div className="relative">
           <Waypoint top="0.4rem" />
           <p className="eyebrow">Get in touch</p>

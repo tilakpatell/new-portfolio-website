@@ -1,9 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <g transform="translate(4 0)">
-    <polygon points="12,1 22.5,10 18.5,31 5.5,31 1.5,10" fill="#FF9900"/>
-    <polygon points="12,1 22.5,10 12,12.5 1.5,10" fill="#ffffff" opacity="0.38"/>
-    <polygon points="12,12.5 22.5,10 18.5,31 12,31" fill="#000000" opacity="0.16"/>
-    <polygon points="12,3.5 14.6,10.5 12,28.5 9.4,10.5" fill="#ffffff" opacity="0.55"/>
-    <polygon points="12,1 22.5,10 18.5,31 5.5,31 1.5,10" fill="none" stroke="#a35f00" stroke-width="1"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <rect width="40" height="40" rx="11" fill="#0f1111"/>
+  <text x="17.5" y="26.5" text-anchor="middle" fill="#ffffff" font-family="Arial Black, Archivo, Helvetica, sans-serif" font-weight="900" font-size="15.5">TP</text>
+  <rect x="30" y="23.5" width="5" height="3.2" rx="1" fill="#FF9900"/>
 </svg>

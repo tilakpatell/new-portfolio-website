@@ -10,7 +10,7 @@ import { useAchievements } from '../components/Achievements';
 import { roles, fmtRange, fmtMonth, monthIndex, nowMonth } from '../data/roles';
 import { profile } from '../data/profile';
 import { THEMES } from '../theme/themes';
-import { useTheme } from '../theme/ThemeProvider';
+import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -89,44 +89,63 @@ function CurrentRole({ role }) {
   );
 }
 
+const roleType = (role) => (role.title.includes('Co-op') ? 'Co-op' : role.title.includes('part-time') ? 'Part-time internship' : 'Internship');
+
+// Every earlier role gets the same centred treatment as the current one, a step smaller.
 function Chapter({ role, episode, last }) {
+  const facts = [
+    ['Where', role.location],
+    ['When', fmtRange(role)],
+    ['Type', roleType(role)],
+    ['Sector', role.sector],
+  ];
   return (
-    <section id={role.id} data-theme-section={role.id} className="shell relative z-10 scroll-mt-24 pt-12 md:pt-16" aria-labelledby={`${role.id}-title`}>
-      <div className="relative">
-        <Waypoint top="0.45rem" />
-        <p className="eyebrow">
-          Episode {ROMAN[episode - 1]} · {role.sector}
-        </p>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <CompanyLogo id={role.id} className="h-14 w-20 flex-none" />
-        <h2 id={`${role.id}-title`} className="display text-[clamp(2.1rem,1.4rem+2.8vw,3.6rem)]">
-          {role.company}
-        </h2>
-      </div>
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
-        <div>
-          <p className="stretch-semi text-xl font-semibold leading-snug text-ink">{role.title}</p>
-          <p className="mono mt-2 text-sm text-muted">
-            {fmtRange(role)} · {role.location}
+    <section id={role.id} data-theme-section={role.id} className="relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
+      <div className="shell relative pt-14 md:pt-20">
+        <div className="relative">
+          <Waypoint top="0.45rem" />
+          <p className="eyebrow text-center">
+            Episode {ROMAN[episode - 1]} · {role.sector}
           </p>
-          <p className="lead mt-5 text-ink">{role.summary}</p>
-          <div className="mt-5">
-            <Bullets items={role.bullets} />
-          </div>
-          <Chips items={role.stack} className="mt-6" />
         </div>
-        <div>
-          <Motif name={role.motif} />
-          {role.result && (
-            <div className="mt-5 border-l-2 pl-4" style={{ borderColor: 'var(--accent)' }}>
-              <p className="stretch-wide text-2xl font-semibold text-ink">{role.result.value}</p>
-              <p className="mt-1 text-sm text-muted">{role.result.label}</p>
+        <div className="mt-6 flex flex-col items-center text-center">
+          <Reveal className="chapter-logo-card">
+            <CompanyLogo id={role.id} className="h-full w-full border-0 bg-transparent" />
+          </Reveal>
+          <h2 id={`${role.id}-title`} className="display mt-6 text-[clamp(2.2rem,1.3rem+3.4vw,4.2rem)]">
+            {role.company}
+          </h2>
+          <p className="stretch-semi mt-3 text-[clamp(1.1rem,1rem+0.6vw,1.4rem)] font-semibold leading-snug text-ink">{role.title}</p>
+          <dl className="mt-7 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-card border border-line sm:grid-cols-4" style={{ background: 'var(--border)' }}>
+            {facts.map(([k, v]) => (
+              <div key={k} className="bg-surface px-4 py-3">
+                <dt className="eyebrow !text-[0.68rem]">{k}</dt>
+                <dd className="mt-1 text-sm font-semibold text-ink">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="lead mt-7 max-w-2xl text-ink">{role.summary}</p>
+        </div>
+        <div className="mt-10 grid items-start gap-10 lg:grid-cols-2 lg:gap-14">
+          <div>
+            <p className="eyebrow">What I did</p>
+            <div className="mt-4">
+              <Bullets items={role.bullets} />
             </div>
-          )}
+            <Chips items={role.stack} className="mt-6" />
+          </div>
+          <div>
+            <Motif name={role.motif} />
+            {role.result && (
+              <div className="mt-5 border-l-2 pl-4" style={{ borderColor: 'var(--accent)' }}>
+                <p className="stretch-wide text-2xl font-semibold text-ink">{role.result.value}</p>
+                <p className="mt-1 text-sm text-muted">{role.result.label}</p>
+              </div>
+            )}
+          </div>
         </div>
+        {!last && <Saber className="mx-auto mt-14 md:mt-16" />}
       </div>
-      {!last && <Saber className="mt-12 md:mt-14" />}
     </section>
   );
 }
@@ -180,23 +199,10 @@ function Timeline() {
 export default function Experience() {
   useDocumentTitle('Experience');
   const page = useRef(null);
-  const { setScrollTheme } = useTheme();
   const [params] = useSearchParams();
   const { unlock } = useAchievements();
 
-  // Re-skin the site with the company whose section crosses the middle of the screen.
-  useEffect(() => {
-    const sections = [...document.querySelectorAll('[data-theme-section]')];
-    if (!sections.length || typeof IntersectionObserver === 'undefined') return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) if (e.isIntersecting) setScrollTheme(e.target.dataset.themeSection);
-      },
-      { rootMargin: '-50% 0px -50% 0px' },
-    );
-    sections.forEach((s) => io.observe(s));
-    return () => io.disconnect();
-  }, [setScrollTheme]);
+  useSectionThemes();
 
   useEffect(() => {
     const id = params.get('role');

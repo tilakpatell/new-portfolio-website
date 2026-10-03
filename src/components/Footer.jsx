@@ -1,16 +1,14 @@
 import { Link } from 'react-router-dom';
 import { RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import { profile } from '../data/profile';
-import { Monogram } from './Nav';
 
 export default function Footer() {
   return (
     <footer className="relative z-10 border-t border-line bg-deep">
       <div className="shell flex flex-col gap-10 py-12 md:flex-row md:items-end md:justify-between">
         <div className="max-w-sm">
-          <Link to="/" className="inline-flex items-center gap-3" aria-label="Tilak Patel, home">
-            <Monogram className="h-8 w-6" />
-            <span className="stretch-wide font-bold text-ink">Tilak Patel</span>
+          <Link to="/" className="wordmark" aria-label="Tilak Patel, home">
+            Tilak Patel
           </Link>
           <p className="mt-4 text-sm leading-relaxed text-muted">
             Software engineer — infrastructure tooling, AI pipelines and systems. Northeastern University, class of 2027.
