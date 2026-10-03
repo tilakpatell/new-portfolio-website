@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiMenuLine, RiMoonClearLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
+import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
+import { openPalette, shortcutLabel } from '../lib/palette';
 import { profile } from '../data/profile';
 import { useAchievements } from './Achievements';
 import { useTheme } from '../theme/ThemeProvider';
-import { THEMES, THEME_ORDER } from '../theme/themes';
+import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
+import Wordmark from './Wordmark';
 
 const LINKS = [
   { to: '/experience', label: 'Experience' },
@@ -17,6 +19,7 @@ const LINKS = [
 // Auto follows the page; picking a company keeps its colours everywhere.
 function ThemeOptions({ onPick }) {
   const { active, pinned, pin } = useTheme();
+  const { unlocked } = useAchievements();
   const choose = (id) => {
     pin(id);
     onPick?.();
@@ -44,6 +47,30 @@ function ThemeOptions({ onPick }) {
             <span className="flex-1 text-ink">{t.company}</span>
             {on && <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" />}
           </button>
+        );
+      })}
+      <div className="my-1 h-px bg-[var(--border)]" />
+      <p className="px-2.5 pb-1 pt-2 text-xs text-muted">
+        Unlocked by easter eggs: {FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).length} of {FAN_THEMES.length}
+      </p>
+      {FAN_THEMES.map((f) => {
+        const t = THEMES[f.id];
+        const open = unlocked.includes(f.achievement);
+        const on = pinned === f.id;
+        return open ? (
+          <button key={f.id} type="button" className={row} aria-pressed={on} onClick={() => choose(f.id)}>
+            <span className="h-4 w-4 flex-none rounded-full" style={{ background: t.swatch }} aria-hidden="true" />
+            <span className="flex-1 text-ink">{t.company}</span>
+            {on && <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" />}
+          </button>
+        ) : (
+          <div key={f.id} className={`${row} cursor-default opacity-70 hover:bg-transparent`}>
+            <RiLockLine className="h-4 w-4 flex-none text-muted" aria-hidden="true" />
+            <span className="flex-1 text-muted">
+              <span className="sr-only">Locked theme. Hint: </span>
+              {f.hint}
+            </span>
+          </div>
         );
       })}
     </div>
@@ -83,7 +110,7 @@ export function ThemePicker() {
         </span>
       </button>
       {open && (
-        <div id="theme-panel" className="card absolute right-0 top-[calc(100%+10px)] z-50 w-[19rem] p-2" style={{ background: 'var(--surface)' }}>
+        <div id="theme-panel" className="card absolute right-0 top-[calc(100%+10px)] z-50 max-h-[calc(100dvh-110px)] w-[19rem] overflow-y-auto p-2" style={{ background: 'var(--surface)' }}>
           <p className="px-2.5 pb-2 pt-1.5 text-xs leading-relaxed text-muted">
             Every color scheme comes from a company I’ve worked at. On <span className="font-semibold text-ink">Auto</span>, the site follows the
             page: AWS by default, each company as you scroll Experience, and each project’s own colors on its page.
@@ -100,7 +127,6 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const header = useRef(null);
-  const { unlock } = useAchievements();
   const { mode, toggleMode } = useTheme();
 
   useEffect(() => setOpen(false), [pathname]);
@@ -166,7 +192,7 @@ export default function Nav() {
       <div className="nav-shell">
       <nav className="nav-bar flex h-[52px] items-center justify-between gap-3 rounded-full pl-5 pr-2 md:h-14 md:pl-6" aria-label="Main">
         <Link to="/" className="wordmark rounded-md" aria-label="Tilak Patel, home">
-          Tilak Patel
+          <Wordmark />
         </Link>
 
         <div className="hidden items-center gap-0.5 md:flex">
@@ -175,7 +201,7 @@ export default function Nav() {
               {l.label}
             </NavLink>
           ))}
-          <NavLink to="/terminal" className={linkClass}>
+          <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden xl:inline-block`}>
             <span className="flex items-center gap-1.5">
               <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
               Terminal
@@ -184,21 +210,25 @@ export default function Nav() {
         </div>
 
         <div className="flex items-center gap-1">
+          <button type="button" onClick={openPalette} className="nav-search hidden md:flex" aria-label={`Search and shortcuts (${shortcutLabel()})`} title={`Search and shortcuts (${shortcutLabel()})`}>
+            <RiSearchLine className="h-[18px] w-[18px]" aria-hidden="true" />
+            <kbd className="palette-kbd hidden lg:inline-grid">{shortcutLabel()}</kbd>
+          </button>
           <div className="hidden lg:block">
             <ThemePicker />
           </div>
-          <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:grid`} aria-label="LinkedIn" title="LinkedIn">
+          <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="LinkedIn" title="LinkedIn">
             <RiLinkedinBoxFill className="h-[18px] w-[18px]" />
           </a>
-          <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden md:grid`} aria-label="GitHub" title="GitHub">
+          <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="GitHub" title="GitHub">
             <RiGithubFill className="h-[18px] w-[18px]" />
           </a>
           <button type="button" className={iconBtn} onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
             {mode === 'dark' ? <RiSunLine className="h-[18px] w-[18px]" /> : <RiMoonClearLine className="h-[18px] w-[18px]" />}
           </button>
-          <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-primary btn-sm ml-1 hidden !rounded-full sm:inline-flex">
+          <Link to="/resume" className="btn btn-primary btn-sm ml-1 hidden !rounded-full sm:inline-flex">
             Résumé
-          </a>
+          </Link>
           <button
             type="button"
             className={`${iconBtn} md:hidden`}
@@ -234,9 +264,19 @@ export default function Nav() {
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-primary">
-              Download résumé
-            </a>
+            <Link to="/resume" className="btn btn-primary">
+              Résumé
+            </Link>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setOpen(false);
+                openPalette();
+              }}
+            >
+              <RiSearchLine className="h-4 w-4" aria-hidden="true" /> Search
+            </button>
             <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost w-11 px-0" aria-label="LinkedIn">
               <RiLinkedinBoxFill className="h-5 w-5" />
             </a>

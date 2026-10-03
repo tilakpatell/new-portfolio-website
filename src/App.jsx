@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
+import { FunProvider } from './fun/FunProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
@@ -13,9 +14,11 @@ const Projects = lazy(() => import('./pages/Projects'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Travel = lazy(() => import('./pages/Travel'));
+const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -74,6 +77,32 @@ function Lightspeed() {
   );
 }
 
+// ⌘K / Ctrl+K anywhere, or the search button in the nav.
+function PaletteHost() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    const onOpen = () => setOpen(true);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('tp:palette', onOpen);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('tp:palette', onOpen);
+    };
+  }, []);
+  if (!open) return null;
+  return (
+    <Suspense fallback={null}>
+      <CommandPalette onClose={() => setOpen(false)} />
+    </Suspense>
+  );
+}
+
 function Shell() {
   const { pathname } = useLocation();
 
@@ -104,6 +133,7 @@ function Shell() {
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/travel" element={<Travel />} />
+                <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="*" element={<NotFound />} />
@@ -115,6 +145,7 @@ function Shell() {
       {pathname !== '/terminal' && pathname !== '/deathstar' && <Footer />}
       <ScrollSaber />
       <Lightspeed />
+      <PaletteHost />
     </>
   );
 }
@@ -124,7 +155,9 @@ export default function App() {
     <HashRouter>
       <ThemeProvider>
         <AchievementProvider>
-          <Shell />
+          <FunProvider>
+            <Shell />
+          </FunProvider>
         </AchievementProvider>
       </ThemeProvider>
     </HashRouter>

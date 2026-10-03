@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useDocumentTitle } from '../lib/hooks';
+import { AurebeshLine } from '../components/Wordmark';
 
 export default function NotFound() {
   useDocumentTitle('Page not found');
@@ -23,7 +24,9 @@ export default function NotFound() {
             Projects
           </Link>
         </div>
-        <p className="mono mt-10 text-xs text-muted">Move along. Move along.</p>
+        <p className="mt-10 text-sm text-muted">
+          <AurebeshLine>Move along. Move along.</AurebeshLine>
+        </p>
       </div>
     </div>
   );

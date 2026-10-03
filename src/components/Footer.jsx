@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import { profile } from '../data/profile';
+import Wordmark, { AurebeshLine } from './Wordmark';
 
 export default function Footer() {
   return (
@@ -8,7 +9,7 @@ export default function Footer() {
       <div className="shell flex flex-col gap-10 py-12 md:flex-row md:items-end md:justify-between">
         <div className="max-w-sm">
           <Link to="/" className="wordmark" aria-label="Tilak Patel, home">
-            Tilak Patel
+            <Wordmark />
           </Link>
           <p className="mt-4 text-sm leading-relaxed text-muted">
             Software engineer building infrastructure tooling, AI pipelines and systems. Northeastern University, class of 2027.
@@ -21,7 +22,7 @@ export default function Footer() {
           <Link className="text-body hover:text-ink" to="/travel">Travel</Link>
           <Link className="text-body hover:text-ink" to="/contact">Contact</Link>
           <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
-          <a className="text-body hover:text-ink" href={profile.resume.href} download={profile.resume.filename}>Résumé</a>
+          <Link className="text-body hover:text-ink" to="/resume">Résumé</Link>
           <Link className="text-body hover:text-ink" to="/deathstar" title="Classified">DS-1 plans</Link>
         </nav>
 
@@ -40,7 +41,9 @@ export default function Footer() {
       <div className="border-t border-line">
         <div className="shell flex flex-col gap-2 py-5 text-xs text-muted sm:flex-row sm:justify-between">
           <p>© {new Date().getFullYear()} Tilak Patel</p>
-          <p className="mono">May the Force be with you.</p>
+          <p>
+            <AurebeshLine className="text-sm">May the Force be with you.</AurebeshLine>
+          </p>
         </div>
       </div>
     </footer>

@@ -1,12 +1,11 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiDownloadLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiStarLine, RiArrowRightUpLine } from 'react-icons/ri';
+import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiStarLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Portrait from '../components/Portrait';
 import CareerStrip from '../components/CareerStrip';
 import ProjectCard from '../components/ProjectCard';
 import { Chips, Reveal, SectionHeading, Waypoint } from '../components/ui';
-import { useAchievements } from '../components/Achievements';
 import { education, focusAreas, profile, skills } from '../data/profile';
 import { roles, fmtMonth } from '../data/roles';
 import { featuredProjects, projectById } from '../data/projects';
@@ -15,11 +14,23 @@ import { ClaudeSpark } from '../stages/ClaudeStage';
 import ProjectThumb from '../components/ProjectThumb';
 import { storage, useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes } from '../theme/ThemeProvider';
+import { useFun } from '../fun/FunProvider';
 import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
+
+// Breaking Bad's title card, with my name: Ti (titanium) and Pa (protactinium) are real.
+function Element({ symbol, number, weight }) {
+  return (
+    <span className="element element-in">
+      <sup aria-hidden="true">{number}</sup>
+      {symbol}
+      <sub aria-hidden="true">{weight}</sub>
+    </span>
+  );
+}
 
 function timeAgo(iso) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -130,7 +141,7 @@ export default function Home() {
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
-  const { unlock } = useAchievements();
+  const { heisenberg } = useFun();
   const gameboy = projectById('gameboy-emulator');
   const translator = projectById('swaminarayan-translator');
   const others = featuredProjects.filter((p) => p.id !== gameboy.id && p.id !== translator.id);
@@ -150,9 +161,21 @@ export default function Home() {
             </Reveal>
             <Reveal delay={60}>
               <h1 className="display mt-6 text-[clamp(3.6rem,1.2rem+9vw,8.4rem)]">
-                Tilak
-                <br />
-                Patel
+                {heisenberg ? (
+                  <>
+                    <Element symbol="Ti" number={22} weight="47.867" />
+                    lak
+                    <br />
+                    <Element symbol="Pa" number={91} weight="231.04" />
+                    tel
+                  </>
+                ) : (
+                  <>
+                    Tilak
+                    <br />
+                    Patel
+                  </>
+                )}
               </h1>
             </Reveal>
             <Reveal delay={120}>
@@ -164,9 +187,9 @@ export default function Home() {
               <Link to="/experience" className="btn btn-primary btn-lg group">
                 View experience <RiArrowRightLine className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
-              <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="btn btn-ghost btn-lg">
-                <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Résumé
-              </a>
+              <Link to="/resume" className="btn btn-ghost btn-lg">
+                <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
+              </Link>
             </Reveal>
           </div>
           <Reveal delay={90} className="mx-auto w-full max-w-[300px] sm:max-w-[340px] lg:mx-0 lg:ml-auto lg:max-w-[380px]">

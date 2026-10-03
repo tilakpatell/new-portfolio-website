@@ -1,0 +1,129 @@
+import { useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { RiCloseLine, RiDownloadLine, RiPrinterLine } from 'react-icons/ri';
+import ResumeSheet from '../components/ResumeSheet';
+import { profile } from '../data/profile';
+import { skillCount, skillFromSlug, skillSlug } from '../data/resume';
+import { useDocumentTitle } from '../lib/hooks';
+
+const VIEWS = [
+  { id: 'interactive', label: 'Interactive' },
+  { id: 'pdf', label: 'PDF' },
+];
+
+function PdfView() {
+  return (
+    <div className="resume-pdf">
+      <object data={`${profile.resume.href}#view=FitH`} type="application/pdf" aria-label="Résumé, PDF" className="h-full w-full">
+        <div className="grid h-full place-items-center p-8 text-center">
+          <div>
+            <p className="stretch-semi text-lg font-semibold text-ink">This browser won’t show the PDF here.</p>
+            <p className="mt-2 text-body">Download it instead, or use the interactive version.</p>
+            <a className="btn btn-primary mt-6" href={profile.resume.href} download={profile.resume.filename}>
+              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download PDF
+            </a>
+          </div>
+        </div>
+      </object>
+    </div>
+  );
+}
+
+export default function Resume() {
+  useDocumentTitle('Résumé');
+  const [params, setParams] = useSearchParams();
+  const view = params.get('view') === 'pdf' ? 'pdf' : 'interactive';
+  const active = useMemo(
+    () =>
+      (params.get('skills') || '')
+        .split(',')
+        .map(skillFromSlug)
+        .filter(Boolean),
+    [params],
+  );
+
+  const update = useCallback(
+    (next) => {
+      const p = new URLSearchParams(params);
+      Object.entries(next).forEach(([k, v]) => (v ? p.set(k, v) : p.delete(k)));
+      setParams(p, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  const toggle = (skill) => {
+    const list = active.includes(skill) ? active.filter((s) => s !== skill) : [...active, skill];
+    update({ skills: list.map(skillSlug).join(',') });
+  };
+
+  const lines = active.reduce((n, s) => n + skillCount(s), 0);
+
+  return (
+    <div className="shell relative z-10 pb-24 pt-[calc(var(--nav-h)+40px)] md:pt-[calc(var(--nav-h)+64px)]">
+      <header className="resume-header flex flex-wrap items-end justify-between gap-8">
+        <div>
+          <p className="eyebrow">Résumé</p>
+          <h1 className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</h1>
+          <p className="lead mt-5 max-w-[46ch]">Click any skill on the résumé to light up every line that uses it.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <a className="btn btn-primary" href={profile.resume.href} download={profile.resume.filename}>
+            <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download PDF
+          </a>
+          <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
+            <RiPrinterLine className="h-4 w-4" aria-hidden="true" /> Print
+          </button>
+        </div>
+      </header>
+
+      <div className="resume-toolbar mt-10">
+        <div className="resume-tabs" role="tablist" aria-label="Résumé view">
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              role="tab"
+              aria-selected={view === v.id}
+              aria-controls="resume-panel"
+              className="resume-tab"
+              onClick={() => update({ view: v.id === 'pdf' ? 'pdf' : null })}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  update({ view: view === 'pdf' ? null : 'pdf' });
+                }
+              }}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+        {view === 'interactive' && (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-live="polite">
+            {active.length === 0 ? (
+              <p className="text-sm text-muted">No skill selected. Try Python, React or MCP below.</p>
+            ) : (
+              <>
+                {active.map((s) => (
+                  <button key={s} type="button" className="chip chip-accent" onClick={() => toggle(s)} aria-label={`Remove ${s}`}>
+                    {s} <RiCloseLine className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                ))}
+                <span className="text-sm text-muted">
+                  {lines ? `${lines} line${lines === 1 ? '' : 's'} on the page` : 'Listed under skills; no single line names it'}
+                </span>
+                <button type="button" className="link ml-auto text-sm" onClick={() => update({ skills: null })}>
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div id="resume-panel" role="tabpanel" className="mt-6">
+        {view === 'pdf' ? <PdfView /> : <ResumeSheet active={active} onToggle={toggle} />}
+      </div>
+    </div>
+  );
+}
