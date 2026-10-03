@@ -300,5 +300,46 @@
       1600
     ],
     "alt": "A Lightweight Counter Mortar Radar raised on a vehicle in front of mountains"
+  },
+  "music-sitar": {
+    "commons": "File:The Doors - Sitar - Rock and Roll Hall of Fame (2014-12-30 14.00.34 by Sam Howzit).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "The carved red soundboard and bridge of a sitar, with its strings running down to the gourd"
+  },
+  "music-tarab": {
+    "commons": "File:Star's Electric Sitar RD - sympathetic string pegs.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A row of small tuning pegs for a sitar’s sympathetic strings, set along the neck"
+  },
+  "music-tabla": {
+    "commons": "File:Tabla, musical instrument..JPG",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A tabla pair under warm stage light, the black syahi at the centre of each drum head"
+  },
+  "music-harmonium": {
+    "commons": "File:Harmonium (Varanasi, India. 19th century. Inv.2000.015) - MIM Brussels (2018-05-26 10.44.51 by Miguel Discart @Flickr 44507244450).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A carved wooden harmonium from Varanasi, nineteenth century, with its keyboard and stops",
+    "author": "Miguel Discart"
+  },
+  "music-tanpura": {
+    "commons": "File:2024-03-22 Tanpuras in Raja Dinkar Kelkar Museum, Pune.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Four tanpuras standing in a museum case, their round gourds at the bottom"
   }
 }

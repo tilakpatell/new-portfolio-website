@@ -127,7 +127,7 @@ export function ThemePicker() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="theme-panel"
-        className="flex h-9 items-center gap-2 rounded-full px-2.5 text-[0.8125rem] text-muted transition-colors hover:bg-[var(--surface-2)] hover:text-ink"
+        className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full px-2.5 text-[0.8125rem] text-muted transition-colors hover:bg-[var(--surface-2)] hover:text-ink"
         title="Site colors"
       >
         <span className="h-3 w-3 rounded-full ring-2 ring-[var(--bg)]" style={{ background: t.fill || t.swatch, boxShadow: '0 0 0 3px var(--border)' }} aria-hidden="true" />
@@ -212,7 +212,7 @@ export default function Nav() {
   }, [open]);
 
   const linkClass = ({ isActive }) =>
-    `nav-link rounded-full px-3.5 py-1.5 text-[0.9rem] font-medium transition-colors ${isActive ? 'is-active' : ''}`;
+    `nav-link whitespace-nowrap rounded-full px-2 py-1.5 text-[0.9rem] font-medium transition-colors lg:px-3.5 ${isActive ? 'is-active' : ''}`;
   const iconBtn = 'nav-icon grid h-9 w-9 place-items-center rounded-full transition-colors';
 
   return (
@@ -226,7 +226,7 @@ export default function Nav() {
         Skip to content
       </a>
       <div className="nav-shell">
-      <nav className="nav-bar flex h-[52px] items-center justify-between gap-3 rounded-full pl-5 pr-2 md:h-14 md:pl-6" aria-label="Main">
+      <nav className="nav-bar flex h-[52px] items-center justify-between gap-2 rounded-full pl-5 pr-2 md:h-14 md:pl-6 lg:gap-3" aria-label="Main">
         <Link to="/" className="wordmark rounded-md" aria-label="Tilak Patel, home">
           <Wordmark />
         </Link>
@@ -237,6 +237,9 @@ export default function Nav() {
               {l.label}
             </NavLink>
           ))}
+          <NavLink to="/music" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`}>
+            Music
+          </NavLink>
           <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden xl:inline-block`}>
             <span className="flex items-center gap-1.5">
               <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
@@ -282,7 +285,7 @@ export default function Nav() {
         createPortal(
         <div id="mobile-menu" className="mobile-menu md:hidden">
           <ul className="divide-y divide-[var(--border)]">
-            {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/terminal', label: 'Terminal' }].map((l) => (
+            {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/music', label: 'Music' }, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
                 <NavLink to={l.to} end className={({ isActive }) => `stretch-semi flex items-center justify-between py-4 text-lg font-semibold ${isActive ? 'text-ink' : 'text-body'}`}>
                   {l.label}

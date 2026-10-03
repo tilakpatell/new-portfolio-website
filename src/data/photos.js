@@ -494,5 +494,80 @@ export const PHOTOS = {
       "source": "https://commons.wikimedia.org/wiki/File:Lightweight_Counter_Mortar_Radar_(LCMR).jpg",
       "title": "Lightweight Counter Mortar Radar (LCMR)"
     }
+  },
+  "music-sitar": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.667,
+    "alt": "The carved red soundboard and bridge of a sitar, with its strings running down to the gourd",
+    "credit": {
+      "author": "Sam Howzit",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:The_Doors_-_Sitar_-_Rock_and_Roll_Hall_of_Fame_(2014-12-30_14.00.34_by_Sam_Howzit).jpg",
+      "title": "The Doors - Sitar - Rock and Roll Hall of Fame (2014-12-30 14.00.34 by Sam Howzit)"
+    }
+  },
+  "music-tarab": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.562,
+    "alt": "A row of small tuning pegs for a sitar’s sympathetic strings, set along the neck",
+    "credit": {
+      "author": "Shunichi kouroki",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Star%27s_Electric_Sitar_RD_-_sympathetic_string_pegs.jpg",
+      "title": "Star's Electric Sitar RD - sympathetic string pegs"
+    }
+  },
+  "music-tabla": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.663,
+    "alt": "A tabla pair under warm stage light, the black syahi at the centre of each drum head",
+    "credit": {
+      "author": "Naveed.yzi",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Tabla,_musical_instrument..JPG",
+      "title": "Tabla, musical instrument."
+    }
+  },
+  "music-harmonium": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.563,
+    "alt": "A carved wooden harmonium from Varanasi, nineteenth century, with its keyboard and stops",
+    "credit": {
+      "author": "Miguel Discart",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Harmonium_(Varanasi,_India._19th_century._Inv.2000.015)_-_MIM_Brussels_(2018-05-26_10.44.51_by_Miguel_Discart_@Flickr_44507244450).jpg",
+      "title": "Harmonium (Varanasi, India. 19th century. Inv.2000.015) - MIM Brussels (2018-05-26 10.44.51 by Miguel Discart @Flickr 44507244450)"
+    }
+  },
+  "music-tanpura": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "Four tanpuras standing in a museum case, their round gourds at the bottom",
+    "credit": {
+      "author": "Alexkom000",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:2024-03-22_Tanpuras_in_Raja_Dinkar_Kelkar_Museum,_Pune.jpg",
+      "title": "2024-03-22 Tanpuras in Raja Dinkar Kelkar Museum, Pune"
+    }
   }
 };

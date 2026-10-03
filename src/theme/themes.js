@@ -56,4 +56,5 @@ export const ROUTE_THEMES = {
   '/projects/smart-summarizer': 'pytorch',
   '/projects/gpu-checkpoint-restart': 'nvidia',
   '/travel': 'travel',
+  '/music': 'raga',
 };

@@ -10,8 +10,9 @@ export default function SitarDivider({ className = '' }) {
   const pluckIt = async () => {
     if (!audioContext()) return; // start audio inside the click, before awaiting
     setPlucks((n) => n + 1);
-    const { pluck } = await import('./interests/music');
-    pluck(Math.floor(Math.random() * 8));
+    const { pluck } = await import('./music/engine');
+    const yaman = [1, 9 / 8, 5 / 4, 45 / 32, 3 / 2, 5 / 3, 15 / 8, 2];
+    pluck(yaman[Math.floor(Math.random() * yaman.length)]);
   };
   return (
     <div ref={ref} className={`sitar-divider ${className}`}>

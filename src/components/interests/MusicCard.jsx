@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RiPauseFill, RiPlayFill } from 'react-icons/ri';
+import { Link } from 'react-router-dom';
+import { RiArrowRightLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 
-// Indian classical music: a sitar you can play (a real recorded note, tuned to
-// each note of Raga Yaman), a tanpura drone underneath, and a recording to
-// listen to. Everything is tuned to Sa = D, so it all plays together.
+// Indian classical music: a sitar you can play (the same physical model as the
+// music room, on the notes of Raga Yaman), a tanpura drone underneath, and a
+// real recording to listen to. Everything shares the music room's Sa.
 //
 // Mouse: click a fret, or hold and drag up to pull the string (meend).
 // Touch: tap a fret, or slide along the neck to glide across notes; vertical
 // swipes still scroll the page. Keyboard: 1 to 8 play the notes.
 
 const SLOTS = ['Sa', 'Re', 'Ga', 'Ma', 'Pa', 'Dha', 'Ni', 'Sa’'];
+// Yaman in just intonation, with tivra Ma, from Sa to Sa'
+const YAMAN = [1, 9 / 8, 5 / 4, 45 / 32, 3 / 2, 5 / 3, 15 / 8, 2];
 const X0 = 18;
 const SLOT = 36;
 const BRIDGE = 344;
 const MAIN_Y = 88;
 const slotCenter = (i) => X0 + SLOT * i + SLOT / 2;
-const music = () => import('./music');
+const music = () => import('../music/engine');
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
 
 export default function MusicCard() {
@@ -28,6 +31,7 @@ export default function MusicCard() {
   const [phrase, setPhrase] = useState(false);
   const [drone, setDrone] = useState(false);
   const [droneString, setDroneString] = useState(-1);
+  const [firstString, setFirstString] = useState('Pa');
   const [listening, setListening] = useState(false);
   const [progress, setProgress] = useState(0);
   const [noSound, setNoSound] = useState(false);
@@ -54,7 +58,7 @@ export default function MusicCard() {
       count.current += 1;
       if (count.current >= 8) unlock('raga');
       const m = await music();
-      const handle = await m.pluck(i);
+      const handle = await m.pluck(YAMAN[i]);
       if (!handle) setNoSound(true);
       return handle;
     },
@@ -117,13 +121,14 @@ export default function MusicCard() {
       return;
     }
     m.startTanpura((i) => setDroneString(i));
+    setFirstString(m.tanpuraStrings()[0].label);
     setDrone(true);
   };
 
   const playPhrase = async () => {
     if (!audioContext()) return setNoSound(true);
     const m = await music();
-    const seconds = await m.phrase();
+    const seconds = await m.playPhrase('yaman');
     if (!seconds) return setNoSound(true);
     setPhrase(true);
     setTimeout(() => setPhrase(false), seconds * 1000);
@@ -217,7 +222,7 @@ export default function MusicCard() {
           ))}
           {/* the tanpura's four strings, lighting as each is plucked */}
           <g className="tanpura-strings" data-on={drone || undefined} aria-hidden="true">
-            {['Pa', 'Sa', 'Sa', 'Sa'].map((n, i) => (
+            {[firstString, 'Sa', 'Sa', 'Sa'].map((n, i) => (
               <g key={i} transform={`translate(${24 + i * 22} 22)`}>
                 <line x1="0" y1="0" x2="0" y2="22" data-lit={droneString === i || undefined} />
                 <text x="0" y="34" textAnchor="middle">
@@ -247,12 +252,15 @@ export default function MusicCard() {
             Listen
           </button>
         </div>
+        <Link to="/music" className="mt-4 inline-flex items-center gap-1.5 self-start text-sm font-semibold text-ink underline-offset-4 hover:underline">
+          Open the music room: sitar, harmonium and tabla <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+        </Link>
         <p className="mt-3 text-xs text-muted">
-          Sitar: a real recording by{' '}
+          Sitar and tanpura: modelled in your browser. Listen: a real recording by{' '}
           <a className="underline underline-offset-2" href={CREDIT} target="_blank" rel="noopener noreferrer">
             Sanath311
           </a>
-          , CC BY-SA 3.0. Tanpura: synthesised.
+          , CC BY-SA 3.0.
         </p>
       </div>
     </li>

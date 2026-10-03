@@ -5,7 +5,7 @@ import { Reveal, Waypoint } from '../ui';
 import { jumpTo } from '../../lib/anchors';
 import { audioContext } from '../../lib/audio';
 
-const music = () => import('../interests/music');
+const music = () => import('../music/engine');
 
 // The first verse of Satsang Dīkṣhā, as Mahant Swami Maharaj teaches it: a
 // prayer for peace for everyone. Text exactly as given, in Gujarati

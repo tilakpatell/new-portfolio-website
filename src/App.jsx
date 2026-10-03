@@ -19,6 +19,7 @@ const Travel = lazy(() => import('./pages/Travel'));
 const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
+const Music = lazy(() => import('./pages/Music'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -138,6 +139,7 @@ function Shell() {
                 <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
+                <Route path="/music" element={<Music />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

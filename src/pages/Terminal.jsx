@@ -84,7 +84,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Off duty: say my name · snap · twss · bears · parkour · sitar · peace · hyperspace · themes', 'dim'),
+  L('  Off duty: music · sitar · tabla · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
 
 const PROJECT_ALIASES = {
@@ -280,11 +280,16 @@ export default function Terminal() {
         return [L('  Parkour! Hardcore parkour.', 'ok')];
       },
       sitar: () => {
-        setTimeout(() => {
-          navigate('/');
-          setTimeout(() => document.getElementById('interests-title')?.scrollIntoView({ block: 'start' }), 400);
-        }, 250);
-        return [L('  Tuning to C♯… opening the sitar on the home page.', 'ok')];
+        setTimeout(() => navigate('/music'), 250);
+        return [L('  Tuning the tanpura… opening the music room.', 'ok')];
+      },
+      music: () => {
+        setTimeout(() => navigate('/music'), 250);
+        return [L('  Sitar, tanpura, harmonium and tabla, all tuned to one Sa.', 'ok')];
+      },
+      tabla: () => {
+        setTimeout(() => navigate('/music'), 250);
+        return [L('  Dha Dhin Dhin Dha. Opening the music room.', 'ok')];
       },
       peace: () => [
         BLANK,
