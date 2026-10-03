@@ -7,6 +7,7 @@ import PlacesExplorer, { countWord } from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
 import Postcards from '../components/travel/Postcards';
 import Heritage from '../components/travel/Heritage';
+import Peace from '../components/travel/Peace';
 import PhotoCredits from '../components/travel/PhotoCredits';
 import { CONTINENT_COUNT, COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } from '../data/places';
 import { PHOTOS } from '../data/photos';
@@ -144,6 +145,7 @@ export default function Travel() {
       </section>
       <Postcards onPick={flyTo} />
       <Heritage />
+      <Peace />
       <Facts />
       <PhotoCredits />
     </div>

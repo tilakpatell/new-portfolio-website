@@ -2,6 +2,21 @@ import { Link } from 'react-router-dom';
 import { RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import { profile } from '../data/profile';
 import Wordmark, { AurebeshLine } from './Wordmark';
+import { useOnceVisible } from './ui';
+
+// Marvel rules: there's always a scene after the credits.
+function PostCredits() {
+  const ref = useOnceVisible('seen');
+  return (
+    <div ref={ref} className="post-credits shell">
+      <p className="pc-hint">Stay for the post-credits scene</p>
+      <div className="pc-scene">
+        <p className="pc-big">Tilak Patel will return</p>
+        <p className="pc-small">Graduating from Northeastern in May 2027</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Footer() {
   return (
@@ -46,6 +61,7 @@ export default function Footer() {
           </p>
         </div>
       </div>
+      <PostCredits />
     </footer>
   );
 }

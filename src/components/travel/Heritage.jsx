@@ -1,4 +1,5 @@
 import Photo from '../Photo';
+import Art from '../Art';
 import { Reveal, Waypoint } from '../ui';
 
 // Indian architecture: two Akshardhams side by side, then four carved details,
@@ -9,9 +10,9 @@ const WIDE = [
 ];
 const DETAILS = [
   { id: 'h-colonnade', caption: 'The parikrama colonnade, Robbinsville' },
-  { id: 'h-pillars', caption: 'Carved sandstone pillars, New Delhi' },
+  { id: 'h-pithika', caption: 'A carved relief panel, New Delhi' },
   { id: 'h-ceiling', caption: 'A marble ceiling dome, Robbinsville' },
-  { id: 'h-neasden', caption: 'Carved wood at Neasden Temple, London' },
+  { id: 'h-elephants', caption: 'The elephant frieze, Robbinsville' },
 ];
 
 export default function Heritage() {
@@ -21,13 +22,18 @@ export default function Heritage() {
         <div className="jali-pattern" />
       </div>
       <div className="shell relative">
-        <Waypoint top="0.9rem" />
-        <h2 id="heritage-title" className="title">
-          Heritage
-        </h2>
-        <p className="lead mt-4 max-w-[54ch]">
-          Indian architecture is my heritage: hand-carved stone and marble, and mandirs like Akshardham in New Delhi and in Robbinsville, New Jersey.
-        </p>
+        <div className="grid items-end gap-8 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="relative">
+            <Waypoint top="0.9rem" />
+            <h2 id="heritage-title" className="title">
+              Heritage
+            </h2>
+            <p className="lead mt-4 max-w-[54ch]">
+              Indian architecture is my heritage: hand-carved stone and marble, and mandirs like Akshardham in New Delhi and in Robbinsville, New Jersey.
+            </p>
+          </div>
+          <Art name="colonnade" className="heritage-arch hidden md:block" />
+        </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2 md:gap-5">
           {WIDE.map((p, i) => (

@@ -1,14 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { RiDownloadLine } from 'react-icons/ri';
+import { RiFileTextLine, RiMovie2Line } from 'react-icons/ri';
+import Art from '../components/Art';
+import Dundies from '../components/experience/Dundies';
 import RouteLine from '../components/RouteLine';
 import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
 import AwsLogoAnimated from '../components/AwsLogoAnimated';
 import { Chips, Reveal, Saber, Waypoint } from '../components/ui';
-import { useAchievements } from '../components/Achievements';
+
+const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'));
 import { roles, fmtRange, fmtMonth, monthIndex, nowMonth } from '../data/roles';
-import { profile } from '../data/profile';
 import { THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
@@ -30,7 +32,7 @@ function Bullets({ items }) {
 
 // The current role opens the page as its own centred hero: the logo draws
 // itself in, then the company, the role and the key facts, with the work below.
-function CurrentRole({ role }) {
+function CurrentRole({ role, onCrawl }) {
   const facts = [
     ['Where', role.location],
     ['Since', fmtMonth(role.start)],
@@ -40,6 +42,7 @@ function CurrentRole({ role }) {
   return (
     <section id={role.id} data-theme-section={role.id} className="exp-hero relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
       <div className="exp-hero-bg" aria-hidden="true" />
+      <Art name="mountains" className="exp-hero-art" priority />
       <div className="shell relative pb-14 pt-[calc(var(--nav-h)+32px)] md:pb-20 md:pt-[calc(var(--nav-h)+52px)]">
         <div className="relative">
           <Waypoint top="0.6rem" />
@@ -69,6 +72,9 @@ function CurrentRole({ role }) {
           <p className="lead hero-in mt-8 max-w-2xl text-ink" style={{ '--d': '340ms' }}>
             {role.summary}
           </p>
+          <button type="button" className="btn btn-ghost btn-sm hero-in mt-6" style={{ '--d': '400ms' }} onClick={onCrawl}>
+            <RiMovie2Line className="h-4 w-4" aria-hidden="true" /> Play the opening crawl
+          </button>
         </div>
 
         <div className="hero-in mt-12 grid items-start gap-10 lg:grid-cols-2 lg:gap-14" style={{ '--d': '420ms' }}>
@@ -190,8 +196,8 @@ function Timeline() {
 export default function Experience() {
   useDocumentTitle('Experience');
   const page = useRef(null);
+  const [crawl, setCrawl] = useState(false);
   const [params] = useSearchParams();
-  const { unlock } = useAchievements();
 
   useSectionThemes();
 
@@ -207,10 +213,15 @@ export default function Experience() {
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
-      <CurrentRole role={roles[0]} />
+      <CurrentRole role={roles[0]} onCrawl={() => setCrawl(true)} />
+      <div className="frieze" aria-hidden="true">
+        <Art name="frieze" />
+      </div>
       {roles.slice(1).map((r, i) => (
         <Chapter key={r.id} role={r} episode={roles.length - 1 - i} last={i === roles.length - 2} />
       ))}
+
+      <Dundies />
 
       <section className="shell relative z-10 pb-24 pt-20" aria-labelledby="glance-title">
         <div className="relative">
@@ -221,14 +232,19 @@ export default function Experience() {
         </div>
         <Timeline />
         <div className="mt-8 flex flex-wrap gap-3">
-          <a className="btn btn-primary" href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')}>
-            <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download résumé
-          </a>
+          <Link className="btn btn-primary" to="/resume">
+            <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
+          </Link>
           <Link className="btn btn-ghost" to="/projects">
             See projects
           </Link>
         </div>
       </section>
+      {crawl && (
+        <Suspense fallback={null}>
+          <OpeningCrawl onClose={() => setCrawl(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

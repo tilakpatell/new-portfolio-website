@@ -6,6 +6,8 @@ import { useAchievements } from '../components/Achievements';
 import { education, profile } from '../data/profile';
 import { fmtMonth } from '../data/roles';
 import { useDocumentTitle } from '../lib/hooks';
+import { useFun } from '../fun/FunProvider';
+import { AurebeshLine } from '../components/Wordmark';
 
 function CopyEmail() {
   const [copied, setCopied] = useState(false);
@@ -27,6 +29,7 @@ function CopyEmail() {
 }
 
 function MessageForm() {
+  const { twss } = useFun();
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [errors, setErrors] = useState({});
   const [opened, setOpened] = useState(false);
@@ -43,6 +46,7 @@ function MessageForm() {
   const submit = (ev) => {
     ev.preventDefault();
     if (!validate()) return;
+    if (/that'?s what she said|\btwss\b/i.test(form.message)) twss();
     const subject = form.subject.trim() || `Hello from ${form.name.trim()}`;
     const body = `${form.message.trim()}\n\n- ${form.name.trim()}${form.email.trim() ? ` (${form.email.trim()})` : ''}`;
     window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -65,34 +69,37 @@ function MessageForm() {
     'aria-invalid': errors[name] ? 'true' : undefined,
     'aria-describedby': errors[name] ? `f-${name}-err` : undefined,
     className: `w-full rounded-panel border bg-[var(--bg-deep)] px-4 py-3 text-ink placeholder:text-[var(--muted)] transition-colors focus:border-[var(--accent)] ${
-      errors[name] ? 'border-[#ff6b6b]' : 'border-line-strong'
+      errors[name] ? 'border-[color:var(--danger)]' : 'border-line-strong'
     }`,
   });
   const label = 'mb-2 block text-sm font-medium text-ink';
   const err = (name) =>
     errors[name] && (
-      <p id={`f-${name}-err`} className="mt-1.5 text-sm text-[#ff8a8a]">
+      <p id={`f-${name}-err`} className="mt-1.5 text-sm text-[color:var(--danger)]">
         {errors[name]}
       </p>
     );
 
   return (
-    <form onSubmit={submit} noValidate className="card grid gap-5 p-6 sm:p-8">
-      <div>
-        <p className="label">Write a message</p>
-        <p className="mt-2 text-sm text-muted">This opens your email app with the message filled in. Nothing is sent from this page.</p>
+    <form onSubmit={submit} noValidate className="card memo-form grid gap-5 p-6 sm:p-8">
+      <div className="memo-top">
+        <p className="memo-head">Dunder Mifflin Paper Company · Interoffice memo</p>
+        <p className="mt-3 text-sm text-ink">
+          <span className="font-semibold">To:</span> Tilak Patel
+        </p>
+        <p className="mt-1 text-sm text-muted">This opens your email app with the memo filled in. Nothing is sent from this page.</p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="f-name" className={label}>
-            Name
+            From <span className="font-normal text-muted">(your name)</span>
           </label>
           <input type="text" autoComplete="name" {...field('name')} />
           {err('name')}
         </div>
         <div>
           <label htmlFor="f-email" className={label}>
-            Your email <span className="font-normal text-muted">(optional)</span>
+            Reply to <span className="font-normal text-muted">(optional)</span>
           </label>
           <input type="email" autoComplete="email" {...field('email')} />
           {err('email')}
@@ -100,7 +107,7 @@ function MessageForm() {
       </div>
       <div>
         <label htmlFor="f-subject" className={label}>
-          Subject <span className="font-normal text-muted">(optional)</span>
+          Re <span className="font-normal text-muted">(optional)</span>
         </label>
         <input type="text" {...field('subject')} />
       </div>
@@ -113,7 +120,7 @@ function MessageForm() {
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" className="btn btn-primary">
-          <RiMailLine className="h-4 w-4" aria-hidden="true" /> Open in email app
+          <RiMailLine className="h-4 w-4" aria-hidden="true" /> Send the memo
         </button>
         {opened && (
           <p className="text-sm text-muted" role="status">
@@ -142,6 +149,9 @@ export default function Contact() {
           <Waypoint top="0.6rem" />
           <p className="eyebrow">Contact</p>
           <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">Let’s talk.</h1>
+          <p className="mt-3 text-sm text-muted">
+            <AurebeshLine>Let’s talk.</AurebeshLine>
+          </p>
           <p className="lead mt-6 max-w-2xl">
             Email is the fastest way to reach me about roles, projects, or anything on this site. I’m graduating in{' '}
             {fmtMonth(education.graduation)} with a {education.degree} from {education.school}.

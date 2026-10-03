@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAchievements, ACHIEVEMENTS } from '../components/Achievements';
 import { useTheme } from '../theme/ThemeProvider';
-import { THEMES } from '../theme/themes';
+import { FAN_THEMES, THEMES } from '../theme/themes';
+import { useFun } from '../fun/FunProvider';
+import { openPalette } from '../lib/palette';
+import { COUNTRY_COUNT, PLACES } from '../data/places';
 import { education, profile, skills } from '../data/profile';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
 import { projects } from '../data/projects';
@@ -49,13 +52,15 @@ const HELP = [
   L('  skills           languages, frameworks, tools'),
   L('  education        Northeastern University'),
   L('  contact          email, GitHub, LinkedIn'),
-  L('  resume           download my résumé (PDF)'),
+  L('  resume           open the interactive résumé  (resume pdf downloads it)'),
+  L('  places           everywhere I have travelled'),
   L('  github           live stats from the GitHub API'),
   L('  achievements     what you have unlocked'),
   L('  clear            clear the screen'),
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
-  L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force', 'dim'),
+  L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
+  L('  Off duty: say my name · snap · twss · bears · parkour · sitar · peace · themes', 'dim'),
 ];
 
 const PROJECT_ALIASES = {
@@ -107,7 +112,8 @@ async function githubReport() {
 export default function Terminal() {
   useDocumentTitle('Terminal');
   const navigate = useNavigate();
-  const { active } = useTheme();
+  const { active, pin } = useTheme();
+  const fun = useFun();
   const { unlock, unlocked } = useAchievements();
   const [lines, setLines] = useState(() => [
     L('  IMPERIAL TERMINAL · tilakpatell.com', 'sys'),
@@ -171,13 +177,96 @@ export default function Terminal() {
         L(`  github    github.com/${profile.github.handle}`),
         L(`  linkedin  linkedin.com/in/${profile.linkedin.handle}`),
       ],
-      resume: () => {
-        const a = Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename });
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        unlock('resume');
-        return [L('  Transmitting résumé…', 'ok')];
+      resume: (arg) => {
+        if (arg === 'pdf') {
+          const a = Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename });
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          unlock('resume');
+          return [L('  Transmitting résumé…', 'ok')];
+        }
+        setTimeout(() => navigate('/resume'), 250);
+        return [L('  Opening the résumé…', 'ok')];
+      },
+      places: () => [
+        BLANK,
+        L(`  PLACES: ${COUNTRY_COUNT} countries and the Caribbean`, 'head'),
+        ...PLACES.map((p) => L(`  ${pad(p.name, 18)}${p.home ? 'home base: Syracuse, NY' : p.photo}`)),
+        BLANK,
+        L("  The globe: 'open travel'", 'dim'),
+      ],
+      travel: () => {
+        setTimeout(() => navigate('/travel'), 250);
+        return [L('  Opening the travel page…', 'ok')];
+      },
+      aurebesh: () => {
+        fun.toggleAurebesh();
+        return [L(fun.aurebesh ? '  Aurebesh off. Back to Basic.' : '  Aurebesh on. Headings now read in Aurebesh.', 'ok')];
+      },
+      say: (arg) => {
+        if (arg !== 'my name') return [L("  Say what? Try: say my name", 'dim')];
+        fun.sayMyName();
+        return [L('  Heisenberg.', 'ok'), L('  Ti is element 22. Pa is element 91.', 'dim')];
+      },
+      heisenberg: () => {
+        fun.sayMyName();
+        return [L('  You’re right.', 'ok')];
+      },
+      snap: () => {
+        setTimeout(() => navigate('/'), 0);
+        setTimeout(fun.snap, 700);
+        return [L('  I am inevitable.', 'ok')];
+      },
+      twss: () => {
+        fun.twss();
+        return [L('  That’s what she said.', 'ok'), L('  - Michael Scott', 'dim')];
+      },
+      bears: () => [L('  Bears. Beets. Battlestar Galactica.'), L('  - Jim Halpert', 'dim')],
+      dwight: () => [L('  Fact: this terminal is the most secure part of the site.'), L('  Question: did you try order66?', 'dim')],
+      parkour: () => {
+        setTimeout(() => navigate('/'), 0);
+        setTimeout(fun.parkour, 700);
+        return [L('  Parkour! Hardcore parkour.', 'ok')];
+      },
+      sitar: () => {
+        setTimeout(() => {
+          navigate('/');
+          setTimeout(() => document.getElementById('interests-title')?.scrollIntoView({ block: 'start' }), 400);
+        }, 250);
+        return [L('  Tuning to C♯… opening the sitar on the home page.', 'ok')];
+      },
+      peace: () => [
+        BLANK,
+        L('  Swāminārāyaṇ Bhagwān eṭale ke sākṣhāt Akṣhar-Puruṣhottam Mahārāj sarvane param shānti, ānand ane sukh arpe.'),
+        L('  May Swaminarayan Bhagwan, that is, Akshar-Purushottam Maharaj himself, bestow ultimate peace, bliss and happiness on all.', 'dim'),
+        L('  Satsang Dīkṣhā, verse 1. Taught by Mahant Swami Maharaj.', 'dim'),
+      ],
+      themes: () => [
+        BLANK,
+        L('  FAN THEMES', 'head'),
+        ...FAN_THEMES.map((f) => (unlocked.includes(f.achievement) ? L(`  ■ ${pad(f.id, 12)}${THEMES[f.id].company}`) : L(`  □ ${pad('???', 12)}hint: ${f.hint}`, 'dim'))),
+        BLANK,
+        L("  Use one with 'theme <name>', or 'theme auto'.", 'dim'),
+      ],
+      theme: (arg) => {
+        if (arg === 'auto') {
+          pin(null);
+          return [L('  Colors follow the page again.', 'ok')];
+        }
+        const fan = FAN_THEMES.find((f) => f.id === arg);
+        if (fan && !unlocked.includes(fan.achievement)) return [L(`  Locked. Hint: ${fan.hint}`, 'err')];
+        if (!THEMES[arg]) return [L(`  No theme called '${arg}'. Try: themes`, 'err')];
+        pin(arg);
+        return [L(`  Theme set: ${THEMES[arg].company}.`, 'ok')];
+      },
+      palette: () => {
+        setTimeout(openPalette, 100);
+        return [L('  Opening the command palette…', 'ok')];
+      },
+      trench: () => {
+        setTimeout(() => navigate('/deathstar#trench'), 250);
+        return [L('  Stay on target…', 'ok')];
       },
       github: githubReport,
       achievements: () => [
@@ -216,7 +305,7 @@ export default function Terminal() {
         return [L('  Closing channel.', 'sys')];
       },
     }),
-    [active, navigate, unlock, unlocked],
+    [active, fun, navigate, pin, unlock, unlocked],
   );
 
   const run = useCallback(
@@ -240,7 +329,7 @@ export default function Terminal() {
         return print([L(`  cat: ${args[0] || ''}: No such file`, 'err')]);
       }
       if (cmd === 'open' || cmd === 'cd') {
-        const pages = { home: '/', experience: '/experience', projects: '/projects', contact: '/contact', '~': '/', '..': '/' };
+        const pages = { home: '/', experience: '/experience', projects: '/projects', travel: '/travel', resume: '/resume', contact: '/contact', '~': '/', '..': '/' };
         if (pages[arg]) {
           setTimeout(() => navigate(pages[arg]), 250);
           return print([L(`  Opening ${arg}…`, 'ok')]);
@@ -256,7 +345,7 @@ export default function Terminal() {
       if (!fn) return print([L(`  ${cmd}: command not found. Type 'help'.`, 'err')]);
       setBusy(true);
       try {
-        print(await fn());
+        print(await fn(arg));
       } finally {
         setBusy(false);
       }

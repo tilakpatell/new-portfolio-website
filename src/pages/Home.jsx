@@ -17,6 +17,7 @@ import { useSectionThemes } from '../theme/ThemeProvider';
 import { useFun } from '../fun/FunProvider';
 import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
+import Interests from '../components/interests/Interests';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -357,6 +358,8 @@ export default function Home() {
 
       <RecentRepos />
 
+      <Interests />
+
       {/* Closing */}
       <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-14 md:pb-32 md:pt-24" aria-labelledby="closing-title">
         <div className="relative">
@@ -364,7 +367,7 @@ export default function Home() {
           <h2 id="closing-title" className="display max-w-4xl text-[clamp(2.3rem,1.3rem+3.8vw,4.8rem)]">
             Working on infrastructure, AI tooling or systems?
           </h2>
-          <p className="lead mt-6 max-w-2xl">I’m graduating in May 2027. {profile.offClock}</p>
+          <p className="lead mt-6 max-w-2xl">I’m graduating in May 2027. Email is the fastest way to reach me.</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <a className="btn btn-primary btn-lg" href={`mailto:${profile.email}`}>
               <RiMailLine className="h-4 w-4" aria-hidden="true" /> Email me

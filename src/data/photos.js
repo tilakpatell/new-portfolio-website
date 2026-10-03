@@ -344,21 +344,6 @@ export const PHOTOS = {
       "title": "Parikrama colonnade, Robbinsville"
     }
   },
-  "h-pillars": {
-    "widths": [
-      480,
-      960
-    ],
-    "ratio": 0.563,
-    "alt": "Pink sandstone pillars covered in carved figures at Akshardham in Delhi",
-    "credit": {
-      "author": "BAPS Swaminarayan Sanstha",
-      "license": "© BAPS Swaminarayan Sanstha",
-      "licenseUrl": null,
-      "source": "https://akshardham.com/download/photo-galleries/",
-      "title": "Carved pillars, New Delhi"
-    }
-  },
   "h-ceiling": {
     "widths": [
       480,
@@ -374,19 +359,50 @@ export const PHOTOS = {
       "title": "Ceiling dome, Robbinsville"
     }
   },
-  "h-neasden": {
+  "h-pithika": {
     "widths": [
       480,
       960
     ],
-    "ratio": 0.918,
-    "alt": "Intricately carved wooden pillars and brackets inside Neasden Temple in London",
+    "ratio": 0.563,
+    "alt": "A carved stone relief panel at Akshardham in New Delhi",
     "credit": {
-      "author": "CGP Grey",
-      "license": "CC BY 2.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-      "source": "https://commons.wikimedia.org/wiki/File:Neasden_Temple_-_Shree_Swaminarayan_Hindu_Mandir_4888044478.jpg",
-      "title": "Neasden Temple - Shree Swaminarayan Hindu Mandir 4888044478"
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Narayan Pithika relief, New Delhi"
+    }
+  },
+  "h-elephants": {
+    "widths": [
+      480,
+      960,
+      1600
+    ],
+    "ratio": 0.667,
+    "alt": "A frieze of carved stone elephants at Akshardham in Robbinsville",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Elephant frieze, Robbinsville"
+    }
+  },
+  "h-dome": {
+    "widths": [
+      960,
+      1440
+    ],
+    "ratio": 0.601,
+    "alt": "A carved stone dome at Akshardham in New Delhi, seen from directly below",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Mandapam dome, New Delhi"
     }
   }
 };

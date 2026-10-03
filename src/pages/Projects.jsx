@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiArrowRightUpLine, RiGithubFill } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -9,6 +9,9 @@ import { profile } from '../data/profile';
 import { ROUTE_THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { useDocumentTitle } from '../lib/hooks';
+import Art from '../components/Art';
+import PeriodicStack from '../components/projects/PeriodicStack';
+import SitarDivider from '../components/SitarDivider';
 
 const CTA = {
   'gameboy-emulator': 'Play it and see how it works',
@@ -19,11 +22,11 @@ const CTA = {
 
 // A featured project tile. `wide` tiles put the demo beside the text; the
 // others stack it on top. Each tile carries its project's colours.
-function Feature({ project, wide, flip, className = '' }) {
+function Feature({ project, wide, flip, className = '', dim = false }) {
   const themeId = ROUTE_THEMES[`/projects/${project.id}`];
   const credit = project.credits?.find((c) => c.role === 'Built with' && c.people[0].name !== 'Claude');
   return (
-    <div data-theme-section={themeId} className={`relative ${className}`}>
+    <div data-theme-section={themeId} className={`project-item relative ${className}`} data-dim={dim || undefined}>
       <Waypoint top="2.2rem" />
       <Reveal className="h-full">
         <Link to={`/projects/${project.id}`} className={`card card-lift group grid h-full grid-cols-[minmax(0,1fr)] overflow-hidden ${wide ? 'md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid-rows-[auto_1fr]'}`}>
@@ -53,9 +56,9 @@ function Feature({ project, wide, flip, className = '' }) {
 }
 
 // The rest: one row each, thumbnail, what it is, and what it's built with.
-function ProjectRow({ project }) {
+function ProjectRow({ project, dim = false }) {
   return (
-    <li className="border-t border-line first:border-t-0">
+    <li className="project-item border-t border-line first:border-t-0" data-dim={dim || undefined}>
       <Link to={`/projects/${project.id}`} className="group grid items-center gap-5 py-6 sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,0.6fr)] lg:gap-10">
         <ProjectThumb stage={project.stage} className="aspect-[16/10] transition-transform duration-300 group-hover:-translate-y-0.5" />
         <div>
@@ -77,38 +80,49 @@ export default function Projects() {
   useSectionThemes();
   const page = useRef(null);
   const [gameboy, translator, devspace, copilot] = featuredProjects;
+  const [tech, setTech] = useState(null);
+  const dim = (p) => Boolean(tech) && !p.stack.includes(tech);
 
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
       <header data-theme-section="aws" className="shell relative z-10 pb-6 pt-[calc(var(--nav-h)+40px)] md:pb-10 md:pt-[calc(var(--nav-h)+72px)]">
-        <div className="relative">
-          <Waypoint top="0.6rem" />
-          <p className="eyebrow">Projects</p>
-          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.4rem)]">
-            Built to be
-            <br />
-            played with.
-          </h1>
-          <p className="lead mt-7 max-w-2xl">
-            An emulator you can play, an AI translator for Gujarati scripture, a hackathon-winning cloud IDE and open-source work. Each opens with live
-            demos.
-          </p>
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="relative">
+            <Waypoint top="0.6rem" />
+            <p className="eyebrow">Projects</p>
+            <h1 className="display mt-6 text-[clamp(3rem,1.4rem+4.6vw,5.4rem)]">
+              Built to be
+              <br />
+              played with.
+            </h1>
+            <p className="lead mt-7 max-w-2xl">
+              An emulator you can play, an AI translator for Gujarati scripture, a hackathon-winning cloud IDE and open-source work. Each opens with live
+              demos.
+            </p>
+          </div>
+          <Art name="akshardham-delhi" className="projects-hero-art hidden lg:block" priority />
         </div>
       </header>
 
+      <PeriodicStack active={tech} onPick={setTech} />
+
       <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" aria-label="Featured projects">
-        <Feature project={gameboy} wide className="md:col-span-2" />
-        <Feature project={translator} />
-        <Feature project={devspace} />
-        <Feature project={copilot} wide flip className="md:col-span-2" />
+        <Feature project={gameboy} wide className="md:col-span-2" dim={dim(gameboy)} />
+        <Feature project={translator} dim={dim(translator)} />
+        <Feature project={devspace} dim={dim(devspace)} />
+        <Feature project={copilot} wide flip className="md:col-span-2" dim={dim(copilot)} />
       </section>
+
+      <div className="shell relative z-10 pt-10">
+        <SitarDivider />
+      </div>
 
       <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-16 md:pt-24" aria-labelledby="more-title">
         <SectionHeading title="Coursework, earlier builds and research" id="more-title" />
         <ul className="mt-8">
           {otherProjects.map((p) => (
-            <ProjectRow key={p.id} project={p} />
+            <ProjectRow key={p.id} project={p} dim={dim(p)} />
           ))}
         </ul>
         <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost mt-10">
