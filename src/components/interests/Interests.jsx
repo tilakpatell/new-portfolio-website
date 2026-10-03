@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiArrowLeftLine, RiArrowRightLine, RiGamepadLine } from 'react-icons/ri';
 import { Waypoint } from '../ui';
@@ -7,7 +7,9 @@ import { useFun } from '../../fun/FunProvider';
 import { ACHIEVEMENTS, useAchievements } from '../Achievements';
 import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
+import MusicCard from './MusicCard';
 import { prefersReducedMotion } from '../../lib/hooks';
+import Gif from '../Gif';
 
 // What I'm into when I'm not writing code, one interactive card each.
 
@@ -27,17 +29,22 @@ function StarWars() {
   const { aurebesh, toggleAurebesh } = useFun();
   const { unlock } = useAchievements();
   const [text, setText] = useState('Hello there');
+  const [obiWan, setObiWan] = useState(false);
   return (
     <Card
       title="Star Wars"
       className="fun-starwars"
       visual={
+        obiWan ? (
+          <Gif name="helloThere" eager caption={false} className="h-full [&_.gif-frame]:h-full [&_.gif-frame]:!aspect-auto [&_.gif-frame]:rounded-none" />
+        ) : (
         <div className="dark-scope relative grid h-full place-items-center px-5 text-center" style={{ background: '#05070c' }}>
           <div className="ds-stars absolute inset-0" aria-hidden="true" />
           <p className="aurebesh relative text-[1.6rem] leading-snug" style={{ color: 'var(--saber)', overflowWrap: 'anywhere' }} aria-hidden="true">
             {text || ' '}
           </p>
         </div>
+        )
       }
     >
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">The theme of this whole site, if you hadn’t noticed. Write something in Aurebesh:</p>
@@ -55,86 +62,14 @@ function StarWars() {
         className="fun-input mt-3"
         autoComplete="off"
       />
-      <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" onClick={toggleAurebesh}>
-        {aurebesh ? 'Back to Basic' : 'Read the site in Aurebesh'}
-      </button>
-    </Card>
-  );
-}
-
-function Sitar() {
-  const { unlock } = useAchievements();
-  const [lit, setLit] = useState(-1);
-  const [noSound, setNoSound] = useState(false);
-  const strings = useRef(null);
-  const down = useRef(null);
-  const plucks = useRef(0);
-  const notes = ['Sa', 'Re', 'Ga', 'Ma', 'Pa', 'Dha', 'Ni', 'Sa’'];
-
-  const play = useCallback(
-    async (i) => {
-      const { pluck } = await import('./sitar');
-      if (!pluck(i)) setNoSound(true);
-      setLit(i);
-      const el = strings.current?.querySelectorAll('.sitar-string')[i];
-      if (el && !prefersReducedMotion()) {
-        el.classList.remove('is-plucked');
-        void el.offsetWidth;
-        el.classList.add('is-plucked');
-      }
-      plucks.current += 1;
-      if (plucks.current >= 8) unlock('raga');
-    },
-    [unlock],
-  );
-
-  const indexAt = (x) => {
-    const r = strings.current.getBoundingClientRect();
-    return Math.max(0, Math.min(7, Math.floor(((x - r.left) / r.width) * 8)));
-  };
-
-  return (
-    <Card
-      title="Sitar"
-      className="fun-sitar"
-      visual={
-        <div
-          ref={strings}
-          className="sitar-neck"
-          onPointerDown={(e) => {
-            if (e.target.closest('button')) return; // the buttons handle their own clicks
-            const i = indexAt(e.clientX);
-            down.current = { id: e.pointerId, i };
-            e.currentTarget.setPointerCapture?.(e.pointerId);
-            play(i);
-          }}
-          onPointerMove={(e) => {
-            const d = down.current;
-            if (!d || d.id !== e.pointerId) return;
-            const i = indexAt(e.clientX);
-            if (i !== d.i) {
-              d.i = i;
-              play(i);
-            }
-          }}
-          onPointerUp={() => (down.current = null)}
-          onPointerCancel={() => (down.current = null)}
-        >
-          <span className="sitar-fret" style={{ top: '22%' }} aria-hidden="true" />
-          <span className="sitar-fret" style={{ top: '44%' }} aria-hidden="true" />
-          <span className="sitar-fret" style={{ top: '66%' }} aria-hidden="true" />
-          {notes.map((n, i) => (
-            <button key={n} type="button" className="sitar-string" data-lit={lit === i || undefined} onClick={(e) => e.detail === 0 && play(i)} aria-label={`Pluck ${n}`}>
-              <span className="sitar-wire" aria-hidden="true" />
-              <span className="sitar-note">{n}</span>
-            </button>
-          ))}
-        </div>
-      }
-    >
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">I play sitar. Pluck a string, or drag across them to strum. The sound is made right here in your browser.</p>
-      {noSound && <p className="mt-2 text-sm text-muted">This browser can’t play sound here.</p>}
-      <p className="mt-auto pt-4 text-xs text-muted">Sa Re Ga Ma Pa Dha Ni Sa, tuned to C♯</p>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={toggleAurebesh}>
+          {aurebesh ? 'Back to Basic' : 'Read the site in Aurebesh'}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
+          Hello there
+        </button>
+      </div>
     </Card>
   );
 }
@@ -170,38 +105,56 @@ function Gaming() {
   );
 }
 
+// The six stones, each a cut gem: a light top facet and two shaded sides.
 const STONES = [
-  { id: 'space', name: 'Space Stone', color: '#2f6ce0' },
-  { id: 'mind', name: 'Mind Stone', color: '#f2c230' },
-  { id: 'reality', name: 'Reality Stone', color: '#d7263d' },
-  { id: 'power', name: 'Power Stone', color: '#8e44ad' },
-  { id: 'time', name: 'Time Stone', color: '#2fa84f' },
-  { id: 'soul', name: 'Soul Stone', color: '#f28c28' },
+  { id: 'space', name: 'Space Stone', base: '#2f6ce0', light: '#8fb4ff', dark: '#173b8a' },
+  { id: 'mind', name: 'Mind Stone', base: '#e9b923', light: '#ffe48a', dark: '#9a7108' },
+  { id: 'reality', name: 'Reality Stone', base: '#d7263d', light: '#ff8a98', dark: '#7d0f1d' },
+  { id: 'power', name: 'Power Stone', base: '#8e44ad', light: '#d29bea', dark: '#4e1f63' },
+  { id: 'time', name: 'Time Stone', base: '#2fa84f', light: '#8ff0a9', dark: '#15622b' },
+  { id: 'soul', name: 'Soul Stone', base: '#f28c28', light: '#ffc68a', dark: '#9a4d08' },
 ];
+
+function Gem({ stone, on }) {
+  return (
+    <svg viewBox="-14 -18 28 36" className="gem" aria-hidden="true">
+      <path d="M0 -17 L12 -8 L12 8 L0 17 L-12 8 L-12 -8 Z" fill={stone.base} />
+      <path d="M0 -17 L12 -8 L0 -3 L-12 -8 Z" fill={stone.light} />
+      <path d="M-12 -8 L0 -3 L0 17 L-12 8 Z" fill={stone.dark} />
+      <path d="M12 -8 L0 -3 L0 17 L12 8 Z" fill={stone.base} />
+      <path d="M-5 -12 L0 -14 L-2 -9 Z" fill="#ffffff" opacity={on ? 0.9 : 0.4} />
+    </svg>
+  );
+}
 
 function Marvel() {
   const { snap } = useFun();
   const [have, setHave] = useState([]);
   const all = have.length === STONES.length;
+  const last = STONES.find((s) => s.id === have[have.length - 1]);
   return (
     <Card
       title="Marvel"
       className="fun-marvel"
       visual={
-        <div className="stones-panel grid h-full place-items-center">
-          <div className="flex gap-3" role="group" aria-label="Infinity Stones">
-            {STONES.map((s) => {
+        <div className="stones-panel">
+          <div className="ds-stars absolute inset-0" aria-hidden="true" />
+          <div className="stones-arc" role="group" aria-label="Infinity Stones">
+            {STONES.map((s, i) => {
               const on = have.includes(s.id);
               return (
                 <button
                   key={s.id}
                   type="button"
                   className="stone"
+                  data-all={all || undefined}
                   aria-pressed={on}
                   aria-label={on ? `${s.name}, collected` : `Collect the ${s.name}`}
-                  style={{ '--stone': s.color }}
+                  style={{ '--glow': s.base, '--lift': `${Math.round(Math.sin((i / (STONES.length - 1)) * Math.PI) * -14)}px`, animationDelay: `${i * 120}ms` }}
                   onClick={() => setHave((h) => (on ? h : [...h, s.id]))}
-                />
+                >
+                  <Gem stone={s} on={on} />
+                </button>
               );
             })}
           </div>
@@ -210,7 +163,7 @@ function Marvel() {
     >
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">All in on the whole saga. Collect the six stones, then snap.</p>
       <p className="mt-2 text-sm text-muted" aria-live="polite">
-        {all ? 'All six. Ready.' : `${have.length} of 6 collected`}
+        {all ? 'All six. Ready when you are.' : last ? `${last.name} collected. ${6 - have.length} to go.` : 'None collected yet.'}
       </p>
       <button type="button" className="btn btn-primary btn-sm mt-auto self-start" disabled={!all} onClick={snap}>
         Snap
@@ -230,55 +183,104 @@ const FACTS = [
 function Office() {
   const { twss } = useFun();
   const [i, setI] = useState(0);
+  const [clip, setClip] = useState(null);
   return (
     <Card
       title="The Office"
       className="fun-office"
       visual={
-        <div className="memo-panel h-full px-5 py-4">
-          <p className="memo-head">Dunder Mifflin · Scranton</p>
-          <p className="memo-body" aria-live="polite">
-            {FACTS[i]}
-          </p>
-        </div>
+        clip ? (
+          <Gif key={clip} name={clip} eager caption={false} className="h-full [&_.gif-frame]:h-full [&_.gif-frame]:!aspect-auto [&_.gif-frame]:rounded-none" />
+        ) : (
+          <div className="memo-panel h-full px-5 py-4">
+            <p className="memo-head">Dunder Mifflin · Scranton</p>
+            <p className="memo-body" aria-live="polite">
+              {FACTS[i]}
+            </p>
+          </div>
+        )
       }
     >
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">The show I put on in the background more than any other.</p>
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setI((n) => (n + 1) % FACTS.length)}>
-          Another fact
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={twss}>
+        {clip ? (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setClip(null)}>
+            Back to the memo
+          </button>
+        ) : (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setI((n) => (n + 1) % FACTS.length)}>
+            Another fact
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            setClip('twss');
+            twss(false);
+          }}
+        >
           That’s what she said
         </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setClip('parkour')}>
+          Parkour!
+        </button>
       </div>
+      {clip && <p className="mt-2 text-xs text-muted">The Office (NBC), via GIPHY. The speaker button turns the clip’s sound on.</p>}
     </Card>
+  );
+}
+
+// The show's title card, with my name: Ti (titanium) and Pa (protactinium).
+function Tile({ n, sym, mass, name }) {
+  return (
+    <span className="bb-tile">
+      <span className="bb-num">{n}</span>
+      <span className="bb-sym">{sym}</span>
+      <span className="bb-mass">{mass}</span>
+      <span className="bb-name">{name}</span>
+    </span>
   );
 }
 
 function BreakingBad() {
   const { sayMyName } = useFun();
+  const [saul, setSaul] = useState(false);
   return (
     <Card
-      title="Breaking Bad"
+      title="Breaking Bad & Better Call Saul"
       className="fun-bb"
       visual={
-        <div className="bb-panel grid h-full place-items-center">
-          <p className="display text-[3.4rem]" aria-label="Ti and Pa">
-            <span className="element">
-              <sup aria-hidden="true">22</sup>Ti<sub aria-hidden="true">47.867</sub>
+        saul ? (
+          <Gif name="saulExcited" eager caption={false} className="h-full [&_.gif-frame]:h-full [&_.gif-frame]:!aspect-auto [&_.gif-frame]:rounded-none" />
+        ) : (
+        <div className="bb-card">
+          <span className="bb-smoke bb-smoke-a" aria-hidden="true" />
+          <span className="bb-smoke bb-smoke-b" aria-hidden="true" />
+          <p className="bb-title" aria-label="Tilak Patel">
+            <span className="bb-line" aria-hidden="true">
+              <Tile n={22} sym="Ti" mass="47.867" name="Titanium" />
+              <span className="bb-rest">lak</span>
             </span>
-            <span className="element ml-2">
-              <sup aria-hidden="true">91</sup>Pa<sub aria-hidden="true">231.04</sub>
+            <span className="bb-line bb-line-2" aria-hidden="true">
+              <Tile n={91} sym="Pa" mass="231.04" name="Protactinium" />
+              <span className="bb-rest">tel</span>
             </span>
           </p>
         </div>
+        )
       }
     >
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Both halves of my name start with an element: titanium and protactinium.</p>
-      <button type="button" className="btn btn-primary btn-sm mt-auto self-start" onClick={sayMyName}>
-        Say my name
-      </button>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Both halves of my name start with a real element: titanium and protactinium.</p>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button type="button" className="btn btn-primary btn-sm" onClick={sayMyName}>
+          Say my name
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" aria-pressed={saul} onClick={() => setSaul((v) => !v)}>
+          S’all good, man
+        </button>
+      </div>
+      {saul && <p className="mt-2 text-xs text-muted">Better Call Saul (AMC), via GIPHY.</p>}
     </Card>
   );
 }
@@ -315,7 +317,7 @@ export default function Interests() {
           <h2 id="interests-title" className="title">
             Off the clock
           </h2>
-          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then sitar, games, Marvel, The Office, Breaking Bad and a lot of travel.</p>
+          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, games, Marvel, The Office, Breaking Bad and a lot of travel.</p>
         </div>
         <div className="flex gap-2">
           <button type="button" className="globe-btn" onClick={() => scroll(-1)} aria-label="Previous interests">
@@ -328,7 +330,7 @@ export default function Interests() {
       </div>
       <ul ref={row} className="fun-row mt-10" aria-label="Interests">
         <StarWars />
-        <Sitar />
+        <MusicCard />
         <Marvel />
         <BreakingBad />
         <Office />

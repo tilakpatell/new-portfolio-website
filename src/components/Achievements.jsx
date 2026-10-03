@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { local, storage } from '../lib/hooks';
 import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
+import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACHIEVEMENTS = {
@@ -40,8 +41,8 @@ export function AchievementProvider({ children }) {
   const { pathname } = useLocation();
   const { seen } = useTheme();
 
-  const notify = useCallback((title, desc = '', kind = 'note') => {
-    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc }]);
+  const notify = useCallback((title, desc = '', kind = 'note', gif = null) => {
+    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc, gif }]);
   }, []);
 
   const unlock = useCallback(
@@ -77,7 +78,7 @@ export function AchievementProvider({ children }) {
   const toast = queue[0];
   useEffect(() => {
     if (!toast) return undefined;
-    const t = setTimeout(() => setQueue((q) => q.slice(1)), 3800);
+    const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -87,7 +88,7 @@ export function AchievementProvider({ children }) {
   return (
     <AchievementContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4" aria-live="polite">
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast]:pointer-events-auto" aria-live="polite">
         {toast && (
           <div key={toast.key} className="toast card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40" style={{ background: 'var(--surface-2)' }}>
             {toast.kind !== 'note' && (
@@ -100,6 +101,7 @@ export function AchievementProvider({ children }) {
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
               {themeId && <p className="mt-1 text-sm text-body">New theme: {THEMES[themeId].company}. Pick it from the site colors.</p>}
+              {toast.gif && <Gif name={toast.gif} eager />}
             </div>
           </div>
         )}

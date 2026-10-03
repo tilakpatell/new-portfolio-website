@@ -30,11 +30,17 @@
       try {
         var m = localStorage.getItem('tp-mode');
         if (m === 'dark' || (!m && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.mode = 'dark';
+        // First visit to the home page: cover it until the hyperspace intro starts.
+        var h = location.hash;
+        if (!localStorage.getItem('tp-intro') && (h === '' || h === '#' || h === '#/') && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.dataset.intro = '1';
       } catch (e) {}
     </script>
     <style>
       html { background: #fdfdfc; }
       html[data-mode='dark'] { background: #09090b; }
+      /* The intro's cover. It removes itself after 4s even if the script never runs. */
+      html[data-intro] body::before { content: ''; position: fixed; inset: 0; z-index: 94; background: #03070f; animation: intro-cover 0.4s ease 4s forwards; }
+      @keyframes intro-cover { to { opacity: 0; visibility: hidden; } }
     </style>
     <script type="application/ld+json">
       {

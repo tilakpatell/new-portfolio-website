@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES } from '../theme/themes';
 import { useFun } from '../fun/FunProvider';
 import { openPalette } from '../lib/palette';
+import { setSound, soundOn } from '../lib/audio';
 import { COUNTRY_COUNT, PLACES } from '../data/places';
 import { education, profile, skills } from '../data/profile';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
@@ -60,7 +61,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Off duty: say my name · snap · twss · bears · parkour · sitar · peace · themes', 'dim'),
+  L('  Off duty: say my name · snap · twss · bears · parkour · sitar · peace · hyperspace · themes', 'dim'),
 ];
 
 const PROJECT_ALIASES = {
@@ -263,6 +264,19 @@ export default function Terminal() {
       palette: () => {
         setTimeout(openPalette, 100);
         return [L('  Opening the command palette…', 'ok')];
+      },
+      hyperspace: () => {
+        window.dispatchEvent(new Event('tp:hyperspace'));
+        return [L('  Punch it.', 'ok')];
+      },
+      jump: () => {
+        window.dispatchEvent(new Event('tp:hyperspace'));
+        return [L('  Punch it.', 'ok')];
+      },
+      sound: (arg) => {
+        const on = arg === 'on' ? true : arg === 'off' ? false : !soundOn();
+        setSound(on);
+        return [L(`  Sound ${on ? 'on' : 'off'}.`, 'ok')];
       },
       trench: () => {
         setTimeout(() => navigate('/deathstar#trench'), 250);

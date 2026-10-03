@@ -251,5 +251,53 @@
     "author": "BAPS Swaminarayan Sanstha",
     "license": "© BAPS Swaminarayan Sanstha",
     "source": "https://akshardham.com/download/photo-galleries/"
+  },
+  "exp-aws": {
+    "commons": "File:NOIRLab HQ Server Racks (6V6A0375-CC).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "Rows of server racks glowing with coloured status lights"
+  },
+  "exp-rtx": {
+    "commons": "File:KC-135 Stratotanker fuels F-35 Lightning II (9703540).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "Two F-35 Lightning II jets flying close together above the clouds"
+  },
+  "exp-bose": {
+    "commons": "File:Headphone Microphone Madrid (Unsplash).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "Studio headphones hanging on a microphone, lit in blue"
+  },
+  "exp-pendar": {
+    "commons": "File:Attocube table GWMorley.jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "Laser optics on a lab table, lit by a green beam"
+  },
+  "exp-empowerreg": {
+    "commons": "File:Vital signs monitor display.jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "A medical monitor showing heart-rate and vital-sign waveforms"
+  },
+  "exp-src": {
+    "commons": "File:Lightweight Counter Mortar Radar (LCMR).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "A Lightweight Counter Mortar Radar raised on a vehicle in front of mountains"
   }
 }

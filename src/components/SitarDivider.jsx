@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useOnceVisible } from './ui';
+import { audioContext } from '../lib/audio';
 
 // A section break drawn as a sitar string. It shivers once when it scrolls into
 // view; click it and it plays a note.
@@ -7,9 +8,10 @@ export default function SitarDivider({ className = '' }) {
   const ref = useOnceVisible('seen');
   const [plucks, setPlucks] = useState(0);
   const pluckIt = async () => {
-    const { pluck } = await import('./interests/sitar');
-    pluck(Math.floor(Math.random() * 8));
+    if (!audioContext()) return; // start audio inside the click, before awaiting
     setPlucks((n) => n + 1);
+    const { pluck } = await import('./interests/music');
+    pluck(Math.floor(Math.random() * 8));
   };
   return (
     <div ref={ref} className={`sitar-divider ${className}`}>

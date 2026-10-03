@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
 import { openPalette, shortcutLabel } from '../lib/palette';
+import { jumpTo } from '../lib/anchors';
 import { profile } from '../data/profile';
 import { useAchievements } from './Achievements';
 import { useTheme } from '../theme/ThemeProvider';
@@ -186,7 +187,7 @@ export default function Nav() {
       data-hidden={hidden && !open ? 'true' : 'false'}
       onFocusCapture={() => setHidden(false)}
     >
-      <a href="#main" className="skip-link">
+      <a href="#main" className="skip-link" onClick={(e) => jumpTo(e, 'main', { focus: true })}>
         Skip to content
       </a>
       <div className="nav-shell">

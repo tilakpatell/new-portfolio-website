@@ -11,7 +11,28 @@ const VIEWS = [
   { id: 'pdf', label: 'PDF' },
 ];
 
+// Phones and tablets can't show a PDF inside the page reliably (iOS shows only
+// the first page), so they get buttons that open it full screen instead.
+const touchDevice = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+
 function PdfView() {
+  if (touchDevice()) {
+    return (
+      <div className="resume-pdf grid place-items-center p-8 text-center !h-auto">
+        <div>
+          <p className="stretch-semi text-lg font-semibold text-ink">The PDF opens best on its own here.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <a className="btn btn-primary" href={profile.resume.href} target="_blank" rel="noopener noreferrer">
+              Open the PDF
+            </a>
+            <a className="btn btn-ghost" href={profile.resume.href} download={profile.resume.filename}>
+              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="resume-pdf">
       <object data={`${profile.resume.href}#view=FitH`} type="application/pdf" aria-label="Résumé, PDF" className="h-full w-full">

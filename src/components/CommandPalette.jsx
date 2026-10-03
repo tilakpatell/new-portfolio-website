@@ -24,6 +24,7 @@ import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAchievements } from './Achievements';
 import { useFun } from '../fun/FunProvider';
+import { audioContext, setSound, soundOn } from '../lib/audio';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -100,6 +101,8 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-twss', group: 'Easter eggs', label: 'That’s what she said', keywords: 'the office michael scott dundie', icon: RiSparkling2Line, run: fun.twss },
       { id: 'e-parkour', group: 'Easter eggs', label: 'Parkour', keywords: 'the office andy dwight', icon: RiSparkling2Line, run: fun.parkour },
       { id: 'e-ds', group: 'Easter eggs', label: 'That’s no moon', keywords: 'death star star wars trench run superlaser', icon: RiSparkling2Line, run: go('/deathstar') },
+      { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
+      { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: RiContrast2Line, run: () => setSound(!soundOn()) },
       { id: 't-auto', group: 'Themes', label: 'Auto colors', hint: 'Follow the page', keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(null) },
       ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Themes', label: `${THEMES[id].company} colors`, keywords: 'theme', icon: RiPaletteLine, run: () => pin(id) })),
       ...FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).map((f) => ({ id: `t-${f.id}`, group: 'Themes', label: `${THEMES[f.id].company} colors`, hint: 'Unlocked', keywords: 'theme fan', icon: RiPaletteLine, run: () => pin(f.id) })),
@@ -123,6 +126,7 @@ export default function CommandPalette({ onClose }) {
 
   const run = (item) => {
     if (!item) return;
+    audioContext(); // inside the key press or click, so sounds may play
     onClose();
     // Let the dialog close (and focus return) before navigating or snapping.
     requestAnimationFrame(() => item.run());

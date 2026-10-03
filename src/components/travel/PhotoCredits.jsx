@@ -2,8 +2,8 @@ import { PHOTOS } from '../../data/photos';
 
 // Every photo on the site with its author, licence and source. Required by the
 // Creative Commons licences, and simply the right thing to do.
-export default function PhotoCredits() {
-  const entries = Object.entries(PHOTOS).filter(([, p]) => p.credit && p.alt);
+export default function PhotoCredits({ ids, note }) {
+  const entries = Object.entries(PHOTOS).filter(([id, p]) => p.credit && p.alt && (ids ? ids.includes(id) : !id.startsWith('exp-')));
   const baps = entries.filter(([, p]) => p.credit.author === 'BAPS Swaminarayan Sanstha');
   const commons = entries.filter(([, p]) => p.credit.author !== 'BAPS Swaminarayan Sanstha');
   return (
@@ -16,7 +16,7 @@ export default function PhotoCredits() {
           <span className="ml-2 text-sm text-muted">({entries.length})</span>
         </summary>
         <p className="mt-4 max-w-[70ch] text-sm leading-relaxed text-body">
-          The mandir photos are courtesy of BAPS Swaminarayan Sanstha. The landscapes are freely licensed photos from Wikimedia Commons, standing in until I add my own.
+          {note ?? 'The mandir photos are courtesy of BAPS Swaminarayan Sanstha. The landscapes are freely licensed photos from Wikimedia Commons, standing in until I add my own.'}
         </p>
         <ul className="mt-4 grid gap-2 text-sm leading-relaxed text-body md:grid-cols-2 md:gap-x-10">
           {[...baps, ...commons].map(([id, p]) => (

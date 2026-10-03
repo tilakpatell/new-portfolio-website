@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
+import { audioContext } from '../../lib/audio';
+
+const sfx = () => import('../../lib/sfx');
+const play = (name) => sfx().then((s) => s[name]());
 
 // The trench run, on a 2D canvas (no WebGL, so it plays without a GPU).
 // Fly Luke's X-wing down the trench, dodge catwalks, walls and turbolaser fire,
@@ -115,6 +119,7 @@ export default function TrenchRun({ onWin }) {
   const [ui, setUi] = useState({ phase: 'ready', shields: 3, torpedoes: 2, computer: true, range: null, message: '' });
 
   const start = useCallback(() => {
+    audioContext(); // in the click, so the run can be heard
     game.current = {
       seed: Date.now() & 0xffff,
       items: course(Date.now() & 0xffff),
@@ -148,10 +153,12 @@ export default function TrenchRun({ onWin }) {
       return;
     }
     g.torpedoes -= 1;
+    play('torpedo');
     const onTarget = Math.abs(g.px) < 0.45 && g.py < 0.1;
     if (dist > 2.5 && dist < 9 && onTarget) {
       g.phase = 'won';
       g.flash = 1;
+      setTimeout(() => play('hit'), 380);
       unlock('trench');
       setUi((u) => ({
         ...u,
@@ -428,6 +435,7 @@ export default function TrenchRun({ onWin }) {
               it.hit = true;
               g.shields -= 1;
               g.flash = 0.35;
+              play('hit');
               if (g.shields <= 0) {
                 g.phase = 'lost';
                 setUi((u) => ({ ...u, phase: 'lost', shields: 0, message: 'Shields are gone. Pull up, and try again.' }));
@@ -443,6 +451,7 @@ export default function TrenchRun({ onWin }) {
         const v = g.vader;
         if (!v.on && !v.gone && left < 46) {
           v.on = true;
+          play('flyby');
           setUi((u) => ({ ...u, message: 'Vader: “The Force is strong with this one.”' }));
         }
         if (v.on && !v.gone) {
@@ -452,6 +461,7 @@ export default function TrenchRun({ onWin }) {
             g.rear.push({ z: g.z - 2.5, x: g.px + (Math.random() - 0.5) * 0.9, y: g.py + (Math.random() - 0.5) * 0.7, hitChecked: false });
           }
           if (left < 15) {
+            play('flyby');
             v.gone = true;
             v.on = false;
             v.away = 1;
@@ -469,6 +479,7 @@ export default function TrenchRun({ onWin }) {
             if (Math.hypot(b.x - g.px, b.y - g.py) < 0.18) {
               g.shields -= 1;
               g.flash = 0.35;
+              play('hit');
               if (g.shields <= 0) {
                 g.phase = 'lost';
                 setUi((u) => ({ ...u, phase: 'lost', shields: 0, message: 'Vader got you. Pull up, and try again.' }));

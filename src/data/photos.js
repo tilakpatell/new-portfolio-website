@@ -404,5 +404,95 @@ export const PHOTOS = {
       "source": "https://akshardham.com/download/photo-galleries/",
       "title": "Mandapam dome, New Delhi"
     }
+  },
+  "exp-aws": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.721,
+    "alt": "Rows of server racks glowing with coloured status lights",
+    "credit": {
+      "author": "NOIRLab/NSF/AURA/T. Slovinský",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:NOIRLab_HQ_Server_Racks_(6V6A0375-CC).jpg",
+      "title": "NOIRLab HQ Server Racks (6V6A0375-CC)"
+    }
+  },
+  "exp-rtx": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.404,
+    "alt": "Two F-35 Lightning II jets flying close together above the clouds",
+    "credit": {
+      "author": "U.S. Air Force AFCENT by Senior Airman Adriana Jordan Alcaniz",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:KC-135_Stratotanker_fuels_F-35_Lightning_II_(9703540).jpg",
+      "title": "KC-135 Stratotanker fuels F-35 Lightning II (9703540)"
+    }
+  },
+  "exp-bose": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.652,
+    "alt": "Studio headphones hanging on a microphone, lit in blue",
+    "credit": {
+      "author": "WillSpirit SBLN willspirit",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "https://commons.wikimedia.org/wiki/File:Headphone_Microphone_Madrid_(Unsplash).jpg",
+      "title": "Headphone Microphone Madrid (Unsplash)"
+    }
+  },
+  "exp-pendar": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.656,
+    "alt": "Laser optics on a lab table, lit by a green beam",
+    "credit": {
+      "author": "Gavin Morley",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Attocube_table_GWMorley.jpg",
+      "title": "Attocube table GWMorley"
+    }
+  },
+  "exp-empowerreg": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.667,
+    "alt": "A medical monitor showing heart-rate and vital-sign waveforms",
+    "credit": {
+      "author": "Petty Officer 1st Class James Stenberg",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:Vital_signs_monitor_display.jpg",
+      "title": "Vital signs monitor display"
+    }
+  },
+  "exp-src": {
+    "widths": [
+      800,
+      1600
+    ],
+    "ratio": 0.734,
+    "alt": "A Lightweight Counter Mortar Radar raised on a vehicle in front of mountains",
+    "credit": {
+      "author": "US ARMY",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:Lightweight_Counter_Mortar_Radar_(LCMR).jpg",
+      "title": "Lightweight Counter Mortar Radar (LCMR)"
+    }
   }
 };

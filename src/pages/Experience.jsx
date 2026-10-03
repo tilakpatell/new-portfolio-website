@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { RiFileTextLine, RiMovie2Line } from 'react-icons/ri';
 import Dundies from '../components/experience/Dundies';
-import ChapterScene from '../components/experience/Scenes';
+import RoleBanner from '../components/experience/RoleBanner';
+import { audioContext } from '../lib/audio';
+import PhotoCredits from '../components/travel/PhotoCredits';
 import RouteLine from '../components/RouteLine';
 import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
@@ -42,10 +44,7 @@ function CurrentRole({ role, onCrawl }) {
   return (
     <section id={role.id} data-theme-section={role.id} className="exp-hero relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
       <div className="exp-hero-bg" aria-hidden="true" />
-      <div aria-hidden="true">
-        <ChapterScene kind={role.id} className="is-hero" />
-      </div>
-      <div className="shell relative pb-14 pt-6 md:pb-20 md:pt-8">
+      <div className="shell relative pb-14 pt-[calc(var(--nav-h)+32px)] md:pb-20 md:pt-[calc(var(--nav-h)+52px)]">
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow hero-in text-center">
@@ -79,6 +78,7 @@ function CurrentRole({ role, onCrawl }) {
           </button>
         </div>
 
+        <RoleBanner role={role.id} className="mt-12" />
         <div className="hero-in mt-12 grid items-start gap-10 lg:grid-cols-2 lg:gap-14" style={{ '--d': '420ms' }}>
           <div>
             <p className="label">What I’m doing</p>
@@ -110,7 +110,7 @@ function Chapter({ role, episode, last }) {
   return (
     <section id={role.id} data-theme-section={role.id} className="relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
       <div className="shell relative pt-16 md:pt-24">
-        <ChapterScene kind={role.id} className="mb-10 md:mb-14" />
+        <RoleBanner role={role.id} className="mb-10 md:mb-14" />
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <div className="relative lg:sticky lg:top-[calc(var(--nav-h)+32px)] lg:self-start">
             <Waypoint top="0.45rem" />
@@ -216,7 +216,13 @@ export default function Experience() {
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
-      <CurrentRole role={roles[0]} onCrawl={() => setCrawl(true)} />
+      <CurrentRole
+        role={roles[0]}
+        onCrawl={() => {
+          audioContext(); // in the click, so the fanfare can play
+          setCrawl(true);
+        }}
+      />
       {roles.slice(1).map((r, i) => (
         <Chapter key={r.id} role={r} episode={roles.length - 1 - i} last={i === roles.length - 2} />
       ))}
@@ -240,6 +246,7 @@ export default function Experience() {
           </Link>
         </div>
       </section>
+      <PhotoCredits ids={roles.map((r) => `exp-${r.id}`)} note="The photos at the top of each role are freely licensed, from Wikimedia Commons." />
       {crawl && (
         <Suspense fallback={null}>
           <OpeningCrawl onClose={() => setCrawl(false)} />

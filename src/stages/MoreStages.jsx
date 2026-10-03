@@ -328,8 +328,9 @@ export function AttentionStage() {
                 key={j}
                 className="mono rounded px-2 py-1 text-sm transition-colors duration-300"
                 style={{
-                  background: `color-mix(in srgb, var(--accent) ${Math.round(w(j) * 100)}%, var(--surface-2))`,
-                  color: w(j) > 0.3 ? '#0f1111' : 'var(--text-body)',
+                  // capped at 60% so the light text stays readable on every token
+                  background: `color-mix(in srgb, var(--accent) ${Math.round(Math.min(0.6, w(j)) * 100)}%, var(--surface-2))`,
+                  color: 'var(--text)',
                   outline: j === focus ? '2px solid var(--text)' : 'none',
                 }}
               >
@@ -338,7 +339,7 @@ export function AttentionStage() {
             ))}
           </p>
           <p className="mono mt-4 text-xs text-muted">
-            Darker = more attention from “{TOKENS[focus]}” (illustrative weights); salient sentences score higher and make the summary
+            Stronger colour = more attention from “{TOKENS[focus]}” (illustrative weights); salient sentences score higher and make the summary
           </p>
         </div>
       </StageWindow>

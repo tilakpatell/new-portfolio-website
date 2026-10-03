@@ -1,10 +1,52 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Readout from '../components/deathstar/Readout';
 import TrenchRun from '../components/deathstar/TrenchRun';
 import { PLANETS, PLANET_AT as PLANET, PlanetArt } from '../components/deathstar/Planets';
 import { AurebeshLine } from '../components/Wordmark';
+import { jumpTo } from '../lib/anchors';
+import Hyperspace from '../components/Hyperspace';
 import { useDocumentTitle, useReducedMotion } from '../lib/hooks';
+import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
+import { PARTS } from '../components/deathstar/parts';
+import Gif from '../components/Gif';
+import { RiCloseLine, RiVolumeMuteLine, RiVolumeUpLine } from 'react-icons/ri';
+
+const sfx = () => import('../lib/sfx');
+
+// A part of the station, opened from its hotspot.
+function PartPanel({ part, onClose, onAction }) {
+  const close = useRef(null);
+  useEffect(() => {
+    close.current?.focus({ preventScroll: true });
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <section className="ds-panel" aria-labelledby="ds-part-title">
+      <div className="flex items-start justify-between gap-4">
+        <h2 id="ds-part-title" className="stretch-semi text-xl font-semibold text-ink">
+          {part.name}
+        </h2>
+        <button ref={close} type="button" className="ds-panel-close" onClick={onClose} aria-label="Close">
+          <RiCloseLine className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">{part.text}</p>
+      {part.gif && <Gif key={part.gif} name={part.gif} eager className="mt-4" />}
+      <figure className="mt-4">
+        <blockquote className="text-lg text-ink">“{part.quote[0]}”</blockquote>
+        <figcaption className="mt-1 text-sm text-muted">{part.quote[1]}</figcaption>
+      </figure>
+      {part.action && (
+        <button type="button" className="btn btn-primary btn-sm mt-5" onClick={() => onAction(part.action)}>
+          {part.action === 'fire' ? 'Fire the superlaser' : 'Fly the trench run'}
+        </button>
+      )}
+    </section>
+  );
+}
 
 // The hidden page. Reachable from the terminal ('deathstar'), the footer and the Konami code.
 const DS = { x: 520, y: 220, r: 150 };
@@ -22,21 +64,24 @@ export default function DeathStar() {
   const [planet, setPlanet] = useState('alderaan');
   const [jumping, setJumping] = useState(false);
   const [arrivals, setArrivals] = useState(0);
+  const [part, setPart] = useState(null);
+  const [sound, setSoundState] = useState(soundOn);
   const { hash } = useLocation();
+  useEffect(() => onSoundChange(setSoundState), []);
 
   // Set a course: the station makes the jump to lightspeed and arrives at the new planet.
+  const [course, setCourse] = useState(null);
   const travel = (id) => {
     if (id === planet || jumping || destroyed || (phase !== 'idle' && phase !== 'gone')) return;
+    audioContext(); // in the click, so the jump can be heard
+    setPart(null);
+    setCourse(id);
     setJumping(true);
-    setTimeout(
-      () => {
-        setPlanet(id);
-        setPhase('idle');
-        setArrivals((n) => n + 1);
-        setJumping(false);
-      },
-      reduced ? 0 : 1150,
-    );
+  };
+  const arrive = () => {
+    setPlanet(course);
+    setPhase('idle');
+    setArrivals((n) => n + 1);
   };
 
   useEffect(() => {
@@ -45,12 +90,20 @@ export default function DeathStar() {
     return () => clearTimeout(t);
   }, [hash]);
 
+  // Back to the top to watch it go, then the station explodes.
   const onWin = () => {
     setTimeout(() => {
-      setDestroyed(true);
+      setPart(null);
       window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-    }, 1400);
+      setTimeout(() => setDestroyed(true), reduced ? 0 : 750);
+    }, 1200);
   };
+  useEffect(() => {
+    if (destroyed) sfx().then((s) => s.boom());
+  }, [destroyed]);
+  useEffect(() => {
+    if (phase === 'boom') sfx().then((s) => s.boom());
+  }, [phase]);
 
   useEffect(() => {
     const next = { charging: ['firing', 1100], firing: ['boom', 380], boom: ['gone', 1500] }[phase];
@@ -72,8 +125,16 @@ export default function DeathStar() {
   );
 
   const fire = () => {
+    if (phase !== 'idle' || destroyed) return;
+    audioContext();
+    sfx().then((s) => s.superlaser(undefined, undefined, 0, 1.1));
     setShots((n) => n + 1);
     setPhase('charging');
+  };
+  const onAction = (action) => {
+    setPart(null);
+    if (action === 'fire') fire();
+    else jumpTo(null, 'trench');
   };
 
   const rim = Array.from({ length: 8 }, (_, i) => {
@@ -87,17 +148,10 @@ export default function DeathStar() {
     <div className="dark-scope relative z-10 min-h-[100svh] overflow-hidden" style={{ background: '#03040a' }}>
       <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
       {phase === 'boom' && !reduced && <div className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
+      {jumping && <Hyperspace sound onPeak={arrive} onDone={() => setJumping(false)} />}
+      {destroyed && !reduced && <div key="ds-flash" className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
       <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
         <div className="relative">
-        {jumping && (
-          <svg className="hyperspace" viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            {Array.from({ length: 70 }).map((_, i) => {
-              const a = (i * 137.5 * Math.PI) / 180;
-              const r0 = 3 + ((i * 7) % 16);
-              return <line key={i} x1={Math.cos(a) * r0} y1={Math.sin(a) * r0} x2={Math.cos(a) * 75} y2={Math.sin(a) * 75} pathLength="1" style={{ animationDelay: `${(i % 9) * 15}ms` }} />;
-            })}
-          </svg>
-        )}
         <svg viewBox="0 0 680 400" className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${PLANETS[planet].name}`}>
           <defs>
             <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
@@ -147,7 +201,18 @@ export default function DeathStar() {
           {destroyed && (
             <g key="boom">
               <circle className="ds-core" cx={DS.x} cy={DS.y} r={DS.r * 0.6} fill="#fff6d8" />
-              <ellipse className="ds-ring" cx={DS.x} cy={DS.y} rx={DS.r * 0.8} ry={DS.r * 0.2} fill="none" stroke="#ffe7a8" strokeWidth="3" />
+              <ellipse className="ds-ring ds-ring-big" cx={DS.x} cy={DS.y} rx={DS.r * 0.8} ry={DS.r * 0.16} fill="none" stroke="#ffe7a8" strokeWidth="4" />
+              {debris.map((p, i) => (
+                <circle
+                  key={i}
+                  className="ds-debris"
+                  cx={DS.x}
+                  cy={DS.y}
+                  r={p.s * 1.4}
+                  fill={p.c}
+                  style={{ '--dx': `${p.dx * 2.2}px`, '--dy': `${p.dy * 2.2}px`, animationDelay: `${(i % 5) * 25}ms` }}
+                />
+              ))}
             </g>
           )}
           <g key={`ds-${arrivals}`} className={destroyed ? 'ds-gone' : arrivals ? 'ds-arrive' : undefined}>
@@ -181,6 +246,23 @@ export default function DeathStar() {
             {planetVisible ? PLANETS[planet].name.toUpperCase() : ''}
           </text>
         </svg>
+        {!destroyed && !jumping && (
+          <div className="ds-hotspots" role="group" aria-label="Parts of the station">
+            {PARTS.map((pt) => (
+              <button
+                key={pt.id}
+                type="button"
+                className="ds-hotspot"
+                style={{ left: `${(pt.x / 680) * 100}%`, top: `${(pt.y / 400) * 100}%` }}
+                aria-pressed={part?.id === pt.id}
+                aria-label={pt.name}
+                data-label={pt.name}
+                onClick={() => setPart(part?.id === pt.id ? null : pt)}
+              />
+            ))}
+          </div>
+        )}
+        {part && <PartPanel part={part} onClose={() => setPart(null)} onAction={onAction} />}
         </div>
 
         <div>
@@ -188,6 +270,7 @@ export default function DeathStar() {
             <AurebeshLine>Classified</AurebeshLine> · DS-1 Orbital Battle Station
           </p>
           <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">{destroyed ? 'It was a moon after all.' : 'That’s no moon.'}</h1>
+          <p className="mt-3 text-sm text-muted">Tap the glowing points on the station to look inside.</p>
           <p className="lead mt-6 max-w-xl">
             {destroyed
               ? 'The station is gone. The Rebellion thanks you, and so does Alderaan’s insurance company.'
@@ -208,16 +291,26 @@ export default function DeathStar() {
                 Rebuild the station
               </button>
             ) : (
-              <a href="#trench" className="btn btn-ghost" onClick={(e) => {
-                e.preventDefault();
-                document.getElementById('trench')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-              }}>
+              <a href="#trench" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'trench')}>
                 Fly the trench run
               </a>
             )}
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>
+            <button
+              type="button"
+              className="btn btn-ghost w-11 px-0"
+              aria-pressed={sound}
+              aria-label={sound ? 'Sound is on. Turn it off' : 'Sound is off. Turn it on'}
+              title={sound ? 'Sound on' : 'Sound off'}
+              onClick={() => {
+                audioContext();
+                setSound(!sound);
+              }}
+            >
+              {sound ? <RiVolumeUpLine className="h-5 w-5" aria-hidden="true" /> : <RiVolumeMuteLine className="h-5 w-5" aria-hidden="true" />}
+            </button>
           </div>
           <div className="mt-8">
             <p className="label">Set course for</p>

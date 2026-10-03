@@ -64,18 +64,22 @@ export function FunProvider({ children }) {
     const { snapPage } = await import('./effects');
     if (!snapPage()) return;
     unlock('snap');
-    notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.');
+    notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
   }, [notify, unlock]);
 
-  const twss = useCallback(() => {
-    unlock('dundie');
-    notify('That’s what she said.', 'Michael Scott, Regional Manager');
-  }, [notify, unlock]);
+  // `withGif` false when the clip is already showing somewhere else (the card).
+  const twss = useCallback(
+    (withGif = true) => {
+      unlock('dundie');
+      notify('That’s what she said.', 'Michael Scott, Regional Manager', 'note', withGif === false ? null : 'twss');
+    },
+    [notify, unlock],
+  );
 
   const parkour = useCallback(async () => {
     const { parkourPage } = await import('./effects');
     parkourPage();
-    notify('Parkour!', 'Hardcore parkour.');
+    notify('Parkour!', 'Hardcore parkour.', 'note', 'parkour');
   }, [notify]);
 
   // Typed anywhere outside a text field.

@@ -8,6 +8,8 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Home from './pages/Home';
+import Hyperspace from './components/Hyperspace';
+import { audioContext } from './lib/audio';
 
 const Experience = lazy(() => import('./pages/Experience'));
 const Projects = lazy(() => import('./pages/Projects'));
@@ -36,6 +38,10 @@ function Lightspeed() {
   const [on, setOn] = useState(0);
   const seq = useRef([]);
   useEffect(() => {
+    const jump = () => {
+      audioContext(); // inside the key press, so the sound may play
+      setOn(Date.now());
+    };
     const onKey = (e) => {
       const t = e.target;
       if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -43,38 +49,34 @@ function Lightspeed() {
       if (seq.current.join() === KONAMI.join()) {
         seq.current = [];
         unlock('konami');
-        setOn(Date.now());
+        jump();
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('tp:hyperspace', jump);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('tp:hyperspace', jump);
+    };
   }, [unlock]);
+  if (!on) return null;
+  return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
+}
+
+// The jump to lightspeed that greets a first visit to the home page. The inline
+// script in index.html decides (and covers the page until it starts).
+function IntroJump() {
+  const [on, setOn] = useState(() => document.documentElement.dataset.intro === '1');
   useEffect(() => {
-    if (!on) return undefined;
-    const t = setTimeout(() => setOn(0), 1300);
-    return () => clearTimeout(t);
+    if (!on) return;
+    try {
+      window.localStorage.setItem('tp-intro', '1');
+    } catch {
+      /* storage unavailable */
+    }
   }, [on]);
   if (!on) return null;
-  return (
-    <svg key={on} className="lightspeed" viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      {Array.from({ length: 90 }).map((_, i) => {
-        const a = (i * 137.5 * Math.PI) / 180;
-        const r = 4 + ((i * 7) % 18);
-        return (
-          <line
-            key={i}
-            x1={Math.cos(a) * r}
-            y1={Math.sin(a) * r}
-            x2={Math.cos(a) * 80}
-            y2={Math.sin(a) * 80}
-            pathLength="1"
-            strokeWidth={0.18 + (i % 3) * 0.12}
-            style={{ animationDelay: `${(i % 9) * 18}ms` }}
-          />
-        );
-      })}
-    </svg>
-  );
+  return <Hyperspace entry onDone={() => setOn(false)} />;
 }
 
 // ⌘K / Ctrl+K anywhere, or the search button in the nav.
@@ -146,6 +148,7 @@ function Shell() {
       <ScrollSaber />
       <Lightspeed />
       <PaletteHost />
+      <IntroJump />
     </>
   );
 }

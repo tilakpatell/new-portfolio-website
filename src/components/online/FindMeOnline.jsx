@@ -119,7 +119,7 @@ function Calendar({ contributions }) {
   const width = L + cols * S;
   const height = T + 7 * S;
   return (
-    <div ref={scroller} className="gh-scroll">
+    <div ref={scroller} className="gh-scroll" tabIndex={0} role="region" aria-label="GitHub contributions over the last year (scrolls sideways)">
       <svg viewBox={`0 0 ${width} ${height}`} className="gh-svg" role="img" aria-label={`${contributions.total} contributions on GitHub in the last year`}>
         {months
           .filter((m, i) => i === 0 || m.col - months[i - 1].col > 2)

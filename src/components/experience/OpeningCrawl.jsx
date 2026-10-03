@@ -8,6 +8,10 @@ export default function OpeningCrawl({ onClose }) {
   const reduced = prefersReducedMotion();
 
   useEffect(() => {
+    import('../../lib/sfx').then((s) => s.fanfare());
+  }, []);
+
+  useEffect(() => {
     const prev = document.activeElement;
     close.current?.focus();
     const onKey = (e) => e.key === 'Escape' && onClose();

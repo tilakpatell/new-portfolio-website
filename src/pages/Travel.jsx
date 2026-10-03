@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Photo from '../components/Photo';
@@ -13,6 +14,7 @@ import { CONTINENT_COUNT, COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } f
 import { PHOTOS } from '../data/photos';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import { jumpTo } from '../lib/anchors';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);
@@ -44,10 +46,7 @@ function Hero() {
           {countWord(COUNTRY_COUNT)} countries and the Caribbean so far, with a soft spot for mountains and lakes.
         </p>
         <div className="hero-in mt-9" style={{ '--d': '240ms' }}>
-          <a href="#globe" className="btn btn-primary btn-lg group" onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('globe')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-          }}>
+          <a href="#globe" className="btn btn-primary btn-lg group" onClick={(e) => jumpTo(e, 'globe')}>
             Spin the globe <RiArrowDownLine className="h-4 w-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
           </a>
         </div>
@@ -119,7 +118,17 @@ export default function Travel() {
   useDocumentTitle('Travel');
   useSectionThemes();
   const page = useRef(null);
-  const [selected, setSelected] = useState(null);
+  const [params] = useSearchParams();
+  const [selected, setSelected] = useState(() => (PLACES.some((p) => p.id === params.get('place')) ? params.get('place') : null));
+
+  // Deep links from the command palette: /travel?place=is flies to Iceland.
+  useEffect(() => {
+    const id = params.get('place');
+    if (!PLACES.some((p) => p.id === id)) return undefined;
+    setSelected(id);
+    const t = setTimeout(() => document.getElementById('globe')?.scrollIntoView({ block: 'start' }), 300);
+    return () => clearTimeout(t);
+  }, [params]);
 
   const flyTo = useCallback((id) => {
     setSelected(id);
