@@ -1,80 +1,119 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFrameLoop, useInView, useReducedMotion } from '../lib/hooks';
 import { useAchievements } from '../components/Achievements';
-import { H, W, newGame, press, render, step } from './marioGame';
+import { H, W } from './gb/font';
+import { newConsole, renderConsole, stepConsole } from './gb/console';
 import './stages.css';
 
-// A DMG-style handheld running "Super Tilak Land". The plumber runs on his own
-// (attract mode); A, B, Space or ↑ jumps. START pauses. SELECT swaps between
-// full colour and the original four-shade green screen.
+// A DMG-style handheld with a cartridge of three games: Super Tilak Land (a
+// Mario-style platformer), Block Drop and Snake. Every control works — the
+// D-pad and A/B can be held, by touch or keyboard.
+
+const KEYS = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  w: 'up',
+  s: 'down',
+  a: 'left',
+  d: 'right',
+  z: 'a',
+  ' ': 'a',
+  k: 'a',
+  x: 'b',
+  j: 'b',
+  Enter: 'start',
+  Shift: 'select',
+  Backspace: 'select',
+};
+const BUTTONS = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'];
 
 export default function GameBoyStage({ compact = false }) {
   const canvasRef = useRef(null);
-  const gameRef = useRef(null);
-  if (!gameRef.current) gameRef.current = newGame();
+  const deviceRef = useRef(null);
+  const sys = useRef(null);
+  if (!sys.current) sys.current = newConsole({ start: compact ? 'attract' : 'boot' });
+  const input = useRef({ pressed: new Set(), ...Object.fromEntries(BUTTONS.map((b) => [b, false])) });
   const [viewRef, inView] = useInView({ rootMargin: '0px' });
   const reduced = useReducedMotion();
-  const [started, setStarted] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [green, setGreen] = useState(false);
-  const pressed = useRef(false);
+  const [started, setStarted] = useState(!reduced);
+  const [held, setHeld] = useState({});
+  const [focused, setFocused] = useState(false);
   const { unlock } = useAchievements();
+  const events = useRef({});
+  events.current.coin = (n) => n >= 10 && unlock('player');
 
-  const running = inView && !paused && (started || !reduced);
+  const running = inView && started;
 
   const draw = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) render(ctx, gameRef.current, { paused, hint: !pressed.current && gameRef.current.t < 14 });
-  }, [paused]);
-
-  const events = useRef({});
-  events.current.coin = (n) => {
-    if (n >= 10) unlock('player');
-  };
+    if (ctx) renderConsole(ctx, sys.current);
+  }, []);
 
   useFrameLoop((dt) => {
-    step(gameRef.current, dt / 1000, events.current);
+    stepConsole(sys.current, Math.min(dt, 50) / 1000, input.current, events.current);
+    input.current.pressed.clear();
     draw();
   }, running);
 
   useEffect(() => {
     if (!running) draw();
-  }, [running, draw, green]);
+  }, [running, draw]);
 
-  const jump = useCallback(() => {
-    setStarted(true);
-    setPaused(false);
-    pressed.current = true;
-    press(gameRef.current);
-  }, []);
+  const press = useCallback(
+    (key, down) => {
+      const st = input.current;
+      if (down) {
+        if (!st[key]) st.pressed.add(key);
+        st[key] = true;
+      } else st[key] = false;
+      setHeld((h) => (h[key] === down ? h : { ...h, [key]: down }));
+      if (down && !started) setStarted(true);
+    },
+    [started],
+  );
 
-  const togglePause = () => {
-    setStarted(true);
-    setPaused((v) => !v);
+  const releaseAll = () => BUTTONS.forEach((b) => input.current[b] && press(b, false));
+
+  const onKey = (down) => (e) => {
+    const k = KEYS[e.key] || KEYS[e.key.toLowerCase?.()];
+    if (!k) return;
+    e.preventDefault();
+    if (down && e.repeat) return;
+    press(k, down);
   };
-  const togglePalette = () => {
-    const g = gameRef.current;
-    g.palette = g.palette === 'color' ? 'dmg' : 'color';
-    setGreen(g.palette === 'dmg');
-  };
 
-  const onKeyDown = (e) => {
-    const k = e.key.toLowerCase();
-    if (k === ' ' || k === 'arrowup' || k === 'enter' || k === 'x' || k === 'z') {
+  // pointer helpers: hold while pressed, release on up/leave/cancel
+  const hold = (key) => ({
+    onPointerDown: (e) => {
       e.preventDefault();
-      jump();
-    } else if (k === 'p') togglePause();
-    else if (k === 'g') togglePalette();
-  };
+      deviceRef.current?.focus({ preventScroll: true });
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      press(key, true);
+    },
+    onPointerUp: () => press(key, false),
+    onPointerCancel: () => press(key, false),
+    onLostPointerCapture: () => press(key, false),
+    onContextMenu: (e) => e.preventDefault(),
+  });
 
   return (
-    <div ref={viewRef} className={`flex flex-col items-center ${compact ? 'gap-4' : 'gap-5 py-4 sm:py-8'}`}>
+    <div ref={viewRef} className={`flex flex-col items-center ${compact ? 'gap-3' : 'gap-5 py-4 sm:py-6'}`}>
       <div
+        ref={deviceRef}
         className={`gb ${compact ? 'gb-compact' : ''}`}
         tabIndex={0}
         role="application"
-        aria-label="Playable Mario-style game on a Game Boy. Space or A jumps, P pauses, G toggles the green screen."
-        onKeyDown={onKeyDown}
+        aria-label="Game Boy with three playable games. Arrow keys move, Z or Space is A, X is B, Enter is Start, Shift is Select."
+        onKeyDown={onKey(true)}
+        onKeyUp={onKey(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          releaseAll();
+        }}
+        onPointerDown={() => deviceRef.current?.focus({ preventScroll: true })}
       >
         <div className="gb-grooves" aria-hidden="true" />
         <div className="gb-bezel">
@@ -87,10 +126,10 @@ export default function GameBoyStage({ compact = false }) {
             <i data-on={running ? 'true' : 'false'} />
             <span>POWER</span>
           </div>
-          <div className="gb-screen" onPointerDown={jump}>
+          <div className="gb-screen">
             <canvas ref={canvasRef} width={W} height={H} />
-            {reduced && !started && (
-              <button type="button" className="gb-start-overlay" onClick={jump}>
+            {!started && (
+              <button type="button" className="gb-start-overlay" onClick={() => setStarted(true)}>
                 Press start
               </button>
             )}
@@ -100,26 +139,29 @@ export default function GameBoyStage({ compact = false }) {
           Tilak <span>TP-01</span>
         </p>
         <div className="gb-controls">
-          <div className="gb-dpad" aria-hidden="true">
-            <button type="button" tabIndex={-1} className="gb-dpad-up" onPointerDown={jump} />
-            <span className="gb-dpad-h" />
-            <span className="gb-dpad-v" />
+          <div className="gb-dpad" data-held={['up', 'down', 'left', 'right'].filter((d) => held[d]).join(' ')}>
+            <span className="gb-dpad-h" aria-hidden="true" />
+            <span className="gb-dpad-v" aria-hidden="true" />
+            <button type="button" className="gb-dpad-btn gb-up" aria-label="Up" {...hold('up')} />
+            <button type="button" className="gb-dpad-btn gb-down" aria-label="Down" {...hold('down')} />
+            <button type="button" className="gb-dpad-btn gb-left" aria-label="Left" {...hold('left')} />
+            <button type="button" className="gb-dpad-btn gb-right" aria-label="Right" {...hold('right')} />
           </div>
           <div className="gb-ab">
-            <button type="button" className="gb-btn" onPointerDown={jump} aria-label="B — jump">
+            <button type="button" className="gb-btn" data-held={held.b ? 'true' : 'false'} aria-label="B" {...hold('b')}>
               <span>B</span>
             </button>
-            <button type="button" className="gb-btn gb-btn-a" onPointerDown={jump} aria-label="A — jump">
+            <button type="button" className="gb-btn gb-btn-a" data-held={held.a ? 'true' : 'false'} aria-label="A" {...hold('a')}>
               <span>A</span>
             </button>
           </div>
         </div>
         <div className="gb-pills">
-          <button type="button" onClick={togglePalette} aria-label={green ? 'Select: switch to colour' : 'Select: switch to green screen'}>
+          <button type="button" aria-label="Select" {...hold('select')}>
             <i />
             <span>Select</span>
           </button>
-          <button type="button" onClick={togglePause} aria-label={paused ? 'Start: resume' : 'Start: pause'}>
+          <button type="button" aria-label="Start" {...hold('start')}>
             <i />
             <span>Start</span>
           </button>
@@ -130,8 +172,12 @@ export default function GameBoyStage({ compact = false }) {
           ))}
         </div>
       </div>
-      <p className="mono text-center text-xs text-muted">
-        A · Space to jump · Start pauses · Select swaps colour ↔ green screen
+      <p className="mono max-w-sm text-center text-xs leading-relaxed text-muted">
+        {focused ? (
+          <>← → move · Z / Space = A (jump) · X = B (run) · Enter = Start · Shift = Select (menu)</>
+        ) : (
+          <>Click the Game Boy to play with your keyboard — or use the buttons. Start picks a game.</>
+        )}
       </p>
     </div>
   );

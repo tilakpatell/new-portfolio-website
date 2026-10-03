@@ -30,6 +30,9 @@ const session = {
 };
 
 const ThemeContext = createContext(null);
+// The setter lives in its own context so pages that drive the theme don't
+// re-render every time it changes.
+const ThemeSetterContext = createContext(() => {});
 
 export function ThemeProvider({ children }) {
   const { pathname } = useLocation();
@@ -55,13 +58,19 @@ export function ThemeProvider({ children }) {
   }, [pathname]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = active;
+    const root = document.documentElement;
+    // Switch instantly: suppress every colour transition for one frame so a
+    // theme change is a single restyle, not hundreds of animations.
+    root.classList.add('theme-switching');
+    root.dataset.theme = active;
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
     setSeen((prev) => {
       if (prev.has(active)) return prev;
       const next = new Set(prev).add(active);
       session.set(SEEN_KEY, JSON.stringify([...next]));
       return next;
     });
+    return () => cancelAnimationFrame(raf);
   }, [active]);
 
   useEffect(() => {
@@ -91,7 +100,11 @@ export function ThemeProvider({ children }) {
     () => ({ active, theme: THEMES[active], pinned, pin, setScrollTheme, seen, mode, toggleMode }),
     [active, pinned, pin, seen, mode, toggleMode],
   );
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeSetterContext.Provider value={setScrollTheme}>
+      <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    </ThemeSetterContext.Provider>
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -101,7 +114,7 @@ export const useTheme = () => useContext(ThemeContext);
 // the screen sets the site's colours.
 // eslint-disable-next-line react-refresh/only-export-components
 export function useSectionThemes() {
-  const { setScrollTheme } = useTheme();
+  const setScrollTheme = useContext(ThemeSetterContext);
   const { pathname } = useLocation();
   useEffect(() => {
     const sections = [...document.querySelectorAll('[data-theme-section]')];

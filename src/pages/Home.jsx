@@ -119,6 +119,16 @@ export default function Home() {
   useDocumentTitle(null);
   useSectionThemes();
   const page = useRef(null);
+
+  // Load the two live demos while the browser is idle, so they don't stall a scroll later.
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1200));
+    const id = idle(() => {
+      import('../stages/GameBoyStage');
+      import('../stages/ClaudeStage');
+    });
+    return () => (window.cancelIdleCallback || clearTimeout)(id);
+  }, []);
   const { unlock } = useAchievements();
   const gameboy = projectById('gameboy-emulator');
   const translator = projectById('swaminarayan-translator');

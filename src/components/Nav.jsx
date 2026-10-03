@@ -97,10 +97,49 @@ export function ThemePicker() {
 export default function Nav() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const header = useRef(null);
   const { unlock } = useAchievements();
   const { mode, toggleMode } = useTheme();
 
   useEffect(() => setOpen(false), [pathname]);
+
+  // Hide while reading (scrolling down); come back on scroll up, near the top,
+  // when the pointer reaches for it, or when focus moves into it.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let frame = 0;
+    let near = false;
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const dy = y - lastY;
+      if (Math.abs(dy) > 6) {
+        setHidden(y > 140 && dy > 0 && !near);
+        lastY = y;
+      }
+      if (y < 140) setHidden(false);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    const onMove = (e) => {
+      const n = e.clientY < 90;
+      if (n !== near) {
+        near = n;
+        if (n) setHidden(false);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pointermove', onMove);
+    };
+  }, []);
+
+  useEffect(() => setHidden(false), [pathname]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -114,11 +153,17 @@ export default function Nav() {
   const iconBtn = 'nav-icon grid h-9 w-9 place-items-center rounded-full transition-colors';
 
   return (
-    <header className="site-nav fixed inset-x-0 top-0 z-40 px-3 pt-3 md:px-6 md:pt-4">
+    <header
+      ref={header}
+      className="site-nav fixed inset-x-0 top-0 z-40"
+      data-hidden={hidden && !open ? 'true' : 'false'}
+      onFocusCapture={() => setHidden(false)}
+    >
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <nav className="nav-bar mx-auto flex h-[52px] max-w-[1200px] items-center justify-between gap-3 rounded-full pl-5 pr-2 md:h-14 md:pl-6" aria-label="Main">
+      <div className="nav-shell">
+      <nav className="nav-bar flex h-[52px] items-center justify-between gap-3 rounded-full pl-5 pr-2 md:h-14 md:pl-6" aria-label="Main">
         <Link to="/" className="wordmark rounded-md" aria-label="Tilak Patel, home">
           Tilak Patel
         </Link>
@@ -167,7 +212,7 @@ export default function Nav() {
       </nav>
 
       {open && (
-        <div id="mobile-menu" className="nav-bar mx-auto mt-2 max-h-[calc(100dvh-90px)] max-w-[1200px] overflow-y-auto rounded-3xl px-5 pb-6 pt-2 md:hidden">
+        <div id="mobile-menu" className="nav-bar mt-2 max-h-[calc(100dvh-90px)] overflow-y-auto rounded-3xl px-5 pb-6 pt-2 md:hidden">
           <ul className="divide-y divide-[var(--border)]">
             {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
@@ -200,6 +245,7 @@ export default function Nav() {
           </div>
         </div>
       )}
+      </div>
     </header>
   );
 }

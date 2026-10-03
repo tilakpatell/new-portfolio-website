@@ -40,7 +40,7 @@ export const roles = [
       'Collaborated with application teams to plan and execute transitions to RTX’s Xeta Cloud modernization platform',
     ],
     stack: ['Application modernization', 'Cloud migration', 'Xeta Cloud', 'Roadmapping'],
-    result: { value: '2028', label: 'enterprise modernization roadmap' },
+    result: { value: '2028', label: 'enterprise modernization roadmap', short: 'roadmap' },
     motif: 'roadmap',
   },
   {
@@ -61,7 +61,7 @@ export const roles = [
       'Shipped cross-platform desktop app (React, Electron, Copilot SDK) integrating Jira, Confluence, and Artifactory',
     ],
     stack: ['Python', 'FastAPI', 'React', 'Electron', 'Copilot SDK', 'Jira', 'Confluence', 'Artifactory'],
-    result: { value: '60+', label: 'REST endpoints in the log-analysis platform' },
+    result: { value: '60+', label: 'REST endpoints in the log-analysis platform', short: 'REST endpoints' },
     motif: 'stream',
   },
   {
@@ -81,7 +81,7 @@ export const roles = [
       'Implemented automated overnight testing with CSV export, eliminating hours of manual data collection daily',
     ],
     stack: ['Python', 'Qt/PySide6', 'Data acquisition', 'Test automation'],
-    result: { value: 'LabVIEW → Qt', label: 'legacy test system fully replaced' },
+    result: { value: 'LabVIEW → Qt', label: 'legacy test system fully replaced', short: 'rewrite' },
     motif: 'spectrum',
   },
   {
@@ -102,7 +102,7 @@ export const roles = [
       'Saved 4+ hours/week per analyst by building AI-powered assistant for regulatory compliance queries',
     ],
     stack: ['Python', 'Grafana', 'Loki', 'LLM assistant', 'Data visualization'],
-    result: { value: '4+ hrs', label: 'saved per analyst, every week' },
+    result: { value: '4+ hrs', label: 'saved per analyst, every week', short: 'saved / analyst / week' },
     motif: 'heatmap',
   },
   {
@@ -122,7 +122,7 @@ export const roles = [
       'Fed extracted triplets into knowledge graphs via LangGraph, automating analysis and cutting review time by 70%',
     ],
     stack: ['Python', 'LangGraph', 'Pydantic', 'Docling', 'Knowledge graphs'],
-    result: { value: '90%', label: 'extraction accuracy across 500+ documents' },
+    result: { value: '90%', label: 'extraction accuracy across 500+ documents', short: 'extraction accuracy' },
     motif: 'graph',
   },
 ];

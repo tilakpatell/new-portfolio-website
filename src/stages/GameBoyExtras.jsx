@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { StageWindow } from './StageKit';
 import { useFrameLoop, useInView, useReducedMotion } from '../lib/hooks';
-import { H, W, newGame, render, text } from './marioGame';
+import { H, W, text } from './gb/font';
+import { newMario, renderMario } from './gb/mario';
 
 const hex = (n, w = 2) => n.toString(16).toUpperCase().padStart(w, '0');
 
@@ -215,10 +216,9 @@ export function PpuStage() {
     const src = document.createElement('canvas');
     src.width = W;
     src.height = H;
-    const g = newGame(7);
-    g.mode = 'title';
-    g.t = 0.2;
-    render(src.getContext('2d'), g);
+    const g = newMario({ attract: true, seed: 7 });
+    g.t = 1;
+    renderMario(src.getContext('2d'), g);
     source.current = src;
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {

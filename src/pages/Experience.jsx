@@ -97,7 +97,7 @@ function Chapter({ role, episode, last }) {
     ['Where', role.location],
     ['When', fmtRange(role)],
     ['Type', roleType(role)],
-    ['Sector', role.sector],
+    role.result ? ['Impact', `${role.result.value} ${role.result.short}`] : ['Sector', role.sector],
   ];
   return (
     <section id={role.id} data-theme-section={role.id} className="relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
@@ -136,12 +136,6 @@ function Chapter({ role, episode, last }) {
           </div>
           <div>
             <Motif name={role.motif} />
-            {role.result && (
-              <div className="mt-5 border-l-2 pl-4" style={{ borderColor: 'var(--accent)' }}>
-                <p className="stretch-wide text-2xl font-semibold text-ink">{role.result.value}</p>
-                <p className="mt-1 text-sm text-muted">{role.result.label}</p>
-              </div>
-            )}
           </div>
         </div>
         {!last && <Saber className="mx-auto mt-14 md:mt-16" />}

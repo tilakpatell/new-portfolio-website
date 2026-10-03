@@ -318,6 +318,9 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   color-scheme: dark;
 }
 
+/* A theme change is one restyle: no colour transitions while it happens */
+.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: none !important; }
+
 /* ─── Base ───────────────────────────────────────────────────────────────── */
 @layer base {
   html {
@@ -577,8 +580,23 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
 }
 
 /* ─── Nav + lightsaber scroll progress ──────────────────────────────────── */
-.site-nav { pointer-events: none; }
-.site-nav > * { pointer-events: auto; }
+.site-nav {
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.site-nav[data-hidden='true'] { transform: translateY(calc(-100% - 16px)); }
+.site-nav .nav-bar { pointer-events: auto; }
+/* The bar lines up with the content column, clear of the scroll line in the left gutter */
+.nav-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 12px calc(var(--gutter-r) - 8px) 0 calc(var(--gutter-l) - 8px);
+}
+@media (min-width: 768px) {
+  .nav-shell { padding-top: 16px; }
+}
 .nav-bar {
   background: color-mix(in srgb, var(--bg) 94%, transparent);
   border: 1px solid var(--border);
