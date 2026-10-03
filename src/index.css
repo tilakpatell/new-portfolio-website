@@ -796,7 +796,7 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
 
 .toast { animation: toast-in 3.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes toast-in {
-  0% { opacity: 0; transform: translateY(20px); }
+  0% { transform: translateY(24px); }
   7%, 88% { opacity: 1; transform: none; }
   100% { opacity: 0; transform: translateY(10px); }
 }

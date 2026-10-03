@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 
-export const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+const matches = (query) => typeof window !== 'undefined' && (window.matchMedia?.(query).matches ?? false);
 
-export function useReducedMotion() {
-  const [reduced, setReduced] = useState(prefersReducedMotion);
+export const prefersReducedMotion = () => matches('(prefers-reduced-motion: reduce)');
+
+// Whether a media query matches, kept up to date as it changes.
+export function useMediaQuery(query) {
+  const [on, setOn] = useState(() => matches(query));
   useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const mq = window.matchMedia?.(query);
     if (!mq) return undefined;
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener?.('change', on);
-    return () => mq.removeEventListener?.('change', on);
-  }, []);
-  return reduced;
+    const update = () => setOn(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, [query]);
+  return on;
 }
+
+export const useReducedMotion = () => useMediaQuery('(prefers-reduced-motion: reduce)');
 
 // Visible-in-viewport flag. `once` keeps it true after the first sighting.
 export function useInView({ once = false, rootMargin = '0px 0px -10% 0px', threshold = 0 } = {}) {

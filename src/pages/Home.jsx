@@ -28,7 +28,7 @@ function Element({ symbol, number, weight }) {
   return (
     <span className="element element-in">
       <sup aria-hidden="true">{number}</sup>
-      {symbol}
+      <span className="element-sym">{symbol}</span>
       <sub aria-hidden="true">{weight}</sub>
     </span>
   );
@@ -293,8 +293,6 @@ export default function Home() {
 
       <FindMeOnline />
 
-      <Interests />
-
       {/* Closing */}
       <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-14 md:pb-32 md:pt-24" aria-labelledby="closing-title">
         <div className="relative">
@@ -334,6 +332,8 @@ export default function Home() {
           </div>
         </PhotoBand>
       </section>
+
+      <Interests />
     </div>
   );
 }

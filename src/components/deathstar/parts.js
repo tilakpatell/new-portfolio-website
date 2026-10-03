@@ -8,7 +8,7 @@ export const PARTS = [
     name: 'Superlaser',
     text: 'Eight tributary beams meet at the focus lens above the dish. One shot is enough for a planet.',
     quote: ['You may fire when ready.', 'Grand Moff Tarkin'],
-    gif: 'deathStar',
+    gif: 'alderaan',
     action: 'fire',
   },
   {
@@ -18,7 +18,7 @@ export const PARTS = [
     name: 'Thermal exhaust port',
     text: 'Two metres wide, right below the main port. A direct hit starts a chain reaction in the main reactor.',
     quote: ['Use the Force, Luke.', 'Obi-Wan Kenobi'],
-    gif: 'explosion',
+    gif: 'yavin',
     action: 'trench',
   },
   {
@@ -28,6 +28,7 @@ export const PARTS = [
     name: 'Equatorial trench',
     text: 'A canyon of turbolaser towers that runs around the station: the only way in to the exhaust port.',
     quote: ['Stay on target.', 'Gold Five'],
+    gif: 'trenchRun',
     action: 'trench',
   },
   {

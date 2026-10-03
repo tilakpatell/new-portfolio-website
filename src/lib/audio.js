@@ -55,6 +55,20 @@ export function audioContext() {
 // Where every sound should connect: the master volume, which mutes with the setting.
 export const output = () => (audioContext() ? master : null);
 
+// Download a file's bytes ahead of time (on hover, say). This creates no audio
+// context, so it is safe before the visitor has clicked anything.
+const bytes = new Map();
+export function prefetch(url) {
+  if (!bytes.has(url)) {
+    bytes.set(
+      url,
+      fetch(url).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${url}`)))),
+    );
+    bytes.get(url).catch(() => bytes.delete(url));
+  }
+  return bytes.get(url);
+}
+
 // Fetch and decode an audio file once.
 const decoded = new Map();
 export function loadBuffer(url) {
@@ -63,9 +77,9 @@ export function loadBuffer(url) {
   if (!decoded.has(url)) {
     decoded.set(
       url,
-      fetch(url)
-        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${url}`))))
-        .then((data) => new Promise((resolve, reject) => ac.decodeAudioData(data, resolve, reject)))
+      prefetch(url)
+        // decoding detaches the buffer it is given, so decode a copy
+        .then((data) => new Promise((resolve, reject) => ac.decodeAudioData(data.slice(0), resolve, reject)))
         .catch((e) => {
           decoded.delete(url);
           throw e;

@@ -171,7 +171,7 @@ export default function MusicCard() {
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
-          onPointerEnter={() => music().then((m) => m.prepare())}
+          onPointerEnter={() => music().then((m) => m.warm())}
         >
           <defs>
             <linearGradient id="sitar-wood" x1="0" y1="0" x2="0" y2="1">

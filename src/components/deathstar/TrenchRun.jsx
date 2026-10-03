@@ -3,6 +3,8 @@ import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 
 const sfx = () => import('../../lib/sfx');
+// The HUD writes in Aurebesh when the site does.
+const hudFamily = () => (document.documentElement.dataset.aurebesh === 'true' ? '"Basic Script", monospace' : '"JetBrains Mono", monospace');
 const play = (name) => sfx().then((s) => s[name]());
 
 // The trench run, on a 2D canvas (no WebGL, so it plays without a GPU).
@@ -360,7 +362,7 @@ export default function TrenchRun({ onWin }) {
         ctx.fillRect(bx, by, bw, bh);
         ctx.strokeRect(bx, by, bw, bh);
         ctx.fillStyle = 'rgba(255,179,71,0.85)';
-        ctx.font = '600 9px "JetBrains Mono", monospace';
+        ctx.font = `600 9px ${hudFamily()}`;
         ctx.textAlign = 'left';
         ctx.fillText('REAR', bx + 6, by + 12);
         const shrink = g.vader.gone ? Math.max(0.15, g.vader.away) : 1;
@@ -382,7 +384,7 @@ export default function TrenchRun({ onWin }) {
         ctx.lineTo(cx + 60, cy);
         ctx.stroke();
         if (portD < 26) {
-          ctx.font = '600 12px "JetBrains Mono", monospace';
+          ctx.font = `600 12px ${hudFamily()}`;
           ctx.textAlign = 'center';
           ctx.fillText(`RANGE ${Math.max(0, Math.round(portD * 100))}`, cx, cy + 42);
           if (portD > 2.5 && portD < 9) ctx.fillText('LOCK', cx, cy - 30);

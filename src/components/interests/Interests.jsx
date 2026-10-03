@@ -10,6 +10,8 @@ import { countWord } from '../travel/PlacesExplorer';
 import MusicCard from './MusicCard';
 import { prefersReducedMotion } from '../../lib/hooks';
 import Gif from '../Gif';
+import Gauntlet from './Gauntlet';
+import { STONES, VIEW } from './stones';
 
 // What I'm into when I'm not writing code, one interactive card each.
 
@@ -105,28 +107,6 @@ function Gaming() {
   );
 }
 
-// The six stones, each a cut gem: a light top facet and two shaded sides.
-const STONES = [
-  { id: 'space', name: 'Space Stone', base: '#2f6ce0', light: '#8fb4ff', dark: '#173b8a' },
-  { id: 'mind', name: 'Mind Stone', base: '#e9b923', light: '#ffe48a', dark: '#9a7108' },
-  { id: 'reality', name: 'Reality Stone', base: '#d7263d', light: '#ff8a98', dark: '#7d0f1d' },
-  { id: 'power', name: 'Power Stone', base: '#8e44ad', light: '#d29bea', dark: '#4e1f63' },
-  { id: 'time', name: 'Time Stone', base: '#2fa84f', light: '#8ff0a9', dark: '#15622b' },
-  { id: 'soul', name: 'Soul Stone', base: '#f28c28', light: '#ffc68a', dark: '#9a4d08' },
-];
-
-function Gem({ stone, on }) {
-  return (
-    <svg viewBox="-14 -18 28 36" className="gem" aria-hidden="true">
-      <path d="M0 -17 L12 -8 L12 8 L0 17 L-12 8 L-12 -8 Z" fill={stone.base} />
-      <path d="M0 -17 L12 -8 L0 -3 L-12 -8 Z" fill={stone.light} />
-      <path d="M-12 -8 L0 -3 L0 17 L-12 8 Z" fill={stone.dark} />
-      <path d="M12 -8 L0 -3 L0 17 L12 8 Z" fill={stone.base} />
-      <path d="M-5 -12 L0 -14 L-2 -9 Z" fill="#ffffff" opacity={on ? 0.9 : 0.4} />
-    </svg>
-  );
-}
-
 function Marvel() {
   const { snap } = useFun();
   const [have, setHave] = useState([]);
@@ -137,33 +117,34 @@ function Marvel() {
       title="Marvel"
       className="fun-marvel"
       visual={
-        <div className="stones-panel">
+        <div className="stones-panel" data-all={all || undefined}>
           <div className="ds-stars absolute inset-0" aria-hidden="true" />
-          <div className="stones-arc" role="group" aria-label="Infinity Stones">
-            {STONES.map((s, i) => {
-              const on = have.includes(s.id);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="stone"
-                  data-all={all || undefined}
-                  aria-pressed={on}
-                  aria-label={on ? `${s.name}, collected` : `Collect the ${s.name}`}
-                  style={{ '--glow': s.base, '--lift': `${Math.round(Math.sin((i / (STONES.length - 1)) * Math.PI) * -14)}px`, animationDelay: `${i * 120}ms` }}
-                  onClick={() => setHave((h) => (on ? h : [...h, s.id]))}
-                >
-                  <Gem stone={s} on={on} />
-                </button>
-              );
-            })}
+          <div className="gauntlet-wrap">
+            <Gauntlet have={have} all={all} />
+            <div className="gauntlet-sockets" role="group" aria-label="Infinity Stones">
+              {STONES.map((s) => {
+                const on = have.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="socket"
+                    style={{ left: `${((s.x - VIEW.x) / VIEW.w) * 100}%`, top: `${((s.y - VIEW.y) / VIEW.h) * 100}%`, '--glow': s.color }}
+                    aria-pressed={on}
+                    aria-label={on ? `${s.name}, collected` : `Collect the ${s.name}`}
+                    data-label={s.name}
+                    onClick={() => setHave((h) => (on ? h : [...h, s.id]))}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       }
     >
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">All in on the whole saga. Collect the six stones, then snap.</p>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">All in on the whole saga. Set all six stones in the gauntlet, then snap.</p>
       <p className="mt-2 text-sm text-muted" aria-live="polite">
-        {all ? 'All six. Ready when you are.' : last ? `${last.name} collected. ${6 - have.length} to go.` : 'None collected yet.'}
+        {all ? 'All six. Ready when you are.' : last ? `${last.name} set. ${6 - have.length} to go.` : 'Tap a socket to set its stone.'}
       </p>
       <button type="button" className="btn btn-primary btn-sm mt-auto self-start" disabled={!all} onClick={snap}>
         Snap
@@ -257,7 +238,8 @@ function BreakingBad() {
         <div className="bb-card">
           <span className="bb-smoke bb-smoke-a" aria-hidden="true" />
           <span className="bb-smoke bb-smoke-b" aria-hidden="true" />
-          <p className="bb-title" aria-label="Tilak Patel">
+          <p className="bb-title">
+            <span className="sr-only">Tilak Patel</span>
             <span className="bb-line" aria-hidden="true">
               <Tile n={22} sym="Ti" mass="47.867" name="Titanium" />
               <span className="bb-rest">lak</span>

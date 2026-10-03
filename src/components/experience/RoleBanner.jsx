@@ -3,7 +3,7 @@ import { useOnceVisible } from '../ui';
 
 // A wide photograph for each role, in the same misty treatment as the travel
 // page: data-centre racks for AWS, F-35s for RTX, headphones for Bose, laser
-// optics for Pendar, a patient monitor for Empowerreg and SRC's own counter-
+// optics for Pendar, the FDA's White Oak campus for Empowerreg and SRC's own counter-
 // mortar radar. It settles into place the first time it is seen.
 export default function RoleBanner({ role, className = '' }) {
   const ref = useOnceVisible('seen');

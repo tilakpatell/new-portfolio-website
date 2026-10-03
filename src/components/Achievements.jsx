@@ -90,7 +90,11 @@ export function AchievementProvider({ children }) {
       {children}
       <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast]:pointer-events-auto" aria-live="polite">
         {toast && (
-          <div key={toast.key} className="toast card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40" style={{ background: 'var(--surface-2)' }}>
+          <div
+            key={toast.key}
+            className="toast card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40"
+            style={{ background: 'var(--surface-2)', animationDuration: toast.gif ? '7s' : '3.8s' }}
+          >
             {toast.kind !== 'note' && (
               <span className="grid h-9 w-9 flex-none place-items-center rounded-full border border-line-strong">
                 <span className="h-3 w-3 rounded-full" style={{ background: themeId ? THEMES[themeId].swatch : 'var(--accent)' }} />

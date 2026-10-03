@@ -33,6 +33,63 @@ export function FunProvider({ children }) {
     local.set('tp-aurebesh', aurebesh);
   }, [aurebesh]);
 
+  // Native title tooltips are drawn by the browser in its own font, so in
+  // Aurebesh mode they are swapped for ones the page draws.
+  useEffect(() => {
+    if (!aurebesh) return undefined;
+    const swap = (root) => {
+      const els = root.querySelectorAll ? root.querySelectorAll('[title]') : [];
+      [root, ...els].forEach((el) => {
+        if (!(el instanceof Element) || !el.hasAttribute('title')) return;
+        el.setAttribute('data-ab-title', el.getAttribute('title'));
+        el.removeAttribute('title');
+      });
+    };
+    swap(document.body);
+    const mo = new MutationObserver((list) => {
+      for (const m of list) {
+        if (m.type === 'attributes' && m.target.hasAttribute?.('title')) swap(m.target);
+        m.addedNodes.forEach((n) => n.nodeType === 1 && swap(n));
+      }
+    });
+    mo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
+    const tip = document.createElement('div');
+    tip.className = 'ab-tooltip';
+    tip.setAttribute('aria-hidden', 'true');
+    tip.hidden = true;
+    document.body.appendChild(tip);
+    const show = (e) => {
+      const el = e.target instanceof Element ? e.target.closest('[data-ab-title]') : null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      tip.textContent = el.getAttribute('data-ab-title');
+      tip.style.left = `${Math.min(window.innerWidth - 140, Math.max(140, r.left + r.width / 2))}px`;
+      tip.style.top = `${Math.max(40, r.top)}px`;
+      tip.hidden = false;
+    };
+    const hide = (e) => {
+      const el = e.target instanceof Element ? e.target.closest('[data-ab-title]') : null;
+      if (el) tip.hidden = true;
+    };
+    document.addEventListener('pointerover', show);
+    document.addEventListener('pointerout', hide);
+    document.addEventListener('focusin', show);
+    document.addEventListener('focusout', hide);
+    return () => {
+      mo.disconnect();
+      document.removeEventListener('pointerover', show);
+      document.removeEventListener('pointerout', hide);
+      document.removeEventListener('focusin', show);
+      document.removeEventListener('focusout', hide);
+      tip.remove();
+      // put the native tooltips back
+      document.querySelectorAll('[data-ab-title]').forEach((el) => {
+        el.setAttribute('title', el.getAttribute('data-ab-title'));
+        el.removeAttribute('data-ab-title');
+      });
+    };
+  }, [aurebesh]);
+
   const setAurebesh = useCallback(
     (on) => {
       setAurebeshState(on);
@@ -112,11 +169,10 @@ export function FunProvider({ children }) {
       {children}
       {aurebesh && (
         <div className="aurebesh-pill" role="status">
-          <span className="aurebesh" aria-hidden="true">
-            Aurebesh
-          </span>
+          <span aria-hidden="true">Aurebesh</span>
           <span className="sr-only">Aurebesh mode is on.</span>
-          <button type="button" onClick={() => setAurebesh(false)}>
+          {/* the way back out stays in plain letters */}
+          <button type="button" className="ab-keep" onClick={() => setAurebesh(false)}>
             Back to Basic
           </button>
         </div>

@@ -470,14 +470,14 @@ export const PHOTOS = {
       800,
       1600
     ],
-    "ratio": 0.667,
-    "alt": "A medical monitor showing heart-rate and vital-sign waveforms",
+    "ratio": 0.665,
+    "alt": "A modern glass laboratory building on the FDA's White Oak campus at dusk",
     "credit": {
-      "author": "Petty Officer 1st Class James Stenberg",
+      "author": "U.S. Food and Drug Administration",
       "license": "Public domain",
       "licenseUrl": null,
-      "source": "https://commons.wikimedia.org/wiki/File:Vital_signs_monitor_display.jpg",
-      "title": "Vital signs monitor display"
+      "source": "https://commons.wikimedia.org/wiki/File:FDA_Bldg_64_-_Exterior_(5161375466).jpg",
+      "title": "FDA Bldg 64 - Exterior (5161375466)"
     }
   },
   "exp-src": {

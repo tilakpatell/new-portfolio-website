@@ -6,7 +6,7 @@ import { PLANETS, PLANET_AT as PLANET, PlanetArt } from '../components/deathstar
 import { AurebeshLine } from '../components/Wordmark';
 import { jumpTo } from '../lib/anchors';
 import Hyperspace from '../components/Hyperspace';
-import { useDocumentTitle, useReducedMotion } from '../lib/hooks';
+import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
 import { PARTS } from '../components/deathstar/parts';
 import Gif from '../components/Gif';
@@ -34,7 +34,7 @@ function PartPanel({ part, onClose, onAction }) {
         </button>
       </div>
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">{part.text}</p>
-      {part.gif && <Gif key={part.gif} name={part.gif} eager className="mt-4" />}
+      {part.gif && <Gif key={part.gif} name={part.gif} size="medium" eager className="mt-4" />}
       <figure className="mt-4">
         <blockquote className="text-lg text-ink">“{part.quote[0]}”</blockquote>
         <figcaption className="mt-1 text-sm text-muted">{part.quote[1]}</figcaption>
@@ -50,6 +50,9 @@ function PartPanel({ part, onClose, onAction }) {
 
 // The hidden page. Reachable from the terminal ('deathstar'), the footer and the Konami code.
 const DS = { x: 520, y: 220, r: 150 };
+// The whole 680×400 scene, or on phones a tighter crop so the station is big enough to tap.
+const SCENE = { x: 0, y: 0, w: 680, h: 400 };
+const SCENE_PHONE = { x: 44, y: 40, w: 644, h: 350 };
 const DISH = { x: 462, y: 160, r: 36 };
 const FOCUS = { x: 432, y: 138 };
 const BEAM = '#8dff6b';
@@ -57,6 +60,8 @@ const BEAM = '#8dff6b';
 export default function DeathStar() {
   useDocumentTitle('DS-1');
   const reduced = useReducedMotion();
+  const phone = useMediaQuery('(max-width: 639px)');
+  const vb = phone ? SCENE_PHONE : SCENE;
   // idle → charging → firing → boom → gone
   const [phase, setPhase] = useState('idle');
   const [shots, setShots] = useState(0);
@@ -152,7 +157,8 @@ export default function DeathStar() {
       {destroyed && !reduced && <div key="ds-flash" className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
       <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
         <div className="relative">
-        <svg viewBox="0 0 680 400" className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${PLANETS[planet].name}`}>
+        <div className="ds-stage">
+        <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${PLANETS[planet].name}`}>
           <defs>
             <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
               <stop offset="0" stopColor="#b9bec4" />
@@ -248,20 +254,26 @@ export default function DeathStar() {
         </svg>
         {!destroyed && !jumping && (
           <div className="ds-hotspots" role="group" aria-label="Parts of the station">
-            {PARTS.map((pt) => (
-              <button
-                key={pt.id}
-                type="button"
-                className="ds-hotspot"
-                style={{ left: `${(pt.x / 680) * 100}%`, top: `${(pt.y / 400) * 100}%` }}
-                aria-pressed={part?.id === pt.id}
-                aria-label={pt.name}
-                data-label={pt.name}
-                onClick={() => setPart(part?.id === pt.id ? null : pt)}
-              />
-            ))}
+            {PARTS.map((pt) => {
+              const left = ((pt.x - vb.x) / vb.w) * 100;
+              return (
+                <button
+                  key={pt.id}
+                  type="button"
+                  className="ds-hotspot"
+                  style={{ left: `${left}%`, top: `${((pt.y - vb.y) / vb.h) * 100}%` }}
+                  aria-pressed={part?.id === pt.id}
+                  aria-label={pt.name}
+                  data-label={pt.name}
+                  // labels near an edge open inwards so they stay on screen
+                  data-side={left > 72 ? 'end' : left < 28 ? 'start' : undefined}
+                  onClick={() => setPart(part?.id === pt.id ? null : pt)}
+                />
+              );
+            })}
           </div>
         )}
+        </div>
         {part && <PartPanel part={part} onClose={() => setPart(null)} onAction={onAction} />}
         </div>
 

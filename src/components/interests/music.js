@@ -13,7 +13,7 @@
 //
 // Listen: the full 15-second recording.
 
-import { audioContext, loadBuffer, output } from '../../lib/audio';
+import { audioContext, loadBuffer, output, prefetch } from '../../lib/audio';
 
 const SAMPLE_URL = '/audio/sitar-sa.mp3';
 export const LISTEN_URL = '/audio/sitar-listen.mp3';
@@ -65,9 +65,14 @@ function roomImpulse(ac, seconds) {
   return ir;
 }
 
-// Start loading the sitar note early (on hover, say) so the first tap is instant.
+// The decoded sitar note (needs the audio context, so only after a click).
 export function prepare() {
   return loadBuffer(SAMPLE_URL).catch(() => null);
+}
+
+// Download the sitar note early (on hover) without starting audio.
+export function warm() {
+  return prefetch(SAMPLE_URL).catch(() => null);
 }
 
 // Play note i of the octave. `octave` 0.5 plays it an octave down. `slideFrom`

@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../../lib/hooks';
 
 // The career so far, as an opening crawl. Every line comes from the roles on
-// this page. Plain CSS 3D, so it plays without a GPU too.
+// this page. Plain CSS 3D, so it plays without a GPU too. It renders into
+// <body> so it covers the nav (the page's <main> is its own stacking context).
 export default function OpeningCrawl({ onClose }) {
   const close = useRef(null);
   const reduced = prefersReducedMotion();
@@ -28,7 +30,7 @@ export default function OpeningCrawl({ onClose }) {
     };
   }, [onClose, reduced]);
 
-  return (
+  return createPortal(
     <div className="crawl dark-scope" role="dialog" aria-modal="true" aria-label="Opening crawl">
       <div className="ds-stars absolute inset-0" aria-hidden="true" />
       <button ref={close} type="button" className="btn btn-ghost btn-sm crawl-close" onClick={onClose}>
@@ -51,6 +53,7 @@ export default function OpeningCrawl({ onClose }) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

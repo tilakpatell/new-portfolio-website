@@ -13,17 +13,33 @@ import { projects } from '../data/projects';
 import { useDocumentTitle } from '../lib/hooks';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
-const L = (text, kind = 'out') => ({ text, kind });
+// `hang` is how far a wrapped line indents (it defaults to the line's own
+// leading spaces), so narrow screens wrap into the right column.
+const L = (text, kind = 'out', hang) => ({ text, kind, hang });
 const BLANK = L('', 'blank');
 const PROMPT = 'visitor@tilakpatell:~$';
 
+const wrap = (text, n) => {
+  const out = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && `${line} ${word}`.length > n) {
+      out.push(line);
+      line = word;
+    } else line = line ? `${line} ${word}` : word;
+  }
+  out.push(line);
+  return out.map((l) => l.slice(0, n));
+};
+
+// A box drawn in text, `width` columns wide; its lines never wrap (`pre`).
 const box = (lines, width = 46) => {
   const inner = width - 4;
   return [
     L(`┌${'─'.repeat(width - 2)}┐`, 'ascii'),
-    ...lines.map((t) => L(`│ ${t.padEnd(inner).slice(0, inner)} │`, 'ascii')),
+    ...lines.flatMap((t) => wrap(t, inner)).map((t) => L(`│ ${t.padEnd(inner)} │`, 'ascii')),
     L(`└${'─'.repeat(width - 2)}┘`, 'ascii'),
-  ];
+  ].map((l) => ({ ...l, pre: true }));
 };
 
 const QUOTES = [
@@ -43,21 +59,28 @@ const quote = () => {
 
 const pad = (s, n) => String(s).padEnd(n);
 
+// A hanging indent: wrapped lines start under the text, not at the margin.
+const hangStyle = (l) => {
+  if (l.pre || l.kind === 'ascii') return undefined;
+  const n = l.hang ?? l.text.match(/^ */)[0].length;
+  return n ? { paddingLeft: `${n}ch`, textIndent: `-${n}ch` } : undefined;
+};
+
 const HELP = [
   BLANK,
   L('  COMMANDS', 'head'),
-  L('  about            who I am'),
-  L('  experience       roles, newest first'),
-  L('  projects         projects and research'),
-  L('  open <project>   open a project page   (try: open gameboy)'),
-  L('  skills           languages, frameworks, tools'),
-  L('  education        Northeastern University'),
-  L('  contact          email, GitHub, LinkedIn'),
-  L('  resume           open the interactive résumé  (resume pdf downloads it)'),
-  L('  places           everywhere I have travelled'),
-  L('  github           live stats from the GitHub API'),
-  L('  achievements     what you have unlocked'),
-  L('  clear            clear the screen'),
+  L('  about            who I am', 'out', 19),
+  L('  experience       roles, newest first', 'out', 19),
+  L('  projects         projects and research', 'out', 19),
+  L('  open <project>   open a project page   (try: open gameboy)', 'out', 19),
+  L('  skills           languages, frameworks, tools', 'out', 19),
+  L('  education        Northeastern University', 'out', 19),
+  L('  contact          email, GitHub, LinkedIn', 'out', 19),
+  L('  resume           open the interactive résumé  (resume pdf downloads it)', 'out', 19),
+  L('  places           everywhere I have travelled', 'out', 19),
+  L('  github           live stats from the GitHub API', 'out', 19),
+  L('  achievements     what you have unlocked', 'out', 19),
+  L('  clear            clear the screen', 'out', 19),
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
@@ -129,6 +152,32 @@ export default function Terminal() {
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
   const started = useRef(Date.now());
+  // How many characters fit across the screen, so boxes are never wider.
+  const cols = useRef(80);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const probe = document.createElement('span');
+    probe.textContent = '0'.repeat(20);
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;pointer-events:none';
+    el.appendChild(probe);
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const w = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const ch = probe.getBoundingClientRect().width / 20;
+      if (ch) cols.current = Math.floor(w / ch);
+    };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      probe.remove();
+    };
+  }, []);
+  const boxWidth = () => Math.max(24, Math.min(46, cols.current));
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -287,7 +336,7 @@ export default function Terminal() {
         BLANK,
         L(`  ACHIEVEMENTS: ${unlocked.length}/${Object.keys(ACHIEVEMENTS).length}`, 'head'),
         ...Object.entries(ACHIEVEMENTS).map(([id, a]) =>
-          L(`  ${unlocked.includes(id) ? '■' : '□'} ${pad(a.name, 20)}${unlocked.includes(id) ? a.desc : '???'}`, unlocked.includes(id) ? 'out' : 'dim'),
+          L(`  ${unlocked.includes(id) ? '■' : '□'} ${pad(a.name, 20)}${unlocked.includes(id) ? a.desc : '???'}`, unlocked.includes(id) ? 'out' : 'dim', 24),
         ),
       ],
       whoami: () => [L('  visitor')],
@@ -296,11 +345,11 @@ export default function Terminal() {
       ls: () => [L('  about.txt  experience/  projects/  resume.pdf  deathstar.plans')],
       neofetch: () => [
         BLANK,
-        ...box(['tilakpatell.com', 'React 18 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`]),
+        ...box(['tilakpatell.com', 'React 18 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`], boxWidth()),
       ],
       order66: () => {
         unlock('order66');
-        return [BLANK, ...box(['EXECUTING ORDER 66…', '“Execute Order 66.” - Darth Sidious'], 46).map((l) => ({ ...l, kind: 'err' })), L('  (It’s just a portfolio. Everyone is fine.)', 'dim')];
+        return [BLANK, ...box(['EXECUTING ORDER 66…', '“Execute Order 66.” - Darth Sidious'], boxWidth()).map((l) => ({ ...l, kind: 'err' })), L('  (It’s just a portfolio. Everyone is fine.)', 'dim')];
       },
       force: quote,
       starwars: quote,
@@ -439,7 +488,7 @@ export default function Terminal() {
             l.kind === 'blank' ? (
               <div key={i} className="h-3" />
             ) : (
-              <p key={i} className={`whitespace-pre-wrap break-words ${tone[l.kind] || tone.out} ${l.kind === 'ascii' ? 'whitespace-pre' : ''}`}>
+              <p key={i} className={`${l.pre || l.kind === 'ascii' ? 'whitespace-pre' : 'whitespace-pre-wrap break-words'} ${tone[l.kind] || tone.out}`} style={hangStyle(l)}>
                 {l.text}
               </p>
             ),

@@ -1,0 +1,3 @@
+Basic Script is a modified version of Aurebesh (c) 2022 SilvinoR, released under the SIL Open Font License 1.1.
+Changes: accented Latin letters and a few symbols are mapped to existing glyphs (see scripts/build-basic-script.py).
+Renamed because AUREBESH is a Reserved Font Name.
