@@ -2,10 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { fmtClock } from './battle';
+import { SCRIPTS } from '../../fun/scripts';
 
 const sfx = () => import('../../lib/sfx');
-// The HUD writes in Aurebesh when the site does.
-const hudFamily = () => (document.documentElement.dataset.aurebesh === 'true' ? '"Basic Script", monospace' : '"JetBrains Mono", monospace');
+// The HUD writes in the site's language when language mode is on.
+const hudFamily = () => {
+  const script = SCRIPTS[document.documentElement.dataset.script];
+  return script ? `${script.font}, monospace` : '"JetBrains Mono", monospace';
+};
 const play = (name) => sfx().then((s) => s[name]());
 
 // The trench run, on a 2D canvas (no WebGL, so it plays without a GPU).
@@ -537,35 +541,76 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     };
   }, []);
 
-  // Keyboard and pointer
+  // Keys steer from anywhere on the page while a run is on, so a mouse or
+  // trackpad hand is free for the buttons. Touch drags to steer.
+  const running = ui.phase === 'running';
+  useEffect(() => {
+    if (!running) return undefined;
+    const STEER = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'];
+    const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    const onDown = (e) => {
+      const g = game.current;
+      if (!g || g.phase !== 'running' || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (STEER.includes(key)) {
+        e.preventDefault();
+        g.keys.add(key);
+      } else if (key === ' ' || key === 'Enter') {
+        // a focused button already acts on its own key press
+        if (e.target instanceof HTMLButtonElement) return;
+        e.preventDefault();
+        if (!e.repeat) fire();
+      } else if (key === 't' && !e.repeat) toggleComputer();
+    };
+    const onUp = (e) => {
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      game.current?.keys.delete(key);
+    };
+    const onBlur = () => game.current?.keys.clear();
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [running, fire, toggleComputer]);
+
+  // Before a run, Space or Enter on the screen starts one.
   const onKeyDown = (e) => {
-    const g = game.current;
-    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (key === ' ' || key === 'Enter') {
+    if (running || e.target !== e.currentTarget) return;
+    if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      if (!g || g.phase !== 'running') start();
-      else fire();
-      return;
+      start();
     }
-    if (key === 't') return toggleComputer();
-    if (g && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(key)) {
-      e.preventDefault();
-      g.keys.add(key);
-    }
-  };
-  const onKeyUp = (e) => {
-    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    game.current?.keys.delete(key);
-  };
-  const steer = (e) => {
-    const g = game.current;
-    if (!g || g.phase !== 'running') return;
-    const r = canvas.current.getBoundingClientRect();
-    g.tx = Math.max(-0.88, Math.min(0.88, ((e.clientX - r.left) / r.width) * 2 - 1));
-    g.ty = Math.max(-0.85, Math.min(0.85, -(((e.clientY - r.top) / r.height) * 2 - 1)));
   };
 
-  const running = ui.phase === 'running';
+  // Touch: the ship follows the finger's movement, not its position, so the
+  // finger never hides it. A mouse click fires.
+  const drag = useRef(null);
+  const onPointerDown = (e) => {
+    const g = game.current;
+    if (!g || g.phase !== 'running') return;
+    if (e.pointerType === 'mouse') {
+      if (e.button === 0) fire();
+      return;
+    }
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, tx: g.tx, ty: g.ty };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const g = game.current;
+    const d = drag.current;
+    if (!g || !d || d.id !== e.pointerId || g.phase !== 'running') return;
+    const r = canvas.current.getBoundingClientRect();
+    g.tx = Math.max(-0.88, Math.min(0.88, d.tx + ((e.clientX - d.x) / r.width) * 2.6));
+    g.ty = Math.max(-0.85, Math.min(0.85, d.ty - ((e.clientY - d.y) / r.height) * 2.6));
+  };
+  const endDrag = (e) => {
+    if (drag.current?.id === e.pointerId) drag.current = null;
+  };
+
   return (
     <div className="trench">
       <div
@@ -573,18 +618,25 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         className="trench-screen"
         tabIndex={0}
         role="group"
-        aria-label="Trench run. Arrow keys or the pointer steer, space fires a torpedo, T switches the targeting computer."
+        aria-label="Trench run. The arrow keys or W A S D steer, Space fires a torpedo, T switches the targeting computer. On a touch screen, drag to steer."
         onKeyDown={onKeyDown}
-        onKeyUp={onKeyUp}
-        onPointerMove={steer}
-        onPointerDown={(e) => {
-          steer(e);
-          if (running && e.pointerType !== 'mouse') return; // on touch, drag to steer; the Fire button fires
-          if (running) fire();
-        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         style={{ touchAction: running ? 'none' : 'auto' }}
       >
         <canvas ref={canvas} className="trench-canvas" />
+        {running && (
+          <div className="trench-touch" onPointerDown={(e) => e.stopPropagation()}>
+            <button type="button" className="trench-touch-btn" onClick={toggleComputer} aria-pressed={!ui.computer} aria-label={ui.computer ? 'Switch off targeting computer' : 'Targeting computer off'}>
+              T
+            </button>
+            <button type="button" className="trench-touch-btn trench-touch-fire" onClick={fire} disabled={ui.torpedoes <= 0} aria-label="Fire torpedo">
+              Fire
+            </button>
+          </div>
+        )}
         {ui.phase !== 'running' && (
           <div className="trench-overlay">
             <p className="stretch-semi text-2xl font-semibold text-white">
@@ -592,7 +644,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             </p>
             <p className="mt-2 max-w-sm text-sm text-white/80">
               {ui.phase === 'ready'
-                ? 'Steer with the mouse, your finger or the arrow keys. Dodge the catwalks, walls and turbolaser fire, then hit the exhaust port.'
+                ? 'Steer with the arrow keys or W A S D, or drag on a touch screen. Space or a click fires, T switches off the targeting computer. Dodge the catwalks, walls and turbolaser fire, then hit the exhaust port.'
                 : ui.message}
             </p>
             <button type="button" className="btn btn-primary mt-5" onClick={start}>

@@ -316,20 +316,35 @@ html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .aurebesh-reveal:hover,
 .aurebesh-reveal:focus-visible { font-family: var(--font-mono); letter-spacing: 0.02em; }
 
-/* Aurebesh mode: every piece of text on the page, including labels, buttons,
-   placeholders, the CSS tooltips and SVG text. Only the way back out (the
-   pill's button) stays readable. */
-html[data-aurebesh='true'] body,
-html[data-aurebesh='true'] body *,
-html[data-aurebesh='true'] body *::before,
-html[data-aurebesh='true'] body *::after,
-html[data-aurebesh='true'] body ::placeholder {
-  font-family: 'Basic Script', var(--font-sans) !important;
+/* Durin Runes: Noto Sans Runic (SIL OFL 1.1) with Latin letters mapped onto
+   the Anglo-Saxon runes, as Tolkien wrote the Dwarves' runes in The Hobbit. */
+@font-face {
+  font-family: 'Durin Runes';
+  src: url('/fonts/durin-runes/DurinRunes.woff') format('woff');
+  font-display: swap;
+}
+
+/* Language mode: every piece of text on the page, including labels, buttons,
+   placeholders, the CSS tooltips and SVG text, in the theme's own script. Only
+   the way back out (the pill's button) stays readable. */
+html[data-script='aurebesh'] { --script-font: 'Basic Script'; }
+html[data-script='cybertronian'] { --script-font: 'Cybertron Script'; }
+html[data-script='runes'] { --script-font: 'Durin Runes'; }
+html[data-script] body,
+html[data-script] body *,
+html[data-script] body *::before,
+html[data-script] body *::after,
+html[data-script] body ::placeholder {
+  font-family: var(--script-font), var(--font-sans) !important;
   font-stretch: normal !important;
   letter-spacing: 0.02em;
 }
-html[data-aurebesh='true'] body .ab-keep,
-html[data-aurebesh='true'] body .ab-keep * {
+/* the scripts run wider than English, so the nav's colour label goes (it stays
+   for screen readers) and its links tighten up */
+html[data-script] .theme-pick-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+html[data-script] .site-nav a { padding-inline: 0.4rem; letter-spacing: 0; font-size: 0.8125rem; }
+html[data-script] body .ab-keep,
+html[data-script] body .ab-keep * {
   font-family: var(--font-sans) !important;
   letter-spacing: normal;
 }
@@ -653,6 +668,25 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
 }
 .fun-card .btn[disabled] { opacity: 0.55; }
 
+/* The Lord of the Rings: the Ring, cold until it meets the fire */
+.ring-panel { position: relative; height: 100%; display: grid; place-items: center; background: radial-gradient(90% 120% at 50% 120%, #4a1a07 0%, #1a0b05 50%, #070302 100%); transition: background 0.8s ease; }
+.ring-panel[data-heat] { background: radial-gradient(90% 120% at 50% 112%, #ff7a1a 0%, #6b1f05 38%, #120604 100%); }
+.ring-panel svg { width: 80%; height: auto; overflow: visible; }
+.card-ring-text { font-family: 'Cinzel', Georgia, serif; font-size: 11.5px; letter-spacing: 1.1px; fill: #ffb347; opacity: 0; transition: opacity 0.9s ease; }
+.ring-panel[data-heat] .card-ring-text { opacity: 1; filter: drop-shadow(0 0 3px #ff7a1a) drop-shadow(0 0 8px #ff4d00); }
+
+/* Transformers: Cybertronian over the insignia, which flips when you change sides */
+.cy-panel { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; padding: 0 1.25rem; background: radial-gradient(120% 100% at 50% 0%, #1c2636 0%, #0a0e15 72%); }
+.cy-panel[data-faction='decepticon'] { background: radial-gradient(120% 100% at 50% 0%, #251b36 0%, #0c0a13 72%); }
+.cy-panel-mark { position: absolute; inset: 12% 31%; display: grid; place-items: center; color: #d0142f; opacity: 0.3; animation: cy-flip 0.6s cubic-bezier(0.3, 1.3, 0.5, 1); }
+.cy-panel-mark svg { width: 100%; height: 100%; }
+.cy-panel[data-faction='decepticon'] .cy-panel-mark { color: #9a5cf0; }
+@keyframes cy-flip { 0% { transform: rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 0.3; } }
+.cy-panel-text { position: relative; font-family: 'Cybertron Script', var(--font-mono); font-size: 1.9rem; line-height: 1.35; text-align: center; color: #4fd8ff; overflow-wrap: anywhere; text-shadow: 0 0 14px rgba(79, 216, 255, 0.4); }
+.cy-panel[data-faction='decepticon'] .cy-panel-text { color: #c4a3ff; text-shadow: 0 0 14px rgba(180, 140, 255, 0.4); }
+.dock-btn[data-icon='ring']:hover .dock-ring-glow { stroke: #ff9a3c; }
+@media (prefers-reduced-motion: reduce) { .cy-panel-mark { animation: none; } .ring-panel { transition: none; } }
+
 /* Gaming: a scoreboard of pixels */
 .pixel-panel {
   background-color: #0e130c;
@@ -809,7 +843,8 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
   aspect-ratio: 1;
   padding: 0.5rem 0.55rem 0.45rem;
   border: 1.5px solid var(--border-strong);
-  border-radius: max(2px, calc(var(--r-chip) * 0.6));
+  /* a tile, never a pill: round themes set --r-chip to 999px */
+  border-radius: clamp(2px, calc(var(--r-chip) * 0.6), 10px);
   background: var(--surface);
   text-align: left;
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -824,7 +859,8 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
 
 .sitar-divider { display: flex; align-items: center; gap: 0.6rem; max-width: 760px; }
 .sd-peg { width: 10px; height: 10px; flex: none; border-radius: 3px; background: linear-gradient(#e7cf8f, #a8853f); }
-.sd-string { flex: 1; height: 26px; cursor: pointer; }
+.sd-string { flex: 1; height: 26px; cursor: pointer; border-radius: 4px; }
+.sd-string:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .sd-string svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .sd-wave {
   fill: none;
@@ -833,11 +869,12 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
   vector-effect: non-scaling-stroke;
   transform-origin: 50% 50%;
   transform-box: fill-box;
-  transform: scaleY(0);
+  /* not 0: a transform that flattens to nothing isn't drawn at all */
+  transform: scaleY(0.002);
 }
 .sd-string:hover .sd-wave { stroke: var(--accent); }
-.sitar-divider[data-seen='true'] .sd-wave,
-.sd-string[data-plucked] .sd-wave { animation: sd-shiver 1.6s cubic-bezier(0.2, 0.6, 0.3, 1); }
+.sitar-divider[data-seen='true'] .sd-wave { animation: sd-shiver 1.6s cubic-bezier(0.2, 0.6, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) { .sitar-divider[data-seen='true'] .sd-wave { animation: none; } }
 @keyframes sd-shiver {
   0% { transform: scaleY(1); }
   10% { transform: scaleY(-0.85); }
@@ -845,7 +882,7 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
   36% { transform: scaleY(-0.4); }
   52% { transform: scaleY(0.22); }
   70% { transform: scaleY(-0.1); }
-  100% { transform: scaleY(0); }
+  100% { transform: scaleY(0.002); }
 }
 
 /* ─── Contact: an interoffice memo ───────────────────────────────────────── */
@@ -885,6 +922,12 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .trench-screen { position: relative; aspect-ratio: 16 / 9; max-height: 72vh; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #05060b; outline: none; }
 .trench-screen:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .trench-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.trench-touch { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 10px; }
+.trench-touch-btn { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 12, 20, 0.55); color: #fff; font: 600 0.8rem/1 var(--font-mono); -webkit-tap-highlight-color: transparent; }
+.trench-touch-btn[aria-pressed='true'] { border-color: var(--saber); color: var(--saber); }
+.trench-touch-fire { width: 64px; height: 64px; background: color-mix(in srgb, #c0392b 70%, transparent); border-color: rgba(255, 180, 160, 0.6); }
+.trench-touch-btn:disabled { opacity: 0.4; }
+@media (hover: hover) and (pointer: fine) { .trench-touch { display: none; } }
 .trench-overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
 .ds-gone { transform-box: fill-box; transform-origin: center; animation: ds-gone 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 @keyframes ds-gone { 0% { opacity: 1; transform: scale(1); filter: brightness(1); } 25% { filter: brightness(2.4); } 100% { opacity: 0; transform: scale(1.12); filter: brightness(3); } }
@@ -1374,6 +1417,8 @@ html.stand-ground main { animation: stand-ground 0.9s cubic-bezier(0.3, 0.7, 0.3
   font-family: 'Cybertron Script';
   src: url('/fonts/cybertron-script/CybertronScript.woff') format('woff');
   font-display: swap;
+  /* the glyphs run wide; this keeps a line of Cybertronian about as long as the English */
+  size-adjust: 86%;
 }
 
 /* Star Wars: headings in Aurebesh, the rest in the crawl's News Gothic (News Cycle) */
@@ -1427,7 +1472,12 @@ html[data-mode='dark'][data-theme='shire'] .display { color: #e9dfb8; }
 
 /* ─── World backdrops: Middle-earth and Cybertron on the horizon ─────────── */
 .backdrop { display: block; pointer-events: none; }
-.hero-backdrop { position: absolute; left: 50%; bottom: 0; z-index: -1; width: 100vw; height: clamp(160px, 24vw, 330px); translate: -50% 0; opacity: 0.95; }
+.hero-backdrop {
+  position: absolute; left: 50%; bottom: 0; z-index: -1; width: 100vw; height: clamp(160px, 24vw, 330px); translate: -50% 0; opacity: 0.95;
+  /* fades into the page, so the next heading has clear space under the skyline */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
 .backdrop-me[data-variant='shire'] { --me-sky-top: #fbfaf3; --me-sky-bottom: #f1edd6; --me-far: #dcdfca; --me-mid: #bccba0; --me-near: #93b065; --me-mist: #fbfaf3; }
 html[data-mode='dark'] .backdrop-me[data-variant='shire'] { --me-sky-top: #09090b; --me-sky-bottom: #11160c; --me-far: #1b2215; --me-mid: #233019; --me-near: #2c3f1e; --me-mist: #09090b; }
 .backdrop-me[data-variant='mordor'] { --me-sky-top: #fcfaf9; --me-sky-bottom: #f6e0d2; --me-far: #ddcdc6; --me-mid: #ad958d; --me-near: #3b2a26; --me-mist: #fcfaf9; }

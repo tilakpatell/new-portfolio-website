@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAchievements } from '../components/Achievements';
 import { useTheme } from '../theme/ThemeProvider';
 import { local, prefersReducedMotion } from '../lib/hooks';
+import { SCRIPTS, scriptFor } from './scripts';
 
-// The easter eggs that reach across the whole site: Aurebesh mode (Star Wars),
+// The easter eggs that reach across the whole site: language mode (Aurebesh,
+// Cybertronian or runes, by theme),
 // "say my name" (Breaking Bad), the snap (Marvel), that's-what-she-said and
 // parkour (The Office), and roll out (Transformers). Each can be triggered from
 // the terminal, the command palette, the home page, or by typing its word anywhere.
@@ -13,6 +15,8 @@ const FunContext = createContext(null);
 
 const WORDS = [
   ['aurebesh', 'aurebesh'],
+  ['cybertronian', 'cybertronian'],
+  ['runes', 'runes'],
   ['saymyname', 'heisenberg'],
   ['heisenberg', 'heisenberg'],
   ['snap', 'snap'],
@@ -35,23 +39,42 @@ const TRANSFORMERS = ['optimus', 'megatron', 'bumblebee', 'shockwave', 'soundwav
 
 export function FunProvider({ children }) {
   const { unlock, notify } = useAchievements();
-  const { pin } = useTheme();
+  const { pin, active } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [aurebesh, setAurebeshState] = useState(() => local.get('tp-aurebesh', false) === true);
+  // null (plain English), 'theme' (whatever the active theme speaks) or one script
+  const [lang, setLang] = useState(() => {
+    const saved = local.get('tp-script', null);
+    if (saved === 'theme' || SCRIPTS[saved]) return saved;
+    return local.get('tp-aurebesh', false) === true ? 'aurebesh' : null;
+  });
+  const script = lang === 'theme' ? scriptFor(active) : lang;
   const [heisenberg, setHeisenberg] = useState(false);
   const pathRef = useRef(pathname);
   pathRef.current = pathname;
 
   useEffect(() => {
-    document.documentElement.dataset.aurebesh = aurebesh ? 'true' : 'false';
-    local.set('tp-aurebesh', aurebesh);
-  }, [aurebesh]);
+    const root = document.documentElement;
+    if (script) root.dataset.script = script;
+    else delete root.dataset.script;
+    local.set('tp-script', lang);
+  }, [lang, script]);
+
+  // Each script read counts toward Polyglot; Aurebesh opens the Star Wars themes.
+  useEffect(() => {
+    if (!script) return;
+    if (script === 'aurebesh') unlock('aurebesh');
+    const read = new Set(local.get('tp-scripts-read', []));
+    read.add(script);
+    local.set('tp-scripts-read', [...read]);
+    if (Object.keys(SCRIPTS).every((id) => read.has(id))) unlock('polyglot');
+  }, [script, unlock]);
 
   // Native title tooltips are drawn by the browser in its own font, so in
-  // Aurebesh mode they are swapped for ones the page draws.
+  // language mode they are swapped for ones the page draws.
+  const scripted = Boolean(script);
   useEffect(() => {
-    if (!aurebesh) return undefined;
+    if (!scripted) return undefined;
     const swap = (root) => {
       const els = root.querySelectorAll ? root.querySelectorAll('[title]') : [];
       [root, ...els].forEach((el) => {
@@ -103,19 +126,26 @@ export function FunProvider({ children }) {
         el.removeAttribute('data-ab-title');
       });
     };
-  }, [aurebesh]);
+  }, [scripted]);
 
-  const setAurebesh = useCallback(
-    (on) => {
-      setAurebeshState(on);
-      if (on) {
-        unlock('aurebesh');
-        notify('Aurebesh mode', 'Headings now read in Aurebesh. Turn it off from the pill at the bottom.');
-      }
+  // `next`: 'theme', a script id, or null for plain English.
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const setScript = useCallback(
+    (next) => {
+      setLang(next);
+      if (!next) return;
+      const id = next === 'theme' ? scriptFor(activeRef.current) : next;
+      notify(`${SCRIPTS[id].name} mode`, `The whole site now reads in ${SCRIPTS[id].name}. The pill at the bottom turns it off.`);
     },
-    [notify, unlock],
+    [notify],
   );
-  const toggleAurebesh = useCallback(() => setAurebesh(!(document.documentElement.dataset.aurebesh === 'true')), [setAurebesh]);
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  // The theme's own language, or back to English.
+  const toggleScript = useCallback(() => setScript(langRef.current ? null : 'theme'), [setScript]);
+  // Typed or asked for by name: that script, whatever the theme.
+  const toggleAurebesh = useCallback(() => setScript(langRef.current === 'aurebesh' ? null : 'aurebesh'), [setScript]);
 
   const heisenbergRef = useRef(false);
   heisenbergRef.current = heisenberg;
@@ -191,6 +221,8 @@ export function FunProvider({ children }) {
     let buffer = '';
     const actions = {
       aurebesh: toggleAurebesh,
+      cybertronian: () => setScript(langRef.current === 'cybertronian' ? null : 'cybertronian'),
+      runes: () => setScript(langRef.current === 'runes' ? null : 'runes'),
       heisenberg: sayMyName,
       snap,
       twss,
@@ -215,23 +247,40 @@ export function FunProvider({ children }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [gandalf, gollum, parkour, rollOut, sayMyName, snap, speakFriend, toggleAurebesh, twss]);
+  }, [gandalf, gollum, parkour, rollOut, sayMyName, setScript, snap, speakFriend, toggleAurebesh, twss]);
 
+  const scriptName = SCRIPTS[script ?? scriptFor(active)].name;
   const value = useMemo(
-    () => ({ aurebesh, setAurebesh, toggleAurebesh, heisenberg, setHeisenberg, sayMyName, snap, twss, parkour, rollOut, speakFriend, gandalf }),
-    [aurebesh, heisenberg, parkour, rollOut, sayMyName, setAurebesh, snap, toggleAurebesh, twss, speakFriend, gandalf],
+    () => ({
+      script,
+      scriptName,
+      setScript,
+      toggleScript,
+      aurebesh: script === 'aurebesh',
+      toggleAurebesh,
+      heisenberg,
+      setHeisenberg,
+      sayMyName,
+      snap,
+      twss,
+      parkour,
+      rollOut,
+      speakFriend,
+      gandalf,
+    }),
+    [script, scriptName, setScript, toggleScript, toggleAurebesh, heisenberg, parkour, rollOut, sayMyName, snap, twss, speakFriend, gandalf],
   );
 
   return (
     <FunContext.Provider value={value}>
       {children}
-      {aurebesh && (
+      {script && (
         <div className="aurebesh-pill" role="status">
-          <span aria-hidden="true">Aurebesh</span>
-          <span className="sr-only">Aurebesh mode is on.</span>
+          <span aria-hidden="true">{SCRIPTS[script].name}</span>
+          <span className="sr-only">{SCRIPTS[script].name} mode is on.</span>
           {/* the way back out stays in plain letters */}
-          <button type="button" className="ab-keep" onClick={() => setAurebesh(false)}>
-            Back to Basic
+          <button type="button" className="ab-keep" onClick={() => setScript(null)}>
+            {SCRIPTS[script].back}
           </button>
         </div>
       )}

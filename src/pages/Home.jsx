@@ -94,7 +94,7 @@ export default function Home() {
         <div className="hero-wash pointer-events-none" aria-hidden="true" />
         {/* Middle-earth or Cybertron on the horizon, when their themes are on */}
         <ThemeBackdrop theme={active} className="hero-backdrop" />
-        <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-16">
+        <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:items-center lg:gap-16">
           <div className="relative">
             <Waypoint top="0.6rem" />
             <Reveal>
@@ -133,7 +133,7 @@ export default function Home() {
               </Link>
             </Reveal>
           </div>
-          <Reveal delay={90} className="mx-auto w-full max-w-[220px] sm:max-w-[300px] lg:mx-0 lg:ml-auto lg:max-w-[380px]">
+          <Reveal delay={90} className="w-full max-w-[340px] lg:ml-auto lg:max-w-[380px]">
             <Portrait />
           </Reveal>
         </div>
@@ -143,7 +143,7 @@ export default function Home() {
       <section data-theme-section="aws" className="shell relative z-10 pb-6 md:pb-0" aria-label="Experience, newest first">
         <CareerStrip />
         {/* The route line turns back across the page here, in clear space below the strip */}
-        <div className="relative hidden h-20 md:block" aria-hidden="true">
+        <div className="relative hidden h-20 lg:block" aria-hidden="true">
           <Waypoint top="5rem" data-node="false" />
         </div>
       </section>

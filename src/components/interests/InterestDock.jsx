@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
 import AutobotMark from '../AutobotMark';
+import { SCRIPTS, scriptFor } from '../../fun/scripts';
+import { useTheme } from '../../theme/ThemeProvider';
 
 // The "Off the clock" row: one small line icon for each thing I'm into, and
 // each one does something. Drawn on a 24-unit grid with one stroke weight so
@@ -77,19 +79,28 @@ const ICONS = {
     </svg>
   ),
   robot: <AutobotMark className="dock-autobot" />,
-  aurebesh: (
+  ring: (
     <svg viewBox="0 0 24 24" {...S}>
-      <circle cx="12" cy="12" r="8.6" />
-      <text x="12" y="15.6" textAnchor="middle" fontSize="10" fill="currentColor" stroke="none" fontFamily="'Basic Script', var(--font-mono)">
-        A
-      </text>
+      <ellipse cx="12" cy="12.6" rx="8.6" ry="5.4" />
+      <ellipse className="dock-ring-glow" cx="12" cy="12.2" rx="6.4" ry="3.5" strokeWidth="0.9" />
     </svg>
   ),
 };
 
+// The letter A in whichever script the theme speaks.
+const scriptIcon = (id) => (
+  <svg viewBox="0 0 24 24" {...S}>
+    <circle cx="12" cy="12" r="8.6" />
+    <text x="12" y="15.6" textAnchor="middle" fontSize="10" fill="currentColor" stroke="none" fontFamily={`${SCRIPTS[id].font}, var(--font-mono)`}>
+      A
+    </text>
+  </svg>
+);
+
 export default function InterestDock() {
   const navigate = useNavigate();
-  const { snap, sayMyName, twss, toggleAurebesh, aurebesh, rollOut } = useFun();
+  const { snap, sayMyName, twss, toggleScript, script, scriptName, rollOut, speakFriend } = useFun();
+  const { active } = useTheme();
   const [say, setSay] = useState('');
 
   // The sitar: a quick flourish (Sa, Pa, high Sa, then the chikari), then the music room.
@@ -146,15 +157,23 @@ export default function InterestDock() {
         rollOut('optimus');
       },
     },
+    {
+      id: 'ring',
+      label: 'Speak, friend, and enter',
+      run: () => {
+        setSay('Mellon.');
+        speakFriend('shire');
+      },
+    },
     { id: 'gameboy', label: 'Play the Game Boy', run: () => navigate('/projects/gameboy-emulator') },
     { id: 'globe', label: 'Places I’ve been', run: () => navigate('/travel') },
     { id: 'temple', label: 'Heritage: Akshardham', run: () => navigate('/travel?section=heritage') },
     {
-      id: 'aurebesh',
-      label: aurebesh ? 'Back to Basic' : 'Read the site in Aurebesh',
+      id: 'script',
+      label: script ? SCRIPTS[script].back : `Read the site in ${scriptName}`,
       run: () => {
         setSay('');
-        toggleAurebesh();
+        toggleScript();
       },
     },
   ];
@@ -166,7 +185,7 @@ export default function InterestDock() {
         {items.map((it) => (
           <li key={it.id}>
             <button type="button" className="dock-btn" data-icon={it.id} data-label={it.label} aria-label={it.label} onClick={it.run}>
-              {ICONS[it.id]}
+              {it.id === 'script' ? scriptIcon(script ?? scriptFor(active)) : ICONS[it.id]}
             </button>
           </li>
         ))}

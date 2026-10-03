@@ -4,6 +4,7 @@ import { RiArrowLeftLine, RiArrowRightLine, RiGamepadLine } from 'react-icons/ri
 import { Waypoint } from '../ui';
 import Photo from '../Photo';
 import { useFun } from '../../fun/FunProvider';
+import { SCRIPTS } from '../../fun/scripts';
 import { ACHIEVEMENTS, useAchievements } from '../Achievements';
 import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
@@ -12,6 +13,10 @@ import InterestDock from './InterestDock';
 import { prefersReducedMotion } from '../../lib/hooks';
 import Gif from '../Gif';
 import Gauntlet from './Gauntlet';
+import AutobotMark from '../AutobotMark';
+import DecepticonMark from '../DecepticonMark';
+import { audioContext } from '../../lib/audio';
+import '@fontsource/cinzel/600.css';
 import { STONES, VIEW } from './stones';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
@@ -36,7 +41,7 @@ function Card({ title, children, visual, className = '' }) {
 }
 
 function StarWars() {
-  const { aurebesh, toggleAurebesh } = useFun();
+  const { script, scriptName, toggleScript } = useFun();
   const { unlock } = useAchievements();
   const [text, setText] = useState('Hello there');
   const [obiWan, setObiWan] = useState(false);
@@ -73,11 +78,118 @@ function StarWars() {
         autoComplete="off"
       />
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={toggleAurebesh}>
-          {aurebesh ? 'Back to Basic' : 'Read the site in Aurebesh'}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={toggleScript}>
+          {script ? SCRIPTS[script].back : `Read the site in ${scriptName}`}
         </button>
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+const RING_WORDS = 'Ash nazg durbatulûk · ash nazg gimbatul · ash nazg thrakatulûk · agh burzum-ishi krimpatul ·';
+
+function MiddleEarth() {
+  const { speakFriend } = useFun();
+  const [word, setWord] = useState('');
+  const [say, setSay] = useState('');
+  const [heat, setHeat] = useState(false);
+  const speak = (e) => {
+    e.preventDefault();
+    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (!w) return;
+    if (w === 'mellon') {
+      setSay('The doors open.');
+      speakFriend('shire');
+    } else if (w === 'friend') setSay('Close. Now say it in Elvish.');
+    else setSay('The doors stay shut.');
+  };
+  return (
+    <Card
+      title="The Lord of the Rings"
+      className="fun-lotr"
+      visual={
+        <div className="ring-panel" data-heat={heat || undefined}>
+          <svg viewBox="-150 -80 300 160" role="img" aria-label={heat ? 'The One Ring, its inscription burning' : 'The One Ring'}>
+            <defs>
+              <linearGradient id="card-ring-gold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#fff1b8" />
+                <stop offset="0.35" stopColor="#e8b44c" />
+                <stop offset="0.7" stopColor="#a8741f" />
+                <stop offset="1" stopColor="#f6d27a" />
+              </linearGradient>
+              <path id="card-ring-path" d="M -104 0 A 104 46 0 1 1 104 0 A 104 46 0 1 1 -104 0" />
+            </defs>
+            <ellipse cx="0" cy="5" rx="114" ry="54" fill="none" stroke="#000" strokeOpacity="0.3" strokeWidth="15" />
+            <ellipse cx="0" cy="0" rx="114" ry="54" fill="none" stroke="url(#card-ring-gold)" strokeWidth="15" />
+            <ellipse cx="0" cy="-3" rx="109" ry="49" fill="none" stroke="#fff6d6" strokeWidth="1.2" opacity="0.55" />
+            <text className="card-ring-text">
+              <textPath href="#card-ring-path">{RING_WORDS}</textPath>
+            </text>
+          </svg>
+        </div>
+      }
+    >
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Tolkien’s Middle-earth, the books and the films. The doors of Moria are shut. Speak, friend, and enter:</p>
+      <form className="mt-3 flex gap-2" onSubmit={speak}>
+        <label htmlFor="mellon-input" className="sr-only">
+          The password
+        </label>
+        <input id="mellon-input" value={word} maxLength={24} onChange={(e) => setWord(e.target.value)} className="fun-input" placeholder="The password" autoComplete="off" />
+        <button type="submit" className="btn btn-ghost btn-sm flex-none">
+          Speak
+        </button>
+      </form>
+      <p className="mt-2 min-h-[1.25rem] text-sm text-muted" aria-live="polite">
+        {say}
+      </p>
+      <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" aria-pressed={heat} onClick={() => setHeat((h) => !h)}>
+        {heat ? 'Out of the fire' : 'Hold it to the fire'}
+      </button>
+    </Card>
+  );
+}
+
+function Transformers() {
+  const { rollOut } = useFun();
+  const [text, setText] = useState('Till all are one');
+  const [side, setSide] = useState('autobot');
+  const autobot = side === 'autobot';
+  const switchSides = () => {
+    audioContext(); // in the click, so the transformation can be heard
+    import('../../lib/clips').then((c) => c.playClip('transform'));
+    setSide(autobot ? 'decepticon' : 'autobot');
+  };
+  return (
+    <Card
+      title="Transformers"
+      className="fun-tf"
+      visual={
+        <div className="cy-panel" data-faction={side}>
+          <span key={side} className="cy-panel-mark" aria-hidden="true">
+            {autobot ? <AutobotMark /> : <DecepticonMark />}
+          </span>
+          <p className="cy-panel-text" aria-hidden="true">
+            {text || ' '}
+          </p>
+        </div>
+      }
+    >
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">
+        The Aligned continuity first (War for Cybertron, Prime), with a soft spot for the Bay films. Write something in Cybertronian:
+      </p>
+      <label htmlFor="cybertronian-input" className="sr-only">
+        Text to write in Cybertronian
+      </label>
+      <input id="cybertronian-input" value={text} maxLength={32} onChange={(e) => setText(e.target.value)} className="fun-input mt-3" autoComplete="off" />
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => rollOut(autobot ? 'optimus' : 'megatron')}>
+          {autobot ? 'Autobots, roll out' : 'Decepticons, attack'}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={switchSides}>
+          {autobot ? 'Join the Decepticons' : 'Join the Autobots'}
         </button>
       </div>
     </Card>
@@ -309,7 +421,7 @@ export default function Interests() {
           <h2 id="interests-title" className="title">
             Off the clock
           </h2>
-          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, games, Marvel, The Office, Breaking Bad and a lot of travel.</p>
+          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad and a lot of travel.</p>
           <div className="mt-6">
             <InterestDock />
           </div>
@@ -326,6 +438,8 @@ export default function Interests() {
       <ul ref={row} className="fun-row mt-10" aria-label="Interests">
         <StarWars />
         <MusicCard />
+        <MiddleEarth />
+        <Transformers />
         <Marvel />
         <BreakingBad />
         <Office />

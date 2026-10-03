@@ -171,7 +171,7 @@ export function ThemePicker() {
         title="Site colors"
       >
         <span className="h-3 w-3 rounded-full ring-2 ring-[var(--bg)]" style={{ background: t.fill || t.swatch, boxShadow: '0 0 0 3px var(--border)' }} aria-hidden="true" />
-        <span>
+        <span className="theme-pick-label">
           <span className="sr-only">Site colors: </span>
           {pinned ? t.label : `Auto · ${t.label}`}
         </span>

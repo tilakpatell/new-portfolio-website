@@ -1,6 +1,7 @@
 import { profile } from '../data/profile';
 
-// The hero portrait: rounded frame (radius follows the theme) with targeting-computer brackets.
+// The hero portrait: rounded frame (radius follows the theme) with targeting-computer
+// brackets drawn edge to edge of an overlay that stands --hud outside the photo.
 export default function Portrait({ className = '' }) {
   const p = profile.photo;
   return (
@@ -22,7 +23,7 @@ export default function Portrait({ className = '' }) {
         </picture>
       </div>
       <svg className="portrait-hud" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M2 14V2h12M86 2h12v12M98 111v12H86M14 123H2v-12" />
+        <path d="M0 12V0h12M88 0h12v12M100 113v12H88M12 125H0v-12" />
       </svg>
     </figure>
   );

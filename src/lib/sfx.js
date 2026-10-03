@@ -851,6 +851,219 @@ function flybyRaw(acIn, destIn) {
   return 1.45;
 }
 
+// ── Middle-earth ───────────────────────────────────────────────────────────
+// Stone doors grinding open: low, rough noise that drags, then settles.
+function stoneRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.45, 0.7);
+  const grind = noiseSource(ac, 'brown', 4);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 0.9;
+  env(bp.frequency, t, [[0, 180], [1.4, 320, 'lin'], [3, 140, 'lin']]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.3, 0.9, 'lin'], [2.4, 0.7, 'lin'], [3.2, 0.0001]]);
+  // the drag is uneven: a slow wobble on the level
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 7;
+  const lfoG = ac.createGain();
+  lfoG.gain.value = 0.25;
+  lfo.connect(lfoG).connect(g.gain);
+  grind.connect(bp).connect(g).connect(out);
+  const thud = ac.createOscillator();
+  thud.type = 'sine';
+  env(thud.frequency, t + 3, [[0, 70], [0.4, 38]]);
+  const tg = ac.createGain();
+  env(tg.gain, t + 3, [[0, 0.0001], [0.02, 0.8, 'lin'], [0.7, 0.0001]]);
+  thud.connect(tg).connect(out);
+  grind.start(t);
+  grind.stop(t + 3.3);
+  lfo.start(t);
+  lfo.stop(t + 3.3);
+  thud.start(t + 3);
+  thud.stop(t + 3.8);
+  return 3.8;
+}
+
+// One beat of the drums in the deep: a huge, slow skin.
+function drumRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.55, 0.8);
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  env(o.frequency, t, [[0, 92], [0.5, 44]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.01, 0.9, 'lin'], [1.1, 0.0001]]);
+  o.connect(g).connect(out);
+  const skin = noiseSource(ac, 'brown', 1);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 300;
+  const sg = ac.createGain();
+  env(sg.gain, t, [[0, 0.0001], [0.01, 0.5, 'lin'], [0.3, 0.0001]]);
+  skin.connect(lp).connect(sg).connect(out);
+  o.start(t);
+  o.stop(t + 1.2);
+  skin.start(t);
+  skin.stop(t + 0.35);
+  return 1.2;
+}
+
+// The Balrog: a growl of fire and shadow.
+function roarRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.4, 0.6);
+  const growl = ac.createOscillator();
+  growl.type = 'sawtooth';
+  env(growl.frequency, t, [[0, 48], [0.6, 62, 'lin'], [2, 40, 'lin']]);
+  const shaper = ac.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < curve.length; i++) {
+    const x = (i / (curve.length - 1)) * 2 - 1;
+    curve[i] = Math.tanh(x * 4);
+  }
+  shaper.curve = curve;
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  env(lp.frequency, t, [[0, 300], [0.5, 900, 'lin'], [2, 250, 'lin']]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.25, 0.5, 'lin'], [1.4, 0.4, 'lin'], [2.1, 0.0001]]);
+  growl.connect(shaper).connect(lp).connect(g).connect(out);
+  const breath = noiseSource(ac, 'white', 3);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 1.2;
+  env(bp.frequency, t, [[0, 500], [0.6, 1400, 'lin'], [2, 400, 'lin']]);
+  const bg = ac.createGain();
+  env(bg.gain, t, [[0, 0.0001], [0.3, 0.35, 'lin'], [2.1, 0.0001]]);
+  breath.connect(bp).connect(bg).connect(out);
+  growl.start(t);
+  growl.stop(t + 2.2);
+  breath.start(t);
+  breath.stop(t + 2.2);
+  return 2.2;
+}
+
+// Stone breaking and falling away into the dark.
+function crumbleRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.5, 0.7);
+  for (let i = 0; i < 9; i++) {
+    const at = t + i * 0.09 + Math.random() * 0.05;
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 2400 - i * 200;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.005, 0.45 - i * 0.03, 'lin'], [0.16, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(at);
+    n.stop(at + 0.2);
+  }
+  const fall = noiseSource(ac, 'brown', 3);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  env(lp.frequency, t, [[0, 700], [2.2, 120]]);
+  const fg = ac.createGain();
+  env(fg.gain, t, [[0, 0.0001], [0.1, 0.8, 'lin'], [2.4, 0.0001]]);
+  fall.connect(lp).connect(fg).connect(out);
+  fall.start(t);
+  fall.stop(t + 2.5);
+  return 2.5;
+}
+
+// The Ring meeting the fire: a hiss, then the mountain answering.
+function sizzleRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.35, 0.6);
+  const hiss = noiseSource(ac, 'white', 2);
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  env(hp.frequency, t, [[0, 5000], [1.4, 2200]]);
+  const hg = ac.createGain();
+  env(hg.gain, t, [[0, 0.0001], [0.04, 0.45, 'lin'], [1.6, 0.0001]]);
+  hiss.connect(hp).connect(hg).connect(out);
+  hiss.start(t);
+  hiss.stop(t + 1.7);
+  return Math.max(1.7, crumbleRaw(ac, dest, when + 0.5) + 0.5);
+}
+
+// Wearing the Ring: wind and whispering that last until it comes off.
+// Returns stop(); nothing (a no-op stop) where sound can't play.
+export function wraith() {
+  const [ac, dest] = ready();
+  if (!ac) return () => {};
+  const t = ac.currentTime;
+  const out = bus(ac, dest, 0.6, 0.5);
+  const level = ac.createGain();
+  env(level.gain, t, [[0, 0.0001], [1.2, 1, 'lin']]);
+  level.connect(out);
+  const wind = noiseSource(ac, 'brown', 4);
+  wind.loop = true;
+  const wl = ac.createBiquadFilter();
+  wl.type = 'bandpass';
+  wl.frequency.value = 420;
+  wl.Q.value = 0.7;
+  const wg = ac.createGain();
+  wg.gain.value = 0.5;
+  wind.connect(wl).connect(wg).connect(level);
+  // whispers: sibilant noise, chopped into syllables by fast, uneven LFOs
+  const hiss = noiseSource(ac, 'white', 4);
+  hiss.loop = true;
+  const hb = ac.createBiquadFilter();
+  hb.type = 'bandpass';
+  hb.frequency.value = 3200;
+  hb.Q.value = 2.5;
+  const hg = ac.createGain();
+  hg.gain.value = 0;
+  const chop = [ac.createOscillator(), ac.createOscillator()];
+  chop[0].frequency.value = 5.3;
+  chop[1].frequency.value = 3.1;
+  const cg = ac.createGain();
+  cg.gain.value = 0.06;
+  chop.forEach((o) => o.connect(cg));
+  cg.connect(hg.gain);
+  const pan = ac.createStereoPanner ? ac.createStereoPanner() : null;
+  const sweep = ac.createOscillator();
+  sweep.frequency.value = 0.13;
+  if (pan) sweep.connect(pan.pan);
+  hiss.connect(hb).connect(hg);
+  (pan ? hg.connect(pan) : hg).connect(level);
+  // a low, uneasy drone under it all
+  const drone = [ac.createOscillator(), ac.createOscillator()];
+  drone[0].type = drone[1].type = 'sawtooth';
+  drone[0].frequency.value = 55;
+  drone[1].frequency.value = 55 * 1.06;
+  const dl = ac.createBiquadFilter();
+  dl.type = 'lowpass';
+  dl.frequency.value = 220;
+  const dg = ac.createGain();
+  dg.gain.value = 0.12;
+  drone.forEach((o) => o.connect(dl));
+  dl.connect(dg).connect(level);
+  const all = [wind, hiss, ...chop, sweep, ...drone];
+  all.forEach((n) => n.start(t));
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    const now = ac.currentTime;
+    level.gain.cancelScheduledValues(now);
+    level.gain.setTargetAtTime(0.0001, now, 0.25);
+    all.forEach((n) => n.stop(now + 1.5));
+  };
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -869,3 +1082,8 @@ export const transform = once('transform', transformRaw);
 export const thunder = once('thunder', thunderRaw);
 export const beeps = once('beeps', beepsRaw);
 export const oneUp = once('oneUp', oneUpRaw);
+export const stone = once('stone', stoneRaw);
+export const drum = once('drum', drumRaw);
+export const roar = once('roar', roarRaw);
+export const crumble = once('crumble', crumbleRaw);
+export const sizzle = once('sizzle', sizzleRaw);

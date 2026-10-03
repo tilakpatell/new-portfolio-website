@@ -690,11 +690,12 @@ html[data-mode='dark'] .saber-progress .blade { background: #ffffff; box-shadow:
 
 /* ─── Portrait targeting brackets ────────────────────────────────────────── */
 .portrait-hud {
+  --hud: 10px;
   position: absolute;
-  left: -12px;
-  top: -12px;
-  width: calc(100% + 24px);
-  height: calc(100% + 24px);
+  left: calc(var(--hud) * -1);
+  top: calc(var(--hud) * -1);
+  width: calc(100% + var(--hud) * 2);
+  height: calc(100% + var(--hud) * 2);
   overflow: visible;
   pointer-events: none;
 }

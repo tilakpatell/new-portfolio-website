@@ -1,0 +1,3 @@
+Cybertron Script: the Aligned Cybertronian alphabet from Transformers: War for Cybertron and
+Fall of Cybertron (letterforms by Hasbro and High Moon Studios), traced from the TFWiki chart
+File:Aligned_font.jpg for this personal, non-commercial fan site. See scripts/build-cybertron-script.py.

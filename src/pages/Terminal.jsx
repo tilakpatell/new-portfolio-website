@@ -84,6 +84,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
+  L('  Languages: language · aurebesh · cybertronian · runes', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
 
@@ -252,7 +253,19 @@ export default function Terminal() {
       },
       aurebesh: () => {
         fun.toggleAurebesh();
-        return [L(fun.aurebesh ? '  Aurebesh off. Back to Basic.' : '  Aurebesh on. Headings now read in Aurebesh.', 'ok')];
+        return [L(fun.script === 'aurebesh' ? '  Aurebesh off. Back to Basic.' : '  Aurebesh on. The whole site now reads in Aurebesh.', 'ok')];
+      },
+      cybertronian: () => {
+        fun.setScript(fun.script === 'cybertronian' ? null : 'cybertronian');
+        return [L(fun.script === 'cybertronian' ? '  Cybertronian off. Back to English.' : '  Cybertronian on. Till all are one.', 'ok')];
+      },
+      runes: () => {
+        fun.setScript(fun.script === 'runes' ? null : 'runes');
+        return [L(fun.script === 'runes' ? '  Runes off. Back to the Common Speech.' : '  Runes on, as on Thror’s map.', 'ok')];
+      },
+      language: () => {
+        fun.toggleScript();
+        return [L(fun.script ? `  ${fun.script === 'runes' ? 'Runes' : fun.script === 'cybertronian' ? 'Cybertronian' : 'Aurebesh'} off.` : `  The site now reads in ${fun.scriptName}.`, 'ok')];
       },
       say: (arg) => {
         if (arg !== 'my name') return [L("  Say what? Try: say my name", 'dim')];

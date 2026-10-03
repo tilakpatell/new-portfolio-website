@@ -19,6 +19,7 @@ export const ACHIEVEMENTS = {
   cartographer: { name: 'Cartographer', desc: 'Saw all six company themes' },
   player: { name: 'High score', desc: 'Collected 10 coins on the Game Boy' },
   aurebesh: { name: 'Linguist', desc: 'Read Aurebesh' },
+  polyglot: { name: 'Polyglot', desc: 'Read the site in Aurebesh, Cybertronian and Dwarf runes' },
   heisenberg: { name: 'Heisenberg', desc: 'Said my name' },
   snap: { name: 'Perfectly balanced', desc: 'Snapped half the page away' },
   dundie: { name: 'Dundie winner', desc: 'That’s what she said' },
