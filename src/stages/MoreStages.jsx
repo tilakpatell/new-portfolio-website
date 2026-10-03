@@ -121,7 +121,7 @@ export function RecoveryStage() {
       <div className="mt-3">
         <button type="button" className="btn btn-sm btn-primary" onClick={() => player.setIndex(1)}>Drop the connection</button>
       </div>
-      <PhaseBar phases={RECOVERY} {...player} />
+      <PhaseBar phases={RECOVERY} player={player} />
     </div>
   );
 }
@@ -329,7 +329,7 @@ export function AttentionStage() {
                 className="mono rounded px-2 py-1 text-sm transition-colors duration-300"
                 style={{
                   background: `color-mix(in srgb, var(--accent) ${Math.round(w(j) * 100)}%, var(--surface-2))`,
-                  color: w(j) > 0.45 ? '#0f1111' : 'var(--text-body)',
+                  color: w(j) > 0.3 ? '#0f1111' : 'var(--text-body)',
                   outline: j === focus ? '2px solid var(--text)' : 'none',
                 }}
               >

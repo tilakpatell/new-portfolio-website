@@ -95,7 +95,7 @@ export default function MergeStage() {
           ))}
         </ul>
       </div>
-      <PhaseBar phases={PHASES} {...player} />
+      <PhaseBar phases={PHASES} player={player} />
     </div>
   );
 }

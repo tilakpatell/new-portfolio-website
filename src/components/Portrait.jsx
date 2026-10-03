@@ -7,13 +7,13 @@ export default function Portrait({ className = '' }) {
     <figure className={`portrait relative ${className}`}>
       <div className="relative overflow-hidden rounded-photo border border-line-strong bg-surface" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
         <picture>
-          <source type="image/webp" srcSet={`${p.webpSmall} 480w, ${p.webp} 780w`} sizes="(min-width: 1024px) 400px, (min-width: 640px) 360px, 80vw" />
+          <source type="image/webp" srcSet={`${p.webpSmall} 480w, ${p.webp} 780w`} sizes="(min-width: 1024px) 380px, (min-width: 640px) 340px, 80vw" />
           <img
             src={p.jpg}
             width={p.width}
             height={p.height}
             alt={p.alt}
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="async"
             className="h-full w-full object-cover"
           />

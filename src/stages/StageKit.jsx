@@ -31,7 +31,7 @@ export function StageWindow({ title, right, children, className = '' }) {
   );
 }
 
-export function PhaseBar({ phases, index, setIndex, playing, setPlaying }) {
+export function PhaseBar({ phases, player: { index, setIndex, playing, setPlaying } }) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
       <button

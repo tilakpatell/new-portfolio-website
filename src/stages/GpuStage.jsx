@@ -127,7 +127,7 @@ export default function GpuStage() {
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => player.setIndex(3)}>Inject a GPU fault</button>
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => player.setIndex(4)}>Restart from checkpoint</button>
       </div>
-      <PhaseBar phases={PHASES} {...player} />
+      <PhaseBar phases={PHASES} player={player} />
     </div>
   );
 }

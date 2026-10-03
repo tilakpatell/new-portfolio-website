@@ -146,7 +146,7 @@ export default function TranslatorStage() {
         </div>
       </StageWindow>
       <p className="mt-3 text-sm text-muted">Hover a line on either page to see its counterpart.</p>
-      <PhaseBar phases={PHASES} {...player} />
+      <PhaseBar phases={PHASES} player={player} />
     </div>
   );
 }

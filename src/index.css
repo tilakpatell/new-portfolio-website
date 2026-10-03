@@ -331,6 +331,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     background: var(--bg);
     scroll-padding-top: calc(var(--nav-h) + 16px);
     color-scheme: light;
+    overflow-x: clip;
   }
   body {
     margin: 0;
@@ -373,6 +374,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   }
 
   .display {
+    overflow-wrap: anywhere;
     font-stretch: 125%;
     font-weight: 680;
     letter-spacing: -0.035em;

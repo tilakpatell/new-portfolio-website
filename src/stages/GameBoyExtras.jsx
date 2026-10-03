@@ -350,7 +350,7 @@ export function BlarggStage() {
           />
           <ol className="stage-code grid grid-cols-1 gap-x-6 sm:grid-cols-2">
             {TESTS.map((t, i) => (
-              <li key={t} className="flex items-center gap-2" style={{ color: i < done ? 'var(--text-body)' : 'var(--muted)', opacity: i < done ? 1 : 0.55 }}>
+              <li key={t} className="flex items-center gap-2" style={{ color: i < done ? 'var(--text-body)' : 'var(--muted)', opacity: i < done ? 1 : 0.8 }}>
                 <span className="w-5 text-center" style={{ color: i < done ? 'var(--accent)' : 'var(--muted)' }}>
                   {i < done ? '✓' : '·'}
                 </span>

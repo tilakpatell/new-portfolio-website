@@ -40,8 +40,9 @@ export default function ProjectDetail() {
             {project.kind}
             {project.status ? ` · ${project.status}` : ''}
           </p>
-          <h1 className="display mt-4 text-[clamp(2.4rem,1.4rem+4.4vw,4.8rem)]">{project.title}</h1>
-          {project.subtitle && <p className="stretch-semi mt-4 text-lg text-body">{project.subtitle}</p>}
+          <h1 className="display mt-4 text-[clamp(2rem,1rem+5vw,4.8rem)]">{project.title}</h1>
+          {project.subtitle && <p className="stretch-semi mt-4 text-lg font-medium text-ink">{project.subtitle}</p>}
+          <p className="lead mt-4 max-w-2xl">{project.summary}</p>
           <div className="mt-5 flex flex-wrap gap-2">
             {withClaude && (
               <span className="chip !py-1 text-ink">
@@ -83,10 +84,9 @@ export default function ProjectDetail() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.45rem" />
-                        <h2 id="about-title" className="sr-only">
-              About {project.title}
+                        <h2 id="about-title" className="title">
+              What I built
             </h2>
-            <p className="lead !text-[clamp(1.1rem,1rem+0.5vw,1.35rem)] text-ink">{project.summary}</p>
             {project.bullets && (
               <ul className="mt-7 grid gap-4">
                 {project.bullets.map((b, n) => (
