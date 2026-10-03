@@ -3,11 +3,11 @@ import { PhaseBar, StageWindow, useStagePlayer } from './StageKit';
 
 // Four GPUs in an NCCL ring: training, a MANA checkpoint, a fault, and a restart.
 const PHASES = [
-  { id: 'train', ms: 3400, label: 'Training — ring all-reduce across four GPUs' },
-  { id: 'ckpt', ms: 2600, label: 'Checkpoint — MANA captures MPI and NCCL state' },
+  { id: 'train', ms: 3400, label: 'Training: ring all-reduce across four GPUs' },
+  { id: 'ckpt', ms: 2600, label: 'Checkpoint: MANA captures MPI and NCCL state' },
   { id: 'train', ms: 2400, label: 'Training continues past the checkpoint' },
-  { id: 'fault', ms: 2200, label: 'Fault — GPU 2 drops out and the collective stalls' },
-  { id: 'restore', ms: 2800, label: 'Restart — every rank restores from the checkpoint' },
+  { id: 'fault', ms: 2200, label: 'Fault: GPU 2 drops out and the collective stalls' },
+  { id: 'restore', ms: 2800, label: 'Restart: every rank restores from the checkpoint' },
 ];
 
 const GPUS = [

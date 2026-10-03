@@ -5,7 +5,7 @@ export const projects = [
     title: 'Game Boy Emulator',
     kind: 'Project',
     featured: true,
-    subtitle: 'Passes Blargg’s CPU test suite — and the demo below is playable',
+    subtitle: 'Passes Blargg’s CPU test suite, and the demo below is playable',
     hero: true,
     summary: 'A Game Boy (DMG) emulator implementing all 500+ LR35902 opcodes, with a scanline PPU running ROMs at 60 FPS.',
     bullets: [
@@ -23,9 +23,9 @@ export const projects = [
     featured: true,
     subtitle: 'AI translation workbench for Gujarati scripture',
     summary:
-      'Turns scanned Gujarati, Hindi and Sanskrit books into English editions typeset like a published volume — OCR, layout analysis and page-by-page translation with Claude, checked in a facing-page review workbench.',
+      'Turns scanned Gujarati, Hindi and Sanskrit books into English editions typeset like a published volume. OCR, layout analysis and page-by-page translation with Claude, checked in a facing-page review workbench.',
     bullets: [
-      'A staged pipeline — rasterise, OCR, layout, translate, harmonise, headings, structure — where every stage is a retryable job in Postgres, so a redeploy mid-book loses nothing',
+      'A staged pipeline (rasterise, OCR, layout, translate, harmonise, headings, structure) where every stage is a retryable job in Postgres, so a redeploy mid-book loses nothing',
       'Sends the page image and the Google Vision OCR to the model together, and detects pre-Unicode “legacy font” text layers so garbage text is never translated',
       'A locked glossary of 247 terms plus prompt caching keeps terminology consistent and cost low across hundreds of pages',
       'Exports a print-ready typeset PDF with contents and index, plus EPUB, DOCX, HTML and Markdown',
@@ -40,7 +40,7 @@ export const projects = [
     title: 'DevSpace',
     kind: 'Hackathon',
     featured: true,
-    award: 'HackBeanpot — 1st place',
+    award: 'HackBeanpot 1st place',
     subtitle: 'Collaborative cloud IDE',
     summary: 'A collaborative cloud IDE with GPU-accelerated Docker execution on a Jetson Nano and real-time multi-user editing.',
     bullets: [

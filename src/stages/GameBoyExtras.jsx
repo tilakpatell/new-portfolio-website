@@ -158,7 +158,7 @@ export function CpuStage() {
 
   return (
     <div ref={ref}>
-      <StageWindow title="lr35902 — step debugger" right={<span className="tabular">{s.cycles.toLocaleString('en-US')} cycles</span>}>
+      <StageWindow title="lr35902 · step debugger" right={<span className="tabular">{s.cycles.toLocaleString('en-US')} cycles</span>}>
         <div className="grid gap-0 md:grid-cols-[1.5fr_1fr]">
           <ol className="stage-code px-3 py-3 sm:px-4">
             {PROGRAM.map((ins, i) => {
@@ -208,7 +208,7 @@ export function CpuStage() {
                 <div className="h-full rounded-full" style={{ width: `${(s.cleared / 8192) * 100}%`, background: 'var(--accent)' }} />
               </div>
             </div>
-            <p className="mono text-xs text-muted">{s.halted ? 'HALT — waiting for an interrupt' : s.fast && s.i < 7 ? 'fast-forwarding the loop…' : auto ? 'running' : 'paused — step it yourself'}</p>
+            <p className="mono text-xs text-muted">{s.halted ? 'HALT: waiting for an interrupt' : s.fast && s.i < 7 ? 'fast-forwarding the loop…' : auto ? 'running' : 'paused: step it yourself'}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-sm btn-primary" onClick={stepOnce}>Step</button>
               <button type="button" className="btn btn-sm border border-[var(--border-strong)] text-white hover:bg-[var(--surface-2)]" onClick={() => setAuto((a) => !a)}>
@@ -273,7 +273,7 @@ export function PpuStage() {
   const vblank = line >= 144;
   return (
     <div ref={ref}>
-      <StageWindow title="ppu — one frame, line by line" right={<span className="tabular">LY {String(line).padStart(3, '0')}</span>}>
+      <StageWindow title="ppu · one frame, line by line" right={<span className="tabular">LY {String(line).padStart(3, '0')}</span>}>
         <div className="grid items-center gap-6 p-4 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="relative mx-auto w-full max-w-[400px]">
             <canvas ref={canvasRef} width={W} height={H} className="block w-full rounded-sm" style={{ imageRendering: 'pixelated', aspectRatio: '160 / 144' }} />
@@ -286,10 +286,10 @@ export function PpuStage() {
           </div>
           <div className="grid gap-3">
             {[
-              ['Mode 2', 'OAM scan — find the sprites on this line', !vblank],
-              ['Mode 3', 'Pixel transfer — push 160 pixels to the LCD', !vblank],
-              ['Mode 0', 'HBlank — CPU may touch VRAM', !vblank],
-              ['Mode 1', 'VBlank — lines 144–153, the frame is done', vblank],
+              ['Mode 2', 'OAM scan: find the sprites on this line', !vblank],
+              ['Mode 3', 'Pixel transfer: push 160 pixels to the LCD', !vblank],
+              ['Mode 0', 'HBlank: CPU may touch VRAM', !vblank],
+              ['Mode 1', 'VBlank: lines 144-153, the frame is done', vblank],
             ].map(([m, d, on]) => (
               <div key={m} className="rounded-lg border p-3 transition-colors" style={{ borderColor: on ? 'var(--accent)' : 'var(--border)' }}>
                 <p className="mono text-sm" style={{ color: on ? 'var(--accent)' : 'var(--muted)' }}>
@@ -339,7 +339,7 @@ export function BlarggStage() {
 
   return (
     <div ref={ref}>
-      <StageWindow title="blargg — cpu_instrs.gb" right={done > TESTS.length ? 'passed' : `${Math.min(done, TESTS.length)}/11`}>
+      <StageWindow title="blargg · cpu_instrs.gb" right={done > TESTS.length ? 'passed' : `${Math.min(done, TESTS.length)}/11`}>
         <div className="grid items-center gap-6 p-4 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <canvas
             ref={canvasRef}

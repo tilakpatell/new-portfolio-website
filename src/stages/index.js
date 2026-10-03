@@ -9,9 +9,9 @@ const play = () => import('./PlayStages');
 // Each project page loads only its own stages, top to bottom.
 export const PROJECT_STAGES = {
   'gameboy-emulator': [
-    { key: 'game', title: 'Play it', caption: 'A cartridge with three games: Super Tilak Land — four worlds (overground, underground, sky, castle) with mushrooms, shells and firebars — plus Block Drop and Snake. Pick a world with ← → in the menu.', C: lazy(() => import('./GameBoyStage')) },
+    { key: 'game', title: 'Play it', caption: 'A cartridge with three games: Super Tilak Land (four worlds: overground, underground, sky, castle, with mushrooms, shells and firebars), plus Block Drop and Snake. Pick a world with ← → in the menu.', C: lazy(() => import('./GameBoyStage')) },
     { key: 'cpu', title: 'Step the CPU', caption: 'A small LR35902 program, one instruction at a time: registers, flags and cycle counts as the emulator sees them.', C: pick(extras, 'CpuStage') },
-    { key: 'ppu', title: 'Watch the PPU draw', caption: 'The picture-processing unit builds each frame one scanline at a time — 144 visible lines, then VBlank.', C: pick(extras, 'PpuStage') },
+    { key: 'ppu', title: 'Watch the PPU draw', caption: 'The picture-processing unit builds each frame one scanline at a time: 144 visible lines, then VBlank.', C: pick(extras, 'PpuStage') },
     { key: 'blargg', title: 'Pass the tests', caption: 'Blargg’s cpu_instrs ROM exercises every instruction group. All eleven pass.', C: pick(extras, 'BlarggStage') },
   ],
   'swaminarayan-translator': [
@@ -20,7 +20,7 @@ export const PROJECT_STAGES = {
   ],
   devspace: [
     { key: 'editor', title: 'Edit together', caption: 'Two people typing into the same CUDA file, then running it on the Jetson.', C: lazy(() => import('./DevSpaceStage')) },
-    { key: 'kernel', title: 'Your turn', caption: 'Edit the kernel and run it — one GPU thread per element.', C: pick(more, 'KernelPlay') },
+    { key: 'kernel', title: 'Your turn', caption: 'Edit the kernel and run it. One GPU thread per element.', C: pick(more, 'KernelPlay') },
     { key: 'scheduler', title: 'Share one GPU', caption: 'Run requests from every editor are queued onto isolated containers on the Jetson Nano.', C: pick(more, 'SchedulerStage') },
   ],
   'awesome-copilot': [
@@ -33,7 +33,7 @@ export const PROJECT_STAGES = {
   ],
   'fuse-fs': [
     { key: 'tree', title: 'Mount it', caption: 'Files and directories appear as inodes and blocks in a memory-mapped disk image.', C: pick(terminal, 'TreeStage') },
-    { key: 'inodes', title: 'Make some files', caption: 'Create, write and delete files — each gets an inode, and its data lands in blocks tracked by a bitmap.', C: pick(play, 'InodePlay') },
+    { key: 'inodes', title: 'Make some files', caption: 'Create, write and delete files. Each gets an inode, and its data lands in blocks tracked by a bitmap.', C: pick(play, 'InodePlay') },
   ],
   'finance-platform': [
     { key: 'api', title: 'Call it', caption: 'Auth, market data, recommendations and chat over FastAPI.', C: pick(terminal, 'ApiStage') },

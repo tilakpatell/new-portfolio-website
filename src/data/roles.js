@@ -140,15 +140,15 @@ export const fmtMonth = (ym) => {
 };
 
 export const fmtRange = (role) =>
-  `${fmtMonth(role.start)} – ${role.end ? fmtMonth(role.end) : 'Present'}`;
+  `${fmtMonth(role.start)} - ${role.end ? fmtMonth(role.end) : 'Present'}`;
 
 // "Jun–Aug 2026", "Jul–Dec 2025", "Sep 2026 – now"
 export const fmtShortRange = (role) => {
   const a = parseMonth(role.start);
-  if (!role.end) return `${MONTHS[a.m - 1]} ${a.y} – now`;
+  if (!role.end) return `${MONTHS[a.m - 1]} ${a.y} - now`;
   const b = parseMonth(role.end);
-  if (a.y === b.y) return `${MONTHS[a.m - 1]}–${MONTHS[b.m - 1]} ${b.y}`;
-  return `${MONTHS[a.m - 1]} ${a.y} – ${MONTHS[b.m - 1]} ${b.y}`;
+  if (a.y === b.y) return `${MONTHS[a.m - 1]}-${MONTHS[b.m - 1]} ${b.y}`;
+  return `${MONTHS[a.m - 1]} ${a.y} - ${MONTHS[b.m - 1]} ${b.y}`;
 };
 
 export const monthIndex = (ym) => {

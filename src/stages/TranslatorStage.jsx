@@ -4,13 +4,13 @@ import { PhaseBar, StageWindow, useStagePlayer } from './StageKit';
 // One page through the translator: scan → OCR boxes → layout labels →
 // translation → glossary → headings → structure → export.
 const PHASES = [
-  { id: 'rasterise', ms: 900, label: 'Rasterise — the scanned leaf becomes an image' },
-  { id: 'ocr', ms: 1300, label: 'OCR — Google Vision finds every line, with its geometry' },
-  { id: 'layout', ms: 1300, label: 'Layout — prose, verse, heading and footnote, from the page geometry' },
-  { id: 'translate', ms: 2000, label: 'Translate — page image and OCR go to Claude together' },
-  { id: 'harmonise', ms: 1300, label: 'Harmonise — locked glossary terms, consistent across the book' },
-  { id: 'structure', ms: 1100, label: 'Headings & structure — running heads, contents, page numbers' },
-  { id: 'export', ms: 1900, label: 'Export — typeset PDF, EPUB, DOCX, HTML and Markdown' },
+  { id: 'rasterise', ms: 900, label: 'Rasterise: the scanned leaf becomes an image' },
+  { id: 'ocr', ms: 1300, label: 'OCR: Google Vision finds every line, with its geometry' },
+  { id: 'layout', ms: 1300, label: 'Layout: prose, verse, heading and footnote, from the page geometry' },
+  { id: 'translate', ms: 2000, label: 'Translate: page image and OCR go to Claude together' },
+  { id: 'harmonise', ms: 1300, label: 'Harmonise: locked glossary terms, consistent across the book' },
+  { id: 'structure', ms: 1100, label: 'Headings & structure: running heads, contents, page numbers' },
+  { id: 'export', ms: 1900, label: 'Export: typeset PDF, EPUB, DOCX, HTML and Markdown' },
 ];
 const ORDER = PHASES.map((p) => p.id);
 const STAGES = ['Rasterise', 'OCR', 'Layout', 'Translate', 'Harmonise', 'Structure', 'Export'];
@@ -21,7 +21,7 @@ const SOURCE = [
   { kind: 'prose', text: 'સભામાં ઘણા સાધુ તથા હરિભક્તો બેઠા હતા.' },
   { kind: 'verse', text: 'અક્ષરધામના ધામી,' },
   { kind: 'verse', text: 'સહજાનંદ સ્વામી.' },
-  { kind: 'footnote', text: '૧. ગઢડા – સૌરાષ્ટ્ર' },
+  { kind: 'footnote', text: '૧. ગઢડા - સૌરાષ્ટ્ર' },
 ];
 const TAG = { heading: 'heading', prose: 'prose', verse: 'verse', footnote: 'footnote' };
 
@@ -45,7 +45,7 @@ export default function TranslatorStage() {
 
   return (
     <div ref={player.ref}>
-      <StageWindow title="swaminarayan-translator — facing-page workbench" right={<span>page 12</span>}>
+      <StageWindow title="swaminarayan-translator · facing-page workbench" right={<span>page 12</span>}>
         <ol className="flex flex-wrap gap-1.5 border-b border-line px-4 py-3" aria-label="Pipeline stages">
           {STAGES.map((s, i) => (
             <li

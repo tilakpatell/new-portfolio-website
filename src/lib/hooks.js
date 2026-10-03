@@ -45,7 +45,7 @@ export function useInView({ once = false, rootMargin = '0px 0px -10% 0px', thres
 
 export function useDocumentTitle(title) {
   useEffect(() => {
-    document.title = title ? `${title} — Tilak Patel` : 'Tilak Patel — Software Engineer';
+    document.title = title ? `${title} | Tilak Patel` : 'Tilak Patel | Software Engineer';
   }, [title]);
 }
 

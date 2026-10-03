@@ -28,7 +28,7 @@ export function SummarizerPlay() {
   const result = useMemo(() => summarize(text, keep), [text, keep]);
   return (
     <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-      <StageWindow title="article.txt — paste anything" right={<span>{result.scored.length} sentences</span>}>
+      <StageWindow title="article.txt · paste anything" right={<span>{result.scored.length} sentences</span>}>
         <div className="p-4">
           <textarea
             value={text}
@@ -60,7 +60,7 @@ export function SummarizerPlay() {
           {result.summary.map((s, i) => (
             <p key={i} className="mb-2 text-white">{s}</p>
           ))}
-          <p className="mono mt-4 text-xs text-muted">Runs in your browser with word-frequency scoring — the project itself scores sentences with a BERT model.</p>
+          <p className="mono mt-4 text-xs text-muted">Runs in your browser with word-frequency scoring. The project itself scores sentences with a BERT model.</p>
         </div>
       </StageWindow>
     </div>
@@ -122,7 +122,7 @@ export function PortfolioPlay() {
               </li>
             ))}
           </ul>
-          <p className="mono mt-4 text-xs text-muted">Illustrative mixes — the API returns a recommendation from the user’s risk profile.</p>
+          <p className="mono mt-4 text-xs text-muted">Illustrative mixes. The API returns a recommendation from the user’s risk profile.</p>
         </div>
       </div>
     </StageWindow>
@@ -162,7 +162,7 @@ export function InodePlay() {
   };
   const write = () => {
     const target = [...files].reverse().find((f) => !f.dir);
-    if (!target) return setMsg('nothing to write to — touch a file first');
+    if (!target) return setMsg('nothing to write to: touch a file first');
     const add = [];
     for (let b = RESERVED; b < BLOCKS && add.length < 4; b++) if (!used.has(b)) add.push(b);
     if (!add.length) return setMsg('ENOSPC: no space left on device');
@@ -176,7 +176,7 @@ export function InodePlay() {
     setMsg(`rm ${target.name}  → freed inode ${target.ino} and ${target.blocks.length} block(s)`);
   };
   return (
-    <StageWindow title="tpfs — your file system" right={<span>{used.size + RESERVED}/{BLOCKS} blocks</span>}>
+    <StageWindow title="tpfs · your file system" right={<span>{used.size + RESERVED}/{BLOCKS} blocks</span>}>
       <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <div className="flex flex-wrap gap-2">
@@ -214,7 +214,7 @@ export function InodePlay() {
               </span>
             ))}
           </div>
-          <p className="mono mt-3 text-xs text-muted">0–4: superblock, bitmaps, inode table</p>
+          <p className="mono mt-3 text-xs text-muted">0-4: superblock, bitmaps, inode table</p>
         </div>
       </div>
     </StageWindow>

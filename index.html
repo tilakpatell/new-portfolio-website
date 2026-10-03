@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Tilak Patel — Software Engineer</title>
-    <meta name="description" content="Tilak Patel — Northeastern CS ’27 and Technical Infrastructure Program Manager Intern at AWS. Infrastructure tooling, AI pipelines and systems software." />
+    <title>Tilak Patel | Software Engineer</title>
+    <meta name="description" content="Tilak Patel: Northeastern CS ’27 and Technical Infrastructure Program Manager Intern at AWS. Infrastructure tooling, AI pipelines and systems software." />
     <meta name="author" content="Tilak Patel" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#fdfdfc" />
     <link rel="canonical" href="https://tilakpatell.com/" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -14,25 +14,26 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Tilak Patel" />
     <meta property="og:url" content="https://tilakpatell.com/" />
-    <meta property="og:title" content="Tilak Patel — Software Engineer" />
+    <meta property="og:title" content="Tilak Patel | Software Engineer" />
     <meta property="og:description" content="Infrastructure tooling, AI pipelines and systems software. Now at AWS; previously RTX, Bose, Pendar and SRC." />
     <meta property="og:image" content="https://tilakpatell.com/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Tilak Patel — Software Engineer" />
+    <meta property="og:image:alt" content="Tilak Patel | Software Engineer" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Tilak Patel — Software Engineer" />
+    <meta name="twitter:title" content="Tilak Patel | Software Engineer" />
     <meta name="twitter:description" content="Infrastructure tooling, AI pipelines and systems software. Now at AWS." />
     <meta name="twitter:image" content="https://tilakpatell.com/og-image.jpg" />
 
     <script>
       try {
-        if (localStorage.getItem('tp-mode') === 'dark') document.documentElement.dataset.mode = 'dark';
+        var m = localStorage.getItem('tp-mode');
+        if (m === 'dark' || (!m && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.mode = 'dark';
       } catch (e) {}
     </script>
     <style>
-      html { background: #ffffff; }
-      html[data-mode='dark'] { background: #000000; }
+      html { background: #fdfdfc; }
+      html[data-mode='dark'] { background: #09090b; }
     </style>
   </head>
   <body>
@@ -40,9 +41,9 @@
     <div id="root"></div>
     <noscript>
       <p style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 40rem">
-        Tilak Patel — software engineer. This site needs JavaScript. Email tilakny@gmail.com, or see
-        <a href="https://github.com/tilakpatell" style="color: #fff">GitHub</a> and
-        <a href="https://www.linkedin.com/in/tilakpatell" style="color: #fff">LinkedIn</a>.
+        Tilak Patel, software engineer. This site needs JavaScript. Email tilakny@gmail.com, or see
+        <a href="https://github.com/tilakpatell" style="color: inherit">GitHub</a> and
+        <a href="https://www.linkedin.com/in/tilakpatell" style="color: inherit">LinkedIn</a>.
       </p>
     </noscript>
     <script type="module" src="/src/main.jsx"></script>

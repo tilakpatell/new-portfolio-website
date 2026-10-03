@@ -64,7 +64,7 @@ export function ShellStage() {
   const state = useTyped(SHELL, inView);
   return (
     <div ref={ref}>
-      <StageWindow title="tsh — a Unix shell in C" right="pipes · redirection · jobs">
+      <StageWindow title="tsh · a Unix shell in C" right="pipes · redirection · jobs">
         <Transcript entries={SHELL} prompt="tsh>" state={state} />
       </StageWindow>
     </div>
@@ -98,7 +98,7 @@ export function TreeStage() {
 
   return (
     <div ref={ref} className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
-      <StageWindow title="bash — FUSE mount">
+      <StageWindow title="bash · FUSE mount">
         <Transcript entries={FS} prompt="$" state={state} />
       </StageWindow>
       <div className="grid gap-4">
@@ -112,7 +112,7 @@ export function TreeStage() {
             ))}
           </div>
         </StageWindow>
-        <StageWindow title="disk.img (mmap) — 64 blocks">
+        <StageWindow title="disk.img (mmap), 64 blocks">
           <div className="grid gap-1 p-4" style={{ gridTemplateColumns: 'repeat(16, minmax(0, 1fr))' }}>
             {Array.from({ length: 64 }).map((_, i) => {
               const kind = i === 0 ? 'super' : i < 3 ? 'meta' : i < used ? 'data' : 'free';
@@ -167,7 +167,7 @@ export function ApiStage() {
   const chartOn = state.all || state.entry > 1 || (state.entry === 1 && state.out);
   return (
     <div ref={ref} className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-      <StageWindow title="uvicorn — FastAPI request log">
+      <StageWindow title="uvicorn · FastAPI request log">
         <Transcript entries={API} prompt="→" state={state} />
       </StageWindow>
       <StageWindow title="AAPL · daily close">
@@ -199,7 +199,7 @@ const SUM_PHASES = [
   { ms: 1800, label: 'Input article' },
   { ms: 2200, label: 'Encode each sentence with BERT' },
   { ms: 2400, label: 'Score sentences for salience' },
-  { ms: 3600, label: 'Keep the top three — the summary' },
+  { ms: 3600, label: 'Keep the top three: the summary' },
 ];
 
 export function SummarizerStage() {

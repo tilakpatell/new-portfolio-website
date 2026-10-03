@@ -77,7 +77,7 @@ export default function DevSpaceStage() {
   return (
     <div ref={ref} className="grid gap-4">
       <StageWindow
-        title="kernel.cu — DevSpace"
+        title="kernel.cu · DevSpace"
         right={
           <span className="flex items-center gap-1.5">
             {PEOPLE.map((p) => (
@@ -111,7 +111,7 @@ export default function DevSpaceStage() {
           })}
         </div>
       </StageWindow>
-      <StageWindow title="terminal — jetson-nano (CUDA)">
+      <StageWindow title="terminal · jetson-nano (CUDA)">
         <div className="stage-code min-h-[9.5rem] px-4 py-3">
           {TERMINAL.slice(0, termLines).map((line, i) => (
             <p key={i} className={i === 0 ? 'text-ink' : line.startsWith('✓') ? 'text-accent' : 'text-muted'}>
@@ -123,7 +123,7 @@ export default function DevSpaceStage() {
       </StageWindow>
       <p className="flex items-center gap-2 text-sm text-body">
         <RiTrophyLine className="h-4 w-4 text-accent" aria-hidden="true" />
-        HackBeanpot — 1st place
+        HackBeanpot, 1st place
       </p>
     </div>
   );

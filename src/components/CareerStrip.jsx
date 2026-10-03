@@ -9,8 +9,8 @@ export default function CareerStrip() {
   return (
     <div className="relative">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="eyebrow">Experience, newest first</p>
-        <Link to="/experience" className="link hidden text-sm sm:inline">
+        <h2 className="stretch-semi text-lg font-semibold text-ink">Where I’ve worked</h2>
+        <Link to="/experience" className="link text-sm">
           Full timeline
         </Link>
       </div>

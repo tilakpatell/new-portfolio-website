@@ -43,8 +43,8 @@ function CurrentRole({ role }) {
       <div className="shell relative pb-14 pt-[calc(var(--nav-h)+32px)] md:pb-20 md:pt-[calc(var(--nav-h)+52px)]">
         <div className="relative">
           <Waypoint top="0.6rem" />
-          <p className="eyebrow hero-in flex items-center justify-center gap-2.5">
-            <span className="status-dot" aria-hidden="true" /> Where I am now
+          <p className="eyebrow hero-in text-center">
+            Where I am now
           </p>
         </div>
 
@@ -61,7 +61,7 @@ function CurrentRole({ role }) {
           <dl className="hero-in mt-8 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-card border border-line sm:grid-cols-4" style={{ '--d': '280ms', background: 'var(--border)' }}>
             {facts.map(([k, v]) => (
               <div key={k} className="bg-surface px-4 py-3">
-                <dt className="eyebrow !text-[0.68rem]">{k}</dt>
+                <dt className="text-xs text-muted">{k}</dt>
                 <dd className="mt-1 text-sm font-semibold text-ink">{v}</dd>
               </div>
             ))}
@@ -73,7 +73,7 @@ function CurrentRole({ role }) {
 
         <div className="hero-in mt-12 grid items-start gap-10 lg:grid-cols-2 lg:gap-14" style={{ '--d': '420ms' }}>
           <div>
-            <p className="eyebrow">What I’m doing</p>
+            <p className="label">What I’m doing</p>
             <div className="mt-4">
               <Bullets items={role.bullets} />
             </div>
@@ -81,7 +81,7 @@ function CurrentRole({ role }) {
           </div>
           <div>
             <Motif name={role.motif} />
-            <p className="mt-4 text-sm text-muted">Scroll for every role — the site takes on each company’s colors as you go.</p>
+            <p className="mt-4 text-sm text-muted">Every earlier role follows below. The site takes on each company’s colors as you reach it.</p>
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@ function CurrentRole({ role }) {
 
 const roleType = (role) => (role.title.includes('Co-op') ? 'Co-op' : role.title.includes('part-time') ? 'Part-time internship' : 'Internship');
 
-// Every earlier role gets the same centred treatment as the current one, a step smaller.
+// Every earlier role: the company pinned on the left while its work scrolls past on the right.
 function Chapter({ role, episode, last }) {
   const facts = [
     ['Where', role.location],
@@ -101,44 +101,41 @@ function Chapter({ role, episode, last }) {
   ];
   return (
     <section id={role.id} data-theme-section={role.id} className="relative z-10 scroll-mt-24" aria-labelledby={`${role.id}-title`}>
-      <div className="shell relative pt-14 md:pt-20">
-        <div className="relative">
-          <Waypoint top="0.45rem" />
-          <p className="eyebrow text-center">
-            Episode {ROMAN[episode - 1]} · {role.sector}
-          </p>
-        </div>
-        <div className="mt-6 flex flex-col items-center text-center">
-          <Reveal className="chapter-logo-card">
-            <CompanyLogo id={role.id} className="h-full w-full border-0 bg-transparent" />
-          </Reveal>
-          <h2 id={`${role.id}-title`} className="display mt-6 text-[clamp(2.2rem,1.3rem+3.4vw,4.2rem)]">
-            {role.company}
-          </h2>
-          <p className="stretch-semi mt-3 text-[clamp(1.1rem,1rem+0.6vw,1.4rem)] font-semibold leading-snug text-ink">{role.title}</p>
-          <dl className="mt-7 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-card border border-line sm:grid-cols-4" style={{ background: 'var(--border)' }}>
-            {facts.map(([k, v]) => (
-              <div key={k} className="bg-surface px-4 py-3">
-                <dt className="eyebrow !text-[0.68rem]">{k}</dt>
-                <dd className="mt-1 text-sm font-semibold text-ink">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="lead mt-7 max-w-2xl text-ink">{role.summary}</p>
-        </div>
-        <div className="mt-10 grid items-start gap-10 lg:grid-cols-2 lg:gap-14">
-          <div>
-            <p className="eyebrow">What I did</p>
-            <div className="mt-4">
+      <div className="shell relative pt-16 md:pt-24">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
+          <div className="relative lg:sticky lg:top-[calc(var(--nav-h)+32px)] lg:self-start">
+            <Waypoint top="0.45rem" />
+            <p className="eyebrow">
+              Episode {ROMAN[episode - 1]} · {role.sector}
+            </p>
+            <Reveal className="chapter-logo-card is-small mt-6">
+              <CompanyLogo id={role.id} className="h-full w-full border-0 bg-transparent" />
+            </Reveal>
+            <h2 id={`${role.id}-title`} className="display mt-7 text-[clamp(2.2rem,1.3rem+3vw,3.8rem)]">
+              {role.company}
+            </h2>
+            <p className="stretch-semi mt-3 text-[clamp(1.05rem,1rem+0.4vw,1.25rem)] font-semibold leading-snug text-ink">{role.title}</p>
+            <dl className="mt-7 grid max-w-md grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5">
+              {facts.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-xs text-muted">{k}</dt>
+                  <dd className="mt-0.5 text-sm font-semibold text-ink">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="lg:pt-10">
+            <p className="lead max-w-2xl !text-[clamp(1.125rem,1rem+0.5vw,1.35rem)] text-ink">{role.summary}</p>
+            <div className="mt-8">
               <Bullets items={role.bullets} />
             </div>
-            <Chips items={role.stack} className="mt-6" />
-          </div>
-          <div>
-            <Motif name={role.motif} />
+            <Chips items={role.stack} className="mt-7" />
+            <div className="mt-10">
+              <Motif name={role.motif} />
+            </div>
           </div>
         </div>
-        {!last && <Saber className="mx-auto mt-14 md:mt-16" />}
+        {!last && <Saber className="mt-16 md:mt-24" />}
       </div>
     </section>
   );
@@ -184,7 +181,7 @@ function Timeline() {
         })}
       </ol>
       <figcaption className="mono mt-4 text-xs text-muted">
-        {fmtMonth(roles[roles.length - 1].start)} – now · Empowerreg was part-time and remote, alongside Pendar
+        {fmtMonth(roles[roles.length - 1].start)} to now. Empowerreg was part-time and remote, alongside Pendar
       </figcaption>
     </figure>
   );
@@ -218,8 +215,7 @@ export default function Experience() {
       <section className="shell relative z-10 pb-24 pt-20" aria-labelledby="glance-title">
         <div className="relative">
           <Waypoint top="0.4rem" />
-          <p className="eyebrow">At a glance</p>
-          <h2 id="glance-title" className="title mt-3">
+          <h2 id="glance-title" className="title">
             Internships and co-ops alongside a CS degree at Northeastern.
           </h2>
         </div>

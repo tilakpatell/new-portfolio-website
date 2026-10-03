@@ -34,7 +34,7 @@ export default function ShellPlay() {
   const [fs, setFs] = useState(initialFs);
   const [cwd, setCwd] = useState('/home/tilak');
   const [log, setLog] = useState([
-    { kind: 'sys', text: 'tsh — a Unix shell, running in your browser. Type help, or try:' },
+    { kind: 'sys', text: 'tsh: a Unix shell, running in your browser. Type help, or try:' },
     { kind: 'sys', text: '  cat names.txt | sort | uniq | head -n 3' },
   ]);
   const [value, setValue] = useState('');
@@ -231,7 +231,7 @@ export default function ShellPlay() {
 
   return (
     <div>
-      <StageWindow title="tsh — try it">
+      <StageWindow title="tsh · try it">
         <div ref={scroller} className="stage-code h-[19rem] overflow-y-auto px-4 py-3" onClick={() => inputRef.current?.focus({ preventScroll: true })}>
           {log.map((l, i) => (
             <p key={i} className={`whitespace-pre-wrap break-words ${l.kind === 'err' ? 'text-[#ff8a8a]' : l.kind === 'sys' ? 'text-muted' : l.kind === 'cmd' ? 'text-white' : 'text-body'}`}>

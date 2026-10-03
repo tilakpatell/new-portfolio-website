@@ -32,7 +32,7 @@ export function SchedulerStage() {
 
   return (
     <div ref={ref}>
-      <StageWindow title="devspace — run queue → jetson-nano" right={<span>{running}/2 GPU slots busy</span>}>
+      <StageWindow title="devspace · run queue → jetson-nano" right={<span>{running}/2 GPU slots busy</span>}>
         <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-[1fr_1.2fr]">
           <div>
             <p className="eyebrow">Run requests</p>
@@ -84,10 +84,10 @@ export function SchedulerStage() {
 // ─── awesome-copilot: an error-recovery hook in action ──────────────────────
 const RECOVERY = [
   { id: 'send', ms: 1100, label: 'The app sends a request through the Copilot SDK' },
-  { id: 'error', ms: 1300, label: 'The call fails — a dropped connection' },
+  { id: 'error', ms: 1300, label: 'The call fails: a dropped connection' },
   { id: 'hook', ms: 1300, label: 'The error-recovery hook catches it and backs off' },
   { id: 'retry', ms: 1200, label: 'Retry with the session intact' },
-  { id: 'ok', ms: 1900, label: 'Response streams back — the user never saw the failure' },
+  { id: 'ok', ms: 1900, label: 'Response streams back. The user never saw the failure' },
 ];
 const R_ORDER = RECOVERY.map((r) => r.id);
 
@@ -103,7 +103,7 @@ export function RecoveryStage() {
   ];
   return (
     <div ref={player.ref}>
-      <StageWindow title="copilot-sdk — error-recovery hook">
+      <StageWindow title="copilot-sdk · error-recovery hook">
         <div className="stage-code min-h-[12rem] px-4 py-4">
           {lines.map(([icon, text, step]) => (
             <p key={step} className="stage-fade flex gap-3" data-on={at >= step ? 'true' : 'false'}>
@@ -143,7 +143,7 @@ export function PipelineStage() {
   ];
   return (
     <div ref={ref}>
-      <StageWindow title="tsh — fork, pipe, dup2, exec">
+      <StageWindow title="tsh: fork, pipe, dup2, exec">
         <div className="p-4 sm:p-6">
           <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
             {procs.map((p, i) => [
@@ -200,7 +200,7 @@ export function InodeStage() {
   const used = new Set(shown.flatMap((i) => i.blocks));
   return (
     <div ref={ref}>
-      <StageWindow title="tpfs — inode table and block bitmap">
+      <StageWindow title="tpfs · inode table and block bitmap">
         <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.5fr_1fr]">
           <table className="stage-code w-full text-left">
             <thead className="text-muted">
@@ -237,7 +237,7 @@ export function InodeStage() {
                 </span>
               ))}
             </div>
-            <p className="mono mt-3 text-xs text-muted">blocks 0–4: superblock, bitmaps, inode table</p>
+            <p className="mono mt-3 text-xs text-muted">blocks 0-4: superblock, bitmaps, inode table</p>
           </div>
         </div>
       </StageWindow>
@@ -259,7 +259,7 @@ export function PortfolioStage() {
   let acc = 0;
   return (
     <div ref={ref}>
-      <StageWindow title="GET /finance/recommend — sample portfolio">
+      <StageWindow title="GET /finance/recommend · sample portfolio">
         <div className="grid items-center gap-6 p-5 sm:grid-cols-[220px_1fr]">
           <svg viewBox="0 0 120 120" className="mx-auto w-48" role="img" aria-label="Donut chart of a sample portfolio split">
             {SLICES.map((s) => {
@@ -296,7 +296,7 @@ export function PortfolioStage() {
                 <span className="mono ml-auto text-white">{s.pct}%</span>
               </li>
             ))}
-            <li className="mono mt-2 text-xs text-muted">Illustrative output — recommendations come from the user’s risk profile</li>
+            <li className="mono mt-2 text-xs text-muted">Illustrative output. Recommendations come from the user’s risk profile</li>
           </ul>
         </div>
       </StageWindow>
@@ -320,7 +320,7 @@ export function AttentionStage() {
   const w = (j) => Math.max(0.08, (WEIGHTS[j] + (j === focus ? 1 : 0) + WEIGHTS[focus] * (1 - Math.abs(j - focus) / TOKENS.length)) / 2.2);
   return (
     <div ref={ref}>
-      <StageWindow title="bert — attention from one token" right={<span>head 7 · layer 11</span>}>
+      <StageWindow title="bert · attention from one token" right={<span>head 7 · layer 11</span>}>
         <div className="p-5">
           <p className="flex flex-wrap gap-1.5">
             {TOKENS.map((t, j) => (
@@ -338,7 +338,7 @@ export function AttentionStage() {
             ))}
           </p>
           <p className="mono mt-4 text-xs text-muted">
-            Darker = more attention from “{TOKENS[focus]}” — illustrative weights; salient sentences score higher and make the summary
+            Darker = more attention from “{TOKENS[focus]}” (illustrative weights); salient sentences score higher and make the summary
           </p>
         </div>
       </StageWindow>
@@ -358,7 +358,7 @@ export function FlamegraphStage() {
   const [ref, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   return (
     <div ref={ref}>
-      <StageWindow title="perf → flamegraph — one checkpoint (illustrative)">
+      <StageWindow title="perf → flamegraph, one checkpoint (illustrative)">
         <div className="p-4 sm:p-5">
           <div className="grid gap-1" style={{ direction: 'ltr' }}>
             {[...FLAME].reverse().map((row, r) => (
@@ -384,7 +384,7 @@ export function FlamegraphStage() {
               </div>
             ))}
           </div>
-          <p className="mono mt-3 text-xs text-muted">Width = time on CPU. Profiling showed where checkpoint time went — draining MPI traffic and writing the image.</p>
+          <p className="mono mt-3 text-xs text-muted">Width = time on CPU. Profiling showed where checkpoint time went: draining MPI traffic and writing the image.</p>
         </div>
       </StageWindow>
     </div>
@@ -409,7 +409,7 @@ export function KernelPlay() {
   };
   const expr = op === 'max' ? 'max(a[i], b[i])' : `a[i] ${op} b[i]`;
   return (
-    <StageWindow title="kernel.cu — your turn" right={<span>{run ? `${run.n} threads` : 'not run yet'}</span>}>
+    <StageWindow title="kernel.cu · your turn" right={<span>{run ? `${run.n} threads` : 'not run yet'}</span>}>
       <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr]">
         <div>
           <pre className="stage-code whitespace-pre-wrap text-body">

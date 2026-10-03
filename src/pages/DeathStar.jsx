@@ -150,7 +150,7 @@ export default function DeathStar() {
         <div>
           <p className="eyebrow">Classified · DS-1 Orbital Battle Station</p>
           <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">That’s no moon.</h1>
-          <p className="lead mt-6 max-w-xl">It’s a space station — and you found the hidden page. Alderaan is in range.</p>
+          <p className="lead mt-6 max-w-xl">It’s a space station, and you found the hidden page. Alderaan is in range.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             {phase === 'gone' ? (
               <button type="button" className="btn btn-primary" onClick={() => setPhase('idle')}>

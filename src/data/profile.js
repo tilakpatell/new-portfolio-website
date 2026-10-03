@@ -15,7 +15,7 @@ export const profile = {
     alt: 'Tilak Patel smiling in a black rain jacket in front of a waterfall',
   },
   lead:
-    'Computer science student at Northeastern, currently a Technical Infrastructure Program Manager Intern at AWS — building data-center planning tools for generative-AI capacity.',
+    'Computer science student at Northeastern, currently a Technical Infrastructure Program Manager Intern at AWS, building data-center planning tools for generative-AI capacity.',
   focus: 'Infrastructure tooling, AI pipelines and systems software.',
   offClock: 'Off the clock: Game Boy emulators, open source and an unreasonable amount of Star Wars.',
 };
@@ -63,7 +63,7 @@ export const focusAreas = [
     id: 'systems',
     title: 'Systems & performance',
     body:
-      'A Game Boy emulator that passes Blargg’s CPU tests at 60 FPS, a real-time Qt acquisition app that replaced LabVIEW, and low-level C work — shells, file systems, MPI.',
+      'A Game Boy emulator that passes Blargg’s CPU tests at 60 FPS, a real-time Qt acquisition app that replaced LabVIEW, and low-level C work: shells, file systems, MPI.',
     where: ['gameboy', 'pendar'],
   },
 ];

@@ -11,7 +11,7 @@ export default function Footer() {
             Tilak Patel
           </Link>
           <p className="mt-4 text-sm leading-relaxed text-muted">
-            Software engineer — infrastructure tooling, AI pipelines and systems. Northeastern University, class of 2027.
+            Software engineer building infrastructure tooling, AI pipelines and systems. Northeastern University, class of 2027.
           </p>
         </div>
 

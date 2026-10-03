@@ -83,11 +83,10 @@ export default function ProjectDetail() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.45rem" />
-            <p className="eyebrow">What I built</p>
-            <h2 id="about-title" className="sr-only">
+                        <h2 id="about-title" className="sr-only">
               About {project.title}
             </h2>
-            <p className="lead mt-4 !text-[clamp(1.1rem,1rem+0.5vw,1.35rem)] text-ink">{project.summary}</p>
+            <p className="lead !text-[clamp(1.1rem,1rem+0.5vw,1.35rem)] text-ink">{project.summary}</p>
             {project.bullets && (
               <ul className="mt-7 grid gap-4">
                 {project.bullets.map((b, n) => (
@@ -100,12 +99,12 @@ export default function ProjectDetail() {
             )}
           </div>
           <aside className="card self-start p-6">
-            <p className="eyebrow">Stack</p>
+            <p className="label">Stack</p>
             <Chips items={project.stack} className="mt-3" />
             {project.credits && (
               <>
                 <div className="divider my-6" />
-                <p className="eyebrow">Credits</p>
+                <p className="label">Credits</p>
                 <dl className="mt-3 grid gap-2 text-sm">
                   {project.credits.map((c) => (
                     <div key={c.role} className="flex flex-wrap gap-x-2">
@@ -125,7 +124,7 @@ export default function ProjectDetail() {
             {project.links.length > 0 && (
               <>
                 <div className="divider my-6" />
-                <p className="eyebrow">Links</p>
+                <p className="label">Links</p>
                 <div className="mt-3 flex flex-wrap gap-3">
                   {project.links.map((l) => (
                     <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
@@ -142,14 +141,14 @@ export default function ProjectDetail() {
       <nav className="shell relative z-10 pb-24" aria-label="More projects">
         <div className="relative grid gap-4 sm:grid-cols-2">
           <Waypoint top="2rem" />
-          <Link to={`/projects/${prev.id}`} className="card p-5">
-            <span className="eyebrow inline-flex items-center gap-2">
+          <Link to={`/projects/${prev.id}`} className="card card-lift p-5">
+            <span className="label inline-flex items-center gap-2">
               <RiArrowLeftLine className="h-4 w-4" aria-hidden="true" /> Previous
             </span>
             <span className="stretch-semi mt-2 block text-lg font-semibold text-ink">{prev.title}</span>
           </Link>
-          <Link to={`/projects/${next.id}`} className="card p-5 sm:text-right">
-            <span className="eyebrow inline-flex items-center gap-2">
+          <Link to={`/projects/${next.id}`} className="card card-lift p-5 sm:flex sm:flex-col sm:items-end sm:text-right">
+            <span className="label inline-flex items-center gap-2">
               Next <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="stretch-semi mt-2 block text-lg font-semibold text-ink">{next.title}</span>

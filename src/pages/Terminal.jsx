@@ -34,7 +34,7 @@ const QUOTES = [
 ];
 const quote = () => {
   const [q, who] = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  return [BLANK, L(`  “${q}”`), L(`   — ${who}`, 'dim')];
+  return [BLANK, L(`  “${q}”`), L(`   - ${who}`, 'dim')];
 };
 
 const pad = (s, n) => String(s).padEnd(n);
@@ -86,7 +86,7 @@ async function githubReport() {
     const top = Object.entries(langs).sort((a, b) => b[1] - a[1]).slice(0, 5);
     return [
       BLANK,
-      L('  GITHUB — LIVE', 'head'),
+      L('  GITHUB: LIVE', 'head'),
       L(`  handle        @${user.login}`),
       L(`  public repos  ${user.public_repos}`),
       BLANK,
@@ -146,7 +146,7 @@ export default function Terminal() {
       ],
       experience: () => [
         BLANK,
-        L('  EXPERIENCE — newest first', 'head'),
+        L('  EXPERIENCE: newest first', 'head'),
         ...roles.flatMap((r) => [L(`  ${pad(r.short, 12)}${pad(r.shortTitle, 36)}${fmtShortRange(r)}`), L(`  ${' '.repeat(12)}${r.summary}`, 'dim')]),
         BLANK,
         L("  Full timeline: 'open experience'", 'dim'),
@@ -182,7 +182,7 @@ export default function Terminal() {
       github: githubReport,
       achievements: () => [
         BLANK,
-        L(`  ACHIEVEMENTS — ${unlocked.length}/${Object.keys(ACHIEVEMENTS).length}`, 'head'),
+        L(`  ACHIEVEMENTS: ${unlocked.length}/${Object.keys(ACHIEVEMENTS).length}`, 'head'),
         ...Object.entries(ACHIEVEMENTS).map(([id, a]) =>
           L(`  ${unlocked.includes(id) ? '■' : '□'} ${pad(a.name, 20)}${unlocked.includes(id) ? a.desc : '???'}`, unlocked.includes(id) ? 'out' : 'dim'),
         ),
@@ -197,14 +197,14 @@ export default function Terminal() {
       ],
       order66: () => {
         unlock('order66');
-        return [BLANK, ...box(['EXECUTING ORDER 66…', '“Execute Order 66.” — Darth Sidious'], 46).map((l) => ({ ...l, kind: 'err' })), L('  (It’s just a portfolio. Everyone is fine.)', 'dim')];
+        return [BLANK, ...box(['EXECUTING ORDER 66…', '“Execute Order 66.” - Darth Sidious'], 46).map((l) => ({ ...l, kind: 'err' })), L('  (It’s just a portfolio. Everyone is fine.)', 'dim')];
       },
       force: quote,
       starwars: quote,
-      vader: () => [BLANK, L('  “No, I am your father.”'), L('   — Darth Vader, The Empire Strikes Back', 'dim')],
-      yoda: () => [BLANK, L('  “Size matters not.”'), L('   — Yoda, The Empire Strikes Back', 'dim')],
+      vader: () => [BLANK, L('  “No, I am your father.”'), L('   - Darth Vader, The Empire Strikes Back', 'dim')],
+      yoda: () => [BLANK, L('  “Size matters not.”'), L('   - Yoda, The Empire Strikes Back', 'dim')],
       lightsaber: () => [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L('  “An elegant weapon for a more civilized age.”'), L('   — Obi-Wan Kenobi', 'dim')],
-      hello: () => [L('  Hello there!'), L('  — General Kenobi', 'dim')],
+      hello: () => [L('  Hello there!'), L('  - General Kenobi', 'dim')],
       sudo: () => [L('  visitor is not in the sudoers file. This incident will be reported to Lord Vader.', 'err')],
       rm: () => [L('  Permission denied. Dark side clearance required.', 'err')],
       deathstar: () => {
@@ -320,7 +320,7 @@ export default function Terminal() {
             <i className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
             <i className="h-2.5 w-2.5 rounded-full bg-[var(--border-strong)]" />
           </span>
-          <span className="mono truncate text-xs text-muted">{PROMPT.replace(':~$', '')} — imperial-sh</span>
+          <span className="mono truncate text-xs text-muted">{PROMPT.replace(':~$', '')} · imperial-sh</span>
           <span className="mono ml-auto flex items-center gap-2 text-xs text-muted">
             <span className="status-dot" aria-hidden="true" /> connected
           </span>

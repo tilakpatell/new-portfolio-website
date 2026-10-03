@@ -74,8 +74,26 @@ export function ThemeProvider({ children }) {
   }, [active]);
 
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#000000' : '#ffffff');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#09090b' : '#fdfdfc');
   }, [mode]);
+
+  // Until the visitor picks a mode, follow the system's light or dark setting.
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!mq) return undefined;
+    const onChange = (e) => {
+      try {
+        if (window.localStorage.getItem(MODE_KEY)) return;
+      } catch {
+        /* storage unavailable */
+      }
+      const next = e.matches ? 'dark' : 'light';
+      document.documentElement.dataset.mode = next;
+      setMode(next);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const pin = useCallback((id) => {
     const next = id && THEMES[id] ? id : null;

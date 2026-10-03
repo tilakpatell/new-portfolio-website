@@ -34,8 +34,8 @@ function MessageForm() {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Enter your name.';
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Check the email address — it looks incomplete.';
-    if (form.message.trim().length < 10) e.message = 'Write a little more — at least 10 characters.';
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Check the email address. It looks incomplete.';
+    if (form.message.trim().length < 10) e.message = 'Write a little more: at least 10 characters.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -44,7 +44,7 @@ function MessageForm() {
     ev.preventDefault();
     if (!validate()) return;
     const subject = form.subject.trim() || `Hello from ${form.name.trim()}`;
-    const body = `${form.message.trim()}\n\n— ${form.name.trim()}${form.email.trim() ? ` (${form.email.trim()})` : ''}`;
+    const body = `${form.message.trim()}\n\n- ${form.name.trim()}${form.email.trim() ? ` (${form.email.trim()})` : ''}`;
     window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setOpened(true);
   };
@@ -79,8 +79,8 @@ function MessageForm() {
   return (
     <form onSubmit={submit} noValidate className="card grid gap-5 p-6 sm:p-8">
       <div>
-        <p className="eyebrow">Write a message</p>
-        <p className="mt-2 text-sm text-muted">This opens your email app with the message filled in — nothing is sent from this page.</p>
+        <p className="label">Write a message</p>
+        <p className="mt-2 text-sm text-muted">This opens your email app with the message filled in. Nothing is sent from this page.</p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
@@ -143,7 +143,7 @@ export default function Contact() {
           <p className="eyebrow">Contact</p>
           <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">Let’s talk.</h1>
           <p className="lead mt-6 max-w-2xl">
-            Email is the fastest way to reach me — about roles, projects, or anything on this site. I’m graduating in{' '}
+            Email is the fastest way to reach me about roles, projects, or anything on this site. I’m graduating in{' '}
             {fmtMonth(education.graduation)} with a {education.degree} from {education.school}.
           </p>
         </div>
@@ -154,31 +154,28 @@ export default function Contact() {
           <Waypoint top="1.6rem" />
           <div className="grid content-start gap-4">
             <div className="card p-6">
-              <p className="eyebrow">Email</p>
+              <p className="label">Email</p>
               <a href={`mailto:${profile.email}`} className="stretch-semi mt-3 block break-all text-[clamp(1.25rem,1rem+1vw,1.75rem)] font-semibold text-ink hover:underline hover:decoration-[color:var(--accent)] hover:underline-offset-4">
                 {profile.email}
               </a>
               <div className="mt-5 flex flex-wrap gap-3">
-                <a href={`mailto:${profile.email}`} className="btn btn-primary btn-sm">
-                  <RiMailLine className="h-4 w-4" aria-hidden="true" /> Send an email
-                </a>
                 <CopyEmail />
               </div>
             </div>
             {rows.map((r) => (
-              <a key={r.label} href={r.href} target="_blank" rel="noopener noreferrer" className="card group flex items-center gap-4 p-5">
+              <a key={r.label} href={r.href} target="_blank" rel="noopener noreferrer" className="card card-lift group flex items-center gap-4 p-5">
                 <r.icon className="h-6 w-6 flex-none text-ink" aria-hidden="true" />
                 <span className="flex-1">
-                  <span className="eyebrow block">{r.label}</span>
+                  <span className="label block">{r.label}</span>
                   <span className="mt-1 block text-ink">{r.value}</span>
                 </span>
                 <RiArrowRightUpLine className="h-5 w-5 text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
               </a>
             ))}
-            <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="card group flex items-center gap-4 p-5">
+            <a href={profile.resume.href} download={profile.resume.filename} onClick={() => unlock('resume')} className="card card-lift group flex items-center gap-4 p-5">
               <RiDownloadLine className="h-6 w-6 flex-none text-ink" aria-hidden="true" />
               <span className="flex-1">
-                <span className="eyebrow block">Résumé</span>
+                <span className="label block">Résumé</span>
                 <span className="mt-1 block text-ink">Tilak_Patel_Resume.pdf</span>
               </span>
             </a>

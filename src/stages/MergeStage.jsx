@@ -3,7 +3,7 @@ import { PhaseBar, StageWindow, useStagePlayer } from './StageKit';
 
 // The life of the upstream contribution: branch, pull request, checks, merge.
 const PHASES = [
-  { id: 'main', ms: 1800, label: 'github/awesome-copilot — main' },
+  { id: 'main', ms: 1800, label: 'github/awesome-copilot · main' },
   { id: 'branch', ms: 2600, label: 'Fork and branch: error-recovery hooks + PyInstaller recipes' },
   { id: 'pr', ms: 2200, label: 'Open pull request #1388' },
   { id: 'checks', ms: 2400, label: 'Checks pass and the review is approved' },
@@ -25,7 +25,7 @@ export default function MergeStage() {
 
   return (
     <div ref={player.ref}>
-      <StageWindow title="git log --graph — github/awesome-copilot">
+      <StageWindow title="git log --graph · github/awesome-copilot">
         <svg viewBox="0 0 640 190" className="block h-auto w-full" role="img" aria-label="Git graph: a branch with three commits merged into main">
           <path d="M 20 56 L 620 56" style={{ stroke: 'var(--border-strong)', strokeWidth: 2 }} />
           <path

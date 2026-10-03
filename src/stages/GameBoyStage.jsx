@@ -176,7 +176,7 @@ export default function GameBoyStage({ compact = false }) {
         {focused ? (
           <>← → move · Z / Space = A (jump) · X = B (run) · Enter = Start · Shift = Select (menu)</>
         ) : (
-          <>Click the Game Boy to play with your keyboard — or use the buttons. Start picks a game.</>
+          <>Click the Game Boy to play with your keyboard, or use the buttons. Start picks a game.</>
         )}
       </p>
     </div>
