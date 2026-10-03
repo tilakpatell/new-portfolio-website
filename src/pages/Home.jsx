@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiStarLine, RiArrowRightUpLine } from 'react-icons/ri';
+import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Portrait from '../components/Portrait';
 import CareerStrip from '../components/CareerStrip';
@@ -12,12 +12,13 @@ import { featuredProjects, projectById } from '../data/projects';
 import { ClaudeFeature, GameBoyFeature } from '../stages';
 import { ClaudeSpark } from '../stages/ClaudeStage';
 import ProjectThumb from '../components/ProjectThumb';
-import { storage, useDocumentTitle } from '../lib/hooks';
+import { useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { useFun } from '../fun/FunProvider';
 import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
 import Interests from '../components/interests/Interests';
+import FindMeOnline from '../components/online/FindMeOnline';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -31,15 +32,6 @@ function Element({ symbol, number, weight }) {
       <sub aria-hidden="true">{weight}</sub>
     </span>
   );
-}
-
-function timeAgo(iso) {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (days < 1) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? 'a month ago' : `${months} months ago`;
 }
 
 // Mounts children only when the placeholder gets near the viewport.
@@ -68,63 +60,6 @@ function LazyMount({ children, minHeight }) {
     <div ref={ref} style={on ? undefined : { minHeight }}>
       {on && children}
     </div>
-  );
-}
-
-function useRecentRepos() {
-  const [repos, setRepos] = useState(() => {
-    const cached = storage.get('tp-gh-repos');
-    return cached && Date.now() - cached.t < 30 * 60 * 1000 ? cached.data : null;
-  });
-  useEffect(() => {
-    if (repos) return undefined;
-    const ctrl = new AbortController();
-    fetch('https://api.github.com/users/tilakpatell/repos?sort=pushed&per_page=12', {
-      signal: ctrl.signal,
-      headers: { Accept: 'application/vnd.github+json' },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((list) => {
-        const data = list
-          .filter((r) => !r.fork && !r.archived)
-          .slice(0, 4)
-          .map((r) => ({ name: r.name, url: r.html_url, desc: r.description, lang: r.language, pushed: r.pushed_at, stars: r.stargazers_count }));
-        storage.set('tp-gh-repos', { t: Date.now(), data });
-        setRepos(data);
-      })
-      .catch(() => setRepos([]));
-    return () => ctrl.abort();
-  }, [repos]);
-  return repos;
-}
-
-function RecentRepos() {
-  const repos = useRecentRepos();
-  if (!repos || repos.length === 0) return null; // never show zeros or placeholders
-  return (
-    <section data-theme-section="github" className="shell relative z-10 py-14 md:py-20" aria-labelledby="gh-title">
-      <SectionHeading title="Recently pushed to GitHub" id="gh-title" />
-      <ul className="mt-10 grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
-        {repos.map((r) => (
-          <li key={r.name}>
-            <a href={r.url} target="_blank" rel="noopener noreferrer" className="repo-link group flex h-full flex-col border-t border-line py-5">
-              <span className="mono flex items-center justify-between gap-2 font-medium text-ink">{r.name}<RiArrowRightUpLine className="h-4 w-4 flex-none text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" /></span>
-              {r.desc && <span className="mt-2 text-sm leading-relaxed text-body">{r.desc}</span>}
-              <span className="mono mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-muted">
-                {r.lang && <span>{r.lang}</span>}
-                {r.stars > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <RiStarLine className="h-3.5 w-3.5" aria-hidden="true" />
-                    {r.stars}
-                  </span>
-                )}
-                <span>pushed {timeAgo(r.pushed)}</span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -356,7 +291,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      <RecentRepos />
+      <FindMeOnline />
 
       <Interests />
 

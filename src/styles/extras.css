@@ -811,3 +811,21 @@ html[data-mode='dark'] { --danger: #ff8a8a; }
 .post-credits[data-seen='true'] .pc-scene { opacity: 1; transform: none; }
 .pc-big { font-stretch: 125%; font-size: clamp(1rem, 0.8rem + 1vw, 1.4rem); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text); }
 .pc-small { margin-top: 0.4rem; font-size: 0.8125rem; color: var(--muted); }
+
+/* ─── Find me online ─────────────────────────────────────────────────────── */
+.gh-panel { --heat: var(--accent); }
+[data-theme='github'] .gh-panel { --heat: #1a7f37; }
+html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
+.gh-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; padding-bottom: 4px; }
+.gh-svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.gh-label { font-family: var(--font-mono); font-size: 9px; fill: var(--muted); }
+.gh-cell { stroke: color-mix(in srgb, var(--text) 6%, transparent); stroke-width: 1; }
+.gh-l0 { fill: var(--surface-2); }
+.gh-l1 { fill: color-mix(in srgb, var(--heat) 32%, var(--surface)); }
+.gh-l2 { fill: color-mix(in srgb, var(--heat) 55%, var(--surface)); }
+.gh-l3 { fill: color-mix(in srgb, var(--heat) 78%, var(--surface)); }
+.gh-l4 { fill: var(--heat); }
+.gh-langbar { display: flex; height: 8px; gap: 2px; overflow: hidden; border-radius: 999px; }
+.gh-langbar span { display: block; height: 100%; }
+.skeleton { border-radius: 8px; background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 60%, var(--surface)), var(--surface-2)); background-size: 200% 100%; animation: skeleton-sweep 1.4s ease-in-out infinite; }
+@keyframes skeleton-sweep { from { background-position: 100% 0; } to { background-position: -100% 0; } }
