@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAchievements } from '../components/Achievements';
+import { useTheme } from '../theme/ThemeProvider';
 import { local, prefersReducedMotion } from '../lib/hooks';
 
 // The easter eggs that reach across the whole site: Aurebesh mode (Star Wars),
 // "say my name" (Breaking Bad), the snap (Marvel), that's-what-she-said and
-// parkour (The Office). Each can be triggered from the terminal, the command
-// palette, the interests on the home page, or by typing its word anywhere.
+// parkour (The Office), and roll out (Transformers). Each can be triggered from
+// the terminal, the command palette, the home page, or by typing its word anywhere.
 
 const FunContext = createContext(null);
 
@@ -17,10 +18,19 @@ const WORDS = [
   ['snap', 'snap'],
   ['twss', 'twss'],
   ['parkour', 'parkour'],
+  ['rollout', 'optimus'],
+  ['autobots', 'optimus'],
+  ['megatron', 'megatron'],
+  ['decepticons', 'megatron'],
+  ['bumblebee', 'bumblebee'],
+  ['shockwave', 'shockwave'],
+  ['soundwave', 'soundwave'],
 ];
+const TRANSFORMERS = ['optimus', 'megatron', 'bumblebee', 'shockwave', 'soundwave'];
 
 export function FunProvider({ children }) {
   const { unlock, notify } = useAchievements();
+  const { pin } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [aurebesh, setAurebeshState] = useState(() => local.get('tp-aurebesh', false) === true);
@@ -139,10 +149,19 @@ export function FunProvider({ children }) {
     notify('Parkour!', 'Hardcore parkour.', 'note', 'parkour');
   }, [notify]);
 
+  // Transformers: one word unlocks all five, and the site transforms into that one.
+  const rollOut = useCallback(
+    (who = 'optimus') => {
+      unlock('rollout');
+      pin(TRANSFORMERS.includes(who) ? who : 'optimus');
+    },
+    [pin, unlock],
+  );
+
   // Typed anywhere outside a text field.
   useEffect(() => {
     let buffer = '';
-    const actions = { aurebesh: toggleAurebesh, heisenberg: sayMyName, snap, twss, parkour };
+    const actions = { aurebesh: toggleAurebesh, heisenberg: sayMyName, snap, twss, parkour, ...Object.fromEntries(TRANSFORMERS.map((t) => [t, () => rollOut(t)])) };
     const onKey = (e) => {
       const t = e.target;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -157,11 +176,11 @@ export function FunProvider({ children }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [parkour, sayMyName, snap, toggleAurebesh, twss]);
+  }, [parkour, rollOut, sayMyName, snap, toggleAurebesh, twss]);
 
   const value = useMemo(
-    () => ({ aurebesh, setAurebesh, toggleAurebesh, heisenberg, setHeisenberg, sayMyName, snap, twss, parkour }),
-    [aurebesh, heisenberg, parkour, sayMyName, setAurebesh, snap, toggleAurebesh, twss],
+    () => ({ aurebesh, setAurebesh, toggleAurebesh, heisenberg, setHeisenberg, sayMyName, snap, twss, parkour, rollOut }),
+    [aurebesh, heisenberg, parkour, rollOut, sayMyName, setAurebesh, snap, toggleAurebesh, twss],
   );
 
   return (

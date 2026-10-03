@@ -1178,6 +1178,122 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .dock-btn .dock-gem { color: #ffc400; }
 .dock-btn[data-icon='gauntlet']:hover .dock-gem { filter: drop-shadow(0 0 2px #ffc400); }
 .dock-btn .dock-string { opacity: 0.55; transform-box: fill-box; transform-origin: center; }
+.dock-btn .dock-eyes { stroke: #4fb3ff; }
+.dock-btn[data-icon='robot']:hover .dock-eyes { filter: drop-shadow(0 0 2px #4fb3ff); }
 .dock-btn[data-icon='sitar']:hover .dock-string { animation: dock-shiver 0.5s ease-out; }
 @keyframes dock-shiver { 0%, 100% { transform: none; } 25% { transform: translate(0.4px, -0.4px); } 50% { transform: translate(-0.4px, 0.4px); } 75% { transform: translate(0.2px, -0.2px); } }
 @media (prefers-reduced-motion: reduce) { .dock-btn, .dock-btn::after { transition: none; } .dock-btn[data-icon='sitar']:hover .dock-string { animation: none; } }
+
+/* ─── Theme switches: a short scene for each theme ───────────────────────── */
+.tt { position: fixed; inset: 0; z-index: 97; display: grid; place-items: center; overflow: hidden; background: rgba(5, 6, 10, 0.9); color: #ffffff; cursor: pointer; animation: tt-fade var(--tt-len) ease both; }
+@keyframes tt-fade { 0% { opacity: 0; } 9% { opacity: 1; } 82% { opacity: 1; } 100% { opacity: 0; } }
+.tt-words { position: relative; z-index: 2; max-width: 40rem; margin: 0; padding: 0 1.5rem; text-align: center; animation: tt-words var(--tt-len) ease both; }
+.tt-words blockquote { margin: 0; font-family: var(--font-sans); font-stretch: 125%; font-weight: 700; font-size: clamp(1.6rem, 1rem + 3vw, 3rem); line-height: 1.1; letter-spacing: -0.01em; }
+.tt-words figcaption { margin-top: 0.6rem; font-size: 0.9rem; opacity: 0.72; }
+@keyframes tt-words { 0%, 16% { opacity: 0; transform: translateY(10px); } 30%, 84% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.tt[data-reduced] .tt-words { animation: none; }
+
+/* lightsaber: the blade runs out from the hilt and back */
+.tt-saber { position: absolute; left: 8vw; right: 8vw; top: 34%; height: 12px; display: flex; align-items: center; }
+.tt-hilt { flex: none; width: 54px; height: 12px; border-radius: 2px; background: linear-gradient(#cfd3d8, #6b7077); box-shadow: inset 6px 0 0 #2b2e33, inset -10px 0 0 #9aa0a6; }
+.tt-blade { flex: 1; height: 7px; border-radius: 0 999px 999px 0; background: #ffffff; box-shadow: 0 0 6px 2px var(--c), 0 0 22px 6px var(--c), 0 0 60px 10px color-mix(in srgb, var(--c) 60%, transparent); transform-origin: left; animation: tt-blade var(--tt-len) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tt-blade { 0%, 8% { transform: scaleX(0); } 22%, 80% { transform: scaleX(1); } 96%, 100% { transform: scaleX(0); } }
+
+/* Stark: an arc reactor's HUD */
+.tt-hud { position: absolute; display: grid; place-items: center; width: 340px; height: 340px; top: 50%; left: 50%; translate: -50% -62%; }
+.tt-ring { position: absolute; border: 2px solid var(--c); border-radius: 999px; width: calc(120px + var(--i) * 100px); height: calc(120px + var(--i) * 100px); opacity: 0; animation: tt-ring var(--tt-len) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 90ms) both; box-shadow: 0 0 18px color-mix(in srgb, var(--c) 40%, transparent); }
+@keyframes tt-ring { 0% { opacity: 0; transform: scale(0.6); } 25% { opacity: 0.9; transform: scale(1); } 80% { opacity: 0.7; } 100% { opacity: 0; transform: scale(1.08); } }
+.tt-sweep { position: absolute; width: 320px; height: 320px; border-radius: 999px; background: conic-gradient(from 0deg, color-mix(in srgb, var(--c) 55%, transparent) 0 12%, transparent 12%); animation: tt-spin 1.2s linear infinite; mask: radial-gradient(circle, transparent 54%, #000 55%); }
+@keyframes tt-spin { to { transform: rotate(360deg); } }
+.tt-core { position: absolute; width: 46px; height: 46px; border-radius: 999px; background: radial-gradient(circle, #ffffff 0 30%, var(--c) 55%, transparent 72%); animation: tt-pulse 0.6s ease-in-out infinite alternate; }
+@keyframes tt-pulse { to { transform: scale(1.18); } }
+
+/* Arcade: a wipe of pixels */
+.tt[data-id='arcade'] { background: #12101c; }
+.tt-pixels { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(8, 1fr); opacity: 0.85; }
+.tt-pixels span { transform: scale(0); animation: tt-px var(--tt-len) steps(4, end) var(--d) both; }
+@keyframes tt-px { 0% { transform: scale(0); } 22% { transform: scale(1); } 55% { transform: scale(1); } 75%, 100% { transform: scale(0); } }
+.tt[data-id='arcade'] .tt-words blockquote { font-family: var(--font-mono); font-stretch: normal; text-transform: uppercase; letter-spacing: 0.08em; text-shadow: 3px 3px 0 #d6246e; }
+
+/* Heisenberg: two elements flip in */
+.tt-tiles { display: flex; justify-content: center; gap: 10px; margin-bottom: 1.25rem; perspective: 600px; }
+.tt-tile { display: grid; place-items: center; width: 92px; height: 92px; padding: 6px; border: 2px solid #3fae5c; background: linear-gradient(135deg, #1e7a3c, #0f4a22); color: #ffffff; transform: rotateY(90deg); animation: tt-tile var(--tt-len) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 120ms) both; }
+.tt-tile b { font-size: 2.6rem; line-height: 1; }
+.tt-tile small { font-size: 0.6rem; opacity: 0.85; }
+.tt-haze { position: absolute; inset: -10%; background: radial-gradient(ellipse at 50% 60%, rgba(63, 174, 92, 0.32), transparent 60%), radial-gradient(ellipse at 30% 30%, rgba(240, 195, 48, 0.12), transparent 50%); animation: tt-haze var(--tt-len) ease both; }
+@keyframes tt-haze { 0% { transform: scale(1.1); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1); opacity: 0.6; } }
+@keyframes tt-tile { 0% { transform: rotateY(90deg); } 25%, 85% { transform: none; } 100% { transform: rotateY(-90deg); } }
+
+/* Dunder Mifflin: a memo, approved */
+.tt-memo { position: relative; width: min(420px, 82vw); margin: 0 auto 1.5rem; padding: 1.1rem 1.25rem 2.4rem; text-align: left; rotate: -2deg; background: #fdfcf7; color: #1f2937; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45); animation: tt-memo var(--tt-len) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tt-memo { 0% { opacity: 0; transform: translateY(-40px); } 20%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.tt-memo-head { margin: 0; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid #c7ccd4; padding-bottom: 0.5rem; }
+.tt-memo-line { height: 6px; margin: 0.9rem 0 0; border-radius: 3px; background: #e3e6ea; }
+.tt-memo-line.short { width: 60%; }
+.tt-stamp { position: absolute; right: 1.1rem; bottom: 0.7rem; padding: 0.15rem 0.6rem; border: 3px solid #c0262d; border-radius: 4px; color: #c0262d; font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; rotate: -8deg; opacity: 0; animation: tt-stamp var(--tt-len) cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+@keyframes tt-stamp { 0%, 30% { opacity: 0; transform: scale(2.2); } 42%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* Raga: Sa, and the sound spreading from it */
+.tt-ripple { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 0; height: 0; translate: 0 -40px; }
+.tt-ripple span { position: absolute; width: 160px; height: 160px; border: 2px solid var(--c); border-radius: 999px; opacity: 0; animation: tt-ripple 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--i) * 220ms) both; }
+@keyframes tt-ripple { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(3.2); } }
+.tt-sa { display: block; margin-bottom: 0.75rem; font-size: clamp(3.5rem, 2rem + 6vw, 5.5rem); line-height: 1; font-weight: 600; animation: tt-words var(--tt-len) ease both; }
+
+/* Transformers: armour plates slide into place */
+.tt[data-kind='transform'] { background: rgba(8, 9, 12, 0.93); }
+.tt-plates { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(8, 1fr); }
+.tt-plates span { background: linear-gradient(90deg, #2a2e36, #4a505b 40%, #2a2e36); border-bottom: 1px solid rgba(255, 255, 255, 0.06); clip-path: polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%); animation: tt-plate var(--tt-len) cubic-bezier(0.7, 0, 0.2, 1) calc(var(--i) * 45ms) both; }
+.tt-plates span:nth-child(odd) { animation-name: tt-plate-r; }
+@keyframes tt-plate { 0% { transform: translateX(-102%); } 22%, 72% { transform: none; } 100% { transform: translateX(102%); } }
+@keyframes tt-plate-r { 0% { transform: translateX(102%); } 22%, 72% { transform: none; } 100% { transform: translateX(-102%); } }
+.tt-face { display: block; width: 88px; height: 88px; margin: 0 auto 1rem; fill: none; stroke: #e8ebf0; stroke-width: 1.6; stroke-linejoin: round; opacity: 0; animation: tt-face var(--tt-len) ease both; }
+.tt-face .tt-eyes { stroke: var(--c); stroke-width: 2.4; filter: drop-shadow(0 0 3px var(--c)); }
+@keyframes tt-face { 0%, 18% { opacity: 0; transform: scale(0.8); } 32%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* the company colours: a clean wipe */
+.tt-wipe { position: absolute; inset: 0; background: var(--c); animation: tt-wipe var(--tt-len) cubic-bezier(0.7, 0, 0.2, 1) both; }
+@keyframes tt-wipe { 0% { transform: translateX(-100%); } 30%, 70% { transform: none; } 100% { transform: translateX(100%); } }
+.tt-wipe ~ .tt-words { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
+@media (prefers-reduced-motion: reduce) { .tt { animation-duration: 1.1s; } }
+
+/* ─── Transformers themes ────────────────────────────────────────────────── */
+[data-theme='optimus'] {
+  --bg: #fbfbfc; --bg-deep: #f0f2f6; --surface: #ffffff; --surface-2: #eef1f6; --border: #dde2ea; --border-strong: #8d97a8;
+  --text: #121722; --text-body: #2b3242; --muted: #5a6476;
+  --accent: #c8102e; --accent-text: #b00e28; --btn-bg: #c8102e; --btn-ink: #ffffff; --saber: #ff5263; --nav-bg: #121722;
+  --route-plan: #ccd3de; --route-dash: 10px; --route-gap: 4px; --marker: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+[data-theme='megatron'] {
+  --bg: #fafafb; --bg-deep: #eff0f3; --surface: #ffffff; --surface-2: #eeeff3; --border: #dcdee5; --border-strong: #8a8f9c;
+  --text: #15161c; --text-body: #2d303a; --muted: #5d6170;
+  --accent: #6b2fa0; --accent-text: #5c2790; --btn-bg: #3a3f4b; --btn-ink: #ffffff; --saber: #b48cff; --nav-bg: #15161c;
+  --route-plan: #cfd1d9; --route-dash: 10px; --route-gap: 4px; --marker: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+[data-theme='bumblebee'] {
+  --bg: #fcfcf9; --bg-deep: #f4f3ea; --surface: #ffffff; --surface-2: #f3f2e8; --border: #e2e0d1; --border-strong: #8f8b72;
+  --text: #121212; --text-body: #2d2c26; --muted: #5f5d50;
+  --accent: #d4a300; --accent-text: #7f5f00; --btn-bg: #f7c600; --btn-ink: #121212; --saber: #ffd52e; --nav-bg: #121212;
+  --route-plan: #d9d6c3; --route-dash: 10px; --route-gap: 4px; --marker: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+[data-theme='shockwave'] {
+  --bg: #fbfafd; --bg-deep: #f1eef7; --surface: #ffffff; --surface-2: #f0edf6; --border: #dfd9ea; --border-strong: #8e86a3;
+  --text: #17121f; --text-body: #2f2840; --muted: #625a75;
+  --accent: #7a2fb8; --accent-text: #6a27a1; --btn-bg: #7a2fb8; --btn-ink: #ffffff; --saber: #ffcf3d; --nav-bg: #17121f;
+  --route-plan: #d6d0e2; --route-dash: 10px; --route-gap: 4px; --marker: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+[data-theme='soundwave'] {
+  --bg: #fafbfd; --bg-deep: #eef1f7; --surface: #ffffff; --surface-2: #edf1f7; --border: #d9dfea; --border-strong: #8592a8;
+  --text: #0f1626; --text-body: #263046; --muted: #576279;
+  --accent: #1f6fb2; --accent-text: #1a5f99; --btn-bg: #1b2f55; --btn-ink: #ffffff; --saber: #4fd8ff; --nav-bg: #0f1626;
+  --route-plan: #cdd5e2; --route-dash: 10px; --route-gap: 4px; --marker: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+/* armour plates: chamfered corners on buttons and cards */
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) {
+  --r-card: 0px; --r-panel: 0px; --r-btn: 0px; --r-chip: 0px; --r-photo: 2px;
+}
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.btn, .seg > button, .place-chip, .theme-chip) {
+  border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) .card {
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}

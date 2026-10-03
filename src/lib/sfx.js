@@ -506,6 +506,198 @@ function victoryRaw(acIn, destIn, when = 0) {
   return 3.2;
 }
 
+// ── Theme switches (all original sounds) ───────────────────────────────────
+// A lightsaber igniting: the snap-hiss, a quick rising "vwoom", then the hum.
+// The Sith blade hums lower and dirtier.
+function saberRaw(acIn, destIn, when = 0, kind = 'jedi') {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.18, 0.55);
+  const sith = kind === 'sith';
+  const hiss = noiseSource(ac, 'white', 1);
+  const hissF = ac.createBiquadFilter();
+  hissF.type = 'bandpass';
+  hissF.frequency.value = 2600;
+  hissF.Q.value = 0.8;
+  const hissG = ac.createGain();
+  env(hissG.gain, t, [[0, 0.0001], [0.01, 0.35, 'lin'], [0.22, 0.0001]]);
+  hiss.connect(hissF).connect(hissG).connect(out);
+  hiss.start(t);
+  hiss.stop(t + 0.25);
+  const sweep = ac.createOscillator();
+  sweep.type = 'sawtooth';
+  env(sweep.frequency, t, [[0, sith ? 110 : 150], [0.16, sith ? 520 : 760], [0.3, sith ? 150 : 190]]);
+  const sweepF = ac.createBiquadFilter();
+  sweepF.type = 'lowpass';
+  sweepF.frequency.value = 1800;
+  const sweepG = ac.createGain();
+  env(sweepG.gain, t, [[0, 0.0001], [0.03, 0.22, 'lin'], [0.3, 0.0001]]);
+  sweep.connect(sweepF).connect(sweepG).connect(out);
+  sweep.start(t);
+  sweep.stop(t + 0.32);
+  // the hum: two saws a few hertz apart, beating, through a dark filter
+  const humG = ac.createGain();
+  env(humG.gain, t, [[0.08, 0.0001], [0.2, sith ? 0.2 : 0.16, 'lin'], [1.2, sith ? 0.16 : 0.13, 'lin'], [1.6, 0.0001]]);
+  const humF = ac.createBiquadFilter();
+  humF.type = 'lowpass';
+  humF.frequency.value = sith ? 900 : 700;
+  let chain = humF;
+  if (sith) {
+    const grit = ac.createWaveShaper();
+    grit.curve = softClip(4);
+    humF.connect(grit);
+    chain = grit;
+  }
+  chain.connect(humG).connect(out);
+  for (const hz of sith ? [72, 75.5] : [92, 95]) {
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = hz;
+    o.connect(humF);
+    o.start(t + 0.08);
+    o.stop(t + 1.65);
+  }
+  return 1.6;
+}
+
+// An arcade coin: two square-wave notes, up a fourth.
+function coinRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const o = ac.createOscillator();
+  o.type = 'square';
+  o.frequency.setValueAtTime(987.77, t);
+  o.frequency.setValueAtTime(1318.51, t + 0.075);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.005, 0.12, 'lin'], [0.075, 0.12, 'lin'], [0.45, 0.0001]]);
+  o.connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + 0.47);
+  return 0.5;
+}
+
+// A repulsor: the whine of it charging, then the blast.
+function repulsorRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.25, 0.55);
+  const whine = ac.createOscillator();
+  env(whine.frequency, t, [[0, 320], [0.55, 1700]]);
+  const whineG = ac.createGain();
+  env(whineG.gain, t, [[0, 0.0001], [0.5, 0.12, 'lin'], [0.6, 0.0001]]);
+  whine.connect(whineG).connect(out);
+  whine.start(t);
+  whine.stop(t + 0.62);
+  const at = t + 0.58;
+  const blast = noiseSource(ac, 'white', 1);
+  const bf = ac.createBiquadFilter();
+  bf.type = 'bandpass';
+  bf.Q.value = 0.9;
+  env(bf.frequency, at, [[0, 2600], [0.4, 500]]);
+  const bg = ac.createGain();
+  env(bg.gain, at, [[0, 0.0001], [0.01, 0.42, 'lin'], [0.45, 0.0001]]);
+  blast.connect(bf).connect(bg).connect(out);
+  blast.start(at);
+  blast.stop(at + 0.5);
+  const thump = ac.createOscillator();
+  env(thump.frequency, at, [[0, 190], [0.3, 60]]);
+  const tg = ac.createGain();
+  env(tg.gain, at, [[0, 0.0001], [0.01, 0.35, 'lin'], [0.35, 0.0001]]);
+  thump.connect(tg).connect(out);
+  thump.start(at);
+  thump.stop(at + 0.4);
+  return 1.1;
+}
+
+// An office bell on the reception desk.
+function dingRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.2, 0.5);
+  for (const [mul, level, decay] of [[1, 0.32, 1.4], [2.76, 0.14, 0.7], [5.4, 0.07, 0.35]]) {
+    const o = ac.createOscillator();
+    o.frequency.value = 1046.5 * mul;
+    const g = ac.createGain();
+    env(g.gain, t, [[0, 0.0001], [0.004, level, 'lin'], [decay, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + decay + 0.05);
+  }
+  return 1.4;
+}
+
+// Knock, knock: two knuckles on a door.
+function knockRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.7);
+  for (const at of [t, t + 0.2]) {
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 900;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.003, 0.5, 'lin'], [0.07, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(at);
+    n.stop(at + 0.08);
+    const o = ac.createOscillator();
+    env(o.frequency, at, [[0, 170], [0.08, 110]]);
+    const og = ac.createGain();
+    env(og.gain, at, [[0, 0.0001], [0.003, 0.4, 'lin'], [0.1, 0.0001]]);
+    o.connect(og).connect(out);
+    o.start(at);
+    o.stop(at + 0.12);
+  }
+  return 0.4;
+}
+
+// A robot changing shape: ratchets, a servo whine that climbs and settles, a clunk.
+function transformRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.22, 0.6);
+  [0, 0.09, 0.16, 0.3, 0.38, 0.52, 0.6, 0.74].forEach((dt, i) => {
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 2200 + (i % 3) * 900;
+    f.Q.value = 3;
+    const g = ac.createGain();
+    env(g.gain, t + dt, [[0, 0.0001], [0.002, 0.3, 'lin'], [0.03, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(t + dt);
+    n.stop(t + dt + 0.04);
+  });
+  const servo = ac.createOscillator();
+  servo.type = 'sawtooth';
+  env(servo.frequency, t, [[0, 120], [0.45, 260], [0.9, 180]]);
+  const sf = ac.createBiquadFilter();
+  sf.type = 'bandpass';
+  sf.Q.value = 2;
+  env(sf.frequency, t, [[0, 500], [0.45, 1900], [0.9, 900]]);
+  const sg = ac.createGain();
+  env(sg.gain, t, [[0, 0.0001], [0.1, 0.16, 'lin'], [0.85, 0.12, 'lin'], [0.95, 0.0001]]);
+  servo.connect(sf).connect(sg).connect(out);
+  servo.start(t);
+  servo.stop(t + 1);
+  const at = t + 0.92;
+  const clunk = ac.createOscillator();
+  env(clunk.frequency, at, [[0, 140], [0.18, 55]]);
+  const cg = ac.createGain();
+  env(cg.gain, at, [[0, 0.0001], [0.005, 0.45, 'lin'], [0.25, 0.0001]]);
+  clunk.connect(cg).connect(out);
+  clunk.start(at);
+  clunk.stop(at + 0.3);
+  return 1.2;
+}
+
 // ── Trench run ──────────────────────────────────────────────────────────────
 function torpedoRaw(acIn, destIn) {
   const [ac, dest] = ready(acIn, destIn);
@@ -597,3 +789,9 @@ export const hit = once('hit', hitRaw);
 export const flyby = once('flyby', flybyRaw);
 export const imperial = once('imperial', imperialRaw);
 export const victory = once('victory', victoryRaw);
+export const saber = once('saber', saberRaw);
+export const coin = once('coin', coinRaw);
+export const repulsor = once('repulsor', repulsorRaw);
+export const ding = once('ding', dingRaw);
+export const knock = once('knock', knockRaw);
+export const transform = once('transform', transformRaw);

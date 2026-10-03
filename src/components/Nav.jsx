@@ -80,10 +80,13 @@ function ThemeOptions({ onPick, compact = false }) {
       <p className="px-2.5 pb-1 pt-2 text-xs text-muted">
         Unlocked by easter eggs: {FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).length} of {FAN_THEMES.length}
       </p>
-      {FAN_THEMES.map((f) => {
+      {FAN_THEMES.map((f, i) => {
         const t = THEMES[f.id];
         const open = unlocked.includes(f.achievement);
         const on = pinned === f.id;
+        // several schemes behind one easter egg show their hint once
+        const sharing = FAN_THEMES.filter((g) => g.achievement === f.achievement);
+        if (!open && FAN_THEMES.findIndex((g) => g.achievement === f.achievement) !== i) return null;
         return open ? (
           <button key={f.id} type="button" className={row} aria-pressed={on} onClick={() => choose(f.id)}>
             <span className="h-4 w-4 flex-none rounded-full" style={{ background: t.swatch }} aria-hidden="true" />
@@ -94,8 +97,9 @@ function ThemeOptions({ onPick, compact = false }) {
           <div key={f.id} className={`${row} cursor-default opacity-70 hover:bg-transparent`}>
             <RiLockLine className="h-4 w-4 flex-none text-muted" aria-hidden="true" />
             <span className="flex-1 text-muted">
-              <span className="sr-only">Locked theme. Hint: </span>
+              <span className="sr-only">{sharing.length > 1 ? `${sharing.length} locked themes` : 'Locked theme'}. Hint: </span>
               {f.hint}
+              {sharing.length > 1 && <span className="text-xs"> ({sharing.length} schemes)</span>}
             </span>
           </div>
         );

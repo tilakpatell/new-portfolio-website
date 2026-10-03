@@ -75,6 +75,14 @@ const ICONS = {
       <path d="M11 18 v-2.6 a1 1 0 0 1 2 0 V18" />
     </svg>
   ),
+  robot: (
+    <svg viewBox="0 0 24 24" {...S}>
+      <path d="M12 2.8 L18.6 6.2 V13 L16.4 19.6 H7.6 L5.4 13 V6.2 Z" />
+      <path d="M12 2.8 V7.4" />
+      <path className="dock-eyes" d="M8.2 10.4 h3 M12.8 10.4 h3" strokeWidth="1.9" />
+      <path d="M9.6 15.4 h4.8 M10.6 17.4 h2.8" />
+    </svg>
+  ),
   aurebesh: (
     <svg viewBox="0 0 24 24" {...S}>
       <circle cx="12" cy="12" r="8.6" />
@@ -87,7 +95,7 @@ const ICONS = {
 
 export default function HeroDock() {
   const navigate = useNavigate();
-  const { snap, sayMyName, twss, toggleAurebesh, aurebesh } = useFun();
+  const { snap, sayMyName, twss, toggleAurebesh, aurebesh, rollOut } = useFun();
   const [say, setSay] = useState('');
 
   // The sitar: a quick flourish (Sa, Pa, high Sa, then the chikari), then the music room.
@@ -134,6 +142,14 @@ export default function HeroDock() {
       run: () => {
         setSay('');
         twss();
+      },
+    },
+    {
+      id: 'robot',
+      label: 'Roll out',
+      run: () => {
+        setSay('Autobots, roll out!');
+        rollOut('optimus');
       },
     },
     { id: 'gameboy', label: 'Play the Game Boy', run: () => navigate('/projects/gameboy-emulator') },

@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DEFAULT_THEME, ROUTE_THEMES, THEMES } from './themes';
+
+const ThemeTransition = lazy(() => import('../components/ThemeTransition'));
 
 // One active theme re-skins the whole site. It flows on its own — AWS by
 // default, the company whose chapter is on screen on the Experience page, and
@@ -95,8 +97,13 @@ export function ThemeProvider({ children }) {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // A theme picked by hand gets its moment: a short scene, a line and a sound.
+  const [switching, setSwitching] = useState(null);
+  const pinnedRef = useRef(pinned);
+  pinnedRef.current = pinned;
   const pin = useCallback((id) => {
     const next = id && THEMES[id] ? id : null;
+    if (next && next !== pinnedRef.current) setSwitching({ id: next, key: Date.now() });
     setPinned(next);
     session.set(PIN_KEY, next);
   }, []);
@@ -120,7 +127,14 @@ export function ThemeProvider({ children }) {
   );
   return (
     <ThemeSetterContext.Provider value={setScrollTheme}>
-      <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+      <ThemeContext.Provider value={value}>
+        {children}
+        {switching && (
+          <Suspense fallback={null}>
+            <ThemeTransition key={switching.key} id={switching.id} onDone={() => setSwitching(null)} />
+          </Suspense>
+        )}
+      </ThemeContext.Provider>
     </ThemeSetterContext.Provider>
   );
 }

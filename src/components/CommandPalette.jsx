@@ -104,6 +104,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-parkour', group: 'Easter eggs', label: 'Parkour', keywords: 'the office andy dwight', icon: RiSparkling2Line, run: fun.parkour },
       { id: 'e-ds', group: 'Easter eggs', label: 'That’s no moon', keywords: 'death star star wars trench run superlaser', icon: RiSparkling2Line, run: go('/deathstar') },
       { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
+      { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },
       { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: RiContrast2Line, run: () => setSound(!soundOn()) },
       { id: 't-auto', group: 'Themes', label: 'Auto colors', hint: 'Follow the page', keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(null) },
       ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Themes', label: `${THEMES[id].company} colors`, keywords: 'theme', icon: RiPaletteLine, run: () => pin(id) })),

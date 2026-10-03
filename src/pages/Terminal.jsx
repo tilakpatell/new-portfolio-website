@@ -84,7 +84,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Off duty: music · sitar · tabla · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
+  L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
 
 const PROJECT_ALIASES = {
@@ -282,6 +282,34 @@ export default function Terminal() {
       sitar: () => {
         setTimeout(() => navigate('/music'), 250);
         return [L('  Tuning the tanpura… opening the music room.', 'ok')];
+      },
+      rollout: () => {
+        fun.rollOut('optimus');
+        return [L('  Autobots, roll out!', 'ok'), L('   - Optimus Prime', 'dim')];
+      },
+      autobots: () => {
+        fun.rollOut('optimus');
+        return [L('  Autobots, transform and roll out!', 'ok')];
+      },
+      megatron: () => {
+        fun.rollOut('megatron');
+        return [L('  Peace through tyranny.', 'err'), L('   - Megatron', 'dim')];
+      },
+      decepticons: () => {
+        fun.rollOut('megatron');
+        return [L('  Decepticons, attack!', 'err')];
+      },
+      bumblebee: () => {
+        fun.rollOut('bumblebee');
+        return [L('  (radio static) …ready to roll.', 'ok')];
+      },
+      shockwave: () => {
+        fun.rollOut('shockwave');
+        return [L('  Logic dictates only one outcome.', 'ok')];
+      },
+      soundwave: () => {
+        fun.rollOut('soundwave');
+        return [L('  Soundwave superior. Autobots inferior.', 'ok')];
       },
       music: () => {
         setTimeout(() => navigate('/music'), 250);

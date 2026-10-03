@@ -24,11 +24,20 @@ export const ACHIEVEMENTS = {
   dundie: { name: 'Dundie winner', desc: 'That’s what she said' },
   raga: { name: 'Raga', desc: 'Played eight notes on the sitar' },
   jugalbandi: { name: 'Jugalbandi', desc: 'Played the sitar, harmonium and tabla' },
+  rollout: { name: 'Roll out', desc: 'Transformed the site' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 
 const PAGES = ['/', '/experience', '/projects', '/travel', '/contact', '/terminal'];
+
+// "New theme: Raga." or, when one easter egg opens several, all of them.
+const newThemes = (themeId) => {
+  const egg = FAN_THEMES.find((f) => f.id === themeId)?.achievement;
+  const names = FAN_THEMES.filter((f) => f.achievement === egg).map((f) => THEMES[f.id].company);
+  if (names.length < 2) return `New theme: ${names[0] ?? THEMES[themeId].company}.`;
+  return `New themes: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
+};
 const KEY = 'tp-achievements';
 
 const AchievementContext = createContext({ unlock: () => {}, notify: () => {}, unlocked: [] });
@@ -108,7 +117,7 @@ export function AchievementProvider({ children }) {
               {toast.kind !== 'note' && <p className="label">Achievement unlocked</p>}
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
-              {themeId && <p className="mt-1 text-sm text-body">New theme: {THEMES[themeId].company}. Pick it from the site colors.</p>}
+              {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colors.</p>}
               {toast.gif && <Gif name={toast.gif} eager />}
             </div>
           </div>

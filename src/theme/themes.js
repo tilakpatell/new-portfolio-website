@@ -27,6 +27,11 @@ export const THEMES = {
   dunder: { id: 'dunder', label: 'Dunder Mifflin', company: 'Dunder Mifflin', swatch: '#1F4E8C', fan: true },
   arcade: { id: 'arcade', label: 'Arcade', company: 'Arcade', swatch: '#D6246E', fan: true },
   raga: { id: 'raga', label: 'Raga', company: 'Raga', swatch: '#E8871E', fan: true },
+  optimus: { id: 'optimus', label: 'Optimus', company: 'Optimus Prime', swatch: '#C8102E', fan: true },
+  megatron: { id: 'megatron', label: 'Megatron', company: 'Megatron', swatch: '#6B2FA0', fan: true },
+  bumblebee: { id: 'bumblebee', label: 'Bumblebee', company: 'Bumblebee', swatch: '#F7C600', fan: true },
+  shockwave: { id: 'shockwave', label: 'Shockwave', company: 'Shockwave', swatch: '#7A2FB8', fan: true },
+  soundwave: { id: 'soundwave', label: 'Soundwave', company: 'Soundwave', swatch: '#1F6FB2', fan: true },
 };
 
 // Fan themes and the achievement that unlocks each. The hint shows on the
@@ -39,6 +44,12 @@ export const FAN_THEMES = [
   { id: 'dunder', achievement: 'dundie', hint: 'That’s what she said' },
   { id: 'arcade', achievement: 'konami', hint: '↑ ↑ ↓ ↓ ← → ← → B A' },
   { id: 'raga', achievement: 'raga', hint: 'Play the sitar' },
+  // one word unlocks all five: type rollout anywhere
+  { id: 'optimus', achievement: 'rollout', hint: 'Roll out' },
+  { id: 'megatron', achievement: 'rollout', hint: 'Roll out' },
+  { id: 'bumblebee', achievement: 'rollout', hint: 'Roll out' },
+  { id: 'shockwave', achievement: 'rollout', hint: 'Roll out' },
+  { id: 'soundwave', achievement: 'rollout', hint: 'Roll out' },
 ];
 
 export const THEME_ORDER = ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src'];
