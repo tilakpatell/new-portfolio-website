@@ -203,7 +203,7 @@ export default function Terminal() {
       starwars: quote,
       vader: () => [BLANK, L('  “No, I am your father.”'), L('   - Darth Vader, The Empire Strikes Back', 'dim')],
       yoda: () => [BLANK, L('  “Size matters not.”'), L('   - Yoda, The Empire Strikes Back', 'dim')],
-      lightsaber: () => [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L('  “An elegant weapon for a more civilized age.”'), L('   — Obi-Wan Kenobi', 'dim')],
+      lightsaber: () => [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L('  “An elegant weapon for a more civilized age.”'), L('   - Obi-Wan Kenobi', 'dim')],
       hello: () => [L('  Hello there!'), L('  - General Kenobi', 'dim')],
       sudo: () => [L('  visitor is not in the sudoers file. This incident will be reported to Lord Vader.', 'err')],
       rm: () => [L('  Permission denied. Dark side clearance required.', 'err')],
