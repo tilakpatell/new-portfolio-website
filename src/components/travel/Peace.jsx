@@ -39,7 +39,10 @@ export default function Peace() {
       <div className="peace-shade -z-10" aria-hidden="true" />
       <div className="peace-glow -z-10" aria-hidden="true" />
       <div className="shell relative py-[clamp(7rem,15vw,12rem)]">
-        <Waypoint top="0.9rem" />
+        {/* waypoints line up from the content edge, so this one sits in a box that starts there */}
+        <div className="relative">
+          <Waypoint top="0.9rem" />
+        </div>
         <div className="mx-auto max-w-3xl text-center">
           <h2 id="peace-title" className="title !text-white">
             A message of peace

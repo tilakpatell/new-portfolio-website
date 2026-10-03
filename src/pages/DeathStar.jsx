@@ -1,85 +1,107 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { RiVolumeMuteLine, RiVolumeUpLine } from 'react-icons/ri';
 import Readout from '../components/deathstar/Readout';
 import TrenchRun from '../components/deathstar/TrenchRun';
-import { PLANETS, PLANET_AT as PLANET, PlanetArt } from '../components/deathstar/Planets';
+import { PLANETS, PLANET_AT as PLANET, PlanetArt, PlanetBackdrop } from '../components/deathstar/Planets';
+import { BATTLE_SECONDS, fmtClock } from '../components/deathstar/battle';
 import { AurebeshLine } from '../components/Wordmark';
+import { useAchievements } from '../components/Achievements';
 import { jumpTo } from '../lib/anchors';
 import Hyperspace from '../components/Hyperspace';
 import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
-import { PARTS } from '../components/deathstar/parts';
-import Gif from '../components/Gif';
-import { RiCloseLine, RiVolumeMuteLine, RiVolumeUpLine } from 'react-icons/ri';
 
 const sfx = () => import('../lib/sfx');
 
-// A part of the station, opened from its hotspot.
-function PartPanel({ part, onClose, onAction }) {
-  const close = useRef(null);
-  useEffect(() => {
-    close.current?.focus({ preventScroll: true });
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+// The hidden page. Reachable from the terminal ('deathstar'), the footer and the Konami code.
+// The scene is 680×460: the target top left, the station bottom right, so the
+// superlaser crosses it on a diagonal. Phones get a tighter crop.
+const SCENE = { x: 0, y: 0, w: 680, h: 460 };
+const SCENE_PHONE = { x: 96, y: 8, w: 580, h: 444 };
+const DS = { x: 505, y: 292, r: 145 };
+const DISH = { x: 446, y: 232, r: 38 };
+const FOCUS = { x: 420, y: 217 }; // where the tributary beams meet, out along the line to the target
+const BEAM = '#8dff6b';
+
+// Read out as the clock runs down, the way the film counts it.
+const CALLS = {
+  90: 'The Death Star is rounding Yavin.',
+  60: 'Death Star will be in range in one minute.',
+  30: 'Thirty seconds until Yavin 4 is in range.',
+  10: 'Ten seconds. Stay on target.',
+};
+
+// Luke's X-wing seen from above, nose to the right, for the victory flypast.
+function XWing({ style }) {
   return (
-    <section className="ds-panel" aria-labelledby="ds-part-title">
-      <div className="flex items-start justify-between gap-4">
-        <h2 id="ds-part-title" className="stretch-semi text-xl font-semibold text-ink">
-          {part.name}
-        </h2>
-        <button ref={close} type="button" className="ds-panel-close" onClick={onClose} aria-label="Close">
-          <RiCloseLine className="h-5 w-5" aria-hidden="true" />
-        </button>
-      </div>
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">{part.text}</p>
-      {part.gif && <Gif key={part.gif} name={part.gif} size="medium" eager className="mt-4" />}
-      <figure className="mt-4">
-        <blockquote className="text-lg text-ink">“{part.quote[0]}”</blockquote>
-        <figcaption className="mt-1 text-sm text-muted">{part.quote[1]}</figcaption>
-      </figure>
-      {part.action && (
-        <button type="button" className="btn btn-primary btn-sm mt-5" onClick={() => onAction(part.action)}>
-          {part.action === 'fire' ? 'Fire the superlaser' : 'Fly the trench run'}
-        </button>
-      )}
-    </section>
+    <svg viewBox="0 0 64 32" className="rebel-xwing" style={style} aria-hidden="true">
+      <path d="M8 16 H54 L62 16" stroke="#e6e9ee" strokeWidth="3" strokeLinecap="round" />
+      <path d="M14 16 L22 3 H30 L26 16 L30 29 H22 Z" fill="#cfd5dd" />
+      <path d="M10 3 H40 M10 29 H40" stroke="#e6e9ee" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M22 6 H27 M22 26 H27" stroke="#c0392b" strokeWidth="2" />
+      <circle cx="9" cy="12" r="2.2" fill="#ffb27a" />
+      <circle cx="9" cy="20" r="2.2" fill="#ffb27a" />
+    </svg>
   );
 }
 
-// The hidden page. Reachable from the terminal ('deathstar'), the footer and the Konami code.
-const DS = { x: 520, y: 220, r: 150 };
-// The whole 680×400 scene, or on phones a tighter crop so the station is big enough to tap.
-const SCENE = { x: 0, y: 0, w: 680, h: 400 };
-const SCENE_PHONE = { x: 44, y: 40, w: 644, h: 350 };
-const DISH = { x: 462, y: 160, r: 36 };
-const FOCUS = { x: 432, y: 138 };
-const BEAM = '#8dff6b';
+// The Medal of Yavin, on its ribbon.
+function Medal() {
+  return (
+    <svg viewBox="0 0 64 88" className="rebel-medal" aria-hidden="true">
+      <path d="M18 0 H30 L36 34 H24 Z" fill="#c0392b" />
+      <path d="M34 0 H46 L40 34 H28 Z" fill="#2f5fa8" />
+      <circle cx="32" cy="58" r="24" fill="#d9a441" stroke="#8a5a14" strokeWidth="2" />
+      <circle cx="32" cy="58" r="17" fill="none" stroke="#f6dc95" strokeWidth="1.4" />
+      {Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return <path key={i} d={`M32 58 L${32 + Math.cos(a) * 14} ${58 + Math.sin(a) * 14}`} stroke="#8a5a14" strokeWidth="1.2" opacity="0.7" />;
+      })}
+      <circle cx="32" cy="58" r="5" fill="#f6dc95" />
+    </svg>
+  );
+}
 
 export default function DeathStar() {
   useDocumentTitle('DS-1');
   const reduced = useReducedMotion();
   const phone = useMediaQuery('(max-width: 639px)');
   const vb = phone ? SCENE_PHONE : SCENE;
-  // idle → charging → firing → boom → gone
+  const { unlock } = useAchievements();
+  // the superlaser: idle → charging → firing → boom → gone
   const [phase, setPhase] = useState('idle');
   const [shots, setShots] = useState(0);
-  const [destroyed, setDestroyed] = useState(false);
+  const [destroyed, setDestroyed] = useState(false); // the station itself
   const [planet, setPlanet] = useState('alderaan');
   const [jumping, setJumping] = useState(false);
+  const [course, setCourse] = useState(null);
   const [arrivals, setArrivals] = useState(0);
-  const [part, setPart] = useState(null);
+  // the Battle of Yavin: a clock, and how it ended
+  const [battle, setBattle] = useState(false);
+  const [clock, setClock] = useState(BATTLE_SECONDS);
+  const [outcome, setOutcome] = useState(null); // 'empire' | 'rebels'
+  const [call, setCall] = useState('');
   const [sound, setSoundState] = useState(soundOn);
+  const deadline = useRef(0);
   const { hash } = useLocation();
   useEffect(() => onSoundChange(setSoundState), []);
 
+  const startBattle = useCallback(() => {
+    deadline.current = Date.now() + BATTLE_SECONDS * 1000;
+    setClock(BATTLE_SECONDS);
+    setBattle(true);
+    setOutcome(null);
+    setCall('The Death Star has reached Yavin. Fly the trench run before Yavin 4 is in range.');
+  }, []);
+
   // Set a course: the station makes the jump to lightspeed and arrives at the new planet.
-  const [course, setCourse] = useState(null);
   const travel = (id) => {
     if (id === planet || jumping || destroyed || (phase !== 'idle' && phase !== 'gone')) return;
     audioContext(); // in the click, so the jump can be heard
-    setPart(null);
+    setBattle(false);
+    setOutcome(null);
+    setCall('');
     setCourse(id);
     setJumping(true);
   };
@@ -87,28 +109,81 @@ export default function DeathStar() {
     setPlanet(course);
     setPhase('idle');
     setArrivals((n) => n + 1);
+    if (course === 'yavin') startBattle();
   };
 
+  const fire = () => {
+    if (phase !== 'idle' || destroyed || jumping) return;
+    audioContext();
+    sfx().then((s) => s.superlaser(undefined, undefined, 0, 1.1));
+    setShots((n) => n + 1);
+    setPhase('charging');
+    if (planet === 'yavin' && battle) {
+      setBattle(false);
+      setOutcome('empire');
+      setCall('');
+    }
+  };
+  const fireRef = useRef(fire);
   useEffect(() => {
-    if (hash !== '#trench') return undefined;
-    const t = setTimeout(() => document.getElementById('trench')?.scrollIntoView({ block: 'start' }), 120);
+    fireRef.current = fire;
+  });
+
+  // The clock counts from a deadline, so a background tab can't slow it down.
+  useEffect(() => {
+    if (!battle) return undefined;
+    const id = setInterval(() => setClock(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000))), 250);
+    return () => clearInterval(id);
+  }, [battle]);
+  useEffect(() => {
+    if (!battle) return undefined;
+    if (CALLS[clock]) setCall(CALLS[clock]);
+    if (clock > 0) return undefined;
+    // Time's up: the station has cleared the planet. Back to the top to watch it fire.
+    setCall('The Death Star has cleared the planet. Yavin 4 is in range.');
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    const t = setTimeout(() => fireRef.current(), reduced ? 0 : 800);
+    return () => clearTimeout(t);
+  }, [battle, clock, reduced]);
+
+  useEffect(() => {
+    if (hash !== '#trench' && hash !== '#readout') return undefined;
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' }), 120);
     return () => clearTimeout(t);
   }, [hash]);
 
-  // Back to the top to watch it go, then the station explodes.
+  // The Rebels win: back to the top to watch the station go.
   const onWin = () => {
+    const savedYavin = battle && planet === 'yavin';
+    setBattle(false);
+    setCall('');
     setTimeout(() => {
-      setPart(null);
       window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-      setTimeout(() => setDestroyed(true), reduced ? 0 : 750);
+      setTimeout(() => {
+        setDestroyed(true);
+        setOutcome('rebels');
+        if (savedYavin) unlock('rebels');
+      }, reduced ? 0 : 750);
     }, 1200);
   };
+
+  // The sounds of each ending. A ref per shot so a re-render can't play them twice.
+  const boomed = useRef(-1);
   useEffect(() => {
-    if (destroyed) sfx().then((s) => s.boom());
+    if (phase !== 'boom' || boomed.current === shots) return undefined;
+    boomed.current = shots;
+    sfx().then((s) => s.boom());
+    if (outcome !== 'empire') return undefined;
+    unlock('empire');
+    const t = setTimeout(() => sfx().then((s) => s.imperial()), 650);
+    return () => clearTimeout(t);
+  }, [phase, shots, outcome, unlock]);
+  useEffect(() => {
+    if (!destroyed) return undefined;
+    sfx().then((s) => s.boom());
+    const t = setTimeout(() => sfx().then((s) => s.victory()), 1500);
+    return () => clearTimeout(t);
   }, [destroyed]);
-  useEffect(() => {
-    if (phase === 'boom') sfx().then((s) => s.boom());
-  }, [phase]);
 
   useEffect(() => {
     const next = { charging: ['firing', 1100], firing: ['boom', 380], boom: ['gone', 1500] }[phase];
@@ -129,17 +204,22 @@ export default function DeathStar() {
     [shots],
   );
 
-  const fire = () => {
-    if (phase !== 'idle' || destroyed) return;
-    audioContext();
-    sfx().then((s) => s.superlaser(undefined, undefined, 0, 1.1));
-    setShots((n) => n + 1);
-    setPhase('charging');
-  };
   const onAction = (action) => {
-    setPart(null);
-    if (action === 'fire') fire();
-    else jumpTo(null, 'trench');
+    if (action === 'fire') {
+      audioContext();
+      window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+      setTimeout(() => fireRef.current(), reduced ? 0 : 650);
+    } else jumpTo(null, 'trench');
+  };
+  const rebuild = () => {
+    setDestroyed(false);
+    setOutcome(null);
+    setPhase('idle');
+    if (planet === 'yavin') startBattle();
+  };
+  const fightAgain = () => {
+    setPhase('idle');
+    startBattle();
   };
 
   const rim = Array.from({ length: 8 }, (_, i) => {
@@ -148,161 +228,186 @@ export default function DeathStar() {
   });
   const charging = phase === 'charging' || phase === 'firing';
   const planetVisible = phase === 'idle' || phase === 'charging' || phase === 'firing';
+  const planetGone = phase === 'boom' || phase === 'gone';
+  const p = PLANETS[planet];
+  const busy = jumping || (phase !== 'idle' && phase !== 'gone');
+
+  let title = 'That’s no moon.';
+  let lead = `It’s a space station, and you found the hidden page. ${p.name} is in range. ${p.line}`;
+  if (outcome === 'empire') {
+    title = 'The Empire wins.';
+    lead = planetGone ? 'Yavin 4 is gone, and the Rebel base with it.' : 'The superlaser is charging on Yavin 4.';
+  } else if (outcome === 'rebels') {
+    title = 'The Rebels win.';
+    lead = planetGone ? `The Death Star is gone. Too late for ${p.name}, but the Rebellion lives on.` : `The Death Star is gone, and ${p.name} is safe.`;
+  } else if (planetGone) lead = `${p.name} is no more. The station is fully operational.`;
 
   return (
-    <div className="dark-scope relative z-10 min-h-[100svh] overflow-hidden" style={{ background: '#03040a' }}>
+    <div className="dark-scope relative z-10 min-h-[100svh] overflow-hidden" style={{ background: '#03040a' }} data-outcome={outcome || undefined}>
       <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
       {phase === 'boom' && !reduced && <div className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
+      {phase === 'boom' && outcome === 'empire' && !reduced && <div className="empire-shade pointer-events-none fixed inset-0 z-40" aria-hidden="true" />}
       {jumping && <Hyperspace sound onPeak={arrive} onDone={() => setJumping(false)} />}
       {destroyed && !reduced && <div key="ds-flash" className="ds-flash pointer-events-none fixed inset-0 z-50 bg-white" aria-hidden="true" />}
-      <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
-        <div className="relative">
-        <div className="ds-stage">
-        <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${PLANETS[planet].name}`}>
-          <defs>
-            <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
-              <stop offset="0" stopColor="#b9bec4" />
-              <stop offset="0.45" stopColor="#7d838a" />
-              <stop offset="0.85" stopColor="#3a3e44" />
-              <stop offset="1" stopColor="#202327" />
-            </radialGradient>
-            <radialGradient id="ds-dish" cx="62%" cy="64%" r="70%">
-              <stop offset="0" stopColor="#a6abb1" />
-              <stop offset="0.7" stopColor="#5d6268" />
-              <stop offset="1" stopColor="#3c4046" />
-            </radialGradient>
-            <clipPath id="ds-clip">
-              <circle cx={DS.x} cy={DS.y} r={DS.r} />
-            </clipPath>
-            <filter id="ds-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" />
-            </filter>
-          </defs>
-
-          {/* The planet in range */}
-          {planetVisible && <PlanetArt key={planet} id={planet} className={phase === 'firing' ? 'planet-hit' : 'planet-in'} />}
-          {(phase === 'boom' || phase === 'gone') && (
-            <g key={shots}>
-              {phase === 'boom' && (
-                <>
-                  <circle className="ds-core" cx={PLANET.x} cy={PLANET.y} r={PLANET.r} fill="#fff6d8" />
-                  <ellipse className="ds-ring" cx={PLANET.x} cy={PLANET.y} rx={PLANET.r} ry={PLANET.r * 0.28} fill="none" stroke="#ffe7a8" strokeWidth="3" />
-                </>
-              )}
-              {debris.map((p, i) => (
-                <circle
-                  key={i}
-                  className="ds-debris"
-                  cx={PLANET.x}
-                  cy={PLANET.y}
-                  r={p.s}
-                  fill={p.c}
-                  style={{ '--dx': `${p.dx}px`, '--dy': `${p.dy}px`, animationDelay: `${(i % 5) * 20}ms` }}
-                />
-              ))}
-            </g>
-          )}
-
-          {/* Death Star */}
-          {destroyed && (
-            <g key="boom">
-              <circle className="ds-core" cx={DS.x} cy={DS.y} r={DS.r * 0.6} fill="#fff6d8" />
-              <ellipse className="ds-ring ds-ring-big" cx={DS.x} cy={DS.y} rx={DS.r * 0.8} ry={DS.r * 0.16} fill="none" stroke="#ffe7a8" strokeWidth="4" />
-              {debris.map((p, i) => (
-                <circle
-                  key={i}
-                  className="ds-debris"
-                  cx={DS.x}
-                  cy={DS.y}
-                  r={p.s * 1.4}
-                  fill={p.c}
-                  style={{ '--dx': `${p.dx * 2.2}px`, '--dy': `${p.dy * 2.2}px`, animationDelay: `${(i % 5) * 25}ms` }}
-                />
-              ))}
-            </g>
-          )}
-          <g key={`ds-${arrivals}`} className={destroyed ? 'ds-gone' : arrivals ? 'ds-arrive' : undefined}>
-          <circle cx={DS.x} cy={DS.y} r={DS.r} fill="url(#ds-body)" />
-          <g clipPath="url(#ds-clip)" opacity="0.5">
-            {[90, 120, 150, 260, 290, 320, 345].map((y) => (
-              <path key={y} d={`M ${DS.x - DS.r} ${y} Q ${DS.x} ${y + (y < DS.y ? 14 : -14)} ${DS.x + DS.r} ${y}`} fill="none" stroke="#2a2d31" strokeWidth="1" />
-            ))}
-            {Array.from({ length: 44 }).map((_, i) => (
-              <rect key={i} x={DS.x - 130 + ((i * 53) % 270)} y={80 + ((i * 97) % 280)} width={4 + (i % 4) * 3} height="2" fill="#2a2d31" />
-            ))}
-          </g>
-          <path d={`M ${DS.x - DS.r + 10} ${DS.y + 4} Q ${DS.x} ${DS.y + 26} ${DS.x + DS.r - 10} ${DS.y + 4}`} fill="none" stroke="#1d1f23" strokeWidth="6" clipPath="url(#ds-clip)" />
-          <circle cx={DISH.x} cy={DISH.y} r={DISH.r} fill="url(#ds-dish)" stroke="#2a2d31" strokeWidth="1.5" />
-          <circle cx={DISH.x} cy={DISH.y} r={DISH.r * 0.62} fill="none" stroke="#2f3237" strokeWidth="1" />
-          <circle cx={DISH.x} cy={DISH.y} r="4" fill={charging ? BEAM : '#2f3237'} />
-
-          {charging &&
-            rim.map((p, i) => (
-              <line key={i} className="ds-tributary" x1={p.x} y1={p.y} x2={FOCUS.x} y2={FOCUS.y} stroke={BEAM} strokeWidth="2" strokeLinecap="round" style={{ animationDelay: `${i * 50}ms` }} />
-            ))}
-          {phase === 'firing' && (
-            <g>
-              <line x1={FOCUS.x} y1={FOCUS.y} x2={PLANET.x} y2={PLANET.y} stroke={BEAM} strokeWidth="12" filter="url(#ds-glow)" className="ds-beam" />
-              <line x1={FOCUS.x} y1={FOCUS.y} x2={PLANET.x} y2={PLANET.y} stroke="#eaffdf" strokeWidth="3" className="ds-beam" />
-            </g>
-          )}
-          {charging && <circle cx={FOCUS.x} cy={FOCUS.y} r="7" fill="#eaffdf" filter="url(#ds-glow)" />}
-          </g>
-          <text x={PLANET.x} y={PLANET.y + PLANET.r + 26} textAnchor="middle" fill="#9aa0a9" fontFamily="var(--font-mono)" fontSize="12" letterSpacing="2">
-            {planetVisible ? PLANETS[planet].name.toUpperCase() : ''}
-          </text>
-        </svg>
-        {!destroyed && !jumping && (
-          <div className="ds-hotspots" role="group" aria-label="Parts of the station">
-            {PARTS.map((pt) => {
-              const left = ((pt.x - vb.x) / vb.w) * 100;
-              return (
-                <button
-                  key={pt.id}
-                  type="button"
-                  className="ds-hotspot"
-                  style={{ left: `${left}%`, top: `${((pt.y - vb.y) / vb.h) * 100}%` }}
-                  aria-pressed={part?.id === pt.id}
-                  aria-label={pt.name}
-                  data-label={pt.name}
-                  // labels near an edge open inwards so they stay on screen
-                  data-side={left > 72 ? 'end' : left < 28 ? 'start' : undefined}
-                  onClick={() => setPart(part?.id === pt.id ? null : pt)}
-                />
-              );
-            })}
-          </div>
-        )}
+      {destroyed && outcome === 'rebels' && !reduced && (
+        <div className="rebel-flypast pointer-events-none fixed inset-x-0 top-[18%] z-40" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <XWing key={i} style={{ '--i': i }} />
+          ))}
         </div>
-        {part && <PartPanel part={part} onClose={() => setPart(null)} onAction={onAction} />}
+      )}
+      <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
+        <div className="ds-stage">
+          <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${p.name}`}>
+            <defs>
+              <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
+                <stop offset="0" stopColor="#b9bec4" />
+                <stop offset="0.45" stopColor="#7d838a" />
+                <stop offset="0.85" stopColor="#3a3e44" />
+                <stop offset="1" stopColor="#202327" />
+              </radialGradient>
+              <radialGradient id="ds-dish" cx="62%" cy="64%" r="70%">
+                <stop offset="0" stopColor="#a6abb1" />
+                <stop offset="0.7" stopColor="#5d6268" />
+                <stop offset="1" stopColor="#3c4046" />
+              </radialGradient>
+              <clipPath id="ds-clip">
+                <circle cx={DS.x} cy={DS.y} r={DS.r} />
+              </clipPath>
+              <filter id="ds-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" />
+              </filter>
+            </defs>
+
+            {/* what surrounds the target stays put: Yavin's gas giant, Tatooine's suns */}
+            <PlanetBackdrop id={planet} />
+            {planetVisible && <PlanetArt key={planet} id={planet} className={phase === 'firing' ? 'planet-hit' : 'planet-in'} />}
+            {planetGone && (
+              <g key={shots}>
+                {phase === 'boom' && (
+                  <>
+                    <circle className="ds-core" cx={PLANET.x} cy={PLANET.y} r={PLANET.r} fill="#fff6d8" />
+                    <ellipse className="ds-ring" cx={PLANET.x} cy={PLANET.y} rx={PLANET.r} ry={PLANET.r * 0.28} fill="none" stroke="#ffe7a8" strokeWidth="3" />
+                  </>
+                )}
+                {debris.map((d, i) => (
+                  <circle
+                    key={i}
+                    className="ds-debris"
+                    cx={PLANET.x}
+                    cy={PLANET.y}
+                    r={d.s}
+                    fill={d.c}
+                    style={{ '--dx': `${d.dx}px`, '--dy': `${d.dy}px`, animationDelay: `${(i % 5) * 20}ms` }}
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* the station going up */}
+            {destroyed && (
+              <g key="boom">
+                <circle className="ds-core" cx={DS.x} cy={DS.y} r={DS.r * 0.6} fill="#fff6d8" />
+                <ellipse className="ds-ring ds-ring-big" cx={DS.x} cy={DS.y} rx={DS.r * 0.8} ry={DS.r * 0.16} fill="none" stroke="#ffe7a8" strokeWidth="4" />
+                {debris.map((d, i) => (
+                  <circle
+                    key={i}
+                    className="ds-debris"
+                    cx={DS.x}
+                    cy={DS.y}
+                    r={d.s * 1.4}
+                    fill={d.c}
+                    style={{ '--dx': `${d.dx * 2.2}px`, '--dy': `${d.dy * 2.2}px`, animationDelay: `${(i % 5) * 25}ms` }}
+                  />
+                ))}
+              </g>
+            )}
+            <g key={`ds-${arrivals}`} className={destroyed ? 'ds-gone' : arrivals ? 'ds-arrive' : undefined}>
+              <circle cx={DS.x} cy={DS.y} r={DS.r} fill="url(#ds-body)" />
+              <g clipPath="url(#ds-clip)" opacity="0.5">
+                {[-128, -100, -70, 40, 70, 100, 124].map((dy) => (
+                  <path key={dy} d={`M ${DS.x - DS.r} ${DS.y + dy} Q ${DS.x} ${DS.y + dy + (dy < 0 ? 14 : -14)} ${DS.x + DS.r} ${DS.y + dy}`} fill="none" stroke="#2a2d31" strokeWidth="1" />
+                ))}
+                {Array.from({ length: 44 }).map((_, i) => (
+                  <rect key={i} x={DS.x - 130 + ((i * 53) % 270)} y={DS.y - 138 + ((i * 97) % 280)} width={4 + (i % 4) * 3} height="2" fill="#2a2d31" />
+                ))}
+              </g>
+              <path d={`M ${DS.x - DS.r + 10} ${DS.y + 4} Q ${DS.x} ${DS.y + 26} ${DS.x + DS.r - 10} ${DS.y + 4}`} fill="none" stroke="#1d1f23" strokeWidth="6" clipPath="url(#ds-clip)" />
+              <circle cx={DISH.x} cy={DISH.y} r={DISH.r} fill="url(#ds-dish)" stroke="#2a2d31" strokeWidth="1.5" />
+              <circle cx={DISH.x} cy={DISH.y} r={DISH.r * 0.62} fill="none" stroke="#2f3237" strokeWidth="1" />
+              <circle cx={DISH.x} cy={DISH.y} r="4" fill={charging ? BEAM : '#2f3237'} />
+
+              {charging &&
+                rim.map((pt, i) => (
+                  <line key={i} className="ds-tributary" x1={pt.x} y1={pt.y} x2={FOCUS.x} y2={FOCUS.y} stroke={BEAM} strokeWidth="2" strokeLinecap="round" style={{ animationDelay: `${i * 50}ms` }} />
+                ))}
+              {phase === 'firing' && (
+                <g>
+                  <line x1={FOCUS.x} y1={FOCUS.y} x2={PLANET.x} y2={PLANET.y} stroke={BEAM} strokeWidth="12" filter="url(#ds-glow)" className="ds-beam" />
+                  <line x1={FOCUS.x} y1={FOCUS.y} x2={PLANET.x} y2={PLANET.y} stroke="#eaffdf" strokeWidth="3" className="ds-beam" />
+                </g>
+              )}
+              {charging && <circle cx={FOCUS.x} cy={FOCUS.y} r="7" fill="#eaffdf" filter="url(#ds-glow)" />}
+            </g>
+            <text x={PLANET.x} y={PLANET.y + PLANET.r + 22} textAnchor="middle" fill="#9aa0a9" fontFamily="var(--font-mono)" fontSize="12" letterSpacing="2">
+              {planetVisible ? p.name.toUpperCase() : ''}
+            </text>
+          </svg>
         </div>
 
         <div>
           <p className="eyebrow">
             <AurebeshLine>Classified</AurebeshLine> · DS-1 Orbital Battle Station
           </p>
-          <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">{destroyed ? 'It was a moon after all.' : 'That’s no moon.'}</h1>
-          <p className="mt-3 text-sm text-muted">Tap the glowing points on the station to look inside.</p>
-          <p className="lead mt-6 max-w-xl">
-            {destroyed
-              ? 'The station is gone. The Rebellion thanks you, and so does Alderaan’s insurance company.'
-              : `It’s a space station, and you found the hidden page. ${PLANETS[planet].name} is in range. ${PLANETS[planet].line}`}
-          </p>
+          <h1 className="display mt-6 text-[clamp(2.8rem,1.6rem+5vw,5.2rem)]">{title}</h1>
+          <p className="lead mt-6 max-w-xl">{lead}</p>
+
+          {outcome && (
+            <figure className={`ds-ending ds-ending-${outcome}`}>
+              {outcome === 'rebels' && <Medal />}
+              <div>
+                <blockquote className="text-lg text-ink">
+                  {outcome === 'empire' ? '“Fear will keep the local systems in line.”' : '“Great shot, kid. That was one in a million!”'}
+                </blockquote>
+                <figcaption className="mt-1 text-sm text-muted">{outcome === 'empire' ? 'Grand Moff Tarkin' : 'Han Solo'}</figcaption>
+              </div>
+            </figure>
+          )}
+
+          {battle && (
+            <div className="battle-card">
+              <div className="flex items-baseline justify-between gap-4">
+                <p className="label">Battle of Yavin</p>
+                <p className="battle-clock" aria-hidden="true">
+                  {fmtClock(clock)}
+                </p>
+              </div>
+              <div className="battle-bar" aria-hidden="true">
+                <span style={{ transform: `scaleX(${clock / BATTLE_SECONDS})` }} />
+              </div>
+              <p className="mt-3 text-sm text-body">Once the station clears the gas giant, Yavin 4 is in range. Fly the trench run before it is.</p>
+            </div>
+          )}
+
           <div className="mt-8 flex flex-wrap gap-3">
-            {phase === 'gone' ? (
+            {outcome === 'empire' ? (
+              <button type="button" className="btn btn-primary" onClick={fightAgain} disabled={busy}>
+                Fight the battle again
+              </button>
+            ) : outcome === 'rebels' ? (
+              <button type="button" className="btn btn-primary" onClick={rebuild}>
+                Rebuild the station
+              </button>
+            ) : phase === 'gone' ? (
               <button type="button" className="btn btn-primary" onClick={() => setPhase('idle')}>
-                Restore {PLANETS[planet].name} from checkpoint
+                Restore {p.name} from checkpoint
               </button>
             ) : (
-              <button type="button" className="btn btn-primary" onClick={fire} disabled={phase !== 'idle'}>
+              <button type="button" className="btn btn-primary" onClick={fire} disabled={busy || destroyed}>
                 Fire the superlaser
               </button>
             )}
-            {destroyed ? (
-              <button type="button" className="btn btn-ghost" onClick={() => setDestroyed(false)}>
-                Rebuild the station
-              </button>
-            ) : (
+            {!destroyed && (
               <a href="#trench" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'trench')}>
                 Fly the trench run
               </a>
@@ -328,35 +433,26 @@ export default function DeathStar() {
             <p className="label">Set course for</p>
             <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Planets">
               {Object.entries(PLANETS).map(([id, pl]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="place-chip"
-                  aria-pressed={planet === id}
-                  disabled={jumping || destroyed || (phase !== 'idle' && phase !== 'gone')}
-                  onClick={() => travel(id)}
-                >
+                <button key={id} type="button" className="place-chip" aria-pressed={planet === id} disabled={busy || destroyed} onClick={() => travel(id)}>
                   {pl.name}
                 </button>
               ))}
             </div>
+            {planet !== 'yavin' && !outcome && <p className="mt-3 text-sm text-muted">Set course for Yavin 4 to fight the Battle of Yavin.</p>}
           </div>
           <p className="mono mt-6 min-h-[1.5em] text-sm text-accent" role="status">
-            {phase === 'charging' && 'Charging the main reactor…'}
-            {phase === 'firing' && 'Fire at will.'}
-            {(phase === 'boom' || phase === 'gone') && `Fully operational. ${PLANETS[planet].name} is no more.`}
-            {jumping && 'Jumping to lightspeed…'}
+            {jumping ? 'Jumping to lightspeed…' : phase === 'charging' ? 'Charging the main reactor…' : phase === 'firing' ? 'Fire at will.' : call}
           </p>
         </div>
       </div>
-      <Readout />
+      <Readout onAction={onAction} />
       <section id="trench" className="shell relative z-10 scroll-mt-24 pb-28" aria-labelledby="trench-title">
         <h2 id="trench-title" className="title">
           Trench run
         </h2>
         <p className="lead mt-4 max-w-[54ch]">Two torpedoes, three shields, one exhaust port. Switching off the targeting computer is optional.</p>
         <div className="mt-8">
-          <TrenchRun onWin={onWin} />
+          <TrenchRun onWin={onWin} clock={battle ? clock : null} over={outcome === 'empire' ? 'Too late. The Death Star cleared Yavin and fired on the moon.' : null} />
         </div>
       </section>
     </div>

@@ -142,7 +142,9 @@ export default function Travel() {
       <HomeBase />
       <section id="globe" data-theme-section="travel" className="relative z-10 scroll-mt-20 py-16 md:py-24" aria-labelledby="globe-title">
         <div className="shell relative">
-          <Waypoint top="0.9rem" />
+          <div className="relative">
+            <Waypoint top="0.9rem" />
+          </div>
         </div>
         <PlacesExplorer
           title="Every trip, from Syracuse"

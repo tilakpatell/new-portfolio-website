@@ -235,65 +235,132 @@ function superlaserRaw(acIn, destIn, when = 0, charge = 1.1) {
   return charge + 0.6;
 }
 
-// ── The jump to lightspeed, timed to the Hyperspace animation ──────────────
+// ── Jumping to lightspeed ──────────────────────────────────────────────────
+// Lined up with the Hyperspace animation (stars drift until 0.45 s, stretch
+// until the jump at 1.15 s, tunnel until 1.95 s, gone by 2.45 s). The engines
+// spool into a rising whine under a jet-flanged whoosh; the jump lands as a
+// crack, a boom and a bright zip; the tunnel roars; a falling whoosh lets go.
+// The boom is driven into soft clipping so its harmonics carry it on laptop
+// and phone speakers, which can't play its fundamental.
+const softClip = (k) => {
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < curve.length; i++) {
+    const x = (i / (curve.length - 1)) * 2 - 1;
+    curve[i] = Math.tanh(k * x) / Math.tanh(k);
+  }
+  return curve;
+};
+
 function hyperspaceRaw(acIn, destIn, when = 0) {
   const [ac, dest] = ready(acIn, destIn);
   if (!ac) return 0;
   const t = ac.currentTime + when;
-  const out = bus(ac, dest, 0.3, 0.58);
+  const jump = t + 1.15;
+  const out = bus(ac, dest, 0.26, 0.62);
+  const track = (node, from, to) => {
+    node.start(from);
+    node.stop(to);
+  };
 
-  // the engines spooling up, then the long rush of the tunnel
-  const rush = noiseSource(ac, 'white', 4);
-  const bp = ac.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.Q.value = 1.2;
-  env(bp.frequency, t, [[0, 180], [0.45, 320], [1.15, 4200], [1.35, 1800], [1.95, 900], [2.45, 160]]);
-  const rushG = ac.createGain();
-  env(rushG.gain, t, [[0, 0.0001], [0.45, 0.07, 'lin'], [1.15, 0.38, 'lin'], [1.3, 0.3, 'lin'], [1.95, 0.22, 'lin'], [2.45, 0.0001]]);
-  rush.connect(bp).connect(rushG).connect(out);
-  rush.start(t);
-  rush.stop(t + 2.5);
-
-  // the rising tone of the stretch
-  const rise = ac.createOscillator();
-  rise.type = 'sawtooth';
-  env(rise.frequency, t, [[0, 48], [0.45, 70], [1.15, 520]]);
-  const riseF = ac.createBiquadFilter();
-  riseF.type = 'lowpass';
-  env(riseF.frequency, t, [[0, 300], [1.15, 3000]]);
-  const riseG = ac.createGain();
-  env(riseG.gain, t, [[0, 0.0001], [0.45, 0.03, 'lin'], [1.12, 0.13, 'lin'], [1.2, 0.0001]]);
-  rise.connect(riseF).connect(riseG).connect(out);
-  rise.start(t);
-  rise.stop(t + 1.25);
-
-  // the punch as the ship crosses over
-  const at = t + 1.15;
-  const thump = ac.createOscillator();
-  thump.type = 'sine';
-  env(thump.frequency, at, [[0, 95], [0.5, 34]]);
-  const thumpG = ac.createGain();
-  env(thumpG.gain, at, [[0, 0.0001], [0.01, 0.5, 'lin'], [0.7, 0.0001]]);
-  thump.connect(thumpG).connect(out);
-  thump.start(at);
-  thump.stop(at + 0.75);
-
-  // the tunnel's slow wobble
+  // the engines spooling up: a low, rising hum
   const hum = ac.createOscillator();
-  hum.type = 'triangle';
-  hum.frequency.value = 62;
-  const wob = ac.createOscillator();
-  wob.frequency.value = 3.2;
-  const wobAmt = ac.createGain();
-  wobAmt.gain.value = 9;
-  wob.connect(wobAmt).connect(hum.frequency);
+  hum.type = 'sawtooth';
+  env(hum.frequency, t, [[0, 38], [1.15, 70]]);
+  const humF = ac.createBiquadFilter();
+  humF.type = 'lowpass';
+  humF.frequency.value = 480;
   const humG = ac.createGain();
-  env(humG.gain, t, [[1.25, 0.0001], [1.45, 0.15, 'lin'], [1.95, 0.12, 'lin'], [2.4, 0.0001]]);
-  hum.connect(humG).connect(out);
-  hum.start(t + 1.2);
-  wob.start(t + 1.2);
-  hum.stop(t + 2.45);
-  wob.stop(t + 2.45);
+  env(humG.gain, t, [[0, 0.0001], [0.3, 0.06, 'lin'], [1.1, 0.12, 'lin'], [1.2, 0.0001]]);
+  hum.connect(humF).connect(humG).connect(out);
+  track(hum, t, t + 1.25);
+
+  // the whine, three partials climbing three octaves with the stretch
+  for (const [mul, level] of [[1, 0.075], [2.01, 0.045], [3.02, 0.024]]) {
+    const o = ac.createOscillator();
+    env(o.frequency, t, [[0.3, 160 * mul], [1.15, 1250 * mul]]);
+    const g = ac.createGain();
+    env(g.gain, t, [[0.3, 0.0001], [0.95, level * 0.6], [1.13, level], [1.17, 0.0001]]);
+    o.connect(g).connect(out);
+    track(o, t + 0.3, t + 1.2);
+  }
+
+  // the whoosh: noise through a resonant band that sweeps up into the jump and
+  // back down on the way out, flanged (mixed with a copy a few ms behind) like a jet
+  const air = noiseSource(ac, 'white', 4);
+  const band = ac.createBiquadFilter();
+  band.type = 'bandpass';
+  band.Q.value = 3;
+  env(band.frequency, t, [[0.2, 260], [1.15, 5200], [1.3, 2400], [1.95, 1100], [2.45, 300]]);
+  const warm = ac.createBiquadFilter();
+  warm.type = 'lowshelf';
+  warm.frequency.value = 400;
+  warm.gain.value = 6;
+  const flange = ac.createDelay(0.05);
+  env(flange.delayTime, t, [[0.2, 0.012], [1.15, 0.0006], [1.95, 0.004], [2.45, 0.01]]);
+  const flangeG = ac.createGain();
+  flangeG.gain.value = 0.85;
+  const airG = ac.createGain();
+  env(airG.gain, t, [[0, 0.0001], [0.45, 0.06], [1.12, 0.78], [1.2, 0.36, 'lin'], [1.95, 0.22, 'lin'], [2.45, 0.0001]]);
+  air.connect(band).connect(warm);
+  warm.connect(airG);
+  warm.connect(flange).connect(flangeG).connect(airG);
+  airG.connect(out);
+  track(air, t, t + 2.5);
+
+  // the jump: a crack...
+  const crack = noiseSource(ac, 'white', 1);
+  const crackF = ac.createBiquadFilter();
+  crackF.type = 'highpass';
+  crackF.frequency.value = 1400;
+  const crackG = ac.createGain();
+  env(crackG.gain, jump, [[0, 0.0001], [0.004, 0.55, 'lin'], [0.09, 0.0001]]);
+  crack.connect(crackF).connect(crackG).connect(out);
+  track(crack, jump, jump + 0.12);
+
+  // ...a boom, driven into soft clipping...
+  const boomO = ac.createOscillator();
+  env(boomO.frequency, jump, [[0, 150], [0.08, 90], [0.7, 40]]);
+  const drive = ac.createWaveShaper();
+  drive.curve = softClip(2.5);
+  drive.oversample = '2x';
+  const boomG = ac.createGain();
+  env(boomG.gain, jump, [[0, 0.0001], [0.008, 0.6, 'lin'], [0.25, 0.32], [0.9, 0.0001]]);
+  boomO.connect(drive).connect(boomG).connect(out);
+  track(boomO, jump, jump + 0.95);
+  const rumble = noiseSource(ac, 'brown', 2);
+  const rumbleF = ac.createBiquadFilter();
+  rumbleF.type = 'lowpass';
+  env(rumbleF.frequency, jump, [[0, 1600], [0.6, 220]]);
+  const rumbleG = ac.createGain();
+  env(rumbleG.gain, jump, [[0, 0.0001], [0.01, 0.5, 'lin'], [0.8, 0.0001]]);
+  rumble.connect(rumbleF).connect(rumbleG).connect(out);
+  track(rumble, jump, jump + 0.85);
+
+  // ...and a bright zip as the ship goes
+  const zip = ac.createOscillator();
+  zip.type = 'triangle';
+  env(zip.frequency, jump, [[0, 1800], [0.14, 6400]]);
+  const zipG = ac.createGain();
+  env(zipG.gain, jump, [[0, 0.0001], [0.01, 0.06, 'lin'], [0.22, 0.0001]]);
+  zip.connect(zipG).connect(out);
+  track(zip, jump, jump + 0.25);
+
+  // the tunnel: a roar that pulses as the light rushes past
+  const roar = noiseSource(ac, 'brown', 2);
+  const roarF = ac.createBiquadFilter();
+  roarF.type = 'lowpass';
+  roarF.frequency.value = 1100;
+  roarF.Q.value = 2;
+  const pulse = ac.createOscillator();
+  pulse.frequency.value = 3.4;
+  const pulseAmt = ac.createGain();
+  pulseAmt.gain.value = 300;
+  pulse.connect(pulseAmt).connect(roarF.frequency);
+  const roarG = ac.createGain();
+  env(roarG.gain, t, [[1.2, 0.0001], [1.4, 0.36, 'lin'], [1.95, 0.28, 'lin'], [2.45, 0.0001]]);
+  roar.connect(roarF).connect(roarG).connect(out);
+  track(roar, t + 1.2, t + 2.5);
+  track(pulse, t + 1.2, t + 2.5);
   return 2.5;
 }
 
@@ -357,6 +424,86 @@ function fanfareRaw(acIn, destIn, when = 0) {
   cym.start(t);
   cym.stop(t + 3.5);
   return 4;
+}
+
+// ── The two endings of the Battle of Yavin (original stings, not anyone's theme) ─
+// A timpani stroke: a sine that sags in pitch, with the slap of the skin.
+function timpani(ac, out, at, hz, level = 0.6) {
+  const o = ac.createOscillator();
+  env(o.frequency, at, [[0, hz * 1.12], [0.35, hz]]);
+  const g = ac.createGain();
+  env(g.gain, at, [[0, 0.0001], [0.008, level, 'lin'], [1.4, 0.0001]]);
+  o.connect(g).connect(out);
+  o.start(at);
+  o.stop(at + 1.5);
+  const skin = noiseSource(ac, 'white', 1);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = hz * 2;
+  f.Q.value = 1.4;
+  const sg = ac.createGain();
+  env(sg.gain, at, [[0, 0.0001], [0.004, level * 0.8, 'lin'], [0.22, 0.0001]]);
+  skin.connect(f).connect(sg).connect(out);
+  skin.start(at);
+  skin.stop(at + 0.25);
+}
+
+// Brass: detuned saws through a filter that opens like breath, then closes.
+function brassChord(ac, out, at, notes, dur, level, bright = 2600) {
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.Q.value = 1.2;
+  env(f.frequency, at, [[0, 320], [0.4, bright], [dur * 0.7, bright * 0.55], [dur, 420]]);
+  const g = ac.createGain();
+  env(g.gain, at, [[0, 0.0001], [0.25, level, 'lin'], [dur * 0.75, level * 0.8, 'lin'], [dur, 0.0001]]);
+  f.connect(g).connect(out);
+  for (const hz of notes) {
+    for (const det of [-7, 0, 7]) {
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = hz;
+      o.detune.value = det;
+      const v = ac.createGain();
+      v.gain.value = 0.1;
+      o.connect(v).connect(f);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    }
+  }
+}
+
+// The Empire wins: two heavy strokes and a low, dark chord (G minor, with the flat sixth on top).
+function imperialRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.4, 0.7);
+  timpani(ac, out, t, 49, 0.7);
+  timpani(ac, out, t + 0.42, 73.4, 0.6);
+  brassChord(ac, out, t + 0.42, [98, 146.83, 196, 233.08, 311.13], 2.8, 0.36, 1500);
+  return 3.3;
+}
+
+// The Rebels win: a bright run up a major chord, then the whole chord held, over a cymbal swell.
+function victoryRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.42, 0.62);
+  timpani(ac, out, t, 87.3, 0.55);
+  [261.63, 329.63, 392, 523.25].forEach((hz, i) => brassChord(ac, out, t + i * 0.13, [hz], 0.42, 0.28, 3400));
+  brassChord(ac, out, t + 0.55, [130.81, 261.63, 329.63, 392, 523.25, 659.25], 2.6, 0.34, 3600);
+  timpani(ac, out, t + 0.55, 65.4, 0.5);
+  const cym = noiseSource(ac, 'white', 4);
+  const cymF = ac.createBiquadFilter();
+  cymF.type = 'highpass';
+  cymF.frequency.value = 6000;
+  const cymG = ac.createGain();
+  env(cymG.gain, t, [[0, 0.0001], [0.6, 0.14, 'lin'], [3, 0.0001]]);
+  cym.connect(cymF).connect(cymG).connect(out);
+  cym.start(t);
+  cym.stop(t + 3.1);
+  return 3.2;
 }
 
 // ── Trench run ──────────────────────────────────────────────────────────────
@@ -448,3 +595,5 @@ export const fanfare = once('fanfare', fanfareRaw);
 export const torpedo = once('torpedo', torpedoRaw);
 export const hit = once('hit', hitRaw);
 export const flyby = once('flyby', flybyRaw);
+export const imperial = once('imperial', imperialRaw);
+export const victory = once('victory', victoryRaw);

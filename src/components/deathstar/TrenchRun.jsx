@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
+import { fmtClock } from './battle';
 
 const sfx = () => import('../../lib/sfx');
 // The HUD writes in Aurebesh when the site does.
@@ -112,7 +113,10 @@ function course(seed) {
   return items;
 }
 
-export default function TrenchRun({ onWin }) {
+// `clock` is how many seconds are left in the Battle of Yavin, if one is on;
+// `over` ends a run in progress with that message (the Empire fired first).
+
+export default function TrenchRun({ onWin, clock = null, over = null }) {
   const wrap = useRef(null);
   const canvas = useRef(null);
   const game = useRef(null);
@@ -178,6 +182,13 @@ export default function TrenchRun({ onWin }) {
       }
     }
   }, [onWin, unlock]);
+
+  useEffect(() => {
+    const g = game.current;
+    if (!over || !g || g.phase !== 'running') return;
+    g.phase = 'lost';
+    setUi((u) => ({ ...u, phase: 'lost', message: over }));
+  }, [over]);
 
   const toggleComputer = useCallback(() => {
     const g = game.current;
@@ -596,6 +607,7 @@ export default function TrenchRun({ onWin }) {
         <span className="mono text-xs text-muted">
           Shields {'■'.repeat(ui.shields)}
           {'□'.repeat(3 - ui.shields)} · Torpedoes {ui.torpedoes}
+          {clock != null && ` · Yavin 4 in range in ${fmtClock(clock)}`}
         </span>
         <span className="mono min-h-[1.2em] w-full text-sm text-accent" role="status">
           {running ? ui.message : ''}

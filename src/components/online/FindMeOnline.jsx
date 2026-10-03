@@ -323,9 +323,10 @@ export default function FindMeOnline() {
         </h2>
         <p className="lead mt-4 max-w-[52ch]">The code on GitHub, the career on LinkedIn, and the one-page version of both.</p>
       </div>
-      <div className="mt-10 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {/* minmax(0, …) tracks: the contribution graph scrolls inside its panel instead of widening the page */}
+      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <GitHubPanel />
-        <div className="grid content-start gap-5">
+        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-5">
           <LinkedInCard />
           <ResumeCard />
         </div>

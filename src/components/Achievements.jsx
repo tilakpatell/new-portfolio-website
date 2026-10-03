@@ -13,6 +13,8 @@ export const ACHIEVEMENTS = {
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
+  rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
+  empire: { name: 'Fear will keep them in line', desc: 'Let the Empire win at Yavin' },
   resume: { name: 'Recruited', desc: 'Opened the résumé' },
   cartographer: { name: 'Cartographer', desc: 'Saw all six company themes' },
   player: { name: 'High score', desc: 'Collected 10 coins on the Game Boy' },
@@ -88,7 +90,8 @@ export function AchievementProvider({ children }) {
   return (
     <AchievementContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast]:pointer-events-auto" aria-live="polite">
+      {/* taps pass through the toast to whatever is under it, except on its own controls */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
         {toast && (
           <div
             key={toast.key}

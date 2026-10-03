@@ -319,7 +319,9 @@ export default function Home() {
       {/* Travel: the globe, then a misty way into the travel page */}
       <section data-theme-section="travel" className="relative z-10 pt-14 md:pt-20" aria-labelledby="travel-title">
         <div className="shell relative">
-          <Waypoint top="0.9rem" />
+          <div className="relative">
+            <Waypoint top="0.9rem" />
+          </div>
         </div>
         <PlacesExplorer />
         <PhotoBand id="band" className="travel-teaser mt-16 md:mt-24">

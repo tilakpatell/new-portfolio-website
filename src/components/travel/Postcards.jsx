@@ -20,7 +20,7 @@ export default function Postcards({ onPick }) {
   return (
     <section data-theme-section="travel" className="relative z-10 py-16 md:py-24" aria-labelledby="postcards-title">
       <div className="shell relative flex flex-wrap items-end justify-between gap-6">
-        <div>
+        <div className="relative">
           <Waypoint top="0.9rem" />
           <h2 id="postcards-title" className="title">
             Postcards

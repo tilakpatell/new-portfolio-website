@@ -253,8 +253,9 @@ export function startTanpura(onPluck) {
 }
 
 export function stopTanpura() {
+  if (!drone) return; // nothing playing: don't create an audio context just to stop
   const ac = audioContext();
-  if (!drone || !ac) return;
+  if (!ac) return;
   const { level, interval, timers } = drone;
   clearInterval(interval);
   timers.forEach(clearTimeout);

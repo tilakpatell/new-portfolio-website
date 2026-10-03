@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
 import { openPalette, shortcutLabel } from '../lib/palette';
@@ -18,13 +19,38 @@ const LINKS = [
 
 // Site colours: a small "Auto" control that explains what the colours mean.
 // Auto follows the page; picking a company keeps its colours everywhere.
-function ThemeOptions({ onPick }) {
+// `compact` lays them out as chips, for the phone menu.
+function ThemeOptions({ onPick, compact = false }) {
   const { active, pinned, pin } = useTheme();
   const { unlocked } = useAchievements();
   const choose = (id) => {
     pin(id);
     onPick?.();
   };
+  if (compact) {
+    const fans = FAN_THEMES.filter((f) => unlocked.includes(f.achievement));
+    const locked = FAN_THEMES.length - fans.length;
+    const chip = (id, label, color) => (
+      <button key={id ?? 'auto'} type="button" className="theme-chip" aria-pressed={pinned === id || (!pinned && id === null)} onClick={() => choose(id)}>
+        <span className="theme-chip-dot" style={{ background: color }} aria-hidden="true" />
+        {label}
+      </button>
+    );
+    return (
+      <div>
+        <div role="group" aria-label="Site colors" className="flex flex-wrap gap-2">
+          {chip(null, 'Auto', THEMES[active].fill || THEMES[active].swatch)}
+          {THEME_ORDER.map((id) => chip(id, THEMES[id].label, THEMES[id].fill || THEMES[id].swatch))}
+          {fans.map((f) => chip(f.id, THEMES[f.id].label, THEMES[f.id].swatch))}
+        </div>
+        {locked > 0 && (
+          <p className="mt-3 text-xs text-muted">
+            {locked} more {locked === 1 ? 'scheme unlocks' : 'schemes unlock'} through easter eggs.
+          </p>
+        )}
+      </div>
+    );
+  }
   const row = 'flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm hover:bg-[var(--surface-2)]';
   return (
     <div role="group" aria-label="Site colors">
@@ -169,11 +195,20 @@ export default function Nav() {
 
   useEffect(() => setHidden(false), [pathname]);
 
+  // The phone menu covers the page: Escape closes it, and the page under it stays put.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const html = document.documentElement;
+    const overflow = html.style.overflow;
+    html.style.overflow = 'hidden';
+    html.dataset.menu = 'open';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      html.style.overflow = overflow;
+      delete html.dataset.menu;
+    };
   }, [open]);
 
   const linkClass = ({ isActive }) =>
@@ -243,8 +278,9 @@ export default function Nav() {
         </div>
       </nav>
 
-      {open && (
-        <div id="mobile-menu" className="nav-bar mt-2 max-h-[calc(100dvh-90px)] overflow-y-auto rounded-3xl px-5 pb-6 pt-2 md:hidden">
+      {open &&
+        createPortal(
+        <div id="mobile-menu" className="mobile-menu md:hidden">
           <ul className="divide-y divide-[var(--border)]">
             {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
@@ -257,11 +293,11 @@ export default function Nav() {
               </li>
             ))}
           </ul>
-          <div className="mt-5">
+          <div className="mt-7">
             <p className="eyebrow">Site colors</p>
-            <p className="mt-1 text-xs text-muted">From companies I’ve worked at. Auto follows the page.</p>
-            <div className="card mt-3 p-1.5">
-              <ThemeOptions onPick={() => setOpen(false)} />
+            <p className="mt-1 text-sm text-muted">From companies I’ve worked at. Auto follows the page.</p>
+            <div className="mt-3">
+              <ThemeOptions compact onPick={() => setOpen(false)} />
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -285,8 +321,9 @@ export default function Nav() {
               <RiGithubFill className="h-5 w-5" />
             </a>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
       </div>
     </header>
   );

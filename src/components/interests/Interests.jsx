@@ -294,7 +294,7 @@ export default function Interests() {
   return (
     <section data-theme-section="aws" className="relative z-10 py-14 md:py-20" aria-labelledby="interests-title">
       <div className="shell relative flex flex-wrap items-end justify-between gap-6">
-        <div>
+        <div className="relative">
           <Waypoint top="0.9rem" />
           <h2 id="interests-title" className="title">
             Off the clock
