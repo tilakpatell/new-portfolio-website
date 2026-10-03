@@ -471,6 +471,8 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       size.h = rect.height;
       canvas.width = Math.round(rect.width * size.dpr);
       canvas.height = Math.round(rect.height * size.dpr);
+      // Resizing clears the canvas; repaint now so it never shows blank.
+      draw(performance.now());
       wake();
     };
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;

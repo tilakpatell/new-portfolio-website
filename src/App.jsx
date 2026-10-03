@@ -12,6 +12,7 @@ const Experience = lazy(() => import('./pages/Experience'));
 const Projects = lazy(() => import('./pages/Projects'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
+const Travel = lazy(() => import('./pages/Travel'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -82,6 +83,7 @@ function Shell() {
       import('./pages/Experience');
       import('./pages/Projects');
       import('./pages/Contact');
+      import('./pages/Travel');
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
@@ -101,6 +103,7 @@ function Shell() {
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/travel" element={<Travel />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="*" element={<NotFound />} />

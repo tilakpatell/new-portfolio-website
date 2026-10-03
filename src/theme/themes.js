@@ -18,7 +18,28 @@ export const THEMES = {
   finance: { id: 'finance', label: 'Finance', company: 'Finance platform', swatch: '#0F9D58' },
   pytorch: { id: 'pytorch', label: 'PyTorch', company: 'PyTorch', swatch: '#EE4C2C' },
   nvidia: { id: 'nvidia', label: 'NVIDIA', company: 'GPU research', swatch: '#76B900' },
+  travel: { id: 'travel', label: 'Travel', company: 'Travel', swatch: '#0F766E' },
+  // fan themes, unlocked by easter eggs
+  jedi: { id: 'jedi', label: 'Jedi', company: 'Jedi Archives', swatch: '#2563EB', fan: true },
+  sith: { id: 'sith', label: 'Sith', company: 'Sith', swatch: '#C1121F', fan: true },
+  heisenberg: { id: 'heisenberg', label: 'Heisenberg', company: 'Heisenberg', swatch: '#1E7A3C', fan: true },
+  stark: { id: 'stark', label: 'Stark', company: 'Stark', swatch: '#B3161B', fan: true },
+  dunder: { id: 'dunder', label: 'Dunder Mifflin', company: 'Dunder Mifflin', swatch: '#1F4E8C', fan: true },
+  arcade: { id: 'arcade', label: 'Arcade', company: 'Arcade', swatch: '#D6246E', fan: true },
+  raga: { id: 'raga', label: 'Raga', company: 'Raga', swatch: '#E8871E', fan: true },
 };
+
+// Fan themes and the achievement that unlocks each. The hint shows on the
+// locked row in the theme picker.
+export const FAN_THEMES = [
+  { id: 'jedi', achievement: 'aurebesh', hint: 'Read Aurebesh' },
+  { id: 'sith', achievement: 'order66', hint: 'Execute an order' },
+  { id: 'heisenberg', achievement: 'heisenberg', hint: 'Say my name' },
+  { id: 'stark', achievement: 'snap', hint: 'Collect the stones, then snap' },
+  { id: 'dunder', achievement: 'dundie', hint: 'That’s what she said' },
+  { id: 'arcade', achievement: 'konami', hint: '↑ ↑ ↓ ↓ ← → ← → B A' },
+  { id: 'raga', achievement: 'raga', hint: 'Play the sitar' },
+];
 
 export const THEME_ORDER = ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src'];
 export const DEFAULT_THEME = 'aws';
@@ -34,4 +55,5 @@ export const ROUTE_THEMES = {
   '/projects/finance-platform': 'finance',
   '/projects/smart-summarizer': 'pytorch',
   '/projects/gpu-checkpoint-restart': 'nvidia',
+  '/travel': 'travel',
 };

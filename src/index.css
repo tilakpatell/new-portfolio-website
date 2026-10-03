@@ -374,7 +374,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   }
 
   .display {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     font-stretch: 125%;
     font-weight: 680;
     letter-spacing: -0.035em;

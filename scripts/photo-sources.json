@@ -1,0 +1,238 @@
+{
+  "_readme": "Photos for the travel page. `commons` is a freely licensed Wikimedia Commons file (credited automatically); `file` is a path to your own photo, relative to the project (credited to you). `widths` are the WebP sizes made for each. After editing, run: node scripts/photos.mjs",
+  "hero": {
+    "commons": "File:Lake Moraine-Banff National Park.jpg",
+    "widths": [
+      960,
+      1920
+    ],
+    "alt": "A turquoise mountain lake below snowy peaks, framed by pine trees"
+  },
+  "band": {
+    "commons": "File:Rundle on Two Jack - panoramio.jpg",
+    "widths": [
+      960,
+      1920
+    ],
+    "alt": "A mountain reflected in a still lake at dawn, with a line of pines"
+  },
+  "haze": {
+    "commons": "File:Two Jack Lake Banff September 2024 003.jpg",
+    "widths": [
+      1280
+    ],
+    "alt": ""
+  },
+  "syracuse": {
+    "commons": "File:Syracuse, New York skyline (cropped).jpg",
+    "widths": [
+      800,
+      1600
+    ],
+    "alt": "Downtown Syracuse, New York, from above"
+  },
+  "us": {
+    "url": "https://media.baps.dev/wp-content/uploads/2023/09/28203110/Mahamandir-closeup-scaled.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The white marble Mahamandir of BAPS Swaminarayan Akshardham in Robbinsville, New Jersey",
+    "title": "Mahamandir, Robbinsville",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://usa.akshardham.org/media"
+  },
+  "ca": {
+    "commons": "File:1 lake louise pano 2019.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Lake Louise in the Canadian Rockies, seen from above"
+  },
+  "mx": {
+    "commons": "File:Tulum - God of the Winds Temple 03.JPG",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "A Maya temple on a rocky point above a turquoise beach in Tulum"
+  },
+  "cr": {
+    "commons": "File:Arenal Volcano 02.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Arenal Volcano rising above green forest in Costa Rica"
+  },
+  "caribbean": {
+    "commons": "File:Magens Bay, St. Thomas, USVI.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "A curved turquoise bay with green hills on a Caribbean island"
+  },
+  "cl": {
+    "commons": "File:A view towards Torres Del Paine.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The jagged granite peaks of Torres del Paine in Chile"
+  },
+  "is": {
+    "commons": "File:Kirkjufell, Iceland (Unsplash LoKG7kKx7Zc).jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Kirkjufell mountain in Iceland behind a small waterfall"
+  },
+  "no": {
+    "commons": "File:Geirangerfjord from Ørnesvingen, 2013 June.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Geirangerfjord in Norway winding between steep green mountains"
+  },
+  "gb": {
+    "commons": "File:Friars' Crag Derwentwater Lake District 2022 01.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Derwentwater in the Lake District, calm under wooded hills"
+  },
+  "pt": {
+    "commons": "File:Ponta da Piedade (49174016398).jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Golden sea stacks and arches at Ponta da Piedade in the Algarve"
+  },
+  "es": {
+    "commons": "File:Montserrat Mountains & Pinetrees.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The serrated Montserrat mountains in Catalonia behind pine trees"
+  },
+  "fr": {
+    "commons": "File:Panorama of Mont Blanc du Tacul, Mont Maudit and Mont Blanc from Aiguille du Midi, Chamonix, Haute-Savoie.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The glaciers and summits of the Mont Blanc massif"
+  },
+  "it": {
+    "commons": "File:Lago di Misurina Tre Cime di Lavaredo 1.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Lago di Misurina with the Tre Cime di Lavaredo in the Dolomites behind it"
+  },
+  "mt": {
+    "commons": "File:Valletta, Malta's Grand Harbor.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Valletta's Grand Harbour in Malta, with old fortifications along the water"
+  },
+  "gr": {
+    "commons": "File:1000 Three domes of Oia in Santorini Photo by Giles Laurent.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Blue church domes in Oia above the caldera of Santorini"
+  },
+  "in": {
+    "url": "https://akshardham.com/newdelhi/wp-content/uploads/2015/06/Akshardham_FV-001.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Swaminarayan Akshardham in Delhi at the end of its long stone approach",
+    "title": "Akshardham, New Delhi",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://akshardham.com/download/photo-galleries/"
+  },
+  "h-robbinsville": {
+    "url": "https://media.baps.dev/wp-content/uploads/2023/09/09181205/17.-BAPS-Swaminarayan-Akshardham-scaled.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Akshardham in Robbinsville at sunset, reflected in the pool before it",
+    "title": "Akshardham at sunset, Robbinsville",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://usa.akshardham.org/media"
+  },
+  "h-delhi": {
+    "url": "https://akshardham.com/newdelhi/wp-content/uploads/2015/05/akshardham_monument_evening-097.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Akshardham in Delhi lit up in the evening and reflected in the water",
+    "title": "Akshardham in the evening, New Delhi",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://akshardham.com/download/photo-galleries/"
+  },
+  "h-colonnade": {
+    "url": "https://media.baps.dev/wp-content/uploads/2023/09/09181356/45.-Parikrama-colonnade-scaled.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The long carved stone colonnade of the parikrama at Robbinsville",
+    "title": "Parikrama colonnade, Robbinsville",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://usa.akshardham.org/media"
+  },
+  "h-pillars": {
+    "url": "https://akshardham.com/newdelhi/wp-content/uploads/2015/05/Pillars_carving-015.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Pink sandstone pillars covered in carved figures at Akshardham in Delhi",
+    "title": "Carved pillars, New Delhi",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://akshardham.com/download/photo-galleries/"
+  },
+  "h-ceiling": {
+    "url": "https://media.baps.dev/wp-content/uploads/2023/09/28203204/Ceilng-scaled.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "A carved marble ceiling dome at Robbinsville, seen from below",
+    "title": "Ceiling dome, Robbinsville",
+    "author": "BAPS Swaminarayan Sanstha",
+    "license": "© BAPS Swaminarayan Sanstha",
+    "source": "https://usa.akshardham.org/media"
+  },
+  "h-neasden": {
+    "commons": "File:Neasden Temple - Shree Swaminarayan Hindu Mandir 4888044478.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "Intricately carved wooden pillars and brackets inside Neasden Temple in London"
+  }
+}

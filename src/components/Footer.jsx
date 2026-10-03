@@ -18,6 +18,7 @@ export default function Footer() {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
           <Link className="text-body hover:text-ink" to="/experience">Experience</Link>
           <Link className="text-body hover:text-ink" to="/projects">Projects</Link>
+          <Link className="text-body hover:text-ink" to="/travel">Travel</Link>
           <Link className="text-body hover:text-ink" to="/contact">Contact</Link>
           <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
           <a className="text-body hover:text-ink" href={profile.resume.href} download={profile.resume.filename}>Résumé</a>

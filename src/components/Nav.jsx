@@ -9,6 +9,7 @@ import { THEMES, THEME_ORDER } from '../theme/themes';
 const LINKS = [
   { to: '/experience', label: 'Experience' },
   { to: '/projects', label: 'Projects' },
+  { to: '/travel', label: 'Travel' },
   { to: '/contact', label: 'Contact' },
 ];
 

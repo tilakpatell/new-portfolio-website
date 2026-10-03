@@ -82,54 +82,170 @@
 .place-chip[aria-pressed='true'] { background: var(--btn-bg); border-color: transparent; color: var(--btn-ink); }
 .place-card { min-height: 4.75rem; padding: 0.15rem 0 0.15rem 1rem; border-left: 2px solid var(--accent); }
 
-/* ─── Travel: mountains over a lake ──────────────────────────────────────── */
-.ls { width: 100%; height: clamp(150px, 19vw, 300px); overflow: hidden; }
-.ls-far > path:first-child { fill: color-mix(in srgb, var(--accent) 8%, color-mix(in srgb, var(--text) 13%, var(--bg))); }
-.ls-snow { fill: color-mix(in srgb, var(--text) 4%, var(--bg)); }
-html[data-mode='dark'] .ls-snow { fill: color-mix(in srgb, var(--text) 58%, var(--bg)); }
-.ls-mid path,
-.ls-mid-fill { fill: color-mix(in srgb, var(--text) 22%, var(--bg)); }
-.ls-near path,
-.ls-near-fill { fill: color-mix(in srgb, var(--text) 34%, var(--bg)); }
-.ls-reflection { opacity: 0.28; }
-/* At night the haze lights the far range and the near hills go darkest */
-html[data-mode='dark'] .ls-far > path:first-child { fill: color-mix(in srgb, var(--text) 26%, var(--bg)); }
-html[data-mode='dark'] :is(.ls-mid path, .ls-mid-fill) { fill: color-mix(in srgb, var(--text) 17%, var(--bg)); }
-html[data-mode='dark'] :is(.ls-near path, .ls-near-fill) { fill: color-mix(in srgb, var(--text) 10%, var(--bg)); }
-html[data-mode='dark'] .ls-reflection { opacity: 0.5; }
-.ls-water-top { stop-color: color-mix(in srgb, var(--accent) 16%, var(--bg)); }
-.ls-water-bottom { stop-color: var(--bg); }
-.ls-glint {
-  stroke: color-mix(in srgb, var(--bg) 70%, var(--accent));
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 60 150 22 230;
-  animation: ls-glint 11s linear infinite;
+
+
+/* ─── Travel page: photos, mist and fog ──────────────────────────────────── */
+/* The page's own theme: glacier teal over granite, triangles for markers. */
+[data-theme='travel'] {
+  --bg: #fbfcfb;
+  --bg-deep: #eef3f2;
+  --surface: #ffffff;
+  --surface-2: #edf3f1;
+  --border: #d6e2df;
+  --border-strong: #86a09b;
+  --text: #0f1a19;
+  --text-body: #24332f;
+  --muted: #4f6460;
+  --accent: #0f766e;
+  --accent-text: #0d6b63;
+  --btn-bg: #0f766e;
+  --btn-ink: #ffffff;
+  --saber: #2dd4bf;
+  --nav-bg: #0f1a19;
+  --route-plan: #c3d3cf;
+  --route-dash: 4px;
+  --route-gap: 5px;
+  --marker: polygon(50% 0, 100% 100%, 0 100%);
+  --r-card: 14px;
+  --r-panel: 10px;
+  --r-chip: 999px;
+  --r-photo: 18px;
 }
-@keyframes ls-glint { to { stroke-dashoffset: -462; } }
-.ls-sun { fill: color-mix(in srgb, var(--accent) 38%, var(--bg)); }
-.ls-glow-in { stop-color: color-mix(in srgb, var(--accent) 14%, var(--bg)); }
-.ls-glow-out { stop-color: var(--bg); stop-opacity: 0; }
-html[data-mode='dark'] .ls-glow-in { stop-color: color-mix(in srgb, var(--text) 8%, var(--bg)); }
-html[data-mode='dark'] .ls-sun { fill: color-mix(in srgb, var(--text) 82%, var(--bg)); }
-.ls-stars { display: none; }
-html[data-mode='dark'] .ls-stars { display: inline; fill: var(--text); }
-.ls-stars circle { animation: ls-twinkle 4s ease-in-out infinite; }
-@keyframes ls-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
-.ls-layer,
-.ls-sun,
-.ls-lake { transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.9s ease; }
-.ls-mid { transition-delay: 0.12s; }
-.ls-near { transition-delay: 0.24s; }
-.ls-lake { transition-delay: 0.3s; }
-.ls:not([data-seen='true']) .ls-far { transform: translateY(48px); opacity: 0; }
-.ls:not([data-seen='true']) .ls-mid { transform: translateY(34px); opacity: 0; }
-.ls:not([data-seen='true']) .ls-near { transform: translateY(22px); opacity: 0; }
-.ls:not([data-seen='true']) .ls-sun { transform: translateY(70px); opacity: 0; }
-.ls:not([data-seen='true']) .ls-lake,
-.ls:not([data-seen='true']) .ls-sky { opacity: 0; }
-.ls-sky { transition: opacity 1.2s ease; }
+html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010; --surface: #0e1515; --surface-2: #152020; --border: #1e2b2a; }
+
+.travel-hero { color: #fff; }
+.travel-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(5, 12, 12, 0.45), transparent 26%),
+    linear-gradient(to right, rgba(5, 12, 12, 0.62), rgba(5, 12, 12, 0.18) 55%, transparent 80%),
+    linear-gradient(to top, rgba(5, 12, 12, 0.35), transparent 50%);
+}
+@media (max-width: 767px) {
+  /* On phones the text runs the full width, so darken where it sits instead of the left side */
+  .travel-hero-scrim {
+    background:
+      linear-gradient(to bottom, rgba(5, 12, 12, 0.45), transparent 22%),
+      linear-gradient(to top, transparent 8%, rgba(5, 12, 12, 0.55) 30%, rgba(5, 12, 12, 0.5) 62%, transparent 82%);
+  }
+}
+.hero-mist,
+.band-mist { position: absolute; inset: 0; pointer-events: none; }
+.hero-mist { background: linear-gradient(to bottom, transparent 72%, color-mix(in srgb, var(--bg) 70%, transparent) 90%, var(--bg)); }
+.band-mist {
+  background:
+    linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 55%, transparent) 14%, transparent 32%, transparent 68%, color-mix(in srgb, var(--bg) 55%, transparent) 86%, var(--bg)),
+    linear-gradient(rgba(5, 12, 12, 0.4), rgba(5, 12, 12, 0.4));
+}
+@media (max-width: 767px) {
+  .band-mist {
+    background:
+      linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 55%, transparent) 10%, transparent 24%, transparent 76%, color-mix(in srgb, var(--bg) 55%, transparent) 90%, var(--bg)),
+      linear-gradient(rgba(5, 12, 12, 0.52), rgba(5, 12, 12, 0.52));
+  }
+}
+
+/* Fog: two soft layers drifting past each other, slow enough to feel like weather */
+.fog {
+  position: absolute;
+  inset: auto -30% 4% -30%;
+  height: 46%;
+  pointer-events: none;
+  opacity: 0.75;
+  background:
+    radial-gradient(38% 46% at 18% 60%, color-mix(in srgb, var(--bg) 62%, transparent), transparent 70%),
+    radial-gradient(30% 40% at 52% 72%, color-mix(in srgb, var(--bg) 52%, transparent), transparent 70%),
+    radial-gradient(34% 44% at 84% 58%, color-mix(in srgb, var(--bg) 58%, transparent), transparent 70%);
+  filter: blur(6px);
+  animation: fog-drift 70s ease-in-out infinite alternate;
+}
+.fog-b { bottom: 12%; height: 34%; opacity: 0.5; animation-duration: 95s; animation-direction: alternate-reverse; }
+@keyframes fog-drift { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+
+.photo-band { color: #fff; }
+.photo-credit {
+  position: absolute;
+  right: max(var(--gutter-r), calc((100% - 1280px) / 2 + var(--gutter-r)));
+  bottom: 14%;
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.photo-credit a { text-decoration: underline; text-underline-offset: 2px; }
+.band-fact { border-top: 1px solid rgba(255, 255, 255, 0.45); padding-top: 1rem; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
+
+/* Postcards: a row that swipes, lined up with the page column */
+.postcards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(232px, 24vw, 300px);
+  gap: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  scroll-padding-inline: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.postcards > li { scroll-snap-align: start; }
+.postcard { display: block; width: 100%; text-align: left; border-radius: var(--r-card); }
+.postcard-photo {
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--r-photo);
+  background: var(--surface-2);
+  box-shadow: 0 18px 40px -26px color-mix(in srgb, var(--text) 60%, transparent);
+}
+.postcard:focus-visible { outline-offset: 4px; }
+
+.heritage-photo { overflow: hidden; border-radius: var(--r-photo); background: var(--surface-2); }
+.heritage-photo img { transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
+.heritage-photo:hover img { transform: scale(1.03); }
+
+.school-card {
+  position: absolute;
+  left: -0.5rem;
+  bottom: 0;
+  width: min(300px, 78%);
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  background: var(--surface);
+  box-shadow: 0 24px 50px -28px color-mix(in srgb, var(--text) 55%, transparent);
+}
+@media (min-width: 1024px) { .school-card { left: -2.5rem; } }
+
+/* Jali: a carved-stone lattice, drawn as a repeating mask so it takes the theme's colour */
+.jali {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+}
+.jali-pattern {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0.08;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.2'%3E%3Cpath d='M32 4 60 32 32 60 4 32Z'/%3E%3Cpath d='M32 16 48 32 32 48 16 32Z'/%3E%3Ccircle cx='32' cy='32' r='6'/%3E%3Cpath d='M32 0v4M32 60v4M0 32h4M60 32h4'/%3E%3Ccircle cx='0' cy='0' r='10'/%3E%3Ccircle cx='64' cy='0' r='10'/%3E%3Ccircle cx='0' cy='64' r='10'/%3E%3Ccircle cx='64' cy='64' r='10'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 64px 64px repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.2'%3E%3Cpath d='M32 4 60 32 32 60 4 32Z'/%3E%3Cpath d='M32 16 48 32 32 48 16 32Z'/%3E%3Ccircle cx='32' cy='32' r='6'/%3E%3Cpath d='M32 0v4M32 60v4M0 32h4M60 32h4'/%3E%3Ccircle cx='0' cy='0' r='10'/%3E%3Ccircle cx='64' cy='0' r='10'/%3E%3Ccircle cx='0' cy='64' r='10'/%3E%3Ccircle cx='64' cy='64' r='10'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 64px 64px repeat;
+}
+html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
+
+.credits > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: baseline; gap: 0.25rem; }
+.credits > summary::-webkit-details-marker { display: none; }
+.credits > summary::before { content: '+'; display: inline-block; width: 1.1rem; font-weight: 600; color: var(--accent-text); }
+.credits[open] > summary::before { content: '−'; }
+
+/* The home page's way into the travel page */
+.travel-teaser { min-height: clamp(320px, 42vw, 520px); display: grid; align-items: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ls:not([data-seen='true']) :is(.ls-far, .ls-mid, .ls-near, .ls-sun, .ls-lake) { transform: none; opacity: 1; }
+  .fog { animation: none; }
 }
