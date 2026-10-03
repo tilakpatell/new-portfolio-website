@@ -1,0 +1,135 @@
+/* Features layered on the base design: the travel globe and landscape, the
+   interests, the résumé, the command palette, the Aurebesh easter eggs and the
+   unlockable fan themes. Plain CSS on the same custom properties as index.css. */
+
+/* ─── Travel: the globe ──────────────────────────────────────────────────── */
+.globe-canvas {
+  cursor: grab;
+  touch-action: pan-y; /* vertical swipes still scroll the page on phones */
+  border-radius: 50%;
+}
+.globe-canvas:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.globe-tip,
+.globe-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.globe-tip {
+  translate: 12px -120%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--text) 40%, transparent);
+}
+.globe-pin {
+  translate: -50% calc(-100% - 12px);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+}
+.globe-controls { position: absolute; right: 0; bottom: 0; display: flex; gap: 0.4rem; }
+.globe-btn {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--r-btn);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.globe-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.globe-btn:active { transform: scale(0.96); }
+.globe-btn-wide { padding: 0 0.85rem; font-size: 0.8125rem; }
+.globe-skeleton {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: radial-gradient(circle at 35% 30%, var(--surface), var(--surface-2));
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-pulse { 50% { opacity: 0.55; } }
+
+.place-chip {
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border-radius: var(--r-btn);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.place-chip:hover,
+.place-chip[data-hover='true'] { border-color: var(--border-strong); color: var(--text); }
+.place-chip:active { transform: scale(0.97); }
+.place-chip[aria-pressed='true'] { background: var(--btn-bg); border-color: transparent; color: var(--btn-ink); }
+.place-card { min-height: 4.75rem; padding: 0.15rem 0 0.15rem 1rem; border-left: 2px solid var(--accent); }
+
+/* ─── Travel: mountains over a lake ──────────────────────────────────────── */
+.ls { width: 100%; height: clamp(150px, 19vw, 300px); overflow: hidden; }
+.ls-far > path:first-child { fill: color-mix(in srgb, var(--accent) 8%, color-mix(in srgb, var(--text) 13%, var(--bg))); }
+.ls-snow { fill: color-mix(in srgb, var(--text) 4%, var(--bg)); }
+html[data-mode='dark'] .ls-snow { fill: color-mix(in srgb, var(--text) 58%, var(--bg)); }
+.ls-mid path,
+.ls-mid-fill { fill: color-mix(in srgb, var(--text) 22%, var(--bg)); }
+.ls-near path,
+.ls-near-fill { fill: color-mix(in srgb, var(--text) 34%, var(--bg)); }
+.ls-reflection { opacity: 0.28; }
+/* At night the haze lights the far range and the near hills go darkest */
+html[data-mode='dark'] .ls-far > path:first-child { fill: color-mix(in srgb, var(--text) 26%, var(--bg)); }
+html[data-mode='dark'] :is(.ls-mid path, .ls-mid-fill) { fill: color-mix(in srgb, var(--text) 17%, var(--bg)); }
+html[data-mode='dark'] :is(.ls-near path, .ls-near-fill) { fill: color-mix(in srgb, var(--text) 10%, var(--bg)); }
+html[data-mode='dark'] .ls-reflection { opacity: 0.5; }
+.ls-water-top { stop-color: color-mix(in srgb, var(--accent) 16%, var(--bg)); }
+.ls-water-bottom { stop-color: var(--bg); }
+.ls-glint {
+  stroke: color-mix(in srgb, var(--bg) 70%, var(--accent));
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 60 150 22 230;
+  animation: ls-glint 11s linear infinite;
+}
+@keyframes ls-glint { to { stroke-dashoffset: -462; } }
+.ls-sun { fill: color-mix(in srgb, var(--accent) 38%, var(--bg)); }
+.ls-glow-in { stop-color: color-mix(in srgb, var(--accent) 14%, var(--bg)); }
+.ls-glow-out { stop-color: var(--bg); stop-opacity: 0; }
+html[data-mode='dark'] .ls-glow-in { stop-color: color-mix(in srgb, var(--text) 8%, var(--bg)); }
+html[data-mode='dark'] .ls-sun { fill: color-mix(in srgb, var(--text) 82%, var(--bg)); }
+.ls-stars { display: none; }
+html[data-mode='dark'] .ls-stars { display: inline; fill: var(--text); }
+.ls-stars circle { animation: ls-twinkle 4s ease-in-out infinite; }
+@keyframes ls-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+.ls-layer,
+.ls-sun,
+.ls-lake { transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.9s ease; }
+.ls-mid { transition-delay: 0.12s; }
+.ls-near { transition-delay: 0.24s; }
+.ls-lake { transition-delay: 0.3s; }
+.ls:not([data-seen='true']) .ls-far { transform: translateY(48px); opacity: 0; }
+.ls:not([data-seen='true']) .ls-mid { transform: translateY(34px); opacity: 0; }
+.ls:not([data-seen='true']) .ls-near { transform: translateY(22px); opacity: 0; }
+.ls:not([data-seen='true']) .ls-sun { transform: translateY(70px); opacity: 0; }
+.ls:not([data-seen='true']) .ls-lake,
+.ls:not([data-seen='true']) .ls-sky { opacity: 0; }
+.ls-sky { transition: opacity 1.2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ls:not([data-seen='true']) :is(.ls-far, .ls-mid, .ls-near, .ls-sun, .ls-lake) { transform: none; opacity: 1; }
+}

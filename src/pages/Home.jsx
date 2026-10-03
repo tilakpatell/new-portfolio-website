@@ -15,6 +15,7 @@ import { ClaudeSpark } from '../stages/ClaudeStage';
 import ProjectThumb from '../components/ProjectThumb';
 import { storage, useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes } from '../theme/ThemeProvider';
+import Travel from '../components/travel/Travel';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -331,6 +332,14 @@ export default function Home() {
       </section>
 
       <RecentRepos />
+
+      {/* Travel: the globe, then mountains over a lake */}
+      <section data-theme-section="aws" className="relative z-10 pt-14 md:pt-20" aria-labelledby="travel-title">
+        <div className="shell relative">
+          <Waypoint top="0.9rem" />
+        </div>
+        <Travel />
+      </section>
 
       {/* Closing */}
       <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-14 md:pb-32 md:pt-24" aria-labelledby="closing-title">

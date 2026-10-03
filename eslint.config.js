@@ -10,7 +10,7 @@ export default [
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
-      globals: { ...globals.browser },
+      globals: { ...globals.es2021, ...globals.browser },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -36,5 +36,10 @@ export default [
   {
     files: ['*.config.js'],
     languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.es2021, ...globals.node } },
+    rules: { ...js.configs.recommended.rules },
   },
 ]
