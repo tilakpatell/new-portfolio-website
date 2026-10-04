@@ -19,7 +19,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { glassMat, glowSprite, painted, planarUV, rng, roundedBox, tubeAlong } from '../kit';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { glassMat, glowSprite, glowTexture, painted, planarUV, rng, roundedBox, tubeAlong } from '../kit';
 import { sky as starField } from '../space';
 import { loadCrew, nudge, prefetchCrew } from '../crew';
 import { createModels } from '../../../lib/models';
@@ -100,6 +102,46 @@ function loadTex(url, { srgb = true, repeat = true, aniso = 8 } = {}) {
 // a CC0 surface: its colour, and its normal and ARM maps where they're worth it
 function loadSet(dir, { normal = true, arm = false } = {}) {
   return Promise.all([loadTex(`${dir}/color.webp`), normal ? loadTex(`${dir}/normal.webp`, { srgb: false }) : null, arm ? loadTex(`${dir}/arm.webp`, { srgb: false }) : null]).then(([color, nrm, armMap]) => ({ color, normal: nrm, arm: armMap }));
+}
+
+// a crew member's clip on its own (the HTTP cache has it from loadCrew)
+function loadClip(name) {
+  const l = new GLTFLoader();
+  l.setMeshoptDecoder(MeshoptDecoder);
+  return l
+    .loadAsync(`/models/cockpit/${name}.glb`)
+    .then((g) => g.animations[0] ?? null)
+    .catch(() => null);
+}
+
+// A clip played gently back and forth through a calm stretch of it, from
+// `a` round to `b` seconds (wrapping past its end), instead of all of it:
+// Jesse's sitting clip leans him forward to talk with his hands for most of
+// its length, Walt's idle turns him half round. `pose` turns bones after.
+function calmly(crew, clip, a, b, speed, pose) {
+  if (!crew) return null;
+  const hip = crew.bones.Hips;
+  const rest = hip?.position.clone();
+  let mixer = null;
+  let act = null;
+  if (clip) {
+    mixer = new THREE.AnimationMixer(crew.model);
+    act = mixer.clipAction(clip);
+    act.play();
+  }
+  const dur = clip?.duration ?? 1;
+  const len = (b - a + dur) % dur;
+  return (t) => {
+    if (act) {
+      act.time = (a + len * (0.5 - 0.5 * Math.cos(t * speed))) % dur;
+      mixer.update(0);
+    }
+    if (hip) {
+      hip.position.x = rest.x;
+      hip.position.z = rest.z;
+    }
+    pose?.(crew.bones, t);
+  };
 }
 
 function loadEnv(pmrem) {
@@ -1338,7 +1380,7 @@ function captainChair(bin, M, x, z, { head = true } = {}) {
   // the back, leaning back, in its shell, and the head roll
   const lean = 0.15;
   bin.add(M.velour, roundedBox(0.52, 0.82, 0.15, 0.07), [x, 0.9, z + 0.28], [lean, 0, 0]);
-  for (const s of [-1, 1]) bin.add(M.velour, roundedBox(0.08, 0.78, 0.17, 0.035), [x + s * 0.235, 0.9, z + 0.27], [lean, 0, s * 0.06]);
+  if (head) for (const s of [-1, 1]) bin.add(M.velour, roundedBox(0.08, 0.78, 0.17, 0.035), [x + s * 0.235, 0.9, z + 0.27], [lean, 0, s * 0.06]);
   bin.add(M.tanDeep, roundedBox(0.56, 0.9, 0.05, 0.02), [x, 0.92, z + 0.37], [lean, 0, 0]);
   if (head) bin.add(M.velour, roundedBox(0.4, 0.2, 0.14, 0.065), [x, 1.42, z + 0.36], [lean, 0, 0]);
   for (const s of [-1, 1]) {
@@ -1356,18 +1398,10 @@ export async function build({ rich, coarse, renderer, pmrem }) {
 
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
   // in his suit
-  const jesseP = loadCrew('jesse', {
-    clip: 'sit',
-    height: 1.73,
-    hips: [0.6, 0.6, 0.2],
-    pose: (b) => {
-      nudge(b.Spine01, -0.06, 0, 0);
-      nudge(b.Head, -0.04, -0.45, 0);
-    },
-  });
-  const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.22, 0.98, 0.68], face: Math.PI + 0.45 });
+  const jesseP = loadCrew('jesse', { clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
+  const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.6, 0.98, 0.9], face: Math.PI + 0.6 });
 
-  const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone] = await Promise.all([
+  const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone, sitClip, idleClip] = await Promise.all([
     loadSet('/cc0/materials/rv-bench', { arm: !small }),
     loadSet('/cc0/materials/rv-wall', { normal: !small }),
     loadSet('/cc0/materials/rv-floor', { normal: !small }),
@@ -1382,6 +1416,8 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     models.load('shrub'),
     models.load('boulder'),
     models.load('rock'),
+    loadClip('jesse-sit'),
+    loadClip('walt-idle'),
   ]);
   for (const set of [bench, panelling, lino, asphalt, dirt, rock]) for (const t of Object.values(set)) if (t) t.anisotropy = aniso;
 
@@ -1400,6 +1436,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     tan: tri(std({ map: mould.map, bumpMap: mould.bump, bumpScale: 0.5, roughness: 0.62 }), 0.5),
     tanDeep: tri(std({ map: mould.map, bumpMap: mould.bump, bumpScale: 0.5, color: 0xb8a080, roughness: 0.6 }), 0.5),
     brown: tri(std({ map: mould.map, bumpMap: mould.bump, bumpScale: 0.4, color: 0x52392a, roughness: 0.52 }), 0.5),
+    pad: tri(std({ map: mould.map, bumpMap: mould.bump, bumpScale: 0.7, color: 0x93785c, roughness: 0.78 }), 0.5),
     beige: tri(std({ map: mould.map, bumpMap: mould.bump, bumpScale: 0.15, color: 0xf4ead6, roughness: 0.36 }), 0.3),
     chrome: std({ color: 0xe2e4e8, roughness: 0.14, metalness: 1 }),
     satin: std({ color: 0xc8c2b8, roughness: 0.32, metalness: 0.85 }),
@@ -1418,7 +1455,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     blue: std({ color: 0x5ec8ff, emissive: 0x1a6aa0, emissiveIntensity: 0.4, roughness: 0.1, transparent: true, opacity: 0.8 }),
     styro: std({ color: 0xf2efe8, roughness: 0.9 }),
   };
-  const glassM = glassMat({ opacity: 0.03, rim: 0.16, smudge: 0.45, tint: '#d8e6ea' });
+  const glassM = glassMat({ opacity: 0.025, rim: 0.14, smudge: 0.28, tint: '#d8e6ea' });
 
   const bin = partsBin();
 
@@ -1489,11 +1526,29 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       1.16,
     ),
   );
+  // the padded vinyl over its top, a shade darker
+  bin.put(
+    M.pad,
+    across(
+      [
+        [-1.335, 0.975],
+        [-1.335, 0.992],
+        [-1.0, 1.007],
+        ['q', -0.89, 1.012, -0.879, 0.95],
+        [-0.874, 0.895],
+        [-0.888, 0.895],
+        [-0.9, 0.96],
+        [-1.0, 0.99],
+      ],
+      -1.162,
+      1.162,
+    ),
+  );
   // the defroster's grille along the foot of the glass
-  bin.add(M.brown, new THREE.BoxGeometry(2.2, 0.006, 0.07), [0, 0.99, -1.25]);
-  for (let i = 0; i < 46; i++) bin.add(M.black, new THREE.BoxGeometry(0.03, 0.008, 0.05), [-1.04 + i * 0.0465, 0.993, -1.25]);
+  bin.add(M.brown, new THREE.BoxGeometry(2.2, 0.006, 0.07), [0, 0.998, -1.25]);
+  for (let i = 0; i < 46; i++) bin.add(M.black, new THREE.BoxGeometry(0.03, 0.006, 0.05), [-1.04 + i * 0.0465, 1.001, -1.25]);
   // speaker grilles at the ends of the dash top
-  for (const sx of [-1, 1]) bin.add(M.brown, roundedBox(0.2, 0.012, 0.13, 0.005), [sx * 0.95, 1.0, -1.1]);
+  for (const sx of [-1, 1]) bin.add(M.brown, roundedBox(0.2, 0.012, 0.13, 0.005), [sx * 0.95, 1.008, -1.1]);
   // the knee panel under the gauges, where the column goes in
   bin.add(M.tanDeep, roundedBox(0.66, 0.36, 0.2, 0.03), [-0.6, 0.47, -0.82], [0.1, 0, 0]);
   // woodgrain across the face, either side of the gauges
@@ -1554,7 +1609,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     roadMap.add(leaf);
   }
   roadMap.children[1].material = roadMap.children[0].material;
-  roadMap.position.set(0.62, 1.0, -1.1);
+  roadMap.position.set(0.62, 1.008, -1.1);
   roadMap.rotation.y = 0.35;
   inside.add(roadMap);
 
@@ -1618,7 +1673,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     bin.put(M.brown, roundedBox(w, h, 0.02, 0.005).translate(x, y, 0.004), CL);
   // the hood over the face, its cheeks, and the ledge under it
   bin.put(
-    M.tan,
+    M.pad,
     across(
       [
         [-1.0, 0.99],
@@ -1635,7 +1690,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   );
   for (const x0 of [-0.925, -0.305])
     bin.put(
-      M.tanDeep,
+      M.pad,
       across(
         [
           [-0.96, 0.79],
@@ -1977,6 +2032,14 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   inside.add(glass);
 
   // ── the crew ──
+  // Jesse sat back, his head turned your way; Mr. White watching the road
+  const jesseMove = calmly(jesse, sitClip, 9.5, 1.2, 0.5, (b, t) => {
+    nudge(b.Spine01, -0.04, 0, 0);
+    nudge(b.Head, -0.06, 0.45 + Math.sin(t * 0.23) * 0.12, 0);
+  });
+  const waltMove = calmly(walt, idleClip, 3.2, 0.5, 0.35, (b, t) => nudge(b.Head, 0.04, Math.sin(t * 0.17) * 0.15, 0));
+  jesseMove?.(0);
+  waltMove?.(0);
   if (jesse) inside.add(jesse.group);
   if (walt) {
     // stood on the floor: lift or drop him so his feet are on it
@@ -2030,11 +2093,21 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   moon.position.set(-2, 3, -1.5);
   inside.add(moon);
 
-  // reflections dim with the light, night coming on
+  // Reflections dim with the light, night coming on: each surface takes the
+  // evening sky as its own reflection (a scene's environment would set its
+  // strength for every surface alike)
+  const ENV = 0.4;
   const reflective = [];
   inside.traverse((o) => {
     if (!o.isMesh) return;
-    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m?.isMeshStandardMaterial && !reflective.includes(m)) reflective.push(m);
+    for (const m of Array.isArray(o.material) ? o.material : [o.material])
+      if (m?.isMeshStandardMaterial && !reflective.includes(m)) {
+        reflective.push(m);
+        if (env) {
+          m.envMap = env;
+          m.envMapIntensity = ENV;
+        }
+      }
   });
 
   // ── outside: the high desert ──
@@ -2089,7 +2162,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   outer.add(skyDome);
   // the stars, and the faint band of the galaxy, for the night (drawn far
   // out, behind everything, added over the sky)
-  const stars = starField({ seed: 19, count: small ? 2600 : 4400, radius: 1800, nebula: ['#1c2a58', '#3a2450'], deep: '#000000', band: [0.55, 1, -0.35] });
+  const stars = starField({ seed: 19, count: small ? 3400 : 6000, radius: 1800, nebula: ['#2c4282', '#5a3274'], deep: '#000000', band: [0.55, 1, -0.35] });
   stars.group.scale.setScalar(2.75);
   stars.group.position.set(...EYE);
   const nebula = stars.group.children[0];
@@ -2100,7 +2173,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   outer.add(stars.group);
   // the low sun's glare
   const sunGlow = glowSprite('#ffd9a8', 230, 0.85);
-  const sunHalo = glowSprite('#ff9a58', 1300, 0.2);
+  const sunHalo = glowSprite('#ff9a58', 1100, 0.14);
   outer.add(sunGlow, sunHalo);
 
   // light on the land
@@ -2204,6 +2277,33 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   fence.children[0].castShadow = rich;
   world.add(fence);
 
+  // the lights of a town far off ahead, and ranches here and there, for
+  // the night (and to fall away below you as you rise)
+  const townPts = [];
+  const townCol = [];
+  {
+    const tr = rng(71);
+    const cluster = (cx, cz, w, d, n) => {
+      for (let i = 0; i < n; i++) {
+        const u = (tr() + tr() + tr()) / 3 - 0.5;
+        const v = (tr() + tr() + tr()) / 3 - 0.5;
+        townPts.push(cx + u * w, ROAD_Y + 2 + tr() * 6, cz + v * d);
+        const warm = tr();
+        townCol.push(1, 0.62 + warm * 0.3, 0.3 + warm * 0.35);
+      }
+    };
+    cluster(-2400, -5200, 2600, 700, 360);
+    cluster(3600, -4600, 900, 300, 90);
+    cluster(900, -5600, 600, 200, 50);
+    for (let i = 0; i < 26; i++) cluster((tr() - 0.5) * 7000, -700 - tr() * 4500, 30, 30, 1 + Math.floor(tr() * 3));
+  }
+  const townGeo = new THREE.BufferGeometry();
+  townGeo.setAttribute('position', new THREE.Float32BufferAttribute(townPts, 3));
+  townGeo.setAttribute('color', new THREE.Float32BufferAttribute(townCol, 3));
+  const town = new THREE.Points(townGeo, new THREE.PointsMaterial({ map: glowTexture(), size: small ? 5 : 7, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  town.frustumCulled = false;
+  world.add(town);
+
   // scrub and stones, scattered either side
   const scatters = [];
   const few = small ? 0.65 : 1;
@@ -2230,7 +2330,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   const tmpC = new THREE.Color();
   const hemiSky = [new THREE.Color(0xe4e8f2), new THREE.Color(0x1a2448)];
   const hemiGround = [new THREE.Color(0x6a4c34), new THREE.Color(0x07060a)];
-  const landSky = [new THREE.Color(0xa8bce0), new THREE.Color(0x24345c)];
+  const landSky = [new THREE.Color(0xa8bce0), new THREE.Color(0x2a3a66), new THREE.Color(0xa07e9c)];
   const landGround = [new THREE.Color(0x6a4a30), new THREE.Color(0x0a0806)];
   const sunCol = [new THREE.Color(0xffb67a), new THREE.Color(0xff5a2a)];
   const mirrorDay = new THREE.Color(1, 1, 1);
@@ -2249,14 +2349,14 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     environment: env,
     eye: EYE,
     rest: [-0.2, -0.14],
-    range: [1.75, 0.5],
+    range: [1.95, 0.5],
     hfov: 92,
     vmin: 58,
     vmax: 100,
     exposure: 0.95,
-    envIntensity: 0.4,
+    envIntensity: ENV,
     glance: -1.0,
-    bloom: [0.45, 0.5, 0.86],
+    bloom: [0.32, 0.45, 0.88],
     flash: '#060914',
     rumble: 0.8,
     triggers: [wheelHit, shifterHit, knob, stalk],
@@ -2275,7 +2375,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       const starsK = smooth((k - 0.38) / 0.42);
       const lights = smooth((k - 0.3) / 0.04);
       const glow = smooth((k - 0.26) / 0.18);
-      const lift = smooth((k - 0.8) / 0.2);
+      const lift = smooth((k - 0.74) / 0.26);
       const el = SUN_EL - sink;
       setSun(el);
       const up = clamp01((el + 1.5) / 6);
@@ -2292,13 +2392,14 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       sunGlow.position.copy(sunDir).multiplyScalar(2400).add(skyDome.position);
       sunHalo.position.copy(sunGlow.position);
       sunGlow.material.opacity = 0.85 * up;
-      sunHalo.material.opacity = 0.2 * up + 0.12 * dusk * (1 - night);
+      sunHalo.material.opacity = 0.13 * up + 0.1 * dusk * (1 - night);
       sunLight.position.copy(sunDir).multiplyScalar(450).add(sunLight.target.position);
       sunLight.intensity = 2.6 * up;
       sunLight.color.copy(sunCol[0]).lerp(sunCol[1], dusk);
-      landHemi.color.copy(landSky[0]).lerp(landSky[1], night);
+      landHemi.color.copy(landSky[0]).lerp(landSky[2], dusk).lerp(landSky[1], night);
       landHemi.groundColor.copy(landGround[0]).lerp(landGround[1], night);
-      landHemi.intensity = 1.0 - 0.55 * dusk - 0.3 * night;
+      landHemi.intensity = 1.0 - 0.3 * dusk - 0.45 * night;
+      town.material.opacity = smooth((k - 0.42) / 0.3);
       beams.intensity = 420 * lights * (1 - lift);
 
       // ── the road going by ──
@@ -2320,16 +2421,17 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       bounce.intensity = 0.5 * up;
       hemi.color.copy(hemiSky[0]).lerp(hemiSky[1], dusk * 0.5 + night * 0.5);
       hemi.groundColor.copy(hemiGround[0]).lerp(hemiGround[1], night);
-      hemi.intensity = 0.4 - 0.1 * night;
-      moon.intensity = 0.4 * night;
+      const dim = Math.max(dusk * 0.7, night);
+      hemi.intensity = 0.4 * (1 - 0.78 * dim);
+      moon.intensity = 0.3 * night;
       faceM.emissiveIntensity = 1.3 * glow;
       needleM.emissiveIntensity = 0.25 + 1.6 * glow;
       radioM.emissiveIntensity = 0.15 + 1.2 * glow;
       dashGlow.intensity = 0.5 * glow;
       radioGlow.intensity = 0.15 * glow;
-      const envK = 1 - 0.85 * Math.max(dusk * 0.6, night);
-      for (const m of reflective) m.envMapIntensity = envK;
-      glassLight.setRGB(1, 0.9, 0.76).lerp(tmpC.setRGB(0.14, 0.2, 0.34), Math.max(dusk * 0.7, night));
+      const envK = 1 - 0.92 * dim;
+      for (const m of reflective) m.envMapIntensity = (env ? ENV : 1) * envK;
+      glassLight.setRGB(1, 0.9, 0.76).lerp(tmpC.setRGB(0.14, 0.2, 0.34), dim);
       glassM.userData.setLight?.(glassLight);
       for (const g of sideGlass) g.material.color.copy(mirrorDay).lerp(mirrorNight, Math.max(dusk * 0.8, night));
       rearGlass.material.color.copy(mirrorDay).lerp(mirrorNight, Math.max(dusk * 0.8, night) * 0.8);
@@ -2366,8 +2468,8 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       swing.b += swing.w * sdt;
       tree.rotation.set(swing.a + Math.sin(t * 1.3) * 0.02, Math.sin(t * 0.5) * 0.4, swing.b + Math.sin(t * 1.7) * 0.015);
 
-      jesse?.update(dt);
-      walt?.update(dt);
+      jesseMove?.(t);
+      waltMove?.(t);
     },
     dispose() {
       jesse?.dispose();
