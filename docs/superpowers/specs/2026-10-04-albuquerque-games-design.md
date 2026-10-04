@@ -16,8 +16,16 @@ for Metherria, deeper gameplay, Walt and Jesse in it, an accurate RV and
 superlab, and more game feel.
 
 Assumptions (stated in conversation, not contradicted): the 2D versions stay
-only as the no-WebGL fallback; CC0 assets only (Poly Haven, ambientCG,
-Quaternius, Kenney); no gore in Face Off.
+only as the no-WebGL fallback; CC0 assets (Poly Haven, ambientCG,
+Quaternius, Kenney) except the hero props; no gore in Face Off.
+
+Hero props (decided 2026-10-04): the props Walt handles and the rooms'
+signature pieces are generated with Meshy (the user's account, through its
+MCP server): the base and blue drums and the hammer in PR 1; the Madrigal
+drums, gas mask, propane tank, hazmat suits on hooks and the reactor in
+PR 2. They are licensed to the user under their Meshy plan, not CC0, and
+are listed as such in `public/cc0/README.md`. Each keeps its procedural
+version as the fallback if the model fails to load.
 
 ## Success criteria
 

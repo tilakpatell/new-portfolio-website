@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- CC0 assets only: Poly Haven, ambientCG, Quaternius, Kenney; textures 1K (512 for small parts).
+- CC0 assets: Poly Haven, ambientCG, Quaternius, Kenney; textures 1K (512 for small parts). The exception is the hero props, made with Meshy (spec, "Hero props"), listed as the user's in `public/cc0/README.md`.
 - 3D first: 2D only without WebGL or after a lost context; slowness lowers resolution and shadows, never drops to 2D.
 - About 300 draw calls per scene on desktop, shadows included (read from `diagnostics()` / `info()`).
 - Copy: American spelling, no em-dashes in new copy, the site's plain voice.
@@ -140,7 +140,26 @@
   - ≤ 300 calls.
   - No console errors.
   - With `/models/office/cast-*.glb` routed to 404, the standees appear.
-- [ ] **Step 4:** Lint, test, build; commit; push; PR; merge; reset the branch.
+- [ ] **Step 4:** Lint, test, build; commit. (Push, PR and merge come after Task 1.5.)
+
+### Task 1.5: Walt's tools from Meshy
+
+Needs the Meshy MCP tools, which load only when a session starts: run it in a fresh session.
+
+**Files:**
+- Create: `public/models/metherria/{drum-base,drum-blue,hammer}.glb`, `src/components/albuquerque/metherria/props.js`, `props.test.js`
+- Modify: `scene.js` (drums and hammer from the models, the procedural ones as the fallback), `public/cc0/README.md`
+
+**Interfaces:**
+- Produces:
+  - `PROPS = { drumBase, drumBlue, hammer }`: `{ url, height, spout?: [x, y, z] }`, the spout in the model's frame (Walt's hand and the pour read it).
+  - `loadProps(renderer) -> Promise<{ [name]: THREE.Object3D | null }>`; a model that fails gives null and the scene keeps its procedural prop.
+- Generation (Meshy text-to-3D, low poly, PBR): a white 55-gallon plastic chemical drum with a spout and a blank label band; the same in blue; a ball-peen hammer with a worn wooden handle. Each under 2,000 triangles and 300 KB after `gltf-transform optimize --compress meshopt --texture-size 512`.
+
+- [ ] **Step 1:** Test `it('ships every prop the scene loads')` (each `PROPS[name].url` exists under `public/` and is under 300 KB) and `it('puts the spout on the drums')`. Run; FAIL.
+- [ ] **Step 2:** Generate with Meshy, preview each, regenerate what reads wrong; optimize; place the spouts.
+- [ ] **Step 3:** `props.js`, then the scene: labels stay on the drums' band, the pour comes from `spout`, Walt's hand reaches for it.
+- [ ] **Step 4:** QA as Task 1.4 (each station, both sizes, ≤ 300 calls, models routed to 404 show the procedural props). Lint, test, build; commit; push; PR; merge; reset the branch.
 
 ## Phase 2 (PR 2): the RV and the superlab
 
