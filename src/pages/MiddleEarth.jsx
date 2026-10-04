@@ -7,9 +7,10 @@ import MiddleEarthMap from '../components/middleearth/Map';
 import Gorgoroth from '../components/middleearth/Gorgoroth';
 import MapBackdrop from '../components/middleearth/MapBackdrop';
 import MapHub from '../components/middleearth/MapHub';
-import { chapter as findChapter, neighbours } from '../components/middleearth/chapters';
+import { chapter as findChapter, neighbours, stopOf } from '../components/middleearth/chapters';
 import { shouldOpen } from '../components/middleearth/opening';
 import { STOPS } from '../components/middleearth/road';
+import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
@@ -129,17 +130,25 @@ export default function MiddleEarth() {
   const go = (id) => {
     if (flying) return;
     audioContext();
+    // Frodo and Sam walk there first, the camera after them; then it dives
+    const walk = api.current?.travel?.(stopOf(id)) ?? 0;
     setFlying(id);
     setHover(null);
     clearTimeout(flight.current);
-    flight.current = setTimeout(
-      () => {
-        navigate(`/middle-earth/${id}`);
-        window.scrollTo(0, 0);
-        setFlying(null);
-      },
-      prefersReducedMotion() ? 0 : FLY,
-    );
+    const open = () => {
+      navigate(`/middle-earth/${id}`);
+      window.scrollTo(0, 0);
+      setFlying(null);
+    };
+    if (prefersReducedMotion()) return open();
+    // wait for them to get there (a slow device walks slower), then dive
+    const until = performance.now() + walk + 4000;
+    const arrived = () => {
+      if (api.current?.walking && performance.now() < until) flight.current = setTimeout(arrived, 100);
+      else flight.current = setTimeout(open, FLY);
+    };
+    flight.current = setTimeout(arrived, walk);
+    return undefined;
   };
   const toMap = () => {
     navigate('/middle-earth');
@@ -358,6 +367,7 @@ export default function MiddleEarth() {
                 </button>
               )}
             </div>
+            <WorldSwitcher className="mt-8" />
           </div>
         </nav>
       )}
