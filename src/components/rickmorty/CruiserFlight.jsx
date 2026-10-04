@@ -139,6 +139,9 @@ export default function CruiserFlight() {
     let raf = 0;
     let running = '';
     const place = (y) => {
+      // leaving the page: React lets go of the elements before this effect
+      // is cleaned up, and the scroll to the top in between still fires
+      if (!ship.current || !win.current || !inner.current) return;
       const { p, h, v } = heading(geo, y);
       const c = cruiserAt(y, geo);
       const s = ship.current.style;
