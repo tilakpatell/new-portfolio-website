@@ -766,6 +766,15 @@ const MODELS = {
   gaming: '/models/universe/gaming.glb',
 };
 
+// One model, or null if it doesn't load.
+export function loadModel(url) {
+  return new GLTFLoader()
+    .setMeshoptDecoder(MeshoptDecoder)
+    .loadAsync(url)
+    .then((g) => g.scene)
+    .catch(() => null);
+}
+
 // Load the models one by one, handing each over as it arrives; a model that
 // fails is skipped.
 export function loadModels(onModel) {

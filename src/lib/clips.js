@@ -30,6 +30,7 @@ export const CLIPS = {
   officeTheme: { src: '/audio/clips/office-theme.mp3', line: 'The Office, the theme', by: 'The Office' },
   thankYou: { src: '/audio/clips/thank-you.mp3', line: 'Thank you.', by: 'Michael Scott' },
   noGod: { src: '/audio/clips/no-god.mp3', line: 'No, God! No, God, please, no!', by: 'Michael Scott' },
+  tanpura: { src: '/audio/tanpura-pluck.mp3' }, // the music room's own (freely licensed, credited there)
 };
 
 const playing = new Set();

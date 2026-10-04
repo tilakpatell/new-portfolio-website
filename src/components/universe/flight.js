@@ -116,11 +116,13 @@ export function poseAt(flight, to, now) {
   return { pose: t >= 1 ? to : mixPose(flight.from, to, easeOut(t)), done: t >= 1 };
 }
 
-// How Enter leaves the map: Star Wars jumps to lightspeed, the rest dive
-// into their planet; with reduced motion or no 3D it just goes.
-export function enterPlan(universe, { reduced, three }) {
+// How Enter leaves the map: Star Wars jumps to lightspeed (unless you came
+// in Rick's cruiser), the cruiser goes everywhere through a portal, the rest
+// dive into their planet; with reduced motion or no 3D it just goes.
+export function enterPlan(universe, { reduced, three, ship = null }) {
   if (!universe) return null;
   if (reduced || !three) return { mode: 'now', delay: 0 };
+  if (ship === 'cruiser') return { mode: 'portal', delay: DIVE_MS };
   if (universe.id === 'starwars') return { mode: 'jump', delay: 1250 };
   return { mode: 'dive', delay: DIVE_MS };
 }

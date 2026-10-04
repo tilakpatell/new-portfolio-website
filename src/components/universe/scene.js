@@ -1,27 +1,49 @@
 // The universe map in WebGL: the planets on a tilted disc among the stars,
-// a faint orbit for each, and a camera that flies between them (flight.js
-// does the numbers; this only copies them onto the camera). The planets'
-// names are DOM buttons that React renders once; the scene moves them in the
-// frames it draws, so nothing re-renders per frame.
+// a faint orbit for each, and the planets' names as DOM buttons that React
+// renders once and the scene moves as it draws (nothing re-renders per
+// frame).
+//
+// Two ways to get round it:
+// - With no ship picked, the camera flies between the planets (flight.js
+//   does the numbers), a drag turns the map and a click picks a planet.
+// - With a ship (Rick's cruiser, Luke's X-wing or the Falcon), you fly it:
+//   W A S D or the arrows, Space to boost, or drag on the map like a stick.
+//   The camera rides behind it. Fly close to a planet and you're at it (the
+//   panel shows its card); pick one from its name or by clicking it and the
+//   ship flies itself there. M shows the whole map. ship.js has the physics.
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
-// { resize, render, update, lowerQuality, hover, dive, dispose }.
-// Props: selected (an id or null), labels (a ref to { id: element }),
-// frozen (the page is leaving: stop drawing), onPick(id).
+// { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
+//   whole, boost, dispose }.
+// Props: selected (an id or null), ship (a crew id or null), labels (a ref
+// to { id: element }), stick (a ref to the steering ring), frozen (the page
+// is leaving: stop drawing), onPick(id), onEvent(event), onLand().
 
 import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
+import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { ORDER, POSITIONS } from './layout';
-import { buildPlanet, loadModels } from './planets';
+import { buildPlanet, loadModel, loadModels } from './planets';
+import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
+import { buildShip } from './shipModels';
+import { shipEngine } from './sounds';
 import { byId } from './universes';
 
 const STARS = 2600;
 const STARS_LOW = 900;
+const STREAKS = 220;
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
+const STICK = 70; // px of drag for full throttle or a full turn
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
+
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'boost', shift: 'boost' };
+const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 const STAR_VERT = `
 attribute float aSize;
@@ -53,7 +75,7 @@ function starfield(rand) {
     [1, 0.9, 0.78],
   ];
   for (let i = 0; i < STARS; i++) {
-    // a shell round the map, thicker below the disc than above it
+    // a shell round the map, flatter than a sphere
     const u = rand() * 2 - 1;
     const a = rand() * Math.PI * 2;
     const r = 90 + rand() * 120;
@@ -99,6 +121,41 @@ function orbits() {
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#9fb0d0', transparent: true, opacity: 0.1, depthWrite: false }));
 }
 
+// Stars streaming past when the ship boosts: lines round the camera's line
+// of sight, riding with the camera.
+function streaks(rand) {
+  const seg = new Float32Array(STREAKS * 6);
+  const at = [];
+  for (let i = 0; i < STREAKS; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 0.5 + rand() * 2.6;
+    at.push([Math.cos(a) * r, Math.sin(a) * r * 0.7, -2 - rand() * 14]);
+  }
+  const g = new THREE.BufferGeometry();
+  const attr = new THREE.BufferAttribute(seg, 3).setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute('position', attr);
+  const mat = new THREE.LineBasicMaterial({ color: '#cfe3ff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const lines = new THREE.LineSegments(g, mat);
+  lines.frustumCulled = false;
+  lines.visible = false;
+  return {
+    lines,
+    update(dt, speed, amount) {
+      lines.visible = amount > 0.01;
+      mat.opacity = amount * 0.7;
+      if (!lines.visible) return;
+      const len = 0.3 + speed * 0.12;
+      for (let i = 0; i < STREAKS; i++) {
+        const p = at[i];
+        p[2] += speed * dt * 2.2;
+        if (p[2] > 1) p[2] -= 16;
+        seg.set([p[0], p[1], p[2], p[0], p[1], p[2] - len], i * 6);
+      }
+      attr.needsUpdate = true;
+    },
+  };
+}
+
 export function create(canvas, ctx) {
   const { reduced } = ctx;
   let props = ctx;
@@ -108,7 +165,8 @@ export function create(canvas, ctx) {
   const { renderer } = gl;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 600);
-  const map = new THREE.Group(); // turned by the drag (yaw); the camera never turns round it
+  scene.add(camera); // it carries the streaks
+  const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
 
   // the names under the planets are the way in by keyboard and screen reader
@@ -130,6 +188,8 @@ export function create(canvas, ctx) {
   const stars = starfield(rand);
   map.add(stars);
   map.add(orbits());
+  const streak = streaks(rand);
+  camera.add(streak.lines);
 
   const planets = ORDER.map((id) => {
     const p = buildPlanet(byId(id));
@@ -163,14 +223,31 @@ export function create(canvas, ctx) {
     overview: null,
     pose: null,
     tLow: 0, // where the orbits stopped when quality went down
+    // flying
+    kind: null, // the ship picked
+    ship: null, // ship.js's numbers
+    model: null,
+    view: 'chase', // or 'map'
+    auto: null, // { id, park } while it flies itself somewhere
+    at: null, // the universe it's at
+    keys: {},
+    stick: null, // { id, x, y, dx, dy, on }
+    boostBtn: false,
+    boosting: false,
+    boosts: 0,
+    streak: 0,
+    flown: false, // has anyone touched the controls yet
+    shown: true,
   };
   const t0 = performance.now();
+  let engine = null;
 
   // The open part of the canvas: the panel covers the right side on a
   // desktop and the bottom on a phone, the nav the top.
+  const panelEl = () => ctx.el.closest('.universe-page')?.querySelector('.universe-panel');
   const measure = () => {
     const box = ctx.el.getBoundingClientRect();
-    const panel = ctx.el.closest('.universe-page')?.querySelector('.universe-panel')?.getBoundingClientRect();
+    const panel = panelEl()?.getBoundingClientRect();
     const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 68;
     let side = 0;
     let sheet = 0;
@@ -184,8 +261,40 @@ export function create(canvas, ctx) {
     camera.setViewOffset(size.w, size.h, -state.rect.sx, -state.rect.sy, size.w, size.h);
     camera.updateProjectionMatrix();
   };
+  // the panel changes height on a phone (the sheet) without the canvas resizing
+  const panelRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => size.w > 1 && (measure(), ctx.invalidate())) : null;
+  const watchPanel = () => {
+    panelRO?.disconnect();
+    const el = panelEl();
+    if (el) panelRO?.observe(el);
+  };
+  watchPanel();
 
-  const goal = () => (state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview);
+  // Where the camera rides with a ship: behind and a little above it, looking
+  // past it the way it points, further back the faster it goes.
+  const rotate = (x, z) => {
+    const c = Math.cos(state.yaw);
+    const s = Math.sin(state.yaw);
+    return [x * c + z * s, -x * s + z * c];
+  };
+  const chasePose = () => {
+    const s = state.ship;
+    const [wx, wz] = rotate(s.x, s.z);
+    const [fx, fz] = forward(s.heading);
+    const [dx, dz] = rotate(fx, fz);
+    const look = 0.9;
+    return {
+      target: [wx + dx * look, s.y + 0.1, wz + dz * look],
+      dist: 2.7 + Math.abs(s.speed) * 0.2 + state.streak * 0.9,
+      pitch: 0.24,
+    };
+  };
+
+  const flying = () => Boolean(state.ship);
+  const goal = () => {
+    if (flying()) return state.view === 'map' ? state.overview : chasePose();
+    return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
+  };
 
   const apply = (pose) => {
     const { position, target } = cameraFrom(pose);
@@ -220,7 +329,7 @@ export function create(canvas, ctx) {
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
-      const off = s.z <= 0 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
+      const off = s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
       // tucked behind a nearer planet
       const behind = screen.some((o) => o !== s && o.z > 0 && o.z < s.z && Math.hypot(o.x - s.x, o.y - s.y) < o.r * 0.9);
       const tf = off ? '' : `translate3d(${s.x.toFixed(1)}px, ${(s.y + s.r + 4).toFixed(1)}px, 0)`;
@@ -256,13 +365,168 @@ export function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  const select = (id, now = performance.now()) => {
+  const emit = (e) => props.onEvent?.(e);
+
+  // the camera eases from wherever it is to wherever it's going next
+  const retarget = (dur) => {
+    state.flight = reduced || !state.pose ? null : startFlight(state.pose, performance.now(), dur);
+  };
+
+  const select = (id) => {
     if (id === state.sel) return;
     state.sel = id;
-    // from wherever the camera is now, even mid-flight; reduced motion cuts
-    state.flight = reduced || !state.pose ? null : startFlight(state.pose, now);
+    if (flying()) {
+      // the ship takes you there (or, with reduced motion, is simply there)
+      if (id && id !== state.at) {
+        state.view = 'chase';
+        if (reduced) {
+          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0 };
+          state.yaw = -state.ship.heading;
+        } else {
+          state.auto = { id, park: parkAt(id, [state.ship.x, state.ship.z]) };
+          retarget(700);
+        }
+      } else if (!id) state.auto = null;
+    } else retarget();
     paintStates();
     ctx.invalidate();
+  };
+
+  // ── The ship ──
+  const heard = () => {
+    // the first key or press: sound may start now
+    if (!state.kind) return;
+    audioContext();
+    if (!engine) engine = shipEngine(state.kind);
+  };
+
+  const setShip = (kind) => {
+    if (kind === state.kind) return;
+    engine?.stop();
+    engine = null;
+    if (state.model) {
+      map.remove(state.model.group);
+      disposeTree(state.model.group);
+      state.model = null;
+    }
+    const was = state.kind;
+    state.kind = kind;
+    state.auto = null;
+    state.flown = false;
+    if (!kind) {
+      state.ship = null;
+      state.at = null;
+      state.yaw = 0;
+      retarget();
+      return;
+    }
+    state.model = buildShip(kind);
+    map.add(state.model.group);
+    if (kind === 'cruiser') {
+      loadModel('/games/meshy/cruiser.glb').then((m) => {
+        if (!m) return;
+        if (disposed || state.kind !== 'cruiser' || !state.model?.mount(m)) disposeTree(m);
+        ctx.invalidate();
+      });
+    }
+    if (!state.ship) {
+      state.ship = spawn(state.sel);
+      state.at = state.sel && orbiting(state.ship, null) === state.sel ? state.sel : null;
+      state.yaw = -state.ship.heading;
+    }
+    state.view = 'chase';
+    if (!was) retarget(state.pose ? 1600 : 0);
+    if (state.pose && engine === null && navigator.userActivation?.hasBeenActive) heard();
+  };
+
+  const takeover = () => {
+    if (!state.flown) {
+      state.flown = true;
+      emit({ type: 'launch' });
+    }
+    if (state.auto) state.auto = null; // the pilot has the stick now
+    if (state.view === 'map') {
+      state.view = 'chase';
+      retarget(700);
+    }
+  };
+
+  const steering = () => {
+    const k = state.keys;
+    let throttle = (k.up ? 1 : 0) - (k.down ? 1 : 0);
+    let turn = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+    const st = state.stick;
+    if (st?.on) {
+      throttle = clamp(throttle - st.dy / STICK, -1, 1);
+      turn = clamp(turn + st.dx / STICK, -1, 1);
+    }
+    return { throttle, turn, boost: Boolean(k.boost || state.boostBtn) };
+  };
+
+  const placeStick = () => {
+    const el = props.stick?.current;
+    if (!el) return;
+    const st = state.stick;
+    if (!st?.on) {
+      el.removeAttribute('data-on');
+      return;
+    }
+    el.setAttribute('data-on', '');
+    el.style.transform = `translate3d(${st.x}px, ${st.y}px, 0)`;
+    const k = Math.min(1, Math.hypot(st.dx, st.dy) / STICK);
+    const a = Math.atan2(st.dy, st.dx);
+    el.style.setProperty('--kx', `${(Math.cos(a) * k * 28).toFixed(1)}px`);
+    el.style.setProperty('--ky', `${(Math.sin(a) * k * 28).toFixed(1)}px`);
+  };
+
+  const fly = (dt, t) => {
+    let input;
+    if (state.auto) {
+      const a = autopilot(state.ship, state.auto.id, state.auto.park);
+      input = a.input;
+      if (a.done) state.auto = null;
+    } else input = steering();
+    const { ship, events } = step(state.ship, input, dt);
+    state.ship = ship;
+    for (const e of events) emit(e);
+
+    // a burst of speed
+    const boosting = input.boost && input.throttle > 0 && ship.speed > SHIP.cruise * 0.7;
+    if (boosting && !state.boosting) emit({ type: 'boost', first: state.boosts++ === 0 });
+    state.boosting = boosting;
+    const want = !reduced && ship.speed > SHIP.cruise + 0.2 ? clamp01((ship.speed - SHIP.cruise) / (SHIP.boost - SHIP.cruise)) : 0;
+    state.streak += (want - state.streak) * clamp01(dt * 4);
+
+    // at a universe: arriving, and leaving
+    const target = state.auto?.id;
+    const now = orbiting(ship, state.at);
+    if (now !== state.at && (!target || now === target || now === null)) {
+      const left = state.at;
+      state.at = now;
+      if (now) {
+        if (state.sel !== now) {
+          state.sel = now;
+          props.onPick?.(now);
+        }
+        emit({ type: 'arrive', id: now });
+      } else if (left && state.sel === left && !target) {
+        state.sel = null;
+        props.onPick?.(null);
+      }
+      paintStates();
+    }
+
+    // the camera swings round behind the ship (not in the map view)
+    if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * clamp01(dt * (reduced ? 12 : 4.5));
+
+    const m = state.model;
+    m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
+    m.group.rotation.y = ship.heading;
+    m.pivot.rotation.z = -ship.bank;
+    m.pivot.rotation.x = reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08);
+    m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
+    engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
+    return Boolean(state.auto || input.throttle || input.turn || Math.abs(ship.speed) > 0.01 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
   };
 
   // ── Frames ──
@@ -271,22 +535,25 @@ export function create(canvas, ctx) {
 
   function render(ms, now) {
     gl.watch(now);
+    const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     if (!state.pose) {
-      // first frame: straight onto a universe from a link; the overview
-      // drifts in from a little further out
+      // first frame: straight onto a universe from a link (or behind the
+      // ship parked there); the overview drifts in from a little further out
       const to = goal();
       if (state.sel || reduced) state.pose = to;
       else {
-        state.pose = { target: [...to.target], dist: to.dist * 1.35, pitch: to.pitch + 0.12 };
+        state.pose = { target: [...(state.overview?.target ?? to.target)], dist: (state.overview?.dist ?? to.dist) * 1.35, pitch: (state.overview?.pitch ?? to.pitch) + 0.12 };
         state.flight = startFlight(state.pose, now, 1800);
       }
     }
-    if (!state.drag && state.vel && !reduced) {
+    if (!flying() && !state.drag && state.vel && !reduced) {
       state.yaw += state.vel * ms;
       state.vel *= 0.0035 ** (ms / 1000);
       if (Math.abs(state.vel) < 2e-6) state.vel = 0;
     }
+    let moving = false;
+    if (flying() && !state.dive && !props.frozen) moving = fly(dt, t);
     map.rotation.y = state.yaw;
     map.updateMatrixWorld();
 
@@ -302,6 +569,12 @@ export function create(canvas, ctx) {
         dist: Math.exp(Math.log(d.from.dist) + (Math.log(end) - Math.log(d.from.dist)) * e),
         pitch: d.from.pitch,
       };
+      // the ship goes in first
+      if (state.model) {
+        const [px, py, pz] = POSITIONS[d.id];
+        const g = state.model.group.position;
+        g.set(g.x + (px - g.x) * e * 0.25, g.y + (py - g.y) * e * 0.25, g.z + (pz - g.z) * e * 0.25);
+      }
     } else {
       const r = poseAt(state.flight, goal(), now);
       pose = r.pose;
@@ -310,6 +583,7 @@ export function create(canvas, ctx) {
     state.pose = pose;
     apply(pose);
 
+    streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();
@@ -318,20 +592,63 @@ export function create(canvas, ctx) {
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (props.frozen) return false;
-    const moving = Boolean(state.flight || state.drag || state.vel);
-    return !still() || moving;
+    return !still() || moving || Boolean(state.flight || state.drag || state.vel || state.stick?.on);
   }
 
-  // ── Pointer: drag turns the map, a click picks a planet ──
+  // ── Keys, while flying ──
+  const onKeyDown = (e) => {
+    if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
+    const el = e.target;
+    if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    if (document.querySelector('[aria-modal="true"]')) return;
+    const key = e.key.toLowerCase();
+    // on a button or link, the arrows, Space and Enter are its own
+    const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
+    if (key === 'm') {
+      heard();
+      state.view = state.view === 'map' ? 'chase' : 'map';
+      retarget(900);
+      ctx.invalidate();
+      return;
+    }
+    if ((key === 'e' || (key === 'enter' && !onControl)) && state.at) {
+      e.preventDefault();
+      props.onLand?.();
+      return;
+    }
+    const k = KEYS[key];
+    if (!k || (onControl && ARROWS.has(key))) return;
+    e.preventDefault();
+    heard();
+    if (k !== 'boost') takeover();
+    state.keys[k] = true;
+    ctx.invalidate();
+  };
+  const onKeyUp = (e) => {
+    const k = KEYS[e.key.toLowerCase()];
+    if (k) state.keys[k] = false;
+  };
+  const onBlur = () => {
+    state.keys = {};
+    state.boostBtn = false;
+  };
+  const onHidden = () => engine?.set({ speed: 0, on: !document.hidden && state.shown });
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
+  document.addEventListener('visibilitychange', onHidden);
+
+  // ── Pointer: a click picks a planet; a drag turns the map, or steers ──
   const local = (e) => {
     const r = canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (state.drag || state.dive) return;
+    if (state.drag || state.dive || props.frozen) return;
     const [x, y] = local(e);
     capturePointer(e, canvas);
+    heard();
     state.vel = 0;
     state.drag = { id: e.pointerId, x, y, yaw: state.yaw, moved: 0, lastX: x, lastT: performance.now() };
     ctx.invalidate();
@@ -342,11 +659,18 @@ export function create(canvas, ctx) {
     if (d && d.id === e.pointerId) {
       d.moved = Math.max(d.moved, Math.hypot(x - d.x, y - d.y));
       if (d.moved < DRAG) return;
-      const now = performance.now();
-      state.yaw = d.yaw + (x - d.x) * TURN;
-      state.vel = ((x - d.lastX) * TURN) / Math.max(1, now - d.lastT);
-      d.lastX = x;
-      d.lastT = now;
+      if (flying()) {
+        // a stick wherever the press began
+        if (!state.stick) takeover();
+        state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true };
+        placeStick();
+      } else {
+        const now = performance.now();
+        state.yaw = d.yaw + (x - d.x) * TURN;
+        state.vel = ((x - d.lastX) * TURN) / Math.max(1, now - d.lastT);
+        d.lastX = x;
+        d.lastT = now;
+      }
       canvas.style.cursor = 'grabbing';
       ctx.invalidate();
       return;
@@ -356,11 +680,16 @@ export function create(canvas, ctx) {
     canvas.style.cursor = id ? 'pointer' : 'grab';
     setHover(id);
   };
+  const endDrag = () => {
+    state.drag = null;
+    state.stick = null;
+    placeStick();
+    canvas.style.cursor = 'grab';
+  };
   const onUp = (e) => {
     const d = state.drag;
     if (!d || d.id !== e.pointerId) return;
-    state.drag = null;
-    canvas.style.cursor = 'grab';
+    endDrag();
     if (d.moved < DRAG) {
       state.vel = 0;
       const [x, y] = local(e);
@@ -371,9 +700,8 @@ export function create(canvas, ctx) {
   };
   const onCancel = (e) => {
     if (state.drag?.id !== e.pointerId) return;
-    state.drag = null;
+    endDrag();
     state.vel = 0;
-    canvas.style.cursor = 'grab';
     ctx.invalidate();
   };
   const onLeave = (e) => {
@@ -385,9 +713,10 @@ export function create(canvas, ctx) {
   canvas.addEventListener('pointercancel', onCancel);
   canvas.addEventListener('pointerleave', onLeave);
 
+  setShip(props.ship ?? null);
   paintStates();
 
-  // in development, renderer counts for checking the budget from a browser
+  // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
     window.__universe = () => ({
       calls: renderer.info.render.calls,
@@ -395,6 +724,10 @@ export function create(canvas, ctx) {
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
       ratio: gl.ratio,
+      ship: state.ship && { ...state.ship },
+      at: state.at,
+      auto: state.auto?.id ?? null,
+      view: state.view,
       last,
     });
   }
@@ -406,12 +739,22 @@ export function create(canvas, ctx) {
       gl.setSize(size.w, size.h);
       stars.material.uniforms.uDpr.value = gl.ratio;
       measure();
+      watchPanel();
     },
     render,
     update(next) {
       props = next;
+      setShip(next.ship ?? null);
       select(next.selected ?? null);
-      if (next.frozen && !state.dive) state.drag = null;
+      if (next.frozen) {
+        endDrag();
+        state.keys = {};
+        engine?.set({ speed: 0, on: false });
+      }
+    },
+    setVisible(on) {
+      state.shown = on;
+      if (!on) engine?.set({ speed: 0, on: false });
     },
     lowerQuality() {
       state.tLow = (performance.now() - t0) / 1000;
@@ -421,21 +764,62 @@ export function create(canvas, ctx) {
     },
     // a name under the pointer lights its planet too
     hover: setHover,
+    // the phone's boost button
+    boost(on) {
+      heard();
+      state.boostBtn = on;
+      if (on) takeover();
+      ctx.invalidate();
+    },
+    // Escape: back from the map view, or stop flying itself. False when
+    // there was nothing to undo.
+    escape() {
+      if (state.view === 'map' && flying()) {
+        state.view = 'chase';
+        retarget(900);
+        ctx.invalidate();
+        return true;
+      }
+      if (state.auto) {
+        state.auto = null;
+        return true;
+      }
+      return false;
+    },
+    // the whole map: the view pulls out while you keep the ship (false
+    // without one; the page clears the selection instead)
+    whole() {
+      if (!flying()) return false;
+      state.view = 'map';
+      state.auto = null;
+      retarget(900);
+      ctx.invalidate();
+      return true;
+    },
     // fly into a planet; the page fades to it and goes after `ms`
     dive(id) {
       if (reduced || !planetOf[id] || !state.pose) return 0;
       state.dive = { id, start: performance.now(), from: { ...state.pose, target: [...state.pose.target] } };
       state.flight = null;
+      engine?.set({ speed: SHIP.boost, boost: true });
       ctx.invalidate();
       return DIVE_MS;
     },
     dispose() {
       disposed = true;
+      engine?.stop();
+      panelRO?.disconnect();
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onHidden);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onCancel);
       canvas.removeEventListener('pointerleave', onLeave);
+      const st = props.stick?.current;
+      if (st) st.removeAttribute('data-on');
       if (import.meta.env.DEV) delete window.__universe;
       disposeTree(scene);
       gl.dispose();
