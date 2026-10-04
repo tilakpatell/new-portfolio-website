@@ -95,16 +95,16 @@ export const ASSETS = {
 // Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
 // as the robot (the game changes one into the other); the jets; the bosses.
 const ROLLOUT = {
-  optimus: { rig: true, height: 2.7, poly: 16000, tex: 1024, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
-  'optimus-truck': { rig: false, poly: 12000, tex: 1024, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
-  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 1024, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
-  'bumblebee-car': { rig: false, poly: 12000, tex: 1024, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
+  optimus: { rig: true, height: 2.7, poly: 16000, tex: 768, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
+  'optimus-truck': { rig: false, poly: 12000, tex: 768, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
+  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 768, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
+  'bumblebee-car': { rig: false, poly: 12000, tex: 768, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
   vehicon: { rig: true, height: 2.6, poly: 9000, tex: 512, prompt: `A Vehicon trooper from Transformers Prime: a lean faceless Decepticon soldier robot in dark gunmetal armour with purple trim, one red visor across the face, a blaster on the right arm. ${BODY}` },
   'vehicon-car': { rig: false, poly: 8000, tex: 512, prompt: `A Vehicon's vehicle mode from Transformers Prime: a dark gunmetal four-door sports sedan with purple trim and a purple Decepticon emblem on the hood. ${CAR}` },
   seeker: { rig: false, poly: 8000, tex: 512, prompt: `A Decepticon seeker jet from Transformers: a dark grey fighter jet with swept wings, twin tail fins and purple Decepticon emblems on the wings. ${PROP}` },
-  starscream: { rig: false, poly: 12000, tex: 1024, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
-  shockwave: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
-  megatron: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
+  starscream: { rig: false, poly: 12000, tex: 512, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
+  shockwave: { rig: true, height: 8, poly: 16000, tex: 512, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
+  megatron: { rig: true, height: 8, poly: 16000, tex: 512, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
 };
 for (const [n, a] of Object.entries(ROLLOUT)) ASSETS[n] = { ...a, set: 'rollout', style: REAL, pbr: true };
 
@@ -262,7 +262,7 @@ async function shrinkAtlas(doc, size) {
 // triangles are left alone: the simplifier doesn't weigh the texture, and
 // pulls the faces about.)
 let io = null;
-async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) {
+async function squeeze(from, to, { tex = 0, clip = false, posed = false, high = false } = {}) {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
@@ -286,7 +286,10 @@ async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) 
     }
     await shrinkAtlas(doc, tex);
   }
-  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed ? 'high' : 'medium' }));
+  // (`high`: Roll out's, squeezed harder and without tangents, which three.js
+  // works out per pixel for the normal map)
+  if (high) for (const m of root.listMeshes()) for (const p of m.listPrimitives()) p.setAttribute('TANGENT', null);
+  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed || high ? 'high' : 'medium' }));
   await io.write(to, doc);
 }
 
@@ -414,7 +417,7 @@ const steps = {
         const raw = join(tmp, `${s[n].rig ?? s[n].model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
         await mkdir(out, { recursive: true });
-        await squeeze(raw, join(out, file), { tex, clip, posed });
+        await squeeze(raw, join(out, file), { tex, clip, posed, high: a.set === 'rollout' && !clip });
       }
       if (a.set === 'rollout') fetched.add(n);
       credits[`meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
