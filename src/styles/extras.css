@@ -2161,6 +2161,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-map { position: relative; aspect-ratio: 720 / 480; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #2c4a2b; box-shadow: var(--shadow-card); }
 .hq-base, .hq-live { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .hq-live { pointer-events: none; }
+.hq-3d { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.hq-3d[data-on] { opacity: 1; }
+.hq-map[data-3d] .hq-base { visibility: hidden; transition: visibility 0s 1s; }
 .hq-live .hq-pin[data-pick] { pointer-events: auto; cursor: pointer; }
 .hq-pin { transform: translate(var(--px), var(--py)) scale(var(--ps, 1.3)); }
 .hq-map[data-compact] { --ps: 2.4; }
@@ -2170,6 +2173,8 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-pin[data-pick]:hover .hq-pin-body { fill: #ffe7a3; }
 .hq-pin[data-on] .hq-pin-body { fill: var(--btn-bg); stroke: #ffffff; }
 .hq-pin[data-on] .hq-pin-num { fill: var(--btn-ink); }
+.hq-pin-stone { fill: none; stroke: var(--glow); stroke-width: 2.6; filter: drop-shadow(0 0 3px var(--glow)); }
+.hq-rail-stone { width: 8px; height: 8px; margin-left: auto; }
 .hq-pin-pulse { fill: none; stroke: var(--btn-bg); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: hq-pulse 1.6s ease-out infinite; }
 @keyframes hq-pulse { from { transform: scale(0.8); opacity: 0.9; } to { transform: scale(2.3); opacity: 0; } }
 .hq-fly { opacity: 0; animation: hq-fly 20s linear infinite; }
@@ -2658,3 +2663,10 @@ html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [da
 html.meeseeks-shake main { animation: meeseeks-shake 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
 @keyframes meeseeks-shake { 0%, 100% { transform: none; } 15% { transform: translateX(-8px) rotate(-0.6deg); } 30% { transform: translateX(7px) rotate(0.5deg); } 45% { transform: translateX(-5px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
 @media (prefers-reduced-motion: reduce) { html.meeseeks-shake main { animation: none; } }
+
+/* Titan in 3D, in the gauntlet's panel */
+.titan-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.titan-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.titan-canvas[data-on] { opacity: 1; }
+.titan-sockets { position: absolute; inset: 0; pointer-events: none; }
+.titan-socket { pointer-events: auto; }
