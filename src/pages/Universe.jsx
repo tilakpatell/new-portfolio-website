@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { byId } from '../components/universe/universes';
@@ -21,7 +21,8 @@ const PORTAL = '#97ce4c';
 // press. The page accent follows the selected universe, so the panel
 // recolours as you go.
 export default function Universe() {
-  useDocumentTitle('The universe');
+  const atRoot = useLocation().pathname === '/';
+  useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
   const navigate = useNavigate();
   const selected = parseId(useParams().id);
   const universe = byId(selected);
@@ -89,7 +90,7 @@ export default function Universe() {
 
   return (
     <div className="dark-scope universe-page" style={accent} data-leaving={leaving?.mode} data-card={universe ? '' : undefined}>
-      <h1 className="sr-only">The universe map</h1>
+      <h1 className="sr-only">Tilak Patel: the whole site as a universe</h1>
       <p className="sr-only" aria-live="polite">
         {universe ? `${universe.label}: selected` : ''}
       </p>

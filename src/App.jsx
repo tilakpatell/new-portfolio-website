@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
@@ -8,7 +8,6 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
-import Home from './pages/Home';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
 
@@ -28,6 +27,7 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Universe = lazy(() => import('./pages/Universe'));
+const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -77,13 +77,13 @@ function Lightspeed() {
   return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
 }
 
-// A first visit to the home page opens on the crawl, then jumps to lightspeed
-// into the universe map, where the whole site is laid out as places to fly
-// to. The inline script in index.html decides (and covers the page until it
-// starts). Skip goes straight to the jump. The map loads during the crawl.
+// A first visit to the site opens on the crawl, then jumps to lightspeed into
+// the universe map (the site's front door), where everything is laid out as
+// places to fly to. The inline script in index.html decides (and covers the
+// page until it starts). Skip goes straight to the jump. The map loads
+// during the crawl.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 function IntroJump() {
-  const navigate = useNavigate();
   const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
   useEffect(() => {
     if (!stage) return;
@@ -108,7 +108,6 @@ function IntroJump() {
             // comes out in the universe
             document.documentElement.dataset.intro = '1';
             setStage('jump');
-            navigate('/universe');
           }}
         />
       </Suspense>
@@ -142,9 +141,10 @@ function PaletteHost() {
   );
 }
 
-// The universe map keeps one page while its URL follows the selection
-// (/universe/marvel), so picking a planet doesn't remount the map.
-const pageKey = (pathname) => (pathname.startsWith('/universe') ? '/universe' : pathname);
+// The universe map is the front door (/) and keeps one page while its URL
+// follows the selection (/universe/marvel), so picking a planet doesn't
+// remount the map.
+const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
 
 function Shell() {
   const { pathname } = useLocation();
@@ -153,6 +153,7 @@ function Shell() {
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
     const id = idle(() => {
+      import('./pages/Home');
       import('./pages/Experience');
       import('./pages/Projects');
       import('./pages/Contact');
@@ -171,7 +172,8 @@ function Shell() {
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Universe />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/experience/:roleId?" element={<Experience />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
