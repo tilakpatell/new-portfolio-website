@@ -12,6 +12,7 @@ import Wordmark from './Wordmark';
 import { CUSTOM_PRESETS } from '../theme/custom';
 
 const LINKS = [
+  { to: '/universe', label: 'Universe' },
   { to: '/experience', label: 'Experience' },
   { to: '/projects', label: 'Projects' },
   { to: '/travel', label: 'Travel' },

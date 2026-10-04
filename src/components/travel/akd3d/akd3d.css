@@ -1,0 +1,43 @@
+/* ─── A day at Akshardham: the WebGL photo and the time track ─────────────── */
+
+/* The WebGL photo sits over the <img> stack and under the scrim and text.
+   It is transparent until a frame with the photo in it is up; then the
+   <img>s stop painting and the CSS bell ring gives way to the ripple. Both
+   come back if 3D is off, fails or is lost (data-gl goes away). */
+.akd-gl { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.akd-gl > .scene-canvas { display: block; width: 100%; height: 100%; }
+.akd-stage:has(> .akd-gl[data-gl='on'][data-drawn]) > .akd-slide { visibility: hidden; }
+.akd-stage:has(> .akd-gl[data-gl='on'][data-drawn]) > .akd-bell-ring { display: none; }
+
+/* The time track: the clock, then a thin line with a tick per photo and a
+   sun for now. The native range input lies over the line, its thumb
+   invisible but full size (so touch can find it); the line, ticks and sun
+   are drawn inset by half a thumb, so they sit exactly where its thumb would. */
+.akd-track { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.35rem 1.25rem; margin-top: 0.9rem; }
+.akd-clock { min-width: 14.5em; margin: 0; font: 600 0.75rem/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.akd-clock-time { color: var(--text); }
+.akd-rail { position: relative; height: 28px; }
+.akd-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
+.akd-range:focus { outline: none; }
+.akd-range::-webkit-slider-runnable-track { height: 28px; border: 0; background: transparent; }
+.akd-range::-webkit-slider-thumb { width: 28px; height: 28px; border: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+.akd-range::-moz-range-track { height: 28px; border: 0; background: transparent; }
+.akd-range::-moz-range-thumb { width: 28px; height: 28px; border: 0; background: transparent; }
+.akd-rail-draw { position: absolute; inset: 0 14px; pointer-events: none; }
+.akd-line, .akd-line-past, .akd-wait { position: absolute; top: 50%; left: 0; translate: 0 -50%; }
+.akd-line { right: 0; height: 1px; background: color-mix(in srgb, var(--muted) 55%, var(--border)); }
+.akd-line-past { width: calc(var(--t) * 100%); height: 2px; background: var(--accent); }
+.akd-wait { left: calc(var(--from) * 100%); width: calc((var(--to) - var(--from)) * 100%); height: 2px; background: color-mix(in srgb, var(--accent) 40%, transparent); transform-origin: left; animation: akd-wait var(--d) linear var(--delay) both; }
+@keyframes akd-wait { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.akd-tick { position: absolute; top: 50%; left: calc(var(--k) * 100%); width: 1px; height: 9px; translate: -50% -50%; background: var(--muted); }
+.akd-tick[data-past] { background: var(--accent); }
+/* the astronomer's sun: a ring with a dot at its centre */
+.akd-sun { position: absolute; top: 50%; left: calc(var(--t) * 100%); width: 15px; height: 15px; translate: -50% -50%; border: 1.5px solid var(--accent); border-radius: 50%; background: radial-gradient(circle, var(--accent) 0 2.25px, var(--bg) 2.75px); }
+.akd-range:focus-visible + .akd-rail-draw .akd-sun { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+
+@media (max-width: 639px) {
+  .akd-track { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .akd-wait { display: none; }
+}

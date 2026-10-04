@@ -153,7 +153,10 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 
 /* Fog: two soft layers drifting past each other, slow enough to feel like weather.
    No blur filter (a blurred layer that moves is costly on phones, Safari most of
-   all): the gradients are soft on their own. They drift only while on screen. */
+   all): the gradients are soft on their own. They drift only while on screen:
+   the animation is named only then, because a paused animation still keeps its
+   element on a GPU layer. At rest the fog sits where the drift starts, so it
+   never jumps. */
 .fog {
   position: absolute;
   inset: auto -12% 4% -12%;
@@ -164,11 +167,11 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
     radial-gradient(38% 50% at 18% 60%, color-mix(in srgb, var(--bg) 58%, transparent), color-mix(in srgb, var(--bg) 22%, transparent) 45%, transparent 75%),
     radial-gradient(30% 44% at 52% 72%, color-mix(in srgb, var(--bg) 48%, transparent), color-mix(in srgb, var(--bg) 18%, transparent) 45%, transparent 75%),
     radial-gradient(34% 48% at 84% 58%, color-mix(in srgb, var(--bg) 54%, transparent), color-mix(in srgb, var(--bg) 20%, transparent) 45%, transparent 75%);
-  animation: fog-drift 70s ease-in-out infinite alternate;
-  animation-play-state: paused;
+  transform: translateX(-5%);
+  animation: 70s ease-in-out infinite alternate;
 }
-.photo-band[data-live] .fog { animation-play-state: running; will-change: transform; }
-.fog-b { bottom: 12%; height: 34%; opacity: 0.5; animation-duration: 95s; animation-direction: alternate-reverse; }
+.photo-band[data-live] .fog { animation-name: fog-drift; }
+.fog-b { bottom: 12%; height: 34%; opacity: 0.5; transform: translateX(5%); animation-duration: 95s; animation-direction: alternate-reverse; }
 @media (max-width: 767px) { .fog-b { display: none; } }
 @keyframes fog-drift { from { transform: translate3d(-5%, 0, 0); } to { transform: translate3d(5%, 0, 0); } }
 
@@ -185,7 +188,40 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 .photo-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .band-fact { border-top: 1px solid rgba(255, 255, 255, 0.45); padding-top: 1rem; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
 
-/* Postcards: a row that swipes, lined up with the page column */
+/* Rows that swipe: the postcards here, the interests row on the home page.
+   A row starts at the page column and runs off the right edge of the screen,
+   so a card is always peeking in to say there are more. It used to start at
+   the left edge of the screen with the gutter as its padding, and its cards
+   then slid through the gutter, under the route line and its crystal.
+   The row keeps a little padding of its own on the left (--swipe-inset) so the
+   first card's focus ring has room. It is never wider than the gap between
+   cards, so a card that has scrolled away leaves nothing behind. */
+.swipe-frame { position: relative; }
+@media (min-width: 768px) {
+  /* Mist over that padding: a card leaving on the left fades into the page
+     instead of meeting a hard edge. A gradient of the page color, not a mask
+     on the row (a mask is redrawn on every frame the row moves). It only
+     covers the padding, which is empty until a card passes through it, and
+     it clears before the last 7px, where a card's focus ring sits. */
+  .swipe-frame::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+    width: var(--swipe-inset);
+    pointer-events: none;
+    background: linear-gradient(to right, var(--bg), color-mix(in srgb, var(--bg) 0%, transparent) calc(100% - 7px));
+  }
+}
+.swipe-arrows { display: flex; gap: 0.5rem; }
+/* An arrow with nowhere left to go. It stays focusable: a disabled button
+   would drop the keyboard's place the moment the row reached its end. */
+.swipe-arrows .globe-btn[aria-disabled='true'] { opacity: 0.4; pointer-events: none; }
+/* On a touch screen the row is swiped; the arrows are for a mouse or keyboard. */
+@media (hover: none) and (pointer: coarse) { .swipe-arrows { display: none; } }
+
 .postcards {
   display: grid;
   grid-auto-flow: column;
@@ -194,8 +230,10 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
-  scroll-padding-inline: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  margin-left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+  /* the top padding leaves room for a card's focus ring (2px, 4px away) */
+  padding: 0.5rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem var(--swipe-inset);
+  scroll-padding-inline: var(--swipe-inset) var(--gutter-r);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -229,10 +267,11 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 }
 @media (min-width: 1024px) { .school-card { left: -2.5rem; } }
 
-/* Jali: a carved-stone lattice, an SVG pattern in the theme's color. Painted
-   once on its own layer; soft edges come from gradients of the page color on
-   top, not a mask, so scrolling past it costs nothing. */
-.jali { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict; transform: translateZ(0); }
+/* Jali: a carved-stone lattice, an SVG pattern in the theme's color. Soft
+   edges come from gradients of the page color on top, not a mask, so scrolling
+   past it costs nothing. It is painted with the page: a GPU layer of its own
+   pushed everything in the section onto a second section-sized layer above it. */
+.jali { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict; }
 .jali-pattern { position: absolute; inset: 0; display: block; color: var(--accent); opacity: 0.08; }
 html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .jali-fade { position: absolute; left: 0; right: 0; height: 18%; }
@@ -248,7 +287,7 @@ html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .travel-teaser { min-height: clamp(320px, 42vw, 520px); display: grid; align-items: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fog { animation: none; }
+  .fog { animation: none; transform: none; }
 }
 
 /* ─── Fan themes, unlocked by easter eggs ────────────────────────────────── */
@@ -615,8 +654,10 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
-  scroll-padding-inline: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  /* starts at the page column, like the postcards (see .swipe-frame) */
+  margin-left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem var(--swipe-inset);
+  scroll-padding-inline: var(--swipe-inset) var(--gutter-r);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -1061,7 +1102,11 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 
 /* ─── A message of peace: Akshardham at dusk, a lamp's glow ───────────────── */
 .peace { color: #ffffff; }
-.peace-photo { transform: scale(1.08); animation: peace-drift 40s ease-in-out infinite alternate; }
+/* The photo drifts and the glow breathes only while the section is on screen
+   (the animations are named only then), so they hold no GPU layers and wake
+   nothing while you are elsewhere on the page. Each rests on its first frame. */
+.peace-photo { transform: scale(1.08); animation: 40s ease-in-out infinite alternate; }
+.peace[data-live] .peace-photo { animation-name: peace-drift; }
 @keyframes peace-drift { from { transform: scale(1.08) translate(0, 0); } to { transform: scale(1.16) translate(-1.5%, -1%); } }
 .peace-shade {
   position: absolute;
@@ -1077,8 +1122,10 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
   aspect-ratio: 1.6;
   translate: -50% -50%;
   background: radial-gradient(closest-side, rgba(255, 196, 110, 0.22), rgba(255, 160, 70, 0.08) 55%, transparent);
-  animation: peace-breathe 7s ease-in-out infinite;
+  opacity: 0.75;
+  animation: 7s ease-in-out infinite;
 }
+.peace[data-live] .peace-glow { animation-name: peace-breathe; }
 @keyframes peace-breathe { 0%, 100% { opacity: 0.75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
 .peace-rule { display: block; width: 72px; height: 2px; margin: 2rem auto 2.25rem; background: linear-gradient(90deg, transparent, #ffd27a, transparent); }
 .peace .peace-gu { color: #ffffff; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45); }
@@ -1102,7 +1149,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .peace-listen:hover { background: rgba(255, 210, 122, 0.12); border-color: #ffd27a; }
 .peace-listen[aria-pressed='true'] { background: rgba(255, 210, 122, 0.18); }
 .peace-listen:focus-visible { outline: 2px solid #ffd27a; outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .peace-photo, .peace-glow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .peace-photo, .peace-glow { animation: none; } .peace-glow { opacity: 1; } }
 
 /* ─── Heritage: the two Akshardhams ──────────────────────────────────────── */
 .heritage-zoom { position: relative; display: block; overflow: hidden; padding: 0; text-align: left; cursor: zoom-in; }
@@ -2155,7 +2202,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease; }
 .akd-slide[data-on] { opacity: 1; z-index: 1; }
 .akd-img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.akd-slide[data-on] .akd-img { animation: akd-drift 14s ease-out both; }
+/* no fill: the drift ends where the photo rests, and an animation that holds
+   its last frame keeps the photo (and the text over it) on GPU layers for good */
+.akd-slide[data-on] .akd-img { animation: akd-drift 14s ease-out; }
 @keyframes akd-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
 .akd-scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(6, 8, 12, 0.78), rgba(6, 8, 12, 0.25) 38%, transparent 62%); }
 .akd-text { position: absolute; left: clamp(1rem, 0.6rem + 2vw, 2rem); right: clamp(4rem, 3rem + 4vw, 7rem); bottom: clamp(1rem, 0.6rem + 1.6vw, 1.75rem); z-index: 3; color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4); }
@@ -2166,8 +2215,6 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-prev { left: 12px; }
 .akd-next { right: 12px; }
 .akd-zoom { position: absolute; top: 12px; right: 12px; z-index: 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: rgba(8, 10, 14, 0.45); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); }
-.akd-progress { position: absolute; left: 0; right: 0; top: 0; z-index: 3; height: 3px; background: #ffe2a8; transform-origin: left; animation: akd-progress var(--d) linear both; }
-@keyframes akd-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .akd-bell-ring { position: absolute; left: 50%; top: 40%; z-index: 3; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 3px solid rgba(255, 226, 168, 0.9); border-radius: 999px; opacity: 0; pointer-events: none; }
 .akd-bell-ring[data-on] { animation: akd-ring 1.6s ease-out; }
 @keyframes akd-ring { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(3); opacity: 0; } }
@@ -2404,6 +2451,40 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .gg-bob[data-walking] { animation: gg-step 0.4s ease-in-out infinite alternate; }
 @keyframes gg-step { to { transform: translateY(-1.2px); } }
 @media (prefers-reduced-motion: reduce) { .gg-torch, .gg-bob[data-walking], .balrog-whip-up { animation: none; } }
+
+/* ─── Middle-earth in WebGL: the scene lies over the drawing it stands in for ─── */
+.me-stage { position: relative; }
+.me-stage[data-3d] { aspect-ratio: 16 / 10; background: #070403; }
+.me-stage[data-3d] > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.me-stage[data-gl] > svg { visibility: hidden; }
+.me-gl { position: absolute; inset: 0; }
+.me-gl canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.6s ease; }
+.me-gl canvas[data-on] { opacity: 1; }
+.me-hud { position: absolute; z-index: 2; top: 12px; right: 14px; display: flex; align-items: center; gap: 7px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; background: rgba(8, 5, 4, 0.5); color: rgba(255, 244, 226, 0.78); font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); pointer-events: none; }
+.me-hud i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); transition: background 0.2s ease, box-shadow 0.2s ease; }
+.me-hud-left { right: auto; left: 14px; }
+.me-hud-left svg { color: #f0c040; }
+.me-hud-left[data-heavy] svg { color: #ff6a1a; }
+.me-hud-time { top: auto; bottom: 12px; letter-spacing: 0.04em; text-transform: none; }
+.me-hud i[data-on] { background: #fdfbf2; box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.8); }
+@media (max-width: 639px) { .me-stage[data-3d] { aspect-ratio: 4 / 3; } }
+
+/* ─── The map behind Middle-earth, and the opening on it ─── */
+.me-atlas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s ease; }
+.me-atlas[data-on] { opacity: 0.3; }
+html[data-mode='dark'] .me-atlas[data-on] { opacity: 0.2; }
+.me-atlas[data-on][data-opening] { opacity: 1; transition-duration: 0.7s; }
+.me-atlas canvas { display: block; width: 100%; height: 100%; }
+.me-atlas canvas[data-flat] { object-fit: cover; }
+.me-atlas::after { content: ''; position: absolute; inset: 0; background: radial-gradient(115% 90% at 50% 42%, transparent 25%, var(--bg) 92%); transition: opacity 1.2s ease; }
+.me-atlas[data-opening]::after { opacity: 0.3; }
+.me-atlas-title { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; justify-items: center; gap: 0.7rem; padding: 1.5rem; text-align: center; background: radial-gradient(34rem 16rem at 50% 50%, rgba(238, 224, 186, 0.86), rgba(238, 224, 186, 0) 72%); animation: me-opening 3s ease both; }
+.me-atlas-title strong { font: 700 clamp(2.6rem, 1.2rem + 6.5vw, 6.5rem)/1 'Cinzel Decorative', 'Cinzel', Georgia, serif; color: #3b2a14; text-shadow: 0 1px 0 rgba(255, 246, 220, 0.7); }
+.me-atlas-title p, .me-atlas-title span { font: 600 clamp(0.72rem, 0.6rem + 0.5vw, 0.95rem)/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.28em; text-transform: uppercase; color: #6a4a22; }
+@keyframes me-opening { 0% { opacity: 0; transform: scale(0.97); } 22% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.me-page > section, .me-page > .mordor-band { transition: opacity 1s ease; }
+.me-page[data-opening] > section, .me-page[data-opening] > .mordor-band { opacity: 0; pointer-events: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .me-gl canvas { transition: none; } }
 /* the Death Star hero in WebGL: the whole hero's backdrop, edge to edge,
    fading into the page at the bottom; the SVG keeps only its label */
 .ds-gl { position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); }

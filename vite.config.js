@@ -5,7 +5,7 @@ import { configDefaults } from 'vitest/config'
 export default defineConfig({
   plugins: [react()],
   base: '/',
-  // agent skills and worktrees under .claude carry their own specs
+  // the skills and the other branches' worktrees under .claude bring their own tests
   test: { exclude: [...configDefaults.exclude, '.claude/**'] },
   build: {
     rollupOptions: {

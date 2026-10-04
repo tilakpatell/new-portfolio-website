@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
+import { use3D } from '../../lib/gpu';
 import { local, useFrameLoop } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { WALK, newWalk, spotOf, stepWalk } from './walk';
+import Scene3D from './Scene3D';
 
 const sfx = () => import('../../lib/sfx');
 const BEST = 'tp-gorgoroth-best';
@@ -13,6 +15,10 @@ const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INP
 // the plain from Barad-dûr. Hold to walk; let go and Frodo and Sam stand still
 // under their elven cloaks, which hides them. Rest now and then, or the Ring
 // gets too heavy; stand still when an orc patrol marches by.
+//
+// Drawn in 3D (./Gorgoroth3D.js) wherever WebGL works, over this drawing,
+// which stays for browsers without it and for anything that reads the page.
+const loadScene = () => import('./Gorgoroth3D').then((m) => m.createGorgoroth3D);
 
 const PATH_Y = 238;
 const EYE = { x: 560, y: 70 };
@@ -26,6 +32,10 @@ export default function Gorgoroth({ onArrive }) {
   const [best, setBest] = useState(() => local.get(BEST, null));
   const walk = useRef(null);
   const held = useRef(false);
+  const three = use3D();
+  const [gl, setGl] = useState('waiting');
+  const want3D = three.on && gl !== 'failed' && gl !== 'lost';
+  const drawn = want3D && gl === 'on';
 
   const begin = () => {
     audioContext(); // in the click, so the Eye can be heard
@@ -120,7 +130,7 @@ export default function Gorgoroth({ onArrive }) {
 
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
-      <div className="gorgoroth" data-phase={phase} data-close={close ? 'true' : 'false'}>
+      <div className="gorgoroth me-stage" data-phase={phase} data-close={close ? 'true' : 'false'} data-3d={want3D || undefined} data-gl={drawn || undefined}>
         <svg viewBox="0 0 640 300" className="block h-auto w-full" role="img" aria-label="The plain of Gorgoroth, Barad-dûr and the Eye to the north east, Mount Doom ahead, two hobbits on the road">
           <defs>
             <linearGradient id="gg-sky" x1="0" y1="0" x2="0" y2="1">
@@ -201,6 +211,23 @@ export default function Gorgoroth({ onArrive }) {
             </text>
           )}
         </svg>
+        {want3D && <Scene3D name="gorgoroth" load={loadScene} read={() => ({ phase, ...view })} soft={three.info.software} onState={setGl} />}
+        {drawn && (
+          <>
+            <p className="me-hud me-hud-left" aria-hidden="true" data-heavy={burden > 0.75 || undefined}>
+              <svg viewBox="-16 -16 32 32" width="22" height="22">
+                <circle r={RING_R - 2} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="4" />
+                <circle r={RING_R - 2} fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray={`${(burden * 2 * Math.PI * (RING_R - 2)).toFixed(1)} 99`} transform="rotate(-90)" strokeLinecap="round" />
+              </svg>
+              <span>{carried ? 'Sam has him' : 'The Ring'}</span>
+            </p>
+            {phase !== 'ready' && (
+              <p className="me-hud me-hud-time" aria-hidden="true">
+                {t.toFixed(1)}s{best != null ? ` · best ${best}s` : ''}
+              </p>
+            )}
+          </>
+        )}
       </div>
       <div>
         <h2 id="gorgoroth-title" className="title">

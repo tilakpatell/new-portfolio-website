@@ -43,6 +43,12 @@
       "skillPath": "skills/caveman-review/SKILL.md",
       "computedHash": "36a4007c5c0c6b90b5accfee1cd769a86e4963b651dece2ce5f17a223a0abb4b"
     },
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "6d838b246d0e35d0b53f4f23f98ba7a1dd561937e64f7d0c7553b0928e376c3e"
+    },
     "diagnosing-superpowers": {
       "source": "obra/superpowers",
       "sourceType": "github",
