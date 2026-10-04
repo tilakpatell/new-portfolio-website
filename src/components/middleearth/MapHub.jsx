@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
-import WorldSwitcher from '../worlds/WorldSwitcher';
 import { CHAPTERS } from './chapters';
 
 // how far from a place on the sheet (800 across) a click still means it
@@ -32,7 +31,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     for (const c of CHAPTERS) {
       const el = pins.current[c.id];
       if (!el) continue;
-      const p = a.project(...c.at);
+      const p = a.project(...c.at, c.lift);
       el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
       el.style.visibility = p.on ? '' : 'hidden';
     }
@@ -144,7 +143,6 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
           ))}
         </ol>
         <div className="me-hub-links">
-          <WorldSwitcher />
           <Link to="/" className="btn btn-ghost btn-sm">
             Back to the site
           </Link>
