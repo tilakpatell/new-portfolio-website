@@ -361,5 +361,257 @@
     ],
     "license": "CC0 1.0",
     "size": "1K, simplified to 12%"
+  },
+  "kenney/house-a": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-a",
+    "name": "City Kit (Suburban): building-type-a",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-c": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-c",
+    "name": "City Kit (Suburban): building-type-c",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-f": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-f",
+    "name": "City Kit (Suburban): building-type-f",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-k": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-k",
+    "name": "City Kit (Suburban): building-type-k",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/fence": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "fence",
+    "name": "City Kit (Suburban): fence",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/tree-large": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "tree-large",
+    "name": "City Kit (Suburban): tree-large",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/tree-small": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "tree-small",
+    "name": "City Kit (Suburban): tree-small",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/oak": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "tree_oak",
+    "name": "Nature Kit: tree_oak",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/bush": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "plant_bushLarge",
+    "name": "Nature Kit: plant_bushLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/rock": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "rock_largeA",
+    "name": "Nature Kit: rock_largeA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/flowers": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "flower_redA",
+    "name": "Nature Kit: flower_redA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/dead-tree": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "tree_thin_dark",
+    "name": "Nature Kit: tree_thin_dark",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/stump": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "stump_old",
+    "name": "Nature Kit: stump_old",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/mushroom": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "mushroom_redTall",
+    "name": "Nature Kit: mushroom_redTall",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/rock-tall": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "rock_tallA",
+    "name": "Nature Kit: rock_tallA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/spire": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "stone_tallA",
+    "name": "Nature Kit: stone_tallA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/cliff": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "cliff_large_rock",
+    "name": "Nature Kit: cliff_large_rock",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/cactus": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "cactus_tall",
+    "name": "Nature Kit: cactus_tall",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/crystal": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "rock_crystalsLargeA",
+    "name": "Space Kit: rock_crystalsLargeA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/meteor": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "meteor_detailed",
+    "name": "Space Kit: meteor_detailed",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/crater": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "craterLarge",
+    "name": "Space Kit: craterLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/console": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "machine_generatorLarge",
+    "name": "Space Kit: machine_generatorLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/computer": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "desk_computer",
+    "name": "Space Kit: desk_computer",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/pillar": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "supports_high",
+    "name": "Space Kit: supports_high",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/barrels": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "machine_barrelLarge",
+    "name": "Space Kit: machine_barrelLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/dish": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "satelliteDish_detailed",
+    "name": "Space Kit: satelliteDish_detailed",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/hangar": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "hangar_roundGlass",
+    "name": "Space Kit: hangar_roundGlass",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/turret": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "turret_double",
+    "name": "Space Kit: turret_double",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
   }
 }

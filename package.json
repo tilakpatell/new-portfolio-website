@@ -15,7 +15,8 @@
     "photos": "node scripts/photos.mjs",
     "paint": "node scripts/paint.mjs",
     "globe": "node scripts/build-globe.mjs",
-    "cc0": "node scripts/cc0.mjs"
+    "cc0": "node scripts/cc0.mjs",
+    "kenney": "node scripts/kenney.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
