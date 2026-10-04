@@ -79,6 +79,12 @@ const ICONS = {
     </svg>
   ),
   robot: <AutobotMark className="dock-autobot" />,
+  portal: (
+    <svg viewBox="0 0 24 24" {...S}>
+      <ellipse cx="12" cy="12" rx="7" ry="8.8" />
+      <path className="dock-swirl" d="M12 6.4 c3 0 4.6 2.6 4 5.2 c-0.6 2.6 -3.4 3.8 -5.4 2.6 c-1.8 -1 -1.8 -3.4 -0.4 -4.4 c1.2 -0.8 2.8 -0.2 2.8 1.2" />
+    </svg>
+  ),
   ring: (
     <svg viewBox="0 0 24 24" {...S}>
       <ellipse cx="12" cy="12.6" rx="8.6" ry="5.4" />
@@ -99,7 +105,7 @@ const scriptIcon = (id) => (
 
 export default function InterestDock() {
   const navigate = useNavigate();
-  const { snap, sayMyName, twss, toggleScript, script, scriptName, rollOut, speakFriend } = useFun();
+  const { snap, sayMyName, twss, toggleScript, script, scriptName, rollOut, speakFriend, getSchwifty } = useFun();
   const { active } = useTheme();
   const [say, setSay] = useState('');
 
@@ -163,6 +169,14 @@ export default function InterestDock() {
       run: () => {
         setSay('Mellon.');
         speakFriend('shire');
+      },
+    },
+    {
+      id: 'portal',
+      label: 'Get schwifty',
+      run: () => {
+        setSay('Wubba lubba dub dub!');
+        getSchwifty('portal');
       },
     },
     { id: 'gameboy', label: 'Play the Game Boy', run: () => navigate('/projects/gameboy-emulator') },

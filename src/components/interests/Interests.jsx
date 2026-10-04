@@ -17,6 +17,7 @@ import AutobotMark from '../AutobotMark';
 import DecepticonMark from '../DecepticonMark';
 import { audioContext } from '../../lib/audio';
 import { STONES, VIEW } from './stones';
+import { DIMENSIONS } from '../rickmorty/dimensions';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
 
@@ -415,6 +416,52 @@ function BreakingBad() {
   );
 }
 
+function RickMorty() {
+  const { getSchwifty } = useFun();
+  const [dim, setDim] = useState(0);
+  const [shots, setShots] = useState(0);
+  const d = DIMENSIONS[dim];
+  const fire = () => {
+    audioContext();
+    import('../games/gameAudio').then((m) => {
+      m.zap?.();
+      m.portalOpen?.();
+    });
+    setDim((i) => (i + 1 + Math.floor(Math.random() * (DIMENSIONS.length - 1))) % DIMENSIONS.length);
+    setShots((n) => n + 1);
+  };
+  return (
+    <Card
+      title="Rick and Morty"
+      className="fun-rm"
+      visual={
+        <div className="rmc-panel">
+          <div key={shots} className="rmc-portal" style={{ '--sky-a': d.sky[0], '--sky-b': d.sky[1], '--ground': d.ground }} aria-hidden="true">
+            <span className="rmc-world" />
+            <span className="rmc-swirl" />
+          </div>
+          <p className="rmc-name" aria-live="polite">
+            {d.name}
+          </p>
+        </div>
+      }
+    >
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Every season of it. Fire the portal gun and see which dimension it opens onto.</p>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button type="button" className="btn btn-primary btn-sm" onClick={fire}>
+          Fire the portal gun
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => getSchwifty('portal')}>
+          Get schwifty
+        </button>
+        <Link to="/c-137" className="btn btn-ghost btn-sm">
+          Visit C-137
+        </Link>
+      </div>
+    </Card>
+  );
+}
+
 function Travel() {
   return (
     <Card
@@ -447,7 +494,7 @@ export default function Interests() {
           <h2 id="interests-title" className="title">
             Off the clock
           </h2>
-          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad and a lot of travel. Most of them have a world of their own on this site, with something to play.</p>
+          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad, Rick and Morty and a lot of travel. Most of them have a world of their own on this site, with something to play.</p>
           <div className="mt-6">
             <InterestDock />
           </div>
@@ -469,6 +516,7 @@ export default function Interests() {
         <Marvel />
         <BreakingBad />
         <Office />
+        <RickMorty />
         <Gaming />
         <Travel />
       </ul>

@@ -2449,6 +2449,25 @@ html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [da
 [data-theme='summer'] h1.display { color: #ff8fb1; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #e2733a; }
 [data-theme='beth'] h1.display { color: #f1cf6a; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #8e2b48; }
 
+/* picking a Smith's colors: a portal opens behind the line, and closes */
+.tt[data-kind='portal'] { background: radial-gradient(circle at 50% 45%, rgba(10, 30, 12, 0.92), rgba(4, 7, 5, 0.96) 70%); }
+.tt-portal { position: absolute; top: 50%; left: 50%; width: min(86vw, 500px); aspect-ratio: 1 / 1.18; translate: -50% -52%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 45%, #0b1a0c) 0%, #0b1a0c 72%); box-shadow: 0 0 70px rgba(151, 206, 76, 0.45); animation: tt-portal var(--tt-len) cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
+.tt-portal-swirl { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #1d7a24, #97ce4c, #d6ff9a, #4fbf3a, #1d7a24, #97ce4c, #e3ffb8, #2f9a2c, #1d7a24); -webkit-mask: radial-gradient(closest-side, transparent 64%, #000 74%); mask: radial-gradient(closest-side, transparent 64%, #000 74%); animation: rmc-spin 1.4s linear infinite; }
+.tt[data-kind='portal'] .tt-words { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6), 0 0 22px rgba(0, 0, 0, 0.85); }
+@keyframes tt-portal { 0% { transform: scale(0.04) rotate(-140deg); opacity: 0; } 22%, 78% { transform: none; opacity: 1; } 100% { transform: scale(0.04) rotate(140deg); opacity: 0; } }
+
+/* the Rick and Morty card in Off the clock: a portal onto wherever the gun lands */
+.rmc-panel { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; background: radial-gradient(90% 120% at 50% 40%, #16301a 0%, #070d08 75%); }
+.rmc-portal { position: relative; width: 104px; height: 128px; border-radius: 50%; margin-bottom: 18px; animation: rmc-open 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; filter: drop-shadow(0 0 18px rgba(151, 206, 76, 0.6)); }
+.rmc-world { position: absolute; inset: 10%; border-radius: 50%; background: linear-gradient(180deg, var(--sky-b) 0%, var(--sky-a) 55%, var(--ground) 56%, color-mix(in srgb, var(--ground) 70%, #000) 100%); }
+.rmc-swirl { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #1d7a24, #97ce4c, #d6ff9a, #4fbf3a, #1d7a24, #97ce4c, #e3ffb8, #2f9a2c, #1d7a24); -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 84%); mask: radial-gradient(closest-side, transparent 78%, #000 84%); animation: rmc-spin 3s linear infinite; }
+.rmc-name { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #c3e88f; }
+@keyframes rmc-open { from { transform: scale(0.1) rotate(-90deg); opacity: 0; } }
+@keyframes rmc-spin { to { transform: rotate(1turn); } }
+.dock-btn .dock-swirl { stroke: #4fa82a; transform-box: fill-box; transform-origin: center; }
+.dock-btn[data-icon='portal']:hover .dock-swirl { animation: rmc-spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .rmc-portal, .rmc-swirl, .dock-btn[data-icon='portal']:hover .dock-swirl { animation: none; } }
+
 /* a Meeseeks shook the page */
 html.meeseeks-shake main { animation: meeseeks-shake 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
 @keyframes meeseeks-shake { 0%, 100% { transform: none; } 15% { transform: translateX(-8px) rotate(-0.6deg); } 30% { transform: translateX(7px) rotate(0.5deg); } 45% { transform: translateX(-5px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }

@@ -6,5 +6,6 @@ export const WORLDS = [
   { to: '/scranton', label: 'Scranton', from: 'The Office' },
   { to: '/cybertron', label: 'Cybertron', from: 'Transformers' },
   { to: '/albuquerque', label: 'Albuquerque', from: 'Breaking Bad' },
+  { to: '/c-137', label: 'Dimension C-137', from: 'Rick and Morty' },
   { to: '/music', label: 'Music room', from: 'Indian classical music' },
 ];
