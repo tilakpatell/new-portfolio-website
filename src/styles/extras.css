@@ -1889,44 +1889,19 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
 @media (min-width: 1024px) {
   .tower-rail { position: sticky; top: calc(var(--nav-h) + 28px); display: flex; flex-direction: column; align-items: center; gap: 0.75rem; align-self: start; height: calc(100vh - var(--nav-h) - 56px); }
 }
-.tower-svg { display: block; height: calc(100% - 2.5rem); width: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden;
-  --tw-sky-top: #6f9cc6; --tw-sky-mid: #b9cfe2; --tw-sky-bottom: #e6edf3;
-  --tw-glass-lit: #e9f0f6; --tw-glass-mid: #9fb4c8; --tw-glass-shade: #5b6f84;
-  --tw-crown-lit: #f1f5f8; --tw-crown-shade: #8396aa; --tw-spine-lit: #a6b6c6; --tw-spine-shade: #4f6075;
-  --tw-deck: #d7e0e8; --tw-deck-under: #5f7084; --tw-edge: #3a4a5c; --tw-haze: #e6edf3; --tw-streak: 0.45; }
-html[data-mode='dark'] .tower-svg { --tw-sky-top: #04070e; --tw-sky-mid: #0e1726; --tw-sky-bottom: #1b2638;
-  --tw-glass-lit: #4a5e74; --tw-glass-mid: #26344a; --tw-glass-shade: #131c29;
-  --tw-crown-lit: #6c7f94; --tw-crown-shade: #2a3647; --tw-spine-lit: #3c4b5e; --tw-spine-shade: #161f2c;
-  --tw-deck: #536273; --tw-deck-under: #1a2330; --tw-edge: #0b1018; --tw-haze: #1b2638; --tw-streak: 0.15; }
-.tw-clouds ellipse { fill: #ffffff; opacity: 0.75; }
-html[data-mode='dark'] .tw-clouds ellipse { fill: #9fb0c8; opacity: 0.08; }
-.tw-far { fill: #aebfd0; }
-.tw-mid { fill: #7e91a5; }
-.tw-mid-floor { stroke: #ffffff; stroke-opacity: 0.12; stroke-width: 1; }
-.tw-near { fill: #5d6f83; }
-html[data-mode='dark'] .tw-far { fill: #0e1624; }
-html[data-mode='dark'] .tw-mid { fill: #0c121c; }
-html[data-mode='dark'] .tw-mid-floor { stroke: #ffd98a; stroke-opacity: 0.1; }
-html[data-mode='dark'] .tw-near { fill: #080c13; }
-.tw-floor-line { stroke: #1d2b3a; stroke-opacity: 0.16; stroke-width: 0.7; }
-html[data-mode='dark'] .tw-floor-line { stroke: #9fb4c8; stroke-opacity: 0.08; }
-.tw-mullion { stroke: #ffffff; stroke-opacity: 0.18; stroke-width: 0.8; }
-.tw-rib { stroke: #1d2b3a; stroke-opacity: 0.45; stroke-width: 1.2; }
-html[data-mode='dark'] .tw-rib { stroke: #000; stroke-opacity: 0.6; }
-.tw-band { fill: #24364b; }
-html[data-mode='dark'] .tw-band { fill: #ffd98a; opacity: 0.55; }
-.tw-badge { fill: #1c2735; stroke: #e9eef3; stroke-width: 2.5; }
-.tw-a { fill: none; stroke: #e9eef3; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-html[data-mode='dark'] .tw-badge { stroke: #7fdcff; filter: drop-shadow(0 0 6px #4fc3ff); }
-html[data-mode='dark'] .tw-a { stroke: #bff1ff; }
-.tw-strut { fill: none; stroke: var(--tw-edge); stroke-width: 2.5; stroke-opacity: 0.6; }
-.tw-beacon { fill: #ff4d4d; }
-html[data-mode='dark'] .tw-beacon { filter: drop-shadow(0 0 4px #ff3b3b); animation: me-flicker 1.6s ease-in-out infinite; }
-.tw-deck-lights circle { fill: #ffffff; opacity: 0; }
-html[data-mode='dark'] .tw-deck-lights circle { fill: #ffe9a8; opacity: 1; filter: drop-shadow(0 0 3px #ffd25a); }
-.tw-lit rect { fill: #ffe7a0; opacity: 0; }
-html[data-mode='dark'] .tw-lit rect { opacity: 0.75; }
-.tw-podium { fill: #3f4d5e; }
+.tower-svg { display: block; height: calc(100% - 2.5rem); width: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; background: #050816; box-shadow: var(--shadow-card); }
+/* the tower at night: a beacon that blinks, a reactor that breathes, a Quinjet drifting in */
+.tw-beacon { animation: tw-blink 1.8s steps(1, end) infinite; }
+@keyframes tw-blink { 0%, 62% { opacity: 1; } 63%, 100% { opacity: 0.15; } }
+.tw-reactor { transform-box: fill-box; transform-origin: 50% 50%; animation: tw-breathe 4.5s ease-in-out infinite alternate; }
+@keyframes tw-breathe { from { opacity: 0.75; transform: scale(0.96); } to { opacity: 1; transform: scale(1.04); } }
+.tw-quinjet { animation: tw-approach 9s ease-in-out infinite alternate; }
+@keyframes tw-approach { from { transform: translate(6px, -6px); } to { transform: translate(-10px, 8px); } }
+.tw-chrysler { filter: drop-shadow(0 0 3px rgba(241, 236, 255, 0.8)); }
+.tw-pad-lights circle { animation: tw-twinkle 2.4s ease-in-out infinite alternate; }
+.tw-pad-lights circle:nth-child(odd) { animation-delay: -1.2s; }
+@keyframes tw-twinkle { from { opacity: 0.45; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tw-beacon, .tw-reactor, .tw-quinjet, .tw-pad-lights circle { animation: none; } }
 .tw-liftcar { transition: transform 0.6s cubic-bezier(0.5, 0, 0.2, 1); }
 .tower-now { font: 600 0.8rem/1.3 var(--font-mono); text-align: center; color: var(--accent-text); }
 .tower-floor-badge { display: inline-block; padding: 0.2rem 0.6rem; border: 1px solid var(--border-strong); border-radius: 999px; font: 600 0.72rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
