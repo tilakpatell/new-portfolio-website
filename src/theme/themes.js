@@ -19,6 +19,8 @@ export const THEMES = {
   pytorch: { id: 'pytorch', label: 'PyTorch', company: 'PyTorch', swatch: '#EE4C2C' },
   nvidia: { id: 'nvidia', label: 'NVIDIA', company: 'GPU research', swatch: '#76B900' },
   travel: { id: 'travel', label: 'Travel', company: 'Travel', swatch: '#0F766E' },
+  // the Caribbean page's own (its colours are in components/caribbean/caribbean.css)
+  tortuga: { id: 'tortuga', label: 'Tortuga', company: 'The Caribbean', swatch: '#D9A436' },
   // fan themes, unlocked by easter eggs
   jedi: { id: 'jedi', label: 'Jedi', company: 'Jedi Archives', swatch: '#2563EB', fan: true },
   sith: { id: 'sith', label: 'Sith', company: 'Sith', swatch: '#C1121F', fan: true },
@@ -83,6 +85,7 @@ export const ROUTE_THEMES = {
   '/projects/smart-summarizer': 'pytorch',
   '/projects/gpu-checkpoint-restart': 'nvidia',
   '/travel': 'travel',
+  '/caribbean': 'tortuga',
   '/music': 'raga',
   '/middle-earth': 'shire',
   '/avengers': 'stark',

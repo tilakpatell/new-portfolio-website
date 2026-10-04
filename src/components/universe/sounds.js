@@ -273,6 +273,7 @@ const ARRIVE = {
       ),
     ms: 1400,
   },
+  caribbean: { clip: 'pirates', duration: 6 },
 };
 
 // docking at one of the stations: two soft tones, up

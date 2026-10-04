@@ -1,0 +1,117 @@
+{
+  "sky": {
+    "source": "https://polyhaven.com/a/evening_road_01_puresky",
+    "id": "evening_road_01_puresky",
+    "name": "Evening Road 01 (Pure Sky)",
+    "authors": [
+      "Jarod Guest",
+      "Sergej Majboroda"
+    ],
+    "license": "CC0 1.0",
+    "size": "4096 × 1152",
+    "sun": {
+      "u": 0.5968,
+      "elevation": 9.98
+    },
+    "scale": 0.4455
+  },
+  "models/pearl": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-ba85-7659-a522-a3a7a719ede5",
+    "name": "the black-sailed galleon you sail, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/navy": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-bdbf-7511-9fcf-3d5390ee2338",
+    "name": "a navy ship of the line, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/ghost": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-c13a-75db-8f46-e7dcfe5c4e94",
+    "name": "the cursed ship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/kraken": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-c3b8-712f-97fa-90f7c73d7199",
+    "name": "the kraken, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/tentacle": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-c60d-7360-acd0-32f439882858",
+    "name": "one of its arms, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/fort": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-c8ab-7377-9a8c-0a0f9f890105",
+    "name": "the sea fort, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/skull": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-cb8c-71f8-b7a6-85dea87bcb89",
+    "name": "the skull island, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/port": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-ce52-7760-b4e2-7389255eb9d9",
+    "name": "the pirate port, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/palms": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-d0df-74db-b750-792ae396b37e",
+    "name": "a sandbar with palms, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/chest": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-d3a1-761e-ac77-0d6d7c678623",
+    "name": "a treasure chest on a raft, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/pearl-far": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-ba85-7659-a522-a3a7a719ede5",
+    "name": "the galleon, small, for the universe map, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  }
+}
