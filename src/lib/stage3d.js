@@ -1,5 +1,6 @@
 // The 3D games' common ground: a renderer set up the same way for each (ACES
-// tone mapping, sRGB, bloom for things that glow), sized to its canvas,
+// tone mapping, sRGB, multisampled, bloom for things that glow, then a grade:
+// contrast, saturation, split toning, a vignette and fine grain), sized to its canvas,
 // that steps its own quality down when frames run long, tells the game when
 // the GPU goes away, and frees everything it made when the game ends.
 //
@@ -10,6 +11,41 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+
+// The last step, on the display-ready picture: a film-like grade.
+const GRADE = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uContrast: { value: 0.12 },
+    uSat: { value: 1.04 },
+    uShadow: { value: new THREE.Color(0, 0.006, 0.02) },
+    uHigh: { value: new THREE.Color(0.02, 0.01, 0) },
+    uVignette: { value: 0.22 },
+    uGrain: { value: 0.022 },
+    uAspect: { value: 16 / 9 },
+    uTime: { value: 0 },
+  },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uContrast, uSat, uVignette, uGrain, uAspect, uTime;
+    uniform vec3 uShadow, uHigh;
+    varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = max(mix(vec3(l), c, uSat), 0.0);
+      c = mix(c, c * c * (3.0 - 2.0 * c), uContrast);
+      c += uShadow * (1.0 - l) * (1.0 - l) + uHigh * l * l;
+      vec2 q = vUv - 0.5;
+      q.x *= uAspect;
+      c *= 1.0 - uVignette * smoothstep(0.3, 1.05, length(q) * 1.3);
+      float n = fract(sin(dot(floor(gl_FragCoord.xy) + fract(uTime) * 71.0, vec2(12.9898, 78.233))) * 43758.5453);
+      c += (n - 0.5) * uGrain;
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`,
+};
 
 // Bright colours for things that glow: above 1, so bloom picks them up.
 export const hot = (hex, k = 1) => new THREE.Color(hex).multiplyScalar(k);
@@ -44,7 +80,7 @@ export function disposeTree(root) {
 const LADDER = ['full', 'ratio', 'shadows', 'bloom', 'low'];
 
 export function createStage(canvas, { soft = false, bloom = { strength: 0.65, radius: 0.42, threshold: 0.82 }, exposure = 1, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !soft, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;
@@ -57,11 +93,26 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(fov, 16 / 9, near, far);
 
-  const composer = new EffectComposer(renderer);
+  // the scene renders into a multisampled target (the canvas's own
+  // antialiasing doesn't reach an offscreen target), then bloom, then the
+  // tone map, then the grade
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: soft ? 0 : 4 });
+  const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(new THREE.Vector2(256, 256), bloom.strength, bloom.radius, bloom.threshold);
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
+  const gradePass = new ShaderPass(GRADE);
+  composer.addPass(gradePass);
+  const grade = (o = {}) => {
+    const u = gradePass.uniforms;
+    if (o.contrast != null) u.uContrast.value = o.contrast;
+    if (o.saturation != null) u.uSat.value = o.saturation;
+    if (o.vignette != null) u.uVignette.value = o.vignette;
+    if (o.grain != null) u.uGrain.value = o.grain;
+    if (o.shadow) u.uShadow.value.setRGB(...o.shadow);
+    if (o.high) u.uHigh.value.setRGB(...o.high);
+  };
   let useBloom = !soft;
   let level = soft ? LADDER.indexOf('bloom') : 0;
 
@@ -73,6 +124,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     composer.setPixelRatio(ratio);
     composer.setSize(size.w, size.h);
     bloomPass.resolution.set(size.w / 2, size.h / 2);
+    gradePass.uniforms.uAspect.value = size.w / size.h;
     camera.aspect = size.w / size.h;
     camera.updateProjectionMatrix();
   };
@@ -98,7 +150,15 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
         if (o.material) [].concat(o.material).forEach((m) => (m.needsUpdate = true));
       });
     }
-    if (level >= LADDER.indexOf('bloom')) useBloom = false;
+    if (level >= LADDER.indexOf('bloom') && useBloom) {
+      useBloom = false;
+      bloomPass.enabled = false;
+      // and stop multisampling
+      for (const rt of [composer.renderTarget1, composer.renderTarget2]) {
+        rt.samples = 0;
+        rt.dispose();
+      }
+    }
     if (level >= LADDER.indexOf('low') && ratio > 0.75) {
       ratio = 0.75;
       resize(size.w, size.h);
@@ -126,8 +186,10 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
 
   const render = (ms = 16) => {
     if (lost || disposed) return;
-    if (useBloom) composer.render();
-    else renderer.render(scene, camera);
+    gradePass.uniforms.uTime.value += ms / 1000;
+    // software rendering draws straight to the canvas: every full-screen pass costs
+    if (soft) renderer.render(scene, camera);
+    else composer.render();
     watch(ms);
   };
 
@@ -141,6 +203,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     if (scene.background?.isTexture) scene.background.dispose();
     composer.dispose?.();
     bloomPass.dispose?.();
+    gradePass.dispose?.();
     renderer.dispose();
     // the canvas is the game's own and goes with it: give the context back now
     renderer.forceContextLoss();
@@ -152,6 +215,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     camera,
     composer,
     bloomPass,
+    grade,
     resize,
     render,
     dispose,

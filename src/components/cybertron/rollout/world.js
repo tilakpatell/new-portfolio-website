@@ -1,58 +1,67 @@
-// Roll out's three stages as places: the sky, the road and the ground beside
+// Roll out's three stages as places: the sky, the road and the land beside
 // it, the canyon under a broken bridge, and layers of scenery that recycle
-// down the road (guard rails and posts near, cacti and street lamps in the
-// middle, mesas, towers and spires far off). Each stage brings its own light:
-// a Nevada sunset, Mission City at night, Kaon under a red sky. The surfaces
-// are scanned CC0 materials (Poly Haven, ambientCG) and the light the metal
-// reflects is a Poly Haven HDRI per stage; scripts/cc0.mjs fetches them all.
+// down the road (guard rails and dry grass near; shrubs, boulders, quiver
+// trees and street lamps in the middle; buttes, towers and megastructures far
+// off). Each stage brings its own light: a Nevada sunset, Mission City at
+// night, Kaon under a burning sky.
+//
+// The sky is a photographed CC0 pure sky (Poly Haven) turned so its sun sits
+// where the stage's light comes from, with mountains or a skyline along the
+// horizon; the fog takes its colour from the sky just above the horizon, so
+// the land fades into it. The surfaces are scanned CC0 materials (Poly
+// Haven, ambientCG) and the light the metal reflects is a Poly Haven HDRI per
+// stage; scripts/cc0.mjs fetches them all.
 
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { canvasTexture, hot } from '../../../lib/stage3d';
-import { paintChasm, paintClouds, paintConcrete, paintDeck, paintFacade, paintLanes, paintPavement, paintRoad, paintSand, paintSign, paintSpire, paintStrata, ROAD_TILE } from './paint';
+import { canvasTexture } from '../../../lib/stage3d';
+import { paintChasm, paintConcrete, paintDeck, paintFacade, paintLanes, paintPavement, paintRoad, paintSand, paintSign, paintStrata, ROAD_TILE } from './paint';
 import { ROLL } from './rules';
+import { createLand, cutFace, cutWiden, CUT_PAD } from './terrain';
+import { tuftGeometry, tuftMaterial } from './flora';
+import { gateGeometry, gateTrimGeometry, kaonMetal, megaGeometry } from './kaon';
 
+// sky: the photographed sky (u and elevation: where its own sun is, as
+// `npm run cc0` prints it), how bright, its tint, the sun drawn over it, how
+// much the horizon hazes into the fog, and what stands along the horizon
+// (1 mountains, 2 an iron skyline, 3 a city skyline). sunAz: the sun's
+// bearing (x, z); at night the light comes from sunElevation instead.
 export const LOOK = {
   jasper: {
     hdri: 'jasper',
-    env: 0.9,
-    exposure: 1.05,
-    fog: 0xc98a62,
-    fogDensity: 0.0052,
-    sky: { top: 0x3b3f78, mid: 0xd77a52, low: 0xf2b27a, sun: 0xffd9a0 },
-    sunDir: [-0.35, 0.16, -1],
-    sun: { color: 0xffc58f, k: 2.6 },
-    hemi: [0xf2b38a, 0x5a3a28, 0.75],
-    clouds: 0.46,
-    stars: 0,
+    env: 0.75,
+    exposure: 1.0,
+    sky: { tex: 'jasper-sky', u: 0.6077, elevation: 8.17, k: 1.0, tint: [1.16, 0.9, 0.72], sunK: 1.4, haze: 0.6, horizon: 1, ridge: [0.5, 0.42, 0.5], windows: [0, 0, 0] },
+    sunAz: [-0.85, -1],
+    fogDensity: 0.0025,
+    sun: { color: 0xffbf86, k: 3.4 },
+    hemi: [0xf2c8a8, 0x6a4a32, 0.5],
+    grade: { contrast: 0.16, saturation: 1.05, vignette: 0.26, shadow: [0.0, 0.01, 0.03], high: [0.035, 0.014, 0.0] },
     night: false,
   },
   mission: {
     hdri: 'mission',
-    env: 0.35,
-    exposure: 1.15,
-    fog: 0x1a2236,
-    fogDensity: 0.0068,
-    sky: { top: 0x050914, mid: 0x14203d, low: 0x40324a, sun: 0x9fb4ff },
-    sunDir: [0.4, 0.5, -1],
+    env: 0.22,
+    exposure: 0.95,
+    sky: { tex: 'mission-sky', u: 0.6, elevation: 38, k: 0.055, tint: [0.72, 0.8, 1.05], sunK: 0, haze: 0.85, horizon: 3, ridge: [0.32, 0.36, 0.5], windows: [1.6, 1.25, 0.8], glow: [0.32, 0.17, 0.08] },
+    sunAz: [0.4, -1],
+    sunElevation: 32,
+    fogDensity: 0.0062,
     sun: { color: 0x9fb4ff, k: 0.55 },
     hemi: [0x3a4a7a, 0x120f14, 0.55],
-    clouds: 0.35,
-    stars: 0.7,
+    grade: { contrast: 0.14, saturation: 1.08, vignette: 0.3, shadow: [0.0, 0.015, 0.04], high: [0.03, 0.015, 0.0] },
     night: true,
   },
   kaon: {
     hdri: 'kaon',
-    env: 0.45,
-    exposure: 1.1,
-    fog: 0x3a1714,
-    fogDensity: 0.0062,
-    sky: { top: 0x12060c, mid: 0x4a1410, low: 0xa8401a, sun: 0xff8a50 },
-    sunDir: [0.5, 0.22, -1],
-    sun: { color: 0xff8b5a, k: 1.2 },
-    hemi: [0xb0503a, 0x1a0a0c, 0.6],
-    clouds: 0.55,
-    stars: 0.9,
+    env: 0.5,
+    exposure: 1.05,
+    sky: { tex: 'kaon-sky', u: 0.6018, elevation: 4.13, k: 0.5, tint: [1.75, 0.58, 0.36], sunK: 2.2, haze: 0.9, horizon: 2, ridge: [0.22, 0.13, 0.13], windows: [2.4, 0.8, 0.25], glow: [0.25, 0.06, 0.02] },
+    sunAz: [0.55, -1],
+    fogDensity: 0.0044,
+    sun: { color: 0xff7a48, k: 2.0 },
+    hemi: [0xb0503a, 0x1a0a0c, 0.5],
+    grade: { contrast: 0.2, saturation: 1.02, vignette: 0.32, shadow: [0.02, 0.0, 0.01], high: [0.04, 0.01, 0.0] },
     night: true,
   },
 };
@@ -86,6 +95,68 @@ export function loadHdri(name, stage) {
   });
   cache.set(name, p);
   return p;
+}
+
+// The photographed skies, cached the same way. Stored range-compressed
+// (x / (1 + x), then gamma 2.2); the sky shader undoes it.
+const SKIES = new WeakMap();
+function loadSky(name, renderer) {
+  if (!SKIES.has(renderer)) SKIES.set(renderer, new Map());
+  const cache = SKIES.get(renderer);
+  if (!cache.has(name))
+    cache.set(
+      name,
+      new Promise((resolve) => {
+        new THREE.TextureLoader().load(
+          `/games/sky/${name}.webp`,
+          (tex) => {
+            tex.colorSpace = THREE.NoColorSpace;
+            tex.generateMipmaps = false;
+            tex.minFilter = THREE.LinearFilter;
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            tex.userData.shared = true;
+            resolve(tex);
+          },
+          undefined,
+          () => resolve(null),
+        );
+      }),
+    );
+  return cache.get(name);
+}
+
+// The sky's colour just above the horizon across the half ahead of you (so
+// the sun's own glow doesn't bleach it), a shade deeper: the fog's colour.
+function horizonColour(tex, sky, shift) {
+  const fallback = new THREE.Color(sky.tint[0], sky.tint[1], sky.tint[2]).multiplyScalar(0.35 * sky.k);
+  if (!tex?.image) return fallback;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 72;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(tex.image, 0, 0, 256, 72);
+    const row = x.getImageData(0, Math.round(((90 - 2.5) / 101.25) * 72), 256, 1).data;
+    const dec = (v) => {
+      const l = (v / 255) ** 2.2;
+      return l / Math.max(1 - l, 0.004);
+    };
+    const sum = [0, 0, 0];
+    const u0 = 0.25 + shift;
+    let n = 0;
+    for (let k = -64; k <= 64; k++) {
+      const px = (((Math.floor((u0 + k / 256) * 256) % 256) + 256) % 256) * 4;
+      // the median-ish: brightest pixels (the sun) count for less
+      const w = 1 / (1 + dec(row[px]) + dec(row[px + 1]));
+      for (let ch = 0; ch < 3; ch++) sum[ch] += dec(row[px + ch]) * w;
+      n += w;
+    }
+    const deep = sky.fogK ?? 0.82;
+    return new THREE.Color((sum[0] / n) * sky.k * sky.tint[0] * deep, (sum[1] / n) * sky.k * sky.tint[1] * deep, (sum[2] / n) * sky.k * sky.tint[2] * deep);
+  } catch {
+    return fallback;
+  }
 }
 
 // A material that cuts holes for the broken bridges: anything between a
@@ -150,46 +221,81 @@ function worldUv(material, tileW, tileH, key) {
   return material;
 }
 
-// The sky: a gradient dome with a sun (or a red giant over Kaon), clouds, and
-// stars at night. It follows the camera.
-function buildSky(look, clouds) {
+// The sky dome: the photograph, the sun over it, haze at the horizon, and
+// mountains or a skyline standing along it. It follows the camera.
+function buildSky(look, tex, sunDir, shift, fogCol) {
   const s = look.sky;
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
     uniforms: {
-      top: { value: new THREE.Color(s.top) },
-      mid: { value: new THREE.Color(s.mid) },
-      low: { value: new THREE.Color(s.low) },
-      sunCol: { value: new THREE.Color(s.sun) },
-      sunDir: { value: new THREE.Vector3(...look.sunDir).normalize() },
-      clouds: { value: clouds },
-      cloudK: { value: look.clouds },
-      stars: { value: look.stars },
-      night: { value: look.night ? 1 : 0 },
-      t: { value: 0 },
+      skyTex: { value: tex },
+      hasTex: { value: tex ? 1 : 0 },
+      skyK: { value: s.k },
+      shift: { value: shift },
+      tint: { value: new THREE.Vector3(...s.tint) },
+      sunK: { value: s.sunK },
+      sunCol: { value: new THREE.Color(look.sun.color) },
+      sunDir: { value: sunDir.clone() },
+      haze: { value: s.haze },
+      fogCol: { value: fogCol },
+      horizon: { value: s.horizon },
+      ridgeCol: { value: new THREE.Vector3(...s.ridge) },
+      windowCol: { value: new THREE.Vector3(...s.windows) },
+      glow: { value: new THREE.Vector3(...(s.glow ?? [0, 0, 0])) },
     },
     vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
     fragmentShader: `
-      uniform vec3 top, mid, low, sunCol, sunDir; uniform sampler2D clouds; uniform float cloudK, stars, night, t;
+      uniform sampler2D skyTex;
+      uniform float hasTex, skyK, shift, sunK, haze, horizon;
+      uniform vec3 tint, sunCol, sunDir, fogCol, ridgeCol, windowCol, glow;
       varying vec3 vDir;
-      float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      float h1(float n) { return fract(sin(n * 127.1) * 43758.5453); }
+      float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      vec3 photo(vec3 d) {
+        float el = degrees(asin(clamp(d.y, -1.0, 1.0)));
+        float u = atan(d.z, d.x) / 6.2831853 + 0.5 + shift;
+        float v = 1.0 - (90.0 - max(el, -11.0)) / 101.25;
+        vec3 l = pow(texture2D(skyTex, vec2(u, clamp(v, 0.002, 0.998))).rgb, vec3(2.2));
+        return l / max(vec3(1.0) - l, vec3(0.004));
+      }
+      float ridge(float a, float s) {
+        return 0.5 + 0.24 * sin(a * 3.0 + s) + 0.13 * sin(a * 7.0 + s * 2.3) + 0.08 * abs(sin(a * 17.0 + s * 1.7)) + 0.04 * abs(sin(a * 43.0 + s * 3.1)) - 0.06;
+      }
       void main() {
         vec3 d = normalize(vDir);
         float h = d.y;
-        vec3 c = h > 0.0 ? mix(mix(low, mid, smoothstep(0.0, 0.18, h)), top, smoothstep(0.12, 0.75, h)) : mix(low, low * 0.35, smoothstep(0.0, -0.3, h));
-        float sd = max(0.0, dot(d, normalize(sunDir)));
-        c += sunCol * (pow(sd, 900.0) * 6.0 + pow(sd, 28.0) * 0.55 + pow(sd, 4.0) * 0.18) * (1.0 - night * 0.55);
-        if (stars > 0.0 && h > 0.02) {
-          vec3 g = floor(d * 380.0);
-          float s = step(0.9965, hash(g)) * smoothstep(0.02, 0.25, h);
-          c += vec3(s) * stars * (0.6 + 0.4 * sin(t * 2.0 + hash(g * 1.7) * 40.0));
+        vec3 c = hasTex > 0.5 ? photo(d) * skyK * tint : mix(fogCol, fogCol * 0.5, smoothstep(0.0, 0.6, h));
+        float sd = max(dot(d, sunDir), 0.0);
+        c += sunCol * sunK * (smoothstep(0.99993, 0.99997, sd) * 40.0 + pow(sd, 900.0) * 3.0 + pow(sd, 60.0) * 0.4 + pow(sd, 7.0) * 0.1);
+        c += glow * exp(-max(h, 0.0) * 9.0);
+        c = mix(c, fogCol, (1.0 - smoothstep(-0.01, 0.15, h)) * haze);
+        float a = atan(d.x, -d.z);
+        float aa = 0.0014;
+        if (horizon > 0.5 && horizon < 1.5) {
+          // two ranges far off, the nearer one darker
+          float far = 0.014 + 0.028 * ridge(a, 1.3);
+          float near = 0.003 + 0.03 * ridge(a * 1.4, 4.1) * ridge(a * 0.6, 2.0);
+          c = mix(c, mix(fogCol, fogCol * ridgeCol * 1.6, 0.35), smoothstep(far + aa, far - aa, h));
+          c = mix(c, mix(fogCol, fogCol * ridgeCol, 0.55), smoothstep(near + aa, near - aa, h));
+        } else if (horizon > 1.5) {
+          // skylines: towers far off, a few windows lit
+          for (int L = 0; L < 2; L++) {
+            float fl = float(L);
+            float n = 80.0 + fl * 46.0;
+            float cell = floor(a * n);
+            float r = h1(cell + fl * 31.0);
+            float top = 0.008 + pow(r, 2.4) * (horizon > 2.5 ? 0.04 + fl * 0.03 : 0.05 + fl * 0.04);
+            if (horizon < 2.5 && r > 0.82) top += (1.0 - abs(fract(a * n) - 0.5) * 2.0) * (0.03 + fl * 0.02);
+            float inside = smoothstep(top + aa * 0.6, top - aa * 0.6, h);
+            vec3 bc = mix(fogCol, fogCol * ridgeCol, 0.45 + fl * 0.35);
+            vec2 wc = floor(vec2(a * n * 7.0, h * 520.0));
+            float lit = step(horizon > 2.5 ? 0.86 : 0.94, h2(wc + fl * 17.0)) * step(0.45, fract(h * 520.0)) * step(0.3, fract(a * n * 7.0));
+            bc += windowCol * lit * (0.5 + fl * 0.5) * step(0.004, top - h);
+            c = mix(c, bc, inside);
+          }
         }
-        vec2 uv = vec2(atan(d.x, -d.z) / 6.2831853 + 0.5, clamp(h * 1.6, 0.0, 1.0));
-        vec4 cl = texture2D(clouds, vec2(uv.x * 2.0, uv.y));
-        vec3 lit = mix(c * 0.6 + sunCol * 0.15, low * 1.15 + sunCol * 0.25, pow(sd, 3.0));
-        c = mix(c, lit, cl.a * cloudK * smoothstep(0.0, 0.08, h));
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -259,49 +365,48 @@ function rnd(seed) {
   };
 }
 
-// A mesa: a noisy flat-topped prism with strata down its sides.
-function mesaGeometry(seed) {
-  const r = rnd(seed);
-  const shape = new THREE.Shape();
-  const n = 14;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    const rad = 1 + (r() - 0.5) * 0.45;
-    const x = Math.cos(a) * rad * (1.6 + r() * 0.3);
-    const y = Math.sin(a) * rad;
-    if (i) shape.lineTo(x, y);
-    else shape.moveTo(x, y);
-  }
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.35, bevelSegments: 2, steps: 3 });
-  geo.rotateX(-Math.PI / 2);
-  // flare the foot out into a scree slope
-  const p = geo.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const y = p.getY(i);
-    const k = 1 + Math.max(0, 0.4 - y) * 0.9;
-    p.setXYZ(i, p.getX(i) * k, y, p.getZ(i) * k);
-  }
-  // UVs from position so the strata run level round the sides
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < p.count; i++) uv.setXY(i, (Math.atan2(p.getZ(i), p.getX(i)) / Math.PI + 1) * 3, p.getY(i) * 0.9);
-  geo.computeVertexNormals();
-  return geo;
+// A guard rail's W-beam, in section, as a thin sheet bulging toward the road.
+function wBeam() {
+  const P = [
+    [0, -0.16],
+    [0.05, -0.125],
+    [0.052, -0.055],
+    [0.018, -0.01],
+    [0.018, 0.01],
+    [0.052, 0.055],
+    [0.05, 0.125],
+    [0, 0.16],
+  ];
+  const s = new THREE.Shape();
+  s.moveTo(P[0][0], P[0][1]);
+  for (const [x, y] of P.slice(1)) s.lineTo(x, y);
+  for (const [x, y] of P.slice().reverse()) s.lineTo(x - 0.01, y);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 4.02, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0.66, -2.01);
+  return g;
 }
 
 // ── one stage's place ──
 
-// The Poly Haven sets each stage is surfaced with (see scripts/cc0.mjs).
 // The scanned props each stage scatters (see scripts/cc0.mjs).
 const PROPS = {
-  jasper: ['quiver-tree', 'rock', 'tyre', 'barrel'],
+  jasper: ['quiver-tree', 'rock', 'tyre', 'barrel', 'shrub', 'brush', 'boulders', 'boulder', 'dead-trunk'],
   mission: ['street-lamp', 'utility-box', 'trash-can'],
   kaon: ['barrel'],
 };
 
+// The Poly Haven sets each stage is surfaced with.
 const SETS = {
-  jasper: { road: 'asphalt-desert', ground: 'desert-ground', rock: 'mesa-rock' },
-  mission: { road: 'asphalt-city', ground: 'sidewalk', rock: 'concrete' },
-  kaon: { road: 'plate-road', ground: 'plate-deck', rock: 'mesa-rock' },
+  jasper: { road: 'asphalt-desert', ground: 'desert-ground', ground2: 'desert-sand', rock: 'mesa-rock' },
+  mission: { road: 'asphalt-city', ground: 'sidewalk', ground2: null, rock: 'concrete' },
+  kaon: { road: 'plate-road', ground: 'plate-deck', ground2: 'plate-road', rock: 'plate-road' },
+};
+
+// How each stage's land takes its sets: tile sizes in metres (ground, second
+// ground, rock), tints, where the slope turns to rock.
+const LAND = {
+  desert: { tile: [4.6, 7.5, 18], tint: [0xffffff, 0xf2e2cf, 0xf0c8a8], rock: [0.3, 0.5], metal: false, env: 0.5, sheen: 0.3, key: 'desert' },
+  kaon: { tile: [7, 9, 9], tint: [0x6c6a74, 0x55535c, 0x8a8894], rock: [0.22, 0.4], metal: true, env: 1.1, sheen: 1, key: 'kaon' },
 };
 
 export async function buildWorld(id, renderer, { big = true, M, shared, lib, models }) {
@@ -316,12 +421,17 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   const size = big ? 512 : 256;
   const kind = id === 'jasper' ? 'desert' : id === 'mission' ? 'city' : 'kaon';
   const want = SETS[id];
-  const [roadSet, groundSet, rockSet] = await Promise.all([want.road, want.ground, want.rock].map((n) => lib.load(n)));
+  const [roadSet, groundSet, ground2Set, rockSet, skyTex] = await Promise.all([...[want.road, want.ground, want.ground2, want.rock].map((n) => (n ? lib.load(n) : null)), loadSky(look.sky.tex, renderer)]);
+
+  // the sun: its bearing from the stage, its height from the photograph
+  const az = new THREE.Vector2(look.sunAz[0], look.sunAz[1]).normalize();
+  const el = THREE.MathUtils.degToRad(look.sky.sunK ? look.sky.elevation : look.sunElevation);
+  const sunDir = new THREE.Vector3(az.x * Math.cos(el), Math.sin(el), az.y * Math.cos(el));
+  const shift = look.sky.u - (Math.atan2(sunDir.z, sunDir.x) / (2 * Math.PI) + 0.5);
+  const fogCol = horizonColour(skyTex, look.sky, shift);
 
   // sky
-  const cloudTex = T(paintClouds({ w: big ? 1024 : 512, h: 256, seed: id.length * 31, cover: look.clouds }), { srgb: true });
-  cloudTex.wrapT = THREE.ClampToEdgeWrapping;
-  const sky = buildSky(look, cloudTex);
+  const sky = buildSky(look, skyTex, sunDir, shift, fogCol);
   root.add(sky);
 
   // the road: a strip that steps forward a tile at a time, so its texture
@@ -346,7 +456,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     new THREE.MeshStandardMaterial({
       map: T(lanesP.color, { repeat: [1, along] }),
       emissiveMap: lanesP.emissive ? T(lanesP.emissive, { repeat: [1, along] }) : null,
-      emissive: lanesP.emissive ? new THREE.Color(2.2, 1.4, 1) : new THREE.Color(0, 0, 0),
+      emissive: lanesP.emissive ? new THREE.Color(1.1, 0.55, 0.3) : new THREE.Color(0, 0, 0),
       transparent: true,
       depthWrite: false,
       roughness: 0.55,
@@ -363,47 +473,65 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   lanes.renderOrder = 1;
   root.add(lanes);
 
-  // the ground either side
+  // the land either side: rolling ground and buttes (Jasper), iron terraces
+  // (Kaon); Mission City's is flat pavement
+  const painted = (p) => {
+    const arm = new THREE.DataTexture(new Uint8Array([255, 235, 0, 255]), 1, 1);
+    arm.needsUpdate = true;
+    own.push(arm);
+    return { color: T(p.color), normal: T(p.normal, { srgb: false }), arm };
+  };
+  let land = null;
+  let ground = null;
+  let groundMat = null;
   const GT = 16;
   const GW = 520;
   const GL = 528;
-  const per = kind === 'city' ? 8 : 4; // texture repeats per 16 m
-  let groundMat;
-  if (groundSet) {
-    groundMat = lib.material(groundSet, { repeat: [(GW / GT) * per, (GL / GT) * per], metal: kind === 'kaon', envMapIntensity: 0.6, normalScale: new THREE.Vector2(1.2, 1.2), color: kind === 'kaon' ? 0x8a7a76 : 0xffffff });
+  if (kind !== 'city') {
+    const fallback = kind === 'desert' ? paintSand({ size, seed: 5 }) : paintDeck({ size, seed: 7 });
+    const flat = groundSet ?? painted(fallback);
+    const rock = rockSet ?? (kind === 'desert' ? painted(paintStrata({ size, seed: 9, palette: kind })) : flat);
+    land = createLand(kind, { big, sets: { flat, flat2: ground2Set ?? flat, rock }, look: LAND[kind] });
+    root.add(land.mesh);
   } else {
-    const groundP = kind === 'desert' ? paintSand({ size, seed: 5 }) : kind === 'city' ? paintPavement({ size, seed: 6 }) : paintDeck({ size, seed: 7 });
-    groundMat = new THREE.MeshStandardMaterial({ map: T(groundP.color, { repeat: [GW / GT, GL / GT] }), normalMap: T(groundP.normal, { repeat: [GW / GT, GL / GT], srgb: false }), roughnessMap: T(groundP.rough, { repeat: [GW / GT, GL / GT], srgb: false }), roughness: 1 });
+    if (groundSet) {
+      groundMat = lib.material(groundSet, { repeat: [(GW / GT) * 8, (GL / GT) * 8], envMapIntensity: 0.6, normalScale: new THREE.Vector2(1.2, 1.2) });
+    } else {
+      const groundP = paintPavement({ size, seed: 6 });
+      groundMat = new THREE.MeshStandardMaterial({ map: T(groundP.color, { repeat: [GW / GT, GL / GT] }), normalMap: T(groundP.normal, { repeat: [GW / GT, GL / GT], srgb: false }), roughnessMap: T(groundP.rough, { repeat: [GW / GT, GL / GT], srgb: false }), roughness: 1 });
+    }
+    holes(groundMat, `ground-${id}`);
+    ground = new THREE.Mesh(new THREE.PlaneGeometry(GW, GL), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.03;
+    ground.receiveShadow = true;
+    root.add(ground);
   }
-  holes(groundMat, `ground-${id}`);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GW, GL), groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.03;
-  ground.receiveShadow = true;
-  root.add(ground);
+  const height = land ? land.height : () => 0;
 
-  // the canyon under a broken bridge: walls, a river (or lava), the deck's
-  // broken ends and the piers that held it up
-  const rockTint = kind === 'kaon' ? 0x6a3a30 : kind === 'city' ? 0x9a9a9a : 0xffffff;
+  // the canyon under a broken bridge: rock faces (cut through the land, or
+  // straight down in the city), a river (or lava), the deck's broken ends and
+  // the piers that held it up
+  const rockTint = kind === 'kaon' ? 0x6a5a58 : kind === 'city' ? 0x9a9a9a : 0xf0c8a8;
   let rockMat;
-  if (rockSet) rockMat = lib.material(rockSet, { repeat: [GW / 26, 40 / 26], color: rockTint, normalScale: new THREE.Vector2(1.4, 1.4) });
+  if (rockSet) rockMat = lib.material(rockSet, { repeat: land ? [1, 1] : [GW / 26, 40 / 26], color: rockTint, metal: kind === 'kaon', normalScale: new THREE.Vector2(1.4, 1.4) });
   else {
     const strata = paintStrata({ size, seed: 9, palette: kind });
-    rockMat = new THREE.MeshStandardMaterial({ map: T(strata.color, { repeat: [12, 2] }), normalMap: T(strata.normal, { repeat: [12, 2], srgb: false }), roughness: 0.95 });
+    rockMat = new THREE.MeshStandardMaterial({ map: T(strata.color, { repeat: land ? [1, 1] : [12, 2] }), normalMap: T(strata.normal, { repeat: land ? [1, 1] : [12, 2], srgb: false }), roughness: 0.95 });
   }
-  // the mesas use the same rock, repeated at their own scale
-  const mesaMat = rockSet ? lib.material(rockSet, { repeat: [1, 1], color: rockTint, normalScale: new THREE.Vector2(1.5, 1.5) }) : rockMat;
+  rockMat.side = THREE.DoubleSide;
+  if (land) rockMat.vertexColors = true;
   const chasmP = paintChasm({ size: 256, kind });
   const chasmMat = new THREE.MeshStandardMaterial({
-    map: T(chasmP.color, { repeat: [30, 3] }),
-    emissiveMap: chasmP.emissive ? T(chasmP.emissive, { repeat: [30, 3] }) : null,
+    map: T(chasmP.color, { repeat: [60, 6] }),
+    emissiveMap: chasmP.emissive ? T(chasmP.emissive, { repeat: [60, 6] }) : null,
     emissive: chasmP.emissive ? new THREE.Color(2.2, 1, 0.3) : new THREE.Color(0, 0, 0),
     roughness: kind === 'kaon' ? 0.6 : 0.08,
     metalness: kind === 'kaon' ? 0 : 0.3,
     envMapIntensity: 1.4,
   });
   const deckMat = shared.concreteMat;
-  rockMat.side = THREE.DoubleSide;
+  const FLOOR_W = land ? 1640 : GW;
   // the ramp's side profile, extruded across the road
   const profile = new THREE.Shape();
   profile.moveTo(0, 0);
@@ -417,11 +545,19 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   const lipMat = new THREE.MeshStandardMaterial({ map: shared.hazard, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2 });
   const canyons = [0, 1].map(() => {
     const g = new THREE.Group();
-    const near = new THREE.Mesh(new THREE.PlaneGeometry(GW, 40), rockMat);
-    near.position.y = -20;
-    const far = near.clone();
-    far.rotation.y = Math.PI;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(GW, 1), chasmMat);
+    let near;
+    let far;
+    if (land) {
+      near = cutFace(height, { big });
+      far = cutFace(height, { big });
+      g.add(new THREE.Mesh(near.geo, rockMat), new THREE.Mesh(far.geo, rockMat));
+    } else {
+      near = new THREE.Mesh(new THREE.PlaneGeometry(GW, 40), rockMat);
+      far = near.clone();
+      far.rotation.y = Math.PI;
+      g.add(near, far);
+    }
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, 1), chasmMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -26;
     const deckA = new THREE.Mesh(new THREE.BoxGeometry(ROAD_TILE + 0.6, 1.3, 3.2), deckMat);
@@ -445,7 +581,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     ramp.castShadow = ramp.receiveShadow = true;
     const lip = new THREE.Mesh(lipGeo, lipMat);
     lip.rotation.x = -Math.PI / 2 + Math.atan2(ROLL.ramp.h, ROLL.ramp.len);
-    g.add(near, far, floor, deckA, deckB, chunks, rebars, ramp, lip);
+    g.add(floor, deckA, deckB, chunks, rebars, ramp, lip);
     g.visible = false;
     root.add(g);
     return { g, near, far, floor, deckA, deckB, piers, chunks, rebars, ramp, lip, gap: null };
@@ -454,12 +590,18 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     c.gap = gap;
     const z0 = gap.z;
     const z1 = gap.z + gap.len;
-    const pad = 3.4;
-    c.near.position.set(0, -20, -(z0 - pad));
-    c.far.position.set(0, -20, -(z1 + pad));
-    c.near.rotation.y = Math.PI;
-    c.far.rotation.y = 0;
-    c.floor.scale.y = z1 - z0 + pad * 2; // the plane's own y runs along the road once laid flat
+    const pad = CUT_PAD;
+    if (land) {
+      c.near.shape(z0, 1, -30);
+      c.far.shape(z1, -1, -30);
+    } else {
+      c.near.position.set(0, -20, -(z0 - pad));
+      c.far.position.set(0, -20, -(z1 + pad));
+      c.near.rotation.y = Math.PI;
+      c.far.rotation.y = 0;
+    }
+    const reach = land ? cutWiden(820) + pad : pad;
+    c.floor.scale.y = z1 - z0 + reach * 2; // the plane's own y runs along the road once laid flat
     c.ramp.position.set(0, 0, -(z0 - ROLL.ramp.len));
     c.lip.position.set(0, ROLL.ramp.h * (1 - 0.35 / ROLL.ramp.len) + 0.015, -(z0 - 0.35));
     c.floor.position.set(0, -26, -(z0 + z1) / 2);
@@ -494,16 +636,30 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   };
 
   // ── scenery ──
+  // Nothing stands where a canyon cuts the land: this stage's broken bridges
+  // are all known when it starts.
+  let gapsNow = [];
+  const inCut = (x, z) => {
+    const w = CUT_PAD + (land ? cutWiden(x) : 0) + 2;
+    for (const p of gapsNow) if (z > p.z - w && z < p.z + p.len + w) return true;
+    return false;
+  };
+  const steep = (x, z) => {
+    const h = height(x, z);
+    return Math.hypot(height(x + 1, z) - h, height(x, z + 1) - h) > 0.55;
+  };
   const cut = []; // [material, extra margin] for everything cut at a broken bridge
-  // near: rails and kerbs; mid: trees, rocks, lamps and roadside junk (CC0
-  // scans); far: mesas, towers and spires
   const bands = [];
+  const keep = (place) => (i, r, z) => {
+    const t = place(i, r, z);
+    return t && !inCut(t.x, t.z) ? t : null;
+  };
   const band = (geo, mat, count, length, place, { shadow = false } = {}) => {
     const mesh = new THREE.InstancedMesh(geo, mat, count);
     mesh.castShadow = shadow;
     mesh.receiveShadow = true;
     root.add(mesh);
-    const b = new Band(mesh, count, length, place);
+    const b = new Band(mesh, count, length, keep(place));
     bands.push(b);
     return b;
   };
@@ -512,59 +668,127 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     if (!model) return null;
     const inst = models.instanced(model, count, { shadow, scale });
     inst.addTo(root);
-    const b = new Band(inst, count, length, place);
+    const b = new Band(inst, count, length, keep(place));
     bands.push(b);
     return b;
   };
   const sideX = (r, lo, hi) => (r() < 0.5 ? -1 : 1) * (lo + r() * (hi - lo));
+  // stood on the land, a little sunk so nothing floats on a slope
+  const on = (x, z, sink = 0.1) => height(x, z) - sink;
   const props = await Promise.all((PROPS[id] ?? []).map((n) => models.load(n)));
   const prop = (n) => props[(PROPS[id] ?? []).indexOf(n)] ?? null;
+  // a model's scale to stand h metres tall
+  const tall = (model, h) => (model ? h / Math.max(0.01, model.size.y) : 1);
 
-  const railMat = holes(new THREE.MeshStandardMaterial({ color: 0xb8bec6, metalness: 0.85, roughness: 0.35 }), `rail-${id}`);
+  const railMat = holes(new THREE.MeshStandardMaterial({ color: 0xc4cad2, metalness: 0.9, roughness: 0.32 }), `rail-${id}`);
+  const postMat = holes(new THREE.MeshStandardMaterial({ color: 0x8e949c, metalness: 0.75, roughness: 0.5 }), `post-${id}`);
   const reflMat = holes(M.lamp(0xffb34a, 1.6), `refl-${id}`);
-  cut.push([railMat, 0], [reflMat, 0]);
+  cut.push([railMat, 0], [postMat, 0], [reflMat, 0]);
   if (kind === 'desert') {
-    const postGeo = new THREE.BoxGeometry(0.14, 0.9, 0.14);
-    postGeo.translate(0, 0.45, 0);
-    band(postGeo, railMat, 120, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.25, z: z + (i % 2) * 2, y: 0 }));
-    const railGeo = new THREE.BoxGeometry(0.06, 0.32, 4.02);
-    railGeo.translate(0, 0.72, 0);
-    band(railGeo, railMat, 120, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.15, z: z + (i % 2) * 2 + 2, y: 0 }));
+    // W-beam guard rail on steel posts, reflector posts beyond it
+    const postGeo = new THREE.BoxGeometry(0.1, 0.84, 0.16);
+    postGeo.translate(0, 0.42, 0);
+    band(postGeo, postMat, 120, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.27, z: z + (i % 2) * 2, y: on(7.27, z, 0.05) }));
+    band(wBeam(), railMat, 120, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.2, z: z + (i % 2) * 2 + 2, ry: i % 2 ? Math.PI : 0 }));
     const refl = new THREE.CylinderGeometry(0.035, 0.035, 1.1, 6);
     refl.translate(0, 0.55, 0);
-    band(refl, reflMat, 40, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.6, z: z + 3, y: 0 }));
+    band(refl, reflMat, 40, 240, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.9, z: z + 3, y: on(7.9, z + 3, 0.05) }));
   } else if (kind === 'kaon') {
-    // Kaon: iron kerb blocks, a faint molten seam
-    const kerb = new THREE.BoxGeometry(0.45, 0.3, 2.6);
-    kerb.translate(0, 0.15, 0);
-    const kerbMat = holes(new THREE.MeshStandardMaterial({ color: 0x2a2c33, metalness: 0.8, roughness: 0.4, emissive: hot(0xff4a1a, 1), emissiveIntensity: 0.14 }), 'kerb');
-    cut.push([kerbMat, 0]);
-    band(kerb, kerbMat, 100, 300, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.1, z, y: 0 }));
+    // Kaon: low iron barriers with an amber lamp on every other one
+    const kerb = new THREE.BoxGeometry(0.5, 0.42, 3.4);
+    kerb.translate(0, 0.21, 0);
+    const kerbMat = holes(new THREE.MeshStandardMaterial({ color: 0x3a3c44, metalness: 0.85, roughness: 0.38 }), 'kerb');
+    const lampMat = holes(M.lamp(0xff8a2a, 1.4), 'kerb-lamp');
+    cut.push([kerbMat, 0], [lampMat, 0]);
+    band(kerb, kerbMat, 100, 400, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.15, z }));
+    const lamp = new THREE.BoxGeometry(0.16, 0.06, 0.5);
+    lamp.translate(0, 0.45, 0);
+    band(lamp, lampMat, 50, 400, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.15, z }));
   }
 
   if (kind === 'desert') {
-    // quiver trees and boulders (Poly Haven scans), tyres and barrels dumped
-    // by the road, telephone poles, and the mesas far off
-    modelBand(prop('quiver-tree'), 46, 380, (i, r, z) => ({ x: sideX(r, 10, 70), z: z + r() * 8, s: 2.6 + r() * 2.2, ry: r() * 6.3 }), { shadow: true });
-    modelBand(prop('rock'), 70, 360, (i, r, z) => ({ x: sideX(r, 11, 80), z: z + r() * 5, s: [3 + r() * 9, 2.5 + r() * 7, 3 + r() * 9], ry: r() * 6.3, y: -0.1 }), { shadow: true });
-    modelBand(prop('tyre'), 10, 420, (i, r, z) => ({ x: sideX(r, 8.2, 11), z, s: 1.1, rx: Math.PI / 2, ry: r() * 6.3, y: 0.08 }), { shadow: true });
-    modelBand(prop('barrel'), 8, 520, (i, r, z) => ({ x: sideX(r, 8.4, 12), z, s: 1, ry: r() * 6.3, rz: r() < 0.4 ? Math.PI / 2 : 0, y: 0 }), { shadow: true });
-    const pole = new THREE.CylinderGeometry(0.12, 0.16, 9, 7);
+    // dry grass, thick by the road and thinning out
+    const tufts = new THREE.InstancedMesh(tuftGeometry({ seed: 11 }), tuftMaterial({ fadeFrom: 92, fadeTo: 128 }), big ? 2600 : 1300);
+    const tint = new THREE.Color();
+    const tr = rnd(77);
+    for (let i = 0; i < tufts.count; i++) tufts.setColorAt(i, tint.setHSL(0.09 + tr() * 0.05, 0.25 + tr() * 0.3, 0.42 + tr() * 0.2).multiplyScalar(1.6));
+    tufts.receiveShadow = true;
+    root.add(tufts);
+    bands.push(
+      new Band(
+        tufts,
+        tufts.count,
+        160,
+        keep((i, r, z) => {
+          const x = (r() < 0.5 ? -1 : 1) * (7.7 + r() ** 1.8 * 60);
+          const zz = z + r() * 3;
+          if (steep(x, zz)) return null;
+          return { x, z: zz, y: on(x, zz, 0.04), s: 0.7 + r() * 0.9, ry: r() * 6.3 };
+        }),
+      ),
+    );
+    // shrubs and brush, boulders, quiver trees (Poly Haven scans); tyres and
+    // barrels dumped by the road; telephone poles
+    const shrub = prop('shrub');
+    modelBand(shrub, 90, 360, (i, r, z) => {
+      const x = sideX(r, 8.5, 130);
+      const zz = z + r() * 4;
+      return steep(x, zz) ? null : { x, z: zz, y: on(x, zz, 0.08), s: tall(shrub, 0.7 + r() * 1.1), ry: r() * 6.3 };
+    });
+    const brush = prop('brush');
+    modelBand(brush, 24, 320, (i, r, z) => {
+      const x = sideX(r, 8.2, 40);
+      const zz = z + r() * 6;
+      return { x, z: zz, y: on(x, zz, 0.05), s: tall(brush, 0.35 + r() * 0.3), ry: r() * 6.3 };
+    });
+    const tree = prop('quiver-tree');
+    modelBand(tree, 40, 520, (i, r, z) => {
+      const x = sideX(r, 11, 150);
+      const zz = z + r() * 8;
+      return steep(x, zz) ? null : { x, z: zz, y: on(x, zz, 0.15), s: 2.4 + r() * 2.4, ry: r() * 6.3 };
+    }, { shadow: true });
+    const trunk = prop('dead-trunk');
+    modelBand(trunk, 10, 480, (i, r, z) => {
+      const x = sideX(r, 10, 60);
+      const zz = z + r() * 8;
+      return { x, z: zz, y: on(x, zz, 0.1), s: tall(trunk, 1.4 + r() * 1.6), ry: r() * 6.3 };
+    }, { shadow: true });
+    const boulders = prop('boulders');
+    modelBand(boulders, 22, 480, (i, r, z) => {
+      const x = sideX(r, 12, 160);
+      const zz = z + r() * 10;
+      return { x, z: zz, y: on(x, zz, 0.4), s: tall(boulders, 1.4 + r() * 4 * (Math.abs(x) / 160 + 0.4)), ry: r() * 6.3 };
+    });
+    const boulder = prop('boulder');
+    modelBand(boulder, 30, 440, (i, r, z) => {
+      const x = sideX(r, 9.5, 120);
+      const zz = z + r() * 10;
+      return { x, z: zz, y: on(x, zz, 0.3), s: tall(boulder, 0.6 + r() * 2.6), ry: r() * 6.3, rx: (r() - 0.5) * 0.3 };
+    });
+    modelBand(prop('rock'), 16, 420, (i, r, z) => {
+      const x = sideX(r, 30, 200);
+      const zz = z + r() * 5;
+      return { x, z: zz, s: [3 + r() * 9, 2.5 + r() * 7, 3 + r() * 9], ry: r() * 6.3, y: on(x, zz, 0.6) };
+    });
+    modelBand(prop('tyre'), 8, 420, (i, r, z) => {
+      const x = sideX(r, 8.4, 11);
+      return { x, z, s: 1.1, rx: Math.PI / 2, ry: r() * 6.3, y: on(x, z, -0.08) };
+    }, { shadow: true });
+    modelBand(prop('barrel'), 6, 520, (i, r, z) => {
+      const x = sideX(r, 8.6, 12);
+      return { x, z, s: 1, ry: r() * 6.3, rz: r() < 0.4 ? Math.PI / 2 : 0, y: on(x, z, 0.02) };
+    }, { shadow: true });
+    const pole = new THREE.CylinderGeometry(0.12, 0.17, 9.4, 8);
     pole.translate(0, 4.5, 0);
     const wood = new THREE.MeshStandardMaterial({ color: 0x5a4330, roughness: 0.9 });
-    band(pole, wood, 24, 480, (i, r, z) => ({ x: 13, z }));
+    band(pole, wood, 24, 480, (i, r, z) => ({ x: 13.5, z, y: on(13.5, z, 0.3) }), { shadow: true });
     const arm = new THREE.BoxGeometry(2.2, 0.14, 0.14);
     arm.translate(0, 8.4, 0);
-    band(arm, wood, 24, 480, (i, r, z) => ({ x: 13, z }));
-    // a mesa's footprint reaches about 2.7 times its scale from its centre
-    // (the shape, plus the scree at its foot), so it stands that far clear
-    for (let k = 0; k < 2; k++) {
-      band(mesaGeometry(11 + k), mesaMat, 14, 900, (i, r, z) => {
-        const sx = 10 + r() * 16;
-        const sz = 10 + r() * 14;
-        return { x: (i % 2 ? 1 : -1) * (26 + Math.max(sx, sz) * 2.7 + r() * (k ? 60 : 140)), z: z + r() * 40, s: [sx, 14 + r() * 26 + k * 6, sz], ry: r() * 6, y: -1 };
-      });
-    }
+    band(arm, wood, 24, 480, (i, r, z) => ({ x: 13.5, z, y: on(13.5, z, 0.3) }));
+    const insulator = new THREE.CylinderGeometry(0.05, 0.07, 0.22, 6);
+    insulator.translate(0, 8.6, 0);
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x6d8f7a, roughness: 0.15, metalness: 0.1 });
+    for (const dx of [-0.9, 0.9]) band(insulator, glassMat, 24, 480, (i, r, z) => ({ x: 13.5 + dx, z, y: on(13.5, z, 0.3) }));
   } else if (kind === 'city') {
     // blocks faced with ambientCG facades: their windows light up by themselves
     const facades = await Promise.all(['facade-brick', 'facade-office', 'facade-tower', 'facade-glass'].map((n) => lib.load(n, { emission: true })));
@@ -578,7 +802,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     ];
     plan.forEach(([set, count, near, tile], fi) => {
       let mat;
-      if (set) mat = lib.material(set, { metal: true, envMapIntensity: 1.3, emissiveIntensity: 1.6 });
+      if (set) mat = lib.material(set, { envMapIntensity: 0.5, emissiveIntensity: 0.7 });
       else {
         const f = paintFacade({ w: 256, h: 384, seed: 13 + fi, kind: near ? 'brick' : 'glass' });
         mat = new THREE.MeshStandardMaterial({ map: T(f.color), emissiveMap: T(f.emissive), emissive: new THREE.Color(1.6, 1.4, 1.1), roughness: 0.6 });
@@ -598,14 +822,14 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
       for (const part of lampModel.parts) {
         if (/glass/i.test(part.material.name)) {
           part.material.emissive = new THREE.Color(1, 0.72, 0.42);
-          part.material.emissiveIntensity = 3.2;
+          part.material.emissiveIntensity = 1.7;
         }
       }
     }
     modelBand(lampModel, 36, 396, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 8.1, z: z + (i % 2) * 11, ry: r() * 6.3 }), { scale: lampScale, shadow: true });
     const poolGeo = new THREE.PlaneGeometry(9, 9);
     poolGeo.rotateX(-Math.PI / 2);
-    const poolMat = holes(new THREE.MeshBasicMaterial({ map: shared.pool, color: new THREE.Color(1, 0.78, 0.5).multiplyScalar(0.5), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3 }), 'pool');
+    const poolMat = holes(new THREE.MeshBasicMaterial({ map: shared.pool, color: new THREE.Color(1, 0.78, 0.5).multiplyScalar(0.3), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3 }), 'pool');
     cut.push([poolMat, 0]);
     band(poolGeo, poolMat, 36, 396, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 6.6, z: z + (i % 2) * 11, y: 0.02 }));
     modelBand(prop('utility-box'), 12, 400, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * (10.6 + r()), z, ry: (i % 2 ? -1 : 1) * Math.PI / 2 }), { shadow: true });
@@ -613,35 +837,36 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     const sidewalk = new THREE.BoxGeometry(4.5, 0.25, 20);
     band(sidewalk, deckMat, 40, 400, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 9.6, z, y: 0.12 }));
   } else {
-    // Kaon: iron spires and towers (Poly Haven plate) banded with light,
-    // energon arches over the road, molten channels
-    const sp = paintSpire({ w: 256, h: 512, seed: 5, light: '#ff5a1f' });
-    let spireMat;
-    if (roadSet) spireMat = lib.material(roadSet, { metal: true, color: 0x9a9aa6, envMapIntensity: 1.2 });
-    else spireMat = new THREE.MeshStandardMaterial({ map: T(sp.color), metalness: 0.85, roughness: 0.35 });
-    spireMat.emissiveMap = T(sp.emissive, { repeat: [1, 1] });
-    spireMat.emissive = new THREE.Color(2.2, 1.2, 0.8);
-    worldUv(spireMat, 12, 24, 'spire');
-    const spireGeo = new THREE.CylinderGeometry(0.15, 1, 1, 6, 1);
-    spireGeo.translate(0, 0.5, 0);
-    band(spireGeo, spireMat, 50, 700, (i, r, z) => {
-      const w = 6 + r() * 12;
-      return { x: (r() < 0.5 ? -1 : 1) * (14 + w + r() * 150), z: z + r() * 20, s: [w, 30 + r() * 110, w], ry: r() * 3 };
+    // Kaon: megastructures in plated iron with furnace light in their window
+    // slits, standing on the terraces; gates over the road
+    let ironMat;
+    if (roadSet) ironMat = lib.material(roadSet, { metal: true, color: 0x8a8894, envMapIntensity: 1.25, normalScale: new THREE.Vector2(1.3, 1.3) });
+    else ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3a42, metalness: 0.85, roughness: 0.4 });
+    ironMat.emissive = new THREE.Color(2.6, 0.95, 0.35);
+    kaonMetal(ironMat, { tile: 11, slit: 4.6, key: 'mega' });
+    const megas = [megaGeometry(3), megaGeometry(8), megaGeometry(21)];
+    megas.forEach((geo, k) => {
+      band(geo, ironMat, 9, 760, (i, r, z) => {
+        const w = 16 + r() * 22;
+        const x = (i % 2 ? 1 : -1) * (30 + w * 0.6 + r() * 70);
+        const zz = z + r() * 30;
+        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (0.85 + r() * 0.7), w], ry: r() * 6.3 };
+      });
+      band(geo, ironMat, 12, 900, (i, r, z) => {
+        const w = 30 + r() * 40;
+        const x = (r() < 0.5 ? -1 : 1) * (150 + r() * 330);
+        const zz = z + r() * 60;
+        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (1 + r() * 0.8), w], ry: r() * 6.3 };
+      });
+      return k;
     });
-    const towerGeo = new THREE.BoxGeometry(1, 1, 1);
-    towerGeo.translate(0, 0.5, 0);
-    band(towerGeo, spireMat, 40, 500, (i, r, z) => {
-      const w = 5 + r() * 10;
-      return { x: (r() < 0.5 ? -1 : 1) * (12 + w / 2 + r() * 50), z: z + r() * 10, s: [w, 8 + r() * 30, 5 + r() * 10] };
-    });
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x2b2d35, metalness: 0.85, roughness: 0.3 });
-    band(new THREE.TorusGeometry(10, 0.5, 8, 24, Math.PI), archMat, 6, 600, (i, r, z) => ({ x: 0, z, y: 0 }), { shadow: true });
-    band(new THREE.TorusGeometry(9.4, 0.12, 6, 32, Math.PI), M.lamp(0xff6a2a, 2.6), 6, 600, (i, r, z) => ({ x: 0, z, y: 0 }));
-    const channel = new THREE.PlaneGeometry(6, 40);
-    channel.rotateX(-Math.PI / 2);
-    const lavaMat = new THREE.MeshStandardMaterial({ map: chasmMat.map, emissiveMap: chasmMat.emissiveMap, emissive: new THREE.Color(2.4, 1, 0.3), roughness: 0.7 });
-    band(channel, lavaMat, 14, 560, (i, r, z) => ({ x: sideX(r, 20, 60), z, y: 0.02 }));
-    modelBand(prop('barrel'), 10, 480, (i, r, z) => ({ x: sideX(r, 8.4, 12), z, s: 1, ry: r() * 6.3, rz: r() < 0.5 ? Math.PI / 2 : 0 }), { shadow: true });
+    const gateMat = new THREE.MeshStandardMaterial({ color: 0x2c2d34, metalness: 0.9, roughness: 0.35, envMapIntensity: 1.3 });
+    band(gateGeometry(), gateMat, 5, 700, (i, r, z) => ({ x: 0, z, y: 0 }), { shadow: true });
+    band(gateTrimGeometry(), M.lamp(0xff6a2a, 1.6), 5, 700, (i, r, z) => ({ x: 0, z, y: 0 }));
+    modelBand(prop('barrel'), 10, 480, (i, r, z) => {
+      const x = sideX(r, 8.4, 12);
+      return { x, z, s: 1, ry: r() * 6.3, rz: r() < 0.5 ? Math.PI / 2 : 0, y: on(x, z, 0) };
+    }, { shadow: true });
   }
 
   // signs before roadblocks and broken bridges
@@ -655,7 +880,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     const g = new THREE.Group();
     const face = new THREE.Mesh(signGeo, new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.5, roughness: 0.4, metalness: 0.1, side: THREE.DoubleSide }));
     face.position.y = 3.2;
-    const post = new THREE.Mesh(signPostGeo, railMat);
+    const post = new THREE.Mesh(signPostGeo, postMat);
     post.position.y = 1.2;
     face.castShadow = true;
     g.add(face, post);
@@ -676,7 +901,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
       const slot = w.kind === 'closed' ? signPool[ci++] : signPool[bi++];
       if (!slot || (w.kind === 'closed' ? ci > 3 : bi > 6)) continue;
       slot.g.visible = true;
-      slot.g.position.set(7.9, 0, -w.z);
+      slot.g.position.set(7.9, height(7.9, w.z), -w.z);
       slot.g.rotation.y = -0.25;
     }
   };
@@ -688,35 +913,42 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   sun.castShadow = true;
   sun.shadow.mapSize.set(big ? 2048 : 1024, big ? 2048 : 1024);
   const sc = sun.shadow.camera;
-  sc.left = -16;
-  sc.right = 16;
-  sc.top = 30;
-  sc.bottom = -30;
+  sc.left = -18;
+  sc.right = 18;
+  sc.top = 32;
+  sc.bottom = -32;
   sc.near = 1;
-  sc.far = 120;
+  sc.far = 160;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   root.add(sun, sun.target);
-  const sunDir = new THREE.Vector3(...look.sunDir).normalize();
+  // shadows from a low sun run long: cast them from no lower than 14°
+  const shadowDir = sunDir.clone();
+  shadowDir.y = Math.max(shadowDir.y, Math.sin(THREE.MathUtils.degToRad(14)));
+  shadowDir.normalize();
 
   let envTex = null;
-  const fog = new THREE.FogExp2(look.fog, look.fogDensity);
+  const fog = new THREE.FogExp2(fogCol, look.fogDensity);
 
   const update = (g, cam, t) => {
     const z = g.z;
     sky.position.copy(cam.position);
-    sky.material.uniforms.t.value = t;
     // road and ground step forward a tile at a time
     const zr = Math.floor((z - 60) / ROAD_TILE) * ROAD_TILE;
     road.position.set(0, 0, -(zr + ROAD_LEN / 2));
     lanes.position.copy(road.position);
-    const zg = Math.floor((z - 120) / GT) * GT;
-    ground.position.set(0, -0.03, -(zg + GL / 2));
+    if (land) land.follow(z);
+    else {
+      const zg = Math.floor((z - 120) / GT) * GT;
+      ground.position.set(0, -0.03, -(zg + GL / 2));
+    }
     // the holes, and the canyons under them
-    const near = g.gaps.filter((p) => p.z + p.len > z - 40 && p.z < z + 320).slice(0, 3);
+    gapsNow = g.gaps;
+    const near = g.gaps.filter((p) => p.z + p.len > z - 60 && p.z < z + 420).slice(0, 3);
+    const surfaces = [[roadMat, 0], [laneMat, 0], ...(land ? [[land.material, 0]] : [[groundMat, CUT_PAD]]), ...cut];
     for (let i = 0; i < 3; i++) {
       const p = near[i];
-      for (const [m, pad] of [[roadMat, 0], [laneMat, 0], [groundMat, 3.4], ...cut]) m.userData.gaps[i].set(p ? p.z - pad : 1e9, p ? p.z + p.len + pad : 1e9);
+      for (const [m, pad] of surfaces) m.userData.gaps[i].set(p ? p.z - pad : 1e9, p ? p.z + p.len + pad : 1e9);
     }
     canyons.forEach((c, i) => {
       const p = near[i];
@@ -724,9 +956,13 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
       else if (c.gap !== p) placeCanyon(c, p);
     });
     for (const b of bands) b.update(z);
+    for (const b of bands) {
+      const u = b.mesh.material?.userData?.uniforms;
+      if (u?.uTime) u.uTime.value = t;
+    }
     placeSigns(g);
     // the sun's shadow box follows you; the light comes from where the sun is
-    sun.position.set(g.x + sunDir.x * 50, Math.max(22, sunDir.y * 50), -(z + 12) + sunDir.z * 50);
+    sun.position.set(g.x + shadowDir.x * 70, shadowDir.y * 70, -(z + 12) + shadowDir.z * 70);
     sun.target.position.set(g.x, 0, -(z + 12));
   };
 
@@ -734,6 +970,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     scene.add(root);
     scene.fog = fog;
     stage.renderer.toneMappingExposure = look.exposure;
+    stage.grade?.(look.grade);
     loadHdri(look.hdri, stage).then((env) => {
       if (!root.parent || !env || stage.disposed) return;
       envTex = env;
@@ -753,7 +990,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     own.forEach((t) => t.dispose());
   };
 
-  return { id, look, root, update, attach, dispose, night: look.night, kind };
+  return { id, look, root, update, attach, dispose, night: look.night, kind, height };
 }
 
 // Surfaces every stage shares: Poly Haven concrete for decks, piers and

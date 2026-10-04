@@ -103,7 +103,9 @@ function Game({ soft, fail }) {
     import('./RollOut3D')
       .then(({ createRollOut3D }) =>
         createRollOut3D(c, {
-          soft,
+          // in development, tp-gl-force=hard draws the full pipeline even on
+          // software WebGL (for checking the picture in a headless browser)
+          soft: soft && !(import.meta.env.DEV && localStorage.getItem('tp-gl-force') === 'hard'),
           bot,
           alive: () => !dead,
           onLost: () => !dead && fail('lost'),

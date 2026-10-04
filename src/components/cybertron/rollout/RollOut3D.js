@@ -314,7 +314,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
 
   // energon cubes, instanced, and the Allspark shard
   const energonTex = T(paintEnergon(), { wrap: false });
-  const cubeMat = new THREE.MeshStandardMaterial({ map: energonTex, emissiveMap: energonTex, emissive: new THREE.Color(2.4, 1.1, 2.2), roughness: 0.15, metalness: 0.1 });
+  const cubeMat = new THREE.MeshStandardMaterial({ map: energonTex, emissiveMap: energonTex, emissive: new THREE.Color(1.5, 0.65, 1.4), roughness: 0.15, metalness: 0.1 });
   const cubes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.62, 0.62, 0.62), cubeMat, 160);
   cubes.frustumCulled = false;
   scene.add(cubes);
@@ -609,7 +609,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     for (const c of g.cubes) {
       if (c.taken && !c.burst && Math.abs(c.z - g.z) < 6) {
         c.burst = true;
-        for (let i = 0; i < 16; i++) add.emit(c.x, c.y, -c.z, (Math.random() - 0.5) * 6, Math.random() * 5, (Math.random() - 0.5) * 6 - g.speed * 0.6, 0.45, 0.4, 0.05, 3.2, 1.2, 2.8, 1, 2, 4);
+        for (let i = 0; i < 16; i++) add.emit(c.x, c.y, -c.z, (Math.random() - 0.5) * 6, Math.random() * 5, (Math.random() - 0.5) * 6 - g.speed * 0.6, 0.45, 0.3, 0.04, 2.2, 0.8, 2, 1, 2, 4);
       }
     }
     shards.begin();
@@ -846,5 +846,25 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     },
     debug: () => { const c = renderer.getContext(); return { size: stage.size, canvas: [canvas.width, canvas.height], viewport: renderer.getViewport(new THREE.Vector4()).toArray(), glViewport: Array.from(c.getParameter(c.VIEWPORT)), drawing: [c.drawingBufferWidth, c.drawingBufferHeight], quality: stage.quality }; },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality: stage.quality }),
+    scene,
+    stage,
+    landUniforms: () => {
+      let u = null;
+      scene.traverse((o) => {
+        if (o.material?.userData?.uniforms?.uRock) u = o.material.userData.uniforms;
+      });
+      return u;
+    },
+    // what's drawn, heaviest first: triangles times instances
+    weigh: () => {
+      const rows = [];
+      scene.traverse((o) => {
+        if (!o.isMesh || !o.visible || !o.geometry) return;
+        const tris = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+        const n = o.isInstancedMesh ? o.count : 1;
+        rows.push([o.geometry.name || o.material?.name || o.material?.type, Math.round(tris), n, Math.round(tris * n), !!o.castShadow]);
+      });
+      return rows.sort((a, b) => b[3] - a[3]).slice(0, 25);
+    },
   };
 }

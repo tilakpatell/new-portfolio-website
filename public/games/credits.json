@@ -97,7 +97,7 @@
       "Jenelle van Heerden"
     ],
     "license": "CC0 1.0",
-    "size": "1K, simplified to 18%"
+    "size": "1K, simplified to 6%"
   },
   "models/quiver-tree": {
     "source": "https://polyhaven.com/a/quiver_tree_02",
@@ -108,7 +108,7 @@
       "Rico Cilliers"
     ],
     "license": "CC0 1.0",
-    "size": "1K, simplified to 6%"
+    "size": "1K, simplified to 3%"
   },
   "models/street-lamp": {
     "source": "https://polyhaven.com/a/street_lamp_01",
@@ -252,5 +252,114 @@
     ],
     "license": "CC0 1.0",
     "size": "512 × 256"
+  },
+  "tex/desert-sand": {
+    "source": "https://polyhaven.com/a/gravelly_sand",
+    "id": "gravelly_sand",
+    "name": "Gravelly Sand",
+    "authors": [
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "sky/jasper-sky": {
+    "source": "https://polyhaven.com/a/kloppenheim_06_puresky",
+    "id": "kloppenheim_06_puresky",
+    "name": "Kloppenheim 06 (Pure Sky)",
+    "authors": [
+      "Greg Zaal",
+      "Jarod Guest"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.6077,
+      "elevation": 8.17
+    }
+  },
+  "sky/mission-sky": {
+    "source": "https://polyhaven.com/a/kloppenheim_07_puresky",
+    "id": "kloppenheim_07_puresky",
+    "name": "Kloppenheim 07 (Pure Sky)",
+    "authors": [
+      "Greg Zaal",
+      "Jarod Guest"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.5999,
+      "elevation": 38.06
+    }
+  },
+  "sky/kaon-sky": {
+    "source": "https://polyhaven.com/a/industrial_sunset_puresky",
+    "id": "industrial_sunset_puresky",
+    "name": "Industrial Sunset (Pure Sky)",
+    "authors": [
+      "Jarod Guest",
+      "Sergej Majboroda"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.6018,
+      "elevation": 4.13
+    }
+  },
+  "models/shrub": {
+    "source": "https://polyhaven.com/a/shrub_02",
+    "id": "shrub_02",
+    "name": "Shrub 02",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 6%"
+  },
+  "models/brush": {
+    "source": "https://polyhaven.com/a/dry_branches_medium_01",
+    "id": "dry_branches_medium_01",
+    "name": "Dry Branches Medium 01",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 10%"
+  },
+  "models/boulders": {
+    "source": "https://polyhaven.com/a/namaqualand_boulders_01",
+    "id": "namaqualand_boulders_01",
+    "name": "Namaqualand Boulders 01",
+    "authors": [
+      "Greg Zaal",
+      "Jenelle van Heerden"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 2%"
+  },
+  "models/boulder": {
+    "source": "https://polyhaven.com/a/namaqualand_boulder_05",
+    "id": "namaqualand_boulder_05",
+    "name": "Namaqualand Boulder 05",
+    "authors": [
+      "Jenelle van Heerden",
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 1%"
+  },
+  "models/dead-trunk": {
+    "source": "https://polyhaven.com/a/dead_quiver_trunk",
+    "id": "dead_quiver_trunk",
+    "name": "Dead Quiver Trunk",
+    "authors": [
+      "James Ray Cock",
+      "Dario Barresi",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 12%"
   }
 }
