@@ -320,7 +320,7 @@ export function buildGauntlet(mats, stoneMats) {
       const seg = new THREE.Group();
       if (i === 0) {
         seg.position.set(-0.005, -0.045, 0.062);
-        seg.rotation.set(0.75, 0, -0.25);
+        seg.rotation.set(-0.7, 0, -0.15); // out to the side, where it shows from the back
       } else seg.position.set(0, -[0.048, 0.036][i - 1], 0);
       parent.add(seg);
       const b = plate(len, 0.033 - i * 0.003, 0.028 - i * 0.002);

@@ -85,8 +85,9 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
       const b = buttons.current[s.id];
       if (!b) continue;
       const p = v.socket(s.id);
-      b.style.left = `${p.x}px`;
-      b.style.top = `${p.y}px`;
+      // whole pixels, so a slow sway doesn't shimmer the targets
+      b.style.left = `${Math.round(p.x)}px`;
+      b.style.top = `${Math.round(p.y)}px`;
       b.style.visibility = p.front && !v.dusting ? 'visible' : 'hidden';
     }
   };

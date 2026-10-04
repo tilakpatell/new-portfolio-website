@@ -195,6 +195,8 @@ export default function Avengers() {
   };
 
   useEffect(() => setHave((h) => [...new Set([...h, ...earned])]), [earned]);
+  // a stone in or out of the gauntlet (the list, or its socket)
+  const toggleStone = (id) => setHave((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]));
   const all = have.length === STONES.length;
   // all six taken back by playing: the snap is Tony's
   const heist = earned.length === STONES.length;
@@ -378,7 +380,7 @@ export default function Avengers() {
             <Titan
               ref={titan}
               have={have}
-              onSet={(id) => setHave((h) => (h.includes(id) ? h : [...h, id]))}
+              onSet={toggleStone}
               fallback={
             <div className="gauntlet-wrap">
               <Gauntlet have={have} all={all} />
@@ -413,16 +415,22 @@ export default function Avengers() {
                 ? 'You took every stone back from the compound. Set them, and this time the snap is Tony’s: Thanos and his army turn to dust, and the page stays.'
                 : 'He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds. Win all six back in the games on the compound, and the snap is Tony’s.'}
             </p>
-            <ul className="stone-list mt-6">
-              {STONES.map((s) => (
-                <li key={s.id} data-on={have.includes(s.id) || undefined} style={{ '--glow': s.color }}>
-                  <span className="stone-dot" aria-hidden="true" />
-                  <span>
-                    <span className="font-semibold text-ink">{s.name}</span>
-                    <span className="block text-sm text-body">{WHERE[s.id]}</span>
-                  </span>
-                </li>
-              ))}
+            <ul className="stone-list mt-6" aria-label="Set the stones">
+              {STONES.map((s) => {
+                const on = have.includes(s.id);
+                return (
+                  <li key={s.id} data-on={on || undefined} style={{ '--glow': s.color }}>
+                    <button type="button" className="stone-pick" aria-pressed={on} onClick={() => toggleStone(s.id)}>
+                      <span className="stone-dot" aria-hidden="true" />
+                      <span>
+                        <span className="font-semibold text-ink">{s.name}</span>
+                        <span className="block text-sm text-body">{WHERE[s.id]}</span>
+                      </span>
+                      <span className="stone-pick-state">{on ? 'Set' : 'Set it'}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
               <button type="button" className="btn btn-primary" disabled={!all} onClick={doSnap}>
