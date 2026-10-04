@@ -288,3 +288,56 @@ export function soundscape() {
     },
   };
 }
+
+// ── for the page's own toys ──
+
+// steel on steel
+export function clang() {
+  const c = ctx();
+  if (!c) return;
+  burst(c, { type: 'bandpass', f0: 5200, f1: 2600, q: 3, gain: 0.25, decay: 0.12 });
+  for (const [f, g, d] of [[2210, 0.14, 0.5], [3127, 0.1, 0.38], [4380, 0.06, 0.25]]) tone(c, { type: 'triangle', f0: f, gain: g, decay: d, attack: 0.001 });
+}
+// a heart in a chest: two beats
+export function heart() {
+  const c = ctx();
+  if (!c) return;
+  for (const at of [0, 0.28]) {
+    tone(c, { f0: 68, f1: 40, gain: at ? 0.5 : 0.7, decay: 0.22, at });
+    burst(c, { f0: 220, f1: 60, gain: 0.18, decay: 0.12, at });
+  }
+}
+// the organ aboard the Dutchman: a slow minor chord, pipes a little out of tune
+export function organ() {
+  const c = ctx();
+  if (!c) return;
+  const { ac, out, t } = c;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.22, t + 0.25);
+  g.gain.setValueAtTime(0.22, t + 1.8);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 1500;
+  lp.connect(g).connect(out);
+  for (const f of [73.42, 146.83, 174.61, 220, 293.66, 440.5]) {
+    for (const type of ['square', 'sawtooth']) {
+      const o = ac.createOscillator();
+      o.type = type;
+      o.frequency.value = f * (type === 'square' ? 1 : 1.004);
+      const v = ac.createGain();
+      v.gain.value = type === 'square' ? 0.1 : 0.07;
+      o.connect(v).connect(lp);
+      o.start(t);
+      o.stop(t + 3.3);
+    }
+  }
+}
+// a cork, and a swig
+export function glug() {
+  const c = ctx();
+  if (!c) return;
+  tone(c, { f0: 900, f1: 1500, gain: 0.25, decay: 0.05 });
+  for (let i = 0; i < 4; i++) tone(c, { f0: 230 + i * 28, f1: 150 + i * 20, gain: 0.2, decay: 0.09, at: 0.12 + i * 0.11 });
+}
