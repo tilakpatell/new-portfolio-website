@@ -8,10 +8,11 @@
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name …]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
-// idle clip, 3), fetch (free: download and compress). Each task's id is kept in
-// scripts/meshy-tasks.json, so running a step again never pays twice; delete
-// a name's entry there to make it again. MESHY_API_KEY comes from .env.local
-// (git ignores it); it is never printed.
+// idle clip, 3), sit (a seated clip, 3), fetch (free: download and
+// compress). Each task's id is kept in scripts/meshy-tasks.json, so running
+// a step again never pays twice; delete a name's entry there to make it
+// again. MESHY_API_KEY comes from .env.local (git ignores it); it is never
+// printed.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -52,6 +53,8 @@ export const ASSETS = {
   evilmorty: { rig: true, height: 1.5, poly: 14000, tex: 1024, prompt: `Evil Morty from Rick and Morty: Morty Smith with a black eyepatch over his right eye and a cold confident look, short brown hair, a yellow T-shirt, blue jeans and white sneakers. ${BODY}` },
   // set pieces
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
+  // the classic one, as in the show's first seasons
+  saucer: { rig: false, poly: 16000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty, the classic one: a small round flying saucer car with a grey metal hull, wide and flat, a big clear see-through glass bubble dome over two empty seats and a steering wheel, two orange-yellow stripes painted down the front of the hull, two round headlights on short stalks at the front rim, a big grey cylindrical exhaust can at the back with a ribbed hose, small bolts round the rim, no people. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
 };
 
@@ -192,6 +195,22 @@ const steps = {
       },
     );
   },
+  // sitting in the cruiser: Chair_Sit_Idle_M from Meshy's animation library
+  async sit(names, s) {
+    await each(
+      names.filter((n) => ASSETS[n].rig),
+      async (n) => {
+        if (!s[n]?.rig) throw new Error('not rigged yet');
+        if (!s[n].sit) {
+          const { result } = await api('POST', '/v1/animations', { rig_task_id: s[n].rig, action_id: 33, post_process: { operation_type: 'extract_armature' } });
+          s[n].sit = result;
+          await save(s);
+        }
+        const t = await wait('/v1/animations', s[n].sit, `${n} sit`);
+        console.log(`sit      ${n.padEnd(12)} ${t.consumed_credits} credits`);
+      },
+    );
+  },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
     const tmp = join(ROOT, 'lab', 'meshy', 'raw');
@@ -210,6 +229,7 @@ const steps = {
         files.push([r.basic_animations.walking_armature_glb_url, `${n}-walk.glb`, 0, true]);
         files.push([r.basic_animations.running_armature_glb_url, `${n}-run.glb`, 0, true]);
         files.push([idle.animation_glb_url, `${n}-idle.glb`, 0, true]);
+        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${n}-sit.glb`, 0, true]);
       } else {
         if (!s[n]?.model) throw new Error(`${n}: no model yet`);
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);

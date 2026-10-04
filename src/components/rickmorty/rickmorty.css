@@ -2,6 +2,7 @@
 
 /* the hero's portal */
 .rm-hero { display: grid; justify-items: center; gap: 1rem; }
+.rm-hero-launch { display: grid; justify-items: center; width: 100%; }
 .rm-portal { position: relative; width: min(100%, 520px); aspect-ratio: 1; }
 .rm-portal-fill.portal-gl { position: absolute; inset: 0; }
 .rm-hero-caption { display: grid; gap: 0.2rem; max-width: 40ch; text-align: center; }
@@ -92,3 +93,85 @@
 .rm-family { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
 .rm-member { display: flex; flex-direction: column; padding: 1.25rem; border-top: 6px solid var(--who); }
 .rm-member-face { width: 76px; height: 76px; }
+
+/* the Space Cruiser down the page (CruiserFlight.jsx): the trail and the
+   broken page behind the content, the cruiser over it */
+.rm-flight { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.rm-flight-back { z-index: 5; }
+.rm-flight-front { z-index: 30; }
+.rm-trail-window { position: absolute; left: 0; top: 0; width: 100%; overflow: hidden; will-change: transform; }
+.rm-trail-inner { display: block; will-change: transform; }
+.rm-trail-glow { fill: none; stroke: rgba(151, 206, 76, 0.16); stroke-width: 12; stroke-linecap: round; }
+.rm-trail-line { fill: none; stroke: #86c947; stroke-width: 3; stroke-dasharray: 1 12; stroke-linecap: round; }
+.rm-cruiser { position: absolute; left: -100px; top: -46px; width: 180px; height: 92px; transform-origin: 100px 46px; will-change: transform, opacity; filter: drop-shadow(0 12px 10px rgba(15, 20, 30, 0.22)); transition: opacity 0.12s linear; }
+.rm-cruiser-art { display: block; width: 100%; height: 100%; overflow: visible; animation: rm-bob 1.4s ease-in-out infinite alternate; }
+.rm-cruiser-flame { transform-box: fill-box; transform-origin: 100% 50%; animation: rm-flame 0.12s steps(2, jump-none) infinite alternate; }
+@keyframes rm-bob { to { transform: translateY(-3px); } }
+@keyframes rm-flame { from { transform: scale(0.8, 0.88); } to { transform: scale(1.08, 1); } }
+@media (max-width: 639px) { .rm-cruiser { left: -70px; top: -32px; width: 126px; height: 64px; transform-origin: 70px 32px; } }
+/* the 3D one: a see-through canvas centred on the path */
+.rm-cruiser-3d { position: absolute; left: 50%; top: 50%; width: 260px; height: 190px; margin: -95px 0 0 -130px; display: block; }
+.rm-cruiser:not(.is-3d) .rm-cruiser-3d { visibility: hidden; }
+.rm-cruiser.is-3d { left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; filter: drop-shadow(0 14px 12px rgba(15, 20, 30, 0.2)); }
+@media (max-width: 639px) { .rm-cruiser-3d { width: 180px; height: 132px; margin: -66px 0 0 -90px; } }
+
+/* a portal through the page: cracks running out, a hole, the swirl in it,
+   and shards of page lifting off round the edge (--open, --crack: 0…1) */
+.rm-rift { position: absolute; width: 0; height: 0; --open: 0; --crack: 0; }
+.rm-rift svg { position: absolute; overflow: visible; }
+.rm-rift-cracks path { fill: none; stroke: #1b1424; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--crack)); opacity: 0.7; }
+.rm-rift-gate { position: absolute; left: 0; top: 0; transform: scale(var(--open)); }
+.rm-rift-hole path { fill: #07120a; stroke: #1b1424; stroke-width: 3; stroke-linejoin: round; }
+.rm-rift-swirl { position: absolute; }
+.rm-rift-fill.portal-gl { position: absolute; inset: 0; }
+.rm-rift-fill.portal-css { position: absolute; inset: 13%; }
+.rm-rift-shards { filter: drop-shadow(0 calc(var(--open) * 6px) calc(var(--open) * 4px) rgba(10, 14, 20, 0.3)); }
+.rm-rift-shards path { fill: var(--bg); stroke: #1b1424; stroke-width: 2; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; transform: translate(calc(var(--sx) * var(--open) * 14px), calc(var(--sy) * var(--open) * 14px)) rotate(calc(var(--open) * var(--turn))); opacity: calc(var(--crack) * (0.35 + 0.65 * var(--open))); }
+@media (prefers-reduced-motion: reduce) { .rm-cruiser-art, .rm-cruiser-flame { animation: none; } }
+
+/* how they do it: the plumbus factory */
+.rm-plumbus-factory { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 2rem; align-items: center; padding: clamp(1.2rem, 0.8rem + 2vw, 2.2rem); }
+@media (max-width: 767px) { .rm-plumbus-factory { grid-template-columns: 1fr; } }
+.rm-pf-stage { margin: 0; display: grid; place-items: center; }
+.rm-pf-art { width: min(100%, 300px); height: auto; overflow: visible; }
+.rm-pf-part { transform-box: fill-box; transform-origin: 50% 100%; animation: rm-pf-in 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.rm-pf-shine { animation: rm-pf-in 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both, rm-pf-twinkle 1.6s ease-in-out 0.42s infinite alternate; transform-origin: 50% 50%; }
+@keyframes rm-pf-in { from { transform: scale(0.2); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rm-pf-twinkle { to { transform: scale(0.8) rotate(20deg); } }
+.rm-pf-empty { font: 600 13px var(--font-sans); fill: var(--muted); }
+.rm-pf-steps { display: grid; gap: 0.3rem; counter-reset: none; list-style: none; padding: 0; }
+.rm-pf-step { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.35rem 0.5rem; border-radius: 10px; text-align: left; font-size: 0.92rem; color: var(--muted); transition: background-color 0.15s ease, color 0.15s ease; }
+.rm-pf-step:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.rm-pf-step:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 1px; }
+.rm-pf-step[data-done] { color: var(--text); }
+.rm-pf-step[data-now] { color: var(--text); font-weight: 650; }
+.rm-pf-num { display: grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border: 2px solid #1b1424; border-radius: 999px; background: var(--bg); color: #1b1424; font: 700 0.78rem/1 var(--font-mono); }
+.rm-pf-step[data-done] .rm-pf-num { background: #f5a3b0; }
+.rm-pf-step[data-now] .rm-pf-num { background: #ffe27a; }
+
+/* the butter robot */
+.rm-butter { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 2rem; align-items: center; padding: clamp(1.2rem, 0.8rem + 2vw, 2.2rem); }
+@media (max-width: 767px) { .rm-butter { grid-template-columns: 1fr; } }
+.rm-butter-stage { position: relative; margin: 0; }
+.rm-butter-art { display: block; width: 100%; height: auto; }
+.rm-butter-bot { position: absolute; bottom: 21%; left: calc(var(--x) * 100% - 12%); width: 24%; transition: left 1.3s cubic-bezier(0.45, 0, 0.4, 1); }
+.rm-butter-bot-art { display: block; width: 100%; height: auto; overflow: visible; }
+.rm-butter-head, .rm-butter-arm { transform-box: view-box; transition: transform 0.6s cubic-bezier(0.3, 1.2, 0.5, 1); }
+.rm-butter-head { transform-origin: 0 -6px; }
+.rm-butter-arm-l { transform-origin: -18px -22px; }
+.rm-butter-arm-r { transform-origin: 18px -22px; }
+.rm-butter-lid { opacity: 0; transition: opacity 0.4s ease; }
+.rm-butter-eye { transition: transform 0.6s ease; }
+.rm-butter[data-scene='fetch'] .rm-butter-bot-art, .rm-butter[data-scene='bring'] .rm-butter-bot-art { animation: rm-butter-roll 0.16s steps(2) infinite alternate; }
+@keyframes rm-butter-roll { to { transform: translateY(-1.5px); } }
+.rm-butter[data-scene='told'] .rm-butter-head, .rm-butter[data-scene='club'] .rm-butter-head { transform: rotate(-9deg) translateY(3px); }
+.rm-butter[data-scene='told'] .rm-butter-arm-l, .rm-butter[data-scene='club'] .rm-butter-arm-l { transform: rotate(-95deg); }
+.rm-butter[data-scene='told'] .rm-butter-arm-r, .rm-butter[data-scene='club'] .rm-butter-arm-r { transform: rotate(80deg); }
+.rm-butter[data-scene='told'] .rm-butter-lid, .rm-butter[data-scene='club'] .rm-butter-lid { opacity: 1; }
+.rm-butter[data-scene='told'] .rm-butter-eye, .rm-butter[data-scene='club'] .rm-butter-eye { transform: translateY(4px); }
+.rm-butter-who { color: var(--muted); font-weight: 600; }
+.rm-butter .btn[aria-disabled] { opacity: 0.6; cursor: progress; }
+@media (prefers-reduced-motion: reduce) {
+  .rm-pf-part, .rm-pf-shine, .rm-butter-bot-art { animation: none !important; }
+  .rm-butter-bot, .rm-butter-head, .rm-butter-arm, .rm-butter-lid, .rm-butter-eye { transition: none; }
+}
