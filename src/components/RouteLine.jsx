@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../lib/hooks';
 
 // The scroll-drawn connector that runs down every page. Each [data-waypoint]
@@ -20,7 +20,8 @@ import { prefersReducedMotion } from '../lib/hooks';
 //   data-trigger="-120"   draw-trigger offset in px (spreads a horizontal run over scroll)
 
 const HEAD_AT = 0.6;
-const SCROLL_TIMELINE = typeof window !== 'undefined' && 'ScrollTimeline' in window;
+// (an animation also has to take a range of the scroll, or it falls back to the script)
+const SCROLL_TIMELINE = typeof window !== 'undefined' && 'ScrollTimeline' in window && typeof Animation !== 'undefined' && 'rangeStart' in Animation.prototype;
 const TURN_GAP = 56;
 const RADIUS = 18;
 const HALF_PI = Math.PI / 2;
@@ -78,7 +79,8 @@ function arcPath(seg, ox, oy) {
   return `M ${p0.x - ox} ${p0.y - oy} A ${seg.r} ${seg.r} 0 0 ${seg.sweep} ${p1.x - ox} ${p1.y - oy}`;
 }
 
-export default function RouteLine({ containerRef }) {
+// (memo: a page re-rendering for its own reasons leaves the route alone)
+export default memo(function RouteLine({ containerRef }) {
   const [geo, setGeo] = useState(null);
   const geoRef = useRef(null);
   const doneRefs = useRef([]);
@@ -87,6 +89,8 @@ export default function RouteLine({ containerRef }) {
   const state = useRef({ f: [], lit: [], top: 0 });
   const reduced = useRef(prefersReducedMotion());
   const anims = useRef([]);
+  const measured = useRef('');
+  const built = useRef({});
   const timeline = SCROLL_TIMELINE && !reduced.current;
 
   const measure = useCallback(() => {
@@ -95,6 +99,7 @@ export default function RouteLine({ containerRef }) {
     const box = el.getBoundingClientRect();
     const stops = [...el.querySelectorAll('[data-waypoint]')].filter((n) => n.offsetParent !== null);
     if (stops.length < 2) {
+      measured.current = '';
       setGeo(null);
       return;
     }
@@ -108,14 +113,25 @@ export default function RouteLine({ containerRef }) {
         trigger: Number(n.dataset.trigger || 0),
       };
     });
+    // The observer, the fonts and a late timer all ask for a measure, and most
+    // of the time nothing has moved. The same stops in the same places are the
+    // same route: keep it, so nothing re-renders and no animation is rebuilt.
+    const top = box.top + window.scrollY;
+    // The container's own height, not its scrollHeight: that counts the route
+    // itself, so once the page had been tall (the photo credits open) the route
+    // held it tall, and closing them left blank space under the footer.
+    const height = Math.round(box.height);
+    const key = `${height}|${Math.round(top)}|${points.map((p) => `${p.x},${p.y},${p.node ? 1 : 0},${p.color ?? ''},${p.trigger}`).join(';')}`;
+    if (key === measured.current) return;
+    measured.current = key;
     const route = build(points);
     const triggers = [];
     points.forEach((p, i) => {
       const t = p.y + p.trigger;
       triggers.push(i === 0 ? t : Math.max(t, triggers[i - 1] + 1));
     });
-    state.current = { f: [], lit: [], top: box.top + window.scrollY };
-    setGeo({ ...route, points, triggers, height: Math.ceil(el.scrollHeight) });
+    state.current = { f: [], lit: [], top };
+    setGeo({ ...route, points, triggers, height });
   }, [containerRef]);
 
   const update = useCallback((nodesOnly = false) => {
@@ -170,17 +186,26 @@ export default function RouteLine({ containerRef }) {
 
   // One animation per piece, and one for the head, each keyed to the scroll
   // position. The drawn length is piecewise linear in the scroll position (it
-  // bends at each stop), so keyframes go at the ends of the scroll, at every
-  // stop, and wherever the value itself bends (a piece's ends, along an arc).
+  // bends at each stop), so keyframes go at every stop inside a piece's stretch
+  // of the scroll, and wherever the value itself bends (along an arc).
+  //
+  // Each animation runs over its own stretch only (rangeStart to rangeEnd) and
+  // holds its first or last frame outside it. Spread over the whole scroll,
+  // every piece's progress changed on every frame, so the browser restyled all
+  // of them each time the page moved; now a piece that is not being drawn has
+  // nothing new to show and is left alone.
   const animateAll = useCallback(() => {
-    anims.current.forEach((a) => a.cancel());
-    anims.current = [];
     const g = geoRef.current;
-    if (!g) return;
     const root = document.scrollingElement || document.documentElement;
-    const tl = new window.ScrollTimeline({ source: root, axis: 'block' });
     const vh = window.innerHeight;
     const max = Math.max(1, root.scrollHeight - vh);
+    // a measure and a resize can both land here: the same route in the same window is already built
+    if (built.current.g === g && built.current.vh === vh && built.current.max === max) return;
+    built.current = { g, vh, max };
+    anims.current.forEach((a) => a.cancel());
+    anims.current = [];
+    if (!g) return;
+    const tl = new window.ScrollTimeline({ source: root, axis: 'block' });
     const top = state.current.top;
     const t = g.triggers;
     const n = t.length;
@@ -202,15 +227,14 @@ export default function RouteLine({ containerRef }) {
       return scrollAt(span > 0 ? t[i] + ((L - g.lens[i]) / span) * (t[i + 1] - t[i]) : t[i]);
     };
     const bends = t.map(scrollAt);
-    const positions = (from, to, extra = []) => {
-      const inside = bends.filter((S) => S > from && S < to);
-      const all = [0, max, from, to, ...inside, ...extra].map((S) => Math.round(Math.min(max, Math.max(0, S)) * 100) / 100);
-      return [...new Set(all)].sort((a, b) => a - b);
-    };
-    const run = (el, list, frameAt) => {
+    const run = (el, from, to, extra, frameAt) => {
       if (!el) return;
-      const keyframes = list.map((S) => ({ offset: S / max, ...frameAt(lengthAt(S)) }));
-      anims.current.push(el.animate(keyframes, { timeline: tl, fill: 'both', easing: 'linear' }));
+      // the stretch, kept inside what the page can actually scroll
+      const b = Math.min(max, Math.max(1, Math.ceil(to)));
+      const a = Math.max(0, Math.min(Math.floor(from), b - 1));
+      const list = [...new Set([a, b, ...[...bends, ...extra].filter((S) => S > a && S < b).map((S) => Math.round(S * 100) / 100)])].sort((x, y) => x - y);
+      const keyframes = list.map((S) => ({ offset: (S - a) / (b - a), ...frameAt(lengthAt(S)) }));
+      anims.current.push(el.animate(keyframes, { timeline: tl, rangeStart: `${a}px`, rangeEnd: `${b}px`, fill: 'both', easing: 'linear' }));
     };
     const headSamples = [];
     g.segs.forEach((seg, i) => {
@@ -221,14 +245,16 @@ export default function RouteLine({ containerRef }) {
       headSamples.push(scrollFor(a), scrollFor(b), ...arcSamples);
       run(
         doneRefs.current[i],
-        positions(scrollFor(a), scrollFor(b), arcSamples),
+        scrollFor(a),
+        scrollFor(b),
+        arcSamples,
         seg.kind === 'arc' ? (L) => ({ strokeDashoffset: String(seg.len * (1 - frac(L))) }) : (L) => ({ transform: seg.kind === 'v' ? `scaleY(${frac(L)})` : `scaleX(${frac(L)})` }),
       );
     });
     // the head: visible while the line is being drawn, riding its tip
     const start = scrollAt(t[0]);
     const end = scrollAt(t[n - 1]);
-    run(kyberRef.current, positions(start, end, [...headSamples, start + 2, end - 2]), (L) => {
+    run(kyberRef.current, start, end, [...headSamples, start + 2, end - 2], (L) => {
       const seg = g.segs.find((sg) => L >= sg.start && L <= sg.start + sg.len) ?? g.segs[g.segs.length - 1];
       const p = pointOn(seg, Math.max(0, Math.min(seg.len, L - seg.start)));
       return { transform: `translate3d(${p.x}px, ${p.y}px, 0)`, opacity: L > 0.5 && L < g.total - 0.5 ? 1 : 0 };
@@ -312,7 +338,7 @@ export default function RouteLine({ containerRef }) {
   if (!geo) return null;
 
   return (
-    <div className="route" style={{ height: geo.height }} aria-hidden="true">
+    <div className="route" aria-hidden="true">
       {geo.segs.map((seg, i) => {
         if (seg.kind === 'arc') {
           const ox = seg.cx - seg.r - 2;
@@ -381,4 +407,4 @@ export default function RouteLine({ containerRef }) {
       )}
     </div>
   );
-}
+});
