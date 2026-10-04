@@ -1,8 +1,9 @@
-// The ships you can fly round the universe map, built from simple shapes
-// the way the planets are: Luke's X-wing (four wings in an X, the red stripes,
-// four engines), the Millennium Falcon (the saucer, the two mandibles, the
-// cockpit off to the right, the blue glow across the back) and Rick's
-// space cruiser, whose model from Portal panic takes over once it loads.
+// The ships you can fly round the universe map: Luke's X-wing, built from
+// simple shapes (four wings in an X, the red stripes, four engines); the
+// Millennium Falcon, the site owner's Meshy model of it once it loads (until
+// then, or without it, one built the same way: the saucer, the two mandibles,
+// the cockpit off to the right); and Rick's space cruiser, whose model from
+// Portal panic takes over once it loads.
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
@@ -132,12 +133,15 @@ function falcon(T) {
     ]),
     lambert('#5d5f63'),
   );
-  // the sublight engines: a blue band across the back of the saucer
+  // the sublight engines: a blue band across the back of the saucer (the
+  // model has its own, painted on)
   const glowM = glowMat('#8fd8ff');
   const band = new THREE.Mesh(new THREE.TorusGeometry(R - 0.002, 0.009, 6, 32, 1.7), glowM);
   band.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 0.85);
-  group.add(hull, dark, band);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }] };
+  const stand = new THREE.Group();
+  stand.add(hull, dark, band);
+  group.add(stand);
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, nose: FALCON_NOSE };
 }
 
 // Until Portal panic's model of the cruiser arrives: a little saucer car
@@ -160,10 +164,16 @@ function cruiser(T) {
   const glow = new THREE.Mesh(new THREE.CircleGeometry(0.03, 16), glowM);
   glow.position.set(0, 0, 0.162);
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow };
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow, nose: -Math.PI / 2 }; // its model's nose is −x
 }
 
+// which way the Falcon model's nose points, as a turn about y (see buildShip)
+const FALCON_NOSE = Math.PI / 2;
+
 const BUILD = { xwing, falcon, cruiser };
+
+// the models that take over from the built ships, when they load
+export const SHIP_MODELS = { cruiser: '/games/meshy/cruiser.glb', falcon: '/models/universe/falcon.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
@@ -177,7 +187,7 @@ export function buildShip(kind, T = {}) {
     setThrottle(k) {
       for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.35 + 0.65 * k);
     },
-    // the cruiser's model, when it comes: sized to the stand-in, which goes
+    // the ship's model, when it comes: sized to the stand-in, which goes
     mount(model) {
       if (!ship.stand || !model) return false;
       const box = new THREE.Box3().setFromObject(model);
@@ -186,7 +196,7 @@ export function buildShip(kind, T = {}) {
       const holder = new THREE.Group();
       holder.add(model);
       holder.scale.setScalar(LENGTH / Math.max(dims.x, dims.z, 1e-6));
-      holder.rotation.y = -Math.PI / 2; // its nose is −x (as Portal panic and the C-137 page have it)
+      holder.rotation.y = ship.nose ?? 0; // turned so its nose points along −z
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
@@ -196,7 +206,12 @@ export function buildShip(kind, T = {}) {
       });
       ship.stand.visible = false;
       ship.group.add(holder);
-      ship.glowMesh.position.z = (dims.z / Math.max(dims.x, dims.z)) * (LENGTH / 2) + 0.004;
+      // the engines' glow at its tail, where the ship has one of its own
+      // (its length runs along x if it was turned a quarter)
+      if (ship.glowMesh) {
+        const along = Math.abs(Math.sin(holder.rotation.y)) > 0.5 ? dims.x : dims.z;
+        ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (LENGTH / 2) + 0.004;
+      }
       return true;
     },
   };

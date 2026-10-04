@@ -28,7 +28,7 @@ import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, start
 import { ORDER, POSITIONS } from './layout';
 import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
 import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
-import { buildShip } from './shipModels';
+import { SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
@@ -493,10 +493,10 @@ export async function create(canvas, ctx) {
     }
     state.model = buildShip(kind, T);
     map.add(state.model.group);
-    if (kind === 'cruiser') {
-      loadModel('/games/meshy/cruiser.glb').then((m) => {
+    if (SHIP_MODELS[kind]) {
+      loadModel(SHIP_MODELS[kind]).then((m) => {
         if (!m) return;
-        if (disposed || state.kind !== 'cruiser' || !state.model?.mount(m)) disposeTree(m);
+        if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
         ctx.invalidate();
       });
     }
