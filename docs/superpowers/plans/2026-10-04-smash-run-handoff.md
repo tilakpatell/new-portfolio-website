@@ -12,5 +12,5 @@ Task 7 of `docs/superpowers/plans/2026-10-04-avengers-hq-games.md`; brief in the
 ## Next
 1. Generate the Meshy set (needs `MESHY_API_KEY`; about 330 credits): `node --env-file=.env.local scripts/meshy.mjs --set hq images`, then `models`, `rig`, `anim`, `fetch`. Look at `lab/meshy-hq/*.png` after `images` before paying for `models`. Commit `public/hq/meshy/`.
 2. With the real models: tune Hulk's smash/leap/roar directions in `poseMeshyHulk`, car scale/orientation (`meshyParts(..., { h: 4.6, along: 'z' })`), soldier walk speed.
-3. Performance: about 250 draws and 600–800k triangles on desktop; lamps (3.9k tris each) and block geometry are the bulk. Fewer lamps, or an LOD for far blocks, if a real device struggles.
+3. Performance (measured in headless Chromium, mid-run with walls and cars): phones (tier medium) 127 draws, 186k triangles: blocks in six materials, a plain lamp, no car or soldier shadows, the city built 260 m ahead; desktop 205 draws, 395k. Touch (tap, swipes) checked with real touch events at 390 × 844. Not yet tried on a real phone.
 4. Merge to `main` via a PR when happy.

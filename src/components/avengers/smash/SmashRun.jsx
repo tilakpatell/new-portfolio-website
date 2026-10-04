@@ -307,7 +307,7 @@ export default function SmashRun({ fallback }) {
     }
     // touch: a swipe changes lanes or leaps; a tap smashes
     capturePointer(e);
-    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), done: false };
+    swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp, done: false };
   };
   const onPointerMove = (e) => {
     const s = swipe.current;
@@ -330,7 +330,8 @@ export default function SmashRun({ fallback }) {
     const s = swipe.current;
     if (!s || s.id !== e.pointerId) return;
     swipe.current = null;
-    if (!s.done && performance.now() - s.t < 350) smash(game.current);
+    // when the finger went down and up, not when we heard about it (a slow frame between them isn't a long press)
+    if (!s.done && e.timeStamp - s.t < 350) smash(game.current);
   };
 
   const res = ui.result;

@@ -527,8 +527,9 @@ const k0 = (s) => s.inset === 0;
 
 // One side of one block, facing +x (the avenue): the kerb at x = 0, the
 // building line at x = -5, from z = 0 (the corner nearest the run's start) to
-// z = -STREET.corner. `size` is the atlas's, for its cells. Returns a group.
-export function buildBlock(seed, mats, { size = 1024 } = {}) {
+// z = -STREET.corner. `size` is the atlas's, for its cells; `lite` draws it in
+// fewer materials. Returns a group.
+export function buildBlock(seed, mats, { size = 1024, lite = false } = {}) {
   const r = rng(seed);
   const B = new PartBuilder();
   const Q = new Quads();
@@ -536,7 +537,9 @@ export function buildBlock(seed, mats, { size = 1024 } = {}) {
   const X = -STREET.walk; // the building line
   const Y = STREET.kerb; // the sidewalk's top
   const L = STREET.corner;
-  const add = (key, geo, place) => B.add(key, geo, place);
+  // `lite` (phones): six materials, not eight; timber and granite go to iron and stone
+  const LITE = { planks: 'iron', base: 'stone' };
+  const add = (key, geo, place) => B.add(lite ? LITE[key] ?? key : key, geo, place);
 
   // the sidewalk, wrapping the corners down the cross streets, and its kerbs
   add('sidewalk', meterBox(30, Y, L, TILE.sidewalk), { p: [-15, Y / 2, -L / 2] });
@@ -756,6 +759,17 @@ function waterTower(add, x, y, z, s = 1.6) {
   add('iron', new THREE.SphereGeometry(0.1, 8, 6), { p: [x, y + legH + H + s * 0.92, z] });
 }
 
+// A plain street lamp for phones (the scanned one is 4,000 triangles): a pole
+// on a base, an arm out along +z to a hood over the bulb (drawn apart).
+export function lampGeometries() {
+  const b = new PartBuilder();
+  b.add('iron', new THREE.CylinderGeometry(0.2, 0.26, 0.7, 8), { p: [0, 0.35, 0] });
+  b.add('iron', new THREE.CylinderGeometry(0.08, 0.12, 7.1, 8), { p: [0, 3.9, 0] });
+  b.add('iron', new THREE.BoxGeometry(0.07, 0.07, 0.8), { p: [0, 7.45, 0.36] });
+  b.add('iron', new THREE.ConeGeometry(0.32, 0.3, 10, 1, true), { p: [0, 7.52, 0.72] });
+  return b.geometries();
+}
+
 // ── cars ──
 
 // Side profiles: [z, y] round the body from the rear bottom, nose at +z.
@@ -817,7 +831,7 @@ function sideExtrude(pts, width, bevel = 0.05) {
 export const CAR_KINDS = ['sedan', 'taxi', 'police', 'suv'];
 
 // A car's parts for an instanced pool, nose along +z, wheels on the ground:
-// paint (tinted per car), glass, trim, chrome, tyre, lamp, red, and for a
+// paint (tinted per car), glass, trim (and tyres), chrome (and headlamps), red, and for a
 // taxi its roof light (sign), for a police car its lightbar (siren) and stripe.
 export function carGeometries(kind = 'sedan') {
   const P = kind === 'suv' ? PROFILES.suv : PROFILES.sedan;
@@ -853,7 +867,7 @@ export function carGeometries(kind = 'sedan') {
   for (const sx of [-1, 1])
     for (const sz of [-1, 1]) {
       const p = [sx * (W / 2 - 0.13), r, sz * P.base];
-      b.add('tyre', tyre, { p });
+      b.add('trim', tyre, { p });
       b.add('chrome', hub, { p: [p[0] + sx * 0.005, r, p[2]] });
       b.add('trim', arch, { p: [sx * (W / 2 - 0.02), r + 0.02, sz * P.base] });
     }
@@ -862,7 +876,7 @@ export function carGeometries(kind = 'sedan') {
   for (const sz of [-1, 1]) b.add('trim', rbox(W * 0.98, 0.2, 0.22, 0.06, 2), { p: [0, by, sz * 2.24] });
   b.add('trim', rbox(W * 0.5, 0.18, 0.06, 0.02, 2), { p: [0, by + 0.24, 2.24] });
   for (const sx of [-1, 1]) {
-    b.add('lamp', rbox(0.34, 0.12, 0.06, 0.02, 2), { p: [sx * 0.62, by + 0.25, 2.21] });
+    b.add('chrome', rbox(0.34, 0.12, 0.06, 0.02, 2), { p: [sx * 0.62, by + 0.25, 2.21] });
     b.add('red', rbox(0.36, 0.13, 0.06, 0.02, 2), { p: [sx * 0.66, by + 0.3, -2.25] });
   }
   for (const sz of [-1, 1]) b.add('chrome', new THREE.BoxGeometry(0.34, 0.12, 0.02), { p: [0, by, sz * 2.36] });
@@ -888,8 +902,6 @@ export function carMaterials() {
     glass: new THREE.MeshPhysicalMaterial({ color: 0x1a2028, metalness: 0.2, roughness: 0.06, clearcoat: 1, envMapIntensity: 1.4 }),
     trim: new THREE.MeshStandardMaterial({ color: 0x1a1b1d, roughness: 0.65, metalness: 0.1 }),
     chrome: new THREE.MeshStandardMaterial({ color: 0xd0d4d8, roughness: 0.18, metalness: 1 }),
-    tyre: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.92, metalness: 0 }),
-    lamp: new THREE.MeshStandardMaterial({ color: 0xe8eef2, roughness: 0.1, metalness: 0.4, emissive: 0xfff2d8, emissiveIntensity: 0.15 }),
     red: new THREE.MeshStandardMaterial({ color: 0x8a0c0c, roughness: 0.25, metalness: 0.2, emissive: 0xff2010, emissiveIntensity: 0.25 }),
     sign: new THREE.MeshStandardMaterial({ color: 0xf2f0e8, roughness: 0.4, emissive: 0xfff4d0, emissiveIntensity: 0.6 }),
     siren: new THREE.MeshStandardMaterial({ color: 0x1030a0, roughness: 0.25, emissive: 0x2050ff, emissiveIntensity: 0.4 }),
@@ -913,14 +925,14 @@ export function wallGeometries(w = 3) {
   const b = new PartBuilder();
   for (const sd of [-1, 1]) {
     const x = sd * (w / 2 + 0.12);
-    b.add('dark', rbox(0.95, 0.32, 1.05, 0.08), { p: [x, 0.16, 0] }); // the foot
-    for (const fz of [-1, 1]) b.add('armour', taper(rbox(0.3, 0.26, 0.75, 0.05), 1, 0.4, { axis: 'z' }), { p: [x, 0.14, fz * 0.62], r: [0, fz > 0 ? 0 : Math.PI, 0] }); // claws
-    b.add('armour', taper(rbox(0.46, 4.1, 0.56, 0.08), 1, 0.42), { p: [x, 2.3, 0] }); // the pylon
-    b.add('dark', taper(rbox(0.22, 3.7, 0.62, 0.04), 1, 0.5), { p: [x + sd * 0.06, 2.2, 0] }); // its spine
-    b.add('glow', rbox(0.05, 3.4, 0.07, 0.02), { p: [x - sd * 0.22, 2.15, 0] }); // the seam that feeds the field
-    for (let i = 0; i < 4; i++) b.add('armour', taper(rbox(0.55, 0.1, 0.42, 0.03), 1, 0.3, { axis: 'x', zToo: true }), { p: [x + sd * 0.3, 1.0 + i * 0.85, 0], r: [0, sd > 0 ? 0 : Math.PI, -sd * 0.35] }); // fins
-    b.add('glow', new THREE.SphereGeometry(0.17, 14, 10), { p: [x, 4.42, 0] }); // the emitter
-    b.add('armour', new THREE.TorusGeometry(0.22, 0.05, 8, 18).rotateX(Math.PI / 2), { p: [x, 4.42, 0] });
+    b.add('dark', rbox(0.95, 0.32, 1.05, 0.08, 1), { p: [x, 0.16, 0] }); // the foot
+    for (const fz of [-1, 1]) b.add('armour', taper(rbox(0.3, 0.26, 0.75, 0.05, 1), 1, 0.4, { axis: 'z' }), { p: [x, 0.14, fz * 0.62], r: [0, fz > 0 ? 0 : Math.PI, 0] }); // claws
+    b.add('armour', taper(rbox(0.46, 4.1, 0.56, 0.08, 1), 1, 0.42), { p: [x, 2.3, 0] }); // the pylon
+    b.add('dark', taper(rbox(0.22, 3.7, 0.62, 0.04, 1), 1, 0.5), { p: [x + sd * 0.06, 2.2, 0] }); // its spine
+    b.add('glow', rbox(0.05, 3.4, 0.07, 0.02, 1), { p: [x - sd * 0.22, 2.15, 0] }); // the seam that feeds the field
+    for (let i = 0; i < 4; i++) b.add('armour', taper(rbox(0.55, 0.1, 0.42, 0.03, 1), 1, 0.3, { axis: 'x', zToo: true }), { p: [x + sd * 0.3, 1.0 + i * 0.85, 0], r: [0, sd > 0 ? 0 : Math.PI, -sd * 0.35] }); // fins
+    b.add('glow', new THREE.SphereGeometry(0.17, 10, 8), { p: [x, 4.42, 0] }); // the emitter
+    b.add('armour', new THREE.TorusGeometry(0.22, 0.05, 6, 14).rotateX(Math.PI / 2), { p: [x, 4.42, 0] });
   }
   return b.geometries();
 }
@@ -1307,23 +1319,20 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
   const frame = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.35, metalness: 0.9 });
   const glow = new THREE.MeshBasicMaterial({ color: hot(0x9fe8ff, 3), toneMapped: false });
 
-  // the podium and the shaft
-  const podium = new THREE.Mesh(new THREE.BoxGeometry(78, 26, 56), stone);
-  podium.position.y = 13;
-  group.add(podium);
+  // the stone, the frame and the lights are each merged into one draw; the
+  // glass is two (the shaft and the crown carry their own windows)
+  const B = new PartBuilder();
   const shaftH = 170;
+  const crownH = 72;
+  const padY = 26 + shaftH + 40;
+  const roofY = 26 + shaftH + crownH;
+  B.add('stone', new THREE.BoxGeometry(78, 26, 56), { p: [0, 13, 0] }); // the podium
   const shaft = new THREE.Mesh(new THREE.BoxGeometry(46, shaftH, 34), glassMat(18, 42, 3, 0.45));
   shaft.position.y = 26 + shaftH / 2;
   group.add(shaft);
   // vertical fins up its corners
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) {
-      const fin = new THREE.Mesh(new THREE.BoxGeometry(1.4, shaftH + 4, 1.4), frame);
-      fin.position.set(sx * 23, 26 + shaftH / 2 + 2, sz * 17);
-      group.add(fin);
-    }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add('frame', new THREE.BoxGeometry(1.4, shaftH + 4, 1.4), { p: [sx * 23, 26 + shaftH / 2 + 2, sz * 17] });
   // the crown: a side profile swept back as it rises, pushed out across
-  const crownH = 72;
   const shape = new THREE.Shape();
   shape.moveTo(-17, 0);
   shape.lineTo(17, 0);
@@ -1338,7 +1347,7 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
   const crown = new THREE.Mesh(crownGeo, glassMat(14, 18, 8, 0.6));
   crown.position.y = 26 + shaftH;
   group.add(crown);
-  // the blade: a fin up the front of the crown, carrying the name
+  // the blade: a fin up the front of the crown
   const bladeShape = new THREE.Shape();
   bladeShape.moveTo(0, 0);
   bladeShape.lineTo(5, 0);
@@ -1347,9 +1356,7 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
   bladeShape.quadraticCurveTo(-1, 48, 0, 0);
   const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, { depth: 3, bevelEnabled: false, curveSegments: 16 });
   bladeGeo.rotateY(-Math.PI / 2);
-  const blade = new THREE.Mesh(bladeGeo, frame);
-  blade.position.set(1.5, 26 + shaftH - 30, 17);
-  group.add(blade);
+  B.add('frame', bladeGeo, { p: [1.5, 26 + shaftH - 30, 17] });
   // STARK, down the front in light
   const name = canvasTexture(128, 640, (x, w, h) => {
     x.clearRect(0, 0, w, h);
@@ -1363,24 +1370,14 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
   sign.position.set(0, 26 + shaftH - 50, 17.2);
   group.add(sign);
   // the landing pad, off the front of the crown, ringed with lights
-  const padY = 26 + shaftH + 40;
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(10, 9, 1.4, 40), frame);
-  pad.position.set(-10, padY, 26);
-  group.add(pad);
-  const padRing = new THREE.Mesh(new THREE.TorusGeometry(9.6, 0.25, 6, 48).rotateX(Math.PI / 2), glow);
-  padRing.position.set(-10, padY + 0.75, 26);
-  group.add(padRing);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 18), frame);
-  arm.position.set(-10, padY - 1.5, 15);
-  group.add(arm);
-  // the arc reactor's ring and the roof
-  const roofY = 26 + shaftH + crownH;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(7, 0.7, 10, 48).rotateX(Math.PI / 2), glow);
-  ring.position.set(0, roofY + 1.2, -9.5);
-  group.add(ring);
-  const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.4, 34, 10), frame);
-  spire.position.set(14, roofY + 17, -14);
-  group.add(spire);
+  B.add('frame', new THREE.CylinderGeometry(10, 9, 1.4, 40), { p: [-10, padY, 26] });
+  B.add('glow', new THREE.TorusGeometry(9.6, 0.25, 6, 48).rotateX(Math.PI / 2), { p: [-10, padY + 0.75, 26] });
+  B.add('frame', new THREE.BoxGeometry(4, 2.5, 18), { p: [-10, padY - 1.5, 15] });
+  // the arc reactor's ring on the roof, the Tesseract's hard white point in it, the spire
+  B.add('glow', new THREE.TorusGeometry(7, 0.7, 10, 48).rotateX(Math.PI / 2), { p: [0, roofY + 1.2, -9.5] });
+  B.add('glow', new THREE.SphereGeometry(3, 16, 12), { p: [0, roofY + 2, -9.5] });
+  B.add('frame', new THREE.CylinderGeometry(0.4, 1.4, 34, 10), { p: [14, roofY + 17, -14] });
+  group.add(B.build({ stone, frame, glow }, { shadows: false }));
 
   // the Tesseract's beam, straight up into the portal
   const beamMat = new THREE.ShaderMaterial({
@@ -1397,7 +1394,6 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
       varying vec2 vUv;
       void main() {
         // brightest facing us: the cylinder's sides fade out
-        float across = abs(vUv.x * 2.0 - 1.0);
         float face = 1.0 - smoothstep(0.0, 0.5, abs(fract(vUv.x * 2.0) - 0.5) * 2.0);
         float streak = 0.75 + 0.25 * sin(vUv.y * 140.0 - uTime * 40.0 + vUv.x * 30.0);
         float flicker = 0.85 + 0.15 * sin(uTime * 53.0) * sin(uTime * 31.0);
@@ -1431,11 +1427,6 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
   }));
   halo.position.copy(beam.position);
   group.add(halo);
-  // and where it starts, a hard white point
-  const source = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 12), new THREE.MeshBasicMaterial({ color: hot(0xcfeaff, 6), toneMapped: false }));
-  source.position.set(0, roofY + 2, -9.5);
-  group.add(source);
-
   group.traverse((o) => {
     if (o.isMesh) {
       o.castShadow = false;
@@ -1450,7 +1441,7 @@ export function buildStarkTower({ beamLength = 420 } = {}) {
     height: roofY,
     update(t) {
       beamMat.uniforms.uTime.value = t;
-      ring.material.color.copy(hot(0x9fe8ff, 2.6 + Math.sin(t * 2) * 0.4));
+      glow.color.copy(hot(0x9fe8ff, 2.6 + Math.sin(t * 2) * 0.4));
     },
   };
 }

@@ -15,7 +15,7 @@ import { prefersReducedMotion } from '../../../lib/hooks';
 import { buildChariot, buildPortal } from '../lawn/models';
 import { CHARIOT, KINDS, LANE, RUN } from './rules';
 import { aim, fitted, loadMeshy, meshyFigure, meshyParts } from './meshy';
-import { CAR_COLOURS, CAR_KINDS, STREET, blockMaterials, buildBlock, buildStarkTower, carGeometries, carMaterials, craterMaps, craterRim, facadeAtlas, laneWarning, roadMarkings, wallField, wallGeometries } from './models';
+import { CAR_COLOURS, CAR_KINDS, STREET, blockMaterials, buildBlock, lampGeometries, buildStarkTower, carGeometries, carMaterials, craterMaps, craterRim, facadeAtlas, laneWarning, roadMarkings, wallField, wallGeometries } from './models';
 
 const FOV = 56;
 const SOLDIERS = 16;
@@ -67,8 +67,9 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   const engine = createEngine(canvas, { exposure: 1.0, fov: FOV, near: 0.1, far: 1600, bloom: { strength: 0.6, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
-  const FAR = small ? 300 : 400; // how far ahead the city is built
-  const VARIANTS = small ? 6 : 8; // blocks per side, reused down the avenue
+  const FAR = small ? 260 : 400; // how far ahead the city is built
+  // blocks per side, reused down the avenue: more than are ever in view at once
+  const VARIANTS = small ? 6 : 8;
 
   // the Meshy models, where they've been made (./meshy.js); the rest is built here
   const M = await loadMeshy({ manifest: meshy });
@@ -106,20 +107,24 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   // the blocks: built once, each placed wherever its turn comes round
   const atlas = facadeAtlas({ size: small ? 512 : 1024 });
   const bmats = await blockMaterials({ small, atlas });
-  const left = Array.from({ length: VARIANTS }, (_, i) => buildBlock(101 + i * 7, bmats, { size: atlas.size }));
-  const right = Array.from({ length: VARIANTS }, (_, i) => buildBlock(503 + i * 11, bmats, { size: atlas.size }));
+  const left = Array.from({ length: VARIANTS }, (_, i) => buildBlock(101 + i * 7, bmats, { size: atlas.size, lite: small }));
+  const right = Array.from({ length: VARIANTS }, (_, i) => buildBlock(503 + i * 11, bmats, { size: atlas.size, lite: small }));
   for (const b of right) b.rotation.y = Math.PI;
   for (const b of [...left, ...right]) {
+    b.name = 'block';
     b.visible = false;
     scene.add(b);
   }
   // block j starts at course position 80 j - 40
   const blockStart = (j) => j * STREET.block - 40;
 
-  // street lamps along both kerbs, every 30 m
-  const lampParts = await modelParts('lamp', 2);
+  // street lamps along both kerbs, every 30 m: the scanned one, or on a phone a plain one
+  const lampParts = small ? { geos: lampGeometries(), mats: { iron: bmats.iron } } : await modelParts('lamp', 2);
   const lamps = lampParts.empty ? null : instanced(lampParts.geos, lampParts.mats, 40, { shadows: false });
-  if (lamps) scene.add(lamps.group);
+  if (lamps) {
+    lamps.group.name = 'lamps';
+    scene.add(lamps.group);
+  }
   const bulbMat = new THREE.MeshBasicMaterial({ color: hot(0xffd9a0, 2.4), toneMapped: false });
   const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 10, 8), bulbMat, 40);
   bulbs.frustumCulled = false;
@@ -127,6 +132,7 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
 
   // ── the background: Stark Tower, the portal, chariots round it, haze ──
   const back = new THREE.Group();
+  back.name = 'background';
   scene.add(back);
   // at the end of the avenue, where the street's slot of sky is
   const PORTAL_Y = 300;
@@ -145,7 +151,7 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   back.add(portal.mesh);
   const skyMats = { armour: new THREE.MeshStandardMaterial({ color: 0x4d4237, metalness: 0.75, roughness: 0.42 }), dark: new THREE.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.7, roughness: 0.45 }), glow: new THREE.MeshBasicMaterial({ color: hot(0x6fd8ff, 2.6), toneMapped: false }) };
   const chariotModel = (mats) => (M.chariot ? fitted(M.chariot, { h: 3.6, along: 'z' }) : buildChariot(mats));
-  const circling = Array.from({ length: small ? 2 : 4 }, (_, i) => {
+  const circling = Array.from({ length: small ? 1 : 4 }, (_, i) => {
     const c = chariotModel(skyMats);
     c.scale.setScalar(3.2);
     back.add(c);
@@ -184,6 +190,7 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   hulk.root.rotation.y = Math.PI; // he runs toward -z
   // Meshy's Hulk, if he's been made: his own run, with the rest laid over it
   const mh = M.hulk ? meshyFigure(M.hulk, { h: 2.6 }) : null;
+  (mh ? mh.root : hulk.root).name = 'hulk';
   scene.add(mh ? mh.root : hulk.root);
   const mhBase = mh?.materials.map((m) => m.color?.clone() ?? new THREE.Color(1, 1, 1));
   if (mh)
@@ -203,6 +210,8 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
     const h = M.chitauri ? meshyFigure(M.chitauri, { h: 1.95 }) : buildHumanoid({ style: 'chitauri', materials: chitMats, scale: 1 });
     if (h.meshy) h.phase(i * 0.37);
     h.root.visible = false;
+    h.root.name = 'soldier';
+    if (small) h.root.traverse((o) => (o.castShadow = false));
     h.id = null;
     scene.add(h.root);
     return h;
@@ -211,17 +220,25 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   const cars = Object.fromEntries(
     CAR_KINDS.map((k) => {
       const parts = M[k] ? meshyParts(M[k], { h: 4.6, along: 'z' }) : null;
-      return [k, parts ? instanced(parts.geos, parts.mats, 14) : instanced(carGeometries(k), carMats, 14)];
+      // on a phone the cars cast no shadows: half their cost
+      return [k, parts ? instanced(parts.geos, parts.mats, 14, { shadows: !small }) : instanced(carGeometries(k), carMats, 14, { shadows: !small })];
     }),
   );
-  for (const p of Object.values(cars)) scene.add(p.group);
+  for (const [k, p] of Object.entries(cars)) {
+    p.group.name = `cars-${k}`;
+    scene.add(p.group);
+  }
   const barrierParts = await modelParts('barrier');
   const barriers = barrierParts.empty ? null : instanced(barrierParts.geos, barrierParts.mats, 36);
-  if (barriers) scene.add(barriers.group);
+  if (barriers) {
+    barriers.group.name = 'barriers';
+    scene.add(barriers.group);
+  }
   const wallMats = { armour: chitMats.armour, dark: skyMats.dark, glow: new THREE.MeshBasicMaterial({ color: hot(VIOLET, 3), toneMapped: false }) };
   // Meshy's pylon, two to a wall, or the built pair
   const pylon = M.pylon ? meshyParts(M.pylon, { h: 4.4 }) : null;
   const walls = pylon ? instanced(pylon.geos, pylon.mats, 12) : instanced(wallGeometries(KINDS.barrier.w), wallMats, 6);
+  walls.group.name = 'walls';
   scene.add(walls.group);
   const field = wallField(KINDS.barrier.w, 3.9);
   const fields = new THREE.InstancedMesh(field.geo, field.mat, 6);
@@ -470,7 +487,8 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
     for (const t of scrollTex) t.offset.y = d / 4;
     markings.offset.y = (d + 40) / STREET.block;
     for (const b of [...left, ...right]) b.visible = false;
-    const j0 = Math.floor((d - 160) / STREET.block) + 1;
+    // from the block 40 m behind him to the last one in reach
+    const j0 = Math.floor((d - 80) / STREET.block) + 1;
     const j1 = Math.floor((d + FAR + 40) / STREET.block);
     for (let j = j0; j <= j1; j++) {
       const z = zAt(g, blockStart(j));
@@ -485,7 +503,7 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
     if (lamps) lamps.begin();
     let nb = 0;
     const k0 = Math.floor((d - 30) / 30);
-    for (let k = k0; k < k0 + Math.ceil(FAR / 30) + 2 && nb < 40; k++) {
+    for (let k = k0; k < k0 + Math.ceil((FAR * (small ? 0.7 : 1)) / 30) + 2 && nb < 40; k++) {
       const s = k * 30 + 15;
       const inBlock = (((s + 40) % 80) + 80) % 80;
       if (inBlock > STREET.corner - 2) continue;
@@ -580,6 +598,7 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
     }
     for (let i = ns; i < 120; i++) slabs.setMatrixAt(i, zero);
     slabs.instanceMatrix.needsUpdate = true;
+    slabs.visible = ns > 0;
     for (const c of craters) if (!c.used) c.m.visible = false;
     fields.count = nf;
     fields.instanceMatrix.needsUpdate = true;
