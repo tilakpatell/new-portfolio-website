@@ -131,3 +131,12 @@ export function enterPlan(universe, { reduced, three, ship = null }) {
   if (universe.id === 'starwars') return { mode: 'jump', delay: 1250 };
   return { mode: 'dive', delay: DIVE_MS };
 }
+
+// Flying into a planet or a station too fast: the crash plays, and then you
+// go on into its page, the screen washing out in its colour on the way
+// (straight there with reduced motion). The sun has no page: it just
+// swallows you and you come back beside it (null).
+export function crashPlan(universe, { reduced }) {
+  if (!universe) return null;
+  return { mode: 'crash', delay: reduced ? 0 : 700 };
+}

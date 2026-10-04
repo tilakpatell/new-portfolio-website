@@ -167,7 +167,7 @@
 .station-list a span:last-child { font-size: 0.8rem; }
 .station-term { margin-bottom: 0; padding: 0.75rem 0.9rem; border-radius: 10px; background: #05080a; color: #7dff9a; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap; }
 .universe-fade { position: absolute; z-index: 3; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
-.universe-page:is([data-leaving='dive'], [data-leaving='portal']) .universe-fade { opacity: 1; }
+.universe-page:is([data-leaving='dive'], [data-leaving='portal'], [data-leaving='crash']) .universe-fade { opacity: 1; }
 
 /* flying: the steering ring, Boost (touch screens), the first-flight hint */
 .universe-stick {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER, REACH } from './layout';
-import { cover, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
+import { cover, crashPlan, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
 import { byId } from './universes';
 
 const gap = (a, b) => Math.hypot(a.target[0] - b.target[0], a.target[1] - b.target[1], a.target[2] - b.target[2]) + Math.abs(Math.log(a.dist / b.dist)) + Math.abs(a.pitch - b.pitch);
@@ -92,5 +92,20 @@ describe('Enter', () => {
     expect(enterPlan(byId('starwars'), { reduced: false, three: true, ship: 'cruiser' })).toEqual({ mode: 'portal', delay: 600 });
     expect(enterPlan(byId('office'), { reduced: false, three: true, ship: 'cruiser' })).toEqual({ mode: 'portal', delay: 600 });
     expect(enterPlan(byId('office'), { reduced: true, three: true, ship: 'cruiser' })).toEqual({ mode: 'now', delay: 0 });
+  });
+});
+
+describe('crashing into a place', () => {
+  it('goes on into its page from every planet and station', () => {
+    for (const id of ORDER) expect(crashPlan(byId(id), { reduced: false }), id).toMatchObject({ mode: 'crash', delay: expect.any(Number) });
+    expect(crashPlan(byId('marvel'), { reduced: false }).delay).toBeGreaterThan(0);
+  });
+
+  it('comes back from the sun, which has no page', () => {
+    expect(crashPlan(byId('sun'), { reduced: false })).toBeNull();
+  });
+
+  it('goes straight there with reduced motion', () => {
+    expect(crashPlan(byId('resume'), { reduced: true })).toMatchObject({ mode: 'crash', delay: 0 });
   });
 });

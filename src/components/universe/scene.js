@@ -19,7 +19,9 @@
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
-// clicked: go to its page), onEvent(event), onLand().
+// clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
+// went into a planet or a station too fast and the impact has played: true
+// if the page goes on into its page, so the ship doesn't come back).
 
 import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
@@ -54,8 +56,9 @@ const PLUME = {
 };
 const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the
-// impact, the ship back again, the end of its coming back
-const CRASH = { impact: 0.32, back: 2.7, done: 3.3 };
+// impact, on through into its page (a planet or a station, not the sun),
+// or else the ship back again, and the end of its coming back
+const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -754,6 +757,8 @@ export async function create(canvas, ctx) {
       speed: e.speed,
       spin: [3 + Math.random() * 5, 2 + Math.random() * 4],
       impact: false,
+      asked: false, // has the page been told (props.onCrash)
+      through: false, // and gone on into the place's page
       back: false,
     };
     state.auto = null;
@@ -791,6 +796,13 @@ export async function create(canvas, ctx) {
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
       emit({ type: 'crash', id: c.id });
     }
+    if (age >= CRASH.through && !c.asked && !c.sun) {
+      // the shockwave running out over the surface: the page takes it from
+      // here, if it's going on into the place's page
+      c.asked = true;
+      c.through = Boolean(props.onCrash?.(c.id));
+    }
+    if (c.through) return true; // the camera holds on the crater till the page goes
     if (age >= CRASH.back && !c.back) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
@@ -1013,6 +1025,7 @@ export async function create(canvas, ctx) {
     last = now;
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
+    if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
     return !still() || moving || shooting || fxBusy || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
