@@ -8,6 +8,7 @@ import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
 import HulkLab from '../components/avengers/HulkLab';
 import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
+import Ricochet from '../components/avengers/ricochet/Ricochet';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -28,7 +29,7 @@ const sfx = () => import('../lib/sfx');
 const FLOORS = [
   { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
   { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
-  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river. Throw the shield and it comes back. It always comes back.' },
+  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'Three lanes at the edge of the woods. Aim anywhere you like.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
   { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him.' },
@@ -253,8 +254,8 @@ export default function Avengers() {
           <Floor i={1} floor={FLOORS[1]} aside={<Gif name="marvelThor" size="medium" />}>
             <Mjolnir />
           </Floor>
-          <Floor i={2} floor={FLOORS[2]} aside={<Gif name="marvelCapHammer" size="medium" />}>
-            <ShieldThrow />
+          <Floor i={2} floor={FLOORS[2]}>
+            <Ricochet fallback={<ShieldThrow />} />
           </Floor>
           <Floor i={3} floor={FLOORS[3]}>
             <Range />

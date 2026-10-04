@@ -87,10 +87,133 @@ const STYLES = {
       add(ft, 'glow', new THREE.CylinderGeometry(0.025, 0.03, 0.02, 14), { p: [0, -0.055, 0] });
     }
   },
+
+  // Stark's training bots: white shells over black joints, a blue visor
+  bot(add) {
+    add('hips', 'shell', rbox(0.3, 0.15, 0.2, 0.05), { p: [0, -0.02, 0] });
+    for (let i = 0; i < 2; i++) add('spine', 'dark', new THREE.CylinderGeometry(0.1, 0.11, 0.08, 16), { p: [0, 0.05 + i * 0.09, 0] });
+    add('chest', 'shell', taper(rbox(0.42, 0.32, 0.24, 0.09), 0.78, 1), { p: [0, 0.15, 0] });
+    add('chest', 'dark', rbox(0.2, 0.08, 0.04, 0.02), { p: [0, 0.2, 0.12] });
+    add('chest', 'visor', rbox(0.12, 0.025, 0.02, 0.008), { p: [0, 0.21, 0.135] });
+    add('neck', 'dark', new THREE.CylinderGeometry(0.045, 0.05, 0.1, 12), { p: [0, 0.03, 0] });
+    add('head', 'shell', rbox(0.2, 0.22, 0.22, 0.08), { p: [0, 0.12, 0] });
+    add('head', 'dark', rbox(0.18, 0.07, 0.04, 0.02), { p: [0, 0.13, 0.1] });
+    add('head', 'visor', rbox(0.16, 0.035, 0.02, 0.01), { p: [0, 0.13, 0.115] });
+    for (const [sh, el, ha, sd] of [
+      ['shoulderL', 'elbowL', 'handL', 1],
+      ['shoulderR', 'elbowR', 'handR', -1],
+    ]) {
+      add(sh, 'shell', new THREE.SphereGeometry(0.075, 16, 12), { p: [sd * 0.01, 0, 0] });
+      add(sh, 'dark', limb(0.045, 0.28, 0.04), { p: [0, -0.29, 0] });
+      add(sh, 'shell', limb(0.058, 0.18, 0.05), { p: [0, -0.24, 0] });
+      add(el, 'dark', new THREE.SphereGeometry(0.04, 12, 10));
+      add(el, 'shell', limb(0.05, 0.22, 0.042), { p: [0, -0.24, 0] });
+      add(ha, 'dark', rbox(0.07, 0.1, 0.04, 0.015), { p: [0, -0.05, 0] });
+    }
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'shell', limb(0.075, 0.4, 0.06), { p: [0, -0.42, 0] });
+      add(kn, 'dark', new THREE.SphereGeometry(0.05, 12, 10));
+      add(kn, 'shell', limb(0.06, 0.4, 0.045), { p: [0, -0.42, 0] });
+      add(ft, 'dark', rbox(0.09, 0.07, 0.2, 0.025), { p: [0, -0.02, 0.035] });
+    }
+  },
+
+  // a training dummy in an orange jumpsuit: the hostage
+  hostage(add) {
+    add('hips', 'suit', rbox(0.3, 0.16, 0.2, 0.06), { p: [0, -0.02, 0] });
+    add('spine', 'suit', new THREE.CylinderGeometry(0.12, 0.13, 0.22, 16), { p: [0, 0.1, 0] });
+    add('chest', 'suit', taper(rbox(0.4, 0.32, 0.23, 0.1), 0.85, 1), { p: [0, 0.14, 0] });
+    add('chest', 'dark', rbox(0.3, 0.12, 0.02, 0.01), { p: [0, 0.16, 0.12] }); // a vest
+    add('neck', 'skin', new THREE.CylinderGeometry(0.045, 0.05, 0.1, 12), { p: [0, 0.03, 0] });
+    add('head', 'skin', new THREE.SphereGeometry(0.11, 20, 16), { p: [0, 0.12, 0], s: [0.92, 1.12, 1] });
+    for (const [sh, el, ha] of [
+      ['shoulderL', 'elbowL', 'handL'],
+      ['shoulderR', 'elbowR', 'handR'],
+    ]) {
+      add(sh, 'suit', limb(0.06, 0.3, 0.05), { p: [0, -0.3, 0] });
+      add(el, 'suit', limb(0.05, 0.25, 0.042), { p: [0, -0.255, 0] });
+      add(ha, 'skin', rbox(0.06, 0.09, 0.035, 0.015), { p: [0, -0.05, 0] });
+    }
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'suit', limb(0.08, 0.42, 0.065), { p: [0, -0.43, 0] });
+      add(kn, 'suit', limb(0.065, 0.42, 0.05), { p: [0, -0.43, 0] });
+      add(ft, 'dark', rbox(0.09, 0.07, 0.2, 0.025), { p: [0, -0.02, 0.035] });
+    }
+  },
+
+  // Captain America: the navy suit with its star and stripes, leather straps,
+  // gloves and boots, the winged helmet with the A
+  cap(add) {
+    add('hips', 'suit', rbox(0.32, 0.17, 0.21, 0.06), { p: [0, -0.02, 0] });
+    add('hips', 'leather', rbox(0.35, 0.06, 0.23, 0.02), { p: [0, 0.07, 0] }); // belt
+    add('hips', 'silver', rbox(0.06, 0.045, 0.02, 0.01), { p: [0, 0.07, 0.118] }); // buckle
+    for (const sd of [-1, 1]) add('hips', 'leather', rbox(0.06, 0.07, 0.05, 0.015), { p: [sd * 0.12, 0.06, 0.1] }); // pouches
+    // the striped midriff: red and white down the front
+    add('spine', 'suit', new THREE.CylinderGeometry(0.125, 0.135, 0.22, 18), { p: [0, 0.1, -0.005] });
+    for (let i = -3; i <= 3; i++) add('spine', i % 2 ? 'white' : 'red', rbox(0.034, 0.22, 0.03, 0.008), { p: [i * 0.034, 0.1, 0.118 - Math.abs(i) * 0.012], r: [0, i * 0.12, 0] });
+    add('chest', 'suit', taper(rbox(0.44, 0.33, 0.25, 0.1), 0.8, 1), { p: [0, 0.15, 0] });
+    // the star
+    const star = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 ? 0.032 : 0.075;
+      if (i) star.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      else star.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    add('chest', 'white', new THREE.ExtrudeGeometry(star, { depth: 0.012, bevelEnabled: false }), { p: [0, 0.2, 0.124] });
+    for (const sd of [-1, 1]) {
+      add('chest', 'leather', rbox(0.05, 0.02, 0.26, 0.008), { p: [sd * 0.13, 0.31, 0], r: [0, 0, sd * -0.2] }); // shoulder straps
+      add('chest', 'leather', rbox(0.04, 0.16, 0.018, 0.006), { p: [sd * 0.13, 0.24, 0.12], r: [0, 0, sd * 0.25] });
+    }
+    add('neck', 'suit', new THREE.CylinderGeometry(0.052, 0.06, 0.12, 14), { p: [0, 0.03, 0] });
+    // head: the helmet over the top, the face below it
+    add('head', 'skin', new THREE.SphereGeometry(0.098, 20, 16), { p: [0, 0.1, 0.01], s: [0.9, 1.12, 1] });
+    add('head', 'helmet', new THREE.SphereGeometry(0.112, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.58), { p: [0, 0.13, -0.005], s: [0.95, 1.05, 1.05] });
+    add('head', 'helmet', rbox(0.2, 0.06, 0.12, 0.03), { p: [0, 0.075, -0.05] }); // its back
+    const A = new THREE.Shape();
+    A.moveTo(-0.022, -0.024);
+    A.lineTo(-0.006, 0.026);
+    A.lineTo(0.006, 0.026);
+    A.lineTo(0.022, -0.024);
+    A.lineTo(0.011, -0.024);
+    A.lineTo(0.006, -0.008);
+    A.lineTo(-0.006, -0.008);
+    A.lineTo(-0.011, -0.024);
+    A.closePath();
+    add('head', 'white', new THREE.ExtrudeGeometry(A, { depth: 0.008, bevelEnabled: false }), { p: [0, 0.175, 0.098], r: [-0.35, 0, 0] });
+    for (const sd of [-1, 1]) add('head', 'white', rbox(0.012, 0.04, 0.05, 0.004), { p: [sd * 0.108, 0.15, 0.01], r: [0.4, 0, 0] }); // wings
+    for (const [sh, el, ha, sd] of [
+      ['shoulderL', 'elbowL', 'handL', 1],
+      ['shoulderR', 'elbowR', 'handR', -1],
+    ]) {
+      add(sh, 'suit', new THREE.SphereGeometry(0.075, 16, 12), { p: [sd * 0.01, -0.01, 0] });
+      add(sh, 'suit', limb(0.064, 0.3, 0.055), { p: [0, -0.3, 0] });
+      add(el, 'suit', limb(0.053, 0.25, 0.045), { p: [0, -0.255, 0] });
+      add(el, 'leather', limb(0.056, 0.13, 0.05), { p: [0, -0.255, 0] }); // gauntlet cuff
+      add(ha, 'leather', rbox(0.07, 0.1, 0.045, 0.018), { p: [0, -0.055, 0] });
+    }
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'suit', limb(0.085, 0.43, 0.068), { p: [0, -0.44, 0] });
+      add(kn, 'suit', limb(0.066, 0.42, 0.05), { p: [0, -0.43, 0] });
+      add(kn, 'leather', limb(0.064, 0.24, 0.055), { p: [0, -0.43, 0] }); // boot
+      add(ft, 'leather', rbox(0.095, 0.075, 0.23, 0.03), { p: [0, -0.02, 0.04] });
+    }
+  },
 };
 
 // Build a figure. `materials` has a material for each key the style uses
-// (ultron: body, dark, glow). `scale` grows it from 1.9 m.
+// (ultron: body, dark, glow; bot: shell, dark, visor; hostage: suit, dark,
+// skin; cap: suit, red, white, leather, silver, skin, helmet). `scale` grows
+// it from 1.9 m.
 export function buildHumanoid({ style = 'ultron', materials, scale = 1 } = {}) {
   // the bones, at rest
   const bones = {};

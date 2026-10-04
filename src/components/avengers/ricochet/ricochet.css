@@ -1,0 +1,34 @@
+/* ─── Ricochet: Cap's training hall ─────────────────────────────────────────── */
+.cap-game { --hq-accent: #ff6b5e; }
+.cap-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: #fff; font-family: var(--font-sans); font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6); }
+.cap-room { position: absolute; top: 12px; left: 16px; display: grid; gap: 0.1rem; }
+.cap-room-n { font-weight: 700; font-size: 0.95rem; font-stretch: 125%; letter-spacing: 0.06em; text-transform: uppercase; }
+.cap-room-n small { margin-left: 0.15rem; font-size: 0.7rem; opacity: 0.6; }
+.cap-room-name { font-size: 0.8rem; font-weight: 600; color: #ffc7c1; }
+.cap-throws { position: absolute; top: 10px; right: 16px; display: grid; justify-items: end; gap: 0.1rem; }
+.cap-throws-n { font-weight: 700; font-size: 1.6rem; line-height: 1; }
+.cap-throws-par { font-size: 0.68rem; font-weight: 600; font-stretch: 125%; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+.cap-left { font-size: 0.74rem; color: #c9e6ff; }
+.cap-tip { position: absolute; left: 50%; bottom: 14px; width: min(90%, 44ch); translate: -50% 0; padding: 0.35rem 0.75rem; border-radius: 8px; background: rgba(8, 12, 22, 0.55); font-size: 0.8rem; line-height: 1.35; text-align: center; }
+.cap-angle { position: absolute; left: 16px; bottom: 16px; font-size: 0.72rem; font-weight: 600; opacity: 0.7; }
+.cap-touch { position: absolute; z-index: 4; right: 12px; bottom: 56px; display: flex; gap: 8px; }
+.cap-touch-btn { display: grid; place-items: center; min-width: 48px; height: 48px; padding: 0 0.9rem; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; background: rgba(8, 12, 22, 0.55); color: #fff; font: 700 0.9rem/1 var(--font-sans); -webkit-tap-highlight-color: transparent; }
+.cap-touch-throw { border-color: rgba(255, 140, 130, 0.85); background: rgba(160, 30, 30, 0.7); font-stretch: 112%; letter-spacing: 0.04em; text-transform: uppercase; }
+.cap-touch-throw:disabled { opacity: 0.4; }
+@media (hover: hover) and (pointer: fine) { .cap-touch { display: none; } }
+.cap-overlay .btn-ghost.cap-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.cap-stars { display: flex; gap: 0.35rem; margin-top: 0.4rem; font-size: 2rem; line-height: 1; }
+.cap-stars span { color: rgba(255, 255, 255, 0.22); }
+.cap-stars span[data-on] { color: #ffd04a; text-shadow: 0 0 14px rgba(255, 190, 60, 0.6); }
+.cap-rooms { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.4rem; width: min(100%, 560px); margin-top: 1rem; }
+.cap-room-btn { display: grid; gap: 0.15rem; min-height: 54px; padding: 0.4rem 0.3rem; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 8px; background: rgba(8, 12, 22, 0.5); color: #fff; text-align: center; }
+.cap-room-btn span { font: 700 1rem/1 var(--font-sans); }
+.cap-room-btn small { overflow: hidden; font-size: 0.58rem; line-height: 1.2; color: #ffd04a; white-space: nowrap; text-overflow: ellipsis; }
+.cap-room-btn:not(:disabled):hover { border-color: #ff8a7e; }
+.cap-room-btn:disabled { opacity: 0.35; }
+.cap-room-btn:focus-visible { outline: 2px solid #ff8a7e; outline-offset: 2px; }
+@media (max-width: 760px) {
+  .cap-rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cap-tip { top: 92px; bottom: auto; font-size: 0.74rem; }
+  .cap-angle { bottom: 70px; }
+}

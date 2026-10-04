@@ -177,6 +177,36 @@
       "tex": 1024,
       "simplify": 0.06,
       "error": 0.02
+    },
+    "fluorescent": {
+      "src": "mounted_fluorescent_lights",
+      "tex": 512,
+      "simplify": 0.5,
+      "error": 0.002
+    },
+    "shelves": {
+      "src": "steel_frame_shelves_01",
+      "tex": 512
+    },
+    "crate": {
+      "src": "wooden_crate_01",
+      "tex": 512
+    },
+    "toolchest": {
+      "src": "metal_tool_chest",
+      "tex": 512,
+      "simplify": 0.5,
+      "error": 0.002
+    },
+    "extinguisher": {
+      "src": "korean_fire_extinguisher_01",
+      "tex": 512,
+      "simplify": 0.5,
+      "error": 0.002
+    },
+    "tyre": {
+      "src": "old_tyre",
+      "tex": 512
     }
   }
 }

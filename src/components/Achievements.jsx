@@ -38,6 +38,7 @@ export const ACHIEVEMENTS = {
   ringbearer: { name: 'Ring-bearer', desc: 'Cast the One Ring into the fire' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
+  captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };

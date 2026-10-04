@@ -1522,6 +1522,35 @@ function unibeamRaw(acIn, destIn, when = 0) {
   return 1.5;
 }
 
+// Glass going: a bright crack, then shards ringing as they fall.
+function shatterRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.5);
+  const crack = noiseSource(ac, 'white', 0.4);
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 2500;
+  const cg = ac.createGain();
+  env(cg.gain, t, [[0, 0.0001], [0.003, 0.5, 'lin'], [0.18, 0.0001]]);
+  crack.connect(hp).connect(cg).connect(out);
+  crack.start(t);
+  crack.stop(t + 0.2);
+  for (let i = 0; i < 9; i++) {
+    const at = t + 0.03 + Math.random() * 0.45;
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 3000 + Math.random() * 4500;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.002, 0.05 + Math.random() * 0.05, 'lin'], [0.12 + Math.random() * 0.2, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + 0.35);
+  }
+  return 0.6;
+}
+
 // Two quick high chirps: something is charging up.
 function warnRaw(acIn, destIn, when = 0) {
   const [ac, dest] = ready(acIn, destIn);
@@ -1593,3 +1622,4 @@ export const repulse = every(75, repulseRaw);
 export const blast = every(90, blastRaw);
 export const unibeam = once('unibeam', unibeamRaw);
 export const warn = every(300, warnRaw);
+export const shatter = once('shatter', shatterRaw);
