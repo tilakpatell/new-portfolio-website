@@ -174,6 +174,27 @@ function cruiser(T) {
   return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow, nose: Math.PI }; // its model's nose (the headlights) is +z
 }
 
+// Where each ship's engines are, inside its pivot (in BUILT units, nose −z):
+// the plumes leave from here (trail.js). The cruiser's are its exhaust cans,
+// read off its model once it's mounted (see scene.js); these stand in.
+export const ENGINES = {
+  xwing: [
+    [-0.035, 0.027, 0.18],
+    [0.035, 0.027, 0.18],
+    [-0.035, -0.027, 0.18],
+    [0.035, -0.027, 0.18],
+  ],
+  falcon: [
+    [-0.06, 0.004, 0.142],
+    [0, 0.004, 0.148],
+    [0.06, 0.004, 0.142],
+  ],
+  cruiser: [
+    [-0.115, 0, 0.17],
+    [0.115, 0, 0.17],
+  ],
+};
+
 // which way the Falcon model's nose points, as a turn about y (see buildShip)
 const FALCON_NOSE = Math.PI / 2;
 
