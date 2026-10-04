@@ -8,14 +8,14 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).map((u) => ({ to: u.to, l
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
 export const WORLD_MB = {
-  '/caribbean': 15, // Dead Man's Tide's ships and sea creatures
-  '/avengers': 10, // the compound's skies, scanned props and trees
-  '/cybertron': 7, // Roll out's scanned ground, rocks and sky
-  '/scranton': 7, // the office cast and set
+  '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
+  '/cybertron': 13, // Roll out's cast, scanned ground, rocks and sky
+  '/avengers': 9, // the compound's skies, scanned props and trees
   '/albuquerque': 6, // Metherria's cast and lab
   '/c-137': 6, // the cruiser and Portal panic's cast
+  '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code: nothing to download
-  '/middle-earth': 1,
+  '/middle-earth': 1, // drawn in code too
   '/music': 1,
 };
 
