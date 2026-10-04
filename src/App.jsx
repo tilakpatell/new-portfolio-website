@@ -79,7 +79,9 @@ function Lightspeed() {
   return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
 }
 
-// A first visit to the site opens on the crawl, then puts you in a cockpit
+// A first visit to the site opens on a welcome (what the site is, what the
+// intro does, and whose worlds these are; Skip goes straight to the front
+// door), then the crawl, then puts you in a cockpit
 // (the Falcon first; the X-wing, Rick's cruiser and the RV a click away),
 // and the launch comes out at the front door's choice over the universe
 // map, where everything is laid out as places to fly to. The inline script
@@ -89,6 +91,7 @@ function Lightspeed() {
 // at the launch's flash. ⌘K's "Back to the cockpit" plays it again.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 const Cockpit = lazy(() => import('./components/cockpit/Cockpit'));
+const Welcome = lazy(() => import('./components/cockpit/Welcome'));
 const cover = (on) => {
   const el = document.documentElement;
   if (on) el.dataset.covered = '';
@@ -100,7 +103,7 @@ const cover = (on) => {
 function IntroJump() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
+  const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'welcome' : null));
   const [ride, setRide] = useState(null); // a replay: { vehicle }, or null for the first visit
   useEffect(() => {
     if (!stage) return;
@@ -109,14 +112,15 @@ function IntroJump() {
     } catch {
       /* storage unavailable */
     }
-    if (stage === 'crawl') {
+    if (stage === 'welcome' || stage === 'crawl') {
+      import('./components/experience/OpeningCrawl');
       import('./pages/Front');
       import('./components/universe/scene');
       import('./components/cockpit/load').then((m) => m.preloadCockpit());
     }
   }, [stage]);
   useEffect(() => {
-    cover(stage === 'crawl' || stage === 'cockpit');
+    cover(stage === 'welcome' || stage === 'crawl' || stage === 'cockpit');
     return () => cover(false);
   }, [stage]);
   // ⌘K: back to the cockpit, from anywhere
@@ -136,6 +140,19 @@ function IntroJump() {
     setStage('cockpit');
   }, []);
   if (!stage) return null;
+  if (stage === 'welcome')
+    return (
+      <Suspense fallback={null}>
+        <Welcome
+          onStart={() => setStage('crawl')}
+          onSkip={() => {
+            setStage(null);
+            // to the front door's choice, as the launch would have come out
+            requestAnimationFrame(() => document.querySelector('.start-choice button')?.focus({ preventScroll: true }));
+          }}
+        />
+      </Suspense>
+    );
   if (stage === 'crawl')
     return (
       <Suspense fallback={null}>

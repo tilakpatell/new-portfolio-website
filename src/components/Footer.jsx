@@ -54,9 +54,11 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-line">
-        <div className="shell flex flex-col gap-2 py-5 text-xs text-muted sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} Tilak Patel</p>
-          <p>
+        <div className="shell flex flex-col gap-2 py-5 text-xs text-muted sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <p className="max-w-2xl leading-relaxed">
+            © {new Date().getFullYear()} Tilak Patel. A personal, fan-made tribute: the films and shows it borrows from belong to their creators and studios, and it isn’t affiliated with or endorsed by any of them.
+          </p>
+          <p className="flex-none">
             <AurebeshLine className="text-sm">May the Force be with you.</AurebeshLine>
           </p>
         </div>

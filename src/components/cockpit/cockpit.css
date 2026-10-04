@@ -187,3 +187,62 @@
   .cockpit-go-ring { animation: none; display: none; }
   .cockpit-line-in { animation: none; }
 }
+
+/* The welcome before a first visit's intro (Welcome.jsx): what the site is,
+   what the intro does, the keys, and whose worlds these are. Over the same
+   starfield as the crawl that follows, above everything. */
+.welcome {
+  position: fixed;
+  z-index: 96;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: #04050a;
+  color: var(--text);
+}
+.welcome-card {
+  position: relative;
+  width: min(600px, 100%);
+  padding: clamp(1.4rem, 3.4vw, 2.2rem);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: rgb(8 10 18 / 0.84);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+  animation: welcome-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes welcome-in { from { opacity: 0; transform: translateY(10px); } }
+.welcome-eyebrow { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.welcome-title { margin-top: 0.5rem; font-size: clamp(1.55rem, 3.6vw, 2.2rem); font-weight: 650; letter-spacing: -0.015em; line-height: 1.15; }
+.welcome-text { max-width: 60ch; margin-top: 0.8rem; color: var(--muted); font-size: 0.97rem; line-height: 1.6; }
+
+.welcome-beats { display: grid; gap: 0.85rem; margin-top: 1.3rem; padding-left: 0.95rem; border-left: 2px solid var(--border); list-style: none; }
+.welcome-beats li { display: grid; gap: 0.15rem; }
+.welcome-beat-title { font-size: 0.95rem; font-weight: 650; }
+.welcome-beat-text { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+
+.welcome-keys { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 1.3rem; color: var(--muted); font-size: 0.82rem; }
+.welcome-keys > span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.welcome-keys kbd { padding: 2px 7px; border: 1px solid var(--border-strong, var(--border)); border-radius: 6px; background: rgb(255 255 255 / 0.04); color: var(--text); font-family: var(--font-mono); font-size: 0.72rem; }
+.welcome-sound svg { width: 1rem; height: 1rem; }
+
+.welcome-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
+.welcome-fine { max-width: 68ch; margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.74rem; line-height: 1.55; }
+
+@media (max-width: 520px) {
+  .welcome { place-items: start center; }
+  .welcome-buttons .btn { flex: 1 1 100%; }
+  .welcome-keys { gap: 0.45rem 0.9rem; }
+}
+.welcome-keys > .welcome-on-touch { display: none; }
+@media (pointer: coarse) {
+  /* no mouse or keyboard: the look is a drag, and there's a button for the rest */
+  .welcome-keys > .welcome-on-fine { display: none; }
+  .welcome-keys > .welcome-on-touch { display: inline-flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card { animation: none; }
+}
