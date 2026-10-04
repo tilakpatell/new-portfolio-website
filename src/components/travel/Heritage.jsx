@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { RiZoomInLine } from 'react-icons/ri';
 import Photo from '../Photo';
 import Lightbox from '../Lightbox';
-import AkshardhamScene from './AkshardhamScene';
 import { Reveal, Waypoint } from '../ui';
 
 // Indian architecture: the two Akshardhams, with facts from the official
@@ -55,10 +54,6 @@ export default function Heritage() {
           <p className="lead mt-4 max-w-[56ch]">
             Indian architecture is my heritage: mandirs carved by hand from stone, in a tradition centuries old. These are the two Akshardhams.
           </p>
-        </div>
-
-        <div className="mt-10">
-          <AkshardhamScene />
         </div>
 
         <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10">
