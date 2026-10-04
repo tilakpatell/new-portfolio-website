@@ -1,0 +1,1003 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAchievements } from '../../Achievements';
+import { audioContext } from '../../../lib/audio';
+import { use3D } from '../../../lib/gpu';
+import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { readPad, typing } from '../../games/pad';
+import {
+  CAST,
+  COLOURS,
+  FIELD,
+  GANDALF_LINES,
+  HOLLOW,
+  HUNT,
+  MAGGOT_GATE,
+  POND,
+  QUESTS,
+  RIDER_RETRY,
+  RINGS,
+  ROADS,
+  SHOW,
+  SPOTS,
+  START,
+  STREAM,
+  WORLD,
+  behindYaw,
+  cameraMove,
+  hidden,
+  inField,
+  launch,
+  nearCast,
+  nearSpot,
+  newHobbit,
+  newHunt,
+  newRider,
+  newRings,
+  newShow,
+  nextRingStep,
+  progress,
+  puff,
+  riderTrigger,
+  stepGaze,
+  stepHobbit,
+  stepHunt,
+  stepRider,
+  stepRings,
+  stepShow,
+} from './rules';
+import { SWATCH } from './fx';
+import './shire.css';
+
+// Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
+// party, and do what hobbits do there. The rules are in ./rules.js, the
+// drawing in ./scene.js; this is the walking, the HUD, the speech and the
+// five things to do. Without 3D, they're listed as cards.
+
+const DONE = 'tp-shire-done';
+const AT = 'tp-shire-at';
+const ACH = { maggot: 'mushrooms', rings: 'smokerings', party: 'fireworks', ring: 'secretsafe', rider: 'getoffroad' };
+const sounds = () => import('./sounds');
+const sfx = () => import('../../../lib/sfx');
+const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
+const MOVE = new Set([...Object.values(KEYS).flat(), ' ', 'Shift']);
+const PROMPT = {
+  rings: { name: 'The bench at Bag End', act: 'Sit with Gandalf' },
+  party: { name: 'Gandalf’s cart', act: 'Light the fireworks' },
+  ring: { name: 'Bag End', act: 'Go in' },
+  leave: { name: 'The East Road', act: 'On to Rivendell' },
+};
+const INSIDE_TEXT = {
+  envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
+  fire: { say: 'A plain gold ring. Gandalf says, “Throw it in the fire.”', act: 'Throw it in the fire' },
+  letters: { say: 'Letters in a fiery script come up round the band, and Gandalf goes very still.', act: 'Take it out with the tongs' },
+  safe: { say: 'Gandalf: “Keep it secret. Keep it safe.”', act: null },
+};
+
+export default function ShireWorld({ onLeave }) {
+  const three = use3D();
+  const [done, setDone] = useState(() => {
+    const d = local.get(DONE, []);
+    return Array.isArray(d) ? d.filter((x) => ACH[x]) : [];
+  });
+  const prog = progress(done);
+  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const { unlock } = useAchievements();
+  const complete = useCallback(
+    (id) => {
+      setDone((d) => {
+        if (d.includes(id)) return d;
+        const next = [...d, id];
+        local.set(DONE, next);
+        return next;
+      });
+      if (ACH[id]) unlock(ACH[id]);
+    },
+    [unlock],
+  );
+  const world = three.on && gl !== 'failed' && gl !== 'lost';
+  return (
+    <section className="shire-world" aria-labelledby="shire-title" data-mode={world ? '3d' : 'cards'}>
+      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+    </section>
+  );
+}
+
+function World({ prog, done, complete, gl, setGl, onLeave }) {
+  const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+  const canvas = useRef(null);
+  const map = useRef(null);
+  const api = useRef(null);
+  const sim = useRef(null);
+  if (!sim.current) {
+    const kept = local.get(AT, null);
+    const ok = kept && Number.isFinite(kept.x) && Math.hypot(kept.x, kept.z) < WORLD.radius;
+    const h = newHobbit(ok ? kept : START);
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', hunt: newHunt(), rings: null, show: null, rider: null, ringStep: 'envelope', stepT: 0, wearing: false, gaze: 0, aim: { u: 0, v: 1.2 }, colour: 'gold', near: null, talk: null, frame: 0, moved: false, t: 0, hoof: null, air: null, wraith: null, padBefore: null };
+  }
+  const progRef = useRef(prog);
+  progRef.current = prog;
+  const doneRef = useRef(done);
+  doneRef.current = done;
+  const [hud, setHud] = useState({ mode: 'walk', near: null, picked: 0, chased: false, moved: false });
+  const hudKey = useRef('');
+  const [toast, setToast] = useState(null);
+  const [bubble, setBubble] = useState(null);
+  const [list, setList] = useState(false);
+  const lines = useRef({});
+  const bubbleRef = useRef(null);
+  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 4200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // the world: made once
+  useEffect(() => {
+    let dead = false;
+    const fit = () => {
+      const c = canvas.current;
+      if (!c || !api.current) return;
+      const r = c.getBoundingClientRect();
+      api.current.resize(Math.round(r.width), Math.round(r.height));
+    };
+    import('./scene')
+      .then(({ createShireWorld }) => {
+        if (dead || !canvas.current) return null;
+        return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+      })
+      .then((a) => {
+        if (!a) return;
+        if (dead) {
+          a.dispose();
+          return;
+        }
+        api.current = a;
+        if (import.meta.env.DEV) window.__SHIRE__ = { api: a, sim: sim.current, complete }; // for the QA scripts
+        fit();
+        setGl('on');
+      })
+      .catch((e) => {
+        if (import.meta.env.DEV) console.error(e);
+        if (!dead) setGl('failed');
+      });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    if (canvas.current) ro?.observe(canvas.current);
+    const s = sim.current;
+    return () => {
+      dead = true;
+      ro?.disconnect();
+      local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+      s.hoof?.stop();
+      s.air?.stop();
+      s.wraith?.();
+      api.current?.dispose();
+      api.current = null;
+    };
+  }, [setGl, complete]);
+
+  const live = gl === 'on' && inView;
+
+  // the air: birds by day, crickets by night, while the world's on screen
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    let stop = false;
+    sounds().then((x) => {
+      if (stop || !s) return;
+      s.air = x.ambience();
+    });
+    return () => {
+      stop = true;
+      s.air?.stop();
+      s.air = null;
+    };
+  }, [live]);
+
+  // ── the activities: in and out ──
+  const enter = useCallback(
+    (id) => {
+      const s = sim.current;
+      audioContext();
+      if (id === 'leave') return onLeave?.();
+      if (id === 'rings') {
+        s.mode = 'rings';
+        s.rings = newRings(Math.floor(Math.random() * 1e6));
+        s.aim = { u: 0, v: 1.2 };
+        say('Gandalf blows a great ring. Send yours through it: aim, then puff. It takes a moment to get there, so lead it.');
+      } else if (id === 'party') {
+        s.mode = 'show';
+        s.show = newShow();
+        say('Night falls on the Party Field. Click the sky to send a rocket up. New colours and new parts of the sky get the biggest cheers.');
+      } else if (id === 'ring') {
+        if (!progRef.current.quests.find((q) => q.id === 'ring')?.open) return say('Bilbo’s busy getting ready for his party. Come back after.');
+        if (doneRef.current.includes('ring')) return say('Bag End. Home, and quiet now Bilbo’s gone.');
+        s.mode = 'inside';
+        s.ringStep = 'envelope';
+        s.stepT = 0;
+        sounds().then((x) => x.door());
+      }
+      setList(false);
+      return undefined;
+    },
+    [onLeave, say],
+  );
+  const leave = useCallback(() => {
+    const s = sim.current;
+    if (s.mode === 'rings') s.h = newHobbit({ x: SPOTS[0].x, z: SPOTS[0].z + 0.6, face: -Math.PI / 2 });
+    if (s.mode === 'show') s.h = newHobbit({ x: SPOTS[1].x, z: SPOTS[1].z + 0.5, face: Math.PI / 2 });
+    if (s.mode === 'inside') s.h = newHobbit({ x: SPOTS[2].x, z: SPOTS[2].z + 1.2, face: -Math.PI / 2 });
+    s.mode = 'walk';
+    s.rings = null;
+    s.show = null;
+    s.yaw = behindYaw(s.h.face);
+  }, []);
+
+  const putRing = useCallback(
+    (on) => {
+      const s = sim.current;
+      if (!progRef.current.hasRing || s.wearing === on) return;
+      s.wearing = on;
+      if (on) {
+        sfx().then((x) => {
+          if (s.wearing) s.wraith = x.wraith();
+        });
+        say('You slip it on. The world goes grey, and something far off turns towards you.', true);
+      } else {
+        s.wraith?.();
+        s.wraith = null;
+      }
+    },
+    [say],
+  );
+
+  // a click or a key that acts: puff, launch, or the next step inside
+  const act = useCallback(
+    (nx = null, ny = null) => {
+      const s = sim.current;
+      audioContext();
+      if (s.mode === 'rings' && s.rings) {
+        if (nx != null) {
+          const a = api.current?.aim('rings', nx, ny);
+          if (a) s.aim = { u: Math.max(-RINGS.u, Math.min(RINGS.u, a.u)), v: Math.max(RINGS.v0, Math.min(RINGS.v1, a.v)) };
+        }
+        if (puff(s.rings, s.aim.u, s.aim.v)) {
+          api.current?.fx('puff');
+          sounds().then((x) => x.puff());
+        }
+      } else if (s.mode === 'show' && s.show) {
+        let u = (Math.random() - 0.5) * 1.6;
+        let v = 0.45 + Math.random() * 0.5;
+        if (nx != null) {
+          const a = api.current?.aim('show', nx, ny);
+          if (a) ({ u, v } = a);
+        }
+        if (launch(s.show, u, v, s.colour)) {
+          api.current?.fx('launch', { u: Math.max(-1, Math.min(1, u)), v: Math.max(0.15, Math.min(1, v)), flight: SHOW.flight });
+          sounds().then((x) => x.rocket());
+        }
+      } else if (s.mode === 'inside') {
+        if (s.ringStep === 'safe') return;
+        if (s.ringStep === 'letters' && s.stepT < 2.6) return;
+        s.ringStep = nextRingStep(s.ringStep);
+        s.stepT = 0;
+        if (s.ringStep === 'letters') sounds().then((x) => x.sizzle());
+        if (s.ringStep === 'safe') sfx().then((x) => x.ring?.());
+      }
+    },
+    [],
+  );
+
+  // keys
+  const near = hud.near;
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => {
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key;
+      if (s.mode === 'walk' || s.mode === 'rider') {
+        if (MOVE.has(k)) {
+          e.preventDefault();
+          s.keys.add(k);
+          audioContext();
+          return;
+        }
+        if ((k === 'e' || k === 'E' || k === 'Enter') && s.near && !(e.target instanceof HTMLButtonElement)) {
+          e.preventDefault();
+          enter(s.near);
+        } else if (k === 'r' || k === 'R') putRing(!s.wearing);
+        else if (k === 'm' || k === 'M') setList((v) => !v);
+        return;
+      }
+      if (k === 'Escape' && s.mode !== 'inside') {
+        e.preventDefault();
+        leave();
+        return;
+      }
+      if (s.mode === 'rings' && MOVE.has(k) && k !== ' ' && k !== 'Shift') {
+        e.preventDefault();
+        s.keys.add(k);
+        return;
+      }
+      if (s.mode === 'show' && /^[1-5]$/.test(k)) {
+        s.colour = COLOURS[Number(k) - 1];
+        setHud((h) => ({ ...h, colour: s.colour }));
+        return;
+      }
+      if ((k === ' ' || k === 'Enter' || k === 'e' || k === 'E') && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
+        act();
+      }
+    };
+    const up = (e) => s.keys.delete(e.key);
+    const blur = () => s.keys.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      s.keys.clear();
+    };
+  }, [live, near, enter, leave, act, putRing]);
+
+  // ── every frame ──
+  useFrameLoop((ms) => {
+    const a = api.current;
+    if (!a || a.lost) return;
+    const s = sim.current;
+    const p = progRef.current;
+    const dt = Math.min(0.05, ms / 1000);
+    s.t += dt;
+    const k = s.keys;
+    const held = (name) => KEYS[name].some((key) => k.has(key));
+    const pad = readPad();
+    const before = s.padBefore ?? {};
+    const pressed = (b) => pad?.[b] && !before[b];
+    s.padBefore = pad ?? {};
+
+    if (s.mode === 'walk' || s.mode === 'rider') {
+      let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
+      let side = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.stick.x;
+      if (pad) {
+        fwd -= pad.ly;
+        side += pad.lx;
+        if (Math.abs(pad.rx) > 0) {
+          s.yaw -= pad.rx * dt * 2.4;
+          s.dragAt = s.t;
+        }
+        if (pressed('a') && s.near) enter(s.near);
+        if (pressed('x')) putRing(!s.wearing);
+        if (pressed('y')) setList((v) => !v);
+      }
+      const run = k.has('Shift') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
+      const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
+      s.h = stepHobbit(s.h, { x: mv.x, z: mv.z, run }, dt);
+      if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      // the camera drifts round behind him as he walks, unless you've just turned it
+      if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
+        let d = behindYaw(s.h.face) - s.yaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        s.yaw += d * Math.min(1, dt * 1.6);
+      }
+    }
+
+    // Maggot's dogs walk their rounds whatever you're doing
+    const huntDone = doneRef.current.includes('maggot');
+    const hEv = stepHunt(s.hunt, huntDone || s.mode !== 'walk' ? { x: 0, z: -40, running: false } : { x: s.h.x, z: s.h.z, running: s.h.running }, dt);
+    for (const e of hEv) {
+      if (e.type === 'pick') {
+        a.fx('pick', e);
+        sounds().then((x) => x.pick());
+        say(e.left ? `A mushroom! ${HUNT.mushrooms - e.left} of ${HUNT.mushrooms}.` : 'Ten mushrooms!');
+      } else if (e.type === 'seen') {
+        a.fx('seen', e);
+        sounds().then((x) => x.bark());
+        say(['Grip’s seen you! Run!', 'Fang! He’s coming!', 'Wolf’s on to you! Run for the gate!'][e.dog % 3], true);
+      } else if (e.type === 'caught') {
+        a.fx('caught');
+        say('Caught! Farmer Maggot marches you back to his gate, and takes his mushrooms back.', true);
+        s.hunt = newHunt([]);
+        s.h = newHobbit(MAGGOT_GATE);
+        s.yaw = behindYaw(s.h.face);
+        break;
+      } else if (e.type === 'lost') say('It’s lost you.');
+      else if (e.type === 'all') {
+        complete('maggot');
+        say('Ten of Farmer Maggot’s best. Shortcut to mushrooms!');
+      }
+    }
+
+    // the Ring: the Eye comes nearer while it's on
+    s.gaze = stepGaze(s.gaze, s.wearing, dt);
+    if (s.wearing && s.gaze >= 1) {
+      putRing(false);
+      say('The Eye. You pull the Ring off, shaking.', true);
+    }
+
+    // the Rider
+    if (s.mode === 'walk' && p.hasRing && !doneRef.current.includes('rider') && riderTrigger(s.h)) {
+      s.mode = 'rider';
+      s.rider = newRider();
+      sounds().then((x) => {
+        s.hoof?.stop();
+        s.hoof = x.hooves();
+      });
+      say('Hoofbeats, on the road behind you. Get off the road! Under the old tree’s roots, quick.', true);
+    }
+    if (s.mode === 'rider' && s.rider) {
+      const rEv = stepRider(s.rider, s.h, s.wearing, dt);
+      s.hoof?.near(s.rider.phase === 'sniff' ? 1 : Math.min(1, s.rider.s / 22));
+      for (const e of rEv) {
+        if (e.type === 'coming') say('A Black Rider, coming up the road. Keep still.', true);
+        else if (e.type === 'sniff') {
+          sounds().then((x) => x.sniff());
+          say('It’s stopped, right over you. It’s sniffing. Keep still, and don’t put it on.', true);
+        } else if (e.type === 'found') {
+          a.fx('found');
+          sounds().then((x) => x.shriek());
+          s.hoof?.stop();
+          s.hoof = null;
+          putRing(false);
+          say(e.why === 'ring' ? 'The Ring calls to it, and it screams. Try again, and leave the Ring be.' : e.why === 'moved' ? 'You moved, and it screams. Try again, and keep still.' : 'It sees you, and screams. Get off the road and under the roots, quick.', true);
+          s.rider = null;
+          s.mode = 'walk';
+          s.h = newHobbit(RIDER_RETRY);
+          s.yaw = behindYaw(s.h.face);
+        } else if (e.type === 'leaving') a.fx('leaving');
+        else if (e.type === 'gone') {
+          s.hoof?.stop();
+          s.hoof = null;
+          s.rider = null;
+          s.mode = 'walk';
+          complete('rider');
+          say('It’s gone. The road goes ever on, and the Ring goes with you.');
+        }
+      }
+    }
+
+    // smoke rings
+    if (s.mode === 'rings' && s.rings) {
+      if (held('left') || held('right') || held('up') || held('down') || pad) {
+        const du = (held('right') ? -1 : 0) + (held('left') ? 1 : 0) - (pad?.lx ?? 0);
+        const dv = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - (pad?.ly ?? 0);
+        s.aim = { u: Math.max(-RINGS.u, Math.min(RINGS.u, s.aim.u + du * dt * 2)), v: Math.max(RINGS.v0, Math.min(RINGS.v1, s.aim.v + dv * dt * 1.6)) };
+      }
+      if (pressed('a')) act();
+      if (pressed('b')) leave();
+      for (const e of stepRings(s.rings, dt)) {
+        if (e.type === 'through') {
+          a.fx('through', s.aim);
+          sounds().then((x) => x.chime(e.hits));
+          say(['Through! Gandalf chuckles.', 'Through again! “Well, Frodo Baggins!”', ''][e.hits - 1] || 'Three!');
+        } else if (e.type === 'won') {
+          complete('rings');
+          say('Three through his. Gandalf blows a little smoke ship that sails through yours.');
+          setTimeout(() => sim.current?.mode === 'rings' && leave(), 2600);
+        } else if (e.type === 'out') say('Out of pipe-weed. Gandalf fills your pipe again.', true);
+      }
+    }
+
+    // the fireworks
+    if (s.mode === 'show' && s.show) {
+      if (pressed('a')) act();
+      if (pressed('b')) leave();
+      for (const e of stepShow(s.show, dt)) {
+        if (e.type === 'burst') {
+          a.fx('burst', e);
+          sounds().then((x) => x.bang(0.8 + e.score * 2));
+        } else if (e.type === 'dragon') {
+          a.fx('dragon', { duration: SHOW.dragon - 0.7 });
+          sfx().then((x) => x.roar());
+          say('Merry and Pippin have got into the cart. It’s the big one: the dragon!');
+          setTimeout(() => sounds().then((x) => x.bang(2.2)), (SHOW.dragon - 0.7) * 1000);
+          setTimeout(() => sounds().then((x) => x.cheer()), (SHOW.dragon - 0.4) * 1000);
+        } else if (e.type === 'done') {
+          complete('party');
+          say('What a party! Bilbo makes his speech, and then he vanishes. Something is waiting at Bag End.');
+          setTimeout(() => sim.current?.mode === 'show' && leave(), 1200);
+        } else if (e.type === 'over') say('The cheering dies away and everyone drifts off to the food tent. Try again, with more variety.', true);
+      }
+    }
+
+    // Bag End
+    if (s.mode === 'inside') {
+      s.stepT += dt;
+      if (pressed('a')) act();
+      if (s.ringStep === 'safe' && s.stepT > 3.2) {
+        complete('ring');
+        leave();
+        say('You have the Ring. R puts it on, if you must. Gandalf has ridden off; take it east, along the East Road.');
+      }
+    }
+
+    // what's here, and who's here
+    const spot = s.mode === 'walk' ? nearSpot(s.h.x, s.h.z) : null;
+    s.near = spot && (spot.id !== 'leave' || p.finished) && (spot.id !== 'rings' || p.sky === 'day') ? spot.id : null;
+    const sky = p.sky;
+    const person = s.mode === 'walk' ? nearCast(s.h.x, s.h.z, sky === 'day' ? 'day' : 'night') : null;
+    let talk = person?.id ?? null;
+    if (!talk && s.mode === 'walk') {
+      // Gandalf on the bench by day, at the road's end at dawn
+      const g = sky === 'day' ? { x: SPOTS[0].x + 0.6, z: SPOTS[0].z - 1 } : sky === 'dawn' ? { x: SPOTS[3].x - 1.5, z: SPOTS[3].z - 2 } : null;
+      if (g && Math.hypot(s.h.x - g.x, s.h.z - g.z) < 3.4) talk = 'gandalf';
+    }
+    if (talk !== s.talk) {
+      s.talk = talk;
+      if (talk) {
+        const c = CAST.find((x) => x.id === talk);
+        const pool = c ? c.lines : GANDALF_LINES;
+        const n = lines.current[talk] ?? 0;
+        lines.current[talk] = n + 1;
+        setBubble({ id: talk, name: c ? c.name : 'Gandalf', line: pool[n % pool.length] });
+      } else setBubble(null);
+    }
+
+    // the markers: what's open and not yet done
+    const markers = s.mode === 'rider' ? [{ x: HOLLOW.x, z: HOLLOW.z }] : p.finished ? [{ x: SPOTS[3].x, z: SPOTS[3].z }] : p.quests.filter((q) => q.open && !q.done && (q.id !== 'rings' || sky === 'day')).map((q) => q.at);
+
+    try {
+      a.render(
+        {
+          hobbit: s.h,
+          sky,
+          mode: s.mode,
+          wearing: s.wearing,
+          gaze: s.gaze,
+          hasRing: p.hasRing,
+          hunt: s.hunt,
+          rings: s.rings,
+          aim: s.mode === 'rings' ? s.aim : null,
+          show: s.show,
+          ringStep: s.ringStep,
+          rider: s.rider,
+          hidden: hidden(s.h),
+          camYaw: s.yaw,
+          camPitch: s.pitch,
+          camDist: touch ? 7.2 : 6.4,
+          near: s.near,
+          talk: s.talk,
+          markers,
+        },
+        ms,
+      );
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      a.dispose();
+      api.current = null;
+      setGl('failed');
+      return;
+    }
+
+    // the HUD, when what it shows changes
+    const chased = s.hunt.dogs.some((d) => d.mode === 'chase' || d.mode === 'alert');
+    const key = [s.mode, s.near, s.hunt.picked.length, chased, s.moved, s.rings?.hits, s.rings?.puffs, s.rings?.state, s.show && Math.round(s.show.cheer * 40), s.show && Math.ceil(SHOW.time - s.show.t), s.show?.state, s.ringStep, s.ringStep === 'letters' && s.stepT > 2.6, s.rider?.phase, s.rider && Math.round(s.rider.pull * 20), s.wearing, Math.round(s.gaze * 20), s.colour, inField(s.h.x, s.h.z, 3)].join('|');
+    if (key !== hudKey.current) {
+      hudKey.current = key;
+      setHud({
+        mode: s.mode,
+        near: s.near,
+        picked: s.hunt.picked.length,
+        chased,
+        moved: s.moved,
+        inField: inField(s.h.x, s.h.z, 3),
+        rings: s.rings && { hits: s.rings.hits, puffs: s.rings.puffs, state: s.rings.state },
+        show: s.show && { cheer: s.show.cheer, left: Math.max(0, Math.ceil(SHOW.time - s.show.t)), state: s.show.state },
+        step: s.ringStep,
+        ready: s.ringStep !== 'letters' || s.stepT > 2.6,
+        rider: s.rider && { phase: s.rider.phase, pull: s.rider.pull },
+        wearing: s.wearing,
+        gaze: s.gaze,
+        colour: s.colour,
+      });
+    }
+    // the speech bubble follows whoever's talking
+    if (s.talk && bubbleRef.current) {
+      const at = a.screenOf('cast', s.talk);
+      if (at) {
+        bubbleRef.current.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+        bubbleRef.current.style.opacity = '1';
+      } else bubbleRef.current.style.opacity = '0';
+    }
+    if (++s.frame % 4 === 0) drawMap(map.current, s.h, markers, p);
+    if (s.frame % 120 === 0) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+  }, live);
+
+  // the world's own pointer: drag to look round; in an activity, aim and act
+  const drag = useRef(null);
+  const ndc = (e) => {
+    const r = canvas.current.getBoundingClientRect();
+    return [((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)];
+  };
+  const onPointer = (e) => {
+    const s = sim.current;
+    if (e.type === 'pointerdown') {
+      audioContext();
+      if (s.mode === 'walk' || s.mode === 'rider') {
+        drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+        return;
+      }
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      const [nx, ny] = ndc(e);
+      act(nx, ny);
+      return;
+    }
+    if (e.type === 'pointermove') {
+      if (s.mode === 'rings' && e.pointerType === 'mouse') {
+        const [nx, ny] = ndc(e);
+        const aim = api.current?.aim('rings', nx, ny);
+        if (aim) s.aim = { u: Math.max(-RINGS.u, Math.min(RINGS.u, aim.u)), v: Math.max(RINGS.v0, Math.min(RINGS.v1, aim.v)) };
+      }
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      s.yaw -= (e.clientX - d.x) * 0.0065;
+      s.pitch = Math.max(0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
+      d.x = e.clientX;
+      d.y = e.clientY;
+      s.dragAt = s.t;
+      return;
+    }
+    drag.current = null;
+  };
+
+  // the touch stick: drag from where you put your thumb
+  const stick = useRef(null);
+  const onStick = (e) => {
+    const s = sim.current;
+    if (e.type === 'pointerdown') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      audioContext();
+    }
+    if (!stick.current || stick.current.id !== e.pointerId) return;
+    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
+      stick.current = null;
+      s.stick = { x: 0, y: 0 };
+      e.currentTarget.style.setProperty('--sx', '0px');
+      e.currentTarget.style.setProperty('--sy', '0px');
+      return;
+    }
+    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
+    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
+    s.stick = { x: dx, y: dy };
+    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
+    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
+  };
+
+  const travel = (q) => {
+    const s = sim.current;
+    leave();
+    const at = q.id === 'rider' ? { x: 38, z: -4, face: 0 } : q.at;
+    s.h = newHobbit({ x: at.x, z: at.z + (q.id === 'maggot' ? -1.5 : 0.8), face: q.id === 'maggot' ? -Math.PI / 2 : Math.PI / 2 });
+    s.yaw = behindYaw(s.h.face);
+    setList(false);
+  };
+
+  const here = hud.near ? PROMPT[hud.near] : null;
+  const mode = hud.mode;
+  const walking = mode === 'walk' || mode === 'rider';
+  const count = done.length;
+  const objective =
+    mode === 'rider'
+      ? hud.rider?.phase === 'sniff'
+        ? 'Keep still. Don’t put it on.'
+        : 'Get off the road! Into the hollow under the old tree’s roots.'
+      : hud.inField && !done.includes('maggot')
+        ? `Mushrooms: ${hud.picked} of ${HUNT.mushrooms}. Keep out of the dogs’ sight; run for the gate if they see you.`
+        : prog.objective;
+  return (
+    <div ref={box} className="shire-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
+      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Hobbiton in 3D: the Hill and Bag End, the Party Field, the pond and the mill, and Frodo on the lane" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      {gl === 'loading' && <p className="shire-loading">Walking into Hobbiton…</p>}
+
+      {walking && (
+        <div className="shire-hud shire-hud-top">
+          <div className="shire-brand">
+            <h1 id="shire-title" className="shire-title">
+              Hobbiton
+            </h1>
+            <p className="shire-objective" aria-live="polite">
+              <span aria-hidden="true">✦</span> {objective}
+            </p>
+          </div>
+          <div className="shire-side">
+            <canvas ref={map} className="shire-map" width="150" height="150" aria-hidden="true" />
+            <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
+              <b>{count}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
+            </button>
+            {prog.hasRing && (
+              <button type="button" className="shire-chip shire-ring-btn" data-on={hud.wearing || undefined} data-tempt={(hud.rider?.phase === 'sniff' && hud.rider.pull > 0.3) || undefined} onClick={() => putRing(!sim.current.wearing)}>
+                {hud.wearing ? 'Take it off' : 'The Ring'} {!touch && <kbd>R</kbd>}
+              </button>
+            )}
+            {hud.wearing && (
+              <div className="shire-meter" role="meter" aria-label="The Eye" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.gaze * 100) / 100}>
+                <span className="shire-meter-label">The Eye</span>
+                <span className="shire-meter-bar shire-meter-eye">
+                  <span style={{ transform: `scaleX(${hud.gaze})` }} />
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {!walking && <h1 id="shire-title" className="sr-only">Hobbiton</h1>}
+
+      {toast && (
+        <p className="shire-toast" data-bad={toast.bad || undefined} role="status" key={toast.at}>
+          {toast.text}
+        </p>
+      )}
+
+      {bubble && walking && (
+        <div ref={bubbleRef} className="shire-bubble" aria-live="polite">
+          <div>
+            <b>{bubble.name}</b>
+            <span>{bubble.line}</span>
+          </div>
+        </div>
+      )}
+
+      {here && walking && (
+        <div className="shire-door">
+          <p className="shire-door-name">{here.name}</p>
+          <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
+            {here.act} {!touch && <kbd>E</kbd>}
+          </button>
+        </div>
+      )}
+
+      {gl === 'on' && walking && !hud.moved && !here && (
+        <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>
+      )}
+
+      {mode === 'rider' && hud.rider?.phase === 'sniff' && (
+        <div className="shire-meter shire-tempt" role="meter" aria-label="The Ring wants to be worn" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round((hud.rider.pull ?? 0) * 100) / 100}>
+          <span className="shire-meter-label">It wants to be worn</span>
+          <span className="shire-meter-bar">
+            <span style={{ transform: `scaleX(${hud.rider.pull})` }} />
+          </span>
+        </div>
+      )}
+
+      {mode === 'rings' && hud.rings && (
+        <div className="shire-panel shire-panel-rings">
+          <p className="shire-panel-title">Smoke rings with Gandalf</p>
+          <p className="shire-panel-stats">
+            <span>
+              Through <b>{hud.rings.hits}</b> of {RINGS.need}
+            </span>
+            <span>
+              Puffs left <b>{hud.rings.puffs}</b>
+            </span>
+          </p>
+          <p className="shire-panel-help">{touch ? 'Tap where to send a ring.' : 'Point to aim (or the arrows), click or Space to puff. Lead his ring: yours take a moment.'}</p>
+          <div className="shire-panel-row">
+            {hud.rings.state === 'out' && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => enter('rings')}>
+                Fill the pipe again
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leave}>
+              Get up {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'show' && hud.show && (
+        <div className="shire-panel shire-panel-show">
+          <p className="shire-panel-title">Gandalf’s fireworks</p>
+          <div className="shire-meter shire-cheer" role="meter" aria-label="The party’s cheer" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.show.cheer * 100) / 100}>
+            <span className="shire-meter-label">Cheer</span>
+            <span className="shire-meter-bar">
+              <span style={{ transform: `scaleX(${hud.show.cheer})` }} />
+            </span>
+            <span className="shire-meter-time">{hud.show.state === 'on' ? `${hud.show.left}s` : hud.show.state === 'dragon' ? 'Dragon!' : ''}</span>
+          </div>
+          <div className="shire-colours" role="radiogroup" aria-label="Rocket colour">
+            {COLOURS.map((c, i) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={hud.colour === c}
+                aria-label={`${c}${touch ? '' : `, key ${i + 1}`}`}
+                className="shire-colour"
+                style={{ '--c': SWATCH[c] }}
+                onClick={() => {
+                  sim.current.colour = c;
+                  setHud((h) => ({ ...h, colour: c }));
+                }}
+              >
+                {!touch && <small>{i + 1}</small>}
+              </button>
+            ))}
+          </div>
+          <p className="shire-panel-help">{touch ? 'Tap the sky to send one up.' : 'Click the sky to send one up (Space for anywhere). 1–5 change colour.'}</p>
+          <div className="shire-panel-row">
+            {hud.show.state === 'over' && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => enter('party')}>
+                Again
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leave}>
+              Back to the party {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'inside' && (
+        <div className="shire-panel shire-panel-inside">
+          <p className="shire-panel-title">Bag End</p>
+          <p className="shire-panel-say">{INSIDE_TEXT[hud.step]?.say}</p>
+          {INSIDE_TEXT[hud.step]?.act && (
+            <button type="button" className="btn btn-primary btn-sm" disabled={!hud.ready} onClick={() => act()}>
+              {INSIDE_TEXT[hud.step].act}
+            </button>
+          )}
+        </div>
+      )}
+
+      {walking && touch && (
+        <div className="shire-hud shire-hud-bottom">
+          <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
+            <span />
+          </div>
+        </div>
+      )}
+
+      {list && (
+        <div className="shire-list" role="dialog" aria-label="Things to do in Hobbiton">
+          <div className="shire-list-head">
+            <p>Things to do</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
+              Close
+            </button>
+          </div>
+          <ul>
+            {prog.quests.map((q) => (
+              <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === prog.next || undefined}>
+                <span className="shire-seal" aria-hidden="true">
+                  {q.done ? '✓' : ''}
+                </span>
+                <div>
+                  <p className="shire-list-name">{q.name}</p>
+                  <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
+                </div>
+                {q.open && (q.id !== 'rings' || prog.sky === 'day') && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
+                    Go there
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// The map in the corner: the water, the lanes, Maggot's field, where to go, and you.
+const MAP_SCALE = 150 / (WORLD.radius * 2 + 8);
+function drawMap(c, h, markers, prog) {
+  const g = c?.getContext('2d');
+  if (!g) return;
+  const at = (x, z) => [75 + x * MAP_SCALE, 75 + z * MAP_SCALE];
+  g.clearRect(0, 0, 150, 150);
+  g.save();
+  g.beginPath();
+  g.arc(75, 75, 73, 0, Math.PI * 2);
+  g.clip();
+  g.fillStyle = prog.sky === 'night' ? '#2c3424' : '#e9dcb4';
+  g.fillRect(0, 0, 150, 150);
+  g.fillStyle = prog.sky === 'night' ? '#3a4a2e' : '#b9c98a';
+  g.beginPath();
+  g.arc(75, 75, WORLD.radius * MAP_SCALE, 0, Math.PI * 2);
+  g.fill();
+  // the field
+  const [fx0, fz0] = at(FIELD.x0, FIELD.z0);
+  const [fx1, fz1] = at(FIELD.x1, FIELD.z1);
+  g.fillStyle = '#8a6a44';
+  g.fillRect(fx0, fz0, fx1 - fx0, fz1 - fz0);
+  // the water
+  g.fillStyle = '#5a8ab0';
+  const [px, pz] = at(POND.x, POND.z);
+  g.beginPath();
+  g.ellipse(px, pz, POND.rx * MAP_SCALE, POND.rz * MAP_SCALE, 0, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = '#5a8ab0';
+  g.lineWidth = STREAM.w * MAP_SCALE * 1.2;
+  g.beginPath();
+  STREAM.points.forEach(([x, z], i) => (i ? g.lineTo(...at(x, z)) : g.moveTo(...at(x, z))));
+  g.stroke();
+  // the lanes
+  g.lineCap = 'round';
+  g.strokeStyle = prog.sky === 'night' ? '#8a7a5a' : '#a07a4a';
+  for (const r of ROADS) {
+    g.lineWidth = Math.max(1.4, r.w * MAP_SCALE);
+    g.beginPath();
+    g.moveTo(...at(r.a[0], r.a[1]));
+    g.lineTo(...at(r.b[0], r.b[1]));
+    g.stroke();
+  }
+  // where to go
+  const pulse = 4 + Math.sin(performance.now() / 250) * 1.2;
+  for (const m of markers) {
+    const [x, y] = at(m.x, m.z);
+    g.fillStyle = '#f0c040';
+    g.beginPath();
+    g.arc(x, y, 3.4, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(240, 192, 64, 0.8)';
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.arc(x, y, pulse + 2, 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.restore();
+  // you
+  const [cx, cy] = at(h.x, h.z);
+  g.save();
+  g.translate(cx, cy);
+  g.rotate(-h.face + Math.PI / 2);
+  g.fillStyle = '#fff8e8';
+  g.strokeStyle = '#2a1a0a';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(0, -6);
+  g.lineTo(4.5, 5);
+  g.lineTo(-4.5, 5);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.restore();
+  g.strokeStyle = 'rgba(60, 40, 20, 0.6)';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(75, 75, 73, 0, Math.PI * 2);
+  g.stroke();
+}
+
+// Without 3D: what there is to do, as cards.
+function Cards({ prog, three, gl, retry }) {
+  return (
+    <div className="shire-cards-wrap">
+      <h1 id="shire-title" className="title">
+        Hobbiton
+      </h1>
+      <p className="lead mt-4 max-w-[60ch]">The day of Bilbo’s party, in a Shire you can walk about in 3D. {prog.objective}</p>
+      {three.can && (
+        <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
+          {gl === 'lost' ? 'The graphics chip reset, so here’s the Shire as cards.' : gl === 'failed' ? 'The 3D Shire couldn’t start here, so here it is as cards.' : three.held ? 'The 3D Shire isn’t loaded yet, so here it is as cards.' : '3D is switched off, so here’s the Shire as cards.'}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              if (!three.on) three.set('auto');
+              retry();
+            }}
+          >
+            {three.on ? 'Try 3D again' : three.held ? 'Load the 3D' : 'Turn 3D on'}
+          </button>
+        </p>
+      )}
+      <ul className="shire-cards">
+        {prog.quests.map((q) => (
+          <li key={q.id} data-done={q.done || undefined}>
+            <p className="shire-list-name">{q.name}</p>
+            <p className="shire-list-sub">{q.where}</p>
+            <p className="mt-2 text-sm text-muted">{q.blurb}</p>
+            {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

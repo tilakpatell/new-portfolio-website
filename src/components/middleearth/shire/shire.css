@@ -1,0 +1,135 @@
+/* Hobbiton, the world: the Shire to walk about in, and its HUD. Parchment,
+   green door paint and lamplight; Cinzel for the names, as on the map. */
+
+.shire-world {
+  --shire-ink: #fbf4e2;
+  --shire-glass: rgba(28, 34, 20, 0.74);
+  --shire-glass-hi: rgba(36, 44, 26, 0.9);
+  --shire-gold: #f0c040;
+  --shire-green: #2e6b3a;
+  --shire-line: rgba(240, 216, 150, 0.4);
+  position: relative;
+  z-index: 10;
+}
+
+.shire-stage {
+  position: relative;
+  height: clamp(30rem, calc(100svh - var(--nav-h, 64px) - 3.5rem), 54rem);
+  overflow: hidden;
+  background: linear-gradient(180deg, #4f86c6 0%, #a8c8e4 46%, #f6dfb0 64%, #7a9a4a 66%, #5f8a3a 100%);
+  border-block: 1px solid rgba(60, 40, 20, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.shire-stage[data-sky='night'] { background: linear-gradient(180deg, #060b1e 0%, #1b2a4a 64%, #1a2414 66%, #10180e 100%); }
+.shire-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; touch-action: pan-y; cursor: grab; }
+.shire-canvas:active { cursor: grabbing; }
+.shire-stage[data-mode='rings'] .shire-canvas, .shire-stage[data-mode='show'] .shire-canvas, .shire-stage[data-mode='inside'] .shire-canvas { cursor: crosshair; touch-action: none; }
+.shire-canvas[data-on] { opacity: 1; }
+.shire-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #2a1d10; font: 600 1.1rem/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; }
+
+/* the HUD sits over the world; only its controls take the pointer */
+.shire-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.7rem, 2vw, 1.2rem); pointer-events: none; }
+.shire-hud > * { pointer-events: auto; }
+.shire-hud-top { top: 0; align-items: flex-start; }
+.shire-hud-bottom { bottom: 0; align-items: flex-end; padding-right: calc(16px + 42px + 0.9rem); } /* clear of the site's guide button */
+.shire-brand { display: grid; gap: 0.55rem; max-width: min(32rem, 60%); pointer-events: none; }
+.shire-title { margin: 0; color: var(--shire-ink); font: 600 clamp(1.8rem, 1.1rem + 2.4vw, 3rem)/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; text-shadow: 0 2px 16px rgba(20, 12, 4, 0.6), 0 0 2px rgba(20, 12, 4, 0.5); }
+.shire-objective { display: inline-flex; align-items: flex-start; gap: 0.5rem; justify-self: start; margin: 0; padding: 0.5rem 0.8rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 500 clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem)/1.4 var(--font-sans); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.shire-objective span { color: var(--shire-gold); }
+.shire-side { display: grid; justify-items: end; gap: 0.5rem; }
+.shire-map { width: 150px; height: 150px; border-radius: 50%; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.32); }
+.shire-chip { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.42rem 0.75rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 600 0.82rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+.shire-chip:hover, .shire-chip:focus-visible { background: var(--shire-glass-hi); border-color: var(--shire-gold); }
+.shire-chip b { color: var(--shire-gold); font-variant-numeric: tabular-nums; }
+.shire-ring-btn { border-color: rgba(240, 192, 64, 0.65); }
+.shire-ring-btn::before { content: ''; width: 0.8rem; height: 0.8rem; border: 2.5px solid var(--shire-gold); border-radius: 50%; box-shadow: 0 0 8px rgba(240, 192, 64, 0.6); }
+.shire-ring-btn[data-on] { background: rgba(80, 30, 10, 0.85); }
+.shire-ring-btn[data-tempt] { animation: shire-tempt 0.9s ease-in-out infinite alternate; }
+@keyframes shire-tempt { to { box-shadow: 0 0 0 4px rgba(240, 192, 64, 0.45), 0 0 24px rgba(255, 120, 30, 0.5); } }
+.shire-world kbd { margin-left: 0.35rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.75; }
+
+.shire-meter { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.6rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.shire-meter-bar { display: block; flex: 1; min-width: 6rem; height: 0.5rem; border-radius: 99px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.shire-meter-bar span { display: block; height: 100%; background: linear-gradient(90deg, #f6d36a, #f08a2a); transform-origin: left; transition: transform 0.15s linear; }
+.shire-meter-eye span { background: linear-gradient(90deg, #ff9a2a, #d8280a); }
+.shire-meter-time { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--shire-gold); }
+.shire-tempt { position: absolute; left: 50%; top: clamp(7rem, 22%, 10rem); width: min(22rem, calc(100% - 2rem)); transform: translateX(-50%); border-color: rgba(255, 140, 40, 0.6); animation: shire-tempt 1.1s ease-in-out infinite alternate; }
+.shire-tempt .shire-meter-bar span { background: linear-gradient(90deg, #f0c040, #ff4a1a); }
+
+.shire-toast { position: absolute; top: clamp(6.6rem, 19%, 9.5rem); left: 50%; z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--shire-gold); border-radius: 8px; background: var(--shire-glass-hi); color: var(--shire-ink); font: 500 0.95rem/1.4 var(--font-sans); text-align: center; transform: translateX(-50%); animation: shire-toast 4.2s ease both; pointer-events: none; }
+.shire-toast[data-bad] { border-left-color: #ff7a5a; }
+.shire-stage[data-mode='show'] .shire-toast, .shire-stage[data-mode='rings'] .shire-toast { top: 0.9rem; }
+@keyframes shire-toast { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
+/* who's talking: a bubble over their head */
+.shire-bubble { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+.shire-bubble > div { position: absolute; left: 0; bottom: 10px; display: grid; gap: 0.2rem; width: max-content; max-width: min(17rem, 70vw); padding: 0.55rem 0.75rem; border-radius: 12px; background: #fbf4e2; color: #2a1d10; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); transform: translateX(-50%); font: 500 0.88rem/1.35 var(--font-sans); }
+.shire-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; background: #fbf4e2; transform: translateX(-50%) rotate(45deg); }
+.shire-bubble b { color: var(--shire-green); font: 600 0.74rem/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; }
+
+.shire-door { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); z-index: 2; display: grid; justify-items: center; gap: 0.45rem; width: min(22rem, calc(100% - 2rem)); padding: 0.85rem 1rem 0.95rem; border: 1px solid rgba(240, 192, 64, 0.55); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+.shire-door-name { margin: 0; font: 600 1.15rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.03em; }
+.shire-world .btn-primary { background: var(--shire-gold); color: #1d160a; border-color: transparent; }
+.shire-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--shire-ink); border-color: rgba(255, 255, 255, 0.35); }
+.shire-cards-wrap .btn-ghost { background: transparent; color: inherit; border-color: var(--border); }
+.shire-hint { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.5rem 0.85rem; border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 500 0.84rem/1.35 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
+
+/* the activities' panels */
+.shire-panel { position: absolute; left: clamp(0.7rem, 2vw, 1.2rem); bottom: clamp(0.7rem, 2vw, 1.2rem); z-index: 2; display: grid; gap: 0.55rem; width: min(22rem, calc(100% - 1.4rem)); padding: 0.85rem 1rem; border: 1px solid var(--shire-line); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+.shire-panel-title { margin: 0; font: 600 1.05rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.03em; color: var(--shire-gold); }
+.shire-panel-stats { display: flex; gap: 1.1rem; margin: 0; font: 500 0.9rem/1.2 var(--font-sans); }
+.shire-panel-stats b { color: var(--shire-gold); font-variant-numeric: tabular-nums; }
+.shire-panel-help, .shire-panel-say { margin: 0; color: #e2d9c2; font: 400 0.84rem/1.4 var(--font-sans); }
+.shire-panel-say { color: var(--shire-ink); font-size: 0.95rem; }
+.shire-panel-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.shire-panel-inside { left: 50%; transform: translateX(-50%); text-align: center; justify-items: center; width: min(26rem, calc(100% - 1.4rem)); }
+.shire-cheer { background: transparent; border: 0; padding: 0; }
+.shire-colours { display: flex; gap: 0.45rem; }
+.shire-colour { position: relative; width: 2.25rem; height: 2.25rem; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 8%, var(--c) 30%, color-mix(in srgb, var(--c) 55%, #000) 100%); cursor: pointer; transition: transform 0.12s ease, border-color 0.12s ease; }
+.shire-colour[aria-checked='true'] { border-color: #fff; transform: scale(1.12); box-shadow: 0 0 14px var(--c); }
+.shire-colour small { position: absolute; right: -0.25rem; bottom: -0.25rem; padding: 0 0.22rem; border-radius: 4px; background: #1d160a; color: #fbf4e2; font: 700 0.6rem/1.3 var(--font-mono); }
+
+/* the touch stick */
+.shire-stick { position: relative; width: 116px; height: 116px; border-radius: 50%; background: rgba(20, 26, 14, 0.45); border: 2px solid rgba(255, 255, 255, 0.4); touch-action: none; }
+.shire-stick span { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(240, 192, 64, 0.92); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
+
+/* the list of things to do */
+.shire-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: calc(clamp(0.7rem, 2vw, 1.2rem) + 150px + 3.2rem); z-index: 4; width: min(25rem, calc(100% - 1.4rem)); max-height: calc(100% - 150px - 5rem); overflow-y: auto; padding: 0.75rem; border: 1px solid var(--shire-line); border-radius: 12px; background: rgba(24, 30, 18, 0.95); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
+.shire-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font: 600 1.05rem/1 'Cinzel', Georgia, serif; }
+.shire-list-head p { margin: 0; }
+.shire-list ul { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.shire-list li { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.7rem; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
+.shire-list li[data-next] { box-shadow: inset 0 0 0 1px var(--shire-gold); }
+.shire-list li:not([data-open]) { opacity: 0.6; }
+.shire-list li > div { flex: 1; min-width: 0; }
+.shire-seal { flex: none; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 2px dashed rgba(240, 216, 150, 0.45); border-radius: 50%; color: #fff4dc; font: 700 0.85rem/1 var(--font-sans); }
+.shire-list li[data-done] .shire-seal { border: 0; background: radial-gradient(circle at 35% 35%, #c8453a, #8a1e18); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
+.shire-list-name { margin: 0; font-weight: 700; }
+.shire-list-sub { margin: 0.15rem 0 0; color: #cfc6ad; font-size: 0.82rem; line-height: 1.35; }
+
+/* wearing the Ring */
+.shire-stage[data-wearing]::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(10, 12, 20, 0.55) 100%); animation: shire-wraith 3s ease-in-out infinite alternate; }
+@keyframes shire-wraith { to { opacity: 0.6; } }
+
+/* without 3D: what there is to do, as cards */
+.shire-cards-wrap { padding: 2.5rem clamp(1rem, 4vw, 2.5rem) 1rem; max-width: 80rem; margin: 0 auto; }
+.shire-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.9rem; margin: 2rem 0 0; padding: 0; list-style: none; }
+.shire-cards li { padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.shire-cards .shire-list-sub { color: var(--muted); }
+
+@media (max-width: 639px) {
+  .shire-stage { height: calc(100svh - var(--nav-h, 64px) - 3rem); min-height: 30rem; }
+  .shire-brand { max-width: 62%; }
+  .shire-title { font-size: 1.6rem; }
+  .shire-objective { font-size: 0.78rem; padding: 0.4rem 0.6rem; }
+  .shire-map { width: 96px; height: 96px; }
+  .shire-chip { font-size: 0.74rem; padding: 0.35rem 0.55rem; }
+  .shire-list { top: auto; bottom: 0.7rem; max-height: 70%; }
+  .shire-door { bottom: 9rem; right: 1rem; left: auto; transform: none; width: min(14rem, calc(100% - 9.5rem)); }
+  .shire-panel { bottom: 0.7rem; }
+  .shire-bubble > div { font-size: 0.8rem; max-width: 13rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shire-toast, .shire-tempt, .shire-ring-btn[data-tempt], .shire-stage[data-wearing]::after { animation: none; }
+}

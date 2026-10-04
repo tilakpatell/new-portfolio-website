@@ -1,0 +1,330 @@
+import { describe, expect, it } from 'vitest';
+import {
+  CAST,
+  COLLIDERS,
+  DOG_ROUNDS,
+  FIELD,
+  HOBBIT,
+  HOLLOW,
+  HUNT,
+  MAGGOT_GATE,
+  MUSHROOMS,
+  QUESTS,
+  RIDER,
+  RIDER_RETRY,
+  RINGS,
+  SHOW,
+  SPOTS,
+  START,
+  TREES,
+  WORLD,
+  burstScore,
+  dogSees,
+  groundY,
+  hidden,
+  hisAt,
+  inField,
+  inWater,
+  launch,
+  nearSpot,
+  newHobbit,
+  newHunt,
+  newRider,
+  newRings,
+  newShow,
+  onRoad,
+  progress,
+  puff,
+  riderTrigger,
+  stepGaze,
+  stepHobbit,
+  stepHunt,
+  stepRider,
+  stepRings,
+  stepShow,
+} from './rules';
+
+const DT = 1 / 60;
+const walk = (h, move, seconds) => {
+  for (let t = 0; t < seconds; t += DT) h = stepHobbit(h, move, DT);
+  return h;
+};
+const blocked = (x, z) =>
+  COLLIDERS.some((c) => (c.kind === 'circle' ? Math.hypot(x - c.x, z - c.z) < c.r + HOBBIT.radius : Math.abs(x - c.x) < c.w / 2 + HOBBIT.radius && Math.abs(z - c.z) < c.d / 2 + HOBBIT.radius));
+
+describe('Hobbiton: the lie of the land', () => {
+  it('starts you on the lane, on dry land', () => {
+    expect(onRoad(START.x, START.z)).toBe(true);
+    expect(inWater(START.x, START.z)).toBe(false);
+    expect(blocked(START.x, START.z)).toBe(false);
+  });
+
+  it('puts every place to stop, and everyone to meet, where a hobbit can stand', () => {
+    for (const q of QUESTS) {
+      expect(blocked(q.at.x, q.at.z), q.id).toBe(false);
+      expect(inWater(q.at.x, q.at.z), q.id).toBe(false);
+      expect(Math.hypot(q.at.x, q.at.z), q.id).toBeLessThan(WORLD.radius);
+    }
+    for (const s of SPOTS) expect(blocked(s.x, s.z), s.id).toBe(false);
+    for (const c of CAST) {
+      expect(blocked(c.x, c.z), c.id).toBe(false);
+      expect(inWater(c.x, c.z), c.id).toBe(false);
+    }
+  });
+
+  it('keeps the trees off the roads and out of the water', () => {
+    expect(TREES.length).toBeGreaterThan(40);
+    for (const t of TREES) {
+      expect(onRoad(t.x, t.z)).toBe(false);
+      expect(inWater(t.x, t.z)).toBe(false);
+    }
+  });
+
+  it('grows all ten mushrooms inside Maggot’s fence, clear of everything', () => {
+    expect(MUSHROOMS).toHaveLength(HUNT.mushrooms);
+    for (const m of MUSHROOMS) {
+      expect(inField(m.x, m.z, -1)).toBe(true);
+      expect(blocked(m.x, m.z)).toBe(false);
+    }
+    for (const round of DOG_ROUNDS) for (const [x, z] of round) expect(inField(x, z, -1)).toBe(true);
+  });
+
+  it('lets you over the bridge, but not into the pond', () => {
+    const over = walk(newHobbit({ x: 12, z: 8, face: 0 }), { x: 0, z: 1 }, 5);
+    expect(over.z).toBeGreaterThan(21);
+    expect(groundY(12, 15.4)).toBeGreaterThan(1.2); // up on the hump
+    const wade = walk(newHobbit({ x: -6, z: 4, face: 0 }), { x: 0, z: 1 }, 4);
+    expect(inWater(wade.x, wade.z)).toBe(false);
+    expect(wade.z).toBeLessThan(7.6);
+  });
+
+  it('keeps you out of Maggot’s field but for the gate and the stile', () => {
+    const fence = walk(newHobbit({ x: -30, z: 19, face: 0 }), { x: 0, z: 1 }, 3);
+    expect(fence.z).toBeLessThan(FIELD.z0);
+    const gate = walk(newHobbit({ x: -38, z: 19, face: 0 }), { x: 0, z: 1 }, 2);
+    expect(inField(gate.x, gate.z)).toBe(true);
+  });
+
+  it('hides you under the old tree’s roots', () => {
+    const h = stepHobbit(newHobbit({ x: HOLLOW.x, z: HOLLOW.z }), {}, DT);
+    expect(hidden(h)).toBe(true);
+    expect(onRoad(HOLLOW.x, HOLLOW.z)).toBe(false);
+  });
+});
+
+describe('Hobbiton: walking', () => {
+  it('walks, and runs faster, and turns to face the way it goes', () => {
+    const w = walk(newHobbit({ x: 4, z: -4, face: 0 }), { x: 1, z: 0 }, 2);
+    const r = walk(newHobbit({ x: 4, z: -4, face: 0 }), { x: 1, z: 0, run: true }, 2);
+    expect(w.x - 4).toBeGreaterThan(HOBBIT.walk * 1.6);
+    expect(r.x - 4).toBeGreaterThan(w.x - 4 + 3);
+    const north = walk(newHobbit({ x: 4, z: -4, face: 0 }), { x: 0, z: -1 }, 1);
+    expect(Math.cos(north.face)).toBeCloseTo(0, 1);
+    expect(Math.sin(north.face)).toBeCloseTo(1, 1); // -z is north
+  });
+
+  it('stays inside the Shire', () => {
+    const h = walk(newHobbit({ x: 0, z: -50, face: 0 }), { x: 0, z: -1, run: true }, 10);
+    expect(Math.hypot(h.x, h.z)).toBeLessThanOrEqual(WORLD.radius + 1e-6);
+  });
+
+  it('finds the place you’ve stopped at', () => {
+    const s = SPOTS.find((x) => x.id === 'party');
+    expect(nearSpot(s.x, s.z)?.id).toBe('party');
+    expect(nearSpot(START.x, START.z)).toBe(null);
+  });
+});
+
+describe('Hobbiton: what there is to do', () => {
+  it('opens the mushrooms, the smoke rings and the fireworks first', () => {
+    const p = progress([]);
+    expect(p.quests.filter((q) => q.open).map((q) => q.id)).toEqual(['maggot', 'rings', 'party']);
+    expect(p.sky).toBe('day');
+    expect(p.hasRing).toBe(false);
+  });
+
+  it('brings the night with the fireworks, and Bag End with it', () => {
+    const p = progress(['party']);
+    expect(p.sky).toBe('night');
+    expect(p.quests.find((q) => q.id === 'ring').open).toBe(true);
+    expect(p.quests.find((q) => q.id === 'rider').open).toBe(false);
+  });
+
+  it('sends the Rider once you have the Ring, and the road at dawn after', () => {
+    expect(progress(['party', 'ring']).next).toBe('maggot');
+    expect(progress(['party', 'ring', 'maggot', 'rings']).next).toBe('rider');
+    const end = progress(QUESTS.map((q) => q.id));
+    expect(end.finished).toBe(true);
+    expect(end.sky).toBe('dawn');
+  });
+});
+
+describe('Hobbiton: shortcut to mushrooms', () => {
+  it('picks a mushroom you walk over, and says when all ten are in', () => {
+    const hunt = newHunt([...Array(HUNT.mushrooms - 1).keys()]);
+    const last = MUSHROOMS[HUNT.mushrooms - 1];
+    const ev = stepHunt(hunt, { x: last.x, z: last.z, running: false }, DT);
+    expect(ev.map((e) => e.type)).toEqual(['pick', 'all']);
+  });
+
+  it('is seen in front of a dog, not behind it, and heard running close by', () => {
+    const dog = { x: 0, z: 0, face: 0, look: 0 };
+    expect(dogSees(dog, { x: 4, z: 0 })).toBe(true);
+    expect(dogSees(dog, { x: -4, z: 0 })).toBe(false);
+    expect(dogSees(dog, { x: 0, z: 5 })).toBe(false);
+    expect(dogSees(dog, { x: -1.5, z: 0, running: true })).toBe(true);
+    expect(dogSees(dog, { x: HUNT.sight + 1, z: 0 })).toBe(false);
+  });
+
+  it('barks, then chases, and catches a hobbit that stands still', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.wait = 0;
+    const h = { x: dog.x + 3, z: dog.z, running: false };
+    dog.face = 0;
+    let types = [];
+    for (let t = 0; t < 3; t += DT) types = types.concat(stepHunt(hunt, h, DT).map((e) => e.type));
+    expect(types[0]).toBe('seen');
+    expect(types).toContain('caught');
+  });
+
+  it('gives up when you get out of the field', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.mode = 'chase';
+    dog.t = 0;
+    const ev = stepHunt(hunt, { x: MAGGOT_GATE.x, z: FIELD.z0 - 3, running: true }, DT);
+    expect(ev.map((e) => e.type)).toContain('lost');
+  });
+
+  it('can be outrun by a running hobbit', () => {
+    expect(HUNT.chase).toBeGreaterThan(HOBBIT.walk);
+    expect(HUNT.chase).toBeLessThan(HOBBIT.run);
+  });
+});
+
+describe('Hobbiton: smoke rings', () => {
+  it('puffs at most two at a time, and eight in all', () => {
+    const s = newRings(3);
+    expect(puff(s, 0, 1)).toBe(true);
+    expect(puff(s, 0, 1)).toBe(true);
+    expect(puff(s, 0, 1)).toBe(false);
+    expect(s.puffs).toBe(RINGS.puffs - 2);
+  });
+
+  it('threads a ring led to where Gandalf’s will be, and wins on the third', () => {
+    const s = newRings(5);
+    let won = false;
+    for (let n = 0; n < 3; n++) {
+      const aim = hisAt(s.his, RINGS.flight);
+      puff(s, aim.u, aim.v);
+      for (let t = 0; t < RINGS.flight + 0.05; t += DT) won = stepRings(s, DT).some((e) => e.type === 'won') || won;
+    }
+    expect(s.hits).toBe(3);
+    expect(won).toBe(true);
+  });
+
+  it('runs out of pipe-weed if you keep missing', () => {
+    const s = newRings(7);
+    let out = false;
+    for (let n = 0; n < RINGS.puffs; n++) {
+      const at = hisAt(s.his, RINGS.flight);
+      puff(s, at.u > 0 ? -RINGS.u : RINGS.u, at.v > 1.3 ? RINGS.v0 : RINGS.v1);
+      for (let t = 0; t < RINGS.flight + 0.05; t += DT) out = stepRings(s, DT).some((e) => e.type === 'out') || out;
+    }
+    expect(s.hits).toBe(0);
+    expect(out).toBe(true);
+  });
+});
+
+describe('Hobbiton: Gandalf’s fireworks', () => {
+  it('cheers a new colour in a new part of the sky, quickly, most', () => {
+    const recent = [
+      { colour: 'gold', u: 0, v: 0.5 },
+      { colour: 'green', u: 0.1, v: 0.5 },
+    ];
+    const same = burstScore(recent, { colour: 'green', u: 0.05, v: 0.5 }, 2);
+    const best = burstScore(recent, { colour: 'red', u: -0.8, v: 0.9 }, 0.4);
+    expect(best).toBeCloseTo(SHOW.base + SHOW.fresh + SHOW.spread + SHOW.quick);
+    expect(same).toBeCloseTo(SHOW.base);
+  });
+
+  it('lights the dragon when the cheer is full, and finishes', () => {
+    const show = newShow();
+    const colours = ['gold', 'green', 'red', 'blue', 'white'];
+    const spots = [[-0.8, 0.9], [0.8, 0.4], [0, 0.95], [-0.5, 0.3], [0.5, 0.75]];
+    const types = [];
+    let i = 0;
+    for (let t = 0; t < 30 && show.state !== 'done'; t += DT) {
+      if (show.state === 'on' && show.t - show.lastLaunch > 0.5) {
+        launch(show, spots[i % 5][0], spots[i % 5][1], colours[i % 5]);
+        i += 1;
+      }
+      types.push(...stepShow(show, DT).map((e) => e.type));
+    }
+    expect(types).toContain('burst');
+    expect(types).toContain('dragon');
+    expect(types[types.length - 1]).toBe('done');
+  });
+
+  it('loses the party if nothing goes up', () => {
+    const show = newShow();
+    let over = false;
+    for (let t = 0; t < SHOW.time + 1 && !over; t += DT) over = stepShow(show, DT).some((e) => e.type === 'over');
+    expect(over).toBe(true);
+    expect(show.t).toBeLessThan(SHOW.start / SHOW.drain + 0.1);
+  });
+});
+
+describe('Hobbiton: get off the road!', () => {
+  const ride = (h, { wearing = false, moving = false } = {}) => {
+    const r = newRider();
+    const types = [];
+    for (let t = 0; t < 40 && !['found', 'gone'].includes(r.phase); t += DT) types.push(...stepRider(r, { ...h, speed: moving && r.phase === 'sniff' ? 2 : 0 }, wearing, DT).map((e) => e.type));
+    return types;
+  };
+
+  it('starts when you take the Ring out along the East Road', () => {
+    expect(riderTrigger({ x: 44, z: -4 })).toBe(true);
+    expect(riderTrigger({ x: 0, z: -4 })).toBe(false);
+  });
+
+  it('passes you by under the roots, keeping still', () => {
+    const types = ride({ x: HOLLOW.x, z: HOLLOW.z });
+    expect(types).toEqual(['coming', 'sniff', 'leaving', 'gone']);
+  });
+
+  it('finds you on the road, moving, or wearing the Ring', () => {
+    expect(ride({ x: RIDER_RETRY.x + 10, z: 2 })).toContain('found');
+    expect(ride({ x: HOLLOW.x, z: HOLLOW.z }, { moving: true })).toContain('found');
+    expect(ride({ x: HOLLOW.x, z: HOLLOW.z }, { wearing: true })).toContain('found');
+  });
+
+  it('gives you time to get there from where it starts', () => {
+    const run = Math.hypot(RIDER_RETRY.x - HOLLOW.x, RIDER_RETRY.z - HOLLOW.z) / HOBBIT.run;
+    expect(RIDER.warn + 10 / RIDER.speed).toBeGreaterThan(run);
+  });
+
+  it('pulls the Ring off by itself if you wear it too long', () => {
+    let g = 0;
+    for (let t = 0; t < 10; t += DT) g = stepGaze(g, true, DT);
+    expect(g).toBe(1);
+    for (let t = 0; t < 10; t += DT) g = stepGaze(g, false, DT);
+    expect(g).toBe(0);
+  });
+});
+
+describe('Hobbiton: the camera', () => {
+  it('walks you away from the camera on forward, and behind you is behind you', async () => {
+    const { behindYaw, cameraMove } = await import('./rules');
+    const yaw = 0.7;
+    const f = cameraMove(yaw, 1, 0);
+    // the camera sits at (sin yaw, cos yaw) from the hobbit: forward points the other way
+    expect(f.x * Math.sin(yaw) + f.z * Math.cos(yaw)).toBeCloseTo(-1);
+    const r = cameraMove(yaw, 0, 1);
+    expect(f.x * r.x + f.z * r.z).toBeCloseTo(0);
+    const face = 1.1;
+    const b = behindYaw(face);
+    expect(Math.sin(b) * Math.cos(face) + Math.cos(b) * -Math.sin(face)).toBeCloseTo(-1);
+  });
+});

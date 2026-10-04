@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Doors from '../components/middleearth/Doors';
 import Bridge from '../components/middleearth/Bridge';
@@ -23,6 +23,7 @@ import '@fontsource/cinzel/600.css';
 import ScriptToggle from '../components/ScriptToggle';
 
 const sfx = () => import('../lib/sfx');
+const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
 
 // New Zealand, standing in for Middle-earth.
 const LOCATIONS = [
@@ -254,10 +255,16 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'shire' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <ShireWorld onLeave={() => go('rivendell')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'shire' && (
         <section id="the-road" data-theme-section="shire" className="shell relative z-10 scroll-mt-24 pb-14 pt-10 md:pb-20" aria-labelledby="road-title">
-          <h1 id="road-title" className="title">
+          <h2 id="road-title" className="title">
             There and back again
-          </h1>
+          </h2>
           <p className="lead mt-4 max-w-[56ch]">The road the Ring took, from a party in Hobbiton to the fire it was made in. Step along it.</p>
           <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)] lg:gap-12">
             <figure className="me-map-frame m-0">
