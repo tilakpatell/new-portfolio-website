@@ -5,6 +5,7 @@ import { prefersReducedMotion } from '../lib/hooks';
 import '@fontsource/cinzel/600.css';
 import AutobotMark from './AutobotMark';
 import DecepticonMark from './DecepticonMark';
+import PortalSwirl from './rickmorty/PortalSwirl';
 
 // each Transformer wears their faction's insignia
 const AUTOBOTS = new Set(['optimus', 'bumblebee']);
@@ -82,8 +83,8 @@ function Scene({ kind, color }) {
     );
   if (kind === 'portal')
     return (
-      <div className="tt-portal" aria-hidden="true" style={{ '--c': color }}>
-        <span className="tt-portal-swirl" />
+      <div className="tt-portal" aria-hidden="true">
+        <PortalSwirl size={[0.28, 0.38]} />
       </div>
     );
   if (kind === 'tiles') return <div className="tt-haze" aria-hidden="true" />;

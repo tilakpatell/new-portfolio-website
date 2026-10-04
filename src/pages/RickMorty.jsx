@@ -61,7 +61,7 @@ export default function RickMorty() {
     <div className="relative rm-page">
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">
         <figure className="rm-hero m-0">
-          <PortalHero dim={dim} firing={fired} className="rm-hero-portal" />
+          <PortalHero firing={fired} className="rm-hero-portal" />
           <figcaption className="rm-hero-caption" aria-live="polite">
             <strong>{d.name}</strong>
             <span>{d.note}</span>

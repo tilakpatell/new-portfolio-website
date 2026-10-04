@@ -12,6 +12,7 @@ import { PANIC, butterRobots } from './rules';
 import { InkPass, toon } from './toon';
 import { animate, hull, makeCast } from './cast';
 import { glowDot, paintFloor, paintFloorGlow, puff } from './paint';
+import { SWIRL_GLSL } from '../swirl';
 
 const R = PANIC.arena;
 
@@ -122,10 +123,13 @@ function buildSky(L) {
   return dome;
 }
 
-// ── portals: the green swirl ──
+// ── portals: the green swirl, the same one as the rest of the site ──
+// (the rim sits a little inside the disc so its haze has room)
+const PORTAL_PAD = 1.22;
 const portalMat = () =>
   new THREE.ShaderMaterial({
     transparent: true,
+    premultipliedAlpha: true,
     depthWrite: false,
     side: THREE.DoubleSide,
     toneMapped: false,
@@ -134,20 +138,11 @@ const portalMat = () =>
     fragmentShader: `
       uniform float t, seed;
       varying vec2 vUv;
+      ${SWIRL_GLSL}
       void main() {
-        vec2 p = vUv * 2.0 - 1.0;
-        float r = length(p);
-        if (r > 1.0) discard;
-        float a = atan(p.y, p.x);
-        float w1 = sin(a * 2.0 - r * 9.0 + t * 6.5 + seed) * 0.5 + 0.5;
-        float w2 = sin(a * 5.0 + r * 15.0 - t * 10.0 + seed * 2.0) * 0.5 + 0.5;
-        vec3 deep = vec3(0.04, 0.42, 0.1);
-        vec3 bright = vec3(0.5, 1.0, 0.3);
-        vec3 c = mix(deep, bright, w1 * 0.7 + w2 * 0.3);
-        c = mix(c, vec3(0.6, 1.0, 0.45), smoothstep(0.5, 0.0, r) * 0.35);
-        float rim = smoothstep(0.82, 0.97, r);
-        c = mix(c, vec3(0.75, 1.0, 0.4), rim);
-        gl_FragColor = vec4(c * (0.95 + rim * 0.9), smoothstep(1.0, 0.92, r));
+        vec4 c = portal((vUv * 2.0 - 1.0) * ${PORTAL_PAD.toFixed(2)}, t, 1.0, seed);
+        if (c.a < 0.004) discard;
+        gl_FragColor = c;
       }`,
   });
 
@@ -883,7 +878,7 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
       m.visible = true;
       m.position.set(x, s * 1.3, z);
       m.rotation.set(-0.3, yaw, 0, 'YXZ');
-      m.scale.set(s, s * 1.3, s);
+      m.scale.set(s * PORTAL_PAD, s * 1.3 * PORTAL_PAD, s);
       m.material.uniforms.t.value = t;
       if (Math.random() < dt * 20) glow.emit(x + (Math.random() - 0.5) * s * 2, s * 1.3 + (Math.random() - 0.5) * s * 2, z, 0, 0, 0, 0.4, 0.4, 0.1, 0.8, 2.6, 0.8);
     };

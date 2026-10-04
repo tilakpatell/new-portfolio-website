@@ -18,6 +18,7 @@ import DecepticonMark from '../DecepticonMark';
 import { audioContext } from '../../lib/audio';
 import { STONES, VIEW } from './stones';
 import { DIMENSIONS } from '../rickmorty/dimensions';
+import PortalSwirl from '../rickmorty/PortalSwirl';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
 
@@ -420,8 +421,10 @@ function RickMorty() {
   const { getSchwifty } = useFun();
   const [dim, setDim] = useState(0);
   const [shots, setShots] = useState(0);
+  const [clip, setClip] = useState(false);
   const d = DIMENSIONS[dim];
   const fire = () => {
+    setClip(false);
     audioContext();
     import('../games/gameAudio').then((m) => {
       m.zap?.();
@@ -435,21 +438,26 @@ function RickMorty() {
       title="Rick and Morty"
       className="fun-rm"
       visual={
-        <div className="rmc-panel">
-          <div key={shots} className="rmc-portal" style={{ '--sky-a': d.sky[0], '--sky-b': d.sky[1], '--ground': d.ground }} aria-hidden="true">
-            <span className="rmc-world" />
-            <span className="rmc-swirl" />
+        clip ? (
+          <Gif name="rmGarage" eager caption={false} className="h-full [&_.gif-frame]:h-full [&_.gif-frame]:!aspect-auto [&_.gif-frame]:rounded-none" />
+        ) : (
+          <div className="rmc-panel">
+            <PortalSwirl shot={shots} size={[0.3, 0.4]} className="rmc-portal" />
+            <p className="rmc-name" aria-live="polite">
+              <span aria-hidden="true">→ </span>
+              {d.name}
+            </p>
           </div>
-          <p className="rmc-name" aria-live="polite">
-            {d.name}
-          </p>
-        </div>
+        )
       }
     >
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Every season of it. Fire the portal gun and see which dimension it opens onto.</p>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Every season of it. Fire the portal gun: it opens somewhere new every time.</p>
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
         <button type="button" className="btn btn-primary btn-sm" onClick={fire}>
           Fire the portal gun
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" aria-pressed={clip} onClick={() => setClip((v) => !v)}>
+          Watch one open
         </button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => getSchwifty('portal')}>
           Get schwifty
@@ -458,6 +466,7 @@ function RickMorty() {
           Visit C-137
         </Link>
       </div>
+      {clip && <p className="mt-2 text-xs text-muted">Rick and Morty (Adult Swim), via GIPHY.</p>}
     </Card>
   );
 }

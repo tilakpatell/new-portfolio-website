@@ -3,18 +3,15 @@
 /* the hero's portal */
 .rm-hero { display: grid; justify-items: center; gap: 1rem; }
 .rm-portal { position: relative; width: min(100%, 520px); aspect-ratio: 1; }
-.rm-portal-box, .rm-portal-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rm-portal-fill.portal-gl { position: absolute; inset: 0; }
 .rm-hero-caption { display: grid; gap: 0.2rem; max-width: 40ch; text-align: center; }
 .rm-hero-caption strong { font-size: 1.05rem; color: var(--text); }
 .rm-hero-caption span { font-size: 0.88rem; line-height: 1.5; color: var(--muted); }
 
-/* without 3D: the swirl in CSS, the dimension a gradient behind it */
-.rm-portal-css { position: absolute; inset: 9% 17%; border-radius: 50%; overflow: hidden; animation: rm-open 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; filter: drop-shadow(0 0 28px rgba(151, 206, 76, 0.65)); }
-.rm-portal-world { position: absolute; inset: 0; background: linear-gradient(180deg, var(--sky-b) 0%, var(--sky-a) 55%, var(--ground) 56%, color-mix(in srgb, var(--ground) 70%, #000) 100%); }
-.rm-portal-swirl { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #1d7a24, #97ce4c, #d6ff9a, #4fbf3a, #1d7a24, #97ce4c, #e3ffb8, #2f9a2c, #1d7a24); -webkit-mask: radial-gradient(closest-side, transparent 66%, #000 74%); mask: radial-gradient(closest-side, transparent 66%, #000 74%); animation: rm-spin 3.2s linear infinite; }
-@keyframes rm-spin { to { transform: rotate(360deg); } }
-@keyframes rm-open { from { transform: scale(0.05); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .rm-portal-swirl { animation: none; } .rm-portal-css { animation: none; } }
+/* without 3D: the CSS swirl (.portal-css, in extras.css), opening */
+.rm-portal-fill.portal-css { position: absolute; inset: 8% 20%; animation: rm-open 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both, portal-spin 4s linear infinite; }
+@keyframes rm-open { from { scale: 0.05; opacity: 0; } to { scale: 1; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rm-portal-fill.portal-css { animation: none; } }
 
 /* the Meeseeks box */
 .rm-box { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 2rem; align-items: center; padding: clamp(1.2rem, 0.8rem + 2vw, 2.2rem); }
