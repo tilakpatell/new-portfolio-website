@@ -1,10 +1,5 @@
 /* ─── Dead man's tide: the screen and its HUD ──────────────────────────── */
 
-/* Pirata One and IM Fell English, both SIL Open Font License */
-@font-face { font-family: 'Pirata One'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/pirata-one.woff2') format('woff2'); }
-@font-face { font-family: 'IM Fell English'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/im-fell-english.woff2') format('woff2'); }
-@font-face { font-family: 'IM Fell English'; font-style: italic; font-weight: 400; font-display: swap; src: url('../fonts/im-fell-english-italic.woff2') format('woff2'); }
-
 .dt-screen, .dt-gate { aspect-ratio: 16 / 9; max-height: 86vh; }
 @media (max-width: 899px) { .dt-screen, .dt-gate { aspect-ratio: 4 / 3; } }
 @media (max-width: 559px) { .dt-screen { aspect-ratio: 3 / 4; max-height: 82svh; } }
@@ -93,6 +88,13 @@
 .dt-overlay { background: radial-gradient(90% 80% at 50% 50%, rgba(6, 14, 20, 0.5), rgba(4, 9, 13, 0.88)); }
 .dt-overlay[data-soft] { background: radial-gradient(62% 58% at 50% 46%, rgba(4, 10, 14, 0.6), rgba(4, 10, 14, 0.14) 72%, rgba(4, 10, 14, 0.4)); }
 .dt-card { display: grid; justify-items: center; width: min(100%, 44rem); }
+/* the title: the card stands to the left, so the captain at the helm shows on the right */
+@media (min-width: 900px) {
+  .dt-screen[data-phase='ready'] .dt-overlay { place-content: center start; justify-items: start; padding-left: clamp(1.4rem, 5vw, 4.2rem); text-align: left; background: linear-gradient(90deg, rgba(4, 10, 14, 0.82), rgba(4, 10, 14, 0.55) 38%, rgba(4, 10, 14, 0) 66%); }
+  .dt-screen[data-phase='ready'] .dt-card { justify-items: start; width: min(100%, 31rem); }
+  .dt-screen[data-phase='ready'] .dt-card .justify-center { justify-content: flex-start; }
+  .dt-screen[data-phase='ready'] .dt-title { font-size: clamp(2.4rem, 1.4rem + 3.6vw, 4.4rem); }
+}
 .dt-kicker { font: 600 0.7rem/1.2 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dt-brass); }
 .dt-title { margin-top: 0.5rem; font: 400 clamp(2.4rem, 1.4rem + 5vw, 5.2rem)/0.95 'Pirata One', var(--font-sans); letter-spacing: 0.01em; color: var(--dt-paper); text-shadow: 0 2px 0 #7a5413, 0 5px 0 #1a0f05, 0 10px 30px rgba(0, 0, 0, 0.7); text-wrap: balance; }
 .dt-sub { margin-top: 0.9rem; max-width: 50ch; font: 400 clamp(1rem, 0.9rem + 0.4vw, 1.2rem)/1.45 'IM Fell English', Georgia, serif; color: rgba(239, 226, 194, 0.92); text-wrap: pretty; }
@@ -122,3 +124,13 @@
 .dt-pick .dt-pick-n { position: absolute; right: 0.6rem; top: 0.5rem; font: 700 0.7rem/1 var(--font-mono); color: rgba(58, 36, 6, 0.6); }
 
 @media (prefers-reduced-motion: reduce) { .dt-screen[data-low] .dt-low { animation: none; } .dt-pick { transition: none; } }
+
+/* a phone: the title has to fit over a small sea */
+@media (max-width: 559px) {
+  .dt-overlay .dt-kicker { display: none; }
+  .dt-overlay .dt-sub { margin-top: 0.5rem; font-size: 0.95rem; line-height: 1.35; }
+  .dt-overlay .g3-seg { flex-wrap: nowrap; width: 100%; margin-top: 0.8rem; }
+  .dt-overlay .g3-seg button { flex: 1; min-width: 0; min-height: 44px; padding: 0.3rem 0.3rem; font-size: 0.72rem; }
+  .dt-overlay .g3-seg small { font-size: 0.56rem; }
+  .dt-overlay .dt-go { min-width: 9rem; }
+}
