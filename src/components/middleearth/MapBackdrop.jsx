@@ -27,6 +27,14 @@ function createFlat(canvas, sheet) {
   let ratio = 1;
   const cur = { x: SHEET.w / 2, y: SHEET.h / 2, z: 1 };
   const goal = { ...cur };
+  const base = { ...cur };
+  const user = { x: 0, y: 0, z: 1 };
+  let hub = false;
+  const apply = () => {
+    const z = base.z * (hub ? user.z : 1);
+    [goal.x, goal.y] = clampView(base.x + (hub ? user.x : 0), base.y + (hub ? user.y : 0), z);
+    goal.z = z;
+  };
   let first = true;
   const scale = () => Math.max(W / SHEET.w, H / SHEET.h) * cur.z;
   const clampView = (x, y, z) => {
@@ -36,12 +44,28 @@ function createFlat(canvas, sheet) {
     return [Math.min(SHEET.w - hw, Math.max(hw, x)), Math.min(SHEET.h - hh, Math.max(hh, y))];
   };
   return {
-    setView({ at = null, zoom = null, lean = [0, 0] }) {
+    setView({ at = null, zoom = null, alive = false }) {
       // `zoom` is the 3D camera's height (smaller is closer): turn it round
-      const z = zoom != null ? 2.75 / zoom : at ? 2.6 : 1.08;
-      const [x, y] = at || [SHEET.w / 2, SHEET.h / 2];
-      [goal.x, goal.y] = clampView(x + lean[0] * 14, y + lean[1] * 10, z);
-      goal.z = z;
+      base.z = zoom != null ? 2.75 / zoom : at ? 2.6 : 1.08;
+      [base.x, base.y] = at || [SHEET.w / 2, SHEET.h / 2];
+      hub = !at && alive;
+      apply();
+    },
+    // the visitor's hands: drag and zoom (on the map itself only)
+    panBy(dx, dy) {
+      const s = scale();
+      user.x -= dx / s;
+      user.y -= dy / s;
+      apply();
+      // a pan past the edge goes no further
+      user.x = goal.x - base.x;
+      user.y = goal.y - base.y;
+      first = true;
+    },
+    zoomBy(f) {
+      user.z = Math.max(1, Math.min(3.2, user.z / f));
+      apply();
+      first = true;
     },
     resize(w, h) {
       ratio = Math.min(2, window.devicePixelRatio || 1);
@@ -162,12 +186,8 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
         })
         .catch(() => !dead && setOn(false));
     } else flat().catch(() => {});
-    // on the hub, the camera leans towards the pointer
-    const onMove = (e) => {
-      if (!state.current.hub || e.pointerType === 'touch') return;
-      lean.current = [(e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1];
-      kick.current();
-    };
+    // anything the visitor does to the map wakes the loop
+    const onMove = () => kick.current();
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('resize', fit);
     document.addEventListener('visibilitychange', kick.current);

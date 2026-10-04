@@ -147,8 +147,9 @@ function PaletteHost() {
 // follows the selection (/universe/marvel). Both routes render the same
 // element (Front, which holds the map), so React keeps the one map across
 // them: picking a planet at /, or the wordmark from /universe/marvel, moves
-// the camera instead of building the universe again.
-const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
+// the camera instead of building the universe again. Middle-earth's places
+// (/middle-earth/moria) keep one page the same way, so its map stays up.
+const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname.startsWith('/middle-earth') ? '/middle-earth' : pathname);
 
 function Shell() {
   const { pathname } = useLocation();

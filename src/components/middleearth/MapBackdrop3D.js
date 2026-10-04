@@ -11,6 +11,8 @@ import * as THREE from 'three';
 import { normalCanvas } from '../../lib/texture';
 import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
+import { buildDiorama } from './mapDiorama';
+import { prefersReducedMotion } from '../../lib/hooks';
 
 const SCALE = 10; // sheet units to one of the scene's
 const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
@@ -23,6 +25,8 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x140d08);
   const camera = new THREE.PerspectiveCamera(34, 16 / 9, 1, 400);
@@ -35,6 +39,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   const W = SHEET.w / SCALE;
   const H = SHEET.h / SCALE;
   const sheet = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map, normalMap: relief, normalScale: new THREE.Vector2(1.5, 1.5), roughness: 0.94 }));
+  sheet.receiveShadow = true;
   scene.add(sheet);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.8 }));
   table.position.y = -0.3;
@@ -46,8 +51,17 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   const ambient = new THREE.AmbientLight(0xffe8c8, 0.8);
   const candle = new THREE.PointLight(0xffb870, 900, 0, 2);
   const low = new THREE.DirectionalLight(0xffdcb0, 1.1);
-  low.position.set(-40, 13, 12);
+  low.position.set(-30, 42, 22);
+  low.castShadow = true;
+  low.shadow.mapSize.set(2048, 2048);
+  Object.assign(low.shadow.camera, { left: -46, right: 46, top: 34, bottom: -34, near: 1, far: 140 });
+  low.shadow.bias = -0.0006;
+  low.shadow.normalBias = 0.03;
   scene.add(ambient, candle, low);
+
+  // the toy world on the sheet, and Frodo and Sam on the road
+  const reduced = prefersReducedMotion();
+  const world = buildDiorama(scene, { reduced });
   // by day, by candle at night, and by Mordor's fire
   const day = { ambient: new THREE.Color(0xfff1dc), candle: new THREE.Color(0xffd6a0), low: new THREE.Color(0xfff0dc) };
   const night = { ambient: new THREE.Color(0x6a7590), candle: new THREE.Color(0xffa458), low: new THREE.Color(0x8fa2c8) };
@@ -67,34 +81,52 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   // dark the room is, and the pointer's lean
   const cur = { x: 0, z: 0, zoom: 3.4, m: 0, n: 0, lx: 0, lz: 0 };
   const goal = { x: 0, z: 0, zoom: 2.6, m: 0, n: 0, lx: 0, lz: 0 };
+  const want = { ...goal }; // what the page asked for; a walk overrides it while it lasts
   let wide = 1;
   let first = true;
   let candleLit = false;
+  let alive = false;
   let t = 0;
+  // the visitor's own look about on the map: a pan and a zoom on top of the
+  // page's view, and whether a hurried walk (to open a place) is on
+  const user = { x: 0, z: 0, zoom: 1 };
+  let hurry = false;
+  let hub = false;
 
   // { at: [x, y] on the sheet or null for the whole map, zoom, mordor, dark,
   //   alive: the candle flickers (it keeps drawing), lean: [-1..1, -1..1] the
   //   pointer, hover: [x, y] a place to lean towards }
-  const setView = ({ at: spot = null, zoom = null, mordor = false, dark = false, alive = false, lean = [0, 0], hover = null }) => {
+  const setView = ({ at: spot = null, zoom = null, mordor = false, dark = false, alive: live = false, lean = [0, 0], hover = null }) => {
     // the whole map is framed a little east of its middle, so Mordor is in
-    const [x, z] = at(...(spot || [438, 300]));
+    const [x, z] = at(...(spot || [452, 322]));
     const [hx, hz] = hover ? at(...hover) : [x, z];
-    goal.x = x + (hx - x) * 0.04;
-    goal.z = z + (hz - z) * 0.04;
+    want.x = x + (hx - x) * 0.04;
+    want.z = z + (hz - z) * 0.04;
     // a tall screen can't hold the whole sheet: show its middle, bigger
-    goal.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 1.75 : 2.95);
-    goal.m = mordor ? 1 : 0;
-    goal.n = dark ? 1 : 0;
-    goal.lx = lean[0];
-    goal.lz = lean[1];
-    candleLit = dark && alive;
+    want.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 0.8 : 3.05);
+    want.m = mordor ? 1 : 0;
+    want.n = dark ? 1 : 0;
+    want.lx = lean[0];
+    want.lz = lean[1];
+    candleLit = dark && live;
+    alive = live;
+    hub = !spot && live;
+  };
+
+  let dragging = false;
+  // keep the middle of the view on the sheet
+  const clampUser = () => {
+    const lx = SHEET.w / SCALE / 2;
+    const lz = SHEET.h / SCALE / 2;
+    user.x = Math.max(-lx - want.x, Math.min(lx - want.x, user.x));
+    user.z = Math.max(-lz - want.z, Math.min(lz - want.z, user.z));
   };
 
   // Where a point on the sheet is on the screen, in CSS pixels of the canvas.
   const v = new THREE.Vector3();
-  const project = (x, y) => {
+  const project = (x, y, h = 0) => {
     const [px, pz] = at(x, y);
-    v.set(px, 0, pz).project(camera);
+    v.set(px, h, pz).project(camera);
     return { x: ((v.x + 1) / 2) * size.w, y: ((1 - v.y) / 2) * size.h, on: v.z < 1 };
   };
   let size = { w: 1, h: 1 };
@@ -125,22 +157,48 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     if (lost) return false;
     const dt = Math.min(0.05, ms / 1000);
     t += dt;
-    const k = 1 - Math.exp(-2.4 * slow * dt);
+    // on a walk the camera follows Frodo, close
+    Object.assign(goal, want);
+    if (hurry && !world.walking) hurry = false;
+    if (hurry) {
+      goal.x = world.frodo.x;
+      goal.z = world.frodo.z;
+      goal.zoom = 1.15;
+    } else if (hub) {
+      // on the map: the visitor's pan and zoom, and Frodo kept in view as he walks
+      if (world.walking && !dragging) {
+        v.copy(world.frodo).project(camera);
+        if (Math.abs(v.x) > 0.45 || Math.abs(v.y) > 0.45) {
+          user.x += (world.frodo.x - (want.x + user.x)) * Math.min(1, dt * 1.6);
+          user.z += (world.frodo.z - (want.z + user.z)) * Math.min(1, dt * 1.6);
+        }
+      }
+      goal.x = want.x + user.x;
+      goal.z = want.z + user.z;
+      goal.zoom = want.zoom * user.zoom;
+    }
+    const k = 1 - Math.exp(-(hurry ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
     const kl = 1 - Math.exp(-4 * dt);
     let far = 0;
     for (const key of ['x', 'z', 'zoom', 'm', 'n', 'lx', 'lz']) far += Math.abs(goal[key] - cur[key]) * (key === 'x' || key === 'z' ? 1 : 4);
-    const moving = first || far > 0.004;
-    if (!moving && !candleLit) return false;
+    const moving = first || far > 0.004 || world.walking || hurry;
+    // on the map itself the world is alive (smoke, the Eye, the hobbits):
+    // keep drawing; behind a chapter, only while the camera moves
+    if (!moving && !alive && !candleLit) return false;
     first = false;
     for (const key of ['x', 'z', 'zoom', 'm', 'n']) cur[key] += (goal[key] - cur[key]) * k;
     cur.lx += (goal.lx - cur.lx) * kl;
     cur.lz += (goal.lz - cur.lz) * kl;
+    world.update(dt, t, { night: cur.n });
     const z = cur.zoom * wide;
     // the pointer swings the camera a little round the point it looks at
     const sx = cur.lx * 1.6 * z;
     const sz = cur.lz * 1.1 * z;
     camera.position.set(cur.x + 1.5 * z + sx, 17 * z, cur.z + 14 * z + sz);
     camera.lookAt(cur.x + sx * 0.25, 0, cur.z - 1.2 * z + sz * 0.25);
+    // Mount Doom shakes the table a little when it goes up
+    const q = reduced ? 0 : world.shake * world.shake * 0.12 * z;
+    if (q) camera.position.add(v.set(Math.sin(t * 61) * q, Math.sin(t * 47) * q, Math.cos(t * 53) * q));
     const flick = candleLit ? 1 + 0.06 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1.3) + 0.04 * Math.sin(t * 23.7) : 1;
     ambient.color.copy(tint.copy(day.ambient).lerp(night.ambient, cur.n)).lerp(fire.ambient, cur.m);
     ambient.intensity = (0.85 - 0.5 * cur.n) * (1 - 0.45 * cur.m);
@@ -168,6 +226,81 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   return {
     setView,
     project,
+    // send Frodo and Sam down the road to a stop; how long they'll take, in ms
+    travel: (stop) => {
+      const ms = world.walkTo(stop);
+      hurry = ms > 0;
+      first = true;
+      return ms;
+    },
+    // ── the visitor's hands on the map ──
+    // drag: move the map with the pointer, by a screen delta in px
+    panBy(dx, dy, x = size.w / 2, y = size.h / 2) {
+      const a = unproject(x, y);
+      const b = unproject(x + dx, y + dy);
+      if (!a || !b) return;
+      user.x -= (b.x - a.x) / SCALE;
+      user.z -= (b.y - a.y) / SCALE;
+      clampUser();
+      first = true;
+    },
+    // zoom by a factor (below 1 is closer) towards a point on the screen
+    zoomBy(f, x = size.w / 2, y = size.h / 2) {
+      const before = user.zoom;
+      user.zoom = Math.max(0.3, Math.min(1.3, user.zoom * f));
+      const k = user.zoom / before;
+      const p = unproject(x, y);
+      if (p) {
+        const px = (p.x - SHEET.w / 2) / SCALE;
+        const pz = (p.y - SHEET.h / 2) / SCALE;
+        user.x += (px - (want.x + user.x)) * (1 - k);
+        user.z += (pz - (want.z + user.z)) * (1 - k);
+      }
+      clampUser();
+      first = true;
+    },
+    holding(on) {
+      dragging = on;
+    },
+    resetView() {
+      Object.assign(user, { x: 0, z: 0, zoom: 1 });
+      first = true;
+    },
+    // centre the map on Frodo (a phone shows only part of it)
+    lookAtFrodo() {
+      user.x = world.frodo.x - want.x;
+      user.z = world.frodo.z - want.z;
+      clampUser();
+      first = true;
+    },
+    // a tap: who's there, or where on the sheet it landed
+    tap(x, y) {
+      ndc.set((x / size.w) * 2 - 1, 1 - (y / size.h) * 2);
+      world.ray.setFromCamera(ndc, camera);
+      const who = world.pick(world.ray);
+      if (who) return { who };
+      const p = unproject(x, y);
+      return p ? { at: [p.x, p.y] } : null;
+    },
+    say: (id) => world.say(id),
+    walkToSheet(x, y) {
+      world.walkToPoint((x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE);
+    },
+    drive: (dx, dz) => world.drive(dx, dz),
+    on: (f) => world.on(f),
+    // where someone's head is on the screen, for a speech bubble
+    headOf(id) {
+      if (!world.headOf(id, v)) return null;
+      v.project(camera);
+      return { x: ((v.x + 1) / 2) * size.w, y: ((1 - v.y) / 2) * size.h, on: v.z < 1 };
+    },
+    get frodoSheet() {
+      return { x: world.frodo.x * SCALE + SHEET.w / 2, y: world.frodo.z * SCALE + SHEET.h / 2 };
+    },
+    place: (stop) => world.place(stop),
+    get walking() {
+      return world.walking;
+    },
     unproject,
     render,
     resize,

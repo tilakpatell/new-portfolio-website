@@ -1,0 +1,48 @@
+/* ─── The Caribbean's site colours ───────────────────────────────────────────
+   Three schemes, unlocked together by "savvy": Tortuga (old charts and brass,
+   the Caribbean page's own), the Black Pearl (black and gold, Jack's ship) and
+   the Flying Dutchman (the deep, Davy Jones's). Here, not with the page, so
+   they hold on every page once picked. Each has a light and a dark of its own. */
+
+[data-theme='tortuga'] {
+  --bg: #f4ead2; --bg-deep: #eadcb9; --surface: #fbf4e2; --surface-2: #efe2c2; --border: #d8c79c; --border-strong: #8f7a4b;
+  --text: #1c1408; --text-body: #3a2e1a; --muted: #6d5d3f;
+  --accent: #0f6b70; --accent-text: #0b5a5f; --btn-bg: #12343b; --btn-ink: #f6e7bf; --saber: #d9a436; --nav-bg: #0d1c22;
+  --route-plan: #d5c296; --marker: circle(50%);
+}
+html[data-mode='dark'][data-theme='tortuga'] {
+  --bg: #071217; --bg-deep: #040c10; --surface: #0c1b22; --surface-2: #12262e; --border: #1d3540; --border-strong: #4d6b74;
+  --text: #f3e6c4; --text-body: #d9cba6; --muted: #9a9278;
+  --accent: #e0aa38; --accent-text: #f2c45a; --btn-bg: #e0aa38; --btn-ink: #1d1204; --saber: #f2c45a; --nav-bg: #040c10;
+}
+
+[data-theme='pearl'] {
+  --bg: #f3efe6; --bg-deep: #e7e0d0; --surface: #fbf8f1; --surface-2: #ebe4d3; --border: #d3c9b2; --border-strong: #7d735c;
+  --text: #110e08; --text-body: #2e281b; --muted: #645b47;
+  --accent: #8a5a12; --accent-text: #7a4f0e; --btn-bg: #15110a; --btn-ink: #f2c45a; --saber: #f2c45a; --nav-bg: #0b0906;
+  --route-plan: #cfc4a8; --marker: polygon(50% 0, 100% 100%, 0 100%);
+}
+html[data-mode='dark'][data-theme='pearl'] {
+  --bg: #090806; --bg-deep: #050403; --surface: #13110c; --surface-2: #1c1911; --border: #2a2518; --border-strong: #6b5f40;
+  --text: #f4e8c8; --text-body: #d8cba8; --muted: #9a9075;
+  --accent: #f2c45a; --accent-text: #f2c45a; --btn-bg: #f2c45a; --btn-ink: #120d03; --saber: #f2c45a; --nav-bg: #050403;
+}
+
+[data-theme='dutchman'] {
+  --bg: #edf3ef; --bg-deep: #dfe9e3; --surface: #f8fbf9; --surface-2: #e2ece6; --border: #c6d6cc; --border-strong: #6f8a7d;
+  --text: #0a1714; --text-body: #213530; --muted: #52675f;
+  --accent: #0d7a62; --accent-text: #0a6a55; --btn-bg: #0c3830; --btn-ink: #c9ffe9; --saber: #5df2c0; --nav-bg: #071411;
+  --route-plan: #bfd0c6; --marker: circle(50%);
+}
+html[data-mode='dark'][data-theme='dutchman'] {
+  --bg: #040e0c; --bg-deep: #020807; --surface: #091a16; --surface-2: #0e2620; --border: #153a31; --border-strong: #3f7868;
+  --text: #dcf7ec; --text-body: #b9dccf; --muted: #7fa598;
+  --accent: #5df2c0; --accent-text: #5df2c0; --btn-bg: #5df2c0; --btn-ink: #03130f; --saber: #5df2c0; --nav-bg: #020807;
+}
+
+/* squared off, like something cut from plank and printed on a hand press */
+:is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) { --r-card: 4px; --r-panel: 4px; --r-btn: 4px; --r-chip: 3px; --r-photo: 4px; }
+:is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) :is(.display, .title) { font-family: 'Pirata One', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0.01em; line-height: 0.98; }
+:is([data-theme='tortuga'], [data-theme='pearl'], [data-theme='dutchman']) .lead { font-family: 'IM Fell English', Georgia, serif; }
+[data-theme='pearl'] h1.display { text-shadow: 0 2px 0 rgba(242, 196, 90, 0.55); }
+html[data-mode='dark'][data-theme='dutchman'] h1.display { text-shadow: 0 0 28px rgba(93, 242, 192, 0.35); }
