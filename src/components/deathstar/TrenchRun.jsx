@@ -6,6 +6,7 @@ import { fmtClock } from './battle';
 import { SCRIPTS } from '../../fun/scripts';
 import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 import { capturePointer } from '../../lib/pointer';
+import { use3D } from '../../lib/gpu';
 
 const sfx = () => import('../../lib/sfx');
 // The HUD writes in the site's language when language mode is on.
@@ -168,6 +169,44 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
   });
   const [ui, setUi] = useState({ phase: 'ready', shields: 3, maxShields: 3, torpedoes: 2, computer: true, score: 0, message: '', newBest: false });
   const fx = useRef({ combo: null, near: 0, lowered: false });
+  // WebGL where there's a graphics chip for it (./Trench3D.js), the 2D canvas otherwise
+  const three = use3D();
+  const glCanvas = useRef(null);
+  const glRef = useRef(null);
+  const resizeRef = useRef(null);
+  const glDrop = useRef(null);
+  const [glState, setGlState] = useState('off'); // off | loading | on | failed | slow | lost
+  useEffect(() => {
+    if (!three.on) {
+      setGlState('off');
+      return undefined;
+    }
+    let dead = false;
+    const drop = (why) => {
+      glRef.current?.dispose();
+      glRef.current = null;
+      if (!dead) setGlState(why);
+    };
+    glDrop.current = drop;
+    setGlState('loading');
+    import('./Trench3D')
+      .then(({ createTrench3D }) => {
+        if (dead || !glCanvas.current) return;
+        try {
+          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => drop('slow') });
+          resizeRef.current?.();
+          setGlState('on');
+        } catch {
+          drop('failed');
+        }
+      })
+      .catch(() => drop('failed'));
+    return () => {
+      dead = true;
+      glRef.current?.dispose();
+      glRef.current = null;
+    };
+  }, [three.on]);
   // Obi-Wan's line, while it plays; it ends with the run
   const force = useRef(null);
   useEffect(() => {
@@ -313,7 +352,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
   // The loop
   useEffect(() => {
     const cv = canvas.current;
-    const ctx = cv.getContext('2d', { alpha: false });
+    const ctx = cv.getContext('2d');
     const size = { w: 0, h: 0, dpr: 1 };
     const perf = { acc: 0, n: 0 };
     const calm = prefersReducedMotion();
@@ -324,24 +363,46 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       size.h = r.height;
       cv.width = Math.round(r.width * size.dpr);
       cv.height = Math.round(r.height * size.dpr);
+      glRef.current?.resize(size.w, size.h);
       draw();
     };
+    resizeRef.current = resize;
     const project = (x, y, z, g) => {
       const f = size.h * 0.95;
       const s = f / Math.max(TRENCH.near, z);
       return [size.w / 2 + (x - g.px * 0.85) * s * 0.55, size.h * 0.46 - (y - g.py * 0.85) * s * 0.42];
     };
 
-    function draw() {
-      const g = game.current ?? { z: 0, px: 0, py: 1.9, tx: 0, ty: 1.9, items: [], towers: [], ties: [], bolts: [], lasers: [], rear: [], shots: [], fx: [], computer: true, flash: 0, shake: 0, status: 'ready', t: 0, vader: {} };
+    // before the first run, a slow fly-over of the surface
+    const idle = { z: 0, px: 0, py: 1.9, tx: 0, ty: 1.9, items: [], towers: [], ties: [], bolts: [], lasers: [], rear: [], shots: [], fx: [], computer: true, flash: 0, shake: 0, status: 'ready', t: 0, vader: {} };
+    const idleState = () => {
+      if (!calm) {
+        const t = performance.now() / 1000;
+        idle.t = t;
+        idle.z = (t * 2.6) % 80;
+        idle.px = idle.tx = Math.sin(t * 0.35) * 0.9;
+        idle.py = idle.ty = 1.85 + Math.sin(t * 0.5) * 0.25;
+      }
+      return idle;
+    };
+
+    function draw(ms = 16) {
+      const g = game.current ?? idleState();
       const { w, h, dpr } = size;
       if (!w) return;
       const detail = !fx.current.lowered;
       const { near: NEAR, far: FAR } = TRENCH;
+      const gl = glRef.current && !glRef.current.lost ? glRef.current : null;
+      // the port: how far, and whether a torpedo would go in from here
+      const portD = portZ() - g.z;
+      const [wLo, wHi] = TRENCH.window;
+      const inWindow = portD > wLo && portD < wHi;
+      const lined = Math.abs(g.px) < TRENCH.lined.x && g.py < TRENCH.lined.y;
+      let portAt = null;
       // the ship rocks when hit, and the station shakes as it goes
       let sx = 0;
       let sy = 0;
-      if (!calm) {
+      if (!calm && !gl) {
         const k = (g.win?.boom ? Math.max(0, 0.9 - (g.win.t - 0.6)) * 14 : 0) + (g.shake ?? 0) * 18;
         if (k) {
           sx = (Math.random() - 0.5) * k;
@@ -349,194 +410,261 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         }
       }
       ctx.setTransform(dpr, 0, 0, dpr, sx * dpr, sy * dpr);
-      ctx.fillStyle = '#05060b';
-      ctx.fillRect(-20, -20, w + 40, h + 40);
-
-      // stars, above the station's horizon
-      const horizon = project(0, 1, FAR, g)[1];
-      if (horizon > 0) {
-        for (const st of STARS) {
-          const y = st.y * horizon;
-          const x = (((st.x * w - g.px * 6 - g.z * 0.3) % w) + w) % w;
-          ctx.fillStyle = `rgba(220,228,255,${st.a})`;
-          ctx.fillRect(x, y, st.s, st.s);
+      if (gl) {
+        // the world is drawn in WebGL underneath; this canvas is only the HUD
+        try {
+          gl.render(g, ms, { calm });
+        } catch {
+          glDrop.current?.('failed'); // a driver that falls over mid-run: carry on in 2D
         }
+        ctx.clearRect(-20, -20, w + 40, h + 40);
       }
+      if (!gl || !glRef.current) {
+        ctx.fillStyle = '#05060b';
+        ctx.fillRect(-20, -20, w + 40, h + 40);
 
-      // Trench walls and floor, and the surface either side: solid panels,
-      // fogged with distance, with the station's surface detail. Panels are
-      // keyed to world position so the detail stays put as you fly past it.
-      const step = 2;
-      const base = Math.floor(g.z / step);
-      const quad = (pts) => {
-        ctx.beginPath();
-        pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-        ctx.closePath();
-        ctx.fill();
-      };
-      const shade = (v, z) => {
-        const f = Math.max(0, Math.min(1, z / FAR));
-        const c = Math.round(v * (1 - f) + 6 * f);
-        return `rgb(${c},${c + 1},${c + 4})`;
-      };
-      const over = g.py > 1.05; // the camera is above the surface
-      const reach = over ? 16 : 7;
-      if (over) {
-        // the plating right under the ship, nearer than the panels start
-        ctx.fillStyle = shade(36, NEAR);
-        const y0 = project(0, 1, NEAR, g)[1];
-        ctx.fillRect(-20, y0 - 1, w + 40, h - y0 + 21);
-      }
-      for (let k = Math.ceil(FAR / step); k >= 0; k--) {
-        const z1 = (base + k) * step - g.z;
-        const z2 = z1 + step;
-        if (z2 <= NEAR) continue;
-        const a = Math.max(NEAR, z1);
-        const seed = base + k;
-        const tone = seed % 2 ? 52 : 44;
-        const P = (x, y, z) => project(x, y, z, g);
-        ctx.fillStyle = shade(tone - 8, a);
-        quad([P(-reach, 1, a), P(-1, 1, a), P(-1, 1, z2), P(-reach, 1, z2)]);
-        quad([P(1, 1, a), P(reach, 1, a), P(reach, 1, z2), P(1, 1, z2)]);
-        if (over && detail && seed % 3 === 0) {
-          // the surface's plating seams
-          ctx.fillStyle = shade(tone + 10, a);
-          quad([P(-reach, 1, a), P(-1, 1, a), P(-1, 1, a + 0.08), P(-reach, 1, a + 0.08)]);
-          quad([P(1, 1, a), P(reach, 1, a), P(reach, 1, a + 0.08), P(1, 1, a + 0.08)]);
-        }
-        ctx.fillStyle = shade(tone, a);
-        quad([P(-1, 1, a), P(-1, -1, a), P(-1, -1, z2), P(-1, 1, z2)]);
-        quad([P(1, 1, a), P(1, -1, a), P(1, -1, z2), P(1, 1, z2)]);
-        ctx.fillStyle = shade(tone - 16, a);
-        quad([P(-1, -1, a), P(1, -1, a), P(1, -1, z2), P(-1, -1, z2)]);
-        if (detail && !over) {
-          // a few raised blocks on each wall
-          const rand = rng(seed * 7 + 3);
-          ctx.fillStyle = shade(tone + 22, a);
-          for (let n = 0; n < 3; n++) {
-            const side = rand() < 0.5 ? -1 : 1;
-            const y0 = rand() * 1.6 - 0.9;
-            const hgt = 0.08 + rand() * 0.22;
-            const za = a + rand() * (z2 - a) * 0.6;
-            const zb = Math.min(z2, za + 0.4 + rand() * 0.6);
-            quad([P(side, y0 + hgt, za), P(side, y0, za), P(side, y0, zb), P(side, y0 + hgt, zb)]);
+        // stars, above the station's horizon
+        const horizon = project(0, 1, FAR, g)[1];
+        if (horizon > 0) {
+          for (const st of STARS) {
+            const y = st.y * horizon;
+            const x = (((st.x * w - g.px * 6 - g.z * 0.3) % w) + w) % w;
+            ctx.fillStyle = `rgba(220,228,255,${st.a})`;
+            ctx.fillRect(x, y, st.s, st.s);
           }
         }
-      }
-      ctx.strokeStyle = 'rgba(190,200,215,0.18)';
-      ctx.lineWidth = 1;
-      for (const [x, y] of [[-1, 1], [-1, -1], [1, -1], [1, 1]]) {
-        const [x1, y1] = project(x, y, NEAR, g);
-        const [x2, y2] = project(x, y, FAR, g);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
 
-      // The exhaust port, on the floor at the end of the trench. Close in and
-      // it glows; inside firing range it pulses, green once you're lined up.
-      const portD = portZ() - g.z;
-      const [wLo, wHi] = TRENCH.window;
-      const inWindow = portD > wLo && portD < wHi;
-      const lined = Math.abs(g.px) < TRENCH.lined.x && g.py < TRENCH.lined.y;
-      let portAt = null;
-      if (portD < FAR && portD > NEAR) {
-        const [px, py] = project(0, -0.98, portD, g);
-        const [ex] = project(0.32, -0.98, portD, g);
-        const r = Math.max(2, ex - px);
-        portAt = [px, py, r];
-        if ((g.status === 'running' || g.status === 'winning') && portD < 30) {
-          const pulse = inWindow ? 0.55 + 0.45 * Math.sin((g.t ?? 0) * 10) : 0.5;
-          const hue = inWindow && lined ? '120,255,160' : '255,179,71';
-          ctx.strokeStyle = `rgba(${hue},${pulse})`;
-          ctx.lineWidth = 2;
-          for (const k of [1.6, 2.3]) {
-            ctx.beginPath();
-            ctx.ellipse(px, py, r * k, r * k * 0.4, 0, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-          ctx.fillStyle = `rgba(${hue},${0.25 * pulse})`;
+        // Trench walls and floor, and the surface either side: solid panels,
+        // fogged with distance, with the station's surface detail. Panels are
+        // keyed to world position so the detail stays put as you fly past it.
+        const step = 2;
+        const base = Math.floor(g.z / step);
+        const quad = (pts) => {
           ctx.beginPath();
-          ctx.ellipse(px, py, r * 2.3, r * 0.92, 0, 0, Math.PI * 2);
+          pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.closePath();
+          ctx.fill();
+        };
+        const shade = (v, z) => {
+          const f = Math.max(0, Math.min(1, z / FAR));
+          const c = Math.round(v * (1 - f) + 6 * f);
+          return `rgb(${c},${c + 1},${c + 4})`;
+        };
+        const over = g.py > 1.05; // the camera is above the surface
+        const reach = over ? 16 : 7;
+        if (over) {
+          // the plating right under the ship, nearer than the panels start
+          ctx.fillStyle = shade(36, NEAR);
+          const y0 = project(0, 1, NEAR, g)[1];
+          ctx.fillRect(-20, y0 - 1, w + 40, h - y0 + 21);
+        }
+        for (let k = Math.ceil(FAR / step); k >= 0; k--) {
+          const z1 = (base + k) * step - g.z;
+          const z2 = z1 + step;
+          if (z2 <= NEAR) continue;
+          const a = Math.max(NEAR, z1);
+          const seed = base + k;
+          const tone = seed % 2 ? 52 : 44;
+          const P = (x, y, z) => project(x, y, z, g);
+          ctx.fillStyle = shade(tone - 8, a);
+          quad([P(-reach, 1, a), P(-1, 1, a), P(-1, 1, z2), P(-reach, 1, z2)]);
+          quad([P(1, 1, a), P(reach, 1, a), P(reach, 1, z2), P(1, 1, z2)]);
+          if (over && detail && seed % 3 === 0) {
+            // the surface's plating seams
+            ctx.fillStyle = shade(tone + 10, a);
+            quad([P(-reach, 1, a), P(-1, 1, a), P(-1, 1, a + 0.08), P(-reach, 1, a + 0.08)]);
+            quad([P(1, 1, a), P(reach, 1, a), P(reach, 1, a + 0.08), P(1, 1, a + 0.08)]);
+          }
+          ctx.fillStyle = shade(tone, a);
+          quad([P(-1, 1, a), P(-1, -1, a), P(-1, -1, z2), P(-1, 1, z2)]);
+          quad([P(1, 1, a), P(1, -1, a), P(1, -1, z2), P(1, 1, z2)]);
+          ctx.fillStyle = shade(tone - 16, a);
+          quad([P(-1, -1, a), P(1, -1, a), P(1, -1, z2), P(-1, -1, z2)]);
+          if (detail && !over) {
+            // a few raised blocks on each wall
+            const rand = rng(seed * 7 + 3);
+            ctx.fillStyle = shade(tone + 22, a);
+            for (let n = 0; n < 3; n++) {
+              const side = rand() < 0.5 ? -1 : 1;
+              const y0 = rand() * 1.6 - 0.9;
+              const hgt = 0.08 + rand() * 0.22;
+              const za = a + rand() * (z2 - a) * 0.6;
+              const zb = Math.min(z2, za + 0.4 + rand() * 0.6);
+              quad([P(side, y0 + hgt, za), P(side, y0, za), P(side, y0, zb), P(side, y0 + hgt, zb)]);
+            }
+          }
+        }
+        ctx.strokeStyle = 'rgba(190,200,215,0.18)';
+        ctx.lineWidth = 1;
+        for (const [x, y] of [[-1, 1], [-1, -1], [1, -1], [1, 1]]) {
+          const [x1, y1] = project(x, y, NEAR, g);
+          const [x2, y2] = project(x, y, FAR, g);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+
+        // The exhaust port, on the floor at the end of the trench. Close in and
+        // it glows; inside firing range it pulses, green once you're lined up.
+        if (portD < FAR && portD > NEAR) {
+          const [px, py] = project(0, -0.98, portD, g);
+          const [ex] = project(0.32, -0.98, portD, g);
+          const r = Math.max(2, ex - px);
+          portAt = [px, py, r];
+          if ((g.status === 'running' || g.status === 'winning') && portD < 30) {
+            const pulse = inWindow ? 0.55 + 0.45 * Math.sin((g.t ?? 0) * 10) : 0.5;
+            const hue = inWindow && lined ? '120,255,160' : '255,179,71';
+            ctx.strokeStyle = `rgba(${hue},${pulse})`;
+            ctx.lineWidth = 2;
+            for (const k of [1.6, 2.3]) {
+              ctx.beginPath();
+              ctx.ellipse(px, py, r * k, r * k * 0.4, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.fillStyle = `rgba(${hue},${0.25 * pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(px, py, r * 2.3, r * 0.92, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#0b0c10';
+          ctx.strokeStyle = '#d9dde3';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(px, py, r, r * 0.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Everything in the world, far to near
+        const things = [];
+        for (const it of g.items) {
+          const d = it.z - g.z;
+          if (d > NEAR && d < FAR && !(it.kind === 'turret' && !it.alive)) things.push([d, 'item', it]);
+        }
+        for (const tw of g.towers) {
+          const d = tw.z - g.z;
+          if (tw.alive && d > NEAR && d < FAR) things.push([d, 'tower', tw]);
+        }
+        for (const t of g.ties) {
+          const d = t.z - g.z;
+          if (t.alive && d > NEAR && d < FAR) things.push([d, 'tie', t]);
+        }
+        things.sort((a, b) => b[0] - a[0]);
+        for (const [d, kind, it] of things) {
+          const a = Math.min(1, 1.2 - d / FAR);
+          if (kind === 'tower') {
+            const P = (x, y, z) => project(x, y, z, g);
+            const x0 = it.x - 0.16;
+            const x1 = it.x + 0.16;
+            const top = 1 + it.h;
+            // the side facing the trench, the front, the roof, then a gun slit
+            const inner = it.x > 0 ? x0 : x1;
+            ctx.fillStyle = shade(58, d);
+            quad([P(inner, 1, d), P(inner, 1, d + 0.3), P(inner, top, d + 0.3), P(inner, top, d)]);
+            ctx.fillStyle = shade(84, d);
+            quad([P(x0, 1, d), P(x1, 1, d), P(x1, top, d), P(x0, top, d)]);
+            ctx.fillStyle = shade(120, d);
+            quad([P(x0, top, d), P(x1, top, d), P(x1, top, d + 0.3), P(x0, top, d + 0.3)]);
+            ctx.fillStyle = shade(24, d);
+            quad([P(x0 + 0.04, top - 0.12, d), P(x1 - 0.04, top - 0.12, d), P(x1 - 0.04, top - 0.18, d), P(x0 + 0.04, top - 0.18, d)]);
+            const [gx, gy] = P(it.x, top + 0.05, d);
+            ctx.fillStyle = `rgba(255,120,90,${a * 0.85})`;
+            ctx.fillRect(gx - 2, gy - 2, 4, 4);
+          } else if (kind === 'tie') {
+            const [x, y] = project(it.x, it.y, d, g);
+            const [x2] = project(it.x + 0.26, it.y, d, g);
+            drawTieFighter(ctx, x, y, Math.max(2, x2 - x), a);
+          } else if (it.kind === 'catwalk') {
+            const [x1, y1] = project(-1, it.y + 0.16, d, g);
+            const [x2, y2] = project(1, it.y - 0.16, d, g);
+            ctx.fillStyle = `rgba(190,196,204,${a * 0.9})`;
+            ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.fillStyle = `rgba(60,64,72,${a})`;
+            ctx.fillRect(x1, y1 + (y2 - y1) * 0.55, x2 - x1, (y2 - y1) * 0.12);
+          } else if (it.kind === 'wall') {
+            const xa = it.side < 0 ? -1 : -0.05;
+            const xb = it.side < 0 ? 0.05 : 1;
+            const [x1, y1] = project(xa, 1, d, g);
+            const [x2, y2] = project(xb, -1, d, g);
+            ctx.fillStyle = `rgba(150,156,166,${a * 0.85})`;
+            ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.strokeStyle = `rgba(40,44,50,${a})`;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+          } else if (it.kind === 'turret') {
+            const x0 = it.side * 0.92;
+            const [x1, y1] = project(x0 - 0.1, it.y + 0.12, d, g);
+            const [x2, y2] = project(x0 + 0.1, it.y - 0.12, d, g);
+            ctx.fillStyle = `rgba(96,102,112,${a})`;
+            ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.fillStyle = `rgba(255,120,90,${a})`;
+            ctx.fillRect((x1 + x2) / 2 - 1.5, (y1 + y2) / 2 - 1.5, 3, 3);
+          } else if (it.kind === 'bolt') {
+            const [x1, y1] = project(it.x, it.y, d, g);
+            const [x2, y2] = project(it.x, it.y, d + 1.4, g);
+            ctx.strokeStyle = `rgba(141,255,107,${a})`;
+            ctx.lineWidth = Math.max(1.5, 5 / d);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+        }
+
+        // bolts aimed at you (green), your lasers (red), missed torpedoes
+        for (const b of g.bolts) {
+          const d = b.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x1, y1] = project(b.x, b.y, d, g);
+          const [x2, y2] = project(b.x - b.vx * 0.06, b.y - b.vy * 0.06, d - b.vz * 0.06, g);
+          ctx.strokeStyle = 'rgba(141,255,107,0.95)';
+          ctx.lineWidth = Math.max(1.5, 5 / d);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        for (const l of g.lasers) {
+          const d = l.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x1, y1] = project(l.x, l.y, d, g);
+          const [x2, y2] = project(l.x, l.y, d + 1.3, g);
+          ctx.strokeStyle = 'rgba(255,82,64,0.95)';
+          ctx.lineWidth = Math.max(1.5, 6 / d);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        ctx.lineWidth = 1;
+        for (const s of g.shots) {
+          const d = s.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x1, y1] = project(s.x, s.y - 0.1, d, g);
+          ctx.fillStyle = '#ffd27a';
+          ctx.beginPath();
+          ctx.arc(x1, y1, Math.max(1.5, 6 / d), 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.fillStyle = '#0b0c10';
-        ctx.strokeStyle = '#d9dde3';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(px, py, r, r * 0.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
+        // explosions
+        for (const f of g.fx) {
+          const d = f.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x, y] = project(f.x, f.y, d, g);
+          const k = f.t / f.life;
+          const r = Math.max(1, (5 / d) * (1 - k * 0.5));
+          ctx.fillStyle = `rgba(255,${Math.round(200 - k * 120)},${Math.round(120 - k * 100)},${1 - k})`;
+          ctx.fillRect(x - r, y - r, r * 2, r * 2);
+        }
 
-      // Everything in the world, far to near
-      const things = [];
-      for (const it of g.items) {
-        const d = it.z - g.z;
-        if (d > NEAR && d < FAR && !(it.kind === 'turret' && !it.alive)) things.push([d, 'item', it]);
-      }
-      for (const tw of g.towers) {
-        const d = tw.z - g.z;
-        if (tw.alive && d > NEAR && d < FAR) things.push([d, 'tower', tw]);
-      }
-      for (const t of g.ties) {
-        const d = t.z - g.z;
-        if (t.alive && d > NEAR && d < FAR) things.push([d, 'tie', t]);
-      }
-      things.sort((a, b) => b[0] - a[0]);
-      for (const [d, kind, it] of things) {
-        const a = Math.min(1, 1.2 - d / FAR);
-        if (kind === 'tower') {
-          const P = (x, y, z) => project(x, y, z, g);
-          const x0 = it.x - 0.16;
-          const x1 = it.x + 0.16;
-          const top = 1 + it.h;
-          // the side facing the trench, the front, the roof, then a gun slit
-          const inner = it.x > 0 ? x0 : x1;
-          ctx.fillStyle = shade(58, d);
-          quad([P(inner, 1, d), P(inner, 1, d + 0.3), P(inner, top, d + 0.3), P(inner, top, d)]);
-          ctx.fillStyle = shade(84, d);
-          quad([P(x0, 1, d), P(x1, 1, d), P(x1, top, d), P(x0, top, d)]);
-          ctx.fillStyle = shade(120, d);
-          quad([P(x0, top, d), P(x1, top, d), P(x1, top, d + 0.3), P(x0, top, d + 0.3)]);
-          ctx.fillStyle = shade(24, d);
-          quad([P(x0 + 0.04, top - 0.12, d), P(x1 - 0.04, top - 0.12, d), P(x1 - 0.04, top - 0.18, d), P(x0 + 0.04, top - 0.18, d)]);
-          const [gx, gy] = P(it.x, top + 0.05, d);
-          ctx.fillStyle = `rgba(255,120,90,${a * 0.85})`;
-          ctx.fillRect(gx - 2, gy - 2, 4, 4);
-        } else if (kind === 'tie') {
-          const [x, y] = project(it.x, it.y, d, g);
-          const [x2] = project(it.x + 0.26, it.y, d, g);
-          drawTieFighter(ctx, x, y, Math.max(2, x2 - x), a);
-        } else if (it.kind === 'catwalk') {
-          const [x1, y1] = project(-1, it.y + 0.16, d, g);
-          const [x2, y2] = project(1, it.y - 0.16, d, g);
-          ctx.fillStyle = `rgba(190,196,204,${a * 0.9})`;
-          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-          ctx.fillStyle = `rgba(60,64,72,${a})`;
-          ctx.fillRect(x1, y1 + (y2 - y1) * 0.55, x2 - x1, (y2 - y1) * 0.12);
-        } else if (it.kind === 'wall') {
-          const xa = it.side < 0 ? -1 : -0.05;
-          const xb = it.side < 0 ? 0.05 : 1;
-          const [x1, y1] = project(xa, 1, d, g);
-          const [x2, y2] = project(xb, -1, d, g);
-          ctx.fillStyle = `rgba(150,156,166,${a * 0.85})`;
-          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-          ctx.strokeStyle = `rgba(40,44,50,${a})`;
-          ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        } else if (it.kind === 'turret') {
-          const x0 = it.side * 0.92;
-          const [x1, y1] = project(x0 - 0.1, it.y + 0.12, d, g);
-          const [x2, y2] = project(x0 + 0.1, it.y - 0.12, d, g);
-          ctx.fillStyle = `rgba(96,102,112,${a})`;
-          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-          ctx.fillStyle = `rgba(255,120,90,${a})`;
-          ctx.fillRect((x1 + x2) / 2 - 1.5, (y1 + y2) / 2 - 1.5, 3, 3);
-        } else if (it.kind === 'bolt') {
-          const [x1, y1] = project(it.x, it.y, d, g);
-          const [x2, y2] = project(it.x, it.y, d + 1.4, g);
-          ctx.strokeStyle = `rgba(141,255,107,${a})`;
+        // Vader's shots streak past from behind
+        for (const b of g.rear ?? []) {
+          const d = b.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x1, y1] = project(b.x, b.y, d, g);
+          const [x2, y2] = project(b.x, b.y, d + 1.6, g);
+          ctx.strokeStyle = 'rgba(141,255,107,0.95)';
           ctx.lineWidth = Math.max(1.5, 5 / d);
           ctx.beginPath();
           ctx.moveTo(x1, y1);
@@ -544,104 +672,44 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ctx.stroke();
           ctx.lineWidth = 1;
         }
-      }
 
-      // bolts aimed at you (green), your lasers (red), missed torpedoes
-      for (const b of g.bolts) {
-        const d = b.z - g.z;
-        if (d < NEAR || d > FAR) continue;
-        const [x1, y1] = project(b.x, b.y, d, g);
-        const [x2, y2] = project(b.x - b.vx * 0.06, b.y - b.vy * 0.06, d - b.vz * 0.06, g);
-        ctx.strokeStyle = 'rgba(141,255,107,0.95)';
-        ctx.lineWidth = Math.max(1.5, 5 / d);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      for (const l of g.lasers) {
-        const d = l.z - g.z;
-        if (d < NEAR || d > FAR) continue;
-        const [x1, y1] = project(l.x, l.y, d, g);
-        const [x2, y2] = project(l.x, l.y, d + 1.3, g);
-        ctx.strokeStyle = 'rgba(255,82,64,0.95)';
-        ctx.lineWidth = Math.max(1.5, 6 / d);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      ctx.lineWidth = 1;
-      for (const s of g.shots) {
-        const d = s.z - g.z;
-        if (d < NEAR || d > FAR) continue;
-        const [x1, y1] = project(s.x, s.y - 0.1, d, g);
-        ctx.fillStyle = '#ffd27a';
-        ctx.beginPath();
-        ctx.arc(x1, y1, Math.max(1.5, 6 / d), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      // explosions
-      for (const f of g.fx) {
-        const d = f.z - g.z;
-        if (d < NEAR || d > FAR) continue;
-        const [x, y] = project(f.x, f.y, d, g);
-        const k = f.t / f.life;
-        const r = Math.max(1, (5 / d) * (1 - k * 0.5));
-        ctx.fillStyle = `rgba(255,${Math.round(200 - k * 120)},${Math.round(120 - k * 100)},${1 - k})`;
-        ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      }
-
-      // Vader's shots streak past from behind
-      for (const b of g.rear ?? []) {
-        const d = b.z - g.z;
-        if (d < NEAR || d > FAR) continue;
-        const [x1, y1] = project(b.x, b.y, d, g);
-        const [x2, y2] = project(b.x, b.y, d + 1.6, g);
-        ctx.strokeStyle = 'rgba(141,255,107,0.95)';
-        ctx.lineWidth = Math.max(1.5, 5 / d);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-        ctx.lineWidth = 1;
-      }
-
-      // Luke's X-wing, banking with the steering
-      const shipX = w / 2 + (g.tx - g.px) * 60;
-      const shipY = h * 0.72;
-      if (g.status !== 'won') {
-        const s = Math.max(0.55, Math.min(1.2, h / 420));
-        drawXwing(ctx, shipX, shipY, s, (g.tx - g.px) * 0.9 + g.px * 0.12, g.t ?? 0, (g.laserCool ?? 0) > TRENCH.laser.cooldown - 0.05);
-      }
-
-      // The two proton torpedoes, dropping into the port
-      if (g.status === 'winning' && g.win && !g.win.boom && portAt) {
-        const p = Math.min(1, g.win.t / 0.6);
-        const e = p * p;
-        for (const side of [-1, 1]) {
-          const x0 = shipX + side * 10;
-          const x = x0 + (portAt[0] - x0) * e;
-          const y = shipY + (portAt[1] - shipY) * e - Math.sin(p * Math.PI) * 30;
-          const glow = ctx.createRadialGradient(x, y, 0, x, y, 12);
-          glow.addColorStop(0, 'rgba(255,255,255,1)');
-          glow.addColorStop(0.35, 'rgba(160,210,255,0.9)');
-          glow.addColorStop(1, 'rgba(80,140,255,0)');
-          ctx.fillStyle = glow;
-          ctx.beginPath();
-          ctx.arc(x, y, 12, 0, Math.PI * 2);
-          ctx.fill();
+        // Luke's X-wing, banking with the steering
+        const shipX = w / 2 + (g.tx - g.px) * 60;
+        const shipY = h * 0.72;
+        if (g.status !== 'won') {
+          const s = Math.max(0.55, Math.min(1.2, h / 420));
+          drawXwing(ctx, shipX, shipY, s, (g.tx - g.px) * 0.9 + g.px * 0.12, g.t ?? 0, (g.laserCool ?? 0) > TRENCH.laser.cooldown - 0.05);
         }
-      }
-      if (g.win?.boom && !g.win.at) {
-        g.win.at = project(0, -0.98, Math.max(NEAR + 0.05, portZ() - g.z), g);
-        g.win.sparks = Array.from({ length: 70 }, () => ({
-          a: Math.random() * Math.PI * 2,
-          v: 80 + Math.random() * 520,
-          life: 0.6 + Math.random() * 1.1,
-          s: 1.5 + Math.random() * 3,
-          c: Math.floor(Math.random() * 70),
-        }));
+
+        // The two proton torpedoes, dropping into the port
+        if (g.status === 'winning' && g.win && !g.win.boom && portAt) {
+          const p = Math.min(1, g.win.t / 0.6);
+          const e = p * p;
+          for (const side of [-1, 1]) {
+            const x0 = shipX + side * 10;
+            const x = x0 + (portAt[0] - x0) * e;
+            const y = shipY + (portAt[1] - shipY) * e - Math.sin(p * Math.PI) * 30;
+            const glow = ctx.createRadialGradient(x, y, 0, x, y, 12);
+            glow.addColorStop(0, 'rgba(255,255,255,1)');
+            glow.addColorStop(0.35, 'rgba(160,210,255,0.9)');
+            glow.addColorStop(1, 'rgba(80,140,255,0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        if (g.win?.boom && !g.win.at) {
+          g.win.at = project(0, -0.98, Math.max(NEAR + 0.05, portZ() - g.z), g);
+          g.win.sparks = Array.from({ length: 70 }, () => ({
+            a: Math.random() * Math.PI * 2,
+            v: 80 + Math.random() * 520,
+            life: 0.6 + Math.random() * 1.1,
+            s: 1.5 + Math.random() * 3,
+            c: Math.floor(Math.random() * 70),
+          }));
+        }
+
       }
 
       // Rear view: Vader closing in, then sent spinning by Han
@@ -664,31 +732,33 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
 
       // Direct hit: a flash, a fireball from the port, a shockwave racing out
       // across the screen, sparks, and the station shaking itself apart
-      if (g.win?.boom && g.win.at) {
+      if (g.win?.boom && (g.win.at || gl)) {
         const e = g.win.t - 0.6;
-        const [cx0, cy0] = g.win.at;
-        const big = Math.hypot(w, h);
-        const fire = Math.min(1, e / 1.2);
-        const R = 20 + fire * big * 0.75;
-        const fb = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, R);
-        fb.addColorStop(0, `rgba(255,255,240,${0.95 * (1 - fire * 0.6)})`);
-        fb.addColorStop(0.3, `rgba(255,190,90,${0.85 * (1 - fire * 0.7)})`);
-        fb.addColorStop(0.7, `rgba(255,90,30,${0.5 * (1 - fire)})`);
-        fb.addColorStop(1, 'rgba(255,60,20,0)');
-        ctx.fillStyle = fb;
-        ctx.fillRect(0, 0, w, h);
-        const ring = Math.min(1, e / 1.4);
-        ctx.strokeStyle = `rgba(200,230,255,${0.9 * (1 - ring)})`;
-        ctx.lineWidth = Math.max(1, 14 * (1 - ring));
-        ctx.beginPath();
-        ctx.ellipse(cx0, cy0, ring * big * 0.9, ring * big * 0.28, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        for (const sp of g.win.sparks) {
-          const d = e * sp.v;
-          const a = Math.max(0, 1 - e / sp.life);
-          if (!a) continue;
-          ctx.fillStyle = `rgba(255,${180 + sp.c},120,${a})`;
-          ctx.fillRect(cx0 + Math.cos(sp.a) * d, cy0 + Math.sin(sp.a) * d * 0.6, sp.s, sp.s);
+        if (!gl) {
+          const [cx0, cy0] = g.win.at;
+          const big = Math.hypot(w, h);
+          const fire = Math.min(1, e / 1.2);
+          const R = 20 + fire * big * 0.75;
+          const fb = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, R);
+          fb.addColorStop(0, `rgba(255,255,240,${0.95 * (1 - fire * 0.6)})`);
+          fb.addColorStop(0.3, `rgba(255,190,90,${0.85 * (1 - fire * 0.7)})`);
+          fb.addColorStop(0.7, `rgba(255,90,30,${0.5 * (1 - fire)})`);
+          fb.addColorStop(1, 'rgba(255,60,20,0)');
+          ctx.fillStyle = fb;
+          ctx.fillRect(0, 0, w, h);
+          const ring = Math.min(1, e / 1.4);
+          ctx.strokeStyle = `rgba(200,230,255,${0.9 * (1 - ring)})`;
+          ctx.lineWidth = Math.max(1, 14 * (1 - ring));
+          ctx.beginPath();
+          ctx.ellipse(cx0, cy0, ring * big * 0.9, ring * big * 0.28, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          for (const sp of g.win.sparks) {
+            const d = e * sp.v;
+            const a = Math.max(0, 1 - e / sp.life);
+            if (!a) continue;
+            ctx.fillStyle = `rgba(255,${180 + sp.c},120,${a})`;
+            ctx.fillRect(cx0 + Math.cos(sp.a) * d, cy0 + Math.sin(sp.a) * d * 0.6, sp.s, sp.s);
+          }
         }
         if (e < 1.7) {
           ctx.fillStyle = `rgba(255,214,140,${Math.min(1, (1.7 - e) * 2)})`;
@@ -778,11 +848,13 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       }
     }
 
+    let idleLast = 0;
     const loop = (now) => {
       raf.current = requestAnimationFrame(loop);
       const g = game.current;
       if (!g) {
-        draw();
+        draw(idleLast ? now - idleLast : 16);
+        idleLast = now;
         return;
       }
       const ms = g.last ? now - g.last : 16;
@@ -804,7 +876,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         stepRun(g, Math.min(0.05, ms / 1000));
         drainRef.current(g);
       }
-      draw();
+      draw(ms);
     };
 
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
@@ -957,6 +1029,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         onPointerCancel={endDrag}
         style={{ touchAction: running ? 'none' : 'auto' }}
       >
+        {three.on && <canvas ref={glCanvas} className="trench-gl" data-on={glState === 'on' || undefined} aria-hidden="true" />}
         <canvas ref={canvas} className="trench-canvas" />
         {running && (
           <div className="trench-touch" onPointerDown={(e) => e.stopPropagation()}>
@@ -1024,6 +1097,20 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         </span>
         <span className="mono min-h-[1.2em] w-full text-sm text-accent" role="status">
           {running ? ui.message : ''}
+        </span>
+        <span className="flex w-full flex-wrap items-center gap-3 text-xs text-muted">
+          {three.can ? (
+            <button type="button" className="btn btn-ghost btn-sm" aria-pressed={three.on} onClick={() => three.set(three.on ? 'off' : 'on')}>
+              3D graphics: {three.on ? 'on' : 'off'}
+            </button>
+          ) : (
+            <span>Playing in 2D: this browser has no WebGL.</span>
+          )}
+          {three.can && !three.on && !three.auto && three.mode === 'auto' && <span>No graphics chip found, so this is the 2D version. Turn 3D on to try it anyway.</span>}
+          {glState === 'loading' && <span>Loading the 3D station…</span>}
+          {glState === 'slow' && <span>Switched to 2D: this device was struggling with 3D.</span>}
+          {glState === 'lost' && <span>The graphics chip reset, so this is the 2D version now.</span>}
+          {glState === 'failed' && <span>3D couldn’t start here, so this is the 2D version.</span>}
         </span>
       </div>
     </div>
