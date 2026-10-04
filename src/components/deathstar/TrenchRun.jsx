@@ -6,7 +6,7 @@ import { fmtClock } from './battle';
 import { SCRIPTS } from '../../fun/scripts';
 import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 import { capturePointer } from '../../lib/pointer';
-import { use3D } from '../../lib/gpu';
+import { gpu, use3D } from '../../lib/gpu';
 
 const sfx = () => import('../../lib/sfx');
 // The HUD writes in the site's language when language mode is on.
@@ -193,7 +193,9 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       .then(({ createTrench3D }) => {
         if (dead || !glCanvas.current) return;
         try {
-          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => drop('slow') });
+          // A real graphics chip stays in 3D (at lower settings if it must);
+          // only WebGL drawn in software, switched on by hand, gives up to 2D.
+          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => !gpu().ok && drop('slow') });
           resizeRef.current?.();
           setGlState('on');
         } catch {

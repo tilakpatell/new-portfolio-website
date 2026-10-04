@@ -194,3 +194,54 @@ function paintClouds(L, w, h) {
   x2.putImageData(img, 0, 0);
   return c;
 }
+
+// The gas giants the moons orbit: bands along the latitudes, torn at their
+// edges into eddies by warped noise, with a few oval storms. Yavin is warm
+// cream and rust; Endor's giant is blue-grey.
+const GIANTS = {
+  yavin: { seed: 71, colors: R([[0, '#f1dcb6'], [0.22, '#d9a46a'], [0.4, '#b9733f'], [0.58, '#ecc995'], [0.75, '#9a5a2f'], [0.9, '#d8b07d'], [1, '#f4e2c0']]) },
+  endor: { seed: 83, colors: R([[0, '#dde9ee'], [0.25, '#9fbcc6'], [0.45, '#6f949f'], [0.62, '#b9d0d7'], [0.8, '#557985'], [1, '#c9dce1']]) },
+};
+
+export function paintGiant(id, { w = 1024, h = 512 } = {}) {
+  const G = GIANTS[id] ?? GIANTS.yavin;
+  const n = noise3(G.seed);
+  const warp = noise3(G.seed + 7);
+  const rand = rng(G.seed);
+  const storms = Array.from({ length: 5 }, () => ({ lat: (rand() - 0.5) * 1.6, lon: rand() * Math.PI * 2, rx: 0.18 + rand() * 0.22, ry: 0.05 + rand() * 0.05, dark: rand() < 0.5 }));
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const x = c.getContext('2d');
+  const img = x.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const lat = (0.5 - (y + 0.5) / h) * Math.PI;
+    const cl = Math.cos(lat);
+    const sy = Math.sin(lat);
+    for (let xx = 0; xx < w; xx++) {
+      const lon = ((xx + 0.5) / w) * Math.PI * 2;
+      const px = cl * Math.cos(lon);
+      const pz = cl * Math.sin(lon);
+      // eddies: the latitude is pushed about by noise, more at band edges
+      const turb = fbm(warp, px * 3, sy * 9, pz * 3, 5) - 0.5;
+      const fine = fbm(n, px * 9, sy * 30, pz * 9, 4) - 0.5;
+      let t = sy * 0.5 + 0.5 + turb * 0.09 + fine * 0.025;
+      t = (t * 4.2) % 1;
+      let col = ramp(G.colors, t);
+      for (const s of storms) {
+        let dl = lon - s.lon;
+        dl = Math.atan2(Math.sin(dl), Math.cos(dl));
+        const d = (dl / s.rx) ** 2 + ((lat - s.lat) / s.ry) ** 2;
+        if (d < 1) col = mix(col, s.dark ? [120, 66, 40] : [246, 232, 210], (1 - d) * 0.65);
+      }
+      const shade = 0.92 + fine * 0.3;
+      const i = (y * w + xx) * 4;
+      img.data[i] = col[0] * shade;
+      img.data[i + 1] = col[1] * shade;
+      img.data[i + 2] = col[2] * shade;
+      img.data[i + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
