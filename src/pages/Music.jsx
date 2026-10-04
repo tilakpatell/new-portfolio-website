@@ -25,7 +25,7 @@ import {
 import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
-import Tabla from '../components/music/Tabla';
+import Tabla from '../components/music/Tabla.jsx'; // .jsx: on a case-insensitive disk 'Tabla' finds tabla.js first
 import Egg from '../components/Egg';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
