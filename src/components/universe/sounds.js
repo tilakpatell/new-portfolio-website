@@ -322,6 +322,80 @@ export function fireSound(kind) {
   }
 }
 
+// Into a planet too fast: a deep boom, the blast and the bits coming down
+export function crashSound() {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.01;
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(95, t);
+  o.frequency.exponentialRampToValueAtTime(32, t + 1.1);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+  o.connect(g).connect(out);
+  o.start(t);
+  o.stop(t + 1.4);
+  whoosh(1.4, 1600, 90, 0.32);
+  tones(
+    [
+      [180, 0.05, 0.12],
+      [120, 0.2, 0.1],
+      [210, 0.38, 0.08],
+    ],
+    { type: 'square', gain: 0.03 },
+  );
+}
+
+// Something going past you: a TIE fighter's scream (falling as it passes),
+// or the rush of anything else
+export function flybySound(kind) {
+  if (kind === 'meeseeks') return; // he says it himself
+  if (kind !== 'tie' && kind !== 'interceptor') {
+    whoosh(1.1, 400, 1400, 0.12);
+    return;
+  }
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.01;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.09, t + 0.35);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 4;
+  f.frequency.setValueAtTime(1300, t);
+  f.frequency.exponentialRampToValueAtTime(520, t + 1.3);
+  for (const detune of [0, 14]) {
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(980 + detune, t);
+    o.frequency.exponentialRampToValueAtTime(430 + detune, t + 1.3);
+    o.connect(f);
+    o.start(t);
+    o.stop(t + 1.45);
+  }
+  f.connect(g).connect(out);
+  whoosh(1.2, 2600, 500, 0.1);
+}
+
+// A ship shot down: a small, sharp blast
+export function popSound() {
+  whoosh(0.6, 2000, 200, 0.22);
+  tones([[90, 0, 0.25]], { type: 'sine', gain: 0.18 });
+}
+
+// Back after a crash: out of a portal (the cruiser) or out of hyperspace
+export function respawnSound(kind) {
+  if (kind === 'cruiser') portalSound();
+  else playClip('hyperspaceExit', { duration: 2 });
+}
+
 // Off the side of a planet
 export const bumpSound = () => {
   tones([[140, 0, 0.18]], { type: 'sawtooth', gain: 0.08 });

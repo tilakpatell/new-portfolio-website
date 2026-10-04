@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { arrivalSound, boostSound, bumpSound, fireSound, speak } from './sounds';
+import { arrivalSound, boostSound, bumpSound, crashSound, fireSound, flybySound, popSound, respawnSound, speak } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -9,11 +9,12 @@ import Face from './Faces';
 // over the open part of the map. Reaching a world for the first time this
 // visit plays its sound bite and then the crew's exchange about it;
 // launching, boosting, bumping into things and reaching the edge get a line
-// now and then (not every time); three hard bumps in a row, sitting still a
-// while and flying into the sun get one of their own. Shots are just sound.
+// now and then (not every time); a crash (into a planet too fast), sitting
+// still a while and flying into the sun get one of their own, and so does
+// traffic going past and a ship shot down. Shots are just sound.
 // The page hands events over through `control.current.handle(event)`.
 
-const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 60000 }; // ms before the same kind of line again
+const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, traffic: 18000, kill: 9000 }; // ms before the same kind of line again
 const COMMS = { name: 'On the comms', color: '#9fb0d0', voice: null }; // a voice on the radio that isn't the crew's
 
 export default function Comms({ crew, reduced, control }) {
@@ -23,7 +24,6 @@ export default function Comms({ crew, reduced, control }) {
   const said = useRef(new Set()); // what's been said this visit
   const lastAt = useRef({});
   const lastSound = useRef({});
-  const hardBumps = useRef([]);
   const timer = useRef(0);
   const alive = useRef(true);
   const n = useRef(0);
@@ -117,18 +117,27 @@ export default function Comms({ crew, reduced, control }) {
           if (e.first || often('boost', now)) say(linesFor(crew, 'boost'));
         } else if (e.type === 'bump') {
           if (soundOnce('bump', 500, now)) bumpSound();
-          if (!e.hard) return;
+          if (e.hard && often('bump', now)) say(linesFor(crew, 'bump'), { urgent: true });
+        } else if (e.type === 'crash') {
+          crashSound();
           if (e.id === 'sun' && !said.current.has('sun')) {
             // straight into the sun: once a visit
             said.current.add('sun');
             say([['comms', 'Oh shit, mother—', 'ohShit']], { urgent: true });
-            return;
+          } else if (often('crash', now)) say(linesFor(crew, 'crash'), { urgent: true });
+        } else if (e.type === 'respawn') {
+          respawnSound(crew?.id);
+        } else if (e.type === 'traffic') {
+          // something going past: the first of each kind always gets a line
+          flybySound(e.kind);
+          const key = `traffic:${e.kind}`;
+          if (!said.current.has(key) || often('traffic', now)) {
+            said.current.add(key);
+            say(linesFor(crew, 'traffic', e.kind));
           }
-          hardBumps.current = [...hardBumps.current.filter((at) => now - at < 30000), now];
-          if (hardBumps.current.length >= 3 && linesFor(crew, 'crash') && often('crash', now)) {
-            hardBumps.current = [];
-            say(linesFor(crew, 'crash'), { urgent: true });
-          } else if (often('bump', now)) say(linesFor(crew, 'bump'), { urgent: true });
+        } else if (e.type === 'kill') {
+          popSound();
+          if (often('kill', now)) say(linesFor(crew, 'kill', e.kind), { urgent: true });
         } else if (e.type === 'edge') {
           if (often('edge', now)) say(linesFor(crew, 'edge'));
         } else if (e.type === 'idle') {
