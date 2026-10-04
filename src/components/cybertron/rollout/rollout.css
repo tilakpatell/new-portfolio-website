@@ -1,0 +1,73 @@
+/* ─── Roll out: the screen and its HUD ─────────────────────────────────── */
+
+.ro-screen, .ro-gate { aspect-ratio: 16 / 9; max-height: 82vh; }
+@media (max-width: 899px) { .ro-screen, .ro-gate { aspect-ratio: 4 / 3; } }
+@media (max-width: 559px) { .ro-screen { aspect-ratio: 3 / 4; max-height: 78svh; } }
+.ro-screen { --ro-font: 'Orbitron', var(--font-sans); --ro-hot: #ffd28c; background: #07080c; }
+.ro-screen:fullscreen { max-height: none; }
+
+/* HUD: a cockpit, not a dashboard */
+.ro-hud { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; align-content: start; gap: 0.75rem; padding: clamp(0.6rem, 0.4rem + 1vw, 1.1rem); font-family: var(--ro-font); letter-spacing: 0.06em; }
+.ro-hud[hidden] { display: none; }
+.ro-hud-left { display: grid; gap: 0.45rem; justify-items: start; }
+.ro-hud-centre { display: grid; gap: 0.35rem; justify-items: center; text-align: center; }
+.ro-hud-right { display: grid; justify-items: end; margin-right: 5.2rem; }
+.ro-shields { display: flex; gap: 0.3rem; }
+.ro-shields span { display: grid; place-items: center; width: clamp(20px, 1.2rem + 0.6vw, 28px); height: clamp(20px, 1.2rem + 0.6vw, 28px); color: rgba(255, 255, 255, 0.18); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); transition: color 0.2s ease, transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.ro-shields span[data-on] { color: #ff3b4e; }
+.ro-shields svg { width: 100%; height: 100%; }
+.ro-energon { display: grid; gap: 0.2rem; width: clamp(120px, 6rem + 8vw, 220px); font-size: 0.62rem; text-transform: uppercase; color: #ffc4ea; }
+.ro-energon .g3-meter { height: 9px; box-shadow: inset 0 0 0 1px rgba(255, 95, 200, 0.35), 0 0 12px rgba(255, 95, 200, 0.25); }
+.ro-mode { display: inline-flex; align-items: baseline; gap: 0.5rem; padding: 0.22rem 0.55rem; border: 1px solid rgba(255, 255, 255, 0.25); clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); background: rgba(8, 10, 16, 0.55); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #9fe8ff; }
+.ro-mode[data-mode='robot'] { color: #ffd28c; border-color: rgba(255, 210, 140, 0.45); }
+.ro-mode small { font: 500 0.62rem/1 var(--font-mono); letter-spacing: 0; color: rgba(255, 255, 255, 0.72); }
+.ro-stage, .ro-boss { display: grid; gap: 0.25rem; width: min(100%, 320px); font-size: 0.68rem; text-transform: uppercase; }
+.ro-boss { color: #ff9aa8; }
+.ro-boss span { font-size: 0.85rem; font-weight: 800; letter-spacing: 0.12em; text-shadow: 0 0 16px rgba(255, 58, 90, 0.7); }
+.ro-boss .g3-meter { height: 10px; }
+.ro-wall { margin-top: 0.3rem; padding: 0.3rem 0.7rem; border-radius: 4px; background: rgba(243, 156, 18, 0.88); color: #160f02; font: 700 clamp(0.62rem, 0.5rem + 0.4vw, 0.8rem)/1.2 var(--ro-font); letter-spacing: 0.04em; text-shadow: none; animation: ro-pulse 0.9s ease-in-out infinite alternate; }
+.ro-wall[data-kind='gap'] { background: rgba(255, 210, 140, 0.92); }
+.ro-wall[hidden] { display: none; }
+@keyframes ro-pulse { from { opacity: 0.75; } to { opacity: 1; } }
+.ro-score { font: 800 clamp(1.1rem, 0.8rem + 1.2vw, 1.8rem)/1 var(--ro-font); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.ro-hud-right small { font-size: 0.6rem; text-transform: uppercase; opacity: 0.7; }
+.ro-hud .g3-callout { font-family: var(--ro-font); }
+.ro-hud .g3-callout[data-tone='bad'] { --callout: rgba(255, 70, 70, 0.9); color: #ffd6d6; }
+.ro-hud .g3-callout[data-tone='good'] { --callout: rgba(120, 255, 190, 0.8); }
+.ro-hud .g3-callout[data-tone='boss'] { --callout: rgba(160, 80, 255, 0.95); color: #f3e6ff; top: 34%; }
+.ro-hud .g3-callout[data-tone='stage'] { --callout: rgba(255, 210, 140, 0.9); top: 38%; }
+@media (max-width: 559px) {
+  .ro-hud { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ro-hud-centre { grid-column: 1 / -1; grid-row: 2; }
+  .ro-hud-right { grid-column: 2; grid-row: 1; margin-right: 5.6rem; }
+}
+
+/* the ground bridge: a green wash as you go through */
+.ro-bridge { position: absolute; z-index: 3; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(220, 255, 236, 0.95), rgba(61, 255, 178, 0.75) 35%, rgba(13, 107, 82, 0.5) 75%); opacity: 0; transition: opacity 0.12s linear; }
+.ro-screen[data-bridge]:not([data-bridge='']) .ro-bridge { opacity: var(--b, 0.85); }
+
+/* touch controls: thumbs at the bottom corners */
+.ro-touch-left { left: 12px; }
+.ro-touch-right { right: 12px; }
+.ro-action { width: 74px; height: 74px; border-color: rgba(159, 232, 255, 0.6); color: #9fe8ff; }
+.ro-transform { width: 84px; height: 84px; border-color: rgba(255, 59, 78, 0.7); color: #ffb3bb; background: rgba(120, 10, 24, 0.45); font-size: 0.66rem; }
+
+/* the garage: pick an Autobot, a difficulty, a stage */
+.ro-card { display: grid; justify-items: center; width: min(100%, 36rem); }
+.ro-title { font: 800 clamp(1.5rem, 1rem + 2.4vw, 2.6rem)/1.05 var(--ro-font); letter-spacing: 0.08em; text-transform: uppercase; background: linear-gradient(180deg, #ffffff 0%, #c9d1dc 44%, #6b7686 54%, #e6ebf1 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5)); }
+.ro-sub { margin-top: 0.6rem; max-width: 44ch; font-size: 0.9rem; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+.ro-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; width: 100%; margin-top: 1rem; }
+.ro-pick button { display: grid; justify-items: center; gap: 0.15rem; padding: 0.65rem 0.6rem; border: 1px solid rgba(255, 255, 255, 0.2); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); background: rgba(10, 12, 20, 0.6); color: #fff; font: 700 0.82rem/1.2 var(--ro-font); letter-spacing: 0.04em; transition: background 0.15s ease, border-color 0.15s ease; }
+.ro-pick button small { font: 500 0.66rem/1.3 var(--font-sans); letter-spacing: 0; color: rgba(255, 255, 255, 0.7); }
+.ro-pick button[aria-pressed='true'] { border-color: #ff3b4e; background: linear-gradient(180deg, rgba(200, 16, 46, 0.45), rgba(31, 79, 168, 0.35)); }
+.ro-pick button[data-bot='bumblebee'][aria-pressed='true'] { border-color: #f7c600; background: linear-gradient(180deg, rgba(247, 198, 0, 0.38), rgba(20, 20, 20, 0.5)); }
+.ro-pick button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ro-pick-mark { display: block; width: 26px; height: 26px; color: #ff3b4e; }
+.ro-pick button[data-bot='bumblebee'] .ro-pick-mark { color: #f7c600; }
+.ro-pick-mark svg { width: 100%; height: 100%; }
+.ro-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem 1rem; margin-top: 0.9rem; font-size: 0.8rem; }
+.ro-stats dt { font: 600 0.62rem/1.2 var(--ro-font); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.ro-stats dd { font: 700 1rem/1.3 var(--font-mono); color: #fff; }
+.ro-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+@media (max-width: 559px) { .ro-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ro-sub { font-size: 0.8rem; } }
+@media (prefers-reduced-motion: reduce) { .ro-wall { animation: none; } .ro-bridge { transition: none; } }
