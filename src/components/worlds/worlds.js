@@ -11,8 +11,8 @@ export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/cybertron': 13, // Roll out's cast, scanned ground, rocks and sky
   '/avengers': 9, // the compound's skies, scanned props and trees
-  '/albuquerque': 6, // Metherria's cast and lab
   '/c-137': 6, // the cruiser and Portal panic's cast
+  '/albuquerque': 5, // Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code: nothing to download
   '/middle-earth': 1, // drawn in code too
