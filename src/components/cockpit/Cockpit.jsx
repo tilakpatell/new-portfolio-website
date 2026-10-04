@@ -112,11 +112,12 @@ export default function Cockpit({ start, onPeak, onDone }) {
     ctl.current?.pick(id);
   }, [id]);
 
-  // the crew's first word, once you're sat down
+  // the crew's first words, once you're sat down, one after another
   useEffect(() => {
     if (!boarded || launching) return undefined;
-    const t = setTimeout(() => say(vehicleById(boarded)?.lines.board?.[0]), 1100);
-    return () => clearTimeout(t);
+    const lines = vehicleById(boarded)?.lines.board ?? [];
+    const timers = lines.map((l, i) => setTimeout(() => say(l), 1100 + i * 3600));
+    return () => timers.forEach(clearTimeout);
   }, [boarded, launching, say]);
 
   useEffect(() => {

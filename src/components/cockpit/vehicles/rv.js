@@ -25,11 +25,14 @@ import { glassMat, glowSprite, glowTexture, painted, planarUV, rng, roundedBox, 
 import { sky as starField } from '../space';
 import { loadCrew, nudge, prefetchCrew } from '../crew';
 import { createModels } from '../../../lib/models';
-import { clamp01, smooth } from '../timeline';
+import { disposeTree } from '../../../lib/three/renderer';
+import { clamp01, due, smooth } from '../timeline';
+import { vehicleById } from '../vehicles';
 
 const TAU = Math.PI * 2;
 const V3 = THREE.Vector3;
 const EYE = [-0.6, 1.22, 0.22];
+const REST = [-0.2, -0.14]; // where you look, at rest: a little right and down
 
 // the road: under the cab's floor, its centre line to your left (you keep
 // to the right-hand lane), and how its textures repeat (metres)
@@ -69,6 +72,7 @@ const PUSH = 1.8;
 
 export function prefetch() {
   prefetchCrew(['jesse', 'jesse-sit', 'walt', 'walt-idle']);
+  for (const url of [WING_URL, FLYER_URL]) fetch(url).catch(() => {});
 }
 
 // How far you've gone and how fast, `lt` ms into the launch; `k` is how far
@@ -1389,7 +1393,149 @@ function captainChair(bin, M, x, z, { head = true } = {}) {
   }
 }
 
-export async function build({ rich, coarse, renderer, pmrem }) {
+// ── the wings ──
+// Walt's home-made wings, the site owner's Meshy models (scripts/meshy-rv.mjs):
+// one wing as it came, a right one (its root at +z, its tip at −z, its
+// leading edge at −x, the jet hanging under it), mirrored for the left; and
+// the whole RV with a pair of them, for the last look at it from outside (its
+// cab at −x, its wings along z). Raw: where things are on the models as they
+// came, in their own units.
+const WINGS = { x: 1.22, y: 0.45, z: 0.1, span: 5.2, stow: 1.52, rise: 0.05 };
+const WING_RAW = { span: 1.9, top: 0.18, jet: [0.235, -0.14, 0.374], tip: [-0.1, 0.15, -0.955] };
+const FLYER = { length: 8.5, jet: [-0.15, -0.27, 0.5], tip: [-0.2, -0.19, 0.955] };
+// the RV from outside: where it is (from your eye) and how it's turned, `u`
+// of the way from the cut to the peak; off ahead and to the right, banking
+// away and climbing, so its side and both wings show
+function flightAt(u) {
+  const d = 32 * u ** 1.4;
+  return { x: 1.6 + 0.43 * d, y: -3 + 0.3 * d, z: -11 - 0.88 * d, yaw: -0.45, pitch: 0.25, roll: -0.12 - 0.08 * u };
+}
+const WING_URL = '/models/cockpit/rv-wing.glb';
+const FLYER_URL = '/models/universe/rv-wings.glb';
+
+function loadModel(url) {
+  const l = new GLTFLoader();
+  l.setMeshoptDecoder(MeshoptDecoder);
+  return l
+    .loadAsync(url)
+    .then((g) => g.scene)
+    .catch(() => null);
+}
+
+// Its paint lit from within a little (none by day), so a wing still reads as
+// one against the night; returns the materials, to turn that up and down.
+function selfLit(model) {
+  const mats = new Set();
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m?.isMeshStandardMaterial || mats.has(m)) continue;
+      m.emissive.setRGB(1, 0.92, 0.82);
+      m.emissiveMap = m.map;
+      m.emissiveIntensity = 0;
+      m.metalness = Math.min(m.metalness, 0.3);
+      mats.add(m);
+    }
+  });
+  return [...mats];
+}
+
+// The pair, each on a pivot at the trailing edge of its root, under the side
+// windows: swung back along the body below the window line (where you can't
+// see them) until `open` swings them out level and they lock with a little
+// rise. Each jet's glow is a pair of sprites (a hot core in a wide haze); the
+// tips carry a red light on the left and a green on the right.
+function wingPair(model) {
+  const s = WINGS.span / WING_RAW.span;
+  const group = new THREE.Group();
+  const mats = selfLit(model);
+  const pivots = [];
+  const jets = [];
+  const tips = [];
+  for (const sx of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(sx * WINGS.x, WINGS.y, WINGS.z);
+    pivot.scale.x = sx; // the left is the right one mirrored
+    const wing = sx > 0 ? model : model.clone();
+    wing.rotation.y = -Math.PI / 2;
+    wing.scale.setScalar(s);
+    wing.updateMatrixWorld(true);
+    // its root on the pivot, its trailing edge too, its top surface level with it
+    const box = new THREE.Box3().setFromObject(wing);
+    wing.position.set(-box.min.x, -WING_RAW.top * s, -box.max.z);
+    const haze = glowSprite(0xff8a3a, 1.5 / s, 0);
+    const core = glowSprite(0xfff0d8, 0.55 / s, 0);
+    haze.position.set(...WING_RAW.jet).x += 0.08;
+    core.position.set(...WING_RAW.jet).x += 0.03;
+    const tip = glowSprite(sx < 0 ? 0xff2a2a : 0x38ff6a, 0.5 / s, 0);
+    tip.position.set(...WING_RAW.tip);
+    wing.add(haze, core, tip);
+    jets.push(haze, core);
+    tips.push(tip);
+    pivot.add(wing);
+    group.add(pivot);
+    pivots.push(pivot);
+  }
+  return {
+    group,
+    // open: 0 stowed … 1 out; jets and lights: 0 … 1; night: how dark it is
+    set(open, jets01, lights, night, t) {
+      pivots.forEach((p, i) => {
+        const sx = i ? 1 : -1;
+        const o = open[i];
+        p.rotation.set(0, -sx * WINGS.stow * (1 - o), sx * WINGS.rise * smooth((o - 0.92) / 0.08));
+        p.visible = o > 0.001;
+      });
+      const flicker = 1 + 0.08 * Math.sin(t * 61) + 0.05 * Math.sin(t * 37);
+      jets.forEach((j, i) => (j.material.opacity = jets01 * (i % 2 ? 1 : 0.75) * flicker));
+      const blink = lights * (Math.sin(t * 5.2) > 0.2 ? 1 : 0.18);
+      tips.forEach((tip) => (tip.material.opacity = blink));
+      for (const m of mats) m.emissiveIntensity = 0.16 * night + 0.12 * jets01;
+    },
+  };
+}
+
+// The whole winged RV from outside: centred, its cab turned to −z,
+// FLYER.length long, with its jets and its wingtips' lights.
+function flyerOf(model) {
+  const group = new THREE.Group();
+  const box = new THREE.Box3().setFromObject(model);
+  const s = FLYER.length / (box.max.x - box.min.x);
+  model.position.copy(box.getCenter(new V3())).negate();
+  const holder = new THREE.Group();
+  holder.rotation.y = -Math.PI / 2;
+  holder.scale.setScalar(s);
+  holder.add(model);
+  group.add(holder);
+  const mats = selfLit(model);
+  const jets = [];
+  const tips = [];
+  for (const sz of [-1, 1]) {
+    const haze = glowSprite(0xff8a3a, 2.4 / s, 0);
+    const core = glowSprite(0xfff0d8, 0.8 / s, 0);
+    haze.position.set(FLYER.jet[0] + 0.03, FLYER.jet[1], sz * FLYER.jet[2]);
+    core.position.set(FLYER.jet[0] + 0.01, FLYER.jet[1], sz * FLYER.jet[2]);
+    // its left wing is the one along +z
+    const tip = glowSprite(sz > 0 ? 0xff2a2a : 0x38ff6a, 0.9 / s, 0);
+    tip.position.set(FLYER.tip[0], FLYER.tip[1], sz * FLYER.tip[2]);
+    model.add(haze, core, tip);
+    jets.push(haze, core);
+    tips.push(tip);
+  }
+  group.visible = false;
+  return {
+    group,
+    set(jets01, t) {
+      const flicker = 1 + 0.1 * Math.sin(t * 57) + 0.06 * Math.sin(t * 31);
+      jets.forEach((j, i) => (j.material.opacity = jets01 * (i % 2 ? 1 : 0.8) * flicker));
+      const blink = Math.sin(t * 5.2) > 0.2 ? 1 : 0.15;
+      tips.forEach((tip) => (tip.material.opacity = blink));
+      for (const m of mats) m.emissiveIntensity = 0.1;
+    },
+  };
+}
+
+export async function build({ rich, coarse, renderer, pmrem, say }) {
   const inside = new THREE.Group();
   const outside = new THREE.Group();
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -1399,6 +1545,10 @@ export async function build({ rich, coarse, renderer, pmrem }) {
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
   // in his suit
   const jesseP = loadCrew('jesse', { clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
+  // the wings and the winged RV: they come when they come (without them the
+  // RV just drives off into the night)
+  const wingP = loadModel(WING_URL);
+  const flyerP = loadModel(FLYER_URL);
   const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.6, 0.98, 0.9], face: Math.PI + 0.6 });
 
   const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone, sitClip, idleClip] = await Promise.all([
@@ -2321,6 +2471,37 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     scatters.push(s);
   }
 
+  // ── the wings ──
+  let gone = false;
+  let wings = null;
+  let flyer = null;
+  wingP.then((m) => {
+    if (!m) return;
+    if (gone) disposeTree(m);
+    else {
+      wings = wingPair(m);
+      inside.add(wings.group);
+    }
+  });
+  flyerP.then((m) => {
+    if (!m) return;
+    if (gone) disposeTree(m);
+    else {
+      flyer = flyerOf(m);
+      outside.add(flyer.group);
+    }
+  });
+  // moonlight on the RV from outside, at the last (none until then)
+  const flyerLight = new THREE.DirectionalLight(0xaabbe8, 0);
+  flyerLight.position.set(EYE[0] - 4, EYE[1] + 10, EYE[2] + 6);
+  flyerLight.target.position.set(EYE[0], EYE[1] - 6, EYE[2] - 30);
+  outside.add(flyerLight, flyerLight.target);
+  // what's said on the way, from vehicles.js: as the wings come out, and as
+  // the RV leaves the road and is seen from outside
+  const LINES = vehicleById('rv').lines;
+  let cues = null;
+  let saidTo = 0;
+
   // ── the drive ──
   let shiftK = 0;
   let lastD = -1;
@@ -2348,7 +2529,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
     outside,
     environment: env,
     eye: EYE,
-    rest: [-0.2, -0.14],
+    rest: REST,
     range: [1.95, 0.5],
     hfov: 92,
     vmin: 58,
@@ -2364,9 +2545,20 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       stars.set({ px });
     },
     launch() {},
+    // the head turned for you: out of the left window at the wing as it
+    // swings out, back ahead before it lifts; then, outside, after the RV
+    aim(lt, p) {
+      if (flyer && lt >= p.cut) {
+        const f = flightAt(clamp01((lt - p.cut) / (p.peak - p.cut)));
+        return [Math.atan2(-f.x, -f.z) - REST[0], Math.atan2(f.y + 1, Math.hypot(f.x, f.z)) - REST[1]];
+      }
+      const side = smooth((lt - p.wings + 300) / 700) - smooth((lt - p.jets - 500) / 900);
+      return [1.42 * side, -0.12 * side];
+    },
     update(dt, t, { launching, t: lt, plan }) {
       const dr = launching ? driveAt(plan, lt) : { d: 0, v: 0, k: 0 };
       const { d, v, k } = dr;
+      const p = plan;
 
       // ── the time of day ──
       const sink = 14 * smooth(k / 0.62);
@@ -2375,7 +2567,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       const starsK = smooth((k - 0.38) / 0.42);
       const lights = smooth((k - 0.3) / 0.04);
       const glow = smooth((k - 0.26) / 0.18);
-      const lift = smooth((k - 0.74) / 0.26);
+      const lift = launching ? smooth((lt - p.lift) / (p.peak - p.lift)) : 0;
       const el = SUN_EL - sink;
       setSun(el);
       const up = clamp01((el + 1.5) / 6);
@@ -2414,6 +2606,41 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       // rising into the night: the land drops, the nose comes up
       world.position.y = -1100 * lift ** 2.2;
       tilt.rotation.x = -0.2 * lift;
+
+      // ── the wings ──
+      // out of the sides (the left a moment before the right), a hard lock,
+      // then the jets catch and burn hotter as it climbs
+      const open = [0, 300].map((lag) => (launching ? smooth((lt - p.wings - lag) / 1200) : 0));
+      const lit = launching ? smooth((lt - p.jets) / 450) * (0.75 + 0.25 * smooth((lt - p.lift) / 1500)) : 0;
+      const nav = launching ? smooth((lt - p.wings - 1500) / 200) : 0;
+      wings?.set(open, lit, nav, night, t);
+      if (wings && open[1] > 0.92 && open[1] < 1) swing.v += (Math.random() - 0.5) * 2 * dt * 30; // the lock shakes the little tree
+      // and from outside, at the last: the cab gone, the RV ahead of you
+      // climbing away into the stars
+      const out = flyer && launching && lt >= p.cut ? clamp01((lt - p.cut) / (p.peak - p.cut)) : -1;
+      inside.visible = out < 0;
+      if (flyer) {
+        flyer.group.visible = out >= 0;
+        if (out >= 0) {
+          const f = flightAt(out);
+          flyer.group.position.set(EYE[0] + f.x, EYE[1] + f.y, EYE[2] + f.z);
+          flyer.group.rotation.set(f.pitch, f.yaw, f.roll + 0.03 * Math.sin(t * 1.7), 'YXZ');
+          flyer.set(1, t);
+        }
+      }
+      flyerLight.intensity = out >= 0 ? 1.3 : 0;
+
+      // ── what's said ──
+      if (launching) {
+        cues ??= [
+          [p.wings + 200, LINES.wings[0]],
+          [p.wings + 2700, LINES.wings[1]],
+          [p.lift + 100, LINES.lift[0]],
+          [p.cut + 300, LINES.lift[1]],
+        ];
+        for (const l of due(cues, saidTo, lt)) say?.(l);
+        saidTo = lt;
+      } else saidTo = 0;
 
       // ── in the cab ──
       key.intensity = 2.2 * up;
@@ -2472,6 +2699,7 @@ export async function build({ rich, coarse, renderer, pmrem }) {
       waltMove?.(t);
     },
     dispose() {
+      gone = true;
       jesse?.dispose();
       walt?.dispose();
       models.dispose();

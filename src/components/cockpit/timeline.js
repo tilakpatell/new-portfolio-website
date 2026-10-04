@@ -10,12 +10,16 @@
 //   peak … end     the flash clears off the universe; `onDone`
 //
 // A click, tap or key during the launch skips on to just before the flash.
+//
+// The RV has beats of its own on the long drive: at dusk its wings swing out
+// of its sides (`wings`), the jets under them light (`jets`), it lifts off
+// the road (`lift`), and the view cuts outside to watch it fly off (`cut`).
 
 export const PLANS = {
   falcon: { spool: 1000, peak: 3050, end: 3700 },
   xwing: { spool: 800, peak: 2850, end: 3500 },
   cruiser: { spool: 1500, peak: 3300, end: 3950 },
-  rv: { spool: 1100, peak: 8200, end: 8950 },
+  rv: { spool: 1100, wings: 3800, jets: 5700, lift: 7900, cut: 9900, peak: 11700, end: 12450 },
 };
 
 export const plan = (id) => PLANS[id] ?? PLANS.falcon;
@@ -45,6 +49,13 @@ export function flashAt(p, t) {
   if (t <= p.peak - rise || t >= p.end) return 0;
   if (t < p.peak) return smooth((t - (p.peak - rise)) / rise);
   return 1 - smooth((t - p.peak) / (p.end - p.peak));
+}
+
+// The lines of a launch said between two moments (ms) of it, `cues` being
+// [at, line] in order: each once, as the launch passes it, and only while
+// it's fresh, so a skip or a jump on says nothing it went past.
+export function due(cues, from, to, fresh = 500) {
+  return cues.filter(([at]) => at > from && at <= to && to - at < fresh).map(([, line]) => line);
 }
 
 // How fast you're going, 0 at rest to 1 flat out: a little creep while

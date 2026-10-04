@@ -6,9 +6,9 @@
 // Two ways to get round it:
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
-// - With a ship (Rick's cruiser, Luke's X-wing or the Falcon), you fly it:
-//   W A S D or the arrows, Space to boost, F to fire, or drag on the map
-//   like a stick.
+// - With a ship (Rick's cruiser, Luke's X-wing, the Falcon or Walt and
+//   Jesse's RV), you fly it: W A S D or the arrows, Space to boost, F to
+//   fire, or drag on the map like a stick.
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
@@ -44,8 +44,8 @@ const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
-const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
-const TRAIL_COLOR = { falcon: '#7fc8ff', xwing: '#ff8a5a', cruiser: '#9df06b' };
+const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b', rv: '#5cc8ff' };
+const TRAIL_COLOR = { falcon: '#7fc8ff', xwing: '#ff8a5a', cruiser: '#9df06b', rv: '#ffb36b' };
 const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the
 // impact, the ship back again, the end of its coming back

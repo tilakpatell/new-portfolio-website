@@ -2,9 +2,10 @@
 // with: Star Wars for Luke's X-wing and Han's Falcon (TIE fighters in
 // twos and threes, interceptors, X-wings in formation, an Imperial shuttle,
 // Boba Fett's Slave I, and now and then a Star Destroyer high over the whole
-// map), Rick and Morty for the cruiser (Galactic
-// Federation patrols and a Federation cruiser, Gromflomite bugs, Mr. Meeseeks
-// floating by, Birdperson); with no ship picked, a quieter mix of both.
+// map), Rick and Morty for the cruiser (Galactic Federation patrols and a
+// Federation cruiser, Gromflomite bugs, Mr. Meeseeks floating by,
+// Birdperson); both for Walt and Jesse's RV, which belongs to neither; with
+// no ship picked, a quieter mix of both.
 // trafficModels.js builds most of them; the X-wings and Slave I are the site
 // owner's Meshy models (scripts/build-universe.py), loaded the first time
 // they're wanted (the X-wings are built until then; Slave I just doesn't fly
@@ -44,11 +45,13 @@ const TYPES = {
   slave1: { size: 0.55, speed: 6, crew: [1, 1], weight: 0.9, flyby: true },
 };
 const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1'], rickmorty: TRAFFIC.rickmorty };
+const BOTH = [...KINDS.starwars, ...KINDS.rickmorty];
 // the ones that are models, and which way their noses point (to turn to +z)
 const MODELS = {
   xwing: { url: '/models/universe/xwing-traffic.glb', nose: 0 },
   slave1: { url: '/models/universe/slave1.glb', nose: 0 },
 };
+// whose traffic each ship meets (a ship that isn't here meets both)
 const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
 const FADE = 1.6; // map units over which a ship grows in at the start of its lane and goes at the end
 
@@ -101,7 +104,7 @@ export function createTraffic(parent, { small = false } = {}) {
     }
   };
   const ready = (kind) => !MODELS[kind] || templates[kind] || kind === 'xwing'; // the X-wing is built until its model comes
-  const kinds = () => (FAMILY[crew] ? KINDS[FAMILY[crew]] : [...KINDS.starwars, ...KINDS.rickmorty]).filter(ready);
+  const kinds = () => (FAMILY[crew] ? KINDS[FAMILY[crew]] : BOTH).filter(ready);
   const pick = (list) => {
     const total = list.reduce((s, k) => s + TYPES[k].weight, 0);
     let r = rand() * total;
@@ -181,6 +184,8 @@ export function createTraffic(parent, { small = false } = {}) {
   return {
     // the crew picked (or null): changes what flies, from now
     setCrew(id) {
+      // any ship's traffic is worth its models (looking round without one isn't)
+      if (id) want(FAMILY[id] ? KINDS[FAMILY[id]] : BOTH);
       if ((FAMILY[id] ?? null) === (FAMILY[crew] ?? null)) {
         crew = id;
         return;
@@ -189,7 +194,6 @@ export function createTraffic(parent, { small = false } = {}) {
       while (live.length) end(live[0]);
       nextAt = clock + 1;
       nextFlyby = clock + 14;
-      want(FAMILY[id] ? KINDS[FAMILY[id]] : []);
     },
 
     // ship: the player's ship ({ x, y, z, heading, speed }) or null. Returns
