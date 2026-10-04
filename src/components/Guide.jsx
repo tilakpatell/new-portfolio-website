@@ -44,8 +44,8 @@ const PAGES = {
     tips: [
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
-      ['The bridge', 'Face the Balrog, wait until it is well out over the drop, then strike.'],
-      ['Gorgoroth', 'Hold to walk. Let go when the Eye’s light comes close: standing still, the elven cloaks hide you.'],
+      ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
+      ['Gorgoroth', 'Hold to walk (Space or →). Let go when the Eye’s light comes close: standing still, the elven cloaks hide you. Rest before the Ring gets too heavy, and stand still while orc patrols march past. Sam carries Frodo the last stretch. Your best time is kept.'],
       ['The Ring', 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.'],
     ],
   },

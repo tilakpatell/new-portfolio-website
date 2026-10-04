@@ -1561,6 +1561,14 @@ html[data-mode='dark'] .backdrop-cy[data-faction='decepticon'] { --cy-light: #b4
 @keyframes fire-flicker { from { transform: scaleY(0.9); } to { transform: scaleY(1.1) skewX(3deg); } }
 .balrog-whip { fill: none; stroke: #ff8a1f; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: whip 0.35s ease-out forwards; filter: drop-shadow(0 0 4px #ff6a1a); }
 @keyframes whip { to { stroke-dashoffset: 0; } }
+.balrog-whip-up { fill: none; stroke: #ffb347; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px #ff6a1a); animation: whip-up 0.8s ease-out both; }
+@keyframes whip-up { from { opacity: 0.2; } to { opacity: 1; } }
+.bridge-deep { fill: #ff9d1f; opacity: 0.35; }
+.bridge-will { fill: #2a2420; stroke: #6b5d50; stroke-width: 1; transition: fill 0.2s ease; }
+.bridge-will[data-on] { fill: #fdfbf2; stroke: #fff; filter: drop-shadow(0 0 4px #fff); }
+.bridge-stage[data-whip='up'] { box-shadow: 0 0 0 2px rgba(255, 140, 40, 0.65), var(--shadow-card); }
+.bridge-kbd { margin-left: 0.45rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.7; }
+@media (hover: none) and (pointer: coarse) { .bridge-kbd { display: none; } }
 .gandalf { transform-box: fill-box; transform-origin: 50% 100%; animation: gandalf-in 0.9s ease backwards; }
 @keyframes gandalf-in { from { opacity: 0; } }
 .gandalf.falling { animation: gandalf-fall 1.4s cubic-bezier(0.5, 0, 0.9, 0.5) forwards; }
@@ -2334,3 +2342,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
   .lab-art { max-height: 11.5rem; }
 }
 @media (hover: none) and (pointer: coarse) { .lab kbd { display: none; } }
+.gg-ring-label { font: 600 11px/1 var(--font-mono); fill: #f3d9a4; }
+.gg-ring[data-heavy] circle:last-of-type { stroke: #ff6a1a; }
+.gg-torch { animation: me-flicker 0.6s ease-in-out infinite; }
+.gg-bob[data-walking] { animation: gg-step 0.4s ease-in-out infinite alternate; }
+@keyframes gg-step { to { transform: translateY(-1.2px); } }
+@media (prefers-reduced-motion: reduce) { .gg-torch, .gg-bob[data-walking], .balrog-whip-up { animation: none; } }

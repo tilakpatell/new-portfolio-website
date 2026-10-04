@@ -2,21 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
+import { local, useFrameLoop } from '../../lib/hooks';
+import { DUEL, block, newDuel, stepDuel, strike } from './duel';
 
 const sfx = () => import('../../lib/sfx');
+const BEST = 'tp-balrog-best';
+const buzz = (ms) => {
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* no vibration */
+  }
+};
+const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
-// The Bridge of Khazad-dûm. Drums in the deep, then the Balrog comes across.
-// Strike the bridge once it's well out on the span and before it reaches you.
-const START = 40; // the Balrog's x, on the far ledge
-const END = 490; // close enough to reach Gandalf
-const CROSSING = 7500; // ms to cross
-const TOO_SOON = 260; // strike before it gets this far and the bridge holds
+// The Bridge of Khazad-dûm, a duel (the rules are in ./duel.js). Drums in the
+// deep, then the Balrog comes across. When it raises its whip, raise the
+// staff as it falls. Strike the bridge with the Balrog out over the deepest
+// part of the drop. Win, and it comes again, faster.
 const BRIDGE = { x0: 70, x1: 570, y: 168, piece: 25 };
 const PIECES = Array.from({ length: (BRIDGE.x1 - BRIDGE.x0) / BRIDGE.piece }, (_, i) => BRIDGE.x0 + i * BRIDGE.piece);
+const GRADES = { perfect: 'Perfect. Right over the deep.', good: 'Good. The bridge goes under it.', close: 'Close. Very close.' };
 
 function Balrog() {
   return (
-    <g transform={`translate(${START} ${BRIDGE.y})`}>
+    <g transform={`translate(${DUEL.start} ${BRIDGE.y})`}>
       <path d="M-16 -76 C-50 -110 -80 -112 -98 -132 C-88 -100 -84 -80 -60 -60 C-50 -52 -36 -50 -20 -52 Z" fill="#0a0605" opacity="0.8" />
       <path d="M16 -76 C50 -110 80 -112 98 -132 C88 -100 84 -80 60 -60 C50 -52 36 -50 20 -52 Z" fill="#0a0605" opacity="0.8" />
       <g className="balrog-fire">
@@ -59,16 +69,25 @@ function Gandalf({ white }) {
 export default function Bridge() {
   const { unlock } = useAchievements();
   const { gandalf } = useFun();
+  const duel = useRef(null);
+  const balrog = useRef(null);
   const [phase, setPhase] = useState('idle'); // idle, drums, coming, won, lost
-  const [x, setX] = useState(START); // where the Balrog is drawn (moving or frozen)
-  const [moving, setMoving] = useState(false);
+  const [x, setX] = useState(DUEL.start); // where the Balrog is drawn once it stops
+  const [whip, setWhip] = useState(null); // 'up' while it winds up, 'lash' as it falls
+  const [will, setWill] = useState(DUEL.will);
   const [broken, setBroken] = useState(null); // the stones that fall, if any
   const [grey, setGrey] = useState('standing'); // standing, falling, gone, white
-  const [strike, setStrike] = useState(0);
+  const [flash, setFlash] = useState(0);
   const [say, setSay] = useState('Gandalf stands at the near end of the bridge.');
-  const t0 = useRef(0);
+  const [round, setRound] = useState(0);
+  const [run, setRun] = useState(0); // points this streak
+  const [best, setBest] = useState(() => {
+    const b = local.get(BEST, null);
+    return b && typeof b === 'object' ? { streak: Number(b.streak) || 0, score: Number(b.score) || 0 } : { streak: 0, score: 0 };
+  });
   const timers = useRef([]);
   const drums = useRef(0);
+  const said = useRef({});
 
   const clear = () => {
     timers.current.forEach(clearTimeout);
@@ -78,71 +97,160 @@ export default function Bridge() {
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
   useEffect(() => clear, []);
 
-  const where = () => (moving ? START + (END - START) * Math.min(1, (Date.now() - t0.current) / CROSSING) : x);
+  const place = (bx) => balrog.current?.setAttribute('transform', `translate(${(bx - DUEL.start).toFixed(1)} 0)`);
+  const keepBest = (streak, score) => {
+    if (streak > best.streak || score > best.score) {
+      const next = { streak: Math.max(streak, best.streak), score: Math.max(score, best.score) };
+      setBest(next);
+      local.set(BEST, next);
+    }
+  };
 
-  const begin = () => {
-    if (!audioContext()) return;
+  const begin = (next = 0) => {
+    audioContext(); // in the click, so the drums can be heard (and the duel runs either way)
     clear();
+    const white = grey === 'white';
+    duel.current = newDuel({ round: next, white });
+    said.current = {};
+    setRound(next);
+    if (!next) setRun(0);
     setPhase('drums');
     setBroken(null);
-    setGrey('standing');
-    setMoving(false);
-    setX(START);
-    setSay('Drums in the deep.');
+    setWhip(null);
+    setWill(duel.current.will);
+    if (!white) setGrey('standing');
+    setX(DUEL.start);
+    place(DUEL.start);
+    setSay(next ? `Again, and faster. Round ${next + 1}.` : 'Drums in the deep.');
     const beat = () => sfx().then((s) => s.drum());
     beat();
     drums.current = setInterval(beat, 800);
-    later(() => {
-      sfx().then((s) => s.roar());
-      setSay('Shadow and flame. It is coming across.');
-      t0.current = Date.now();
-      setPhase('coming');
-      setMoving(true);
-      setX(END);
-    }, 2400);
-    later(() => setSay('It is out on the bridge.'), 2400 + CROSSING * 0.35);
-    later(() => setSay('Closer.'), 2400 + CROSSING * 0.7);
-    later(() => {
-      clearInterval(drums.current);
-      setMoving(false);
-      setPhase('lost');
-      setSay('It crossed the bridge. Run!');
-      sfx().then((s) => s.roar());
-    }, 2400 + CROSSING);
+  };
+
+  const lost = (reason) => {
+    clearInterval(drums.current);
+    const d = duel.current;
+    setPhase('lost');
+    setWhip(null);
+    setX(d.x);
+    keepBest(round, run);
+    setSay(reason === 'beaten' ? 'Gandalf is beaten back off the bridge. Run!' : 'It crossed the bridge. Run!');
+    sfx().then((s) => s.roar());
+  };
+
+  // the duel, frame by frame
+  useFrameLoop((ms) => {
+    const d = duel.current;
+    if (!d) return;
+    const ev = stepDuel(d, Math.min(0.05, ms / 1000));
+    place(d.x);
+    const k = (d.x - DUEL.start) / (DUEL.end - DUEL.start);
+    for (const e of ev) {
+      if (e.type === 'coming') {
+        sfx().then((s) => s.roar());
+        setPhase('coming');
+        setSay('Shadow and flame. It is coming across.');
+      } else if (e.type === 'windup') {
+        setWhip('up');
+        setSay('It raises its whip!');
+        sfx().then((s) => s.sizzle?.());
+      } else if (e.type === 'lashed') {
+        setWhip('lash');
+        setWill(e.will);
+        setSay(e.will > 0 ? 'The whip catches him. Raise the staff as it falls!' : 'The whip catches him.');
+        sfx().then((s) => s.zip());
+        buzz(80);
+        later(() => setWhip(null), 300);
+      } else if (e.type === 'lost') lost(e.reason);
+    }
+    if (d.whip == null && whip === 'up') setWhip(null);
+    if (d.phase === 'coming') {
+      if (k > 0.35 && !said.current.out) {
+        said.current.out = true;
+        setSay('It is out on the bridge.');
+      }
+      if (k > 0.62 && !said.current.deep) {
+        said.current.deep = true;
+        setSay('Over the deep. Now!');
+      }
+    }
+  }, (phase === 'drums' || phase === 'coming') && !!duel.current);
+
+  const raise = () => {
+    const d = duel.current;
+    if (!d || d.phase !== 'coming') return;
+    audioContext();
+    const r = block(d);
+    if (r.ok) {
+      setFlash((n) => n + 1);
+      setWhip(null);
+      setSay('The staff turns the whip.');
+      sfx().then((s) => s.clang(undefined, undefined, 0));
+      buzz(30);
+    } else setSay(r.recovering ? 'The staff is still down.' : 'Nothing to turn. The staff is down for a moment.');
   };
 
   const stand = () => {
+    const d = duel.current;
+    if (!d || (d.phase !== 'drums' && d.phase !== 'coming')) return;
     audioContext();
-    setStrike((n) => n + 1);
-    const at = where();
-    if (phase === 'drums' || at < TOO_SOON) {
+    setFlash((n) => n + 1);
+    const r = strike(d);
+    if (r.grade === 'soon') {
       sfx().then((s) => s.thunder());
-      setSay(phase === 'drums' ? 'Not yet. It hasn’t come.' : 'Not yet. Let it come out over the drop.');
+      setWill(d.will);
+      buzz(60);
+      if (d.phase === 'lost') lost('beaten');
+      else setSay(d.phase === 'drums' ? 'Not yet. It hasn’t come.' : 'Not yet. Let it come out over the drop.');
       return;
     }
     clear();
-    setMoving(false);
-    setX(at);
-    setBroken(PIECES.filter((p) => p + BRIDGE.piece > at - 50 && p < at + 45));
+    setX(d.x);
+    setWhip(null);
+    setBroken(PIECES.filter((p) => p + BRIDGE.piece > d.x - 50 && p < d.x + 45));
     setPhase('won');
+    const total = run + r.score;
+    setRun(total);
+    keepBest(round + 1, total);
     gandalf();
     sfx().then((s) => {
       s.crumble(undefined, undefined, 0.15);
       s.roar(undefined, undefined, 0.4);
     });
-    setSay('The bridge breaks under it, and it falls.');
+    setSay(`${GRADES[r.grade]} +${r.score}. The bridge breaks under it, and it falls.`);
+    unlock('balrog');
+    if (grey === 'white') return;
     later(() => {
       setGrey('falling');
       setSay('Its whip catches him as it falls. Fly, you fools!');
-      unlock('balrog');
     }, 1700);
     later(() => setGrey('gone'), 3200);
   };
 
+  // Space raises the staff, Enter strikes, while the duel is on
   const fighting = phase === 'drums' || phase === 'coming';
+  const keys = useRef({ raise, stand });
+  keys.current = { raise, stand };
+  useEffect(() => {
+    if (!fighting) return undefined;
+    const onKey = (e) => {
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        keys.current.raise();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        keys.current.stand();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fighting]);
+
+  const will0 = grey === 'white' ? DUEL.will + 1 : DUEL.will;
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
-      <div className="bridge-stage" data-phase={phase}>
+      <div className="bridge-stage" data-phase={phase} data-whip={whip || undefined}>
         <svg viewBox="0 0 640 300" className="block h-auto w-full" role="img" aria-label="The Bridge of Khazad-dûm: a narrow stone span over a fiery chasm, Gandalf at the near end">
           <defs>
             <linearGradient id="bal-fire" x1="0" y1="1" x2="0" y2="0">
@@ -174,6 +282,8 @@ export default function Bridge() {
           ))}
           <path d="M0 166 H72 L66 300 H0 Z" fill="#17100c" />
           <path d="M568 166 H640 V300 H574 Z" fill="#17100c" />
+          {/* the deepest part of the drop, faintly marked while it comes */}
+          {fighting && <rect x={DUEL.sweet[0] - 20} y={BRIDGE.y + 12} width={DUEL.sweet[1] - DUEL.sweet[0] + 40} height="3" rx="1.5" className="bridge-deep" />}
           {PIECES.map((p, i) => (
             <path
               key={p}
@@ -184,53 +294,69 @@ export default function Bridge() {
             />
           ))}
           {/* once Gandalf comes back as the White, the Balrog is gone for good (until Again) */}
-          {grey !== 'white' && (
-            <g style={{ transform: `translateX(${x - START}px)`, transition: moving ? `transform ${CROSSING}ms linear` : 'none' }}>
+          {!(grey === 'white' && phase === 'idle') && (
+            <g ref={balrog} transform={`translate(${x - DUEL.start} 0)`}>
               <g className={phase === 'won' ? 'balrog falling' : phase === 'lost' ? 'balrog flare' : 'balrog'}>
                 <Balrog />
               </g>
+              {/* the whip, raised over its head, then down at Gandalf */}
+              {whip === 'up' && <path d={`M${DUEL.start - 40} ${BRIDGE.y - 44} C ${DUEL.start - 70} ${BRIDGE.y - 120} ${DUEL.start + 20} ${BRIDGE.y - 150} ${DUEL.start + 60} ${BRIDGE.y - 110}`} className="balrog-whip-up" />}
             </g>
           )}
+          {whip === 'lash' && <path d={`M${x - 40} ${BRIDGE.y - 44} C ${x + 120} ${BRIDGE.y - 120} 470 ${BRIDGE.y - 80} 532 ${BRIDGE.y - 30}`} className="balrog-whip" pathLength="1" />}
           {grey === 'falling' && <path d={`M${x} 250 C ${x + 90} 170 470 150 534 168`} className="balrog-whip" pathLength="1" />}
           <g className={grey === 'falling' || grey === 'gone' ? 'gandalf falling' : 'gandalf'}>
             <Gandalf white={grey === 'white'} />
           </g>
-          {strike > 0 && <circle key={strike} cx="527" cy="114" r="6" className="staff-flash" />}
+          {flash > 0 && <circle key={flash} cx="527" cy="114" r="6" className="staff-flash" />}
+          {/* Gandalf's will, as lights over the near ledge */}
+          <g aria-hidden="true">
+            {Array.from({ length: will0 }, (_, i) => (
+              <circle key={i} cx={590 + (i % 2) * 14} cy={40 + Math.floor(i / 2) * 14} r="4.5" className="bridge-will" data-on={i < will || undefined} />
+            ))}
+          </g>
         </svg>
       </div>
       <div>
         <h2 id="bridge-title" className="title">
           The Bridge of Khazad-dûm
         </h2>
-        <p className="lead mt-4 max-w-[46ch]">A slender bridge with no rail, and something in the dark on the other side. Let it come, then strike the bridge.</p>
+        <p className="lead mt-4 max-w-[46ch]">A slender bridge with no rail, and something in the dark on the other side. When it raises its whip, raise the staff. Let it come out over the deep, then strike the bridge.</p>
         <div className="mt-7 flex flex-wrap gap-3">
           {fighting ? (
-            <button type="button" className="btn btn-primary" onClick={stand}>
-              You shall not pass!
-            </button>
-          ) : grey === 'gone' ? (
             <>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  setGrey('white');
-                  setBroken(null);
-                  setPhase('idle');
-                  setX(START);
-                  setSay('Gandalf the White, back at the turn of the tide.');
-                }}
-              >
-                Wait for it
+              <button type="button" className="btn btn-ghost" onClick={raise} disabled={phase !== 'coming'}>
+                Raise the staff <kbd className="bridge-kbd">Space</kbd>
+              </button>
+              <button type="button" className="btn btn-primary" onClick={stand}>
+                You shall not pass! <kbd className="bridge-kbd">Enter</kbd>
               </button>
             </>
+          ) : grey === 'gone' ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                // the streak goes on: he's back, and stronger
+                setGrey('white');
+                setBroken(null);
+                setWill(DUEL.will + 1);
+                setSay('Gandalf the White, back at the turn of the tide. Stronger, too.');
+              }}
+            >
+              Wait for it
+            </button>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={begin} disabled={phase === 'won'}>
-              {phase === 'idle' && grey !== 'white' ? 'Face the Balrog' : 'Again'}
+            <button type="button" className="btn btn-primary" onClick={() => begin(phase === 'won' ? round + 1 : 0)} disabled={phase === 'won' && grey !== 'white'}>
+              {phase === 'idle' && grey !== 'white' ? 'Face the Balrog' : phase === 'won' ? 'Again, faster' : phase === 'lost' ? 'Try again' : 'Face it again'}
             </button>
           )}
         </div>
-        <p className="mt-5 min-h-[1.5em] text-sm text-muted" role="status">
+        <p className="mono mt-4 text-xs text-muted">
+          {round > 0 || run > 0 ? `Round ${round + 1} · ${run} points` : 'Round 1'}
+          {best.streak > 0 ? ` · best ${best.streak} in a row, ${best.score} points` : ''}
+        </p>
+        <p className="mt-3 min-h-[1.5em] text-sm text-muted" role="status">
           {say}
         </p>
       </div>

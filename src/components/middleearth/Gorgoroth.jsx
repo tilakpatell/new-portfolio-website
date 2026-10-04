@@ -1,111 +1,126 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
-import { prefersReducedMotion } from '../../lib/hooks';
+import { local, useFrameLoop } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
+import { WALK, newWalk, spotOf, stepWalk } from './walk';
 
 const sfx = () => import('../../lib/sfx');
+const BEST = 'tp-gorgoroth-best';
+const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
-// Across Gorgoroth to Mount Doom. The Eye sweeps the plain from Barad-dûr.
-// Hold to walk; let go and Frodo and Sam stand still under their elven cloaks,
-// which hides them. Walk while the light is on them and the Eye sees you.
+// Across Gorgoroth to Mount Doom (the rules are in ./walk.js). The Eye sweeps
+// the plain from Barad-dûr. Hold to walk; let go and Frodo and Sam stand still
+// under their elven cloaks, which hides them. Rest now and then, or the Ring
+// gets too heavy; stand still when an orc patrol marches by.
 
-const PATH = { x0: 60, x1: 470, y: 238 }; // the road across the plain, west to east
-const SPEED = 52; // plain units a second while walking
+const PATH_Y = 238;
 const EYE = { x: 560, y: 70 };
+const RING_R = 13;
 
 export default function Gorgoroth({ onArrive }) {
   const { unlock } = useAchievements();
-  const [phase, setPhase] = useState('ready'); // ready, walking, seen, there
-  const beam = useRef(null);
-  const hobbits = useRef(null);
-  const pupil = useRef(null);
-  const state = useRef({ x: PATH.x0, walking: false, t: 0, last: 0, phase: 0, exposed: 0 });
-  const wrapEl = useRef(null);
-  const raf = useRef(0);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => () => cancelAnimationFrame(raf.current), []);
-
-  const draw = (spot) => {
-    const s = state.current;
-    hobbits.current?.setAttribute('transform', `translate(${s.x} ${PATH.y})`);
-    // the beam: from the Eye down to a spot on the plain
-    beam.current?.setAttribute('points', `${EYE.x - 6},${EYE.y + 4} ${EYE.x + 6},${EYE.y + 4} ${spot + 46},${PATH.y + 18} ${spot - 46},${PATH.y + 18}`);
-    const dx = spot - EYE.x;
-    pupil.current?.setAttribute('transform', `translate(${Math.max(-7, Math.min(7, dx / 40))} 0)`);
-  };
-
-  const run = () => {
-    const s = state.current;
-    s.last = 0;
-    const tick = (now) => {
-      const dt = s.last ? Math.min(0.05, (now - s.last) / 1000) : 0.016;
-      s.last = now;
-      s.t += dt;
-      // the Eye sweeps a little faster as they get closer
-      const near = (s.x - PATH.x0) / (PATH.x1 - PATH.x0);
-      s.phase += dt * (0.55 + near * 0.5);
-      const spot = 265 + Math.sin(s.phase) * 215;
-      if (s.walking) s.x = Math.min(PATH.x1, s.x + SPEED * dt);
-      draw(spot);
-      setProgress(Math.round(near * 100));
-      // a warning glow as the light comes close, and a moment's grace in it
-      const gap = Math.abs(spot - s.x);
-      if (wrapEl.current) wrapEl.current.dataset.close = gap < 110 ? 'true' : 'false';
-      s.exposed = s.walking && gap < 30 ? s.exposed + dt : 0;
-      if (s.exposed > 0.18) {
-        setPhase('seen');
-        s.walking = false;
-        sfx().then((x) => x.roar());
-        return;
-      }
-      if (s.x >= PATH.x1) {
-        setPhase('there');
-        unlock('gorgoroth');
-        onArrive?.();
-        return;
-      }
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  };
+  const [phase, setPhase] = useState('ready'); // ready, walking, seen, ring, caught, there
+  const [view, setView] = useState(() => ({ x: WALK.x0, spot: 265, burden: 0, patrols: [], carried: false, t: 0, walking: false, close: false }));
+  const [say, setSay] = useState('');
+  const [best, setBest] = useState(() => local.get(BEST, null));
+  const walk = useRef(null);
+  const held = useRef(false);
 
   const begin = () => {
     audioContext(); // in the click, so the Eye can be heard
-    cancelAnimationFrame(raf.current);
-    state.current = { x: PATH.x0, walking: false, t: 0, last: 0, phase: 1.2, exposed: 0 };
+    walk.current = newWalk();
+    held.current = false;
     setPhase('walking');
-    setProgress(0);
-    run();
+    setSay('Hold to walk. Rest when the light comes near, or the Ring gets heavy.');
   };
-  const walk = (on) => {
-    if (phase !== 'walking') return;
-    state.current.walking = on;
+  const hold = (on) => {
+    if (phase === 'walking') held.current = on;
   };
-  const key = (on) => (e) => {
-    if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      walk(on);
+
+  useFrameLoop((ms) => {
+    const s = walk.current;
+    if (!s) return;
+    const walking = held.current;
+    const ev = stepWalk(s, Math.min(0.05, ms / 1000), walking);
+    const spot = spotOf(s);
+    for (const e of ev) {
+      if (e.type === 'seen') {
+        setPhase('seen');
+        setSay('The Eye sees you. Back to the start.');
+        sfx().then((x) => x.roar());
+      } else if (e.type === 'ring') {
+        setPhase('ring');
+        setSay('The Ring is too heavy. Frodo puts it on, and the Eye turns.');
+        sfx().then((x) => x.roar());
+      } else if (e.type === 'caught') {
+        setPhase('caught');
+        setSay('Orcs! They drag you off the road.');
+        sfx().then((x) => x.alarm());
+      } else if (e.type === 'patrol') {
+        setSay('Orcs on the road ahead. Stand still under the cloaks when they pass.');
+        sfx().then((x) => x.drum());
+      } else if (e.type === 'passed') setSay('They march right past you.');
+      else if (e.type === 'carry') setSay('Sam: “I can’t carry it for you, but I can carry you!”');
+      else if (e.type === 'there') {
+        setPhase('there');
+        const secs = Math.round(s.t * 10) / 10;
+        const isBest = best == null || secs < best;
+        if (isBest) {
+          setBest(secs);
+          local.set(BEST, secs);
+        }
+        setSay(`Mount Doom in ${secs} seconds${isBest ? ', the quickest yet' : ''}. The fire is just inside.`);
+        unlock('gorgoroth');
+        onArrive?.();
+      }
     }
-  };
+    setView({ x: s.x, spot, burden: s.burden, patrols: s.patrols.map((p) => p.x), carried: s.carried, t: s.t, walking, close: Math.abs(spot - s.x) < WALK.warn });
+  }, phase === 'walking');
 
+  // hold Space or → anywhere on the page while they walk; let go if the window loses focus
   useEffect(() => {
-    // a still picture until the walk starts
-    draw(265);
-    if (prefersReducedMotion()) return;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (phase !== 'walking') return undefined;
+    const isKey = (e) => e.key === ' ' || e.key === 'ArrowRight';
+    const down = (e) => {
+      if (!isKey(e) || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      e.preventDefault();
+      held.current = true;
+    };
+    const up = (e) => {
+      if (!isKey(e)) return;
+      e.preventDefault();
+      held.current = false;
+    };
+    const blur = () => {
+      held.current = false;
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      held.current = false;
+    };
+  }, [phase]);
 
-  const say = {
-    ready: 'The Eye is looking for them. Hold to walk, let go to hide.',
-    walking: `Keep going. ${progress}% of the way to the mountain.`,
-    seen: 'The Eye sees you. Back to the start.',
-    there: 'Mount Doom. The fire is just inside.',
-  }[phase];
+  const { x, spot, burden, patrols, carried, t, walking, close } = view;
+  const near = Math.round(((x - WALK.x0) / (WALK.x1 - WALK.x0)) * 100);
+  const beam = `${EYE.x - 6},${EYE.y + 4} ${EYE.x + 6},${EYE.y + 4} ${spot + 46},${PATH_Y + 18} ${spot - 46},${PATH_Y + 18}`;
+  const pupil = Math.max(-7, Math.min(7, (spot - EYE.x) / 40));
+  const ringLen = 2 * Math.PI * RING_R;
+  const status =
+    phase === 'ready'
+      ? 'The Eye is looking for them. Hold to walk, let go to hide.'
+      : phase === 'walking'
+        ? `${say} ${near}% of the way.`
+        : say;
 
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
-      <div ref={wrapEl} className="gorgoroth" data-phase={phase}>
+      <div className="gorgoroth" data-phase={phase} data-close={close ? 'true' : 'false'}>
         <svg viewBox="0 0 640 300" className="block h-auto w-full" role="img" aria-label="The plain of Gorgoroth, Barad-dûr and the Eye to the north east, Mount Doom ahead, two hobbits on the road">
           <defs>
             <linearGradient id="gg-sky" x1="0" y1="0" x2="0" y2="1">
@@ -133,28 +148,65 @@ export default function Gorgoroth({ onArrive }) {
           <path d="M548 236 L552 96 L556 82 L560 70 L564 82 L568 96 L572 236 Z" fill="#170b08" />
           <g transform={`translate(${EYE.x} ${EYE.y})`}>
             <ellipse rx="22" ry="9" fill="url(#gg-eye)" className="gg-eye" />
-            <g ref={pupil}>
-              <ellipse rx="1.6" ry="6" fill="#140404" />
+            <ellipse rx="1.6" ry="6" fill="#140404" transform={`translate(${pupil.toFixed(1)} 0)`} />
+          </g>
+          <polygon points={beam} fill="url(#gg-beam)" className="gg-beam" />
+          {/* the road */}
+          <path d={`M${WALK.x0} ${PATH_Y + 4} C200 ${PATH_Y + 8} 340 ${PATH_Y - 2} ${WALK.x1} ${PATH_Y + 2}`} stroke="#5a2f22" strokeWidth="3" strokeDasharray="4 6" fill="none" />
+          {/* orc patrols marching down it, a torch at the front */}
+          {patrols.map((px, i) => (
+            <g key={i} transform={`translate(${px.toFixed(1)} ${PATH_Y})`} className="gg-orcs">
+              {[0, 9, 18, 27].map((dx) => (
+                <g key={dx} transform={`translate(${dx} 0)`}>
+                  <path d="M-4 0 L-3 -12 L3 -12 L4 0 Z" fill="#1a0f0b" />
+                  <circle cy="-14.5" r="3" fill="#2a1a12" />
+                  <path d="M3 -12 L6 -20" stroke="#4a3a2c" strokeWidth="1.4" />
+                </g>
+              ))}
+              <circle cx="-6" cy="-18" r="3.2" fill="#ffb347" className="gg-torch" />
+            </g>
+          ))}
+          {/* Frodo and Sam, cloaked; Sam carries him for the last of it */}
+          <g transform={`translate(${x.toFixed(1)} ${PATH_Y})`} className="gg-hobbits">
+            <g className="gg-bob" data-walking={walking || undefined}>
+            {carried ? (
+              <>
+                <path d="M-2 0 L1 -15 L7 -15 L10 0 Z" fill="#5a6a44" />
+                <circle cx="4" cy="-17" r="2.8" fill="#d9b48c" />
+                <path d="M-4 -12 L-1 -22 L5 -21 L3 -12 Z" fill="#4b5a3a" />
+                <circle cx="-1" cy="-23" r="2.4" fill="#d9b48c" />
+              </>
+            ) : (
+              <>
+                <path d="M-8 0 L-5 -14 L-1 -14 L2 0 Z" fill="#4b5a3a" />
+                <circle cx="-3" cy="-16" r="2.6" fill="#d9b48c" />
+                <path d="M4 0 L7 -13 L11 -13 L14 0 Z" fill="#5a6a44" />
+                <circle cx="9" cy="-15" r="2.6" fill="#d9b48c" />
+                <rect x="11" y="-12" width="5" height="7" rx="1" fill="#6b5338" />
+              </>
+            )}
             </g>
           </g>
-          <polygon ref={beam} fill="url(#gg-beam)" className="gg-beam" />
-          {/* the road */}
-          <path d={`M${PATH.x0} ${PATH.y + 4} C200 ${PATH.y + 8} 340 ${PATH.y - 2} ${PATH.x1} ${PATH.y + 2}`} stroke="#5a2f22" strokeWidth="3" strokeDasharray="4 6" fill="none" />
-          {/* Frodo and Sam, cloaked */}
-          <g ref={hobbits} className="gg-hobbits">
-            <path d="M-8 0 L-5 -14 L-1 -14 L2 0 Z" fill="#4b5a3a" />
-            <circle cx="-3" cy="-16" r="2.6" fill="#d9b48c" />
-            <path d="M4 0 L7 -13 L11 -13 L14 0 Z" fill="#5a6a44" />
-            <circle cx="9" cy="-15" r="2.6" fill="#d9b48c" />
-            <rect x="11" y="-12" width="5" height="7" rx="1" fill="#6b5338" />
+          {/* the Ring's weight: it fills as Frodo walks, and drains while he rests */}
+          <g transform="translate(36 36)" className="gg-ring" data-heavy={burden > 0.75 || undefined}>
+            <circle r={RING_R} fill="none" stroke="#3a2210" strokeWidth="5" />
+            <circle r={RING_R} fill="none" stroke="#f0c040" strokeWidth="5" strokeDasharray={`${(burden * ringLen).toFixed(1)} ${ringLen.toFixed(1)}`} transform="rotate(-90)" strokeLinecap="round" />
+            <text x="22" y="4" className="gg-ring-label">
+              {carried ? 'Sam has him' : 'The Ring'}
+            </text>
           </g>
+          {phase !== 'ready' && (
+            <text x="604" y="290" textAnchor="end" className="gg-ring-label">
+              {t.toFixed(1)}s{best != null ? ` · best ${best}s` : ''}
+            </text>
+          )}
         </svg>
       </div>
       <div>
         <h2 id="gorgoroth-title" className="title">
           Gorgoroth
         </h2>
-        <p className="lead mt-4 max-w-[44ch]">The last stretch: open ground, all the way to Mount Doom, under the Eye. Hold to walk. Let go, and the elven cloaks hide them.</p>
+        <p className="lead mt-4 max-w-[44ch]">The last stretch: open ground, all the way to Mount Doom, under the Eye. Hold to walk. Let go, and the elven cloaks hide them. Rest when the Ring gets heavy, and hold still when the orcs march by.</p>
         <div className="mt-7 flex flex-wrap gap-3">
           {phase === 'walking' ? (
             <button
@@ -162,13 +214,11 @@ export default function Gorgoroth({ onArrive }) {
               className="btn btn-primary hold-btn"
               onPointerDown={(e) => {
                 capturePointer(e);
-                walk(true);
+                hold(true);
               }}
-              onPointerUp={() => walk(false)}
-              onPointerLeave={() => walk(false)}
-              onPointerCancel={() => walk(false)}
-              onKeyDown={key(true)}
-              onKeyUp={key(false)}
+              onPointerUp={() => hold(false)}
+              onPointerCancel={() => hold(false)}
+              onLostPointerCapture={() => hold(false)}
               onContextMenu={(e) => e.preventDefault()}
             >
               Hold to walk
@@ -179,8 +229,8 @@ export default function Gorgoroth({ onArrive }) {
             </button>
           )}
         </div>
-        <p className="mt-5 min-h-[1.5em] text-sm text-muted" role="status">
-          {say}
+        <p className="mt-5 min-h-[3em] text-sm text-muted" role="status">
+          {status}
         </p>
       </div>
     </div>
