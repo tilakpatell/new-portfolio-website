@@ -393,6 +393,16 @@ const BUILDERS = {
     o.holder.add(moon);
     p.orbits.push(o);
     p.tick.push((t) => (moon.rotation.y = t * 0.4));
+
+    // Slave I close in, and a Republic attack cruiser further out (the site
+    // owner's Meshy models, when they come)
+    const near = orbit(p.group, { radius: r * 1.3, tilt: -0.5, speed: 0.45, phase: 0.4 });
+    const far = orbit(p.group, { radius: r * 1.75, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
+    p.orbits.push(near, far);
+    p.slots = {
+      slave: { holder: near.holder, size: r * 0.44, turn: [0, Math.PI, 0.25] },
+      cruiser: { holder: far.holder, size: r * 0.62, turn: [0, Math.PI, -0.1] },
+    };
   },
 
   music(p, { u, T }) {
@@ -722,6 +732,26 @@ const BUILDERS = {
     const o = orbit(p.group, { radius: r * 1.55, tilt: -0.3, speed: 0.22, phase: 2.6 });
     p.orbits.push(o);
     p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI, 0.2] };
+
+    // Mario stands on top of the world, and a Piranha Plant comes up out of
+    // its pipe further round: each on the outermost block in its direction
+    const ground = (dir) => {
+      const top = cells.reduce((best, [v]) => (v.clone().projectOnVector(dir).distanceTo(v) < c * 0.6 && v.dot(dir) > (best?.dot(dir) ?? -Infinity) ? v : best), null);
+      return top.clone().addScaledVector(dir, c * 0.47);
+    };
+    const stand = (parent, dir, size) => {
+      const holder = new THREE.Group();
+      holder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      holder.position.copy(ground(dir)).addScaledVector(dir, size / 2);
+      parent.add(holder);
+      return holder;
+    };
+    const plantAt = new THREE.Vector3(-0.55, 0.75, 0.38).normalize();
+    p.slots = {
+      // on the pole, so the world turns under him and he stays up
+      mario: { holder: stand(p.group, new THREE.Vector3(0, 1, 0), r * 0.42), size: r * 0.42, turn: [0, 0, 0] },
+      plant: { holder: stand(p.body, plantAt, r * 0.32), size: r * 0.32, turn: [0, 0.6, 0] },
+    };
   },
 
   caribbean(p, { u }) {
@@ -1156,13 +1186,15 @@ export function buildPlanet(u, T = {}) {
       selected = sel;
       if (sign) sign.material.opacity = dim && !hover ? 0.28 : 1;
     },
-    // a loaded model, parked on its orbit (true when this planet takes one)
-    mount(model) {
-      if (!p.slot || !model) return false;
-      const holder = fit(model, p.slot.size);
-      holder.rotation.set(...p.slot.turn);
-      p.slot.holder.add(holder);
-      p.tick.push((t) => (holder.rotation.y = p.slot.turn[1] + Math.sin(t * 0.4) * 0.25));
+    // a loaded model, parked on its orbit or its spot: the planet's own, or
+    // the one named (true when this planet takes it)
+    mount(model, name) {
+      const slot = name ? p.slots?.[name] : p.slot;
+      if (!slot || !model) return false;
+      const holder = fit(model, slot.size);
+      holder.rotation.set(...slot.turn);
+      slot.holder.add(holder);
+      p.tick.push((t) => (holder.rotation.y = slot.turn[1] + Math.sin(t * 0.4) * 0.25));
       return true;
     },
   };
@@ -1211,25 +1243,30 @@ export function loadModel(url) {
     .catch(() => null);
 }
 
-const MODELS = {
-  music: '/models/universe/music.glb',
-  transformers: '/models/universe/transformers.glb',
-  marvel: '/models/universe/marvel.glb',
-  breakingbad: '/models/universe/breakingbad.glb',
-  rickmorty: '/games/meshy/saucer.glb', // the classic cruiser, as on the C-137 page
-  gaming: '/models/universe/gaming.glb',
-  caribbean: '/games/caribbean/pearl-far.glb',
-};
+// [planet, model, and which of its spots, if not its own]
+const MODELS = [
+  ['music', '/models/universe/music.glb'],
+  ['transformers', '/models/universe/transformers.glb'],
+  ['marvel', '/models/universe/marvel.glb'],
+  ['breakingbad', '/models/universe/breakingbad.glb'],
+  ['rickmorty', '/games/meshy/saucer.glb'], // the classic cruiser, as on the C-137 page
+  ['gaming', '/models/universe/gaming.glb'],
+  ['caribbean', '/games/caribbean/pearl-far.glb'],
+  ['starwars', '/models/meshy/slave-i.glb', 'slave'],
+  ['starwars', '/models/meshy/republic-attack-cruiser.glb', 'cruiser'],
+  ['gaming', '/models/meshy/mario.glb', 'mario'],
+  ['gaming', '/models/meshy/piranha-plant.glb', 'plant'],
+];
 
 // Load the models one by one, handing each over as it arrives; a model that
 // fails is skipped.
 export function loadModels(onModel) {
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   return Promise.all(
-    Object.entries(MODELS).map(([id, url]) =>
+    MODELS.map(([id, url, spot]) =>
       loader
         .loadAsync(url)
-        .then((g) => onModel(id, g.scene))
+        .then((g) => onModel(id, g.scene, spot))
         .catch(() => {}),
     ),
   );

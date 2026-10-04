@@ -249,12 +249,12 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
 
   // the models arrive after the map is up
-  loadModels((id, model) => {
+  loadModels((id, model, spot) => {
     if (disposed) {
       disposeTree(model);
       return;
     }
-    if (!planetOf[id]?.mount(model)) disposeTree(model);
+    if (!planetOf[id]?.mount(model, spot)) disposeTree(model);
     ctx.invalidate();
   });
 
