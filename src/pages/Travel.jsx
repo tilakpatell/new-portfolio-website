@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -30,7 +30,9 @@ const FACTS = [
   { value: `${Math.round(northernmost.at[1])}°N to ${Math.round(-southernmost.at[1])}°S`, label: `${northernmost.name} to ${southernmost.name}` },
 ];
 
-function Hero() {
+// Picking a place re-renders the page; these sections take nothing from it,
+// so they are memoised and sit that out.
+const Hero = memo(function Hero() {
   return (
     <header className="travel-hero relative isolate overflow-hidden" aria-labelledby="travel-hero-title">
       <Photo id="hero" priority sizes="100vw" className="absolute inset-0 -z-30 h-full w-full object-cover" />
@@ -54,9 +56,9 @@ function Hero() {
       </div>
     </header>
   );
-}
+});
 
-function HomeBase() {
+const HomeBase = memo(function HomeBase() {
   const school = PHOTOS['west-genesee'];
   return (
     <section data-theme-section="travel" className="shell relative z-10 py-16 md:py-24" aria-labelledby="home-base-title">
@@ -93,9 +95,9 @@ function HomeBase() {
       </div>
     </section>
   );
-}
+});
 
-function Facts() {
+const Facts = memo(function Facts() {
   return (
     <PhotoBand id="band" className="travel-band">
       <div className="shell relative py-[clamp(7rem,16vw,12rem)]">
@@ -114,7 +116,7 @@ function Facts() {
       </div>
     </PhotoBand>
   );
-}
+});
 
 export default function Travel() {
   useDocumentTitle('Travel');

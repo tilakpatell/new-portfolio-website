@@ -10,7 +10,7 @@ import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
 import MusicCard from './MusicCard';
 import InterestDock from './InterestDock';
-import { prefersReducedMotion } from '../../lib/hooks';
+import { prefersReducedMotion, useRowEnds } from '../../lib/hooks';
 import Gif from '../Gif';
 import Gauntlet from './Gauntlet';
 import AutobotMark from '../AutobotMark';
@@ -490,6 +490,9 @@ function Travel() {
 
 export default function Interests() {
   const row = useRef(null);
+  const earlier = useRef(null);
+  const more = useRef(null);
+  useRowEnds(row, earlier, more);
   const scroll = (dir) => {
     const el = row.current;
     if (!el) return;
@@ -508,27 +511,29 @@ export default function Interests() {
             <InterestDock />
           </div>
         </div>
-        <div className="flex gap-2">
-          <button type="button" className="globe-btn" onClick={() => scroll(-1)} aria-label="Previous interests">
+        <div className="swipe-arrows">
+          <button ref={earlier} type="button" className="globe-btn" onClick={() => scroll(-1)} aria-label="Previous interests">
             <RiArrowLeftLine className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button type="button" className="globe-btn" onClick={() => scroll(1)} aria-label="More interests">
+          <button ref={more} type="button" className="globe-btn" onClick={() => scroll(1)} aria-label="More interests">
             <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
-      <ul ref={row} className="fun-row mt-10" aria-label="Interests">
-        <StarWars />
-        <MusicCard />
-        <MiddleEarth />
-        <Transformers />
-        <Marvel />
-        <BreakingBad />
-        <Office />
-        <RickMorty />
-        <Gaming />
-        <Travel />
-      </ul>
+      <div className="swipe-frame mt-10">
+        <ul ref={row} className="fun-row" aria-label="Interests">
+          <StarWars />
+          <MusicCard />
+          <MiddleEarth />
+          <Transformers />
+          <Marvel />
+          <BreakingBad />
+          <Office />
+          <RickMorty />
+          <Gaming />
+          <Travel />
+        </ul>
+      </div>
     </section>
   );
 }

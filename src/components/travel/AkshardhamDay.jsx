@@ -132,7 +132,7 @@ export default function AkshardhamDay({ onOpen }) {
       >
         {day.map((d, k) => (
           <div key={d.id} className="akd-slide" data-on={k === i || undefined} aria-hidden={k !== i}>
-            <Photo id={d.id} sizes="(min-width: 1280px) 1180px, 100vw" priority={k === 0} className="akd-img" style={{ objectPosition: d.pos }} />
+            <Photo id={d.id} sizes="(min-width: 1280px) 1180px, 100vw" className="akd-img" style={{ objectPosition: d.pos }} />
           </div>
         ))}
         <div className="akd-scrim" aria-hidden="true" />
