@@ -975,5 +975,64 @@ export const PHOTOS = {
       "source": "https://commons.wikimedia.org/wiki/File:%CE%9B%CE%B5%CF%85%CE%BA%CF%8C%CF%82_%CE%A0%CF%8D%CF%81%CE%B3%CE%BF%CF%82_4014.jpg",
       "title": "Λευκός Πύργος 4014"
     }
+  },
+  "h-robbinsville-day": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 1.333,
+    "alt": "BAPS Swaminarayan Akshardham in Robbinsville by day: white carved stone shikhars above a wide flight of steps",
+    "credit": {
+      "author": "Srishti Sethi",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_Hindu_Temple_in_Jersey_City.jpg",
+      "title": "Akshardham Hindu Temple in Jersey City"
+    }
+  },
+  "h-delhi-gardens": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.75,
+    "alt": "The gardens of Swaminarayan Akshardham in New Delhi: green lawns, clipped hedges and trees, with the carved sandstone mandir and its domes beyond",
+    "credit": {
+      "author": "rajaraman sundaram",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_temple_gardens,delhi_-_panoramio.jpg",
+      "title": "Akshardham temple gardens,delhi - panoramio"
+    }
+  },
+  "h-delhi-night": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.75,
+    "alt": "Swaminarayan Akshardham in New Delhi at night, its carved domes and pillars lit gold against a black sky",
+    "credit": {
+      "author": "Akshatha Inamdar",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_02.jpg",
+      "title": "Akshardham 02"
+    }
+  },
+  "h-delhi-fountain": {
+    "widths": [
+      800
+    ],
+    "ratio": 0.666,
+    "alt": "The musical fountain at Akshardham in New Delhi after dark, jets of water lit pink and violet, the mandir glowing behind",
+    "credit": {
+      "author": "Juthani1",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_fountain.jpg",
+      "title": "Akshardham fountain"
+    }
   }
 };

@@ -3,10 +3,11 @@ import { RiZoomInLine } from 'react-icons/ri';
 import Photo from '../Photo';
 import Lightbox from '../Lightbox';
 import { Reveal, Waypoint } from '../ui';
+import AkshardhamDay, { DAY } from './AkshardhamDay';
 
-// Indian architecture: the two Akshardhams, with facts from the official
-// sites, then the carving up close, over a faint jali (stone lattice)
-// pattern. Any photo opens larger.
+// Indian architecture: a day at the two Akshardhams in photographs, their
+// facts from the official sites, then the carving up close, over a faint jali
+// (stone lattice). Any photo opens larger.
 
 const DELHI_FACTS = [
   { value: '234', label: 'carved pillars' },
@@ -21,11 +22,35 @@ const DETAILS = [
   { id: 'h-elephants', title: 'Gajendra Peeth', caption: 'The plinth of carved elephants, Robbinsville' },
 ];
 
-const ALL = [
-  { id: 'h-robbinsville', title: 'BAPS Swaminarayan Akshardham', caption: 'Robbinsville, New Jersey, at sunset' },
-  { id: 'h-delhi', title: 'Swaminarayan Akshardham', caption: 'New Delhi, in the evening' },
-  ...DETAILS,
-];
+const ALL = [...DAY.map((d) => ({ id: d.id, title: `${d.time}, ${d.place}`, caption: d.text })), ...DETAILS];
+
+// The lattice, drawn once as an SVG pattern in the theme's color. (It used to
+// be a CSS mask over the whole section, which phones redrew as you scrolled.)
+function Jali() {
+  return (
+    <div className="jali" aria-hidden="true">
+      <svg className="jali-pattern" width="100%" height="100%">
+        <defs>
+          <pattern id="jali-tile" width="64" height="64" patternUnits="userSpaceOnUse">
+            <g fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M32 4 60 32 32 60 4 32Z" />
+              <path d="M32 16 48 32 32 48 16 32Z" />
+              <circle cx="32" cy="32" r="6" />
+              <path d="M32 0v4M32 60v4M0 32h4M60 32h4" />
+              <circle cx="0" cy="0" r="10" />
+              <circle cx="64" cy="0" r="10" />
+              <circle cx="0" cy="64" r="10" />
+              <circle cx="64" cy="64" r="10" />
+            </g>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#jali-tile)" />
+      </svg>
+      <div className="jali-fade jali-fade-top" />
+      <div className="jali-fade jali-fade-bottom" />
+    </div>
+  );
+}
 
 function Zoomable({ index, onOpen, className = '', children }) {
   return (
@@ -42,9 +67,7 @@ export default function Heritage() {
   const [open, setOpen] = useState(-1);
   return (
     <section id="heritage" data-theme-section="travel" className="heritage relative z-10 scroll-mt-20 py-16 md:py-28" aria-labelledby="heritage-title">
-      <div className="jali" aria-hidden="true">
-        <div className="jali-pattern" />
-      </div>
+      <Jali />
       <div className="shell relative">
         <div className="relative">
           <Waypoint top="0.9rem" />
@@ -56,50 +79,43 @@ export default function Heritage() {
           </p>
         </div>
 
-        <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10">
-          <Reveal className="h-full">
-            <Zoomable index={0} onOpen={setOpen} className="heritage-photo heritage-hero h-full w-full">
-              <Photo id="h-robbinsville" sizes="(min-width: 1024px) 640px, 100vw" className="h-full w-full object-cover" />
-            </Zoomable>
-          </Reveal>
+        <Reveal className="mt-10">
+          <AkshardhamDay onOpen={(id) => setOpen(ALL.findIndex((a) => a.id === id))} />
+        </Reveal>
 
-          <div className="grid content-between gap-6">
-            <Reveal className="temple">
-              <p className="label">New Delhi</p>
-              <h3 className="stretch-semi mt-1 text-2xl font-semibold text-ink">Swaminarayan Akshardham</h3>
-              <p className="mt-2 leading-relaxed text-body">
-                Opened on 6 November 2005. Carved sandstone and marble, 141 feet tall, built without any steel by more than 8,000 volunteers.
-              </p>
-              <dl className="temple-stats">
-                {DELHI_FACTS.map((f) => (
-                  <div key={f.label}>
-                    <dt className="sr-only">{f.label}</dt>
-                    <dd className="m-0">
-                      <span className="stretch-semi block text-3xl font-semibold text-ink">{f.value}</span>
-                      <span className="text-sm text-muted">{f.label}</span>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              <Zoomable index={1} onOpen={setOpen} className="heritage-photo mt-5 aspect-[16/9] w-full">
-                <Photo id="h-delhi" sizes="(min-width: 1024px) 560px, 100vw" className="h-full w-full object-cover" />
-              </Zoomable>
-            </Reveal>
-            <Reveal className="temple" delay={80}>
-              <p className="label">Robbinsville, New Jersey</p>
-              <h3 className="stretch-semi mt-1 text-2xl font-semibold text-ink">BAPS Swaminarayan Akshardham</h3>
-              <p className="mt-2 leading-relaxed text-body">
-                Opened in October 2023. Stone carved by hand in India, then assembled in New Jersey with the help of thousands of volunteers.
-              </p>
-            </Reveal>
-          </div>
+        <div className="mt-12 grid gap-6 md:grid-cols-2 md:gap-8">
+          <Reveal className="temple">
+            <p className="label">New Delhi</p>
+            <h3 className="stretch-semi mt-1 text-2xl font-semibold text-ink">Swaminarayan Akshardham</h3>
+            <p className="mt-2 leading-relaxed text-body">
+              Opened on 6 November 2005. Carved sandstone and marble, 141 feet tall, built without any steel by more than 8,000 volunteers.
+            </p>
+            <dl className="temple-stats">
+              {DELHI_FACTS.map((f) => (
+                <div key={f.label}>
+                  <dt className="sr-only">{f.label}</dt>
+                  <dd className="m-0">
+                    <span className="stretch-semi block text-3xl font-semibold text-ink">{f.value}</span>
+                    <span className="text-sm text-muted">{f.label}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Reveal>
+          <Reveal className="temple" delay={80}>
+            <p className="label">Robbinsville, New Jersey</p>
+            <h3 className="stretch-semi mt-1 text-2xl font-semibold text-ink">BAPS Swaminarayan Akshardham</h3>
+            <p className="mt-2 leading-relaxed text-body">
+              Opened in October 2023. Stone carved by hand in India, then assembled in New Jersey with the help of thousands of volunteers.
+            </p>
+          </Reveal>
         </div>
 
         <h3 className="stretch-semi mt-16 text-xl font-semibold text-ink md:mt-20">Up close</h3>
         <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
           {DETAILS.map((d, i) => (
             <Reveal as="li" key={d.id} delay={i * 60}>
-              <Zoomable index={i + 2} onOpen={setOpen} className="heritage-photo aspect-[4/5] w-full">
+              <Zoomable index={i + DAY.length} onOpen={setOpen} className="heritage-photo aspect-[4/5] w-full">
                 <Photo id={d.id} sizes="(min-width: 768px) 25vw, 50vw" className="h-full w-full object-cover" />
               </Zoomable>
               <p className="mt-3 font-semibold text-ink">{d.title}</p>

@@ -559,5 +559,36 @@
       960
     ],
     "alt": "The White Tower of Thessaloniki, a round stone tower with a crenellated top and a Greek flag, behind umbrella pines under a blue sky"
+  },
+  "h-robbinsville-day": {
+    "commons": "File:Akshardham Hindu Temple in Jersey City.jpg",
+    "widths": [
+      960,
+      1600
+    ],
+    "alt": "BAPS Swaminarayan Akshardham in Robbinsville by day: white carved stone shikhars above a wide flight of steps"
+  },
+  "h-delhi-gardens": {
+    "commons": "File:Akshardham temple gardens,delhi - panoramio.jpg",
+    "widths": [
+      960,
+      1600
+    ],
+    "alt": "The gardens of Swaminarayan Akshardham in New Delhi: green lawns, clipped hedges and trees, with the carved sandstone mandir and its domes beyond"
+  },
+  "h-delhi-night": {
+    "commons": "File:Akshardham 02.jpg",
+    "widths": [
+      960,
+      1600
+    ],
+    "alt": "Swaminarayan Akshardham in New Delhi at night, its carved domes and pillars lit gold against a black sky"
+  },
+  "h-delhi-fountain": {
+    "commons": "File:Akshardham fountain.jpg",
+    "widths": [
+      800
+    ],
+    "alt": "The musical fountain at Akshardham in New Delhi after dark, jets of water lit pink and violet, the mandir glowing behind"
   }
 }
