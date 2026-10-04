@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ArcReactor from '../components/avengers/ArcReactor';
 import Mjolnir from '../components/avengers/Mjolnir';
 import Compound from '../components/avengers/Compound';
+import HQBackdrop, { AvengersMark } from '../components/avengers/HQBackdrop';
 import ShieldThrow from '../components/avengers/ShieldThrow';
 import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
@@ -114,6 +115,12 @@ export default function Avengers() {
   const intro = useRef(null);
   const [playing, setPlaying] = useState(false);
   const timers = useRef([]);
+  // the page's own look (styles/extras.css), while the Stark theme is on
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.world = 'avengers';
+    return () => delete root.dataset.world;
+  }, []);
   useEffect(
     () => () => {
       intro.current?.stop();
@@ -205,17 +212,29 @@ export default function Avengers() {
     after(heist);
   };
   return (
-    <div className="relative">
+    <div className="hq-page relative">
+      <HQBackdrop />
       <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
         <figure className="m-0">
-          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
+          <p className="hq-feed" aria-hidden="true">
+            <span>
+              <i className="hq-live-dot" />
+              Live · compound feed
+            </span>
+            <span>F.R.I.D.A.Y.</span>
+          </p>
+          <div className="hq-hud">
+            <Compound spots={SPOT_IDS} titles={SPOT_TITLES} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
+          </div>
           <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
         </figure>
-        <div>
+        <div className="relative">
+          <AvengersMark className="hq-hero-mark" />
           <p className="eyebrow">The Avengers compound · Upstate New York</p>
-          <h1 id="hq-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
+          <h1 id="hq-title" className="display hq-steel mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
             Avengers HQ
           </h1>
+          <span className="hq-rule" aria-hidden="true" />
           <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Walk the compound: every building belongs to someone, and the Tesseract is waiting in the hangar.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#floor-stark" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-stark')}>

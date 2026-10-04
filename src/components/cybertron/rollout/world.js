@@ -11,6 +11,10 @@
 // the land fades into it. The surfaces are scanned CC0 materials (Poly
 // Haven, ambientCG) and the light the metal reflects is a Poly Haven HDRI per
 // stage; scripts/cc0.mjs fetches them all.
+//
+// Iacon, the Autobots' capital (the Decepticons' last stage), is Kaon's iron
+// re-lit: night, energon blue in the window slits, the lane lines and the
+// river under the broken bridges, the towers taller.
 
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
@@ -62,6 +66,19 @@ export const LOOK = {
     sun: { color: 0xff7a48, k: 2.0 },
     hemi: [0xb0503a, 0x1a0a0c, 0.5],
     grade: { contrast: 0.2, saturation: 1.02, vignette: 0.32, shadow: [0.02, 0.0, 0.01], high: [0.04, 0.01, 0.0] },
+    night: true,
+  },
+  iacon: {
+    hdri: 'mission',
+    env: 0.45,
+    exposure: 1.05,
+    sky: { tex: 'mission-sky', u: 0.6, elevation: 38, k: 0.11, tint: [0.55, 0.82, 1.45], sunK: 0, haze: 0.85, horizon: 2, ridge: [0.16, 0.22, 0.34], windows: [0.35, 1.3, 2.6], glow: [0.03, 0.12, 0.3] },
+    sunAz: [0.4, -1],
+    sunElevation: 34,
+    fogDensity: 0.0045,
+    sun: { color: 0x9fcfff, k: 0.9 },
+    hemi: [0x4f78b0, 0x0a1220, 0.6],
+    grade: { contrast: 0.18, saturation: 1.06, vignette: 0.3, shadow: [0.0, 0.012, 0.04], high: [0.0, 0.02, 0.04] },
     night: true,
   },
 };
@@ -393,6 +410,7 @@ const PROPS = {
   jasper: ['quiver-tree', 'rock', 'tyre', 'barrel', 'shrub', 'brush', 'boulders', 'boulder', 'dead-trunk'],
   mission: ['street-lamp', 'utility-box', 'trash-can'],
   kaon: ['barrel'],
+  iacon: ['barrel'],
 };
 
 // The Poly Haven sets each stage is surfaced with.
@@ -400,6 +418,7 @@ const SETS = {
   jasper: { road: 'asphalt-desert', ground: 'desert-ground', ground2: 'desert-sand', rock: 'mesa-rock' },
   mission: { road: 'asphalt-city', ground: 'sidewalk', ground2: null, rock: 'concrete' },
   kaon: { road: 'plate-road', ground: 'plate-deck', ground2: 'plate-road', rock: 'plate-road' },
+  iacon: { road: 'plate-road', ground: 'plate-deck', ground2: 'plate-road', rock: 'plate-road' },
 };
 
 // How each stage's land takes its sets: tile sizes in metres (ground, second
@@ -407,6 +426,13 @@ const SETS = {
 const LAND = {
   desert: { tile: [4.6, 7.5, 18], tint: [0xffffff, 0xf2e2cf, 0xf0c8a8], rock: [0.3, 0.5], metal: false, env: 0.5, sheen: 0.3, key: 'desert' },
   kaon: { tile: [7, 9, 9], tint: [0x6c6a74, 0x55535c, 0x8a8894], rock: [0.22, 0.4], metal: true, env: 1.1, sheen: 1, key: 'kaon' },
+  iacon: { tile: [7, 9, 9], tint: [0x6c7686, 0x566070, 0x8c96a6], rock: [0.22, 0.4], metal: true, env: 1.2, sheen: 1, key: 'iacon' },
+};
+
+// Kaon's furnace light, or Iacon's energon blue
+const CYBER = {
+  kaon: { slit: [2.6, 0.95, 0.35], lamp: 0xff8a2a, trim: 0xff6a2a, lane: '#ff6a2a', river: 'lava', tall: 1, sign: { text: ['DECEPTICON', 'BARRIER'], bg: '#7a2fb8', fg: '#fff' } },
+  iacon: { slit: [0.45, 1.5, 2.8], lamp: 0x4fd8ff, trim: 0x3fc8ff, lane: '#3fd0ff', river: 'energon', tall: 1.55, sign: { text: ['AUTOBOT', 'CHECKPOINT'], bg: '#c8102e', fg: '#fff' } },
 };
 
 export async function buildWorld(id, renderer, { big = true, M, shared, lib, models }) {
@@ -420,6 +446,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   };
   const size = big ? 512 : 256;
   const kind = id === 'jasper' ? 'desert' : id === 'mission' ? 'city' : 'kaon';
+  const cyber = CYBER[id] ?? CYBER.kaon;
   const want = SETS[id];
   const [roadSet, groundSet, ground2Set, rockSet, skyTex] = await Promise.all([...[want.road, want.ground, want.ground2, want.rock].map((n) => (n ? lib.load(n) : null)), loadSky(look.sky.tex, renderer)]);
 
@@ -451,7 +478,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   road.rotation.x = -Math.PI / 2;
   road.receiveShadow = true;
   root.add(road);
-  const lanesP = paintLanes({ size: big ? 1024 : 512, seed: 3 + id.length, kind });
+  const lanesP = paintLanes({ size: big ? 1024 : 512, seed: 3 + id.length, kind, glow: cyber.lane });
   const laneMat = holes(
     new THREE.MeshStandardMaterial({
       map: T(lanesP.color, { repeat: [1, along] }),
@@ -491,7 +518,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     const fallback = kind === 'desert' ? paintSand({ size, seed: 5 }) : paintDeck({ size, seed: 7 });
     const flat = groundSet ?? painted(fallback);
     const rock = rockSet ?? (kind === 'desert' ? painted(paintStrata({ size, seed: 9, palette: kind })) : flat);
-    land = createLand(kind, { big, sets: { flat, flat2: ground2Set ?? flat, rock }, look: LAND[kind] });
+    land = createLand(kind, { big, sets: { flat, flat2: ground2Set ?? flat, rock }, look: LAND[id === 'iacon' ? 'iacon' : kind] });
     root.add(land.mesh);
   } else {
     if (groundSet) {
@@ -521,7 +548,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
   }
   rockMat.side = THREE.DoubleSide;
   if (land) rockMat.vertexColors = true;
-  const chasmP = paintChasm({ size: 256, kind });
+  const chasmP = paintChasm({ size: 256, kind: kind === 'kaon' && cyber.river === 'energon' ? 'energon' : kind });
   const chasmMat = new THREE.MeshStandardMaterial({
     map: T(chasmP.color, { repeat: [60, 6] }),
     emissiveMap: chasmP.emissive ? T(chasmP.emissive, { repeat: [60, 6] }) : null,
@@ -698,7 +725,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     const kerb = new THREE.BoxGeometry(0.5, 0.42, 3.4);
     kerb.translate(0, 0.21, 0);
     const kerbMat = holes(new THREE.MeshStandardMaterial({ color: 0x3a3c44, metalness: 0.85, roughness: 0.38 }), 'kerb');
-    const lampMat = holes(M.lamp(0xff8a2a, 1.4), 'kerb-lamp');
+    const lampMat = holes(M.lamp(cyber.lamp, 1.4), `kerb-lamp-${id}`);
     cut.push([kerbMat, 0], [lampMat, 0]);
     band(kerb, kerbMat, 100, 400, (i, r, z) => ({ x: (i % 2 ? 1 : -1) * 7.15, z }));
     const lamp = new THREE.BoxGeometry(0.16, 0.06, 0.5);
@@ -842,7 +869,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
     let ironMat;
     if (roadSet) ironMat = lib.material(roadSet, { metal: true, color: 0x8a8894, envMapIntensity: 1.25, normalScale: new THREE.Vector2(1.3, 1.3) });
     else ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3a42, metalness: 0.85, roughness: 0.4 });
-    ironMat.emissive = new THREE.Color(2.6, 0.95, 0.35);
+    ironMat.emissive = new THREE.Color(...cyber.slit);
     kaonMetal(ironMat, { tile: 11, slit: 4.6, key: 'mega' });
     const megas = [megaGeometry(3), megaGeometry(8), megaGeometry(21)];
     megas.forEach((geo, k) => {
@@ -850,19 +877,19 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
         const w = 16 + r() * 22;
         const x = (i % 2 ? 1 : -1) * (30 + w * 0.6 + r() * 70);
         const zz = z + r() * 30;
-        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (0.85 + r() * 0.7), w], ry: r() * 6.3 };
+        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (0.85 + r() * 0.7) * cyber.tall, w], ry: r() * 6.3 };
       });
       band(geo, ironMat, 12, 900, (i, r, z) => {
         const w = 30 + r() * 40;
         const x = (r() < 0.5 ? -1 : 1) * (150 + r() * 330);
         const zz = z + r() * 60;
-        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (1 + r() * 0.8), w], ry: r() * 6.3 };
+        return { x, z: zz, y: on(x, zz, 3), s: [w, w * (1 + r() * 0.8) * cyber.tall, w], ry: r() * 6.3 };
       });
       return k;
     });
     const gateMat = new THREE.MeshStandardMaterial({ color: 0x2c2d34, metalness: 0.9, roughness: 0.35, envMapIntensity: 1.3 });
     band(gateGeometry(), gateMat, 5, 700, (i, r, z) => ({ x: 0, z, y: 0 }), { shadow: true });
-    band(gateTrimGeometry(), M.lamp(0xff6a2a, 1.6), 5, 700, (i, r, z) => ({ x: 0, z, y: 0 }));
+    band(gateTrimGeometry(), M.lamp(cyber.trim, 1.6), 5, 700, (i, r, z) => ({ x: 0, z, y: 0 }));
     modelBand(prop('barrel'), 10, 480, (i, r, z) => {
       const x = sideX(r, 8.4, 12);
       return { x, z, s: 1, ry: r() * 6.3, rz: r() < 0.5 ? Math.PI / 2 : 0, y: on(x, z, 0) };
@@ -871,7 +898,7 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
 
   // signs before roadblocks and broken bridges
   const signs = {
-    closed: T(paintSign({ text: kind === 'kaon' ? ['DECEPTICON', 'BARRIER'] : ['ROAD', 'CLOSED'], bg: kind === 'kaon' ? '#7a2fb8' : '#f39c12', fg: kind === 'kaon' ? '#fff' : '#111' }), { wrap: false }),
+    closed: T(paintSign(kind === 'kaon' ? cyber.sign : { text: ['ROAD', 'CLOSED'], bg: '#f39c12', fg: '#111' }), { wrap: false }),
     bridge: T(paintSign({ text: ['BRIDGE', 'OUT'], bg: '#f39c12' }), { wrap: false }),
   };
   const signGeo = new THREE.PlaneGeometry(2.2, 2.2);

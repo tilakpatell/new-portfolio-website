@@ -8,6 +8,7 @@ import Megatron from '../components/cybertron/Megatron';
 import Optimus from '../components/cybertron/Optimus';
 import Planet from '../components/cybertron/Planet';
 import Visor from '../components/cybertron/Visor';
+import CybertronBackdrop from '../components/cybertron/world/CybertronBackdrop';
 import AutobotMark from '../components/AutobotMark';
 import DecepticonMark from '../components/DecepticonMark';
 import { Cybertron as Skyline } from '../components/worlds/Backdrops';
@@ -148,6 +149,7 @@ export default function Cybertron() {
 
   return (
     <div className="relative">
+      <CybertronBackdrop side={side} />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="cy-title">
         <figure className="cy-planet m-0" data-side={side}>
           <Planet side={side} className="cy-planet-canvas" />
@@ -183,10 +185,12 @@ export default function Cybertron() {
           Roll out
         </h2>
         <p className="lead mt-4 max-w-[62ch]">
-          From Jasper, Nevada to Mission City to the streets of Kaon, as Optimus or Bumblebee. Drive fast as a vehicle, stand up and fight as a robot, and pick the right form before the road picks it for you.
+          {side === 'autobot'
+            ? 'From Jasper, Nevada to Mission City to the streets of Kaon, as Optimus or Bumblebee. Drive fast as a vehicle, stand up and fight as a robot, and pick the right form before the road picks it for you.'
+            : 'From Jasper, Nevada to Mission City to the gates of Iacon, as Knock Out or Breakdown. Run down the Autobots on the road, stand up and fight them in the street, and take their capital.'}
         </p>
         <div className="mt-8">
-          <RollOut />
+          <RollOut side={side} />
         </div>
       </section>
 
@@ -239,13 +243,15 @@ export default function Cybertron() {
 
       <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="bridge-title">
         <h2 id="bridge-title" className="title">
-          Ground bridge
+          {side === 'autobot' ? 'Ground bridge' : 'Space bridge'}
         </h2>
         <p className="lead mt-4 max-w-[58ch]">
-          Team Prime is out past Jasper, Nevada, and the Vehicons are on their tail. Ratchet’s at the controls of the bridge back to base. Get the team home, and none of the Decepticons.
+          {side === 'autobot'
+            ? 'Team Prime is out past Jasper, Nevada, and the Vehicons are on their tail. Ratchet’s at the controls of the bridge back to base. Get the team home, and none of the Decepticons.'
+            : 'Knock Out, Breakdown and the Vehicons are pinned down past Jasper, Nevada, with Team Prime on their tail. Soundwave holds the bridge up to the Nemesis. Get the Decepticons aboard, and none of the Autobots.'}
         </p>
         <div className="mt-8">
-          <GroundBridge />
+          <GroundBridge side={side} />
         </div>
       </section>
 
@@ -253,9 +259,13 @@ export default function Cybertron() {
         <h2 id="iacon-title" className="title">
           The Iacon database
         </h2>
-        <p className="lead mt-4 max-w-[58ch]">Nine relics from Prime, written in the database in Cybertronian. Decode each entry before Soundwave does: the key is there if you need it.</p>
+        <p className="lead mt-4 max-w-[58ch]">
+          {side === 'autobot'
+            ? 'Nine relics from Prime, written in the database in Cybertronian. Decode each entry before Soundwave does: the key is there if you need it.'
+            : 'Nine relics from Prime, written in the database in Cybertronian. Decode each entry for Lord Megatron before Teletraan-1 does: the key is there if you need it.'}
+        </p>
         <div className="mt-8">
-          <Iacon />
+          <Iacon side={side} />
         </div>
       </section>
 

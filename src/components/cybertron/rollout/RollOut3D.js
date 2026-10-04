@@ -9,12 +9,19 @@ import { canvasTexture, createStage, hot } from '../../../lib/stage3d';
 import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
 import { buildWorld, sharedSurfaces } from './world';
-import { buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
+import { BOSS_LOOK, BREAKDOWN, KNOCKOUT, SENTRY, buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
 import { createRollOutCast } from './meshyCast';
 import { chevronSprite, fireSprite, glowSprite, paintEnergon, paintInsignia, paintPanels, paintRim, paintTread, ringSprite, smokeSprite } from './paint';
-import { ROLL, bodyOf } from './rules';
+import { ROLL, bodyOf, stagesFor } from './rules';
 
-const STAGES = ROLL.stages.map((s) => s.id);
+const stageIds = (side) => stagesFor(side).map((s) => s.id);
+// each bot's optics, and the jets that fly at you: Decepticon seekers, or
+// the Autobots' Aerialbots; the flying bosses: Starscream, or Wheeljack's
+// Jackhammer
+const OPTICS = { optimus: 0x6fd8ff, bumblebee: 0x61c8ff, knockout: 0xff3b3b, breakdown: 0xffcc33 };
+const SEEKER = { body: 0x55596a, accent: 0x5a2a86 };
+const AERIALBOT = { body: 0xd9dde3, accent: 0xb3121f, accent2: 0x1f4aa8, mark: 'autobot' };
+const FLYERS = { starscream: { body: 0x9aa1ad, accent: 0xc8282e, accent2: 0x2a52b8 }, wheeljack: { body: 0xe4e6ea, accent: 0x2f9e44, accent2: 0xc8102e, mark: 'autobot' } };
 const TAU = Math.PI * 2;
 
 // ── particles: one draw call per blend mode ──
@@ -199,7 +206,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       scene.remove(player.group);
       player.group.traverse((o) => !o.userData.shared && o.geometry?.dispose());
     }
-    player = cast.player(who) ?? (who === 'bumblebee' ? buildBumblebee(M, tex) : buildOptimus(M, tex));
+    player =
+      cast.player(who) ??
+      (who === 'bumblebee' ? buildBumblebee(M, tex) : who === 'knockout' ? buildBumblebee(M, tex, KNOCKOUT) : who === 'breakdown' ? buildVehicon(M, tex, BREAKDOWN) : buildOptimus(M, tex));
     playerBot = who;
     scene.add(player.group);
   };
@@ -222,8 +231,16 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     });
   progress(0.4, 'Building traffic');
   const cars = new Assign(pool(16, (i) => ({ ...buildCar(M, tex, i % 8), key: 'road', look: i % 8 })).concat(pool(10, (i) => ({ ...buildCar(M, tex, i + 2, true), key: 'hover' }))));
-  const vehicons = new Assign(pool(8, () => cast.vehicon() ?? buildVehicon(M, tex)));
-  const jets = new Assign(pool(4, () => cast.jet('seeker') ?? buildJet(M, { body: 0x55596a, accent: 0x5a2a86, tex })));
+  // who comes at you: Vehicons and seekers for an Autobot, the Autobots'
+  // sentries and Aerialbots for a Decepticon (built the first time they're needed)
+  const foes = {};
+  const foesFor = (side) =>
+    (foes[side] ??=
+      side === 'decepticon'
+        ? { troopers: new Assign(pool(8, () => buildVehicon(M, tex, SENTRY))), jets: new Assign(pool(4, () => buildJet(M, { ...AERIALBOT, tex }))) }
+        : { troopers: new Assign(pool(8, () => cast.vehicon() ?? buildVehicon(M, tex))), jets: new Assign(pool(4, () => cast.jet('seeker') ?? buildJet(M, { ...SEEKER, tex }))) });
+  foesFor(bot === 'knockout' || bot === 'breakdown' ? 'decepticon' : 'autobot');
+  let foeSide = null;
 
   // debris: scanned crates, barrels, tyres, a rock; scrap metal in Kaon
   const scrapMat = M.scarred(0x5a4a44, { roughness: 0.6 });
@@ -391,15 +408,19 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   // ── the world for each stage, built when needed ──
   let world = null;
   let pending = null;
-  const worldFor = (index) => buildWorld(STAGES[index], renderer, { big, M, shared, lib, models });
+  const worldFor = (id) => buildWorld(id, renderer, { big, M, shared, lib, models });
   progress(0.55, 'Laying the road');
-  world = await worldFor(0);
+  world = await worldFor(stageIds(ROLL.bots[bot]?.side)[0]);
   world.attach(scene, stage);
   progress(0.9, 'Warming up');
-  const want = (index) => {
-    if (!pending || pending.index !== index) {
-      const p = { index, ready: null };
-      p.promise = worldFor(index).then((w) => {
+  // by stage id: the Autobots' third stage is Kaon, the Decepticons' Iacon
+  const want = (id) => {
+    if (!pending || pending.id !== id) {
+      const old = pending;
+      // one being built that's no longer wanted is freed when it's done
+      old?.promise.then((w) => pending !== old && w !== world && w.dispose(scene)).catch(() => {});
+      const p = { id, ready: null };
+      p.promise = worldFor(id).then((w) => {
         p.ready = w;
         return w;
       });
@@ -422,7 +443,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       scene.remove(boss.group);
       boss.group.traverse((o) => !o.userData.shared && o.geometry?.dispose()); // its materials include shared ones
     }
-    const m = (kind === 'starscream' ? cast.jet('starscream') : cast.boss(kind)) ?? (kind === 'starscream' ? buildJet(M, { body: 0x9aa1ad, accent: 0xc8282e, accent2: 0x2a52b8, scale: 3.2, tex }) : buildBoss(M, kind, tex));
+    const m = FLYERS[kind]
+      ? ((kind === 'starscream' ? cast.jet('starscream') : null) ?? buildJet(M, { ...FLYERS[kind], scale: 3.2, tex }))
+      : (cast.boss(kind) ?? buildBoss(M, kind, tex));
     boss = { kind, ...m };
     scene.add(boss.group);
     return boss;
@@ -468,11 +491,12 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     const Z = -g.z; // world z of the player
 
     // the right world for the stage; the next one built while the boss fights
-    const id = STAGES[g.stage];
+    const ids = stageIds(g.side);
+    const id = ids[g.stage];
     if (world.id !== id) {
-      const p = want(g.stage);
+      const p = want(id);
       if (p.ready) swapTo(p.ready);
-    } else if (g.boss && g.stage + 1 < STAGES.length) want(g.stage + 1);
+    } else if (g.boss && g.stage + 1 < ids.length) want(ids[g.stage + 1]);
     world.update(g, camera, time);
     const kaon = world.kind === 'kaon';
     const night = world.night;
@@ -497,7 +521,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       shellMat.opacity = Math.max(inv, spark);
       shellMat.color.copy(spark ? hot(0x7fd8ff, 1.6) : hot(0xff6a5a, 1.2));
     }
-    P.eye.color.copy(hot(g.bot === 'bumblebee' ? 0x61c8ff : 0x6fd8ff, 2 + robot * 2));
+    P.eye.color.copy(hot(OPTICS[g.bot] ?? 0x6fd8ff, 2 + robot * 2));
 
     // transforming: a crackle of sparks and steam
     if (g.morphT >= 0 && prevMorphT < 0) {
@@ -579,6 +603,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     debris.end();
 
     // ── roadblocks ──
+    fenceGlow.color.copy(world.id === 'iacon' ? hot(0x4fd8ff, 2.6) : hot(0xb070ff, 2.6));
     barricades.begin();
     for (const b of g.barricades) {
       if (b.z > g.z + 260) break;
@@ -632,6 +657,17 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     shards.end();
 
     // ── Decepticons ──
+    // the other side's foes, if it just changed, go
+    if (foeSide !== g.side) {
+      for (const f of Object.values(foes)) {
+        f.troopers.begin();
+        f.troopers.end();
+        f.jets.begin();
+        f.jets.end();
+      }
+      foeSide = g.side;
+    }
+    const { troopers: vehicons, jets } = foesFor(g.side);
     vehicons.begin();
     jets.begin();
     for (const e of g.enemies) {
@@ -698,14 +734,17 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       else for (let i = 0; i < 8; i++) add.emit(f.x, f.y, -f.z, (Math.random() - 0.5) * 10, Math.random() * 6, (Math.random() - 0.5) * 10, 0.25, 0.25, 0.05, 3, 2.2, 1.2, 1, 3, 12);
     }
     blast.intensity *= Math.exp(-dt * 7);
+    // the Autobots' bosses fire blue: Magnus's hammer, Optimus's ion cannon
+    const blue = BOSS_LOOK[g.boss?.kind]?.mark === 'autobot';
     wavePool.forEach((it, i) => {
       const w = g.waves[i];
       it.obj.visible = Boolean(w);
       if (!w) return;
       it.obj.position.set(0, w.h / 2, -w.z);
       it.obj.scale.set(1, w.h, 1);
-      it.obj.material.color.copy(w.kind === 'wave' ? hot(0xff6a2a, 3) : hot(0xb070ff, 3));
-      if (Math.random() < 0.8) add.emit((Math.random() - 0.5) * 12, Math.random() * w.h, -w.z, 0, 1, 0, 0.3, 0.6, 0.1, w.kind === 'wave' ? 3 : 2, w.kind === 'wave' ? 1.4 : 1.2, w.kind === 'wave' ? 0.6 : 3, 1, 1);
+      it.obj.material.color.copy(blue ? hot(0x7fd0ff, 3) : w.kind === 'wave' ? hot(0xff6a2a, 3) : hot(0xb070ff, 3));
+      const [wr, wg, wb] = blue ? [1, 2.2, 3.2] : w.kind === 'wave' ? [3, 1.4, 0.6] : [2, 1.2, 3];
+      if (Math.random() < 0.8) add.emit((Math.random() - 0.5) * 12, Math.random() * w.h, -w.z, 0, 1, 0, 0.3, 0.6, 0.1, wr, wg, wb, 1, 1);
     });
     beamPool.forEach((it, i) => {
       const bm = g.beams[i];
@@ -716,6 +755,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       it.obj.position.set(bm.x, 1.2, -(g.z + g.boss.dz) + len / 2);
       it.obj.scale.set(1.6 * (1 - k * 0.6), 1.6 * (1 - k * 0.6), len);
       it.obj.material.opacity = 1 - k;
+      it.obj.material.color.copy(blue ? hot(0x6fc8ff, 4) : hot(0xff6a2a, 4));
     });
     warn.visible = Boolean(g.warn);
     if (g.warn) {
@@ -732,7 +772,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       const m = buildBossModel(B.kind);
       m.group.visible = true;
       const bz = -(g.z + B.dz);
-      if (B.kind === 'starscream') {
+      if (FLYERS[B.kind]) {
         m.group.position.set(B.x, B.y, bz);
         m.group.rotation.set(0.1, Math.PI, Math.sin(B.t * 1.3) * 0.35);
         m.flame.color.copy(hot(0x8fc8ff, 2.4 + Math.random()));
@@ -742,12 +782,14 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
         m.rig.animate(1, time * 4.5, 0, 0.6);
         // charging the cannon or the optic
         const charging = B.attack && (B.attack.charge ?? 0) > B.attack.t;
-        m.glow.color.copy(hot(B.kind === 'shockwave' ? 0xb07bff : 0xff5a3a, charging ? 4 + Math.sin(time * 30) * 2 : 2));
+        const look = BOSS_LOOK[B.kind] ?? BOSS_LOOK.megatron;
+        m.glow.color.copy(hot(look.glow, charging ? 4 + Math.sin(time * 30) * 2 : 2));
         if (charging && Math.random() < 0.7) {
           const tip = m.cannonTip.getWorldPosition(tmp);
-          add.emit(tip.x + (Math.random() - 0.5) * 3, tip.y + (Math.random() - 0.5) * 3, tip.z + (Math.random() - 0.5) * 3, 0, 0, 0, 0.3, 0.6, 0.1, 3, 1.4, 0.8, 1, 0);
+          const [cr, cg, cb] = look.mark === 'autobot' ? [1, 2.2, 3.4] : [3, 1.4, 0.8];
+          add.emit(tip.x + (Math.random() - 0.5) * 3, tip.y + (Math.random() - 0.5) * 3, tip.z + (Math.random() - 0.5) * 3, 0, 0, 0, 0.3, 0.6, 0.1, cr, cg, cb, 1, 0);
         }
-        m.eye.color.copy(hot(B.kind === 'shockwave' ? 0xffd23a : 0xff2a2a, 3 + Math.sin(time * 6)));
+        m.eye.color.copy(hot(look.eye, 3 + Math.sin(time * 6)));
       }
       // a hit is a quick, dim pop, so steady fire doesn't wash the paint out
       // (the sparks say it hit); staggered, it pulses cold while every hit
@@ -855,7 +897,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       return stage.quality;
     },
     get loadingStage() {
-      return pending != null && !pending.ready && world.id !== STAGES[pending.index];
+      return pending != null && !pending.ready && world.id !== pending.id;
     },
     debug: () => { const c = renderer.getContext(); return { size: stage.size, canvas: [canvas.width, canvas.height], viewport: renderer.getViewport(new THREE.Vector4()).toArray(), glViewport: Array.from(c.getParameter(c.VIEWPORT)), drawing: [c.drawingBufferWidth, c.drawingBufferHeight], quality: stage.quality }; },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality: stage.quality }),
