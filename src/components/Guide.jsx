@@ -107,6 +107,15 @@ const PAGES = {
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
+  '/universe': {
+    title: 'The universe',
+    tips: [
+      ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing or Han and Chewie’s Falcon. Each crew has something to say about every place you reach, and each ship sounds like itself.'],
+      ['Fly', 'W A S D or the arrows, Space to boost; on a phone, drag anywhere on the map and hold Boost. M pulls out to the whole map.'],
+      ['Go somewhere', 'The stations round the sun are the site’s pages; the planets are its worlds. Fly close to one, or pick it by name and the ship takes you. E (or the panel’s button) lands or docks.'],
+      ['Just looking', 'With no ship, pick a place and the camera flies there. Drag to turn the map, and Escape comes back out.'],
+    ],
+  },
   '/music': {
     title: 'The music room',
     tips: [
@@ -141,6 +150,7 @@ export default function Guide() {
   const page =
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
+    (pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

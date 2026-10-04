@@ -32,6 +32,57 @@ const BUTTONS = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'];
 const BEST = 'tp-gb-best'; // each game's top score, kept between visits
 const PALETTE = 'tp-gb-palette';
 
+// The handheld turns a few degrees to face the pointer, as if picked up, and
+// the light slides across its plastic. It squares up to be played (focus) and
+// when the pointer leaves, so the screen and buttons sit still and crisp under
+// input. Mouse and trackpad only, never with reduced motion, and nothing runs
+// while the pointer is elsewhere.
+function useTilt(ref, { on, flat }) {
+  const flatRef = useRef(flat);
+  flatRef.current = flat;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !on || !window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return undefined;
+    let raf = 0;
+    let x = 0;
+    let y = 0;
+    const draw = () => {
+      raf = 0;
+      if (flatRef.current) return;
+      const r = el.getBoundingClientRect();
+      const nx = Math.max(-1, Math.min(1, (x - r.left) / (r.width / 2) - 1));
+      const ny = Math.max(-1, Math.min(1, (y - r.top) / (r.height / 2) - 1));
+      // where the pointer is over it, -1 to 1; the CSS turns it into the
+      // tilt, the sheen and the shadow (.gb[data-tilt] in stages.css)
+      el.style.setProperty('--gb-nx', nx.toFixed(3));
+      el.style.setProperty('--gb-ny', ny.toFixed(3));
+      el.dataset.tilt = '';
+    };
+    const move = (e) => {
+      if (e.pointerType === 'touch') return;
+      x = e.clientX;
+      y = e.clientY;
+      raf ||= requestAnimationFrame(draw);
+    };
+    const leave = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      delete el.dataset.tilt;
+    };
+    el.addEventListener('pointermove', move, { passive: true });
+    el.addEventListener('pointerleave', leave);
+    return () => {
+      leave();
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerleave', leave);
+    };
+  }, [ref, on]);
+  // squaring up to be played
+  useEffect(() => {
+    if (flat && ref.current) delete ref.current.dataset.tilt;
+  }, [ref, flat]);
+}
+
 export default function GameBoyStage({ compact = false }) {
   const canvasRef = useRef(null);
   const deviceRef = useRef(null);
@@ -53,6 +104,7 @@ export default function GameBoyStage({ compact = false }) {
   events.current.palette = (p) => local.set(PALETTE, p);
 
   const running = inView && started;
+  useTilt(deviceRef, { on: !reduced, flat: focused });
 
   const draw = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
@@ -165,11 +217,11 @@ export default function GameBoyStage({ compact = false }) {
           </div>
         </div>
         <div className="gb-pills">
-          <button type="button" aria-label="Select" {...hold('select')}>
+          <button type="button" aria-label="Select" data-held={held.select ? 'true' : 'false'} {...hold('select')}>
             <i />
             <span>Select</span>
           </button>
-          <button type="button" aria-label="Start" {...hold('start')}>
+          <button type="button" aria-label="Start" data-held={held.start ? 'true' : 'false'} {...hold('start')}>
             <i />
             <span>Start</span>
           </button>

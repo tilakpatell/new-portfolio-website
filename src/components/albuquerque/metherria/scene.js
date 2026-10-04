@@ -1020,7 +1020,9 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
         m.dispose?.();
       }
     });
+    // each look also holds its `ready` promise, which isn't a material
     for (const L of Object.values(looks)) for (const m of Object.values(L)) {
+      if (!m?.isMaterial) continue;
       for (const k2 of ['map', 'normalMap', 'roughnessMap']) m[k2]?.dispose?.();
       m.dispose();
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import Photo from '../Photo';
+import Lamplight from '../peace/Lamplight';
 import { Reveal, Waypoint } from '../ui';
 import { jumpTo } from '../../lib/anchors';
 import { audioContext } from '../../lib/audio';
@@ -28,7 +29,8 @@ export default function Peace() {
       m.stopTanpura();
       setDrone(false);
     } else {
-      m.startTanpura();
+      // each pluck swells the lamplight (peace/scene.js)
+      m.startTanpura((i) => window.dispatchEvent(new CustomEvent('tp:tanpura', { detail: i })));
       setDrone(true);
     }
   };
@@ -36,6 +38,7 @@ export default function Peace() {
   return (
     <section data-theme-section="travel" className="peace relative isolate z-10 overflow-hidden" aria-labelledby="peace-title">
       <Photo id="h-delhi" sizes="100vw" alt="" className="peace-photo absolute inset-0 -z-20 h-full w-full object-cover" />
+      <Lamplight id="h-delhi" water={0.52} />
       <div className="peace-shade -z-10" aria-hidden="true" />
       <div className="peace-glow -z-10" aria-hidden="true" />
       <div className="shell relative py-[clamp(7rem,15vw,12rem)]">

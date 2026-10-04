@@ -1,10 +1,22 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { RiArrowRightLine } from 'react-icons/ri';
 import { WORLDS } from './worlds';
+import { byPath } from '../universe/universes';
+import { nextWorld } from '../universe/layout';
 
-// A way between the hidden worlds, on each of them.
+// A way between the hidden worlds, on each of them: back to this world's
+// place on the universe map, on to the next world, or straight to any.
 export default function WorldSwitcher({ className = '' }) {
+  const here = byPath(useLocation().pathname);
+  const after = nextWorld(here?.id ?? null);
   return (
     <nav className={`world-switcher ${className}`} aria-label="Worlds">
+      <Link to={here ? `/universe/${here.id}` : '/universe'} className="world-link world-link-map">
+        Universe map
+      </Link>
+      <Link to={after.to} className="world-link">
+        Next: {after.world} <RiArrowRightLine className="inline h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
       <span className="world-switcher-label">Worlds</span>
       {WORLDS.map((w) => (
         <NavLink key={w.to} to={w.to} className={({ isActive }) => `world-link${isActive ? ' is-active' : ''}`} title={w.from}>
