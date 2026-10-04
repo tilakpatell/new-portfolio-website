@@ -2,35 +2,15 @@ import { useRef, useState } from 'react';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
 import { jumpTo } from '../../lib/anchors';
+import { use3D } from '../../lib/gpu';
 import { useMediaQuery } from '../../lib/hooks';
 import Gif from '../Gif';
+import OfficeTour3D from './OfficeTour3D';
+import './office.css';
+import { DOORS, FLOOR, GLASS, LABELS, LIFT, LOBBY, STAFF, SUPPLIES, WALLS_INNER, WALLS_INNER_2, WALLS_OUTER } from './layout';
 
 const sfx = () => import('../../lib/sfx');
 const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id));
-
-// The Scranton branch from above, laid out as the set is: the lobby and lift,
-// reception, Michael's office with the conference room beside it, the bullpen,
-// accounting, then the hallway past the kitchen and the restrooms to the annex.
-// `x`/`y` place each person on the 940×520 plan.
-const STAFF = [
-  { id: 'michael', gif: 'officeBestBoss', name: 'Michael Scott', role: 'Regional Manager', x: 269, y: 58, item: 'mug', text: 'Runs the branch like a family, a talk show and an improv class at once, from the office with the blinds he never quite closes.', action: 'Thank the room', done: 'Thank you. Thank you so much.' },
-  { id: 'jim', gif: 'officeJim', name: 'Jim Halpert', role: 'Salesman', x: 295, y: 194, item: 'jello', text: 'Sits across from Dwight, which explains most of what happens to Dwight’s things.', action: 'Prank Dwight', done: 'Dwight’s stapler, in Jell-O. Again.' },
-  { id: 'pam', gif: 'officePamDundie', name: 'Pam Beesly', role: 'Sales, later office administrator', x: 269, y: 258, item: 'phone', text: 'Answered the phones at reception for years, then moved to the desk beside Jim. Paints the building in her spare time.', action: 'Answer the phone', done: 'Dunder Mifflin, this is Pam.' },
-  { id: 'dwight', gif: 'officeFalse', name: 'Dwight Schrute', role: 'Assistant (to the) Regional Manager', x: 331, y: 258, item: 'beet', text: 'Beet farmer, volunteer sheriff’s deputy and the branch’s top salesman, by his own count.', action: 'Fact or false?', done: '' },
-  { id: 'andy', gif: 'parkour', name: 'Andy Bernard', role: 'Salesman', x: 410, y: 194, item: 'banjo', text: 'Cornell man, banjo player, and one third of the branch’s parkour team.', action: 'Parkour!', done: 'Parkour!' },
-  { id: 'phyllis', name: 'Phyllis Vance', role: 'Saleswoman', x: 379, y: 258, item: 'yarn', text: 'Knits, sells, and is married to Bob Vance, of Vance Refrigeration.', action: 'Ask about Bob', done: 'Bob Vance, Vance Refrigeration.' },
-  { id: 'stanley', name: 'Stanley Hudson', role: 'Salesman', x: 442, y: 258, item: 'paper', text: 'Does the crossword, keeps his head down, and lives for one day a year.', action: 'Is it Pretzel Day?', done: 'It is. Stanley is first in line.' },
-  { id: 'erin', name: 'Erin Hannon', role: 'Receptionist', x: 186, y: 190, item: 'phone', text: 'Took over reception when Pam moved to sales. The first face you see off the lift.', action: 'Ring reception', done: 'Dunder Mifflin, this is Erin.' },
-  { id: 'kevin', gif: 'officeChili', name: 'Kevin Malone', role: 'Accountant', x: 197, y: 331, item: 'chili', text: 'Makes one thing better than anyone: his chili. Getting it to the office is another matter.', action: 'Bring in the chili', done: 'The carpet never recovered.' },
-  { id: 'angela', name: 'Angela Martin', role: 'Head of Accounting', x: 197, y: 302, item: 'cat', text: 'Runs the party planning committee and an unknown number of cats.', action: 'Meet the cats', done: 'Sprinkles, Bandit, Princess Lady, Garbage, Comstock, Lumpy, and more besides.' },
-  { id: 'oscar', name: 'Oscar Martinez', role: 'Accountant', x: 252, y: 290, item: 'book', text: 'The accountant who reads, and the first to say “actually” when someone is wrong.', action: 'Ask Oscar', done: 'Actually, it’s a little more complicated than that.' },
-  { id: 'creed', name: 'Creed Bratton', role: 'Quality Assurance', x: 377, y: 319, item: 'question', text: 'Nobody is entirely sure what Creed does. Possibly including Creed.', action: 'Ask what he does', done: 'Quality assurance. Probably.' },
-  { id: 'meredith', name: 'Meredith Palmer', role: 'Supplier Relations', x: 307, y: 366, item: 'mug-plain', text: 'Supplier relations, and every office party’s last guest standing.', action: '', done: '' },
-  { id: 'darryl', name: 'Darryl Philbin', role: 'Warehouse foreman', x: 462, y: 330, item: 'keys', text: 'Came up from the warehouse to an office of his own, glass walls and all. Plays keys.', action: '', done: '' },
-  { id: 'ryan', name: 'Ryan Howard', role: 'The temp, then the closet', x: 600, y: 286, item: 'question', text: 'Started as the temp, rose, fell, and ended up in a closet between the restrooms.', action: '', done: '' },
-  { id: 'toby', gif: 'officeNoGod', name: 'Toby Flenderson', role: 'Human Resources', x: 900, y: 270, item: 'binder', text: 'HR, at the far end of the annex. Michael has strong feelings about Toby.', action: 'Welcome Toby back', done: 'Michael took it well.' },
-  { id: 'kelly', name: 'Kelly Kapoor', role: 'Customer Service', x: 892, y: 352, item: 'phone', text: 'Customer service in the annex, and the office’s authority on everyone’s business.', action: '', done: '' },
-];
 
 function Item({ kind, active }) {
   const S = { stroke: '#2b3340', strokeWidth: 2, strokeLinejoin: 'round', strokeLinecap: 'round' };
@@ -173,34 +153,25 @@ function Plan() {
   return (
     <svg viewBox="0 0 940 520" className="block h-auto w-full" aria-hidden="true">
       {/* floor: the office proper, the supply room below accounting, and the annex wing */}
-      <path d="M142 12 H926 V376 H670 V440 H586 V376 H298 V403 H161 V238 H142 Z" className="of-floor" />
-      <rect x="161" y="403" width="137" height="106" className="of-floor of-floor-alt" />
+      <path d={FLOOR} className="of-floor" />
+      <rect x={SUPPLIES.x} y={SUPPLIES.y} width={SUPPLIES.w} height={SUPPLIES.h} className="of-floor of-floor-alt" />
       {/* the lobby and the lift, outside the office */}
-      <rect x="14" y="14" width="128" height="75" className="of-outside" />
-      <rect x="48" y="89" width="91" height="50" className="of-lift" />
+      <rect x={LOBBY.x} y={LOBBY.y} width={LOBBY.w} height={LOBBY.h} className="of-outside" />
+      <rect x={LIFT.x} y={LIFT.y} width={LIFT.w} height={LIFT.h} className="of-lift" />
       <path d="M52 93 L135 135 M135 93 L52 135" className="of-lift-x" />
       {/* walls */}
-      <path d="M142 12 H926 V376 H670 V440 H586 V376 H298 V403 M161 403 V509 H298 V403 M161 403 V238 H142 V12" className="of-wall" />
-      <path d="M206 12 V127 H514 V12 M324 12 V127 M514 12 V376 M552 12 V175 M514 175 H739 M514 252 H739 M628 252 V376 M739 12 V376 M806 12 V141 H926 M406 288 V376 M161 384 H298" className="of-wall of-wall-in" />
-      <path d="M206 127 H324 M326 127 H514 M406 288 H514" className="of-glass" />
-      <path d="M566 252 V300 H628" className="of-wall of-wall-in" />
+      <path d={WALLS_OUTER} className="of-wall" />
+      <path d={WALLS_INNER} className="of-wall of-wall-in" />
+      <path d={GLASS} className="of-glass" />
+      <path d={WALLS_INNER_2} className="of-wall of-wall-in" />
       {/* doors: in from the lobby, into the hallway, into the annex */}
-      <path d="M142 40 V70 M514 200 V228 M739 200 V228 M300 127 V127" className="of-door" />
+      <path d={DOORS} className="of-door" />
       {/* labels */}
-      <text x="22" y="36" className="of-label">LOBBY</text>
-      <text x="56" y="128" className="of-label">LIFT</text>
-      <text x="214" y="30" className="of-label">MICHAEL</text>
-      <text x="334" y="30" className="of-label">CONFERENCE ROOM</text>
-      <text x="560" y="30" className="of-label">STAIRS</text>
-      <text x="522" y="192" className="of-label">KITCHEN</text>
-      <text x="522" y="368" className="of-label">MEN</text>
-      <text x="636" y="368" className="of-label">WOMEN</text>
-      <text x="748" y="30" className="of-label">ANNEX</text>
-      <text x="814" y="30" className="of-label">BREAK ROOM</text>
-      <text x="166" y="170" className="of-label">RECEPTION</text>
-      <text x="166" y="376" className="of-label">ACCOUNTING</text>
-      <text x="414" y="306" className="of-label">DARRYL</text>
-      <text x="166" y="424" className="of-label">SUPPLIES</text>
+      {LABELS.map(([t, x, y]) => (
+        <text key={t} x={x} y={y} className="of-label">
+          {t}
+        </text>
+      ))}
       {/* furniture */}
       <rect x="352" y="48" width="118" height="38" rx="3" className="of-desk" />
       <rect x="242" y="44" width="56" height="24" rx="2" className="of-desk" />
@@ -241,6 +212,11 @@ export default function OfficeFloor({ say = (t) => t }) {
   const [done, setDone] = useState(null);
   const panel = useRef(null);
   const p = STAFF.find((s) => s.id === sel);
+  // the office in 3D where there's a graphics chip for it; this map otherwise
+  const three = use3D();
+  const [gl, setGl] = useState('off'); // loading | on | failed | lost | slow
+  const gave = gl === 'failed' || gl === 'lost' || gl === 'slow';
+  const in3D = three.on && !gave;
 
   const visit = (id) => {
     setSel(id);
@@ -262,6 +238,9 @@ export default function OfficeFloor({ say = (t) => t }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-12">
       <div className="self-start">
+        {in3D ? (
+          <OfficeTour3D sel={sel} onPick={visit} onState={setGl} />
+        ) : (
         <div className="office-plan">
           <Plan />
           {STAFF.map((s) => (
@@ -283,6 +262,27 @@ export default function OfficeFloor({ say = (t) => t }) {
                 .join('')}
             </button>
           ))}
+        </div>
+        )}
+        <div className="office3d-note">
+          {three.can ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              aria-pressed={in3D}
+              onClick={() => {
+                setGl('off');
+                three.set(in3D ? 'off' : 'on');
+              }}
+            >
+              3D office: {in3D ? 'on' : 'off'}
+            </button>
+          ) : null}
+          {three.can && !three.on && !three.auto && three.mode === 'auto' && <span>No graphics chip found, so this is the map. Turn 3D on to see the office anyway.</span>}
+          {gl === 'slow' && <span>Back to the map: this device was struggling with 3D.</span>}
+          {gl === 'lost' && <span>The graphics chip let go, so this is the map.</span>}
+          {gl === 'failed' && <span>3D couldn’t start here, so this is the map.</span>}
+          {in3D && gl === 'on' && <span>Drag to look round. Pick anyone to go to their desk.</span>}
         </div>
         {phone && (
           <ul className="office-roll mt-4" aria-label="Who sits where">

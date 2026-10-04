@@ -1,0 +1,19 @@
+/* The Scranton office's 3D view and paper toss. Kept beside them rather than
+   in the shared stylesheets; tokens come from the theme. */
+
+.office3d { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: radial-gradient(120% 90% at 50% 20%, #ece9e2, #d6d2c8); box-shadow: var(--shadow-card); }
+.office3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; opacity: 0; transition: opacity 0.5s ease; }
+.office3d[data-ready] .office3d-canvas { opacity: 1; }
+.office3d-canvas:active { cursor: grabbing; }
+.office3d-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: 0.9rem; color: #5b5f66; }
+.office3d-pins { position: absolute; inset: 0; pointer-events: none; }
+.office3d-pin { position: absolute; left: 0; top: 0; translate: none; pointer-events: auto; visibility: hidden; will-change: transform; transition: background-color 0.15s ease, scale 0.15s ease; }
+.office3d-pin:hover { scale: 1.12; }
+.office3d-pin[aria-pressed='true'] { scale: 1.18; }
+.office3d-controls { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+.office3d-controls button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 999px; background: rgba(255, 255, 255, 0.88); color: #1d2129; font-size: 1.15rem; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.4); }
+.office3d-controls button:hover { background: #fff; }
+.office3d-controls button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.office3d-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted); }
+@media (max-width: 639px) { .office3d { aspect-ratio: 4 / 3; } .office3d-pin { width: 22px; height: 22px; font-size: 0.6rem; } .office3d-controls button { width: 40px; height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .office3d-canvas { transition: none; } }
