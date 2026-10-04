@@ -113,7 +113,7 @@ const PAGES = {
     title: 'The universe',
     tips: [
       ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing or Han and Chewie’s Falcon. Each crew has something to say about every place you reach, and each ship sounds like itself.'],
-      ['Fly', 'W A S D or the arrows, Space to boost, F to fire; on a phone, drag anywhere on the map, hold Boost and tap Fire. M pulls out to the whole map.'],
+      ['Fly', 'W A S D or the arrows, R to climb and C to dive (Page Up and Page Down work too), Space to boost, F to fire; on a phone, drag anywhere on the map, hold the arrow buttons to climb and dive, hold Boost and tap Fire. M pulls out to the whole map. The gauge on the left shows how high above or below the map you are.'],
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash (the crew will have words), then come back beside it.'],
       ['Traffic', 'You’re not alone out here: TIE fighters and X-wings if you fly with Luke or Han, Federation patrols, Gromflomites, Meeseeks and Birdperson if you fly with Rick. Now and then some come your way; you can shoot them down.'],
       ['Go somewhere', 'The stations round the sun are the site’s pages; the planets are its worlds. Fly close to one, or pick it by name and the ship takes you. E (or the panel’s button) lands or docks.'],

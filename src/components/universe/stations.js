@@ -172,8 +172,9 @@ uniform float uFrom;
 varying vec2 vUv;
 varying float vFace;
 void main() {
-  float along = mix(vUv.y, 1.0 - vUv.y, uFrom);
-  gl_FragColor = vec4(uColor * pow(along, 1.8) * pow(vFace, 1.6), 1.0);
+  // (clamped: at an edge a sample can land just outside the triangle, and pow() below zero is NaN)
+  float along = clamp(mix(vUv.y, 1.0 - vUv.y, uFrom), 0.0, 1.0);
+  gl_FragColor = vec4(uColor * pow(along, 1.8) * pow(clamp(vFace, 0.0, 1.0), 1.6), 1.0);
   #include <colorspace_fragment>
 }`;
 const coneMat = (color, k, from = 0) =>
@@ -945,7 +946,8 @@ export const STATIONS = {
           uv.x += step(0.96, hash(tick)) * (hash(floor(uv.y * 30.0) + tick) - 0.5) * 0.03;
           vec3 ink = texture2D(uMap, uv).rgb;
           float scan = 0.78 + 0.22 * sin(uv.y * 210.0 - uTime * 3.0);
-          float sweep = exp(-pow((fract(uTime * 0.12) * 1.5 - 0.25 - uv.y) * 12.0, 2.0));
+          float off = (fract(uTime * 0.12) * 1.5 - 0.25 - uv.y) * 12.0;
+          float sweep = exp(-off * off);
           float flicker = 0.93 + 0.07 * sin(uTime * 31.0) * sin(uTime * 7.3);
           vec2 e = min(uv, 1.0 - uv);
           float rim = smoothstep(0.022, 0.0, min(e.x, e.y * 0.75));

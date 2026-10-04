@@ -76,12 +76,15 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows to fly
               </li>
               <li className="universe-keys-board">
+                <kbd>R</kbd> to climb, <kbd>C</kbd> to dive
+              </li>
+              <li className="universe-keys-board">
                 <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the whole map
               </li>
               <li className="universe-keys-board">
                 <kbd>E</kbd> to land or dock where you are
               </li>
-              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold Boost to go fast, and tap Fire</li>
+              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to climb and dive, hold Boost to go fast, and tap Fire</li>
               <li className="universe-keys-touch">Tap a planet or a station to fly there</li>
             </ul>
             <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
