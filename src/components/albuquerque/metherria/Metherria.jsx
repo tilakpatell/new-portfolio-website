@@ -36,6 +36,9 @@ import { buzz, useKeys } from './keys';
 // finer cut and stickers. The career is kept between visits.
 
 const sfx = () => import('../../../lib/sfx');
+const clip = (id, opts) => import('../../../lib/clips').then((c) => c.playClip(id, opts));
+// what some of them say as they come to the hatch (once a shift)
+const HELLO = { jesse: 'jesseRing', saul: 'saulHi', gus: 'gusHello' };
 const STORE = 'tp-metherria';
 const STATIONS = [
   ['order', 'Order'],
@@ -193,18 +196,25 @@ export default function Metherria() {
     const idle = !sh.lobby.length && !sh.tickets.length && sh.next < sh.day.queue.length;
     if (idle) sh.clock = Math.max(sh.clock, sh.day.queue[sh.next].arrive);
     let changed = false;
+    let said = false;
     while (sh.next < sh.day.queue.length && sh.day.queue[sh.next].arrive <= sh.clock) {
+      const who = sh.day.queue[sh.next].customer;
       sh.lobby.push(sh.day.queue[sh.next]);
       sh.next += 1;
       changed = true;
       sfx().then((x) => x.knock(undefined, undefined, 0.02));
+      sh.heard ??= {};
+      if (HELLO[who] && !sh.heard[who] && !said) {
+        sh.heard[who] = said = true;
+        clip(HELLO[who], { when: 0.5 });
+      }
     }
     // Hank, once a shift from day three, while something's cooking
     if (sh.raidAt != null && sh.clock >= sh.raidAt && stationRef.current !== 'order' && sh.tickets.some((t) => stationOf(t.stage) === stationRef.current)) {
       sh.raidAt = null;
       const t = sh.tickets.find((x) => stationOf(x.stage) === stationRef.current);
       setRaid({ left: RAID_SECONDS, ticket: t.id });
-      sfx().then((x) => x.alarm());
+      clip('hankRing').then((h) => !h && sfx().then((x) => x.alarm()));
       buzz(120);
     }
     if (changed || sh.clock - lastRefresh.current > 0.5) {
@@ -316,10 +326,11 @@ export default function Metherria() {
     if (after.index > before.index) {
       setRankUp({ title: after.title, brings: newAt(after.index) });
       sfx().then((x) => x.victory());
-      if (after.title === 'Heisenberg') import('../../../lib/clips').then((cl) => cl.playClip('sayMyName'));
+      if (after.title === 'Heisenberg') clip('sayMyName');
     } else setRankUp(null);
     if (total >= 95) unlock('bluesky');
     sfx().then((x) => (mood === 'great' ? x.applause() : mood === 'bad' ? x.buzz() : x.coin()));
+    if (ticket.order.customer === 'tuco' && (mood === 'great' || mood === 'good')) clip('tight', { when: 0.3 });
     buzz(mood === 'great' ? 40 : 20);
     setResult(done);
     setActiveId(sh.tickets[0]?.id ?? null);
@@ -353,6 +364,7 @@ export default function Metherria() {
     if (c !== career) {
       save(c);
       sfx().then((x) => x.coin());
+      if (id === 'billboard') clip('callSaul', { when: 0.25 });
     }
   };
 
@@ -471,11 +483,11 @@ export default function Metherria() {
     </div>
   ) : !three.on ? (
     <div className="wm-card" role="note">
-      <p className="wm-card-title">3D is switched off.</p>
-      <p className="wm-card-text">Walt’s Metherria only comes in 3D. Turn it on to play.</p>
+      <p className="wm-card-title">{three.held ? 'The 3D isn’t loaded yet.' : '3D is switched off.'}</p>
+      <p className="wm-card-text">{three.held ? `Walt’s Metherria only comes in 3D: about ${three.hold.mb} MB. Load it to play.` : 'Walt’s Metherria only comes in 3D. Turn it on to play.'}</p>
       <div className="wm-row">
         <button type="button" className="btn btn-primary" onClick={() => three.set('auto')}>
-          Turn 3D on
+          {three.held ? 'Load the 3D' : 'Turn 3D on'}
         </button>
       </div>
     </div>

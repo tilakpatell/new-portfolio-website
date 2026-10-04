@@ -35,6 +35,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { reatlas } from './reatlas.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
@@ -100,16 +101,16 @@ export const ASSETS = {
 // Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
 // as the robot (the game changes one into the other); the jets; the bosses.
 const ROLLOUT = {
-  optimus: { rig: true, height: 2.7, poly: 16000, tex: 1024, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
-  'optimus-truck': { rig: false, poly: 12000, tex: 1024, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
-  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 1024, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
-  'bumblebee-car': { rig: false, poly: 12000, tex: 1024, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
+  optimus: { rig: true, height: 2.7, poly: 16000, tex: 768, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
+  'optimus-truck': { rig: false, poly: 12000, tex: 768, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
+  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 768, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
+  'bumblebee-car': { rig: false, poly: 12000, tex: 768, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
   vehicon: { rig: true, height: 2.6, poly: 9000, tex: 512, prompt: `A Vehicon trooper from Transformers Prime: a lean faceless Decepticon soldier robot in dark gunmetal armour with purple trim, one red visor across the face, a blaster on the right arm. ${BODY}` },
   'vehicon-car': { rig: false, poly: 8000, tex: 512, prompt: `A Vehicon's vehicle mode from Transformers Prime: a dark gunmetal four-door sports sedan with purple trim and a purple Decepticon emblem on the hood. ${CAR}` },
   seeker: { rig: false, poly: 8000, tex: 512, prompt: `A Decepticon seeker jet from Transformers: a dark grey fighter jet with swept wings, twin tail fins and purple Decepticon emblems on the wings. ${PROP}` },
-  starscream: { rig: false, poly: 12000, tex: 1024, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
-  shockwave: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
-  megatron: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
+  starscream: { rig: false, poly: 12000, tex: 512, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
+  shockwave: { rig: true, height: 8, poly: 16000, tex: 512, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
+  megatron: { rig: true, height: 8, poly: 16000, tex: 512, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
 };
 for (const [n, a] of Object.entries(ROLLOUT)) ASSETS[n] = { ...a, set: 'rollout', style: REAL, pbr: true };
 
@@ -175,120 +176,13 @@ async function each(names, fn, at = 4) {
   await Promise.all(Array.from({ length: at }, worker));
 }
 
-// A texture down to `size` pixels without its islands running together.
-// Meshy packs an atlas's islands edge to edge, so a plain resize (and a
-// mipmap) mixes each island's rim with its neighbour's colour: light seams
-// on a dark suit. Here a texel averages only the texels the mesh uses, and
-// what the mesh doesn't use is filled outward from what it does.
-async function shrinkAtlas(doc, size) {
-  const root = doc.getRoot();
-  for (const texture of root.listTextures()) {
-    const { data, info } = await sharp(texture.getImage()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-    const W = info.width;
-    const f = Math.round(W / size);
-    if (info.height !== W || f < 2 || W !== f * size) continue; // (textureCompress resizes it)
-    // the texels the mesh uses: any whose centre is in or just by a triangle
-    const used = new Uint8Array(W * W);
-    const a = [];
-    const b = [];
-    const c = [];
-    for (const mesh of root.listMeshes())
-      for (const prim of mesh.listPrimitives()) {
-        const uv = prim.getAttribute('TEXCOORD_0');
-        const idx = prim.getIndices();
-        if (!uv || !idx) continue;
-        for (let t = 0; t < idx.getCount(); t += 3) {
-          uv.getElement(idx.getScalar(t), a);
-          uv.getElement(idx.getScalar(t + 1), b);
-          uv.getElement(idx.getScalar(t + 2), c);
-          const x = [a[0] * W - 0.5, b[0] * W - 0.5, c[0] * W - 0.5];
-          const y = [a[1] * W - 0.5, b[1] * W - 0.5, c[1] * W - 0.5];
-          const area = (x[1] - x[0]) * (y[2] - y[0]) - (x[2] - x[0]) * (y[1] - y[0]);
-          const sign = area < 0 ? -1 : 1;
-          const x0 = Math.max(0, Math.floor(Math.min(...x)) - 1);
-          const x1 = Math.min(W - 1, Math.ceil(Math.max(...x)) + 1);
-          const y0 = Math.max(0, Math.floor(Math.min(...y)) - 1);
-          const y1 = Math.min(W - 1, Math.ceil(Math.max(...y)) + 1);
-          for (let py = y0; py <= y1; py++)
-            for (let px = x0; px <= x1; px++) {
-              let inside = true;
-              for (let e = 0; e < 3 && inside; e++) {
-                const n = (e + 1) % 3;
-                const ex = x[n] - x[e];
-                const ey = y[n] - y[e];
-                const len = Math.hypot(ex, ey);
-                // how far inside this edge, in texels (a sliver counts by its box)
-                if (len > 1e-6 && (sign * (ex * (py - y[e]) - ey * (px - x[e]))) / len < -0.75) inside = false;
-              }
-              if (inside) used[py * W + px] = 1;
-            }
-        }
-      }
-    const out = new Uint8Array(size * size * 3);
-    const got = new Uint8Array(size * size);
-    for (let ty = 0; ty < size; ty++)
-      for (let tx = 0; tx < size; tx++) {
-        let r = 0;
-        let g = 0;
-        let bl = 0;
-        let n = 0;
-        for (let sy = ty * f; sy < ty * f + f; sy++)
-          for (let sx = tx * f; sx < tx * f + f; sx++) {
-            if (!used[sy * W + sx]) continue;
-            const i = (sy * W + sx) * 3;
-            r += data[i];
-            g += data[i + 1];
-            bl += data[i + 2];
-            n++;
-          }
-        if (!n) continue;
-        const o = (ty * size + tx) * 3;
-        out[o] = r / n;
-        out[o + 1] = g / n;
-        out[o + 2] = bl / n;
-        got[ty * size + tx] = 1;
-      }
-    // the rest, a ring at a time, from the filled texels round them
-    for (let left = true; left; ) {
-      left = false;
-      const add = [];
-      for (let ty = 0; ty < size; ty++)
-        for (let tx = 0; tx < size; tx++) {
-          if (got[ty * size + tx]) continue;
-          let r = 0;
-          let g = 0;
-          let bl = 0;
-          let n = 0;
-          for (let dy = -1; dy <= 1; dy++)
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = tx + dx;
-              const ny = ty + dy;
-              if (nx < 0 || ny < 0 || nx >= size || ny >= size || !got[ny * size + nx]) continue;
-              const i = (ny * size + nx) * 3;
-              r += out[i];
-              g += out[i + 1];
-              bl += out[i + 2];
-              n++;
-            }
-          if (n) add.push(ty * size + tx, r / n, g / n, bl / n);
-        }
-      for (let i = 0; i < add.length; i += 4) {
-        out.set([add[i + 1], add[i + 2], add[i + 3]], add[i] * 3);
-        got[add[i]] = 1;
-        left = true;
-      }
-    }
-    texture.setImage(await sharp(out, { raw: { width: size, height: size, channels: 3 } }).png().toBuffer()).setMimeType('image/png');
-  }
-}
-
 // For the web: textures to WebP at `tex` pixels, geometry meshopt-compressed.
 // A clip keeps only its skeleton and animation. A figure the browser poses
-// (`posed`) loses its clips, and its texture is shrunk island by island. (Its
+// (`posed`) loses its clips, and goes onto a new atlas of `tex` pixels. (Its
 // triangles are left alone: the simplifier doesn't weigh the texture, and
 // pulls the faces about.)
 let io = null;
-async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) {
+async function squeeze(from, to, { tex = 0, clip = false, posed = false, high = false } = {}) {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
@@ -310,9 +204,12 @@ async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) 
       for (const part of [...a.listChannels(), ...a.listSamplers()]) part.dispose();
       a.dispose();
     }
-    await shrinkAtlas(doc, tex);
+    await reatlas(doc, tex);
   }
-  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed ? 'high' : 'medium' }));
+  // (`high`: Roll out's, squeezed harder and without tangents, which three.js
+  // works out per pixel for the normal map)
+  if (high) for (const m of root.listMeshes()) for (const p of m.listPrimitives()) p.setAttribute('TANGENT', null);
+  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed || high ? 'high' : 'medium' }));
   await io.write(to, doc);
 }
 
@@ -443,7 +340,7 @@ const steps = {
         const raw = join(tmp, `${s[n].rig ?? s[n].model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
         await mkdir(out, { recursive: true });
-        await squeeze(raw, join(out, file), { tex, clip, posed });
+        await squeeze(raw, join(out, file), { tex, clip, posed, high: a.set === 'rollout' && !clip });
       }
       if (a.set === 'rollout') fetched.add(n);
       if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };

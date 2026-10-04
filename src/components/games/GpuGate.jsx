@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { RiCpuLine, RiFileCopyLine, RiRefreshLine, RiRestartLine } from 'react-icons/ri';
 import { reprobe, use3D } from '../../lib/gpu';
-import { storage } from '../../lib/hooks';
+import { storage, useInView } from '../../lib/hooks';
 import { STEPS, thisBrowser } from './accel';
 import './games.css';
 
@@ -10,6 +10,11 @@ import './games.css';
 // all) the visitor gets an apology and the steps to turn it on in their own
 // browser, instead of a game that crawls or a blank box. If the GPU goes
 // away mid-game, the game reports it here and gets a Restart button.
+//
+// The game itself only mounts (and starts downloading its models and
+// textures) once its frame comes within a screen and a half of the view, so
+// opening a page doesn't fetch a game the visitor hasn't scrolled to; until
+// then the frame holds its place, the same size.
 //
 // children({ soft, fail }): soft is true when the game is running on
 // software WebGL because the visitor asked to play anyway; fail(reason)
@@ -88,6 +93,7 @@ export default function GpuGate({ children, className = '' }) {
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState('');
   const fail = useCallback((reason) => setFailure(reason === 'lost' ? 'lost' : 'failed'), []);
+  const [frame, near] = useInView({ once: true, rootMargin: '150% 0px 150% 0px' });
 
   const status = three.status;
   const soft = status === 'software';
@@ -111,6 +117,23 @@ export default function GpuGate({ children, className = '' }) {
     setFailure(null);
     setAttempt((n) => n + 1);
   };
+
+  // the world round the game is waiting to be asked before it downloads 3D
+  // (a phone, Data Saver, short of space: components/worlds/WorldGate)
+  if (three.held && three.mode !== 'off')
+    return (
+      <Card
+        className={className}
+        title="This game is drawn in 3D."
+        actions={
+          <button type="button" className="btn btn-primary btn-sm" onClick={three.hold.load}>
+            Load the 3D{three.hold.mb ? ` (about ${three.hold.mb} MB)` : ''}
+          </button>
+        }
+      >
+        <p className="gate-lede">To save your data and battery, {three.hold.name ?? 'this world'} hasn’t downloaded its 3D yet. Load it to play.</p>
+      </Card>
+    );
 
   if (three.mode === 'off')
     return (
@@ -166,6 +189,8 @@ export default function GpuGate({ children, className = '' }) {
         {failure === 'lost' ? <p className="gate-lede">That happens after a driver update, when the computer wakes from sleep, or with a lot of tabs open.</p> : soft ? <Steps status={status} /> : <p className="gate-lede">Something in this browser stopped the 3D from starting. Reloading the page usually clears it.</p>}
       </Card>
     );
+
+  if (!near) return <div ref={frame} className={`gate ${className}`} aria-hidden="true" />;
 
   return <div key={attempt} className="contents">{children({ soft, fail })}</div>;
 }

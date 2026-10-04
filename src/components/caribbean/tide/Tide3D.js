@@ -1,7 +1,9 @@
 // Dead man's tide, drawn: the game in ./rules.js as a WebGL scene. The sea
 // and sky are ./sea.js, the smoke and foam ./fx.js; the ships, the kraken and
 // the islands are models made for the site with Meshy (scripts/caribbean.mjs),
-// lit by the sky they sit under. Your ship and the navy load first; the rest
+// lit by the sky they sit under. Captain Jack Sparrow (also Meshy's, rigged,
+// with an idle clip) stands at the Black Pearl's helm, and the title screen
+// looks over his shoulder. Your ship, he and the navy load first; the rest
 // arrive while you sail and appear when they land.
 //
 // render(g, ms, view) draws one frame of a game: it reads g and g.events and
@@ -10,13 +12,14 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createStage } from '../../../lib/stage3d';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, TIDE, bearing, fitted } from './rules';
 
 const BASE = '/games/caribbean';
-const FIRST = ['pearl', 'navy']; // what a game can't start without
+const FIRST = ['pearl', 'navy', 'jack']; // what a game can't start without
 const LATER = ['palms', 'port', 'skull', 'fort', 'chest', 'ghost', 'tentacle', 'kraken'];
 
 // How each model sits in the sea: `draft` is how much of it is under water,
@@ -90,7 +93,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
       m.metalness = Math.min(m.metalness, 0.35);
       m.envMapIntensity = 0.9;
     });
-    models.set(name, { root, box, size: box.getSize(new THREE.Vector3()) });
+    models.set(name, { root, box, size: box.getSize(new THREE.Vector3()), clips: gltf.animations ?? [] });
   };
   let landed = 0;
   await Promise.all(
@@ -168,6 +171,36 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   let lastGame = null;
   const shells = []; // mortar shells in the air
 
+  // The captain at the Pearl's helm: on the quarterdeck, facing the bow. The
+  // deck under him is found with a plumb line, so he stands on the model as
+  // it is: her main deck is about 3.3 above the water, the quarterdeck 4.9
+  // and the poop deck behind it 7.3, and it is the quarterdeck that's wanted.
+  const plumb = new THREE.Raycaster();
+  const DOWN = new THREE.Vector3(0, -1, 0);
+  const captain = (tilt, hull, s) => {
+    const src = models.get('jack');
+    if (!src) return null;
+    const figure = cloneSkinned(src.root);
+    const k = 2.9 / src.size.y;
+    figure.scale.setScalar(k);
+    const x = s.len * 0.235; // toward the stern: her bow is −x
+    tilt.updateWorldMatrix(true, true);
+    plumb.set(new THREE.Vector3(x, 200, 0).applyMatrix4(tilt.matrixWorld), DOWN);
+    const decks = plumb.intersectObject(hull, true).map((h) => tilt.worldToLocal(h.point.clone()).y).filter((y) => y > 3.9 && y < 5.7);
+    const deck = decks.length ? Math.max(...decks) : 4.9;
+    figure.position.set(x, deck - src.box.min.y * k, 0);
+    figure.rotation.y = -Math.PI / 2; // facing the bow
+    figure.traverse((m) => {
+      if (m.isMesh) m.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+    });
+    tilt.add(figure);
+    const mixer = new THREE.AnimationMixer(figure);
+    if (src.clips[0]) mixer.clipAction(src.clips[0]).play();
+    // where the title screen stands (on the main deck ahead of him, looking aft: the captain to the right of
+    // the picture, the stern lantern and the sky behind) and what it looks at
+    return { mixer, eye: new THREE.Vector3(x - 5.0, deck + 2.5, 0.9), gaze: new THREE.Vector3(x + 2, deck + 2.25, -1.9) };
+  };
+
   const makeShip = (s) => {
     const spec = SHIP[s.kind];
     // a ship whose own model hasn't landed yet sails as a navy ship until it does
@@ -180,7 +213,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     root.add(tilt);
     scene.add(root);
     if (s.kind === 'ghost') for (const m of c.mats) m.emissive = new THREE.Color(0.02, 0.14, 0.07);
-    return { root, tilt, mats: c.mats, spec, stand, h: 0, pitch: 0, roll: 0, kick: 0, kickV: 0, wake: 0, smoke: 0, base: s.kind === 'ghost' ? new THREE.Color(0.02, 0.14, 0.07) : new THREE.Color(0, 0, 0) };
+    return { root, tilt, mats: c.mats, spec, stand, captain: s.kind === 'pearl' ? captain(tilt, c.model, s) : null, h: 0, pitch: 0, roll: 0, kick: 0, kickV: 0, wake: 0, smoke: 0, base: s.kind === 'ghost' ? new THREE.Color(0.02, 0.14, 0.07) : new THREE.Color(0, 0, 0) };
   };
 
   const flash = new THREE.Color();
@@ -397,8 +430,10 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   };
 
   // ── the camera: behind the ship, swung by `look` to face a broadside ──
-  const cam = { yaw: 0, look: 0, x: 0, z: 0, set: false, t: 0 };
+  const cam = { yaw: 0, look: 0, x: 0, z: 0, set: false, t: 0, deck: 1 }; // deck: 1 on the quarterdeck (the title), 0 in the chase view
   const target = new THREE.Vector3();
+  const deckAt = new THREE.Vector3();
+  const deckTo = new THREE.Vector3();
   const noise = (t, s) => {
     const x = Math.sin(t * 12.9898 + s * 78.233) * 43758.5453;
     return (x - Math.floor(x)) * 2 - 1;
@@ -431,10 +466,21 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     camera.position.set(cam.x - Math.cos(yaw) * back, up + sink * 10, cam.z - Math.sin(yaw) * back);
     camera.position.y = Math.max(camera.position.y, sea.height(camera.position.x, camera.position.z) + 5);
     target.set(cam.x + Math.cos(yaw) * lerp(16, 34, side), 8 - sink * 6, cam.z + Math.sin(yaw) * lerp(16, 34, side));
+    // The title screen stands on the quarterdeck, behind the captain's
+    // shoulder; weighing anchor pulls back from there to the chase view.
+    cam.deck += ((view.deck ? 1 : 0) - cam.deck) * (1 - Math.exp(-dt * (view.deck ? 3 : 0.9)));
+    const helm = ships.get(p.id);
+    const onDeck = helm?.captain && !p.sunk ? ease(clamp(cam.deck, 0, 1)) : 0;
+    if (onDeck > 0.001) {
+      deckAt.copy(helm.captain.eye).applyMatrix4(helm.tilt.matrixWorld);
+      deckTo.copy(helm.captain.gaze).applyMatrix4(helm.tilt.matrixWorld);
+      camera.position.lerp(deckAt, onDeck);
+      target.lerp(deckTo, onDeck);
+    }
     camera.lookAt(target);
     // a kick of the lens on a broadside, and the deck shaking under a hit
     fovKick = Math.max(0, fovKick - dt * 3.2);
-    const fov = 50 + (p.v / 30) * 4 + fovKick * fovKick * 2.2;
+    const fov = lerp(50 + (p.v / 30) * 4 + fovKick * fovKick * 2.2, 46, onDeck);
     if (Math.abs(camera.fov - fov) > 0.02) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -499,6 +545,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
         ships.set(s.id, o);
       }
       poseShip(o, s, dt);
+      o.captain?.mixer.update(dt);
       trail(o, s, dt, s.max);
       if (!s.sunk && s.under < 0.3) {
         // where the hull meets the water: froth round it, and its shade under it

@@ -13,6 +13,7 @@ import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { budget, pixelRatio } from '../../lib/device';
 
 const SCALE = 10; // sheet units to one of the scene's
 const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
@@ -24,8 +25,9 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
-  renderer.shadowMap.enabled = true;
+  // lib/device: less sharp, and no shadows, on a weak device
+  renderer.setPixelRatio(pixelRatio(1.5));
+  renderer.shadowMap.enabled = budget().shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x140d08);
@@ -87,6 +89,11 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   let candleLit = false;
   let alive = false;
   let t = 0;
+  // the visitor's own look about on the map: a pan and a zoom on top of the
+  // page's view, and whether a hurried walk (to open a place) is on
+  const user = { x: 0, z: 0, zoom: 1 };
+  let hurry = false;
+  let hub = false;
 
   // { at: [x, y] on the sheet or null for the whole map, zoom, mordor, dark,
   //   alive: the candle flickers (it keeps drawing), lean: [-1..1, -1..1] the
@@ -98,13 +105,23 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     want.x = x + (hx - x) * 0.04;
     want.z = z + (hz - z) * 0.04;
     // a tall screen can't hold the whole sheet: show its middle, bigger
-    want.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 1.75 : 3.05);
+    want.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 0.8 : 3.05);
     want.m = mordor ? 1 : 0;
     want.n = dark ? 1 : 0;
     want.lx = lean[0];
     want.lz = lean[1];
     candleLit = dark && live;
     alive = live;
+    hub = !spot && live;
+  };
+
+  let dragging = false;
+  // keep the middle of the view on the sheet
+  const clampUser = () => {
+    const lx = SHEET.w / SCALE / 2;
+    const lz = SHEET.h / SCALE / 2;
+    user.x = Math.max(-lx - want.x, Math.min(lx - want.x, user.x));
+    user.z = Math.max(-lz - want.z, Math.min(lz - want.z, user.z));
   };
 
   // Where a point on the sheet is on the screen, in CSS pixels of the canvas.
@@ -144,16 +161,29 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     t += dt;
     // on a walk the camera follows Frodo, close
     Object.assign(goal, want);
-    if (world.walking) {
+    if (hurry && !world.walking) hurry = false;
+    if (hurry) {
       goal.x = world.frodo.x;
       goal.z = world.frodo.z;
       goal.zoom = 1.15;
+    } else if (hub) {
+      // on the map: the visitor's pan and zoom, and Frodo kept in view as he walks
+      if (world.walking && !dragging) {
+        v.copy(world.frodo).project(camera);
+        if (Math.abs(v.x) > 0.45 || Math.abs(v.y) > 0.45) {
+          user.x += (world.frodo.x - (want.x + user.x)) * Math.min(1, dt * 1.6);
+          user.z += (world.frodo.z - (want.z + user.z)) * Math.min(1, dt * 1.6);
+        }
+      }
+      goal.x = want.x + user.x;
+      goal.z = want.z + user.z;
+      goal.zoom = want.zoom * user.zoom;
     }
-    const k = 1 - Math.exp(-(world.walking ? 3.5 : 2.4) * slow * dt);
+    const k = 1 - Math.exp(-(hurry ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
     const kl = 1 - Math.exp(-4 * dt);
     let far = 0;
     for (const key of ['x', 'z', 'zoom', 'm', 'n', 'lx', 'lz']) far += Math.abs(goal[key] - cur[key]) * (key === 'x' || key === 'z' ? 1 : 4);
-    const moving = first || far > 0.004 || world.walking;
+    const moving = first || far > 0.004 || world.walking || hurry;
     // on the map itself the world is alive (smoke, the Eye, the hobbits):
     // keep drawing; behind a chapter, only while the camera moves
     if (!moving && !alive && !candleLit) return false;
@@ -201,8 +231,73 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     // send Frodo and Sam down the road to a stop; how long they'll take, in ms
     travel: (stop) => {
       const ms = world.walkTo(stop);
+      hurry = ms > 0;
       first = true;
       return ms;
+    },
+    // ── the visitor's hands on the map ──
+    // drag: move the map with the pointer, by a screen delta in px
+    panBy(dx, dy, x = size.w / 2, y = size.h / 2) {
+      const a = unproject(x, y);
+      const b = unproject(x + dx, y + dy);
+      if (!a || !b) return;
+      user.x -= (b.x - a.x) / SCALE;
+      user.z -= (b.y - a.y) / SCALE;
+      clampUser();
+      first = true;
+    },
+    // zoom by a factor (below 1 is closer) towards a point on the screen
+    zoomBy(f, x = size.w / 2, y = size.h / 2) {
+      const before = user.zoom;
+      user.zoom = Math.max(0.3, Math.min(1.3, user.zoom * f));
+      const k = user.zoom / before;
+      const p = unproject(x, y);
+      if (p) {
+        const px = (p.x - SHEET.w / 2) / SCALE;
+        const pz = (p.y - SHEET.h / 2) / SCALE;
+        user.x += (px - (want.x + user.x)) * (1 - k);
+        user.z += (pz - (want.z + user.z)) * (1 - k);
+      }
+      clampUser();
+      first = true;
+    },
+    holding(on) {
+      dragging = on;
+    },
+    resetView() {
+      Object.assign(user, { x: 0, z: 0, zoom: 1 });
+      first = true;
+    },
+    // centre the map on Frodo (a phone shows only part of it)
+    lookAtFrodo() {
+      user.x = world.frodo.x - want.x;
+      user.z = world.frodo.z - want.z;
+      clampUser();
+      first = true;
+    },
+    // a tap: who's there, or where on the sheet it landed
+    tap(x, y) {
+      ndc.set((x / size.w) * 2 - 1, 1 - (y / size.h) * 2);
+      world.ray.setFromCamera(ndc, camera);
+      const who = world.pick(world.ray);
+      if (who) return { who };
+      const p = unproject(x, y);
+      return p ? { at: [p.x, p.y] } : null;
+    },
+    say: (id) => world.say(id),
+    walkToSheet(x, y) {
+      world.walkToPoint((x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE);
+    },
+    drive: (dx, dz) => world.drive(dx, dz),
+    on: (f) => world.on(f),
+    // where someone's head is on the screen, for a speech bubble
+    headOf(id) {
+      if (!world.headOf(id, v)) return null;
+      v.project(camera);
+      return { x: ((v.x + 1) / 2) * size.w, y: ((1 - v.y) / 2) * size.h, on: v.z < 1 };
+    },
+    get frodoSheet() {
+      return { x: world.frodo.x * SCALE + SHEET.w / 2, y: world.frodo.z * SCALE + SHEET.h / 2 };
     },
     place: (stop) => world.place(stop),
     get walking() {

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { use3D } from '../../lib/gpu';
 import { prefersReducedMotion, useFrameLoop } from '../../lib/hooks';
-import { register } from './hq/useStage';
+import { register, useLive } from './hq/useStage';
 import { APRON, arcPt, BERM, BRIDGE, C, CRES, CRES_FOOT, depthOf, GATE, HANGAR, K, LAB, LAWN, OX, OY, P, PROW, RIVER, ROADS, SHORE, SPOTS, STALLS, TRAINING, TREES, VH, VW } from './compound/plan';
 
 // The Avengers compound in upstate New York, from the air, in isometric: the
@@ -485,42 +485,20 @@ function Pin({ id, n, current, onPick, title, stone }) {
   );
 }
 
-// The compound in 3D (./compound/scene.js), over the drawing: made when the
-// map comes near the screen, drawn while it's on screen, let go a while after
-// it's left. The drawing stays underneath until the 3D is ready, and comes
-// back if the 3D can't start or loses its graphics chip.
-const DROP_AFTER = 8000;
+// The compound in 3D (./compound/scene.js), over the drawing: made when it's
+// the page's live 3D view (hq/useStage's useLive: one at a time), drawn while
+// it's on screen. The drawing stays underneath until the 3D is ready, and
+// comes back when another view takes over, or if the 3D can't start or loses
+// its graphics chip.
 const load3d = () => import('./compound/scene');
 function useCompound3D(enabled) {
   const wrap = useRef(null);
   const canvas = useRef(null);
   const view = useRef(null);
   const [status, setStatus] = useState('idle'); // idle | loading | on | failed
-  const [near, setNear] = useState(false);
-  const [visible, setVisible] = useState(false);
   const calm = useRef(typeof window !== 'undefined' && prefersReducedMotion());
 
-  useEffect(() => {
-    const el = wrap.current;
-    if (!enabled || !el || typeof IntersectionObserver === 'undefined') return undefined;
-    let timer = 0;
-    const nearIO = new IntersectionObserver(
-      ([e]) => {
-        clearTimeout(timer);
-        if (e.isIntersecting) setNear(true);
-        else timer = setTimeout(() => setNear(false), DROP_AFTER);
-      },
-      { rootMargin: '100% 0px 100% 0px' },
-    );
-    const seenIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.02 });
-    nearIO.observe(el);
-    seenIO.observe(el);
-    return () => {
-      clearTimeout(timer);
-      nearIO.disconnect();
-      seenIO.disconnect();
-    };
-  }, [enabled]);
+  const { active: near, visible } = useLive(wrap, { id: 'compound', enabled, warm: load3d });
 
   useEffect(() => {
     if (!enabled || !near || status === 'failed') return undefined;

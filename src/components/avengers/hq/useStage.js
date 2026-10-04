@@ -1,18 +1,99 @@
-// A game's 3D view, made only when it's needed: it loads when the game comes
-// within a screen or so of the viewport (and 3D is on), draws only while it's
-// on screen, and lets its GPU memory go once it's been far away for a while,
-// so a page of seven games never holds seven contexts it isn't using.
+// A game's 3D view, made only when it's needed. The page has seven games, the
+// map of the compound and Titan, and a phone (or a laptop) can't hold nine
+// WebGL contexts, or build two while you scroll: so there is one live view on
+// the page at a time (useLive, below), the one most on screen once the scrolling
+// settles. It draws only while it's on screen; the others wait with their
+// menus over a dark screen, their code fetched ahead as they come near.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const DROP_AFTER = 8000; // ms far from the viewport before the view is let go
+// ── one live 3D view on the page ──
+const SETTLE = 240; // ms of quiet scrolling before a view is built
+const stages = new Map(); // key → { ratio, set(active) }
+let current = null;
+let timer = 0;
+
+function pick() {
+  timer = 0;
+  let best = null;
+  let bestR = 0;
+  for (const [k, st] of stages) {
+    if (st.ratio > bestR) {
+      best = k;
+      bestR = st.ratio;
+    }
+  }
+  const cur = current && stages.get(current);
+  // the live view keeps it while it's still well in sight, unless another is clearly more so
+  if (cur && cur.ratio >= 0.2 && bestR < Math.max(0.5, cur.ratio + 0.15)) return;
+  if (!best || bestR < 0.3 || best === current) return;
+  cur?.set(false);
+  current = best;
+  stages.get(best).set(true);
+}
+const schedule = () => {
+  clearTimeout(timer);
+  timer = setTimeout(pick, SETTLE);
+};
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  window.__LIVE__ = { stages, get current() { return current; } };
+}
+
+// `active`: this one is the page's live 3D view; `visible`: it's on screen
+export function useLive(ref, { id, enabled = true, warm }) {
+  const [active, setActive] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const warmRef = useRef(warm);
+  warmRef.current = warm;
+  useEffect(() => {
+    const el = ref.current;
+    if (!enabled || !el) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setActive(true);
+      setVisible(true);
+      return undefined;
+    }
+    const key = `${id}:${Math.random().toString(36).slice(2)}`;
+    const st = { ratio: 0, set: setActive };
+    stages.set(key, st);
+    const seen = new IntersectionObserver(
+      ([e]) => {
+        st.ratio = e.isIntersecting ? e.intersectionRatio : 0;
+        setVisible(e.intersectionRatio >= 0.12);
+        schedule();
+      },
+      { threshold: [0, 0.12, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
+    );
+    // its code, fetched as it comes within a screen (not built)
+    let warmed = false;
+    const near = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting || warmed) return;
+        warmed = true;
+        warmRef.current?.()?.catch?.(() => {});
+      },
+      { rootMargin: '100% 0px 100% 0px' },
+    );
+    seen.observe(el);
+    near.observe(el);
+    return () => {
+      seen.disconnect();
+      near.disconnect();
+      stages.delete(key);
+      if (current === key) {
+        current = null;
+        schedule();
+      }
+      setActive(false);
+    };
+  }, [ref, id, enabled]);
+  return { active: enabled && active, visible };
+}
 
 export function useStage(load, { enabled, id, forced = false }) {
   const wrap = useRef(null);
   const canvas = useRef(null);
   const view = useRef(null);
   const [status, setStatus] = useState('idle'); // idle | loading | on | failed | slow | lost
-  const [near, setNear] = useState(false);
-  const [visible, setVisible] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const failed = useRef(false); // a view that failed stays failed until a retry
   const loadRef = useRef(load);
@@ -21,32 +102,8 @@ export function useStage(load, { enabled, id, forced = false }) {
   const forcedRef = useRef(forced);
   forcedRef.current = forced;
 
-  // near the viewport (make it), and on screen (draw it)
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setNear(true);
-      setVisible(true);
-      return undefined;
-    }
-    let dropTimer = 0;
-    const nearIO = new IntersectionObserver(
-      ([e]) => {
-        clearTimeout(dropTimer);
-        if (e.isIntersecting) setNear(true);
-        else dropTimer = setTimeout(() => setNear(false), DROP_AFTER);
-      },
-      { rootMargin: '120% 0px 120% 0px' },
-    );
-    const seenIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.12 });
-    nearIO.observe(el);
-    seenIO.observe(el);
-    return () => {
-      clearTimeout(dropTimer);
-      nearIO.disconnect();
-      seenIO.disconnect();
-    };
-  }, []);
+  // the page's live 3D view (make it), and on screen (draw it)
+  const { active: near, visible } = useLive(wrap, { id, enabled, warm: load });
 
   useEffect(() => {
     if (!enabled || !near || failed.current) {

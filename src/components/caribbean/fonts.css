@@ -1,0 +1,5 @@
+/* The Caribbean's lettering: Pirata One and IM Fell English, both SIL Open
+   Font License. On their own so the pirate themes can load them on any page. */
+@font-face { font-family: 'Pirata One'; font-style: normal; font-weight: 400; font-display: swap; src: url('./fonts/pirata-one.woff2') format('woff2'); }
+@font-face { font-family: 'IM Fell English'; font-style: normal; font-weight: 400; font-display: swap; src: url('./fonts/im-fell-english.woff2') format('woff2'); }
+@font-face { font-family: 'IM Fell English'; font-style: italic; font-weight: 400; font-display: swap; src: url('./fonts/im-fell-english-italic.woff2') format('woff2'); }

@@ -243,15 +243,19 @@ export function buildOptimus(M, tex) {
 
 // ── Bumblebee: a yellow muscle car with black stripes ──
 
-export function buildBumblebee(M, tex) {
+// Knock Out, the Decepticons' medic: Bumblebee's build in crimson and chrome
+export const KNOCKOUT = { body: 0xa30d1b, stripe: 0xc9ced6, armour: 0xb5121f, dark: 0x24262c, grey: 0xb4bac3, eye: 0xff3b3b, metal: 0.55 };
+
+export function buildBumblebee(M, tex, look = {}) {
   const root = new THREE.Group();
   const rig = new Rig(root);
-  const yellow = M.livery(0xf2b705);
-  const black = M.livery(0x161616, { metalness: 0.2 });
-  const yellowA = M.armour(0xf0b400, { roughness: 0.3 });
-  const blackA = M.armour(0x1d1f22);
-  const greyA = M.armour(0x8b929c);
-  const eye = M.lamp(0x61c8ff, 3.4);
+  const L = { body: 0xf2b705, stripe: 0x161616, armour: 0xf0b400, dark: 0x1d1f22, grey: 0x8b929c, eye: 0x61c8ff, metal: 0.35, ...look };
+  const yellow = M.livery(L.body, { metalness: L.metal });
+  const black = M.livery(L.stripe, { metalness: look.stripe != null ? 0.85 : 0.2, roughness: look.stripe != null ? 0.25 : 0.38 / 0.29 });
+  const yellowA = M.armour(L.armour, { roughness: 0.3 });
+  const blackA = M.armour(L.dark);
+  const greyA = M.armour(L.grey);
+  const eye = M.lamp(L.eye, 3.4);
   const head = M.lamp(0xfff4d6, 3);
   const tail = M.lamp(0xff2a2a, 2.2);
 
@@ -332,18 +336,25 @@ export function buildBumblebee(M, tex) {
 
 // ── a Vehicon: a dark sedan that stands up as a Decepticon trooper ──
 
-export function buildVehicon(M, tex) {
+// Breakdown: a Vehicon's build, bigger, in his blue and grey with a yellow
+// optic; and the Autobots' sentries, white and red with blue visors
+export const BREAKDOWN = { shell: 0x2c4a7c, trim: 0xc9a227, grey: 0x707784, accent: 0x34405a, visor: 0xffcc33, scale: 1.12 };
+export const SENTRY = { shell: 0xd9dde3, trim: 0xb3121f, grey: 0x7a818c, accent: 0x1f4aa8, visor: 0x4fd8ff, lights: 0xfff2d6, mark: 'autobot' };
+
+export function buildVehicon(M, tex, look = {}) {
   const root = new THREE.Group();
   const rig = new Rig(root);
-  const shell = M.livery(0x2b2d38, { metalness: 0.55 });
-  const trim = M.livery(0x5a2a86, { metalness: 0.5 });
-  const greyA = M.scarred(0x6c7280);
-  const purpleA = M.scarred(0x4b2475, { metalness: 0.5 });
-  const visor = M.lamp(0xff2b3a, 3.2);
-  const head = M.lamp(0xff3b3b, 2.4);
+  const L = { shell: 0x2b2d38, trim: 0x5a2a86, grey: 0x6c7280, accent: 0x4b2475, visor: 0xff2b3a, lights: 0xff3b3b, mark: 'decepticon', scale: 1, ...look };
+  const shell = M.livery(L.shell, { metalness: 0.55 });
+  const trim = M.livery(L.trim, { metalness: 0.5 });
+  const greyA = M.scarred(L.grey);
+  const purpleA = M.scarred(L.accent, { metalness: 0.5 });
+  const visor = M.lamp(L.visor, 3.2);
+  const head = M.lamp(L.lights, 2.4);
+  root.scale.setScalar(L.scale);
 
   const hood = group(mesh(rbox(1.6, 0.38, 1.2, 0.1), shell, 0, 0, 0), mesh(rbox(0.32, 0.08, 0.05, 0.02), head, -0.56, 0.02, -0.6), mesh(rbox(0.32, 0.08, 0.05, 0.02), head, 0.56, 0.02, -0.6));
-  const ins = decal(tex.decepticon, 0.46);
+  const ins = decal(tex[L.mark], 0.46);
   ins.rotation.x = -Math.PI / 2;
   ins.position.set(0, 0.2, 0.05);
   hood.add(ins);
@@ -381,7 +392,7 @@ export function buildVehicon(M, tex) {
 
 // ── jets: Decepticon seekers, and Starscream in his colours ──
 
-export function buildJet(M, { body = 0x5b5f6a, accent = 0x5a2a86, accent2 = null, scale = 1, tex } = {}) {
+export function buildJet(M, { body = 0x5b5f6a, accent = 0x5a2a86, accent2 = null, scale = 1, tex, mark = 'decepticon' } = {}) {
   const g = new THREE.Group();
   const hull = M.scarred(body, { metalness: 0.65, roughness: 0.38 });
   const acc = M.scarred(accent, { metalness: 0.5, roughness: 0.38 });
@@ -416,9 +427,9 @@ export function buildJet(M, { body = 0x5b5f6a, accent = 0x5a2a86, accent2 = null
     const fl = mesh(new THREE.CircleGeometry(0.15, 12), flame, sd * 0.24, 0, 1.91);
     g.add(fl);
   }
-  if (tex?.decepticon) {
+  if (tex?.[mark]) {
     for (const sd of [-1, 1]) {
-      const d = decal(tex.decepticon, 0.6);
+      const d = decal(tex[mark], 0.6);
       d.rotation.x = -Math.PI / 2;
       d.position.set(sd * 1.3, 0.04, 0.55);
       g.add(d);
@@ -430,15 +441,26 @@ export function buildJet(M, { body = 0x5b5f6a, accent = 0x5a2a86, accent2 = null
 
 // A big robot for the bosses: Shockwave (one optic, an arm cannon) or
 // Megatron (silver, the bucket helm, the fusion cannon).
+// How each boss is painted: its colours, its head (one optic, the bucket
+// helm, or a Prime's helmet with antennae), whose mark it wears, and which
+// arm holds the cannon (Shockwave's left; everyone else's right).
+export const BOSS_LOOK = {
+  shockwave: { main: 0x6c2fb0, second: 0x3a3d48, third: 0xb2a46a, metal: 0.45, rough: 0.38, eye: 0xffd23a, glow: 0xb07bff, head: 'optic', mark: 'decepticon', left: true },
+  megatron: { main: 0x7f8792, second: 0x3a3d45, third: 0x6a6f78, metal: 0.8, rough: 0.36, eye: 0xff2a2a, glow: 0xff5a3a, head: 'bucket', mark: 'decepticon' },
+  magnus: { main: 0x2a5fc0, second: 0xe2e5ea, third: 0xb3121f, metal: 0.55, rough: 0.34, eye: 0x6fd8ff, glow: 0x7fd0ff, head: 'prime', mark: 'autobot', crest: 0xb3121f },
+  optimus: { main: 0xb5121b, second: 0x1f4aa8, third: 0x9aa3ad, metal: 0.5, rough: 0.34, eye: 0x6fd8ff, glow: 0x6fc8ff, head: 'prime', mark: 'autobot' },
+};
+
 export function buildBoss(M, kind, tex) {
   const g = new THREE.Group();
   const rig = new Rig(g);
-  const shock = kind === 'shockwave';
-  const main = M.scarred(shock ? 0x6c2fb0 : 0x7f8792, { metalness: shock ? 0.45 : 0.8, roughness: shock ? 0.38 : 0.36 });
-  const second = M.scarred(shock ? 0x3a3d48 : 0x3a3d45);
-  const third = M.scarred(shock ? 0xb2a46a : 0x6a6f78, { metalness: 0.6 });
-  const eye = M.lamp(shock ? 0xffd23a : 0xff2a2a, 3.6);
-  const glowC = M.lamp(shock ? 0xb07bff : 0xff5a3a, 3);
+  const L = BOSS_LOOK[kind] ?? BOSS_LOOK.megatron;
+  const finish = L.mark === 'autobot' ? M.armour : M.scarred;
+  const main = finish(L.main, { metalness: L.metal, roughness: L.rough });
+  const second = finish(L.second);
+  const third = finish(L.third, { metalness: 0.6 });
+  const eye = M.lamp(L.eye, 3.6);
+  const glowC = M.lamp(L.glow, 3);
   const add = (obj) => {
     rig.add(obj, { p: [obj.position.x, obj.position.y, obj.position.z], r: [obj.rotation.x, obj.rotation.y, obj.rotation.z] }, { p: [obj.position.x, obj.position.y, obj.position.z], r: [obj.rotation.x, obj.rotation.y, obj.rotation.z] });
     return obj;
@@ -447,12 +469,19 @@ export function buildBoss(M, kind, tex) {
   add(mesh(rbox(1.5, 1.1, 0.9, 0.12), main, 0, 2.6, 0));
   add(mesh(rbox(1.1, 0.5, 0.7, 0.1), second, 0, 1.85, 0));
   add(mesh(rbox(1.2, 0.4, 0.75, 0.1), third, 0, 1.45, 0));
-  const ins = decal(tex.decepticon, 0.6);
+  const ins = decal(tex[L.mark], 0.6);
   ins.position.set(0, 2.75, 0.46);
   g.add(ins);
   for (const sd of [-1, 1]) add(mesh(rbox(0.6, 0.5, 0.8, 0.12), main, sd * 1.0, 3.05, 0));
   // head
-  if (shock) {
+  if (L.head === 'prime') {
+    // a Prime's helmet: the faceplate, blue optics, two antennae
+    add(mesh(rbox(0.56, 0.56, 0.56, 0.12), second, 0, 3.6, 0));
+    add(mesh(rbox(0.36, 0.2, 0.1, 0.03), M.steel, 0, 3.46, 0.29));
+    add(mesh(new THREE.BoxGeometry(0.36, 0.06, 0.04), eye, 0, 3.64, 0.3));
+    for (const sd of [-1, 1]) add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.42, 8), second, sd * 0.32, 3.86, 0, 0, 0, sd * -0.12));
+    if (L.crest) add(mesh(rbox(0.1, 0.3, 0.5, 0.03), M.armour(L.crest), 0, 3.95, 0));
+  } else if (L.head === 'optic') {
     add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.6, 18).rotateX(Math.PI / 2), main, 0, 3.55, 0));
     add(mesh(new THREE.CircleGeometry(0.22, 20), eye, 0, 3.55, 0.31));
     for (const sd of [-1, 1]) add(mesh(rbox(0.12, 0.5, 0.3, 0.04), third, sd * 0.4, 3.75, 0, 0, 0, sd * -0.25));
@@ -469,7 +498,7 @@ export function buildBoss(M, kind, tex) {
     arm.position.set(sd * 1.15, 3.0, 0);
     arm.add(mesh(rbox(0.42, 0.8, 0.5, 0.1), second, 0, -0.45, 0));
     arm.add(mesh(rbox(0.48, 0.8, 0.56, 0.1), main, 0, -1.2, 0));
-    if ((shock && sd < 0) || (!shock && sd > 0)) {
+    if ((L.left && sd < 0) || (!L.left && sd > 0)) {
       const barrel = mesh(new THREE.CylinderGeometry(0.22, 0.26, 1.4, 18).rotateX(Math.PI / 2), M.dark, 0, -1.25, 0.65);
       arm.add(barrel);
       const ring = mesh(new THREE.TorusGeometry(0.2, 0.04, 8, 20), glowC, 0, -1.25, 1.36);
