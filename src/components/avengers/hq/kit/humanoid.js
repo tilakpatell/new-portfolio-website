@@ -31,6 +31,29 @@ const BONES = {
   footR: ['kneeR', 0, -0.44, 0],
 };
 const NAMES = Object.keys(BONES);
+// styles built to other proportions move some joints
+const BONES_FOR = {
+  // Hulk: shoulders and hips far wider, a short thick neck, a head sunk
+  // between the trapezius
+  hulk: {
+    hips: [null, 0, 0.95, 0],
+    chest: ['spine', 0, 0.21, 0],
+    neck: ['chest', 0, 0.36, 0.03],
+    head: ['neck', 0, 0.06, 0.02],
+    shoulderL: ['chest', 0.37, 0.25, 0],
+    elbowL: ['shoulderL', 0, -0.33, 0],
+    handL: ['elbowL', 0, -0.3, 0],
+    shoulderR: ['chest', -0.37, 0.25, 0],
+    elbowR: ['shoulderR', 0, -0.33, 0],
+    handR: ['elbowR', 0, -0.3, 0],
+    thighL: ['hips', 0.15, -0.06, 0],
+    kneeL: ['thighL', 0, -0.42, 0],
+    footL: ['kneeL', 0, -0.42, 0],
+    thighR: ['hips', -0.15, -0.06, 0],
+    kneeR: ['thighR', 0, -0.42, 0],
+    footR: ['kneeR', 0, -0.42, 0],
+  },
+};
 
 // Each style: (add) => adds parts as add(bone, material, geometry, placement).
 // Limbs hang down (−y) from their joint; the figure faces +z.
@@ -354,6 +377,82 @@ const STYLES = {
   },
 };
 
+// Hulk: built on the bones in BONES_FOR.hulk. Muscle laid over muscle, the
+// trapezius rising to the ears, fists like anvils, purple trousers torn off
+// below the knee, bare feet. Materials: skin, pants, hair, dark.
+STYLES.hulk = (add) => {
+  const ball = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
+  // the pelvis, in the trousers, the waistband rolled
+  add('hips', 'pants', taper(rbox(0.46, 0.24, 0.31, 0.1), 1, 1.05), { p: [0, -0.03, 0] });
+  add('hips', 'pants', new THREE.TorusGeometry(0.2, 0.035, 8, 24), { p: [0, 0.08, 0], r: [Math.PI / 2, 0, 0], s: [1.12, 0.8, 1] });
+  for (const sd of [-1, 1]) add('hips', 'pants', ball(0.15), { p: [sd * 0.1, -0.07, -0.1], s: [1, 1.05, 0.9] }); // seat
+  // the belly and the obliques
+  add('spine', 'skin', taper(rbox(0.42, 0.26, 0.3, 0.12), 0.96, 1.08), { p: [0, 0.1, 0.01] });
+  for (let i = 0; i < 3; i++)
+    for (const sd of [-1, 1]) add('spine', 'skin', ball(0.058, 10, 8), { p: [sd * 0.055, 0.03 + i * 0.075, 0.15], s: [1, 0.75, 0.45] }); // abs
+  for (const sd of [-1, 1]) add('spine', 'skin', ball(0.12, 12, 10), { p: [sd * 0.17, 0.1, 0.02], s: [0.7, 1.1, 1.1] });
+  // the chest: a barrel, pecs over it, lats flaring at the back
+  add('chest', 'skin', taper(rbox(0.66, 0.42, 0.42, 0.16), 0.74, 1), { p: [0, 0.18, 0] });
+  for (const sd of [-1, 1]) {
+    add('chest', 'skin', ball(0.17, 18, 14), { p: [sd * 0.13, 0.25, 0.13], s: [1.1, 0.75, 0.55] }); // pecs
+    add('chest', 'skin', ball(0.2, 16, 12), { p: [sd * 0.24, 0.13, -0.08], s: [0.65, 1.2, 0.85], r: [0, 0, sd * 0.25] }); // lats
+    add('chest', 'skin', ball(0.16, 16, 12), { p: [sd * 0.14, 0.33, -0.05], s: [1.25, 0.6, 1] }); // trapezius
+    add('chest', 'skin', ball(0.11, 12, 10), { p: [sd * 0.12, 0.2, -0.17], s: [1, 1.2, 0.6] }); // the back, either side of the spine
+  }
+  add('chest', 'skin', taper(rbox(0.3, 0.16, 0.24, 0.08), 1.2, 0.6), { p: [0, 0.39, -0.03] }); // where the traps meet the neck
+  // a short, thick neck
+  add('neck', 'skin', new THREE.CylinderGeometry(0.1, 0.13, 0.14, 16), { p: [0, 0.03, 0] });
+  // the head, small for the body: a heavy brow, a wide jaw, black hair
+  add('head', 'skin', ball(0.11, 20, 16), { p: [0, 0.1, 0.01], s: [0.95, 1.05, 1.08] });
+  add('head', 'skin', rbox(0.17, 0.09, 0.15, 0.04), { p: [0, 0.03, 0.04] }); // jaw
+  add('head', 'skin', rbox(0.17, 0.035, 0.06, 0.015), { p: [0, 0.135, 0.09], r: [-0.25, 0, 0] }); // brow
+  add('head', 'dark', rbox(0.12, 0.012, 0.02, 0.005), { p: [0, 0.035, 0.115] }); // the set mouth
+  for (const sd of [-1, 1]) {
+    add('head', 'dark', ball(0.013, 8, 6), { p: [sd * 0.04, 0.11, 0.1] });
+    add('head', 'skin', ball(0.025, 8, 6), { p: [sd * 0.105, 0.09, 0], s: [0.5, 1, 0.8] }); // ears
+  }
+  add('head', 'hair', new THREE.SphereGeometry(0.122, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), { p: [0, 0.12, -0.01], s: [1, 0.9, 1.08] });
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 6 - 0.5) * 2.2;
+    add('head', 'hair', new THREE.ConeGeometry(0.03, 0.08, 6), { p: [Math.sin(a) * 0.08, 0.19, 0.04 + Math.cos(a) * 0.04], r: [0.6, 0, -a * 0.5] }); // the fringe, spiked forward
+  }
+  for (const [sh, el, ha, sd] of [
+    ['shoulderL', 'elbowL', 'handL', 1],
+    ['shoulderR', 'elbowR', 'handR', -1],
+  ]) {
+    add(sh, 'skin', ball(0.16, 18, 14), { p: [sd * 0.03, 0.0, 0], s: [1, 0.95, 1.05] }); // deltoid
+    add(sh, 'skin', limb(0.13, 0.34, 0.11, 16), { p: [0, -0.34, 0] }); // upper arm
+    add(sh, 'skin', ball(0.11, 14, 10), { p: [0, -0.15, 0.06], s: [0.9, 1.4, 0.9] }); // biceps
+    add(sh, 'skin', ball(0.1, 14, 10), { p: [0, -0.16, -0.06], s: [0.95, 1.5, 0.85] }); // triceps
+    add(el, 'skin', ball(0.1, 12, 10));
+    add(el, 'skin', limb(0.12, 0.3, 0.085, 16), { p: [0, -0.3, 0] }); // forearm, thick at the elbow
+    add(el, 'skin', ball(0.1, 12, 10), { p: [0, -0.08, 0.02], s: [1.1, 1.3, 1] });
+    // a fist like an anvil
+    add(ha, 'skin', rbox(0.17, 0.17, 0.14, 0.05), { p: [0, -0.08, 0.01] });
+    add(ha, 'skin', rbox(0.17, 0.06, 0.06, 0.025), { p: [0, -0.13, 0.07] }); // knuckles
+    add(ha, 'skin', rbox(0.05, 0.09, 0.06, 0.02), { p: [sd * 0.09, -0.07, 0.05], r: [0.3, 0, 0] }); // thumb
+  }
+  for (const [th, kn, ft] of [
+    ['thighL', 'kneeL', 'footL'],
+    ['thighR', 'kneeR', 'footR'],
+  ]) {
+    add(th, 'pants', limb(0.17, 0.44, 0.13, 16), { p: [0, -0.44, 0] });
+    add(th, 'pants', ball(0.14, 14, 10), { p: [0, -0.2, 0.06], s: [1, 1.5, 0.9] }); // quads
+    add(kn, 'skin', ball(0.1, 12, 10));
+    // the trousers, torn off just below the knee: a ragged hem
+    const hem = new THREE.CylinderGeometry(0.14, 0.15, 0.2, 14, 2, true);
+    const p = hem.attributes.position;
+    for (let i = 0; i < p.count; i++) if (p.getY(i) < -0.05) p.setY(i, p.getY(i) - 0.04 - Math.abs(Math.sin(i * 2.7)) * 0.07);
+    hem.computeVertexNormals();
+    add(kn, 'pants', hem, { p: [0, -0.06, 0] });
+    add(kn, 'skin', limb(0.115, 0.42, 0.085, 14), { p: [0, -0.42, 0] }); // shin
+    add(kn, 'skin', ball(0.1, 12, 10), { p: [0, -0.14, -0.06], s: [0.9, 1.5, 0.9] }); // calf
+    // bare feet
+    add(ft, 'skin', rbox(0.15, 0.09, 0.3, 0.04), { p: [0, -0.02, 0.06] });
+    for (let t = 0; t < 4; t++) add(ft, 'skin', ball(0.022, 8, 6), { p: [-0.045 + t * 0.03, -0.035, 0.205] });
+  }
+};
+
 // Build a figure. `materials` has a material for each key the style uses
 // (ultron: body, dark, glow; bot: shell, dark, visor; hostage: suit, dark,
 // skin; cap: suit, red, white, leather, silver, skin, helmet; thor: armour,
@@ -363,7 +462,7 @@ export function buildHumanoid({ style = 'ultron', materials, scale = 1 } = {}) {
   // the bones, at rest
   const bones = {};
   for (const name of NAMES) {
-    const [parent, x, y, z] = BONES[name];
+    const [parent, x, y, z] = BONES_FOR[style]?.[name] ?? BONES[name];
     const b = new THREE.Bone();
     b.name = name;
     b.position.set(x * scale, y * scale, z * scale);
