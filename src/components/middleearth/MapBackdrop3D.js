@@ -82,7 +82,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     goal.x = x + (hx - x) * 0.12;
     goal.z = z + (hz - z) * 0.12;
     // a tall screen can't hold the whole sheet: show its middle, bigger
-    goal.zoom = zoom ?? (spot ? 1.05 : camera.aspect < 1 ? 1.75 : 2.95);
+    goal.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 1.75 : 2.95);
     goal.m = mordor ? 1 : 0;
     goal.n = dark ? 1 : 0;
     goal.lx = lean[0];
