@@ -19,8 +19,10 @@ export const THEMES = {
   pytorch: { id: 'pytorch', label: 'PyTorch', company: 'PyTorch', swatch: '#EE4C2C' },
   nvidia: { id: 'nvidia', label: 'NVIDIA', company: 'GPU research', swatch: '#76B900' },
   travel: { id: 'travel', label: 'Travel', company: 'Travel', swatch: '#0F766E' },
-  // the Caribbean page's own (its colours are in components/caribbean/caribbean.css)
-  tortuga: { id: 'tortuga', label: 'Tortuga', company: 'The Caribbean', swatch: '#D9A436' },
+  // the Caribbean's three (styles/caribbean-themes.css): the page's own, Jack's ship and Davy Jones's
+  tortuga: { id: 'tortuga', label: 'Tortuga', company: 'Tortuga', swatch: '#D9A436', fan: true },
+  pearl: { id: 'pearl', label: 'Black Pearl', company: 'The Black Pearl', swatch: '#1A1408', fan: true },
+  dutchman: { id: 'dutchman', label: 'Dutchman', company: 'The Flying Dutchman', swatch: '#1FA27F', fan: true },
   // fan themes, unlocked by easter eggs
   jedi: { id: 'jedi', label: 'Jedi', company: 'Jedi Archives', swatch: '#2563EB', fan: true },
   sith: { id: 'sith', label: 'Sith', company: 'Sith', swatch: '#C1121F', fan: true },
@@ -54,6 +56,10 @@ export const FAN_THEMES = [
   { id: 'dunder', achievement: 'dundie', hint: 'That’s what she said' },
   { id: 'arcade', achievement: 'konami', hint: '↑ ↑ ↓ ↓ ← → ← → B A' },
   { id: 'raga', achievement: 'raga', hint: 'Play the sitar' },
+  // hoist the colours: type savvy anywhere
+  { id: 'pearl', achievement: 'savvy', hint: 'Savvy?' },
+  { id: 'dutchman', achievement: 'savvy', hint: 'Savvy?' },
+  { id: 'tortuga', achievement: 'savvy', hint: 'Savvy?' },
   // one word unlocks all five: type rollout anywhere
   { id: 'optimus', achievement: 'rollout', hint: 'Roll out' },
   { id: 'megatron', achievement: 'rollout', hint: 'Roll out' },

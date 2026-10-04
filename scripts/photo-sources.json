@@ -75,6 +75,30 @@
     ],
     "alt": "A curved turquoise bay with green hills on a Caribbean island"
   },
+  "potc-wallilabou": {
+    "commons": "File:Saint-Vincent Wallilabou Bay.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A calm green bay ringed with palms and wooded hills, low buildings and a jetty at the water’s edge, a sailing boat moored to one side"
+  },
+  "potc-port-royal": {
+    "commons": "File:Fort Port Royal Jamaica.JPG",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A long red-brick fort wall with arched gun ports, seen across a field of tall pale grass under a blue sky"
+  },
+  "potc-indian-river": {
+    "commons": "File:Indian River (Dominica).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A still river between banks of palms and thick green growth, the clouds mirrored in the water"
+  },
   "cl": {
     "commons": "File:A view towards Torres Del Paine.jpg",
     "widths": [
