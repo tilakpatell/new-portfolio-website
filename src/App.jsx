@@ -146,7 +146,9 @@ function PaletteHost() {
 // The universe map is the front door (/) and keeps one page while its URL
 // follows the selection (/universe/marvel), so picking a planet doesn't
 // remount the map.
-const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
+// pages whose own addresses below them keep one page: the universe map, and
+// Middle-earth's places (the map behind them stays up as you move about)
+const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname.startsWith('/middle-earth') ? '/middle-earth' : pathname);
 
 function Shell() {
   const { pathname } = useLocation();
