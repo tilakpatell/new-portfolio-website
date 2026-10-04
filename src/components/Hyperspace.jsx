@@ -1,8 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/hooks';
+import { use3D } from '../lib/gpu';
+import { T } from './hyperspace3d/timeline';
+import { jumpFailed, jumpScene, preloadJump } from './hyperspace3d/load';
+import Hyperspace3D from './hyperspace3d/Hyperspace3D';
 
-// The jump to lightspeed, full screen, on a plain 2D canvas (no GPU needed).
+// The jump to lightspeed, full screen. Drawn in WebGL with real depth where
+// 3D is on and its scene has already loaded (it's fetched ahead of time, see
+// hyperspace3d/load.js, so the jump never waits for it); otherwise, with
+// reduced motion, or if WebGL fails, on the plain 2D canvas below. Both run
+// on the same timeline with the same callbacks:
 //
 //   0.00–0.45s  the view darkens and the stars begin to drift outward
 //   0.45–1.15s  they stretch into streaks as the ship accelerates
@@ -19,15 +27,40 @@ import { prefersReducedMotion } from '../lib/hooks';
 // paint by the html[data-intro] style) and any click, key, scroll or touch
 // skips straight to the exit.
 
-const T = { drift: 450, jump: 1150, flash: 1300, tunnel: 1950, end: 2450 };
 const ease = (t) => t * t * (3 - 2 * t);
 const clamp = (t) => Math.max(0, Math.min(1, t));
 
 export default function Hyperspace({ onPeak, onDone, sound = false, entry = false }) {
-  const canvas = useRef(null);
+  const three = use3D();
+  // chosen once, as the jump starts: 3D only if its scene is already here
+  const [scene, setScene] = useState(() => (three.on && !prefersReducedMotion() ? jumpScene() : null));
   const peaked = useRef(false);
+  const finished = useRef(false);
   const cbs = useRef({ onPeak, onDone });
   cbs.current = { onPeak, onDone };
+  const peak = useCallback(() => {
+    if (peaked.current) return;
+    peaked.current = true;
+    cbs.current.onPeak?.();
+  }, []);
+  const done = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    cbs.current.onDone?.();
+  }, []);
+  // WebGL gave out: before the flash the 2D version plays the jump from the
+  // start; after it, the page has already changed, so the jump just ends.
+  // Either way the rest of the visit jumps in 2D.
+  const fail = useCallback(() => {
+    jumpFailed();
+    if (peaked.current) done();
+    else setScene(null);
+  }, [done]);
+
+  // playing in 2D this time: have the 3D version ready for the next jump
+  useEffect(() => {
+    if (!scene) preloadJump();
+  }, [scene]);
 
   useEffect(() => {
     if (!sound) return undefined;
@@ -49,6 +82,17 @@ export default function Hyperspace({ onPeak, onDone, sound = false, entry = fals
       });
     };
   }, [sound, entry]);
+
+  if (scene) return <Hyperspace3D scene={scene} entry={entry} onPeak={peak} onDone={done} onFail={fail} />;
+  return <Hyperspace2D entry={entry} onPeak={peak} onDone={done} />;
+}
+
+// The 2D canvas version: the fallback, and the reduced-motion crossfade.
+function Hyperspace2D({ onPeak, onDone, entry }) {
+  const canvas = useRef(null);
+  const peaked = useRef(false);
+  const cbs = useRef({ onPeak, onDone });
+  cbs.current = { onPeak, onDone };
 
   useEffect(() => {
     const cv = canvas.current;

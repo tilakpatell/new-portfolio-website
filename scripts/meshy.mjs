@@ -7,13 +7,20 @@
 // and credited in public/games/credits.json. The output is committed, so the
 // site never calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name …]
+// Roll out's Autobots, Decepticons and bosses are a set of their own
+// (realistic, with PBR textures: metalness, roughness and normal maps) into
+// public/games/meshy/rollout/, listed in its index.json, which is how the
+// game knows what's there; a vehicle that comes out backwards gets
+// { "name": …, "yaw": 180 } there in place of its name.
+//
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
-// idle clip, 3), fetch (free: download and compress). Each task's id is kept in
-// scripts/meshy-tasks.json, so running a step again never pays twice; delete
-// a name's entry there to make it again. MESHY_API_KEY comes from .env.local
-// (git ignores it); it is never printed.
+// idle clip, 3), sit (a seated clip, 3), fetch (free: download and
+// compress). Each task's id is kept in scripts/meshy-tasks.json, so running
+// a step again never pays twice; delete a name's entry there to make it
+// again. MESHY_API_KEY comes from .env.local (git ignores it); it is never
+// printed.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -29,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
 const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
+const ROLLOUT_OUT = join(OUT, 'rollout');
 const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -36,6 +44,8 @@ const API = 'https://api.meshy.ai/openapi';
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
+const REAL = 'A photorealistic hard-surface 3D render in the style of the live-action Transformers films: painted metal armour plates with panel lines and light wear, chrome and dark steel mechanical detail, readable silhouette. Plain white background, no text, no shadow.';
 // the office's people: figures, not drawings, each as the show dresses them
 const OFFICE = 'Stylized 3D animated-film character, slightly caricatured, clean simple shapes, matte colours. Full body, front view, standing straight in an A-pose, arms a little away from the body, empty hands. Plain white background, no text, no shadow.';
 // (height: the actor's, as src/components/office/people.js seats them)
@@ -60,6 +70,8 @@ export const ASSETS = {
   evilmorty: { rig: true, height: 1.5, poly: 14000, tex: 1024, prompt: `Evil Morty from Rick and Morty: Morty Smith with a black eyepatch over his right eye and a cold confident look, short brown hair, a yellow T-shirt, blue jeans and white sneakers. ${BODY}` },
   // set pieces
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
+  // the classic one, as in the show's first seasons
+  saucer: { rig: false, poly: 16000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty, the classic one: a small round flying saucer car with a grey metal hull, wide and flat, a big clear see-through glass bubble dome over two empty seats and a steering wheel, two orange-yellow stripes painted down the front of the hull, two round headlights on short stalks at the front rim, a big grey cylindrical exhaust can at the back with a ribbed hose, small bolts round the rim, no people. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
   // the Scranton branch
   michael: staff(1.75, 'Michael Scott', 'a middle-aged office manager with short neat dark brown hair parted to the side, clean-shaven, a pleased self-satisfied smile, in a charcoal grey suit, a light blue dress shirt, a dark red tie, black dress shoes'),
@@ -80,6 +92,22 @@ export const ASSETS = {
   toby: staff(1.78, 'Toby Flenderson', 'a meek sad-looking man with thinning sandy-brown hair parted to the side, in a grey suit jacket, a pale blue-grey shirt, a muted plum tie, grey trousers, brown shoes'),
   kelly: staff(1.6, 'Kelly Kapoor', 'a young Indian-American woman with long glossy black hair and a bright excited smile, in a hot pink knee-length dress with a thin dark belt, dark heels'),
 };
+
+// Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
+// as the robot (the game changes one into the other); the jets; the bosses.
+const ROLLOUT = {
+  optimus: { rig: true, height: 2.7, poly: 16000, tex: 1024, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
+  'optimus-truck': { rig: false, poly: 12000, tex: 1024, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
+  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 1024, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
+  'bumblebee-car': { rig: false, poly: 12000, tex: 1024, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
+  vehicon: { rig: true, height: 2.6, poly: 9000, tex: 512, prompt: `A Vehicon trooper from Transformers Prime: a lean faceless Decepticon soldier robot in dark gunmetal armour with purple trim, one red visor across the face, a blaster on the right arm. ${BODY}` },
+  'vehicon-car': { rig: false, poly: 8000, tex: 512, prompt: `A Vehicon's vehicle mode from Transformers Prime: a dark gunmetal four-door sports sedan with purple trim and a purple Decepticon emblem on the hood. ${CAR}` },
+  seeker: { rig: false, poly: 8000, tex: 512, prompt: `A Decepticon seeker jet from Transformers: a dark grey fighter jet with swept wings, twin tail fins and purple Decepticon emblems on the wings. ${PROP}` },
+  starscream: { rig: false, poly: 12000, tex: 1024, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
+  shockwave: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
+  megatron: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
+};
+for (const [n, a] of Object.entries(ROLLOUT)) ASSETS[n] = { ...a, set: 'rollout', style: REAL, pbr: true };
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -652,7 +680,7 @@ const steps = {
           input_task_id: s[n].image,
           ai_model: 'latest',
           should_texture: true,
-          enable_pbr: false,
+          enable_pbr: Boolean(a.pbr),
           should_remesh: true,
           topology: 'triangle',
           target_polycount: a.poly,
@@ -700,6 +728,22 @@ const steps = {
       },
     );
   },
+  // sitting in the cruiser: Chair_Sit_Idle_M from Meshy's animation library
+  async sit(names, s) {
+    await each(
+      names.filter((n) => ASSETS[n].rig),
+      async (n) => {
+        if (!s[n]?.rig) throw new Error('not rigged yet');
+        if (!s[n].sit) {
+          const { result } = await api('POST', '/v1/animations', { rig_task_id: s[n].rig, action_id: 33, post_process: { operation_type: 'extract_armature' } });
+          s[n].sit = result;
+          await save(s);
+        }
+        const t = await wait('/v1/animations', s[n].sit, `${n} sit`);
+        console.log(`sit      ${n.padEnd(12)} ${t.consumed_credits} credits`);
+      },
+    );
+  },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
     // as Meshy made them, kept by task (so compressing again needs no download)
@@ -707,10 +751,11 @@ const steps = {
     await mkdir(tmp, { recursive: true });
     const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
     const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
+    const fetched = new Set();
     for (const n of names) {
       const a = ASSETS[n];
       const files = []; // [url, file, texture size, clip only, posed in the browser]
-      const out = a.set === 'office' ? OFFICE_OUT : OUT;
+      const out = a.set === 'office' ? OFFICE_OUT : a.set === 'rollout' ? ROLLOUT_OUT : OUT;
       if (a.rig && a.clips === false) {
         // the skinned figure on its skeleton, nothing else
         if (!s[n]?.rig) throw new Error(`${n}: rig first`);
@@ -725,6 +770,7 @@ const steps = {
         files.push([r.basic_animations.walking_armature_glb_url, `${n}-walk.glb`, 0, true]);
         files.push([r.basic_animations.running_armature_glb_url, `${n}-run.glb`, 0, true]);
         files.push([idle.animation_glb_url, `${n}-idle.glb`, 0, true]);
+        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${n}-sit.glb`, 0, true]);
       } else {
         if (!s[n]?.model) throw new Error(`${n}: no model yet`);
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
@@ -736,10 +782,19 @@ const steps = {
         await mkdir(out, { recursive: true });
         await squeeze(raw, join(out, file), { tex, clip, posed });
       }
-      credits[`meshy/${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (a.set === 'rollout') fetched.add(n);
+      credits[`meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
+    // Roll out's list of what's there
+    if (fetched.size) {
+      const index = join(ROLLOUT_OUT, 'index.json');
+      const had = existsSync(index) ? JSON.parse(await readFile(index, 'utf8')) : [];
+      const named = (e) => e?.name ?? e;
+      const list = [...had, ...[...fetched].filter((n) => !had.some((e) => named(e) === n))];
+      await writeFile(index, `${JSON.stringify(list.sort((x, y) => named(x).localeCompare(named(y))), null, 2)}\n`);
+    }
   },
 };
 
@@ -747,7 +802,9 @@ async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(ASSETS);
+  // a set's name stands for its assets
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT) };
+  const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);

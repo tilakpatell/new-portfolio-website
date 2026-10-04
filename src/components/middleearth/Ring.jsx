@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom';
 import { useAchievements } from '../Achievements';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
+import { use3D } from '../../lib/gpu';
 import { useReducedMotion } from '../../lib/hooks';
+import Scene3D from './Scene3D';
 
 const sfx = () => import('../../lib/sfx');
+const loadScene = () => import('./Ring3D').then((m) => m.createRing3D);
 
 // The Eye, wreathed in flame, looking for whoever has the Ring on.
 function Eye() {
@@ -94,6 +97,9 @@ export default function Ring() {
   const [say, setSay] = useState('');
   const timers = useRef([]);
   const cooling = useRef(0);
+  const three = use3D();
+  const [gl, setGl] = useState('waiting');
+  const want3D = three.on && gl !== 'failed' && gl !== 'lost';
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
   useEffect(
     () => () => {
@@ -147,7 +153,7 @@ export default function Ring() {
 
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
-      <div className="ring-stage" data-heat={heat || undefined} data-fate={fate || undefined}>
+      <div className="ring-stage me-stage" data-heat={heat || undefined} data-fate={fate || undefined} data-3d={want3D || undefined} data-gl={(want3D && gl === 'on') || undefined}>
         <svg viewBox="-180 -130 360 260" className="block h-auto w-full" role="img" aria-label={fate === 'gone' ? 'The fire, and no Ring' : heat ? 'The One Ring, its inscription burning' : 'The One Ring, plain gold'}>
           <defs>
             <linearGradient id="ring-gold" x1="0" y1="0" x2="1" y2="1">
@@ -183,6 +189,7 @@ export default function Ring() {
             </text>
           </g>
         </svg>
+        {want3D && <Scene3D name="ring" load={loadScene} read={() => ({ heat, fate })} soft={three.info.software} onState={setGl} />}
       </div>
       <div>
         <h2 id="ring-title" className="title">

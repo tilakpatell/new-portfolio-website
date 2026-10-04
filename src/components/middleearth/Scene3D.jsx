@@ -12,6 +12,7 @@ export default function Scene3D({ name, load, read, api, soft = false, onState }
   const [status, setStatus] = useState('waiting'); // waiting, loading, ready, on, lost, failed
   const [box, inView] = useInView({ rootMargin: '240px' });
   const [near, setNear] = useState(false);
+  const running = useMostlyInView(box);
   const latest = useRef(read);
   latest.current = read;
   const report = useRef(onState);
@@ -83,11 +84,54 @@ export default function Scene3D({ name, load, read, api, soft = false, onState }
       if (api) api.current = null;
       setStatus('failed');
     }
-  }, inView && (status === 'ready' || status === 'on'));
+  }, inView && running && (status === 'ready' || status === 'on'));
 
   return (
     <div ref={box} className="me-gl" aria-hidden="true">
       <canvas ref={canvas} data-on={status === 'on' || undefined} />
     </div>
   );
+}
+
+// Of the stages on screen, only the one showing the most of itself draws, so
+// two that both peek into the screen don't both render; the one being played
+// holds it. The scene still loads as it comes near (useInView above).
+const shown = new Map(); // stage -> pixels of it on screen
+const heard = new Set();
+const tell = () => heard.forEach((f) => f());
+function useMostlyInView(ref) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setOn(true);
+      return undefined;
+    }
+    const key = {};
+    const check = () => {
+      const mine = shown.get(key) || 0;
+      let most = true;
+      shown.forEach((px, k) => {
+        if (k !== key && px > mine) most = false;
+      });
+      setOn(mine > 0 && most);
+    };
+    heard.add(check);
+    const io = new IntersectionObserver(
+      ([e]) => {
+        shown.set(key, e.isIntersecting ? e.intersectionRect.height : 0);
+        tell();
+      },
+      { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      heard.delete(check);
+      shown.delete(key);
+      tell();
+    };
+  }, [ref]);
+  return on;
 }

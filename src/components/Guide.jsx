@@ -8,7 +8,7 @@ import { WORLDS } from './worlds/worlds';
 // "?" button in the corner (or the ? key) opens it.
 
 const PAGES = {
-  '/': {
+  '/home': {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
@@ -39,9 +39,18 @@ const PAGES = {
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
+  '/caribbean': {
+    title: 'The Caribbean',
+    tips: [
+      ['The compass', 'It points at what you want most, wherever that is on the page. Press it to want something else.'],
+      ['Dead man’s tide', 'A and D (or the arrows) turn the ship; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the cursed ship and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['The code', 'Press an article to see what it comes to in practice.'],
+    ],
+  },
   '/middle-earth': {
     title: 'Middle-earth',
     tips: [
+      ['The map', 'Pick a place on the map and the camera flies down to it: the Shire, Rivendell, Moria, Lothlórien or Mordor. The map button takes you back up. A wax seal marks each place you have won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
       ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
@@ -99,6 +108,15 @@ const PAGES = {
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
+  '/universe': {
+    title: 'The universe',
+    tips: [
+      ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing or Han and Chewie’s Falcon. Each crew has something to say about every place you reach, and each ship sounds like itself.'],
+      ['Fly', 'W A S D or the arrows, Space to boost; on a phone, drag anywhere on the map and hold Boost. M pulls out to the whole map.'],
+      ['Go somewhere', 'The stations round the sun are the site’s pages; the planets are its worlds. Fly close to one, or pick it by name and the ship takes you. E (or the panel’s button) lands or docks.'],
+      ['Just looking', 'With no ship, pick a place and the camera flies there. Drag to turn the map, and Escape comes back out.'],
+    ],
+  },
   '/music': {
     title: 'The music room',
     tips: [
@@ -133,6 +151,8 @@ export default function Guide() {
   const page =
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
+    (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

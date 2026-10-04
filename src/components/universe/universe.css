@@ -1,0 +1,384 @@
+/* ─── The universe map ───────────────────────────────────────────────────── */
+
+/* The flat map: Home's teaser and the 3D-off map */
+.minimap { position: relative; width: 100%; aspect-ratio: 2 / 1; }
+.minimap-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.minimap-orbit { fill: none; stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.minimap-labels { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.minimap-item { position: absolute; width: 0; height: 0; }
+.minimap-hit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  display: grid;
+  justify-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding-top: 30px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.minimap-hit:hover,
+.minimap-hit[aria-pressed='true'] { color: var(--swatch); }
+.minimap-hit:focus-visible { outline: 2px solid var(--swatch); outline-offset: 2px; }
+.minimap-name { pointer-events: none; }
+@media (max-width: 640px) {
+  .minimap-hit { font-size: 0.58rem; padding-top: 24px; }
+  /* on a phone the long names crowd: the teaser keeps the dots, the map keeps the selected name */
+  .minimap-teaser .minimap-name { display: none; }
+}
+
+/* Home's teaser */
+.universe-teaser {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: #03040a;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+/* The page: the map fills it, edge to edge; the panel floats over its right
+   side (a bottom sheet on a phone), and the scene keeps the planets in the
+   part that's left open */
+.universe-page {
+  --panel-w: min(400px, calc(100vw - 24px));
+  --sheet-h: 38svh; /* taller once a universe's card is in it */
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  background: #03040a;
+}
+.universe-page[data-card] { --sheet-h: 46svh; }
+.universe-map { position: absolute; inset: 0; }
+.universe-map > .scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none; /* a drag turns the map; the page itself never scrolls */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the open part of the page, for what isn't the scene */
+.universe-flat,
+.universe-loading {
+  position: absolute;
+  top: var(--nav-h);
+  left: 0;
+  right: calc(var(--panel-w) + 24px);
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1.5rem;
+}
+.universe-flat .minimap { max-width: 900px; }
+.universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
+
+/* the planets' names, moved by the scene */
+.universe-labels {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.universe-map[data-gl='on'] .universe-labels { opacity: 1; }
+.universe-page[data-leaving] .universe-labels { opacity: 0; transition-duration: 0.2s; }
+.universe-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% 0;
+  display: grid;
+  place-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: auto;
+  transition: color 0.2s, opacity 0.2s, background-color 0.2s;
+}
+.universe-label:hover,
+.universe-label[data-hover] { color: var(--swatch); }
+.universe-label[aria-pressed='true'] { color: var(--swatch); background: rgb(3 4 10 / 0.7); }
+.universe-label[data-behind] { opacity: 0.3; }
+.universe-label[data-off] { visibility: hidden; }
+/* a station's big sign names it; its button stays for the keys */
+.universe-label[data-station]:not(:focus-visible) { opacity: 0; pointer-events: none; }
+.universe-label:focus-visible { outline: 2px solid var(--swatch); outline-offset: 2px; }
+@media (pointer: coarse) { .universe-label { min-height: 44px; } }
+
+.universe-panel {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--nav-h) + 12px);
+  right: 12px;
+  bottom: 12px;
+  width: var(--panel-w);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: rgb(6 8 16 / 0.9);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.universe-title { margin-top: 0.4rem; color: var(--text); font-size: 1.5rem; font-weight: 600; }
+.universe-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  margin: -0.4rem 0 0.5rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  transition: color 0.2s;
+}
+.universe-back:hover { color: var(--text); }
+.universe-back { text-align: left; }
+.universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
+.universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
+.universe-enter { width: 100%; justify-content: center; }
+.universe-card { margin: 0; padding: 0; list-style: none; }
+.universe-card .fun-card { min-height: 0; }
+.station-list { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
+.station-list a { display: grid; gap: 0.05rem; padding: 0.45rem 0.6rem; margin: 0 -0.6rem; border-radius: 10px; font-size: 0.88rem; line-height: 1.3; transition: background-color 0.2s; }
+.station-list a:hover { background: rgb(255 255 255 / 0.05); }
+.station-list a span:last-child { font-size: 0.8rem; }
+.station-term { margin-bottom: 0; padding: 0.75rem 0.9rem; border-radius: 10px; background: #05080a; color: #7dff9a; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap; }
+.universe-fade { position: absolute; z-index: 3; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
+.universe-page:is([data-leaving='dive'], [data-leaving='portal']) .universe-fade { opacity: 1; }
+
+/* flying: the steering ring, Boost (touch screens), the first-flight hint */
+.universe-stick {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border: 1.5px solid rgb(255 255 255 / 0.28);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.universe-stick[data-on] { opacity: 1; }
+.universe-stick > span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.35);
+  translate: var(--kx, 0) var(--ky, 0);
+}
+.universe-boost {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 36px);
+  bottom: 24px;
+  display: none;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 1.5px solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-boost:active { background: rgb(255 255 255 / 0.18); }
+.universe-fire {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 124px);
+  bottom: 30px;
+  display: none;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1.5px solid rgb(255 120 100 / 0.5);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-fire:active { background: rgb(255 120 100 / 0.25); }
+.universe-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.7);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.universe-hint kbd,
+.universe-keys kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.universe-hint-touch,
+.universe-keys-touch { display: none; }
+@media (pointer: coarse) {
+  .universe-boost,
+  .universe-fire { display: grid; }
+  .universe-hint-keys,
+  .universe-keys-board { display: none; }
+  .universe-hint-touch { display: inline; }
+  .universe-keys-touch { display: list-item; }
+}
+.universe-keys { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; }
+
+/* the ships to pick */
+.universe-ships { display: grid; gap: 0.6rem; margin-top: 1rem; }
+.universe-ship {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-align: left;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.universe-ship:hover { border-color: var(--muted); }
+.universe-ship[aria-pressed='true'] { border-color: var(--accent-text); background: rgb(255 255 255 / 0.05); }
+.universe-ship:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.universe-ship-faces { display: flex; flex: none; }
+.universe-ship-face { width: 38px; height: 38px; }
+.universe-ship-face + .universe-ship-face { margin-left: -10px; }
+.universe-ship-text { display: grid; }
+.universe-ship-name { color: var(--text); font-weight: 600; font-size: 0.95rem; }
+.universe-ship-crew { color: var(--muted); font-size: 0.8rem; }
+
+/* the comms: what the crew says, over the open part of the map */
+.universe-comms {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--nav-h) + 12px);
+  left: 16px;
+  right: calc(var(--panel-w) + 40px);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.universe-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 560px;
+  margin: 0;
+  padding: 0.6rem 1rem 0.6rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--who) 40%, transparent);
+  border-radius: 16px;
+  background: rgb(6 8 16 / 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.universe-comms[data-motion] .universe-line { animation: universe-line 0.25s ease-out; }
+@keyframes universe-line {
+  from { opacity: 0; translate: 0 -6px; }
+}
+.universe-face { flex: none; width: 44px; height: 44px; }
+.universe-who { display: block; color: var(--who); font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.universe-said { display: block; color: var(--text); font-size: 0.92rem; line-height: 1.4; }
+
+@media (max-width: 767px) {
+  .universe-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: var(--sheet-h);
+    border-bottom: 0;
+    border-radius: var(--r-card) var(--r-card) 0 0;
+  }
+  .universe-flat,
+  .universe-loading { right: 0; bottom: var(--sheet-h); }
+  .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
+  .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
+  .universe-hint { bottom: calc(var(--sheet-h) + 16px); translate: -50% 0; }
+  .universe-comms { right: 16px; left: 16px; }
+  .universe-face { width: 36px; height: 36px; }
+  .universe-said { font-size: 0.85rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-labels,
+  .universe-label,
+  .universe-fade { transition: none; }
+}
+
+/* the front door's choice, over the universe on a first arrival */
+.start-choice {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--nav-h) + 16px) 16px 16px;
+  background: radial-gradient(ellipse at center, rgb(3 4 10 / 0.35), rgb(3 4 10 / 0.75));
+}
+.start-card {
+  width: min(520px, 100%);
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: rgb(6 8 16 / 0.9);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+}
+.start-title { margin-top: 0.4rem; color: var(--text); font-size: clamp(1.4rem, 3vw, 1.8rem); font-weight: 650; line-height: 1.2; }
+.start-text { margin-top: 0.75rem; font-size: 0.95rem; line-height: 1.55; }
+.start-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
+.start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
+.start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }

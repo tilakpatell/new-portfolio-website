@@ -308,6 +308,7 @@ export default function Metherria() {
     sh.earned += pay;
     live.current.jar = (live.current.jar ?? 0) + pay;
     live.current.tip = { at: performance.now(), amount: pay };
+    live.current.reaction = { mood, at: performance.now() }; // Jesse, in the room, reacts
     const before = rankFor(career.points);
     const c = { ...career, money: career.money + pay, points: career.points + pointsFor(total), served: career.served + 1, bestOrder: Math.max(career.bestOrder, total) };
     const after = rankFor(c.points);

@@ -27,6 +27,7 @@ import { useAchievements } from './Achievements';
 import { useFun } from '../fun/FunProvider';
 import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
+import { local } from '../lib/hooks';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -70,7 +71,10 @@ export default function CommandPalette({ onClose }) {
   const items = useMemo(() => {
     const go = (to) => () => navigate(to);
     const all = [
-      { id: 'p-home', group: 'Go to', label: 'Home', icon: RiArrowRightLine, run: go('/') },
+      { id: 'p-home', group: 'Go to', label: 'Home', keywords: 'about me intro', icon: RiArrowRightLine, run: go('/home') },
+      { id: 's-uni', group: 'Actions', label: 'Start the site in the universe', keywords: 'front door start page landing universe', icon: RiGlobalLine, run: () => local.set('tp-start', 'universe') },
+      { id: 's-home', group: 'Actions', label: 'Start the site on the home page', keywords: 'front door start page landing home plain', icon: RiArrowRightLine, run: () => local.set('tp-start', 'home') },
+      { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
       { id: 'p-proj', group: 'Go to', label: 'Projects', icon: RiCodeBoxLine, run: go('/projects') },
       { id: 'p-travel', group: 'Go to', label: 'Travel', keywords: 'places globe heritage akshardham', icon: RiGlobalLine, run: go('/travel') },
@@ -105,6 +109,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-parkour', group: 'Easter eggs', label: 'Parkour', keywords: 'the office andy dwight', icon: RiSparkling2Line, run: fun.parkour },
       { id: 'e-ds', group: 'Easter eggs', label: 'That’s no moon', keywords: 'death star star wars trench run superlaser', icon: RiSparkling2Line, run: go('/deathstar') },
       { id: 'w-me', group: 'Easter eggs', label: 'Middle-earth: Moria to Mordor', keywords: 'lord of the rings lotr tolkien moria doors of durin gandalf balrog one ring frodo sam mordor eye sauron map world', icon: RiSparkling2Line, run: go('/middle-earth') },
+      { id: 'w-cb', group: 'Easter eggs', label: 'The Caribbean: Dead man’s tide', keywords: 'pirates of the caribbean pirate ship black pearl jack sparrow kraken davy jones tortuga navy cannon broadside treasure compass sea sail game world', icon: RiSparkling2Line, run: go('/caribbean') },
       { id: 'w-av', group: 'Easter eggs', label: 'Avengers HQ', keywords: 'marvel avengers compound tower iron man stark arc reactor thor mjolnir captain america shield hawkeye black widow hulk banner tesseract thanos infinity gauntlet snap world', icon: RiSparkling2Line, run: go('/avengers') },
       { id: 'w-sc', group: 'Easter eggs', label: 'Scranton: Dunder Mifflin', keywords: 'the office dunder mifflin michael jim pam dwight kevin floor plan paper airplane dundies world', icon: RiSparkling2Line, run: go('/scranton') },
       { id: 'w-cy', group: 'Easter eggs', label: 'Cybertron', keywords: 'transformers prime optimus megatron autobots decepticons bumblebee arcee ratchet ground bridge iacon relics cybertronian world', icon: RiSparkling2Line, run: go('/cybertron') },

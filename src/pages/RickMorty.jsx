@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import ButterRobot from '../components/rickmorty/ButterRobot';
 import Cable from '../components/rickmorty/Cable';
+import CruiserFlight from '../components/rickmorty/CruiserFlight';
 import MeeseeksBox from '../components/rickmorty/MeeseeksBox';
+import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
 import PortalPanic from '../components/rickmorty/portal/PortalPanic';
@@ -30,7 +33,8 @@ const BOARD = [
 ];
 
 // Dimension C-137: fire the portal gun into other dimensions, play Portal
-// panic, press the Meeseeks box, flip through interdimensional cable.
+// panic, press the Meeseeks box, flip through interdimensional cable, see
+// how a plumbus is made, give the butter robot its purpose.
 export default function RickMorty() {
   useDocumentTitle('Dimension C-137');
   const { getSchwifty } = useFun();
@@ -59,9 +63,12 @@ export default function RickMorty() {
 
   return (
     <div className="relative rm-page">
+      <CruiserFlight />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">
         <figure className="rm-hero m-0">
-          <PortalHero firing={fired} className="rm-hero-portal" />
+          <div data-rm-launch className="rm-hero-launch">
+            <PortalHero firing={fired} className="rm-hero-portal" />
+          </div>
           <figcaption className="rm-hero-caption" aria-live="polite">
             <strong>{d.name}</strong>
             <span>{d.note}</span>
@@ -73,7 +80,7 @@ export default function RickMorty() {
             Wubba lubba dub dub.
           </h1>
           <p className="lead mt-6 max-w-[48ch]">
-            Rick and Morty, every season of it. Fire the portal gun to see another dimension, play Portal panic across four of them, press the Meeseeks box, and see what’s on interdimensional cable.
+            Rick and Morty, every season of it. Fire the portal gun to see another dimension, play Portal panic across four of them, press the Meeseeks box, see what’s on interdimensional cable, watch a plumbus get made and give the butter robot its purpose.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={fire}>
@@ -98,7 +105,7 @@ export default function RickMorty() {
         <p className="lead mt-4 max-w-[62ch]">
           Enemies pour out of portals in the Smiths’ backyard, Cronenberg World, Gazorpazorp and the Citadel of Ricks. Play as Rick, Morty or Pickle Rick, portal-dash out of trouble, grab a gadget from the workbench after each wave, and get past Snowball, the big Cronenberg, the Cromulon and Evil Morty.
         </p>
-        <div className="mt-8">
+        <div className="mt-8" data-rm-jump>
           <PortalPanic />
         </div>
       </section>
@@ -118,11 +125,30 @@ export default function RickMorty() {
           Interdimensional cable
         </h2>
         <p className="lead mt-4 max-w-[56ch]">Rick rigged the box to pick up TV from every reality. Nothing on it makes sense, and it’s the best thing on.</p>
-        <div className="mt-8">
+        <div className="mt-8" data-rm-jump>
           <Cable />
         </div>
       </section>
 
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="plumbus-title">
+        <p className="eyebrow">How they do it</p>
+        <h2 id="plumbus-title" className="title mt-3">
+          The plumbus factory
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">Everyone has a plumbus at home. Here’s how one gets made, a step at a time.</p>
+        <div className="mt-8">
+          <PlumbusFactory />
+        </div>
+      </section>
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="butter-title">
+        <h2 id="butter-title" className="title">
+          The butter robot
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">Rick built it at breakfast to pass the butter. Switch it on and give it something to do.</p>
+        <div className="mt-8">
+          <ButterRobot />
+        </div>
+      </section>
       <section className="shell relative z-10 py-10 md:py-14" aria-labelledby="family-title">
         <h2 id="family-title" className="title">
           The Smiths

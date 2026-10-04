@@ -27,9 +27,24 @@ export const CLIPS = {
   marvel: { src: '/audio/clips/marvel-opening.mp3', line: 'The Marvel Studios opening', by: 'Marvel Studios' },
   lotr: { src: '/audio/clips/lotr-theme.mp3', line: 'The Lord of the Rings', by: 'Howard Shore' },
   kingsArrival: { src: '/audio/clips/kings-arrival.mp3', line: 'The Return of the King', by: 'Howard Shore' },
+  pirates: { src: '/audio/clips/pirates-theme.mp3', line: 'Pirates of the Caribbean, the theme', by: 'Pirates of the Caribbean' },
   officeTheme: { src: '/audio/clips/office-theme.mp3', line: 'The Office, the theme', by: 'The Office' },
   thankYou: { src: '/audio/clips/thank-you.mp3', line: 'Thank you.', by: 'Michael Scott' },
   noGod: { src: '/audio/clips/no-god.mp3', line: 'No, God! No, God, please, no!', by: 'Michael Scott' },
+  tanpura: { src: '/audio/tanpura-pluck.mp3' }, // the music room's own (freely licensed, credited there)
+  // the universe map's crews and ships
+  wubba: { src: '/audio/clips/wubba-lubba-dub-dub.mp3', line: 'Wubba lubba dub dub!', by: 'Rick Sanchez' },
+  pickleRick: { src: '/audio/clips/pickle-rick.mp3', line: 'I’m Pickle Rick!', by: 'Rick Sanchez' },
+  riggity: { src: '/audio/clips/riggity-wrecked-son.mp3', line: 'Riggity riggity wrecked, son!', by: 'Rick Sanchez' },
+  meeseeks: { src: '/audio/clips/im-mr-meeseeks.mp3', line: 'I’m Mr. Meeseeks! Look at me!', by: 'Mr. Meeseeks' },
+  portalGun: { src: '/audio/clips/portal-gun.mp3' },
+  cool: { src: '/audio/clips/cool.mp3', line: 'Coool.' },
+  cantTakeIt: { src: '/audio/clips/cant-take-it-anymore.mp3', line: 'I can’t take it anymore. I just wanna die.' },
+  lickLick: { src: '/audio/clips/lick-lick.mp3', line: 'Lick, lick, lick my balls! Ha ha! Yeah! Say that all the time!', by: 'Rick Sanchez' },
+  chewieRoar: { src: '/audio/clips/chewie-roar.mp3' },
+  chewieLaugh: { src: '/audio/clips/chewie-laugh.mp3' },
+  dl44: { src: '/audio/clips/dl-44.mp3' },
+  ohShit: { src: '/audio/clips/oh-shit.mp3', line: 'Oh shit, mother—' },
 };
 
 const playing = new Set();

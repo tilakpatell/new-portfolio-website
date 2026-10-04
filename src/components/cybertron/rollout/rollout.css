@@ -65,7 +65,7 @@
 .ro-pick-mark { display: block; width: 26px; height: 26px; color: #ff3b4e; }
 .ro-pick button[data-bot='bumblebee'] .ro-pick-mark { color: #f7c600; }
 .ro-pick-mark svg { width: 100%; height: 100%; }
-.ro-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem 1rem; margin-top: 0.9rem; font-size: 0.8rem; }
+.ro-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem 1rem; margin-top: 0.9rem; font-size: 0.8rem; }
 .ro-stats dt { font: 600 0.62rem/1.2 var(--ro-font); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
 .ro-stats dd { font: 700 1rem/1.3 var(--font-mono); color: #fff; }
 .ro-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.35); }

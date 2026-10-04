@@ -7,7 +7,11 @@
 // you can jump a barricade or a floor beam, and you burn energon just
 // standing up. Out of energon, you fold back into the vehicle. Each obstacle
 // is answered by one form, and transforming takes half a second, so the game
-// is reading the road and changing in time.
+// is reading the road and changing in time. That pays: a roadblock jumped or a
+// broken bridge flown scores, double if the transform that answered it began
+// at the last moment, and changing form in mid-air off a ramp is a stunt. A
+// boss that takes enough fire while it charges a telegraphed attack is
+// staggered: the attack is off, and for a moment every hit counts double.
 //
 // Three stages, each closed by a boss: Starscream over Jasper, Nevada;
 // Shockwave in Mission City; Megatron in Kaon. A ground bridge takes you
@@ -51,7 +55,9 @@ export const ROLL = {
   outro: 2,
   comboWindow: 2.5,
   nearGap: 0.9,
-  points: { meter: 1, cube: 20, vehicon: 150, jet: 200, debris: 30, near: 40, boss: 2500, stage: 1000, shield: 250, spark: 100 },
+  clutch: 1.1, // a transform begun this many seconds (at the speed then) before the obstacle it answers is just in time
+  stagger: { dmg: 7, time: 1.6, mult: 2 }, // damage landed in one charge that staggers a boss; how long it's exposed; damage while exposed
+  points: { meter: 1, cube: 20, vehicon: 150, jet: 200, debris: 30, near: 40, boss: 2500, stage: 1000, shield: 250, spark: 100, clear: { barricade: 150, gap: 200 }, aerial: 250, stagger: 300 },
   levels: {
     recruit: { label: 'Recruit', speed: 0.88, shields: 1, density: 0.75, fire: 1.35, fuse: 1.25, bossHp: 0.75 },
     autobot: { label: 'Autobot', speed: 1, shields: 0, density: 1, fire: 1, fuse: 1, bossHp: 1 },
@@ -240,6 +246,10 @@ export function newRun({ seed = 1, level = 'autobot', bot = 'optimus', stage = 0
     morph: 0,
     morphFrom: 0,
     morphT: -1,
+    formZ: -Infinity, // where the last transform began, and the speed then
+    formV: 1,
+    airTurn: false, // transformed in the air off a ramp
+    launched: null, // the broken bridge being flown
     speed: 0,
     boosting: false,
     shields,
@@ -254,6 +264,8 @@ export function newRun({ seed = 1, level = 'autobot', bot = 'optimus', stage = 0
     kills: { vehicon: 0, jet: 0, debris: 0, boss: 0 },
     taken: 0,
     nears: 0,
+    clears: 0,
+    stunts: 0,
     shots: [],
     bolts: [],
     bombs: [],
@@ -289,6 +301,9 @@ export function transform(g) {
   g.mode = to;
   g.morphFrom = g.morph;
   g.morphT = 0;
+  g.formZ = g.z;
+  g.formV = Math.max(1, g.speed);
+  if (!g.grounded && g.launched) g.airTurn = true;
   emit(g, 'transform', { to, log: `transform:${to}` });
   return true;
 }
@@ -317,9 +332,15 @@ function score(g, pts) {
   g.score = Math.floor(g.points);
 }
 
-function kill(g, kind, at) {
+// kills and clears keep a combo going
+function chain(g) {
   const now = g.t;
   g.combo = now - g.combo.t < ROLL.comboWindow ? { n: g.combo.n + 1, t: now } : { n: 1, t: now };
+  return g.combo.n;
+}
+
+function kill(g, kind, at) {
+  chain(g);
   g.kills[kind] = (g.kills[kind] ?? 0) + 1;
   score(g, ROLL.points[kind] * Math.min(5, g.combo.n));
   g.fx.push({ kind: 'boom', x: at.x, y: at.y ?? 1, z: at.z, t: 0, life: kind === 'debris' ? 0.5 : 0.9, big: kind !== 'debris' });
@@ -340,6 +361,17 @@ function hurt(g, why) {
     emit(g, 'lost', { text: lostLine(g, why) });
   }
   return true;
+}
+
+// A roadblock jumped or a broken bridge flown. Just in time: the transform
+// that answered it began within ROLL.clutch seconds of it.
+function clear(g, kind, at) {
+  const clutch = at - g.formZ <= ROLL.clutch * g.formV;
+  const pts = ROLL.points.clear[kind] * (clutch ? 2 : 1);
+  const n = chain(g);
+  g.clears += 1;
+  score(g, pts * Math.min(5, n));
+  emit(g, 'cleared', { kind, clutch, points: pts, combo: n, log: `clear:${kind}` });
 }
 
 const lostLine = (g, why) =>
@@ -403,7 +435,7 @@ function startBoss(g) {
   const kind = ROLL.stages[g.stage].boss;
   const B = ROLL.bosses[kind];
   const hp = Math.round(B.hp * ROLL.levels[g.level].bossHp);
-  g.boss = { kind, name: B.name, hp, max: hp, x: 0, tx: 0, y: B.y, dz: B.dz + 30, t: 0, cool: 2.5, phase: 1, attack: null, alive: true, dying: 0, flash: 0, next: 0, cubeT: 4 };
+  g.boss = { kind, name: B.name, hp, max: hp, x: 0, tx: 0, y: B.y, dz: B.dz + 30, t: 0, cool: 2.5, phase: 1, attack: null, alive: true, dying: 0, flash: 0, next: 0, cubeT: 4, chargeDmg: 0, exposed: 0 };
   g.enemies = g.enemies.filter((e) => e.z < g.z + 20);
   // the road clears for the fight
   for (const c of g.cars) {
@@ -422,6 +454,7 @@ function bossAttack(g, B) {
   const type = list[b.next % list.length];
   b.next += 1 + (g.rand() < 0.3 ? 1 : 0);
   const p = b.phase;
+  b.chargeDmg = 0;
   if (type === 'missiles') b.attack = { type, t: 0, n: 2 + p, every: 0.32 - p * 0.04, fired: 0 };
   else if (type === 'strafe') b.attack = { type, t: 0, dur: 3.2, bombs: 3 + p, dropped: 0 };
   else if (type === 'dive') {
@@ -444,11 +477,30 @@ function bossAttack(g, B) {
   emit(g, 'bossAttack', { attack: type, log: `attack:${type}` });
 }
 
+// Winding up a telegraphed attack (Starscream's dive, Shockwave's beam,
+// Megatron's floor wave and fusion cannon): hits now can stagger it.
+export const charging = (b) => {
+  const a = b?.attack;
+  return Boolean(a && a.charge != null && a.t < a.charge && !(a.active > 0));
+};
+
+function stagger(g, b, at) {
+  b.attack = null;
+  g.warn = null;
+  b.exposed = ROLL.stagger.time;
+  b.cool = Math.max(b.cool, ROLL.stagger.time + 0.4);
+  b.chargeDmg = 0;
+  score(g, ROLL.points.stagger);
+  g.fx.push({ kind: 'boom', x: at.x, y: at.y, z: at.z, t: 0, life: 0.9, big: true });
+  emit(g, 'stagger', { name: b.name, log: 'stagger' });
+}
+
 function stepBoss(g, dt) {
   const b = g.boss;
   const B = ROLL.bosses[b.kind];
   b.t += dt;
   b.flash = Math.max(0, b.flash - dt * 4);
+  b.exposed = Math.max(0, (b.exposed ?? 0) - dt);
   if (!b.alive) {
     b.dying += dt;
     b.y -= dt * 2;
@@ -551,6 +603,7 @@ function stepBoss(g, dt) {
           if (a.fired < a.shots) {
             // the second shot follows you
             a.t = 0;
+            b.chargeDmg = 0;
             a.x = clamp(g.x, -3, 3);
             g.warn = { x: a.x, w: 1.7, t: 0, kind: 'fusion' };
           } else {
@@ -626,6 +679,8 @@ function stepPlayer(g, dt) {
       // off the end of the ramp: a car flies, a robot just steps off
       if (g.morph < 0.5) {
         g.vy = ROLL.rampV;
+        g.launched = g.gaps.find((p) => g.z >= p.z && g.z < p.z + p.len) ?? null;
+        g.airTurn = false;
         emit(g, 'launch');
       } else g.vy = 0;
     } else g.y = floor;
@@ -643,11 +698,24 @@ function stepPlayer(g, dt) {
       g.grounded = true;
       g.air = 0;
       emit(g, 'land', { hard });
+      const flown = g.launched;
+      if (flown && g.z >= flown.z + flown.len) {
+        clear(g, 'gap', flown.z - ROLL.ramp.len);
+        if (g.airTurn) {
+          g.stunts += 1;
+          score(g, ROLL.points.aerial);
+          emit(g, 'stunt', { kind: 'aerial', points: ROLL.points.aerial, log: 'stunt:aerial' });
+        }
+      }
+      g.launched = null;
+      g.airTurn = false;
       if (g.jumpBuf > 0) jump(g);
     } else if (intoWall || (floor === -Infinity && g.y < -5)) {
       // fell through: Ratchet bridges you out on the far side
       const gap = g.gaps.find((p) => g.z >= p.z - 2 && g.z < p.z + p.len + 4) ?? g.gaps.find((p) => p.z + p.len > g.z - 20);
       hurt(g, 'gap');
+      g.launched = null;
+      g.airTurn = false;
       emit(g, 'fell', { text: 'Fell through the bridge. Ratchet bridged you out.' });
       g.z = (gap ? gap.z + gap.len : g.z) + 3;
       g.y = 0;
@@ -731,10 +799,14 @@ function stepShots(g, dt) {
       const shielded = b.attack?.type === 'strafe' && b.dz < 8;
       if (!shielded && Math.abs(s.x - b.x) < B.r + ROLL.shot.r && Math.abs(s.z - bz) < 1.6 && Math.abs(s.y - by) < 2.6) {
         s.life = 0;
-        b.hp -= s.dmg;
+        b.hp -= s.dmg * (b.exposed > 0 ? ROLL.stagger.mult : 1);
         b.flash = 1;
         g.fx.push({ kind: 'spark', x: s.x, y: s.y, z: s.z, t: 0, life: 0.25 });
         emit(g, 'bossHit');
+        if (charging(b)) {
+          b.chargeDmg += s.dmg;
+          if (b.chargeDmg >= ROLL.stagger.dmg && b.hp > 0) stagger(g, b, { x: b.x, y: by, z: bz });
+        }
         if (b.hp <= 0) {
           b.hp = 0;
           b.alive = false;
@@ -870,7 +942,13 @@ function stepWorld(g, dt, body) {
   // roadblocks
   for (const b of g.barricades) {
     if (b.z > g.z + 4) break;
-    if (b.broken || b.z < g.z - 4) continue;
+    if (b.broken || b.cleared || b.z < g.z - 4) continue;
+    if (b.z < g.z - b.l / 2 - body.hl) {
+      // over it, untouched
+      b.cleared = true;
+      if (g.y > -1) clear(g, 'barricade', b.z);
+      continue;
+    }
     if (g.y > -1 && Math.abs(b.z - g.z) < b.l / 2 + body.hl && low < b.h) {
       b.broken = true;
       if (g.spark > 0) kill(g, 'debris', { x: g.x, y: 0.6, z: b.z });
