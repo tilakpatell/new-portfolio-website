@@ -175,7 +175,7 @@ export default function Avengers() {
     <div className="relative">
       <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
         <figure className="m-0">
-          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" />
+          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
           <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
         </figure>
         <div>
