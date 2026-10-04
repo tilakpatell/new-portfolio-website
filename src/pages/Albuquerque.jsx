@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
 import HectorBell from '../components/albuquerque/HectorBell';
+import HectorBoard from '../components/albuquerque/HectorBoard';
 import Cook from '../components/albuquerque/Cook';
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
+import { useFitTitle } from '../components/ui';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { audioContext } from '../lib/audio';
 import { useDocumentTitle } from '../lib/hooks';
@@ -20,7 +22,7 @@ const PLACES = [
   { id: 'bb-balloons', title: 'The Balloon Fiesta', note: 'Every October, hundreds of hot-air balloons go up over the city.' },
   { id: 'bb-kimo', title: 'The KiMo Theatre', note: 'Pueblo Deco from 1927, on Route 66 downtown.' },
 ];
-const SCENES = ['bbDanger', 'bbKnocks', 'bbJesse', 'bbGusExplain', 'bbGusHand', 'bbHalfMeasures', 'bbBarrel', 'saulExcited'];
+const SCENES = ['bbDanger', 'bbKnocks', 'bbJesse', 'bbGusExplain', 'bbGusHand', 'bbHalfMeasures', 'bbBarrel', 'saulExcited', 'bcsNewOffice'];
 
 function Tile({ el }) {
   return (
@@ -37,7 +39,7 @@ function Tile({ el }) {
 const MENU = [
   ['Pollo clásico', '8 pieces'],
   ['Pollo picante', 'with the house spice'],
-  ['Curly fries', 'large'],
+  ['Spice curls', 'the house recommends'],
   ['Sweet tea', 'Mike’s order'],
 ];
 function Pollos() {
@@ -49,7 +51,10 @@ function Pollos() {
   };
   return (
     <div className="pollos card">
-      <div className="pollos-board">
+      <div className="pollos-inside">
+        <Gif name="bcsSpiceCurls" size="medium" />
+      </div>
+      <div className="pollos-board mt-4">
         <p className="pollos-name">Los Pollos Hermanos</p>
         <p className="pollos-sub">Albuquerque, New Mexico</p>
         <ul className="mt-4 grid gap-2">
@@ -74,6 +79,7 @@ function Pollos() {
 // Los Pollos Hermanos and Saul's card.
 export default function Albuquerque() {
   useDocumentTitle('Albuquerque');
+  const fitTitle = useFitTitle();
   const [name, setName] = useState('Tilak Patel');
   const [saul, setSaul] = useState(false);
   const music = useRef(null);
@@ -132,7 +138,7 @@ export default function Albuquerque() {
         </figure>
         <div>
           <p className="eyebrow">Albuquerque · New Mexico</p>
-          <h1 id="abq-title" className="display mt-6 text-[clamp(2.4rem,1.2rem+3.4vw,4.2rem)]">
+          <h1 ref={fitTitle} id="abq-title" className="display mt-6 text-[clamp(2.4rem,1.2rem+3.4vw,4.2rem)]">
             Albuquerque
           </h1>
           <p className="lead mt-6 max-w-[46ch]">Breaking Bad and Better Call Saul. Type a name and it becomes a title card, one element from the periodic table at a time.</p>
@@ -175,19 +181,34 @@ export default function Albuquerque() {
         <HectorBell />
       </section>
 
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="board-title">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:gap-14">
+          <HectorBoard />
+          <div>
+            <h2 id="board-title" className="title">
+              The letter board
+            </h2>
+            <p className="lead mt-4 max-w-[44ch]">
+              How Hector talks: someone runs a finger along a letter board and he rings when it reaches the one he wants. Pick the row, then the letter. Three
+              words, as fast as you can, and every wrong ring costs you five seconds.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="shell relative z-10 grid items-start gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14" aria-labelledby="pollos-title">
         <div>
           <h2 id="pollos-title" className="title">
             Los Pollos Hermanos
           </h2>
-          <p className="lead mt-4 max-w-[46ch]">Gus Fring’s chicken restaurants, the cleanest kitchens in New Mexico.</p>
+          <p className="lead mt-4 max-w-[46ch]">Inside Gus Fring’s chicken restaurant, the cleanest kitchen in New Mexico. Gus is at the counter himself.</p>
           <div className="mt-8">
             <Pollos />
           </div>
         </div>
         <div>
           <h2 className="title">Better call Saul</h2>
-          <p className="lead mt-4 max-w-[46ch]">Saul Goodman’s card. Keep it in your wallet.</p>
+          <p className="lead mt-4 max-w-[46ch]">Saul Goodman’s card. Keep it in your wallet, and call: he’s outside the office, under the inflatable Statue of Liberty.</p>
           <div className="saul-card mt-8">
             <p className="saul-big">Better Call Saul!</p>
             <p className="saul-name">Saul Goodman · Attorney at Law</p>
@@ -198,7 +219,7 @@ export default function Albuquerque() {
           </button>
           {saul && (
             <div className="mt-5 max-w-sm">
-              <Gif name="saulGood" size="medium" eager />
+              <Gif name="bcsBestDecision" size="medium" eager />
             </div>
           )}
         </div>

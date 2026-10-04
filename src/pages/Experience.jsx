@@ -9,7 +9,7 @@ import RouteLine from '../components/RouteLine';
 import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
 import AwsLogoAnimated from '../components/AwsLogoAnimated';
-import { Chips, Reveal, Saber, Waypoint } from '../components/ui';
+import { Chips, Reveal, Saber, useFitTitle, Waypoint } from '../components/ui';
 
 const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'));
 import { roles, fmtRange, fmtMonth, monthIndex, nowMonth, roleLink, TRACKS } from '../data/roles';
@@ -128,6 +128,7 @@ const roleType = (role) => (role.title.includes('Co-op') ? 'Co-op' : role.title.
 // Every earlier role: the company pinned on the left while its work scrolls past on the right.
 function Chapter({ role, episode, last }) {
   const { track } = useTrack();
+  const fitTitle = useFitTitle();
   const facts = [
     ['Where', role.location],
     ['When', fmtRange(role)],
@@ -147,7 +148,7 @@ function Chapter({ role, episode, last }) {
             <Reveal className="chapter-logo-card is-small mt-6">
               <CompanyLogo id={role.id} className="h-full w-full border-0 bg-transparent" />
             </Reveal>
-            <h2 id={`${role.id}-title`} className="display mt-7 text-[clamp(2.2rem,1.3rem+3vw,3.8rem)]">
+            <h2 ref={fitTitle} id={`${role.id}-title`} className="display mt-7 text-[clamp(2.2rem,1.3rem+3vw,3.8rem)]">
               {role.company}
             </h2>
             <p className="stretch-semi mt-3 text-[clamp(1.05rem,1rem+0.4vw,1.25rem)] font-semibold leading-snug text-ink">{role.title}</p>

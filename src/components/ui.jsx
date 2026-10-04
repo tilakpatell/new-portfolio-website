@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { onceVisible } from '../lib/observe';
 
 // Marks the element with data-<attr>="true" the first time it is seen.
@@ -72,4 +72,63 @@ export function Chips({ items, className = '' }) {
       ))}
     </ul>
   );
+}
+
+// A title that may hold a path (github/awesome-copilot): it can break after
+// each slash, instead of in the middle of a word.
+export function Breakable({ text }) {
+  const parts = String(text).split('/');
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {part}
+      {i < parts.length - 1 && (
+        <>
+          /<wbr />
+        </>
+      )}
+    </Fragment>
+  ));
+}
+
+// A big title shrinks only as far as it must for its longest word to fit its
+// column, instead of breaking the word in two (Albuquerqu / e). It is measured,
+// so a title that already fits keeps its size exactly; it checks again when the
+// column changes width and once the fonts have loaded.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useFitTitle() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    let frame = 0;
+    const fit = () => {
+      frame = 0;
+      el.style.removeProperty('font-size');
+      const words = el.textContent.split(/[\s/\-–—]+/).filter(Boolean);
+      if (!words.length || !el.clientWidth) return;
+      const longest = words.reduce((a, b) => (b.length > a.length ? b : a));
+      // the word on one line, in the title's own styles (first-letter tiles and all)
+      const probe = el.cloneNode(false);
+      probe.removeAttribute('id');
+      probe.setAttribute('aria-hidden', 'true');
+      probe.textContent = longest;
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;width:auto;max-width:none;left:0;top:0;margin:0';
+      el.parentElement.appendChild(probe);
+      const need = probe.getBoundingClientRect().width;
+      probe.remove();
+      if (need > el.clientWidth) el.style.fontSize = `${(parseFloat(getComputedStyle(el).fontSize) * el.clientWidth * 0.98) / need}px`;
+    };
+    const later = () => {
+      if (!frame) frame = requestAnimationFrame(fit);
+    };
+    const ro = new ResizeObserver(later);
+    ro.observe(el.parentElement);
+    document.fonts?.ready.then(later);
+    later();
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+  return ref;
 }

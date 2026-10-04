@@ -2041,8 +2041,9 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 .hector-stage[data-after] .gus-tie { animation: tie 0.6s ease 1.6s; transform-box: fill-box; transform-origin: 50% 0; }
 @keyframes tie { 50% { transform: scaleY(0.8) translateY(2px); } }
 .cook-stage[data-in] { box-shadow: 0 0 0 2px rgba(63, 174, 92, 0.6), var(--shadow-card); }
-.cook-blue { opacity: 0; transition: opacity 0.6s ease; }
-.cook-stage[data-done] .cook-blue { opacity: 1; filter: drop-shadow(0 0 6px #5ec8f0); }
+.cook-crystal { opacity: 0; transition: opacity 0.3s ease; }
+.cook-crystal[data-on] { opacity: 1; }
+.cook-stage[data-done] .cook-blue { filter: drop-shadow(0 0 6px #5ec8f0); }
 @media (prefers-reduced-motion: reduce) { .hector-stage[data-boom], .hector-bell[data-ring] { animation: none; } .gus { transition-duration: 0.01s; } }
 
 /* The guide: a ? in the corner, and the panel it opens */
@@ -2180,3 +2181,25 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-places button { min-height: 2.25rem; padding: 0.3rem 1rem; border-radius: 999px; color: var(--text-body); font-size: 0.9rem; font-weight: 600; transition: background-color 0.2s ease, color 0.2s ease; }
 .akd-places button:hover { color: var(--text); }
 .akd-places button[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); }
+
+/* Los Pollos Hermanos: Gus at the counter, above the menu */
+.pollos-inside { overflow: hidden; border-radius: calc(var(--r-card) - 6px); }
+.pollos-inside .gif-frame { max-height: 300px; }
+
+/* Hector's letter board */
+.hb-board { padding: 1.1rem; border: 1px solid #c9b88f; border-radius: 10px; background: #f6efdc; color: #2b2418; box-shadow: var(--shadow-card); user-select: none; -webkit-user-select: none; touch-action: manipulation; cursor: pointer; }
+.hb-board[data-glare] { animation: hb-glare 0.4s ease; }
+@keyframes hb-glare { 25% { transform: translateX(-6px); box-shadow: 0 0 0 3px #c0392b; } 75% { transform: translateX(6px); } }
+.hb-word { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; min-height: 2.6rem; padding-bottom: 0.8rem; border-bottom: 1px dashed #c9b88f; }
+.hb-label { margin-right: 0.4rem; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #6b5a3a; }
+.hb-slot { display: grid; place-items: center; width: 2rem; height: 2.3rem; border-bottom: 3px solid #2b2418; font: 800 1.3rem/1 Georgia, serif; }
+.hb-slot[data-done] { color: #8a1c1c; }
+.hb-count { margin-left: auto; font: 600 0.75rem/1 var(--font-mono); color: #6b5a3a; }
+.hb-rows { display: grid; gap: 0.45rem; margin-top: 0.9rem; }
+.hb-row { display: flex; gap: 0.45rem; padding: 0.3rem; border-radius: 8px; transition: background-color 0.12s ease; }
+.hb-row[data-lit] { background: rgba(214, 178, 74, 0.35); }
+.hb-cell { display: grid; flex: 1 1 0; place-items: center; min-width: 0; height: 2.6rem; border: 1px solid #d8cba5; border-radius: 6px; background: #fffaf0; font: 700 1.15rem/1 Georgia, serif; transition: background-color 0.1s ease, color 0.1s ease, transform 0.1s ease; }
+.hb-row:last-child .hb-cell { flex: 0 0 calc((100% - 5 * 0.45rem) / 6); }
+.hb-cell[data-lit] { background: #2b2418; color: #f6d77a; transform: scale(1.06); }
+@media (max-width: 639px) { .hb-cell { height: 2.3rem; font-size: 1rem; } .hb-slot { width: 1.6rem; height: 2rem; font-size: 1.1rem; } }
+@media (prefers-reduced-motion: reduce) { .hb-board[data-glare] { animation: none; } }

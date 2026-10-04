@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { RiArrowRightLine, RiArrowRightUpLine, RiGithubFill } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import ProjectThumb from '../components/ProjectThumb';
-import { Chips, Reveal, SectionHeading, Waypoint } from '../components/ui';
+import { Breakable, Chips, Reveal, SectionHeading, useFitTitle, Waypoint } from '../components/ui';
 import { featuredProjects, otherProjects } from '../data/projects';
 import { profile } from '../data/profile';
 import { ROUTE_THEMES } from '../theme/themes';
@@ -25,6 +25,7 @@ const CTA = {
 // in the left column take a stop on the route line (`waypoint`), so the line
 // stays in the gutter instead of cutting across the grid.
 function Feature({ project, wide, flip, className = '', dim = false, waypoint = true }) {
+  const fitTitle = useFitTitle();
   const themeId = ROUTE_THEMES[`/projects/${project.id}`];
   const credit = project.credits?.find((c) => c.role === 'Built with' && c.people[0].name !== 'Claude');
   return (
@@ -41,8 +42,8 @@ function Feature({ project, wide, flip, className = '', dim = false, waypoint = 
               <span className="text-sm font-medium text-muted">{project.kind}</span>
               {project.award && <span className="chip chip-accent !min-h-0 !py-0.5">{project.award}</span>}
             </div>
-            <h2 id={`${project.id}-row`} className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'text-[clamp(1.8rem,1.3rem+1.6vw,2.6rem)]'}`}>
-              {project.title}
+            <h2 ref={fitTitle} id={`${project.id}-row`} className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'text-[clamp(1.8rem,1.3rem+1.6vw,2.6rem)]'}`}>
+              <Breakable text={project.title} />
             </h2>
             <p className="mt-4 max-w-[52ch] text-[1.05rem] leading-relaxed text-body">{project.summary}</p>
             {credit && <p className="mt-2 text-sm text-muted">Built with {credit.people.map((p) => p.name).join(', ')}</p>}
@@ -66,7 +67,9 @@ function ProjectRow({ project, dim = false }) {
         <div>
           <p className="text-sm font-medium text-muted">{project.kind}</p>
           <h3 className="stretch-semi mt-1 flex items-center gap-2 text-xl font-semibold text-ink">
-            {project.title}
+            <span className="min-w-0">
+              <Breakable text={project.title} />
+            </span>
             <RiArrowRightUpLine className="h-5 w-5 flex-none text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--accent-text)]" aria-hidden="true" />
           </h3>
           <p className="mt-2 max-w-[60ch] leading-relaxed text-body">{project.summary}</p>

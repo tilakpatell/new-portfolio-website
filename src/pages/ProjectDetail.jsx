@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { RiArrowLeftLine, RiArrowRightLine, RiExternalLinkLine, RiLockLine, RiTrophyLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { Chips, Reveal, Waypoint } from '../components/ui';
+import { Breakable, Chips, Reveal, Waypoint } from '../components/ui';
 import { projects, projectById } from '../data/projects';
 import { PROJECT_STAGES } from '../stages';
 import { ClaudeSpark } from '../stages/ClaudeStage';
@@ -40,7 +40,9 @@ export default function ProjectDetail() {
             {project.kind}
             {project.status ? ` · ${project.status}` : ''}
           </p>
-          <h1 className="display mt-4 text-[clamp(2rem,1rem+5vw,4.8rem)]">{project.title}</h1>
+          <h1 className="display mt-4 text-[clamp(2rem,1rem+5vw,4.8rem)]">
+            <Breakable text={project.title} />
+          </h1>
           {project.subtitle && <p className="stretch-semi mt-4 text-lg font-medium text-ink">{project.subtitle}</p>}
           <p className="lead mt-4 max-w-2xl">{project.summary}</p>
           <div className="mt-5 flex flex-wrap gap-2">

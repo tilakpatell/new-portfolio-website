@@ -82,9 +82,10 @@ const PAGES = {
     tips: [
       ['The title card', 'Type a name and it becomes a Breaking Bad title card.'],
       ['The cast', 'Every card does something.'],
-      ['The superlab', 'Hold to heat, let go to cool. Keep the needle in the green for the whole cook.'],
+      ['The superlab', 'Hold to heat, let go to cool. The cook starts when the needle reaches the green: stay in it until the tray is full. The green narrows, and flare-ups push the heat for a second, so ride them out. Your best purity is kept.'],
       ['Face Off', 'Ring Hector’s bell three times.'],
-      ['Los Pollos Hermanos', 'Order at the counter and the tray fills up. Then call Saul.'],
+      ['The letter board', 'Rows light up in turn: ring (Space, the button or a tap on the board) to pick the row, then again on the right letter. Three words; wrong rings cost five seconds.'],
+      ['Inside', 'Order at the Los Pollos Hermanos counter (Gus is serving) and the tray fills up. Then call Saul.'],
     ],
   },
   '/music': {
