@@ -106,6 +106,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               <div ref={stick} className="universe-stick" aria-hidden="true">
                 <span />
               </div>
+              <button type="button" className="universe-fire" onPointerDown={(e) => (e.preventDefault(), view.current?.fire?.())} onContextMenu={(e) => e.preventDefault()}>
+                Fire
+              </button>
               <button
                 type="button"
                 className="universe-boost"
@@ -120,9 +123,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows to fly, <kbd>Space</kbd> to boost, <kbd>M</kbd> for the map
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows to fly, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the map
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, hold Boost to go fast</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, hold Boost to go fast, tap Fire</span>
                 </p>
               )}
             </>
