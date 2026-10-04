@@ -34,11 +34,6 @@ const BOTS = {
 const BOSSES = { shockwave: { h: 8.4, hand: 'LeftHand' }, megatron: { h: 8.6, hand: 'RightHand' } };
 const JETS = { seeker: 3.9, starscream: 3.9 * 3.2 };
 
-const smooth = (a, b, x) => {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
-};
-
 // Changing form (k 0 vehicle … 1 robot): the vehicle comes apart over the
 // first three quarters while the robot builds over the last three, so midway
 // some of each is there, edges lit. The cut runs over the noise's useful range.
