@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TRENCH, fireTorpedo, newRun, portZ, stepRun, toggleComputer, zoneAt } from './trench';
+import { TRENCH, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 
 const fly = (g, secs, keys = {}, dt = 1 / 60) => {
   for (let t = 0; t < secs && g.status === 'running'; t += dt) {
@@ -111,7 +111,7 @@ describe('the trench run', () => {
     expect(g.score).toBeGreaterThanOrEqual(TRENCH.points.port);
   });
 
-  it('wastes a torpedo fired too early, and loses with none left', () => {
+  it('wastes a torpedo fired too early, and loses once the last one lands', () => {
     const g = newRun({ seed: 10 });
     quiet(g);
     g.z = portZ() - 20;
@@ -119,14 +119,78 @@ describe('the trench run', () => {
     expect(g.torpedoes).toBe(1);
     expect(g.status).toBe('running');
     fireTorpedo(g);
+    expect(g.status).toBe('running'); // still in flight
+    fly(g, 2);
     expect(g.status).toBe('lost');
   });
 
-  it('holds a torpedo fired from too far out', () => {
+  it('holds a torpedo fired before the trench', () => {
     const g = newRun({ seed: 11 });
     quiet(g);
     fireTorpedo(g);
     expect(g.torpedoes).toBe(2);
+  });
+
+  it('flies a missed torpedo down onto the trench and leaves a scorch mark', () => {
+    const g = newRun({ seed: 13 });
+    quiet(g);
+    g.z = portZ() - 60;
+    g.px = g.tx = 0.3;
+    g.py = g.ty = 0.2;
+    fireTorpedo(g);
+    expect(g.shots.length).toBe(1);
+    const events = [];
+    for (let i = 0; i < 180 && g.shots.length; i++) {
+      stepRun(g, 1 / 60);
+      events.push(...g.events.splice(0));
+    }
+    expect(g.shots.length).toBe(0);
+    expect(g.scorch.length).toBe(1);
+    expect(g.scorch[0].y).toBeGreaterThanOrEqual(-1);
+    expect(g.scorch[0].z).toBeGreaterThan(g.z);
+    expect(events.some((e) => e.type === 'miss')).toBe(true);
+    expect(g.blasts.length).toBeGreaterThan(0);
+  });
+
+  it('blasts a catwalk, a wall or a turret in a torpedo’s path, and the ship flies through', () => {
+    for (const it of [
+      { kind: 'catwalk', y: 0.1 },
+      { kind: 'wall', side: -1 },
+      { kind: 'turret', side: -1, y: 0.1, fired: true, alive: true },
+    ]) {
+      const g = newRun({ seed: 14 });
+      quiet(g);
+      g.z = trenchStart() + 20;
+      g.px = g.tx = -0.2;
+      g.py = g.ty = 0.1;
+      if (it.kind === 'turret') g.px = g.tx = -0.7;
+      g.items = [{ ...it, z: g.z + 8 }];
+      const score = g.score;
+      fireTorpedo(g);
+      const events = [];
+      for (let i = 0; i < 90; i++) {
+        g.keys = {};
+        stepRun(g, 1 / 60);
+        events.push(...g.events.splice(0));
+      }
+      const blast = events.find((e) => e.type === 'blast');
+      expect(blast?.what).toBe(it.kind);
+      expect(g.score).toBeGreaterThan(score);
+      expect(g.shields).toBe(g.maxShields); // nothing left to hit
+      expect(g.items[0].blasted).toBe(true);
+    }
+  });
+
+  it('flies a torpedo over a catwalk it clears', () => {
+    const g = newRun({ seed: 15 });
+    quiet(g);
+    g.z = trenchStart() + 20;
+    g.px = g.tx = 0;
+    g.py = g.ty = 0.6;
+    g.items = [{ kind: 'catwalk', z: g.z + 6, y: -0.6 }];
+    fireTorpedo(g);
+    for (let i = 0; i < 30; i++) stepRun(g, 1 / 60);
+    expect(g.items[0].blasted).toBeFalsy();
   });
 
   it('pays half again for a shot with the targeting computer off', () => {
