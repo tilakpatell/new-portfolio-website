@@ -8,6 +8,7 @@ import { local } from '../../lib/hooks';
 // the word, fast, and without ringing for the wrong one.
 
 const sfx = () => import('../../lib/sfx');
+const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id));
 const ROWS = ['ABCDEF', 'GHIJKL', 'MNOPQR', 'STUVWX', 'YZ'];
 const WORDS = ['TIO', 'DING', 'GUS', 'SAUL', 'WALT', 'MIKE', 'LALO', 'HANK'];
 const BEST = 'tp-hector-best';
@@ -72,7 +73,7 @@ export default function HectorBoard() {
   const ring = () => {
     if (phase !== 'rows' && phase !== 'letters') return;
     audioContext();
-    sfx().then((s) => s.ding());
+    clip('hectorBell').then((h) => !h && sfx().then((s) => s.ding()));
     if (phase === 'rows') {
       setCol(0);
       setPhase('letters');

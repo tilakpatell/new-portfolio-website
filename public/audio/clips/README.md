@@ -15,6 +15,8 @@ remove it.
 | star-wars-theme.mp3 (the first 44 seconds), binary-sunset.mp3 | Star Wars: A New Hope, John Williams's score |
 | transform.mp3, freedom.mp3, so-unwise.mp3, die.mp3 | Transformers |
 | say-my-name.mp3 (edited to the three lines), breaking-bad-intro.mp3 | Breaking Bad |
+| hector-bell.mp3, face-off.mp3, gus-hello.mp3 (the first seven seconds), jesse-ringtone.mp3 (cut before its last line) | Breaking Bad, supplied by the site owner |
+| hi-im-saul.mp3, tuco-tight.mp3, hank-ringtone.mp3, better-call-saul.mp3 | Breaking Bad and Better Call Saul, from [Myinstants](https://www.myinstants.com) |
 | thats-what-she-said.mp3 | The Office |
 | snap.mp3, marvel-opening.mp3 | Avengers: Infinity War, the Marvel Studios opening |
 | pirates-theme.mp3 (twelve seconds) | Pirates of the Caribbean, the theme |

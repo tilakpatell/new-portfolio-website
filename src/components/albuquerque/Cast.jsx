@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { audioContext } from '../../lib/audio';
 
 const sfx = () => import('../../lib/sfx');
-const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id));
+const clip = (id, opts) => import('../../lib/clips').then((c) => c.playClip(id, opts));
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
@@ -79,16 +79,12 @@ export default function Cast() {
   const act = (id) => {
     audioContext(); // in the click, so it can be heard
     if (id === 'walt') clip('sayMyName');
-    if (id === 'saul') sfx().then((s) => s.ring());
-    if (id === 'gus') sfx().then((s) => s.ding());
-    if (id === 'hector')
-      sfx().then((s) => {
-        s.ding(undefined, undefined, 0);
-        setTimeout(() => s.ding(), 330);
-        setTimeout(() => s.ding(), 660);
-      });
+    if (id === 'saul') clip('callSaul');
+    if (id === 'gus') clip('gusHello');
+    if (id === 'hector') for (const when of [0, 0.42, 0.84]) clip('hectorBell', { when });
     if (id === 'jesse') sfx().then((s) => s.beeps());
-    if (id === 'hank' || id === 'mike' || id === 'lalo') sfx().then((s) => s.knock());
+    if (id === 'hank') clip('hankRing');
+    if (id === 'mike' || id === 'lalo') sfx().then((s) => s.knock());
     setDone((d) => ({ ...d, [id]: Date.now() }));
   };
   return (

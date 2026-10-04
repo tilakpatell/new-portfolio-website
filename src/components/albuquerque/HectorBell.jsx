@@ -3,6 +3,7 @@ import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
 
 const sfx = () => import('../../lib/sfx');
+const clip = (id, opts) => import('../../lib/clips').then((c) => c.playClip(id, opts));
 
 // Casa Tranquila: Hector in his wheelchair, his bell on the tray, and a visitor
 // in a suit. Three rings, and the room goes up. Gus walks out, and straightens
@@ -17,7 +18,7 @@ export default function HectorBell() {
   const ring = () => {
     if (boom) return;
     audioContext(); // in the click, so the bell can be heard
-    sfx().then((s) => s.ding());
+    clip('hectorBell').then((h) => !h && sfx().then((s) => s.ding()));
     const n = rings + 1;
     setRings(n);
     if (n < 3) return;
@@ -25,10 +26,14 @@ export default function HectorBell() {
     timers.current.push(
       setTimeout(() => {
         setBoom(true);
-        sfx().then((s) => {
-          s.boom();
-          s.crumble(undefined, undefined, 0.2);
-        });
+        clip('faceOff', { offset: 3.2 }).then(
+          (h) =>
+            !h &&
+            sfx().then((s) => {
+              s.boom();
+              s.crumble(undefined, undefined, 0.2);
+            }),
+        );
       }, 450),
       setTimeout(() => setAfter(true), still ? 700 : 2600),
     );
