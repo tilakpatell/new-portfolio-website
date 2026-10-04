@@ -1179,7 +1179,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
               3D graphics: {three.on ? 'on' : 'off'}
             </button>
           ) : (
-            <span>Playing in 2D: this browser has no WebGL.</span>
+            <span>Playing in 2D: this browser isn’t giving the page WebGL, which usually means hardware acceleration is off. Turn it on for the 3D trench.</span>
           )}
           {glState === 'loading' && <span>Loading the 3D station…</span>}
           {glState === 'lost' && <span>The graphics chip reset, so this is the 2D version now.</span>}

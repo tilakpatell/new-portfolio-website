@@ -16,7 +16,11 @@ npm run lint
 - `src/components/RouteLine.jsx` — the line that draws itself down each page as you scroll. Any `[data-waypoint]` element is a stop.
 - `src/stages/` — the live demo on each project page (the Game Boy one is playable).
 - `src/pages/Terminal.jsx`, `src/pages/DeathStar.jsx` — the easter eggs. Try ↑ ↑ ↓ ↓ ← → ← → B A.
+- `src/components/worlds/worlds.js` — the hidden worlds, one per fandom (Death Star, Middle-earth, Avengers HQ, Scranton, Cybertron, Albuquerque, Dimension C-137, the music room). Each is a page in `src/pages/` with its own folder under `src/components/`.
+- `src/components/games/` — what the WebGL-only games share: `GpuGate.jsx` (the hardware acceleration check), gamepad input and synthesised sounds. Roll out (`cybertron/rollout/`) and Portal panic (`rickmorty/portal/`) keep their rules in a tested `rules.js`, apart from the drawing.
 
 Graphics: the site itself is SVG, CSS and 2D canvas, and its games and scenes are 3D first: they draw in WebGL (Three.js, loaded only when it's used) wherever the browser has it, a graphics chip or WebGL run in software, and lower their own resolution and effects when frames can't keep up (judged on real time, so a laptop's battery-saving 30 fps cap doesn't count). `src/lib/gpu.js` checks once. Only a browser with no WebGL at all, or a GPU context that's lost or fails, gets the 2D versions. Visitors can switch 3D off under the trench run. The 3D scenes use CC0 photo-scanned materials and HDRI lighting from Poly Haven and ambientCG, kept in `public/cc0` (see its README), with procedural textures as the fallback.
+
+Roll out and Portal panic are the exception: they need the graphics chip, so with hardware acceleration off they say so, with the steps for the visitor's browser, and offer to play anyway. Their assets are all CC0, in `public/games/` with each one credited in `public/games/credits.json`. Roll out is realistic (Poly Haven and ambientCG scans and skies, fetched by `npm run cc0`; behind a proxy, set `NODE_USE_ENV_PROXY=1`); Portal panic is stylised (Kenney's City Kit Suburban, Nature Kit and Space Kit, unzipped somewhere and converted with `KENNEY=/path/to/kits npm run kenney`). The output is committed, so the site never calls these services at runtime.
 
 Tests: `npm test` runs the games' rules (Vitest); they run before every deploy.
