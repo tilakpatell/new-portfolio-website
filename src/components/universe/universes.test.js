@@ -10,7 +10,7 @@ const ROUTES = [...app.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filt
 
 describe('the universes', () => {
   it('are the site’s six pages and eleven fandoms, each with its own id', () => {
-    expect(UNIVERSES.filter((u) => u.kind === 'core').map((u) => u.to)).toEqual(['/', '/experience', '/projects', '/resume', '/contact', '/terminal']);
+    expect(UNIVERSES.filter((u) => u.kind === 'core').map((u) => u.to)).toEqual(['/home', '/experience', '/projects', '/resume', '/contact', '/terminal']);
     expect(UNIVERSES.filter((u) => u.kind === 'fandom')).toHaveLength(11);
     expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(17);
     for (const u of UNIVERSES) expect(u.place, u.id).toBeTruthy();

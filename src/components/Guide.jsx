@@ -8,7 +8,7 @@ import { WORLDS } from './worlds/worlds';
 // "?" button in the corner (or the ? key) opens it.
 
 const PAGES = {
-  '/': {
+  '/home': {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
@@ -150,7 +150,7 @@ export default function Guide() {
   const page =
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
-    (pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

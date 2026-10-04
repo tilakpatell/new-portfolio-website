@@ -282,7 +282,7 @@ export default function Nav() {
 
         <div className="hidden items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} className={linkClass}>
+            <NavLink key={l.to} to={l.to} className={({ isActive }) => linkClass({ isActive: isActive || (l.to === '/universe' && pathname === '/') })}>
               {l.label}
             </NavLink>
           ))}
@@ -334,7 +334,7 @@ export default function Nav() {
         createPortal(
         <div id="mobile-menu" className="mobile-menu md:hidden">
           <ul className="divide-y divide-[var(--border)]">
-            {[{ to: '/', label: 'Home' }, ...LINKS, { to: '/music', label: 'Music' }, { to: '/terminal', label: 'Terminal' }].map((l) => (
+            {[{ to: '/home', label: 'Home' }, ...LINKS, { to: '/music', label: 'Music' }, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
                 <NavLink to={l.to} end className={({ isActive }) => `stretch-semi flex items-center justify-between py-4 text-lg font-semibold ${isActive ? 'text-ink' : 'text-body'}`}>
                   {l.label}

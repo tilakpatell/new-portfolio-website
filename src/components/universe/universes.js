@@ -22,7 +22,7 @@ const CORE = [
     sign: ['HOME', 'Who I am, and what I do'],
     label: 'Home',
     place: 'Home',
-    to: '/',
+    to: '/home',
     swatch: '#ffd27a',
     accent: '#ffd27a',
     size: 0.6,

@@ -7,14 +7,15 @@
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
 // - With a ship (Rick's cruiser, Luke's X-wing or the Falcon), you fly it:
-//   W A S D or the arrows, Space to boost, or drag on the map like a stick.
+//   W A S D or the arrows, Space to boost, F to fire, or drag on the map
+//   like a stick.
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
-//   whole, boost, dispose }.
+//   whole, boost, fire, dispose }.
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
@@ -28,13 +29,16 @@ import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, start
 import { ORDER, POSITIONS } from './layout';
 import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
 import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
-import { SHIP_MODELS, buildShip } from './shipModels';
+import { LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
-const STARS = 2600;
-const STARS_LOW = 900;
+const STARS = 1800; // the near ones, over the Milky Way's own
+const STARS_LOW = 700;
 const STREAKS = 220;
+const BOLTS = 10; // shots in flight at once
+const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
+const IDLE = 40000; // ms sitting still before the crew get bored
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -49,12 +53,16 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const STAR_VERT = `
 attribute float aSize;
 attribute vec3 aColor;
+attribute float aPhase;
 uniform float uDpr;
+uniform float uTime;
 varying vec3 vColor;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = clamp(aSize * uDpr * (260.0 / -mv.z), 1.0, 6.0 * uDpr);
-  vColor = aColor;
+  // a slow twinkle, each star on its own beat
+  float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
+  vColor = aColor * tw;
   gl_Position = projectionMatrix * mv;
 }`;
 const STAR_FRAG = `
@@ -70,6 +78,7 @@ function starfield(rand) {
   const pos = new Float32Array(STARS * 3);
   const size = new Float32Array(STARS);
   const col = new Float32Array(STARS * 3);
+  const phase = new Float32Array(STARS);
   const tints = [
     [1, 1, 1],
     [0.78, 0.86, 1],
@@ -86,15 +95,17 @@ function starfield(rand) {
     const t = tints[rand() < 0.75 ? 0 : rand() < 0.5 ? 1 : 2];
     col.set([t[0] * b, t[1] * b, t[2] * b], i * 3);
     size[i] = 0.7 + rand() ** 4 * 2.2;
+    phase[i] = rand();
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
   const mat = new THREE.ShaderMaterial({
     vertexShader: STAR_VERT,
     fragmentShader: STAR_FRAG,
-    uniforms: { uDpr: { value: 1 } },
+    uniforms: { uDpr: { value: 1 }, uTime: { value: 0 } },
     blending: THREE.AdditiveBlending,
     transparent: true,
     depthWrite: false,
@@ -192,9 +203,31 @@ export async function create(canvas, ctx) {
   const streak = streaks(rand);
   camera.add(streak.lines);
 
+  // shots: a few glowing bolts, reused
+  const boltGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.34, 6).rotateX(Math.PI / 2);
+  const boltMat = new THREE.MeshBasicMaterial({ color: '#ff4a3d', toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const bolts = Array.from({ length: BOLTS }, () => {
+    const m = new THREE.Mesh(boltGeo, boltMat);
+    m.visible = false;
+    m.userData = { life: 0, v: [0, 0] };
+    map.add(m);
+    return m;
+  });
+
   // the planets' maps first (half size on a phone), so nothing pops in
   const small = (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 || (navigator.deviceMemory ?? 8) <= 4;
   const T = await loadTextures({ small });
+
+  // the sky: the Milky Way, all the way round, turning with the map. It's
+  // always seen magnified, so it does without mipmaps (and their memory)
+  if (T.sky) {
+    T.sky.generateMipmaps = false;
+    T.sky.minFilter = THREE.LinearFilter;
+    T.sky.anisotropy = 1;
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
+    sky.renderOrder = -10;
+    map.add(sky);
+  }
 
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
@@ -250,6 +283,10 @@ export async function create(canvas, ctx) {
     streak: 0,
     flown: false, // has anyone touched the controls yet
     shown: true,
+    lastInput: performance.now(),
+    idleSaid: false,
+    side: 1, // which wing the X-wing fires from next
+    lastShot: 0,
   };
   const t0 = performance.now();
   let engine = null;
@@ -477,6 +514,7 @@ export async function create(canvas, ctx) {
     engine = null;
     if (state.model) {
       map.remove(state.model.group);
+      state.model.dispose();
       disposeTree(state.model.group);
       state.model = null;
     }
@@ -484,6 +522,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     state.auto = null;
     state.flown = false;
+    if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d');
     if (!kind) {
       state.ship = null;
       state.at = null;
@@ -499,6 +538,20 @@ export async function create(canvas, ctx) {
         if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
         ctx.invalidate();
       });
+    } else if (kind === 'cruiser') {
+      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
+      const model = state.model;
+      import('../rickmorty/cruiser3d')
+        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7 }))
+        .then((c) => {
+          if (!c) return;
+          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
+            c.dispose();
+            disposeTree(c.group);
+          }
+          ctx.invalidate();
+        })
+        .catch(() => {});
     }
     if (!state.ship) {
       state.ship = spawn(state.sel);
@@ -511,6 +564,7 @@ export async function create(canvas, ctx) {
   };
 
   const takeover = () => {
+    state.lastInput = performance.now();
     if (!state.flown) {
       state.flown = true;
       emit({ type: 'launch' });
@@ -532,6 +586,41 @@ export async function create(canvas, ctx) {
       turn = clamp(turn + st.dx / STICK, -1, 1);
     }
     return { throttle, turn, boost: Boolean(k.boost || state.boostBtn) };
+  };
+
+  // a shot from the nose (the X-wing's from each wingtip in turn)
+  const fire = () => {
+    const s = state.ship;
+    const now = performance.now();
+    if (!s || props.frozen || now - state.lastShot < 220) return;
+    state.lastShot = now;
+    state.lastInput = now;
+    const b = bolts.find((m) => !m.visible) ?? bolts[0];
+    const [fx, fz] = forward(s.heading);
+    const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.17 : 0;
+    b.position.set(s.x + fx * 0.22 - fz * side, s.y, s.z + fz * 0.22 + fx * side);
+    b.rotation.set(0, s.heading, 0);
+    const v = 13 + Math.max(0, s.speed);
+    b.userData = { life: 0.8, v: [fx * v, fz * v] };
+    b.visible = true;
+    emit({ type: 'fire' });
+    ctx.invalidate();
+  };
+  const moveBolts = (dt) => {
+    let any = false;
+    for (const b of bolts) {
+      if (!b.visible) continue;
+      const d = b.userData;
+      d.life -= dt;
+      if (d.life <= 0) {
+        b.visible = false;
+        continue;
+      }
+      any = true;
+      b.position.x += d.v[0] * dt;
+      b.position.z += d.v[1] * dt;
+    }
+    return any;
   };
 
   const placeStick = () => {
@@ -591,12 +680,18 @@ export async function create(canvas, ctx) {
     if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * clamp01(dt * (reduced ? 12 : 4.5));
 
     const m = state.model;
+    m.update(t);
     m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
     m.group.rotation.y = ship.heading;
     m.pivot.rotation.z = -ship.bank;
     m.pivot.rotation.x = reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08);
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
     engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
+    // sitting still a good while: the crew notice
+    if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
+      state.idleSaid = true;
+      emit({ type: 'idle' });
+    }
     return Boolean(state.auto || input.throttle || input.turn || Math.abs(ship.speed) > 0.01 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
   };
 
@@ -670,7 +765,9 @@ export async function create(canvas, ctx) {
     apply(pose);
 
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
+    const shooting = moveBolts(dt);
     sun.update(t);
+    stars.material.uniforms.uTime.value = t;
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();
@@ -679,7 +776,7 @@ export async function create(canvas, ctx) {
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (props.frozen) return false;
-    return !still() || moving || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -696,6 +793,12 @@ export async function create(canvas, ctx) {
       state.view = state.view === 'map' ? 'chase' : 'map';
       retarget(900);
       ctx.invalidate();
+      return;
+    }
+    if (key === 'f') {
+      e.preventDefault();
+      heard();
+      fire();
       return;
     }
     if ((key === 'e' || (key === 'enter' && !onControl)) && state.at) {
@@ -862,6 +965,11 @@ export async function create(canvas, ctx) {
     },
     // a name under the pointer lights its planet too
     hover: setHover,
+    // the phone's fire button
+    fire() {
+      heard();
+      fire();
+    },
     // the phone's boost button
     boost(on) {
       heard();
@@ -906,6 +1014,7 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
+      state.model?.dispose();
       panelRO?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
