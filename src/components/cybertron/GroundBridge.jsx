@@ -10,6 +10,8 @@ import { capturePointer } from '../../lib/pointer';
 // Autobot reaches it and let go before a Vehicon does. Leave an Autobot behind
 // or let a Vehicon through and it's a strike; three and Ratchet takes back the
 // controls. The decision is made the moment each one reaches the bridge.
+// On the Decepticon side it's Soundwave's space bridge up to the Nemesis: let
+// Knock Out, Breakdown and the Vehicons through, and shut out Team Prime.
 
 const sfx = () => import('../../lib/sfx');
 
@@ -21,8 +23,18 @@ const TEAM = [
   { id: 'smokescreen', name: 'Smokescreen', kind: 'racer' },
   { id: 'optimus', name: 'Optimus', kind: 'truck' },
 ];
-const VEHICONS = 8;
-const WIDTH = { bike: 84, muscle: 100, suv: 104, rally: 96, racer: 104, truck: 148, vehicon: 100 };
+const VEHICON = { id: 'vehicon', name: 'A Vehicon', them: 'a Vehicon', kind: 'vehicon', con: true };
+const CONS = [
+  { id: 'breakdown', name: 'Breakdown', kind: 'breakdown', con: true },
+  VEHICON,
+  VEHICON,
+  VEHICON,
+  VEHICON,
+  { id: 'knockout', name: 'Knock Out', kind: 'knockout', con: true },
+];
+const FRIENDS = 6; // who you let through
+const FOES = 8; // who you shut out
+const WIDTH = { bike: 84, muscle: 100, suv: 104, rally: 96, racer: 104, truck: 148, vehicon: 100, knockout: 104, breakdown: 112 };
 const BRIDGE_AT = 0.8; // the bridge's center, as a share of the stage's width
 const STRIKES = 3;
 
@@ -35,34 +47,76 @@ const shuffle = (a) => {
   return b;
 };
 
-// Who comes when: an Autobot first, Optimus the last of the team, Vehicons in
-// between, and later on some of them tailgating an Autobot.
-function makePlan() {
-  const team = [...shuffle(TEAM.slice(0, 5)), TEAM[5]];
+const SIDES = {
+  autobot: {
+    friends: () => [...shuffle(TEAM.slice(0, 5)), TEAM[5]],
+    foes: () => Array.from({ length: FOES }, () => VEHICON),
+    go: 'Bridge coordinates locked. Here they come.',
+    through: (v) => `${v.name} is home.`,
+    left: (v) => `Left ${v.them ?? v.name} behind!`,
+    out: 'Shut out a Vehicon.',
+    leak: 'A Vehicon got through the bridge!',
+    in: 'Home',
+    title: 'Ratchet, we need a bridge.',
+    how: 'Hold the bridge open as an Autobot reaches it, and let go before a Vehicon does.',
+    lost: 'Ratchet takes the controls back.',
+    perfect: 'Everyone home. Not a Vehicon in sight.',
+    tally: (r) => `Team Prime home: ${r.home} of ${FRIENDS}. Vehicons shut out: ${r.out} of ${FOES}.`,
+    power: 'Power up the bridge',
+    achievement: 'groundbridge',
+  },
+  decepticon: {
+    friends: () => [...shuffle(CONS.slice(0, 5)), CONS[5]],
+    // all of Team Prime, and two of them twice
+    foes: () => shuffle([...TEAM, ...shuffle(TEAM.slice(0, 5)).slice(0, 2)]),
+    go: 'Coordinates locked. Here they come.',
+    through: (v) => `${v.name} is aboard.`,
+    left: (v) => `Left ${v.them ?? v.name} behind!`,
+    out: 'Shut out an Autobot.',
+    leak: 'An Autobot got through the bridge!',
+    in: 'Aboard',
+    title: 'Soundwave, a bridge.',
+    how: 'Hold the bridge open as a Decepticon reaches it, and let go before an Autobot does.',
+    lost: 'Megatron takes the controls back.',
+    perfect: 'Every Decepticon aboard. Not an Autobot in sight.',
+    tally: (r) => `Decepticons aboard: ${r.home} of ${FRIENDS}. Autobots shut out: ${r.out} of ${FOES}.`,
+    power: 'Open the space bridge',
+    achievement: 'spacebridge',
+  },
+};
+
+// Who comes when: one of your side first, Optimus (or Knock Out) the last of
+// them, the other side in between, and later on some of them tailgating.
+function makePlan(side) {
+  const team = side.friends();
+  const foes = side.foes();
   const order = [team[0]];
   let a = 1;
   let v = 0;
-  while (a < team.length || v < VEHICONS) {
+  while (a < team.length || v < foes.length) {
     const bots = team.length - a;
-    const cons = VEHICONS - v;
+    const cons = foes.length - v;
     const bot = bots > 0 && (cons === 0 || Math.random() < bots / (bots + cons));
     if (bot) order.push(team[a++]);
-    else {
-      order.push({ id: 'vehicon', name: 'A Vehicon', kind: 'vehicon', con: true });
-      v += 1;
-    }
+    else order.push({ ...foes[v++], foe: true });
   }
   let arrive = 0;
   return order.map((who, i) => {
     const k = i / (order.length - 1);
-    const tailgate = i > 3 && who.con && !order[i - 1].con && Math.random() < 0.55;
+    const tailgate = i > 3 && who.foe && !order[i - 1].foe && Math.random() < 0.55;
     const gap = i === 0 ? 0 : tailgate ? 0.62 : 0.95 + Math.random() * (0.75 - 0.35 * k);
     arrive += gap;
     return { ...who, key: i, arrive, cross: 3.2 - 1.1 * k };
   });
 }
 
-export default function GroundBridge() {
+// A change of sides ends any run and starts the other side's bridge from idle.
+export default function GroundBridge({ side = 'autobot' }) {
+  return <Bridge key={side} side={side} />;
+}
+
+function Bridge({ side }) {
+  const cfg = SIDES[side] ?? SIDES.autobot;
   const { unlock } = useAchievements();
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const stage = useRef(null);
@@ -90,10 +144,10 @@ export default function GroundBridge() {
     g.over = true;
     held.current = false;
     setOpen(false);
-    const perfect = !lost && g.home === TEAM.length && g.out === VEHICONS;
+    const perfect = !lost && g.home === FRIENDS && g.out === FOES;
     setResult({ lost, perfect, home: g.home, out: g.out });
     setPhase('done');
-    if (perfect) unlock('groundbridge');
+    if (perfect) unlock(cfg.achievement);
     sfx().then((s) => (lost ? s.alarm() : perfect ? s.victory() : s.oneUp()));
   };
 
@@ -102,7 +156,7 @@ export default function GroundBridge() {
     const el = stage.current;
     if (!el) return;
     cancelAnimationFrame(game.current?.raf ?? 0);
-    const plan = makePlan();
+    const plan = makePlan(cfg);
     game.current = { plan, t: 0, next: 0, live: [], home: 0, out: 0, strikes: 0, last: performance.now(), over: false, raf: 0, visible: true };
     els.current.clear();
     held.current = false;
@@ -110,7 +164,7 @@ export default function GroundBridge() {
     setCars([]);
     setHud({ home: 0, out: 0, strikes: 0 });
     setResult(null);
-    setSay('Bridge coordinates locked. Here they come.');
+    setSay(cfg.go);
     setPhase('run');
   };
 
@@ -151,22 +205,22 @@ export default function GroundBridge() {
               if (held.current) {
                 v.state = 'through';
                 sfx().then((s) => s.zip());
-                if (v.con) {
+                if (v.foe) {
                   g.strikes += 1;
-                  setSay('A Vehicon got through the bridge!');
+                  setSay(cfg.leak);
                   sfx().then((s) => s.alarm());
                 } else {
                   g.home += 1;
-                  setSay(`${v.name} is home.`);
+                  setSay(cfg.through(v));
                 }
-              } else if (v.con) {
+              } else if (v.foe) {
                 v.state = 'stopped';
                 g.out += 1;
-                setSay('Shut out a Vehicon.');
+                setSay(cfg.out);
               } else {
                 v.state = 'left';
                 g.strikes += 1;
-                setSay(`Left ${v.name} behind!`);
+                setSay(cfg.left(v));
                 sfx().then((s) => s.buzz());
               }
             }
@@ -258,7 +312,7 @@ export default function GroundBridge() {
   const hold = { onPointerDown: press, onPointerUp: release, onPointerCancel: release, onLostPointerCapture: release, onContextMenu: (e) => e.preventDefault() };
 
   return (
-    <div className="gbr">
+    <div className="gbr" data-side={side}>
       <div ref={stage} className="gbr-stage" data-open={open || undefined} data-phase={phase} {...hold}>
         <svg className="gbr-scene" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
           <defs>
@@ -300,10 +354,10 @@ export default function GroundBridge() {
 
         <div className="gbr-hud" aria-hidden={phase === 'idle' || undefined}>
           <span>
-            Home <b>{hud.home}</b>/{TEAM.length}
+            {cfg.in} <b>{hud.home}</b>/{FRIENDS}
           </span>
           <span>
-            Shut out <b>{hud.out}</b>/{VEHICONS}
+            Shut out <b>{hud.out}</b>/{FOES}
           </span>
           <span className="gbr-strikes" aria-label={`${hud.strikes} of ${STRIKES} strikes`}>
             {Array.from({ length: STRIKES }, (_, i) => (
@@ -316,19 +370,17 @@ export default function GroundBridge() {
           <div className="gbr-card">
             {phase === 'done' && result ? (
               <>
-                <p className="gbr-card-title">{result.lost ? 'Ratchet takes the controls back.' : result.perfect ? 'Everyone home. Not a Vehicon in sight.' : 'The bridge is closed.'}</p>
-                <p className="gbr-card-text">
-                  Team Prime home: {result.home} of {TEAM.length}. Vehicons shut out: {result.out} of {VEHICONS}.
-                </p>
+                <p className="gbr-card-title">{result.lost ? cfg.lost : result.perfect ? cfg.perfect : 'The bridge is closed.'}</p>
+                <p className="gbr-card-text">{cfg.tally(result)}</p>
               </>
             ) : (
               <>
-                <p className="gbr-card-title">Ratchet, we need a bridge.</p>
-                <p className="gbr-card-text">Hold the bridge open as an Autobot reaches it, and let go before a Vehicon does.</p>
+                <p className="gbr-card-title">{cfg.title}</p>
+                <p className="gbr-card-text">{cfg.how}</p>
               </>
             )}
             <button type="button" className="btn btn-primary btn-sm mt-4" onClick={start} onPointerDown={(e) => e.stopPropagation()}>
-              {phase === 'done' ? 'Bridge them again' : 'Power up the bridge'}
+              {phase === 'done' ? 'Bridge them again' : cfg.power}
             </button>
           </div>
         )}
