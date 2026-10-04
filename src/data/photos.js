@@ -855,5 +855,95 @@ export const PHOTOS = {
       "source": "https://commons.wikimedia.org/wiki/File:MP-10_Convoy_Optimus_Prime_Takara_Masterpiece_(51927178025).jpg",
       "title": "MP-10 Convoy Optimus Prime Takara Masterpiece (51927178025)"
     }
+  },
+  "bb-albuquerque": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.563,
+    "alt": "Downtown Albuquerque from above on a clear day: office towers, two with pyramid tops, over low streets and parking lots, with the desert mesa beyond",
+    "credit": {
+      "author": "Quintin Soloviev",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Albuquerque,_New_Mexico_skyline.jpg",
+      "title": "Albuquerque, New Mexico skyline"
+    }
+  },
+  "bb-pollos": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "Twisters, a tan stucco fast-food restaurant with a red and yellow sign and maroon trim, under a deep blue sky, a yellow Mustang in the parking lot",
+    "credit": {
+      "author": "John Phelan",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Twisters,_Isleta_Blvd,_South_Valley_NM.jpg",
+      "title": "Twisters, Isleta Blvd, South Valley NM"
+    }
+  },
+  "bb-sandias": {
+    "widths": [
+      640,
+      979
+    ],
+    "ratio": 0.613,
+    "alt": "The Sandia Mountains glowing pink at sunset above a band of golden cottonwoods and the Rio Grande",
+    "credit": {
+      "author": "G. Thomas at en.wikipedia",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:SandiaMtnNM.jpg",
+      "title": "SandiaMtnNM"
+    }
+  },
+  "bb-doghouse": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "The Dog House, a small brick drive-in under a long yellow sign with a brown dachshund on it",
+    "credit": {
+      "author": "John Phelan",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Dog_House_Drive_In,_Albuquerque_NM.jpg",
+      "title": "Dog House Drive In, Albuquerque NM"
+    }
+  },
+  "bb-balloons": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.748,
+    "alt": "Hot-air balloons shaped like a bee and a giant hand rising over a crowd at the Albuquerque International Balloon Fiesta, under a clear blue sky",
+    "credit": {
+      "author": "Greg Goebel from Loveland CO, USA",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Albuquerque_International_Balloon_Fiesta_D2013.jpg",
+      "title": "Albuquerque International Balloon Fiesta D2013"
+    }
+  },
+  "bb-kimo": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.68,
+    "alt": "The KiMo Theatre, a cream Pueblo Deco building with ornate tilework across its upper floors, on a downtown street under a blue sky",
+    "credit": {
+      "author": "Daniel Schwen",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:KiMo_Albuquerque.jpg",
+      "title": "KiMo Albuquerque"
+    }
   }
 };

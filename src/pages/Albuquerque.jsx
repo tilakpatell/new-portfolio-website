@@ -13,11 +13,14 @@ import { audioContext } from '../lib/audio';
 import { useDocumentTitle } from '../lib/hooks';
 
 const PLACES = [
-  { id: 'bb-albuquerque', title: 'Albuquerque, New Mexico', note: 'Where both shows were filmed, and where they are set.' },
-  { id: 'bb-pollos', title: 'Twisters, Albuquerque', note: 'Los Pollos Hermanos, on screen.' },
-  { id: 'bb-sandias', title: 'The Sandia Mountains', note: 'The skyline behind half the show.' },
+  { id: 'bb-albuquerque', title: 'Albuquerque, New Mexico', note: 'Where both shows are set, and where they were filmed.' },
+  { id: 'bb-pollos', title: 'Twisters, Isleta Boulevard', note: 'On screen, it is Los Pollos Hermanos.' },
+  { id: 'bb-doghouse', title: 'The Dog House', note: 'A drive-in hot dog stand that turns up in Breaking Bad.' },
+  { id: 'bb-sandias', title: 'The Sandia Mountains', note: 'They turn pink at sunset. Sandía is Spanish for watermelon.' },
+  { id: 'bb-balloons', title: 'The Balloon Fiesta', note: 'Every October, hundreds of hot-air balloons go up over the city.' },
+  { id: 'bb-kimo', title: 'The KiMo Theatre', note: 'Pueblo Deco from 1927, on Route 66 downtown.' },
 ];
-const SCENES = ['saulExcited'];
+const SCENES = ['bbDanger', 'bbKnocks', 'bbJesse', 'bbGusExplain', 'bbGusHand', 'bbHalfMeasures', 'bbBarrel', 'saulExcited'];
 
 function Tile({ el }) {
   return (
@@ -129,7 +132,7 @@ export default function Albuquerque() {
         </figure>
         <div>
           <p className="eyebrow">Albuquerque · New Mexico</p>
-          <h1 id="abq-title" className="display mt-6 text-[clamp(2.8rem,1.6rem+4vw,5rem)]">
+          <h1 id="abq-title" className="display mt-6 text-[clamp(2.4rem,1.2rem+3.4vw,4.2rem)]">
             Albuquerque
           </h1>
           <p className="lead mt-6 max-w-[46ch]">Breaking Bad and Better Call Saul. Type a name and it becomes a title card, one element from the periodic table at a time.</p>
