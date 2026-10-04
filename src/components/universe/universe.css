@@ -44,3 +44,27 @@
   background: #03040a;
   padding: clamp(1rem, 3vw, 2rem);
 }
+
+/* The page: the map, and the panel beside it (a bottom sheet on a phone) */
+.universe-page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  height: 100svh;
+  overflow: hidden;
+  padding-top: var(--nav-h);
+  background: #03040a;
+}
+.universe-map { position: relative; display: grid; place-items: center; min-height: 0; padding: 1.5rem; }
+.universe-map .minimap { max-width: 900px; }
+.universe-panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem; border-left: 1px solid var(--border); }
+.universe-title { margin-top: 0.4rem; color: var(--text); font-size: 1.5rem; font-weight: 600; }
+.universe-enter { width: 100%; justify-content: center; }
+.universe-card { margin: 0; padding: 0; list-style: none; }
+.universe-card .fun-card { min-height: 0; }
+.universe-fade { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
+.universe-page[data-leaving='dive'] .universe-fade { opacity: 1; }
+@media (max-width: 767px) {
+  .universe-page { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 46svh; }
+  .universe-panel { border-left: 0; border-top: 1px solid var(--border); }
+}

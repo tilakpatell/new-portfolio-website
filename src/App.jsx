@@ -26,6 +26,7 @@ const Scranton = lazy(() => import('./pages/Scranton'));
 const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
+const Universe = lazy(() => import('./pages/Universe'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -35,7 +36,7 @@ function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
     // a link to one role (/experience/aws) lands on that role, not the top
-    if (!search.includes('role=') && !/^\/experience\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
+    if (!search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
   }, [pathname, search]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
@@ -132,8 +133,13 @@ function PaletteHost() {
   );
 }
 
+// The universe map keeps one page while its URL follows the selection
+// (/universe/marvel), so picking a planet doesn't remount the map.
+const pageKey = (pathname) => (pathname.startsWith('/universe') ? '/universe' : pathname);
+
 function Shell() {
   const { pathname } = useLocation();
+  const page = pageKey(pathname);
 
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
@@ -152,9 +158,9 @@ function Shell() {
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
-        <ErrorBoundary resetKey={pathname}>
+        <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
-            <div key={pathname} className="page-enter">
+            <div key={page} className="page-enter">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/experience/:roleId?" element={<Experience />} />
@@ -171,13 +177,14 @@ function Shell() {
                 <Route path="/avengers" element={<Avengers />} />
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
+                <Route path="/universe/:id?" element={<Universe />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />
