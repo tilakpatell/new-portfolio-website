@@ -45,9 +45,11 @@ varying vec3 vP;
 void main() {
   float ang = acos(clamp(dot(normalize(vP), uDir), -1.0, 1.0)); // 0 where it went in
   float front = 0.15 + uAge * 1.5;
-  float ring = exp(-pow((ang - front) / (0.05 + uAge * 0.04), 2.0)) * exp(-uAge * 1.6);
-  float crater = exp(-pow(ang / 0.07, 2.0));
-  float halo = exp(-pow(ang / 0.2, 2.0)) * 0.35;
+  // (squares multiplied out: pow() of anything below zero is NaN on some GPUs)
+  float r = (ang - front) / (0.05 + uAge * 0.04);
+  float ring = exp(-r * r) * exp(-uAge * 1.6);
+  float crater = exp(-ang * ang / 0.0049);
+  float halo = exp(-ang * ang / 0.04) * 0.35;
   float heat = exp(-uAge * 0.55);
   vec3 hot = mix(vec3(0.45, 0.05, 0.01), vec3(5.0, 2.6, 1.0), heat);
   vec3 col = uWave * ring * 2.4 + hot * (crater + halo * heat) * smoothstep(9.0, 4.0, uAge);

@@ -8,8 +8,9 @@ import MiniMap from './MiniMap';
 // planets' names as buttons over it. React renders the names once; the
 // scene moves them as it draws. The names are one focus group: the arrow
 // keys step through the universes, Home and End jump to the ends. With a
-// ship picked there's a ring that shows the drag-to-steer stick, a Boost
-// button on touch screens and a line on how to fly until you do. While the
+// ship picked there's a ring that shows the drag-to-steer stick, a gauge of
+// how high it flies, Boost, Fire and climb and dive buttons on touch
+// screens and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box.
 const load = () => import('./scene');
@@ -17,6 +18,7 @@ const load = () => import('./scene');
 export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand, onCrash }) {
   const labels = useRef({});
   const stick = useRef(null);
+  const alt = useRef(null);
   const [flown, setFlown] = useState(false);
   const events = useRef(onEvent);
   events.current = onEvent;
@@ -28,6 +30,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       ship,
       labels,
       stick,
+      alt,
       frozen,
       onPick: onSelect,
       onOpen,
@@ -68,6 +71,26 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     e.preventDefault();
     view.current?.boost?.(down);
   };
+  const climb = (way) => (e) => {
+    e.preventDefault();
+    view.current?.climb?.(way);
+  };
+  const climbButton = (way, label) => (
+    <button
+      type="button"
+      className="universe-climb"
+      aria-label={label}
+      onPointerDown={climb(way)}
+      onPointerUp={climb(0)}
+      onPointerCancel={climb(0)}
+      onPointerLeave={climb(0)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d={way > 0 ? 'M5 15l7-7 7 7' : 'M5 9l7 7 7-7'} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
 
   return (
     <div ref={wrap} className="universe-map" data-ship={ship || undefined}>
@@ -107,6 +130,13 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               <div ref={stick} className="universe-stick" aria-hidden="true">
                 <span />
               </div>
+              <div ref={alt} className="universe-alt" aria-hidden="true">
+                <span className="universe-alt-mark" />
+              </div>
+              <div className="universe-climbs">
+                {climbButton(1, 'Climb')}
+                {climbButton(-1, 'Dive')}
+              </div>
               <button type="button" className="universe-fire" onPointerDown={(e) => (e.preventDefault(), view.current?.fire?.())} onContextMenu={(e) => e.preventDefault()}>
                 Fire
               </button>
@@ -124,9 +154,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows to fly, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the map
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the map
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, hold Boost to go fast, tap Fire</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast</span>
                 </p>
               )}
             </>
