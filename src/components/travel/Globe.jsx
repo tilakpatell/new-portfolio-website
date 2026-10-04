@@ -441,15 +441,24 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       }
     };
 
+    // While the page scrolls past, the idle spin holds still: the scroll gets
+    // the frames, and the globe picks up again a moment after it stops.
+    let scrolledAt = -1e9;
+    const onPageScroll = () => {
+      scrolledAt = performance.now();
+    };
+    window.addEventListener('scroll', onPageScroll, { passive: true });
+
     const frame = (now) => {
       raf = 0;
       const dt = last ? Math.min(64, now - last) : 16;
       last = now;
-      step(dt, now);
+      const interactive = state.dragging || state.fly;
+      const idleHold = !interactive && now - scrolledAt < 220;
+      if (!idleHold) step(dt, now);
       const busy = animating(now);
       // Idle spinning is drawn at 30fps; anything the visitor is doing gets 60.
-      const interactive = state.dragging || state.fly;
-      if (dirty || (busy && (interactive || now - state.lastDraw > 31))) {
+      if (dirty || (busy && !idleHold && (interactive || now - state.lastDraw > 31))) {
         draw(now);
         dirty = false;
       }
@@ -656,6 +665,7 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       io?.disconnect();
       mo.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('scroll', onPageScroll);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
