@@ -186,7 +186,7 @@ function Shell() {
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="/music" element={<Music />} />
-                <Route path="/middle-earth" element={<MiddleEarth />} />
+                <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
                 <Route path="/avengers" element={<Avengers />} />
                 <Route path="/cybertron" element={<Cybertron />} />

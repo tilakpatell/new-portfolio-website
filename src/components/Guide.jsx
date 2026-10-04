@@ -50,6 +50,7 @@ const PAGES = {
   '/middle-earth': {
     title: 'Middle-earth',
     tips: [
+      ['The map', 'Pick a place on the map and the camera flies down to it: the Shire, Rivendell, Moria, Lothlórien or Mordor. The map button takes you back up. A wax seal marks each place you have won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
       ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
@@ -151,6 +152,7 @@ export default function Guide() {
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);
