@@ -22,7 +22,7 @@ const CORE = [
     sign: ['HOME', 'Who I am, and what I do'],
     label: 'Home',
     place: 'Home',
-    to: '/',
+    to: '/home',
     swatch: '#ffd27a',
     accent: '#ffd27a',
     size: 0.6,
@@ -188,6 +188,16 @@ const FANDOMS = [
     accent: '#5cb8ff',
     size: 0.68,
     palette: { base: '#1f5f99', dark: '#0d2a47', light: '#5f9e5a', glow: '#5cb8ff' },
+  },
+  {
+    id: 'caribbean',
+    label: 'Pirates of the Caribbean',
+    world: 'The Caribbean',
+    to: '/caribbean',
+    swatch: '#e9b949',
+    accent: '#f2c45a',
+    size: 0.62,
+    palette: { base: '#0f6b70', dark: '#06323a', light: '#e9d9a6', glow: '#f2c45a' },
   },
 ].map((u) => ({ ...u, kind: 'fandom', place: u.place ?? u.world }));
 

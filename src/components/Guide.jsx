@@ -8,7 +8,7 @@ import { WORLDS } from './worlds/worlds';
 // "?" button in the corner (or the ? key) opens it.
 
 const PAGES = {
-  '/': {
+  '/home': {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
@@ -37,6 +37,14 @@ const PAGES = {
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
       ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo. In the trench it blasts the first catwalk, wall or turret in its path, or scorches the floor, so spend them carefully: you need one for the port, which glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. It plays in 3D wherever the browser has WebGL; the switch under it goes back to 2D.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
+    ],
+  },
+  '/caribbean': {
+    title: 'The Caribbean',
+    tips: [
+      ['The compass', 'It points at what you want most, wherever that is on the page. Press it to want something else.'],
+      ['Dead man’s tide', 'A and D (or the arrows) turn the ship; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the cursed ship and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['The code', 'Press an article to see what it comes to in practice.'],
     ],
   },
   '/middle-earth': {
@@ -143,7 +151,7 @@ export default function Guide() {
   const page =
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
-    (pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');

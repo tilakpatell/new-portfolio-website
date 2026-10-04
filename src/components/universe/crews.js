@@ -3,7 +3,10 @@
 // Pure data: the panel offers the ships, the scene builds the one picked and
 // the comms box says these lines as things happen.
 //
-// A line is [speaker, text]; an exchange is a list of lines said in turn.
+// A line is [speaker, text, clip?]; an exchange is a list of lines said in
+// turn. A line with a clip (lib/clips.js) plays the recording under its
+// subtitle; the rest are voiced by sounds.js. The speaker 'comms' is a
+// voice on the radio that isn't one of the crew (no face).
 // `arrive` has one exchange per place on the map (the stations and the
 // planets), said the first time you reach it.
 // Artoo and Chewie don't speak Basic: their lines are what they mean, in
@@ -17,16 +20,22 @@ export const CREWS = [
     speakers: {
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
+      meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
     },
     launch: [
-      ['rick', 'Alright Morty, ten worlds, one tank of fuel. Try not to touch anything.'],
+      ['rick', 'Wubba lubba dub dub!', 'wubba'],
+      ['rick', 'Alright Morty, the whole site’s out here. Try not to touch anything.'],
       ['morty', 'Aw jeez, Rick. Which one first?'],
     ],
-    boost: [['rick', 'Wubba lubba dub dub!']],
+    boost: [['rick', 'Wubba lubba dub dub!', 'wubba']],
     bump: [
+      ['rick', 'Riggity riggity wrecked, son!', 'riggity'],
       ['morty', 'Rick, you flew into a planet!'],
-      ['rick', 'That’s what planets are for, Morty.'],
     ],
+    // three hard bumps in a row
+    crash: [['comms', 'I can’t take it anymore. I just wanna die.', 'cantTakeIt']],
+    // sitting still a while
+    idle: [['rick', 'Lick, lick, lick my balls! Ha ha! Yeah! Say that all the time!', 'lickLick']],
     edge: [['rick', 'Nothing out there but more nothing, Morty. Turning back.']],
     arrive: {
       home: [
@@ -38,6 +47,7 @@ export const CREWS = [
         ['morty', 'That’s, like, a real career, Rick.'],
       ],
       projects: [
+        ['meeseeks', 'I’m Mr. Meeseeks! Look at me!', 'meeseeks'],
         ['morty', 'They’re building stuff in there, Rick!'],
         ['rick', 'A Game Boy emulator, a file system, a shell. Kid’s a tinkerer, Morty. I like him.'],
       ],
@@ -86,12 +96,17 @@ export const CREWS = [
         ['morty', 'Can we stop for a bit? I just want one normal day.'],
       ],
       gaming: [
+        ['comms', 'Coool.', 'cool'],
         ['morty', 'It’s all blocks, Rick. Like an old Game Boy.'],
         ['rick', 'Somebody wrote a whole Game Boy in code, Morty. Respect.'],
       ],
       travel: [
         ['rick', 'Earth. Somebody’s been all over this one.'],
         ['morty', 'Look at all those routes, Rick!'],
+      ],
+      caribbean: [
+        ['morty', 'Rick, there’s a giant tentacle coming out of that ocean!'],
+        ['rick', 'The Caribbean, Morty. Pirates. It’s just crime with better hats.'],
       ],
     },
   },
@@ -181,6 +196,10 @@ export const CREWS = [
         ['luke', 'So much blue. Nothing like home.'],
         ['r2', '[a happy trill]'],
       ],
+      caribbean: [
+        ['luke', 'A whole world of water, and one black ship on it.'],
+        ['r2', '[a wary, bubbling whistle]'],
+      ],
     },
   },
   {
@@ -192,7 +211,7 @@ export const CREWS = [
       chewie: { name: 'Chewbacca', color: '#d0965a', voice: 'chewie' },
     },
     launch: [
-      ['han', 'Chewie, we’re home. Well, ten of them.'],
+      ['han', 'Chewie, we’re home.'],
       ['chewie', '[a happy roar]'],
     ],
     boost: [
@@ -269,6 +288,10 @@ export const CREWS = [
         ['han', 'Everybody’s been everywhere on this one.'],
         ['chewie', '[a contented rumble]'],
       ],
+      caribbean: [
+        ['han', 'Pirates. Finally, some honest people.'],
+        ['chewie', '[an approving growl]'],
+      ],
     },
   },
 ];
@@ -281,7 +304,8 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', or 'arrive' at a universe. An exchange, or null.
+// 'edge', 'crash' or 'idle' (where a crew has those), or 'arrive' at a
+// place. An exchange, or null.
 export function linesFor(crew, event, id) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
