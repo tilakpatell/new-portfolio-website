@@ -1,5 +1,6 @@
-// Team Prime and the Vehicons in vehicle mode, side on and facing right, in
-// their Prime colors. Every drawing is 40 high; `WIDTHS` gives each one's width.
+// Team Prime, Knock Out, Breakdown and the Vehicons in vehicle mode, side on and
+// facing right, in their Prime colors. Every drawing is 40 high; the bridge's
+// `WIDTH` gives each one's width.
 
 const INK = '#0d0f14';
 
@@ -101,6 +102,34 @@ const ART = {
       <path d="M94 22 h4 v3 h-4 Z" fill="#ff2b4a" />
       <Wheel x={24} y={30} />
       <Wheel x={80} y={30} />
+    </>
+  ),
+  // Knock Out: a low crimson sports car with silver trim
+  knockout: (
+    <>
+      <path d="M2 27 L3 19.6 L9 19.2 L22 18.5 L40 11 L60 10.5 L77 16.5 L98 19.5 L102 25 L100 30 H3 Z" fill="#b3122a" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M43 13.5 L59 13.2 L70 17.4 L35 18.2 Z" fill="#26303f" />
+      <path d="M6 23.5 L99 22.8" stroke="#c9ced6" strokeWidth="1.8" />
+      <path d="M36 27.6 H68" stroke="#c9ced6" strokeWidth="1.4" />
+      <path d="M64 19.6 h7 l-2 2 h-6 Z" fill="#c9ced6" />
+      <path d="M97 20.2 h4 v2.4 h-4 Z" fill="#ffe9a8" />
+      <Wheel x={23} y={30} />
+      <Wheel x={83} y={30} />
+    </>
+  ),
+  // Breakdown: a big dark-blue armored SUV with grey plating and a yellow light bar
+  breakdown: (
+    <>
+      <path d="M3 31 V14 L11 6 H78 L91 15 L108 17 L110 31 Z" fill="#23396a" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M15 9 H41 V16 H11 Z M45 9 H75 L85 16 H45 Z" fill="#26303f" />
+      <path d="M3 21 H109.5 V31 H3 Z" fill="#6b7380" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M38 21 V31 M72 21 V31" stroke="#4b525d" strokeWidth="1.2" />
+      <path d="M30 2.5 H60 V6 H30 Z" fill="#ffc400" stroke={INK} strokeWidth="1" />
+      <path d="M40 2.5 V6 M50 2.5 V6" stroke="#c98f00" strokeWidth="1" />
+      <path d="M105 18 h6 v13 h-6 Z" fill="#3a3f47" stroke={INK} strokeWidth="1" />
+      <path d="M100 17.5 h4 v3 h-4 Z" fill="#ffe9a8" />
+      <Wheel x={26} y={30} r={10} />
+      <Wheel x={86} y={30} r={10} />
     </>
   ),
 };

@@ -1,18 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ArcReactor from '../components/avengers/ArcReactor';
 import Mjolnir from '../components/avengers/Mjolnir';
 import Compound from '../components/avengers/Compound';
+import HQBackdrop, { AvengersMark } from '../components/avengers/HQBackdrop';
 import ShieldThrow from '../components/avengers/ShieldThrow';
 import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
 import HulkLab from '../components/avengers/HulkLab';
+import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
+import TrickShot from '../components/avengers/trickshot/TrickShot';
+import HoldTheLawn from '../components/avengers/lawn/HoldTheLawn';
+import SmashRun from '../components/avengers/smash/SmashRun';
+import Ricochet from '../components/avengers/ricochet/Ricochet';
+import Titan from '../components/avengers/titan/Titan';
+import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
+import { useAchievements } from '../components/Achievements';
+import TesseractRun from '../components/avengers/tesseract/TesseractRun';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
-import Gif from '../components/Gif';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
@@ -25,16 +34,24 @@ const sfx = () => import('../lib/sfx');
 // walks it, and the map beside it shows where you are. It ends in the hangar,
 // where the Tesseract is kept.
 const FLOORS = [
-  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and the reactor hums, with F.R.I.D.A.Y. running the place.' },
-  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
-  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river. Throw the shield and it comes back. It always comes back.' },
-  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'Three lanes at the edge of the woods. Aim anywhere you like.' },
+  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
+  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir waits in a crater on the terrace, for someone worthy. Lift it, because the Chitauri are coming across the lawn in the rain.' },
+  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
+  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
-  { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him.' },
-  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. In a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
+  { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him. Push him anyway: it’s 2012, the portal is open over Stark Tower, and Midtown is full of Chitauri.' },
+  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. The Tesseract has to come home to it, slung in its case under a Quinjet: over the woods, under the gantry, over the ridge and, with a storm coming in, through the hangar doors. Set it down gently and the Space Stone opens a hole in the sky, as it did over New York.' },
 ];
 
 const SPOT_IDS = FLOORS.map((f) => f.id);
+
+// which stone each building gives up (Clint's and Natasha's halves of Soul)
+const FLOOR_STONE = { stark: 'power', thor: 'reality', cap: 'mind', hawkeye: 'soul-clint', widow: 'soul-natasha', banner: 'time', vault: 'space' };
+const stoneOf = (floorId) => {
+  const id = FLOOR_STONE[floorId];
+  if (!id || !hasEarned(id)) return null;
+  return STONES.find((s) => s.id === (id.startsWith('soul') ? 'soul' : id)) ?? null;
+};
 const SPOT_TITLES = FLOORS.map((f, i) => `${i + 1}. ${f.title}`);
 
 const FRIDAY = [
@@ -85,15 +102,25 @@ function Floor({ i, floor, children, aside }) {
 export default function Avengers() {
   useDocumentTitle('Avengers HQ');
   const { snap } = useFun();
+  const { unlock, notify } = useAchievements();
+  const earned = useStones();
+  const titan = useRef(null);
   const [power, setPower] = useState(0);
   const [blast, setBlast] = useState(0);
-  const [have, setHave] = useState([]);
+  // the gauntlet starts with every stone won back in the games
+  const [have, setHave] = useState(earnedStones);
   const [current, setCurrent] = useState(0);
   const [portal, setPortal] = useState(false);
   const [arrived, setArrived] = useState(false);
   const intro = useRef(null);
   const [playing, setPlaying] = useState(false);
   const timers = useRef([]);
+  // the page's own look (styles/extras.css), while the Stark theme is on
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.world = 'avengers';
+    return () => delete root.dataset.world;
+  }, []);
   useEffect(
     () => () => {
       intro.current?.stop();
@@ -166,19 +193,48 @@ export default function Avengers() {
     );
   };
 
+  useEffect(() => setHave((h) => [...new Set([...h, ...earned])]), [earned]);
   const all = have.length === STONES.length;
+  // all six taken back by playing: the snap is Tony's
+  const heist = earned.length === STONES.length;
+  const doSnap = () => {
+    audioContext();
+    const after = (tony) => {
+      if (!tony) {
+        snap();
+        return;
+      }
+      sfx().then((s) => s.thunder());
+      unlock('whatever');
+      notify('I am Iron Man.', 'Every stone, won back on the compound. Thanos and his army are dust; this page is not.', 'note', 'whatever');
+    };
+    if (titan.current?.snap(heist, after)) return;
+    after(heist);
+  };
   return (
-    <div className="relative">
+    <div className="hq-page relative">
+      <HQBackdrop />
       <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
         <figure className="m-0">
-          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" />
+          <p className="hq-feed" aria-hidden="true">
+            <span>
+              <i className="hq-live-dot" />
+              Live · compound feed
+            </span>
+            <span>F.R.I.D.A.Y.</span>
+          </p>
+          <div className="hq-hud">
+            <Compound spots={SPOT_IDS} titles={SPOT_TITLES} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
+          </div>
           <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
         </figure>
-        <div>
+        <div className="relative">
+          <AvengersMark className="hq-hero-mark" />
           <p className="eyebrow">The Avengers compound · Upstate New York</p>
-          <h1 id="hq-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
+          <h1 id="hq-title" className="display hq-steel mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
             Avengers HQ
           </h1>
+          <span className="hq-rule" aria-hidden="true" />
           <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Walk the compound: every building belongs to someone, and the Tesseract is waiting in the hangar.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#floor-stark" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-stark')}>
@@ -210,7 +266,7 @@ export default function Avengers() {
 
       <div className="shell relative z-10 grid gap-10 lg:grid-cols-[236px_minmax(0,1fr)] lg:gap-14">
         <aside className="hq-rail" aria-hidden="true">
-          <Compound spots={SPOT_IDS} current={current} compact />
+          <Compound spots={SPOT_IDS} current={current} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} compact />
           <p className="hq-now">
             <span className="hq-now-label">You are here</span>
             {FLOORS[current].title}
@@ -220,82 +276,94 @@ export default function Avengers() {
               <li key={f.id} data-on={i === current || undefined}>
                 <span>{i + 1}</span>
                 {f.short}
+                {stoneOf(f.id) && <i className="stone-dot hq-rail-stone" style={{ '--glow': stoneOf(f.id).color }} title={stoneOf(f.id).name} />}
               </li>
             ))}
           </ol>
         </aside>
         <div className="grid gap-20 pb-20 md:gap-28">
           <Floor i={0} floor={FLOORS[0]}>
-            <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <figure className="reactor-stage m-0">
-                <ArcReactor power={power} blast={blast} />
-              </figure>
-              <div>
-                <div className="flex flex-wrap gap-3">
-                  <button type="button" className="btn btn-primary" onClick={powerUp}>
-                    {power === 3 ? 'Power down' : 'Power up'}
-                  </button>
-                  <button type="button" className="btn btn-ghost" onClick={fire}>
-                    Fire a repulsor
-                  </button>
+            <RepulsorRange
+              fallback={
+                <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <figure className="reactor-stage m-0">
+                    <ArcReactor power={power} blast={blast} />
+                  </figure>
+                  <div>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" className="btn btn-primary" onClick={powerUp}>
+                        {power === 3 ? 'Power down' : 'Power up'}
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={fire}>
+                        Fire a repulsor
+                      </button>
+                    </div>
+                    <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
+                      F.R.I.D.A.Y.: {FRIDAY[power]}
+                    </p>
+                  </div>
                 </div>
-                <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-                  F.R.I.D.A.Y.: {FRIDAY[power]}
-                </p>
-              </div>
-            </div>
+              }
+            />
           </Floor>
-          <Floor i={1} floor={FLOORS[1]} aside={<Gif name="marvelThor" size="medium" />}>
-            <Mjolnir />
+          <Floor i={1} floor={FLOORS[1]}>
+            <HoldTheLawn fallback={<Mjolnir />} />
           </Floor>
-          <Floor i={2} floor={FLOORS[2]} aside={<Gif name="marvelCapHammer" size="medium" />}>
-            <ShieldThrow />
+          <Floor i={2} floor={FLOORS[2]}>
+            <Ricochet fallback={<ShieldThrow />} />
           </Floor>
           <Floor i={3} floor={FLOORS[3]}>
-            <Range />
+            <TrickShot fallback={<Range />} />
           </Floor>
           <Floor i={4} floor={FLOORS[4]}>
             <Dossier />
           </Floor>
           <Floor i={5} floor={FLOORS[5]}>
-            <HulkLab />
+            <SmashRun fallback={<HulkLab />} />
           </Floor>
           <Floor i={6} floor={FLOORS[6]}>
-            <div className="roof-stage" data-portal={portal || undefined}>
-              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
-                <defs>
-                  <radialGradient id="tess-glow">
-                    <stop offset="0" stopColor="#d6f3ff" />
-                    <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
-                    <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
-                  </radialGradient>
-                  <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#0d1420" />
-                    <stop offset="1" stopColor="#1b2534" />
-                  </linearGradient>
-                </defs>
-                <rect width="600" height="260" fill="url(#vault-wall)" />
-                {Array.from({ length: 9 }, (_, i) => (
-                  <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
-                ))}
-                <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
-                <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
-                <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
-                <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
-                <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
-                <g className="tesseract">
-                  <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
-                  <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
-                </g>
-                <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
-                  S.H.I.E.L.D. · CONTAINMENT
-                </text>
-              </svg>
-            </div>
-            <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
-              Space
-            </button>
-            <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
+            <TesseractRun
+              onPortal={openPortal}
+              fallback={
+                <div>
+                  <div className="roof-stage" data-portal={portal || undefined}>
+                    <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
+                      <defs>
+                        <radialGradient id="tess-glow">
+                          <stop offset="0" stopColor="#d6f3ff" />
+                          <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
+                          <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
+                        </radialGradient>
+                        <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stopColor="#0d1420" />
+                          <stop offset="1" stopColor="#1b2534" />
+                        </linearGradient>
+                      </defs>
+                      <rect width="600" height="260" fill="url(#vault-wall)" />
+                      {Array.from({ length: 9 }, (_, i) => (
+                        <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
+                      ))}
+                      <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
+                      <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
+                      <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
+                      <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
+                      <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
+                      <g className="tesseract">
+                        <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
+                        <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
+                      </g>
+                      <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
+                        S.H.I.E.L.D. · CONTAINMENT
+                      </text>
+                    </svg>
+                  </div>
+                  <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
+                    Space
+                  </button>
+                  <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
+                </div>
+              }
+            />
           </Floor>
         </div>
       </div>
@@ -306,6 +374,11 @@ export default function Avengers() {
         <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
         <div className="shell relative grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div className="stones-panel gauntlet-stage" data-all={all || undefined}>
+            <Titan
+              ref={titan}
+              have={have}
+              onSet={(id) => setHave((h) => (h.includes(id) ? h : [...h, id]))}
+              fallback={
             <div className="gauntlet-wrap">
               <Gauntlet have={have} all={all} />
               <div className="gauntlet-sockets" role="group" aria-label="Infinity Stones">
@@ -326,13 +399,19 @@ export default function Avengers() {
                 })}
               </div>
             </div>
+              }
+            />
           </div>
           <div>
             <p className="eyebrow">Titan · beyond the portal</p>
             <h2 id="gauntlet-title" className="title mt-4">
               Thanos
             </h2>
-            <p className="lead mt-4 max-w-[46ch]">He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds.</p>
+            <p className="lead mt-4 max-w-[46ch]">
+              {heist
+                ? 'You took every stone back from the compound. Set them, and this time the snap is Tony’s: Thanos and his army turn to dust, and the page stays.'
+                : 'He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds. Win all six back in the games on the compound, and the snap is Tony’s.'}
+            </p>
             <ul className="stone-list mt-6">
               {STONES.map((s) => (
                 <li key={s.id} data-on={have.includes(s.id) || undefined} style={{ '--glow': s.color }}>
@@ -345,8 +424,8 @@ export default function Avengers() {
               ))}
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
-              <button type="button" className="btn btn-primary" disabled={!all} onClick={snap}>
-                Snap
+              <button type="button" className="btn btn-primary" disabled={!all} onClick={doSnap}>
+                {heist ? 'Snap: I am Iron Man' : 'Snap'}
               </button>
               <button type="button" className="btn btn-ghost" disabled={!have.length} onClick={() => setHave([])}>
                 Take them out

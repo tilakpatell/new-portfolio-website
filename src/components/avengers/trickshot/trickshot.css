@@ -1,0 +1,51 @@
+/* ─── Trick Shot: Clint's range ─────────────────────────────────────────────── */
+.ts-game { --hq-accent: #c9a2ff; }
+.ts-hud-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.ts-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: #fff; font-family: var(--font-sans); font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55); }
+.ts-round { position: absolute; top: 12px; left: 16px; display: grid; gap: 0.1rem; }
+.ts-round-n { font-weight: 700; font-size: 0.92rem; font-stretch: 125%; letter-spacing: 0.06em; text-transform: uppercase; }
+.ts-round-n small { margin-left: 0.15rem; font-size: 0.7rem; opacity: 0.6; }
+.ts-round-title { font-size: 0.78rem; font-weight: 600; color: #dcc7ff; }
+.ts-clock { position: absolute; top: 8px; left: 50%; translate: -50% 0; font-weight: 700; font-size: 1.7rem; font-stretch: 112%; line-height: 1; }
+.ts-clock small { margin-left: 0.1rem; font-size: 0.8rem; opacity: 0.7; }
+.ts-clock[data-low] { color: #ff9a86; }
+.ts-score { position: absolute; top: 10px; right: 16px; display: grid; justify-items: end; gap: 0.15rem; }
+.ts-score-n { font-weight: 700; font-size: 1.6rem; line-height: 1; }
+.ts-score-total { font-size: 0.66rem; font-weight: 600; font-stretch: 125%; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.78; }
+.ts-streak { padding: 0.08rem 0.45rem; border: 1px solid rgba(201, 162, 255, 0.75); border-radius: 4px; font-weight: 700; font-size: 0.7rem; color: #e3d2ff; }
+
+.ts-quiver { position: absolute; left: 16px; bottom: 14px; display: grid; gap: 6px; }
+.ts-arrows { display: flex; gap: 3px; }
+.ts-arrows span { width: 5px; height: 24px; border-radius: 2px; background: rgba(255, 255, 255, 0.16); }
+.ts-arrows span[data-on] { background: linear-gradient(#f0eaff 0 18%, #6a35b0 18% 30%, #e9e6f0 30%); box-shadow: 0 0 6px rgba(0, 0, 0, 0.4); }
+.ts-tricks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 20px; }
+.ts-trick { padding: 0.12rem 0.45rem; border: 1px solid var(--c); border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, rgba(0, 0, 0, 0.45)); font-size: 0.64rem; font-weight: 700; font-stretch: 112%; letter-spacing: 0.04em; text-transform: uppercase; }
+.ts-trick[data-nocked] { background: var(--c); color: #120c18; text-shadow: none; box-shadow: 0 0 10px var(--c); }
+.ts-kbd { padding: 0 0.35rem; border: 1px solid rgba(255, 255, 255, 0.45); border-bottom-width: 2px; border-radius: 4px; font: 600 0.62rem/1.5 var(--font-sans); }
+
+.ts-wind { position: absolute; right: 16px; bottom: 14px; display: grid; grid-template-columns: auto auto auto; align-items: center; justify-items: end; gap: 4px 8px; }
+.ts-wind-label { font-size: 0.62rem; font-weight: 600; font-stretch: 125%; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+.ts-wind-arrow { position: relative; width: calc(18px + 30px * var(--k)); height: 2px; background: #fff; }
+.ts-wind-arrow::after { content: ''; position: absolute; top: -4px; right: -1px; border: 5px solid transparent; border-left-color: #fff; border-right-width: 0; }
+.ts-wind-n { min-width: 2.2ch; font-weight: 700; font-size: 0.9rem; }
+.ts-draw-mode { grid-column: 1 / -1; font-size: 0.66rem; font-weight: 600; opacity: 0.8; }
+.ts-draw-mode[data-lob] { color: #dcc7ff; opacity: 1; }
+.ts-message { position: absolute; left: 50%; bottom: 52px; width: min(80%, 48ch); translate: -50% 0; font-size: 0.8rem; font-weight: 500; line-height: 1.35; text-align: center; color: #f3edff; }
+
+.ts-touch { position: absolute; z-index: 4; right: 12px; bottom: 74px; display: flex; gap: 8px; }
+.ts-touch-btn { display: grid; place-items: center; min-width: 52px; height: 44px; padding: 0 0.7rem; border: 1px solid rgba(201, 162, 255, 0.6); border-radius: 999px; background: rgba(14, 8, 24, 0.55); color: #fff; font: 700 0.74rem/1 var(--font-sans); font-stretch: 112%; letter-spacing: 0.03em; text-transform: uppercase; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.ts-touch-btn[aria-pressed='true'] { background: rgba(106, 53, 176, 0.75); }
+.ts-touch-btn:disabled { opacity: 0.35; }
+@media (hover: hover) and (pointer: fine) { .ts-touch { display: none; } }
+.ts-overlay .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+@media (max-width: 760px) {
+  .ts-touch { left: 12px; right: 12px; justify-content: flex-end; bottom: 12px; }
+  .ts-quiver { bottom: auto; top: 54px; left: 12px; }
+  .ts-arrows span { width: 4px; height: 18px; }
+  .ts-wind { bottom: auto; top: 54px; right: 12px; }
+  .ts-message { bottom: 66px; font-size: 0.74rem; }
+  .ts-clock { top: 10px; font-size: 1.35rem; }
+  .ts-score-n { font-size: 1.3rem; }
+  .ts-round { left: 12px; }
+  .ts-score { right: 12px; }
+}
