@@ -444,7 +444,7 @@ export default function Terminal() {
         L(`  ${pad('avengers', 13)}Marvel: the Avengers compound building by building, the Tesseract, Thanos`),
         L(`  ${pad('scranton', 13)}The Office: the floor plan, Kevin mode, Dwight's fact check, the Dundies`),
         L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, the ground bridge, the Iacon relics`),
-        L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, the superlab, Hector's bell, Los Pollos Hermanos`),
+        L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, Walt's Metherria, Hector's bell, Los Pollos Hermanos`),
         L(`  ${pad('music', 13)}The music room: sitar, harmonium, tabla`),
       ],
       exit: () => {

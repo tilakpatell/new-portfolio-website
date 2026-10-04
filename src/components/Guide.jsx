@@ -82,7 +82,7 @@ const PAGES = {
     tips: [
       ['The title card', 'Type a name and it becomes a Breaking Bad title card.'],
       ['The cast', 'Every card does something.'],
-      ['The superlab', 'Cook to order. Take each customer’s ticket at the counter, then: hold to pour the base to the line and tint it to the right blue (Chili P only if they want it), hold to keep the heat in the green, strike the slab on its crack lines, and fill each bag to the mark. Every station is scored, and so is the wait. Pay buys upgrades between shifts; new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch).'],
+      ['Walt’s Metherria', 'Cook to order, Papa’s style, in 3D. Take each customer’s ticket at the hatch, then work the stations along the bench: pick the size and hold to pour the base to the gold line, counting in the blue and Chili P (and the mix-ins your title unlocks); hold the heat in the green; strike the slab on its crack lines; pick the pack, fill each one to the mark, and stick the stickers where the ticket shows. Hand it over at the hatch. Every station is scored, and so is the wait. Pay buys upgrades between shifts, new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch). It needs WebGL.'],
       ['Face Off', 'Ring Hector’s bell three times.'],
       ['The letter board', 'Rows light up in turn: ring (Space, the button or a tap on the board) to pick the row, then again on the right letter. Three words; wrong rings cost five seconds.'],
       ['Inside', 'Order at the Los Pollos Hermanos counter (Gus is serving) and the tray fills up. Then call Saul.'],
