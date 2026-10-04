@@ -976,63 +976,169 @@ export const PHOTOS = {
       "title": "Λευκός Πύργος 4014"
     }
   },
-  "h-robbinsville-day": {
+  "h-rv-day": {
     "widths": [
       960,
       1600
-    ],
-    "ratio": 1.333,
-    "alt": "BAPS Swaminarayan Akshardham in Robbinsville by day: white carved stone shikhars above a wide flight of steps",
-    "credit": {
-      "author": "Srishti Sethi",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_Hindu_Temple_in_Jersey_City.jpg",
-      "title": "Akshardham Hindu Temple in Jersey City"
-    }
-  },
-  "h-delhi-gardens": {
-    "widths": [
-      960,
-      1600
-    ],
-    "ratio": 0.75,
-    "alt": "The gardens of Swaminarayan Akshardham in New Delhi: green lawns, clipped hedges and trees, with the carved sandstone mandir and its domes beyond",
-    "credit": {
-      "author": "rajaraman sundaram",
-      "license": "CC BY 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
-      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_temple_gardens,delhi_-_panoramio.jpg",
-      "title": "Akshardham temple gardens,delhi - panoramio"
-    }
-  },
-  "h-delhi-night": {
-    "widths": [
-      960,
-      1600
-    ],
-    "ratio": 0.75,
-    "alt": "Swaminarayan Akshardham in New Delhi at night, its carved domes and pillars lit gold against a black sky",
-    "credit": {
-      "author": "Akshatha Inamdar",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_02.jpg",
-      "title": "Akshardham 02"
-    }
-  },
-  "h-delhi-fountain": {
-    "widths": [
-      800
     ],
     "ratio": 0.666,
-    "alt": "The musical fountain at Akshardham in New Delhi after dark, jets of water lit pink and violet, the mandir glowing behind",
+    "alt": "BAPS Swaminarayan Akshardham in Robbinsville on a clear day, the white stone mandir above lawns and flower beds",
     "credit": {
-      "author": "Juthani1",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "source": "https://commons.wikimedia.org/wiki/File:Akshardham_fountain.jpg",
-      "title": "Akshardham fountain"
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Akshardham by day, Robbinsville"
+    }
+  },
+  "h-rv-golden": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.667,
+    "alt": "The mandir at Robbinsville across a still lake with a fountain, the sun low beside it",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Akshardham in the low sun, Robbinsville"
+    }
+  },
+  "h-rv-dusk": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.642,
+    "alt": "Akshardham in Robbinsville from above at dusk: the mandir and its long pools lit up under a pink and violet sky",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Akshardham at dusk, Robbinsville"
+    }
+  },
+  "h-rv-night": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.749,
+    "alt": "Akshardham in Robbinsville at night from above, the mandir glowing and the grounds lined with lights for the inauguration",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Akshardham at night, Robbinsville"
+    }
+  },
+  "h-rv-fireworks": {
+    "widths": [
+      800,
+      1200
+    ],
+    "ratio": 1.5,
+    "alt": "Fireworks bursting over the mandir at Robbinsville, lit blue and violet, during the inauguration",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://usa.akshardham.org/media",
+      "title": "Fireworks at the inauguration, Robbinsville"
+    }
+  },
+  "h-dl-day": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "Swaminarayan Akshardham in New Delhi by day, seen down a long patterned stone walk under a blue sky with white clouds",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Akshardham by day, New Delhi"
+    }
+  },
+  "h-dl-lotus": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "The Yogi Hriday Kamal at Akshardham in New Delhi, a garden laid out like an opening lotus, with the mandir beyond",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "The Yogi Hriday Kamal garden, New Delhi"
+    }
+  },
+  "h-dl-golden": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "The mandir in New Delhi beside the lake, the sky gold and blue and the water holding its reflection",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Akshardham by the lake, New Delhi"
+    }
+  },
+  "h-dl-dusk": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "Akshardham in New Delhi at dusk, its domes lit gold under a violet sky, with gardens in front",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Akshardham at dusk, New Delhi"
+    }
+  },
+  "h-dl-night": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "Akshardham in New Delhi at night, the carved mandir lit against a deep blue sky",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "Akshardham at night, New Delhi"
+    }
+  },
+  "h-dl-watershow": {
+    "widths": [
+      960,
+      1600
+    ],
+    "ratio": 0.563,
+    "alt": "The Sahaj Anand water show at Akshardham in New Delhi: arcs of water lit orange under fans of laser light",
+    "credit": {
+      "author": "BAPS Swaminarayan Sanstha",
+      "license": "© BAPS Swaminarayan Sanstha",
+      "licenseUrl": null,
+      "source": "https://akshardham.com/download/photo-galleries/",
+      "title": "The Sahaj Anand water show, New Delhi"
     }
   }
 };

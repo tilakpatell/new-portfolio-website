@@ -2176,3 +2176,7 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 @keyframes saber-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tip-run { from { transform: translateX(44px); } to { transform: translateX(calc(100cqw - 10px)); } }
 @keyframes stone-lit { from { background: color-mix(in srgb, var(--stone) 30%, #2a2a2a); box-shadow: none; } to { background: var(--stone); box-shadow: 0 0 8px var(--stone); } }
+.akd-places { display: inline-flex; gap: 0.25rem; margin-bottom: 0.85rem; padding: 0.25rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.akd-places button { min-height: 2.25rem; padding: 0.3rem 1rem; border-radius: 999px; color: var(--text-body); font-size: 0.9rem; font-weight: 600; transition: background-color 0.2s ease, color 0.2s ease; }
+.akd-places button:hover { color: var(--text); }
+.akd-places button[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); }
