@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STAFF } from './layout';
-import { CAST } from './people';
+import { CAST, GESTURES, isSpec } from './people';
 
 // a person's .glb, and its JSON chunk
 const file = (id) => readFileSync(new URL(`../../../public/models/office/cast/${id}.glb`, import.meta.url));
@@ -42,6 +42,22 @@ describe('the cast', () => {
       expect(c.height, id).toBeGreaterThan(1.45);
       expect(c.height, id).toBeLessThan(2.0);
     }
+  });
+
+  it('names every gesture the callers use', () => {
+    expect(GESTURES).toEqual(['nod', 'shake', 'shrug', 'fold', 'cheer', 'wave']);
+  });
+
+  it('takes someone from elsewhere as a spec of their own figure, not only an office id', () => {
+    const walt = { id: 'walt', model: '/models/albuquerque/walt.glb', height: 1.79 };
+    expect(isSpec(walt)).toBe(true);
+    const { model, ...noModel } = walt;
+    expect(model).toBeTruthy();
+    expect(isSpec(noModel)).toBe(false);
+    expect(isSpec({ ...walt, height: '1.79' })).toBe(false);
+    expect(isSpec({ ...walt, model: '/models/albuquerque/walt.png' })).toBe(false);
+    for (const id of Object.keys(CAST)) expect(isSpec(id), id).toBe(false);
+    expect(isSpec(null)).toBe(false);
   });
 
   it('ships no animations (the browser poses them), and stays small enough to send', () => {
