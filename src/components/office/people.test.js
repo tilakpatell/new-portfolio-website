@@ -40,6 +40,12 @@ describe('the cast', () => {
     }
   });
 
+  it('ships the parts Albuquerque wears', () => {
+    const meshes = packs.men.meshes.map((m) => m.name);
+    expect(meshes).toContain('head_beard');
+    expect(meshes).toContain('body_hoodie');
+  });
+
   it('names every gesture the callers use', () => {
     expect(GESTURES).toEqual(['nod', 'shake', 'shrug', 'fold', 'cheer', 'wave']);
   });
