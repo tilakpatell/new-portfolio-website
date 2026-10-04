@@ -86,7 +86,7 @@ function IntroJump() {
     }
   }, [on]);
   if (!on) return null;
-  return <Hyperspace entry onDone={() => setOn(false)} />;
+  return <Hyperspace entry sound onDone={() => setOn(false)} />;
 }
 
 // ⌘K / Ctrl+K anywhere, or the search button in the nav.
