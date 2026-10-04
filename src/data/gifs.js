@@ -16,6 +16,30 @@ export const GIFS = {
   trenchRun: { id: 'l0IpWBta9aL7GOoE0', title: 'Vader’s TIE fighters chase an X-wing down the trench', by: 'Star Wars', w: 400, h: 170, small: true },
   yavin: { id: '1xo9COytfPE9chS05b', title: 'Luke’s torpedoes find the exhaust port, and the Death Star explodes', by: 'Star Wars', w: 480, h: 270, small: true },
   snap: { id: 'iIFS20pNoCg1EEVodC', title: 'Thanos snaps', by: 'Marvel Studios', w: 360, h: 360, small: true },
+  // The Office (NBC)
+  officeFalse: { id: 'mnkU1KhOfG2dnPcFml', title: 'Dwight misses Jim. False.', by: 'The Office', w: 480, h: 400, small: true },
+  officeNoGod: { id: 'vyTnNTrs3wqQ0UIvwE', title: 'Michael hears Toby is back: “No, God! No!”', by: 'The Office', w: 480, h: 400, small: true },
+  officeJim: { id: 'ZWx7CHCCXdcKKVsgvc', title: 'Jim gives the camera the look', by: 'The Office', w: 480, h: 400, small: true },
+  officeDundies: { id: 'Ka9v0caVwNVOxDgcIZ', title: 'Michael hosts the Dundies at Chili’s', by: 'The Office', w: 480, h: 400, small: true },
+  officePamDundie: { id: 'hjvinhl1pUrb1gdzlV', title: 'Pam waves her Dundie outside Chili’s', by: 'The Office', w: 480, h: 400, small: true },
+  officeChili: { id: 'SZQBPO4NqHkh6wmdXk', title: 'Kevin brings in his chili', by: 'The Office', w: 480, h: 400, small: true },
+  officeBankruptcy: { id: '8nM6YNtvjuezzD7DNh', title: 'Michael declares bankruptcy', by: 'The Office', w: 480, h: 400, small: true },
+  officeBestBoss: { id: 'kTTtJPkGoBTzhEze9T', title: 'Michael and the World’s Best Boss mug', by: 'The Office', w: 480, h: 400, small: true },
+  // Marvel Studios
+  marvelAssemble: { id: 'LOFT5Jd31ON1b5kLtP', title: 'Everyone comes back through the portals', by: 'Marvel Studios', w: 360, h: 360, small: true },
+  marvelCapHammer: { id: 'dv01JuAyGK11zZKRv5', title: 'Captain America, holding Mjolnir, as help arrives', by: 'Marvel Studios', w: 360, h: 360, small: true },
+  marvelThor: { id: 'Pja8Ied6v7M7Gq5DeK', title: 'Thor with Mjolnir and Stormbreaker, lightning everywhere', by: 'Marvel Studios', w: 360, h: 360, small: true },
+  marvelGroot: { id: '3oKIPsVV8T8nqicJFu', title: 'Baby Groot: “I am Groot”', by: 'Marvel Studios', w: 500, h: 500, small: true },
+  // The Lord of the Rings (HBO Max, for Warner Bros.)
+  lotrPass: { id: 'WpD30tFjzosDn7amXq', title: 'Gandalf on the bridge: “You shall not pass”', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },
+  lotrPrecious: { id: 'lq4zZge5wmOEFecKu8', title: 'Gollum: “My precious”', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },
+  lotrRing: { id: 'YTR0RHAhJBbCzsgaAk', title: 'Gollum reaches for the Ring around Frodo’s neck', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },
+  // Transformers (Paramount)
+  tfRollOut: { id: 'j9pKCnYLbN1nqYcuHc', title: 'Optimus: “Transform and roll out!”', by: 'Transformers One', w: 480, h: 360, small: true },
+  tfTransform: { id: 'Ur2pMIbwdCcyKha1Ru', title: 'Optimus Prime unfolds in the alley', by: 'Transformers (2007)', w: 480, h: 480, small: true },
+  tfBumblebee: { id: '5WJlk4CjBWZ5SNE4SC', title: 'Bumblebee unfolds from his Beetle', by: 'Bumblebee (2018)', w: 480, h: 270, small: true },
+  tfBumblebeeWave: { id: 'S4GlSMkYIjFyDdgJ6K', title: 'Bumblebee waves hello', by: 'Bumblebee (2018)', w: 480, h: 480, small: true },
+  tfMegatron: { id: 'JZjTmfiY6hNgCPJUVe', title: 'Megatron: “I don’t think so.”', by: 'Transformers One', w: 480, h: 360, small: true },
 };
 
 export const gifPage = (id) => `https://giphy.com/gifs/${id}`;

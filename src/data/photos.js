@@ -569,5 +569,291 @@ export const PHOTOS = {
       "source": "https://commons.wikimedia.org/wiki/File:2024-03-22_Tanpuras_in_Raja_Dinkar_Kelkar_Museum,_Pune.jpg",
       "title": "2024-03-22 Tanpuras in Raja Dinkar Kelkar Museum, Pune"
     }
+  },
+  "me-bag-end": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.663,
+    "alt": "Bag End’s round green door and porthole windows set into a grassy mound at the Hobbiton Movie Set, with potted flowers in front and a gnarled oak on top",
+    "credit": {
+      "author": "Tom Hall",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Hobbiton,_New_Zealand.jpg",
+      "title": "Hobbiton, New Zealand"
+    }
+  },
+  "me-hobbiton": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "Hobbit holes with grey, red and teal round doors in a green hillside at the Hobbiton Movie Set, mirrored in a still pond",
+    "credit": {
+      "author": "Jackie.lck",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Hobbit_holes_reflected_in_water.jpg",
+      "title": "Hobbit holes reflected in water"
+    }
+  },
+  "me-doom": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "The dark, symmetrical cone of Mount Ngauruhoe rising beyond a rocky ridge in Tongariro National Park, snow-capped Ruapehu behind",
+    "credit": {
+      "author": "Eusebius",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Le_Ngauruhoe_et_le_Ruapehu_vus_du_sommet_du_Tongariro.jpg",
+      "title": "Le Ngauruhoe et le Ruapehu vus du sommet du Tongariro"
+    }
+  },
+  "me-edoras": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.667,
+    "alt": "Mount Sunday, a rocky knoll rising from golden tussock in the upper Rangitata valley, with a braided riverbed and grey mountains behind",
+    "credit": {
+      "author": "Experience Mid Canterbury",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:EMC_Walk_Mt_Sunday_-_Lord_of_Rings_Location.jpg",
+      "title": "EMC Walk Mt Sunday - Lord of Rings Location"
+    }
+  },
+  "me-pinnacles": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "Tall grey eroded rock spires of the Putangirua Pinnacles above green scrub and a gravel slope, under a deep blue sky",
+    "credit": {
+      "author": "Pseudopanax at English Wikipedia",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:Conglomerate_pillars_at_Putangirua_Pinnacles.jpg",
+      "title": "Conglomerate pillars at Putangirua Pinnacles"
+    }
+  },
+  "me-anduin": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.653,
+    "alt": "The turquoise Kawarau River winding through a rocky gorge lined with golden autumn trees, under an arched bridge",
+    "credit": {
+      "author": "Bernard Spragg. NZ",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "https://commons.wikimedia.org/wiki/File:Kawarau_Gorge._Otago_NZ.jpg",
+      "title": "Kawarau Gorge. Otago NZ"
+    }
+  },
+  "me-mordor": {
+    "widths": [
+      640,
+      1280,
+      1920
+    ],
+    "ratio": 0.667,
+    "alt": "The rust-red scarred walls of Red Crater on the Tongariro Alpine Crossing, with the dark cone of Mount Ngauruhoe behind",
+    "credit": {
+      "author": "Julien Carnot",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Red_crater_(24511166521).jpg",
+      "title": "Red crater (24511166521)"
+    }
+  },
+  "office-electric-city": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.695,
+    "alt": "The illuminated Scranton Electric City sign, a ring of glowing bulbs under a light-bulb starburst, on a steel frame above an ornate rooftop at dusk",
+    "credit": {
+      "author": "Carol M. Highsmith",
+      "license": "Public domain",
+      "licenseUrl": null,
+      "source": "https://commons.wikimedia.org/wiki/File:Scranton,_Pennsylvania,_restored_historic_Electric_City_sign_by_Carol_Highsmith_(LOC_highsm.04369).jpg",
+      "title": "Scranton, Pennsylvania, restored historic Electric City sign by Carol Highsmith (LOC highsm.04369)"
+    }
+  },
+  "office-dunder-mifflin": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "A street banner reading Scranton, Pennsylvania and Dunder Mifflin, Inc. Paper Company hanging from a utility pole",
+    "credit": {
+      "author": "tomdobb",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Dunder_mifflin_banner_scranton.jpg",
+      "title": "Dunder mifflin banner scranton"
+    }
+  },
+  "office-scranton-sign": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.749,
+    "alt": "The maroon and white Scranton Welcomes You sign on wooden posts",
+    "credit": {
+      "author": "Michael Scialdone",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Welcome_to_Scranton_Sign_(2013).jpg",
+      "title": "Welcome to Scranton Sign (2013)"
+    }
+  },
+  "office-penn-paper": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.625,
+    "alt": "The brick clock tower of the Pennsylvania Paper and Supply building in Scranton, its clock face lettered Penn Paper",
+    "credit": {
+      "author": "Ajay Suresh from New York, NY, USA",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:The_Office_-_Penn_Paper_-_Landscape_(48472737706).jpg",
+      "title": "The Office - Penn Paper - Landscape (48472737706)"
+    }
+  },
+  "office-courthouse": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.563,
+    "alt": "The stone Lackawanna County Courthouse with its clock tower in morning sun, downtown Scranton behind",
+    "credit": {
+      "author": "Ajay Suresh from New York, NY, USA",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Scranton_-_Downtown_(48472890492).jpg",
+      "title": "Scranton - Downtown (48472890492)"
+    }
+  },
+  "marvel-ironman": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "Three Iron Man armours in lit glass cases: a crude grey prototype, a red and gold suit and a gold and red suit, each with a glowing chest light",
+    "credit": {
+      "author": "Higher Further Faster",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Iron_Man%27s_Armor_(2024_Exhibition).jpg",
+      "title": "Iron Man's Armor (2024 Exhibition)"
+    }
+  },
+  "marvel-shield": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "Captain America’s round shield, red and silver rings around a silver star on blue, scuffed and scratched, against a dark background",
+    "credit": {
+      "author": "Fred Cherrygarden",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Captain_America%E2%80%99s_Shield.jpg",
+      "title": "Captain America’s Shield"
+    }
+  },
+  "marvel-campus": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "A silver Quinjet on the roof of the Avengers Headquarters building at Avengers Campus, marked with the Avengers A",
+    "credit": {
+      "author": "Jeremy Thompson from Los Angeles, California",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Disney_California_Adventure_(51242016469).jpg",
+      "title": "Disney California Adventure (51242016469)"
+    }
+  },
+  "marvel-gauntlet": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.666,
+    "alt": "A bronze Infinity Gauntlet replica set with six coloured gems, standing upright on a table",
+    "credit": {
+      "author": "Thomson200",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "https://commons.wikimedia.org/wiki/File:Infinity_Gauntlet_-_2018_Atlanta_Comic_Con.jpg",
+      "title": "Infinity Gauntlet - 2018 Atlanta Comic Con"
+    }
+  },
+  "tf-optimus": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.701,
+    "alt": "A giant Optimus Prime statue on top of the Transformers: The Ride building at Universal Studios Florida, one arm raised, against a blue sky",
+    "credit": {
+      "author": "Benoît Prieur",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "https://commons.wikimedia.org/wiki/File:Transformers-_The_Ride_at_Universal_Studios_Florida-May_2023.jpg",
+      "title": "Transformers- The Ride at Universal Studios Florida-May 2023"
+    }
+  },
+  "tf-bumblebee": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.665,
+    "alt": "A life-size yellow Bumblebee statue crouching with an arm cannon raised, above the Transformers The Ride sign at Universal Studios Singapore",
+    "credit": {
+      "author": "ScribblingGeek",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Bumblebee_Universal_Studios_Singapore.jpg",
+      "title": "Bumblebee Universal Studios Singapore"
+    }
+  },
+  "tf-g1-optimus": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "A red and silver Optimus Prime toy in truck mode, the Masterpiece MP-10, with its silver trailer bearing the red Autobot logo",
+    "credit": {
+      "author": "Carlos Pacheco from Toronto, Canada",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:MP-10_Convoy_Optimus_Prime_Takara_Masterpiece_(51927178025).jpg",
+      "title": "MP-10 Convoy Optimus Prime Takara Masterpiece (51927178025)"
+    }
   }
 };

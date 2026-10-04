@@ -2,8 +2,11 @@ import { PHOTOS } from '../../data/photos';
 
 // Every photo on the site with its author, licence and source. Required by the
 // Creative Commons licences, and simply the right thing to do.
+// Photos that belong to other pages, credited there.
+const OTHER_PAGES = ['exp-', 'music-', 'me-', 'office-', 'marvel-', 'tf-', 'bb-'];
+
 export default function PhotoCredits({ ids, note }) {
-  const entries = Object.entries(PHOTOS).filter(([id, p]) => p.credit && p.alt && (ids ? ids.includes(id) : !id.startsWith('exp-') && !id.startsWith('music-')));
+  const entries = Object.entries(PHOTOS).filter(([id, p]) => p.credit && p.alt && (ids ? ids.includes(id) : !OTHER_PAGES.some((prefix) => id.startsWith(prefix))));
   const baps = entries.filter(([, p]) => p.credit.author === 'BAPS Swaminarayan Sanstha');
   const commons = entries.filter(([, p]) => p.credit.author !== 'BAPS Swaminarayan Sanstha');
   return (

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Insignia from '../components/cybertron/Insignia';
+import Optimus from '../components/cybertron/Optimus';
+import Planet from '../components/cybertron/Planet';
 import Visor from '../components/cybertron/Visor';
 import AutobotMark from '../components/AutobotMark';
 import DecepticonMark from '../components/DecepticonMark';
@@ -37,11 +39,11 @@ const BOARD = [
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 const ON_EARTH = [
-  { id: 'tf-optimus', title: 'Optimus Prime', note: 'Life size, or close to it.' },
-  { id: 'tf-bumblebee', title: 'Bumblebee', note: 'Ready to roll.' },
-  { id: 'tf-megatron', title: 'Megatron', note: 'Still scheming.' },
+  { id: 'tf-optimus', title: 'Optimus Prime, Orlando', note: 'Standing guard on top of Transformers: The Ride at Universal Studios Florida.' },
+  { id: 'tf-bumblebee', title: 'Bumblebee, Singapore', note: 'Crouched over the ride’s entrance at Universal Studios Singapore.' },
+  { id: 'tf-g1-optimus', title: 'Optimus Prime, the toy', note: 'The Masterpiece remake of the 1984 truck, trailer and all.' },
 ];
-const SCENES = ['tfRollOut', 'tfTransform', 'tfBumblebee', 'tfMegatron'];
+const SCENES = ['tfTransform', 'tfRollOut', 'tfBumblebee', 'tfBumblebeeWave', 'tfMegatron'];
 
 // Cybertron: change sides, write in Cybertronian, roll out as anyone on the roster.
 export default function Cybertron() {
@@ -50,13 +52,32 @@ export default function Cybertron() {
   const { setScrollTheme } = useTheme();
   const [side, setSide] = useState('autobot');
   const [phase, setPhase] = useState('idle');
+  const [mode, setMode] = useState('truck');
+  const [busy, setBusy] = useState(false);
+  const [matrix, setMatrix] = useState(false);
   const [text, setText] = useState('Tilak Patel');
   const [shown, setShown] = useState('Tilak Patel');
   const timers = useRef([]);
   const s = SIDES[side];
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Transform: the slats slide out, the face changes, the slats slide back.
+  // Truck to robot and back, with the sound of it.
+  const transformBot = () => {
+    if (busy) return;
+    audioContext(); // in the click, so the transformation can be heard
+    import('../lib/clips').then((c) => c.playClip('transform'));
+    setMatrix(false);
+    setMode((m) => (m === 'truck' ? 'robot' : 'truck'));
+    setBusy(true);
+    timers.current.push(setTimeout(() => setBusy(false), prefersReducedMotion() ? 100 : 1300));
+  };
+  const openMatrix = () => {
+    audioContext();
+    if (!matrix) import('../lib/sfx').then((x) => x.repulsor());
+    setMatrix((m) => !m);
+  };
+
+  // Changing sides: the slats slide out, the face changes, the slats slide back.
   const transform = () => {
     if (phase !== 'idle') return;
     audioContext(); // in the click, so the transformation can be heard
@@ -106,9 +127,9 @@ export default function Cybertron() {
   return (
     <div className="relative">
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="cy-title">
-        <figure className="cy-stage m-0" data-side={side}>
-          <Skyline faction={side} className="cy-stage-skyline" />
-          <Insignia side={side} phase={phase} className="cy-stage-mark" />
+        <figure className="cy-planet m-0" data-side={side}>
+          <Planet side={side} className="cy-planet-canvas" />
+          <Insignia side={side} phase={phase} className="cy-planet-mark" />
         </figure>
         <div>
           <p className="eyebrow">Cybertron · {s.city}</p>
@@ -120,7 +141,7 @@ export default function Cybertron() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={transform} disabled={phase !== 'idle'}>
-              {side === 'autobot' ? 'Transform to the Decepticons' : 'Transform to the Autobots'}
+              {side === 'autobot' ? 'Join the Decepticons' : 'Join the Autobots'}
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => rollOut(s.leader)}>
               {s.call}
@@ -130,6 +151,40 @@ export default function Cybertron() {
             </Link>
           </div>
           <WorldSwitcher className="mt-10" />
+        </div>
+      </section>
+
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="transform-title">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+          <figure className="cy-stage m-0" data-side={side}>
+            <Skyline faction={side} className="cy-stage-skyline" />
+            <Optimus mode={mode} side={side} matrix={matrix && mode === 'robot'} className="cy-bot" />
+          </figure>
+          <div>
+            <h2 id="transform-title" className="title">
+              {side === 'autobot' ? 'More than meets the eye' : 'Robots in disguise'}
+            </h2>
+            <p className="lead mt-4 max-w-[46ch]">
+              {mode === 'truck'
+                ? 'A cab-over truck, parked on Cybertron. Press Transform.'
+                : side === 'autobot'
+                  ? 'Optimus Prime, leader of the Autobots. Inside his chest he carries the Matrix of Leadership.'
+                  : 'In Decepticon colours now. The chest is just a chest.'}
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button type="button" className="btn btn-primary" onClick={transformBot} disabled={busy}>
+                Transform
+              </button>
+              {mode === 'robot' && side === 'autobot' && (
+                <button type="button" className="btn btn-ghost" onClick={openMatrix} aria-pressed={matrix} disabled={busy}>
+                  {matrix ? 'Close the Matrix' : 'Open the Matrix'}
+                </button>
+              )}
+            </div>
+            <p className="mt-4 min-h-[1.5em] text-sm text-muted" role="status">
+              {matrix && mode === 'robot' ? 'The Matrix of Leadership: light our darkest hour.' : ''}
+            </p>
+          </div>
         </div>
       </section>
 

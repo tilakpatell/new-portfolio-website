@@ -19,13 +19,14 @@ const sfx = () => import('../lib/sfx');
 
 // New Zealand, standing in for Middle-earth.
 const LOCATIONS = [
-  { id: 'me-hobbiton', title: 'Hobbiton, Matamata', note: 'The Shire, built on a sheep farm in the Waikato. The hobbit holes are still there.' },
+  { id: 'me-bag-end', title: 'Bag End, Hobbiton', note: 'The Shire was built on a sheep farm near Matamata, and Bilbo’s door is still there.' },
+  { id: 'me-hobbiton', title: 'Hobbiton, Matamata', note: 'Hobbit holes around the pond, under the Party Tree’s hill.' },
   { id: 'me-doom', title: 'Mount Ngauruhoe, Tongariro', note: 'Mount Doom in the wide shots.' },
   { id: 'me-edoras', title: 'Mount Sunday, Canterbury', note: 'Where Edoras was built for the films, then taken down again.' },
   { id: 'me-pinnacles', title: 'Putangirua Pinnacles, Wairarapa', note: 'The Dimholt Road, on the way to the Paths of the Dead.' },
   { id: 'me-anduin', title: 'Kawarau River, Otago', note: 'The Anduin, where the Argonath stand.' },
 ];
-const SCENES = ['lotrPass', 'lotrSimply', 'lotrPrecious', 'lotrFly', 'lotrCarry'];
+const SCENES = ['lotrPass', 'lotrPrecious', 'lotrRing'];
 
 // What the doors say back to a wrong word, as the Watcher wakes up.
 const WRONG = [

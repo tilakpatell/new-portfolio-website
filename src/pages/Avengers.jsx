@@ -2,25 +2,35 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ArcReactor from '../components/avengers/ArcReactor';
 import Mjolnir from '../components/avengers/Mjolnir';
+import Tower from '../components/avengers/Tower';
+import ShieldThrow from '../components/avengers/ShieldThrow';
+import Range from '../components/avengers/Range';
+import Dossier from '../components/avengers/Dossier';
+import HulkLab from '../components/avengers/HulkLab';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
+import Gif from '../components/Gif';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
-import { useDocumentTitle } from '../lib/hooks';
+import { jumpTo } from '../lib/anchors';
+import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 
 const sfx = () => import('../lib/sfx');
 
-const ON_DISPLAY = [
-  { id: 'marvel-ironman', title: 'Iron Man armour', note: 'On display.' },
-  { id: 'marvel-campus', title: 'Avengers Campus', note: 'The Avengers’ own corner of a Disney park.' },
-  { id: 'marvel-shield', title: 'Captain America’s shield', note: 'Vibranium, allegedly.' },
-  { id: 'marvel-mjolnir', title: 'Mjolnir', note: 'Unlifted, so far.' },
+// The floors, from the bottom up: scrolling down the page rides the lift up.
+const FLOORS = [
+  { id: 'banner', short: 'Banner', title: 'Bruce Banner’s lab', text: 'Gamma research, reinforced walls, and a scientist who would rather you didn’t push him.' },
+  { id: 'widow', short: 'Widow', title: 'Black Widow', text: 'Natasha keeps her file locked. Most of it, anyway.' },
+  { id: 'hawkeye', short: 'Hawkeye', title: 'The range', text: 'Clint Barton’s floor. Aim anywhere you like.' },
+  { id: 'cap', short: 'Cap', title: 'Captain America', text: 'The training floor. Throw the shield and it comes back. It always comes back.' },
+  { id: 'thor', short: 'Thor', title: 'Thor', text: 'Mjolnir, waiting for someone worthy.' },
+  { id: 'stark', short: 'Stark', title: 'Tony Stark’s workshop', text: 'Near the top of the tower, where the suits are built and the reactor hums.' },
+  { id: 'roof', short: 'Roof', title: 'The roof', text: 'Where the Tesseract opened a hole in the sky over New York. It still could.' },
 ];
-const SCENES = ['marvelIronMan', 'marvelAssemble', 'marvelWorthy', 'marvelGroot', 'marvelAllDay', 'marvelPuny', 'marvelBargain', 'snap'];
 
 const JARVIS = [
   'Reactor on standby.',
@@ -39,16 +49,65 @@ const WHERE = {
   soul: 'On Vormir, for a price. Avengers: Infinity War.',
 };
 
-// Avengers Tower: the arc reactor, Mjolnir and the Infinity Gauntlet.
+const ON_DISPLAY = [
+  { id: 'marvel-ironman', title: 'Iron Man armour', note: 'From the cave-built Mark I to the suits that followed, under glass.' },
+  { id: 'marvel-shield', title: 'Captain America’s shield', note: 'Vibranium, and it shows every dent.' },
+  { id: 'marvel-campus', title: 'Avengers Campus', note: 'A Quinjet parked on the roof of the Avengers’ headquarters, at Disney California Adventure.' },
+  { id: 'marvel-gauntlet', title: 'The Infinity Gauntlet', note: 'A replica, all six stones set. Snap responsibly.' },
+];
+const SCENES = ['marvelAssemble', 'marvelGroot', 'snap'];
+
+function Floor({ i, floor, children, aside }) {
+  return (
+    <section id={`floor-${floor.id}`} data-floor={i} className="tower-floor scroll-mt-28" aria-labelledby={`floor-${floor.id}-title`}>
+      <p className="tower-floor-badge">{i === FLOORS.length - 1 ? 'Roof' : `Floor ${i + 1}`}</p>
+      <h2 id={`floor-${floor.id}-title`} className="title mt-3">
+        {floor.title}
+      </h2>
+      <p className="lead mt-3 max-w-[48ch]">{floor.text}</p>
+      <div className={aside ? 'mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.6fr)]' : 'mt-7'}>
+        <div>{children}</div>
+        {aside}
+      </div>
+    </section>
+  );
+}
+
+// Avengers Tower: ride up past each hero's floor to the roof, open the portal,
+// and come out in front of Thanos.
 export default function Avengers() {
   useDocumentTitle('Avengers Tower');
   const { snap } = useFun();
   const [power, setPower] = useState(0);
   const [blast, setBlast] = useState(0);
   const [have, setHave] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [portal, setPortal] = useState(false);
+  const [arrived, setArrived] = useState(false);
   const intro = useRef(null);
   const [playing, setPlaying] = useState(false);
-  useEffect(() => () => intro.current?.stop(), []);
+  const timers = useRef([]);
+  useEffect(
+    () => () => {
+      intro.current?.stop();
+      timers.current.forEach(clearTimeout);
+    },
+    [],
+  );
+
+  // which floor is in the middle of the screen
+  useEffect(() => {
+    const els = [...document.querySelectorAll('[data-floor]')];
+    if (!els.length || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setCurrent(Number(e.target.dataset.floor));
+      },
+      { rootMargin: '-45% 0px -45% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   const powerUp = () => {
     audioContext(); // in the click, so the reactor can be heard
@@ -81,48 +140,127 @@ export default function Avengers() {
     });
   };
 
+  // The Space Stone opens the portal over the roof; on the other side, Thanos.
+  const openPortal = () => {
+    if (portal) return;
+    audioContext();
+    sfx().then((s) => s.hyperspace());
+    setPortal(true);
+    const still = prefersReducedMotion();
+    timers.current.push(
+      setTimeout(
+        () => {
+          setArrived(true);
+          jumpTo(null, 'thanos');
+        },
+        still ? 200 : 1300,
+      ),
+      setTimeout(() => setPortal(false), still ? 400 : 2600),
+    );
+  };
+
   const all = have.length === STONES.length;
   return (
     <div className="relative">
-      <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="tower-title">
-        <figure className="reactor-stage m-0">
-          <ArcReactor power={power} blast={blast} />
-        </figure>
-        <div>
-          <p className="eyebrow">Avengers Tower · Stark Industries</p>
-          <h1 id="tower-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
-            Avengers Tower
-          </h1>
-          <p className="lead mt-6 max-w-[46ch]">Marvel, all of it. Power up the reactor, try to lift the hammer, and set all six stones if you dare.</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button type="button" className="btn btn-primary" onClick={powerUp}>
-              {power === 3 ? 'Power down' : 'Power up'}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={fire}>
-              Fire a repulsor
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
-              {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
-            </button>
-            <Link to="/" className="btn btn-ghost">
-              Back to the site
-            </Link>
-          </div>
-          <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-            J.A.R.V.I.S.: {JARVIS[power]}
-          </p>
-          <WorldSwitcher className="mt-8" />
+      <section className="shell relative z-10 pb-10 pt-[calc(var(--nav-h)+40px)] md:pb-14 md:pt-[calc(var(--nav-h)+64px)]" aria-labelledby="tower-title">
+        <p className="eyebrow">Avengers Tower · Manhattan</p>
+        <h1 id="tower-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
+          Avengers Tower
+        </h1>
+        <p className="lead mt-6 max-w-[54ch]">Marvel, all of it. Take the lift: scroll down and each floor belongs to someone else. The Tesseract is on the roof.</p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a href="#floor-banner" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-banner')}>
+            Take the lift
+          </a>
+          <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
+            {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
+          </button>
+          <Link to="/" className="btn btn-ghost">
+            Back to the site
+          </Link>
         </div>
+        <WorldSwitcher className="mt-8" />
       </section>
 
-      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="mjolnir-title">
-        <Mjolnir />
-      </section>
+      <div className="shell relative z-10 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
+        <aside className="tower-rail" aria-hidden="true">
+          <Tower floors={FLOORS} current={current} />
+          <p className="tower-now">{FLOORS[current].title}</p>
+        </aside>
+        <div className="grid gap-20 pb-20 md:gap-28">
+          <Floor i={0} floor={FLOORS[0]}>
+            <HulkLab />
+          </Floor>
+          <Floor i={1} floor={FLOORS[1]}>
+            <Dossier />
+          </Floor>
+          <Floor i={2} floor={FLOORS[2]}>
+            <Range />
+          </Floor>
+          <Floor i={3} floor={FLOORS[3]} aside={<Gif name="marvelCapHammer" size="medium" />}>
+            <ShieldThrow />
+          </Floor>
+          <Floor i={4} floor={FLOORS[4]} aside={<Gif name="marvelThor" size="medium" />}>
+            <Mjolnir />
+          </Floor>
+          <Floor i={5} floor={FLOORS[5]}>
+            <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <figure className="reactor-stage m-0">
+                <ArcReactor power={power} blast={blast} />
+              </figure>
+              <div>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className="btn btn-primary" onClick={powerUp}>
+                    {power === 3 ? 'Power down' : 'Power up'}
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={fire}>
+                    Fire a repulsor
+                  </button>
+                </div>
+                <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
+                  J.A.R.V.I.S.: {JARVIS[power]}
+                </p>
+              </div>
+            </div>
+          </Floor>
+          <Floor i={6} floor={FLOORS[6]}>
+            <div className="roof-stage" data-portal={portal || undefined}>
+              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The roof of Avengers Tower at night, the Tesseract glowing on its pedestal">
+                <defs>
+                  <radialGradient id="tess-glow">
+                    <stop offset="0" stopColor="#d6f3ff" />
+                    <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
+                    <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+                <rect width="600" height="260" fill="#0b1324" />
+                {Array.from({ length: 40 }, (_, i) => (
+                  <circle key={i} cx={(i * 137) % 600} cy={(i * 53) % 150} r={i % 6 ? 0.8 : 1.4} fill="#dbe6ff" opacity="0.7" />
+                ))}
+                <circle className="roof-portal" cx="300" cy="70" r="60" fill="url(#tess-glow)" />
+                <path d="M0 200 H600 V260 H0 Z" fill="#1a2433" />
+                <path d="M240 200 h120 l-14 -18 h-92 Z" fill="#2b3748" />
+                <rect x="290" y="150" width="20" height="34" fill="#3b4859" />
+                <g className="tesseract">
+                  <circle cx="300" cy="136" r="34" fill="url(#tess-glow)" />
+                  <rect x="286" y="122" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 136)" />
+                </g>
+              </svg>
+            </div>
+            <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
+              Space
+            </button>
+            <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
+          </Floor>
+        </div>
+      </div>
 
-      <section className="shell relative z-10 pb-16 pt-10 md:pb-20" aria-labelledby="gauntlet-title">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+      {portal && <div className="portal-flash" aria-hidden="true" />}
+
+      <section id="thanos" className="space-scope relative z-10 py-20 md:py-28" data-arrived={arrived || undefined} aria-labelledby="gauntlet-title">
+        <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
+        <div className="shell relative grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div className="stones-panel gauntlet-stage" data-all={all || undefined}>
-            <div className="ds-stars absolute inset-0" aria-hidden="true" />
             <div className="gauntlet-wrap">
               <Gauntlet have={have} all={all} />
               <div className="gauntlet-sockets" role="group" aria-label="Infinity Stones">
@@ -145,10 +283,11 @@ export default function Avengers() {
             </div>
           </div>
           <div>
-            <h2 id="gauntlet-title" className="title">
-              The Infinity Gauntlet
+            <p className="eyebrow">Titan · beyond the portal</p>
+            <h2 id="gauntlet-title" className="title mt-4">
+              Thanos
             </h2>
-            <p className="lead mt-4 max-w-[46ch]">Tap a socket to set its stone. With all six, the snap takes half of this page with it, for a few seconds.</p>
+            <p className="lead mt-4 max-w-[46ch]">He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds.</p>
             <ul className="stone-list mt-6">
               {STONES.map((s) => (
                 <li key={s.id} data-on={have.includes(s.id) || undefined} style={{ '--glow': s.color }}>
@@ -167,13 +306,16 @@ export default function Avengers() {
               <button type="button" className="btn btn-ghost" disabled={!have.length} onClick={() => setHave([])}>
                 Take them out
               </button>
+              <a href="#floor-roof" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'floor-roof')}>
+                Back through the portal
+              </a>
             </div>
           </div>
         </div>
       </section>
 
       {hasScenes(SCENES) && (
-        <section className="shell relative z-10 py-10" aria-labelledby="av-scenes-title">
+        <section className="shell relative z-10 py-14" aria-labelledby="av-scenes-title">
           <h2 id="av-scenes-title" className="title">
             From the films
           </h2>

@@ -1093,6 +1093,93 @@ function applauseRaw(acIn, destIn, when = 0) {
   return len;
 }
 
+// An office desk phone: two short rings of the two-tone bell.
+function ringRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.12, 0.32);
+  for (const at of [0, 0.62]) {
+    const g = ac.createGain();
+    g.gain.value = 0;
+    // the bell's warble: on and off twenty times a second
+    for (let k = 0; k < 9; k++) {
+      g.gain.setValueAtTime(0.5, t + at + k * 0.05);
+      g.gain.setValueAtTime(0.0001, t + at + k * 0.05 + 0.03);
+    }
+    for (const f of [440, 480]) {
+      const o = ac.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f * 2;
+      o.connect(g);
+      o.start(t + at);
+      o.stop(t + at + 0.46);
+    }
+    g.connect(out);
+  }
+  return 1.1;
+}
+
+// ── Avengers ────────────────────────────────────────────────────────────────
+// Vibranium against a wall: a bright metallic clang that rings on.
+function clangRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.35, 0.5);
+  for (const [f, level, decay] of [
+    [523, 0.35, 1.2],
+    [1384, 0.22, 0.8],
+    [2219, 0.14, 0.5],
+    [3301, 0.08, 0.3],
+  ]) {
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f * (0.98 + Math.random() * 0.04);
+    const g = ac.createGain();
+    env(g.gain, t, [[0, 0.0001], [0.004, level, 'lin'], [decay, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + decay + 0.05);
+  }
+  const hit = noiseSource(ac, 'white', 1);
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 2500;
+  const hg = ac.createGain();
+  env(hg.gain, t, [[0, 0.0001], [0.002, 0.4, 'lin'], [0.06, 0.0001]]);
+  hit.connect(hp).connect(hg).connect(out);
+  hit.start(t);
+  hit.stop(t + 0.08);
+  return 1.25;
+}
+
+// An arrow leaving a bow: the string's twang and the shaft's hiss.
+function twangRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.15, 0.5);
+  const o = ac.createOscillator();
+  o.type = 'triangle';
+  env(o.frequency, t, [[0, 180], [0.25, 120]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.003, 0.5, 'lin'], [0.3, 0.0001]]);
+  o.connect(g).connect(out);
+  o.start(t);
+  o.stop(t + 0.32);
+  const whoosh = noiseSource(ac, 'white', 1);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  env(bp.frequency, t, [[0, 3000], [0.25, 1200]]);
+  const wg = ac.createGain();
+  env(wg.gain, t, [[0, 0.0001], [0.03, 0.25, 'lin'], [0.25, 0.0001]]);
+  whoosh.connect(bp).connect(wg).connect(out);
+  whoosh.start(t);
+  whoosh.stop(t + 0.3);
+  return 0.35;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1117,3 +1204,6 @@ export const roar = once('roar', roarRaw);
 export const crumble = once('crumble', crumbleRaw);
 export const sizzle = once('sizzle', sizzleRaw);
 export const applause = once('applause', applauseRaw);
+export const ring = once('ring', ringRaw);
+export const clang = once('clang', clangRaw);
+export const twang = once('twang', twangRaw);

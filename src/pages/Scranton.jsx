@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Dundie from '../components/office/Dundie';
 import FactCheck from '../components/office/FactCheck';
+import OfficeFloor from '../components/office/OfficeFloor';
+import PaperPlane from '../components/office/PaperPlane';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
@@ -15,18 +17,28 @@ import '@fontsource/courier-prime/700.css';
 const sfx = () => import('../lib/sfx');
 
 const PLACES = [
-  { id: 'office-sign', title: 'Scranton, Pennsylvania', note: 'The Electric City, as the opening credits show it.' },
-  { id: 'office-courthouse', title: 'Lackawanna County Courthouse', note: 'Downtown, a few blocks from where the show put the office.' },
-  { id: 'office-steamtown', title: 'Steamtown', note: 'The railroad yards Scranton grew up around.' },
-  { id: 'office-mifflin', title: 'Dunder Mifflin', note: 'A Dunder Mifflin sign, out in the world.' },
+  { id: 'office-electric-city', title: 'The Electric City sign', note: 'Scranton’s nickname, in lights, as the opening credits show it.' },
+  { id: 'office-dunder-mifflin', title: 'Dunder Mifflin, on the street', note: 'The city hung banners for the paper company that never was.' },
+  { id: 'office-penn-paper', title: 'Penn Paper', note: 'The clock tower from the opening credits, on a real paper supplier.' },
+  { id: 'office-scranton-sign', title: 'Scranton Welcomes You', note: 'The sign the cold opens drive past.' },
+  { id: 'office-courthouse', title: 'Lackawanna County Courthouse', note: 'Downtown Scranton, under the Electric City sign.' },
 ];
-const SCENES = ['officeFalse', 'officeNoGod', 'officeJim', 'officeDundies', 'officeIdentity', 'officeChili', 'officeBankruptcy', 'parkour'];
+const SCENES = ['officeBankruptcy', 'officeDundies', 'officePamDundie', 'officeFalse', 'parkour', 'twss'];
+
+// Kevin's way with words: the small ones go.
+const SMALL = new Set(['a', 'an', 'the', 'of', 'to', 'at', 'on', 'in', 'is', 'are', 'was', 'were', 'and', 'it', 'its', 'that', 'this', 'with', 'for', 'has', 'have', 'be', 'by', 'from', 'as', 'which', 'who', 'about', 'each', 'every', 'one', 'now', 'there', 'their', 'his', 'her', 'mostly', 'but', 'or', 'so', 'than', 'then', 'into', 'something', 'everyone']);
+const fewWord = (text) =>
+  text
+    .split(/\s+/)
+    .filter((w) => !SMALL.has(w.toLowerCase().replace(/[^a-z’']/g, '')))
+    .join(' ')
+    .replace(/\s+([.,!?])/g, '$1');
 
 // Everyone gets one. Michael insists.
 const OPENING = { title: 'The “Showed Up” Dundie', desc: 'For coming to the Dundies. Everyone gets one.' };
 
-// Scranton: the Dundies, where every easter egg found on the site is an award,
-// and Dwight's fact check. Reachable from the worlds menu, the terminal and the dock.
+// Scranton: the office from above (pick a desk), Dwight's fact check, scenes
+// from the show, and the Dundies, where every easter egg found is an award.
 export default function Scranton() {
   useDocumentTitle('Scranton');
   const { unlocked } = useAchievements();
@@ -37,6 +49,9 @@ export default function Scranton() {
   const [pop, setPop] = useState(0);
   const theme = useRef(null);
   const [song, setSong] = useState(false);
+  // Kevin: why waste time say lot word when few word do trick
+  const [kevin, setKevin] = useState(false);
+  const say = (text) => (kevin ? fewWord(text) : text);
   useEffect(() => () => theme.current?.stop(), []);
   const onStage = k < 0 || !won.length ? OPENING : { title: `The “${ACHIEVEMENTS[won[k % won.length]].name}” Dundie`, desc: ACHIEVEMENTS[won[k % won.length]].desc };
 
@@ -69,8 +84,62 @@ export default function Scranton() {
   };
 
   return (
-    <div className="relative">
-      <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16" aria-labelledby="dundies-title">
+    <div className="relative" data-kevin={kevin || undefined}>
+      <PaperPlane />
+      <section className="shell relative z-10 pb-12 pt-[calc(var(--nav-h)+36px)] md:pb-16" aria-labelledby="office-title">
+        <div className="grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12">
+          <div>
+            <p className="eyebrow">Dunder Mifflin · Scranton Branch</p>
+            <h1 id="office-title" className="display mt-5 text-[clamp(2.6rem,1.4rem+4vw,4.8rem)]">
+              Dunder Mifflin
+            </h1>
+            <p className="lead mt-5 max-w-[56ch]">{say('Pick a desk. Everyone at the Scranton branch has something on it and something to do, from Michael’s mug to Kevin’s chili.')}</p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <button type="button" className="btn btn-ghost" onClick={playSong} aria-pressed={song}>
+              {song ? 'Stop the theme' : 'Play the theme'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setKevin((k) => !k)} aria-pressed={kevin}>
+              {kevin ? 'Back to lot word' : 'Kevin mode'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={parkour}>
+              Parkour!
+            </button>
+          </div>
+        </div>
+        <div className="mt-8">
+          <OfficeFloor say={say} />
+        </div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-6">
+          <WorldSwitcher />
+          <Link to="/" className="btn btn-ghost">
+            Back to the site
+          </Link>
+        </div>
+      </section>
+
+      <section className="shell relative z-10 grid gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16" aria-labelledby="facts-title">
+        <div>
+          <h2 id="facts-title" className="title scroll-mt-28">
+            Dwight’s fact check
+          </h2>
+          <p className="lead mt-4 max-w-[46ch]">{say('Seven statements, mostly about me. Fact, or false? Dwight has strong opinions about each one.')}</p>
+        </div>
+        <FactCheck />
+      </section>
+
+      {hasScenes(SCENES) && (
+        <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="office-scenes-title">
+          <h2 id="office-scenes-title" className="title">
+            From the show
+          </h2>
+          <div className="mt-8">
+            <Scenes names={SCENES} />
+          </div>
+        </section>
+      )}
+
+      <section className="shell relative z-10 grid items-center gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16" aria-labelledby="dundies-title">
         <figure className="dundie-stage m-0" aria-label={`On stage: ${onStage.title}. ${onStage.desc}`}>
           <div className="dundie-curtain dundie-curtain-l" aria-hidden="true" />
           <div className="dundie-curtain dundie-curtain-r" aria-hidden="true" />
@@ -83,80 +152,39 @@ export default function Scranton() {
           </figcaption>
         </figure>
         <div>
-          <p className="eyebrow">Dunder Mifflin · Scranton Branch</p>
-          <h1 id="dundies-title" className="display mt-6 text-[clamp(2.8rem,1.6rem+4vw,5rem)]">
+          <h2 id="dundies-title" className="title">
             The Dundies
-          </h1>
-          <p className="lead mt-6 max-w-[46ch]">
-            Every easter egg you find on this site wins a Dundie. You have {won.length} of {all.length}. Michael is presenting them now, in order, at length.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          </h2>
+          <p className="lead mt-4 max-w-[46ch]">{say(`Every easter egg you find on this site wins a Dundie. You have ${won.length} of ${all.length}. Michael is presenting them now, in order, at length.`)}</p>
+          <div className="mt-7 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={present}>
               Present the next Dundie
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={playSong} aria-pressed={song}>
-              {song ? 'Stop the theme' : 'Play the theme'}
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => twss()}>
               That’s what she said
             </button>
-            <button type="button" className="btn btn-ghost" onClick={parkour}>
-              Parkour!
-            </button>
-            <Link to="/" className="btn btn-ghost">
-              Back to the site
-            </Link>
           </div>
-          <WorldSwitcher className="mt-10" />
+          <ul className="dundie-shelf mt-8">
+            {all.map((id) => {
+              const has = unlocked.includes(id);
+              return (
+                <li key={id} data-won={has || undefined}>
+                  <Dundie won={has} className="w-auto" />
+                  <span className="mt-2 block text-xs font-semibold text-ink">{has ? ACHIEVEMENTS[id].name : 'Not yet'}</span>
+                  <span className="sr-only">{has ? `won: ${ACHIEVEMENTS[id].desc}` : 'not won yet'}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
-
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="case-title">
-        <h2 id="case-title" className="title">
-          The trophy case
-        </h2>
-        <p className="lead mt-4 max-w-[54ch]">One Dundie for each easter egg. The empty ones are still out there: try the terminal, the Konami code, or typing a few famous words anywhere.</p>
-        <ul className="dundie-shelf mt-8">
-          {all.map((id) => {
-            const has = unlocked.includes(id);
-            return (
-              <li key={id} data-won={has || undefined}>
-                <Dundie won={has} className="w-auto" />
-                <span className="mt-2 block text-xs font-semibold text-ink">{has ? ACHIEVEMENTS[id].name : 'Not yet'}</span>
-                <span className="sr-only">{has ? `won: ${ACHIEVEMENTS[id].desc}` : 'not won yet'}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section className="shell relative z-10 grid gap-10 pb-16 pt-10 md:pb-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16" aria-labelledby="facts-title">
-        <div>
-          <h2 id="facts-title" className="title">
-            Dwight’s fact check
-          </h2>
-          <p className="lead mt-4 max-w-[46ch]">Seven statements, mostly about me. Fact, or false? Dwight has strong opinions about each one.</p>
-        </div>
-        <FactCheck />
-      </section>
-
-      {hasScenes(SCENES) && (
-        <section className="shell relative z-10 py-10" aria-labelledby="office-scenes-title">
-          <h2 id="office-scenes-title" className="title">
-            From the show
-          </h2>
-          <div className="mt-8">
-            <Scenes names={SCENES} />
-          </div>
-        </section>
-      )}
 
       {hasPhotos(PLACES) && (
-        <section className="shell relative z-10 pb-24 pt-10 md:pb-28" aria-labelledby="office-places-title">
+        <section className="shell relative z-10 pb-24 pt-12 md:pb-28" aria-labelledby="office-places-title">
           <h2 id="office-places-title" className="title">
             The real Scranton
           </h2>
-          <p className="lead mt-4 max-w-[54ch]">The show was shot in California, but the city is real.</p>
+          <p className="lead mt-4 max-w-[54ch]">{say('The show was shot in California, but the city is real.')}</p>
           <div className="mt-8">
             <WorldPhotos items={PLACES} />
           </div>

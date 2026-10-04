@@ -341,5 +341,159 @@
       1280
     ],
     "alt": "Four tanpuras standing in a museum case, their round gourds at the bottom"
+  },
+  "me-bag-end": {
+    "commons": "File:Hobbiton, New Zealand.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Bag End’s round green door and porthole windows set into a grassy mound at the Hobbiton Movie Set, with potted flowers in front and a gnarled oak on top"
+  },
+  "me-hobbiton": {
+    "commons": "File:Hobbit holes reflected in water.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Hobbit holes with grey, red and teal round doors in a green hillside at the Hobbiton Movie Set, mirrored in a still pond",
+    "author": "Jackie.lck"
+  },
+  "me-doom": {
+    "commons": "File:Le Ngauruhoe et le Ruapehu vus du sommet du Tongariro.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The dark, symmetrical cone of Mount Ngauruhoe rising beyond a rocky ridge in Tongariro National Park, snow-capped Ruapehu behind"
+  },
+  "me-edoras": {
+    "commons": "File:EMC Walk Mt Sunday - Lord of Rings Location.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Mount Sunday, a rocky knoll rising from golden tussock in the upper Rangitata valley, with a braided riverbed and grey mountains behind"
+  },
+  "me-pinnacles": {
+    "commons": "File:Conglomerate pillars at Putangirua Pinnacles.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Tall grey eroded rock spires of the Putangirua Pinnacles above green scrub and a gravel slope, under a deep blue sky"
+  },
+  "me-anduin": {
+    "commons": "File:Kawarau Gorge. Otago NZ.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The turquoise Kawarau River winding through a rocky gorge lined with golden autumn trees, under an arched bridge"
+  },
+  "me-mordor": {
+    "commons": "File:Red crater (24511166521).jpg",
+    "widths": [
+      640,
+      1280,
+      1920
+    ],
+    "alt": "The rust-red scarred walls of Red Crater on the Tongariro Alpine Crossing, with the dark cone of Mount Ngauruhoe behind"
+  },
+  "office-electric-city": {
+    "commons": "File:Scranton, Pennsylvania, restored historic Electric City sign by Carol Highsmith (LOC highsm.04369).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The illuminated Scranton Electric City sign, a ring of glowing bulbs under a light-bulb starburst, on a steel frame above an ornate rooftop at dusk"
+  },
+  "office-dunder-mifflin": {
+    "commons": "File:Dunder mifflin banner scranton.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A street banner reading Scranton, Pennsylvania and Dunder Mifflin, Inc. Paper Company hanging from a utility pole"
+  },
+  "office-scranton-sign": {
+    "commons": "File:Welcome to Scranton Sign (2013).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The maroon and white Scranton Welcomes You sign on wooden posts"
+  },
+  "office-penn-paper": {
+    "commons": "File:The Office - Penn Paper - Landscape (48472737706).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The brick clock tower of the Pennsylvania Paper and Supply building in Scranton, its clock face lettered Penn Paper"
+  },
+  "office-courthouse": {
+    "commons": "File:Scranton - Downtown (48472890492).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "The stone Lackawanna County Courthouse with its clock tower in morning sun, downtown Scranton behind"
+  },
+  "marvel-ironman": {
+    "commons": "File:Iron Man's Armor (2024 Exhibition).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Three Iron Man armours in lit glass cases: a crude grey prototype, a red and gold suit and a gold and red suit, each with a glowing chest light"
+  },
+  "marvel-shield": {
+    "commons": "File:Captain America’s Shield.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "Captain America’s round shield, red and silver rings around a silver star on blue, scuffed and scratched, against a dark background"
+  },
+  "marvel-campus": {
+    "commons": "File:Disney California Adventure (51242016469).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A silver Quinjet on the roof of the Avengers Headquarters building at Avengers Campus, marked with the Avengers A"
+  },
+  "marvel-gauntlet": {
+    "commons": "File:Infinity Gauntlet - 2018 Atlanta Comic Con.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A bronze Infinity Gauntlet replica set with six coloured gems, standing upright on a table"
+  },
+  "tf-optimus": {
+    "commons": "File:Transformers- The Ride at Universal Studios Florida-May 2023.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A giant Optimus Prime statue on top of the Transformers: The Ride building at Universal Studios Florida, one arm raised, against a blue sky"
+  },
+  "tf-bumblebee": {
+    "commons": "File:Bumblebee Universal Studios Singapore.jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A life-size yellow Bumblebee statue crouching with an arm cannon raised, above the Transformers The Ride sign at Universal Studios Singapore"
+  },
+  "tf-g1-optimus": {
+    "commons": "File:MP-10 Convoy Optimus Prime Takara Masterpiece (51927178025).jpg",
+    "widths": [
+      640,
+      1280
+    ],
+    "alt": "A red and silver Optimus Prime toy in truck mode, the Masterpiece MP-10, with its silver trailer bearing the red Autobot logo"
   }
 }

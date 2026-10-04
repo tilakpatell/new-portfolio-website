@@ -31,7 +31,7 @@ export default function Footer() {
           </p>
         </div>
 
-        <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
+        <nav aria-label="Footer" className="grid flex-none grid-cols-[repeat(2,max-content)] gap-x-10 gap-y-2 whitespace-nowrap text-sm sm:grid-cols-[repeat(3,max-content)]">
           <Link className="text-body hover:text-ink" to="/experience">Experience</Link>
           <Link className="text-body hover:text-ink" to="/projects">Projects</Link>
           <Link className="text-body hover:text-ink" to="/travel">Travel</Link>
