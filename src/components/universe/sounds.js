@@ -1,9 +1,10 @@
 // The universe map's sounds: each ship's engine, which follows its speed;
-// a voice for each of the crew (blips in the rhythm of the line, Artoo's
-// chirps, Chewie's growl), since there are no recordings of them here; and
-// a sound bite when you reach a world, from the site's own clips where it
-// has one. All through the site's master volume, so the sound setting mutes
-// them. Plain functions: the scene drives the engine each frame and the
+// a voice for each of the crew under the lines that have no recording of
+// their own (Chewie's real roars and laughs; blips in the rhythm of the line
+// for the rest, and Artoo's chirps); each ship's shot (Han's DL-44, the
+// portal gun, the X-wing's laser); and a sound bite when you reach a world,
+// from the site's own clips where it has one. All through the site's master
+// volume, so the sound setting mutes them. Plain functions: the scene drives the engine each frame and the
 // comms box calls the rest.
 
 import { audioContext, output } from '../../lib/audio';
@@ -144,37 +145,10 @@ export function speak(voice, text) {
     return (at - t) * 1000 + 300;
   }
   if (voice === 'chewie') {
-    // Chewie: a growl that rises and falls, roughed up with breath
-    const dur = 0.9;
-    const o = ac.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(120, t);
-    o.frequency.linearRampToValueAtTime(190, t + dur * 0.35);
-    o.frequency.linearRampToValueAtTime(95, t + dur);
-    const vib = ac.createOscillator();
-    vib.frequency.value = 22;
-    const vibG = ac.createGain();
-    vibG.gain.value = 14;
-    vib.connect(vibG).connect(o.frequency);
-    const bp = ac.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 700;
-    bp.Q.value = 1.6;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.16, t + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const breath = ac.createBufferSource();
-    breath.buffer = noise(ac);
-    const bg = ac.createGain();
-    bg.gain.value = 0.25;
-    breath.connect(bg).connect(bp);
-    o.connect(bp).connect(g).connect(out);
-    [o, vib, breath].forEach((n) => {
-      n.start(t);
-      n.stop(t + dur + 0.05);
-    });
-    return dur * 1000 + 500;
+    // Chewie himself: a laugh when it's a laugh, a roar the rest of the time
+    const laugh = /laugh/i.test(text);
+    playClip(laugh ? 'chewieLaugh' : 'chewieRoar').then((h) => h || growl(ac, out, t));
+    return laugh ? 2700 : 1700;
   }
   const v = VOICES[voice];
   if (!v) return 600 + words * 260;
@@ -189,6 +163,39 @@ export function speak(voice, text) {
     at += v.syl * (1 + Math.random() * 0.4) + (i % 4 === 3 ? 0.06 : 0);
   }
   return (at - t) * 1000 + 450;
+}
+
+// Chewie's growl, made up: in case his recording won't play
+function growl(ac, out, t) {
+  const dur = 0.9;
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(120, t);
+  o.frequency.linearRampToValueAtTime(190, t + dur * 0.35);
+  o.frequency.linearRampToValueAtTime(95, t + dur);
+  const vib = ac.createOscillator();
+  vib.frequency.value = 22;
+  const vibG = ac.createGain();
+  vibG.gain.value = 14;
+  vib.connect(vibG).connect(o.frequency);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 700;
+  bp.Q.value = 1.6;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.16, t + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const breath = ac.createBufferSource();
+  breath.buffer = noise(ac);
+  const bg = ac.createGain();
+  bg.gain.value = 0.25;
+  breath.connect(bg).connect(bp);
+  o.connect(bp).connect(g).connect(out);
+  [o, vib, breath].forEach((n) => {
+    n.start(t);
+    n.stop(t + dur + 0.05);
+  });
 }
 
 function tones(list, { type = 'square', gain = 0.05 } = {}) {
@@ -243,7 +250,7 @@ const ARRIVE = {
   marvel: { clip: 'snap' },
   breakingbad: { clip: 'sayMyName' },
   office: { clip: 'twss' },
-  rickmorty: { play: () => portalSound(), ms: 900 },
+  rickmorty: { clip: 'pickleRick' },
   gaming: {
     // the Game Boy's startup ding
     play: () =>
@@ -297,6 +304,21 @@ export function boostSound(kind, first) {
   if (kind === 'falcon' && first) playClip('hyperspaceEnter', { duration: 2.6 });
   else if (kind === 'cruiser') whoosh(0.35, 2400, 500, 0.16);
   else whoosh(0.7, 200, 2600, 0.2);
+}
+
+// A shot: Han's DL-44 from the Falcon, the portal gun from the cruiser, a
+// laser from the X-wing
+export function fireSound(kind) {
+  if (kind === 'falcon') playClip('dl44', { gain: 0.8 });
+  else if (kind === 'cruiser') playClip('portalGun', { gain: 0.8, duration: 1.4 });
+  else {
+    const ac = audioContext();
+    const out = ac ? output() : null;
+    if (!ac || !out) return;
+    const t = ac.currentTime + 0.01;
+    blip(ac, out, { type: 'sawtooth', f: 1800, at: t, dur: 0.16, gain: 0.07, glide: 0.25, filter: 3000 });
+    blip(ac, out, { type: 'square', f: 1200, at: t + 0.02, dur: 0.12, gain: 0.04, glide: 0.3, filter: 2500 });
+  }
 }
 
 // Off the side of a planet
