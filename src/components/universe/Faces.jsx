@@ -1,4 +1,4 @@
-import { MortyFace, RickFace } from '../rickmorty/Faces';
+import { MeeseeksFace, MortyFace, RickFace } from '../rickmorty/Faces';
 
 // The crews' little heads for the comms box, in the same flat style as the
 // Rick and Morty ones (which come from there): flat colour, a dark line, dot
@@ -62,7 +62,7 @@ function ChewieFace({ className }) {
   );
 }
 
-const FACES = { rick: RickFace, morty: MortyFace, luke: LukeFace, r2: R2Face, han: HanFace, chewie: ChewieFace };
+const FACES = { rick: RickFace, morty: MortyFace, meeseeks: MeeseeksFace, luke: LukeFace, r2: R2Face, han: HanFace, chewie: ChewieFace };
 
 export default function Face({ who, className }) {
   const F = FACES[who];

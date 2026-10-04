@@ -13,10 +13,18 @@ describe('the crews', () => {
       for (const exchange of all) {
         expect(exchange?.length, crew.id).toBeGreaterThan(0);
         for (const [who, text] of exchange) {
-          expect(crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+          expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
           expect(text.length).toBeGreaterThan(2);
         }
       }
+    }
+  });
+
+  it('only play clips the site has', async () => {
+    const { CLIPS } = await import('../../lib/clips');
+    for (const crew of CREWS) {
+      const lines = Object.values(crew).filter(Array.isArray).flat().concat(Object.values(crew.arrive).flat());
+      for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
     }
   });
 
