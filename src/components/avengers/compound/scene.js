@@ -252,7 +252,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
   const { scene, sun } = engine;
   const small = engine.small;
   const sets = ['aerial-grass', 'forest-floor', 'asphalt', 'concrete-floor', 'concrete-wall', 'corrugated', 'rock', 'painted-metal'];
-  await preload({ sets, skies: ['pines'], small });
+  await preload({ sets, skies: ['pines'], small, backgrounds: false });
 
   // ── the camera: the drawing's isometric view, exactly ──
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 6000);

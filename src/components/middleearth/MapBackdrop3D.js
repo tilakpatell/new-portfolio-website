@@ -13,6 +13,7 @@ import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { budget, pixelRatio } from '../../lib/device';
 
 const SCALE = 10; // sheet units to one of the scene's
 const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
@@ -24,8 +25,9 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
-  renderer.shadowMap.enabled = true;
+  // lib/device: less sharp, and no shadows, on a weak device
+  renderer.setPixelRatio(pixelRatio(1.5));
+  renderer.shadowMap.enabled = budget().shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x140d08);

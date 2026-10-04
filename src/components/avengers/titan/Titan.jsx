@@ -1,14 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { use3D } from '../../../lib/gpu';
 import { prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
-import { register } from '../hq/useStage';
+import { register, useLive } from '../hq/useStage';
 import { STONES } from '../../interests/stones';
 
 // Titan in 3D (./scene.js) in the gauntlet's panel: the gauntlet raised against
 // the dusk, a button over each socket (they follow the hand), and the snap.
-// The drawing of the gauntlet (`fallback`) stays where there's no 3D.
+// The drawing of the gauntlet (`fallback`) stays where there's no 3D, and
+// while another of the page's 3D views is the live one (hq/useStage's useLive).
 const load = () => import('./scene');
-const DROP_AFTER = 8000;
 
 const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
   const three = use3D();
@@ -17,33 +17,11 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
   const view = useRef(null);
   const buttons = useRef({});
   const [status, setStatus] = useState('idle'); // idle | loading | on | failed
-  const [near, setNear] = useState(false);
-  const [visible, setVisible] = useState(false);
   const calm = useRef(typeof window !== 'undefined' && prefersReducedMotion());
   const haveRef = useRef(have);
   haveRef.current = have;
 
-  useEffect(() => {
-    const el = wrap.current;
-    if (!three.on || !el || typeof IntersectionObserver === 'undefined') return undefined;
-    let timer = 0;
-    const nearIO = new IntersectionObserver(
-      ([e]) => {
-        clearTimeout(timer);
-        if (e.isIntersecting) setNear(true);
-        else timer = setTimeout(() => setNear(false), DROP_AFTER);
-      },
-      { rootMargin: '120% 0px 120% 0px' },
-    );
-    const seenIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.05 });
-    nearIO.observe(el);
-    seenIO.observe(el);
-    return () => {
-      clearTimeout(timer);
-      nearIO.disconnect();
-      seenIO.disconnect();
-    };
-  }, [three.on]);
+  const { active: near, visible } = useLive(wrap, { id: 'titan', enabled: three.on, warm: load });
 
   useEffect(() => {
     if (!three.on || !near || status === 'failed') return undefined;
@@ -107,8 +85,9 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
       const b = buttons.current[s.id];
       if (!b) continue;
       const p = v.socket(s.id);
-      b.style.left = `${p.x}px`;
-      b.style.top = `${p.y}px`;
+      // whole pixels, so a slow sway doesn't shimmer the targets
+      b.style.left = `${Math.round(p.x)}px`;
+      b.style.top = `${Math.round(p.y)}px`;
       b.style.visibility = p.front && !v.dusting ? 'visible' : 'hidden';
     }
   };

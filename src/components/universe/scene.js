@@ -25,11 +25,18 @@ import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
 import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
+import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS } from './layout';
-import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
-import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
-import { LENGTH, SHIP_MODELS, buildShip } from './shipModels';
+import { ORDER, POSITIONS, SUN } from './layout';
+import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
+import { buildSun } from './sun';
+import { createPost, spaceEnvironment } from './post';
+import { SHIP, SOLIDS, autopilot, forward, headingTo, orbiting, parkAt, spawn, step } from './ship';
+import { createCrash } from './crash';
+import { createTraffic } from './traffic';
+import { createBelt, createDust } from './belt';
+import { createTrail } from './trail';
+import { BUILT, SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
@@ -38,7 +45,11 @@ const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
 const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
+const TRAIL_COLOR = { falcon: '#7fc8ff', xwing: '#ff8a5a', cruiser: '#9df06b' };
 const IDLE = 40000; // ms sitting still before the crew get bored
+// a crash, in seconds from the moment it hits: on into the planet, the
+// impact, the ship back again, the end of its coming back
+const CRASH = { impact: 0.32, back: 2.7, done: 3.3 };
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -130,7 +141,7 @@ function orbits() {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#9fb0d0', transparent: true, opacity: 0.1, depthWrite: false }));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#9fb0d0', transparent: true, opacity: 0.05, depthWrite: false }));
 }
 
 // Stars streaming past when the ship boosts: lines round the camera's line
@@ -154,7 +165,7 @@ function streaks(rand) {
     lines,
     update(dt, speed, amount) {
       lines.visible = amount > 0.01;
-      mat.opacity = amount * 0.7;
+      mat.opacity = amount * 0.32;
       if (!lines.visible) return;
       const len = 0.3 + speed * 0.12;
       for (let i = 0; i < STREAKS; i++) {
@@ -175,6 +186,7 @@ export async function create(canvas, ctx) {
 
   const gl = createRenderer(canvas, { ratio: 2, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
+  renderer.info.autoReset = false;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 600);
   scene.add(camera); // it carries the streaks
@@ -199,12 +211,30 @@ export async function create(canvas, ctx) {
   };
   const stars = starfield(rand);
   map.add(stars);
-  map.add(orbits());
+  const rings = orbits();
+  map.add(rings);
+  // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
+  const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 });
+  map.add(belt.group);
+  const dust = createDust({ small: Math.min(window.innerWidth, window.innerHeight) < 600 });
+  map.add(dust.points);
+  const camLocal = new THREE.Vector3();
+  let dustAmount = 0;
+  // the ship's engine trail (trail.js), and a ring of light that runs out
+  // round a place as you arrive
+  const trail = createTrail();
+  map.add(trail.mesh);
+  const tail = new THREE.Vector3();
+  const pulse = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 128), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  pulse.rotation.x = -Math.PI / 2;
+  pulse.visible = false;
+  map.add(pulse);
+  let pulseAt = null; // { id, age }
   const streak = streaks(rand);
   camera.add(streak.lines);
 
   // shots: a few glowing bolts, reused
-  const boltGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.34, 6).rotateX(Math.PI / 2);
+  const boltGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.28, 6).rotateX(Math.PI / 2);
   const boltMat = new THREE.MeshBasicMaterial({ color: '#ff4a3d', toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const bolts = Array.from({ length: BOLTS }, () => {
     const m = new THREE.Mesh(boltGeo, boltMat);
@@ -214,17 +244,28 @@ export async function create(canvas, ctx) {
     return m;
   });
 
-  // the planets' maps first (half size on a phone), so nothing pops in
-  const small = (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 || (navigator.deviceMemory ?? 8) <= 4;
+  // the planets' maps first (half size on a phone or anything below a
+  // desktop, lib/device), so nothing pops in; a weak device starts with the
+  // nearer stars thinned out
+  const tier = device().tier;
+  const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
+  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
   const T = await loadTextures({ small });
 
-  // the sky: the Milky Way, all the way round, turning with the map. It's
-  // always seen magnified, so it does without mipmaps (and their memory)
+  // what metal reflects, and the passes after the scene (post.js)
+  const env = spaceEnvironment(renderer, T.sky);
+  scene.environment = env.texture;
+  const post = createPost(renderer, scene, camera, { small });
+
+  // the sky: the Milky Way, all the way round, turning with the map and
+  // riding with the camera (so it's always as far off). It's always seen
+  // magnified, so it does without mipmaps (and their memory)
+  let sky = null;
   if (T.sky) {
     T.sky.generateMipmaps = false;
     T.sky.minFilter = THREE.LinearFilter;
     T.sky.anisotropy = 1;
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
+    sky = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
     sky.renderOrder = -10;
     map.add(sky);
   }
@@ -232,7 +273,7 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 7, 10, 1.4);
+  const sunLight = new THREE.PointLight('#ffd6a8', 40, 32, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -242,14 +283,18 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
+  const crashFx = createCrash(map);
+  // everyone else out here (none with reduced motion), and the pops when a shot hits one
+  const traffic = reduced ? null : createTraffic(map, { small });
+  const pops = createCrash(map);
 
   // the models arrive after the map is up
-  loadModels((id, model) => {
+  loadModels((id, model, spot) => {
     if (disposed) {
       disposeTree(model);
       return;
     }
-    if (!planetOf[id]?.mount(model)) disposeTree(model);
+    if (!planetOf[id]?.mount(model, spot)) disposeTree(model);
     ctx.invalidate();
   });
 
@@ -287,6 +332,9 @@ export async function create(canvas, ctx) {
     idleSaid: false,
     side: 1, // which wing the X-wing fires from next
     lastShot: 0,
+    crash: null, // { age, id, … } while a crash plays out (startCrash)
+    shake: 0,
+    flare: 1,
   };
   const t0 = performance.now();
   let engine = null;
@@ -331,11 +379,11 @@ export async function create(canvas, ctx) {
     const [wx, wz] = rotate(s.x, s.z);
     const [fx, fz] = forward(s.heading);
     const [dx, dz] = rotate(fx, fz);
-    const look = 0.9;
+    const look = 0.4;
     return {
-      target: [wx + dx * look, s.y + 0.1, wz + dz * look],
-      dist: 2.7 + Math.abs(s.speed) * 0.2 + state.streak * 0.9,
-      pitch: 0.24,
+      target: [wx + dx * look, s.y + 0.06, wz + dz * look],
+      dist: 1.7 + Math.abs(s.speed) * 0.06 + state.streak * 0.7,
+      pitch: 0.21,
     };
   };
 
@@ -351,7 +399,7 @@ export async function create(canvas, ctx) {
   };
 
   const goal = () => {
-    if (flying()) return state.view === 'map' ? state.overview : chasePose();
+    if (flying()) return state.view === 'map' ? state.overview : state.crash && !state.crash.back ? crashPose() : chasePose();
     return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
   };
 
@@ -520,9 +568,12 @@ export async function create(canvas, ctx) {
     }
     const was = state.kind;
     state.kind = kind;
+    traffic?.setCrew(kind);
+    trail.clear();
+    if (kind) trail.setColor(TRAIL_COLOR[kind] ?? '#ffffff');
     state.auto = null;
     state.flown = false;
-    if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d');
+    if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
     if (!kind) {
       state.ship = null;
       state.at = null;
@@ -542,7 +593,7 @@ export async function create(canvas, ctx) {
       // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
       const model = state.model;
       import('../rickmorty/cruiser3d')
-        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7 }))
+        .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
         .then((c) => {
           if (!c) return;
           if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
@@ -592,20 +643,22 @@ export async function create(canvas, ctx) {
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    if (!s || props.frozen || now - state.lastShot < 220) return;
+    if (!s || props.frozen || state.crash || now - state.lastShot < 220) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
     const [fx, fz] = forward(s.heading);
-    const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.17 : 0;
-    b.position.set(s.x + fx * 0.22 - fz * side, s.y, s.z + fz * 0.22 + fx * side);
+    const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
+    b.position.set(s.x + fx * 0.16 - fz * side, s.y, s.z + fz * 0.16 + fx * side);
     b.rotation.set(0, s.heading, 0);
-    const v = 13 + Math.max(0, s.speed);
-    b.userData = { life: 0.8, v: [fx * v, fz * v] };
+    const v = 18 + Math.max(0, s.speed);
+    b.userData = { life: 1.1, v: [fx * v, fz * v] };
     b.visible = true;
     emit({ type: 'fire' });
     ctx.invalidate();
   };
+  const popDir = new THREE.Vector3();
+  const shotFrom = new THREE.Vector3();
   const moveBolts = (dt) => {
     let any = false;
     for (const b of bolts) {
@@ -617,8 +670,16 @@ export async function create(canvas, ctx) {
         continue;
       }
       any = true;
+      shotFrom.copy(b.position);
       b.position.x += d.v[0] * dt;
       b.position.z += d.v[1] * dt;
+      // into someone: a pop (the big ships just take it)
+      const h = traffic?.hit(shotFrom, b.position);
+      if (h) {
+        b.visible = false;
+        pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[1]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
+        if (!h.glance) emit({ type: 'kill', kind: h.kind });
+      }
     }
     return any;
   };
@@ -639,7 +700,100 @@ export async function create(canvas, ctx) {
     el.style.setProperty('--ky', `${(Math.sin(a) * k * 28).toFixed(1)}px`);
   };
 
+  // ── A crash: into something too fast ──
+  const startCrash = (e) => {
+    const s = state.ship;
+    const solid = SOLIDS.find((o) => o.id === e.id);
+    const center = new THREE.Vector3(...solid.at);
+    const from = new THREE.Vector3(s.x, s.y, s.z);
+    const normal = from.clone().sub(center).normalize();
+    state.crash = {
+      age: 0, // seconds of frames since the hit (a hidden tab pauses it)
+      id: e.id,
+      sun: e.id === 'sun',
+      from,
+      into: normal.clone().negate(),
+      normal,
+      radius: solid.r,
+      point: center.clone().addScaledVector(normal, solid.r), // where it goes in
+      fwd: forward(s.heading),
+      speed: e.speed,
+      spin: [3 + Math.random() * 5, 2 + Math.random() * 4],
+      impact: false,
+      back: false,
+    };
+    state.auto = null;
+    state.boosting = false;
+    engine?.set({ speed: 0, boost: false, on: false });
+    retarget(650); // the camera pulls back to watch it
+  };
+  // the camera during a crash: back and up from the impact, so you see the
+  // ship go in and the shockwave run out over the planet
+  const crashPose = () => {
+    const c = state.crash;
+    const [wx, wz] = rotate(c.point.x, c.point.z);
+    return { target: [wx, c.point.y, wz], dist: c.radius * 2.4 + 2.6, pitch: 0.42 };
+  };
+  const crashing = (dt) => {
+    const c = state.crash;
+    c.age += dt;
+    const age = c.age;
+    const m = state.model;
+    trail.update(dt, tail, 0); // the engines are out
+    if (age < CRASH.impact) {
+      // on into it, tumbling, a little way under the surface
+      const k = age / CRASH.impact;
+      const depth = k * k * (SHIP.radius + 0.25);
+      m.group.position.copy(c.from).addScaledVector(c.into, depth);
+      m.group.position.x += c.fwd[0] * k * 0.1;
+      m.group.position.z += c.fwd[1] * k * 0.1;
+      m.pivot.rotation.x += dt * c.spin[0];
+      m.pivot.rotation.z += dt * c.spin[1];
+    } else if (!c.impact) {
+      c.impact = true;
+      m.group.visible = false;
+      crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun });
+      state.shake = reduced ? 0 : 1;
+      state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
+      emit({ type: 'crash', id: c.id });
+    }
+    if (age >= CRASH.back && !c.back) {
+      // back again: parked off the planet on the side it hit (well clear of the sun)
+      c.back = true;
+      let at;
+      if (c.sun) {
+        const out = Math.hypot(c.from.x, c.from.z) || 1;
+        const r = SUN.r + 5;
+        at = { x: (c.from.x / out) * r, z: (c.from.z / out) * r, heading: headingTo(c.from.x, c.from.z) }; // facing away from it
+      } else at = parkAt(c.id, [c.from.x, c.from.z]);
+      state.ship = { ...state.ship, x: at.x, z: at.z, heading: at.heading, speed: 0, bank: 0, edge: false };
+      m.group.visible = true;
+      m.pivot.rotation.set(0, 0, 0);
+      crashFx.arrive({ point: new THREE.Vector3(at.x, state.ship.y, at.z), kind: state.kind, heading: at.heading });
+      emit({ type: 'respawn' });
+      retarget(900);
+    }
+    if (c.back) {
+      // coming out of the portal, or out of hyperspace (long, then snapping to size)
+      const k = clamp01((age - CRASH.back) / (CRASH.done - CRASH.back));
+      const s = state.ship;
+      m.group.position.set(s.x, s.y, s.z);
+      m.group.rotation.y = s.heading;
+      const grow = 1 - (1 - k) ** 3;
+      if (state.view === 'chase') state.yaw += wrap(-s.heading - state.yaw) * clamp01(dt * 4.5);
+      m.group.scale.set(grow, grow, state.kind === 'cruiser' ? grow : grow * (1 + (1 - k) * 5));
+    }
+    if (age >= CRASH.done) {
+      state.crash = null;
+      m.group.scale.setScalar(1);
+      m.group.visible = true;
+      state.lastInput = performance.now();
+    }
+    return true;
+  };
+
   const fly = (dt, t) => {
+    if (state.crash) return crashing(dt);
     let input;
     if (state.auto) {
       const a = autopilot(state.ship, state.auto.id, state.auto.park);
@@ -648,7 +802,11 @@ export async function create(canvas, ctx) {
     } else input = steering();
     const { ship, events } = step(state.ship, input, dt);
     state.ship = ship;
-    for (const e of events) emit(e);
+    for (const e of events) {
+      if (e.type !== 'crash') emit(e);
+      else if (!state.crash) startCrash(e);
+    }
+    if (state.crash) return true;
 
     // a burst of speed
     const boosting = input.boost && input.throttle > 0 && ship.speed > SHIP.cruise * 0.7;
@@ -669,6 +827,7 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        pulseAt = { id: now, age: 0 };
       } else if (left && state.sel === left && !target) {
         state.sel = null;
         props.onPick?.(null);
@@ -686,6 +845,8 @@ export async function create(canvas, ctx) {
     m.pivot.rotation.z = -ship.bank;
     m.pivot.rotation.x = reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08);
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
+    const [hx, hz] = forward(ship.heading);
+    trail.update(dt, tail.set(ship.x - hx * 0.13, ship.y, ship.z - hz * 0.13), clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak));
     engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
     // sitting still a good while: the crew notice
     if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
@@ -763,20 +924,64 @@ export async function create(canvas, ctx) {
     }
     state.pose = pose;
     apply(pose);
+    // a crash shakes the camera a moment (not with reduced motion), and the
+    // glare flares
+    if (state.shake > 0) {
+      const k = state.shake * state.shake * 0.09;
+      camera.position.x += Math.sin(now * 0.047) * k + Math.sin(now * 0.091) * k * 0.5;
+      camera.position.y += Math.sin(now * 0.061 + 1) * k;
+      camera.updateMatrixWorld();
+      state.shake = Math.max(0, state.shake - dt * 1.4);
+    }
+    if (state.flare > 1) {
+      state.flare = 1 + (state.flare - 1) * Math.exp(-dt * 2.5);
+      if (state.flare < 1.01) state.flare = 1;
+      post.flare(state.flare);
+    }
+    if (pulseAt) {
+      // the arrival ring: from the planet's edge out past its moons, fading
+      pulseAt.age += dt;
+      const k = clamp01(pulseAt.age / 1.3);
+      const u = byId(pulseAt.id);
+      const [px, py, pz] = POSITIONS[pulseAt.id];
+      pulse.visible = k < 1;
+      pulse.position.set(px, py, pz);
+      pulse.scale.setScalar(u.size * (1.05 + k * 1.6));
+      pulse.material.color.set(u.swatch).multiplyScalar(2.6 * (1 - k) ** 2);
+      if (k >= 1) pulseAt = null;
+    }
+    const crashBusy = crashFx.update(dt, camera);
+    const popBusy = pops.update(dt, camera);
+    const fxBusy = crashBusy || popBusy;
+    if (traffic) for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) emit(e);
 
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
+    // the orbits fade while you fly down among them (edge-on they'd be stripes)
+    const ringsWant = flying() && state.view === 'chase' ? 0.012 : 0.05;
+    rings.material.opacity += (ringsWant - rings.material.opacity) * clamp01(dt * 3);
     const shooting = moveBolts(dt);
-    sun.update(t);
+    sun.update(t, camera);
     stars.material.uniforms.uTime.value = t;
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();
-    renderer.render(scene, camera);
+    // the sky and the far stars stay round the camera, wherever it flies;
+    // the dust rides with it too, and shows while you fly (more, the faster)
+    map.updateMatrixWorld();
+    map.worldToLocal(camLocal.copy(camera.position));
+    if (sky) sky.position.copy(camLocal);
+    stars.position.copy(camLocal);
+    const dustWant = !reduced && flying() && state.view === 'chase' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
+    dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
+    dust.update(camLocal, dustAmount, gl.ratio);
+    belt.update(t);
+    renderer.info.reset(); // counted over the whole frame, post passes and all
+    post.render(size.w, size.h);
     last = now;
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (props.frozen) return false;
-    return !still() || moving || shooting || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -918,6 +1123,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
+    window.__universeDebug = { post, scene, renderer, camera, traffic };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -928,6 +1134,7 @@ export async function create(canvas, ctx) {
       at: state.at,
       auto: state.auto?.id ?? null,
       view: state.view,
+      crash: state.crash && { id: state.crash.id, age: state.crash.age },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
     });
@@ -961,6 +1168,7 @@ export async function create(canvas, ctx) {
       state.tLow = (performance.now() - t0) / 1000;
       state.low = true;
       stars.geometry.setDrawRange(0, STARS_LOW);
+      post.off();
       ctx.invalidate();
     },
     // a name under the pointer lights its planet too
@@ -1027,8 +1235,13 @@ export async function create(canvas, ctx) {
       canvas.removeEventListener('pointerleave', onLeave);
       const st = props.stick?.current;
       if (st) st.removeAttribute('data-on');
-      if (import.meta.env.DEV) delete window.__universe;
+      if (import.meta.env.DEV) delete window.__universe, delete window.__universeDebug;
+      crashFx.dispose();
+      pops.dispose();
+      traffic?.dispose();
       disposeTree(scene);
+      post.dispose();
+      env.dispose();
       gl.dispose();
     },
   };

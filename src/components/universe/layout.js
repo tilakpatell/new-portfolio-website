@@ -9,14 +9,17 @@
 import { UNIVERSES, byId } from './universes';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const SPREAD = 2.6; // map units per √step, out past the stations
-const HUB = 3.6; // where the fandoms' spiral starts
-const RING = 2.7; // the stations' ring
+const SPREAD = 7.4; // map units per √step, out past the stations
+const HUB = 16; // where the fandoms' spiral starts
+const RING = 9.5; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
 
 // the sun in the middle: something to fly round, not somewhere to go
-export const SUN = { at: [0, 0, 0], r: 0.8 };
+export const SUN = { at: [0, 0, 0], r: 2.4 };
+
+// the asteroid belt, in the gap between the stations and the planets
+export const BELT = { inner: 13.2, outer: 16.6, height: 3.2 };
 
 // how far a universe's moons, rings and orbiting things reach from its centre
 export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.kind === 'core' ? 2.0 : 1.9)]));
@@ -26,12 +29,12 @@ const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
 export const POSITIONS = Object.fromEntries([
   ...core.map((u, i) => {
     const a = (i / core.length) * Math.PI * 2 + Math.PI / 2; // Home nearest the camera
-    return [u.id, [RING * Math.cos(a), 0.12 * Math.sin(i * 2.1), RING * Math.sin(a)]];
+    return [u.id, [RING * Math.cos(a), 0.3 * Math.sin(i * 2.1), RING * Math.sin(a)]];
   }),
   ...fandoms.map((u, i) => {
     const r = HUB + SPREAD * Math.sqrt(i + 0.6);
     const a = i * GOLDEN + 0.4;
-    return [u.id, [r * Math.cos(a), 0.35 * Math.sin(i * 2.4), r * Math.sin(a)]];
+    return [u.id, [r * Math.cos(a), 0.9 * Math.sin(i * 2.4), r * Math.sin(a)]];
   }),
 ]);
 

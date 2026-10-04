@@ -38,8 +38,21 @@ describe('flying the ship', () => {
       const { ship, events } = fly({ ...spawn(null), x: park.x, z: park.z, heading: park.heading }, { throttle: 1, boost: true }, 2);
       expect(orbiting({ ...ship, ...park }, null), id).toBe(id); // the parking spot is at this planet, not a neighbour
       expect(inside(ship), id).toBe(false);
-      expect(events.some((e) => e.type === 'bump' && e.id === id), id).toBe(true);
+      expect(events.some((e) => (e.type === 'bump' || e.type === 'crash') && e.id === id), id).toBe(true);
     }
+  });
+
+  it('crashes into a planet when it hits it fast, and only bumps when slow', () => {
+    const park = parkAt('marvel');
+    const at = { ...spawn(null), x: park.x, z: park.z, heading: park.heading };
+    const fast = fly(at, { throttle: 1, boost: true }, 2).events;
+    expect(fast.some((e) => e.type === 'crash' && e.id === 'marvel')).toBe(true);
+    const crash = fast.find((e) => e.type === 'crash');
+    expect(crash.speed).toBeGreaterThan(SHIP.crash);
+    expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
+    const slow = fly(at, { throttle: 0.3 }, 4).events;
+    expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
+    expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
 
   it('is turned back at the edge of the map', () => {
@@ -78,7 +91,7 @@ describe('autopilot', () => {
         done = a.done;
         const r = step(s, a.input, 1 / 60);
         s = r.ship;
-        bumps += r.events.filter((e) => e.type === 'bump').length;
+        bumps += r.events.filter((e) => e.type === 'bump' || e.type === 'crash').length;
       }
       expect(done, id).toBe(true);
       expect(bumps, id).toBe(0);

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
@@ -10,6 +10,7 @@ import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
+import WorldGate from './components/worlds/WorldGate';
 
 const Experience = lazy(() => import('./pages/Experience'));
 const Projects = lazy(() => import('./pages/Projects'));
@@ -78,14 +79,29 @@ function Lightspeed() {
   return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
 }
 
-// A first visit to the site opens on the crawl, then jumps to lightspeed into
-// the universe map (the site's front door), where everything is laid out as
-// places to fly to. The inline script in index.html decides (and covers the
-// page until it starts). Skip goes straight to the jump. The map loads
-// during the crawl.
+// A first visit to the site opens on the crawl, then puts you in a cockpit
+// (the Falcon first; the X-wing, Rick's cruiser and the RV a click away),
+// and the launch comes out at the front door's choice over the universe
+// map, where everything is laid out as places to fly to. The inline script
+// in index.html decides (and covers the page until it starts). The map and
+// the cockpit load during the crawl; the map stays still under the crawl
+// and the cockpit (html[data-covered], see lib/three/useScene) and comes on
+// at the launch's flash. ⌘K's "Back to the cockpit" plays it again.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
+const Cockpit = lazy(() => import('./components/cockpit/Cockpit'));
+const cover = (on) => {
+  const el = document.documentElement;
+  if (on) el.dataset.covered = '';
+  else if ('covered' in el.dataset) {
+    delete el.dataset.covered;
+    window.dispatchEvent(new Event('tp:uncover'));
+  }
+};
 function IntroJump() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
+  const [ride, setRide] = useState(null); // a replay: { vehicle }, or null for the first visit
   useEffect(() => {
     if (!stage) return;
     try {
@@ -96,24 +112,52 @@ function IntroJump() {
     if (stage === 'crawl') {
       import('./pages/Front');
       import('./components/universe/scene');
+      import('./components/cockpit/load').then((m) => m.preloadCockpit());
     }
   }, [stage]);
+  useEffect(() => {
+    cover(stage === 'crawl' || stage === 'cockpit');
+    return () => cover(false);
+  }, [stage]);
+  // ⌘K: back to the cockpit, from anywhere
+  useEffect(() => {
+    const again = (e) => {
+      if (stage) return;
+      import('./components/cockpit/load').then((m) => m.preloadCockpit(e.detail?.vehicle));
+      setRide({ vehicle: e.detail?.vehicle ?? null });
+      setStage('cockpit');
+    };
+    window.addEventListener('tp:cockpit', again);
+    return () => window.removeEventListener('tp:cockpit', again);
+  }, [stage]);
+  const closeCrawl = useCallback(() => {
+    // keep the page covered until the cockpit's first frame
+    document.documentElement.dataset.intro = '1';
+    setStage('cockpit');
+  }, []);
   if (!stage) return null;
   if (stage === 'crawl')
     return (
       <Suspense fallback={null}>
-        <OpeningCrawl
-          variant="intro"
-          onClose={() => {
-            // keep the page covered until the jump's first frame, which
-            // comes out in the universe
-            document.documentElement.dataset.intro = '1';
-            setStage('jump');
-          }}
-        />
+        <OpeningCrawl variant="intro" onClose={closeCrawl} />
       </Suspense>
     );
-  return <Hyperspace entry sound onDone={() => setStage(null)} />;
+  return (
+    <Suspense fallback={null}>
+      <Cockpit
+        start={ride?.vehicle ?? undefined}
+        onPeak={() => {
+          // a replay comes out in the universe; the first visit at the front door's choice
+          if (ride && !/^\/(universe(\/|$)|$)/.test(pathname)) navigate('/universe');
+          cover(false);
+        }}
+        onDone={() => {
+          setStage(null);
+          setRide(null);
+        }}
+      />
+    </Suspense>
+  );
 }
 
 // ⌘K / Ctrl+K anywhere, or the search button in the nav.
@@ -175,6 +219,8 @@ function Shell() {
         <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
+              {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
+              <WorldGate pathname={pathname}>
               <Routes>
                 <Route path="/" element={<Front />} />
                 <Route path="/home" element={<Home />} />
@@ -197,6 +243,7 @@ function Shell() {
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </WorldGate>
             </div>
           </Suspense>
         </ErrorBoundary>
