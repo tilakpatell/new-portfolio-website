@@ -1,16 +1,17 @@
 // Avengers Tower, drawn tall and narrow the way it stands over Manhattan: a
 // tapering glass shaft that leans into a crown with a landing deck and the A.
-// `floors` lists the stops from the bottom; the lit band shows where you are,
-// so scrolling down the page rides the lift up the tower.
+// `floors` lists the stops from the top down; the lit band shows where you are,
+// so scrolling down the page rides the lift down the tower. With `onPick`, the
+// floor names are a building directory you can click.
 
 const BASE = 560; // where the shaft meets the street
 const TOP = 70; // the crown
 
-export default function Tower({ floors, current }) {
-  const step = (BASE - TOP - 60) / Math.max(1, floors.length - 1);
-  const yAt = (i) => BASE - 40 - i * step;
+export default function Tower({ floors, current, onPick, className = '' }) {
+  const step = (BASE - TOP - 110) / Math.max(1, floors.length - 1);
+  const yAt = (i) => TOP + 110 + i * step;
   return (
-    <svg viewBox="0 0 240 600" preserveAspectRatio="xMidYMax slice" className="tower-svg" aria-hidden="true">
+    <svg viewBox="0 0 240 600" preserveAspectRatio="xMidYMax slice" className={`tower-svg ${className}`} aria-hidden={onPick ? undefined : 'true'} role={onPick ? 'group' : undefined} aria-label={onPick ? 'Building directory' : undefined}>
       <defs>
         <linearGradient id="tw-glass" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#5b6b7d" />
@@ -49,7 +50,7 @@ export default function Tower({ floors, current }) {
 
       {/* the lift: one lit band per floor, the current one bright */}
       {floors.map((f, i) => (
-        <g key={f.id}>
+        <g key={f.id} className={onPick ? 'tw-stop tw-stop-link' : 'tw-stop'} onClick={onPick ? () => onPick(f.id) : undefined} tabIndex={onPick ? 0 : undefined} role={onPick ? 'link' : undefined} aria-label={onPick ? `Go to ${f.title}` : undefined} onKeyDown={onPick ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onPick(f.id)) : undefined}>
           <rect x="96" y={yAt(i) - 3} width="58" height="6" rx="1" className="tw-floor" data-on={i === current || undefined} />
           <text x="72" y={yAt(i) + 3} textAnchor="end" className="tw-label" data-on={i === current || undefined}>
             {f.short}

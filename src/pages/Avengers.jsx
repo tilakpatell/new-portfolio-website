@@ -21,15 +21,16 @@ import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 
 const sfx = () => import('../lib/sfx');
 
-// The floors, from the bottom up: scrolling down the page rides the lift up.
+// The floors, from the top down: scrolling down the page rides the lift down,
+// past each hero's floor to the vault where the Tesseract is kept.
 const FLOORS = [
-  { id: 'banner', short: 'Banner', title: 'Bruce Banner’s lab', text: 'Gamma research, reinforced walls, and a scientist who would rather you didn’t push him.' },
-  { id: 'widow', short: 'Widow', title: 'Black Widow', text: 'Natasha keeps her file locked. Most of it, anyway.' },
-  { id: 'hawkeye', short: 'Hawkeye', title: 'The range', text: 'Clint Barton’s floor. Aim anywhere you like.' },
-  { id: 'cap', short: 'Cap', title: 'Captain America', text: 'The training floor. Throw the shield and it comes back. It always comes back.' },
+  { id: 'stark', short: 'Stark', title: 'Tony Stark’s workshop', text: 'The penthouse, where the suits are built and the reactor hums.' },
   { id: 'thor', short: 'Thor', title: 'Thor', text: 'Mjolnir, waiting for someone worthy.' },
-  { id: 'stark', short: 'Stark', title: 'Tony Stark’s workshop', text: 'Near the top of the tower, where the suits are built and the reactor hums.' },
-  { id: 'roof', short: 'Roof', title: 'The roof', text: 'Where the Tesseract opened a hole in the sky over New York. It still could.' },
+  { id: 'cap', short: 'Cap', title: 'Captain America', text: 'The training floor. Throw the shield and it comes back. It always comes back.' },
+  { id: 'hawkeye', short: 'Hawkeye', title: 'The range', text: 'Clint Barton’s floor. Aim anywhere you like.' },
+  { id: 'widow', short: 'Widow', title: 'Black Widow', text: 'Natasha keeps her file locked. Most of it, anyway.' },
+  { id: 'banner', short: 'Banner', title: 'Bruce Banner’s lab', text: 'Down where the walls are thickest: gamma research, and a scientist who would rather you didn’t push him.' },
+  { id: 'vault', short: 'Vault', title: 'The vault', text: 'Under the tower, in a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
 ];
 
 const JARVIS = [
@@ -60,7 +61,7 @@ const SCENES = ['marvelAssemble', 'marvelGroot', 'snap'];
 function Floor({ i, floor, children, aside }) {
   return (
     <section id={`floor-${floor.id}`} data-floor={i} className="tower-floor scroll-mt-28" aria-labelledby={`floor-${floor.id}-title`}>
-      <p className="tower-floor-badge">{i === FLOORS.length - 1 ? 'Roof' : `Floor ${i + 1}`}</p>
+      <p className="tower-floor-badge">{floor.id === 'vault' ? 'Sub-level' : `Level ${FLOORS.length - 1 - i}`}</p>
       <h2 id={`floor-${floor.id}-title`} className="title mt-3">
         {floor.title}
       </h2>
@@ -73,8 +74,8 @@ function Floor({ i, floor, children, aside }) {
   );
 }
 
-// Avengers Tower: ride up past each hero's floor to the roof, open the portal,
-// and come out in front of Thanos.
+// Avengers Tower: ride the lift down past each hero's floor to the vault, open
+// the portal with the Tesseract, and come out in front of Thanos.
 export default function Avengers() {
   useDocumentTitle('Avengers Tower');
   const { snap } = useFun();
@@ -162,24 +163,30 @@ export default function Avengers() {
   const all = have.length === STONES.length;
   return (
     <div className="relative">
-      <section className="shell relative z-10 pb-10 pt-[calc(var(--nav-h)+40px)] md:pb-14 md:pt-[calc(var(--nav-h)+64px)]" aria-labelledby="tower-title">
-        <p className="eyebrow">Avengers Tower · Manhattan</p>
-        <h1 id="tower-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
-          Avengers Tower
-        </h1>
-        <p className="lead mt-6 max-w-[54ch]">Marvel, all of it. Take the lift: scroll down and each floor belongs to someone else. The Tesseract is on the roof.</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#floor-banner" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-banner')}>
-            Take the lift
-          </a>
-          <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
-            {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
-          </button>
-          <Link to="/" className="btn btn-ghost">
-            Back to the site
-          </Link>
+      <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16" aria-labelledby="tower-title">
+        <figure className="tower-hero m-0">
+          <Tower floors={FLOORS} current={0} onPick={(id) => jumpTo(null, `floor-${id}`)} className="tower-hero-svg" />
+        </figure>
+        <div>
+          <p className="eyebrow">Avengers Tower · Manhattan</p>
+          <h1 id="tower-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
+            Avengers Tower
+          </h1>
+          <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Take the lift down from the penthouse: every floor belongs to someone else, and the Tesseract is kept in the vault at the bottom.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="#floor-stark" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-stark')}>
+              Take the lift down
+            </a>
+            <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
+              {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
+            </button>
+            <Link to="/" className="btn btn-ghost">
+              Back to the site
+            </Link>
+          </div>
+          <p className="mt-4 text-sm text-muted">Or pick a floor from the directory on the tower.</p>
+          <WorldSwitcher className="mt-8" />
         </div>
-        <WorldSwitcher className="mt-8" />
       </section>
 
       <div className="shell relative z-10 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
@@ -189,21 +196,6 @@ export default function Avengers() {
         </aside>
         <div className="grid gap-20 pb-20 md:gap-28">
           <Floor i={0} floor={FLOORS[0]}>
-            <HulkLab />
-          </Floor>
-          <Floor i={1} floor={FLOORS[1]}>
-            <Dossier />
-          </Floor>
-          <Floor i={2} floor={FLOORS[2]}>
-            <Range />
-          </Floor>
-          <Floor i={3} floor={FLOORS[3]} aside={<Gif name="marvelCapHammer" size="medium" />}>
-            <ShieldThrow />
-          </Floor>
-          <Floor i={4} floor={FLOORS[4]} aside={<Gif name="marvelThor" size="medium" />}>
-            <Mjolnir />
-          </Floor>
-          <Floor i={5} floor={FLOORS[5]}>
             <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <figure className="reactor-stage m-0">
                 <ArcReactor power={power} blast={blast} />
@@ -223,28 +215,51 @@ export default function Avengers() {
               </div>
             </div>
           </Floor>
+          <Floor i={1} floor={FLOORS[1]} aside={<Gif name="marvelThor" size="medium" />}>
+            <Mjolnir />
+          </Floor>
+          <Floor i={2} floor={FLOORS[2]} aside={<Gif name="marvelCapHammer" size="medium" />}>
+            <ShieldThrow />
+          </Floor>
+          <Floor i={3} floor={FLOORS[3]}>
+            <Range />
+          </Floor>
+          <Floor i={4} floor={FLOORS[4]}>
+            <Dossier />
+          </Floor>
+          <Floor i={5} floor={FLOORS[5]}>
+            <HulkLab />
+          </Floor>
           <Floor i={6} floor={FLOORS[6]}>
             <div className="roof-stage" data-portal={portal || undefined}>
-              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The roof of Avengers Tower at night, the Tesseract glowing on its pedestal">
+              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="A vault under the tower: the Tesseract glowing in a glass case">
                 <defs>
                   <radialGradient id="tess-glow">
                     <stop offset="0" stopColor="#d6f3ff" />
                     <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
                     <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
                   </radialGradient>
+                  <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#0d1420" />
+                    <stop offset="1" stopColor="#1b2534" />
+                  </linearGradient>
                 </defs>
-                <rect width="600" height="260" fill="#0b1324" />
-                {Array.from({ length: 40 }, (_, i) => (
-                  <circle key={i} cx={(i * 137) % 600} cy={(i * 53) % 150} r={i % 6 ? 0.8 : 1.4} fill="#dbe6ff" opacity="0.7" />
+                <rect width="600" height="260" fill="url(#vault-wall)" />
+                {Array.from({ length: 9 }, (_, i) => (
+                  <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
                 ))}
-                <circle className="roof-portal" cx="300" cy="70" r="60" fill="url(#tess-glow)" />
-                <path d="M0 200 H600 V260 H0 Z" fill="#1a2433" />
-                <path d="M240 200 h120 l-14 -18 h-92 Z" fill="#2b3748" />
-                <rect x="290" y="150" width="20" height="34" fill="#3b4859" />
+                <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
+                <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
+                <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
+                <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
+                <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
                 <g className="tesseract">
-                  <circle cx="300" cy="136" r="34" fill="url(#tess-glow)" />
-                  <rect x="286" y="122" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 136)" />
+                  <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
+                  <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
                 </g>
+                <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
+                  S.H.I.E.L.D. · CONTAINMENT
+                </text>
               </svg>
             </div>
             <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
@@ -306,7 +321,7 @@ export default function Avengers() {
               <button type="button" className="btn btn-ghost" disabled={!have.length} onClick={() => setHave([])}>
                 Take them out
               </button>
-              <a href="#floor-roof" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'floor-roof')}>
+              <a href="#floor-vault" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'floor-vault')}>
                 Back through the portal
               </a>
             </div>

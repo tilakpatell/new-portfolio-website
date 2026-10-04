@@ -1884,3 +1884,11 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 .gg-eye { animation: eye-flicker 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
 .gg-lava { animation: me-flicker 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .me-scene svg { transition-duration: 0.2s; } .map-walker { transition: none; } .gg-eye, .gg-lava, .map-fire { animation: none; } }
+.tower-hero { display: flex; justify-content: center; }
+.tower-hero-svg { height: min(78vh, 720px); width: auto; max-width: 100%; }
+@media (max-width: 1023px) { .tower-hero-svg { height: 62vh; } }
+.tw-stop-link { cursor: pointer; }
+.tw-stop-link:hover .tw-floor { fill: rgba(255, 210, 90, 0.6); }
+.tw-stop-link:hover .tw-label, .tw-stop-link:focus-visible .tw-label { fill: var(--accent-text); text-decoration: underline; }
+.tw-stop-link:focus-visible { outline: none; }
+.tw-stop-link:focus-visible .tw-floor { fill: #ffd25a; }
