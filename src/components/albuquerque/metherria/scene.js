@@ -15,6 +15,7 @@ import Face from './Face';
 import { M } from './rules';
 import { loadPeople } from '../../office/people';
 import { ABQ, moodGesture } from '../wardrobe';
+import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
@@ -337,6 +338,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     spout.rotation.z = Math.PI / 2;
     spout.position.set(0.17 * side, 0.4, 0);
     g.add(spout);
+    // (made here until the drum's model is in: see props below)
+    g.userData = { side, label: lab, made: g.children.filter((c) => c !== lab), spout: new THREE.Vector3(0.17 * side, 0.4, 0) };
     return shadowy(g);
   };
   const baseDrum = drum(0xdfe3e6, 'BASE', ['#f4f6f7', '#22313a'], 1);
@@ -517,6 +520,31 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     hammer.add(head, handle);
   }
   scene.add(shadowy(hammer));
+
+  // ── Walt's drums and hammer as models (props.js), once they're in ──
+  loadProps(renderer).then((models) => {
+    if (disposed) {
+      for (const m of Object.values(models)) m?.traverse((o) => o.isMesh && (o.geometry.dispose(), o.material.map?.dispose(), o.material.dispose()));
+      return;
+    }
+    for (const [name, d] of [['drumBase', baseDrum], ['drumBlue', blueDrum]]) {
+      const m = models[name];
+      if (!m) continue;
+      const { side, label, made } = d.userData;
+      for (const c of made) c.visible = false;
+      m.rotation.y = side < 0 ? Math.PI : 0; // its spout toward the flask
+      d.add(m);
+      spoutOf(name, side, d.userData.spout);
+      // the label on the drum's band
+      const [y, r] = PROPS[name].band;
+      label.position.y = y;
+      label.scale.set((r * 1.03) / 0.1515, 1, (r * 1.03) / 0.1515);
+    }
+    if (models.hammer) {
+      for (const c of [...hammer.children]) c.visible = false;
+      hammer.add(models.hammer);
+    }
+  });
   const marker = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.8, 0.2), toneMapped: false }));
   marker.rotation.x = Math.PI;
   scene.add(marker);
@@ -781,7 +809,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       const s = streams[i];
       s.visible = on;
       if (on) {
-        const from = v3.set(0.17 * (i ? -1 : 1), 0.4, 0).applyEuler(d.rotation).add(d.position);
+        const from = v3.copy(d.userData.spout).applyEuler(d.rotation).add(d.position);
         const to = s3.set(flask.position.x, flask.position.y + Math.max(0.08, lvl + 0.02), flask.position.z);
         s.position.copy(from).add(to).multiplyScalar(0.5);
         s.scale.set(1, from.distanceTo(to), 1);
@@ -992,7 +1020,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       let hand = null;
       if (live.station === 'build' && (b.pour === 'base' || b.pour === 'blue')) {
         const d = b.pour === 'base' ? baseDrum : blueDrum;
-        hand = d.localToWorld(reachFor.set(0.17 * (b.pour === 'base' ? 1 : -1), 0.4, 0));
+        hand = d.localToWorld(reachFor.copy(d.userData.spout));
       } else if (live.station === 'cook' && live.cook) hand = gauge.localToWorld(reachFor.set(0, 0.08, 0.02));
       else if (live.station === 'break' && live.brk) {
         hammer.updateMatrixWorld();

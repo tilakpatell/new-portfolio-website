@@ -11,3 +11,9 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
   - `lab-floor`: Poly Haven `concrete_floor_worn_001`
   - `lab-wall`: ambientCG `Tiles010`
   - `lab-bench`: ambientCG `Metal009`
+
+## Not CC0: made for this site
+
+These live outside this folder and are not public domain.
+
+- `../models/metherria/{drum-base,drum-blue,hammer}.glb`: Walt's two chemical drums and his ball-peen hammer in Metherria, generated for this site by Tilak Patel with Meshy AI (meshy.ai, a paid plan: the output is the site owner's). Made by `scripts/meshy-metherria.mjs` (concept image, then a textured model, baked into the scene's frame with 1K WebP textures); the Meshy task ids are in `scripts/meshy-metherria-tasks.json`.
