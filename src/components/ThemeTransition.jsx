@@ -34,7 +34,7 @@ const SCENES = {
   bumblebee: { kind: 'transform', color: '#f7c600', quote: 'Bumblebee, ready to roll.', by: 'Bumblebee', sound: (s) => s.transform(), clip: ['transform'] },
   shockwave: { kind: 'transform', color: '#a855f7', quote: 'Logic dictates only one outcome.', by: 'Shockwave', sound: (s) => s.transform(), clip: ['transform'] },
   soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'] },
-  portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen' },
+  portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen', clip: ['wubba'] },
   morty: { kind: 'portal', color: '#f3d84b', quote: 'Aw geez, Rick.', by: 'Morty Smith', cue: 'portalOpen' },
   summer: { kind: 'portal', color: '#e2557f', quote: 'Keep Summer safe.', by: 'Rick’s car', cue: 'portalOpen' },
   beth: { kind: 'portal', color: '#8e2b48', quote: 'I’m a horse surgeon.', by: 'Beth Smith', cue: 'portalOpen' },
@@ -164,13 +164,16 @@ export default function ThemeTransition({ id, onDone }) {
 
   useEffect(() => {
     // a recorded clip where there is one (cut short with a fade), else the synthesised sound
+    const made = () => {
+      if (scene.sound) sfx().then((s) => scene.sound(s));
+      else if (scene.cue) import('./games/gameAudio').then((m) => m[scene.cue]?.());
+    };
     if (scene.clip)
       import('../lib/clips').then(async (c) => {
         const played = await c.playClip(scene.clip[0], { duration: scene.clip[1], keep: true });
-        if (!played && scene.sound) sfx().then((s) => scene.sound(s));
+        if (!played) made();
       });
-    else if (scene.sound) sfx().then((s) => scene.sound(s));
-    else if (scene.cue) import('./games/gameAudio').then((m) => m[scene.cue]?.());
+    else if (scene.sound || scene.cue) made();
     else if (id === 'raga')
       import('./music/engine').then((m) => {
         m.pluck(1, { vel: 0.8 });

@@ -53,6 +53,10 @@ export const CLIPS = {
   chewieLaugh: { src: '/audio/clips/chewie-laugh.mp3' },
   dl44: { src: '/audio/clips/dl-44.mp3' },
   ohShit: { src: '/audio/clips/oh-shit.mp3', line: 'Oh shit, mother—' },
+  // Dimension C-137
+  canDo: { src: '/audio/clips/can-do.mp3', line: 'Ooh, yeah! Can do!', by: 'Mr. Meeseeks' },
+  showMe: { src: '/audio/clips/show-me-what-you-got.mp3', line: 'Show me what you got!', by: 'The Cromulon' },
+  disqualified: { src: '/audio/clips/disqualified.mp3', line: 'Disqualified!', by: 'The Cromulon' },
 };
 
 const playing = new Set();

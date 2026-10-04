@@ -1,6 +1,7 @@
 # Sound clips
 
-Short clips supplied by the site owner for the site's big moments. They are
+Short clips for the site's big moments, supplied by the site owner or found
+on free soundboard sites (each row says where). They are
 excerpts from films and shows whose rights belong to their studios
 (Lucasfilm, Hasbro and Paramount, Sony Pictures Television and AMC, NBC and
 Universal Television, Marvel Studios, New Line Cinema, Walt Disney Pictures).
@@ -25,6 +26,7 @@ remove it.
 | wubba-lubba-dub-dub.mp3, pickle-rick.mp3, riggity-wrecked-son.mp3, im-mr-meeseeks.mp3, portal-gun.mp3, cool.mp3, cant-take-it-anymore.mp3, lick-lick.mp3 | Rick and Morty (Adult Swim), for the universe map's space cruiser |
 | chewie-roar.mp3, chewie-laugh.mp3, dl-44.mp3 (Han's blaster) | Star Wars, for the Millennium Falcon's crew |
 | oh-shit.mp3 | a clip supplied by the site owner, for crashing into the universe map's sun |
+| can-do.mp3, show-me-what-you-got.mp3, disqualified.mp3 | Rick and Morty (Adult Swim), from [Myinstants](https://www.myinstants.com), for Dimension C-137 |
 
 The rest of the site's sounds are original (`src/lib/sfx.js`), or freely
 licensed recordings credited on the music page.
