@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { classify, probe, resolve3D } from './gpu';
+import { classify, gpuStatus, probe, resolve3D } from './gpu';
 
-const fakeDoc = (renderer, { webgl2 = true, webgl = true } = {}) => ({
+// `caveat`: the browser refuses a context that asks for no major performance
+// caveat (what Chrome and Firefox do when hardware acceleration is off) but
+// hands out a software one when asked without it.
+const fakeDoc = (renderer, { webgl2 = true, webgl = true, caveat = false } = {}) => ({
   createElement: () => ({
-    getContext: (kind) => {
+    getContext: (kind, opts = {}) => {
+      if (caveat && opts.failIfMajorPerformanceCaveat) return null;
       if ((kind === 'webgl2' && !webgl2) || (kind !== 'webgl2' && !webgl)) return null;
       return {
         getExtension: (name) => (name === 'WEBGL_debug_renderer_info' ? { UNMASKED_RENDERER_WEBGL: 1 } : name === 'WEBGL_lose_context' ? { loseContext: () => {} } : null),
@@ -44,6 +48,26 @@ describe('telling a real GPU from software WebGL', () => {
     expect(probe({ createElement: () => ({ getContext: () => { throw new Error('blocked'); } }) })).toMatchObject({ webgl: false, ok: false });
     expect(probe(undefined)).toMatchObject({ webgl: false, ok: false });
   });
+
+  it('finds software WebGL when hardware acceleration is off, whatever the renderer calls itself', () => {
+    // with acceleration off the strict request fails; the relaxed one works, in software
+    const info = probe(fakeDoc('ANGLE (Google, Vulkan 1.3.0)', { caveat: true }));
+    expect(info).toMatchObject({ webgl: true, software: true, ok: false, caveat: true });
+  });
+});
+
+describe('why a WebGL-only game cannot start', () => {
+  it('is fine on a graphics chip', () => {
+    expect(gpuStatus({ webgl: true, software: false, ok: true })).toBe('ok');
+  });
+
+  it('blames hardware acceleration when WebGL runs in software', () => {
+    expect(gpuStatus({ webgl: true, software: true, ok: false })).toBe('software');
+  });
+
+  it('says there is no WebGL when there is none', () => {
+    expect(gpuStatus({ webgl: false, software: false, ok: false })).toBe('none');
+  });
 });
 
 describe('choosing 3D or 2D', () => {
@@ -51,9 +75,9 @@ describe('choosing 3D or 2D', () => {
   const soft = { webgl: true, ok: false };
   const none = { webgl: false, ok: false };
 
-  it('uses 3D on its own only with a real GPU', () => {
+  it('uses 3D wherever WebGL exists, even drawn in software', () => {
     expect(resolve3D('auto', gpu)).toBe(true);
-    expect(resolve3D('auto', soft)).toBe(false);
+    expect(resolve3D('auto', soft)).toBe(true);
     expect(resolve3D('auto', none)).toBe(false);
   });
 

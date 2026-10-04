@@ -38,6 +38,10 @@ const THEME_FONTS = {
   bumblebee: orbitron,
   shockwave: orbitron,
   soundwave: orbitron,
+  portal: () => import('@fontsource/luckiest-guy/400.css'),
+  morty: () => import('@fontsource/luckiest-guy/400.css'),
+  summer: () => import('@fontsource/luckiest-guy/400.css'),
+  beth: () => import('@fontsource/luckiest-guy/400.css'),
 };
 
 // One active theme re-skins the whole site. It flows on its own — AWS by

@@ -85,9 +85,9 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · music', 'dim'),
+  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
-  L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
+  L('  Off duty: music · sitar · tabla · rollout · megatron · schwifty · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
 
 const PROJECT_ALIASES = {
@@ -311,6 +311,17 @@ export default function Terminal() {
         fun.rollOut('optimus');
         return [L('  Autobots, transform and roll out!', 'ok')];
       },
+      schwifty: () => {
+        fun.getSchwifty('portal');
+        return [L('  Wubba lubba dub dub!', 'ok'), L('  (It means he’s in great pain.)', 'dim')];
+      },
+      wubbalubbadubdub: () => {
+        fun.getSchwifty('portal');
+        return [L('  Wubba lubba dub dub!', 'ok')];
+      },
+      rick: () => [L('  Wubba lubba dub dub.'), L('   - Rick Sanchez', 'dim')],
+      morty: () => [L('  Aw geez, Rick.'), L('   - Morty Smith', 'dim')],
+      meeseeks: () => [L('  I’m Mr. Meeseeks! Look at me!'), L('  (There’s a box of them on c137.)', 'dim')],
       megatron: () => {
         fun.rollOut('megatron');
         return [L('  Peace through tyranny.', 'err'), L('   - Megatron', 'dim')];
@@ -436,6 +447,14 @@ export default function Terminal() {
         setTimeout(() => navigate('/albuquerque'), 400);
         return [L('  Driving out to the Land of Enchantment…', 'ok')];
       },
+      c137: () => {
+        setTimeout(() => navigate('/c-137'), 400);
+        return [L('  Firing the portal gun at Dimension C-137…', 'ok')];
+      },
+      'c-137': () => {
+        setTimeout(() => navigate('/c-137'), 400);
+        return [L('  Firing the portal gun at Dimension C-137…', 'ok')];
+      },
       worlds: () => [
         BLANK,
         L('  WORLDS', 'head'),
@@ -443,8 +462,9 @@ export default function Terminal() {
         L(`  ${pad('moria', 13)}The Lord of the Rings: the Doors of Durin, the road, the Bridge, Mordor, the Ring`),
         L(`  ${pad('avengers', 13)}Marvel: the Avengers compound building by building, the Tesseract, Thanos`),
         L(`  ${pad('scranton', 13)}The Office: the floor plan, Kevin mode, Dwight's fact check, the Dundies`),
-        L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, the ground bridge, the Iacon relics`),
-        L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, the superlab, Hector's bell, Los Pollos Hermanos`),
+        L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, Roll out, the ground bridge, the Iacon relics`),
+        L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, Walt's Metherria, Hector's bell, Los Pollos Hermanos`),
+        L(`  ${pad('c137', 13)}Rick and Morty: the portal gun, Portal panic, the Meeseeks box, interdimensional cable`),
         L(`  ${pad('music', 13)}The music room: sitar, harmonium, tabla`),
       ],
       exit: () => {

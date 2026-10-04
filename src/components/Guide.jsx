@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. With a graphics chip it plays in 3D; the switch under it goes back to 2D.'],
+      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo. In the trench it blasts the first catwalk, wall or turret in its path, or scorches the floor, so spend them carefully: you need one for the port, which glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. It plays in 3D wherever the browser has WebGL; the switch under it goes back to 2D.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
@@ -73,6 +73,7 @@ const PAGES = {
       ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you, and so does who you can transform.'],
       ['Transform', 'Optimus folds into his truck, Megatron into his jet. Open Optimus’s Matrix, or fire Megatron’s fusion cannon in either mode.'],
       ['Ground bridge', 'Hold the button, Space, or the scene itself to open the bridge as an Autobot reaches it. Let go before a Vehicon does. Three strikes and Ratchet takes over.'],
+      ['Roll out', 'Left and right (or A and D) steer. As a vehicle you’re fast: Space or up boosts, smashing debris, and you take the ramps over broken bridges. As a robot you fight: the blaster fires on its own, and Space or up jumps the barricades, but standing up burns energon. Shift, T or down transforms; it takes half a second, so read the road ahead. Get past Starscream over Jasper, Shockwave in Mission City and Megatron in Kaon. On a touch screen, drag to steer and use the buttons; a gamepad works too. Each difficulty keeps its best score. It needs hardware acceleration on.'],
       ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter. Wrong guesses cost time.'],
       ['The roster', 'Roll out as any of them to wear their colors. The soundboard plays through Soundwave’s visor.'],
     ],
@@ -82,10 +83,20 @@ const PAGES = {
     tips: [
       ['The title card', 'Type a name and it becomes a Breaking Bad title card.'],
       ['The cast', 'Every card does something.'],
-      ['The superlab', 'Cook to order. Take each customer’s ticket at the counter, then: hold to pour the base to the line and tint it to the right blue (Chili P only if they want it), hold to keep the heat in the green, strike the slab on its crack lines, and fill each bag to the mark. Every station is scored, and so is the wait. Pay buys upgrades between shifts; new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch).'],
+      ['Walt’s Metherria', 'Cook to order, Papa’s style, in 3D. Take each customer’s ticket at the hatch, then work the stations along the bench: pick the size and hold to pour the base to the gold line, counting in the blue and Chili P (and the mix-ins your title unlocks); hold the heat in the green; strike the slab on its crack lines; pick the pack, fill each one to the mark, and stick the stickers where the ticket shows. Hand it over at the hatch. Every station is scored, and so is the wait. Pay buys upgrades between shifts, new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch). It needs WebGL.'],
       ['Face Off', 'Ring Hector’s bell three times.'],
       ['The letter board', 'Rows light up in turn: ring (Space, the button or a tap on the board) to pick the row, then again on the right letter. Three words; wrong rings cost five seconds.'],
       ['Inside', 'Order at the Los Pollos Hermanos counter (Gus is serving) and the tray fills up. Then call Saul.'],
+    ],
+  },
+  '/c-137': {
+    title: 'Dimension C-137',
+    tips: [
+      ['The portal gun', 'Fire it to look through into another dimension.'],
+      ['Portal panic', 'W A S D or the arrows move and the mouse aims. The gun fires on its own at the nearest enemy; F turns that off, and then you hold the mouse button to fire. Space or Shift portal-dashes out of trouble. Clear three waves in each of four dimensions, take a gadget from Rick’s workbench after every wave (1, 2 or 3), and beat the boss to portal on. On a touch screen the left thumb moves and the right thumb aims; a gamepad works too. P pauses. Play as Rick, Morty or Pickle Rick; each difficulty keeps its best score. It needs hardware acceleration on.'],
+      ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
+      ['Interdimensional cable', 'Turn the dial.'],
+      ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
   '/music': {
@@ -112,7 +123,7 @@ const SITE = [
   ['Getting around', 'The menu at the top, or ⌘K (Ctrl+K) for the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
   ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
-  ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious or say my name. ↑ ↑ ↓ ↓ ← → ← → B A jumps to lightspeed.'],
+  ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name. ↑ ↑ ↓ ↓ ← → ← → B A jumps to lightspeed.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],
 ];
 

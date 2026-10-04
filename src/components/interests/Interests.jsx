@@ -17,6 +17,8 @@ import AutobotMark from '../AutobotMark';
 import DecepticonMark from '../DecepticonMark';
 import { audioContext } from '../../lib/audio';
 import { STONES, VIEW } from './stones';
+import { DIMENSIONS } from '../rickmorty/dimensions';
+import PortalSwirl from '../rickmorty/PortalSwirl';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
 
@@ -415,6 +417,60 @@ function BreakingBad() {
   );
 }
 
+function RickMorty() {
+  const { getSchwifty } = useFun();
+  const [dim, setDim] = useState(0);
+  const [shots, setShots] = useState(0);
+  const [clip, setClip] = useState(false);
+  const d = DIMENSIONS[dim];
+  const fire = () => {
+    setClip(false);
+    audioContext();
+    import('../games/gameAudio').then((m) => {
+      m.zap?.();
+      m.portalOpen?.();
+    });
+    setDim((i) => (i + 1 + Math.floor(Math.random() * (DIMENSIONS.length - 1))) % DIMENSIONS.length);
+    setShots((n) => n + 1);
+  };
+  return (
+    <Card
+      title="Rick and Morty"
+      className="fun-rm"
+      visual={
+        clip ? (
+          <Gif name="rmGarage" eager caption={false} className="h-full [&_.gif-frame]:h-full [&_.gif-frame]:!aspect-auto [&_.gif-frame]:rounded-none" />
+        ) : (
+          <div className="rmc-panel">
+            <PortalSwirl shot={shots} size={[0.3, 0.4]} className="rmc-portal" />
+            <p className="rmc-name" aria-live="polite">
+              <span aria-hidden="true">→ </span>
+              {d.name}
+            </p>
+          </div>
+        )
+      }
+    >
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">Every season of it. Fire the portal gun: it opens somewhere new every time.</p>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button type="button" className="btn btn-primary btn-sm" onClick={fire}>
+          Fire the portal gun
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" aria-pressed={clip} onClick={() => setClip((v) => !v)}>
+          Watch one open
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => getSchwifty('portal')}>
+          Get schwifty
+        </button>
+        <Link to="/c-137" className="btn btn-ghost btn-sm">
+          Visit C-137
+        </Link>
+      </div>
+      {clip && <p className="mt-2 text-xs text-muted">Rick and Morty (Adult Swim), via GIPHY.</p>}
+    </Card>
+  );
+}
+
 function Travel() {
   return (
     <Card
@@ -447,7 +503,7 @@ export default function Interests() {
           <h2 id="interests-title" className="title">
             Off the clock
           </h2>
-          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad and a lot of travel. Most of them have a world of their own on this site, with something to play.</p>
+          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad, Rick and Morty and a lot of travel. Most of them have a world of their own on this site, with something to play.</p>
           <div className="mt-6">
             <InterestDock />
           </div>
@@ -469,6 +525,7 @@ export default function Interests() {
         <Marvel />
         <BreakingBad />
         <Office />
+        <RickMorty />
         <Gaming />
         <Travel />
       </ul>

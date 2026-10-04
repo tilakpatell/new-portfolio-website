@@ -1,0 +1,734 @@
+{
+  "tex/armour": {
+    "source": "https://polyhaven.com/a/blue_metal_plate",
+    "id": "blue_metal_plate",
+    "name": "Blue Metal Plate",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-brick": {
+    "source": "https://ambientcg.com/view?id=Facade018B",
+    "id": "Facade018B",
+    "name": "Facade018B",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-office": {
+    "source": "https://ambientcg.com/view?id=Facade020B",
+    "id": "Facade020B",
+    "name": "Facade020B",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-tower": {
+    "source": "https://ambientcg.com/view?id=Facade013",
+    "id": "Facade013",
+    "name": "Facade013",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-glass": {
+    "source": "https://ambientcg.com/view?id=Facade009",
+    "id": "Facade009",
+    "name": "Facade009",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "models/barrier": {
+    "source": "https://polyhaven.com/a/concrete_road_barrier_02",
+    "id": "concrete_road_barrier_02",
+    "name": "Concrete Road Barrier 02",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 12%"
+  },
+  "models/crate": {
+    "source": "https://polyhaven.com/a/wooden_crate_01",
+    "id": "wooden_crate_01",
+    "name": "Wooden Crate 01",
+    "authors": [
+      "James Ray Cock"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 50%"
+  },
+  "models/barrel": {
+    "source": "https://polyhaven.com/a/Barrel_01",
+    "id": "Barrel_01",
+    "name": "Barrel_01",
+    "authors": [
+      "Jorge Camacho"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 70%"
+  },
+  "models/tyre": {
+    "source": "https://polyhaven.com/a/old_tyre",
+    "id": "old_tyre",
+    "name": "Old Tyre",
+    "authors": [
+      "MP"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 60%"
+  },
+  "models/rock": {
+    "source": "https://polyhaven.com/a/rock_07",
+    "id": "rock_07",
+    "name": "Rock 07",
+    "authors": [
+      "Jenelle van Heerden"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 6%"
+  },
+  "models/quiver-tree": {
+    "source": "https://polyhaven.com/a/quiver_tree_02",
+    "id": "quiver_tree_02",
+    "name": "Quiver Tree 02",
+    "authors": [
+      "Dario Barresi",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 3%"
+  },
+  "models/street-lamp": {
+    "source": "https://polyhaven.com/a/street_lamp_01",
+    "id": "street_lamp_01",
+    "name": "Street Lamp 01",
+    "authors": [
+      "Josh Dean"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 30%"
+  },
+  "models/utility-box": {
+    "source": "https://polyhaven.com/a/utility_box_01",
+    "id": "utility_box_01",
+    "name": "Utility Box 01",
+    "authors": [
+      "James Ray Cock"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 60%"
+  },
+  "models/trash-can": {
+    "source": "https://polyhaven.com/a/metal_trash_can",
+    "id": "metal_trash_can",
+    "name": "Metal Trash Can",
+    "authors": [
+      "GurJas Studios"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 35%"
+  },
+  "tex/asphalt-desert": {
+    "source": "https://polyhaven.com/a/asphalt_02",
+    "id": "asphalt_02",
+    "name": "Asphalt 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/asphalt-city": {
+    "source": "https://polyhaven.com/a/asphalt_track",
+    "id": "asphalt_track",
+    "name": "Asphalt Track",
+    "authors": [
+      "Dimitrios Savva"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/plate-road": {
+    "source": "https://polyhaven.com/a/metal_plate_02",
+    "id": "metal_plate_02",
+    "name": "Metal Plate 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/desert-ground": {
+    "source": "https://polyhaven.com/a/dry_ground_rocks",
+    "id": "dry_ground_rocks",
+    "name": "Dry Ground Rocks",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/mesa-rock": {
+    "source": "https://polyhaven.com/a/cliff_side",
+    "id": "cliff_side",
+    "name": "Cliff Side",
+    "authors": [
+      "James Ray Cock",
+      "Jenelle van Heerden",
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/sidewalk": {
+    "source": "https://polyhaven.com/a/concrete_pavement",
+    "id": "concrete_pavement",
+    "name": "Concrete Pavement",
+    "authors": [
+      "Charlotte Baglioni"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/plate-deck": {
+    "source": "https://polyhaven.com/a/metal_plate",
+    "id": "metal_plate",
+    "name": "Metal Plate",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/concrete": {
+    "source": "https://polyhaven.com/a/concrete_floor_worn_001",
+    "id": "concrete_floor_worn_001",
+    "name": "Concrete Floor Worn 001",
+    "authors": [
+      "Dimitrios Savva",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "hdri/jasper": {
+    "source": "https://polyhaven.com/a/rogland_sunset",
+    "id": "rogland_sunset",
+    "name": "Rogland Sunset",
+    "authors": [
+      "Greg Zaal"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "hdri/mission": {
+    "source": "https://polyhaven.com/a/modern_buildings_night",
+    "id": "modern_buildings_night",
+    "name": "Modern Buildings Night",
+    "authors": [
+      "Greg Zaal"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "hdri/kaon": {
+    "source": "https://polyhaven.com/a/abandoned_tank_farm_05",
+    "id": "abandoned_tank_farm_05",
+    "name": "Abandoned Tank Farm 05",
+    "authors": [
+      "Sergej Majboroda"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "tex/desert-sand": {
+    "source": "https://polyhaven.com/a/gravelly_sand",
+    "id": "gravelly_sand",
+    "name": "Gravelly Sand",
+    "authors": [
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "sky/jasper-sky": {
+    "source": "https://polyhaven.com/a/kloppenheim_06_puresky",
+    "id": "kloppenheim_06_puresky",
+    "name": "Kloppenheim 06 (Pure Sky)",
+    "authors": [
+      "Greg Zaal",
+      "Jarod Guest"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.6077,
+      "elevation": 8.17
+    }
+  },
+  "sky/mission-sky": {
+    "source": "https://polyhaven.com/a/kloppenheim_07_puresky",
+    "id": "kloppenheim_07_puresky",
+    "name": "Kloppenheim 07 (Pure Sky)",
+    "authors": [
+      "Greg Zaal",
+      "Jarod Guest"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.5999,
+      "elevation": 38.06
+    }
+  },
+  "sky/kaon-sky": {
+    "source": "https://polyhaven.com/a/industrial_sunset_puresky",
+    "id": "industrial_sunset_puresky",
+    "name": "Industrial Sunset (Pure Sky)",
+    "authors": [
+      "Jarod Guest",
+      "Sergej Majboroda"
+    ],
+    "license": "CC0 1.0",
+    "size": "2048 × 576",
+    "sun": {
+      "u": 0.6018,
+      "elevation": 4.13
+    }
+  },
+  "models/shrub": {
+    "source": "https://polyhaven.com/a/shrub_02",
+    "id": "shrub_02",
+    "name": "Shrub 02",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 6%"
+  },
+  "models/brush": {
+    "source": "https://polyhaven.com/a/dry_branches_medium_01",
+    "id": "dry_branches_medium_01",
+    "name": "Dry Branches Medium 01",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 10%"
+  },
+  "models/boulders": {
+    "source": "https://polyhaven.com/a/namaqualand_boulders_01",
+    "id": "namaqualand_boulders_01",
+    "name": "Namaqualand Boulders 01",
+    "authors": [
+      "Greg Zaal",
+      "Jenelle van Heerden"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 2%"
+  },
+  "models/boulder": {
+    "source": "https://polyhaven.com/a/namaqualand_boulder_05",
+    "id": "namaqualand_boulder_05",
+    "name": "Namaqualand Boulder 05",
+    "authors": [
+      "Jenelle van Heerden",
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 1%"
+  },
+  "models/dead-trunk": {
+    "source": "https://polyhaven.com/a/dead_quiver_trunk",
+    "id": "dead_quiver_trunk",
+    "name": "Dead Quiver Trunk",
+    "authors": [
+      "James Ray Cock",
+      "Dario Barresi",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 12%"
+  },
+  "kenney/house-a": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-a",
+    "name": "City Kit (Suburban): building-type-a",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-c": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-c",
+    "name": "City Kit (Suburban): building-type-c",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-f": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-f",
+    "name": "City Kit (Suburban): building-type-f",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/house-k": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "building-type-k",
+    "name": "City Kit (Suburban): building-type-k",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/fence": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "fence",
+    "name": "City Kit (Suburban): fence",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/tree-large": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "tree-large",
+    "name": "City Kit (Suburban): tree-large",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/tree-small": {
+    "source": "https://kenney.nl/assets/city-kit-suburban",
+    "id": "tree-small",
+    "name": "City Kit (Suburban): tree-small",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/oak": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "tree_oak",
+    "name": "Nature Kit: tree_oak",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/bush": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "plant_bushLarge",
+    "name": "Nature Kit: plant_bushLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/rock": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "rock_largeA",
+    "name": "Nature Kit: rock_largeA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/flowers": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "flower_redA",
+    "name": "Nature Kit: flower_redA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/dead-tree": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "tree_thin_dark",
+    "name": "Nature Kit: tree_thin_dark",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/stump": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "stump_old",
+    "name": "Nature Kit: stump_old",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/mushroom": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "mushroom_redTall",
+    "name": "Nature Kit: mushroom_redTall",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/rock-tall": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "rock_tallA",
+    "name": "Nature Kit: rock_tallA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/spire": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "stone_tallA",
+    "name": "Nature Kit: stone_tallA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/cliff": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "cliff_large_rock",
+    "name": "Nature Kit: cliff_large_rock",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/cactus": {
+    "source": "https://kenney.nl/assets/nature-kit",
+    "id": "cactus_tall",
+    "name": "Nature Kit: cactus_tall",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/crystal": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "rock_crystalsLargeA",
+    "name": "Space Kit: rock_crystalsLargeA",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/meteor": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "meteor_detailed",
+    "name": "Space Kit: meteor_detailed",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/crater": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "craterLarge",
+    "name": "Space Kit: craterLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/console": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "machine_generatorLarge",
+    "name": "Space Kit: machine_generatorLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/computer": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "desk_computer",
+    "name": "Space Kit: desk_computer",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/pillar": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "supports_high",
+    "name": "Space Kit: supports_high",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/barrels": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "machine_barrelLarge",
+    "name": "Space Kit: machine_barrelLarge",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/dish": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "satelliteDish_detailed",
+    "name": "Space Kit: satelliteDish_detailed",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/hangar": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "hangar_roundGlass",
+    "name": "Space Kit: hangar_roundGlass",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/turret": {
+    "source": "https://kenney.nl/assets/space-kit",
+    "id": "turret_double",
+    "name": "Space Kit: turret_double",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "meshy/rick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10817-1dbf-716d-9df0-6f358ed4b26e",
+    "name": "rick, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/pickle": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10817-1dc8-7282-8683-3067e5a59949",
+    "name": "pickle, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/morty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10817-1dc7-74e6-ae11-99413abae73d",
+    "name": "morty, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/meeseeks": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10817-1dc6-7665-ad63-e3dae9e34eba",
+    "name": "meeseeks, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/gromflomite": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10818-4362-716b-81b1-67eed5533472",
+    "name": "gromflomite, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cronenberg": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10818-7f88-74de-a683-9926fcab4e0d",
+    "name": "cronenberg, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/gazorpian": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10818-7f85-7599-bc1b-9df73ae08d35",
+    "name": "gazorpian, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cop": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10818-9405-71fe-aadb-728fc3b3cad5",
+    "name": "cop, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/snowball": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10819-e144-74b4-9a7a-c49e67e620ad",
+    "name": "snowball, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cromulon": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10819-f521-750e-b7e4-f2957e6a9dd6",
+    "name": "cromulon, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/evilmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10819-f638-7680-9f9b-3e0069bbc5e1",
+    "name": "evilmorty, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cruiser": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1081a-85cc-75fd-876a-2c61acc7439b",
+    "name": "cruiser, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/garage": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1081a-f4eb-734e-97c7-a9745afea517",
+    "name": "garage, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  }
+}

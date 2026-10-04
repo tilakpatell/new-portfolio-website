@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { RiVolumeMuteLine, RiVolumeUpLine } from 'react-icons/ri';
 import Readout from '../components/deathstar/Readout';
 import TrenchRun from '../components/deathstar/TrenchRun';
+import Hero3D from '../components/deathstar/Hero3D';
 import { PLANETS, PLANET_AT as PLANET, PlanetArt, PlanetBackdrop } from '../components/deathstar/Planets';
 import { BATTLE_SECONDS, fmtClock } from '../components/deathstar/battle';
 import { AurebeshLine } from '../components/Wordmark';
@@ -11,6 +12,7 @@ import { jumpTo } from '../lib/anchors';
 import Hyperspace from '../components/Hyperspace';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
+import { use3D } from '../lib/gpu';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
 import ScriptToggle from '../components/ScriptToggle';
 
@@ -73,6 +75,10 @@ export default function DeathStar() {
   const { unlock } = useAchievements();
   // the superlaser: idle → charging → firing → boom → gone
   const [phase, setPhase] = useState('idle');
+  // in WebGL where there's a graphics chip for it, the SVG otherwise
+  const three = use3D();
+  const [gl, setGl] = useState('off');
+  const stageSvg = useRef(null);
   const [shots, setShots] = useState(0);
   const [destroyed, setDestroyed] = useState(false); // the station itself
   const [planet, setPlanet] = useState('alderaan');
@@ -279,9 +285,10 @@ export default function DeathStar() {
           ))}
         </div>
       )}
-      <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
-        <div className="ds-stage">
-          <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${p.name}`}>
+      <div className="ds-hero shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]" data-gl={(three.on && gl === 'on') || undefined}>
+        {three.on && gl !== 'failed' && gl !== 'lost' && <Hero3D svgRef={stageSvg} planet={planet} phase={phase} destroyed={destroyed} arrivals={arrivals} shots={shots} vb={vb} reduced={reduced} onState={setGl} />}
+        <div className="ds-stage" data-gl={three.on && gl !== 'failed' && gl !== 'lost' ? gl : undefined}>
+          <svg ref={stageSvg} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${p.name}`}>
             <defs>
               <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
                 <stop offset="0" stopColor="#b9bec4" />

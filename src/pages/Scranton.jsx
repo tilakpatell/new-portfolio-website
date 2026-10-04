@@ -4,6 +4,7 @@ import Dundie from '../components/office/Dundie';
 import FactCheck from '../components/office/FactCheck';
 import OfficeFloor from '../components/office/OfficeFloor';
 import PaperPlane from '../components/office/PaperPlane';
+import PaperToss from '../components/office/PaperToss';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
@@ -118,12 +119,22 @@ export default function Scranton() {
         </div>
       </section>
 
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="toss-title">
+        <h2 id="toss-title" className="title">
+          Office Olympics
+        </h2>
+        <p className="lead mt-4 max-w-[58ch]">{say('Paper toss, from Jim’s desk to the wastebasket. Ten balls. Every basket moves the bin, and after two somebody turns the fan on.')}</p>
+        <div className="mt-8">
+          <PaperToss />
+        </div>
+      </section>
+
       <section className="shell relative z-10 grid gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16" aria-labelledby="facts-title">
         <div>
           <h2 id="facts-title" className="title scroll-mt-28">
             Dwight’s fact check
           </h2>
-          <p className="lead mt-4 max-w-[46ch]">{say('Seven statements, mostly about me. Fact, or false? Dwight has strong opinions about each one.')}</p>
+          <p className="lead mt-4 max-w-[46ch]">{say('Eight statements, half about me and half about the branch. Fact, or false? Dwight has strong opinions about each one.')}</p>
         </div>
         <FactCheck />
       </section>

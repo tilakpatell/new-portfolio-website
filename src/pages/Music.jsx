@@ -25,7 +25,7 @@ import {
 import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
-import Tabla from '../components/music/Tabla';
+import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
 import Egg from '../components/Egg';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
@@ -252,7 +252,8 @@ export default function Music() {
             Sitar
           </h2>
           <p className="lead mt-4 max-w-[60ch]">
-            Tap a fret to pluck it. Hold and slide along the neck to glide between frets, or pull the string across the fret to bend it: meend.
+            Every swara has a fret, from mandra Pa to taar Ga, and the raga’s notes are lit. Tap a fret to pluck it. Hold and slide along the neck to glide
+            between frets, or pull the string across the fret to bend it: meend.
           </p>
         </div>
         <div className="mt-8">
@@ -280,27 +281,40 @@ export default function Music() {
             <Photo id="music-tarab" sizes="(min-width: 768px) 36vw, 100vw" className="h-full w-full object-cover" />
           </figure>
           <div className="max-w-[62ch] text-[0.95rem] leading-relaxed text-body">
-            <h3 className="stretch-semi text-xl font-semibold text-ink">Real notes, retuned to every fret</h3>
+            <h3 className="stretch-semi text-xl font-semibold text-ink">Real strokes, on every fret</h3>
             <p className="mt-3">
-              Each pluck is a recording of a real sitar, retuned to the fret you touch, so the jawari’s buzz and the ring of the sympathetic strings are the
-              instrument’s own. Meend glides the note the way a pulled string bends. The tanpura is a real pluck too, retuned to each of its four strings.
+              Each note is a real sitar: two strokes, the inward Da and the outward Ra, recorded and shifted along the neck so no fret is more than two
+              semitones from a recording, and the jawari’s buzz stays the instrument’s own. Play quickly and the strokes alternate, as the mizrab does. Meend
+              and krintan move the note without a new stroke, the way the left hand pulls and lets go of the string.
             </p>
             <p className="mt-3">
               Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {RAGAS[tuning.raga].name}. Nobody plucks them; they ring when a
-              note you play matches one, and glow on the neck above as they would.
+              note you play matches one, and you hear them bloom after it, a modelled string with its own jawari for each. They glow on the neck as they ring.
+            </p>
+            <p className="mt-3">
+              On a keyboard, 1 to = and Q to ] play the frets in order. Shift with a fret’s key moves to it without a new stroke (krintan), holding ↑ pulls
+              the note up to the raga’s next one (meend), Space strikes the chikari and Esc stops the string.
             </p>
             <p className="mt-3 text-sm text-muted">
-              Sitar recordings by{' '}
-              <a className="link" href={CREDIT} target="_blank" rel="noopener noreferrer">
-                Sanath311
-              </a>{' '}
-              (CC BY-SA 3.0) and{' '}
+              Sitar strokes by{' '}
               <a className="link" href="https://freesound.org/people/chinpen/sounds/42268/" target="_blank" rel="noopener noreferrer">
                 chinpen
               </a>{' '}
-              (CC BY 3.0). Tanpura pluck by{' '}
+              (CC BY 3.0, pitch-shifted across the neck); the recording to listen to by{' '}
+              <a className="link" href={CREDIT} target="_blank" rel="noopener noreferrer">
+                Sanath311
+              </a>{' '}
+              (CC BY-SA 3.0). Tanpura pluck by{' '}
               <a className="link" href="https://freesound.org/people/luckylittleraven/sounds/416606/" target="_blank" rel="noopener noreferrer">
                 luckylittleraven
+              </a>{' '}
+              (CC0). Tabla strokes by{' '}
+              <a className="link" href="https://github.com/sonic-pi-net/sonic-pi/blob/main/etc/samples/README.md" target="_blank" rel="noopener noreferrer">
+                dio_333
+              </a>{' '}
+              (CC0, from Sonic Pi’s sample library). Rosewood texture from{' '}
+              <a className="link" href="https://polyhaven.com/a/rosewood_veneer1" target="_blank" rel="noopener noreferrer">
+                Poly Haven
               </a>{' '}
               (CC0).
             </p>
@@ -337,7 +351,7 @@ export default function Music() {
               Tabla
             </h2>
             <p className="lead mt-4 max-w-[56ch]">
-              Every stroke has a name, a bol, and every taal is a cycle of them. The right drum is tuned to Sa, so it plays in tune with the tanpura.
+              Every stroke has a name, a bol, and every taal is a cycle of them. These are real strokes, the right drum retuned to Sa and the left to Sa or Pa below it, so they play in tune with the tanpura.
             </p>
           </div>
           <figure className="music-photo music-photo-wide m-0">
@@ -351,7 +365,7 @@ export default function Music() {
 
       <PhotoCredits
         ids={['music-sitar', 'music-tanpura', 'music-tarab', 'music-harmonium', 'music-tabla']}
-        note="Freely licensed photos from Wikimedia Commons. The sitar and tanpura play real recordings, credited above; the harmonium and tabla are synthesised in your browser."
+        note="Freely licensed photos from Wikimedia Commons. The sitar, tanpura and tabla play real recordings, credited above; the harmonium is synthesised in your browser."
       />
 
       {(pastHero || drone.on) && (
