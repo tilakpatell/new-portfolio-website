@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { splitWord } from '../components/albuquerque/elements';
+import Cast from '../components/albuquerque/Cast';
+import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
@@ -13,7 +15,7 @@ const PLACES = [
   { id: 'bb-pollos', title: 'Twisters, Albuquerque', note: 'Los Pollos Hermanos, on screen.' },
   { id: 'bb-sandias', title: 'The Sandia Mountains', note: 'The skyline behind half the show.' },
 ];
-const SCENES = ['bbSayMyName', 'bbKnocks', 'bbScience', 'saulExcited', 'saulGood'];
+const SCENES = ['saulExcited'];
 
 function Tile({ el }) {
   return (
@@ -26,10 +28,49 @@ function Tile({ el }) {
   );
 }
 
-// Albuquerque: any name as a Breaking Bad title card, and the show's sounds.
+// The counter at Los Pollos Hermanos: order, and the tray fills up.
+const MENU = [
+  ['Pollo clásico', '8 pieces'],
+  ['Pollo picante', 'with the house spice'],
+  ['Curly fries', 'large'],
+  ['Sweet tea', 'Mike’s order'],
+];
+function Pollos() {
+  const [tray, setTray] = useState([]);
+  const order = (i) => {
+    audioContext(); // in the click, so the bell can be heard
+    import('../lib/sfx').then((s) => s.ding());
+    setTray((t) => (t.includes(i) ? t : [...t, i]));
+  };
+  return (
+    <div className="pollos card">
+      <div className="pollos-board">
+        <p className="pollos-name">Los Pollos Hermanos</p>
+        <p className="pollos-sub">Albuquerque, New Mexico</p>
+        <ul className="mt-4 grid gap-2">
+          {MENU.map(([item, note], i) => (
+            <li key={item}>
+              <button type="button" className="pollos-item" aria-pressed={tray.includes(i)} onClick={() => order(i)}>
+                <span>{item}</span>
+                <span className="pollos-note">{note}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="mt-4 min-h-[1.5em] text-sm text-body" aria-live="polite">
+        {tray.length === MENU.length ? 'The manager brings it out himself, and thanks you for your business.' : tray.length ? `${tray.length} on the tray.` : 'Order at the counter.'}
+      </p>
+    </div>
+  );
+}
+
+// Albuquerque: any name as a Breaking Bad title card, the cast of both shows,
+// Los Pollos Hermanos and Saul's card.
 export default function Albuquerque() {
   useDocumentTitle('Albuquerque');
   const [name, setName] = useState('Tilak Patel');
+  const [saul, setSaul] = useState(false);
   const music = useRef(null);
   const [playing, setPlaying] = useState(false);
   useEffect(() => () => music.current?.stop(), []);
@@ -108,6 +149,45 @@ export default function Albuquerque() {
             </Link>
           </div>
           <WorldSwitcher className="mt-10" />
+        </div>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="cast-title">
+        <h2 id="cast-title" className="title">
+          The cast
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">Breaking Bad and Better Call Saul, one card each. Every one of them does something.</p>
+        <div className="mt-8">
+          <Cast />
+        </div>
+      </section>
+
+      <section className="shell relative z-10 grid items-start gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14" aria-labelledby="pollos-title">
+        <div>
+          <h2 id="pollos-title" className="title">
+            Los Pollos Hermanos
+          </h2>
+          <p className="lead mt-4 max-w-[46ch]">Gus Fring’s chicken restaurants, the cleanest kitchens in New Mexico.</p>
+          <div className="mt-8">
+            <Pollos />
+          </div>
+        </div>
+        <div>
+          <h2 className="title">Better call Saul</h2>
+          <p className="lead mt-4 max-w-[46ch]">Saul Goodman’s card. Keep it in your wallet.</p>
+          <div className="saul-card mt-8">
+            <p className="saul-big">Better Call Saul!</p>
+            <p className="saul-name">Saul Goodman · Attorney at Law</p>
+            <p className="saul-small">Injuries · Criminal defence · Whatever you need</p>
+          </div>
+          <button type="button" className="btn btn-primary mt-6" onClick={() => setSaul((v) => !v)} aria-pressed={saul}>
+            {saul ? 'Hang up' : 'Call Saul'}
+          </button>
+          {saul && (
+            <div className="mt-5 max-w-sm">
+              <Gif name="saulGood" size="medium" eager />
+            </div>
+          )}
         </div>
       </section>
 
