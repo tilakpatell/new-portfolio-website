@@ -34,6 +34,10 @@ export const THEMES = {
   soundwave: { id: 'soundwave', label: 'Soundwave', company: 'Soundwave', swatch: '#1F6FB2', fan: true },
   shire: { id: 'shire', label: 'Shire', company: 'The Shire', swatch: '#4F7C2A', fan: true },
   mordor: { id: 'mordor', label: 'Mordor', company: 'Mordor', swatch: '#C2410C', fan: true },
+  portal: { id: 'portal', label: 'Portal', company: 'Rick Sanchez', swatch: '#97CE4C', fan: true },
+  morty: { id: 'morty', label: 'Morty', company: 'Morty Smith', swatch: '#F3D84B', fan: true },
+  summer: { id: 'summer', label: 'Summer', company: 'Summer Smith', swatch: '#E2557F', fan: true },
+  beth: { id: 'beth', label: 'Beth', company: 'Beth Smith', swatch: '#8E2B48', fan: true },
   // the visitor's own colour (see theme/custom.js); its swatch follows their pick
   custom: { id: 'custom', label: 'Yours', company: 'Your color', swatch: 'var(--custom-accent, #7c3aed)' },
 };
@@ -57,6 +61,11 @@ export const FAN_THEMES = [
   // speak, friend, and enter: type mellon anywhere
   { id: 'shire', achievement: 'mellon', hint: 'Speak, friend, and enter' },
   { id: 'mordor', achievement: 'mellon', hint: 'Speak, friend, and enter' },
+  // get schwifty: type wubbalubbadubdub (or schwifty) anywhere
+  { id: 'portal', achievement: 'wubba', hint: 'Wubba lubba dub dub' },
+  { id: 'morty', achievement: 'wubba', hint: 'Wubba lubba dub dub' },
+  { id: 'summer', achievement: 'wubba', hint: 'Wubba lubba dub dub' },
+  { id: 'beth', achievement: 'wubba', hint: 'Wubba lubba dub dub' },
 ];
 
 export const THEME_ORDER = ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src'];
@@ -80,4 +89,5 @@ export const ROUTE_THEMES = {
   '/scranton': 'dunder',
   '/cybertron': 'optimus',
   '/albuquerque': 'heisenberg',
+  '/c-137': 'portal',
 };

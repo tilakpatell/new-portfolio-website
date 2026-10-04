@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
-export function createModels() {
+export function createModels({ base = '/games/models' } = {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const cache = new Map();
@@ -21,7 +21,7 @@ export function createModels() {
       cache.set(
         name,
         loader
-          .loadAsync(`/games/models/${name}.glb`)
+          .loadAsync(`${base}/${name}.glb`)
           .then((gltf) => {
             const root = gltf.scene;
             root.updateMatrixWorld(true);

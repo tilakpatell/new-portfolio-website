@@ -26,6 +26,7 @@ const Scranton = lazy(() => import('./pages/Scranton'));
 const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
+const RickMorty = lazy(() => import('./pages/RickMorty'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -171,6 +172,7 @@ function Shell() {
                 <Route path="/avengers" element={<Avengers />} />
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
+                <Route path="/c-137" element={<RickMorty />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

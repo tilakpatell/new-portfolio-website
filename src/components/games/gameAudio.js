@@ -139,3 +139,32 @@ export const nearMiss = () => whoosh(0.35, 1800, 500, 0.16);
 export const powerDown = () => tone([520], { type: 'sawtooth', dur: 0.5, gain: 0.06, glide: 0.25 });
 // the boss arrives
 export const bossSting = () => tone([110, 104, 98], { type: 'sawtooth', dur: 0.9, gain: 0.09, delay: 0.18, glide: 0.98 });
+
+// Portal panic
+// the portal gun: a wet little zap
+export const zap = () => tone([880], { type: 'square', dur: 0.09, gain: 0.035, glide: 0.45 });
+// a portal opening: a rising swirl
+export const portalOpen = () => {
+  whoosh(0.8, 250, 1800, 0.14);
+  tone([220, 330], { type: 'sine', dur: 0.6, gain: 0.05, delay: 0.08, glide: 1.8 });
+};
+// a portal dash: through and out
+export const portalHop = () => whoosh(0.28, 2200, 600, 0.16);
+// something squishy goes
+export const splat = () => tone([140], { type: 'sawtooth', dur: 0.16, gain: 0.07, glide: 0.4 });
+// a Mega Seed
+export const seed = () => tone([1568, 2093], { type: 'triangle', dur: 0.12, gain: 0.05, delay: 0.04 });
+// a gadget from the workbench
+export const gadget = () => tone([523, 659, 784, 1047], { type: 'triangle', dur: 0.2, gain: 0.07, delay: 0.06 });
+// hurt
+export const ouch = () => tone([300], { type: 'sawtooth', dur: 0.25, gain: 0.08, glide: 0.5 });
+// the soundboard on /c-137: a plumbus's squelch, the Cromulon's verdict, a
+// bassline to get schwifty to
+export const plumbus = () => {
+  tone([90], { type: 'sawtooth', dur: 0.3, gain: 0.08, glide: 2.4 });
+  whoosh(0.25, 400, 120, 0.12);
+};
+export const showMe = () => tone([196, 247, 294, 392], { type: 'sawtooth', dur: 1.2, gain: 0.045, delay: 0.03 });
+export const schwifty = () => {
+  [110, 110, 131, 110, 147, 131, 110, 98, 110, 110, 165, 147].forEach((f, i) => setTimeout(() => tone([f, f * 2], { type: 'square', dur: 0.16, gain: 0.05, delay: 0 }), i * 190));
+};

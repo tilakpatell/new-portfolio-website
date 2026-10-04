@@ -35,8 +35,12 @@ const WORDS = [
   ['sauron', 'mordor'],
   ['youshallnotpass', 'gandalf'],
   ['precious', 'gollum'],
+  ['wubbalubbadubdub', 'portal'],
+  ['schwifty', 'portal'],
+  ['picklerick', 'pickle'],
 ];
 const TRANSFORMERS = ['optimus', 'megatron', 'bumblebee', 'shockwave', 'soundwave'];
+const SMITHS = ['portal', 'morty', 'summer', 'beth'];
 
 export function FunProvider({ children }) {
   const { unlock, notify } = useAchievements();
@@ -217,6 +221,18 @@ export function FunProvider({ children }) {
   }, [notify]);
   const gollum = useCallback(() => notify('My precious.', 'Gollum', 'note'), [notify]);
 
+  // Rick and Morty: get schwifty, and the site goes portal green (or one of
+  // the Smiths' colours)
+  const getSchwifty = useCallback(
+    (who = 'portal') => {
+      unlock('wubba');
+      pin(SMITHS.includes(who) ? who : 'portal');
+      import('../components/games/gameAudio').then((m) => m.portalOpen?.());
+    },
+    [pin, unlock],
+  );
+  const pickleRick = useCallback(() => notify('I’m Pickle Riiick!', 'Funniest thing I’ve ever seen.', 'note'), [notify]);
+
   // Typed anywhere outside a text field.
   useEffect(() => {
     let buffer = '';
@@ -233,6 +249,8 @@ export function FunProvider({ children }) {
       mordor: () => speakFriend('mordor'),
       gandalf,
       gollum,
+      portal: () => getSchwifty('portal'),
+      pickle: pickleRick,
       ...Object.fromEntries(TRANSFORMERS.map((t) => [t, () => rollOut(t)])),
     };
     const onKey = (e) => {
@@ -249,7 +267,7 @@ export function FunProvider({ children }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [gandalf, gollum, parkour, rollOut, sayMyName, setScript, snap, speakFriend, toggleAurebesh, twss]);
+  }, [gandalf, getSchwifty, gollum, parkour, pickleRick, rollOut, sayMyName, setScript, snap, speakFriend, toggleAurebesh, twss]);
 
   const scriptName = SCRIPTS[script ?? scriptFor(active)].name;
   const value = useMemo(
@@ -269,8 +287,9 @@ export function FunProvider({ children }) {
       rollOut,
       speakFriend,
       gandalf,
+      getSchwifty,
     }),
-    [script, scriptName, setScript, toggleScript, toggleAurebesh, heisenberg, parkour, rollOut, sayMyName, snap, twss, speakFriend, gandalf],
+    [script, scriptName, setScript, toggleScript, toggleAurebesh, heisenberg, parkour, rollOut, sayMyName, snap, twss, speakFriend, gandalf, getSchwifty],
   );
 
   return (

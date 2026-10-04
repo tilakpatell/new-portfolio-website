@@ -49,7 +49,7 @@ export const PANIC = {
       id: 'backyard',
       name: 'The Smiths’ backyard',
       where: 'Earth, dimension C-137',
-      props: ['tree', 'tree', 'shed', 'rock', 'bush'],
+      props: ['tree', 'tree', 'bush', 'rock', 'bush'],
       waves: [[['meeseeks', 6]], [['meeseeks', 5], ['gromflomite', 4]], [['gromflomite', 5], ['meeseeks', 8]]],
       boss: 'snowball',
     },
