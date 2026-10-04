@@ -416,7 +416,7 @@ export default function Terminal() {
       },
       avengers: () => {
         setTimeout(() => navigate('/avengers'), 400);
-        return [L('  J.A.R.V.I.S.: Welcome home.', 'ok')];
+        return [L('  F.R.I.D.A.Y.: Welcome to the compound.', 'ok')];
       },
       scranton: () => {
         setTimeout(() => navigate('/scranton'), 400);
@@ -435,7 +435,7 @@ export default function Terminal() {
         L('  WORLDS', 'head'),
         L(`  ${pad('deathstar', 13)}Star Wars: the superlaser, the readout, the trench run`),
         L(`  ${pad('moria', 13)}The Lord of the Rings: the Doors of Durin, the road, the Bridge, Mordor, the Ring`),
-        L(`  ${pad('avengers', 13)}Marvel: Avengers Tower floor by floor, the Tesseract, Thanos`),
+        L(`  ${pad('avengers', 13)}Marvel: the Avengers compound building by building, the Tesseract, Thanos`),
         L(`  ${pad('scranton', 13)}The Office: the floor plan, Kevin mode, Dwight's fact check, the Dundies`),
         L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, the ground bridge, the Iacon relics`),
         L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, the superlab, Hector's bell, Los Pollos Hermanos`),

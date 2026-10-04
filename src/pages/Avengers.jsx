@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ArcReactor from '../components/avengers/ArcReactor';
 import Mjolnir from '../components/avengers/Mjolnir';
-import Tower from '../components/avengers/Tower';
+import Compound from '../components/avengers/Compound';
 import ShieldThrow from '../components/avengers/ShieldThrow';
 import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
@@ -21,23 +21,27 @@ import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 
 const sfx = () => import('../lib/sfx');
 
-// The floors, from the top down: scrolling down the page rides the lift down,
-// past each hero's floor to the vault where the Tesseract is kept.
+// The tour of the compound, building by building: scrolling down the page
+// walks it, and the map beside it shows where you are. It ends in the hangar,
+// where the Tesseract is kept.
 const FLOORS = [
-  { id: 'stark', short: 'Stark', title: 'Tony Stark’s workshop', text: 'The penthouse, where the suits are built and the reactor hums.' },
-  { id: 'thor', short: 'Thor', title: 'Thor', text: 'Mjolnir, waiting for someone worthy.' },
-  { id: 'cap', short: 'Cap', title: 'Captain America', text: 'The training floor. Throw the shield and it comes back. It always comes back.' },
-  { id: 'hawkeye', short: 'Hawkeye', title: 'The range', text: 'Clint Barton’s floor. Aim anywhere you like.' },
-  { id: 'widow', short: 'Widow', title: 'Black Widow', text: 'Natasha keeps her file locked. Most of it, anyway.' },
-  { id: 'banner', short: 'Banner', title: 'Bruce Banner’s lab', text: 'Down where the walls are thickest: gamma research, and a scientist who would rather you didn’t push him.' },
-  { id: 'vault', short: 'Vault', title: 'The vault', text: 'Under the tower, in a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
+  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and the reactor hums, with F.R.I.D.A.Y. running the place.' },
+  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
+  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river. Throw the shield and it comes back. It always comes back.' },
+  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'Three lanes at the edge of the woods. Aim anywhere you like.' },
+  { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
+  { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him.' },
+  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. In a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
 ];
 
-const JARVIS = [
-  'Reactor on standby.',
-  'Reactor online. All systems nominal.',
-  'Output at 200 percent. The suit is ready when you are.',
-  'Output at 400 percent. I would advise against going any higher, sir.',
+const SPOT_IDS = FLOORS.map((f) => f.id);
+const SPOT_TITLES = FLOORS.map((f, i) => `${i + 1}. ${f.title}`);
+
+const FRIDAY = [
+  'Reactor on standby, boss.',
+  'Reactor online. All systems green.',
+  'Output at 200 percent. The suit’s ready when you are.',
+  'Output at 400 percent. I’d advise against going any higher, boss.',
 ];
 
 // Where each stone turned up before Thanos came for it.
@@ -61,7 +65,9 @@ const SCENES = ['marvelAssemble', 'marvelGroot', 'snap'];
 function Floor({ i, floor, children, aside }) {
   return (
     <section id={`floor-${floor.id}`} data-floor={i} className="tower-floor scroll-mt-28" aria-labelledby={`floor-${floor.id}-title`}>
-      <p className="tower-floor-badge">{floor.id === 'vault' ? 'Sub-level' : `Level ${FLOORS.length - 1 - i}`}</p>
+      <p className="tower-floor-badge">
+        {i + 1} · {floor.where}
+      </p>
       <h2 id={`floor-${floor.id}-title`} className="title mt-3">
         {floor.title}
       </h2>
@@ -74,10 +80,10 @@ function Floor({ i, floor, children, aside }) {
   );
 }
 
-// Avengers Tower: ride the lift down past each hero's floor to the vault, open
+// Avengers HQ: walk the compound past each hero's building to the hangar, open
 // the portal with the Tesseract, and come out in front of Thanos.
 export default function Avengers() {
-  useDocumentTitle('Avengers Tower');
+  useDocumentTitle('Avengers HQ');
   const { snap } = useFun();
   const [power, setPower] = useState(0);
   const [blast, setBlast] = useState(0);
@@ -163,19 +169,20 @@ export default function Avengers() {
   const all = have.length === STONES.length;
   return (
     <div className="relative">
-      <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16" aria-labelledby="tower-title">
-        <figure className="tower-hero m-0">
-          <Tower className="tower-hero-svg" />
+      <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
+        <figure className="m-0">
+          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" />
+          <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
         </figure>
         <div>
-          <p className="eyebrow">Avengers Tower · Manhattan</p>
-          <h1 id="tower-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
-            Avengers Tower
+          <p className="eyebrow">The Avengers compound · Upstate New York</p>
+          <h1 id="hq-title" className="display mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
+            Avengers HQ
           </h1>
-          <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Take the lift down from the penthouse: every floor belongs to someone else, and the Tesseract is kept in the vault at the bottom.</p>
+          <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Walk the compound: every building belongs to someone, and the Tesseract is waiting in the hangar.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#floor-stark" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-stark')}>
-              Take the lift down
+              Start the tour
             </a>
             <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
               {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
@@ -184,13 +191,13 @@ export default function Avengers() {
               Back to the site
             </Link>
           </div>
-          <nav className="tower-directory mt-8" aria-label="Building directory">
-            <p className="label">Directory</p>
+          <nav className="tower-directory mt-8" aria-label="Places in the compound">
+            <p className="label">On the map</p>
             <ol className="mt-3">
               {FLOORS.map((f, i) => (
                 <li key={f.id}>
                   <a href={`#floor-${f.id}`} onClick={(e) => jumpTo(e, `floor-${f.id}`)}>
-                    <span className="tower-directory-level">{f.id === 'vault' ? 'B' : FLOORS.length - 1 - i}</span>
+                    <span className="tower-directory-level">{i + 1}</span>
                     {f.title}
                   </a>
                 </li>
@@ -201,10 +208,21 @@ export default function Avengers() {
         </div>
       </section>
 
-      <div className="shell relative z-10 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
-        <aside className="tower-rail" aria-hidden="true">
-          <Tower floors={FLOORS} current={current} />
-          <p className="tower-now">{FLOORS[current].title}</p>
+      <div className="shell relative z-10 grid gap-10 lg:grid-cols-[236px_minmax(0,1fr)] lg:gap-14">
+        <aside className="hq-rail" aria-hidden="true">
+          <Compound spots={SPOT_IDS} current={current} compact />
+          <p className="hq-now">
+            <span className="hq-now-label">You are here</span>
+            {FLOORS[current].title}
+          </p>
+          <ol className="hq-rail-list">
+            {FLOORS.map((f, i) => (
+              <li key={f.id} data-on={i === current || undefined}>
+                <span>{i + 1}</span>
+                {f.short}
+              </li>
+            ))}
+          </ol>
         </aside>
         <div className="grid gap-20 pb-20 md:gap-28">
           <Floor i={0} floor={FLOORS[0]}>
@@ -222,7 +240,7 @@ export default function Avengers() {
                   </button>
                 </div>
                 <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-                  J.A.R.V.I.S.: {JARVIS[power]}
+                  F.R.I.D.A.Y.: {FRIDAY[power]}
                 </p>
               </div>
             </div>
@@ -244,7 +262,7 @@ export default function Avengers() {
           </Floor>
           <Floor i={6} floor={FLOORS[6]}>
             <div className="roof-stage" data-portal={portal || undefined}>
-              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="A vault under the tower: the Tesseract glowing in a glass case">
+              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
                 <defs>
                   <radialGradient id="tess-glow">
                     <stop offset="0" stopColor="#d6f3ff" />

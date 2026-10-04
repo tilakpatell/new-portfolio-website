@@ -291,7 +291,7 @@ function Marvel() {
           Snap
         </button>
         <Link to="/avengers" className="btn btn-ghost btn-sm">
-          Avengers Tower
+          Avengers HQ
         </Link>
       </div>
     </Card>

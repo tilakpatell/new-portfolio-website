@@ -50,11 +50,11 @@ const PAGES = {
     ],
   },
   '/avengers': {
-    title: 'Avengers Tower',
+    title: 'Avengers HQ',
     tips: [
-      ['The lift', 'Scroll down the tower, or pick a floor from the directory.'],
-      ['The floors', 'Make Banner angry three times. Tap Widow’s black bars. Click anywhere on Hawkeye’s range. Throw Cap’s shield. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Power up Stark’s reactor.'],
-      ['The vault', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
+      ['The map', 'Scroll to walk the compound, or pick a pin on the map (or a name under it). On a wide screen the map beside the tour shows where you are.'],
+      ['The buildings', 'Power up Stark’s reactor. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Throw Cap’s shield. Click anywhere on Hawkeye’s range. Tap Widow’s black bars. Make Banner angry three times.'],
+      ['The hangar', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
     ],
   },
   '/scranton': {
