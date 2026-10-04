@@ -27,6 +27,7 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Universe = lazy(() => import('./pages/Universe'));
+const Front = lazy(() => import('./pages/Front'));
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
@@ -172,7 +173,7 @@ function Shell() {
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
               <Routes>
-                <Route path="/" element={<Universe />} />
+                <Route path="/" element={<Front />} />
                 <Route path="/home" element={<Home />} />
                 <Route path="/experience/:roleId?" element={<Experience />} />
                 <Route path="/projects" element={<Projects />} />

@@ -18,9 +18,11 @@ function Ships({ ship, onShip }) {
       {CREWS.map((c) => (
         <button key={c.id} type="button" className="universe-ship" aria-pressed={ship === c.id} onClick={() => onShip(c.id)}>
           <span className="universe-ship-faces" aria-hidden="true">
-            {Object.keys(c.speakers).map((who) => (
-              <Face key={who} who={who} className="universe-ship-face" />
-            ))}
+            {Object.keys(c.speakers)
+              .slice(0, 2) // the crew, not their guests
+              .map((who) => (
+                <Face key={who} who={who} className="universe-ship-face" />
+              ))}
           </span>
           <span className="universe-ship-text">
             <span className="universe-ship-name">{c.ship}</span>
@@ -32,8 +34,9 @@ function Ships({ ship, onShip }) {
   );
 }
 
-export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, onShip }) {
+export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, onShip, onStartOn }) {
   const [changing, setChanging] = useState(false);
+  const [homeFirst, setHomeFirst] = useState(false);
   const crew = crewById(ship);
 
   if (!universe) {
@@ -43,7 +46,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
         <h2 className="universe-title">My whole site, as a universe</h2>
         {!crew || changing ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed">The stations round the sun are my pages: home, experience, projects, résumé, contact and the terminal. The planets further out are the things I love. Pick a ship and fly to any of them; your crew will have something to say about each.</p>
+            <p className="mt-3 text-sm leading-relaxed">
+              The stations round the sun are my pages: home, experience, projects, résumé, contact and the terminal. The planets further out are the things I love. Pick a ship and fly to any of them;
+              your crew will have something to say about each.
+            </p>
             <Ships
               ship={ship}
               onShip={(id) => {
@@ -62,7 +68,8 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed">
-              You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes you.
+              You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
+              you.
             </p>
             <ul className="universe-keys mt-4">
               <li className="universe-keys-board">
@@ -82,6 +89,17 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
             </button>
           </>
         )}
+        <button
+          type="button"
+          className="universe-back mt-5"
+          onClick={() => {
+            onStartOn?.('home');
+            setHomeFirst(true);
+          }}
+          aria-live="polite"
+        >
+          {homeFirst ? 'Next time the site opens on the home page.' : 'Prefer the plain site? Start on the home page next time'}
+        </button>
         <p className="universe-credit">
           Planet maps by{' '}
           <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">

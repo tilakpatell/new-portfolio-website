@@ -155,6 +155,7 @@
   transition: color 0.2s;
 }
 .universe-back:hover { color: var(--text); }
+.universe-back { text-align: left; }
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
 .universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .universe-enter { width: 100%; justify-content: center; }
@@ -355,3 +356,29 @@
   .universe-label,
   .universe-fade { transition: none; }
 }
+
+/* the front door's choice, over the universe on a first arrival */
+.start-choice {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--nav-h) + 16px) 16px 16px;
+  background: radial-gradient(ellipse at center, rgb(3 4 10 / 0.35), rgb(3 4 10 / 0.75));
+}
+.start-card {
+  width: min(520px, 100%);
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: rgb(6 8 16 / 0.9);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+}
+.start-title { margin-top: 0.4rem; color: var(--text); font-size: clamp(1.4rem, 3vw, 1.8rem); font-weight: 650; line-height: 1.2; }
+.start-text { margin-top: 0.75rem; font-size: 0.95rem; line-height: 1.55; }
+.start-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
+.start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
+.start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
