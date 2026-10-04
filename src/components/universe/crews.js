@@ -32,10 +32,48 @@ export const CREWS = [
       ['rick', 'Riggity riggity wrecked, son!', 'riggity'],
       ['morty', 'Rick, you flew into a planet!'],
     ],
-    // three hard bumps in a row
-    crash: [['comms', 'I can’t take it anymore. I just wanna die.', 'cantTakeIt']],
+    // into a planet too fast (the cruiser comes back through a portal)
+    crash: [
+      ['comms', 'I can’t take it anymore. I just wanna die.', 'cantTakeIt'],
+      ['morty', 'Rick! We crashed into a planet, Rick!'],
+      ['rick', 'Relax, Morty. I backed us up. Portal’s open.'],
+    ],
     // sitting still a while
     idle: [['rick', 'Lick, lick, lick my balls! Ha ha! Yeah! Say that all the time!', 'lickLick']],
+    // something flying past you (traffic.js)
+    traffic: {
+      patrol: [
+        ['morty', 'Rick, it’s the Federation!'],
+        ['rick', 'Act natural, Morty. We’re two guys out for a drive.'],
+      ],
+      gromflomite: [
+        ['morty', 'Bugs, Rick! Space bugs!'],
+        ['rick', 'Gromflomites, Morty. The Federation’s errand boys.'],
+      ],
+      meeseeks: [
+        ['meeseeks', 'I’m Mr. Meeseeks! Look at me!', 'meeseeks'],
+        ['morty', 'What’s he even doing out here?'],
+      ],
+      birdperson: [
+        ['morty', 'Is that Birdperson?'],
+        ['rick', 'Birdperson! My man.'],
+      ],
+    },
+    // shooting one down
+    kill: {
+      any: [
+        ['morty', 'Oh geez, Rick, I hit one!'],
+        ['rick', 'Relax, Morty. It’s the Federation. Nobody’s gonna miss ’em.'],
+      ],
+      meeseeks: [
+        ['morty', 'Rick! I popped a Meeseeks!'],
+        ['rick', 'He’s fine, Morty. Existence is pain to a Meeseeks.'],
+      ],
+      birdperson: [
+        ['morty', 'Rick, I shot Birdperson!'],
+        ['rick', 'He’ll be fine, Morty. Phoenixperson’s a whole thing.'],
+      ],
+    },
     edge: [['rick', 'Nothing out there but more nothing, Morty. Turning back.']],
     arrive: {
       home: [
@@ -130,6 +168,42 @@ export const CREWS = [
       ['r2', '[an alarmed shriek]'],
       ['luke', 'I’ve got a bad feeling about this.'],
     ],
+    crash: [
+      ['r2', '[a long, falling scream]'],
+      ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
+    ],
+    traffic: {
+      tie: [
+        ['luke', 'TIE fighters! Artoo, lock them down!'],
+        ['r2', '[an urgent warble]'],
+      ],
+      interceptor: [
+        ['luke', 'Interceptors, coming in fast!'],
+        ['r2', '[a frightened whistle]'],
+      ],
+      xwing: [
+        ['comms', 'Red Five, this is Red Leader. Glad you could join us.'],
+        ['luke', 'Copy, Red Leader.'],
+      ],
+      slave1: [
+        ['luke', 'That’s Boba Fett’s ship!'],
+        ['r2', '[a nervous warble]'],
+      ],
+    },
+    kill: {
+      any: [
+        ['luke', 'Got him!'],
+        ['r2', '[a triumphant whistle]'],
+      ],
+      xwing: [
+        ['comms', 'Red Five, you just shot one of ours!'],
+        ['luke', 'Sorry, Red Leader!'],
+      ],
+      slave1: [
+        ['luke', 'Got the bounty hunter!'],
+        ['r2', '[a delighted whistle]'],
+      ],
+    },
     edge: [['luke', 'Nothing out there, Artoo. Bringing her around.']],
     arrive: {
       home: [
@@ -222,6 +296,42 @@ export const CREWS = [
       ['han', 'It’s not my fault!'],
       ['chewie', '[a furious roar]'],
     ],
+    crash: [
+      ['chewie', '[a horrified roar]'],
+      ['han', 'Hold together, baby. Hold together!'],
+    ],
+    traffic: {
+      tie: [
+        ['han', 'Here they come!'],
+        ['chewie', '[a roar]'],
+      ],
+      interceptor: [
+        ['han', 'Interceptors. Chewie, get on the guns.'],
+        ['chewie', '[an eager growl]'],
+      ],
+      xwing: [
+        ['han', 'Rebels. They’re friendly, Chewie. Don’t shoot.'],
+        ['chewie', '[a grumble]'],
+      ],
+      slave1: [
+        ['han', 'Boba Fett? Boba Fett?! Where?'],
+        ['chewie', '[an alarmed roar]'],
+      ],
+    },
+    kill: {
+      any: [
+        ['han', 'Great, kid! Don’t get cocky.'],
+        ['chewie', '[a happy roar]'],
+      ],
+      xwing: [
+        ['han', 'That was one of ours!'],
+        ['chewie', '[an angry roar]'],
+      ],
+      slave1: [
+        ['han', 'So long, Fett. No bounty today.'],
+        ['chewie', '[a triumphant roar]'],
+      ],
+    },
     edge: [['han', 'Nothing out there but rocks. Turning around.']],
     arrive: {
       home: [
@@ -304,10 +414,13 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash' or 'idle' (where a crew has those), or 'arrive' at a
-// place. An exchange, or null.
+// 'edge', 'crash' or 'idle' (where a crew has those), 'arrive' at a place,
+// 'traffic' going past (by kind) or a 'kill' (by kind, or any). An
+// exchange, or null.
 export function linesFor(crew, event, id) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
+  if (event === 'traffic') return crew.traffic?.[id] ?? null;
+  if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
   return crew[event] ?? null;
 }

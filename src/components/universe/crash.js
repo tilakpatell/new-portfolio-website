@@ -1,0 +1,310 @@
+// What a crash looks like, and coming back from one.
+//
+// hit() plays the impact where the ship went in: a flash hot enough to
+// bloom, sparks and bits of hull thrown out from the surface, and on a planet
+// a shockwave that runs out over its surface and a crater that glows white,
+// cools to red and goes dark; the sun just swallows the ship in a flare.
+// arrive() brings the ship back: out of a green portal for Rick's cruiser,
+// out of hyperspace (a flash and a ring of light) for the others.
+// Everything is made once and reused, so a crash costs a few draws while it
+// plays and nothing after.
+//
+// createCrash(parent) → { hit(info), arrive(info), update(dt, camera) → busy, dispose() }
+// Points are in `parent`'s space (the map's, where the ship flies).
+
+import * as THREE from 'three';
+import { SWIRL_GLSL } from '../rickmorty/swirl';
+
+const SPARKS = 90;
+const SHARDS = 18;
+
+// a soft round spot, white in the middle: the flash, the sparks
+function spot() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(0.6, 'rgba(255,255,255,0.12)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// On the planet's surface: the shockwave, a ring running out from where the
+// ship went in, and the crater, glowing and cooling
+const SHELL_FRAG = `
+uniform vec3 uDir;
+uniform float uAge;
+uniform vec3 uWave;
+varying vec3 vP;
+void main() {
+  float ang = acos(clamp(dot(normalize(vP), uDir), -1.0, 1.0)); // 0 where it went in
+  float front = 0.15 + uAge * 1.5;
+  float ring = exp(-pow((ang - front) / (0.05 + uAge * 0.04), 2.0)) * exp(-uAge * 1.6);
+  float crater = exp(-pow(ang / 0.07, 2.0));
+  float halo = exp(-pow(ang / 0.2, 2.0)) * 0.35;
+  float heat = exp(-uAge * 0.55);
+  vec3 hot = mix(vec3(0.45, 0.05, 0.01), vec3(5.0, 2.6, 1.0), heat);
+  vec3 col = uWave * ring * 2.4 + hot * (crater + halo * heat) * smoothstep(9.0, 4.0, uAge);
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+const PORTAL_FRAG = `
+uniform float uT;
+uniform float uOpen;
+varying vec2 vUv;
+${SWIRL_GLSL}
+void main() {
+  vec4 c = portal((vUv * 2.0 - 1.0) * 1.22, uT, uOpen, 7.0);
+  if (c.a < 0.004) discard;
+  gl_FragColor = vec4(c.rgb * 1.6, c.a);
+}`;
+
+const UV_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+
+export function createCrash(parent) {
+  const tex = spot();
+  const made = [tex];
+  const keep = (...things) => {
+    made.push(...things);
+    return things[0];
+  };
+
+  // the flash
+  const flashMat = keep(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(6, 3.6, 1.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  const flash = new THREE.Sprite(flashMat);
+  flash.visible = false;
+  parent.add(flash);
+
+  // the shockwave and crater, laid over a planet's surface
+  const shellMat = keep(
+    new THREE.ShaderMaterial({
+      vertexShader: 'varying vec3 vP; void main() { vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: SHELL_FRAG,
+      uniforms: { uDir: { value: new THREE.Vector3(0, 0, 1) }, uAge: { value: 0 }, uWave: { value: new THREE.Color(1.6, 1.2, 0.9) } },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+  );
+  const shell = new THREE.Mesh(keep(new THREE.SphereGeometry(1, 96, 48)), shellMat);
+  shell.visible = false;
+
+  // sparks, thrown out from the impact and slowing
+  const sparkPos = new Float32Array(SPARKS * 3);
+  const sparkCol = new Float32Array(SPARKS * 3);
+  const sparkGeo = keep(new THREE.BufferGeometry());
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3).setUsage(THREE.DynamicDrawUsage));
+  sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkCol, 3).setUsage(THREE.DynamicDrawUsage));
+  const sparkMat = keep(new THREE.PointsMaterial({ map: tex, size: 0.09, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+  const sparks = new THREE.Points(sparkGeo, sparkMat);
+  sparks.frustumCulled = false;
+  sparks.visible = false;
+  parent.add(sparks);
+  const sparkV = Array.from({ length: SPARKS }, () => ({ v: new THREE.Vector3(), life: 0, max: 1, heat: 1 }));
+
+  // bits of hull, tumbling out and burning down
+  const shardMat = keep(new THREE.MeshStandardMaterial({ color: '#3d434d', metalness: 0.7, roughness: 0.45, emissive: '#ff7a2a', emissiveIntensity: 3, flatShading: true }));
+  const shards = new THREE.InstancedMesh(keep(new THREE.TetrahedronGeometry(1, 0)), shardMat, SHARDS);
+  shards.frustumCulled = false;
+  shards.visible = false;
+  parent.add(shards);
+  const shardV = Array.from({ length: SHARDS }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), axis: new THREE.Vector3(1, 0, 0), spin: 0, size: 0, life: 0, max: 1 }));
+
+  // coming back: the cruiser's portal, the others' ring of light
+  const portalMat = keep(
+    new THREE.ShaderMaterial({
+      vertexShader: UV_VERT,
+      fragmentShader: PORTAL_FRAG,
+      uniforms: { uT: { value: 0 }, uOpen: { value: 0 } },
+      transparent: true,
+      premultipliedAlpha: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  const portal = new THREE.Mesh(keep(new THREE.PlaneGeometry(1, 1)), portalMat);
+  portal.visible = false;
+  parent.add(portal);
+  const ringMat = keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 3, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, side: THREE.DoubleSide }));
+  const ring = new THREE.Mesh(keep(new THREE.RingGeometry(0.92, 1, 64)), ringMat);
+  ring.visible = false;
+  parent.add(ring);
+
+  const fx = { hit: -1, arrive: -1, flashAt: -1, kind: null, flashSize: 1, flashColor: new THREE.Color() };
+  const tmp = new THREE.Vector3();
+  const q = new THREE.Quaternion();
+  const m = new THREE.Matrix4();
+  const s3 = new THREE.Vector3();
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const randomDir = (v) => v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+  let clock = 0;
+
+  // face the camera: undo the parent's turn, then take the camera's
+  const face = (obj, camera) => {
+    parent.getWorldQuaternion(q);
+    obj.quaternion.copy(q.invert()).multiply(camera.quaternion);
+  };
+
+  return {
+    // info: { point, normal (unit, out of the surface), body (the planet's
+    // surface mesh, for the shockwave; none for a station), radius, sun }
+    hit({ point, normal, body = null, radius = 1, sun = false }) {
+      fx.hit = clock;
+      fx.flashAt = clock;
+      fx.flashSize = sun ? 2.4 : 0.55 + radius * 0.25;
+      fx.flashColor.setRGB(...(sun ? [6, 2.8, 0.9] : [4, 2.4, 1.1]));
+      flash.position.copy(point).addScaledVector(normal, 0.12);
+      flash.visible = true;
+      // sparks: mostly outward, fanned
+      for (let i = 0; i < SPARKS; i++) {
+        const sp = sparkV[i];
+        randomDir(sp.v).addScaledVector(normal, 1.3).normalize().multiplyScalar(rand(1.2, sun ? 5 : 3.6));
+        sp.life = 0;
+        sp.max = rand(0.5, 1.4);
+        sp.heat = rand(0.6, 1.4);
+        sparkPos.set([point.x, point.y, point.z], i * 3);
+      }
+      sparks.visible = true;
+      // the hull: not from the sun, which takes it all
+      shards.visible = !sun;
+      for (const sh of shardV) {
+        sh.p.copy(point).addScaledVector(normal, 0.05);
+        randomDir(sh.v).addScaledVector(normal, 1.1).normalize().multiplyScalar(rand(0.6, 1.8));
+        randomDir(sh.axis);
+        sh.spin = rand(4, 12);
+        sh.size = rand(0.012, 0.04);
+        sh.life = 0;
+        sh.max = rand(1.2, 2.4);
+      }
+      // the shockwave over the surface (planets only: stations and the sun have none)
+      shell.removeFromParent();
+      shell.visible = false;
+      if (body && !sun) {
+        body.add(shell);
+        shell.scale.setScalar(radius * 1.006);
+        parent.localToWorld(tmp.copy(point));
+        body.worldToLocal(tmp);
+        shellMat.uniforms.uDir.value.copy(tmp).normalize();
+        shellMat.uniforms.uAge.value = 0;
+        shell.visible = true;
+      }
+    },
+
+    // info: { point, kind (the ship), heading }
+    arrive({ point, kind, heading = 0 }) {
+      fx.arrive = clock;
+      fx.kind = kind;
+      if (kind === 'cruiser') {
+        portal.position.copy(point);
+        portal.visible = true;
+      } else {
+        ring.position.copy(point);
+        ring.rotation.set(0, heading, 0);
+        ring.visible = true;
+        flash.position.copy(point);
+        fx.flashAt = clock;
+        fx.flashColor.setRGB(1.6, 2.3, 4);
+        fx.flashSize = 0.32;
+        flash.visible = true;
+      }
+    },
+
+    update(dt, camera) {
+      clock += dt;
+      let busy = false;
+
+      // the flash: up fast, then gone
+      if (flash.visible) {
+        const a = clock - fx.flashAt;
+        const k = a < 0.08 ? a / 0.08 : Math.exp(-(a - 0.08) * 5);
+        flash.scale.setScalar(fx.flashSize * (0.4 + Math.min(1, a / 0.12) * 0.8));
+        flashMat.color.copy(fx.flashColor).multiplyScalar(k);
+        if (a > 1.2) flash.visible = false;
+        busy = true;
+      }
+
+      if (sparks.visible) {
+        let any = false;
+        for (let i = 0; i < SPARKS; i++) {
+          const sp = sparkV[i];
+          sp.life += dt;
+          const k = Math.max(0, 1 - sp.life / sp.max);
+          if (k > 0) any = true;
+          sp.v.multiplyScalar(Math.exp(-dt * 2.2));
+          sparkPos[i * 3] += sp.v.x * dt;
+          sparkPos[i * 3 + 1] += sp.v.y * dt;
+          sparkPos[i * 3 + 2] += sp.v.z * dt;
+          const h = k * k * sp.heat;
+          sparkCol.set([5 * h, 2.4 * h * k, 0.7 * h * k * k], i * 3);
+        }
+        sparkGeo.attributes.position.needsUpdate = true;
+        sparkGeo.attributes.color.needsUpdate = true;
+        sparks.visible = any;
+        busy ||= any;
+      }
+
+      if (shards.visible) {
+        let any = false;
+        for (let i = 0; i < SHARDS; i++) {
+          const sh = shardV[i];
+          sh.life += dt;
+          const k = Math.max(0, 1 - sh.life / sh.max);
+          if (k > 0) any = true;
+          sh.v.multiplyScalar(Math.exp(-dt * 0.9));
+          sh.p.addScaledVector(sh.v, dt);
+          q.setFromAxisAngle(sh.axis, sh.life * sh.spin);
+          shards.setMatrixAt(i, m.compose(sh.p, q, s3.setScalar(sh.size * Math.min(1, k * 3))));
+        }
+        shards.instanceMatrix.needsUpdate = true;
+        shardMat.emissiveIntensity = 3 * Math.exp(-(clock - fx.hit) * 1.4);
+        shards.visible = any;
+        busy ||= any;
+      }
+
+      if (shell.visible) {
+        const a = clock - fx.hit;
+        shellMat.uniforms.uAge.value = a;
+        if (a > 9) {
+          shell.visible = false;
+          shell.removeFromParent();
+        }
+        busy = true;
+      }
+
+      if (portal.visible) {
+        // swirls open, holds while the ship comes out, closes
+        const a = clock - fx.arrive;
+        const open = a < 0.45 ? a / 0.45 : a < 1.1 ? 1 : Math.max(0, 1 - (a - 1.1) / 0.4);
+        portalMat.uniforms.uOpen.value = open;
+        portalMat.uniforms.uT.value = clock;
+        portal.scale.setScalar(0.5 * (0.3 + 0.7 * open));
+        if (camera) face(portal, camera);
+        if (a > 1.5) portal.visible = false;
+        busy = true;
+      }
+
+      if (ring.visible) {
+        const a = clock - fx.arrive;
+        const k = Math.min(1, a / 0.6);
+        ring.scale.setScalar(0.04 + k * 0.26);
+        ringMat.color.setRGB(2.2, 3, 5).multiplyScalar((1 - k) ** 3);
+        if (a > 0.6) ring.visible = false;
+        busy = true;
+      }
+      return busy;
+    },
+
+    dispose() {
+      shell.removeFromParent();
+      for (const o of [flash, sparks, shards, portal, ring]) o.removeFromParent();
+      shards.dispose();
+      for (const thing of made) thing.dispose();
+    },
+  };
+}

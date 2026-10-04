@@ -1,23 +1,23 @@
-// The ships you can fly round the universe map: Luke's X-wing, the site
-// owner's Meshy model of it once it loads (until then, or without it, one
-// built from simple shapes: four wings in an X, the red stripes, four
-// engines); the
-// Millennium Falcon, the site owner's Meshy model of it once it loads (until
-// then, or without it, one built the same way: the saucer, the two mandibles,
-// the cockpit off to the right); and Rick's space cruiser, the classic saucer
+// The ships you can fly round the universe map: Luke's X-wing and the
+// Millennium Falcon, the site owner's Meshy models of them once they load
+// (until then, or without them, ones built from simple shapes: four wings in
+// an X, the red stripes, four engines; the saucer, the two mandibles, the
+// cockpit off to the right); and Rick's space cruiser, the classic saucer
 // from the C-137 page with Rick at the wheel and Morty beside him
 // (rickmorty/cruiser3d.js), once it loads.
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
 // buildShip(kind, textures) → { group, setThrottle(0…1), mount(model, extra), update(t), dispose() }
-// Every ship points along −z, centred, about LENGTH long.
+// Every ship points along −z, centred, about LENGTH long (they're built at
+// BUILT long and scaled down as a whole).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { tiled } from './planets';
+import { tiled } from './kit';
 
-export const LENGTH = 0.36;
+export const LENGTH = 0.26; // small against the planets
+export const BUILT = 0.36; // the length the ships below are built at
 
 // Geometries placed by [position, rotation, scale], merged into one.
 function parts(list) {
@@ -181,11 +181,13 @@ const BUILD = { xwing, falcon, cruiser };
 
 // the models that take over from the built ships, when they load (the
 // cruiser is built by the C-137 page's own code instead; see scene.js)
+// (the X-wing is the trench run's own, so a visitor who's flown one has it already)
 export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/meshy/x-wing-fighter.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
   const pivot = new THREE.Group(); // banks and bobs inside the group the scene moves
+  pivot.scale.setScalar(LENGTH / BUILT);
   pivot.add(ship.group);
   const group = new THREE.Group();
   group.add(pivot);
@@ -200,7 +202,7 @@ export function buildShip(kind, T = {}) {
     group,
     pivot,
     setThrottle(k) {
-      for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.35 + 0.65 * k);
+      for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.5 + 2.8 * k); // past 1 at speed, so it blooms
     },
     // the ship's model, when it comes: sized to the stand-in, which goes.
     // `extra` is what a built model brings: update(t) each frame, dispose(),
@@ -213,7 +215,7 @@ export function buildShip(kind, T = {}) {
       model.position.sub(box.getCenter(new THREE.Vector3()));
       const holder = new THREE.Group();
       holder.add(model);
-      holder.scale.setScalar(LENGTH / Math.max(dims.x, dims.z, 1e-6));
+      holder.scale.setScalar(BUILT / Math.max(dims.x, dims.z, 1e-6));
       holder.rotation.y = ship.nose ?? 0; // turned so its nose points along −z
       model.traverse((o) => {
         if (!o.isMesh) return;
@@ -229,7 +231,7 @@ export function buildShip(kind, T = {}) {
       // (its length runs along x if it was turned a quarter)
       if (ship.glowMesh) {
         const along = Math.abs(Math.sin(holder.rotation.y)) > 0.5 ? dims.x : dims.z;
-        ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (LENGTH / 2) + 0.004;
+        ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (BUILT / 2) + 0.004;
         if (ship.glowOnModel) ship.glowMesh.scale.set(...ship.glowOnModel, 1);
       }
       return true;
