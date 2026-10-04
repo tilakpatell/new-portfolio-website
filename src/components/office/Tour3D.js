@@ -2,13 +2,15 @@
 // (./layout.js), dressed to the set as the show's photographs have it. Seen
 // like an architect's model: the far walls (north and west) at full height
 // with the windows, the sign and the clock; every other wall cut at chest
-// height so you can see in. Pick a desk and the camera eases over to it.
+// height so you can see in. Everyone is at their desk. Pick one and the camera
+// eases over; they look up at it and wave.
 //
 // Loaded only when 3D is on. The 2D map is the fallback, and stays the
 // accessible way to pick a desk: this view only adds a picture to it.
 
 import * as THREE from 'three';
 import { loadKit, merge } from './kit';
+import { loadPeople } from './people';
 import { makeProps } from './props';
 import { createStage, lightOffice } from './stage3d';
 import {
@@ -46,8 +48,9 @@ const w = (px, py) => toWorld(px, py);
 export async function createTour3D(canvas, { onLost, onSlow } = {}) {
   const stage = createStage(canvas, { onLost, onSlow, fov: 36 });
   const { scene, camera } = stage;
-  const kit = await loadKit(stage.renderer);
+  const [kit, people] = await Promise.all([loadKit(stage.renderer), loadPeople()]);
   const props = makeProps(kit);
+  const folks = new Map(); // who -> their figure
   scene.background = new THREE.Color(0xdcd8cf);
   scene.fog = new THREE.Fog(0xdcd8cf, 45, 90);
   const centre = w(534, 240);
@@ -248,10 +251,10 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     mon.position.set(0, top, -front + 0.2);
     g.add(mon);
     const blot = kit.blotter();
-    blot.position.set(0, top, front - 0.24);
+    blot.position.set(0, top, front - 0.2);
     g.add(blot);
     const kb = kit.keyboard();
-    kb.position.set(-0.04, top + 0.004, front - 0.2);
+    kb.position.set(-0.04, top + 0.004, front - 0.15);
     g.add(kb);
     const ph = kit.phone();
     ph.position.set(width / 2 - 0.2, top, -front + 0.25);
@@ -300,9 +303,17 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     }
     // the chair, pulled up to the desk
     const ch = kit.chair();
-    ch.position.set(0.1, 0, front + 0.42);
+    ch.position.set(0.1, 0, front + 0.34);
     ch.rotation.y = Math.PI + (i % 5 - 2) * 0.12;
     g.add(ch);
+    // and whoever sits there, in it
+    const p = d.who && people.person(d.who, { keys: 0.49 });
+    if (p) {
+      p.group.position.copy(ch.position);
+      p.group.rotation.y = ch.rotation.y;
+      g.add(p.group);
+      folks.set(d.who, p);
+    }
     scene.add(g);
     const box = new THREE.Mesh(new THREE.BoxGeometry(width + 0.2, 1.3, depth + 1), pickMat);
     box.position.set(0, 0.65, 0.4);
@@ -310,7 +321,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     g.add(box);
     if (d.who) {
       picks.push(box);
-      const seat = new THREE.Vector3(0.1, 0, front + 0.42).applyEuler(new THREE.Euler(0, g.rotation.y, 0)).add(g.position);
+      const seat = new THREE.Vector3(0.1, 0, front + 0.34).applyEuler(new THREE.Euler(0, g.rotation.y, 0)).add(g.position);
       seats.set(d.who, { seat, desk: new THREE.Vector3(c.x, top, c.z), item });
     }
   });
@@ -324,10 +335,18 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     counter.rotation.y = Math.PI * 0.82;
     scene.add(counter);
     const inner = w(r.x + r.w * 0.36, r.y + r.h * 0.74);
+    // her chair, turned to the counter and the lift beyond it
     const ch = kit.chair();
     ch.position.set(inner.x, 0, inner.z);
-    ch.rotation.y = Math.PI * 0.75;
+    ch.rotation.y = Math.atan2(c.x - inner.x, c.z - inner.z);
     scene.add(ch);
+    const erin = people.person('erin');
+    if (erin) {
+      erin.group.position.copy(ch.position);
+      erin.group.rotation.y = ch.rotation.y;
+      scene.add(erin.group);
+      folks.set('erin', erin);
+    }
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.3, 2.2), pickMat);
     box.position.set(c.x, 0.65, c.z);
     box.userData.who = 'erin';
@@ -507,6 +526,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
 
   // Mark someone's desk; unless `move` is false, the camera goes over to it.
   const focus = (id, { move = true } = {}) => {
+    if (selected !== id) folks.get(selected)?.look(null);
     selected = id;
     const s = seats.get(id);
     if (!s) {
@@ -516,6 +536,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     marker.visible = true;
     marker.position.set(s.seat.x, 0.012, s.seat.z);
     if (!move) return;
+    folks.get(id)?.wave();
     go({ target: new THREE.Vector3((s.seat.x + s.desk.x) / 2, 0.6, (s.seat.z + s.desk.z) / 2), dist: 7.5, pol: 0.95 }, 1.0);
   };
   const reset = () => go({ ...home, target: home.target.clone() }, 1.0);
@@ -545,11 +566,14 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
   };
 
   // where each person's pin goes on screen
+  const at = new THREE.Vector3();
   const anchors = () =>
     STAFF.map((s) => {
       const p = seats.get(s.id);
       if (!p) return { id: s.id, x: 0, y: 0, front: false };
-      const q = stage.project(p.desk.x, p.desk.y + 0.7, p.desk.z);
+      // over their head
+      const h = folks.get(s.id)?.headAt(at) ?? at.set(p.seat.x, 1.25, p.seat.z);
+      const q = stage.project(h.x, h.y + 0.34, h.z);
       // only pins on the picture can be pressed
       const inside = q.x > 8 && q.y > 8 && q.x < stage.size.w - 8 && q.y < stage.size.h - 8;
       return { id: s.id, ...q, front: q.front && inside };
@@ -557,6 +581,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
 
   // Advance the camera and draw. Returns whether it is still moving.
   let dirty = true;
+  let elapsed = 0;
   const render = (ms = 16) => {
     let moving = false;
     if (tween) {
@@ -570,10 +595,16 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
       moving = Boolean(tween);
     }
     place();
+    // whoever is picked looks up at the camera; the rest get on with their work
+    const who = folks.get(selected);
+    who?.look(camera.position);
+    elapsed += ms / 1000;
+    let turning = false;
+    for (const p of folks.values()) turning = p.update(elapsed, Math.min(0.1, ms / 1000)) || turning;
     stage.render(ms);
     const was = dirty;
     dirty = false;
-    return moving || was;
+    return moving || turning || was;
   };
   const touch = () => (dirty = true);
 
@@ -601,6 +632,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
       return stage.lost;
     },
     dispose() {
+      people.dispose();
       props.dispose();
       kit.dispose();
       stage.dispose();

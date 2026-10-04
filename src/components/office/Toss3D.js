@@ -3,12 +3,19 @@
 // Dwight's desk when it is in the way, and every crumpled sheet where it
 // landed. It draws the rules' state (./toss.js); it doesn't keep any.
 //
+// The office is in: Stanley, Phyllis, Kevin and Andy at their desks down the
+// sides, Dwight at his when he has moved it into the way, Michael behind his
+// glass. They watch the ball fly and look where it lands; a basket gets a
+// cheer from Kevin and Michael (and Andy, for a swish). Dwight glares at Jim
+// for a miss. Stanley does not look up.
+//
 // The rules count x to the thrower's right with z away from them; three's
 // world is right-handed, so the thrower's right is its -x. `wx` turns one into
 // the other (everything else is shared).
 
 import * as THREE from 'three';
 import { loadKit, merge } from './kit';
+import { loadPeople } from './people';
 import { createStage, lightOffice } from './stage3d';
 import { TOSS, predict } from './toss';
 
@@ -19,7 +26,17 @@ const wx = (x) => -x;
 export async function createToss3D(canvas, { onLost, onSlow } = {}) {
   const stage = createStage(canvas, { onLost, onSlow, fov: 58 });
   const { scene, camera } = stage;
-  const kit = await loadKit(stage.renderer);
+  const [kit, people] = await Promise.all([loadKit(stage.renderer), loadPeople()]);
+  // who is in: id -> their figure, sat in a chair
+  const cast = {};
+  const seat = (id, parent, chair, opts) => {
+    const p = people.person(id, opts);
+    if (!p) return;
+    p.group.position.copy(chair.position);
+    p.group.rotation.y = chair.rotation.y;
+    parent.add(p.group);
+    cast[id] = p;
+  };
   scene.background = new THREE.Color(0xd9d6cf);
   const lights = lightOffice(stage, kit, { target: new THREE.Vector3(0, 0, 4), span: 8, shadowSize: 2048 });
   lights.key.position.set(1.5, 6, 2.5);
@@ -127,6 +144,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     mc.position.set(-1.9, 0, Z + 2.25);
     mc.rotation.y = Math.PI;
     scene.add(mc);
+    seat('michael', scene, mc, { idle: true, typing: true, keys: 0.32 });
     const mm = kit.monitor(7);
     mm.position.set(-1.9, 0.76, Z + 1.85);
     mm.rotation.y = Math.PI;
@@ -187,7 +205,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
   }
 
   // ── Desks down both sides of the aisle ──────────────────────────────────
-  const sideDesk = (x, z, side, screen) => {
+  const sideDesk = (x, z, side, screen, who) => {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     g.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2; // chairs face the walls' desks from the aisle
@@ -196,10 +214,10 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     mon.position.set(0, 0.76, -0.16);
     g.add(mon);
     const blot = kit.blotter();
-    blot.position.set(0, 0.76, 0.12);
+    blot.position.set(0, 0.76, 0.16);
     g.add(blot);
     const kb = kit.keyboard();
-    kb.position.set(0, 0.764, 0.14);
+    kb.position.set(0, 0.764, 0.2);
     g.add(kb);
     const ph = kit.phone();
     ph.position.set(0.55, 0.76, -0.1);
@@ -208,18 +226,20 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     cup.position.set(-0.6, 0.76, -0.2);
     g.add(cup);
     const ch = kit.chair();
-    ch.position.set(0.05, 0, 0.75);
+    ch.position.set(0.05, 0, 0.66);
     ch.rotation.y = Math.PI + 0.2 * side;
     g.add(ch);
+    // Stanley keeps his head down; the rest look round now and then
+    seat(who, g, ch, { typing: true, idle: who !== 'stanley', keys: 0.46 });
     scene.add(g);
     return g;
   };
   [
-    [-X + 0.4, 2.4, -1, 1],
-    [-X + 0.4, 5.6, -1, 3],
-    [X - 0.4, 2.0, 1, 4],
-    [X - 0.4, 5.2, 1, 0],
-  ].forEach(([x, z, side, s]) => sideDesk(x, z, side, s));
+    [-X + 0.4, 2.4, -1, 1, 'stanley'],
+    [-X + 0.4, 5.6, -1, 3, 'phyllis'],
+    [X - 0.4, 2.0, 1, 4, 'kevin'],
+    [X - 0.4, 5.2, 1, 0, 'andy'],
+  ].forEach(([x, z, side, s, who]) => sideDesk(x, z, side, s, who));
   // items the bullpen is known for
   {
     const plant = kit.model('plant');
@@ -301,6 +321,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
   dChair.position.set(0, 0, 0.7);
   dChair.rotation.y = Math.PI;
   dwight.add(dChair);
+  seat('dwight', dwight, dChair, { typing: true, keys: 0.42 });
   dwight.visible = false;
   scene.add(dwight);
   // the aim guide: a dotted arc
@@ -327,7 +348,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
   camera.lookAt(look);
 
   // ── Drawing a frame from the round ───────────────────────────────────────
-  const shown = { bin: null, from: null, t0: 0, missCount: 0, fanSide: 0 };
+  const shown = { bin: null, from: null, t0: 0, missCount: 0, fanSide: 0, last: null, react: null };
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const v3 = new THREE.Vector3();
@@ -463,12 +484,31 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     // the camera breathes a little, as a hand-held documentary camera does
     camera.position.set(Math.sin(time * 0.7) * 0.008, 1.28 + Math.sin(time * 0.9) * 0.006, -0.62);
     camera.lookAt(look);
+    // the office: watching the ball, then where it ended up, for a moment
+    if (s.last !== shown.last) {
+      shown.last = s.last;
+      shown.react = s.last ? { t: time, made: s.last.made, at: new THREE.Vector3(wx(s.last.at.x), 0.25, s.last.at.z) } : null;
+    }
+    const react = shown.react && time - shown.react.t < 2.2 ? shown.react : null;
+    const flying = s.phase === 'flying' && ball.visible ? ball.position : null;
+    for (const [id, p] of Object.entries(cast)) {
+      if (id === 'stanley') p.look(null);
+      else if (flying) p.look(flying);
+      else if (react) p.look(id === 'dwight' && !react.made ? camera.position : react.at);
+      else if (id === 'dwight' && s.phase === 'aim') p.look(camera.position); // he watches Jim aim
+      else p.look(null);
+      p.update(time, dt);
+    }
     stage.render(ms);
   };
 
-  // A basket: the rim flashes for a swish, and paper bits jump out.
+  // A basket: the rim flashes for a swish, paper bits jump out, and the
+  // office cheers.
   const celebrate = (swish) => {
     if (swish) flash.material.opacity = 1;
+    cast.kevin?.cheer();
+    cast.michael?.cheer();
+    if (swish) cast.andy?.cheer();
     burst.t = 0;
     burst.at.set(wx(shown.bin.x), TOSS.bin.height, shown.bin.z);
     burst.v = Array.from({ length: 18 }, () => {
@@ -485,6 +525,8 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     shown.missCount = 0;
     shown.bin = null;
     shown.from = null;
+    shown.last = null;
+    shown.react = null;
   };
 
   return {
@@ -504,6 +546,7 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
       return stage.lost;
     },
     dispose() {
+      people.dispose();
       kit.dispose();
       stage.dispose();
     },
