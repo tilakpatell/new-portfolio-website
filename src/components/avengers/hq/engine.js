@@ -10,6 +10,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
+import { device } from '../../../lib/device';
 
 // What a device can afford. Phones and small GPUs start lower; the watchdog
 // steps down from there when frames run long.
@@ -20,11 +21,10 @@ const TIERS = {
 };
 const ORDER = ['high', 'medium', 'low'];
 
+// (lib/device decides, the same way for every scene on the site)
 export function startTier() {
-  const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false);
-  const mem = typeof navigator !== 'undefined' ? navigator.deviceMemory ?? 8 : 8;
-  const narrow = typeof window !== 'undefined' && Math.min(window.screen?.width ?? 1920, window.innerWidth ?? 1920) < 700;
-  return coarse || narrow || mem <= 4 ? 'medium' : 'high';
+  if (typeof window === 'undefined') return 'high';
+  return { high: 'high', mid: 'medium', low: 'low' }[device().tier] ?? 'medium';
 }
 
 // Colours above 1 for things that glow, so bloom picks them up.
@@ -142,7 +142,7 @@ export function createEngine(canvas, opts = {}) {
   let skyAssets = null;
   const pmrem = new THREE.PMREMGenerator(renderer);
   async function setSky(name, { background = true, envIntensity = 1, bgIntensity = 1, sunIntensity = 2.5, sunColor, sunDir, fill = 0.15, fog, blur = 0, rotate = 0 } = {}) {
-    const sky = await loadSky(name);
+    const sky = await loadSky(name, { background });
     if (lost) return sky;
     skyAssets?.env?.dispose();
     const env = pmrem.fromEquirectangular(sky.hdr).texture;

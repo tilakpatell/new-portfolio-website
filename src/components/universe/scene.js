@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
 import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
+import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { ORDER, POSITIONS } from './layout';
 import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
@@ -214,8 +215,12 @@ export async function create(canvas, ctx) {
     return m;
   });
 
-  // the planets' maps first (half size on a phone), so nothing pops in
-  const small = (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 || (navigator.deviceMemory ?? 8) <= 4;
+  // the planets' maps first (half size on a phone or anything below a
+  // desktop, lib/device), so nothing pops in; a weak device starts with the
+  // nearer stars thinned out
+  const tier = device().tier;
+  const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
+  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
   const T = await loadTextures({ small });
 
   // the sky: the Milky Way, all the way round, turning with the map. It's

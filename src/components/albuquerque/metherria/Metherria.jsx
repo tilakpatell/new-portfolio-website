@@ -471,11 +471,11 @@ export default function Metherria() {
     </div>
   ) : !three.on ? (
     <div className="wm-card" role="note">
-      <p className="wm-card-title">3D is switched off.</p>
-      <p className="wm-card-text">Walt’s Metherria only comes in 3D. Turn it on to play.</p>
+      <p className="wm-card-title">{three.held ? 'The 3D isn’t loaded yet.' : '3D is switched off.'}</p>
+      <p className="wm-card-text">{three.held ? `Walt’s Metherria only comes in 3D: about ${three.hold.mb} MB. Load it to play.` : 'Walt’s Metherria only comes in 3D. Turn it on to play.'}</p>
       <div className="wm-row">
         <button type="button" className="btn btn-primary" onClick={() => three.set('auto')}>
-          Turn 3D on
+          {three.held ? 'Load the 3D' : 'Turn 3D on'}
         </button>
       </div>
     </div>

@@ -12,6 +12,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { budget } from './device';
 
 // The last step, on the display-ready picture: a film-like grade.
 const GRADE = {
@@ -55,7 +56,7 @@ export function canvasTexture(canvas, renderer, { repeat = [1, 1], srgb = true, 
   const t = new THREE.CanvasTexture(canvas);
   if (wrap) t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat[0], repeat[1]);
-  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  t.anisotropy = Math.min(budget().aniso, renderer.capabilities.getMaxAnisotropy());
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -80,13 +81,16 @@ export function disposeTree(root) {
 const LADDER = ['full', 'ratio', 'shadows', 'bloom', 'low'];
 
 export function createStage(canvas, { soft = false, bloom = { strength: 0.65, radius: 0.42, threshold: 0.82 }, exposure = 1, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
+  // what this device can afford (lib/device): a phone starts less sharp with
+  // less multisampling, a weak device without shadows or bloom
+  const fit = budget();
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;
-  renderer.shadowMap.enabled = shadows && !soft;
+  renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const full = Math.min(soft ? 1 : 1.75, window.devicePixelRatio || 1);
+  const full = Math.min(soft ? 1 : 1.75, fit.ratio, window.devicePixelRatio || 1);
   let ratio = full;
   renderer.setPixelRatio(ratio);
 
@@ -96,7 +100,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // the scene renders into a multisampled target (the canvas's own
   // antialiasing doesn't reach an offscreen target), then bloom, then the
   // tone map, then the grade
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: soft ? 0 : 4 });
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: soft ? 0 : fit.samples });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(new THREE.Vector2(256, 256), bloom.strength, bloom.radius, bloom.threshold);
@@ -164,7 +168,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
       resize(size.w, size.h);
     }
   };
-  if (soft) setLevel('bloom');
+  if (soft || !fit.bloom) setLevel('bloom');
 
   // Average the last two seconds of frames; past 24 ms, step down one rung.
   const perf = { acc: 0, n: 0, warm: 30 };
