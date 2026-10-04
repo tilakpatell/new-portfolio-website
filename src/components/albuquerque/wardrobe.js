@@ -37,7 +37,7 @@ export const ABQ = {
 // (scripts/meshy-albuquerque.mjs): textured and rigged, posed by
 // office/people.js like the rest. The packs' parts above stand in until a
 // figure loads, or if it can't.
-const FIGURES = { walt: 'walt', badger: 'badger' };
+const FIGURES = { walt: 'walt', jesseLab: 'jesse-lab', jesse: 'jesse', badger: 'badger', pete: 'pete', tuco: 'tuco', mike: 'mike', gus: 'gus', lydia: 'lydia', declan: 'declan', saul: 'saul', hank: 'hank', hector: 'hector', nurse: 'nurse' };
 for (const [id, file] of Object.entries(FIGURES)) ABQ[id].model = `/models/albuquerque/${file}.glb`;
 
 // How they take an order, by the mood it left them in.

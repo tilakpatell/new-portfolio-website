@@ -23,50 +23,62 @@
   },
   "jesseLab": {
     "image": "01a10876-7be2-706e-8727-78c049e52c15",
-    "model": "01a10877-bf3e-778b-baef-c449529275c7"
+    "model": "01a10877-bf3e-778b-baef-c449529275c7",
+    "rig": "01a1087a-b1a7-70a3-a777-648ce0288865"
   },
   "jesse": {
     "image": "01a10876-7dc6-77fa-b737-dbaaef60eb08",
-    "model": "01a10877-c1cb-76a4-b8f7-13bf6710e8bf"
+    "model": "01a10877-c1cb-76a4-b8f7-13bf6710e8bf",
+    "rig": "01a1087a-bd22-721a-a542-46f4ec4492ca"
   },
   "pete": {
     "image": "01a10876-80b9-760f-b07a-1ddc7dd92852",
-    "model": "01a10877-c45b-74b5-8d4e-9dbd9e85675d"
+    "model": "01a10877-c45b-74b5-8d4e-9dbd9e85675d",
+    "rig": "01a1087a-c7f5-717c-bf5b-fb45479102f1"
   },
   "tuco": {
     "image": "01a10876-82b4-73a5-b04f-1587a2e95458",
-    "model": "01a10877-c737-772b-b713-ee6dea3386c1"
+    "model": "01a10877-c737-772b-b713-ee6dea3386c1",
+    "rig": "01a1087a-d38c-7255-a867-257e61b93366"
   },
   "mike": {
     "image": "01a10876-8585-7795-b97a-f39d3e456081",
-    "model": "01a10877-c98c-70ec-a24e-111f5a93c918"
+    "model": "01a10877-c98c-70ec-a24e-111f5a93c918",
+    "rig": "01a1087a-e040-72f0-abd7-04a35c9877fa"
   },
   "gus": {
     "image": "01a10876-8ba0-779f-88c5-778c67114da9",
-    "model": "01a10877-cc6a-7196-83ac-696de34f5611"
+    "model": "01a10877-cc6a-7196-83ac-696de34f5611",
+    "rig": "01a1087a-eb36-7564-a76f-f919be813b0d"
   },
   "lydia": {
     "image": "01a10876-8df9-7110-b968-1b709507ca42",
-    "model": "01a10877-cf9d-7086-95e3-d08cf83e9144"
+    "model": "01a10877-cf9d-7086-95e3-d08cf83e9144",
+    "rig": "01a1087a-f667-72ef-aa04-725675dc9164"
   },
   "declan": {
     "image": "01a10876-9057-7153-985b-1348fea948f6",
-    "model": "01a10877-d258-70f5-82a9-fc6441bcf938"
+    "model": "01a10877-d258-70f5-82a9-fc6441bcf938",
+    "rig": "01a1087b-02eb-713e-a3b0-8865a535c6fb"
   },
   "saul": {
     "image": "01a10876-9244-7778-9b45-c070d6e8dfe8",
-    "model": "01a10877-d51c-71e5-a895-668fd2590d5f"
+    "model": "01a10877-d51c-71e5-a895-668fd2590d5f",
+    "rig": "01a1087b-0e61-7114-961e-d73e19c341f9"
   },
   "hank": {
     "image": "01a10876-9501-7694-a0cc-c13da4bb86b8",
-    "model": "01a10877-d80d-7273-ae4e-afcf93eeb558"
+    "model": "01a10877-d80d-7273-ae4e-afcf93eeb558",
+    "rig": "01a1087b-2915-74d8-96cc-d5ca0c3d02d2"
   },
   "hector": {
     "image": "01a10876-96e7-73ac-8a77-dbe4e3e12a4e",
-    "model": "01a10877-dae9-76a0-8171-733fb9f438a3"
+    "model": "01a10877-dae9-76a0-8171-733fb9f438a3",
+    "rig": "01a1087b-3533-7017-a6ea-11c646f7730b"
   },
   "nurse": {
     "image": "01a10876-9a3a-7387-bb86-20298c8a698f",
-    "model": "01a10877-ddf8-73cf-b75f-80bff32ab0e5"
+    "model": "01a10877-ddf8-73cf-b75f-80bff32ab0e5",
+    "rig": "01a1087b-40d3-70b4-874f-800921fe8f9d"
   }
 }

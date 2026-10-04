@@ -47,7 +47,7 @@ describe("Albuquerque's people", () => {
   it("gives each figure the skeleton the cast module poses, under 600 KB", () => {
     const bones = ['Hips', 'Spine02', 'Spine01', 'Spine', 'neck', 'Head', ...['Shoulder', 'Arm', 'ForeArm', 'Hand', 'UpLeg', 'Leg', 'Foot'].flatMap((n) => [`Left${n}`, `Right${n}`])];
     const figures = Object.values(ABQ).filter((spec) => spec.model);
-    expect(figures.length).toBeGreaterThan(0);
+    expect(figures.map((f) => f.id).sort()).toEqual(Object.keys(ABQ).sort()); // everyone has one
     for (const { id, model } of figures) {
       const file = new URL(`../../../public${model}`, import.meta.url);
       expect(statSync(file).size, id).toBeLessThan(600 * 1024);
