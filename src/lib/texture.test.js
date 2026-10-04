@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { heightToNormal } from './plating';
+import { heightToNormal } from './texture';
 
 // a height field as an RGBA buffer (height in the red channel)
 const field = (w, h, f) => {

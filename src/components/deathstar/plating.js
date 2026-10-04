@@ -2,29 +2,9 @@
 // downloads). The plating is drawn twice in step: once in colour and once as
 // a height field, and the height becomes a normal map, so panel edges,
 // insets, vents, rivets and pipes catch the light as real relief.
+import { heightToNormal } from '../../lib/texture';
 
-// A tangent-space normal map from a height field in the red channel (RGBA
-// bytes). It wraps at the edges, so a tiled texture shows no seams.
-export function heightToNormal(src, w, h, strength = 2) {
-  const out = new Uint8ClampedArray(w * h * 4);
-  const H = (x, y) => src[(((y + h) % h) * w + ((x + w) % w)) * 4] / 255;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const dx = (H(x + 1, y) - H(x - 1, y)) * strength;
-      const dy = (H(x, y + 1) - H(x, y - 1)) * strength;
-      // canvas rows run down the page, texture v runs up it
-      const nx = -dx;
-      const ny = dy;
-      const len = Math.hypot(nx, ny, 1);
-      const i = (y * w + x) * 4;
-      out[i] = (nx / len) * 127.5 + 127.5;
-      out[i + 1] = (ny / len) * 127.5 + 127.5;
-      out[i + 2] = (1 / len) * 127.5 + 127.5;
-      out[i + 3] = 255;
-    }
-  }
-  return out;
-}
+export { heightToNormal };
 
 function rng(seed) {
   let a = seed >>> 0 || 1;

@@ -12,6 +12,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 
@@ -91,28 +92,116 @@ function buildXwing() {
   return { group: g, tipMat, glowMat };
 }
 
-function buildTie(mats) {
+// A TIE fighter, front (the window) towards +Z: a ball cockpit with its
+// spoked round window, two tapered pylons with collars, and the hexagonal
+// wings, each a dark solar panel inside a frame of six edges, six spokes and
+// a hub.
+function hexShape(r) {
+  const s = new THREE.Shape();
+  for (let i = 0; i <= 6; i++) {
+    const a = Math.PI / 2 + (i * Math.PI) / 3;
+    if (i) s.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    else s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  return s;
+}
+function tieParts() {
+  const R = 0.3;
+  const panel = new THREE.ShapeGeometry(hexShape(R));
+  // the shape's UVs are in its own units; map them to 0..1 for the panel texture
+  const uv = panel.attributes.uv;
+  const pos = panel.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / (2 * R) + 0.5, pos.getY(i) / (2 * R) + 0.5);
+  panel.rotateY(Math.PI / 2);
+  const tex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(128, 128, 10, 128, 128, 150);
+    gr.addColorStop(0, '#1f252d');
+    gr.addColorStop(1, '#11151a');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 256, 256);
+    x.strokeStyle = 'rgba(120,135,150,0.22)';
+    x.lineWidth = 1;
+    for (let i = 4; i < 256; i += 7) {
+      x.beginPath();
+      x.moveTo(0, i);
+      x.lineTo(256, i);
+      x.stroke();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+  const bar = (len, w = 0.016) => new THREE.BoxGeometry(w, w, len);
+  const verts = Array.from({ length: 6 }, (_, i) => {
+    const a = Math.PI / 2 + (i * Math.PI) / 3;
+    return [Math.cos(a) * R, Math.sin(a) * R];
+  });
+  return {
+    R,
+    verts,
+    panel,
+    edge: bar(R),
+    spoke: bar(R, 0.012),
+    hub: new THREE.CylinderGeometry(0.055, 0.055, 0.035, 14).rotateZ(Math.PI / 2),
+    ball: new THREE.SphereGeometry(0.1, 28, 18),
+    bezel: new THREE.CylinderGeometry(0.064, 0.07, 0.03, 24).rotateX(Math.PI / 2),
+    glass: new THREE.CircleGeometry(0.056, 24),
+    winSpoke: new THREE.BoxGeometry(0.004, 0.056, 0.004),
+    pylon: new THREE.CylinderGeometry(0.02, 0.034, 0.2, 12).rotateZ(Math.PI / 2),
+    collar: new THREE.TorusGeometry(0.036, 0.009, 8, 18).rotateY(Math.PI / 2),
+    hatch: new THREE.CylinderGeometry(0.035, 0.04, 0.03, 16).rotateX(Math.PI / 2),
+    hull: new THREE.MeshStandardMaterial({ color: 0xaab1ba, metalness: 0.6, roughness: 0.32 }),
+    frame: new THREE.MeshStandardMaterial({ color: 0x8f97a1, metalness: 0.65, roughness: 0.35 }),
+    solar: new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: 0.3, roughness: 0.45, side: THREE.DoubleSide }),
+    darkGlass: new THREE.MeshStandardMaterial({ color: 0x06080b, metalness: 0.9, roughness: 0.12 }),
+  };
+}
+function buildTie(P) {
   const g = new THREE.Group();
-  const ball = new THREE.Mesh(mats.ballGeo, mats.ball);
-  g.add(ball);
-  const win = new THREE.Mesh(mats.windowGeo, mats.window);
-  win.position.z = 0.1;
-  g.add(win);
+  g.add(new THREE.Mesh(P.ball, P.hull));
+  const bezel = new THREE.Mesh(P.bezel, P.hull);
+  bezel.position.z = 0.09;
+  g.add(bezel);
+  const glass = new THREE.Mesh(P.glass, P.darkGlass);
+  glass.position.z = 0.106;
+  g.add(glass);
+  for (let i = 0; i < 8; i++) {
+    const sp = new THREE.Mesh(P.winSpoke, P.frame);
+    sp.rotation.z = (i * Math.PI) / 4;
+    sp.position.set(Math.sin((i * Math.PI) / 4) * -0.028, Math.cos((i * Math.PI) / 4) * 0.028, 0.108);
+    g.add(sp);
+  }
+  const hatch = new THREE.Mesh(P.hatch, P.frame);
+  hatch.position.z = -0.095;
+  g.add(hatch);
   for (const side of [-1, 1]) {
-    const strut = new THREE.Mesh(mats.strutGeo, mats.ball);
-    strut.rotation.z = Math.PI / 2;
-    strut.position.x = side * 0.11;
-    g.add(strut);
-    const wing = new THREE.Mesh(mats.wingGeo, mats.wing);
-    wing.rotation.z = Math.PI / 2;
-    wing.rotation.y = Math.PI / 2;
-    wing.position.x = side * 0.22;
+    const pylon = new THREE.Mesh(P.pylon, P.hull);
+    pylon.position.x = side * 0.18;
+    if (side < 0) pylon.rotation.y = Math.PI;
+    g.add(pylon);
+    const collar = new THREE.Mesh(P.collar, P.frame);
+    collar.position.x = side * 0.09;
+    g.add(collar);
+    const wing = new THREE.Group();
+    wing.position.x = side * 0.29;
+    wing.add(new THREE.Mesh(P.panel, P.solar));
+    const hub = new THREE.Mesh(P.hub, P.frame);
+    wing.add(hub);
+    P.verts.forEach(([y, z], i) => {
+      const [y2, z2] = P.verts[(i + 1) % 6];
+      const edge = new THREE.Mesh(P.edge, P.frame);
+      edge.position.set(0, (y + y2) / 2, (z + z2) / 2);
+      edge.rotation.x = -Math.atan2(y2 - y, z2 - z);
+      wing.add(edge);
+      const spoke = new THREE.Mesh(P.spoke, P.frame);
+      spoke.position.set(0, y / 2, z / 2);
+      spoke.rotation.x = -Math.atan2(y, z);
+      wing.add(spoke);
+    });
     g.add(wing);
-    const frame = new THREE.Mesh(mats.frameGeo, mats.frame);
-    frame.rotation.z = Math.PI / 2;
-    frame.rotation.y = Math.PI / 2;
-    frame.position.x = side * 0.222;
-    g.add(frame);
   }
   return g;
 }
@@ -128,6 +217,12 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x04050a);
+  // something for metal to reflect: a soft studio, dimmed for the dark of space
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environment = envMap;
+  scene.environmentIntensity = 0.32;
   scene.fog = new THREE.FogExp2(0x05060c, 0.038);
   const camera = new THREE.PerspectiveCamera(68, 16 / 9, 0.05, 420);
 
@@ -321,19 +416,9 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // ── the ships ──
   const xw = buildXwing();
   scene.add(xw.group);
-  const tieMats = {
-    ball: new THREE.MeshStandardMaterial({ color: 0xb4bcc6, metalness: 0.45, roughness: 0.4 }),
-    wing: new THREE.MeshStandardMaterial({ color: 0x4a515b, metalness: 0.35, roughness: 0.5, emissive: new THREE.Color(0.03, 0.035, 0.05) }),
-    frame: new THREE.MeshStandardMaterial({ color: 0xc8d0da, metalness: 0.6, roughness: 0.35, wireframe: true }),
-    window: new THREE.MeshBasicMaterial({ color: 0x0b0e12 }),
-    ballGeo: new THREE.SphereGeometry(0.1, 16, 12),
-    windowGeo: new THREE.CircleGeometry(0.05, 16),
-    strutGeo: new THREE.CylinderGeometry(0.018, 0.018, 0.22, 8),
-    wingGeo: new THREE.CylinderGeometry(0.27, 0.27, 0.014, 6),
-    frameGeo: new THREE.CylinderGeometry(0.27, 0.27, 0.018, 6, 1, true),
-  };
+  const tieParts_ = tieParts();
   const ties = Array.from({ length: 12 }, () => {
-    const t = buildTie(tieMats);
+    const t = buildTie(tieParts_);
     t.scale.setScalar(1.25);
     t.visible = false;
     scene.add(t);
@@ -554,7 +639,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
       const m = ties[ti++];
       m.visible = true;
       m.position.set(tie.x, tie.y, -tie.z);
-      m.rotation.set(0, Math.PI, Math.cos(tie.phase ?? 0) * 0.35);
+      m.rotation.set(0, 0, Math.cos(tie.phase ?? 0) * 0.35); // window towards the camera
     }
     for (; ti < ties.length; ti++) ties[ti].visible = false;
 
@@ -694,6 +779,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
       }
     });
     composer.dispose?.();
+    envMap.dispose();
     renderer.dispose();
   };
 
