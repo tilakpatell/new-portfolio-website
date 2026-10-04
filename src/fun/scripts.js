@@ -5,10 +5,15 @@
 // real text, so screen readers, search and copy still get English.
 
 export const SCRIPTS = {
-  aurebesh: { name: 'Aurebesh', back: 'Back to Basic', font: "'Basic Script'" },
-  cybertronian: { name: 'Cybertronian', back: 'Back to English', font: "'Cybertron Script'" },
-  runes: { name: 'Dwarf runes', back: 'Back to the Common Speech', font: "'Durin Runes'" },
+  aurebesh: { name: 'Aurebesh', font: "'Basic Script'" },
+  cybertronian: { name: 'Cybertronian', font: "'Cybertron Script'" },
+  runes: { name: 'Dwarf runes', font: "'Durin Runes'" },
 };
+
+// The way back is the same for every script, and is always drawn in plain
+// letters (.ab-keep): the pill at the bottom, the switch that turned it on, the
+// command palette, the terminal (english) or typing english anywhere.
+export const BACK = 'Back to English';
 
 const BY_THEME = {
   optimus: 'cybertronian',

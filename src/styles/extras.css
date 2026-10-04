@@ -340,10 +340,15 @@ html[data-script] body ::placeholder {
 html[data-script] .theme-pick-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 html[data-script] .site-nav a { padding-inline: 0.4rem; letter-spacing: 0; font-size: 0.8125rem; }
 html[data-script] body .ab-keep,
-html[data-script] body .ab-keep * {
+html[data-script] body .ab-keep *,
+html[data-script] body .ab-keep::before,
+html[data-script] body .ab-keep::after,
+html[data-script] body .ab-keep *::before,
+html[data-script] body .ab-keep *::after {
   font-family: var(--font-sans) !important;
   letter-spacing: normal;
 }
+html[data-script] .toast-host { bottom: calc(88px + env(safe-area-inset-bottom)); }
 .aurebesh-pill {
   position: fixed;
   left: 50%;

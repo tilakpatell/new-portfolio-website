@@ -4,6 +4,7 @@ import { useAchievements, ACHIEVEMENTS } from '../components/Achievements';
 import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES } from '../theme/themes';
 import { useFun } from '../fun/FunProvider';
+import { SCRIPTS } from '../fun/scripts';
 import { openPalette } from '../lib/palette';
 import { setSound, soundOn } from '../lib/audio';
 import { COUNTRY_COUNT, PLACES } from '../data/places';
@@ -85,7 +86,7 @@ const HELP = [
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · music', 'dim'),
-  L('  Languages: language · aurebesh · cybertronian · runes', 'dim'),
+  L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
 
@@ -254,19 +255,24 @@ export default function Terminal() {
       },
       aurebesh: () => {
         fun.toggleAurebesh();
-        return [L(fun.script === 'aurebesh' ? '  Aurebesh off. Back to Basic.' : '  Aurebesh on. The whole site now reads in Aurebesh.', 'ok')];
+        return [L(fun.script === 'aurebesh' ? '  Aurebesh off. Back to English.' : '  Aurebesh on. The whole site now reads in Aurebesh. Type english to come back.', 'ok')];
       },
       cybertronian: () => {
         fun.setScript(fun.script === 'cybertronian' ? null : 'cybertronian');
-        return [L(fun.script === 'cybertronian' ? '  Cybertronian off. Back to English.' : '  Cybertronian on. Till all are one.', 'ok')];
+        return [L(fun.script === 'cybertronian' ? '  Cybertronian off. Back to English.' : '  Cybertronian on. Till all are one. Type english to come back.', 'ok')];
       },
       runes: () => {
         fun.setScript(fun.script === 'runes' ? null : 'runes');
-        return [L(fun.script === 'runes' ? '  Runes off. Back to the Common Speech.' : '  Runes on, as on Thror’s map.', 'ok')];
+        return [L(fun.script === 'runes' ? '  Runes off. Back to English.' : '  Runes on, as on Thror’s map. Type english to come back.', 'ok')];
       },
       language: () => {
         fun.toggleScript();
-        return [L(fun.script ? `  ${fun.script === 'runes' ? 'Runes' : fun.script === 'cybertronian' ? 'Cybertronian' : 'Aurebesh'} off.` : `  The site now reads in ${fun.scriptName}.`, 'ok')];
+        return [L(fun.script ? `  ${SCRIPTS[fun.script].name} off. Back to English.` : `  The site now reads in ${fun.scriptName}. Type english to come back.`, 'ok')];
+      },
+      english: () => {
+        if (!fun.script) return [L('  Already in English.', 'dim')];
+        fun.setScript(null);
+        return [L(`  ${SCRIPTS[fun.script].name} off. Back to English.`, 'ok')];
       },
       say: (arg) => {
         if (arg !== 'my name') return [L("  Say what? Try: say my name", 'dim')];

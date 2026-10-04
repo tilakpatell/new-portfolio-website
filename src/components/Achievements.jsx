@@ -110,11 +110,12 @@ export function AchievementProvider({ children }) {
     <AchievementContext.Provider value={value}>
       {children}
       {/* taps pass through the toast to whatever is under it, except on its own controls */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
+      {/* in language mode the toast reads plainly, and sits above the Back to English pill */}
+      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
         {toast && (
           <div
             key={toast.key}
-            className="toast card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40"
+            className="toast ab-keep card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40"
             style={{ background: 'var(--surface-2)', animationDuration: toast.gif ? '7s' : '3.8s' }}
           >
             {toast.kind !== 'note' && (

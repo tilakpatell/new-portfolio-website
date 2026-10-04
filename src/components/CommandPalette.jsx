@@ -25,7 +25,7 @@ import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAchievements } from './Achievements';
 import { useFun } from '../fun/FunProvider';
-import { SCRIPTS } from '../fun/scripts';
+import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
@@ -98,7 +98,7 @@ export default function CommandPalette({ onClose }) {
       },
       { id: 'a-pdf', group: 'Actions', label: 'Download résumé (PDF)', keywords: 'resume cv pdf', icon: RiFileTextLine, run: () => Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename }).click() },
       { id: 'a-mode', group: 'Actions', label: mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', keywords: 'theme dark light mode', icon: RiContrast2Line, run: toggleMode },
-      { id: 'e-script', group: 'Easter eggs', label: fun.script ? `${SCRIPTS[fun.script].back} (turn off ${SCRIPTS[fun.script].name})` : `Read the site in ${fun.scriptName}`, keywords: 'language aurebesh star wars cybertronian transformers runes tolkien dwarf font', icon: RiSparkling2Line, run: fun.toggleScript },
+      { id: 'e-script', group: 'Easter eggs', label: fun.script ? `${BACK} (turn off ${SCRIPTS[fun.script].name})` : `Read the site in ${fun.scriptName}`, keep: Boolean(fun.script), keywords: 'language english back off aurebesh star wars cybertronian transformers runes tolkien dwarf font', icon: RiSparkling2Line, run: fun.toggleScript },
       { id: 'e-name', group: 'Easter eggs', label: 'Say my name', keywords: 'breaking bad heisenberg walter white', icon: RiSparkling2Line, run: fun.sayMyName },
       { id: 'e-snap', group: 'Easter eggs', label: 'Snap', keywords: 'marvel thanos infinity gauntlet', icon: RiSparkling2Line, run: fun.snap },
       { id: 'e-twss', group: 'Easter eggs', label: 'That’s what she said', keywords: 'the office michael scott dundie', icon: RiSparkling2Line, run: fun.twss },
@@ -201,7 +201,7 @@ export default function CommandPalette({ onClose }) {
                   onClick={() => run(it)}
                 >
                   <Icon className="h-4 w-4 flex-none text-muted" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate text-ink">{it.label}</span>
+                  <span className={`min-w-0 flex-1 truncate text-ink${it.keep ? ' ab-keep' : ''}`}>{it.label}</span>
                   {it.hint && <span className="hidden truncate text-xs text-muted sm:block">{it.hint}</span>}
                 </div>
               </li>

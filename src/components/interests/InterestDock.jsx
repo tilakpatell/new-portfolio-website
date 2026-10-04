@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
 import AutobotMark from '../AutobotMark';
-import { SCRIPTS, scriptFor } from '../../fun/scripts';
+import { BACK, SCRIPTS, scriptFor } from '../../fun/scripts';
 import { useTheme } from '../../theme/ThemeProvider';
 
 // The "Off the clock" row: one small line icon for each thing I'm into, and
@@ -170,7 +170,8 @@ export default function InterestDock() {
     { id: 'temple', label: 'Heritage: Akshardham', run: () => navigate('/travel?section=heritage') },
     {
       id: 'script',
-      label: script ? SCRIPTS[script].back : `Read the site in ${scriptName}`,
+      label: script ? BACK : `Read the site in ${scriptName}`,
+      keep: Boolean(script),
       run: () => {
         setSay('');
         toggleScript();
@@ -184,7 +185,7 @@ export default function InterestDock() {
       <ul className="mt-3 flex flex-wrap gap-2" aria-label="Quick tricks">
         {items.map((it) => (
           <li key={it.id}>
-            <button type="button" className="dock-btn" data-icon={it.id} data-label={it.label} aria-label={it.label} onClick={it.run}>
+            <button type="button" className={`dock-btn${it.keep ? ' ab-keep' : ''}`} data-icon={it.id} data-label={it.label} aria-label={it.label} onClick={it.run}>
               {it.id === 'script' ? scriptIcon(script ?? scriptFor(active)) : ICONS[it.id]}
             </button>
           </li>

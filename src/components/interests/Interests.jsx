@@ -4,7 +4,7 @@ import { RiArrowLeftLine, RiArrowRightLine, RiGamepadLine } from 'react-icons/ri
 import { Waypoint } from '../ui';
 import Photo from '../Photo';
 import { useFun } from '../../fun/FunProvider';
-import { SCRIPTS } from '../../fun/scripts';
+import ScriptToggle from '../ScriptToggle';
 import { ACHIEVEMENTS, useAchievements } from '../Achievements';
 import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
@@ -40,7 +40,6 @@ function Card({ title, children, visual, className = '' }) {
 }
 
 function StarWars() {
-  const { script, scriptName, toggleScript } = useFun();
   const { unlock } = useAchievements();
   const [text, setText] = useState('Hello there');
   const [obiWan, setObiWan] = useState(false);
@@ -77,9 +76,7 @@ function StarWars() {
         autoComplete="off"
       />
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={toggleScript}>
-          {script ? SCRIPTS[script].back : `Read the site in ${scriptName}`}
-        </button>
+        <ScriptToggle className="btn btn-ghost btn-sm" />
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
         </button>

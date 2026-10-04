@@ -111,7 +111,7 @@ const PAGES = {
 const SITE = [
   ['Getting around', 'The menu at the top, or ⌘K (Ctrl+K) for the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
   ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
-  ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, whichever the theme speaks, from the Off the clock row or ⌘K.'],
+  ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious or say my name. ↑ ↑ ↓ ↓ ← → ← → B A jumps to lightspeed.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],
 ];

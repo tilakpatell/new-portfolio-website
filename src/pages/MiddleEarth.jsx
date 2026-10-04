@@ -17,6 +17,7 @@ import { audioContext } from '../lib/audio';
 import { jumpTo } from '../lib/anchors';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import '@fontsource/cinzel/600.css';
+import ScriptToggle from '../components/ScriptToggle';
 
 const sfx = () => import('../lib/sfx');
 
@@ -150,6 +151,7 @@ export default function MiddleEarth() {
                 Enter Moria
               </a>
             )}
+            <ScriptToggle id="runes" />
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>

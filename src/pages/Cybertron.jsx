@@ -18,6 +18,7 @@ import { useFun } from '../fun/FunProvider';
 import { useTheme } from '../theme/ThemeProvider';
 import { audioContext } from '../lib/audio';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import ScriptToggle from '../components/ScriptToggle';
 
 const SIDES = {
   autobot: { city: 'Iacon', motto: 'Till all are one.', leader: 'optimus', theme: 'optimus', call: 'Autobots, roll out' },
@@ -166,6 +167,7 @@ export default function Cybertron() {
             <button type="button" className="btn btn-ghost" onClick={() => rollOut(s.leader)}>
               {s.call}
             </button>
+            <ScriptToggle id="cybertronian" />
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>

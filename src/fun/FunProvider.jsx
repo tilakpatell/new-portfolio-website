@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAchievements } from '../components/Achievements';
 import { useTheme } from '../theme/ThemeProvider';
 import { local, prefersReducedMotion } from '../lib/hooks';
-import { SCRIPTS, scriptFor } from './scripts';
+import { BACK, SCRIPTS, scriptFor } from './scripts';
 
 // The easter eggs that reach across the whole site: language mode (Aurebesh,
 // Cybertronian or runes, by theme),
@@ -17,6 +17,7 @@ const WORDS = [
   ['aurebesh', 'aurebesh'],
   ['cybertronian', 'cybertronian'],
   ['runes', 'runes'],
+  ['english', 'english'],
   ['saymyname', 'heisenberg'],
   ['heisenberg', 'heisenberg'],
   ['snap', 'snap'],
@@ -136,7 +137,7 @@ export function FunProvider({ children }) {
       setLang(next);
       if (!next) return;
       const id = next === 'theme' ? scriptFor(activeRef.current) : next;
-      notify(`${SCRIPTS[id].name} mode`, `The whole site now reads in ${SCRIPTS[id].name}. The pill at the bottom turns it off.`);
+      notify(`${SCRIPTS[id].name} mode`, `The whole site now reads in ${SCRIPTS[id].name}. ${BACK} is at the bottom of the screen, or type english.`);
     },
     [notify],
   );
@@ -223,6 +224,7 @@ export function FunProvider({ children }) {
       aurebesh: toggleAurebesh,
       cybertronian: () => setScript(langRef.current === 'cybertronian' ? null : 'cybertronian'),
       runes: () => setScript(langRef.current === 'runes' ? null : 'runes'),
+      english: () => langRef.current && setScript(null),
       heisenberg: sayMyName,
       snap,
       twss,
@@ -275,12 +277,14 @@ export function FunProvider({ children }) {
     <FunContext.Provider value={value}>
       {children}
       {script && (
-        <div className="aurebesh-pill" role="status">
-          <span aria-hidden="true">{SCRIPTS[script].name}</span>
-          <span className="sr-only">{SCRIPTS[script].name} mode is on.</span>
-          {/* the way back out stays in plain letters */}
-          <button type="button" className="ab-keep" onClick={() => setScript(null)}>
-            {SCRIPTS[script].back}
+        // the way back out stays in plain letters, whatever the script
+        <div className="aurebesh-pill ab-keep" role="status">
+          <span>
+            {SCRIPTS[script].name}
+            <span className="sr-only"> mode is on.</span>
+          </span>
+          <button type="button" onClick={() => setScript(null)}>
+            {BACK}
           </button>
         </div>
       )}

@@ -12,6 +12,7 @@ import Hyperspace from '../components/Hyperspace';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
+import ScriptToggle from '../components/ScriptToggle';
 
 const sfx = () => import('../lib/sfx');
 
@@ -434,6 +435,7 @@ export default function DeathStar() {
                 Fly the trench run
               </a>
             )}
+            <ScriptToggle id="aurebesh" />
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>
