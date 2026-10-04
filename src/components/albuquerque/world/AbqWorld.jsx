@@ -442,7 +442,7 @@ function Cards({ prog, enter, three, gl, retry }) {
       <p className="lead mt-4 max-w-[60ch]">Breaking Bad and Better Call Saul. {prog.objective}</p>
       {three.can && (
         <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
-          {gl === 'lost' ? 'The graphics chip reset, so here’s the town as cards.' : gl === 'failed' ? 'The 3D town couldn’t start here, so here it is as cards.' : '3D is switched off, so here’s the town as cards.'}
+          {gl === 'lost' ? 'The graphics chip reset, so here’s the town as cards.' : gl === 'failed' ? 'The 3D town couldn’t start here, so here it is as cards.' : three.held ? `The 3D town isn’t loaded yet (about ${three.hold.mb} MB), so here it is as cards.` : '3D is switched off, so here’s the town as cards.'}
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -451,7 +451,7 @@ function Cards({ prog, enter, three, gl, retry }) {
               retry();
             }}
           >
-            {three.on ? 'Try 3D again' : 'Turn 3D on'}
+            {three.on ? 'Try 3D again' : three.held ? 'Load the 3D' : 'Turn 3D on'}
           </button>
         </p>
       )}
