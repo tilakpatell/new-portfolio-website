@@ -266,22 +266,7 @@ const ARRIVE = {
       ),
     ms: 1400,
   },
-  caribbean: {
-    // a gun over the water, then the ship's bell
-    play: () => {
-      whoosh(0.5, 700, 70, 0.22);
-      tones(
-        [
-          [660, 0.3, 0.9],
-          [1340, 0.3, 0.6],
-          [660, 0.72, 0.9],
-          [1340, 0.72, 0.6],
-        ],
-        { type: 'sine', gain: 0.06 },
-      );
-    },
-    ms: 1500,
-  },
+  caribbean: { clip: 'pirates', duration: 6 },
 };
 
 // docking at one of the stations: two soft tones, up

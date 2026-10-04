@@ -27,6 +27,7 @@ export const CLIPS = {
   marvel: { src: '/audio/clips/marvel-opening.mp3', line: 'The Marvel Studios opening', by: 'Marvel Studios' },
   lotr: { src: '/audio/clips/lotr-theme.mp3', line: 'The Lord of the Rings', by: 'Howard Shore' },
   kingsArrival: { src: '/audio/clips/kings-arrival.mp3', line: 'The Return of the King', by: 'Howard Shore' },
+  pirates: { src: '/audio/clips/pirates-theme.mp3', line: 'Pirates of the Caribbean, the theme', by: 'Pirates of the Caribbean' },
   officeTheme: { src: '/audio/clips/office-theme.mp3', line: 'The Office, the theme', by: 'The Office' },
   thankYou: { src: '/audio/clips/thank-you.mp3', line: 'Thank you.', by: 'Michael Scott' },
   noGod: { src: '/audio/clips/no-god.mp3', line: 'No, God! No, God, please, no!', by: 'Michael Scott' },

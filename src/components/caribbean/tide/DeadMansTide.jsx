@@ -15,6 +15,9 @@ import './tide.css';
 
 const sound = () => import('./audio');
 const play = (name, ...args) => sound().then((s) => s[name]?.(...args));
+// the film's theme (a recorded clip, lib/clips.js): as you weigh anchor, and when the voyage is won
+const THEME = 13; // seconds of it, near enough
+const theme = () => import('../../../lib/clips').then((c) => c.playClip('pirates', { gain: 0.85 }));
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -55,6 +58,7 @@ function Game({ soft, fail }) {
   const game = useRef(null);
   const demo = useRef(null);
   const scape = useRef(null);
+  const tune = useRef(null); // the theme, while it plays
   const keys = useRef({ left: false, right: false, port: false, star: false, fire: false });
   const mouse = useRef({ x: 0.5, inside: false, moved: 0, down: false });
   const stick = useRef(null); // a thumb on the left of the screen: { id, ox, x }
@@ -123,6 +127,8 @@ function Game({ soft, fail }) {
       c.remove();
       scape.current?.stop();
       scape.current = null;
+      tune.current?.stop();
+      tune.current = null;
     };
     // built once per mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +152,8 @@ function Game({ soft, fail }) {
       scape.current?.stop();
       scape.current = s.soundscape();
     });
+    tune.current?.stop();
+    theme().then((h) => (tune.current = h));
     wrap.current?.focus({ preventScroll: true });
   }, [level]);
 
@@ -163,7 +171,10 @@ function Game({ soft, fail }) {
       const r = g.result;
       setUi((u) => ({ ...u, result: r, offer: [] }));
       setPhase(r.won ? 'won' : 'lost');
-      play('fanfare', r.won);
+      tune.current?.stop();
+      // won: the theme again (the synthesised fanfare if the clip can't play)
+      if (r.won) theme().then((h) => (h ? (tune.current = h) : play('fanfare', true)));
+      else play('fanfare', false);
       scape.current?.set({ on: false });
       setBest((b) => {
         if ((b[g.level] ?? 0) >= r.gold) return b;
@@ -369,7 +380,8 @@ function Game({ soft, fail }) {
       if (running) {
         drawChart(chart.current, g, gl.current.yaw + look.current);
         const fight = g.ships.some((s) => !s.sunk && !s.flee && Math.hypot(s.x - p.x, s.y - p.y) < 330) || g.arms.length > 0 || (g.kraken && g.kraken.phase !== 'dead') || g.zones.length > 0;
-        scape.current?.set({ speed: Math.min(1, p.v / 28), fight: fight && !g.over ? 1 : 0, on: true });
+        // the drums wait for the theme to finish
+        scape.current?.set({ speed: Math.min(1, p.v / 28), fight: fight && !g.over && g.stats.time > THEME ? 1 : 0, on: true });
       }
     };
     raf = requestAnimationFrame(loop);

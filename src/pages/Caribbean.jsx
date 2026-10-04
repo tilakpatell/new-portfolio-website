@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Compass from '../components/caribbean/Compass';
 import DeadMansTide from '../components/caribbean/tide/DeadMansTide';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import { audioContext } from '../lib/audio';
 import { useDocumentTitle } from '../lib/hooks';
 import '../components/caribbean/caribbean.css';
 
@@ -52,6 +53,16 @@ export default function Caribbean() {
             <a href="#tide" className="btn btn-primary">
               Set sail
             </a>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                audioContext(); // inside the press, so the sound may play
+                import('../lib/clips').then((c) => c.playClip('pirates'));
+              }}
+            >
+              Strike up the theme
+            </button>
             <Link to="/" className="btn btn-ghost cb-home">
               Back to the site
             </Link>
@@ -114,7 +125,7 @@ export default function Caribbean() {
           </ol>
         </div>
         <p className="cb-credits mt-14">
-          The ships, the kraken, the fort and the islands were generated for this site with Meshy and compressed for the web; the sky is “Evening Road 01” from Poly Haven (CC0); the lettering is Pirata One and IM Fell English (SIL Open Font License). The sea, the smoke and the sound are code. Not affiliated with Disney.
+          The ships, the kraken, the fort and the islands were generated for this site with Meshy and compressed for the web; the sky is “Evening Road 01” from Poly Haven (CC0); the lettering is Pirata One and IM Fell English (SIL Open Font License). The sea, the smoke and the guns are code; the theme is a twelve-second clip from the films. Not affiliated with Disney.
         </p>
       </section>
     </div>

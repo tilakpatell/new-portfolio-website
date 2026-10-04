@@ -19,7 +19,7 @@ export const CREWS = [
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
     },
     launch: [
-      ['rick', 'Alright Morty, eleven worlds, one tank of fuel. Try not to touch anything.'],
+      ['rick', 'Alright Morty, ten worlds, one tank of fuel. Try not to touch anything.'],
       ['morty', 'Aw jeez, Rick. Which one first?'],
     ],
     boost: [['rick', 'Wubba lubba dub dub!']],
@@ -200,7 +200,7 @@ export const CREWS = [
       chewie: { name: 'Chewbacca', color: '#d0965a', voice: 'chewie' },
     },
     launch: [
-      ['han', 'Chewie, we’re home. Well, eleven of them.'],
+      ['han', 'Chewie, we’re home. Well, ten of them.'],
       ['chewie', '[a happy roar]'],
     ],
     boost: [
