@@ -210,6 +210,10 @@ function Game({ soft, fail }) {
           case 'jump':
             playCue('servoJump');
             break;
+          case 'leap':
+            play('zip');
+            say('Transform leap', 'good');
+            break;
           case 'launch':
             play('zip');
             break;
@@ -526,7 +530,7 @@ function Game({ soft, fail }) {
         className="g3 ro-screen"
         tabIndex={0}
         role="group"
-        aria-label="Roll out. Left and right (or A and D) steer. Space or up jumps as a robot and boosts as a vehicle. Shift, T or down transforms. P pauses. On a touch screen, drag to steer."
+        aria-label="Roll out. Left and right (or A and D) steer. Space or up jumps as a robot and boosts as a vehicle; keep it held as you transform to leap. Shift, T or down transforms. P pauses. On a touch screen, drag to steer."
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -740,6 +744,9 @@ function Game({ soft, fail }) {
               </span>
               <span>
                 <kbd>Shift</kbd> transform
+              </span>
+              <span>
+                <kbd>Space</kbd> held through <kbd>Shift</kbd> leaps
               </span>
               <span>
                 <kbd>P</kbd> pause

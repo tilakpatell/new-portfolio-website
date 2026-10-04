@@ -32,12 +32,13 @@ export const ROLL = {
   rampV: 7,
   coyote: 0.1,
   jumpBuffer: 0.14,
+  leap: 0.8, // a leap out of a boost carries the speed, up to this share of vehicle speed
   transformTime: 0.5,
-  invuln: 1.5,
+  invuln: 1.2,
   accel: 26,
   decel: 42,
   speed: { vehicle: 30, robot: 0.567, boost: 1.45 }, // robot and boost are shares of vehicle speed
-  energon: { max: 100, start: 60, cube: 14, drain: 4.5, charge: 2.5, boost: 24, toStand: 8, spark: 30 },
+  energon: { max: 100, start: 60, cube: 12, drain: 5, charge: 2, boost: 24, toStand: 8, spark: 30 },
   body: { vehicle: { hw: 0.85, hl: 1.75, h: 1.4 }, robot: { hw: 0.6, hl: 0.5, h: 2.7 } },
   ramp: { len: 7, h: 0.9 },
   gapK: 0.6, // a broken bridge is this many seconds of vehicle speed long
@@ -45,12 +46,13 @@ export const ROLL = {
   bomb: { r: 1.35, blast: 0.25, fuse: 1.1 },
   wave: { h: 0.9, d: 0.6, speed: 20 },
   shot: { speed: 78, life: 1.1, r: 0.3, range: 72 },
-  vehicon: { hp: 3, w: 1.7, l: 3.6, standW: 1.3, standL: 1.0, standH: 2.6, fire: 1.7, bolt: 26, ahead: [16, 26] },
-  jet: { hp: 2, y: 6.5, speed: 26, w: 2.6, l: 2.6, bombs: 3 },
+  vehicon: { hp: 4, w: 1.7, l: 3.6, standW: 1.3, standL: 1.0, standH: 2.6, fire: 1.3, bolt: 30, ahead: [16, 26] },
+  jet: { hp: 3, y: 6.5, speed: 26, w: 2.6, l: 2.6, bombs: 4 },
   car: { w: 1.8, l: 3.8, h: 1.5 },
   bolt: { r: 0.35, y: 1.1 },
   spark: { time: 6, w: 1.2 },
   spacing: { min: 24, wall: 80 },
+  rampUp: 0.5, // the road gets this much busier by the end of a stage
   bridgeTime: 2.2,
   outro: 2,
   comboWindow: 2.5,
@@ -73,9 +75,9 @@ export const ROLL = {
     { id: 'kaon', name: 'Kaon, Cybertron', len: 1500, boss: 'megatron', speed: 1.1, mix: { traffic: 1.6, debris: 3, cubes: 3, barricade: 1.3, gap: 1.3, vehicons: 2.3, jets: 1.3, spark: 0.2 } },
   ],
   bosses: {
-    starscream: { name: 'Starscream', hp: 60, dz: 32, y: 4.5, r: 2.2, cool: 2.2, attacks: ['missiles', 'strafe', 'dive'] },
-    shockwave: { name: 'Shockwave', hp: 80, dz: 27, y: 0, r: 1.9, cool: 2.3, attacks: ['beam', 'cannon', 'drones'] },
-    megatron: { name: 'Megatron', hp: 100, dz: 28, y: 0, r: 1.9, cool: 2.1, attacks: ['fusion', 'wave', 'reinforce'] },
+    starscream: { name: 'Starscream', hp: 72, dz: 32, y: 4.5, r: 2.2, cool: 2.0, attacks: ['missiles', 'strafe', 'dive'] },
+    shockwave: { name: 'Shockwave', hp: 96, dz: 27, y: 0, r: 1.9, cool: 2.1, attacks: ['beam', 'cannon', 'drones'] },
+    megatron: { name: 'Megatron', hp: 120, dz: 28, y: 0, r: 1.9, cool: 1.9, attacks: ['fusion', 'wave', 'reinforce'] },
   },
 };
 
@@ -152,6 +154,8 @@ function buildStage(g, z0) {
   let lastWall = -Infinity;
   let guard = 0;
   while (z < end && guard++ < 400) {
+    const late = (z - z0) / st.len; // 0 at the start of the stage, 1 at the boss
+    const busy = dense * (1 + ROLL.rampUp * late);
     let kind = choose();
     const wall = kind === 'barricade' || kind === 'gap';
     if (wall && (z - lastWall < ROLL.spacing.wall || z + 40 > end)) kind = r() < 0.5 ? 'traffic' : 'cubes';
@@ -193,7 +197,7 @@ function buildStage(g, z0) {
       lastWall = z;
       len = ROLL.ramp.len + g.gapLen + 12;
     } else if (kind === 'vehicons') {
-      g.triggers.push({ z, kind: 'vehicons', n: 1 + (r() < 0.45 * dense ? 1 : 0) });
+      g.triggers.push({ z, kind: 'vehicons', n: 1 + (r() < 0.45 * busy ? 1 : 0) + (late > 0.5 && r() < 0.3 * dense ? 1 : 0) });
       len = 6;
     } else if (kind === 'jets') {
       g.triggers.push({ z, kind: 'jet', n: dense > 1.1 && r() < 0.4 ? 2 : 1 });
@@ -202,7 +206,7 @@ function buildStage(g, z0) {
       g.sparks.push({ x: LANES[Math.floor(r() * 4)], z, y: 1.2, taken: false });
       len = 4;
     }
-    z += len + (ROLL.spacing.min * (1 + r() * 0.9)) / dense;
+    z += len + (ROLL.spacing.min * (1 + r() * 0.9)) / busy;
   }
   // cars stop short of a roadblock or a broken bridge, one behind another
   const walls = [...g.barricades.map((b) => b.z - b.l), ...g.gaps.map((p) => p.z - ROLL.ramp.len)].sort((a, b) => a - b);
@@ -242,6 +246,8 @@ export function newRun({ seed = 1, level = 'autobot', bot = 'optimus', stage = 0
     grounded: true,
     air: 0,
     jumpBuf: 0,
+    jumpQueued: false,
+    leap: false,
     mode: 'vehicle',
     morph: 0,
     morphFrom: 0,
@@ -304,14 +310,27 @@ export function transform(g) {
   g.formZ = g.z;
   g.formV = Math.max(1, g.speed);
   if (!g.grounded && g.launched) g.airTurn = true;
+  // standing up out of a boost (the button still held) is a leap; folding
+  // back into the vehicle drops any jump that was waiting
+  g.leap = to === 'robot' && g.grounded && (g.boosting || Boolean(g.input?.boost));
+  g.jumpQueued = g.leap;
   emit(g, 'transform', { to, log: `transform:${to}` });
   return true;
 }
 
 export function jump(g) {
-  if (g.status !== 'running' || g.mode !== 'robot' || g.morph < 0.6) return false;
+  if (g.status !== 'running' || g.mode !== 'robot') return false;
+  if (g.morph < 0.6) {
+    // still standing up: jump the moment it can
+    if (g.morphT >= 0) g.jumpQueued = true;
+    return false;
+  }
   if (g.grounded || g.air < ROLL.coyote) {
     if (!g.grounded && g.vy > 0) return false; // already going up
+    // a robot takes off no faster than a leap, and off a ramp no faster than
+    // it walks: the broken bridges are for the vehicle
+    const cap = floorAt(g, g.z) > 0 ? g.robotSpeed : g.vehicleSpeed * ROLL.leap;
+    if (g.speed > cap) g.speed = cap;
     g.vy = ROLL.jumpV;
     g.grounded = false;
     g.air = ROLL.coyote;
@@ -642,6 +661,20 @@ function stepPlayer(g, dt) {
     if (k >= 1) {
       g.morph = to;
       g.morphT = -1;
+    }
+  }
+
+  // a jump pressed while standing up goes as soon as the legs are under it;
+  // a leap keeps the boost's speed (but not on a ramp: no flying a broken
+  // bridge as a robot)
+  if (g.jumpQueued && (g.mode !== 'robot' || g.morphT < 0 && g.morph < 0.6)) g.jumpQueued = false;
+  if (g.jumpQueued && g.morph >= 0.6 && g.grounded) {
+    g.jumpQueued = false;
+    const carry = g.leap && floorAt(g, g.z) === 0;
+    g.leap = false;
+    if (jump(g) && carry) {
+      g.speed = Math.max(g.speed, Math.min(g.formV, g.vehicleSpeed * ROLL.leap));
+      emit(g, 'leap', { log: 'leap' });
     }
   }
 

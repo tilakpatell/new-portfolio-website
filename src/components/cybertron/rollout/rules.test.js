@@ -158,6 +158,67 @@ describe('transforming', () => {
     expect(g.log).toContain('empty');
   });
 
+  it('keeps a jump pressed while standing up, and jumps as soon as the robot can', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    run(g, 0.5);
+    transform(g);
+    run(g, 0.1);
+    expect(g.morph).toBeLessThan(0.6);
+    expect(jump(g)).toBe(false); // too soon to jump, but it's kept
+    let top = 0;
+    run(g, 0.8, {}, (s) => (top = Math.max(top, s.y)));
+    expect(g.log).toContain('jump');
+    expect(top).toBeGreaterThan(1.5);
+  });
+
+  it('a jump kept through a transform is dropped if it folds back into the vehicle', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    transform(g);
+    run(g, 0.05);
+    jump(g);
+    run(g, ROLL.transformTime + 0.2);
+    transform(g); // straight back
+    run(g, 1);
+    expect(g.log.filter((l) => l === 'jump').length).toBeLessThanOrEqual(1);
+  });
+
+  it('transforming with boost held leaps as it stands, carrying the speed into the air', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    g.energon = 100;
+    run(g, 1.5, { boost: true });
+    const fast = g.speed;
+    expect(fast).toBeGreaterThan(g.vehicleSpeed * 1.2);
+    g.input = { steer: 0, boost: true };
+    transform(g);
+    let leapSpeed = 0;
+    run(g, 0.7, { boost: true }, (s) => {
+      if (!leapSpeed && !s.grounded) leapSpeed = s.speed;
+    });
+    expect(g.log).toContain('leap');
+    expect(leapSpeed).toBeGreaterThan(g.robotSpeed * 1.25);
+    expect(leapSpeed).toBeLessThanOrEqual(g.vehicleSpeed * ROLL.leap + 1e-6);
+  });
+
+  it('a leap still can’t clear a broken bridge: that takes the vehicle and the ramp', () => {
+    for (const level of ['recruit', 'autobot', 'prime']) {
+      for (let lead = 0.3; lead < 1.6; lead += 0.1) {
+        const g = newRun({ seed: 8, level });
+        quiet(g);
+        g.energon = 100;
+        run(g, 1.5, { boost: true });
+        // the ramp starts `lead` seconds ahead at boost speed
+        g.gaps.push({ z: g.z + ROLL.ramp.len + g.speed * lead, len: g.gapLen });
+        g.input = { steer: 0, boost: true };
+        transform(g);
+        run(g, 4, { boost: true });
+        expect({ level, lead, cleared: g.log.includes('clear:gap') }).toMatchObject({ cleared: false });
+      }
+    }
+  });
+
   it('jumps only as a robot, and only from the ground', () => {
     const g = newRun({ seed: 6 });
     quiet(g);
