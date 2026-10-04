@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score.'],
+      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. With a graphics chip it plays in 3D; the switch under it goes back to 2D.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
@@ -44,8 +44,8 @@ const PAGES = {
     tips: [
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
-      ['The bridge', 'Face the Balrog, wait until it is well out over the drop, then strike.'],
-      ['Gorgoroth', 'Hold to walk. Let go when the Eye’s light comes close: standing still, the elven cloaks hide you.'],
+      ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
+      ['Gorgoroth', 'Hold to walk (Space or →). Let go when the Eye’s light comes close: standing still, the elven cloaks hide you. Rest before the Ring gets too heavy, and stand still while orc patrols march past. Sam carries Frodo the last stretch. Your best time is kept.'],
       ['The Ring', 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.'],
     ],
   },

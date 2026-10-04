@@ -925,8 +925,10 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 /* ─── The Death Star: readout and trench run ─────────────────────────────── */
 .trench-screen { position: relative; aspect-ratio: 16 / 9; max-height: 72vh; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #05060b; outline: none; }
 .trench-screen:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
-.trench-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
-.trench-touch { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 10px; }
+.trench-canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; cursor: crosshair; }
+.trench-gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.4s ease; }
+.trench-gl[data-on] { opacity: 1; }
+.trench-touch { position: absolute; z-index: 2; right: 12px; bottom: 12px; display: flex; gap: 10px; }
 .trench-touch-btn { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 12, 20, 0.55); color: #fff; font: 600 0.8rem/1 var(--font-mono); -webkit-tap-highlight-color: transparent; }
 .trench-touch-btn[aria-pressed='true'] { border-color: var(--saber); color: var(--saber); }
 .trench-touch-fire { width: 64px; height: 64px; background: color-mix(in srgb, #c0392b 70%, transparent); border-color: rgba(255, 180, 160, 0.6); }
@@ -937,7 +939,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
   .trench-touch-btn { grid-auto-flow: row; gap: 2px; align-content: center; }
   .trench-key { display: block; font: 500 0.55rem/1 var(--font-mono); letter-spacing: 0.04em; opacity: 0.75; text-transform: uppercase; }
 }
-.trench-overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
+.trench-overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
 @media (max-width: 640px) {
   .trench-touch { left: 12px; }
   .trench-touch-laser { order: 3; margin-left: auto; }
@@ -1561,6 +1563,14 @@ html[data-mode='dark'] .backdrop-cy[data-faction='decepticon'] { --cy-light: #b4
 @keyframes fire-flicker { from { transform: scaleY(0.9); } to { transform: scaleY(1.1) skewX(3deg); } }
 .balrog-whip { fill: none; stroke: #ff8a1f; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: whip 0.35s ease-out forwards; filter: drop-shadow(0 0 4px #ff6a1a); }
 @keyframes whip { to { stroke-dashoffset: 0; } }
+.balrog-whip-up { fill: none; stroke: #ffb347; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px #ff6a1a); animation: whip-up 0.8s ease-out both; }
+@keyframes whip-up { from { opacity: 0.2; } to { opacity: 1; } }
+.bridge-deep { fill: #ff9d1f; opacity: 0.35; }
+.bridge-will { fill: #2a2420; stroke: #6b5d50; stroke-width: 1; transition: fill 0.2s ease; }
+.bridge-will[data-on] { fill: #fdfbf2; stroke: #fff; filter: drop-shadow(0 0 4px #fff); }
+.bridge-stage[data-whip='up'] { box-shadow: 0 0 0 2px rgba(255, 140, 40, 0.65), var(--shadow-card); }
+.bridge-kbd { margin-left: 0.45rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.7; }
+@media (hover: none) and (pointer: coarse) { .bridge-kbd { display: none; } }
 .gandalf { transform-box: fill-box; transform-origin: 50% 100%; animation: gandalf-in 0.9s ease backwards; }
 @keyframes gandalf-in { from { opacity: 0; } }
 .gandalf.falling { animation: gandalf-fall 1.4s cubic-bezier(0.5, 0, 0.9, 0.5) forwards; }
@@ -2334,3 +2344,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
   .lab-art { max-height: 11.5rem; }
 }
 @media (hover: none) and (pointer: coarse) { .lab kbd { display: none; } }
+.gg-ring-label { font: 600 11px/1 var(--font-mono); fill: #f3d9a4; }
+.gg-ring[data-heavy] circle:last-of-type { stroke: #ff6a1a; }
+.gg-torch { animation: me-flicker 0.6s ease-in-out infinite; }
+.gg-bob[data-walking] { animation: gg-step 0.4s ease-in-out infinite alternate; }
+@keyframes gg-step { to { transform: translateY(-1.2px); } }
+@media (prefers-reduced-motion: reduce) { .gg-torch, .gg-bob[data-walking], .balrog-whip-up { animation: none; } }

@@ -17,4 +17,6 @@ npm run lint
 - `src/stages/` — the live demo on each project page (the Game Boy one is playable).
 - `src/pages/Terminal.jsx`, `src/pages/DeathStar.jsx` — the easter eggs. Try ↑ ↑ ↓ ↓ ← → ← → B A.
 
-No WebGL anywhere: everything is SVG, CSS and 2D canvas, so the site works with hardware acceleration off.
+Graphics: the site itself is SVG, CSS and 2D canvas. The games draw in WebGL (Three.js, loaded only when it's used) where the device has a graphics chip: `src/lib/gpu.js` checks once, counts software WebGL (SwiftShader, llvmpipe and the like) as none, and falls back to the 2D version where there is one, or says so where there isn't. A lost GPU context, a render error or frames that can't keep up also drop a game back to 2D. Visitors can switch 3D on or off under each game.
+
+Tests: `npm test` runs the games' rules (Vitest); they run before every deploy.
