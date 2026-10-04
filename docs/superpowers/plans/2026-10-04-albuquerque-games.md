@@ -335,6 +335,8 @@ All in `src/components/albuquerque/metherria/rules.js`, tests in `rules.test.js`
 
 ## Phase 5 (PR 5): Casa Tranquila
 
+Brought forward to PR 2 at the user's ask (2026-10-04): "Face Off should be a 3D game as well, and use the audio." Phases 2 to 4 follow it.
+
 ### Task 5.1: The rules
 
 **Files:**
@@ -363,7 +365,7 @@ All in `src/components/albuquerque/metherria/rules.js`, tests in `rules.test.js`
   - Three rings in `'bell'` boom.
   - Ten rings in one frame during `'bell'` still give exactly one `'boom'` (Review Focus).
   - Score with 2 misses in 20 s is 30.
-- [ ] FAIL → implement → PASS → commit.
+- [x] FAIL → implement → PASS → commit.
 
 ### Task 5.2: The scene
 
@@ -382,7 +384,8 @@ All in `src/components/albuquerque/metherria/rules.js`, tests in `rules.test.js`
   - **`'after'`:** Gus walks out, tie gesture (`reach('right', tie)`).
 - Budget: ≤ 300 calls.
 
-- [ ] QA captures of each phase at desktop and mobile; diagnostics logged; commit.
+- [x] QA captures of each phase at desktop and mobile; diagnostics logged; commit.
+- Ruling: the floor is Poly Haven `floor_tiles_08` and the walls `beige_wall_001` (casa-floor, casa-wall); the nurse walks out with the board as Gus walks in, so nobody else is in the room for the blast; Hector and his chair are gone in the smoke (no gore). The cast module gains `walk(on)` (a procedural stride) for them.
 
 ### Task 5.3: The component and the page
 
@@ -395,7 +398,7 @@ All in `src/components/albuquerque/metherria/rules.js`, tests in `rules.test.js`
 - Behavior:
   - **Input:** Ding button, Space/Enter and tapping the canvas ring.
   - **Display:** the HUD shows the word, the count, misses and the best score (`tp-hector-best`).
-  - **Sound:** `sfx` ding/buzz/boom/crumble as now.
+  - **Sound:** the site owner's clips (`src/lib/clips.js`): Hector's bell on every ring, Gus's "My name is Gustavo" as he walks in, the Face Off clip from just before its blast on the third ring; `sfx` ding, boom and crumble only if a clip can't play, and buzz on a miss.
   - **Fallback:** without WebGL, on a lost context, or if `createCasa3D` rejects, the two 2D games show.
 
 - [ ] QA:

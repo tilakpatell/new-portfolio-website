@@ -11,6 +11,8 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
   - `lab-floor`: Poly Haven `concrete_floor_worn_001`
   - `lab-wall`: ambientCG `Tiles010`
   - `lab-bench`: ambientCG `Metal009`
+  - `casa-wall`: Poly Haven `beige_wall_001` (Dimitrios Savva, Rico Cilliers)
+  - `casa-floor`: Poly Haven `floor_tiles_08` (Rob Tuytel)
 
 ## Not CC0: made for this site
 

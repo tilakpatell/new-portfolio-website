@@ -2276,6 +2276,11 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 /* Walt's Metherria: always the lab's own dark, whatever the site theme */
 .wm { --wm-bg: #15191b; --wm-panel: #1f2629; --wm-line: #384246; --wm-ink: #eef2f4; --wm-dim: #a9b4ba; --wm-hi: #f2c318; --wm-blue: #4fb8ea; --wm-good: #7ef0a0; --wm-bad: #ff8a7a; position: relative; overflow: hidden; border: 1px solid var(--wm-line); border-radius: var(--r-card); background: var(--wm-bg); color: var(--wm-ink); box-shadow: var(--shadow-card); outline: none; user-select: none; -webkit-user-select: none; }
 .wm[data-place='rv'] { --wm-bg: #1d1915; --wm-panel: #2a241e; --wm-line: #4a3f33; --wm-dim: #bbae9b; }
+/* Face Off at Casa Tranquila: the rest home's beige and teal */
+.wm[data-place='casa'] { --wm-bg: #1b1d1c; --wm-panel: #252a28; --wm-line: #3d4642; --wm-dim: #b2bab4; --wm-hi: #e9c46a; }
+.ct-word { color: var(--wm-hi); letter-spacing: 0.12em; }
+.ct-miss { color: var(--wm-bad); }
+.ct-ding { min-width: 9rem; }
 .wm .btn-primary { background: var(--wm-hi); color: #1a1708; }
 .wm .btn-primary:hover { background: #ffd43b; }
 .wm .btn-ghost { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.3); color: var(--wm-ink); }
