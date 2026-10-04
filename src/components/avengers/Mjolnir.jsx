@@ -98,8 +98,11 @@ export default function Mjolnir() {
         <div className="mt-7 flex flex-wrap gap-3">
           <button
             type="button"
-            className="btn btn-primary select-none"
-            onPointerDown={begin}
+            className="btn btn-primary hold-btn"
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              begin();
+            }}
             onPointerUp={end}
             onPointerLeave={end}
             onPointerCancel={end}

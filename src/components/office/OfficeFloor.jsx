@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
 import { jumpTo } from '../../lib/anchors';
+import { useMediaQuery } from '../../lib/hooks';
 import Gif from '../Gif';
 
 const sfx = () => import('../../lib/sfx');
@@ -235,6 +236,7 @@ function Plan() {
 
 export default function OfficeFloor({ say = (t) => t }) {
   const { parkour } = useFun();
+  const phone = useMediaQuery('(max-width: 639px)');
   const [sel, setSel] = useState('michael');
   const [done, setDone] = useState(null);
   const panel = useRef(null);
@@ -259,24 +261,40 @@ export default function OfficeFloor({ say = (t) => t }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:gap-12">
-      <div className="office-plan">
-        <Plan />
-        {STAFF.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className="office-mark"
-            style={{ left: `${(s.x / 940) * 100}%`, top: `${(s.y / 520) * 100}%` }}
-            aria-pressed={sel === s.id}
-            aria-label={`${s.name}, ${s.role}`}
-            onClick={() => visit(s.id)}
-          >
-            {s.name
-              .split(' ')
-              .map((w) => w[0])
-              .join('')}
-          </button>
-        ))}
+      <div className="self-start">
+        <div className="office-plan">
+          <Plan />
+          {STAFF.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="office-mark"
+              style={{ left: `${(s.x / 940) * 100}%`, top: `${(s.y / 520) * 100}%` }}
+              aria-pressed={sel === s.id}
+              aria-label={`${s.name}, ${s.role}`}
+              // on a phone the desks are too close to tap: the names below do it
+              aria-hidden={phone || undefined}
+              tabIndex={phone ? -1 : undefined}
+              onClick={() => visit(s.id)}
+            >
+              {s.name
+                .split(' ')
+                .map((w) => w[0])
+                .join('')}
+            </button>
+          ))}
+        </div>
+        {phone && (
+          <ul className="office-roll mt-4" aria-label="Who sits where">
+            {STAFF.map((s) => (
+              <li key={s.id}>
+                <button type="button" aria-pressed={sel === s.id} aria-label={`${s.name}, ${s.role}`} onClick={() => visit(s.id)}>
+                  {s.name.split(' ')[0]}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div ref={panel} className="office-panel card scroll-mt-28" aria-live="polite">
         {p.gif ? (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFrameLoop, useInView, useReducedMotion } from '../lib/hooks';
+import { useFrameLoop, useInView, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { useAchievements } from '../components/Achievements';
 import { H, W } from './gb/font';
 import { newConsole, renderConsole, stepConsole } from './gb/console';
@@ -40,6 +40,7 @@ export default function GameBoyStage({ compact = false }) {
   const [started, setStarted] = useState(!reduced);
   const [held, setHeld] = useState({});
   const [focused, setFocused] = useState(false);
+  const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const { unlock } = useAchievements();
   const events = useRef({});
   events.current.coin = (n) => n >= 10 && unlock('player');
@@ -173,7 +174,9 @@ export default function GameBoyStage({ compact = false }) {
         </div>
       </div>
       <p className="mono max-w-sm text-center text-xs leading-relaxed text-muted">
-        {focused ? (
+        {touch ? (
+          <>Hold the D-pad to move, A to jump and B to run. Start picks a game; Select opens the menu.</>
+        ) : focused ? (
           <>← → move · Z / Space = A (jump) · X = B (run) · Enter = Start · Shift = Select (menu)</>
         ) : (
           <>Click the Game Boy to play with your keyboard, or use the buttons. Start picks a game.</>

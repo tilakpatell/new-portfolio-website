@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
-import { prefersReducedMotion } from '../../lib/hooks';
+import { prefersReducedMotion, useMediaQuery } from '../../lib/hooks';
 import { useAchievements } from '../Achievements';
 import Vehicle from './Vehicle';
 
@@ -63,6 +63,7 @@ function makePlan() {
 
 export default function GroundBridge() {
   const { unlock } = useAchievements();
+  const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const stage = useRef(null);
   const els = useRef(new Map());
   const game = useRef(null);
@@ -336,9 +337,7 @@ export default function GroundBridge() {
         <button type="button" className="btn btn-ghost gbr-hold" disabled={phase !== 'run'} aria-pressed={open} {...hold}>
           {open ? 'Bridge open' : 'Hold to open the bridge'}
         </button>
-        <p className="text-sm text-muted">
-          Or hold <kbd>Space</kbd>, or press and hold the scene.
-        </p>
+        <p className="text-sm text-muted">{touch ? 'Or press and hold the scene.' : 'Or hold Space, or press and hold the scene.'}</p>
       </div>
       <p className="mt-3 min-h-[1.5em] text-sm text-body" role="status" aria-live="polite">
         {phase === 'run' ? say : ''}

@@ -84,7 +84,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · music', 'dim'),
+  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
@@ -426,15 +426,20 @@ export default function Terminal() {
         setTimeout(() => navigate('/cybertron'), 400);
         return [L('  Opening a space bridge to Cybertron…', 'ok')];
       },
+      albuquerque: () => {
+        setTimeout(() => navigate('/albuquerque'), 400);
+        return [L('  Driving out to the Land of Enchantment…', 'ok')];
+      },
       worlds: () => [
         BLANK,
         L('  WORLDS', 'head'),
-        L(`  ${pad('deathstar', 12)}Star Wars: the Death Star and the trench run`),
-        L(`  ${pad('moria', 12)}The Lord of the Rings: Doors of Durin, Khazad-dûm, the Ring`),
-        L(`  ${pad('avengers', 12)}Marvel: the arc reactor, Mjolnir, the gauntlet`),
-        L(`  ${pad('scranton', 12)}The Office: the Dundies and Dwight's fact check`),
-        L(`  ${pad('cybertron', 12)}Transformers: transform, Cybertronian, the roster`),
-        L(`  ${pad('music', 12)}The music room: sitar, harmonium, tabla`),
+        L(`  ${pad('deathstar', 13)}Star Wars: the superlaser, the readout, the trench run`),
+        L(`  ${pad('moria', 13)}The Lord of the Rings: the Doors of Durin, the road, the Bridge, Mordor, the Ring`),
+        L(`  ${pad('avengers', 13)}Marvel: Avengers Tower floor by floor, the Tesseract, Thanos`),
+        L(`  ${pad('scranton', 13)}The Office: the floor plan, Kevin mode, Dwight's fact check, the Dundies`),
+        L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, the ground bridge, the Iacon relics`),
+        L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, the superlab, Hector's bell, Los Pollos Hermanos`),
+        L(`  ${pad('music', 13)}The music room: sitar, harmonium, tabla`),
       ],
       exit: () => {
         setTimeout(() => navigate('/'), 300);

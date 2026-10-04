@@ -1708,7 +1708,14 @@ html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
 .office-mark:hover { transform: scale(1.12); }
 .office-mark[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); transform: scale(1.18); }
 .office-mark:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-@media (max-width: 639px) { .office-mark { width: 26px; height: 26px; font-size: 0.6rem; border-width: 1.5px; } }
+@media (max-width: 639px) {
+  .office-mark { width: 13px; height: 13px; font-size: 0; border-width: 1.5px; pointer-events: none; }
+  .office-mark[aria-pressed='true'] { width: 20px; height: 20px; transform: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--btn-bg) 30%, transparent); }
+}
+/* on a phone, pick someone by name */
+.office-roll { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.office-roll button { min-height: 2.25rem; padding: 0.3rem 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 0.85rem; font-weight: 600; }
+.office-roll button[aria-pressed='true'] { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
 .office-panel { padding: 1.5rem; }
 .office-item { display: block; width: 96px; height: 96px; overflow: visible; }
 .office-item[data-active] .mug-coffee { animation: mug-fill 0.9s ease forwards; transform-box: fill-box; transform-origin: 50% 0; }
@@ -2079,6 +2086,11 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 /* The guide: a ? in the corner, and the panel it opens */
 .guide-btn { position: fixed; right: 16px; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 46; display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--text) 60%, transparent); transition: transform 0.15s ease, border-color 0.15s ease; }
 .guide-btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+@media (max-width: 639px) {
+  .guide-btn { transition: transform 0.25s ease, opacity 0.25s ease; }
+  .guide-btn[data-tucked] { transform: translateY(calc(100% + 32px)); opacity: 0; pointer-events: none; }
+  .guide-btn[data-tucked]:focus-visible { transform: none; opacity: 1; pointer-events: auto; }
+}
 .guide-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .guide-btn[aria-expanded='true'] { background: var(--btn-bg); color: var(--btn-ink); border-color: transparent; }
 html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
@@ -2089,3 +2101,6 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .guide-list dt { font-weight: 600; color: var(--text); }
 .guide-list dd { margin: 0.15rem 0 0; font-size: 0.92rem; line-height: 1.5; color: var(--text-body); }
 @media print { .guide-btn, .guide-panel { display: none !important; } }
+
+/* Press-and-hold buttons: a drifting finger mustn't turn the hold into a scroll */
+.hold-btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }

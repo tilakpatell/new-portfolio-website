@@ -111,8 +111,11 @@ export default function Cook() {
           {phase === 'cooking' ? (
             <button
               type="button"
-              className="btn btn-primary select-none"
-              onPointerDown={() => hold(true)}
+              className="btn btn-primary hold-btn"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                hold(true);
+              }}
               onPointerUp={() => hold(false)}
               onPointerLeave={() => hold(false)}
               onPointerCancel={() => hold(false)}

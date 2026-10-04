@@ -83,6 +83,9 @@ function StarWars() {
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
         </button>
+        <Link to="/deathstar" className="btn btn-ghost btn-sm">
+          Visit the Death Star
+        </Link>
       </div>
     </Card>
   );
@@ -349,7 +352,7 @@ function Office() {
           Parkour!
         </button>
         <Link to="/scranton" className="btn btn-ghost btn-sm">
-          The Dundies
+          Visit Scranton
         </Link>
       </div>
       {clip && <p className="mt-2 text-xs text-muted">The Office (NBC), via GIPHY. The speaker button turns the clip’s sound on.</p>}
@@ -406,6 +409,9 @@ function BreakingBad() {
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={saul} onClick={() => setSaul((v) => !v)}>
           S’all good, man
         </button>
+        <Link to="/albuquerque" className="btn btn-ghost btn-sm">
+          Visit Albuquerque
+        </Link>
       </div>
       {saul && <p className="mt-2 text-xs text-muted">Better Call Saul (AMC), via GIPHY.</p>}
     </Card>
@@ -444,7 +450,7 @@ export default function Interests() {
           <h2 id="interests-title" className="title">
             Off the clock
           </h2>
-          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad and a lot of travel.</p>
+          <p className="lead mt-4 max-w-[52ch]">Star Wars first. Then Indian classical music, Tolkien, Transformers, Marvel, games, The Office, Breaking Bad and a lot of travel. Most of them have a world of their own on this site, with something to play.</p>
           <div className="mt-6">
             <InterestDock />
           </div>

@@ -158,8 +158,11 @@ export default function Gorgoroth({ onArrive }) {
           {phase === 'walking' ? (
             <button
               type="button"
-              className="btn btn-primary select-none"
-              onPointerDown={() => walk(true)}
+              className="btn btn-primary hold-btn"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                walk(true);
+              }}
               onPointerUp={() => walk(false)}
               onPointerLeave={() => walk(false)}
               onPointerCancel={() => walk(false)}

@@ -12,7 +12,7 @@ const PAGES = {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
-      ['The Game Boy', 'It plays: arrow keys to move, Z and X for B and A, Enter to start. On a phone, use the buttons.'],
+      ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
     ],
   },
@@ -60,7 +60,8 @@ const PAGES = {
   '/scranton': {
     title: 'Scranton',
     tips: [
-      ['The office', 'Click a desk to visit someone. Each of them has something to do.'],
+      ['The office', 'Pick a desk to visit someone (on a phone, tap a name under the plan). Each of them has something to do.'],
+      ['The paper airplane', 'It glides down the page with you as you scroll.'],
       ['Kevin mode', 'Why waste time say lot word.'],
       ['Dwight’s fact check', 'Fact or false, seven times.'],
       ['The Dundies', 'One for every easter egg you have found on the site.'],
@@ -83,6 +84,7 @@ const PAGES = {
       ['The cast', 'Every card does something.'],
       ['The superlab', 'Hold to heat, let go to cool. Keep the needle in the green for the whole cook.'],
       ['Face Off', 'Ring Hector’s bell three times.'],
+      ['Los Pollos Hermanos', 'Order at the counter and the tray fills up. Then call Saul.'],
     ],
   },
   '/music': {
@@ -143,6 +145,22 @@ export default function Guide() {
   }, [open]);
   useEffect(() => setOpen(false), [pathname]);
 
+  // On a phone the button tucks away while you scroll down the page (so it
+  // never sits over a game's controls) and comes back when you scroll up.
+  const [tucked, setTucked] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y < 160) setTucked(false);
+      else if (y > last + 8) setTucked(true);
+      else if (y < last - 8) setTucked(false);
+      if (Math.abs(y - last) > 8) last = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const close = () => {
     setOpen(false);
     button.current?.focus();
@@ -150,7 +168,7 @@ export default function Guide() {
 
   return (
     <>
-      <button ref={button} type="button" className="guide-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="guide-panel" aria-label="Guide: how this site works">
+      <button ref={button} type="button" className="guide-btn" data-tucked={(tucked && !open) || undefined} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="guide-panel" aria-label="Guide: how this site works">
         <RiQuestionLine className="h-5 w-5" aria-hidden="true" />
       </button>
       {open &&
