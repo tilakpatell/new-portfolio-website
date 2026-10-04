@@ -43,7 +43,7 @@ const JARVIS = [
 // Where each stone turned up before Thanos came for it.
 const WHERE = {
   space: 'The Tesseract. Captain America: The First Avenger, then The Avengers.',
-  mind: 'In Loki’s sceptre, then in Vision. The Avengers, Age of Ultron.',
+  mind: 'In Loki’s scepter, then in Vision. The Avengers, Age of Ultron.',
   reality: 'The Aether. Thor: The Dark World.',
   power: 'The Orb, found on Morag. Guardians of the Galaxy.',
   time: 'Inside the Eye of Agamotto. Doctor Strange.',
@@ -51,7 +51,7 @@ const WHERE = {
 };
 
 const ON_DISPLAY = [
-  { id: 'marvel-ironman', title: 'Iron Man armour', note: 'From the cave-built Mark I to the suits that followed, under glass.' },
+  { id: 'marvel-ironman', title: 'Iron Man armor', note: 'From the cave-built Mark I to the suits that followed, under glass.' },
   { id: 'marvel-shield', title: 'Captain America’s shield', note: 'Vibranium, and it shows every dent.' },
   { id: 'marvel-campus', title: 'Avengers Campus', note: 'A Quinjet parked on the roof of the Avengers’ headquarters, at Disney California Adventure.' },
   { id: 'marvel-gauntlet', title: 'The Infinity Gauntlet', note: 'A replica, all six stones set. Snap responsibly.' },

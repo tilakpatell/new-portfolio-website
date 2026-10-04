@@ -7,6 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
+import Guide from './components/Guide';
 import Home from './pages/Home';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
@@ -177,6 +178,7 @@ function Shell() {
       </main>
       {pathname !== '/terminal' && pathname !== '/deathstar' && <Footer />}
       <ScrollSaber />
+      <Guide />
       <Lightspeed />
       <PaletteHost />
       <IntroJump />

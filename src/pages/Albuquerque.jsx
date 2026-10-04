@@ -188,7 +188,7 @@ export default function Albuquerque() {
           <div className="saul-card mt-8">
             <p className="saul-big">Better Call Saul!</p>
             <p className="saul-name">Saul Goodman · Attorney at Law</p>
-            <p className="saul-small">Injuries · Criminal defence · Whatever you need</p>
+            <p className="saul-small">Injuries · Criminal defense · Whatever you need</p>
           </div>
           <button type="button" className="btn btn-primary mt-6" onClick={() => setSaul((v) => !v)} aria-pressed={saul}>
             {saul ? 'Hang up' : 'Call Saul'}

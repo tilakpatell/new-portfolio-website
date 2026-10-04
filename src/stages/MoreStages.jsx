@@ -339,7 +339,7 @@ export function AttentionStage() {
             ))}
           </p>
           <p className="mono mt-4 text-xs text-muted">
-            Stronger colour = more attention from “{TOKENS[focus]}” (illustrative weights); salient sentences score higher and make the summary
+            Stronger color = more attention from “{TOKENS[focus]}” (illustrative weights); salient sentences score higher and make the summary
           </p>
         </div>
       </StageWindow>

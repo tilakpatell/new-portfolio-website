@@ -17,7 +17,7 @@ export const PARTS = [
     bx: 286,
     by: 58,
     name: 'Thermal exhaust port',
-    text: 'Two metres wide, right below the main port. The shaft leads straight down to the reactor.',
+    text: 'Two meters wide, right below the main port. The shaft leads straight down to the reactor.',
     quote: ['Use the Force, Luke.', 'Obi-Wan Kenobi'],
     clip: 'useTheForce',
     gif: 'yavin',
@@ -63,7 +63,7 @@ export const PARTS = [
     bx: 86,
     by: 176,
     name: 'Detention block AA-23',
-    text: 'Princess Leia was held in cell 2187 until Luke and Han came for her in borrowed armour.',
+    text: 'Princess Leia was held in cell 2187 until Luke and Han came for her in borrowed armor.',
     quote: ['Aren’t you a little short for a stormtrooper?', 'Princess Leia'],
   },
   {

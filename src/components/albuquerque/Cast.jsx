@@ -68,7 +68,7 @@ const CAST = [
   { id: 'jesse', name: 'Jesse Pinkman', role: 'His former student', text: 'Walt’s old student and partner, who learns more chemistry than either of them planned.', action: 'Science!', done: 'Yeah, science!' },
   { id: 'gus', name: 'Gustavo Fring', role: 'Los Pollos Hermanos', text: 'Owns a chain of chicken restaurants. Calm, polite, meticulous. Hides in plain sight.', action: 'Order the chicken', done: 'Your order is ready. The manager hopes you enjoy it.' },
   { id: 'mike', name: 'Mike Ehrmantraut', role: 'Security', text: 'A retired Philadelphia cop who handles problems quietly, and never halfway.', action: 'Half measures?', done: 'No more half measures.' },
-  { id: 'saul', name: 'Saul Goodman', role: 'Attorney at law', text: 'Jimmy McGill, practising law as Saul Goodman, from an office with an inflatable Statue of Liberty on the roof.', action: 'Better call Saul', done: 'S’all good, man.' },
+  { id: 'saul', name: 'Saul Goodman', role: 'Attorney at law', text: 'Jimmy McGill, practicing law as Saul Goodman, from an office with an inflatable Statue of Liberty on the roof.', action: 'Better call Saul', done: 'S’all good, man.' },
   { id: 'lalo', name: 'Lalo Salamanca', role: 'The cousin', text: 'The most charming Salamanca, which makes him the most dangerous one in the room.', action: 'Lalo’s back', done: 'He walks in smiling. Nobody else is.' },
   { id: 'hector', name: 'Hector Salamanca', role: 'Tio', text: 'Says everything he needs to with a bell on his wheelchair.', action: 'Ring the bell', done: 'Ding. Ding. Ding.' },
   { id: 'hank', name: 'Hank Schrader', role: 'DEA', text: 'Walt’s brother-in-law, DEA agent, and a serious collector of minerals.', action: 'See the collection', done: 'They’re minerals.' },

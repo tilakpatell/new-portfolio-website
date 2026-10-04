@@ -169,7 +169,7 @@ export default function Cybertron() {
                 ? 'A cab-over truck, parked on Cybertron. Press Transform.'
                 : side === 'autobot'
                   ? 'Optimus Prime, leader of the Autobots. Inside his chest he carries the Matrix of Leadership.'
-                  : 'In Decepticon colours now. The chest is just a chest.'}
+                  : 'In Decepticon colors now. The chest is just a chest.'}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <button type="button" className="btn btn-primary" onClick={transformBot} disabled={busy}>
@@ -208,7 +208,7 @@ export default function Cybertron() {
         <h2 id="roster-title" className="title">
           The roster
         </h2>
-        <p className="lead mt-4 max-w-[54ch]">Each of them is a colour scheme for this site. Roll out as one, and everything changes to match.</p>
+        <p className="lead mt-4 max-w-[54ch]">Each of them is a color scheme for this site. Roll out as one, and everything changes to match.</p>
         <ul className="cy-roster mt-8">
           {ROSTER.map((bot) => (
             <li key={bot.id} className="cy-bot card" style={{ '--bot': bot.color, '--trim': bot.trim }}>

@@ -12,8 +12,8 @@ const PADS = [
   { bol: 'Dhin', key: 'h', hint: 'Tin and Ge together' },
   { bol: 'Na', key: 'j', hint: 'the rim of the dayan' },
   { bol: 'Tin', key: 'k', hint: 'between the rim and the black' },
-  { bol: 'Tu', key: 'l', hint: 'the centre, left to ring' },
-  { bol: 'Ti', key: ';', hint: 'the centre, closed' },
+  { bol: 'Tu', key: 'l', hint: 'the center, left to ring' },
+  { bol: 'Ti', key: ';', hint: 'the center, closed' },
   { bol: 'Ge', key: 'f', hint: 'the bayan, open' },
   { bol: 'Ke', key: 'd', hint: 'the bayan, closed' },
 ];

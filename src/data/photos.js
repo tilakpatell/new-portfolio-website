@@ -411,7 +411,7 @@ export const PHOTOS = {
       1600
     ],
     "ratio": 0.721,
-    "alt": "Rows of server racks glowing with coloured status lights",
+    "alt": "Rows of server racks glowing with colored status lights",
     "credit": {
       "author": "NOIRLab/NSF/AURA/T. Slovinský",
       "license": "CC BY 4.0",
@@ -531,7 +531,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.663,
-    "alt": "A tabla pair under warm stage light, the black syahi at the centre of each drum head",
+    "alt": "A tabla pair under warm stage light, the black syahi at the center of each drum head",
     "credit": {
       "author": "Naveed.yzi",
       "license": "CC BY-SA 4.0",
@@ -591,7 +591,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.666,
-    "alt": "Hobbit holes with grey, red and teal round doors in a green hillside at the Hobbiton Movie Set, mirrored in a still pond",
+    "alt": "Hobbit holes with gray, red and teal round doors in a green hillside at the Hobbiton Movie Set, mirrored in a still pond",
     "credit": {
       "author": "Jackie.lck",
       "license": "CC BY 2.0",
@@ -621,7 +621,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.667,
-    "alt": "Mount Sunday, a rocky knoll rising from golden tussock in the upper Rangitata valley, with a braided riverbed and grey mountains behind",
+    "alt": "Mount Sunday, a rocky knoll rising from golden tussock in the upper Rangitata valley, with a braided riverbed and gray mountains behind",
     "credit": {
       "author": "Experience Mid Canterbury",
       "license": "CC BY 4.0",
@@ -636,7 +636,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.666,
-    "alt": "Tall grey eroded rock spires of the Putangirua Pinnacles above green scrub and a gravel slope, under a deep blue sky",
+    "alt": "Tall gray eroded rock spires of the Putangirua Pinnacles above green scrub and a gravel slope, under a deep blue sky",
     "credit": {
       "author": "Pseudopanax at English Wikipedia",
       "license": "Public domain",
@@ -757,7 +757,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.75,
-    "alt": "Three Iron Man armours in lit glass cases: a crude grey prototype, a red and gold suit and a gold and red suit, each with a glowing chest light",
+    "alt": "Three Iron Man suits in lit glass cases: a crude gray prototype, a red and gold suit and a gold and red suit, each with a glowing chest light",
     "credit": {
       "author": "Higher Further Faster",
       "license": "CC BY 4.0",
@@ -802,7 +802,7 @@ export const PHOTOS = {
       1280
     ],
     "ratio": 0.666,
-    "alt": "A bronze Infinity Gauntlet replica set with six coloured gems, standing upright on a table",
+    "alt": "A bronze Infinity Gauntlet replica set with six colored gems, standing upright on a table",
     "credit": {
       "author": "Thomson200",
       "license": "CC0",
