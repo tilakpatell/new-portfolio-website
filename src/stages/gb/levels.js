@@ -5,6 +5,7 @@
 //   H  hard block    [ ] pipe top    ( ) pipe body    =  bridge
 //   o  coin          g  walker       k  shell turtle  L  lava
 //   f  firebar block X  axe          F  flag base     C  castle
+//   *  star block    W  the king of the castle
 
 const chunk = (w, rows = {}, ground = null) => ({ w, rows, ground: ground ?? '#'.repeat(w) });
 
@@ -47,7 +48,7 @@ const O = {
     15: '.........g.g......',
   }),
   bricks2: chunk(24, {
-    7: '...BBB?BBB..............',
+    7: '...BB*?BBB..............',
     11: '..........B?BMB.........',
     15: '...g..........k.........',
   }),
@@ -80,7 +81,7 @@ const U = {
     2: ceil(22),
     3: ceil(22),
     8: '....oooooooooo........',
-    9: '....BBBBBBBBBB........',
+    9: '....BBBBB*BBBB........',
     11: '..........M...........',
     15: '.....g....g.....g.....',
   }),
@@ -162,6 +163,7 @@ const C = {
   bridge: chunk(40, {
     2: stone(40),
     3: stone(40),
+    11: '......................W.................',
     12: '...................................X....',
     13: '....=========================HHHHHHHHHHH',
     14: '.............................HHHHHHHHHHH',
@@ -198,7 +200,7 @@ export function buildCourse(index) {
     }
     x0 += ch.w;
   }
-  const spawns = { coins: [], walkers: [], turtles: [], firebars: [], flag: null, castle: null, axe: null };
+  const spawns = { coins: [], walkers: [], turtles: [], firebars: [], flag: null, castle: null, axe: null, boss: null };
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < cols; c++) {
       const t = grid[r][c];
@@ -208,10 +210,11 @@ export function buildCourse(index) {
       else if (t === 'F') spawns.flag = { c, r };
       else if (t === 'C') spawns.castle = { c, r };
       else if (t === 'X') spawns.axe = { c, r };
+      else if (t === 'W') spawns.boss = { c, r };
       if (t === 'f') {
         spawns.firebars.push({ c, r });
         grid[r][c] = 'H';
-      } else if ('ogkCX'.includes(t)) grid[r][c] = '.';
+      } else if ('ogkCXW'.includes(t)) grid[r][c] = '.';
       else if (t === 'F') grid[r][c] = 'H';
     }
   }

@@ -12,7 +12,7 @@ const PAGES = {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
-      ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons.'],
+      ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons. In Super Tilak Land a fire flower lets B throw fire, stomps in a row score more each time, and a king waits at the end of the castle. Each game keeps its best score.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
     ],
   },

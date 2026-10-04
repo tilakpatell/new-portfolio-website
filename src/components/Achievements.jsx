@@ -18,6 +18,8 @@ export const ACHIEVEMENTS = {
   resume: { name: 'Recruited', desc: 'Opened the résumé' },
   cartographer: { name: 'Cartographer', desc: 'Saw all six company themes' },
   player: { name: 'High score', desc: 'Collected 10 coins on the Game Boy' },
+  castle: { name: 'Super Tilak', desc: 'Beat the king of the castle on the Game Boy' },
+  tetris: { name: 'Four at once', desc: 'Cleared four lines at once in Block Drop' },
   aurebesh: { name: 'Linguist', desc: 'Read Aurebesh' },
   polyglot: { name: 'Polyglot', desc: 'Read the site in Aurebesh, Cybertronian and Dwarf runes' },
   heisenberg: { name: 'Heisenberg', desc: 'Said my name' },
