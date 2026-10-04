@@ -19,7 +19,9 @@
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
-// clicked: go to its page), onEvent(event), onLand().
+// clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
+// went into a planet or a station too fast and the impact has played: true
+// if the page goes on into its page, so the ship doesn't come back).
 
 import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
@@ -36,7 +38,7 @@ import { createCrash } from './crash';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, SHIP_MODELS, buildShip } from './shipModels';
+import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
@@ -45,11 +47,18 @@ const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
 const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
-const TRAIL_COLOR = { falcon: '#7fc8ff', xwing: '#ff8a5a', cruiser: '#9df06b' };
+// each ship's exhaust (trail.js): its colour, its white-hot core, how wide
+// and how long it is, and the cruiser's portal-plasma ripple
+const PLUME = {
+  cruiser: { color: '#4dff3a', core: '#e6ffd2', width: 0.036, life: 0.42, length: 0.32, wobble: 1.3, sparks: 40 },
+  falcon: { color: '#5cbcff', core: '#eef8ff', width: 0.034, life: 0.45, length: 0.36, wobble: 0 },
+  xwing: { color: '#ff6a36', core: '#fff0dc', width: 0.017, life: 0.38, length: 0.3, wobble: 0 },
+};
 const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the
-// impact, the ship back again, the end of its coming back
-const CRASH = { impact: 0.32, back: 2.7, done: 3.3 };
+// impact, on through into its page (a planet or a station, not the sun),
+// or else the ship back again, and the end of its coming back
+const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -70,7 +79,7 @@ uniform float uTime;
 varying vec3 vColor;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = clamp(aSize * uDpr * (260.0 / -mv.z), 1.0, 6.0 * uDpr);
+  gl_PointSize = clamp(aSize * uDpr * (700.0 / -mv.z), 1.0, 6.0 * uDpr);
   // a slow twinkle, each star on its own beat
   float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
   vColor = aColor * tw;
@@ -99,7 +108,7 @@ function starfield(rand) {
     // a shell round the map, flatter than a sphere
     const u = rand() * 2 - 1;
     const a = rand() * Math.PI * 2;
-    const r = 90 + rand() * 120;
+    const r = 320 + rand() * 70; // behind everything, however far out the camera is
     const s = Math.sqrt(1 - u * u);
     pos.set([Math.cos(a) * s * r, u * r * 0.8, Math.sin(a) * s * r], i * 3);
     const b = 0.25 + rand() ** 3 * 0.75;
@@ -220,11 +229,34 @@ export async function create(canvas, ctx) {
   map.add(dust.points);
   const camLocal = new THREE.Vector3();
   let dustAmount = 0;
-  // the ship's engine trail (trail.js), and a ring of light that runs out
-  // round a place as you arrive
-  const trail = createTrail();
-  map.add(trail.mesh);
-  const tail = new THREE.Vector3();
+  // the ship's exhaust, a plume from each engine (trail.js), and a ring of
+  // light that runs out round a place as you arrive
+  let plumes = []; // { trail, at: where its engine is, inside the ship's pivot }
+  const nozzle = new THREE.Vector3();
+  const setPlumes = (kind, engines) => {
+    for (const pl of plumes) {
+      map.remove(pl.trail.mesh);
+      pl.trail.dispose();
+    }
+    plumes = [];
+    if (!kind) return;
+    const look = PLUME[kind] ?? PLUME.falcon;
+    plumes = engines.map((at) => {
+      const trail = createTrail(look);
+      trail.setColors(look.color, look.core);
+      map.add(trail.mesh);
+      return { trail, at: new THREE.Vector3(...at) };
+    });
+  };
+  const updatePlumes = (dt, t, amount) => {
+    const m = state.model;
+    if (!m) return;
+    m.group.updateMatrixWorld(true);
+    for (const pl of plumes) {
+      map.worldToLocal(m.pivot.localToWorld(nozzle.copy(pl.at)));
+      pl.trail.update(dt, t, nozzle, amount, camLocal);
+    }
+  };
   const pulse = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 128), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   pulse.rotation.x = -Math.PI / 2;
   pulse.visible = false;
@@ -273,7 +305,7 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 40, 32, 1.4);
+  const sunLight = new THREE.PointLight('#ffd6a8', 78, 50, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -382,7 +414,7 @@ export async function create(canvas, ctx) {
     const look = 0.4;
     return {
       target: [wx + dx * look, s.y + 0.06, wz + dz * look],
-      dist: 1.7 + Math.abs(s.speed) * 0.06 + state.streak * 0.7,
+      dist: 1.7 + Math.abs(s.speed) * 0.045 + state.streak * 0.7,
       pitch: 0.21,
     };
   };
@@ -569,8 +601,7 @@ export async function create(canvas, ctx) {
     const was = state.kind;
     state.kind = kind;
     traffic?.setCrew(kind);
-    trail.clear();
-    if (kind) trail.setColor(TRAIL_COLOR[kind] ?? '#ffffff');
+    setPlumes(kind, ENGINES[kind] ?? []);
     state.auto = null;
     state.flown = false;
     if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
@@ -599,6 +630,12 @@ export async function create(canvas, ctx) {
           if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
             c.dispose();
             disposeTree(c.group);
+            return;
+          }
+          // its exhaust leaves from its own exhaust cans
+          if (c.engines?.length) {
+            model.group.updateMatrixWorld(true);
+            setPlumes('cruiser', c.engines.map((g) => model.pivot.worldToLocal(g.getWorldPosition(new THREE.Vector3())).toArray()));
           }
           ctx.invalidate();
         })
@@ -720,6 +757,8 @@ export async function create(canvas, ctx) {
       speed: e.speed,
       spin: [3 + Math.random() * 5, 2 + Math.random() * 4],
       impact: false,
+      asked: false, // has the page been told (props.onCrash)
+      through: false, // and gone on into the place's page
       back: false,
     };
     state.auto = null;
@@ -739,7 +778,7 @@ export async function create(canvas, ctx) {
     c.age += dt;
     const age = c.age;
     const m = state.model;
-    trail.update(dt, tail, 0); // the engines are out
+    updatePlumes(dt, (performance.now() - t0) / 1000, 0); // the engines are out
     if (age < CRASH.impact) {
       // on into it, tumbling, a little way under the surface
       const k = age / CRASH.impact;
@@ -757,6 +796,13 @@ export async function create(canvas, ctx) {
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
       emit({ type: 'crash', id: c.id });
     }
+    if (age >= CRASH.through && !c.asked && !c.sun) {
+      // the shockwave running out over the surface: the page takes it from
+      // here, if it's going on into the place's page
+      c.asked = true;
+      c.through = Boolean(props.onCrash?.(c.id));
+    }
+    if (c.through) return true; // the camera holds on the crater till the page goes
     if (age >= CRASH.back && !c.back) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
@@ -845,8 +891,7 @@ export async function create(canvas, ctx) {
     m.pivot.rotation.z = -ship.bank;
     m.pivot.rotation.x = reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08);
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
-    const [hx, hz] = forward(ship.heading);
-    trail.update(dt, tail.set(ship.x - hx * 0.13, ship.y, ship.z - hz * 0.13), clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak));
+    updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak));
     engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
     // sitting still a good while: the crew notice
     if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
@@ -980,6 +1025,7 @@ export async function create(canvas, ctx) {
     last = now;
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
+    if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
     return !still() || moving || shooting || fxBusy || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }

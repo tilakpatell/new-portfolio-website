@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
+import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiRestartLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
 import { openPalette, shortcutLabel } from '../lib/palette';
 import { jumpTo } from '../lib/anchors';
 import { profile } from '../data/profile';
 import { useAchievements } from './Achievements';
 import { useTheme } from '../theme/ThemeProvider';
+import { useFun } from '../fun/FunProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import Wordmark from './Wordmark';
 import { CUSTOM_PRESETS } from '../theme/custom';
+import { DROPS, dropped, nextFit } from './navFit';
+import { restartSite } from '../lib/restart';
 
 const LINKS = [
   { to: '/universe', label: 'Universe' },
@@ -145,7 +148,7 @@ function ThemeOptions({ onPick, compact = false }) {
   );
 }
 
-export function ThemePicker() {
+export function ThemePicker({ nameless = false }) {
   const { active, pinned } = useTheme();
   const [open, setOpen] = useState(false);
   const wrap = useRef(null);
@@ -172,7 +175,7 @@ export function ThemePicker() {
         title="Site colors"
       >
         <span className="h-3 w-3 rounded-full ring-2 ring-[var(--bg)]" style={{ background: t.fill || t.swatch, boxShadow: '0 0 0 3px var(--border)' }} aria-hidden="true" />
-        <span className="theme-pick-label">
+        <span className={nameless ? 'sr-only' : 'theme-pick-label'}>
           <span className="sr-only">Site colors: </span>
           {pinned ? t.label : `Auto · ${t.label}`}
         </span>
@@ -202,7 +205,50 @@ export default function Nav() {
     setHiddenState(v);
   }, []);
   const header = useRef(null);
-  const { mode, toggleMode } = useTheme();
+  const bar = useRef(null);
+  const menuButton = useRef(null);
+  const { mode, toggleMode, active, pinned } = useTheme();
+  const { script } = useFun();
+
+  // The bar never lets its contents spill past its ends (the Résumé button
+  // used to stick out of the right end): while they're wider than the bar it
+  // lets go of one more thing (navFit.js) and measures again, before the
+  // browser paints. Whatever changes the room (the window, the fonts
+  // arriving, the colour's name, a script mode) starts it over from all.
+  const [fit, setFit] = useState(0);
+  const [round, setRound] = useState(0); // a new round measures again even when fit is already 0
+  const refit = useCallback(() => {
+    setFit(0);
+    setRound((r) => r + 1);
+  }, []);
+  const gone = (item) => dropped(fit, item);
+  const collapsed = gone('links');
+  useLayoutEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const next = nextFit(fit, el.scrollWidth > el.clientWidth + 1);
+    if (next !== fit) {
+      setFit(next);
+      return;
+    }
+    // settled: a menu left open with its button gone (the links came back) closes
+    if (open && menuButton.current && getComputedStyle(menuButton.current).display === 'none') setOpen(false);
+  }, [fit, round, open]);
+  useLayoutEffect(refit, [active, pinned, script, refit]);
+  useEffect(() => {
+    let frame = 0;
+    const later = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(refit);
+    };
+    window.addEventListener('resize', later);
+    document.fonts?.addEventListener?.('loadingdone', later);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', later);
+      document.fonts?.removeEventListener?.('loadingdone', later);
+    };
+  }, [refit]);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -275,51 +321,67 @@ export default function Nav() {
         Skip to content
       </a>
       <div className="nav-shell">
-      <nav className="nav-bar flex h-[52px] items-center justify-between gap-2 rounded-full pl-5 pr-2 md:h-14 md:pl-6 lg:gap-3" aria-label="Main">
-        <Link to="/" className="wordmark rounded-md" aria-label="Tilak Patel, home">
+      <nav
+        ref={bar}
+        className="nav-bar flex h-[52px] items-center justify-between gap-2 rounded-full pl-5 pr-2 md:h-14 md:pl-6 lg:gap-3"
+        aria-label="Main"
+        data-fit={fit ? DROPS.slice(0, fit).join(' ') : undefined}
+      >
+        <Link to="/" className="wordmark flex-none rounded-md" aria-label="Tilak Patel, home">
           <Wordmark />
         </Link>
 
-        <div className="hidden items-center gap-0.5 md:flex">
+        {!collapsed && (
+        <div className="hidden flex-none items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
             <NavLink key={l.to} to={l.to} className={({ isActive }) => linkClass({ isActive: isActive || (l.to === '/universe' && pathname === '/') })}>
               {l.label}
             </NavLink>
           ))}
-          <NavLink to="/music" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`}>
-            Music
-          </NavLink>
-          <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden xl:inline-block`}>
-            <span className="flex items-center gap-1.5">
-              <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
-              Terminal
-            </span>
-          </NavLink>
+          {!gone('music') && (
+            <NavLink to="/music" className={({ isActive }) => `${linkClass({ isActive })} hidden lg:inline-block`}>
+              Music
+            </NavLink>
+          )}
+          {!gone('terminal') && (
+            <NavLink to="/terminal" className={({ isActive }) => `${linkClass({ isActive })} hidden xl:inline-block`}>
+              <span className="flex items-center gap-1.5">
+                <RiTerminalBoxLine className="h-4 w-4" aria-hidden="true" />
+                Terminal
+              </span>
+            </NavLink>
+          )}
         </div>
+        )}
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-none items-center gap-1">
           <button type="button" onClick={openPalette} className="nav-search hidden md:flex" aria-label={`Search and shortcuts (${shortcutLabel()})`} title={`Search and shortcuts (${shortcutLabel()})`}>
             <RiSearchLine className="h-[18px] w-[18px]" aria-hidden="true" />
-            <kbd className="palette-kbd hidden lg:inline-grid">{shortcutLabel()}</kbd>
+            {!gone('kbd') && <kbd className="palette-kbd hidden whitespace-nowrap lg:inline-grid">{shortcutLabel()}</kbd>}
           </button>
           <div className="hidden lg:block">
-            <ThemePicker />
+            <ThemePicker nameless={gone('colorName')} />
           </div>
-          <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="LinkedIn" title="LinkedIn">
-            <RiLinkedinBoxFill className="h-[18px] w-[18px]" />
-          </a>
-          <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="GitHub" title="GitHub">
-            <RiGithubFill className="h-[18px] w-[18px]" />
-          </a>
+          {!gone('social') && (
+            <>
+              <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="LinkedIn" title="LinkedIn">
+                <RiLinkedinBoxFill className="h-[18px] w-[18px]" />
+              </a>
+              <a href={profile.github.url} target="_blank" rel="noopener noreferrer" className={`${iconBtn} hidden xl:grid`} aria-label="GitHub" title="GitHub">
+                <RiGithubFill className="h-[18px] w-[18px]" />
+              </a>
+            </>
+          )}
           <button type="button" className={iconBtn} onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
             {mode === 'dark' ? <RiSunLine className="h-[18px] w-[18px]" /> : <RiMoonClearLine className="h-[18px] w-[18px]" />}
           </button>
-          <Link to="/resume" className="btn btn-primary btn-sm ml-1 hidden !rounded-full sm:inline-flex">
+          <Link to="/resume" className="btn btn-primary btn-sm ml-1 hidden flex-none !rounded-full sm:inline-flex">
             Résumé
           </Link>
           <button
+            ref={menuButton}
             type="button"
-            className={`${iconBtn} md:hidden`}
+            className={`${iconBtn} ${collapsed ? '' : 'md:hidden'}`}
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? 'Close menu' : 'Open menu'}
@@ -332,7 +394,7 @@ export default function Nav() {
 
       {open &&
         createPortal(
-        <div id="mobile-menu" className="mobile-menu md:hidden">
+        <div id="mobile-menu" className={`mobile-menu ${collapsed ? '' : 'md:hidden'}`}>
           <ul className="divide-y divide-[var(--border)]">
             {[{ to: '/home', label: 'Home' }, ...LINKS, { to: '/music', label: 'Music' }, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
@@ -365,6 +427,9 @@ export default function Nav() {
               }}
             >
               <RiSearchLine className="h-4 w-4" aria-hidden="true" /> Search
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={restartSite}>
+              <RiRestartLine className="h-4 w-4" aria-hidden="true" /> Start over
             </button>
             <a href={profile.linkedin.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost w-11 px-0" aria-label="LinkedIn">
               <RiLinkedinBoxFill className="h-5 w-5" />
