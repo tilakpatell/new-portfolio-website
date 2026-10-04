@@ -184,13 +184,13 @@ export function paintPlating({ seed = 1, size = 1024, kind = 'surface' } = {}) {
 }
 
 // Yavin: a banded gas giant, stretched round a sphere.
-export function paintGasGiant({ seed = 3, w = 1024, h = 512 } = {}) {
+export function paintGasGiant({ seed = 3, w = 1024, h = 512, palette: given = null } = {}) {
   const rand = rng(seed);
   const cv = canvas(w, h);
   const ctx = cv.getContext('2d');
   const img = ctx.createImageData(w, h);
   const bands = Array.from({ length: 14 }, () => ({ f: 2 + rand() * 18, p: rand() * 6, a: rand() }));
-  const palette = [
+  const palette = given ?? [
     [196, 140, 92],
     [228, 186, 138],
     [168, 112, 74],
@@ -230,4 +230,92 @@ export function starSprite(size = 64) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   return cv;
+}
+
+// The whole station as the films show it from afar: an even, dark hull grey
+// (a touch blue-green, as ILM painted it), divided like a globe into bands
+// of latitude and sectors along the meridians, so from across the scene it
+// reads as fine surface detail rather than tiles. Painted equirectangular
+// (longitude across, latitude down), with a height for relief and a scatter
+// of lights for the night side.
+export function paintStation({ seed = 4, w = 2048, h = 1024 } = {}) {
+  const rand = rng(seed);
+  const color = canvas(w, h);
+  const height = canvas(w, h);
+  const lit = canvas(w, h);
+  const c = color.getContext('2d');
+  const hc = height.getContext('2d');
+  const l = lit.getContext('2d');
+  const k = w / 2048;
+  c.fillStyle = 'rgb(116,120,122)';
+  c.fillRect(0, 0, w, h);
+  hc.fillStyle = grey(150);
+  hc.fillRect(0, 0, w, h);
+  l.fillStyle = '#000';
+  l.fillRect(0, 0, w, h);
+  const bands = 36; // every 5 degrees of latitude
+  const bh = h / bands;
+  for (let b = 0; b < bands; b++) {
+    const y = b * bh;
+    // sectors are narrower in pixels toward the poles' squeeze, so the same
+    // count all round keeps them square-ish on the sphere
+    const lat = Math.abs((b + 0.5) / bands - 0.5) * Math.PI;
+    const sectors = Math.max(12, Math.round(72 * Math.cos(lat)));
+    const sw = w / sectors;
+    for (let i = 0; i < sectors; i++) {
+      const x = i * sw;
+      const v = 116 + (rand() - 0.5) * 7;
+      c.fillStyle = `rgb(${v | 0},${(v + 4) | 0},${(v + 6) | 0})`;
+      c.fillRect(x, y, sw, bh);
+      // inside each sector: a few long low strips and small blocks, faint
+      const strips = 1 + Math.floor(rand() * 3);
+      for (let j = 0; j < strips; j++) {
+        const sy = y + bh * (0.15 + rand() * 0.7);
+        c.fillStyle = `rgba(52,55,58,${0.06 + rand() * 0.08})`;
+        c.fillRect(x + sw * 0.08, sy, sw * (0.3 + rand() * 0.6), Math.max(1, k * 1.5));
+        hc.fillStyle = grey(132);
+        hc.fillRect(x + sw * 0.08, sy, sw * (0.3 + rand() * 0.6), Math.max(1, k * 1.5));
+      }
+      const blocks = Math.floor(rand() * 6);
+      for (let j = 0; j < blocks; j++) {
+        const bw = sw * (0.05 + rand() * 0.16);
+        const bhh = bh * (0.08 + rand() * 0.22);
+        const bx = x + rand() * (sw - bw);
+        const by = y + rand() * (bh - bhh);
+        const raised = rand() < 0.5;
+        c.fillStyle = raised ? `rgba(168,172,175,${0.1 + rand() * 0.08})` : `rgba(40,43,46,${0.16 + rand() * 0.14})`;
+        c.fillRect(bx, by, bw, bhh);
+        hc.fillStyle = grey(raised ? 172 : 128);
+        hc.fillRect(bx, by, bw, bhh);
+      }
+      // the seam down the sector's side
+      c.fillStyle = 'rgba(58,61,64,0.14)';
+      c.fillRect(x, y, Math.max(1, k), bh);
+      hc.fillStyle = grey(124);
+      hc.fillRect(x, y, Math.max(1, k), bh);
+    }
+    // and the line between bands of latitude
+    c.fillStyle = 'rgba(50,53,56,0.24)';
+    c.fillRect(0, y, w, Math.max(1, 1.2 * k));
+    hc.fillStyle = grey(116);
+    hc.fillRect(0, y, w, Math.max(1, 1.4 * k));
+  }
+  // fine grain, so up close the grey isn't flat
+  for (let i = 0; i < w * h * 0.006; i++) {
+    const dark = rand() < 0.6;
+    c.fillStyle = dark ? `rgba(36,39,42,${0.06 + rand() * 0.08})` : `rgba(180,184,186,${0.04 + rand() * 0.06})`;
+    c.fillRect(rand() * w, rand() * h, Math.max(1, (1 + rand() * 2) * k), Math.max(1, k));
+  }
+  // lights, sparse, that show on the side in shadow
+  for (let i = 0; i < 1400 * k * k; i++) {
+    l.fillStyle = rand() < 0.8 ? 'rgba(255,226,170,1)' : 'rgba(200,220,255,1)';
+    l.fillRect(rand() * w, rand() * h, Math.max(1, k * 1.2), Math.max(1, k));
+  }
+  const hd = hc.getImageData(0, 0, w, h).data;
+  const normal = canvas(w, h);
+  const nctx = normal.getContext('2d');
+  const nimg = nctx.createImageData(w, h);
+  nimg.data.set(heightToNormal(hd, w, h, 1.4));
+  nctx.putImageData(nimg, 0, 0);
+  return { color, normal, lit };
 }

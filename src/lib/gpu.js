@@ -1,11 +1,12 @@
-// Does this device have a graphics chip worth drawing in 3D for? The games
-// draw in WebGL where there is one, and in 2D canvas everywhere else (the 2D
-// versions are complete games, not placeholders). WebGL that a browser runs
-// in software on the CPU (SwiftShader, llvmpipe, Microsoft's basic driver)
-// counts as none, because it would play worse than the 2D version.
+// Can this browser draw in 3D? The site's games and scenes are 3D first:
+// they draw in WebGL wherever it exists, a real graphics chip or WebGL run in
+// software on the CPU (SwiftShader, llvmpipe, Microsoft's basic driver), and
+// lower their own resolution and effects if frames can't keep up. Only a
+// browser with no WebGL at all gets the 2D versions. `software` is still
+// reported, for those quality steps.
 //
-// The visitor can choose: 'auto' (the default), 'on' (3D wherever WebGL
-// exists at all) or 'off' (always 2D). The choice is kept between visits.
+// The visitor can choose: 'auto' (the default), 'on' (the same: 3D wherever
+// WebGL exists) or 'off' (always 2D). The choice is kept between visits.
 
 import { useEffect, useState } from 'react';
 
@@ -63,7 +64,7 @@ export function reprobe() {
   return cached;
 }
 
-export const resolve3D = (mode, info) => (mode === 'off' ? false : mode === 'on' ? info.webgl : info.ok);
+export const resolve3D = (mode, info) => (mode === 'off' ? false : info.webgl);
 
 export function mode3D() {
   try {

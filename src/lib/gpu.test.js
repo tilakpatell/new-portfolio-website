@@ -75,9 +75,9 @@ describe('choosing 3D or 2D', () => {
   const soft = { webgl: true, ok: false };
   const none = { webgl: false, ok: false };
 
-  it('uses 3D on its own only with a real GPU', () => {
+  it('uses 3D wherever WebGL exists, even drawn in software', () => {
     expect(resolve3D('auto', gpu)).toBe(true);
-    expect(resolve3D('auto', soft)).toBe(false);
+    expect(resolve3D('auto', soft)).toBe(true);
     expect(resolve3D('auto', none)).toBe(false);
   });
 

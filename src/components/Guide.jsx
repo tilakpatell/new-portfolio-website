@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. With a graphics chip it plays in 3D; the switch under it goes back to 2D.'],
+      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo. In the trench it blasts the first catwalk, wall or turret in its path, or scorches the floor, so spend them carefully: you need one for the port, which glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score. It plays in 3D wherever the browser has WebGL; the switch under it goes back to 2D.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
@@ -82,7 +82,7 @@ const PAGES = {
     tips: [
       ['The title card', 'Type a name and it becomes a Breaking Bad title card.'],
       ['The cast', 'Every card does something.'],
-      ['The superlab', 'Cook to order. Take each customer’s ticket at the counter, then: hold to pour the base to the line and tint it to the right blue (Chili P only if they want it), hold to keep the heat in the green, strike the slab on its crack lines, and fill each bag to the mark. Every station is scored, and so is the wait. Pay buys upgrades between shifts; new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch).'],
+      ['Walt’s Metherria', 'Cook to order, Papa’s style, in 3D. Take each customer’s ticket at the hatch, then work the stations along the bench: pick the size and hold to pour the base to the gold line, counting in the blue and Chili P (and the mix-ins your title unlocks); hold the heat in the green; strike the slab on its crack lines; pick the pack, fill each one to the mark, and stick the stickers where the ticket shows. Hand it over at the hatch. Every station is scored, and so is the wait. Pay buys upgrades between shifts, new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch). It needs WebGL.'],
       ['Face Off', 'Ring Hector’s bell three times.'],
       ['The letter board', 'Rows light up in turn: ring (Space, the button or a tap on the board) to pick the row, then again on the right letter. Three words; wrong rings cost five seconds.'],
       ['Inside', 'Order at the Los Pollos Hermanos counter (Gus is serving) and the tray fills up. Then call Saul.'],
