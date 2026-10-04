@@ -3,8 +3,9 @@
 // kit and re-lit in furnace light. Tiered spires in plated metal with light
 // along their edges and windows, skyways between them, flying traffic in the
 // avenues, and the Hall of Records at the end of the great boulevard (Kaon
-// raises its own citadel there instead). Two moons, a few stars, and haze the
-// city fades into.
+// raises its own citadel there instead), Optimus Prime standing colossal in
+// its plaza (Megatron, in Kaon's). Two moons, a few stars, and haze the city
+// fades into.
 //
 // The page tells it how far down the reader is (the camera glides up the
 // boulevard and climbs over the city as they go), which side they are on and
@@ -18,6 +19,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
@@ -26,6 +29,9 @@ const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
 const PLAZA = 440; // the open ground around it
 const HALL_SCALE = 0.8;
+// the statues in the plaza, made with Meshy (public/models/meshy): how tall,
+// and how far in front of the Hall, down the boulevard
+const STATUE = { h: 520, ahead: 360, plinth: [280, 80, 200] };
 const BLOCK = 140; // one city block, avenue to avenue
 const FADE_S = 1; // seconds to change sides, or day for night
 
@@ -416,6 +422,7 @@ const FOG = /* glsl */ `
 // CY_STREETS  glowing street lines on the deck
 // CY_GROW     grows up from its foot as uGrow goes 0 to 1 (Kaon's spikes)
 // CY_DISSOLVE 1: only Iacon's, -1: only Kaon's; it breaks up or builds in panels
+// CY_OWNUV    keeps the model's own texture coordinates (the statues)
 function cityMaterial(material, U, { defines = {}, fogK = 1, tile = 36, key }) {
   material.defines = { ...(material.defines || {}), ...defines };
   const own = { uFogK: { value: fogK }, uInfo: { value: new THREE.Vector4(0.5, 0, 0.5, 0) } };
@@ -453,6 +460,7 @@ function cityMaterial(material, U, { defines = {}, fogK = 1, tile = 36, key }) {
           #else
             vCyInfo = uInfo;
           #endif
+          #ifndef CY_OWNUV
           vec2 wuv = vec2((abs(vCyN.x) > abs(vCyN.z) ? vCyW.z : vCyW.x) / ${tile.toFixed(1)}, (abs(vCyN.y) > 0.7 ? vCyW.z : vCyW.y) / ${tile.toFixed(1)});
           #ifdef USE_MAP
             vMapUv = wuv;
@@ -465,6 +473,7 @@ function cityMaterial(material, U, { defines = {}, fogK = 1, tile = 36, key }) {
           #endif
           #ifdef USE_AOMAP
             vAoMapUv = wuv;
+          #endif
           #endif
         }`,
       );
@@ -801,7 +810,16 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
 
   // the plating: a scanned CC0 metal, loaded once; plain metal if it can't be
   const lib = createLibrary(renderer);
-  const [plates, deck] = await Promise.all([lib.load('plate-road'), lib.load('plate-deck')]);
+  // the statues: Optimus Prime in Iacon's plaza, Megatron in Kaon's (null if
+  // one can't load: the plaza stands empty)
+  const gltf = new GLTFLoader();
+  gltf.setMeshoptDecoder(MeshoptDecoder);
+  const statue = (name) =>
+    gltf
+      .loadAsync(`/models/meshy/${name}.glb`)
+      .then((g) => g.scene)
+      .catch(() => null);
+  const [plates, deck, optimusModel, megatronModel] = await Promise.all([lib.load('plate-road'), lib.load('plate-deck'), statue('optimus-prime'), statue('megatron')]);
 
   // the uniforms every city surface shares
   const U = {
@@ -1067,6 +1085,37 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     m.position.set(HALL.x, hallBase, HALL.z);
     scene.add(m);
   }
+  // the statues before it, on a plinth, facing down the boulevard; each side's
+  // breaks up or builds in panels with its city
+  const statueAt = V(HALL.x, hallBase, HALL.z + STATUE.ahead);
+  const [pw, ph, pd] = STATUE.plinth;
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pd).translate(0, ph / 2, 0), plazaMat);
+  plinth.position.copy(statueAt);
+  scene.add(plinth);
+  const statues = [optimusModel, megatronModel].map((model, i) => {
+    if (!model) return null;
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const k = STATUE.h / Math.max(size.y, 1e-6);
+    const holder = new THREE.Group();
+    model.scale.setScalar(k);
+    model.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
+    holder.add(model);
+    holder.position.copy(statueAt).add(V(0, ph, 0));
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      const src = o.material;
+      o.material = cityMaterial(new THREE.MeshStandardMaterial({ map: src.map ?? null, color: src.color ?? 0xffffff, metalness: 0.55, roughness: 0.42 }), U, {
+        defines: { CY_OWNUV: '', CY_DISSOLVE: i === 0 ? '1' : '-1' },
+        fogK: 0.72,
+        key: i === 0 ? 'statue-a' : 'statue-d',
+      });
+      src.dispose();
+    });
+    scene.add(holder);
+    return holder;
+  });
   // a megastructure from the Roll out kit, raised to the Hall's height, and
   // two lesser ones beside it
   const megaGeo = megaGeometry(4);
@@ -1336,6 +1385,8 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     spikes.visible = U.uGrow.value > 0.002;
     hallMesh.visible = hallLights.visible = s < 0.999;
     citadel.visible = s > 0.001;
+    if (statues[0]) statues[0].visible = s < 0.999;
+    if (statues[1]) statues[1].visible = s > 0.001;
     beacon.position.set(HALL.x, hallTop + (citadelTop - hallTop) * smooth(s) + 4, HALL.z);
     beam.position.copy(beacon.position);
   };
