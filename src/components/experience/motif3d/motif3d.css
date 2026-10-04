@@ -1,0 +1,58 @@
+/* The Experience diagrams in 3D: the canvas covers the SVG's box, fades in
+   once it has drawn, and the SVG steps aside (its accessible label stays). */
+.motif { position: relative; }
+.motif-3d {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.motif-3d[data-on] { opacity: 1; }
+.motif-3d canvas { display: block; width: 100%; height: 100%; }
+.motif:has(> .motif-3d[data-on]) > svg { visibility: hidden; }
+
+.m3d-labels { position: absolute; inset: 0; pointer-events: none; }
+.m3d-labels > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 2.1cqw, 12px);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-top: -0.5em;
+}
+.m3d-labels > span[data-anchor='middle'] { translate: -50% 0; }
+.m3d-labels > span[data-anchor='end'] { translate: -100% 0; }
+.m3d-labels > span[data-accent] { color: var(--accent-text, var(--accent)); }
+.m3d-labels > span[data-strong] { color: var(--text); }
+
+.m3d-legend {
+  position: absolute;
+  left: 4.4%;
+  bottom: 5%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em 1.4em;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 2.1cqw, 12px);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.m3d-legend > span { display: inline-flex; align-items: center; gap: 0.5em; }
+.m3d-legend > span::before { content: ''; width: 0.8em; height: 0.8em; border-radius: 2px; flex: none; }
+.m3d-legend > [data-kind='fill']::before { background: var(--accent); }
+.m3d-legend > [data-kind='solid']::before { background: color-mix(in srgb, var(--text) 30%, var(--surface-2)); }
+.m3d-legend > [data-kind='dash']::before { border: 1px dashed var(--border-strong); }
+.m3d-legend > [data-kind='flag']::before {
+  border-radius: 0;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 35%, 0 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motif-3d { transition: none; }
+}

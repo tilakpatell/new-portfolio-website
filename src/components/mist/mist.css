@@ -1,0 +1,24 @@
+/* The WebGL mist over a landscape photo. It sits above the photo and under
+   the scrim (so the scrim still guards the text), fades in once it has drawn,
+   and the CSS fog layers fade out; they come back if 3D is off or fails. */
+.mist-3d {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.mist-3d[data-on] { opacity: 1; }
+.mist-3d canvas { display: block; width: 100%; height: 100%; }
+.travel-hero > .mist-3d { z-index: -25; }
+.photo-band > .mist-3d { z-index: -15; }
+:is(.travel-hero, .photo-band):has(> .mist-3d[data-on]) > .fog {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1.4s ease, visibility 0s linear 1.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mist-3d,
+  :is(.travel-hero, .photo-band):has(> .mist-3d[data-on]) > .fog { transition: none; }
+}

@@ -1,0 +1,54 @@
+/* The GPU stage in 3D: the canvas covers the SVG's box, fades in once it has
+   drawn, and the SVG steps aside (the frame keeps the accessible label). */
+.gpu3d-frame { position: relative; }
+.gpu3d {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.gpu3d[data-on] { opacity: 1; }
+.gpu3d canvas { display: block; width: 100%; height: 100%; }
+.gpu3d-frame:has(> .gpu3d[data-on]) > svg { visibility: hidden; }
+
+.gpu3d-labels { position: absolute; inset: 0; pointer-events: none; }
+.gpu3d-labels > span {
+  --ax: 0;
+  --ay: -100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.9em;
+  translate: var(--ax) var(--ay);
+  font-family: var(--font-mono);
+  font-size: clamp(7.5px, 1.56cqw, 13px);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--muted);
+  /* a little of the window's own dark behind the letters, where an arc passes */
+  text-shadow: 0 0 3px var(--bg-deep), 0 0 6px var(--bg-deep);
+}
+.gpu3d-labels b { font-weight: 400; font-size: 1.2em; color: var(--text); }
+.gpu3d-labels i { font-style: normal; }
+.gpu3d-labels i:empty { display: none; }
+.gpu3d-labels > [data-anchor='middle'] { --ax: -50%; }
+.gpu3d-labels > [data-anchor='end'] { --ax: -100%; }
+.gpu3d-labels > [data-v='mid'] { --ay: -50%; }
+.gpu3d-labels > [data-v='below'] { --ay: 0; margin-top: 0.5em; }
+.gpu3d-labels > [data-kind='stack'] { flex-direction: column; align-items: center; gap: 0.7em; }
+.gpu3d-labels > [data-lost] i,
+.gpu3d-labels > [data-kind='fault'] b { color: var(--gpu-fault, #ff6b6b); }
+
+/* a phone-width stage: smaller type, and only the rank that matters */
+@container (max-width: 520px) {
+  .gpu3d-labels > span { font-size: 7px; gap: 0.6em; }
+  .gpu3d-labels > [data-kind='tag']:not([data-lost]) i { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gpu3d { transition: none; }
+}

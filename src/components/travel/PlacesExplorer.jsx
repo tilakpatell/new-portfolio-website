@@ -1,9 +1,16 @@
-import { lazy, Suspense, useCallback, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } from '../../data/places';
+import { use3D } from '../../lib/gpu';
 import { useAchievements } from '../Achievements';
 
 // The globe and its data load only when this section is near the screen.
+// With 3D on, the WebGL globe is laid over the 2D one and takes over once it
+// has drawn; the 2D globe comes back if 3D is turned off, fails, is lost or
+// runs slow. A lost context stays mounted (hidden): useScene tries it again
+// when the globe next comes near.
 const Globe = lazy(() => import('./Globe'));
+const Globe3D = lazy(() => import('./globe3d/Globe3D'));
+const BROKEN = new Set(['failed', 'slow']);
 
 const REGIONS = [...new Set(PLACES.map((p) => p.region))];
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
@@ -77,6 +84,23 @@ export default function PlacesExplorer({ title = 'Places I’ve been', titleId =
   const place = PLACES.find((p) => p.id === selected);
   const others = PLACES.length - COUNTRY_COUNT;
 
+  // 2D underneath until the 3D globe is on, then let go of it once the
+  // cross-fade is done (so it stops drawing)
+  const three = use3D();
+  const [status3D, setStatus3D] = useState('idle');
+  const try3D = three.on && !BROKEN.has(status3D);
+  const on3D = try3D && status3D === 'on';
+  const [hide2D, setHide2D] = useState(false);
+  useEffect(() => {
+    if (!on3D) {
+      setHide2D(false);
+      return undefined;
+    }
+    const t = setTimeout(() => setHide2D(true), 600);
+    return () => clearTimeout(t);
+  }, [on3D]);
+  const label = 'Globe of the places I’ve been. Drag or use the arrow keys to spin it, plus and minus to zoom. The same places are listed as buttons beside it.';
+
   return (
     <div className="shell relative grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
       <div className="relative">
@@ -114,14 +138,18 @@ export default function PlacesExplorer({ title = 'Places I’ve been', titleId =
       </div>
 
       <div className="relative mx-auto w-full max-w-[640px]">
-        <Suspense fallback={<GlobeSkeleton />}>
-          <Globe
-            selected={selected}
-            onSelect={select}
-            onHover={setHovered}
-            label="Globe of the places I’ve been. Drag or use the arrow keys to spin it, plus and minus to zoom. The same places are listed as buttons beside it."
-          />
-        </Suspense>
+        <div className="relative aspect-square w-full">
+          {!(on3D && hide2D) && (
+            <Suspense fallback={<GlobeSkeleton />}>
+              <Globe selected={selected} onSelect={select} onHover={setHovered} label={label} />
+            </Suspense>
+          )}
+          {try3D && (
+            <Suspense fallback={null}>
+              <Globe3D selected={selected} onSelect={select} onHover={setHovered} label={label} onStatus={setStatus3D} />
+            </Suspense>
+          )}
+        </div>
         <p className="mt-3 text-center text-sm text-muted">Drag to spin. Click a lit country to fly there.</p>
       </div>
     </div>
