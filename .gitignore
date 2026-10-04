@@ -28,3 +28,6 @@ dist-ssr
 .claude/launch.json
 *.orig
 lab/
+
+# superpowers brainstorming companion session files
+.superpowers
