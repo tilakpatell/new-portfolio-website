@@ -175,7 +175,7 @@ Added 2026-10-04 at the user's ask: generated, high-quality figures for everyone
 
 - [x] Pilot (Walt, Badger): concept image, model (12k triangles), rig, fetch; posed at the hatch and the bench.
 - [x] The other 12 (Jesse in hazmat, Jesse, Skinny Pete, Tuco, Mike, Gus, Lydia, Declan, Saul, Hank, Hector, the nurse), 340 to 440 KB each.
-- [ ] QA as Task 1.4 (hatch, every station, both sizes, ≤ 300 calls; the figures routed to 404 show the pack's people).
+- [x] QA as Task 1.4: hatch and every station at 1200×800 and 390×844, at most 41 calls, no console errors; with `/models/albuquerque/*.glb` routed to 404 the pack's people stand in.
 
 ## Phase 2 (PR 2): the RV and the superlab
 
