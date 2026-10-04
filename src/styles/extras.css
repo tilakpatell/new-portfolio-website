@@ -2215,8 +2215,6 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-prev { left: 12px; }
 .akd-next { right: 12px; }
 .akd-zoom { position: absolute; top: 12px; right: 12px; z-index: 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: rgba(8, 10, 14, 0.45); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); }
-.akd-progress { position: absolute; left: 0; right: 0; top: 0; z-index: 3; height: 3px; background: #ffe2a8; transform-origin: left; animation: akd-progress var(--d) linear both; }
-@keyframes akd-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .akd-bell-ring { position: absolute; left: 50%; top: 40%; z-index: 3; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 3px solid rgba(255, 226, 168, 0.9); border-radius: 999px; opacity: 0; pointer-events: none; }
 .akd-bell-ring[data-on] { animation: akd-ring 1.6s ease-out; }
 @keyframes akd-ring { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(3); opacity: 0; } }

@@ -477,11 +477,8 @@ function makeRaw(kind, variant) {
   if (kind === 'snowball') return snowball();
   if (kind === 'bigcronenberg') return cronenberg(2.9, 7);
   if (kind === 'cromulon') return cromulon();
-  if (kind === 'evilmorty') {
-    const c = morty({ shirt: 0xc9b23a, pants: 0x2a3f78, patch: true });
-    c.group.scale.setScalar(1.25);
-    return c;
-  }
+  // Morty's height: a boss by what he does, not by size
+  if (kind === 'evilmorty') return morty({ shirt: 0xc9b23a, pants: 0x2a3f78, patch: true });
   if (kind === 'butter') return butterRobot();
   return meeseeks();
 }

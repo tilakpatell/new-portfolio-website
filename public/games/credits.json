@@ -883,5 +883,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/saucer": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10863-acfa-71cb-a592-4d30821167e5",
+    "name": "saucer, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

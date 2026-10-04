@@ -1,16 +1,22 @@
+import { createContext, useContext } from 'react';
 import { useOnceVisible } from './ui';
+import Motif3D from './experience/Motif3D';
+
+const SceneName = createContext(null);
 
 // One small diagram per role, drawn from what the work actually was.
 // Everything draws in once when it scrolls into view and then stays still.
 
 function Frame({ label, caption, children }) {
   const ref = useOnceVisible('seen');
+  const scene = useContext(SceneName);
   return (
     <figure className="panel overflow-hidden">
       <div ref={ref} className="motif">
         <svg viewBox="0 0 320 168" className="block h-auto w-full" role="img" aria-label={label}>
           {children}
         </svg>
+        {scene && <Motif3D name={scene} />}
       </div>
       {caption && <figcaption className="mono border-t border-line px-4 py-2.5 text-xs text-muted">{caption}</figcaption>}
     </figure>
@@ -233,5 +239,9 @@ const MOTIFS = { capacity: Capacity, roadmap: Roadmap, stream: Stream, spectrum:
 
 export default function Motif({ name }) {
   const Component = MOTIFS[name];
-  return Component ? <Component /> : null;
+  return Component ? (
+    <SceneName.Provider value={name}>
+      <Component />
+    </SceneName.Provider>
+  ) : null;
 }
