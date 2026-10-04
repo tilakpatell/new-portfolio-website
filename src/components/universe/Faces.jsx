@@ -105,7 +105,24 @@ function JesseFace({ className }) {
   );
 }
 
-const FACES = { rick: RickFace, morty: MortyFace, meeseeks: MeeseeksFace, luke: LukeFace, r2: R2Face, han: HanFace, chewie: ChewieFace, walt: WaltFace, jesse: JesseFace };
+// Hank: bald and broad, a blond goatee, the DEA's olive shirt
+function HankFace({ className }) {
+  return (
+    <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
+      <path d="M12 100 Q14 72 50 70 Q86 72 88 100 Z" fill="#6f7a4a" stroke={INK} strokeWidth="2" />
+      <path d="M40 71 L50 82 L60 71" fill="#59633a" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M26 44 Q26 18 50 18 Q74 18 74 44 L72 66 Q50 84 28 66 Z" fill="#efc7a4" stroke={INK} strokeWidth="2" />
+      <path d="M40 63 Q50 58 60 63 L59 72 Q50 81 41 72 Z" fill="#c9a26a" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M44 68 Q50 66 56 68" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+      <path d="M35 42 L46 44 M65 42 L54 44" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="41" cy="50" r="2.4" fill={INK} />
+      <circle cx="59" cy="50" r="2.4" fill={INK} />
+      <path d="M47 56 Q50 59 53 56" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const FACES = { rick: RickFace, morty: MortyFace, meeseeks: MeeseeksFace, luke: LukeFace, r2: R2Face, han: HanFace, chewie: ChewieFace, walt: WaltFace, jesse: JesseFace, hank: HankFace };
 
 export default function Face({ who, className }) {
   const F = FACES[who];

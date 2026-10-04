@@ -9,9 +9,10 @@
 // `seat` says who you are; `go` is the button that launches; `lines` are
 // said in the cockpit, [speaker, text, clip?] as in the universe's crews
 // (lib/clips.js): `board` one after another once you're sat down, `launch`
-// as you go, and the RV's `wings` and `lift` on the long drive, as its wings
-// come out and as it leaves the road (vehicles/rv.js says those). `ship` is
-// the universe map's ship it is (universe/crews.js).
+// as you go, and the RV's `wings`, `lift` and `chase` on the long drive, as
+// its wings come out, as it leaves the road and as Hank comes after it
+// (vehicles/rv.js says those). `ship` is the universe map's ship it is
+// (universe/crews.js): the launch comes out in the universe, flying it.
 
 export const VEHICLES = [
   {
@@ -79,8 +80,10 @@ export const VEHICLES = [
         ['jesse', 'Yo… Mr. White? Why are there wings coming out of the RV?!'],
         ['walt', 'Because I built them, Jesse. Hold on to something.'],
       ],
-      lift: [
-        ['jesse', 'We’re flying! Mr. White, we’re actually flying!'],
+      lift: [['jesse', 'We’re flying! Mr. White, we’re actually flying!']],
+      chase: [
+        ['jesse', 'Yo, Mr. White! It’s Hank! How is Hank flying?!'],
+        ['hank', 'Pull over, Heisenberg! I know it’s you in there!'],
         ['walt', 'Say my name.', 'sayMyName'],
       ],
     },

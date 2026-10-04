@@ -3,8 +3,8 @@
 // throttle; and each launch. The jump's recorded boom is lined up to land
 // on the flash; Rick's portal gun fires and the portal opens with a swirl;
 // the RV's long drive has the Breaking Bad opening over it, its wings come
-// out with a hydraulic whine and lock with a clunk, and its jets catch and
-// roar. All through the
+// out with a hydraulic whine and lock with a clunk, its jets catch and roar,
+// and Hank's siren comes after it. All through the
 // site's master volume, and only once the visitor has clicked or pressed
 // something (browsers hold sound back until then).
 
@@ -203,6 +203,34 @@ function whump(at = 0) {
   src.stop(t + 0.85);
 }
 
+// Hank's siren coming up behind and dropping away: the wail sweeping up and
+// down, `dur` seconds long
+function siren(dur, at = 0) {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + at;
+  const o = ac.createOscillator();
+  o.type = 'triangle';
+  o.frequency.value = 900;
+  const sweep = ac.createOscillator();
+  sweep.type = 'triangle';
+  sweep.frequency.value = 1.6;
+  const depth = ac.createGain();
+  depth.gain.value = 330;
+  sweep.connect(depth).connect(o.frequency);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.07, t + dur * 0.45);
+  g.gain.setValueAtTime(0.07, t + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(out);
+  [o, sweep].forEach((n) => {
+    n.start(t);
+    n.stop(t + dur + 0.05);
+  });
+}
+
 // Artoo: a run of quick whistles
 function chirps(at = 0, n = 6) {
   const ac = audioContext();
@@ -274,6 +302,8 @@ export function cockpitSound(id) {
       at(plan.wings + 1150, t, () => clunk());
       at(plan.wings + 1450, t, () => clunk());
       at(plan.jets, t, () => whump());
+      // Hank, from the cut outside to just past the flash
+      at(plan.cut, t, () => siren((plan.end - plan.cut) / 1000));
       // the opening, over the drive (and on a little into the universe)
       clip('bbIntro', { offset: Math.max(0, t / 1000), duration: 14, keep: true, gain: 0.85 });
     }

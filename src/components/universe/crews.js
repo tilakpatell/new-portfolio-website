@@ -566,6 +566,10 @@ export const CREWS = [
   },
 ];
 
+// where the ship you fly is remembered (the map's, and the cockpit's launch
+// comes out flying the ship it was)
+export const SHIP_KEY = 'tp-universe-ship';
+
 const BY_ID = new Map(CREWS.map((c) => [c.id, c]));
 
 export const crewById = (id) => BY_ID.get(id) ?? null;

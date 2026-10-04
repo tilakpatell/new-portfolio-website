@@ -129,6 +129,8 @@ const VOICES = {
   // Walt low and measured, Jesse quicker and higher
   walt: { type: 'triangle', f: 118, spread: 0.12, syl: 0.095, gain: 0.08 },
   jesse: { type: 'square', f: 200, spread: 0.36, syl: 0.062, gain: 0.03, filter: 1500 },
+  // Hank, on his loudhailer in the cockpit's chase: big and gruff
+  hank: { type: 'sawtooth', f: 98, spread: 0.2, syl: 0.08, gain: 0.05, filter: 800 },
 };
 
 // Someone says a line. Returns about how long it takes, in ms.

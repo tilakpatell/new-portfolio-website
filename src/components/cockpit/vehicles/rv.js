@@ -9,9 +9,12 @@
 //
 // Going (click the wheel or the shifter): into drive, the RV pulls away and
 // keeps gathering speed while the day goes by in a time-lapse: the sun sets,
-// the stars come out, the headlights and the gauges come on. At the last the
-// road falls away and the RV rises into the night sky, and the peak is a fade
-// through the dark.
+// the stars come out, the headlights and the gauges come on. At dusk a pair
+// of wings swings out of the RV's sides (you turn to watch the left one) and
+// the jets under them catch; the road falls away and the RV rises into the
+// night sky. Then you see it from outside, climbing for space with Walt's
+// blue crystals spilling out of the back and Hank's SUV after it, lights
+// going, and the peak is a fade through the dark into the universe.
 //
 // The cab's floor is y = 0, a metre above the road; you sit on the left,
 // looking down −z. Units are metres.
@@ -72,7 +75,7 @@ const PUSH = 1.8;
 
 export function prefetch() {
   prefetchCrew(['jesse', 'jesse-sit', 'walt', 'walt-idle']);
-  for (const url of [WING_URL, FLYER_URL]) fetch(url).catch(() => {});
+  for (const url of [WING_URL, FLYER_URL, SUV_URL]) fetch(url).catch(() => {});
 }
 
 // How far you've gone and how fast, `lt` ms into the launch; `k` is how far
@@ -1410,8 +1413,22 @@ function flightAt(u) {
   const d = 32 * u ** 1.4;
   return { x: 1.6 + 0.43 * d, y: -3 + 0.3 * d, z: -11 - 0.88 * d, yaw: -0.45, pitch: 0.25, roll: -0.12 - 0.08 * u };
 }
+// Hank, after you: his SUV (Albuquerque's, its front at −x, 5 m long and
+// standing on y = 0) behind the RV, off to its left and below, and gaining,
+// `u` as above, from the RV; it comes up from behind you, closes, then the
+// RV pulls away
+function chaseAt(u) {
+  const close = smooth((u - 0.05) / 0.5);
+  return { x: -10 + 2.6 * close, y: -5 + 2.6 * smooth(u / 0.5), z: 19 - 9.5 * close + 16 * smooth((u - 0.78) / 0.22) };
+}
+// the blue crystals: how many spill out, and where from on the RV (its back
+// door, from the RV's middle, in metres)
+const CRYSTALS = 70;
+const DOOR = [0.4, -0.6, 3.8];
+
 const WING_URL = '/models/cockpit/rv-wing.glb';
 const FLYER_URL = '/models/universe/rv-wings.glb';
+const SUV_URL = '/models/albuquerque/world/suv.glb';
 
 function loadModel(url) {
   const l = new GLTFLoader();
@@ -1495,6 +1512,80 @@ function wingPair(model) {
   };
 }
 
+// Hank's SUV, turned to −z, its lights on the roof (red and blue, taking
+// turns) and its tail lights on.
+function chaserOf(model) {
+  const group = new THREE.Group();
+  model.rotation.y = -Math.PI / 2;
+  model.position.y = -0.95;
+  group.add(model);
+  const mats = selfLit(model);
+  const bar = [0xff2a2a, 0x2a6bff].map((c, i) => {
+    const s = glowSprite(c, 3.2, 0);
+    s.position.set(i ? 0.45 : -0.45, 1.05, 0.3);
+    group.add(s);
+    return s;
+  });
+  for (const sx of [-1, 1]) {
+    const tail = glowSprite(0xff3020, 0.7, 0.8);
+    tail.position.set(sx * 0.85, 0.1, 2.5);
+    group.add(tail);
+  }
+  group.visible = false;
+  return {
+    group,
+    set(t) {
+      const a = Math.sin(t * 19) > 0;
+      bar[0].material.opacity = a ? 1 : 0.1;
+      bar[1].material.opacity = a ? 0.1 : 1;
+      for (const m of mats) m.emissiveIntensity = 0.12;
+    },
+  };
+}
+
+// Walt's blue crystals, tumbling out of the RV's back door as it climbs: each
+// let go at its own moment where the RV was then, drifting back past you
+// while the RV pulls away (all worked out from the moment, so a jump or a
+// skip shows them where they'd be). One instanced mesh.
+function crystals(n) {
+  const geo = new THREE.OctahedronGeometry(0.11, 0).scale(0.7, 1.5, 0.7);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x8fdcff, emissive: 0x2a9cff, emissiveIntensity: 1.4, roughness: 0.15, metalness: 0.1, toneMapped: false });
+  const mesh = new THREE.InstancedMesh(geo, mat, n);
+  mesh.frustumCulled = false;
+  const r = rng(83);
+  const each = Array.from({ length: n }, (_, i) => ({ at: 0.04 + (0.8 * i) / n + r() * 0.01, v: [(r() - 0.5) * 3, (r() - 0.6) * 2, 5 + r() * 7], spin: [r() * 6, r() * 6, r() * TAU], size: 0.7 + r() * 0.9 }));
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const pos = new V3();
+  const sc = new V3();
+  mesh.visible = false;
+  return {
+    mesh,
+    // u: through the shot; secs: how long the shot is; from(at) → where the
+    // door was at `at`
+    set(u, secs, from) {
+      each.forEach((c, i) => {
+        const age = (u - c.at) * secs;
+        if (age < 0) {
+          sc.setScalar(0);
+          m.compose(pos.set(0, 0, 0), q.identity(), sc);
+        } else {
+          from(c.at, pos);
+          pos.x += c.v[0] * age;
+          pos.y += c.v[1] * age;
+          pos.z += c.v[2] * age;
+          e.set(c.spin[2] + c.spin[0] * age, c.spin[1] * age, 0);
+          sc.setScalar(c.size * Math.min(1, age * 6));
+          m.compose(pos, q.setFromEuler(e), sc);
+        }
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+    },
+  };
+}
+
 // The whole winged RV from outside: centred, its cab turned to −z,
 // FLYER.length long, with its jets and its wingtips' lights.
 function flyerOf(model) {
@@ -1549,6 +1640,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   // RV just drives off into the night)
   const wingP = loadModel(WING_URL);
   const flyerP = loadModel(FLYER_URL);
+  const suvP = loadModel(SUV_URL);
   const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.6, 0.98, 0.9], face: Math.PI + 0.6 });
 
   const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone, sitClip, idleClip] = await Promise.all([
@@ -2491,13 +2583,33 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       outside.add(flyer.group);
     }
   });
+  let hank = null;
+  suvP.then((m) => {
+    if (!m) return;
+    if (gone) disposeTree(m);
+    else {
+      hank = chaserOf(m);
+      outside.add(hank.group);
+    }
+  });
+  const blue = crystals(small ? Math.round(CRYSTALS * 0.6) : CRYSTALS);
+  outside.add(blue.mesh);
   // moonlight on the RV from outside, at the last (none until then)
   const flyerLight = new THREE.DirectionalLight(0xaabbe8, 0);
   flyerLight.position.set(EYE[0] - 4, EYE[1] + 10, EYE[2] + 6);
   flyerLight.target.position.set(EYE[0], EYE[1] - 6, EYE[2] - 30);
   outside.add(flyerLight, flyerLight.target);
-  // what's said on the way, from vehicles.js: as the wings come out, and as
-  // the RV leaves the road and is seen from outside
+  // where the RV's back door was, `u` through the shot from outside (from
+  // your eye's frame, into the scene's)
+  const doorOff = new V3();
+  const doorTurn = new THREE.Euler();
+  const doorAt = (u, into) => {
+    const f = flightAt(u);
+    doorOff.set(...DOOR).applyEuler(doorTurn.set(f.pitch, f.yaw, f.roll, 'YXZ'));
+    return into.set(EYE[0] + f.x, EYE[1] + f.y, EYE[2] + f.z).add(doorOff);
+  };
+  // what's said on the way, from vehicles.js: as the wings come out, as the
+  // RV leaves the road, and as Hank comes after it
   const LINES = vehicleById('rv').lines;
   let cues = null;
   let saidTo = 0;
@@ -2628,6 +2740,19 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
           flyer.set(1, t);
         }
       }
+      // the crystals out of the back, and Hank after them
+      blue.mesh.visible = out >= 0;
+      if (out >= 0) blue.set(out, (p.peak - p.cut) / 1000, doorAt);
+      if (hank) {
+        hank.group.visible = out >= 0;
+        if (out >= 0) {
+          const f = flightAt(out);
+          const c = chaseAt(out);
+          hank.group.position.set(EYE[0] + f.x + c.x, EYE[1] + f.y + c.y, EYE[2] + f.z + c.z);
+          hank.group.rotation.set(0.18, f.yaw * 0.6, 0.06 * Math.sin(t * 2.3), 'YXZ');
+          hank.set(t);
+        }
+      }
       flyerLight.intensity = out >= 0 ? 1.3 : 0;
 
       // ── what's said ──
@@ -2636,7 +2761,9 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
           [p.wings + 200, LINES.wings[0]],
           [p.wings + 2700, LINES.wings[1]],
           [p.lift + 100, LINES.lift[0]],
-          [p.cut + 300, LINES.lift[1]],
+          [p.cut + 250, LINES.chase[0]],
+          [p.cut + 1500, LINES.chase[1]],
+          [p.cut + 2600, LINES.chase[2]],
         ];
         for (const l of due(cues, saidTo, lt)) say?.(l);
         saidTo = lt;

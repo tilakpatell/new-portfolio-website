@@ -13,13 +13,14 @@
 //
 // The RV has beats of its own on the long drive: at dusk its wings swing out
 // of its sides (`wings`), the jets under them light (`jets`), it lifts off
-// the road (`lift`), and the view cuts outside to watch it fly off (`cut`).
+// the road (`lift`), and the view cuts outside to watch it climb for space
+// with Hank after it (`cut`).
 
 export const PLANS = {
   falcon: { spool: 1000, peak: 3050, end: 3700 },
   xwing: { spool: 800, peak: 2850, end: 3500 },
   cruiser: { spool: 1500, peak: 3300, end: 3950 },
-  rv: { spool: 1100, wings: 3800, jets: 5700, lift: 7900, cut: 9900, peak: 11700, end: 12450 },
+  rv: { spool: 1100, wings: 3800, jets: 5700, lift: 7900, cut: 9300, peak: 12600, end: 13350 },
 };
 
 export const plan = (id) => PLANS[id] ?? PLANS.falcon;
