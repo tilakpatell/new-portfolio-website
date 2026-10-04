@@ -154,7 +154,7 @@ Needs the Meshy MCP tools, which load only when a session starts: run it in a fr
 - Produces:
   - `PROPS = { drumBase, drumBlue, hammer }`: `{ url, height, spout?: [x, y, z] }`, the spout in the model's frame (Walt's hand and the pour read it).
   - `loadProps(renderer) -> Promise<{ [name]: THREE.Object3D | null }>`; a model that fails gives null and the scene keeps its procedural prop.
-- Generation (Meshy text-to-3D, low poly, PBR): a white 55-gallon plastic chemical drum with a spout and a blank label band; the same in blue; a ball-peen hammer with a worn wooden handle. Each under 2,000 triangles and 300 KB after `gltf-transform optimize --compress meshopt --texture-size 512`.
+- Source, in order: Meshy's free library (meshy.ai/free-3d-models; community models marked CC0 on their page) first, then Meshy text-to-3D for what it lacks. Wanted: a white 55-gallon plastic chemical drum with a spout and a blank label band; the same in blue; a ball-peen hammer with a worn wooden handle. Library models run to hundreds of thousands of triangles: decimate (`gltf-transform simplify`, or Meshy remesh) to under 2,000 triangles and 300 KB after `gltf-transform optimize --compress meshopt --texture-size 512`. Record each model's page, author and license in `public/cc0/README.md`.
 
 - [ ] **Step 1:** Test `it('ships every prop the scene loads')` (each `PROPS[name].url` exists under `public/` and is under 300 KB) and `it('puts the spout on the drums')`. Run; FAIL.
 - [ ] **Step 2:** Generate with Meshy, preview each, regenerate what reads wrong; optimize; place the spouts.

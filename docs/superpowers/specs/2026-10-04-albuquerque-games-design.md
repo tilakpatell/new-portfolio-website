@@ -23,8 +23,8 @@ Hero props (decided 2026-10-04): the props Walt handles and the rooms'
 signature pieces are generated with Meshy (the user's account, through its
 MCP server): the base and blue drums and the hammer in PR 1; the Madrigal
 drums, gas mask, propane tank, hazmat suits on hooks and the reactor in
-PR 2. They are licensed to the user under their Meshy plan, not CC0, and
-are listed as such in `public/cc0/README.md`. Each keeps its procedural
+PR 2. Generated ones are licensed to the user under their Meshy plan, not CC0, and
+are listed as such in `public/cc0/README.md`. Meshy's free library comes first: its community models are marked CC0 on their pages (recorded per model); only what it lacks is generated. Each keeps its procedural
 version as the fallback if the model fails to load.
 
 ## Success criteria
