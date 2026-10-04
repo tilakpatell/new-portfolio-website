@@ -6,6 +6,7 @@ import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
 import { CHAPTERS, ISLES, TIDE, UPS, bearing, choose, fitted, newGame, progress, step } from './rules';
 import { autopilot } from './pilot';
+import '../fonts.css';
 import './tide.css';
 
 // Dead man's tide: the Pirates of the Caribbean game, in WebGL only (behind
@@ -29,10 +30,12 @@ const buzz = (ms) => {
 const BEST = 'tp-tide-best';
 const PREFS = 'tp-tide-prefs';
 const LEVELS = Object.keys(TIDE.levels);
-const LEVEL_NOTE = { easy: 'A stout hull and a kind sea', normal: 'As the tale is told', hard: 'The navy shoots straight' };
+const LEVEL_NOTE = { easy: 'A kind sea', normal: 'As it’s told', hard: 'No quarter' };
 const SAILS = ['Furled', 'Half sail', 'Full sail'];
 const LOOK = 1.55; // how far round the camera swings to face a broadside (radians)
-const LOST_LINE = ['The navy has you, a mile out of port.', 'The gold stays on the sea bed, and so do you.', 'The fort’s mortars found the range.', 'The cursed ship takes another crew.', 'The beast drags her under.'];
+const LOST_LINE = ['The navy has the Pearl, a mile out of port.', 'The gold stays on the sea bed, and so does she.', 'The fort’s mortars found the range.', 'The Dutchman takes another crew. A hundred years before the mast.', 'The beast drags the Pearl under, captain and all.'];
+// what Jack has to say when one of theirs goes down
+const SUNK_LINE = ['Sunk', 'Savvy?', 'Take what you can', 'Give nothing back'];
 
 const KEYS = {
   left: ['ArrowLeft', 'a', 'A'],
@@ -206,7 +209,7 @@ function Game({ soft, fail }) {
           }
         } else if (e.type === 'sunk') {
           play('sinking');
-          if (e.kind !== 'pearl') say(e.kind === 'fort' ? 'The fort is silenced' : e.kind === 'kraken' ? 'The beast is dead' : e.kind === 'ghost' ? 'Back to the deep with her' : 'Sunk', e.kind === 'sloop' || e.kind === 'navy' ? 'good' : 'boss');
+          if (e.kind !== 'pearl') say(e.kind === 'fort' ? 'The fort is silenced' : e.kind === 'kraken' ? 'The beast is dead' : e.kind === 'ghost' ? 'Back to the locker with her' : SUNK_LINE[g.stats.sunk % SUNK_LINE.length], e.kind === 'sloop' || e.kind === 'navy' ? 'good' : 'boss');
         } else if (e.type === 'pickup') play(e.kind === 'chest' ? 'coin' : 'rum');
         else if (e.type === 'boom' || e.type === 'slam') play('boom', near(e));
         else if (e.type === 'mortar') play('cannon', 0.35);
@@ -342,7 +345,7 @@ function Game({ soft, fail }) {
       }
       if (!g) return;
       try {
-        gl.current.render(g, ms, { look: look.current, side: Math.abs(look.current) > 0.5 ? Math.sign(look.current) : 0, calm, attract, wide: attract });
+        gl.current.render(g, ms, { look: look.current, side: Math.abs(look.current) > 0.5 ? Math.sign(look.current) : 0, calm, attract, wide: attract, deck: attract });
       } catch (err) {
         if (import.meta.env.DEV) console.error(err);
         fail('failed');
@@ -694,7 +697,7 @@ function Game({ soft, fail }) {
                 <>
                   <p className="dt-kicker">{r.won ? 'The voyage is done' : `Lost in chapter ${r.chapter + 1}: ${CHAPTERS[r.chapter].name}`}</p>
                   <p className="dt-title">{r.won ? 'The sea is yours.' : 'Davy Jones has her.'}</p>
-                  <p className="dt-sub">{r.won ? 'The navy sunk, the fort silenced, the cursed ship sent down and the kraken with it.' : LOST_LINE[r.chapter]}</p>
+                  <p className="dt-sub">{r.won ? 'The navy sunk, the fort silenced, the Dutchman sent down and the kraken with it. Now, bring me that horizon.' : LOST_LINE[r.chapter]}</p>
                   <dl className="dt-stats">
                     <div>
                       <dt>Gold</dt>
@@ -723,7 +726,7 @@ function Game({ soft, fail }) {
                 <>
                   <p className="dt-kicker">A voyage in five chapters</p>
                   <p className="dt-title">Dead man’s tide</p>
-                  <p className="dt-sub">You have the fastest ship in the Caribbean and the navy wants her back. Sink the patrol, take the gold, silence the fort, and then see what comes up from the deep.</p>
+                  <p className="dt-sub">You are Captain Jack Sparrow, the Black Pearl is yours again, and the navy wants her back. Sink the patrol, take the gold, silence the fort, and then see what Davy Jones sends up from the deep.</p>
                 </>
               )}
               <div className="g3-seg mt-5" role="group" aria-label="Difficulty">

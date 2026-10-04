@@ -4,12 +4,13 @@
 // from it can repeat its textures without uploading them again.
 
 import * as THREE from 'three';
+import { budget } from './device';
 
 export function createLibrary(renderer) {
   const sets = new Map();
   const made = [];
   const loader = new THREE.TextureLoader();
-  const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const aniso = Math.min(budget().aniso, renderer.capabilities.getMaxAnisotropy());
 
   const one = (name, file, srgb) =>
     new Promise((resolve, reject) => {

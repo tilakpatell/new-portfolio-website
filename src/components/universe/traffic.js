@@ -1,14 +1,14 @@
 // Traffic: everyone else out here. Which traffic depends on who you fly
 // with: Star Wars for Luke's X-wing and Han's Falcon (TIE fighters in
 // twos and threes, interceptors, X-wings in formation, an Imperial shuttle,
-// Boba Fett's Slave I, and now and then a Star Destroyer or a Republic attack
-// cruiser high over the whole map), Rick and Morty for the cruiser (Galactic
+// Boba Fett's Slave I, and now and then a Star Destroyer high over the whole
+// map), Rick and Morty for the cruiser (Galactic
 // Federation patrols and a Federation cruiser, Gromflomite bugs, Mr. Meeseeks
 // floating by, Birdperson); with no ship picked, a quieter mix of both.
-// trafficModels.js builds most of them; the X-wings, Slave I and the
-// attack cruiser are the site owner's Meshy models (scripts/build-universe.py),
-// loaded the first time they're wanted (the X-wings are built until then;
-// the other two just don't fly until they've come).
+// trafficModels.js builds most of them; the X-wings and Slave I are the site
+// owner's Meshy models (scripts/build-universe.py), loaded the first time
+// they're wanted (the X-wings are built until then; Slave I just doesn't fly
+// until it's come).
 //
 // Everyday traffic flies lanes between the places, well above or below the
 // disc (lanes.js), so it never meets a planet or you. Every so often while
@@ -42,14 +42,12 @@ const TYPES = {
   meeseeks: { size: 0.3, speed: 1.3, crew: [1, 3], weight: 1.4, flyby: true },
   birdperson: { size: 0.4, speed: 4.2, crew: [1, 1], weight: 1, flyby: true },
   slave1: { size: 0.55, speed: 6, crew: [1, 1], weight: 0.9, flyby: true },
-  venator: { size: 8, speed: 1, crew: [1, 1], weight: 0.5, big: true },
 };
-const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1', 'venator'], rickmorty: TRAFFIC.rickmorty };
+const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1'], rickmorty: TRAFFIC.rickmorty };
 // the ones that are models, and which way their noses point (to turn to +z)
 const MODELS = {
   xwing: { url: '/models/universe/xwing-traffic.glb', nose: 0 },
   slave1: { url: '/models/universe/slave1.glb', nose: 0 },
-  venator: { url: '/models/universe/venator.glb', nose: Math.PI / 2 },
 };
 const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
 const FADE = 1.6; // map units over which a ship grows in at the start of its lane and goes at the end

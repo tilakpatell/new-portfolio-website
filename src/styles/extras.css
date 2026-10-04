@@ -1906,27 +1906,37 @@ html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
 .gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #22c98a 22%, transparent); }
 @media (max-width: 639px) { .gbr-hold { width: 100%; min-height: 3.25rem; } .gbr-hud { font-size: 0.7rem; left: 0.5rem; top: 0.5rem; } .gbr-card { padding: 0.8rem 0.9rem 0.9rem; } .gbr-card-text { font-size: 0.8rem; } }
 @media (prefers-reduced-motion: reduce) { .gbr-stage[data-open] .gbr-vortex::before { animation: none; } }
+/* the Decepticons' space bridge: the same vortex, in purple and violet */
+.gbr[data-side='decepticon'] .gbr-ring { border-color: rgba(206, 170, 255, 0.5); }
+.gbr[data-side='decepticon'] .gbr-vortex { box-shadow: 0 0 22px 6px rgba(150, 82, 255, 0.6), inset 0 0 18px rgba(255, 255, 255, 0.6); }
+.gbr[data-side='decepticon'] .gbr-vortex::before { background: repeating-conic-gradient(from 0deg, #b77bff 0deg 22deg, #4a1c8c 22deg 50deg, #ead9ff 50deg 64deg, #6b2fa0 64deg 90deg); }
+.gbr[data-side='decepticon'] .gbr-vortex::after { background: radial-gradient(closest-side, #fbf6ff 0%, rgba(214, 180, 255, 0.85) 22%, rgba(139, 77, 255, 0.25) 55%, rgba(58, 18, 104, 0.55) 100%); }
+.gbr[data-side='decepticon'] .gbr-hud b { color: #d6b8ff; }
+.gbr[data-side='decepticon'] .gbr-card { border-color: rgba(190, 150, 255, 0.4); }
+.gbr[data-side='decepticon'] .gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #8b4dff 24%, transparent); }
 
 /* The Iacon database: a console, the glyphs, the key, and the vault */
-.iacon { display: grid; gap: 1.5rem; }
+.iacon { --iacon-ok: #22c98a; --iacon-rival: linear-gradient(90deg, #7b3fe4, #ff4d6d); display: grid; gap: 1.5rem; }
+/* for the Decepticons: relics in purple, and Teletraan-1 decrypting in Autobot red and blue */
+.iacon[data-side='decepticon'] { --iacon-ok: #8b4dff; --iacon-rival: linear-gradient(90deg, #1f4fa8, #c8102e); }
 @media (min-width: 1024px) { .iacon { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; } }
 .iacon-console { padding: clamp(1.1rem, 0.9rem + 1vw, 1.75rem); }
 .iacon-bar { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
 .iacon-body { padding-top: 1.25rem; }
 .iacon-glyphs { min-height: 1.3em; font-family: 'Cybertron Script', var(--font-mono); font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3rem); line-height: 1.25; letter-spacing: 0.04em; color: var(--accent-text); overflow-wrap: anywhere; }
 .iacon-decrypt { height: 6px; margin-top: 1rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); }
-.iacon-decrypt span { display: block; height: 100%; background: linear-gradient(90deg, #7b3fe4, #ff4d6d); transform-origin: left; transition: transform 0.1s linear; }
+.iacon-decrypt span { display: block; height: 100%; background: var(--iacon-rival); transform-origin: left; transition: transform 0.1s linear; }
 .iacon-options { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .iacon-option { min-height: 2.9rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: var(--r-btn, 10px); background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-align: left; line-height: 1.25; transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
 .iacon-option:hover:not(:disabled) { border-color: var(--accent); }
 .iacon-option:active:not(:disabled) { transform: translateY(1px); }
 .iacon-option[data-wrong] { opacity: 0.5; text-decoration: line-through; animation: iacon-shake 0.3s ease; }
-.iacon-option[data-right] { border-color: #22c98a; background: color-mix(in srgb, #22c98a 16%, var(--surface)); }
+.iacon-option[data-right] { border-color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 16%, var(--surface)); }
 .iacon-option:disabled:not([data-right]) { cursor: default; }
 @keyframes iacon-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .iacon-result { min-height: 3.5rem; margin-top: 1rem; }
 .iacon-found { display: flex; gap: 0.85rem; align-items: flex-start; }
-.iacon-found-icon { flex: none; width: 40px; height: 40px; padding: 7px; border-radius: 10px; color: #22c98a; background: color-mix(in srgb, #22c98a 14%, transparent); }
+.iacon-found-icon { flex: none; width: 40px; height: 40px; padding: 7px; border-radius: 10px; color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 14%, transparent); }
 .iacon-keybar { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .iacon-key { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 0.4rem; margin-top: 0.85rem; }
 .iacon-key li { display: grid; place-items: center; gap: 0.1rem; padding: 0.35rem 0.2rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
@@ -1934,9 +1944,9 @@ html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
 .iacon-key-letter { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
 .iacon-relics { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
 .iacon-relic { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--muted); font-size: 0.85rem; line-height: 1.25; }
-.iacon-relic[data-have] { border-style: solid; border-color: color-mix(in srgb, #22c98a 55%, var(--border)); color: var(--text); background: color-mix(in srgb, #22c98a 8%, var(--surface)); }
+.iacon-relic[data-have] { border-style: solid; border-color: color-mix(in srgb, var(--iacon-ok) 55%, var(--border)); color: var(--text); background: color-mix(in srgb, var(--iacon-ok) 8%, var(--surface)); }
 .iacon-relic-icon { flex: none; width: 26px; height: 26px; }
-.iacon-relic[data-have] .iacon-relic-icon { color: #22c98a; }
+.iacon-relic[data-have] .iacon-relic-icon { color: var(--iacon-ok); }
 .iacon-relic-unknown { font-family: 'Cybertron Script', var(--font-mono); font-size: 1rem; letter-spacing: 0.03em; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .iacon-option[data-wrong] { animation: none; } }
 .office-gif { position: relative; }
@@ -1986,6 +1996,81 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
 .space-scope[data-arrived] .gauntlet-stage { animation: arrive 1s ease both; }
 @keyframes arrive { from { opacity: 0; transform: scale(0.9); } }
 @media (prefers-reduced-motion: reduce) { .tesseract, .hulk-stage[data-hulk] { animation: none; } .portal-flash { animation-duration: 0.4s; } }
+
+/* Avengers HQ, the look: the compound at night. While the page is open (it
+   sets data-world on <html>) and the Stark theme is on, the whole site goes
+   dark: a night sky lit from the compound below, Stark's HUD grid, steel and
+   Iron Man red, the A in its ring behind the title, HUD brackets on the map
+   and on every game's screen. Pin another theme and that theme wins. */
+:root[data-world='avengers'][data-theme='stark'] {
+  --bg: #070a10; --bg-deep: #05070c; --surface: #0d131c; --surface-2: #141c27; --border: #1d2734; --border-strong: #3b4a5c;
+  --text: #f3f5f8; --text-body: #c9d1dc; --muted: #8b97a8;
+  --accent: #e0322f; --accent-text: #ff6f61; --btn-bg: #c8161d; --btn-ink: #ffffff; --saber: #7fdcff; --nav-bg: #05070c;
+  --route-plan: #2b3644; --shadow-card: 0 30px 60px -40px rgba(0, 0, 0, 0.9);
+  --hud: #7fdcff;
+  color-scheme: dark;
+}
+.hq-sky, .hq-feed, .hq-rule, .hq-hero-mark { display: none; }
+.hq-page { isolation: isolate; }
+:root[data-world='avengers'][data-theme='stark'] .hq-sky { display: block; position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.hq-sky-glow {
+  position: absolute; inset: 0 0 auto; height: min(1600px, 100%);
+  background:
+    radial-gradient(55% 45% at 70% 0%, rgba(64, 132, 230, 0.3), transparent 72%),
+    radial-gradient(38% 30% at 10% 14%, rgba(200, 22, 29, 0.13), transparent 72%),
+    radial-gradient(60% 38% at 40% 55%, rgba(127, 220, 255, 0.05), transparent 72%);
+}
+.hq-sky-grid {
+  position: absolute; inset: 0 0 auto; height: min(1400px, 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0L28 8V24L14 32L0 24V8ZM14 32V48' fill='none' stroke='%237fdcff' stroke-opacity='.2' stroke-width='.8'/%3E%3C/svg%3E") 0 0 / 35px 60px;
+  -webkit-mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+  mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+}
+.hq-sky-stars { position: absolute; inset: 0; opacity: 0.32; }
+
+/* the hero: a live feed of the compound, the A behind the steel title */
+:root[data-world='avengers'][data-theme='stark'] .hq-feed { display: flex; justify-content: space-between; gap: 1rem; margin: 0 0 0.75rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.hq-feed span { display: inline-flex; align-items: center; }
+.hq-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 0.6em; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 8px #ff3b30; animation: hq-live 1.6s ease-in-out infinite; }
+@keyframes hq-live { 50% { opacity: 0.35; } }
+.hq-hud { position: relative; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::before,
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::after {
+  content: ''; position: absolute; z-index: 3; width: 24px; height: 24px; border: 0 solid var(--hud); opacity: 0.7; pointer-events: none;
+}
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::before,
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::after { content: none; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game)::before { top: -8px; left: -8px; border-width: 2px 0 0 2px; }
+:root[data-world='avengers'][data-theme='stark'] .hq-hud::after { bottom: -8px; right: -8px; border-width: 0 2px 2px 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game::after { top: -8px; right: -8px; border-width: 2px 2px 0 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game { position: relative; }
+/* the rail's little map is clipped, so its brackets sit inside it */
+:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::before { top: 6px; left: 6px; width: 14px; height: 14px; border-width: 2px 0 0 2px; }
+:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::after { bottom: 6px; right: 6px; width: 14px; height: 14px; border-width: 0 2px 2px 0; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-map, .hq-screen, .reactor-stage, .roof-stage, .floor-stage, .gauntlet-stage) { border-color: rgba(127, 220, 255, 0.16); }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hero-map, .hq-screen) { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 40px 100px -45px rgba(64, 132, 230, 0.55); }
+:root[data-world='avengers'][data-theme='stark'] .hq-hero-mark { display: block; position: absolute; z-index: -1; top: 50%; right: -2rem; width: min(500px, 78%); translate: 0 -54%; opacity: 0.075; pointer-events: none; }
+:root[data-world='avengers'][data-theme='stark'] .hq-page .eyebrow { color: var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .hq-page :is(.display, .title) {
+  background: linear-gradient(180deg, #ffffff 0%, #e2e7ee 40%, #8e9aab 53%, #e8edf2 72%, #a3aebb 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-world='avengers'][data-theme='stark'] .hq-steel { filter: drop-shadow(0 4px 24px rgba(64, 132, 230, 0.28)); }
+:root[data-world='avengers'][data-theme='stark'] .hq-rule { display: block; width: 72px; height: 3px; margin-top: 1.1rem; border-radius: 2px; background: linear-gradient(90deg, #c8161d, #e3b450); box-shadow: 0 0 14px rgba(224, 50, 47, 0.6); }
+
+/* the tour: each stop marked off like a HUD readout */
+:root[data-world='avengers'][data-theme='stark'] .tower-floor-badge { border-color: rgba(127, 220, 255, 0.35); border-radius: 3px; background: rgba(127, 220, 255, 0.06); color: var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor { position: relative; padding-top: 2.25rem; }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(127, 220, 255, 0.45), rgba(127, 220, 255, 0.08) 55%, transparent); }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor::after { content: ''; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--hud); box-shadow: 0 0 10px var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .hq-rail-list li[data-on] span { box-shadow: 0 0 10px rgba(224, 50, 47, 0.7); }
+:root[data-world='avengers'][data-theme='stark'] .btn-primary { box-shadow: 0 8px 24px -10px rgba(200, 22, 29, 0.8); }
+:root[data-world='avengers'][data-theme='stark'] .btn-ghost { background: rgba(13, 19, 28, 0.7); }
+/* Titan's space fades in and out of the night instead of starting at an edge */
+:root[data-world='avengers'][data-theme='stark'] .space-scope {
+  background: linear-gradient(var(--bg), transparent 140px, transparent calc(100% - 140px), var(--bg)), radial-gradient(70% 60% at 30% 30%, rgba(108, 47, 160, 0.4), transparent 70%), radial-gradient(60% 60% at 80% 80%, rgba(40, 60, 140, 0.35), transparent 70%), #05040b;
+}
+@media (prefers-reduced-motion: reduce) { .hq-live-dot { animation: none; } }
 
 /* ─── The scroll bar, per theme ──────────────────────────────────────────── */
 /* Sting: an elven blade that glows blue (orange in Mordor) */
@@ -2161,6 +2246,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-map { position: relative; aspect-ratio: 720 / 480; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #2c4a2b; box-shadow: var(--shadow-card); }
 .hq-base, .hq-live { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .hq-live { pointer-events: none; }
+.hq-3d { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.hq-3d[data-on] { opacity: 1; }
+.hq-map[data-3d] .hq-base { visibility: hidden; transition: visibility 0s 1s; }
 .hq-live .hq-pin[data-pick] { pointer-events: auto; cursor: pointer; }
 .hq-pin { transform: translate(var(--px), var(--py)) scale(var(--ps, 1.3)); }
 .hq-map[data-compact] { --ps: 2.4; }
@@ -2170,6 +2258,8 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-pin[data-pick]:hover .hq-pin-body { fill: #ffe7a3; }
 .hq-pin[data-on] .hq-pin-body { fill: var(--btn-bg); stroke: #ffffff; }
 .hq-pin[data-on] .hq-pin-num { fill: var(--btn-ink); }
+.hq-pin-stone { fill: none; stroke: var(--glow); stroke-width: 2.6; filter: drop-shadow(0 0 3px var(--glow)); }
+.hq-rail-stone { width: 8px; height: 8px; margin-left: auto; }
 .hq-pin-pulse { fill: none; stroke: var(--btn-bg); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: hq-pulse 1.6s ease-out infinite; }
 @keyframes hq-pulse { from { transform: scale(0.8); opacity: 0.9; } to { transform: scale(2.3); opacity: 0; } }
 .hq-fly { opacity: 0; animation: hq-fly 20s linear infinite; }
@@ -2276,6 +2366,11 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 /* Walt's Metherria: always the lab's own dark, whatever the site theme */
 .wm { --wm-bg: #15191b; --wm-panel: #1f2629; --wm-line: #384246; --wm-ink: #eef2f4; --wm-dim: #a9b4ba; --wm-hi: #f2c318; --wm-blue: #4fb8ea; --wm-good: #7ef0a0; --wm-bad: #ff8a7a; position: relative; overflow: hidden; border: 1px solid var(--wm-line); border-radius: var(--r-card); background: var(--wm-bg); color: var(--wm-ink); box-shadow: var(--shadow-card); outline: none; user-select: none; -webkit-user-select: none; }
 .wm[data-place='rv'] { --wm-bg: #1d1915; --wm-panel: #2a241e; --wm-line: #4a3f33; --wm-dim: #bbae9b; }
+/* Face Off at Casa Tranquila: the rest home's beige and teal */
+.wm[data-place='casa'] { --wm-bg: #1b1d1c; --wm-panel: #252a28; --wm-line: #3d4642; --wm-dim: #b2bab4; --wm-hi: #e9c46a; }
+.ct-word { color: var(--wm-hi); letter-spacing: 0.12em; }
+.ct-miss { color: var(--wm-bad); }
+.ct-ding { min-width: 9rem; }
 .wm .btn-primary { background: var(--wm-hi); color: #1a1708; }
 .wm .btn-primary:hover { background: #ffd43b; }
 .wm .btn-ghost { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.3); color: var(--wm-ink); }
@@ -2511,9 +2606,13 @@ html[data-mode='dark'] .me-atlas:not([data-hub]) canvas[data-flat] { filter: blu
 .me-hub-section { min-height: 100svh; }
 .me-hub { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: calc(var(--nav-h) + 28px) 0 28px; pointer-events: none; transition: opacity 0.6s ease; }
 .me-hub[data-hidden] { opacity: 0; transition: none; }
+.me-hub-head { transition: opacity 0.6s ease, translate 0.6s ease; }
+.me-hub[data-roam] .me-hub-head { opacity: 0; translate: 0 -12px; }
+.me-hub[data-roam] .me-hub-head > * { pointer-events: none; }
 .me-hub[data-leaving] { opacity: 0; transition-duration: 0.4s; }
 .me-hub-head, .me-hub-foot { position: relative; z-index: 2; }
 .me-hub-head > *, .me-hub-foot > * { pointer-events: auto; }
+.me-hub-head > p, .me-hub-head > h1, .me-hint { pointer-events: none; }
 .me-hub-head { width: 100%; }
 @media (min-width: 1024px) {
   .me-hub-head { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
@@ -2529,8 +2628,22 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-hub-lead { margin-top: 0.9rem; max-width: 34ch; font-size: 1.06rem; line-height: 1.55; color: var(--me-ink-soft); }
 
 .me-pins { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; }
-.me-areas[data-area] { cursor: pointer; }
+.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
+.me-areas:active { cursor: grabbing; }
+.me-areas[data-area], .me-areas[data-who='true'] { cursor: pointer; }
+
+/* someone on the map speaks: a bubble over their head */
+.me-bubble { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; will-change: transform; }
+.me-bubble > div { position: absolute; left: 0; bottom: 12px; translate: -50% 0; display: grid; gap: 0.2rem; width: max-content; max-width: min(19rem, 80vw); padding: 0.65rem 0.85rem 0.7rem; border-radius: 16px; background: var(--me-veil); color: var(--me-ink); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; transform-origin: 50% 100%; }
+.me-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; translate: -50% 0; rotate: 45deg; background: inherit; border-radius: 3px; }
+.me-bubble b { font: 700 0.8rem/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; color: var(--me-wax); }
+.me-bubble span { font-size: 0.95rem; line-height: 1.4; }
+@keyframes me-bubble-in { from { opacity: 0; scale: 0.6; } }
+/* Frodo is at a place: go in */
+.me-prompt { position: fixed; left: 0; top: 0; z-index: 3; will-change: transform; }
+.me-prompt .btn { position: absolute; left: 0; bottom: 0; translate: -50% 0; white-space: nowrap; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+.me-prompt kbd { margin-left: 0.35rem; padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font-size: 0.72rem; opacity: 0.8; }
+.me-hint { width: 100%; margin: 0 0 0.25rem; font-size: 0.8rem; color: var(--me-ink-soft); }
 .me-hub[data-leaving] .me-areas, .me-hub[data-hidden] .me-areas { pointer-events: none; }
 .me-pin { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; will-change: transform; animation: me-pin-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(0.25s + var(--i) * 0.09s); }
 .me-hub[data-hidden] .me-pin { animation: none; opacity: 0; }
@@ -2578,10 +2691,14 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-onward-card { max-width: 40rem; padding: 1.6rem 1.75rem; border: 1px solid var(--border); border-radius: var(--r-card); background: color-mix(in srgb, var(--surface, var(--bg)) 82%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-card); }
 @media (max-width: 639px) {
   .me-pin-label b { font-size: 0.86rem; }
-  .me-route { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  .me-route li + li::before { display: none; }
-  .me-route li:last-child { grid-column: 1 / -1; }
-  .me-route button { width: 100%; min-height: 42px; }
+  .me-route { flex-wrap: nowrap; width: calc(100% + 2.5rem); margin: 0 -1.25rem; padding: 0.2rem 1.25rem; overflow-x: auto; scrollbar-width: none; }
+  .me-route::-webkit-scrollbar { display: none; }
+  .me-route li + li::before { width: 0.6rem; }
+  .me-route button { min-height: 40px; white-space: nowrap; }
+  .me-hint { font-size: 0.74rem; }
+  .me-hub-title { font-size: 2rem; }
+  .me-hub-lead { font-size: 0.95rem; }
+  .me-hub-foot { gap: 0.6rem; }
   .me-hub-head::before { inset: -3rem -1rem; width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .me-pin, .me-pin-dot::after { animation: none; } .me-atlas canvas { transition: none; } }
@@ -2658,3 +2775,10 @@ html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [da
 html.meeseeks-shake main { animation: meeseeks-shake 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
 @keyframes meeseeks-shake { 0%, 100% { transform: none; } 15% { transform: translateX(-8px) rotate(-0.6deg); } 30% { transform: translateX(7px) rotate(0.5deg); } 45% { transform: translateX(-5px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
 @media (prefers-reduced-motion: reduce) { html.meeseeks-shake main { animation: none; } }
+
+/* Titan in 3D, in the gauntlet's panel */
+.titan-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.titan-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.titan-canvas[data-on] { opacity: 1; }
+.titan-sockets { position: absolute; inset: 0; pointer-events: none; }
+.titan-socket { pointer-events: auto; }

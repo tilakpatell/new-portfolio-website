@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 // has scrolled to. Press the compass to want something else.
 const WANTS = [
   { label: 'to sink the navy', target: '#tide' },
-  { label: 'the gold', target: '#cb-voyage' },
-  { label: 'an argument about the code', target: '#cb-code' },
+  { label: 'the rum', target: '#cb-rum' },
+  { label: 'what’s in the jar', target: '#cb-jar' },
   { label: 'to go home', target: '.cb-home' },
 ];
 

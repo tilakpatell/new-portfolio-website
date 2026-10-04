@@ -155,5 +155,55 @@
   "saucer": {
     "image": "01a10862-d30e-758a-8f1f-fadcb55a0fda",
     "model": "01a10863-acfa-71cb-a592-4d30821167e5"
+  },
+  "optimus": {
+    "image": "01a108b8-b94a-76c7-8800-33f1c07091ab",
+    "model": "01a108c4-6d5e-73be-9494-3b46f6906e3a",
+    "rig": "01a108c8-7f73-7363-bff2-8ae8126deb2b",
+    "idle": "01a108c9-2038-73a2-b327-17d45b8a8443"
+  },
+  "optimus-truck": {
+    "image": "01a108b8-b934-721d-9562-8e3241916cc2",
+    "model": "01a108ba-2c16-7315-90b8-0e48653b89d9"
+  },
+  "bumblebee": {
+    "image": "01a108b8-b936-708d-8bee-8000b5f3612c",
+    "model": "01a108ba-2c0c-7516-8a59-5c6233dda9ca",
+    "rig": "01a108c8-7f73-7485-b217-9b1d5384b623",
+    "idle": "01a108c9-2039-7552-ad04-59be1dd7b204"
+  },
+  "bumblebee-car": {
+    "image": "01a108b8-b94b-7409-bae4-05786f831470",
+    "model": "01a108ba-2c12-70bd-85a2-aaae59df1fb1"
+  },
+  "vehicon": {
+    "image": "01a108b9-0c47-7374-ae03-3c890103941f",
+    "model": "01a108bc-b53a-7744-aa26-e6fafea3dc7c",
+    "rig": "01a108c8-7f6f-74b9-9c15-c88ec06b7a54",
+    "idle": "01a108c9-1fce-72d0-a140-acfe96090e05"
+  },
+  "vehicon-car": {
+    "image": "01a108b9-0c54-77dd-aaaf-45d4f05679f5",
+    "model": "01a108bd-04b6-70bb-8fb1-dfca5d51ecb0"
+  },
+  "seeker": {
+    "image": "01a108b9-0ce3-72e8-bd19-7d9af0cc9cbc",
+    "model": "01a108be-cc17-73d0-afb6-8d4fa6882d9b"
+  },
+  "starscream": {
+    "image": "01a108b9-1f5a-75ff-93a6-26925e6675e3",
+    "model": "01a108bf-2073-7252-9184-629352ba63dd"
+  },
+  "shockwave": {
+    "image": "01a108b9-5ea9-714c-b2f0-674d43b71b0b",
+    "model": "01a108bf-34ba-74c1-a0f3-c984c43abf53",
+    "rig": "01a108c8-7f6f-749b-b140-f1b5473f1762",
+    "idle": "01a108c9-2045-7236-9371-b67bd0cce785"
+  },
+  "megatron": {
+    "image": "01a108b9-71bd-7221-bb72-727fcdbfb13d",
+    "model": "01a108bf-4788-7377-a93b-e7e5b962d67b",
+    "rig": "01a108c8-d3e1-7141-a1f8-31495f918c11",
+    "idle": "01a108c9-4a7e-76a7-b509-92e3dab6d95f"
   }
 }

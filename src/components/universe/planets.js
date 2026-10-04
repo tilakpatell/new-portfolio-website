@@ -7,10 +7,12 @@
 // the things that make it that place, in orbit or on it: the Death Star's dish
 // and Alderaan, the sitar's strings, the One Ring, Cybertron's energon seams,
 // the Infinity Stones, the crystals and element tiles, the mug, the portal,
-// the travel routes. Seven models (Meshy's, plus Rick's cruiser from the
-// C-137 page and the Black Pearl) load after the map is up and are parked on
-// orbits; a planet whose model never arrives simply goes without. The sun is
-// sun.js's.
+// the travel routes. The models (the site owner's, from Meshy: the sitar,
+// Optimus Prime and Megatron, the gauntlet, the motorhome, the Game Boy,
+// Mario and a Piranha Plant, a Republic attack cruiser; plus Rick's cruiser
+// from the C-137 page and the Black Pearl) load after the map is up and are
+// parked on orbits or stood on the ground; a planet whose model never arrives
+// simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
@@ -214,6 +216,13 @@ const BUILDERS = {
     o.holder.add(moon);
     p.orbits.push(o);
     p.tick.push((t) => (moon.rotation.y = t * 0.4));
+
+    // a Republic attack cruiser further out (the site owner's Meshy model,
+    // when it comes; its nose is −x, so a quarter turn points it the way the
+    // orbit goes). Slave I is about too, as traffic (traffic.js)
+    const far = orbit(p.group, { radius: r * 1.75, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
+    p.orbits.push(far);
+    p.slots = { cruiser: { holder: far.holder, size: r * 0.62, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 } };
   },
 
   music(p, { u, T }) {
@@ -349,7 +358,7 @@ const BUILDERS = {
     const dx = rival.position.x - R;
     const dz = rival.position.z;
     p.slot = { holder: o.holder, size: r * 0.55, turn: [0, Math.atan2(dx, dz), 0], sway: 0.12 };
-    p.rival = { holder: rival, size: r * 0.58, turn: [0, Math.atan2(-dx, -dz), 0], sway: 0.12 };
+    p.slots = { rival: { holder: rival, size: r * 0.58, turn: [0, Math.atan2(-dx, -dz), 0], sway: 0.12 } };
   },
 
   marvel(p, { u, T }) {
@@ -668,21 +677,25 @@ const BUILDERS = {
     }
     blocks.count = i;
     p.body.add(blocks);
-    // Mario stands on top of it (turning with it, like the Little Prince on
-    // his asteroid), and a Piranha Plant pokes out of its pipe on the land
+    // Mario stands on top of it, like the Little Prince on his asteroid (on
+    // the pole, so the world turns under him and he stays facing you), and a
+    // Piranha Plant pokes out of its pipe on the land, going round with it
     const hero = new THREE.Group();
     hero.position.y = r + r * 0.16;
-    p.body.add(hero);
-    p.hero = { holder: hero, size: r * 0.34, turn: [0, 0, 0], sway: 0.35, hop: true };
+    p.group.add(hero);
     const plantAt = new THREE.Vector3(0.55, 0.62, 0.56).normalize();
     const plant = new THREE.Group();
     plant.position.copy(plantAt).multiplyScalar(r + r * 0.12);
     plant.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), plantAt);
     p.body.add(plant);
-    p.plant = { holder: plant, size: r * 0.26, turn: [0, 0.6, 0], sway: 0.5, chomp: true };
+    p.slots = {
+      mario: { holder: hero, size: r * 0.34, turn: [0, 0, 0], sway: 0.35, hop: true },
+      plant: { holder: plant, size: r * 0.26, turn: [0, 0.6, 0], sway: 0.5, chomp: true },
+    };
     const o = orbit(p.group, { radius: r * 1.55, tilt: -0.3, speed: 0.22, phase: 2.6 });
     p.orbits.push(o);
     p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI, 0.2] };
+
   },
 
   caribbean(p, { u }) {
@@ -832,11 +845,12 @@ export function buildPlanet(u, T = {}) {
       selected = sel;
       if (sign) sign.material.opacity = dim && !hover ? 0.28 : 1;
     },
-    // a loaded model, parked on its orbit (true when this planet takes one)
-    // `slot` is which of its places (most planets have one, 'slot'; a few
-    // have more: Cybertron's 'rival', the Game Boy world's 'hero' and 'plant')
-    mount(model, slot = 'slot') {
-      const s = p[slot];
+    // a loaded model, parked on its orbit or its spot: the planet's own, or
+    // the one named (most planets have just their own; a few have more:
+    // Cybertron's 'rival', the Game Boy world's 'mario' and 'plant', the Death
+    // Star's 'cruiser'). True when this planet takes it
+    mount(model, name) {
+      const s = name ? p.slots?.[name] : p.slot;
       if (!s || !model) return false;
       const holder = fit(model, s.size);
       holder.rotation.set(...s.turn);
@@ -863,7 +877,7 @@ export function loadModel(url) {
     .catch(() => null);
 }
 
-// [place, url, slot] (the slot when it isn't the place's one)
+// [planet, model, and which of its spots, if not its own]
 const MODELS = [
   ['music', '/models/universe/music.glb'],
   ['transformers', '/models/universe/optimus.glb'],
@@ -872,9 +886,10 @@ const MODELS = [
   ['breakingbad', '/models/universe/breakingbad.glb'],
   ['rickmorty', '/games/meshy/saucer.glb'], // the classic cruiser, as on the C-137 page
   ['gaming', '/models/universe/gaming.glb'],
-  ['gaming', '/models/universe/mario.glb', 'hero'],
+  ['gaming', '/models/universe/mario.glb', 'mario'],
   ['gaming', '/models/universe/piranha.glb', 'plant'],
   ['caribbean', '/games/caribbean/pearl-far.glb'],
+  ['starwars', '/models/universe/venator.glb', 'cruiser'],
 ];
 
 // Load the models one by one, handing each over as it arrives; a model that
@@ -882,10 +897,10 @@ const MODELS = [
 export function loadModels(onModel) {
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   return Promise.all(
-    MODELS.map(([id, url, slot]) =>
+    MODELS.map(([id, url, spot]) =>
       loader
         .loadAsync(url)
-        .then((g) => onModel(id, g.scene, slot))
+        .then((g) => onModel(id, g.scene, spot))
         .catch(() => {}),
     ),
   );

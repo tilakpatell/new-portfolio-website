@@ -1,0 +1,39 @@
+/* ─── Smash Run: Hulk down a Midtown avenue ─────────────────────────────────── */
+.sr-game { --hq-accent: #7dff6a; }
+.sr-hud-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.sr-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: #f2fff0; font-family: var(--font-sans); font-variant-numeric: tabular-nums; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.75); }
+.sr-distance { position: absolute; top: 10px; left: 50%; display: grid; justify-items: center; gap: 0.3rem; translate: -50% 0; }
+.sr-distance-n { font-weight: 800; font-size: 1.9rem; font-stretch: 112%; line-height: 1; letter-spacing: -0.01em; }
+.sr-distance-n small { margin-left: 0.2rem; font-size: 0.85rem; font-weight: 700; opacity: 0.7; }
+.sr-track { position: relative; width: 170px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); }
+.sr-track > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #3a9a3a, #8aff6a); }
+.sr-stone { position: absolute; top: 50%; right: -7px; width: 12px; height: 12px; border-radius: 999px; translate: 0 -50%; background: radial-gradient(circle at 35% 35%, #c8ffd8, #2adf6a 55%, #0a6a2a); box-shadow: 0 0 8px rgba(42, 223, 106, 0.8); }
+.sr-track[data-done] .sr-stone { animation: sr-glow 0.9s ease-in-out infinite alternate; }
+@keyframes sr-glow { to { box-shadow: 0 0 16px rgba(42, 223, 106, 1); } }
+.sr-section { font-size: 0.7rem; font-weight: 700; font-stretch: 125%; letter-spacing: 0.12em; text-transform: uppercase; color: #b8ff9a; }
+.sr-score { position: absolute; top: 10px; right: 16px; display: grid; justify-items: end; gap: 0.35rem; }
+.sr-score-n { font-weight: 700; font-size: 1.3rem; line-height: 1; }
+.sr-hearts { display: flex; gap: 4px; }
+.sr-hearts span { width: 15px; height: 15px; background: rgba(255, 255, 255, 0.18); clip-path: polygon(50% 100%, 0 38%, 12% 8%, 34% 0, 50% 16%, 66% 0, 88% 8%, 100% 38%); }
+.sr-hearts span[data-on] { background: #ff6b5e; filter: drop-shadow(0 0 4px rgba(255, 80, 60, 0.6)); }
+.sr-rage { position: absolute; left: 16px; bottom: 14px; display: grid; gap: 5px; }
+.sr-rage-bar { width: 150px; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(125, 255, 106, 0.16); box-shadow: inset 0 0 0 1px rgba(125, 255, 106, 0.3); }
+.sr-rage-bar span { display: block; height: 100%; background: linear-gradient(90deg, #2a8a2a, #7dff6a); transition: width 0.15s linear; }
+.sr-rage-label { font-size: 0.68rem; font-weight: 800; font-stretch: 125%; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+.sr-rage[data-full] .sr-rage-bar span { background: linear-gradient(90deg, #7dff6a, #e8ffd8); box-shadow: 0 0 10px #7dff6a; }
+.sr-rage[data-full] .sr-rage-label { color: #b8ff9a; opacity: 1; animation: sr-throb 0.4s ease-in-out infinite alternate; }
+@keyframes sr-throb { to { text-shadow: 0 0 12px #7dff6a; } }
+.sr-message { position: absolute; left: 50%; bottom: 44px; width: min(80%, 52ch); translate: -50% 0; font-size: 0.82rem; font-weight: 600; line-height: 1.35; text-align: center; }
+.sr-hud[data-rage] .sr-message { color: #c8ff9a; }
+.sr-overlay .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+@media (max-width: 760px) {
+  .sr-distance-n { font-size: 1.4rem; }
+  .sr-track { width: 110px; }
+  .sr-score-n { font-size: 1.05rem; }
+  .sr-rage { left: 12px; bottom: 10px; }
+  .sr-rage-bar { width: 100px; }
+  .sr-message { bottom: 36px; font-size: 0.72rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sr-rage[data-full] .sr-rage-label, .sr-track[data-done] .sr-stone { animation: none; }
+}

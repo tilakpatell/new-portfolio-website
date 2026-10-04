@@ -10,6 +10,7 @@ import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
+import WorldGate from './components/worlds/WorldGate';
 
 const Experience = lazy(() => import('./pages/Experience'));
 const Projects = lazy(() => import('./pages/Projects'));
@@ -146,8 +147,9 @@ function PaletteHost() {
 // follows the selection (/universe/marvel). Both routes render the same
 // element (Front, which holds the map), so React keeps the one map across
 // them: picking a planet at /, or the wordmark from /universe/marvel, moves
-// the camera instead of building the universe again.
-const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
+// the camera instead of building the universe again. Middle-earth's places
+// (/middle-earth/moria) keep one page the same way, so its map stays up.
+const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname.startsWith('/middle-earth') ? '/middle-earth' : pathname);
 
 function Shell() {
   const { pathname } = useLocation();
@@ -174,6 +176,8 @@ function Shell() {
         <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
+              {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
+              <WorldGate pathname={pathname}>
               <Routes>
                 <Route path="/" element={<Front />} />
                 <Route path="/home" element={<Home />} />
@@ -196,6 +200,7 @@ function Shell() {
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </WorldGate>
             </div>
           </Suspense>
         </ErrorBoundary>

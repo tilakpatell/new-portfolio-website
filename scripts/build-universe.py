@@ -12,10 +12,10 @@ these prompts, task ids in brackets:
 and these, made by the site owner with Meshy (100k triangles and a 2048 px
 texture each as they came), cut to what they're seen at:
 
-  xwing          the X-wing you fly (x-wing-starfighter.glb): 20k triangles, 1024 px
-  xwing-traffic  the X-wings flying by (x-wing-fighter.glb): 5k, 256 px
+  xwing-traffic  the X-wings flying by (x-wing-fighter.glb, the one you fly, from
+                 public/models/meshy/, cut down for a crowd): 5k, 256 px
   slave1         Boba Fett's Slave I, a bounty hunter who comes by: 34k, 512 px
-  venator        a Republic attack cruiser high over the map: 8k, 1024 px
+  venator        a Republic attack cruiser circling the Death Star: 14k, 1024 px
   optimus        Optimus Prime, on Cybertron's orbit: 8k, 512 px
   megatron       Megatron, across the orbit from him (200k as it came): 8k, 512 px
   mario          Mario, standing on the Game Boy world: 8k, 512 px
@@ -33,7 +33,7 @@ it's ever seen (256 px: on the map each object is a moon a few dozen pixels
 across, a couple of hundred at most when its planet is selected).
 
 Run: python3 scripts/build-universe.py <folder with gaming.glb, marvel.glb, ...>   (needs npx)
-(each named as above: the X-wing you fly as xwing.glb, and so on)
+(each named as above: the crowd's X-wing as xwing-traffic.glb, and so on)
 """
 import pathlib
 import subprocess
@@ -45,7 +45,6 @@ NAMES = ['gaming', 'marvel', 'breakingbad', 'music']
 # name: (texture px, simplify ratio or None, how far the simplifier may move the surface)
 OPTIONS = {
     'falcon': (1024, 0.012),
-    'xwing': (1024, 0.2),
     'xwing-traffic': (256, 0.05),
     'slave1': (512, 0.08),  # stops at about 34k: its texture seams won't come down further (one at a time, so it's fine)
     'venator': (1024, 0.08),

@@ -6,11 +6,39 @@ import { useAchievements } from '../Achievements';
 // The Iacon database: entries on the relics the Autobots hid, in Cybertronian.
 // Read each one (the key helps) before the Decepticons decrypt it. What you
 // recover stays in the vault between visits; all nine is an achievement.
+// On the Decepticon side you read for Soundwave, against Teletraan-1, and the
+// relics go to the Nemesis, in a vault of their own.
 
 const sfx = () => import('../../lib/sfx');
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const ROUND = 5;
-const STORE = 'tp-iacon';
+
+const SIDES = {
+  autobot: {
+    store: 'tp-iacon',
+    achievement: 'iacon',
+    console: 'Teletraan-1',
+    intro: 'Before Iacon fell, the Autobots hid their relics. Where they are is written in the database, in Cybertronian, and the Decepticons are decrypting it too. Read each entry before they do.',
+    rival: 'Decepticon decryption',
+    first: 'Soundwave got there first.',
+    none: 'The Decepticons read them all first.',
+    vault: 'The vault',
+    all: 'All nine relics are in the vault. Orion Pax would be proud.',
+    some: (n, of) => `${n} of ${of} relics in the vault so far.`,
+  },
+  decepticon: {
+    store: 'tp-iacon-dcp',
+    achievement: 'iacon-dcp',
+    console: 'Soundwave',
+    intro: 'Before Iacon fell, the Autobots hid their relics. Where they are is written in the database, in Cybertronian. Soundwave has tapped into it, and Teletraan-1 is decrypting it too. Read each entry before the Autobots do.',
+    rival: 'Autobot decryption',
+    first: 'Teletraan-1 got there first.',
+    none: 'The Autobots read them all first.',
+    vault: 'Aboard the Nemesis',
+    all: 'All nine relics are aboard the Nemesis. Lord Megatron is pleased.',
+    some: (n, of) => `${n} of ${of} relics aboard the Nemesis so far.`,
+  },
+};
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
 const ICONS = {
@@ -56,10 +84,16 @@ function Icon({ name, className = '' }) {
 
 const seconds = (i) => Math.max(9, 15 - i * 1.5);
 
-export default function Iacon() {
+// A change of sides goes back to idle and opens that side's vault.
+export default function Iacon({ side = 'autobot' }) {
+  return <Database key={side} side={side} />;
+}
+
+function Database({ side }) {
+  const cfg = SIDES[side] ?? SIDES.autobot;
   const { unlock } = useAchievements();
   const [vault, setVault] = useState(() => {
-    const saved = local.get(STORE, []);
+    const saved = local.get(cfg.store, []);
     return Array.isArray(saved) ? saved.filter((id) => RELICS.some((r) => r.id === id)) : [];
   });
   const [round, setRound] = useState(null); // { entries, i, results }
@@ -108,8 +142,8 @@ export default function Iacon() {
       if (!vault.includes(entry.id)) {
         const nv = [...vault, entry.id];
         setVault(nv);
-        local.set(STORE, nv);
-        if (nv.length === RELICS.length) unlock('iacon');
+        local.set(cfg.store, nv);
+        if (nv.length === RELICS.length) unlock(cfg.achievement);
       }
     } else sfx().then((s) => s.alarm());
   };
@@ -133,11 +167,11 @@ export default function Iacon() {
     else {
       sfx().then((s) => s.buzz());
       setWrong((w) => [...w, relic.id]);
-      clock.current.penalty += 0.22; // a wrong guess hands the Decepticons time
+      clock.current.penalty += 0.22; // a wrong guess hands the other side time
     }
   };
 
-  // the Decepticons' decryption creeps up; pauses while the tab is hidden
+  // the other side's decryption creeps up; pauses while the tab is hidden
   useEffect(() => {
     if (stage !== 'ask' || !round) return undefined;
     const total = seconds(round.i) * 1000;
@@ -168,18 +202,16 @@ export default function Iacon() {
   const shown = stage === 'reveal' && !got ? 1 : progress;
 
   return (
-    <div className="iacon">
+    <div className="iacon" data-side={side}>
       <div className="iacon-console card">
         <div className="iacon-bar">
           <span className="label">Iacon database</span>
-          <span className="label">{round && stage !== 'idle' && stage !== 'done' ? `Entry ${round.i + 1} of ${round.entries.length}` : 'Teletraan-1'}</span>
+          <span className="label">{round && stage !== 'idle' && stage !== 'done' ? `Entry ${round.i + 1} of ${round.entries.length}` : cfg.console}</span>
         </div>
 
         {stage === 'idle' && (
           <div className="iacon-body">
-            <p className="text-[0.95rem] leading-relaxed text-body">
-              Before Iacon fell, the Autobots hid their relics. Where they are is written in the database, in Cybertronian, and the Decepticons are decrypting it too. Read each entry before they do.
-            </p>
+            <p className="text-[0.95rem] leading-relaxed text-body">{cfg.intro}</p>
             <button type="button" className="btn btn-primary btn-sm mt-5" onClick={start}>
               Access the database
             </button>
@@ -195,7 +227,7 @@ export default function Iacon() {
             <div className="iacon-decrypt" aria-hidden="true">
               <span style={{ transform: `scaleX(${shown})` }} />
             </div>
-            <p className="mt-2 text-xs text-muted">Decepticon decryption {Math.round(shown * 100)}%</p>
+            <p className="mt-2 text-xs text-muted">{`${cfg.rival} ${Math.round(shown * 100)}%`}</p>
             <div className="iacon-options mt-4" role="group" aria-label="What does the entry say?">
               {options.map((o) => {
                 const isWrong = wrong.includes(o.id);
@@ -219,7 +251,7 @@ export default function Iacon() {
                   </div>
                 ) : (
                   <p className="text-sm text-body">
-                    Soundwave got there first. It was the <b className="text-ink">{entry.name}</b>.
+                    {cfg.first} It was the <b className="text-ink">{entry.name}</b>.
                   </p>
                 ))}
             </div>
@@ -234,11 +266,9 @@ export default function Iacon() {
         {stage === 'done' && round && (
           <div className="iacon-body">
             <p className="text-lg font-semibold text-ink">
-              {score === round.entries.length ? 'Every entry read first.' : score === 0 ? 'The Decepticons read them all first.' : `You read ${score} of ${round.entries.length} first.`}
+              {score === round.entries.length ? 'Every entry read first.' : score === 0 ? cfg.none : `You read ${score} of ${round.entries.length} first.`}
             </p>
-            <p className="mt-2 text-sm text-body">
-              {vault.length === RELICS.length ? 'All nine relics are in the vault. Orion Pax would be proud.' : `${vault.length} of ${RELICS.length} relics in the vault so far.`}
-            </p>
+            <p className="mt-2 text-sm text-body">{vault.length === RELICS.length ? cfg.all : cfg.some(vault.length, RELICS.length)}</p>
             <button type="button" className="btn btn-primary btn-sm mt-5" onClick={start}>
               Another search
             </button>
@@ -266,7 +296,7 @@ export default function Iacon() {
 
       <div className="iacon-vault">
         <p className="label">
-          The vault · {vault.length} of {RELICS.length}
+          {cfg.vault} · {vault.length} of {RELICS.length}
         </p>
         <ul className="iacon-relics mt-3">
           {RELICS.map((r) => {

@@ -17,6 +17,7 @@ import { loadPeople } from '../../office/people';
 import { ABQ, moodGesture } from '../wardrobe';
 import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
+import { pixelRatio } from '../../../lib/device';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
 const BENCH_Y = 0.92;
@@ -61,7 +62,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  let ratio = Math.min(1.75, window.devicePixelRatio || 1);
+  let ratio = pixelRatio(1.75); // lib/device: lower on a phone or a weak device
   renderer.setPixelRatio(ratio);
   const big = renderer.capabilities.maxTextureSize >= 4096 && !(window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const T = big ? 1024 : 512;

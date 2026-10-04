@@ -13,6 +13,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { paintStation } from './plating';
 import { paintGiant, paintPlanet } from './planetPaint';
+import { pixelRatio } from '../../lib/device';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -78,7 +79,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const big = renderer.capabilities.maxTextureSize >= 4096 && !coarse;
-  let ratio = Math.min(1.5, window.devicePixelRatio || 1);
+  let ratio = pixelRatio(1.5); // lib/device: lower on a phone or a weak device
   renderer.setPixelRatio(ratio);
 
   const scene = new THREE.Scene();

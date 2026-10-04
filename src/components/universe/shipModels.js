@@ -74,7 +74,7 @@ function xwing(T) {
       stripes.push([new THREE.BoxGeometry(0.05, 0.0062, 0.022), [stx, sty, 0.045], [0, 0, tilt]]);
       cannons.push([tube(0.0035, 0.005, 0.2, 6), [tx, ty, 0.0], LAY]);
       engines.push([tube(0.018, 0.018, 0.1, 12), [sx * 0.045, sy * 0.028, 0.09], LAY]);
-      glows.push([new THREE.CircleGeometry(0.014, 14), [sx * 0.045, sy * 0.028, 0.1405], [0, 0, 0]]);
+      glows.push([new THREE.CircleGeometry(0.014, 14), [sx * 0.045, sy * 0.028, 0], [0, 0, 0]]);
     }
   }
   const white = new THREE.Mesh(
@@ -97,11 +97,12 @@ function xwing(T) {
   );
   const glowM = glowMat('#ff7a4a');
   const glow = new THREE.Mesh(parts(glows), glowM);
-  // all of it stands in until the model comes (whose engines glow in its own paint)
+  glow.position.z = 0.1405;
   const stand = new THREE.Group();
-  stand.add(white, red, dark, glow);
-  group.add(stand);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, nose: XWING_NOSE };
+  stand.add(white, red, dark);
+  group.add(stand, glow);
+  // the model's nose is +z, and its engines sit a little closer in than these
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, glowMesh: glow, nose: Math.PI, glowOnModel: [0.78, 0.96] };
 }
 
 function falcon(T) {
@@ -175,13 +176,13 @@ function cruiser(T) {
 
 // which way the Falcon model's nose points, as a turn about y (see buildShip)
 const FALCON_NOSE = Math.PI / 2;
-const XWING_NOSE = -Math.PI / 2; // the X-wing model's nose is −x
 
 const BUILD = { xwing, falcon, cruiser };
 
 // the models that take over from the built ships, when they load (the
 // cruiser is built by the C-137 page's own code instead; see scene.js)
-export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/universe/xwing.glb' };
+// (the X-wing is the trench run's own, so a visitor who's flown one has it already)
+export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/meshy/x-wing-fighter.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
@@ -231,6 +232,7 @@ export function buildShip(kind, T = {}) {
       if (ship.glowMesh) {
         const along = Math.abs(Math.sin(holder.rotation.y)) > 0.5 ? dims.x : dims.z;
         ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (BUILT / 2) + 0.004;
+        if (ship.glowOnModel) ship.glowMesh.scale.set(...ship.glowOnModel, 1);
       }
       return true;
     },
