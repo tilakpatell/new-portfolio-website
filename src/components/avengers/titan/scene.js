@@ -1,8 +1,8 @@
-// Titan in 3D: Thanos at the edge of his ruined world at dusk, seen from
-// behind his left shoulder, the Infinity Gauntlet raised against the sky.
-// Stones are set into it one by one; with all six he snaps, and the light
-// goes white. If they were all taken back by playing, it's Tony's snap
-// instead, and Thanos turns to dust.
+// Titan in 3D: the Infinity Gauntlet raised against the dusk over Thanos's
+// ruined world, the back of the hand to us, every socket in sight. Stones are
+// set into it one by one; with all six it snaps, and the light goes white. If
+// they were all taken back by playing, it's Tony's snap instead: a cut to
+// Thanos on the plateau, turning to dust.
 
 import * as THREE from 'three';
 import { createEngine } from '../hq/engine';
@@ -12,7 +12,7 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { createVfx } from '../hq/vfx';
 import { createFeel } from '../hq/feel';
 import { lightningPool } from '../lawn/models';
-import { aim, loadMeshy, meshyFigure } from '../smash/meshy';
+import { loadMeshy, meshyFigure } from '../smash/meshy';
 import { STONES } from '../../interests/stones';
 import { SOCKETS, THANOS_JOINTS, buildGauntlet, engravingNormal, rubbleGeometry, spireGeometry, thanosStyle, titanSky } from './models';
 
@@ -177,7 +177,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   const stoneMats = Object.fromEntries(
     STONES.map((s) => [
       s.id,
-      dusty(new THREE.MeshPhysicalMaterial({ color: s.color, emissive: new THREE.Color(s.color), emissiveIntensity: 0, roughness: 0.06, metalness: 0, clearcoat: 1, flatShading: true, envMapIntensity: 1.5 }), dustU),
+      dusty(new THREE.MeshPhysicalMaterial({ color: s.dark, emissive: new THREE.Color(s.color), emissiveIntensity: 0, roughness: 0.22, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.15, flatShading: true, envMapIntensity: 0.35 }), dustU),
     ]),
   );
   const engraved = engravingNormal();
@@ -186,14 +186,27 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   const gauntletGold = dusty(new THREE.MeshPhysicalMaterial({ color: 0xc8962f, metalness: 1, roughness: 0.34, clearcoat: 0.25, clearcoatRoughness: 0.3, normalMap: engraved, normalScale: new THREE.Vector2(0.9, 0.9), envMapIntensity: 0.75, envMap: scene.environment }), dustU);
   const gauntletDark = dusty(new THREE.MeshStandardMaterial({ color: 0x2a1a06, metalness: 0.85, roughness: 0.55 }), dustU);
   const gauntlet = buildGauntlet({ gold: gauntletGold, dark: gauntletDark }, stoneMats);
-  gauntlet.group.scale.setScalar(SCALE * 1.15); // drawn a touch large, so it reads
-  // on Meshy's Thanos the gauntlet rides on its own, where the built one's
-  // would be: moved to his elbow and sized to his forearm, every frame
-  const holder = mt?.bones.LeftForeArm && mt.bones.LeftHand ? new THREE.Group() : null;
-  if (holder) {
-    holder.add(gauntlet.group);
-    scene.add(holder);
-  } else thanos.bones.elbowL.add(gauntlet.group);
+  gauntlet.group.scale.setScalar(SCALE * 1.15);
+  // It's held up on its own in front of the plateau, fingers to the sky and
+  // the back of the hand to the camera (it's built pointing down the arm,
+  // its back to +x): `stand` turns it upright, `rig` sways it a touch.
+  const STAND = new THREE.Vector3(0, 2.4, 1.2);
+  const TURN = -0.28; // turned a little, the thumb towards us
+  const rig = new THREE.Group();
+  rig.position.copy(STAND);
+  const stand = new THREE.Group();
+  stand.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
+  stand.add(gauntlet.group);
+  // the cuff's lower end sits at the stand, the hand above it
+  gauntlet.group.position.set(0, 0, 0);
+  rig.add(stand);
+  scene.add(rig);
+  // a warm key from the front and above, so the gold and the stones read
+  // against the light (the low sun behind it rims the edges)
+  const key = new THREE.DirectionalLight(0xffe9d2, 2.6);
+  key.position.copy(STAND).add(new THREE.Vector3(-1.6, 2.2, 3.2));
+  key.target = rig;
+  scene.add(key);
   // the stones' light on the gold: one soft light at the back of the hand,
   // its colour the mix of what's set
   const handLight = new THREE.PointLight(0xffffff, 0, 1.4, 2);
@@ -245,34 +258,11 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   }
 
   // ── his pose ──
-  // Meshy's Thanos: his idle clip, his arms along the built one's (posed but
-  // not drawn), the hand under the gauntlet folded away
-  const up3 = new THREE.Vector3();
-  const pa = new THREE.Vector3();
-  const pb = new THREE.Vector3();
-  const pc = new THREE.Vector3();
+  // he's seen only in the wide shot after Tony's snap: standing, arms down,
+  // looking out at the haze
   function poseMeshy(dt) {
     mt.set('idle');
     mt.update(dt);
-    const B = mt.bones;
-    const b = thanos.bones;
-    thanos.root.updateMatrixWorld(true);
-    b.shoulderL.getWorldPosition(pa);
-    b.elbowL.getWorldPosition(pb);
-    b.handL.getWorldPosition(pc);
-    aim(B.LeftArm, B.LeftForeArm, up3.subVectors(pb, pa), 1);
-    aim(B.LeftForeArm, B.LeftHand, up3.subVectors(pc, pb), 1);
-    aim(B.neck ?? B.Spine02, B.Head, up3.set(-0.2, 1, -0.35), 0.6);
-    B.LeftHand.scale.setScalar(0.001);
-    B.LeftHand.updateMatrixWorld(true);
-    if (!holder) return;
-    // its wrist on his, sized to his forearm (within reason, so it still reads)
-    b.elbowL.matrixWorld.decompose(up3, holder.quaternion, holder.scale);
-    B.LeftForeArm.getWorldPosition(pa);
-    B.LeftHand.getWorldPosition(holder.position);
-    const k = clamp(pa.distanceTo(holder.position) / pc.distanceTo(pb), 0.85, 1.2);
-    holder.scale.multiplyScalar(k);
-    holder.position.addScaledVector(up3.subVectors(pc, pb), -k);
   }
 
   function pose(dt) {
@@ -282,7 +272,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
     b.hips.position.y = thanos.rest.hips.y;
     b.chest.rotation.x = -0.04 + breathe * 0.012;
     b.spine.rotation.y = 0.12;
-    b.head.rotation.set(-0.28 + breathe * 0.01, 0.32, 0); // looking up at his hand
+    b.head.rotation.set(-0.12 + breathe * 0.01, 0.1, 0);
     b.neck.rotation.set(-0.05, 0.1, 0);
     // feet apart, his weight on the right
     b.thighL.rotation.set(-0.12, 0, 0.1);
@@ -292,13 +282,16 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
     // the right arm down, the fist loose
     b.shoulderR.rotation.set(0.05, 0, -0.16);
     b.elbowR.rotation.set(-0.25, 0, 0);
-    // the left: raised in front of him, the back of the hand to us
+    b.shoulderL.rotation.set(0.05, 0, 0.16);
+    b.elbowL.rotation.set(-0.25, 0, 0);
+    if (mt) poseMeshy(dt);
+    // the gauntlet: held still (the sockets have buttons on them), a slow
+    // breath of a sway, a lift into the snap
     const s = snapT >= 0 ? snapT : 99;
     const lift = s < 0.35 ? ease(s / 0.35) : s < 1.6 ? 1 : 1 - ease(clamp((s - 1.6) / 0.8, 0, 1));
-    b.shoulderL.rotation.set(-2.05 - lift * 0.25 + Math.sin(clock * 0.7) * 0.02, -0.25, 0.42);
-    b.elbowL.rotation.set(-0.55 - lift * 0.15, 0, 0);
-    gauntlet.wrist.rotation.set(0.15, -0.55 - lift * 0.25, -0.05);
-    if (mt) poseMeshy(dt);
+    rig.rotation.set(0, TURN + (calm ? 0 : Math.sin(clock * 0.3) * 0.018), 0);
+    rig.position.set(STAND.x, STAND.y + (calm ? 0 : Math.sin(clock * 0.45) * 0.004) + lift * 0.05, STAND.z);
+    gauntlet.wrist.rotation.set(0, 0, -0.06 - lift * 0.1);
     // the fingers: open and a little curled; the snap's press and release
     const F = gauntlet.fingers;
     const open = [0.12, 0.18, 0.12];
@@ -323,7 +316,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
       const p = pop[st.id] ?? 9;
       const k = on ? 1 + (p < 0.6 ? (1 - p / 0.6) * 1.2 : 0) : 0;
       const pulse = 0.85 + 0.15 * Math.sin(clock * 3 + st.id.length);
-      stoneMats[st.id].emissiveIntensity = (on ? (all ? 0.9 : 0.75) * pulse : 0) * k + surge * 4;
+      stoneMats[st.id].emissiveIntensity = (on ? (all ? 1.5 : 1.25) * pulse : 0) * k + surge * 4;
       gauntlet.stones[st.id].scale.setScalar(on ? 1 + (p < 0.3 ? Math.sin((p / 0.3) * Math.PI) * 0.5 : 0) : 1);
     }
     mixC.setRGB(0, 0, 0);
@@ -331,7 +324,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
     handLight.color.copy(mixC);
     handLight.intensity = set.size ? 0.15 + set.size * 0.04 + surge * 6 : 0;
     // with all six, the gauntlet crackles
-    if (all && !calm && snapT < 0 && Math.random() < dt * 2.2) {
+    if (all && !calm && snapT < 0 && dustT < 0 && Math.random() < dt * 2.2) {
       const ids = [...set];
       const a = gauntlet.sockets[ids[Math.floor(Math.random() * ids.length)]].getWorldPosition(new THREE.Vector3());
       const c = gauntlet.sockets[ids[Math.floor(Math.random() * ids.length)]].getWorldPosition(new THREE.Vector3());
@@ -340,42 +333,43 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   }
 
   // ── the camera ──
-  // close: on the gauntlet, the back of his hand to us, the sky behind it;
-  // wide: behind him on the plateau, for when he turns to dust
-  const camPos = new THREE.Vector3();
-  const camLook = new THREE.Vector3();
+  // close: square on to the back of the hand, a little below it, the hand
+  // filling the frame and the cuff running out of the bottom; wide (a cut, on
+  // Tony's snap): behind Thanos on the plateau as he turns to dust
   const wristW = new THREE.Vector3();
-  const back = new THREE.Vector3();
-  const along = new THREE.Vector3();
-  const wq = new THREE.Quaternion();
-  const closePos = new THREE.Vector3();
-  const closeLook = new THREE.Vector3();
-  let wide = 0;
-  function placeCamera(dt) {
-    const tall = camera.aspect < 1;
-    (mt ? mt.root : thanos.root).updateMatrixWorld(true);
+  const tipW = new THREE.Vector3();
+  let frame = null; // { center, dist, len }, from the open hand
+  function frameHand() {
+    rig.updateMatrixWorld(true);
     gauntlet.wrist.getWorldPosition(wristW);
-    gauntlet.wrist.getWorldQuaternion(wq);
-    back.set(1, 0, 0).applyQuaternion(wq); // the back of the hand
-    along.set(0, -1, 0).applyQuaternion(wq); // toward the fingertips
-    // a little below and to the side of the back of the hand, looking up past it
-    // straight at the back of the hand, a little below it
-    closePos
-      .copy(wristW)
-      .addScaledVector(back, tall ? 1.3 : 1.0)
-      .addScaledVector(along, 0.02)
-      .add(new THREE.Vector3(0.08, -0.4, 0.12));
-    closeLook.copy(wristW).addScaledVector(along, 0.2).add(new THREE.Vector3(0, 0.22, 0));
-    wide = dustT >= 0 ? Math.min(1, wide + dt / 2.5) : Math.max(0, wide - dt / 1.5);
-    const w = ease(wide);
-    const widePos = new THREE.Vector3(-2.6, 1.9, 7.8 + (tall ? 3 : 0));
-    const wideLook = new THREE.Vector3(-0.6, 2.4, -3);
-    camPos.copy(closePos).lerp(widePos, w);
-    camLook.copy(closeLook).lerp(wideLook, w);
-    camera.position.copy(camPos);
-    camera.position.x += Math.sin(clock * 0.21) * 0.015;
-    camera.position.y += Math.sin(clock * 0.17) * 0.012;
-    camera.lookAt(camLook);
+    gauntlet.fingers.middle.at(-1).getWorldPosition(tipW);
+    const len = wristW.distanceTo(tipW) + 0.08;
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+    // from a little below the wrist to just over the fingertips, and the hand's width
+    const H = len * 1.5;
+    const W = len * 1.15;
+    const dist = Math.max(H / 2 / Math.tan(vfov / 2), W / 2 / Math.tan(hfov / 2));
+    const center = wristW.clone().lerp(tipW, 0.48);
+    center.x = STAND.x;
+    center.z = STAND.z;
+    frame = { center, dist, len };
+  }
+  const widePos = new THREE.Vector3();
+  const wideLook = new THREE.Vector3();
+  function placeCamera(dt) {
+    if (!frame) frameHand();
+    const tall = camera.aspect < 1;
+    if (dustT >= 0) {
+      widePos.set(-2.6, 1.9, 7.8 + (tall ? 3 : 0));
+      wideLook.set(-0.6, 2.4, -3);
+      camera.position.copy(widePos);
+      camera.lookAt(wideLook);
+    } else {
+      const { center, dist, len } = frame;
+      camera.position.set(center.x + Math.sin(clock * 0.21) * 0.006, center.y - len * 0.22 + Math.sin(clock * 0.17) * 0.004, center.z + dist);
+      camera.lookAt(center.x, center.y, center.z);
+    }
     feel.update(dt, camera);
   }
 
@@ -418,8 +412,9 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
       if (before < 0.44 && snapT >= 0.44) {
         snapFx();
         onSnapped?.(tony);
-        if (tony) dustT = 0;
       }
+      // Tony's: once the flash has gone, cut to Thanos
+      if (tony && before < 1.05 && snapT >= 1.05) dustT = 0;
       if (snapT > 2.4) snapT = -1;
     }
     pose(d);
@@ -433,6 +428,16 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
       }
     }
     dustFx(d);
+    // the gauntlet in the close shot; Thanos in the wide one, and when he's
+    // gone, back to the gauntlet
+    if (dustT > 8) {
+      dustT = -1;
+      dustU.value = 0;
+    }
+    const wideNow = dustT >= 0;
+    rig.visible = !wideNow;
+    key.intensity = wideNow ? 0 : 2.6;
+    (mt ? mt.root : thanos.root).visible = wideNow;
     sky.mat.uniforms.uTime.value = clock;
     // the debris turning in the sky
     drift.forEach((o, i) => {
@@ -457,6 +462,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
 
   const resize = (w, h) => {
     engine.resize(w, h);
+    frame = null;
     const aspect = w / Math.max(1, h);
     fov = aspect < 1 ? FOV + (1 - aspect) * 30 : FOV;
     feel.setBaseFov(fov);

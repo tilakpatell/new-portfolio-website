@@ -13,20 +13,21 @@ import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const SHIP = {
-  cruise: 3.2, // map units a second
-  boost: 7.5,
-  reverse: 1.2,
-  accel: 3.4,
-  brake: 6,
-  coast: 1.4,
+  cruise: 4.2, // map units a second (the ship is 0.26 long)
+  boost: 12,
+  reverse: 1.6,
+  accel: 4.4,
+  brake: 9,
+  coast: 1.9,
   turn: 2.0, // radians a second
-  radius: 0.2,
-  height: 0.28,
+  radius: 0.15,
+  height: 0.3,
+  crash: 2.4, // flying into something faster than this is a crash, not a bump
 };
-export const EDGE = MAP_RADIUS + 2.5;
-const ORBIT_IN = 1.2; // past a planet's reach: closer than this, you're at it
-const ORBIT_OUT = 2.0; // and you've left once you're this far
-const PARK = 0.7; // where autopilot stops, past the planet's reach
+export const EDGE = MAP_RADIUS + 6;
+const ORBIT_IN = 2.4; // past a planet's reach: closer than this, you're at it
+const ORBIT_OUT = 3.8; // and you've left once you're this far
+const PARK = 1.2; // where autopilot stops, past the planet's reach
 
 export const PLANETS = ORDER.map((id) => ({ id, at: POSITIONS[id], r: byId(id).size, reach: REACH[id] }));
 const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
@@ -60,7 +61,7 @@ export function parkAt(id, from = [0, MAP_RADIUS]) {
     const z = p.at[2] + dz * d;
     let clear = Infinity;
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.hypot(x - o.at[0], z - o.at[2]) - o.reach);
-    const inMap = Math.hypot(x, z) < EDGE - 1;
+    const inMap = Math.hypot(x, z) < EDGE - 2;
     const score = dx * ax + dz * az + (clear > ORBIT_IN + 0.2 ? 4 : clear) + (inMap ? 2 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
   }
@@ -70,13 +71,15 @@ export function parkAt(id, from = [0, MAP_RADIUS]) {
 // A new ship: parked at a universe, or at the near edge of the map facing
 // its middle.
 export function spawn(id) {
-  const at = id && PLANET[id] ? parkAt(id) : { x: 0, z: MAP_RADIUS + 0.6, heading: 0 };
+  const at = id && PLANET[id] ? parkAt(id) : { x: 0, z: MAP_RADIUS + 1.5, heading: 0 };
   return { ...at, y: SHIP.height, speed: 0, bank: 0, edge: false };
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
-// way: { type: 'bump', id, hard } and { type: 'edge' }. `solids` is what it
-// can bump into (everything on the map, unless a test says otherwise).
+// way: { type: 'bump', id, hard }, { type: 'crash', id, at, normal, speed }
+// (into something too fast: the scene plays it out) and { type: 'edge' }.
+// `solids` is what it can bump into (everything on the map, unless a test
+// says otherwise).
 export function step(s, input, dt, solids = SOLIDS) {
   dt = clamp(dt, 0, 0.05);
   const events = [];
@@ -91,9 +94,9 @@ export function step(s, input, dt, solids = SOLIDS) {
 
   // turned back at the edge: the nose comes round toward the middle
   const out = Math.hypot(s.x, s.z);
-  if (out > EDGE - 1) {
+  if (out > EDGE - 2) {
     const home = headingTo(-s.x, -s.z);
-    const k = clamp((out - (EDGE - 1)) / 1, 0, 1);
+    const k = clamp((out - (EDGE - 2)) / 2, 0, 1);
     heading = wrap(heading + clamp(wrap(home - heading), -2.2 * dt * k, 2.2 * dt * k));
   }
 
@@ -102,7 +105,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   let z = s.z + fz * speed * dt;
   let v = speed;
   const r = Math.hypot(x, z);
-  let edge = s.edge && r > EDGE - 0.5; // clears once well back inside
+  let edge = s.edge && r > EDGE - 1; // clears once well back inside
   if (r > EDGE) {
     x *= EDGE / r;
     z *= EDGE / r;
@@ -125,7 +128,9 @@ export function step(s, input, dt, solids = SOLIDS) {
     z = p.at[2] + nz * reach;
     const into = -(fx * nx + fz * nz) * v; // speed toward the planet
     if (into > 0) {
-      events.push({ type: 'bump', id: p.id, hard: into > 1.2 });
+      // too fast is a crash (the scene plays it out); otherwise a bump
+      if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, z], normal: [nx, nz], speed: into });
+      else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55 });
       v = -0.3 * into; // a little bounce back
     }
   }
@@ -159,7 +164,7 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const tx = park.x - s.x;
   const tz = park.z - s.z;
   const dist = Math.hypot(tx, tz);
-  if (dist < 0.3) {
+  if (dist < 0.4) {
     // there: stop and turn to face it
     const face = wrap(park.heading - s.heading);
     const done = Math.abs(face) < 0.08 && Math.abs(s.speed) < 0.25;
@@ -174,7 +179,7 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   let dz = uz;
   let blocked = false;
   let closest = Infinity; // the gap to the nearest thing in the way
-  const look = 2.5 + Math.abs(s.speed) * 1.2;
+  const look = 4 + Math.abs(s.speed) * 1.1;
   for (const o of SOLIDS) {
     if (o.id === id) continue;
     const ox = o.at[0] - s.x;
@@ -182,12 +187,12 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
     const along = ox * ux + oz * uz;
     if (along < -o.r || along > Math.min(dist, look) + o.r) continue; // behind, past the stop, or not yet
     const cross = ox * uz - oz * ux; // > 0: it's to the left of the line
-    const clear = o.r + SHIP.radius + 0.6;
+    const clear = o.r + SHIP.radius + 1;
     if (Math.abs(cross) > clear) continue;
     blocked = true;
     const gap = Math.hypot(ox, oz) - o.r;
     closest = Math.min(closest, gap);
-    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 1.5, 0, 1));
+    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 2.5, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;
     dz += side * ux * k;
@@ -196,7 +201,7 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const diff = wrap(want - s.heading);
   const turn = clamp(-diff * 2.5, -1, 1);
   // slow for sharp turns, and for anything close ahead, so it can steer round
-  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * clamp(closest / 2.5, 0.3, 1);
-  const throttle = brake * clamp(dist / 3, 0.18, 1);
-  return { input: { throttle, turn, boost: !blocked && dist > 8 && Math.abs(diff) < 0.25 }, done: false };
+  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * clamp(closest / 4, 0.3, 1);
+  const throttle = brake * clamp(dist / 4, 0.14, 1);
+  return { input: { throttle, turn, boost: !blocked && dist > 12 && Math.abs(diff) < 0.25 }, done: false };
 }

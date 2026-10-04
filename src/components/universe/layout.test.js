@@ -58,3 +58,14 @@ describe('the map layout', () => {
     expect(keyStep('a', 'office')).toBeUndefined();
   });
 });
+
+describe('the asteroid belt', () => {
+  it('sits in the gap between the stations and the planets, touching neither', async () => {
+    const { BELT } = await import('./layout');
+    for (const id of ORDER) {
+      const r = Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
+      expect(r + REACH[id] < BELT.inner || r - REACH[id] > BELT.outer, id).toBe(true);
+    }
+    expect(BELT.inner).toBeGreaterThan(SUN.r);
+  });
+});

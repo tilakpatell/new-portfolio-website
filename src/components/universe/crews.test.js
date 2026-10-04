@@ -9,7 +9,7 @@ describe('the crews', () => {
 
   it('have something to say everywhere, and only their own crew says it', () => {
     for (const crew of CREWS) {
-      const all = [...['launch', 'boost', 'bump', 'edge'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id))];
+      const all = [...['launch', 'boost', 'bump', 'edge', 'crash'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
       for (const exchange of all) {
         expect(exchange?.length, crew.id).toBeGreaterThan(0);
         for (const [who, text] of exchange) {
@@ -23,8 +23,22 @@ describe('the crews', () => {
   it('only play clips the site has', async () => {
     const { CLIPS } = await import('../../lib/clips');
     for (const crew of CREWS) {
-      const lines = Object.values(crew).filter(Array.isArray).flat().concat(Object.values(crew.arrive).flat());
+      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill].map((o) => Object.values(o ?? {}).flat()));
       for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
+    }
+  });
+
+  it('have a word for every kind of traffic that comes past them, and for shooting one down', () => {
+    // what flies by each crew (traffic.js): Star Wars for the X-wing and the Falcon, Rick and Morty for the cruiser
+    const FLYBY = { cruiser: ['patrol', 'gromflomite', 'meeseeks', 'birdperson'], xwing: ['tie', 'interceptor', 'xwing', 'slave1'], falcon: ['tie', 'interceptor', 'xwing', 'slave1'] };
+    for (const crew of CREWS) {
+      for (const kind of FLYBY[crew.id]) {
+        for (const event of ['traffic', 'kill']) {
+          const exchange = linesFor(crew, event, kind);
+          expect(exchange?.length, `${crew.id} ${event} ${kind}`).toBeGreaterThan(0);
+          for (const [who] of exchange) expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+        }
+      }
     }
   });
 

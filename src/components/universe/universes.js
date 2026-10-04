@@ -12,9 +12,15 @@
 //   swatch   its colour on the mini-map and its label
 //   accent   the page accent while it's selected (4.5:1 on #03040a)
 //   rim      the glow round its edge, when that isn't the swatch
-//   size     its radius in map units
+//   size     its radius, before the scale below (stations and planets are
+//            drawn bigger than their numbers here, by STATION and PLANET)
 //   sign     a station's big sign: its name, and a line under it
 //   palette  the colours it's painted in
+
+// how much bigger than its size number each kind is drawn, in map units:
+// the planets big against the ship, the stations a little less so
+const STATION = 1.8;
+const PLANET = 2.4;
 
 const CORE = [
   {
@@ -83,7 +89,7 @@ const CORE = [
     size: 0.52,
     palette: { base: '#1d2128', dark: '#0b0d10', light: '#3a404a', glow: '#7dff9a' },
   },
-].map((u) => ({ ...u, kind: 'core', world: null }));
+].map((u) => ({ ...u, size: u.size * STATION, kind: 'core', world: null }));
 
 const FANDOMS = [
   {
@@ -154,6 +160,7 @@ const FANDOMS = [
     to: '/scranton',
     swatch: '#e9e4d6',
     accent: '#e9e4d6',
+    rim: '#7f8aa0', // the paper's own white would glare
     size: 0.58,
     palette: { base: '#f1eee4', dark: '#9aa7b8', light: '#ffffff', glow: '#d23b3b' },
   },
@@ -175,6 +182,7 @@ const FANDOMS = [
     to: '/projects/gameboy-emulator',
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
+    rim: '#6f9a1c', // the screen's lightest green would glare as air
     size: 0.56,
     palette: { base: '#8bac0f', dark: '#0f380f', light: '#9bbc0f', glow: '#306230' },
   },
@@ -199,7 +207,7 @@ const FANDOMS = [
     size: 0.62,
     palette: { base: '#0f6b70', dark: '#06323a', light: '#e9d9a6', glow: '#f2c45a' },
   },
-].map((u) => ({ ...u, kind: 'fandom', place: u.place ?? u.world }));
+].map((u) => ({ ...u, size: u.size * PLANET, kind: 'fandom', place: u.place ?? u.world }));
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
 
