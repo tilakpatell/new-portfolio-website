@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# superpowers brainstorming companion session files
+.superpowers
