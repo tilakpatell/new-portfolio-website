@@ -13,6 +13,7 @@ import {
   RiMailLine,
   RiMusic2Line,
   RiPaletteLine,
+  RiRestartLine,
   RiSearchLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
@@ -28,6 +29,7 @@ import { useFun } from '../fun/FunProvider';
 import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { local } from '../lib/hooks';
+import { restartSite } from '../lib/restart';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -74,6 +76,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-home', group: 'Go to', label: 'Home', keywords: 'about me intro', icon: RiArrowRightLine, run: go('/home') },
       { id: 's-uni', group: 'Actions', label: 'Start the site in the universe', keywords: 'front door start page landing universe', icon: RiGlobalLine, run: () => local.set('tp-start', 'universe') },
       { id: 's-home', group: 'Actions', label: 'Start the site on the home page', keywords: 'front door start page landing home plain', icon: RiArrowRightLine, run: () => local.set('tp-start', 'home') },
+      { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
       { id: 'p-proj', group: 'Go to', label: 'Projects', icon: RiCodeBoxLine, run: go('/projects') },

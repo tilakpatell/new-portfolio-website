@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiRestartLine } from 'react-icons/ri';
+import { restartSite } from '../../lib/restart';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
@@ -76,12 +77,15 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows to fly
               </li>
               <li className="universe-keys-board">
+                <kbd>R</kbd> to climb, <kbd>C</kbd> to dive
+              </li>
+              <li className="universe-keys-board">
                 <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the whole map
               </li>
               <li className="universe-keys-board">
                 <kbd>E</kbd> to land or dock where you are
               </li>
-              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold Boost to go fast, and tap Fire</li>
+              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to climb and dive, hold Boost to go fast, and tap Fire</li>
               <li className="universe-keys-touch">Tap a planet or a station to fly there</li>
             </ul>
             <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
@@ -99,6 +103,9 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           aria-live="polite"
         >
           {homeFirst ? 'Next time the site opens on the home page.' : 'Prefer the plain site? Start on the home page next time'}
+        </button>
+        <button type="button" className="universe-back mt-2" onClick={restartSite}>
+          <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Restart the site from the beginning
         </button>
         <p className="universe-credit">
           Planet maps and the Milky Way by{' '}

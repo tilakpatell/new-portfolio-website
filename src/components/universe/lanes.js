@@ -13,9 +13,9 @@
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
 
-const LOW = [4, 7.5]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
-const HIGH = [9, 15]; // and the big ships
-const FLYBY = { ahead: [16, 24], side: [0.9, 1.8] };
+const LOW = [5, 9]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
+const HIGH = [12, 20]; // and the big ships
+const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
   const u = 1 - t;

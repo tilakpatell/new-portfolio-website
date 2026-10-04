@@ -17,7 +17,7 @@ import { MAP_RADIUS, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
 export const FOV = 34; // vertical, degrees
-export const FLIGHT_MS = 1100;
+export const FLIGHT_MS = 1400;
 export const DIVE_MS = 600;
 const OVERVIEW_PITCH = 0.62;
 const FOCUS_PITCH = 0.3;
@@ -130,4 +130,13 @@ export function enterPlan(universe, { reduced, three, ship = null }) {
   if (ship === 'cruiser') return { mode: 'portal', delay: DIVE_MS };
   if (universe.id === 'starwars') return { mode: 'jump', delay: 1250 };
   return { mode: 'dive', delay: DIVE_MS };
+}
+
+// Flying into a planet or a station too fast: the crash plays, and then you
+// go on into its page, the screen washing out in its colour on the way
+// (straight there with reduced motion). The sun has no page: it just
+// swallows you and you come back beside it (null).
+export function crashPlan(universe, { reduced }) {
+  if (!universe) return null;
+  return { mode: 'crash', delay: reduced ? 0 : 700 };
 }
