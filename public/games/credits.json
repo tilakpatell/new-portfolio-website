@@ -1,0 +1,256 @@
+{
+  "tex/armour": {
+    "source": "https://polyhaven.com/a/blue_metal_plate",
+    "id": "blue_metal_plate",
+    "name": "Blue Metal Plate",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-brick": {
+    "source": "https://ambientcg.com/view?id=Facade018B",
+    "id": "Facade018B",
+    "name": "Facade018B",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-office": {
+    "source": "https://ambientcg.com/view?id=Facade020B",
+    "id": "Facade020B",
+    "name": "Facade020B",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-tower": {
+    "source": "https://ambientcg.com/view?id=Facade013",
+    "id": "Facade013",
+    "name": "Facade013",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/facade-glass": {
+    "source": "https://ambientcg.com/view?id=Facade009",
+    "id": "Facade009",
+    "name": "Facade009",
+    "authors": [
+      "ambientCG"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "models/barrier": {
+    "source": "https://polyhaven.com/a/concrete_road_barrier_02",
+    "id": "concrete_road_barrier_02",
+    "name": "Concrete Road Barrier 02",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 12%"
+  },
+  "models/crate": {
+    "source": "https://polyhaven.com/a/wooden_crate_01",
+    "id": "wooden_crate_01",
+    "name": "Wooden Crate 01",
+    "authors": [
+      "James Ray Cock"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 50%"
+  },
+  "models/barrel": {
+    "source": "https://polyhaven.com/a/Barrel_01",
+    "id": "Barrel_01",
+    "name": "Barrel_01",
+    "authors": [
+      "Jorge Camacho"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 70%"
+  },
+  "models/tyre": {
+    "source": "https://polyhaven.com/a/old_tyre",
+    "id": "old_tyre",
+    "name": "Old Tyre",
+    "authors": [
+      "MP"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 60%"
+  },
+  "models/rock": {
+    "source": "https://polyhaven.com/a/rock_07",
+    "id": "rock_07",
+    "name": "Rock 07",
+    "authors": [
+      "Jenelle van Heerden"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 18%"
+  },
+  "models/quiver-tree": {
+    "source": "https://polyhaven.com/a/quiver_tree_02",
+    "id": "quiver_tree_02",
+    "name": "Quiver Tree 02",
+    "authors": [
+      "Dario Barresi",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 6%"
+  },
+  "models/street-lamp": {
+    "source": "https://polyhaven.com/a/street_lamp_01",
+    "id": "street_lamp_01",
+    "name": "Street Lamp 01",
+    "authors": [
+      "Josh Dean"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 30%"
+  },
+  "models/utility-box": {
+    "source": "https://polyhaven.com/a/utility_box_01",
+    "id": "utility_box_01",
+    "name": "Utility Box 01",
+    "authors": [
+      "James Ray Cock"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 60%"
+  },
+  "models/trash-can": {
+    "source": "https://polyhaven.com/a/metal_trash_can",
+    "id": "metal_trash_can",
+    "name": "Metal Trash Can",
+    "authors": [
+      "GurJas Studios"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K, simplified to 35%"
+  },
+  "tex/asphalt-desert": {
+    "source": "https://polyhaven.com/a/asphalt_02",
+    "id": "asphalt_02",
+    "name": "Asphalt 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/asphalt-city": {
+    "source": "https://polyhaven.com/a/asphalt_track",
+    "id": "asphalt_track",
+    "name": "Asphalt Track",
+    "authors": [
+      "Dimitrios Savva"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/plate-road": {
+    "source": "https://polyhaven.com/a/metal_plate_02",
+    "id": "metal_plate_02",
+    "name": "Metal Plate 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/desert-ground": {
+    "source": "https://polyhaven.com/a/dry_ground_rocks",
+    "id": "dry_ground_rocks",
+    "name": "Dry Ground Rocks",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/mesa-rock": {
+    "source": "https://polyhaven.com/a/cliff_side",
+    "id": "cliff_side",
+    "name": "Cliff Side",
+    "authors": [
+      "James Ray Cock",
+      "Jenelle van Heerden",
+      "Dario Barresi"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/sidewalk": {
+    "source": "https://polyhaven.com/a/concrete_pavement",
+    "id": "concrete_pavement",
+    "name": "Concrete Pavement",
+    "authors": [
+      "Charlotte Baglioni"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/plate-deck": {
+    "source": "https://polyhaven.com/a/metal_plate",
+    "id": "metal_plate",
+    "name": "Metal Plate",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/concrete": {
+    "source": "https://polyhaven.com/a/concrete_floor_worn_001",
+    "id": "concrete_floor_worn_001",
+    "name": "Concrete Floor Worn 001",
+    "authors": [
+      "Dimitrios Savva",
+      "Rico Cilliers"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "hdri/jasper": {
+    "source": "https://polyhaven.com/a/rogland_sunset",
+    "id": "rogland_sunset",
+    "name": "Rogland Sunset",
+    "authors": [
+      "Greg Zaal"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "hdri/mission": {
+    "source": "https://polyhaven.com/a/modern_buildings_night",
+    "id": "modern_buildings_night",
+    "name": "Modern Buildings Night",
+    "authors": [
+      "Greg Zaal"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "hdri/kaon": {
+    "source": "https://polyhaven.com/a/abandoned_tank_farm_05",
+    "id": "abandoned_tank_farm_05",
+    "name": "Abandoned Tank Farm 05",
+    "authors": [
+      "Sergej Majboroda"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  }
+}

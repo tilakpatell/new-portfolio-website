@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import GroundBridge from '../components/cybertron/GroundBridge';
+import RollOut from '../components/cybertron/rollout/RollOut';
 import Iacon from '../components/cybertron/Iacon';
 import Insignia from '../components/cybertron/Insignia';
 import Megatron from '../components/cybertron/Megatron';
@@ -173,6 +174,19 @@ export default function Cybertron() {
             </Link>
           </div>
           <WorldSwitcher className="mt-10" />
+        </div>
+      </section>
+
+      <section id="roll-out" className="shell relative z-10 scroll-mt-24 py-14 md:py-20" aria-labelledby="rollout-title">
+        <p className="eyebrow">In 3D · WebGL</p>
+        <h2 id="rollout-title" className="title mt-3">
+          Roll out
+        </h2>
+        <p className="lead mt-4 max-w-[62ch]">
+          From Jasper, Nevada to Mission City to the streets of Kaon, as Optimus or Bumblebee. Drive fast as a vehicle, stand up and fight as a robot, and pick the right form before the road picks it for you.
+        </p>
+        <div className="mt-8">
+          <RollOut />
         </div>
       </section>
 

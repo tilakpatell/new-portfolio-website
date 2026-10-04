@@ -31,6 +31,8 @@ export const ACHIEVEMENTS = {
   rollout: { name: 'Roll out', desc: 'Transformed the site' },
   groundbridge: { name: 'Bridge them back', desc: 'Brought all of Team Prime home through the ground bridge' },
   iacon: { name: 'Archivist', desc: 'Recovered every relic in the Iacon database' },
+  grounded: { name: 'Grounded', desc: 'Brought Starscream down over Jasper in Roll out' },
+  onestand: { name: 'One shall stand', desc: 'Beat Megatron in Kaon in Roll out' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },
