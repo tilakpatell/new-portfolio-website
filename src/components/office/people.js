@@ -46,8 +46,10 @@ export const CAST = {
 };
 
 // Anyone else (Albuquerque's people) comes as a spec of the same shape:
-// { pack, parts, height, colors, belly?, glasses?, tie?, gloves? }, where
-// `gloves` colours the hands.
+// { pack, parts, height, colors, belly?, glasses?, tie?, gloves?, model? },
+// where `gloves` colours the hands, and `model` is a textured, rigged figure
+// of them (Meshy's humanoid skeleton) to use instead when it has loaded; the
+// pack's parts are the stand-in.
 const PACKS = ['men', 'women'];
 export const isSpec = (s) => !!s && typeof s === 'object' && PACKS.includes(s.pack) && Array.isArray(s.parts) && s.parts.length > 0;
 
@@ -62,6 +64,8 @@ const AY = new THREE.Vector3(0, 1, 0);
 const AZ = new THREE.Vector3(0, 0, 1);
 const IDENTITY = new THREE.Quaternion();
 const HAND = /^(Wrist|Index|Middle|Ring|Pinky|Thumb)/; // the bones gloves cover
+// Meshy's skeleton, by the packs' bone names ([left, right] for pairs)
+const MESHY_BONES = { abdomen: 'Spine02', torso: 'Spine01', chest: 'Spine', neck: 'neck', head: 'Head', thigh: 'UpLeg', shin: 'Leg', foot: 'Foot', shoulder: 'Shoulder', arm: 'Arm', fore: 'ForeArm', wrist: 'Hand' };
 
 // Turn a bone about an axis of the figure's own frame (x its left, y up, z
 // forward), whatever the bone's own axes are. `frame` is the figure's world
@@ -190,19 +194,34 @@ function widen(geometry, skeleton, k) {
 }
 
 // ── The cast ───────────────────────────────────────────────────────────────
-// Loads both packs. Resolves to { person(id, opts), dispose }; if the models
-// can't be had, `person` gives null and the office goes on without them.
-export async function loadPeople() {
+// Loads both packs, and `models` (specs' model urls) beside them. Resolves to
+// { person(id, opts), dispose }; if the packs can't be had, `person` gives
+// null and the office goes on without them. A model that can't be had leaves
+// its person in the pack's parts.
+export async function loadPeople({ models = [] } = {}) {
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let packs;
+  const figures = new Map(); // model url -> gltf
   try {
-    const [men, women] = await Promise.all([loader.loadAsync('/models/office/cast-men.glb'), loader.loadAsync('/models/office/cast-women.glb')]);
+    const [men, women] = await Promise.all([
+      loader.loadAsync('/models/office/cast-men.glb'),
+      loader.loadAsync('/models/office/cast-women.glb'),
+      ...[...new Set(models)].map((url) => loader.loadAsync(url).then((g) => figures.set(url, g), () => null)),
+    ]);
     packs = { men, women };
   } catch {
     return { person: () => null, dispose() {} };
   }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 });
   const owned = []; // geometries and materials to dispose
+  for (const g of figures.values()) {
+    g.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material.roughness = 0.8;
+      o.material.metalness = 0;
+      owned.push(o.geometry, o.material, ...(o.material.map ? [o.material.map] : []));
+    });
+  }
   const looks = new Map(); // spec -> dressed geometry
   const lookFor = (spec) => {
     if (!looks.has(spec)) {
@@ -225,23 +244,32 @@ export async function loadPeople() {
     const spec = isSpec(who) ? who : CAST[who];
     if (!spec) return null;
     const id = typeof who === 'string' ? who : (spec.id ?? null);
-    const look = lookFor(spec);
-    const rig = cloneRig(packs[spec.pack].scene);
-    // keep the rig; swap its part meshes for this person's one mesh
-    const parts = [];
-    rig.traverse((o) => o.isSkinnedMesh && parts.push(o));
-    const tpl = parts.find((p) => p.name === look.template) || parts[0];
-    const body = new THREE.SkinnedMesh(look.geometry, mat);
+    const figure = spec.model && figures.get(spec.model);
+    const look = figure ? null : lookFor(spec);
+    const rig = cloneRig((figure ?? packs[spec.pack]).scene);
+    let body;
+    if (figure) {
+      // their own figure: its one textured mesh, as it is
+      rig.traverse((o) => o.isSkinnedMesh && !body && (body = o));
+    } else {
+      // keep the rig; swap its part meshes for this person's one mesh
+      const parts = [];
+      rig.traverse((o) => o.isSkinnedMesh && parts.push(o));
+      const tpl = parts.find((p) => p.name === look.template) || parts[0];
+      body = new THREE.SkinnedMesh(look.geometry, mat);
+      body.bind(tpl.skeleton, tpl.bindMatrix);
+      tpl.parent.add(body);
+      for (const p of parts) p.parent.remove(p);
+    }
     body.name = id ?? 'person';
-    body.bind(tpl.skeleton, tpl.bindMatrix);
     body.castShadow = shadows;
     body.frustumCulled = false; // its bounds move with its bones
-    tpl.parent.add(body);
-    for (const p of parts) p.parent.remove(p);
     const bone = (n) => rig.getObjectByName(n);
     // (the loader drops the dot from the packs' names: UpperLeg.L is UpperLegL)
-    const pair = (n) => [bone(`${n}L`), bone(`${n}R`)];
-    const B = { abdomen: bone('Abdomen'), torso: bone('Torso'), chest: bone('Chest'), neck: bone('Neck'), head: bone('Head'), thigh: pair('UpperLeg'), shin: pair('LowerLeg'), foot: pair('Foot'), shoulder: pair('Shoulder'), arm: pair('UpperArm'), fore: pair('LowerArm'), wrist: pair('Wrist') };
+    const pair = (n) => (figure ? [bone(`Left${n}`), bone(`Right${n}`)] : [bone(`${n}L`), bone(`${n}R`)]);
+    const B = figure
+      ? Object.fromEntries(Object.entries(MESHY_BONES).map(([k, n]) => [k, ['abdomen', 'torso', 'chest', 'neck', 'head'].includes(k) ? bone(n) : pair(n)]))
+      : { abdomen: bone('Abdomen'), torso: bone('Torso'), chest: bone('Chest'), neck: bone('Neck'), head: bone('Head'), thigh: pair('UpperLeg'), shin: pair('LowerLeg'), foot: pair('Foot'), shoulder: pair('Shoulder'), arm: pair('UpperArm'), fore: pair('LowerArm'), wrist: pair('Wrist') };
     const root = new THREE.Group();
     root.add(rig);
     const settle = () => {
@@ -279,7 +307,7 @@ export async function loadPeople() {
 
     // ── glasses and a tie, where the packs have none: on the head and chest ──
     const extras = [];
-    if (spec.glasses) {
+    if (spec.glasses && !figure) {
       const eyes = where('eyes');
       const mid = eyes.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, eyes.length));
       const centre = (keep) => {
@@ -313,7 +341,7 @@ export async function loadPeople() {
       extras.push(g);
       owned.push(g.geometry, m);
     }
-    if (spec.tie) {
+    if (spec.tie && !figure) {
       // from the collar down the shirt's front
       const neck = B.neck.getWorldPosition(new THREE.Vector3());
       const chest = where('top', (p) => Math.abs(p.x) < 0.04 && p.y < neck.y - 0.04 && p.y > neck.y - 0.2);

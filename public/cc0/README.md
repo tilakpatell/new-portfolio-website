@@ -16,4 +16,5 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
 
 These live outside this folder and are not public domain.
 
-- `../models/metherria/{drum-base,drum-blue,hammer}.glb`: Walt's two chemical drums and his ball-peen hammer in Metherria, generated for this site by Tilak Patel with Meshy AI (meshy.ai, a paid plan: the output is the site owner's). Made by `scripts/meshy-metherria.mjs` (concept image, then a textured model, baked into the scene's frame with 1K WebP textures); the Meshy task ids are in `scripts/meshy-metherria-tasks.json`.
+- `../models/metherria/{drum-base,drum-blue,hammer}.glb`: Walt's two chemical drums and his ball-peen hammer in Metherria, generated for this site by Tilak Patel with Meshy AI (meshy.ai, a paid plan: the output is the site owner's). Made by `scripts/meshy-albuquerque.mjs` (concept image, then a textured model, baked into the scene's frame with 1K WebP textures); the Meshy task ids are in `scripts/meshy-albuquerque-tasks.json`.
+- `../models/albuquerque/<id>.glb`: Albuquerque's people (Walt and Jesse in hazmat, Metherria's customers, Hank, Hector and the nurse), generated for this site by Tilak Patel with Meshy AI in the same way, then rigged by Meshy: stylized figures described by look and costume, not likenesses of anyone real.

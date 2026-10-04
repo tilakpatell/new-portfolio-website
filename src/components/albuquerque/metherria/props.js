@@ -1,5 +1,5 @@
 // Walt's drums and hammer: models made for the site with Meshy AI by
-// scripts/meshy-metherria.mjs, already in the scene's frame and size (a drum
+// scripts/meshy-albuquerque.mjs, already in the scene's frame and size (a drum
 // stands on y = 0 with its spout toward +x; the hammer's head is at the
 // origin with the handle down +z). The scene keeps its own drums and hammer
 // for any model that doesn't load.

@@ -1,5 +1,7 @@
-// Albuquerque's people, dressed as the shows dress them, from the same
-// Quaternius packs as the Scranton office (see office/people.js): Jesse's
+// Albuquerque's people, dressed as the shows dress them. Each has a figure
+// of their own, made with Meshy (FIGURES, below); until it loads, or if it
+// can't, they stand in from the same Quaternius packs as the Scranton office
+// (see office/people.js): Jesse's
 // hoodie, Tuco's shaved head, Mike's tan jacket, Gus's grey suit and glasses,
 // Lydia's camel blazer, Saul's loud shirt and tie, Hank's polo, Hector's
 // white hair, and Walt and Jesse in hazmat yellow at the bench.
@@ -30,6 +32,13 @@ export const ABQ = {
   walt: men('walt', 'head_bald_moustache', 'body_suit', 'legs_slacks', 1.79, { skin: SKIN.light, moustache: 0x7a6a58, brows: 0x6a5a48, top: HAZMAT, shirt: HAZMAT, tie: HAZMAT, legs: HAZMAT }, { glasses: 0x2a2a2a, gloves: GLOVES }),
   jesseLab: men('jesseLab', 'head_short', 'body_suit', 'legs_slacks', 1.73, { skin: SKIN.fair, hair: 0x7a6248, top: HAZMAT, shirt: HAZMAT, tie: HAZMAT, legs: HAZMAT }, { gloves: GLOVES }),
 };
+
+// Their own figures, made for the site with Meshy AI
+// (scripts/meshy-albuquerque.mjs): textured and rigged, posed by
+// office/people.js like the rest. The packs' parts above stand in until a
+// figure loads, or if it can't.
+const FIGURES = { walt: 'walt', badger: 'badger' };
+for (const [id, file] of Object.entries(FIGURES)) ABQ[id].model = `/models/albuquerque/${file}.glb`;
 
 // How they take an order, by the mood it left them in.
 const REACT = { great: 'cheer', good: 'nod', okay: 'shrug', bad: 'shake', restless: 'fold' };

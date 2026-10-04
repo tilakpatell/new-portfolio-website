@@ -12,7 +12,7 @@ import { loadEnvironment, loadPbr, loadTexture } from '../../../lib/hdri';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import Face from './Face';
-import { M } from './rules';
+import { CUSTOMERS, M } from './rules';
 import { loadPeople } from '../../office/people';
 import { ABQ, moodGesture } from '../wardrobe';
 import { loadProps, PROPS, spoutOf } from './props';
@@ -715,7 +715,9 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   // the room ── Rigged figures (office/people.js) once the cast has loaded;
   // until then, or if it can't, the cut-outs above.
   const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null };
-  loadPeople()
+  // (their own figures where they have them: the customers, Walt and Jesse)
+  const cast = [...Object.keys(CUSTOMERS), 'walt', 'jesseLab'];
+  loadPeople({ models: cast.map((id) => ABQ[id]?.model).filter(Boolean) })
     .then((people) => {
       if (disposed) return people.dispose();
       const walt = people.person(ABQ.walt, { pose: 'stand' });

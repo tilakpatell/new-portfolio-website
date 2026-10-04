@@ -1,0 +1,72 @@
+{
+  "drumBase": {
+    "image": "01a1085b-58b2-7205-b6b6-611dc0a04e4a",
+    "model": "01a1085c-000e-7752-a6c1-25f419552958"
+  },
+  "drumBlue": {
+    "image": "01a1085b-590c-7025-8688-6de1fd9aaf85",
+    "model": "01a1085c-0217-74db-a460-8753104e1bb3"
+  },
+  "hammer": {
+    "image": "01a1085b-595b-7243-b9dc-7a3d19b68514",
+    "model": "01a1085c-0443-7428-8c51-b578c2f591e1"
+  },
+  "walt": {
+    "image": "01a1086c-19d8-76e7-939d-329ad7653896",
+    "model": "01a1086c-b335-723a-a090-6bd52a6ee0d0",
+    "rig": "01a1086f-05b2-7469-8c15-7c8205721b17"
+  },
+  "badger": {
+    "image": "01a1086c-1c8b-758d-8c1e-ee1caa038c76",
+    "model": "01a1086c-b545-7393-a7fd-aefff6b1e825",
+    "rig": "01a1086f-10de-706b-a87d-c6236b2bd224"
+  },
+  "jesseLab": {
+    "image": "01a10876-7be2-706e-8727-78c049e52c15",
+    "model": "01a10877-bf3e-778b-baef-c449529275c7"
+  },
+  "jesse": {
+    "image": "01a10876-7dc6-77fa-b737-dbaaef60eb08",
+    "model": "01a10877-c1cb-76a4-b8f7-13bf6710e8bf"
+  },
+  "pete": {
+    "image": "01a10876-80b9-760f-b07a-1ddc7dd92852",
+    "model": "01a10877-c45b-74b5-8d4e-9dbd9e85675d"
+  },
+  "tuco": {
+    "image": "01a10876-82b4-73a5-b04f-1587a2e95458",
+    "model": "01a10877-c737-772b-b713-ee6dea3386c1"
+  },
+  "mike": {
+    "image": "01a10876-8585-7795-b97a-f39d3e456081",
+    "model": "01a10877-c98c-70ec-a24e-111f5a93c918"
+  },
+  "gus": {
+    "image": "01a10876-8ba0-779f-88c5-778c67114da9",
+    "model": "01a10877-cc6a-7196-83ac-696de34f5611"
+  },
+  "lydia": {
+    "image": "01a10876-8df9-7110-b968-1b709507ca42",
+    "model": "01a10877-cf9d-7086-95e3-d08cf83e9144"
+  },
+  "declan": {
+    "image": "01a10876-9057-7153-985b-1348fea948f6",
+    "model": "01a10877-d258-70f5-82a9-fc6441bcf938"
+  },
+  "saul": {
+    "image": "01a10876-9244-7778-9b45-c070d6e8dfe8",
+    "model": "01a10877-d51c-71e5-a895-668fd2590d5f"
+  },
+  "hank": {
+    "image": "01a10876-9501-7694-a0cc-c13da4bb86b8",
+    "model": "01a10877-d80d-7273-ae4e-afcf93eeb558"
+  },
+  "hector": {
+    "image": "01a10876-96e7-73ac-8a77-dbe4e3e12a4e",
+    "model": "01a10877-dae9-76a0-8171-733fb9f438a3"
+  },
+  "nurse": {
+    "image": "01a10876-9a3a-7387-bb86-20298c8a698f",
+    "model": "01a10877-ddf8-73cf-b75f-80bff32ab0e5"
+  }
+}

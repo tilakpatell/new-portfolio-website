@@ -144,7 +144,7 @@
 
 ### Task 1.5: Walt's tools from Meshy
 
-Needs the Meshy MCP tools, which load only when a session starts: run it in a fresh session.
+Needs the Meshy MCP tools, which load only when a session starts: run it in a fresh session. (Done in a cloud session with Meshy's API instead, `scripts/meshy-albuquerque.mjs`; textures kept at 1K, not 512, at the user's ask for high quality.)
 
 **Files:**
 - Create: `public/models/metherria/{drum-base,drum-blue,hammer}.glb`, `src/components/albuquerque/metherria/props.js`, `props.test.js`
@@ -160,6 +160,21 @@ Needs the Meshy MCP tools, which load only when a session starts: run it in a fr
 - [ ] **Step 2:** Generate with Meshy, preview each, regenerate what reads wrong; optimize; place the spouts.
 - [ ] **Step 3:** `props.js`, then the scene: labels stay on the drums' band, the pour comes from `spout`, Walt's hand reaches for it.
 - [ ] **Step 4:** QA as Task 1.4 (each station, both sizes, ≤ 300 calls, models routed to 404 show the procedural props). Lint, test, build; commit; push; PR; merge; reset the branch.
+
+### Task 1.6: Albuquerque's people from Meshy
+
+Added 2026-10-04 at the user's ask: generated, high-quality figures for everyone in the wardrobe.
+
+**Files:**
+- Create: `public/models/albuquerque/<id>.glb` (14 people)
+- Modify: `scripts/meshy-albuquerque.mjs` (renamed from `meshy-metherria.mjs`: people, a `rig` step), `src/components/office/people.js` (`loadPeople({ models })`, a spec's `model`, Meshy's bone names), `src/components/albuquerque/wardrobe.js` (`model` per person), `metherria/scene.js` (preloads its cast), `public/cc0/README.md`
+
+**Interfaces:**
+- `loadPeople({ models = [] })`: also loads these urls; a spec whose `model` loaded is built from it, else from the pack's parts. `loadPeople()` alone is as before (the office).
+- Figures: one skinned mesh, one 1K WebP texture, Meshy's 24-bone skeleton, under 600 KB.
+
+- [x] Pilot (Walt, Badger): concept image, model (12k triangles), rig, fetch; posed at the hatch and the bench.
+- [ ] The other 12; QA as Task 1.4 (hatch, every station, both sizes, ≤ 300 calls; the figures routed to 404 show the pack's people).
 
 ## Phase 2 (PR 2): the RV and the superlab
 

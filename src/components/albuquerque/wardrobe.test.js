@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { isSpec } from '../office/people';
 import { CUSTOMERS } from './metherria/rules';
@@ -42,6 +42,22 @@ describe("Albuquerque's people", () => {
     }
     expect(ABQ.jesse.parts).toContain('body_hoodie');
     expect(ABQ.declan.parts).toContain('head_beard');
+  });
+
+  it("gives each figure the skeleton the cast module poses, under 600 KB", () => {
+    const bones = ['Hips', 'Spine02', 'Spine01', 'Spine', 'neck', 'Head', ...['Shoulder', 'Arm', 'ForeArm', 'Hand', 'UpLeg', 'Leg', 'Foot'].flatMap((n) => [`Left${n}`, `Right${n}`])];
+    const figures = Object.values(ABQ).filter((spec) => spec.model);
+    expect(figures.length).toBeGreaterThan(0);
+    for (const { id, model } of figures) {
+      const file = new URL(`../../../public${model}`, import.meta.url);
+      expect(statSync(file).size, id).toBeLessThan(600 * 1024);
+      const b = readFileSync(file);
+      const g = JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString());
+      expect(g.skins, id).toHaveLength(1);
+      const names = g.skins[0].joints.map((j) => g.nodes[j].name);
+      for (const n of bones) expect(names, `${id}: ${n}`).toContain(n);
+      expect(g.images?.length, id).toBeGreaterThan(0);
+    }
   });
 
   it('reacts to each mood', () => {

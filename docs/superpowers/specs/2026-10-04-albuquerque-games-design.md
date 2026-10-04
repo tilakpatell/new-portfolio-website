@@ -27,6 +27,17 @@ PR 2. Generated ones are licensed to the user under their Meshy plan, not CC0, a
 are listed as such in `public/cc0/README.md`. Meshy's free library comes first: its community models are marked CC0 on their pages (recorded per model); only what it lacks is generated. Each keeps its procedural
 version as the fallback if the model fails to load.
 
+Generated figures and textures (decided 2026-10-04, "we want it high
+quality"): Albuquerque's people are Meshy figures too, each made from a
+concept image, textured (1K) and rigged on Meshy's humanoid skeleton, which
+the cast module poses through a bone-name map. They are described by look
+and costume, never by name or actor, in a stylized animated-film style, not
+a likeness of anyone real. The Quaternius figure stays as the stand-in until
+a figure loads, or if it can't. Props keep 1K textures. Meshy's library
+can't be searched or downloaded from a cloud session (the site doesn't load
+through its proxy; the API and MCP have no library tools), so there the props
+are generated too.
+
 ## Success criteria
 
 - Every customer in Metherria and everyone in Casa Tranquila is a rigged 3D
