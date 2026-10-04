@@ -80,5 +80,41 @@
     "image": "01a10876-9a3a-7387-bb86-20298c8a698f",
     "model": "01a10877-ddf8-73cf-b75f-80bff32ab0e5",
     "rig": "01a1087b-40d3-70b4-874f-800921fe8f9d"
+  },
+  "aztek": {
+    "image": "01a108fd-790d-73b8-aed0-4e18df8ea45e",
+    "model": "01a10900-0c91-762d-a608-ec2cd00d53cf"
+  },
+  "rv": {
+    "image": "01a108fd-7974-77d1-8eb7-1dc85f895a60",
+    "model": "01a10900-0f68-706a-94b1-343765d38a0b"
+  },
+  "suv": {
+    "image": "01a108fd-79cb-7753-81db-b5b8c10ba931",
+    "model": "01a10900-11f6-77b0-a0ed-2bd35016ae8a"
+  },
+  "house": {
+    "image": "01a108fd-7a1f-701d-976e-63ab32542c40",
+    "model": "01a10900-143f-70ec-9e11-f8f2458c1ee8"
+  },
+  "pollos": {
+    "image": "01a108fd-7a75-721e-b0c2-3bee7ab70448",
+    "model": "01a10900-1682-70bd-8d80-cb6d08e3dda2"
+  },
+  "laundry": {
+    "image": "01a108fd-7acb-73cf-900c-9984537be8ea",
+    "model": "01a10900-18ef-7420-8a75-6e97b0123cf3"
+  },
+  "casa": {
+    "image": "01a108fd-7b2c-72e4-adcb-7ff28871c855",
+    "model": "01a10900-1b76-733b-ab80-732759d6c2e0"
+  },
+  "office": {
+    "image": "01a108fd-7b7e-74fc-afb8-cbda7d590a5c",
+    "model": "01a10900-1dfb-7323-9d5c-b800b07aef35"
+  },
+  "carwash": {
+    "image": "01a108fd-7bd3-72a5-bdbe-446a3eaebd33",
+    "model": "01a10900-20b0-7746-971e-a5a8d05988c2"
   }
 }
