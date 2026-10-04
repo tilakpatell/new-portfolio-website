@@ -13,6 +13,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import Face from './Face';
 import { M } from './rules';
+import { loadPeople } from '../../office/people';
+import { ABQ, moodGesture } from '../wardrobe';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
@@ -681,6 +683,39 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   let flying = [];
   let lastTip = null;
 
+  // ── the people: customers outside the hatch, Walt at the bench, Jesse in
+  // the room ── Rigged figures (office/people.js) once the cast has loaded;
+  // until then, or if it can't, the cut-outs above.
+  const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null };
+  loadPeople()
+    .then((people) => {
+      if (disposed) return people.dispose();
+      const walt = people.person(ABQ.walt, { pose: 'stand' });
+      if (!walt) return people.dispose(); // no models: the cut-outs stay
+      folks.people = people;
+      folks.walt = walt;
+      folks.waltHead = walt.group.getObjectByName('Head');
+      walt.group.rotation.y = Math.PI; // at the bench, his back to us
+      folks.jesse = people.person(ABQ.jesseLab, { pose: 'stand', idle: true });
+      scene.add(walt.group, folks.jesse.group);
+      folks.ready = true;
+    })
+    .catch(() => {});
+  // one figure a customer, made the first time they come and kept
+  const figureFor = (id) => {
+    if (!folks.at.has(id)) {
+      const p = ABQ[id] ? folks.people.person(ABQ[id], { pose: 'stand', idle: true }) : null;
+      if (p) scene.add(p.group);
+      folks.at.set(id, p && { p, mood: null });
+    }
+    return folks.at.get(id);
+  };
+  const crowdAnchors = []; // over each customer's head, in crowd order
+  const waltAt = new THREE.Vector3(STATIONS.order - 0.42, 0, 0.42);
+  const WALT_EYES = 1.66; // how far his eyes are off the floor
+  const reachFor = new THREE.Vector3();
+  const headTmp = new THREE.Vector3();
+
   // ── per frame ──
   const camPos = new THREE.Vector3().copy(camera.position);
   const camLook = new THREE.Vector3(STATIONS.order, 1.2, -0.4);
@@ -899,19 +934,82 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     const crowd = [];
     if (live.serving) crowd.push({ ...live.serving, front: true });
     for (const e of live.lobby ?? []) if (crowd.length < standees.length) crowd.push(e);
+    // (only drawn while the camera's at the hatch)
+    const atHatch = Math.abs(camPos.x - STATIONS.order) < 2.6;
+    const shown = new Set();
+    crowdAnchors.length = 0;
     standees.forEach((m, i) => {
       const e = crowd[i];
-      m.visible = !!e;
+      m.visible = !!e && !folks.ready;
       if (!e) return;
-      m.material = standeeFor(e.customer, e.mood ?? 'wait');
       const front = e.front || (!live.serving && i === 0);
       const slot = live.serving ? i : i + 1;
       const x = -4.4 + (front ? 0 : (slot % 2 ? -1 : 1) * (0.35 + Math.floor(slot / 2) * 0.3));
       const z = front ? -1.05 : -1.5 - slot * 0.35;
-      const s = front ? 1.05 : 0.85;
-      m.scale.set(s, s, 1);
-      m.position.set(x, 1.12 + Math.sin(clock * 2 + m.userData.phase) * 0.012 + (front ? 0.05 : -0.05), z);
+      if (!folks.ready) {
+        m.material = standeeFor(e.customer, e.mood ?? 'wait');
+        const s = front ? 1.05 : 0.85;
+        m.scale.set(s, s, 1);
+        m.position.set(x, 1.12 + Math.sin(clock * 2 + m.userData.phase) * 0.012 + (front ? 0.05 : -0.05), z);
+        return;
+      }
+      // a figure: the one being served at the ledge, looking at us; the
+      // queue behind, turned to the hatch
+      const f = figureFor(e.customer);
+      if (!f || shown.has(e.customer)) return crowdAnchors.push(null);
+      shown.add(e.customer);
+      const g = f.p.group;
+      g.visible = atHatch;
+      g.position.set(x, 0, front ? -1.25 : z);
+      g.rotation.y = front ? 0 : Math.atan2(-4.4 - x, -0.75 - z);
+      f.p.look(front ? camera.position : null);
+      // the one at the front shows how the order left them
+      const mood = front ? (e.mood ?? 'wait') : null;
+      if (mood !== f.mood) {
+        f.mood = mood;
+        const gesture = mood && moodGesture(mood);
+        if (gesture) f.p.gesture(gesture);
+      }
+      if (atHatch) f.p.update(clock, dt);
+      crowdAnchors.push(f.p.headAt(new THREE.Vector3()).add(headTmp.set(0, 0.3, 0)));
     });
+    if (folks.ready) for (const [id, f] of folks.at) if (f && !shown.has(id)) f.p.group.visible = false;
+
+    // Walt, at the station, his hand on what he's working with; Jesse in the
+    // room, reacting to each order (unless he's outside, ordering)
+    if (folks.ready) {
+      const walt = folks.walt;
+      const sx = STATIONS[live.station] ?? STATIONS.order;
+      // at the hatch, over his shoulder; at the bench, his eyes are ours: his
+      // head is hidden and his arms come into view from below
+      const bench = !(live.station in { order: 1, serve: 1, idle: 1 });
+      if (bench) waltAt.set(camPos.x - 0.02, camPos.y - WALT_EYES, camPos.z - 0.12);
+      else waltAt.lerp(v3.set(sx - 0.42, 0, 0.42), k);
+      walt.group.position.copy(waltAt);
+      folks.waltHead.scale.setScalar(bench ? 1e-3 : 1);
+      let hand = null;
+      if (live.station === 'build' && (b.pour === 'base' || b.pour === 'blue')) {
+        const d = b.pour === 'base' ? baseDrum : blueDrum;
+        hand = d.localToWorld(reachFor.set(0.17 * (b.pour === 'base' ? 1 : -1), 0.4, 0));
+      } else if (live.station === 'cook' && live.cook) hand = gauge.localToWorld(reachFor.set(0, 0.08, 0.02));
+      else if (live.station === 'break' && live.brk) {
+        hammer.updateMatrixWorld();
+        hand = hammer.localToWorld(reachFor.set(0, 0, 0.36));
+      } else if (live.station === 'pack' && pk.pack && packs[pk.pack]) hand = packs[pk.pack].g.localToWorld(reachFor.set(0, 0.12, 0.05));
+      walt.reach('right', hand);
+      walt.update(clock, dt);
+      const jesse = folks.jesse;
+      jesse.group.visible = !shown.has('jesse');
+      jesse.group.position.set(-2.9, 0, 0.5);
+      jesse.group.rotation.y = -0.5;
+      jesse.look(walt.headAt(headTmp));
+      if (live.reaction && live.reaction.at !== folks.reaction) {
+        folks.reaction = live.reaction.at;
+        const gesture = moodGesture(live.reaction.mood);
+        if (gesture) jesse.gesture(gesture);
+      }
+      if (jesse.group.visible) jesse.update(clock, dt);
+    }
 
     // tips: coins arc from the hatch into the jar
     if (live.tip && live.tip.at !== lastTip) {
@@ -994,7 +1092,12 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     v3.set(x, y, z).project(camera);
     return [((v3.x + 1) / 2) * size.w, ((1 - v3.y) / 2) * size.h, v3.z < 1];
   };
-  const standeeAnchors = () => standees.filter((m) => m.visible).map((m) => project(m.position.x, m.position.y + m.scale.y * 0.5, m.position.z));
+  // (over the figures' heads once they're in, else over the cut-outs; in
+  // crowd order either way, the one being served first)
+  const standeeAnchors = () =>
+    folks.ready
+      ? crowdAnchors.map((p) => (p ? project(p.x, p.y, p.z) : [0, 0, false]))
+      : standees.filter((m) => m.visible).map((m) => project(m.position.x, m.position.y + m.scale.y * 0.5, m.position.z));
 
   // renderer counts, for the QA pass (draw calls, triangles, textures)
   const diagnostics = () => {
@@ -1004,6 +1107,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
 
   const dispose = () => {
     disposed = true;
+    folks.people?.dispose();
     for (const p of Object.values(hdris)) p.then((t) => t?.dispose());
     canvas.removeEventListener('webglcontextlost', onContextLost);
     const seen = new Set();
@@ -1021,6 +1125,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       }
     });
     for (const L of Object.values(looks)) for (const m of Object.values(L)) {
+      if (!m?.isMaterial) continue; // (each look also keeps its `ready` promise)
       for (const k2 of ['map', 'normalMap', 'roughnessMap']) m[k2]?.dispose?.();
       m.dispose();
     }
