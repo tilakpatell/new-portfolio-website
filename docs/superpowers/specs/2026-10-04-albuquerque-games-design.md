@@ -141,6 +141,13 @@ Ultimate Modular Men/Women packs built by `scripts/build-cast.py`):
 - Rules in a pure module (`casa/rules.js`) with tests: the sweep, picking,
   misses, timing and scoring, the finale's steps.
 - The 2D `HectorBoard` and `HectorBell` stay as the no-WebGL fallback.
+- Sound (decided 2026-10-04): recorded clips from the shows, supplied by the
+  site owner or picked from Myinstants for them, through the site's clip
+  registry (`src/lib/clips.js`, credited in `public/audio/clips/README.md`):
+  Hector's bell, Gus's introduction, the Face Off blast; in Metherria, Jesse's
+  ringtone, Saul's and Gus's hellos at the hatch, Tuco's "Tight, tight,
+  tight!", Hank's ringtone at the raid, and "Better call Saul!" for the
+  billboard. Lines with swearing are cut or left out.
 
 ## Delivery
 

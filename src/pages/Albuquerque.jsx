@@ -2,8 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
-import HectorBell from '../components/albuquerque/HectorBell';
-import HectorBoard from '../components/albuquerque/HectorBoard';
+import CasaTranquila from '../components/albuquerque/casa/CasaTranquila';
 import Metherria from '../components/albuquerque/metherria/Metherria';
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -185,22 +184,15 @@ export default function Albuquerque() {
         </div>
       </section>
 
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="hector-title">
-        <HectorBell />
-      </section>
-
-      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="board-title">
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:gap-14">
-          <HectorBoard />
-          <div>
-            <h2 id="board-title" className="title">
-              The letter board
-            </h2>
-            <p className="lead mt-4 max-w-[44ch]">
-              How Hector talks: someone runs a finger along a letter board and he rings when it reaches the one he wants. Pick the row, then the letter. Three
-              words, as fast as you can, and every wrong ring costs you five seconds.
-            </p>
-          </div>
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="casa-title">
+        <h2 id="casa-title" className="title">
+          Face Off at Casa Tranquila
+        </h2>
+        <p className="lead mt-4 max-w-[60ch]">
+          How Hector talks: the nurse runs her finger along a letter board, and he rings his bell when it reaches the one he wants. Pick the row, then the letter. Three words, as fast as you can, and every wrong ring costs you five seconds. Then Gus comes to visit.
+        </p>
+        <div className="mt-8">
+          <CasaTranquila />
         </div>
       </section>
 
