@@ -2270,7 +2270,7 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .wm-callout[data-tone='bad'] { color: var(--wm-bad); }
 .wm-pin { position: absolute; top: 0.7rem; left: 0.7rem; z-index: 2; display: grid; justify-items: start; gap: 0.35rem; max-width: min(13rem, 46%); }
 .wm-pin-toggle { padding: 0.25rem 0.6rem; border-radius: 999px; background: rgba(10, 12, 14, 0.72); color: #fff; font: 700 0.7rem/1.2 var(--font-mono); text-transform: uppercase; }
-.wm-card { position: absolute; top: 50%; left: 50%; z-index: 4; width: min(34rem, calc(100% - 1.5rem)); padding: 1.25rem 1.2rem 1.3rem; border: 1px solid var(--wm-line); border-radius: 14px; background: rgba(18, 21, 23, 0.92); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%); animation: wm-in 0.3s ease-out both; }
+.wm-card { position: absolute; top: 50%; left: 50%; z-index: 4; width: min(34rem, calc(100% - 1.5rem)); max-height: calc(100% - 1rem); overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem 1.2rem 1.3rem; border: 1px solid var(--wm-line); border-radius: 14px; background: rgba(18, 21, 23, 0.92); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%); animation: wm-in 0.3s ease-out both; }
 .wm-card-scroll { max-height: calc(100% - 1.5rem); overflow-y: auto; }
 .wm-card-title { font: 700 1.35rem/1.2 var(--font-sans); }
 .wm-card-text { max-width: 60ch; margin-top: 0.55rem; color: var(--wm-dim); line-height: 1.55; }
@@ -2391,6 +2391,17 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
   .wm-tabs button { font-size: 0.7rem; letter-spacing: 0; }
   .wm-card { padding: 1rem; }
   .wm-card-title { font-size: 1.15rem; }
+  /* the order's result: the face beside the quote, the five scores in a row */
+  .wm-result { flex-wrap: nowrap; gap: 0.75rem; padding: 0.85rem; }
+  .wm-result > div { flex: 1; min-width: 0; }
+  .wm-result .wm-face-big { flex: none; width: 3rem; height: 3rem; }
+  .wm-result .wm-quote { font-size: 1rem; }
+  .wm-scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; margin-top: 0.55rem; }
+  .wm-scores li { min-width: 0; padding: 0.25rem 0.1rem; }
+  .wm-scores span { font-size: 0.52rem; }
+  .wm-scores b { font-size: 0.92rem; }
+  .wm-result .wm-total { margin-top: 0.5rem; font-size: 1.35rem; }
+  .wm-result .wm-row { margin-top: 0.65rem; }
   .wm-pin { max-width: 58%; }
 }
 @media (prefers-reduced-motion: reduce) {
