@@ -982,5 +982,61 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/optimus-prime": {
+    "source": "https://www.meshy.ai",
+    "name": "Optimus Prime, robot mode, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/megatron": {
+    "source": "https://www.meshy.ai",
+    "name": "Megatron, robot mode, with the fusion cannon, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/x-wing-fighter": {
+    "source": "https://www.meshy.ai",
+    "name": "an X-wing starfighter, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/slave-i": {
+    "source": "https://www.meshy.ai",
+    "name": "Slave I, Boba Fett's ship, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/republic-attack-cruiser": {
+    "source": "https://www.meshy.ai",
+    "name": "a Republic attack cruiser, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/mario": {
+    "source": "https://www.meshy.ai",
+    "name": "Mario, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/piranha-plant": {
+    "source": "https://www.meshy.ai",
+    "name": "a Piranha Plant in its pipe, made for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

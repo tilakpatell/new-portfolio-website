@@ -1,5 +1,7 @@
-// The ships you can fly round the universe map: Luke's X-wing, built from
-// simple shapes (four wings in an X, the red stripes, four engines); the
+// The ships you can fly round the universe map: Luke's X-wing, the site
+// owner's Meshy model of it once it loads (until then, or without it, one
+// built from simple shapes: four wings in an X, the red stripes, four
+// engines); the
 // Millennium Falcon, the site owner's Meshy model of it once it loads (until
 // then, or without it, one built the same way: the saucer, the two mandibles,
 // the cockpit off to the right); and Rick's space cruiser, the classic saucer
@@ -72,7 +74,7 @@ function xwing(T) {
       stripes.push([new THREE.BoxGeometry(0.05, 0.0062, 0.022), [stx, sty, 0.045], [0, 0, tilt]]);
       cannons.push([tube(0.0035, 0.005, 0.2, 6), [tx, ty, 0.0], LAY]);
       engines.push([tube(0.018, 0.018, 0.1, 12), [sx * 0.045, sy * 0.028, 0.09], LAY]);
-      glows.push([new THREE.CircleGeometry(0.014, 14), [sx * 0.045, sy * 0.028, 0.1405], [0, 0, 0]]);
+      glows.push([new THREE.CircleGeometry(0.014, 14), [sx * 0.045, sy * 0.028, 0], [0, 0, 0]]);
     }
   }
   const white = new THREE.Mesh(
@@ -95,8 +97,12 @@ function xwing(T) {
   );
   const glowM = glowMat('#ff7a4a');
   const glow = new THREE.Mesh(parts(glows), glowM);
-  group.add(white, red, dark, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }] };
+  glow.position.z = 0.1405;
+  const stand = new THREE.Group();
+  stand.add(white, red, dark);
+  group.add(stand, glow);
+  // the model's nose is +z, and its engines sit a little closer in than these
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, glowMesh: glow, nose: Math.PI, glowOnModel: [0.78, 0.96] };
 }
 
 function falcon(T) {
@@ -175,7 +181,7 @@ const BUILD = { xwing, falcon, cruiser };
 
 // the models that take over from the built ships, when they load (the
 // cruiser is built by the C-137 page's own code instead; see scene.js)
-export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb' };
+export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/meshy/x-wing-fighter.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
@@ -224,6 +230,7 @@ export function buildShip(kind, T = {}) {
       if (ship.glowMesh) {
         const along = Math.abs(Math.sin(holder.rotation.y)) > 0.5 ? dims.x : dims.z;
         ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (LENGTH / 2) + 0.004;
+        if (ship.glowOnModel) ship.glowMesh.scale.set(...ship.glowOnModel, 1);
       }
       return true;
     },
