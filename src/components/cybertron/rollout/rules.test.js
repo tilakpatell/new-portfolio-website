@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROLL, boostSpeed, jump, newRun, stepRun, transform } from './rules';
+import { ROLL, boostSpeed, jump, newRun, stagesFor, stepRun, transform } from './rules';
 import { autopilot } from './pilot';
 
 const DT = 1 / 60;
@@ -661,6 +661,63 @@ describe('the boss and the stages', () => {
       if (w && s.grounded && w.z - s.z < 7 && w.z - s.z > 0) jump(s);
     });
     expect(h.shields).toBe(s1);
+  });
+});
+
+describe('the Decepticons’ side', () => {
+  const toBoss = (g) => {
+    quiet(g);
+    g.z = g.stageLen - 1;
+    run(g, 0.3);
+  };
+
+  it('Knock Out and Breakdown drive for the Decepticons, through to Iacon', () => {
+    const g = newRun({ seed: 50, bot: 'knockout' });
+    expect(g.side).toBe('decepticon');
+    expect(newRun({ seed: 50, bot: 'breakdown' }).side).toBe('decepticon');
+    expect(newRun({ seed: 50, bot: 'optimus' }).side).toBe('autobot');
+    expect(stagesFor('decepticon').map((s) => s.id)).toEqual(['jasper', 'mission', 'iacon']);
+    expect(stagesFor('decepticon').map((s) => s.boss)).toEqual(['wheeljack', 'magnus', 'optimus']);
+    expect(newRun({ seed: 50, bot: 'breakdown' }).shields).toBeGreaterThan(newRun({ seed: 50, bot: 'knockout' }).shields);
+  });
+
+  it('meets the Autobots’ bosses: Wheeljack’s Jackhammer flies like Starscream, Optimus waits in Iacon', () => {
+    const g = newRun({ seed: 51, bot: 'knockout' });
+    toBoss(g);
+    expect(g.boss.kind).toBe('wheeljack');
+    expect(ROLL.bosses.wheeljack.flyer).toBe(true);
+    expect(g.boss.y).toBeGreaterThan(2);
+    const h = newRun({ seed: 51, bot: 'breakdown', stage: 2 });
+    toBoss(h);
+    expect(h.boss.kind).toBe('optimus');
+    expect(h.boss.name).toBe('Optimus Prime');
+  });
+
+  it('wins by taking Iacon', () => {
+    const w = newRun({ seed: 52, bot: 'knockout', stage: 2 });
+    toBoss(w);
+    w.boss.hp = 0.5;
+    transform(w);
+    run(w, 4, {}, (s) => {
+      if (s.boss) {
+        s.boss.cool = 99;
+        s.x = s.tx = s.boss.x;
+      }
+    });
+    expect(w.status).toBe('won');
+    expect(w.events.find((e) => e.type === 'won')?.text).toMatch(/Iacon/);
+  });
+
+  it('can be driven: the autopilot clears the first stage as Breakdown on every level, and as Knock Out as a recruit', () => {
+    const runs = [...['recruit', 'autobot', 'prime'].flatMap((level) => [1, 2, 3].map((seed) => ({ level, seed, bot: 'breakdown' }))), ...[1, 2, 3].map((seed) => ({ level: 'recruit', seed, bot: 'knockout' }))];
+    for (const { level, seed, bot } of runs) {
+      const g = newRun({ seed, level, bot });
+      for (let t = 0; t < 200 && g.status === 'running' && g.stage === 0; t += DT) {
+        autopilot(g);
+        stepRun(g, DT);
+      }
+      expect({ level, bot, stage: g.stage, status: g.status }).toMatchObject({ stage: 1, status: 'running' });
+    }
   });
 });
 

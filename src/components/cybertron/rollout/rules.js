@@ -15,7 +15,9 @@
 //
 // Three stages, each closed by a boss: Starscream over Jasper, Nevada;
 // Shockwave in Mission City; Megatron in Kaon. A ground bridge takes you
-// between them.
+// between them. On the Decepticons' side, as Knock Out or Breakdown, it's
+// Autobots on the road and Wheeljack's Jackhammer, Ultra Magnus and Optimus
+// Prime at the ends, and the last stage is Iacon.
 //
 // World units: x across the road (lanes at ±1.5 and ±4.5), y up, z along the
 // road; the player is at z and everything ahead has a larger z. Everything
@@ -66,22 +68,39 @@ export const ROLL = {
     prime: { label: 'Prime', speed: 1.12, shields: 0, density: 1.3, fire: 0.78, fuse: 0.9, bossHp: 1.25 },
   },
   bots: {
-    optimus: { name: 'Optimus Prime', shields: 4, fire: 0.24, dmg: 2, speed: 0.96 },
-    bumblebee: { name: 'Bumblebee', shields: 3, fire: 0.12, dmg: 1, speed: 1.05 },
+    optimus: { name: 'Optimus Prime', side: 'autobot', shields: 4, fire: 0.24, dmg: 2, speed: 0.96 },
+    bumblebee: { name: 'Bumblebee', side: 'autobot', shields: 3, fire: 0.12, dmg: 1, speed: 1.05 },
+    breakdown: { name: 'Breakdown', side: 'decepticon', shields: 4, fire: 0.24, dmg: 2, speed: 0.95 },
+    knockout: { name: 'Knock Out', side: 'decepticon', shields: 3, fire: 0.12, dmg: 1, speed: 1.06 },
   },
   stages: [
     { id: 'jasper', name: 'Jasper, Nevada', len: 1300, boss: 'starscream', speed: 1, mix: { traffic: 3, debris: 2, cubes: 3, barricade: 1, gap: 1, vehicons: 1.2, jets: 0.6, spark: 0.15 } },
     { id: 'mission', name: 'Mission City', len: 1400, boss: 'shockwave', speed: 1.05, mix: { traffic: 3.4, debris: 2, cubes: 3, barricade: 1.2, gap: 1, vehicons: 1.7, jets: 1, spark: 0.15 } },
     { id: 'kaon', name: 'Kaon, Cybertron', len: 1500, boss: 'megatron', speed: 1.1, mix: { traffic: 1.6, debris: 3, cubes: 3, barricade: 1.3, gap: 1.3, vehicons: 2.3, jets: 1.3, spark: 0.2 } },
   ],
+  // the Decepticons' run: the same roads, the Autobots' bosses, and Iacon
+  dstages: [
+    { id: 'jasper', name: 'Jasper, Nevada', len: 1300, boss: 'wheeljack', speed: 1, mix: { traffic: 3, debris: 2, cubes: 3, barricade: 1, gap: 1, vehicons: 1.2, jets: 0.6, spark: 0.15 } },
+    { id: 'mission', name: 'Mission City', len: 1400, boss: 'magnus', speed: 1.05, mix: { traffic: 3.4, debris: 2, cubes: 3, barricade: 1.2, gap: 1, vehicons: 1.7, jets: 1, spark: 0.15 } },
+    { id: 'iacon', name: 'Iacon, Cybertron', len: 1500, boss: 'optimus', speed: 1.1, mix: { traffic: 1.6, debris: 3, cubes: 3, barricade: 1.3, gap: 1.3, vehicons: 2.3, jets: 1.3, spark: 0.2 } },
+  ],
   bosses: {
-    starscream: { name: 'Starscream', hp: 72, dz: 32, y: 4.5, r: 2.2, cool: 2.0, attacks: ['missiles', 'strafe', 'dive'] },
+    starscream: { name: 'Starscream', flyer: true, hp: 72, dz: 32, y: 4.5, r: 2.2, cool: 2.0, attacks: ['missiles', 'strafe', 'dive'] },
     shockwave: { name: 'Shockwave', hp: 96, dz: 27, y: 0, r: 1.9, cool: 2.1, attacks: ['beam', 'cannon', 'drones'] },
     megatron: { name: 'Megatron', hp: 120, dz: 28, y: 0, r: 1.9, cool: 1.9, attacks: ['fusion', 'wave', 'reinforce'] },
+    // the Autobots': Wheeljack flying the Jackhammer, Ultra Magnus's hammer
+    // sending its shockwave down the road, Optimus with the ion cannon
+    wheeljack: { name: 'Wheeljack', flyer: true, hp: 72, dz: 32, y: 4.5, r: 2.2, cool: 2.0, attacks: ['missiles', 'strafe', 'dive'] },
+    magnus: { name: 'Ultra Magnus', hp: 96, dz: 27, y: 0, r: 1.9, cool: 2.1, attacks: ['beam', 'cannon', 'drones'] },
+    optimus: { name: 'Optimus Prime', hp: 120, dz: 28, y: 0, r: 1.9, cool: 1.9, attacks: ['fusion', 'wave', 'reinforce'] },
   },
 };
 
 const { lanes: LANES } = ROLL;
+
+// the stages for a side, and the one a run is on
+export const stagesFor = (side) => (side === 'decepticon' ? ROLL.dstages : ROLL.stages);
+const stageOf = (g) => stagesFor(g.side)[g.stage];
 
 export function rng(seed) {
   let a = seed >>> 0 || 1;
@@ -118,7 +137,7 @@ export const armed = (g) => g.mode === 'robot' && g.morph > 0.95;
 
 function setSpeeds(g) {
   const lv = ROLL.levels[g.level];
-  const st = ROLL.stages[g.stage];
+  const st = stageOf(g);
   g.vehicleSpeed = ROLL.speed.vehicle * lv.speed * st.speed * ROLL.bots[g.bot].speed;
   g.robotSpeed = g.vehicleSpeed * ROLL.speed.robot;
   g.gapLen = ROLL.gapK * g.vehicleSpeed;
@@ -126,7 +145,7 @@ function setSpeeds(g) {
 
 function buildStage(g, z0) {
   const r = g.rand;
-  const st = ROLL.stages[g.stage];
+  const st = stageOf(g);
   const lv = ROLL.levels[g.level];
   setSpeeds(g);
   g.cars = [];
@@ -228,12 +247,14 @@ function shuffle(r, a) {
 export function newRun({ seed = 1, level = 'autobot', bot = 'optimus', stage = 0 } = {}) {
   const lv = ROLL.levels[level] ? level : 'autobot';
   const who = ROLL.bots[bot] ? bot : 'optimus';
+  const side = ROLL.bots[who].side;
   const shields = Math.max(1, ROLL.bots[who].shields + ROLL.levels[lv].shields);
   const g = {
     seed,
     level: lv,
     bot: who,
-    stage: clamp(stage | 0, 0, ROLL.stages.length - 1),
+    side,
+    stage: clamp(stage | 0, 0, stagesFor(side).length - 1),
     rand: rng(seed),
     status: 'running',
     t: 0,
@@ -291,7 +312,7 @@ export function newRun({ seed = 1, level = 'autobot', bot = 'optimus', stage = 0
   };
   buildStage(g, 0);
   g.speed = g.vehicleSpeed * 0.55; // pulling away
-  emit(g, 'stage', { index: g.stage, name: ROLL.stages[g.stage].name, log: `stage:${g.stage}` });
+  emit(g, 'stage', { index: g.stage, name: stageOf(g).name, log: `stage:${g.stage}` });
   return g;
 }
 
@@ -394,15 +415,25 @@ function clear(g, kind, at) {
 }
 
 const lostLine = (g, why) =>
-  ({
-    barricade: 'Straight into the roadblock. Ratchet will have words.',
-    gap: 'Down through the broken bridge.',
-    car: 'Autobots protect the humans, not run into them.',
-    bomb: 'Caught in a bombing run.',
-    beam: 'The beam took your legs out.',
-    fusion: 'Megatron’s fusion cannon. One shall stand.',
-    vehicon: 'The Vehicons ran you off the road.',
-  })[why] ?? 'Autobot down.';
+  g.side === 'decepticon'
+    ? ({
+        barricade: 'Straight into the roadblock. Knock Out will want that paint redone.',
+        gap: 'Down through the broken bridge.',
+        car: 'Wrecked on a human’s car. Lord Megatron will not be amused.',
+        bomb: 'Caught in an Aerialbot bombing run.',
+        beam: 'Ultra Magnus’s hammer took your legs out.',
+        fusion: 'Optimus Prime’s ion cannon. One shall fall.',
+        vehicon: 'The Autobots ran you off the road.',
+      })[why] ?? 'Decepticon down.'
+    : ({
+        barricade: 'Straight into the roadblock. Ratchet will have words.',
+        gap: 'Down through the broken bridge.',
+        car: 'Autobots protect the humans, not run into them.',
+        bomb: 'Caught in a bombing run.',
+        beam: 'The beam took your legs out.',
+        fusion: 'Megatron’s fusion cannon. One shall stand.',
+        vehicon: 'The Vehicons ran you off the road.',
+      })[why] ?? 'Autobot down.';
 
 // ── the ground under you: the road, a ramp, or nothing over a broken bridge ──
 
@@ -451,7 +482,7 @@ function fireBolt(g, from, { speed = ROLL.vehicon.bolt, big = false, lead = true
 }
 
 function startBoss(g) {
-  const kind = ROLL.stages[g.stage].boss;
+  const kind = stageOf(g).boss;
   const B = ROLL.bosses[kind];
   const hp = Math.round(B.hp * ROLL.levels[g.level].bossHp);
   g.boss = { kind, name: B.name, hp, max: hp, x: 0, tx: 0, y: B.y, dz: B.dz + 30, t: 0, cool: 2.5, phase: 1, attack: null, alive: true, dying: 0, flash: 0, next: 0, cubeT: 4, chargeDmg: 0, exposed: 0 };
@@ -535,7 +566,7 @@ function stepBoss(g, dt) {
   const strafing = b.attack?.type === 'strafe';
   if (!strafing) {
     b.dz += (B.dz - b.dz) * Math.min(1, dt * 1.6);
-    const sway = b.kind === 'starscream' ? Math.sin(b.t * (0.8 + phase * 0.25)) * 3.6 : clamp(g.x, -3.5, 3.5) * 0.7 + Math.sin(b.t * 0.7) * 1.2;
+    const sway = B.flyer ? Math.sin(b.t * (0.8 + phase * 0.25)) * 3.6 : clamp(g.x, -3.5, 3.5) * 0.7 + Math.sin(b.t * 0.7) * 1.2;
     b.tx = sway;
   }
   b.x += (b.tx - b.x) * Math.min(1, dt * 2.2);
@@ -828,7 +859,7 @@ function stepShots(g, dt) {
     if (b && b.alive) {
       const bz = g.z + b.dz;
       const B = ROLL.bosses[b.kind];
-      const by = b.kind === 'starscream' ? b.y : 2.4;
+      const by = B.flyer ? b.y : 2.4;
       const shielded = b.attack?.type === 'strafe' && b.dz < 8;
       if (!shielded && Math.abs(s.x - b.x) < B.r + ROLL.shot.r && Math.abs(s.z - bz) < 1.6 && Math.abs(s.y - by) < 2.6) {
         s.life = 0;
@@ -886,7 +917,7 @@ export function aimAt(g) {
     const dx = Math.abs(b.x - g.x);
     if (dz > 2 && dx < 4 + dz * 0.25) {
       const s = dz + dx * 6;
-      if (s < bestScore) best = { x: b.x, y: b.kind === 'starscream' ? b.y : 2.4, z: bz };
+      if (s < bestScore) best = { x: b.x, y: ROLL.bosses[b.kind].flyer ? b.y : 2.4, z: bz };
     }
   }
   return best;
@@ -1181,14 +1212,14 @@ function stepOnce(g, dt) {
     if (g.outro <= 0) {
       const bonus = ROLL.points.stage + g.shields * ROLL.points.shield;
       score(g, bonus);
-      if (g.stage >= ROLL.stages.length - 1) {
+      if (g.stage >= stagesFor(g.side).length - 1) {
         g.status = 'won';
-        emit(g, 'won', { text: 'Till all are one. Megatron is down and Kaon is quiet.' });
+        emit(g, 'won', { text: g.side === 'decepticon' ? 'Peace through tyranny. Optimus is down and Iacon is ours.' : 'Till all are one. Megatron is down and Kaon is quiet.' });
         return;
       }
       g.bridge = ROLL.bridgeTime;
       g.bridgeHalf = false;
-      emit(g, 'clear', { name: ROLL.stages[g.stage].name, bonus });
+      emit(g, 'clear', { name: stageOf(g).name, bonus });
     }
   }
   if (g.bridge > 0) {
@@ -1206,7 +1237,7 @@ function stepOnce(g, dt) {
       g.shields = Math.min(g.maxShields, g.shields + 1);
       g.energon = Math.max(g.energon, ROLL.energon.start);
       buildStage(g, g.z);
-      emit(g, 'stage', { index: g.stage, name: ROLL.stages[g.stage].name, log: `stage:${g.stage}` });
+      emit(g, 'stage', { index: g.stage, name: stageOf(g).name, log: `stage:${g.stage}` });
     }
     if (g.bridge <= 0) g.bridge = 0;
   }

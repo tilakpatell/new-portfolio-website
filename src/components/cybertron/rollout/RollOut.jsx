@@ -4,9 +4,10 @@ import GpuGate from '../../games/GpuGate';
 import { edges, readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import AutobotMark from '../../AutobotMark';
+import DecepticonMark from '../../DecepticonMark';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
-import { ROLL, jump, newRun, nextWall, stepRun, transform } from './rules';
+import { ROLL, jump, newRun, nextWall, stagesFor, stepRun, transform } from './rules';
 import { autopilot } from './pilot';
 import './rollout.css';
 
@@ -26,11 +27,21 @@ const buzz = (ms) => {
   }
 };
 
-const BEST = 'tp-rollout-best';
+// each side keeps its own records (the Autobots' under the original keys)
+const BEST = { autobot: 'tp-rollout-best', decepticon: 'tp-rollout-best-dcp' };
 const PREFS = 'tp-rollout-prefs';
-const REACHED = 'tp-rollout-reached';
+const REACHED = { autobot: 'tp-rollout-reached', decepticon: 'tp-rollout-reached-dcp' };
 const LEVELS = Object.keys(ROLL.levels);
-const BOTS = Object.keys(ROLL.bots);
+const botsOf = (side) => Object.keys(ROLL.bots).filter((id) => ROLL.bots[id].side === side);
+const SIDE = {
+  autobot: { title: 'Roll out', call: (bot) => (bot === 'optimus' ? 'Autobots, roll out' : 'Bumblebee, roll out'), won: 'Till all are one.', lost: 'Autobot down.', foes: 'Decepticons', behind: 'Vehicons behind you', Mark: AutobotMark, intro: 'Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
+  decepticon: { title: 'Decepticons, attack', call: () => 'Decepticons, attack', won: 'Peace through tyranny.', lost: 'Decepticon down.', foes: 'Autobots', behind: 'Autobots behind you', Mark: DecepticonMark, intro: 'Run the Autobots off the road and take their capital. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Wheeljack, Ultra Magnus and Optimus Prime at the gates of Iacon. The later you change, the more it pays; shoot a boss while it charges up to stagger it.' },
+};
+const readBest = (side) => {
+  const b = local.get(BEST[side], {});
+  return b && typeof b === 'object' ? b : {};
+};
+const readReached = (side) => Math.min(2, Math.max(0, Number(local.get(REACHED[side], 0)) || 0));
 
 const KEYS = {
   left: ['ArrowLeft', 'a', 'A'],
@@ -48,11 +59,11 @@ const hint = (wall, mode) => {
   return mode === 'vehicle' ? `Bridge out in ${m} m · floor it off the ramp` : `Bridge out in ${m} m · back into vehicle mode`;
 };
 
-export default function RollOut() {
-  return <GpuGate className="ro-gate">{({ soft, fail }) => <Game soft={soft} fail={fail} />}</GpuGate>;
+export default function RollOut({ side = 'autobot' }) {
+  return <GpuGate className="ro-gate">{({ soft, fail }) => <Game soft={soft} fail={fail} side={side === 'decepticon' ? 'decepticon' : 'autobot'} />}</GpuGate>;
 }
 
-function Game({ soft, fail }) {
+function Game({ soft, fail, side }) {
   const { unlock } = useAchievements();
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const wrap = useRef(null);
@@ -67,14 +78,16 @@ function Game({ soft, fail }) {
   const engineRef = useRef(null);
   const endText = useRef('');
   const prefs0 = local.get(PREFS, {}) ?? {};
-  const [bot, setBot] = useState(BOTS.includes(prefs0.bot) ? prefs0.bot : 'optimus');
+  const BOTS = botsOf(side);
+  const S = SIDE[side];
+  // the bot last picked on each side
+  const [picked, setPicked] = useState(() => ({ autobot: botsOf('autobot').includes(prefs0.bot) ? prefs0.bot : 'optimus', decepticon: botsOf('decepticon').includes(prefs0.dbot) ? prefs0.dbot : 'breakdown' }));
+  const bot = picked[side];
+  const setBot = (id) => setPicked((p) => ({ ...p, [ROLL.bots[id].side]: id }));
   const [level, setLevel] = useState(LEVELS.includes(prefs0.level) ? prefs0.level : 'autobot');
   const [startStage, setStartStage] = useState(0);
-  const [reached, setReached] = useState(() => Math.min(2, Math.max(0, Number(local.get(REACHED, 0)) || 0)));
-  const [best, setBest] = useState(() => {
-    const b = local.get(BEST, {});
-    return b && typeof b === 'object' ? b : {};
-  });
+  const [reached, setReached] = useState(() => readReached(side));
+  const [best, setBest] = useState(() => readBest(side));
   const [phase, setPhase] = useState('loading'); // loading | ready | running | paused | won | lost
   const [load, setLoad] = useState({ k: 0, label: 'Starting the renderer' });
   const [ui, setUi] = useState({ shields: 4, maxShields: 4, stage: 0, mode: 'vehicle', boss: null, result: null });
@@ -86,8 +99,23 @@ function Game({ soft, fail }) {
   const calm = prefersReducedMotion();
 
   useEffect(() => {
-    local.set(PREFS, { bot, level });
-  }, [bot, level]);
+    local.set(PREFS, { bot: picked.autobot, dbot: picked.decepticon, level });
+  }, [picked, level]);
+
+  // changing sides on the page: that side's records, and any run is over
+  const sideRef = useRef(side);
+  useEffect(() => {
+    if (sideRef.current === side) return;
+    sideRef.current = side;
+    setBest(readBest(side));
+    setReached(readReached(side));
+    setStartStage(0);
+    if (phaseRef.current === 'running' || phaseRef.current === 'paused' || phaseRef.current === 'won' || phaseRef.current === 'lost') {
+      engineRef.current?.set({ on: false });
+      game.current = null;
+      setPhase('ready');
+    }
+  }, [side]);
 
   // ── the renderer ──
   // Each mount draws on a canvas of its own: two renderers sharing one
@@ -151,7 +179,7 @@ function Game({ soft, fail }) {
       if (isBest) {
         const next = { ...best, [g.level]: g.score };
         setBest(next);
-        local.set(BEST, next);
+        local.set(BEST[g.side], next);
       }
       engineRef.current?.set({ on: false });
       setUi((u) => ({ ...u, result: { won, score: g.score, isBest, prev, stage: g.stage, kills: g.kills, cubes: g.taken, nears: g.nears, clears: g.clears, stunts: g.stunts, text: endText.current } }));
@@ -233,7 +261,7 @@ function Game({ soft, fail }) {
             say('Allspark shard: invincible', 'good');
             break;
           case 'vehicons':
-            say('Vehicons behind you', 'bad');
+            say(g.side === 'decepticon' ? 'Autobots behind you' : 'Vehicons behind you', 'bad');
             break;
           case 'jet':
             play('flyby');
@@ -258,6 +286,7 @@ function Game({ soft, fail }) {
             say(`${e.name} is down`, 'good');
             if (e.name === 'Starscream') unlock('grounded');
             if (e.name === 'Megatron') unlock('onestand');
+            if (e.name === 'Optimus Prime') unlock('onefall');
             setUi((u) => ({ ...u, boss: null }));
             break;
           case 'clear':
@@ -273,7 +302,7 @@ function Game({ soft, fail }) {
               say(e.name, 'stage');
               if (e.index > reached) {
                 setReached(e.index);
-                local.set(REACHED, e.index);
+                local.set(REACHED[g.side], e.index);
               }
             }
             break;
@@ -302,12 +331,12 @@ function Game({ soft, fail }) {
     setCallout(null);
     engineRef.current?.stop();
     cue().then((c) => {
-      if (game.current === g) engineRef.current = c.engine({ diesel: bot === 'optimus' });
+      if (game.current === g) engineRef.current = c.engine({ diesel: bot === 'optimus' || bot === 'breakdown' });
     });
     setPhase('running');
-    say(bot === 'optimus' ? 'Autobots, roll out' : 'Bumblebee, roll out', 'stage');
+    say(S.call(bot), 'stage');
     wrap.current?.focus({ preventScroll: true });
-  }, [bot, level, say, startStage]);
+  }, [S, bot, level, say, startStage]);
 
   const pause = useCallback((on) => {
     if (on && phaseRef.current === 'running') {
@@ -522,7 +551,9 @@ function Game({ soft, fail }) {
   const running = phase === 'running';
   const over = phase === 'won' || phase === 'lost';
   const r = ui.result;
-  const stageName = ROLL.stages[ui.stage]?.name ?? '';
+  const STAGES = stagesFor(side);
+  const stageName = STAGES[ui.stage]?.name ?? '';
+  const Mark = S.Mark;
   return (
     <div className="ro">
       <div
@@ -530,7 +561,8 @@ function Game({ soft, fail }) {
         className="g3 ro-screen"
         tabIndex={0}
         role="group"
-        aria-label="Roll out. Left and right (or A and D) steer. Space or up jumps as a robot and boosts as a vehicle; keep it held as you transform to leap. Shift, T or down transforms. P pauses. On a touch screen, drag to steer."
+        aria-label={`${S.title}. Left and right (or A and D) steer. Space or up jumps as a robot and boosts as a vehicle; keep it held as you transform to leap. Shift, T or down transforms. P pauses. On a touch screen, drag to steer.`}
+        data-side={side}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -559,7 +591,7 @@ function Game({ soft, fail }) {
             <div className="ro-shields" aria-label={`${ui.shields} of ${ui.maxShields} shields`}>
               {Array.from({ length: ui.maxShields }, (_, i) => (
                 <span key={i} data-on={i < ui.shields || undefined}>
-                  <AutobotMark />
+                  <Mark />
                 </span>
               ))}
             </div>
@@ -652,7 +684,7 @@ function Game({ soft, fail }) {
             <div className="ro-card">
               {over && r ? (
                 <>
-                  <p className="ro-title">{r.won ? 'Till all are one.' : 'Autobot down.'}</p>
+                  <p className="ro-title">{r.won ? S.won : S.lost}</p>
                   <p className="ro-sub">{r.text}</p>
                   <dl className="ro-stats">
                     <div>
@@ -665,10 +697,10 @@ function Game({ soft, fail }) {
                     </div>
                     <div>
                       <dt>Reached</dt>
-                      <dd>{ROLL.stages[r.stage].name}</dd>
+                      <dd>{STAGES[r.stage]?.name}</dd>
                     </div>
                     <div>
-                      <dt>Decepticons</dt>
+                      <dt>{S.foes}</dt>
                       <dd>{(r.kills.vehicon ?? 0) + (r.kills.jet ?? 0) + (r.kills.boss ?? 0)}</dd>
                     </div>
                     <div>
@@ -691,18 +723,18 @@ function Game({ soft, fail }) {
                 </>
               ) : (
                 <>
-                  <p className="ro-title">Roll out</p>
-                  <p className="ro-sub">Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron. The later you change, the more it pays; shoot a boss while it charges up to stagger it.</p>
+                  <p className="ro-title">{S.title}</p>
+                  <p className="ro-sub">{S.intro}</p>
                 </>
               )}
-              <div className="ro-pick" role="group" aria-label="Autobot">
+              <div className="ro-pick" role="group" aria-label={side === 'decepticon' ? 'Decepticon' : 'Autobot'}>
                 {BOTS.map((id) => (
                   <button key={id} type="button" aria-pressed={bot === id} onClick={() => setBot(id)} data-bot={id}>
                     <span className="ro-pick-mark">
-                      <AutobotMark />
+                      <Mark />
                     </span>
                     {ROLL.bots[id].name}
-                    <small>{ROLL.bots[id].shields} shields · {id === 'optimus' ? 'heavy blaster' : 'rapid fire, quicker'}</small>
+                    <small>{ROLL.bots[id].shields} shields · {ROLL.bots[id].dmg > 1 ? 'heavy blaster' : 'rapid fire, quicker'}</small>
                   </button>
                 ))}
               </div>
@@ -715,14 +747,14 @@ function Game({ soft, fail }) {
                 ))}
               </div>
               <div className="g3-seg mt-3" role="group" aria-label="Start from">
-                {ROLL.stages.map((s, i) => (
+                {STAGES.map((s, i) => (
                   <button key={s.id} type="button" aria-pressed={startStage === i} disabled={i > reached} onClick={() => setStartStage(i)} title={i > reached ? 'Reach it first' : undefined}>
                     {s.name.split(',')[0]}
                   </button>
                 ))}
               </div>
               <button type="button" className="btn btn-primary mt-4" onClick={start}>
-                {over ? 'Roll out again' : 'Roll out'}
+                {side === 'decepticon' ? (over ? 'Attack again' : 'Attack') : over ? 'Roll out again' : 'Roll out'}
               </button>
             </div>
           </div>
