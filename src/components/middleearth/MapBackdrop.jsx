@@ -55,6 +55,10 @@ function createFlat(canvas, sheet) {
       const s = scale();
       return { x: W / 2 + (x - cur.x) * s, y: H / 2 + (y - cur.y) * s, on: true };
     },
+    unproject(sx, sy) {
+      const s = scale();
+      return { x: cur.x + (sx - W / 2) / s, y: cur.y + (sy - H / 2) / s };
+    },
     render(ms = 16) {
       const k = 1 - Math.exp(-3 * Math.min(0.05, ms / 1000));
       const far = Math.abs(goal.x - cur.x) + Math.abs(goal.y - cur.y) + Math.abs(goal.z - cur.z) * 200;

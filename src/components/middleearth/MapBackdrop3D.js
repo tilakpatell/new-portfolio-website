@@ -79,8 +79,8 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     // the whole map is framed a little east of its middle, so Mordor is in
     const [x, z] = at(...(spot || [438, 300]));
     const [hx, hz] = hover ? at(...hover) : [x, z];
-    goal.x = x + (hx - x) * 0.12;
-    goal.z = z + (hz - z) * 0.12;
+    goal.x = x + (hx - x) * 0.04;
+    goal.z = z + (hz - z) * 0.04;
     // a tall screen can't hold the whole sheet: show its middle, bigger
     goal.zoom = zoom ?? (spot ? 1.45 : camera.aspect < 1 ? 1.75 : 2.95);
     goal.m = mordor ? 1 : 0;
@@ -98,6 +98,17 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     return { x: ((v.x + 1) / 2) * size.w, y: ((1 - v.y) / 2) * size.h, on: v.z < 1 };
   };
   let size = { w: 1, h: 1 };
+  // and the other way: a point on the screen to the sheet, where it meets the table
+  const ray = new THREE.Raycaster();
+  const table0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const ndc = new THREE.Vector2();
+  const hit = new THREE.Vector3();
+  const unproject = (sx, sy) => {
+    ndc.set((sx / size.w) * 2 - 1, 1 - (sy / size.h) * 2);
+    ray.setFromCamera(ndc, camera);
+    if (!ray.ray.intersectPlane(table0, hit)) return null;
+    return { x: hit.x * SCALE + SHEET.w / 2, y: hit.z * SCALE + SHEET.h / 2 };
+  };
 
   const resize = (w, h) => {
     size = { w: Math.max(1, w), h: Math.max(1, h) };
@@ -157,6 +168,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   return {
     setView,
     project,
+    unproject,
     render,
     resize,
     dispose,

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import WorldSwitcher from '../worlds/WorldSwitcher';
 import { CHAPTERS } from './chapters';
+
+// how far from a place on the sheet (800 across) a click still means it
+const REACH = 75;
 
 // A wax seal, for a place whose trials are won.
 function Seal({ title }) {
@@ -47,10 +50,50 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     };
   }, [place, frameRef]);
 
+  // The map itself is clickable, not just the pins: whichever place is
+  // nearest the pointer (within a reach of the sheet) lights up, and a click
+  // goes there.
+  const nearest = (e) => {
+    const p = api.current?.unproject?.(e.clientX, e.clientY);
+    if (!p) return null;
+    let best = null;
+    let d = REACH;
+    for (const c of CHAPTERS) {
+      const k = Math.hypot(c.at[0] - p.x, c.at[1] - p.y);
+      if (k < d) {
+        d = k;
+        best = c.id;
+      }
+    }
+    return best;
+  };
+  const [area, setArea] = useState(null);
+
   const won = (c) => c.seals.length > 0 && c.seals.every((s) => unlocked.includes(s));
 
   return (
     <div className="me-hub" data-leaving={leaving || undefined} data-hidden={hidden || undefined}>
+      {/* the map's areas, for the pointer; the pins below are the same places for the keyboard */}
+      <div
+        className="me-areas"
+        data-area={area || undefined}
+        aria-hidden="true"
+        onPointerMove={(e) => {
+          const id = nearest(e);
+          if (id !== area) {
+            setArea(id);
+            onHover(id);
+          }
+        }}
+        onPointerLeave={() => {
+          setArea(null);
+          onHover(null);
+        }}
+        onClick={(e) => {
+          const id = nearest(e);
+          if (id) onGo(id);
+        }}
+      />
       <div className="me-pins" role="group" aria-label="Places on the map">
         {CHAPTERS.map((c, i) => (
           <button
