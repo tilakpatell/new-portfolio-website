@@ -121,10 +121,14 @@ function rick({ coat = 0xf4f3ee, shirt = 0x8fd2e7, pants = 0x7c5a3f, hair = 0xa9
 
 // the portal gun: grey, a glass bulb of green fluid on top, a green tip
 function gun(arm) {
-  const g = new THREE.Group();
+  const g = portalGun();
   g.position.set(0, -0.62, 0.12);
   g.rotation.x = -Math.PI / 2;
   arm.add(g);
+  return g;
+}
+export function portalGun() {
+  const g = new THREE.Group();
   part(g, 'box', 0xb9c3c9, [0.12, 0.3, 0.14], [0, 0.05, 0]);
   part(g, 'sphere', 0x7dff8a, [0.07, 0.07, 0.07], [0, 0.08, 0.1], [0, 0, 0], { emissive: 0x4dff6a, k: 1.6 });
   const tip = part(g, 'cyl', 0x7dff8a, [0.05, 0.06, 0.05], [0, 0.23, 0], [0, 0, 0], { emissive: 0x4dff6a, k: 2.4 });
@@ -485,6 +489,7 @@ function makeRaw(kind, variant) {
 // Moving: legs and arms swing with `move` (0..1), the body bobs; `hit`
 // (0..1) squashes it; `t` is its own clock.
 export function animate(c, t, move = 0, hit = 0) {
+  if (c.update) return c.update(t, move, hit); // a Meshy figure (./meshyCast.js)
   const ph = t * c.stride;
   const sw = Math.sin(ph) * 0.75 * move;
   if (c.legs) {

@@ -10,7 +10,8 @@ import { canvasTexture, createStage } from '../../../lib/stage3d';
 import { createModels } from '../../../lib/models';
 import { PANIC, butterRobots } from './rules';
 import { InkPass, toon } from './toon';
-import { animate, hull, makeCast } from './cast';
+import { animate, hull, makeCast, portalGun } from './cast';
+import { createMeshyCast } from './meshyCast';
 import { glowDot, paintFloor, paintFloorGlow, puff } from './paint';
 import { SWIRL_GLSL } from '../swirl';
 
@@ -298,6 +299,11 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
       }),
     ),
   );
+  // the cast and set pieces modelled for the site (./meshyCast.js)
+  const meshy = createMeshyCast();
+  await meshy.load((k) => progress(0.58 + k * 0.2, 'Bringing in the cast'));
+  // a figure: the modelled one where it loaded, the shapes otherwise
+  const figure = (kind, variant = 0) => meshy.make(kind, variant) ?? makeCast(kind, variant);
   if (!alive()) {
     stage.dispose();
     return null;
@@ -493,6 +499,19 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
       place(group, fl, ring(40, R + 1.6, R + 5).map((p) => ({ ...p, s: tall(fl, 0.5 + r() * 0.4) })), { shadow: false });
       const bu = toonModel('bush');
       place(group, bu, ring(16, R + 2, R + 7).map((p) => ({ ...p, s: tall(bu, 1 + r()) })));
+      // the Smiths' garage behind the fence, Rick's cruiser parked by it
+      const garage = meshy.prop('garage', 5.2);
+      if (garage) {
+        garage.position.set(-7, 0, -(R + 7));
+        garage.rotation.y = 0.25;
+        group.add(garage);
+      }
+      const cruiser = meshy.prop('cruiser', 1.7);
+      if (cruiser) {
+        cruiser.position.set(3.5, 0, -(R + 5));
+        cruiser.rotation.y = -0.5;
+        group.add(cruiser);
+      }
     } else if (d.id === 'cronenberg') {
       ['house-a', 'house-f'].forEach((n) => {
         const m = toonModel(n, 0x8a6a7a, 0.55);
@@ -566,9 +585,9 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     castPool.set(kind, list);
     let c = list.find((x) => !x.used && (kind !== 'mortyclone' || x.variant === variant % 6));
     if (!c) {
-      c = makeCast(kind, variant);
+      c = figure(kind, variant);
       c.variant = variant % 6;
-      if (soft) hull(c, 0.03);
+      if (soft && !c.meshy) hull(c, 0.03);
       scene.add(c.group);
       list.push(c);
     }
@@ -585,8 +604,19 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     if (player) {
       scene.remove(player.group);
     }
-    player = makeCast(h);
-    if (soft) hull(player, 0.03);
+    player = figure(h);
+    if (soft && !player.meshy) hull(player, 0.03);
+    // a modelled hero holds the portal gun in the right hand
+    if (player.hand) {
+      player.group.updateMatrixWorld(true);
+      const gun = portalGun();
+      const k = 1 / player.hand.getWorldScale(new THREE.Vector3()).x;
+      gun.scale.setScalar(k);
+      gun.position.set(0, 0.06 * k, 0.04 * k);
+      gun.rotation.set(Math.PI / 2, 0, 0);
+      player.hand.add(gun);
+      player.gun = gun;
+    }
     scene.add(player.group);
     playerHero = h;
   };
@@ -785,8 +815,8 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     const b = g.boss;
     if (b && b.id !== bossId) {
       if (bossCast) scene.remove(bossCast.group);
-      bossCast = makeCast(BOSS_CAST[b.id]);
-      if (soft) hull(bossCast, 0.04);
+      bossCast = figure(BOSS_CAST[b.id]);
+      if (soft && !bossCast.meshy) hull(bossCast, 0.04);
       scene.add(bossCast.group);
       bossId = b.id;
     } else if (!b && bossCast) {
@@ -806,8 +836,8 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     // Meeseeks from the box, butter robots
     g.allies.forEach((a, i) => {
       if (!allyPool[i]) {
-        allyPool[i] = makeCast('ally');
-        if (soft) hull(allyPool[i], 0.025);
+        allyPool[i] = figure('ally');
+        if (soft && !allyPool[i].meshy) hull(allyPool[i], 0.025);
         scene.add(allyPool[i].group);
       }
       const c = allyPool[i];
@@ -983,6 +1013,7 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
   const dispose = () => {
     stage.dispose();
     models.dispose();
+    meshy.dispose();
   };
   progress(1, 'Ready');
   return {
