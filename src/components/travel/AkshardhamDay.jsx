@@ -3,11 +3,14 @@ import { RiArrowLeftSLine, RiArrowRightSLine, RiPauseFill, RiPlayFill, RiZoomInL
 import Photo from '../Photo';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import AkdStage from './akd3d/AkdStage';
+import TimeTrack from './akd3d/TimeTrack';
 
 // A day at each of the two Akshardhams, in their own photographs: pick
 // Robbinsville or New Delhi, then slide through the day, play it, swipe it or
 // use the arrow keys. The photos cross-fade (opacity only, so it stays smooth
-// on a phone) and the one on screen drifts in slowly.
+// on a phone) and the one on screen drifts in slowly; in 3D (akd3d/) the light
+// changes first and the time track scrubs the day, over that same <img> stack.
 
 const sfx = () => import('../../lib/sfx');
 
@@ -31,8 +34,8 @@ export const PLACES = [
     name: 'New Delhi',
     place: 'New Delhi',
     day: [
+      { id: 'h-dl-lotus', time: 'Morning', text: 'The Yogi Hriday Kamal: a garden laid out like a lotus opening.', pos: '50% 60%' },
       { id: 'h-dl-day', time: 'Day', text: 'Carved sandstone and marble, 141 feet tall, opened on 6 November 2005.', pos: '50% 50%' },
-      { id: 'h-dl-lotus', time: 'Garden', text: 'The Yogi Hriday Kamal: a garden laid out like a lotus opening.', pos: '50% 60%' },
       { id: 'h-dl-golden', time: 'Golden hour', text: 'The mandir by the lake, the water holding its reflection.', pos: '50% 50%' },
       { id: 'h-dl-dusk', time: 'Dusk', text: 'Nine domes and 234 carved pillars, lit gold as the sky turns violet.', pos: '50% 45%' },
       { id: 'h-dl-night', time: 'Night', text: 'The whole mandir lit against the night sky.', pos: '50% 50%' },
@@ -52,6 +55,7 @@ export default function AkshardhamDay({ onOpen }) {
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [rang, setRang] = useState(0);
+  const [scrub, setScrub] = useState(null); // the time track while it's dragged
   const timer = useRef(0);
   const touch = useRef(null);
   const n = day.length;
@@ -76,6 +80,10 @@ export default function AkshardhamDay({ onOpen }) {
   const step = (d) => {
     setPlaying(false);
     go(i + d);
+  };
+  const scrubTo = (t) => {
+    setPlaying(false);
+    setScrub(t);
   };
   const ring = () => {
     audioContext(); // in the click, so the bell can be heard
@@ -135,6 +143,7 @@ export default function AkshardhamDay({ onOpen }) {
             <Photo id={d.id} sizes="(min-width: 1280px) 1180px, 100vw" priority={k === 0} className="akd-img" style={{ objectPosition: d.pos }} />
           </div>
         ))}
+        <AkdStage place={placeId} day={day} index={i} scrub={scrub} rang={rang} />
         <div className="akd-scrim" aria-hidden="true" />
         <div className="akd-text">
           <p className="akd-time">
@@ -156,8 +165,8 @@ export default function AkshardhamDay({ onOpen }) {
             <RiZoomInLine className="h-4 w-4" aria-hidden="true" />
           </button>
         )}
-        {playing && !still && <span key={i} className="akd-progress" style={{ '--d': `${STEP_MS}ms` }} aria-hidden="true" />}
       </div>
+      <TimeTrack day={day} index={i} playing={playing} still={still} stepMs={STEP_MS} onScrub={scrubTo} onPick={(k) => step(k - i)} />
 
       <div className="akd-controls">
         <ol className="akd-times" aria-label="Time of day">
