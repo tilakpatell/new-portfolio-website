@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { use3D } from '../../lib/gpu';
 import { prefersReducedMotion } from '../../lib/hooks';
 import PortalSwirl from './PortalSwirl';
 import { TALL, along, breakage, cruiserAt, flight, riftAt } from './flight';
@@ -10,6 +11,9 @@ import { TALL, along, breakage, cruiserAt, flight, riftAt } from './flight';
 // [data-rm-jump] the page cracks open beside it, a portal opens in the hole,
 // the cruiser dives in, and it comes out of another below on the other side.
 // The geometry is ./flight.js. It sits over the page but never takes a click.
+// Where 3D is on the cruiser is the 3D one (./cruiser3d.js), turned to fly
+// the way it's going; the flat drawing below is for everywhere else, and
+// while the 3D one loads.
 //
 // Every frame changes transforms and two custom properties per portal only,
 // and the trail is shown down to the cruiser by a window sliding down while
@@ -17,6 +21,14 @@ import { TALL, along, breakage, cruiserAt, flight, riftAt } from './flight';
 // the cruiser is near it.
 
 const NEAR = 1000; // how near (px) a portal is to the cruiser to run its swirl
+const AHEAD = 40; // how far on (px) to look to see which way it's turning
+
+// which way it's flying at y: across (-1 left … 1 right) and down (0 … 1)
+const heading = (geo, y) => {
+  const p = along(geo.X, geo.Y, y);
+  const l = Math.hypot(p.dx, p.dy) || 1;
+  return { p, h: p.dx / l, v: p.dy / l };
+};
 
 export default function CruiserFlight() {
   const box = useRef(null);
@@ -24,8 +36,60 @@ export default function CruiserFlight() {
   const inner = useRef(null);
   const ship = useRef(null);
   const rifts = useRef([]);
+  const host = useRef(null);
+  const solid = useRef(null); // the 3D cruiser, once it's going
   const [geo, setGeo] = useState(null);
   const [near, setNear] = useState('');
+  const [is3D, setIs3D] = useState(false);
+  const { on: want3D } = use3D();
+
+  // the 3D cruiser: loaded only where 3D is on; it breathes (the crew's
+  // clip, the exhaust) only while the tab is in view, and holds still for
+  // reduced motion; anything wrong and it's the drawing
+  useEffect(() => {
+    if (!want3D || !host.current) return undefined;
+    // a canvas of its own each time, so one being let go never takes
+    // another's context with it
+    const canvas = document.createElement('canvas');
+    canvas.className = 'rm-cruiser-3d';
+    host.current.appendChild(canvas);
+    let gone = false;
+    let raf = 0;
+    const still = prefersReducedMotion();
+    const frame = (t) => {
+      raf = 0;
+      if (gone || !solid.current) return;
+      solid.current.render(t / 1000);
+      if (!still && !document.hidden) raf = requestAnimationFrame(frame);
+    };
+    const onVisible = () => {
+      if (!document.hidden && !raf && !still) raf = requestAnimationFrame(frame);
+    };
+    const onResize = () => solid.current?.fit();
+    import('./cruiser3d')
+      .then((m) => m.createCruiser3D(canvas))
+      .then((c) => {
+        if (gone) return c?.dispose();
+        if (!c) return undefined;
+        solid.current = c;
+        setIs3D(true);
+        raf = requestAnimationFrame(frame);
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('resize', onResize);
+        return undefined;
+      })
+      .catch(() => {});
+    return () => {
+      gone = true;
+      cancelAnimationFrame(raf);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('resize', onResize);
+      solid.current?.dispose();
+      solid.current = null;
+      canvas.remove();
+      setIs3D(false);
+    };
+  }, [want3D]);
 
   // where everything is: the page's size, the hero's portal, the jumps
   useEffect(() => {
@@ -75,13 +139,23 @@ export default function CruiserFlight() {
     let raf = 0;
     let running = '';
     const place = (y) => {
-      const p = along(geo.X, geo.Y, y);
+      const { p, h, v } = heading(geo, y);
       const c = cruiserAt(y, geo);
-      // nose the way it's flying, dipping a little as it drops
-      const dir = p.dx >= 0 ? 1 : -1;
-      const tilt = Math.max(2, Math.min(22, (Math.atan2(p.dy, Math.abs(p.dx) + 0.001) * 90) / Math.PI));
       const s = ship.current.style;
-      s.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) scaleX(${dir}) rotate(${(tilt + c.spin).toFixed(1)}deg) scale(${c.scale.toFixed(3)})`;
+      const at = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
+      if (solid.current) {
+        // the 3D one turns itself: nose the way it's going, banking into
+        // the turn, rolling into a portal
+        const bank = Math.max(-0.5, Math.min(0.5, (heading(geo, y + AHEAD).h - h) * 1.4));
+        solid.current.pose({ h, v, bank, roll: (c.spin * Math.PI) / 180 });
+        if (still) solid.current.render(0);
+        s.transform = `${at} scale(${c.scale.toFixed(3)})`;
+      } else {
+        // nose the way it's flying, dipping a little as it drops
+        const dir = p.dx >= 0 ? 1 : -1;
+        const tilt = Math.max(2, Math.min(22, (Math.atan2(p.dy, Math.abs(p.dx) + 0.001) * 90) / Math.PI));
+        s.transform = `${at} scaleX(${dir}) rotate(${(tilt + c.spin).toFixed(1)}deg) scale(${c.scale.toFixed(3)})`;
+      }
       s.opacity = c.hidden ? '0' : '1';
       // the trail shows down to the cruiser
       win.current.style.transform = `translate3d(0, ${(y - H).toFixed(1)}px, 0)`;
@@ -127,7 +201,7 @@ export default function CruiserFlight() {
       window.removeEventListener('resize', onScroll);
       cancelAnimationFrame(raf);
     };
-  }, [geo]);
+  }, [geo, is3D]);
 
   const on = new Set(near ? near.split(',').map(Number) : []);
   return (
@@ -183,8 +257,9 @@ export default function CruiserFlight() {
         )}
       </div>
       <div className="rm-flight rm-flight-front" aria-hidden="true">
-        <div ref={ship} className="rm-cruiser">
-          <Cruiser />
+        <div ref={ship} className={`rm-cruiser${is3D ? ' is-3d' : ''}`}>
+          <div ref={host} />
+          {!is3D && <Cruiser />}
         </div>
       </div>
     </>

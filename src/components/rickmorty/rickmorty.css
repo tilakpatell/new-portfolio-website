@@ -109,6 +109,11 @@
 @keyframes rm-bob { to { transform: translateY(-3px); } }
 @keyframes rm-flame { from { transform: scale(0.8, 0.88); } to { transform: scale(1.08, 1); } }
 @media (max-width: 639px) { .rm-cruiser { left: -70px; top: -32px; width: 126px; height: 64px; transform-origin: 70px 32px; } }
+/* the 3D one: a see-through canvas centred on the path */
+.rm-cruiser-3d { position: absolute; left: 50%; top: 50%; width: 260px; height: 190px; margin: -95px 0 0 -130px; display: block; }
+.rm-cruiser:not(.is-3d) .rm-cruiser-3d { visibility: hidden; }
+.rm-cruiser.is-3d { left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; filter: drop-shadow(0 14px 12px rgba(15, 20, 30, 0.2)); }
+@media (max-width: 639px) { .rm-cruiser-3d { width: 180px; height: 132px; margin: -66px 0 0 -90px; } }
 
 /* a portal through the page: cracks running out, a hole, the swirl in it,
    and shards of page lifting off round the edge (--open, --crack: 0…1) */

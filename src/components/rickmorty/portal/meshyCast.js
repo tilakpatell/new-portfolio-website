@@ -104,13 +104,15 @@ export function createMeshyCast() {
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
       const clips = {};
       if (RIGGED.has(name)) {
-        const [idle, walk, run] = await Promise.all(['idle', 'walk', 'run'].map((c) => (want.includes(c) ? clipOf(`${BASE}/${name}-${c}.glb`) : null)));
-        Object.assign(clips, { idle, walk, run });
+        const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
+        want.forEach((c, i) => {
+          clips[c] = got[i];
+        });
         const hips = scene.getObjectByName('Hips');
-        if (hips?.parent && walk) {
+        if (hips?.parent && clips.walk) {
           const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
-          const ahead = heading(walk, up);
-          if (ahead != null) for (const c of [idle, run]) if (c) faceForward(c, up, ahead);
+          const ahead = heading(clips.walk, up);
+          if (ahead != null) for (const [n, c] of Object.entries(clips)) if (c && n !== 'walk') faceForward(c, up, ahead);
         }
       }
       assets.set(name, { scene, height: size.y, offset, clips, rigged: RIGGED.has(name) });
@@ -119,7 +121,8 @@ export function createMeshyCast() {
     }
   };
 
-  // load every model (or just `names`, with just the `clips` named);
+  // load every model (or just `names`, with just the `clips` named: idle,
+  // walk, run, or sit for the cruiser's seats);
   // onEach(k) as each one lands
   const load = async (onEach, names = MESHY_ASSETS, { clips } = {}) => {
     let done = 0;

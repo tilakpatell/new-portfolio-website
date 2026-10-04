@@ -73,6 +73,7 @@ export function flight(w, h, { launch = null, jumps = [], narrow = w < 640 } = {
     portals.push({ x: a.x, y: a.y, r, kind: 'in', jump: hops.length }, { x: b.x, y: b.y, r, kind: 'out', jump: hops.length });
     hops.push({ a, b, beside });
     if (beside) side = -side;
+    from = b;
   }
   legs.push([from, { x: w * 0.5, y: end }]);
 
@@ -81,7 +82,9 @@ export function flight(w, h, { launch = null, jumps = [], narrow = w < 640 } = {
   const Y = [];
   for (const [p, q] of legs) {
     // swoops from side to side, about a step apart, ending where the leg does
-    const n = Math.max(1, Math.round((q.y - p.y) / step));
+    // (at least out and back when it starts and ends on the same side)
+    const same = p.x < w * 0.5 === q.x < w * 0.5 && Math.abs(p.x - w * 0.5) > w * 0.1;
+    const n = Math.max(same ? 2 : 1, Math.round((q.y - p.y) / step));
     const dy = (q.y - p.y) / n;
     let x = p.x;
     let y = p.y;

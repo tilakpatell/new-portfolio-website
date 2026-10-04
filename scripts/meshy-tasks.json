@@ -3,13 +3,15 @@
     "image": "01a10814-a879-75b1-b4f0-8cf9a0b1d603",
     "model": "01a10817-1dbf-716d-9df0-6f358ed4b26e",
     "rig": "01a1081c-dee6-75da-813f-9e38fb7ab771",
-    "idle": "01a1081d-7df9-7673-a311-b31819f85b95"
+    "idle": "01a1081d-7df9-7673-a311-b31819f85b95",
+    "sit": "01a10862-77f4-7790-820a-a192338cf921"
   },
   "morty": {
     "image": "01a10816-5101-770d-825d-b5d79aec4fae",
     "model": "01a10817-1dc7-74e6-ae11-99413abae73d",
     "rig": "01a1081c-deeb-77a2-a56a-4e650dcb1c18",
-    "idle": "01a1081d-c572-72cf-aa2e-861bfd997697"
+    "idle": "01a1081d-c572-72cf-aa2e-861bfd997697",
+    "sit": "01a10862-7864-7101-976a-7a691b35269b"
   },
   "pickle": {
     "image": "01a10815-5d90-77bd-84fa-c26fcf7bbaba",
@@ -64,5 +66,12 @@
   "garage": {
     "image": "01a10815-5df4-7382-b626-e122acfc968f",
     "model": "01a1081a-f4eb-734e-97c7-a9745afea517"
+  },
+  "ship": {
+    "model": "01a10861-7e91-740f-aecb-5956bd008b47"
+  },
+  "saucer": {
+    "image": "01a10862-d30e-758a-8f1f-fadcb55a0fda",
+    "model": "01a10863-acfa-71cb-a592-4d30821167e5"
   }
 }

@@ -19,6 +19,24 @@ describe('the cruiser’s flight', () => {
     expect(f.Y[f.Y.length - 1]).toBeCloseTo(6000 - 40);
   });
 
+  it('flies on from each portal out, not from the start again', () => {
+    const f = page();
+    const starts = [...f.d.matchAll(/M ([\d.]+) ([\d.]+)/g)].map((m) => [+m[1], +m[2]]);
+    expect(starts).toHaveLength(f.jumps.length + 1);
+    f.jumps.forEach(({ b }, i) => {
+      expect(starts[i + 1][0]).toBeCloseTo(b.x, 0);
+      expect(starts[i + 1][1]).toBeCloseTo(b.y, 0);
+      // and the way just past it is near it
+      expect(Math.abs(along(f.X, f.Y, b.y + 5).x - b.x)).toBeLessThan(20);
+    });
+    // and swoops out across the page before the next portal, not straight down its edge
+    // (even when the next is less than a swoop away)
+    const g = flight(1280, 6000, { launch: { x: 320, y: 420 }, jumps: [{ top: 1300, bottom: 2100 }, { top: 2900, bottom: 3300 }] });
+    const [one, two] = g.jumps;
+    const xs = g.X.filter((_, i) => g.Y[i] > one.b.y && g.Y[i] < two.a.y);
+    expect(Math.min(...xs)).toBeLessThan(1280 * 0.5);
+  });
+
   it('keeps on the page, side to side', () => {
     for (const w of [360, 1280]) {
       const f = page(w);

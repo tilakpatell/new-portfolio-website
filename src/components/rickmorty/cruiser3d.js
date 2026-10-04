@@ -1,6 +1,7 @@
 // The Space Cruiser in 3D for the flight down the Rick and Morty page
-// (./CruiserFlight.jsx): the Meshy model of it with Rick at the wheel and
-// Morty beside him, both breathing with their idle clips, toon-shaded and
+// (./CruiserFlight.jsx): the Meshy model of the classic saucer with Rick at
+// the wheel and Morty beside him, both sat in their seats (Meshy's seated
+// clip) under the glass dome, toon-shaded and
 // inked like Portal panic, on a small see-through canvas that the page moves
 // about. Here it only turns: pose() points the nose the way it's flying
 // (swinging round through facing you as it swoops from one side to the
@@ -11,10 +12,15 @@ import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
 
 const INK = 0x1b1424;
-const SPAN = 2.7; // half the canvas's width, in the cruiser's units (it's 3.9 long)
-const GLASS = 0.6;
-// how tall Rick and Morty stand in it, and where their feet are (the model's units, nose -x)
-const CREW = { rick: 1.4, morty: 1.18, x: -0.3, y: 0.42 }; // the share of the cruiser's height where the hull stops and the dome starts
+const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 across)
+const SPAN = 2.4; // half the canvas's width, in the same units
+const GLASS = 0.69; // the share of the saucer's height where the hull stops and the dome starts
+// how tall Rick and Morty would stand, and where they sit: across (Rick on
+// the right as you look at the nose, as in the show), forward, and the
+// height of their feet, sat (the saucer's units, nose +z)
+const CREW = { rick: [1.1, 0.27], morty: [0.92, -0.29], z: 0.05, y: 0.82 };
+// the backs of the two exhaust cans
+const CANS = [[0.87, 1.0, -1.3], [-0.87, 1.0, -1.3]];
 
 // an ink line round a mesh, skinned or not: its back faces drawn flat,
 // pushed out along the normals once posed, in view space (so `width` is in
@@ -99,30 +105,27 @@ export async function createCruiser3D(canvas) {
   scene.add(sun);
 
   const cast = createMeshyCast();
-  await cast.load(null, ['cruiser', 'rick', 'morty'], { clips: ['idle', 'walk'] });
-  const body = cast.prop('cruiser', 1.7);
+  // the walk only to turn the seated clip to face ahead (see meshyCast)
+  await cast.load(null, ['saucer', 'rick', 'morty'], { clips: ['sit', 'walk'] });
+  const body = cast.prop('saucer', TALL);
   if (!body) {
     cast.dispose();
     renderer.dispose();
     return null;
   }
-  // the model's nose is along -x and its thruster +x; turned so the nose is
-  // +z, centred on the hull
+  // the nose (its headlights) is +z; centred on the hull
   const hull = new THREE.Group();
-  hull.rotation.y = Math.PI / 2;
-  hull.position.y = -0.8;
+  hull.position.y = -TALL / 2;
   hull.add(body);
-  // Rick at the wheel on the left, Morty on the right, looking ahead
+  // Rick at the wheel, Morty beside him, sat looking ahead
   const crew = [];
-  for (const [kind, tall, z] of [
-    ['rick', CREW.rick, 0.3],
-    ['morty', CREW.morty, -0.3],
-  ]) {
+  for (const kind of ['rick', 'morty']) {
     const c = cast.make(kind);
     if (!c) continue;
+    const [tall, x] = CREW[kind];
     c.group.scale.setScalar(tall / c.height);
-    c.group.position.set(CREW.x, CREW.y, z);
-    c.group.rotation.y = Math.PI / 2;
+    c.group.position.set(x, CREW.y, CREW.z);
+    for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
     hull.add(c.group);
     crew.push(c);
   }
@@ -137,27 +140,38 @@ export async function createCruiser3D(canvas) {
     m.transparent = true;
     m.onBeforeCompile = (s) => {
       s.vertexShader = s.vertexShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {\nvGlassY = position.y;');
-      s.fragmentShader = s.fragmentShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {').replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
-        {
-          float glass = smoothstep(${glassY.toFixed(5)} - 0.004, ${glassY.toFixed(5)} + 0.004, vGlassY);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.93, 1.0), glass * 0.45);
-          diffuseColor.a *= mix(1.0, 0.26, glass);
-        }`,
-      );
+      // see-through face on, thicker towards its edges, so it reads as a bubble
+      s.fragmentShader = s.fragmentShader
+        .replace('void main() {', 'varying float vGlassY;\nvoid main() {\nfloat glass = 0.0;')
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+          glass = smoothstep(${glassY.toFixed(5)} - 0.004, ${glassY.toFixed(5)} + 0.004, vGlassY);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.95, 0.96), glass * 0.6);`,
+        )
+        .replace(
+          '#include <normal_fragment_maps>',
+          `#include <normal_fragment_maps>
+          {
+            float rim = 1.0 - abs(normal.z);
+            diffuseColor.a *= mix(1.0, 0.16 + 0.6 * rim * rim, glass);
+          }`,
+        );
     };
     m.customProgramCacheKey = () => `glass-${glassY}`;
     o.material = m;
     o.userData.glass = m;
   });
   const inks = [inkHull(body, 0.036, glassY), ...crew.map((c) => inkHull(c.group, 0.026))];
-  // the thruster's glow
+  // the exhaust cans' glow
   const glowTex = glowTexture();
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-  glow.position.set(1.62, 0.75, 0);
-  glow.scale.setScalar(1.1);
-  hull.add(glow);
+  const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  const glows = CANS.map((p) => {
+    const g = new THREE.Sprite(glowMat);
+    g.position.set(...p);
+    hull.add(g);
+    return g;
+  });
 
   const ship = new THREE.Group();
   ship.rotation.order = 'YXZ';
@@ -187,9 +201,12 @@ export async function createCruiser3D(canvas) {
       ship.rotation.set(v * 0.26, Math.PI / 2 - a, bank + roll);
     },
     render(t) {
-      for (const c of crew) c.update(t, 0, 0);
-      glow.material.opacity = 0.75 + Math.sin(t * 19) * 0.15;
-      glow.scale.setScalar(1.05 + Math.sin(t * 13) * 0.08);
+      for (const c of crew) {
+        c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
+        c.last = t;
+      }
+      glowMat.opacity = 0.75 + Math.sin(t * 19) * 0.15;
+      glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
       renderer.render(scene, camera);
     },
     fit,
@@ -198,7 +215,7 @@ export async function createCruiser3D(canvas) {
       for (const m of inks) m.dispose();
       body.traverse((o) => o.userData.glass?.dispose());
       glowTex.dispose();
-      glow.material.dispose();
+      glowMat.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     },

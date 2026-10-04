@@ -8,7 +8,7 @@
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name …]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
-// idle clip, 3), fetch (free: download and compress). Each task's id is kept in
+// idle clip, 3), sit (a seated clip, 3), fetch (free: download and compress). Each task's id is kept in
 // scripts/meshy-tasks.json, so running a step again never pays twice; delete
 // a name's entry there to make it again. MESHY_API_KEY comes from .env.local
 // (git ignores it); it is never printed.
@@ -52,10 +52,15 @@ export const ASSETS = {
   evilmorty: { rig: true, height: 1.5, poly: 14000, tex: 1024, prompt: `Evil Morty from Rick and Morty: Morty Smith with a black eyepatch over his right eye and a cold confident look, short brown hair, a yellow T-shirt, blue jeans and white sneakers. ${BODY}` },
   // set pieces
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
+  // Rick and Morty Spaceship by SandersonArts (CC0, meshy.ai community), remade
+  // here from its published cover image: the cruiser that flies down the page
+  ship: { rig: false, poly: 16000, tex: 1024, image: 'https://cdn.meshy.ai/uploads/prod/95997335eb0d312779282d7a3b249aa3a0c518f13709a7434552dee7ae18a32f/publish/cover-landscape/01983048-7cf2-76f1-8c87-6ec741f4f414.png', credit: { source: 'https://www.meshy.ai/3d-models/Rick-and-Morty-Spaceship-0198303c-9960-755a-9c9e-ac853cb60e30', name: 'Rick and Morty Spaceship, remade with Meshy AI image-to-3D from the cover image of the original', authors: ['SandersonArts'], license: 'CC0' } },
+  // the classic one, as in the show's first seasons
+  saucer: { rig: false, poly: 16000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty, the classic one: a small round flying saucer car with a grey metal hull, wide and flat, a big clear see-through glass bubble dome over two empty seats and a steering wheel, two orange-yellow stripes painted down the front of the hull, two round headlights on short stalks at the front rim, a big grey cylindrical exhaust can at the back with a ribbed hose, small bolts round the rim, no people. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
 };
 
-const key = process.env.MESHY_API_KEY;
+const key = process.env.MESHY_API_KEY ?? process.env.MESHY_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -138,10 +143,11 @@ const steps = {
   async models(names, s) {
     await each(names, async (n) => {
       const a = ASSETS[n];
-      if (!s[n]?.image) throw new Error('no image yet');
+      if (!s[n]?.image && !a.image) throw new Error('no image yet');
+      s[n] ??= {};
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
-          input_task_id: s[n].image,
+          ...(a.image ? { image_url: a.image } : { input_task_id: s[n].image }),
           ai_model: 'latest',
           should_texture: true,
           enable_pbr: false,
@@ -192,6 +198,22 @@ const steps = {
       },
     );
   },
+  // sitting in the cruiser: Chair_Sit_Idle_M from Meshy's animation library
+  async sit(names, s) {
+    await each(
+      names.filter((n) => ASSETS[n].rig),
+      async (n) => {
+        if (!s[n]?.rig) throw new Error('not rigged yet');
+        if (!s[n].sit) {
+          const { result } = await api('POST', '/v1/animations', { rig_task_id: s[n].rig, action_id: 33, post_process: { operation_type: 'extract_armature' } });
+          s[n].sit = result;
+          await save(s);
+        }
+        const t = await wait('/v1/animations', s[n].sit, `${n} sit`);
+        console.log(`sit      ${n.padEnd(12)} ${t.consumed_credits} credits`);
+      },
+    );
+  },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
     const tmp = join(ROOT, 'lab', 'meshy', 'raw');
@@ -210,6 +232,7 @@ const steps = {
         files.push([r.basic_animations.walking_armature_glb_url, `${n}-walk.glb`, 0, true]);
         files.push([r.basic_animations.running_armature_glb_url, `${n}-run.glb`, 0, true]);
         files.push([idle.animation_glb_url, `${n}-idle.glb`, 0, true]);
+        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${n}-sit.glb`, 0, true]);
       } else {
         if (!s[n]?.model) throw new Error(`${n}: no model yet`);
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
@@ -220,7 +243,7 @@ const steps = {
         await download(url, raw);
         await squeeze(raw, join(OUT, file), { tex, clip });
       }
-      credits[`meshy/${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[`meshy/${n}`] = a.credit ? { ...a.credit, id: s[n].model } : { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
