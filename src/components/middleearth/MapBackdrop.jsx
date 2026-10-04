@@ -1,35 +1,107 @@
 import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../../lib/gpu';
 import { opened } from './opening';
+import { SHEET } from './mapData';
 
 // The map of Middle-earth behind the whole page. With a graphics chip it is
 // in WebGL (./MapBackdrop3D.js): the sheet on a table, a camera gliding over
-// it, following the Ring's road as the page scrolls and stepping back to the
-// whole map at the end. Without one, the painted sheet lies flat and still.
+// it. Without one, the painted sheet is drawn flat, and pans and zooms the
+// same way. On the hub (`spot` null) it shows the whole sheet and leans
+// towards the pointer; with a `spot` ([x, y] on the sheet) it flies down to
+// it and stays there, close, behind the chapter.
 //
 // `opening` is the films' beginning: the map alone, with the title over it,
 // before the page comes in. Any key, click, tap or scroll ends it early.
+// `api` is a ref the hub keeps, to ask where places are on the screen
+// (`api.current.project(x, y)`); `onFrame` is called after every frame drawn,
+// so the hub can move its markers with the camera.
 
 const HOLD = 3000;
 
-// How far down the road the page has come: 0 at the top, 1 where the Ring's
-// section ends, then `after` counts up to 1 over the screen that follows.
-function progress() {
-  const end = document.getElementById('ring');
-  const full = (end ? end.getBoundingClientRect().bottom + window.scrollY : document.documentElement.scrollHeight) - window.innerHeight * 0.7;
-  const y = window.scrollY;
-  return { p: Math.max(0, Math.min(1, y / Math.max(1, full))), after: Math.max(0, Math.min(1, (y - full) / (window.innerHeight * 0.8))) };
+// The flat sheet, for browsers without a graphics chip: drawn into the canvas
+// at a scale and offset that ease towards where they should be.
+function createFlat(canvas, sheet) {
+  const ctx = canvas.getContext('2d');
+  let W = 1;
+  let H = 1;
+  let ratio = 1;
+  const cur = { x: SHEET.w / 2, y: SHEET.h / 2, z: 1 };
+  const goal = { ...cur };
+  let first = true;
+  const scale = () => Math.max(W / SHEET.w, H / SHEET.h) * cur.z;
+  const clampView = (x, y, z) => {
+    const s = Math.max(W / SHEET.w, H / SHEET.h) * z;
+    const hw = W / s / 2;
+    const hh = H / s / 2;
+    return [Math.min(SHEET.w - hw, Math.max(hw, x)), Math.min(SHEET.h - hh, Math.max(hh, y))];
+  };
+  return {
+    setView({ at = null, zoom = null, lean = [0, 0] }) {
+      // `zoom` is the 3D camera's height (smaller is closer): turn it round
+      const z = zoom != null ? 2.75 / zoom : at ? 2.6 : 1.08;
+      const [x, y] = at || [SHEET.w / 2, SHEET.h / 2];
+      [goal.x, goal.y] = clampView(x + lean[0] * 14, y + lean[1] * 10, z);
+      goal.z = z;
+    },
+    resize(w, h) {
+      ratio = Math.min(2, window.devicePixelRatio || 1);
+      W = Math.max(1, w);
+      H = Math.max(1, h);
+      canvas.width = Math.round(W * ratio);
+      canvas.height = Math.round(H * ratio);
+      first = true;
+    },
+    project(x, y) {
+      const s = scale();
+      return { x: W / 2 + (x - cur.x) * s, y: H / 2 + (y - cur.y) * s, on: true };
+    },
+    unproject(sx, sy) {
+      const s = scale();
+      return { x: cur.x + (sx - W / 2) / s, y: cur.y + (sy - H / 2) / s };
+    },
+    render(ms = 16) {
+      const k = 1 - Math.exp(-3 * Math.min(0.05, ms / 1000));
+      const far = Math.abs(goal.x - cur.x) + Math.abs(goal.y - cur.y) + Math.abs(goal.z - cur.z) * 200;
+      if (!first && far < 0.05) return false;
+      first = false;
+      cur.x += (goal.x - cur.x) * k;
+      cur.y += (goal.y - cur.y) * k;
+      cur.z += (goal.z - cur.z) * k;
+      const s = scale() * ratio;
+      const sx = sheet.width / SHEET.w;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#1a110a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(s / sx, 0, 0, s / sx, (W * ratio) / 2 - cur.x * s, (H * ratio) / 2 - cur.y * s);
+      ctx.drawImage(sheet, 0, 0);
+      return true;
+    },
+    dispose() {},
+    lost: false,
+  };
 }
 
-export default function MapBackdrop({ mordor = false, opening = false, onOpened }) {
+// a dev-only way to see the WebGL map in a browser that draws in software
+const forced = () => {
+  try {
+    return import.meta.env.DEV && window.localStorage.getItem('tp-map3d') === 'force';
+  } catch {
+    return false;
+  }
+};
+
+export default function MapBackdrop({ spot = null, zoom = null, hover = null, mordor = false, dark = false, hub = false, opening = false, onOpened, api: outer, onFrame }) {
   const three = use3D();
-  const gl = three.on && !three.info.software;
+  const gl = three.on && (!three.info.software || forced());
   const canvas = useRef(null);
   const api = useRef(null);
-  const state = useRef({ mordor, opening });
-  state.current = { mordor, opening };
+  const state = useRef({});
+  state.current = { spot, zoom, hover, mordor, dark, hub, opening };
+  const lean = useRef([0, 0]);
   const done = useRef(onOpened);
   done.current = onOpened;
+  const frame = useRef(onFrame);
+  frame.current = onFrame;
   const kick = useRef(() => {});
   const [on, setOn] = useState(false);
 
@@ -41,7 +113,10 @@ export default function MapBackdrop({ mordor = false, opening = false, onOpened 
       const c = canvas.current;
       if (c && api.current) api.current.resize(c.clientWidth, c.clientHeight);
     };
-    const view = () => api.current?.setView({ ...progress(), mordor: state.current.mordor, whole: false });
+    const view = () => {
+      const s = state.current;
+      api.current?.setView({ at: s.spot, zoom: s.zoom, hover: s.hover, mordor: s.mordor, dark: s.dark, alive: s.hub, lean: s.hub ? lean.current : [0, 0] });
+    };
     // draw while the camera is on its way, then stop until something changes
     const loop = (now) => {
       raf = 0;
@@ -49,8 +124,10 @@ export default function MapBackdrop({ mordor = false, opening = false, onOpened 
       if (!a || dead) return;
       const ms = last ? Math.min(50, now - last) : 16;
       last = now;
-      if (a.render(ms, state.current.opening ? 0.3 : 1)) raf = requestAnimationFrame(loop);
-      else last = 0;
+      if (a.render(ms, state.current.opening ? 0.3 : 1)) {
+        frame.current?.();
+        raf = requestAnimationFrame(loop);
+      } else last = 0;
     };
     kick.current = () => {
       view();
@@ -60,18 +137,20 @@ export default function MapBackdrop({ mordor = false, opening = false, onOpened 
       size();
       kick.current();
     };
+    const ready = (a) => {
+      api.current = a;
+      if (outer) outer.current = a;
+      if (import.meta.env.DEV) window.__ME__ = { ...window.__ME__, map: a }; // for the browser tests
+      fit();
+      setOn(true);
+    };
     const flat = async () => {
-      // no graphics chip: the sheet itself, still
+      // no graphics chip: the sheet itself, drawn flat
       const { mapFont, paintMap } = await import('./mapPaint');
       await mapFont();
       if (dead || !canvas.current) return;
-      const sheet = paintMap(1400);
-      const c = canvas.current;
-      c.width = sheet.width;
-      c.height = sheet.height;
-      c.getContext('2d')?.drawImage(sheet, 0, 0);
-      c.dataset.flat = 'true';
-      setOn(true);
+      canvas.current.dataset.flat = 'true';
+      ready(createFlat(canvas.current, paintMap(2048)));
     };
     if (gl) {
       import('./MapBackdrop3D')
@@ -79,31 +158,37 @@ export default function MapBackdrop({ mordor = false, opening = false, onOpened 
           await mapFont();
           // only now, and only if still wanted: a canvas has one context to give
           if (dead || !canvas.current) return;
-          api.current = createMapBackdrop(canvas.current, { onLost: () => setOn(false) });
-          if (import.meta.env.DEV) window.__ME__ = { ...window.__ME__, map: api.current }; // for the browser tests
-          fit();
-          setOn(true);
+          ready(createMapBackdrop(canvas.current, { onLost: () => setOn(false) }));
         })
         .catch(() => !dead && setOn(false));
     } else flat().catch(() => {});
-    window.addEventListener('scroll', kick.current, { passive: true });
+    // on the hub, the camera leans towards the pointer
+    const onMove = (e) => {
+      if (!state.current.hub || e.pointerType === 'touch') return;
+      lean.current = [(e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1];
+      kick.current();
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('resize', fit);
     document.addEventListener('visibilitychange', kick.current);
     return () => {
       dead = true;
       cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', kick.current);
+      window.removeEventListener('pointermove', onMove);
       window.removeEventListener('resize', fit);
       document.removeEventListener('visibilitychange', kick.current);
       api.current?.dispose();
       api.current = null;
+      if (outer) outer.current = null;
     };
+    // `outer` is a ref, the same one throughout
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl]);
 
-  // Mordor, or the opening ending: the camera has somewhere new to go
+  // somewhere new to go: a place, the hub, Mordor, the dark, the opening ending
   useEffect(() => {
     kick.current();
-  }, [mordor, opening]);
+  }, [spot, zoom, hover, mordor, dark, hub, opening]);
 
   // the opening: hold on the map, then let the page in
   useEffect(() => {
@@ -123,7 +208,7 @@ export default function MapBackdrop({ mordor = false, opening = false, onOpened 
   }, [opening, on]);
 
   return (
-    <div className="me-atlas" data-on={on || undefined} data-opening={(opening && on) || undefined} aria-hidden="true">
+    <div className="me-atlas" data-on={on || undefined} data-hub={hub || undefined} data-opening={(opening && on) || undefined} aria-hidden="true">
       <canvas ref={canvas} />
       {opening && on && (
         <div className="me-atlas-title">
