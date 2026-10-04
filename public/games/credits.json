@@ -739,5 +739,32 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "cockpit/chewie": {
+    "source": "https://www.meshy.ai",
+    "id": "01a108b9-fac8-734f-9ce5-0976a896a903",
+    "name": "chewie, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "cockpit/walt": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1086c-b335-723a-a090-6bd52a6ee0d0",
+    "name": "walt, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "cockpit/jesse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10877-c1cb-76a4-b8f7-13bf6710e8bf",
+    "name": "jesse, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

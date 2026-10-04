@@ -1,0 +1,15 @@
+{
+  "walt": {
+    "idle": "01a108ad-db96-75ba-9eac-255742c628be",
+    "sit": "01a108ae-065d-764d-96b1-b87893cd974a"
+  },
+  "jesse": {
+    "sit": "01a108ae-3104-7272-bad4-cadf50c6a2b2"
+  },
+  "chewie": {
+    "image": "01a108b7-666d-7421-ab23-8ecd35df3544",
+    "model": "01a108b9-fac8-734f-9ce5-0976a896a903",
+    "rig": "01a108be-03a6-75a1-822a-4bb5b58b6171",
+    "sit": "01a108be-4f4d-719d-96a9-cfcb49a43cca"
+  }
+}
