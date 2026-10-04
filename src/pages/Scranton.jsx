@@ -139,7 +139,7 @@ export default function Scranton() {
         </section>
       )}
 
-      <section className="shell relative z-10 grid items-center gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16" aria-labelledby="dundies-title">
+      <section className="shell relative z-10 grid items-start gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16" aria-labelledby="dundies-title">
         <figure className="dundie-stage m-0" aria-label={`On stage: ${onStage.title}. ${onStage.desc}`}>
           <div className="dundie-curtain dundie-curtain-l" aria-hidden="true" />
           <div className="dundie-curtain dundie-curtain-r" aria-hidden="true" />

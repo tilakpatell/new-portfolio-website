@@ -1,32 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../../lib/hooks';
 
-// A Dunder Mifflin paper airplane that flies down the page as you scroll,
-// swooping from side to side (and once round in a loop), leaving a dotted
-// trail. It sits over the page but never takes a click.
+// A Dunder Mifflin paper airplane that glides down the page with you: it stays
+// at the middle of the screen while it swoops from side to side, turning to
+// face the way it is flying, and leaves a dotted trail. It sits over the page
+// but never takes a click.
 
 function flightPath(w, h) {
-  // it keeps to the middle of the page, swinging out a little either side
-  const reach = w < 640 ? 0.26 : 0.18;
+  // it keeps near the middle of the page, swinging out either side
+  const reach = w < 640 ? 0.3 : 0.24;
   const left = w * (0.5 - reach);
   const right = w * (0.5 + reach);
-  const step = Math.max(420, Math.min(640, h / 7));
-  let x = right;
-  let y = 90;
+  const step = Math.max(380, Math.min(560, h / 8));
+  let x = w * 0.5;
+  let y = 40;
   let d = `M ${x} ${y}`;
   let i = 0;
-  while (y + step < h - 60) {
-    const nx = i % 2 ? right : left;
+  while (y + step < h - 40) {
+    const nx = i % 2 ? left : right;
     const ny = y + step;
-    // one loop-the-loop, a third of the way down
-    if (i === 2) {
-      const mx = (x + nx) / 2;
-      const my = (y + ny) / 2;
-      const r = Math.min(70, w * 0.09);
-      d += ` C ${x} ${y + step * 0.35}, ${mx + r} ${my - r * 1.4}, ${mx} ${my - r}`;
-      d += ` a ${r} ${r} 0 1 0 0.1 0`;
-      d += ` C ${mx - r} ${my + r * 1.4}, ${nx} ${ny - step * 0.35}, ${nx} ${ny}`;
-    } else d += ` C ${x} ${y + step * 0.55}, ${nx} ${ny - step * 0.55}, ${nx} ${ny}`;
+    d += ` C ${x} ${y + step * 0.5}, ${nx} ${ny - step * 0.5}, ${nx} ${ny}`;
     x = nx;
     y = ny;
     i += 1;
@@ -55,38 +48,64 @@ export default function PaperPlane() {
     const p = path.current;
     const el = box.current;
     if (!p || !el || !geo) return undefined;
+    // sample the path once: arc length, x and y (y only ever increases)
     const total = p.getTotalLength();
+    const L = [];
+    const X = [];
+    const Y = [];
+    for (let l = 0; l <= total; l += 4) {
+      const pt = p.getPointAtLength(l);
+      L.push(l);
+      X.push(pt.x);
+      Y.push(pt.y);
+    }
+    const n = Y.length;
     const still = prefersReducedMotion();
     trail.current.style.strokeDasharray = `0 ${total}`;
-    let shown = 0;
+    let shown = null;
     let raf = 0;
-    const place = (len) => {
-      const a = p.getPointAtLength(Math.max(0, len - 1));
-      const b = p.getPointAtLength(Math.min(total, len + 1));
-      const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-      plane.current.style.transform = `translate(${b.x}px, ${b.y}px) rotate(${angle}deg)`;
-      // the dotted trail, drawn up to the plane
-      trail.current.style.strokeDasharray = `${len} ${total}`;
+    const indexAt = (y) => {
+      let lo = 0;
+      let hi = n - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (Y[mid] < y) lo = mid + 1;
+        else hi = mid;
+      }
+      return Math.max(1, Math.min(n - 1, lo));
     };
+    const place = (y) => {
+      const i = indexAt(y);
+      const k = Math.max(0, Math.min(1, (y - Y[i - 1]) / Math.max(0.001, Y[i] - Y[i - 1])));
+      const x = X[i - 1] + (X[i] - X[i - 1]) * k;
+      const dx = X[i] - X[i - 1];
+      const dy = Y[i] - Y[i - 1];
+      // nose the way it is flying, gliding down at a gentle angle
+      const dir = dx >= 0 ? 1 : -1;
+      const tilt = Math.max(8, Math.min(38, (Math.atan2(dy, Math.abs(dx) + 0.001) * 180) / Math.PI));
+      plane.current.style.transform = `translate(${x}px, ${y}px) scaleX(${dir}) rotate(${tilt}deg)`;
+      trail.current.style.strokeDasharray = `${L[i - 1] + (L[i] - L[i - 1]) * k} ${total}`;
+    };
+    // where the plane should be: the middle of the screen, in the page's coordinates
     const target = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
-      const progress = (window.scrollY + window.innerHeight * 0.45 - top) / el.clientHeight;
-      return Math.max(0, Math.min(1, progress)) * total;
+      return Math.max(Y[0], Math.min(Y[n - 1], window.scrollY + window.innerHeight * 0.5 - top));
     };
     const tick = () => {
       const goal = target();
-      shown += (goal - shown) * (still ? 1 : 0.12);
+      shown = shown == null || still ? goal : shown + (goal - shown) * 0.16;
       place(shown);
       raf = Math.abs(goal - shown) > 0.5 ? requestAnimationFrame(tick) : 0;
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(tick);
     };
-    shown = target();
-    place(shown);
+    tick();
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
       cancelAnimationFrame(raf);
     };
   }, [geo]);
@@ -100,7 +119,7 @@ export default function PaperPlane() {
           <svg width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`}>
             <defs>
               <mask id="paper-reveal" maskUnits="userSpaceOnUse" x="0" y="0" width={geo.w} height={geo.h}>
-                <path ref={trail} d={d} fill="none" stroke="#fff" strokeWidth="8" />
+                <path ref={trail} d={d} fill="none" stroke="#fff" strokeWidth="10" />
               </mask>
             </defs>
             <path ref={path} d={d} fill="none" stroke="none" />
@@ -110,11 +129,11 @@ export default function PaperPlane() {
       </div>
       <div className="paper-flight paper-flight-plane" aria-hidden="true">
         <div ref={plane} className="paper-plane">
-          <svg viewBox="-28 -16 56 32" width="56" height="32">
+          <svg viewBox="-28 -16 56 32" className="paper-plane-art">
             {/* nose to the right: the two wings, the keel, and a Dunder Mifflin stripe */}
-            <path d="M26 0 L-24 -14 L-14 0 Z" fill="#ffffff" stroke="#9aa6b8" strokeWidth="0.8" strokeLinejoin="round" />
-            <path d="M26 0 L-24 12 L-14 0 Z" fill="#e9eef6" stroke="#9aa6b8" strokeWidth="0.8" strokeLinejoin="round" />
-            <path d="M26 0 L-14 0 L-18 6 Z" fill="#cfd8e6" stroke="#9aa6b8" strokeWidth="0.6" strokeLinejoin="round" />
+            <path d="M26 0 L-24 -14 L-14 0 Z" fill="#ffffff" stroke="#8a96a8" strokeWidth="0.8" strokeLinejoin="round" />
+            <path d="M26 0 L-24 12 L-14 0 Z" fill="#e9eef6" stroke="#8a96a8" strokeWidth="0.8" strokeLinejoin="round" />
+            <path d="M26 0 L-14 0 L-18 6 Z" fill="#cfd8e6" stroke="#8a96a8" strokeWidth="0.6" strokeLinejoin="round" />
             <path d="M-8 -9.5 L8 -5 M-8 8.5 L8 4.5" stroke="#1f4e8c" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </div>
