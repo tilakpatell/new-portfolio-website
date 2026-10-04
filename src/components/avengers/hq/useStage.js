@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const DROP_AFTER = 8000; // ms far from the viewport before the view is let go
 
-export function useStage(load, { enabled, id }) {
+export function useStage(load, { enabled, id, forced = false }) {
   const wrap = useRef(null);
   const canvas = useRef(null);
   const view = useRef(null);
@@ -17,6 +17,9 @@ export function useStage(load, { enabled, id }) {
   const failed = useRef(false); // a view that failed stays failed until a retry
   const loadRef = useRef(load);
   loadRef.current = load;
+  // a visitor who switched 3D on keeps it on, however slow: quality drops instead
+  const forcedRef = useRef(forced);
+  forcedRef.current = forced;
 
   // near the viewport (make it), and on screen (draw it)
   useEffect(() => {
@@ -63,7 +66,7 @@ export function useStage(load, { enabled, id }) {
       .then(async (mod) => {
         if (dead || !canvas.current) return;
         try {
-          const v = await mod.create(canvas.current, { onLost: () => drop('lost'), onSlow: () => drop('slow') });
+          const v = await mod.create(canvas.current, { onLost: () => drop('lost'), onSlow: () => !forcedRef.current && drop('slow') });
           if (dead) {
             v.dispose();
             return;

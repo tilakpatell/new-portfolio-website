@@ -37,6 +37,7 @@ export const ACHIEVEMENTS = {
   gorgoroth: { name: 'Unseen', desc: 'Crossed Gorgoroth without the Eye seeing you' },
   ringbearer: { name: 'Ring-bearer', desc: 'Cast the One Ring into the fire' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
+  ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };

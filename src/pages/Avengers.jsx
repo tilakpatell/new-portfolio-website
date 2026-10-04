@@ -7,6 +7,7 @@ import ShieldThrow from '../components/avengers/ShieldThrow';
 import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
 import HulkLab from '../components/avengers/HulkLab';
+import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -25,7 +26,7 @@ const sfx = () => import('../lib/sfx');
 // walks it, and the map beside it shows where you are. It ends in the hangar,
 // where the Tesseract is kept.
 const FLOORS = [
-  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and the reactor hums, with F.R.I.D.A.Y. running the place.' },
+  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
   { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
   { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river. Throw the shield and it comes back. It always comes back.' },
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'Three lanes at the edge of the woods. Aim anywhere you like.' },
@@ -226,24 +227,28 @@ export default function Avengers() {
         </aside>
         <div className="grid gap-20 pb-20 md:gap-28">
           <Floor i={0} floor={FLOORS[0]}>
-            <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <figure className="reactor-stage m-0">
-                <ArcReactor power={power} blast={blast} />
-              </figure>
-              <div>
-                <div className="flex flex-wrap gap-3">
-                  <button type="button" className="btn btn-primary" onClick={powerUp}>
-                    {power === 3 ? 'Power down' : 'Power up'}
-                  </button>
-                  <button type="button" className="btn btn-ghost" onClick={fire}>
-                    Fire a repulsor
-                  </button>
+            <RepulsorRange
+              fallback={
+                <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <figure className="reactor-stage m-0">
+                    <ArcReactor power={power} blast={blast} />
+                  </figure>
+                  <div>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" className="btn btn-primary" onClick={powerUp}>
+                        {power === 3 ? 'Power down' : 'Power up'}
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={fire}>
+                        Fire a repulsor
+                      </button>
+                    </div>
+                    <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
+                      F.R.I.D.A.Y.: {FRIDAY[power]}
+                    </p>
+                  </div>
                 </div>
-                <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-                  F.R.I.D.A.Y.: {FRIDAY[power]}
-                </p>
-              </div>
-            </div>
+              }
+            />
           </Floor>
           <Floor i={1} floor={FLOORS[1]} aside={<Gif name="marvelThor" size="medium" />}>
             <Mjolnir />

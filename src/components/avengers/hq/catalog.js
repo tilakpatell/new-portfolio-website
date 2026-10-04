@@ -1,4 +1,4 @@
-// Written by scripts/hq-assets.mjs: what's in public/hq/. Don't edit by hand.
+// Written by scripts/hq-assets.mjs (and hq-impostors.mjs): what's in public/hq/. Don't edit by hand.
 export const TEXTURES = {
  "aerial-grass": {
   "size": 1024,
@@ -310,56 +310,28 @@ export const MODELS = {
  },
  "barrier": {
   "min": [
-   -0.776,
+   -0.775,
    -0.003,
    -0.254
   ],
   "max": [
-   0.789,
-   1.109,
+   0.788,
+   1.108,
    0.188
   ],
-  "tris": 23822,
-  "bytes": 535768,
+  "tris": 2382,
+  "bytes": 372140,
   "nodes": {
    "concrete_road_barrier_02": {
     "min": [
-     -0.776,
+     -0.775,
      -0.003,
      -0.254
     ],
     "max": [
-     0.789,
-     1.109,
+     0.788,
+     1.108,
      0.188
-    ]
-   }
-  }
- },
- "boulder": {
-  "min": [
-   -0.748,
-   -0.074,
-   -0.948
-  ],
-  "max": [
-   0.524,
-   0.93,
-   0.882
-  ],
-  "tris": 58953,
-  "bytes": 2573756,
-  "nodes": {
-   "boulder_01": {
-    "min": [
-     -0.748,
-     -0.074,
-     -0.948
-    ],
-    "max": [
-     0.524,
-     0.93,
-     0.882
     ]
    }
   }
@@ -418,21 +390,21 @@ export const MODELS = {
  },
  "grass-clump": {
   "min": [
-   -0.056,
+   -0.054,
    -0.006,
    -0.175
   ],
   "max": [
-   1.255,
+   1.254,
    0.4,
-   0.258
+   0.257
   ],
-  "tris": 7842,
-  "bytes": 173668,
+  "tris": 3526,
+  "bytes": 123252,
   "nodes": {
    "grass_medium_02_a": {
     "min": [
-     -0.056,
+     -0.054,
      -0.003,
      -0.057
     ],
@@ -450,7 +422,7 @@ export const MODELS = {
     ],
     "max": [
      0.325,
-     0.176,
+     0.175,
      0.094
     ]
    },
@@ -461,60 +433,60 @@ export const MODELS = {
      -0.161
     ],
     "max": [
-     0.611,
+     0.608,
      0.226,
      0.089
     ]
    },
    "grass_medium_02_d": {
     "min": [
-     0.608,
+     0.609,
      -0.005,
      -0.154
     ],
     "max": [
-     0.926,
+     0.922,
      0.255,
      0.208
     ]
    },
    "grass_medium_02_e": {
     "min": [
-     0.9,
+     0.899,
      -0.003,
      -0.175
     ],
     "max": [
-     1.255,
+     1.254,
      0.4,
-     0.258
+     0.257
     ]
    }
   }
  },
  "lamp": {
   "min": [
-   -0.352,
+   -0.351,
    0,
    -0.193
   ],
   "max": [
-   0.352,
-   3.871,
+   0.351,
+   3.87,
    0.193
   ],
-  "tris": 30610,
-  "bytes": 430432,
+  "tris": 3870,
+  "bytes": 228796,
   "nodes": {
    "street_lamp_01": {
     "min": [
-     -0.352,
+     -0.351,
      0,
      -0.193
     ],
     "max": [
-     0.352,
-     3.871,
+     0.351,
+     3.87,
      0.193
     ]
    }
@@ -523,22 +495,22 @@ export const MODELS = {
  "rocks": {
   "min": [
    -3.914,
-   -0.661,
-   -3.824
+   -0.656,
+   -3.819
   ],
   "max": [
    4.091,
    1.107,
-   3.125
+   3.124
   ],
-  "tris": 63127,
-  "bytes": 1434608,
+  "tris": 16007,
+  "bytes": 1063672,
   "nodes": {
    "rock_moss_set_01_rock01": {
     "min": [
      -3.914,
-     -0.657,
-     -3.824
+     -0.656,
+     -3.819
     ],
     "max": [
      -1.676,
@@ -562,7 +534,7 @@ export const MODELS = {
     "min": [
      1.982,
      -0.411,
-     -3.146
+     -3.145
     ],
     "max": [
      4.091,
@@ -573,36 +545,36 @@ export const MODELS = {
    "rock_moss_set_01_rock04": {
     "min": [
      -3.65,
-     -0.661,
+     -0.656,
      0.69
     ],
     "max": [
      -1.523,
      1.107,
-     2.655
+     2.654
     ]
    },
    "rock_moss_set_01_rock05": {
     "min": [
-     -0.711,
+     -0.708,
      -0.573,
-     0.126
+     0.127
     ],
     "max": [
-     1.107,
-     0.633,
-     3.125
+     1.106,
+     0.632,
+     3.124
     ]
    },
    "rock_moss_set_01_rock06": {
     "min": [
      1.599,
      -0.528,
-     0.097
+     0.101
     ],
     "max": [
      3.725,
-     0.734,
+     0.731,
      2.854
     ]
    }
@@ -611,7 +583,7 @@ export const MODELS = {
  "shrub": {
   "min": [
    -0.024,
-   -0.006,
+   -0.005,
    -0.075
   ],
   "max": [
@@ -619,13 +591,13 @@ export const MODELS = {
    0.213,
    0.071
   ],
-  "tris": 27327,
-  "bytes": 466056,
+  "tris": 4080,
+  "bytes": 254428,
   "nodes": {
    "shrub_04": {
     "min": [
      -0.024,
-     -0.006,
+     -0.005,
      -0.075
     ],
     "max": [
@@ -663,5 +635,40 @@ export const MODELS = {
     ]
    }
   }
+ }
+};
+
+export const IMPOSTORS = {
+ "broadleaf": {
+  "height": 4.557,
+  "width": 4.292,
+  "span": 4.557,
+  "size": 1024,
+  "bytes": 1006997,
+  "src": "tree_small_02"
+ },
+ "fir-a": {
+  "height": 18.925,
+  "width": 6.534,
+  "span": 18.925,
+  "size": 1024,
+  "bytes": 606947,
+  "src": "fir_tree_01"
+ },
+ "fir-b": {
+  "height": 14.055,
+  "width": 6.057,
+  "span": 14.055,
+  "size": 1024,
+  "bytes": 632085,
+  "src": "fir_tree_01"
+ },
+ "fir-c": {
+  "height": 14.521,
+  "width": 6.306,
+  "span": 14.521,
+  "size": 1024,
+  "bytes": 440199,
+  "src": "fir_tree_01"
  }
 };

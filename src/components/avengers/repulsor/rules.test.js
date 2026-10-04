@@ -49,7 +49,7 @@ function pilot(s) {
   s.input.firing = !!t && s.energy >= RANGE.shotCost;
   if (t) {
     const spot = t.kind === 'prime' ? t.parts.find((p) => p.hp > 0 && (p.core ? t.parts.every((q) => q.core || q.hp <= 0) : true)) : null;
-    const at = spot ? { x: t.x + spot.dx, y: t.y + spot.dy, z: t.z } : t.kind === 'sentry' ? { x: t.x, y: t.y + 0.9, z: t.z } : t;
+    const at = spot ? { x: t.x + spot.dx, y: t.y + spot.dy, z: t.z } : t.kind === 'sentry' ? { x: t.x, y: t.y + 0.42, z: t.z } : t;
     s.input.aim = aimAt(eye, at);
   }
   const crowd = s.enemies.filter((e) => e.z > -60).length;

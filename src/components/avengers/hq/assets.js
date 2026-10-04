@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { MODELS, SKIES, TEXTURES } from './catalog';
+import { IMPOSTORS, MODELS, SKIES, TEXTURES } from './catalog';
 
 const BASE = `${import.meta.env?.BASE_URL ?? '/'}hq/`;
 const cache = new Map();
@@ -61,7 +61,7 @@ export function loadSet(name, { small = false } = {}) {
 export async function pbr(name, { repeat = [1, 1], small = false, color, normalScale = 1, roughness = 1, metalness = 1, aoMapIntensity = 1, envMapIntensity, side, transparent, alphaTest, rotation = 0, physical, ...extra } = {}) {
   const set = await loadSet(name, { small });
   const Mat = physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
-  if (!set) return new Mat({ color: color ?? FALLBACK[name] ?? 0x808080, roughness: 0.8, metalness: 0, side, ...extra });
+  if (!set) return new Mat({ color: color ?? FALLBACK[name] ?? 0x808080, roughness: 0.8, metalness: 0, ...(side != null ? { side } : {}), ...extra });
   const tile = (t) => {
     const c = t.clone();
     c.repeat.set(repeat[0], repeat[1]);
@@ -71,6 +71,7 @@ export async function pbr(name, { repeat = [1, 1], small = false, color, normalS
   };
   const arm = tile(set.arm);
   const m = new Mat({
+    ...(side != null ? { side } : {}),
     map: tile(set.map),
     normalMap: tile(set.normalMap),
     normalScale: new THREE.Vector2(normalScale, normalScale),
@@ -80,7 +81,6 @@ export async function pbr(name, { repeat = [1, 1], small = false, color, normalS
     metalnessMap: arm,
     roughness,
     metalness,
-    side,
     transparent: transparent ?? false,
     alphaTest: alphaTest ?? (set.alpha ? 0.5 : 0),
     ...extra,
@@ -193,6 +193,23 @@ export async function instanceModel(name, transforms, { node, shadows = true } =
   return group;
 }
 
+// A tree photographed for distant forests (scripts/hq-impostors.mjs): its
+// colour, its normals, and its size.
+export function loadImpostor(name) {
+  const meta = IMPOSTORS[name];
+  if (!meta) return Promise.resolve(null);
+  return once(`imp:${name}`, async () => {
+    try {
+      const [map, normalMap] = await Promise.all([loadImage(`${BASE}impostors/${name}/color.webp`), loadImage(`${BASE}impostors/${name}/normal.png`)]);
+      map.colorSpace = THREE.SRGBColorSpace;
+      for (const t of [map, normalMap]) t.anisotropy = 4;
+      return { ...meta, map, normalMap };
+    } catch {
+      return null;
+    }
+  });
+}
+
 // Start loading what a game needs while it's still being built.
-export const preload = ({ sets = [], skies = [], models = [], small = false } = {}) =>
-  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map(loadSky), ...models.map(loadModel)]);
+export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false } = {}) =>
+  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map(loadSky), ...models.map(loadModel), ...impostors.map(loadImpostor)]);

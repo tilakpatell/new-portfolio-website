@@ -1,48 +1,182 @@
 {
   "textures": {
-    "grass": { "src": "polyhaven:leafy_grass", "size": 1024 },
-    "grass-sparse": { "src": "polyhaven:sparse_grass", "size": 1024 },
-    "aerial-grass": { "src": "polyhaven:aerial_grass_rock", "size": 1024 },
-    "forest-floor": { "src": "polyhaven:forrest_ground_01", "size": 1024 },
-    "mud-leaves": { "src": "polyhaven:brown_mud_leaves_01", "size": 1024 },
-    "concrete-floor": { "src": "polyhaven:hangar_concrete_floor", "size": 1024 },
-    "concrete-worn": { "src": "polyhaven:concrete_floor_worn_001", "size": 1024 },
-    "concrete-wall": { "src": "polyhaven:concrete_wall_008", "size": 1024 },
-    "steel-plate": { "src": "polyhaven:metal_plate", "size": 1024 },
-    "corrugated": { "src": "polyhaven:corrugated_iron", "size": 1024 },
-    "brushed-steel": { "src": "ambientcg:Metal009", "size": 1024, "metal": 255, "roughness": 90 },
-    "painted-metal": { "src": "ambientcg:PaintedMetal004", "size": 1024 },
-    "sci-panels": { "src": "ambientcg:MetalPlates001", "size": 1024 },
-    "diamond-plate": { "src": "ambientcg:DiamondPlate009", "size": 1024 },
-    "carbon": { "src": "ambientcg:Fabric004", "size": 512 },
-    "rubber-tiles": { "src": "polyhaven:rubber_tiles", "size": 1024 },
-    "plywood": { "src": "polyhaven:plywood", "size": 1024 },
-    "planks": { "src": "polyhaven:wood_planks", "size": 1024 },
-    "bark": { "src": "polyhaven:bark_brown_02", "size": 1024 },
-    "thatch": { "src": "polyhaven:thatch_roof_angled", "size": 1024 },
-    "leather": { "src": "polyhaven:brown_leather", "size": 512 },
-    "asphalt": { "src": "polyhaven:asphalt_02", "size": 1024 },
-    "sidewalk": { "src": "polyhaven:concrete_pavement", "size": 1024 },
-    "brick": { "src": "polyhaven:red_brick_03", "size": 1024 },
-    "rock": { "src": "polyhaven:rock_face_03", "size": 1024 }
+    "grass": {
+      "src": "polyhaven:leafy_grass",
+      "size": 1024
+    },
+    "grass-sparse": {
+      "src": "polyhaven:sparse_grass",
+      "size": 1024
+    },
+    "aerial-grass": {
+      "src": "polyhaven:aerial_grass_rock",
+      "size": 1024
+    },
+    "forest-floor": {
+      "src": "polyhaven:forrest_ground_01",
+      "size": 1024
+    },
+    "mud-leaves": {
+      "src": "polyhaven:brown_mud_leaves_01",
+      "size": 1024
+    },
+    "concrete-floor": {
+      "src": "polyhaven:hangar_concrete_floor",
+      "size": 1024
+    },
+    "concrete-worn": {
+      "src": "polyhaven:concrete_floor_worn_001",
+      "size": 1024
+    },
+    "concrete-wall": {
+      "src": "polyhaven:concrete_wall_008",
+      "size": 1024
+    },
+    "steel-plate": {
+      "src": "polyhaven:metal_plate",
+      "size": 1024
+    },
+    "corrugated": {
+      "src": "polyhaven:corrugated_iron",
+      "size": 1024
+    },
+    "brushed-steel": {
+      "src": "ambientcg:Metal009",
+      "size": 1024,
+      "metal": 255,
+      "roughness": 90
+    },
+    "painted-metal": {
+      "src": "ambientcg:PaintedMetal004",
+      "size": 1024
+    },
+    "sci-panels": {
+      "src": "ambientcg:MetalPlates001",
+      "size": 1024
+    },
+    "diamond-plate": {
+      "src": "ambientcg:DiamondPlate009",
+      "size": 1024
+    },
+    "carbon": {
+      "src": "ambientcg:Fabric004",
+      "size": 512
+    },
+    "rubber-tiles": {
+      "src": "polyhaven:rubber_tiles",
+      "size": 1024
+    },
+    "plywood": {
+      "src": "polyhaven:plywood",
+      "size": 1024
+    },
+    "planks": {
+      "src": "polyhaven:wood_planks",
+      "size": 1024
+    },
+    "bark": {
+      "src": "polyhaven:bark_brown_02",
+      "size": 1024
+    },
+    "thatch": {
+      "src": "polyhaven:thatch_roof_angled",
+      "size": 1024
+    },
+    "leather": {
+      "src": "polyhaven:brown_leather",
+      "size": 512
+    },
+    "asphalt": {
+      "src": "polyhaven:asphalt_02",
+      "size": 1024
+    },
+    "sidewalk": {
+      "src": "polyhaven:concrete_pavement",
+      "size": 1024
+    },
+    "brick": {
+      "src": "polyhaven:red_brick_03",
+      "size": 1024
+    },
+    "rock": {
+      "src": "polyhaven:rock_face_03",
+      "size": 1024
+    }
   },
   "skies": {
-    "dusk": { "src": "kloppenheim_06_puresky", "sky": 4096 },
-    "storm": { "src": "kloppenheim_07_puresky", "sky": 4096, "noSun": true },
-    "hall": { "src": "empty_warehouse_01", "noSun": true },
-    "pines": { "src": "misty_pines", "sky": 4096, "noSun": true },
-    "midtown": { "src": "the_sky_is_on_fire", "sky": 4096 },
-    "airfield": { "src": "evening_road_01_puresky", "sky": 4096 }
+    "dusk": {
+      "src": "kloppenheim_06_puresky",
+      "sky": 4096
+    },
+    "storm": {
+      "src": "kloppenheim_07_puresky",
+      "sky": 4096,
+      "noSun": true
+    },
+    "hall": {
+      "src": "empty_warehouse_01",
+      "noSun": true
+    },
+    "pines": {
+      "src": "misty_pines",
+      "sky": 4096,
+      "noSun": true
+    },
+    "midtown": {
+      "src": "the_sky_is_on_fire",
+      "sky": 4096
+    },
+    "airfield": {
+      "src": "evening_road_01_puresky",
+      "sky": 4096
+    }
   },
   "models": {
-    "barrel": { "src": "Barrel_01", "tex": 512 },
-    "barrier": { "src": "concrete_road_barrier_02", "tex": 512 },
-    "lamp": { "src": "street_lamp_01", "tex": 512 },
-    "rocks": { "src": "rock_moss_set_01", "tex": 1024 },
-    "boulder": { "src": "boulder_01", "tex": 1024, "simplify": 0.15, "error": 0.002 },
-    "grass-clump": { "src": "grass_medium_02", "tex": 512 },
-    "shrub": { "src": "shrub_04", "tex": 512 },
-    "stump": { "src": "tree_stump_01", "tex": 512, "simplify": 0.3, "error": 0.002 },
-    "fir-sapling": { "src": "fir_sapling", "tex": 1024, "simplify": 0.06, "error": 0.02 }
+    "barrel": {
+      "src": "Barrel_01",
+      "tex": 512
+    },
+    "barrier": {
+      "src": "concrete_road_barrier_02",
+      "tex": 512,
+      "simplify": 0.1,
+      "error": 0.004
+    },
+    "lamp": {
+      "src": "street_lamp_01",
+      "tex": 512,
+      "simplify": 0.12,
+      "error": 0.003
+    },
+    "rocks": {
+      "src": "rock_moss_set_01",
+      "tex": 1024,
+      "simplify": 0.15,
+      "error": 0.004
+    },
+    "grass-clump": {
+      "src": "grass_medium_02",
+      "tex": 512,
+      "simplify": 0.45,
+      "error": 0.01
+    },
+    "shrub": {
+      "src": "shrub_04",
+      "tex": 512,
+      "simplify": 0.15,
+      "error": 0.01
+    },
+    "stump": {
+      "src": "tree_stump_01",
+      "tex": 512,
+      "simplify": 0.3,
+      "error": 0.002
+    },
+    "fir-sapling": {
+      "src": "fir_sapling",
+      "tex": 1024,
+      "simplify": 0.06,
+      "error": 0.02
+    }
   }
 }

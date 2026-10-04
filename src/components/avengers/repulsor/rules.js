@@ -23,7 +23,7 @@ export const RANGE = {
   regen: 30,
   regenDelay: 0.35,
   assist: 0.35, // a little extra around every target
-  r: { drone: 0.75, sentry: 0.85, head: 0.5, missile: 0.55, disc: 0.75 },
+  r: { drone: 0.75, sentry: 0.6, head: 0.42, missile: 0.55, disc: 0.75 },
   hp: { drone: 1, sentry: 4, missile: 1, disc: 1 },
   charge: { drone: 12, sentry: 22, missile: 8, disc: 10, plate: 14 },
   points: { drone: 100, sentry: 250, missile: 75, disc: 150, plate: 300, prime: 2500 },
@@ -54,13 +54,15 @@ export const WAVES = [
 ];
 
 const PRIME_PARTS = [
-  { name: 'shoulderL', dx: -1.7, dy: 1.5, r: 0.8, hp: 7 },
-  { name: 'shoulderR', dx: 1.7, dy: 1.5, r: 0.8, hp: 7 },
-  { name: 'chestL', dx: -0.85, dy: 0.45, r: 0.72, hp: 7 },
-  { name: 'chestR', dx: 0.85, dy: 0.45, r: 0.72, hp: 7 },
-  { name: 'core', dx: 0, dy: 0.5, r: 0.95, hp: 26, core: true },
+  { name: 'shoulderL', dx: 0.82, dy: 0.4, r: 0.66, hp: 7 },
+  { name: 'shoulderR', dx: -0.82, dy: 0.4, r: 0.66, hp: 7 },
+  { name: 'chestL', dx: 0.33, dy: 0.15, r: 0.5, hp: 7 },
+  { name: 'chestR', dx: -0.33, dy: 0.15, r: 0.5, hp: 7 },
+  { name: 'core', dx: 0, dy: 0.1, r: 0.6, hp: 26, core: true },
 ];
 const PRIME_PATTERN = ['volley', 'summon', 'volley', 'missiles'];
+export const PRIME_Z = -30;
+export const PRIME_SCALE = 3.2;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const norm = (v) => {
@@ -163,7 +165,7 @@ function spawn(s, kind, ev) {
     const side = r() < 0.5 ? -1 : 1;
     e = { id, kind, x: side * 20, y: 1, z: -28 - r() * 16, vx: -side * (10 + r() * 3), vy: 7.5 + r() * 1.8, vz: 0, hp: RANGE.hp.disc, r: RANGE.r.disc, t: 0, seed: r() * 10 };
   } else if (kind === 'prime') {
-    e = { id, kind, x: 0, y: 7, z: -110, vx: 0, vy: 0, vz: 0, hp: 1, r: 1.6, t: 0, seed: 0, arrived: false, attack: 4, step: 0, volley: null, parts: PRIME_PARTS.map((p) => ({ ...p })) };
+    e = { id, kind, x: 0, y: 7.5, z: -110, vx: 0, vy: 0, vz: 0, hp: 1, r: 1.6, t: 0, seed: 0, arrived: false, attack: 4, step: 0, volley: null, parts: PRIME_PARTS.map((p) => ({ ...p })) };
   }
   s.enemies.push(e);
   ev.push({ type: 'spawn', kind, id });
@@ -225,7 +227,7 @@ function hitPrime(s, e, part, dmg, ev) {
 
 // The spheres you can hit on an enemy: [x, y, z, r, part, crit]
 function spheres(e) {
-  if (e.kind === 'sentry') return [[e.x, e.y + 0.95, e.z, RANGE.r.head, null, true], [e.x, e.y, e.z, e.r, null, false]];
+  if (e.kind === 'sentry') return [[e.x, e.y + 0.42, e.z, RANGE.r.head, null, true], [e.x, e.y - 0.1, e.z, e.r, null, false], [e.x, e.y - 0.75, e.z, e.r * 0.8, null, false]];
   if (e.kind === 'prime') return e.parts.filter((p) => p.hp > 0).map((p) => [e.x + p.dx, e.y + p.dy, e.z, p.r, p, false]);
   return [[e.x, e.y, e.z, e.r, null, false]];
 }
@@ -374,8 +376,8 @@ function updateEnemy(s, e, dt, ev) {
     }
   } else if (e.kind === 'prime') {
     if (!e.arrived) {
-      e.z = Math.min(-36, e.z + 9 * dt);
-      if (e.z >= -36) {
+      e.z = Math.min(PRIME_Z, e.z + 9 * dt);
+      if (e.z >= PRIME_Z) {
         e.arrived = true;
         e.t = 0;
         ev.push({ type: 'boss', id: e.id });
@@ -383,7 +385,7 @@ function updateEnemy(s, e, dt, ev) {
       return;
     }
     e.x = Math.sin(e.t * 0.35) * 6;
-    e.y = 7 + Math.sin(e.t * 0.8) * 0.6;
+    e.y = 7.5 + Math.sin(e.t * 0.8) * 0.6;
     if (e.volley) {
       e.volley.t -= dt;
       if (e.volley.t <= 0) {

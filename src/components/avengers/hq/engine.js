@@ -50,6 +50,7 @@ export function createEngine(canvas, opts = {}) {
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.info.autoReset = false; // count a whole frame: shadows, scene and every pass
   renderer.setPixelRatio(Math.min(tier.dpr, window.devicePixelRatio || 1));
 
   const scene = new THREE.Scene();
@@ -200,12 +201,15 @@ export function createEngine(canvas, opts = {}) {
     const now = performance.now();
     const ms = now - last;
     last = now;
+    renderer.info.reset();
     composer.render();
     watch(ms);
   };
   // a frame without timing it (screenshots, the first frame)
   const renderOnce = () => {
-    if (!lost) composer.render();
+    if (lost) return;
+    renderer.info.reset();
+    composer.render();
   };
 
   // where a world point is on screen, in CSS pixels (and whether it's in front)

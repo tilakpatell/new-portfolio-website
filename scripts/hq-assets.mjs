@@ -509,12 +509,20 @@ const T = keepOnly(catalog.textures, Object.keys(manifest.textures ?? {}));
 const S = keepOnly(catalog.skies, Object.keys(manifest.skies ?? {}));
 const M = keepOnly(catalog.models, Object.keys(manifest.models ?? {}));
 await ensureDir(new URL('.', CATALOG).pathname);
+// the impostors are written by scripts/hq-impostors.mjs: keep them
+let impostors = '';
+try {
+  impostors = (await readFile(CATALOG, 'utf8')).match(/\nexport const IMPOSTORS = [\s\S]*?;\n/)?.[0] ?? '';
+} catch {
+  /* no catalog yet */
+}
 await writeFile(
   CATALOG,
-  `// Written by scripts/hq-assets.mjs: what's in public/hq/. Don't edit by hand.\n` +
+  `// Written by scripts/hq-assets.mjs (and hq-impostors.mjs): what's in public/hq/. Don't edit by hand.\n` +
     `export const TEXTURES = ${JSON.stringify(T, null, 1)};\n\n` +
     `export const SKIES = ${JSON.stringify(S, null, 1)};\n\n` +
-    `export const MODELS = ${JSON.stringify(M, null, 1)};\n`,
+    `export const MODELS = ${JSON.stringify(M, null, 1)};\n` +
+    (impostors || '\nexport const IMPOSTORS = {};\n'),
 );
 
 // the credits, kept across partial runs
