@@ -475,7 +475,7 @@ export default function DeathStar() {
         <h2 id="trench-title" className="title">
           Trench run
         </h2>
-        <p className="lead mt-4 max-w-[54ch]">Two torpedoes, three shields, one exhaust port. Switching off the targeting computer is optional.</p>
+        <p className="lead mt-4 max-w-[58ch]">TIE fighters over the surface, then the trench: catwalks, turrets, Vader on your tail, two torpedoes and one exhaust port. Switching off the targeting computer is optional, and worth it.</p>
         <div className="mt-8">
           <TrenchRun onWin={onWin} clock={battle ? clock : null} over={outcome === 'empire' ? 'Too late. The Death Star cleared Yavin and fired on the moon.' : null} />
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { capturePointer } from '../../lib/pointer';
 
 const sfx = () => import('../../lib/sfx');
 
@@ -160,7 +161,7 @@ export default function Gorgoroth({ onArrive }) {
               type="button"
               className="btn btn-primary hold-btn"
               onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture?.(e.pointerId);
+                capturePointer(e);
                 walk(true);
               }}
               onPointerUp={() => walk(false)}

@@ -9,7 +9,7 @@ const play = () => import('./PlayStages');
 // Each project page loads only its own stages, top to bottom.
 export const PROJECT_STAGES = {
   'gameboy-emulator': [
-    { key: 'game', title: 'Play it', caption: 'A cartridge with three games: Super Tilak Land (four worlds: overground, underground, sky, castle, with mushrooms, shells and firebars), plus Block Drop and Snake. Pick a world with ← → in the menu.', C: lazy(() => import('./GameBoyStage')) },
+    { key: 'game', title: 'Play it', caption: 'A cartridge with three games. Super Tilak Land: four worlds (overground, underground, sky, castle) with mushrooms, fire flowers (B throws fire), a star in a brick or two, shells, firebars and a fire-breathing king on the castle bridge. Block Drop pays combos for clears in a row; in Snake, hold B to sprint and chase the golden apples. Pick a world with ← → in the menu; every game keeps its best score.', C: lazy(() => import('./GameBoyStage')) },
     { key: 'cpu', title: 'Step the CPU', caption: 'A small LR35902 program, one instruction at a time: registers, flags and cycle counts as the emulator sees them.', C: pick(extras, 'CpuStage') },
     { key: 'ppu', title: 'Watch the PPU draw', caption: 'The picture-processing unit builds each frame one scanline at a time: 144 visible lines, then VBlank.', C: pick(extras, 'PpuStage') },
     { key: 'blargg', title: 'Pass the tests', caption: 'Blargg’s cpu_instrs ROM exercises every instruction group. All eleven pass.', C: pick(extras, 'BlarggStage') },

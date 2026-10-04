@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFrameLoop, useInView, useMediaQuery, useReducedMotion } from '../lib/hooks';
+import { local, useFrameLoop, useInView, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { useAchievements } from '../components/Achievements';
 import { H, W } from './gb/font';
 import { newConsole, renderConsole, stepConsole } from './gb/console';
 import './stages.css';
+import { capturePointer } from '../lib/pointer';
 
 // A DMG-style handheld with a cartridge of three games: Super Tilak Land (a
 // Mario-style platformer), Block Drop and Snake. Every control works — the
@@ -28,12 +29,14 @@ const KEYS = {
   Backspace: 'select',
 };
 const BUTTONS = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'];
+const BEST = 'tp-gb-best'; // each game's top score, kept between visits
+const PALETTE = 'tp-gb-palette';
 
 export default function GameBoyStage({ compact = false }) {
   const canvasRef = useRef(null);
   const deviceRef = useRef(null);
   const sys = useRef(null);
-  if (!sys.current) sys.current = newConsole({ start: compact ? 'attract' : 'boot' });
+  if (!sys.current) sys.current = newConsole({ start: compact ? 'attract' : 'boot', best: local.get(BEST, {}), palette: local.get(PALETTE, 'color') });
   const input = useRef({ pressed: new Set(), ...Object.fromEntries(BUTTONS.map((b) => [b, false])) });
   const [viewRef, inView] = useInView({ rootMargin: '0px' });
   const reduced = useReducedMotion();
@@ -44,6 +47,10 @@ export default function GameBoyStage({ compact = false }) {
   const { unlock } = useAchievements();
   const events = useRef({});
   events.current.coin = (n) => n >= 10 && unlock('player');
+  events.current.win = () => unlock('castle');
+  events.current.tetris = () => unlock('tetris');
+  events.current.best = (best) => local.set(BEST, best);
+  events.current.palette = (p) => local.set(PALETTE, p);
 
   const running = inView && started;
 
@@ -90,7 +97,7 @@ export default function GameBoyStage({ compact = false }) {
     onPointerDown: (e) => {
       e.preventDefault();
       deviceRef.current?.focus({ preventScroll: true });
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      capturePointer(e);
       press(key, true);
     },
     onPointerUp: () => press(key, false),
@@ -175,9 +182,9 @@ export default function GameBoyStage({ compact = false }) {
       </div>
       <p className="mono max-w-sm text-center text-xs leading-relaxed text-muted">
         {touch ? (
-          <>Hold the D-pad to move, A to jump and B to run. Start picks a game; Select opens the menu.</>
+          <>Hold the D-pad to move, A to jump and B to run (or throw fire). Start picks a game; Select opens the menu.</>
         ) : focused ? (
-          <>← → move · Z / Space = A (jump) · X = B (run) · Enter = Start · Shift = Select (menu)</>
+          <>← → move · Z / Space = A (jump) · X = B (run, throw fire) · Enter = Start · Shift = Select (menu)</>
         ) : (
           <>Click the Game Boy to play with your keyboard, or use the buttons. Start picks a game.</>
         )}

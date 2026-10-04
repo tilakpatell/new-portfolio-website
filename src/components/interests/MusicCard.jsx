@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
+import { capturePointer } from '../../lib/pointer';
 
 // Indian classical music: a sitar you can play (real recorded notes, retuned to
 // Raga Yaman's frets), a real tanpura pluck as the drone underneath, and a
@@ -74,7 +75,7 @@ export default function MusicCard() {
   const onDown = async (e) => {
     const i = slotAt(e);
     if (i < 0) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    capturePointer(e);
     press.current = { id: e.pointerId, type: e.pointerType, y0: e.clientY, i, handle: null };
     const handle = await play(i);
     if (press.current && press.current.id === e.pointerId) press.current.handle = handle;

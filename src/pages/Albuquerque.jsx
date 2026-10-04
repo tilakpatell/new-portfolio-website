@@ -4,7 +4,7 @@ import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
 import HectorBell from '../components/albuquerque/HectorBell';
 import HectorBoard from '../components/albuquerque/HectorBoard';
-import Cook from '../components/albuquerque/Cook';
+import Lab from '../components/albuquerque/Lab';
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
@@ -174,7 +174,15 @@ export default function Albuquerque() {
       </section>
 
       <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="cook-title">
-        <Cook />
+        <h2 id="cook-title" className="title">
+          The superlab
+        </h2>
+        <p className="lead mt-4 max-w-[60ch]">
+          Under the laundry, cooking to order. Jesse, Badger and Skinny Pete are at the door on day one; Tuco, Mike, Gus, Lydia and Declan follow. Mix it, cook it, break it and bag it the way the ticket says. Walt won’t settle for less than 99, and neither will Gus.
+        </p>
+        <div className="mt-8">
+          <Lab />
+        </div>
       </section>
 
       <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="hector-title">

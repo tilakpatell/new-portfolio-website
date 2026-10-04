@@ -12,7 +12,7 @@ const PAGES = {
     title: 'Home',
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
-      ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons.'],
+      ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons. In Super Tilak Land a fire flower lets B throw fire, stomps in a row score more each time, and a king waits at the end of the castle. Each game keeps its best score.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
     ],
   },
@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Arrow keys or W A S D steer; Space or the Fire button fires, and T switches off the targeting computer. On a touch screen, drag to steer. The exhaust port glows as you close in and turns green when you’re lined up: stay low and centered, and fire.'],
+      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
@@ -82,7 +82,7 @@ const PAGES = {
     tips: [
       ['The title card', 'Type a name and it becomes a Breaking Bad title card.'],
       ['The cast', 'Every card does something.'],
-      ['The superlab', 'Hold to heat, let go to cool. The cook starts when the needle reaches the green: stay in it until the tray is full. The green narrows, and flare-ups push the heat for a second, so ride them out. Your best purity is kept.'],
+      ['The superlab', 'Cook to order. Take each customer’s ticket at the counter, then: hold to pour the base to the line and tint it to the right blue (Chili P only if they want it), hold to keep the heat in the green, strike the slab on its crack lines, and fill each bag to the mark. Every station is scored, and so is the wait. Pay buys upgrades between shifts; new customers turn up as the days go on, and from day three Hank drops by (press H to hide the batch).'],
       ['Face Off', 'Ring Hector’s bell three times.'],
       ['The letter board', 'Rows light up in turn: ring (Space, the button or a tap on the board) to pick the row, then again on the right letter. Three words; wrong rings cost five seconds.'],
       ['Inside', 'Order at the Los Pollos Hermanos counter (Gus is serving) and the tray fills up. Then call Saul.'],

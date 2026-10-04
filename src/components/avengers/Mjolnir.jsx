@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
+import { capturePointer } from '../../lib/pointer';
 
 const sfx = () => import('../../lib/sfx');
 const HOLD = 1800; // ms of holding before the hammer decides
@@ -100,7 +101,7 @@ export default function Mjolnir() {
             type="button"
             className="btn btn-primary hold-btn"
             onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture?.(e.pointerId);
+              capturePointer(e);
               begin();
             }}
             onPointerUp={end}

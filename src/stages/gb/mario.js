@@ -1,15 +1,22 @@
 // "Super Tilak Land" — a Mario-style platformer at the Game Boy's 160×144.
 // Four hand-designed courses (overground, underground, sky, castle) with
-// mushrooms, stompable walkers, kickable turtle shells, coin blocks, pits,
-// lava, firebars, a flagpole finish and a bridge-and-axe ending.
+// mushrooms, fire flowers, stars, stompable walkers, kickable turtle shells,
+// coin blocks, pits, lava, firebars, a flagpole finish, and a fire-breathing
+// king on the castle bridge before the axe.
 // In attract mode a simple pilot plays until someone presses a button.
 import { DMG, H, W, centerText, text } from './font';
 import { COURSES, ROWS, buildCourse } from './levels';
 
 const T = 8;
+// Physics runs in fixed steps no longer than this, so a slow frame can't carry
+// anything through a one-tile ledge or wall.
+const STEP = 1 / 120;
+const STAR_TIME = 10;
+const CHAIN = [100, 200, 400, 800, 1000, 2000, 4000, 8000]; // stomps before landing; then 1-UPs
+const KING_HP = 5;
 
 // ─── Colours ────────────────────────────────────────────────────────────────
-const SPRITE = {
+const BASE = {
   color: {
     R: '#e52521', O: '#2840e8', S: '#ffc890', H: '#6b3a1e', Y: '#fce000', K: '#101010', W: '#fcfcfc',
     B: '#a0522d', T: '#fcc890', G: '#fc9838', D: '#7c3c00', L: '#fcfcfc', P: '#80d010', Q: '#00a800', N: '#005800',
@@ -20,6 +27,15 @@ const SPRITE = {
     B: DMG[2], T: DMG[1], G: DMG[1], D: DMG[3], L: DMG[0], P: DMG[1], Q: DMG[2], N: DMG[3],
     E: DMG[2], F: DMG[1], V: DMG[0], A: DMG[3],
   },
+};
+// the plumber's other outfits: white and red with a fire flower, and the
+// colours a star cycles him through
+const SPRITE = {
+  ...BASE,
+  'color-fire': { ...BASE.color, R: '#fcfcfc', O: '#e52521' },
+  'color-star': { ...BASE.color, R: '#00a800', O: '#fc9838', H: '#7c3c00' },
+  'dmg-fire': { ...BASE.dmg, R: DMG[1], O: DMG[3] },
+  'dmg-star': { ...BASE.dmg, R: DMG[0], O: DMG[1], H: DMG[2] },
 };
 const LOOKS = {
   color: {
@@ -51,6 +67,8 @@ const SMALL = {
 // Big frames: the same plumber with a taller body.
 const tall = (rows) => [...rows.slice(0, 7), ...rows.slice(7, 15).flatMap((r) => [r, r]), rows[15]];
 const BIG = Object.fromEntries(Object.entries(SMALL).filter(([k]) => k !== 'dead').map(([k, v]) => [k, tall(v)]));
+// throwing a fireball: the arm out front
+BIG.throw = BIG.stand.map((r, i) => (i === 9 || i === 10 ? `${r.slice(0, 10)}WW` : r));
 const WALKER = [
   fit(['...BBBB...', '..BBBBBB..', '.BKWBBWKB.', '.BKKBBKKB.', 'BBBBBBBBBB', 'BBBTTTTBBB', '..TTTTTT..', '.KKK..KK..'], 10),
   fit(['...BBBB...', '..BBBBBB..', '.BKWBBWKB.', '.BKKBBKKB.', 'BBBBBBBBBB', 'BBBTTTTBBB', '..TTTTTT..', '..KK..KKK.'], 10),
@@ -62,9 +80,16 @@ const TURTLE = [
 ];
 const SHELL = fit(['...EEEE...', '..EFEEFE..', '.EEFEEFEE.', 'EFEEEEEEFE', 'EEEEEEEEEE', '.VVVVVVVV.', '..VVVVVV..'], 10);
 const MUSHROOM = fit(['...AAAA...', '..AVVAAA..', '.AVVAAVVA.', 'AAAAAVVVAA', 'AVVAAAAAAA', '.VVTTTTVV.', '..TKTTKT..', '..TTTTTT..'], 10);
+const FLOWER = fit(['...RRRR...', '..RYYYYR..', '.RYWWWWYR.', '..RYYYYR..', '...RRRR...', '.P..QQ..P.', '.PP.QQ.PP.', '..PPQQPP..'], 10);
+const STAR = fit(['....YY....', '....YY....', '...YYYY...', 'YYYYYYYYYY', '.YYKYYKYY.', '..YYYYYY..', '..YYYYYY..', '.YYY..YYY.', '.YY....YY.'], 10);
 const COIN = [fit(['.DDD.', 'DGGLD', 'DGLGD', 'DGLGD', 'DGLGD', 'DGLGD', 'DGGGD', '.DDD.'], 5), fit(['.D.', 'DGD', 'DLD', 'DLD', 'DLD', 'DLD', 'DGD', '.D.'], 3)];
 const QBLOCK = fit(['DDDDDDDD', 'DGGGGGGD', 'DGGKKGGD', 'DGGGGKGD', 'DGGGKGGD', 'DGGGGGGD', 'DGGGKGGD', 'DDDDDDDD'], 8);
 const USED = fit(['DDDDDDDD', 'DBBBBBBD', 'DBDBBDBD', 'DBBBBBBD', 'DBBBBBBD', 'DBDBBDBD', 'DBBBBBBD', 'DDDDDDDD'], 8);
+// The king of the castle, facing left: horns, a red mane, a spiked shell.
+const KING = [
+  fit(['......RR.R......', '.....RRRRRR.....', '...WEEEEEERR....', '..WEEKWEEEEERW..', '.EEEEKKEEEEERWW.', 'EEEEEEEEEEWWWWE.', 'WWEEEEEEEWEEEWW.', '.EEEEEEEEEEWEEE.', '..EFFFEEEEEEEWW.', '..FFFFFFEEEEEEE.', '.YFFFFFFFEEEEWW.', '.YYFFFFFFEEEEE..', '..FFFFFFFEEEE...', '..EEE..EEEEE....', '.EEEE...EEEE....', 'YYYY....YYYY....'], 16),
+  fit(['......RR.R......', '.....RRRRRR.....', '...WEEEEEERR....', '..WEEKWEEEEERW..', '.EEEEKKEEEEERWW.', 'EEEEEEEEEEWWWWE.', 'WWEEEEEEEWEEEWW.', '.EEEEEEEEEEWEEE.', '..EFFFEEEEEEEWW.', '..FFFFFFEEEEEEE.', '.YFFFFFFFEEEEWW.', '.YYFFFFFFEEEEE..', '..FFFFFFFEEEE...', '...EEE.EEEEE....', '..EEEE..EEEE....', '.YYYY..YYYY.....'], 16),
+];
 
 const cache = {};
 function sprite(rows, pal, key) {
@@ -87,7 +112,7 @@ function sprite(rows, pal, key) {
 const flipH = (rows) => rows.map((r) => [...r].reverse().join(''));
 
 // ─── Tiles ──────────────────────────────────────────────────────────────────
-const SOLID = new Set(['#', 'B', '?', 'M', 'U', 'H', '[', ']', '(', ')', '=']);
+const SOLID = new Set(['#', 'B', '?', 'M', 'U', 'H', '[', ']', '(', ')', '=', '*']);
 
 function tileAt(g, px, py) {
   const c = Math.floor(px / T);
@@ -100,8 +125,8 @@ function tileAt(g, px, py) {
 const solid = (g, px, py) => SOLID.has(tileAt(g, px, py));
 
 // ─── State ──────────────────────────────────────────────────────────────────
-export function newMario({ attract = false, course = 0 } = {}) {
-  const g = { course, score: 0, coins: 0, lives: 3, t: 0, attract, palette: 'color', mode: 'card', modeT: 0, big: false };
+export function newMario({ attract = false, course = 0, best = 0 } = {}) {
+  const g = { course, score: 0, coins: 0, lives: 3, t: 0, attract, palette: 'color', mode: 'card', modeT: 0, big: false, fire: false, best };
   startCourse(g, course);
   if (attract) g.mode = 'play';
   return g;
@@ -119,10 +144,19 @@ function startCourse(g, index) {
   g.walkers = s.walkers.map(({ c: cc, r }) => ({ x: cc * T, y: r * T, vx: -22, vy: 0, alive: true, flat: 0 }));
   g.turtles = s.turtles.map(({ c: cc, r }) => ({ x: cc * T, y: r * T - 4, vx: -20, vy: 0, alive: true, state: 'walk', wake: 0 }));
   g.firebars = s.firebars.map(({ c: cc, r }, i) => ({ cx: cc * T + 4, cy: r * T + 4, ang: i * 1.3, speed: i % 2 ? -1.7 : 1.7 }));
-  g.mushrooms = [];
+  g.items = [];
+  g.fireballs = [];
+  g.flames = [];
+  g.flamesFired = 0;
+  g.star = 0;
+  g.chain = 0;
+  g.throwT = 0;
   g.flagX = s.flag ? s.flag.c * T + 3 : null;
+  g.flagCol = s.flag ? s.flag.c : null;
   g.castleX = s.castle ? s.castle.c * T : null;
   g.axe = s.axe ? { x: s.axe.c * T, y: s.axe.r * T } : null;
+  // the king stands on the bridge, his feet on its planks
+  g.boss = s.boss ? { x: s.boss.c * T, y: (s.boss.r + 2) * T - 30, w: 26, h: 30, homeX: s.boss.c * T, vx: 0, vy: 0, hp: KING_HP, dead: false, hurt: 0, face: -1, fireT: 1.2, jumpT: 2.6, onGround: false, t: 0 } : null;
   g.fx = [];
   g.bumps = {};
   g.cam = 0;
@@ -137,8 +171,19 @@ function startCourse(g, index) {
 
 const restart = (g) => {
   g.big = false;
+  g.fire = false;
   startCourse(g, g.course);
 };
+
+const pts = (g, n, x, y) => {
+  g.score += n;
+  g.fx.push({ kind: 'pts', text: String(n), x, y, t: 0, life: 0.7 });
+};
+
+function oneUp(g, x, y) {
+  g.lives += 1;
+  g.fx.push({ kind: 'pts', text: '1UP', x, y, t: 0, life: 0.9 });
+}
 
 function die(g) {
   const p = g.p;
@@ -148,12 +193,17 @@ function die(g) {
   p.vy = -300;
   p.vx = 0;
   g.big = false;
+  g.fire = false;
+  g.star = 0;
 }
 
 function hurt(g) {
   const p = g.p;
-  if (p.inv > 0 || p.dead || g.attract) return; // the demo pilot shrugs off hits
-  if (g.big) {
+  if (p.inv > 0 || p.dead || g.attract || g.star > 0) return; // the demo pilot shrugs off hits
+  if (g.fire) {
+    g.fire = false;
+    p.inv = 1.6;
+  } else if (g.big) {
     g.big = false;
     p.h = 15;
     p.y += 8;
@@ -161,32 +211,47 @@ function hurt(g) {
   } else die(g);
 }
 
-function grow(g) {
+function grow(g, kind) {
   const p = g.p;
-  if (g.big) {
-    g.score += 1000;
+  g.score += 1000;
+  if (kind === 'star') {
+    g.star = STAR_TIME;
     return;
   }
+  if (kind === 'flower') {
+    g.fire = true;
+    g.fireAt = g.t;
+  }
+  if (g.big) return;
   g.big = true;
   p.h = 23;
   p.y -= 8;
-  p.inv = 0.6;
-  g.score += 1000;
+  p.inv = Math.max(p.inv, 0.6);
+}
+
+// A stomp or a star hit: points that climb while the plumber stays in the air.
+function chainPoints(g, x, y) {
+  if (g.chain >= CHAIN.length) oneUp(g, x, y);
+  else pts(g, CHAIN[g.chain], x, y);
+  g.chain += 1;
 }
 
 function hitBlock(g, c, r, events) {
   const t = g.grid[r][c];
-  if (t === '?' || t === 'M') {
+  if (t === '?' || t === 'M' || t === '*') {
     g.grid[r][c] = 'U';
     g.bumps[`${c},${r}`] = 0.16;
     if (t === '?') {
       g.coins += 1;
-      g.score += 200;
       g.fx.push({ kind: 'coin', x: c * T + 1, y: r * T - 8, t: 0, life: 0.45 });
-      g.fx.push({ kind: 'pts', text: '200', x: c * T - 2, y: r * T - 12, t: 0, life: 0.7 });
+      pts(g, 200, c * T - 2, r * T - 12);
       events?.coin?.(g.coins);
-      if (g.coins % 100 === 0) g.lives += 1;
-    } else g.mushrooms.push({ x: c * T - 1, y: r * T, vx: 0, vy: 0, rise: 0.5, alive: true });
+      if (g.coins % 100 === 0) oneUp(g, c * T, r * T - 16);
+    } else {
+      // a mushroom for a small plumber, a flower for a big one; or a star
+      const kind = t === '*' ? 'star' : g.big ? 'flower' : 'mushroom';
+      g.items.push({ kind, x: c * T - 1, y: r * T, vx: 0, vy: 0, rise: 0.5, alive: true });
+    }
   } else if (t === 'B') {
     if (g.big) {
       g.grid[r][c] = '.';
@@ -243,6 +308,68 @@ function moveBody(g, b, w, h, dt) {
 const overlap = (a, aw, ah, b, bw, bh) => a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
 
 export function stepMario(g, dt, input, events) {
+  // fixed small steps; a button press counts once, on the first of them
+  let left = dt;
+  let first = true;
+  let r = null;
+  do {
+    const h = Math.min(left, STEP);
+    r = stepOnce(g, h, input, events, first);
+    first = false;
+    left -= h;
+  } while (left > 1e-9 && r == null);
+  return r;
+}
+
+function finishGame(g, mode) {
+  g.mode = mode;
+  g.modeT = 0;
+  g.best = Math.max(g.best || 0, g.score);
+}
+
+function kingDown(g) {
+  const b = g.boss;
+  if (!b || b.dead) return;
+  b.dead = true;
+  b.vy = -160;
+  pts(g, 5000, b.x, b.y - 8);
+  g.flames = [];
+}
+
+function stepKing(g, dt, awake) {
+  const b = g.boss;
+  if (!b) return;
+  if (b.hurt > 0) b.hurt -= dt;
+  if (b.dead) {
+    b.vy = Math.min(320, b.vy + 900 * dt);
+    b.y += b.vy * dt;
+    return;
+  }
+  if (!awake(b.x)) return;
+  const p = g.p;
+  b.t += dt;
+  b.face = p.x + p.w / 2 < b.x + b.w / 2 ? -1 : 1;
+  // pace back and forth near home, hop now and then, breathe fire on a beat
+  const goal = b.homeX + Math.sin(b.t * 0.9) * 22;
+  b.vx = Math.max(-28, Math.min(28, (goal - b.x) * 2));
+  b.jumpT -= dt;
+  if (b.jumpT <= 0 && b.onGround) {
+    b.vy = -230;
+    b.jumpT = 3.1;
+  }
+  const { ground } = moveBody(g, b, b.w, b.h, dt);
+  b.onGround = ground;
+  b.fireT -= dt;
+  if (b.fireT <= 0) {
+    b.fireT = 2.3;
+    g.flamesFired += 1;
+    g.flames.push({ x: b.face < 0 ? b.x - 8 : b.x + b.w, y: b.y + 10, vx: b.face * 78, ty: Math.max(40, p.y + p.h - 12), life: 4 });
+  }
+  if (b.y > H) b.dead = true;
+  if (!p.dead && overlap(p, p.w, p.h, b, b.w, b.h)) hurt(g);
+}
+
+function stepOnce(g, dt, input, events, first) {
   g.t += dt;
   g.modeT += dt;
   const p = g.p;
@@ -261,8 +388,7 @@ export function stepMario(g, dt, input, events) {
     case 'clear':
       if (g.modeT > 2.2) {
         if (g.course + 1 >= COURSES.length) {
-          g.mode = 'win';
-          g.modeT = 0;
+          finishGame(g, 'win');
           events?.win?.(g);
         } else startCourse(g, g.course + 1);
       }
@@ -271,9 +397,12 @@ export function stepMario(g, dt, input, events) {
       p.y = Math.min(16 * T - p.h - T, p.y + 80 * dt);
       g.flagY = Math.min(16 * T - 30, g.flagY + 80 * dt);
       if (g.modeT > 1.1) {
+        // hop down on the far side of the pole's base, then walk in
         g.mode = 'walk';
         g.modeT = 0;
+        p.x = (g.flagCol + 1) * T + 1;
         p.y = 16 * T - p.h;
+        p.face = 1;
       }
       return null;
     case 'walk':
@@ -295,6 +424,7 @@ export function stepMario(g, dt, input, events) {
           removed++;
         }
       }
+      stepKing(g, dt, () => true);
       if (g.modeT > 1.6) {
         g.mode = 'clear';
         g.modeT = 0;
@@ -318,16 +448,16 @@ export function stepMario(g, dt, input, events) {
         return null;
       }
       g.lives -= 1;
-      if (g.lives <= 0) {
-        g.mode = 'over';
-        g.modeT = 0;
-      } else restart(g);
+      if (g.lives <= 0) finishGame(g, 'over');
+      else restart(g);
     }
     return null;
   }
 
   const ctl = g.attract ? pilot(g) : input;
   if (p.inv > 0) p.inv -= dt;
+  if (g.star > 0) g.star = Math.max(0, g.star - dt);
+  if (g.throwT > 0) g.throwT -= dt;
 
   g.timeAcc += dt;
   if (g.timeAcc > 0.4) {
@@ -349,6 +479,12 @@ export function stepMario(g, dt, input, events) {
     p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f;
   }
   p.vx = Math.max(-max, Math.min(max, p.vx));
+
+  // B throws a fireball while the flower's power lasts (two in the air at most)
+  if (first && g.fire && !g.attract && input.pressed?.has('b') && g.fireballs.length < 2) {
+    g.fireballs.push({ x: p.face > 0 ? p.x + p.w : p.x - 4, y: p.y + 8, vx: p.face * 165, vy: 40, life: 2.5 });
+    g.throwT = 0.15;
+  }
 
   // jump — hold for height
   if (ctl.a && p.onGround && !p.jumpLatch) {
@@ -404,29 +540,38 @@ export function stepMario(g, dt, input, events) {
       }
     }
   }
+  if (p.onGround) g.chain = 0;
   if (tileAt(g, p.x + p.w / 2, p.y + p.h - 1) === 'L' || p.y > H + 10) die(g);
 
   g.cam = Math.max(g.cam, Math.min(g.cols * T - W, p.x - 64));
   const awake = (x) => x < g.cam + W + 24 && x > g.cam - 40;
 
-  // mushrooms
-  for (const m of g.mushrooms) {
+  // mushrooms, flowers and stars
+  for (const m of g.items) {
     if (!m.alive) continue;
     if (m.rise > 0) {
       m.rise -= dt;
       m.y -= 16 * dt;
-      if (m.rise <= 0) m.vx = 40;
-    } else {
-      const { wall } = moveBody(g, m, 10, 8, dt);
+      if (m.rise <= 0) {
+        if (m.kind === 'mushroom') m.vx = 40;
+        if (m.kind === 'star') {
+          m.vx = 60;
+          m.vy = -200;
+        }
+      }
+    } else if (m.kind !== 'flower') {
+      const { wall, ground } = moveBody(g, m, 10, 8, dt);
       if (wall) m.vx = -m.vx;
+      if (ground && m.kind === 'star') m.vy = -230;
       if (m.y > H) m.alive = false;
     }
-    if (overlap(p, p.w, p.h, m, 10, 8)) {
+    if (m.alive && overlap(p, p.w, p.h, m, 10, 8)) {
       m.alive = false;
-      grow(g);
+      grow(g, m.kind);
       g.fx.push({ kind: 'pts', text: '1000', x: m.x - 2, y: m.y - 8, t: 0, life: 0.8 });
     }
   }
+  g.items = g.items.filter((m) => m.alive);
 
   // walkers
   for (const w of g.walkers) {
@@ -444,8 +589,10 @@ export function stepMario(g, dt, input, events) {
       if (p.vy > 30 && p.y + p.h - w.y < 7) {
         w.flat = 0.4;
         p.vy = ctl.a ? -250 : -180;
-        g.score += 100;
-        g.fx.push({ kind: 'pts', text: '100', x: w.x, y: w.y - 8, t: 0, life: 0.6 });
+        chainPoints(g, w.x, w.y - 8);
+      } else if (g.star > 0) {
+        w.alive = false;
+        chainPoints(g, w.x, w.y - 8);
       } else if (g.attract) w.flat = 0.4;
       else hurt(g);
     }
@@ -475,8 +622,7 @@ export function stepMario(g, dt, input, events) {
       for (const o of [...g.walkers, ...g.turtles]) {
         if (o !== k && o.alive && !o.flat && Math.abs(o.x - k.x) < 9 && Math.abs(o.y + (o.state ? 6 : 4) - (k.y + 9)) < 9) {
           o.alive = false;
-          g.score += 200;
-          g.fx.push({ kind: 'pts', text: '200', x: o.x, y: o.y - 6, t: 0, life: 0.6 });
+          pts(g, 200, o.x, o.y - 6);
         }
       }
     }
@@ -484,7 +630,7 @@ export function stepMario(g, dt, input, events) {
       const stomp = p.vy > 30 && p.y + p.h - box.y < 7;
       if (stomp) {
         p.vy = ctl.a ? -250 : -180;
-        g.score += 100;
+        chainPoints(g, k.x, k.y - 6);
         if (k.state === 'walk' || k.state === 'spin') {
           k.state = 'shell';
           k.wake = 0;
@@ -493,6 +639,9 @@ export function stepMario(g, dt, input, events) {
           k.state = 'spin';
           k.vx = p.x + p.w / 2 < k.x + 5 ? 150 : -150;
         }
+      } else if (g.star > 0) {
+        k.alive = false;
+        chainPoints(g, k.x, k.y - 6);
       } else if (k.state === 'shell') {
         k.state = 'spin';
         k.vx = p.x + p.w / 2 < k.x + 5 ? 150 : -150;
@@ -502,6 +651,54 @@ export function stepMario(g, dt, input, events) {
       else hurt(g);
     }
   }
+
+  // fireballs: bounce along the ground, burn whatever they touch
+  for (const f of g.fireballs) {
+    f.life -= dt;
+    f.vy = Math.min(320, f.vy + 900 * dt);
+    f.x += f.vx * dt;
+    if (solid(g, f.x + (f.vx > 0 ? 4 : 0), f.y + 2)) f.life = 0;
+    f.y += f.vy * dt;
+    // a low bounce, so it skims along at the height of whatever walks there
+    if (f.vy > 0 && solid(g, f.x + 2, f.y + 4)) {
+      f.y = Math.floor((f.y + 4) / T) * T - 4;
+      f.vy = -110;
+    }
+    if (f.x < g.cam - 8 || f.x > g.cam + W + 8 || f.y > H) f.life = 0;
+    if (f.life <= 0) continue;
+    const ball = { x: f.x, y: f.y };
+    for (const o of [...g.walkers, ...g.turtles]) {
+      if (!o.alive || o.flat) continue;
+      const oh = o.state && o.state !== 'walk' ? 7 : o.state ? 12 : 8;
+      const oy = o.state && o.state !== 'walk' ? 5 : 0;
+      if (overlap(ball, 4, 4, { x: o.x, y: o.y + oy }, 10, oh)) {
+        o.alive = false;
+        pts(g, 200, o.x, o.y - 6);
+        f.life = 0;
+        break;
+      }
+    }
+    const b = g.boss;
+    if (f.life > 0 && b && !b.dead && overlap(ball, 4, 4, b, b.w, b.h)) {
+      f.life = 0;
+      b.hp -= 1;
+      b.hurt = 0.3;
+      if (b.hp <= 0) kingDown(g);
+    }
+    if (f.life <= 0) g.fx.push({ kind: 'puff', x: f.x, y: f.y, t: 0, life: 0.2 });
+  }
+  g.fireballs = g.fireballs.filter((f) => f.life > 0);
+
+  // the king and his fire
+  stepKing(g, dt, awake);
+  for (const fl of g.flames) {
+    fl.life -= dt;
+    fl.x += fl.vx * dt;
+    fl.y += Math.sign(fl.ty - fl.y) * Math.min(Math.abs(fl.ty - fl.y), 18 * dt);
+    if (fl.x < g.cam - 16 || fl.x > g.cam + W + 16) fl.life = 0;
+    if (fl.life > 0 && overlap(p, p.w, p.h, { x: fl.x, y: fl.y }, 8, 3)) hurt(g);
+  }
+  g.flames = g.flames.filter((fl) => fl.life > 0);
 
   // firebars
   for (const f of g.firebars) {
@@ -520,7 +717,7 @@ export function stepMario(g, dt, input, events) {
       g.coins += 1;
       g.score += 200;
       events?.coin?.(g.coins);
-      if (g.coins % 100 === 0) g.lives += 1;
+      if (g.coins % 100 === 0) oneUp(g, c.x, c.y - 8);
     }
   }
 
@@ -552,6 +749,9 @@ export function stepMario(g, dt, input, events) {
     g.modeT = 0;
     g.axe = null;
     p.vx = 0;
+    g.flames = [];
+    // the king goes down with the bridge
+    kingDown(g);
   }
   return null;
 }
@@ -582,6 +782,7 @@ function drawTile(ctx, g, L, t, x, y) {
       if (t === 'H') ctx.fillRect(x + 2, y + 2, 4, 4);
       return;
     case 'B':
+    case '*': // a star hides in what looks like any other brick
       ctx.fillStyle = L.g;
       ctx.fillRect(x, y, 8, 8);
       ctx.fillStyle = L.gd;
@@ -647,11 +848,19 @@ function drawCastle(ctx, L, cx, base) {
   ctx.fillRect(cx + 17, base - 40, 6, 6);
 }
 
+// Which outfit the plumber wears this frame.
+function outfit(g) {
+  const pal = g.palette;
+  if (g.star > 0 && !(g.star < 2 && Math.floor(g.t * 8) % 2)) return [pal, `${pal}-fire`, `${pal}-star`][Math.floor(g.t * 14) % 3];
+  return g.fire ? `${pal}-fire` : pal;
+}
+
 export function renderMario(ctx, g, { paused, hint } = {}) {
   const pal = g.palette;
   const L = LOOKS[pal][g.look];
   const hud = hudFor(pal, g.look);
   const cam = Math.floor(g.cam);
+  ctx.imageSmoothingEnabled = false; // the king is scaled up; keep his pixels square
 
   if (g.mode === 'card' && !g.attract) {
     ctx.fillStyle = pal === 'color' ? '#000000' : DMG[3];
@@ -661,17 +870,19 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     ctx.drawImage(sprite(SMALL.stand, pal, 'stand'), 62, 74);
     text(ctx, `x ${g.lives}`, 80, 80, ink);
     centerText(ctx, ['OVERGROUND', 'UNDERGROUND', 'SKY', 'CASTLE'][g.course], 104, pal === 'color' ? '#8fa0bf' : DMG[1]);
+    if (g.best) centerText(ctx, `TOP ${String(g.best).padStart(6, '0')}`, 120, pal === 'color' ? '#8fa0bf' : DMG[1]);
     return;
   }
   if (g.mode === 'win') {
     ctx.fillStyle = pal === 'color' ? '#000000' : DMG[3];
     ctx.fillRect(0, 0, W, H);
     const ink = pal === 'color' ? '#fcfcfc' : DMG[0];
-    centerText(ctx, 'YOU WIN!', 40, pal === 'color' ? '#fc9838' : DMG[0], 2);
-    centerText(ctx, 'THANKS FOR PLAYING', 66, ink);
-    centerText(ctx, `SCORE ${String(g.score).padStart(6, '0')}`, 82, ink);
-    centerText(ctx, `COINS ${g.coins}`, 92, ink);
-    ctx.drawImage(sprite(BIG.stand, pal, 'big-stand'), 74, 104);
+    centerText(ctx, 'YOU WIN!', 34, pal === 'color' ? '#fc9838' : DMG[0], 2);
+    centerText(ctx, 'THANKS FOR PLAYING', 58, ink);
+    centerText(ctx, `SCORE ${String(g.score).padStart(6, '0')}`, 72, ink);
+    centerText(ctx, `TOP   ${String(g.best).padStart(6, '0')}`, 81, ink);
+    centerText(ctx, `COINS ${g.coins}`, 90, ink);
+    ctx.drawImage(sprite(BIG.stand, outfit(g), 'big-stand'), 74, 104);
     return;
   }
 
@@ -733,14 +944,20 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     ctx.fillRect(ax, g.axe.y, 4, 5);
   }
 
-  // coins, mushrooms
+  // coins, power-ups
   const spin = Math.floor(g.t * 8) % 4 === 2 ? 1 : 0;
   for (const coin of g.coinsOnMap) {
     if (coin.taken) continue;
     const x = Math.round(coin.x - cam);
     if (x > -8 && x < W) ctx.drawImage(sprite(COIN[spin], pal, `coin${spin}`), spin ? x + 1 : x, coin.y);
   }
-  for (const m of g.mushrooms) if (m.alive) ctx.drawImage(sprite(MUSHROOM, pal, 'mush'), Math.round(m.x - cam), Math.round(m.y));
+  for (const m of g.items) {
+    const x = Math.round(m.x - cam);
+    const y = Math.round(m.y);
+    if (m.kind === 'mushroom') ctx.drawImage(sprite(MUSHROOM, pal, 'mush'), x, y);
+    else if (m.kind === 'flower') ctx.drawImage(sprite(FLOWER, Math.floor(g.t * 8) % 2 ? `${pal}-fire` : pal, 'flower'), x, y);
+    else ctx.drawImage(sprite(STAR, pal, 'star'), x, y - 1);
+  }
 
   // enemies
   for (const w of g.walkers) {
@@ -771,6 +988,37 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     }
   }
 
+  // the king, drawn at twice the size: blinks when burnt, tumbles when he's down
+  const b = g.boss;
+  if (b && b.y < H + 4) {
+    const x = Math.round(b.x - cam) - 3;
+    if (x > -36 && x < W + 4 && !(b.hurt > 0 && Math.floor(g.t * 20) % 2)) {
+      const f = b.dead ? 0 : Math.floor(g.t * 4) % 2;
+      let rows = KING[f];
+      if (b.face > 0) rows = flipH(rows);
+      if (b.dead) rows = [...rows].reverse();
+      ctx.drawImage(sprite(rows, pal, `king${f}${b.face > 0 ? 'r' : ''}${b.dead ? 'd' : ''}`), x, Math.round(b.y) - 2, 32, 32);
+    }
+  }
+  for (const fl of g.flames) {
+    const x = Math.round(fl.x - cam);
+    const y = Math.round(fl.y);
+    const flick = Math.floor(g.t * 16) % 2;
+    ctx.fillStyle = pal === 'color' ? '#f83800' : DMG[1];
+    ctx.fillRect(x, y, 8, 3);
+    ctx.fillStyle = pal === 'color' ? '#fca044' : DMG[0];
+    ctx.fillRect(fl.vx < 0 ? x : x + 3, y + flick, 5, 1);
+  }
+  for (const f of g.fireballs) {
+    const x = Math.round(f.x - cam);
+    const y = Math.round(f.y);
+    const turn = Math.floor(g.t * 16) % 2;
+    ctx.fillStyle = pal === 'color' ? '#f83800' : DMG[3];
+    ctx.fillRect(x, y, 4, 4);
+    ctx.fillStyle = pal === 'color' ? '#fce000' : DMG[1];
+    ctx.fillRect(x + (turn ? 0 : 2), y + (turn ? 0 : 2), 2, 2);
+  }
+
   // effects
   for (const f of g.fx) {
     const x = Math.round(f.x - cam);
@@ -780,6 +1028,13 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     else if (f.kind === 'debris') {
       ctx.fillStyle = L.g;
       ctx.fillRect(x - 2, Math.round(f.y) - 2, 4, 4);
+    } else if (f.kind === 'puff') {
+      ctx.fillStyle = hud.ink;
+      const r = Math.round(1 + k * 3);
+      ctx.fillRect(x + 2 - r, Math.round(f.y) + 2, 1, 1);
+      ctx.fillRect(x + 2 + r, Math.round(f.y) + 2, 1, 1);
+      ctx.fillRect(x + 2, Math.round(f.y) + 2 - r, 1, 1);
+      ctx.fillRect(x + 2, Math.round(f.y) + 2 + r, 1, 1);
     }
   }
 
@@ -790,10 +1045,11 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
     let frame = 'stand';
     if (p.dead) frame = 'dead';
     else if (g.mode === 'flag' || !p.onGround) frame = 'jump';
+    else if (g.throwT > 0 && g.big) frame = 'throw';
     else if (Math.abs(p.vx) > 4 || g.mode === 'walk') frame = ['stand', 'run1', 'run2', 'run1'][Math.floor(g.t * (Math.abs(p.vx) > 90 ? 16 : 11)) % 4];
     const left = p.face < 0 && !p.dead;
     const rows = left ? flipH(set[frame]) : set[frame];
-    ctx.drawImage(sprite(rows, pal, `${g.big && !p.dead ? 'big-' : ''}${frame}${left ? '-l' : ''}`), Math.round(p.x - cam) - 1, Math.round(p.y) - 1);
+    ctx.drawImage(sprite(rows, p.dead ? pal : outfit(g), `${g.big && !p.dead ? 'big-' : ''}${frame}${left ? '-l' : ''}`), Math.round(p.x - cam) - 1, Math.round(p.y) - 1);
   }
 
   // HUD
@@ -806,12 +1062,17 @@ export function renderMario(ctx, g, { paused, hint } = {}) {
   text(ctx, 'WORLD', 80, 4, ink, 1, shadow);
   text(ctx, g.name, 84, 11, ink, 1, shadow);
   text(ctx, 'TIME', 126, 4, ink, 1, shadow);
-  text(ctx, String(Math.ceil(g.time)).padStart(3, '0'), 128, 11, ink, 1, shadow);
+  // the clock blinks when it's running low
+  if (!(g.time < 100 && g.mode === 'play' && Math.floor(g.t * 4) % 2)) text(ctx, String(Math.ceil(g.time)).padStart(3, '0'), 128, 11, ink, 1, shadow);
 
   if (g.mode === 'clear') text(ctx, 'COURSE CLEAR!', 30, 56, ink, 2, shadow);
-  if (g.mode === 'over') text(ctx, 'GAME OVER', 44, 62, ink, 2, shadow);
+  if (g.mode === 'over') {
+    text(ctx, 'GAME OVER', 44, 58, ink, 2, shadow);
+    centerText(ctx, `TOP ${String(g.best).padStart(6, '0')}`, 76, ink, 1, shadow);
+  }
   if (g.attract && Math.floor(g.t * 2) % 2 === 0) text(ctx, 'DEMO - PRESS START', 44, 26, ink, 1, shadow);
   if (hint && !g.attract && g.mode === 'play' && g.modeT < 5 && g.course === 0) text(ctx, '<> MOVE  A JUMP  B RUN', 36, 26, ink, 1, shadow);
+  if (hint && g.fire && g.mode === 'play' && g.fireAt != null && g.t - g.fireAt < 3) text(ctx, 'B THROWS FIRE', 54, 26, ink, 1, shadow);
   if (paused) {
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(0, 0, W, H);

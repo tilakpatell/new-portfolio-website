@@ -1,6 +1,6 @@
 // The handheld's "operating system": boot logo, cartridge menu, demo mode,
 // pause and back-to-menu, routing input to whichever game is running.
-import { DMG, H, W, centerText, text } from './font';
+import { DMG, H, W, centerText, text, textWidth } from './font';
 import { WORLDS, drawPlumberIcon, newMario, renderMario, stepMario } from './mario';
 import { newBlocks, renderBlocks, stepBlocks } from './blocks';
 import { newSnake, renderSnake, stepSnake } from './snake';
@@ -11,17 +11,21 @@ export const GAMES = [
   { id: 'snake', name: 'SNAKE', blurb: 'EAT, GROW, SURVIVE', step: stepSnake, render: renderSnake },
 ];
 
-export function newConsole({ start = 'boot' } = {}) {
-  const c = { mode: 'boot', t: 0, modeT: 0, sel: 0, world: 0, palette: 'color', game: null, def: null, paused: false, idle: 0, attract: false, best: 0 };
+// `best` holds each game's top score ({ mario, blocks, snake }) and `palette`
+// the colour choice, both kept by the page between visits.
+export function newConsole({ start = 'boot', best = {}, palette = 'color' } = {}) {
+  const c = { mode: 'boot', t: 0, modeT: 0, sel: 0, world: 0, palette: palette === 'dmg' ? 'dmg' : 'color', game: null, def: null, paused: false, idle: 0, attract: false, best: {} };
+  for (const g of GAMES) c.best[g.id] = Math.max(0, Number(best?.[g.id]) || 0);
   if (start === 'attract') startGame(c, 0, { attract: true });
   return c;
 }
 
 function startGame(c, idx, { attract = false } = {}) {
   const def = GAMES[idx];
-  if (def.id === 'mario') c.game = newMario({ attract, course: attract ? 0 : c.world });
-  else if (def.id === 'blocks') c.game = newBlocks();
-  else c.game = newSnake(Date.now(), c.best);
+  const best = c.best[def.id];
+  if (def.id === 'mario') c.game = newMario({ attract, course: attract ? 0 : c.world, best });
+  else if (def.id === 'blocks') c.game = newBlocks(Date.now(), best);
+  else c.game = newSnake(Date.now(), best);
   c.game.palette = c.palette;
   c.def = def;
   c.sel = idx;
@@ -31,8 +35,18 @@ function startGame(c, idx, { attract = false } = {}) {
   c.modeT = 0;
 }
 
+// A finished game's best becomes the console's, and the page hears about it.
+function keepBest(c, events) {
+  if (!c.game || c.attract || !c.def) return;
+  const id = c.def.id;
+  const top = Math.max(c.game.best || 0, c.game.mode === 'over' || c.game.mode === 'won' || c.game.mode === 'win' ? c.game.score : 0);
+  if (top > c.best[id]) {
+    c.best[id] = top;
+    events?.best?.({ ...c.best });
+  }
+}
+
 const toMenu = (c) => {
-  if (c.game?.best) c.best = Math.max(c.best, c.game.best);
   c.mode = 'menu';
   c.modeT = 0;
   c.idle = 0;
@@ -54,7 +68,10 @@ export function stepConsole(c, dt, input, events) {
     if (p.has('down')) c.sel = (c.sel + 1) % GAMES.length;
     if (c.sel === 0 && p.has('left')) c.world = (c.world + WORLDS.length - 1) % WORLDS.length;
     if (c.sel === 0 && p.has('right')) c.world = (c.world + 1) % WORLDS.length;
-    if (p.has('select') || p.has('b')) c.palette = c.palette === 'color' ? 'dmg' : 'color';
+    if (p.has('select') || p.has('b')) {
+      c.palette = c.palette === 'color' ? 'dmg' : 'color';
+      events?.palette?.(c.palette);
+    }
     if (p.has('a') || p.has('start')) return startGame(c, c.sel);
     c.idle = any ? 0 : c.idle + dt;
     if (c.idle > 9) startGame(c, 0, { attract: true });
@@ -67,10 +84,15 @@ export function stepConsole(c, dt, input, events) {
     c.def.step(c.game, dt, input, events);
     return;
   }
-  if (p.has('select')) return toMenu(c);
-  if (p.has('start') && c.game.mode !== 'over') c.paused = !c.paused;
+  if (p.has('select')) {
+    keepBest(c, events);
+    return toMenu(c);
+  }
+  const ended = c.game.mode === 'over' || c.game.mode === 'won' || c.game.mode === 'win';
+  if (p.has('start') && !ended) c.paused = !c.paused;
   if (c.paused) return;
   const r = c.def.step(c.game, dt, input, events);
+  keepBest(c, events);
   if (r === 'restart') startGame(c, c.sel);
   if (r === 'exit') toMenu(c);
 }
@@ -113,6 +135,10 @@ function renderMenu(ctx, c) {
       ctx.fillRect(ix + 12, y + 2, 2, 2);
     }
     text(ctx, g.name, 40, y + 1, on ? ink : dim);
+    if (c.best[g.id]) {
+      const top = String(c.best[g.id]);
+      text(ctx, top, W - 10 - textWidth(top), y + 9, on ? hi : dim);
+    }
     text(ctx, g.id === 'mario' && on ? `< WORLD ${WORLDS[c.world]} >` : g.blurb, 40, y + 9, g.id === 'mario' && on ? hi : dim);
   });
   centerText(ctx, 'A START   SELECT COLORS', 124, dim);

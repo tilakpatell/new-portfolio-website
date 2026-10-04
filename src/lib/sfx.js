@@ -1284,6 +1284,40 @@ function zipRaw(acIn, destIn, when = 0) {
   return 0.3;
 }
 
+// An X-wing's cannons: a short falling chirp. Fired several times a second,
+// so it skips the reverb bus and goes straight out.
+function laserRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const o = ac.createOscillator();
+  o.type = 'square';
+  env(o.frequency, t, [[0, 1500], [0.11, 260]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.006, 0.07, 'lin'], [0.12, 0.0001]]);
+  o.connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + 0.13);
+  return 0.13;
+}
+
+// A TIE fighter going up: a short crack of filtered noise.
+function popRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const n = noiseSource(ac, 'white', 0.5);
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  env(f.frequency, t, [[0, 3200], [0.4, 180]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.01, 0.4, 'lin'], [0.42, 0.0001]]);
+  n.connect(f).connect(g).connect(dest);
+  n.start(t);
+  n.stop(t + 0.45);
+  return 0.45;
+}
+
 // The base's alarm: two tones, three times.
 function alarmRaw(acIn, destIn, when = 0) {
   const [ac, dest] = ready(acIn, destIn);
@@ -1412,3 +1446,15 @@ export const alarm = once('alarm', alarmRaw);
 export const buzz = once('buzz', buzzRaw);
 export const decode = once('decode', decodeRaw);
 export const ghanta = once('ghanta', ghantaRaw);
+// these two fire faster than once()'s quarter second allows
+const every = (ms, fn) => {
+  let last = -1e9;
+  return (ac, ...rest) => {
+    const now = performance.now();
+    if (!ac && now - last < ms) return 0;
+    last = now;
+    return fn(ac, ...rest);
+  };
+};
+export const laser = every(70, laserRaw);
+export const pop = every(60, popRaw);
