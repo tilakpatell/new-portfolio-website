@@ -172,7 +172,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     autobot: T(paintInsignia('autobot', '#c8102e'), { wrap: false }),
     decepticon: T(paintInsignia('decepticon', '#8a3fd0'), { wrap: false }),
   };
-  const M = materials(null, panels);
+  // the Decepticons' worn plate (Kaon's road surface, so no extra download there)
+  const wornSet = await lib.load('plate-road');
+  const M = materials(null, panels, wornSet ? lib.detail(wornSet, { repeat: [1, 1] }) : null);
   const shared = await sharedSurfaces(renderer, big, panels, lib);
   progress(0.25, 'Fetching the props');
   const [barrierModel, crateModel, barrelModel, tyreModel, rockModel] = await Promise.all(['barrier', 'crate', 'barrel', 'tyre', 'rock'].map((n) => models.load(n)));
@@ -224,7 +226,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const jets = new Assign(pool(4, () => cast.jet('seeker') ?? buildJet(M, { body: 0x55596a, accent: 0x5a2a86, tex })));
 
   // debris: scanned crates, barrels, tyres, a rock; scrap metal in Kaon
-  const scrapMat = M.armour(0x5a4a44, { roughness: 0.6 });
+  const scrapMat = M.scarred(0x5a4a44, { roughness: 0.6 });
   const debrisMake = (kind) => {
     const g = new THREE.Group();
     if (kind === 0 && crateModel) {
