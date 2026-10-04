@@ -563,6 +563,7 @@ export async function build({ rich, coarse }) {
     envIntensity: 0.15,
     bloom: [0.45, 0.4, 0.86],
     flash: '#b4f36c',
+    glance: -0.8, // over at Rick
     rumble: 0.6,
     triggers: [wheel],
     resize() {},

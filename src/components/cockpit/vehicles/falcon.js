@@ -584,6 +584,7 @@ export async function build({ rich, coarse, renderer }) {
     envIntensity: 0.6,
     bloom: [0.6, 0.45, 0.8],
     flash: '#eef5ff',
+    glance: -0.75, // over at Chewie
     rumble: 1,
     triggers: [hitBox, ...leverHit],
     resize(w, h, px) {

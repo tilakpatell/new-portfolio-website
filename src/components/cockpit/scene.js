@@ -137,7 +137,9 @@ export function run(canvas, opts) {
   window.addEventListener('resize', fit);
 
   // ── looking about ──
-  const look = { yaw: 0, pitch: 0, ty: 0, tp: 0, rest: [0, 0], range: [1, 0.4], hover: true };
+  // (`glance`: a vehicle's look over at its crew a moment after you sit
+  // down, which shows the view moves; any look of your own ends it)
+  const look = { yaw: 0, pitch: 0, ty: 0, tp: 0, rest: [0, 0], range: [1, 0.4], glance: 0, sat: 0, own: false };
   const clampLook = () => {
     look.ty = Math.max(look.rest[0] - look.range[0], Math.min(look.rest[0] + look.range[0], look.ty));
     look.tp = Math.max(look.rest[1] - look.range[1], Math.min(look.rest[1] + look.range[1], look.tp));
@@ -194,7 +196,9 @@ export function run(canvas, opts) {
     if (v) {
       // the head: where you're looking, eased; drawn back ahead as you go
       const ahead = L.on ? smooth(Math.min(1, L.t / (L.plan.spool * 0.9 + 1))) : 0;
-      const ty = look.ty + (look.rest[0] - look.ty) * ahead;
+      const since = clock - look.sat;
+      const glance = look.own || L.on ? 0 : look.glance * (smooth((since - 1.4) / 1.1) - smooth((since - 3.6) / 1.2));
+      const ty = look.ty + glance + (look.rest[0] - look.ty) * ahead;
       const tp = look.tp + (look.rest[1] - look.tp) * ahead;
       const k = 1 - Math.exp(-dt * (L.on ? 7 : 4.5));
       look.yaw += (ty - look.yaw) * k;
@@ -320,6 +324,8 @@ export function run(canvas, opts) {
       look.range = [...(v.range ?? [1, 0.4])];
       look.yaw = look.ty = look.rest[0];
       look.pitch = look.tp = look.rest[1];
+      look.glance = v.glance ?? 0;
+      look.sat = clock;
       L.plan = planOf(id);
       fit();
       // compile everything now, behind the black, so the first look doesn't stall
@@ -396,6 +402,7 @@ export function run(canvas, opts) {
     },
     // a mouse over the cockpit: where it points, -1…1 each way
     point(nx, ny) {
+      look.own = true;
       look.ty = look.rest[0] - nx * look.range[0] * 0.9;
       look.tp = look.rest[1] - ny * look.range[1] * 0.9;
       clampLook();
@@ -403,6 +410,7 @@ export function run(canvas, opts) {
     },
     // a finger dragging: by how much (pixels)
     drag(dx, dy) {
+      look.own = true;
       const k = 2.4 / Math.max(size.w, size.h);
       look.ty += dx * k;
       look.tp += dy * k;
@@ -410,6 +418,7 @@ export function run(canvas, opts) {
     },
     // the arrow keys
     nudge(dx, dy) {
+      look.own = true;
       look.ty -= dx * 0.18;
       look.tp -= dy * 0.12;
       clampLook();
