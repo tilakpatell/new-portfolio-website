@@ -294,6 +294,7 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       pitch: 0,
       gesture: null, // { name, t }
       hands: [0, 1].map(() => ({ to: null, at: new THREE.Vector3(), amt: 0 })), // reaching for
+      walk: { on: false, amt: 0, t: 0 }, // a stride, on the spot (the scene moves them)
       seed: Math.random() * 100,
     };
     const tmp = new THREE.Vector3();
@@ -320,6 +321,13 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
         const h = state.hands[side === 'right' ? right : 1 - right];
         h.to = point ? h.at.copy(point) : null;
       },
+      // walking (true) or still (false): the legs and arms swing; the scene
+      // moves the figure along
+      walk(on) {
+        state.walk.on = !!on;
+      },
+      // how far up the stride lifts them, for the scene to add (metres)
+      bob: () => Math.abs(Math.sin(state.walk.t)) * 0.018 * state.walk.amt,
       // where their head is (world)
       headAt(out = new THREE.Vector3()) {
         return B.head.getWorldPosition(out);
@@ -337,6 +345,21 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
           if (!amt) continue;
           B.wrist[s].getWorldPosition(from);
           reach(B.arm[s], B.fore[s], B.wrist[s], from.lerp(h.at, ease(amt)), va.set(sides[s] * 0.6, -1, -0.5).applyQuaternion(frame));
+        }
+        // a stride: the thighs swing, the knees bend through, the arms swing
+        // against the legs
+        const w = state.walk;
+        const wa = w.on ? Math.min(1, w.amt + dt * 4) : Math.max(0, w.amt - dt * 4);
+        if (wa !== w.amt || wa) moving = true;
+        w.amt = wa;
+        if (wa) {
+          w.t += dt * 7.2;
+          for (let s = 0; s < 2; s++) {
+            const ph = w.t + s * Math.PI;
+            turn(B.thigh[s], AX, -Math.sin(ph) * 0.4 * wa, frame);
+            turn(B.shin[s], AX, Math.max(0, Math.sin(ph + 0.7)) * 0.6 * wa, frame);
+            turn(B.arm[s], AX, Math.sin(ph) * 0.28 * wa, frame);
+          }
         }
         // the head's part in a gesture, on top of where it looks
         let nod = 0;
@@ -425,17 +448,6 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       const id = isSpec(who) ? who.id : who;
       return loader.loadAsync(isSpec(who) ? who.model : `/models/office/cast/${id}.glb`).then(
         (m) => {
-          // No mipmaps for a figure from elsewhere: it is still on the atlas
-          // Meshy made it, small islands packed edge to edge, and a mip level
-          // mixes each island's rim with its neighbour's colour (light seams
-          // down a dark suit). The office's own are on atlases with gutters
-          // (scripts/meshy.mjs, reatlas), and keep theirs.
-          if (isSpec(who))
-            m.scene.traverse((o) => {
-              if (!o.isMesh || !o.material.map) return;
-              o.material.map.minFilter = THREE.LinearFilter;
-              o.material.map.generateMipmaps = false;
-            });
           models.set(id, m);
           each?.(id, cast);
         },
