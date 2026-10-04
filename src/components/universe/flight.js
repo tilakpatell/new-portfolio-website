@@ -17,7 +17,7 @@ import { MAP_RADIUS, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
 export const FOV = 34; // vertical, degrees
-export const FLIGHT_MS = 1100;
+export const FLIGHT_MS = 1400;
 export const DIVE_MS = 600;
 const OVERVIEW_PITCH = 0.62;
 const FOCUS_PITCH = 0.3;
