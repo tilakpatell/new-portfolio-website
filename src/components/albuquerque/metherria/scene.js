@@ -170,9 +170,9 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       bench: new THREE.MeshStandardMaterial(superlab ? { color: 0xc9ced3, metalness: 0.9, roughness: 0.3 } : { color: 0x6e3a22, roughness: 0.45 }),
     };
     looks[place] = L;
-    for (const part of Object.keys(L)) {
+    L.ready = Promise.all(Object.keys(L).map((part) => {
       const [name, metres, metal] = SETS[place][part];
-      loadPbr(name)
+      return loadPbr(name)
         .then((maps) => {
           if (disposed) return Object.values(maps).forEach((t) => t.dispose());
           fit(maps.color, part, metres);
@@ -181,7 +181,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
           return dress(L[part], maps, metal);
         })
         .catch(() => !disposed && paintFallback(place, part, L[part]));
-    }
+    }));
     return L;
   };
   const room = new THREE.Group();
@@ -1033,5 +1033,13 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     renderer.forceContextLoss(); // give the context back now, not when it's collected
   };
 
-  return { render, resize, dispose, project, standeeAnchors, diagnostics, get lost() { return lost; } };
+  // the room as it should look: photo materials and HDRI in, or given up on
+  // after a few seconds (and painted instead), so it never shows half-dressed
+  const whenReady = () => {
+    const look = lookFor(place ?? 'rv');
+    const wait = new Promise((r) => setTimeout(r, 6000));
+    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => renderer.compile(scene, camera));
+  };
+
+  return { render, resize, dispose, project, standeeAnchors, diagnostics, whenReady, get lost() { return lost; } };
 }
