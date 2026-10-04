@@ -1,7 +1,7 @@
 // The one-page résumé, assembled from the same data as the rest of the site so
 // the two never drift apart. The entries and their order match Resume.pdf.
 import { education, profile, skills } from './profile';
-import { roles, fmtRange } from './roles';
+import { roles, fmtRange, roleLink } from './roles';
 import { projectById } from './projects';
 
 const RESUME_ROLES = ['aws', 'rtx', 'bose', 'pendar', 'src'];
@@ -24,7 +24,7 @@ export const resume = {
   skills,
   experience: RESUME_ROLES.map((id) => {
     const r = roles.find((x) => x.id === id);
-    return { id, title: r.company, subtitle: r.title, where: r.location, when: fmtRange(r), bullets: r.bullets, stack: r.stack, link: `/experience?role=${id}` };
+    return { id, title: r.company, subtitle: r.title, where: r.location, when: fmtRange(r), bullets: r.bullets, stack: r.stack, link: roleLink(id) };
   }),
   projects: RESUME_PROJECTS.map(({ id, title, note }) => {
     const p = projectById(id);

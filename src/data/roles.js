@@ -12,6 +12,7 @@ export const roles = [
     start: '2026-09',
     end: null,
     sector: 'Cloud infrastructure',
+    track: 'pm',
     summary: 'Planning tools and data-quality automation for the teams delivering generative-AI data-center capacity.',
     bullets: [
       'Developing data center planning tools modeling server placement constraints for generative AI capacity',
@@ -33,6 +34,7 @@ export const roles = [
     start: '2026-06',
     end: '2026-08',
     sector: 'Aerospace & defense',
+    track: 'pm',
     summary: 'Helped shape the application-modernization roadmap and move enterprise workloads onto RTX’s Xeta Cloud platform.',
     bullets: [
       'Helped design the application modernization value stream and roadmap targeting 2028 enterprise goals',
@@ -54,6 +56,7 @@ export const roles = [
     start: '2026-01',
     end: '2026-06',
     sector: 'Consumer audio',
+    track: 'eng',
     summary: 'Built the log-analysis platform used to debug device firmware, cutting investigations from hours to minutes.',
     bullets: [
       'Built full-stack log analysis platform with 60+ REST endpoints, streaming, and session persistence using FastAPI',
@@ -75,6 +78,7 @@ export const roles = [
     start: '2025-07',
     end: '2025-12',
     sector: 'Laser sensing',
+    track: 'eng',
     summary: 'Replaced a legacy LabVIEW rig with a real-time Qt/PySide6 acquisition app for laser sensor testing.',
     bullets: [
       'Built real-time data acquisition app in Qt/PySide6 for laser sensor testing, fully replacing legacy LabVIEW system',
@@ -95,6 +99,7 @@ export const roles = [
     start: '2025-07',
     end: '2025-12',
     sector: 'Regulatory AI',
+    track: 'eng',
     summary: 'Visualization, observability and an AI assistant for medical-device regulatory analysts.',
     bullets: [
       'Built interactive visualization tool mapping FDA complaint severity with heatmaps for medical device risk analysis',
@@ -116,6 +121,7 @@ export const roles = [
     start: '2025-04',
     end: '2025-07',
     sector: 'Defense R&D',
+    track: 'eng',
     summary: 'Turned 500+ radar documents into knowledge graphs with a LangGraph extraction pipeline.',
     bullets: [
       'Built pipeline extracting knowledge triplets from 500+ radar docs at 90% accuracy using Pydantic and Docling',
@@ -171,3 +177,15 @@ export const careerStats = () => {
     states: new Set(roles.map((r) => r.state).filter(Boolean)).size,
   };
 };
+
+// `track` on each role: 'pm' for technical program management, 'eng' for
+// software, AI and ML engineering
+export const TRACKS = [
+  { id: 'all', label: 'All roles' },
+  { id: 'pm', label: 'Program management' },
+  { id: 'eng', label: 'Software engineering' },
+];
+
+// the address of a role on this site (opens the Experience page on that role),
+// for the résumé or anywhere else
+export const roleLink = (id) => `/experience/${id}`;

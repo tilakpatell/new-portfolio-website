@@ -118,7 +118,10 @@ const SITE = [
 export default function Guide() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
-  const page = PAGES[pathname] ?? (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
+  const page =
+    PAGES[pathname] ??
+    (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
+    (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);
   const button = useRef(null);

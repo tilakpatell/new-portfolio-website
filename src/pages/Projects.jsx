@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RiArrowRightLine, RiArrowRightUpLine, RiGithubFill } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import ProjectThumb from '../components/ProjectThumb';
@@ -82,7 +82,15 @@ export default function Projects() {
   useSectionThemes();
   const page = useRef(null);
   const [gameboy, translator, devspace, copilot] = featuredProjects;
-  const [tech, setTech] = useState(null);
+  // the technology filter is in the address, so a link can open on it
+  const [params, setParams] = useSearchParams();
+  const tech = params.get('tech');
+  const setTech = (t) => {
+    const next = new URLSearchParams(params);
+    if (t) next.set('tech', t);
+    else next.delete('tech');
+    setParams(next, { replace: true });
+  };
   const dim = (p) => Boolean(tech) && !p.stack.includes(tech);
 
   return (

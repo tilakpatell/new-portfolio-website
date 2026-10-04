@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { roles } from '../data/roles';
+import { roles, roleLink } from '../data/roles';
 import { education } from '../data/profile';
 import { THEMES } from '../theme/themes';
 import CompanyLogo from './CompanyLogo';
@@ -11,7 +11,7 @@ const SCHOOL = { id: 'northeastern', short: 'Northeastern', shortTitle: educatio
 
 export default function CareerStrip() {
   const stops = [
-    ...roles.map((r) => ({ id: r.id, short: r.short, shortTitle: r.shortTitle, to: `/experience?role=${r.id}`, color: THEMES[r.id].fill || THEMES[r.id].swatch })),
+    ...roles.map((r) => ({ id: r.id, short: r.short, shortTitle: r.shortTitle, to: roleLink(r.id), color: THEMES[r.id].fill || THEMES[r.id].swatch })),
     SCHOOL,
   ];
   return (

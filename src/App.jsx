@@ -34,7 +34,8 @@ const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'Ar
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
-    if (!search.includes('role=')) window.scrollTo(0, 0);
+    // a link to one role (/experience/aws) lands on that role, not the top
+    if (!search.includes('role=') && !/^\/experience\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
   }, [pathname, search]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
@@ -156,7 +157,7 @@ function Shell() {
             <div key={pathname} className="page-enter">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/experience" element={<Experience />} />
+                <Route path="/experience/:roleId?" element={<Experience />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/contact" element={<Contact />} />

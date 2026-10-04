@@ -80,7 +80,7 @@ export function AchievementProvider({ children }) {
   );
 
   useEffect(() => {
-    const top = pathname.startsWith('/projects') ? '/projects' : pathname;
+    const top = pathname.startsWith('/projects') ? '/projects' : pathname.startsWith('/experience') ? '/experience' : pathname;
     const visited = storage.get('tp-visited', []);
     if (!visited.includes(top)) {
       const next = [...visited, top];

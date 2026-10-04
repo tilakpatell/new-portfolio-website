@@ -2128,3 +2128,8 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-rail-list li[data-on] { color: var(--text); font-weight: 600; }
 .hq-rail-list li[data-on] span { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-ink); }
 @media (prefers-reduced-motion: reduce) { .hq-fly, .hq-shimmer, .hq-pin-pulse { animation: none; } }
+
+/* Experience: highlighting one track dims the other roles, without moving anything */
+.exp-hero, .exp-chapter, .exp-tl-row { transition: opacity 0.4s ease, filter 0.4s ease; }
+:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] { opacity: 0.3; filter: grayscale(0.85); }
+@media (prefers-reduced-motion: reduce) { .exp-hero, .exp-chapter, .exp-tl-row { transition: none; } }
