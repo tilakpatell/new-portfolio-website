@@ -30,9 +30,9 @@ const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's ke
 // ── Textures ──
 
 const BASE = '/textures/universe/';
-const PLANET_MAPS = ['starwars', 'music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'sun'];
+const PLANET_MAPS = ['starwars', 'music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'sun', 'sky'];
 const FIXED = ['alderaan', 'middleearth-glow', 'rickmorty-glow', 'starwars-glow', 'transformers-glow'];
-const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal'];
+const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal', 'middleearth-normal', 'breakingbad-normal', 'earth-rough'];
 const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
@@ -94,8 +94,12 @@ function paint(draw, w, h) {
 
 // ── Shared pieces ──
 
-// A soft rim in the planet's colour, brightest on its sunlit edge
-const RIM_VERT = `
+// The air round a planet, in its colour, brightest on its sunlit side: a
+// halo just outside its edge (the back of a slightly bigger sphere, fading
+// out from the limb) and a glow on the surface's own rim (added to the
+// planet's material, below), so it's one extra draw a planet as before.
+const HALO = 1.2; // the halo's reach, as a share of the planet's radius
+const HALO_VERT = `
 uniform vec3 uLight;
 varying vec3 vN;
 varying vec3 vV;
@@ -107,34 +111,69 @@ void main() {
   vL = normalize((viewMatrix * vec4(uLight, 0.0)).xyz);
   gl_Position = projectionMatrix * mv;
 }`;
-const RIM_FRAG = `
+const HALO_FRAG = `
 uniform vec3 uColor;
 uniform float uStrength;
+uniform float uReach;
 varying vec3 vN;
 varying vec3 vV;
 varying vec3 vL;
 void main() {
   vec3 n = normalize(vN);
-  float f = 1.0 - max(dot(n, normalize(vV)), 0.0);
-  float lit = 0.3 + 0.7 * smoothstep(-0.3, 0.6, dot(n, vL));
-  gl_FragColor = vec4(uColor * pow(f, 2.4) * uStrength * lit, 1.0);
+  // how far out from the planet's edge this ray passes, 0 at the edge and 1
+  // at the halo's, so the air thins out evenly rather than ending in a rim
+  float c = -dot(n, normalize(vV));
+  float x = clamp((sqrt(max(1.0 - c * c, 0.0)) * uReach - 1.0) / (uReach - 1.0), 0.0, 1.0);
+  float lit = 0.12 + 0.88 * smoothstep(-0.45, 0.5, dot(n, vL));
+  gl_FragColor = vec4(uColor * pow(1.0 - x, 3.0) * uStrength * lit, 1.0);
   #include <colorspace_fragment>
 }`;
 
 const RIM = { idle: 0.5, hover: 1.3, selected: 0.95 };
 
-function rim(radius, swatch, seg) {
+function halo(radius, color, seg) {
   const mat = new THREE.ShaderMaterial({
-    vertexShader: RIM_VERT,
-    fragmentShader: RIM_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(swatch) }, uStrength: { value: RIM.idle }, uLight: { value: LIGHT } },
+    vertexShader: HALO_VERT,
+    fragmentShader: HALO_FRAG,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: LIGHT }, uReach: { value: HALO } },
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    side: THREE.BackSide,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.035, seg[0], seg[1]), mat);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * HALO, seg[0], seg[1]), mat);
   mesh.renderOrder = 2;
   return mesh;
+}
+
+// The glow on a planet's own rim, in its material, and (for Earth) its
+// cities' lights on the night side: both follow the sun.
+function airGlow(mat, color, { night = null } = {}) {
+  const u = {
+    uRimColor: { value: new THREE.Color(color) },
+    uRimStrength: { value: RIM.idle * 0.8 },
+    uSunW: { value: LIGHT },
+    uNight: { value: night },
+  };
+  mat.userData.air = u;
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        {
+          vec3 sunV = normalize((viewMatrix * vec4(uSunW, 0.0)).xyz);
+          float day = dot(normal, sunV);
+          float rim = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);
+          totalEmissiveRadiance += uRimColor * rim * uRimStrength * (0.2 + 0.8 * smoothstep(-0.3, 0.6, day));
+          ${night ? 'totalEmissiveRadiance += texture2D(uNight, vMapUv).rgb * 1.5 * smoothstep(0.12, -0.3, day);' : ''}
+        }`,
+      );
+  };
+  mat.customProgramCacheKey = () => (night ? 'air-night' : 'air');
+  return mat;
 }
 
 // Something going round: a tilted plane, turning, with a holder out at `radius`.
@@ -390,8 +429,8 @@ const BUILDERS = {
     p.body.material = new THREE.MeshStandardMaterial({
       map: T.middleearth ?? null,
       color: T.middleearth ? '#ffffff' : u.palette.base,
-      bumpMap: T.middleearth ?? null,
-      bumpScale: 2,
+      normalMap: T['middleearth-normal'] ?? null,
+      normalScale: new THREE.Vector2(1.1, 1.1),
       emissive: '#ffffff',
       emissiveMap: T['middleearth-glow'] ?? null,
       emissiveIntensity: T['middleearth-glow'] ? 1.4 : 0,
@@ -481,7 +520,13 @@ const BUILDERS = {
 
   breakingbad(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({ map: T.breakingbad ?? null, color: T.breakingbad ? '#ffffff' : u.palette.base, bumpMap: T.breakingbad ?? null, bumpScale: 2.5, roughness: 1 });
+    p.body.material = new THREE.MeshStandardMaterial({
+      map: T.breakingbad ?? null,
+      color: T.breakingbad ? '#ffffff' : u.palette.base,
+      normalMap: T['breakingbad-normal'] ?? null,
+      normalScale: new THREE.Vector2(1.2, 1.2),
+      roughness: 1,
+    });
     // blue crystal moons
     const crystals = new THREE.InstancedMesh(
       new THREE.OctahedronGeometry(r * 0.07, 0),
@@ -679,9 +724,66 @@ const BUILDERS = {
     p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI, 0.2] };
   },
 
+  caribbean(p, { u }) {
+    const r = u.size;
+    const P = u.palette;
+    const rand = rng('caribbean');
+    // a world that is nearly all sea: deep water, turquoise shallows round
+    // small islands of sand and green, and a little cloud
+    const map = paint(
+      (g, w, h) => {
+        const sea = g.createLinearGradient(0, 0, 0, h);
+        sea.addColorStop(0, '#0a4a55');
+        sea.addColorStop(0.5, P.base);
+        sea.addColorStop(1, P.dark);
+        g.fillStyle = sea;
+        g.fillRect(0, 0, w, h);
+        const blob = (x, y, s, fill) => {
+          // drawn twice across the seam, so the map wraps
+          for (const dx of [0, -w, w]) {
+            g.beginPath();
+            g.ellipse(x + dx, y, s * 1.5, s, 0, 0, Math.PI * 2);
+            g.fillStyle = fill;
+            g.fill();
+          }
+        };
+        // island chains: each a few lumps run together, so no two are the
+        // same shape; the shallows first, then the sand, then the green
+        const isles = [];
+        for (let i = 0; i < 64; i++) {
+          const x = rand() * w;
+          const y = h * (0.16 + rand() * 0.68);
+          const s = 3 + rand() * rand() * 15;
+          const run = rand() * Math.PI;
+          for (let k = 0, n = 2 + Math.floor(rand() * 5); k < n; k++) isles.push([x + Math.cos(run) * k * s * 1.3 + (rand() - 0.5) * s, y + Math.sin(run) * k * s * 0.7 + (rand() - 0.5) * s, s * (0.55 + rand() * 0.6)]);
+        }
+        for (const [x, y, s] of isles) blob(x, y, s * 2.4, 'rgba(64, 220, 200, 0.14)');
+        for (const [x, y, s] of isles) blob(x, y, s * 1.6, 'rgba(64, 220, 200, 0.3)');
+        for (const [x, y, s] of isles) blob(x, y, s * 1.08, P.light);
+        for (const [x, y, s] of isles) blob(x, y, s * 0.78, '#3f7a3a');
+        for (let i = 0; i < 60; i++) blob(rand() * w, rand() * h, 6 + rand() * 30, `rgba(255, 255, 255, ${(0.03 + rand() * 0.08).toFixed(3)})`);
+      },
+      1024,
+      512,
+    );
+    p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.6 });
+    // the black galleon sails round it
+    const o = orbit(p.group, { radius: r * 1.5, tilt: 0.22, speed: 0.2, phase: 0.7 });
+    p.orbits.push(o);
+    p.slot = { holder: o.holder, size: r * 0.9, turn: [0.1, -Math.PI / 2, 0] }; // her bow is −x: along the orbit
+  },
+
   travel(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({ map: T.earth ?? null, color: T.earth ? '#ffffff' : u.palette.base, roughness: 0.85, metalness: 0 });
+    // the oceans catch the sun (a roughness map), the cities light the night side (in airGlow)
+    p.body.material = new THREE.MeshStandardMaterial({
+      map: T.earth ?? null,
+      color: T.earth ? '#ffffff' : u.palette.base,
+      roughnessMap: T['earth-rough'] ?? null,
+      roughness: T['earth-rough'] ? 1 : 0.85,
+      metalness: 0,
+    });
+    p.night = T['earth-night'] ?? null;
     // the clouds, drifting a little faster than the ground
     if (T['earth-clouds']) {
       const clouds = new THREE.Mesh(
@@ -1009,11 +1111,12 @@ export function buildPlanet(u, T = {}) {
   group.add(spinner);
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
-  // a planet has a rim in its colour; a station's name does that job
-  const halo = core ? null : rim(u.size, u.rim ?? u.swatch, seg);
-  if (halo) group.add(halo);
+  // a planet has air round it in its colour; a station's sign does that job
+  const air = core ? null : halo(u.size, u.rim ?? u.swatch, seg);
+  if (air) group.add(air);
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null };
   BUILDERS[u.id]?.(p, { u, T });
+  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night });
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
@@ -1044,7 +1147,10 @@ export function buildPlanet(u, T = {}) {
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {
-      if (halo) halo.material.uniforms.uStrength.value = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
+      const k = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
+      if (air) air.material.uniforms.uStrength.value = k;
+      const glow = body.material?.userData?.air;
+      if (glow) glow.uRimStrength.value = k * 0.8;
       if (sel && !selected) p.onSelect?.(t0);
       if (sel !== selected) for (const fn of p.focus) fn(sel);
       selected = sel;
@@ -1082,12 +1188,16 @@ export function buildSun(T = {}) {
   );
   const corona = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   corona.scale.setScalar(SUN.r * 5.5);
-  group.add(surface, corona);
+  // and a wide, faint one, the light spilling out into space
+  const spill = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.32 }));
+  spill.scale.setScalar(SUN.r * 13);
+  group.add(spill, surface, corona);
   return {
     group,
     update(t) {
       surface.rotation.y = t * 0.03;
       corona.material.rotation = t * 0.02;
+      corona.scale.setScalar(SUN.r * (5.5 + Math.sin(t * 0.7) * 0.15)); // it breathes
     },
   };
 }
@@ -1108,6 +1218,7 @@ const MODELS = {
   breakingbad: '/models/universe/breakingbad.glb',
   rickmorty: '/games/meshy/saucer.glb', // the classic cruiser, as on the C-137 page
   gaming: '/models/universe/gaming.glb',
+  caribbean: '/games/caribbean/pearl-far.glb',
 };
 
 // Load the models one by one, handing each over as it arrives; a model that

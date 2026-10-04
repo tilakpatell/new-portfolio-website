@@ -154,7 +154,7 @@ function Game({ soft, fail }) {
         local.set(BEST, next);
       }
       engineRef.current?.set({ on: false });
-      setUi((u) => ({ ...u, result: { won, score: g.score, isBest, prev, stage: g.stage, kills: g.kills, cubes: g.taken, nears: g.nears, text: endText.current } }));
+      setUi((u) => ({ ...u, result: { won, score: g.score, isBest, prev, stage: g.stage, kills: g.kills, cubes: g.taken, nears: g.nears, clears: g.clears, stunts: g.stunts, text: endText.current } }));
       setPhase(won ? 'won' : 'lost');
     },
     [best],
@@ -190,6 +190,22 @@ function Game({ soft, fail }) {
           case 'near':
             playCue('nearMiss');
             say('Close call +40', 'good');
+            break;
+          case 'cleared': {
+            const what = e.kind === 'gap' ? 'Bridge jumped' : 'Roadblock cleared';
+            const pts = e.points * Math.min(5, e.combo);
+            if (e.clutch) play('ding');
+            say(`${e.clutch ? 'Just in time! ' : ''}${what} +${pts}`, 'good');
+            break;
+          }
+          case 'stunt':
+            play('oneUp');
+            say(`Mid-air transform +${e.points}`, 'good');
+            break;
+          case 'stagger':
+            play('clang');
+            buzz(60);
+            say(`${e.name} staggered: double damage`, 'boss');
             break;
           case 'jump':
             playCue('servoJump');
@@ -659,12 +675,20 @@ function Game({ soft, fail }) {
                       <dt>Close calls</dt>
                       <dd>{r.nears}</dd>
                     </div>
+                    <div>
+                      <dt>Cleared</dt>
+                      <dd>{r.clears}</dd>
+                    </div>
+                    <div>
+                      <dt>Stunts</dt>
+                      <dd>{r.stunts}</dd>
+                    </div>
                   </dl>
                 </>
               ) : (
                 <>
                   <p className="ro-title">Roll out</p>
-                  <p className="ro-sub">Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron.</p>
+                  <p className="ro-sub">Drive fast as a vehicle, fight as a robot. Transform in time: jump the roadblocks, take the ramps over the broken bridges, and get past Starscream, Shockwave and Megatron. The later you change, the more it pays; shoot a boss while it charges up to stagger it.</p>
                 </>
               )}
               <div className="ro-pick" role="group" aria-label="Autobot">

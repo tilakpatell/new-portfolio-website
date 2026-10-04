@@ -21,10 +21,11 @@ describe('the map layout', () => {
     expect(next('home')).toBe('experience');
     expect(next('terminal')).toBe('starwars');
     expect(next('starwars')).toBe('music');
-    expect(next('travel')).toBe('home');
-    expect(prev('home')).toBe('travel');
+    expect(next('travel')).toBe('caribbean');
+    expect(next('caribbean')).toBe('home');
+    expect(prev('home')).toBe('caribbean');
     expect(next(null)).toBe('home');
-    expect(prev(null)).toBe('travel');
+    expect(prev(null)).toBe('caribbean');
   });
 
   it('keeps the sun clear of everything', () => {
@@ -38,7 +39,8 @@ describe('the map layout', () => {
 
   it('finds the next world page, skipping the ones that are not', () => {
     expect(nextWorld('office').id).toBe('rickmorty');
-    expect(nextWorld('rickmorty').id).toBe('starwars'); // gaming and travel have no world page
+    expect(nextWorld('rickmorty').id).toBe('caribbean'); // gaming and travel have no world page
+    expect(nextWorld('caribbean').id).toBe('starwars');
     expect(nextWorld('starwars').id).toBe('music');
     expect(nextWorld('albuquerque')?.id).toBe('starwars'); // not an id: starts from the top
     expect(nextWorld(null).id).toBe('starwars');
@@ -49,9 +51,9 @@ describe('the map layout', () => {
     expect(keyStep('ArrowRight', 'starwars')).toBe('music');
     expect(keyStep('ArrowDown', 'starwars')).toBe('music');
     expect(keyStep('ArrowLeft', 'starwars')).toBe('terminal');
-    expect(keyStep('ArrowUp', null)).toBe('travel');
+    expect(keyStep('ArrowUp', null)).toBe('caribbean');
     expect(keyStep('Home', 'office')).toBe('home');
-    expect(keyStep('End', 'office')).toBe('travel');
+    expect(keyStep('End', 'office')).toBe('caribbean');
     expect(keyStep('Enter', 'office')).toBeUndefined();
     expect(keyStep('a', 'office')).toBeUndefined();
   });

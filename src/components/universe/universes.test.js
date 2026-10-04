@@ -9,10 +9,10 @@ const app = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8');
 const ROUTES = [...app.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '*');
 
 describe('the universes', () => {
-  it('are the site’s six pages and ten fandoms, each with its own id', () => {
+  it('are the site’s six pages and eleven fandoms, each with its own id', () => {
     expect(UNIVERSES.filter((u) => u.kind === 'core').map((u) => u.to)).toEqual(['/home', '/experience', '/projects', '/resume', '/contact', '/terminal']);
-    expect(UNIVERSES.filter((u) => u.kind === 'fandom')).toHaveLength(10);
-    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(16);
+    expect(UNIVERSES.filter((u) => u.kind === 'fandom')).toHaveLength(11);
+    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(17);
     for (const u of UNIVERSES) expect(u.place, u.id).toBeTruthy();
   });
 
@@ -27,7 +27,7 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137']);
+    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/caribbean']);
     expect(WORLDS[0]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
   });
 });

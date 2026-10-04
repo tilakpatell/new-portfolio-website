@@ -33,8 +33,8 @@ import { LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
-const STARS = 2600;
-const STARS_LOW = 900;
+const STARS = 1800; // the near ones, over the Milky Way's own
+const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
 const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
@@ -53,12 +53,16 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const STAR_VERT = `
 attribute float aSize;
 attribute vec3 aColor;
+attribute float aPhase;
 uniform float uDpr;
+uniform float uTime;
 varying vec3 vColor;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = clamp(aSize * uDpr * (260.0 / -mv.z), 1.0, 6.0 * uDpr);
-  vColor = aColor;
+  // a slow twinkle, each star on its own beat
+  float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
+  vColor = aColor * tw;
   gl_Position = projectionMatrix * mv;
 }`;
 const STAR_FRAG = `
@@ -74,6 +78,7 @@ function starfield(rand) {
   const pos = new Float32Array(STARS * 3);
   const size = new Float32Array(STARS);
   const col = new Float32Array(STARS * 3);
+  const phase = new Float32Array(STARS);
   const tints = [
     [1, 1, 1],
     [0.78, 0.86, 1],
@@ -90,15 +95,17 @@ function starfield(rand) {
     const t = tints[rand() < 0.75 ? 0 : rand() < 0.5 ? 1 : 2];
     col.set([t[0] * b, t[1] * b, t[2] * b], i * 3);
     size[i] = 0.7 + rand() ** 4 * 2.2;
+    phase[i] = rand();
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
   const mat = new THREE.ShaderMaterial({
     vertexShader: STAR_VERT,
     fragmentShader: STAR_FRAG,
-    uniforms: { uDpr: { value: 1 } },
+    uniforms: { uDpr: { value: 1 }, uTime: { value: 0 } },
     blending: THREE.AdditiveBlending,
     transparent: true,
     depthWrite: false,
@@ -210,6 +217,17 @@ export async function create(canvas, ctx) {
   // the planets' maps first (half size on a phone), so nothing pops in
   const small = (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 || (navigator.deviceMemory ?? 8) <= 4;
   const T = await loadTextures({ small });
+
+  // the sky: the Milky Way, all the way round, turning with the map. It's
+  // always seen magnified, so it does without mipmaps (and their memory)
+  if (T.sky) {
+    T.sky.generateMipmaps = false;
+    T.sky.minFilter = THREE.LinearFilter;
+    T.sky.anisotropy = 1;
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
+    sky.renderOrder = -10;
+    map.add(sky);
+  }
 
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
@@ -749,6 +767,7 @@ export async function create(canvas, ctx) {
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
     const shooting = moveBolts(dt);
     sun.update(t);
+    stars.material.uniforms.uTime.value = t;
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();

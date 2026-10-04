@@ -175,14 +175,14 @@ function makeKit(sets, models, env) {
     const fabric = [];
     const dark = [];
     const seat = new RoundedBoxGeometry(0.5, 0.09, 0.48, 3, 0.03);
-    seat.translate(0, 0.49, 0);
+    seat.translate(0, 0.415, 0);
     fabric.push(seat);
     const back = new RoundedBoxGeometry(0.46, 0.56, 0.07, 3, 0.03);
     back.rotateX(-0.12);
-    back.translate(0, 0.88, -0.25);
+    back.translate(0, 0.805, -0.25);
     fabric.push(back);
-    const lift = new THREE.CylinderGeometry(0.025, 0.03, 0.3, 12);
-    lift.translate(0, 0.3, 0);
+    const lift = new THREE.CylinderGeometry(0.025, 0.03, 0.225, 12);
+    lift.translate(0, 0.2625, 0);
     dark.push(lift);
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
@@ -197,14 +197,14 @@ function makeKit(sets, models, env) {
     }
     for (const side of [-1, 1]) {
       const post = new THREE.BoxGeometry(0.03, 0.2, 0.04);
-      post.translate(side * 0.27, 0.62, -0.02);
+      post.translate(side * 0.27, 0.545, -0.02);
       dark.push(post);
       const rest = new RoundedBoxGeometry(0.06, 0.03, 0.26, 2, 0.012);
-      rest.translate(side * 0.27, 0.73, 0.0);
+      rest.translate(side * 0.27, 0.655, 0.0);
       dark.push(rest);
       const strut = new THREE.BoxGeometry(0.04, 0.3, 0.03);
       strut.rotateX(-0.12);
-      strut.translate(0, 0.66, -0.24);
+      strut.translate(0, 0.585, -0.24);
       if (side === 1) dark.push(strut);
     }
     return { fabric: keep(merge(fabric)), dark: keep(merge(dark)) };

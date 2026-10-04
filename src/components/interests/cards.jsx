@@ -487,6 +487,17 @@ function Travel() {
   );
 }
 
+function Caribbean() {
+  return (
+    <Card title="Pirates of the Caribbean" className="fun-caribbean" visual={<img src={`${import.meta.env.BASE_URL}games/caribbean/art/pearl.webp`} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">A black ship, the kraken, and a compass that doesn’t point north. There’s a sea to sail here: five chapters of it, in 3D.</p>
+      <Link to="/caribbean" className="btn btn-ghost btn-sm mt-auto self-start">
+        Sail the Caribbean
+      </Link>
+    </Card>
+  );
+}
+
 // One card per universe on the map, by its id.
 export const CARDS = {
   starwars: StarWars,
@@ -499,4 +510,5 @@ export const CARDS = {
   rickmorty: RickMorty,
   gaming: Gaming,
   travel: Travel,
+  caribbean: Caribbean,
 };

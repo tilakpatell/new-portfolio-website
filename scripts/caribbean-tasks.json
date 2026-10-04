@@ -1,0 +1,12 @@
+{
+  "pearl": { "image": "01a10875-2af2-700c-bf3f-ffdf7009c8fb", "model": "01a10876-ba85-7659-a522-a3a7a719ede5" },
+  "navy": { "image": "01a10875-2bb0-7227-b427-ab3d9209e309", "model": "01a10876-bdbf-7511-9fcf-3d5390ee2338" },
+  "ghost": { "image": "01a10875-2c26-7589-aa29-896a4c67b9ab", "model": "01a10876-c13a-75db-8f46-e7dcfe5c4e94" },
+  "kraken": { "image": "01a10875-2c94-762f-8e33-e3faa8fab7d2", "model": "01a10876-c3b8-712f-97fa-90f7c73d7199" },
+  "tentacle": { "image": "01a10875-2d04-76dc-9c95-3601ce92e374", "model": "01a10876-c60d-7360-acd0-32f439882858" },
+  "fort": { "image": "01a10875-2dba-70e8-b364-3526863ad193", "model": "01a10876-c8ab-7377-9a8c-0a0f9f890105" },
+  "skull": { "image": "01a10875-2e24-7281-84f0-49ec9ef37432", "model": "01a10876-cb8c-71f8-b7a6-85dea87bcb89" },
+  "port": { "image": "01a10875-2e8d-72f5-af07-48369bb2659d", "model": "01a10876-ce52-7760-b4e2-7389255eb9d9" },
+  "palms": { "image": "01a10875-2f14-7558-b5e5-f321f7f2c24a", "model": "01a10876-d0df-74db-b750-792ae396b37e" },
+  "chest": { "image": "01a10875-2fde-746c-b862-1e862d531a86", "model": "01a10876-d3a1-761e-ac77-0d6d7c678623" }
+}

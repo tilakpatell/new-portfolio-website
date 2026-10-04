@@ -101,7 +101,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           {homeFirst ? 'Next time the site opens on the home page.' : 'Prefer the plain site? Start on the home page next time'}
         </button>
         <p className="universe-credit">
-          Planet maps by{' '}
+          Planet maps and the Milky Way by{' '}
           <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
             Solar System Scope
           </a>{' '}
