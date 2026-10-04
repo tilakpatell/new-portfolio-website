@@ -697,6 +697,25 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     return m;
   });
 
+  // ── the hero's mark: a ring of portal green round their feet, a chevron on
+  // it where they aim, so they can be found in a crowd (and while they blink
+  // after a hit, or are gone mid-dash) ──
+  const markMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 1.6, 0.5), transparent: true, opacity: 0.85, toneMapped: false, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4 });
+  const ringGeo = new THREE.RingGeometry(0.66, 0.8, 48);
+  ringGeo.rotateX(-Math.PI / 2);
+  const chevron = new THREE.Shape();
+  chevron.moveTo(-0.26, 0);
+  chevron.lineTo(0, 0.36);
+  chevron.lineTo(0.26, 0);
+  chevron.lineTo(0, 0.12);
+  chevron.closePath();
+  const chevGeo = new THREE.ShapeGeometry(chevron);
+  chevGeo.rotateX(Math.PI / 2); // pointing along +z, the way the hero faces
+  chevGeo.translate(0, 0, 0.86);
+  const mark = new THREE.Group();
+  mark.add(new THREE.Mesh(ringGeo, markMat), new THREE.Mesh(chevGeo, markMat));
+  decals.add(mark);
+
   // ── the camera ──
   const look = new THREE.Vector3();
   let shake = 0;
@@ -795,6 +814,11 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     const blink = p.inv > 0 && p.dashT <= 0 && Math.floor(time * 16) % 2 === 0;
     pc.group.visible = p.dashT <= 0 && !blink && g.status !== 'travel';
     animate(pc, time, Math.min(1, speed / 5), 0);
+    mark.visible = g.status !== 'travel';
+    mark.position.set(p.x, 0.025, p.y);
+    mark.rotation.y = pc.group.rotation.y;
+    mark.scale.setScalar(1 + Math.sin(time * 3) * 0.03);
+    markMat.opacity = p.inv > 0 ? 0.45 + Math.abs(Math.sin(time * 14)) * 0.45 : 0.85;
     if (pc.gun?.userData.tip) {
       pc.gunFlash = Math.max(0, (pc.gunFlash ?? 0) - dt);
       pc.gun.userData.tip.scale.setScalar(0.05 * (1 + (pc.gunFlash > 0 ? 1.8 : 0)));
