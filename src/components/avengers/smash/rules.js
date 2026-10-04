@@ -56,7 +56,6 @@ export const UNLOCK = [
   ['barrier', 620],
   ['chariot', 820],
 ];
-const has = (d, kind) => UNLOCK.some(([k, at]) => k === kind && d >= at);
 
 // Chariot runs: the lane glows red for `warn` seconds, then burns for `burn`.
 export const CHARIOT = { warn: 1.5, burn: 0.55, reach: [-2, 30] };
