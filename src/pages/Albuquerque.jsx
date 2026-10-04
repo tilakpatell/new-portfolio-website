@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
+import HectorBell from '../components/albuquerque/HectorBell';
+import Cook from '../components/albuquerque/Cook';
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
@@ -160,6 +162,14 @@ export default function Albuquerque() {
         <div className="mt-8">
           <Cast />
         </div>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="cook-title">
+        <Cook />
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="hector-title">
+        <HectorBell />
       </section>
 
       <section className="shell relative z-10 grid items-start gap-10 py-12 md:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14" aria-labelledby="pollos-title">

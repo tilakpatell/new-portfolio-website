@@ -1946,3 +1946,27 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 .saul-big { font: 800 italic 2rem/1 Georgia, 'Times New Roman', serif; color: #c0392b; text-shadow: 1px 1px 0 #1b2a5a; }
 .saul-name { margin-top: 0.75rem; font-weight: 700; letter-spacing: 0.04em; }
 .saul-small { margin-top: 0.35rem; font-size: 0.8rem; color: #4b587f; }
+
+/* Albuquerque: Face Off, and the superlab */
+.hector-stage, .cook-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.hector-bell { transform-box: fill-box; transform-origin: 50% 0%; }
+.hector-bell[data-ring] { animation: bell-swing 0.45s ease; }
+@keyframes bell-swing { 25% { transform: rotate(-18deg); } 75% { transform: rotate(14deg); } }
+.hector-flash { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+.hector-stage[data-boom] .hector-flash { animation: hector-flash 0.9s ease-out forwards; }
+@keyframes hector-flash { 0% { opacity: 1; transform: scale(0.3); } 30% { opacity: 1; transform: scale(9); } 100% { opacity: 0; transform: scale(12); } }
+.hector-smoke { filter: blur(9px); }
+.hector-smoke circle { fill: #5f5f5f; opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+.hector-stage[data-boom] .hector-smoke circle { animation: smoke 2.4s ease-out calc(0.2s + var(--i) * 0.08s) forwards; }
+@keyframes smoke { 0% { opacity: 0.9; transform: scale(0.2); } 60% { opacity: 0.85; } 100% { opacity: 0.55; transform: scale(1.5); } }
+.hector-stage[data-boom] .hector { opacity: 0; transition: opacity 0.2s ease 0.4s; }
+.hector-stage[data-boom] .hector-sign { transform: rotate(8deg); transform-box: fill-box; transform-origin: 0 50%; }
+.hector-stage[data-boom] { animation: hulk-shake 0.4s ease 0.4s 2; }
+.gus { transition: transform 1.6s ease 0.2s; }
+.hector-stage[data-after] .gus { transform: translateX(150px); }
+.hector-stage[data-after] .gus-tie { animation: tie 0.6s ease 1.6s; transform-box: fill-box; transform-origin: 50% 0; }
+@keyframes tie { 50% { transform: scaleY(0.8) translateY(2px); } }
+.cook-stage[data-in] { box-shadow: 0 0 0 2px rgba(63, 174, 92, 0.6), var(--shadow-card); }
+.cook-blue { opacity: 0; transition: opacity 0.6s ease; }
+.cook-stage[data-done] .cook-blue { opacity: 1; filter: drop-shadow(0 0 6px #5ec8f0); }
+@media (prefers-reduced-motion: reduce) { .hector-stage[data-boom], .hector-bell[data-ring] { animation: none; } .gus { transition-duration: 0.01s; } }
