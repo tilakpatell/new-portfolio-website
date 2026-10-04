@@ -65,7 +65,7 @@ export function autopilot(g) {
   let want = 'vehicle';
   const standing = g.enemies.some((e) => e.alive && e.kind === 'vehicon' && e.state !== 'pass' && e.z > g.z + 4 && e.z - g.z < 60);
   if (boss) {
-    const jumper = boss.kind !== 'starscream';
+    const jumper = !ROLL.bosses[boss.kind].flyer;
     if (g.mode === 'robot') want = g.energon > (jumper ? 6 : 12) ? 'robot' : 'vehicle';
     else want = g.energon > 45 || (jumper && ['beam', 'wave'].includes(boss.attack?.type) && g.energon > ROLL.energon.toStand) ? 'robot' : 'vehicle';
     if (jumper && g.waves.length && g.energon > ROLL.energon.toStand) want = 'robot';
@@ -116,7 +116,7 @@ export function autopilot(g) {
       const mid = g.x + Math.sign(lx - g.x) * 3 * i;
       d += Math.max(0, laneDanger(g, mid, 10)) * 0.6;
     }
-    if (boss && boss.kind === 'starscream' && g.mode === 'robot') d += Math.abs(lx - boss.x) * 0.15;
+    if (boss && ROLL.bosses[boss.kind].flyer && g.mode === 'robot') d += Math.abs(lx - boss.x) * 0.15;
     if (!best || d < best.d) best = { x: lx, d };
   }
   // hold the lane unless another is clearly better

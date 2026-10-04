@@ -19,6 +19,8 @@ import { makeNoise } from '../../lib/paint';
 import { FORESTS, RANGES, SHEET, peaks, wood } from './mapData';
 import { STOPS } from './road';
 import { EMBER, FIRE, SMOKE, createParticles } from './kit';
+import { makeGollum, makeToyFigure, makeTreebeard, pose } from './mapFigures';
+import { CAST, HOBBIT_LINES } from './mapCast';
 
 const SCALE = 10;
 const P = (sx, sy) => [(sx - SHEET.w / 2) / SCALE, (sy - SHEET.h / 2) / SCALE];
@@ -59,88 +61,6 @@ function instanced(scene, geo, material, list, { shadow = true } = {}) {
   return m;
 }
 
-// ── the hobbits: big-headed toys, Frodo in his elven cloak, Sam with the pack ──
-function makeToyHobbit({ hair, coat, cloak, pack = false, ring = false }) {
-  const g = new THREE.Group();
-  const skin = mat(0xf1c9a0, { flatShading: false, roughness: 0.6 });
-  const feetMat = mat(0xd6a878, { flatShading: false });
-  const hairMat = mat(hair, { roughness: 0.9 });
-  const legs = [];
-  const arms = [];
-  const body = new THREE.Group();
-  body.position.y = 0.42;
-  g.add(body);
-  for (const s of [-1, 1]) {
-    const hip = new THREE.Group();
-    hip.position.set(0, 0.42, s * 0.12);
-    const leg = put(hip, new THREE.CylinderGeometry(0.075, 0.07, 0.34, 8), mat(0x6b4a2b), 0, -0.17, 0);
-    leg.castShadow = true;
-    const foot = put(hip, new THREE.SphereGeometry(0.12, 10, 8), feetMat, 0.06, -0.36, 0);
-    foot.scale.set(1.5, 0.55, 1);
-    // hairy feet
-    put(hip, new THREE.SphereGeometry(0.05, 6, 5), hairMat, 0.0, -0.3, 0, { shadow: false });
-    g.add(hip);
-    legs.push(hip);
-  }
-  // the body: shirt, waistcoat, and the cloak behind
-  put(body, new THREE.CylinderGeometry(0.18, 0.24, 0.5, 12), mat(0xf2ead8, { flatShading: false }), 0, 0.22, 0);
-  put(body, new THREE.CylinderGeometry(0.19, 0.245, 0.34, 12, 1, true), mat(coat, { side: THREE.DoubleSide }), 0, 0.17, 0);
-  const cape = put(body, new THREE.ConeGeometry(0.32, 0.72, 14, 1, true, Math.PI * 0.55, Math.PI * 0.9), mat(cloak, { side: THREE.DoubleSide }), 0, 0.2, 0);
-  cape.rotation.y = Math.PI;
-  put(body, new THREE.SphereGeometry(0.035, 6, 5), glow(0x7fcf6a, 1.4), 0.17, 0.44, 0, { shadow: false }); // the leaf brooch
-  if (ring) {
-    const r = put(body, new THREE.TorusGeometry(0.045, 0.012, 6, 16), glow(0xffd76a, 2.2), 0.2, 0.3, 0, { shadow: false });
-    r.rotation.y = Math.PI / 2;
-  }
-  if (pack) {
-    put(body, new THREE.BoxGeometry(0.26, 0.38, 0.36), mat(0x7a5a3a), -0.24, 0.32, 0);
-    const pan = put(body, new THREE.CylinderGeometry(0.12, 0.12, 0.03, 12), mat(0x3a3a3c, { metalness: 0.6, roughness: 0.4 }), -0.38, 0.36, 0);
-    pan.rotation.z = Math.PI / 2;
-    put(body, new THREE.CylinderGeometry(0.11, 0.11, 0.34, 10), mat(0x9a7a4a), -0.24, 0.56, 0).rotation.x = Math.PI / 2; // the bedroll
-  }
-  for (const s of [-1, 1]) {
-    const sh = new THREE.Group();
-    sh.position.set(0, 0.42, s * 0.22);
-    put(sh, new THREE.CylinderGeometry(0.05, 0.045, 0.3, 8), mat(0xf2ead8, { flatShading: false }), 0, -0.15, 0);
-    put(sh, new THREE.SphereGeometry(0.055, 8, 6), skin, 0, -0.32, 0);
-    body.add(sh);
-    arms.push(sh);
-  }
-  // the head: big, curly-haired, pointed ears
-  const head = new THREE.Group();
-  head.position.y = 0.78;
-  body.add(head);
-  put(head, new THREE.SphereGeometry(0.29, 18, 14), skin, 0, 0, 0);
-  for (const s of [-1, 1]) {
-    put(head, new THREE.SphereGeometry(0.035, 8, 6), mat(0x1b1410, { flatShading: false, roughness: 0.3 }), 0.255, 0.03, s * 0.1, { shadow: false });
-    const ear = put(head, new THREE.ConeGeometry(0.06, 0.16, 6), skin, -0.02, 0.06, s * 0.29, { shadow: false });
-    ear.rotation.x = s * 1.3;
-  }
-  const n = makeNoise(hair & 255);
-  for (let i = 0; i < 26; i++) {
-    const a = (i / 26) * Math.PI * 2;
-    const up = 0.15 + n(i, 1) * 0.8;
-    const x = Math.cos(a) * Math.sqrt(1 - up * up) * 0.27 - 0.04;
-    const z = Math.sin(a) * Math.sqrt(1 - up * up) * 0.29;
-    if (x > 0.12 && up < 0.55) continue; // the face
-    put(head, new THREE.SphereGeometry(0.085 + n(i, 3) * 0.04, 7, 6), hairMat, x, up * 0.29 + 0.03, z, { shadow: false });
-  }
-  g.traverse((o) => {
-    if (o.isMesh) o.castShadow = true;
-  });
-  return { group: g, body, head, legs, arms };
-}
-
-function walkPose(h, t, moving, speed = 1) {
-  const sw = moving ? Math.sin(t * 13 * speed) : 0;
-  h.legs[0].rotation.z = sw * 0.75;
-  h.legs[1].rotation.z = -sw * 0.75;
-  h.arms[0].rotation.z = -sw * 0.6;
-  h.arms[1].rotation.z = sw * 0.6;
-  h.body.position.y = 0.42 + (moving ? Math.abs(Math.cos(t * 13 * speed)) * 0.07 : Math.sin(t * 2) * 0.012);
-  h.head.rotation.y = moving ? 0 : Math.sin(t * 0.7) * 0.35;
-}
-
 // ── the road, as a path the hobbits can walk ──
 // where they stand at each stop: in front of its landmark, not inside it
 const STAND = { hobbiton: [-1.8, 1.5], bree: [0, 1.4], weathertop: [0, 2], rivendell: [0.8, 2.7], moria: [0, 2.3], lorien: [0.4, 1.9], 'black-gate': [0, 1.3], 'mount-doom': [-3.9, 1.1] };
@@ -149,16 +69,6 @@ const ROAD = STOPS.map((s) => {
   const [dx, dz] = STAND[s.id] || [0, 0];
   return new THREE.Vector3(x + dx, 0, z + dz);
 });
-const LEGS = ROAD.slice(1).map((p, i) => p.distanceTo(ROAD[i]));
-const AT = LEGS.reduce((acc, l) => [...acc, acc[acc.length - 1] + l], [0]); // distance to each stop
-const roadPoint = (d, out) => {
-  const D = Math.max(0, Math.min(AT[AT.length - 1], d));
-  let i = 0;
-  while (i < LEGS.length - 1 && AT[i + 1] < D) i += 1;
-  const k = LEGS[i] ? (D - AT[i]) / LEGS[i] : 0;
-  return out.copy(ROAD[i]).lerp(ROAD[i + 1], k);
-};
-export const stopIndex = (id) => Math.max(0, STOPS.findIndex((s) => s.id === id));
 
 export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
   const world = new THREE.Group();
@@ -457,66 +367,196 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
   const motes = createParticles(70, { ramp: [[0, 2, 1.9, 1.3, 0], [0.3, 2.2, 2, 1.4, 0.9], [1, 1, 0.9, 0.5, 0]], gravity: 0.05, drag: 1, swirl: 0.8 });
   scene.add(fire.mesh, bombs.mesh, smoke.mesh, wisps.mesh, motes.mesh);
 
-  // ── Frodo and Sam ──
-  const frodo = makeToyHobbit({ hair: 0x3a2214, coat: 0x8a3a2a, cloak: 0x5f6b48, ring: true });
-  const sam = makeToyHobbit({ hair: 0x8a5a2b, coat: 0xb8873a, cloak: 0x6a6448, pack: true });
+  // ── Frodo and Sam, and the people they meet ──
+  const roots = []; // what a tap can land on
+  const tag = (group, id) => {
+    group.userData.who = id;
+    roots.push(group);
+    return group;
+  };
+  const frodo = makeToyFigure({ hair: 0x3a2214, coat: 0x8a3a2a, cloak: 0x5f6b48, ring: true, seed: 1 });
+  const sam = makeToyFigure({ hair: 0x8a5a2b, coat: 0xb8873a, cloak: 0x6a6448, pack: true, seed: 2 });
   frodo.group.scale.setScalar(1.9);
   sam.group.scale.setScalar(1.8);
-  scene.add(frodo.group, sam.group);
-  let saved = 0;
-  try {
-    saved = Number(window.sessionStorage.getItem('tp-me-frodo')) || 0;
-  } catch {
-    /* no storage: Hobbiton */
-  }
-  const H = { d: AT[Math.min(saved, AT.length - 1)], from: 0, to: 0, t: 0, dur: 0, moving: false, face: 0 };
-  const tmp = new THREE.Vector3();
-  const tmp2 = new THREE.Vector3();
-  const place = (stop) => {
-    H.d = AT[Math.max(0, Math.min(AT.length - 1, stop))];
-    H.moving = false;
+  scene.add(tag(frodo.group, 'frodo'), tag(sam.group, 'sam'));
+  const top = (g) => new THREE.Box3().setFromObject(g).max.y;
+  const people = CAST.map((c) => {
+    const f = c.kind === 'ent' ? makeTreebeard() : c.kind === 'gollum' ? makeGollum() : makeToyFigure(c.look);
+    const [x, z] = P(...c.at);
+    f.group.scale.setScalar(c.kind === 'ent' ? 1.45 : 1.8);
+    f.group.position.set(x, 0, z);
+    const face = Math.PI * 0.5 + R(0.6); // towards the viewer, more or less
+    f.group.rotation.y = face;
+    scene.add(tag(f.group, c.id));
+    return { c, f, face, home: face, wave: 0, talk: 0, greeted: false, line: 0, top: top(f.group) };
+  });
+  const hobbitTop = top(frodo.group) + 0.1;
+  const lines = { frodo: 0, sam: 0 };
+
+  // what happens on the map, for the page: someone says something
+  const heard = new Set();
+  const emit = (e) => heard.forEach((f) => f(e));
+  const say = (id) => {
+    const p = people.find((q) => q.c.id === id);
+    if (p) {
+      p.wave = 1;
+      p.talk = 1;
+      const line = p.c.lines[p.line % p.c.lines.length];
+      p.line += 1;
+      emit({ type: 'talk', id, name: p.c.name, line });
+      return;
+    }
+    if (HOBBIT_LINES[id]) {
+      const line = HOBBIT_LINES[id][lines[id] % HOBBIT_LINES[id].length];
+      lines[id] += 1;
+      (id === 'frodo' ? frodoTalk : samTalk).v = 1;
+      emit({ type: 'talk', id, name: id === 'frodo' ? 'Frodo Baggins' : 'Samwise Gamgee', line });
+    }
   };
-  // Send them to a stop; says how long the walk will take, in ms.
-  const walkTo = (stop) => {
-    const to = AT[Math.max(0, Math.min(AT.length - 1, stop))];
-    const dist = Math.abs(to - H.d);
+  const frodoTalk = { v: 0 };
+  const samTalk = { v: 0 };
+
+  // where they are: free on the map, or walking a path (a list of points)
+  const LIMIT = { x: SHEET.w / SCALE / 2 - 2, z: SHEET.h / SCALE / 2 - 2 };
+  const H = { x: ROAD[0].x, z: ROAD[0].z, path: [], speed: 8, face: 0, moving: false, drive: [0, 0] };
+  try {
+    const kept = JSON.parse(window.sessionStorage.getItem('tp-me-frodo') || 'null');
+    if (kept && Number.isFinite(kept.x)) Object.assign(H, { x: kept.x, z: kept.z });
+    else if (Number.isFinite(kept)) Object.assign(H, { x: ROAD[Math.min(kept, ROAD.length - 1)].x, z: ROAD[Math.min(kept, ROAD.length - 1)].z });
+  } catch {
+    /* Hobbiton */
+  }
+  const Sam = { x: H.x - 0.95, z: H.z + 0.8, face: 0, moving: false };
+  const keep = () => {
     try {
-      window.sessionStorage.setItem('tp-me-frodo', String(stop));
+      window.sessionStorage.setItem('tp-me-frodo', JSON.stringify({ x: H.x, z: H.z }));
     } catch {
       /* fine */
     }
-    if (dist < 0.1) return 0;
-    H.from = H.d;
-    H.to = to;
-    H.t = 0;
-    H.dur = reduced ? 0.01 : Math.min(2.8, Math.max(0.9, dist / 22));
-    H.moving = true;
-    return H.dur * 1000;
+  };
+  const nearestStop = () => {
+    let best = 0;
+    ROAD.forEach((p, i) => {
+      if (Math.hypot(p.x - H.x, p.z - H.z) < Math.hypot(ROAD[best].x - H.x, ROAD[best].z - H.z)) best = i;
+    });
+    return best;
+  };
+  const pathLength = (pts) => pts.reduce((sum, p, i) => sum + Math.hypot(p.x - (i ? pts[i - 1].x : H.x), p.z - (i ? pts[i - 1].z : H.z)), 0);
+  // Down the road to a stop, hurrying; says how long it will take, in ms.
+  const walkTo = (stop) => {
+    const to = Math.max(0, Math.min(ROAD.length - 1, stop));
+    const from = nearestStop();
+    const pts = [];
+    const step = to >= from ? 1 : -1;
+    for (let i = from; i !== to + step; i += step) pts.push({ x: ROAD[i].x, z: ROAD[i].z });
+    const len = pathLength(pts);
+    if (len < 0.1) return 0;
+    H.path = pts;
+    H.drive = [0, 0];
+    H.speed = reduced ? 1e4 : Math.max(9, len / 2.8);
+    return (len / H.speed) * 1000;
+  };
+  // Straight across the map to a point.
+  const walkToPoint = (x, z) => {
+    H.path = [{ x: Math.max(-LIMIT.x, Math.min(LIMIT.x, x)), z: Math.max(-LIMIT.z, Math.min(LIMIT.z, z)) }];
+    H.drive = [0, 0];
+    H.speed = 8;
+  };
+  const place = (stop) => {
+    const p = ROAD[Math.max(0, Math.min(ROAD.length - 1, stop))];
+    H.x = p.x;
+    H.z = p.z;
+    H.path = [];
+    keep();
+  };
+  // Steering, from the keys: a direction on the map, or [0, 0] to stop.
+  const drive = (dx, dz) => {
+    H.drive = [dx, dz];
+    if (dx || dz) H.path = [];
+  };
+  const ray = new THREE.Raycaster();
+  const pick = (raycaster) => {
+    const hit = raycaster.intersectObjects(roots, true)[0];
+    let o = hit?.object;
+    while (o && !o.userData.who) o = o.parent;
+    return o?.userData.who || null;
+  };
+  const headOf = (id, out) => {
+    if (id === 'frodo') return out.set(H.x, hobbitTop, H.z);
+    if (id === 'sam') return out.set(Sam.x, hobbitTop, Sam.z);
+    const p = people.find((q) => q.c.id === id);
+    return p ? out.set(p.f.group.position.x, p.top + 0.2, p.f.group.position.z) : null;
   };
 
   const S = { erupt: 3, shake: 0, flare: 0 };
   const update = (dt, t, { night = 0 } = {}) => {
-    // the hobbits
-    if (H.moving) {
-      H.t += dt / H.dur;
-      const k = Math.min(1, H.t);
-      const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
-      H.d = H.from + (H.to - H.from) * e;
-      if (k >= 1) H.moving = false;
+    // Frodo: steered, or walking his path
+    const wasMoving = H.moving;
+    let vx = 0;
+    let vz = 0;
+    if (H.drive[0] || H.drive[1]) {
+      const l = Math.hypot(H.drive[0], H.drive[1]);
+      vx = (H.drive[0] / l) * 7;
+      vz = (H.drive[1] / l) * 7;
+    } else if (H.path.length) {
+      const p = H.path[0];
+      const dx = p.x - H.x;
+      const dz = p.z - H.z;
+      const d = Math.hypot(dx, dz);
+      const stepLen = H.speed * dt;
+      if (d <= stepLen) {
+        H.x = p.x;
+        H.z = p.z;
+        H.path.shift();
+      } else {
+        vx = (dx / d) * H.speed;
+        vz = (dz / d) * H.speed;
+      }
     }
-    const dir = H.to >= H.from ? 1 : -1;
-    roadPoint(H.d, tmp);
-    roadPoint(H.d + dir * 0.6, tmp2);
-    const want = Math.atan2(-(tmp2.z - tmp.z), tmp2.x - tmp.x);
-    if (H.moving) H.face = want;
-    frodo.group.position.copy(tmp);
+    H.x = Math.max(-LIMIT.x, Math.min(LIMIT.x, H.x + vx * dt));
+    H.z = Math.max(-LIMIT.z, Math.min(LIMIT.z, H.z + vz * dt));
+    H.moving = Boolean(vx || vz || H.path.length);
+    if (vx || vz) H.face = Math.atan2(-vz, vx);
+    if (wasMoving && !H.moving) keep();
+    frodo.group.position.set(H.x, 0, H.z);
     frodo.group.rotation.y = H.face;
-    roadPoint(H.d - dir * 1.7, tmp2);
-    sam.group.position.copy(tmp2);
-    if (!H.moving) sam.group.position.set(frodo.group.position.x - 0.95, 0, frodo.group.position.z + 0.8);
-    sam.group.rotation.y = H.face;
-    walkPose(frodo, t, H.moving, 1);
-    walkPose(sam, t + 0.4, H.moving, 1);
+    // Sam keeps up, a little behind
+    {
+      const dx = H.x - Sam.x;
+      const dz = H.z - Sam.z;
+      const d = Math.hypot(dx, dz);
+      const gap = 1.5;
+      Sam.moving = d > gap + 0.05;
+      if (Sam.moving) {
+        const go = Math.min(d - gap, Math.max(7, H.speed) * dt * 1.05);
+        Sam.x += (dx / d) * go;
+        Sam.z += (dz / d) * go;
+        Sam.face = Math.atan2(-dz, dx);
+      }
+      sam.group.position.set(Sam.x, 0, Sam.z);
+      sam.group.rotation.y = Sam.face;
+    }
+    frodoTalk.v = Math.max(0, frodoTalk.v - dt * 0.4);
+    samTalk.v = Math.max(0, samTalk.v - dt * 0.4);
+    pose(frodo, t, { moving: H.moving, speed: H.speed > 9 ? 1.3 : 1, talk: frodoTalk.v });
+    pose(sam, t + 0.4, { moving: Sam.moving, speed: H.speed > 9 ? 1.3 : 1, talk: samTalk.v });
+
+    // the people: they turn to Frodo as he comes by, wave, and say their piece
+    for (const p of people) {
+      const g = p.f.group;
+      const d = Math.hypot(H.x - g.position.x, H.z - g.position.z);
+      if (d < 2.8 && !p.greeted) {
+        p.greeted = true;
+        say(p.c.id);
+      } else if (d > 4.5) p.greeted = false;
+      const want = d < 5 ? Math.atan2(-(H.z - g.position.z), H.x - g.position.x) : p.home;
+      let diff = want - g.rotation.y;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      g.rotation.y += diff * Math.min(1, dt * 3);
+      p.wave = Math.max(0, p.wave - dt * 0.35);
+      p.talk = Math.max(0, p.talk - dt * 0.3);
+      pose(p.f, t + p.face * 3, { wave: Math.min(1, p.wave * 2), talk: p.talk });
+    }
 
     // Rivendell's falls, Minas Tirith's banner, Moria's lines, the Eye
     for (const f of falls) {
@@ -583,7 +623,17 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
   return {
     update,
     walkTo,
+    walkToPoint,
+    drive,
     place,
+    say,
+    pick,
+    headOf,
+    on(f) {
+      heard.add(f);
+      return () => heard.delete(f);
+    },
+    ray,
     get frodo() {
       return frodo.group.position;
     },

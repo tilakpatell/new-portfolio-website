@@ -134,6 +134,51 @@ export const PHOTOS = {
       "title": "Magens Bay, St. Thomas, USVI"
     }
   },
+  "potc-wallilabou": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.5,
+    "alt": "A calm green bay ringed with palms and wooded hills, low buildings and a jetty at the water’s edge, a sailing boat moored to one side",
+    "credit": {
+      "author": "Waielbi",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Saint-Vincent_Wallilabou_Bay.jpg",
+      "title": "Saint-Vincent Wallilabou Bay"
+    }
+  },
+  "potc-port-royal": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "A long red-brick fort wall with arched gun ports, seen across a field of tall pale grass under a blue sky",
+    "credit": {
+      "author": "Raychristofer",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Fort_Port_Royal_Jamaica.JPG",
+      "title": "Fort Port Royal Jamaica"
+    }
+  },
+  "potc-indian-river": {
+    "widths": [
+      640,
+      1280
+    ],
+    "ratio": 0.75,
+    "alt": "A still river between banks of palms and thick green growth, the clouds mirrored in the water",
+    "credit": {
+      "author": "(Hans Hillewaert)",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Indian_River_(Dominica).jpg",
+      "title": "Indian River (Dominica)"
+    }
+  },
   "cl": {
     "widths": [
       480,

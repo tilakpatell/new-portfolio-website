@@ -182,7 +182,7 @@ export function paintRoad({ size = 512, seed = 1, kind = 'desert' } = {}) {
 // The markings laid over a real asphalt (or iron) texture: worn lane dashes
 // and edge lines, tyre tracks, rumble strips, sand blown onto the shoulder;
 // in Kaon, energon strips that glow. Transparent everywhere else.
-export function paintLanes({ size = 512, seed = 1, kind = 'desert' } = {}) {
+export function paintLanes({ size = 512, seed = 1, kind = 'desert', glow: lineGlow = '#ff6a2a' } = {}) {
   const S = size;
   const n = makeNoise(seed);
   const col = new Uint8ClampedArray(S * S * 4);
@@ -190,7 +190,7 @@ export function paintLanes({ size = 512, seed = 1, kind = 'desert' } = {}) {
   const W = ROAD_TILE;
   const paint = kind === 'desert' ? rgb('#ece6d2') : rgb('#f4f4f0');
   const yellow = rgb('#e8b53a');
-  const energon = rgb('#ff6a2a');
+  const energon = rgb(lineGlow);
   const sand = rgb('#c99a64');
   for (let py = 0; py < S; py++) {
     for (let px = 0; px < S; px++) {
@@ -435,12 +435,14 @@ export function paintStrata({ size = 512, seed = 5, palette = 'desert' } = {}) {
   return finish(s, 3.5);
 }
 
-// The bottom of the canyon under a broken bridge: a river, or lava in Kaon.
+// The bottom of the canyon under a broken bridge: a river, lava in Kaon, or
+// a river of raw energon in Iacon.
 export function paintChasm({ size = 256, seed = 6, kind = 'desert' } = {}) {
   const s = surface(size);
   const n = makeNoise(seed);
   const S = size;
-  const lava = kind === 'kaon';
+  const lava = kind === 'kaon' || kind === 'energon';
+  const hot = kind === 'energon' ? [[40, 190, 255], [12, 26, 44], [80, 210, 255]] : [[255, 110, 20], [40, 22, 18], [255, 120, 30]];
   for (let py = 0; py < S; py++) {
     for (let px = 0; px < S; px++) {
       const i = py * S + px;
@@ -449,9 +451,9 @@ export function paintChasm({ size = 256, seed = 6, kind = 'desert' } = {}) {
       const f = fbm(n, u * 4, v * 4, { period: 4, octaves: 5 });
       if (lava) {
         const crust = smooth(0.45, 0.62, f);
-        const col = [mix(255, 40, crust), mix(110, 22, crust), mix(20, 18, crust)];
+        const col = [mix(hot[0][0], hot[1][0], crust), mix(hot[0][1], hot[1][1], crust), mix(hot[0][2], hot[1][2], crust)];
         put(s, i, col);
-        glow(s, i, [255, 120, 30], 1 - crust);
+        glow(s, i, hot[2], 1 - crust);
         s.hgt[i] = crust;
         s.rgh[i] = mix(0.4, 0.95, crust);
       } else {

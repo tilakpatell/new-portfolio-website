@@ -17,6 +17,7 @@ const cinzel = both(
   () => import('@fontsource/cinzel/700.css'),
   () => import('@fontsource/cinzel-decorative/700.css'),
 );
+const pirate = () => import('../components/caribbean/fonts.css');
 const orbitron = both(
   () => import('@fontsource/orbitron/600.css'),
   () => import('@fontsource/orbitron/800.css'),
@@ -31,6 +32,9 @@ const THEME_FONTS = {
   ),
   arcade: () => import('@fontsource/press-start-2p/400.css'),
   raga: () => import('@fontsource/yatra-one/400.css'),
+  tortuga: pirate,
+  pearl: pirate,
+  dutchman: pirate,
   shire: cinzel,
   mordor: cinzel,
   optimus: orbitron,

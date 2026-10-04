@@ -1906,27 +1906,37 @@ html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
 .gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #22c98a 22%, transparent); }
 @media (max-width: 639px) { .gbr-hold { width: 100%; min-height: 3.25rem; } .gbr-hud { font-size: 0.7rem; left: 0.5rem; top: 0.5rem; } .gbr-card { padding: 0.8rem 0.9rem 0.9rem; } .gbr-card-text { font-size: 0.8rem; } }
 @media (prefers-reduced-motion: reduce) { .gbr-stage[data-open] .gbr-vortex::before { animation: none; } }
+/* the Decepticons' space bridge: the same vortex, in purple and violet */
+.gbr[data-side='decepticon'] .gbr-ring { border-color: rgba(206, 170, 255, 0.5); }
+.gbr[data-side='decepticon'] .gbr-vortex { box-shadow: 0 0 22px 6px rgba(150, 82, 255, 0.6), inset 0 0 18px rgba(255, 255, 255, 0.6); }
+.gbr[data-side='decepticon'] .gbr-vortex::before { background: repeating-conic-gradient(from 0deg, #b77bff 0deg 22deg, #4a1c8c 22deg 50deg, #ead9ff 50deg 64deg, #6b2fa0 64deg 90deg); }
+.gbr[data-side='decepticon'] .gbr-vortex::after { background: radial-gradient(closest-side, #fbf6ff 0%, rgba(214, 180, 255, 0.85) 22%, rgba(139, 77, 255, 0.25) 55%, rgba(58, 18, 104, 0.55) 100%); }
+.gbr[data-side='decepticon'] .gbr-hud b { color: #d6b8ff; }
+.gbr[data-side='decepticon'] .gbr-card { border-color: rgba(190, 150, 255, 0.4); }
+.gbr[data-side='decepticon'] .gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #8b4dff 24%, transparent); }
 
 /* The Iacon database: a console, the glyphs, the key, and the vault */
-.iacon { display: grid; gap: 1.5rem; }
+.iacon { --iacon-ok: #22c98a; --iacon-rival: linear-gradient(90deg, #7b3fe4, #ff4d6d); display: grid; gap: 1.5rem; }
+/* for the Decepticons: relics in purple, and Teletraan-1 decrypting in Autobot red and blue */
+.iacon[data-side='decepticon'] { --iacon-ok: #8b4dff; --iacon-rival: linear-gradient(90deg, #1f4fa8, #c8102e); }
 @media (min-width: 1024px) { .iacon { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; } }
 .iacon-console { padding: clamp(1.1rem, 0.9rem + 1vw, 1.75rem); }
 .iacon-bar { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
 .iacon-body { padding-top: 1.25rem; }
 .iacon-glyphs { min-height: 1.3em; font-family: 'Cybertron Script', var(--font-mono); font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3rem); line-height: 1.25; letter-spacing: 0.04em; color: var(--accent-text); overflow-wrap: anywhere; }
 .iacon-decrypt { height: 6px; margin-top: 1rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); }
-.iacon-decrypt span { display: block; height: 100%; background: linear-gradient(90deg, #7b3fe4, #ff4d6d); transform-origin: left; transition: transform 0.1s linear; }
+.iacon-decrypt span { display: block; height: 100%; background: var(--iacon-rival); transform-origin: left; transition: transform 0.1s linear; }
 .iacon-options { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .iacon-option { min-height: 2.9rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: var(--r-btn, 10px); background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-align: left; line-height: 1.25; transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
 .iacon-option:hover:not(:disabled) { border-color: var(--accent); }
 .iacon-option:active:not(:disabled) { transform: translateY(1px); }
 .iacon-option[data-wrong] { opacity: 0.5; text-decoration: line-through; animation: iacon-shake 0.3s ease; }
-.iacon-option[data-right] { border-color: #22c98a; background: color-mix(in srgb, #22c98a 16%, var(--surface)); }
+.iacon-option[data-right] { border-color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 16%, var(--surface)); }
 .iacon-option:disabled:not([data-right]) { cursor: default; }
 @keyframes iacon-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 .iacon-result { min-height: 3.5rem; margin-top: 1rem; }
 .iacon-found { display: flex; gap: 0.85rem; align-items: flex-start; }
-.iacon-found-icon { flex: none; width: 40px; height: 40px; padding: 7px; border-radius: 10px; color: #22c98a; background: color-mix(in srgb, #22c98a 14%, transparent); }
+.iacon-found-icon { flex: none; width: 40px; height: 40px; padding: 7px; border-radius: 10px; color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 14%, transparent); }
 .iacon-keybar { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .iacon-key { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 0.4rem; margin-top: 0.85rem; }
 .iacon-key li { display: grid; place-items: center; gap: 0.1rem; padding: 0.35rem 0.2rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
@@ -1934,9 +1944,9 @@ html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
 .iacon-key-letter { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
 .iacon-relics { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
 .iacon-relic { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--muted); font-size: 0.85rem; line-height: 1.25; }
-.iacon-relic[data-have] { border-style: solid; border-color: color-mix(in srgb, #22c98a 55%, var(--border)); color: var(--text); background: color-mix(in srgb, #22c98a 8%, var(--surface)); }
+.iacon-relic[data-have] { border-style: solid; border-color: color-mix(in srgb, var(--iacon-ok) 55%, var(--border)); color: var(--text); background: color-mix(in srgb, var(--iacon-ok) 8%, var(--surface)); }
 .iacon-relic-icon { flex: none; width: 26px; height: 26px; }
-.iacon-relic[data-have] .iacon-relic-icon { color: #22c98a; }
+.iacon-relic[data-have] .iacon-relic-icon { color: var(--iacon-ok); }
 .iacon-relic-unknown { font-family: 'Cybertron Script', var(--font-mono); font-size: 1rem; letter-spacing: 0.03em; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .iacon-option[data-wrong] { animation: none; } }
 .office-gif { position: relative; }
@@ -2591,9 +2601,13 @@ html[data-mode='dark'] .me-atlas:not([data-hub]) canvas[data-flat] { filter: blu
 .me-hub-section { min-height: 100svh; }
 .me-hub { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: calc(var(--nav-h) + 28px) 0 28px; pointer-events: none; transition: opacity 0.6s ease; }
 .me-hub[data-hidden] { opacity: 0; transition: none; }
+.me-hub-head { transition: opacity 0.6s ease, translate 0.6s ease; }
+.me-hub[data-roam] .me-hub-head { opacity: 0; translate: 0 -12px; }
+.me-hub[data-roam] .me-hub-head > * { pointer-events: none; }
 .me-hub[data-leaving] { opacity: 0; transition-duration: 0.4s; }
 .me-hub-head, .me-hub-foot { position: relative; z-index: 2; }
 .me-hub-head > *, .me-hub-foot > * { pointer-events: auto; }
+.me-hub-head > p, .me-hub-head > h1, .me-hint { pointer-events: none; }
 .me-hub-head { width: 100%; }
 @media (min-width: 1024px) {
   .me-hub-head { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
@@ -2609,8 +2623,22 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-hub-lead { margin-top: 0.9rem; max-width: 34ch; font-size: 1.06rem; line-height: 1.55; color: var(--me-ink-soft); }
 
 .me-pins { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; }
-.me-areas[data-area] { cursor: pointer; }
+.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
+.me-areas:active { cursor: grabbing; }
+.me-areas[data-area], .me-areas[data-who='true'] { cursor: pointer; }
+
+/* someone on the map speaks: a bubble over their head */
+.me-bubble { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; will-change: transform; }
+.me-bubble > div { position: absolute; left: 0; bottom: 12px; translate: -50% 0; display: grid; gap: 0.2rem; width: max-content; max-width: min(19rem, 80vw); padding: 0.65rem 0.85rem 0.7rem; border-radius: 16px; background: var(--me-veil); color: var(--me-ink); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; transform-origin: 50% 100%; }
+.me-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; translate: -50% 0; rotate: 45deg; background: inherit; border-radius: 3px; }
+.me-bubble b { font: 700 0.8rem/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; color: var(--me-wax); }
+.me-bubble span { font-size: 0.95rem; line-height: 1.4; }
+@keyframes me-bubble-in { from { opacity: 0; scale: 0.6; } }
+/* Frodo is at a place: go in */
+.me-prompt { position: fixed; left: 0; top: 0; z-index: 3; will-change: transform; }
+.me-prompt .btn { position: absolute; left: 0; bottom: 0; translate: -50% 0; white-space: nowrap; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+.me-prompt kbd { margin-left: 0.35rem; padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font-size: 0.72rem; opacity: 0.8; }
+.me-hint { width: 100%; margin: 0 0 0.25rem; font-size: 0.8rem; color: var(--me-ink-soft); }
 .me-hub[data-leaving] .me-areas, .me-hub[data-hidden] .me-areas { pointer-events: none; }
 .me-pin { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; will-change: transform; animation: me-pin-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(0.25s + var(--i) * 0.09s); }
 .me-hub[data-hidden] .me-pin { animation: none; opacity: 0; }
@@ -2658,10 +2686,14 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-onward-card { max-width: 40rem; padding: 1.6rem 1.75rem; border: 1px solid var(--border); border-radius: var(--r-card); background: color-mix(in srgb, var(--surface, var(--bg)) 82%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-card); }
 @media (max-width: 639px) {
   .me-pin-label b { font-size: 0.86rem; }
-  .me-route { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  .me-route li + li::before { display: none; }
-  .me-route li:last-child { grid-column: 1 / -1; }
-  .me-route button { width: 100%; min-height: 42px; }
+  .me-route { flex-wrap: nowrap; width: calc(100% + 2.5rem); margin: 0 -1.25rem; padding: 0.2rem 1.25rem; overflow-x: auto; scrollbar-width: none; }
+  .me-route::-webkit-scrollbar { display: none; }
+  .me-route li + li::before { width: 0.6rem; }
+  .me-route button { min-height: 40px; white-space: nowrap; }
+  .me-hint { font-size: 0.74rem; }
+  .me-hub-title { font-size: 2rem; }
+  .me-hub-lead { font-size: 0.95rem; }
+  .me-hub-foot { gap: 0.6rem; }
   .me-hub-head::before { inset: -3rem -1rem; width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .me-pin, .me-pin-dot::after { animation: none; } .me-atlas canvas { transition: none; } }
