@@ -1342,6 +1342,69 @@ function decodeRaw(acIn, destIn, when = 0) {
   return 0.45;
 }
 
+// ── Heritage ────────────────────────────────────────────────────────────────
+// A temple bell (ghanta): bright metal, partials that aren't quite harmonic,
+// two close tones beating against each other, and a long ring.
+function ghantaRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.35, 0.5);
+  const f0 = 587;
+  [
+    [1, 0.3, 3.2],
+    [1.006, 0.22, 3.0],
+    [2.32, 0.12, 2.1],
+    [3.86, 0.07, 1.4],
+    [5.43, 0.04, 0.9],
+  ].forEach(([mul, level, decay]) => {
+    const o = ac.createOscillator();
+    o.frequency.value = f0 * mul;
+    const g = ac.createGain();
+    env(g.gain, t, [[0, 0.0001], [0.004, level, 'lin'], [decay, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + decay + 0.05);
+  });
+  const strike = noiseSource(ac, 'white', 1);
+  const sf = ac.createBiquadFilter();
+  sf.type = 'highpass';
+  sf.frequency.value = 3000;
+  const sg = ac.createGain();
+  env(sg.gain, t, [[0, 0.0001], [0.002, 0.18, 'lin'], [0.04, 0.0001]]);
+  strike.connect(sf).connect(sg).connect(out);
+  strike.start(t);
+  strike.stop(t + 0.05);
+  return 3.2;
+}
+
+// A lamp set down on water: a soft drop and a little shimmer.
+function plopRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.45);
+  const o = ac.createOscillator();
+  env(o.frequency, t, [[0, 520], [0.12, 180]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.01, 0.28, 'lin'], [0.16, 0.0001]]);
+  o.connect(g).connect(out);
+  o.start(t);
+  o.stop(t + 0.2);
+  [1568, 2093, 2637].forEach((hz, i) => {
+    const s = ac.createOscillator();
+    s.type = 'triangle';
+    s.frequency.value = hz;
+    const sg = ac.createGain();
+    const at = t + 0.08 + i * 0.07;
+    env(sg.gain, at, [[0, 0.0001], [0.005, 0.05, 'lin'], [0.5, 0.0001]]);
+    s.connect(sg).connect(out);
+    s.start(at);
+    s.stop(at + 0.55);
+  });
+  return 0.8;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1375,3 +1438,5 @@ export const zip = once('zip', zipRaw);
 export const alarm = once('alarm', alarmRaw);
 export const buzz = once('buzz', buzzRaw);
 export const decode = once('decode', decodeRaw);
+export const ghanta = once('ghanta', ghantaRaw);
+export const plop = once('plop', plopRaw);
