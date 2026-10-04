@@ -6,15 +6,17 @@
 // the universe. Pure data: the overlay offers them and the scene builds the
 // one picked (./vehicles/<id>.js).
 //
-// `go` is the button that launches; `lines` are said in the cockpit, in
-// turn, [speaker, text, clip?] as in the universe's crews (lib/clips.js);
-// `ship` is the universe map's ship it is (universe/crews.js), if any.
+// `seat` says who you are; `go` is the button that launches; `lines` are
+// said in the cockpit, [speaker, text, clip?] as in the universe's crews
+// (lib/clips.js); `ship` is the universe map's ship it is
+// (universe/crews.js), if any.
 
 export const VEHICLES = [
   {
     id: 'falcon',
     name: 'The Millennium Falcon',
     short: 'Falcon',
+    seat: 'You’re in Han’s seat',
     crew: 'with Chewie',
     face: 'chewie',
     go: 'Punch it',
@@ -29,6 +31,7 @@ export const VEHICLES = [
     id: 'xwing',
     name: 'Red Five, an X-wing',
     short: 'X-wing',
+    seat: 'You’re Luke',
     crew: 'with Artoo',
     face: 'r2',
     go: 'Lightspeed',
@@ -43,13 +46,14 @@ export const VEHICLES = [
     id: 'cruiser',
     name: 'Rick’s space cruiser',
     short: 'Cruiser',
-    crew: 'with Rick',
-    face: 'rick',
+    seat: 'You’re Rick',
+    crew: 'with Morty',
+    face: 'morty',
     go: 'Portal',
     going: 'Through the portal',
     ship: 'cruiser',
     lines: {
-      board: [['rick', 'You’re driving. Don’t make it weird.']],
+      board: [['morty', 'Aw geez, Rick, you’re driving? You’ve been drinking all day!']],
       launch: [['rick', 'Wubba lubba dub dub!', 'wubba']],
     },
   },
@@ -57,6 +61,7 @@ export const VEHICLES = [
     id: 'rv',
     name: 'The RV',
     short: 'RV',
+    seat: 'You’re at the wheel',
     crew: 'with Jesse and Mr. White',
     face: null,
     go: 'Hit the road',

@@ -1,13 +1,16 @@
-// Rick's space cruiser, the classic one, from the driver's seat (Rick rides
-// beside you, on the right). Drawn the way the show draws it: flat colour in
-// two or three steps of light and a dark ink line round everything. The
-// grey hood runs away in front of you with its two orange stripes and the
-// headlights up on their stalks, under the bubble of the glass dome; on the
-// dash, a wheel, a few big knobs, a little screen of Rick's squiggles, a
-// can in the holder and a hank of wires. You're hovering over the street
-// outside the Smiths' house at dusk. Going: Rick raises the portal gun and
-// fires, the portal opens in the air ahead, you floor it, the houses stream
-// past, the swirl fills the glass, and the green flash.
+// Rick's space cruiser, the classic one: you're Rick, at the wheel, and
+// Morty rides beside you. Drawn the way the show draws it: flat colours with
+// barely a shadow, and a bold dark ink line round everything (Morty's own
+// texture is snapped to his flat colours, so he looks drawn, not painted).
+// Your arms are Rick's, in the lab coat's sleeves: the left hand on the
+// wheel, the right holding the portal gun. The grey hood runs away in front
+// of you with its two orange stripes and the headlights up on their stalks,
+// under the bubble of the glass dome; on the dash, a few big knobs, a little
+// screen of squiggles, a can in the holder and a hank of wires. You're
+// hovering over the street outside the Smiths' house at dusk. Going: you
+// raise the portal gun and fire, the portal opens in the air ahead, Morty
+// panics, you floor it, the houses stream past, the swirl fills the glass,
+// and the green flash.
 //
 // The cruiser's floor is y = 0, its nose down −z; units are metres.
 
@@ -15,8 +18,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createMeshyCast } from '../../rickmorty/portal/meshyCast';
-import { portalGun } from '../../rickmorty/portal/cast';
-import { toon, toonify } from '../../rickmorty/portal/toon';
+import { toonify } from '../../rickmorty/portal/toon';
 import { SWIRL_GLSL } from '../../rickmorty/swirl';
 import { glowSprite, rng, roundedBox, screen, tubeAlong } from '../kit';
 import { clamp01, smooth } from '../timeline';
@@ -28,8 +30,15 @@ const PORTAL_Z = -38; // where the portal opens, ahead
 const KENNEY = '/games/kenney';
 const MODELS = '/games/models';
 
+// Morty's colours, as the show paints him (his texture is snapped to these)
+const MORTY = ['#f6c0a0', '#f4ec6c', '#f1f5f7', '#2a5b86', '#6a4416', '#e9a184'];
+// Rick's, for your own arms
+const COAT = 0xe6eaec;
+const SHIRT = 0x9fd0e6;
+const SKIN = 0xf0d6bf;
+
 export function prefetch() {
-  for (const f of ['/games/meshy/rick.glb', '/games/meshy/rick-sit.glb', '/games/meshy/rick-walk.glb', `${KENNEY}/house-a.glb`, `${KENNEY}/house-c.glb`, `${KENNEY}/house-f.glb`, `${KENNEY}/house-k.glb`, `${KENNEY}/oak.glb`])
+  for (const f of ['/games/meshy/morty.glb', '/games/meshy/morty-sit.glb', '/games/meshy/morty-walk.glb', `${KENNEY}/house-a.glb`, `${KENNEY}/house-c.glb`, `${KENNEY}/house-f.glb`, `${KENNEY}/house-k.glb`, `${KENNEY}/oak.glb`])
     fetch(f).catch(() => {});
 }
 
@@ -64,17 +73,166 @@ function ink(root, width, { skip = () => false } = {}) {
       h = new THREE.SkinnedMesh(o.geometry, mat);
       h.bind(o.skeleton, o.bindMatrix);
       h.bindMode = o.bindMode;
-    } else h = new THREE.Mesh(o.geometry, mat);
+    } else h = new THREE.Mesh(inkShape(o.geometry), mat);
     h.userData.ink = true;
-    h.userData.shared = true; // the geometry is the mesh's own
     h.frustumCulled = false;
-    h.position.copy(o.position);
-    h.quaternion.copy(o.quaternion);
-    h.scale.copy(o.scale);
     h.renderOrder = o.renderOrder;
-    o.parent.add(h);
+    // a child of its mesh, so it moves with it
+    o.add(h);
   }
   return mat;
+}
+
+// The line round a hard-edged shape (a box's faces each have their own
+// normals at its corners) would split open at the edges: it's drawn from a
+// copy whose normals are averaged where points meet, so it stays whole.
+const inked = new WeakMap();
+function inkShape(geo) {
+  if (inked.has(geo)) return inked.get(geo);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', geo.attributes.position);
+  if (geo.index) g.setIndex(geo.index);
+  const pos = geo.attributes.position;
+  const key = (i) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  const sum = new Map();
+  const nrm = geo.attributes.normal;
+  for (let i = 0; i < pos.count; i++) {
+    const k = key(i);
+    const v = sum.get(k) ?? [0, 0, 0];
+    if (nrm) {
+      v[0] += nrm.getX(i);
+      v[1] += nrm.getY(i);
+      v[2] += nrm.getZ(i);
+    }
+    sum.set(k, v);
+  }
+  const out = new Float32Array(pos.count * 3);
+  const n = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    const v = sum.get(key(i));
+    n.set(v[0], v[1], v[2]).normalize();
+    out.set([n.x, n.y, n.z], i * 3);
+  }
+  g.setAttribute('normal', new THREE.BufferAttribute(out, 3));
+  inked.set(geo, g);
+  return g;
+}
+
+// The show's light: flat colour and one soft step of shadow, no more.
+let ramp = null;
+function flatRamp() {
+  if (ramp) return ramp;
+  ramp = new THREE.DataTexture(new Uint8Array([196, 196, 196, 255, 255, 255, 255, 255]), 2, 1, THREE.RGBAFormat);
+  ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+  ramp.generateMipmaps = false;
+  ramp.needsUpdate = true;
+  return ramp;
+}
+const cel = (color, extra = {}) => new THREE.MeshToonMaterial({ color, gradientMap: flatRamp(), ...extra });
+
+// A Meshy character's texture as a cel: every texel snapped to the nearest
+// of the show's colours for them (the darkest stay ink), so the soft paint
+// and smudges a generated texture has come out as clean flat shapes.
+function drawnSkin(map, palette) {
+  const m = cel(0xffffff, { map });
+  const pal = palette.map((c) => new THREE.Color(c));
+  m.onBeforeCompile = (s) => {
+    s.uniforms.uPal = { value: pal };
+    s.fragmentShader = s.fragmentShader.replace('void main() {', `uniform vec3 uPal[${pal.length}];\nvoid main() {`).replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+      {
+        vec3 c = sqrt(max(diffuseColor.rgb, 0.0));
+        vec3 best = uPal[0];
+        float bd = 1e9;
+        for (int i = 0; i < ${pal.length}; i++) {
+          vec3 d = c - sqrt(uPal[i]);
+          float e = dot(d, d);
+          if (e < bd) { bd = e; best = uPal[i]; }
+        }
+        float lum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb = lum < 0.025 ? vec3(0.008, 0.005, 0.012) : best;
+      }`,
+    );
+  };
+  m.customProgramCacheKey = () => `drawn-skin-${palette.join('')}`;
+  return m;
+}
+
+// Two bones, shoulder to wrist: where the elbow goes, bent towards `pole`.
+const _d = new THREE.Vector3();
+const _p = new THREE.Vector3();
+function elbow(S, W, a, b, pole, out) {
+  _d.subVectors(W, S);
+  const len = Math.min(a + b - 1e-3, Math.max(Math.abs(a - b) + 1e-3, _d.length()));
+  _d.normalize();
+  const x = (a * a - b * b + len * len) / (2 * len);
+  const h = Math.sqrt(Math.max(0, a * a - x * x));
+  _p.copy(pole).addScaledVector(_d, -pole.dot(_d)).normalize();
+  return out.copy(S).addScaledVector(_d, x).addScaledVector(_p, h);
+}
+
+// A length of sleeve between two points: a cylinder stood on its end, set
+// between them each frame.
+const UP = new THREE.Vector3(0, 1, 0);
+function setBetween(mesh, a, b) {
+  mesh.position.addVectors(a, b).multiplyScalar(0.5);
+  _d.subVectors(b, a);
+  mesh.scale.set(1, Math.max(0.001, _d.length()), 1);
+  mesh.quaternion.setFromUnitVectors(UP, _d.normalize());
+}
+
+// Rick's hand, a cartoon's: a palm, four fingers curled into a grip, and a
+// thumb; it reaches along +z from the wrist.
+function hand(skin) {
+  const g = new THREE.Group();
+  const palm = new THREE.Mesh(roundedBox(0.07, 0.03, 0.075, 0.012), skin);
+  palm.position.set(0, 0, 0.045);
+  g.add(palm);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(new THREE.CapsuleGeometry(0.0095, 0.03, 4, 8), skin);
+    f.rotation.x = Math.PI / 2 + 0.9;
+    f.position.set(-0.026 + i * 0.0175, -0.018, 0.088);
+    g.add(f);
+  }
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.03, 4, 8), skin);
+  thumb.rotation.set(Math.PI / 2, 0, -0.7);
+  thumb.position.set(-0.04, 0.008, 0.05);
+  g.add(thumb);
+  return g;
+}
+
+// Rick's portal gun, as the show draws it: a chunky grey-white body with a
+// grip, a round glass bulb of green fluid on top, the emitter at the front
+// with its green light, a dial on the side. Points along +z.
+function portalGun(m) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(roundedBox(0.058, 0.05, 0.13, 0.014), m.gun);
+  body.position.set(0, 0.03, 0.06);
+  const grip = new THREE.Mesh(roundedBox(0.034, 0.075, 0.038, 0.01), m.gunDark);
+  grip.position.set(0, -0.012, 0.012);
+  grip.rotation.x = -0.25;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.019, 0.04, 16), m.gunDark);
+  neck.rotation.x = Math.PI / 2;
+  neck.position.set(0, 0.03, 0.14);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 8, 20), m.gunDark);
+  lip.position.set(0, 0.03, 0.161);
+  const light = new THREE.Mesh(new THREE.CircleGeometry(0.014, 20), m.green);
+  light.position.set(0, 0.03, 0.163);
+  light.userData.noInk = true;
+  const fluid = new THREE.Mesh(new THREE.SphereGeometry(0.02, 18, 12), m.green);
+  fluid.position.set(0, 0.07, 0.07);
+  fluid.userData.noInk = true;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.025, 18, 12), m.bulb);
+  bulb.position.copy(fluid.position);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.012, 16), m.gunDark);
+  cap.position.set(0, 0.055, 0.07);
+  const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 16), m.gunDark);
+  dial.rotation.z = Math.PI / 2;
+  dial.position.set(-0.034, 0.035, 0.03);
+  g.add(body, grip, neck, lip, light, cap, fluid, bulb, dial);
+  g.userData.tip = light;
+  return g;
 }
 
 // the show's portal on a disc: `open` grows it from a point
@@ -150,21 +308,28 @@ export async function build({ rich, coarse }) {
 
   // ── the cruiser: toon materials ──
   const M = {
-    hull: toon(0xbcc4c9),
-    hullDark: toon(0x939ca3),
-    stripe: toon(0xf0a238),
-    dash: toon(0x6b737a),
-    dashTop: toon(0x585f66),
-    seat: toon(0x9a6440),
-    seatDark: toon(0x6e4429),
-    black: toon(0x2b2b33),
-    chrome: toon(0xdfe5e8),
-    red: toon(0xe0453a),
-    yellow: toon(0xf2d14a),
-    blue: toon(0x4a8fe0),
-    can: toon(0xd9d4c6),
-    lamp: toon(0xfff3b0, { emissive: new THREE.Color(0xfff0a0), emissiveIntensity: 1.4 }),
-    wire: [toon(0xe0453a), toon(0x3f8fd8), toon(0xf2d14a), toon(0x3a3a3a)],
+    hull: cel(0xbcc4c9),
+    hullDark: cel(0x939ca3),
+    stripe: cel(0xf0a238),
+    dash: cel(0x6b737a),
+    dashTop: cel(0x585f66),
+    seat: cel(0x9a6440),
+    seatDark: cel(0x6e4429),
+    black: cel(0x2b2b33),
+    chrome: cel(0xdfe5e8),
+    red: cel(0xe0453a),
+    yellow: cel(0xf2d14a),
+    blue: cel(0x4a8fe0),
+    can: cel(0xd9d4c6),
+    lamp: cel(0xfff3b0, { emissive: new THREE.Color(0xfff0a0), emissiveIntensity: 1.4 }),
+    coat: cel(COAT),
+    shirt: cel(SHIRT),
+    skin: cel(SKIN),
+    gun: cel(0xdfe6e8),
+    gunDark: cel(0x8d979e),
+    green: new THREE.MeshBasicMaterial({ color: 0x9dff5a, toneMapped: false }),
+    bulb: new THREE.MeshBasicMaterial({ color: 0xe6fff4, transparent: true, opacity: 0.28, depthWrite: false }),
+    wire: [cel(0xe0453a), cel(0x3f8fd8), cel(0xf2d14a), cel(0x3a3a3a)],
   };
   Object.values(M)
     .flat()
@@ -194,7 +359,7 @@ export async function build({ rich, coarse }) {
   rim.position.set(0, 0.97, 0.12);
   ship.add(rim);
   // the inside of the tub, and its floor
-  const tubIn = new THREE.Mesh(new THREE.CylinderGeometry(1.14, 0.95, 0.97, 48, 1, true), toon(0x7c858c, { side: THREE.BackSide }));
+  const tubIn = new THREE.Mesh(new THREE.CylinderGeometry(1.14, 0.95, 0.97, 48, 1, true), cel(0x7c858c, { side: THREE.BackSide }));
   disposers.push(tubIn.material);
   tubIn.scale.set(1, 1, 1.07);
   tubIn.position.set(0, 0.485, 0.12);
@@ -245,7 +410,7 @@ export async function build({ rich, coarse }) {
 
   // ── the dash: a curved panel round the front of the cabin, facing you ──
   const DASH = { r: 0.98, y: 0.76, h: 0.3, z: 0.12 };
-  const dash = new THREE.Mesh(new THREE.CylinderGeometry(DASH.r, DASH.r * 1.04, DASH.h, 48, 1, true, Math.PI * 0.64, Math.PI * 0.72), toon(0x6b737a, { side: THREE.BackSide }));
+  const dash = new THREE.Mesh(new THREE.CylinderGeometry(DASH.r, DASH.r * 1.04, DASH.h, 48, 1, true, Math.PI * 0.64, Math.PI * 0.72), cel(0x6b737a, { side: THREE.BackSide }));
   disposers.push(dash.material);
   dash.position.set(0, DASH.y, DASH.z);
   dash.userData.noInk = true;
@@ -380,38 +545,85 @@ export async function build({ rich, coarse }) {
   };
   ship.add(seat(0.36), seat(EYE[0]));
 
-  // ── Rick, beside you, with the portal gun ──
+  // ── Morty, beside you ──
   const cast = createMeshyCast();
-  await cast.load(null, ['rick'], { clips: ['sit', 'walk'] });
-  const rick = cast.make('rick');
-  let gun = null;
-  if (rick) {
-    rick.group.scale.setScalar(1.8 / rick.height);
-    rick.group.rotation.y = Math.PI;
-    for (const [n, a] of Object.entries(rick.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
-    rick.mixer?.update(0.01);
-    ship.add(rick.group);
+  await cast.load(null, ['morty'], { clips: ['sit', 'walk'] });
+  const morty = cast.make('morty');
+  if (morty) {
+    morty.group.scale.setScalar(1.5 / morty.height);
+    morty.group.rotation.y = Math.PI;
+    for (const [n, a] of Object.entries(morty.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    morty.mixer?.update(0.01);
+    // drawn, not painted: his texture snapped to the show's colours for him
+    morty.group.traverse((o) => {
+      if (!o.isMesh || !o.material?.map) return;
+      const drawn = drawnSkin(o.material.map, MORTY);
+      disposers.push(drawn);
+      o.material = drawn;
+    });
+    ship.add(morty.group);
     // sat on his seat: his hips just above the cushion
     ship.updateMatrixWorld(true);
-    const hips = rick.group.getObjectByName('Hips');
+    const hips = morty.group.getObjectByName('Hips');
     if (hips) {
       const at = hips.getWorldPosition(new THREE.Vector3());
       ship.worldToLocal(at);
-      rick.group.position.add(new THREE.Vector3(0.4, 0.62, 0.5).sub(at));
-    } else rick.group.position.set(0.4, 0.35, 0.4);
-    gun = portalGun();
-    if (rick.hand) {
-      // in his right hand, pointing out of it
-      rick.hand.add(gun);
-      gun.scale.setScalar(0.5 / rick.hand.getWorldScale(new THREE.Vector3()).x);
-      gun.rotation.set(Math.PI / 2, 0, 0);
-    } else {
-      gun.scale.setScalar(0.5);
-      gun.position.set(0.6, 1.0, -0.2);
-      ship.add(gun);
-    }
+      morty.group.position.add(new THREE.Vector3(0.4, 0.6, 0.5).sub(at));
+    } else morty.group.position.set(0.4, 0.35, 0.4);
   }
   disposers.push({ dispose: () => cast.dispose() });
+
+  // ── your arms: Rick's, in the lab coat ──
+  const SHOULDER = { l: new THREE.Vector3(EYE[0] - 0.21, EYE[1] - 0.29, EYE[2] + 0.02), r: new THREE.Vector3(EYE[0] + 0.21, EYE[1] - 0.29, EYE[2] + 0.02) };
+  const UPPER = 0.3;
+  const FORE = 0.29;
+  const sleeveGeo = new THREE.CylinderGeometry(0.052, 0.058, 1, 14, 1, true);
+  const foreGeo = new THREE.CylinderGeometry(0.046, 0.052, 1, 14, 1, true);
+  const jointGeo = new THREE.SphereGeometry(0.056, 14, 10);
+  const arm = (side) => {
+    const g = new THREE.Group();
+    const upper = new THREE.Mesh(sleeveGeo, M.coat);
+    const fore = new THREE.Mesh(foreGeo, M.coat);
+    const joint = new THREE.Mesh(jointGeo, M.coat);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.044, 0.03, 14), M.shirt);
+    const h = hand(M.skin);
+    g.add(upper, fore, joint, cuff, h);
+    ship.add(g);
+    return { side, upper, fore, joint, cuff, hand: h, e: new THREE.Vector3() };
+  };
+  const arms = { l: arm('l'), r: arm('r') };
+  const gun = portalGun(M);
+  arms.r.hand.add(gun);
+  gun.scale.setScalar(1.25);
+  gun.position.set(0, 0.022, 0.03); // the grip in the fist, the body over it
+  // pose an arm: the wrist at `w`, the hand pointing along `dir`
+  const look = new THREE.Vector3();
+  const lean = new THREE.Vector3();
+  const pose = (a, w, dir, pole) => {
+    const S = SHOULDER[a.side];
+    elbow(S, w, UPPER, FORE, pole, a.e);
+    setBetween(a.upper, S, a.e);
+    setBetween(a.fore, a.e, w);
+    a.joint.position.copy(a.e);
+    lean.subVectors(w, a.e).normalize();
+    a.cuff.position.copy(w).addScaledVector(lean, -0.01);
+    a.cuff.quaternion.setFromUnitVectors(UP, lean);
+    a.hand.position.copy(w);
+    a.hand.lookAt(look.copy(w).add(dir));
+  };
+  // the left hand on the wheel, at ten to; the right resting with the gun
+  wheel.updateMatrixWorld(true);
+  const grip = new THREE.Vector3(-0.155, 0.07, 0.01).applyMatrix4(wheel.matrixWorld);
+  ship.worldToLocal(grip);
+  const leftWrist = grip.clone().add(new THREE.Vector3(-0.03, -0.02, 0.07));
+  const leftDir = new THREE.Vector3().subVectors(grip, leftWrist).normalize();
+  const POLE = { l: new THREE.Vector3(-1, -0.6, 0.3), r: new THREE.Vector3(1, -0.7, 0.3) };
+  pose(arms.l, leftWrist, leftDir, POLE.l);
+  const REST = { w: new THREE.Vector3(-0.06, 1.0, -0.14), dir: new THREE.Vector3(-0.15, 0.05, -1).normalize() };
+  const AIM = { w: new THREE.Vector3(-0.08, 1.16, -0.1), dir: new THREE.Vector3(0.02, 0.05, -1).normalize() };
+  const rw = new THREE.Vector3();
+  const rd = new THREE.Vector3();
+  const tipAt = new THREE.Vector3();
 
   // the dome: a bubble of glass, faintly cyan, white where it turns away
   const domeMat = new THREE.MeshBasicMaterial({ color: 0xc8f4f4, transparent: true, depthWrite: false, side: THREE.DoubleSide });
@@ -445,12 +657,13 @@ export async function build({ rich, coarse }) {
   }
 
   // ink round everything but the glass and the screen
-  const inkMat = ink(ship, 0.007, { skip: (o) => o.userData.noInk || o === dome || o.material === shine || o === scr.mesh });
+  const inkMat = ink(ship, 0.0105, { skip: (o) => o.userData.noInk || o === dome || o.material === shine || o === scr.mesh || o.material === M.bulb });
   disposers.push(inkMat);
 
   // ── light: dusk ──
-  const hemi = new THREE.HemisphereLight(0xffd9e8, 0x4a4060, 1.6);
-  const sun = new THREE.DirectionalLight(0xffc49a, 2.2);
+  // (near-white, so the lab coat reads white; the dusk is outside)
+  const hemi = new THREE.HemisphereLight(0xf2f2ff, 0x6a6478, 1.9);
+  const sun = new THREE.DirectionalLight(0xffe6cc, 1.6);
   sun.position.set(1.5, 2.5, 4);
   const front = new THREE.DirectionalLight(0xc8b8ff, 0.8);
   front.position.set(-1, 2, -3);
@@ -463,10 +676,10 @@ export async function build({ rich, coarse }) {
   street.position.y = -HOVER;
   outside.add(street);
   outside.add(duskSky());
-  const grass = toon(0x6fae5a);
-  const tar = toon(0x5a5d66);
-  const walk = toon(0xc9c3b8);
-  const line = toon(0xf2d14a);
+  const grass = cel(0x6fae5a);
+  const tar = cel(0x5a5d66);
+  const walk = cel(0xc9c3b8);
+  const line = cel(0xf2d14a);
   disposers.push(grass, tar, walk, line);
   const LEN = 420;
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, LEN), grass);
@@ -493,9 +706,21 @@ export async function build({ rich, coarse }) {
     loadModel(`${KENNEY}/oak.glb`),
     loadModel(`${MODELS}/street-lamp.glb`),
   ]);
-  const kinds = houses.filter(Boolean).map((h) => toonify(h));
-  if (oak) toonify(oak);
-  if (lamp) toonify(lamp);
+  // Kenney's suburbs in the show's flat light
+  const flat = (root) => {
+    toonify(root);
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of [o.material].flat()) {
+        m.gradientMap = flatRamp();
+        m.needsUpdate = true;
+      }
+    });
+    return root;
+  };
+  const kinds = houses.filter(Boolean).map(flat);
+  if (oak) flat(oak);
+  if (lamp) flat(lamp);
   const SPACING = 15;
   const ROWS = coarse ? 10 : 16;
   for (let i = 0; i < ROWS; i++) {
@@ -546,7 +771,10 @@ export async function build({ rich, coarse }) {
   const shot = glowSprite('#9dff6e', 0.9, 1);
   shot.visible = false;
   outside.add(shot);
-  const shotFrom = new THREE.Vector3(0.6, 1.25, -0.6);
+  const shotFrom = new THREE.Vector3();
+  // the gun's flash as it fires
+  const muzzle = glowSprite('#b8ff7a', 0.22, 0);
+  gun.userData.tip.add(muzzle);
 
   return {
     inside,
@@ -561,35 +789,54 @@ export async function build({ rich, coarse }) {
     // flat colours as painted: no filmic curve
     toneMapping: THREE.NoToneMapping,
     envIntensity: 0.15,
-    bloom: [0.45, 0.4, 0.86],
+    bloom: [0.5, 0.4, 0.97], // only the portal's green and the lights
     flash: '#b4f36c',
-    glance: -0.8, // over at Rick
+    glance: -0.8, // over at Morty
     rumble: 0.6,
     triggers: [wheel],
     resize() {},
     launch() {},
     update(dt, t, { launching, t: lt, plan, throttle }) {
       scr.tick(t);
-      rick?.update?.(t, 0, 0);
-      // Rick: sat up, glancing over at you now and then; the gun arm up and
-      // forward from the start of the launch
-      if (rick) {
-        rick.mixer?.update(0);
-        const g = rick.group;
+      // Morty: sat up, looking over at you now and then (nervously); when
+      // you go, his arms up and his head back
+      if (morty) {
+        morty.update?.(t, 0, 0);
+        morty.mixer?.update(0);
+        const g = morty.group;
         const spine = g.getObjectByName('Spine01');
         const head = g.getObjectByName('Head');
-        const arm = g.getObjectByName('RightArm');
-        const fore = g.getObjectByName('RightForeArm');
-        const up = launching ? smooth(lt / 350) : 0;
-        const glance = launching ? 0 : smooth(Math.sin(t * 0.45) * 2 - 0.6);
-        spine?.rotateX(-0.5);
-        head?.rotateY(0.55 * glance + (launching ? -0.1 : 0));
-        head?.rotateX(0.22);
-        if (arm) {
-          arm.rotateX(-1.25 * up);
-          arm.rotateZ(0.35 * up);
+        const panic = launching ? smooth((lt - 250) / 400) : 0;
+        const glance = launching ? 0 : smooth(Math.sin(t * 0.55 + 1) * 2 - 0.4);
+        spine?.rotateX(-0.42 + 0.12 * panic);
+        head?.rotateY(0.6 * glance);
+        head?.rotateX(0.18 - 0.35 * panic + Math.sin(t * 9) * 0.03 * glance);
+        for (const [n, sx] of [
+          ['LeftArm', -1],
+          ['RightArm', 1],
+        ]) {
+          const b = g.getObjectByName(n);
+          if (!b) continue;
+          b.rotateX(-1.6 * panic);
+          b.rotateZ(sx * 0.4 * panic);
         }
-        fore?.rotateX(-0.35 * up);
+      }
+      // your right arm: the gun up and aimed from the start of the launch,
+      // a kick when it fires
+      const up = launching ? smooth(lt / 300) : 0;
+      const kick = launching ? Math.max(0, 1 - Math.abs(lt - 330) / 160) * (lt > 300 ? 1 : 0) : 0;
+      rw.lerpVectors(REST.w, AIM.w, up);
+      rw.z += kick * 0.035;
+      rw.y += Math.sin(t * 1.7) * 0.004 * (1 - up);
+      rd.lerpVectors(REST.dir, AIM.dir, up);
+      rd.y += kick * 0.25;
+      rd.normalize();
+      pose(arms.r, rw, rd, POLE.r);
+      muzzle.material.opacity = launching ? Math.max(0, 1 - Math.abs(lt - 330) / 120) : 0;
+      muzzle.scale.setScalar(0.12 + 0.25 * muzzle.material.opacity);
+      if (!launching || lt < 300) {
+        gun.userData.tip.getWorldPosition(tipAt);
+        shotFrom.copy(tipAt);
       }
       // the shot, then the portal opening
       const fired = launching ? clamp01((lt - 300) / 420) : 0;

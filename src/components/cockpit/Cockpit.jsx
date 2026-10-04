@@ -8,6 +8,7 @@ import Face from '../universe/Faces';
 import { VEHICLES, firstVehicle, stepVehicle, vehicleById } from './vehicles';
 import { cockpitPossible, cockpitScene, preloadCockpit } from './load';
 import { artoo, sayClip } from './sounds';
+import { speak } from '../universe/sounds';
 import './cockpit.css';
 
 const KEY = 'tp-cockpit'; // the last one you sat in
@@ -62,6 +63,7 @@ export default function Cockpit({ start, onPeak, onDone }) {
     setLine({ who, text, key: Math.random() });
     if (clip) sayClip(clip);
     else if (who === 'r2') artoo();
+    else speak(who, text); // the universe's voices for those who have one
   }, []);
   useEffect(() => {
     if (!line) return undefined;
@@ -262,7 +264,7 @@ export default function Cockpit({ start, onPeak, onDone }) {
       <div className="cockpit-hud">
         <header className="cockpit-top">
           <p className="cockpit-where">
-            <span className="cockpit-eyebrow">You’re at the controls</span>
+            <span className="cockpit-eyebrow">{v.seat ?? 'You’re at the controls'}</span>
             <span className="cockpit-name">{v.name}</span>
             <span className="cockpit-crew">{v.crew}</span>
           </p>
