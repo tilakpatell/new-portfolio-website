@@ -82,7 +82,7 @@ export function createMeshyCast() {
     }
   };
 
-  const loadOne = async (name) => {
+  const loadOne = async (name, want = ['idle', 'walk', 'run']) => {
     try {
       const gltf = await loader.loadAsync(`${BASE}/${name}.glb`);
       const scene = gltf.scene;
@@ -104,7 +104,7 @@ export function createMeshyCast() {
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
       const clips = {};
       if (RIGGED.has(name)) {
-        const [idle, walk, run] = await Promise.all(['idle', 'walk', 'run'].map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
+        const [idle, walk, run] = await Promise.all(['idle', 'walk', 'run'].map((c) => (want.includes(c) ? clipOf(`${BASE}/${name}-${c}.glb`) : null)));
         Object.assign(clips, { idle, walk, run });
         const hips = scene.getObjectByName('Hips');
         if (hips?.parent && walk) {
@@ -119,14 +119,15 @@ export function createMeshyCast() {
     }
   };
 
-  // load every model; onEach(k) as each one lands
-  const load = async (onEach) => {
+  // load every model (or just `names`, with just the `clips` named);
+  // onEach(k) as each one lands
+  const load = async (onEach, names = MESHY_ASSETS, { clips } = {}) => {
     let done = 0;
     await Promise.all(
-      MESHY_ASSETS.map((n) =>
-        loadOne(n).then(() => {
+      names.map((n) =>
+        loadOne(n, clips).then(() => {
           done += 1;
-          onEach?.(done / MESHY_ASSETS.length);
+          onEach?.(done / names.length);
         }),
       ),
     );

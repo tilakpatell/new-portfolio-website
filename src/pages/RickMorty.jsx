@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Cable from '../components/rickmorty/Cable';
+import CruiserFlight from '../components/rickmorty/CruiserFlight';
 import MeeseeksBox from '../components/rickmorty/MeeseeksBox';
 import PortalHero from '../components/rickmorty/PortalHero';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
@@ -59,9 +60,12 @@ export default function RickMorty() {
 
   return (
     <div className="relative rm-page">
+      <CruiserFlight />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">
         <figure className="rm-hero m-0">
-          <PortalHero firing={fired} className="rm-hero-portal" />
+          <div data-rm-launch className="rm-hero-launch">
+            <PortalHero firing={fired} className="rm-hero-portal" />
+          </div>
           <figcaption className="rm-hero-caption" aria-live="polite">
             <strong>{d.name}</strong>
             <span>{d.note}</span>
@@ -98,7 +102,7 @@ export default function RickMorty() {
         <p className="lead mt-4 max-w-[62ch]">
           Enemies pour out of portals in the Smiths’ backyard, Cronenberg World, Gazorpazorp and the Citadel of Ricks. Play as Rick, Morty or Pickle Rick, portal-dash out of trouble, grab a gadget from the workbench after each wave, and get past Snowball, the big Cronenberg, the Cromulon and Evil Morty.
         </p>
-        <div className="mt-8">
+        <div className="mt-8" data-rm-jump>
           <PortalPanic />
         </div>
       </section>
@@ -118,7 +122,7 @@ export default function RickMorty() {
           Interdimensional cable
         </h2>
         <p className="lead mt-4 max-w-[56ch]">Rick rigged the box to pick up TV from every reality. Nothing on it makes sense, and it’s the best thing on.</p>
-        <div className="mt-8">
+        <div className="mt-8" data-rm-jump>
           <Cable />
         </div>
       </section>

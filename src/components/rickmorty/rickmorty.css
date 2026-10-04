@@ -2,6 +2,7 @@
 
 /* the hero's portal */
 .rm-hero { display: grid; justify-items: center; gap: 1rem; }
+.rm-hero-launch { display: grid; justify-items: center; width: 100%; }
 .rm-portal { position: relative; width: min(100%, 520px); aspect-ratio: 1; }
 .rm-portal-fill.portal-gl { position: absolute; inset: 0; }
 .rm-hero-caption { display: grid; gap: 0.2rem; max-width: 40ch; text-align: center; }
@@ -92,3 +93,33 @@
 .rm-family { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
 .rm-member { display: flex; flex-direction: column; padding: 1.25rem; border-top: 6px solid var(--who); }
 .rm-member-face { width: 76px; height: 76px; }
+
+/* the Space Cruiser down the page (CruiserFlight.jsx): the trail and the
+   broken page behind the content, the cruiser over it */
+.rm-flight { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.rm-flight-back { z-index: 5; }
+.rm-flight-front { z-index: 30; }
+.rm-trail-window { position: absolute; left: 0; top: 0; width: 100%; overflow: hidden; will-change: transform; }
+.rm-trail-inner { display: block; will-change: transform; }
+.rm-trail-glow { fill: none; stroke: rgba(151, 206, 76, 0.16); stroke-width: 12; stroke-linecap: round; }
+.rm-trail-line { fill: none; stroke: #86c947; stroke-width: 3; stroke-dasharray: 1 12; stroke-linecap: round; }
+.rm-cruiser { position: absolute; left: -100px; top: -46px; width: 180px; height: 92px; transform-origin: 100px 46px; will-change: transform, opacity; filter: drop-shadow(0 12px 10px rgba(15, 20, 30, 0.22)); transition: opacity 0.12s linear; }
+.rm-cruiser-art { display: block; width: 100%; height: 100%; overflow: visible; animation: rm-bob 1.4s ease-in-out infinite alternate; }
+.rm-cruiser-flame { transform-box: fill-box; transform-origin: 100% 50%; animation: rm-flame 0.12s steps(2, jump-none) infinite alternate; }
+@keyframes rm-bob { to { transform: translateY(-3px); } }
+@keyframes rm-flame { from { transform: scale(0.8, 0.88); } to { transform: scale(1.08, 1); } }
+@media (max-width: 639px) { .rm-cruiser { left: -70px; top: -32px; width: 126px; height: 64px; transform-origin: 70px 32px; } }
+
+/* a portal through the page: cracks running out, a hole, the swirl in it,
+   and shards of page lifting off round the edge (--open, --crack: 0…1) */
+.rm-rift { position: absolute; width: 0; height: 0; --open: 0; --crack: 0; }
+.rm-rift svg { position: absolute; overflow: visible; }
+.rm-rift-cracks path { fill: none; stroke: #1b1424; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--crack)); opacity: 0.7; }
+.rm-rift-gate { position: absolute; left: 0; top: 0; transform: scale(var(--open)); }
+.rm-rift-hole path { fill: #07120a; stroke: #1b1424; stroke-width: 3; stroke-linejoin: round; }
+.rm-rift-swirl { position: absolute; }
+.rm-rift-fill.portal-gl { position: absolute; inset: 0; }
+.rm-rift-fill.portal-css { position: absolute; inset: 13%; }
+.rm-rift-shards { filter: drop-shadow(0 calc(var(--open) * 6px) calc(var(--open) * 4px) rgba(10, 14, 20, 0.3)); }
+.rm-rift-shards path { fill: var(--bg); stroke: #1b1424; stroke-width: 2; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; transform: translate(calc(var(--sx) * var(--open) * 14px), calc(var(--sy) * var(--open) * 14px)) rotate(calc(var(--open) * var(--turn))); opacity: calc(var(--crack) * (0.35 + 0.65 * var(--open))); }
+@media (prefers-reduced-motion: reduce) { .rm-cruiser-art, .rm-cruiser-flame { animation: none; } }
