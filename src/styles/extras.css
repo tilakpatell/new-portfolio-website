@@ -2092,3 +2092,23 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 
 /* Press-and-hold buttons: a drifting finger mustn't turn the hold into a scroll */
 .hold-btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+/* ─── Program management: the steps of a program, joined by a line ───────── */
+.pm-loop { position: relative; display: grid; gap: 1.9rem; }
+.pm-loop::before { content: ''; position: absolute; left: 15px; top: 16px; bottom: 16px; width: 2px; background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 22%, transparent)); }
+.pm-step { position: relative; padding-left: 3.1rem; }
+.pm-node { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 32px; height: 32px; border: 2px solid var(--accent); border-radius: var(--r-chip, 999px); background: var(--bg); font: 700 0.72rem/1 var(--font-mono); color: var(--accent-text); }
+.pm-label { padding-top: 0.5rem; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); }
+@media (min-width: 1024px) {
+  .pm-loop { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.6rem; }
+  .pm-loop::before { left: 16px; right: calc((100% - 6.4rem) / 5 - 16px); top: 15px; bottom: auto; width: auto; height: 2px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); }
+  .pm-step { padding-left: 0; padding-top: 3.2rem; }
+  .pm-label { padding-top: 0; }
+}
+
+/* the hero's "open to" line, with a live dot */
+.open-to { display: inline-flex; align-items: flex-start; gap: 0.65rem; padding: 0.55rem 0.95rem; border: 1px solid var(--border); border-radius: 1rem; background: color-mix(in srgb, var(--surface) 85%, transparent); font-size: 0.92rem; line-height: 1.45; color: var(--text-body); }
+.open-to strong { color: var(--text); font-weight: 600; }
+.open-dot { flex: none; width: 8px; height: 8px; margin-top: 0.42rem; border-radius: 999px; background: #22c55e; animation: open-pulse 2.4s ease-out infinite; }
+@keyframes open-pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); } 70%, 100% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); } }
+@media (prefers-reduced-motion: reduce) { .open-dot { animation: none; } }

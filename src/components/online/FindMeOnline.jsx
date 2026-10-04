@@ -266,7 +266,7 @@ function LinkedInCard() {
         <img src={profile.photo.webpSmall} alt="" width="64" height="64" className="h-16 w-16 rounded-[18px] object-cover" loading="lazy" />
         <div className="min-w-0 flex-1">
           <p className="stretch-semi text-lg font-semibold text-ink">{profile.name}</p>
-          <p className="text-sm text-body">Software Engineer, Northeastern CS ’27</p>
+          <p className="text-sm text-body">TPM & Software Engineer, Northeastern CS ’27</p>
         </div>
         <RiLinkedinBoxFill className="h-7 w-7 flex-none" style={{ color: '#0a66c2' }} aria-hidden="true" />
       </div>

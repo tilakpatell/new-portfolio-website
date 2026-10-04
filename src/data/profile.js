@@ -1,6 +1,6 @@
 export const profile = {
   name: 'Tilak Patel',
-  identity: 'Software Engineer',
+  identity: 'Technical Program Manager & Software Engineer',
   email: 'tilakny@gmail.com',
   site: 'https://tilakpatell.com',
   github: { handle: 'tilakpatell', url: 'https://github.com/tilakpatell' },
@@ -16,7 +16,7 @@ export const profile = {
   },
   lead:
     'Computer science student at Northeastern, currently a Technical Infrastructure Program Manager Intern at AWS, building data-center planning tools for generative-AI capacity.',
-  focus: 'Infrastructure tooling, AI pipelines and systems software.',
+  focus: 'Technical program management, infrastructure tooling, AI pipelines and systems software.',
   offClock: 'Off the clock: Game Boy emulators, open source and an unreasonable amount of Star Wars.',
 };
 

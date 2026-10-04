@@ -25,9 +25,9 @@ const STORIES = {
     episode: 'Episode IV',
     title: 'A New Hire',
     paragraphs: [
-      'It is a period of internships. From a dorm room at Northeastern, computer science student TILAK PATEL has shipped work at AWS, RTX, BOSE, PENDAR, EMPOWERREG and SRC.',
+      'It is a period of internships. From a dorm room at Northeastern, computer science student TILAK PATEL has planned programs and shipped software at AWS, RTX, BOSE, PENDAR, EMPOWERREG and SRC.',
       'Between them he built a Game Boy emulator, an AI translator for Gujarati scripture and a cloud IDE that won a hackathon, and learned to play the sitar.',
-      'Now, with graduation in sight, he sets out across the galaxy to find the team he will build with next…',
+      'Now, with graduation in sight, he sets out across the galaxy in search of his next mission, as a technical program manager or a software engineer…',
     ],
     seconds: 36,
   },

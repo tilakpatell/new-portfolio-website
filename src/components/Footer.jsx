@@ -27,7 +27,7 @@ export default function Footer() {
             <Wordmark />
           </Link>
           <p className="mt-4 text-sm leading-relaxed text-muted">
-            Software engineer building infrastructure tooling, AI pipelines and systems. Northeastern University, class of 2027.
+            Technical program manager and software engineer: roadmaps, capacity planning, infrastructure tooling and AI pipelines. Northeastern University, class of 2027.
           </p>
         </div>
 

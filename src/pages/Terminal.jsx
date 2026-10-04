@@ -197,7 +197,7 @@ export default function Terminal() {
       help: () => HELP,
       about: () => [
         BLANK,
-        ...box([profile.name.toUpperCase(), 'Software engineer · Northeastern ’27', `Now: ${roles[0].shortTitle} @ ${roles[0].short}`]),
+        ...box([profile.name.toUpperCase(), 'TPM & software engineer · Northeastern ’27', `Now: ${roles[0].shortTitle} @ ${roles[0].short}`]),
         BLANK,
         L(`  ${profile.focus}`),
         L(`  ${profile.offClock}`, 'dim'),

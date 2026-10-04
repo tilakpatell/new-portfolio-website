@@ -21,6 +21,7 @@ import PhotoBand from '../components/travel/PhotoBand';
 import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
 import Egg from '../components/Egg';
+import ProgramManagement from '../components/ProgramManagement';
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -122,7 +123,7 @@ export default function Home() {
           <div className="relative">
             <Waypoint top="0.6rem" />
             <Reveal>
-              <p className="eyebrow">Now at Amazon Web Services</p>
+              <p className="eyebrow">Technical Infrastructure PM Intern at AWS</p>
             </Reveal>
             <Reveal delay={60}>
               <h1 className="display mt-6 text-[clamp(3.6rem,1.2rem+9vw,8.4rem)]">
@@ -130,8 +131,16 @@ export default function Home() {
               </h1>
             </Reveal>
             <Reveal delay={120}>
-              <p className="lead mt-8 max-w-[34rem] !text-[clamp(1.125rem,1rem+0.45vw,1.3rem)] text-ink">
-                I build infrastructure tooling, AI pipelines and systems software. Currently at AWS, before that RTX, Bose, Pendar and SRC.
+              <p className="lead mt-8 max-w-[36rem] !text-[clamp(1.125rem,1rem+0.45vw,1.3rem)] text-ink">
+                I plan technical programs and build the software behind them: capacity planning at AWS, a modernization roadmap at RTX, and engineering at Bose, Pendar, Empowerreg and SRC.
+              </p>
+            </Reveal>
+            <Reveal delay={150}>
+              <p className="open-to mt-6">
+                <span className="open-dot" aria-hidden="true" />
+                <span>
+                  Open to <strong>technical program manager</strong> and <strong>software engineer</strong> roles. Graduating May 2027.
+                </span>
               </p>
             </Reveal>
             <Reveal delay={180} className="mt-9 flex flex-wrap gap-3">
@@ -157,6 +166,8 @@ export default function Home() {
           <Waypoint top="5rem" data-node="false" />
         </div>
       </section>
+
+      <ProgramManagement />
 
       {/* Featured: the Game Boy */}
       <section data-theme-section="gameboy" className="shell relative z-10 py-14 md:py-20" aria-labelledby="gb-title">
@@ -316,9 +327,9 @@ export default function Home() {
         <div className="relative">
           <Waypoint top="0.9rem" />
           <h2 id="closing-title" className="display max-w-4xl text-[clamp(2.3rem,1.3rem+3.8vw,4.8rem)]">
-            Working on infrastructure, AI tooling or systems?
+            Hiring a TPM or a software engineer?
           </h2>
-          <p className="lead mt-6 max-w-2xl">I’m graduating in May 2027. Email is the fastest way to reach me.</p>
+          <p className="lead mt-6 max-w-2xl">I graduate in May 2027 and I’m looking for technical program management and software engineering roles. Email is the fastest way to reach me.</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <a className="btn btn-primary btn-lg" href={`mailto:${profile.email}`}>
               <RiMailLine className="h-4 w-4" aria-hidden="true" /> Email me
