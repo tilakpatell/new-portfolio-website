@@ -53,6 +53,26 @@ const BONES_FOR = {
     kneeR: ['thighR', 0, -0.42, 0],
     footR: ['kneeR', 0, -0.42, 0],
   },
+  // Natasha: narrower shoulders and a slimmer frame, long legs
+  widow: {
+    hips: [null, 0, 1.0, 0],
+    spine: ['hips', 0, 0.11, 0],
+    chest: ['spine', 0, 0.19, 0],
+    neck: ['chest', 0, 0.27, 0],
+    head: ['neck', 0, 0.08, 0],
+    shoulderL: ['chest', 0.185, 0.2, 0],
+    elbowL: ['shoulderL', 0, -0.28, 0],
+    handL: ['elbowL', 0, -0.25, 0],
+    shoulderR: ['chest', -0.185, 0.2, 0],
+    elbowR: ['shoulderR', 0, -0.28, 0],
+    handR: ['elbowR', 0, -0.25, 0],
+    thighL: ['hips', 0.09, -0.05, 0],
+    kneeL: ['thighL', 0, -0.45, 0],
+    footL: ['kneeL', 0, -0.45, 0],
+    thighR: ['hips', -0.09, -0.05, 0],
+    kneeR: ['thighR', 0, -0.45, 0],
+    footR: ['kneeR', 0, -0.45, 0],
+  },
 };
 
 // Each style: (add) => adds parts as add(bone, material, geometry, placement).
@@ -451,6 +471,140 @@ STYLES.hulk = (add) => {
     add(ft, 'skin', rbox(0.15, 0.09, 0.3, 0.04), { p: [0, -0.02, 0.06] });
     for (let t = 0; t < 4; t++) add(ft, 'skin', ball(0.022, 8, 6), { p: [-0.045 + t * 0.03, -0.035, 0.205] });
   }
+};
+
+// Natasha Romanoff, on the bones in BONES_FOR.widow: the black suit with
+// grey side panels and a silver zip, the gunmetal belt with the red
+// hourglass, a pistol on the right thigh, the Widow's Bite on both wrists,
+// and shoulder-length auburn hair, parted and swept to one side. Materials:
+// suit, trim, belt, metal, red, skin, dark, hair, bite (glowing), boot.
+STYLES.widow = (add) => {
+  const ball = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
+  // pelvis, hips filled out round the leg joints
+  add('hips', 'suit', taper(rbox(0.28, 0.2, 0.19, 0.085), 1.04, 0.9), { p: [0, -0.035, 0] });
+  for (const sd of [-1, 1]) add('hips', 'suit', ball(0.082, 16, 12), { p: [sd * 0.088, -0.07, 0], s: [1, 1.05, 1] });
+  add('hips', 'belt', rbox(0.3, 0.036, 0.205, 0.014), { p: [0, 0.045, 0] });
+  add('hips', 'metal', new THREE.CylinderGeometry(0.03, 0.03, 0.014, 20), { p: [0, 0.045, 0.105], r: [Math.PI / 2, 0, 0] });
+  add('hips', 'red', new THREE.ConeGeometry(0.016, 0.024, 3), { p: [0, 0.057, 0.113], r: [0, 0, Math.PI] }); // the hourglass
+  add('hips', 'red', new THREE.ConeGeometry(0.016, 0.024, 3), { p: [0, 0.033, 0.113] });
+  for (const sd of [-1, 1]) add('hips', 'belt', rbox(0.045, 0.05, 0.035, 0.01), { p: [sd * 0.12, 0.03, 0.08] }); // pouches
+  // waist and torso
+  add('spine', 'suit', new THREE.CylinderGeometry(0.097, 0.112, 0.2, 18), { p: [0, 0.09, 0] });
+  add('spine', 'suit', ball(0.11, 16, 12), { p: [0, 0.0, 0], s: [1.15, 0.6, 0.85] });
+  add('chest', 'suit', taper(rbox(0.32, 0.3, 0.2, 0.095), 0.8, 1), { p: [0, 0.13, 0] });
+  for (const sd of [-1, 1]) add('chest', 'suit', ball(0.062, 14, 10), { p: [sd * 0.055, 0.135, 0.068], s: [1, 0.88, 0.72] });
+  add('chest', 'metal', rbox(0.008, 0.28, 0.012, 0.003), { p: [0, 0.15, 0.104] }); // the zip
+  for (const sd of [-1, 1]) {
+    add('chest', 'trim', rbox(0.02, 0.25, 0.17, 0.008), { p: [sd * 0.145, 0.125, 0], r: [0, 0, sd * 0.14] }); // grey side panels
+    add('chest', 'suit', ball(0.07, 14, 10), { p: [sd * 0.15, 0.25, -0.005], s: [1, 0.8, 1] }); // shoulder caps
+  }
+  add('chest', 'suit', new THREE.CylinderGeometry(0.05, 0.066, 0.08, 16), { p: [0, 0.29, 0] }); // high collar
+  add('neck', 'skin', new THREE.CylinderGeometry(0.035, 0.041, 0.09, 12), { p: [0, 0.035, 0] });
+  // the face
+  add('head', 'skin', ball(0.084, 22, 18), { p: [0, 0.1, 0.01], s: [0.88, 1.12, 1] });
+  add('head', 'skin', rbox(0.095, 0.05, 0.08, 0.025), { p: [0, 0.045, 0.03] }); // jaw
+  add('head', 'skin', ball(0.012, 8, 6), { p: [0, 0.092, 0.092] }); // nose
+  for (const sd of [-1, 1]) add('head', 'dark', ball(0.008, 8, 6), { p: [sd * 0.028, 0.112, 0.08] });
+  // the hair: a full crown, a soft mass behind, locks falling to the
+  // shoulders, curtains either side of the face, the fringe swept across
+  add('head', 'hair', ball(0.098, 24, 18), { p: [0, 0.13, -0.012], s: [1.0, 0.98, 1.06] });
+  add('head', 'hair', ball(0.098, 20, 16), { p: [0, 0.07, -0.05], s: [1.06, 1.2, 0.8] });
+  for (let i = 0; i < 7; i++) {
+    const a = -1.2 + (i / 6) * 2.4;
+    add('head', 'hair', ball(0.048, 12, 10), { p: [Math.sin(a) * 0.085, -0.025 - Math.abs(Math.cos(a)) * 0.012, -Math.cos(a) * 0.062 - 0.02], s: [0.72, 1.85, 0.58], r: [-0.18 * Math.cos(a), 0, Math.sin(a) * 0.25] });
+  }
+  // either side of the face, behind the cheekbones
+  for (const sd of [-1, 1]) add('head', 'hair', ball(0.05, 12, 10), { p: [sd * 0.085, 0.05, -0.012], s: [0.46, 1.6, 0.9], r: [0, 0, sd * -0.1] });
+  // the fringe: parted on her right, swept up and across to the left
+  add('head', 'hair', ball(0.058, 14, 10), { p: [0.028, 0.185, 0.045], s: [1.35, 0.42, 0.8], r: [0.35, 0, -0.32] });
+  for (const [sh, el, ha, sd] of [
+    ['shoulderL', 'elbowL', 'handL', 1],
+    ['shoulderR', 'elbowR', 'handR', -1],
+  ]) {
+    add(sh, 'suit', ball(0.054, 14, 10), { p: [sd * 0.004, -0.005, 0] });
+    add(sh, 'suit', limb(0.05, 0.28, 0.041), { p: [0, -0.28, 0] });
+    add(el, 'suit', ball(0.041, 12, 10));
+    add(el, 'suit', limb(0.042, 0.24, 0.032), { p: [0, -0.24, 0] });
+    add(el, 'trim', limb(0.044, 0.12, 0.037), { p: [0, -0.235, 0] }); // gauntlet
+    add(el, 'bite', new THREE.TorusGeometry(0.04, 0.0075, 6, 22), { p: [0, -0.2, 0], r: [Math.PI / 2, 0, 0] }); // Widow's Bite
+    add(el, 'bite', rbox(0.024, 0.012, 0.032, 0.004), { p: [0, -0.16, 0.037] });
+    add(ha, 'trim', rbox(0.052, 0.085, 0.032, 0.013), { p: [0, -0.045, 0] });
+  }
+  for (const [th, kn, ft] of [
+    ['thighL', 'kneeL', 'footL'],
+    ['thighR', 'kneeR', 'footR'],
+  ]) {
+    add(th, 'suit', limb(0.084, 0.45, 0.056), { p: [0, -0.45, 0] });
+    add(kn, 'suit', ball(0.054, 12, 10));
+    add(kn, 'suit', limb(0.057, 0.44, 0.037), { p: [0, -0.44, 0] });
+    add(kn, 'boot', limb(0.058, 0.3, 0.043), { p: [0, -0.44, 0] });
+    add(ft, 'boot', taper(rbox(0.075, 0.068, 0.2, 0.026), 1, 0.85, { axis: 'z' }), { p: [0, -0.02, 0.035] });
+  }
+  // the pistol on her right thigh
+  add('thighR', 'trim', rbox(0.055, 0.13, 0.065, 0.016), { p: [-0.075, -0.17, 0.005] });
+  add('thighR', 'belt', rbox(0.03, 0.06, 0.042, 0.01), { p: [-0.08, -0.08, 0.0] });
+};
+
+// A HYDRA trooper: charcoal fatigues, a black plate carrier, a helmet over a
+// balaclava and goggles that catch the light red, the red armband, and a
+// rifle at the low ready with a torch under the barrel (the torch shows what
+// he can see). Materials: cloth, gear, helmet, lens (glowing), metal, red,
+// torch (glowing).
+STYLES.hydra = (add) => {
+  const ball = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
+  add('hips', 'cloth', taper(rbox(0.32, 0.18, 0.21, 0.06), 1.05, 1), { p: [0, -0.03, 0] });
+  for (const sd of [-1, 1]) add('hips', 'cloth', ball(0.09, 14, 10), { p: [sd * 0.1, -0.07, 0] });
+  add('hips', 'gear', rbox(0.35, 0.05, 0.23, 0.015), { p: [0, 0.05, 0] });
+  for (const sd of [-1, 1]) add('hips', 'gear', rbox(0.07, 0.08, 0.06, 0.015), { p: [sd * 0.13, 0.0, 0.085] });
+  add('spine', 'cloth', new THREE.CylinderGeometry(0.125, 0.135, 0.22, 16), { p: [0, 0.1, 0] });
+  add('chest', 'cloth', taper(rbox(0.44, 0.33, 0.25, 0.1), 0.8, 1), { p: [0, 0.15, 0] });
+  // the plate carrier and its pouches
+  add('chest', 'gear', taper(rbox(0.38, 0.3, 0.29, 0.06), 0.9, 1), { p: [0, 0.13, 0.005] });
+  for (let i = 0; i < 3; i++) add('chest', 'gear', rbox(0.085, 0.1, 0.05, 0.015), { p: [(i - 1) * 0.095, 0.05, 0.155] });
+  add('chest', 'gear', rbox(0.045, 0.1, 0.04, 0.012), { p: [0.16, 0.24, 0.1] }); // radio
+  add('chest', 'red', rbox(0.065, 0.065, 0.012, 0.01), { p: [-0.09, 0.22, 0.15] }); // the patch
+  add('chest', 'gear', rbox(0.3, 0.2, 0.06, 0.03), { p: [0, 0.16, -0.16] }); // back plate
+  add('neck', 'cloth', new THREE.CylinderGeometry(0.05, 0.058, 0.11, 14), { p: [0, 0.03, 0] });
+  // head: balaclava, helmet, goggles
+  add('head', 'gear', ball(0.098, 20, 16), { p: [0, 0.1, 0.01], s: [0.92, 1.1, 1] });
+  add('head', 'helmet', new THREE.SphereGeometry(0.118, 22, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), { p: [0, 0.125, -0.005], s: [1, 1, 1.08] });
+  add('head', 'helmet', new THREE.TorusGeometry(0.112, 0.012, 6, 28), { p: [0, 0.12, -0.005], r: [Math.PI / 2, 0, 0], s: [1, 1.08, 1] });
+  add('head', 'lens', rbox(0.15, 0.04, 0.03, 0.012), { p: [0, 0.112, 0.088] });
+  add('head', 'gear', rbox(0.21, 0.022, 0.2, 0.008), { p: [0, 0.112, -0.005] }); // goggle strap
+  for (const [sh, el, ha, sd] of [
+    ['shoulderL', 'elbowL', 'handL', 1],
+    ['shoulderR', 'elbowR', 'handR', -1],
+  ]) {
+    add(sh, 'cloth', ball(0.075, 16, 12), { p: [sd * 0.01, -0.01, 0] });
+    add(sh, 'cloth', limb(0.062, 0.3, 0.054), { p: [0, -0.3, 0] });
+    add(el, 'cloth', limb(0.052, 0.25, 0.045), { p: [0, -0.255, 0] });
+    add(el, 'cloth', ball(0.05, 10, 8));
+    add(el, 'gear', ball(0.052, 10, 8), { p: [0, 0, -0.022], s: [1, 0.8, 1] }); // elbow pad
+    add(ha, 'gear', rbox(0.07, 0.1, 0.045, 0.018), { p: [0, -0.055, 0] });
+  }
+  add('shoulderL', 'red', new THREE.CylinderGeometry(0.066, 0.066, 0.06, 16, 1, true), { p: [0, -0.12, 0] }); // armband
+  for (const [th, kn, ft] of [
+    ['thighL', 'kneeL', 'footL'],
+    ['thighR', 'kneeR', 'footR'],
+  ]) {
+    add(th, 'cloth', limb(0.085, 0.43, 0.068), { p: [0, -0.44, 0] });
+    add(kn, 'cloth', ball(0.066, 12, 10));
+    add(kn, 'gear', ball(0.064, 10, 8), { p: [0, 0, 0.035], s: [1, 1, 0.7] }); // knee pad
+    add(kn, 'cloth', limb(0.064, 0.42, 0.05), { p: [0, -0.43, 0] });
+    add(kn, 'gear', limb(0.062, 0.22, 0.056), { p: [0, -0.43, 0] }); // boot
+    add(ft, 'gear', rbox(0.095, 0.075, 0.23, 0.03), { p: [0, -0.02, 0.04] });
+  }
+  add('thighR', 'gear', rbox(0.06, 0.14, 0.07, 0.018), { p: [-0.08, -0.16, 0] }); // holster
+  // the rifle, carried across the chest at the low ready, muzzle forward
+  const rifle = (mat, geo, p, r = [0, 0, 0]) => add('chest', mat, geo, { p: [-0.05 + p[0], -0.02 + p[1], 0.06 + p[2]], r });
+  rifle('metal', rbox(0.05, 0.08, 0.34, 0.012), [0, 0, 0.22]); // receiver
+  rifle('metal', new THREE.CylinderGeometry(0.014, 0.014, 0.26, 10), [0, 0.012, 0.5], [Math.PI / 2, 0, 0]); // barrel
+  rifle('gear', rbox(0.056, 0.06, 0.18, 0.02), [0, 0.0, 0.45]); // handguard
+  rifle('metal', rbox(0.04, 0.13, 0.05, 0.01), [0, -0.09, 0.2], [0.25, 0, 0]); // magazine
+  rifle('gear', rbox(0.045, 0.09, 0.16, 0.015), [0, -0.02, 0.0]); // stock
+  rifle('metal', rbox(0.03, 0.035, 0.09, 0.008), [0, 0.065, 0.24]); // sight
+  rifle('metal', new THREE.CylinderGeometry(0.02, 0.02, 0.07, 12), [0.0, -0.045, 0.5], [Math.PI / 2, 0, 0]); // torch body
+  rifle('torch', new THREE.CylinderGeometry(0.018, 0.018, 0.012, 12), [0.0, -0.045, 0.537], [Math.PI / 2, 0, 0]); // its lens
 };
 
 // Build a figure. `materials` has a material for each key the style uses

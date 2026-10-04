@@ -13,6 +13,7 @@ import TrickShot from '../components/avengers/trickshot/TrickShot';
 import HoldTheLawn from '../components/avengers/lawn/HoldTheLawn';
 import SmashRun from '../components/avengers/smash/SmashRun';
 import Ricochet from '../components/avengers/ricochet/Ricochet';
+import Infiltration from '../components/avengers/widow/Infiltration';
 import Titan from '../components/avengers/titan/Titan';
 import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
 import { useAchievements } from '../components/Achievements';
@@ -38,7 +39,7 @@ const FLOORS = [
   { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir waits in a crater on the terrace, for someone worthy. Lift it, because the Chitauri are coming across the lawn in the rain.' },
   { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
-  { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
+  { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. On the holotable: a HYDRA facility, eight levels deep, and her file at the bottom of it. Plan her way in a move at a time; every move she makes, the guards make one too. Each level cleared declassifies a line of the file.' },
   { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him. Push him anyway: it’s 2012, the portal is open over Stark Tower, and Midtown is full of Chitauri.' },
   { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. The Tesseract has to come home to it, slung in its case under a Quinjet: over the woods, under the gantry, over the ridge and, with a storm coming in, through the hangar doors. Set it down gently and the Space Stone opens a hole in the sky, as it did over New York.' },
 ];
@@ -316,7 +317,7 @@ export default function Avengers() {
             <TrickShot fallback={<Range />} />
           </Floor>
           <Floor i={4} floor={FLOORS[4]}>
-            <Dossier />
+            <Infiltration fallback={<Dossier />} />
           </Floor>
           <Floor i={5} floor={FLOORS[5]}>
             <SmashRun fallback={<HulkLab />} />
