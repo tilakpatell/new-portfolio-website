@@ -87,7 +87,7 @@ export default function OfficeTour3D({ sel, onPick, onState }) {
       if (!dead) onState?.(why);
     };
     import('./Tour3D')
-      .then(({ createTour3D }) => createTour3D(canvas.current, { onLost: () => give('lost') }))
+      .then(({ createTour3D }) => createTour3D(canvas.current, { onLost: () => give('lost'), onChange: () => kickRef.current() }))
       .then((t) => {
         if (dead) {
           t.dispose();

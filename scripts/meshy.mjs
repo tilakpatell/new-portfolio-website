@@ -1,9 +1,11 @@
-// Makes Portal panic's cast, enemies and set pieces with Meshy (meshy.ai),
-// the site owner's account: a concept image for each, then a textured model
-// from the image, then (for the ones that walk on two legs) a skeleton with
-// walking and running clips. Output is compressed for the web into
-// public/games/meshy/ and credited in public/games/credits.json. The output
-// is committed, so the site never calls Meshy.
+// Makes Portal panic's cast, enemies and set pieces, and the Scranton office's
+// people, with Meshy (meshy.ai), the site owner's account: a concept image for
+// each, then a textured model from the image, then (for the ones that walk on
+// two legs) a skeleton with walking and running clips. Output is compressed
+// for the web into public/games/meshy/ (the office's people: their skeleton
+// and no clips, the browser sits them down, into public/models/office/cast/)
+// and credited in public/games/credits.json. The output is committed, so the
+// site never calls Meshy.
 //
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name …]
 //
@@ -19,12 +21,13 @@ import { dedup, meshopt, prune, resample, textureCompress } from '@gltf-transfor
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
+const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
 const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -32,6 +35,10 @@ const API = 'https://api.meshy.ai/openapi';
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+// the office's people: figures, not drawings, each as the show dresses them
+const OFFICE = 'Stylized 3D animated-film character, slightly caricatured, clean simple shapes, matte colours. Full body, front view, standing straight in an A-pose, arms a little away from the body, empty hands. Plain white background, no text, no shadow.';
+// (height: the actor's, as src/components/office/people.js seats them)
+const staff = (height, who, looks) => ({ rig: true, clips: false, set: 'office', height, poly: 10000, tex: 1024, aspect: '3:4', style: OFFICE, prompt: `${who} from the TV show The Office: ${looks}.` });
 
 // rig: a two-legged character to give a skeleton and walk/run clips
 // height: metres, for the rig; poly: target faces; tex: texture size in the game
@@ -53,6 +60,24 @@ export const ASSETS = {
   // set pieces
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
+  // the Scranton branch
+  michael: staff(1.75, 'Michael Scott', 'a middle-aged office manager with short neat dark brown hair parted to the side, clean-shaven, a pleased self-satisfied smile, in a charcoal grey suit, a light blue dress shirt, a dark red tie, black dress shoes'),
+  dwight: staff(1.88, 'Dwight Schrute', 'a tall pale stern man with flat brown hair parted in the centre and combed down to the sides, thin wire-rimmed glasses, in a mustard-yellow short-sleeved dress shirt, a brown striped tie, olive-brown trousers with a belt and a pager on it, brown shoes'),
+  jim: staff(1.91, 'Jim Halpert', 'a tall lanky young man with shaggy tousled brown hair and a wry half-smile, in a white dress shirt with the sleeves rolled to the elbows, a loosened navy blue tie, grey slacks, dark brown shoes'),
+  pam: staff(1.63, 'Pam Beesly', 'a young woman with wavy auburn-brown hair to the shoulders, half pulled back, and a gentle smile, in a pink cardigan over a white collared blouse, a grey knee-length pencil skirt, flat brown shoes'),
+  andy: staff(1.83, 'Andy Bernard', 'a preppy man with neat side-parted brown hair and a big toothy grin, in a navy blue blazer, a pink dress shirt, a red striped tie, khaki trousers, brown loafers'),
+  phyllis: staff(1.6, 'Phyllis Vance', 'a heavyset motherly woman in her fifties with short wavy reddish-brown hair and a soft smile, in a purple cardigan jacket over a cream blouse, a string of pearls, dark grey slacks, flat black shoes'),
+  stanley: staff(1.8, 'Stanley Hudson', 'a heavyset older Black man, bald, with a grey moustache, reading glasses low on his nose and a bored unimpressed look, in a tan-brown suit jacket, a cream shirt, a dark red tie, dark brown trousers, black shoes'),
+  erin: staff(1.65, 'Erin Hannon', 'a cheerful young woman with long straight auburn-red hair and a bright smile, in a light blue cardigan over a white blouse, a dark grey knee-length skirt, flat black shoes'),
+  kevin: staff(1.75, 'Kevin Malone', 'a very large heavyset man with a round face, balding with short brown hair at the sides, a sleepy grin, in a light blue dress shirt, a dark red tie, dark grey suit trousers, black shoes'),
+  angela: staff(1.55, 'Angela Martin', 'a petite prim stern woman with blonde hair pulled tightly back into a bun, in a lavender cardigan over a white high-collared blouse, a small cross necklace, a long grey skirt below the knee, flat grey shoes'),
+  oscar: staff(1.73, 'Oscar Martinez', 'a neat Latino man with short black hair and a calm knowing look, clean-shaven, in a light blue dress shirt, a dark grey tie, charcoal slacks, black shoes'),
+  creed: staff(1.78, 'Creed Bratton', 'a wiry old man with short swept-back white-grey hair and an odd sly grin, in a dark olive-green suit jacket, a grey shirt, a dark green tie, dark grey trousers, black shoes'),
+  meredith: staff(1.65, 'Meredith Palmer', 'a middle-aged woman with short tousled red-auburn hair and a tired smirk, in a blue short-sleeved blouse, dark navy slacks, flat black shoes'),
+  darryl: staff(1.85, 'Darryl Philbin', 'a tall broad Black man with very short black hair and a goatee, a calm deadpan look, in a navy blue polo shirt, dark jeans, black shoes'),
+  ryan: staff(1.76, 'Ryan Howard', 'a slim young man with dark tousled hair and stubble, a smug look, in a slim black suit, a white shirt, a thin black tie, black shoes'),
+  toby: staff(1.78, 'Toby Flenderson', 'a meek sad-looking man with thinning sandy-brown hair parted to the side, in a grey suit jacket, a pale blue-grey shirt, a muted plum tie, grey trousers, brown shoes'),
+  kelly: staff(1.6, 'Kelly Kapoor', 'a young Indian-American woman with long glossy black hair and a bright excited smile, in a hot pink knee-length dress with a thin dark belt, dark heels'),
 };
 
 const key = process.env.MESHY_API_KEY;
@@ -96,10 +121,120 @@ async function each(names, fn, at = 4) {
   await Promise.all(Array.from({ length: at }, worker));
 }
 
+// A texture down to `size` pixels without its islands running together.
+// Meshy packs an atlas's islands edge to edge, so a plain resize (and a
+// mipmap) mixes each island's rim with its neighbour's colour: light seams
+// on a dark suit. Here a texel averages only the texels the mesh uses, and
+// what the mesh doesn't use is filled outward from what it does.
+async function shrinkAtlas(doc, size) {
+  const root = doc.getRoot();
+  for (const texture of root.listTextures()) {
+    const { data, info } = await sharp(texture.getImage()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const W = info.width;
+    const f = Math.round(W / size);
+    if (info.height !== W || f < 2 || W !== f * size) continue; // (textureCompress resizes it)
+    // the texels the mesh uses: any whose centre is in or just by a triangle
+    const used = new Uint8Array(W * W);
+    const a = [];
+    const b = [];
+    const c = [];
+    for (const mesh of root.listMeshes())
+      for (const prim of mesh.listPrimitives()) {
+        const uv = prim.getAttribute('TEXCOORD_0');
+        const idx = prim.getIndices();
+        if (!uv || !idx) continue;
+        for (let t = 0; t < idx.getCount(); t += 3) {
+          uv.getElement(idx.getScalar(t), a);
+          uv.getElement(idx.getScalar(t + 1), b);
+          uv.getElement(idx.getScalar(t + 2), c);
+          const x = [a[0] * W - 0.5, b[0] * W - 0.5, c[0] * W - 0.5];
+          const y = [a[1] * W - 0.5, b[1] * W - 0.5, c[1] * W - 0.5];
+          const area = (x[1] - x[0]) * (y[2] - y[0]) - (x[2] - x[0]) * (y[1] - y[0]);
+          const sign = area < 0 ? -1 : 1;
+          const x0 = Math.max(0, Math.floor(Math.min(...x)) - 1);
+          const x1 = Math.min(W - 1, Math.ceil(Math.max(...x)) + 1);
+          const y0 = Math.max(0, Math.floor(Math.min(...y)) - 1);
+          const y1 = Math.min(W - 1, Math.ceil(Math.max(...y)) + 1);
+          for (let py = y0; py <= y1; py++)
+            for (let px = x0; px <= x1; px++) {
+              let inside = true;
+              for (let e = 0; e < 3 && inside; e++) {
+                const n = (e + 1) % 3;
+                const ex = x[n] - x[e];
+                const ey = y[n] - y[e];
+                const len = Math.hypot(ex, ey);
+                // how far inside this edge, in texels (a sliver counts by its box)
+                if (len > 1e-6 && (sign * (ex * (py - y[e]) - ey * (px - x[e]))) / len < -0.75) inside = false;
+              }
+              if (inside) used[py * W + px] = 1;
+            }
+        }
+      }
+    const out = new Uint8Array(size * size * 3);
+    const got = new Uint8Array(size * size);
+    for (let ty = 0; ty < size; ty++)
+      for (let tx = 0; tx < size; tx++) {
+        let r = 0;
+        let g = 0;
+        let bl = 0;
+        let n = 0;
+        for (let sy = ty * f; sy < ty * f + f; sy++)
+          for (let sx = tx * f; sx < tx * f + f; sx++) {
+            if (!used[sy * W + sx]) continue;
+            const i = (sy * W + sx) * 3;
+            r += data[i];
+            g += data[i + 1];
+            bl += data[i + 2];
+            n++;
+          }
+        if (!n) continue;
+        const o = (ty * size + tx) * 3;
+        out[o] = r / n;
+        out[o + 1] = g / n;
+        out[o + 2] = bl / n;
+        got[ty * size + tx] = 1;
+      }
+    // the rest, a ring at a time, from the filled texels round them
+    for (let left = true; left; ) {
+      left = false;
+      const add = [];
+      for (let ty = 0; ty < size; ty++)
+        for (let tx = 0; tx < size; tx++) {
+          if (got[ty * size + tx]) continue;
+          let r = 0;
+          let g = 0;
+          let bl = 0;
+          let n = 0;
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = tx + dx;
+              const ny = ty + dy;
+              if (nx < 0 || ny < 0 || nx >= size || ny >= size || !got[ny * size + nx]) continue;
+              const i = (ny * size + nx) * 3;
+              r += out[i];
+              g += out[i + 1];
+              bl += out[i + 2];
+              n++;
+            }
+          if (n) add.push(ty * size + tx, r / n, g / n, bl / n);
+        }
+      for (let i = 0; i < add.length; i += 4) {
+        out.set([add[i + 1], add[i + 2], add[i + 3]], add[i] * 3);
+        got[add[i]] = 1;
+        left = true;
+      }
+    }
+    texture.setImage(await sharp(out, { raw: { width: size, height: size, channels: 3 } }).png().toBuffer()).setMimeType('image/png');
+  }
+}
+
 // For the web: textures to WebP at `tex` pixels, geometry meshopt-compressed.
-// A clip keeps only its skeleton and animation.
+// A clip keeps only its skeleton and animation. A figure the browser poses
+// (`posed`) loses its clips, and its texture is shrunk island by island. (Its
+// triangles are left alone: the simplifier doesn't weigh the texture, and
+// pulls the faces about.)
 let io = null;
-async function squeeze(from, to, { tex = 0, clip = false } = {}) {
+async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
@@ -116,7 +251,14 @@ async function squeeze(from, to, { tex = 0, clip = false } = {}) {
     for (const m of root.listMaterials()) m.dispose();
     for (const t of root.listTextures()) t.dispose();
   }
-  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  if (posed) {
+    for (const a of root.listAnimations()) {
+      for (const part of [...a.listChannels(), ...a.listSamplers()]) part.dispose();
+      a.dispose();
+    }
+    await shrinkAtlas(doc, tex);
+  }
+  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed ? 'high' : 'medium' }));
   await io.write(to, doc);
 }
 
@@ -126,12 +268,12 @@ const steps = {
       const a = ASSETS[n];
       s[n] ??= {};
       if (!s[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${a.style ?? STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}), ...(a.aspect ? { aspect_ratio: a.aspect } : {}) });
         s[n].image = result;
         await save(s);
       }
       const t = await wait('/v1/text-to-image', s[n].image, `${n} image`);
-      await download(t.image_urls[0], join(REVIEW, `${n}.png`));
+      await download(t.image_urls[0], join(REVIEW, a.set ?? '', `${n}.png`));
       console.log(`image    ${n.padEnd(12)} ${t.consumed_credits} credits`);
     });
   },
@@ -157,7 +299,7 @@ const steps = {
         await save(s);
       }
       const t = await wait('/v1/image-to-3d', s[n].model, `${n} model`);
-      for (const [side, url] of Object.entries(t.thumbnail_urls ?? { front: t.thumbnail_url })) await download(url, join(REVIEW, `${n}-${side}.png`));
+      for (const [side, url] of Object.entries(t.thumbnail_urls ?? { front: t.thumbnail_url })) await download(url, join(REVIEW, a.set ?? '', `${n}-${side}.png`));
       console.log(`model    ${n.padEnd(12)} ${t.consumed_credits} credits`);
     });
   },
@@ -179,7 +321,7 @@ const steps = {
   // an idle clip (Meshy's animation library, action 0), on the bare skeleton
   async anim(names, s) {
     await each(
-      names.filter((n) => ASSETS[n].rig),
+      names.filter((n) => ASSETS[n].rig && ASSETS[n].clips !== false),
       async (n) => {
         if (!s[n]?.rig) throw new Error('not rigged yet');
         if (!s[n].idle) {
@@ -194,14 +336,21 @@ const steps = {
   },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
-    const tmp = join(ROOT, 'lab', 'meshy', 'raw');
+    // as Meshy made them, kept by task (so compressing again needs no download)
+    const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
     await mkdir(tmp, { recursive: true });
     const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
     const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
     for (const n of names) {
       const a = ASSETS[n];
-      const files = []; // [url, file, texture size, clip only]
-      if (a.rig) {
+      const files = []; // [url, file, texture size, clip only, posed in the browser]
+      const out = a.set === 'office' ? OFFICE_OUT : OUT;
+      if (a.rig && a.clips === false) {
+        // the skinned figure on its skeleton, nothing else
+        if (!s[n]?.rig) throw new Error(`${n}: rig first`);
+        const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
+        files.push([r.rigged_character_glb_url, `${n}.glb`, a.tex, false, true]);
+      } else if (a.rig) {
         if (!s[n]?.rig || !s[n]?.idle) throw new Error(`${n}: rig and anim first`);
         const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
         const idle = (await api('GET', `/v1/animations/${s[n].idle}`)).result;
@@ -215,16 +364,16 @@ const steps = {
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
         files.push([t.model_urls.glb, `${n}.glb`, a.tex, false]);
       }
-      for (const [url, file, tex, clip] of files) {
-        const raw = join(tmp, file);
-        await download(url, raw);
-        await squeeze(raw, join(OUT, file), { tex, clip });
+      for (const [url, file, tex, clip, posed] of files) {
+        const raw = join(tmp, `${s[n].rig ?? s[n].model}-${file}`);
+        if (!existsSync(raw)) await download(url, raw);
+        await mkdir(out, { recursive: true });
+        await squeeze(raw, join(out, file), { tex, clip, posed });
       }
       credits[`meshy/${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
-    await rm(tmp, { recursive: true, force: true });
   },
 };
 
