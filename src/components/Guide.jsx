@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Arrow keys or W A S D steer, Space or a click fires, T switches off the targeting computer. On a touch screen, drag to steer and use the Fire and T buttons.'],
+      ['The trench run', 'Arrow keys or W A S D steer; Space or the Fire button fires, and T switches off the targeting computer. On a touch screen, drag to steer. The exhaust port glows as you close in and turns green when you’re lined up: stay low and centered, and fire.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },

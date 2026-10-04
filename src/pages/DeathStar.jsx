@@ -175,7 +175,8 @@ export default function DeathStar() {
         setOutcome('rebels');
         if (savedYavin) unlock('rebels');
       }, reduced ? 0 : 750);
-    }, 1200);
+      // after the torpedoes, the flash and the shockwave in the trench
+    }, reduced ? 1200 : 3400);
   };
 
   // The sounds of each ending. A ref per shot so a re-render can't play them twice.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
+import { prefersReducedMotion } from '../../lib/hooks';
 import { fmtClock } from './battle';
 import { SCRIPTS } from '../../fun/scripts';
 
@@ -172,16 +173,12 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     play('torpedo');
     const onTarget = Math.abs(g.px) < 0.45 && g.py < 0.1;
     if (dist > 2.5 && dist < 9 && onTarget) {
-      g.phase = 'won';
-      g.flash = 1;
-      setTimeout(() => play('hit'), 380);
+      // Torpedoes away: they drop into the port, then the station goes up
+      // (the loop plays it out, and the page shows the explosion after).
+      g.phase = 'winning';
+      g.win = { t: 0, boom: false, sparks: [] };
       unlock('trench');
-      setUi((u) => ({
-        ...u,
-        phase: 'won',
-        torpedoes: g.torpedoes,
-        message: g.computer ? 'Great shot. That was one in a million.' : 'The Force is strong with this one. Great shot.',
-      }));
+      setUi((u) => ({ ...u, phase: 'winning', torpedoes: g.torpedoes, message: 'Torpedoes away…' }));
       onWin?.();
     } else {
       g.shots.push({ z: g.z + 1, x: g.px, y: g.py });
@@ -230,6 +227,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       cv.height = Math.round(r.height * size.dpr);
       draw();
     };
+    const calm = prefersReducedMotion();
     const project = (x, y, z, g) => {
       const f = size.h * 0.95;
       const s = f / Math.max(NEAR, z);
@@ -240,7 +238,15 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       const g = game.current ?? { z: 0, px: 0, py: 0, items: [], computer: true, flash: 0, shots: [], phase: 'ready' };
       const { w, h, dpr } = size;
       if (!w) return;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // the station shakes as it goes
+      let sx = 0;
+      let sy = 0;
+      if (g.win?.boom && !calm) {
+        const k = Math.max(0, 0.9 - (g.win.t - 0.6)) * 14;
+        sx = (Math.random() - 0.5) * k;
+        sy = (Math.random() - 0.5) * k;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, sx * dpr, sy * dpr);
       ctx.fillStyle = '#05060b';
       ctx.fillRect(0, 0, w, h);
 
@@ -300,12 +306,32 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         ctx.stroke();
       }
 
-      // The exhaust port, on the floor at the end of the trench
+      // The exhaust port, on the floor at the end of the trench. Close in and
+      // it glows; inside firing range it pulses, green once you're lined up.
       const portD = PORT_Z - g.z;
+      const inWindow = portD > 2.5 && portD < 9;
+      const lined = Math.abs(g.px) < 0.45 && g.py < 0.1;
+      let portAt = null;
       if (portD < FAR && portD > NEAR) {
         const [px, py] = project(0, -0.98, portD, g);
         const [ex] = project(0.32, -0.98, portD, g);
         const r = Math.max(2, ex - px);
+        portAt = [px, py, r];
+        if ((g.phase === 'running' || g.phase === 'winning') && portD < 30) {
+          const pulse = inWindow ? 0.55 + 0.45 * Math.sin((g.t ?? 0) * 10) : 0.5;
+          const hue = inWindow && lined ? '120,255,160' : '255,179,71';
+          ctx.strokeStyle = `rgba(${hue},${pulse})`;
+          ctx.lineWidth = 2;
+          for (const k of [1.6, 2.3]) {
+            ctx.beginPath();
+            ctx.ellipse(px, py, r * k, r * k * 0.4, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.fillStyle = `rgba(${hue},${0.25 * pulse})`;
+          ctx.beginPath();
+          ctx.ellipse(px, py, r * 2.3, r * 0.92, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.fillStyle = '#0b0c10';
         ctx.strokeStyle = '#d9dde3';
         ctx.lineWidth = 1.5;
@@ -376,13 +402,34 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       }
 
       // Luke's X-wing, banking with the steering
+      const shipX = w / 2 + (g.tx - g.px) * 60;
+      const shipY = h * 0.72;
       if (g.phase !== 'won') {
         const s = Math.max(0.55, Math.min(1.2, h / 420));
-        drawXwing(ctx, w / 2 + (g.tx - g.px) * 60, h * 0.72, s, (g.tx - g.px) * 0.9 + g.px * 0.12, g.t ?? 0);
+        drawXwing(ctx, shipX, shipY, s, (g.tx - g.px) * 0.9 + g.px * 0.12, g.t ?? 0);
+      }
+
+      // The two proton torpedoes, dropping into the port
+      if (g.phase === 'winning' && g.win && !g.win.boom && portAt) {
+        const p = Math.min(1, g.win.t / 0.6);
+        const e = p * p;
+        for (const side of [-1, 1]) {
+          const x0 = shipX + side * 10;
+          const x = x0 + (portAt[0] - x0) * e;
+          const y = shipY + (portAt[1] - shipY) * e - Math.sin(p * Math.PI) * 30;
+          const glow = ctx.createRadialGradient(x, y, 0, x, y, 12);
+          glow.addColorStop(0, 'rgba(255,255,255,1)');
+          glow.addColorStop(0.35, 'rgba(160,210,255,0.9)');
+          glow.addColorStop(1, 'rgba(80,140,255,0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       // Rear view: Vader closing in, then sent spinning by Han
-      if (g.vader && (g.vader.on || g.vader.away > 0)) {
+      if (g.vader && (g.vader.on || g.vader.away > 0) && !g.win?.boom) {
         const bw = Math.min(150, w * 0.26);
         const bh = bw * 0.6;
         const bx = w - bw - 12;
@@ -397,6 +444,42 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         ctx.fillText('REAR', bx + 6, by + 12);
         const shrink = g.vader.gone ? Math.max(0.15, g.vader.away) : 1;
         drawTie(ctx, bx + bw / 2 + Math.sin((g.t ?? 0) * 2) * bw * 0.12, by + bh / 2 + 4, (bw / 70) * shrink, g.vader.spin);
+      }
+
+      // Direct hit: a flash, a fireball from the port, a shockwave racing out
+      // across the screen, sparks, and the station shaking itself apart
+      if (g.win?.boom) {
+        const e = g.win.t - 0.6;
+        const [cx0, cy0] = g.win.at;
+        const big = Math.hypot(w, h);
+        const fire = Math.min(1, e / 1.2);
+        const R = 20 + fire * big * 0.75;
+        const fb = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, R);
+        fb.addColorStop(0, `rgba(255,255,240,${0.95 * (1 - fire * 0.6)})`);
+        fb.addColorStop(0.3, `rgba(255,190,90,${0.85 * (1 - fire * 0.7)})`);
+        fb.addColorStop(0.7, `rgba(255,90,30,${0.5 * (1 - fire)})`);
+        fb.addColorStop(1, 'rgba(255,60,20,0)');
+        ctx.fillStyle = fb;
+        ctx.fillRect(0, 0, w, h);
+        const ring = Math.min(1, e / 1.4);
+        ctx.strokeStyle = `rgba(200,230,255,${0.9 * (1 - ring)})`;
+        ctx.lineWidth = Math.max(1, 14 * (1 - ring));
+        ctx.beginPath();
+        ctx.ellipse(cx0, cy0, ring * big * 0.9, ring * big * 0.28, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        for (const sp of g.win.sparks) {
+          const d = e * sp.v;
+          const a = Math.max(0, 1 - e / sp.life);
+          if (!a) continue;
+          ctx.fillStyle = `rgba(255,${180 + sp.c},120,${a})`;
+          ctx.fillRect(cx0 + Math.cos(sp.a) * d, cy0 + Math.sin(sp.a) * d * 0.6, sp.s, sp.s);
+        }
+        if (e < 1.7) {
+          ctx.fillStyle = `rgba(255,214,140,${Math.min(1, (1.7 - e) * 2)})`;
+          ctx.font = `700 ${Math.round(Math.min(44, w / 9))}px ${hudFamily()}`;
+          ctx.textAlign = 'center';
+          ctx.fillText('DIRECT HIT', w / 2, h * 0.24);
+        }
       }
 
       // Targeting computer
@@ -417,7 +500,11 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ctx.font = `600 12px ${hudFamily()}`;
           ctx.textAlign = 'center';
           ctx.fillText(`RANGE ${Math.max(0, Math.round(portD * 100))}`, cx, cy + 42);
-          if (portD > 2.5 && portD < 9) ctx.fillText('LOCK', cx, cy - 30);
+          if (inWindow) {
+            ctx.fillStyle = lined ? 'rgba(120,255,160,0.95)' : 'rgba(255,179,71,0.9)';
+            ctx.font = `700 14px ${hudFamily()}`;
+            ctx.fillText(lined ? 'LOCK · FIRE' : 'LOCK · STAY LOW', cx, cy - 30);
+          }
         }
       } else if (g.phase === 'running') {
         ctx.fillStyle = 'rgba(255,255,255,0.65)';
@@ -523,6 +610,31 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         if (PORT_Z - g.z < NEAR + 0.5) {
           g.phase = 'lost';
           setUi((u) => ({ ...u, phase: 'lost', message: 'You flew past the port. Pull up, and try again.' }));
+        }
+      } else if (g.phase === 'winning') {
+        const win = g.win;
+        win.t += dt;
+        g.t += dt;
+        g.z += SPEED * 0.25 * dt;
+        // Luke pulls up and out of the trench
+        g.ty = Math.min(0.85, g.ty + dt * 1.4);
+        g.py += (g.ty - g.py) * Math.min(1, dt * 4);
+        if (!win.boom && win.t >= 0.6) {
+          win.boom = true;
+          g.flash = calm ? 0.45 : 1;
+          win.at = project(0, -0.98, Math.max(NEAR + 0.05, PORT_Z - g.z), g);
+          win.sparks = Array.from({ length: 70 }, () => ({
+            a: Math.random() * Math.PI * 2,
+            v: 80 + Math.random() * 520,
+            life: 0.6 + Math.random() * 1.1,
+            s: 1.5 + Math.random() * 3,
+            c: Math.floor(Math.random() * 70),
+          }));
+          play('boom');
+        }
+        if (win.t >= 2.5) {
+          g.phase = 'won';
+          setUi((u) => ({ ...u, phase: 'won', message: g.computer ? 'Great shot, kid. That was one in a million.' : 'The Force is strong with this one. Great shot.' }));
         }
       }
       draw();
@@ -641,17 +753,17 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         {running && (
           <div className="trench-touch" onPointerDown={(e) => e.stopPropagation()}>
             <button type="button" className="trench-touch-btn" onClick={toggleComputer} aria-pressed={!ui.computer} aria-label={ui.computer ? 'Switch off targeting computer' : 'Targeting computer off'}>
-              T
+              T<span className="trench-key">Computer</span>
             </button>
             <button type="button" className="trench-touch-btn trench-touch-fire" onClick={fire} disabled={ui.torpedoes <= 0} aria-label="Fire torpedo">
-              Fire
+              Fire<span className="trench-key">Space</span>
             </button>
           </div>
         )}
-        {ui.phase !== 'running' && (
+        {ui.phase !== 'running' && ui.phase !== 'winning' && (
           <div className="trench-overlay">
             <p className="stretch-semi text-2xl font-semibold text-white">
-              {ui.phase === 'won' ? 'The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}
+              {ui.phase === 'won' ? 'Direct hit. The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}
             </p>
             <p className="mt-2 max-w-sm text-sm text-white/80">
               {ui.phase === 'ready'

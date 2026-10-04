@@ -930,7 +930,12 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .trench-touch-btn[aria-pressed='true'] { border-color: var(--saber); color: var(--saber); }
 .trench-touch-fire { width: 64px; height: 64px; background: color-mix(in srgb, #c0392b 70%, transparent); border-color: rgba(255, 180, 160, 0.6); }
 .trench-touch-btn:disabled { opacity: 0.4; }
-@media (hover: hover) and (pointer: fine) { .trench-touch { display: none; } }
+/* the keys, for a keyboard: shown under the in-game buttons where there's a mouse */
+.trench-key { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .trench-touch-btn { grid-auto-flow: row; gap: 2px; align-content: center; }
+  .trench-key { display: block; font: 500 0.55rem/1 var(--font-mono); letter-spacing: 0.04em; opacity: 0.75; text-transform: uppercase; }
+}
 .trench-overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
 .ds-gone { transform-box: fill-box; transform-origin: center; animation: ds-gone 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 @keyframes ds-gone { 0% { opacity: 1; transform: scale(1); filter: brightness(1); } 25% { filter: brightness(2.4); } 100% { opacity: 0; transform: scale(1.12); filter: brightness(3); } }
