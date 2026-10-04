@@ -42,14 +42,16 @@ const PAGES = {
   '/caribbean': {
     title: 'The Caribbean',
     tips: [
-      ['The compass', 'It points at what you want most, wherever that is on the page. Press it to want something else.'],
-      ['Dead man’s tide', 'A and D (or the arrows) turn the ship; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the cursed ship and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['Dead man’s tide', 'You are Jack Sparrow, at the helm of the Black Pearl. A and D (or the arrows) turn her; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the Flying Dutchman and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['The captain’s effects', 'The compass points at what you want most, wherever that is on the page: press it to want something else. Drink the rum, all of it. Press the jar of dirt until it tells you what’s inside.'],
+      ['Wanted', 'Every poster does something. Jack and Davy Jones change the colours of the whole site (so does typing savvy anywhere); Barbossa brings the moonlight, and in the moonlight the curse shows.'],
       ['The code', 'Press an article to see what it comes to in practice.'],
     ],
   },
   '/middle-earth': {
     title: 'Middle-earth',
     tips: [
+      ['The map', 'Pick a place on the map and the camera flies down to it: the Shire, Rivendell, Moria, Lothlórien or Mordor. The map button takes you back up. A wax seal marks each place you have won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
       ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
@@ -151,6 +153,7 @@ export default function Guide() {
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

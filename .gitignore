@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+scripts/.cache/
 
 # local only: this machine's preview servers, patch leftovers, and the
 # contact sheets the model scripts write for looking over

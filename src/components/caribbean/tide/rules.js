@@ -1,5 +1,5 @@
-// Dead man's tide: the rules. A sea with islands in it, your ship, the navy,
-// a fort, a cursed ship and the kraken, stepped in seconds with nothing drawn
+// Dead man's tide: the rules. A sea with islands in it, the Black Pearl (you
+// are Jack Sparrow), the navy, a fort, the Flying Dutchman and the kraken, stepped in seconds with nothing drawn
 // here (./Tide3D.js draws it, ./DeadMansTide.jsx is the screen and the keys).
 //
 // The sea is flat in here: x runs east and y south, a heading is an angle from
@@ -60,7 +60,7 @@ export const CHAPTERS = [
   { id: 'patrol', name: 'A sail on the horizon', goal: 'Sink the navy patrol' },
   { id: 'gold', name: 'Dead men’s gold', goal: 'Take the four chests' },
   { id: 'fort', name: 'The fort', goal: 'Silence the fort’s mortars' },
-  { id: 'cursed', name: 'The cursed ship', goal: 'Send her back to the deep' },
+  { id: 'cursed', name: 'The Flying Dutchman', goal: 'Send her back to the deep' },
   { id: 'kraken', name: 'The kraken', goal: 'Kill the beast' },
 ];
 
@@ -237,7 +237,7 @@ function begin(g, i) {
     spawn(g, hard ? 'navy' : 'sloop', 300, Math.atan2(FORT.y - g.p.y, FORT.x - g.p.x) - 0.5);
   } else if (c.id === 'cursed') {
     const s = spawn(g, 'ghost', 230, ahead + 0.4, { dive: 11, state: 'up' });
-    g.boss = { name: 'The cursed ship', hp: s.hp, max: s.max, ship: s.id };
+    g.boss = { name: 'The Flying Dutchman', hp: s.hp, max: s.max, ship: s.id };
   } else if (c.id === 'kraken') {
     const hp = Math.round(300 * g.L.foe);
     g.kraken = { x: 0, y: 0, a: 0, hp, max: hp, phase: 'arms', t: 2.5, volleys: 0, up: 0, spit: 0, hit: 0 };
