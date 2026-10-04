@@ -118,6 +118,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
       { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },
       { id: 'e-schwifty', group: 'Easter eggs', label: 'Get schwifty', keywords: 'rick and morty wubba lubba dub dub wubbalubbadubdub portal green', icon: RiSparkling2Line, run: () => fun.getSchwifty('portal') },
+      { id: 'e-savvy', group: 'Easter eggs', label: 'Savvy? Hoist the colours', keywords: 'pirates of the caribbean jack sparrow black pearl flying dutchman davy jones tortuga pirate theme', icon: RiSparkling2Line, run: () => fun.savvy('pearl') },
       { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: RiContrast2Line, run: () => setSound(!soundOn()) },
       { id: 't-auto', group: 'Themes', label: 'Auto colors', hint: 'Follow the page', keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(null) },
       ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Themes', label: `${THEMES[id].company} colors`, keywords: 'theme', icon: RiPaletteLine, run: () => pin(id) })),

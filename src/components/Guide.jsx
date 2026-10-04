@@ -42,8 +42,9 @@ const PAGES = {
   '/caribbean': {
     title: 'The Caribbean',
     tips: [
-      ['The compass', 'It points at what you want most, wherever that is on the page. Press it to want something else.'],
-      ['Dead man’s tide', 'A and D (or the arrows) turn the ship; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the cursed ship and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['Dead man’s tide', 'You are Jack Sparrow, at the helm of the Black Pearl. A and D (or the arrows) turn her; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the Flying Dutchman and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['The captain’s effects', 'The compass points at what you want most, wherever that is on the page: press it to want something else. Drink the rum, all of it. Press the jar of dirt until it tells you what’s inside.'],
+      ['Wanted', 'Every poster does something. Jack and Davy Jones change the colours of the whole site (so does typing savvy anywhere); Barbossa brings the moonlight, and in the moonlight the curse shows.'],
       ['The code', 'Press an article to see what it comes to in practice.'],
     ],
   },

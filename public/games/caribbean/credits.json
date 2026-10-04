@@ -113,5 +113,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/jack": {
+    "source": "https://www.meshy.ai",
+    "id": "01a108c4-63a8-74c6-b897-d49ae2d54299",
+    "name": "Captain Jack Sparrow, at the helm, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
