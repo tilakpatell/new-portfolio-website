@@ -62,3 +62,14 @@
 .toss-keys span { margin-right: 0.6rem; }
 @media (max-width: 639px) { .toss-stage { aspect-ratio: 3 / 4; } .toss-keys { display: none; } }
 @media (prefers-reduced-motion: reduce) { .toss-say, .toss-hint { animation: none; } .toss-gl { transition: none; } }
+
+/* ── Dwight's fact check ────────────────────────────────────────────────── */
+.fc-pips { display: flex; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.fc-pips li { flex: 1; height: 4px; border-radius: 4px; background: var(--border); transition: background-color 0.2s ease; }
+.fc-pips li[data-done] { background: var(--border-strong); }
+.fc-pips li[data-now] { background: var(--accent); }
+.fc-answer { position: relative; }
+.fc-stamp { position: absolute; right: 0; top: -0.4rem; padding: 0.15rem 0.6rem; border: 3px solid #b3261e; border-radius: 6px; color: #b3261e; font: 700 1.05rem/1.2 'Courier Prime', var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; rotate: -8deg; opacity: 0.85; animation: fc-stamp 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.fc-stamp[data-right] { border-color: #1f6b3a; color: #1f6b3a; }
+@keyframes fc-stamp { from { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fc-stamp { animation: none; } }

@@ -134,7 +134,7 @@ export default function Scranton() {
           <h2 id="facts-title" className="title scroll-mt-28">
             Dwight’s fact check
           </h2>
-          <p className="lead mt-4 max-w-[46ch]">{say('Seven statements, mostly about me. Fact, or false? Dwight has strong opinions about each one.')}</p>
+          <p className="lead mt-4 max-w-[46ch]">{say('Eight statements, half about me and half about the branch. Fact, or false? Dwight has strong opinions about each one.')}</p>
         </div>
         <FactCheck />
       </section>
