@@ -13,7 +13,11 @@
 // game knows what's there; a vehicle that comes out backwards gets
 // { "name": …, "yaw": 180 } there in place of its name.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout]
+// The Avengers HQ games' models are another (photoreal, PBR): Smash Run's
+// Hulk, Chitauri, cars, chariot and wall pylon, and Thanos for Titan, into
+// public/hq/meshy/ with a manifest.json the games read.
+//
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), sit (a seated clip, 3), fetch (free: download and
@@ -36,6 +40,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
 const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
 const ROLLOUT_OUT = join(OUT, 'rollout');
+const HQ_OUT = join(ROOT, 'public', 'hq', 'meshy');
 const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -107,6 +112,27 @@ const ROLLOUT = {
   megatron: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
 };
 for (const [n, a] of Object.entries(ROLLOUT)) ASSETS[n] = { ...a, set: 'rollout', style: REAL, pbr: true };
+
+// The Avengers HQ games' models: photoreal, like the rest of the HQ. Hulk and
+// the Chitauri are described rather than named (Meshy turns down named
+// characters).
+const HQ_STYLE = 'Photorealistic, like a still from a big-budget live-action film: physically accurate materials and natural light. Plain white background, no text.';
+const HQ_BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
+const HQ_PROP = 'The whole object on its own, three-quarter front view, centred.';
+// h: how tall (or long, for a car) the game draws it, in metres
+const HQ = {
+  hulk: { rig: true, height: 2.6, h: 2.6, poly: 20000, tex: 1024, prompt: `A towering green-skinned giant of a man, about eight and a half feet tall and impossibly muscular: huge shoulders and trapezius rising to his ears, thick arms ending in big fists, a broad deep chest, a short thick neck, a small head with short messy black hair, a heavy brow and an angry scowl. Torn, ragged dark purple trousers cut off below the knee, bare feet, nothing else. ${HQ_BODY}` },
+  chitauri: { rig: true, height: 1.95, h: 1.95, poly: 12000, tex: 1024, prompt: `An alien foot soldier of a warlike invading army: grey, wrinkled, leathery skin fused with segmented dark bronze and gunmetal biomechanical armour plates, a narrow armoured head with a jutting jaw and small pale glowing blue eyes, long thin limbs, clawed hands, armoured feet. No weapon. ${HQ_BODY}` },
+  taxi: { h: 5.2, poly: 12000, tex: 1024, prompt: `A New York City yellow taxi cab from 2012: a full-size four-door American sedan in taxi yellow with a lit roof sign, dusty and dented after a battle in the street. ${HQ_PROP}` },
+  police: { h: 5.2, poly: 12000, tex: 1024, prompt: `A New York police patrol car from 2012: a full-size four-door American sedan, white with blue stripes down the sides and a red and blue lightbar on the roof, dusty and dented. ${HQ_PROP}` },
+  sedan: { h: 4.9, poly: 12000, tex: 1024, prompt: `An ordinary dark red four-door American sedan from around 2010, dusty, its windscreen cracked and a door dented. ${HQ_PROP}` },
+  suv: { h: 5.1, poly: 12000, tex: 1024, prompt: `A black full-size American SUV from around 2010, dusty, the bonnet dented and a side window shattered. ${HQ_PROP}` },
+  chariot: { h: 5.5, poly: 12000, tex: 1024, prompt: `An alien flying war sled: a long narrow armoured hovercraft of segmented dark bronze and gunmetal biomechanical plates, a pointed prow, a small open standing deck with a handrail at the back, two glowing blue jet engines under its tail. No rider. ${HQ_PROP}` },
+  // Titan: the warlord himself (the gauntlet stays modelled in code: its sockets are the game's)
+  thanos: { rig: true, height: 2.8, h: 2.8, poly: 24000, tex: 2048, prompt: `A towering, massively built alien warlord about nine feet tall, with wrinkled purple-grey skin, a bald head, a heavy brow and a broad chin deeply ridged with vertical grooves, small hard eyes; a dark navy sleeveless armoured tunic with gold shoulder plates, a gold harness crossing his chest and back, and a broad gold belt; bare, heavily muscled purple arms; dark trousers and armoured boots. ${HQ_BODY}` },
+  pylon: { h: 4.4, poly: 8000, tex: 512, prompt: `A tall alien biomechanical energy pylon, about four metres high: a tapering column of segmented dark bronze and gunmetal armour plates with fins up its back, clawed feet at its base, and a glowing violet crystal at its top. ${HQ_PROP}` },
+};
+for (const [n, a] of Object.entries(HQ)) ASSETS[n] = { ...a, set: 'hq', style: HQ_STYLE, pbr: true };
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -386,10 +412,13 @@ const steps = {
     const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
     const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
     const fetched = new Set();
+    // the HQ games' list of what's there
+    const manifestFile = join(HQ_OUT, 'manifest.json');
+    const made = existsSync(manifestFile) ? JSON.parse(await readFile(manifestFile, 'utf8')) : {};
     for (const n of names) {
       const a = ASSETS[n];
       const files = []; // [url, file, texture size, clip only, posed in the browser]
-      const out = a.set === 'office' ? OFFICE_OUT : a.set === 'rollout' ? ROLLOUT_OUT : OUT;
+      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT }[a.set] ?? OUT;
       if (a.rig && a.clips === false) {
         // the skinned figure on its skeleton, nothing else
         if (!s[n]?.rig) throw new Error(`${n}: rig first`);
@@ -417,10 +446,12 @@ const steps = {
         await squeeze(raw, join(out, file), { tex, clip, posed });
       }
       if (a.set === 'rollout') fetched.add(n);
-      credits[`meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };
+      credits[a.set === 'hq' ? `hq/meshy/${n}` : `meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
+    if (names.some((n) => ASSETS[n].set === 'hq')) await writeFile(manifestFile, `${JSON.stringify(made, null, 2)}\n`);
     // Roll out's list of what's there
     if (fetched.size) {
       const index = join(ROLLOUT_OUT, 'index.json');
@@ -437,7 +468,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ) };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
