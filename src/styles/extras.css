@@ -2601,9 +2601,13 @@ html[data-mode='dark'] .me-atlas:not([data-hub]) canvas[data-flat] { filter: blu
 .me-hub-section { min-height: 100svh; }
 .me-hub { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: calc(var(--nav-h) + 28px) 0 28px; pointer-events: none; transition: opacity 0.6s ease; }
 .me-hub[data-hidden] { opacity: 0; transition: none; }
+.me-hub-head { transition: opacity 0.6s ease, translate 0.6s ease; }
+.me-hub[data-roam] .me-hub-head { opacity: 0; translate: 0 -12px; }
+.me-hub[data-roam] .me-hub-head > * { pointer-events: none; }
 .me-hub[data-leaving] { opacity: 0; transition-duration: 0.4s; }
 .me-hub-head, .me-hub-foot { position: relative; z-index: 2; }
 .me-hub-head > *, .me-hub-foot > * { pointer-events: auto; }
+.me-hub-head > p, .me-hub-head > h1, .me-hint { pointer-events: none; }
 .me-hub-head { width: 100%; }
 @media (min-width: 1024px) {
   .me-hub-head { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
@@ -2619,8 +2623,22 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-hub-lead { margin-top: 0.9rem; max-width: 34ch; font-size: 1.06rem; line-height: 1.55; color: var(--me-ink-soft); }
 
 .me-pins { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; }
-.me-areas[data-area] { cursor: pointer; }
+.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
+.me-areas:active { cursor: grabbing; }
+.me-areas[data-area], .me-areas[data-who='true'] { cursor: pointer; }
+
+/* someone on the map speaks: a bubble over their head */
+.me-bubble { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; will-change: transform; }
+.me-bubble > div { position: absolute; left: 0; bottom: 12px; translate: -50% 0; display: grid; gap: 0.2rem; width: max-content; max-width: min(19rem, 80vw); padding: 0.65rem 0.85rem 0.7rem; border-radius: 16px; background: var(--me-veil); color: var(--me-ink); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; transform-origin: 50% 100%; }
+.me-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; translate: -50% 0; rotate: 45deg; background: inherit; border-radius: 3px; }
+.me-bubble b { font: 700 0.8rem/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; color: var(--me-wax); }
+.me-bubble span { font-size: 0.95rem; line-height: 1.4; }
+@keyframes me-bubble-in { from { opacity: 0; scale: 0.6; } }
+/* Frodo is at a place: go in */
+.me-prompt { position: fixed; left: 0; top: 0; z-index: 3; will-change: transform; }
+.me-prompt .btn { position: absolute; left: 0; bottom: 0; translate: -50% 0; white-space: nowrap; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); animation: me-bubble-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+.me-prompt kbd { margin-left: 0.35rem; padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font-size: 0.72rem; opacity: 0.8; }
+.me-hint { width: 100%; margin: 0 0 0.25rem; font-size: 0.8rem; color: var(--me-ink-soft); }
 .me-hub[data-leaving] .me-areas, .me-hub[data-hidden] .me-areas { pointer-events: none; }
 .me-pin { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; will-change: transform; animation: me-pin-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(0.25s + var(--i) * 0.09s); }
 .me-hub[data-hidden] .me-pin { animation: none; opacity: 0; }
@@ -2668,10 +2686,14 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-onward-card { max-width: 40rem; padding: 1.6rem 1.75rem; border: 1px solid var(--border); border-radius: var(--r-card); background: color-mix(in srgb, var(--surface, var(--bg)) 82%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-card); }
 @media (max-width: 639px) {
   .me-pin-label b { font-size: 0.86rem; }
-  .me-route { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  .me-route li + li::before { display: none; }
-  .me-route li:last-child { grid-column: 1 / -1; }
-  .me-route button { width: 100%; min-height: 42px; }
+  .me-route { flex-wrap: nowrap; width: calc(100% + 2.5rem); margin: 0 -1.25rem; padding: 0.2rem 1.25rem; overflow-x: auto; scrollbar-width: none; }
+  .me-route::-webkit-scrollbar { display: none; }
+  .me-route li + li::before { width: 0.6rem; }
+  .me-route button { min-height: 40px; white-space: nowrap; }
+  .me-hint { font-size: 0.74rem; }
+  .me-hub-title { font-size: 2rem; }
+  .me-hub-lead { font-size: 0.95rem; }
+  .me-hub-foot { gap: 0.6rem; }
   .me-hub-head::before { inset: -3rem -1rem; width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .me-pin, .me-pin-dot::after { animation: none; } .me-atlas canvas { transition: none; } }
