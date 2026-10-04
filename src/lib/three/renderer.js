@@ -5,16 +5,11 @@
 // page that never draws in 3D never downloads three.js.
 
 import * as THREE from 'three';
+import { budget, pixelRatio } from '../device';
 
-const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
-
-// The sharpest a device starts at. Phones and small screens start lower.
-export function maxRatio(cap = 2) {
-  const narrow = Math.min(window.screen?.width ?? 1920, window.innerWidth ?? 1920) < 700;
-  const mem = navigator.deviceMemory ?? 8;
-  const start = coarse() || narrow || mem <= 4 ? Math.min(cap, 1.5) : cap;
-  return Math.min(start, window.devicePixelRatio || 1);
-}
+// The sharpest a device starts at: lib/device's tier (phones and small
+// screens start lower), under the scene's own cap.
+export const maxRatio = (cap = 2) => pixelRatio(cap);
 
 // A [r, g, b] (0-255, sRGB) from lib/three/theme as a THREE.Color.
 export const color = (rgb, target = new THREE.Color()) => target.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
@@ -23,7 +18,8 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   // (in development, window.__tpKeepFrames keeps the last frame readable for
   // automated screenshots of scenes that have stopped drawing)
   const preserveDrawingBuffer = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpKeepFrames;
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha, antialias, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer });
+  // a weak device skips multisampling: at its pixel ratio it costs more than it shows
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha, antialias: antialias && budget().antialias, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
