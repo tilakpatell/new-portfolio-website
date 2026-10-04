@@ -14,7 +14,7 @@ html[data-mode='dark'] .cy-world[data-on] { opacity: 1; }
 .cy-world::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
 .cy-world::before { background: var(--bg); opacity: calc(var(--cy-quiet) * 0.66); }
 .cy-world::after { background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 60%, transparent), transparent calc(var(--nav-h, 64px) + 48px)); }
-html[data-mode='dark'] .cy-world::before { opacity: calc(var(--cy-quiet) * 0.58); }
+html[data-mode='dark'] .cy-world::before { opacity: calc(0.45 + var(--cy-quiet) * 0.33); }
 
 /* no WebGL: the skyline in SVG along the foot of the screen, faintly */
 .cy-world[data-flat][data-on] { opacity: 0.4; }
