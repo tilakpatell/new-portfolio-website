@@ -13,7 +13,7 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { compactPrimitive, dedup, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
+import { compactPrimitive, dedup, meshopt, prune, resample, simplify, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
@@ -41,6 +41,8 @@ export const ASSETS = {
   port: { color: 1536, maps: 1024, keep: 1, what: 'the pirate port' },
   palms: { color: 1024, maps: 512, keep: 0.5, what: 'a sandbar with palms' },
   chest: { color: 1024, maps: 512, keep: 0.6, what: 'a treasure chest on a raft' },
+  // the captain at her helm: skinned, his idle clip in the same file (its keyframes thinned)
+  jack: { color: 1024, maps: 512, keep: 1, rig: true, what: 'Captain Jack Sparrow, at the helm' },
   // the galleon again, small: she orbits the Caribbean on the universe map
   'pearl-far': { from: 'pearl', color: 512, maps: 128, keep: 0.16, error: 0.05, rough: true, what: 'the galleon, small, for the universe map' },
 };
@@ -167,6 +169,7 @@ async function models(dir, only = []) {
     await doc.transform(
       dedup(),
       prune(),
+      ...(a.rig ? [resample()] : []),
       ...(a.keep < 1 ? [weld(), a.rough ? roughly(a.keep, a.error ?? 0.05) : simplify({ simplifier: MeshoptSimplifier, ratio: a.keep, error: a.error ?? 0.01 })] : []),
       textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.color, a.color], quality: 84 }),
       textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness/, resize: [a.maps, a.maps], quality: 84 }),

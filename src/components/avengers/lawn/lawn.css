@@ -1,0 +1,55 @@
+/* ─── Hold the Lawn: Thor on the terrace ────────────────────────────────────── */
+.tl-game { --hq-accent: #bfe0ff; }
+.tl-hud-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.tl-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: #eef6ff; font-family: var(--font-sans); font-variant-numeric: tabular-nums; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+.tl-wave { position: absolute; top: 12px; left: 16px; display: grid; gap: 0.1rem; }
+.tl-wave-n { font-weight: 700; font-size: 0.92rem; font-stretch: 125%; letter-spacing: 0.06em; text-transform: uppercase; }
+.tl-wave-n small { margin-left: 0.15rem; font-size: 0.7rem; opacity: 0.6; }
+.tl-wave-title { font-size: 0.78rem; font-weight: 600; color: #bfe0ff; }
+.tl-score { position: absolute; top: 10px; right: 16px; display: grid; justify-items: end; gap: 0.35rem; }
+.tl-score-n { font-weight: 700; font-size: 1.55rem; line-height: 1; }
+.tl-hearts { display: flex; gap: 4px; }
+.tl-hearts span { width: 15px; height: 15px; background: rgba(255, 255, 255, 0.18); clip-path: polygon(50% 100%, 0 38%, 12% 8%, 34% 0, 50% 16%, 66% 0, 88% 8%, 100% 38%); }
+.tl-hearts span[data-on] { background: #ff6b5e; filter: drop-shadow(0 0 4px rgba(255, 80, 60, 0.6)); }
+
+.tl-bottom { position: absolute; left: 16px; bottom: 14px; display: grid; gap: 6px; }
+.tl-charge { display: flex; align-items: center; gap: 8px; }
+.tl-charge svg { width: 22px; height: 22px; fill: rgba(191, 224, 255, 0.35); }
+.tl-charge-bar { width: 140px; height: 6px; overflow: hidden; border-radius: 3px; background: rgba(191, 224, 255, 0.16); }
+.tl-charge-bar span { display: block; height: 100%; background: linear-gradient(90deg, #5aa8ff, #e8f4ff); transition: width 0.2s ease; }
+.tl-charge-label { font-size: 0.66rem; font-weight: 700; font-stretch: 125%; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+.tl-charge[data-ready] svg { fill: #e8f4ff; filter: drop-shadow(0 0 6px #8fc8ff); animation: tl-pulse 0.8s ease-in-out infinite alternate; }
+.tl-charge[data-ready] .tl-charge-label { opacity: 1; color: #e8f4ff; }
+@keyframes tl-pulse { to { filter: drop-shadow(0 0 12px #bfe0ff); } }
+.tl-hammer { font-size: 0.72rem; font-weight: 600; opacity: 0.75; }
+.tl-hammer[data-out] { color: #ffd27a; opacity: 1; }
+.tl-message { position: absolute; left: 50%; bottom: 52px; width: min(80%, 50ch); translate: -50% 0; font-size: 0.8rem; font-weight: 500; line-height: 1.35; text-align: center; color: #eef6ff; }
+
+/* the lift: a balance gauge and how far the hammer has come */
+.tl-lift { position: absolute; z-index: 3; left: 50%; bottom: 22px; display: grid; justify-items: center; gap: 8px; width: min(86%, 420px); translate: -50% 0; pointer-events: none; color: #eef6ff; font-family: var(--font-sans); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+.tl-lift-text { font-size: 0.85rem; font-weight: 600; }
+.tl-gauge { position: relative; width: 100%; height: 14px; border-radius: 7px; background: linear-gradient(90deg, #ff4a3a 0 8%, #ffb347 18% 32%, transparent 32% 68%, #ffb347 68% 82%, #ff4a3a 92%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.tl-gauge-green { position: absolute; top: 0; bottom: 0; left: 50%; translate: -50% 0; border-radius: 7px; background: #5fd38a; box-shadow: 0 0 12px rgba(95, 211, 138, 0.6); }
+.tl-gauge-needle { position: absolute; top: -6px; bottom: -6px; width: 4px; translate: -50% 0; border-radius: 2px; background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.9); }
+.tl-gauge[data-zone='red'] .tl-gauge-needle { background: #ff6b5e; }
+.tl-lift-progress { width: 60%; height: 5px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, 0.18); }
+.tl-lift-progress span { display: block; height: 100%; background: linear-gradient(90deg, #8fc8ff, #fff); }
+.tl-lift-msg { position: static; translate: none; width: auto; }
+.tl-skip { position: absolute; z-index: 4; top: 12px; right: 12px; padding: 0.35rem 0.8rem; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; background: rgba(6, 10, 18, 0.55); color: #fff; font: 600 0.75rem/1 var(--font-sans); }
+
+.tl-touch { position: absolute; z-index: 4; right: 12px; bottom: 74px; display: flex; gap: 8px; }
+.tl-touch-btn { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid rgba(191, 224, 255, 0.5); border-radius: 999px; background: rgba(6, 10, 18, 0.55); color: #eef6ff; font: 700 0.9rem/1 var(--font-sans); touch-action: none; -webkit-tap-highlight-color: transparent; }
+.tl-touch-bolt { width: 60px; height: 60px; font-size: 1.3rem; border-color: rgba(232, 244, 255, 0.85); }
+.tl-touch-bolt:disabled { opacity: 0.35; }
+@media (hover: hover) and (pointer: fine) { .tl-touch { display: none; } }
+.tl-overlay .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+@media (max-width: 760px) {
+  .tl-touch { left: 12px; right: 12px; justify-content: space-between; bottom: 12px; }
+  .tl-touch-bolt { order: 3; margin-left: auto; }
+  .tl-bottom { bottom: auto; top: 54px; left: 12px; }
+  .tl-charge-bar { width: 90px; }
+  .tl-message { bottom: 80px; font-size: 0.74rem; }
+  .tl-score-n { font-size: 1.25rem; }
+  .tl-lift { bottom: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .tl-charge[data-ready] svg { animation: none; } }

@@ -1,10 +1,12 @@
 // Makes Albuquerque's people and Walt's drums and hammer with Meshy
 // (meshy.ai), the site owner's account: a concept image for each, then a
 // textured model from the image; a person is then rigged (Meshy's humanoid
-// skeleton, which office/people.js poses), a prop brought into the scene's
-// frame and measured. Everything is compressed for the web into
-// public/models/ (metherria/ for the props, albuquerque/ for the people). The
-// output is committed, so the site never calls Meshy.
+// skeleton, which office/people.js poses) and put on a new atlas
+// (scripts/reatlas.mjs: welded, a few large charts with gutters, so its
+// texture can have mipmaps), a prop brought into the scene's frame and
+// measured. Everything is compressed for the web into public/models/
+// (metherria/ for the props, albuquerque/ for the people). The output is
+// committed, so the site never calls Meshy.
 //
 //   node --env-file=.env.local scripts/meshy-albuquerque.mjs <step> [name …]
 //
@@ -23,9 +25,10 @@ import { dedup, meshopt, prune, textureCompress } from '@gltf-transform/function
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { reatlas } from './reatlas.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models');
@@ -179,6 +182,7 @@ function placeHammer(ps, size) {
   return { matrix };
 }
 
+const TEX = 1024; // a texture's size, as shipped
 let io = null;
 async function bake(from, to, a) {
   if (!io) {
@@ -188,7 +192,7 @@ async function bake(from, to, a) {
   }
   const doc = await io.read(from);
   // a prop into the scene's frame, under one node that carries the placement
-  // (a person stays as rigged: people.js sizes and poses them)
+  // (a person stays where they were rigged: people.js sizes and poses them)
   const placed = a.kind === 'drum' ? placeDrum(points(doc), a.size) : a.kind === 'hammer' ? placeHammer(points(doc), a.size) : {};
   if (placed.matrix) {
     const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
@@ -199,15 +203,26 @@ async function bake(from, to, a) {
     }
     scene.addChild(top);
   }
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [1024, 1024] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  // a person without the clip they were rigged with (the browser poses
+  // them), on a new atlas the size of the texture they ship with
+  const person = a.kind === 'person';
+  if (person) {
+    for (const clip of doc.getRoot().listAnimations()) {
+      for (const part of [...clip.listChannels(), ...clip.listSamplers()]) part.dispose();
+      clip.dispose();
+    }
+    await reatlas(doc, TEX, { apart: true });
+  }
+  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [TEX, TEX] }), meshopt({ encoder: MeshoptEncoder, level: person ? 'high' : 'medium' }));
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
-  const tris = doc
+  const prims = doc
     .getRoot()
     .listMeshes()
-    .flatMap((m) => m.listPrimitives())
-    .reduce((n, p) => n + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0);
-  return { ...placed, tris };
+    .flatMap((m) => m.listPrimitives());
+  const tris = prims.reduce((n, p) => n + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0);
+  const verts = prims.reduce((n, p) => n + p.getAttribute('POSITION').getCount(), 0);
+  return { ...placed, tris, verts };
 }
 
 const steps = {
@@ -270,25 +285,24 @@ const steps = {
     }
   },
   async fetch(names, s) {
-    const tmp = join(REVIEW, 'raw');
+    // as Meshy made them, kept by task (so compressing again needs no download)
+    const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
     for (const n of names) {
       const a = ASSETS[n];
-      const raw = join(tmp, a.out);
       if (a.kind === 'person') {
         if (!s[n]?.rig) throw new Error(`${n}: not rigged yet`);
-        const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
-        await download(r.rigged_character_glb_url, raw);
-        const { tris } = await bake(raw, join(OUT, a.out), a);
-        console.log(`fetch    ${n.padEnd(10)} ${a.out}, ${tris} triangles`);
+        const raw = join(tmp, `${s[n].rig}-${n}.glb`);
+        if (!existsSync(raw)) await download((await api('GET', `/v1/rigging/${s[n].rig}`)).result.rigged_character_glb_url, raw);
+        const { tris, verts } = await bake(raw, join(OUT, a.out), a);
+        console.log(`fetch    ${n.padEnd(10)} ${a.out}, ${tris} triangles, ${verts} vertices`);
         continue;
       }
       if (!s[n]?.model) throw new Error(`${n}: no model yet`);
-      const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
-      await download(t.model_urls.glb, raw);
+      const raw = join(tmp, `${s[n].model}-${n}.glb`);
+      if (!existsSync(raw)) await download((await api('GET', `/v1/image-to-3d/${s[n].model}`)).model_urls.glb, raw);
       const { spout, band, tris } = await bake(raw, join(OUT, a.out), a);
       console.log(`fetch    ${n.padEnd(10)} ${a.out}, ${tris} triangles${spout ? `, spout ${JSON.stringify(spout)}, band ${JSON.stringify(band)}` : ''}`);
     }
-    await rm(tmp, { recursive: true, force: true });
   },
 };
 

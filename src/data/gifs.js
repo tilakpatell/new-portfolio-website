@@ -44,6 +44,11 @@ export const GIFS = {
   marvelThor: { id: 'Pja8Ied6v7M7Gq5DeK', title: 'Thor with Mjolnir and Stormbreaker, lightning everywhere', by: 'Marvel Studios', w: 360, h: 360, small: true },
   marvelGroot: { id: '3oKIPsVV8T8nqicJFu', title: 'Baby Groot: “I am Groot”', by: 'Marvel Studios', w: 500, h: 500, small: true },
   // The Lord of the Rings (HBO Max, for Warner Bros.)
+  // Pirates of the Caribbean: these four are from GIPHY's general library (no studio channel carries them)
+  potcArrival: { id: 'o0eOCNkn7cSD6', title: 'Captain Jack Sparrow arrives at Port Royal', by: 'Pirates of the Caribbean: The Curse of the Black Pearl', w: 245, h: 300, small: true },
+  potcRum: { id: 'w7M8g9cTom0Du', title: '“But why is the rum gone?”', by: 'Pirates of the Caribbean: The Curse of the Black Pearl', w: 160, h: 160, small: true },
+  potcBeach: { id: '9sCgiHAt79jDW', title: 'Jack leaves the island, in a hurry', by: 'Pirates of the Caribbean: Dead Man’s Chest', w: 500, h: 213, small: true },
+  potcHelm: { id: 'gDllSSJi9Knew', title: 'The captain, at the helm', by: 'Pirates of the Caribbean', w: 358, h: 201, small: true },
   lotrPass: { id: 'WpD30tFjzosDn7amXq', title: 'Gandalf on the bridge: “You shall not pass”', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },
   lotrPrecious: { id: 'lq4zZge5wmOEFecKu8', title: 'Gollum: “My precious”', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },
   lotrRing: { id: 'YTR0RHAhJBbCzsgaAk', title: 'Gollum reaches for the Ring around Frodo’s neck', by: 'The Lord of the Rings, via HBO Max', w: 480, h: 270, small: true },

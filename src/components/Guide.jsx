@@ -42,14 +42,16 @@ const PAGES = {
   '/caribbean': {
     title: 'The Caribbean',
     tips: [
-      ['The compass', 'It points at what you want most, wherever that is on the page. Press it to want something else.'],
-      ['Dead man’s tide', 'A and D (or the arrows) turn the ship; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the cursed ship and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['Dead man’s tide', 'You are Jack Sparrow, at the helm of the Black Pearl. A and D (or the arrows) turn her; W and S set more or less sail. Her guns point off her sides: Q fires the port guns, E the starboard. Move the mouse to either side to look that way, and click or press Space to fire the side you are looking at. Gold arcs on the water show what each side can reach. Sink the patrol, take the four chests, silence the fort (keep off the red rings: that is where a mortar is about to land), then the Flying Dutchman and the kraken. Pick a refit after each chapter with 1, 2 or 3. A controller works too.'],
+      ['The captain’s effects', 'The compass points at what you want most, wherever that is on the page: press it to want something else. Drink the rum, all of it. Press the jar of dirt until it tells you what’s inside.'],
+      ['Wanted', 'Every poster does something. Jack and Davy Jones change the colours of the whole site (so does typing savvy anywhere); Barbossa brings the moonlight, and in the moonlight the curse shows.'],
       ['The code', 'Press an article to see what it comes to in practice.'],
     ],
   },
   '/middle-earth': {
     title: 'Middle-earth',
     tips: [
+      ['The map', 'Pick a place on the map and the camera flies down to it: the Shire, Rivendell, Moria, Lothlórien or Mordor. The map button takes you back up. A wax seal marks each place you have won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word. It is a riddle: read the arch.'],
       ['The road', 'Step along the map from Hobbiton to Mount Doom.'],
       ['The bridge', 'Face the Balrog. When it raises its whip, raise the staff as it falls (Space); a block at nothing leaves the staff down for a moment. Strike the bridge (Enter) with it right over the deep for a perfect. Win and it comes again, faster; your best streak is kept.'],
@@ -80,9 +82,9 @@ const PAGES = {
     tips: [
       ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you, and so does who you can transform.'],
       ['Transform', 'Optimus folds into his truck, Megatron into his jet. Open Optimus’s Matrix, or fire Megatron’s fusion cannon in either mode.'],
-      ['Ground bridge', 'Hold the button, Space, or the scene itself to open the bridge as an Autobot reaches it. Let go before a Vehicon does. Three strikes and Ratchet takes over.'],
-      ['Roll out', 'Left and right (or A and D) steer. As a vehicle you’re fast: Space or up boosts, smashing debris, and you take the ramps over broken bridges. As a robot you fight: the blaster fires on its own, and Space or up jumps the barricades, but standing up burns energon. Shift, T or down transforms; it takes half a second, so read the road ahead. Get past Starscream over Jasper, Shockwave in Mission City and Megatron in Kaon. On a touch screen, drag to steer and use the buttons; a gamepad works too. Each difficulty keeps its best score. It needs hardware acceleration on.'],
-      ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter. Wrong guesses cost time.'],
+      ['Ground bridge', 'Hold the button, Space, or the scene itself to open the bridge as an Autobot reaches it. Let go before a Vehicon does. Three strikes and Ratchet takes over. Join the Decepticons and it’s Soundwave’s space bridge: let the Decepticons aboard and shut the Autobots out.'],
+      ['Roll out', 'Left and right (or A and D) steer. As a vehicle you’re fast: Space or up boosts, smashing debris, and you take the ramps over broken bridges. As a robot you fight: the blaster fires on its own, and Space or up jumps the barricades, but standing up burns energon. Shift, T or down transforms; it takes half a second, so read the road ahead. A jump pressed while you’re still standing up goes as soon as it can, and Space held through the transform leaps out of the boost. Clearing a roadblock or a broken bridge pays, double if you changed at the last moment; shoot a boss while it charges up to stagger it. Get past Starscream over Jasper, Shockwave in Mission City and Megatron in Kaon, or join the Decepticons and drive Knock Out or Breakdown past Wheeljack, Ultra Magnus and Optimus Prime to Iacon. On a touch screen, drag to steer and use the buttons; a gamepad works too. Each difficulty keeps its best score. It needs hardware acceleration on.'],
+      ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter. Wrong guesses cost time. On the Decepticons’ side you decode for Lord Megatron, racing Teletraan-1, into a vault of your own.'],
       ['The roster', 'Roll out as any of them to wear their colors. The soundboard plays through Soundwave’s visor.'],
     ],
   },
@@ -151,6 +153,7 @@ export default function Guide() {
     PAGES[pathname] ??
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
+    (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);
