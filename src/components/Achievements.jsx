@@ -46,6 +46,7 @@ export const ACHIEVEMENTS = {
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
   hawkeye: { name: 'I see better from a distance', desc: 'Took Clint’s half of the Soul Stone at Trick Shot' },
+  widow: { name: 'I’m always picking up after you boys', desc: 'Got Natasha’s file out of the HYDRA facility in Infiltration' },
   thor: { name: 'Bring me Thanos!', desc: 'Held the lawn against Cull Obsidian' },
   hulk: { name: 'That’s my secret', desc: 'Ran 2,000 m through Midtown at Smash Run' },
   whatever: { name: 'Whatever it takes', desc: 'Won all six Infinity Stones back on the compound, and snapped' },
