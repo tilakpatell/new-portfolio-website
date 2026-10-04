@@ -4,6 +4,7 @@ import Dundie from '../components/office/Dundie';
 import FactCheck from '../components/office/FactCheck';
 import OfficeFloor from '../components/office/OfficeFloor';
 import PaperPlane from '../components/office/PaperPlane';
+import PaperToss from '../components/office/PaperToss';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
@@ -115,6 +116,16 @@ export default function Scranton() {
           <Link to="/" className="btn btn-ghost">
             Back to the site
           </Link>
+        </div>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="toss-title">
+        <h2 id="toss-title" className="title">
+          Office Olympics
+        </h2>
+        <p className="lead mt-4 max-w-[58ch]">{say('Paper toss, from Jim’s desk to the wastebasket. Ten balls. Every basket moves the bin, and after two somebody turns the fan on.')}</p>
+        <div className="mt-8">
+          <PaperToss />
         </div>
       </section>
 

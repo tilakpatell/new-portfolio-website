@@ -258,7 +258,6 @@ function makeKit(sets, models, env) {
     k.position.y = 0.011;
     const m = new THREE.Mesh(mouseGeo, M.plasticDark);
     m.position.set(0.3, 0.014, 0.02);
-    k.castShadow = m.castShadow = true;
     g.add(k, m);
     return g;
   };
@@ -345,23 +344,26 @@ function makeKit(sets, models, env) {
     motor.position.z = -0.06;
     head.add(motor);
     const cageMat = keep(new THREE.MeshStandardMaterial({ color: 0xd9dde2, roughness: 0.3, metalness: 0.8 }));
+    // the cage: four rings and sixteen spokes, one mesh
+    const cageParts = [];
     for (const [r, z] of [
       [0.17, 0.035],
       [0.17, -0.005],
       [0.11, 0.06],
       [0.05, 0.075],
     ]) {
-      const ring = new THREE.Mesh(keep(new THREE.TorusGeometry(r, 0.0035, 6, 48)), cageMat);
-      ring.position.z = z;
-      head.add(ring);
+      const ring = new THREE.TorusGeometry(r, 0.0035, 6, 48);
+      ring.translate(0, 0, z);
+      cageParts.push(ring);
     }
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
-      const spoke = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.002, 0.002, 0.17, 4)), cageMat);
-      spoke.rotation.z = a;
-      spoke.position.set(Math.sin(-a) * 0.085, Math.cos(a) * 0.085, 0.07);
-      head.add(spoke);
+      const spoke = new THREE.CylinderGeometry(0.002, 0.002, 0.17, 4);
+      spoke.rotateZ(a);
+      spoke.translate(Math.sin(-a) * 0.085, Math.cos(a) * 0.085, 0.07);
+      cageParts.push(spoke);
     }
+    head.add(new THREE.Mesh(keep(merge(cageParts)), cageMat));
     const blades = new THREE.Group();
     blades.position.z = 0.015;
     const bladeShape = new THREE.Shape();
@@ -410,7 +412,6 @@ function makeKit(sets, models, env) {
     const handle = new THREE.Mesh(keep(new THREE.TorusGeometry(0.025, 0.007, 8, 20, Math.PI)), M.white);
     handle.rotation.z = -Math.PI / 2;
     handle.position.set(0.042, 0.055, 0);
-    for (const m of [cup, handle]) m.castShadow = true;
     g.add(cup, inside, coffee, base, handle);
     return g;
   };
@@ -569,7 +570,6 @@ function makeKit(sets, models, env) {
   const phone = () => {
     const g = new THREE.Group();
     const b = new THREE.Mesh(phoneGeo, M.plasticDark);
-    b.castShadow = true;
     const scr = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.1, 0.06)), phoneScreenMat);
     scr.position.set(0.02, 0.078, -0.035);
     scr.rotation.x = -1.1;
@@ -577,20 +577,31 @@ function makeKit(sets, models, env) {
     return g;
   };
 
-  // a mug of pens
+  // a mug of pens (the pens one mesh, coloured per pen)
+  const pensGeo = (() => {
+    const colors = [0x1f4ea0, 0xd03a2a, 0x111111, 0xe8c12a, 0x2c8a3c, 0x1f4ea0];
+    const r0 = rng(9);
+    const parts = colors.map((c) => {
+      const pen = new THREE.CylinderGeometry(0.004, 0.004, 0.15, 6);
+      pen.rotateX((r0() - 0.5) * 0.4);
+      pen.rotateZ((r0() - 0.5) * 0.4);
+      pen.translate((r0() - 0.5) * 0.04, 0.1, (r0() - 0.5) * 0.04);
+      const col = new THREE.Color(c);
+      const n = pen.attributes.position.count;
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) col.toArray(arr, i * 3);
+      pen.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+      return pen.toNonIndexed();
+    });
+    return keep(mergeGeometries(parts, false));
+  })();
+  const pensMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4 }));
+  const cupGeo = keep(new THREE.CylinderGeometry(0.035, 0.032, 0.1, 18, 1, true));
   const pencilCup = () => {
     const g = new THREE.Group();
-    const cup = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.035, 0.032, 0.1, 18, 1, true)), M.plasticDark);
+    const cup = new THREE.Mesh(cupGeo, M.plasticDark);
     cup.position.y = 0.05;
-    g.add(cup);
-    const colors = [0x1f4ea0, 0xd03a2a, 0x111111, 0xe8c12a, 0x2c8a3c];
-    const r0 = rng(9);
-    for (let i = 0; i < 6; i++) {
-      const pen = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.004, 0.004, 0.15, 6)), keep(new THREE.MeshStandardMaterial({ color: colors[i % colors.length], roughness: 0.4 })));
-      pen.position.set((r0() - 0.5) * 0.04, 0.1, (r0() - 0.5) * 0.04);
-      pen.rotation.set((r0() - 0.5) * 0.4, 0, (r0() - 0.5) * 0.4);
-      g.add(pen);
-    }
+    g.add(cup, new THREE.Mesh(pensGeo, pensMat));
     return g;
   };
 

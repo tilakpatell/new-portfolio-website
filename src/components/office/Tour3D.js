@@ -596,6 +596,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     get closeness() {
       return Math.min(1, 12 / cam.dist);
     },
+    info: stage.info,
     get lost() {
       return stage.lost;
     },

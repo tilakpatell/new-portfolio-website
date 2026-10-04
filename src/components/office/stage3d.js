@@ -39,12 +39,12 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   };
   canvas.addEventListener('webglcontextlost', onContextLost);
 
-  // the watchdog: two seconds of frames at a time
-  const perf = { acc: 0, n: 0, step: 0 };
+  // the watchdog: every two seconds of drawing, the average frame
+  const perf = { acc: 0, n: 0, step: 0, since: 0 };
   const watch = (ms) => {
     perf.acc += ms;
     perf.n += 1;
-    if (perf.n < 120) return;
+    if (perf.acc < 2000 || perf.n < 8) return;
     const avg = perf.acc / perf.n;
     perf.acc = 0;
     perf.n = 0;
@@ -80,7 +80,10 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
     renderer.dispose();
   };
 
-  return { renderer, scene, camera, size, resize, project, render, dispose, coarse, get lost() { return lost; } };
+  // renderer counts, for checking the scene against its budget
+  const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: ratio, shadows: renderer.shadowMap.enabled });
+
+  return { renderer, scene, camera, size, resize, project, render, dispose, info, coarse, get lost() { return lost; } };
 }
 
 // The office's light: the HDRI for ambient and reflections, a cool overhead
