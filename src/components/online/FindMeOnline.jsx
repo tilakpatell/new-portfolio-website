@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiArrowRightUpLine, RiGithubFill, RiLinkedinBoxFill, RiStarLine } from 'react-icons/ri';
 import { Waypoint } from '../ui';
@@ -86,20 +86,17 @@ const ago = (iso) => {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function Calendar({ contributions }) {
-  const scroller = useRef(null);
-  useLayoutEffect(() => {
-    const el = scroller.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [contributions]);
-  if (!contributions?.start || !contributions.counts?.length) return null;
+const S = 14;
+const L = 28;
+const T = 16;
+
+// The year of squares, built once per set of data (it has 365 of them, and the
+// home page re-themes itself several times on the way past).
+function buildCalendar(contributions) {
   const start = new Date(`${contributions.start}T00:00:00`);
   const offset = start.getDay();
   const n = contributions.counts.length;
   const cols = Math.ceil((offset + n) / 7);
-  const S = 14;
-  const L = 28;
-  const T = 16;
   const months = [];
   const cells = contributions.counts.map((count, i) => {
     const slot = offset + i;
@@ -109,15 +106,26 @@ function Calendar({ contributions }) {
     d.setDate(start.getDate() + i);
     if (d.getDate() === 1 || i === 0) months.push({ col, label: MONTHS[d.getMonth()] });
     const level = Number(contributions.levels?.[i] ?? (count ? 2 : 0));
-    const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const when = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
     return (
       <rect key={i} x={L + col * S} y={T + row * S} width={S - 3} height={S - 3} rx="2.5" className={`gh-cell gh-l${level}`}>
         <title>{`${count || 'No'} contribution${count === 1 ? '' : 's'} on ${when}`}</title>
       </rect>
     );
   });
-  const width = L + cols * S;
-  const height = T + 7 * S;
+  return { cells, months, width: L + cols * S, height: T + 7 * S };
+}
+
+function Calendar({ contributions }) {
+  const scroller = useRef(null);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [contributions]);
+  const ok = Boolean(contributions?.start && contributions.counts?.length);
+  const built = useMemo(() => (ok ? buildCalendar(contributions) : null), [ok, contributions]);
+  if (!built) return null;
+  const { cells, months, width, height } = built;
   return (
     <div ref={scroller} className="gh-scroll" tabIndex={0} role="region" aria-label="GitHub contributions over the last year (scrolls sideways)">
       <svg viewBox={`0 0 ${width} ${height}`} className="gh-svg" role="img" aria-label={`${contributions.total} contributions on GitHub in the last year`}>
@@ -313,7 +321,7 @@ function ResumeCard() {
   );
 }
 
-export default function FindMeOnline() {
+function FindMeOnline() {
   return (
     <section data-theme-section="github" className="shell relative z-10 py-14 md:py-20" aria-labelledby="online-title">
       <div className="relative">
@@ -334,3 +342,6 @@ export default function FindMeOnline() {
     </section>
   );
 }
+
+// nothing here follows the theme, so the home page re-theming leaves it alone
+export default memo(FindMeOnline);

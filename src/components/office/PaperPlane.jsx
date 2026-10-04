@@ -5,6 +5,11 @@ import { prefersReducedMotion } from '../../lib/hooks';
 // at the middle of the screen while it swoops from side to side, turning to
 // face the way it is flying, and leaves a dotted trail. It sits over the page
 // but never takes a click.
+//
+// Every frame changes transforms only. The path only ever goes down the page,
+// so the trail is revealed down to the plane by a window that slides down
+// while its contents slide up by the same amount: no repaint of the page-tall
+// trail, which is what made phones stutter.
 
 function flightPath(w, h) {
   // it keeps near the middle of the page, swinging out either side
@@ -30,7 +35,8 @@ function flightPath(w, h) {
 export default function PaperPlane() {
   const box = useRef(null);
   const path = useRef(null);
-  const trail = useRef(null);
+  const win = useRef(null);
+  const inner = useRef(null);
   const plane = useRef(null);
   const [geo, setGeo] = useState(null);
 
@@ -48,20 +54,18 @@ export default function PaperPlane() {
     const p = path.current;
     const el = box.current;
     if (!p || !el || !geo) return undefined;
-    // sample the path once: arc length, x and y (y only ever increases)
+    // sample the path once: x and y every few pixels along it (y only ever increases)
     const total = p.getTotalLength();
-    const L = [];
     const X = [];
     const Y = [];
     for (let l = 0; l <= total; l += 4) {
       const pt = p.getPointAtLength(l);
-      L.push(l);
       X.push(pt.x);
       Y.push(pt.y);
     }
     const n = Y.length;
     const still = prefersReducedMotion();
-    trail.current.style.strokeDasharray = `0 ${total}`;
+    const H = geo.h;
     let shown = null;
     let raf = 0;
     const indexAt = (y) => {
@@ -83,8 +87,10 @@ export default function PaperPlane() {
       // nose the way it is flying, gliding down at a gentle angle
       const dir = dx >= 0 ? 1 : -1;
       const tilt = Math.max(8, Math.min(38, (Math.atan2(dy, Math.abs(dx) + 0.001) * 180) / Math.PI));
-      plane.current.style.transform = `translate(${x}px, ${y}px) scaleX(${dir}) rotate(${tilt}deg)`;
-      trail.current.style.strokeDasharray = `${L[i - 1] + (L[i] - L[i - 1]) * k} ${total}`;
+      plane.current.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scaleX(${dir}) rotate(${tilt.toFixed(1)}deg)`;
+      // the trail shows down to the plane
+      win.current.style.transform = `translate3d(0, ${(y - H).toFixed(1)}px, 0)`;
+      inner.current.style.transform = `translate3d(0, ${(H - y).toFixed(1)}px, 0)`;
     };
     // where the plane should be: the middle of the screen, in the page's coordinates
     const target = () => {
@@ -116,15 +122,12 @@ export default function PaperPlane() {
       {/* the trail sits behind the page's cards; the plane flies over them */}
       <div ref={box} className="paper-flight paper-flight-trail" aria-hidden="true">
         {geo && (
-          <svg width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`}>
-            <defs>
-              <mask id="paper-reveal" maskUnits="userSpaceOnUse" x="0" y="0" width={geo.w} height={geo.h}>
-                <path ref={trail} d={d} fill="none" stroke="#fff" strokeWidth="10" />
-              </mask>
-            </defs>
-            <path ref={path} d={d} fill="none" stroke="none" />
-            <path d={d} className="paper-trail-line" mask="url(#paper-reveal)" />
-          </svg>
+          <div ref={win} className="paper-trail-window" style={{ height: geo.h, transform: `translate3d(0, ${-geo.h}px, 0)` }}>
+            <svg ref={inner} className="paper-trail-inner" width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`} style={{ transform: `translate3d(0, ${geo.h}px, 0)` }}>
+              <path ref={path} d={d} fill="none" stroke="none" />
+              <path d={d} className="paper-trail-line" />
+            </svg>
+          </div>
         )}
       </div>
       <div className="paper-flight paper-flight-plane" aria-hidden="true">

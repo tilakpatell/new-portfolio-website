@@ -168,13 +168,22 @@ export default function RouteLine({ containerRef }) {
     };
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
     ro?.observe(el);
-    window.addEventListener('resize', schedule);
+    // A phone's toolbar sliding in and out as you scroll resizes the window's
+    // height only; the route doesn't change, so only a new width re-measures
+    // (the observer above still catches the page itself changing size).
+    let width = window.innerWidth;
+    const onResize = () => {
+      if (window.innerWidth === width) return;
+      width = window.innerWidth;
+      schedule();
+    };
+    window.addEventListener('resize', onResize);
     document.fonts?.ready?.then(schedule).catch(() => {});
     const late = setTimeout(schedule, 1000);
     return () => {
       cancelAnimationFrame(frame);
       ro?.disconnect();
-      window.removeEventListener('resize', schedule);
+      window.removeEventListener('resize', onResize);
       clearTimeout(late);
     };
   }, [containerRef, measure]);

@@ -65,6 +65,32 @@ function LazyMount({ children, minHeight }) {
   );
 }
 
+// The two bits of the hero that follow the theme and the Heisenberg egg, in
+// components of their own: the theme changes every few hundred pixels as you
+// scroll this page, and only these should redraw when it does, not the page.
+function HeroBackdrop() {
+  const { active } = useTheme();
+  return <ThemeBackdrop theme={active} className="hero-backdrop" />;
+}
+function HeroName() {
+  const { heisenberg } = useFun();
+  return heisenberg ? (
+    <>
+      <Element symbol="Ti" number={22} weight="47.867" />
+      lak
+      <br />
+      <Element symbol="Pa" number={91} weight="231.04" />
+      tel
+    </>
+  ) : (
+    <>
+      Tilak
+      <br />
+      Patel
+    </>
+  );
+}
+
 export default function Home() {
   useDocumentTitle(null);
   useSectionThemes();
@@ -79,8 +105,6 @@ export default function Home() {
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
-  const { heisenberg } = useFun();
-  const { active } = useTheme();
   const gameboy = projectById('gameboy-emulator');
   const translator = projectById('swaminarayan-translator');
   const others = featuredProjects.filter((p) => p.id !== gameboy.id && p.id !== translator.id);
@@ -93,7 +117,7 @@ export default function Home() {
       <section data-theme-section="aws" className="shell relative z-10 pb-16 pt-[calc(var(--nav-h)+40px)] md:pb-24 md:pt-[calc(var(--nav-h)+72px)]">
         <div className="hero-wash pointer-events-none" aria-hidden="true" />
         {/* Middle-earth or Cybertron on the horizon, when their themes are on */}
-        <ThemeBackdrop theme={active} className="hero-backdrop" />
+        <HeroBackdrop />
         <div className="relative grid items-end gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:items-center lg:gap-16">
           <div className="relative">
             <Waypoint top="0.6rem" />
@@ -102,21 +126,7 @@ export default function Home() {
             </Reveal>
             <Reveal delay={60}>
               <h1 className="display mt-6 text-[clamp(3.6rem,1.2rem+9vw,8.4rem)]">
-                {heisenberg ? (
-                  <>
-                    <Element symbol="Ti" number={22} weight="47.867" />
-                    lak
-                    <br />
-                    <Element symbol="Pa" number={91} weight="231.04" />
-                    tel
-                  </>
-                ) : (
-                  <>
-                    Tilak
-                    <br />
-                    Patel
-                  </>
-                )}
+                <HeroName />
               </h1>
             </Reveal>
             <Reveal delay={120}>

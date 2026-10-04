@@ -1694,6 +1694,8 @@ html.ring-worn footer { filter: grayscale(1) blur(1.2px) brightness(0.72) contra
 .paper-flight { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .paper-flight-trail { z-index: 5; }
 .paper-flight-plane { z-index: 30; }
+.paper-trail-window { position: absolute; left: 0; top: 0; width: 100%; overflow: hidden; will-change: transform; }
+.paper-trail-inner { display: block; will-change: transform; }
 .paper-trail-line { fill: none; stroke: color-mix(in srgb, var(--accent) 60%, transparent); stroke-width: 2.4; stroke-dasharray: 1 11; stroke-linecap: round; }
 .paper-plane { position: absolute; left: -44px; top: -25px; display: grid; place-items: center; width: 88px; height: 50px; transform-origin: 44px 25px; filter: drop-shadow(0 10px 10px rgba(15, 20, 30, 0.22)); will-change: transform; }
 .paper-plane-art { width: 88px; height: 50px; overflow: visible; }

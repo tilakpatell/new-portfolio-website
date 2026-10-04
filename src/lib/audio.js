@@ -31,6 +31,57 @@ export function onSoundChange(fn) {
   return () => listeners.delete(fn);
 }
 
+// On an iPhone, Web Audio follows the ring/silent switch, so with the switch on
+// silent (as most phones are) every sound here would be mute. Asking for the
+// playback session (Safari 16.4+), or on older iOS playing a silent <audio>
+// element, makes the site as audible as a video. Done once, in a gesture, and
+// only after the visitor has used something with sound.
+const IOS =
+  typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+let unmuted = false;
+function silence() {
+  // a tenth of a second of 8-bit silence, as a WAV
+  const n = 800;
+  const buf = new ArrayBuffer(44 + n);
+  const v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF');
+  v.setUint32(4, 36 + n, true);
+  str(8, 'WAVEfmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true);
+  v.setUint32(28, 8000, true);
+  v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true);
+  str(36, 'data');
+  v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function unmuteIOS() {
+  if (unmuted) return;
+  unmuted = true;
+  try {
+    if (navigator.audioSession) {
+      navigator.audioSession.type = 'playback';
+      return;
+    }
+  } catch {
+    /* no audio session API */
+  }
+  if (!IOS) return;
+  const el = document.createElement('audio');
+  el.setAttribute('x-webkit-airplay', 'deny');
+  el.preload = 'auto';
+  el.loop = true;
+  el.src = silence();
+  el.play().catch(() => {
+    unmuted = false;
+  });
+}
+
 // The context, created and resumed on demand. Returns null where Web Audio is
 // missing (very old browsers) so callers can quietly skip the sound.
 export function audioContext() {
@@ -48,8 +99,21 @@ export function audioContext() {
     limiter.release.value = 0.2;
     master.connect(limiter).connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  // suspended until a gesture; 'interrupted' on iOS after a call or a trip to the background
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
+  unmuteIOS();
   return ctx;
+}
+
+// A press that starts a hold (pointerdown) isn't a gesture iOS will start audio
+// in, so any later tap, click or key wakes a context that is still asleep.
+if (typeof window !== 'undefined') {
+  const wake = () => {
+    if (!ctx) return;
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    unmuteIOS();
+  };
+  ['touchend', 'click', 'keydown'].forEach((type) => window.addEventListener(type, wake, { capture: true, passive: true }));
 }
 
 // Where every sound should connect: the master volume, which mutes with the setting.
