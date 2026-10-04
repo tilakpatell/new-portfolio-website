@@ -6,8 +6,12 @@
 // the run) running down -Z here. The camera rides just behind and above the
 // X-wing. Textures are painted once on a canvas at start; the trench's detail
 // is a few instanced meshes; lasers, bolts and engines glow through bloom.
+// The X-wing is the site owner's Meshy model once it loads; until then (or
+// if it never does) one built from simple shapes, the same size.
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -42,54 +46,111 @@ function texture(canvas, repeatX, repeatY, renderer, srgb = true) {
 // Bright colours for things that glow: above 1, so bloom picks them up.
 const hot = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 
+// The built X-wing, nose towards -Z: its hull (hidden when the model comes),
+// and the engine glows and cannon tips (which stay, moved onto the model).
 function buildXwing() {
   const g = new THREE.Group();
+  const shell = new THREE.Group();
+  g.add(shell);
   const hull = new THREE.MeshStandardMaterial({ color: 0xdfe3e8, metalness: 0.25, roughness: 0.55 });
   const grey = new THREE.MeshStandardMaterial({ color: 0x8a9098, metalness: 0.4, roughness: 0.5 });
   const red = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.6 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x23272d, roughness: 0.4, metalness: 0.5 });
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.065, 0.52), hull);
-  g.add(body);
+  shell.add(body);
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.042, 0.22, 4), hull);
   nose.rotation.x = -Math.PI / 2;
   nose.rotation.y = Math.PI / 4;
   nose.position.z = -0.37;
-  g.add(nose);
+  shell.add(nose);
   const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.1), dark);
   canopy.position.set(0, 0.045, -0.05);
-  g.add(canopy);
+  shell.add(canopy);
   const droid = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), new THREE.MeshStandardMaterial({ color: 0x3a6ad8, roughness: 0.4 }));
   droid.position.set(0, 0.045, 0.08);
-  g.add(droid);
+  shell.add(droid);
   const glowMat = new THREE.MeshBasicMaterial({ color: hot(0xff8a5a, 1.8), toneMapped: false });
   const tipMat = new THREE.MeshBasicMaterial({ color: hot(0xff4030, 0.4), toneMapped: false });
   const tips = [];
+  const glows = [];
   for (const a of [0.42, Math.PI - 0.42, Math.PI + 0.42, -0.42]) {
     const wing = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.012, 0.15), hull);
     wing.position.set(Math.cos(a) * 0.19, Math.sin(a) * 0.19, 0.08);
     wing.rotation.z = a;
-    g.add(wing);
+    shell.add(wing);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 0.14), red);
     stripe.position.set(Math.cos(a) * 0.24, Math.sin(a) * 0.24, 0.08);
     stripe.rotation.z = a;
-    g.add(stripe);
+    shell.add(stripe);
     const engine = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.2, 10), grey);
     engine.rotation.x = Math.PI / 2;
     engine.position.set(Math.cos(a) * 0.065, Math.sin(a) * 0.065, 0.06);
-    g.add(engine);
+    shell.add(engine);
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.021, 12), glowMat);
     glow.position.set(Math.cos(a) * 0.065, Math.sin(a) * 0.065, 0.161);
     g.add(glow);
+    glows.push(glow);
     const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 6), grey);
     cannon.rotation.x = Math.PI / 2;
     cannon.position.set(Math.cos(a) * 0.35, Math.sin(a) * 0.35, -0.04);
-    g.add(cannon);
+    shell.add(cannon);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 6), tipMat);
     tip.position.set(Math.cos(a) * 0.35, Math.sin(a) * 0.35, -0.21);
     g.add(tip);
     tips.push(tip);
   }
-  return { group: g, tipMat, glowMat };
+  return { group: g, shell, tipMat, glowMat, glows, tips };
+}
+
+// The Meshy X-wing: 2 long, nose +Z, wings in a shallow X. Where its engines'
+// nozzles (their back faces, about 0.09 across) and its wingtip cannons'
+// muzzles are, as fractions of its half-width, half-height and half-length
+// from its middle (it's the same on all four wings, mirrored).
+const XW_MODEL = { engine: [0.224, 0.574, -1], cannon: [0.94, 0.84, 0.3] };
+const XW_LENGTH = 0.75; // the built one's, nose tip to tail
+const XW_MID = -0.11; // and where its middle is along z
+
+// Put the model in place of the built hull: turned nose -Z, scaled to the
+// built one's length and centred where it was, with the four engine glows on
+// its nozzles and the four cannon tips on its muzzles.
+function mountXwing(xw, model) {
+  const box = new THREE.Box3().setFromObject(model);
+  const half = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+  model.position.sub(box.getCenter(new THREE.Vector3()));
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.scale.setScalar(XW_LENGTH / Math.max(half.z * 2, 1e-6));
+  holder.rotation.y = Math.PI;
+  holder.position.z = XW_MID;
+  holder.updateMatrix();
+  // a point on the model's wing at (sx, sy) of its own, in the ship's units, nudged dz along z
+  const at = ([x, y, z], sx, sy, dz) => new THREE.Vector3(sx * x * half.x, sy * y * half.y, z * half.z).applyMatrix4(holder.matrix).add(new THREE.Vector3(0, 0, dz));
+  const quads = [[1, 1], [-1, 1], [-1, -1], [1, -1]]; // the order the built ones go round in
+  quads.forEach(([sx, sy], i) => {
+    xw.glows[i].position.copy(at(XW_MODEL.engine, -sx, sy, 0.004)); // (turned half round, so x mirrors)
+    xw.glows[i].scale.setScalar(0.85);
+    xw.tips[i].position.copy(at(XW_MODEL.cannon, -sx, sy, -0.01));
+  });
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if ('metalness' in m) m.metalness = 0.2;
+      if ('roughness' in m) m.roughness = 0.6;
+    }
+  });
+  xw.shell.visible = false;
+  xw.group.add(holder);
+}
+
+// a model that came too late
+function disposeModel(model) {
+  model.traverse((o) => {
+    o.geometry?.dispose();
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      m.map?.dispose();
+      m.dispose();
+    }
+  });
 }
 
 // A TIE fighter, front (the window) towards +Z: a ball cockpit with its
@@ -416,6 +477,18 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // ── the ships ──
   const xw = buildXwing();
   scene.add(xw.group);
+  // the Meshy model, when it comes: its shaders made first, so it doesn't stall a frame
+  let disposed = false;
+  new GLTFLoader()
+    .setMeshoptDecoder(MeshoptDecoder)
+    .loadAsync('/models/meshy/x-wing-fighter.glb')
+    .then(async ({ scene: model }) => {
+      if (disposed || lost) return disposeModel(model);
+      await renderer.compileAsync(model, camera, scene).catch(() => {});
+      if (disposed || lost) return disposeModel(model);
+      mountXwing(xw, model);
+    })
+    .catch(() => {}); // the built one stays
   const tieParts_ = tieParts();
   const ties = Array.from({ length: 12 }, () => {
     const t = buildTie(tieParts_);
@@ -862,6 +935,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   };
 
   const dispose = () => {
+    disposed = true;
     canvas.removeEventListener('webglcontextlost', onContextLost);
     clearCourse();
     scene.traverse((o) => {
