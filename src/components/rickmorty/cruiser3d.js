@@ -166,6 +166,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
   ship.add(hull);
   return {
     group: ship,
+    engines: glows, // the exhaust cans, for a scene that draws their exhaust
     update(t) {
       for (const c of crew) {
         c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));

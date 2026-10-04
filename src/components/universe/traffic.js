@@ -31,17 +31,17 @@ import { bezier, flybyLane, laneBetween, laneLength, tangent } from './lanes';
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you
 const TYPES = {
-  tie: { size: 0.3, speed: 6.5, crew: [2, 3], weight: 3, flyby: true },
-  interceptor: { size: 0.32, speed: 7.5, crew: [1, 2], weight: 2, flyby: true },
-  xwing: { size: 0.36, speed: 6.2, crew: [2, 4], weight: 2, flyby: true },
-  shuttle: { size: 0.55, speed: 3.2, crew: [1, 1], weight: 1.4 },
-  destroyer: { size: 9, speed: 1.1, crew: [1, 1], weight: 0.5, big: true },
-  patrol: { size: 0.34, speed: 6.8, crew: [2, 3], weight: 3, flyby: true },
-  federation: { size: 4, speed: 1.4, crew: [1, 1], weight: 0.6, big: true },
-  gromflomite: { size: 0.28, speed: 5.2, crew: [2, 4], weight: 2, flyby: true },
-  meeseeks: { size: 0.3, speed: 1.3, crew: [1, 3], weight: 1.4, flyby: true },
-  birdperson: { size: 0.4, speed: 4.2, crew: [1, 1], weight: 1, flyby: true },
-  slave1: { size: 0.55, speed: 6, crew: [1, 1], weight: 0.9, flyby: true },
+  tie: { size: 0.3, speed: 9, crew: [2, 3], weight: 3, flyby: true },
+  interceptor: { size: 0.32, speed: 10.5, crew: [1, 2], weight: 2, flyby: true },
+  xwing: { size: 0.36, speed: 8.7, crew: [2, 4], weight: 2, flyby: true },
+  shuttle: { size: 0.55, speed: 4.5, crew: [1, 1], weight: 1.4 },
+  destroyer: { size: 11, speed: 1.6, crew: [1, 1], weight: 0.5, big: true },
+  patrol: { size: 0.34, speed: 9.5, crew: [2, 3], weight: 3, flyby: true },
+  federation: { size: 5, speed: 2, crew: [1, 1], weight: 0.6, big: true },
+  gromflomite: { size: 0.28, speed: 7.3, crew: [2, 4], weight: 2, flyby: true },
+  meeseeks: { size: 0.3, speed: 1.8, crew: [1, 3], weight: 1.4, flyby: true },
+  birdperson: { size: 0.4, speed: 5.9, crew: [1, 1], weight: 1, flyby: true },
+  slave1: { size: 0.55, speed: 8.4, crew: [1, 1], weight: 0.9, flyby: true },
 };
 const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1'], rickmorty: TRAFFIC.rickmorty };
 // the ones that are models, and which way their noses point (to turn to +z)

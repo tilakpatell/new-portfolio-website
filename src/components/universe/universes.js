@@ -19,8 +19,8 @@
 
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets big against the ship, the stations a little less so
-const STATION = 1.8;
-const PLANET = 2.4;
+const STATION = 2;
+const PLANET = 2.7;
 
 const CORE = [
   {

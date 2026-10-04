@@ -13,18 +13,18 @@ import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const SHIP = {
-  cruise: 4.2, // map units a second (the ship is 0.26 long)
-  boost: 12,
-  reverse: 1.6,
-  accel: 4.4,
-  brake: 9,
-  coast: 1.9,
+  cruise: 5.5, // map units a second (the ship is 0.26 long)
+  boost: 20,
+  reverse: 2,
+  accel: 5.5,
+  brake: 11,
+  coast: 2.4,
   turn: 2.0, // radians a second
   radius: 0.15,
   height: 0.3,
   crash: 2.4, // flying into something faster than this is a crash, not a bump
 };
-export const EDGE = MAP_RADIUS + 6;
+export const EDGE = MAP_RADIUS + 8;
 const ORBIT_IN = 2.4; // past a planet's reach: closer than this, you're at it
 const ORBIT_OUT = 3.8; // and you've left once you're this far
 const PARK = 1.2; // where autopilot stops, past the planet's reach
@@ -179,7 +179,7 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   let dz = uz;
   let blocked = false;
   let closest = Infinity; // the gap to the nearest thing in the way
-  const look = 4 + Math.abs(s.speed) * 1.1;
+  const look = 5 + Math.abs(s.speed) * 1;
   for (const o of SOLIDS) {
     if (o.id === id) continue;
     const ox = o.at[0] - s.x;
@@ -192,16 +192,38 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
     blocked = true;
     const gap = Math.hypot(ox, oz) - o.r;
     closest = Math.min(closest, gap);
-    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 2.5, 0, 1));
+    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 4, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;
     dz += side * ux * k;
   }
+  // and anything the way it's actually pointing, while it swings round at
+  // speed (it turns wide when fast): out to where it could stop, and a bit
+  const [hx, hz] = forward(s.heading);
+  const stopping = (s.speed * s.speed) / (2 * SHIP.brake) + 3;
+  let danger = false;
+  for (const o of SOLIDS) {
+    if (o.id === id) continue;
+    const ox = o.at[0] - s.x;
+    const oz = o.at[2] - s.z;
+    const along = ox * hx + oz * hz;
+    if (along < 0 || along > stopping + o.r) continue;
+    const cross = ox * hz - oz * hx;
+    const clear = o.r + SHIP.radius + 0.8;
+    if (Math.abs(cross) > clear) continue;
+    danger = true;
+    blocked = true;
+    closest = Math.min(closest, Math.hypot(ox, oz) - o.r);
+    const side = Math.sign(cross) || 1;
+    dx += -side * hz * 2.5;
+    dz += side * hx * 2.5;
+  }
   const want = headingTo(dx, dz);
   const diff = wrap(want - s.heading);
   const turn = clamp(-diff * 2.5, -1, 1);
-  // slow for sharp turns, and for anything close ahead, so it can steer round
-  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * clamp(closest / 4, 0.3, 1);
-  const throttle = brake * clamp(dist / 4, 0.14, 1);
-  return { input: { throttle, turn, boost: !blocked && dist > 12 && Math.abs(diff) < 0.25 }, done: false };
+  // slow for sharp turns, and for anything close ahead, so it can steer
+  // round; hard, for anything dead ahead within stopping distance
+  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * (danger ? 0.12 : clamp(closest / 5, 0.3, 1));
+  const throttle = brake * clamp(dist / 5, 0.12, 1);
+  return { input: { throttle, turn, boost: !blocked && dist > 18 && Math.abs(diff) < 0.25 }, done: false };
 }
