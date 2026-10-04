@@ -425,6 +425,17 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       const id = isSpec(who) ? who.id : who;
       return loader.loadAsync(isSpec(who) ? who.model : `/models/office/cast/${id}.glb`).then(
         (m) => {
+          // No mipmaps for a figure from elsewhere: it is still on the atlas
+          // Meshy made it, small islands packed edge to edge, and a mip level
+          // mixes each island's rim with its neighbour's colour (light seams
+          // down a dark suit). The office's own are on atlases with gutters
+          // (scripts/meshy.mjs, reatlas), and keep theirs.
+          if (isSpec(who))
+            m.scene.traverse((o) => {
+              if (!o.isMesh || !o.material.map) return;
+              o.material.map.minFilter = THREE.LinearFilter;
+              o.material.map.generateMipmaps = false;
+            });
           models.set(id, m);
           each?.(id, cast);
         },
