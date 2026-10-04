@@ -4,7 +4,7 @@ import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
 import HectorBell from '../components/albuquerque/HectorBell';
 import HectorBoard from '../components/albuquerque/HectorBoard';
-import Lab from '../components/albuquerque/Lab';
+import Lab from '../components/albuquerque/Lab.jsx'; // lab.js sits beside it: case-blind disks would take that
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
