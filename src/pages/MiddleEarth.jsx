@@ -5,6 +5,8 @@ import Bridge from '../components/middleearth/Bridge';
 import Ring from '../components/middleearth/Ring';
 import MiddleEarthMap from '../components/middleearth/Map';
 import Gorgoroth from '../components/middleearth/Gorgoroth';
+import MapBackdrop from '../components/middleearth/MapBackdrop';
+import { shouldOpen } from '../components/middleearth/opening';
 import { STOPS } from '../components/middleearth/road';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
@@ -41,7 +43,8 @@ const WRONG = [
 ];
 
 // Middle-earth: the Doors of Durin, the road on the map, the Bridge of Khazad-dûm,
-// then Mordor: Gorgoroth under the Eye and the One Ring at Mount Doom.
+// then Mordor: Gorgoroth under the Eye and the One Ring at Mount Doom. Behind
+// it all lies the map, which the page opens on, as the films do.
 // Reachable from the worlds menu, the terminal ('moria') and the Off the clock dock.
 export default function MiddleEarth() {
   useDocumentTitle('Middle-earth');
@@ -56,6 +59,7 @@ export default function MiddleEarth() {
   const [word, setWord] = useState('');
   const [say, setSay] = useState('');
   const music = useRef(null);
+  const [opening, setOpening] = useState(shouldOpen);
   useEffect(() => () => music.current?.stop(), []);
 
   const moon = () => {
@@ -113,7 +117,8 @@ export default function MiddleEarth() {
       : 'Somewhere on this cliff are the Doors of Durin. They show only by moonlight, and open to a single word. Move your light over the rock, or call the moon.';
 
   return (
-    <div className="relative">
+    <div className="me-page relative" data-opening={opening || undefined}>
+      <MapBackdrop mordor={active === 'mordor'} opening={opening} onOpened={() => setOpening(false)} />
       <section data-theme-section="shire" className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:min-h-[100svh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="me-title">
         <Mountains variant={active === 'mordor' ? 'mordor' : 'shire'} className="hero-backdrop" />
         <figure className="me-scene" data-entering={entering || undefined}>
