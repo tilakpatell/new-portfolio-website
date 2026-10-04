@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Meshy concept images and thumbnails, for review (scripts/meshy*.mjs)
+/lab/meshy/
