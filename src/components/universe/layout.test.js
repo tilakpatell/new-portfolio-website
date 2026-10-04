@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { MAP_RADIUS, ORDER, POSITIONS, REACH, keyStep, next, nextWorld, parseId, prev } from './layout';
+
+describe('the map layout', () => {
+  it('keeps every universe clear of the others, moons and all', () => {
+    for (const a of ORDER) {
+      for (const b of ORDER) {
+        if (a >= b) continue;
+        const [ax, , az] = POSITIONS[a];
+        const [bx, , bz] = POSITIONS[b];
+        expect(Math.hypot(ax - bx, az - bz), `${a} and ${b}`).toBeGreaterThan(REACH[a] + REACH[b]);
+      }
+    }
+  });
+
+  it('keeps every universe inside the map radius', () => {
+    for (const id of ORDER) expect(Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]).toBeLessThanOrEqual(MAP_RADIUS + 1e-9);
+  });
+
+  it('steps through the map in order and wraps', () => {
+    expect(next('starwars')).toBe('music');
+    expect(next('travel')).toBe('starwars');
+    expect(prev('starwars')).toBe('travel');
+    expect(next(null)).toBe('starwars');
+    expect(prev(null)).toBe('travel');
+  });
+
+  it('reads only real ids from the URL', () => {
+    expect(parseId('marvel')).toBe('marvel');
+    for (const bad of ['MARVEL', '__proto__', 'constructor', 'toString', '', undefined, null, 42]) expect(parseId(bad)).toBeNull();
+  });
+
+  it('finds the next world page, skipping the ones that are not', () => {
+    expect(nextWorld('office').id).toBe('starwars'); // gaming and travel have no world page
+    expect(nextWorld('starwars').id).toBe('music');
+    expect(nextWorld('albuquerque')?.id).toBe('starwars'); // not an id: starts from the top
+    expect(nextWorld(null).id).toBe('starwars');
+  });
+
+  it('maps the focus group keys and leaves the rest alone', () => {
+    expect(keyStep('ArrowRight', 'starwars')).toBe('music');
+    expect(keyStep('ArrowDown', 'starwars')).toBe('music');
+    expect(keyStep('ArrowLeft', 'starwars')).toBe('travel');
+    expect(keyStep('ArrowUp', null)).toBe('travel');
+    expect(keyStep('Home', 'office')).toBe('starwars');
+    expect(keyStep('End', 'office')).toBe('travel');
+    expect(keyStep('Enter', 'office')).toBeUndefined();
+    expect(keyStep('a', 'office')).toBeUndefined();
+  });
+});
