@@ -12,6 +12,7 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { createVfx } from '../hq/vfx';
 import { createFeel } from '../hq/feel';
 import { lightningPool } from '../lawn/models';
+import { aim, loadMeshy, meshyFigure } from '../smash/meshy';
 import { STONES } from '../../interests/stones';
 import { SOCKETS, THANOS_JOINTS, buildGauntlet, engravingNormal, rubbleGeometry, spireGeometry, thanosStyle, titanSky } from './models';
 
@@ -61,7 +62,7 @@ function dusty(mat, dustU) {
   return mat;
 }
 
-export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
+export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {}) {
   const engine = createEngine(canvas, { exposure: 0.92, fov: FOV, near: 0.05, far: 3000, bloom: { strength: 0.55, radius: 0.45, threshold: 1.6 }, onLost, onSlow });
   const { scene, camera, hemi } = engine;
   const small = engine.small;
@@ -162,7 +163,15 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
   const thanosMats = { skin: dusty(skin, dustU), suit: dusty(suit, dustU), gold: dusty(gold, dustU), dark: dusty(dark, dustU) };
   const thanos = buildHumanoid({ style: thanosStyle, joints: THANOS_JOINTS, materials: thanosMats, scale: SCALE });
   thanos.root.rotation.y = Math.PI; // facing the horizon (−z)
-  scene.add(thanos.root);
+  // Meshy's Thanos, if he's been made (scripts/meshy.mjs --set hq): he stands
+  // where the built one would, the gauntlet on his left forearm
+  const M = await loadMeshy({ manifest: meshy }).catch(() => ({}));
+  const mt = M.thanos ? meshyFigure(M.thanos, { h: 2.8 }) : null;
+  if (mt) {
+    mt.root.rotation.y = Math.PI;
+    for (const m of mt.materials) dusty(m, dustU);
+    scene.add(mt.root);
+  } else scene.add(thanos.root);
 
   // the gauntlet on his left forearm
   const stoneMats = Object.fromEntries(
@@ -178,7 +187,13 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
   const gauntletDark = dusty(new THREE.MeshStandardMaterial({ color: 0x2a1a06, metalness: 0.85, roughness: 0.55 }), dustU);
   const gauntlet = buildGauntlet({ gold: gauntletGold, dark: gauntletDark }, stoneMats);
   gauntlet.group.scale.setScalar(SCALE * 1.15); // drawn a touch large, so it reads
-  thanos.bones.elbowL.add(gauntlet.group);
+  // on Meshy's Thanos the gauntlet rides on its own, where the built one's
+  // would be: moved to his elbow and sized to his forearm, every frame
+  const holder = mt?.bones.LeftForeArm && mt.bones.LeftHand ? new THREE.Group() : null;
+  if (holder) {
+    holder.add(gauntlet.group);
+    scene.add(holder);
+  } else thanos.bones.elbowL.add(gauntlet.group);
   // the stones' light on the gold: one soft light at the back of the hand,
   // its colour the mix of what's set
   const handLight = new THREE.PointLight(0xffffff, 0, 1.4, 2);
@@ -230,6 +245,36 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
   }
 
   // ── his pose ──
+  // Meshy's Thanos: his idle clip, his arms along the built one's (posed but
+  // not drawn), the hand under the gauntlet folded away
+  const up3 = new THREE.Vector3();
+  const pa = new THREE.Vector3();
+  const pb = new THREE.Vector3();
+  const pc = new THREE.Vector3();
+  function poseMeshy(dt) {
+    mt.set('idle');
+    mt.update(dt);
+    const B = mt.bones;
+    const b = thanos.bones;
+    thanos.root.updateMatrixWorld(true);
+    b.shoulderL.getWorldPosition(pa);
+    b.elbowL.getWorldPosition(pb);
+    b.handL.getWorldPosition(pc);
+    aim(B.LeftArm, B.LeftForeArm, up3.subVectors(pb, pa), 1);
+    aim(B.LeftForeArm, B.LeftHand, up3.subVectors(pc, pb), 1);
+    aim(B.neck ?? B.Spine02, B.Head, up3.set(-0.2, 1, -0.35), 0.6);
+    B.LeftHand.scale.setScalar(0.001);
+    B.LeftHand.updateMatrixWorld(true);
+    if (!holder) return;
+    // its wrist on his, sized to his forearm (within reason, so it still reads)
+    b.elbowL.matrixWorld.decompose(up3, holder.quaternion, holder.scale);
+    B.LeftForeArm.getWorldPosition(pa);
+    B.LeftHand.getWorldPosition(holder.position);
+    const k = clamp(pa.distanceTo(holder.position) / pc.distanceTo(pb), 0.85, 1.2);
+    holder.scale.multiplyScalar(k);
+    holder.position.addScaledVector(up3.subVectors(pc, pb), -k);
+  }
+
   function pose(dt) {
     const b = thanos.bones;
     poseHumanoid(thanos, { t: clock, mode: 'idle', speed: 1 });
@@ -253,6 +298,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
     b.shoulderL.rotation.set(-2.05 - lift * 0.25 + Math.sin(clock * 0.7) * 0.02, -0.25, 0.42);
     b.elbowL.rotation.set(-0.55 - lift * 0.15, 0, 0);
     gauntlet.wrist.rotation.set(0.15, -0.55 - lift * 0.25, -0.05);
+    if (mt) poseMeshy(dt);
     // the fingers: open and a little curled; the snap's press and release
     const F = gauntlet.fingers;
     const open = [0.12, 0.18, 0.12];
@@ -307,7 +353,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
   let wide = 0;
   function placeCamera(dt) {
     const tall = camera.aspect < 1;
-    thanos.root.updateMatrixWorld(true);
+    (mt ? mt.root : thanos.root).updateMatrixWorld(true);
     gauntlet.wrist.getWorldPosition(wristW);
     gauntlet.wrist.getWorldQuaternion(wq);
     back.set(1, 0, 0).applyQuaternion(wq); // the back of the hand
@@ -352,7 +398,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
     dustU.value = clamp(dustT / 5, 0, 1.05);
     if (calm) return;
     // ash from wherever he's still standing, blown off to the side
-    const bones = Object.values(thanos.bones);
+    const bones = Object.values(mt ? mt.bones : thanos.bones).filter(Boolean);
     for (let i = 0; i < 3; i++) {
       const b = bones[Math.floor(Math.random() * bones.length)];
       b.getWorldPosition(tmp);
@@ -378,7 +424,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
     }
     pose(d);
     if (popFx.length) {
-      thanos.root.updateMatrixWorld(true);
+      (mt ? mt.root : thanos.root).updateMatrixWorld(true);
       for (const id of popFx.splice(0)) {
         gauntlet.sockets[id].getWorldPosition(tmp);
         const c = STONES.find((st) => st.id === id).color;

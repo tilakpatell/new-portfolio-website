@@ -9,7 +9,7 @@
 //
 // Two sets: Portal panic's cast (the default), and the Avengers HQ games'
 // models (--set hq: Smash Run's Hulk, Chitauri, cars, chariot and wall
-// pylon, photoreal, into public/hq/meshy/ with a manifest the games read).
+// pylon, and Thanos for Titan, photoreal, into public/hq/meshy/ with a manifest the games read).
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), fetch (free: download and compress). Each task's id is kept in
@@ -76,6 +76,8 @@ export const HQ_ASSETS = {
   sedan: { h: 4.9, poly: 12000, tex: 1024, prompt: `An ordinary dark red four-door American sedan from around 2010, dusty, its windscreen cracked and a door dented. ${HQ_PROP}` },
   suv: { h: 5.1, poly: 12000, tex: 1024, prompt: `A black full-size American SUV from around 2010, dusty, the bonnet dented and a side window shattered. ${HQ_PROP}` },
   chariot: { h: 5.5, poly: 12000, tex: 1024, prompt: `An alien flying war sled: a long narrow armoured hovercraft of segmented dark bronze and gunmetal biomechanical plates, a pointed prow, a small open standing deck with a handrail at the back, two glowing blue jet engines under its tail. No rider. ${HQ_PROP}` },
+  // Titan: the warlord himself (the gauntlet stays modelled in code: its sockets are the game's)
+  thanos: { rig: true, height: 2.8, h: 2.8, poly: 24000, tex: 2048, prompt: `A towering, massively built alien warlord about nine feet tall, with wrinkled purple-grey skin, a bald head, a heavy brow and a broad chin deeply ridged with vertical grooves, small hard eyes; a dark navy sleeveless armoured tunic with gold shoulder plates, a gold harness crossing his chest and back, and a broad gold belt; bare, heavily muscled purple arms; dark trousers and armoured boots. ${HQ_BODY}` },
   pylon: { h: 4.4, poly: 8000, tex: 512, prompt: `A tall alien biomechanical energy pylon, about four metres high: a tapering column of segmented dark bronze and gunmetal armour plates with fins up its back, clawed feet at its base, and a glowing violet crystal at its top. ${HQ_PROP}` },
 };
 
