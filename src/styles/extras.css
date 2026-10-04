@@ -1804,3 +1804,46 @@ html[data-mode='dark'] .tower-svg { --tw-sky-top: #070b14; --tw-sky-bottom: #1b2
 .space-scope[data-arrived] .gauntlet-stage { animation: arrive 1s ease both; }
 @keyframes arrive { from { opacity: 0; transform: scale(0.9); } }
 @media (prefers-reduced-motion: reduce) { .tesseract, .hulk-stage[data-hulk] { animation: none; } .portal-flash { animation-duration: 0.4s; } }
+
+/* ─── The scroll bar, per theme ──────────────────────────────────────────── */
+/* Sting: an elven blade that glows blue (orange in Mordor) */
+.saber-progress[data-kind='sting'] .hilt { width: 30px; background: linear-gradient(90deg, #3b2a1c 0 60%, #c9d1d9 60% 66%, #3b2a1c 66% 100%); border-radius: 3px 0 0 3px; }
+.saber-progress[data-kind='sting'] .hilt::after { right: -6px; top: -3px; width: 6px; height: 16px; border-radius: 3px; background: linear-gradient(#f0f3f6, #8f98a2); box-shadow: none; }
+.saber-progress[data-kind='sting'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='sting'] .blade { left: 42px; height: 4px; top: 0; border-radius: 0; background: linear-gradient(#ffffff, #b9c4cf 55%, #7d8894); clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); box-shadow: none; filter: drop-shadow(0 0 3px #5fb6ff) drop-shadow(0 0 7px #2f86ff); }
+[data-theme='mordor'] .saber-progress[data-kind='sting'] .blade { filter: drop-shadow(0 0 3px #ff9a3c) drop-shadow(0 0 8px #ff4d00); }
+/* Dunder Mifflin: a dotted flight path and a paper airplane at its end */
+.saber-progress[data-kind='plane'] .hilt { width: 26px; height: 12px; top: -4px; border-radius: 1px; background: repeating-linear-gradient(0deg, #ffffff 0 2px, #d7dde6 2px 3px); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.saber-progress[data-kind='plane'] .hilt::after { display: none; }
+.saber-progress[data-kind='plane'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='plane'] .blade { background: repeating-linear-gradient(90deg, var(--accent) 0 3px, transparent 3px 9px); box-shadow: none; height: 2px; top: 1px; }
+.progress-tip { position: absolute; left: -12px; top: -6px; will-change: transform; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); }
+/* Transformers: an energon gauge, cell by cell */
+.saber-progress[data-kind='energon'] .hilt { width: 30px; background: linear-gradient(#5d6570, #2c3138); clip-path: polygon(0 20%, 80% 0, 100% 50%, 80% 100%, 0 80%); }
+.saber-progress[data-kind='energon'] .hilt::after { right: 8px; background: var(--saber); }
+.saber-progress[data-kind='energon'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='energon'] .blade { height: 6px; top: -1px; border-radius: 1px; background: repeating-linear-gradient(90deg, var(--saber) 0 10px, transparent 10px 13px); box-shadow: none; filter: drop-shadow(0 0 4px var(--saber)); }
+/* Stark: six stones along a gold beam, lighting as you pass them */
+.saber-progress[data-kind='stones'] .hilt { width: 28px; height: 12px; top: -4px; border-radius: 4px 6px 6px 4px; background: linear-gradient(#f2d27a, #b8871f); }
+.saber-progress[data-kind='stones'] .hilt::after { right: 5px; top: 3px; width: 5px; height: 5px; border-radius: 999px; background: #ffc400; box-shadow: 0 0 5px #ffc400; }
+.saber-progress[data-kind='stones'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='stones'] .blade { background: linear-gradient(#ffe7a6, #d9a93a); box-shadow: 0 0 6px rgba(255, 196, 0, 0.6); height: 2px; top: 1px; }
+.progress-stone { position: absolute; top: -3px; width: 8px; height: 10px; margin-left: -4px; border-radius: 50%; background: color-mix(in srgb, var(--stone) 30%, #2a2a2a); border: 1px solid rgba(0, 0, 0, 0.35); transition: background-color 0.25s ease, box-shadow 0.25s ease; }
+.progress-stone[data-lit='true'] { background: var(--stone); box-shadow: 0 0 8px var(--stone); }
+/* Heisenberg: a test tube filling with the blue */
+.saber-progress[data-kind='tube'] .hilt { width: 18px; height: 12px; top: -4px; border-radius: 6px 0 0 6px; background: linear-gradient(#e9f3f6, #a9c2c9); border: 1px solid rgba(0, 0, 0, 0.2); }
+.saber-progress[data-kind='tube'] .hilt::after { display: none; }
+.saber-progress[data-kind='tube']::before { content: ''; position: absolute; left: 26px; right: 8px; top: -3px; height: 9px; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); border-left: 0; border-radius: 0 6px 6px 0; }
+.saber-progress[data-kind='tube'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='tube'] .blade { left: 26px; top: -2px; height: 7px; border-radius: 0 4px 4px 0; background: radial-gradient(circle at 20% 40%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px) 0 0 / 14px 7px, linear-gradient(#a6ecff, #30b6e8); box-shadow: 0 0 6px rgba(48, 182, 232, 0.6); }
+/* Raga: a sitar string, gold where it has been played */
+.saber-progress[data-kind='string'] .hilt { width: 22px; height: 12px; top: -4px; border-radius: 50% 2px 2px 50%; background: radial-gradient(circle at 40% 40%, #a8743a, #5a3412); }
+.saber-progress[data-kind='string'] .hilt::after { display: none; }
+.saber-progress[data-kind='string']::before { content: ''; position: absolute; left: 30px; right: 8px; top: 1px; height: 1px; background: color-mix(in srgb, var(--text) 25%, transparent); }
+.saber-progress[data-kind='string'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='string'] .blade { left: 30px; height: 2px; top: 0.5px; border-radius: 0; background: linear-gradient(90deg, #ffd27a, #e8871e); box-shadow: 0 0 6px rgba(232, 135, 30, 0.7); }
+/* Arcade: chunky pixels */
+.saber-progress[data-kind='pixels'] .hilt { width: 24px; height: 10px; top: -3px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--accent) 0 4px, transparent 4px 6px); }
+.saber-progress[data-kind='pixels'] .hilt::after { display: none; }
+.saber-progress[data-kind='pixels'] .blade,
+html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px; top: -1px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--saber) 0 6px, transparent 6px 8px); box-shadow: none; }
