@@ -1180,6 +1180,168 @@ function twangRaw(acIn, destIn, when = 0) {
   return 0.35;
 }
 
+// ── Cybertron ───────────────────────────────────────────────────────────────
+// Megatron's fusion cannon: a charge that climbs, then a heavy blast.
+function fusionRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.35, 0.6);
+  for (const det of [-8, 8]) {
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.detune.value = det;
+    env(o.frequency, t, [[0, 90], [0.42, 440]]);
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.Q.value = 8;
+    env(f.frequency, t, [[0, 300], [0.42, 2600]]);
+    const g = ac.createGain();
+    env(g.gain, t, [[0, 0.0001], [0.38, 0.09, 'lin'], [0.44, 0.0001]]);
+    o.connect(f).connect(g).connect(out);
+    o.start(t);
+    o.stop(t + 0.46);
+  }
+  const at = t + 0.42;
+  const low = ac.createOscillator();
+  env(low.frequency, at, [[0, 160], [0.5, 38]]);
+  const lg = ac.createGain();
+  env(lg.gain, at, [[0, 0.0001], [0.01, 0.6, 'lin'], [0.7, 0.0001]]);
+  low.connect(lg).connect(out);
+  low.start(at);
+  low.stop(at + 0.75);
+  const n = noiseSource(ac, 'white', 2);
+  const nf = ac.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.Q.value = 0.7;
+  env(nf.frequency, at, [[0, 3200], [0.8, 300]]);
+  const ng = ac.createGain();
+  env(ng.gain, at, [[0, 0.0001], [0.01, 0.5, 'lin'], [0.9, 0.0001]]);
+  n.connect(nf).connect(ng).connect(out);
+  n.start(at);
+  n.stop(at + 0.95);
+  const zap = ac.createOscillator();
+  zap.type = 'square';
+  env(zap.frequency, at, [[0, 1400], [0.3, 220]]);
+  const zg = ac.createGain();
+  env(zg.gain, at, [[0, 0.0001], [0.01, 0.07, 'lin'], [0.32, 0.0001]]);
+  zap.connect(zg).connect(out);
+  zap.start(at);
+  zap.stop(at + 0.35);
+  return 1.4;
+}
+
+// A ground bridge opening: noise spun through a wobbling filter, over a hum.
+function bridgeRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.4, 0.45);
+  const n = noiseSource(ac, 'white', 2);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 6;
+  env(f.frequency, t, [[0, 300], [0.35, 1800], [0.9, 900]]);
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 9;
+  const lfoG = ac.createGain();
+  lfoG.gain.value = 260;
+  lfo.connect(lfoG).connect(f.frequency);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.12, 0.5, 'lin'], [0.7, 0.25, 'lin'], [1, 0.0001]]);
+  n.connect(f).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 1.05);
+  lfo.start(t);
+  lfo.stop(t + 1.05);
+  const hum = ac.createOscillator();
+  hum.type = 'triangle';
+  env(hum.frequency, t, [[0, 110], [0.3, 220]]);
+  const hg = ac.createGain();
+  env(hg.gain, t, [[0, 0.0001], [0.2, 0.12, 'lin'], [1, 0.0001]]);
+  hum.connect(hg).connect(out);
+  hum.start(t);
+  hum.stop(t + 1.05);
+  return 1.05;
+}
+
+// Something going through the bridge: a short, bright whoosh.
+function zipRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.25, 0.45);
+  const n = noiseSource(ac, 'white', 1);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 2.5;
+  env(f.frequency, t, [[0, 900], [0.22, 5200]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.03, 0.35, 'lin'], [0.26, 0.0001]]);
+  n.connect(f).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.3);
+  return 0.3;
+}
+
+// The base's alarm: two tones, three times.
+function alarmRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  for (let i = 0; i < 6; i++) {
+    const o = ac.createOscillator();
+    o.type = 'square';
+    o.frequency.value = i % 2 ? 620 : 880;
+    const g = ac.createGain();
+    const at = t + i * 0.16;
+    env(g.gain, at, [[0, 0.0001], [0.01, 0.06, 'lin'], [0.15, 0.0001]]);
+    o.connect(g).connect(dest);
+    o.start(at);
+    o.stop(at + 0.16);
+  }
+  return 1;
+}
+
+// A wrong answer: a short low buzz.
+function buzzRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.value = 110;
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 900;
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.01, 0.16, 'lin'], [0.22, 0.12, 'lin'], [0.3, 0.0001]]);
+  o.connect(f).connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + 0.32);
+  return 0.32;
+}
+
+// A record decoded: four quick notes going up.
+function decodeRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.2, 0.45);
+  [523.25, 783.99, 1046.5, 1567.98].forEach((hz, i) => {
+    const o = ac.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = hz;
+    const g = ac.createGain();
+    const at = t + i * 0.06;
+    env(g.gain, at, [[0, 0.0001], [0.005, 0.18, 'lin'], [0.18, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + 0.2);
+  });
+  return 0.45;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1207,3 +1369,9 @@ export const applause = once('applause', applauseRaw);
 export const ring = once('ring', ringRaw);
 export const clang = once('clang', clangRaw);
 export const twang = once('twang', twangRaw);
+export const fusion = once('fusion', fusionRaw);
+export const bridge = once('bridge', bridgeRaw);
+export const zip = once('zip', zipRaw);
+export const alarm = once('alarm', alarmRaw);
+export const buzz = once('buzz', buzzRaw);
+export const decode = once('decode', decodeRaw);

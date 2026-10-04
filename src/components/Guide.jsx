@@ -69,9 +69,10 @@ const PAGES = {
   '/cybertron': {
     title: 'Cybertron',
     tips: [
-      ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you.'],
-      ['Transform', 'Turn the truck into Optimus and back. In robot form, open the Matrix.'],
-      ['Cybertronian', 'Type anything to see it in the War for Cybertron alphabet.'],
+      ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you, and so does who you can transform.'],
+      ['Transform', 'Optimus folds into his truck, Megatron into his jet. Open Optimus’s Matrix, or fire Megatron’s fusion cannon in either mode.'],
+      ['Ground bridge', 'Hold the button, Space, or the scene itself to open the bridge as an Autobot reaches it. Let go before a Vehicon does. Three strikes and Ratchet takes over.'],
+      ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter. Wrong guesses cost time.'],
       ['The roster', 'Roll out as any of them to wear their colors. The soundboard plays through Soundwave’s visor.'],
     ],
   },

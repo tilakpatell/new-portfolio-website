@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import GroundBridge from '../components/cybertron/GroundBridge';
+import Iacon from '../components/cybertron/Iacon';
 import Insignia from '../components/cybertron/Insignia';
+import Megatron from '../components/cybertron/Megatron';
 import Optimus from '../components/cybertron/Optimus';
 import Planet from '../components/cybertron/Planet';
 import Visor from '../components/cybertron/Visor';
@@ -23,9 +26,9 @@ const SIDES = {
 
 const ROSTER = [
   { id: 'optimus', name: 'Optimus Prime', side: 'autobot', role: 'Leader of the Autobots', line: 'Freedom is the right of all sentient beings.', color: '#c8102e', trim: '#1f4fa8' },
-  { id: 'bumblebee', name: 'Bumblebee', side: 'autobot', role: 'Scout', line: 'Speaks through his radio, a line of a song at a time.', color: '#f7c600', trim: '#151515' },
+  { id: 'bumblebee', name: 'Bumblebee', side: 'autobot', role: 'Scout', line: 'Lost his voice in the war, so he talks in beeps and whirs. Raf understands every one.', color: '#f7c600', trim: '#151515' },
   { id: 'megatron', name: 'Megatron', side: 'decepticon', role: 'Leader of the Decepticons', line: 'Once a gladiator in Kaon. Peace through tyranny.', color: '#8a8f9c', trim: '#6b2fa0' },
-  { id: 'shockwave', name: 'Shockwave', side: 'decepticon', role: 'Scientist', line: 'One optic, no feelings. Only logic.', color: '#7a2fb8', trim: '#d4af37' },
+  { id: 'shockwave', name: 'Shockwave', side: 'decepticon', role: 'Scientist', line: 'One optic, no feelings, only logic. Grew the Predacons from fossils.', color: '#7a2fb8', trim: '#d4af37' },
   { id: 'soundwave', name: 'Soundwave', side: 'decepticon', role: 'Communications', line: 'Hears everything, says almost nothing. Superior.', color: '#1b2f55', trim: '#4fd8ff' },
 ];
 
@@ -52,24 +55,35 @@ export default function Cybertron() {
   const { setScrollTheme } = useTheme();
   const [side, setSide] = useState('autobot');
   const [phase, setPhase] = useState('idle');
-  const [mode, setMode] = useState('truck');
+  const [mode, setMode] = useState('alt'); // the truck (or the jet), or the robot
   const [busy, setBusy] = useState(false);
   const [matrix, setMatrix] = useState(false);
+  const [firing, setFiring] = useState(false);
   const [text, setText] = useState('Tilak Patel');
   const [shown, setShown] = useState('Tilak Patel');
   const timers = useRef([]);
   const s = SIDES[side];
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Truck to robot and back, with the sound of it.
+  // Truck (or jet) to robot and back, with the sound of it.
   const transformBot = () => {
     if (busy) return;
     audioContext(); // in the click, so the transformation can be heard
     import('../lib/clips').then((c) => c.playClip('transform'));
+    if (side === 'decepticon' && mode === 'robot') timers.current.push(setTimeout(() => import('../lib/sfx').then((x) => x.flyby()), 700));
     setMatrix(false);
-    setMode((m) => (m === 'truck' ? 'robot' : 'truck'));
+    setFiring(false);
+    setMode((m) => (m === 'alt' ? 'robot' : 'alt'));
     setBusy(true);
     timers.current.push(setTimeout(() => setBusy(false), prefersReducedMotion() ? 100 : 1300));
+  };
+  // Megatron's fusion cannon: up comes the arm (or the jet's pod), and it fires.
+  const fire = () => {
+    if (firing || busy) return;
+    audioContext();
+    import('../lib/sfx').then((x) => x.fusion());
+    setFiring(true);
+    timers.current.push(setTimeout(() => setFiring(false), 1500));
   };
   const openMatrix = () => {
     audioContext();
@@ -119,6 +133,12 @@ export default function Cybertron() {
     return () => clearInterval(id);
   }, [text]);
 
+  // Bumblebee says hi, the only way he can
+  const beep = () => {
+    audioContext();
+    import('../lib/sfx').then((x) => x.beeps());
+  };
+
   const play = (id) => {
     audioContext();
     import('../lib/clips').then((c) => c.playClip(id));
@@ -137,7 +157,7 @@ export default function Cybertron() {
             {s.motto}
           </h1>
           <p className="lead mt-6 max-w-[48ch]">
-            The Aligned continuity first: War for Cybertron, Fall of Cybertron and Prime. And a soft spot for the Bay films. Pick a side, then transform.
+            The Aligned continuity first: War for Cybertron, Fall of Cybertron and Prime, with a soft spot for the Bay films. Pick a side and transform, bridge Team Prime home, and beat Soundwave to the Iacon relics.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={transform} disabled={phase !== 'idle'}>
@@ -158,18 +178,26 @@ export default function Cybertron() {
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <figure className="cy-stage m-0" data-side={side}>
             <Skyline faction={side} className="cy-stage-skyline" />
-            <Optimus mode={mode} side={side} matrix={matrix && mode === 'robot'} className="cy-bot" />
+            <div key={side} className="cy-figure" data-mode={mode}>
+              {side === 'autobot' ? (
+                <Optimus mode={mode === 'alt' ? 'truck' : 'robot'} matrix={matrix && mode === 'robot'} className="cy-figure-art" />
+              ) : (
+                <Megatron mode={mode === 'alt' ? 'jet' : 'robot'} firing={firing} className="cy-figure-art" />
+              )}
+            </div>
           </figure>
           <div>
             <h2 id="transform-title" className="title">
               {side === 'autobot' ? 'More than meets the eye' : 'Robots in disguise'}
             </h2>
             <p className="lead mt-4 max-w-[46ch]">
-              {mode === 'truck'
-                ? 'A cab-over truck, parked on Cybertron. Press Transform.'
-                : side === 'autobot'
-                  ? 'Optimus Prime, leader of the Autobots. Inside his chest he carries the Matrix of Leadership.'
-                  : 'In Decepticon colors now. The chest is just a chest.'}
+              {side === 'autobot'
+                ? mode === 'alt'
+                  ? 'A cab-over truck, parked on Cybertron. Press Transform.'
+                  : 'Optimus Prime, leader of the Autobots. Once Orion Pax, an archivist in Iacon. Inside his chest he carries the Matrix of Leadership.'
+                : mode === 'alt'
+                  ? 'A Cybertronian jet, circling over Kaon. Press Transform.'
+                  : 'Megatron, leader of the Decepticons. Once D-16, a gladiator in the pits of Kaon, who took the name of one of the Thirteen: Megatronus.'}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <button type="button" className="btn btn-primary" onClick={transformBot} disabled={busy}>
@@ -180,11 +208,38 @@ export default function Cybertron() {
                   {matrix ? 'Close the Matrix' : 'Open the Matrix'}
                 </button>
               )}
+              {side === 'decepticon' && (
+                <button type="button" className="btn btn-ghost" onClick={fire} disabled={busy || firing}>
+                  Fire the fusion cannon
+                </button>
+              )}
             </div>
             <p className="mt-4 min-h-[1.5em] text-sm text-muted" role="status">
-              {matrix && mode === 'robot' ? 'The Matrix of Leadership: light our darkest hour.' : ''}
+              {matrix && mode === 'robot' ? 'The Matrix of Leadership: light our darkest hour.' : firing ? 'Fusion cannon: fired.' : ''}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="bridge-title">
+        <h2 id="bridge-title" className="title">
+          Ground bridge
+        </h2>
+        <p className="lead mt-4 max-w-[58ch]">
+          Team Prime is out past Jasper, Nevada, and the Vehicons are on their tail. Ratchet’s at the controls of the bridge back to base. Get the team home, and none of the Decepticons.
+        </p>
+        <div className="mt-8">
+          <GroundBridge />
+        </div>
+      </section>
+
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="iacon-title">
+        <h2 id="iacon-title" className="title">
+          The Iacon database
+        </h2>
+        <p className="lead mt-4 max-w-[58ch]">Nine relics from Prime, written in the database in Cybertronian. Decode each entry before Soundwave does: the key is there if you need it.</p>
+        <div className="mt-8">
+          <Iacon />
         </div>
       </section>
 
@@ -211,17 +266,24 @@ export default function Cybertron() {
         <p className="lead mt-4 max-w-[54ch]">Each of them is a color scheme for this site. Roll out as one, and everything changes to match.</p>
         <ul className="cy-roster mt-8">
           {ROSTER.map((bot) => (
-            <li key={bot.id} className="cy-bot card" style={{ '--bot': bot.color, '--trim': bot.trim }}>
-              <span className="cy-bot-mark" aria-hidden="true">
+            <li key={bot.id} className="cy-member card" style={{ '--bot': bot.color, '--trim': bot.trim }}>
+              <span className="cy-member-mark" aria-hidden="true">
                 {bot.side === 'autobot' ? <AutobotMark /> : <DecepticonMark />}
               </span>
               <h3 className="stretch-semi mt-4 text-lg font-semibold text-ink">{bot.name}</h3>
               <p className="text-sm text-muted">{bot.role}</p>
               {bot.id === 'soundwave' ? <Visor className="cy-visor mt-4" /> : <p className="mt-3 text-sm leading-relaxed text-body">{bot.line}</p>}
               {bot.id === 'soundwave' && <p className="mt-3 text-sm leading-relaxed text-body">{bot.line} His visor shows whatever this site is playing.</p>}
-              <button type="button" className="btn btn-ghost btn-sm mt-5 self-start" onClick={() => rollOut(bot.id)} aria-label={`Roll out as ${bot.name}`}>
-                Roll out
-              </button>
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => rollOut(bot.id)} aria-label={`Roll out as ${bot.name}`}>
+                  Roll out
+                </button>
+                {bot.id === 'bumblebee' && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={beep}>
+                    Say hi
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

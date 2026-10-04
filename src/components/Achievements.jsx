@@ -26,6 +26,8 @@ export const ACHIEVEMENTS = {
   raga: { name: 'Raga', desc: 'Played eight notes on the sitar' },
   jugalbandi: { name: 'Jugalbandi', desc: 'Played the sitar, harmonium and tabla' },
   rollout: { name: 'Roll out', desc: 'Transformed the site' },
+  groundbridge: { name: 'Bridge them back', desc: 'Brought all of Team Prime home through the ground bridge' },
+  iacon: { name: 'Archivist', desc: 'Recovered every relic in the Iacon database' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },
