@@ -1,17 +1,18 @@
-import { RiArrowLeftLine, RiArrowRightLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine } from 'react-icons/ri';
 import { CARDS } from '../interests/cards';
 import { next, prev } from './layout';
 import { byId } from './universes';
 
 // Beside the map (a bottom sheet on a phone): the selected universe's card,
-// the way into its world, and previous / next in map order.
+// the way into its world, previous / next in map order, and back out to the
+// whole map.
 export default function UniversePanel({ universe, onSelect, onEnter, leaving }) {
   if (!universe) {
     return (
       <aside className="universe-panel" aria-label="About the map">
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">Ten worlds, one map</h2>
-        <p className="mt-3 text-sm leading-relaxed">Pick a planet to fly there and see what it holds. Drag to turn the map. The arrow keys step through them and Escape brings you back out.</p>
+        <p className="mt-3 text-sm leading-relaxed">Pick a planet to fly there and see what it holds. Drag to turn the map. The arrow keys step through the planets’ names and Escape brings you back out.</p>
         <button type="button" className="btn btn-primary mt-5" onClick={() => onSelect(next(null))}>
           Start with Star Wars <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -22,7 +23,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, leaving }) 
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
-    <aside className="universe-panel" aria-label={universe.label} aria-live="polite">
+    <aside className="universe-panel" aria-label={universe.label}>
+      <button type="button" className="universe-back" onClick={() => onSelect(null)}>
+        <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
+      </button>
       <div className="flex items-center justify-between gap-2">
         <button type="button" className="globe-btn" onClick={() => onSelect(before.id)} aria-label={`Previous: ${before.label}`} title={before.label}>
           <RiArrowLeftLine className="h-4 w-4" aria-hidden="true" />

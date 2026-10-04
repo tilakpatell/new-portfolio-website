@@ -54,6 +54,9 @@ export default function Universe() {
     // Escape is heard from anywhere inside the map or the panel
     <div className="dark-scope universe-page" style={accent} onKeyDown={onKeyDown} data-leaving={leaving?.mode}>
       <h1 className="sr-only">The universe map</h1>
+      <p className="sr-only" aria-live="polite">
+        {universe ? `${universe.label}: selected` : ''}
+      </p>
       <UniverseMap selected={selected} onSelect={select} handle={map} frozen={Boolean(leaving)} />
       <UniversePanel universe={universe} onSelect={select} onEnter={enter} leaving={Boolean(leaving)} />
       <div className="universe-fade" aria-hidden="true" style={{ background: leaving?.mode === 'dive' ? byId(leaving.id).palette.base : undefined }} />
