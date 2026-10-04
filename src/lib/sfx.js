@@ -1412,6 +1412,219 @@ function ghantaRaw(acIn, destIn, when = 0) {
   return 3.2;
 }
 
+// ── The HQ games ───────────────────────────────────────────────────────────
+// A single repulsor shot: a quick whine up, then the blast.
+function repulseRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.18, 0.4);
+  const whine = ac.createOscillator();
+  whine.type = 'sawtooth';
+  env(whine.frequency, t, [[0, 900], [0.06, 2600]]);
+  const wf = ac.createBiquadFilter();
+  wf.type = 'bandpass';
+  wf.frequency.value = 2200;
+  wf.Q.value = 2;
+  const wg = ac.createGain();
+  env(wg.gain, t, [[0, 0.0001], [0.03, 0.06, 'lin'], [0.08, 0.0001]]);
+  whine.connect(wf).connect(wg).connect(out);
+  whine.start(t);
+  whine.stop(t + 0.09);
+  const at = t + 0.05;
+  const blast = noiseSource(ac, 'white', 0.5);
+  const bf = ac.createBiquadFilter();
+  bf.type = 'bandpass';
+  bf.Q.value = 0.8;
+  env(bf.frequency, at, [[0, 3200], [0.18, 700]]);
+  const bg = ac.createGain();
+  env(bg.gain, at, [[0, 0.0001], [0.006, 0.32, 'lin'], [0.2, 0.0001]]);
+  blast.connect(bf).connect(bg).connect(out);
+  blast.start(at);
+  blast.stop(at + 0.22);
+  const thump = ac.createOscillator();
+  env(thump.frequency, at, [[0, 160], [0.12, 70]]);
+  const tg = ac.createGain();
+  env(tg.gain, at, [[0, 0.0001], [0.005, 0.22, 'lin'], [0.14, 0.0001]]);
+  thump.connect(tg).connect(out);
+  thump.start(at);
+  thump.stop(at + 0.16);
+  return 0.3;
+}
+
+// A drone going up: a crack, a short roar, a low thump.
+function blastRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.6);
+  const n = noiseSource(ac, 'white', 1);
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  env(f.frequency, t, [[0, 5200], [0.5, 260]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.004, 0.55, 'lin'], [0.55, 0.0001]]);
+  n.connect(f).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.6);
+  const sub = ac.createOscillator();
+  env(sub.frequency, t, [[0, 110], [0.4, 38]]);
+  const sg = ac.createGain();
+  env(sg.gain, t, [[0, 0.0001], [0.01, 0.5, 'lin'], [0.45, 0.0001]]);
+  sub.connect(sg).connect(out);
+  sub.start(t);
+  sub.stop(t + 0.5);
+  return 0.6;
+}
+
+// The unibeam: the chest reactor spinning up, then the beam for a second.
+function unibeamRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.35, 0.55);
+  const spin = ac.createOscillator();
+  spin.type = 'triangle';
+  env(spin.frequency, t, [[0, 300], [0.22, 1400]]);
+  const sg = ac.createGain();
+  env(sg.gain, t, [[0, 0.0001], [0.2, 0.12, 'lin'], [0.26, 0.0001]]);
+  spin.connect(sg).connect(out);
+  spin.start(t);
+  spin.stop(t + 0.28);
+  const at = t + 0.2;
+  for (const [type, hz, lvl] of [
+    ['sawtooth', 110, 0.16],
+    ['sawtooth', 165, 0.1],
+    ['square', 55, 0.12],
+  ]) {
+    const o = ac.createOscillator();
+    o.type = type;
+    env(o.frequency, at, [[0, hz * 1.4], [0.15, hz], [1.1, hz * 0.8]]);
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1800;
+    const og = ac.createGain();
+    env(og.gain, at, [[0, 0.0001], [0.04, lvl, 'lin'], [0.95, lvl * 0.8, 'lin'], [1.25, 0.0001]]);
+    o.connect(lp).connect(og).connect(out);
+    o.start(at);
+    o.stop(at + 1.3);
+  }
+  const roar = noiseSource(ac, 'white', 2);
+  const rf = ac.createBiquadFilter();
+  rf.type = 'bandpass';
+  rf.Q.value = 0.7;
+  env(rf.frequency, at, [[0, 2400], [1.1, 900]]);
+  const rg = ac.createGain();
+  env(rg.gain, at, [[0, 0.0001], [0.03, 0.3, 'lin'], [0.95, 0.22, 'lin'], [1.25, 0.0001]]);
+  roar.connect(rf).connect(rg).connect(out);
+  roar.start(at);
+  roar.stop(at + 1.3);
+  return 1.5;
+}
+
+// Glass going: a bright crack, then shards ringing as they fall.
+function shatterRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.5);
+  const crack = noiseSource(ac, 'white', 0.4);
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 2500;
+  const cg = ac.createGain();
+  env(cg.gain, t, [[0, 0.0001], [0.003, 0.5, 'lin'], [0.18, 0.0001]]);
+  crack.connect(hp).connect(cg).connect(out);
+  crack.start(t);
+  crack.stop(t + 0.2);
+  for (let i = 0; i < 9; i++) {
+    const at = t + 0.03 + Math.random() * 0.45;
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 3000 + Math.random() * 4500;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.002, 0.05 + Math.random() * 0.05, 'lin'], [0.12 + Math.random() * 0.2, 0.0001]]);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + 0.35);
+  }
+  return 0.6;
+}
+
+// Two quick high chirps: something is charging up.
+function warnRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  for (const k of [0, 0.11]) {
+    const o = ac.createOscillator();
+    o.type = 'square';
+    o.frequency.value = 1760;
+    const g = ac.createGain();
+    env(g.gain, t + k, [[0, 0.0001], [0.005, 0.05, 'lin'], [0.07, 0.0001]]);
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 4000;
+    o.connect(f).connect(g).connect(dest);
+    o.start(t + k);
+    o.stop(t + k + 0.08);
+  }
+  return 0.2;
+}
+
+// A bow coming to full draw: the limbs and string creaking under load.
+function creakRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.08, 0.35);
+  const n = noiseSource(ac, 'brown', 1);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 9;
+  env(bp.frequency, t, [[0, 260], [0.6, 520]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.12, 0.5, 'lin'], [0.55, 0.32, 'lin'], [0.7, 0.0001]]);
+  // the creak's grain: a slow tremolo
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 23;
+  const depth = ac.createGain();
+  depth.gain.value = 0.18;
+  lfo.connect(depth).connect(g.gain);
+  n.connect(bp).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.72);
+  lfo.start(t);
+  lfo.stop(t + 0.72);
+  return 0.72;
+}
+
+// An arrow into a straw boss: a dull thud with a rustle on top.
+function thunkRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.12, 0.6);
+  const o = ac.createOscillator();
+  env(o.frequency, t, [[0, 150], [0.09, 70]]);
+  const og = ac.createGain();
+  env(og.gain, t, [[0, 0.0001], [0.002, 0.6, 'lin'], [0.14, 0.0001]]);
+  o.connect(og).connect(out);
+  o.start(t);
+  o.stop(t + 0.16);
+  const n = noiseSource(ac, 'white', 1);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = 2400;
+  f.Q.value = 0.8;
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.004, 0.28, 'lin'], [0.12, 0.0001]]);
+  n.connect(f).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.14);
+  return 0.18;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1458,3 +1671,10 @@ const every = (ms, fn) => {
 };
 export const laser = every(70, laserRaw);
 export const pop = every(60, popRaw);
+export const repulse = every(75, repulseRaw);
+export const blast = every(90, blastRaw);
+export const unibeam = once('unibeam', unibeamRaw);
+export const warn = every(300, warnRaw);
+export const shatter = once('shatter', shatterRaw);
+export const creak = once('creak', creakRaw);
+export const thunk = every(60, thunkRaw);

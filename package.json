@@ -16,7 +16,8 @@
     "paint": "node scripts/paint.mjs",
     "globe": "node scripts/build-globe.mjs",
     "cc0": "node scripts/cc0.mjs",
-    "kenney": "node scripts/kenney.mjs"
+    "kenney": "node scripts/kenney.mjs",
+    "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
