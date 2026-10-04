@@ -26,7 +26,7 @@ const wx = (x) => -x;
 export async function createToss3D(canvas, { onLost, onSlow } = {}) {
   const stage = createStage(canvas, { onLost, onSlow, fov: 58 });
   const { scene, camera } = stage;
-  const [kit, people] = await Promise.all([loadKit(stage.renderer), loadPeople()]);
+  const [kit, people] = await Promise.all([loadKit(stage.renderer), loadPeople(['michael', 'dwight', 'stanley', 'phyllis', 'kevin', 'andy'])]);
   // who is in: id -> their figure, sat in a chair
   const cast = {};
   const seat = (id, parent, chair, opts) => {
