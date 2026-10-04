@@ -8,7 +8,7 @@
 // element tiles, the mug, the portal, the travel routes; the home station's
 // lit windows, Experience's six modules, the Projects shipyard, the Résumé, the
 // Contact dish, the Terminal's screen. Six models (five made with Meshy, plus
-// Rick's cruiser from Portal panic) load after the map is up and are parked on
+// Rick's cruiser from the C-137 page) load after the map is up and are parked on
 // orbits; a planet whose model never arrives simply goes without.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
@@ -636,7 +636,7 @@ const BUILDERS = {
       portal.quaternion.copy(q.invert()).multiply(camera.quaternion);
     });
     p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.58, turn: [0.15, -Math.PI / 2, 0] }; // its nose is −x: along the orbit
+    p.slot = { holder: o.holder, size: r * 0.58, turn: [0.15, Math.PI, 0] }; // its nose (the headlights) is +z: turned along the orbit
   },
 
   gaming(p, { u }) {
@@ -1106,7 +1106,7 @@ const MODELS = {
   transformers: '/models/universe/transformers.glb',
   marvel: '/models/universe/marvel.glb',
   breakingbad: '/models/universe/breakingbad.glb',
-  rickmorty: '/games/meshy/cruiser.glb',
+  rickmorty: '/games/meshy/saucer.glb', // the classic cruiser, as on the C-137 page
   gaming: '/models/universe/gaming.glb',
 };
 

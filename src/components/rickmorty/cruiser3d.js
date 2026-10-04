@@ -84,33 +84,20 @@ function glowTexture() {
   return t;
 }
 
-export async function createCruiser3D(canvas) {
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
-  } catch {
-    return null;
-  }
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setClearColor(0x000000, 0);
-  const scene = new THREE.Scene();
-  const aspect = (canvas.clientHeight || 190) / (canvas.clientWidth || 260);
-  const camera = new THREE.OrthographicCamera(-SPAN, SPAN, SPAN * aspect, -SPAN * aspect, 0.1, 60);
-  // a little above it, so you see into the cockpit
-  camera.position.set(0, 3.6, 12);
-  camera.lookAt(0, 0, 0);
-  scene.add(new THREE.HemisphereLight(0xf4f8ff, 0x8a94a8, 2.1));
-  const sun = new THREE.DirectionalLight(0xfff6e8, 2.3);
-  sun.position.set(-4, 9, 7);
-  scene.add(sun);
-
+// The cruiser itself, crew aboard: the saucer (its nose, the headlights,
+// +z) TALL high and centred, Rick at the wheel and Morty beside him in their
+// seated clips, the glass dome, the ink round everything and the exhaust
+// cans' glow. Shared by the flight down this page and the universe map's
+// cruiser. `ink` scales the outline's width, which is in the scene's units:
+// a scene that draws the cruiser smaller passes its scale. update(t) breathes
+// the crew and flickers the glow. Null if the saucer won't load.
+export async function buildCruiser({ ink = 1 } = {}) {
   const cast = createMeshyCast();
   // the walk only to turn the seated clip to face ahead (see meshyCast)
   await cast.load(null, ['saucer', 'rick', 'morty'], { clips: ['sit', 'walk'] });
   const body = cast.prop('saucer', TALL);
   if (!body) {
     cast.dispose();
-    renderer.dispose();
     return null;
   }
   // the nose (its headlights) is +z; centred on the hull
@@ -162,7 +149,7 @@ export async function createCruiser3D(canvas) {
     o.material = m;
     o.userData.glass = m;
   });
-  const inks = [inkHull(body, 0.036, glassY), ...crew.map((c) => inkHull(c.group, 0.026))];
+  const inks = [inkHull(body, 0.036 * ink, glassY), ...crew.map((c) => inkHull(c.group, 0.026 * ink))];
   // the exhaust cans' glow
   const glowTex = glowTexture();
   const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
@@ -176,6 +163,52 @@ export async function createCruiser3D(canvas) {
   const ship = new THREE.Group();
   ship.rotation.order = 'YXZ';
   ship.add(hull);
+  return {
+    group: ship,
+    update(t) {
+      for (const c of crew) {
+        c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
+        c.last = t;
+      }
+      glowMat.opacity = 0.75 + Math.sin(t * 19) * 0.15;
+      glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
+    },
+    dispose() {
+      cast.dispose();
+      for (const m of inks) m.dispose();
+      body.traverse((o) => o.userData.glass?.dispose());
+      glowTex.dispose();
+      glowMat.dispose();
+    },
+  };
+}
+
+export async function createCruiser3D(canvas) {
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
+  } catch {
+    return null;
+  }
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  const aspect = (canvas.clientHeight || 190) / (canvas.clientWidth || 260);
+  const camera = new THREE.OrthographicCamera(-SPAN, SPAN, SPAN * aspect, -SPAN * aspect, 0.1, 60);
+  // a little above it, so you see into the cockpit
+  camera.position.set(0, 3.6, 12);
+  camera.lookAt(0, 0, 0);
+  scene.add(new THREE.HemisphereLight(0xf4f8ff, 0x8a94a8, 2.1));
+  const sun = new THREE.DirectionalLight(0xfff6e8, 2.3);
+  sun.position.set(-4, 9, 7);
+  scene.add(sun);
+
+  const cruiser = await buildCruiser();
+  if (!cruiser) {
+    renderer.dispose();
+    return null;
+  }
+  const ship = cruiser.group;
   scene.add(ship);
 
   const fit = () => {
@@ -201,21 +234,12 @@ export async function createCruiser3D(canvas) {
       ship.rotation.set(v * 0.26, Math.PI / 2 - a, bank + roll);
     },
     render(t) {
-      for (const c of crew) {
-        c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
-        c.last = t;
-      }
-      glowMat.opacity = 0.75 + Math.sin(t * 19) * 0.15;
-      glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
+      cruiser.update(t);
       renderer.render(scene, camera);
     },
     fit,
     dispose() {
-      cast.dispose();
-      for (const m of inks) m.dispose();
-      body.traverse((o) => o.userData.glass?.dispose());
-      glowTex.dispose();
-      glowMat.dispose();
+      cruiser.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     },

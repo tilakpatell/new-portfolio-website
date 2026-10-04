@@ -2,12 +2,13 @@
 // simple shapes (four wings in an X, the red stripes, four engines); the
 // Millennium Falcon, the site owner's Meshy model of it once it loads (until
 // then, or without it, one built the same way: the saucer, the two mandibles,
-// the cockpit off to the right); and Rick's space cruiser, whose model from
-// Portal panic takes over once it loads.
+// the cockpit off to the right); and Rick's space cruiser, the classic saucer
+// from the C-137 page with Rick at the wheel and Morty beside him
+// (rickmorty/cruiser3d.js), once it loads.
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
-// buildShip(kind, textures) → { group, setThrottle(0…1), mount(model) }
+// buildShip(kind, textures) → { group, setThrottle(0…1), mount(model, extra), update(t), dispose() }
 // Every ship points along −z, centred, about LENGTH long.
 
 import * as THREE from 'three';
@@ -144,8 +145,8 @@ function falcon(T) {
   return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, nose: FALCON_NOSE };
 }
 
-// Until Portal panic's model of the cruiser arrives: a little saucer car
-// with a glass dome, the same size.
+// Until the C-137 page's cruiser arrives: a little saucer car with a glass
+// dome, the same size.
 function cruiser(T) {
   const group = new THREE.Group();
   const stand = new THREE.Group();
@@ -164,7 +165,7 @@ function cruiser(T) {
   const glow = new THREE.Mesh(new THREE.CircleGeometry(0.03, 16), glowM);
   glow.position.set(0, 0, 0.162);
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow, nose: -Math.PI / 2 }; // its model's nose is −x
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow, nose: Math.PI }; // its model's nose (the headlights) is +z
 }
 
 // which way the Falcon model's nose points, as a turn about y (see buildShip)
@@ -172,8 +173,9 @@ const FALCON_NOSE = Math.PI / 2;
 
 const BUILD = { xwing, falcon, cruiser };
 
-// the models that take over from the built ships, when they load
-export const SHIP_MODELS = { cruiser: '/games/meshy/cruiser.glb', falcon: '/models/universe/falcon.glb' };
+// the models that take over from the built ships, when they load (the
+// cruiser is built by the C-137 page's own code instead; see scene.js)
+export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
@@ -181,15 +183,25 @@ export function buildShip(kind, T = {}) {
   pivot.add(ship.group);
   const group = new THREE.Group();
   group.add(pivot);
+  let mounted = null;
   return {
+    update(t) {
+      mounted?.update?.(t);
+    },
+    dispose() {
+      mounted?.dispose?.();
+    },
     group,
     pivot,
     setThrottle(k) {
       for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.35 + 0.65 * k);
     },
-    // the ship's model, when it comes: sized to the stand-in, which goes
-    mount(model) {
+    // the ship's model, when it comes: sized to the stand-in, which goes.
+    // `extra` is what a built model brings: update(t) each frame, dispose(),
+    // and whether it has its own engine glow
+    mount(model, extra = {}) {
       if (!ship.stand || !model) return false;
+      mounted = extra;
       const box = new THREE.Box3().setFromObject(model);
       const dims = box.getSize(new THREE.Vector3());
       model.position.sub(box.getCenter(new THREE.Vector3()));
@@ -206,6 +218,7 @@ export function buildShip(kind, T = {}) {
       });
       ship.stand.visible = false;
       ship.group.add(holder);
+      if (extra.ownGlow && ship.glowMesh) ship.glowMesh.visible = false;
       // the engines' glow at its tail, where the ship has one of its own
       // (its length runs along x if it was turned a quarter)
       if (ship.glowMesh) {

@@ -29,7 +29,7 @@ import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, start
 import { ORDER, POSITIONS } from './layout';
 import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
 import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
-import { SHIP_MODELS, buildShip } from './shipModels';
+import { LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { shipEngine } from './sounds';
 import { byId } from './universes';
 
@@ -496,6 +496,7 @@ export async function create(canvas, ctx) {
     engine = null;
     if (state.model) {
       map.remove(state.model.group);
+      state.model.dispose();
       disposeTree(state.model.group);
       state.model = null;
     }
@@ -519,6 +520,20 @@ export async function create(canvas, ctx) {
         if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
         ctx.invalidate();
       });
+    } else if (kind === 'cruiser') {
+      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
+      const model = state.model;
+      import('../rickmorty/cruiser3d')
+        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7 }))
+        .then((c) => {
+          if (!c) return;
+          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
+            c.dispose();
+            disposeTree(c.group);
+          }
+          ctx.invalidate();
+        })
+        .catch(() => {});
     }
     if (!state.ship) {
       state.ship = spawn(state.sel);
@@ -647,6 +662,7 @@ export async function create(canvas, ctx) {
     if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * clamp01(dt * (reduced ? 12 : 4.5));
 
     const m = state.model;
+    m.update(t);
     m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
     m.group.rotation.y = ship.heading;
     m.pivot.rotation.z = -ship.bank;
@@ -979,6 +995,7 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
+      state.model?.dispose();
       panelRO?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
