@@ -31,7 +31,8 @@ describe('the map layout', () => {
   });
 
   it('finds the next world page, skipping the ones that are not', () => {
-    expect(nextWorld('office').id).toBe('starwars'); // gaming and travel have no world page
+    expect(nextWorld('office').id).toBe('rickmorty');
+    expect(nextWorld('rickmorty').id).toBe('starwars'); // gaming and travel have no world page
     expect(nextWorld('starwars').id).toBe('music');
     expect(nextWorld('albuquerque')?.id).toBe('starwars'); // not an id: starts from the top
     expect(nextWorld(null).id).toBe('starwars');

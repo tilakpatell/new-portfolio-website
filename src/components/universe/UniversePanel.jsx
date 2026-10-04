@@ -10,7 +10,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, leaving }) 
     return (
       <aside className="universe-panel" aria-label="About the map">
         <p className="eyebrow">The universe</p>
-        <h2 className="universe-title">Nine worlds, one map</h2>
+        <h2 className="universe-title">Ten worlds, one map</h2>
         <p className="mt-3 text-sm leading-relaxed">Pick a planet to fly there and see what it holds. Drag to turn the map. The arrow keys step through them and Escape brings you back out.</p>
         <button type="button" className="btn btn-primary mt-5" onClick={() => onSelect(next(null))}>
           Start with Star Wars <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />

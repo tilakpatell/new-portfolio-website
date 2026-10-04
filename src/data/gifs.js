@@ -27,6 +27,8 @@ export const GIFS = {
   trenchRun: { id: 'l0IpWBta9aL7GOoE0', title: 'Vader’s TIE fighters chase an X-wing down the trench', by: 'Star Wars', w: 400, h: 170, small: true },
   yavin: { id: '1xo9COytfPE9chS05b', title: 'Luke’s torpedoes find the exhaust port, and the Death Star explodes', by: 'Star Wars', w: 480, h: 270, small: true },
   snap: { id: 'iIFS20pNoCg1EEVodC', title: 'Thanos snaps', by: 'Marvel Studios', w: 360, h: 360, small: true },
+  // Rick and Morty (Adult Swim)
+  rmGarage: { id: 'gjfbSsz2EnNMLpRyqb', title: 'A portal opens on the Smiths’ garage wall', by: 'Rick and Morty', w: 480, h: 480 },
   // The Office (NBC)
   officeFalse: { id: 'mnkU1KhOfG2dnPcFml', title: 'Dwight misses Jim. False.', by: 'The Office', w: 480, h: 400, small: true },
   officeNoGod: { id: 'vyTnNTrs3wqQ0UIvwE', title: 'Michael hears Toby is back: “No, God! No!”', by: 'The Office', w: 480, h: 400, small: true },

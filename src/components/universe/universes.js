@@ -1,4 +1,4 @@
-// The nine fandoms on the universe map, in map order (the order Home always
+// The ten fandoms on the universe map, in map order (the order Home always
 // showed them in). Pure data: the map, the mini-map, the world pages' links
 // and the guide all read this list.
 //
@@ -80,6 +80,16 @@ export const UNIVERSES = [
     accent: '#e9e4d6',
     size: 0.58,
     palette: { base: '#f1eee4', dark: '#9aa7b8', light: '#ffffff', glow: '#d23b3b' },
+  },
+  {
+    id: 'rickmorty',
+    label: 'Rick and Morty',
+    world: 'Dimension C-137',
+    to: '/c-137',
+    swatch: '#97ce4c',
+    accent: '#97ce4c',
+    size: 0.6,
+    palette: { base: '#6f4fa8', dark: '#2a1a4a', light: '#c7a6ff', glow: '#b6f04a' },
   },
   {
     id: 'gaming',

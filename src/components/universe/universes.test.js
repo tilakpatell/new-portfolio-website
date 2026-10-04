@@ -9,9 +9,9 @@ const app = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8');
 const ROUTES = [...app.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '*');
 
 describe('the universes', () => {
-  it('are nine, each with its own id', () => {
-    expect(UNIVERSES).toHaveLength(9);
-    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(9);
+  it('are ten, each with its own id', () => {
+    expect(UNIVERSES).toHaveLength(10);
+    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(10);
   });
 
   it('each go somewhere real', () => {
@@ -25,7 +25,7 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton']);
+    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137']);
     expect(WORLDS[0]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
   });
 });
