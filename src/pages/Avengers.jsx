@@ -15,6 +15,7 @@ import Ricochet from '../components/avengers/ricochet/Ricochet';
 import Titan from '../components/avengers/titan/Titan';
 import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
 import { useAchievements } from '../components/Achievements';
+import TesseractRun from '../components/avengers/tesseract/TesseractRun';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -38,7 +39,7 @@ const FLOORS = [
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
   { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him. Push him anyway: it’s 2012, the portal is open over Stark Tower, and Midtown is full of Chitauri.' },
-  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. In a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
+  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. The Tesseract has to come home to it, slung in its case under a Quinjet: over the woods, under the gantry, over the ridge and, with a storm coming in, through the hangar doors. Set it down gently and the Space Stone opens a hole in the sky, as it did over New York.' },
 ];
 
 const SPOT_IDS = FLOORS.map((f) => f.id);
@@ -302,41 +303,48 @@ export default function Avengers() {
             <SmashRun fallback={<HulkLab />} />
           </Floor>
           <Floor i={6} floor={FLOORS[6]}>
-            <div className="roof-stage" data-portal={portal || undefined}>
-              <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
-                <defs>
-                  <radialGradient id="tess-glow">
-                    <stop offset="0" stopColor="#d6f3ff" />
-                    <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
-                    <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
-                  </radialGradient>
-                  <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#0d1420" />
-                    <stop offset="1" stopColor="#1b2534" />
-                  </linearGradient>
-                </defs>
-                <rect width="600" height="260" fill="url(#vault-wall)" />
-                {Array.from({ length: 9 }, (_, i) => (
-                  <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
-                ))}
-                <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
-                <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
-                <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
-                <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
-                <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
-                <g className="tesseract">
-                  <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
-                  <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
-                </g>
-                <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
-                  S.H.I.E.L.D. · CONTAINMENT
-                </text>
-              </svg>
-            </div>
-            <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
-              Space
-            </button>
-            <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
+            <TesseractRun
+              onPortal={openPortal}
+              fallback={
+                <div>
+                  <div className="roof-stage" data-portal={portal || undefined}>
+                    <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
+                      <defs>
+                        <radialGradient id="tess-glow">
+                          <stop offset="0" stopColor="#d6f3ff" />
+                          <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
+                          <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
+                        </radialGradient>
+                        <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stopColor="#0d1420" />
+                          <stop offset="1" stopColor="#1b2534" />
+                        </linearGradient>
+                      </defs>
+                      <rect width="600" height="260" fill="url(#vault-wall)" />
+                      {Array.from({ length: 9 }, (_, i) => (
+                        <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
+                      ))}
+                      <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
+                      <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
+                      <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
+                      <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
+                      <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
+                      <g className="tesseract">
+                        <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
+                        <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
+                      </g>
+                      <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
+                        S.H.I.E.L.D. · CONTAINMENT
+                      </text>
+                    </svg>
+                  </div>
+                  <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
+                    Space
+                  </button>
+                  <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
+                </div>
+              }
+            />
           </Floor>
         </div>
       </div>
