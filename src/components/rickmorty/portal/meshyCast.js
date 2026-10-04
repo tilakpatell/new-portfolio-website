@@ -38,12 +38,12 @@ export const MESHY = {
   cronenberg: { a: 'cronenberg', h: 1.45 },
   blob: { a: 'cronenberg', h: 0.75 },
   gazorpian: { a: 'gazorpian', h: 2.8 },
-  cop: { a: 'cop', h: 2.3 },
+  cop: { a: 'cop', h: 2.35 },
   mortyclone: { a: 'morty', h: 1.95, shirts: [0xf3d84b, 0x7fc77a, 0xe0795a, 0xa98ad8, 0x63b5d9, 0xf0a0c0] },
   snowball: { a: 'snowball', h: 3.7 },
   bigcronenberg: { a: 'cronenberg', h: 3.9 },
   cromulon: { a: 'cromulon', h: 9.5 },
-  evilmorty: { a: 'evilmorty', h: 2.4 },
+  evilmorty: { a: 'evilmorty', h: 1.95 },
 };
 const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty']);
 // and the set pieces round the arenas
