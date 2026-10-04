@@ -57,14 +57,28 @@ export class Rig {
 
 // ── materials ──
 
-export function materials(env, panels) {
+// panels: the Autobots' scuffed blue steel (Poly Haven blue_metal_plate);
+// worn: the Decepticons' corroded plate (metal_plate_02). Each is { normal,
+// rough } with AO, roughness and metalness packed in rough (glTF ORM), its
+// roughness averaging 0.29 and 0.66, which the materials divide back out.
+export function materials(env, panels, worn) {
   const paint = (color, extra = {}) =>
     new THREE.MeshPhysicalMaterial({ color, metalness: 0.35, roughness: 0.38, clearcoat: 0.9, clearcoatRoughness: 0.12, envMapIntensity: 1.1, ...extra });
+  // a robot's paint: the plate's seams and scuffs under a smooth clearcoat
+  const livery = (color, extra = {}) =>
+    paint(color, panels ? { normalMap: panels.normal, normalScale: new THREE.Vector2(0.22, 0.22), roughnessMap: panels.rough, roughness: 0.38 / 0.29, ...extra } : extra);
   const armour = (color, extra = {}) =>
     new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.42, normalMap: panels?.normal ?? null, roughnessMap: panels?.rough ?? null, normalScale: new THREE.Vector2(0.6, 0.6), ...extra });
+  // Decepticon steel: pitted, duller, its metal showing where it's worn
+  const scarred = (color, { roughness = 0.45, metalness = 0.7, ...extra } = {}) =>
+    worn
+      ? new THREE.MeshStandardMaterial({ color, metalness, metalnessMap: worn.rough, roughness: roughness / 0.66, roughnessMap: worn.rough, normalMap: worn.normal, normalScale: new THREE.Vector2(0.9, 0.9), ...extra })
+      : armour(color, { roughness, metalness, ...extra });
   return {
     paint,
+    livery,
     armour,
+    scarred,
     chrome: new THREE.MeshStandardMaterial({ color: 0xe8ecf1, metalness: 1, roughness: 0.12 }),
     steel: new THREE.MeshStandardMaterial({ color: 0x8b929c, metalness: 0.85, roughness: 0.32, normalMap: panels?.normal ?? null, normalScale: new THREE.Vector2(0.4, 0.4) }),
     dark: new THREE.MeshStandardMaterial({ color: 0x23262c, metalness: 0.6, roughness: 0.45 }),
@@ -114,8 +128,8 @@ function decal(tex, size) {
 export function buildOptimus(M, tex) {
   const root = new THREE.Group();
   const rig = new Rig(root);
-  const red = M.paint(0xb5121b);
-  const blue = M.paint(0x1d3f9a);
+  const red = M.livery(0xb5121b);
+  const blue = M.livery(0x1d3f9a);
   const greyA = M.armour(0x9aa3ad);
   const blueA = M.armour(0x1f4aa8, { roughness: 0.35 });
   const redA = M.armour(0xc0141f, { roughness: 0.3 });
@@ -232,8 +246,8 @@ export function buildOptimus(M, tex) {
 export function buildBumblebee(M, tex) {
   const root = new THREE.Group();
   const rig = new Rig(root);
-  const yellow = M.paint(0xf2b705);
-  const black = M.paint(0x161616, { metalness: 0.2 });
+  const yellow = M.livery(0xf2b705);
+  const black = M.livery(0x161616, { metalness: 0.2 });
   const yellowA = M.armour(0xf0b400, { roughness: 0.3 });
   const blackA = M.armour(0x1d1f22);
   const greyA = M.armour(0x8b929c);
@@ -321,10 +335,10 @@ export function buildBumblebee(M, tex) {
 export function buildVehicon(M, tex) {
   const root = new THREE.Group();
   const rig = new Rig(root);
-  const shell = M.paint(0x2b2d38, { metalness: 0.55 });
-  const trim = M.paint(0x5a2a86, { metalness: 0.5 });
-  const greyA = M.armour(0x6c7280);
-  const purpleA = M.armour(0x4b2475);
+  const shell = M.livery(0x2b2d38, { metalness: 0.55 });
+  const trim = M.livery(0x5a2a86, { metalness: 0.5 });
+  const greyA = M.scarred(0x6c7280);
+  const purpleA = M.scarred(0x4b2475, { metalness: 0.5 });
   const visor = M.lamp(0xff2b3a, 3.2);
   const head = M.lamp(0xff3b3b, 2.4);
 
@@ -369,9 +383,9 @@ export function buildVehicon(M, tex) {
 
 export function buildJet(M, { body = 0x5b5f6a, accent = 0x5a2a86, accent2 = null, scale = 1, tex } = {}) {
   const g = new THREE.Group();
-  const hull = M.armour(body, { metalness: 0.6, roughness: 0.35 });
-  const acc = M.armour(accent, { roughness: 0.35 });
-  const acc2 = accent2 != null ? M.armour(accent2, { roughness: 0.35 }) : acc;
+  const hull = M.scarred(body, { metalness: 0.65, roughness: 0.38 });
+  const acc = M.scarred(accent, { metalness: 0.5, roughness: 0.38 });
+  const acc2 = accent2 != null ? M.scarred(accent2, { metalness: 0.5, roughness: 0.38 }) : acc;
   const flame = M.lamp(0x7fc8ff, 3);
   // fuselage
   const fus = new THREE.CylinderGeometry(0.28, 0.36, 3.2, 10);
@@ -420,9 +434,9 @@ export function buildBoss(M, kind, tex) {
   const g = new THREE.Group();
   const rig = new Rig(g);
   const shock = kind === 'shockwave';
-  const main = M.armour(shock ? 0x6c2fb0 : 0x7f8792, { metalness: shock ? 0.45 : 0.75, roughness: shock ? 0.35 : 0.32 });
-  const second = M.armour(shock ? 0x3a3d48 : 0x3a3d45);
-  const third = M.armour(shock ? 0xb2a46a : 0x6a6f78);
+  const main = M.scarred(shock ? 0x6c2fb0 : 0x7f8792, { metalness: shock ? 0.45 : 0.8, roughness: shock ? 0.38 : 0.36 });
+  const second = M.scarred(shock ? 0x3a3d48 : 0x3a3d45);
+  const third = M.scarred(shock ? 0xb2a46a : 0x6a6f78, { metalness: 0.6 });
   const eye = M.lamp(shock ? 0xffd23a : 0xff2a2a, 3.6);
   const glowC = M.lamp(shock ? 0xb07bff : 0xff5a3a, 3);
   const add = (obj) => {
