@@ -27,7 +27,6 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
-const Universe = lazy(() => import('./pages/Universe'));
 const Front = lazy(() => import('./pages/Front'));
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -95,7 +94,7 @@ function IntroJump() {
       /* storage unavailable */
     }
     if (stage === 'crawl') {
-      import('./pages/Universe');
+      import('./pages/Front');
       import('./components/universe/scene');
     }
   }, [stage]);
@@ -144,8 +143,10 @@ function PaletteHost() {
 }
 
 // The universe map is the front door (/) and keeps one page while its URL
-// follows the selection (/universe/marvel), so picking a planet doesn't
-// remount the map.
+// follows the selection (/universe/marvel). Both routes render the same
+// element (Front, which holds the map), so React keeps the one map across
+// them: picking a planet at /, or the wordmark from /universe/marvel, moves
+// the camera instead of building the universe again.
 const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
 
 function Shell() {
@@ -192,7 +193,7 @@ function Shell() {
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
-                <Route path="/universe/:id?" element={<Universe />} />
+                <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
