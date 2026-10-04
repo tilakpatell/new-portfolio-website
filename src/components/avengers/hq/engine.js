@@ -196,6 +196,7 @@ export function createEngine(canvas, opts = {}) {
   };
 
   let last = performance.now();
+  let long = false; // the last gap was long
   const render = () => {
     if (lost) return;
     const now = performance.now();
@@ -203,7 +204,12 @@ export function createEngine(canvas, opts = {}) {
     last = now;
     renderer.info.reset();
     composer.render();
-    watch(ms);
+    // One long gap is the loop coming back (the game was scrolled away, or the
+    // tab hidden), not a slow frame; long gaps in a row are a device that
+    // can't keep up.
+    const resumed = ms > 250 && !long;
+    long = ms > 250;
+    if (!resumed) watch(ms);
   };
   // a frame without timing it (screenshots, the first frame)
   const renderOnce = () => {
