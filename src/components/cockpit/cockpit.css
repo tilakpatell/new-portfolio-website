@@ -25,12 +25,15 @@
   grid-template-rows: auto 1fr auto;
   padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   pointer-events: none;
-  transition: opacity 0.5s ease;
 }
 .cockpit-hud > * { pointer-events: none; }
 .cockpit-hud button { pointer-events: auto; }
-.cockpit[data-launching] .cockpit-hud { opacity: 0; transition-duration: 0.9s; }
-.cockpit[data-launching] .cockpit-line { opacity: 1; }
+/* going: the controls fade away; what the crew say stays */
+.cockpit-top,
+.cockpit-bottom { transition: opacity 0.6s ease; }
+.cockpit[data-launching] .cockpit-top,
+.cockpit[data-launching] .cockpit-bottom { opacity: 0; }
+.cockpit[data-launching] .cockpit-hud button { pointer-events: none; }
 
 /* where you are */
 .cockpit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -143,6 +146,26 @@
 @media (pointer: coarse) {
   .cockpit-hint-mouse { display: none; }
   .cockpit-hint-touch { display: inline; }
+  /* no keyboard to hint at */
+  .cockpit-chip kbd,
+  .cockpit-go kbd { display: none; }
+  .cockpit-chip { padding: 0 14px; }
+}
+
+/* short windows (a phone on its side): one tight row along the bottom */
+@media (max-height: 500px) and (min-width: 761px) {
+  .cockpit-hud { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .cockpit-eyebrow,
+  .cockpit-crew { display: none; }
+  .cockpit-name { font-size: 0.95rem; }
+  .cockpit-skip { min-height: 34px; padding: 0 12px; }
+  .cockpit-pick { flex-wrap: nowrap; gap: 4px; }
+  .cockpit-chip { min-height: 36px; padding: 0 10px; font-size: 0.78rem; }
+  .cockpit-go { min-width: 170px; min-height: 46px; font-size: 0.95rem; }
+  .cockpit-line { min-height: 0; margin-bottom: 8px; }
+  .cockpit-line-in { padding: 5px 10px 5px 5px; font-size: 0.8rem; }
+  .cockpit-face { width: 26px; height: 26px; }
+  .cockpit-hint { display: none; }
 }
 
 /* phones and narrow windows: everything stacked at the bottom, thumb-sized */

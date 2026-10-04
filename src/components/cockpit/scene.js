@@ -46,11 +46,12 @@ export function run(canvas, opts) {
     cb.onFail?.(why);
   };
 
-  // phones and software WebGL: no bloom, and a lower ceiling on sharpness
+  // phones and software WebGL: no bloom; everyone at most 1.5 pixels to the
+  // pixel (the picture fills the screen, and the desktop's carries MSAA and bloom)
   const info = gpu();
   // (in development, window.__tpRich draws the desktop's way in software WebGL, for screenshots)
   const rich = (info.ok || (import.meta.env.DEV && !!window.__tpRich)) && !coarse();
-  const gl = createRenderer(canvas, { alpha: false, antialias: !rich, ratio: rich ? 2 : 1.5, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1, onLost: () => fail('context lost'), onSlow: () => lower() });
+  const gl = createRenderer(canvas, { alpha: false, antialias: !rich, ratio: 1.5, toneMapping: THREE.ACESFilmicToneMapping, exposure: 1, onLost: () => fail('context lost'), onSlow: () => lower() });
   const { renderer } = gl;
   renderer.autoClear = false;
   renderer.setClearColor(0x000000, 1);

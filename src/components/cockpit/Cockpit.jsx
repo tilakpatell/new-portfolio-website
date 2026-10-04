@@ -175,7 +175,8 @@ export default function Cockpit({ start, onPeak, onDone }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const inPicker = e.target instanceof HTMLElement && e.target.closest('.cockpit-pick');
       let handled = true;
-      if (e.key === ' ' || e.code === 'Space') launch();
+      // (Space on a picker's button picks it, as a button does)
+      if ((e.key === ' ' || e.code === 'Space') && !inPicker) launch();
       else if (e.key === 'Escape') skip();
       else if (/^[1-4]$/.test(e.key)) pick(VEHICLES[Number(e.key) - 1].id);
       else if (!inPicker && e.key === 'ArrowLeft') ctl.current?.nudge(-1, 0);
