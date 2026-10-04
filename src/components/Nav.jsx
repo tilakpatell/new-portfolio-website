@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
@@ -192,7 +192,14 @@ export function ThemePicker() {
 export default function Nav() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHiddenState] = useState(false);
+  // the scroll handler calls this every few pixels; it only sets state on a change
+  const hiddenNow = useRef(false);
+  const setHidden = useCallback((v) => {
+    if (v === hiddenNow.current) return;
+    hiddenNow.current = v;
+    setHiddenState(v);
+  }, []);
   const header = useRef(null);
   const { mode, toggleMode } = useTheme();
 
@@ -204,15 +211,16 @@ export default function Nav() {
     let lastY = window.scrollY;
     let frame = 0;
     let near = false;
+    const hide = setHidden;
     const update = () => {
       frame = 0;
       const y = window.scrollY;
       const dy = y - lastY;
       if (Math.abs(dy) > 6) {
-        setHidden(y > 140 && dy > 0 && !near);
+        hide(y > 140 && dy > 0 && !near);
         lastY = y;
       }
-      if (y < 140) setHidden(false);
+      if (y < 140) hide(false);
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -221,7 +229,7 @@ export default function Nav() {
       const n = e.clientY < 90;
       if (n !== near) {
         near = n;
-        if (n) setHidden(false);
+        if (n) hide(false);
       }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -231,9 +239,9 @@ export default function Nav() {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('pointermove', onMove);
     };
-  }, []);
+  }, [setHidden]);
 
-  useEffect(() => setHidden(false), [pathname]);
+  useEffect(() => setHidden(false), [pathname, setHidden]);
 
   // The phone menu covers the page: Escape closes it, and the page under it stays put.
   useEffect(() => {

@@ -6,8 +6,13 @@ import { prefersReducedMotion } from '../lib/hooks';
 // right-angle turns and draws itself up to a point 60% down the viewport.
 //
 // Performance: the route is built from small absolutely-positioned pieces.
-// Scrolling only changes a transform on the piece being drawn and moves the
-// kyber-crystal head — no layout reads and no large repaints per frame.
+// Where the browser supports scroll timelines (Chrome, Edge, Safari 26), each
+// piece and the kyber-crystal head get an animation tied to the scroll
+// position itself, so the browser draws the line in step with the page and no
+// script runs as you scroll (a script always trails a smooth scroll by a
+// frame, which reads as lag). Elsewhere a scroll listener changes a transform
+// on the piece being drawn and moves the head: no layout reads, no large
+// repaints.
 //
 // Waypoint attributes:
 //   data-node="false"     no node at this stop (a pure corner)
@@ -15,6 +20,7 @@ import { prefersReducedMotion } from '../lib/hooks';
 //   data-trigger="-120"   draw-trigger offset in px (spreads a horizontal run over scroll)
 
 const HEAD_AT = 0.6;
+const SCROLL_TIMELINE = typeof window !== 'undefined' && 'ScrollTimeline' in window;
 const TURN_GAP = 56;
 const RADIUS = 18;
 const HALF_PI = Math.PI / 2;
@@ -80,6 +86,8 @@ export default function RouteLine({ containerRef }) {
   const kyberRef = useRef(null);
   const state = useRef({ f: [], lit: [], top: 0 });
   const reduced = useRef(prefersReducedMotion());
+  const anims = useRef([]);
+  const timeline = SCROLL_TIMELINE && !reduced.current;
 
   const measure = useCallback(() => {
     const el = containerRef.current;
@@ -110,7 +118,7 @@ export default function RouteLine({ containerRef }) {
     setGeo({ ...route, points, triggers, height: Math.ceil(el.scrollHeight) });
   }, [containerRef]);
 
-  const update = useCallback(() => {
+  const update = useCallback((nodesOnly = false) => {
     const g = geoRef.current;
     if (!g) return;
     const s = state.current;
@@ -125,6 +133,18 @@ export default function RouteLine({ containerRef }) {
         L = g.lens[i] + ((headY - t[i]) / (t[i + 1] - t[i])) * (g.lens[i + 1] - g.lens[i]);
       }
     }
+    const lightNodes = () =>
+      g.points.forEach((p, i) => {
+        const lit = L >= g.lens[i] - 0.5;
+        if (s.lit[i] === lit) return;
+        s.lit[i] = lit;
+        const el = nodeRefs.current[i];
+        if (el) el.dataset.lit = lit ? 'true' : 'false';
+      });
+    if (nodesOnly) {
+      lightNodes();
+      return;
+    }
     let head = null;
     g.segs.forEach((seg, i) => {
       const f = Math.max(0, Math.min(1, (L - seg.start) / seg.len));
@@ -136,13 +156,7 @@ export default function RouteLine({ containerRef }) {
       if (seg.kind === 'arc') el.style.strokeDashoffset = String(seg.len * (1 - f));
       else el.style.transform = seg.kind === 'v' ? `scaleY(${f})` : `scaleX(${f})`;
     });
-    g.points.forEach((p, i) => {
-      const lit = L >= g.lens[i] - 0.5;
-      if (s.lit[i] === lit) return;
-      s.lit[i] = lit;
-      const el = nodeRefs.current[i];
-      if (el) el.dataset.lit = lit ? 'true' : 'false';
-    });
+    lightNodes();
     const k = kyberRef.current;
     if (k) {
       if (!head && L > 0 && L < g.total) {
@@ -152,6 +166,73 @@ export default function RouteLine({ containerRef }) {
       k.style.opacity = head ? '1' : '0';
       if (head) k.style.transform = `translate3d(${head.x}px, ${head.y}px, 0)`;
     }
+  }, []);
+
+  // One animation per piece, and one for the head, each keyed to the scroll
+  // position. The drawn length is piecewise linear in the scroll position (it
+  // bends at each stop), so keyframes go at the ends of the scroll, at every
+  // stop, and wherever the value itself bends (a piece's ends, along an arc).
+  const animateAll = useCallback(() => {
+    anims.current.forEach((a) => a.cancel());
+    anims.current = [];
+    const g = geoRef.current;
+    if (!g) return;
+    const root = document.scrollingElement || document.documentElement;
+    const tl = new window.ScrollTimeline({ source: root, axis: 'block' });
+    const vh = window.innerHeight;
+    const max = Math.max(1, root.scrollHeight - vh);
+    const top = state.current.top;
+    const t = g.triggers;
+    const n = t.length;
+    const scrollAt = (headY) => headY - vh * HEAD_AT + top;
+    const lengthAt = (S) => {
+      const headY = S + vh * HEAD_AT - top;
+      if (headY <= t[0]) return 0;
+      if (headY >= t[n - 1]) return g.total;
+      let i = 0;
+      while (i < n - 2 && headY >= t[i + 1]) i++;
+      return g.lens[i] + ((headY - t[i]) / (t[i + 1] - t[i])) * (g.lens[i + 1] - g.lens[i]);
+    };
+    const scrollFor = (L) => {
+      if (L <= 0) return scrollAt(t[0]);
+      if (L >= g.total) return scrollAt(t[n - 1]);
+      let i = 0;
+      while (i < n - 2 && L > g.lens[i + 1]) i++;
+      const span = g.lens[i + 1] - g.lens[i];
+      return scrollAt(span > 0 ? t[i] + ((L - g.lens[i]) / span) * (t[i + 1] - t[i]) : t[i]);
+    };
+    const bends = t.map(scrollAt);
+    const positions = (from, to, extra = []) => {
+      const inside = bends.filter((S) => S > from && S < to);
+      const all = [0, max, from, to, ...inside, ...extra].map((S) => Math.round(Math.min(max, Math.max(0, S)) * 100) / 100);
+      return [...new Set(all)].sort((a, b) => a - b);
+    };
+    const run = (el, list, frameAt) => {
+      if (!el) return;
+      const keyframes = list.map((S) => ({ offset: S / max, ...frameAt(lengthAt(S)) }));
+      anims.current.push(el.animate(keyframes, { timeline: tl, fill: 'both', easing: 'linear' }));
+    };
+    const headSamples = [];
+    g.segs.forEach((seg, i) => {
+      const a = seg.start;
+      const b = seg.start + seg.len;
+      const frac = (L) => Math.max(0, Math.min(1, (L - a) / seg.len));
+      const arcSamples = seg.kind === 'arc' ? Array.from({ length: 7 }, (_, k) => scrollFor(a + ((k + 1) / 8) * seg.len)) : [];
+      headSamples.push(scrollFor(a), scrollFor(b), ...arcSamples);
+      run(
+        doneRefs.current[i],
+        positions(scrollFor(a), scrollFor(b), arcSamples),
+        seg.kind === 'arc' ? (L) => ({ strokeDashoffset: String(seg.len * (1 - frac(L))) }) : (L) => ({ transform: seg.kind === 'v' ? `scaleY(${frac(L)})` : `scaleX(${frac(L)})` }),
+      );
+    });
+    // the head: visible while the line is being drawn, riding its tip
+    const start = scrollAt(t[0]);
+    const end = scrollAt(t[n - 1]);
+    run(kyberRef.current, positions(start, end, [...headSamples, start + 2, end - 2]), (L) => {
+      const seg = g.segs.find((sg) => L >= sg.start && L <= sg.start + sg.len) ?? g.segs[g.segs.length - 1];
+      const p = pointOn(seg, Math.max(0, Math.min(seg.len, L - seg.start)));
+      return { transform: `translate3d(${p.x}px, ${p.y}px, 0)`, opacity: L > 0.5 && L < g.total - 0.5 ? 1 : 0 };
+    });
   }, []);
 
   useLayoutEffect(() => {
@@ -190,24 +271,43 @@ export default function RouteLine({ containerRef }) {
 
   useEffect(() => {
     geoRef.current = geo;
-    update();
-  }, [geo, update]);
+    if (timeline) {
+      animateAll();
+      update(true);
+    } else update();
+  }, [geo, update, timeline, animateAll]);
 
+  useEffect(() => () => anims.current.forEach((a) => a.cancel()), []);
+
+  // With scroll timelines the browser draws the line; the script only lights
+  // the stops as you pass them (a frame late is invisible there), and redoes
+  // the animations when the window's height changes (a phone's toolbar).
   useEffect(() => {
     let frame = 0;
+    let rebuild = 0;
+    let height = window.innerHeight;
     const onScroll = () => {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        update();
+        update(timeline);
       });
     };
+    const onResize = () => {
+      if (!timeline || window.innerHeight === height) return;
+      height = window.innerHeight;
+      clearTimeout(rebuild);
+      rebuild = setTimeout(animateAll, 150);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
     return () => {
       cancelAnimationFrame(frame);
+      clearTimeout(rebuild);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
     };
-  }, [update]);
+  }, [update, timeline, animateAll]);
 
   if (!geo) return null;
 

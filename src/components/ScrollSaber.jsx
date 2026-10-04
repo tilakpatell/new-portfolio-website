@@ -6,7 +6,13 @@ import { useTheme } from '../theme/ThemeProvider';
 // form: a lightsaber for the house and company themes, Sting for Middle-earth,
 // a paper airplane for Dunder Mifflin, an energon gauge for the Transformers,
 // the Infinity Stones for Stark, a test tube for Heisenberg, a sitar string for
-// the raga, and pixels for the arcade. One transform (and a few attributes) a frame.
+// the raga, and pixels for the arcade.
+//
+// Where the browser can tie an animation to the scroll position (Chrome, Edge,
+// Safari 26), the bar is drawn by the browser itself, in step with the page:
+// no script runs as you scroll. Elsewhere a scroll listener sets one transform
+// (and a few attributes) a frame.
+const SCROLL_DRIVEN = typeof CSS !== 'undefined' && Boolean(CSS.supports?.('animation-timeline', 'scroll()'));
 const KIND = {
   shire: 'sting',
   mordor: 'sting',
@@ -58,6 +64,16 @@ export default function ScrollSaber() {
       onScroll();
     };
     measure();
+    if (SCROLL_DRIVEN) {
+      // the browser draws the bar; only whether there's anything to scroll is ours
+      const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+      ro?.observe(document.body);
+      window.addEventListener('resize', measure);
+      return () => {
+        ro?.disconnect();
+        window.removeEventListener('resize', measure);
+      };
+    }
     draw();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
     ro?.observe(document.body);
@@ -86,7 +102,12 @@ export default function ScrollSaber() {
       )}
       {kind === 'stones' &&
         ['#1f6fff', '#ffc400', '#e3001b', '#8e2de2', '#00c853', '#ff8a00'].map((c, i) => (
-          <span key={c} ref={(el) => (stones.current[i] = el)} className="progress-stone" style={{ '--stone': c, left: `calc(44px + (100% - 54px) * ${(i + 1) / 7})` }} />
+          <span
+            key={c}
+            ref={(el) => (stones.current[i] = el)}
+            className="progress-stone"
+            style={{ '--stone': c, left: `calc(44px + (100% - 54px) * ${(i + 1) / 7})`, animationRange: `${((i + 1) / 7) * 100}% ${((i + 1) / 7) * 100 + 0.6}%` }}
+          />
         ))}
     </div>
   );

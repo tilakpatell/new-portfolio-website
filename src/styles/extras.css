@@ -2122,8 +2122,8 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .hq-fly, .hq-shimmer, .hq-pin-pulse { animation: none; } }
 
 /* Experience: highlighting one track dims the other roles, without moving anything */
-.exp-hero, .exp-chapter, .exp-tl-row { transition: opacity 0.4s ease, filter 0.4s ease; }
-:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] { opacity: 0.3; filter: grayscale(0.85); }
+.exp-hero, .exp-chapter, .exp-tl-row { transition: opacity 0.4s ease; }
+:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] { opacity: 0.3; }
 @media (prefers-reduced-motion: reduce) { .exp-hero, .exp-chapter, .exp-tl-row { transition: none; } }
 
 /* ─── Heritage: a day at Akshardham, in photographs ─────────────────────── */
@@ -2156,3 +2156,23 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-times button[aria-current] { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
 @media (max-width: 639px) { .akd-arrow { width: 36px; height: 36px; top: 42%; } .akd-prev { left: 8px; } .akd-next { right: 8px; } .akd-text { right: 1rem; } }
 @media (prefers-reduced-motion: reduce) { .akd-slide { transition-duration: 0.01s; } .akd-slide[data-on] .akd-img, .akd-bell-ring[data-on] { animation: none; } }
+
+/* The scroll bar, drawn by the browser from the scroll position where it can
+   (no script runs as you scroll, so it never trails the page) */
+@supports (animation-timeline: scroll()) {
+  .saber-progress { container-type: inline-size; }
+  .saber-progress .blade, .progress-tip, .progress-stone {
+    animation-duration: 1ms;
+    animation-duration: auto;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: scroll(root block);
+  }
+  .saber-progress .blade { animation-name: saber-fill; }
+  .saber-progress[data-kind='pixels'] .blade { animation-timing-function: steps(40, end); }
+  .progress-tip { animation-name: tip-run; }
+  .progress-stone { animation-name: stone-lit; transition: none; }
+}
+@keyframes saber-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tip-run { from { transform: translateX(44px); } to { transform: translateX(calc(100cqw - 10px)); } }
+@keyframes stone-lit { from { background: color-mix(in srgb, var(--stone) 30%, #2a2a2a); box-shadow: none; } to { background: var(--stone); box-shadow: 0 0 8px var(--stone); } }

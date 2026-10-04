@@ -150,18 +150,33 @@ export default function Guide() {
 
   // On a phone the button tucks away while you scroll down the page (so it
   // never sits over a game's controls) and comes back when you scroll up.
+  // (once a frame at most, and only when it changes)
   const [tucked, setTucked] = useState(false);
   useEffect(() => {
     let last = window.scrollY;
-    const onScroll = () => {
+    let now = false;
+    let frame = 0;
+    const set = (v) => {
+      if (v === now) return;
+      now = v;
+      setTucked(v);
+    };
+    const check = () => {
+      frame = 0;
       const y = window.scrollY;
-      if (y < 160) setTucked(false);
-      else if (y > last + 8) setTucked(true);
-      else if (y < last - 8) setTucked(false);
+      if (y < 160) set(false);
+      else if (y > last + 8) set(true);
+      else if (y < last - 8) set(false);
       if (Math.abs(y - last) > 8) last = y;
     };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, []);
 
   const close = () => {
