@@ -4,7 +4,8 @@
 // shooting, and turbolaser towers stand up off the plating. Then Red Five
 // dives into the trench: catwalks, walls, turbolaser bolts and wall turrets,
 // Vader on your tail, Han to clear him, and two proton torpedoes for a
-// thermal exhaust port. Lasers (held fire) take out TIEs, towers and turrets;
+// thermal exhaust port. A torpedo spent in the trench blasts whatever it
+// meets out of the way, but leaves one fewer for the port. Lasers (held fire) take out TIEs, towers and turrets;
 // a near miss pays; R2 patches one shield. Everything random comes from the
 // run's seed, so a run replays the same way.
 //
@@ -36,6 +37,10 @@ export const TRENCH = {
   comboWindow: 2.2,
   r2Delay: 9,
   torpedoRange: 26,
+  // a torpedo flies on ahead of the ship, dropping, and goes off on whatever
+  // it meets: a catwalk, a wall block or a turret (blasting it out of the
+  // way), or else the trench floor or walls
+  torpedo: { speed: 30, lift: 0.4, drop: 3, blast: 120, scorches: 24 },
   window: [2.5, 9], // how far from the port a torpedo can go in
   lined: { x: 0.45, y: 0.1 }, // and how centred and low the ship must be
   forceBonus: 1.5,
@@ -133,7 +138,9 @@ export function newRun({ seed = 1, level = 'red5' } = {}) {
     bolts: [],
     lasers: [],
     rear: [],
-    shots: [],
+    shots: [], // torpedoes in flight
+    blasts: [], // fireballs where they went off
+    scorch: [], // and the marks they left
     fx: [],
     vader: { on: false, gone: false, cooldown: 1.2, spin: 0, away: 0 },
     laserCool: 0,
@@ -201,8 +208,8 @@ function aimBolt(g, x, y, z, from) {
 export function fireTorpedo(g) {
   if (g.status !== 'running' || g.torpedoes <= 0) return;
   const dist = portZ() - g.z;
-  if (dist > TRENCH.torpedoRange) {
-    emit(g, 'hold', { text: 'Save your torpedoes for the exhaust port.' });
+  if (zoneAt(g.z) !== 'trench') {
+    emit(g, 'hold', { text: 'Save your torpedoes for the trench.' });
     return;
   }
   g.torpedoes -= 1;
@@ -218,9 +225,76 @@ export function fireTorpedo(g) {
     emit(g, 'away', { text: 'Torpedoes away…', force: !g.computer });
     return;
   }
-  g.shots.push({ z: g.z + 1, x: g.px, y: g.py });
-  emit(g, 'miss', { text: dist >= hi ? 'Too early. It just impacted on the surface.' : 'Negative. It just impacted on the surface.' });
-  if (g.torpedoes <= 0) lose(g, 'Out of torpedoes. Pull up, and try again.');
+  // not the shot: it flies on and goes off on whatever it meets
+  g.shots.push({ x: g.px, y: g.py - 0.08, z: g.z + 0.8, vy: TRENCH.torpedo.lift, t: 0, near: dist < TRENCH.torpedoRange, early: dist >= hi, done: false });
+}
+
+// A torpedo going off: a fireball, sparks, and a mark where it struck.
+function detonate(g, x, y, z, mark) {
+  g.blasts.push({ x, y, z, t: 0, life: 0.8, size: 1 });
+  if (g.blasts.length > 6) g.blasts.shift();
+  for (let i = 0; i < 26 && g.fx.length < 120; i++) {
+    const a = g.rand() * Math.PI * 2;
+    const v = 0.8 + g.rand() * 2.4;
+    g.fx.push({ x, y, z, vx: Math.cos(a) * v, vy: Math.abs(Math.sin(a)) * v, vz: (g.rand() - 0.3) * 3, life: 0.5 + g.rand() * 0.7, t: 0 });
+  }
+  if (mark) {
+    g.scorch.push({ x, y, z, on: mark, r: 0.32 + g.rand() * 0.12, spin: g.rand() * 6 });
+    if (g.scorch.length > TRENCH.torpedo.scorches) g.scorch.shift();
+  }
+  g.shake = Math.max(g.shake, 0.22);
+  emit(g, 'blastfx');
+}
+
+const BLASTED = { catwalk: 'The catwalk’s down. Clear!', wall: 'Straight through the wall. Clear!', turret: 'Turret’s gone. Clear!' };
+
+function stepTorpedoes(g, dt) {
+  const T = TRENCH.torpedo;
+  for (const s of g.shots) {
+    if (s.done) continue;
+    const z0 = s.z;
+    s.t += dt;
+    s.z += (g.speed + T.speed) * dt;
+    s.vy -= T.drop * dt;
+    s.y += s.vy * dt;
+    // whatever it crossed on the way
+    for (const it of g.items) {
+      if (it.done || it.blasted || it.kind === 'bolt' || it.z < z0 || it.z > s.z) continue;
+      let hit = false;
+      if (it.kind === 'catwalk') hit = Math.abs(s.y - it.y) < 0.3;
+      else if (it.kind === 'wall') hit = it.side < 0 ? s.x < 0.22 : s.x > -0.22;
+      else if (it.kind === 'turret') hit = it.alive && Math.hypot(s.x - it.side * 0.92, s.y - it.y) < 0.5;
+      if (!hit) continue;
+      s.done = true;
+      it.blasted = true;
+      it.done = true; // nothing there for the ship to hit now
+      if (it.kind === 'turret') it.alive = false;
+      g.score += T.blast;
+      const at = it.kind === 'wall' ? [it.side * 0.55, 0] : it.kind === 'turret' ? [it.side * 0.92, it.y] : [s.x, it.y];
+      detonate(g, at[0], at[1], it.z, it.kind === 'catwalk' ? null : 'wall');
+      emit(g, 'blast', { what: it.kind, points: T.blast, text: BLASTED[it.kind] });
+      break;
+    }
+    if (s.done) {
+      outOfTorpedoes(g);
+      continue;
+    }
+    // or the floor, a wall, or the surface past the port
+    const past = s.z >= portZ() - 0.5;
+    if (s.y <= -1 || past) {
+      s.done = true;
+      detonate(g, s.x, Math.max(-1, s.y), s.z, 'floor');
+      emit(g, 'miss', {
+        text: s.early ? 'Too early. It just impacted on the surface.' : s.near ? 'Negative. It just impacted on the surface.' : 'It hit the trench floor. Save the next one for the port.',
+      });
+      outOfTorpedoes(g);
+    }
+  }
+  if (g.shots.length) g.shots = g.shots.filter((s) => !s.done);
+}
+
+function outOfTorpedoes(g) {
+  if (g.torpedoes <= 0 && !g.shots.some((s) => !s.done) && g.status === 'running') lose(g, 'Out of torpedoes. Pull up, and try again.');
 }
 
 export function toggleComputer(g) {
@@ -245,6 +319,8 @@ export function stepRun(g, dt) {
 
 function stepOnce(g, dt) {
   if (g.flash > 0) g.flash = Math.max(0, g.flash - dt * 0.8);
+  for (const b of g.blasts) b.t += dt;
+  if (g.blasts.length && g.blasts[0].t > g.blasts[0].life) g.blasts = g.blasts.filter((b) => b.t < b.life);
   if (g.shake > 0) g.shake = Math.max(0, g.shake - dt);
   for (const f of g.fx) {
     f.t += dt;
@@ -436,7 +512,7 @@ function stepOnce(g, dt) {
     if (now < -4) bo.done = true;
   }
   g.bolts = g.bolts.filter((bo) => !bo.done || bo.z - g.z > -4);
-  g.shots.forEach((s) => (s.z += g.speed * 3 * dt));
+  stepTorpedoes(g, dt);
 
   // Vader, then Han
   const toPort = portZ() - g.z;
