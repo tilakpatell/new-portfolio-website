@@ -741,8 +741,11 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
         }
         m.eye.color.copy(hot(B.kind === 'shockwave' ? 0xffd23a : 0xff2a2a, 3 + Math.sin(time * 6)));
       }
-      const fl = B.flash ?? 0;
-      for (const mat of m.mats) mat.emissive?.setRGB(fl * 1.4, fl * 0.5, fl * 0.3);
+      // a hit is a quick pop (cubed, so steady fire doesn't wash the paint
+      // out); staggered, it pulses cold while every hit counts double
+      const fl = (B.flash ?? 0) ** 3;
+      const ex = B.exposed > 0 ? 0.3 + 0.25 * Math.sin(time * 18) : 0;
+      for (const mat of m.mats) mat.emissive?.setRGB(fl * 1.1 + ex * 0.15, fl * 0.4 + ex * 0.55, fl * 0.25 + ex * 0.9);
       if (!B.alive && Math.random() < 0.5) burst(B.x + (Math.random() - 0.5) * 4, 2 + Math.random() * 3, bz + (Math.random() - 0.5) * 3, { big: true });
     } else if (boss) boss.group.visible = false;
 

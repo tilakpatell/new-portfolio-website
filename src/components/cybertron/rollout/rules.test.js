@@ -293,6 +293,91 @@ describe('what each mode is for', () => {
   });
 });
 
+describe('reading the road pays', () => {
+  const barricadeAhead = (g, dist) => g.barricades.push({ z: g.z + dist, l: ROLL.barricade.l, h: ROLL.barricade.h, broken: false });
+  // jump when the barricade is a few metres off
+  const hop = (b) => (s) => {
+    if (s.mode === 'robot' && s.morph > 0.6 && s.grounded && b.z - s.z < 6 && b.z - s.z > 1) jump(s);
+  };
+
+  it('jumping a roadblock scores the clear', () => {
+    const g = newRun({ seed: 40 });
+    quiet(g);
+    transform(g);
+    settle(g, 2.5);
+    barricadeAhead(g, 14);
+    const b = g.barricades[0];
+    const s0 = g.points;
+    run(g, 2.5, {}, hop(b));
+    expect(g.log).toContain('clear:barricade');
+    expect(g.clears).toBe(1);
+    const e = g.events.find((x) => x.type === 'cleared');
+    expect(e).toMatchObject({ kind: 'barricade', clutch: false });
+    expect(g.points - s0).toBeGreaterThanOrEqual(ROLL.points.clear.barricade);
+  });
+
+  it('standing up just in time for the roadblock pays double', () => {
+    const g = newRun({ seed: 41 });
+    quiet(g);
+    run(g, 1);
+    // a second out at vehicle speed: transform now, jump when it's close
+    barricadeAhead(g, g.speed * 0.95);
+    const b = g.barricades[0];
+    transform(g);
+    run(g, 2.5, {}, hop(b));
+    const e = g.events.find((x) => x.type === 'cleared');
+    expect(e).toMatchObject({ kind: 'barricade', clutch: true, points: ROLL.points.clear.barricade * 2 });
+    expect(g.shields).toBe(g.maxShields);
+  });
+
+  it('flying a broken bridge scores the clear; a robot dropped through it doesn’t', () => {
+    const g = newRun({ seed: 42, level: 'recruit' });
+    quiet(g);
+    g.gaps.push({ z: g.z + 40, len: g.gapLen });
+    run(g, 4);
+    expect(g.log).toContain('clear:gap');
+    expect(g.events.find((x) => x.type === 'cleared')).toMatchObject({ kind: 'gap' });
+
+    const h = newRun({ seed: 42, level: 'recruit' });
+    quiet(h);
+    transform(h);
+    settle(h);
+    h.gaps.push({ z: h.z + 20, len: h.gapLen });
+    run(h, 5);
+    expect(h.log).toContain('fell');
+    expect(h.log).not.toContain('clear:gap');
+  });
+
+  it('folding into the vehicle just before the ramp pays double for the bridge', () => {
+    const g = newRun({ seed: 43, level: 'recruit' });
+    quiet(g);
+    transform(g);
+    settle(g, 1.5);
+    g.energon = 100;
+    // the ramp starts a second away at robot speed
+    g.gaps.push({ z: g.z + ROLL.ramp.len + g.speed * 1.0, len: g.gapLen });
+    transform(g);
+    run(g, 5);
+    expect(g.events.find((x) => x.type === 'cleared')).toMatchObject({ kind: 'gap', clutch: true, points: ROLL.points.clear.gap * 2 });
+  });
+
+  it('transforming in the air off a ramp and landing it is a stunt', () => {
+    const g = newRun({ seed: 44, level: 'recruit' });
+    quiet(g);
+    g.energon = 100;
+    g.gaps.push({ z: g.z + 40, len: g.gapLen });
+    let turned = false;
+    run(g, 4, {}, (s) => {
+      if (!turned && !s.grounded && s.vy > 0) turned = transform(s);
+    });
+    expect(turned).toBe(true);
+    expect(g.mode).toBe('robot');
+    expect(g.log).toContain('stunt:aerial');
+    expect(g.stunts).toBe(1);
+    expect(g.shields).toBe(g.maxShields);
+  });
+});
+
 describe('getting hurt', () => {
   it('a bolt costs a shield, and a moment of cover stops the next one', () => {
     const g = newRun({ seed: 11 });
@@ -440,6 +525,56 @@ describe('the boss and the stages', () => {
       }
     });
     expect(w.status).toBe('won');
+  });
+
+  // a robot in front of the boss, blaster up, as the boss starts to charge `attack`
+  const facing = (g, attack) => {
+    toBoss(g);
+    g.energon = 100;
+    transform(g);
+    run(g, 2, {}, (s) => {
+      s.boss.cool = 99;
+      s.boss.dz = ROLL.bosses[s.boss.kind].dz;
+      s.x = s.tx = s.boss.x;
+    });
+    g.boss.next = ROLL.bosses[g.boss.kind].attacks.indexOf(attack);
+    g.boss.cool = 0;
+  };
+
+  it('pouring fire into a boss while it charges staggers it: the attack is off and it takes double', () => {
+    const g = newRun({ seed: 23, stage: 2 });
+    facing(g, 'fusion');
+    const hp0 = g.boss.hp;
+    run(g, 1.2, {}, (s) => {
+      s.x = s.tx = s.boss.x;
+    });
+    expect(g.log).toContain('stagger');
+    expect(g.beams.length).toBe(0);
+    expect(g.warn).toBe(null);
+    expect(g.boss.attack).toBe(null);
+    expect(g.boss.exposed).toBeGreaterThan(0);
+    // exposed: each hit counts double
+    const hp = g.boss.hp;
+    const hits = g.log.filter((l) => l === 'bossHit').length;
+    run(g, 0.5, {}, (s) => {
+      s.x = s.tx = s.boss.x;
+      s.boss.cool = 99;
+    });
+    const more = g.log.filter((l) => l === 'bossHit').length - hits;
+    expect(more).toBeGreaterThan(0);
+    expect(hp - g.boss.hp).toBe(more * ROLL.bots.optimus.dmg * ROLL.stagger.mult);
+    expect(hp0 - g.boss.hp).toBeGreaterThan(0);
+  });
+
+  it('a boss charging with nobody shooting at it isn’t staggered', () => {
+    const g = newRun({ seed: 24, stage: 2 });
+    toBoss(g);
+    g.boss.next = ROLL.bosses.megatron.attacks.indexOf('fusion');
+    g.boss.cool = 0;
+    g.x = g.tx = 4.5;
+    run(g, 1.6);
+    expect(g.log).not.toContain('stagger');
+    expect(g.log).toContain('fusion');
   });
 
   it('Shockwave’s floor beam has to be jumped', () => {
