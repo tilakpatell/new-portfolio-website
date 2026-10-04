@@ -78,6 +78,7 @@ export default function DeathStar() {
   // in WebGL where there's a graphics chip for it, the SVG otherwise
   const three = use3D();
   const [gl, setGl] = useState('off');
+  const stageSvg = useRef(null);
   const [shots, setShots] = useState(0);
   const [destroyed, setDestroyed] = useState(false); // the station itself
   const [planet, setPlanet] = useState('alderaan');
@@ -284,10 +285,10 @@ export default function DeathStar() {
           ))}
         </div>
       )}
-      <div className="shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]">
+      <div className="ds-hero shell relative grid min-h-[100svh] items-center gap-10 pb-16 pt-[calc(var(--nav-h)+32px)] lg:grid-cols-[1.25fr_1fr]" data-gl={(three.on && gl === 'on') || undefined}>
+        {three.on && gl !== 'failed' && gl !== 'lost' && <Hero3D svgRef={stageSvg} planet={planet} phase={phase} destroyed={destroyed} arrivals={arrivals} shots={shots} vb={vb} reduced={reduced} onState={setGl} />}
         <div className="ds-stage" data-gl={(three.on && gl === 'on') || undefined}>
-          {three.on && gl !== 'failed' && gl !== 'lost' && <Hero3D planet={planet} phase={phase} destroyed={destroyed} arrivals={arrivals} shots={shots} vb={vb} reduced={reduced} onState={setGl} />}
-          <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${p.name}`}>
+          <svg ref={stageSvg} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="block h-auto w-full overflow-visible" role="img" aria-label={`The Death Star facing ${p.name}`}>
             <defs>
               <radialGradient id="ds-body" cx="38%" cy="32%" r="75%">
                 <stop offset="0" stopColor="#b9bec4" />

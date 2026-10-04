@@ -2404,10 +2404,11 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .gg-bob[data-walking] { animation: gg-step 0.4s ease-in-out infinite alternate; }
 @keyframes gg-step { to { transform: translateY(-1.2px); } }
 @media (prefers-reduced-motion: reduce) { .gg-torch, .gg-bob[data-walking], .balrog-whip-up { animation: none; } }
-/* the Death Star hero in WebGL: the canvas under the SVG, which keeps only its label */
-.ds-gl { position: absolute; inset: 0; pointer-events: none; }
-.ds-gl canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.6s ease; }
+/* the Death Star hero in WebGL: the whole hero's backdrop, edge to edge,
+   fading into the page at the bottom; the SVG keeps only its label */
+.ds-gl { position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); }
+.ds-gl canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease; }
 .ds-gl canvas[data-on] { opacity: 1; }
-.ds-stage > svg { position: relative; z-index: 1; }
+.ds-hero > :not(.ds-gl) { position: relative; z-index: 1; }
 .ds-stage[data-gl] > svg > :not(text) { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .ds-gl canvas { transition: none; } }

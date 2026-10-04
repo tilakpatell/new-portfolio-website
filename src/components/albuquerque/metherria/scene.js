@@ -958,16 +958,16 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     }
     perf.acc += gap;
     perf.n += 1;
-    if (perf.acc < 2500 || perf.n < 4) return;
+    if (perf.acc < 3000 || perf.n < 4) return;
     const avg = perf.acc / perf.n;
     perf.acc = 0;
     perf.n = 0;
-    if (avg < 24) return;
+    if (avg < 40) return; // a battery-saving 30 fps cap isn't struggling
     if (ratio > 1) {
       ratio = 1;
       resize(size.w, size.h);
     } else if (shadows) shadows = false;
-    else if (avg > 40 && perf.step !== 'told') {
+    else if (avg > 60 && perf.step !== 'told') {
       perf.step = 'told';
       onSlow?.();
     }

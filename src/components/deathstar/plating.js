@@ -232,11 +232,12 @@ export function starSprite(size = 64) {
   return cv;
 }
 
-// The whole station as the films show it from afar: a light, even grey, in
-// horizontal bands of sectors, with low-contrast panels and greebles, the
-// way a moon reads before you see it's a space station. Painted
-// equirectangular (longitude across, latitude down) so the bands follow the
-// latitudes, with a height for relief and a few lights for the night side.
+// The whole station as the films show it from afar: an even, dark hull grey
+// (a touch blue-green, as ILM painted it), divided like a globe into bands
+// of latitude and sectors along the meridians, so from across the scene it
+// reads as fine surface detail rather than tiles. Painted equirectangular
+// (longitude across, latitude down), with a height for relief and a scatter
+// of lights for the night side.
 export function paintStation({ seed = 4, w = 2048, h = 1024 } = {}) {
   const rand = rng(seed);
   const color = canvas(w, h);
@@ -246,65 +247,75 @@ export function paintStation({ seed = 4, w = 2048, h = 1024 } = {}) {
   const hc = height.getContext('2d');
   const l = lit.getContext('2d');
   const k = w / 2048;
-  // the films' hull grey (#969696 to #AFAFAF lit), a touch blue-green
   c.fillStyle = 'rgb(116,120,122)';
   c.fillRect(0, 0, w, h);
   hc.fillStyle = grey(150);
   hc.fillRect(0, 0, w, h);
   l.fillStyle = '#000';
   l.fillRect(0, 0, w, h);
-  const bands = 56;
+  const bands = 36; // every 5 degrees of latitude
   const bh = h / bands;
   for (let b = 0; b < bands; b++) {
     const y = b * bh;
-    // each band split into sectors of their own shade, barely different
-    for (let x = 0; x < w; ) {
-      const sw = (24 + rand() * 90) * k;
-      const v = 116 + (rand() - 0.5) * 14 - (rand() < 0.14 ? 14 : 0);
+    // sectors are narrower in pixels toward the poles' squeeze, so the same
+    // count all round keeps them square-ish on the sphere
+    const lat = Math.abs((b + 0.5) / bands - 0.5) * Math.PI;
+    const sectors = Math.max(12, Math.round(72 * Math.cos(lat)));
+    const sw = w / sectors;
+    for (let i = 0; i < sectors; i++) {
+      const x = i * sw;
+      const v = 116 + (rand() - 0.5) * 7;
       c.fillStyle = `rgb(${v | 0},${(v + 4) | 0},${(v + 6) | 0})`;
       c.fillRect(x, y, sw, bh);
-      // a few panels and greebles inside, slightly darker or lighter
-      const n = Math.floor(rand() * 5);
-      for (let i = 0; i < n; i++) {
-        const pw = sw * (0.15 + rand() * 0.4);
-        const ph = bh * (0.2 + rand() * 0.45);
-        const px = x + rand() * (sw - pw);
-        const py = y + bh * 0.15 + rand() * (bh * 0.7 - ph);
-        const dv = rand() < 0.8 ? -14 : 9;
-        c.fillStyle = `rgba(${dv < 0 ? '44,47,50' : '170,174,176'},${dv < 0 ? 0.2 + rand() * 0.15 : 0.06 + rand() * 0.06})`;
-        c.fillRect(px, py, pw, ph);
-        hc.fillStyle = grey(dv < 0 ? 128 : 172);
-        hc.fillRect(px, py, pw, ph);
+      // inside each sector: a few long low strips and small blocks, faint
+      const strips = 1 + Math.floor(rand() * 3);
+      for (let j = 0; j < strips; j++) {
+        const sy = y + bh * (0.15 + rand() * 0.7);
+        c.fillStyle = `rgba(52,55,58,${0.06 + rand() * 0.08})`;
+        c.fillRect(x + sw * 0.08, sy, sw * (0.3 + rand() * 0.6), Math.max(1, k * 1.5));
+        hc.fillStyle = grey(132);
+        hc.fillRect(x + sw * 0.08, sy, sw * (0.3 + rand() * 0.6), Math.max(1, k * 1.5));
       }
-      // the seam at the sector's end
-      c.fillStyle = 'rgba(70,72,76,0.35)';
-      c.fillRect(x + sw - k, y, Math.max(1, k), bh);
-      hc.fillStyle = grey(120);
-      hc.fillRect(x + sw - k, y, Math.max(1, k), bh);
-      x += sw;
+      const blocks = Math.floor(rand() * 6);
+      for (let j = 0; j < blocks; j++) {
+        const bw = sw * (0.05 + rand() * 0.16);
+        const bhh = bh * (0.08 + rand() * 0.22);
+        const bx = x + rand() * (sw - bw);
+        const by = y + rand() * (bh - bhh);
+        const raised = rand() < 0.5;
+        c.fillStyle = raised ? `rgba(168,172,175,${0.1 + rand() * 0.08})` : `rgba(40,43,46,${0.16 + rand() * 0.14})`;
+        c.fillRect(bx, by, bw, bhh);
+        hc.fillStyle = grey(raised ? 172 : 128);
+        hc.fillRect(bx, by, bw, bhh);
+      }
+      // the seam down the sector's side
+      c.fillStyle = 'rgba(58,61,64,0.14)';
+      c.fillRect(x, y, Math.max(1, k), bh);
+      hc.fillStyle = grey(124);
+      hc.fillRect(x, y, Math.max(1, k), bh);
     }
-    // the line between bands
-    c.fillStyle = 'rgba(62,64,68,0.5)';
-    c.fillRect(0, y, w, Math.max(1, 1.5 * k));
-    hc.fillStyle = grey(110);
-    hc.fillRect(0, y, w, Math.max(1, 1.5 * k));
+    // and the line between bands of latitude
+    c.fillStyle = 'rgba(50,53,56,0.24)';
+    c.fillRect(0, y, w, Math.max(1, 1.2 * k));
+    hc.fillStyle = grey(116);
+    hc.fillRect(0, y, w, Math.max(1, 1.4 * k));
   }
-  // fine grain, so the grey isn't flat up close
-  for (let i = 0; i < w * h * 0.004; i++) {
-    const v = rand() < 0.65 ? '40,42,46' : '190,193,196';
-    c.fillStyle = `rgba(${v},${0.05 + rand() * 0.08})`;
-    c.fillRect(rand() * w, rand() * h, 1 + rand() * 2 * k, 1);
+  // fine grain, so up close the grey isn't flat
+  for (let i = 0; i < w * h * 0.006; i++) {
+    const dark = rand() < 0.6;
+    c.fillStyle = dark ? `rgba(36,39,42,${0.06 + rand() * 0.08})` : `rgba(180,184,186,${0.04 + rand() * 0.06})`;
+    c.fillRect(rand() * w, rand() * h, Math.max(1, (1 + rand() * 2) * k), Math.max(1, k));
   }
-  // lights, sparse, for the side in shadow
-  for (let i = 0; i < 900 * k * k; i++) {
-    l.fillStyle = rand() < 0.8 ? 'rgba(255,226,170,0.9)' : 'rgba(200,220,255,0.9)';
-    l.fillRect(rand() * w, rand() * h, Math.max(1, k * 1.5), Math.max(1, k));
+  // lights, sparse, that show on the side in shadow
+  for (let i = 0; i < 1400 * k * k; i++) {
+    l.fillStyle = rand() < 0.8 ? 'rgba(255,226,170,1)' : 'rgba(200,220,255,1)';
+    l.fillRect(rand() * w, rand() * h, Math.max(1, k * 1.2), Math.max(1, k));
   }
   const hd = hc.getImageData(0, 0, w, h).data;
   const normal = canvas(w, h);
   const nctx = normal.getContext('2d');
   const nimg = nctx.createImageData(w, h);
-  nimg.data.set(heightToNormal(hd, w, h, 1.6));
+  nimg.data.set(heightToNormal(hd, w, h, 1.4));
   nctx.putImageData(nimg, 0, 0);
   return { color, normal, lit };
 }

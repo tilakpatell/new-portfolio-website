@@ -627,22 +627,33 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   };
   canvas.addEventListener('webglcontextlost', onContextLost);
 
-  // slow frames: drop the pixel ratio, then bloom, then tell the page
-  const perf = { acc: 0, n: 0, step: 0 };
-  const watch = (ms) => {
-    perf.acc += ms;
+  // Frames that really can't keep up: drop the pixel ratio, then bloom, then
+  // tell the page. Judged on real time every few seconds, and only below
+  // about 25 fps: a laptop saving battery caps animation at 30 fps (33 ms a
+  // frame), and that is not a machine struggling.
+  const perf = { acc: 0, n: 0, last: performance.now(), told: false };
+  const watch = () => {
+    const t = performance.now();
+    const gap = t - perf.last;
+    perf.last = t;
+    if (gap > 500) {
+      perf.acc = perf.n = 0; // back from a pause, or off screen
+      return;
+    }
+    perf.acc += gap;
     perf.n += 1;
-    if (perf.n < 120) return;
+    if (perf.acc < 3000) return;
     const avg = perf.acc / perf.n;
-    perf.acc = 0;
-    perf.n = 0;
-    if (avg < 24) return;
-    perf.step += 1;
-    if (perf.step === 1 && ratio > 1) {
+    perf.acc = perf.n = 0;
+    if (avg < 40) return;
+    if (ratio > 1) {
       ratio = 1;
       resize(size.w, size.h);
-    } else if (perf.step <= 2) useBloom = false;
-    else if (avg > 34) onSlow?.();
+    } else if (useBloom) useBloom = false;
+    else if (avg > 60 && !perf.told) {
+      perf.told = true;
+      onSlow?.();
+    }
   };
 
   const tmp = new THREE.Vector3();
@@ -650,6 +661,8 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1);
   const shakeV = new THREE.Vector3();
 
+  // (the frame time is measured here, not taken from the caller)
+  // eslint-disable-next-line no-unused-vars
   function render(g, ms = 16, { calm = false } = {}) {
     if (lost) return;
     if (g.items && g !== built && g.towers) buildCourse(g);
@@ -837,7 +850,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
 
     if (useBloom) composer.render();
     else renderer.render(scene, camera);
-    watch(ms);
+    watch();
   }
 
   renderer.compile(scene, camera);

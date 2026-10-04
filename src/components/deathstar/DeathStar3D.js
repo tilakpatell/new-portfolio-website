@@ -7,8 +7,12 @@
 // the SVG stays as the fallback.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { paintGasGiant, paintStation } from './plating';
-import { paintPlanet } from './planetPaint';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { paintStation } from './plating';
+import { paintGiant, paintPlanet } from './planetPaint';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -17,16 +21,6 @@ const TARGET = { x: 170, y: 78, r: 46 };
 const GIANT = { x: 100, y: 352, r: 118 };
 const BEAM = new THREE.Color('#8dff6b');
 
-const GIANT_LOOK = {
-  yavin: null, // paintGasGiant's own oranges
-  endor: [
-    [184, 210, 217],
-    [111, 148, 159],
-    [167, 196, 204],
-    [85, 121, 133],
-    [143, 179, 191],
-  ],
-};
 const GLOW = { alderaan: '#6aa8ff', yavin: '#9fe08a', tatooine: '#f0c27a', hoth: '#d8ecff', endor: '#9fd68e' };
 
 const W = (x, y, z = 0) => new THREE.Vector3(x, -y, z);
@@ -61,9 +55,11 @@ function atmosphere(radius, color, sun) {
         }`,
       fragmentShader: `uniform vec3 glow; uniform vec3 sun; varying vec3 vN; varying vec3 vV; varying vec3 vW;
         void main() {
-          float rim = pow(1.0 - abs(dot(vN, vV)), 3.0);
-          float lit = 0.25 + 0.75 * max(0.0, dot(vW, sun));
-          gl_FragColor = vec4(glow * rim * lit * 1.6, rim * lit);
+          float f = 1.0 - abs(dot(vN, vV));
+          float day = max(0.0, dot(vW, sun));
+          float lit = 0.15 + 0.85 * smoothstep(-0.25, 0.6, dot(vW, sun));
+          float a = (pow(f, 2.6) * 1.4 + pow(f, 8.0) * 1.8) * lit + 0.05 * day;
+          gl_FragColor = vec4(glow * a, a);
         }`,
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -73,8 +69,8 @@ function atmosphere(radius, color, sun) {
 }
 
 export function createDeathStar3D(canvas, { onLost } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-  renderer.setClearColor(0x000000, 0);
+  // opaque, in the page's own black: the canvas is the hero's whole backdrop
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -82,10 +78,11 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const big = renderer.capabilities.maxTextureSize >= 4096 && !coarse;
-  let ratio = Math.min(big ? 2 : 1.5, window.devicePixelRatio || 1);
+  let ratio = Math.min(1.5, window.devicePixelRatio || 1);
   renderer.setPixelRatio(ratio);
 
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x03040a);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
@@ -132,8 +129,9 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     normalScale: new THREE.Vector2(0.6, 0.6),
     emissiveMap: tex(skin.lit, true),
     emissive: new THREE.Color(0.55, 0.5, 0.42),
-    metalness: 0.05,
-    roughness: 0.82,
+    metalness: 0.28,
+    roughness: 0.62,
+    envMapIntensity: 1.4,
     transparent: true,
   });
   // where the dish sits on the sphere, in the tilted frame
@@ -317,7 +315,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   const giants = new Map();
   const giantFor = (id) => {
     if (!giants.has(id)) {
-      const c = paintGasGiant({ seed: id === 'endor' ? 9 : 3, w: big ? 1024 : 512, h: big ? 512 : 256, palette: GIANT_LOOK[id] });
+      const c = paintGiant(id, big ? { w: 2048, h: 1024 } : { w: 1024, h: 512 });
       const t = new THREE.CanvasTexture(c);
       t.colorSpace = THREE.SRGBColorSpace;
       giants.set(id, t);
@@ -479,13 +477,109 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     }
   }
 
+  // the camera sees the scene's coordinates over the canvas's whole box:
+  // `frame` is that box in SVG units, worked out by the page from where the
+  // SVG sits inside the canvas, so everything lines up with the 2D layout
+  let frame = null;
   const fitCamera = () => {
-    camera.left = vb.x;
-    camera.right = vb.x + vb.w;
-    camera.top = -vb.y;
-    camera.bottom = -(vb.y + vb.h);
+    const f = frame ?? { x0: vb.x, x1: vb.x + vb.w, y0: vb.y, y1: vb.y + vb.h };
+    camera.left = f.x0;
+    camera.right = f.x1;
+    camera.top = -f.y0;
+    camera.bottom = -f.y1;
     camera.updateProjectionMatrix();
+    stars.position.set((f.x0 + f.x1) / 2, -(f.y0 + f.y1) / 2, -1500);
+    stars.scale.setScalar(Math.max(f.x1 - f.x0, f.y1 - f.y0) / 1000);
+    band.position.set((f.x0 + f.x1) / 2, -(f.y0 + f.y1) / 2, -1400);
+    band.scale.set((f.x1 - f.x0) * 1.3, (f.y1 - f.y0) * 0.9, 1);
   };
+
+  // the sky: stars of different sizes and warmth that twinkle a little, and
+  // a faint band of the galaxy behind them
+  const stars = (() => {
+    const n = 2200;
+    const rand = (() => {
+      let a = 99;
+      return () => {
+        a = (a * 1664525 + 1013904223) >>> 0;
+        return a / 4294967296;
+      };
+    })();
+    const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const size = new Float32Array(n);
+    const seed = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      pos.set([(rand() - 0.5) * 1000, (rand() - 0.5) * 1000, 0], i * 3);
+      const warm = rand();
+      const b = 0.35 + rand() ** 3 * 1.6;
+      col.set([b * (warm > 0.7 ? 1 : 0.82), b * 0.9, b * (warm < 0.3 ? 1.1 : 0.85)], i * 3);
+      size[i] = 0.8 + rand() ** 4 * 2.6;
+      seed[i] = rand() * 100;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setAttribute('size', new THREE.BufferAttribute(size, 1));
+    g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
+    const m = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 }, dpr: { value: ratio } },
+      vertexShader: `attribute float size; attribute float seed; attribute vec3 color; uniform float time; uniform float dpr; varying vec3 vC; varying float vT;
+        void main() {
+          vC = color;
+          vT = 0.75 + 0.25 * sin(time * (0.6 + fract(seed) * 1.8) + seed);
+          gl_PointSize = size * dpr * 1.6;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `varying vec3 vC; varying float vT;
+        void main() {
+          vec2 d = gl_PointCoord - 0.5;
+          float r = length(d);
+          float a = smoothstep(0.5, 0.0, r);
+          gl_FragColor = vec4(vC * vT * a, a);
+        }`,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const p = new THREE.Points(g, m);
+    p.frustumCulled = false;
+    scene.add(p);
+    return p;
+  })();
+  const band = (() => {
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 512;
+    const x = c.getContext('2d');
+    x.translate(512, 256);
+    x.rotate(-0.42);
+    for (let i = 0; i < 70; i++) {
+      const gx = (Math.sin(i * 12.9898) * 0.5 + 0.5 - 0.5) * 1100;
+      const gy = Math.sin(i * 78.233) * 60;
+      const r = 60 + ((i * 37) % 90);
+      const gr = x.createRadialGradient(gx, gy, 0, gx, gy, r);
+      const hue = i % 3 === 0 ? '120,140,200' : i % 3 === 1 ? '170,150,190' : '110,120,150';
+      gr.addColorStop(0, `rgba(${hue},0.07)`);
+      gr.addColorStop(1, `rgba(${hue},0)`);
+      x.fillStyle = gr;
+      x.fillRect(gx - r, gy - r, r * 2, r * 2);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
+    m.frustumCulled = false;
+    scene.add(m);
+    return m;
+  })();
+
+  // ── post: bloom on what glows (the beam, the lights, the fire) ──
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.55, 0.85);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+  let useBloom = true;
 
   const emitterWorld = new THREE.Vector3();
   function render(ms = 16) {
@@ -543,7 +637,9 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     }
     animateBlast(planetBlast);
     animateBlast(stationBlast);
-    renderer.render(scene, camera);
+    stars.material.uniforms.time.value = still ? 0 : clock;
+    if (useBloom) composer.render();
+    else renderer.render(scene, camera);
     watch(ms);
   }
 
@@ -559,18 +655,24 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     }
     perf.acc += gap;
     perf.n += 1;
-    if (perf.acc < 2500 || perf.n < 4) return;
+    if (perf.acc < 3000 || perf.n < 4) return;
     const avg = perf.acc / perf.n;
     perf.acc = perf.n = 0;
-    if (avg > 26 && ratio > 1) {
+    if (avg < 40) return; // a battery-saving 30 fps cap isn't struggling
+    if (ratio > 1) {
       ratio = 1;
-      resize(size.w, size.h);
-    }
+      resize(size.w, size.h, frame);
+    } else useBloom = false;
   };
-  const resize = (w, h) => {
+  const resize = (w, h, f = null) => {
     size = { w: Math.max(1, w), h: Math.max(1, h) };
+    frame = f;
     renderer.setPixelRatio(ratio);
     renderer.setSize(size.w, size.h, false);
+    composer.setPixelRatio(ratio);
+    composer.setSize(size.w, size.h);
+    bloom.resolution.set(size.w / 2, size.h / 2);
+    stars.material.uniforms.dpr.value = ratio;
     fitCamera();
   };
   const onContextLost = (e) => {
@@ -599,6 +701,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     for (const L of looks.values()) for (const t of Object.values(L)) t?.dispose();
     for (const t of giants.values()) t.dispose();
     env.dispose();
+    composer.dispose?.();
     renderer.dispose();
     renderer.forceContextLoss();
   };
