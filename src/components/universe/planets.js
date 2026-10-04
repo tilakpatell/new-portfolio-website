@@ -36,7 +36,7 @@ const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
   const loader = new THREE.TextureLoader();
-  const T = {};
+  const T = { small }; // (and whether this is a phone, for the builders)
   const get = async (name, file, colour) => {
     try {
       const t = await loader.loadAsync(BASE + file);
@@ -779,7 +779,7 @@ const BUILDERS = {
 
 export function buildPlanet(u, T = {}) {
   const core = u.kind === 'core';
-  const seg = [64, 40];
+  const seg = T.small ? [44, 28] : [64, 40]; // a phone's screen needs fewer
   const group = new THREE.Group();
   const spinner = new THREE.Group(); // what turns about the planet's axis
   group.add(spinner);

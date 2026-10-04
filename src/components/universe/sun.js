@@ -140,7 +140,7 @@ export function buildSun(T = {}) {
     fragmentShader: SURFACE_FRAG,
     uniforms: { uMap: { value: T.sun ?? null }, uHasMap: { value: T.sun ? 1 : 0 }, uTime: { value: 0 }, uHeat: { value: 2.6 } },
   });
-  const surface = new THREE.Mesh(new THREE.SphereGeometry(SUN.r, 96, 64), surfaceMat);
+  const surface = new THREE.Mesh(new THREE.SphereGeometry(SUN.r, T.small ? 64 : 96, T.small ? 40 : 64), surfaceMat);
   const coronaMat = new THREE.ShaderMaterial({
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: CORONA_FRAG,
