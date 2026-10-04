@@ -458,11 +458,13 @@ STYLES.hulk = (add) => {
 // skin; cap: suit, red, white, leather, silver, skin, helmet; thor: armour,
 // silver, skin, hair, beard, boot; chitauri: armour, skin, glow; brute and cull:
 // armour, skin, glow, shield). `scale` grows it from 1.9 m.
-export function buildHumanoid({ style = 'ultron', materials, scale = 1 } = {}) {
+// A game can bring its own figure: `style` a function like the ones in STYLES,
+// and `joints` any bones moved from where BONES has them.
+export function buildHumanoid({ style = 'ultron', materials, scale = 1, joints } = {}) {
   // the bones, at rest
   const bones = {};
   for (const name of NAMES) {
-    const [parent, x, y, z] = BONES_FOR[style]?.[name] ?? BONES[name];
+    const [parent, x, y, z] = joints?.[name] ?? BONES_FOR[style]?.[name] ?? BONES[name];
     const b = new THREE.Bone();
     b.name = name;
     b.position.set(x * scale, y * scale, z * scale);
@@ -487,7 +489,7 @@ export function buildHumanoid({ style = 'ultron', materials, scale = 1 } = {}) {
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Float32Array(n * 4).map((_, i) => (i % 4 === 0 ? 1 : 0)), 4));
     (byMat[mat] ??= []).push(g.index ? g.toNonIndexed() : g);
   };
-  STYLES[style](add);
+  (typeof style === 'function' ? style : STYLES[style])(add);
 
   const meshes = {};
   for (const [key, geos] of Object.entries(byMat)) {

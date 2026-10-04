@@ -462,7 +462,7 @@ const FLY = (() => {
   return [r1(b[0] - a[0]), r1(b[1] - a[1])];
 })();
 
-function Pin({ id, n, current, onPick, title }) {
+function Pin({ id, n, current, onPick, title, stone }) {
   const [x, y, z] = SPOTS[id];
   const [sx, sy] = P(x, y, z);
   // the size comes from CSS (--ps), so a phone can have bigger pins
@@ -476,6 +476,7 @@ function Pin({ id, n, current, onPick, title }) {
     >
       {title && <title>{title}</title>}
       {current && <circle className="hq-pin-pulse" cx="0" cy="-13.5" r="9" />}
+      {stone && <circle className="hq-pin-stone" cx="0" cy="-13.5" r="9.4" style={{ '--glow': stone }} />}
       <path d="M0 0 C-2.6 -4.6 -7 -8.4 -7 -13.5 A7 7 0 1 1 7 -13.5 C7 -8.4 2.6 -4.6 0 0 Z" className="hq-pin-body" />
       <text x="0" y="-10.4" textAnchor="middle" className="hq-pin-num">
         {n}
@@ -581,12 +582,18 @@ function useCompound3D(enabled) {
     },
     status === 'on' && visible && !calm.current,
   );
-  return { wrap, canvas, status };
+  return { wrap, canvas, status, view };
 }
 
-export default function Compound({ spots = [], titles = [], current = -1, compact = false, live = false, onPick, className = '' }) {
+export default function Compound({ spots = [], titles = [], current = -1, compact = false, live = false, stones = [], onPick, className = '' }) {
   const three = use3D();
-  const { wrap, canvas, status } = useCompound3D(live && !compact && three.on);
+  const { wrap, canvas, status, view } = useCompound3D(live && !compact && three.on);
+  // the stones won back float over the buildings that gave them up
+  const stoneKey = stones.join(',');
+  useEffect(() => {
+    view.current?.setStones?.(spots.map((id, i) => (stones[i] ? { id, color: stones[i] } : null)).filter(Boolean));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, stoneKey]);
   const on = status === 'on';
   return (
     <div ref={wrap} className={`hq-map ${className}`} data-compact={compact || undefined} data-3d={on || undefined}>
@@ -620,7 +627,7 @@ export default function Compound({ spots = [], titles = [], current = -1, compac
           </>
         )}
         {spots.map((id, i) => (
-          <Pin key={id} id={id} n={i + 1} current={i === current} onPick={onPick} title={titles[i]} />
+          <Pin key={id} id={id} n={i + 1} current={i === current} onPick={onPick} title={titles[i]} stone={stones[i]} />
         ))}
       </svg>
     </div>

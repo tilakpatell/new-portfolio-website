@@ -48,6 +48,7 @@ export const ACHIEVEMENTS = {
   hawkeye: { name: 'I see better from a distance', desc: 'Took Clint’s half of the Soul Stone at Trick Shot' },
   thor: { name: 'Bring me Thanos!', desc: 'Held the lawn against Cull Obsidian' },
   hulk: { name: 'That’s my secret', desc: 'Ran 2,000 m through Midtown at Smash Run' },
+  whatever: { name: 'Whatever it takes', desc: 'Won all six Infinity Stones back on the compound, and snapped' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };

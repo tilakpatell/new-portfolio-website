@@ -15,7 +15,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { canvasTexture } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
-import { APRON, BERM, BRIDGE, C, CLEAR, CRES, GATE, HANGAR, K, LAB, LAWN, OX, OY, PROW, RIVER, ROADS, SHORE, STALLS, TRAINING, TREES, VH, VW, arcPt, inPoly, onScreen, rng } from './plan';
+import { APRON, BERM, BRIDGE, C, CLEAR, CRES, GATE, HANGAR, K, LAB, LAWN, OX, OY, PROW, RIVER, ROADS, SHORE, SPOTS, STALLS, TRAINING, TREES, VH, VW, arcPt, inPoly, onScreen, rng } from './plan';
 import { U, W, apronMarks, buildQuinjet, canopyGeometry, coniferGeometry, curtainTexture, flatShape, groundPaint, leafNormal, panelNormal, prismTop, prismWalls, solarTexture } from './models';
 
 // pixels of the drawing (720 × 480) per metre across the screen
@@ -867,6 +867,29 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
     }
   }
 
+  // ── the stones won back: a gem hanging over each building that gave one up ──
+  const gemGeo = new THREE.OctahedronGeometry(1, 0).scale(0.7, 1.1, 0.7);
+  const gems = new Map(); // spot id → mesh
+  const setStones = (list) => {
+    const want = new Set(list.map((s) => s.id));
+    for (const [id, g] of gems)
+      if (!want.has(id)) {
+        scene.remove(g);
+        gems.delete(id);
+      }
+    for (const { id, color } of list) {
+      if (gems.has(id) || !SPOTS[id]) continue;
+      const g = new THREE.Mesh(gemGeo, new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 3.2, roughness: 0.2, metalness: 0.1 }));
+      const [x, y, z] = SPOTS[id];
+      g.position.copy(W(x + 3.2, y - 3.2, z + 3.5));
+      g.scale.setScalar(5.5);
+      g.userData.base = g.position.y;
+      g.castShadow = true;
+      scene.add(g);
+      gems.set(id, g);
+    }
+  };
+
   // ── per frame ──
   let clock = 0;
   const render = (dt) => {
@@ -877,6 +900,10 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
     for (const t of [waterN]) t.offset.set(clock * 0.004, clock * 0.0065);
     placeJet(clock, d);
     placeCars(clock);
+    for (const g of gems.values()) {
+      g.rotation.y = clock * 0.8;
+      g.position.y = g.userData.base + Math.sin(clock * 1.4 + g.userData.base) * 1.2;
+    }
     vfx.update(d, cam, engine.size.h);
     engine.render();
   };
@@ -895,6 +922,7 @@ export async function create(canvas, { onLost, onSlow, calm = false } = {}) {
       engine.resize(w, h);
       frame(w, h);
     },
+    setStones,
     info: engine.info,
     dispose() {
       vfx.dispose();

@@ -12,6 +12,9 @@ import TrickShot from '../components/avengers/trickshot/TrickShot';
 import HoldTheLawn from '../components/avengers/lawn/HoldTheLawn';
 import SmashRun from '../components/avengers/smash/SmashRun';
 import Ricochet from '../components/avengers/ricochet/Ricochet';
+import Titan from '../components/avengers/titan/Titan';
+import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
+import { useAchievements } from '../components/Achievements';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -39,6 +42,14 @@ const FLOORS = [
 ];
 
 const SPOT_IDS = FLOORS.map((f) => f.id);
+
+// which stone each building gives up (Clint's and Natasha's halves of Soul)
+const FLOOR_STONE = { stark: 'power', thor: 'reality', cap: 'mind', hawkeye: 'soul-clint', widow: 'soul-natasha', banner: 'time', vault: 'space' };
+const stoneOf = (floorId) => {
+  const id = FLOOR_STONE[floorId];
+  if (!id || !hasEarned(id)) return null;
+  return STONES.find((s) => s.id === (id.startsWith('soul') ? 'soul' : id)) ?? null;
+};
 const SPOT_TITLES = FLOORS.map((f, i) => `${i + 1}. ${f.title}`);
 
 const FRIDAY = [
@@ -89,9 +100,13 @@ function Floor({ i, floor, children, aside }) {
 export default function Avengers() {
   useDocumentTitle('Avengers HQ');
   const { snap } = useFun();
+  const { unlock, notify } = useAchievements();
+  const earned = useStones();
+  const titan = useRef(null);
   const [power, setPower] = useState(0);
   const [blast, setBlast] = useState(0);
-  const [have, setHave] = useState([]);
+  // the gauntlet starts with every stone won back in the games
+  const [have, setHave] = useState(earnedStones);
   const [current, setCurrent] = useState(0);
   const [portal, setPortal] = useState(false);
   const [arrived, setArrived] = useState(false);
@@ -170,12 +185,29 @@ export default function Avengers() {
     );
   };
 
+  useEffect(() => setHave((h) => [...new Set([...h, ...earned])]), [earned]);
   const all = have.length === STONES.length;
+  // all six taken back by playing: the snap is Tony's
+  const heist = earned.length === STONES.length;
+  const doSnap = () => {
+    audioContext();
+    const after = (tony) => {
+      if (!tony) {
+        snap();
+        return;
+      }
+      sfx().then((s) => s.thunder());
+      unlock('whatever');
+      notify('I am Iron Man.', 'Every stone, won back on the compound. Thanos and his army are dust; this page is not.', 'note', 'whatever');
+    };
+    if (titan.current?.snap(heist, after)) return;
+    after(heist);
+  };
   return (
     <div className="relative">
       <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
         <figure className="m-0">
-          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
+          <Compound spots={SPOT_IDS} titles={SPOT_TITLES} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
           <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
         </figure>
         <div>
@@ -214,7 +246,7 @@ export default function Avengers() {
 
       <div className="shell relative z-10 grid gap-10 lg:grid-cols-[236px_minmax(0,1fr)] lg:gap-14">
         <aside className="hq-rail" aria-hidden="true">
-          <Compound spots={SPOT_IDS} current={current} compact />
+          <Compound spots={SPOT_IDS} current={current} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} compact />
           <p className="hq-now">
             <span className="hq-now-label">You are here</span>
             {FLOORS[current].title}
@@ -224,6 +256,7 @@ export default function Avengers() {
               <li key={f.id} data-on={i === current || undefined}>
                 <span>{i + 1}</span>
                 {f.short}
+                {stoneOf(f.id) && <i className="stone-dot hq-rail-stone" style={{ '--glow': stoneOf(f.id).color }} title={stoneOf(f.id).name} />}
               </li>
             ))}
           </ol>
@@ -314,6 +347,11 @@ export default function Avengers() {
         <div className="ds-stars pointer-events-none absolute inset-0" aria-hidden="true" />
         <div className="shell relative grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div className="stones-panel gauntlet-stage" data-all={all || undefined}>
+            <Titan
+              ref={titan}
+              have={have}
+              onSet={(id) => setHave((h) => (h.includes(id) ? h : [...h, id]))}
+              fallback={
             <div className="gauntlet-wrap">
               <Gauntlet have={have} all={all} />
               <div className="gauntlet-sockets" role="group" aria-label="Infinity Stones">
@@ -334,13 +372,19 @@ export default function Avengers() {
                 })}
               </div>
             </div>
+              }
+            />
           </div>
           <div>
             <p className="eyebrow">Titan · beyond the portal</p>
             <h2 id="gauntlet-title" className="title mt-4">
               Thanos
             </h2>
-            <p className="lead mt-4 max-w-[46ch]">He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds.</p>
+            <p className="lead mt-4 max-w-[46ch]">
+              {heist
+                ? 'You took every stone back from the compound. Set them, and this time the snap is Tony’s: Thanos and his army turn to dust, and the page stays.'
+                : 'He has the gauntlet. Set all six stones, and the snap takes half of this page with it, for a few seconds. Win all six back in the games on the compound, and the snap is Tony’s.'}
+            </p>
             <ul className="stone-list mt-6">
               {STONES.map((s) => (
                 <li key={s.id} data-on={have.includes(s.id) || undefined} style={{ '--glow': s.color }}>
@@ -353,8 +397,8 @@ export default function Avengers() {
               ))}
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
-              <button type="button" className="btn btn-primary" disabled={!all} onClick={snap}>
-                Snap
+              <button type="button" className="btn btn-primary" disabled={!all} onClick={doSnap}>
+                {heist ? 'Snap: I am Iron Man' : 'Snap'}
               </button>
               <button type="button" className="btn btn-ghost" disabled={!have.length} onClick={() => setHave([])}>
                 Take them out
