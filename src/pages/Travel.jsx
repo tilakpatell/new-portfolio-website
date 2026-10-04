@@ -16,6 +16,7 @@ import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import { jumpTo } from '../lib/anchors';
 import Egg from '../components/Egg';
+import Mist from '../components/mist/Mist';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);
@@ -34,6 +35,7 @@ function Hero() {
   return (
     <header className="travel-hero relative isolate overflow-hidden" aria-labelledby="travel-hero-title">
       <Photo id="hero" priority sizes="100vw" className="absolute inset-0 -z-30 h-full w-full object-cover" />
+      <Mist photo="hero" clear={0.55} />
       <div className="travel-hero-scrim -z-20" aria-hidden="true" />
       <div className="fog fog-a -z-10" aria-hidden="true" />
       <div className="fog fog-b -z-10" aria-hidden="true" />
