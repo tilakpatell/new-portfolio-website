@@ -1,8 +1,8 @@
 // The office's WebGL stage: one renderer, scene and camera, set up the way
 // both 3D views need them (filmic tone mapping, soft shadows, the office HDRI
-// for light and reflections), plus the watchdog the site's 3D games share:
-// if frames can't keep up it first drops resolution, then shadows, then asks
-// to go back to 2D; a lost context does the same at once.
+// for light and reflections), plus the quality steps the site's 3D shares:
+// 3D first, so if frames can't keep up it lowers its own resolution, then
+// turns shadows off, and stays 3D. Only a lost context goes back to 2D.
 
 import * as THREE from 'three';
 
@@ -39,22 +39,29 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   };
   canvas.addEventListener('webglcontextlost', onContextLost);
 
-  // the watchdog: every two seconds of drawing, the average frame
-  const perf = { acc: 0, n: 0, step: 0, since: 0 };
+  // quality steps: every few seconds of drawing, the average frame; below
+  // about 25 fps it steps down (resolution, then shadows, then resolution again)
+  const perf = { acc: 0, n: 0, step: 0 };
   const watch = (ms) => {
     perf.acc += ms;
     perf.n += 1;
-    if (perf.acc < 2000 || perf.n < 8) return;
+    if (perf.acc < 3000 || perf.n < 8) return;
     const avg = perf.acc / perf.n;
     perf.acc = 0;
     perf.n = 0;
-    if (avg < 24) return;
+    if (avg < 40) return;
     perf.step += 1;
     if (perf.step === 1 && ratio > 1) {
       ratio = 1;
       resize(size.w, size.h);
-    } else if (perf.step <= 2) renderer.shadowMap.enabled = false;
-    else if (avg > 34) onSlow?.();
+    } else if (perf.step <= 2 && renderer.shadowMap.enabled) {
+      renderer.shadowMap.enabled = false;
+      scene.traverse((o) => o.material && (o.material.needsUpdate = true));
+    } else if (ratio > 0.6) {
+      ratio = Math.max(0.6, ratio - 0.2);
+      resize(size.w, size.h);
+    }
+    onSlow?.(perf.step);
   };
 
   const tmp = new THREE.Vector3();

@@ -5,8 +5,8 @@ import { STAFF } from './layout';
 // The office in 3D, over the 2D map it replaces: the same people, as pins
 // that follow their desks (real buttons, so the keyboard and screen readers
 // use it as they use the map). Drag to look round it, or use the controls.
-// `onState` hears 'loading', 'on', or why it gave up ('failed', 'lost',
-// 'slow'), so the map can come back.
+// `onState` hears 'loading', 'on', or why it gave up ('failed' or 'lost'),
+// so the map can come back.
 
 // Push overlapping pins apart (a few passes of pairwise separation).
 function declutter(list, gap) {
@@ -87,7 +87,7 @@ export default function OfficeTour3D({ sel, onPick, onState }) {
       if (!dead) onState?.(why);
     };
     import('./Tour3D')
-      .then(({ createTour3D }) => createTour3D(canvas.current, { onLost: () => give('lost'), onSlow: () => give('slow') }))
+      .then(({ createTour3D }) => createTour3D(canvas.current, { onLost: () => give('lost') }))
       .then((t) => {
         if (dead) {
           t.dispose();

@@ -13,7 +13,7 @@ import './office.css';
 // moves the bin somewhere harder, and after two the fan comes on.
 //
 // Drawn in 3D (./Toss3D.js) wherever WebGL works; the same round in 2D
-// (./Toss2D.js) only if it can't start.
+// (./Toss2D.js) only where there is no WebGL, or it fails or is lost.
 
 const BEST = 'tp-toss-best';
 const readBest = () => {
@@ -51,7 +51,7 @@ const pick = (list) => (Array.isArray(list) ? list[Math.floor(Math.random() * li
 export default function PaperToss() {
   const three = use3D();
   // 3D first: on wherever WebGL works, unless the visitor turned it off
-  const want3D = three.mode !== 'off' && three.can;
+  const want3D = three.on;
   const wrap = useRef(null);
   const glCanvas = useRef(null);
   const flatCanvas = useRef(null);
@@ -61,7 +61,7 @@ export default function PaperToss() {
   const drag = useRef(null);
   const raf = useRef(0);
   const visible = useRef(true);
-  const [glState, setGlState] = useState('off'); // off | loading | on | failed | lost | slow
+  const [glState, setGlState] = useState('off'); // off | loading | on | failed | lost
   const [ui, setUi] = useState({ phase: 'ready', score: 0, throws: 0, made: 0, streak: 0, swishes: 0, bestStreak: 0, wind: { x: 0, z: 0 }, dist: 0, desk: false });
   const [best, setBest] = useState(readBest);
   const [say, setSay] = useState({ text: '', n: 0, good: false });
@@ -108,7 +108,7 @@ export default function PaperToss() {
     if (want3D) {
       setGlState('loading');
       import('./Toss3D')
-        .then(({ createToss3D }) => createToss3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => drop('slow') }))
+        .then(({ createToss3D }) => createToss3D(glCanvas.current, { onLost: () => drop('lost') }))
         .then((v) => {
           if (dead) {
             v.dispose();
@@ -434,7 +434,6 @@ export default function PaperToss() {
             3D: {want3D ? 'on' : 'off'}
           </button>
         )}
-        {glState === 'slow' && <span className="text-sm text-muted">Switched to 2D: this device was struggling with 3D.</span>}
         {glState === 'failed' && <span className="text-sm text-muted">3D couldn’t start here, so this is the 2D version.</span>}
         {glState === 'lost' && <span className="text-sm text-muted">The graphics chip let go, so this is the 2D version.</span>}
       </div>

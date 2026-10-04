@@ -214,10 +214,10 @@ export default function OfficeFloor({ say = (t) => t }) {
   const p = STAFF.find((s) => s.id === sel);
   // the office in 3D where there's a graphics chip for it; this map otherwise
   const three = use3D();
-  const [gl, setGl] = useState('off'); // loading | on | failed | lost | slow
-  const gave = gl === 'failed' || gl === 'lost' || gl === 'slow';
+  const [gl, setGl] = useState('off'); // loading | on | failed | lost
+  const gave = gl === 'failed' || gl === 'lost';
   // 3D first: on wherever WebGL works, unless the visitor turned it off
-  const in3D = three.mode !== 'off' && three.can && !gave;
+  const in3D = three.on && !gave;
 
   const visit = (id) => {
     setSel(id);
@@ -279,7 +279,6 @@ export default function OfficeFloor({ say = (t) => t }) {
               3D office: {in3D ? 'on' : 'off'}
             </button>
           ) : null}
-          {gl === 'slow' && <span>Back to the map: this device was struggling with 3D.</span>}
           {gl === 'lost' && <span>The graphics chip let go, so this is the map.</span>}
           {gl === 'failed' && <span>3D couldn’t start here, so this is the map.</span>}
           {in3D && gl === 'on' && <span>Drag to look round. Pick anyone to go to their desk.</span>}
