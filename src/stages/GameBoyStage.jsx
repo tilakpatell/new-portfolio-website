@@ -4,6 +4,7 @@ import { useAchievements } from '../components/Achievements';
 import { H, W } from './gb/font';
 import { newConsole, renderConsole, stepConsole } from './gb/console';
 import './stages.css';
+import { capturePointer } from '../lib/pointer';
 
 // A DMG-style handheld with a cartridge of three games: Super Tilak Land (a
 // Mario-style platformer), Block Drop and Snake. Every control works — the
@@ -96,7 +97,7 @@ export default function GameBoyStage({ compact = false }) {
     onPointerDown: (e) => {
       e.preventDefault();
       deviceRef.current?.focus({ preventScroll: true });
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      capturePointer(e);
       press(key, true);
     },
     onPointerUp: () => press(key, false),

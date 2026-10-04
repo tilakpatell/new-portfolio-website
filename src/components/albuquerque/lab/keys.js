@@ -1,6 +1,7 @@
 // Input for the lab: window keys while a station is up, press-and-hold
 // buttons that survive a drifting finger, and a short buzz on phones.
 import { useEffect, useRef } from 'react';
+import { capturePointer } from '../../../lib/pointer';
 
 export const buzz = (ms) => {
   try {
@@ -40,7 +41,7 @@ export function useKeys(active, down, up) {
 export const holdProps = (set) => ({
   onPointerDown: (e) => {
     e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    capturePointer(e);
     set(true);
   },
   onPointerUp: () => set(false),

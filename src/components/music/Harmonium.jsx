@@ -4,6 +4,7 @@ import { useMediaQuery } from '../../lib/hooks';
 import { RAGAS, SA_NOTES, SWARA, harmoniumAllOff, harmoniumOff, harmoniumOn } from './engine';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
+import { capturePointer } from '../../lib/pointer';
 
 // A harmonium keyboard from C3, labelled in sargam from wherever Sa is: the way
 // a harmonium player finds their Sa on a fixed keyboard. Play with the mouse
@@ -64,7 +65,7 @@ export default function Harmonium({ onPlay }) {
     const k = keyAt(e.clientX, e.clientY);
     if (k == null) return;
     e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    capturePointer(e);
     pointers.current.set(e.pointerId, k);
     start(k);
   };

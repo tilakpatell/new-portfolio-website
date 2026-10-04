@@ -4,6 +4,7 @@ import { useMediaQuery } from '../../lib/hooks';
 import { chikari, frets, onSitarPluck, pluck, tarabRatios } from './engine';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
+import { capturePointer } from '../../lib/pointer';
 
 // The sitar, played on its frets. Click or tap a fret to pluck it. Hold and
 // move along the neck to slide between frets without plucking again; pull
@@ -81,7 +82,7 @@ export default function SitarNeck({ onPlay }) {
     const i = slotAt(e);
     if (i < 0) return;
     e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    capturePointer(e);
     const p = { id: e.pointerId, a0: across(e), i, handle: null };
     press.current = p;
     play(i).then((h) => {

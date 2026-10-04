@@ -35,7 +35,7 @@ const PAGES = {
     tips: [
       ['The superlaser', 'Fire it, or set a course to another planet first.'],
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
-      ['The trench run', 'Arrow keys or W A S D steer; Space or the Fire button fires, and T switches off the targeting computer. On a touch screen, drag to steer. The exhaust port glows as you close in and turns green when you’re lined up: stay low and centered, and fire.'],
+      ['The trench run', 'Over the surface first: hold Space (or the mouse, or the Laser button) to fire the lasers at the TIE fighters and towers, and keep moving, because their shots are aimed at you. Then dive into the trench: dodge the catwalks and walls (a close shave scores), shoot the wall turrets, and lose Vader. F or Enter fires a torpedo; the port glows as you close in and turns green when you’re lined up, low and centered. T switches off the targeting computer for half again on the score. On a touch screen, drag to steer. Pick Rookie, Red Five or Jedi; each keeps its best score.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
