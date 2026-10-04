@@ -40,6 +40,7 @@ export const ACHIEVEMENTS = {
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
   hawkeye: { name: 'I see better from a distance', desc: 'Took Clint’s half of the Soul Stone at Trick Shot' },
+  thor: { name: 'Bring me Thanos!', desc: 'Held the lawn against Cull Obsidian' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };

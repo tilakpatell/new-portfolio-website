@@ -9,13 +9,13 @@ import Dossier from '../components/avengers/Dossier';
 import HulkLab from '../components/avengers/HulkLab';
 import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
 import TrickShot from '../components/avengers/trickshot/TrickShot';
+import HoldTheLawn from '../components/avengers/lawn/HoldTheLawn';
 import Ricochet from '../components/avengers/ricochet/Ricochet';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
-import Gif from '../components/Gif';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
@@ -29,7 +29,7 @@ const sfx = () => import('../lib/sfx');
 // where the Tesseract is kept.
 const FLOORS = [
   { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
-  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
+  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir waits in a crater on the terrace, for someone worthy. Lift it, because the Chitauri are coming across the lawn in the rain.' },
   { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
@@ -252,8 +252,8 @@ export default function Avengers() {
               }
             />
           </Floor>
-          <Floor i={1} floor={FLOORS[1]} aside={<Gif name="marvelThor" size="medium" />}>
-            <Mjolnir />
+          <Floor i={1} floor={FLOORS[1]}>
+            <HoldTheLawn fallback={<Mjolnir />} />
           </Floor>
           <Floor i={2} floor={FLOORS[2]}>
             <Ricochet fallback={<ShieldThrow />} />

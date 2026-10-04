@@ -208,12 +208,157 @@ const STYLES = {
       add(ft, 'leather', rbox(0.095, 0.075, 0.23, 0.03), { p: [0, -0.02, 0.04] });
     }
   },
+
+  // Thor: dark scaled armour, the six silver discs, a silver collar for the
+  // cape, bare forearms in silver vambraces, the hair and the beard
+  thor(add) {
+    add('hips', 'armour', taper(rbox(0.34, 0.2, 0.23, 0.06), 1.08, 1), { p: [0, -0.03, 0] });
+    add('hips', 'silver', rbox(0.36, 0.05, 0.25, 0.02), { p: [0, 0.07, 0] }); // belt
+    for (const sd of [-1, 1]) add('hips', 'armour', taper(rbox(0.15, 0.28, 0.05, 0.02), 1, 1.2), { p: [sd * 0.09, -0.2, 0.1], r: [0.15, 0, sd * 0.05] }); // the skirt's front panels
+    add('spine', 'armour', new THREE.CylinderGeometry(0.13, 0.14, 0.22, 18), { p: [0, 0.1, 0] });
+    add('chest', 'armour', taper(rbox(0.48, 0.34, 0.27, 0.1), 0.8, 1), { p: [0, 0.15, 0] });
+    for (const sd of [-1, 1])
+      for (let i = 0; i < 3; i++) {
+        add('chest', 'silver', new THREE.CylinderGeometry(0.038, 0.038, 0.016, 20), { p: [sd * 0.085, 0.27 - i * 0.085, 0.135 - i * 0.008], r: [Math.PI / 2 - 0.12, 0, 0] });
+        add('chest', 'armour', new THREE.TorusGeometry(0.038, 0.007, 6, 20), { p: [sd * 0.085, 0.27 - i * 0.085, 0.142 - i * 0.008], r: [-0.12, 0, 0] });
+      }
+    add('chest', 'silver', rbox(0.34, 0.05, 0.2, 0.02), { p: [0, 0.33, -0.01] }); // collar
+    for (const sd of [-1, 1]) {
+      add('chest', 'silver', new THREE.CylinderGeometry(0.05, 0.05, 0.02, 20), { p: [sd * 0.2, 0.31, 0.06], r: [Math.PI / 2, 0, 0] }); // cape clasps
+      add('chest', 'armour', rbox(0.14, 0.08, 0.2, 0.04), { p: [sd * 0.24, 0.3, -0.01], r: [0, 0, sd * -0.3] }); // pauldrons
+    }
+    add('neck', 'skin', new THREE.CylinderGeometry(0.055, 0.065, 0.12, 14), { p: [0, 0.03, 0] });
+    add('head', 'skin', new THREE.SphereGeometry(0.105, 22, 18), { p: [0, 0.11, 0.01], s: [0.9, 1.12, 1] });
+    // the hair swept back off the face, long down the back, and the beard
+    add('head', 'hair', new THREE.SphereGeometry(0.116, 22, 18, 0, Math.PI * 2, 0, Math.PI * 0.5), { p: [0, 0.13, -0.025], r: [-0.55, 0, 0], s: [0.96, 1.02, 1.1] });
+    add('head', 'hair', taper(rbox(0.2, 0.3, 0.08, 0.035), 1.2, 0.85), { p: [0, 0.02, -0.08], r: [0.12, 0, 0] });
+    for (const sd of [-1, 1]) add('head', 'hair', taper(rbox(0.05, 0.22, 0.09, 0.02), 1.3, 0.8), { p: [sd * 0.095, 0.04, -0.03] });
+    add('head', 'beard', taper(rbox(0.13, 0.07, 0.05, 0.025), 0.55, 1), { p: [0, 0.02, 0.08] });
+    add('head', 'skin', new THREE.SphereGeometry(0.02, 8, 6), { p: [0, 0.1, 0.105] }); // the nose
+    for (const sd of [-1, 1]) add('head', 'boot', new THREE.SphereGeometry(0.011, 8, 6), { p: [sd * 0.035, 0.125, 0.095] }); // eyes
+    for (const [sh, el, ha, sd] of [
+      ['shoulderL', 'elbowL', 'handL', 1],
+      ['shoulderR', 'elbowR', 'handR', -1],
+    ]) {
+      add(sh, 'armour', new THREE.SphereGeometry(0.085, 16, 12), { p: [sd * 0.01, -0.01, 0] });
+      add(sh, 'armour', limb(0.072, 0.3, 0.062), { p: [0, -0.3, 0] });
+      add(el, 'skin', limb(0.058, 0.25, 0.048), { p: [0, -0.255, 0] });
+      add(el, 'silver', limb(0.062, 0.15, 0.054), { p: [0, -0.255, 0] }); // vambrace
+      add(ha, 'skin', rbox(0.08, 0.1, 0.05, 0.02), { p: [0, -0.055, 0] });
+    }
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'armour', limb(0.09, 0.43, 0.072), { p: [0, -0.44, 0] });
+      add(kn, 'armour', limb(0.07, 0.42, 0.055), { p: [0, -0.43, 0] });
+      add(kn, 'boot', limb(0.068, 0.26, 0.058), { p: [0, -0.43, 0] });
+      add(ft, 'boot', rbox(0.1, 0.08, 0.24, 0.03), { p: [0, -0.02, 0.04] });
+    }
+  },
+
+  // a Chitauri soldier: grey hide under bronze-dark plates, a long helmeted
+  // head with two blue eyes, a staff rifle in the right hand
+  chitauri(add) {
+    add('hips', 'armour', taper(rbox(0.3, 0.15, 0.2, 0.04), 1.1, 1), { p: [0, -0.02, 0] });
+    for (let i = 0; i < 3; i++) add('spine', 'skin', new THREE.TorusGeometry(0.1 - i * 0.006, 0.03, 8, 18), { p: [0, 0.03 + i * 0.065, 0], r: [Math.PI / 2, 0, 0] });
+    add('spine', 'skin', new THREE.CylinderGeometry(0.09, 0.1, 0.2, 14), { p: [0, 0.1, 0] });
+    add('chest', 'armour', taper(rbox(0.4, 0.3, 0.24, 0.08), 0.72, 1), { p: [0, 0.14, 0.01] });
+    for (let i = 0; i < 3; i++) add('chest', 'skin', rbox(0.3 - i * 0.04, 0.025, 0.05, 0.01), { p: [0, 0.04 + i * 0.06, 0.12], r: [0.2, 0, 0] }); // ribs
+    add('chest', 'glow', new THREE.SphereGeometry(0.022, 10, 8), { p: [0, 0.2, 0.135] });
+    add('chest', 'armour', rbox(0.22, 0.1, 0.2, 0.04), { p: [0, 0.3, -0.06], r: [-0.4, 0, 0] }); // the hump
+    add('neck', 'skin', new THREE.CylinderGeometry(0.04, 0.05, 0.14, 12), { p: [0, 0.04, 0.02], r: [0.35, 0, 0] });
+    add('head', 'skin', new THREE.SphereGeometry(0.09, 18, 14), { p: [0, 0.09, 0.03], s: [0.85, 0.95, 1.45] });
+    add('head', 'armour', taper(rbox(0.16, 0.1, 0.26, 0.04), 1, 0.7, { axis: 'z' }), { p: [0, 0.13, 0.04] }); // helmet
+    add('head', 'armour', rbox(0.11, 0.06, 0.1, 0.02), { p: [0, 0.05, 0.14], r: [0.3, 0, 0] }); // the jaw plate
+    for (const sd of [-1, 1]) {
+      add('head', 'glow', new THREE.SphereGeometry(0.014, 8, 6), { p: [sd * 0.04, 0.1, 0.16] });
+      add('head', 'armour', rbox(0.02, 0.07, 0.14, 0.008), { p: [sd * 0.085, 0.14, -0.02], r: [0.3, 0, 0] }); // fins
+    }
+    for (const [sh, el, ha, sd] of [
+      ['shoulderL', 'elbowL', 'handL', 1],
+      ['shoulderR', 'elbowR', 'handR', -1],
+    ]) {
+      add(sh, 'armour', rbox(0.13, 0.09, 0.14, 0.04), { p: [sd * 0.02, 0.02, 0], r: [0, 0, sd * -0.3] });
+      add(sh, 'skin', limb(0.045, 0.3, 0.038), { p: [0, -0.3, 0] });
+      add(el, 'skin', limb(0.04, 0.26, 0.032), { p: [0, -0.265, 0] });
+      add(el, 'armour', limb(0.046, 0.14, 0.04), { p: [0, -0.2, 0] }); // bracer
+      add(ha, 'skin', rbox(0.06, 0.09, 0.035, 0.012), { p: [0, -0.05, 0] });
+    }
+    // the rifle, along the forearm: a long barrel, a blade, the glowing muzzle
+    add('handR', 'armour', new THREE.CylinderGeometry(0.022, 0.026, 0.95, 8), { p: [0, -0.2, 0.03] });
+    add('handR', 'armour', rbox(0.05, 0.18, 0.07, 0.015), { p: [0, -0.07, 0.03] });
+    add('handR', 'armour', taper(rbox(0.012, 0.22, 0.05, 0.004), 1, 0.2), { p: [0, -0.62, 0.03] });
+    add('handR', 'glow', new THREE.SphereGeometry(0.03, 10, 8), { p: [0, -0.67, 0.03] });
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'skin', limb(0.065, 0.43, 0.05), { p: [0, -0.44, 0] });
+      add(th, 'armour', rbox(0.13, 0.22, 0.08, 0.03), { p: [0, -0.2, 0.05] }); // thigh plate
+      add(kn, 'skin', limb(0.05, 0.42, 0.035), { p: [0, -0.43, 0] });
+      add(kn, 'armour', rbox(0.09, 0.26, 0.06, 0.02), { p: [0, -0.18, 0.04] }); // greave
+      add(ft, 'armour', taper(rbox(0.08, 0.06, 0.22, 0.02), 1, 0.7, { axis: 'z' }), { p: [0, -0.02, 0.05] });
+    }
+  },
+
+  // a brute: a Chitauri built heavier, with a tower shield on the left arm
+  brute(add) {
+    STYLES.chitauri(add);
+    add('shoulderL', 'armour', rbox(0.24, 0.14, 0.24, 0.06), { p: [0.04, 0.04, 0], r: [0, 0, -0.4] });
+    add('shoulderR', 'armour', rbox(0.24, 0.14, 0.24, 0.06), { p: [-0.04, 0.04, 0], r: [0, 0, 0.4] });
+    add('chest', 'armour', rbox(0.46, 0.2, 0.08, 0.04), { p: [0, 0.2, 0.13] });
+    // the shield: a tall curved plate on the forearm, its face forward
+    add('elbowL', 'shield', taper(rbox(0.62, 0.95, 0.06, 0.03), 0.85, 1.05), { p: [-0.05, -0.18, 0.22], r: [-0.05, 0, 0] });
+    add('elbowL', 'glow', rbox(0.05, 0.6, 0.012, 0.004), { p: [-0.05, -0.18, 0.256] });
+  },
+
+  // Cull Obsidian: huge, hide like cooled rock, a fanged helmet, a shield of
+  // a gauntlet on the left arm and the anchor-blade on the right
+  cull(add) {
+    add('hips', 'armour', taper(rbox(0.42, 0.2, 0.28, 0.06), 1.1, 1), { p: [0, -0.02, 0] });
+    add('spine', 'skin', new THREE.CylinderGeometry(0.17, 0.16, 0.24, 16), { p: [0, 0.1, 0] });
+    add('chest', 'skin', taper(rbox(0.6, 0.38, 0.34, 0.12), 0.75, 1.05), { p: [0, 0.15, 0] });
+    add('chest', 'armour', rbox(0.5, 0.14, 0.3, 0.05), { p: [0, 0.3, -0.02] });
+    for (const sd of [-1, 1]) add('chest', 'armour', rbox(0.26, 0.16, 0.3, 0.06), { p: [sd * 0.3, 0.32, 0], r: [0, 0, sd * -0.35] });
+    add('chest', 'glow', rbox(0.2, 0.012, 0.01, 0.003), { p: [0, 0.1, 0.17] }); // the cracks glow
+    add('neck', 'skin', new THREE.CylinderGeometry(0.08, 0.1, 0.1, 12), { p: [0, 0.02, 0.02] });
+    add('head', 'skin', new THREE.SphereGeometry(0.12, 18, 14), { p: [0, 0.08, 0.04], s: [1, 0.9, 1.2] });
+    add('head', 'armour', taper(rbox(0.22, 0.12, 0.26, 0.04), 1, 0.8, { axis: 'z' }), { p: [0, 0.14, 0.02] });
+    for (const sd of [-1, 1]) {
+      add('head', 'glow', new THREE.SphereGeometry(0.016, 8, 6), { p: [sd * 0.05, 0.1, 0.165] });
+      add('head', 'armour', taper(rbox(0.025, 0.12, 0.025, 0.006), 1, 0.3), { p: [sd * 0.05, -0.0, 0.15], r: [0.3, 0, 0] }); // tusks
+    }
+    for (const [sh, el, ha, sd] of [
+      ['shoulderL', 'elbowL', 'handL', 1],
+      ['shoulderR', 'elbowR', 'handR', -1],
+    ]) {
+      add(sh, 'skin', limb(0.1, 0.32, 0.085), { p: [0, -0.32, 0] });
+      add(el, 'skin', limb(0.085, 0.27, 0.07), { p: [0, -0.275, 0] });
+      add(ha, 'skin', rbox(0.12, 0.13, 0.08, 0.03), { p: [0, -0.06, 0] });
+      if (sd > 0) add(el, 'shield', taper(rbox(0.5, 0.6, 0.1, 0.04), 0.9, 1.1), { p: [0, -0.18, 0.12] }); // the gauntlet
+    }
+    // the anchor-blade on its chain
+    add('handR', 'armour', new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8), { p: [0, -0.4, 0.05] });
+    add('handR', 'armour', taper(rbox(0.5, 0.32, 0.07, 0.02), 0.4, 1), { p: [0, -0.85, 0.05] });
+    add('handR', 'glow', rbox(0.4, 0.015, 0.075, 0.004), { p: [0, -0.86, 0.05] });
+    for (const [th, kn, ft] of [
+      ['thighL', 'kneeL', 'footL'],
+      ['thighR', 'kneeR', 'footR'],
+    ]) {
+      add(th, 'skin', limb(0.12, 0.44, 0.1), { p: [0, -0.45, 0] });
+      add(kn, 'skin', limb(0.1, 0.42, 0.075), { p: [0, -0.43, 0] });
+      add(kn, 'armour', rbox(0.17, 0.28, 0.1, 0.03), { p: [0, -0.2, 0.06] });
+      add(ft, 'armour', rbox(0.15, 0.09, 0.28, 0.03), { p: [0, -0.02, 0.06] });
+    }
+  },
 };
 
 // Build a figure. `materials` has a material for each key the style uses
 // (ultron: body, dark, glow; bot: shell, dark, visor; hostage: suit, dark,
-// skin; cap: suit, red, white, leather, silver, skin, helmet). `scale` grows
-// it from 1.9 m.
+// skin; cap: suit, red, white, leather, silver, skin, helmet; thor: armour,
+// silver, skin, hair, beard, boot; chitauri: armour, skin, glow; brute and cull:
+// armour, skin, glow, shield). `scale` grows it from 1.9 m.
 export function buildHumanoid({ style = 'ultron', materials, scale = 1 } = {}) {
   // the bones, at rest
   const bones = {};
