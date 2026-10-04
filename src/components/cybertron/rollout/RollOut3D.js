@@ -10,6 +10,7 @@ import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
 import { buildWorld, sharedSurfaces } from './world';
 import { buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
+import { createRollOutCast } from './meshyCast';
 import { chevronSprite, fireSprite, glowSprite, paintEnergon, paintInsignia, paintPanels, paintRim, paintTread, ringSprite, smokeSprite } from './paint';
 import { ROLL, bodyOf } from './rules';
 
@@ -142,6 +143,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const big = !soft && renderer.capabilities.maxTextureSize >= 4096 && !(window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const lib = createLibrary(renderer);
   const models = createModels();
+  const cast = createRollOutCast();
   const T = (c, o) => canvasTexture(c, renderer, o);
   // stop building if the game went away while we were loading
   const progress = (k, label) => {
@@ -149,6 +151,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       stage.dispose();
       lib.dispose();
       models.dispose();
+      cast.dispose();
       throw new Error('unmounted');
     }
     onProgress?.(k, label);
@@ -173,6 +176,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const shared = await sharedSurfaces(renderer, big, panels, lib);
   progress(0.25, 'Fetching the props');
   const [barrierModel, crateModel, barrelModel, tyreModel, rockModel] = await Promise.all(['barrier', 'crate', 'barrel', 'tyre', 'rock'].map((n) => models.load(n)));
+  // the cast modelled with Meshy, where the site has it (./meshyCast.js)
+  await cast.load((k) => onProgress?.(0.25 + k * 0.12, 'Rolling out the cast'));
+  progress(0.37, 'Rolling out the cast');
 
   // ── lights that travel with you ──
   const blast = new THREE.PointLight(0xffa860, 0, 30, 2);
@@ -189,9 +195,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     if (playerBot === who && player) return;
     if (player) {
       scene.remove(player.group);
-      player.group.traverse((o) => o.geometry?.dispose());
+      player.group.traverse((o) => !o.userData.shared && o.geometry?.dispose());
     }
-    player = who === 'bumblebee' ? buildBumblebee(M, tex) : buildOptimus(M, tex);
+    player = cast.player(who) ?? (who === 'bumblebee' ? buildBumblebee(M, tex) : buildOptimus(M, tex));
     playerBot = who;
     scene.add(player.group);
   };
@@ -214,8 +220,8 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     });
   progress(0.4, 'Building traffic');
   const cars = new Assign(pool(16, (i) => ({ ...buildCar(M, tex, i % 8), key: 'road', look: i % 8 })).concat(pool(10, (i) => ({ ...buildCar(M, tex, i + 2, true), key: 'hover' }))));
-  const vehicons = new Assign(pool(8, () => buildVehicon(M, tex)));
-  const jets = new Assign(pool(4, () => buildJet(M, { body: 0x55596a, accent: 0x5a2a86, tex })));
+  const vehicons = new Assign(pool(8, () => cast.vehicon() ?? buildVehicon(M, tex)));
+  const jets = new Assign(pool(4, () => cast.jet('seeker') ?? buildJet(M, { body: 0x55596a, accent: 0x5a2a86, tex })));
 
   // debris: scanned crates, barrels, tyres, a rock; scrap metal in Kaon
   const scrapMat = M.armour(0x5a4a44, { roughness: 0.6 });
@@ -412,9 +418,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     if (boss?.kind === kind) return boss;
     if (boss) {
       scene.remove(boss.group);
-      boss.group.traverse((o) => o.geometry?.dispose()); // its materials include shared ones
+      boss.group.traverse((o) => !o.userData.shared && o.geometry?.dispose()); // its materials include shared ones
     }
-    const m = kind === 'starscream' ? buildJet(M, { body: 0x9aa1ad, accent: 0xc8282e, accent2: 0x2a52b8, scale: 3.2, tex }) : buildBoss(M, kind, tex);
+    const m = (kind === 'starscream' ? cast.jet('starscream') : cast.boss(kind)) ?? (kind === 'starscream' ? buildJet(M, { body: 0x9aa1ad, accent: 0xc8282e, accent2: 0x2a52b8, scale: 3.2, tex }) : buildBoss(M, kind, tex));
     boss = { kind, ...m };
     scene.add(boss.group);
     return boss;
@@ -741,11 +747,12 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
         }
         m.eye.color.copy(hot(B.kind === 'shockwave' ? 0xffd23a : 0xff2a2a, 3 + Math.sin(time * 6)));
       }
-      // a hit is a quick pop (cubed, so steady fire doesn't wash the paint
-      // out); staggered, it pulses cold while every hit counts double
-      const fl = (B.flash ?? 0) ** 3;
+      // a hit is a quick, dim pop, so steady fire doesn't wash the paint out
+      // (the sparks say it hit); staggered, it pulses cold while every hit
+      // counts double
+      const fl = (B.flash ?? 0) ** 4;
       const ex = B.exposed > 0 ? 0.3 + 0.25 * Math.sin(time * 18) : 0;
-      for (const mat of m.mats) mat.emissive?.setRGB(fl * 1.1 + ex * 0.15, fl * 0.4 + ex * 0.55, fl * 0.25 + ex * 0.9);
+      for (const mat of m.mats) mat.emissive?.setRGB(fl * 0.45 + ex * 0.15, fl * 0.18 + ex * 0.55, fl * 0.12 + ex * 0.9);
       if (!B.alive && Math.random() < 0.5) burst(B.x + (Math.random() - 0.5) * 4, 2 + Math.random() * 3, bz + (Math.random() - 0.5) * 3, { big: true });
     } else if (boss) boss.group.visible = false;
 
@@ -830,6 +837,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     stage.dispose();
     lib.dispose();
     models.dispose();
+    cast.dispose();
   };
 
   return {
