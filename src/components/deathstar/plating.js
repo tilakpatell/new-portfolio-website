@@ -184,13 +184,13 @@ export function paintPlating({ seed = 1, size = 1024, kind = 'surface' } = {}) {
 }
 
 // Yavin: a banded gas giant, stretched round a sphere.
-export function paintGasGiant({ seed = 3, w = 1024, h = 512 } = {}) {
+export function paintGasGiant({ seed = 3, w = 1024, h = 512, palette: given = null } = {}) {
   const rand = rng(seed);
   const cv = canvas(w, h);
   const ctx = cv.getContext('2d');
   const img = ctx.createImageData(w, h);
   const bands = Array.from({ length: 14 }, () => ({ f: 2 + rand() * 18, p: rand() * 6, a: rand() }));
-  const palette = [
+  const palette = given ?? [
     [196, 140, 92],
     [228, 186, 138],
     [168, 112, 74],
@@ -230,4 +230,81 @@ export function starSprite(size = 64) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   return cv;
+}
+
+// The whole station as the films show it from afar: a light, even grey, in
+// horizontal bands of sectors, with low-contrast panels and greebles, the
+// way a moon reads before you see it's a space station. Painted
+// equirectangular (longitude across, latitude down) so the bands follow the
+// latitudes, with a height for relief and a few lights for the night side.
+export function paintStation({ seed = 4, w = 2048, h = 1024 } = {}) {
+  const rand = rng(seed);
+  const color = canvas(w, h);
+  const height = canvas(w, h);
+  const lit = canvas(w, h);
+  const c = color.getContext('2d');
+  const hc = height.getContext('2d');
+  const l = lit.getContext('2d');
+  const k = w / 2048;
+  // the films' hull grey (#969696 to #AFAFAF lit), a touch blue-green
+  c.fillStyle = 'rgb(116,120,122)';
+  c.fillRect(0, 0, w, h);
+  hc.fillStyle = grey(150);
+  hc.fillRect(0, 0, w, h);
+  l.fillStyle = '#000';
+  l.fillRect(0, 0, w, h);
+  const bands = 56;
+  const bh = h / bands;
+  for (let b = 0; b < bands; b++) {
+    const y = b * bh;
+    // each band split into sectors of their own shade, barely different
+    for (let x = 0; x < w; ) {
+      const sw = (24 + rand() * 90) * k;
+      const v = 116 + (rand() - 0.5) * 14 - (rand() < 0.14 ? 14 : 0);
+      c.fillStyle = `rgb(${v | 0},${(v + 4) | 0},${(v + 6) | 0})`;
+      c.fillRect(x, y, sw, bh);
+      // a few panels and greebles inside, slightly darker or lighter
+      const n = Math.floor(rand() * 5);
+      for (let i = 0; i < n; i++) {
+        const pw = sw * (0.15 + rand() * 0.4);
+        const ph = bh * (0.2 + rand() * 0.45);
+        const px = x + rand() * (sw - pw);
+        const py = y + bh * 0.15 + rand() * (bh * 0.7 - ph);
+        const dv = rand() < 0.8 ? -14 : 9;
+        c.fillStyle = `rgba(${dv < 0 ? '44,47,50' : '170,174,176'},${dv < 0 ? 0.2 + rand() * 0.15 : 0.06 + rand() * 0.06})`;
+        c.fillRect(px, py, pw, ph);
+        hc.fillStyle = grey(dv < 0 ? 128 : 172);
+        hc.fillRect(px, py, pw, ph);
+      }
+      // the seam at the sector's end
+      c.fillStyle = 'rgba(70,72,76,0.35)';
+      c.fillRect(x + sw - k, y, Math.max(1, k), bh);
+      hc.fillStyle = grey(120);
+      hc.fillRect(x + sw - k, y, Math.max(1, k), bh);
+      x += sw;
+    }
+    // the line between bands
+    c.fillStyle = 'rgba(62,64,68,0.5)';
+    c.fillRect(0, y, w, Math.max(1, 1.5 * k));
+    hc.fillStyle = grey(110);
+    hc.fillRect(0, y, w, Math.max(1, 1.5 * k));
+  }
+  // fine grain, so the grey isn't flat up close
+  for (let i = 0; i < w * h * 0.004; i++) {
+    const v = rand() < 0.65 ? '40,42,46' : '190,193,196';
+    c.fillStyle = `rgba(${v},${0.05 + rand() * 0.08})`;
+    c.fillRect(rand() * w, rand() * h, 1 + rand() * 2 * k, 1);
+  }
+  // lights, sparse, for the side in shadow
+  for (let i = 0; i < 900 * k * k; i++) {
+    l.fillStyle = rand() < 0.8 ? 'rgba(255,226,170,0.9)' : 'rgba(200,220,255,0.9)';
+    l.fillRect(rand() * w, rand() * h, Math.max(1, k * 1.5), Math.max(1, k));
+  }
+  const hd = hc.getImageData(0, 0, w, h).data;
+  const normal = canvas(w, h);
+  const nctx = normal.getContext('2d');
+  const nimg = nctx.createImageData(w, h);
+  nimg.data.set(heightToNormal(hd, w, h, 1.6));
+  nctx.putImageData(nimg, 0, 0);
+  return { color, normal, lit };
 }
