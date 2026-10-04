@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiRestartLine } from 'react-icons/ri';
+import { restartSite } from '../../lib/restart';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
@@ -102,6 +103,9 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           aria-live="polite"
         >
           {homeFirst ? 'Next time the site opens on the home page.' : 'Prefer the plain site? Start on the home page next time'}
+        </button>
+        <button type="button" className="universe-back mt-2" onClick={restartSite}>
+          <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Restart the site from the beginning
         </button>
         <p className="universe-credit">
           Planet maps and the Milky Way by{' '}
