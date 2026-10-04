@@ -531,6 +531,13 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
      through the gutter and clear space, and takes no pointer events. */
   .route { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 15; contain: layout style; }
   .route-seg { position: absolute; }
+  /* Drawn in layers: every dashed plan first, then the lit line, then the
+     stops, then the crystal. Interleaving them (plan, lit, plan, lit…) made the
+     browser stack each plan above a moving lit segment, on its own GPU layer. */
+  .route-plan, .route-arc { z-index: 0; }
+  .route-done { z-index: 1; }
+  .route-node { z-index: 2; }
+  .route .kyber { z-index: 3; }
   .route-plan.v { width: 1px; background: repeating-linear-gradient(to bottom, var(--route-plan) 0 var(--route-dash), transparent var(--route-dash) calc(var(--route-dash) + var(--route-gap))); }
   .route-plan.h { height: 1px; background: repeating-linear-gradient(to right, var(--route-plan) 0 var(--route-dash), transparent var(--route-dash) calc(var(--route-dash) + var(--route-gap))); }
   .route-done { background: var(--accent); transform-origin: 0 0; will-change: transform; }
@@ -752,7 +759,7 @@ html[data-mode='dark'] .saber-progress .blade { background: #ffffff; box-shadow:
   background:
     linear-gradient(to bottom, transparent 40%, var(--bg)),
     radial-gradient(60% 70% at 85% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
-  animation: fade-in 0.8s ease both;
+  animation: fade-in 0.8s ease backwards;
 }
 .hero-logo-card {
   display: flex;
@@ -765,7 +772,7 @@ html[data-mode='dark'] .saber-progress .blade { background: #ffffff; box-shadow:
   border-radius: calc(var(--r-card) + 6px);
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(15, 17, 17, 0.06), 0 30px 60px -30px color-mix(in srgb, var(--accent) 55%, transparent);
-  animation: logo-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: logo-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 html[data-mode='dark'] .hero-logo-card { background: var(--surface); }
 .chapter-logo-card.is-small { width: clamp(150px, 16vw, 200px); }
@@ -781,17 +788,20 @@ html[data-mode='dark'] .hero-logo-card { background: var(--surface); }
   box-shadow: 0 1px 2px rgba(15, 17, 17, 0.06), 0 24px 48px -28px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .reveal.chapter-logo-card:not([data-in='true']) { opacity: 0; transform: scale(0.9) translateY(14px); }
-.aws-logo .aws-letters { fill: #252f3e; animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+.aws-logo .aws-letters { fill: #252f3e; animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards; }
 html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
-.aws-logo .aws-smile { fill: #ff9900; fill-rule: evenodd; transform-box: fill-box; transform-origin: 0 50%; animation: smile-in 0.6s cubic-bezier(0.6, 0, 0.2, 1) both; }
-.hero-in { animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both; }
+.aws-logo .aws-smile { fill: #ff9900; fill-rule: evenodd; transform-box: fill-box; transform-origin: 0 50%; animation: smile-in 0.6s cubic-bezier(0.6, 0, 0.2, 1) backwards; }
+.hero-in { animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) backwards; }
 @keyframes hero-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes logo-in { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes smile-in { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ─── Page entry, toast, Death Star ──────────────────────────────────────── */
-.page-enter { animation: page-in 0.2s ease-out both; }
+/* Entrances fill backwards only: the end state is each element's own style, and
+   an animation that holds its last frame keeps the element on its own GPU layer
+   for as long as the page is open (here, the whole page). */
+.page-enter { animation: page-in 0.2s ease-out backwards; }
 @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
 
 .toast { animation: toast-in 3.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
