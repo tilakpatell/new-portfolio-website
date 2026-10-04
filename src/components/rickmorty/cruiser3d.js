@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
+import { pixelRatio } from '../../lib/device';
 
 const INK = 0x1b1424;
 const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 across)
@@ -215,7 +216,7 @@ export async function createCruiser3D(canvas) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (!w || !h) return;
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(pixelRatio(2)); // lib/device: lower on a phone or a weak device
     renderer.setSize(w, h, false);
     const a = h / w;
     camera.top = SPAN * a;

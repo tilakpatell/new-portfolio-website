@@ -24,6 +24,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
+import { pixelRatio } from '../../../lib/device';
 
 const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
@@ -1423,7 +1424,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   };
 
   let size = { w: 1, h: 1 };
-  let ratioCap = 1.5;
+  let ratioCap = pixelRatio(1.5); // lib/device: 1 on a weak device
   const resize = (w, h) => {
     size = { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
     // at most 1.5 device pixels a pixel, and about three million in all

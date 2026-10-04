@@ -193,22 +193,41 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     };
     glDrop.current = drop;
     setGlState('loading');
-    import('./Trench3D')
-      .then(({ createTrench3D }) => {
-        if (dead || !glCanvas.current) return;
-        try {
-          // 3D stays 3D: frames that can't keep up lower its resolution and
-          // effects; only a lost or failed context falls back to 2D.
-          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost') });
-          resizeRef.current?.();
-          setGlState('on');
-        } catch {
-          drop('failed');
-        }
-      })
-      .catch(() => drop('failed'));
+    const start = () =>
+      import('./Trench3D')
+        .then(({ createTrench3D }) => {
+          if (dead || !glCanvas.current) return;
+          try {
+            // 3D stays 3D: frames that can't keep up lower its resolution and
+            // effects; only a lost or failed context falls back to 2D.
+            glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost') });
+            resizeRef.current?.();
+            setGlState('on');
+          } catch {
+            drop('failed');
+          }
+        })
+        .catch(() => drop('failed'));
+    // the trench is well down the page: its context is made as it comes near,
+    // so on the way in the hero has the graphics chip (and a phone's memory)
+    // to itself
+    let near = null;
+    if (typeof IntersectionObserver === 'undefined' || !glCanvas.current) start();
+    else {
+      near = new IntersectionObserver(
+        ([e]) => {
+          if (!e.isIntersecting) return;
+          near.disconnect();
+          near = null;
+          start();
+        },
+        { rootMargin: '100% 0px 100% 0px' },
+      );
+      near.observe(glCanvas.current);
+    }
     return () => {
       dead = true;
+      near?.disconnect();
       glRef.current?.dispose();
       glRef.current = null;
     };

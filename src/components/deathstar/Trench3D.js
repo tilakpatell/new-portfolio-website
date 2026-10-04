@@ -19,6 +19,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
+import { pixelRatio } from '../../lib/device';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
@@ -272,7 +273,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
-  const maxRatio = Math.min(1.75, window.devicePixelRatio || 1);
+  const maxRatio = pixelRatio(1.75); // lib/device: lower on a phone or a weak device
   let ratio = maxRatio;
   renderer.setPixelRatio(ratio);
 

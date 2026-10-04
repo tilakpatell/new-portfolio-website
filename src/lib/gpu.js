@@ -8,7 +8,8 @@
 // The visitor can choose: 'auto' (the default), 'on' (the same: 3D wherever
 // WebGL exists) or 'off' (always 2D). The choice is kept between visits.
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { noteGpu } from './device';
 
 const SOFTWARE = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen|gdi generic/i;
 const KEY = 'tp-3d';
@@ -54,12 +55,17 @@ export function probe(doc = typeof document !== 'undefined' ? document : undefin
 export const gpuStatus = (info) => (info.ok ? 'ok' : info.webgl ? 'software' : 'none');
 
 let cached = null;
-export const gpu = () => (cached ??= probe());
+// (lib/device hears what was found, so a weak phone chip or software WebGL
+// lowers the quality tier too)
+export const gpu = () => {
+  if (!cached) noteGpu((cached = probe()));
+  return cached;
+};
 
 // Look again (after the visitor has changed a setting and come back), and
 // tell anything listening.
 export function reprobe() {
-  cached = probe();
+  noteGpu((cached = probe()));
   window.dispatchEvent(new CustomEvent(EVENT, { detail: mode3D() }));
   return cached;
 }
@@ -85,9 +91,18 @@ export function setMode3D(mode) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: mode }));
 }
 
-// { on, can, mode, set }: whether to draw in 3D now, whether WebGL exists at
-// all, the visitor's choice, and a way to change it.
+// A world that waits for the visitor before downloading its 3D (on a phone,
+// with Data Saver, short of space: components/worlds/WorldGate) holds the 3D
+// for everything inside it: `on` is false, so its scenes keep their 2D
+// versions and fetch nothing, and `held` says why. Any "turn 3D on" inside
+// it loads the world instead. The value is { held, load, mb, name }.
+export const Hold3D = createContext(null);
+
+// { on, can, mode, set, held }: whether to draw in 3D now, whether WebGL
+// exists at all, the visitor's choice, a way to change it, and whether the
+// world around it is holding its 3D until asked.
 export function use3D() {
+  const hold = useContext(Hold3D);
   const [mode, setMode] = useState(mode3D);
   const [, setLooked] = useState(0); // bumped by reprobe(), which may leave the mode as it was
   useEffect(() => {
@@ -99,5 +114,12 @@ export function use3D() {
     return () => window.removeEventListener(EVENT, on);
   }, []);
   const info = gpu();
-  return { on: resolve3D(mode, info), can: info.webgl, auto: info.ok, mode, set: setMode3D, info, status: gpuStatus(info) };
+  const held = Boolean(hold?.held);
+  const set = held
+    ? (m) => {
+        if (m !== 'off') hold.load();
+        setMode3D(m);
+      }
+    : setMode3D;
+  return { on: resolve3D(mode, info) && !held, can: info.webgl, auto: info.ok, mode, set, info, status: gpuStatus(info), held, hold };
 }

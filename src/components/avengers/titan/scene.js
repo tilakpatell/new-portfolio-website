@@ -66,7 +66,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   const engine = createEngine(canvas, { exposure: 0.92, fov: FOV, near: 0.05, far: 3000, bloom: { strength: 0.55, radius: 0.45, threshold: 1.6 }, onLost, onSlow });
   const { scene, camera, hemi } = engine;
   const small = engine.small;
-  await preload({ sets: ['rock', 'leather', 'carbon', 'concrete-worn'], skies: ['dusk'], small });
+  await preload({ sets: ['rock', 'leather', 'carbon', 'concrete-worn'], skies: ['dusk'], small, backgrounds: false });
 
   // a low sun behind the haze, ahead of him: he's lit from the front and
   // stands against the light; a cool fill from the violet sky above

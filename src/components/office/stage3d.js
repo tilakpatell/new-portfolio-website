@@ -5,6 +5,7 @@
 // turns shadows off, and stays 3D. Only a lost context goes back to 2D.
 
 import * as THREE from 'three';
+import { pixelRatio } from '../../lib/device';
 
 export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
@@ -14,7 +15,7 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false);
-  let ratio = Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2);
+  let ratio = pixelRatio(2); // lib/device: 1.5 on a phone, 1 on a weak device
   renderer.setPixelRatio(ratio);
 
   const scene = new THREE.Scene();
