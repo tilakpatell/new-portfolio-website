@@ -42,6 +42,8 @@ const DRUM = 'standing upright, ribbed near the top and bottom, with a small gre
 // The people are described by how they look and dress, never by name or
 // actor: stylized, not a likeness of anyone real.
 const PERSON = 'A stylized, high-detail 3D game character in the look of a modern animated feature film: believable adult proportions, soft painted skin, hair and fabric, clean readable shapes. Full body, front view, standing straight in an A-pose with the arms held a little away from the body, feet slightly apart. Plain neutral grey background, no text, no shadow.';
+// The world's buildings and cars, in the same stylized look as the people
+const WORLD = 'A stylized 3D game asset in the look of a modern animated feature film: believable proportions, softly painted textures, clean readable shapes, a little weathered by the desert sun. The whole object, three-quarter front view from slightly above, centred, on a plain neutral grey background, no text, no logos, no people.';
 const HAZMAT = 'a baggy bright yellow hazmat coverall zipped up to the neck, the hood down, and long black rubber gloves';
 
 // out: under public/models; poly: target triangles. A prop's size is its
@@ -67,6 +69,16 @@ export const ASSETS = {
   hank: { out: 'albuquerque/hank.glb', kind: 'person', poly: 12000, height: 1.85, prompt: 'A big, burly, bald man in his forties with a short blond-grey goatee and a bit of a belly, in an olive green short-sleeved shirt, khaki trousers with a badge on the belt, and brown shoes.' },
   hector: { out: 'albuquerque/hector.glb', kind: 'person', poly: 12000, height: 1.73, prompt: 'A frail, very old man with tanned wrinkled skin, swept-back white hair and white eyebrows, in a pale grey-blue button-up shirt, dark grey trousers and black shoes.' },
   nurse: { out: 'albuquerque/nurse.glb', kind: 'person', poly: 12000, height: 1.65, prompt: 'A woman in her thirties with short dark hair, in light blue nurse scrubs and white shoes.' },
+  // the world: Walt's car and the RV, Hank's SUV, and the places you drive to
+  aztek: { out: 'albuquerque/world/aztek.glb', kind: 'world', poly: 9000, size: 4.6, prompt: 'A boxy mid-2000s crossover SUV with a sloping split rear tailgate, thick grey plastic body cladding along the doors and bumpers, a dull pale beige-green paint and black roof rails.' },
+  rv: { out: 'albuquerque/world/rv.glb', kind: 'world', poly: 9000, size: 8.5, prompt: 'An old weathered 1980s motorhome camper: off-white and beige body with faded brown and orange stripes along its side, a side door, small square windows, a ladder at the back, dusty tyres.' },
+  suv: { out: 'albuquerque/world/suv.glb', kind: 'world', poly: 7000, size: 5, prompt: 'A black full-size government SUV with tinted windows, chrome grille and black steel wheels, clean and imposing.' },
+  house: { out: 'albuquerque/world/house.glb', kind: 'world', poly: 10000, size: 16, prompt: 'A single-storey suburban ranch house in the American Southwest: tan stucco walls, a low pitched brown shingle roof, an attached two-car garage with a white door, a small front porch, gravel front yard with a small tree and a concrete driveway.' },
+  pollos: { out: 'albuquerque/world/pollos.glb', kind: 'world', poly: 10000, size: 18, prompt: 'A cheerful fast-food chicken restaurant: a single-storey building with warm yellow walls and red trim, big front windows, a red tiled roof edge, an outdoor seating area with yellow umbrellas, and a tall yellow sign on a pole.' },
+  laundry: { out: 'albuquerque/world/laundry.glb', kind: 'world', poly: 10000, size: 24, prompt: 'An industrial laundry building: a long low warehouse with beige painted brick walls, a loading dock with two roll-up doors, a row of small high windows, steam vents on the flat roof and a blank sign board over the entrance.' },
+  casa: { out: 'albuquerque/world/casa.glb', kind: 'world', poly: 10000, size: 20, prompt: 'A single-storey Southwestern adobe-style retirement home: smooth beige stucco walls, a flat roof with wooden beam ends sticking out, an arched entrance porch with a bench, small windows with turquoise blue trim, and a few desert plants in front.' },
+  office: { out: 'albuquerque/world/office.glb', kind: 'world', poly: 10000, size: 16, prompt: 'A small office unit in a beige stucco strip mall with a glass storefront and door, a blank sign board above it, and a tall inflatable Statue of Liberty figure in green standing on its flat roof, holding up a torch.' },
+  carwash: { out: 'albuquerque/world/carwash.glb', kind: 'world', poly: 9000, size: 18, prompt: 'A small drive-through car wash: a white and blue building with a long open bay showing big blue brushes inside, a flat canopy over the entrance and a tall blank sign on a pole.' },
 };
 
 const key = process.env.MESHY_API_KEY;
@@ -183,6 +195,15 @@ function placeHammer(ps, size) {
 }
 
 const TEX = 1024; // a texture's size, as shipped
+// A building or a car: standing on y = 0, centred, its longest side `size`
+// (which way it faces is the world's business: see albuquerque/world).
+function placeWorld(ps, size) {
+  const [[x0, x1], [y0], [z0, z1]] = bounds(ps);
+  const s = size / Math.max(x1 - x0, z1 - z0);
+  const matrix = [s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, (-s * (x0 + x1)) / 2, -s * y0, (-s * (z0 + z1)) / 2, 1];
+  return { matrix };
+}
+
 let io = null;
 async function bake(from, to, a) {
   if (!io) {
@@ -193,7 +214,7 @@ async function bake(from, to, a) {
   const doc = await io.read(from);
   // a prop into the scene's frame, under one node that carries the placement
   // (a person stays where they were rigged: people.js sizes and poses them)
-  const placed = a.kind === 'drum' ? placeDrum(points(doc), a.size) : a.kind === 'hammer' ? placeHammer(points(doc), a.size) : {};
+  const placed = a.kind === 'drum' ? placeDrum(points(doc), a.size) : a.kind === 'hammer' ? placeHammer(points(doc), a.size) : a.kind === 'world' ? placeWorld(points(doc), a.size) : {};
   if (placed.matrix) {
     const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
     const top = doc.createNode('placed').setMatrix(placed.matrix);
@@ -231,7 +252,7 @@ const steps = {
       s[n] ??= {};
       if (!s[n].image) {
         const person = ASSETS[n].kind === 'person';
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${ASSETS[n].prompt} ${person ? PERSON : STYLE}`, ...(person ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${ASSETS[n].prompt} ${person ? PERSON : ASSETS[n].kind === 'world' ? WORLD : STYLE}`, ...(person ? { pose_mode: 'a-pose' } : {}) });
         s[n].image = result;
         await save(s);
       }

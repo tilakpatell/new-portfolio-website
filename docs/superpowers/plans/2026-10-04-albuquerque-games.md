@@ -401,8 +401,69 @@ Brought forward to PR 2 at the user's ask (2026-10-04): "Face Off should be a 3D
   - **Sound:** the site owner's clips (`src/lib/clips.js`): Hector's bell on every ring, Gus's "My name is Gustavo" as he walks in, the Face Off clip from just before its blast on the third ring; `sfx` ding, boom and crumble only if a clip can't play, and buzz on a miss.
   - **Fallback:** without WebGL, on a lost context, or if `createCasa3D` rejects, the two 2D games show.
 
-- [ ] QA:
+- [x] QA:
   - A full game through the finale at desktop and 390×844.
   - Hold Space through the finale: one boom.
   - The 2D fallback with WebGL disabled.
+- [x] Lint, test, build; commit; PR; merge; reset.
+
+## Phase 6 (PR 6): the world
+
+Added at the user's ask (2026-10-04): "Make it a 3D world where you spawn in and you have the house and Los Pollos and the superlab and the RV, and you have to unlock it." The page's hero becomes a drivable Albuquerque; each game is a place in it.
+
+### Task 6.1: The rules
+
+**Files:**
+- Create: `src/components/albuquerque/world/rules.js`, `world/rules.test.js`
+
+**Interfaces:**
+- Produces:
+  - `ROADS` (Central, 4th Street, Negra Arroyo Lane, Juan Tabo, the dirt track to To'hajiilee), `PLACES` (home, rv, saul, pollos, superlab, casa: where each stands, its footprint and its door), `LANDMARKS`, `HOUSES`, `COLLIDERS`, `SPAWN`, `CAR`, `WORLD_RADIUS`.
+  - `stepCar(car, { throttle, steer }, dt) -> { car, bump }`: asphalt, dirt and sand speeds; circle-against-footprint push-out; the edge of the world.
+  - `nearPlace(x, z)`, `progress(snap) -> { places, next, objective, done }`.
+  - `hankAt(t)`: Hank's lap of the block; `stepHeat(heat, dist, dt) -> { heat, caught }`.
+- Unlocks, read from Metherria's career (`tp-metherria`) and the places visited (`tp-abq-visited`):
+  - Home and the RV are open from the start.
+  - Saul: two orders served.
+  - Los Pollos: 40 points (Cap'n Cook).
+  - The superlab: bought at Saul's.
+  - Casa Tranquila: once you've met Gus.
+
+- [x] Tests: the map (the spawn and every door on a road, doors clear of the buildings, the roads join up), the unlocks in order and the objective, driving (speed by surface, turning, colliding, the edge), pulling up at a place, Hank's loop and the heat.
+
+### Task 6.2: The scene
+
+**Files:**
+- Create: `src/components/albuquerque/world/scene.js`
+- Modify: `scripts/meshy-albuquerque.mjs` (the world's buildings and cars), `public/models/albuquerque/world/*.glb`
+
+**Interfaces:**
+- Produces: `createAbqWorld(canvas, { onLost, onSlow }) -> Promise<{ render(state, ms), setPlaces(progress), beam(id), settle(), resize, info, project, dispose, lost }>`.
+- Contents:
+  - A late-afternoon sky dome, the desert floor and dunes, and the Sandias in a ring to the east.
+  - Asphalt and dirt roads, lane lines, power lines along Central and lamps along 4th.
+  - Instanced shrubs, yucca, cholla and rocks.
+  - Meshy buildings for each place (the house, the RV, the office, Los Pollos, the laundry, Casa Tranquila, the A1A car wash) and the neighbours' houses, instanced.
+  - A sign for each place with a periodic-table tile; a marker ring and icon (a lock until it opens), and a beam when one opens.
+  - Walt's Aztek, Hank's SUV with its lights, and dust.
+  - A chase camera that swoops in from over the town.
+- Budget: ≤ 300 calls desktop, ≤ 150 mobile.
+
+- [x] QA captures at desktop and 390×844: spawn, driving, the places list, at a door, inside, back out, a locked door. About 40 calls and 240k triangles at desktop.
+
+### Task 6.3: The component and the page
+
+**Files:**
+- Create: `src/components/albuquerque/world/AbqWorld.jsx`, `world/places.jsx`, `world/career.js`, `world/world.css`, `src/components/albuquerque/TitleCard.jsx`, `src/components/albuquerque/Pollos.jsx`
+- Modify: `src/pages/Albuquerque.jsx`, `metherria/Metherria.jsx` (`at`: the RV or the superlab)
+
+**Interfaces:**
+- Behavior:
+  - **Input:** WASD or arrows, Space to brake, E or Enter to go in, M for the places list; a gamepad; a touch stick on phones.
+  - **HUD:** the title, the objective, cash and rank, a minimap, Hank's heat, the door card, the places list ("Drive there" for any open place).
+  - **Places:** open as a full-screen dialog over the page (Escape back to the car). Walt's house: the career and the title card. The RV and the superlab: Metherria. Saul's office: the upgrades. Los Pollos: the menu. Casa Tranquila: Face Off.
+  - **Sound:** Jesse's ringtone at the RV, Saul's and Gus's hellos at their doors, Hank's ringtone when he pulls you over.
+  - **Fallback:** without 3D, the places as cards.
+
+- [x] QA: as Task 6.2, plus the fallback cards with 3D off.
 - [ ] Lint, test, build; commit; PR; merge; reset.

@@ -12,7 +12,7 @@ export const WORLD_MB = {
   '/cybertron': 14, // Roll out's cast, scanned ground, rocks and sky, and the statues
   '/avengers': 9, // the compound's skies, scanned props and trees
   '/c-137': 6, // the cruiser and Portal panic's cast
-  '/albuquerque': 5, // Metherria's cast and lab
+  '/albuquerque': 8, // the town's buildings and cars, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   '/middle-earth': 1, // drawn in code too

@@ -149,15 +149,35 @@ Ultimate Modular Men/Women packs built by `scripts/build-cast.py`):
   tight!", Hank's ringtone at the raid, and "Better call Saul!" for the
   billboard. Lines with swearing are cut or left out.
 
+## 4. The world (added 2026-10-04)
+
+- The page opens on a drivable 3D Albuquerque: you spawn on Walt's driveway
+  in his Aztek, and drive between the places the shows happen. Each place is
+  a door: pull up and go in, and its game or room opens over the page.
+- The places: Walt's house (the career and the title card), the RV out past
+  To'hajiilee and the superlab under the laundry (Metherria), Saul Goodman &
+  Associates (the upgrades), Los Pollos Hermanos (the menu), Casa Tranquila
+  (Face Off). The A1A Car Wash and the neighbours' houses are scenery.
+- Unlocking follows the career: home and the RV are open; two orders and
+  Saul will see you; Cap'n Cook and Gus will; the superlab once it's bought;
+  Casa Tranquila once you've met Gus. The HUD always says what's next.
+- Hank cruises the block in his SUV; stay close to him and the heat builds
+  until he pulls you over (back to the driveway, no loss).
+- Rules in a pure module (`world/rules.js`) with tests; the buildings and
+  cars are Meshy models made for this site; the rest is procedural and
+  instanced.
+- Without 3D, the places are cards.
+
 ## Delivery
 
-Five PRs, each merged when green:
+Six PRs, each merged when green:
 
 1. Characters, Metherria's 3D customers, Walt and Jesse.
 2. The RV and the superlab.
 3. Metherria's deeper gameplay.
 4. Metherria's game feel.
 5. Casa Tranquila.
+6. The world.
 
 ## Out of scope
 

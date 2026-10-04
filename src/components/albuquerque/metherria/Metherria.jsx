@@ -62,7 +62,9 @@ const patienceLeft = (waited, id, upgrades) => {
 };
 const stationOf = (stage) => (stage === 'serve' ? 'order' : stage);
 
-export default function Metherria() {
+// `at`: 'rv' or 'superlab' to cook in that room (the world's places); without
+// it, the superlab once it's bought, else the RV.
+export default function Metherria({ at } = {}) {
   const { unlock } = useAchievements();
   const reduced = useReducedMotion();
   const wide = useMediaQuery('(min-width: 720px)');
@@ -104,7 +106,7 @@ export default function Metherria() {
   };
   const upgrades = career.upgrades;
   const rank = rankFor(career.points);
-  const superlab = upgrades.includes('superlab');
+  const superlab = at ? at === 'superlab' : upgrades.includes('superlab');
   const s = shift.current;
   const running = phase === 'shift' && inView;
   const playable = three.on && glState !== 'failed' && glState !== 'lost';
