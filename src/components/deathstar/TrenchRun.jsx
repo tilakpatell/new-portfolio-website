@@ -6,7 +6,7 @@ import { fmtClock } from './battle';
 import { SCRIPTS } from '../../fun/scripts';
 import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 import { capturePointer } from '../../lib/pointer';
-import { gpu, use3D } from '../../lib/gpu';
+import { use3D } from '../../lib/gpu';
 
 const sfx = () => import('../../lib/sfx');
 // The HUD writes in the site's language when language mode is on.
@@ -175,7 +175,11 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
   const glRef = useRef(null);
   const resizeRef = useRef(null);
   const glDrop = useRef(null);
-  const [glState, setGlState] = useState('off'); // off | loading | on | failed | slow | lost
+  const [glState, setGlState] = useState('off'); // off | loading | on | failed | lost
+  const glStateRef = useRef('off');
+  glStateRef.current = glState;
+  const threeOn = useRef(three.on);
+  threeOn.current = three.on;
   useEffect(() => {
     if (!three.on) {
       setGlState('off');
@@ -193,9 +197,9 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       .then(({ createTrench3D }) => {
         if (dead || !glCanvas.current) return;
         try {
-          // A real graphics chip stays in 3D (at lower settings if it must);
-          // only WebGL drawn in software, switched on by hand, gives up to 2D.
-          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => !gpu().ok && drop('slow') });
+          // 3D stays 3D: frames that can't keep up lower its resolution and
+          // effects; only a lost or failed context falls back to 2D.
+          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost') });
           resizeRef.current?.();
           setGlState('on');
         } catch {
@@ -430,7 +434,12 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         }
         ctx.clearRect(-20, -20, w + 40, h + 40);
       }
-      if (!gl || !glRef.current) {
+      // 3D on its way: just the dark of space until it's ready, never the 2D world first
+      const waiting = !gl && threeOn.current && (glStateRef.current === 'loading' || glStateRef.current === 'off');
+      if (waiting) {
+        ctx.fillStyle = '#05060b';
+        ctx.fillRect(-20, -20, w + 40, h + 40);
+      } else if (!gl || !glRef.current) {
         ctx.fillStyle = '#05060b';
         ctx.fillRect(-20, -20, w + 40, h + 40);
 
@@ -1172,9 +1181,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ) : (
             <span>Playing in 2D: this browser has no WebGL.</span>
           )}
-          {three.can && !three.on && !three.auto && three.mode === 'auto' && <span>No graphics chip found, so this is the 2D version. Turn 3D on to try it anyway.</span>}
           {glState === 'loading' && <span>Loading the 3D station…</span>}
-          {glState === 'slow' && <span>Switched to 2D: this device was struggling with 3D.</span>}
           {glState === 'lost' && <span>The graphics chip reset, so this is the 2D version now.</span>}
           {glState === 'failed' && <span>3D couldn’t start here, so this is the 2D version.</span>}
         </span>

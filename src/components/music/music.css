@@ -1,0 +1,50 @@
+/* The music room's instruments. Kept beside them rather than in the shared
+   stylesheets; tokens (--surface, --accent, ...) come from the theme. */
+
+/* ── Tabla ─────────────────────────────────────────────────────────────── */
+.tb2-svg { display: block; width: 100%; max-width: 520px; height: auto; margin-inline: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; overflow: visible; }
+.tb2-drum { transform-box: fill-box; transform-origin: 50% 50%; }
+.tb2-drum[data-struck] { animation: tb2-struck 0.26s cubic-bezier(0.2, 0.7, 0.3, 1); }
+@keyframes tb2-struck { 0% { transform: scale(0.972); } 100% { transform: scale(1); } }
+.tb2-zone { fill: rgba(255, 230, 170, 0); stroke: none; transition: fill 0.15s ease; pointer-events: none; }
+.tb2-zone[data-on] { fill: rgba(255, 230, 170, 0.16); }
+.tb2-zone-band { stroke: rgba(255, 230, 170, 0); transition: stroke 0.15s ease; pointer-events: none; }
+.tb2-zone-band[data-on] { stroke: rgba(255, 230, 170, 0.2); }
+.tb2-zone-line { stroke: rgba(255, 240, 210, 0); stroke-width: 1; stroke-dasharray: 3 5; transition: stroke 0.15s ease; pointer-events: none; }
+.tb2-zone-line[data-on] { stroke: rgba(255, 240, 210, 0.55); }
+.tb2-ripple { pointer-events: none; animation: tb2-ripple 0.7s cubic-bezier(0.2, 0.6, 0.3, 1) forwards; }
+.tb2-ripple circle { fill: none; stroke: rgba(255, 246, 225, 0.9); stroke-width: 2; }
+.tb2-ripple text { font: 700 13px/1 var(--font-sans); fill: #fff6e1; paint-order: stroke; stroke: rgba(20, 12, 6, 0.75); stroke-width: 3px; }
+@keyframes tb2-ripple { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.9); opacity: 0; } }
+.tb2-caption { min-height: 1.4em; margin-top: 0.4rem; text-align: center; font-size: 0.82rem; color: var(--muted); }
+.tb2-pads { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.45rem; }
+.tb2-pads .tabla-pad { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; min-height: 54px; padding: 0.35rem 0.25rem; }
+.tb2-pads .tabla-pad::before { content: ''; position: absolute; left: 8px; right: 8px; top: 5px; height: 2px; border-radius: 2px; background: var(--border-strong); opacity: 0.7; }
+.tb2-pads .tabla-pad[data-drum='dayan']::before { background: #b77a3f; }
+.tb2-pads .tabla-pad[data-drum='bayan']::before { background: #7b8fa6; }
+.tb2-pads .tabla-pad[data-drum='dayan bayan']::before { background: linear-gradient(90deg, #b77a3f 50%, #7b8fa6 50%); }
+.tb2-pads .tabla-pad:active { transform: translateY(1px); }
+@media (max-width: 1023px) { .tb2-pads { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 639px) { .tb2-pads { grid-template-columns: repeat(4, minmax(0, 1fr)); } .tb2-pads .palette-kbd { display: none; } }
+.tb2-grid .taal-beat[data-tihai] { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-style: dashed; }
+.tb2-grid .taal-beat[data-tihai][data-now] { background: color-mix(in srgb, var(--accent) 26%, var(--surface)); border-style: solid; }
+@media (prefers-reduced-motion: reduce) { .tb2-drum[data-struck], .tb2-ripple { animation: none; } }
+
+/* ── Sitar ─────────────────────────────────────────────────────────────── */
+.sn2-svg { filter: drop-shadow(0 18px 22px rgba(30, 14, 4, 0.28)); }
+.sn2-inlay-line { fill: none; stroke: #eadfc4; stroke-width: 1; opacity: 0.55; }
+.sn2-inlay-leaf { fill: #efe5cc; opacity: 0.62; }
+.sn2-inlay-dot { fill: #efe5cc; opacity: 0.7; }
+.sn2-fret[data-out] > path:first-of-type { opacity: 0.5; }
+.sn2-labels > span { display: grid; justify-items: center; gap: 0.1rem; }
+.sn2-labels > span[data-out] { opacity: 0.55; font-weight: 500; }
+.sn2-labels > span[data-out][data-lit] { opacity: 1; }
+.sn2-key { font: 600 0.62rem/1 var(--font-mono); color: var(--muted); opacity: 0.8; }
+.sitar-neck:not([data-vertical]) .sn2-labels { height: 3.1rem; }
+.sitar-neck[data-vertical] .sn2-svg { height: var(--sn2-h, min(66vh, 620px)); }
+.sn2-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; min-height: 2.2rem; font-size: 0.95rem; }
+.sn2-strip-label { font-size: 0.8rem; color: var(--muted); margin-right: 0.2rem; }
+.sn2-strip-note { display: inline-grid; place-items: center; min-width: 2.1rem; padding: 0 0.35rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-weight: 600; color: var(--text); animation: sn2-in 0.25s ease both; }
+@keyframes sn2-in { from { opacity: 0; transform: translateY(4px); } }
+@media (max-width: 639px) { .sitar-neck[data-vertical] .sn2-labels > span { font-size: 0.85rem; } }
+@media (prefers-reduced-motion: reduce) { .sn2-strip-note { animation: none; } }
