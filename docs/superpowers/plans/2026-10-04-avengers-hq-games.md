@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - No new runtime dependencies; three.js code loads only inside dynamically imported scene modules.
-- CC0 only (Poly Haven, ambientCG); assets in `public/hq/`, WebP textures at 1K (512 for small props), under about 4 MB per game.
+- CC0 (Poly Haven, ambientCG), plus Meshy-generated models and textures with credit (allowed from 2026-10-04); assets in `public/hq/`, WebP textures at 1K (512 for small props), under about 4 MB per game.
 - Rules deterministic with a seed; every game has "idle loses" and "sensible player wins" tests.
 - Keyboard, mouse and touch for every game; reduced motion removes shake and flashes.
 - Draw calls ≤ 300 desktop / 150 mobile, DPR ≤ 1.75, bloom only on authored emissives.
