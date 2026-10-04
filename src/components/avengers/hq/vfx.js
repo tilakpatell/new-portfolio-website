@@ -169,6 +169,9 @@ export function createVfx(scene, { calm = false, maxSparks = 900, maxPuffs = 260
   debris.castShadow = true;
   debris.frustumCulled = false;
   debris.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // each chunk can have its own tint (white leaves the material's colour)
+  const tint = new THREE.Color(1, 1, 1);
+  for (let i = 0; i < maxDebris; i++) debris.setColorAt(i, tint);
   scene.add(debris);
   const bits = Array.from({ length: maxDebris }, () => ({ alive: false, p: new THREE.Vector3(), v: new THREE.Vector3(), q: new THREE.Quaternion(), w: new THREE.Vector3(), s: 1, life: 0, age: 0, ground }));
   let nextBit = 0;
@@ -238,9 +241,11 @@ export function createVfx(scene, { calm = false, maxSparks = 900, maxPuffs = 260
     trail(at, { size = 0.5, life = 0.35, color = 0xffb070, to = 0x552200, a = 0.8 } = {}) {
       fire.spawn({ x: at.x, y: at.y, z: at.z, vx: 0, vy: 0.3, vz: 0, life, s0: size, s1: size * 0.2, a0: a, drag: 0, g: 0, rot: 0, vr: 0, ground: -Infinity, c0: new THREE.Color(color).multiplyScalar(3), c1: new THREE.Color(to) });
     },
-    debris(at, { count = 10, speed = 7, size = 0.12, life = 3.5, dir = null, spread = 1 } = {}) {
+    debris(at, { count = 10, speed = 7, size = 0.12, life = 3.5, dir = null, spread = 1, color = 0xffffff } = {}) {
+      tint.set(color);
       for (let i = 0; i < n(count); i++) {
         const b = bits[nextBit];
+        debris.setColorAt(nextBit, tint);
         nextBit = (nextBit + 1) % maxDebris;
         dirScatter(v, spread, dir);
         b.alive = true;
@@ -333,6 +338,7 @@ export function createVfx(scene, { calm = false, maxSparks = 900, maxPuffs = 260
         debris.setMatrixAt(i, m4.compose(b.p, b.q, sv));
       }
       debris.instanceMatrix.needsUpdate = true;
+      debris.instanceColor.needsUpdate = true;
       for (const r of rings) {
         if (!r.visible) continue;
         const u = r.userData;

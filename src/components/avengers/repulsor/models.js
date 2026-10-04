@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { PartBuilder, lathe, rbox, taper } from '../hq/kit/shapes';
 import { hot } from '../hq/engine';
+import { instanced as pool } from '../hq/kit/instanced';
 
 // ── Ultron's drone: a silver orb in a ring, four thrusters, a red stare ──
 export function droneGeometries() {
@@ -73,44 +74,9 @@ export function repulsorMaterials({ steel, gun, red, gold }) {
   };
 }
 
-// An instanced set of a model: one InstancedMesh per material part.
-export function instanced(geos, mats, max, { shadows = true } = {}) {
-  const group = new THREE.Group();
-  const meshes = [];
-  const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-  for (const [k, g] of Object.entries(geos)) {
-    const m = new THREE.InstancedMesh(g, mats[k], max);
-    m.name = k;
-    m.castShadow = shadows && !['eye', 'thrust', 'bolt'].includes(k);
-    m.receiveShadow = true;
-    m.frustumCulled = false;
-    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    for (let i = 0; i < max; i++) m.setMatrixAt(i, zero);
-    group.add(m);
-    meshes.push(m);
-  }
-  let n = 0;
-  return {
-    group,
-    meshes,
-    // start a frame, set instances, finish
-    begin() {
-      n = 0;
-    },
-    set(matrix) {
-      if (n >= max) return;
-      for (const m of meshes) m.setMatrixAt(n, matrix);
-      n++;
-    },
-    end() {
-      for (const m of meshes) {
-        for (let i = n; i < max; i++) m.setMatrixAt(i, zero);
-        m.count = Math.max(n, 1);
-        m.instanceMatrix.needsUpdate = true;
-      }
-    },
-  };
-}
+// An instanced set of a model: one InstancedMesh per material part (the
+// glowing parts cast no shadow).
+export const instanced = (geos, mats, max, opts = {}) => pool(geos, mats, max, { noShadow: ['eye', 'thrust', 'bolt'], ...opts });
 
 // ── Iron Man's gauntlet, for the first-person view: the hand raised palm
 // forward (the repulsor pose), fingers up and flexed back a little; the

@@ -8,6 +8,7 @@ import Range from '../components/avengers/Range';
 import Dossier from '../components/avengers/Dossier';
 import HulkLab from '../components/avengers/HulkLab';
 import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
+import TrickShot from '../components/avengers/trickshot/TrickShot';
 import Ricochet from '../components/avengers/ricochet/Ricochet';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
@@ -30,7 +31,7 @@ const FLOORS = [
   { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
   { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir, waiting for someone worthy. In the last battle, right here, Steve Rogers was.' },
   { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
-  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'Three lanes at the edge of the woods. Aim anywhere you like.' },
+  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. Her file stays locked. Most of it, anyway.' },
   { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him.' },
   { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. In a case of its own: the Tesseract, with the Space Stone inside. It opened a hole in the sky over New York once. It still could.' },
@@ -258,7 +259,7 @@ export default function Avengers() {
             <Ricochet fallback={<ShieldThrow />} />
           </Floor>
           <Floor i={3} floor={FLOORS[3]}>
-            <Range />
+            <TrickShot fallback={<Range />} />
           </Floor>
           <Floor i={4} floor={FLOORS[4]}>
             <Dossier />

@@ -98,6 +98,13 @@ export const TEXTURES = {
   "bytes": 1056709,
   "smallBytes": 273637
  },
+ "hay": {
+  "size": 1024,
+  "small": 512,
+  "alpha": false,
+  "bytes": 1343430,
+  "smallBytes": 379762
+ },
  "leather": {
   "size": 512,
   "small": 256,

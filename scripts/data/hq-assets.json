@@ -82,6 +82,10 @@
       "src": "polyhaven:thatch_roof_angled",
       "size": 1024
     },
+    "hay": {
+      "src": "polyhaven:reed_roof_04",
+      "size": 1024
+    },
     "leather": {
       "src": "polyhaven:brown_leather",
       "size": 512

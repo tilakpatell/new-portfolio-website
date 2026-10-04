@@ -1572,6 +1572,59 @@ function warnRaw(acIn, destIn, when = 0) {
   return 0.2;
 }
 
+// A bow coming to full draw: the limbs and string creaking under load.
+function creakRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.08, 0.35);
+  const n = noiseSource(ac, 'brown', 1);
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 9;
+  env(bp.frequency, t, [[0, 260], [0.6, 520]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.12, 0.5, 'lin'], [0.55, 0.32, 'lin'], [0.7, 0.0001]]);
+  // the creak's grain: a slow tremolo
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 23;
+  const depth = ac.createGain();
+  depth.gain.value = 0.18;
+  lfo.connect(depth).connect(g.gain);
+  n.connect(bp).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.72);
+  lfo.start(t);
+  lfo.stop(t + 0.72);
+  return 0.72;
+}
+
+// An arrow into a straw boss: a dull thud with a rustle on top.
+function thunkRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.12, 0.6);
+  const o = ac.createOscillator();
+  env(o.frequency, t, [[0, 150], [0.09, 70]]);
+  const og = ac.createGain();
+  env(og.gain, t, [[0, 0.0001], [0.002, 0.6, 'lin'], [0.14, 0.0001]]);
+  o.connect(og).connect(out);
+  o.start(t);
+  o.stop(t + 0.16);
+  const n = noiseSource(ac, 'white', 1);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = 2400;
+  f.Q.value = 0.8;
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.004, 0.28, 'lin'], [0.12, 0.0001]]);
+  n.connect(f).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.14);
+  return 0.18;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1623,3 +1676,5 @@ export const blast = every(90, blastRaw);
 export const unibeam = once('unibeam', unibeamRaw);
 export const warn = every(300, warnRaw);
 export const shatter = once('shatter', shatterRaw);
+export const creak = once('creak', creakRaw);
+export const thunk = every(60, thunkRaw);
