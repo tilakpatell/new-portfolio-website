@@ -65,10 +65,14 @@ function globeData() {
     const c = GLOBE.placeCountry[p.id];
     if (c != null) placeOf[c] = i;
   });
+  // Whether each dot sits in a lit country never changes, so it is worked out
+  // here once instead of for every dot in every frame.
+  const lit = new Uint8Array(count);
+  for (let i = 0; i < count; i++) lit[i] = placeOf[owner[i]] >= 0 ? 1 : 0;
   const home = toVec(...HOME.at);
   const markers = PLACES.map((p) => toVec(...p.at));
   const arcs = PLACES.map((p, i) => (p.home ? null : arc(home, markers[i])));
-  cache = { count, xyz, owner, placeOf, markers, arcs };
+  cache = { count, xyz, owner, lit, placeOf, markers, arcs };
   return cache;
 }
 
@@ -96,6 +100,14 @@ function readColors(el) {
   };
 }
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
+
+// Land dots are filled in 16 buckets, 4 kinds (plain, hovered, lit, selected)
+// by 4 depth bands, so each bucket is one path and one fill.
+const BUCKETS = 16;
+const HIDDEN = 255; // a dot on the far side of the globe
+const BAND_ALPHA = [0.3, 0.55, 0.8, 1];
+const KIND_SIZE = [1, 1.1, 1.15, 1.45];
+const TAU = Math.PI * 2;
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const easeOut = (t) => 1 - (1 - t) ** 3;
@@ -137,9 +149,15 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       lastDraw: 0,
     };
     const n = data.count;
+    // One frame of land: where each dot lands on screen and which bucket it is
+    // in, then the same coordinates again packed in bucket order, so a bucket
+    // is drawn from one run of memory instead of a search through every dot.
     const sx = new Float32Array(n);
     const sy = new Float32Array(n);
-    const kinds = new Uint8Array(n);
+    const bucketOf = new Uint8Array(n);
+    const bx = new Float32Array(n);
+    const by = new Float32Array(n);
+    const ends = new Int32Array(BUCKETS);
 
     // Rotation that brings (view.lon, view.lat) to the middle of the disc.
     let cosT = 1;
@@ -235,104 +253,238 @@ export default function Globe({ selected, onSelect, onHover, label }) {
     };
 
     // ── Drawing ────────────────────────────────────────────────────────────
-    const BUCKETS = 16; // 4 kinds × 4 depth bands
-    const draw = (now) => {
-      const { w, h, dpr } = size;
-      if (!w || !h) return;
+    // Colour strings are the same from one frame to the next, so they are built
+    // when the theme or the selection changes, not 30 times a second.
+    let paint = null;
+    const paintFor = (hasSelection) => {
       const { colors } = state;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      setRotation();
+      if (paint && paint.colors === colors && paint.hasSelection === hasSelection) return paint;
+      const land = [];
+      for (let b = 0; b < BUCKETS; b++) {
+        const kind = b >> 2;
+        const a = BAND_ALPHA[b & 3];
+        land.push(
+          kind === 3
+            ? rgba(colors.accent, a)
+            : kind === 2
+              ? rgba(colors.accent, a * (hasSelection ? 0.55 : 0.9))
+              : kind === 1
+                ? rgba(colors.text, a * 0.75)
+                : rgba(colors.text, a * (colors.dark ? 0.32 : 0.26)),
+        );
+      }
+      const sparks = [];
+      for (let tail = 0; tail < 6; tail++) sparks.push(rgba(colors.accent, 1 - tail / 6));
+      paint = {
+        colors,
+        hasSelection,
+        land,
+        sparks,
+        glow: [rgba(colors.accent, colors.dark ? 0.22 : 0.14), rgba(colors.accent, 0)],
+        body: [rgba(colors.surface, 1), rgba(colors.surface2, 1)],
+        border: rgba(colors.border, 0.45),
+        accent: rgba(colors.accent, 1),
+        surface: rgba(colors.surface, 1),
+        route: rgba(colors.accent, 0.55),
+        routeDim: rgba(colors.accent, 0.18),
+      };
+      return paint;
+    };
+    // The two gradients of the sphere only change with its size or the theme,
+    // so the last pair is kept: while the globe just spins they are reused.
+    let sphere = null;
+    const sphereFor = (c, p, cx, cy, R) => {
+      if (sphere && sphere.c === c && sphere.p === p && sphere.cx === cx && sphere.cy === cy && sphere.R === R) return sphere;
+      const glow = c.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.16);
+      glow.addColorStop(0, p.glow[0]);
+      glow.addColorStop(1, p.glow[1]);
+      const body = c.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.05, cx, cy, R);
+      body.addColorStop(0, p.body[0]);
+      body.addColorStop(1, p.body[1]);
+      sphere = { c, p, cx, cy, R, glow, body };
+      return sphere;
+    };
+
+    // The sphere and its land: everything that only moves when the globe turns.
+    const drawLand = (c, p) => {
+      const { w, h, dpr } = size;
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, w, h);
       const R = radius();
       const cx = w / 2;
       const cy = h / 2;
 
       // Atmosphere and the sphere itself
-      const glow = ctx.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.16);
-      glow.addColorStop(0, rgba(colors.accent, colors.dark ? 0.22 : 0.14));
-      glow.addColorStop(1, rgba(colors.accent, 0));
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, R * 1.16, 0, Math.PI * 2);
-      ctx.fill();
-      const body = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.05, cx, cy, R);
-      body.addColorStop(0, rgba(colors.surface, 1));
-      body.addColorStop(1, rgba(colors.surface2, 1));
-      ctx.fillStyle = body;
-      ctx.beginPath();
-      ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = rgba(colors.border, 0.45);
-      ctx.stroke();
+      const { glow, body } = sphereFor(c, p, cx, cy, R);
+      c.fillStyle = glow;
+      c.beginPath();
+      c.arc(cx, cy, R * 1.16, 0, TAU);
+      c.fill();
+      c.fillStyle = body;
+      c.beginPath();
+      c.arc(cx, cy, R, 0, TAU);
+      c.fill();
+      c.lineWidth = 1;
+      c.strokeStyle = p.border;
+      c.stroke();
 
-      // Land dots, bucketed by kind and depth so each bucket is one fill
-      const { xyz, owner, placeOf } = data;
+      // One pass turns every dot and notes its bucket. The rotation is written
+      // out in place: a helper that hands back [x, y, z] made an array iterator
+      // for each of the 6,316 dots, which is where the garbage came from.
+      const { xyz, owner, lit } = data;
       const selectedCountry = state.selected >= 0 ? (GLOBE.placeCountry[PLACES[state.selected].id] ?? -2) : -2;
-      const dot = R * 0.0072;
-      kinds.fill(0);
-      for (let i = 0; i < n; i++) {
-        const [x, y, z] = rotate(xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2]);
-        if (z <= 0.02) continue;
-        sx[i] = cx + x * R;
-        sy[i] = cy - y * R;
-        const c = owner[i];
-        const visited = placeOf[c] >= 0;
-        const kind = c === selectedCountry ? 3 : visited ? 2 : c === state.hoverCountry ? 1 : 0;
-        const band = z < 0.3 ? 0 : z < 0.55 ? 1 : z < 0.8 ? 2 : 3;
-        kinds[i] = kind * 4 + band + 1;
-      }
-      const alphaFor = [0.3, 0.55, 0.8, 1];
-      for (let b = 0; b < BUCKETS; b++) {
-        const kind = b >> 2;
-        const band = b & 3;
-        const a = alphaFor[band];
-        const r = dot * (kind === 3 ? 1.45 : kind === 2 ? 1.15 : kind === 1 ? 1.1 : 1) * (0.7 + 0.3 * (band / 3));
-        ctx.beginPath();
-        let any = false;
-        for (let i = 0; i < n; i++) {
-          if (kinds[i] !== b + 1) continue;
-          any = true;
-          ctx.moveTo(sx[i] + r, sy[i]);
-          ctx.arc(sx[i], sy[i], r, 0, Math.PI * 2);
+      const hoverCountry = state.hoverCountry;
+      ends.fill(0);
+      for (let i = 0, j = 0; i < n; i++, j += 3) {
+        const x = xyz[j];
+        const y = xyz[j + 1];
+        const z = xyz[j + 2];
+        const z1 = -x * sinT + z * cosT;
+        const depth = y * sinA + z1 * cosA;
+        if (depth <= 0.02) {
+          bucketOf[i] = HIDDEN;
+          continue;
         }
-        if (!any) continue;
-        ctx.fillStyle =
-          kind === 3
-            ? rgba(colors.accent, a)
-            : kind === 2
-              ? rgba(colors.accent, a * (state.selected >= 0 ? 0.55 : 0.9))
-              : kind === 1
-                ? rgba(colors.text, a * 0.75)
-                : rgba(colors.text, a * (colors.dark ? 0.32 : 0.26));
-        ctx.fill();
+        sx[i] = cx + (x * cosT + z * sinT) * R;
+        sy[i] = cy - (y * cosA - z1 * sinA) * R;
+        const country = owner[i];
+        const kind = country === selectedCountry ? 3 : lit[i] ? 2 : country === hoverCountry ? 1 : 0;
+        const b = kind * 4 + (depth < 0.3 ? 0 : depth < 0.55 ? 1 : depth < 0.8 ? 2 : 3);
+        bucketOf[i] = b;
+        ends[b]++;
       }
+      // Counting sort: turn the bucket sizes into where each bucket starts,
+      // then drop every visible dot into its bucket's run.
+      let total = 0;
+      for (let b = 0; b < BUCKETS; b++) {
+        const count = ends[b];
+        ends[b] = total;
+        total += count;
+      }
+      for (let i = 0; i < n; i++) {
+        const b = bucketOf[i];
+        if (b === HIDDEN) continue;
+        const at = ends[b]++;
+        bx[at] = sx[i];
+        by[at] = sy[i];
+      }
+      // ends[b] now is where bucket b stops; each bucket is still one fill, so
+      // dots that overlap near the rim do not darken each other.
+      const dot = R * 0.0072;
+      let from = 0;
+      for (let b = 0; b < BUCKETS; b++) {
+        const to = ends[b];
+        if (to === from) continue;
+        const r = dot * KIND_SIZE[b >> 2] * (0.7 + 0.3 * ((b & 3) / 3));
+        c.beginPath();
+        for (let k = from; k < to; k++) {
+          const x = bx[k];
+          const y = by[k];
+          c.moveTo(x + r, y);
+          c.arc(x, y, r, 0, TAU);
+        }
+        c.fillStyle = p.land[b];
+        c.fill();
+        from = to;
+      }
+    };
+
+    // While nothing turns the globe (a place is selected, or the visitor has
+    // just let go) every frame would draw the same 3,000 dots again under the
+    // moving sparks. The second frame in a row with the same land keeps a copy
+    // of it, and later frames paste that copy instead of drawing the dots.
+    const kept = { canvas: null, ctx: null, fresh: false };
+    const shown = { lon: NaN, lat: NaN, scale: NaN, hover: -1, selected: -1, colors: null, w: 0, h: 0, dpr: 0 };
+    const landUnchanged = () =>
+      shown.lon === view.lon &&
+      shown.lat === view.lat &&
+      shown.scale === view.scale &&
+      shown.hover === state.hoverCountry &&
+      shown.selected === state.selected &&
+      shown.colors === state.colors &&
+      shown.w === size.w &&
+      shown.h === size.h &&
+      shown.dpr === size.dpr;
+    const keepLand = (p) => {
+      if (!kept.canvas) {
+        kept.canvas = document.createElement('canvas');
+        kept.ctx = kept.canvas.getContext('2d');
+        if (kept.ctx) kept.ctx.lineCap = 'round';
+      }
+      if (!kept.ctx) return;
+      if (kept.canvas.width !== canvas.width || kept.canvas.height !== canvas.height) {
+        kept.canvas.width = canvas.width;
+        kept.canvas.height = canvas.height;
+        kept.ctx.lineCap = 'round'; // resizing a canvas resets its state
+      }
+      drawLand(kept.ctx, p);
+      kept.fresh = true;
+    };
+
+    // What the label and the tooltip were last set to, so a frame that leaves
+    // them where they are does not touch the DOM.
+    const dom = { pinOpacity: '', pinX: NaN, pinY: NaN, tipOpacity: '' };
+
+    const draw = (now) => {
+      const { w, h, dpr } = size;
+      if (!w || !h) return;
+      const { colors } = state;
+      const p = paintFor(state.selected >= 0);
+      setRotation();
+      const R = radius();
+      const cx = w / 2;
+      const cy = h / 2;
+
+      if (!landUnchanged()) {
+        shown.lon = view.lon;
+        shown.lat = view.lat;
+        shown.scale = view.scale;
+        shown.hover = state.hoverCountry;
+        shown.selected = state.selected;
+        shown.colors = colors;
+        shown.w = w;
+        shown.h = h;
+        shown.dpr = dpr;
+        kept.fresh = false;
+      } else if (!kept.fresh) keepLand(p);
+      if (kept.fresh) {
+        // Pasted pixel for pixel, so it is exactly what drawLand would paint.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(kept.canvas, 0, 0);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      } else drawLand(ctx, p);
 
       // Routes from home
       const intro = state.introStart == null ? 0 : reduced ? 1 : Math.min(1, (now - state.introStart) / 1800);
-      ctx.lineCap = 'round';
-      data.arcs.forEach((pts, i) => {
-        if (!pts) return;
+      const { arcs, markers } = data;
+      for (let i = 0; i < arcs.length; i++) {
+        const pts = arcs[i];
+        if (!pts) continue;
         const steps = pts.length / 3 - 1;
         const local = reduced ? 1 : easeOut(Math.max(0, Math.min(1, intro * 1.6 - i * 0.04)));
         const upto = Math.floor(local * steps);
-        if (upto < 1) return;
+        if (upto < 1) continue;
         const isSel = state.selected === i;
-        ctx.strokeStyle = rgba(colors.accent, isSel ? 1 : state.selected >= 0 ? 0.18 : 0.55);
+        ctx.strokeStyle = isSel ? p.accent : state.selected >= 0 ? p.routeDim : p.route;
         ctx.lineWidth = isSel ? 2 : 1.2;
         ctx.beginPath();
         let pen = false;
-        for (let k = 0; k <= upto; k++) {
-          const [x, y, z] = rotate(pts[k * 3], pts[k * 3 + 1], pts[k * 3 + 2]);
+        for (let k = 0, j = 0; k <= upto; k++, j += 3) {
+          const px = pts[j];
+          const py = pts[j + 1];
+          const pz = pts[j + 2];
+          const x = px * cosT + pz * sinT;
+          const z1 = -px * sinT + pz * cosT;
+          const y = py * cosA - z1 * sinA;
+          const z = py * sinA + z1 * cosA;
           const visible = z > 0 || x * x + y * y > 1;
           if (!visible) {
             pen = false;
             continue;
           }
-          const px = cx + x * R;
-          const py = cy - y * R;
-          if (pen) ctx.lineTo(px, py);
-          else ctx.moveTo(px, py);
+          if (pen) ctx.lineTo(cx + x * R, cy - y * R);
+          else ctx.moveTo(cx + x * R, cy - y * R);
           pen = true;
         }
         ctx.stroke();
@@ -347,23 +499,30 @@ export default function Globe({ selected, onSelect, onHover, label }) {
             const k = Math.floor(f);
             const u = f - k;
             const a = k * 3;
-            const bx = pts[a] + (pts[a + 3] - pts[a]) * u;
-            const by = pts[a + 1] + (pts[a + 4] - pts[a + 1]) * u;
-            const bz = pts[a + 2] + (pts[a + 5] - pts[a + 2]) * u;
-            const [x, y, z] = rotate(bx, by, bz);
+            const bx0 = pts[a] + (pts[a + 3] - pts[a]) * u;
+            const by0 = pts[a + 1] + (pts[a + 4] - pts[a + 1]) * u;
+            const bz0 = pts[a + 2] + (pts[a + 5] - pts[a + 2]) * u;
+            const x = bx0 * cosT + bz0 * sinT;
+            const z1 = -bx0 * sinT + bz0 * cosT;
+            const y = by0 * cosA - z1 * sinA;
+            const z = by0 * sinA + z1 * cosA;
             if (!(z > 0 || x * x + y * y > 1)) break;
-            ctx.fillStyle = rgba(colors.accent, 1 - tail / 6);
+            ctx.fillStyle = p.sparks[tail];
             ctx.beginPath();
-            ctx.arc(cx + x * R, cy - y * R, (isSel ? 2.6 : 2) * (1 - tail / 8), 0, Math.PI * 2);
+            ctx.arc(cx + x * R, cy - y * R, (isSel ? 2.6 : 2) * (1 - tail / 8), 0, TAU);
             ctx.fill();
           }
         }
-      });
+      }
 
       // Markers
-      data.markers.forEach((m, i) => {
-        const [x, y, z] = rotate(m[0], m[1], m[2]);
-        if (z <= 0.05) return;
+      for (let i = 0; i < markers.length; i++) {
+        const m = markers[i];
+        const x = m[0] * cosT + m[2] * sinT;
+        const z1 = -m[0] * sinT + m[2] * cosT;
+        const y = m[1] * cosA - z1 * sinA;
+        const z = m[1] * sinA + z1 * cosA;
+        if (z <= 0.05) continue;
         const px = cx + x * R;
         const py = cy - y * R;
         const isSel = state.selected === i;
@@ -373,38 +532,57 @@ export default function Globe({ selected, onSelect, onHover, label }) {
           ctx.strokeStyle = rgba(colors.accent, (1 - t) * 0.8);
           ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.arc(px, py, 4 + t * 12, 0, Math.PI * 2);
+          ctx.arc(px, py, 4 + t * 12, 0, TAU);
           ctx.stroke();
         }
-        ctx.fillStyle = rgba(colors.surface, 1);
-        ctx.strokeStyle = rgba(colors.accent, Math.min(1, 0.4 + z));
+        ctx.fillStyle = p.surface;
+        const ring = 0.4 + z;
+        ctx.strokeStyle = ring >= 1 ? p.accent : rgba(colors.accent, ring);
         ctx.lineWidth = isSel || home ? 2 : 1.4;
         ctx.beginPath();
-        ctx.arc(px, py, isSel ? 5 : home ? 4.2 : 3.2, 0, Math.PI * 2);
+        ctx.arc(px, py, isSel ? 5 : home ? 4.2 : 3.2, 0, TAU);
         ctx.fill();
         ctx.stroke();
         if (isSel || home) {
-          ctx.fillStyle = rgba(colors.accent, 1);
+          ctx.fillStyle = p.accent;
           ctx.beginPath();
-          ctx.arc(px, py, isSel ? 2.2 : 1.8, 0, Math.PI * 2);
+          ctx.arc(px, py, isSel ? 2.2 : 1.8, 0, TAU);
           ctx.fill();
         }
-      });
+      }
 
       // The selected place's label follows its marker
       const pin = pinRef.current;
       if (pin) {
+        let opacity = '0';
         if (state.selected >= 0) {
-          const m = data.markers[state.selected];
-          const [x, y, z] = rotate(m[0], m[1], m[2]);
-          pin.style.opacity = z > 0.1 ? '1' : '0';
-          pin.style.transform = `translate(${cx + x * R}px, ${cy - y * R}px)`;
-        } else {
-          pin.style.opacity = '0';
+          const m = markers[state.selected];
+          const x = m[0] * cosT + m[2] * sinT;
+          const z1 = -m[0] * sinT + m[2] * cosT;
+          const y = m[1] * cosA - z1 * sinA;
+          const z = m[1] * sinA + z1 * cosA;
+          opacity = z > 0.1 ? '1' : '0';
+          const px = cx + x * R;
+          const py = cy - y * R;
+          if (px !== dom.pinX || py !== dom.pinY) {
+            dom.pinX = px;
+            dom.pinY = py;
+            pin.style.transform = `translate(${px}px, ${py}px)`;
+          }
+        }
+        if (opacity !== dom.pinOpacity) {
+          dom.pinOpacity = opacity;
+          pin.style.opacity = opacity;
         }
       }
       const tip = tipRef.current;
-      if (tip) tip.style.opacity = state.hoverPoint && (state.hoverCountry >= 0 || now < state.tipUntil) ? '1' : '0';
+      if (tip) {
+        const opacity = state.hoverPoint && (state.hoverCountry >= 0 || now < state.tipUntil) ? '1' : '0';
+        if (opacity !== dom.tipOpacity) {
+          dom.tipOpacity = opacity;
+          tip.style.opacity = opacity;
+        }
+      }
       state.lastDraw = now;
     };
 
@@ -437,8 +615,10 @@ export default function Globe({ selected, onSelect, onHover, label }) {
         state.velocity.lat *= decay;
         dirty = true;
       } else if (!reduced && !state.dragging && state.selected < 0 && now - state.idleSince > 2500) {
-        view.lon += 0.006 * dt; // about 6° a second
-        dirty = true;
+        // about 6° a second. Not marked dirty: the idle spin is drawn on the
+        // 30fps beat in frame(), and dirty would redraw it on every frame the
+        // screen has (60 a second, 120 on a ProMotion display).
+        view.lon += 0.006 * dt;
       }
     };
 
@@ -481,6 +661,7 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       size.h = rect.height;
       canvas.width = Math.round(rect.width * size.dpr);
       canvas.height = Math.round(rect.height * size.dpr);
+      ctx.lineCap = 'round'; // for the routes; resizing a canvas resets its state
       // Resizing clears the canvas; repaint now so it never shows blank.
       draw(performance.now());
       wake();
@@ -516,10 +697,15 @@ export default function Globe({ selected, onSelect, onHover, label }) {
       const r = canvas.getBoundingClientRect();
       return [e.clientX - r.left, e.clientY - r.top];
     };
+    let tipText = '';
     const setTip = (text, px, py) => {
       const tip = tipRef.current;
       if (!tip) return;
-      tip.textContent = text;
+      // the same words written again would still cost a layout on every pointer move
+      if (text !== tipText) {
+        tipText = text;
+        tip.textContent = text;
+      }
       tip.style.transform = `translate(${px}px, ${py}px)`;
     };
     const describe = (hit) => {

@@ -43,6 +43,10 @@
   --gutter-l: 40px;
   --gutter-r: 20px;
   --route-x: 16px;
+  /* How far a swiping row reaches left of the page column. The row's edge has
+     to stay clear of the route line's crystal, which is 12px to each side of
+     --route-x: keep --gutter-l minus this above --route-x plus 12px. */
+  --swipe-inset: 8px;
   --nav-h: 68px;
 }
 
@@ -51,6 +55,7 @@
     --gutter-l: 104px;
     --gutter-r: 56px;
     --route-x: 44px;
+    --swipe-inset: 16px;
     --nav-h: 76px;
   }
 }
@@ -528,8 +533,12 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     pointer-events: none;
   }
   /* Above the sections, so bands and photos never cut the line; it only runs
-     through the gutter and clear space, and takes no pointer events. */
-  .route { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 15; contain: layout style; }
+     through the gutter and clear space, and takes no pointer events. The box
+     itself has no size (the pieces are placed from its corner): a box as tall
+     as the page counted as covering the page, so the browser kept the dashed
+     plan and whatever section text it could merge with it on one GPU layer
+     the size of the page. */
+  .route { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 15; contain: layout style; }
   .route-seg { position: absolute; }
   /* Drawn in layers: every dashed plan first, then the lit line, then the
      stops, then the crystal. Interleaving them (plan, lit, plan, lit…) made the
@@ -555,16 +564,19 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     background: var(--border-strong);
     transition: background-color 0.2s ease;
   }
+  /* The centre fades out by colour, which looks the same as fading its
+     opacity. An opacity fade put the stop on its own GPU layers for 0.2s and
+     took them away again, and each of those cost a late frame mid-scroll. */
   .route-node::after {
     content: '';
     position: absolute;
     inset: 2px;
     clip-path: var(--marker);
     background: var(--bg);
-    transition: opacity 0.2s ease;
+    transition: background-color 0.2s ease;
   }
   .route-node[data-lit='true'] { background: var(--node-color, var(--accent)); }
-  .route-node[data-lit='true']::after { opacity: 0; }
+  .route-node[data-lit='true']::after { background-color: transparent; }
   .kyber {
     position: absolute;
     left: 0;

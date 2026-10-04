@@ -1,0 +1,26 @@
+/* The Peace section is a night scene, so it stays a dark band in light mode
+   too, with clean edges: fading the night photo into the white page left
+   grey-white haze at the top and bottom. In dark mode it still fades into
+   the page. */
+html:not([data-mode='dark']) .peace-shade {
+  background: linear-gradient(to bottom, rgba(6, 6, 12, 0.66), rgba(6, 6, 12, 0.74) 50%, rgba(6, 6, 12, 0.66));
+}
+
+/* The lamplight canvas sits where the photo is and fades in over it on its
+   first frame. It draws the same photo, so the <img> can stay as the picture
+   while it loads (nothing different flashes first), then step aside along
+   with the CSS glow. */
+.peace-gl {
+  position: absolute;
+  inset: 0;
+  z-index: -20;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.peace-gl[data-on] { opacity: 1; }
+.peace-gl > .scene-canvas { display: block; width: 100%; height: 100%; }
+.peace:has(> .peace-gl[data-gl='on']) > .peace-photo { opacity: 0; animation: none; }
+.peace:has(> .peace-gl[data-gl='on']) > .peace-glow { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .peace-gl { transition: none; }
+}

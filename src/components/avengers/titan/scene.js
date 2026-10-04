@@ -163,7 +163,7 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   const thanosMats = { skin: dusty(skin, dustU), suit: dusty(suit, dustU), gold: dusty(gold, dustU), dark: dusty(dark, dustU) };
   const thanos = buildHumanoid({ style: thanosStyle, joints: THANOS_JOINTS, materials: thanosMats, scale: SCALE });
   thanos.root.rotation.y = Math.PI; // facing the horizon (−z)
-  // Meshy's Thanos, if he's been made (scripts/meshy.mjs --set hq): he stands
+  // Meshy's Thanos, if he's been made (scripts/meshy.mjs <step> hq): he stands
   // where the built one would, the gauntlet on his left forearm
   const M = await loadMeshy({ manifest: meshy }).catch(() => ({}));
   const mt = M.thanos ? meshyFigure(M.thanos, { h: 2.8 }) : null;

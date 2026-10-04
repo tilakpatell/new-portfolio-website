@@ -24,5 +24,11 @@ dist-ssr
 *.sw?
 scripts/.cache/
 
+# local only: this machine's preview servers, patch leftovers, and the
+# contact sheets the model scripts write for looking over
+.claude/launch.json
+*.orig
+lab/
+
 # superpowers brainstorming companion session files
 .superpowers

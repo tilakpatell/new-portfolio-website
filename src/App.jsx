@@ -8,7 +8,6 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
-import Home from './pages/Home';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
 
@@ -17,6 +16,7 @@ const Projects = lazy(() => import('./pages/Projects'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Travel = lazy(() => import('./pages/Travel'));
+const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
@@ -27,6 +27,9 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
+const Universe = lazy(() => import('./pages/Universe'));
+const Front = lazy(() => import('./pages/Front'));
+const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -36,7 +39,7 @@ function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
     // a link to one role (/experience/aws) lands on that role, not the top
-    if (!search.includes('role=') && !/^\/experience\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
+    if (!search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
   }, [pathname, search]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
@@ -76,9 +79,11 @@ function Lightspeed() {
   return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
 }
 
-// A first visit to the home page opens on the crawl, then jumps to lightspeed
-// into the site. The inline script in index.html decides (and covers the page
-// until it starts). Skip goes straight to the jump.
+// A first visit to the site opens on the crawl, then jumps to lightspeed into
+// the universe map (the site's front door), where everything is laid out as
+// places to fly to. The inline script in index.html decides (and covers the
+// page until it starts). Skip goes straight to the jump. The map loads
+// during the crawl.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 function IntroJump() {
   const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
@@ -89,6 +94,10 @@ function IntroJump() {
     } catch {
       /* storage unavailable */
     }
+    if (stage === 'crawl') {
+      import('./pages/Universe');
+      import('./components/universe/scene');
+    }
   }, [stage]);
   if (!stage) return null;
   if (stage === 'crawl')
@@ -97,7 +106,8 @@ function IntroJump() {
         <OpeningCrawl
           variant="intro"
           onClose={() => {
-            // keep the page covered until the jump's first frame
+            // keep the page covered until the jump's first frame, which
+            // comes out in the universe
             document.documentElement.dataset.intro = '1';
             setStage('jump');
           }}
@@ -133,12 +143,19 @@ function PaletteHost() {
   );
 }
 
+// The universe map is the front door (/) and keeps one page while its URL
+// follows the selection (/universe/marvel), so picking a planet doesn't
+// remount the map.
+const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname);
+
 function Shell() {
   const { pathname } = useLocation();
+  const page = pageKey(pathname);
 
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
     const id = idle(() => {
+      import('./pages/Home');
       import('./pages/Experience');
       import('./pages/Projects');
       import('./pages/Contact');
@@ -153,33 +170,36 @@ function Shell() {
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
-        <ErrorBoundary resetKey={pathname}>
+        <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
-            <div key={pathname} className="page-enter">
+            <div key={page} className="page-enter">
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Front />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/experience/:roleId?" element={<Experience />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/travel" element={<Travel />} />
+                <Route path="/caribbean" element={<Caribbean />} />
                 <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="/music" element={<Music />} />
-                <Route path="/middle-earth" element={<MiddleEarth />} />
+                <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
                 <Route path="/avengers" element={<Avengers />} />
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
+                <Route path="/universe/:id?" element={<Universe />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />

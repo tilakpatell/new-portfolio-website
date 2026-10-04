@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import Photo from '../Photo';
+import Lamplight from '../peace/Lamplight';
 import { Reveal, Waypoint } from '../ui';
 import { jumpTo } from '../../lib/anchors';
 import { audioContext } from '../../lib/audio';
@@ -11,7 +12,7 @@ const music = () => import('../music/engine');
 // prayer for peace for everyone. Text exactly as given, in Gujarati
 // (romanised) and English, with its footnote, over Akshardham in the evening.
 // A tanpura can play underneath while you read.
-export default function Peace() {
+export default memo(function Peace() {
   const [drone, setDrone] = useState(false);
 
   useEffect(
@@ -21,6 +22,17 @@ export default function Peace() {
     [],
   );
 
+  // the photo's drift and the glow only run while the section is on screen
+  // (set on the DOM, so it costs no re-render)
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([e]) => el.toggleAttribute('data-live', e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const toggle = async () => {
     if (!audioContext()) return; // inside the click, so the drone may play
     const m = await music();
@@ -28,14 +40,16 @@ export default function Peace() {
       m.stopTanpura();
       setDrone(false);
     } else {
-      m.startTanpura();
+      // each pluck swells the lamplight (peace/scene.js)
+      m.startTanpura((i) => window.dispatchEvent(new CustomEvent('tp:tanpura', { detail: i })));
       setDrone(true);
     }
   };
 
   return (
-    <section data-theme-section="travel" className="peace relative isolate z-10 overflow-hidden" aria-labelledby="peace-title">
+    <section ref={box} data-theme-section="travel" className="peace relative isolate z-10 overflow-hidden" aria-labelledby="peace-title">
       <Photo id="h-delhi" sizes="100vw" alt="" className="peace-photo absolute inset-0 -z-20 h-full w-full object-cover" />
+      <Lamplight id="h-delhi" water={0.52} />
       <div className="peace-shade -z-10" aria-hidden="true" />
       <div className="peace-glow -z-10" aria-hidden="true" />
       <div className="shell relative py-[clamp(7rem,15vw,12rem)]">
@@ -77,4 +91,4 @@ export default function Peace() {
       </div>
     </section>
   );
-}
+});

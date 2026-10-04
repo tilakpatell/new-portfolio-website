@@ -1,21 +1,30 @@
-// Makes Portal panic's cast, enemies and set pieces with Meshy (meshy.ai),
-// the site owner's account: a concept image for each, then a textured model
-// from the image, then (for the ones that walk on two legs) a skeleton with
-// walking and running clips. Output is compressed for the web into
-// public/games/meshy/ and credited in public/games/credits.json. The output
-// is committed, so the site never calls Meshy.
+// Makes Portal panic's cast, enemies and set pieces, and the Scranton office's
+// people, with Meshy (meshy.ai), the site owner's account: a concept image for
+// each, then a textured model from the image, then (for the ones that walk on
+// two legs) a skeleton with walking and running clips. Output is compressed
+// for the web into public/games/meshy/ (the office's people: their skeleton
+// and no clips, the browser sits them down, into public/models/office/cast/)
+// and credited in public/games/credits.json. The output is committed, so the
+// site never calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy.mjs [--set hq] <step> [name …]
+// Roll out's Autobots, Decepticons and bosses are a set of their own
+// (realistic, with PBR textures: metalness, roughness and normal maps) into
+// public/games/meshy/rollout/, listed in its index.json, which is how the
+// game knows what's there; a vehicle that comes out backwards gets
+// { "name": …, "yaw": 180 } there in place of its name.
 //
-// Two sets: Portal panic's cast (the default), and the Avengers HQ games'
-// models (--set hq: Smash Run's Hulk, Chitauri, cars, chariot and wall
-// pylon, and Thanos for Titan, photoreal, into public/hq/meshy/ with a manifest the games read).
+// The Avengers HQ games' models are another (photoreal, PBR): Smash Run's
+// Hulk, Chitauri, cars, chariot and wall pylon, and Thanos for Titan, into
+// public/hq/meshy/ with a manifest.json the games read.
+//
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
-// idle clip, 3), fetch (free: download and compress). Each task's id is kept in
-// scripts/meshy-tasks.json, so running a step again never pays twice; delete
-// a name's entry there to make it again. MESHY_API_KEY comes from .env.local
-// (git ignores it); it is never printed.
+// idle clip, 3), sit (a seated clip, 3), fetch (free: download and
+// compress). Each task's id is kept in scripts/meshy-tasks.json, so running
+// a step again never pays twice; delete a name's entry there to make it
+// again. MESHY_API_KEY comes from .env.local (git ignores it); it is never
+// printed.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -23,21 +32,28 @@ import { dedup, meshopt, prune, resample, textureCompress } from '@gltf-transfor
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-// where a set's models, concept images (for looking at, not shipped) and task
-// ids go; chosen in main()
-let OUT = join(ROOT, 'public', 'games', 'meshy');
-let REVIEW = join(ROOT, 'lab', 'meshy');
-let TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
+const OUT = join(ROOT, 'public', 'games', 'meshy');
+const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
+const ROLLOUT_OUT = join(OUT, 'rollout');
+const HQ_OUT = join(ROOT, 'public', 'hq', 'meshy');
+const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
+const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
 
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
+const REAL = 'A photorealistic hard-surface 3D render in the style of the live-action Transformers films: painted metal armour plates with panel lines and light wear, chrome and dark steel mechanical detail, readable silhouette. Plain white background, no text, no shadow.';
+// the office's people: figures, not drawings, each as the show dresses them
+const OFFICE = 'Stylized 3D animated-film character, slightly caricatured, clean simple shapes, matte colours. Full body, front view, standing straight in an A-pose, arms a little away from the body, empty hands. Plain white background, no text, no shadow.';
+// (height: the actor's, as src/components/office/people.js seats them)
+const staff = (height, who, looks) => ({ rig: true, clips: false, set: 'office', height, poly: 10000, tex: 1024, aspect: '3:4', style: OFFICE, prompt: `${who} from the TV show The Office: ${looks}.` });
 
 // rig: a two-legged character to give a skeleton and walk/run clips
 // height: metres, for the rig; poly: target faces; tex: texture size in the game
@@ -58,8 +74,44 @@ export const ASSETS = {
   evilmorty: { rig: true, height: 1.5, poly: 14000, tex: 1024, prompt: `Evil Morty from Rick and Morty: Morty Smith with a black eyepatch over his right eye and a cold confident look, short brown hair, a yellow T-shirt, blue jeans and white sneakers. ${BODY}` },
   // set pieces
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
+  // the classic one, as in the show's first seasons
+  saucer: { rig: false, poly: 16000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty, the classic one: a small round flying saucer car with a grey metal hull, wide and flat, a big clear see-through glass bubble dome over two empty seats and a steering wheel, two orange-yellow stripes painted down the front of the hull, two round headlights on short stalks at the front rim, a big grey cylindrical exhaust can at the back with a ribbed hose, small bolts round the rim, no people. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
+  // the Scranton branch
+  michael: staff(1.75, 'Michael Scott', 'a middle-aged office manager with short neat dark brown hair parted to the side, clean-shaven, a pleased self-satisfied smile, in a charcoal grey suit, a light blue dress shirt, a dark red tie, black dress shoes'),
+  dwight: staff(1.88, 'Dwight Schrute', 'a tall pale stern man with flat brown hair parted in the centre and combed down to the sides, thin wire-rimmed glasses, in a mustard-yellow short-sleeved dress shirt, a brown striped tie, olive-brown trousers with a belt and a pager on it, brown shoes'),
+  jim: staff(1.91, 'Jim Halpert', 'a tall lanky young man with shaggy tousled brown hair and a wry half-smile, in a white dress shirt with the sleeves rolled to the elbows, a loosened navy blue tie, grey slacks, dark brown shoes'),
+  pam: staff(1.63, 'Pam Beesly', 'a young woman with wavy auburn-brown hair to the shoulders, half pulled back, and a gentle smile, in a pink cardigan over a white collared blouse, a grey knee-length pencil skirt, flat brown shoes'),
+  andy: staff(1.83, 'Andy Bernard', 'a preppy man with neat side-parted brown hair and a big toothy grin, in a navy blue blazer, a pink dress shirt, a red striped tie, khaki trousers, brown loafers'),
+  phyllis: staff(1.6, 'Phyllis Vance', 'a heavyset motherly woman in her fifties with short wavy reddish-brown hair and a soft smile, in a purple cardigan jacket over a cream blouse, a string of pearls, dark grey slacks, flat black shoes'),
+  stanley: staff(1.8, 'Stanley Hudson', 'a heavyset older Black man, bald, with a grey moustache, reading glasses low on his nose and a bored unimpressed look, in a tan-brown suit jacket, a cream shirt, a dark red tie, dark brown trousers, black shoes'),
+  erin: staff(1.65, 'Erin Hannon', 'a cheerful young woman with long straight auburn-red hair and a bright smile, in a light blue cardigan over a white blouse, a dark grey knee-length skirt, flat black shoes'),
+  kevin: staff(1.75, 'Kevin Malone', 'a very large heavyset man with a round face, balding with short brown hair at the sides, a sleepy grin, in a light blue dress shirt, a dark red tie, dark grey suit trousers, black shoes'),
+  angela: staff(1.55, 'Angela Martin', 'a petite prim stern woman with blonde hair pulled tightly back into a bun, in a lavender cardigan over a white high-collared blouse, a small cross necklace, a long grey skirt below the knee, flat grey shoes'),
+  oscar: staff(1.73, 'Oscar Martinez', 'a neat Latino man with short black hair and a calm knowing look, clean-shaven, in a light blue dress shirt, a dark grey tie, charcoal slacks, black shoes'),
+  creed: staff(1.78, 'Creed Bratton', 'a wiry old man with short swept-back white-grey hair and an odd sly grin, in a dark olive-green suit jacket, a grey shirt, a dark green tie, dark grey trousers, black shoes'),
+  meredith: staff(1.65, 'Meredith Palmer', 'a middle-aged woman with short tousled red-auburn hair and a tired smirk, in a blue short-sleeved blouse, dark navy slacks, flat black shoes'),
+  darryl: staff(1.85, 'Darryl Philbin', 'a tall broad Black man with very short black hair and a goatee, a calm deadpan look, in a navy blue polo shirt, dark jeans, black shoes'),
+  ryan: staff(1.76, 'Ryan Howard', 'a slim young man with dark tousled hair and stubble, a smug look, in a slim black suit, a white shirt, a thin black tie, black shoes'),
+  toby: staff(1.78, 'Toby Flenderson', 'a meek sad-looking man with thinning sandy-brown hair parted to the side, in a grey suit jacket, a pale blue-grey shirt, a muted plum tie, grey trousers, brown shoes'),
+  kelly: staff(1.6, 'Kelly Kapoor', 'a young Indian-American woman with long glossy black hair and a bright excited smile, in a hot pink knee-length dress with a thin dark belt, dark heels'),
 };
+
+// Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
+// as the robot (the game changes one into the other); the jets; the bosses.
+const ROLLOUT = {
+  optimus: { rig: true, height: 2.7, poly: 16000, tex: 1024, prompt: `Optimus Prime, the Autobot leader from Transformers: a tall heroic robot, his red chest built from a truck cab with two windscreen panels, a chrome grille on his abdomen, blue arms and legs with wheels at the calves, chrome exhaust stacks rising behind his shoulders, a blue helmet with two antennae, a silver faceplate and glowing blue eyes. ${BODY}` },
+  'optimus-truck': { rig: false, poly: 12000, tex: 1024, prompt: `Optimus Prime's vehicle mode from Transformers: a red and blue cab-over semi truck with no trailer, a tall chrome grille and bumper, two chrome exhaust stacks behind the cab and amber roof lights. ${CAR}` },
+  bumblebee: { rig: true, height: 2.55, poly: 14000, tex: 1024, prompt: `Bumblebee from Transformers: a compact agile robot in yellow armour with black racing stripes, two car doors on his back like wings, a round black and yellow helmet with two short horns and glowing blue eyes, a blaster on his right forearm. ${BODY}` },
+  'bumblebee-car': { rig: false, poly: 12000, tex: 1024, prompt: `Bumblebee's vehicle mode from Transformers: a yellow modern muscle car with two black racing stripes over the hood, roof and trunk. ${CAR}` },
+  vehicon: { rig: true, height: 2.6, poly: 9000, tex: 512, prompt: `A Vehicon trooper from Transformers Prime: a lean faceless Decepticon soldier robot in dark gunmetal armour with purple trim, one red visor across the face, a blaster on the right arm. ${BODY}` },
+  'vehicon-car': { rig: false, poly: 8000, tex: 512, prompt: `A Vehicon's vehicle mode from Transformers Prime: a dark gunmetal four-door sports sedan with purple trim and a purple Decepticon emblem on the hood. ${CAR}` },
+  seeker: { rig: false, poly: 8000, tex: 512, prompt: `A Decepticon seeker jet from Transformers: a dark grey fighter jet with swept wings, twin tail fins and purple Decepticon emblems on the wings. ${PROP}` },
+  starscream: { rig: false, poly: 12000, tex: 1024, prompt: `Starscream's jet mode from Transformers: a silver-grey stealth fighter jet with red and blue markings on the wings and a purple Decepticon emblem. ${PROP}` },
+  shockwave: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Shockwave from Transformers: a towering purple Decepticon robot with one round glowing yellow eye in a smooth helmet with two horn-like antennae, a huge cannon in place of his left hand, dark grey limbs. ${BODY}` },
+  megatron: { rig: true, height: 8, poly: 16000, tex: 1024, prompt: `Megatron, the Decepticon leader from Transformers Prime: a towering gunmetal-grey robot with jagged spiked armour, a bucket-shaped helm, glowing red eyes and a fusion cannon on his right forearm. ${BODY}` },
+};
+for (const [n, a] of Object.entries(ROLLOUT)) ASSETS[n] = { ...a, set: 'rollout', style: REAL, pbr: true };
 
 // The Avengers HQ games' models: photoreal, like the rest of the HQ. Hulk and
 // the Chitauri are described rather than named (Meshy turns down named
@@ -68,7 +120,7 @@ const HQ_STYLE = 'Photorealistic, like a still from a big-budget live-action fil
 const HQ_BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const HQ_PROP = 'The whole object on its own, three-quarter front view, centred.';
 // h: how tall (or long, for a car) the game draws it, in metres
-export const HQ_ASSETS = {
+const HQ = {
   hulk: { rig: true, height: 2.6, h: 2.6, poly: 20000, tex: 1024, prompt: `A towering green-skinned giant of a man, about eight and a half feet tall and impossibly muscular: huge shoulders and trapezius rising to his ears, thick arms ending in big fists, a broad deep chest, a short thick neck, a small head with short messy black hair, a heavy brow and an angry scowl. Torn, ragged dark purple trousers cut off below the knee, bare feet, nothing else. ${HQ_BODY}` },
   chitauri: { rig: true, height: 1.95, h: 1.95, poly: 12000, tex: 1024, prompt: `An alien foot soldier of a warlike invading army: grey, wrinkled, leathery skin fused with segmented dark bronze and gunmetal biomechanical armour plates, a narrow armoured head with a jutting jaw and small pale glowing blue eyes, long thin limbs, clawed hands, armoured feet. No weapon. ${HQ_BODY}` },
   taxi: { h: 5.2, poly: 12000, tex: 1024, prompt: `A New York City yellow taxi cab from 2012: a full-size four-door American sedan in taxi yellow with a lit roof sign, dusty and dented after a battle in the street. ${HQ_PROP}` },
@@ -80,12 +132,7 @@ export const HQ_ASSETS = {
   thanos: { rig: true, height: 2.8, h: 2.8, poly: 24000, tex: 2048, prompt: `A towering, massively built alien warlord about nine feet tall, with wrinkled purple-grey skin, a bald head, a heavy brow and a broad chin deeply ridged with vertical grooves, small hard eyes; a dark navy sleeveless armoured tunic with gold shoulder plates, a gold harness crossing his chest and back, and a broad gold belt; bare, heavily muscled purple arms; dark trousers and armoured boots. ${HQ_BODY}` },
   pylon: { h: 4.4, poly: 8000, tex: 512, prompt: `A tall alien biomechanical energy pylon, about four metres high: a tapering column of segmented dark bronze and gunmetal armour plates with fins up its back, clawed feet at its base, and a glowing violet crystal at its top. ${HQ_PROP}` },
 };
-
-const SETS = {
-  portal: { assets: ASSETS, style: STYLE, out: ['public', 'games', 'meshy'], review: ['lab', 'meshy'], tasks: 'meshy-tasks.json', credits: ['public', 'games', 'credits.json'], prefix: 'meshy/', pbr: false },
-  hq: { assets: HQ_ASSETS, style: HQ_STYLE, out: ['public', 'hq', 'meshy'], review: ['lab', 'meshy-hq'], tasks: 'meshy-hq-tasks.json', credits: ['public', 'hq', 'meshy', 'credits.json'], prefix: '', pbr: true, manifest: true },
-};
-let SET = SETS.portal;
+for (const [n, a] of Object.entries(HQ)) ASSETS[n] = { ...a, set: 'hq', style: HQ_STYLE, pbr: true };
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -128,10 +175,120 @@ async function each(names, fn, at = 4) {
   await Promise.all(Array.from({ length: at }, worker));
 }
 
+// A texture down to `size` pixels without its islands running together.
+// Meshy packs an atlas's islands edge to edge, so a plain resize (and a
+// mipmap) mixes each island's rim with its neighbour's colour: light seams
+// on a dark suit. Here a texel averages only the texels the mesh uses, and
+// what the mesh doesn't use is filled outward from what it does.
+async function shrinkAtlas(doc, size) {
+  const root = doc.getRoot();
+  for (const texture of root.listTextures()) {
+    const { data, info } = await sharp(texture.getImage()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const W = info.width;
+    const f = Math.round(W / size);
+    if (info.height !== W || f < 2 || W !== f * size) continue; // (textureCompress resizes it)
+    // the texels the mesh uses: any whose centre is in or just by a triangle
+    const used = new Uint8Array(W * W);
+    const a = [];
+    const b = [];
+    const c = [];
+    for (const mesh of root.listMeshes())
+      for (const prim of mesh.listPrimitives()) {
+        const uv = prim.getAttribute('TEXCOORD_0');
+        const idx = prim.getIndices();
+        if (!uv || !idx) continue;
+        for (let t = 0; t < idx.getCount(); t += 3) {
+          uv.getElement(idx.getScalar(t), a);
+          uv.getElement(idx.getScalar(t + 1), b);
+          uv.getElement(idx.getScalar(t + 2), c);
+          const x = [a[0] * W - 0.5, b[0] * W - 0.5, c[0] * W - 0.5];
+          const y = [a[1] * W - 0.5, b[1] * W - 0.5, c[1] * W - 0.5];
+          const area = (x[1] - x[0]) * (y[2] - y[0]) - (x[2] - x[0]) * (y[1] - y[0]);
+          const sign = area < 0 ? -1 : 1;
+          const x0 = Math.max(0, Math.floor(Math.min(...x)) - 1);
+          const x1 = Math.min(W - 1, Math.ceil(Math.max(...x)) + 1);
+          const y0 = Math.max(0, Math.floor(Math.min(...y)) - 1);
+          const y1 = Math.min(W - 1, Math.ceil(Math.max(...y)) + 1);
+          for (let py = y0; py <= y1; py++)
+            for (let px = x0; px <= x1; px++) {
+              let inside = true;
+              for (let e = 0; e < 3 && inside; e++) {
+                const n = (e + 1) % 3;
+                const ex = x[n] - x[e];
+                const ey = y[n] - y[e];
+                const len = Math.hypot(ex, ey);
+                // how far inside this edge, in texels (a sliver counts by its box)
+                if (len > 1e-6 && (sign * (ex * (py - y[e]) - ey * (px - x[e]))) / len < -0.75) inside = false;
+              }
+              if (inside) used[py * W + px] = 1;
+            }
+        }
+      }
+    const out = new Uint8Array(size * size * 3);
+    const got = new Uint8Array(size * size);
+    for (let ty = 0; ty < size; ty++)
+      for (let tx = 0; tx < size; tx++) {
+        let r = 0;
+        let g = 0;
+        let bl = 0;
+        let n = 0;
+        for (let sy = ty * f; sy < ty * f + f; sy++)
+          for (let sx = tx * f; sx < tx * f + f; sx++) {
+            if (!used[sy * W + sx]) continue;
+            const i = (sy * W + sx) * 3;
+            r += data[i];
+            g += data[i + 1];
+            bl += data[i + 2];
+            n++;
+          }
+        if (!n) continue;
+        const o = (ty * size + tx) * 3;
+        out[o] = r / n;
+        out[o + 1] = g / n;
+        out[o + 2] = bl / n;
+        got[ty * size + tx] = 1;
+      }
+    // the rest, a ring at a time, from the filled texels round them
+    for (let left = true; left; ) {
+      left = false;
+      const add = [];
+      for (let ty = 0; ty < size; ty++)
+        for (let tx = 0; tx < size; tx++) {
+          if (got[ty * size + tx]) continue;
+          let r = 0;
+          let g = 0;
+          let bl = 0;
+          let n = 0;
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = tx + dx;
+              const ny = ty + dy;
+              if (nx < 0 || ny < 0 || nx >= size || ny >= size || !got[ny * size + nx]) continue;
+              const i = (ny * size + nx) * 3;
+              r += out[i];
+              g += out[i + 1];
+              bl += out[i + 2];
+              n++;
+            }
+          if (n) add.push(ty * size + tx, r / n, g / n, bl / n);
+        }
+      for (let i = 0; i < add.length; i += 4) {
+        out.set([add[i + 1], add[i + 2], add[i + 3]], add[i] * 3);
+        got[add[i]] = 1;
+        left = true;
+      }
+    }
+    texture.setImage(await sharp(out, { raw: { width: size, height: size, channels: 3 } }).png().toBuffer()).setMimeType('image/png');
+  }
+}
+
 // For the web: textures to WebP at `tex` pixels, geometry meshopt-compressed.
-// A clip keeps only its skeleton and animation.
+// A clip keeps only its skeleton and animation. A figure the browser poses
+// (`posed`) loses its clips, and its texture is shrunk island by island. (Its
+// triangles are left alone: the simplifier doesn't weigh the texture, and
+// pulls the faces about.)
 let io = null;
-async function squeeze(from, to, { tex = 0, clip = false } = {}) {
+async function squeeze(from, to, { tex = 0, clip = false, posed = false } = {}) {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
@@ -148,35 +305,42 @@ async function squeeze(from, to, { tex = 0, clip = false } = {}) {
     for (const m of root.listMaterials()) m.dispose();
     for (const t of root.listTextures()) t.dispose();
   }
-  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  if (posed) {
+    for (const a of root.listAnimations()) {
+      for (const part of [...a.listChannels(), ...a.listSamplers()]) part.dispose();
+      a.dispose();
+    }
+    await shrinkAtlas(doc, tex);
+  }
+  await doc.transform(dedup(), prune(), resample(), ...(tex ? [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex] })] : []), meshopt({ encoder: MeshoptEncoder, level: posed ? 'high' : 'medium' }));
   await io.write(to, doc);
 }
 
 const steps = {
   async images(names, s) {
     await each(names, async (n) => {
-      const a = SET.assets[n];
+      const a = ASSETS[n];
       s[n] ??= {};
       if (!s[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${SET.style}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${a.style ?? STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}), ...(a.aspect ? { aspect_ratio: a.aspect } : {}) });
         s[n].image = result;
         await save(s);
       }
       const t = await wait('/v1/text-to-image', s[n].image, `${n} image`);
-      await download(t.image_urls[0], join(REVIEW, `${n}.png`));
+      await download(t.image_urls[0], join(REVIEW, a.set ?? '', `${n}.png`));
       console.log(`image    ${n.padEnd(12)} ${t.consumed_credits} credits`);
     });
   },
   async models(names, s) {
     await each(names, async (n) => {
-      const a = SET.assets[n];
+      const a = ASSETS[n];
       if (!s[n]?.image) throw new Error('no image yet');
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
           input_task_id: s[n].image,
           ai_model: 'latest',
           should_texture: true,
-          enable_pbr: SET.pbr,
+          enable_pbr: Boolean(a.pbr),
           should_remesh: true,
           topology: 'triangle',
           target_polycount: a.poly,
@@ -189,17 +353,17 @@ const steps = {
         await save(s);
       }
       const t = await wait('/v1/image-to-3d', s[n].model, `${n} model`);
-      for (const [side, url] of Object.entries(t.thumbnail_urls ?? { front: t.thumbnail_url })) await download(url, join(REVIEW, `${n}-${side}.png`));
+      for (const [side, url] of Object.entries(t.thumbnail_urls ?? { front: t.thumbnail_url })) await download(url, join(REVIEW, a.set ?? '', `${n}-${side}.png`));
       console.log(`model    ${n.padEnd(12)} ${t.consumed_credits} credits`);
     });
   },
   async rig(names, s) {
     await each(
-      names.filter((n) => SET.assets[n].rig),
+      names.filter((n) => ASSETS[n].rig),
       async (n) => {
         if (!s[n]?.model) throw new Error('no model yet');
         if (!s[n].rig) {
-          const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].model, height_meters: SET.assets[n].height });
+          const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].model, height_meters: ASSETS[n].height });
           s[n].rig = result;
           await save(s);
         }
@@ -211,7 +375,7 @@ const steps = {
   // an idle clip (Meshy's animation library, action 0), on the bare skeleton
   async anim(names, s) {
     await each(
-      names.filter((n) => SET.assets[n].rig),
+      names.filter((n) => ASSETS[n].rig && ASSETS[n].clips !== false),
       async (n) => {
         if (!s[n]?.rig) throw new Error('not rigged yet');
         if (!s[n].idle) {
@@ -224,18 +388,43 @@ const steps = {
       },
     );
   },
+  // sitting in the cruiser: Chair_Sit_Idle_M from Meshy's animation library
+  async sit(names, s) {
+    await each(
+      names.filter((n) => ASSETS[n].rig),
+      async (n) => {
+        if (!s[n]?.rig) throw new Error('not rigged yet');
+        if (!s[n].sit) {
+          const { result } = await api('POST', '/v1/animations', { rig_task_id: s[n].rig, action_id: 33, post_process: { operation_type: 'extract_armature' } });
+          s[n].sit = result;
+          await save(s);
+        }
+        const t = await wait('/v1/animations', s[n].sit, `${n} sit`);
+        console.log(`sit      ${n.padEnd(12)} ${t.consumed_credits} credits`);
+      },
+    );
+  },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
-    const tmp = join(REVIEW, 'raw');
+    // as Meshy made them, kept by task (so compressing again needs no download)
+    const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
     await mkdir(tmp, { recursive: true });
-    const creditsFile = join(ROOT, ...SET.credits);
-    const credits = existsSync(creditsFile) ? JSON.parse(await readFile(creditsFile, 'utf8')) : {};
-    const manifestFile = join(OUT, 'manifest.json');
-    const manifest = SET.manifest && existsSync(manifestFile) ? JSON.parse(await readFile(manifestFile, 'utf8')) : {};
+    const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
+    const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
+    const fetched = new Set();
+    // the HQ games' list of what's there
+    const manifestFile = join(HQ_OUT, 'manifest.json');
+    const made = existsSync(manifestFile) ? JSON.parse(await readFile(manifestFile, 'utf8')) : {};
     for (const n of names) {
-      const a = SET.assets[n];
-      const files = []; // [url, file, texture size, clip only]
-      if (a.rig) {
+      const a = ASSETS[n];
+      const files = []; // [url, file, texture size, clip only, posed in the browser]
+      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT }[a.set] ?? OUT;
+      if (a.rig && a.clips === false) {
+        // the skinned figure on its skeleton, nothing else
+        if (!s[n]?.rig) throw new Error(`${n}: rig first`);
+        const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
+        files.push([r.rigged_character_glb_url, `${n}.glb`, a.tex, false, true]);
+      } else if (a.rig) {
         if (!s[n]?.rig || !s[n]?.idle) throw new Error(`${n}: rig and anim first`);
         const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
         const idle = (await api('GET', `/v1/animations/${s[n].idle}`)).result;
@@ -244,42 +433,44 @@ const steps = {
         files.push([r.basic_animations.walking_armature_glb_url, `${n}-walk.glb`, 0, true]);
         files.push([r.basic_animations.running_armature_glb_url, `${n}-run.glb`, 0, true]);
         files.push([idle.animation_glb_url, `${n}-idle.glb`, 0, true]);
+        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${n}-sit.glb`, 0, true]);
       } else {
         if (!s[n]?.model) throw new Error(`${n}: no model yet`);
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
         files.push([t.model_urls.glb, `${n}.glb`, a.tex, false]);
       }
-      for (const [url, file, tex, clip] of files) {
-        const raw = join(tmp, file);
-        await download(url, raw);
-        await squeeze(raw, join(OUT, file), { tex, clip });
+      for (const [url, file, tex, clip, posed] of files) {
+        const raw = join(tmp, `${s[n].rig ?? s[n].model}-${file}`);
+        if (!existsSync(raw)) await download(url, raw);
+        await mkdir(out, { recursive: true });
+        await squeeze(raw, join(out, file), { tex, clip, posed });
       }
-      if (SET.manifest) manifest[n] = { rig: !!a.rig, h: a.h };
-      credits[`${SET.prefix}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (a.set === 'rollout') fetched.add(n);
+      if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };
+      credits[a.set === 'hq' ? `hq/meshy/${n}` : `meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
-    if (SET.manifest) await writeFile(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
-    await rm(tmp, { recursive: true, force: true });
+    if (names.some((n) => ASSETS[n].set === 'hq')) await writeFile(manifestFile, `${JSON.stringify(made, null, 2)}\n`);
+    // Roll out's list of what's there
+    if (fetched.size) {
+      const index = join(ROLLOUT_OUT, 'index.json');
+      const had = existsSync(index) ? JSON.parse(await readFile(index, 'utf8')) : [];
+      const named = (e) => e?.name ?? e;
+      const list = [...had, ...[...fetched].filter((n) => !had.some((e) => named(e) === n))];
+      await writeFile(index, `${JSON.stringify(list.sort((x, y) => named(x).localeCompare(named(y))), null, 2)}\n`);
+    }
   },
 };
 
 async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
-  const args = process.argv.slice(2);
-  const at = args.indexOf('--set');
-  if (at >= 0) {
-    SET = SETS[args[at + 1]];
-    if (!SET) throw new Error(`--set: ${Object.keys(SETS).join(' | ')}`);
-    args.splice(at, 2);
-  }
-  OUT = join(ROOT, ...SET.out);
-  REVIEW = join(ROOT, ...SET.review);
-  TASKS = join(ROOT, 'scripts', SET.tasks);
-  const [step, ...only] = args;
+  const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(SET.assets);
-  for (const n of names) if (!SET.assets[n]) throw new Error(`unknown asset ${n}`);
+  // a set's name stands for its assets
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ) };
+  const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
+  for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);
   const { balance } = await api('GET', '/v1/balance');

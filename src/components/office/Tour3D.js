@@ -45,12 +45,35 @@ const SEAT = { s: 0, n: Math.PI, e: Math.PI / 2, w: -Math.PI / 2 };
 
 const w = (px, py) => toWorld(px, py);
 
-export async function createTour3D(canvas, { onLost, onSlow } = {}) {
+export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
   const stage = createStage(canvas, { onLost, onSlow, fov: 36 });
   const { scene, camera } = stage;
-  const [kit, people] = await Promise.all([loadKit(stage.renderer), loadPeople()]);
-  const props = makeProps(kit);
+  // The people take their seats as their models come: the office opens
+  // without waiting for them. (`onChange`: there is something new to draw.)
   const folks = new Map(); // who -> their figure
+  const chairs = new Map(); // who -> their chair, what it stands in, and how they sit
+  const came = []; // whose models are here
+  let cast = null;
+  let built = false;
+  let gone = false;
+  const sit = (id) => {
+    const c = chairs.get(id);
+    const p = c && cast.person(id, c.opts);
+    if (!p) return;
+    p.group.position.copy(c.chair.position);
+    p.group.rotation.y = c.chair.rotation.y;
+    c.parent.add(p.group);
+    folks.set(id, p);
+    touch();
+    onChange?.();
+  };
+  const coming = loadPeople(undefined, (id, c) => {
+    cast = c;
+    came.push(id);
+    if (built && !gone) sit(id);
+  });
+  const kit = await loadKit(stage.renderer);
+  const props = makeProps(kit);
   scene.background = new THREE.Color(0xdcd8cf);
   scene.fog = new THREE.Fog(0xdcd8cf, 45, 90);
   const centre = w(534, 240);
@@ -307,13 +330,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     ch.rotation.y = Math.PI + (i % 5 - 2) * 0.12;
     g.add(ch);
     // and whoever sits there, in it
-    const p = d.who && people.person(d.who, { keys: 0.49 });
-    if (p) {
-      p.group.position.copy(ch.position);
-      p.group.rotation.y = ch.rotation.y;
-      g.add(p.group);
-      folks.set(d.who, p);
-    }
+    if (d.who) chairs.set(d.who, { chair: ch, parent: g, opts: { keys: 0.49 } });
     scene.add(g);
     const box = new THREE.Mesh(new THREE.BoxGeometry(width + 0.2, 1.3, depth + 1), pickMat);
     box.position.set(0, 0.65, 0.4);
@@ -340,13 +357,7 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     ch.position.set(inner.x, 0, inner.z);
     ch.rotation.y = Math.atan2(c.x - inner.x, c.z - inner.z);
     scene.add(ch);
-    const erin = people.person('erin');
-    if (erin) {
-      erin.group.position.copy(ch.position);
-      erin.group.rotation.y = ch.rotation.y;
-      scene.add(erin.group);
-      folks.set('erin', erin);
-    }
+    chairs.set('erin', { chair: ch, parent: scene });
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.3, 2.2), pickMat);
     box.position.set(c.x, 0.65, c.z);
     box.userData.who = 'erin';
@@ -607,6 +618,8 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
     return moving || turning || was;
   };
   const touch = () => (dirty = true);
+  built = true;
+  for (const id of came) sit(id);
 
   return {
     render,
@@ -632,7 +645,8 @@ export async function createTour3D(canvas, { onLost, onSlow } = {}) {
       return stage.lost;
     },
     dispose() {
-      people.dispose();
+      gone = true;
+      coming.then((c) => c.dispose());
       props.dispose();
       kit.dispose();
       stage.dispose();

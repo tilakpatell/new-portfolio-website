@@ -1,4 +1,4 @@
-// Smash Run's models from Meshy (scripts/meshy.mjs --set hq), once they've
+// Smash Run's models from Meshy (scripts/meshy.mjs <step> hq), once they've
 // been made: public/hq/meshy/manifest.json lists what's there. Hulk and the
 // Chitauri are skinned, with running, walking and idle clips; Hulk's smash,
 // leap and roar are laid over his run by turning his limbs toward where they

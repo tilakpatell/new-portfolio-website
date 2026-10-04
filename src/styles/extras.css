@@ -153,7 +153,10 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 
 /* Fog: two soft layers drifting past each other, slow enough to feel like weather.
    No blur filter (a blurred layer that moves is costly on phones, Safari most of
-   all): the gradients are soft on their own. They drift only while on screen. */
+   all): the gradients are soft on their own. They drift only while on screen:
+   the animation is named only then, because a paused animation still keeps its
+   element on a GPU layer. At rest the fog sits where the drift starts, so it
+   never jumps. */
 .fog {
   position: absolute;
   inset: auto -12% 4% -12%;
@@ -164,11 +167,11 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
     radial-gradient(38% 50% at 18% 60%, color-mix(in srgb, var(--bg) 58%, transparent), color-mix(in srgb, var(--bg) 22%, transparent) 45%, transparent 75%),
     radial-gradient(30% 44% at 52% 72%, color-mix(in srgb, var(--bg) 48%, transparent), color-mix(in srgb, var(--bg) 18%, transparent) 45%, transparent 75%),
     radial-gradient(34% 48% at 84% 58%, color-mix(in srgb, var(--bg) 54%, transparent), color-mix(in srgb, var(--bg) 20%, transparent) 45%, transparent 75%);
-  animation: fog-drift 70s ease-in-out infinite alternate;
-  animation-play-state: paused;
+  transform: translateX(-5%);
+  animation: 70s ease-in-out infinite alternate;
 }
-.photo-band[data-live] .fog { animation-play-state: running; will-change: transform; }
-.fog-b { bottom: 12%; height: 34%; opacity: 0.5; animation-duration: 95s; animation-direction: alternate-reverse; }
+.photo-band[data-live] .fog { animation-name: fog-drift; }
+.fog-b { bottom: 12%; height: 34%; opacity: 0.5; transform: translateX(5%); animation-duration: 95s; animation-direction: alternate-reverse; }
 @media (max-width: 767px) { .fog-b { display: none; } }
 @keyframes fog-drift { from { transform: translate3d(-5%, 0, 0); } to { transform: translate3d(5%, 0, 0); } }
 
@@ -185,7 +188,40 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 .photo-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .band-fact { border-top: 1px solid rgba(255, 255, 255, 0.45); padding-top: 1rem; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
 
-/* Postcards: a row that swipes, lined up with the page column */
+/* Rows that swipe: the postcards here, the interests row on the home page.
+   A row starts at the page column and runs off the right edge of the screen,
+   so a card is always peeking in to say there are more. It used to start at
+   the left edge of the screen with the gutter as its padding, and its cards
+   then slid through the gutter, under the route line and its crystal.
+   The row keeps a little padding of its own on the left (--swipe-inset) so the
+   first card's focus ring has room. It is never wider than the gap between
+   cards, so a card that has scrolled away leaves nothing behind. */
+.swipe-frame { position: relative; }
+@media (min-width: 768px) {
+  /* Mist over that padding: a card leaving on the left fades into the page
+     instead of meeting a hard edge. A gradient of the page color, not a mask
+     on the row (a mask is redrawn on every frame the row moves). It only
+     covers the padding, which is empty until a card passes through it, and
+     it clears before the last 7px, where a card's focus ring sits. */
+  .swipe-frame::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+    width: var(--swipe-inset);
+    pointer-events: none;
+    background: linear-gradient(to right, var(--bg), color-mix(in srgb, var(--bg) 0%, transparent) calc(100% - 7px));
+  }
+}
+.swipe-arrows { display: flex; gap: 0.5rem; }
+/* An arrow with nowhere left to go. It stays focusable: a disabled button
+   would drop the keyboard's place the moment the row reached its end. */
+.swipe-arrows .globe-btn[aria-disabled='true'] { opacity: 0.4; pointer-events: none; }
+/* On a touch screen the row is swiped; the arrows are for a mouse or keyboard. */
+@media (hover: none) and (pointer: coarse) { .swipe-arrows { display: none; } }
+
 .postcards {
   display: grid;
   grid-auto-flow: column;
@@ -194,8 +230,10 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
-  scroll-padding-inline: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  margin-left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+  /* the top padding leaves room for a card's focus ring (2px, 4px away) */
+  padding: 0.5rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem var(--swipe-inset);
+  scroll-padding-inline: var(--swipe-inset) var(--gutter-r);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -229,10 +267,11 @@ html[data-mode='dark'][data-theme='travel'] { --bg: #070b0b; --bg-deep: #0a1010;
 }
 @media (min-width: 1024px) { .school-card { left: -2.5rem; } }
 
-/* Jali: a carved-stone lattice, an SVG pattern in the theme's color. Painted
-   once on its own layer; soft edges come from gradients of the page color on
-   top, not a mask, so scrolling past it costs nothing. */
-.jali { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict; transform: translateZ(0); }
+/* Jali: a carved-stone lattice, an SVG pattern in the theme's color. Soft
+   edges come from gradients of the page color on top, not a mask, so scrolling
+   past it costs nothing. It is painted with the page: a GPU layer of its own
+   pushed everything in the section onto a second section-sized layer above it. */
+.jali { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict; }
 .jali-pattern { position: absolute; inset: 0; display: block; color: var(--accent); opacity: 0.08; }
 html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .jali-fade { position: absolute; left: 0; right: 0; height: 18%; }
@@ -248,7 +287,7 @@ html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .travel-teaser { min-height: clamp(320px, 42vw, 520px); display: grid; align-items: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fog { animation: none; }
+  .fog { animation: none; transform: none; }
 }
 
 /* ─── Fan themes, unlocked by easter eggs ────────────────────────────────── */
@@ -615,8 +654,10 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
-  scroll-padding-inline: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l));
+  /* starts at the page column, like the postcards (see .swipe-frame) */
+  margin-left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+  padding: 0.25rem calc(max(0px, (100% - 1280px) / 2) + var(--gutter-r)) 1.25rem var(--swipe-inset);
+  scroll-padding-inline: var(--swipe-inset) var(--gutter-r);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -1061,7 +1102,11 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 
 /* ─── A message of peace: Akshardham at dusk, a lamp's glow ───────────────── */
 .peace { color: #ffffff; }
-.peace-photo { transform: scale(1.08); animation: peace-drift 40s ease-in-out infinite alternate; }
+/* The photo drifts and the glow breathes only while the section is on screen
+   (the animations are named only then), so they hold no GPU layers and wake
+   nothing while you are elsewhere on the page. Each rests on its first frame. */
+.peace-photo { transform: scale(1.08); animation: 40s ease-in-out infinite alternate; }
+.peace[data-live] .peace-photo { animation-name: peace-drift; }
 @keyframes peace-drift { from { transform: scale(1.08) translate(0, 0); } to { transform: scale(1.16) translate(-1.5%, -1%); } }
 .peace-shade {
   position: absolute;
@@ -1077,8 +1122,10 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
   aspect-ratio: 1.6;
   translate: -50% -50%;
   background: radial-gradient(closest-side, rgba(255, 196, 110, 0.22), rgba(255, 160, 70, 0.08) 55%, transparent);
-  animation: peace-breathe 7s ease-in-out infinite;
+  opacity: 0.75;
+  animation: 7s ease-in-out infinite;
 }
+.peace[data-live] .peace-glow { animation-name: peace-breathe; }
 @keyframes peace-breathe { 0%, 100% { opacity: 0.75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
 .peace-rule { display: block; width: 72px; height: 2px; margin: 2rem auto 2.25rem; background: linear-gradient(90deg, transparent, #ffd27a, transparent); }
 .peace .peace-gu { color: #ffffff; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45); }
@@ -1102,7 +1149,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .peace-listen:hover { background: rgba(255, 210, 122, 0.12); border-color: #ffd27a; }
 .peace-listen[aria-pressed='true'] { background: rgba(255, 210, 122, 0.18); }
 .peace-listen:focus-visible { outline: 2px solid #ffd27a; outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .peace-photo, .peace-glow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .peace-photo, .peace-glow { animation: none; } .peace-glow { opacity: 1; } }
 
 /* ─── Heritage: the two Akshardhams ──────────────────────────────────────── */
 .heritage-zoom { position: relative; display: block; overflow: hidden; padding: 0; text-align: left; cursor: zoom-in; }
@@ -2160,7 +2207,9 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease; }
 .akd-slide[data-on] { opacity: 1; z-index: 1; }
 .akd-img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.akd-slide[data-on] .akd-img { animation: akd-drift 14s ease-out both; }
+/* no fill: the drift ends where the photo rests, and an animation that holds
+   its last frame keeps the photo (and the text over it) on GPU layers for good */
+.akd-slide[data-on] .akd-img { animation: akd-drift 14s ease-out; }
 @keyframes akd-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
 .akd-scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(6, 8, 12, 0.78), rgba(6, 8, 12, 0.25) 38%, transparent 62%); }
 .akd-text { position: absolute; left: clamp(1rem, 0.6rem + 2vw, 2rem); right: clamp(4rem, 3rem + 4vw, 7rem); bottom: clamp(1rem, 0.6rem + 1.6vw, 1.75rem); z-index: 3; color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4); }
@@ -2171,8 +2220,6 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .akd-prev { left: 12px; }
 .akd-next { right: 12px; }
 .akd-zoom { position: absolute; top: 12px; right: 12px; z-index: 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: rgba(8, 10, 14, 0.45); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); }
-.akd-progress { position: absolute; left: 0; right: 0; top: 0; z-index: 3; height: 3px; background: #ffe2a8; transform-origin: left; animation: akd-progress var(--d) linear both; }
-@keyframes akd-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .akd-bell-ring { position: absolute; left: 50%; top: 40%; z-index: 3; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 3px solid rgba(255, 226, 168, 0.9); border-radius: 999px; opacity: 0; pointer-events: none; }
 .akd-bell-ring[data-on] { animation: akd-ring 1.6s ease-out; }
 @keyframes akd-ring { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(3); opacity: 0; } }
@@ -2275,7 +2322,7 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .wm-callout[data-tone='bad'] { color: var(--wm-bad); }
 .wm-pin { position: absolute; top: 0.7rem; left: 0.7rem; z-index: 2; display: grid; justify-items: start; gap: 0.35rem; max-width: min(13rem, 46%); }
 .wm-pin-toggle { padding: 0.25rem 0.6rem; border-radius: 999px; background: rgba(10, 12, 14, 0.72); color: #fff; font: 700 0.7rem/1.2 var(--font-mono); text-transform: uppercase; }
-.wm-card { position: absolute; top: 50%; left: 50%; z-index: 4; width: min(34rem, calc(100% - 1.5rem)); padding: 1.25rem 1.2rem 1.3rem; border: 1px solid var(--wm-line); border-radius: 14px; background: rgba(18, 21, 23, 0.92); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%); animation: wm-in 0.3s ease-out both; }
+.wm-card { position: absolute; top: 50%; left: 50%; z-index: 4; width: min(34rem, calc(100% - 1.5rem)); max-height: calc(100% - 1rem); overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem 1.2rem 1.3rem; border: 1px solid var(--wm-line); border-radius: 14px; background: rgba(18, 21, 23, 0.92); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%); animation: wm-in 0.3s ease-out both; }
 .wm-card-scroll { max-height: calc(100% - 1.5rem); overflow-y: auto; }
 .wm-card-title { font: 700 1.35rem/1.2 var(--font-sans); }
 .wm-card-text { max-width: 60ch; margin-top: 0.55rem; color: var(--wm-dim); line-height: 1.55; }
@@ -2396,6 +2443,17 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
   .wm-tabs button { font-size: 0.7rem; letter-spacing: 0; }
   .wm-card { padding: 1rem; }
   .wm-card-title { font-size: 1.15rem; }
+  /* the order's result: the face beside the quote, the five scores in a row */
+  .wm-result { flex-wrap: nowrap; gap: 0.75rem; padding: 0.85rem; }
+  .wm-result > div { flex: 1; min-width: 0; }
+  .wm-result .wm-face-big { flex: none; width: 3rem; height: 3rem; }
+  .wm-result .wm-quote { font-size: 1rem; }
+  .wm-scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; margin-top: 0.55rem; }
+  .wm-scores li { min-width: 0; padding: 0.25rem 0.1rem; }
+  .wm-scores span { font-size: 0.52rem; }
+  .wm-scores b { font-size: 0.92rem; }
+  .wm-result .wm-total { margin-top: 0.5rem; font-size: 1.35rem; }
+  .wm-result .wm-row { margin-top: 0.65rem; }
   .wm-pin { max-width: 58%; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2409,6 +2467,130 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .gg-bob[data-walking] { animation: gg-step 0.4s ease-in-out infinite alternate; }
 @keyframes gg-step { to { transform: translateY(-1.2px); } }
 @media (prefers-reduced-motion: reduce) { .gg-torch, .gg-bob[data-walking], .balrog-whip-up { animation: none; } }
+
+/* ─── Middle-earth in WebGL: the scene lies over the drawing it stands in for ─── */
+.me-stage { position: relative; }
+.me-stage[data-3d] { aspect-ratio: 16 / 10; background: #070403; }
+.me-stage[data-3d] > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.me-stage[data-gl] > svg { visibility: hidden; }
+.me-gl { position: absolute; inset: 0; }
+.me-gl canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.6s ease; }
+.me-gl canvas[data-on] { opacity: 1; }
+.me-hud { position: absolute; z-index: 2; top: 12px; right: 14px; display: flex; align-items: center; gap: 7px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; background: rgba(8, 5, 4, 0.5); color: rgba(255, 244, 226, 0.78); font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); pointer-events: none; }
+.me-hud i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); transition: background 0.2s ease, box-shadow 0.2s ease; }
+.me-hud-left { right: auto; left: 14px; }
+.me-hud-left svg { color: #f0c040; }
+.me-hud-left[data-heavy] svg { color: #ff6a1a; }
+.me-hud-time { top: auto; bottom: 12px; letter-spacing: 0.04em; text-transform: none; }
+.me-hud i[data-on] { background: #fdfbf2; box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.8); }
+@media (max-width: 639px) { .me-stage[data-3d] { aspect-ratio: 4 / 3; } }
+
+/* ─── The map behind Middle-earth, and the opening on it ─── */
+.me-atlas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s ease; }
+.me-atlas[data-on] { opacity: 1; }
+.me-atlas[data-on][data-opening] { opacity: 1; transition-duration: 0.7s; }
+/* Behind a chapter the map is out of focus, the way a camera holds the
+   table while it looks at what's on it: full strength, blurred, under a wash
+   of the page's own colour so the text reads. On the map itself, during a
+   flight and in the opening it is sharp, and the focus pulls as you land. */
+.me-atlas canvas { display: block; width: 100%; height: 100%; filter: blur(7px) saturate(0.9); transform: scale(1.04); transition: filter 1.1s ease, transform 1.1s ease; }
+.me-atlas[data-hub] canvas, .me-atlas[data-opening] canvas, .me-page[data-flying] .me-atlas canvas { filter: none; transform: none; }
+.me-atlas::after { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 95% at 50% 40%, color-mix(in srgb, var(--bg) 52%, transparent) 30%, color-mix(in srgb, var(--bg) 88%, transparent) 100%); transition: opacity 1.2s ease; }
+html[data-mode='dark'] .me-atlas::after { background: radial-gradient(120% 95% at 50% 40%, color-mix(in srgb, var(--bg) 46%, transparent) 30%, color-mix(in srgb, var(--bg) 90%, transparent) 100%); }
+.me-atlas[data-opening]::after { opacity: 0.3; }
+.me-atlas-title { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; justify-items: center; gap: 0.7rem; padding: 1.5rem; text-align: center; background: radial-gradient(34rem 16rem at 50% 50%, rgba(238, 224, 186, 0.86), rgba(238, 224, 186, 0) 72%); animation: me-opening 3s ease both; }
+.me-atlas-title strong { font: 700 clamp(2.6rem, 1.2rem + 6.5vw, 6.5rem)/1 'Cinzel Decorative', 'Cinzel', Georgia, serif; color: #3b2a14; text-shadow: 0 1px 0 rgba(255, 246, 220, 0.7); }
+.me-atlas-title p, .me-atlas-title span { font: 600 clamp(0.72rem, 0.6rem + 0.5vw, 0.95rem)/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.28em; text-transform: uppercase; color: #6a4a22; }
+@keyframes me-opening { 0% { opacity: 0; transform: scale(0.97); } 22% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.me-page > section, .me-page > .mordor-band { transition: opacity 1s ease; }
+.me-page[data-opening] > section, .me-page[data-opening] > .mordor-band { opacity: 0; pointer-events: none; transition: none; }
+
+/* ─── The map as the way about: the hub, its places, and the chapters ─── */
+.me-atlas[data-on][data-hub], .me-page[data-flying] .me-atlas[data-on] { opacity: 1; transition-duration: 0.9s; }
+.me-atlas[data-hub]::after { opacity: 0.45; }
+.me-page[data-flying] .me-atlas::after { opacity: 0.25; }
+html[data-mode='dark'] .me-atlas[data-hub] canvas[data-flat] { filter: brightness(0.58) saturate(0.85) sepia(0.15); }
+html[data-mode='dark'] .me-atlas:not([data-hub]) canvas[data-flat] { filter: blur(7px) brightness(0.58) saturate(0.85) sepia(0.15); }
+.me-page[data-flying] > :not(.me-atlas) { opacity: 0; pointer-events: none; transition: opacity 0.45s ease; }
+
+.me-hub-section { min-height: 100svh; }
+.me-hub { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: calc(var(--nav-h) + 28px) 0 28px; pointer-events: none; transition: opacity 0.6s ease; }
+.me-hub[data-hidden] { opacity: 0; transition: none; }
+.me-hub[data-leaving] { opacity: 0; transition-duration: 0.4s; }
+.me-hub-head, .me-hub-foot { position: relative; z-index: 2; }
+.me-hub-head > *, .me-hub-foot > * { pointer-events: auto; }
+.me-hub-head { width: 100%; }
+@media (min-width: 1024px) {
+  .me-hub-head { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+  .me-hub-head::before { inset: -4rem -6rem -3rem auto; }
+  .me-hub-lead { max-width: 30ch; }
+}
+.me-hub-head::before, .me-hub-foot::before { content: ''; position: absolute; z-index: -1; pointer-events: none; inset: -3rem -2rem; background: radial-gradient(closest-side, var(--me-veil), transparent); }
+.me-hub-head::before { inset: -4rem auto -3rem -6rem; width: min(46rem, 100%); }
+.me-hub { --me-veil: rgba(246, 236, 210, 0.82); --me-ink: #2c1d0e; --me-ink-soft: #5d4426; --me-wax: #8e1b10; }
+html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e3c0; --me-ink-soft: #cdb68a; --me-wax: #c2321e; }
+.me-hub .eyebrow { color: var(--me-ink-soft); }
+.me-hub-title { margin-top: 0.8rem; font-size: clamp(2.2rem, 1.2rem + 3.2vw, 4rem); line-height: 1; color: var(--me-ink); }
+.me-hub-lead { margin-top: 0.9rem; max-width: 34ch; font-size: 1.06rem; line-height: 1.55; color: var(--me-ink-soft); }
+
+.me-pins { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.me-areas { position: fixed; inset: 0; z-index: 0; pointer-events: auto; }
+.me-areas[data-area] { cursor: pointer; }
+.me-hub[data-leaving] .me-areas, .me-hub[data-hidden] .me-areas { pointer-events: none; }
+.me-pin { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; will-change: transform; animation: me-pin-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(0.25s + var(--i) * 0.09s); }
+.me-hub[data-hidden] .me-pin { animation: none; opacity: 0; }
+@keyframes me-pin-in { from { opacity: 0; scale: 0.4; } }
+.me-pin-dot { position: absolute; inset: 12px; border-radius: 50%; background: radial-gradient(circle at 38% 34%, #d0463a, var(--me-wax) 55%, #4a0905); box-shadow: 0 0 0 2.5px rgba(255, 243, 214, 0.9), 0 3px 10px rgba(0, 0, 0, 0.45); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.me-pin-dot::after { content: ''; position: absolute; inset: -9px; border-radius: 50%; border: 1.5px solid var(--me-wax); opacity: 0; animation: me-pin-pulse 2.6s ease-out infinite; animation-delay: calc(var(--i) * 0.5s); }
+@keyframes me-pin-pulse { 0% { opacity: 0.8; transform: scale(0.5); } 70%, 100% { opacity: 0; transform: scale(1.5); } }
+.me-pin[data-place='mordor'] .me-pin-dot { background: radial-gradient(circle at 40% 36%, #ffd27a, #ff6a1a 45%, #7a1504); box-shadow: 0 0 0 2.5px rgba(255, 220, 170, 0.85), 0 0 18px 4px rgba(255, 106, 26, 0.55); }
+.me-pin[data-place='mordor'] .me-pin-dot::after { border-color: #ff6a1a; }
+.me-pin:hover .me-pin-dot, .me-pin[data-hover] .me-pin-dot { transform: scale(1.3); }
+.me-pin:focus-visible { outline: none; }
+.me-pin:focus-visible .me-pin-dot { box-shadow: 0 0 0 2.5px rgba(255, 243, 214, 0.95), 0 0 0 6px var(--accent, #3b5d2a); }
+.me-pin-label { position: absolute; left: 40px; top: 8px; display: none; gap: 0.2rem; width: max-content; max-width: 15rem; padding: 0.15rem 0.5rem; border-radius: 10px; text-align: left; color: var(--me-ink); transition: background 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease; }
+.me-pin:hover .me-pin-label, .me-pin[data-hover] .me-pin-label { display: grid; }
+.me-pin-label b { font: 700 1rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.04em; white-space: nowrap; text-shadow: 0 0 6px var(--me-veil), 0 0 12px var(--me-veil), 0 0 2px var(--me-veil); }
+.me-pin-label em, .me-pin-label small { display: none; }
+.me-pin-label em { font: 600 0.78rem/1.25 'Cinzel', Georgia, serif; font-style: normal; letter-spacing: 0.06em; color: var(--me-wax); }
+.me-pin-label small { font-size: 0.84rem; line-height: 1.45; color: var(--me-ink-soft); }
+.me-pin:hover .me-pin-label, .me-pin[data-hover] .me-pin-label { padding: 0.6rem 0.8rem 0.7rem; background: var(--me-veil); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.me-pin:hover .me-pin-label em, .me-pin:hover .me-pin-label small, .me-pin[data-hover] .me-pin-label em, .me-pin[data-hover] .me-pin-label small { display: block; }
+.me-pin[data-place='mordor'] .me-pin-label, .me-pin[data-place='lorien'] .me-pin-label { left: auto; right: 40px; text-align: right; }
+.me-pin[data-place='lorien'] .me-pin-label { top: 10px; }
+.me-pin[data-place='moria'] .me-pin-label { top: -4px; }
+.me-pin[data-hover] { z-index: 2; }
+.me-seal { position: absolute; left: 24px; top: -6px; width: 22px; height: 22px; rotate: -12deg; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4)); }
+.me-seal path:first-child { fill: var(--me-wax); }
+.me-seal-ring { fill: none; stroke: rgba(255, 210, 190, 0.45); stroke-width: 1; }
+.me-seal-mark { fill: none; stroke: rgba(255, 220, 200, 0.75); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.me-hub-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 2rem; }
+.me-route { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.me-route li { display: flex; align-items: center; gap: 0.4rem; }
+.me-route li + li::before { content: ''; width: 1.1rem; border-top: 2px dashed var(--me-wax); opacity: 0.7; }
+.me-route button { min-height: 36px; padding: 0 0.85rem; border: 1px solid color-mix(in srgb, var(--me-ink) 25%, transparent); border-radius: 999px; font: 600 0.82rem/1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; color: var(--me-ink); background: var(--me-veil); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+.me-route button:hover, .me-route button:focus-visible { border-color: var(--me-wax); color: var(--me-wax); }
+.me-route button[data-won]::after { content: ' ✦'; color: var(--me-wax); }
+.me-hub-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+
+.me-bar { position: sticky; top: calc(var(--nav-h) + 10px); display: flex; align-items: center; gap: 0.75rem; margin-top: calc(var(--nav-h) + 18px); }
+.me-bar > * { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.me-bar-where { display: flex; align-items: baseline; gap: 0.6rem; margin: 0 auto 0 0.25rem; padding: 0.35rem 0.8rem; border-radius: 999px; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.me-bar-where b { font: 700 1rem/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; color: var(--text-ink, inherit); }
+.me-bar .btn { background: color-mix(in srgb, var(--bg) 78%, transparent); }
+@media (max-width: 639px) { .me-bar-where .eyebrow { display: none; } .me-bar-next { display: none; } }
+.me-onward-card { max-width: 40rem; padding: 1.6rem 1.75rem; border: 1px solid var(--border); border-radius: var(--r-card); background: color-mix(in srgb, var(--surface, var(--bg)) 82%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-card); }
+@media (max-width: 639px) {
+  .me-pin-label b { font-size: 0.86rem; }
+  .me-route { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .me-route li + li::before { display: none; }
+  .me-route li:last-child { grid-column: 1 / -1; }
+  .me-route button { width: 100%; min-height: 42px; }
+  .me-hub-head::before { inset: -3rem -1rem; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .me-pin, .me-pin-dot::after { animation: none; } .me-atlas canvas { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .me-gl canvas { transition: none; } }
 /* the Death Star hero in WebGL: the whole hero's backdrop, edge to edge,
    fading into the page at the bottom; the SVG keeps only its label */
 .ds-gl { position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 80%, transparent 100%); }
