@@ -94,6 +94,7 @@ export default function OfficeTour3D({ sel, onPick, onState }) {
           return;
         }
         tour.current = t;
+        if (import.meta.env.DEV) window.__TOUR__ = t; // for the browser tests
         const r = wrap.current.getBoundingClientRect();
         t.resize(r.width, r.height);
         t.focus(sel, { move: false }); // open on the whole office
