@@ -165,7 +165,7 @@ export default function Avengers() {
     <div className="relative">
       <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16" aria-labelledby="tower-title">
         <figure className="tower-hero m-0">
-          <Tower floors={FLOORS} current={0} onPick={(id) => jumpTo(null, `floor-${id}`)} className="tower-hero-svg" />
+          <Tower floors={FLOORS} current={0} className="tower-hero-svg" />
         </figure>
         <div>
           <p className="eyebrow">Avengers Tower · Manhattan</p>
@@ -184,7 +184,19 @@ export default function Avengers() {
               Back to the site
             </Link>
           </div>
-          <p className="mt-4 text-sm text-muted">Or pick a floor from the directory on the tower.</p>
+          <nav className="tower-directory mt-8" aria-label="Building directory">
+            <p className="label">Directory</p>
+            <ol className="mt-3">
+              {FLOORS.map((f, i) => (
+                <li key={f.id}>
+                  <a href={`#floor-${f.id}`} onClick={(e) => jumpTo(e, `floor-${f.id}`)}>
+                    <span className="tower-directory-level">{f.id === 'vault' ? 'B' : FLOORS.length - 1 - i}</span>
+                    {f.title}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
           <WorldSwitcher className="mt-8" />
         </div>
       </section>
