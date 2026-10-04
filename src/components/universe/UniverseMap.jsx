@@ -14,7 +14,7 @@ import MiniMap from './MiniMap';
 // if 3D is off, fails or is lost, the flat MiniMap takes the box.
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand, onCrash }) {
   const labels = useRef({});
   const stick = useRef(null);
   const [flown, setFlown] = useState(false);
@@ -32,6 +32,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onPick: onSelect,
       onOpen,
       onLand,
+      onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
         events.current?.(e);
