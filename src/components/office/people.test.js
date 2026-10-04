@@ -67,7 +67,7 @@ describe('the cast', () => {
     }
   });
 
-  it('is welded and on its own atlas (scripts/meshy.mjs), which a mipmap can be made of', () => {
+  it('is welded and on its own atlas (scripts/reatlas.mjs), which a mipmap can be made of', () => {
     for (const id of Object.keys(CAST)) {
       const g = glb(id);
       // (as Meshy cuts a figure, 11,000 vertices)
