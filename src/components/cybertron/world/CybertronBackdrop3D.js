@@ -114,6 +114,8 @@ const STYLES = [
   { seed: 53, n: 6, tiers: 4, first: 2.4, rest: [1.4, 2.0], taper: 0.9, step: 0.82, fins: 0, crown: 'needle', twin: true, buttress: 0 },
   { seed: 67, n: 8, tiers: 6, first: 2.2, rest: [1.0, 1.6], taper: 0.84, step: 0.8, fins: 2, crown: 'needle', buttress: 8, slim: true },
 ];
+// the terraced blocks the towers stand among, filling the city's lower levels
+const PODIUM = { seed: 91, n: 4, tiers: 3, first: 0.55, rest: [0.2, 0.34], taper: 0.97, step: 0.84, fins: 0, crown: 'roof', buttress: 0 };
 // far away, a tower is a silhouette and some windows: fewer pieces, no light mesh
 const FAR_STYLES = [
   { seed: 71, n: 6, tiers: 3, first: 3, rest: [1.8, 2.6], taper: 0.88, step: 0.78, fins: 0, crown: 'needle', buttress: 0, plain: true },
@@ -141,7 +143,7 @@ function tower(style) {
         for (let k = 0; k < n; k += n > 4 ? 2 : 1) {
           const a = corner(rad * 1.012, y + 0.04, k, n, at);
           const b = corner(top * 1.012, y + h - 0.04, k, n, at);
-          glow.push(beam(a, b, 0.022));
+          glow.push(beam(a, b, 0.014));
         }
         // ribs on every corner of a ribbed tower
         if (style.ribs) for (let k = 0; k < n; k++) body.push(beam(corner(rad * 1.04, y, k, n, at), corner(top * 1.04, y + h, k, n, at), 0.05));
@@ -216,6 +218,15 @@ function tower(style) {
       }
       body.push(prism(s.rad * 0.7, 0.004, h * 1.3, n, s.y));
       crown.tip = s.y + h * 1.3;
+    } else if (style.crown === 'roof') {
+      // machinery on a flat roof
+      for (let k = 0; k < 4; k++) {
+        const a = r() * Math.PI * 2;
+        const d = r() * s.rad * 0.5;
+        const bw = 0.06 + r() * 0.1;
+        body.push(new THREE.BoxGeometry(bw, 0.05 + r() * 0.08, bw * (0.6 + r())).translate(Math.cos(a) * d, s.y + 0.04, Math.sin(a) * d));
+      }
+      return { body: merge(body), glow: merge(glow), crown };
     } else if (style.crown === 'dome') {
       const d = new THREE.SphereGeometry(s.rad * 1.05, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2);
       d.scale(1, 0.55, 1);
@@ -309,54 +320,54 @@ function hallOfRecords() {
 const PALETTES = {
   iacon: {
     night: {
-      zenith: '#02050d', mid: '#0a1a33', horizon: '#173e58', haze: '#2b6e88', glow: [0.05, 0.16, 0.24], glowDir: [-0.35, 0.3, -1],
-      smoke: 0.22, smokeCol: '#0d1f33', smokeLit: '#1f4a63', stars: 1, moonTint: [0.82, 0.88, 0.98], moonK: 1.2, sunDir: [0.75, 0.28, 0.6],
-      fogDen: 0.00058, lowHaze: 2.4,
-      hemiSky: '#4f74a3', hemiGround: '#0b1422', hemiK: 1.1, keyCol: '#a9c4e6', keyK: 1.6, keyDir: [-0.4, 0.55, -1], rimCol: '#34c6ff', rimK: 1.1, rimDir: [0.7, 0.2, 0.6],
-      envZ: '#0d2240', envH: '#2a6a8c', envG: '#060b14', envK: 1.25,
-      tintA: '#aab6c6', tintB: '#7489a3', tintC: '#454f5d', mapGain: 3.2,
-      winA: [0.35, 1.55, 2.6], winB: [0.25, 0.75, 2.4], winK: 1.15, winCut: 0.56, winBand: 0.2, winRow: 7,
-      stripA: [0.4, 2.2, 3.6], stripB: [0.35, 1.0, 3.4], stripK: 1, street: [0.1, 0.5, 0.9],
-      trafA: [1.8, 2.6, 3.2], trafB: [3.2, 1.6, 0.5], trafK: 1, blink: [3, 0.25, 0.2], beacon: [0.8, 2.4, 4], beam: [0.12, 0.5, 0.9],
-      edge: [0.5, 2, 3.5], bloom: 0.62, exposure: 1.05,
+      zenith: '#01040b', mid: '#071530', horizon: '#0f2c47', haze: '#1b4a66', glow: [0.03, 0.09, 0.15], glowDir: [-0.4, 0.42, -1],
+      smoke: 0.25, smokeCol: '#081426', smokeLit: '#163a55', stars: 1, moonTint: [0.75, 0.82, 0.95], moonK: 0.9, moonOcc: 0.2, sunDir: [0.75, 0.28, 0.6],
+      fogDen: 0.00052, lowHaze: 1.6,
+      hemiSky: '#36557d', hemiGround: '#0a111d', hemiK: 1, keyCol: '#a5bfe0', keyK: 1.5, keyDir: [0.55, 0.5, 0.45], rimCol: '#2fbfff', rimK: 1.4, rimDir: [-0.5, 0.25, -0.8],
+      envZ: '#0b1d38', envH: '#2a6386', envG: '#04070d', envK: 1.3,
+      tintA: '#b7c3d3', tintB: '#7a90aa', tintC: '#4a5463', mapGain: 3.2,
+      winA: [0.3, 1.3, 2.4], winB: [0.2, 0.55, 2.2], winK: 0.9, winCut: 0.6, winBand: 0.07, winRow: 6, winSeg: 14,
+      stripA: [0.3, 1.5, 2.6], stripB: [0.25, 0.65, 2.4], stripK: 0.9, street: [0.03, 0.12, 0.22],
+      trafA: [1.5, 1.85, 2.3], trafB: [0.4, 1.3, 2.6], trafK: 0.9, blink: [2.6, 0.25, 0.2], beacon: [0.7, 2.2, 3.6], beam: [0.1, 0.4, 0.75],
+      edge: [0.5, 2, 3.5], bloom: 0.55, exposure: 1,
     },
     day: {
-      zenith: '#8fb0cf', mid: '#bccfe0', horizon: '#e2ebf2', haze: '#f4f8fb', glow: [0.35, 0.33, 0.28], glowDir: [0.5, 0.45, -1],
-      smoke: 0.3, smokeCol: '#eef3f7', smokeLit: '#ffffff', stars: 0, moonTint: [0.9, 0.93, 1], moonK: 0.42, sunDir: [0.6, 0.6, 0.4],
-      fogDen: 0.00066, lowHaze: 2,
-      hemiSky: '#e3edf8', hemiGround: '#6f7a88', hemiK: 1.6, keyCol: '#fff4e2', keyK: 2.6, keyDir: [0.55, 0.75, 0.45], rimCol: '#cfe6ff', rimK: 0.5, rimDir: [-0.6, 0.3, -0.7],
-      envZ: '#8fb3d6', envH: '#e6eef5', envG: '#69727e', envK: 1,
-      tintA: '#c5ced9', tintB: '#93a5bb', tintC: '#5f6977', mapGain: 3,
-      winA: [0.5, 1.2, 1.6], winB: [0.4, 0.8, 1.5], winK: 0.22, winCut: 0.62, winBand: 0.2, winRow: 7,
-      stripA: [0.3, 1.1, 1.7], stripB: [0.3, 0.7, 1.6], stripK: 0.55, street: [0.05, 0.12, 0.2],
-      trafA: [0.9, 1.1, 1.3], trafB: [1.4, 0.9, 0.5], trafK: 0.45, blink: [1.6, 0.3, 0.2], beacon: [0.6, 1.6, 2.4], beam: [0.03, 0.08, 0.12],
-      edge: [0.5, 1.6, 2.6], bloom: 0.22, exposure: 1,
+      zenith: '#9db9d4', mid: '#c4d4e3', horizon: '#e3ebf1', haze: '#f2f6f9', glow: [0.3, 0.28, 0.24], glowDir: [0.5, 0.45, -1],
+      smoke: 0.3, smokeCol: '#eef3f7', smokeLit: '#ffffff', stars: 0, moonTint: [0.85, 0.9, 1], moonK: 0.22, moonOcc: 1, sunDir: [0.6, 0.6, 0.4],
+      fogDen: 0.00048, lowHaze: 1.2,
+      hemiSky: '#e3edf8', hemiGround: '#6f7a88', hemiK: 1.6, keyCol: '#fff4e2', keyK: 2.6, keyDir: [0.55, 0.75, 0.45], rimCol: '#cfe6ff', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
+      envZ: '#93b5d6', envH: '#e6eef5', envG: '#69727e', envK: 1,
+      tintA: '#c8d1dc', tintB: '#93a6bc', tintC: '#5d6877', mapGain: 3,
+      winA: [0.4, 1, 1.4], winB: [0.3, 0.6, 1.3], winK: 0.18, winCut: 0.6, winBand: 0.07, winRow: 6, winSeg: 14,
+      stripA: [0.25, 0.9, 1.5], stripB: [0.25, 0.55, 1.4], stripK: 0.6, street: [0.02, 0.05, 0.08],
+      trafA: [0.8, 1, 1.2], trafB: [0.4, 0.8, 1.3], trafK: 0.4, blink: [1.4, 0.3, 0.2], beacon: [0.5, 1.4, 2.2], beam: [0.03, 0.07, 0.11],
+      edge: [0.5, 1.6, 2.6], bloom: 0.2, exposure: 1,
     },
   },
   kaon: {
     night: {
-      zenith: '#080305', mid: '#2a0907', horizon: '#6d1a07', haze: '#c2410c', glow: [1.1, 0.28, 0.05], glowDir: [0.15, 0.02, -1],
-      smoke: 1, smokeCol: '#150707', smokeLit: '#7a2208', stars: 0.15, moonTint: [1, 0.55, 0.42], moonK: 0.75, sunDir: [-0.2, 0.1, -1],
-      fogDen: 0.00072, lowHaze: 3,
-      hemiSky: '#5e2a22', hemiGround: '#c44a14', hemiK: 1, keyCol: '#ff7a33', keyK: 2, keyDir: [0.15, 0.12, -1], rimCol: '#9a4dff', rimK: 1, rimDir: [0.7, 0.35, 0.6],
-      envZ: '#140608', envH: '#8a2a0c', envG: '#4a1406', envK: 1.25,
+      zenith: '#070204', mid: '#250806', horizon: '#5c1606', haze: '#a8370b', glow: [1, 0.25, 0.04], glowDir: [0.15, 0.02, -1],
+      smoke: 1, smokeCol: '#120606', smokeLit: '#6e1f08', stars: 0.12, moonTint: [1, 0.5, 0.38], moonK: 0.6, moonOcc: 0.2, sunDir: [-0.2, 0.1, -1],
+      fogDen: 0.0006, lowHaze: 2.2,
+      hemiSky: '#4f2219', hemiGround: '#b8420f', hemiK: 0.9, keyCol: '#ff7a33', keyK: 1.8, keyDir: [0.15, 0.12, -1], rimCol: '#8a46ff', rimK: 1, rimDir: [0.6, 0.35, 0.7],
+      envZ: '#120508', envH: '#7a250b', envG: '#401105', envK: 1.2,
       tintA: '#6f6a74', tintB: '#524a56', tintC: '#2c272e', mapGain: 3.2,
-      winA: [2.8, 0.85, 0.22], winB: [2.6, 0.3, 0.12], winK: 1.4, winCut: 0.74, winBand: 0.07, winRow: 9,
-      stripA: [3.6, 0.45, 0.25], stripB: [1.9, 0.45, 3.4], stripK: 1, street: [0.9, 0.22, 0.05],
-      trafA: [3.4, 0.6, 0.3], trafB: [2, 0.6, 3.2], trafK: 1, blink: [3, 0.3, 0.15], beacon: [4, 0.6, 0.25], beam: [0.9, 0.12, 0.05],
-      edge: [3.5, 0.8, 0.2], bloom: 0.68, exposure: 1.05,
+      winA: [2.6, 0.75, 0.2], winB: [2.4, 0.28, 0.1], winK: 1.3, winCut: 0.76, winBand: 0.06, winRow: 9, winSeg: 3,
+      stripA: [3.2, 0.4, 0.22], stripB: [1.7, 0.4, 3], stripK: 0.9, street: [0.6, 0.15, 0.03],
+      trafA: [3, 0.65, 0.3], trafB: [1.8, 0.5, 2.8], trafK: 0.9, blink: [3, 0.3, 0.15], beacon: [3.6, 0.5, 0.22], beam: [0.8, 0.1, 0.04],
+      edge: [3.5, 0.8, 0.2], bloom: 0.6, exposure: 1,
     },
     day: {
-      zenith: '#b3a29c', mid: '#d6bfb1', horizon: '#efd9c8', haze: '#f7e3d2', glow: [0.55, 0.3, 0.16], glowDir: [0.15, 0.1, -1],
-      smoke: 0.75, smokeCol: '#a8948c', smokeLit: '#e8c0a0', stars: 0, moonTint: [1, 0.85, 0.78], moonK: 0.3, sunDir: [-0.2, 0.4, -1],
-      fogDen: 0.00074, lowHaze: 2.4,
-      hemiSky: '#f2e2d6', hemiGround: '#8a6a5c', hemiK: 1.5, keyCol: '#ffe2c4', keyK: 2.2, keyDir: [0.4, 0.55, -0.6], rimCol: '#ffd0b0', rimK: 0.4, rimDir: [-0.6, 0.3, 0.7],
+      zenith: '#b3a29c', mid: '#d6bfb1', horizon: '#efd9c8', haze: '#f7e3d2', glow: [0.5, 0.28, 0.14], glowDir: [0.15, 0.1, -1],
+      smoke: 0.7, smokeCol: '#a8948c', smokeLit: '#e8c0a0', stars: 0, moonTint: [1, 0.85, 0.78], moonK: 0.18, moonOcc: 1, sunDir: [-0.2, 0.4, -1],
+      fogDen: 0.0005, lowHaze: 1.4,
+      hemiSky: '#f2e2d6', hemiGround: '#8a6a5c', hemiK: 1.5, keyCol: '#ffe2c4', keyK: 2.2, keyDir: [0.4, 0.55, 0.6], rimCol: '#ffd0b0', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
       envZ: '#b9a49a', envH: '#f0dccb', envG: '#77625a', envK: 1,
       tintA: '#b3adb3', tintB: '#8c858c', tintC: '#5a545a', mapGain: 3,
-      winA: [1.6, 0.6, 0.2], winB: [1.4, 0.35, 0.15], winK: 0.3, winCut: 0.74, winBand: 0.07, winRow: 9,
-      stripA: [1.7, 0.4, 0.25], stripB: [1.1, 0.45, 1.6], stripK: 0.55, street: [0.2, 0.08, 0.03],
-      trafA: [1.4, 0.6, 0.35], trafB: [1, 0.55, 1.4], trafK: 0.45, blink: [1.6, 0.3, 0.2], beacon: [2.4, 0.6, 0.3], beam: [0.12, 0.03, 0.02],
-      edge: [2.6, 0.8, 0.2], bloom: 0.22, exposure: 1,
+      winA: [1.4, 0.5, 0.18], winB: [1.2, 0.3, 0.12], winK: 0.25, winCut: 0.76, winBand: 0.06, winRow: 9, winSeg: 3,
+      stripA: [1.5, 0.35, 0.22], stripB: [1, 0.4, 1.4], stripK: 0.55, street: [0.1, 0.04, 0.02],
+      trafA: [1.2, 0.55, 0.3], trafB: [0.9, 0.5, 1.2], trafK: 0.4, blink: [1.4, 0.3, 0.2], beacon: [2, 0.5, 0.25], beam: [0.1, 0.03, 0.02],
+      edge: [2.6, 0.8, 0.2], bloom: 0.2, exposure: 1,
     },
   },
 };
@@ -464,7 +475,7 @@ function cityMaterial(material, U, { defines = {}, fogK = 1, tile = 36, key }) {
         varying vec3 vCyW;
         varying vec3 vCyN;
         varying vec4 vCyInfo;
-        uniform float uSide, uFogDen, uFogK, uLowHaze, uEnvK, uMapGain, uWinK, uWinCut, uWinBand, uWinRow, uStripK;
+        uniform float uSide, uFogDen, uFogK, uLowHaze, uEnvK, uMapGain, uWinK, uWinCut, uWinBand, uWinRow, uWinSeg, uStripK;
         uniform vec3 uFogCol, uEnvZ, uEnvH, uEnvG, uTintA, uTintB, uTintC, uWinA, uWinB, uStripA, uStripB, uStreet, uEdge;
         ${HASH}`,
       )
@@ -509,16 +520,17 @@ function cityMaterial(material, U, { defines = {}, fogK = 1, tile = 36, key }) {
           float along = abs(vCyN.x) > abs(vCyN.z) ? vCyW.z : vCyW.x;
           float fy = (vCyW.y - ${GROUND.toFixed(1)}) / uWinRow;
           float f = fract(fy);
-          float band = smoothstep(0.5 - uWinBand, 0.5 - uWinBand + 0.05, f) * (1.0 - smoothstep(0.5 + uWinBand - 0.05, 0.5 + uWinBand, f));
-          float ca = along / 4.5;
+          float aa = fwidth(fy);
+          float band = smoothstep(0.5 - uWinBand - aa, 0.5 - uWinBand + aa, f) * (1.0 - smoothstep(0.5 + uWinBand - aa, 0.5 + uWinBand + aa, f));
+          float ca = along / uWinSeg;
           float cf = fract(ca);
-          float mull = smoothstep(0.05, 0.14, cf) * (1.0 - smoothstep(0.86, 0.95, cf));
+          float gap = clamp(0.9 / uWinSeg, 0.04, 0.3);
+          float mull = smoothstep(gap * 0.5, gap, cf) * (1.0 - smoothstep(1.0 - gap, 1.0 - gap * 0.5, cf));
           float rnd = cyHash(vec3(floor(ca), floor(fy), vCyInfo.x * 113.0 + 7.0));
           float lit = step(uWinCut, rnd) * (0.55 + 0.9 * fract(rnd * 31.7));
           float pattern = band * mull * lit;
-          // far off, the pattern becomes its average glow, not a shimmer
-          float fw = fwidth(fy) + fwidth(ca) * 0.3;
-          pattern = mix(pattern, 1.4 * uWinBand * 0.8 * (1.0 - uWinCut), smoothstep(0.2, 0.8, fw));
+          // far off, the bands become their average glow, not a shimmer
+          pattern = mix(pattern, 2.0 * uWinBand * 0.9 * (1.0 - uWinCut), smoothstep(0.3, 0.9, aa));
           vec3 wc = mix(uWinA, uWinB, step(0.5, cyHash(vec3(floor(fy * 0.25), vCyInfo.x * 31.0, 3.0))));
           totalEmissiveRadiance = wc * pattern * upright * uWinK * step(${(GROUND + 8).toFixed(1)}, vCyW.y) * (0.6 + 0.8 * vCyInfo.x);
         }
@@ -568,7 +580,7 @@ const SKY = {
     }`,
   fragmentShader: /* glsl */ `
     uniform vec3 uZenith, uMid, uHorizon, uHaze, uGlow, uGlowDir, uFogCol, uMoonA, uMoonB, uMoonTint, uSunDir, uSmokeCol, uSmokeLit;
-    uniform float uMoonK, uSmoke, uTime;
+    uniform float uMoonK, uMoonOcc, uSmoke, uTime;
     varying vec3 vDir;
     float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
     float vnoise(vec2 p) {
@@ -596,7 +608,7 @@ const SKY = {
         float sea = fbm(q * 2.2 + seed);
         float pits = smoothstep(0.62, 0.7, vnoise(q * 9.0 + seed * 3.0));
         vec3 mc = uMoonTint * ((0.55 + 0.6 * sea - 0.18 * pits) * lit + 0.035);
-        col = mix(col, mc * uMoonK, smoothstep(1.0, 0.94, r2));
+        col = mix(col, col * uMoonOcc + mc * uMoonK, smoothstep(1.0, 0.94, r2));
       }
       return col;
     }
@@ -652,7 +664,7 @@ const TRAFFIC = {
       vec3 toCam = cameraPosition - pos;
       float dist = length(toCam);
       vec3 side = normalize(cross(dir, toCam / dist));
-      float w = max(0.9, dist * 0.0016);
+      float w = max(0.7, dist * 0.0013);
       pos += side * corner.y * w;
       vHead = 1.0 - corner.x;
       vSide = corner.y;
@@ -813,6 +825,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     uWinCut: { value: 0.6 },
     uWinBand: { value: 0.2 },
     uWinRow: { value: 7 },
+    uWinSeg: { value: 14 },
     uStripA: { value: new THREE.Color() },
     uStripB: { value: new THREE.Color() },
     uStripK: { value: 1 },
@@ -883,8 +896,10 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   // ── the kit, and where each tower stands
   const kit = STYLES.map(tower);
   const farKit = FAR_STYLES.map(tower);
+  const podiumKit = tower(PODIUM);
   const near = kit.map(() => []);
   const far = farKit.map(() => []);
+  const podia = [];
   const placed = []; // for skyways, spikes and mast lights
   const farPlaced = [];
   const r = rng(1984);
@@ -913,17 +928,19 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
       const cz = (bz + 0.5) * BLOCK - 10;
       if (Math.abs(cx) < 80) continue; // the boulevard
       if (hallD(cx, cz) < PLAZA + 40) continue;
+      // the block itself, terraced, then the towers rising from it
+      stand(podia, podiumKit, cx + (r() - 0.5) * 8, cz + (r() - 0.5) * 8, 96 + r() * 22, 24 + r() * 74, 0, { rand: r(), tint: 0.45 + r() * 0.5, sz: 0.8 + r() * 0.18 });
       const many = r() < 0.35 ? 2 : 1;
       for (let i = 0; i < many; i++) {
-        const w = many > 1 ? 18 + r() * 14 : 24 + r() * 26;
+        const w = many > 1 ? 22 + r() * 12 : 32 + r() * 26;
         const off = many > 1 ? (i ? 1 : -1) * 26 : 0;
         const jx = (r() - 0.5) * (many > 1 ? 10 : 30);
         const jz = (r() - 0.5) * 30;
         const x = cx + jx + (r() < 0.5 ? off : 0);
         const z = cz + jz + (r() < 0.5 ? 0 : off);
         const v = Math.floor(r() * kit.length);
-        const boost = 1 + 0.8 * Math.exp(-hallD(x, z) / 900);
-        const h = (170 + r() * 260) * boost * (r() < 0.12 ? 1.45 : 1);
+        const boost = 1 + 0.7 * Math.exp(-hallD(x, z) / 900);
+        const h = (150 + r() * 210) * boost * (r() < 0.1 ? 1.55 : 1);
         const info = { rand: r(), tint: r(), sz: 0.78 + r() * 0.22 };
         const s = stand(near[v], kit[v], x, z, w, h, (Math.floor(r() * 4) * Math.PI) / 2 + (r() < 0.3 ? Math.PI / 8 : 0), info);
         if (s) placed.push(s);
@@ -973,6 +990,13 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
       instanced(k.glow, towerGlow, near[v]);
     }
   });
+  if (podia.length) {
+    const a = info(podia);
+    podiumKit.body.setAttribute('aInfo', a);
+    podiumKit.glow.setAttribute('aInfo', a);
+    instanced(podiumKit.body, towerMat, podia);
+    instanced(podiumKit.glow, towerGlow, podia);
+  }
   farKit.forEach((k, v) => {
     if (!far[v].length) return;
     k.body.setAttribute('aInfo', info(far[v]));
@@ -1094,10 +1118,11 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     uGlow: { value: new THREE.Color() },
     uGlowDir: { value: new THREE.Vector3(0, 0, -1) },
     uFogCol: U.uFogCol,
-    uMoonA: { value: new THREE.Vector3(-0.42, 0.33, -1).normalize() },
+    uMoonA: { value: new THREE.Vector3(-0.4, 0.42, -1).normalize() },
     uMoonB: { value: new THREE.Vector3(0.36, 0.5, -1).normalize() },
     uMoonTint: { value: new THREE.Color() },
     uMoonK: { value: 1 },
+    uMoonOcc: { value: 0.2 },
     uSunDir: { value: new THREE.Vector3(0.7, 0.3, 0.6).normalize() },
     uSmoke: { value: 0 },
     uSmokeCol: { value: new THREE.Color() },
@@ -1165,7 +1190,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   };
   const tr = rng(77);
   for (const [x, y, back] of [
-    [-50, 18, 1], [-36, 205, 1], [36, 205, 0], [50, 18, 0], [-62, 290, 1], [62, 300, 0], [-44, -20, 1], [44, -20, 0], [-58, 120, 1], [58, 110, 0],
+    [-50, -45, 1], [-36, -15, 1], [36, -15, 0], [50, -45, 0], [-58, 18, 1], [58, 22, 0], [-44, 235, 1], [44, 245, 0],
   ]) {
     const a = V(x, y, 1500);
     const b = V(x, y, HALL.z + PLAZA - 30);
@@ -1177,7 +1202,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     const x = k * BLOCK;
     for (const dir of [0, 1]) {
       if (tr() < 0.3) continue;
-      const y = GROUND + 60 + tr() * 340;
+      const y = GROUND + 45 + tr() * 200;
       const xx = x + (dir ? 7 : -7);
       const a = V(xx, y, 1300);
       const b = V(xx, y, -2300);
@@ -1190,7 +1215,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     if (Math.abs(z - HALL.z) < PLAZA) continue;
     for (const dir of [0, 1]) {
       if (tr() < 0.35) continue;
-      const y = GROUND + 60 + tr() * 340;
+      const y = GROUND + 45 + tr() * 200;
       const zz = z + (dir ? 7 : -7);
       const a = V(-1500, y, zz);
       const b = V(1500, y, zz);
@@ -1199,14 +1224,14 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     }
   }
   // high lanes across the whole city
-  for (let i = 0; i < 6; i++) {
-    const y = 380 + tr() * 300;
+  for (let i = 0; i < 3; i++) {
+    const y = 420 + tr() * 220;
     const a = V(-2600, y, -400 - tr() * 2200);
     const b = V(2600, y, -400 - tr() * 2200);
     line(i % 2 ? b : a, i % 2 ? a : b, i % 2, 140);
   }
   // round the Hall
-  for (let i = 0; i < 7; i++) lanes.push({ c: V(HALL.x, hallBase + 70 + i * 80, HALL.z), rad: 232 + (i % 3) * 12, kind: 1, look: i % 2, gap: 60 + tr() * 30, dir: i % 2 ? 1 : -1 });
+  for (let i = 0; i < 3; i++) lanes.push({ c: V(HALL.x, hallBase + 120 + i * 150, HALL.z), rad: 236 + i * 8, kind: 1, look: i % 2, gap: 80 + tr() * 30, dir: i % 2 ? 1 : -1 });
 
   const cars = [];
   for (const l of lanes) {
@@ -1215,7 +1240,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     const speed = (l.kind ? 70 : 90) + tr() * 70;
     for (let i = 0; i < count; i++) {
       const phase = (i + tr() * 0.6) / count;
-      const len = 14 + tr() * 22;
+      const len = 18 + tr() * 24;
       const bright = 0.6 + tr() * 0.8;
       if (l.kind) cars.push([l.c.x, l.c.y, l.c.z, l.rad, 0, 0, 1, speed * l.dir, phase, len, l.look, bright]);
       else cars.push([l.a.x, l.a.y, l.a.z, l.b.x, l.b.y, l.b.z, 0, speed, phase, len, l.look, bright]);
@@ -1286,7 +1311,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     ]) u.value.copy(pick(k));
     for (const [u, k] of [
       [skyU.uMoonK, 'moonK'], [skyU.uSmoke, 'smoke'], [starU.uStars, 'stars'], [U.uFogDen, 'fogDen'], [U.uLowHaze, 'lowHaze'], [U.uEnvK, 'envK'], [U.uMapGain, 'mapGain'],
-      [U.uWinK, 'winK'], [U.uWinCut, 'winCut'], [U.uWinBand, 'winBand'], [U.uWinRow, 'winRow'], [U.uStripK, 'stripK'], [trafU.uTrafK, 'trafK'],
+      [U.uWinK, 'winK'], [U.uWinCut, 'winCut'], [U.uWinBand, 'winBand'], [U.uWinRow, 'winRow'], [U.uWinSeg, 'winSeg'], [U.uStripK, 'stripK'], [trafU.uTrafK, 'trafK'], [skyU.uMoonOcc, 'moonOcc'],
     ]) u.value = pick(k);
     skyU.uGlowDir.value.copy(pick('glowDir'));
     skyU.uSunDir.value.copy(pick('sunDir'));
@@ -1366,7 +1391,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   // Moves the camera, the fades and the clock on by ms; says whether
   // anything is still on its way (the traffic is always moving, unless calm).
   const update = (ms = 16) => {
-    const dt = Math.min(0.1, ms / 1000);
+    const dt = Math.min(0.25, ms / 1000);
     let busy = false;
     if (calmNow) {
       view.p = view.goal;

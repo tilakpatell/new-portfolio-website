@@ -94,7 +94,7 @@ export default function CybertronBackdrop({ side = 'autobot' }) {
         last = 0;
         return;
       }
-      const ms = last ? Math.min(100, now - last) : 16;
+      const ms = last ? Math.min(250, now - last) : 16;
       last = now;
       const calm = prefersReducedMotion() || slow;
       a.setCalm(calm);
