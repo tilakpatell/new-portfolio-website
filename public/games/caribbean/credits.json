@@ -104,5 +104,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "models/pearl-far": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10876-ba85-7659-a522-a3a7a719ede5",
+    "name": "the galleon, small, for the universe map, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

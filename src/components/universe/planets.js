@@ -679,6 +679,55 @@ const BUILDERS = {
     p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI, 0.2] };
   },
 
+  caribbean(p, { u }) {
+    const r = u.size;
+    const P = u.palette;
+    const rand = rng('caribbean');
+    // a world that is nearly all sea: deep water, turquoise shallows round
+    // small islands of sand and green, and a little cloud
+    const map = paint(
+      (g, w, h) => {
+        const sea = g.createLinearGradient(0, 0, 0, h);
+        sea.addColorStop(0, '#0a4a55');
+        sea.addColorStop(0.5, P.base);
+        sea.addColorStop(1, P.dark);
+        g.fillStyle = sea;
+        g.fillRect(0, 0, w, h);
+        const blob = (x, y, s, fill) => {
+          // drawn twice across the seam, so the map wraps
+          for (const dx of [0, -w, w]) {
+            g.beginPath();
+            g.ellipse(x + dx, y, s * 1.5, s, 0, 0, Math.PI * 2);
+            g.fillStyle = fill;
+            g.fill();
+          }
+        };
+        // island chains: each a few lumps run together, so no two are the
+        // same shape; the shallows first, then the sand, then the green
+        const isles = [];
+        for (let i = 0; i < 64; i++) {
+          const x = rand() * w;
+          const y = h * (0.16 + rand() * 0.68);
+          const s = 3 + rand() * rand() * 15;
+          const run = rand() * Math.PI;
+          for (let k = 0, n = 2 + Math.floor(rand() * 5); k < n; k++) isles.push([x + Math.cos(run) * k * s * 1.3 + (rand() - 0.5) * s, y + Math.sin(run) * k * s * 0.7 + (rand() - 0.5) * s, s * (0.55 + rand() * 0.6)]);
+        }
+        for (const [x, y, s] of isles) blob(x, y, s * 2.4, 'rgba(64, 220, 200, 0.14)');
+        for (const [x, y, s] of isles) blob(x, y, s * 1.6, 'rgba(64, 220, 200, 0.3)');
+        for (const [x, y, s] of isles) blob(x, y, s * 1.08, P.light);
+        for (const [x, y, s] of isles) blob(x, y, s * 0.78, '#3f7a3a');
+        for (let i = 0; i < 60; i++) blob(rand() * w, rand() * h, 6 + rand() * 30, `rgba(255, 255, 255, ${(0.03 + rand() * 0.08).toFixed(3)})`);
+      },
+      1024,
+      512,
+    );
+    p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.6 });
+    // the black galleon sails round it
+    const o = orbit(p.group, { radius: r * 1.5, tilt: 0.22, speed: 0.2, phase: 0.7 });
+    p.orbits.push(o);
+    p.slot = { holder: o.holder, size: r * 0.9, turn: [0.1, -Math.PI / 2, 0] }; // her bow is −x: along the orbit
+  },
+
   travel(p, { u, T }) {
     const r = u.size;
     p.body.material = new THREE.MeshStandardMaterial({ map: T.earth ?? null, color: T.earth ? '#ffffff' : u.palette.base, roughness: 0.85, metalness: 0 });
@@ -1108,6 +1157,7 @@ const MODELS = {
   breakingbad: '/models/universe/breakingbad.glb',
   rickmorty: '/games/meshy/cruiser.glb',
   gaming: '/models/universe/gaming.glb',
+  caribbean: '/games/caribbean/pearl-far.glb',
 };
 
 // Load the models one by one, handing each over as it arrives; a model that

@@ -19,7 +19,7 @@ export const CREWS = [
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
     },
     launch: [
-      ['rick', 'Alright Morty, ten worlds, one tank of fuel. Try not to touch anything.'],
+      ['rick', 'Alright Morty, eleven worlds, one tank of fuel. Try not to touch anything.'],
       ['morty', 'Aw jeez, Rick. Which one first?'],
     ],
     boost: [['rick', 'Wubba lubba dub dub!']],
@@ -92,6 +92,10 @@ export const CREWS = [
       travel: [
         ['rick', 'Earth. Somebody’s been all over this one.'],
         ['morty', 'Look at all those routes, Rick!'],
+      ],
+      caribbean: [
+        ['morty', 'Rick, there’s a giant tentacle coming out of that ocean!'],
+        ['rick', 'The Caribbean, Morty. Pirates. It’s just crime with better hats.'],
       ],
     },
   },
@@ -181,6 +185,10 @@ export const CREWS = [
         ['luke', 'So much blue. Nothing like home.'],
         ['r2', '[a happy trill]'],
       ],
+      caribbean: [
+        ['luke', 'A whole world of water, and one black ship on it.'],
+        ['r2', '[a wary, bubbling whistle]'],
+      ],
     },
   },
   {
@@ -192,7 +200,7 @@ export const CREWS = [
       chewie: { name: 'Chewbacca', color: '#d0965a', voice: 'chewie' },
     },
     launch: [
-      ['han', 'Chewie, we’re home. Well, ten of them.'],
+      ['han', 'Chewie, we’re home. Well, eleven of them.'],
       ['chewie', '[a happy roar]'],
     ],
     boost: [
@@ -268,6 +276,10 @@ export const CREWS = [
       travel: [
         ['han', 'Everybody’s been everywhere on this one.'],
         ['chewie', '[a contented rumble]'],
+      ],
+      caribbean: [
+        ['han', 'Pirates. Finally, some honest people.'],
+        ['chewie', '[an approving growl]'],
       ],
     },
   },

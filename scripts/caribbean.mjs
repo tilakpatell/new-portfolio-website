@@ -2,7 +2,7 @@
 // so the site never calls anyone):
 //
 //   node scripts/caribbean.mjs sky            the sky, from a CC0 Poly Haven HDRI
-//   node scripts/caribbean.mjs models <dir>   the ships, the kraken, the islands
+//   node scripts/caribbean.mjs models <dir> [name …]   the ships, the kraken, the islands (all, or just those named)
 //
 // The models were made with Meshy (meshy.ai, the site owner's account): a
 // concept image each, then a textured PBR model from the image; the task ids
@@ -13,7 +13,7 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
+import { compactPrimitive, dedup, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
@@ -27,7 +27,9 @@ const CREDITS = join(OUT, 'credits.json');
 const SKY = 'evening_road_01_puresky';
 
 // color: the base colour map's size; maps: normal and roughness/metalness;
-// keep: the share of triangles kept (1 = as Meshy made it)
+// keep: the share of triangles kept (1 = as Meshy made it), within an error
+// that is a share of the model's size (0.01 unless given)
+// (a share of the model's size; 0.01 unless given)
 export const ASSETS = {
   pearl: { color: 2048, maps: 1024, keep: 1, what: 'the black-sailed galleon you sail' },
   navy: { color: 1536, maps: 1024, keep: 0.8, what: 'a navy ship of the line' },
@@ -39,6 +41,25 @@ export const ASSETS = {
   port: { color: 1536, maps: 1024, keep: 1, what: 'the pirate port' },
   palms: { color: 1024, maps: 512, keep: 0.5, what: 'a sandbar with palms' },
   chest: { color: 1024, maps: 512, keep: 0.6, what: 'a treasure chest on a raft' },
+  // the galleon again, small: she orbits the Caribbean on the universe map
+  'pearl-far': { from: 'pearl', color: 512, maps: 128, keep: 0.16, error: 0.05, rough: true, what: 'the galleon, small, for the universe map' },
+};
+
+// Meshy's models are cut into many small UV islands, and the careful
+// simplifier won't collapse across their edges, so it stalls near full size.
+// For a copy seen from far off, the rough one will do: it keeps a share of
+// the triangles whatever the seams, and each kept corner keeps its UV.
+const roughly = (ratio, error) => (doc) => {
+  const buffer = doc.getRoot().listBuffers()[0];
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      const index = prim.getIndices();
+      const indices = index ? new Uint32Array(index.getArray()) : Uint32Array.from({ length: pos.getCount() }, (_, i) => i);
+      const [kept] = MeshoptSimplifier.simplifySloppy(indices, new Float32Array(pos.getArray()), 3, null, Math.floor((indices.length * ratio) / 3) * 3, error);
+      prim.setIndices(doc.createAccessor().setArray(kept).setBuffer(buffer));
+      compactPrimitive(prim);
+    }
 };
 
 const loadJson = async (file, fallback) => (existsSync(file) ? JSON.parse(await readFile(file, 'utf8')) : fallback);
@@ -125,7 +146,7 @@ async function sky() {
   console.log(`sky      ${SKY}  ${src.w} × ${rows}  sun at u ${made.sun.u}, ${made.sun.elevation}° up, ×${made.scale}`);
 }
 
-async function models(dir) {
+async function models(dir, only = []) {
   if (!dir) throw new Error('models <dir>: the folder the GLBs were downloaded to');
   await MeshoptEncoder.ready;
   await MeshoptDecoder.ready;
@@ -134,9 +155,10 @@ async function models(dir) {
   const tasks = await loadJson(join(ROOT, 'scripts', 'caribbean-tasks.json'), {});
   await mkdir(OUT, { recursive: true });
   for (const [name, a] of Object.entries(ASSETS)) {
-    const from = join(dir, `${name}.glb`);
+    if (only.length && !only.includes(name)) continue;
+    const from = join(dir, `${a.from ?? name}.glb`);
     if (!existsSync(from)) {
-      console.log(`skip     ${name} (no ${name}.glb in ${dir})`);
+      console.log(`skip     ${name} (no ${a.from ?? name}.glb in ${dir})`);
       continue;
     }
     const doc = await io.read(from);
@@ -145,7 +167,7 @@ async function models(dir) {
     await doc.transform(
       dedup(),
       prune(),
-      ...(a.keep < 1 ? [weld(), simplify({ simplifier: MeshoptSimplifier, ratio: a.keep, error: 0.01 })] : []),
+      ...(a.keep < 1 ? [weld(), a.rough ? roughly(a.keep, a.error ?? 0.05) : simplify({ simplifier: MeshoptSimplifier, ratio: a.keep, error: a.error ?? 0.01 })] : []),
       textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.color, a.color], quality: 84 }),
       textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness/, resize: [a.maps, a.maps], quality: 84 }),
       meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
@@ -153,15 +175,15 @@ async function models(dir) {
     const to = join(OUT, `${name}.glb`);
     await io.write(to, doc);
     const { size } = await stat(to);
-    await credit(`models/${name}`, { source: 'https://www.meshy.ai', id: tasks[name]?.model, name: `${a.what}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' });
+    await credit(`models/${name}`, { source: 'https://www.meshy.ai', id: tasks[a.from ?? name]?.model, name: `${a.what}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' });
     console.log(`model    ${name.padEnd(9)} ${String(Math.round(before)).padStart(6)} → ${String(Math.round(tris())).padStart(6)} tris  ${(size / 1024).toFixed(0).padStart(5)} KB`);
   }
 }
 
-const [step, arg] = process.argv.slice(2);
-const run = { sky, models: () => models(arg) }[step];
+const [step, arg, ...names] = process.argv.slice(2);
+const run = { sky, models: () => models(arg, names) }[step];
 if (!run) {
-  console.error('step: sky | models <dir>');
+  console.error('step: sky | models <dir> [name …]');
   process.exit(1);
 }
 run().catch((e) => {
