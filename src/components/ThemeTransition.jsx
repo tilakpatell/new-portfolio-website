@@ -16,12 +16,12 @@ const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 const sfx = () => import('../lib/sfx');
 
 const SCENES = {
-  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Star Wars', sound: (s) => s.saber(undefined, undefined, 0, 'jedi') },
+  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Star Wars', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), clip: ['binarySunset', 10] },
   sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith') },
   stark: { kind: 'hud', color: '#7fdcff', quote: 'I am Iron Man.', by: 'Tony Stark', sound: (s) => s.repulsor(), clip: ['marvel', 6] },
   arcade: { kind: 'pixels', color: '#d6246e', quote: 'Let’s-a go!', by: 'Player one', sound: (s) => s.coin() },
   heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), clip: ['bbIntro', 6] },
-  dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() },
+  dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() , clip: ['officeTheme', 7] },
   raga: { kind: 'ripple', color: '#e8871e', quote: 'Sa. Where every raga begins and ends.', by: 'Raga', sound: null },
   shire: { kind: 'ring', color: '#e8b44c', quote: 'Even the smallest person can change the course of the future.', by: 'Galadriel', clip: ['lotr', 7] },
   mordor: { kind: 'ring', color: '#ff6a1a', quote: 'One Ring to rule them all.', by: 'J.R.R. Tolkien', clip: ['lotr', 7] },
@@ -152,7 +152,7 @@ export default function ThemeTransition({ id, onDone }) {
     // a recorded clip where there is one (cut short with a fade), else the synthesised sound
     if (scene.clip)
       import('../lib/clips').then(async (c) => {
-        const played = await c.playClip(scene.clip[0], { duration: scene.clip[1] });
+        const played = await c.playClip(scene.clip[0], { duration: scene.clip[1], keep: true });
         if (!played && scene.sound) sfx().then((s) => scene.sound(s));
       });
     else if (scene.sound) sfx().then((s) => scene.sound(s));

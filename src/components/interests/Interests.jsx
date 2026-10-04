@@ -16,7 +16,6 @@ import Gauntlet from './Gauntlet';
 import AutobotMark from '../AutobotMark';
 import DecepticonMark from '../DecepticonMark';
 import { audioContext } from '../../lib/audio';
-import '@fontsource/cinzel/600.css';
 import { STONES, VIEW } from './stones';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
@@ -145,9 +144,22 @@ function MiddleEarth() {
       <p className="mt-2 min-h-[1.25rem] text-sm text-muted" aria-live="polite">
         {say}
       </p>
-      <button type="button" className="btn btn-ghost btn-sm mt-auto self-start" aria-pressed={heat} onClick={() => setHeat((h) => !h)}>
-        {heat ? 'Out of the fire' : 'Hold it to the fire'}
-      </button>
+      <div className="mt-auto flex flex-wrap gap-2 pt-2">
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          aria-pressed={heat}
+          onClick={() => {
+            import('@fontsource/cinzel/600.css'); // the fire-letters' face, only when needed
+            setHeat((h) => !h);
+          }}
+        >
+          {heat ? 'Out of the fire' : 'Hold it to the fire'}
+        </button>
+        <Link to="/middle-earth" className="btn btn-ghost btn-sm">
+          Visit Middle-earth
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -191,6 +203,9 @@ function Transformers() {
         <button type="button" className="btn btn-ghost btn-sm" onClick={switchSides}>
           {autobot ? 'Join the Decepticons' : 'Join the Autobots'}
         </button>
+        <Link to="/cybertron" className="btn btn-ghost btn-sm">
+          Visit Cybertron
+        </Link>
       </div>
     </Card>
   );
@@ -268,9 +283,14 @@ function Marvel() {
       <p className="mt-2 text-sm text-muted" aria-live="polite">
         {all ? 'All six. Ready when you are.' : last ? `${last.name} set. ${6 - have.length} to go.` : 'Tap a socket to set its stone.'}
       </p>
-      <button type="button" className="btn btn-primary btn-sm mt-auto self-start" disabled={!all} onClick={snap}>
-        Snap
-      </button>
+      <div className="mt-auto flex flex-wrap gap-2 pt-2">
+        <button type="button" className="btn btn-primary btn-sm" disabled={!all} onClick={snap}>
+          Snap
+        </button>
+        <Link to="/avengers" className="btn btn-ghost btn-sm">
+          Avengers Tower
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -328,6 +348,9 @@ function Office() {
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => setClip('parkour')}>
           Parkour!
         </button>
+        <Link to="/scranton" className="btn btn-ghost btn-sm">
+          The Dundies
+        </Link>
       </div>
       {clip && <p className="mt-2 text-xs text-muted">The Office (NBC), via GIPHY. The speaker button turns the clip’s sound on.</p>}
     </Card>

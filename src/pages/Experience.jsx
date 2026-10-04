@@ -220,7 +220,7 @@ export default function Experience() {
       <CurrentRole
         role={roles[0]}
         onCrawl={() => {
-          audioContext(); // in the click, so the fanfare can play
+          audioContext(); // in the click, so the main title can play
           setCrawl(true);
         }}
       />

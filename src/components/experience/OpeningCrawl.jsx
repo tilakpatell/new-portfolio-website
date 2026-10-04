@@ -9,9 +9,22 @@ export default function OpeningCrawl({ onClose }) {
   const close = useRef(null);
   const reduced = prefersReducedMotion();
 
+  // The main title comes in as the crawl starts, after "A long time ago…";
+  // the synthesised fanfare stands in if the recording can't play.
   useEffect(() => {
-    import('../../lib/sfx').then((s) => s.fanfare());
-  }, []);
+    let alive = true;
+    let music = null;
+    import('../../lib/clips').then(async (c) => {
+      const played = await c.playClip('starWars', { when: reduced ? 0 : 4.4 });
+      if (!alive) played?.stop();
+      else if (played) music = played;
+      else import('../../lib/sfx').then((s) => s.fanfare());
+    });
+    return () => {
+      alive = false;
+      music?.stop();
+    };
+  }, [reduced]);
 
   useEffect(() => {
     const prev = document.activeElement;

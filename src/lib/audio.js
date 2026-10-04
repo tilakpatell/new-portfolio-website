@@ -55,6 +55,19 @@ export function audioContext() {
 // Where every sound should connect: the master volume, which mutes with the setting.
 export const output = () => (audioContext() ? master : null);
 
+// A tap on everything the site plays, for drawing it (Soundwave's visor).
+// Created on demand, after the context exists; returns null before that.
+let tap = null;
+export function analyser() {
+  if (!ctx) return null;
+  if (!tap) {
+    tap = ctx.createAnalyser();
+    tap.fftSize = 1024;
+    master.connect(tap);
+  }
+  return tap;
+}
+
 // Download a file's bytes ahead of time (on hover, say). This creates no audio
 // context, so it is safe before the visitor has clicked anything.
 const bytes = new Map();

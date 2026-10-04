@@ -127,6 +127,12 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
   const raf = useRef(0);
   const { unlock } = useAchievements();
   const [ui, setUi] = useState({ phase: 'ready', shields: 3, torpedoes: 2, computer: true, range: null, message: '' });
+  // Obi-Wan's line, while it plays; it ends with the run
+  const force = useRef(null);
+  useEffect(() => {
+    if (ui.phase !== 'running') force.current?.stop();
+  }, [ui.phase]);
+  useEffect(() => () => force.current?.stop(), []);
 
   const start = useCallback(() => {
     audioContext(); // in the click, so the run can be heard
@@ -200,8 +206,13 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     g.computer = !g.computer;
     if (!g.computer) {
       audioContext();
-      import('../../lib/clips').then((c) => c.playClip('useTheForce'));
-    }
+      import('../../lib/clips').then(async (c) => {
+        force.current?.stop();
+        force.current = await c.playClip('useTheForce');
+        // switched back on, or the run ended, before it loaded
+        if (!game.current || game.current.phase !== 'running' || game.current.computer) force.current?.stop();
+      });
+    } else force.current?.stop();
     setUi((u) => ({ ...u, computer: g.computer, message: g.computer ? 'Targeting computer on.' : 'You switched off your targeting computer. Use the Force.' }));
   }, []);
 

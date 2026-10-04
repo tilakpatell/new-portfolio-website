@@ -20,6 +20,11 @@ const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
 const Music = lazy(() => import('./pages/Music'));
+const MiddleEarth = lazy(() => import('./pages/MiddleEarth'));
+const Scranton = lazy(() => import('./pages/Scranton'));
+const Avengers = lazy(() => import('./pages/Avengers'));
+const Cybertron = lazy(() => import('./pages/Cybertron'));
+const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -30,6 +35,10 @@ function ScrollToTop() {
   useEffect(() => {
     if (!search.includes('role=')) window.scrollTo(0, 0);
   }, [pathname, search]);
+  // a page's music and lines stop when you leave it
+  useEffect(() => {
+    import('./lib/clips').then((c) => c.stopPageClips());
+  }, [pathname]);
   return null;
 }
 
@@ -140,6 +149,11 @@ function Shell() {
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="/music" element={<Music />} />
+                <Route path="/middle-earth" element={<MiddleEarth />} />
+                <Route path="/scranton" element={<Scranton />} />
+                <Route path="/avengers" element={<Avengers />} />
+                <Route path="/cybertron" element={<Cybertron />} />
+                <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

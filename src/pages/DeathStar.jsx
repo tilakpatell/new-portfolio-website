@@ -9,6 +9,7 @@ import { AurebeshLine } from '../components/Wordmark';
 import { useAchievements } from '../components/Achievements';
 import { jumpTo } from '../lib/anchors';
 import Hyperspace from '../components/Hyperspace';
+import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
 
@@ -84,6 +85,8 @@ export default function DeathStar() {
   const [call, setCall] = useState('');
   const [sound, setSoundState] = useState(soundOn);
   const deadline = useRef(0);
+  // the score playing now (the Binary Sunset, the Rebels' main title), so it can end with its moment
+  const music = useRef(null);
   const { hash } = useLocation();
   useEffect(() => onSoundChange(setSoundState), []);
 
@@ -99,6 +102,7 @@ export default function DeathStar() {
   const travel = (id) => {
     if (id === planet || jumping || destroyed || (phase !== 'idle' && phase !== 'gone')) return;
     audioContext(); // in the click, so the jump can be heard
+    music.current?.stop();
     // dropping out of lightspeed as the tunnel ends
     import('../lib/clips').then((c) => c.playClip('hyperspaceExit', { when: 1.47 }));
     setBattle(false);
@@ -112,6 +116,11 @@ export default function DeathStar() {
     setPhase('idle');
     setArrivals((n) => n + 1);
     if (course === 'yavin') startBattle();
+    // two suns over Tatooine: the binary sunset
+    if (course === 'tatooine')
+      import('../lib/clips').then(async (c) => {
+        music.current = await c.playClip('binarySunset', { when: 0.6, duration: 14 });
+      });
   };
 
   const fire = () => {
@@ -183,7 +192,15 @@ export default function DeathStar() {
   useEffect(() => {
     if (!destroyed) return undefined;
     sfx().then((s) => s.boom());
-    const t = setTimeout(() => sfx().then((s) => s.victory()), 1500);
+    // the main title for the Rebels, or the synthesised fanfare if it can't play
+    const t = setTimeout(
+      () =>
+        import('../lib/clips').then(async (c) => {
+          music.current = await c.playClip('starWars', { duration: 16 });
+          if (!music.current) sfx().then((s) => s.victory());
+        }),
+      1500,
+    );
     return () => clearTimeout(t);
   }, [destroyed]);
 
@@ -214,12 +231,14 @@ export default function DeathStar() {
     } else jumpTo(null, 'trench');
   };
   const rebuild = () => {
+    music.current?.stop();
     setDestroyed(false);
     setOutcome(null);
     setPhase('idle');
     if (planet === 'yavin') startBattle();
   };
   const fightAgain = () => {
+    music.current?.stop();
     setPhase('idle');
     startBattle();
   };
@@ -445,6 +464,7 @@ export default function DeathStar() {
           <p className="mono mt-6 min-h-[1.5em] text-sm text-accent" role="status">
             {jumping ? 'Jumping to lightspeed…' : phase === 'charging' ? 'Charging the main reactor…' : phase === 'firing' ? 'Fire at will.' : call}
           </p>
+          <WorldSwitcher className="mt-6" />
         </div>
       </div>
       <Readout onAction={onAction} />

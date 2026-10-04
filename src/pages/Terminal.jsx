@@ -84,6 +84,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
+  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
@@ -409,6 +410,32 @@ export default function Terminal() {
         setTimeout(() => navigate('/deathstar'), 500);
         return [L('  Retrieving the Death Star plans…', 'ok')];
       },
+      moria: () => {
+        setTimeout(() => navigate('/middle-earth'), 400);
+        return [L('  Speak, friend, and enter…', 'ok')];
+      },
+      avengers: () => {
+        setTimeout(() => navigate('/avengers'), 400);
+        return [L('  J.A.R.V.I.S.: Welcome home.', 'ok')];
+      },
+      scranton: () => {
+        setTimeout(() => navigate('/scranton'), 400);
+        return [L('  Dunder Mifflin, this is Pam…', 'ok')];
+      },
+      cybertron: () => {
+        setTimeout(() => navigate('/cybertron'), 400);
+        return [L('  Opening a space bridge to Cybertron…', 'ok')];
+      },
+      worlds: () => [
+        BLANK,
+        L('  WORLDS', 'head'),
+        L(`  ${pad('deathstar', 12)}Star Wars: the Death Star and the trench run`),
+        L(`  ${pad('moria', 12)}The Lord of the Rings: Doors of Durin, Khazad-dûm, the Ring`),
+        L(`  ${pad('avengers', 12)}Marvel: the arc reactor, Mjolnir, the gauntlet`),
+        L(`  ${pad('scranton', 12)}The Office: the Dundies and Dwight's fact check`),
+        L(`  ${pad('cybertron', 12)}Transformers: transform, Cybertronian, the roster`),
+        L(`  ${pad('music', 12)}The music room: sitar, harmonium, tabla`),
+      ],
       exit: () => {
         setTimeout(() => navigate('/'), 300);
         return [L('  Closing channel.', 'sys')];

@@ -76,5 +76,8 @@ export const ROUTE_THEMES = {
   '/travel': 'travel',
   '/music': 'raga',
   '/middle-earth': 'shire',
+  '/avengers': 'stark',
+  '/scranton': 'dunder',
   '/cybertron': 'optimus',
+  '/albuquerque': 'heisenberg',
 };

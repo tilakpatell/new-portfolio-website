@@ -1064,6 +1064,35 @@ export function wraith() {
   };
 }
 
+// ── The Office ─────────────────────────────────────────────────────────────
+// A room applauding: a few hundred short claps, thick at first, then thinning.
+function applauseRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.3, 0.55);
+  const len = 3.2;
+  const buf = noise(ac, 1, 'white');
+  for (let i = 0; i < 240; i++) {
+    const at = t + Math.pow(Math.random(), 1.6) * len;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 900 + Math.random() * 2200;
+    f.Q.value = 1.2;
+    const g = ac.createGain();
+    const level = (0.18 + Math.random() * 0.22) * (1 - (at - t) / (len * 1.15));
+    env(g.gain, at, [[0, 0.0001], [0.002, level, 'lin'], [0.05, 0.0001]]);
+    const pan = ac.createStereoPanner ? ac.createStereoPanner() : null;
+    if (pan) pan.pan.value = Math.random() * 1.6 - 0.8;
+    src.connect(f).connect(g);
+    (pan ? g.connect(pan) : g).connect(out);
+    src.start(at, Math.random() * 0.9, 0.06);
+  }
+  return len;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1087,3 +1116,4 @@ export const drum = once('drum', drumRaw);
 export const roar = once('roar', roarRaw);
 export const crumble = once('crumble', crumbleRaw);
 export const sizzle = once('sizzle', sizzleRaw);
+export const applause = once('applause', applauseRaw);

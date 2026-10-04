@@ -27,6 +27,7 @@ import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
 import Tabla from '../components/music/Tabla';
 import Egg from '../components/Egg';
+import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
 const hz = (f) => `${f.toFixed(1)} Hz`;
@@ -207,6 +208,7 @@ export default function Music() {
             <p className="lead mt-6 max-w-[54ch]">
               I play sitar. Pick a Sa and a raga, start the tanpura, and everything on this page tunes to it: the sitar, the harmonium and the tabla.
             </p>
+            <WorldSwitcher className="mt-7" />
           </div>
           <figure className="music-hero-photo m-0">
             <Photo id="music-sitar" sizes="(min-width: 1024px) 40vw, 100vw" priority className="h-full w-full object-cover" />

@@ -28,6 +28,9 @@ export const ACHIEVEMENTS = {
   rollout: { name: 'Roll out', desc: 'Transformed the site' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
+  balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },
+  ringbearer: { name: 'Ring-bearer', desc: 'Cast the One Ring into the fire' },
+  worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
