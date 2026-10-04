@@ -1601,8 +1601,13 @@ html.ring-worn footer { filter: grayscale(1) blur(1.2px) brightness(0.72) contra
 @media (min-width: 640px) { .dundie-shelf { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 1.25rem 1rem; } .dundie-shelf svg { height: 4rem; } }
 .dundie-shelf li { display: flex; flex-direction: column; align-items: center; color: var(--border-strong); }
 .dundie-shelf li:not([data-won]) span { color: var(--muted); font-weight: 400; }
+/* the ones still to find: a compact row of empty trophies */
+.dundie-shelf-empty { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 0.6rem 0.35rem; }
+.dundie-shelf-empty svg { height: 2.1rem; }
+@media (min-width: 640px) { .dundie-shelf-empty { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 0.75rem 0.4rem; } .dundie-shelf-empty svg { height: 2.4rem; } }
 .factcheck { padding: clamp(1.25rem, 1rem + 1vw, 2rem); }
 .factcheck-q { font: 700 clamp(1.25rem, 1rem + 1vw, 1.65rem)/1.35 'Courier Prime', var(--font-mono); color: var(--text); }
+@media (max-width: 639px) { .dundie-stage { aspect-ratio: 1 / 1; } .dundie-big { bottom: 28%; height: 52%; } .dundie-award-desc { font-size: 0.75rem; } }
 @media (prefers-reduced-motion: reduce) { .dundie-big { animation: none; } }
 
 /* ─── Avengers Tower ─────────────────────────────────────────────────────── */
@@ -1673,6 +1678,7 @@ html.ring-worn footer { filter: grayscale(1) blur(1.2px) brightness(0.72) contra
 .world-photo-lead .world-photo-frame { aspect-ratio: 16 / 10; }
 @media (min-width: 1024px) { .world-photo-lead .world-photo-frame { aspect-ratio: auto; height: calc(100% - 4.5rem); min-height: 320px; } }
 .world-scenes { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+@media (min-width: 1024px) { .world-scenes { grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); } }
 
 /* ─── Albuquerque ────────────────────────────────────────────────────────── */
 .abq-card { position: relative; display: grid; place-items: center; min-height: clamp(280px, 40vw, 440px); padding: 2rem 1.5rem; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: radial-gradient(120% 120% at 30% 20%, #1d5a32 0%, #0b3018 45%, #04160a 100%); box-shadow: var(--shadow-card); }

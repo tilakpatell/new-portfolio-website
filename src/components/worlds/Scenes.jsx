@@ -5,8 +5,11 @@ import { GIFS } from '../../data/gifs';
 export default function Scenes({ names }) {
   const shown = names.filter((n) => GIFS[n]);
   if (!shown.length) return null;
+  // on a wide screen, as many to a row as leaves no row half empty
+  const n = shown.length;
+  const cols = n <= 5 ? n : n % 4 === 0 ? 4 : n % 3 === 0 ? 3 : 4;
   return (
-    <ul className="world-scenes">
+    <ul className="world-scenes" style={{ '--cols': cols }}>
       {shown.map((n) => (
         <li key={n}>
           <Gif name={n} size="medium" />

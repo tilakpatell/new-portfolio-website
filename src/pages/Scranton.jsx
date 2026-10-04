@@ -164,18 +164,37 @@ export default function Scranton() {
               That’s what she said
             </button>
           </div>
-          <ul className="dundie-shelf mt-8">
-            {all.map((id) => {
-              const has = unlocked.includes(id);
-              return (
-                <li key={id} data-won={has || undefined}>
-                  <Dundie won={has} className="w-auto" />
-                  <span className="mt-2 block text-xs font-semibold text-ink">{has ? ACHIEVEMENTS[id].name : 'Not yet'}</span>
-                  <span className="sr-only">{has ? `won: ${ACHIEVEMENTS[id].desc}` : 'not won yet'}</span>
-                </li>
-              );
-            })}
-          </ul>
+          {all.some((id) => unlocked.includes(id)) && (
+            <>
+              <p className="label mt-8">Won</p>
+              <ul className="dundie-shelf mt-3">
+                {all
+                  .filter((id) => unlocked.includes(id))
+                  .map((id) => (
+                    <li key={id} data-won title={ACHIEVEMENTS[id].desc}>
+                      <Dundie won className="w-auto" />
+                      <span className="mt-2 block text-xs font-semibold text-ink">{ACHIEVEMENTS[id].name}</span>
+                      <span className="sr-only">: {ACHIEVEMENTS[id].desc}</span>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
+          {all.some((id) => !unlocked.includes(id)) && (
+            <>
+              <p className="label mt-8">Still to find · {all.filter((id) => !unlocked.includes(id)).length}</p>
+              <ul className="dundie-shelf dundie-shelf-empty mt-3" aria-label="Dundies not won yet">
+                {all
+                  .filter((id) => !unlocked.includes(id))
+                  .map((id) => (
+                    <li key={id}>
+                      <Dundie won={false} className="w-auto" />
+                      <span className="sr-only">Not won yet</span>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
         </div>
       </section>
 
