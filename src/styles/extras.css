@@ -800,7 +800,9 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
 .dundie-trophy { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-text); }
 
 .crawl { position: fixed; inset: 0; z-index: 90; overflow: hidden; background: #04050a; }
-.crawl-close { position: absolute; top: 16px; right: 16px; z-index: 2; }
+.crawl-controls { position: absolute; top: 16px; right: 16px; z-index: 2; display: flex; gap: 0.5rem; }
+.crawl[data-variant='intro'] .crawl-stage .crawl-text { animation-duration: 31s; }
+.crawl-static-go { position: absolute; left: 0; right: 0; bottom: 2rem; display: flex; justify-content: center; }
 .crawl-intro {
   position: absolute;
   top: 42%;

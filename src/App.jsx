@@ -73,20 +73,35 @@ function Lightspeed() {
   return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
 }
 
-// The jump to lightspeed that greets a first visit to the home page. The inline
-// script in index.html decides (and covers the page until it starts).
+// A first visit to the home page opens on the crawl, then jumps to lightspeed
+// into the site. The inline script in index.html decides (and covers the page
+// until it starts). Skip goes straight to the jump.
+const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 function IntroJump() {
-  const [on, setOn] = useState(() => document.documentElement.dataset.intro === '1');
+  const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
   useEffect(() => {
-    if (!on) return;
+    if (!stage) return;
     try {
       window.localStorage.setItem('tp-intro', '1');
     } catch {
       /* storage unavailable */
     }
-  }, [on]);
-  if (!on) return null;
-  return <Hyperspace entry sound onDone={() => setOn(false)} />;
+  }, [stage]);
+  if (!stage) return null;
+  if (stage === 'crawl')
+    return (
+      <Suspense fallback={null}>
+        <OpeningCrawl
+          variant="intro"
+          onClose={() => {
+            // keep the page covered until the jump's first frame
+            document.documentElement.dataset.intro = '1';
+            setStage('jump');
+          }}
+        />
+      </Suspense>
+    );
+  return <Hyperspace entry sound onDone={() => setStage(null)} />;
 }
 
 // ⌘K / Ctrl+K anywhere, or the search button in the nav.
