@@ -47,7 +47,16 @@ describe('the cast', () => {
   it('ships no animations (the browser poses them), and stays small enough to send', () => {
     for (const id of Object.keys(CAST)) {
       expect(glb(id).animations ?? [], id).toHaveLength(0);
-      expect(file(id).length, id).toBeLessThan(320 * 1024);
+      expect(file(id).length, id).toBeLessThan(190 * 1024);
+    }
+  });
+
+  it('is welded and on its own atlas (scripts/meshy.mjs), which a mipmap can be made of', () => {
+    for (const id of Object.keys(CAST)) {
+      const g = glb(id);
+      // (as Meshy cuts a figure, 11,000 vertices)
+      expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(8000);
+      expect(g.samplers[g.textures[0].sampler], id).toMatchObject({ minFilter: 9987, wrapS: 33071, wrapT: 33071 });
     }
   });
 });
