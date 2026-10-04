@@ -25,6 +25,11 @@ const BEST = 'tp-hq-lawn-best';
 const LIFTED = 'tp-hq-lawn-lifted';
 const STEP = 1 / 120;
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const media = (q) => (typeof window !== 'undefined' ? window.matchMedia?.(q) : null);
+// lawn.css's breakpoint, where the lightning meter moves up beside the wave
+const narrow = media('(max-width: 760px)');
+// a mouse and keyboard; lawn.css hides the touch buttons for these
+const fine = media('(hover: hover) and (pointer: fine)');
 
 // What Thor says as each wave comes in.
 const LINES = [
@@ -122,10 +127,10 @@ export default function HoldTheLawn({ fallback }) {
         recall: () => recallHammer(game.current),
         lightning: () => callLightning(game.current, input.current.aim),
         setState(name) {
-          const g = game.current;
           if (name === 'lift') start();
           if (name === 'action' || name === 'boss') {
-            if (g.phase === 'ready' || g.phase === 'won' || g.phase === 'lost') start();
+            if (['ready', 'won', 'lost'].includes(game.current.phase)) start();
+            const g = game.current; // start() makes a new game
             skipLift(g);
             for (let i = 0; i < 200; i++) stepLawn(g, STEP);
             g.spawns = [];
@@ -236,7 +241,7 @@ export default function HoldTheLawn({ fallback }) {
             break;
           case 'ready':
             play('sizzle');
-            important = { message: 'Lightning ready. E, or right-click, brings it down: on the hammer if it’s out, else where you aim.' };
+            important = { message: `Lightning ready. ${fine?.matches ? 'E, or right-click,' : 'The bolt button'} brings it down: on the hammer if it’s out, else where you aim.` };
             break;
           case 'roar':
             play('roar');
@@ -494,7 +499,7 @@ export default function HoldTheLawn({ fallback }) {
               <span className="tl-charge-bar">
                 <span style={{ width: `${ui.charge}%` }} />
               </span>
-              <span className="tl-charge-label">{ui.charge >= 100 ? 'Lightning · E' : 'Lightning'}</span>
+              <span className="tl-charge-label">{ui.charge >= 100 ? (fine?.matches ? 'Lightning · E' : 'Lightning ready') : 'Lightning'}</span>
             </div>
             <span className="tl-hammer" data-out={ui.hammer !== 'held' || undefined}>
               {ui.hammer === 'held' ? 'Mjolnir in hand' : ui.hammer === 'back' ? 'Coming back…' : 'Click to call it back'}
@@ -672,10 +677,17 @@ function drawHud(cv, g, view, f, dt, live) {
   if (boss) {
     const bw = Math.min(320, w * 0.55);
     const x0 = (w - bw) / 2;
-    const y0 = 52;
+    const y0 = narrow?.matches ? 122 : 52; // below the meter when it's up top
     ctx.font = font(10, 700);
+    // outlined, like the points: it sits on the portal's glow
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 3;
+    ctx.strokeText('CULL OBSIDIAN · HIT HIM FROM BEHIND', w / 2, y0 - 6);
+    ctx.lineWidth = 1.5;
     ctx.fillStyle = 'rgba(255,170,120,0.95)';
     ctx.fillText('CULL OBSIDIAN · HIT HIM FROM BEHIND', w / 2, y0 - 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x0 - 1, y0 - 1, bw + 2, 8);
     ctx.fillStyle = 'rgba(255,255,255,0.14)';
     ctx.fillRect(x0, y0, bw, 6);
     ctx.fillStyle = 'rgba(255,110,60,0.95)';

@@ -137,9 +137,12 @@ export function buildRain({ count = 3500, size = [44, 26, 44], calm = false } = 
     const x = (Math.random() - 0.5) * size[0];
     const y = Math.random() * size[1];
     const z = (Math.random() - 0.5) * size[2];
+    // one seed for both ends: ends falling at different speeds drift apart and
+    // wrap at different times, stretching the streak across the whole volume
+    const s = Math.random();
     for (let k = 0; k < 2; k++) {
       pos.set([x, y, z], (i * 2 + k) * 3);
-      seed[i * 2 + k] = Math.random();
+      seed[i * 2 + k] = s;
       end[i * 2 + k] = k;
     }
   }
@@ -168,10 +171,10 @@ export function buildRain({ count = 3500, size = [44, 26, 44], calm = false } = 
         p.xz = mod(p.xz - uCenter.xz + uSize.xz * 0.5, uSize.xz) - uSize.xz * 0.5 + uCenter.xz;
         // a streak: the top end trails behind the fall
         vec3 dir = normalize(vec3(-uWind.x, uSpeed, -uWind.y));
-        p += dir * end * 0.38;
+        p += dir * end * 0.6;
         // fainter close up, where a streak would be long on screen
         float near = smoothstep(1.5, 7.0, distance(p, cameraPosition));
-        vA = (0.1 + uFlash * 0.3) * (0.5 + seed * 0.5) * (1.0 - end * 0.85) * near;
+        vA = (0.16 + uFlash * 0.3) * (0.5 + seed * 0.5) * (1.0 - end * 0.85) * near;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */ `
@@ -241,6 +244,8 @@ export function lightningPool(scene, n = 10) {
       blending: THREE.AdditiveBlending,
       toneMapped: false,
       fog: false,
+      // the ribbon's quads are wound away from the camera; seen from either side
+      side: THREE.DoubleSide,
       uniforms: { uColor: { value: hot(0xcfe6ff, 4) }, uFade: { value: 1 } },
       vertexShader: /* glsl */ `attribute float alpha; varying float vA; void main() { vA = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: /* glsl */ `uniform vec3 uColor; uniform float uFade; varying float vA; void main() { gl_FragColor = vec4(uColor * vA * uFade, 1.0); }`,
@@ -274,7 +279,7 @@ export function lightningPool(scene, n = 10) {
   };
 
   // strike from a to b; `camera` turns the ribbon toward the view
-  const strike = (a, b, camera, { width = 0.22, jag = 0.12, forks = 2, life = 0.45, color = 0xcfe6ff, k = 4 } = {}) => {
+  const strike = (a, b, camera, { width = 0.22, jag = 0.12, forks = 2, life = 0.45, color = 0xcfe6ff, k = 2.5 } = {}) => {
     const s = pool[next];
     next = (next + 1) % pool.length;
     const strands = [path(a, b, jag, 14)];

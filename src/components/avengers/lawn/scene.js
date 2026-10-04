@@ -653,7 +653,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         // a strike far off, over the trees
         const x = (Math.random() - 0.5) * 300;
         const z = -150 - Math.random() * 150;
-        zap.strike(new THREE.Vector3(x, 140, z), new THREE.Vector3(x + (Math.random() - 0.5) * 40, 0, z + 20), camera, { width: 1.4, jag: 0.12, forks: 3, life: 0.5, k: 3 });
+        zap.strike(new THREE.Vector3(x, 140, z), new THREE.Vector3(x + (Math.random() - 0.5) * 40, 0, z + 20), camera, { width: 0.6, jag: 0.12, forks: 3, life: 0.5, k: 2.5 });
         stormSound?.();
       }
     }
@@ -702,7 +702,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         case 'lifted': {
           liftedT = 0;
           const top = new THREE.Vector3(CRATER.x, 30, CRATER.z - 6);
-          zap.strike(top, new THREE.Vector3(thorX + 0.4, 2.6, 0), camera, { width: 0.5, jag: 0.1, forks: 4, life: 0.7 });
+          zap.strike(top, new THREE.Vector3(thorX + 0.4, 2.6, 0), camera, { width: 0.14, jag: 0.1, forks: 4, life: 0.7 });
           vfx.sparks(new THREE.Vector3(thorX + 0.4, 2.4, 0), { count: 60, speed: 10, color: 0xdff0ff, to: 0x5aa8ff, life: 0.7, size: 0.12 });
           vfx.ring(new THREE.Vector3(thorX, 0.08, 0), { color: 0x9fd0ff, from: 0.5, to: 6, life: 0.5, opacity: 0.55 });
           vfx.flash(new THREE.Vector3(thorX, 3, 0), { color: 0xbfe0ff, intensity: 120, distance: 30, life: 0.6 });
@@ -806,8 +806,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         case 'lightning': {
           raiseT = 0;
           const at = new THREE.Vector3(e.x, 0.05, e.z);
-          zap.strike(new THREE.Vector3(e.x + 6, 80, e.z - 30), at, camera, { width: 0.7, jag: 0.08, forks: 4, life: 0.65 });
-          for (const [ax, ay, az, bx, by, bz] of e.arcs) zap.strike(new THREE.Vector3(ax, ay + 0.6, az), new THREE.Vector3(bx, by, bz), camera, { width: 0.18, jag: 0.25, forks: 1, life: 0.5 });
+          zap.strike(new THREE.Vector3(e.x + 6, 80, e.z - 30), at, camera, { width: 0.22, jag: 0.08, forks: 4, life: 0.65 });
+          for (const [ax, ay, az, bx, by, bz] of e.arcs) zap.strike(new THREE.Vector3(ax, ay + 0.6, az), new THREE.Vector3(bx, by, bz), camera, { width: 0.07, jag: 0.25, forks: 1, life: 0.5 });
           vfx.ring(at, { color: 0x9fd0ff, from: 0.5, to: LAWN.strike, life: 0.45, opacity: 0.5 });
           vfx.sparks(at, { count: 50, speed: 11, color: 0xdff0ff, to: 0x5aa8ff, life: 0.7, size: 0.12 });
           vfx.smoke(at, { size: 2, count: 6, life: 2, color: 0x2a2a2e, to: 0x55555c, opacity: 0.5 });
@@ -815,7 +815,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
           // the hammer, raised to the sky, takes a bolt of its own
           if (g.hammer.state === 'held') {
             thor.bones.handR.getWorldPosition(v3);
-            zap.strike(new THREE.Vector3(thorX - 4, 70, -30), v3.clone().setY(v3.y + 0.6), camera, { width: 0.35, jag: 0.08, forks: 2, life: 0.45 });
+            zap.strike(new THREE.Vector3(thorX - 4, 70, -30), v3.clone().setY(v3.y + 0.6), camera, { width: 0.1, jag: 0.08, forks: 2, life: 0.45 });
           }
           lightning(1.1);
           feel.trauma(0.55);
