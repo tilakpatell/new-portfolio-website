@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
@@ -78,10 +78,12 @@ function Lightspeed() {
 }
 
 // A first visit to the home page opens on the crawl, then jumps to lightspeed
-// into the site. The inline script in index.html decides (and covers the page
-// until it starts). Skip goes straight to the jump.
+// into the universe map, where the whole site is laid out as places to fly
+// to. The inline script in index.html decides (and covers the page until it
+// starts). Skip goes straight to the jump. The map loads during the crawl.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 function IntroJump() {
+  const navigate = useNavigate();
   const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
   useEffect(() => {
     if (!stage) return;
@@ -89,6 +91,10 @@ function IntroJump() {
       window.localStorage.setItem('tp-intro', '1');
     } catch {
       /* storage unavailable */
+    }
+    if (stage === 'crawl') {
+      import('./pages/Universe');
+      import('./components/universe/scene');
     }
   }, [stage]);
   if (!stage) return null;
@@ -98,9 +104,11 @@ function IntroJump() {
         <OpeningCrawl
           variant="intro"
           onClose={() => {
-            // keep the page covered until the jump's first frame
+            // keep the page covered until the jump's first frame, which
+            // comes out in the universe
             document.documentElement.dataset.intro = '1';
             setStage('jump');
+            navigate('/universe');
           }}
         />
       </Suspense>

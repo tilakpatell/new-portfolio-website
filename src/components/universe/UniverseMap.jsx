@@ -14,7 +14,7 @@ import MiniMap from './MiniMap';
 // if 3D is off, fails or is lost, the flat MiniMap takes the box.
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, handle, frozen, ship, onEvent, onLand }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand }) {
   const labels = useRef({});
   const stick = useRef(null);
   const [flown, setFlown] = useState(false);
@@ -30,6 +30,7 @@ export default function UniverseMap({ selected, onSelect, handle, frozen, ship, 
       stick,
       frozen,
       onPick: onSelect,
+      onOpen,
       onLand,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
@@ -85,6 +86,7 @@ export default function UniverseMap({ selected, onSelect, handle, frozen, ship, 
                   }}
                   type="button"
                   className="universe-label"
+                  data-station={u.kind === 'core' || undefined}
                   style={{ '--swatch': u.swatch }}
                   aria-pressed={selected === u.id}
                   tabIndex={u.id === focusable ? 0 : -1}

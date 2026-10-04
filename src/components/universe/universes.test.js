@@ -9,9 +9,11 @@ const app = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8');
 const ROUTES = [...app.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '*');
 
 describe('the universes', () => {
-  it('are ten, each with its own id', () => {
-    expect(UNIVERSES).toHaveLength(10);
-    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(10);
+  it('are the site’s six pages and ten fandoms, each with its own id', () => {
+    expect(UNIVERSES.filter((u) => u.kind === 'core').map((u) => u.to)).toEqual(['/', '/experience', '/projects', '/resume', '/contact', '/terminal']);
+    expect(UNIVERSES.filter((u) => u.kind === 'fandom')).toHaveLength(10);
+    expect(new Set(UNIVERSES.map((u) => u.id)).size).toBe(16);
+    for (const u of UNIVERSES) expect(u.place, u.id).toBeTruthy();
   });
 
   it('each go somewhere real', () => {

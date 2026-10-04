@@ -1,33 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, PLANETS, SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
+import { EDGE, PLANETS, SHIP, SOLIDS, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
 import { ORDER } from './layout';
 
-const fly = (s, input, seconds) => {
+const fly = (s, input, seconds, solids = SOLIDS) => {
   let ship = s;
   const events = [];
   for (let t = 0; t < seconds; t += 1 / 60) {
-    const r = step(ship, input, 1 / 60);
+    const r = step(ship, input, 1 / 60, solids);
     ship = r.ship;
     events.push(...r.events);
   }
   return { ship, events };
 };
-const inside = (s) => PLANETS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < p.r + SHIP.radius - 1e-6);
+const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < p.r + SHIP.radius - 1e-6);
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
-    const s = spawn(null);
-    expect(fly(s, { throttle: 1 }, 3).ship.speed).toBeCloseTo(SHIP.cruise, 1);
-    expect(fly(s, { throttle: 1, boost: true }, 4).ship.speed).toBeCloseTo(SHIP.boost, 1);
-    const going = fly(s, { throttle: 1 }, 3).ship;
-    expect(fly(going, {}, 4).ship.speed).toBeCloseTo(0, 3);
+    const s = spawn(null); // in open space for this one: nothing to bump into
+    expect(fly(s, { throttle: 1 }, 3, []).ship.speed).toBeCloseTo(SHIP.cruise, 1);
+    expect(fly(s, { throttle: 1, boost: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    const going = fly(s, { throttle: 1 }, 3, []).ship;
+    expect(fly(going, {}, 4, []).ship.speed).toBeCloseTo(0, 3);
   });
 
   it('goes the way it points, and turns right when told to', () => {
     const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
-    const ahead = fly(s, { throttle: 1 }, 0.5).ship;
+    const ahead = fly(s, { throttle: 1 }, 0.5, []).ship;
     expect(ahead.z).toBeLessThan(0); // heading 0 is −z
-    const right = fly(s, { throttle: 1, turn: 1 }, 0.5).ship;
+    const right = fly(s, { throttle: 1, turn: 1 }, 0.5, []).ship;
     expect(forward(right.heading)[0]).toBeGreaterThan(0); // nose toward +x
   });
 
@@ -44,7 +44,7 @@ describe('flying the ship', () => {
 
   it('is turned back at the edge of the map', () => {
     const s = { ...spawn(null), heading: Math.PI }; // facing out, past the edge
-    const { ship, events } = fly(s, { throttle: 1 }, 3);
+    const { ship, events } = fly(s, { throttle: 1 }, 3, []);
     expect(Math.hypot(ship.x, ship.z)).toBeLessThanOrEqual(EDGE + 1e-9);
     expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
     const [fx, fz] = forward(ship.heading);

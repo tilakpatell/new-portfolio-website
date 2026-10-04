@@ -268,9 +268,21 @@ const ARRIVE = {
   },
 };
 
+// docking at one of the stations: two soft tones, up
+const DOCK = {
+  play: () =>
+    tones(
+      [
+        [659, 0, 0.35],
+        [988, 0.16, 0.6],
+      ],
+      { type: 'sine', gain: 0.06 },
+    ),
+  ms: 700,
+};
+
 export async function arrivalSound(id) {
-  const a = ARRIVE[id];
-  if (!a) return;
+  const a = ARRIVE[id] ?? DOCK;
   if (a.play) {
     a.play();
     await new Promise((r) => setTimeout(r, a.ms));

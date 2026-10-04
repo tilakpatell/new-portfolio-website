@@ -4,7 +4,8 @@
 // the comms box says these lines as things happen.
 //
 // A line is [speaker, text]; an exchange is a list of lines said in turn.
-// `arrive` has one exchange per universe, said the first time you reach it.
+// `arrive` has one exchange per place on the map (the stations and the
+// planets), said the first time you reach it.
 // Artoo and Chewie don't speak Basic: their lines are what they mean, in
 // brackets, and sound like them (sounds.js).
 
@@ -28,6 +29,30 @@ export const CREWS = [
     ],
     edge: [['rick', 'Nothing out there but more nothing, Morty. Turning back.']],
     arrive: {
+      home: [
+        ['morty', 'Whose space station is this, Rick?'],
+        ['rick', 'Tilak’s. The guy who built this whole universe, Morty. Show some respect.'],
+      ],
+      experience: [
+        ['rick', 'Six jobs on one station, Morty. AWS, Bose, the works.'],
+        ['morty', 'That’s, like, a real career, Rick.'],
+      ],
+      projects: [
+        ['morty', 'They’re building stuff in there, Rick!'],
+        ['rick', 'A Game Boy emulator, a file system, a shell. Kid’s a tinkerer, Morty. I like him.'],
+      ],
+      resume: [
+        ['rick', 'One page, Morty. A whole career on one page.'],
+        ['morty', 'Mine would just say “went on adventures.”'],
+      ],
+      contact: [
+        ['morty', 'A big antenna! Can we call home?'],
+        ['rick', 'It’s for messages to Tilak, Morty. Don’t prank call him.'],
+      ],
+      terminal: [
+        ['rick', 'A terminal. Finally, something for grown-ups.'],
+        ['morty', 'Rick, what’s sudo?'],
+      ],
       starwars: [
         ['morty', 'Rick, is that… is that the Death Star?'],
         ['rick', 'A moon-sized battle station with one exhaust port. Peak Empire engineering, Morty.'],
@@ -92,6 +117,30 @@ export const CREWS = [
     ],
     edge: [['luke', 'Nothing out there, Artoo. Bringing her around.']],
     arrive: {
+      home: [
+        ['luke', 'That’s his home base. Artoo, say hello.'],
+        ['r2', '[a cheerful greeting]'],
+      ],
+      experience: [
+        ['luke', 'Six missions logged. That’s a real flight record.'],
+        ['r2', '[an impressed whistle]'],
+      ],
+      projects: [
+        ['luke', 'A workshop! Artoo, you’d love it in there.'],
+        ['r2', '[an excited spin of beeps]'],
+      ],
+      resume: [
+        ['luke', 'His service record. One page, every word of it true.'],
+        ['r2', '[a data-transfer chirp]'],
+      ],
+      contact: [
+        ['luke', 'A relay station. We can get a message to him from here.'],
+        ['r2', '[a hopeful bleep]'],
+      ],
+      terminal: [
+        ['luke', 'Artoo, plug in. See what you can find.'],
+        ['r2', '[a smug, triumphant trill]'],
+      ],
       starwars: [
         ['luke', 'The Death Star. Stay on target, Artoo.'],
         ['r2', '[a worried warble]'],
@@ -156,6 +205,30 @@ export const CREWS = [
     ],
     edge: [['han', 'Nothing out there but rocks. Turning around.']],
     arrive: {
+      home: [
+        ['han', 'Nice place. Not as nice as the Falcon.'],
+        ['chewie', '[a polite growl]'],
+      ],
+      experience: [
+        ['han', 'AWS, RTX, Bose. Kid’s had more jobs than I’ve had bounties.'],
+        ['chewie', '[laughs]'],
+      ],
+      projects: [
+        ['han', 'A Game Boy emulator? Chewie, we’re keeping that.'],
+        ['chewie', '[a pleased rumble]'],
+      ],
+      resume: [
+        ['han', 'One page? Mine would need a lawyer.'],
+        ['chewie', '[agrees]'],
+      ],
+      contact: [
+        ['han', 'Send him a message. Keep it short, nobody reads the long ones.'],
+        ['chewie', '[a short, polite roar]'],
+      ],
+      terminal: [
+        ['han', 'A terminal. Chewie, you’re the one who reads the manuals.'],
+        ['chewie', '[an offended growl]'],
+      ],
       starwars: [
         ['han', 'The Death Star. I’m not going in there. Again.'],
         ['chewie', '[a long groan]'],

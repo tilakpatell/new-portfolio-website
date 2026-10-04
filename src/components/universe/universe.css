@@ -121,6 +121,8 @@
 .universe-label[aria-pressed='true'] { color: var(--swatch); background: rgb(3 4 10 / 0.7); }
 .universe-label[data-behind] { opacity: 0.3; }
 .universe-label[data-off] { visibility: hidden; }
+/* a station's big sign names it; its button stays for the keys */
+.universe-label[data-station]:not(:focus-visible) { opacity: 0; pointer-events: none; }
 .universe-label:focus-visible { outline: 2px solid var(--swatch); outline-offset: 2px; }
 @media (pointer: coarse) { .universe-label { min-height: 44px; } }
 
@@ -153,9 +155,16 @@
   transition: color 0.2s;
 }
 .universe-back:hover { color: var(--text); }
+.universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
+.universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .universe-enter { width: 100%; justify-content: center; }
 .universe-card { margin: 0; padding: 0; list-style: none; }
 .universe-card .fun-card { min-height: 0; }
+.station-list { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
+.station-list a { display: grid; gap: 0.05rem; padding: 0.45rem 0.6rem; margin: 0 -0.6rem; border-radius: 10px; font-size: 0.88rem; line-height: 1.3; transition: background-color 0.2s; }
+.station-list a:hover { background: rgb(255 255 255 / 0.05); }
+.station-list a span:last-child { font-size: 0.8rem; }
+.station-term { margin-bottom: 0; padding: 0.75rem 0.9rem; border-radius: 10px; background: #05080a; color: #7dff9a; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap; }
 .universe-fade { position: absolute; z-index: 3; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
 .universe-page:is([data-leaving='dive'], [data-leaving='portal']) .universe-fade { opacity: 1; }
 

@@ -6,11 +6,12 @@
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
-// buildShip(kind) → { group, setThrottle(0…1), mount(model) }
+// buildShip(kind, textures) → { group, setThrottle(0…1), mount(model) }
 // Every ship points along −z, centred, about LENGTH long.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { tiled } from './planets';
 
 export const LENGTH = 0.36;
 
@@ -22,7 +23,7 @@ function parts(list) {
     m.compose(new THREE.Vector3(...pos), q.setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scale));
     const g = geo.index ? geo.toNonIndexed() : geo.clone();
     geo.dispose();
-    for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
+    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
     return g.applyMatrix4(m);
   });
   const merged = mergeGeometries(geos);
@@ -30,14 +31,25 @@ function parts(list) {
   return merged;
 }
 
-const lambert = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
+const lambert = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.1, ...extra });
+// a hull of real plates (or plain, if the textures didn't come)
+const plated = (T, color, which, repeat, extra = {}) =>
+  new THREE.MeshStandardMaterial({
+    color,
+    map: which === 'hull' ? tiled(T.hull, repeat, repeat) : null,
+    normalMap: tiled(T[`${which}-normal`], repeat, repeat),
+    roughnessMap: tiled(T[`${which}-rough`], repeat, repeat),
+    roughness: 1,
+    metalness: 0.2,
+    ...extra,
+  });
 const glowMat = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, side: THREE.DoubleSide });
 
 // along z: CylinderGeometry stands on y, so lay it down with its top forward
 const tube = (rTop, rBottom, len, seg = 12) => new THREE.CylinderGeometry(rTop, rBottom, len, seg);
 const LAY = [-Math.PI / 2, 0, 0];
 
-function xwing() {
+function xwing(T) {
   const group = new THREE.Group();
   const wingSpan = 0.17;
   const wings = [];
@@ -68,7 +80,7 @@ function xwing() {
       ...wings,
       ...engines,
     ]),
-    lambert('#dcd8cf'),
+    plated(T, '#e2ded5', 'plates', 3),
   );
   const red = new THREE.Mesh(parts([...stripes, [new THREE.BoxGeometry(0.03, 0.054, 0.02), [0, 0, 0.03]]]), lambert('#c0392b'));
   const dark = new THREE.Mesh(
@@ -85,7 +97,7 @@ function xwing() {
   return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }] };
 }
 
-function falcon() {
+function falcon(T) {
   const group = new THREE.Group();
   const R = 0.165;
   const profile = [
@@ -107,7 +119,7 @@ function falcon() {
       [new THREE.SphereGeometry(0.02, 14, 10), [0.165, 0.004, -0.122]],
       [new THREE.CylinderGeometry(0.03, 0.034, 0.012, 16), [0, 0.034, 0.01]], // the top turret
     ]),
-    lambert('#bdb9b0'),
+    plated(T, '#d6d1c6', 'hull', 2),
   );
   const dark = new THREE.Mesh(
     parts([
@@ -130,7 +142,7 @@ function falcon() {
 
 // Until Portal panic's model of the cruiser arrives: a little saucer car
 // with a glass dome, the same size.
-function cruiser() {
+function cruiser(T) {
   const group = new THREE.Group();
   const stand = new THREE.Group();
   const body = new THREE.Mesh(
@@ -139,7 +151,7 @@ function cruiser() {
       [new THREE.BoxGeometry(0.03, 0.05, 0.06), [-0.08, 0.015, 0.1], [0, 0, 0.4]],
       [new THREE.BoxGeometry(0.03, 0.05, 0.06), [0.08, 0.015, 0.1], [0, 0, -0.4]],
     ]),
-    lambert('#a9b4b8'),
+    plated(T, '#b4bfc3', 'plates', 1),
   );
   const dome = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#bfe8ff', transparent: true, opacity: 0.6 }));
   dome.position.set(0, 0.025, -0.02);
@@ -153,8 +165,8 @@ function cruiser() {
 
 const BUILD = { xwing, falcon, cruiser };
 
-export function buildShip(kind) {
-  const ship = (BUILD[kind] ?? cruiser)();
+export function buildShip(kind, T = {}) {
+  const ship = (BUILD[kind] ?? cruiser)(T);
   const pivot = new THREE.Group(); // banks and bobs inside the group the scene moves
   pivot.add(ship.group);
   const group = new THREE.Group();
@@ -174,7 +186,7 @@ export function buildShip(kind) {
       const holder = new THREE.Group();
       holder.add(model);
       holder.scale.setScalar(LENGTH / Math.max(dims.x, dims.z, 1e-6));
-      holder.rotation.y = Math.PI; // its nose is +z
+      holder.rotation.y = -Math.PI / 2; // its nose is −x (as Portal panic and the C-137 page have it)
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {

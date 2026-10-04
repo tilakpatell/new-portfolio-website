@@ -14,6 +14,7 @@
 
 import { easeOut } from '../../lib/three/renderer';
 import { MAP_RADIUS, POSITIONS, REACH } from './layout';
+import { byId } from './universes';
 
 export const FOV = 34; // vertical, degrees
 export const FLIGHT_MS = 1100;
@@ -91,10 +92,14 @@ export function overviewPose(size, rect) {
   return pose;
 }
 
-// One universe, centred in the open area at about half its size.
+// One place, centred in the open area at about half its size (a station a
+// little closer and from a little higher, so it fills the view and the sun
+// behind it drops away).
 export function focusPose(id, yaw, size, rect) {
-  const dist = (REACH[id] * size.h) / (TAN * FOCUS_FILL * Math.min(rect.w, rect.h));
-  return { target: worldPos(id, yaw), dist, pitch: FOCUS_PITCH };
+  const station = byId(id)?.kind === 'core';
+  const fill = station ? 0.72 : FOCUS_FILL;
+  const dist = (REACH[id] * size.h) / (TAN * fill * Math.min(rect.w, rect.h));
+  return { target: worldPos(id, yaw), dist, pitch: station ? 0.46 : FOCUS_PITCH };
 }
 
 const mix = (a, b, t) => a + (b - a) * t;

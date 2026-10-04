@@ -19,7 +19,7 @@ export default function Interests() {
           <InterestDock />
         </div>
         <div className="dark-scope universe-teaser mt-10">
-          <MiniMap className="minimap-teaser" linkTo={(id) => `/universe/${id}`} />
+          <MiniMap className="minimap-teaser" kind="fandom" linkTo={(id) => `/universe/${id}`} />
           <Link to="/universe" className="btn btn-primary group mt-4">
             Open the universe <RiArrowRightLine className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>

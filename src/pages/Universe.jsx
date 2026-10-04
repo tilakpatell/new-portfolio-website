@@ -42,22 +42,24 @@ export default function Universe() {
     local.set(SHIP_KEY, id);
   };
 
-  const enter = () => {
-    if (!universe || leaving) return;
-    const plan = enterPlan(universe, { reduced, three: map.current.live, ship });
+  // into a place: the selected one (Enter, E), or a station whose sign was clicked
+  const go = (u) => {
+    if (!u || leaving) return;
+    const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(universe.to);
+      navigate(u.to);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
     if (plan.mode === 'jump') window.dispatchEvent(new Event('tp:hyperspace'));
     else {
       if (plan.mode === 'portal') portalSound();
-      map.current.dive(universe.id);
+      map.current.dive(u.id);
     }
-    setLeaving({ id: universe.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(universe.to), plan.delay);
+    setLeaving({ id: u.id, mode: plan.mode });
+    timer.current = setTimeout(() => navigate(u.to), plan.delay);
   };
+  const enter = () => go(universe);
 
   const whole = () => {
     if (!map.current.whole()) select(null);
@@ -94,6 +96,7 @@ export default function Universe() {
       <UniverseMap
         selected={selected}
         onSelect={select}
+        onOpen={(id) => go(byId(id))}
         handle={map}
         frozen={Boolean(leaving)}
         ship={ship}

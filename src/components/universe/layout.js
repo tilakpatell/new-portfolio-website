@@ -1,27 +1,39 @@
 // Where each universe sits on the map, and how to step between them. Pure:
 // the 3D scene, the SVG mini-map and the world pages' links all use it.
 //
-// The planets lie on a disc (x, z) on a golden-angle spiral, radius growing
-// with their order, so no two line up and the first ones sit near the middle.
+// A sun sits in the middle of the disc (x, z), the site's own pages are
+// stations on a ring round it, and the fandoms are planets further out on a
+// golden-angle spiral, radius growing with their order, so no two line up.
 // A little height (y) each keeps the tilted view from looking flat.
 
 import { UNIVERSES, byId } from './universes';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const SPREAD = 2.75; // map units per √step
+const SPREAD = 2.6; // map units per √step, out past the stations
+const HUB = 3.6; // where the fandoms' spiral starts
+const RING = 2.7; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
 
-// how far a universe's moons, rings and orbiting things reach from its centre
-export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * 1.9]));
+// the sun in the middle: something to fly round, not somewhere to go
+export const SUN = { at: [0, 0, 0], r: 0.8 };
 
-export const POSITIONS = Object.fromEntries(
-  UNIVERSES.map((u, i) => {
-    const r = SPREAD * Math.sqrt(i + 0.6);
+// how far a universe's moons, rings and orbiting things reach from its centre
+export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.kind === 'core' ? 2.0 : 1.9)]));
+
+const core = UNIVERSES.filter((u) => u.kind === 'core');
+const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
+export const POSITIONS = Object.fromEntries([
+  ...core.map((u, i) => {
+    const a = (i / core.length) * Math.PI * 2 + Math.PI / 2; // Home nearest the camera
+    return [u.id, [RING * Math.cos(a), 0.12 * Math.sin(i * 2.1), RING * Math.sin(a)]];
+  }),
+  ...fandoms.map((u, i) => {
+    const r = HUB + SPREAD * Math.sqrt(i + 0.6);
     const a = i * GOLDEN + 0.4;
     return [u.id, [r * Math.cos(a), 0.35 * Math.sin(i * 2.4), r * Math.sin(a)]];
   }),
-);
+]);
 
 export const MAP_RADIUS = Math.max(...ORDER.map((id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]));
 

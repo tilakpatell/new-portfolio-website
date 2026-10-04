@@ -9,7 +9,7 @@
 // It turns on the spot, coasts to a stop, can't go through a planet (it
 // bounces off) and is turned back at the edge of the map.
 
-import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
+import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const SHIP = {
@@ -30,6 +30,8 @@ const PARK = 0.7; // where autopilot stops, past the planet's reach
 
 export const PLANETS = ORDER.map((id) => ({ id, at: POSITIONS[id], r: byId(id).size, reach: REACH[id] }));
 const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
+// what the ship can't fly through: every planet and station, and the sun
+export const SOLIDS = [...PLANETS, { id: 'sun', at: SUN.at, r: SUN.r, reach: SUN.r * 1.4 }];
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)); // to −π…π
@@ -57,7 +59,7 @@ export function parkAt(id, from = [0, MAP_RADIUS]) {
     const x = p.at[0] + dx * d;
     const z = p.at[2] + dz * d;
     let clear = Infinity;
-    for (const o of PLANETS) if (o !== p) clear = Math.min(clear, Math.hypot(x - o.at[0], z - o.at[2]) - o.reach);
+    for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.hypot(x - o.at[0], z - o.at[2]) - o.reach);
     const inMap = Math.hypot(x, z) < EDGE - 1;
     const score = dx * ax + dz * az + (clear > ORBIT_IN + 0.2 ? 4 : clear) + (inMap ? 2 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
@@ -73,8 +75,9 @@ export function spawn(id) {
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
-// way: { type: 'bump', id, hard } and { type: 'edge' }.
-export function step(s, input, dt) {
+// way: { type: 'bump', id, hard } and { type: 'edge' }. `solids` is what it
+// can bump into (everything on the map, unless a test says otherwise).
+export function step(s, input, dt, solids = SOLIDS) {
   dt = clamp(dt, 0, 0.05);
   const events = [];
   const throttle = clamp(input.throttle || 0, -1, 1);
@@ -108,7 +111,7 @@ export function step(s, input, dt) {
   }
 
   // off a planet's side, never through it
-  for (const p of PLANETS) {
+  for (const p of solids) {
     const dy = s.y - p.at[1];
     const min = p.r + SHIP.radius;
     if (Math.abs(dy) >= min) continue;
@@ -162,22 +165,29 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
     const done = Math.abs(face) < 0.08 && Math.abs(s.speed) < 0.25;
     return { input: { throttle: 0, turn: clamp(-face * 3, -1, 1) }, done };
   }
-  // toward the parking spot, steering round any planet the straight line
-  // would clip, on the side the ship already passes it
+  // toward the parking spot, steering round anything the straight line
+  // would clip (further ahead the faster it goes, and harder the closer it
+  // is), on the side the ship already passes it
   const ux = tx / dist;
   const uz = tz / dist;
   let dx = ux;
   let dz = uz;
-  for (const o of PLANETS) {
+  let blocked = false;
+  let closest = Infinity; // the gap to the nearest thing in the way
+  const look = 2.5 + Math.abs(s.speed) * 1.2;
+  for (const o of SOLIDS) {
     if (o.id === id) continue;
     const ox = o.at[0] - s.x;
     const oz = o.at[2] - s.z;
     const along = ox * ux + oz * uz;
-    if (along < 0 || along > dist + o.r) continue; // behind the ship or past the stop
+    if (along < -o.r || along > Math.min(dist, look) + o.r) continue; // behind, past the stop, or not yet
     const cross = ox * uz - oz * ux; // > 0: it's to the left of the line
     const clear = o.r + SHIP.radius + 0.6;
-    if (Math.abs(cross) > clear || along > o.reach + 4) continue;
-    const k = ((clear - Math.abs(cross)) / clear) * 1.6;
+    if (Math.abs(cross) > clear) continue;
+    blocked = true;
+    const gap = Math.hypot(ox, oz) - o.r;
+    closest = Math.min(closest, gap);
+    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 1.5, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;
     dz += side * ux * k;
@@ -185,7 +195,8 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const want = headingTo(dx, dz);
   const diff = wrap(want - s.heading);
   const turn = clamp(-diff * 2.5, -1, 1);
-  const brake = Math.abs(diff) > 1.1 ? 0.15 : 1;
+  // slow for sharp turns, and for anything close ahead, so it can steer round
+  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * clamp(closest / 2.5, 0.3, 1);
   const throttle = brake * clamp(dist / 3, 0.18, 1);
-  return { input: { throttle, turn, boost: dist > 8 && Math.abs(diff) < 0.25 }, done: false };
+  return { input: { throttle, turn, boost: !blocked && dist > 8 && Math.abs(diff) < 0.25 }, done: false };
 }

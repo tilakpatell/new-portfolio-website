@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine } from 'react-icons/ri';
 import { CARDS } from '../interests/cards';
+import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
 import { next, prev } from './layout';
 import { byId } from './universes';
@@ -39,10 +40,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
     return (
       <aside className="universe-panel" aria-label="About the map">
         <p className="eyebrow">The universe</p>
-        <h2 className="universe-title">Ten worlds, one map</h2>
+        <h2 className="universe-title">My whole site, as a universe</h2>
         {!crew || changing ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed">Pick a ship and fly it between the worlds. Your crew will have something to say about each one.</p>
+            <p className="mt-3 text-sm leading-relaxed">The stations round the sun are my pages: home, experience, projects, résumé, contact and the terminal. The planets further out are the things I love. Pick a ship and fly to any of them; your crew will have something to say about each.</p>
             <Ships
               ship={ship}
               onShip={(id) => {
@@ -55,13 +56,13 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 No ship, just look around
               </button>
             ) : (
-              <p className="mt-3 text-xs leading-relaxed text-muted">Or just pick a planet, and the camera takes you there.</p>
+              <p className="mt-3 text-xs leading-relaxed text-muted">Or just pick a place by name, and the camera takes you there.</p>
             )}
           </>
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed">
-              You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a planet to see what’s there, or pick one by name and the ship takes you.
+              You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes you.
             </p>
             <ul className="universe-keys mt-4">
               <li className="universe-keys-board">
@@ -71,20 +72,32 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 <kbd>Space</kbd> to boost, <kbd>M</kbd> for the whole map
               </li>
               <li className="universe-keys-board">
-                <kbd>E</kbd> to land on the planet you’re at
+                <kbd>E</kbd> to land or dock where you are
               </li>
               <li className="universe-keys-touch">Drag anywhere on the map to fly, and hold Boost to go fast</li>
-              <li className="universe-keys-touch">Tap a planet to fly there</li>
+              <li className="universe-keys-touch">Tap a planet or a station to fly there</li>
             </ul>
             <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
               Change ship
             </button>
           </>
         )}
+        <p className="universe-credit">
+          Planet maps by{' '}
+          <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
+            Solar System Scope
+          </a>{' '}
+          (CC BY 4.0), recoloured; metal and paper from{' '}
+          <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
+            ambientCG
+          </a>{' '}
+          (CC0).
+        </p>
       </aside>
     );
   }
-  const Card = CARDS[universe.id];
+  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id];
+  const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
@@ -104,7 +117,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
         </button>
       </div>
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
-        {crew ? 'Land on' : 'Enter'} {universe.world ?? (universe.id === 'travel' ? (crew ? 'Earth' : 'the travel page') : 'the Game Boy')} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+        {crew ? (core ? 'Dock at' : 'Land on') : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
       <ul className="universe-card mt-4" key={universe.id}>
         <Card />

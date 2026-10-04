@@ -17,7 +17,8 @@
 //   whole, boost, dispose }.
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), frozen (the page
-// is leaving: stop drawing), onPick(id), onEvent(event), onLand().
+// is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
+// clicked: go to its page), onEvent(event), onLand().
 
 import * as THREE from 'three';
 import { capturePointer } from '../../lib/pointer';
@@ -25,7 +26,7 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { ORDER, POSITIONS } from './layout';
-import { buildPlanet, loadModel, loadModels } from './planets';
+import { buildPlanet, buildSun, loadModel, loadModels, loadTextures } from './planets';
 import { SHIP, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
 import { buildShip } from './shipModels';
 import { shipEngine } from './sounds';
@@ -156,7 +157,7 @@ function streaks(rand) {
   };
 }
 
-export function create(canvas, ctx) {
+export async function create(canvas, ctx) {
   const { reduced } = ctx;
   let props = ctx;
   let disposed = false;
@@ -191,8 +192,18 @@ export function create(canvas, ctx) {
   const streak = streaks(rand);
   camera.add(streak.lines);
 
+  // the planets' maps first (half size on a phone), so nothing pops in
+  const small = (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 || (navigator.deviceMemory ?? 8) <= 4;
+  const T = await loadTextures({ small });
+
+  // the sun in the middle, warming the stations round it
+  const sun = buildSun(T);
+  map.add(sun.group);
+  const sunLight = new THREE.PointLight('#ffd6a8', 7, 10, 1.4);
+  map.add(sunLight);
+
   const planets = ORDER.map((id) => {
-    const p = buildPlanet(byId(id));
+    const p = buildPlanet(byId(id), T);
     p.group.position.set(...POSITIONS[id]);
     map.add(p.group);
     return p;
@@ -223,6 +234,7 @@ export function create(canvas, ctx) {
     overview: null,
     pose: null,
     tLow: 0, // where the orbits stopped when quality went down
+    yawTo: null, // where the map is turning to bring the picked place round to the front
     // flying
     kind: null, // the ship picked
     ship: null, // ship.js's numbers
@@ -291,6 +303,16 @@ export function create(canvas, ctx) {
   };
 
   const flying = () => Boolean(state.ship);
+  // the turn of the map that brings a place round to the front, nearest the
+  // camera, with nothing between (the rest of the ring to its sides); a
+  // station comes round a little past the front, so the sun in the middle
+  // sits off to the left of it rather than right behind
+  const frontYaw = (id) => {
+    const [x, , z] = POSITIONS[id];
+    const a = Math.atan2(z, x) - Math.PI / 2 + (byId(id).kind === 'core' ? 0.62 : 0);
+    return state.yaw + Math.atan2(Math.sin(a - state.yaw), Math.cos(a - state.yaw));
+  };
+
   const goal = () => {
     if (flying()) return state.view === 'map' ? state.overview : chasePose();
     return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
@@ -305,6 +327,9 @@ export function create(canvas, ctx) {
 
   // ── Where each planet is on screen: for the names and for picking ──
   const screen = planets.map((p) => ({ id: p.id, x: 0, y: 0, r: 0, z: -1 }));
+  // the stations' signs on screen, as boxes: { id, x0, y0, x1, y1, z }
+  const signs = planets.filter((p) => p.sign).map((p) => ({ id: p.id, p, x0: 0, y0: 0, x1: 0, y1: 0, z: -1 }));
+  const corner = new THREE.Vector3();
   const shown = new Map(); // what each name element was last given
   const v = new THREE.Vector3();
   const w = new THREE.Vector3();
@@ -321,6 +346,29 @@ export function create(canvas, ctx) {
       s.z = z;
       s.r = z > 0 ? (p.radius / (z * tanHalf)) * (size.h / 2) : 0;
     });
+    for (const g of signs) {
+      const m = g.p.sign;
+      const [sw, sh] = m.userData.size;
+      g.x0 = g.y0 = Infinity;
+      g.x1 = g.y1 = -Infinity;
+      m.getWorldPosition(w);
+      g.z = -w.applyMatrix4(camera.matrixWorldInverse).z;
+      for (const [cx, cy] of [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ]) {
+        corner.set((cx * sw) / 2, (cy * sh) / 2, 0);
+        m.localToWorld(corner).project(camera);
+        const px = ((corner.x + 1) / 2) * size.w;
+        const py = ((1 - corner.y) / 2) * size.h;
+        g.x0 = Math.min(g.x0, px);
+        g.x1 = Math.max(g.x1, px);
+        g.y0 = Math.min(g.y0, py);
+        g.y1 = Math.max(g.y1, py);
+      }
+    }
   };
 
   const placeLabels = () => {
@@ -330,8 +378,11 @@ export function create(canvas, ctx) {
       const el = els[s.id];
       if (!el) continue;
       const off = s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
-      // tucked behind a nearer planet
-      const behind = screen.some((o) => o !== s && o.z > 0 && o.z < s.z && Math.hypot(o.x - s.x, o.y - s.y) < o.r * 0.9);
+      // tucked behind a nearer planet, or a station's sign
+      const ly = s.y + s.r + 10;
+      const behind =
+        screen.some((o) => o !== s && o.z > 0 && o.z < s.z && Math.hypot(o.x - s.x, o.y - s.y) < o.r * 0.9) ||
+        signs.some((g) => g.id !== s.id && g.z > 0 && g.z < s.z && s.x > g.x0 && s.x < g.x1 && ly > g.y0 && ly < g.y1);
       const tf = off ? '' : `translate3d(${s.x.toFixed(1)}px, ${(s.y + s.r + 4).toFixed(1)}px, 0)`;
       const was = shown.get(el);
       const flag = `${off ? 'off' : ''}${behind ? 'behind' : ''}`;
@@ -341,6 +392,21 @@ export function create(canvas, ctx) {
       el.toggleAttribute('data-off', off);
       el.toggleAttribute('data-behind', behind && !off);
     }
+  };
+
+  // the nearest sign under the point, if any
+  const pickSign = (px, py) => {
+    let best = null;
+    for (const g of signs) if (g.z > 0.3 && px >= g.x0 && px <= g.x1 && py >= g.y0 && py <= g.y1 && (!best || g.z < best.z)) best = g;
+    return best?.id ?? null;
+  };
+  let signHover = null;
+  const setSignHover = (id) => {
+    if (id === signHover) return;
+    if (signHover) planetOf[signHover].setSignHover(false);
+    signHover = id;
+    if (id) planetOf[id].setSignHover(true);
+    ctx.invalidate();
   };
 
   const pick = (px, py) => {
@@ -353,7 +419,7 @@ export function create(canvas, ctx) {
   };
 
   const paintStates = () => {
-    for (const p of planets) p.setState({ hover: state.hover === p.id, selected: state.sel === p.id });
+    for (const p of planets) p.setState({ hover: state.hover === p.id, selected: state.sel === p.id, dim: Boolean(state.sel) && state.sel !== p.id });
     const els = props.labels?.current;
     if (els) for (const [id, el] of Object.entries(els)) el?.toggleAttribute('data-hover', state.hover === id);
   };
@@ -387,7 +453,12 @@ export function create(canvas, ctx) {
           retarget(700);
         }
       } else if (!id) state.auto = null;
-    } else retarget();
+    } else {
+      state.yawTo = id ? frontYaw(id) : null;
+      state.vel = 0;
+      if (reduced && id) state.yaw = state.yawTo;
+      retarget();
+    }
     paintStates();
     ctx.invalidate();
   };
@@ -420,7 +491,7 @@ export function create(canvas, ctx) {
       retarget();
       return;
     }
-    state.model = buildShip(kind);
+    state.model = buildShip(kind, T);
     map.add(state.model.group);
     if (kind === 'cruiser') {
       loadModel('/games/meshy/cruiser.glb').then((m) => {
@@ -540,11 +611,26 @@ export function create(canvas, ctx) {
     if (!state.pose) {
       // first frame: straight onto a universe from a link (or behind the
       // ship parked there); the overview drifts in from a little further out
+      if (!flying() && state.sel) {
+        state.yaw = frontYaw(state.sel);
+        state.yawTo = null;
+        map.rotation.y = state.yaw;
+        map.updateMatrixWorld();
+      }
       const to = goal();
       if (state.sel || reduced) state.pose = to;
       else {
         state.pose = { target: [...(state.overview?.target ?? to.target)], dist: (state.overview?.dist ?? to.dist) * 1.35, pitch: (state.overview?.pitch ?? to.pitch) + 0.12 };
         state.flight = startFlight(state.pose, now, 1800);
+      }
+    }
+    if (!flying() && !state.drag && state.yawTo !== null && !reduced) {
+      // swing round with the camera's flight
+      const left = state.yawTo - state.yaw;
+      state.yaw += left * clamp01((ms / 1000) * 2.6);
+      if (Math.abs(left) < 0.002) {
+        state.yaw = state.yawTo;
+        state.yawTo = null;
       }
     }
     if (!flying() && !state.drag && state.vel && !reduced) {
@@ -584,6 +670,7 @@ export function create(canvas, ctx) {
     apply(pose);
 
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
+    sun.update(t);
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();
@@ -592,7 +679,7 @@ export function create(canvas, ctx) {
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (props.frozen) return false;
-    return !still() || moving || Boolean(state.flight || state.drag || state.vel || state.stick?.on);
+    return !still() || moving || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -666,6 +753,7 @@ export function create(canvas, ctx) {
         placeStick();
       } else {
         const now = performance.now();
+        state.yawTo = null;
         state.yaw = d.yaw + (x - d.x) * TURN;
         state.vel = ((x - d.lastX) * TURN) / Math.max(1, now - d.lastT);
         d.lastX = x;
@@ -676,8 +764,10 @@ export function create(canvas, ctx) {
       return;
     }
     if (e.pointerType !== 'mouse') return;
-    const id = pick(x, y);
-    canvas.style.cursor = id ? 'pointer' : 'grab';
+    const sign = pickSign(x, y);
+    const id = sign ? null : pick(x, y);
+    canvas.style.cursor = sign || id ? 'pointer' : 'grab';
+    setSignHover(sign);
     setHover(id);
   };
   const endDrag = () => {
@@ -693,6 +783,11 @@ export function create(canvas, ctx) {
     if (d.moved < DRAG) {
       state.vel = 0;
       const [x, y] = local(e);
+      const sign = pickSign(x, y);
+      if (sign) {
+        props.onOpen?.(sign);
+        return;
+      }
       const id = pick(x, y);
       if (id) props.onPick?.(id);
     } else if (performance.now() - d.lastT > 80) state.vel = 0; // let go after holding still
@@ -705,7 +800,9 @@ export function create(canvas, ctx) {
     ctx.invalidate();
   };
   const onLeave = (e) => {
-    if (e.pointerType === 'mouse' && !state.drag) setHover(null);
+    if (e.pointerType !== 'mouse' || state.drag) return;
+    setHover(null);
+    setSignHover(null);
   };
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
@@ -728,6 +825,7 @@ export function create(canvas, ctx) {
       at: state.at,
       auto: state.auto?.id ?? null,
       view: state.view,
+      signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
     });
   }

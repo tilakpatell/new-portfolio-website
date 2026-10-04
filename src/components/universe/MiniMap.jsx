@@ -1,14 +1,15 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { UNIVERSES } from './universes';
-import { MAP_RADIUS, ORDER, POSITIONS, keyStep } from './layout';
+import { MAP_RADIUS, ORDER, POSITIONS, SUN, keyStep } from './layout';
 import './universe.css';
 
 // The universe map drawn flat: the same layout as the 3D one, seen from the
-// same tilt, with an orbit for each and a dot per universe in its colour.
-// It's Home's teaser (each dot a link into the map) and the map itself when
-// 3D is off (each dot a button in one focus group: the arrow keys step
-// through them, Home and End jump to the ends).
+// same tilt, with the sun in the middle, an orbit for each and a dot per
+// place in its colour. It's Home's teaser (just the fandoms, each dot a link
+// into the map) and the map itself when 3D is off (every place, each a
+// button in one focus group: the arrow keys step through them, Home and End
+// jump to the ends).
 const W = 600;
 const H = 300;
 const TILT = 0.42; // how flat the disc looks: the 3D overview's pitch, roughly
@@ -18,8 +19,12 @@ const at = (id) => {
   return [W / 2 + x * K, H / 2 - 8 + z * K * TILT - y * K * 0.6];
 };
 const radius = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
+// one orbit per distinct radius (the stations share theirs)
+const ORBITS = [...new Set(ORDER.map((id) => radius(id).toFixed(3)))].map(Number);
 
-export default function MiniMap({ selected = null, onSelect, linkTo, className = '' }) {
+export default function MiniMap({ selected = null, onSelect, linkTo, kind = null, className = '' }) {
+  const shown = kind ? UNIVERSES.filter((u) => u.kind === kind) : UNIVERSES;
+  const radii = kind ? [...new Set(shown.map((u) => radius(u.id).toFixed(3)))].map(Number) : ORBITS;
   const list = useRef(null);
   const focusable = selected ?? ORDER[0];
 
@@ -35,10 +40,11 @@ export default function MiniMap({ selected = null, onSelect, linkTo, className =
   return (
     <div className={`minimap ${className}`} data-selected={selected || undefined}>
       <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true" className="minimap-svg">
-        {ORDER.map((id) => (
-          <ellipse key={id} className="minimap-orbit" cx={W / 2} cy={H / 2 - 8} rx={radius(id) * K} ry={radius(id) * K * TILT} />
+        {radii.map((r) => (
+          <ellipse key={r} className="minimap-orbit" cx={W / 2} cy={H / 2 - 8} rx={r * K} ry={r * K * TILT} />
         ))}
-        {UNIVERSES.map((u) => {
+        <circle cx={W / 2} cy={H / 2 - 8} r={SUN.r * K * 0.9} fill="#ffb347" opacity="0.9" />
+        {shown.map((u) => {
           const [x, y] = at(u.id);
           return (
             <g key={u.id} className="minimap-planet" data-on={selected === u.id || undefined}>
@@ -49,7 +55,7 @@ export default function MiniMap({ selected = null, onSelect, linkTo, className =
         })}
       </svg>
       <ul ref={list} className="minimap-labels" aria-label="Universes" onKeyDown={onKeyDown}>
-        {UNIVERSES.map((u) => {
+        {shown.map((u) => {
           const [x, y] = at(u.id);
           const style = { left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%`, '--swatch': u.swatch };
           const inner = <span className="minimap-name">{u.label}</span>;

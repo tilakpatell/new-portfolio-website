@@ -1,16 +1,91 @@
-// The ten fandoms on the universe map, in map order (the order Home always
-// showed them in). Pure data: the map, the mini-map, the world pages' links
-// and the guide all read this list.
+// Everywhere on the universe map, in map order: the site's own pages first,
+// as stations round the sun in the middle (kind 'core'), then the ten
+// fandoms as planets further out, in the order Home always showed them.
+// Pure data: the map, the mini-map, the world pages' links and the guide all
+// read this list.
 //
-//   label    the fandom, as the map names it
+//   label    as the map names it
+//   kind     'core' (a station) or 'fandom' (a planet)
 //   world    the world page's own name, or null when it isn't a world page
-//   to       where Enter goes
-//   swatch   the planet's colour on the mini-map and its label
+//   place    what you land on or dock at, for the panel's button
+//   to       where it goes
+//   swatch   its colour on the mini-map and its label
 //   accent   the page accent while it's selected (4.5:1 on #03040a)
-//   size     the planet's radius in map units
-//   palette  the colours its procedural planet is painted in
+//   rim      the glow round its edge, when that isn't the swatch
+//   size     its radius in map units
+//   sign     a station's big sign: its name, and a line under it
+//   palette  the colours it's painted in
 
-export const UNIVERSES = [
+const CORE = [
+  {
+    id: 'home',
+    sign: ['HOME', 'Who I am, and what I do'],
+    label: 'Home',
+    place: 'Home',
+    to: '/',
+    swatch: '#ffd27a',
+    accent: '#ffd27a',
+    size: 0.6,
+    palette: { base: '#e9e4d8', dark: '#4a4f5a', light: '#ffffff', glow: '#ffd27a' },
+  },
+  {
+    id: 'experience',
+    sign: ['EXPERIENCE', 'Six roles, AWS to SRC'],
+    label: 'Experience',
+    place: 'Experience',
+    to: '/experience',
+    swatch: '#ffa94d',
+    accent: '#ffa94d',
+    size: 0.58,
+    palette: { base: '#c9ccd3', dark: '#3c4048', light: '#f1f2f5', glow: '#ffa94d' },
+  },
+  {
+    id: 'projects',
+    sign: ['PROJECTS', 'The Game Boy emulator and more'],
+    label: 'Projects',
+    place: 'Projects',
+    to: '/projects',
+    swatch: '#6fd3ff',
+    accent: '#6fd3ff',
+    size: 0.6,
+    palette: { base: '#9aa6b8', dark: '#2a3140', light: '#d6e2f2', glow: '#6fd3ff' },
+  },
+  {
+    id: 'resume',
+    sign: ['RÉSUMÉ', 'One page, as a PDF'],
+    label: 'Résumé',
+    place: 'the Résumé',
+    to: '/resume',
+    swatch: '#c7b8ff',
+    accent: '#c7b8ff',
+    size: 0.52,
+    palette: { base: '#f3f1fa', dark: '#3a3550', light: '#ffffff', glow: '#c7b8ff' },
+  },
+  {
+    id: 'contact',
+    sign: ['CONTACT', 'Say hello'],
+    label: 'Contact',
+    place: 'Contact',
+    to: '/contact',
+    swatch: '#ff8fb8',
+    accent: '#ff8fb8',
+    size: 0.56,
+    palette: { base: '#b9bec8', dark: '#353a44', light: '#eef0f4', glow: '#ff8fb8' },
+  },
+  {
+    id: 'terminal',
+    sign: ['TERMINAL', 'The whole site as a shell'],
+    label: 'Terminal',
+    place: 'the Terminal',
+    to: '/terminal',
+    swatch: '#7dff9a',
+    accent: '#7dff9a',
+    size: 0.52,
+    palette: { base: '#1d2128', dark: '#0b0d10', light: '#3a404a', glow: '#7dff9a' },
+  },
+].map((u) => ({ ...u, kind: 'core', world: null }));
+
+const FANDOMS = [
   {
     id: 'starwars',
     label: 'Star Wars',
@@ -18,6 +93,7 @@ export const UNIVERSES = [
     to: '/deathstar',
     swatch: '#ffe81f',
     accent: '#ffe81f',
+    rim: '#c9ced6', // the station's own grey, not the crawl's yellow
     size: 0.78,
     palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
   },
@@ -95,6 +171,7 @@ export const UNIVERSES = [
     id: 'gaming',
     label: 'Gaming',
     world: null,
+    place: 'the Game Boy',
     to: '/projects/gameboy-emulator',
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
@@ -105,13 +182,16 @@ export const UNIVERSES = [
     id: 'travel',
     label: 'Travel',
     world: null,
+    place: 'Earth',
     to: '/travel',
     swatch: '#5cb8ff',
     accent: '#5cb8ff',
     size: 0.68,
     palette: { base: '#1f5f99', dark: '#0d2a47', light: '#5f9e5a', glow: '#5cb8ff' },
   },
-];
+].map((u) => ({ ...u, kind: 'fandom', place: u.place ?? u.world }));
+
+export const UNIVERSES = [...CORE, ...FANDOMS];
 
 const BY_ID = new Map(UNIVERSES.map((u) => [u.id, u]));
 
