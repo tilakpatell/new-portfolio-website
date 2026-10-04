@@ -10,7 +10,7 @@ const sfx = () => import('../../lib/sfx');
 // which hides them. Walk while the light is on them and the Eye sees you.
 
 const PATH = { x0: 60, x1: 470, y: 238 }; // the road across the plain, west to east
-const SPEED = 46; // plain units a second while walking
+const SPEED = 52; // plain units a second while walking
 const EYE = { x: 560, y: 70 };
 
 export default function Gorgoroth({ onArrive }) {
@@ -19,7 +19,8 @@ export default function Gorgoroth({ onArrive }) {
   const beam = useRef(null);
   const hobbits = useRef(null);
   const pupil = useRef(null);
-  const state = useRef({ x: PATH.x0, walking: false, t: 0, last: 0 });
+  const state = useRef({ x: PATH.x0, walking: false, t: 0, last: 0, phase: 0, exposed: 0 });
+  const wrapEl = useRef(null);
   const raf = useRef(0);
   const [progress, setProgress] = useState(0);
 
@@ -41,13 +42,18 @@ export default function Gorgoroth({ onArrive }) {
       const dt = s.last ? Math.min(0.05, (now - s.last) / 1000) : 0.016;
       s.last = now;
       s.t += dt;
-      // the Eye sweeps faster as they get closer
+      // the Eye sweeps a little faster as they get closer
       const near = (s.x - PATH.x0) / (PATH.x1 - PATH.x0);
-      const spot = 265 + Math.sin(s.t * (0.9 + near * 0.9)) * 215;
+      s.phase += dt * (0.55 + near * 0.5);
+      const spot = 265 + Math.sin(s.phase) * 215;
       if (s.walking) s.x = Math.min(PATH.x1, s.x + SPEED * dt);
       draw(spot);
       setProgress(Math.round(near * 100));
-      if (s.walking && Math.abs(spot - s.x) < 40) {
+      // a warning glow as the light comes close, and a moment's grace in it
+      const gap = Math.abs(spot - s.x);
+      if (wrapEl.current) wrapEl.current.dataset.close = gap < 110 ? 'true' : 'false';
+      s.exposed = s.walking && gap < 30 ? s.exposed + dt : 0;
+      if (s.exposed > 0.18) {
         setPhase('seen');
         s.walking = false;
         sfx().then((x) => x.roar());
@@ -67,7 +73,7 @@ export default function Gorgoroth({ onArrive }) {
   const begin = () => {
     audioContext(); // in the click, so the Eye can be heard
     cancelAnimationFrame(raf.current);
-    state.current = { x: PATH.x0, walking: false, t: 0, last: 0 };
+    state.current = { x: PATH.x0, walking: false, t: 0, last: 0, phase: 1.2, exposed: 0 };
     setPhase('walking');
     setProgress(0);
     run();
@@ -98,7 +104,7 @@ export default function Gorgoroth({ onArrive }) {
 
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
-      <div className="gorgoroth" data-phase={phase}>
+      <div ref={wrapEl} className="gorgoroth" data-phase={phase}>
         <svg viewBox="0 0 640 300" className="block h-auto w-full" role="img" aria-label="The plain of Gorgoroth, Barad-dûr and the Eye to the north east, Mount Doom ahead, two hobbits on the road">
           <defs>
             <linearGradient id="gg-sky" x1="0" y1="0" x2="0" y2="1">
@@ -134,7 +140,7 @@ export default function Gorgoroth({ onArrive }) {
           {/* the road */}
           <path d={`M${PATH.x0} ${PATH.y + 4} C200 ${PATH.y + 8} 340 ${PATH.y - 2} ${PATH.x1} ${PATH.y + 2}`} stroke="#5a2f22" strokeWidth="3" strokeDasharray="4 6" fill="none" />
           {/* Frodo and Sam, cloaked */}
-          <g ref={hobbits}>
+          <g ref={hobbits} className="gg-hobbits">
             <path d="M-8 0 L-5 -14 L-1 -14 L2 0 Z" fill="#4b5a3a" />
             <circle cx="-3" cy="-16" r="2.6" fill="#d9b48c" />
             <path d="M4 0 L7 -13 L11 -13 L14 0 Z" fill="#5a6a44" />

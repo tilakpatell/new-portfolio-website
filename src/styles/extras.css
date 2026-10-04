@@ -1847,3 +1847,40 @@ html[data-mode='dark'] .saber-progress[data-kind='string'] .blade { left: 30px; 
 .saber-progress[data-kind='pixels'] .hilt::after { display: none; }
 .saber-progress[data-kind='pixels'] .blade,
 html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px; top: -1px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--saber) 0 6px, transparent 6px 8px); box-shadow: none; }
+
+/* Middle-earth: the map, the road, entering Moria, and Mordor */
+.me-map-frame { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.map-sea { fill: #c9d8d2; }
+.map-river { fill: none; stroke: #6f9db0; stroke-width: 2.4; stroke-linecap: round; }
+.map-river-thin { stroke-width: 1.5; }
+.map-peaks { fill: none; stroke: #6b5a3e; stroke-width: 1.4; stroke-linejoin: round; }
+.map-peaks-dark { stroke: #3a2418; stroke-width: 1.8; }
+.map-tree circle { fill: #7f9a5a; opacity: 0.7; }
+.map-tree-gold circle { fill: #c9a227; }
+.map-tree-dark circle { fill: #4c6a3a; }
+.map-fire { fill: #ff6a1a; filter: drop-shadow(0 0 4px #ff4d00); animation: me-flicker 2s ease-in-out infinite; }
+.map-region { font: 700 12px/1 'Cinzel', Georgia, serif; letter-spacing: 3px; fill: #7a6440; opacity: 0.75; }
+.map-place { font: italic 10px/1 Georgia, 'Times New Roman', serif; fill: #4a3c26; }
+.map-place-stop { font-weight: 700; font-style: normal; font-size: 10.5px; }
+.map-dot { fill: #4a3c26; }
+.map-road { fill: none; stroke: #8a1c1c; stroke-width: 2.6; stroke-dasharray: 6 5; stroke-linecap: round; stroke-linejoin: round; }
+.map-road-faint { stroke: #8a1c1c; opacity: 0.18; }
+.map-stop circle { fill: #f2e6c6; stroke: #8a6d3b; stroke-width: 1.5; }
+.map-stop[data-reached] circle { fill: #8a1c1c; stroke: #fff7dc; }
+.map-walker { transition: transform 0.9s cubic-bezier(0.5, 0, 0.2, 1); }
+.map-compass path { fill: #8a6d3b; opacity: 0.7; }
+.me-road { padding: 1.5rem; }
+.me-stops { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.me-stops button { min-height: 30px; padding: 0 0.6rem; border: 1px solid var(--border); border-radius: var(--r-chip, 999px); font-size: 0.78rem; color: var(--text-body); background: var(--surface); }
+.me-stops button[aria-current='step'] { border-color: transparent; background: var(--btn-bg); color: var(--btn-ink); }
+.me-scene svg { transition: transform 1.3s cubic-bezier(0.6, 0, 0.4, 1), filter 1.3s ease; transform-origin: 50% 54%; }
+.me-scene[data-entering] svg { transform: scale(4.2); filter: brightness(0.15); }
+.mordor-band { background: radial-gradient(80% 60% at 70% 0%, rgba(255, 106, 26, 0.08), transparent 70%); }
+.gorgoroth { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.gg-beam { transition: opacity 0.3s ease; }
+.gorgoroth[data-phase='seen'] .gg-beam { fill: #ff2a00; opacity: 0.6; }
+.gorgoroth[data-close='true'] .gg-beam { opacity: 1; filter: drop-shadow(0 0 10px #ff7a1a); }
+.gorgoroth[data-close='true'] { box-shadow: 0 0 0 2px rgba(255, 106, 26, 0.55), var(--shadow-card); }
+.gg-eye { animation: eye-flicker 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
+.gg-lava { animation: me-flicker 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .me-scene svg { transition-duration: 0.2s; } .map-walker { transition: none; } .gg-eye, .gg-lava, .map-fire { animation: none; } }

@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom';
 import Doors from '../components/middleearth/Doors';
 import Bridge from '../components/middleearth/Bridge';
 import Ring from '../components/middleearth/Ring';
+import MiddleEarthMap from '../components/middleearth/Map';
+import Gorgoroth from '../components/middleearth/Gorgoroth';
+import { STOPS } from '../components/middleearth/road';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { MiddleEarth as Mountains } from '../components/worlds/Backdrops';
 import { useAchievements } from '../components/Achievements';
-import { useTheme } from '../theme/ThemeProvider';
+import { useSectionThemes, useTheme } from '../theme/ThemeProvider';
 import { audioContext } from '../lib/audio';
 import { jumpTo } from '../lib/anchors';
-import { useDocumentTitle } from '../lib/hooks';
+import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import '@fontsource/cinzel/600.css';
 
 const sfx = () => import('../lib/sfx');
@@ -36,10 +39,14 @@ const WRONG = [
   'The water is moving. Read the arch again: it is a riddle.',
 ];
 
-// Middle-earth: the Doors of Durin, the Bridge of Khazad-dûm and the One Ring.
+// Middle-earth: the Doors of Durin, the road on the map, the Bridge of Khazad-dûm,
+// then Mordor: Gorgoroth under the Eye and the One Ring at Mount Doom.
 // Reachable from the worlds menu, the terminal ('moria') and the Off the clock dock.
 export default function MiddleEarth() {
   useDocumentTitle('Middle-earth');
+  useSectionThemes();
+  const [step, setStep] = useState(0);
+  const [entering, setEntering] = useState(false);
   const { unlock } = useAchievements();
   const { active } = useTheme();
   const [lit, setLit] = useState(false);
@@ -82,6 +89,22 @@ export default function MiddleEarth() {
     setSay(WRONG[Math.min(n, WRONG.length) - 1]);
   };
 
+  const enter = (e) => {
+    e.preventDefault();
+    if (entering) return;
+    audioContext();
+    sfx().then((x) => x.drum());
+    setEntering(true);
+    const still = prefersReducedMotion();
+    setTimeout(
+      () => {
+        jumpTo(null, 'khazad-dum');
+        setTimeout(() => setEntering(false), 600);
+      },
+      still ? 50 : 1300,
+    );
+  };
+
   const lead = open
     ? 'The Doors of Durin stand open on the dark of Moria. It is a long way through, and something is waiting at the bridge.'
     : lit
@@ -90,9 +113,9 @@ export default function MiddleEarth() {
 
   return (
     <div className="relative">
-      <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:min-h-[100svh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="me-title">
+      <section data-theme-section="shire" className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:min-h-[100svh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="me-title">
         <Mountains variant={active === 'mordor' ? 'mordor' : 'shire'} className="hero-backdrop" />
-        <figure className="me-scene">
+        <figure className="me-scene" data-entering={entering || undefined}>
           <Doors lit={lit} open={open} watcher={tries >= 3 && !open} onMoon={moon} />
           <figcaption className="me-caption">
             On the arch, in Sindarin: <i>Ennyn Durin Aran Moria: pedo mellon a minno.</i> “The Doors of Durin, Lord of Moria. Speak, friend, and enter.”
@@ -123,8 +146,8 @@ export default function MiddleEarth() {
               </button>
             )}
             {open && (
-              <a href="#khazad-dum" className="btn btn-primary" onClick={(e) => jumpTo(e, 'khazad-dum')}>
-                Into Moria
+              <a href="#khazad-dum" className="btn btn-primary" onClick={enter}>
+                Enter Moria
               </a>
             )}
             <Link to="/" className="btn btn-ghost">
@@ -135,16 +158,69 @@ export default function MiddleEarth() {
         </div>
       </section>
 
-      <section id="khazad-dum" className="shell relative z-10 scroll-mt-24 py-14 md:py-20" aria-labelledby="bridge-title">
+      <section id="the-road" data-theme-section="shire" className="shell relative z-10 scroll-mt-24 py-14 md:py-20" aria-labelledby="road-title">
+        <h2 id="road-title" className="title">
+          There and back again
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">The road the Ring took, from a party in Hobbiton to the fire it was made in. Step along it.</p>
+        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)] lg:gap-12">
+          <figure className="me-map-frame m-0">
+            <MiddleEarthMap step={step} />
+          </figure>
+          <div className="me-road card">
+            <p className="mono text-xs text-muted">
+              {step + 1} of {STOPS.length}
+            </p>
+            <h3 className="stretch-semi mt-2 text-xl font-semibold text-ink">{STOPS[step].name}</h3>
+            <p className="mt-2 leading-relaxed text-body" aria-live="polite">
+              {STOPS[step].text}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep((n) => Math.max(0, n - 1))} disabled={step === 0}>
+                Back
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep((n) => Math.min(STOPS.length - 1, n + 1))} disabled={step === STOPS.length - 1}>
+                On to {STOPS[Math.min(STOPS.length - 1, step + 1)].name}
+              </button>
+              {STOPS[step].id === 'moria' && (
+                <a href="#khazad-dum" className="btn btn-ghost btn-sm" onClick={(e) => jumpTo(e, 'khazad-dum')}>
+                  To the bridge
+                </a>
+              )}
+              {STOPS[step].id === 'mount-doom' && (
+                <a href="#gorgoroth" className="btn btn-ghost btn-sm" onClick={(e) => jumpTo(e, 'gorgoroth')}>
+                  Cross Gorgoroth
+                </a>
+              )}
+            </div>
+            <ol className="me-stops mt-6">
+              {STOPS.map((st, i) => (
+                <li key={st.id}>
+                  <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => setStep(i)}>
+                    {st.name}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="khazad-dum" data-theme-section="shire" className="shell relative z-10 scroll-mt-24 py-14 md:py-20" aria-labelledby="bridge-title">
         <Bridge />
       </section>
 
-      <section id="ring" className="shell relative z-10 scroll-mt-24 pb-16 pt-10 md:pb-20" aria-labelledby="ring-title">
-        <Ring />
-      </section>
+      <div data-theme-section="mordor" className="mordor-band relative z-10">
+        <section id="gorgoroth" className="shell relative scroll-mt-24 py-14 md:py-20" aria-labelledby="gorgoroth-title">
+          <Gorgoroth onArrive={() => setTimeout(() => jumpTo(null, 'ring'), 1200)} />
+        </section>
+        <section id="ring" className="shell relative scroll-mt-24 pb-16 pt-10 md:pb-20" aria-labelledby="ring-title">
+          <Ring />
+        </section>
+      </div>
 
       {hasScenes(SCENES) && (
-        <section className="shell relative z-10 py-10" aria-labelledby="me-scenes-title">
+        <section data-theme-section="shire" className="shell relative z-10 py-10" aria-labelledby="me-scenes-title">
           <h2 id="me-scenes-title" className="title">
             From the films
           </h2>
@@ -155,7 +231,7 @@ export default function MiddleEarth() {
       )}
 
       {hasPhotos(LOCATIONS) && (
-        <section className="shell relative z-10 pb-24 pt-10 md:pb-28" aria-labelledby="me-places-title">
+        <section data-theme-section="shire" className="shell relative z-10 pb-24 pt-10 md:pb-28" aria-labelledby="me-places-title">
           <h2 id="me-places-title" className="title">
             Where it was filmed
           </h2>
