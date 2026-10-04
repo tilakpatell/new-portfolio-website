@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROLL, boostSpeed, jump, newRun, stepRun, transform } from './rules';
+import { ROLL, boostSpeed, jump, newRun, stagesFor, stepRun, transform } from './rules';
 import { autopilot } from './pilot';
 
 const DT = 1 / 60;
@@ -156,6 +156,67 @@ describe('transforming', () => {
     run(g, 1.5);
     expect(g.mode).toBe('vehicle');
     expect(g.log).toContain('empty');
+  });
+
+  it('keeps a jump pressed while standing up, and jumps as soon as the robot can', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    run(g, 0.5);
+    transform(g);
+    run(g, 0.1);
+    expect(g.morph).toBeLessThan(0.6);
+    expect(jump(g)).toBe(false); // too soon to jump, but it's kept
+    let top = 0;
+    run(g, 0.8, {}, (s) => (top = Math.max(top, s.y)));
+    expect(g.log).toContain('jump');
+    expect(top).toBeGreaterThan(1.5);
+  });
+
+  it('a jump kept through a transform is dropped if it folds back into the vehicle', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    transform(g);
+    run(g, 0.05);
+    jump(g);
+    run(g, ROLL.transformTime + 0.2);
+    transform(g); // straight back
+    run(g, 1);
+    expect(g.log.filter((l) => l === 'jump').length).toBeLessThanOrEqual(1);
+  });
+
+  it('transforming with boost held leaps as it stands, carrying the speed into the air', () => {
+    const g = newRun({ seed: 6 });
+    quiet(g);
+    g.energon = 100;
+    run(g, 1.5, { boost: true });
+    const fast = g.speed;
+    expect(fast).toBeGreaterThan(g.vehicleSpeed * 1.2);
+    g.input = { steer: 0, boost: true };
+    transform(g);
+    let leapSpeed = 0;
+    run(g, 0.7, { boost: true }, (s) => {
+      if (!leapSpeed && !s.grounded) leapSpeed = s.speed;
+    });
+    expect(g.log).toContain('leap');
+    expect(leapSpeed).toBeGreaterThan(g.robotSpeed * 1.25);
+    expect(leapSpeed).toBeLessThanOrEqual(g.vehicleSpeed * ROLL.leap + 1e-6);
+  });
+
+  it('a leap still can’t clear a broken bridge: that takes the vehicle and the ramp', () => {
+    for (const level of ['recruit', 'autobot', 'prime']) {
+      for (let lead = 0.3; lead < 1.6; lead += 0.1) {
+        const g = newRun({ seed: 8, level });
+        quiet(g);
+        g.energon = 100;
+        run(g, 1.5, { boost: true });
+        // the ramp starts `lead` seconds ahead at boost speed
+        g.gaps.push({ z: g.z + ROLL.ramp.len + g.speed * lead, len: g.gapLen });
+        g.input = { steer: 0, boost: true };
+        transform(g);
+        run(g, 4, { boost: true });
+        expect({ level, lead, cleared: g.log.includes('clear:gap') }).toMatchObject({ cleared: false });
+      }
+    }
   });
 
   it('jumps only as a robot, and only from the ground', () => {
@@ -600,6 +661,63 @@ describe('the boss and the stages', () => {
       if (w && s.grounded && w.z - s.z < 7 && w.z - s.z > 0) jump(s);
     });
     expect(h.shields).toBe(s1);
+  });
+});
+
+describe('the Decepticons’ side', () => {
+  const toBoss = (g) => {
+    quiet(g);
+    g.z = g.stageLen - 1;
+    run(g, 0.3);
+  };
+
+  it('Knock Out and Breakdown drive for the Decepticons, through to Iacon', () => {
+    const g = newRun({ seed: 50, bot: 'knockout' });
+    expect(g.side).toBe('decepticon');
+    expect(newRun({ seed: 50, bot: 'breakdown' }).side).toBe('decepticon');
+    expect(newRun({ seed: 50, bot: 'optimus' }).side).toBe('autobot');
+    expect(stagesFor('decepticon').map((s) => s.id)).toEqual(['jasper', 'mission', 'iacon']);
+    expect(stagesFor('decepticon').map((s) => s.boss)).toEqual(['wheeljack', 'magnus', 'optimus']);
+    expect(newRun({ seed: 50, bot: 'breakdown' }).shields).toBeGreaterThan(newRun({ seed: 50, bot: 'knockout' }).shields);
+  });
+
+  it('meets the Autobots’ bosses: Wheeljack’s Jackhammer flies like Starscream, Optimus waits in Iacon', () => {
+    const g = newRun({ seed: 51, bot: 'knockout' });
+    toBoss(g);
+    expect(g.boss.kind).toBe('wheeljack');
+    expect(ROLL.bosses.wheeljack.flyer).toBe(true);
+    expect(g.boss.y).toBeGreaterThan(2);
+    const h = newRun({ seed: 51, bot: 'breakdown', stage: 2 });
+    toBoss(h);
+    expect(h.boss.kind).toBe('optimus');
+    expect(h.boss.name).toBe('Optimus Prime');
+  });
+
+  it('wins by taking Iacon', () => {
+    const w = newRun({ seed: 52, bot: 'knockout', stage: 2 });
+    toBoss(w);
+    w.boss.hp = 0.5;
+    transform(w);
+    run(w, 4, {}, (s) => {
+      if (s.boss) {
+        s.boss.cool = 99;
+        s.x = s.tx = s.boss.x;
+      }
+    });
+    expect(w.status).toBe('won');
+    expect(w.events.find((e) => e.type === 'won')?.text).toMatch(/Iacon/);
+  });
+
+  it('can be driven: the autopilot clears the first stage as Breakdown on every level, and as Knock Out as a recruit', () => {
+    const runs = [...['recruit', 'autobot', 'prime'].flatMap((level) => [1, 2, 3].map((seed) => ({ level, seed, bot: 'breakdown' }))), ...[1, 2, 3].map((seed) => ({ level: 'recruit', seed, bot: 'knockout' }))];
+    for (const { level, seed, bot } of runs) {
+      const g = newRun({ seed, level, bot });
+      for (let t = 0; t < 200 && g.status === 'running' && g.stage === 0; t += DT) {
+        autopilot(g);
+        stepRun(g, DT);
+      }
+      expect({ level, bot, stage: g.stage, status: g.status }).toMatchObject({ stage: 1, status: 'running' });
+    }
   });
 });
 

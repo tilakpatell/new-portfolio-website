@@ -31,7 +31,8 @@ const BOTS = {
   optimus: { vehicle: 'optimus-truck', len: 3.7, robot: 'optimus', h: 3.05 },
   bumblebee: { vehicle: 'bumblebee-car', len: 4.3, robot: 'bumblebee', h: 2.55 },
 };
-const BOSSES = { shockwave: { h: 8.4, hand: 'LeftHand' }, megatron: { h: 8.6, hand: 'RightHand' } };
+// (Optimus is the Decepticons' last boss: the player's model, at a boss's size)
+const BOSSES = { shockwave: { h: 8.4, hand: 'LeftHand' }, megatron: { h: 8.6, hand: 'RightHand' }, optimus: { h: 8.2, hand: 'RightHand' } };
 const JETS = { seeker: 3.9, starscream: 3.9 * 3.2 };
 
 // Changing form (k 0 vehicle … 1 robot): the vehicle comes apart over the
