@@ -8,5 +8,14 @@
   "skull": { "image": "01a10875-2e24-7281-84f0-49ec9ef37432", "model": "01a10876-cb8c-71f8-b7a6-85dea87bcb89" },
   "port": { "image": "01a10875-2e8d-72f5-af07-48369bb2659d", "model": "01a10876-ce52-7760-b4e2-7389255eb9d9" },
   "palms": { "image": "01a10875-2f14-7558-b5e5-f321f7f2c24a", "model": "01a10876-d0df-74db-b750-792ae396b37e" },
+  "jack": { "image": "01a108c2-f724-7739-ad86-1391290659f3", "model": "01a108c4-63a8-74c6-b897-d49ae2d54299", "rig": "01a108c7-3ddc-718c-b582-1971330613bf", "idle": "01a108c9-1d59-72ed-bdd3-bc407056183e" },
+  "posters": {
+    "jack": "01a108c2-f9e7-76d4-a9c6-0f61dcd0597d",
+    "barbossa": "01a108c2-fa6d-76f9-82af-e1810b53b16e",
+    "will": "01a108c2-fb3a-765b-b6a3-968177388a53",
+    "elizabeth": "01a108c2-fbba-72c5-af91-76e6afdc4b2e",
+    "davy": "01a108c2-fc3e-7539-af39-d2f8c1331681",
+    "gibbs": "01a108c2-fcba-7565-8f89-a463518cb524"
+  },
   "chest": { "image": "01a10875-2fde-746c-b862-1e862d531a86", "model": "01a10876-d3a1-761e-ac77-0d6d7c678623" }
 }

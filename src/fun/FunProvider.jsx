@@ -37,10 +37,14 @@ const WORDS = [
   ['precious', 'gollum'],
   ['wubbalubbadubdub', 'portal'],
   ['schwifty', 'portal'],
+  ['savvy', 'pearl'],
+  ['davyjones', 'dutchman'],
+  ['tortuga', 'tortuga'],
   ['picklerick', 'pickle'],
 ];
 const TRANSFORMERS = ['optimus', 'megatron', 'bumblebee', 'shockwave', 'soundwave'];
 const SMITHS = ['portal', 'morty', 'summer', 'beth'];
+const PIRATES = ['pearl', 'dutchman', 'tortuga'];
 
 export function FunProvider({ children }) {
   const { unlock, notify } = useAchievements();
@@ -233,6 +237,16 @@ export function FunProvider({ children }) {
   );
   const pickleRick = useCallback(() => notify('I’m Pickle Riiick!', 'Funniest thing I’ve ever seen.', 'note'), [notify]);
 
+  // Pirates of the Caribbean: savvy hoists the colours (the Pearl's, the
+  // Dutchman's or Tortuga's)
+  const savvy = useCallback(
+    (ship = 'pearl') => {
+      unlock('savvy');
+      pin(PIRATES.includes(ship) ? ship : 'pearl');
+    },
+    [pin, unlock],
+  );
+
   // Typed anywhere outside a text field.
   useEffect(() => {
     let buffer = '';
@@ -250,6 +264,7 @@ export function FunProvider({ children }) {
       gandalf,
       gollum,
       portal: () => getSchwifty('portal'),
+      ...Object.fromEntries(PIRATES.map((p) => [p, () => savvy(p)])),
       pickle: pickleRick,
       ...Object.fromEntries(TRANSFORMERS.map((t) => [t, () => rollOut(t)])),
     };
@@ -267,7 +282,7 @@ export function FunProvider({ children }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [gandalf, getSchwifty, gollum, parkour, pickleRick, rollOut, sayMyName, setScript, snap, speakFriend, toggleAurebesh, twss]);
+  }, [gandalf, getSchwifty, gollum, parkour, pickleRick, rollOut, savvy, sayMyName, setScript, snap, speakFriend, toggleAurebesh, twss]);
 
   const scriptName = SCRIPTS[script ?? scriptFor(active)].name;
   const value = useMemo(
@@ -288,8 +303,9 @@ export function FunProvider({ children }) {
       speakFriend,
       gandalf,
       getSchwifty,
+      savvy,
     }),
-    [script, scriptName, setScript, toggleScript, toggleAurebesh, heisenberg, parkour, rollOut, sayMyName, snap, twss, speakFriend, gandalf, getSchwifty],
+    [script, scriptName, setScript, toggleScript, toggleAurebesh, heisenberg, parkour, rollOut, sayMyName, snap, twss, speakFriend, gandalf, getSchwifty, savvy],
   );
 
   return (
