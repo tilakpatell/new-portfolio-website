@@ -23,6 +23,7 @@ export const ACHIEVEMENTS = {
   aurebesh: { name: 'Linguist', desc: 'Read Aurebesh' },
   polyglot: { name: 'Polyglot', desc: 'Read the site in Aurebesh, Cybertronian and Dwarf runes' },
   heisenberg: { name: 'Heisenberg', desc: 'Said my name' },
+  bluesky: { name: 'Blue Sky', desc: 'Served a 95% order in the superlab' },
   snap: { name: 'Perfectly balanced', desc: 'Snapped half the page away' },
   dundie: { name: 'Dundie winner', desc: 'That’s what she said' },
   raga: { name: 'Raga', desc: 'Played eight notes on the sitar' },
