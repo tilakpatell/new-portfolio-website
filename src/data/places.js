@@ -5,7 +5,8 @@
 // no country). `at` is [longitude, latitude] of the capital, or the middle of a
 // region: where the globe turns to and where the route from home ends. `photo`
 // names what the postcard picture on /travel shows (photos are keyed by id in
-// scripts/photo-sources.json).
+// scripts/photo-sources.json). `stops` lists the cities on a trip that took in
+// more than one, and `more` adds a postcard for each of them.
 //
 // After adding or removing a place, run `node scripts/build-globe.mjs` so the
 // globe lights the right countries.
@@ -24,7 +25,20 @@ export const PLACES = [
   { id: 'fr', iso: '250', name: 'France', region: 'Europe', at: [2.35, 48.86], continent: 'Europe', photo: 'The Mont Blanc massif' },
   { id: 'it', iso: '380', name: 'Italy', region: 'Europe', at: [12.5, 41.9], continent: 'Europe', photo: 'Lago di Misurina, Dolomites' },
   { id: 'mt', iso: '470', name: 'Malta', region: 'Europe', at: [14.51, 35.9], continent: 'Europe', photo: 'Grand Harbour, Valletta' },
-  { id: 'gr', iso: '300', name: 'Greece', region: 'Europe', at: [23.73, 37.98], continent: 'Europe', photo: 'Oia, Santorini' },
+  {
+    id: 'gr',
+    iso: '300',
+    name: 'Greece',
+    region: 'Europe',
+    at: [23.73, 37.98],
+    continent: 'Europe',
+    photo: 'Oia, Santorini',
+    stops: ['Athens', 'Thessaloniki', 'the islands'],
+    more: [
+      { id: 'gr-athens', photo: 'The Acropolis, Athens', at: [23.73, 37.97] },
+      { id: 'gr-thessaloniki', photo: 'The White Tower, Thessaloniki', at: [22.95, 40.63] },
+    ],
+  },
   { id: 'in', iso: '356', name: 'India', region: 'Asia', at: [77.21, 28.61], continent: 'Asia', photo: 'Akshardham, New Delhi' },
 ];
 

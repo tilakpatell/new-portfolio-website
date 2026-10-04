@@ -543,5 +543,21 @@
       1280
     ],
     "alt": "The KiMo Theatre, a cream Pueblo Deco building with ornate tilework across its upper floors, on a downtown street under a blue sky"
+  },
+  "gr-athens": {
+    "commons": "File:Attica 06-13 Athens 50 View from Philopappos - Acropolis Hill.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The Acropolis of Athens on its rocky hill, the Parthenon on top, seen from Philopappos Hill above green trees"
+  },
+  "gr-thessaloniki": {
+    "commons": "File:Λευκός Πύργος 4014.jpg",
+    "widths": [
+      480,
+      960
+    ],
+    "alt": "The White Tower of Thessaloniki, a round stone tower with a crenellated top and a Greek flag, behind umbrella pines under a blue sky"
   }
 }

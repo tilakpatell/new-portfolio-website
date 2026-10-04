@@ -945,5 +945,35 @@ export const PHOTOS = {
       "source": "https://commons.wikimedia.org/wiki/File:KiMo_Albuquerque.jpg",
       "title": "KiMo Albuquerque"
     }
+  },
+  "gr-athens": {
+    "widths": [
+      480,
+      960
+    ],
+    "ratio": 0.625,
+    "alt": "The Acropolis of Athens on its rocky hill, the Parthenon on top, seen from Philopappos Hill above green trees",
+    "credit": {
+      "author": "A.Savin",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Attica_06-13_Athens_50_View_from_Philopappos_-_Acropolis_Hill.jpg",
+      "title": "Attica 06-13 Athens 50 View from Philopappos - Acropolis Hill"
+    }
+  },
+  "gr-thessaloniki": {
+    "widths": [
+      480,
+      960
+    ],
+    "ratio": 1.6,
+    "alt": "The White Tower of Thessaloniki, a round stone tower with a crenellated top and a Greek flag, behind umbrella pines under a blue sky",
+    "credit": {
+      "author": "C messier",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:%CE%9B%CE%B5%CF%85%CE%BA%CF%8C%CF%82_%CE%A0%CF%8D%CF%81%CE%B3%CE%BF%CF%82_4014.jpg",
+      "title": "Λευκός Πύργος 4014"
+    }
   }
 };

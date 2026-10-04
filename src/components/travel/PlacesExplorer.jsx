@@ -39,7 +39,8 @@ function PlaceInfo({ place }) {
     <>
       <p className="stretch-semi text-lg font-semibold text-ink">{place.name}</p>
       <p className="mt-1 text-sm leading-relaxed text-body">
-        {place.region}. {distanceLine(place)}.
+        {place.stops ? `${place.stops.slice(0, -1).join(', ')} and ${place.stops[place.stops.length - 1]}. ` : `${place.region}. `}
+        {distanceLine(place)}.
       </p>
     </>
   );
