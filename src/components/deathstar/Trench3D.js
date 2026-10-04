@@ -457,6 +457,53 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
+  // torpedoes in flight (a glow and a trail), the fireballs where they go
+  // off, and the scorch marks they leave on the floor and walls
+  const flightGlow = Array.from({ length: 2 }, () => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, color: hot(0x9fd0ff, 3.2), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
+    sp.scale.setScalar(0.32);
+    sp.visible = false;
+    scene.add(sp);
+    return sp;
+  });
+  const trailGeo = new THREE.CylinderGeometry(0.004, 0.022, 1.6, 8, 1, true);
+  trailGeo.rotateX(Math.PI / 2); // along z, thin end trailing
+  trailGeo.translate(0, 0, 0.8);
+  const trailMat = new THREE.MeshBasicMaterial({ color: hot(0x88bbff, 2.4), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const trails = pool(2, trailGeo, trailMat);
+  const blastSprites = Array.from({ length: 6 }, () => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, color: hot(0xffc890, 2.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }));
+    sp.visible = false;
+    scene.add(sp);
+    return sp;
+  });
+  const scorchTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(6,5,4,0.92)');
+    gr.addColorStop(0.45, 'rgba(18,14,11,0.7)');
+    gr.addColorStop(1, 'rgba(18,14,11,0)');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 128, 128);
+    // a few streaks thrown out from the middle
+    x.strokeStyle = 'rgba(10,8,6,0.5)';
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + Math.sin(i * 7.3) * 0.3;
+      x.lineWidth = 2 + (i % 3);
+      x.beginPath();
+      x.moveTo(64 + Math.cos(a) * 18, 64 + Math.sin(a) * 18);
+      x.lineTo(64 + Math.cos(a) * (40 + (i % 4) * 6), 64 + Math.sin(a) * (40 + (i % 4) * 6));
+      x.stroke();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+  const scorchMat = new THREE.MeshBasicMaterial({ map: scorchTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+  const scorchGeo = new THREE.PlaneGeometry(1, 1);
+  const scorches = pool(TRENCH.torpedo.scorches, scorchGeo, scorchMat);
   const boom = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, color: hot(0xffe0b0, 2.4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false, fog: false }));
   boom.visible = false;
   scene.add(boom);
@@ -580,22 +627,33 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   };
   canvas.addEventListener('webglcontextlost', onContextLost);
 
-  // slow frames: drop the pixel ratio, then bloom, then tell the page
-  const perf = { acc: 0, n: 0, step: 0 };
-  const watch = (ms) => {
-    perf.acc += ms;
+  // Frames that really can't keep up: drop the pixel ratio, then bloom, then
+  // tell the page. Judged on real time every few seconds, and only below
+  // about 25 fps: a laptop saving battery caps animation at 30 fps (33 ms a
+  // frame), and that is not a machine struggling.
+  const perf = { acc: 0, n: 0, last: performance.now(), told: false };
+  const watch = () => {
+    const t = performance.now();
+    const gap = t - perf.last;
+    perf.last = t;
+    if (gap > 500) {
+      perf.acc = perf.n = 0; // back from a pause, or off screen
+      return;
+    }
+    perf.acc += gap;
     perf.n += 1;
-    if (perf.n < 120) return;
+    if (perf.acc < 3000) return;
     const avg = perf.acc / perf.n;
-    perf.acc = 0;
-    perf.n = 0;
-    if (avg < 24) return;
-    perf.step += 1;
-    if (perf.step === 1 && ratio > 1) {
+    perf.acc = perf.n = 0;
+    if (avg < 40) return;
+    if (ratio > 1) {
       ratio = 1;
       resize(size.w, size.h);
-    } else if (perf.step <= 2) useBloom = false;
-    else if (avg > 34) onSlow?.();
+    } else if (useBloom) useBloom = false;
+    else if (avg > 60 && !perf.told) {
+      perf.told = true;
+      onSlow?.();
+    }
   };
 
   const tmp = new THREE.Vector3();
@@ -603,6 +661,8 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1);
   const shakeV = new THREE.Vector3();
 
+  // (the frame time is measured here, not taken from the caller)
+  // eslint-disable-next-line no-unused-vars
   function render(g, ms = 16, { calm = false } = {}) {
     if (lost) return;
     if (g.items && g !== built && g.towers) buildCourse(g);
@@ -649,7 +709,8 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
         const m = itemMeshes[i];
         if (!m) return;
         if (it.kind === 'bolt') m.position.set(it.x, it.y, -it.z);
-        if (it.kind === 'turret') m.visible = it.alive;
+        if (it.blasted) m.visible = false;
+        else if (it.kind === 'turret') m.visible = it.alive;
       });
       g.towers.forEach((tw, i) => {
         towerMeshes[i].visible = tw.alive;
@@ -704,14 +765,47 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
       blast.intensity = 6 * Math.max(0, 1 - newest.t / 0.35);
     } else blast.intensity = 0;
 
-    // missed torpedoes streak on ahead
+    // torpedoes in flight, pitched down as they drop
     let pi = 0;
     for (const s of g.shots ?? []) {
       if (pi >= 2) break;
-      const m = torps[pi++];
-      m.visible = true;
-      m.position.set(s.x, s.y - 0.1, -s.z);
+      const m = torps[pi];
+      const glow = flightGlow[pi];
+      const tr = trails[pi];
+      pi += 1;
+      m.visible = glow.visible = tr.visible = true;
+      m.position.set(s.x, s.y, -s.z);
+      glow.position.copy(m.position);
+      glow.scale.setScalar(0.3 + Math.sin(t * 40 + pi) * 0.04);
+      tr.position.copy(m.position);
+      tr.rotation.x = Math.atan2(s.vy, (g.speed ?? 7) + TRENCH.torpedo.speed);
     }
+    for (let i = pi; i < 2; i++) flightGlow[i].visible = trails[i].visible = false;
+    // fireballs where they went off
+    blastSprites.forEach((sp, i) => {
+      const b = g.blasts?.[i];
+      sp.visible = !!b;
+      if (!b) return;
+      const k = b.t / b.life;
+      sp.position.set(b.x, b.y + k * 0.2, -b.z);
+      sp.scale.setScalar(0.5 + k * 1.6);
+      sp.material.opacity = (1 - k) ** 1.4;
+    });
+    // and the marks they left
+    scorches.forEach((m, i) => {
+      const sc = g.scorch?.[i];
+      m.visible = !!sc;
+      if (!sc) return;
+      m.scale.setScalar(sc.r * 2.2);
+      if (sc.on === 'floor') {
+        m.position.set(sc.x, -0.995, -sc.z);
+        m.rotation.set(-Math.PI / 2, 0, sc.spin);
+      } else {
+        const side = Math.sign(sc.x) || 1;
+        m.position.set(side * 0.995, sc.y, -sc.z);
+        m.rotation.set(0, -side * (Math.PI / 2), sc.spin);
+      }
+    });
     // the two that go in, curving down into the port
     const winning = g.status === 'winning' && g.win;
     for (let i = 2; i < 4; i++) torps[i].visible = false;
@@ -756,7 +850,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
 
     if (useBloom) composer.render();
     else renderer.render(scene, camera);
-    watch(ms);
+    watch();
   }
 
   renderer.compile(scene, camera);

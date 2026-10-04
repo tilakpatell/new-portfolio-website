@@ -4,7 +4,7 @@ import { splitWord } from '../components/albuquerque/elements';
 import Cast from '../components/albuquerque/Cast';
 import HectorBell from '../components/albuquerque/HectorBell';
 import HectorBoard from '../components/albuquerque/HectorBoard';
-import Lab from '../components/albuquerque/Lab';
+import Metherria from '../components/albuquerque/metherria/Metherria';
 import Gif from '../components/Gif';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import Scenes from '../components/worlds/Scenes';
@@ -175,13 +175,13 @@ export default function Albuquerque() {
 
       <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="cook-title">
         <h2 id="cook-title" className="title">
-          The superlab
+          Walt’s Metherria
         </h2>
         <p className="lead mt-4 max-w-[60ch]">
-          Under the laundry, cooking to order. Jesse, Badger and Skinny Pete are at the door on day one; Tuco, Mike, Gus, Lydia and Declan follow. Mix it, cook it, break it and bag it the way the ticket says. Walt won’t settle for less than 99, and neither will Gus.
+          A cook-to-order shop in 3D, in the spirit of Papa’s Freezeria. Jesse, Badger and Skinny Pete are at the hatch on day one; Tuco, Mike, Gus, Lydia, Declan and Saul follow. Build it, cook it, break it and pack it the way the ticket says. Walt won’t settle for less than 99, and neither will Gus.
         </p>
         <div className="mt-8">
-          <Lab />
+          <Metherria />
         </div>
       </section>
 

@@ -36,7 +36,7 @@ export default function Face({ who, mood = 'wait', className = '', title }) {
   const brows = BROW[mood] ?? BROW.wait;
   const jaw = L.long ? 26 : 22;
   return (
-    <svg viewBox="0 0 64 64" className={`lab-face ${className}`} data-mood={mood} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : 'true'}>
+    <svg viewBox="0 0 64 64" className={`wm-face ${className}`} data-mood={mood} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : 'true'}>
       {/* shoulders */}
       <path d="M8 64 c0 -12 10 -16 24 -16 s24 4 24 16 Z" fill={L.top} />
       {L.tie && <path d="M30 50 l2 12 l2 -12 Z" fill={L.tie} />}

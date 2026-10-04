@@ -175,7 +175,11 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
   const glRef = useRef(null);
   const resizeRef = useRef(null);
   const glDrop = useRef(null);
-  const [glState, setGlState] = useState('off'); // off | loading | on | failed | slow | lost
+  const [glState, setGlState] = useState('off'); // off | loading | on | failed | lost
+  const glStateRef = useRef('off');
+  glStateRef.current = glState;
+  const threeOn = useRef(three.on);
+  threeOn.current = three.on;
   useEffect(() => {
     if (!three.on) {
       setGlState('off');
@@ -193,7 +197,9 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       .then(({ createTrench3D }) => {
         if (dead || !glCanvas.current) return;
         try {
-          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost'), onSlow: () => drop('slow') });
+          // 3D stays 3D: frames that can't keep up lower its resolution and
+          // effects; only a lost or failed context falls back to 2D.
+          glRef.current = createTrench3D(glCanvas.current, { onLost: () => drop('lost') });
           resizeRef.current?.();
           setGlState('on');
         } catch {
@@ -254,6 +260,15 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             break;
           case 'torpedo':
             play('torpedo');
+            changed = true;
+            break;
+          case 'blastfx':
+            play('thunder');
+            buzz(40);
+            break;
+          case 'blast':
+            play('crumble');
+            message = e.text;
             changed = true;
             break;
           case 'away':
@@ -374,7 +389,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     };
 
     // before the first run, a slow fly-over of the surface
-    const idle = { z: 0, px: 0, py: 1.9, tx: 0, ty: 1.9, items: [], towers: [], ties: [], bolts: [], lasers: [], rear: [], shots: [], fx: [], computer: true, flash: 0, shake: 0, status: 'ready', t: 0, vader: {} };
+    const idle = { z: 0, px: 0, py: 1.9, tx: 0, ty: 1.9, items: [], towers: [], ties: [], bolts: [], lasers: [], rear: [], shots: [], blasts: [], scorch: [], fx: [], computer: true, flash: 0, shake: 0, status: 'ready', t: 0, vader: {} };
     const idleState = () => {
       if (!calm) {
         const t = performance.now() / 1000;
@@ -419,7 +434,12 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
         }
         ctx.clearRect(-20, -20, w + 40, h + 40);
       }
-      if (!gl || !glRef.current) {
+      // 3D on its way: just the dark of space until it's ready, never the 2D world first
+      const waiting = !gl && threeOn.current && (glStateRef.current === 'loading' || glStateRef.current === 'off');
+      if (waiting) {
+        ctx.fillStyle = '#05060b';
+        ctx.fillRect(-20, -20, w + 40, h + 40);
+      } else if (!gl || !glRef.current) {
         ctx.fillStyle = '#05060b';
         ctx.fillRect(-20, -20, w + 40, h + 40);
 
@@ -536,11 +556,29 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ctx.stroke();
         }
 
+        // scorch marks where torpedoes went off, on the floor and the walls
+        for (const m of g.scorch ?? []) {
+          const d = m.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const [x, y] = project(m.x, m.y, d, g);
+          const [x2] = project(m.x + m.r, m.y, d, g);
+          const r = Math.max(2, Math.abs(x2 - x));
+          const floor = m.on === 'floor';
+          const sc = ctx.createRadialGradient(x, y, 0, x, y, r);
+          sc.addColorStop(0, 'rgba(8,6,5,0.85)');
+          sc.addColorStop(0.55, 'rgba(24,18,14,0.55)');
+          sc.addColorStop(1, 'rgba(24,18,14,0)');
+          ctx.fillStyle = sc;
+          ctx.beginPath();
+          ctx.ellipse(x, y, floor ? r : r * 0.45, floor ? r * 0.32 : r, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         // Everything in the world, far to near
         const things = [];
         for (const it of g.items) {
           const d = it.z - g.z;
-          if (d > NEAR && d < FAR && !(it.kind === 'turret' && !it.alive)) things.push([d, 'item', it]);
+          if (d > NEAR && d < FAR && !it.blasted && !(it.kind === 'turret' && !it.alive)) things.push([d, 'item', it]);
         }
         for (const tw of g.towers) {
           const d = tw.z - g.z;
@@ -638,13 +676,50 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ctx.stroke();
         }
         ctx.lineWidth = 1;
+        // torpedoes in flight: a hot blue-white core and a trail
         for (const s of g.shots) {
           const d = s.z - g.z;
           if (d < NEAR || d > FAR) continue;
-          const [x1, y1] = project(s.x, s.y - 0.1, d, g);
-          ctx.fillStyle = '#ffd27a';
+          const [x1, y1] = project(s.x, s.y, d, g);
+          const [x0, y0] = project(s.x, s.y - s.vy * 0.08, Math.max(NEAR, d - 2.2), g);
+          const r = Math.max(2.5, 14 / d);
+          const trail = ctx.createLinearGradient(x0, y0, x1, y1);
+          trail.addColorStop(0, 'rgba(120,170,255,0)');
+          trail.addColorStop(1, 'rgba(170,210,255,0.8)');
+          ctx.strokeStyle = trail;
+          ctx.lineWidth = r * 0.8;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.arc(x1, y1, Math.max(1.5, 6 / d), 0, Math.PI * 2);
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.stroke();
+          ctx.lineCap = 'butt';
+          ctx.lineWidth = 1;
+          const glow = ctx.createRadialGradient(x1, y1, 0, x1, y1, r * 2);
+          glow.addColorStop(0, 'rgba(255,255,255,1)');
+          glow.addColorStop(0.3, 'rgba(170,215,255,0.9)');
+          glow.addColorStop(1, 'rgba(80,140,255,0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(x1, y1, r * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // where they went off: a fireball that blooms and fades
+        for (const b of g.blasts ?? []) {
+          const d = b.z - g.z;
+          if (d < NEAR || d > FAR) continue;
+          const k = b.t / b.life;
+          const [x, y] = project(b.x, b.y, d, g);
+          const [x2] = project(b.x + 0.5 + k * 0.6, b.y, d, g);
+          const r = Math.max(3, Math.abs(x2 - x));
+          const fire = ctx.createRadialGradient(x, y, 0, x, y, r);
+          fire.addColorStop(0, `rgba(255,250,230,${1 - k})`);
+          fire.addColorStop(0.3, `rgba(255,190,90,${0.9 * (1 - k)})`);
+          fire.addColorStop(0.7, `rgba(230,80,20,${0.5 * (1 - k)})`);
+          fire.addColorStop(1, 'rgba(120,30,10,0)');
+          ctx.fillStyle = fire;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
           ctx.fill();
         }
         // explosions
@@ -1049,7 +1124,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             <p className="stretch-semi text-2xl font-semibold text-white">{ui.phase === 'won' ? 'Direct hit. The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}</p>
             <p className="mt-2 max-w-md text-sm text-white/80">
               {ui.phase === 'ready'
-                ? 'Over the surface first: shoot down the TIE fighters and dodge the towers. Then dive into the trench, thread the catwalks and walls, lose Vader, and put a torpedo in the exhaust port. Arrows or W A S D steer (drag on a touch screen), Space or a held click fires the lasers, F or Enter fires a torpedo, T switches off the targeting computer.'
+                ? 'Over the surface first: shoot down the TIE fighters and dodge the towers. Then dive into the trench, thread the catwalks and walls, lose Vader, and put a torpedo in the exhaust port. A torpedo spent in the trench blasts a catwalk, a wall or a turret out of your way, but you only have two. Arrows or W A S D steer (drag on a touch screen), Space or a held click fires the lasers, F or Enter fires a torpedo, T switches off the targeting computer.'
                 : ui.message}
             </p>
             {ended && (
@@ -1106,9 +1181,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           ) : (
             <span>Playing in 2D: this browser has no WebGL.</span>
           )}
-          {three.can && !three.on && !three.auto && three.mode === 'auto' && <span>No graphics chip found, so this is the 2D version. Turn 3D on to try it anyway.</span>}
           {glState === 'loading' && <span>Loading the 3D station…</span>}
-          {glState === 'slow' && <span>Switched to 2D: this device was struggling with 3D.</span>}
           {glState === 'lost' && <span>The graphics chip reset, so this is the 2D version now.</span>}
           {glState === 'failed' && <span>3D couldn’t start here, so this is the 2D version.</span>}
         </span>
