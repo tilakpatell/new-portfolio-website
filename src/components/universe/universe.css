@@ -1,0 +1,46 @@
+/* ─── The universe map ───────────────────────────────────────────────────── */
+
+/* The flat map: Home's teaser and the 3D-off map */
+.minimap { position: relative; width: 100%; aspect-ratio: 2 / 1; }
+.minimap-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.minimap-orbit { fill: none; stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.minimap-labels { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.minimap-item { position: absolute; width: 0; height: 0; }
+.minimap-hit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  display: grid;
+  justify-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding-top: 30px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.minimap-hit:hover,
+.minimap-hit[aria-pressed='true'] { color: var(--swatch); }
+.minimap-hit:focus-visible { outline: 2px solid var(--swatch); outline-offset: 2px; }
+.minimap-name { pointer-events: none; }
+@media (max-width: 640px) {
+  .minimap-hit { font-size: 0.58rem; padding-top: 24px; }
+  /* on a phone the long names crowd: the teaser keeps the dots, the map keeps the selected name */
+  .minimap-teaser .minimap-name { display: none; }
+}
+
+/* Home's teaser */
+.universe-teaser {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: #03040a;
+  padding: clamp(1rem, 3vw, 2rem);
+}
