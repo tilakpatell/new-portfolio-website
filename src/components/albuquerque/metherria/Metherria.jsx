@@ -470,15 +470,11 @@ export default function Metherria() {
     </div>
   ) : !three.on ? (
     <div className="wm-card" role="note">
-      <p className="wm-card-title">{three.mode === 'off' ? '3D is switched off.' : 'No graphics chip found.'}</p>
-      <p className="wm-card-text">
-        {three.mode === 'off'
-          ? 'Walt’s Metherria only comes in 3D. Turn it on to play.'
-          : 'This browser draws 3D on the processor instead of a graphics chip, so the lab may run slowly. You can still try it.'}
-      </p>
+      <p className="wm-card-title">3D is switched off.</p>
+      <p className="wm-card-text">Walt’s Metherria only comes in 3D. Turn it on to play.</p>
       <div className="wm-row">
-        <button type="button" className="btn btn-primary" onClick={() => three.set('on')}>
-          {three.mode === 'off' ? 'Turn 3D on' : 'Play anyway'}
+        <button type="button" className="btn btn-primary" onClick={() => three.set('auto')}>
+          Turn 3D on
         </button>
       </div>
     </div>

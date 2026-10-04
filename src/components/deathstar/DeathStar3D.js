@@ -315,7 +315,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   const giants = new Map();
   const giantFor = (id) => {
     if (!giants.has(id)) {
-      const c = paintGiant(id, big ? { w: 2048, h: 1024 } : { w: 1024, h: 512 });
+      const c = paintGiant(id, big ? { w: 1024, h: 512 } : { w: 768, h: 384 });
       const t = new THREE.CanvasTexture(c);
       t.colorSpace = THREE.SRGBColorSpace;
       giants.set(id, t);

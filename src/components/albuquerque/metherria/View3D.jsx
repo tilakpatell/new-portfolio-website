@@ -38,7 +38,11 @@ export default function View3D({ live, active, onState, onFrame }) {
           api.current = createMetherria3D(canvas.current, { onLost: () => fail('lost'), onSlow: () => !dead && setState('slow') });
           if (import.meta.env.DEV) window.__METH_GL__ = api.current; // renderer counts for the QA scripts
           fit();
-          setState('on');
+          // shown only once it's fully dressed, never plain first
+          const shown = api.current;
+          shown.whenReady().finally(() => {
+            if (!dead && api.current === shown) setState('on');
+          });
         } catch {
           fail('failed');
         }
