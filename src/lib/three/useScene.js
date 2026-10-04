@@ -26,6 +26,11 @@ import { readTheme, watchTheme } from './theme';
 
 const DROP_AFTER = 10000; // ms far from the viewport before the scene is let go
 
+// Something full screen over the whole page (the opening crawl, the cockpit)
+// sets html[data-covered]: scenes underneath stay made but draw nothing until
+// it's gone (App sends tp:uncover then).
+const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
+
 export function useScene(load, { enabled = true, props, id = 'scene', near: nearMargin = '100% 0px 100% 0px' } = {}) {
   const wrap = useRef(null);
   const view = useRef(null);
@@ -112,7 +117,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     const frame = (now) => {
       L.raf = 0;
       const v = view.current;
-      if (!v || !visible.current || document.hidden) return;
+      if (!v || !visible.current || document.hidden || covered()) return;
       const ms = L.last ? Math.min(50, now - L.last) : 16;
       L.last = now;
       let more = false;
@@ -131,10 +136,11 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
       else L.last = 0;
     };
     L.kick = () => {
-      if (!L.raf && view.current && visible.current && !document.hidden) L.raf = requestAnimationFrame(frame);
+      if (!L.raf && view.current && visible.current && !document.hidden && !covered()) L.raf = requestAnimationFrame(frame);
     };
     const onVis = () => (document.hidden ? stop() : L.kick());
     document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('tp:uncover', onVis);
 
     setStatus('loading');
     Promise.resolve()
@@ -177,6 +183,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
       dead = true;
       stop();
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('tp:uncover', onVis);
       L.kick = () => {};
       release();
     };

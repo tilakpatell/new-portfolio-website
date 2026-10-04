@@ -1,0 +1,189 @@
+/* The cockpit the site opens in (Cockpit.jsx): the picture full screen, the
+   controls over it, kept to the edges so the view out of the glass stays
+   clear. Above the nav and everything else, like the jump to lightspeed. */
+
+.cockpit {
+  position: fixed;
+  z-index: 95;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: #f4f1ea;
+  font-family: var(--font-sans);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cockpit-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.cockpit-veil { position: absolute; inset: 0; background: #000; opacity: 1; pointer-events: none; }
+
+.cockpit-hud {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.cockpit-hud > * { pointer-events: none; }
+.cockpit-hud button { pointer-events: auto; }
+/* going: the controls fade away; what the crew say stays */
+.cockpit-top,
+.cockpit-bottom { transition: opacity 0.6s ease; }
+.cockpit[data-launching] .cockpit-top,
+.cockpit[data-launching] .cockpit-bottom { opacity: 0; }
+.cockpit[data-launching] .cockpit-hud button { pointer-events: none; }
+
+/* where you are */
+.cockpit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cockpit-where { display: grid; gap: 2px; text-shadow: 0 1px 12px rgb(0 0 0 / 0.7); }
+.cockpit-eyebrow { color: rgb(244 241 234 / 0.6); font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.cockpit-name { font-size: clamp(1.05rem, 2.2vw, 1.4rem); font-weight: 650; letter-spacing: -0.01em; }
+.cockpit-crew { color: rgb(244 241 234 / 0.72); font-size: 0.85rem; }
+.cockpit-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  background: rgb(8 9 14 / 0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.cockpit-skip:hover { border-color: rgb(255 255 255 / 0.5); background: rgb(8 9 14 / 0.7); }
+
+/* what the crew say */
+.cockpit-line { align-self: end; justify-self: center; max-width: min(640px, 100%); min-height: 48px; margin-bottom: 14px; text-align: center; transition: opacity 0.3s; }
+.cockpit-line-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  background: rgb(6 7 12 / 0.62);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  text-align: left;
+  animation: cockpit-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.cockpit-face { flex: none; width: 34px; height: 34px; border-radius: 50%; background: rgb(255 255 255 / 0.08); }
+@keyframes cockpit-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* the picker and the big button */
+.cockpit-bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 16px; }
+.cockpit-pick { display: flex; flex-wrap: wrap; gap: 6px; justify-self: start; }
+.cockpit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px 0 8px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 999px;
+  background: rgb(8 9 14 / 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: rgb(244 241 234 / 0.85);
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.cockpit-chip:hover { border-color: rgb(255 255 255 / 0.45); color: #fff; }
+.cockpit-chip[aria-checked='true'] { border-color: #f4f1ea; background: #f4f1ea; color: #0b0c10; }
+.cockpit-chip:disabled { cursor: default; }
+.cockpit-chip kbd { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: rgb(255 255 255 / 0.12); font-family: var(--font-mono); font-size: 0.66rem; }
+.cockpit-chip[aria-checked='true'] kbd { background: rgb(0 0 0 / 0.12); }
+
+.cockpit-go {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 220px;
+  min-height: 58px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffaf0, #e9e1d0);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.4), 0 10px 40px rgb(0 0 0 / 0.45), 0 0 40px rgb(255 236 200 / 0.25);
+  color: #0b0c10;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.3s;
+}
+.cockpit-go:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.6), 0 14px 46px rgb(0 0 0 / 0.5), 0 0 60px rgb(255 236 200 / 0.4); }
+.cockpit-go:active { transform: translateY(1px) scale(0.99); }
+.cockpit-go:disabled { opacity: 0.55; cursor: default; }
+.cockpit-go kbd { padding: 3px 7px; border-radius: 6px; background: rgb(0 0 0 / 0.1); font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.cockpit-go-ring { position: absolute; inset: -6px; border: 1.5px solid rgb(255 244 222 / 0.55); border-radius: 999px; pointer-events: none; animation: cockpit-ring 2.4s ease-out infinite; }
+.cockpit-go:disabled .cockpit-go-ring { display: none; }
+@keyframes cockpit-ring { 0% { opacity: 0.9; transform: scale(1); } 70%, 100% { opacity: 0; transform: scale(1.18, 1.5); } }
+
+.cockpit-hint { justify-self: end; margin-bottom: 10px; color: rgb(244 241 234 / 0.55); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.04em; text-shadow: 0 1px 8px rgb(0 0 0 / 0.8); }
+.cockpit-hint-touch { display: none; }
+.cockpit:not([data-ready]) .cockpit-hint { opacity: 0; }
+
+.cockpit-skip:focus-visible,
+.cockpit-chip:focus-visible,
+.cockpit-go:focus-visible { outline: 2px solid #f4f1ea; outline-offset: 3px; }
+
+@media (pointer: coarse) {
+  .cockpit-hint-mouse { display: none; }
+  .cockpit-hint-touch { display: inline; }
+  /* no keyboard to hint at */
+  .cockpit-chip kbd,
+  .cockpit-go kbd { display: none; }
+  .cockpit-chip { padding: 0 14px; }
+}
+
+/* short windows (a phone on its side): one tight row along the bottom */
+@media (max-height: 500px) and (min-width: 761px) {
+  .cockpit-hud { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .cockpit-eyebrow,
+  .cockpit-crew { display: none; }
+  .cockpit-name { font-size: 0.95rem; }
+  .cockpit-skip { min-height: 34px; padding: 0 12px; }
+  .cockpit-pick { flex-wrap: nowrap; gap: 4px; }
+  .cockpit-chip { min-height: 36px; padding: 0 10px; font-size: 0.78rem; }
+  .cockpit-go { min-width: 170px; min-height: 46px; font-size: 0.95rem; }
+  .cockpit-line { min-height: 0; margin-bottom: 8px; }
+  .cockpit-line-in { padding: 5px 10px 5px 5px; font-size: 0.8rem; }
+  .cockpit-face { width: 26px; height: 26px; }
+  .cockpit-hint { display: none; }
+}
+
+/* phones and narrow windows: everything stacked at the bottom, thumb-sized */
+@media (max-width: 760px) {
+  .cockpit-hud { padding-right: max(14px, env(safe-area-inset-right)); padding-left: max(14px, env(safe-area-inset-left)); }
+  .cockpit-bottom { grid-template-columns: 1fr; justify-items: stretch; gap: 10px; }
+  .cockpit-pick { display: grid; grid-template-columns: repeat(4, 1fr); justify-self: stretch; gap: 6px; }
+  .cockpit-chip { justify-content: center; min-height: 44px; padding: 0 6px; font-size: 0.82rem; }
+  .cockpit-chip kbd { display: none; }
+  .cockpit-go { width: 100%; min-width: 0; min-height: 56px; }
+  .cockpit-go kbd { display: none; }
+  .cockpit-hint { justify-self: center; margin: 0; }
+  .cockpit-line { margin-bottom: 8px; }
+  .cockpit-line-in { font-size: 0.85rem; }
+  .cockpit-name { font-size: 1.05rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cockpit-go-ring { animation: none; display: none; }
+  .cockpit-line-in { animation: none; }
+}
