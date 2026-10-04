@@ -1987,6 +1987,81 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
 @keyframes arrive { from { opacity: 0; transform: scale(0.9); } }
 @media (prefers-reduced-motion: reduce) { .tesseract, .hulk-stage[data-hulk] { animation: none; } .portal-flash { animation-duration: 0.4s; } }
 
+/* Avengers HQ, the look: the compound at night. While the page is open (it
+   sets data-world on <html>) and the Stark theme is on, the whole site goes
+   dark: a night sky lit from the compound below, Stark's HUD grid, steel and
+   Iron Man red, the A in its ring behind the title, HUD brackets on the map
+   and on every game's screen. Pin another theme and that theme wins. */
+:root[data-world='avengers'][data-theme='stark'] {
+  --bg: #070a10; --bg-deep: #05070c; --surface: #0d131c; --surface-2: #141c27; --border: #1d2734; --border-strong: #3b4a5c;
+  --text: #f3f5f8; --text-body: #c9d1dc; --muted: #8b97a8;
+  --accent: #e0322f; --accent-text: #ff6f61; --btn-bg: #c8161d; --btn-ink: #ffffff; --saber: #7fdcff; --nav-bg: #05070c;
+  --route-plan: #2b3644; --shadow-card: 0 30px 60px -40px rgba(0, 0, 0, 0.9);
+  --hud: #7fdcff;
+  color-scheme: dark;
+}
+.hq-sky, .hq-feed, .hq-rule, .hq-hero-mark { display: none; }
+.hq-page { isolation: isolate; }
+:root[data-world='avengers'][data-theme='stark'] .hq-sky { display: block; position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.hq-sky-glow {
+  position: absolute; inset: 0 0 auto; height: min(1600px, 100%);
+  background:
+    radial-gradient(55% 45% at 70% 0%, rgba(64, 132, 230, 0.3), transparent 72%),
+    radial-gradient(38% 30% at 10% 14%, rgba(200, 22, 29, 0.13), transparent 72%),
+    radial-gradient(60% 38% at 40% 55%, rgba(127, 220, 255, 0.05), transparent 72%);
+}
+.hq-sky-grid {
+  position: absolute; inset: 0 0 auto; height: min(1400px, 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0L28 8V24L14 32L0 24V8ZM14 32V48' fill='none' stroke='%237fdcff' stroke-opacity='.2' stroke-width='.8'/%3E%3C/svg%3E") 0 0 / 35px 60px;
+  -webkit-mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+  mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+}
+.hq-sky-stars { position: absolute; inset: 0; opacity: 0.32; }
+
+/* the hero: a live feed of the compound, the A behind the steel title */
+:root[data-world='avengers'][data-theme='stark'] .hq-feed { display: flex; justify-content: space-between; gap: 1rem; margin: 0 0 0.75rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.hq-feed span { display: inline-flex; align-items: center; }
+.hq-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 0.6em; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 8px #ff3b30; animation: hq-live 1.6s ease-in-out infinite; }
+@keyframes hq-live { 50% { opacity: 0.35; } }
+.hq-hud { position: relative; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::before,
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::after {
+  content: ''; position: absolute; z-index: 3; width: 24px; height: 24px; border: 0 solid var(--hud); opacity: 0.7; pointer-events: none;
+}
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::before,
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::after { content: none; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game)::before { top: -8px; left: -8px; border-width: 2px 0 0 2px; }
+:root[data-world='avengers'][data-theme='stark'] .hq-hud::after { bottom: -8px; right: -8px; border-width: 0 2px 2px 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game::after { top: -8px; right: -8px; border-width: 2px 2px 0 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game { position: relative; }
+/* the rail's little map is clipped, so its brackets sit inside it */
+:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::before { top: 6px; left: 6px; width: 14px; height: 14px; border-width: 2px 0 0 2px; }
+:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::after { bottom: 6px; right: 6px; width: 14px; height: 14px; border-width: 0 2px 2px 0; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-map, .hq-screen, .reactor-stage, .roof-stage, .floor-stage, .gauntlet-stage) { border-color: rgba(127, 220, 255, 0.16); }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hero-map, .hq-screen) { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 40px 100px -45px rgba(64, 132, 230, 0.55); }
+:root[data-world='avengers'][data-theme='stark'] .hq-hero-mark { display: block; position: absolute; z-index: -1; top: 50%; right: -2rem; width: min(500px, 78%); translate: 0 -54%; opacity: 0.075; pointer-events: none; }
+:root[data-world='avengers'][data-theme='stark'] .hq-page .eyebrow { color: var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .hq-page :is(.display, .title) {
+  background: linear-gradient(180deg, #ffffff 0%, #e2e7ee 40%, #8e9aab 53%, #e8edf2 72%, #a3aebb 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-world='avengers'][data-theme='stark'] .hq-steel { filter: drop-shadow(0 4px 24px rgba(64, 132, 230, 0.28)); }
+:root[data-world='avengers'][data-theme='stark'] .hq-rule { display: block; width: 72px; height: 3px; margin-top: 1.1rem; border-radius: 2px; background: linear-gradient(90deg, #c8161d, #e3b450); box-shadow: 0 0 14px rgba(224, 50, 47, 0.6); }
+
+/* the tour: each stop marked off like a HUD readout */
+:root[data-world='avengers'][data-theme='stark'] .tower-floor-badge { border-color: rgba(127, 220, 255, 0.35); border-radius: 3px; background: rgba(127, 220, 255, 0.06); color: var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor { position: relative; padding-top: 2.25rem; }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(127, 220, 255, 0.45), rgba(127, 220, 255, 0.08) 55%, transparent); }
+:root[data-world='avengers'][data-theme='stark'] .tower-floor::after { content: ''; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--hud); box-shadow: 0 0 10px var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .hq-rail-list li[data-on] span { box-shadow: 0 0 10px rgba(224, 50, 47, 0.7); }
+:root[data-world='avengers'][data-theme='stark'] .btn-primary { box-shadow: 0 8px 24px -10px rgba(200, 22, 29, 0.8); }
+:root[data-world='avengers'][data-theme='stark'] .btn-ghost { background: rgba(13, 19, 28, 0.7); }
+/* Titan's space fades in and out of the night instead of starting at an edge */
+:root[data-world='avengers'][data-theme='stark'] .space-scope {
+  background: linear-gradient(var(--bg), transparent 140px, transparent calc(100% - 140px), var(--bg)), radial-gradient(70% 60% at 30% 30%, rgba(108, 47, 160, 0.4), transparent 70%), radial-gradient(60% 60% at 80% 80%, rgba(40, 60, 140, 0.35), transparent 70%), #05040b;
+}
+@media (prefers-reduced-motion: reduce) { .hq-live-dot { animation: none; } }
+
 /* ─── The scroll bar, per theme ──────────────────────────────────────────── */
 /* Sting: an elven blade that glows blue (orange in Mordor) */
 .saber-progress[data-kind='sting'] .hilt { width: 30px; background: linear-gradient(90deg, #3b2a1c 0 60%, #c9d1d9 60% 66%, #3b2a1c 66% 100%); border-radius: 3px 0 0 3px; }
