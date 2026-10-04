@@ -10,6 +10,7 @@ import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
+import WorldGate from './components/worlds/WorldGate';
 
 const Experience = lazy(() => import('./pages/Experience'));
 const Projects = lazy(() => import('./pages/Projects'));
@@ -175,6 +176,8 @@ function Shell() {
         <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
+              {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
+              <WorldGate pathname={pathname}>
               <Routes>
                 <Route path="/" element={<Front />} />
                 <Route path="/home" element={<Home />} />
@@ -197,6 +200,7 @@ function Shell() {
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </WorldGate>
             </div>
           </Suspense>
         </ErrorBoundary>

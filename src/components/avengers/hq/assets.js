@@ -91,27 +91,33 @@ export async function pbr(name, { repeat = [1, 1], small = false, color, normalS
 }
 
 // A sky: the HDR that lights the scene, the photo you see, and what the asset
-// script found in it (its sun, the colour of its horizon).
-export function loadSky(name) {
+// script found in it (its sun, the colour of its horizon). The photo is only
+// fetched for a scene that shows it (`background`): the compound's sky
+// lights the map but is never seen, and its photo alone is 1.6 MB.
+const skyPhoto = (name) =>
+  once(`sky-photo:${name}`, () =>
+    loadImage(`${BASE}sky/${name}/sky.jpg`)
+      .then((t) => {
+        t.mapping = THREE.EquirectangularReflectionMapping;
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+      })
+      .catch(() => null),
+  );
+
+export function loadSky(name, { background = true } = {}) {
   const meta = SKIES[name] ?? { sun: null, horizon: [0.5, 0.5, 0.5], sky: false };
-  return once(`sky:${name}`, async () => {
-    const hdr = await new HDRLoader().loadAsync(`${BASE}sky/${name}/env.hdr`).catch(() => {
+  const hdr = once(`sky:${name}`, async () => {
+    const t = await new HDRLoader().loadAsync(`${BASE}sky/${name}/env.hdr`).catch(() => {
       // no sky file: a plain grey one, so the scene still lights
-      const t = new THREE.DataTexture(new Float32Array([0.5, 0.5, 0.5, 1]), 1, 1, THREE.RGBAFormat, THREE.FloatType);
-      t.needsUpdate = true;
-      return t;
+      const g = new THREE.DataTexture(new Float32Array([0.5, 0.5, 0.5, 1]), 1, 1, THREE.RGBAFormat, THREE.FloatType);
+      g.needsUpdate = true;
+      return g;
     });
-    hdr.mapping = THREE.EquirectangularReflectionMapping;
-    let background = null;
-    if (meta.sky) {
-      background = await loadImage(`${BASE}sky/${name}/sky.jpg`).catch(() => null);
-      if (background) {
-        background.mapping = THREE.EquirectangularReflectionMapping;
-        background.colorSpace = THREE.SRGBColorSpace;
-      }
-    }
-    return { hdr, background, meta };
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    return t;
   });
+  return Promise.all([hdr, background && meta.sky ? skyPhoto(name) : null]).then(([h, photo]) => ({ hdr: h, background: photo, meta }));
 }
 
 let gltfLoader = null;
@@ -211,5 +217,6 @@ export function loadImpostor(name) {
 }
 
 // Start loading what a game needs while it's still being built.
-export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false } = {}) =>
-  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map(loadSky), ...models.map(loadModel), ...impostors.map(loadImpostor)]);
+// (`backgrounds: false` for a game whose skies only light it)
+export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false, backgrounds = true } = {}) =>
+  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map((s) => loadSky(s, { background: backgrounds })), ...models.map(loadModel), ...impostors.map(loadImpostor)]);
