@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
+import { use3D } from '../../lib/gpu';
 import { local, useFrameLoop } from '../../lib/hooks';
+import Scene3D from './Scene3D';
 import { DUEL, block, newDuel, stepDuel, strike } from './duel';
 
 const sfx = () => import('../../lib/sfx');
@@ -20,6 +22,10 @@ const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INP
 // deep, then the Balrog comes across. When it raises its whip, raise the
 // staff as it falls. Strike the bridge with the Balrog out over the deepest
 // part of the drop. Win, and it comes again, faster.
+//
+// Drawn in 3D (./Bridge3D.js) wherever WebGL works, over this drawing, which
+// stays for browsers without it and for anything that reads the page.
+const loadScene = () => import('./Bridge3D').then((m) => m.createBridge3D);
 const BRIDGE = { x0: 70, x1: 570, y: 168, piece: 25 };
 const PIECES = Array.from({ length: (BRIDGE.x1 - BRIDGE.x0) / BRIDGE.piece }, (_, i) => BRIDGE.x0 + i * BRIDGE.piece);
 const GRADES = { perfect: 'Perfect. Right over the deep.', good: 'Good. The bridge goes under it.', close: 'Close. Very close.' };
@@ -85,6 +91,10 @@ export default function Bridge() {
     const b = local.get(BEST, null);
     return b && typeof b === 'object' ? { streak: Number(b.streak) || 0, score: Number(b.score) || 0 } : { streak: 0, score: 0 };
   });
+  const three = use3D();
+  const [gl, setGl] = useState('waiting');
+  const want3D = three.on && gl !== 'failed' && gl !== 'lost';
+  const view = useRef(null); // the 3D scene, once it is up
   const timers = useRef([]);
   const drums = useRef(0);
   const said = useRef({});
@@ -159,6 +169,7 @@ export default function Bridge() {
         setWill(e.will);
         setSay(e.will > 0 ? 'The whip catches him. Raise the staff as it falls!' : 'The whip catches him.');
         sfx().then((s) => s.zip());
+        view.current?.fx('lash');
         buzz(80);
         later(() => setWhip(null), 300);
       } else if (e.type === 'lost') lost(e.reason);
@@ -186,8 +197,12 @@ export default function Bridge() {
       setWhip(null);
       setSay('The staff turns the whip.');
       sfx().then((s) => s.clang(undefined, undefined, 0));
+      view.current?.fx('block');
       buzz(30);
-    } else setSay(r.recovering ? 'The staff is still down.' : 'Nothing to turn. The staff is down for a moment.');
+    } else {
+      view.current?.fx('miss');
+      setSay(r.recovering ? 'The staff is still down.' : 'Nothing to turn. The staff is down for a moment.');
+    }
   };
 
   const stand = () => {
@@ -198,6 +213,7 @@ export default function Bridge() {
     const r = strike(d);
     if (r.grade === 'soon') {
       sfx().then((s) => s.thunder());
+      view.current?.fx('soon');
       setWill(d.will);
       buzz(60);
       if (d.phase === 'lost') lost('beaten');
@@ -205,6 +221,7 @@ export default function Bridge() {
       return;
     }
     clear();
+    view.current?.fx('strike');
     setX(d.x);
     setWhip(null);
     setBroken(PIECES.filter((p) => p + BRIDGE.piece > d.x - 50 && p < d.x + 45));
@@ -248,9 +265,11 @@ export default function Bridge() {
   }, [fighting]);
 
   const will0 = grey === 'white' ? DUEL.will + 1 : DUEL.will;
+  // what the 3D scene draws from, read fresh each frame
+  const read = () => ({ phase, x: fighting && duel.current ? duel.current.x : x, whip, grey, broken });
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
-      <div className="bridge-stage" data-phase={phase} data-whip={whip || undefined}>
+      <div className="bridge-stage me-stage" data-phase={phase} data-whip={whip || undefined} data-3d={want3D || undefined} data-gl={(want3D && gl === 'on') || undefined}>
         <svg viewBox="0 0 640 300" className="block h-auto w-full" role="img" aria-label="The Bridge of Khazad-dûm: a narrow stone span over a fiery chasm, Gandalf at the near end">
           <defs>
             <linearGradient id="bal-fire" x1="0" y1="1" x2="0" y2="0">
@@ -316,6 +335,15 @@ export default function Bridge() {
             ))}
           </g>
         </svg>
+        {want3D && <Scene3D name="bridge" load={loadScene} read={read} api={view} soft={three.info.software} onState={setGl} />}
+        {want3D && gl === 'on' && (
+          <p className="me-hud" aria-hidden="true">
+            <span>Will</span>
+            {Array.from({ length: will0 }, (_, i) => (
+              <i key={i} data-on={i < will || undefined} />
+            ))}
+          </p>
+        )}
       </div>
       <div>
         <h2 id="bridge-title" className="title">

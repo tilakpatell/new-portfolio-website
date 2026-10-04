@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { RiZoomInLine } from 'react-icons/ri';
 import Photo from '../Photo';
 import Lightbox from '../Lightbox';
@@ -63,7 +63,7 @@ function Zoomable({ index, onOpen, className = '', children }) {
   );
 }
 
-export default function Heritage() {
+export default memo(function Heritage() {
   const [open, setOpen] = useState(-1);
   return (
     <section id="heritage" data-theme-section="travel" className="heritage relative z-10 scroll-mt-20 py-16 md:py-28" aria-labelledby="heritage-title">
@@ -127,4 +127,4 @@ export default function Heritage() {
       {open >= 0 && <Lightbox items={ALL} index={open} onIndex={setOpen} onClose={() => setOpen(-1)} />}
     </section>
   );
-}
+});

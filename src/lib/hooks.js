@@ -48,6 +48,29 @@ export function useInView({ once = false, rootMargin = '0px 0px -10% 0px', thres
   return [ref, inView];
 }
 
+// Dims the arrow of a sideways-scrolling row that has nowhere left to go: the
+// "earlier" arrow while the row's first item is in full view, the "more" arrow
+// while its last one is. It watches those two items against the row itself, so
+// nothing runs while the row scrolls, and it writes aria-disabled straight to
+// the buttons, so reaching an end costs no React re-render of the row.
+export function useRowEnds(row, earlier, more) {
+  useEffect(() => {
+    const el = row.current;
+    const first = el?.firstElementChild;
+    const last = el?.lastElementChild;
+    if (!first || first === last || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) (e.target === first ? earlier : more).current?.setAttribute('aria-disabled', String(e.intersectionRatio >= 0.9));
+      },
+      { root: el, threshold: 0.9 },
+    );
+    io.observe(first);
+    io.observe(last);
+    return () => io.disconnect();
+  }, [row, earlier, more]);
+}
+
 export function useDocumentTitle(title) {
   useEffect(() => {
     document.title = title ? `${title} | Tilak Patel` : 'Tilak Patel | TPM & Software Engineer';
