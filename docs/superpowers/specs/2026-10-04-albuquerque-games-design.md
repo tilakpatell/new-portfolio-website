@@ -7,7 +7,8 @@ Date: 2026-10-04. Status: approved in conversation; this is the written spec.
 Bring the Albuquerque (Breaking Bad / Better Call Saul) page's games up to the
 Scranton office's standard: 3D first, quality CC0 textures, rigged characters
 that are recognisably the cast, deeper play and stronger game feel. Built with
-the game-creator, superpowers and three.js skills; shipped in pieces, each
+the superpowers, threejs-skills and threejs-game-skills skills (game-creator
+was considered and left out); shipped in pieces, each
 merged as it lands, without touching pages other sessions are working on.
 
 What the user said: improve the Albuquerque games; all of it, with deeper play;

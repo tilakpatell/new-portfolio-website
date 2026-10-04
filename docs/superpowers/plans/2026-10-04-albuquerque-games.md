@@ -293,6 +293,7 @@ All in `src/components/albuquerque/metherria/rules.js`, tests in `rules.test.js`
   - Blue sparkles and a push-in on a station scored ≥ 95.
   - The camera shakes on strikes.
   - All instanced, within the budget.
+- Score pops: the existing `say()` per station stays, and gains the streak count.
 
 - [ ] Tests: `shakeAt(0, 0.02) === 0.02`, `shakeAt(0.3, 0.02) === 0`, monotone decreasing in between; `pushIn(0) === 0`, `pushIn(0.6) === 1`, `pushIn(1.5) === 0`. FAIL → implement → PASS.
 - [ ] QA: captures mid-strike and on a perfect; ≤ 300 calls. Lint, test, build; commit; PR; merge; reset.
