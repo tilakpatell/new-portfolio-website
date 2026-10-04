@@ -713,6 +713,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const crowdAnchors = []; // over each customer's head, in crowd order
   const waltAt = new THREE.Vector3(STATIONS.order - 0.42, 0, 0.42);
   const WALT_EYES = 1.66; // how far his eyes are off the floor
+  const WALT_BACK = 0.1; // at the bench, his body this far behind the camera (his neck out of sight)
   const reachFor = new THREE.Vector3();
   const headTmp = new THREE.Vector3();
 
@@ -981,9 +982,10 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       const walt = folks.walt;
       const sx = STATIONS[live.station] ?? STATIONS.order;
       // at the hatch, over his shoulder; at the bench, his eyes are ours: his
-      // head is hidden and his arms come into view from below
+      // head is hidden, his body a step behind us, and only his arms come
+      // into view
       const bench = !(live.station in { order: 1, serve: 1, idle: 1 });
-      if (bench) waltAt.set(camPos.x - 0.02, camPos.y - WALT_EYES, camPos.z - 0.12);
+      if (bench) waltAt.set(camPos.x - 0.02, camPos.y - WALT_EYES, camPos.z + WALT_BACK);
       else waltAt.lerp(v3.set(sx - 0.42, 0, 0.42), k);
       walt.group.position.copy(waltAt);
       folks.waltHead.scale.setScalar(bench ? 1e-3 : 1);
