@@ -14,6 +14,7 @@ import { createFeel } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { buildChariot, buildPortal } from '../lawn/models';
 import { CHARIOT, KINDS, LANE, RUN } from './rules';
+import { aim, fitted, loadMeshy, meshyFigure, meshyParts } from './meshy';
 import { CAR_COLOURS, CAR_KINDS, STREET, blockMaterials, buildBlock, buildStarkTower, carGeometries, carMaterials, craterMaps, craterRim, facadeAtlas, laneWarning, roadMarkings, wallField, wallGeometries } from './models';
 
 const FOV = 56;
@@ -61,7 +62,7 @@ async function modelParts(name, scale = 1) {
   return { geos, mats, empty: i === 0 };
 }
 
-export async function create(canvas, { onLost, onSlow } = {}) {
+export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   const calm = prefersReducedMotion();
   const engine = createEngine(canvas, { exposure: 1.0, fov: FOV, near: 0.1, far: 1600, bloom: { strength: 0.6, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
   const { scene, camera } = engine;
@@ -69,6 +70,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   const FAR = small ? 300 : 400; // how far ahead the city is built
   const VARIANTS = small ? 6 : 8; // blocks per side, reused down the avenue
 
+  // the Meshy models, where they've been made (./meshy.js); the rest is built here
+  const M = await loadMeshy({ manifest: meshy });
   const sets = ['asphalt', 'sidewalk', 'brick', 'concrete-wall', 'concrete-worn', 'painted-metal', 'planks', 'leather', 'carbon'];
   await preload({ sets, skies: ['midtown'], models: ['lamp', 'barrier'], small });
 
@@ -141,8 +144,9 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   portal.mesh.position.copy(portalAt);
   back.add(portal.mesh);
   const skyMats = { armour: new THREE.MeshStandardMaterial({ color: 0x4d4237, metalness: 0.75, roughness: 0.42 }), dark: new THREE.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.7, roughness: 0.45 }), glow: new THREE.MeshBasicMaterial({ color: hot(0x6fd8ff, 2.6), toneMapped: false }) };
+  const chariotModel = (mats) => (M.chariot ? fitted(M.chariot, { h: 3.6, along: 'z' }) : buildChariot(mats));
   const circling = Array.from({ length: small ? 2 : 4 }, (_, i) => {
-    const c = buildChariot(skyMats);
+    const c = chariotModel(skyMats);
     c.scale.setScalar(3.2);
     back.add(c);
     return { c, a: (i / 4) * Math.PI * 2, r: 90 + i * 26, y: 170 + (i % 3) * 40, sp: 0.18 + (i % 2) * 0.07 };
@@ -178,7 +182,16 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   hulkMats.skin.emissiveIntensity = 0;
   const hulk = buildHumanoid({ style: 'hulk', materials: hulkMats, scale: 1.35 });
   hulk.root.rotation.y = Math.PI; // he runs toward -z
-  scene.add(hulk.root);
+  // Meshy's Hulk, if he's been made: his own run, with the rest laid over it
+  const mh = M.hulk ? meshyFigure(M.hulk, { h: 2.6 }) : null;
+  scene.add(mh ? mh.root : hulk.root);
+  const mhBase = mh?.materials.map((m) => m.color?.clone() ?? new THREE.Color(1, 1, 1));
+  if (mh)
+    for (const m of mh.materials) {
+      if (!m.emissive) continue;
+      m.emissive.set(GREEN);
+      m.emissiveIntensity = 0;
+    }
 
   // ── what's in his way ──
   const chitMats = {
@@ -186,21 +199,29 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     skin: new THREE.MeshStandardMaterial({ color: 0x8e8a84, roughness: 0.75, metalness: 0.05 }),
     glow: new THREE.MeshBasicMaterial({ color: hot(0x6fd8ff, 2.2), toneMapped: false }),
   };
-  const soldiers = Array.from({ length: SOLDIERS }, () => {
-    const h = buildHumanoid({ style: 'chitauri', materials: chitMats, scale: 1 });
+  const soldiers = Array.from({ length: SOLDIERS }, (_, i) => {
+    const h = M.chitauri ? meshyFigure(M.chitauri, { h: 1.95 }) : buildHumanoid({ style: 'chitauri', materials: chitMats, scale: 1 });
+    if (h.meshy) h.phase(i * 0.37);
     h.root.visible = false;
     h.id = null;
     scene.add(h.root);
     return h;
   });
   const carMats = carMaterials();
-  const cars = Object.fromEntries(CAR_KINDS.map((k) => [k, instanced(carGeometries(k), carMats, 14)]));
+  const cars = Object.fromEntries(
+    CAR_KINDS.map((k) => {
+      const parts = M[k] ? meshyParts(M[k], { h: 4.6, along: 'z' }) : null;
+      return [k, parts ? instanced(parts.geos, parts.mats, 14) : instanced(carGeometries(k), carMats, 14)];
+    }),
+  );
   for (const p of Object.values(cars)) scene.add(p.group);
   const barrierParts = await modelParts('barrier');
   const barriers = barrierParts.empty ? null : instanced(barrierParts.geos, barrierParts.mats, 36);
   if (barriers) scene.add(barriers.group);
   const wallMats = { armour: chitMats.armour, dark: skyMats.dark, glow: new THREE.MeshBasicMaterial({ color: hot(VIOLET, 3), toneMapped: false }) };
-  const walls = instanced(wallGeometries(KINDS.barrier.w), wallMats, 6);
+  // Meshy's pylon, two to a wall, or the built pair
+  const pylon = M.pylon ? meshyParts(M.pylon, { h: 4.4 }) : null;
+  const walls = pylon ? instanced(pylon.geos, pylon.mats, 12) : instanced(wallGeometries(KINDS.barrier.w), wallMats, 6);
   scene.add(walls.group);
   const field = wallField(KINDS.barrier.w, 3.9);
   const fields = new THREE.InstancedMesh(field.geo, field.mat, 6);
@@ -236,7 +257,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   });
   const riders = Array.from({ length: 2 }, () => {
     const group = new THREE.Group();
-    group.add(buildChariot({ armour: chitMats.armour, dark: skyMats.dark, glow: new THREE.MeshBasicMaterial({ color: hot(0x6fd8ff, 2.6), toneMapped: false }) }));
+    group.add(chariotModel({ armour: chitMats.armour, dark: skyMats.dark, glow: new THREE.MeshBasicMaterial({ color: hot(0x6fd8ff, 2.6), toneMapped: false }) }));
     const rider = buildHumanoid({ style: 'chitauri', materials: chitMats, scale: 0.95 });
     rider.root.position.set(0, 0.24, -0.5);
     group.add(rider.root);
@@ -381,6 +402,68 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     hulk.root.visible = !(H.hurt > 0 && H.hurt < RUN.invulnerable - 0.2 && Math.sin(clock * 40) > 0.6 && !calm);
   }
 
+  // Meshy's Hulk: his run clip, with the smash, the leap and the roar laid
+  // over it by pointing his limbs (world directions; he faces -z, his left
+  // toward -x)
+  const dirA = new THREE.Vector3();
+  const dirB = new THREE.Vector3();
+  function poseMeshyHulk(g, dt) {
+    const H = g.hulk;
+    const B = mh.bones;
+    const running = g.phase === 'run';
+    const lost = g.phase === 'lost';
+    leanX = approach(leanX, clamp((H.lane * LANE - H.x) * 0.25, -0.5, 0.5), 10, dt);
+    const land = landT < 0.3 ? 1 - landT / 0.3 : 0;
+    const down = lost ? ease(clamp(lostT / 0.9, 0, 1)) : 0;
+    mh.root.position.set(H.x, H.y - land * 0.25 - down * 0.7, 0);
+    mh.root.rotation.set(-down * 0.5, Math.PI, -leanX * 0.25);
+    mh.set(running ? 'run' : 'idle', 0.75 + g.speed / 32);
+    mh.update(dt);
+    const arms = [
+      [B.LeftArm, B.LeftForeArm, B.LeftHand, -1],
+      [B.RightArm, B.RightForeArm, B.RightHand, 1],
+    ];
+    if (smashT < RUN.smashTime + 0.22) {
+      const k = clamp(smashT / RUN.smashTime, 0, 1);
+      const rec = smashT > RUN.smashTime ? 1 - (smashT - RUN.smashTime) / 0.22 : 1;
+      const up = k < 0.2 ? ease(k / 0.2) : 1 - ease((k - 0.2) / 0.8);
+      for (const [arm, fore, hand, sd] of arms) {
+        dirA.set(sd * 0.15, -0.35, -1).lerp(dirB.set(sd * 0.2, 1, 0.1), up);
+        aim(arm, fore, dirA, rec);
+        aim(fore, hand, dirA, rec);
+      }
+      aim(B.Spine01, B.neck, dirA.set(0, 1, -0.6 * (1 - up)), rec * 0.6);
+    }
+    if (H.air > 0) {
+      const tuck = Math.sin((1 - H.air / RUN.leapTime) * Math.PI);
+      for (const [thigh, shin, foot] of [
+        [B.LeftUpLeg, B.LeftLeg, B.LeftFoot],
+        [B.RightUpLeg, B.RightLeg, B.RightFoot],
+      ]) {
+        aim(thigh, shin, dirA.set(0, -0.3, -1), tuck);
+        aim(shin, foot, dirA.set(0, -1, 0.6), tuck);
+      }
+      if (smashT > RUN.smashTime) for (const [arm, fore, , sd] of arms) aim(arm, fore, dirA.set(sd * 0.7, 0.6, -0.3), tuck * 0.8);
+    }
+    if (roarT < 1.1) {
+      const k = Math.sin(clamp(roarT / 1.1, 0, 1) * Math.PI);
+      for (const [arm, fore, hand, sd] of arms) {
+        aim(arm, fore, dirA.set(sd, 0.2, 0), k);
+        aim(fore, hand, dirA.set(sd * 0.25, 1, 0), k);
+      }
+      aim(B.neck, B.Head, dirA.set(0, 1, 0.5), k);
+    }
+    // the rage glows through his skin; a hit flashes red; he blinks after one
+    // (a textured model glows less, or it turns to neon)
+    const rage = H.raging > 0 ? 0.1 + 0.07 * Math.sin(clock * 9) : 0;
+    const hurt = hitT < 0.35 ? 1 - hitT / 0.35 : 0;
+    mh.materials.forEach((m, i) => {
+      if (m.emissive) m.emissiveIntensity = approach(m.emissiveIntensity ?? 0, rage, 8, dt);
+      m.color?.copy(mhBase[i]).lerp(HURT, hurt * 0.5);
+    });
+    mh.root.visible = !(H.hurt > 0 && H.hurt < RUN.invulnerable - 0.2 && Math.sin(clock * 40) > 0.6 && !calm);
+  }
+
   // ── the city scrolling past ──
   function placeCity(g) {
     const d = g.d;
@@ -475,7 +558,10 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         h.root.visible = true;
         h.root.position.set(o.x + Math.sin(clock * 0.7 + o.id) * 0.15, 0, z);
         h.root.rotation.set(0, 0, 0); // they face him (+z)
-        poseHumanoid(h, { t: clock, mode: 'walk', speed: 1.1, phase: o.id * 1.3, aim: ahead < 30 ? 0.7 : 0.25, lean: 0.25 });
+        if (h.meshy) {
+          h.set('walk', 1.1);
+          h.update(dt);
+        } else poseHumanoid(h, { t: clock, mode: 'walk', speed: 1.1, phase: o.id * 1.3, aim: ahead < 30 ? 0.7 : 0.25, lean: 0.25 });
       } else if (o.kind === 'car') {
         const { kind, c } = carLook(o.id);
         const yaw = (hash(o.id, 4) - 0.5) * 0.5 + (hash(o.id, 5) < 0.5 ? Math.PI : 0);
@@ -486,9 +572,10 @@ export async function create(canvas, { onLost, onSlow } = {}) {
           barriers.set(m4);
         }
       } else if (o.kind === 'barrier') {
-        m4.makeTranslation(o.x, 0, z);
-        walls.set(m4);
-        if (nf < 6) fields.setMatrixAt(nf++, m4);
+        if (pylon) {
+          for (const sd of [-1, 1]) walls.set(m4.makeTranslation(o.x + sd * (KINDS.barrier.w / 2 + 0.12), 0, z));
+        } else walls.set(m4.makeTranslation(o.x, 0, z));
+        if (nf < 6) fields.setMatrixAt(nf++, m4.makeTranslation(o.x, 0, z));
       }
     }
     for (let i = ns; i < 120; i++) slabs.setMatrixAt(i, zero);
@@ -560,7 +647,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         f.fig.root.visible = true;
         f.fig.root.position.set(f.x, f.y, z);
         f.fig.root.rotation.set(f.rx, f.ry, f.rz);
-        poseHumanoid(f.fig, { t: clock, mode: 'idle', flinch: 1 });
+        if (!f.fig.meshy) poseHumanoid(f.fig, { t: clock, mode: 'idle', flinch: 1 });
       }
     }
     // an empty pool still draws one hidden copy: hide it instead
@@ -655,7 +742,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     lastD = g.d;
 
     placeCity(g);
-    poseHulk(g, realDt);
+    if (mh) poseMeshyHulk(g, realDt);
+    else poseHulk(g, realDt);
     placeObstacles(g, realDt);
     placeChariots(g);
     placeSky(realDt);
@@ -664,9 +752,9 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     // dust kicked up by his feet, and sparks off him in a rage
     if (!calm && g.phase === 'run' && g.hulk.air <= 0 && Math.random() < realDt * 10) vfx.smoke(v3.set(g.hulk.x + (Math.random() - 0.5) * 0.8, 0.2, 0.6), { size: 0.9, count: 1, life: 0.8, rise: 0.4, opacity: 0.25, color: 0x5a5450, to: 0x8a8480 });
     if (!calm && g.hulk.raging > 0) {
-      hulk.bones.handL.getWorldPosition(v3);
+      (mh?.bones.LeftHand ?? hulk.bones.handL).getWorldPosition(v3);
       vfx.sparks(v3, { count: 1, speed: 2, color: 0xc8ffb0, to: GREEN, life: 0.3, size: 0.08, gravity: -2 });
-      hulk.bones.handR.getWorldPosition(v3);
+      (mh?.bones.RightHand ?? hulk.bones.handR).getWorldPosition(v3);
       vfx.sparks(v3, { count: 1, speed: 2, color: 0xc8ffb0, to: GREEN, life: 0.3, size: 0.08, gravity: -2 });
     }
 
@@ -743,7 +831,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
             vfx.flash(at, { color: VIOLET, intensity: 60, distance: 18, life: 0.3 });
           }
           // the punch itself: a ring off his fists, a shake, a stop
-          if (e.rage) vfx.ring(new THREE.Vector3(g.hulk.x, 0.06, -2.2), { color: GREEN, from: 0.5, to: 3.5, life: 0.25, opacity: 0.35 });
+          if (e.rage) vfx.ring(new THREE.Vector3(g.hulk.x, 0.06, -2.2), { color: GREEN, from: 0.4, to: 2.4, life: 0.2, opacity: 0.18 });
           feel.trauma(e.kind === 'car' ? 0.4 : e.perfect ? 0.28 : 0.18);
           feel.hitstop(e.kind === 'car' ? 70 : e.perfect ? 55 : 25);
           feel.punch(e.perfect ? 3 : 1.5);

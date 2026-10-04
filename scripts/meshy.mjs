@@ -5,7 +5,11 @@
 // public/games/meshy/ and credited in public/games/credits.json. The output
 // is committed, so the site never calls Meshy.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name …]
+//   node --env-file=.env.local scripts/meshy.mjs [--set hq] <step> [name …]
+//
+// Two sets: Portal panic's cast (the default), and the Avengers HQ games'
+// models (--set hq: Smash Run's Hulk, Chitauri, cars, chariot and wall
+// pylon, photoreal, into public/hq/meshy/ with a manifest the games read).
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), fetch (free: download and compress). Each task's id is kept in
@@ -24,9 +28,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'public', 'games', 'meshy');
-const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
-const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
+// where a set's models, concept images (for looking at, not shipped) and task
+// ids go; chosen in main()
+let OUT = join(ROOT, 'public', 'games', 'meshy');
+let REVIEW = join(ROOT, 'lab', 'meshy');
+let TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
 
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
@@ -54,6 +60,30 @@ export const ASSETS = {
   cruiser: { rig: false, poly: 12000, tex: 1024, prompt: `Rick's space cruiser from Rick and Morty: a small grey flying car shaped like a flattened saucer with an open cockpit, a clear bubble windscreen, two seats and a green glowing energy core at the back. ${PROP}` },
   garage: { rig: false, poly: 10000, tex: 1024, prompt: `The Smith family's garage from Rick and Morty: a small detached suburban garage with pale grey wooden siding, a big white roll-up door, a grey shingled roof and a side door. ${PROP}` },
 };
+
+// The Avengers HQ games' models: photoreal, like the rest of the HQ. Hulk and
+// the Chitauri are described rather than named (Meshy turns down named
+// characters).
+const HQ_STYLE = 'Photorealistic, like a still from a big-budget live-action film: physically accurate materials and natural light. Plain white background, no text.';
+const HQ_BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
+const HQ_PROP = 'The whole object on its own, three-quarter front view, centred.';
+// h: how tall (or long, for a car) the game draws it, in metres
+export const HQ_ASSETS = {
+  hulk: { rig: true, height: 2.6, h: 2.6, poly: 20000, tex: 1024, prompt: `A towering green-skinned giant of a man, about eight and a half feet tall and impossibly muscular: huge shoulders and trapezius rising to his ears, thick arms ending in big fists, a broad deep chest, a short thick neck, a small head with short messy black hair, a heavy brow and an angry scowl. Torn, ragged dark purple trousers cut off below the knee, bare feet, nothing else. ${HQ_BODY}` },
+  chitauri: { rig: true, height: 1.95, h: 1.95, poly: 12000, tex: 1024, prompt: `An alien foot soldier of a warlike invading army: grey, wrinkled, leathery skin fused with segmented dark bronze and gunmetal biomechanical armour plates, a narrow armoured head with a jutting jaw and small pale glowing blue eyes, long thin limbs, clawed hands, armoured feet. No weapon. ${HQ_BODY}` },
+  taxi: { h: 5.2, poly: 12000, tex: 1024, prompt: `A New York City yellow taxi cab from 2012: a full-size four-door American sedan in taxi yellow with a lit roof sign, dusty and dented after a battle in the street. ${HQ_PROP}` },
+  police: { h: 5.2, poly: 12000, tex: 1024, prompt: `A New York police patrol car from 2012: a full-size four-door American sedan, white with blue stripes down the sides and a red and blue lightbar on the roof, dusty and dented. ${HQ_PROP}` },
+  sedan: { h: 4.9, poly: 12000, tex: 1024, prompt: `An ordinary dark red four-door American sedan from around 2010, dusty, its windscreen cracked and a door dented. ${HQ_PROP}` },
+  suv: { h: 5.1, poly: 12000, tex: 1024, prompt: `A black full-size American SUV from around 2010, dusty, the bonnet dented and a side window shattered. ${HQ_PROP}` },
+  chariot: { h: 5.5, poly: 12000, tex: 1024, prompt: `An alien flying war sled: a long narrow armoured hovercraft of segmented dark bronze and gunmetal biomechanical plates, a pointed prow, a small open standing deck with a handrail at the back, two glowing blue jet engines under its tail. No rider. ${HQ_PROP}` },
+  pylon: { h: 4.4, poly: 8000, tex: 512, prompt: `A tall alien biomechanical energy pylon, about four metres high: a tapering column of segmented dark bronze and gunmetal armour plates with fins up its back, clawed feet at its base, and a glowing violet crystal at its top. ${HQ_PROP}` },
+};
+
+const SETS = {
+  portal: { assets: ASSETS, style: STYLE, out: ['public', 'games', 'meshy'], review: ['lab', 'meshy'], tasks: 'meshy-tasks.json', credits: ['public', 'games', 'credits.json'], prefix: 'meshy/', pbr: false },
+  hq: { assets: HQ_ASSETS, style: HQ_STYLE, out: ['public', 'hq', 'meshy'], review: ['lab', 'meshy-hq'], tasks: 'meshy-hq-tasks.json', credits: ['public', 'hq', 'meshy', 'credits.json'], prefix: '', pbr: true, manifest: true },
+};
+let SET = SETS.portal;
 
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -123,10 +153,10 @@ async function squeeze(from, to, { tex = 0, clip = false } = {}) {
 const steps = {
   async images(names, s) {
     await each(names, async (n) => {
-      const a = ASSETS[n];
+      const a = SET.assets[n];
       s[n] ??= {};
       if (!s[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${SET.style}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
         s[n].image = result;
         await save(s);
       }
@@ -137,14 +167,14 @@ const steps = {
   },
   async models(names, s) {
     await each(names, async (n) => {
-      const a = ASSETS[n];
+      const a = SET.assets[n];
       if (!s[n]?.image) throw new Error('no image yet');
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
           input_task_id: s[n].image,
           ai_model: 'latest',
           should_texture: true,
-          enable_pbr: false,
+          enable_pbr: SET.pbr,
           should_remesh: true,
           topology: 'triangle',
           target_polycount: a.poly,
@@ -163,11 +193,11 @@ const steps = {
   },
   async rig(names, s) {
     await each(
-      names.filter((n) => ASSETS[n].rig),
+      names.filter((n) => SET.assets[n].rig),
       async (n) => {
         if (!s[n]?.model) throw new Error('no model yet');
         if (!s[n].rig) {
-          const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].model, height_meters: ASSETS[n].height });
+          const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].model, height_meters: SET.assets[n].height });
           s[n].rig = result;
           await save(s);
         }
@@ -179,7 +209,7 @@ const steps = {
   // an idle clip (Meshy's animation library, action 0), on the bare skeleton
   async anim(names, s) {
     await each(
-      names.filter((n) => ASSETS[n].rig),
+      names.filter((n) => SET.assets[n].rig),
       async (n) => {
         if (!s[n]?.rig) throw new Error('not rigged yet');
         if (!s[n].idle) {
@@ -194,12 +224,14 @@ const steps = {
   },
   async fetch(names, s) {
     await mkdir(OUT, { recursive: true });
-    const tmp = join(ROOT, 'lab', 'meshy', 'raw');
+    const tmp = join(REVIEW, 'raw');
     await mkdir(tmp, { recursive: true });
-    const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
-    const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
+    const creditsFile = join(ROOT, ...SET.credits);
+    const credits = existsSync(creditsFile) ? JSON.parse(await readFile(creditsFile, 'utf8')) : {};
+    const manifestFile = join(OUT, 'manifest.json');
+    const manifest = SET.manifest && existsSync(manifestFile) ? JSON.parse(await readFile(manifestFile, 'utf8')) : {};
     for (const n of names) {
-      const a = ASSETS[n];
+      const a = SET.assets[n];
       const files = []; // [url, file, texture size, clip only]
       if (a.rig) {
         if (!s[n]?.rig || !s[n]?.idle) throw new Error(`${n}: rig and anim first`);
@@ -220,20 +252,32 @@ const steps = {
         await download(url, raw);
         await squeeze(raw, join(OUT, file), { tex, clip });
       }
-      credits[`meshy/${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (SET.manifest) manifest[n] = { rig: !!a.rig, h: a.h };
+      credits[`${SET.prefix}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
+    if (SET.manifest) await writeFile(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
     await rm(tmp, { recursive: true, force: true });
   },
 };
 
 async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
-  const [step, ...only] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const at = args.indexOf('--set');
+  if (at >= 0) {
+    SET = SETS[args[at + 1]];
+    if (!SET) throw new Error(`--set: ${Object.keys(SETS).join(' | ')}`);
+    args.splice(at, 2);
+  }
+  OUT = join(ROOT, ...SET.out);
+  REVIEW = join(ROOT, ...SET.review);
+  TASKS = join(ROOT, 'scripts', SET.tasks);
+  const [step, ...only] = args;
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
-  const names = only.length ? only : Object.keys(ASSETS);
-  for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
+  const names = only.length ? only : Object.keys(SET.assets);
+  for (const n of names) if (!SET.assets[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
   await steps[step](names, s);
   const { balance } = await api('GET', '/v1/balance');
