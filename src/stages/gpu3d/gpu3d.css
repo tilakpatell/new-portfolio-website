@@ -10,7 +10,7 @@
 }
 .gpu3d[data-on] { opacity: 1; }
 .gpu3d canvas { display: block; width: 100%; height: 100%; }
-.gpu3d-frame:has(> .gpu3d[data-on]) > svg { visibility: hidden; }
+.gpu3d-frame:has(> .gpu3d[data-gl]) > svg { opacity: 0; } /* 3D first: hidden while the scene loads */
 
 .gpu3d-labels { position: absolute; inset: 0; pointer-events: none; }
 .gpu3d-labels > span {

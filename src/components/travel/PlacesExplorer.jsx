@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import { COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } from '../../data/places';
 import { use3D } from '../../lib/gpu';
 import { useAchievements } from '../Achievements';
@@ -10,7 +10,7 @@ import { useAchievements } from '../Achievements';
 // when the globe next comes near.
 const Globe = lazy(() => import('./Globe'));
 const Globe3D = lazy(() => import('./globe3d/Globe3D'));
-const BROKEN = new Set(['failed', 'slow']);
+const BROKEN = new Set(['failed', 'slow']); // 'slow' only from an older kit; scenes step down instead
 
 const REGIONS = [...new Set(PLACES.map((p) => p.region))];
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
@@ -84,21 +84,15 @@ export default function PlacesExplorer({ title = 'Places I’ve been', titleId =
   const place = PLACES.find((p) => p.id === selected);
   const others = PLACES.length - COUNTRY_COUNT;
 
-  // 2D underneath until the 3D globe is on, then let go of it once the
-  // cross-fade is done (so it stops drawing)
+  // 3D first: where 3D is on, the 3D globe is the globe, with a skeleton
+  // while it loads (never the 2D one flashing first). The 2D globe is for a
+  // browser with no WebGL, a scene that fails, or a lost context until the 3D
+  // one comes back.
   const three = use3D();
   const [status3D, setStatus3D] = useState('idle');
   const try3D = three.on && !BROKEN.has(status3D);
-  const on3D = try3D && status3D === 'on';
-  const [hide2D, setHide2D] = useState(false);
-  useEffect(() => {
-    if (!on3D) {
-      setHide2D(false);
-      return undefined;
-    }
-    const t = setTimeout(() => setHide2D(true), 600);
-    return () => clearTimeout(t);
-  }, [on3D]);
+  const show2D = !try3D || status3D === 'lost';
+  const loading3D = try3D && status3D !== 'on' && status3D !== 'lost';
   const label = 'Globe of the places I’ve been. Drag or use the arrow keys to spin it, plus and minus to zoom. The same places are listed as buttons beside it.';
 
   return (
@@ -139,11 +133,12 @@ export default function PlacesExplorer({ title = 'Places I’ve been', titleId =
 
       <div className="relative mx-auto w-full max-w-[640px]">
         <div className="relative aspect-square w-full">
-          {!(on3D && hide2D) && (
+          {show2D && (
             <Suspense fallback={<GlobeSkeleton />}>
               <Globe selected={selected} onSelect={select} onHover={setHovered} label={label} />
             </Suspense>
           )}
+          {loading3D && <GlobeSkeleton />}
           {try3D && (
             <Suspense fallback={null}>
               <Globe3D selected={selected} onSelect={select} onHover={setHovered} label={label} onStatus={setStatus3D} />

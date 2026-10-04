@@ -38,7 +38,7 @@ export default function GpuStage() {
 
   const id = phase.id;
   const training = id === 'train';
-  const { wrap, on } = useScene(scene3d, {
+  const { wrap, on, meant } = useScene(scene3d, {
     id: 'gpu-stage',
     props: { phase: id, running, saved, fault: FAULT, levels: [0, 1, 2, 3].map((i) => load(id, step, i) / 96) },
   });
@@ -47,9 +47,9 @@ export default function GpuStage() {
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg?.pauseAnimations) return;
-    if (running && training && !on) svg.unpauseAnimations();
+    if (running && training && !meant) svg.unpauseAnimations();
     else svg.pauseAnimations();
-  }, [running, training, on]);
+  }, [running, training, meant]);
 
   useEffect(() => {
     if (!running || !training) return undefined;

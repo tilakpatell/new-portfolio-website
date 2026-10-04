@@ -13,6 +13,7 @@
 //   setColors?(colors)       lib/three/theme colours changed
 //   setVisible?(on)          its box came on or went off screen
 //   update?(props)           new props from the page
+//   lowerQuality?()          still slow at the lowest sharpness: simplify
 //   dispose()
 // ctx is { el, colors, reduced, invalidate, onLost, onSlow, ...props }
 // (colours as seen inside `el`, so a scene in a .dark-scope gets dark ones):
@@ -149,7 +150,8 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
             reduced,
             invalidate: () => L.kick(),
             onLost: () => drop('lost'),
-            onSlow: () => drop('slow'),
+            // at its lowest sharpness and still slow: the scene may simplify
+            onSlow: () => view.current?.lowerQuality?.(),
           });
           if (dead) {
             v.dispose();
@@ -209,5 +211,16 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     loop.current.kick();
   });
 
-  return { wrap, status, on: status === 'on', view };
+  // 3D first: while the scene is meant to show (3D on, not failed or lost),
+  // its box carries data-gl="loading" and then "on", so the page can hide the
+  // fallback from the start instead of flashing it before the 3D arrives
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const meant = on && status !== 'failed' && status !== 'slow' && status !== 'lost';
+    if (meant) el.dataset.gl = status === 'on' ? 'on' : 'loading';
+    else delete el.dataset.gl;
+  }, [on, status]);
+
+  return { wrap, status, on: status === 'on', meant: on && status !== 'failed' && status !== 'slow' && status !== 'lost', view };
 }

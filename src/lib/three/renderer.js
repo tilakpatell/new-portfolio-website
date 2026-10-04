@@ -42,15 +42,19 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   canvas.addEventListener('webglcontextlost', onContextLost);
 
   // Slow frames, measured over a couple of seconds of real drawing (a pause
-  // longer than a second starts the count again): drop to 1× pixels first,
-  // then tell the scene, which can fall back.
+  // longer than a second starts the count again). 3D first: nothing falls
+  // back to 2D for being slow. Sharpness steps down a quarter at a time, and
+  // only after two slow stretches in a row, so a hiccup doesn't cost
+  // anything; at the floor the scene is told once, so it can lower its own
+  // effects.
+  const FLOOR = 0.75;
   let spent = 0;
   let frames = 0;
   let window0 = 0;
   let lastAt = 0;
-  let gaveUp = false;
+  let slowRuns = 0;
+  let told = false;
   const watch = (now) => {
-    if (gaveUp) return;
     if (!lastAt || now - lastAt > 1000) {
       lastAt = now;
       window0 = now;
@@ -66,15 +70,18 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
     window0 = now;
     spent = 0;
     frames = 0;
-    if (avg < 40) return; // 25fps or better is fine (a laptop on battery caps at 30)
-    if (pixelRatio > 1) {
-      pixelRatio = 1;
-      renderer.setPixelRatio(1);
+    // 25fps or better is fine (a laptop on battery caps at 30)
+    slowRuns = avg < 40 ? 0 : slowRuns + 1;
+    if (slowRuns < 2) return;
+    slowRuns = 0;
+    if (pixelRatio > FLOOR) {
+      pixelRatio = Math.max(FLOOR, Math.round((pixelRatio - 0.25) * 4) / 4);
+      renderer.setPixelRatio(pixelRatio);
       renderer.setSize(size.w, size.h, false);
-      return;
+    } else if (!told) {
+      told = true;
+      onSlow?.();
     }
-    gaveUp = true;
-    onSlow?.();
   };
 
   return {

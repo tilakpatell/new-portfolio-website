@@ -10,7 +10,7 @@
 }
 .motif-3d[data-on] { opacity: 1; }
 .motif-3d canvas { display: block; width: 100%; height: 100%; }
-.motif:has(> .motif-3d[data-on]) > svg { visibility: hidden; }
+.motif:has(> .motif-3d[data-gl]) > svg { opacity: 0; } /* 3D first: hidden while the model loads; still read out */
 
 .m3d-labels { position: absolute; inset: 0; pointer-events: none; }
 .m3d-labels > span {
