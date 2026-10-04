@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STAFF } from './layout';
-import { CAST } from './people';
+import { CAST, GESTURES, isSpec } from './people';
 
 // the JSON chunk of a .glb
 const glb = (path) => {
@@ -38,6 +38,25 @@ describe('the cast', () => {
       expect(c.height, id).toBeLessThan(2.0);
       if (c.belly) expect(c.belly, id).toBeLessThan(1.6);
     }
+  });
+
+  it('names every gesture the callers use', () => {
+    expect(GESTURES).toEqual(['nod', 'shake', 'shrug', 'fold', 'cheer', 'wave']);
+  });
+
+  it('takes a wardrobe as a spec, not only an office id', () => {
+    const full = { pack: 'men', parts: ['head_bald', 'body_tee', 'legs_jeans', 'feet_shoes'], height: 1.8, colors: { skin: 0xe0b598 } };
+    expect(isSpec(full)).toBe(true);
+    for (const id of Object.keys(CAST)) expect(isSpec(CAST[id]), id).toBe(true);
+    const { pack, ...noPack } = full;
+    const { parts, ...noParts } = full;
+    expect(pack && parts).toBeTruthy();
+    expect(isSpec(noPack)).toBe(false);
+    expect(isSpec(noParts)).toBe(false);
+    expect(isSpec({ ...full, pack: 'aliens' })).toBe(false);
+    expect(isSpec({ ...full, parts: [] })).toBe(false);
+    expect(isSpec('michael')).toBe(false);
+    expect(isSpec(null)).toBe(false);
   });
 
   it('ships one skeleton a pack, and no animations it does not use', () => {

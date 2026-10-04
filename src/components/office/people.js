@@ -8,8 +8,9 @@
 // heads, bodies, legs and feet on one skeleton a pack, each vertex tagged with
 // which of its colours it is. Each person here is one skinned mesh (their
 // parts merged, coloured from their wardrobe) on their own copy of the
-// skeleton, posed sitting at a desk by turning its bones. The head looks
-// round, at the camera or at the bin; the hands type, wave and cheer.
+// skeleton, posed by turning its bones: sitting at a desk, standing, or in a
+// wheelchair. The head looks round, at the camera or at the bin, nods and
+// shakes; the hands type, wave, cheer, shrug, fold and reach for things.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -44,14 +45,23 @@ export const CAST = {
   kelly: { pack: 'women', parts: ['head_long', 'body_dress', 'legs_skirt', 'feet_shoes'], height: 1.6, colors: { skin: SKIN.olive, hair: 0x1b1512, top: 0xe04f8a, belt: 0x2f2f38, legs: 0xe04f8a, shoes: 0x2f2f38 } },
 };
 
+// Anyone else (Albuquerque's people) comes as a spec of the same shape:
+// { pack, parts, height, colors, belly?, glasses?, tie?, gloves? }, where
+// `gloves` colours the hands.
+const PACKS = ['men', 'women'];
+export const isSpec = (s) => !!s && typeof s === 'object' && PACKS.includes(s.pack) && Array.isArray(s.parts) && s.parts.length > 0;
+
 const SEAT = 0.535; // the top of the chair's seat (kit.chair)
 const LEAN = [0.16, 0.1, 0.06]; // how far the belly, chest and head lean in to the desk
 const DOWN = LEAN[0] + LEAN[1] + LEAN[2];
-const WAVE = 1.8; // seconds
-const CHEER = 1.6;
+// what they can do, and for how long (seconds)
+const LASTS = { nod: 0.9, shake: 1, shrug: 1.2, fold: 1.6, cheer: 1.6, wave: 1.6 };
+export const GESTURES = Object.keys(LASTS);
 const AX = new THREE.Vector3(1, 0, 0);
 const AY = new THREE.Vector3(0, 1, 0);
+const AZ = new THREE.Vector3(0, 0, 1);
 const IDENTITY = new THREE.Quaternion();
+const HAND = /^(Wrist|Index|Middle|Ring|Pinky|Thumb)/; // the bones gloves cover
 
 // Turn a bone about an axis of the figure's own frame (x its left, y up, z
 // forward), whatever the bone's own axes are. `frame` is the figure's world
@@ -90,7 +100,7 @@ function aim(bone, dir) {
 // between them bends toward `pole`.
 const vd = new THREE.Vector3();
 const ve = new THREE.Vector3();
-function reach(upper, lower, end, target, pole) {
+function ik(upper, lower, end, target, pole) {
   const s = upper.getWorldPosition(new THREE.Vector3());
   const a = s.distanceTo(lower.getWorldPosition(vd));
   const b = vd.distanceTo(end.getWorldPosition(ve));
@@ -114,12 +124,23 @@ function dress(gltf, spec, slots) {
   const colours = { eyes: 0x2a2018, shoes: SHOES, ...spec.colors };
   colours.brows ??= colours.hair ?? 0x3a2a20;
   const c = new THREE.Color();
+  const skin = slots.indexOf('skin');
   const geos = parts.map((p) => {
     const g = p.geometry.clone();
     const slot = g.attributes._slot;
     const col = new Float32Array(slot.count * 3);
+    // gloves: the skin that moves mostly with the hands
+    const hand = spec.gloves ? p.skeleton.bones.map((b) => HAND.test(b.name)) : null;
+    const si = g.attributes.skinIndex;
+    const sw = g.attributes.skinWeight;
     for (let i = 0; i < slot.count; i++) {
-      c.set(colours[slots[slot.getX(i)]] ?? colours.top ?? 0x888888);
+      let colour = colours[slots[slot.getX(i)]] ?? colours.top ?? 0x888888;
+      if (hand && slot.getX(i) === skin) {
+        let w = 0;
+        for (let j = 0; j < 4; j++) if (hand[si.getComponent(i, j)]) w += sw.getComponent(i, j);
+        if (w > 0.5) colour = spec.gloves;
+      }
+      c.set(colour);
       c.toArray(col, i * 3);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -182,34 +203,36 @@ export async function loadPeople() {
   }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 });
   const owned = []; // geometries and materials to dispose
-  const looks = new Map(); // id -> dressed geometry
-  const lookFor = (id) => {
-    if (!looks.has(id)) {
-      const spec = CAST[id];
+  const looks = new Map(); // spec -> dressed geometry
+  const lookFor = (spec) => {
+    if (!looks.has(spec)) {
       const gl = packs[spec.pack];
       const d = dress(gl, spec, gl.parser.json.extras.slots);
       d.slots = gl.parser.json.extras.slots;
       owned.push(d.geometry);
-      looks.set(id, d);
+      looks.set(spec, d);
     }
-    return looks.get(id);
+    return looks.get(spec);
   };
-  // A person, sitting, facing +z with the chair's seat under them. Returns
-  // { group, id, look(target | null), cheer(), wave(), headAt(), update(t, dt) },
-  // where update says whether they are still moving. `typing`: the hands go
-  // on the keys, which are `keys` ahead of the chair's middle; `idle`: the
-  // head looks round now and then.
-  const person = (id, { shadows = true, typing = false, idle = false, keys = 0.45 } = {}) => {
-    const spec = CAST[id];
+  // A person, an office id or a spec, facing +z. Returns { group, id,
+  // look(target | null), gesture(name), cheer(), wave(), reach(side, point),
+  // headAt(), update(t, dt) }, where update says whether they are still
+  // moving. `pose`: 'sit' (the chair's seat `seat` under them, leaning in to
+  // the desk), 'stand', or 'wheelchair' (sitting up, hands on the armrests).
+  // `typing`: the hands go on the keys, which are `keys` ahead of the chair's
+  // middle; `idle`: the head looks round now and then.
+  const person = (who, { pose = 'sit', seat = SEAT, shadows = true, typing = false, idle = false, keys = 0.45 } = {}) => {
+    const spec = isSpec(who) ? who : CAST[who];
     if (!spec) return null;
-    const look = lookFor(id);
+    const id = typeof who === 'string' ? who : (spec.id ?? null);
+    const look = lookFor(spec);
     const rig = cloneRig(packs[spec.pack].scene);
     // keep the rig; swap its part meshes for this person's one mesh
     const parts = [];
     rig.traverse((o) => o.isSkinnedMesh && parts.push(o));
     const tpl = parts.find((p) => p.name === look.template) || parts[0];
     const body = new THREE.SkinnedMesh(look.geometry, mat);
-    body.name = id;
+    body.name = id ?? 'person';
     body.bind(tpl.skeleton, tpl.bindMatrix);
     body.castShadow = shadows;
     body.frustumCulled = false; // its bounds move with its bones
@@ -218,7 +241,7 @@ export async function loadPeople() {
     const bone = (n) => rig.getObjectByName(n);
     // (the loader drops the dot from the packs' names: UpperLeg.L is UpperLegL)
     const pair = (n) => [bone(`${n}L`), bone(`${n}R`)];
-    const B = { abdomen: bone('Abdomen'), torso: bone('Torso'), chest: bone('Chest'), neck: bone('Neck'), head: bone('Head'), thigh: pair('UpperLeg'), shin: pair('LowerLeg'), foot: pair('Foot'), arm: pair('UpperArm'), fore: pair('LowerArm'), wrist: pair('Wrist') };
+    const B = { abdomen: bone('Abdomen'), torso: bone('Torso'), chest: bone('Chest'), neck: bone('Neck'), head: bone('Head'), thigh: pair('UpperLeg'), shin: pair('LowerLeg'), foot: pair('Foot'), shoulder: pair('Shoulder'), arm: pair('UpperArm'), fore: pair('LowerArm'), wrist: pair('Wrist') };
     const root = new THREE.Group();
     root.add(rig);
     const settle = () => {
@@ -315,71 +338,113 @@ export async function loadPeople() {
     }
     for (const e of extras) e.castShadow = false;
 
-    // ── sitting ──
+    // ── the pose ──
     // Posed at the origin facing +z, so the world is the figure's own frame.
-    // The feet hang from the root (the packs' legs are rigged for IK), so they
-    // are put where the shins end.
     const pos = (o) => o.getWorldPosition(new THREE.Vector3());
-    const shinLen = B.shin.map((b, s) => pos(b).distanceTo(pos(B.foot[s])));
-    const feetRest = B.foot.map((b) => b.getWorldQuaternion(new THREE.Quaternion()));
-    // thighs level, a little apart
-    for (let s = 0; s < 2; s++) aim(B.thigh[s], va.set(Math.sign(pos(B.thigh[s]).x) * 0.08, -0.06, 1));
-    settle();
-    // the hips onto the seat: the hip joints a thigh's half-depth above it,
-    // just back from its middle
-    const hip = pos(B.thigh[0]);
-    rig.position.y += SEAT + 0.085 - hip.y;
-    rig.position.z += -0.05 - hip.z;
-    settle();
-    // the shins down to the floor, the feet a little ahead of the knees, flat
-    for (let s = 0; s < 2; s++) {
-      const knee = pos(B.shin[s]);
-      const len = shinLen[s];
-      const drop = Math.min(len * 0.97, knee.y - 0.075);
-      const dir = new THREE.Vector3(0, -drop, Math.max(len * 0.24, Math.sqrt(Math.max(0, len * len - drop * drop)))).normalize();
-      aim(B.shin[s], dir);
-      const ankle = knee.add(dir.multiplyScalar(len));
-      B.foot[s].position.copy(B.foot[s].parent.worldToLocal(ankle));
-      B.foot[s].updateMatrixWorld(true);
-      setWorldQuat(B.foot[s], feetRest[s]);
-    }
-    // leaning in to the desk, the head down at the screen
-    turn(B.abdomen, AX, LEAN[0], IDENTITY);
-    turn(B.chest, AX, LEAN[1], IDENTITY);
-    turn(B.head, AX, LEAN[2], IDENTITY);
-    settle();
-    // the hands onto the keys: elbows down by the sides, palms down
     const sides = B.arm.map((b, s) => Math.sign(pos(b).x) || (s ? -1 : 1));
-    for (let s = 0; s < 2; s++) {
-      const side = sides[s];
-      reach(B.arm[s], B.fore[s], B.wrist[s], new THREE.Vector3(side * 0.14, SEAT + 0.27, keys), new THREE.Vector3(side * 0.6, -1, -0.6));
-      turn(B.wrist[s], pos(B.wrist[s]).sub(pos(B.fore[s])).normalize(), side * 1.45, IDENTITY);
-      turn(B.wrist[s], AX, 0.15, IDENTITY);
+    // shoulder to wrist (the packs' arms are short for their height)
+    const reachOf = B.arm.map((b, s) => pos(b).distanceTo(pos(B.fore[s])) + pos(B.fore[s]).distanceTo(pos(B.wrist[s])));
+    // palms down, as on the keys or the armrests
+    const palmsDown = () => {
+      for (let s = 0; s < 2; s++) {
+        turn(B.wrist[s], pos(B.wrist[s]).sub(pos(B.fore[s])).normalize(), sides[s] * 1.45, IDENTITY);
+        turn(B.wrist[s], AX, 0.15, IDENTITY);
+      }
+    };
+    if (pose === 'stand') {
+      // on their feet as they were modelled, the soles on the floor
+      body.computeBoundingBox();
+      rig.position.y -= body.boundingBox.clone().applyMatrix4(body.matrixWorld).min.y;
+      settle();
+      // the arms down by the sides, the elbows a little back
+      for (let s = 0; s < 2; s++) {
+        const shoulder = pos(B.arm[s]);
+        ik(B.arm[s], B.fore[s], B.wrist[s], shoulder.add(new THREE.Vector3(sides[s] * 0.07, -reachOf[s] * 0.96, 0.03)), new THREE.Vector3(sides[s] * 0.2, 0, -1));
+      }
+      settle();
+    } else {
+      // Sitting. The feet hang from the root (the packs' legs are rigged for
+      // IK), so they are put where the shins end.
+      const shinLen = B.shin.map((b, s) => pos(b).distanceTo(pos(B.foot[s])));
+      const feetRest = B.foot.map((b) => b.getWorldQuaternion(new THREE.Quaternion()));
+      // thighs level, a little apart
+      for (let s = 0; s < 2; s++) aim(B.thigh[s], va.set(Math.sign(pos(B.thigh[s]).x) * 0.08, -0.06, 1));
+      settle();
+      // the hips onto the seat: the hip joints a thigh's half-depth above it,
+      // just back from its middle
+      const hip = pos(B.thigh[0]);
+      rig.position.y += seat + 0.085 - hip.y;
+      rig.position.z += -0.05 - hip.z;
+      settle();
+      // the shins down to the floor, the feet a little ahead of the knees, flat
+      for (let s = 0; s < 2; s++) {
+        const knee = pos(B.shin[s]);
+        const len = shinLen[s];
+        const drop = Math.min(len * 0.97, knee.y - 0.075);
+        const dir = new THREE.Vector3(0, -drop, Math.max(len * 0.24, Math.sqrt(Math.max(0, len * len - drop * drop)))).normalize();
+        aim(B.shin[s], dir);
+        const ankle = knee.add(dir.multiplyScalar(len));
+        B.foot[s].position.copy(B.foot[s].parent.worldToLocal(ankle));
+        B.foot[s].updateMatrixWorld(true);
+        setWorldQuat(B.foot[s], feetRest[s]);
+      }
+      if (pose === 'wheelchair') {
+        // sitting up, the hands on the armrests
+        settle();
+        for (let s = 0; s < 2; s++) ik(B.arm[s], B.fore[s], B.wrist[s], new THREE.Vector3(sides[s] * 0.24, seat + 0.2, 0.05), new THREE.Vector3(sides[s] * 0.6, -1, -0.6));
+        palmsDown();
+      } else {
+        // leaning in to the desk, the head down at the screen
+        turn(B.abdomen, AX, LEAN[0], IDENTITY);
+        turn(B.chest, AX, LEAN[1], IDENTITY);
+        turn(B.head, AX, LEAN[2], IDENTITY);
+        settle();
+        // the hands onto the keys: elbows down by the sides, palms down
+        for (let s = 0; s < 2; s++) ik(B.arm[s], B.fore[s], B.wrist[s], new THREE.Vector3(sides[s] * 0.14, seat + 0.27, keys), new THREE.Vector3(sides[s] * 0.6, -1, -0.6));
+        palmsDown();
+      }
+      settle();
     }
-    settle();
+    // how far the pose already looks down
+    const down = pose === 'sit' ? DOWN : 0;
     // the pose, to come back to every frame
     const bones = body.skeleton.bones;
-    const pose = bones.map((b) => b.quaternion.clone());
-    const reset = () => bones.forEach((b, i) => b.quaternion.copy(pose[i]));
+    const rest = bones.map((b) => b.quaternion.clone());
+    const reset = () => bones.forEach((b, i) => b.quaternion.copy(rest[i]));
 
-    // a hand raised from the keys to a point by the head (figure's frame,
-    // from the shoulder), by `p` of the way
+    // a hand raised from where it is to a point (figure's frame, from the
+    // shoulder), by `p` of the way, the elbow toward `pole` (x out to its side)
     const right = sides.indexOf(-1) < 0 ? 1 : sides.indexOf(-1);
     const from = new THREE.Vector3();
     const to = new THREE.Vector3();
-    const raise = (s, offset, p, frame) => {
+    const raise = (s, offset, p, frame, pole = [1, -0.7, -0.3]) => {
       B.wrist[s].getWorldPosition(from);
       B.arm[s].getWorldPosition(to).add(offset.applyQuaternion(frame));
-      reach(B.arm[s], B.fore[s], B.wrist[s], from.lerp(to, p), va.set(sides[s], -0.7, -0.3).applyQuaternion(frame));
+      ik(B.arm[s], B.fore[s], B.wrist[s], from.lerp(to, p), va.set(sides[s] * pole[0], pole[1], pole[2]).applyQuaternion(frame));
     };
+    const ELBOWS_OUT = [1, -0.25, 0.1];
+    const ELBOWS_IN = [0.35, -1, -0.3];
     const ease = (x) => x * x * (3 - 2 * x);
     const offset = new THREE.Vector3();
 
-    const state = { look: null, lookAt: new THREE.Vector3(), amt: 0, yaw: 0, pitch: 0, cheer: -1, wave: -1, seed: Math.random() * 100 };
+    const state = {
+      look: null,
+      lookAt: new THREE.Vector3(),
+      amt: 0,
+      yaw: 0,
+      pitch: 0,
+      gesture: null, // { name, t }
+      hands: [0, 1].map(() => ({ to: null, at: new THREE.Vector3(), amt: 0 })), // reaching for
+      seed: Math.random() * 100,
+    };
     const tmp = new THREE.Vector3();
     const frame = new THREE.Quaternion();
     const inv = new THREE.Quaternion();
     const headAt = new THREE.Vector3();
+    const gesture = (name) => {
+      // one at a time; asked again while it's going, it goes on
+      if (LASTS[name] && state.gesture?.name !== name) state.gesture = { name, t: 0 };
+    };
     return {
       group: root,
       id,
@@ -387,37 +452,76 @@ export async function loadPeople() {
       look(target) {
         state.look = target ? state.lookAt.copy(target) : null;
       },
-      cheer() {
-        state.cheer = 0;
+      gesture,
+      cheer: () => gesture('cheer'),
+      wave: () => gesture('wave'),
+      // a hand ('left' or 'right') reaching for a world position, or (null)
+      // back to the pose
+      reach(side, point) {
+        const h = state.hands[side === 'right' ? right : 1 - right];
+        h.to = point ? h.at.copy(point) : null;
       },
       // where their head is (world)
       headAt(out = new THREE.Vector3()) {
         return B.head.getWorldPosition(out);
       },
-      wave() {
-        if (state.wave < 0) state.wave = 0;
-      },
       update(t, dt = 1 / 60) {
         reset();
         let moving = false;
         root.getWorldQuaternion(frame);
-        if (state.cheer >= 0) {
-          // both fists up over the head, pumping
-          const p = ease(Math.min(1, state.cheer / 0.3, (CHEER - state.cheer) / 0.35));
-          const pump = Math.sin(state.cheer * 14) * 0.05;
-          for (let s = 0; s < 2; s++) raise(s, offset.set(sides[s] * 0.12, 0.5 + pump, 0.06), p, frame);
-          state.cheer += dt;
-          if (state.cheer > CHEER) state.cheer = -1;
-          moving = true;
-        } else if (state.wave >= 0) {
-          // the right hand up by the head, side to side
-          const p = ease(Math.min(1, state.wave / 0.35, (WAVE - state.wave) / 0.35));
-          raise(right, offset.set(-0.26 + Math.sin(state.wave * 13) * 0.06, 0.2, 0.14), p, frame);
-          state.wave += dt;
-          if (state.wave > WAVE) state.wave = -1;
+        // the hands on what they're reaching for, easing there and back
+        for (let s = 0; s < 2; s++) {
+          const h = state.hands[s];
+          const amt = h.to ? Math.min(1, h.amt + dt * 4) : Math.max(0, h.amt - dt * 4);
+          if (amt !== h.amt) moving = true;
+          h.amt = amt;
+          if (!amt) continue;
+          B.wrist[s].getWorldPosition(from);
+          ik(B.arm[s], B.fore[s], B.wrist[s], from.lerp(h.at, ease(amt)), va.set(sides[s] * 0.6, -1, -0.5).applyQuaternion(frame));
+        }
+        // the head's part in a gesture, on top of where it looks
+        let nod = 0;
+        let shake = 0;
+        let tilt = 0;
+        const g = state.gesture;
+        if (g) {
+          const T = LASTS[g.name];
+          const p = ease(Math.min(1, g.t / 0.3, Math.max(0, T - g.t) / 0.35)); // in, held, out
+          const env = Math.sin((Math.PI * Math.min(g.t, T)) / T);
+          if (g.name === 'cheer') {
+            // both fists up over the head, pumping
+            const pump = Math.sin(g.t * 14) * 0.05;
+            for (let s = 0; s < 2; s++) raise(s, offset.set(sides[s] * 0.12, 0.5 + pump, 0.06), p, frame);
+          } else if (g.name === 'wave') {
+            // the right hand up by the head, side to side
+            raise(right, offset.set(-0.26 + Math.sin(g.t * 13) * 0.06, 0.2, 0.14), p, frame);
+          } else if (g.name === 'fold') {
+            // the arms across the chest, one over the other
+            for (let s = 0; s < 2; s++) {
+              raise(s, offset.set(-sides[s] * 0.52, -0.33 - s * 0.08, 0.3 + s * 0.04).multiplyScalar(reachOf[s]), p, frame, ELBOWS_OUT);
+              turn(B.wrist[s], AY, -sides[s] * 1.1 * p, frame); // the hands tucked round the arms
+            }
+          } else if (g.name === 'shrug') {
+            // the shoulders up, the elbows in, the hands out, palms up, the
+            // head on one side
+            for (let s = 0; s < 2; s++) turn(B.shoulder[s], AZ, sides[s] * 0.2 * p, frame);
+            for (let s = 0; s < 2; s++) {
+              raise(s, offset.set(sides[s] * 0.3, -0.4, 0.47).multiplyScalar(reachOf[s]), p, frame, ELBOWS_IN);
+              turn(B.wrist[s], pos(B.wrist[s]).sub(pos(B.fore[s])).normalize(), -sides[s] * 1.3 * p, frame);
+            }
+            tilt = 0.12 * p;
+          } else if (g.name === 'nod') {
+            nod = 0.36 * (1 - Math.cos((4 * Math.PI * g.t) / T)) * 0.5 * env; // down and up, twice
+          } else if (g.name === 'shake') {
+            shake = 0.5 * Math.sin((5 * Math.PI * g.t) / T) * env;
+          }
+          g.t += dt;
+          if (g.t > T) state.gesture = null;
           moving = true;
         } else if (typing) {
           for (let s = 0; s < 2; s++) turn(B.wrist[s], AX, Math.max(0, Math.sin(t * 10 + s * 2.1 + state.seed)) * 0.2, frame);
+          turn(B.chest, AX, Math.sin(t * 1.6 + state.seed) * 0.012, frame); // breathing
+        } else if (idle && pose !== 'sit') {
           turn(B.chest, AX, Math.sin(t * 1.6 + state.seed) * 0.012, frame); // breathing
         }
         // the head: down at the screen, a look round, or at what it's asked to
@@ -429,14 +533,15 @@ export async function loadPeople() {
           state.amt = Math.min(1, state.amt + dt * 3);
           yaw = THREE.MathUtils.lerp(yaw, THREE.MathUtils.clamp(Math.atan2(tmp.x, tmp.z), -1.25, 1.25), state.amt);
           // less what the pose already looks down
-          pitch = THREE.MathUtils.lerp(pitch, THREE.MathUtils.clamp(-Math.atan2(tmp.y, Math.hypot(tmp.x, tmp.z)) - DOWN, -0.8, 0.4), state.amt);
+          pitch = THREE.MathUtils.lerp(pitch, THREE.MathUtils.clamp(-Math.atan2(tmp.y, Math.hypot(tmp.x, tmp.z)) - down, -0.8, 0.4), state.amt);
         } else state.amt = Math.max(0, state.amt - dt * 2);
         const follow = Math.min(1, dt * 6);
         state.yaw += (yaw - state.yaw) * follow;
         state.pitch += (pitch - state.pitch) * follow;
         turn(B.neck, AY, state.yaw * 0.4, frame);
-        turn(B.head, AY, state.yaw * 0.6, frame);
-        turn(B.head, AX, state.pitch, frame);
+        turn(B.head, AY, state.yaw * 0.6 + shake, frame);
+        turn(B.head, AX, state.pitch + nod, frame);
+        turn(B.head, AZ, tilt, frame);
         if (Math.abs(yaw - state.yaw) > 0.003 || Math.abs(pitch - state.pitch) > 0.003) moving = true;
         return moving;
       },
