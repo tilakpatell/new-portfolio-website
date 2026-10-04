@@ -713,11 +713,10 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
 
   // ── the people: customers outside the hatch, Walt at the bench, Jesse in
   // the room ── Rigged figures (office/people.js) once the cast has loaded;
-  // until then, or if it can't, the cut-outs above.
+  // until then, or for anyone whose figure can't be had, the cut-outs above.
   const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null };
-  // (their own figures where they have them: the customers, Walt and Jesse)
   const cast = [...Object.keys(CUSTOMERS), 'walt', 'jesseLab'];
-  loadPeople({ models: cast.map((id) => ABQ[id]?.model).filter(Boolean) })
+  loadPeople(cast.map((id) => ABQ[id]).filter(Boolean))
     .then((people) => {
       if (disposed) return people.dispose();
       const walt = people.person(ABQ.walt, { pose: 'stand' });
@@ -727,7 +726,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       folks.waltHead = walt.group.getObjectByName('Head');
       walt.group.rotation.y = Math.PI; // at the bench, his back to us
       folks.jesse = people.person(ABQ.jesseLab, { pose: 'stand', idle: true });
-      scene.add(walt.group, folks.jesse.group);
+      scene.add(walt.group);
+      if (folks.jesse) scene.add(folks.jesse.group);
       folks.ready = true;
     })
     .catch(() => {});
@@ -977,17 +977,20 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       const slot = live.serving ? i : i + 1;
       const x = -4.4 + (front ? 0 : (slot % 2 ? -1 : 1) * (0.35 + Math.floor(slot / 2) * 0.3));
       const z = front ? -1.05 : -1.5 - slot * 0.35;
-      if (!folks.ready) {
+      const f = folks.ready ? figureFor(e.customer) : null;
+      if (!f) {
+        // a cut-out: until the cast is in, or if their figure can't be had
+        m.visible = true;
         m.material = standeeFor(e.customer, e.mood ?? 'wait');
         const s = front ? 1.05 : 0.85;
         m.scale.set(s, s, 1);
         m.position.set(x, 1.12 + Math.sin(clock * 2 + m.userData.phase) * 0.012 + (front ? 0.05 : -0.05), z);
+        if (folks.ready) crowdAnchors.push(new THREE.Vector3(x, m.position.y + s * 0.5, z));
         return;
       }
       // a figure: the one being served at the ledge, looking at us; the
       // queue behind, turned to the hatch
-      const f = figureFor(e.customer);
-      if (!f || shown.has(e.customer)) return crowdAnchors.push(null);
+      if (shown.has(e.customer)) return crowdAnchors.push(null);
       shown.add(e.customer);
       const g = f.p.group;
       g.visible = atHatch;
@@ -1031,16 +1034,18 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       walt.reach('right', hand);
       walt.update(clock, dt);
       const jesse = folks.jesse;
-      jesse.group.visible = !shown.has('jesse');
-      jesse.group.position.set(-2.9, 0, 0.5);
-      jesse.group.rotation.y = -0.5;
-      jesse.look(walt.headAt(headTmp));
-      if (live.reaction && live.reaction.at !== folks.reaction) {
-        folks.reaction = live.reaction.at;
-        const gesture = moodGesture(live.reaction.mood);
-        if (gesture) jesse.gesture(gesture);
+      if (jesse) {
+        jesse.group.visible = !shown.has('jesse');
+        jesse.group.position.set(-2.9, 0, 0.5);
+        jesse.group.rotation.y = -0.5;
+        jesse.look(walt.headAt(headTmp));
+        if (live.reaction && live.reaction.at !== folks.reaction) {
+          folks.reaction = live.reaction.at;
+          const gesture = moodGesture(live.reaction.mood);
+          if (gesture) jesse.gesture(gesture);
+        }
+        if (jesse.group.visible) jesse.update(clock, dt);
       }
-      if (jesse.group.visible) jesse.update(clock, dt);
     }
 
     // tips: coins arc from the hatch into the jar
@@ -1156,8 +1161,9 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
         m.dispose?.();
       }
     });
+    // each look also holds its `ready` promise, which isn't a material
     for (const L of Object.values(looks)) for (const m of Object.values(L)) {
-      if (!m?.isMaterial) continue; // (each look also keeps its `ready` promise)
+      if (!m?.isMaterial) continue;
       for (const k2 of ['map', 'normalMap', 'roughnessMap']) m[k2]?.dispose?.();
       m.dispose();
     }

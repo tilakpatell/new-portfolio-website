@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
@@ -27,6 +27,7 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
+const Universe = lazy(() => import('./pages/Universe'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -36,7 +37,7 @@ function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
     // a link to one role (/experience/aws) lands on that role, not the top
-    if (!search.includes('role=') && !/^\/experience\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
+    if (!search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
   }, [pathname, search]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
@@ -77,10 +78,12 @@ function Lightspeed() {
 }
 
 // A first visit to the home page opens on the crawl, then jumps to lightspeed
-// into the site. The inline script in index.html decides (and covers the page
-// until it starts). Skip goes straight to the jump.
+// into the universe map, where the whole site is laid out as places to fly
+// to. The inline script in index.html decides (and covers the page until it
+// starts). Skip goes straight to the jump. The map loads during the crawl.
 const OpeningCrawl = lazy(() => import('./components/experience/OpeningCrawl'));
 function IntroJump() {
+  const navigate = useNavigate();
   const [stage, setStage] = useState(() => (document.documentElement.dataset.intro === '1' ? 'crawl' : null));
   useEffect(() => {
     if (!stage) return;
@@ -88,6 +91,10 @@ function IntroJump() {
       window.localStorage.setItem('tp-intro', '1');
     } catch {
       /* storage unavailable */
+    }
+    if (stage === 'crawl') {
+      import('./pages/Universe');
+      import('./components/universe/scene');
     }
   }, [stage]);
   if (!stage) return null;
@@ -97,9 +104,11 @@ function IntroJump() {
         <OpeningCrawl
           variant="intro"
           onClose={() => {
-            // keep the page covered until the jump's first frame
+            // keep the page covered until the jump's first frame, which
+            // comes out in the universe
             document.documentElement.dataset.intro = '1';
             setStage('jump');
+            navigate('/universe');
           }}
         />
       </Suspense>
@@ -133,8 +142,13 @@ function PaletteHost() {
   );
 }
 
+// The universe map keeps one page while its URL follows the selection
+// (/universe/marvel), so picking a planet doesn't remount the map.
+const pageKey = (pathname) => (pathname.startsWith('/universe') ? '/universe' : pathname);
+
 function Shell() {
   const { pathname } = useLocation();
+  const page = pageKey(pathname);
 
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
@@ -153,9 +167,9 @@ function Shell() {
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
-        <ErrorBoundary resetKey={pathname}>
+        <ErrorBoundary resetKey={page}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
-            <div key={pathname} className="page-enter">
+            <div key={page} className="page-enter">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/experience/:roleId?" element={<Experience />} />
@@ -173,13 +187,14 @@ function Shell() {
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
+                <Route path="/universe/:id?" element={<Universe />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />

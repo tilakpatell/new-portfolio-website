@@ -23,5 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# Meshy concept images and thumbnails, for review (scripts/meshy*.mjs)
-/lab/meshy/
+# local only: this machine's preview servers, patch leftovers, and the
+# contact sheets the model scripts write for looking over
+.claude/launch.json
+*.orig
+lab/

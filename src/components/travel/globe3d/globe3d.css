@@ -1,0 +1,32 @@
+/* The WebGL globe sits exactly over the 2D one, hidden (and out of the tab
+   order) until its first frame is drawn, then fades in. The tooltip, pin and
+   buttons reuse the 2D globe's styles in extras.css. */
+.globe3d {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+}
+.globe3d[data-on] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.45s ease;
+}
+.globe3d > .scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%; /* zoomed in, the globe fills a round window */
+  cursor: grab;
+  touch-action: pan-y; /* vertical swipes still scroll the page on phones */
+  -webkit-tap-highlight-color: transparent;
+}
+.globe3d > .scene-canvas:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .globe3d,
+  .globe3d[data-on] { transition: none; }
+}

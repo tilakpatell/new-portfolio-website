@@ -1,56 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { FORESTS, PLACES, RANGES, REGIONS, RIVERS, SEAS, range, wood } from './mapData';
 import { STOPS } from './road';
 
 // Middle-earth, drawn plainly on parchment: the coast, the Misty Mountains,
 // the Anduin, the forests and the mountains around Mordor, with the road the
 // Ring took from Hobbiton to Mount Doom. `step` reveals the road up to that stop.
 
-
-const PLACES = [
-  ['The Grey Havens', 92, 200],
-  ['Isengard', 378, 362],
-  ['Edoras', 418, 410],
-  ['Helm’s Deep', 380, 398],
-  ['Minas Tirith', 520, 444],
-  ['Osgiliath', 548, 436],
-  ['Barad-dûr', 712, 392],
-  ['Erebor', 590, 62],
-  ['Dol Guldur', 520, 252],
-];
-
-const REGIONS = [
-  ['ERIADOR', 230, 120],
-  ['THE SHIRE', 168, 222],
-  ['RHOVANION', 620, 170],
-  ['ROHAN', 452, 384],
-  ['GONDOR', 470, 492],
-  ['MORDOR', 680, 470],
-];
-
-// a run of little peaks along a line
-function range(x0, y0, x1, y1, every = 13, size = 9) {
-  const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / every));
-  let d = '';
-  for (let i = 0; i <= n; i++) {
-    const x = x0 + ((x1 - x0) * i) / n + (i % 2 ? 3 : -3);
-    const y = y0 + ((y1 - y0) * i) / n;
-    d += `M${x - size / 2} ${y + size / 3} L${x} ${y - size / 2} L${x + size / 2} ${y + size / 3} `;
-  }
-  return d;
-}
-// a patch of trees
-function wood(cx, cy, rx, ry, seed, count = 40) {
-  let s = seed;
-  const r = () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
-  return Array.from({ length: count }, () => {
-    const a = r() * Math.PI * 2;
-    const d = Math.sqrt(r());
-    return [cx + Math.cos(a) * rx * d, cy + Math.sin(a) * ry * d, 3 + r() * 2.5];
-  });
-}
 
 export default function MiddleEarthMap({ step }) {
   const reveal = useRef(null);
@@ -76,32 +31,25 @@ export default function MiddleEarthMap({ step }) {
       </defs>
       <rect width="800" height="560" fill="#f2e6c6" />
       {/* the sea to the west and the bay in the south */}
-      <path d="M0 0 H118 C108 78 66 118 98 170 C128 218 58 262 80 330 C100 398 40 462 62 560 H0 Z" className="map-sea" />
-      <path d="M350 560 C372 524 424 504 468 520 C498 532 516 560 516 560 Z" className="map-sea" />
+      {SEAS.map((d) => (
+        <path key={d} d={d} className="map-sea" />
+      ))}
       {/* forests: the Old Forest, Lothlórien, Fangorn, Mirkwood */}
-      {[
-        [wood(282, 222, 18, 12, 7, 18), 'map-tree'],
-        [wood(440, 282, 20, 16, 11, 26), 'map-tree map-tree-gold'],
-        [wood(412, 334, 22, 14, 13, 26), 'map-tree'],
-        [wood(540, 160, 52, 92, 17, 120), 'map-tree map-tree-dark'],
-      ].map(([trees, cls], k) => (
-        <g key={k} className={cls}>
-          {trees.map(([x, y, r], i) => (
+      {FORESTS.map(([cx, cy, rx, ry, seed, count, kind]) => (
+        <g key={seed} className={kind ? `map-tree map-tree-${kind}` : 'map-tree'}>
+          {wood(cx, cy, rx, ry, seed, count).map(([x, y, r], i) => (
             <circle key={i} cx={x} cy={y} r={r} />
           ))}
         </g>
       ))}
       {/* rivers: the Anduin from the north to the sea, the Brandywine, the Isen */}
-      <path d="M470 50 C478 110 462 180 472 240 C482 290 476 330 488 360 C500 400 476 440 470 470 C462 500 444 512 430 524" className="map-river" />
-      <path d="M210 120 C216 170 206 214 222 250 C232 280 218 320 228 360" className="map-river map-river-thin" />
-      <path d="M372 360 C366 392 360 420 342 452" className="map-river map-river-thin" />
+      {RIVERS.map(([d, thin]) => (
+        <path key={d} d={d} className={thin ? 'map-river map-river-thin' : 'map-river'} />
+      ))}
       {/* mountains: the Misty Mountains, the White Mountains, the Grey Mountains, and Mordor's walls */}
-      <path d={range(372, 52, 396, 334)} className="map-peaks" />
-      <path d={range(334, 432, 512, 432)} className="map-peaks" />
-      <path d={range(400, 36, 566, 36)} className="map-peaks" />
-      <path d={range(586, 362, 772, 362)} className="map-peaks map-peaks-dark" />
-      <path d={range(578, 384, 578, 520)} className="map-peaks map-peaks-dark" />
-      <path d={range(586, 520, 770, 520)} className="map-peaks map-peaks-dark" />
+      {RANGES.map(([x0, y0, x1, y1, dark]) => (
+        <path key={`${x0} ${y0}`} d={range(x0, y0, x1, y1)} className={dark ? 'map-peaks map-peaks-dark' : 'map-peaks'} />
+      ))}
       {/* Mount Doom, burning, and the dark tower */}
       <path d="M646 432 L660 406 L674 432 Z" fill="#5a2a1a" stroke="#3a1a10" />
       <circle cx="660" cy="406" r="5" className="map-fire" />

@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { canvasTexture, createStage } from '../../../lib/stage3d';
 import { createModels } from '../../../lib/models';
 import { PANIC, butterRobots } from './rules';
-import { InkPass, toon } from './toon';
+import { InkPass, releaf, releafMap, toon } from './toon';
 import { animate, hull, makeCast, portalGun } from './cast';
 import { createMeshyCast } from './meshyCast';
 import { glowDot, paintFloor, paintFloorGlow, puff } from './paint';
@@ -19,7 +19,7 @@ const R = PANIC.arena;
 
 // each dimension's sky, ground and light
 const LOOK = {
-  backyard: { top: 0x2f7fd6, mid: 0x86c4ef, low: 0xdff2ff, ground: 0x4f9a3c, sun: [0xfff1d8, 2.3], hemi: [0xd2ecff, 0x4b7a3b, 1.2], clouds: 0.62, stars: 0, suns: 1, sunCol: 0xfff6c8, fog: [0xcde9fa, 55, 150], exposure: 1.0, rim: 'fence', leaf: 0x3d9a2c },
+  backyard: { top: 0x2f7fd6, mid: 0x86c4ef, low: 0xdff2ff, ground: 0x4f9a3c, sun: [0xfff1d8, 2.3], hemi: [0xd2ecff, 0x4b7a3b, 1.2], clouds: 0.62, stars: 0, suns: 1, sunCol: 0xfff6c8, fog: [0xcde9fa, 55, 150], exposure: 1.0, rim: 'fence', leaf: 0x2f8530 },
   cronenberg: { top: 0x2c1640, mid: 0x7a3c6c, low: 0xd2a070, ground: 0x8e4462, sun: [0xffd2b0, 2.0], hemi: [0xf0a8c8, 0x55203e, 1.05], clouds: 0.7, stars: 0, suns: 1, sunCol: 0xffe4a0, fog: [0xb07a86, 45, 130], exposure: 1.0, rim: 'flesh', leaf: 0x8a5a9a },
   gazorpazorp: { top: 0x6e2452, mid: 0xe06a3a, low: 0xffc276, ground: 0xc4652c, sun: [0xffd49a, 2.6], hemi: [0xffc4a0, 0x7a3a20, 1.0], clouds: 0.28, stars: 0, suns: 2, sunCol: 0xfff0b0, fog: [0xf0a070, 50, 140], exposure: 1.0, rim: 'rocks', leaf: 0x2aa08a },
   citadel: { top: 0x04050e, mid: 0x111637, low: 0x34296a, ground: 0x343e52, sun: [0xd4e2ff, 1.9], hemi: [0x8ca2ff, 0x1c1c2c, 1.05], clouds: 0, stars: 1, suns: 0, sunCol: 0xffffff, fog: [0x1a1838, 50, 160], exposure: 1.05, rim: 'rail' },
@@ -33,6 +33,9 @@ const PROPS = {
   citadel: { console: ['console'], pillar: ['pillar'], crate: ['barrels'] },
 };
 const KENNEY = ['house-a', 'house-c', 'house-f', 'house-k', 'fence', 'tree-large', 'tree-small', 'oak', 'bush', 'rock', 'flowers', 'dead-tree', 'stump', 'mushroom', 'rock-tall', 'spire', 'cliff', 'cactus', 'crystal', 'meteor', 'crater', 'console', 'computer', 'pillar', 'barrels', 'dish', 'hangar', 'turret'];
+
+// the plants among them, whose greens take each dimension's leaf colour
+const PLANTS = new Set(['tree-large', 'tree-small', 'oak', 'bush', 'flowers', 'dead-tree', 'cactus']);
 
 const ENEMY_CAST = { meeseeks: 'meeseeks', gromflomite: 'gromflomite', cronenberg: 'cronenberg', blob: 'blob', gazorpian: 'gazorpian', cop: 'cop', morty: 'mortyclone' };
 const BOSS_CAST = { snowball: 'snowball', cronenberg: 'bigcronenberg', cromulon: 'cromulon', evilmorty: 'evilmorty' };
@@ -310,18 +313,30 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
   }
   // toon versions, one per (model, tint)
   const toonCache = new Map();
-  // Kenney's foliage is mint; each dimension greens (or sickens) it to suit
+  // Kenney's foliage is mint; each dimension greens (or sickens) it to suit:
+  // every green in a plant (its colours, and its palette texture's greens),
+  // and anything named for a plant elsewhere (the grass on a rock)
   let leaf = null;
+  const leafMaps = new Map(); // a palette with its greens changed, per leaf
   const toonModel = (name, tint = null, k = 0.6) => {
     const key = `${name}-${tint}-${k}-${leaf}`;
     if (toonCache.has(key)) return toonCache.get(key);
     const m = loaded[name];
     if (!m) return null;
+    const plant = PLANTS.has(name);
     const parts = m.parts.map((p) => {
       const c = (p.material.color ?? new THREE.Color(1, 1, 1)).clone();
-      if (leaf != null && /leaf|grass|bush|plant/i.test(p.material.name ?? '')) c.lerp(new THREE.Color(leaf), 0.6);
+      let map = p.material.map ?? null;
+      if (leaf != null && (plant || /leaf|grass|bush|plant/i.test(p.material.name ?? ''))) {
+        releaf(c, leaf);
+        if (map && plant) {
+          const mk = `${map.uuid}-${leaf}`;
+          if (!leafMaps.has(mk)) leafMaps.set(mk, releafMap(map, leaf));
+          map = leafMaps.get(mk);
+        }
+      }
       if (tint != null) c.lerp(new THREE.Color(tint), k);
-      const mat = toon(c, { map: p.material.map ?? null });
+      const mat = toon(c, { map });
       mat.userData.shared = true;
       return { geometry: p.geometry, material: mat, base: p.base };
     });
@@ -682,6 +697,25 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     return m;
   });
 
+  // ── the hero's mark: a ring of portal green round their feet, a chevron on
+  // it where they aim, so they can be found in a crowd (and while they blink
+  // after a hit, or are gone mid-dash) ──
+  const markMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 1.6, 0.5), transparent: true, opacity: 0.85, toneMapped: false, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4 });
+  const ringGeo = new THREE.RingGeometry(0.66, 0.8, 48);
+  ringGeo.rotateX(-Math.PI / 2);
+  const chevron = new THREE.Shape();
+  chevron.moveTo(-0.26, 0);
+  chevron.lineTo(0, 0.36);
+  chevron.lineTo(0.26, 0);
+  chevron.lineTo(0, 0.12);
+  chevron.closePath();
+  const chevGeo = new THREE.ShapeGeometry(chevron);
+  chevGeo.rotateX(Math.PI / 2); // pointing along +z, the way the hero faces
+  chevGeo.translate(0, 0, 0.86);
+  const mark = new THREE.Group();
+  mark.add(new THREE.Mesh(ringGeo, markMat), new THREE.Mesh(chevGeo, markMat));
+  decals.add(mark);
+
   // ── the camera ──
   const look = new THREE.Vector3();
   let shake = 0;
@@ -780,6 +814,11 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     const blink = p.inv > 0 && p.dashT <= 0 && Math.floor(time * 16) % 2 === 0;
     pc.group.visible = p.dashT <= 0 && !blink && g.status !== 'travel';
     animate(pc, time, Math.min(1, speed / 5), 0);
+    mark.visible = g.status !== 'travel';
+    mark.position.set(p.x, 0.025, p.y);
+    mark.rotation.y = pc.group.rotation.y;
+    mark.scale.setScalar(1 + Math.sin(time * 3) * 0.03);
+    markMat.opacity = p.inv > 0 ? 0.45 + Math.abs(Math.sin(time * 14)) * 0.45 : 0.85;
     if (pc.gun?.userData.tip) {
       pc.gunFlash = Math.max(0, (pc.gunFlash ?? 0) - dt);
       pc.gun.userData.tip.scale.setScalar(0.05 * (1 + (pc.gunFlash > 0 ? 1.8 : 0)));
@@ -1014,6 +1053,7 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     stage.dispose();
     models.dispose();
     meshy.dispose();
+    for (const t of leafMaps.values()) t.dispose();
   };
   progress(1, 'Ready');
   return {

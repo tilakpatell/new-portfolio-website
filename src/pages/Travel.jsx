@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -16,6 +16,7 @@ import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import { jumpTo } from '../lib/anchors';
 import Egg from '../components/Egg';
+import Mist from '../components/mist/Mist';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);
@@ -30,10 +31,13 @@ const FACTS = [
   { value: `${Math.round(northernmost.at[1])}°N to ${Math.round(-southernmost.at[1])}°S`, label: `${northernmost.name} to ${southernmost.name}` },
 ];
 
-function Hero() {
+// Picking a place re-renders the page; these sections take nothing from it,
+// so they are memoised and sit that out.
+const Hero = memo(function Hero() {
   return (
     <header className="travel-hero relative isolate overflow-hidden" aria-labelledby="travel-hero-title">
       <Photo id="hero" priority sizes="100vw" className="absolute inset-0 -z-30 h-full w-full object-cover" />
+      <Mist photo="hero" clear={0.55} />
       <div className="travel-hero-scrim -z-20" aria-hidden="true" />
       <div className="fog fog-a -z-10" aria-hidden="true" />
       <div className="fog fog-b -z-10" aria-hidden="true" />
@@ -54,9 +58,9 @@ function Hero() {
       </div>
     </header>
   );
-}
+});
 
-function HomeBase() {
+const HomeBase = memo(function HomeBase() {
   const school = PHOTOS['west-genesee'];
   return (
     <section data-theme-section="travel" className="shell relative z-10 py-16 md:py-24" aria-labelledby="home-base-title">
@@ -93,9 +97,9 @@ function HomeBase() {
       </div>
     </section>
   );
-}
+});
 
-function Facts() {
+const Facts = memo(function Facts() {
   return (
     <PhotoBand id="band" className="travel-band">
       <div className="shell relative py-[clamp(7rem,16vw,12rem)]">
@@ -114,7 +118,7 @@ function Facts() {
       </div>
     </PhotoBand>
   );
-}
+});
 
 export default function Travel() {
   useDocumentTitle('Travel');
