@@ -100,3 +100,9 @@ export function dance(f, t, phase) {
   f.arms[0].rotation.x = 2.4 + Math.sin(t * 3.5 + phase) * 0.4;
   f.arms[1].rotation.x = -2.4 - Math.sin(t * 3.5 + phase) * 0.4;
 }
+
+// Back to standing, after a dance.
+export function calm(f) {
+  f.arms[0].rotation.x = 0;
+  f.arms[1].rotation.x = 0;
+}

@@ -126,7 +126,9 @@
   .shire-map { width: 96px; height: 96px; }
   .shire-chip { font-size: 0.74rem; padding: 0.35rem 0.55rem; }
   .shire-list { top: auto; bottom: 0.7rem; max-height: 70%; }
-  .shire-door { bottom: 9rem; right: 1rem; left: auto; transform: none; width: min(14rem, calc(100% - 9.5rem)); }
+  .shire-door { bottom: 4.4rem; right: 0.8rem; left: auto; transform: none; width: min(13.5rem, calc(100% - 9.5rem)); padding: 0.7rem 0.8rem; }
+  .shire-door-name { font-size: 0.98rem; }
+  .shire-hint { bottom: 9.2rem; font-size: 0.78rem; }
   .shire-panel { bottom: 0.7rem; }
   .shire-bubble > div { font-size: 0.8rem; max-width: 13rem; }
 }

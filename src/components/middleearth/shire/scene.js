@@ -19,7 +19,7 @@ import { createShireKit } from './props';
 import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, swaying } from './ground';
 import { makeAtmosphere, makeSky } from './sky';
 import { createFx } from './fx';
-import { dance, makePerson, sit } from './people';
+import { calm, dance, makePerson, sit } from './people';
 import { INSIDE, buildInside } from './inside';
 import {
   BAG_END,
@@ -421,7 +421,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       p.group.rotation.y += d * Math.min(1, dt * 4);
       if ((c.id === 'merry' || c.id === 'pippin') && A.night > 0.5 && s.mode !== 'show') dance(p, t, c.id === 'merry' ? 0 : 1.7);
-      else pose(p, t, { moving: false, wave: s.talk === c.id ? 0.6 : 0, talk: s.talk === c.id ? 1 : 0 });
+      else {
+        calm(p);
+        pose(p, t, { moving: false, wave: s.talk === c.id ? 0.6 : 0, talk: s.talk === c.id ? 1 : 0 });
+      }
     }
     // Gandalf: the bench by day, his cart for the fireworks, gone by night
     // (he's in Bag End), and at the edge of the Shire at dawn
@@ -437,7 +440,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
     guests.forEach((g, i) => {
       g.group.visible = s.mode !== 'inside' && (A.night > 0.3 || i % 2 === 0);
       if (A.night > 0.5) dance(g, t, i * 1.3);
-      else pose(g, t + i, { moving: false });
+      else {
+        calm(g);
+        pose(g, t + i, { moving: false });
+      }
     });
 
     // ── the dogs, and what they can see ──
