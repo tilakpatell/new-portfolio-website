@@ -10,7 +10,8 @@
 // ./rules.js has the rules.
 //
 // createRmWorld(canvas, { onLost }) resolves to { render(state, ms),
-// resize(w, h), dispose(), lost, fx(type, data), info() }, where state is
+// resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
+// info() }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
 // yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done }.
 
@@ -28,6 +29,8 @@ import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
+import { buildAnnex } from './annex';
+import { buildArcade } from './arcade';
 
 export { kitMaterials };
 
@@ -43,7 +46,7 @@ export { kitMaterials };
 // { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
 // tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
 // The rooms and the annex add theirs here.
-export const AREA_BUILDERS = { street: buildStreet };
+export const AREA_BUILDERS = { street: buildStreet, annex: buildAnnex, arcade: buildArcade };
 
 // the models the world loads (public/models/c137/), shared with the builders by name
 const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];
@@ -407,6 +410,10 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     render,
     resize,
     fx: fxEvent,
+    // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
+    act(area, name, ...args) {
+      return areas[area]?.actions?.[name]?.(...args);
+    },
     info() {
       const i = renderer.info;
       return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, quality: stage.quality, sharp, tier, models: MODELS.filter((n) => models.get(n)), cast: !!saucer };

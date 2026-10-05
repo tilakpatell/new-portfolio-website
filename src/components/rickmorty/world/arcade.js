@@ -553,6 +553,42 @@ export async function buildArcade(kit) {
   group.add(doors);
   neon.add(C(BOX, NEON.teal), glow, at(CX, 3.08, SOUTH - 0.04, 0, 3.7, 0.08, 0.06));
   for (const s of [-1, 1]) neon.add(C(BOX, NEON.teal), glow, at(CX + s * 1.8, 1.54, SOUTH - 0.04, 0, 0.08, 3.08, 0.06));
+  // the name over the doors, and the games' posters either side of them
+  const POSTERS = ['ROY', ...Object.values(CABINET_GAMES)];
+  const posterTex = own(
+    paint(renderer, 1024, 512, (g, w, h) => {
+      const pw = w / 5;
+      POSTERS.forEach((name, i) => drawPoster(g, i * pw, 0, pw, h, name, i));
+      g.fillStyle = '#12061f';
+      g.fillRect(pw * 4, 0, pw, h);
+      g.save();
+      g.translate(pw * 4.5, h / 2);
+      g.rotate(-Math.PI / 2);
+      logoText(g, 'BLIPS AND CHITZ', 0, 0, pw * 0.5, { maxW: h * 0.94 });
+      g.restore();
+    }),
+  );
+  const posterGeo = [
+    [CX - 7.6, 0],
+    [CX - 4.4, 1],
+    [CX + 4.4, 2],
+    [CX + 7.6, 3],
+    [CX, 4],
+  ].map(([x, i]) => {
+    const sign = i === 4;
+    const g = new THREE.PlaneGeometry(sign ? 3.4 : 1.7, sign ? 0.6 : 2.5);
+    const uv = g.attributes.uv;
+    for (let k = 0; k < uv.count; k++) {
+      const [u, v] = [uv.getX(k), uv.getY(k)];
+      // the sign is drawn on its side in the atlas
+      if (sign) uv.setXY(k, (5 - v) / 5, u);
+      else uv.setX(k, (i + u) / 5);
+    }
+    return g.applyMatrix4(at(x, sign ? 3.38 : 1.75, SOUTH - 0.02, Math.PI));
+  });
+  for (const [x] of [[CX - 7.6], [CX - 4.4], [CX + 4.4], [CX + 7.6]]) neon.add(C(BOX, NEON.purple), glow, at(x, 3.06, SOUTH - 0.05, 0, 1.8, 0.05, 0.05));
+  const posters = new THREE.Mesh(mergeGeometries(posterGeo), own(new THREE.MeshBasicMaterial({ map: posterTex, color: hot(0xffffff, 1.05) })));
+  group.add(posters);
 
   // ── the pillars: leaning from the floor up into the dome, neon on their
   // edges, chevrons of yellow bulbs up their faces ──
@@ -632,14 +668,15 @@ export async function buildArcade(kit) {
   belt.position.copy(planet.position);
   group.add(belt);
   // the orbits (three drawn faintly) and the spheres going round them
+  // each tilted so it passes in front of the walkway well above or below the belt
   const ORBITS = [
-    { r: 6.6, tilt: 0.35, node: 0.2, speed: 0.32, size: 0.62, color: NEON.magenta },
-    { r: 7.4, tilt: -0.25, node: 1.3, speed: -0.24, size: 0.5, color: NEON.teal },
-    { r: 7.0, tilt: 0.6, node: 2.4, speed: 0.27, size: 0.42, color: NEON.lime },
-    { r: 8.0, tilt: 0.15, node: -0.8, speed: 0.19, size: 0.7, color: NEON.blue },
-    { r: 6.3, tilt: -0.5, node: 0.9, speed: -0.36, size: 0.38, color: NEON.gold },
-    { r: 7.7, tilt: 0.45, node: -1.9, speed: 0.22, size: 0.46, color: 0xff4a4a },
-    { r: 8.5, tilt: -0.1, node: 3.0, speed: -0.17, size: 0.55, color: NEON.purple },
+    { r: 6.6, tilt: 0.38, node: 0.2, speed: 0.32, size: 0.62, color: NEON.magenta },
+    { r: 7.4, tilt: -0.33, node: -0.3, speed: -0.24, size: 0.5, color: NEON.teal },
+    { r: 7.0, tilt: 0.55, node: 0.35, speed: 0.27, size: 0.42, color: NEON.lime },
+    { r: 8.0, tilt: 0.3, node: Math.PI - 0.25, speed: 0.19, size: 0.7, color: NEON.blue },
+    { r: 6.3, tilt: -0.45, node: Math.PI + 0.3, speed: -0.36, size: 0.38, color: NEON.gold },
+    { r: 7.7, tilt: 0.42, node: -0.15, speed: 0.22, size: 0.46, color: 0xff4a4a },
+    { r: 8.5, tilt: -0.36, node: Math.PI, speed: -0.17, size: 0.55, color: NEON.purple },
   ].map((o, i) => ({ ...o, phase: i * 1.9, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(o.tilt, o.node, 0, 'YXZ')) }));
   for (const o of ORBITS.slice(0, 3)) neon.add(C(new THREE.TorusGeometry(o.r, 0.025, 4, 120).rotateX(Math.PI / 2), o.color), glow, new THREE.Matrix4().compose(planet.position, o.q, new THREE.Vector3(1, 1, 1)));
   const spheres = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 24, 16), mats.toon(0xffffff, { emissive: 0x2a1a3a }), ORBITS.length);
@@ -649,6 +686,7 @@ export async function buildArcade(kit) {
 
   // ── Roy's chair, and the high-score board on the rail beside it ──
   const roySpot = FURNITURE.find((f) => f.id === 'roy');
+  const near = []; // [object, its FURNITURE spot]: hidden while the camera is inside it
   const roy = models.get('roy-cabinet');
   let royScreen = null;
   if (roy) {
@@ -664,6 +702,7 @@ export async function buildArcade(kit) {
       o.receiveShadow = true;
     });
     group.add(holder);
+    near.push([holder, { ...roySpot, z: front - 0.78, d: 1.55 }]);
   } else royScreen = royStandIn(props, C, VC, neon, glow, roySpot);
   const boardCanvas = document.createElement('canvas');
   boardCanvas.width = 768;
@@ -727,7 +766,10 @@ export async function buildArcade(kit) {
   );
   const nameGeo = walkway.map((f, i) => {
     const m = at(f.x, 0, f.z, f.turn, f.w * 0.92, f.h, f.d);
-    props.add(tinted(cabGeo, BODY[(i * 3) % BODY.length]), VC, m);
+    const body = new THREE.Mesh(tinted(cabGeo, BODY[(i * 3) % BODY.length]).applyMatrix4(m), VC);
+    body.castShadow = body.receiveShadow = true;
+    group.add(body);
+    near.push([body, f]);
     screens.push([m.clone().multiply(SCREEN), 1.3 + i * 2.1]);
     const g = new THREE.PlaneGeometry(1, 1);
     const uv = g.attributes.uv;
@@ -830,7 +872,7 @@ export async function buildArcade(kit) {
   const s = new THREE.Vector3();
   return {
     group,
-    noInk: [dome, bulbMesh, screenMesh, marqueeMesh, nameMesh, board, doors, signMesh, ...glows],
+    noInk: [dome, bulbMesh, screenMesh, marqueeMesh, nameMesh, board, doors, posters, signMesh, ...glows],
     light: ARCADE_LIGHT,
     actions: {
       // the visitor's best age as Roy (a number; anything else shows "—")
@@ -839,7 +881,17 @@ export async function buildArcade(kit) {
         boardTex.needsUpdate = true;
       },
     },
-    update(t) {
+    update(t, dt, state, camera) {
+      // the indoor camera keeps to the walkway, so it can end up inside a
+      // cabinet by the rail: that one isn't drawn while it is
+      const c = camera.position;
+      for (const [o, f] of near) {
+        const dx = c.x - f.x;
+        const dz = c.z - f.z;
+        const u = Math.abs(dx * Math.cos(f.turn) - dz * Math.sin(f.turn));
+        const w = Math.abs(dx * Math.sin(f.turn) + dz * Math.cos(f.turn));
+        o.visible = !(u < f.w / 2 + 0.3 && w < f.d / 2 + 0.3 && c.y < f.h + 0.3);
+      }
       domeMat.uniforms.t.value = t;
       bulbMat.uniforms.t.value = t;
       screenMat.uniforms.t.value = t;
@@ -865,6 +917,56 @@ function tinted(geo, color) {
   const a = g.attributes.color;
   for (let i = 0; i < a.count; i++) a.setXYZ(i, a.getX(i) * c.r, a.getY(i) * c.g, a.getZ(i) * c.b);
   return g;
+}
+
+// A game's poster: a sky of its colour, a big shape for the game (a man in a
+// headset for Roy, a ball, a plumbus, a blob) and its name across the foot.
+function drawPoster(g, x, y, w, h, name, i) {
+  const skies = [
+    ['#1d6b5a', '#0a2a24'],
+    ['#2a2a8a', '#0b0b30'],
+    ['#8a2a6a', '#2a0b22'],
+    ['#6a4a1a', '#241806'],
+  ];
+  const gr = g.createLinearGradient(0, y, 0, y + h);
+  gr.addColorStop(0, skies[i][0]);
+  gr.addColorStop(1, skies[i][1]);
+  g.fillStyle = gr;
+  g.fillRect(x + 6, y + 6, w - 12, h - 12);
+  g.strokeStyle = '#ffd34a';
+  g.lineWidth = 6;
+  g.strokeRect(x + 9, y + 9, w - 18, h - 18);
+  const cx = x + w / 2;
+  const cy = y + h * 0.42;
+  g.fillStyle = ['#9dff5a', '#ff8a2a', '#ff9ad0', '#c46aff'][i];
+  g.beginPath();
+  if (i === 0) {
+    // a man's head and shoulders, the headset over his eyes
+    g.arc(cx, cy - h * 0.06, w * 0.17, 0, Math.PI * 2);
+    g.fill();
+    g.fillRect(cx - w * 0.3, cy + h * 0.08, w * 0.6, h * 0.2);
+    g.fillStyle = '#f2f2f6';
+    g.fillRect(cx - w * 0.2, cy - h * 0.09, w * 0.4, h * 0.05);
+  } else if (i === 1) {
+    g.arc(cx, cy, w * 0.26, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#12061f';
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(cx, cy, w * 0.26, -0.6, 0.6);
+    g.arc(cx, cy, w * 0.26, Math.PI - 0.6, Math.PI + 0.6);
+    g.stroke();
+  } else if (i === 2) {
+    g.ellipse(cx, cy, w * 0.16, h * 0.16, 0, 0, Math.PI * 2);
+    g.fill();
+    g.beginPath();
+    g.ellipse(cx, cy - h * 0.17, w * 0.07, h * 0.06, 0, 0, Math.PI * 2);
+    g.fill();
+  } else {
+    for (let k = 0; k < 5; k++) g.arc(cx + Math.cos(k * 1.3) * w * 0.12, cy + Math.sin(k * 1.7) * h * 0.06, w * (0.1 + (k % 3) * 0.04), 0, Math.PI * 2);
+    g.fill();
+  }
+  logoText(g, name, cx, y + h * 0.82, w * 0.15, { maxW: w * 0.86 });
 }
 
 // the walkway's carpet: squiggles, ringed planets, stars and triangles in
