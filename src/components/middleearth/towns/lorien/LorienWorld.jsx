@@ -5,15 +5,17 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { SideList } from '../SideList';
+import { readSide, recordSide } from '../side';
 import { useTravellers } from '../useTravellers';
 import { keyDown, keyUp, moveOf } from '../keys';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { followAt, lead as leadParty, newParty } from '../rivendell/rules';
-import { AMBUSH, COLLIDERS, LANDING, LEAD, MIRROR, SPOTS, START, STAIR, TABLE, TREE, WALLS, castFor, moodFor, validAt } from './layout';
-import { CONVOS, NOT_FOR, QUESTS, SEAL, SPEAKERS, THANKS, lorienProgress } from './story';
-import { GIFTS, MIRROR_PULL, RIVER, allGiven, eyeOn, eyeSoon, giveGift, newBoat, newGifts, newLead, newPull, stepBoat, stepLead, stepPull, takeGift } from './rules';
+import { AMBUSH, BOARDS, BUTTS, COLLIDERS, LANDING, LEAD, MIRROR, RANGE, SPOTS, START, STAIR, TABLE, TREE, WALLS, castFor, moodFor, validAt } from './layout';
+import { ARCHERY, CONVOS, NOT_FOR, QUESTS, SEAL, SIDE, SPEAKERS, THANKS, lorienProgress } from './story';
+import { BOW, GIFTS, MIRROR_PULL, RIVER, aimOf, allGiven, eyeOn, eyeSoon, giveGift, newBoat, newGifts, newLead, newPull, newRange, stepBoat, stepLead, stepPull, stepRange, takeGift, tiredOf, turnAim } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './lorien.css';
@@ -26,12 +28,15 @@ import './lorien.css';
 
 const DONE = 'tp-lorien-done';
 const AT = 'tp-lorien-at';
+// Legolas's targets, on the side: { won, best } (best: fewest arrows)
+const SIDE_KEY = 'tp-lorien-side';
 const sounds = () => import('./sounds');
 const PROMPT = {
   stair: { name: 'The great mallorn', act: 'Climb the stair' },
   mirror: { name: 'The Mirror of Galadriel', act: 'Go down to the Mirror' },
   table: { name: 'The Lady’s gifts', act: 'Take a gift' },
   boats: { name: 'The boats', act: 'Into the boat' },
+  butts: { name: 'Legolas’s targets', act: 'Take up the bow' },
 };
 const walker = makeWalker({ radius: 400, colliders: COLLIDERS, walls: WALLS });
 // the Fellowship following you in, behind Haldir
@@ -46,6 +51,14 @@ const SHOTS = {
 };
 // how fast you climb the stair, all the way up
 const CLIMB = 1 / 13;
+
+// The breeze at the targets as the panel shows it: which way it blows
+// across your aim (0 straight away from you, turning left), and how hard.
+function windOn(r) {
+  const k = Math.hypot(r.wind.x, r.wind.z);
+  const turn = Math.atan2(-r.wind.z, r.wind.x) - r.yaw;
+  return { turn, word: k < BOW.wind * 0.4 ? 'light' : k < BOW.wind * 0.75 ? 'fresh' : 'strong' };
+}
 
 export default function LorienWorld({ onLeave }) {
   const three = use3D();
@@ -68,15 +81,28 @@ export default function LorienWorld({ onLeave }) {
     },
     [unlock],
   );
+  // the targets on the side: kept apart from the story's progress
+  const [side, setSide] = useState(() => readSide(local.get(SIDE_KEY, null)));
+  const recordGo = useCallback(
+    (go) => {
+      setSide((was) => {
+        const { won, best } = recordSide(was, go, { low: true });
+        local.set(SIDE_KEY, { won, best });
+        return { won, best };
+      });
+      if (go.won) unlock(SIDE.seal);
+    },
+    [unlock],
+  );
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world lorien-world" aria-labelledby="lorien-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} complete={complete} side={side} recordGo={recordGo} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, complete, gl, setGl, onLeave }) {
+function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const trav = useTravellers('lorien', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -86,7 +112,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   if (!sim.current) {
     const at = validAt(local.get(AT, null));
     const h = newWalker(at);
-    sim.current = { zone: 'wood', h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ambushed: false, lead: null, party: newParty(), climb: 0, pull: null, gifts: null, boat: null, busy: false, steer: 0, up: 0, hold: false, tempt: 0 };
+    sim.current = { zone: 'wood', h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ambushed: false, lead: null, party: newParty(), climb: 0, pull: null, gifts: null, boat: null, busy: false, steer: 0, up: 0, hold: false, tempt: 0, range: null, drawHold: false, said: null, saidAt: -9, toldTired: false, lastDraw: 1 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -97,6 +123,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
+  const sightRef = useRef(null);
   const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
@@ -209,6 +236,33 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     say('Down the river. Steer round the rocks (A and D), and dig in with the paddle (W).', true);
   }, [say]);
 
+  // Legolas's targets: stand at the mark with a bow
+  const rangeSay = useCallback((text) => {
+    const s = sim.current;
+    s.said = text;
+    s.saidAt = s.t;
+  }, []);
+  const startRange = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'archery';
+    s.h = newWalker({ x: BUTTS.x, z: BUTTS.z, face: BUTTS.face });
+    s.range = newRange(RANGE, Math.floor(Math.random() * 1000) + 1);
+    s.drawHold = false;
+    s.toldTired = false;
+    rangeSay(ARCHERY.start);
+    sounds().then((x) => x.creak());
+  }, [rangeSay]);
+  const leaveRange = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'archery') return;
+    s.mode = 'walk';
+    s.range = null;
+    s.drawHold = false;
+    s.h = newWalker({ x: BUTTS.x, z: BUTTS.z + 0.8, face: BUTTS.face });
+    s.yaw = behindYaw(BUTTS.face);
+    s.dragAt = s.t;
+  }, []);
+
   const toWood = useCallback((at = START) => {
     const s = sim.current;
     s.zone = 'wood';
@@ -234,9 +288,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       } else if (id === 'table') {
         s.mode = 'table';
       } else if (id === 'boats') startRiver();
+      else if (id === 'butts') startRange();
       setList(false);
     },
-    [say, startTalk, startRiver],
+    [say, startTalk, startRiver, startRange],
   );
 
   const talkOnward = useCallback(
@@ -383,6 +438,12 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         e.preventDefault();
         audioContext();
       }
+      if (s.mode === 'archery') {
+        if (k === 'Escape') leaveRange();
+        else if ((k === 'r' || k === 'R') && (s.range?.state === 'won' || s.range?.state === 'out')) startRange();
+        else if (k === ' ' && !onButton) e.preventDefault();
+        return;
+      }
       if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
         if (s.mode === 'walk' && (s.near || s.gifts?.carrying)) {
           e.preventDefault();
@@ -392,7 +453,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct, take]);
+  }, [live, talkOnward, doAct, take, leaveRange, startRange]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -504,6 +565,41 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         }
       }
     }
+    // Legolas's targets
+    if (s.mode === 'archery' && s.range) {
+      const r = s.range;
+      const ax = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + (pad ? pad.lx + pad.rx : 0);
+      const ay = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - (pad ? pad.ly + pad.ry : 0);
+      const draw = held('space') || s.drawHold || Boolean(pad?.a || pad?.rt);
+      for (const e of stepRange(r, dt, { draw, x: ax, y: ay })) {
+        if (e.type === 'draw') {
+          s.toldTired = false;
+          sounds().then((x) => x.creak());
+        } else if (e.type === 'loose') {
+          s.lastDraw = e.draw;
+          sounds().then((x) => x.twang(e.draw));
+        } else if (e.type === 'hit') {
+          sounds().then((x) => x.thock('board', e.gold));
+          a.fx('board', e.i);
+          rangeSay(!e.fresh ? ARCHERY.again : e.gold ? ARCHERY.gold(r.golds - 1) : ARCHERY.hit(r.shot));
+        } else if (e.type === 'miss') {
+          if (e.into !== 'away') sounds().then((x) => x.thock(e.into));
+          rangeSay(e.into === 'trunk' ? ARCHERY.trunk : e.into === 'away' ? ARCHERY.away : s.lastDraw < 0.6 ? ARCHERY.short : ARCHERY.low);
+        } else if (e.type === 'won') {
+          sounds().then((x) => x.chime(3));
+          rangeSay(ARCHERY.won(r.shot, r.golds));
+          recordGo({ won: true, score: r.shot });
+        } else if (e.type === 'out') {
+          rangeSay(ARCHERY.out);
+          recordGo({ won: false, score: null });
+        }
+      }
+      if (r.drawing && !s.toldTired && tiredOf(r) > 0.35) {
+        s.toldTired = true;
+        rangeSay(ARCHERY.tired);
+      }
+    }
+
     // the boat drifts on between the Kings while Aragorn speaks
     if (s.zone === 'river' && s.mode === 'talk' && s.boat) s.boat.s = Math.min(RIVER.len, s.boat.s + dt * 3);
 
@@ -514,10 +610,14 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       spotHere = sp && sp.quest === p.next ? sp.id : null;
       // the table only while there are gifts on it
       if (spotHere === 'table' && s.gifts && s.gifts.left.length === 0) spotHere = null;
+      // and on the side, Legolas's targets, once you're let into the wood
+      if (!spotHere && !s.gifts?.carrying && p.done.includes(SIDE.needs) && Math.hypot(s.h.x - BUTTS.x, s.h.z - BUTTS.z) < 2.4) spotHere = 'butts';
     }
     s.near = spotHere;
     let cast = s.zone === 'wood' ? castFor(p.next) : [];
     if (s.ambushed || s.lead) cast = cast.filter((c) => !c.while?.includes('haldir'));
+    // at the targets, Legolas is by the mark (and nowhere else)
+    if (s.mode === 'archery') cast = cast.filter((c) => c.look !== 'legolas');
     let person = null;
     if (s.mode === 'walk') person = nearest(cast, s.h.x, s.h.z, 2.8)?.id ?? null;
     if (person !== s.person) {
@@ -560,7 +660,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           cast: cast.map((c) => c.id),
           talk: s.person,
           talking: s.talking,
-          speaker: node?.who ?? null,
+          speaker: node?.who ?? (s.mode === 'archery' && s.t - s.saidAt < 2.5 ? 'legolas' : null),
           line: s.talk?.at ?? null,
           camShot: s.mode === 'talk' && SHOTS[s.talking] ? { id: s.talking, ...SHOTS[s.talking] } : null,
           ambush: s.ambushed && (s.mode === 'talk' || Boolean(s.lead)),
@@ -575,6 +675,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           given: s.gifts ? Object.keys(s.gifts.given) : [],
           giftsLeft: s.gifts ? s.gifts.left : p.next === 'gifts' ? GIFTS.map((g) => g.id) : [],
           boat: s.boat,
+          range: s.mode === 'archery' && s.range ? { aim: aimOf(s.range), draw: s.range.draw, arrow: s.range.arrow, stuck: s.range.stuck, state: s.range.state } : null,
           stepT: s.stepT,
           markers,
           camYaw: s.yaw,
@@ -594,10 +695,17 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     }
 
     const b = s.boat;
-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, Boolean(s.lead), s.lead?.waiting, s.mode === 'climb' ? Math.round(s.climb * 20) : '', pull ? Math.round(pull.pull * 30) : '', pull ? Math.round(pull.strength * 20) : '', pull ? eyeOn(pull) + eyeSoon(pull) * 2 : '', b ? Math.round(b.s / 4) : '', b?.hits, s.gifts?.carrying, s.gifts?.left.length, s.person, p.done.length].join('|');
+    const rg = s.mode === 'archery' ? s.range : null;
+    const key = [rg ? [rg.state, Math.round(rg.draw * 20), rg.arrows, rg.struck.length, tiredOf(rg) > 0.2, rg.wind.x.toFixed(1), rg.wind.z.toFixed(1), Math.round(rg.yaw * 20), s.said].join(',') : '', s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, Boolean(s.lead), s.lead?.waiting, s.mode === 'climb' ? Math.round(s.climb * 20) : '', pull ? Math.round(pull.pull * 30) : '', pull ? Math.round(pull.strength * 20) : '', pull ? eyeOn(pull) + eyeSoon(pull) * 2 : '', b ? Math.round(b.s / 4) : '', b?.hits, s.gifts?.carrying, s.gifts?.left.length, s.person, p.done.length].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, leading: Boolean(s.lead), climb: s.climb, pull: pull ? { pull: pull.pull, strength: pull.strength, eye: eyeOn(pull), soon: eyeSoon(pull) } : null, boat: b ? { s: b.s, hits: b.hits } : null, carrying: s.gifts?.carrying ?? null, left: s.gifts ? [...s.gifts.left] : GIFTS.map((g) => g.id), giveTo: s.gifts?.carrying && s.person ? (cast.find((c) => c.id === s.person && c.gift)?.name ?? null) : null });
+      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, leading: Boolean(s.lead), climb: s.climb, pull: pull ? { pull: pull.pull, strength: pull.strength, eye: eyeOn(pull), soon: eyeSoon(pull) } : null, boat: b ? { s: b.s, hits: b.hits } : null, carrying: s.gifts?.carrying ?? null, range: rg ? { state: rg.state, draw: rg.draw, arrows: rg.arrows, struck: rg.struck.length, shot: rg.shot, tired: tiredOf(rg), wind: windOn(rg), say: s.said } : null, left: s.gifts ? [...s.gifts.left] : GIFTS.map((g) => g.id), giveTo: s.gifts?.carrying && s.person ? (cast.find((c) => c.id === s.person && c.gift)?.name ?? null) : null });
+    }
+    // the sight, where the arrow would go if it didn't fall
+    if (sightRef.current && s.mode === 'archery') {
+      const at = a.screenOf('sight');
+      if (at) sightRef.current.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+      sightRef.current.style.opacity = at ? '1' : '0';
     }
     if (s.person && bubbleRef.current) {
       const at = a.screenOf('cast', s.person);
@@ -616,11 +724,23 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     if (e.type === 'pointerdown') {
       audioContext();
       if (s.mode === 'walk') drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      else if (s.mode === 'archery' && s.range) {
+        // at the targets: press to draw, drag to aim, let go to loose
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, bow: true };
+        s.drawHold = true;
+      }
       return;
     }
     if (e.type === 'pointermove') {
       const d = drag.current;
       if (!d || d.id !== e.pointerId) return;
+      if (d.bow) {
+        if (s.range) turnAim(s.range, -(e.clientX - d.x) * 0.0022, -(e.clientY - d.y) * 0.0022);
+        d.x = e.clientX;
+        d.y = e.clientY;
+        return;
+      }
       s.yaw -= (e.clientX - d.x) * 0.0065;
       s.pitch = Math.max(0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
       d.x = e.clientX;
@@ -628,6 +748,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       s.dragAt = s.t;
       return;
     }
+    if (drag.current?.bow) s.drawHold = false;
     drag.current = null;
   };
   const stick = useRef(null);
@@ -673,6 +794,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     setList(false);
   };
   const stay = () => toWood({ x: LANDING.x - 4, z: LANDING.z, face: Math.PI });
+  const sideTask = { ...SIDE, open: prog.done.includes(SIDE.needs), done: side.won, best: side.best != null ? ARCHERY.best(side.best) : null };
+  const goSide = () => {
+    toWood({ x: BUTTS.x, z: BUTTS.z + 1.6, face: BUTTS.face });
+    setList(false);
+  };
 
   const here = hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
@@ -682,8 +808,9 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   const P = hud.pull;
   const B = hud.boat;
   const carrying = hud.carrying ? GIFTS.find((g) => g.id === hud.carrying) : null;
+  const A = mode === 'archery' ? hud.range : null;
   return (
-    <div ref={box} className="shire-stage lorien-stage" data-touch={touch || undefined} data-mode={mode} data-sky={hud.zone === 'river' ? 'day' : moodFor(prog.next)} data-game={['climb', 'mirror', 'river', 'table'].includes(mode) || undefined}>
+    <div ref={box} className="shire-stage lorien-stage" data-touch={touch || undefined} data-mode={mode} data-sky={hud.zone === 'river' ? 'day' : moodFor(prog.next)} data-game={['climb', 'mirror', 'river', 'table', 'archery'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Lothlórien in 3D: the golden wood of the mallorns, Caras Galadhon and its lanterns, the Mirror of Galadriel, and the river down to the Argonath" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into the golden wood…</p>}
 
@@ -825,6 +952,61 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           )}
         </div>
       )}
+      {A && (
+        <>
+          <div ref={sightRef} className="lorien-sight" data-drawn={A.draw >= 1 || undefined} data-shake={A.tired > 0.2 || undefined} aria-hidden="true">
+            <span />
+          </div>
+          <div className="shire-panel lorien-archery" role="group" aria-label="Legolas’s targets">
+            <p className="shire-panel-title">Legolas’s targets</p>
+            {A.say && (
+              <p className="shire-panel-say" aria-live="polite">
+                <b>Legolas:</b> {A.say}
+              </p>
+            )}
+            <p className="shire-panel-stats">
+              <span>
+                Arrows <b>{A.arrows}</b>
+              </span>
+              <span>
+                Boards <b>{A.struck}</b> of {BOARDS.length}
+              </span>
+              <span className="lorien-wind" title="The breeze, as it blows across your aim">
+                Breeze{' '}
+                <i aria-hidden="true" style={{ transform: `rotate(${-A.wind.turn}rad)` }}>
+                  ↑
+                </i>{' '}
+                <b>{A.wind.word}</b>
+              </span>
+            </p>
+            {A.state === 'won' || A.state === 'out' ? (
+              <div className="shire-panel-row">
+                <button type="button" className="btn btn-primary btn-sm" onClick={startRange}>
+                  Again {!touch && <kbd>R</kbd>}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={leaveRange}>
+                  Put the bow down
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="shire-meter" role="meter" aria-label="The draw" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(A.draw * 100)}>
+                  <span className="shire-meter-label">The draw</span>
+                  <span className="shire-meter-bar lorien-meter-draw" data-tired={A.tired > 0.2 || undefined}>
+                    <span style={{ transform: `scaleX(${A.draw})` }} />
+                  </span>
+                </div>
+                <p className="shire-panel-help">{touch ? 'Press on the wood to draw, drag to aim, and lift your finger to loose.' : 'Hold Space (or the mouse) to draw, aim with the arrow keys or W A S D (or drag), and let go to loose.'}</p>
+                <div className="shire-panel-row">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={leaveRange}>
+                    Put the bow down {!touch && <kbd>Esc</kbd>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
       {mode === 'end' && (
         <div className="shire-panel lorien-end" role="dialog" aria-label="Past the Argonath">
           <p className="shire-panel-title">The Pillars of the Kings</p>
@@ -840,7 +1022,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         </div>
       )}
       {walking && touch && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do in Lothlórien" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'haldir' && sim.current.mode === 'walk' && !sim.current.lead} />}
+      {list && (
+        <QuestList title="Things to do in Lothlórien" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'haldir' && sim.current.mode === 'walk' && !sim.current.lead}>
+          <SideList tasks={[sideTask]} onGo={goSide} canGo={(t) => t.open && sim.current.mode === 'walk' && !sim.current.lead && !sim.current.gifts?.carrying} />
+        </QuestList>
+      )}
     </div>
   );
 }

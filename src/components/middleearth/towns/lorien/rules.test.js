@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GIFTS, LEADS, MIRROR_PULL, RIVER, allGiven, eyeOn, eyeSoon, giveGift, newBoat, newGifts, newLead, newPull, riverWide, stepBoat, stepLead, stepPull, takeGift } from './rules';
+import { BOW, GIFTS, LEADS, MIRROR_PULL, RIVER, aimAt, aimOf, allGiven, eyeOn, eyeSoon, giveGift, newBoat, newGifts, newLead, newPull, newRange, riverWide, stepBoat, stepLead, stepPull, stepRange, takeGift } from './rules';
 import { LEAD } from './layout';
 
 const run = (n, fn) => {
@@ -136,5 +136,99 @@ describe('down the Anduin', () => {
   });
   it('has every rock inside the channel', () => {
     for (const r of RIVER.rocks) expect(Math.abs(r.lat)).toBeLessThan(riverWide(r.s) - 1);
+  });
+});
+
+describe('Legolas’s targets', () => {
+  // a plain range: two boards to the north, the far one a little east, and
+  // a trunk off to the west
+  const world = { from: { x: 0, y: 1, z: 0 }, targets: [{ x: 0, y: 1.5, z: -12, r: 0.55 }, { x: 6, y: 1.6, z: -28, r: 0.55 }], trunks: [{ x: -6, z: -14, r: 1.4 }], ground: () => 0 };
+  const still = (r) => Object.assign(r, { wind: { x: 0, z: 0 } });
+  // draw for `hold` seconds aimed so, let go, and wait till it's down
+  const shoot = (r, { yaw, pitch }, hold = 1) => {
+    const ev = stepRange(r, 0.02, { draw: false });
+    for (let t = 0; t < hold; t += 0.02) {
+      Object.assign(r, { yaw, pitch });
+      ev.push(...stepRange(r, 0.02, { draw: true }));
+    }
+    ev.push(...stepRange(r, 0.02, { draw: false }));
+    for (let i = 0; i < 400 && r.state !== 'aim' && r.state !== 'won' && r.state !== 'out'; i++) ev.push(...stepRange(r, 0.02));
+    return ev;
+  };
+  // aimed above a board by as much as a full draw falls on the way
+  const allowing = (at) => {
+    const d = Math.hypot(at.x - world.from.x, at.z - world.from.z);
+    const t = d / BOW.speed[1];
+    return { yaw: aimAt(world.from, at).yaw, pitch: Math.atan2(at.y - world.from.y + 0.5 * BOW.g * t * t, d) };
+  };
+
+  it('strikes the board aimed at, allowing for the fall', () => {
+    const r = still(newRange(world, 3));
+    const ev = shoot(r, allowing(world.targets[0]));
+    expect(ev.find((e) => e.type === 'hit')).toMatchObject({ i: 0, fresh: true });
+    expect(r.struck).toEqual([0]);
+    expect(r.arrows).toBe(BOW.arrows - 1);
+    expect(r.stuck[0].into).toBe('board');
+  });
+  it('falls short of a far board aimed straight at', () => {
+    const r = still(newRange(world, 3));
+    const ev = shoot(r, aimAt(world.from, world.targets[1]));
+    expect(ev.some((e) => e.type === 'hit')).toBe(false);
+    expect(ev.find((e) => e.type === 'miss')?.into).toBe('ground');
+  });
+  it('drops a slack bow’s arrow at your feet', () => {
+    const r = still(newRange(world, 3));
+    const ev = shoot(r, allowing(world.targets[0]), 0.1);
+    expect(ev.find((e) => e.type === 'loose').draw).toBeLessThan(0.2);
+    expect(ev.find((e) => e.type === 'miss')?.into).toBe('ground');
+    expect(Math.hypot(r.stuck[0].x, r.stuck[0].z)).toBeLessThan(8);
+  });
+  it('stops in a trunk in the way', () => {
+    const r = still(newRange(world, 3));
+    const ev = shoot(r, aimAt(world.from, { x: -6, y: 1.5, z: -14 }));
+    expect(ev.find((e) => e.type === 'miss')?.into).toBe('trunk');
+  });
+  it('is carried by the breeze', () => {
+    const calm = still(newRange(world, 3));
+    shoot(calm, aimAt(world.from, { x: 0, y: 1, z: -30 }));
+    const windy = Object.assign(newRange(world, 3), { wind: { x: BOW.wind, z: 0 } });
+    shoot(windy, aimAt(world.from, { x: 0, y: 1, z: -30 }));
+    expect(windy.stuck[0].x - calm.stuck[0].x).toBeGreaterThan(0.2);
+  });
+  it('shakes, held at full draw too long', () => {
+    const spread = (r, from, to) => {
+      let most = 0;
+      for (let t = 0; t < to; t += 0.02) {
+        stepRange(r, 0.02, { draw: true });
+        if (t >= from) most = Math.max(most, Math.abs(aimOf(r).pitch - r.pitch));
+      }
+      return most;
+    };
+    const fresh = spread(newRange(world, 5), 0.7, 1.4);
+    const tired = spread(newRange(world, 5), 4, 5);
+    expect(tired).toBeGreaterThan(fresh * 3);
+  });
+  it('needs the bow let go of before the next draw', () => {
+    const r = still(newRange(world, 3));
+    shoot(r, allowing(world.targets[0]));
+    const ev = [];
+    for (let i = 0; i < 20; i++) ev.push(...stepRange(r, 0.02, { draw: true }));
+    expect(ev.some((e) => e.type === 'draw')).toBe(false);
+    stepRange(r, 0.02, { draw: false });
+    expect(stepRange(r, 0.02, { draw: true }).map((e) => e.type)).toContain('draw');
+  });
+  it('is won when every board is struck, and lost when the arrows run out', () => {
+    const r = still(newRange(world, 3));
+    shoot(r, allowing(world.targets[0]));
+    const ev = shoot(still(r), allowing(world.targets[1]));
+    expect(ev.map((e) => e.type)).toContain('won');
+    expect(r.state).toBe('won');
+    expect(r.shot).toBe(2);
+    const lost = still(newRange(world, 3));
+    const all = [];
+    for (let i = 0; i < BOW.arrows; i++) all.push(...shoot(still(lost), { yaw: Math.PI / 2, pitch: -0.3 }));
+    expect(lost.state).toBe('out');
+    expect(all.filter((e) => e.type === 'loose')).toHaveLength(BOW.arrows);
+    expect(stepRange(lost, 0.02, { draw: true })).toEqual([]);
   });
 });

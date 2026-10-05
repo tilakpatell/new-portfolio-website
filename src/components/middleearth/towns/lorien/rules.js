@@ -244,3 +244,193 @@ export function stepBoat(b, dt, { steer = 0, paddle = false } = {}) {
   }
   return ev;
 }
+
+// ── On the side: Legolas's targets ──
+// Five painted boards among the mallorns, and seven arrows to strike them
+// all. Hold to draw: the bow comes to full in a moment, and held there too
+// long your arms begin to shake. Aim, and let go. The arrow flies as fast
+// as the bow was drawn, it falls as it goes (aim above the far ones), the
+// breeze in the wood carries it a little, and a trunk in the way stops it.
+//
+// The world is { from: { x, y, z }, targets: [{ x, y, z, r }], trunks:
+// [{ x, z, r }], ground(x, z) } (./layout.js RANGE). The aim is a yaw, the
+// way the towns turn things (0 east, π/2 north), and a pitch, up.
+export const BOW = {
+  arrows: 7,
+  draw: 0.7, // seconds to full draw
+  steady: 1.5, // seconds at full draw before the arms tire
+  tire: 0.6, // how fast the shake grows after that
+  sway: 0.0035, // the aim's wander, drawn and steady (radians)
+  shake: 0.03, // and at its worst, tired out
+  speed: [8, 58], // the arrow's speed, from a slack bow to a full one (m/s; by the draw squared)
+  g: 9.8,
+  wind: 2.4, // the most the breeze pushes, sideways (m/s²)
+  turn: 0.55, // aiming with the keys (radians a second)
+  fine: 0.3, // and with the bow drawn
+  gold: 0.35, // the gold, as a part of a board's radius
+  pause: 0.9, // seconds after an arrow lands, before the next
+  reach: 90, // lost in the wood past this
+};
+
+// yaw and pitch straight at a point
+export function aimAt(from, at) {
+  const dx = at.x - from.x;
+  const dz = at.z - from.z;
+  return { yaw: Math.atan2(-dz, dx), pitch: Math.atan2(at.y - from.y, Math.hypot(dx, dz)) };
+}
+// the way an aim points, as a unit vector
+export const aimDir = (yaw, pitch) => ({ x: Math.cos(pitch) * Math.cos(yaw), y: Math.sin(pitch), z: -Math.cos(pitch) * Math.sin(yaw) });
+
+// a breath of wind across the wood, for the next arrow: { x, z } (m/s²)
+const breeze = (rand) => {
+  const a = rand() * Math.PI * 2;
+  const k = BOW.wind * (0.2 + rand() * 0.8);
+  return { x: Math.cos(a) * k, z: Math.sin(a) * k };
+};
+
+// A round at the targets, aimed at first at board `first`.
+export function newRange(world, seed = 1, first = 1) {
+  const rand = seeded(seed);
+  const { yaw, pitch } = aimAt(world.from, world.targets[first] ?? world.targets[0]);
+  return { world, rand, t: 0, phase: rand() * 10, arrows: BOW.arrows, shot: 0, struck: [], golds: 0, yaw, pitch, draw: 0, held: 0, drawing: false, ready: true, arrow: null, stuck: [], wind: breeze(rand), state: 'aim', wait: 0, last: null };
+}
+
+// how tired your arms are, 0..1
+export const tiredOf = (r) => Math.max(0, Math.min(1, (r.held - BOW.steady) * BOW.tire));
+// the aim as it really is, wandering a little (and shaking, tired)
+export function aimOf(r) {
+  const tired = tiredOf(r);
+  const amp = (r.drawing ? 1 : 0.6) * BOW.sway + BOW.shake * tired;
+  const t = r.t;
+  const p = r.phase;
+  const tremble = tired > 0 ? 0.6 : 0;
+  return {
+    yaw: r.yaw + amp * (Math.sin(t * 1.7 + p) + 0.5 * Math.sin(t * 4.3 + p * 2) + tremble * Math.sin(t * 11 + p)),
+    pitch: r.pitch + amp * (Math.sin(t * 1.3 + p * 1.3) + 0.5 * Math.sin(t * 3.7 + p) + tremble * Math.sin(t * 13 + p * 3)),
+  };
+}
+// turn the aim (by the keys, or a finger dragged), within reason
+export function turnAim(r, dyaw, dpitch) {
+  r.yaw += dyaw;
+  r.pitch = Math.max(-0.35, Math.min(0.5, r.pitch + dpitch));
+}
+
+// let the arrow go, as the aim and the draw are now
+function loose(r, ev) {
+  const { yaw, pitch } = aimOf(r);
+  const d = aimDir(yaw, pitch);
+  const v = BOW.speed[0] + (BOW.speed[1] - BOW.speed[0]) * r.draw * r.draw;
+  const { x, y, z } = r.world.from;
+  r.arrow = { x, y, z, vx: d.x * v, vy: d.y * v, vz: d.z * v, t: 0, run: 0 };
+  r.arrows -= 1;
+  r.shot += 1;
+  r.state = 'flying';
+  ev.push({ type: 'loose', draw: r.draw });
+  r.draw = 0;
+  r.held = 0;
+  r.ready = false;
+}
+
+// where the arrow ends: in a board (`i`), a trunk, the ground, or lost
+function land(r, ev, into, at, i = -1, gold = false) {
+  const a = r.arrow;
+  if (into !== 'away') r.stuck.push({ x: at.x, y: at.y, z: at.z, vx: a.vx, vy: a.vy, vz: a.vz, into, i });
+  r.arrow = null;
+  r.state = 'wait';
+  r.wait = BOW.pause;
+  if (into === 'board') {
+    const fresh = !r.struck.includes(i);
+    if (fresh) r.struck.push(i);
+    if (gold) r.golds += 1;
+    r.last = { into, i, gold, fresh };
+    ev.push({ type: 'hit', i, gold, fresh });
+  } else {
+    r.last = { into };
+    ev.push({ type: 'miss', into });
+  }
+}
+
+function fly(r, dt, ev) {
+  const a = r.arrow;
+  const { from, targets, trunks, ground } = r.world;
+  const n = Math.max(1, Math.ceil(dt * 240));
+  const h = dt / n;
+  for (let k = 0; k < n; k++) {
+    const p0 = { x: a.x, y: a.y, z: a.z };
+    a.vx += r.wind.x * h;
+    a.vz += r.wind.z * h;
+    a.vy -= BOW.g * h;
+    a.x += a.vx * h;
+    a.y += a.vy * h;
+    a.z += a.vz * h;
+    a.t += h;
+    a.run += Math.hypot(a.x - p0.x, a.y - p0.y, a.z - p0.z);
+    // the boards stand face on to the mark: did it cross a face, inside it?
+    for (let i = 0; i < targets.length; i++) {
+      const c = targets[i];
+      const nx = from.x - c.x;
+      const nz = from.z - c.z;
+      const nl = Math.hypot(nx, nz) || 1;
+      const s0 = ((p0.x - c.x) * nx + (p0.z - c.z) * nz) / nl;
+      const s1 = ((a.x - c.x) * nx + (a.z - c.z) * nz) / nl;
+      if (s0 > 0 && s1 <= 0) {
+        const f = s0 / (s0 - s1);
+        const q = { x: p0.x + (a.x - p0.x) * f, y: p0.y + (a.y - p0.y) * f, z: p0.z + (a.z - p0.z) * f };
+        const off = Math.hypot(q.x - c.x, q.y - c.y, q.z - c.z);
+        if (off < c.r) return land(r, ev, 'board', q, i, off < c.r * BOW.gold);
+      }
+    }
+    for (const tr of trunks) if (Math.hypot(a.x - tr.x, a.z - tr.z) < tr.r && a.y < 40) return land(r, ev, 'trunk', a);
+    const gy = ground(a.x, a.z);
+    if (a.y <= gy) return land(r, ev, 'ground', { x: a.x, y: gy, z: a.z });
+    if (a.run > BOW.reach || a.t > 4) return land(r, ev, 'away', a);
+  }
+  return undefined;
+}
+
+// One step. `draw` true while the bow's held drawn; `x` and `y` turn the
+// aim (-1..1: right, and up). Events: 'draw', 'loose' { draw }, 'hit' { i,
+// gold, fresh }, 'miss' { into: 'trunk' | 'ground' | 'away' }, then 'won'
+// (every board struck) or 'out' (no arrows left).
+export function stepRange(r, dt, { draw = false, x = 0, y = 0 } = {}) {
+  const ev = [];
+  if (r.state === 'won' || r.state === 'out') return ev;
+  r.t += dt;
+  const k = (r.drawing ? BOW.fine : BOW.turn) * dt;
+  turnAim(r, -x * k, y * k);
+  if (r.state === 'flying') {
+    fly(r, dt, ev);
+    return ev;
+  }
+  if (r.state === 'wait') {
+    r.wait -= dt;
+    if (r.wait > 0) return ev;
+    if (r.struck.length >= r.world.targets.length) {
+      r.state = 'won';
+      ev.push({ type: 'won' });
+    } else if (r.arrows <= 0) {
+      r.state = 'out';
+      ev.push({ type: 'out' });
+    } else {
+      r.state = 'aim';
+      r.wind = breeze(r.rand);
+    }
+    return ev;
+  }
+  // aiming: a fresh draw needs the last one let go of first
+  if (!draw) r.ready = true;
+  if (draw && r.ready && r.arrows > 0) {
+    if (!r.drawing) {
+      r.drawing = true;
+      r.draw = 0;
+      r.held = 0;
+      ev.push({ type: 'draw' });
+    }
+    r.draw = Math.min(1, r.draw + dt / BOW.draw);
+    if (r.draw >= 1) r.held += dt;
+  } else if (r.drawing) {
+    r.drawing = false;
+    loose(r, ev);
+  }
+  return ev;
+}
