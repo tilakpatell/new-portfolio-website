@@ -94,6 +94,7 @@
 .roy-mark[data-kind='best'] span { top: auto; bottom: calc(100% + 2px); color: var(--roy-gold); }
 
 .roy-stage { display: grid; justify-items: center; gap: 0.35rem; min-width: 0; text-align: center; padding-top: 0.2rem; }
+.roy-stage[hidden] { display: grid; visibility: hidden; }
 .roy-title {
   margin: 0;
   font-size: clamp(1.25rem, 0.9rem + 1.5vw, 2rem);
@@ -117,6 +118,7 @@
 
 .roy-meter { display: grid; gap: 0.35rem; width: min(190px, 100%); padding: 0.45rem 0.55rem; border: 2px solid var(--roy-ink); border-radius: 8px; background: rgba(8, 14, 11, 0.72); box-shadow: 0 3px 0 var(--roy-ink); }
 .roy-meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; font: 800 0.66rem/1 var(--font-sans, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
+.roy-meter-row span { white-space: nowrap; }
 .roy-meter-row b { font: 900 1rem/1 var(--font-sans, sans-serif); font-variant-numeric: tabular-nums; letter-spacing: 0; color: #fff; }
 .roy-past { color: var(--roy-lime); }
 .roy-bar { position: relative; height: 10px; overflow: hidden; border: 2px solid var(--roy-ink); border-radius: 4px; background: rgba(255, 255, 255, 0.14); }
@@ -260,7 +262,8 @@
   .roy-stage { grid-column: 1 / -1; grid-row: 2; }
   .roy-age-n { font-size: clamp(2.6rem, 1.6rem + 6vw, 3.6rem); }
   .roy-life { width: min(150px, 100%); }
-  .roy-meter { width: min(160px, 100%); }
+  .roy-meter { width: min(170px, 100%); }
+  .roy-meter-row { letter-spacing: 0.03em; }
   .roy-choices { grid-template-columns: 1fr; }
   .roy-choose { min-height: 0; }
   .roy-sub { font-size: 0.84rem; }

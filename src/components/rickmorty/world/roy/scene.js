@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../../lib/stage3d';
 import { budget } from '../../../../lib/device';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { InkPass, toon } from '../../portal/toon';
 import { at, batch, hipRoof, kitMaterials, paint, rng, speckle } from '../kit';
 import { makeSky } from '../sky';
@@ -1256,7 +1257,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
   const starMat = new THREE.MeshBasicMaterial({ color: hot(0xffe14a, 1.4) });
   for (let i = 0; i < 3; i++) {
     const s = new THREE.Mesh(G.star, starMat);
-    s.scale.setScalar(0.07);
+    s.scale.setScalar(0.11);
     stars.add(s);
   }
   stars.visible = false;
@@ -1684,19 +1685,21 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     // yard numbers, from an atlas
     const atlas = tex(512, 96, numberAtlas);
     const numMat = new THREE.MeshBasicMaterial({ map: atlas, transparent: true, depthWrite: false, color: 0xe8e8e2 });
+    const nums = [];
     for (let f = 10; f <= 90; f += 10) {
       const n = Math.min(f, 100 - f) / 10 - 1;
       for (const s of [-1, 1]) {
         const geo = new THREE.PlaneGeometry(3.2, 1.6).rotateX(-Math.PI / 2);
         const uv = geo.attributes.uv;
         for (let i = 0; i < uv.count; i++) uv.setX(i, (n + uv.getX(i)) / 5);
-        const m = new THREE.Mesh(geo, numMat);
-        m.position.set(s * 17, 0.014, -f);
-        m.rotation.y = s * -Math.PI / 2;
-        field.add(m);
-        noInk.push(m);
+        geo.applyMatrix4(at(s * 17, 0.014, -f, s * -Math.PI / 2));
+        nums.push(geo);
       }
     }
+    const numbers = new THREE.Mesh(mergeGeometries(nums), numMat);
+    nums.forEach((n) => n.dispose());
+    field.add(numbers);
+    noInk.push(numbers);
     // the crowd: two halves bobbing out of step
     const crowdGeo = new THREE.CapsuleGeometry(0.22, 0.35, 2, 6);
     owned.push(crowdGeo);
@@ -1812,13 +1815,13 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           stars.position.y += 0.12;
           stars.children.forEach((st, i) => {
             const a = t * 5 + (i * Math.PI * 2) / 3;
-            st.position.set(Math.cos(a) * 0.26, Math.sin(t * 7 + i) * 0.04, Math.sin(a) * 0.26);
+            st.position.set(Math.cos(a) * 0.32, Math.sin(t * 7 + i) * 0.05, Math.sin(a) * 0.32);
             st.rotation.set(t * 3, a, 0);
           });
         }
         // the tacklers, by where the rules have them
         tacklers.forEach((tk, i) => {
-          const k = s.tacklers[i] && s.tacklers[i].z > -2.2 ? s.tacklers[i] : null;
+          const k = s.tacklers[i] && s.tacklers[i].z > -0.8 ? s.tacklers[i] : null;
           tk.f.root.visible = Boolean(k);
           tk.warn.visible = Boolean(k) && k.z > 0;
           tk.shadow.visible = Boolean(k);
@@ -2134,6 +2137,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
             p0.swatch.material.map = swatchMaps[c.want];
             askBubble.material.map = bubbleMaps[c.want];
           }
+          customerSpot.x = aspect < 0.9 ? 3.3 : 4.9;
           const waited = SHOW.patience - c.patience;
           const k = smooth(0, 0.7, waited);
           rest(p0.f);
@@ -2203,9 +2207,9 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           const mine = finale ? s.rolls.filter((r) => r.lane === k) : [];
           rollsByLane[k].forEach((r, i) => {
             const it = mine[i];
-            if (!it || (dead && it.lane === life.lane && life.cause === 'carpet')) return hideRoll(r);
-            // after the end the rolls roll on, for the look of it
-            const z = dead ? it.z - it.v * deathT : it.z;
+            if (!it || (dead && it.lane === life.lane)) return hideRoll(r);
+            // after the end the rolls roll on (or, at a hundred, roll to a stop), for the look of it
+            const z = dead ? it.z - (life.cause === 'old' ? (it.v * (1 - Math.exp(-deathT * 2))) / 2 : it.v * deathT) : it.z;
             if (z < -2.6) return hideRoll(r);
             setRoll(r, laneX(k, LANE.store), z);
             r.halo.visible = z > 0.3 && !dead;
@@ -2246,10 +2250,11 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           // down off the top of the rack, onto him, then on toward the door
           const R = 0.44 * 2;
           const fall = Math.min(1, deathT / 0.32);
-          const z = deathT < 0.32 ? 0.2 : 0.2 - (deathT - 0.55 > 0 ? (deathT - 0.55) * 7 : 0);
+          const z = 0.2 + Math.max(0, deathT - 0.6) * 4.5;
           deathRoll.grp.visible = z > -9;
           deathRoll.shadow.visible = deathRoll.grp.visible;
-          deathRoll.grp.position.set(royX, lerp(6, R, fall * fall), -z);
+          const hop = deathT > 0.32 && deathT < 0.6 ? Math.sin(((deathT - 0.32) / 0.28) * Math.PI) * 0.35 : 0;
+          deathRoll.grp.position.set(royX, lerp(6, R, fall * fall) + hop, -z);
           deathRoll.spin.rotation.x = deathT * 3 - z / R;
           deathRoll.shadow.position.set(royX, 0.02, -z);
           deathRoll.shadow.scale.setScalar(1.2 + fall);
@@ -2397,12 +2402,12 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     const needMaps = [0, 1, 2].map((i) => tex(256, 256, (g2, w, h) => needBubble(g2, w, h, i)));
     const ask = new THREE.Group();
     const askBubble = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: needMaps[0], transparent: true, depthWrite: false }));
-    askBubble.scale.set(1.3, 1.3, 1);
+    askBubble.scale.set(1.7, 1.7, 1);
     const barBack = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ color: 0x1b1424 }));
-    barBack.scale.set(1.08, 0.14, 1);
-    barBack.position.set(0, -0.78, 0.001);
+    barBack.scale.set(1.3, 0.16, 1);
+    barBack.position.set(0, -0.98, 0.001);
     const bar = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ color: 0x9dff5a }));
-    bar.position.set(0, -0.78, 0.002);
+    bar.position.set(0, -0.98, 0.002);
     ask.add(askBubble, barBack, bar);
     ov.add(ask);
     const pick = new THREE.Mesh(G.flat, new THREE.MeshBasicMaterial({ map: spot, color: hot(0x9dff5a, 0.9), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -2546,11 +2551,11 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           pick.position.set(want, 0.04, -3.2);
           if (c) {
             askBubble.material.map = needMaps[c.want];
-            ask.position.set(0.9, 4.2 + Math.sin(t * 3) * 0.05, -7.4);
+            ask.position.set(1.4, 4.6 + Math.sin(t * 3) * 0.05, -7.2);
             ask.quaternion.copy(camera.quaternion);
             const left = clamp(c.patience / SHOW.patience, 0, 1);
-            bar.scale.set(1.04 * left, 0.1, 1);
-            bar.position.x = -0.52 * (1 - left);
+            bar.scale.set(1.24 * left, 0.11, 1);
+            bar.position.x = -0.62 * (1 - left);
             bar.material.color.setHex(left > 0.5 ? 0x9dff5a : left > 0.25 ? 0xffd23a : 0xff4a3a);
             ask.position.x += left < 0.25 ? Math.sin(t * 40) * 0.03 : 0;
           }
@@ -2583,8 +2588,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         if (deathT >= 0) deathT += dt;
         logs.forEach((r, i) => {
           const it = s.rolls[i];
-          const z = it ? (dead ? it.z - it.v * deathT : it.z) : 0;
-          if (!it || (dead && it.lane === life.lane && life.cause === 'log') || z < -2.6) {
+          const z = it ? (dead ? it.z - (life.cause === 'old' ? (it.v * (1 - Math.exp(-deathT * 2))) / 2 : it.v * deathT) : it.z) : 0;
+          if (!it || (dead && it.lane === life.lane) || z < -2.6) {
             r.grp.visible = false;
             r.shadow.visible = false;
             r.halo.visible = false;
@@ -2798,7 +2803,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     heart.scale.setScalar(0.52);
     const heartPivot = new THREE.Group();
     heartPivot.add(heart);
-    const dotOn = new THREE.MeshBasicMaterial({ color: hot(0x6dff7a, 1.8) });
+    const dotOn = new THREE.MeshBasicMaterial({ color: hot(0x6dff7a, 1.3) });
     const dotOff = new THREE.MeshBasicMaterial({ color: 0x3a4a5a });
     const dots = Array.from({ length: SHOW.need }, (_, i) => {
       const d = new THREE.Mesh(G.lo, dotOff);
@@ -2814,8 +2819,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     disc.scale.setScalar(1.0);
     disc.position.z = -0.05;
     ring.add(disc, target, closing, heartPivot, ...dots);
-    ring.position.set(1.3, 1.95, -0.25);
-    ring.scale.setScalar(0.72);
+    ring.position.set(1.2, 1.95, -2.1);
+    ring.scale.setScalar(1);
     let flash = 0;
     let flashCol = 0x9dff5a;
     let deadT = -1;
@@ -2872,8 +2877,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         // the ring
         const inWindow = s.beatT <= SHOW.window || SHOW.beat - s.beatT <= SHOW.window;
         flash *= Math.exp(-dt * 7);
-        targetMat.color.copy(hot(dead ? 0x662222 : inWindow ? 0x9dff5a : 0xffffff, inWindow && !dead ? 1.8 : 1.1));
-        if (flash > 0.02) targetMat.color.lerp(hot(flashCol, 2.2), flash);
+        targetMat.color.copy(hot(dead ? 0x662222 : inWindow ? 0x9dff5a : 0xffffff, inWindow && !dead ? 1.35 : 0.95));
+        if (flash > 0.02) targetMat.color.lerp(hot(flashCol, 1.7), flash);
         const k = (SHOW.beat - s.beatT) / SHOW.beat;
         closing.visible = !dead;
         closing.scale.setScalar(1 + 1.5 * k);
@@ -2897,9 +2902,11 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           }
         }
         ring.quaternion.copy(camera.quaternion);
-        ring.position.x = 1.3 + jolt * Math.sin(t * 60) * 0.04;
+        const tall = aspect < 0.9;
+        ring.position.set(tall ? 0.1 : 1.2, tall ? 2.75 : 1.95, tall ? -1.9 : -2.1);
+        ring.position.x += jolt * Math.sin(t * 60) * 0.05;
         ring.visible = deadT < 0.8;
-        ring.scale.setScalar(dead ? 0.72 * Math.max(0.01, 1 - deadT / 0.8) : 0.72);
+        ring.scale.setScalar(dead ? Math.max(0.01, 1 - deadT / 0.8) : 1);
         if (dead) {
           const k = smooth(0.2, 2, deadT);
           hemi.intensity = lerp(1.5, 0.75, k);
@@ -2968,6 +2975,14 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     return Math.min(88, (2 * Math.atan(Math.tan(h / 2) / aspect) * 180) / Math.PI);
   };
   const camAt = v3(0, 0, 0);
+  // on a tall screen, the camera steps back along its line (at most a few metres) to keep the lanes in
+  const pulled = v3(0, 0, 0);
+  const framed = (cam) => {
+    if (aspect >= 1.1) return pulled.copy(cam.pos);
+    pulled.copy(cam.pos).sub(cam.look);
+    const d = pulled.length();
+    return pulled.multiplyScalar(1 + (Math.min(d, 8) * (1.1 - aspect) * 0.75) / d).add(cam.look);
+  };
   const camLook = v3(0, 0, 0);
   let current = null;
   let seen = null;
@@ -3009,7 +3024,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     royShadow.visible = true;
     v.enter(life);
     v.update(0, life, time);
-    camAt.copy(v.cam.pos);
+    camAt.copy(framed(v.cam));
     camLook.copy(v.cam.look);
     camera.fov = fovFor(v.cam.fov);
     camera.updateProjectionMatrix();
@@ -3056,7 +3071,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     }
     // the camera
     const k = damp(dt, v.cam.rate ?? 5);
-    camAt.lerp(v.cam.pos, k);
+    camAt.lerp(framed(v.cam), k);
     camLook.lerp(v.cam.look, k);
     camera.position.copy(camAt);
     trauma = Math.max(0, trauma - dt * 1.6);

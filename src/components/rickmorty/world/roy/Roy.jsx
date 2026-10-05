@@ -24,7 +24,8 @@ import './roy.css';
 
 const SAVE = 'tp-c137-roy';
 const STEP = 1 / 60;
-const HOLD_MS = 1500; // the end of a stage, played out before its card
+const HOLD_MS = 1500; // the end of a stage, played out before its card (longer when it earned grit)
+const HOLD_GRIT_MS = 2500;
 const CARD_MS = 2400;
 const WIPE_MS = 950;
 const DYING_MS = { cancer: 2600, carpet: 2700, log: 2700, old: 3800 };
@@ -133,6 +134,7 @@ export default function Roy({ onLeave }) {
   const input = useRef({ left: false, right: false, act: false });
   const padPrev = useRef({});
   const holdNext = useRef(null);
+  const holdMs = useRef(HOLD_MS);
   const resumeTo = useRef('play');
   const auto = useRef(true); // the DEV hook can stop the clock to step by hand
   const saved = useRef(readSave());
@@ -143,7 +145,7 @@ export default function Roy({ onLeave }) {
   const [phase, setPhaseState] = useState('loading'); // loading | intro | wipe | card | choose | play | hold | dying | end | paused | failed
   const [hud, setHud] = useState(() => hudOf(newLife()));
   const [card, setCard] = useState(null);
-  const [callout, setCallout] = useState(null);
+  const [callouts, setCallouts] = useState([]);
   const [result, setResult] = useState(null);
   const [failed, setFailed] = useState(null);
   const [best, setBest] = useState(saved.current.best);
@@ -153,7 +155,15 @@ export default function Roy({ onLeave }) {
     phaseT.current = 0;
     setPhaseState(p);
   }, []);
-  const say = useCallback((text, tone = 'good') => setCallout({ text, tone, key: Math.random() }), []);
+  // a word for what just happened, over the last one; `after` waits its turn (a bonus after the news)
+  const say = useCallback(
+    (text, tone = 'good', after = false) =>
+      setCallouts((q) => {
+        const c = { text, tone, after, key: Math.random() };
+        return after ? [...q, c].slice(-3) : [c, ...q.filter((x, i) => i > 0 && x.after)];
+      }),
+    [],
+  );
   const fail = useCallback(
     (why) => {
       setFailed(why);
@@ -275,11 +285,11 @@ export default function Roy({ onLeave }) {
     }
     if (pulse) beep(980, 0.07, 0.045);
     // grit earned at the end of a stage; Morty's 55 passed
-    if (l.stage !== 'finale' && l.grit > said.current.grit) say('+1 grit', 'big');
+    if (l.stage !== 'finale' && l.grit > said.current.grit) say('+1 grit', 'big', true);
     said.current.grit = l.grit;
     if (l.stage === 'finale' && ageOf(l) > MORTY_BEST && !said.current.morty && !l.over) {
       said.current.morty = true;
-      say(`Past Morty’s ${MORTY_BEST}`, 'big');
+      say(`Past Morty’s ${MORTY_BEST}`, 'big', true);
       play('oneUp');
     }
   };
@@ -287,6 +297,7 @@ export default function Roy({ onLeave }) {
   // ── moving the life on ──
   const startHold = (prev, next, evs) => {
     holdNext.current = next;
+    holdMs.current = next.grit > prev.grit ? HOLD_GRIT_MS : HOLD_MS;
     // the screen keeps the stage that just ended a moment longer, as it ended
     const s = { ...prev.s };
     if (prev.stage === 'kid') {
@@ -354,7 +365,7 @@ export default function Roy({ onLeave }) {
     view.current = l;
     said.current = { grit: 0, morty: false };
     setResult(null);
-    setCallout(null);
+    setCallouts([]);
     take();
     if (calm) toCard(l);
     else {
@@ -462,20 +473,19 @@ export default function Roy({ onLeave }) {
       }
       if (n && phaseRef.current === 'play') view.current = { ...life.current, events: evs };
       if (evs.length) react(evs, view.current);
-    } else if (p === 'hold' && phaseT.current > HOLD_MS) toCard(holdNext.current);
+    } else if (p === 'hold' && phaseT.current > holdMs.current) toCard(holdNext.current);
     else if (p === 'card' && phaseT.current > CARD_MS) toPlay();
     else if (p === 'wipe' && phaseT.current > WIPE_MS) toCard(life.current);
     else if (p === 'dying' && phaseT.current > (DYING_MS[life.current.cause] ?? 2600)) finish();
+    sync(view.current);
     if (p !== 'paused') {
       try {
         a.render(view.current, ms);
       } catch (err) {
         if (import.meta.env.DEV) console.error(err);
         fail('failed');
-        return;
       }
     }
-    sync(view.current);
   };
   useFrameLoop(tick, phase !== 'loading' && phase !== 'failed');
 
@@ -639,7 +649,7 @@ export default function Roy({ onLeave }) {
             </div>
           </div>
 
-          <div className="roy-stage">
+          <div className="roy-stage" hidden={phase === 'choose'}>
             <p className="roy-title">{hud.title}</p>
             <p className="roy-how">{how}</p>
           </div>
@@ -730,9 +740,9 @@ export default function Roy({ onLeave }) {
         </div>
       )}
 
-      {callout && inGame && (
-        <p key={callout.key} className="roy-callout" data-tone={callout.tone} onAnimationEnd={() => setCallout(null)}>
-          {callout.text}
+      {callouts[0] && inGame && (
+        <p key={callouts[0].key} className="roy-callout" data-tone={callouts[0].tone} onAnimationEnd={() => setCallouts((q) => q.slice(1))}>
+          {callouts[0].text}
         </p>
       )}
 
