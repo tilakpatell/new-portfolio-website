@@ -108,6 +108,11 @@
 .shire-list li[data-done] .shire-seal { border: 0; background: radial-gradient(circle at 35% 35%, #c8453a, #8a1e18); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
 .shire-list-name { margin: 0; font-weight: 700; }
 .shire-list-sub { margin: 0.15rem 0 0; color: #cfc6ad; font-size: 0.82rem; line-height: 1.35; }
+/* on the side: a task the story never waits on, with a dotted seal */
+.shire-list-side { margin: 0.85rem 0 0.4rem; color: var(--shire-gold); font: 700 0.7rem/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; }
+.shire-list li[data-side]:not([data-done]) .shire-seal { border-style: dotted; }
+.shire-cards li[data-side] { border-style: dashed; }
+.shire-cards .shire-list-side { margin: 0 0 0.45rem; color: var(--muted); }
 
 /* wearing the Ring */
 .shire-stage[data-wearing]::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(10, 12, 20, 0.55) 100%); animation: shire-wraith 3s ease-in-out infinite alternate; }

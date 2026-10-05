@@ -8,6 +8,8 @@ import {
   HOLES,
   HOLLOW,
   HUNT,
+  LOBELIA,
+  LOBELIA_LEN,
   MAGGOT_GATE,
   MUSHROOMS,
   QUESTS,
@@ -15,6 +17,9 @@ import {
   RIDER_RETRY,
   RINGS,
   SHOW,
+  SIDE,
+  SPOONS,
+  SPOON_SPOTS,
   SPOTS,
   START,
   TREES,
@@ -27,12 +32,14 @@ import {
   inField,
   inWater,
   launch,
+  lobeliaAt,
   nearSpot,
   newHobbit,
   newHunt,
   newRider,
   newRings,
   newShow,
+  newSpoons,
   onRoad,
   progress,
   puff,
@@ -43,6 +50,7 @@ import {
   stepRider,
   stepRings,
   stepShow,
+  stepSpoons,
 } from './rules';
 
 const DT = 1 / 60;
@@ -327,6 +335,87 @@ describe('Hobbiton: get off the road!', () => {
     expect(g).toBe(1);
     for (let t = 0; t < 10; t += DT) g = stepGaze(g, false, DT);
     expect(g).toBe(0);
+  });
+});
+
+describe('Hobbiton, on the side: Bilbo’s spoons', () => {
+  const H = SPOONS.home;
+  // a hobbit who knows the way: the hedge and the mill, home; the reeds and
+  // the bridge, home; the Green Dragon and the Party Tree, home
+  const PLAN = [
+    [-13.2, -4.6], [-29.4, -4.6], [-14.2, -3.6], [-19.3, 7], [-18.2, 7.1],
+    [-19.3, 7], [-14.2, -3.6], [-15, -10], [H.x, H.z],
+    [-15, -10], [-13.2, -4.6], [-1.5, 5.3], [11.4, 5.6], [12, 13.4],
+    [12, 10.4], [11, -4], [-13.2, -4.4], [-15, -10], [H.x, H.z],
+    [-15, -10], [-13.2, -4.4], [11, -4], [12, 10.4], [12, 20.4], [14, 28.8], [17.4, 29.4],
+    [14, 28.8], [12, 20.4], [12, 10.4], [11, -4], [13.5, -11], [17.6, -16.8],
+    [6, -16.8], [-6, -16], [H.x, H.z],
+  ];
+  const race = (run) => {
+    let h = newHobbit({ x: LOBELIA.x, z: LOBELIA.z + 1.3 });
+    const sp = newSpoons();
+    const types = [];
+    let i = 0;
+    for (let t = 0; t < 150 && sp.state === 'on' && i < PLAN.length; t += 1 / 30) {
+      const [x, z] = PLAN[i];
+      const d = Math.hypot(x - h.x, z - h.z);
+      if (d < 0.6) i++;
+      h = stepHobbit(h, d > 0.01 ? { x: (x - h.x) / d, z: (z - h.z) / d, run } : {}, 1 / 30);
+      types.push(...stepSpoons(sp, h, 1 / 30).map((e) => e.type));
+    }
+    return { sp, types };
+  };
+
+  it('hides every spoon where a hobbit can stand, and sends Lobelia round by the lanes', () => {
+    expect(SPOON_SPOTS.length).toBeGreaterThanOrEqual(SPOONS.need + SPOONS.lose - 1);
+    for (const p of SPOON_SPOTS) {
+      expect(blocked(p.x, p.z), p.id).toBe(false);
+      expect(inWater(p.x, p.z), p.id).toBe(false);
+    }
+    for (let s = 0; s <= LOBELIA_LEN; s += 0.5) {
+      const p = lobeliaAt(s);
+      expect(blocked(p.x, p.z) || inWater(p.x, p.z), `${s}`).toBe(false);
+    }
+    // she goes past every hiding place, and ends where she began
+    for (const p of SPOON_SPOTS) expect(Array.from({ length: Math.ceil(LOBELIA_LEN * 4) }, (_, k) => lobeliaAt(k / 4)).some((q) => Math.hypot(q.x - p.x, q.z - p.z) < SPOONS.take), p.id).toBe(true);
+    const end = lobeliaAt(LOBELIA_LEN + 5);
+    expect(Math.hypot(end.x - LOBELIA.x, end.z - LOBELIA.z)).toBeLessThan(0.01);
+  });
+
+  it('fills your pockets two at a time, and empties them at Bag End’s gate', () => {
+    const sp = newSpoons();
+    const at = (p) => stepSpoons(sp, { x: p.x, z: p.z }, 0.01).map((e) => e.type);
+    expect(at(SPOON_SPOTS[0])).toEqual(['found']);
+    expect(at(SPOON_SPOTS[1])).toEqual(['found']);
+    expect(at(SPOON_SPOTS[2])).toEqual(['full']);
+    expect(sp.carried).toEqual([0, 1]);
+    expect(at(H)).toEqual(['home']);
+    expect(sp.home).toEqual([0, 1]);
+    expect(sp.carried).toEqual([]);
+  });
+
+  it('lets Lobelia pocket what she gets to first, and gives her the game at two', () => {
+    const sp = newSpoons();
+    const far = { x: 40, z: -30 };
+    const types = [];
+    for (let t = 0; t < 120 && sp.state === 'on'; t += 0.05) types.push(...stepSpoons(sp, far, 0.05).map((e) => e.type));
+    expect(types).toEqual(['pocketed', 'pocketed', 'lost']);
+    expect(sp.hers).toEqual([0, 1]);
+  });
+
+  it('is won by a hobbit who runs for it, and lost by one who dawdles', () => {
+    const fast = race(true);
+    expect(fast.sp.state).toBe('won');
+    expect(fast.sp.hers.length).toBeLessThan(SPOONS.lose);
+    const slow = race(false);
+    expect(slow.sp.state).toBe('lost');
+  });
+
+  it('is on the side: the story never waits on it', () => {
+    expect(QUESTS.some((q) => q.id === SIDE.id)).toBe(false);
+    expect(blocked(SIDE.at.x, SIDE.at.z)).toBe(false);
+    expect(nearSpot(SIDE.at.x, SIDE.at.z)?.id).toBe('spoons');
+    expect(blocked(LOBELIA.x, LOBELIA.z)).toBe(false);
   });
 });
 
