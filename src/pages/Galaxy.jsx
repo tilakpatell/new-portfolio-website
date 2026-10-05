@@ -151,10 +151,14 @@ export default function Galaxy() {
         comms.current?.handle(e);
         return;
       }
-      if (e.type === 'event' && e.id === 'wellclear') {
+      // clear of the Interdictor's well: the drive's back (a crash ends the hold too, but earns nothing)
+      if (e.type === 'wellclear') {
         setHeld(null);
         setBalked(false);
+        if (e.why === 'crash') return;
         unlock('interdicted');
+        comms.current?.handle({ type: 'event', id: 'wellclear' });
+        return;
       }
       if (e.type === 'tractor') {
         comms.current?.handle({ type: 'event', id: 'tractor' });

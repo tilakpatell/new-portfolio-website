@@ -848,6 +848,13 @@ export async function create(canvas, ctx) {
       camQOn = false;
       state.shield = 100;
       state.lowSaid = false;
+      // an Interdictor's hold doesn't survive a crash: it's gone when you're
+      // back (and nothing's earned for getting clear that way)
+      if (state.held) {
+        state.held = null;
+        interdictor?.hide();
+        emit({ type: 'wellclear', why: 'crash' });
+      }
       m.group.visible = true;
       m.pivot.rotation.set(0, 0, 0);
       crashFx.arrive({ point: new THREE.Vector3(a.x, a.y, a.z), kind: state.kind, heading: a.heading });
@@ -1229,7 +1236,7 @@ export async function create(canvas, ctx) {
         if (why) {
           state.held = null;
           state.nextHunt = 50 + Math.random() * 45;
-          emit({ type: 'event', id: 'wellclear', why });
+          emit({ type: 'wellclear', why });
         }
       }
       if (interdictor?.here && !state.held && !hunters?.active) {
