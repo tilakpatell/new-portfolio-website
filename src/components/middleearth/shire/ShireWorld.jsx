@@ -57,6 +57,9 @@ const DONE = 'tp-shire-done';
 const AT = 'tp-shire-at';
 const ACH = { maggot: 'mushrooms', rings: 'smokerings', party: 'fireworks', ring: 'secretsafe', rider: 'getoffroad' };
 const sounds = () => import('./sounds');
+const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
+// the lines the site has the films' own recordings of (lib/clips)
+const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
 const sfx = () => import('../../../lib/sfx');
 const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
 const MOVE = new Set([...Object.values(KEYS).flat(), ' ', 'Shift']);
@@ -444,7 +447,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           say('It’s stopped, right over you. It’s sniffing. Keep still, and don’t put it on.', true);
         } else if (e.type === 'found') {
           a.fx('found');
-          sounds().then((x) => x.shriek());
+          // the Nazgûl's own scream, or a made one where it can't play
+          clip('nazgul').then((h) => !h && sounds().then((x) => x.shriek()));
           s.hoof?.stop();
           s.hoof = null;
           putRing(false);
@@ -538,7 +542,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         const pool = c ? c.lines : GANDALF_LINES;
         const n = lines.current[talk] ?? 0;
         lines.current[talk] = n + 1;
-        setBubble({ id: talk, name: c ? c.name : 'Gandalf', line: pool[n % pool.length] });
+        const line = pool[n % pool.length];
+        setBubble({ id: talk, name: c ? c.name : 'Gandalf', line });
+        if (SPOKEN[line]) clip(SPOKEN[line]);
       } else setBubble(null);
     }
 
