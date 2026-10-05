@@ -1,8 +1,9 @@
 // Weathertop's sounds, synthesised so nothing is downloaded: the wind over
 // the hilltop (and a fire's crackle when one's near), a stamp on burning
 // grass, the brand's whoosh, a sword's ring, the kingsfoil found, the
-// gallop to the Ford and the river rising. The Nazgûl's shriek is the
-// Shire's (../../shire/sounds.js). All through the site's master volume.
+// gallop to the Ford and the river rising, and on the side the scrape of
+// lichen off old stone. The Nazgûl's shriek is the Shire's
+// (../../shire/sounds.js). All through the site's master volume.
 
 import { audioContext, output } from '../../../../lib/audio';
 
@@ -139,6 +140,12 @@ export function found(n = 1) {
   if (!ac) return;
   const t = ac.currentTime + 0.02;
   [523, 659, 784, 1047].slice(0, 2 + Math.min(2, n)).forEach((f, i) => tone(ac, out, t + i * 0.09, { type: 'sine', f, gain: 0.1, attack: 0.01, length: 0.6 }));
+}
+// lichen scraped off old stone: a short dry rasp
+export function scrape() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  hiss(ac, out, ac.currentTime + 0.01, { type: 'bandpass', f: 1800 + Math.random() * 900, q: 2.2, gain: 0.07, attack: 0.01, length: 0.11 });
 }
 // a weed pulled up
 export function rustle() {

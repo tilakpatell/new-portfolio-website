@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DASH_START, FLIGHT, GATE } from './layout';
-import { FLY, STONES, TUMBLE, WATCHER, grab, newDash, newFlight, newTumble, stepDash, stepFlight, stepTumble } from './rules';
+import { FLY, PLANK, STONES, TUMBLE, WATCHER, draught, grab, newDash, newFlight, newPlank, newTumble, stepDash, stepFlight, stepPlank, stepTumble } from './rules';
 
 const DT = 1 / 30;
 const door = { x: 0, z: GATE.cliff + 0.5 };
@@ -165,5 +165,64 @@ describe('the flight to the bridge', () => {
     f.s = FLIGHT.bridge[0] + 1;
     stepFlight(f, DT, { steer: 1 }, FLIGHT);
     expect(f.lat).toBeCloseTo(FLY.wide.bridge, 5);
+  });
+});
+
+describe('on the side: mind the well', () => {
+  // out along the plank and back, leaning as `steer` says, for up to 30 s
+  const cross = (steer, { seed = 5, walk = true } = {}) => {
+    const pl = newPlank(seed);
+    const seen = [];
+    const types = [];
+    for (let t = 0; t < 30 && pl.state === 'on'; t += DT) {
+      seen.push({ lean: pl.lean, spin: pl.spin });
+      types.push(...stepPlank(pl, DT, { walk, lean: steer(pl, seen) }).map((e) => e.type));
+    }
+    return { pl, types };
+  };
+  // a hobbit who leans against it, a moment after he feels it go
+  const steady = (pl, seen) => {
+    const p = seen[Math.max(0, seen.length - 1 - Math.round(0.25 / DT))];
+    const v = p.lean + 0.3 * p.spin;
+    return v > 0.1 ? -1 : v < -0.1 ? 1 : 0;
+  };
+
+  it('tips you over if you do nothing, even standing still', () => {
+    for (const seed of [1, 5, 21]) {
+      const { pl, types } = cross(() => 0, { seed, walk: false });
+      expect(pl.state, `seed ${seed}`).toBe('fell');
+      expect(types).toEqual(['wobble', 'fell']);
+      expect(pl.t).toBeLessThan(12);
+    }
+  });
+
+  it('gets the pipe and you back, for a hobbit who leans against it', () => {
+    for (const seed of [1, 5, 21]) {
+      const { pl, types } = cross(steady, { seed });
+      expect(pl.state, `seed ${seed}`).toBe('won');
+      expect(types.filter((x) => x !== 'wobble')).toEqual(['pipe', 'won']);
+      expect(pl.t).toBeCloseTo((PLANK.half * 2) / PLANK.walk, 0);
+    }
+  });
+
+  it('is over quickly if you lean the wrong way', () => {
+    const { pl } = cross((p) => (p.lean > 0 ? 1 : -1));
+    expect(pl.state).toBe('fell');
+    expect(pl.t).toBeLessThan(2);
+  });
+
+  it('only gets you anywhere while you walk, and the draught is worst over the middle', () => {
+    const pl = newPlank(5);
+    for (let t = 0; t < 3; t += DT) stepPlank(pl, DT, { walk: false, lean: -Math.sign(pl.lean + 0.3 * pl.spin) });
+    expect(pl.state).toBe('on');
+    expect(pl.at).toBe(0);
+    const out = cross(steady, { seed: 5 });
+    expect(out.pl.back).toBe(true);
+    // gusting harder out over the middle
+    const p = newPlank(5);
+    const edge = Math.max(...Array.from({ length: 200 }, (_, k) => Math.abs(draught(p, k * 0.1))));
+    p.at = PLANK.half;
+    const middle = Math.max(...Array.from({ length: 200 }, (_, k) => Math.abs(draught(p, k * 0.1))));
+    expect(middle).toBeGreaterThan(edge * 1.5);
   });
 });

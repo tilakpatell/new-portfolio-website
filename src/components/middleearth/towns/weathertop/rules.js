@@ -1,6 +1,7 @@
 // Weathertop's four games, as rules with no drawing, so they can be
 // tested: stamping out the fire in the dell, holding the summit with a
-// brand, Sam's search for the kingsfoil, and the ride to the Ford.
+// brand, Sam's search for the kingsfoil, and the ride to the Ford; and on
+// the side, Gandalf's mark on the stone at the top.
 // ./WeathertopWorld.jsx steps them; ./scene.js draws them.
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -334,4 +335,90 @@ export function stepRide(r, dt, { steer = 0, spur = false } = {}) {
     ev.push({ type: 'ford' });
   }
   return ev;
+}
+
+// ── On the side: Gandalf's mark ──
+// On the broken plinth at the top of Amon Sûl, under the lichen, Gandalf
+// scratched his G-rune and three strokes: he was here on the third of
+// October, three days ahead of you. Scrape the lichen off the stone (the
+// stone's face is a grid of cells, each with its lichen, 1 thick to 0 gone),
+// then read what's there. It's on the side: the story never waits on it.
+
+export const MARK = { cols: 30, rows: 18, brush: 1.7, need: 0.85, bare: 0.3 };
+// the task, for the list
+export const SIDE = { id: 'mark', name: 'Gandalf’s mark', where: 'The broken plinth, on the summit', blurb: 'Gandalf came this way ahead of you. Scrape the lichen off the stone at the top, and read what he left.', seal: 'gandalfsmark' };
+// the scratches, as strokes across the stone's face (u across, v down, 0…1)
+export const MARK_LINES = [
+  // the G-rune, like a cross laid on its side
+  [0.12, 0.2, 0.4, 0.8],
+  [0.4, 0.2, 0.12, 0.8],
+  // and three strokes
+  [0.6, 0.24, 0.6, 0.76],
+  [0.72, 0.24, 0.72, 0.76],
+  [0.84, 0.24, 0.84, 0.76],
+];
+// what it might say; one's right, if you count the strokes
+export const READINGS = [
+  { text: 'G, and two strokes: Gandalf was here on the second of October.', ok: false },
+  { text: 'G, and three strokes: Gandalf was here on the third of October.', ok: true },
+  { text: 'G, and four strokes: Gandalf was here on the fourth of October.', ok: false },
+];
+
+// which cells the scratches run through
+export const MARK_CELLS = (() => {
+  const out = [];
+  for (let r = 0; r < MARK.rows; r++) {
+    for (let c = 0; c < MARK.cols; c++) {
+      const x = c + 0.5;
+      const y = r + 0.5;
+      const on = MARK_LINES.some(([u0, v0, u1, v1]) => {
+        const ax = u0 * MARK.cols;
+        const ay = v0 * MARK.rows;
+        const dx = u1 * MARK.cols - ax;
+        const dy = v1 * MARK.rows - ay;
+        const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
+        return Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) < 0.75;
+      });
+      if (on) out.push(r * MARK.cols + c);
+    }
+  }
+  return out;
+})();
+
+export const newMark = () => ({ lichen: new Array(MARK.cols * MARK.rows).fill(1), state: 'scrub', tries: 0 });
+
+// how much of the mark shows: 0…1 of its cells scraped bare
+export const revealed = (m) => MARK_CELLS.filter((i) => m.lichen[i] <= MARK.bare).length / MARK_CELLS.length;
+
+// Scrape at (u, v), as hard as `amount` (a stroke of the pointer, or a
+// moment of the key held): the lichen thins under the brush, most in the
+// middle. Returns how much came off.
+export function scrape(m, u, v, amount = 0.5) {
+  if (m.state !== 'scrub') return 0;
+  const cx = u * MARK.cols;
+  const cy = v * MARK.rows;
+  const R = MARK.brush;
+  let off = 0;
+  for (let r = Math.max(0, Math.floor(cy - R)); r <= Math.min(MARK.rows - 1, Math.floor(cy + R)); r++) {
+    for (let c = Math.max(0, Math.floor(cx - R)); c <= Math.min(MARK.cols - 1, Math.floor(cx + R)); c++) {
+      const d = Math.hypot(c + 0.5 - cx, r + 0.5 - cy);
+      if (d > R) continue;
+      const i = r * MARK.cols + c;
+      const was = m.lichen[i];
+      m.lichen[i] = Math.max(0, was - amount * (1 - (d / R) * 0.6));
+      off += was - m.lichen[i];
+    }
+  }
+  if (revealed(m) >= MARK.need) m.state = 'read';
+  return off;
+}
+
+// Read it, once it shows: true if that's what it says. A wrong reading
+// leaves it to be read again.
+export function readMark(m, i) {
+  if (m.state !== 'read') return null;
+  m.tries += 1;
+  if (!READINGS[i]?.ok) return false;
+  m.state = 'done';
+  return true;
 }

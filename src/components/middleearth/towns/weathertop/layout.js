@@ -270,6 +270,8 @@ export const SPOTS = [
   { id: 'camp', x: DELL.x + 2.6, z: DELL.z + 2.2, r: 2.6 },
   { id: 'wounded', x: -33.2, z: 35.8, r: 2.6 },
   { id: 'leave', x: 41, z: 40, r: 3.6 },
+  // on the side: Gandalf's mark, scratched on the plinth's east face
+  { id: 'mark', x: 1.55, z: 0.25, r: 1.3 },
 ];
 export const spot = (id) => SPOTS.find((s) => s.id === id);
 // where Frodo lies, wounded, at the stair's foot while Sam searches

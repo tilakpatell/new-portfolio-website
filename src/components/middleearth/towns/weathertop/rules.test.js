@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GAPS, PATCHES, PLANTS } from './layout';
-import { ATHELAS, BRAND, FIRE, OBSTACLES, RIDE, glowOf, newBrand, newFire, newHunt, newRide, pick, pickable, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
+import { ATHELAS, BRAND, FIRE, MARK, MARK_CELLS, MARK_LINES, OBSTACLES, READINGS, RIDE, glowOf, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const DT = 1 / 30;
@@ -258,5 +258,58 @@ describe('the ride to the ford', () => {
   it('winds, but never turns back on itself', async () => {
     const { roadTurn } = await import('./rules');
     for (let s = 0; s <= RIDE.length; s += 5) expect(Math.abs(roadTurn(s))).toBeLessThan(0.6);
+  });
+});
+
+describe('on the side: Gandalf’s mark', () => {
+  // drag along a line across the stone, a little at a time
+  const along = (m, [u0, v0, u1, v1], amount = 0.5) => {
+    for (let k = 0; k <= 1; k += 0.02) scrape(m, u0 + (u1 - u0) * k, v0 + (v1 - v0) * k, amount);
+  };
+
+  it('has the G-rune and three strokes under the lichen', () => {
+    expect(MARK_LINES).toHaveLength(5);
+    expect(MARK_CELLS.length).toBeGreaterThan(40);
+    expect(MARK_CELLS.length).toBeLessThan(MARK.cols * MARK.rows * 0.4);
+    expect(READINGS.filter((r) => r.ok)).toHaveLength(1);
+    expect(READINGS.find((r) => r.ok).text).toMatch(/three strokes/);
+  });
+
+  it('shows nothing till it’s scraped, and nothing for scraping the bare corners', () => {
+    const m = newMark();
+    expect(revealed(m)).toBe(0);
+    along(m, [0.02, 0.03, 0.98, 0.03]);
+    along(m, [0.02, 0.97, 0.98, 0.97]);
+    expect(revealed(m)).toBeLessThan(0.2);
+    expect(m.state).toBe('scrub');
+    expect(readMark(m, 1)).toBe(null);
+  });
+
+  it('comes up stroke by stroke as you scrape along them, then wants reading', () => {
+    const m = newMark();
+    MARK_LINES.slice(0, 2).forEach((l) => along(m, l));
+    const half = revealed(m);
+    expect(half).toBeGreaterThan(0.2);
+    expect(half).toBeLessThan(MARK.need);
+    MARK_LINES.slice(2).forEach((l) => along(m, l));
+    expect(revealed(m)).toBeGreaterThanOrEqual(MARK.need);
+    expect(m.state).toBe('read');
+  });
+
+  it('comes up for a hobbit who scrubs the whole stone, back and forth', () => {
+    const m = newMark();
+    for (let v = 0.05; v < 1; v += 0.08) along(m, [0.02, v, 0.98, v], 0.35);
+    expect(m.state).toBe('read');
+  });
+
+  it('wants the right reading, and lets you count again', () => {
+    const m = newMark();
+    MARK_LINES.forEach((l) => along(m, l));
+    const wrong = READINGS.findIndex((r) => !r.ok);
+    expect(readMark(m, wrong)).toBe(false);
+    expect(m.state).toBe('read');
+    expect(readMark(m, READINGS.findIndex((r) => r.ok))).toBe(true);
+    expect(m.state).toBe('done');
+    expect(m.tries).toBe(2);
   });
 });

@@ -12,9 +12,9 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { followAt, lead, newParty } from '../rivendell/rules';
-import { CHAMBER, CHAMBER_DOOR_WALL, COMPANY, DASH_START, DOOR_WALL, FLIGHT, FORK, GATE, GATE_COLLIDERS, GATE_WALLS, HALL, HALL_COLLIDERS, HALL_START, HALL_WALLS, SPOTS, TOMB, TROLL_FRODO, TROLL_ROUNDS, TROLL_ZONE, WELL, castFor, inLake, validAt, wayAt } from './layout';
+import { CHAMBER, CHAMBER_DOOR_WALL, COMPANY, DASH_START, DOOR_WALL, FLIGHT, FORK, GATE, GATE_COLLIDERS, GATE_WALLS, HALL, HALL_COLLIDERS, HALL_START, HALL_WALLS, SHAFT, SPOTS, TOMB, TROLL_FRODO, TROLL_ROUNDS, TROLL_ZONE, WELL, castFor, inLake, validAt, wayAt } from './layout';
 import { CONVOS, QUESTS, SEAL, SPEAKERS, moriaProgress } from './story';
-import { FLY, TROLL, WATCHER, grab, newDash, newFlight, newTumble, stepDash, stepFlight, stepTumble } from './rules';
+import { FLY, PLANK, SIDE, TROLL, WATCHER, grab, newDash, newFlight, newPlank, newTumble, stepDash, stepFlight, stepPlank, stepTumble } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './moria.css';
@@ -23,15 +23,18 @@ import './moria.css';
 // long dark, Balin's tomb, the cave troll, and the Bridge of Khazad-dûm.
 // The places are in ./layout.js, the story in ./story.js, the games in
 // ./rules.js, the drawing in ./scene.js; this is the walking, the HUD, the
-// talk and the games. Without 3D, the scenes are listed as cards.
+// talk and the games, and on the side the plank over the old shaft, which
+// the story never waits on. Without 3D, the scenes are listed as cards.
 
 const DONE = 'tp-moria-done';
+const SIDE_DONE = 'tp-moria-side'; // kept apart, so the story's count stays the story's
 const AT = 'tp-moria-at';
 const sounds = () => import('./sounds');
 const PROMPT = {
   doors: { name: 'The Doors of Durin', act: 'Look at the Doors' },
   tomb: { name: 'The Chamber of Mazarbul', act: 'Go in' },
   east: { name: 'The east door', act: 'Run!' },
+  plank: { name: 'An old shaft, and a plank', act: 'Fetch Gandalf’s pipe' },
 };
 const walkers = {
   gate: makeWalker({ radius: 400, colliders: GATE_COLLIDERS, walls: GATE_WALLS, blocked: inLake }),
@@ -78,8 +81,18 @@ export default function MoriaWorld({ onLeave }) {
     return moriaProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = moriaProgress(done);
+  const [side, setSide] = useState(() => {
+    const d = local.get(SIDE_DONE, []);
+    return Array.isArray(d) && d.includes(SIDE.id);
+  });
   const [gl, setGl] = useState('loading');
   const { unlock } = useAchievements();
+  // the pipe, fetched: on the side, with its own seal but none on the map
+  const winSide = useCallback(() => {
+    setSide(true);
+    local.set(SIDE_DONE, [SIDE.id]);
+    unlock(SIDE.seal);
+  }, [unlock]);
   const complete = useCallback(
     (id) => {
       setDone((d) => {
@@ -95,12 +108,12 @@ export default function MoriaWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world moria-world" aria-labelledby="moria-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const trav = useTravellers('moria', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -110,7 +123,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   if (!sim.current) {
     const at = validAt(local.get(AT, null), done);
     const h = newWalker(at);
-    sim.current = { zone: at.zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ithildin: false, doorsOpen: done.includes('doors'), dash: null, held: 0, forkTold: false, revealing: false, tumble: null, troll: null, trollT: 0, flight: null, fallen: 0, whip: 0, party: trailBehind(h), busy: false, steer: 0, jump: false, deadEnd: -1 };
+    sim.current = { zone: at.zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ithildin: false, doorsOpen: done.includes('doors'), dash: null, held: 0, forkTold: false, revealing: false, tumble: null, troll: null, trollT: 0, flight: null, fallen: 0, whip: 0, party: trailBehind(h), busy: false, steer: 0, jump: false, deadEnd: -1, plank: null, plankWalk: 0, plankLean: 0 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -265,10 +278,30 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         s.h = newWalker({ x: TOMB.x - 1.2, z: TOMB.z + 3.2, face: Math.PI / 2 });
         startTalk('tomb');
       } else if (id === 'east') startFlight();
+      else if (id === 'plank') {
+        // on the side: out along the plank over the old shaft
+        s.mode = 'plank';
+        s.plank = newPlank(Math.floor(Math.random() * 1e6) + 1);
+        s.h = newWalker({ x: SHAFT.x - PLANK.half - 0.15, z: SHAFT.z, face: 0 });
+        sounds().then((x) => x.creak?.());
+        say('Gandalf’s pipe, out on the plank over the middle. Walk out (W or ↑) and back, and lean against the sway (A and D).');
+      }
       setList(false);
     },
-    [startTalk, startFlight],
+    [startTalk, startFlight, say],
   );
+  // off the plank, back on the floor of the hall at its west end
+  const leavePlank = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'plank') return;
+    s.mode = 'walk';
+    s.plank = null;
+    s.plankWalk = 0;
+    s.plankLean = 0;
+    s.h = newWalker({ x: SHAFT.x - SHAFT.plank / 2 - 0.6, z: SHAFT.z, face: Math.PI });
+    s.yaw = behindYaw(s.h.face);
+    s.dragAt = s.t;
+  }, []);
 
   const talkOnward = useCallback(
     (choice = null) => {
@@ -387,6 +420,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         e.preventDefault();
         audioContext();
       }
+      if (s.mode === 'plank') {
+        if (k === 'Escape') leavePlank();
+        else if ((k === ' ' || k === 'Enter') && s.plank?.state === 'fell' && !onButton) {
+          e.preventDefault();
+          enter('plank');
+        }
+        return;
+      }
       if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
         if (s.mode === 'flight') {
           e.preventDefault();
@@ -399,7 +440,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct]);
+  }, [live, talkOnward, doAct, leavePlank, enter]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -577,11 +618,39 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     }
     if (s.fallen > 0) s.fallen = Math.min(1, s.fallen + dt * 0.35);
 
+    // on the side: out along the plank over the old shaft
+    if (s.mode === 'plank' && s.plank) {
+      const pl = s.plank;
+      const walkOn = held('up') || s.plankWalk > 0 || (pad?.ly ?? 0) < -0.4 || Boolean(pad?.a);
+      const lean = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.plankLean + (pad?.lx ?? 0);
+      for (const e of stepPlank(pl, dt, { walk: walkOn, lean })) {
+        if (e.type === 'wobble') sounds().then((x) => x.creak?.());
+        else if (e.type === 'pipe') {
+          sounds().then((x) => x.catchIt());
+          say('You have it. Now back, slowly, the same way.');
+        } else if (e.type === 'won') {
+          winSide();
+          say('Back on the floor of the hall, and the pipe safe. Gandalf takes it without a word, then: “Thank you, Frodo.”');
+          later(() => sim.current?.plank === pl && leavePlank(), 2600);
+        } else if (e.type === 'fell') {
+          sounds().then((x) => {
+            x.clatter(1.2);
+            setTimeout(() => x.drums(), 2600);
+          });
+          api.current?.fx('break');
+          say(e.pipe ? 'You throw your arms out, and Gandalf’s pipe goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”' : 'You throw your arms out, and something goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”', true);
+        }
+      }
+      s.h.x = SHAFT.x - PLANK.half - 0.15 + pl.at;
+      s.h.face = pl.back ? Math.PI : 0;
+      s.h.speed = walkOn && pl.state === 'on' ? PLANK.walk : 0;
+    }
+
     // what's here, and who's here
     let spotHere = null;
     if (s.mode === 'walk') {
       const sp = nearest(SPOTS.filter((x) => x.zone === s.zone), s.h.x, s.h.z);
-      const ok = sp && ((sp.id === 'doors' && p.next === 'doors') || (sp.id === 'tomb' && p.next === 'tomb') || (sp.id === 'east' && p.next === 'bridge'));
+      const ok = sp && ((sp.id === 'doors' && p.next === 'doors') || (sp.id === 'tomb' && p.next === 'tomb') || (sp.id === 'east' && p.next === 'bridge') || (sp.id === 'plank' && (p.next === 'tomb' || p.finished)));
       spotHere = ok ? sp.id : null;
     }
     s.near = spotHere;
@@ -659,6 +728,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           tumble: s.tumble,
           troll: s.troll?.list ?? null,
           flight: s.flight,
+          plank: s.plank,
+          pipeTaken: side,
           fallen: s.fallen,
           whip: s.whip,
           stepT: s.stepT,
@@ -681,10 +752,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     const f = s.flight;
     const tm = s.tumble;
-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, s.dash?.grabs, tm ? tm.caught.length + tm.falling : '', s.mode === 'troll' ? Math.floor(s.trollT) : '', s.troll?.list?.[0]?.mode, f ? Math.round(f.s / 2) : '', f ? Math.round(f.behind) : '', f?.air > 0, p.done.length].join('|');
+    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, s.dash?.grabs, tm ? tm.caught.length + tm.falling : '', s.mode === 'troll' ? Math.floor(s.trollT) : '', s.troll?.list?.[0]?.mode, f ? Math.round(f.s / 2) : '', f ? Math.round(f.behind) : '', f?.air > 0, p.done.length, s.plank ? `${s.plank.state}.${s.plank.back}.${Math.round(s.plank.lean * 24)}.${Math.round(s.plank.at * 8)}` : ''].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, grabs: s.dash?.grabs ?? 0, tumble: tm ? { caught: tm.caught.length, falling: tm.falling } : null, troll: s.mode === 'troll' ? { t: s.trollT, hunting: ['alert', 'chase'].includes(s.troll?.list?.[0]?.mode) } : null, flight: f ? { s: f.s, behind: f.behind, air: f.air > 0 } : null });
+      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, grabs: s.dash?.grabs ?? 0, tumble: tm ? { caught: tm.caught.length, falling: tm.falling } : null, troll: s.mode === 'troll' ? { t: s.trollT, hunting: ['alert', 'chase'].includes(s.troll?.list?.[0]?.mode) } : null, flight: f ? { s: f.s, behind: f.behind, air: f.air > 0 } : null, plank: s.plank ? { state: s.plank.state, back: s.plank.back, lean: s.plank.lean, at: s.plank.at } : null });
     }
     if (s.person && bubbleRef.current) {
       const at = a.screenOf('cast', s.person);
@@ -758,7 +829,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       s.h = newWalker({ x: -4, z: GATE.cliff + 5, face: Math.PI / 2 });
     } else {
       if (s.zone !== 'halls') toHalls();
-      const at = q.id === 'dark' ? { x: FORK.x - 5, z: 0, face: 0 } : q.id === 'bridge' ? { x: 20, z: 0, face: 0 } : { x: CHAMBER.x, z: -HALL.d / 2 + 4, face: Math.PI / 2 };
+      const at = q.id === 'dark' ? { x: FORK.x - 5, z: 0, face: 0 } : q.id === 'bridge' ? { x: 20, z: 0, face: 0 } : q.id === SIDE.id ? { x: SHAFT.x - SHAFT.plank / 2 - 1, z: SHAFT.z, face: 0 } : { x: CHAMBER.x, z: -HALL.d / 2 + 4, face: Math.PI / 2 };
       s.h = newWalker(at);
       s.party = trailBehind(s.h);
       s.gandalf = null;
@@ -783,7 +854,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
   const F = hud.flight;
   return (
-    <div ref={box} className="shire-stage moria-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['dash', 'tumble', 'troll', 'flight'].includes(mode) || undefined}>
+    <div ref={box} className="shire-stage moria-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['dash', 'tumble', 'troll', 'flight', 'plank'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Moria in 3D: the Doors of Durin under the moon, the great halls of Dwarrowdelf in the dark, Balin's tomb, and the Bridge of Khazad-dûm" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into the dark of Moria…</p>}
 
@@ -894,6 +965,49 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           )}
         </div>
       )}
+      {/* on the side: the plank over the old shaft */}
+      {mode === 'plank' && hud.plank && (
+        <div className="shire-panel moria-game moria-plank" role="group" aria-label="Mind the well" data-fell={hud.plank.state === 'fell' || undefined}>
+          <p className="shire-panel-title">{hud.plank.state === 'fell' ? 'Fool of a Baggins!' : hud.plank.back ? 'Back, slowly' : 'Out to the pipe'}</p>
+          <div className="moria-balance" role="meter" aria-label="Your balance" aria-valuemin={-1} aria-valuemax={1} aria-valuenow={Math.round(hud.plank.lean * 100) / 100}>
+            <span className="moria-balance-safe" style={{ left: `${50 - PLANK.wobble * 50}%`, right: `${50 - PLANK.wobble * 50}%` }} />
+            <span className="moria-balance-needle" style={{ left: `${50 + Math.max(-1, Math.min(1, hud.plank.lean)) * 50}%` }} />
+          </div>
+          <div className="shire-meter" role="meter" aria-label="Along the plank" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round((hud.plank.back ? 1 + (PLANK.half - hud.plank.at) / PLANK.half : hud.plank.at / PLANK.half) * 50) / 100}>
+            <span className="shire-meter-label">{hud.plank.back ? 'Back' : 'Out'}</span>
+            <span className="shire-meter-bar">
+              <span style={{ transform: `scaleX(${(hud.plank.back ? 1 + (PLANK.half - hud.plank.at) / PLANK.half : hud.plank.at / PLANK.half) / 2})` }} />
+            </span>
+          </div>
+          {hud.plank.state === 'fell' ? (
+            <div className="shire-panel-row">
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => enter('plank')}>
+                Try again {!touch && <kbd>Space</kbd>}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={leavePlank}>
+                Leave it {!touch && <kbd>Esc</kbd>}
+              </button>
+            </div>
+          ) : touch ? (
+            <div className="shire-panel-row">
+              <button type="button" className="btn btn-ghost btn-sm" aria-label="Lean left" {...hold('plankLean', -1)}>
+                ◀
+              </button>
+              <button type="button" className="btn btn-primary btn-sm moria-big" {...hold('plankWalk', 1)}>
+                Walk
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" aria-label="Lean right" {...hold('plankLean', 1)}>
+                ▶
+              </button>
+            </div>
+          ) : (
+            <p className="shire-panel-help">
+              Hold W or ↑ to walk. When the needle swings one way, lean the other: A or ←, D or →. <kbd>Esc</kbd> to step off.
+            </p>
+          )}
+        </div>
+      )}
+
       {mode === 'end' && (
         <div className="shire-panel moria-end" role="dialog" aria-label="Out of Moria">
           <p className="shire-panel-title">Fly, you fools</p>
@@ -909,13 +1023,23 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
       {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do in Moria" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && sim.current.mode === 'walk' && (q.id === 'doors') === (sim.current.zone === 'gate')} />}
+      {list && (
+        <QuestList
+          title="Things to do in Moria"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => (q.id === SIDE.id ? (prog.next === 'tomb' || prog.finished) && sim.current.mode === 'walk' && sim.current.zone !== 'flight' : q.open && !q.done && sim.current.mode === 'walk' && (q.id === 'doors') === (sim.current.zone === 'gate'))}
+        />
+      )}
     </div>
   );
 }
 
 // Without 3D: the scenes, as cards.
-function Cards({ prog, three, gl, retry }) {
+function Cards({ prog, side, three, gl, retry }) {
   return (
     <div className="shell shire-cards-wrap">
       <h1 id="moria-title" className="title">
@@ -946,6 +1070,13 @@ function Cards({ prog, three, gl, retry }) {
             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
           </li>
         ))}
+        <li data-side>
+          <p className="shire-list-side">On the side</p>
+          <p className="shire-list-name">{SIDE.name}</p>
+          <p className="shire-list-sub">{SIDE.where}</p>
+          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
+          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
+        </li>
       </ul>
     </div>
   );
