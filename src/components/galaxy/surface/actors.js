@@ -85,6 +85,65 @@ export function think(b, spec, dt, r, { avoid = null } = {}) {
   b.z = nz;
 }
 
+// A kind's model (catalog/*.js) as a figure that walks: with its own clips
+// where it came rigged (an idle and a walk, or only one of them), or a bob
+// in its step where it didn't; null without a model
+export async function modelFigure(kind) {
+  if (!SURFACE_MODELS[kind]) return null;
+  const gltf = await loadGlb(surfaceUrl(kind));
+  if (!gltf) return null;
+  const model = cloneModel(gltf);
+  const anim = SURFACE_MODELS[kind].anim;
+  let mixer = null;
+  const act = {};
+  if (anim && gltf.animations.length) {
+    mixer = new THREE.AnimationMixer(model);
+    for (const [name, clipName] of Object.entries(anim)) {
+      const clip = gltf.animations.find((c) => c.name === clipName);
+      if (!clip) continue;
+      act[name] = mixer.clipAction(clip);
+      act[name].play();
+      act[name].setEffectiveWeight(name === 'idle' ? 1 : 0);
+      act[name].time = Math.random() * clip.duration;
+    }
+  }
+  let t = Math.random() * 10;
+  const box = new THREE.Box3().setFromObject(model);
+  const tall = box.max.y - box.min.y;
+  return {
+    model,
+    tall,
+    update(dt, move) {
+      if (mixer && act.idle && act.walk) {
+        const walkW = Math.min(1, move * 3);
+        act.idle.setEffectiveWeight(1 - walkW);
+        act.walk.setEffectiveWeight(walkW * (act.run ? 1 - Math.max(0, move - 0.6) * 2.5 : 1));
+        act.run?.setEffectiveWeight(Math.max(0, move - 0.6) * 2.5);
+        mixer.update(dt);
+      } else if (mixer && act.walk) {
+        // a walk and nothing else: it walks while it's going, and
+        // stands where its stride stopped
+        act.walk.setEffectiveWeight(1);
+        act.walk.timeScale = move > 0.05 ? 0.5 + move : 0;
+        mixer.update(dt);
+      } else if (mixer) {
+        // an idle and nothing else: it idles, and the bob walks it
+        mixer.update(dt);
+        t += dt * (2 + move * 7);
+        model.position.y = Math.abs(Math.sin(t)) * 0.03 * move * tall;
+      } else {
+        // a model that doesn't move its legs: a bob in its step, a sway
+        t += dt * (2 + move * 7);
+        model.position.y = Math.abs(Math.sin(t)) * 0.04 * move * tall;
+        model.rotation.z = Math.sin(t) * 0.03 * move;
+      }
+    },
+    dispose() {
+      mixer?.stopAllAction();
+    },
+  };
+}
+
 export function createActors({ parent, world, life = [], seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null }) {
   const group = new THREE.Group();
   group.name = 'life';
@@ -112,62 +171,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
   };
   const figureOf = async (kind, spec) => {
     if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec);
-    if (SURFACE_MODELS[kind]) {
-      const gltf = await loadGlb(surfaceUrl(kind));
-      if (gltf) {
-        const model = cloneModel(gltf);
-        const anim = SURFACE_MODELS[kind].anim;
-        let mixer = null;
-        const act = {};
-        if (anim && gltf.animations.length) {
-          mixer = new THREE.AnimationMixer(model);
-          for (const [name, clipName] of Object.entries(anim)) {
-            const clip = gltf.animations.find((c) => c.name === clipName);
-            if (!clip) continue;
-            act[name] = mixer.clipAction(clip);
-            act[name].play();
-            act[name].setEffectiveWeight(name === 'idle' ? 1 : 0);
-            act[name].time = Math.random() * clip.duration;
-          }
-        }
-        let t = Math.random() * 10;
-        const box = new THREE.Box3().setFromObject(model);
-        const tall = box.max.y - box.min.y;
-        return {
-          model,
-          tall,
-          update(dt, move) {
-            if (mixer && act.idle && act.walk) {
-              const walkW = Math.min(1, move * 3);
-              act.idle.setEffectiveWeight(1 - walkW);
-              act.walk.setEffectiveWeight(walkW * (act.run ? 1 - Math.max(0, move - 0.6) * 2.5 : 1));
-              act.run?.setEffectiveWeight(Math.max(0, move - 0.6) * 2.5);
-              mixer.update(dt);
-            } else if (mixer && act.walk) {
-              // a walk and nothing else: it walks while it's going, and
-              // stands where its stride stopped
-              act.walk.setEffectiveWeight(1);
-              act.walk.timeScale = move > 0.05 ? 0.5 + move : 0;
-              mixer.update(dt);
-            } else if (mixer) {
-              // an idle and nothing else: it idles, and the bob walks it
-              mixer.update(dt);
-              t += dt * (2 + move * 7);
-              model.position.y = Math.abs(Math.sin(t)) * 0.03 * move * tall;
-            } else {
-              // a model that doesn't move its legs: a bob in its step, a sway
-              t += dt * (2 + move * 7);
-              model.position.y = Math.abs(Math.sin(t)) * 0.04 * move * tall;
-              model.rotation.z = Math.sin(t) * 0.03 * move;
-            }
-          },
-          dispose() {
-            mixer?.stopAllAction();
-          },
-        };
-      }
-    }
-    return buildFigure(kind) ?? propFigure(kind, spec);
+    return (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec);
   };
 
   for (const spec of life) {

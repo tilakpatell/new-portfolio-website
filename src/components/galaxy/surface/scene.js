@@ -53,7 +53,7 @@ import { createWater } from './water';
 import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createPlacer } from './placer';
-import { createActors } from './actors';
+import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
@@ -69,6 +69,9 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // the ships you land in: how long they are (m), how high their belly sits
 const SHIPS = { xwing: { metres: 12.5, lift: 0.4 }, falcon: { metres: 34.7, lift: 1.2 }, cruiser: { metres: 6.5, lift: 0.3 }, rv: { metres: 11, lift: 0.3 } };
 const LAND = { descend: 7.5, settle: 1.2, out: 1.6 }; // seconds
+// the crew who have models of their own on the worlds (catalog/people.js), by
+// who they are in the universe's crews (footScene.js's PARTY)
+export const CREW_MODELS = { luke: 'luke', han: 'han', artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
@@ -346,10 +349,12 @@ export async function create(canvas, ctx) {
     }
     await Promise.all(
       people.map(async (p) => {
-        const fig = await loadPartyFigure(p.spec, cast).catch(() => null);
+        // (one of the crew with a model of their own here: that, in metres)
+        const own = CREW_MODELS[p.spec.id] ? await modelFigure(CREW_MODELS[p.spec.id]).catch(() => null) : null;
+        const fig = own ?? (await loadPartyFigure(p.spec, cast).catch(() => null));
         if (!fig || disposed) return;
         const inner = new THREE.Group();
-        inner.scale.setScalar(1 / METRE);
+        if (!own) inner.scale.setScalar(1 / METRE);
         inner.add(fig.model);
         fig.model.traverse((o) => {
           if (o.isMesh) o.castShadow = true;

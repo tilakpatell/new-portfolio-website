@@ -13,6 +13,9 @@ import { PARTY, loadPartyFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
 import { buildFigure } from './figures';
+import { modelFigure } from './actors';
+
+const CREW_MODELS = { luke: 'luke', han: 'han', artoo: 'r2d2' }; // (scene.js's)
 
 const QUIET = 3000; // ms with nothing from them: gone
 const SPECS = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s]));
@@ -54,11 +57,12 @@ export function createPeers({ parent, placer, getCast }) {
     const spec = SPECS[who];
     if (spec)
       (async () => {
-        if (spec.src.meshy) await getCast()?.load(null, [spec.src.meshy]).catch(() => {});
-        const fig = await loadPartyFigure(spec, getCast()).catch(() => null);
+        const own = CREW_MODELS[who] ? await modelFigure(CREW_MODELS[who]).catch(() => null) : null;
+        if (!own && spec.src.meshy) await getCast()?.load(null, [spec.src.meshy]).catch(() => {});
+        const fig = own ?? (await loadPartyFigure(spec, getCast()).catch(() => null));
         if (!fig || dead || !holder.parent) return;
         const inner = new THREE.Group();
-        inner.scale.setScalar(1 / METRE);
+        if (!own) inner.scale.setScalar(1 / METRE);
         inner.add(fig.model);
         holder.add(inner);
         w.fig = fig;
