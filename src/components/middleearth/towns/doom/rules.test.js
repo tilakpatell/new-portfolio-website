@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BURSTS, CARRY, EYE, FLIGHT, HANG, MARCH, carryStep, newCarry, newFlight, newHang, newMarch, newSearch, paceAt, stepCarry, stepFlight, stepHang, stepMarch, stepSearch } from './rules';
+import { BURSTS, CARRY, EYE, FLIGHT, HANG, MARCH, RECALL, SHIRE, carryStep, newCarry, newFlight, newHang, newMarch, newRecall, newSearch, paceAt, recall, stepCarry, stepFlight, stepHang, stepMarch, stepRecall, stepSearch, telling } from './rules';
 
 const run = (n, fn) => {
   for (let i = 0; i < n; i++) if (fn(i) === false) break;
@@ -144,5 +144,56 @@ describe('the eagles', () => {
       return f.state === 'on';
     });
     expect(f.state).toBe('down');
+  });
+});
+
+describe('do you remember the Shire?', () => {
+  // let Sam tell this round, and say what he told
+  const listen = (r) => {
+    const told = [];
+    for (let i = 0; i < 400 && r.phase !== 'ask' && r.state === 'on'; i++) for (const e of stepRecall(r, 0.05)) if (e.type === 'tell') told.push(e.id);
+    return told;
+  };
+  it('picks six different things of the Shire to tell', () => {
+    for (let seed = 1; seed < 30; seed++) {
+      const r = newRecall(seed);
+      expect(new Set(r.order).size).toBe(RECALL.length);
+      for (const id of r.order) expect(SHIRE.some((m) => m.id === id)).toBe(true);
+    }
+  });
+  it('has Sam tell two to begin with, one at a time, then waits for Frodo', () => {
+    const r = newRecall(4);
+    expect(recall(r, r.order[0])).toBeNull();
+    stepRecall(r, RECALL.wait + 0.1);
+    expect(telling(r)).toBe(r.order[0]);
+    stepRecall(r, RECALL.show);
+    expect(telling(r)).toBeNull();
+    const told = [r.order[0], ...listen(r)];
+    expect(told).toEqual(r.order.slice(0, RECALL.first));
+    expect(r.phase).toBe('ask');
+  });
+  it('goes one longer each time they’re said back right, up to all six', () => {
+    const r = newRecall(6);
+    const results = [];
+    for (let round = RECALL.first; round <= RECALL.length; round++) {
+      expect(listen(r)).toEqual(r.order.slice(0, round));
+      for (let i = 0; i < round; i++) results.push(recall(r, r.order[i]));
+      for (let i = 0; i < 100 && r.phase === 'next'; i++) stepRecall(r, 0.05);
+    }
+    expect(results.filter((x) => x === 'round')).toHaveLength(RECALL.length - RECALL.first);
+    expect(results.at(-1)).toBe('remembered');
+    expect(r.state).toBe('remembered');
+    expect(r.slips).toBe(0);
+  });
+  it('tells the same again after one said wrong', () => {
+    const r = newRecall(8);
+    listen(r);
+    const wrong = SHIRE.find((m) => m.id !== r.order[0]).id;
+    expect(recall(r, wrong)).toBe('wrong');
+    expect(recall(r, r.order[0])).toBeNull();
+    for (let i = 0; i < 100 && r.phase === 'wrong'; i++) stepRecall(r, 0.05);
+    expect(listen(r)).toEqual(r.order.slice(0, RECALL.first));
+    expect(r.round).toBe(RECALL.first);
+    expect(r.slips).toBe(1);
   });
 });

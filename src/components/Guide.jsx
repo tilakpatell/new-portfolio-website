@@ -61,6 +61,7 @@ const PAGES = {
   '/invincible': {
     title: 'Invincible',
     tips: [
+      ['The city', 'The page opens on the Graysons’ city, to fly about as Mark: six kilometres of downtown, river, suburbs, coast and hills. W, A, S and D fly the way you’re looking (walk, on the ground), Space goes up (and takes off), C goes down (and lands), Shift goes flat out: past about 430 km/h the air breaks with a boom. Come down fast and the street cracks; hit a tower too fast and you bounce off it. Drag or the arrow keys look round, E at a place (the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA), T changes the time of day. On a phone, a stick on the left and Up, Down and Boost on the right.'],
       ['Think, Mark!', 'You are Invincible, flying over the city. W, A, S and D fly the way the camera looks (so look down to dive), Space climbs, C drops and Shift goes flat out; drag the mouse or use the arrow keys to look round. J or a click throws a punch at whatever you’re locked on to (Tab picks another); K or a right-click dodges, and nothing can touch you for a moment. Four chapters: fly through your father’s rings in order; knock the Flaxans back through their portal (dodge their purple bolts); then Omni-Man and Thragg. A Viltrumite blocks a punch and hits back, unless he’s recovering from a charge: watch the ring close round him, dodge as it closes, then hit him while he’s open. A dodge just in time slows everything down and leaves him open for longer. On a touch screen, the left of the screen steers, a drag on the right looks, a tap punches. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
@@ -200,6 +201,7 @@ const PAGES = {
 };
 
 const SITE = [
+  ['Two ways round', 'The Universe and Classic switch at the top: fly through the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site opens on the one you picked last.'],
   ['Getting around', 'The menu at the top, or ⌘K (Ctrl+K) for the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
   ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],

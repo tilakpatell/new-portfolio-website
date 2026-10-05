@@ -11,6 +11,7 @@ import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
 import Hyperspace from './components/Hyperspace';
 import { audioContext } from './lib/audio';
+import { introPlaying } from './lib/stale';
 import WorldGate from './components/worlds/WorldGate';
 
 const Experience = lazy(() => import('./pages/Experience'));
@@ -132,6 +133,8 @@ function IntroJump() {
     cover(stage === 'welcome' || stage === 'crawl' || stage === 'cockpit');
     return () => cover(false);
   }, [stage]);
+  // (a reload for the new build in the middle of a first visit's intro plays it again: lib/stale)
+  useEffect(() => introPlaying(Boolean(stage) && !ride), [stage, ride]);
   // ⌘K: back to the cockpit, from anywhere
   useEffect(() => {
     const again = (e) => {
@@ -187,9 +190,28 @@ function IntroJump() {
   );
 }
 
-// ⌘K / Ctrl+K anywhere, or the search button in the nav.
+// The intro has a boundary of its own: a file of it gone after a deploy (the
+// cockpit's, asked for as the crawl ends) reloads for the new build
+// (ErrorBoundary), and anything else in it puts you in the site, uncovered,
+// instead of blanking the page.
+function IntroGone() {
+  useEffect(() => {
+    delete document.documentElement.dataset.intro;
+  }, []);
+  return null;
+}
+
+// ⌘K / Ctrl+K anywhere, or the search button in the nav. Its file is
+// fetched the first time it opens: gone after a deploy, that reloads for the
+// new build (ErrorBoundary), and anything else wrong in it just closes it,
+// so ⌘K can try again, instead of blanking the page.
+function Shut({ onClose }) {
+  useEffect(() => onClose(), [onClose]);
+  return null;
+}
 function PaletteHost() {
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -207,9 +229,11 @@ function PaletteHost() {
   }, []);
   if (!open) return null;
   return (
-    <Suspense fallback={null}>
-      <CommandPalette onClose={() => setOpen(false)} />
-    </Suspense>
+    <ErrorBoundary fallback={<Shut onClose={close} />}>
+      <Suspense fallback={null}>
+        <CommandPalette onClose={close} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
@@ -297,7 +321,9 @@ function Shell() {
       <Guide />
       <Lightspeed />
       <PaletteHost />
-      <IntroJump />
+      <ErrorBoundary fallback={<IntroGone />}>
+        <IntroJump />
+      </ErrorBoundary>
     </OnlineProvider>
   );
 }
