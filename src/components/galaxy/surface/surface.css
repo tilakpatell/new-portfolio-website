@@ -316,3 +316,114 @@
 @media (pointer: coarse) {
   .surface-page .universe-comms { bottom: auto; top: calc(var(--nav-h, 64px) + 128px); }
 }
+
+/* the quest you're on (or the way to the list of things to do) */
+.surface-quest {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 56px);
+  width: min(300px, calc(100vw - 32px));
+  pointer-events: auto;
+}
+.surface-quest-name {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+.surface-quest-step { margin: 0.2rem 0 0; font-size: 0.95rem; font-weight: 600; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.75); }
+.surface-quest-time { color: #ffd36a; font-variant-numeric: tabular-nums; }
+.surface-quest-link { margin-top: 0.25rem; padding: 0; border: 0; background: none; color: rgba(242, 239, 232, 0.6); font-size: 0.72rem; cursor: pointer; text-decoration: underline; }
+.surface-quest-open {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.surface-quest-open kbd { margin-right: 0.3rem; color: var(--accent); font: 600 0.72rem ui-monospace, monospace; }
+.surface-quest-open:hover { border-color: var(--accent); }
+.surface-list {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 96px);
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100svh - var(--nav-h, 64px) - 140px);
+  overflow: auto;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 8, 14, 0.86);
+  backdrop-filter: blur(10px);
+}
+.surface-list-title { margin: 0 0 0.6rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+.surface-list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+.surface-list button {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.surface-list button:hover:not(:disabled) { border-color: var(--accent); }
+.surface-list button:disabled { opacity: 0.55; cursor: default; }
+.surface-list b { font-size: 0.9rem; }
+.surface-list span { font-size: 0.78rem; line-height: 1.4; color: rgba(242, 239, 232, 0.75); }
+.surface-list li[data-done] b::after { content: ' ✓'; color: var(--accent); }
+
+/* health, when you've been hit */
+.surface-health {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  width: min(240px, 50vw);
+  height: 6px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.surface-health span { display: block; height: 100%; background: linear-gradient(90deg, #ff4a3d, #ffd36a); transition: width 0.2s; }
+
+/* the crosshair, while you're shooting */
+.surface-crosshair {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.surface-crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: #fff; }
+
+/* through a door: a moment's black */
+.surface-door { position: absolute; z-index: 3; inset: 0; background: #000; pointer-events: none; transition: opacity 0.35s; }
+
+.surface-mark-quest i { background: #ffd36a; height: 13px; }
+.surface-mark-quest b { color: #ffd36a !important; font-size: 0.85rem !important; }
+.surface-toast[data-done] .surface-toast-title::before { content: 'Done · '; }
+.surface-btn-fire { border-color: #ff6a5a; color: #ffb0a0; }
+
+@media (max-width: 640px) {
+  .surface-quest { top: calc(var(--nav-h, 64px) + 118px); right: auto; left: 16px; width: calc(100vw - 32px); }
+  .surface-list { top: calc(var(--nav-h, 64px) + 60px); }
+}

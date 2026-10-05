@@ -8,14 +8,14 @@ import { useScene } from '../../../lib/three/useScene';
 // so; without 3D, a note that the world needs it.
 const load = () => import('./scene');
 
-export default function SurfaceView({ system, ship, loadout, found, compass, net = null, handle, onEvent }) {
+export default function SurfaceView({ system, ship, loadout, found, done, compass, net = null, handle, onEvent }) {
   const events = useRef(onEvent);
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const { wrap, on, meant, view } = useScene(load, {
     id: 'surface',
     near: '0px',
-    props: { system, ship, loadout, found, compass, net, onEvent: (e) => events.current?.(e) },
+    props: { system, ship, loadout, found, done, compass, net, onEvent: (e) => events.current?.(e) },
   });
   useEffect(() => {
     if (handle) handle.current = { live: on, input: (name, ...a) => view.current?.input?.[name]?.(...a), debug: () => view.current?.debug?.() };
@@ -111,6 +111,9 @@ export default function SurfaceView({ system, ship, loadout, found, compass, net
             </button>
             <button type="button" className="surface-btn" onPointerDown={press('run')} onPointerUp={release('run')} onPointerCancel={release('run')} onPointerLeave={release('run')} onContextMenu={(e) => e.preventDefault()}>
               Run
+            </button>
+            <button type="button" className="surface-btn surface-btn-fire" onPointerDown={press('fire')} onPointerUp={release('fire')} onPointerCancel={release('fire')} onPointerLeave={release('fire')} onContextMenu={(e) => e.preventDefault()}>
+              Fire
             </button>
           </div>
         </div>

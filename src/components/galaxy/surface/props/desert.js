@@ -1,4 +1,4 @@
-// Tatooine's and Jakku's props, built in code: what a world places when
+// Tatooine's props, built in code: what a world places when
 // there's no model of it (catalog/desert.js), and what there's no model of
 // at all (the homestead's pit, the Sarlacc, Jabba's palace on the horizon,
 // Mos Eisley's docking bay).
@@ -42,18 +42,6 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'landspeeder' }) };
   },
 
-  // Rey's speeder: a big engine with a seat on its back, a pod out front
-  reyspeeder(k) {
-    const grey = '#8a8478';
-    const parts = [
-      part(new THREE.CylinderGeometry(0.42, 0.5, 2.6, 14), { at: [0, 0.55, -0.5], rot: [Math.PI / 2, 0, 0], color: grey, to: 'metal' }),
-      part(new THREE.SphereGeometry(0.45, 14, 10), { at: [0, 0.55, 1.2], scale: [1.4, 0.8, 1.2], color: '#6a6458', to: 'metal' }),
-      part(box(0.5, 0.15, 0.8), { at: [0, 0.95, -0.6], color: '#4a3a30', to: 'cloth' }),
-      part(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 12), { at: [0, 0.55, -1.82], rot: [Math.PI / 2, 0, 0], color: new THREE.Color('#ffb070').multiplyScalar(2), to: 'glow' }),
-    ];
-    for (const x of [-0.6, 0.6]) parts.push(part(box(0.25, 0.2, 1.8), { at: [x, 0.3, 0.6], color: '#5a5448', to: 'metal' }));
-    return { object: k.build(parts, { name: 'reyspeeder' }) };
-  },
   // a moisture vaporator: a pole with collars and condenser fins, 5 m tall
   vaporator(k, { color = '#b8b2a6' } = {}) {
     const dark = '#6e6a62';
@@ -314,25 +302,6 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'palace', shadows: false }) };
   },
 
-  // a wrecked Star Destroyer, half buried on Jakku: a long wedge on its
-  // side, plating stripped, a mountain of metal
-  sdwreck(k, { len = 1200 } = {}) {
-    const L = len;
-    const hull = loft([
-      { z: -L / 2, pts: trap8(L * 0.52, L * 0.06, L * 0.14, L * 0.01, 0) },
-      { z: L / 2, pts: trap8(L * 0.04, L * 0.01, L * 0.05, L * 0.002, 0) },
-    ]);
-    const parts = [part(hull, { color: '#8e8e8a', to: 'paint' })];
-    // the superstructure, up on the side it's lying on
-    parts.push(part(box(L * 0.12, L * 0.09, L * 0.1), { at: [0, L * 0.06, -L * 0.42], color: '#7a7a76', to: 'paint' }));
-    parts.push(part(box(L * 0.05, L * 0.04, L * 0.015), { at: [0, L * 0.15, -L * 0.42], color: '#6a6a66', to: 'paint' }));
-    const object = k.build(parts, { name: 'sdwreck', shadows: false });
-    // on its side, its nose in the sand
-    object.rotation.set(0.12, 0, PI / 2 - 0.35);
-    const holder = new THREE.Group();
-    holder.add(object);
-    return { object: holder };
-  },
 };
 
 export const SCATTER = {};

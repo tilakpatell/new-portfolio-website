@@ -109,9 +109,31 @@ export function createSounds(site) {
     o.stop(now + 0.35);
   };
 
+  // a blaster shot: a falling zap, with a crack of noise under it
+  const blast = () => {
+    if (!started) return;
+    const now = ac.currentTime;
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(1800, now);
+    o.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1200;
+    f.Q.value = 0.8;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.09, now + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    o.connect(f).connect(g).connect(out);
+    o.start(now);
+    o.stop(now + 0.25);
+  };
+
   return {
     start,
     step,
+    blast,
     // each frame: the wind gusting, the sea swelling, the speeder's whine
     update(dt, { riding = 0, wind = 1 } = {}) {
       if (!started) return;

@@ -28,6 +28,14 @@
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
 //   skyships       [{ kind, metres, at: [x, y, z], yaw }]: hanging in the sky
 //   floors         walker.js's, over the land (platforms, walkways)
+//   zones          places you go into: { id, name, door: { at, r, prompt },
+//                  back: [x, z] (where you come out), inside: { build (a
+//                  props kind), spawn, yaw, exit: { at, r }, bounds: [hw,
+//                  hd, h], light: { sky, ground, ambient, fog, density },
+//                  lamps: [[x, y, z, color, intensity, distance]] }, life
+//                  (as the site's, placed relative to the inside) }
+//   quests         quests.js's: things to do (talk to someone, get
+//                  somewhere, pick things up, race, shoot, ride, use)
 //   reach          how far you can go (terrain.js's REACH unless said)
 //   fall           a world with nothing under its floors (Bespin, Coruscant,
 //                  Kamino): how far down counts as falling off
@@ -68,6 +76,23 @@ export function siteOf(id) {
     ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h })),
   ];
   const pits = places.flatMap((p) => p.pits);
+  // the places you go into (zones): each built high over the world where
+  // nothing outside can be seen, at `origin`; what's in one is placed
+  // relative to it (its life, and its quests' steps that say `zone`)
+  const zones = (raw.zones ?? []).map((z, i) => ({ ...z, origin: z.origin ?? [-1600 + i * 700, 1500, -4200] }));
+  const inZone = (id, xz) => {
+    const z = zones.find((q) => q.id === id);
+    return z && xz ? [z.origin[0] + xz[0], z.origin[2] + xz[1]] : xz;
+  };
+  const zoneLife = zones.flatMap((z) => (z.life ?? []).map((a) => ({ ...a, zone: z.id, at: a.at && inZone(z.id, a.at), path: a.path?.map((q) => inZone(z.id, q)) })));
+  const quests = (raw.quests ?? []).map((q) => ({
+    ...q,
+    steps: q.steps.map((st) => {
+      const zid = st.zone && st.type !== 'enter' ? st.zone : null;
+      if (!zid) return st;
+      return { ...st, at: st.at && inZone(zid, st.at), gates: st.gates?.map((g) => inZone(zid, g)), spots: st.spots?.map((g) => inZone(zid, g)), spawn: st.spawn && [].concat(st.spawn).map((sp) => ({ ...sp, at: inZone(zid, sp.at) })) };
+    }),
+  }));
   return {
     id,
     name: sys?.name ?? id,
@@ -76,7 +101,6 @@ export function siteOf(id) {
     weather: [],
     things: [],
     scatter: [],
-    life: [],
     rides: [],
     flyovers: [],
     skyships: [],
@@ -84,6 +108,9 @@ export function siteOf(id) {
     ...raw,
     land,
     places,
+    zones,
+    quests,
+    life: [...(raw.life ?? []), ...zoneLife],
     ground: { ...raw.ground, flats, pits },
     things_all: [...(raw.things ?? []), ...places.flatMap((p) => p.things)],
   };

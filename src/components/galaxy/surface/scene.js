@@ -57,6 +57,9 @@ import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
+import { createActivity } from './activity';
+import { createBlaster } from './blaster';
+import { feed, start as startQuest, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -75,7 +78,8 @@ export const CREW_MODELS = { luke: 'luke', han: 'han', artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', f: 'act', enter: 'act' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire' };
+const FIRE_EVERY = 0.24; // seconds between shots
 
 export async function create(canvas, ctx) {
   const { reduced } = ctx;
@@ -182,6 +186,39 @@ export async function create(canvas, ctx) {
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit });
+
+  // ── The places you go into (zones): built high over the world, out of
+  // sight, each with its own lamps ──
+  for (const z of site.zones) placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts });
+  const lamps = Array.from({ length: 4 }, () => {
+    const l = new THREE.PointLight('#ffffff', 0, 30, 1.6);
+    scene.add(l);
+    return l;
+  });
+
+  // ── Things to do: the quest you're on, out in the world, and the blaster ──
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent });
+  const blaster = createBlaster({ parent: scene, world });
+  const questOf = (id) => site.quests.find((q) => q.id === id) ?? null;
+  // who gives each quest, with a mark over them till it's done
+  const givers = [];
+  const markMat = new THREE.SpriteMaterial({ map: (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffd36a';
+    g.beginPath();
+    g.arc(32, 32, 26, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#1a1206';
+    g.font = 'bold 40px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('!', 32, 34);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })(), depthWrite: false, transparent: true });
 
   // what you can ride, where it's parked
   const rides = site.rides
@@ -404,6 +441,14 @@ export async function create(canvas, ctx) {
     edgeAt: -10,
     shake: 0,
     dust: 0,
+    quest: null, // quests.js's progress on the one you're on
+    tracked: null, // the one picked from the list (its giver on the compass)
+    done: new Set(props.done ?? []),
+    health: 100,
+    hurtAt: -10,
+    firedAt: -10,
+    zone: null, // the place you're in, if you've gone into one
+    outside: null, // where you were before you went in
   };
   const camPos = new V();
   const camLook = new V();
@@ -499,6 +544,7 @@ export async function create(canvas, ctx) {
       if (state.phase === 'landing') skipLanding();
       if (k === 'jump') state.jumpQueued = true;
       if (k === 'act') state.actQueued = true;
+      if (k === 'fire') state.fireQueued = true;
     }
     state.keys[k] = down;
     ctx.invalidate();
@@ -563,10 +609,19 @@ export async function create(canvas, ctx) {
     const p = me().st;
     if (state.phase === 'ride') return state.riding.state.speed < 7 ? { kind: 'dismount', text: `Get off ${state.riding.spec.name}` } : null;
     if (state.phase !== 'walk') return null;
+    // a quest's thing to do here
+    const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
+    if (step?.type === 'use' && Math.hypot(p.x - step.at[0], p.z - step.at[1]) < (step.r ?? 3)) return { kind: 'use', id: step.id, text: step.prompt ?? 'Use' };
+    // the way out of where you are, or into somewhere
+    if (state.zone) {
+      const ex = state.zone.inside.exit;
+      if (Math.hypot(p.x - (state.zone.origin[0] + ex.at[0]), p.z - (state.zone.origin[2] + ex.at[1])) < (ex.r ?? 2.5)) return { kind: 'leave', text: `Leave ${state.zone.name}` };
+    } else
+      for (const z of site.zones) if (Math.hypot(p.x - z.door.at[0], p.z - z.door.at[1]) < (z.door.r ?? 3)) return { kind: 'enter', zone: z, text: z.door.prompt ?? `Go into ${z.name}` };
     // the ship
     const sx = p.x - landAt[0];
     const sz = p.z - landAt[1];
-    if (Math.hypot(sx, sz) < Math.max(shipBox.w, shipBox.l) + 3.5) return { kind: 'board', text: 'Get in and take off' };
+    if (!state.zone && Math.hypot(sx, sz) < Math.max(shipBox.w, shipBox.l) + 3.5) return { kind: 'board', text: 'Get in and take off' };
     let best = null;
     let bestD = REACH;
     for (const x of rides) {
@@ -578,17 +633,66 @@ export async function create(canvas, ctx) {
     }
     if (best) return best;
     const a = life.talker(p.x, p.z, REACH);
-    if (a) return { kind: 'talk', actor: a, text: `Talk to the ${a.spec.name ?? a.spec.kind}` };
+    if (a) return { kind: 'talk', actor: a, text: `Talk to ${a.spec.named ? '' : 'the '}${a.spec.name ?? a.spec.kind}` };
     return null;
   };
+
+  // ── Quests ──
+  const say = (lines) => lines?.length && emit({ type: 'say', lines: lines.map((l) => (Array.isArray(l) ? { who: l[0], text: l[1] } : { who: null, text: l })) });
+  const announce = () => {
+    const q = state.quest && questOf(state.quest.id);
+    const step = q?.steps[state.quest.step];
+    emit({ type: 'quest', id: q?.id ?? null, name: q?.name ?? null, text: q ? stepText(q, state.quest) : null, left: step?.time ? Math.max(0, Math.ceil(step.time - state.quest.time)) : null, shoot: step?.type === 'shoot' });
+  };
+  function beginQuest(q) {
+    if (!q || state.done.has(q.id) || state.quest) return;
+    state.quest = startQuest(q);
+    say(q.intro);
+    say(q.steps[0].lines);
+    activity.show(q, state.quest);
+    announce();
+    emit({ type: 'questStart', id: q.id });
+  }
+  function questEvent(ev) {
+    if (!state.quest) return;
+    const q = questOf(state.quest.id);
+    const was = state.quest;
+    const { progress, out } = feed(state.quest, q, ev);
+    state.quest = progress;
+    for (const o of out) {
+      if (o.type === 'step') say(q.steps[o.step].lines);
+      if (o.type === 'done') {
+        state.done.add(q.id);
+        say(q.done);
+        emit({ type: 'questDone', id: q.id, achievement: q.achievement ?? null });
+      }
+      if (o.type === 'fail') emit({ type: 'questFail', id: q.id, why: o.why });
+    }
+    if (out.length || (ev.type === 'tick' && Math.ceil(was.time) !== Math.ceil(progress?.time ?? 0))) announce();
+    activity.show(q, state.quest);
+  }
   const act = (tg) => {
     if (!tg) return;
-    if (tg.kind === 'talk') emit({ type: 'talk', ...life.say(tg.actor) });
+    if (tg.kind === 'talk') {
+      const spec = tg.actor.spec;
+      const q = spec.quest && questOf(spec.quest);
+      const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
+      if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
+      else if (step?.type === 'talk' && step.actor === spec.id) questEvent({ type: 'talk', actor: spec.id });
+      else {
+        const line = life.say(tg.actor);
+        if (line) emit({ type: 'talk', ...line });
+        else if (q && state.done.has(q.id)) say(q.after ?? [[spec.name, 'Thanks again.']]);
+      }
+    } else if (tg.kind === 'use') questEvent({ type: 'use', id: tg.id });
+    else if (tg.kind === 'enter') enterZone(tg.zone);
+    else if (tg.kind === 'leave') leaveZone();
     else if (tg.kind === 'mount') {
       state.riding = tg.ridee;
       state.phase = 'ride';
       state.cam.dist = tg.ridee.spec.cam[0];
       emit({ type: 'phase', phase: 'ride', kind: tg.ridee.kind });
+      questEvent({ type: 'mount', kind: tg.ridee.kind });
     } else if (tg.kind === 'dismount') {
       const x = state.riding;
       const p = me().st;
@@ -611,6 +715,106 @@ export async function create(canvas, ctx) {
       emit({ type: 'phase', phase: 'leaving' });
     }
   };
+
+  // ── Going in and out ──
+  const outdoors = { sun: sun.intensity, second: second?.intensity ?? 0, sky: hemi.color.clone(), ground: hemi.groundColor.clone(), ambient: hemi.intensity, fog: scene.fog.color.clone(), density: scene.fog.density, env: scene.environmentIntensity };
+  function lighting(z) {
+    const L = z?.inside.light;
+    sun.intensity = z ? 0 : outdoors.sun;
+    if (second) second.intensity = z ? 0 : outdoors.second;
+    hemi.color.set(L?.sky ?? outdoors.sky);
+    hemi.groundColor.set(L?.ground ?? outdoors.ground);
+    hemi.intensity = z ? (L?.ambient ?? 0.4) : outdoors.ambient;
+    scene.fog.color.set(L?.fog ?? outdoors.fog);
+    scene.fog.density = z ? (L?.density ?? 0.02) : outdoors.density;
+    scene.environmentIntensity = z ? 0.15 : outdoors.env;
+    sky.mesh.visible = !z;
+    if (weather) weather.group.visible = !z;
+    if (water) water.mesh.visible = !z;
+    lamps.forEach((l, i) => {
+      const d = z?.inside.lamps?.[i];
+      l.intensity = d ? d[4] : 0;
+      if (d) {
+        l.position.set(z.origin[0] + d[0], z.origin[1] + d[1], z.origin[2] + d[2]);
+        l.color.set(d[3]);
+        l.distance = d[5] ?? 30;
+      }
+    });
+  }
+  const putAt = (st, x, z, yaw) => {
+    st.x = x;
+    st.z = z;
+    st.y = groundAt(world, x, z);
+    st.vx = st.vz = st.vy = 0;
+    st.grounded = true;
+    if (yaw != null) st.yaw = yaw;
+  };
+  function enterZone(z) {
+    const p = me().st;
+    state.outside = [p.x, p.z, p.yaw];
+    state.zone = z;
+    world.reach = Infinity;
+    const [sx, sz] = z.inside.spawn ?? [0, 0];
+    putAt(p, z.origin[0] + sx, z.origin[2] + sz, z.inside.yaw ?? 0);
+    putAt(other().st, z.origin[0] + sx + 1.2, z.origin[2] + sz - 1, z.inside.yaw ?? 0);
+    state.cam.yaw = p.yaw;
+    state.cam.dist = Math.min(state.cam.dist, 3.4);
+    camInit = false;
+    lighting(z);
+    emit({ type: 'zone', id: z.id, name: z.name });
+    questEvent({ type: 'enter', zone: z.id });
+  }
+  function leaveZone() {
+    const z = state.zone;
+    if (!z) return;
+    state.zone = null;
+    world.reach = site.reach;
+    const [bx, bz] = z.back ?? z.door.at;
+    const yaw = state.outside?.[2] ?? 0;
+    putAt(me().st, bx, bz, yaw + Math.PI);
+    putAt(other().st, bx + 1.2, bz + 1, yaw + Math.PI);
+    state.cam.yaw = yaw + Math.PI;
+    state.cam.dist = CAM.dist;
+    camInit = false;
+    lighting(null);
+    emit({ type: 'zone', id: null });
+  }
+
+  // ── Shooting, and being shot ──
+  const camDir = new V();
+  function fire() {
+    const p = me().st;
+    if (state.phase !== 'walk' || state.t - state.firedAt < FIRE_EVERY) return;
+    state.firedAt = state.t;
+    camera.getWorldDirection(camDir);
+    p.yaw = Math.atan2(camDir.x, camDir.z);
+    const right = new V(-Math.cos(p.yaw), 0, Math.sin(p.yaw));
+    const from = new V(p.x, p.y + 1.35, p.z).addScaledVector(right, -0.25).addScaledVector(camDir, 0.5);
+    const hit = blaster.fire(from, camDir, activity.targets, me().spec.bolt ?? '#ff3b30');
+    if (hit.target) activity.hit(hit.target, 1);
+    sounds.blast?.();
+    emit({ type: 'fire' });
+  }
+  function hurt(n) {
+    state.health = Math.max(0, state.health - n);
+    state.hurtAt = state.t;
+    state.shake = Math.min(1, state.shake + 0.3);
+    emit({ type: 'health', value: state.health });
+    if (state.health > 0) return;
+    // down: back on your feet where the quest's step began (or by the ship)
+    state.health = 100;
+    emit({ type: 'health', value: 100 });
+    emit({ type: 'down' });
+    if (state.quest) {
+      state.quest = { ...state.quest, count: 0, time: 0 };
+      const q = questOf(state.quest.id);
+      activity.show(null, null);
+      activity.show(q, state.quest);
+      announce();
+    }
+    const p = me().st;
+    if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
+  }
 
   // ── Each frame ──
   const pace = createPace();
@@ -809,6 +1013,14 @@ export async function create(canvas, ctx) {
       camLook.copy(focus);
       camInit = true;
     }
+    // inside, the camera keeps inside the walls
+    if (state.zone?.inside.bounds) {
+      const [hw, hd, h] = state.zone.inside.bounds;
+      const o = state.zone.origin;
+      want.x = clamp(want.x, o[0] - hw + 0.4, o[0] + hw - 0.4);
+      want.z = clamp(want.z, o[2] - hd + 0.4, o[2] + hd - 0.4);
+      want.y = clamp(want.y, o[1] + 0.4, o[1] + h - 0.4);
+    }
     camPos.lerp(want, 1 - Math.exp(-dt * (riding ? 9 : 12)));
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
     camera.position.copy(camPos);
@@ -843,6 +1055,9 @@ export async function create(canvas, ctx) {
           state.found.add(pl.id);
           emit({ type: 'found', id: pl.id });
         }
+        // (a quest that starts when you get there)
+        const q = site.quests.find((x) => x.place === pl.id);
+        if (q && !state.quest && !state.done.has(q.id)) beginQuest(q);
       }
     }
     if (here !== state.here) {
@@ -866,7 +1081,15 @@ export async function create(canvas, ctx) {
     for (const m of el.querySelectorAll('[data-id]')) {
       const id = m.dataset.id;
       let at;
-      if (id === 'ship') at = landAt;
+      if (id === 'quest') {
+        const q = state.quest && questOf(state.quest.id);
+        const step = q?.steps[state.quest.step];
+        at = step ? (step.type === 'talk' ? ((a) => a && [a.b.x, a.b.z])(life.find(step.actor)) : step.type === 'race' ? step.gates[state.quest.count] : step.at) : state.tracked ? ((a) => a && [a.b.x, a.b.z])(life.actors.find((x) => x.spec.quest === state.tracked)) : null;
+        if (!at || state.zone) {
+          m.style.opacity = '0';
+          continue;
+        }
+      } else if (id === 'ship') at = landAt;
       else if (id === 'n') at = [p.x, p.z + 1000];
       else if (id === 'e') at = [p.x - 1000, p.z];
       else if (id === 's') at = [p.x, p.z - 1000];
@@ -927,6 +1150,38 @@ export async function create(canvas, ctx) {
         if (state.actQueued) act(tg);
         places();
       }
+    }
+    // the blaster (F, held to keep firing)
+    if ((state.fireQueued || state.keys.fire || state.buttons.fire) && state.phase === 'walk') fire();
+    state.fireQueued = false;
+    // the quest: its clock, where you are, what's out there for it
+    if (state.quest && (state.phase === 'walk' || state.phase === 'ride')) {
+      const p = me().st;
+      questEvent({ type: 'tick', dt });
+      questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
+    }
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: (id) => { const a = life.find(id); return a ? [a.b.x, a.b.z] : null; } })) questEvent(ev);
+    if (state.phase === 'walk' || state.phase === 'ride') for (const s of activity.shooters(dt, me().st)) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+    const hit = blaster.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null);
+    if (hit) hurt(hit);
+    if (state.health < 100 && state.t - state.hurtAt > 4) {
+      state.health = Math.min(100, state.health + dt * 12);
+      if (Math.round(state.health) % 10 === 0) emit({ type: 'health', value: Math.round(state.health) });
+    }
+    // the marks over whoever has a quest to give
+    for (const a of life.actors) {
+      const q = a.spec.quest;
+      if (!q) continue;
+      let m = givers.find((g) => g.a === a);
+      if (!m) {
+        m = { a, sprite: new THREE.Sprite(markMat) };
+        m.sprite.scale.set(0.6, 0.6, 1);
+        scene.add(m.sprite);
+        givers.push(m);
+      }
+      const on = !state.done.has(q) && !state.quest && a.fig;
+      m.sprite.visible = Boolean(on);
+      if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
     state.jumpQueued = false;
     state.actQueued = false;
@@ -1030,6 +1285,7 @@ export async function create(canvas, ctx) {
     update(next) {
       props = next;
       for (const id of next.found ?? []) state.found.add(id);
+      for (const id of next.done ?? []) state.done.add(id);
     },
     setVisible(on) {
       shown = on;
@@ -1048,11 +1304,27 @@ export async function create(canvas, ctx) {
         if (name === 'jump') state.jumpQueued = true;
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
+        if (name === 'fire') state.buttons.fire = true;
         if (name === 'swap') swap();
         ctx.invalidate();
       },
       release(name) {
         if (name === 'run') state.buttons.run = false;
+        if (name === 'fire') state.buttons.fire = false;
+      },
+      // the quest list: follow one (its giver on the compass; one with
+      // nobody to give it starts), or drop the one you're on
+      track(id) {
+        const q = questOf(id);
+        if (!q || state.done.has(id)) return;
+        state.tracked = id;
+        if (!q.giver && !q.place && !state.quest) beginQuest(q);
+      },
+      drop() {
+        if (!state.quest) return;
+        state.quest = null;
+        activity.show(null, null);
+        announce();
       },
     },
     // (for tests: the world moved on without drawing it, in steps)
@@ -1083,7 +1355,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, quest: state.quest, zone: state.zone?.id ?? null, health: state.health }),
     dispose() {
       disposed = true;
       window.removeEventListener('keydown', keyDown);
@@ -1097,6 +1369,10 @@ export async function create(canvas, ctx) {
       props.net?.walk?.(null);
       sounds.dispose();
       peers.dispose();
+      activity.dispose();
+      blaster.dispose();
+      markMat.map.dispose();
+      markMat.dispose();
       life.dispose();
       placer.dispose();
       for (const p of people) p.fig?.dispose?.();

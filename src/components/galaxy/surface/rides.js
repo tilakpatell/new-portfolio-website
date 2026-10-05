@@ -8,14 +8,12 @@
 // over the ground (0: on its feet); bank: radians, leaning into a turn;
 // radius: its footprint; grip: 0…1, how much it goes where it's pointed
 // (less: it drifts); seat: [x, y, z] where you sit, in its own frame; cam:
-// [distance, height]; trail: it leaves a mark in the ground behind it
-// (Crait's red under the salt); figure: a creature (figures.js's kind)
+// [distance, height]; trail: it leaves a mark in the ground behind it;
+// figure: a creature (figures.js's kind)
 
 export const RIDES = {
   landspeeder: { name: 'the landspeeder', top: 24, boost: 33, accel: 9, brake: 20, turn: 1.35, hover: 0.8, bank: 0.28, radius: 1.5, grip: 0.84, seat: [-0.42, 0.42, -0.05], cam: [9, 3.2], hum: 'speeder' },
   speederbike: { name: 'the speeder bike', top: 34, boost: 52, accel: 17, brake: 28, turn: 1.75, hover: 1.0, bank: 0.55, radius: 0.75, grip: 0.92, seat: [0, 0.62, -0.4], cam: [6.5, 2.2], hum: 'bike' },
-  skispeeder: { name: 'the ski speeder', top: 28, boost: 38, accel: 10, brake: 18, turn: 1.25, hover: 0.55, bank: 0.3, radius: 2.2, grip: 0.8, seat: [0, 0.9, 0.4], cam: [12, 3.6], trail: true, hum: 'speeder' },
-  reyspeeder: { name: 'Rey’s speeder', top: 30, boost: 44, accel: 13, brake: 24, turn: 1.5, hover: 0.9, bank: 0.42, radius: 1.2, grip: 0.86, seat: [0, 0.75, -0.6], cam: [8, 2.6], hum: 'bike' },
   tauntaun: { name: 'the tauntaun', figure: 'tauntaun', top: 8, boost: 13, accel: 6, brake: 12, turn: 2.1, hover: 0, bank: 0.08, radius: 0.8, grip: 1, seat: [0, 1.75, -0.3], cam: [6.5, 2.8] },
   kaadu: { name: 'the kaadu', figure: 'kaadu', top: 9, boost: 14, accel: 7, brake: 12, turn: 2.2, hover: 0, bank: 0.08, radius: 0.8, grip: 1, seat: [0, 1.6, -0.2], cam: [6.5, 2.6] },
   bantha: { name: 'the bantha', figure: 'bantha', top: 4.5, boost: 7, accel: 3, brake: 6, turn: 1.1, hover: 0, bank: 0, radius: 1.6, grip: 1, seat: [0, 2.7, -0.2], cam: [9, 3.6] },

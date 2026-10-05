@@ -21,9 +21,14 @@ import '../components/galaxy/surface/surface.css';
 export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what you've found on each world
 export const LAUNCH_KEY = 'tp-galaxy-launch'; // (session) the world you've just taken off from
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
+export const QUESTS_KEY = 'tp-galaxy-quests'; // { [system]: [quest ids] }: what you've done on each world
 
 const readFound = () => {
   const all = local.get(FOUND_KEY);
+  return all && typeof all === 'object' ? all : {};
+};
+const readDone = () => {
+  const all = local.get(QUESTS_KEY);
   return all && typeof all === 'object' ? all : {};
 };
 
@@ -57,6 +62,14 @@ export default function GalaxySurface() {
   const [toast, setToast] = useState(null); // { title, text, n }
   const [help, setHelp] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
+  const [quest, setQuest] = useState(null); // { id, name, text, left, shoot }
+  const [list, setList] = useState(false); // the things-to-do list, open
+  const [health, setHealth] = useState(100);
+  const [zone, setZone] = useState(null); // { id, name } inside somewhere
+  const [fade, setFade] = useState(0); // a moment's black, going in or out
+  const [aiming, setAiming] = useState(false);
+  const lines = useRef([]); // what's to be said, in turn
   const view = useRef({ live: false });
   const compass = useRef(null);
   const comms = useRef(null);
@@ -119,11 +132,55 @@ export default function GalaxySurface() {
       } else if (e.type === 'fell') {
         setToast((t) => ({ title: 'Long way down', text: 'You’d still be falling. Back to the ship.', n: (t?.n ?? 0) + 1 }));
         later('toast', 4000, () => setToast(null));
+      } else if (e.type === 'say') {
+        // lines in turn, each up long enough to read
+        const wasEmpty = !lines.current.length;
+        lines.current.push(...e.lines);
+        const next = () => {
+          const l = lines.current.shift();
+          if (!l) {
+            setTalk(null);
+            return;
+          }
+          setTalk((t) => ({ who: l.who, text: l.text, n: (t?.n ?? 0) + 1 }));
+          later('talk', 2600 + l.text.length * 42, next);
+        };
+        if (wasEmpty) next();
+      } else if (e.type === 'quest') setQuest(e.id ? e : null);
+      else if (e.type === 'questDone') {
+        const q = site?.quests.find((x) => x.id === e.id);
+        setDone((was) => {
+          if (was.includes(e.id)) return was;
+          const next = [...was, e.id];
+          local.set(QUESTS_KEY, { ...readDone(), [id]: next });
+          return next;
+        });
+        if (e.achievement) unlock(e.achievement);
+        setToast((t) => ({ title: q?.name ?? 'Done', text: q?.reward ?? 'Done.', n: (t?.n ?? 0) + 1, done: true }));
+        later('toast', 6000, () => setToast(null));
+      } else if (e.type === 'questFail') {
+        setToast((t) => ({ title: 'Not this time', text: e.why === 'time' ? 'Out of time. Back to the start of it: try again.' : 'Try that again.', n: (t?.n ?? 0) + 1 }));
+        later('toast', 3500, () => setToast(null));
+      } else if (e.type === 'health') setHealth(e.value);
+      else if (e.type === 'down') {
+        setToast((t) => ({ title: 'Knocked down', text: 'Back on your feet. Try that again.', n: (t?.n ?? 0) + 1 }));
+        later('toast', 3500, () => setToast(null));
+      } else if (e.type === 'zone') {
+        setFade(1);
+        later('fade', 350, () => setFade(0));
+        setZone(e.id ? { id: e.id, name: e.name } : null);
+      } else if (e.type === 'fire') {
+        setAiming(true);
+        later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') takeOff();
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
     },
     [site, id, takeOff, unlock],
   );
+  const track = (qid) => {
+    view.current?.input?.('track', qid);
+    setList(false);
+  };
 
   // H for the controls; Escape shuts them
   useEffect(() => {
@@ -131,7 +188,11 @@ export default function GalaxySurface() {
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'h' || e.key === 'H' || e.key === '?') setHelp((h) => !h);
-      if (e.key === 'Escape') setHelp(false);
+      if (e.key === 'q' || e.key === 'Q') setList((l) => !l);
+      if (e.key === 'Escape') {
+        setHelp(false);
+        setList(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -148,7 +209,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView system={id} ship={ship} loadout={loadout} found={found} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView system={id} ship={ship} loadout={loadout} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -156,7 +217,7 @@ export default function GalaxySurface() {
           <span className="surface-dot" aria-hidden="true" />
           {sys.name}
         </Link>
-        <p className="surface-place">{place?.name ?? site.place}</p>
+        <p className="surface-place">{zone?.name ?? place?.name ?? site.place}</p>
         <p className="surface-count">
           {left ? `${site.places.length - left} of ${site.places.length} places found` : `All ${site.places.length} places found`}
         </p>
@@ -169,6 +230,11 @@ export default function GalaxySurface() {
             {d.toUpperCase()}
           </span>
         ))}
+        <span data-id="quest" className="surface-mark surface-mark-quest">
+          <i />
+          <b>{quest ? '◆' : '!'}</b>
+          <em className="d" />
+        </span>
         <span data-id="ship" className="surface-mark surface-mark-ship">
           <i />
           <b>Ship</b>
@@ -183,6 +249,49 @@ export default function GalaxySurface() {
         ))}
       </div>
 
+      {/* the quest you're on, and the things to do here */}
+      {phase !== 'landing' && site.quests.length > 0 && (
+        <div className="surface-quest">
+          {quest ? (
+            <>
+              <p className="surface-quest-name">{quest.name}</p>
+              <p className="surface-quest-step">
+                {quest.text}
+                {quest.left != null && <span className="surface-quest-time"> · {quest.left}s</span>}
+              </p>
+              <button type="button" className="surface-quest-link" onClick={() => view.current?.input?.('drop')}>
+                Drop it
+              </button>
+            </>
+          ) : (
+            <button type="button" className="surface-quest-open" onClick={() => setList((l) => !l)} aria-expanded={list}>
+              <kbd>Q</kbd> Things to do · {done.length}/{site.quests.length}
+            </button>
+          )}
+        </div>
+      )}
+      {list && (
+        <div className="surface-list" role="dialog" aria-label="Things to do">
+          <p className="surface-list-title">Things to do on {sys.name}</p>
+          <ul>
+            {site.quests.map((q) => (
+              <li key={q.id} data-done={done.includes(q.id) ? '' : undefined}>
+                <button type="button" onClick={() => track(q.id)} disabled={done.includes(q.id)}>
+                  <b>{q.name}</b>
+                  <span>{done.includes(q.id) ? 'Done' : q.about}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {health < 100 && (
+        <div className="surface-health" role="meter" aria-label="Health" aria-valuenow={Math.round(health)} aria-valuemin={0} aria-valuemax={100}>
+          <span style={{ width: `${health}%` }} />
+        </div>
+      )}
+      {(aiming || quest?.shoot) && phase === 'walk' && <span className="surface-crosshair" aria-hidden="true" />}
+      <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">
           <kbd>E</kbd> {prompt}
@@ -194,7 +303,7 @@ export default function GalaxySurface() {
         </p>
       )}
       {toast && (
-        <div key={toast.n} className="surface-toast" role="status">
+        <div key={toast.n} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
           <p className="surface-toast-title">{toast.title}</p>
           <p className="surface-toast-text">{toast.text}</p>
         </div>
@@ -230,7 +339,10 @@ export default function GalaxySurface() {
             </li>
             <li>Drag to look round · scroll to zoom</li>
             <li>
-              <kbd>E</kbd> talk, ride, get in the ship
+              <kbd>E</kbd> talk, ride, go in, get in the ship
+            </li>
+            <li>
+              <kbd>F</kbd> fire your blaster · <kbd>Q</kbd> things to do
             </li>
             <li>
               <kbd>Tab</kbd> swap to {crew?.label?.split(' and ')[1] ?? 'your crewmate'}

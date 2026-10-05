@@ -12,6 +12,4 @@ export const MODELS = {
   probe: { uid: 'd2de16581b574e2584ef75d87e358356', as: 'the probe droids', metres: 2.4, yaw: 0, tris: 8000, tex: 512 },
   // a DF.9 anti-infantry battery
   turret: { uid: 'e15d4f794ed24f8fb385695ce5255bbd', as: 'the DF.9 turrets', metres: 4, yaw: Math.PI / 2, tris: 16000, tex: 1024 },
-  // the First Order's AT-M6 walker
-  atm6: { uid: 'd35fe6f380ac4054bbb6db857ee89051', as: 'the AT-M6 walkers', metres: 30, yaw: -Math.PI / 2, tris: 20000, tex: 512, maps: 256 },
 };

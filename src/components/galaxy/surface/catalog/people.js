@@ -14,14 +14,9 @@ export const MODELS = {
   snowtrooper: { uid: '751b09d5b8aa49d4809a94676190ea2b', as: 'the snowtroopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // a scout trooper, as on Endor
   scouttrooper: { uid: 'bdcf732e6f374b6d87b02cd023991aae', as: 'the scout troopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
-  // a First Order stormtrooper
-  fotrooper: { uid: 'b7341f5280484497a72451c3f62cd0c1', as: 'the First Order stormtroopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // a B2 super battle droid
   superdroid: { uid: 'a0f947934672450bad323d6438499812', as: 'the super battle droids', metres: 1.93, yaw: 0, tris: 4500, tex: 512, rig: true, anim: { idle: 'at attention', walk: 'walk guns up' } },
   c3po: { uid: '19b9099bf348488bb781677de04ba0c0', as: 'C-3PO', metres: 1.67, yaw: 0, tris: 7000, tex: 512, rig: true, anim: { idle: 'mixamo.com' } },
-  bb8: { uid: '69c8b77c726e406c99ab0839baee3ce9', as: 'BB-8', metres: 0.67, yaw: 0, tris: 8000, tex: 512 },
-  // a Sith trooper, in red (The Rise of Skywalker)
-  sithtrooper: { uid: '91f4fd40a92e4d05b3bbbe011e91d910', as: 'the Sith troopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // a shoretrooper, as on Scarif
   shoretrooper: { uid: '67611b62211648b7805359ab148c949a', as: 'the shoretroopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   vader: { uid: '15c6b612a5834924b0959261aa89e80f', as: 'Darth Vader', metres: 2.02, yaw: 0, tris: 8000, tex: 512 },

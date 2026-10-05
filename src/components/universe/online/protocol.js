@@ -197,7 +197,7 @@ export function readFoot(data) {
 // lead, mate, ride }, each walker [who, x, y, z, yaw, speed], ride the
 // kind they're on (or null); or null once they've taken off again
 export const WALK_MS = 100;
-const RIDES_SEEN = ['landspeeder', 'speederbike', 'skispeeder', 'reyspeeder', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
+const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
 const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed)] : null);
 export function writeWalk(w) {

@@ -12,7 +12,8 @@
 //
 // site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
-//   or [who, text]), scale, solid }]
+//   or [who, text]), scale, solid, id (a quest's name for them), quest (the
+//   quest they give: quests.js's) }]
 
 import * as THREE from 'three';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
@@ -202,6 +203,8 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
   const avoider = (self) => (x, z) => {
     if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
     for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
+    // (inside somewhere, the floor's flat and the world's edge is far off)
+    if (self.spec.zone) return false;
     return world.normalAt?.(x, z)[1] < 0.75 || Math.hypot(x, z) > (world.reach ?? 600);
   };
 
@@ -212,7 +215,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     update(dt, you) {
       for (const a of actors) {
         const { b, spec } = a;
-        const near = you && Math.hypot(you.x - b.x, you.z - b.z) < TALK && (spec.says?.length || spec.turn);
+        const near = you && Math.hypot(you.x - b.x, you.z - b.z) < TALK && (spec.says?.length || spec.turn || spec.quest || spec.id);
         if (near) {
           b.speed = Math.max(0, b.speed - dt * 4);
           b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), 4 * dt);
@@ -225,12 +228,16 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
         if (a.fig && (!small || !you || Math.hypot(you.x - b.x, you.z - b.z) < 60)) a.fig.update(dt, Math.min(1, b.speed / 2.4));
       }
     },
+    // one by its id (a quest's), where it is now
+    find(id) {
+      return actors.find((a) => a.spec.id === id) ?? null;
+    },
     // the nearest one with something to say, within reach of (x, z)
     talker(x, z, reach = 3) {
       let best = null;
       let bestD = reach;
       for (const a of actors) {
-        if (!a.spec.says?.length || !a.fig) continue;
+        if (!(a.spec.says?.length || a.spec.quest || a.spec.id) || !a.fig) continue;
         const d = Math.hypot(x - a.b.x, z - a.b.z);
         if (d < bestD) {
           best = a;
@@ -241,6 +248,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     },
     // what they say next (round and round their lines)
     say(a) {
+      if (!a.spec.says?.length) return null;
       const line = a.spec.says[a.said % a.spec.says.length];
       a.said += 1;
       return Array.isArray(line) ? { who: line[0], text: line[1] } : { who: a.spec.name ?? a.spec.kind, text: line };

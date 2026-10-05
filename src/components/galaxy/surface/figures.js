@@ -18,8 +18,6 @@ const PEOPLE = {
   sandtrooper: { tall: 1.83, body: '#e2d6c0', legs: '#e2d6c0', joints: '#4a3c2a', helmet: 'trooper', pauldron: '#c84a2a', pack: '#b8aa90', bulk: 1 },
   snowtrooper: { tall: 1.83, body: '#e8ecf2', legs: '#e8ecf2', joints: '#7a8494', helmet: 'trooper', robe: '#dfe4ec', bulk: 1.05 },
   scouttrooper: { tall: 1.83, body: '#e8e8e4', legs: '#1a1a1a', joints: '#1a1a1a', helmet: 'scout', bulk: 0.9 },
-  fotrooper: { tall: 1.83, body: '#f4f4f2', legs: '#f4f4f2', joints: '#101010', helmet: 'trooper', bulk: 1 },
-  sithtrooper: { tall: 1.83, body: '#b01e1e', legs: '#b01e1e', joints: '#1a0a0a', helmet: 'trooper', bulk: 1 },
   clone: { tall: 1.83, body: '#eeeeea', legs: '#eeeeea', joints: '#2a2a2a', helmet: 'clone', stripe: '#3a6ad0', bulk: 1 },
   rebel: { tall: 1.78, body: '#c8b48c', legs: '#4a4a3e', helmet: 'rebel', skin: '#d8a888', bulk: 1 },
   pilot: { tall: 1.78, body: '#e8742a', legs: '#e8742a', helmet: 'pilot', skin: '#e0b090', bulk: 1 },
@@ -43,7 +41,6 @@ const BEASTS = {
   tauntaun: { tall: 2.5, fur: '#d8d0c4', skin: '#9a9488', biped: true, len: 1.6, wide: 0.8, leg: 1.1, neck: 0.9, head: 0.5, horns: 'back', tail: 1.2 },
   kaadu: { tall: 2.2, fur: '#8a7a5a', skin: '#6a5a3a', biped: true, len: 1.5, wide: 0.7, leg: 1.2, neck: 0.8, head: 0.5, tail: 1.0, beak: true },
   wampa: { tall: 3.0, fur: '#f0ece6', skin: '#c8bfb2', ape: true, len: 1.2, wide: 1.4, leg: 1.0, head: 0.6, horns: 'curl' },
-  vulptex: { tall: 0.8, fur: '#e8eef4', skin: '#b8c4d4', len: 1.0, wide: 0.35, leg: 0.4, neck: 0.25, head: 0.25, tail: 0.9, crystal: true },
   nerf: { tall: 1.4, fur: '#7a5a3a', skin: '#3a2a1e', len: 2.0, wide: 1.0, leg: 0.6, neck: 0.3, head: 0.45, horns: 'curl', tail: 0.3 },
 };
 
