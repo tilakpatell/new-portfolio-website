@@ -119,7 +119,8 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
 
   if (!soft) {
     const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
-    const ink = new InkPass(scene, camera, { hide: () => [...concourse.hide, fxRoot], width: big ? 1.15 : 1 });
+    const unlined = [...concourse.hide, fxRoot];
+    const ink = new InkPass(scene, camera, { hide: () => unlined, width: big ? 1.15 : 1 });
     stage.composer.insertPass(ink, 1);
   }
 
@@ -128,6 +129,8 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
   const tmp2 = V(0, 0, 0);
   const look = V(0, 0, 0);
 
+  // the grade each frame, changed in place (nothing new made a frame)
+  const graded = { vignette: 0.2, high: [0.006, 0.006, 0.014], shadow: [0, 0.008, 0.03] };
   const render = (s, ms, fast = 1) => {
     const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
@@ -143,7 +146,10 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
     hemi.color.setRGB(1, 0.91 - A.red * 0.3, 0.77 - A.red * 0.25);
     key.intensity = 1.35 * (1 - A.red * 0.45);
     alarm.intensity = inside ? 0 : pulse * 140;
-    stage.grade({ vignette: 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0), high: [0.006 + pulse * 0.05, 0.006, 0.014], shadow: [pulse * 0.025, 0.008, 0.03] });
+    graded.vignette = 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0);
+    graded.high[0] = 0.006 + pulse * 0.05;
+    graded.shadow[0] = pulse * 0.025;
+    stage.grade(graded);
 
     concourse.update(t, dt, { gateOpen: s.gateOpen, hangarOpen: s.hangarOpen, escapeT: s.escapeT });
     concourse.group.visible = !inside;
