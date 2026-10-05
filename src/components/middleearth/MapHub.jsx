@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import ModelCredits from '../ModelCredits';
 import { CHAPTERS } from './chapters';
+import { hidden as hiddenPlace, hiddenAt } from './hidden';
 import { useTravellers } from './towns/useTravellers';
 
 // how far from a place on the sheet (800 across) a click still means it
@@ -133,6 +134,12 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     }
     return best;
   };
+  // and on the flat map, a click right on a hidden place's name (./hidden.js)
+  const secret = (x, y) => {
+    if (api.current?.tap) return null;
+    const p = api.current?.unproject?.(x, y);
+    return p ? hiddenAt(p.x, p.y) : null;
+  };
   const [area, setArea] = useState(null);
   // once the visitor starts to move about, the heading steps out of the way
   const [roam, setRoam] = useState(false);
@@ -156,7 +163,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
       if (e.pointerType !== 'mouse') return;
       const hit = a?.tap?.(e.clientX, e.clientY);
       const id = hit?.who ? null : hit?.at ? nearest(hit.at) : nearest(e.clientX, e.clientY);
-      e.currentTarget.dataset.who = hit?.who ? 'true' : '';
+      e.currentTarget.dataset.who = hit?.who || (!hit && secret(e.clientX, e.clientY)) ? 'true' : '';
       if (id !== area) {
         setArea(id);
         onHover(id);
@@ -203,7 +210,11 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     if (drag.current.moved <= 6) {
       // a tap: someone to talk to, a place to go, or ground to walk to
       const hit = a?.tap?.(e.clientX, e.clientY);
+      // a hidden place (the tower at Isengard): no pin, no label, just itself
+      if (hit?.who && hiddenPlace(hit.who)) return onGo(hit.who);
       if (hit?.who) return a.say(hit.who);
+      const found = !hit && secret(e.clientX, e.clientY);
+      if (found) return onGo(found.id);
       // on a place: go there (and in); anywhere else: walk there
       const id = hit?.at ? nearest(hit.at) : nearest(e.clientX, e.clientY);
       if (id) return onGo(id);
