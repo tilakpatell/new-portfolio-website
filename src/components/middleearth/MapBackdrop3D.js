@@ -14,6 +14,7 @@ import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { budget, device, pixelRatio } from '../../lib/device';
+import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
 const SCALE = 10; // sheet units to one of the scene's
 const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
@@ -21,7 +22,7 @@ const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
 export { mapFont };
 
 export function createMapBackdrop(canvas, { onLost } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power', stencil: false });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power', stencil: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -224,7 +225,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       o.material?.dispose();
     });
     renderer.dispose();
-    renderer.forceContextLoss();
+    releaseContext(renderer); // (lib/three/renderer: once nothing is compiling)
   };
 
   return {
@@ -310,6 +311,8 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     resize,
     dispose,
     renderer,
+    // its shaders, linked in the background: the page waits for this before the first frame
+    ready: precompile(renderer, scene, camera),
     get lost() {
       return lost;
     },

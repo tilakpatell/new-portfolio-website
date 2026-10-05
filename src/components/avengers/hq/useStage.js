@@ -5,6 +5,7 @@
 // settles. It draws only while it's on screen; the others wait with their
 // menus over a dark screen, their code fetched ahead as they come near.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { settle } from '../../../lib/settle';
 
 // ── one live 3D view on the page ──
 const SETTLE = 240; // ms of quiet scrolling before a view is built
@@ -37,6 +38,11 @@ const schedule = () => {
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   window.__LIVE__ = { stages, get current() { return current; } };
 }
+
+// A view's shaders, linked in the background before its first frame
+// (hq/engine's precompile), so drawing it doesn't stall the page; four seconds
+// at most, and never a failure.
+export const warmed = (v) => settle(v?.engine?.precompile?.(), 4000);
 
 // `active`: this one is the page's live 3D view; `visible`: it's on screen
 export function useLive(ref, { id, enabled = true, warm }) {
@@ -125,6 +131,11 @@ export function useStage(load, { enabled, id, forced = false }) {
         try {
           const v = await mod.create(canvas.current, { onLost: () => drop('lost'), onSlow: () => !forcedRef.current && drop('slow') });
           if (dead) {
+            v.dispose();
+            return;
+          }
+          await warmed(v);
+          if (dead || failed.current) {
             v.dispose();
             return;
           }

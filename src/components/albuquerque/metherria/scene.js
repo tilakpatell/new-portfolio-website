@@ -18,6 +18,7 @@ import { ABQ, moodGesture } from '../wardrobe';
 import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 import { pixelRatio } from '../../../lib/device';
+import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
 const BENCH_Y = 0.92;
@@ -55,7 +56,7 @@ const flaskRadius = (y) => {
 const FLASK_H = 0.27; // the liquid can rise to the neck
 
 export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
@@ -1123,7 +1124,6 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   };
   canvas.addEventListener('webglcontextlost', onContextLost);
   setPlace('rv');
-  renderer.compile(scene, camera);
 
   // where a point is on screen, for labels over the customers
   const project = (x, y, z) => {
@@ -1174,15 +1174,19 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     }
     env.dispose();
     renderer.dispose();
-    renderer.forceContextLoss(); // give the context back now, not when it's collected
+    // give the context back soon, not when it's collected (lib/three/renderer:
+    // once nothing is compiling, so the wait for it lands on no one's frame)
+    releaseContext(renderer);
   };
 
   // the room as it should look: photo materials and HDRI in, or given up on
-  // after a few seconds (and painted instead), so it never shows half-dressed
+  // after a few seconds (and painted instead), so it never shows half-dressed;
+  // then its shaders, linked in the background, so the first frame doesn't
+  // stop the page (lib/three/renderer's precompile)
   const whenReady = () => {
     const look = lookFor(place ?? 'rv');
     const wait = new Promise((r) => setTimeout(r, 6000));
-    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => renderer.compile(scene, camera));
+    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => (disposed || lost ? null : precompile(renderer, scene, camera)));
   };
 
   return { render, resize, dispose, project, standeeAnchors, diagnostics, whenReady, get lost() { return lost; } };

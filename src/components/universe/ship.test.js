@@ -87,18 +87,76 @@ describe('flying the ship', () => {
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
 
-  it('climbs and dives, nose up or down as it goes, and levels off when let go', () => {
-    const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
-    const up = fly(s, { throttle: 1, climb: 1 }, 1, []).ship;
+  it('turns quicker, and pitches quicker, with the sensitivity turned up', () => {
+    const s = { ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.cruise };
+    const turned = (k) => fly(s, { throttle: 1, turn: 1, turnRate: k }, 0.5, []).ship.heading;
+    expect(Math.abs(turned(1.5))).toBeGreaterThan(Math.abs(turned(1)) * 1.3);
+    const pitched = (k) => fly(s, { throttle: 1, climb: 1, pitchRate: k }, 0.15, []).ship.pitch;
+    expect(pitched(1.5)).toBeGreaterThan(pitched(1) * 1.2);
+  });
+});
+
+describe('up and down', () => {
+  const level = { ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.cruise };
+  // the ship's path, frame by frame
+  const path = (s, input, seconds) => {
+    const out = [];
+    for (let t = 0; t < seconds; t += 1 / 60) out.push((s = step(s, input, 1 / 60, []).ship));
+    return out;
+  };
+
+  it('points the nose up with the stick and flies up along it, as a fighter does', () => {
+    const { ship } = fly(level, { throttle: 1, climb: 1 }, 1, []);
+    expect(ship.pitch).toBeGreaterThan(SHIP.pitchMax * 0.9);
+    expect(ship.vy).toBeCloseTo(ship.speed * Math.sin(ship.pitch), 1);
+    expect(ship.y).toBeGreaterThan(level.y + 2.5);
+    // (its way forward is what's left: it goes up, not up and as far on)
+    const flat = fly(level, { throttle: 1 }, 1, []).ship;
+    expect(Math.abs(ship.z - level.z)).toBeLessThan(Math.abs(flat.z - level.z) * 0.9);
+  });
+
+  it('dives the same way, nose down', () => {
+    const { ship } = fly(level, { throttle: 1, climb: -1 }, 1, []);
+    expect(ship.pitch).toBeLessThan(-SHIP.pitchMax * 0.9);
+    expect(ship.y).toBeLessThan(level.y - 2.5);
+  });
+
+  it('climbs and dives faster the faster it flies', () => {
+    const slow = fly(level, { throttle: 1, climb: 1 }, 0.8, []).ship.vy;
+    const fast = fly({ ...level, speed: SHIP.boost }, { throttle: 1, climb: 1, boost: true }, 0.8, []).ship.vy;
+    expect(fast).toBeGreaterThan(slow * 2.5);
+  });
+
+  it('eases the nose round, never snapping it', () => {
+    const frames = [level, ...path(level, { throttle: 1, climb: 1 }, 0.6), ...path({ ...level, pitch: SHIP.pitchMax }, { throttle: 1, climb: -1 }, 1)];
+    for (let i = 1; i < frames.length; i++) expect(Math.abs(frames[i].pitch - frames[i - 1].pitch)).toBeLessThanOrEqual(SHIP.pitchRate / 60 + 1e-9);
+  });
+
+  it('levels off by itself when let go', () => {
+    const up = fly(level, { throttle: 1, climb: 1 }, 1, []).ship;
+    const after = fly(up, { throttle: 1 }, 1.2, []).ship;
+    expect(Math.abs(after.pitch)).toBeLessThan(0.02);
+    expect(Math.abs(after.vy)).toBeLessThan(0.1);
+  });
+
+  it('still rises and sinks on its thrusters when stopped, the nose near level', () => {
+    const s = { ...spawn(null), x: 0, z: 0 };
+    const up = fly(s, { climb: 1 }, 1, []).ship;
+    expect(up.vy).toBeGreaterThan(SHIP.climb * 0.8);
     expect(up.y).toBeGreaterThan(s.y + 2);
-    expect(up.vy).toBeCloseTo(SHIP.climb, 1);
-    expect(up.pitch).toBeGreaterThan(0.3);
-    const down = fly(s, { throttle: 1, climb: -1 }, 1, []).ship;
+    expect(Math.abs(up.pitch)).toBeLessThan(0.35);
+    const down = fly(s, { climb: -1 }, 1, []).ship;
     expect(down.y).toBeLessThan(s.y - 2);
-    expect(down.pitch).toBeLessThan(-0.3);
-    const level = fly(up, { throttle: 1 }, 2, []).ship;
-    expect(level.vy).toBeCloseTo(0, 3);
-    expect(Math.abs(level.pitch)).toBeLessThan(0.01);
+  });
+
+  it('rounds out before the ceiling at speed, rather than punching through it', () => {
+    for (const way of [1, -1]) {
+      const s = { ...level, y: way * (SHIP.ceiling - 5), speed: SHIP.boost };
+      const frames = path(s, { throttle: 1, climb: way, boost: true }, 3);
+      const top = Math.max(...frames.map((f) => way * f.y));
+      expect(top).toBeLessThan(SHIP.ceiling + 0.75);
+      expect(Math.abs(frames.at(-1).pitch)).toBeLessThan(0.2);
+    }
   });
 
   it('stops at the ceiling and the floor, and says so once', () => {

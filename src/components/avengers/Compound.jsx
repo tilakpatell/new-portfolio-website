@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { use3D } from '../../lib/gpu';
 import { prefersReducedMotion, useFrameLoop } from '../../lib/hooks';
-import { register, useLive } from './hq/useStage';
+import { register, useLive, warmed } from './hq/useStage';
 import { APRON, arcPt, BERM, BRIDGE, C, CRES, CRES_FOOT, depthOf, GATE, HANGAR, K, LAB, LAWN, OX, OY, P, PROW, RIVER, ROADS, SHORE, SPOTS, STALLS, TRAINING, TREES, VH, VW } from './compound/plan';
 
 // The Avengers compound in upstate New York, from the air, in isometric: the
@@ -515,6 +515,11 @@ function useCompound3D(enabled) {
         try {
           const v = await mod.create(canvas.current, { calm: calm.current, onLost: fail });
           if (dead) {
+            v.dispose();
+            return;
+          }
+          await warmed(v); // its shaders linked before the first frame
+          if (dead || v.engine?.lost) {
             v.dispose();
             return;
           }

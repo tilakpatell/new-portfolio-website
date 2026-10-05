@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIM, aimAngles, assist, bearing, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
+import { AIM, aimAngles, assist, assistAmount, bearing, dirTo, edgeOf, intercept, nose, onScreen, sweptHit, track } from './targeting';
 
 const ship = { x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0 }; // nose along −z
 const hunter = (id, at, vel = [0, 0, 0]) => ({ id, at, vel, size: 0.3 });
@@ -71,6 +71,58 @@ describe('the lock', () => {
     lock = track(ship, cands, lock, 1 / 60, { cycle: true }); // round again (never the one behind)
     expect(lock.id).toBe('a');
   });
+
+  it('prefers the hunter coming at you over one as near the nose that is not', () => {
+    const calm = { ...hunter('a', [1.5, 0, -20]) };
+    const coming = { ...hunter('b', [-1.6, 0, -20]), threat: 1 };
+    expect(track(ship, [calm, coming], null, 1 / 60)?.id).toBe('b');
+  });
+
+  it('moves straight on to the next one round the nose when its target goes down', () => {
+    const lock = track(ship, [hunter('a', [0, 0, -20])], null, 1 / 60);
+    // the next is out past the pick-up cone, but well inside the hold
+    const next = hunter('b', [20 * Math.sin(0.6), 0, -20 * Math.cos(0.6)]);
+    expect(track(ship, [next], lock, 1 / 60)?.id).toBe('b');
+    // (a fresh look from nothing would not have picked it up)
+    expect(track(ship, [next], null, 1 / 60)).toBeNull();
+  });
+
+  it('holds a lock picked by hand for longer before letting it go', () => {
+    const lock = { id: 'a', out: 0, manual: true };
+    const behind = hunter('a', [0, 0, 20]);
+    expect(follow(ship, [behind], lock, AIM.lose + 0.2)?.id).toBe('a');
+    expect(follow(ship, [behind], lock, AIM.loseManual + 0.2)).toBeNull();
+  });
+
+  it('cycles the other way round too', () => {
+    const cands = [hunter('a', [0, 0, -20]), hunter('b', [5, 0, -20]), hunter('c', [-9, 0, -20])];
+    let lock = track(ship, cands, null, 1 / 60);
+    lock = track(ship, cands, lock, 1 / 60, { cycle: -1 });
+    expect(lock.id).toBe('c');
+    lock = track(ship, cands, lock, 1 / 60, { cycle: -1 });
+    expect(lock.id).toBe('b');
+  });
+
+  it('marks a lock moved on to by hand as picked by hand', () => {
+    const cands = [hunter('a', [0, 0, -20]), hunter('b', [5, 0, -20])];
+    const lock = track(ship, cands, track(ship, cands, null, 1 / 60), 1 / 60, { cycle: true });
+    expect(lock).toMatchObject({ id: 'b', manual: true });
+  });
+});
+
+describe('the guns', () => {
+  it('reach well past where the hunters open fire (16 out)', () => {
+    expect(AIM.bolt * AIM.life).toBeGreaterThan(30);
+    expect(AIM.range).toBeGreaterThanOrEqual(AIM.bolt * AIM.life);
+  });
+
+  it('are fast enough to catch the quickest hunter crossing the nose, soon', () => {
+    const p = intercept(ship, AIM.bolt, [0, 0, -20], [26, 0, 0]);
+    expect(p).not.toBeNull();
+    expect(p.t).toBeLessThan(AIM.life);
+    // and the lead is a modest angle off the target, not a wild guess
+    expect(Math.atan2(p.x, -p.z)).toBeLessThan(0.5);
+  });
 });
 
 describe('the lead', () => {
@@ -120,6 +172,29 @@ describe('the help onto the lead', () => {
     expect(a).toBeLessThan(0.9 * mid);
   });
 
+  it('follows the aim-assist setting: none when off, the full bend further out when strong', () => {
+    const want = off(AIM.assist * 1.25); // just past the usual full-bend cone
+    expect(assist(ahead, want, 0)).toEqual(ahead);
+    expect(assist(ahead, want, 1)).not.toEqual(want);
+    expect(assist(ahead, want, 1.6)).toEqual(want);
+  });
+
+  it('forgives a little more up and down than side to side', () => {
+    const a = AIM.assist * 1.15;
+    const up = [0, Math.sin(a), -Math.cos(a)];
+    expect(assist(ahead, up)).toEqual(up);
+    expect(assist(ahead, off(a))).not.toEqual(off(a));
+  });
+
+  it('says how much of the bend a shot gets: all of it, some, or none', () => {
+    expect(assistAmount(ahead, off(AIM.assist * 0.5))).toBe(1);
+    const mid = assistAmount(ahead, off((AIM.assist + AIM.assistEdge) / 2));
+    expect(mid).toBeGreaterThan(0.1);
+    expect(mid).toBeLessThan(0.9);
+    expect(assistAmount(ahead, off(AIM.assistEdge + 0.1))).toBe(0);
+    expect(assistAmount(ahead, off(AIM.assist * 0.5), 0)).toBe(0);
+  });
+
   it('turns a direction back into a heading and a pitch', () => {
     expect(aimAngles([0, 0, -1])).toEqual({ heading: -0, pitch: 0 });
     const { heading, pitch } = aimAngles(nose({ heading: 1.2, pitch: -0.3 }));
@@ -150,3 +225,21 @@ describe('the edge of the screen', () => {
     expect(onScreen(500, 690, 10, rect)).toBe(false);
   });
 });
+
+describe('a hit', () => {
+  it('counts a bolt that passes through a target crossing its path during the frame', () => {
+    // where the target ends up the bolt has already passed, but they met halfway
+    const k = sweptHit([0, 0, 0], [0, 0, -1], [-0.5, 0, -0.5], [0.5, 0, -0.5], 0.3);
+    expect(k).toBeCloseTo(0.5, 6);
+  });
+
+  it('misses a target that moves out of the way first', () => {
+    expect(sweptHit([0, 0, 0], [0, 0, -1], [0, 0, -0.4], [0, 2, -0.4], 0.3)).toBeNull();
+  });
+
+  it('counts one the bolt and the target close on head on, even faster than a frame', () => {
+    // closing at 80 a second, a sixtieth of a second: they pass through each other
+    expect(sweptHit([0, 0, 0], [0, 0, -1], [0, 0.1, -1.2], [0, 0.1, -0.1], 0.3)).not.toBeNull();
+  });
+});
+

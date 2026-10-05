@@ -18,6 +18,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
+import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
 
@@ -269,7 +270,7 @@ function buildTie(P) {
 }
 
 export function createTrench3D(canvas, { onLost, onSlow } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -485,7 +486,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     .loadAsync('/models/meshy/x-wing-fighter.glb')
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
-      await renderer.compileAsync(model, camera, scene).catch(() => {});
+      await precompile(renderer, model, camera, scene, composer.readBuffer); // (drawn through the composer)
       if (disposed || lost) return disposeModel(model);
       mountXwing(xw, model);
     })
@@ -927,7 +928,9 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     watch();
   }
 
-  renderer.compile(scene, camera);
+  // every shader (the scene's, into the composer's buffer, and the passes')
+  // linked in the background: the run waits for this before its first 3D frame
+  const ready = Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
 
   // where a point in the world is on screen, in CSS pixels
   const project = (x, y, z) => {
@@ -952,5 +955,5 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     renderer.dispose();
   };
 
-  return { render, resize, project, dispose, get lost() { return lost; } };
+  return { render, resize, project, dispose, ready, get lost() { return lost; } };
 }
