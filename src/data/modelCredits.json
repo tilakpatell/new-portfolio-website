@@ -450,6 +450,17 @@
     "as": "the adobe houses",
     "file": "/models/galaxy/surface/adobe.glb"
   },
+  "surface-atst": {
+    "title": "Star Wars AT-ST [Rigged]",
+    "author": "smithson17",
+    "authorUrl": "https://sketchfab.com/smithson17",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-at-st-rigged-18164d3b3eb64ea1b8d3dc2ad5f4f9cf",
+    "where": "galaxy",
+    "as": "the AT-ST walkers",
+    "file": "/models/galaxy/surface/atst.glb"
+  },
   "surface-bantha": {
     "title": "Star Wars Bantha Walk",
     "author": "michael50",
@@ -460,6 +471,17 @@
     "where": "galaxy",
     "as": "the banthas",
     "file": "/models/galaxy/surface/bantha.glb"
+  },
+  "surface-ewok": {
+    "title": "Ewok",
+    "author": "Ulrik S. Selvik",
+    "authorUrl": "https://sketchfab.com/Nemi66",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ewok-77fb4fc353c64b8098bc2f71667f1062",
+    "where": "galaxy",
+    "as": "the Ewoks",
+    "file": "/models/galaxy/surface/ewok.glb"
   },
   "surface-jawa": {
     "title": "SM_jawa",
@@ -482,6 +504,17 @@
     "where": "galaxy",
     "as": "Luke's landspeeder",
     "file": "/models/galaxy/surface/landspeeder.glb"
+  },
+  "surface-speederbike": {
+    "title": "Star Wars Aratech 74z Speeder Bike",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-aratech-74z-speeder-bike-efbdcedb6f0a483b9046daa716d1ff6a",
+    "where": "galaxy",
+    "as": "the speeder bikes",
+    "file": "/models/galaxy/surface/speederbike.glb"
   },
   "surface-vaporator": {
     "title": "Star Wars Moisture Vaporator",
