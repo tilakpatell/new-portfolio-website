@@ -38,7 +38,7 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | --- | --- | --- |
 | Home | `/home` | Intro, focus areas and a live GitHub activity snapshot |
 | Experience | `/experience` | Every role, from AWS to SRC. The site's theme changes to each company's colours as its role scrolls past |
-| Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable |
+| Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable. It opens on a hand of 3D game cartridges, one per project: point at one to lift it, click to open it |
 | Résumé | `/resume` | The résumé on the page, plus a PDF download |
 | Travel | `/travel` | A 3D globe of places visited, with photos |
 | Contact | `/contact` | How to reach me |
