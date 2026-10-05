@@ -13,7 +13,9 @@ Sources (credited on the map itself, in its panel):
 
 - The sky: Solar System Scope's Milky Way (8K, CC BY 4.0), brought up from
   its very dim original so the band of the galaxy shows (its glow brought up
-  apart from its stars, so they stay pinpoints), 4096x2048 (2048 on phones).
+  apart from its stars, so they stay pinpoints), its arms cooled toward blue
+  and its core warmed, with a fine field of faint stars of our own laid
+  over, 4096x2048 (2048 on phones).
 - Earth's night lights (Solar System Scope, from Commons' 1920 px copy), and
   a roughness map made from its day map, so the oceans catch the sun.
 - Relief (normal maps) worked out from the terrain itself for Middle-earth and
@@ -356,9 +358,25 @@ def main():
     glow = smooth * (1 - t) + sharp * t
     points = np.clip(arr(sky) - sharp, 0, None)
     soft = lambda x: 1 - np.exp(-x)
-    sky = (soft(np.clip(glow - 0.8 / 255, 0, None) * 7) * 0.85 + soft(points * 2) * 0.8).clip(0, 1) ** 0.8
-    sky += (np.random.default_rng(1).random(sky.shape[:2])[..., None] - 0.5) / 255
-    save(sky, 'sky', full=(4096, 2048), quality=90)
+    # the glow with a harder toe (the dark stays dark) and a higher shoulder,
+    # its faint arms tinted toward blue and its bright core toward warm, a
+    # touch more saturated; the source's stars kept as pinpoints
+    g = soft(np.clip(glow - 1.1 / 255, 0, None) * 8.5)
+    lum = g.mean(-1, keepdims=True)
+    g = np.clip(g * (np.array([0.82, 0.9, 1.12], np.float32) * (1 - lum) + np.array([1.1, 0.98, 0.86], np.float32) * lum), 0, 1)
+    mean = g.mean(-1, keepdims=True)
+    g = np.clip(mean + (g - mean) * 1.35, 0, 1)
+    stars = soft(points * 2.2) * 0.85
+    # and a fine layer of faint stars of our own, so the dark isn't flat
+    rng = np.random.default_rng(7)
+    h, w = g.shape[:2]
+    field = np.zeros((h, w), np.float32)
+    ys, xs = rng.integers(0, h, 26000), rng.integers(0, w, 26000)
+    field[ys, xs] = rng.random(26000) ** 3 * 0.55 + 0.04
+    field = arr(Image.fromarray((field * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6))) * 1.6
+    sky = np.clip(g * 0.95 + stars + np.stack([field * 0.9, field * 0.95, field], -1), 0, 1) ** 0.82
+    sky += (rng.random(sky.shape[:2])[..., None] - 0.5) / 255
+    save(sky, 'sky', full=(4096, 2048), quality=88)
 
     # Tiling materials for the stations and ships
     for asset, short in (('MetalPlates001', 'plates'), ('MetalPlates014', 'hull')):

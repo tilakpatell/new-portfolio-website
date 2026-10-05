@@ -40,6 +40,11 @@ export const CREWS = [
       ['morty', 'Rick! We crashed into a planet, Rick!'],
       ['rick', 'Relax, Morty. I backed us up. Portal’s open.'],
     ],
+    // caught in the black hole's pull (maw.js), and still able to get out
+    pulled: [
+      ['morty', 'R-Rick, it’s pulling us in! Rick!'],
+      ['rick', 'Then hit the boost, Morty! Gravity doesn’t care how smart you are!'],
+    ],
     // into the black hole: no coming back from this one (on its far side is
     // a friend's universe, deep.js's `beyond`, and the page goes on to it)
     swallowed: [
@@ -108,6 +113,26 @@ export const CREWS = [
       ],
     },
     // their lasers hitting you, your shields low, shot down
+    // dropped out of the pulse drive by hunters, and crashes of other kinds
+    interdicted: [
+      ['morty', 'Rick! Something pulled us out of pulse!'],
+      ['rick', 'Interdictor, Morty. Somebody wants a word. Shoot the word.'],
+    ],
+    crashInto: {
+      star: [
+        ['rick', 'Yep. Flew into a star. That one’s on me, Morty.'],
+        ['morty', 'My eyebrows, Rick!'],
+      ],
+      giant: [
+        ['morty', 'Rick, we’re sinking into the clouds!'],
+        ['rick', 'Hydrogen, Morty. Pull up before it crushes the hull. Too late. Portal.'],
+      ],
+      citadel: [
+        ['comms', 'Unidentified cruiser, you have breached the Citadel. Prepare to be portalled.'],
+        ['rick', 'Oh great. A whole city of me is about to be smug about this.'],
+        ['morty', 'Aw jeez.'],
+      ],
+    },
     hit: [
       ['morty', 'Rick, we’re hit!'],
       ['rick', 'It’s a scratch, Morty.'],
@@ -148,6 +173,10 @@ export const CREWS = [
         ['morty', 'Whoa, Rick, a comet!'],
         ['rick', 'It’s a dirty snowball, Morty. Don’t make a wish.'],
       ],
+      supernova: [
+        ['morty', 'Rick! The sky just went white!'],
+        ['rick', 'Supernova, Morty. A star just died so you could see something cool. Say thank you.'],
+      ],
       deep: [
         ['morty', 'Rick, where are we going? There’s nothing out here.'],
         ['rick', 'That’s the thing about space, Morty. It’s mostly space. Hit the boost.'],
@@ -159,10 +188,6 @@ export const CREWS = [
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
-      deathstar: [
-        ['morty', 'Rick, is that a… moon?'],
-        ['rick', 'Wrong universe, Morty. Don’t touch it. That thing’s got lawyers.'],
-      ],
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
@@ -286,6 +311,10 @@ export const CREWS = [
       ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
+    pulled: [
+      ['luke', 'We’re caught in its gravity! Artoo, all the power you’ve got to the engines!'],
+      ['r2', '[frantic beeping]'],
+    ],
     swallowed: [
       ['luke', 'It’s pulling us in! Artoo, there’s something on the other side…'],
       ['r2', '[a long, falling scream]', 'r2Scream'],
@@ -346,6 +375,24 @@ export const CREWS = [
         ['comms', 'No, I am your father.', 'vader'],
       ],
     },
+    interdicted: [
+      ['r2', '[an alarmed shriek]'],
+      ['luke', 'They’ve pulled us out of the drive! Interdictor!'],
+    ],
+    crashInto: {
+      star: [
+        ['luke', 'Too close to the star! Pull out!'],
+        ['r2', '[a frantic shriek]'],
+      ],
+      giant: [
+        ['luke', 'We’re in the clouds! I can’t see a thing!'],
+        ['r2', '[a worried warble]'],
+      ],
+      citadel: [
+        ['comms', 'Rebel fighter, you are in Council space. You will be processed.'],
+        ['luke', 'Processed? Artoo, get us out of— '],
+      ],
+    },
     hit: [
       ['r2', '[an alarmed shriek]'],
       ['luke', 'I’m hit! Artoo, see what you can do!'],
@@ -387,6 +434,10 @@ export const CREWS = [
         ['luke', 'A comet! Back on Tatooine you’d see one every few years.'],
         ['r2', '[an unimpressed beep]'],
       ],
+      supernova: [
+        ['luke', 'Did you see that? A star just… went.'],
+        ['r2', '[a long, awed whistle]'],
+      ],
       deep: [
         ['luke', 'Nothing but stars out here, Artoo.'],
         ['r2', '[a nervous whistle]'],
@@ -398,10 +449,6 @@ export const CREWS = [
       ],
     },
     wonders: {
-      deathstar: [
-        ['comms', 'That’s no moon.'],
-        ['luke', 'It’s a space station. I have a bad feeling about this.'],
-      ],
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
@@ -517,6 +564,10 @@ export const CREWS = [
       ['chewie', '[a horrified roar]'],
       ['han', 'Hold together, baby. Hold together!'],
     ],
+    pulled: [
+      ['han', 'Chewie, it’s got its hooks in us. Punch it!'],
+      ['chewie', '[an alarmed roar]'],
+    ],
     swallowed: [
       ['han', 'Told you, Chewie. Nothing outruns that. Hang on, we’re going through.'],
       ['chewie', '[a long, falling roar]'],
@@ -576,6 +627,24 @@ export const CREWS = [
         ['comms', 'No, I am your father.', 'vader'],
       ],
     },
+    interdicted: [
+      ['han', 'Interdictor! They’ve yanked us out of the drive!'],
+      ['chewie', '[a furious roar]'],
+    ],
+    crashInto: {
+      star: [
+        ['han', 'That’s a star, Chewie! Why didn’t you say it was a star?!'],
+        ['chewie', '[an indignant roar]'],
+      ],
+      giant: [
+        ['han', 'We’re in the soup! Pull her up!'],
+        ['chewie', '[a straining roar]'],
+      ],
+      citadel: [
+        ['comms', 'Freighter, you have violated Council space. Surrender.'],
+        ['han', 'A whole city of the same guy. This is the worst cantina I’ve ever seen.'],
+      ],
+    },
     hit: [
       ['han', 'We’re taking hits!'],
       ['chewie', '[an angry roar]'],
@@ -617,6 +686,10 @@ export const CREWS = [
         ['han', 'I’m just saying.'],
       ],
       comet: [['han', 'A comet. Don’t get any ideas, Chewie. We’re not chasing it.']],
+      supernova: [
+        ['han', 'Whoa. That’s a whole star going up. Glad we weren’t parked there.'],
+        ['chewie', '[an awed growl]'],
+      ],
       deep: [
         ['han', 'Out here it’s just us and the stars, pal.'],
         ['chewie', '[a contented growl]'],
@@ -627,10 +700,6 @@ export const CREWS = [
       ],
     },
     wonders: {
-      deathstar: [
-        ['han', 'That’s no moon. That’s trouble.'],
-        ['chewie', '[a worried roar]'],
-      ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -740,6 +809,10 @@ export const CREWS = [
       ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
       ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
     ],
+    pulled: [
+      ['jesse', 'Yo, Mr. White, it’s pulling us in! Floor it!'],
+      ['walt', 'Gravity doesn’t negotiate, Jesse. Boost!'],
+    ],
     swallowed: [
       ['jesse', 'Mr. White! It’s got the RV!'],
       ['walt', 'Not even light gets out, Jesse. Let’s see where it goes.'],
@@ -820,6 +893,24 @@ export const CREWS = [
         ['walt', 'We don’t run, Jesse. We do the math. Then we run.'],
       ],
     },
+    interdicted: [
+      ['jesse', 'Yo, the fast thing stopped! Why’d the fast thing stop?!'],
+      ['walt', 'Interdiction, Jesse. Someone wants to talk. We don’t.'],
+    ],
+    crashInto: {
+      star: [
+        ['walt', 'Fusion, Jesse. Up close. My mistake.'],
+        ['jesse', 'Your mistake?! We’re on fire!'],
+      ],
+      giant: [
+        ['jesse', 'We’re sinking, Mr. White!'],
+        ['walt', 'Pressure, Jesse. It builds. Then it crushes you.'],
+      ],
+      citadel: [
+        ['comms', 'RV, you are in Council space. You will be processed.'],
+        ['walt', 'A whole city of the same man. Imagine the chemistry.'],
+      ],
+    },
     hit: [
       ['jesse', 'We’re hit! The RV’s getting holes, yo!'],
       ['walt', 'Then plug them, Jesse.'],
@@ -858,6 +949,10 @@ export const CREWS = [
         ['jesse', 'Mr. White, a comet!'],
         ['walt', 'Ice and dust, Jesse. Chemistry, frozen.'],
       ],
+      supernova: [
+        ['jesse', 'Yo! Did a star just blow up?!'],
+        ['walt', 'A supernova, Jesse. Every element heavier than iron was made in one of those. Including what we cook with.'],
+      ],
       deep: [
         ['jesse', 'Mr. White, where are we even going?'],
         ['walt', 'Out here, Jesse, nobody is watching.'],
@@ -868,10 +963,6 @@ export const CREWS = [
       ],
     },
     wonders: {
-      deathstar: [
-        ['jesse', 'Yo, that’s a moon with a giant dish on it!'],
-        ['walt', 'That is no moon, Jesse. That is a lab.'],
-      ],
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
@@ -986,18 +1077,21 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash', 'swallowed' (by the black hole), 'idle', 'hit',
+// 'edge', 'crash', 'pulled' and 'swallowed' (by the black hole), 'idle', 'hit',
 // 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
-// its id). An exchange, or null.
+// its id), 'interdicted' (hunters cut the pulse drive) or 'crashInto' (by
+// what: 'star', 'giant', 'citadel'; the plain crash lines
+// otherwise). An exchange, or null.
 export function linesFor(crew, event, id) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
+  if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
   if (event === 'event') return crew.events?.[id] ?? null;
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   return crew[event] ?? null;

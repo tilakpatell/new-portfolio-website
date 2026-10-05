@@ -21,12 +21,16 @@
 // pirates on a freighter), and it shoots at that instead until you deal with
 // it, or turns on you if you shoot at it.
 //
-// createHunters(parent, { small }) → { pack(faction, ship, { prey, size, ace, from }) → points,
+// createHunters(parent, { small }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to) → hit or null, clear(), dispose(), count, active,
 //   targets: the ones still after you (or their prey), for the guns to lock
 //   on to: [{ id, at, vel, size, kind, hp, faction }] (targeting.js) }
-// Events: { type: 'hunted', faction, kinds, prey }, { type: 'shot', faction }
+// A pack sent in `ahead` drops in ahead of you (an ambush on the way
+// somewhere) and one that `interdict`s says so in its 'hunted' event: the
+// scene holds the pulse drive down while it's on you.
+//
+// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction }
 // (one fired at you), { type: 'laser', damage, from } (and hit), { type:
 // 'escaped', faction } and { type: 'cleared', faction, rescued } (rescued:
 // they were after someone else, and you saw them off).
@@ -114,10 +118,16 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
   // where a pack comes from: behind you, spread out, a little above and
   // below; or, for the Council, from portals opening ahead of you, where you
   // can see them
-  function entry(ship, i, n, portal, from) {
+  function entry(ship, i, n, portal, from, ahead) {
     const [fx, fz] = forward(ship.heading);
     // out of a hangar (a Star Destroyer's belly): one after another, spread a little
     if (from) return new THREE.Vector3(from.x + (rand() - 0.5) * 3, from.y - i * 0.6, from.z + (rand() - 0.5) * 3);
+    // an ambush: dropped in ahead of you, spread across your way, so you see them coming
+    if (ahead) {
+      const d = 38 + i * 4;
+      const side = (i - (n - 1) / 2) * 5;
+      return new THREE.Vector3(ship.x + fx * d - fz * side, ship.y + (rand() - 0.5) * 6, ship.z + fz * d + fx * side);
+    }
     if (portal) {
       const a = ship.heading + (i - (n - 1) / 2) * 0.32;
       const [px, pz] = forward(a);
@@ -133,18 +143,18 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
     // a pack of hunters after you (or after `prey`: { position, quaternion }
     // of something else, e.g. a freighter in distress). Returns the points
     // they came in at (the scene opens a portal or flashes a jump at each)
-    pack(faction, ship, { prey = null, size, ace = rand() < 0.22, from = null } = {}) {
+    pack(faction, ship, { prey = null, size, ace = rand() < 0.22, from = null, ahead = false, interdict = false } = {}) {
       const f = FACTIONS[faction];
       if (!f || !ship) return [];
       const n = size ?? Math.round(between(rand, f.size[0], f.size[1] + 0.49));
       const kinds = Array.from({ length: n }, () => pick(f.kinds));
       if (f.ace && ace) kinds[0] = f.ace;
-      const pack = { faction, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds };
+      const pack = { faction, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict };
       const points = [];
       kinds.forEach((kind, i) => {
         const type = KIND[kind];
         const model = take(kind);
-        const pos = entry(ship, i, n, f.portal && !from, from);
+        const pos = entry(ship, i, n, f.portal && !from && !ahead, from, ahead);
         points.push(pos.clone());
         const [fx, fz] = forward(ship.heading);
         const h = {
@@ -154,7 +164,8 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
           model,
           pack,
           pos,
-          vel: new THREE.Vector3(fx, 0, fz).multiplyScalar(type.speed * 0.8),
+          // (an ambush comes at you; the rest come up behind you)
+          vel: new THREE.Vector3(fx, 0, fz).multiplyScalar(type.speed * (ahead ? -0.8 : 0.8)),
           hp: type.hp,
           mode: 'set', // swinging out ahead to come round ('set'), or coming at you ('run')
           side: i % 2 ? 1 : -1,
@@ -194,7 +205,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
         }
         if (!pack.said && ship) {
           pack.said = true;
-          events.push({ type: 'hunted', faction: pack.faction, kinds: pack.kinds, prey: pack.wasPrey });
+          events.push({ type: 'hunted', faction: pack.faction, kinds: pack.kinds, prey: pack.wasPrey, interdict: Boolean(pack.interdict) });
         }
         // too far away for long enough: they give up
         const near = ship ? Math.min(...alive.map((h) => h.pos.distanceTo(you))) : Infinity;

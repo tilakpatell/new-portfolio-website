@@ -156,11 +156,12 @@ export function createCrash(parent) {
   return {
     // info: { point, normal (unit, out of the surface), body (the planet's
     // surface mesh, for the shockwave; none for a station), radius, sun }
-    hit({ point, normal, body = null, radius = 1, sun = false }) {
+    hit({ point, normal, body = null, radius = 1, sun = false, colour = null }) {
       fx.hit = clock;
       fx.flashAt = clock;
-      fx.flashSize = sun ? 2.4 : 0.55 + radius * 0.25;
+      fx.flashSize = sun ? 2.4 : 0.55 + Math.min(radius, 12) * 0.25;
       fx.flashColor.setRGB(...(sun ? [6, 2.8, 0.9] : [4, 2.4, 1.1]));
+      if (colour) fx.flashColor.set(colour).multiplyScalar(4.5); // (a giant's clouds: its own colour)
       flash.position.copy(point).addScaledVector(normal, 0.12);
       flash.visible = true;
       // sparks: mostly outward, fanned

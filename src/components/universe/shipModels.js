@@ -296,11 +296,15 @@ export function buildShip(kind, T = {}) {
       holder.add(model);
       holder.scale.setScalar(BUILT / Math.max(dims.x, dims.z, 1e-6));
       holder.rotation.y = ship.nose ?? 0; // turned so its nose points along −z
+      // painted metal: a little of the space round it reflects in the hull,
+      // its maps sharp at a grazing angle (the chase camera's)
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-          if ('metalness' in m) m.metalness = 0;
-          if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 1, 0.7);
+          if ('metalness' in m) m.metalness = 0.22;
+          if ('roughness' in m) m.roughness = Math.min(Math.max(m.roughness ?? 1, 0.42), 0.68);
+          if ('envMapIntensity' in m) m.envMapIntensity = 0.9;
+          for (const tex of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap]) if (tex) tex.anisotropy = 8;
         }
       });
       ship.stand.visible = false;

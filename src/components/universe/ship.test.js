@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, brakeAt, ceilingAt, forward, orbiting, parkAt, spawn, step, turnAt } from './ship';
+import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, brakeAt, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, step, turnAt } from './ship';
 import { DEEP, WONDERS } from './deep';
-import { ORDER } from './layout';
+import { ORDER, REACH } from './layout';
+import { byId } from './universes';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
   let ship = s;
@@ -13,12 +14,8 @@ const fly = (s, input, seconds, solids = SOLIDS) => {
   }
   return { ship, events };
 };
-// in something solid (down in the Death Star's trench, between its walls, is allowed)
-const inside = (s) =>
-  SOLIDS.some((p) => {
-    const min = (p.band && Math.abs(s.y - p.at[1]) < p.band.half ? p.band.floor : p.r) + SHIP.radius;
-    return Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < min - 1e-6;
-  });
+// in something solid (a trench, where one's laid, is open down to its floor)
+const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
@@ -66,8 +63,8 @@ describe('flying the ship', () => {
   it('never goes through a planet, and says when it hits one', () => {
     for (const id of ORDER) {
       const park = parkAt(id);
-      // pointed straight at the planet, full boost
-      const { ship, events } = fly({ ...spawn(null), x: park.x, z: park.z, heading: park.heading }, { throttle: 1, boost: true }, 2);
+      // pointed straight at the planet, full boost, for as long as it takes to get there
+      const { ship, events } = fly({ ...spawn(null), x: park.x, y: park.y, z: park.z, heading: park.heading }, { throttle: 1, boost: true }, 3 + (REACH[id] - byId(id).size) / 8);
       expect(orbiting({ ...ship, ...park }, null), id).toBe(id); // the parking spot is at this planet, not a neighbour
       expect(inside(ship), id).toBe(false);
       expect(events.some((e) => (e.type === 'bump' || e.type === 'crash') && e.id === id), id).toBe(true);
@@ -76,13 +73,13 @@ describe('flying the ship', () => {
 
   it('crashes into a planet when it hits it fast, and only bumps when slow', () => {
     const park = parkAt('marvel');
-    const at = { ...spawn(null), x: park.x, z: park.z, heading: park.heading };
-    const fast = fly(at, { throttle: 1, boost: true }, 2).events;
+    const at = { ...spawn(null), x: park.x, y: park.y, z: park.z, heading: park.heading };
+    const fast = fly(at, { throttle: 1, boost: true }, 4).events;
     expect(fast.some((e) => e.type === 'crash' && e.id === 'marvel')).toBe(true);
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    const slow = fly(at, { throttle: 0.3 }, 4).events;
+    const slow = fly(at, { throttle: 0.3 }, 14).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
@@ -101,12 +98,12 @@ describe('flying the ship', () => {
     expect(Math.abs(level.pitch)).toBeLessThan(0.01);
   });
 
-  it('stops at the ceiling and the floor, and says so once', () => {
+  it('stops at the ceiling and the floor, without a word', () => {
     for (const way of [1, -1]) {
       const { ship, events } = fly({ ...spawn(null), x: 0, z: 0 }, { climb: way, boost: true }, 12, []);
       expect(Math.abs(ship.y)).toBeLessThan(SHIP.ceiling + 1);
       expect(Math.abs(ship.y)).toBeGreaterThan(SHIP.ceiling - 2.5);
-      expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
+      expect(events.filter((e) => e.type === 'edge')).toHaveLength(0);
     }
   });
 
@@ -150,9 +147,18 @@ describe('deep space', () => {
     expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
   });
 
+  it('is cut back to the boost while hunters have it interdicted', () => {
+    const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
+    expect(pulsing.speed).toBeGreaterThan(SHIP.pulse - 2);
+    const cut = fly(pulsing, { throttle: 1, boost: true, interdicted: true }, 2, []).ship;
+    expect(cut.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
+    expect(cut.speed).toBeGreaterThan(SHIP.cruise);
+    expect(fly(cut, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2); // and off again once they're gone
+  });
+
   it('brakes and coasts harder out there, to match the speeds', () => {
-    expect(brakeAt(open.x, open.z)).toBeGreaterThan(SHIP.brake * 3.5);
-    expect(brakeAt(0, 0)).toBe(SHIP.brake);
+    expect(brakeAt(open.x, open.y, open.z)).toBeGreaterThan(SHIP.brake * 3.5);
+    expect(brakeAt(0, 0, 0)).toBe(SHIP.brake);
     const flat = { ...open, speed: SHIP.pulse };
     expect(fly(flat, { throttle: -1 }, 3, []).ship.speed).toBeLessThanOrEqual(0);
     expect(fly(flat, {}, 4, []).ship.speed).toBeLessThan(SHIP.pulse * 0.6);
@@ -167,24 +173,31 @@ describe('deep space', () => {
   });
 
   it('lets the ship down into the Death Star’s trench, and only there', () => {
-    const ds = SOLIDS.find((o) => o.id === 'deathstar');
+    const ds = SOLIDS.find((o) => o.id === 'starwars');
     expect(ds.band).toBeTruthy();
-    // level with the trench, heading straight in, slowly: it stops near the floor
-    const at = (dy) => ({ ...spawn(null), x: ds.at[0], y: ds.at[1] + dy, z: ds.at[2] + ds.r + 3, heading: 0, speed: 2 });
-    const into = fly(at(0), { throttle: 0.3 }, 6).ship;
+    // level with the trench on the stretch that's laid (the side toward home),
+    // heading straight in, slowly: it stops near the floor
+    const toward = (a, dy, out) => {
+      const x = ds.at[0] + Math.cos(a) * (ds.r + out);
+      const z = ds.at[2] + Math.sin(a) * (ds.r + out);
+      return { ...spawn(null), x, y: ds.at[1] + dy, z, heading: Math.atan2(-(ds.at[0] - x), -(ds.at[2] - z)), speed: 2 };
+    };
+    const into = fly(toward(ds.band.home, 0, 3), { throttle: 0.3 }, 6).ship;
     const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
     expect(d).toBeLessThan(ds.r - 1.5);
     expect(d).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
-    // above the trench, it's the surface that stops it
-    const off = fly(at(ds.band.half + 2), { throttle: 0.3 }, 6).ship;
-    expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
+    // above the trench, or round the far side where none is laid, it's the surface that stops it
+    for (const s of [toward(ds.band.home, ds.band.half + 2, 3), toward(ds.band.home + Math.PI, 0, 3)]) {
+      const off = fly(s, { throttle: 0.3 }, 6).ship;
+      expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
+    }
   });
 
   it('crashes into a wonder, never through it', () => {
     for (const w of WONDERS.filter((o) => o.solid !== false)) {
-      // from 120 out, level with it, flat out at it
+      // from 120 out, level with it, flat out at it (slowed by the drive dropping out as it nears)
       const s = { ...spawn(null), x: w.at[0], y: w.at[1], z: w.at[2] + w.r + 120, heading: 0, speed: SHIP.pulse };
-      const { ship, events } = fly(s, { throttle: 1, boost: true }, 4);
+      const { ship, events } = fly(s, { throttle: 1, boost: true }, 9);
       expect(inside(ship), w.id).toBe(false);
       expect(events.some((e) => e.type === 'crash' && e.id === w.id), w.id).toBe(true);
     }

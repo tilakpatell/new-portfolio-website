@@ -357,6 +357,99 @@ export function crashSound() {
   );
 }
 
+// The Maw's hold on you: a low hum under a rumble, both swelling and
+// rising as it pulls harder. set(k) every frame it has you (0 … 1, 0 to let
+// it die away), stop() at the end
+export function wellSound() {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return { set() {}, stop() {} };
+  const master = ac.createGain();
+  master.gain.value = 0;
+  master.connect(out);
+  const hum = [38, 57.4].map((f) => {
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(master);
+    o.start();
+    return o;
+  });
+  // the rumble: noise, low and slowly breathing
+  const rumble = ac.createBufferSource();
+  rumble.buffer = noise(ac);
+  rumble.loop = true;
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 90;
+  lp.Q.value = 2.5;
+  const rg = ac.createGain();
+  rg.gain.value = 0.9;
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 0.35;
+  const lg = ac.createGain();
+  lg.gain.value = 0.35;
+  lfo.connect(lg).connect(rg.gain);
+  rumble.connect(lp).connect(rg).connect(master);
+  rumble.start();
+  lfo.start();
+  let alive = true;
+  return {
+    set(k) {
+      if (!alive) return;
+      const now = ac.currentTime;
+      master.gain.setTargetAtTime(0.32 * k ** 1.4, now, 0.25);
+      lp.frequency.setTargetAtTime(90 + 260 * k * k, now, 0.3);
+      hum.forEach((o, i) => o.frequency.setTargetAtTime((i ? 57.4 : 38) * (1 + 0.35 * k * k), now, 0.4));
+    },
+    stop() {
+      if (!alive) return;
+      alive = false;
+      const now = ac.currentTime;
+      master.gain.setTargetAtTime(0, now, 0.15);
+      for (const n of [...hum, rumble, lfo]) n.stop(now + 0.8);
+      setTimeout(() => master.disconnect(), 1000);
+    },
+  };
+}
+
+// Into the black hole, the long way down: a deep swell, a tone that slides
+// down and down, slower as it goes (time running slow at the edge, seen
+// from outside), and the rush of the disk going round
+export function fallSound() {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.02;
+  const swell = ac.createOscillator();
+  swell.type = 'sine';
+  swell.frequency.setValueAtTime(52, t);
+  swell.frequency.exponentialRampToValueAtTime(24, t + 4.4);
+  const sg = ac.createGain();
+  sg.gain.setValueAtTime(0.0001, t);
+  sg.gain.exponentialRampToValueAtTime(0.5, t + 1.6);
+  sg.gain.exponentialRampToValueAtTime(0.0001, t + 4.8);
+  swell.connect(sg).connect(out);
+  const tone = ac.createOscillator();
+  tone.type = 'sawtooth';
+  tone.frequency.setValueAtTime(760, t);
+  tone.frequency.setTargetAtTime(70, t, 1.15);
+  const tl = ac.createBiquadFilter();
+  tl.type = 'lowpass';
+  tl.frequency.setValueAtTime(2400, t);
+  tl.frequency.setTargetAtTime(260, t, 1.3);
+  const tg = ac.createGain();
+  tg.gain.setValueAtTime(0.0001, t);
+  tg.gain.exponentialRampToValueAtTime(0.06, t + 0.3);
+  tg.gain.setTargetAtTime(0.0001, t + 2.6, 0.45);
+  tone.connect(tl).connect(tg).connect(out);
+  for (const o of [swell, tone]) {
+    o.start(t);
+    o.stop(t + 5);
+  }
+  whoosh(2.8, 260, 2600, 0.15);
+}
+
 // Something going past you: a TIE fighter's scream (falling as it passes),
 // or the rush of anything else
 export function flybySound(kind) {
@@ -459,4 +552,17 @@ export function enemyFireSound() {
 // Something big dropping out of hyperspace (or into it)
 export function jumpSound(out = false) {
   playClip(out ? 'hyperspaceEnter' : 'hyperspaceExit', { duration: 2.2 });
+}
+
+// Pulled out of the pulse drive: the drive's whine dropping away, and a thud
+export function interdictSound() {
+  whoosh(0.9, 2400, 120, 0.3);
+  tones([[60, 0.05, 0.3]], { type: 'sine', gain: 0.28 });
+  tones(
+    [
+      [520, 0.1, 0.1],
+      [390, 0.25, 0.14],
+    ],
+    { type: 'square', gain: 0.03 },
+  );
 }

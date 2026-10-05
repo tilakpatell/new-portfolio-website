@@ -26,10 +26,6 @@
 //   of lookups), glowing in their colours with dark lanes of dust across
 //   them and young stars inside. A puff fades out as you come close to it,
 //   so flying through is a drift through haze, not a wall.
-// - The Death Star: plated with city blocks and thousands of tiny lit windows
-//   (brightest on its night side), its equatorial trench cut in, the
-//   superlaser's dish pressed into the north with its emitters and a green
-//   glow at the focus; three Star Destroyers drift round it in formation.
 // - The Citadel of Ricks: a wide disc with a tall stepped spire above and a
 //   shorter one below, rings round it, rows of lit windows, masts with
 //   blinking beacons and a green band of light round its rim, a portal
@@ -50,12 +46,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
-import { DEEP, WONDERS, planetAt, reachOf, trenchOf } from './deep';
+import { DEEP, WONDERS, planetAt, reachOf } from './deep';
+import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
 import { buildTraffic } from './trafficModels';
 
-const { PI, sin, cos, sqrt, hypot, max, min } = Math;
+const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
 
 const SKY_FAR = 2200; // how far off the background galaxies ride (inside the camera's far plane)
@@ -72,7 +69,6 @@ const SUBTITLE = {
   maw: 'black hole',
   veil: 'nebula',
   cradle: 'stellar nursery',
-  deathstar: 'imperial battle station',
   citadel: 'citadel of ricks',
 };
 
@@ -699,122 +695,6 @@ void main() {
 
 // ── The Death Star ──
 
-const DS_VERT = `
-uniform vec4 uDish;
-uniform float uDishC;
-varying vec3 vObj;
-varying vec3 vW;
-varying vec3 vNW;
-uniform vec3 uLight;
-varying vec3 vDishC;
-varying vec3 vLightObj;
-void main() {
-  vObj = position;
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  vW = w.xyz;
-  vNW = mat3(modelMatrix) * normal;
-  vDishC = (modelMatrix * vec4(uDish.xyz * uDishC, 1.0)).xyz;
-  vLightObj = transpose(mat3(modelMatrix)) * (uLight - w.xyz);
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`;
-const DS_FRAG = `
-uniform sampler2D uPanels;
-uniform vec3 uLight;
-uniform vec3 uLightColor;
-uniform vec4 uDish;
-uniform float uDishAngle;
-uniform float uR;
-uniform float uTrench;
-uniform float uTime;
-varying vec3 vObj;
-varying vec3 vW;
-varying vec3 vNW;
-varying vec3 vDishC;
-varying vec3 vLightObj;
-${COMMON}
-void main() {
-  vec3 p = nrm(vObj);
-  vec3 N = nrm(vNW);
-  vec3 V = nrm(cameraPosition - vW);
-  vec3 L = nrm(uLight - vW);
-  vec4 tx = globe(uPanels, p);
-  float alb = 0.08 + 0.26 * tx.r;
-  float win = tx.g;
-  vec3 relief = bumped(N, vW, tx.b * uR * 0.006);
-  float cosD = dot(p, uDish.xyz);
-  float inDish = smoothstep(uDish.w - 0.0015, uDish.w + 0.0015, cosD);
-  float inTrench = step(abs(vObj.y), uR * uTrench + 0.02);
-  N = nrm(mix(relief, N, max(inDish, inTrench)));
-  vec3 emit = vec3(0.0);
-  float open = 1.0;
-  // the dish: concave, in rings of panels, eight emitters round the focus
-  // lens; its lip shades it where the light comes in low
-  if (inDish > 0.0) {
-    N = nrm(mix(N, nrm(vDishC - vW), inDish));
-    float th = acos(clamp(cosD, -1.0, 1.0)) / uDishAngle;
-    vec3 e1 = nrm(cross(uDish.xyz, vec3(0.0, 1.0, 0.0)));
-    vec3 e2 = cross(uDish.xyz, e1);
-    float a = atan(dot(p, e2), dot(p, e1) + 1e-6);
-    float ring = floor(th * 9.0);
-    float seamR = smoothstep(0.42, 0.5, abs(fract(th * 9.0) - 0.5));
-    float seamS = smoothstep(0.47, 0.5, abs(fract(a * 2.54648 + 0.5) - 0.5)) * step(0.2, th);
-    alb = mix(alb, (0.1 + 0.05 * hash12(vec2(ring, floor(a * 2.54648 + 8.0)))) * (1.0 - 0.35 * max(seamR, seamS)), inDish);
-    float em = smoothstep(0.032, 0.012, length(vec2(th - 0.56, (fract(a * 1.27324) - 0.5) * th * 0.785)));
-    float lens = smoothstep(0.055, 0.025, th);
-    emit += vec3(0.2, 1.3, 0.4) * (em * 0.6 + lens * 0.8) * inDish;
-    win *= 1.0 - inDish;
-    vec3 lo = nrm(vLightObj);
-    float ld = dot(lo, uDish.xyz);
-    float rimH = uR * uDish.w;
-    float rimR = uR * sin(uDishAngle);
-    float through = 0.0;
-    if (ld > 1e-3) {
-      vec3 hit = vObj + lo * ((rimH - dot(vObj, uDish.xyz)) / ld);
-      through = smoothstep(rimR * 1.01, rimR * 0.93, length(hit - uDish.xyz * rimH));
-    }
-    open = mix(1.0, through, inDish);
-  }
-  // the trench: dark, its walls catching the light, a row of lights down it
-  if (inTrench > 0.5) {
-    alb = 0.12 + 0.08 * tx.r;
-    float lon = atan(p.z, p.x + 1e-7) * uR;
-    float row = step(0.82, fract(lon * 1.6)) * step(0.5, hash12(vec2(floor(lon * 1.6), 2.0)));
-    win = row * step(abs(vObj.y), uR * uTrench * 0.35);
-  }
-  float ndl = dot(N, L);
-  float light = smoothstep(-0.12, 0.25, ndl) * (0.08 + 0.92 * max(ndl, 0.0)) * open;
-  vec3 col = vec3(alb) * uLightColor * light + vec3(alb) * vec3(0.016, 0.018, 0.024);
-  vec3 H = nrm(L + V);
-  float sp = sat(dot(N, H));
-  sp *= sp;
-  sp *= sp;
-  sp *= sp;
-  sp *= sp;
-  col += uLightColor * sp * 0.08 * step(0.0, ndl) * open;
-  // lit windows, mostly seen on the night side
-  col += vec3(1.0, 0.82, 0.56) * win * (0.35 + 1.5 * smoothstep(0.15, -0.25, ndl)) * 1.9;
-  col += emit;
-  gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-const FOCUS_FRAG = `
-uniform float uTime;
-uniform float uFacing;
-varying vec2 vC;
-varying float vSil;
-varying float vDist;
-void main() {
-  float r = length(vC);
-  float a = (exp(-r * r * 16.0) * 1.1 + exp(-r * 4.0) * 0.08) * uFacing;
-  a *= 0.9 + 0.1 * sin(uTime * 3.1);
-  a *= 1.0 - smoothstep(0.75, 1.0, r);
-  gl_FragColor = vec4(vec3(0.3, 1.0, 0.42) * a, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-// ── The Citadel ──
-
 const CITADEL_VERT = `
 attribute float aPart;
 varying vec3 vObj;
@@ -1211,59 +1091,6 @@ function puffTexture(n) {
 
 // The Death Star's plating, equirectangular: storeys of city blocks (r: how
 // light each is), their lit windows (g), how high each stands (b).
-function deathStarTexture(w, h, seed) {
-  const rand = rng(`deathstar-${seed}`);
-  const out = new Uint8Array(w * h * 4);
-  const put = (i, j, a, win, hgt) => {
-    const k = (j * w + i) * 4;
-    out[k] = a;
-    out[k + 1] = win;
-    out[k + 2] = hgt;
-    out[k + 3] = 255;
-  };
-  const storeys = 52;
-  for (let z = 0; z < storeys; z++) {
-    const y0 = Math.round((z * h) / storeys);
-    const y1 = Math.round(((z + 1) * h) / storeys);
-    const lat = ((z + 0.5) / storeys - 0.5) * PI;
-    const squeeze = Math.max(cos(lat), 0.06);
-    const polar = Math.abs(lat) > 1.38;
-    let x = 0;
-    while (x < w) {
-      const bw = Math.min(w - x, Math.max(3, Math.round((3 + rand() ** 2 * 44) / squeeze)));
-      // a block is one, two or three strips high
-      const strips = 1 + Math.floor(rand() * 3);
-      for (let s = 0; s < strips; s++) {
-        const sy0 = y0 + Math.round(((y1 - y0) * s) / strips);
-        const sy1 = y0 + Math.round(((y1 - y0) * (s + 1)) / strips);
-        const grey = polar ? 120 : 95 + rand() * 120;
-        const hgt = polar ? 120 : 60 + rand() * 170;
-        const dens = polar ? 0 : rand() < 0.3 ? 0 : rand() ** 1.5 * 0.7;
-        const pitch = Math.max(2, Math.round((2 + Math.floor(rand() * 2)) / squeeze));
-        for (let j = sy0; j < sy1; j++) {
-          const edgeY = j === sy0 || j === sy1 - 1;
-          for (let i = x; i < x + bw; i++) {
-            const edge = edgeY || i === x || i === x + bw - 1;
-            const lit = !edge && (j - sy0) % 3 === 1 && (i - x) % pitch === 1 && rand() < dens;
-            put(i, j, edge ? grey * 0.7 : grey, lit ? 255 : 0, edge ? hgt * 0.4 : hgt);
-          }
-        }
-      }
-      x += bw;
-    }
-    // the line between storeys
-    for (let i = 0; i < w; i++) put(i, y0, 60, 0, 20);
-  }
-  // meridians every 15°
-  for (let m = 0; m < 24; m++) {
-    const i0 = Math.round((m * w) / 24);
-    for (let j = 0; j < h; j++) put(i0, j, 70, 0, 25);
-  }
-  return dataTexture(out, w, h, { repeat: true });
-}
-
-// The galaxies, four to a sheet: a grand spiral, a ragged one, one edge-on
-// with dust across it, and a globular cluster.
 function galaxyAtlas(size) {
   const rand = rng('galaxies');
   return canvasTexture(size, size, (g, W) => {
@@ -1515,7 +1342,7 @@ export function buildDeepSpace({ small = false } = {}) {
   const blackHole = (w) => {
     const g = place(w);
     const tilt = new THREE.Group();
-    tilt.rotation.set(0.36, 0.5, -0.18);
+    tilt.rotation.set(...TILT); // (maw.js: its pull goes round the way the disk does)
     g.add(tilt);
     mesh(new THREE.SphereGeometry(w.r, 48, 32), new THREE.MeshBasicMaterial({ color: 0x000000 }), g);
     const reach = 2.6;
@@ -1689,116 +1516,6 @@ export function buildDeepSpace({ small = false } = {}) {
   };
 
   // ── the Death Star ──
-  const deathStar = (w) => {
-    const g = place(w);
-    const r = w.r;
-    // the trench: cut a little wider and deeper than the trench run model
-    // laid in it (trench.js), so its walls and floor are the model's
-    const run = w.trench ? trenchOf(w) : null;
-    const TRENCH = run ? (run.width / 2 + 0.5) / r : 0.022; // the trench's half-height, as an angle
-    const DEPTH = run ? (run.depth + 0.8) / r : 0.016; // how deep it's cut, in radii
-    const dishAngle = 0.27;
-    // the dish faces home (where visitors come from), tipped north and a little aside
-    const toHome = new THREE.Vector3(-w.at[0], 0, -w.at[2]).normalize();
-    const D = toHome.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.75).multiplyScalar(cos(0.5)).add(new THREE.Vector3(0, sin(0.5), 0)).normalize();
-    const depth = r * 0.09;
-    const cDish = (r * r - (r - depth) ** 2) / (2 * (r * cos(dishAngle) - r + depth)); // its centre of curvature, from the middle
-    const rDish = cDish - r + depth; // and its radius of curvature
-    const C = D.clone().multiplyScalar(cDish);
-    const rows = Math.round(seg(128, 72) / 2);
-    const top = new THREE.SphereGeometry(r, seg(128, 72), rows, 0, TAU, 0, PI / 2 - TRENCH);
-    const bottom = new THREE.SphereGeometry(r, seg(128, 72), rows, 0, TAU, PI / 2 + TRENCH, PI / 2 - TRENCH);
-    // the dish, pressed into the top: points inside it moved onto a sphere
-    // round its centre of curvature
-    const pos = top.attributes.position;
-    const nor = top.attributes.normal;
-    const v = new THREE.Vector3();
-    const nn = new THREE.Vector3();
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i);
-      nn.copy(v).normalize();
-      if (nn.dot(D) <= cos(dishAngle)) continue;
-      const nc = nn.dot(C);
-      const s = nc - sqrt(max(nc * nc - cDish * cDish + rDish * rDish, 0));
-      v.copy(nn).multiplyScalar(s);
-      pos.setXYZ(i, v.x, v.y, v.z);
-      nn.copy(C).sub(v).normalize();
-      nor.setXYZ(i, nn.x, nn.y, nn.z);
-    }
-    const floorR = r * cos(TRENCH) - r * DEPTH;
-    const hh = r * sin(TRENCH);
-    const floor = new THREE.CylinderGeometry(floorR, floorR, 2 * hh, seg(128, 72), 1, true);
-    const wallTop = new THREE.RingGeometry(floorR, r * cos(TRENCH), seg(128, 72), 1).rotateX(PI / 2).translate(0, hh, 0);
-    const wallBottom = new THREE.RingGeometry(floorR, r * cos(TRENCH), seg(128, 72), 1).rotateX(-PI / 2).translate(0, -hh, 0);
-    const parts = [top, bottom, floor, wallTop, wallBottom];
-    const geo = mergeGeometries(parts);
-    for (const p of parts) p.dispose();
-    const tex = own(deathStarTexture(seg(2048, 1024), seg(1024, 512), w.id));
-    mesh(
-      geo,
-      shader(DS_VERT, DS_FRAG, {
-        uPanels: { value: tex },
-        uLight: homeW,
-        uLightColor: { value: HOME_LIGHT },
-        uDish: { value: new THREE.Vector4(D.x, D.y, D.z, cos(dishAngle)) },
-        uDishC: { value: cDish },
-        uDishAngle: { value: dishAngle },
-        uR: { value: r },
-        uTrench: { value: sin(TRENCH) },
-      }),
-      g,
-    );
-    // the green glow at the dish's focus
-    const focus = facingQuad(r * 0.1, FOCUS_FRAG, { uR: { value: r * 0.1 }, uFacing: { value: 1 } }, g);
-    focus.position.copy(D).multiplyScalar(r - depth + rDish / 2);
-    // it shows only while the dish is turned toward you (side on, it would
-    // float off the limb like a stray light)
-    const focusW = new THREE.Vector3();
-    const dishW = new THREE.Vector3();
-    focus.onBeforeRender = (renderer, scene, camera) => {
-      focus.getWorldPosition(focusW);
-      dishW.copy(D).transformDirection(g.matrixWorld);
-      const k = focusW.sub(camera.position).normalize().dot(dishW);
-      focus.material.uniforms.uFacing.value = THREE.MathUtils.smoothstep(-k, 0.15, 0.6);
-    };
-    // three Star Destroyers in a wedge, drifting slowly round it
-    const fleet = instancedFleet('destroyer', 3, g);
-    fleets.push(fleet);
-    const axis = new THREE.Vector3(0.12, 1, -0.08).normalize();
-    const slots = [
-      [0, 0, 0, 17],
-      [-14, -3, -15, 14.5],
-      [15, 2, -17, 14.5],
-    ];
-    const orbitR = r * 2.6;
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const qa = new THREE.Quaternion();
-    const at = new THREE.Vector3();
-    const off = new THREE.Vector3();
-    const s = new THREE.Vector3();
-    const look = new THREE.Matrix4();
-    const ahead = new THREE.Vector3();
-    const centre = new THREE.Vector3();
-    const origin = new THREE.Vector3();
-    const start = Math.atan2(toHome.z, toHome.x) - 0.7;
-    ticks.push((t) => {
-      const a = start + t * 0.006;
-      qa.setFromAxisAngle(axis, -a);
-      centre.set(orbitR, 6, 0).applyQuaternion(qa);
-      ahead.set(0, 0, 1).applyQuaternion(qa);
-      look.lookAt(ahead, origin, axis);
-      q.setFromRotationMatrix(look);
-      slots.forEach(([x, y, z, len], i) => {
-        off.set(x, y + sin(t * 0.13 + i * 2) * 0.4, z).applyQuaternion(q);
-        at.copy(centre).add(off);
-        m.compose(at, q, s.setScalar(len));
-        fleet.set(i, m);
-      });
-      fleet.commit(t);
-    });
-  };
-
   // a traffic model, many times in one draw a part: the model's meshes
   // instanced, each placed by its own matrix under the instance's
   function instancedFleet(kind, count, parent) {
@@ -1833,7 +1550,6 @@ export function buildDeepSpace({ small = false } = {}) {
   }
   const fleets = [];
 
-  // ── the Citadel ──
   const citadel = (w) => {
     const g = place(w);
     const k = w.r / 18; // its profile is drawn for a radius of 18
@@ -1911,7 +1627,6 @@ export function buildDeepSpace({ small = false } = {}) {
     else if (w.kind === 'star') sun(w);
     else if (w.kind === 'black-hole') blackHole(w);
     else if (w.kind === 'nebula') nebula(w);
-    else if (w.kind === 'deathstar') deathStar(w);
     else if (w.kind === 'citadel') citadel(w);
   }
 

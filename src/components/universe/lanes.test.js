@@ -47,6 +47,32 @@ describe('everyday traffic', () => {
   });
 });
 
+describe('traffic where you are', () => {
+  it('curves round the place and leaves it, clear of everything, within sight', async () => {
+    const { laneLocal, laneDepart } = await import('./lanes');
+    const { PLACES } = await import('./deep');
+    let made = 0;
+    PLACES.forEach((place, i) => {
+      const rand = seeded(20 + i);
+      for (let n = 0; n < 12; n++) {
+        for (const [make, within] of [
+          [laneLocal, place.reach + 14 + place.reach * 0.35],
+          [laneDepart, place.reach + 10],
+        ]) {
+          const pts = make(place, rand, { high: n % 4 === 0 });
+          if (!pts) continue;
+          made++;
+          expect(clearance(pts), `${place.id} ${n}`).toBeGreaterThan(0.5);
+          // it starts or ends beside the place
+          const near = Math.min(...[pts[0], pts[2]].map((p) => Math.hypot(p[0] - place.at[0], p[2] - place.at[2])));
+          expect(near, `${place.id} ${n}`).toBeLessThan(within);
+        }
+      }
+    });
+    expect(made).toBeGreaterThan(PLACES.length * 12);
+  });
+});
+
 describe('a flyby', () => {
   it('crosses in front of the nose, close enough to hit with a shot', () => {
     const rand = seeded(13);
