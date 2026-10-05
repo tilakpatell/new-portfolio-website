@@ -107,10 +107,11 @@ export const PAGES = {
     tips: [
       ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has something to say about every place you reach. No ship? Pick a place and the camera flies there.'],
       ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back as you near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise.'],
+      ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map. The crew have a word about each as you come up on it.'],
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
-      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say.'],
+      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say. A stream of rocks crosses your path (shoot them, or steer round them), and now and then a bounty hunter comes for you alone: Boba Fett in Slave I, or Phoenixperson.'],
       ['The black hole', 'The one thing out there you don’t come back from. On its far side is a friend’s universe; Back brings you home.'],
       ['Online', 'Multiplayer, bottom left: everyone else flying the map is there in their own ships. Fly together, or shoot each other down.'],
     ],
@@ -216,7 +217,8 @@ export const PAGES = {
           ['C', 'Down (and land)'],
           ['Shift', 'Flat out: past about 430 km/h the air breaks with a boom'],
           ['Drag / ← ↑ ↓ →', 'Look round'],
-          ['E', 'Go in at a place'],
+          ['J / F / Click', 'Punch (a little way off, he lunges)'],
+          ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
         ],
       },
@@ -235,11 +237,14 @@ export const PAGES = {
       },
     ],
     touch: [
-      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out']] },
+      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out'], ['Punch', 'Punch']] },
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
+      ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one very high up). Every minute or so someone needs catching: follow the red beacon, catch them before the ground, then land to set them down. Fly alongside the airliner and your father has something to say.'],
+      ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
+      ['Space', 'Keep climbing: the sky goes dark and the stars come out, and past 9 km you’re out of the air with the whole Earth under you. Out there you drift, and flat out you go twenty times faster. The Moon and Mars are on the gauge: land on them (Space jumps off again), and someone’s waiting at each. Dive back at the Earth and you come down through the fire over the city.'],
       ['Think, Mark!', 'Four chapters: your father’s rings, the Flaxans, then Omni-Man and Thragg. A Viltrumite blocks and hits back unless he’s recovering from a charge: dodge as the ring closes round him, then hit him while he’s open. A dodge just in time slows everything down. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
@@ -275,9 +280,14 @@ export const PAGES = {
     about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
     keys: [
       { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
-      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch']] },
+      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
+      { label: 'In the armour', rows: [['W A S D', 'Fly (it leans into its speed)'], ['Space', 'Climb'], ['Shift', 'Come down'], ['E', 'Step out, wherever you are']] },
+      { label: 'Anywhere', rows: [['O', 'Settings']] },
     ],
-    touch: [{ rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch']] }],
+    touch: [
+      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
+      { label: 'In the armour', rows: [['Stick', 'Fly'], ['Up', 'Hold to climb'], ['Down', 'Hold to come down'], ['Step out', 'Out of the armour']] },
+    ],
     tips: [
       ['Swinging', 'Let go on the upswing for a perfect release. Hold on with nothing to catch for web wings. Race the swing tour’s rings round the compound.'],
       ['The stones', 'Win a building’s game and its stone hangs over the door. The Space Stone opens a portal over the helipad: walk under it to Titan.'],
@@ -395,7 +405,7 @@ export const PAGES = {
   '/earth': {
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
-      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
+      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
     ],
     touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster']] }],
     tips: [
@@ -435,7 +445,7 @@ export const SHORTCUTS = [
 export const SITE = [
   ['Two ways round', 'The Universe and Classic switch at the top: fly through the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site opens on the one you picked last.'],
   ['Getting around', 'The menu at the top, or the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
-  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
+  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color. Each scheme brings a background to the portfolio pages: a quiet one for the companies, a lively one for the fan themes (click on empty page). Switch them off at the bottom of the same menu.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],

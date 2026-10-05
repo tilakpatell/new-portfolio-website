@@ -14,6 +14,7 @@ import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
 import { introPlaying } from './lib/stale';
 import WorldGate from './components/worlds/WorldGate';
+import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
 
 const Feed = lazy(() => import('./components/feed/Feed'));
@@ -296,6 +297,7 @@ function Shell() {
   return (
     <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
+      <Ambience />
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">

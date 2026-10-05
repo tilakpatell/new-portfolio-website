@@ -32,6 +32,11 @@
 //   tall blades hanging under it with cyan light down them and a crystal
 //   hanging lowest, beacons round the rim, a portal swirling beside it and
 //   council ships circling.
+// - The Lantern, a pulsar: a tiny blinding star in a glare with two beams
+//   sweeping round it. The Twins, a binary: two suns with a bridge of gas
+//   between them. The Wanderer, a rogue planet: dark and ice-crusted, lit by
+//   the auroras over its poles, with a faint ring. The Graveyard: a white
+//   dwarf with a field of dead hulls turning slowly round it.
 // - Names: each wonder's in spaced capitals over a thin line, with what it is
 //   under it, at the same size on screen however far off. They show only out
 //   of the home system and well clear of the wonder, and fade in and out.
@@ -52,6 +57,8 @@ import { DEEP, WONDERS, planetAt, reachOf } from './deep';
 import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
+import { PULSAR_FRAG } from './supernova';
+import { parts } from './kit';
 import { buildTraffic } from './trafficModels';
 import { sharpen } from '../../lib/three/textures';
 
@@ -66,6 +73,10 @@ const LABEL_RH = 128;
 const HOME_LIGHT = new THREE.Color(1.0, 0.96, 0.9).multiplyScalar(1.55); // the home sun, far out here
 
 const SUBTITLE = {
+  lantern: 'pulsar',
+  twins: 'binary star',
+  wanderer: 'rogue planet',
+  graveyard: 'white dwarf · wreck field',
   aurelia: 'ringed gas giant',
   glacia: 'ice giant',
   ember: 'orange star · two worlds',
@@ -1238,6 +1249,54 @@ function labelAtlas(list) {
 
 // ── Building ──
 
+// A rogue planet's aurora: a ring over each pole, curtains of light that
+// wander round it, brightest near the pole and fading outward
+const AURORA_VERT = `
+varying vec3 vP;
+void main() {
+  vP = position;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const AURORA_FRAG = `
+uniform float uTime;
+uniform vec3 uColor;
+uniform float uInner;
+uniform float uOuter;
+uniform float uSeed;
+varying vec3 vP;
+${NOISE_GLSL}
+void main() {
+  float r = length(vP.xz);
+  float k = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);
+  float a = atan(vP.z, vP.x);
+  float band = snoise(vec3(cos(a) * 3.0, sin(a) * 3.0, uTime * 0.12 + uSeed)) * 0.5 + 0.5;
+  float fine = snoise(vec3(cos(a) * 11.0, sin(a) * 11.0, uTime * 0.3 + uSeed * 2.0)) * 0.5 + 0.5;
+  float curtain = smoothstep(0.0, 0.25, k) * (1.0 - smoothstep(0.45, 1.0, k));
+  float v = band * band * (0.5 + 0.5 * fine) * curtain;
+  vec3 col = mix(uColor, vec3(0.85, 0.35, 0.95), k * 0.8) * v * 1.8;
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+// a binary's bridge of gas: a soft wisp between the two suns, drawn on two
+// crossed planes along the line between them (uv.x along it)
+const BRIDGE_FRAG = `
+uniform float uTime;
+uniform vec3 uColor;
+varying vec2 vUv;
+${NOISE_GLSL}
+void main() {
+  float across = (vUv.y - 0.5) * 2.0;
+  float along = vUv.x;
+  float ends = smoothstep(0.0, 0.18, along) * smoothstep(1.0, 0.82, along);
+  float pinch = 0.55 + 0.45 * abs(along - 0.5) * 2.0;
+  float body = exp(-across * across * 7.0 / pinch);
+  float wisp = snoise(vec3(along * 6.0 - uTime * 0.25, across * 3.0, uTime * 0.05)) * 0.5 + 0.5;
+  float v = body * ends * (0.45 + 0.55 * wisp);
+  gl_FragColor = vec4(uColor * v * 1.4, 1.0);
+  #include <colorspace_fragment>
+}`;
+const UV_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+
 export function buildDeepSpace({ small = false } = {}) {
   const group = new THREE.Group();
   group.name = 'deep-space';
@@ -1795,12 +1854,134 @@ export function buildDeepSpace({ small = false } = {}) {
     });
   };
 
+  // ── a pulsar ──
+  // a tiny blinding star, and its glare with two beams sweeping round it
+  // (the supernova's own pulsar shader, grown up)
+  const pulsar = (w) => {
+    const g = place(w);
+    const color = new THREE.Color(w.color);
+    const light = { value: new THREE.Vector3() };
+    lightOf.set(w.id, light);
+    const star = mesh(new THREE.SphereGeometry(w.r, seg(32, 20), seg(20, 14)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: color.clone().multiplyScalar(1.5) }, uSeed: { value: 9.1 } }), g);
+    const reach = 30;
+    const beams = facingQuad(w.r * reach, PULSAR_FRAG, { uR: { value: w.r * reach }, uT: { value: 0 }, uK: { value: 1.2 } }, g);
+    ticks.push((t) => {
+      beams.material.uniforms.uT.value = t;
+      star.rotation.y = t * 0.4;
+    });
+  };
+
+  // ── a binary star ──
+  // two suns close together, each with its corona, and a bridge of gas
+  // drawn between them on two crossed planes
+  const binary = (w) => {
+    const g = place(w);
+    const light = { value: new THREE.Vector3() };
+    lightOf.set(w.id, light);
+    const suns = [
+      { r: w.r, color: w.color, at: [0, 0, 0], seed: 4.2 },
+      { r: w.pair.r, color: w.pair.color, at: [w.pair.apart, 0, 0], seed: 6.6 },
+    ];
+    for (const sn of suns) {
+      const c = new THREE.Color(sn.color);
+      const holder = new THREE.Group();
+      holder.position.set(...sn.at);
+      g.add(holder);
+      const surface = mesh(new THREE.SphereGeometry(sn.r, seg(72, 44), seg(48, 28)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c }, uSeed: { value: sn.seed } }), holder);
+      const reach = 11;
+      facingQuad(sn.r * reach, GLOW_FRAG, { uR: { value: sn.r }, uColor: { value: c }, uSeed: { value: sn.r }, uReach: { value: reach } }, holder);
+      ticks.push((t) => (surface.rotation.y = t * 0.03 + sn.seed));
+    }
+    const bridgeMat = shader(UV_VERT, BRIDGE_FRAG, { uColor: { value: new THREE.Color(w.color).lerp(new THREE.Color(w.pair.color), 0.4) } }, { ...additive, side: THREE.DoubleSide });
+    const bridgeGeo = new THREE.PlaneGeometry(w.pair.apart * 0.98, w.r * 1.6);
+    for (const roll of [0, PI / 2]) {
+      const m = mesh(bridgeGeo, bridgeMat, g, 2);
+      m.position.set(w.pair.apart / 2, 0, 0);
+      m.rotation.x = roll;
+    }
+  };
+
+  // ── a rogue planet ──
+  // a dark, ice-crusted world with no sun of its own, lit by its auroras (a
+  // ring of curtains over each pole) and a thin faint ring
+  const rogue = (w) => {
+    const g = place(w);
+    const tilt = new THREE.Group();
+    tilt.rotation.set(0.42, 0, 0.3);
+    g.add(tilt);
+    const mat = world('ROCK', { light: homeW, radius: w.r, base: w.colors[0], accent: w.colors[1], tex: rockTex, rim: w.colors[2], rimStrength: 1.2, dusk: '#2a3a60', seed: 5.5 });
+    const body = mesh(new THREE.SphereGeometry(w.r, seg(96, 56), seg(64, 36)), mat, tilt);
+    halo(tilt, w.r, w.colors[2], homeW, { reach: 1.06, strength: 0.5 });
+    // (an auroral oval over each pole, hanging just off the cap, as one reads from orbit)
+    const inner = w.r * 0.45;
+    const outer = w.r * 1.0;
+    for (const pole of [1, -1]) {
+      const m = mesh(new THREE.RingGeometry(inner, outer, seg(96, 48), 1).rotateX(-PI / 2), shader(AURORA_VERT, AURORA_FRAG, { uColor: { value: new THREE.Color(w.colors[2]) }, uInner: { value: inner }, uOuter: { value: outer }, uSeed: { value: pole * 3.3 } }, { ...additive, side: THREE.DoubleSide }), tilt, 2);
+      m.position.y = pole * w.r * 0.9;
+    }
+    const ringTex = own(ringTexture(['#b9d8f0', '#7fa8c8', '#e8f4ff'], w.id, { faint: true }));
+    ring(tilt, w.r, [1.6, 2.2], ringTex, homeW, 0.35);
+    ticks.push((t) => (body.rotation.y = t * 0.012));
+  };
+
+  // ── a wreck field ──
+  // a white dwarf, small and hot, and a field of dead hulls drifting round
+  // it: three broken shapes, instanced, the whole field turning slowly
+  const graveyard = (w) => {
+    const g = place(w);
+    const c = new THREE.Color(w.color);
+    const light = { value: new THREE.Vector3() };
+    lightOf.set(w.id, light);
+    const dwarf = mesh(new THREE.SphereGeometry(w.r, seg(48, 28), seg(32, 20)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c.clone().multiplyScalar(1.3) }, uSeed: { value: 2.7 } }), g);
+    const reach = 9;
+    facingQuad(w.r * reach, GLOW_FRAG, { uR: { value: w.r }, uColor: { value: c }, uSeed: { value: w.r }, uReach: { value: reach } }, g);
+    const field = new THREE.Group();
+    g.add(field);
+    const metal = own(new THREE.MeshStandardMaterial({ color: '#3a3d45', roughness: 0.95, metalness: 0.35, flatShading: true }));
+    // a hull with a cone nose, broken open; a cylinder hull with its end torn; a wing slab on a strut
+    const shapes = [
+      own(parts([[new THREE.BoxGeometry(1, 0.3, 0.4), [0, 0, 0]], [new THREE.ConeGeometry(0.2, 0.5, 6), [0.75, 0, 0], [0, 0, -PI / 2]], [new THREE.BoxGeometry(0.3, 0.12, 0.6), [-0.3, 0.2, 0]]])),
+      own(parts([[new THREE.CylinderGeometry(0.2, 0.24, 1.2, 8), [0, 0, 0], [0, 0, PI / 2]], [new THREE.ConeGeometry(0.26, 0.4, 5), [-0.7, 0.05, 0], [0, 0, PI / 2]], [new THREE.BoxGeometry(0.5, 0.05, 0.9), [0.1, 0, 0]]])),
+      own(parts([[new THREE.BoxGeometry(1, 0.05, 0.6), [0, 0, 0]], [new THREE.BoxGeometry(0.08, 0.5, 0.08), [-0.4, 0.2, 0]], [new THREE.BoxGeometry(0.4, 0.25, 0.3), [0.3, 0.1, 0.1]]])),
+    ];
+    const rand = rng(`${w.id}-hulls`);
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const at = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const per = small ? 14 : 20;
+    for (const geo of shapes) {
+      const im = new THREE.InstancedMesh(geo, metal, per);
+      for (let i = 0; i < per; i++) {
+        const r = w.r * 2.5 + Math.sqrt(rand()) * (w.field - w.r * 2.5);
+        const a = rand() * TAU;
+        at.set(cos(a) * r, (rand() - 0.5) * 50, sin(a) * r);
+        const size = 3 + rand() * 6;
+        sc.set(size, size, size);
+        q.setFromEuler(e.set(rand() * TAU, rand() * TAU, rand() * TAU));
+        im.setMatrixAt(i, m4.compose(at, q, sc));
+      }
+      im.instanceMatrix.needsUpdate = true;
+      im.computeBoundingSphere();
+      field.add(im);
+    }
+    ticks.push((t) => {
+      dwarf.rotation.y = t * 0.02;
+      field.rotation.y = t * 0.0025;
+    });
+  };
+
   for (const w of WONDERS) {
     if (w.kind === 'gas-giant' || w.kind === 'ice-giant') giant(w);
     else if (w.kind === 'star') sun(w);
     else if (w.kind === 'black-hole') blackHole(w);
     else if (w.kind === 'nebula') nebula(w);
     else if (w.kind === 'citadel') citadel(w);
+    else if (w.kind === 'pulsar') pulsar(w);
+    else if (w.kind === 'binary') binary(w);
+    else if (w.kind === 'rogue') rogue(w);
+    else if (w.kind === 'graveyard') graveyard(w);
   }
 
   // the nebulae's young stars, all in one draw
@@ -1836,6 +2017,9 @@ export function buildDeepSpace({ small = false } = {}) {
     if (w.kind === 'nebula') return w.r * 0.55;
     if (w.kind === 'black-hole') return w.r * 3.0;
     if (w.kind === 'star') return w.r * 1.7;
+    if (w.kind === 'pulsar') return w.r * 14;
+    if (w.kind === 'binary') return w.r * 2.2;
+    if (w.kind === 'graveyard') return w.field * 0.6;
     if (w.ring) return w.r * 1.45;
     return w.r * 1.4 + 2;
   };

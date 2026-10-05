@@ -11,7 +11,8 @@ import '../../styles/lazy/interests.css';
 // each one does something. Drawn on a 24-unit grid with one stroke weight so
 // they read as a set.
 
-const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
+// (the buttons are named by their labels: the icons, Ti's letters and all, are decoration)
+const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
 
 const ICONS = {
   sitar: (
@@ -200,7 +201,7 @@ export default function InterestDock() {
       <ul className="mt-3 flex flex-wrap gap-2" aria-label="Quick tricks">
         {items.map((it) => (
           <li key={it.id}>
-            <button type="button" className={`dock-btn${it.keep ? ' ab-keep' : ''}`} data-icon={it.id} data-label={it.label} aria-label={it.label} onClick={it.run}>
+            <button type="button" className={`dock-btn${it.keep ? ' ab-keep' : ''}`} data-icon={it.id} data-label={it.label} aria-label={it.label} title={it.label} onClick={it.run}>
               {it.id === 'script' ? scriptIcon(script ?? scriptFor(active)) : ICONS[it.id]}
             </button>
           </li>

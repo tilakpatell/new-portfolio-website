@@ -319,6 +319,11 @@ export const ZOOM = { min: 7, start: 12.5, max: 20 };
 export const zoomTo = (dist, k) => Math.max(ZOOM.min, Math.min(ZOOM.max, dist * k));
 export const pitchFor = (dist) => 0.68 + (dist - ZOOM.start) * 0.018;
 
+// Where the hero is, for the other islanders online (the towns' rooms,
+// middleearth/towns/travellers.js): the island's own coordinates, how fast
+// he's going and how high he stands.
+export const islanderStep = (h) => ({ x: h.x, z: h.z, face: h.face, speed: h.moving ?? 0, y: Math.max(0, h.y) });
+
 // ── the columns ──
 
 // [lo, hi, block id or null] spans, per tile, bottom up
