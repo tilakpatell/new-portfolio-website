@@ -3,6 +3,8 @@ import { ageOf, beatMorty, epitaph, MORTY_BEST, newLife, OLD_AGE, rand, STAGE_IN
 
 const DT = 1 / 60;
 const idle = () => ({});
+const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const SEEDS_20 = Array.from({ length: 20 }, (_, i) => i + 1);
 
 // a tackler or a roll that is close and in Roy's lane: step aside (one key is one lane)
 function dodge(items, lane) {
@@ -11,26 +13,40 @@ function dodge(items, lane) {
   return {};
 }
 
+// a kid who throws once per window, except the first `misses` throws, which go when the tire is far out
+function kid(misses = 0) {
+  let was = false;
+  return (life) => {
+    const want = life.s.throws < misses ? Math.abs(life.s.phase) > 0.9 : Math.abs(life.s.phase) < 0.28;
+    const act = want && !was;
+    was = want;
+    return { act };
+  };
+}
+
+// a seller who picks the wrong lane for the first `misses` customers
+function seller(misses = 0) {
+  return (life) => {
+    const { s } = life;
+    if (s.choice || !s.customer) return {};
+    const want = s.served < misses ? (s.customer.want + 1) % 3 : s.customer.want;
+    if (s.pointer < want) return { right: true };
+    if (s.pointer > want) return { left: true };
+    return { act: true };
+  };
+}
+
 // the perfect player: reads only life.s, one stage after another. `fumble` names a stage it sits out.
 function perfect(fumble) {
-  let inWindow = false;
+  const kidBrain = kid();
+  const sellerBrain = seller();
   let beatsSeen = 0;
   return (life) => {
     const { s } = life;
     if (life.stage === fumble) return {};
-    if (life.stage === 'kid') {
-      const now = Math.abs(s.phase) < 0.28;
-      const act = now && !inWindow;
-      inWindow = now;
-      return { act };
-    }
+    if (life.stage === 'kid') return kidBrain(life);
     if (life.stage === 'football') return dodge(s.tacklers, life.lane);
-    if (life.stage === 'carpet') {
-      if (s.choice || !s.customer) return {};
-      if (s.pointer < s.customer.want) return { right: true };
-      if (s.pointer > s.customer.want) return { left: true };
-      return { act: true };
-    }
+    if (life.stage === 'carpet') return sellerBrain(life);
     if (life.stage === 'cancer') {
       const act = s.elapsed > beatsSeen; // a beat has just sounded
       beatsSeen = s.elapsed;
@@ -70,8 +86,9 @@ describe('a new life', () => {
       route: 'job',
       over: false,
       cause: null,
+      grit: 0,
       stats: { dream: 0, touchdown: false, tackles: 0, sales: 0, beats: 0 },
-      s: { throws: 0, hits: 0, phase: 0 },
+      s: { throws: 0, hits: 0 },
       events: [],
     });
     expect(newLife({ offgrid: true }).route).toBe('offgrid');
@@ -95,22 +112,26 @@ describe('a new life', () => {
 
 describe('growing up', () => {
   it('scores five hits for a throw in every window, and is twelve when it ends', () => {
-    const { life, events } = play(newLife(), perfect(), (l) => l.stage !== 'kid');
-    expect(count(events, 'hit')).toBe(5);
-    expect(count(events, 'miss')).toBe(0);
-    expect(life.stats.dream).toBe(5);
-    expect(life.stage).toBe('football');
-    expect(events).toContain('stage');
-    expect(ageOf(life)).toBe(12);
+    for (const seed of SEEDS) {
+      const { life, events } = play(newLife({ seed }), perfect(), (l) => l.stage !== 'kid');
+      expect(count(events, 'throw'), `seed ${seed}`).toBe(5);
+      expect(count(events, 'hit'), `seed ${seed}`).toBe(5);
+      expect(count(events, 'miss'), `seed ${seed}`).toBe(0);
+      expect(life.stats.dream).toBe(5);
+      expect(life.stage).toBe('football');
+      expect(events).toContain('stage');
+      expect(ageOf(life)).toBe(12);
+    }
   });
 
-  it('misses a throw when the tire is not near the middle, and still uses it up', () => {
+  it('starts the tire off the middle, so the first throw is no free hit', () => {
     let life = newLife();
-    life = stepLife(life, { act: true }, DT); // t = 0: the tire is dead centre
-    expect(life.events).toEqual(['hit']);
-    while (Math.abs(life.s.phase) < 0.9) life = stepLife(life, {}, DT);
+    expect(Math.abs(life.s.phase)).toBeGreaterThan(0.9);
     life = stepLife(life, { act: true }, DT);
-    expect(life.events).toEqual(['miss']);
+    expect(life.events).toEqual(['throw', 'miss']);
+    while (Math.abs(life.s.phase) >= 0.28) life = stepLife(life, {}, DT);
+    life = stepLife(life, { act: true }, DT);
+    expect(life.events).toEqual(['throw', 'hit']);
     expect(life.s).toMatchObject({ throws: 2, hits: 1 });
     expect(life.age).toBeCloseTo((12 * 2) / 5);
   });
@@ -120,23 +141,39 @@ describe('growing up', () => {
     expect(life.stage).toBe('kid');
     expect(life.s.throws).toBe(0);
   });
+
+  it('earns grit for four hits or more, and not for three', () => {
+    for (const [misses, grit] of [[0, 1], [1, 1], [2, 0]]) {
+      const { life } = play(newLife(), kid(misses), (l) => l.stage !== 'kid');
+      expect(life.stats.dream).toBe(5 - misses);
+      expect(life.grit).toBe(grit);
+    }
+  });
 });
 
 describe('Friday nights', () => {
-  it('ends by 22 seconds with no input, and Roy is 18', () => {
-    const start = playTo('football');
-    const { life, events, n } = play(start, idle, (l) => l.stage !== 'football');
-    expect(life.stage).toBe('carpet');
-    expect(n).toBeLessThanOrEqual(22 * 60 + 1);
-    expect(ageOf(life)).toBeLessThanOrEqual(18);
-    expect(life.stats.tackles).toBeGreaterThan(0);
-    expect(count(events, 'tackle')).toBe(life.stats.tackles);
+  it('ends by 16 seconds with no input, and Roy is 18; a quiet player scores on fewer than half the seeds', () => {
+    let scored = 0;
+    let timedOut = 0;
+    for (const seed of SEEDS_20) {
+      const start = playTo('football', newLife({ seed }));
+      const { life, events, n } = play(start, idle, (l) => l.stage !== 'football');
+      expect(life.stage, `seed ${seed}`).toBe('carpet');
+      expect(n, `seed ${seed}`).toBeLessThanOrEqual(16 * 60 + 1);
+      expect(ageOf(life)).toBe(18);
+      expect(count(events, 'tackle')).toBe(life.stats.tackles);
+      expect(life.grit).toBe(start.grit + (life.stats.touchdown ? 1 : 0));
+      if (life.stats.touchdown) scored++;
+      else timedOut++;
+    }
+    expect(scored).toBeLessThan(10);
+    expect(timedOut).toBeGreaterThan(0);
   });
 
   it('gives no forward progress while stunned', () => {
-    let { life } = play(playTo('football'), idle, (l) => l.events.includes('tackle'), 22 * 60);
+    let { life } = play(playTo('football'), idle, (l) => l.events.includes('tackle'), 16 * 60);
     expect(life.events).toContain('tackle');
-    expect(life.s.stun).toBeCloseTo(1.2);
+    expect(life.s.stun).toBeCloseTo(1.5);
     while (life.s.stun > 0) {
       const before = life.s.dist;
       life = stepLife(life, {}, DT);
@@ -147,12 +184,15 @@ describe('Friday nights', () => {
     expect(life.s.dist).toBeGreaterThan(before);
   });
 
-  it('is a touchdown for a player who steps out of the way', () => {
-    const { life, events } = play(playTo('football'), perfect(), (l) => l.stage !== 'football');
-    expect(count(events, 'touchdown')).toBe(1);
-    expect(count(events, 'tackle')).toBe(0);
-    expect(life.stats).toMatchObject({ touchdown: true, tackles: 0 });
-    expect(ageOf(life)).toBe(18);
+  it('is a touchdown for a player who steps out of the way, on every seed', () => {
+    for (const seed of SEEDS_20) {
+      const { life, events } = play(playTo('football', newLife({ seed })), perfect(), (l) => l.stage !== 'football');
+      expect(count(events, 'touchdown'), `seed ${seed}`).toBe(1);
+      expect(count(events, 'tackle'), `seed ${seed}`).toBe(0);
+      expect(life.stats).toMatchObject({ touchdown: true, tackles: 0 });
+      expect(ageOf(life)).toBe(18);
+      expect(life.grit).toBe(2);
+    }
   });
 
   it('keeps Roy in the three lanes', () => {
@@ -166,18 +206,47 @@ describe('Friday nights', () => {
 
 describe('the carpet store', () => {
   it('serves eight customers for eight sales, and Roy is 44', () => {
-    const { life, events } = play(playTo('carpet'), perfect(), (l) => l.stage !== 'carpet');
-    expect(count(events, 'sale')).toBe(8);
-    expect(count(events, 'lost')).toBe(0);
-    expect(life.stats.sales).toBe(8);
-    expect(life.stage).toBe('cancer');
-    expect(ageOf(life)).toBe(44);
+    for (const seed of SEEDS) {
+      const { life, events } = play(playTo('carpet', newLife({ seed })), perfect(), (l) => l.stage !== 'carpet');
+      expect(count(events, 'sale'), `seed ${seed}`).toBe(8);
+      expect(count(events, 'lost'), `seed ${seed}`).toBe(0);
+      expect(life.stats.sales).toBe(8);
+      expect(life.stage).toBe('cancer');
+      expect(ageOf(life)).toBe(44);
+      expect(life.grit).toBe(3);
+    }
+  });
+
+  it('gets a year older as the line goes, from 19 to 44', () => {
+    let life = playTo('carpet');
+    const brain = perfect();
+    let served = 0;
+    while (life.stage === 'carpet') {
+      life = stepLife(life, brain(life), DT);
+      if (life.events.includes('sale')) {
+        served++;
+        expect(life.age).toBeCloseTo(19 + (25 * served) / 8);
+      }
+    }
+    expect(served).toBe(8);
+    expect(life.age).toBe(44);
   });
 
   it('is the same eight customers off the grid', () => {
     const { life, events } = play(playTo('carpet', newLife({ offgrid: true })), perfect(), (l) => l.stage !== 'carpet');
     expect(count(events, 'sale')).toBe(8);
     expect(life.route).toBe('offgrid');
+    expect(life.grit).toBe(3);
+  });
+
+  it('earns grit for six sales or more, and not for five', () => {
+    for (const [misses, sales, grit] of [[2, 6, 1], [3, 5, 0]]) {
+      const start = playTo('carpet');
+      const { life, events } = play(start, seller(misses), (l) => l.stage !== 'carpet');
+      expect(count(events, 'lost')).toBe(misses);
+      expect(life.stats.sales).toBe(sales);
+      expect(life.grit).toBe(start.grit + grit);
+    }
   });
 
   it('loses a customer who is picked wrong, and one who runs out of patience', () => {
@@ -236,11 +305,13 @@ describe('the diagnosis', () => {
   });
 
   it('is beaten by twelve beats on time, which is the finale', () => {
-    const { life, events } = play(playTo('cancer'), perfect(), (l) => l.stage !== 'cancer');
-    expect(count(events, 'beat')).toBe(12);
-    expect(count(events, 'offbeat')).toBe(0);
-    expect(life).toMatchObject({ stage: 'finale', over: false });
-    expect(life.stats.beats).toBe(12);
+    for (const seed of SEEDS) {
+      const { life, events } = play(playTo('cancer', newLife({ seed })), perfect(), (l) => l.stage !== 'cancer');
+      expect(count(events, 'beat'), `seed ${seed}`).toBe(12);
+      expect(count(events, 'offbeat'), `seed ${seed}`).toBe(0);
+      expect(life).toMatchObject({ stage: 'finale', over: false });
+      expect(life.stats.beats).toBe(12);
+    }
   });
 
   it('counts a beat once, so mashing around it is an offbeat', () => {
@@ -251,6 +322,24 @@ describe('the diagnosis', () => {
     life = stepLife(life, { act: true }, DT);
     expect(life.events).toEqual(['offbeat']);
     expect(life.s).toMatchObject({ beats: 1, offbeats: 1 });
+  });
+
+  it('counts a press just before the beat, and not the beat itself again', () => {
+    let life = playTo('cancer');
+    while (life.s.beatT < 0.62) life = stepLife(life, {}, DT); // 0.1 s early, inside the 0.16 s window
+    life = stepLife(life, { act: true }, DT);
+    expect(life.events).toEqual(['beat']);
+    while (life.s.elapsed < 1) life = stepLife(life, {}, DT);
+    life = stepLife(life, { act: true }, DT);
+    expect(life.events).toEqual(['offbeat']);
+  });
+
+  it('calls a press 0.3 s from the beat an offbeat', () => {
+    let life = playTo('cancer');
+    while (life.s.beatT < 0.3) life = stepLife(life, {}, DT);
+    life = stepLife(life, { act: true }, DT);
+    expect(life.events).toEqual(['offbeat']);
+    expect(life.s).toMatchObject({ beats: 0, offbeats: 1 });
   });
 });
 
@@ -284,20 +373,64 @@ describe('back to work', () => {
     expect(ageOf(life)).toBe(49);
   });
 
-  it('lets a perfect dodger live to 100, a whole life in five stages', () => {
-    const { life, events, n } = play(newLife(), perfect(), (l) => l.over);
-    expect(n).toBeLessThan(100000);
-    expect(life).toMatchObject({ over: true, cause: 'old', endAge: OLD_AGE });
-    expect(ageOf(life)).toBe(OLD_AGE);
-    expect(count(events, 'stage')).toBe(4);
-    expect(count(events, 'death')).toBe(1);
-    expect(count(events, 'dodge')).toBe(OLD_AGE - 46);
-    expect(beatMorty(life)).toBe(true);
+  it('comes faster and quicker the older Roy gets', () => {
+    const firstRoll = (age) => {
+      const start = { ...playTo('finale'), age };
+      const { life } = play(start, idle, (l) => l.s.rolls.length > 0);
+      return { v: life.s.rolls[0].v, next: life.s.next };
+    };
+    const young = firstRoll(46);
+    const old = firstRoll(80);
+    expect(young.v).toBe(10);
+    expect(old.v).toBe(10 + 34 * 0.25);
+    expect(young.next).toBeCloseTo(1.3, 1);
+    expect(old.next).toBeCloseTo(1.3 - 34 * 0.02, 1);
+    expect(old.v).toBeGreaterThan(young.v);
+    expect(old.next).toBeLessThan(young.next);
   });
 
-  it('leaves an over life alone', () => {
+  it('shrugs off a roll for each grit, then the next one kills', () => {
+    for (const grit of [0, 1, 2]) {
+      let life = { ...playTo('finale'), grit };
+      let shrugs = 0;
+      while (!life.over) {
+        const age = life.age;
+        const next = stepLife(life, {}, DT);
+        if (next.events.includes('shrug')) {
+          shrugs++;
+          expect(next.events).not.toContain('dodge');
+          expect(next.events).not.toContain('death');
+          expect(next.age).toBe(age);
+          expect(next.grit).toBe(grit - shrugs);
+          expect(next.s.rolls.some((r) => r.z <= 0 && r.lane === next.lane)).toBe(false);
+        }
+        life = next;
+      }
+      expect(shrugs).toBe(grit);
+      expect(life).toMatchObject({ cause: 'carpet', grit: 0 });
+    }
+  });
+
+  it('lets a perfect dodger live to 100, a whole life in five stages', () => {
+    for (const seed of SEEDS) {
+      const { life, events, n } = play(newLife({ seed }), perfect(), (l) => l.over);
+      expect(n, `seed ${seed}`).toBeLessThan(100000);
+      expect(life).toMatchObject({ over: true, cause: 'old', endAge: OLD_AGE, grit: 3 });
+      expect(ageOf(life)).toBe(OLD_AGE);
+      expect(count(events, 'stage')).toBe(4);
+      expect(count(events, 'death')).toBe(1);
+      expect(count(events, 'dodge')).toBe(OLD_AGE - 46);
+      expect(count(events, 'shrug')).toBe(0);
+      expect(beatMorty(life)).toBe(true);
+    }
+  });
+
+  it('leaves an over life alone, apart from clearing the events it ended with', () => {
     const { life: over } = play(playTo('finale'), idle, (l) => l.over);
-    expect(stepLife(over, { act: true, left: true }, DT)).toBe(over);
+    expect(over.events).toContain('death');
+    const after = stepLife(over, { act: true, left: true }, DT);
+    expect(after).toEqual({ ...over, events: [] });
+    expect(stepLife(after, { act: true }, DT)).toBe(after);
   });
 });
 
@@ -311,7 +444,7 @@ describe('the epitaph and the score to beat', () => {
 
   it('says the age range and how it ended', () => {
     const cancer = play(playTo('cancer'), idle, (l) => l.over).life;
-    expect(epitaph(cancer)).toBe('Roy, 0–45. Dreamed of the NFL, scored a touchdown, sold carpet. Not ready to die, and gone at 45.');
+    expect(epitaph(cancer)).toBe('Roy, 0–45. Dreamed of the NFL, scored a touchdown, sold carpet. Not ready to die.');
 
     const carpet = play(playTo('finale'), idle, (l) => l.over).life;
     expect(epitaph(carpet)).toContain(`Roy, 0–${ageOf(carpet)}. Dreamed of the NFL, scored a touchdown, sold carpet, beat cancer. A roll of carpet came loose.`);
@@ -327,7 +460,7 @@ describe('the epitaph and the score to beat', () => {
   it('varies with how the life went', () => {
     const { life } = play(playTo('cancer'), idle, (l) => l.over);
     const poor = { ...life, stats: { ...life.stats, touchdown: false, sales: 1 } };
-    expect(epitaph(poor)).toBe('Roy, 0–45. Dreamed of the NFL, sold hardly any carpet. Not ready to die, and gone at 45.');
+    expect(epitaph(poor)).toBe('Roy, 0–45. Dreamed of the NFL, sold hardly any carpet. Not ready to die.');
     expect(epitaph({ ...poor, route: 'offgrid' })).toContain('lived off the grid in the woods.');
   });
 });
@@ -348,15 +481,31 @@ describe('purity and determinism', () => {
     expect(JSON.stringify(frozen)).toBe(before);
   });
 
+  it('never touches an idle life in the finale with grit to spend', () => {
+    let life = { ...playTo('finale'), grit: 1 };
+    for (let i = 0; i < 3000 && !life.over; i++) {
+      deepFreeze(life);
+      life = stepLife(life, {}, DT);
+    }
+    expect(life.over).toBe(true);
+  });
+
   it('gives a fresh events array every step', () => {
     let life = newLife();
     life = stepLife(life, { act: true }, DT);
     const first = life.events;
-    expect(first).toEqual(['hit']);
+    expect(first).toEqual(['throw', 'miss']);
     life = stepLife(life, {}, DT);
     expect(life.events).not.toBe(first);
     expect(life.events).toEqual([]);
-    expect(first).toEqual(['hit']);
+    expect(first).toEqual(['throw', 'miss']);
+  });
+
+  it('takes no more than a tenth of a second at a time, and never goes back', () => {
+    const big = stepLife(newLife(), {}, 5);
+    expect(big.t).toBeCloseTo(0.1);
+    expect(stepLife(newLife(), {}, -1).t).toBe(0);
+    expect(stepLife(newLife(), {}, DT).t).toBeCloseTo(DT);
   });
 
   it('plays the same life from the same seed and the same keys', () => {

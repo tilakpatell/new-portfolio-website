@@ -6,7 +6,11 @@
 // Lanes are 0..2 (Roy starts in 1). A tackler or a roll has `z`, its distance
 // in metres ahead of Roy. `stepLife` is pure: it returns a new life, with the
 // random state carried in `life.rng`. Input flags are true only on the frame a
-// key went down, and apply to the state the player is looking at.
+// key went down, and apply to the state the player is looking at. A step is at
+// most a tenth of a second.
+//
+// Doing well early earns `grit`: each point lets Roy shrug off one roll in the
+// finale instead of dying under it.
 //
 // On the step a stage ends, `age` still reads that stage's last year (12, 18,
 // 44, 45); the next stage's age starts on the following step.
@@ -24,11 +28,13 @@ export const STAGE_INFO = {
 };
 export const stageTitle = (life) => (life.route === 'offgrid' && STAGE_INFO[life.stage].offgrid) || STAGE_INFO[life.stage].title;
 
-const KID = { swing: 2.4, band: 0.28, throws: 5 };
-const FOOTBALL = { spawn: 0.9, ahead: 40, speed: 14, run: 9, goal: 100, stun: 1.2, limit: 22 };
+// the tire starts at the far end of its swing, so the first throw is no free hit
+const KID = { swing: 2.4, band: 0.28, throws: 5, start: -Math.PI / 2 };
+const FOOTBALL = { spawn: 0.9, ahead: 40, speed: 14, run: 9, goal: 100, stun: 1.5, limit: 16 };
 const CARPET = { customers: 8, patience: 4, gap: 0.6 };
 const CANCER = { beat: 0.75, window: 0.16, need: 12, offbeats: 6, limit: 24 };
 const FINALE = { ahead: 30, from: 46 };
+const GRIT = { hits: 4, sales: 6 };
 
 // mulberry32 on a uint32 (as shire/rules.js `seeded`), but the state is passed in and out
 export function rand(state) {
@@ -49,7 +55,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const shift = (lane, input) => clamp(lane + (input.right ? 1 : 0) - (input.left ? 1 : 0), 0, 2);
 
 const START = {
-  kid: () => ({ throws: 0, hits: 0, phase: 0 }),
+  kid: () => ({ throws: 0, hits: 0, phase: Math.sin(KID.start) }),
   football: () => ({ dist: 0, stun: 0, time: 0, spawn: FOOTBALL.spawn, tacklers: [] }),
   carpet: (L) => ({ served: 0, customer: null, pointer: 1, gap: CARPET.gap, choice: L.choose }),
   cancer: () => ({ beatT: 0, beats: 0, offbeats: 0, elapsed: 0, hit: 0 }),
@@ -64,6 +70,7 @@ export function newLife({ seed = 1, offgrid = false, offerChoice = false } = {})
     lane: 1,
     route: offgrid ? 'offgrid' : 'job',
     choose: offerChoice,
+    grit: 0,
     over: false,
     cause: null,
     endAge: null,
@@ -96,6 +103,7 @@ function stepKid(L, input) {
   const s = L.s;
   if (input.act) {
     s.throws++;
+    L.events.push('throw');
     const hit = Math.abs(s.phase) < KID.band;
     if (hit) {
       s.hits++;
@@ -104,8 +112,10 @@ function stepKid(L, input) {
     L.events.push(hit ? 'hit' : 'miss');
   }
   L.age = (12 * s.throws) / KID.throws;
-  if (s.throws >= KID.throws) enter(L, 'football');
-  else s.phase = Math.sin(L.t * KID.swing);
+  if (s.throws >= KID.throws) {
+    if (s.hits >= GRIT.hits) L.grit++;
+    enter(L, 'football');
+  } else s.phase = Math.sin(L.t * KID.swing + KID.start);
 }
 
 function stepFootball(L, input, dt) {
@@ -134,6 +144,7 @@ function stepFootball(L, input, dt) {
   if (scored) {
     s.dist = FOOTBALL.goal;
     L.stats.touchdown = true;
+    L.grit++;
     L.events.push('touchdown');
   }
   L.age = 13 + 5 * Math.min(1, s.dist / FOOTBALL.goal);
@@ -169,8 +180,11 @@ function stepCarpet(L, input, dt) {
       }
     }
   }
-  L.age = Math.min(STAGE_INFO.carpet.to, 19 + (26 * s.served) / CARPET.customers);
-  if (s.served >= CARPET.customers) enter(L, 'cancer');
+  L.age = 19 + (25 * s.served) / CARPET.customers;
+  if (s.served >= CARPET.customers) {
+    if (L.stats.sales >= GRIT.sales) L.grit++;
+    enter(L, 'cancer');
+  }
 }
 
 // beat k sounds at k * 0.75 s; `hit` is the last beat taken, so one beat counts once
@@ -200,23 +214,26 @@ function stepCancer(L, input, dt) {
   if (s.elapsed >= CANCER.limit) die(L, 'cancer');
 }
 
-// each roll keeps the speed it was rolled at
+// each roll keeps the speed it was rolled at; one in Roy's lane costs a grit if he has one, else his life
 function stepFinale(L, input, dt) {
   const s = L.s;
   L.age = Math.max(L.age, FINALE.from);
   L.lane = shift(L.lane, input);
-  for (const r of s.rolls) {
+  s.rolls = s.rolls.filter((r) => {
     const was = r.z;
     r.z -= r.v * dt;
     if (was > 0 && r.z <= 0 && !L.over) {
-      if (r.lane === L.lane) die(L, L.route === 'job' ? 'carpet' : 'log');
-      else {
+      if (r.lane !== L.lane) {
         L.age++;
         L.events.push('dodge');
-      }
+      } else if (L.grit > 0) {
+        L.grit--;
+        L.events.push('shrug');
+        return false;
+      } else die(L, L.route === 'job' ? 'carpet' : 'log');
     }
-  }
-  s.rolls = s.rolls.filter((r) => r.z > -6);
+    return r.z > -6;
+  });
   if (L.over) return;
   if (L.age >= OLD_AGE) {
     L.age = OLD_AGE;
@@ -233,10 +250,11 @@ function stepFinale(L, input, dt) {
 const STEP = { kid: stepKid, football: stepFootball, carpet: stepCarpet, cancer: stepCancer, finale: stepFinale };
 
 export function stepLife(life, input = {}, dt = 1 / 60) {
-  if (life.over) return life;
+  if (life.over) return life.events.length ? { ...life, events: [] } : life;
+  const h = clamp(dt, 0, 0.1);
   const L = { ...life, stats: { ...life.stats }, s: structuredClone(life.s), events: [] };
-  L.t += dt;
-  STEP[L.stage](L, input || {}, dt);
+  L.t += h;
+  STEP[L.stage](L, input || {}, h);
   return L;
 }
 
@@ -251,7 +269,7 @@ export function epitaph(life) {
   if (at >= 4) did.push('beat cancer');
   const age = life.endAge ?? ageOf(life);
   const end = {
-    cancer: `Not ready to die, and gone at ${age}.`,
+    cancer: 'Not ready to die.',
     carpet: 'A roll of carpet came loose.',
     log: 'A log came down.',
     old: `A life well lived, all the way to ${OLD_AGE}.`,
