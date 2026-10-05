@@ -583,3 +583,50 @@ export function interdictSound() {
     { type: 'square', gain: 0.03 },
   );
 }
+
+// ── the weapons (weapons.js) and the Citadel's siege ──
+
+// changing weapons: a click and a rising chirp
+export function switchSound() {
+  tones(
+    [
+      [520, 0, 0.04],
+      [880, 0.05, 0.06],
+    ],
+    { type: 'square', gain: 0.04 },
+  );
+}
+
+// a heavy round away: a thump and a long rush (the cruiser's grenade, a portal's swirl)
+export function launchSound(kind) {
+  if (kind === 'cruiser') {
+    whoosh(0.5, 400, 2400, 0.16);
+    tones([[160, 0, 0.3]], { type: 'sine', gain: 0.12 });
+    return;
+  }
+  whoosh(0.9, 1800, 260, 0.2);
+  tones([[110, 0, 0.22]], { type: 'triangle', gain: 0.16 });
+}
+
+// the trigger on an empty rack
+export function drySound() {
+  tones([[220, 0, 0.03]], { type: 'square', gain: 0.03 });
+}
+
+// a heavy round going off (big: a generator going with it)
+export function boomSound(big = false) {
+  whoosh(big ? 1.4 : 0.8, 1600, 90, big ? 0.32 : 0.24);
+  tones([[big ? 55 : 75, 0, big ? 0.7 : 0.35]], { type: 'sine', gain: big ? 0.3 : 0.2 });
+}
+
+// a shot into the Citadel's shield: a fizzing hum
+export function shieldSound() {
+  tones(
+    [
+      [1240, 0, 0.05],
+      [930, 0.03, 0.08],
+    ],
+    { type: 'sawtooth', gain: 0.025 },
+  );
+  whoosh(0.25, 4200, 1800, 0.08);
+}

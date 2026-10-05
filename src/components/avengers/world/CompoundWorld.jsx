@@ -320,7 +320,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     s.jump = false;
     s.zip = false;
     for (const e of s.h.ev) {
-      if (e.type === 'web' || e.type === 'zip') sfx('zip');
+      if (e.type === 'web' || e.type === 'zip' || e.type === 'corner') sfx('zip');
       else if (e.type === 'perfect') {
         sfx('ding');
         showTrick(e.combo);

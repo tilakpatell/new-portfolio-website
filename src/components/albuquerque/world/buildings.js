@@ -11,7 +11,7 @@
 // createTown({ aniso, small }) → { object, update(dt, clock, night), dispose }.
 
 import * as THREE from 'three';
-import { RAIL, TOWN, groundHeight } from './rules';
+import { RAIL, TOWN, groundHeight, surfaceHeight } from './rules';
 
 const seeded = (seed) => () => {
   seed |= 0;
@@ -504,13 +504,13 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
       b.add(holder);
       NAMES[t.id]?.(b, t, W, D);
     } else KINDS[t.kind]?.(b, t, W, D);
-    b.position.set(t.at.x, groundHeight(t.at.x, t.at.z), t.at.z);
+    b.position.set(t.at.x, surfaceHeight(t.at.x, t.at.z), t.at.z);
     b.rotation.y = YAW[t.face] ?? 0;
     root.add(b);
   }
 
-  // ── on the street: Route 66's arches over Central, and two billboards ──
-  for (const x of [-176, 176]) {
+  // ── on the road in: Route 66's arches over Central where it leaves town, and two billboards ──
+  for (const x of [-254, 254]) {
     const arch = new THREE.Group();
     for (const s of [-1, 1]) pole(arch, 0, s * 8.2, 7.2, 0.22);
     add(arch, B(0.4, 0.5, 16.8), steel, 0, 7.2, 0);
@@ -526,8 +526,8 @@ export function createTown({ aniso = 8, small = false, models = {}, tankCar = nu
     g.rotation.y = ry;
     root.add(g);
   };
-  billboard('BETTER CALL SAUL!\n(505) 503-4455', 74, 17, Math.PI, { bg: '#f6cf1d', fg: '#b3151b', neon: '#ffe14a', font: 'Arial Black, Arial, sans-serif' });
-  billboard('LOS POLLOS HERMANOS\nThe finest ingredients', -150, -16, 0, { bg: '#f4e9c8', fg: '#c0392b', neon: '#ffb347' });
+  billboard('BETTER CALL SAUL!\n(505) 503-4455', 272, 16, Math.PI, { bg: '#f6cf1d', fg: '#b3151b', neon: '#ffe14a', font: 'Arial Black, Arial, sans-serif' });
+  billboard('LOS POLLOS HERMANOS\nThe finest ingredients', -272, -16, 0, { bg: '#f4e9c8', fg: '#c0392b', neon: '#ffb347' });
 
   // ── the tracks north of town, and the freight ──
   const span = 900;

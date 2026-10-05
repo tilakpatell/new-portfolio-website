@@ -133,6 +133,28 @@ function systemEnvironment(renderer, sys) {
 }
 const s3 = (d) => [d[0], -d[1] * 0.5, d[2]];
 
+// Just taken off from a system's planet (the surface page leaves its id in
+// the session as it goes): just off the planet on its sunny side, nose
+// out, climbing. Once only.
+const LAUNCH_KEY = 'tp-galaxy-launch';
+function takeOff(sys) {
+  let id = null;
+  try {
+    id = window.sessionStorage.getItem(LAUNCH_KEY);
+    if (id) window.sessionStorage.removeItem(LAUNCH_KEY);
+  } catch {
+    return null;
+  }
+  if (id !== sys.id || !sys.body) return null;
+  const r = sys.body.r;
+  const sun = sys.suns[0].dir;
+  const l = Math.hypot(sun[0], sun[2]) || 1;
+  const dx = sun[0] / l;
+  const dz = sun[2] / l;
+  const d = r * 1.18 + 4;
+  return { x: dx * d, y: r * 0.12, z: dz * d, heading: Math.atan2(-dx, -dz) };
+}
+
 export async function create(canvas, ctx) {
   const { reduced } = ctx;
   let props = ctx;
@@ -152,12 +174,11 @@ export async function create(canvas, ctx) {
   const post = createPost(renderer, scene, camera, { small });
   const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
 
-  // light: each sun from its way, a little ambient, and a flash for lightning
+  // light: each sun from its way, and a little ambient
   const keys = [new THREE.DirectionalLight('#ffffff', 2.2), new THREE.DirectionalLight('#ffffff', 0)];
   for (const k of keys) scene.add(k, k.target);
   const ambient = new THREE.AmbientLight('#9fb0d8', 0.32);
-  const storm = new THREE.HemisphereLight('#c9b8ff', '#40306a', 0);
-  scene.add(ambient, storm);
+  scene.add(ambient);
 
   const sky = createSky({ small });
   scene.add(sky.group);
@@ -1123,15 +1144,15 @@ export async function create(canvas, ctx) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
-      // now and then, whoever holds the system comes for you; the Empire and
-      // the First Order sometimes bring a Star Destroyer to launch them
+      // now and then, whoever holds the system comes for you; the Empire (and
+      // what's left of it) sometimes brings a Star Destroyer to launch them
       const faction = state.sys?.faction;
       if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere) {
         if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
         if (state.nextHunt <= 0) {
           state.nextHunt = 50 + Math.random() * 45;
           const travelling = state.space.openness(live.x, live.y, live.z) > 0.5 && Math.abs(live.speed) > 30;
-          if ((faction === 'empire' || faction === 'firstorder') && pieces && Math.random() < 0.3) {
+          if ((faction === 'empire' || faction === 'remnant') && pieces && Math.random() < 0.3) {
             const d = pieces.destroyer(live);
             if (d) {
               emit({ type: 'event', id: 'destroyer' });
@@ -1359,11 +1380,15 @@ export async function create(canvas, ctx) {
     const wt = wall();
     if (!flying() && props.ship) setShip(props.ship);
     if (!state.ship && state.kind && state.sys) {
-      // a new pilot: out of hyperspace into the system you asked for
-      const a = arrival(state.sys, null);
-      state.ship = { ...spawn(null, a), speed: reduced ? 0 : 46 };
+      // a new pilot: out of hyperspace into the system you asked for, or,
+      // just taken off from its planet (pages/GalaxySurface.jsx), climbing
+      // away from it out of its air
+      const launched = takeOff(state.sys);
+      const a = launched ?? arrival(state.sys, null);
+      state.ship = { ...spawn(null, a), speed: reduced ? 0 : launched ? 30 : 46, pitch: launched ? 0.25 : 0 };
       camQOn = false;
-      if (!reduced) {
+      if (launched) emit({ type: 'launch' });
+      else if (!reduced) {
         state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, ready: true };
         jumpFx.set({ stretch: 1, tunnel: 0, flash: 1, speed: 300 });
       }
@@ -1427,7 +1452,7 @@ export async function create(canvas, ctx) {
     if (world) {
       worldBusy = world.update(wt, dt, camera, state.ship);
       for (const e of world.events.splice(0)) if (!state.jump) emit(e);
-      // in the planet's shadow, the sun's gone (and with Starkiller drinking it, going)
+      // in the planet's shadow, the sun's gone
       let eclipse = 1;
       if (world.body && state.ship) {
         sunWorld.copy(world.sunLights[0].dir);
@@ -1438,17 +1463,16 @@ export async function create(canvas, ctx) {
         if (along < 0) eclipse = clamp01((off - r * 0.97) / (r * 0.08));
       }
       state.eclipse += (eclipse - state.eclipse) * clamp01(dt * 4);
-      const light = state.eclipse * world.dim;
+      const light = state.eclipse;
       keys[0].intensity = 2.2 * light;
       keys[1].intensity = world.sunLights[1] ? 1.1 * light : 0;
       ambient.intensity = 0.22 + 0.12 * light;
-      storm.intensity = world.flash * 2.4;
     }
     const inTunnel = state.jump?.phase === 'tunnel';
     sky.group.visible = !inTunnel;
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
-    sky.update(camera, world?.dim ?? 1, t);
+    sky.update(camera, t);
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);

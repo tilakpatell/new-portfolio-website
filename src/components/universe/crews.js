@@ -24,6 +24,27 @@ export const CREWS = [
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
       birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
     },
+    // the Citadel's siege (siege.js): its shield, a generator going, the
+    // core shrugging off the lasers, the whole thing going up, and back
+    siege: {
+      shielded: [
+        ['morty', 'It’s got a shield, Rick! The shots just bounce off!'],
+        ['rick', 'So take out the generators on the arms, Morty. Siege one-oh-one.'],
+      ],
+      gen: [
+        ['morty', 'We got one, Rick! A shield generator!'],
+        ['rick', 'Don’t get cocky, Morty. Ricks build redundancy. It’s the only thing we build.'],
+      ],
+      shield: [['rick', 'Shield’s down! Now the core, Morty. Portal grenades. The heavy stuff, press three!']],
+      deflect: [['rick', 'Lasers won’t scratch that core, Morty. Grenades. Three. Come on.']],
+      dry: [['morty', 'We’re out of grenades, Rick!']],
+      down: [
+        ['morty', 'Oh geez, Rick, we blew up the Citadel!'],
+        ['rick', 'Relax, Morty. Infinite Ricks, infinite Citadels. They’ll portal a new one in by lunch.'],
+      ],
+      rebuilt: [['rick', 'And there it is, rebuilt. Bureaucracy, Morty: the one thing in the multiverse you can’t kill.']],
+      closed: [['rick', 'Nothing to land on, Morty. We kinda blew it up.']],
+    },
     // out of the ship on a planet (footScene.js): coming down, getting out,
     // the Federation's squads, shooting them, getting hit, going down and
     // getting up, playing the other one, wandering off, and back in
@@ -370,6 +391,23 @@ export const CREWS = [
       luke: { name: 'Luke', color: '#ff9f4a', voice: 'luke' },
       r2: { name: 'R2-D2', color: '#7fb2ff', voice: 'r2' },
     },
+    // the Citadel's siege (siege.js)
+    siege: {
+      shielded: [
+        ['luke', 'It’s shielded. Artoo, where’s it coming from?'],
+        ['r2', '[four quick beeps: the generators out on the arms]'],
+      ],
+      gen: [['r2', '[a delighted whistle]']],
+      shield: [['luke', 'Their shield’s down! Switching to proton torpedoes.']],
+      deflect: [['luke', 'Lasers aren’t getting through. Torpedoes, it’ll take torpedoes.']],
+      dry: [['r2', '[a sad, falling beep: no torpedoes left]']],
+      down: [
+        ['luke', 'Great shot! That was one in a million!'],
+        ['r2', '[a long, triumphant whistle]'],
+      ],
+      rebuilt: [['luke', 'They’ve rebuilt it already? Through a portal?']],
+      closed: [['luke', 'There’s nothing left to land on, Artoo.']],
+    },
     foot: {
       land: [
         ['luke', 'Setting down, Artoo. Let’s have a look around.'],
@@ -690,6 +728,23 @@ export const CREWS = [
       han: { name: 'Han', color: '#e8d3b0', voice: 'han' },
       chewie: { name: 'Chewbacca', color: '#d0965a', voice: 'chewie' },
     },
+    // the Citadel's siege (siege.js)
+    siege: {
+      shielded: [
+        ['han', 'Deflector shield. Figures.'],
+        ['chewie', '[a growl at the generators on the arms]'],
+      ],
+      gen: [['han', 'Scratch one generator!']],
+      shield: [['han', 'Shield’s down, Chewie. Give ’em the concussion missiles.']],
+      deflect: [['han', 'Lasers won’t crack that. Missiles, Chewie, missiles!']],
+      dry: [['han', 'We’re out of missiles. Great. Just great.']],
+      down: [
+        ['han', 'Yahoo! You’re all clear, kid!'],
+        ['chewie', '[a roar of triumph]'],
+      ],
+      rebuilt: [['han', 'They put it back together already? I hate Ricks.']],
+      closed: [['han', 'Land where? We blew it to bits.']],
+    },
     foot: {
       land: [
         ['han', 'Setting her down, Chewie. Grab your bowcaster.'],
@@ -995,6 +1050,23 @@ export const CREWS = [
       walt: { name: 'Walt', color: '#9fd27c', voice: 'walt' },
       jesse: { name: 'Jesse', color: '#ff9d55', voice: 'jesse' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
+    },
+    // the Citadel's siege (siege.js)
+    siege: {
+      shielded: [
+        ['jesse', 'Yo, it’s got like a force field, Mr. White!'],
+        ['walt', 'Then we cut its power. The generators, Jesse. On the arms.'],
+      ],
+      gen: [['jesse', 'Yeah, science! That’s one down, yo!']],
+      shield: [['walt', 'The shield is down. Now, Jesse. The fulminated mercury.']],
+      deflect: [['walt', 'Bullets won’t do it. We need something with a little more chemistry. Press three.']],
+      dry: [['jesse', 'We’re out of the bomb stuff, Mr. White!']],
+      down: [
+        ['jesse', 'Yeah, Mr. White! Yeah, science!'],
+        ['walt', 'Say my name.'],
+      ],
+      rebuilt: [['walt', 'They rebuilt it. Of course they did. Everyone wants back in the game.']],
+      closed: [['jesse', 'There’s nothing there anymore, yo. We blew it up.']],
     },
     foot: {
       land: [
@@ -1371,6 +1443,7 @@ export function linesFor(crew, event, id, sub) {
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
   if (event === 'event') return crew.events?.[id] ?? null;
+  if (event === 'siege') return crew.siege?.[id] ?? null;
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   if (event === 'foot') {
     const f = crew.foot?.[id];

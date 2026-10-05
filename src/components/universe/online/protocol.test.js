@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 
 describe('cleanName', () => {
@@ -149,7 +149,12 @@ describe('cursors', () => {
 describe('shots', () => {
   it('round-trips', () => {
     const s = readShot(writeShot({ x: 1, y: 2, z: 3 }, [0, 0, -20]));
-    expect(s).toEqual({ p: [1, 2, 3], v: [0, 0, -20] });
+    expect(s).toEqual({ p: [1, 2, 3], v: [0, 0, -20], w: 0 });
+  });
+  it('carries the weapon, and reads an unknown one as the blaster', () => {
+    expect(readShot(writeShot({ x: 1, y: 2, z: 3 }, [0, 0, -20], 2)).w).toBe(2);
+    expect(readShot([1, 2, 3, 0, 0, -20, 7]).w).toBe(0);
+    expect(readShot([1, 2, 3, 0, 0, -20, 'x']).w).toBe(0);
   });
   it('refuses one from far off where the pilot was, or impossibly fast', () => {
     expect(readShot([50, 0, 0, 0, 0, -20], { x: 0, y: 0, z: 0 })).toBeNull();
@@ -160,7 +165,7 @@ describe('shots', () => {
 
 describe('hits', () => {
   it('caps the damage', () => {
-    expect(readHit({ d: 999 })).toBe(DAMAGE);
+    expect(readHit({ d: 999 })).toBe(DAMAGE_MAX);
     expect(readHit({ d: -1 })).toBeNull();
     expect(readHit({})).toBeNull();
   });
@@ -347,5 +352,28 @@ describe('sample', () => {
     expect(s.z).toBeCloseTo(-2.5); // heading 0 is −z; 250 ms at most
     expect(sample([moving], STALE_MS + 1)).toBeNull();
     expect(sample([], 0)).toBeNull();
+  });
+});
+
+describe('down on a world in the galaxy', () => {
+  it('sends where the crew are, and reads it back', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'tatooine', kind: 'xwing', lead: { who: 'luke', x: 12.345, y: 3.2, z: -40.1, yaw: 1.2, speed: 3.3 }, mate: { who: 'artoo', x: 11, y: 3.1, z: -41, yaw: 1.1, speed: 3 }, ride: 'landspeeder' });
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.world).toBe('tatooine');
+    expect(got.kind).toBe('xwing');
+    expect(got.lead).toMatchObject({ who: 'luke', x: 12.35, y: 3.2, z: -40.1, yaw: 1.2 });
+    expect(got.mate.who).toBe('artoo');
+    expect(got.ride).toBe('landspeeder');
+    expect(readWalk(writeWalk(null))).toEqual({ off: true });
+  });
+
+  it('turns away what isn’t a crew on a world', async () => {
+    const { readWalk } = await import('./protocol');
+    expect(readWalk(null)).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['vader', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: '../etc', a: ['luke', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 'x', 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 1, 2, 3, 0, 0], r: 'deathstar' }).ride).toBeNull();
   });
 });

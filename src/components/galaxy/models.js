@@ -2,11 +2,11 @@
 // that load (the Star Destroyer, the corvette, the X-wing, the interceptor,
 // Slave I, the Republic's Venator, the Millennium Falcon, the Death Star, and
 // the galaxy's own from Sketchfab: the Rebellion's cruisers and fighters, the
-// Executor, the Separatists' and the Republic's ships, the Sith Destroyers)
-// and the ones built in code (galaxy/fleet.js: everything else). Each kind is
-// made once, its first copy kept as a template, and every ship of that kind
-// after it is a copy sharing its geometry and materials (so the fourteen
-// Star Destroyers rising over Exegol cost one build). A kind that loads
+// Executor, the Separatists' and the Republic's ships) and the ones built in
+// code (galaxy/fleet.js: everything else). Each kind is made once, its first
+// copy kept as a template, and every ship of that kind after it is a copy
+// sharing its geometry and materials (so the four Star Destroyers over Hoth
+// cost one build). A kind that loads
 // flies as its built stand-in until it's here (where it has one), and a slot
 // swaps over the moment it is.
 //
@@ -46,16 +46,14 @@ export const MODELS = {
   delta7: { url: '/models/galaxy/delta7.glb', nose: 0 },
   arc170: { url: '/models/galaxy/arc170.glb', nose: Math.PI },
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
-  xyston: { url: '/models/galaxy/xyston.glb', nose: Math.PI / 2 },
-  tiefo: { url: '/models/galaxy/tiefo.glb', nose: -Math.PI / 2 },
 };
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
 // the models the hunters fly (universe/glbFleet.js flies them, the
-// universe's and the galaxy's droids and TIEs, each built until it's here)
+// universe's TIEs and the galaxy's droids, each built until it's here)
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tiefo'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter'].map((k) => [k, { ...MODELS[k], built: true }])),
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
@@ -89,7 +87,7 @@ function normalise(root, nose = 0) {
   return { holder, size: size.multiplyScalar(k) };
 }
 
-// a darker paint for the First Order's and the wrecks' copies
+// a copy in another paint (a slot's `tint`), darker or coloured
 function tinted(root, color) {
   const c = new THREE.Color(color);
   const swapped = new Map();

@@ -50,7 +50,7 @@ import { FACTIONS, HUNTER_KINDS, LASER, NAMES, createHunt } from './hunterRules'
 export { FACTIONS, HUNTER_KINDS, NAMES };
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
-// galaxy's Separatists, First Order and Sith, galaxy/hunted.js)
+// galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
 export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
   const hunt = createHunt({ factions, kinds, solids, lasers: small ? 16 : 28 });
   const pool = {}; // kind → models not in use

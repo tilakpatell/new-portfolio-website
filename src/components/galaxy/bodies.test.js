@@ -45,9 +45,7 @@ describe('buildBody', () => {
         expect(b.reach, id).toBeLessThan(30 * 1.2);
         b.setSuns([{ dir: new THREE.Vector3(1, 0, 0), color: new THREE.Color(1.2, 1.1, 1) }, { dir: new THREE.Vector3(0, 0, 1), color: new THREE.Color(0.6, 0.5, 0.4) }]);
         b.update(12.5, camera);
-        b.set('charge', 1);
         b.set('shield', 1);
-        b.set('flash', 0.5);
         b.set('nonsense', 3);
         const surface = b.group.children[0];
         expect(surface.material.fragmentShader, id).toContain('void surface(');

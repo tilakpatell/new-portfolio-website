@@ -1,9 +1,10 @@
 // The galaxy's own ships and stations, built in code the way the universe
 // map's traffic is (universe/trafficModels.js, universe/trafficKit.js): the
-// Rebellion's and the Empire's (fleetRebels.js), the Republic's, the
-// Separatists' and the sequel era's (fleetRepublic.js), and a few odd ones
-// (fleetExtras.js: Bespin's cloud cars). Anything not here is one of the
-// universe's own (a TIE, an X-wing, a Star Destroyer…).
+// Rebellion's and the Empire's (fleetRebels.js), the Republic's and the
+// Separatists' (fleetRepublic.js), and a few odd ones (fleetExtras.js:
+// Bespin's cloud cars, the Razor Crest, the Mandalorians' Gauntlets).
+// Anything not here is one of the universe's own (a TIE, an X-wing, a Star
+// Destroyer…).
 //
 // buildGalaxyShip(kind) → { group, length, size, update(t), dispose() },
 // nose along +z, +y up, exactly 1 long in z (the scene scales it).

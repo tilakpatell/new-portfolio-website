@@ -141,8 +141,9 @@ export function createBalloons({ count = 34, seed = 9 } = {}) {
   };
 }
 
-// ── tumbleweeds, bowling east on the wind ──
-export function createTumbleweeds({ count = 7, seed = 4, radius = 235, model = null } = {}) {
+// ── tumbleweeds, bowling east on the wind, out in the desert north and south of town ──
+// (`bands`: the stretches of z they roll along, clear of the city)
+export function createTumbleweeds({ count = 7, seed = 4, radius = 235, model = null, bands = [[-380, -225], [205, 360]], height = () => 0 } = {}) {
   const rand = seeded(seed);
   const outer = new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(0.62, 2));
   const inner = new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(0.4, 1));
@@ -163,20 +164,21 @@ export function createTumbleweeds({ count = 7, seed = 4, radius = 235, model = n
     const s = 0.8 + rand() * 0.9;
     w.scale.setScalar(s);
     group.add(w);
-    weeds.push({ w, s, x: (rand() * 2 - 1) * radius, z: (rand() * 2 - 1) * radius * 0.8, v: 3 + rand() * 3.5, ph: rand() * 9, drift: (rand() - 0.5) * 1.2 });
+    const band = bands[i % bands.length];
+    weeds.push({ w, s, band, x: (rand() * 2 - 1) * radius, z: band[0] + rand() * (band[1] - band[0]), v: 3 + rand() * 3.5, ph: rand() * 9, drift: (rand() - 0.5) * 1.2 });
   }
   return {
     object: group,
     update(dt, clock) {
       for (const t of weeds) {
         t.x += t.v * dt;
-        t.z += t.drift * dt;
+        t.z = Math.max(t.band[0], Math.min(t.band[1], t.z + t.drift * dt));
         if (t.x > radius) {
           t.x = -radius;
-          t.z = (rand() * 2 - 1) * radius * 0.8;
+          t.z = t.band[0] + rand() * (t.band[1] - t.band[0]);
         }
         const hop = Math.abs(Math.sin(clock * 2.1 + t.ph));
-        t.w.position.set(t.x, 0.62 * t.s + hop * hop * 0.7, t.z);
+        t.w.position.set(t.x, height(t.x, t.z) + 0.62 * t.s + hop * hop * 0.7, t.z);
         t.w.rotation.z = -(t.x / (0.62 * t.s));
         t.w.rotation.y = t.ph;
       }
@@ -309,7 +311,7 @@ export function createNightLights({ lamps, pools, glow }) {
   const poolMesh = new THREE.InstancedMesh(poolGeo, poolMat, pools.length);
   const c = new THREE.Color();
   pools.forEach((p, i) => {
-    o.position.set(p.x, 0.07, p.z);
+    o.position.set(p.x, 0.19, p.z);
     o.scale.set(p.r * 2, 1, p.r * 2);
     o.updateMatrix();
     poolMesh.setMatrixAt(i, o.matrix);

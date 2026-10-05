@@ -731,6 +731,7 @@ export const SWING = {
   perfect: { from: 0.2, to: 0.95, boost: 1.1, lift: 4 }, // the release window: past the vertical, forward (radians)
   letGo: 1.25, // that far past the anchor, the web would only pull him back: he lets go
   zip: { speed: 11, up: 3, cool: 0.6, charges: 2, max: 30, reach: 20 }, // a web zip: +11 m/s forward, two per flight
+  corner: { turn: 1, reach: 28, out: 2.5, whip: 3, time: 0.6, cool: 1 }, // a corner swing: steer this hard (rad) near a corner, and the web goes to it
   climb: 4.2, // up a wall (m/s), and with Shift
   climbRun: 7,
   wallRun: { carry: 0.75, min: 8, max: 16, fade: 9 }, // the speed he hits a wall with, carried up it
@@ -758,6 +759,7 @@ export const newHero = (at = START) => ({
   rearm: 0,
   zips: SWING.zip.charges,
   zipT: 0,
+  cornerT: -SWING.corner.cool, // a corner swing's whip, seconds left (then its cool-down, down to -cool)
   stuck: 0,
   lastWall: null,
   runUp: 0, // speed carried up a wall
@@ -780,6 +782,7 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   h.land = Math.max(0, (h.land ?? 0) - dt);
   h.rearm = Math.max(0, (h.rearm ?? 0) - dt);
   h.zipT = Math.max(0, (h.zipT ?? 0) - dt);
+  h.cornerT = Math.max(-SWING.corner.cool, (h.cornerT ?? -SWING.corner.cool) - dt);
   h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
@@ -921,6 +924,70 @@ function letGo(h) {
   } else h.ev.push({ type: 'release' });
 }
 
+// The corners of the buildings a swing can whip round: { x, z, nx, nz (out
+// along the corner's bisector), h (its roof), id }.
+export const CORNERS = (() => {
+  const out = [];
+  for (const b of BUILDINGS) {
+    if (b.h < 8 || b.id === 'pier') continue;
+    const f = b.foot;
+    for (let i = 0; i < f.length; i++) {
+      const p = f[(i - 1 + f.length) % f.length];
+      const v = f[i];
+      const q = f[(i + 1) % f.length];
+      const n1 = wallNormal((p[0] + v[0]) / 2, (p[1] + v[1]) / 2, f);
+      const n2 = wallNormal((v[0] + q[0]) / 2, (v[1] + q[1]) / 2, f);
+      // a real corner, not a bend in a curve, and one that sticks out
+      if (n1.nx * n2.nx + n1.nz * n2.nz > 0.87) continue;
+      let nx = n1.nx + n2.nx;
+      let nz = n1.nz + n2.nz;
+      const l = Math.hypot(nx, nz) || 1;
+      nx /= l;
+      nz /= l;
+      if (inPoly(v[0] + nx * 0.3, v[1] + nz * 0.3, f)) continue;
+      out.push({ x: v[0], z: v[1], nx, nz, h: b.h, id: b.id });
+    }
+  }
+  return out;
+})();
+
+// A corner swing: steering hard (the stick well off the way he's going) with
+// a building's corner ahead on that side, the web goes to the top of the
+// corner and he whips round it, as Insomniac's corner swings do.
+function cornerSwing(h, turn) {
+  const C = SWING.corner;
+  const hs = Math.hypot(h.vx, h.vz);
+  if (hs < 8) return;
+  const fx = h.vx / hs;
+  const fz = h.vz / hs;
+  const off = Math.atan2(fx * turn.z - fz * turn.x, fx * turn.x + fz * turn.z);
+  if (Math.abs(off) < C.turn) return;
+  let best = null;
+  for (const c of CORNERS) {
+    if (c.h < h.y + 3) continue;
+    const rx = c.x - h.x;
+    const rz = c.z - h.z;
+    const d = Math.hypot(rx, rz);
+    if (d > C.reach || d < 4) continue;
+    // ahead of him, and on the side he's turning to
+    const ahead = rx * fx + rz * fz;
+    const side = fx * rz - fz * rx;
+    if (ahead < 0 || Math.sign(side) !== Math.sign(off)) continue;
+    if (!best || d < best.d) best = { c, d };
+  }
+  if (!best) return;
+  const { c } = best;
+  const a = [c.x + c.nx * C.out, c.h - 0.5, c.z + c.nz * C.out];
+  const at = [c.x + c.nx * 0.05, c.h - 0.1, c.z + c.nz * 0.05];
+  if (!clearLine(h.x, h.y + 1.5, h.z, at[0], at[1], at[2])) return;
+  const len = Math.hypot(a[0] - h.x, a[1] - h.y, a[2] - h.z);
+  if (len > SWING.reach) return;
+  const left = (a[0] - h.x) * fz - (a[2] - h.z) * fx;
+  h.web = { a, at, len, target: ropeFor(a, len, h.web.entry ?? h.y, floorAt(h.x, h.z, h.y)), hand: left > 0 ? 'L' : 'R', entry: h.web.entry ?? h.y };
+  h.cornerT = C.time;
+  h.ev.push({ type: 'corner', at, hand: h.web.hand });
+}
+
 // A web zip: a quick web out ahead and a burst along it.
 function webZip(h, { mx, mz, len }) {
   const hs = Math.hypot(h.vx, h.vz);
@@ -982,10 +1049,12 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
   if (h.web && !web) letGo(h);
   else if (!h.web && web && h.rearm <= 0 && (!h.held || h.airT >= SWING.arm)) attach(h, turn);
   if (zip && !h.web && h.zips > 0 && h.zipT <= 0) webZip(h, { mx, mz, len });
+  // steering hard round a building's corner: the web goes to the corner, and he whips round it
+  if (h.web && turn && h.cornerT <= -SWING.corner.cool) cornerSwing(h, turn);
   const w = h.web;
   if (h.fly && turn) {
-    // he goes where you steer: the swing (or the flight) comes round toward it
-    steerToward(h, mx, mz, SWING.assist * (w ? 1 : 0.5) * len * dt);
+    // he goes where you steer: the swing (or the flight) comes round toward it (fast, whipping round a corner)
+    steerToward(h, mx, mz, SWING.assist * (w ? 1 : 0.5) * (h.cornerT > 0 ? SWING.corner.whip : 1) * len * dt);
     h.vx += mx * SWING.steer * dt;
     h.vz += mz * SWING.steer * dt;
   }

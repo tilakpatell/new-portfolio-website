@@ -36,13 +36,15 @@ A holotable-style map for the universe (like the galaxy's `galaxy/HoloMap.jsx`):
 
 ## Steps left
 
-1. **Re-run the browser check** on the last fixes, which haven't been seen in a browser: `npx vite --port 5173` in one shell, `OUT=/tmp/shots node scripts/navmap-check.mjs` in another. Headless Chrome draws in software here at about 5 fps, so allow minutes. Clicks go through `el.click()` in `page.evaluate`, since Playwright's own clicks stall on the slow frames. The fixes to check:
+Super speed fallback: when a jump can't happen, the HUD prompt now says why for 3.5 s (`state.note` in `scene.js`). It reads "Hyperdrive charging (N s): super speed instead", or, while interdicted, "no jump till the hunters are gone". This matters for `J` with the map closed. The map's own note and go-button wording were already there.
+
+1. **Done (desktop), 2026-10-05:** `node scripts/navmap-check.mjs desktop` passed every check: labels clear, list unsquashed, button wording, the overlay, the ship out on the first frame past the flash, the card cleared, the charging status, Escape. The only failures were the frames being too slow to hold the charge (the script now forces it). Originally: **re-run the browser check** on the last fixes, which haven't been seen in a browser: `npx vite --port 5173` in one shell, `OUT=/tmp/shots node scripts/navmap-check.mjs` in another. Headless Chrome draws in software here at about 5 fps, so allow minutes. Clicks go through `el.click()` in `page.evaluate`, since Playwright's own clicks stall on the slow frames. The fixes to check:
    - The jump is now timed on the wall clock (`wall()` in `scene.js`). Confirm the ship moves under the overlay's flash, and the `.hyperspace-canvas` overlay shows.
    - Going to a wonder now clears the page's selection, so the panel doesn't keep the last world's card. Deselecting no longer cancels a trip out to a wonder (`select()`: `isPlace(state.auto?.id)`).
    - Labels: The Maw and Glacia now sit under their dots (`UNDER` in `NavMap.jsx`), so they no longer overlap The Caribbean and the galaxy gate.
    - The side panel no longer squashes the place list under the key hints (`.navmap-side > * { flex-shrink: 0 }`).
    - The go button now reads "Jump to …", "Super speed to …" or "Cruise to …".
-2. **Phone layout** (390×844) hasn't been seen: the screenshot timed out in software GL. Check:
+2. **Phone layout: tightened in CSS, still not seen in a browser.** The header has no kicker on phones, so the title, the view buttons, 3D and close fit on one row. The chips are smaller, search is full width (16px text, so iOS doesn't zoom), and the chart is `min(100%, 42svh)` above the side panel. The map button sits at `left: 112px`, clear of the Multiplayer pill, which is lower down (`online.css`). Originally: **phone layout** (390×844) hadn't been seen: the screenshot timed out in software GL. Check:
    - The chart over the side panel, and the panel's scroll.
    - Wonder names hidden except when picked.
    - The compass button at `left: 112px` beside settings and hangar (`universe.css`, the `max-width: 767px` block), and that it doesn't collide with the Multiplayer pill.

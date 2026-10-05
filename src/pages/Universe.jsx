@@ -54,7 +54,7 @@ export default function Universe({ ask = false }) {
   useEffect(() => setKind(ship), [setKind, ship]);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
-  const { unlocked } = useAchievements();
+  const { unlocked, unlock } = useAchievements();
   const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
   const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked), [loadouts, ship, unlocked]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
@@ -176,7 +176,10 @@ export default function Universe({ ask = false }) {
         comms.current?.handle({ type: 'event', id: 'hyperspeed' });
       }
     } else if (e.type === 'portal') go(byId(e.id));
-    else comms.current?.handle(e);
+    else if (e.type === 'siege' && e.what === 'down' && e.mine) {
+      unlock('citadelfall'); // (you helped bring it down)
+      comms.current?.handle(e);
+    } else comms.current?.handle(e);
   };
 
   // off from the nav map: with a ship, it flies (or jumps) there, and a

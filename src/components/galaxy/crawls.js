@@ -1,9 +1,9 @@
 // The opening crawl for each system's mission (systems.js's `game`): the
 // briefing that rolls away into the stars before you fly it, the way the
 // films begin. Pure data, by system id: the episode line (the film's own,
-// or 'A Star Wars Story' for Rogue One), the mission's title, and three
-// paragraphs in the crawl's voice, the last trailing off into the mission
-// itself.
+// 'A Star Wars Story' for Rogue One, or a show's title and chapter), the
+// mission's title, and three paragraphs in the crawl's voice, the last
+// trailing off into the mission itself.
 
 export const CRAWLS = {
   tatooine: {
@@ -132,49 +132,40 @@ export const CRAWLS = {
       'Now the Rebel fleet has come to their aid. Blue Squadron must fly through the shield gate before it closes, the rebels must hold the beaches against the walkers, and Jyn Erso must climb the Citadel tower to send the plans to the fleet before the Death Star fires…',
     ],
   },
-  jakku: {
-    episode: 'Episode VII',
-    title: 'The Garbage Will Do',
+  nevarro: {
+    episode: 'The Mandalorian, Chapter 12',
+    title: 'The Siege',
     paragraphs: [
-      'Thirty years after the fall of the Empire, the sinister FIRST ORDER has risen from its ashes. Luke Skywalker, the last Jedi, has vanished, and both the First Order and the Resistance are searching for him.',
-      'A map to Luke’s hiding place has been hidden inside a droid, BB-8, on the desert world of Jakku. Found by a scavenger named Rey and a runaway stormtrooper named Finn, the little droid is now the most wanted in the galaxy.',
-      'With First Order TIE fighters strafing Niima Outpost, the fugitives have run for the only ship in reach: a piece of garbage. Now they must outfly two TIEs through the Starship Graveyard, and thread the ship through the wreck of a fallen Star Destroyer…',
+      'The Empire has fallen, but in the Outer Rim its remnants have not. On the volcanic world of Nevarro, an Imperial base still stands outside the city that Greef Karga, now its magistrate, and Marshal Cara Dune have cleaned up.',
+      'The Mandalorian has limped back with the Razor Crest in pieces and the Child in tow. In return for the repairs, Greef and Cara want his help: the base must go, before its troopers can threaten the town again.',
+      'The reactor is overloading and the base is going up behind them. Now, as TIE fighters scramble from the wreckage, Din Djarin must take the Razor Crest through the lava canyons, turn on his pursuers and shoot them down one by one…',
     ],
   },
-  crait: {
-    episode: 'Episode VIII',
-    title: 'The Salt Flats',
+  mandalore: {
+    episode: 'The Mandalorian, Chapter 24',
+    title: 'The Return',
     paragraphs: [
-      'The FIRST ORDER reigns. Hunted through hyperspace, the Resistance has been worn down to a handful of survivors, who have escaped in transports to an abandoned Rebel base on the remote mineral planet Crait.',
-      'Behind its great blast door, General Leia Organa has sent a call for help across the galaxy. No one has answered, and the First Order has landed walkers and a battering ram cannon, built from Death Star technology, to break the door down.',
-      'Now, in battered old ski speeders, Poe Dameron and the last pilots of the Resistance must race out across the salt flats, through the walkers’ fire, and stop the cannon, buying time for help that no one expects…',
+      'The Mandalorians have returned to their homeworld. Years after the Empire glassed Mandalore in the Great Purge, Bo-Katan Kryze has gathered the scattered coverts beneath one banner, and Din Djarin has bathed in the Living Waters beneath its mines.',
+      'But the planet is not empty. Moff Gideon has built a hidden base beneath the ruins of Sundari, and has captured the Mandalorian. His TIE fighters now swarm the Mandalorians’ capital ship above the clouds.',
+      'They cannot win in space. Bo-Katan must keep the TIEs off the ship until it is empty, then clear the sky as Axe Woves takes it down onto the enemy base, and lead her people into the fight for Mandalore…',
     ],
   },
-  starkiller: {
-    episode: 'Episode VII',
-    title: 'The Oscillator',
+  lothal: {
+    episode: 'Ahsoka, Part One',
+    title: 'The Star Map',
     paragraphs: [
-      'The FIRST ORDER has revealed its terrible new weapon. Hollowed out of an ice planet in the Unknown Regions, STARKILLER BASE has drained the light of its star and fired through hyperspace, destroying the Republic’s capital in the Hosnian system.',
-      'The Resistance is its next target. Han Solo, Chewbacca and Finn have slipped onto the base to bring down its shield, while the Resistance’s X-wings gather to strike at the weapon’s one weakness: its thermal oscillator.',
-      'The weapon is charging again, drinking its sun. Now Poe Dameron, Black Leader, must lead his squadron in under the shield, down into the trench around the oscillator, and hit it before the last light is gone…',
+      'The Empire has fallen, but scattered enemies remain. On Lothal, the people celebrate the anniversary of their liberation, and of the night the Jedi Ezra Bridger vanished into hyperspace with Grand Admiral Thrawn and his flagship, the Chimaera.',
+      'Ahsoka Tano has found a map that may lead to them both, but she cannot read it. Only Sabine Wren, Ezra’s friend and her own lost apprentice, can unlock it, and Sabine has skipped the ceremony.',
+      'Now Sabine must race her speeder across the plains to her home in the old tower, unlock the map that points the way to Ezra, and keep it out of the hands of the dark Jedi Shin Hati, who is already on her way…',
     ],
   },
-  exegol: {
-    episode: 'Episode IX',
-    title: 'The Navigation Tower',
+  sorgan: {
+    episode: 'The Mandalorian, Chapter 4',
+    title: 'Sanctuary',
     paragraphs: [
-      'Somehow, Emperor Palpatine has returned. From Exegol, the hidden world of the Sith deep in the Unknown Regions, he has raised the FINAL ORDER, a fleet of Star Destroyers armed with planet-killing cannons.',
-      'Guided by a Sith wayfinder, Rey has gone to face him, and the Resistance has followed her. They have learned that the fleet cannot find its way out of the atmosphere without the navigation signal from its command ship, the Steadfast.',
-      'Outnumbered and outgunned, Poe Dameron must lead the Resistance through the lightning and the guns of the fleet, knock out the Steadfast’s navigation tower, and hold on until help arrives from across the galaxy…',
-    ],
-  },
-  ahchto: {
-    episode: 'Episode VIII',
-    title: 'The Last Lesson',
-    paragraphs: [
-      'Luke Skywalker has been found. Following the map from BB-8 and R2-D2, Rey has flown the Millennium Falcon with Chewbacca to Ahch-To, the remote ocean world of the first Jedi Temple, where Luke has hidden for years.',
-      'But the legendary Jedi Master threw away the lightsaber she brought him, and refuses to return to the fight. He has cut himself off from the Force, and come to this island, he says, to die.',
-      'Now Rey must earn her lessons from a grumpy old Jedi: the Force, the ancient tree that holds the sacred Jedi texts, and the dark cave beneath the island, with curious porgs in her way at every step…',
+      'Having betrayed the Bounty Hunters’ Guild to save the Child, the Mandalorian is a hunted man. He has set course for Sorgan, a backwater forest world far from anywhere, to lie low until the hunt dies down.',
+      'But the planet already has its troubles. Klatooinian raiders, with an Imperial walker of their own, keep coming for a small village of krill farmers, and a former Rebel shock trooper, Cara Dune, is hiding out in the woods.',
+      'Paid in krill and a place to stay, the Mandalorian and Cara Dune must teach the farmers to fight, dig a trap in the pond, and bring the walker down when the raiders come in the night…',
     ],
   },
 };

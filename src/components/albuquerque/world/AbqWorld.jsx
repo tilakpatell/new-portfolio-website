@@ -11,7 +11,7 @@ import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, timeName } from './rules';
+import { CITY, COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
 import { carSound } from './sounds';
 import './world.css';
 
@@ -166,7 +166,10 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   if (!sim.current) {
     const parked = local.get(PARKED, null);
     const ok = parked && Number.isFinite(parked.x) && Math.hypot(parked.x, parked.z) < WORLD_RADIUS;
-    sim.current = { car: { ...(ok ? { x: parked.x, z: parked.z, yaw: Number.isFinite(parked.yaw) ? parked.yaw : SPAWN.yaw } : SPAWN), speed: 0, slide: 0, yawRate: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
+    const car = { ...(ok ? { x: parked.x, z: parked.z, yaw: Number.isFinite(parked.yaw) ? parked.yaw : SPAWN.yaw } : SPAWN), speed: 0, slide: 0, yawRate: 0 };
+    // the town's traffic (Hank first, in his SUV), none of it on top of you
+    const traffic = createStreets(touch ? 18 : 34, { avoid: [car] });
+    sim.current = { car, traffic, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
   }
   const { unlock } = useAchievements();
   // the other drivers online, as ghosts (towns/useTravellers)
@@ -396,7 +399,13 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     throttle = Math.max(-1, Math.min(1, throttle));
     const analog = keyed === 0 && stick !== 0;
     s.steer = stepSteer(s.steer, analog ? stick : keyed, s.car.speed, dt, { steer: set.steer, analog });
-    const { car, bump, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt);
+    // the traffic moves on (and waits for you, if you're in its way), then you, bumping off it
+    s.t += dt;
+    stepTraffic(s.traffic, dt, s.t, [{ x: s.car.x, z: s.car.z, yaw: s.car.yaw, speed: Math.hypot(s.car.speed, s.car.slide ?? 0) }]);
+    const movers = s.near3 ?? (s.near3 = []);
+    movers.length = 0;
+    for (const t of s.traffic) if (Math.abs(t.x - s.car.x) < 14 && Math.abs(t.z - s.car.z) < 14) movers.push({ x: t.x, z: t.z, r: t.route ? 1.7 : 1.5 });
+    const { car, bump, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt, movers);
     s.car = car;
     if (s.frame % 2 === 0) s.sound?.set({ speed: Math.hypot(car.speed, car.slide), throttle, slip, road: surface === 'road' });
     if (Math.abs(throttle) > 0.1) s.moved = true;
@@ -409,8 +418,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         speedo.current.textContent = String(mph);
       }
     }
-    s.t += dt;
-    const hank = hankAt(s.t);
+    // Hank's the first car in the traffic
+    const hank = s.traffic[0];
     const h = stepHeat(s.heat, Math.hypot(hank.x - car.x, hank.z - car.z), dt);
     s.heat = h.heat;
     if (h.caught) {
@@ -465,13 +474,14 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         setClock(now);
       }
     }
+    // (a block, sidewalk or car park, counts as paved: rules.js's surfaceAt)
     const asphalt = surface === 'road';
     // the other drivers: where you are to them, and where they are
     const tv = travRef.current;
     tv?.pose(stepOf(s.car));
     s.others = tv ? tv.list() : [];
     try {
-      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, handbrake, slip, onRoad: surface !== 'sand', asphalt, bump, follow: set.camera, travellers: s.others }, ms);
+      a.render({ car: s.car, hank, traffic: s.traffic, t: s.t, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, handbrake, slip, onRoad: surface !== 'sand', asphalt, bump, follow: set.camera, travellers: s.others }, ms);
     } catch {
       a.dispose();
       api.current = null;
@@ -486,7 +496,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       hudKey.current = key;
       setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
   }, live);
 
   // the touch stick: drag from where you put your thumb
@@ -766,36 +776,82 @@ function Driving({ id, driving, onChange, onClose, touch }) {
   );
 }
 
-// The map in the corner: the roads, the places, Hank, the other drivers
-// online (pale, out of any place) and you.
-// (the town fills it; out in the dunes the car's arrow rides the rim)
-const MAP_RADIUS = Math.min(WORLD_RADIUS, 250);
-const MAP_SCALE = 150 / (MAP_RADIUS * 2 + 20);
-function drawMap(c, car, hank, prog, blue = [], run = null, others = []) {
-  const g = c?.getContext('2d');
-  if (!g) return;
-  const at = (x, z) => [75 + x * MAP_SCALE, 75 + z * MAP_SCALE];
-  g.clearRect(0, 0, 150, 150);
-  g.fillStyle = 'rgba(40, 30, 20, 0.55)';
-  g.beginPath();
-  g.arc(75, 75, 74, 0, Math.PI * 2);
-  g.fill();
-  g.lineCap = 'round';
+// The map in the corner, north up and round the car: the city's streets,
+// blocks and buildings (drawn once, below), the places, the crystals, Hank,
+// the traffic, the other drivers online (pale, out of any place) and you.
+// Anything further off than it shows is drawn on its rim.
+const VIEW = 150; // metres from the middle to the rim
+const K = 74 / VIEW;
+let base = null;
+const BASE = { px: 1, half: 430 }; // pixels a metre, and where the middle of town is on it
+function baseMap() {
+  if (base) return base;
+  const c = document.createElement('canvas');
+  c.width = c.height = BASE.half * 2;
+  const g = c.getContext('2d');
+  const at = (x, z) => [BASE.half + x * BASE.px, BASE.half + z * BASE.px];
+  // the blocks, a shade lighter than the desert
+  g.fillStyle = 'rgba(233, 225, 208, 0.16)';
+  for (const b of CITY.blocks) {
+    const [x, y] = at(b.kerb.x0, b.kerb.z0);
+    g.fillRect(x, y, (b.kerb.x1 - b.kerb.x0) * BASE.px, (b.kerb.z1 - b.kerb.z0) * BASE.px);
+  }
+  g.fillStyle = 'rgba(120, 170, 90, 0.45)';
+  for (const l of CITY.lots) {
+    if (l.surface !== 'grass') continue;
+    const [x, y] = at(l.x - l.w / 2, l.z - l.d / 2);
+    g.fillRect(x, y, l.w * BASE.px, l.d * BASE.px);
+  }
+  g.lineCap = 'butt';
   for (const r of ROADS) {
     g.strokeStyle = r.dirt ? '#b8946a' : '#e9e1d0';
-    g.lineWidth = Math.max(2, r.w * MAP_SCALE * 1.4);
+    g.lineWidth = Math.max(2, r.w * BASE.px);
     g.beginPath();
     g.moveTo(...at(r.a.x, r.a.z));
     g.lineTo(...at(r.b.x, r.b.z));
     g.stroke();
   }
-  g.fillStyle = 'rgba(233, 225, 208, 0.34)';
+  g.fillStyle = 'rgba(40, 30, 20, 0.55)';
   for (const b of COLLIDERS) {
+    if (b.kind === 'car') continue;
     const [x, y] = at(b.x - b.w / 2, b.z - b.d / 2);
-    g.fillRect(x, y, Math.max(1.5, b.w * MAP_SCALE), Math.max(1.5, b.d * MAP_SCALE));
+    g.fillRect(x, y, Math.max(1, b.w * BASE.px), Math.max(1, b.d * BASE.px));
   }
+  base = c;
+  return c;
+}
+function drawMap(c, car, hank, prog, blue = [], run = null, others = [], traffic = []) {
+  const g = c?.getContext('2d');
+  if (!g) return;
+  const at = (x, z) => [75 + (x - car.x) * K, 75 + (z - car.z) * K];
+  // anything off the map's edge is drawn on its rim
+  const rim = (x, z) => {
+    const dx = x - car.x;
+    const dz = z - car.z;
+    const d = Math.hypot(dx, dz);
+    const k = d > VIEW - 6 ? (VIEW - 6) / d : 1;
+    return at(car.x + dx * k, car.z + dz * k);
+  };
+  g.clearRect(0, 0, 150, 150);
+  g.save();
+  g.beginPath();
+  g.arc(75, 75, 74, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(70, 52, 34, 0.62)';
+  g.fill();
+  g.clip();
+  const b = baseMap();
+  g.drawImage(b, BASE.half + (car.x - VIEW) * BASE.px, BASE.half + (car.z - VIEW) * BASE.px, VIEW * 2 * BASE.px, VIEW * 2 * BASE.px, 1, 1, 148, 148);
+  // the traffic, small and grey
+  g.fillStyle = 'rgba(200, 200, 195, 0.75)';
+  for (const t of traffic) {
+    if (t.route) continue;
+    const [x, y] = at(t.x, t.z);
+    if (x < 0 || y < 0 || x > 150 || y > 150) continue;
+    g.fillRect(x - 1.2, y - 1.2, 2.4, 2.4);
+  }
+  g.restore();
   for (const p of prog.places) {
-    const [x, y] = at(p.door.x, p.door.z);
+    const [x, y] = rim(p.door.x, p.door.z);
     g.fillStyle = p.open ? '#f0c330' : '#7c817e';
     g.beginPath();
     g.arc(x, y, p.id === prog.next ? 5 : 3.5, 0, Math.PI * 2);
@@ -811,20 +867,15 @@ function drawMap(c, car, hank, prog, blue = [], run = null, others = []) {
   g.fillStyle = '#5fd0ff';
   for (const k of CRYSTALS) {
     if (blue.includes(k.id)) continue;
+    if (Math.hypot(k.x - car.x, k.z - car.z) > VIEW - 6) continue;
     const [x, y] = at(k.x, k.z);
     g.fillRect(x - 1.5, y - 1.5, 3, 3);
   }
-  const [hx, hy] = at(hank.x, hank.z);
+  const [hx, hy] = rim(hank.x, hank.z);
   g.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#ff4a4a' : '#4a7bff';
   g.beginPath();
   g.arc(hx, hy, 3.5, 0, Math.PI * 2);
   g.fill();
-  // anything off the map's edge is drawn on its rim
-  const rim = (x, z) => {
-    const d = Math.hypot(x, z);
-    const k = d > MAP_RADIUS ? MAP_RADIUS / d : 1;
-    return at(x * k, z * k);
-  };
   g.fillStyle = 'rgba(190, 210, 255, 0.85)';
   for (const o of others ?? []) {
     if (o.inside) continue;
@@ -843,9 +894,8 @@ function drawMap(c, car, hank, prog, blue = [], run = null, others = []) {
     g.fill();
     g.stroke();
   }
-  const [cx, cy] = rim(car.x, car.z);
   g.save();
-  g.translate(cx, cy);
+  g.translate(75, 75);
   g.rotate(-car.yaw + Math.PI);
   g.fillStyle = '#ffffff';
   g.strokeStyle = '#1a1a1a';

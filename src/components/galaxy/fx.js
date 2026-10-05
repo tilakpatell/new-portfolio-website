@@ -16,8 +16,8 @@ export const LASER = {
   rebel: [5.8, 0.75, 0.55], // red
   republic: [0.7, 2.4, 6.5], // blue
   separatist: [6.2, 0.7, 0.4], // red
-  firstorder: [5.8, 0.6, 0.45],
-  sith: [6.4, 0.5, 0.4],
+  remnant: [0.5, 5.5, 0.9], // green, as the Empire's were
+  mandalorian: [5.6, 1.2, 0.5], // red-orange
   naboo: [5.4, 1.4, 0.5],
   ion: [7.5, 3.2, 1.2], // the ion cannon's, orange-white
 };
