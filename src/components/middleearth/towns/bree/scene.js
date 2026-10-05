@@ -21,6 +21,7 @@ import { instances } from '../../shire/ground';
 import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { bake, farTree } from '../bake';
+import { createGhosts } from '../ghosts';
 import { makePuddles, makeTerrain, makeTufts } from '../ground';
 import { makeRain } from '../rain';
 import { createBreeKit, makeFolk } from './props';
@@ -270,6 +271,9 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   };
   const frodo = blob(makeFolk('frodo'));
   outdoors.add(frodo.group);
+  // other travellers, online, from other worlds (../ghosts.js)
+  const ghosts = createGhosts({ height });
+  outdoors.add(ghosts.group);
   const people = {};
   for (const c of CAST) {
     const p = blob(makeFolk(c.look));
@@ -456,6 +460,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     frodo.group.visible = A.wraith < 0.5 && !inside;
     pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
     if (s.crouch) frodo.body.position.y -= 0.12;
+    ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
     // ── who's about ──
     const tod = s.sky;
@@ -676,6 +681,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      ghosts.dispose();
       disposeTree(inn.group);
       stage.dispose();
     },
