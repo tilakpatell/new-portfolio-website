@@ -603,12 +603,13 @@
   -webkit-touch-callout: none;
 }
 .universe-view:active { background: rgb(255 255 255 / 0.18); }
-/* the flight settings: a button in the map's corner, and the sheet over it */
+/* the flight settings: a button in the map's corner (over the multiplayer
+   pill, online.css), and the sheet over it */
 .universe-settings-btn {
   position: absolute;
   z-index: 2;
   left: 16px;
-  bottom: 24px;
+  bottom: 68px;
   display: grid;
   place-items: center;
   width: 44px;
@@ -626,9 +627,9 @@
   position: absolute;
   z-index: 3;
   left: 16px;
-  bottom: 78px;
+  bottom: 122px;
   width: min(312px, calc(100% - 32px));
-  max-height: calc(100% - var(--nav-h, 68px) - 110px);
+  max-height: calc(100% - var(--nav-h, 68px) - 154px);
   overflow-y: auto;
   overscroll-behavior: contain;
   display: grid;
@@ -850,10 +851,11 @@
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
   .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
-  /* (wrapped, above the buttons, clear of the climb and dive ones on the right) */
-  .universe-hint { left: 16px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
-  .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 16px); }
-  .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 70px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 86px); }
+  /* (wrapped, above the buttons, clear of the settings button on the left and
+     the climb and dive ones on the right) */
+  .universe-hint { left: 68px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
+  .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
+  .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-comms { right: 16px; left: 16px; }
   /* the bar keeps clear of the guide's button in the corner */
   .universe-panel[data-tucked] { padding-bottom: env(safe-area-inset-bottom, 0px); }
