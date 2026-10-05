@@ -13,6 +13,7 @@ import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
+import Rain from '../components/universe/Rain';
 
 const PORTAL = '#97ce4c';
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
@@ -169,16 +170,20 @@ export default function Universe({ ask = false }) {
   );
 }
 
-// Through the black hole: over the black, where you're going, while the
-// crew have their say above it. The page leaves for it once the plan's time
-// is up; the link is there for anyone who can't wait.
+// Through the black hole: over the black, the far side's falling code and
+// where you're going, while the crew have their say above it. The page
+// leaves for it once the plan's time is up; the link is there for anyone
+// who can't wait.
 function Beyond({ far }) {
   return (
-    <div className="universe-beyond" role="status">
-      <p className="universe-beyond-kicker">Through the Maw</p>
-      <p className="universe-beyond-text">
-        On the far side is a friend’s universe: <a href={far.url}>{far.name}</a>’s portfolio, {far.what}.
-      </p>
-    </div>
+    <>
+      <Rain />
+      <div className="universe-beyond" role="status">
+        <p className="universe-beyond-kicker">Through the Maw</p>
+        <p className="universe-beyond-text">
+          On the far side is a friend’s universe: <a href={far.url}>{far.name}</a>’s portfolio, {far.what}.
+        </p>
+      </div>
+    </>
   );
 }

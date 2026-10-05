@@ -13,7 +13,10 @@
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
 //   Out past the home system is deep space (deep.js, deepspace.js), vast,
-//   with wonders to fly to on the pulse drive. You're not alone: traffic
+//   with wonders to fly to on the pulse drive. Out there too is the Maw, a
+//   black hole: come near and it pulls you in, and past its point of no
+//   return (maw.js) you watch your ship spiral down it from a way off, then
+//   go in after it (infall.js draws the fall). You're not alone: traffic
 //   (traffic.js), hunters after you (hunters.js: the Empire, the Federation,
 //   the Council of Ricks), with shields that take their hits and come back,
 //   and now and then the director (director.js) sets something going
@@ -51,11 +54,13 @@ import { buildDeepSpace } from './deepspace';
 import { createTrench } from './trench';
 import { DEEP, WONDERS, openness, reachOf } from './deep';
 import { createCrash } from './crash';
+import { createInfall } from './infall';
+import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
-import { shipEngine } from './sounds';
+import { shipEngine, wellSound } from './sounds';
 import { byId } from './universes';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
@@ -75,9 +80,9 @@ const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the
 // impact, on through into its page (a planet or a station, not the sun),
 // or else the ship back again, and the end of its coming back. Into the
-// black hole there's no impact: the fall takes `fall` seconds instead, and
-// `through` goes on to what's beyond it
-const CRASH = { impact: 0.32, fall: 1.4, through: 1.6, back: 2.7, done: 3.3 };
+// black hole there's no impact: the fall plays out instead, on maw.js's
+// timings, and goes on through to what's beyond it
+const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -566,9 +571,13 @@ export async function create(canvas, ctx) {
     trench: 0, // seconds down in the Death Star's trench
     trenchAt: -1e9,
     flare: 1,
+    pull: 0, // how hard the Maw has you (maw.js), 0 … 1
+    pullSaid: false,
   };
   const t0 = performance.now();
   let engine = null;
+  let well = null; // the Maw's hum, while it has you
+  let infall = null; // the fall into it, drawn
 
   // The open part of the canvas: the panel covers the right side on a
   // desktop and the bottom on a phone (or, put away, a corner or a slim
@@ -706,7 +715,8 @@ export async function create(canvas, ctx) {
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
-      const off = s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
+      // (none while the ship falls into the Maw: nothing to pick, and the camera's going in)
+      const off = Boolean(state.crash?.swallow) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
       const behind =
@@ -804,6 +814,8 @@ export async function create(canvas, ctx) {
     if (kind === state.kind) return;
     engine?.stop();
     engine = null;
+    well?.stop();
+    well = null;
     if (state.model) {
       map.remove(state.model.group);
       state.model.dispose();
@@ -993,11 +1005,16 @@ export async function create(canvas, ctx) {
     const center = new THREE.Vector3(...solid.at);
     const from = new THREE.Vector3(s.x, s.y, s.z);
     const normal = from.clone().sub(center).normalize();
+    const swallow = Boolean(e.swallowed);
     state.crash = {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
       id: e.id,
       sun: e.id === 'sun',
-      swallow: Boolean(e.swallowed), // into the black hole: the fall, then on through to what's beyond it
+      swallow, // into the black hole: the fall, then on through to what's beyond it
+      fall: swallow ? startFall([s.x, s.y, s.z], camLocal.toArray()) : null, // (maw.js)
+      fell: null, // where the ship is in it (fallAt)
+      yaw: 0, // the way the camera looks at it, while it falls (below)
+      backAt: swallow ? MAW.through + 0.3 : CRASH.back,
       from,
       into: normal.clone().negate(),
       normal,
@@ -1015,8 +1032,18 @@ export async function create(canvas, ctx) {
     state.boosting = false;
     burst.clear();
     engine?.set({ speed: 0, boost: false, on: false });
-    retarget(650); // the camera pulls back to watch it
-    if (state.crash.swallow) emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
+    if (swallow) {
+      // pulled well back, to watch it go down (maw.js says from where)
+      const [vx, , vz] = state.crash.fall.view;
+      state.crash.yaw = -headingTo(-vx, -vz);
+      state.view = 'chase';
+      hunters?.clear();
+      infall?.dispose();
+      infall = createInfall(map, { color: (PLUME[state.kind] ?? PLUME.falcon).color, shadow: MAW.shadow, at: MAW.at });
+      infall.start();
+      retarget(reduced ? 0 : 1700);
+      emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
+    } else retarget(650); // the camera pulls back to watch it
   };
   // ── Shot down: the hunters' lasers took the last of the shields ──
   const startDestroyed = () => {
@@ -1027,6 +1054,7 @@ export async function create(canvas, ctx) {
       id: 'shot',
       shot: true,
       sun: false,
+      backAt: CRASH.back,
       from,
       into: new THREE.Vector3(), // it tumbles where it is
       normal: new THREE.Vector3(0, 1, 0),
@@ -1108,16 +1136,36 @@ export async function create(canvas, ctx) {
   };
 
   // the light bending round the black hole: where it is on the canvas and
-  // how big its shadow looks there (none behind you, or too far to matter)
+  // how big its shadow looks there (none behind you, or too far to matter),
+  // how far off its near side is (what's nearer, the ship, isn't bent), and
+  // its spin's twist, and the shadow's edge (inside it nothing gets out, not
+  // even the bloom's glow off the ring). Close in, the bending's held back,
+  // or its shadow would fill the screen from a long way off and hide
+  // everything round it; falling in after the ship, it's let go, and the
+  // shadow takes the screen
   const lensAt = new THREE.Vector3();
+  const lensCam = new THREE.Vector3();
   const bend = () => {
     const L = deep.lens?.();
     if (!L || reduced) return post.lens(0, 0, 0);
     map.localToWorld(lensAt.copy(L.at));
     const d = lensAt.distanceTo(camera.position);
+    const plunge = state.crash?.swallow ? plungeAt(state.crash.age) : 0;
+    if (d < L.r * 1.05) return post.lens(0.5, 0.5, 4, { front: 0, black: 9 }); // in past it: nothing but black
+    const front = Math.min(lensAt.clone().applyMatrix4(camera.matrixWorldInverse).z * -1 - L.r * 1.6, 250);
     lensAt.project(camera);
-    if (d > 700 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
-    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, L.r / (d * tanHalf) / 2);
+    if (d > 700 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
+    const z = L.r / (d * tanHalf) / 2; // (as a share of the canvas's height)
+    const held = z / Math.sqrt(1 + (z / 0.3) ** 2);
+    const r = held + (z - held) * plunge;
+    // the shadow's edge on the canvas: the sphere's, pushed out by the bending
+    const S = Math.tan(Math.asin(Math.min(1, L.r / d))) / tanHalf / 2;
+    const edge = (S + Math.sqrt(S * S + 4 * r * r)) / 2;
+    // turned the way its disk goes round, as seen from this side of it
+    map.worldToLocal(lensCam.copy(camera.position)).sub(L.at);
+    const facing = Math.sign(lensCam.dot(new THREE.Vector3(...DISK_N))) || 1;
+    const twist = -(0.1 + 0.45 * state.pull + 1.6 * plunge) * facing;
+    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, r, { front, twist, black: edge });
   };
 
   // the shields bar: shown while there's trouble about or they're down at all
@@ -1190,33 +1238,52 @@ export async function create(canvas, ctx) {
   const crashPose = () => {
     const c = state.crash;
     if (c.swallow) {
-      // from just outside the shadow, a little way in after the ship,
-      // watching it go down into the black
-      const k = clamp01(c.age / CRASH.fall);
-      const inward = k * k * c.radius * 0.18;
-      const [wx, wz] = rotate(c.from.x + c.into.x * inward, c.from.z + c.into.z * inward);
-      return { target: [wx, c.from.y + c.into.y * inward, wz], dist: 2.4, pitch: 0.18 };
+      // well off and nearly level with the disk (maw.js), the whole of the
+      // hole in view while the ship goes down it; then in after it: its
+      // shadow grows steadily over the screen (as one over the distance)
+      // till it's all of it, and on in through it
+      const k = plungeAt(c.age);
+      const near = MAW.shadow * 2.2;
+      const dist = k < 0.8 ? 1 / (1 / MAW.witness + (1 / near - 1 / MAW.witness) * (k / 0.8) ** 1.3) : near + (MAW.shadow * 0.5 - near) * ((k - 0.8) / 0.2);
+      const [wx, wz] = rotate(MAW.at[0], MAW.at[2]);
+      return { target: [wx, MAW.at[1], wz], dist, pitch: Math.asin(clamp(c.fall.view[1], -0.95, 0.95)) };
     }
     const [wx, wz] = rotate(c.point.x, c.point.z);
     return { target: [wx, c.point.y, wz], dist: c.radius * 2.4 + 2.6, pitch: 0.42 };
   };
-  // the fall into the black hole: nose first, drawn in and stretched thin
-  // (spaghetti, as Rick says), rolling faster as it goes, and gone into the
-  // shadow by CRASH.fall. No impact and nothing thrown out: nothing comes
-  // back out of it. The camera comes round to look down the way it went
+  // the fall into the black hole (maw.js): round and down its disk, faster
+  // and faster, nose first and drawn out thin (spaghetti, as Rick says),
+  // rolling as it goes; then held at the edge of the shadow, shrinking as
+  // its light fades, and gone. No impact and nothing thrown out: nothing
+  // comes back out of it. The camera pulls back to watch (crashPose)
   const NOSE = new THREE.Vector3(0, 0, -1);
+  const along = new THREE.Vector3();
   const swallowing = (dt) => {
     const c = state.crash;
     const m = state.model;
-    const k = clamp01(c.age / CRASH.fall);
-    const ease = k * k;
-    m.group.position.copy(c.from).addScaledVector(c.into, ease * c.radius * 0.6); // from where it touched to well inside the shadow
-    m.group.quaternion.setFromUnitVectors(NOSE, c.into);
-    m.pivot.rotation.z += dt * (1 + ease * 7);
-    const thin = 1 - ease * 0.92;
-    m.group.scale.set(thin, thin, 1 + ease * 7);
-    if (state.view === 'chase') state.yaw += wrap(-headingTo(c.into.x, c.into.z) - state.yaw) * clamp01(dt * 2.5);
-    if (k >= 1 && !c.impact) {
+    const s = fallAt(c.fall, reduced ? MAW.horizon : c.age);
+    c.fell = s;
+    // the camera comes round to where it watches from. The map turns about
+    // its middle, far off, so where the camera's flying from turns with it
+    // (or the view would swing off into empty space)
+    const turn = state.view === 'chase' ? wrap(c.yaw - state.yaw) * clamp01(dt * 1.6) : 0;
+    if (Math.abs(turn) > 1e-6) {
+      state.yaw += turn;
+      const f = state.flight;
+      if (f) {
+        const [x, y, z] = f.from.target;
+        const [cs, sn] = [Math.cos(turn), Math.sin(turn)];
+        f.from = { ...f.from, target: [x * cs + z * sn, y, -x * sn + z * cs] };
+      }
+    }
+    if (!s.gone) {
+      m.group.position.set(...s.at);
+      m.group.quaternion.setFromUnitVectors(NOSE, along.set(...s.dir));
+      m.pivot.rotation.z += dt * (1.2 + s.stretch * 9);
+      const fade = s.held ? s.glow : 1;
+      const thin = (1 - s.stretch * 0.85) * fade;
+      m.group.scale.set(thin, thin, (1 + s.stretch * 8) * fade);
+    } else if (!c.impact) {
       c.impact = true;
       m.group.visible = false;
       m.group.scale.setScalar(1);
@@ -1248,7 +1315,7 @@ export async function create(canvas, ctx) {
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
       if (!c.shot) emit({ type: 'crash', id: c.id }); // (shot down said so as it began)
     }
-    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && (isPlace(c.id) || c.swallow)) {
+    if (age >= (c.swallow ? (reduced ? 0.3 : MAW.through) : CRASH.through) && !c.asked && !c.sun && !c.shot && (isPlace(c.id) || c.swallow)) {
       // the shockwave running out over the surface (or the ship gone into
       // the black hole): the page takes it from here, if it's going on into
       // the place's page, or on through to what's beyond the hole
@@ -1256,7 +1323,7 @@ export async function create(canvas, ctx) {
       c.through = Boolean(props.onCrash?.(c.id));
     }
     if (c.through) return true; // the camera holds on the crater till the page goes
-    if (age >= CRASH.back && !c.back) {
+    if (age >= c.backAt && !c.back) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
       let at;
@@ -1274,6 +1341,14 @@ export async function create(canvas, ctx) {
         at = { x: solid.at[0] + out.x * r, y: c.sun ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
       state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
+      if (c.swallow) {
+        // (the page didn't take it on through: back out past the Maw's reach)
+        const out = new THREE.Vector3(c.from.x - MAW.at[0], 0, c.from.z - MAW.at[2]).normalize();
+        Object.assign(state.ship, { x: MAW.at[0] + out.x * (MAW.reach + 10), y: MAW.at[1], z: MAW.at[2] + out.z * (MAW.reach + 10), heading: headingTo(out.x, out.z) });
+        infall?.clear();
+        m.group.scale.setScalar(1);
+        m.group.quaternion.identity();
+      }
       state.shield = 100;
       state.lowSaid = false;
       m.group.visible = true;
@@ -1284,7 +1359,7 @@ export async function create(canvas, ctx) {
     }
     if (c.back) {
       // coming out of the portal, or out of hyperspace (long, then snapping to size)
-      const k = clamp01((age - CRASH.back) / (CRASH.done - CRASH.back));
+      const k = clamp01((age - c.backAt) / (CRASH.done - CRASH.back));
       const s = state.ship;
       m.group.position.set(s.x, s.y, s.z);
       m.group.rotation.y = s.heading;
@@ -1292,7 +1367,7 @@ export async function create(canvas, ctx) {
       if (state.view === 'chase') state.yaw += wrap(-s.heading - state.yaw) * clamp01(dt * 4.5);
       m.group.scale.set(grow, grow, state.kind === 'cruiser' ? grow : grow * (1 + (1 - k) * 5));
     }
-    if (age >= CRASH.done) {
+    if (age >= c.backAt + CRASH.done - CRASH.back) {
       state.crash = null;
       m.group.scale.setScalar(1);
       m.group.visible = true;
@@ -1309,13 +1384,35 @@ export async function create(canvas, ctx) {
       input = a.input;
       if (a.done) state.auto = null;
     } else input = steering();
-    const { ship, events } = step(state.ship, input, dt);
+    const { ship: stepped, events } = step(state.ship, input, dt);
+    // the Maw's pull (maw.js): drawn in, and carried round with its disk
+    const g = pullAt(stepped.x, stepped.y, stepped.z);
+    const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
     state.ship = ship;
+    state.pull = g?.k ?? 0;
     for (const e of events) {
       if (e.type !== 'crash') emit(e);
       else if (!state.crash) startCrash(e);
     }
     if (state.crash) return true;
+    if (g) {
+      if (!state.pullSaid && g.k > 0.3) {
+        state.pullSaid = true;
+        emit({ type: 'pulled' });
+      }
+      // the hum of it, and the ship shaking in its grip
+      if (!well && engine) well = wellSound();
+      well?.set(g.k);
+      if (!reduced) state.shake = Math.max(state.shake, Math.max(0, g.k - 0.2) * 0.55);
+      // past the point of no return: the fall
+      if (captured(ship.x, ship.y, ship.z)) {
+        startCrash({ id: MAW.id, swallowed: true, speed: ship.speed });
+        return true;
+      }
+    } else {
+      state.pullSaid = false;
+      well?.set(0);
+    }
 
     // a burst of speed
     const boosting = input.boost && input.throttle > 0 && ship.speed > SHIP.cruise * 0.7;
@@ -1364,7 +1461,7 @@ export async function create(canvas, ctx) {
       state.idleSaid = true;
       emit({ type: 'idle' });
     }
-    return Boolean(state.auto || input.throttle || input.turn || input.climb || Math.abs(ship.speed) > 0.01 || Math.abs(ship.vy) > 0.01 || Math.abs(ship.pitch) > 0.002 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
+    return Boolean(state.auto || g || input.throttle || input.turn || input.climb || Math.abs(ship.speed) > 0.01 || Math.abs(ship.vy) > 0.01 || Math.abs(ship.pitch) > 0.002 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
   };
 
   // ── Frames ──
@@ -1438,7 +1535,8 @@ export async function create(canvas, ctx) {
     apply(pose);
     // boosting, the lens widens (so the speed shows at the edges), with a
     // kick as a boost lights
-    const fov = FOV + (reduced || !flying() || state.view !== 'chase' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5));
+    const plunging = state.crash?.swallow ? plungeAt(state.crash.age) : 0;
+    const fov = FOV + (reduced || !flying() || state.view !== 'chase' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 18 * plunging ** 2);
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1473,7 +1571,7 @@ export async function create(canvas, ctx) {
     }
     const crashBusy = crashFx.update(dt, camera);
     const popBusy = pops.update(dt, camera);
-    const fxBusy = crashBusy || popBusy;
+    const fxBusy = crashBusy || popBusy || Boolean(state.crash?.swallow);
     if (traffic) {
       for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) {
         if (e.event === 'convoy') emit({ type: 'event', id: 'convoy' });
@@ -1503,6 +1601,11 @@ export async function create(canvas, ctx) {
     map.updateMatrixWorld();
     map.worldToLocal(camLocal.copy(camera.position));
     deep.update(t, camera, camLocal);
+    // the fall into the Maw: the ship's trail and glow, and its last light
+    if (infall) {
+      if (state.crash?.swallow && !state.crash.back) infall.update(dt, state.crash.fell, camLocal, camera);
+      else infall.clear();
+    }
     for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 700) tr.wake();
     bend();
     if (sky) sky.position.copy(camLocal);
@@ -1770,6 +1873,8 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
+      well?.stop();
+      infall?.dispose();
       state.model?.dispose();
       panelRO?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
