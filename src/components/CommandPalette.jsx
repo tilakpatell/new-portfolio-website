@@ -13,6 +13,7 @@ import {
   RiMailLine,
   RiMusic2Line,
   RiPaletteLine,
+  RiRestartLine,
   RiSearchLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
@@ -28,6 +29,7 @@ import { useFun } from '../fun/FunProvider';
 import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { local } from '../lib/hooks';
+import { restartSite } from '../lib/restart';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -74,7 +76,8 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-home', group: 'Go to', label: 'Home', keywords: 'about me intro', icon: RiArrowRightLine, run: go('/home') },
       { id: 's-uni', group: 'Actions', label: 'Start the site in the universe', keywords: 'front door start page landing universe', icon: RiGlobalLine, run: () => local.set('tp-start', 'universe') },
       { id: 's-home', group: 'Actions', label: 'Start the site on the home page', keywords: 'front door start page landing home plain', icon: RiArrowRightLine, run: () => local.set('tp-start', 'home') },
-      { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty', icon: RiGlobalLine, run: go('/universe') },
+      { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
+      { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
       { id: 'p-proj', group: 'Go to', label: 'Projects', icon: RiCodeBoxLine, run: go('/projects') },
       { id: 'p-travel', group: 'Go to', label: 'Travel', keywords: 'places globe heritage akshardham', icon: RiGlobalLine, run: go('/travel') },
@@ -116,7 +119,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'w-abq', group: 'Easter eggs', label: 'Albuquerque: Breaking Bad', keywords: 'breaking bad walter white heisenberg jesse pinkman gus fring los pollos hermanos saul goodman mike lalo hector superlab world', icon: RiSparkling2Line, run: go('/albuquerque') },
       { id: 'w-rm', group: 'Easter eggs', label: 'Dimension C-137: Rick and Morty', keywords: 'rick and morty sanchez smith summer beth jerry portal gun portal panic pickle rick meeseeks interdimensional cable plumbus cromulon snowball evil morty citadel gazorpazorp cronenberg world', icon: RiSparkling2Line, run: go('/c-137') },
       { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
-      { id: 'e-cockpit', group: 'Easter eggs', label: 'Back to the cockpit', keywords: 'cockpit first person pilot seat falcon chewie x-wing red five rick cruiser portal rv walt jesse breaking bad drive launch', icon: RiSparkling2Line, run: () => window.dispatchEvent(new CustomEvent('tp:cockpit')) },
+      { id: 'e-cockpit', group: 'Easter eggs', label: 'Back to the cockpit', keywords: 'cockpit first person pilot seat falcon chewie x-wing red five rick cruiser portal rv walt jesse breaking bad drive launch wings fly', icon: RiSparkling2Line, run: () => window.dispatchEvent(new CustomEvent('tp:cockpit')) },
       { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },
       { id: 'e-schwifty', group: 'Easter eggs', label: 'Get schwifty', keywords: 'rick and morty wubba lubba dub dub wubbalubbadubdub portal green', icon: RiSparkling2Line, run: () => fun.getSchwifty('portal') },
       { id: 'e-savvy', group: 'Easter eggs', label: 'Savvy? Hoist the colours', keywords: 'pirates of the caribbean jack sparrow black pearl flying dutchman davy jones tortuga pirate theme', icon: RiSparkling2Line, run: () => fun.savvy('pearl') },

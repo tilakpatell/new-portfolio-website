@@ -1,10 +1,11 @@
-// The ships you can fly round the universe map: Luke's X-wing and the
-// Millennium Falcon, the site owner's Meshy models of them once they load
-// (until then, or without them, ones built from simple shapes: four wings in
-// an X, the red stripes, four engines; the saucer, the two mandibles, the
-// cockpit off to the right); and Rick's space cruiser, the classic saucer
-// from the C-137 page with Rick at the wheel and Morty beside him
-// (rickmorty/cruiser3d.js), once it loads.
+// The ships you can fly round the universe map: Luke's X-wing, the
+// Millennium Falcon and Walt and Jesse's RV with its home-made wings, the
+// site owner's Meshy models of them once they load (until then, or without
+// them, ones built from simple shapes: four wings in an X, the red stripes,
+// four engines; the saucer, the two mandibles, the cockpit off to the right;
+// a camper with a wing each side and a jet under each); and Rick's space
+// cruiser, the classic saucer from the C-137 page with Rick at the wheel and
+// Morty beside him (rickmorty/cruiser3d.js), once it loads.
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
@@ -174,6 +175,58 @@ function cruiser(T) {
   return { group, glow: [{ mat: glowM, color: new THREE.Color('#9df06b') }], stand, glowMesh: glow, nose: Math.PI }; // its model's nose (the headlights) is +z
 }
 
+// where the RV model's jets end (either side, low, a little ahead of the
+// middle), measured from the model in the frame it's built in
+const POD = [0.098, -0.0505, -0.029];
+
+// Walt and Jesse's RV, until its model comes: a boxy camper (the cab under
+// the cab-over, a dark band of windows, the brown stripe, the wheels) with
+// a straight wing bolted on each side at floor height and a jet hanging
+// under each. Built to the model's own proportions (it's the wingspan that's
+// BUILT across), so the jets' glow sits where the model's exhausts are too
+// and stays put when the model comes.
+function rv() {
+  const group = new THREE.Group();
+  const stand = new THREE.Group();
+  const pods = [];
+  const wingStripes = [];
+  const wheels = [];
+  const glows = [];
+  for (const sx of [-1, 1]) {
+    pods.push([tube(0.0105, 0.0085, 0.05), [sx * POD[0], POD[1] - 0.0025, -0.055], LAY]); // the intake forward
+    pods.push([new THREE.BoxGeometry(0.004, 0.012, 0.02), [sx * POD[0], -0.041, -0.055]]); // the pylon
+    wingStripes.push([new THREE.BoxGeometry(0.014, 0.008, 0.0535), [sx * 0.14, -0.038, -0.05]]);
+    for (const z of [-0.085, 0.062]) wheels.push([tube(0.015, 0.015, 0.014, 12), [sx * 0.048, -0.055, z], [0, 0, Math.PI / 2]]);
+    glows.push([new THREE.CircleGeometry(0.0095, 14), [sx * POD[0], POD[1], POD[2]]]);
+  }
+  const body = new THREE.Mesh(
+    parts([
+      [new THREE.BoxGeometry(0.11, 0.115, 0.19), [0, 0.008, 0.025]], // the living box
+      [new THREE.BoxGeometry(0.106, 0.04, 0.034), [0, 0.042, -0.084]], // the cab-over
+      [new THREE.BoxGeometry(0.104, 0.072, 0.052), [0, -0.014, -0.094]], // the cab
+      [new THREE.BoxGeometry(0.36, 0.007, 0.052), [0, -0.038, -0.05]], // the wings, one plank right across
+    ]),
+    lambert('#ebe2cc'),
+  );
+  const brown = new THREE.Mesh(parts([[new THREE.BoxGeometry(0.1126, 0.009, 0.1926), [0, 0, 0.025]], [new THREE.BoxGeometry(0.1066, 0.009, 0.052), [0, 0, -0.094]], ...wingStripes]), lambert('#8a5a34'));
+  const dark = new THREE.Mesh(
+    parts([
+      [new THREE.BoxGeometry(0.1124, 0.02, 0.15), [0, 0.034, 0.035]], // the side windows
+      [new THREE.BoxGeometry(0.1064, 0.022, 0.03), [0, 0.005, -0.1]], // the cab's
+      [new THREE.BoxGeometry(0.09, 0.024, 0.004), [0, 0.005, -0.12]], // the windscreen
+      [new THREE.BoxGeometry(0.044, 0.02, 0.004), [0, 0.034, 0.12]], // the back window
+      [new THREE.BoxGeometry(0.112, 0.01, 0.006), [0, -0.047, 0.12]], // the bumper
+      ...wheels,
+    ]),
+    lambert('#2b2d33'),
+  );
+  const grey = new THREE.Mesh(parts([...pods, [new THREE.BoxGeometry(0.04, 0.012, 0.04), [0, 0.07, 0.04]]]), lambert('#8d9097', { metalness: 0.3 }));
+  stand.add(body, brown, dark, grey);
+  const glowM = glowMat('#ffa04a');
+  group.add(stand, new THREE.Mesh(parts(glows), glowM));
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ffa04a') }], stand, nose: -Math.PI / 2 }; // its model's cab is −x
+}
+
 // Where each ship's engines are, inside its pivot (in BUILT units, nose −z):
 // the plumes leave from here (trail.js). The cruiser's are its exhaust cans,
 // read off its model once it's mounted (see scene.js); these stand in.
@@ -193,17 +246,22 @@ export const ENGINES = {
     [-0.115, 0, 0.17],
     [0.115, 0, 0.17],
   ],
+  // the RV's two jets, one under each wing
+  rv: [
+    [-POD[0], POD[1], POD[2]],
+    [POD[0], POD[1], POD[2]],
+  ],
 };
 
 // which way the Falcon model's nose points, as a turn about y (see buildShip)
 const FALCON_NOSE = Math.PI / 2;
 
-const BUILD = { xwing, falcon, cruiser };
+const BUILD = { xwing, falcon, cruiser, rv };
 
 // the models that take over from the built ships, when they load (the
 // cruiser is built by the C-137 page's own code instead; see scene.js)
 // (the X-wing is the trench run's own, so a visitor who's flown one has it already)
-export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/meshy/x-wing-fighter.glb' };
+export const SHIP_MODELS = { falcon: '/models/universe/falcon.glb', xwing: '/models/meshy/x-wing-fighter.glb', rv: '/models/universe/rv-wings.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);

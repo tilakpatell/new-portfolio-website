@@ -11,8 +11,11 @@
 // behind, it never fills the screen). One draw a plume; a ship has one for
 // each engine.
 //
+// Boosting (`stretch` above 1), it draws out longer, a little wider and
+// hotter, as an afterburner's flame does.
+//
 // createTrail({ width, life, length, wobble, sparks }) → { mesh, setColors(color, core),
-//   update(dt, t, nozzle, amount, camera), clear(), dispose() }
+//   update(dt, t, nozzle, amount, camera, stretch), clear(), dispose() }
 // (mesh carries the sparks too, as a child)
 // `nozzle` and `camera` are in the mesh's parent's space.
 
@@ -47,7 +50,9 @@ varying float vSide;
 varying float vAlong;
 varying float vDist;
 void main() {
-  float across = 1.0 - abs(vSide); // 1 down the middle, 0 at the edges
+  // 1 down the middle, 0 at the edges (clamped: with multisampling a pixel at
+  // the edge can be shaded from just outside it, and pow() below zero is NaN)
+  float across = clamp(1.0 - abs(vSide), 0.0, 1.0);
   float body = across * across * (3.0 - 2.0 * across);
   float core = pow(across, 7.0) * (1.0 - vAlong);
   // a flicker running back along it (busier for the plasma)
@@ -197,9 +202,10 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       hot.set(core).multiplyScalar(1.9);
       sparkColour.set(color).lerp(new THREE.Color(core), 0.35).multiplyScalar(2.2);
     },
-    // amount: 0 (engines idle) … 1 (full boost)
-    update(dt, t, nozzle, amount, camera) {
+    // amount: 0 (engines idle) … 1 (flat out); stretch: 1, up to 2 or so boosting
+    update(dt, t, nozzle, amount, camera, stretch = 1) {
       level += (amount - level) * Math.min(1, dt * 5);
+      const reachOut = length * stretch;
       for (const p of path) p.age += dt;
       while (path.length && path[path.length - 1].age > life) path.pop();
       since += dt;
@@ -218,8 +224,8 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       mesh.visible = path.length > 1 && level > 0.01;
       if (!mesh.visible) return;
       const u = mat.uniforms;
-      u.uColor.value.copy(colour).multiplyScalar(level);
-      u.uCore.value.copy(hot).multiplyScalar(level);
+      u.uColor.value.copy(colour).multiplyScalar(level * (0.75 + 0.25 * stretch));
+      u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
       u.uCam.value.copy(camera);
       u.uTime.value = t;
       const reach = Math.hypot(camera.x - nozzle.x, camera.y - nozzle.y, camera.z - nozzle.z); // engine to lens
@@ -228,7 +234,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       for (let i = 1; i < path.length; i++) {
         run += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y, path[i].z - path[i - 1].z);
         path[i].run = run;
-        if (run > length) {
+        if (run > reachOut) {
           path.length = i + 1;
           break;
         }
@@ -246,10 +252,10 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
         across.normalize();
         // 0 at the nozzle, 1 where it's gone: by age, or by coming too near the lens
         const lens = Math.hypot(camera.x - p.x, camera.y - p.y, camera.z - p.z) / reach;
-        const k = i < n ? Math.min(1, Math.max(p.age / life, p.run / length, 1 - Math.min(1, Math.max(0, (lens - 0.2) / 0.3)))) : 1;
+        const k = i < n ? Math.min(1, Math.max(p.age / life, p.run / reachOut, 1 - Math.min(1, Math.max(0, (lens - 0.2) / 0.3)))) : 1;
         // a flame's shape: a little narrow right at the nozzle, swelling,
         // then thinning away (faster than it fades)
-        const w = width * (0.6 + 0.4 * Math.sin(Math.min(1, k * 5) * Math.PI * 0.5)) * (1 - k) ** 1.6 * (0.5 + 0.5 * level);
+        const w = width * (0.6 + 0.4 * Math.sin(Math.min(1, k * 5) * Math.PI * 0.5)) * (1 - k) ** 1.6 * (0.5 + 0.5 * level) * (0.8 + 0.2 * stretch);
         // the plasma's ripple: the middle line weaving side to side, more as it goes
         const weave = wobble ? Math.sin(p.age * 26 + phase) * width * wobble * k : 0;
         const cx = p.x + across.x * weave;

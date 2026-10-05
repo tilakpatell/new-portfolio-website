@@ -5,6 +5,10 @@
 // always in front of whatever is out there. Bloom on a desktop's graphics
 // chip; phones and software WebGL draw without it, at a lower resolution.
 //
+// A vehicle can turn your head itself during the launch (the RV looks out at
+// its wings): its aim(t, plan) is a [yaw, pitch] added to wherever you're
+// looking. Not with reduced motion.
+//
 // run(canvas, opts) → { pick(id), go(), skip(), look…, stop() }
 //   opts: { vehicle, veil, reduced, onBoarded(id), onPeak, onDone, onFail,
 //           onLine(line), onPhase(name) }
@@ -198,8 +202,9 @@ export function run(canvas, opts) {
       const ahead = L.on ? smooth(Math.min(1, L.t / (L.plan.spool * 0.9 + 1))) : 0;
       const since = clock - look.sat;
       const glance = look.own || L.on ? 0 : look.glance * (smooth((since - 1.4) / 1.1) - smooth((since - 3.6) / 1.2));
-      const ty = look.ty + glance + (look.rest[0] - look.ty) * ahead;
-      const tp = look.tp + (look.rest[1] - look.tp) * ahead;
+      const aim = L.on && !reduced ? v.aim?.(L.t, L.plan) : null;
+      const ty = look.ty + glance + (look.rest[0] - look.ty) * ahead + (aim?.[0] ?? 0);
+      const tp = look.tp + (look.rest[1] - look.tp) * ahead + (aim?.[1] ?? 0);
       const k = 1 - Math.exp(-dt * (L.on ? 7 : 4.5));
       look.yaw += (ty - look.yaw) * k;
       look.pitch += (tp - look.pitch) * k;

@@ -14,6 +14,7 @@ import AutobotMark from '../components/AutobotMark';
 import DecepticonMark from '../components/DecepticonMark';
 import { Cybertron as Skyline } from '../components/worlds/Backdrops';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
@@ -36,11 +37,23 @@ const ROSTER = [
   { id: 'soundwave', name: 'Soundwave', side: 'decepticon', role: 'Communications', line: 'Hears everything, says almost nothing. Superior.', color: '#1b2f55', trim: '#4fd8ff' },
 ];
 
+// the soundboard: the films' and the cartoon's lines, and the sound
 const BOARD = [
+  'autobotsRollOut',
+  'myNameIsOptimusPrime',
+  'iAmOptimusPrime',
+  'freedom',
+  'oneShallStand',
+  'megatronPrime',
+  'youAndMeMegatron',
+  'relieveWeapons',
+  'bumblebeeBrave',
+  'moreThanMeetsTheEye',
+  'weAreWaiting',
+  'soundwaveSuperior',
+  'soUnwise',
+  'die',
   ['transform', 'Transform'],
-  ['freedom', 'Freedom'],
-  ['soUnwise', 'So unwise'],
-  ['die', 'Die'],
 ];
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -99,7 +112,10 @@ export default function Cybertron() {
   const transform = () => {
     if (phase !== 'idle') return;
     audioContext(); // in the click, so the transformation can be heard
-    import('../lib/clips').then((c) => c.playClip('transform'));
+    import('../lib/clips').then((c) => {
+      c.playClip('transform');
+      c.playClip('megatronPrime', { when: 0.9 }); // the two leaders, at each other
+    });
     const next = side === 'autobot' ? 'decepticon' : 'autobot';
     if (prefersReducedMotion()) {
       setSide(next);
@@ -141,11 +157,6 @@ export default function Cybertron() {
   const beep = () => {
     audioContext();
     import('../lib/sfx').then((x) => x.beeps());
-  };
-
-  const play = (id) => {
-    audioContext();
-    import('../lib/clips').then((c) => c.playClip(id));
   };
 
   return (
@@ -331,14 +342,8 @@ export default function Cybertron() {
         <h2 id="board-title" className="title">
           Soundboard
         </h2>
-        <p className="lead mt-4 max-w-[54ch]">Four clips. Soundwave is listening.</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          {BOARD.map(([id, label]) => (
-            <button key={id} type="button" className="btn btn-ghost" onClick={() => play(id)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <p className="lead mt-4 max-w-[54ch]">From the films and the cartoon. Soundwave is listening.</p>
+        <ClipBoard className="mt-6" clips={BOARD} />
       </section>
 
       {hasScenes(SCENES) && (

@@ -4,8 +4,8 @@ import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
-import { enterPlan } from '../components/universe/flight';
-import { crewById, parseShip } from '../components/universe/crews';
+import { crashPlan, enterPlan } from '../components/universe/flight';
+import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { START_KEY } from './Front';
 import { portalSound } from '../components/universe/sounds';
 import UniverseMap from '../components/universe/UniverseMap';
@@ -13,7 +13,6 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 
-const SHIP_KEY = 'tp-universe-ship';
 const PORTAL = '#97ce4c';
 
 // The universe map: every fandom on the site is a planet, and you travel
@@ -37,6 +36,18 @@ export default function Universe({ ask = false }) {
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
+  // ship it was, with no question first
+  useEffect(() => {
+    const arrive = (e) => {
+      const id = parseShip(e.detail?.ship);
+      if (id) setShip(id);
+      setAsking(false);
+    };
+    window.addEventListener('tp:arrive', arrive);
+    return () => window.removeEventListener('tp:arrive', arrive);
+  }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
 
@@ -64,6 +75,18 @@ export default function Universe({ ask = false }) {
     timer.current = setTimeout(() => navigate(u.to), plan.delay);
   };
   const enter = () => go(universe);
+
+  // flown into a planet or a station too fast: once the crash has played,
+  // on into its page, the screen washing out in its colour (true tells the
+  // map the ship isn't coming back; the sun, with no page, sends it back)
+  const crashInto = (id) => {
+    const u = byId(id);
+    const plan = crashPlan(u, { reduced });
+    if (!plan || leaving) return false;
+    setLeaving({ id: u.id, mode: plan.mode });
+    timer.current = setTimeout(() => navigate(u.to), plan.delay);
+    return true;
+  };
 
   // the front door's choice: fly, or the home page; kept if asked to
   const start = (where, remember) => {
@@ -97,7 +120,7 @@ export default function Universe({ ask = false }) {
   }, [leaving, selected, select]);
 
   const accent = universe ? { '--accent': universe.accent, '--accent-text': universe.accent, '--btn-bg': universe.accent } : undefined;
-  const fade = leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'dive' ? byId(leaving.id).palette.base : undefined;
+  const fade = leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'dive' || leaving?.mode === 'crash' ? byId(leaving.id).palette.base : undefined;
 
   return (
     <div className="dark-scope universe-page" style={accent} data-leaving={leaving?.mode} data-card={universe ? '' : undefined}>
@@ -114,6 +137,7 @@ export default function Universe({ ask = false }) {
         ship={ship}
         onEvent={(e) => comms.current?.handle(e)}
         onLand={enter}
+        onCrash={crashInto}
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
       <UniversePanel universe={universe} onSelect={select} onEnter={enter} onWhole={whole} leaving={Boolean(leaving)} ship={ship} onShip={pickShip} onStartOn={startOn} />

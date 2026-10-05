@@ -3,8 +3,8 @@ import { CREWS, crewById, linesFor, parseShip } from './crews';
 import { ORDER } from './layout';
 
 describe('the crews', () => {
-  it('are three ships, each with its own id', () => {
-    expect(CREWS.map((c) => c.id)).toEqual(['cruiser', 'xwing', 'falcon']);
+  it('are four ships, each with its own id', () => {
+    expect(CREWS.map((c) => c.id)).toEqual(['cruiser', 'xwing', 'falcon', 'rv']);
   });
 
   it('have something to say everywhere, and only their own crew says it', () => {
@@ -29,8 +29,10 @@ describe('the crews', () => {
   });
 
   it('have a word for every kind of traffic that comes past them, and for shooting one down', () => {
-    // what flies by each crew (traffic.js): Star Wars for the X-wing and the Falcon, Rick and Morty for the cruiser
-    const FLYBY = { cruiser: ['patrol', 'gromflomite', 'meeseeks', 'birdperson'], xwing: ['tie', 'interceptor', 'xwing', 'slave1'], falcon: ['tie', 'interceptor', 'xwing', 'slave1'] };
+    // what flies by each crew (traffic.js): Star Wars for the X-wing and the Falcon, Rick and Morty for the cruiser, both for the RV
+    const STAR_WARS = ['tie', 'interceptor', 'xwing', 'slave1'];
+    const RICK_AND_MORTY = ['patrol', 'gromflomite', 'meeseeks', 'birdperson'];
+    const FLYBY = { cruiser: RICK_AND_MORTY, xwing: STAR_WARS, falcon: STAR_WARS, rv: [...STAR_WARS, ...RICK_AND_MORTY] };
     for (const crew of CREWS) {
       for (const kind of FLYBY[crew.id]) {
         for (const event of ['traffic', 'kill']) {

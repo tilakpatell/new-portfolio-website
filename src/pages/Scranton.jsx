@@ -6,6 +6,7 @@ import OfficeFloor from '../components/office/OfficeFloor';
 import PaperPlane from '../components/office/PaperPlane';
 import PaperToss from '../components/office/PaperToss';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
@@ -24,6 +25,31 @@ const PLACES = [
   { id: 'office-scranton-sign', title: 'Scranton Welcomes You', note: 'The sign the cold opens drive past.' },
   { id: 'office-courthouse', title: 'Lackawanna County Courthouse', note: 'Downtown Scranton, under the Electric City sign.' },
 ];
+// the soundboard: the show's own lines, and the theme
+const BOARD = [
+  'twss',
+  'parkour',
+  'thankYou',
+  'noGod',
+  'whyAreYou',
+  'bankruptcy',
+  'likeToBeLiked',
+  'littleStitious',
+  'insideJokes',
+  'boomRoasted',
+  'beyonceAlways',
+  'prisonMike',
+  'fireDrill',
+  'ignorantSlut',
+  'identityTheft',
+  'dwightPunish',
+  'bearsBeets',
+  'didIStutter',
+  'undercookOnions',
+  'pamGamble',
+  ['officeTheme', 'The theme'],
+];
+
 const SCENES = ['officeBankruptcy', 'officeDundies', 'officePamDundie', 'officeFalse', 'parkour', 'twss'];
 
 // Kevin's way with words: the small ones go.
@@ -61,6 +87,7 @@ export default function Scranton() {
     sfx().then((s) => s.applause());
     // Michael thanks the room for the first one, and every fourth after that
     if (pop % 4 === 0) import('../lib/clips').then((c) => c.playClip('thankYou', { when: 0.5 }));
+    else if (pop % 4 === 2) import('../lib/clips').then((c) => c.playClip('beyonceAlways', { when: 0.5 }));
     setK((n) => n + 1);
     setPop((n) => n + 1);
   };
@@ -137,6 +164,14 @@ export default function Scranton() {
           <p className="lead mt-4 max-w-[46ch]">{say('Eight statements, half about me and half about the branch. Fact, or false? Dwight has strong opinions about each one.')}</p>
         </div>
         <FactCheck />
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="office-board-title">
+        <h2 id="office-board-title" className="title">
+          Soundboard
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">From the show, a line at a time.</p>
+        <ClipBoard className="mt-8" clips={BOARD} />
       </section>
 
       {hasScenes(SCENES) && (

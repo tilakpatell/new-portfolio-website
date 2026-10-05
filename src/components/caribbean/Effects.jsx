@@ -5,6 +5,8 @@ const sound = (name) => {
   audioContext(); // inside the press, so the sound may play
   import('./tide/audio').then((s) => s[name]?.());
 };
+// Jack, in his own voice
+const say = (id) => import('../../lib/clips').then((c) => c.playClip(id, { when: 0.35 }));
 
 // The rum. Six bottles; press one to drink it. When the last has gone the
 // page asks the obvious question, and lists a little.
@@ -19,6 +21,7 @@ export function Rum({ onGone }) {
   const drink = (i) => {
     if (drunk.has(i)) return;
     sound('glug');
+    if (drunk.size === BOTTLES - 1) say('rumGone'); // that was the last of it
     setDrunk((s) => new Set(s).add(i));
   };
   return (
@@ -35,7 +38,7 @@ export function Rum({ onGone }) {
           </button>
         ))}
       </div>
-      <h3 className="cb-toy-title">{gone ? 'Why is the rum gone?' : 'The rum'}</h3>
+      <h3 className="cb-toy-title">{gone ? 'Why is the rum always gone?' : 'The rum'}</h3>
       <p className="cb-toy-line" aria-live="polite">
         {gone ? 'One, it turns even the most respectable men into scoundrels. Two, you drank it.' : drunk.size ? `${BOTTLES - drunk.size} left. The horizon is starting to tilt.` : 'Hidden by rum-runners, found by you. Press a bottle.'}
       </p>
@@ -49,7 +52,7 @@ export function Rum({ onGone }) {
 }
 
 // The jar of dirt. Each press says a little more about what's in it.
-const JAR = ['Press the jar.', 'I’ve got a jar of dirt.', 'I’ve got a jar of dirt, and guess what’s inside it.', 'Something that beats. Don’t tell the captain of the Dutchman.'];
+const JAR = ['Press the jar.', 'I’ve got a jar of dirt!', 'I’ve got a jar of dirt, and guess what’s inside it?', 'Something that beats. Don’t tell the captain of the Dutchman.'];
 
 export function Jar() {
   const [step, setStep] = useState(0);
@@ -60,6 +63,7 @@ export function Jar() {
     setStep(next);
     if (next === JAR.length - 1) sound('heart');
     else sound('glug');
+    if (step === 0) say('jarOfDirt'); // he says the next two himself
   };
   return (
     <div className="cb-toy card">

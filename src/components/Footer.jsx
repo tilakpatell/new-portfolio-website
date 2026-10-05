@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
 import { profile } from '../data/profile';
+import { restartSite } from '../lib/restart';
 import Wordmark, { AurebeshLine } from './Wordmark';
 import { useOnceVisible } from './ui';
 
@@ -39,6 +40,9 @@ export default function Footer() {
           <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
           <Link className="text-body hover:text-ink" to="/resume">Résumé</Link>
           <Link className="text-body hover:text-ink" to="/deathstar" title="Classified">DS-1 plans</Link>
+          <button type="button" className="text-left text-body hover:text-ink" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
+            Start over
+          </button>
         </nav>
 
         <div className="flex gap-2">

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import Cast from '../components/albuquerque/Cast';
 import AbqWorld from '../components/albuquerque/world/AbqWorld';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
@@ -15,6 +16,27 @@ const PLACES = [
   { id: 'bb-balloons', title: 'The Balloon Fiesta', note: 'Every October, hundreds of hot-air balloons go up over the city.' },
   { id: 'bb-kimo', title: 'The KiMo Theatre', note: 'Pueblo Deco from 1927, on Route 66 downtown.' },
 ];
+// the soundboard: the shows' own lines and sounds
+const BOARD = [
+  'sayMyName',
+  'oneWhoKnocks',
+  'theDanger',
+  'killedGus',
+  'waltAddress',
+  'yeahScience',
+  'domicile',
+  'gettingAway',
+  'gusHello',
+  'tight',
+  'saulHi',
+  'callSaul',
+  'dontDrinkDrive',
+  ['hectorBell', 'Hector’s bell'],
+  ['jesseRing', 'Jesse’s ringtone'],
+  ['hankRing', 'Hank’s phone'],
+  ['bbIntro', 'The opening'],
+];
+
 const SCENES = ['bbDanger', 'bbKnocks', 'bbJesse', 'bbGusExplain', 'bbGusHand', 'bbHalfMeasures', 'bbBarrel', 'saulExcited', 'bcsNewOffice'];
 
 // Albuquerque: the town to drive round (the places open as Walt's career
@@ -49,6 +71,14 @@ export default function Albuquerque() {
         <div className="mt-8">
           <Cast />
         </div>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="abq-board-title">
+        <h2 id="abq-board-title" className="title">
+          Soundboard
+        </h2>
+        <p className="lead mt-4 max-w-[56ch]">From both shows, a line at a time.</p>
+        <ClipBoard className="mt-8" clips={BOARD} />
       </section>
 
       

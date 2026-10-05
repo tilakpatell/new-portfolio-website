@@ -12,6 +12,7 @@ import { education, profile, skills } from '../data/profile';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
 import { projects } from '../data/projects';
 import { useDocumentTitle } from '../lib/hooks';
+import { restartSite } from '../lib/restart';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
 // `hang` is how far a wrapped line indents (it defaults to the line's own
@@ -83,7 +84,7 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  Also: whoami · date · ls · cat · echo · history · neofetch · exit', 'dim'),
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
@@ -470,6 +471,14 @@ export default function Terminal() {
       exit: () => {
         setTimeout(() => navigate('/'), 300);
         return [L('  Closing channel.', 'sys')];
+      },
+      restart: () => {
+        setTimeout(restartSite, 700);
+        return [L('  Rebooting from the beginning…', 'ok')];
+      },
+      reboot: () => {
+        setTimeout(restartSite, 700);
+        return [L('  Rebooting from the beginning…', 'ok')];
       },
     }),
     [active, fun, navigate, pin, unlock, unlocked],

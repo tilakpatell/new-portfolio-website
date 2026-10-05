@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiArrowRightLine } from 'react-icons/ri';
 import { local } from '../../lib/hooks';
+import { SHIP_KEY, parseShip } from '../universe/crews';
 import { audioContext } from '../../lib/audio';
 import Hyperspace from '../Hyperspace';
 import Face from '../universe/Faces';
@@ -17,9 +18,10 @@ const KEY = 'tp-cockpit'; // the last one you sat in
 // RV's driver's), the vehicle's world out of the glass. Look about with the
 // mouse (a drag on a touch screen, or the arrow keys), switch vehicle with
 // the picker (or 1 to 4), and go with the big button, Space, or the
-// vehicle's own lever or wheel. The launch comes out over whatever is behind
-// (the front door's choice, over the universe): `onPeak` at the flash,
-// `onDone` once it has cleared. Skip (or Escape) goes straight there.
+// vehicle's own lever or wheel. The launch comes out in the universe, flying
+// the ship you launched in (remembered for the map, and told to it as
+// 'tp:arrive'): `onPeak` at the flash, `onDone` once it has cleared. Skip
+// (or Escape) goes straight there.
 //
 // Where WebGL can't draw it (or it fails), the plain jump to lightspeed
 // plays instead, with the same callbacks.
@@ -37,6 +39,17 @@ export default function Cockpit({ start, onPeak, onDone }) {
   cbs.current = { onPeak, onDone };
   const go = useRef(null);
   const v = vehicleById(id);
+  const idNow = useRef(id);
+  idNow.current = id;
+  // the flash: into the universe, in this vehicle's ship
+  const peak = useCallback(() => {
+    const ship = parseShip(vehicleById(idNow.current)?.ship);
+    if (ship) {
+      local.set(SHIP_KEY, ship);
+      window.dispatchEvent(new CustomEvent('tp:arrive', { detail: { ship } }));
+    }
+    cbs.current.onPeak?.();
+  }, []);
 
   // the scene module: here already (fetched during the crawl), or now
   useEffect(() => {
@@ -87,7 +100,7 @@ export default function Cockpit({ start, onPeak, onDone }) {
         onBoarded: (got) => setBoarded(got),
         onFirstFrame: () => delete document.documentElement.dataset.intro,
         onLine: say,
-        onPeak: () => cbs.current.onPeak?.(),
+        onPeak: peak,
         onDone: () => cbs.current.onDone?.(),
         onFail: () => setFallback(true),
       });
@@ -106,17 +119,18 @@ export default function Cockpit({ start, onPeak, onDone }) {
     };
     // the vehicle is switched inside the running scene (below), not by remaking it
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, fallback, say]);
+  }, [scene, fallback, say, peak]);
 
   useEffect(() => {
     ctl.current?.pick(id);
   }, [id]);
 
-  // the crew's first word, once you're sat down
+  // the crew's first words, once you're sat down, one after another
   useEffect(() => {
     if (!boarded || launching) return undefined;
-    const t = setTimeout(() => say(vehicleById(boarded)?.lines.board?.[0]), 1100);
-    return () => clearTimeout(t);
+    const lines = vehicleById(boarded)?.lines.board ?? [];
+    const timers = lines.map((l, i) => setTimeout(() => say(l), 1100 + i * 3600));
+    return () => timers.forEach(clearTimeout);
   }, [boarded, launching, say]);
 
   useEffect(() => {
@@ -151,7 +165,7 @@ export default function Cockpit({ start, onPeak, onDone }) {
     audioContext();
     const c = ctl.current;
     if (!c) {
-      cbs.current.onPeak?.();
+      peak();
       cbs.current.onDone?.();
       return;
     }
@@ -160,7 +174,7 @@ export default function Cockpit({ start, onPeak, onDone }) {
       setLaunching(true);
     }
     c.skip();
-  }, [id]);
+  }, [id, peak]);
 
   const pick = (to) => {
     if (launching || to === id) return;

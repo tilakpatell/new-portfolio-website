@@ -1,6 +1,7 @@
 // The parts of the station you can open on the technical readout. `bx`/`by`
 // place each one on the 400×400 cutaway blueprint. Each has what happens there
-// in A New Hope, and the line it's known for.
+// in A New Hope, and the line it's known for (with its recording, `clip`, where
+// the site has one: lib/clips.js).
 export const PARTS = [
   {
     id: 'superlaser',
@@ -9,6 +10,7 @@ export const PARTS = [
     name: 'Superlaser',
     text: 'Eight tributary beams meet at the focus lens above the dish. One shot is enough for a planet.',
     quote: ['You may fire when ready.', 'Grand Moff Tarkin'],
+    clip: 'fireWhenReady',
     gif: 'alderaan',
     action: 'fire',
   },
@@ -30,6 +32,7 @@ export const PARTS = [
     name: 'Equatorial trench',
     text: 'A canyon of turbolaser towers that runs around the station: the only way in to the exhaust port.',
     quote: ['Stay on target.', 'Gold Five'],
+    clip: 'stayOnTarget',
     gif: 'trenchRun',
     action: 'trench',
   },
@@ -49,6 +52,7 @@ export const PARTS = [
     name: 'Tractor beam',
     text: 'It caught the Millennium Falcon. Obi-Wan slipped past the guards and switched off a power coupling so it could leave.',
     quote: ['The Force will be with you. Always.', 'Obi-Wan Kenobi'],
+    clip: 'forceAlways',
   },
   {
     id: 'hangar',
@@ -57,6 +61,7 @@ export const PARTS = [
     name: 'Docking bay 327',
     text: 'Where the tractor beam pulled the Falcon in, and where it escaped from with the princess aboard.',
     quote: ['That’s no moon. It’s a space station.', 'Obi-Wan Kenobi'],
+    clip: 'noMoon',
   },
   {
     id: 'detention',
@@ -65,6 +70,7 @@ export const PARTS = [
     name: 'Detention block AA-23',
     text: 'Princess Leia was held in cell 2187 until Luke and Han came for her in borrowed armor.',
     quote: ['Aren’t you a little short for a stormtrooper?', 'Princess Leia'],
+    clip: 'shortStormtrooper',
   },
   {
     id: 'compactor',
@@ -81,5 +87,6 @@ export const PARTS = [
     name: 'Conference room',
     text: 'Where the Imperial commanders meet, and where Admiral Motti doubts the Force out loud.',
     quote: ['I find your lack of faith disturbing.', 'Darth Vader'],
+    clip: 'lackOfFaith',
   },
 ];
