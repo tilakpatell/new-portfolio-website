@@ -10,7 +10,8 @@
 //   summary   two or three sentences: what changed and why it's better
 //   routes    the pages it touched, to link to
 //   pr        the pull request's number
-//   shots     screenshots under /changes/, 960 × 600 WebP, at most two
+//   shots     screenshots under /changes/, 960 × 600 WebP, at most two; one
+//             named <id>-before.webp is the same view before the change
 //   measured  { js: total JS shipped after it, in bytes; note: a number worth saying }
 //   session   the Claude session that made it
 //   reverted  null, or { date, why } once it has been taken out again
@@ -37,6 +38,8 @@ export const changeById = (id) => CHANGES.find((c) => c.id === Number(id)) ?? nu
 // What to say to any Claude session to undo an entry (the autopilot skill's
 // "Undoing a change" is what it then follows).
 export const revertPhrase = (c) => `Revert change ${c.id}`;
+
+export const isBefore = (shot) => /-before\.webp$/.test(shot);
 
 export const fmtDay = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 

@@ -66,6 +66,18 @@ describe('the director', () => {
     expect(got.some((g) => g.e === 'hunt' || g.e === 'destroyer' || g.e === 'council')).toBe(false);
   });
 
+  it('knows the meteors and the bounty hunter, and sends no bounty hunter while your shields are low', () => {
+    expect(EVENTS.meteors.heat).toBe(0);
+    expect(EVENTS.bounty.heat).toBeGreaterThan(0);
+    for (const id of ['meteors', 'bounty']) expect(EVENTS[id].families).toEqual(['starwars', 'rickmorty', 'both']);
+    const got = run(createDirector({ rand: seeded(9) }), 6000, { family: 'rickmorty', heat: 4, calm: true });
+    expect(got.length).toBeGreaterThan(10);
+    expect(got.some((g) => g.e === 'bounty')).toBe(false);
+    const hot = run(createDirector({ rand: seeded(9) }), 6000, { family: 'rickmorty', heat: 4 });
+    expect(hot.some((g) => g.e === 'bounty')).toBe(true);
+    expect(hot.some((g) => g.e === 'meteors')).toBe(true);
+  });
+
   it('brings on what it is asked for next', () => {
     const d = createDirector({ rand: seeded() });
     d.soon('comet');

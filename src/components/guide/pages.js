@@ -110,7 +110,7 @@ export const PAGES = {
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
-      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say.'],
+      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say. A stream of rocks crosses your path (shoot them, or steer round them), and now and then a bounty hunter comes for you alone: Boba Fett in Slave I, or Phoenixperson.'],
       ['The black hole', 'The one thing out there you don’t come back from. On its far side is a friend’s universe; Back brings you home.'],
       ['Online', 'Multiplayer, bottom left: everyone else flying the map is there in their own ships. Fly together, or shoot each other down.'],
     ],
@@ -435,7 +435,7 @@ export const SHORTCUTS = [
 export const SITE = [
   ['Two ways round', 'The Universe and Classic switch at the top: fly through the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site opens on the one you picked last.'],
   ['Getting around', 'The menu at the top, or the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
-  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
+  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color. Each scheme brings a background to the portfolio pages: a quiet one for the companies, a lively one for the fan themes (click on empty page). Switch them off at the bottom of the same menu.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],

@@ -23,6 +23,9 @@ import { LINES, createNpcs } from './npcs';
 import { buildClouds } from './sky';
 import { createTraffic, stepTraffic } from './traffic';
 import { WORLD, buildWorld, groundAt, near } from './map';
+import { BODIES, altitudeOf } from './orbit';
+import { buildPerson, posePerson } from './people';
+import { buildSpace } from './space';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -98,16 +101,44 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   engine.sun.shadow.bias = -0.0006;
 
   // ── the people ──
-  const [markT, omniT] = await Promise.all([loadFigure(asset(CAST.mark.file)), loadFigure(asset(CAST.omni.file))]);
+  const [markT, omniT, thraggT] = await Promise.all(['mark', 'omni', 'thragg'].map((n) => loadFigure(asset(CAST[n].file))));
   const mark = figure(markT, CAST.mark);
   const omni = figure(omniT, CAST.omni);
-  for (const f of [mark, omni]) {
+  const thragg = figure(thraggT, CAST.thragg);
+  for (const f of [mark, omni, thragg]) {
     f.lean = new THREE.Quaternion();
     f.snap(POSES.stand);
     scene.add(f.holder);
   }
   // Omni-Man, over downtown, hands on his hips
   const OMNI = { p: [40, 150, -60], yaw: Math.PI * 0.85 };
+
+  // ── space: the Earth under him, the Moon, Mars, and who's waiting out there ──
+  const space = await buildSpace(engine.renderer, { small });
+  scene.add(space.group, space.stars);
+  space.stars.visible = false;
+  const toEarth = (c) => {
+    const l = Math.hypot(...c);
+    return c.map((v) => -v / l);
+  };
+  // Allen, between the Moon and home; Thragg, over Mars, facing Earth
+  const moon = BODIES.find((b) => b.id === 'moon');
+  const mars = BODIES.find((b) => b.id === 'mars');
+  const ALLEN = moon.c.map((v, i) => v + toEarth(moon.c)[i] * (moon.r + 30));
+  const THRAGG = mars.c.map((v, i) => v + toEarth(mars.c)[i] * (mars.r + 45));
+  const allen = buildPerson('allen', 9);
+  const allenHolder = new THREE.Group();
+  allen.h.root.position.y = -allen.h.rest.hips.y;
+  allenHolder.add(allen.h.root);
+  allenHolder.position.set(...ALLEN);
+  allenHolder.rotation.y = Math.atan2(-ALLEN[0], -ALLEN[2]);
+  space.group.add(allenHolder);
+  thragg.holder.removeFromParent();
+  space.group.add(thragg.holder);
+  const spaceTalk = [
+    { id: 'allen', name: 'Allen', p: ALLEN, r: 70, lines: LINES.allen },
+    { id: 'thragg', name: 'Thragg', p: THRAGG, r: 90, lines: LINES.thragg },
+  ];
 
   const fx = createFlightFx(scene, { calm, small });
   const challenges = createChallenges(scene, world, fx.vfx);
@@ -116,9 +147,14 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // ── the time of day ──
   let look = null;
   let haze = 1;
+  let timeName = 'noon';
+  let zone = 'city';
+  const fogBase = new THREE.Color();
   async function setTime(name) {
     const L = LOOK[name] ?? LOOK.noon;
-    if (look === L) return;
+    timeName = name;
+    space.setTime(name);
+    if (look === L || zone === 'space') return;
     look = L;
     scene.fog = null;
     await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
@@ -128,8 +164,36 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     landmarks.setNight(L.night);
     clouds.setLook(L.cloud);
     haze = 1;
+    if (scene.fog) fogBase.copy(scene.fog.color);
   }
   await setTime('noon');
+
+  // ── the city or space: one or the other is drawn ──
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, omni.holder];
+  async function setZone(z) {
+    if (z === zone) return;
+    zone = z;
+    for (const g of cityOnly) g.visible = z === 'city';
+    for (const n of npcs.all) n.holder.visible = z === 'city';
+    space.group.visible = z === 'space';
+    if (z === 'space') {
+      scene.background = new THREE.Color(0, 0, 0.004);
+      scene.fog = null;
+      scene.environmentIntensity = 0.08;
+      engine.sun.color.setRGB(1, 0.97, 0.92);
+      engine.sun.intensity = 3.4;
+      engine.hemi.intensity = 0.04;
+      engine.sun.userData.dir = space.sun.clone();
+      space.stars.visible = true;
+      space.stars.material.color.setScalar(1);
+      camera.far = 1300000;
+    } else {
+      camera.far = 26000;
+      look = null;
+      await setTime(timeName);
+    }
+    camera.updateProjectionMatrix();
+  }
 
   // ── a flyer's body: upright when still, along his flight when fast ──
   const qTmp = new THREE.Quaternion();
@@ -159,20 +223,33 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const k = clamp(speed / 260, 0, 1);
     const want = h.mode === 'ground' ? 5.2 : 6.5 + k * 1.5;
     cam.dist = dt === 0 ? want : damp(cam.dist, want, 2.4, dt);
-    const fwd = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
-    const anchor = [h.p[0], h.p[1] + (fly ? 1.2 : 1.55), h.p[2]];
+    // standing on the Moon or Mars, "up" is away from it: the camera's frame turns with it
+    const upV = h.mode === 'perch' ? new THREE.Vector3(...h.perch.n) : Y;
+    const qUp = new THREE.Quaternion().setFromUnitVectors(Y, upV);
+    const f3 = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).applyQuaternion(qUp);
+    const fwd = [f3.x, f3.y, f3.z];
+    const lift = upV.clone().multiplyScalar(fly ? 1.2 : 1.55);
+    const anchor = [h.p[0] + lift.x, h.p[1] + lift.y, h.p[2] + lift.z];
     // (higher over him the faster he goes, so flat out you see his back, not his boots)
-    const back = [-fwd[0] * cam.dist, -fwd[1] * cam.dist + (fly ? 0.9 + k * 2.6 : 0.7), -fwd[2] * cam.dist];
+    const over = upV.clone().multiplyScalar(fly ? 0.9 + k * 2.6 : 0.7);
+    const back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
     // never inside a building: stop short of the first wall behind him
     let t = 1;
     const reach = cam.dist + 2;
-    for (const b of near(world, anchor[0], anchor[2], reach, list)) {
-      const g = { x0: b.x0 - 0.4, x1: b.x1 + 0.4, y0: b.y0 - 0.4, y1: b.y1 + 0.4, z0: b.z0 - 0.4, z1: b.z1 + 0.4 };
-      t = Math.min(t, rayBox(anchor, back, g));
-    }
+    if (zone === 'city')
+      for (const b of near(world, anchor[0], anchor[2], reach, list)) {
+        const g = { x0: b.x0 - 0.4, x1: b.x1 + 0.4, y0: b.y0 - 0.4, y1: b.y1 + 0.4, z0: b.z0 - 0.4, z1: b.z1 + 0.4 };
+        t = Math.min(t, rayBox(anchor, back, g));
+      }
     t = Math.max(0.08, t);
     const pos = new THREE.Vector3(anchor[0] + back[0] * t, anchor[1] + back[1] * t, anchor[2] + back[2] * t);
-    pos.y = Math.max(pos.y, groundAt(pos.x, pos.z) + 0.5, -2);
+    if (zone === 'city') pos.y = Math.max(pos.y, groundAt(pos.x, pos.z) + 0.5, -2);
+    else
+      for (const b of BODIES) {
+        // (and never inside the Moon)
+        const d = pos.clone().sub(new THREE.Vector3(...b.c));
+        if (d.length() < b.r + 1.5) pos.copy(new THREE.Vector3(...b.c).addScaledVector(d.normalize(), b.r + 1.5));
+      }
     const at = new THREE.Vector3(anchor[0] + fwd[0] * 4, anchor[1] + fwd[1] * 4, anchor[2] + fwd[2] * 4);
     if (!cam.ready || dt === 0) {
       cam.pos.copy(pos);
@@ -185,27 +262,36 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       cam.at.lerp(at, 1 - Math.exp(-(r + 4) * dt));
     }
     camera.position.copy(cam.pos);
-    camera.up.set(0, 1, 0);
+    camera.up.lerp(upV, dt === 0 ? 1 : 1 - Math.exp(-4 * dt)).normalize();
     camera.lookAt(cam.at);
     // the near plane moves out as he climbs (the depth buffer goes further)
-    const alt = h.p[1] - groundAt(h.p[0], h.p[2]);
-    const nearWant = clamp(alt * 0.004, 0.25, 3);
-    if (Math.abs(nearWant - cam.near) > 0.02) {
+    const alt = zone === 'space' ? altitudeOf(h) : h.p[1] - groundAt(h.p[0], h.p[2]);
+    const nearWant = zone === 'space' ? 2 : clamp(alt * 0.004, 0.25, 3);
+    // (and the far plane, so from high up the land runs on to the horizon)
+    const farWant = zone === 'space' ? 1300000 : clamp(26000 + alt * 3, 26000, 60000);
+    if (Math.abs(nearWant - cam.near) > 0.02 || Math.abs(farWant - camera.far) > 500) {
       cam.near = nearWant;
       camera.near = nearWant;
+      camera.far = farWant;
       camera.updateProjectionMatrix();
     }
     feel.setBaseFov(FOV + Math.pow(k, 1.2) * 16);
     feel.update(dt, camera);
-    // the shadows: round him, wider the higher he is
-    engine.setShadowBox(new THREE.Vector3(h.p[0], Math.max(0, h.p[1] - alt), h.p[2]), clamp(60 + alt * 0.4, 60, 360), 600 + Math.min(alt, 1500));
-    // and the haze thins as the air does
-    if (scene.fog?.isFogExp2 && look) {
+    // the shadows: round him, wider the higher he is (in space, just his own)
+    if (zone === 'space') engine.setShadowBox(new THREE.Vector3(...h.p), 6, 40);
+    else engine.setShadowBox(new THREE.Vector3(h.p[0], Math.max(0, h.p[1] - alt), h.p[2]), clamp(60 + alt * 0.4, 60, 360), 600 + Math.min(alt, 1500));
+    // the haze thins as the air does; high up, the sky goes dark and the stars come out
+    if (zone === 'city' && scene.fog?.isFogExp2 && look) {
       const thin = clamp(1 - alt / 2600, 0.3, 1);
-      if (Math.abs(thin - haze) > 0.01) {
+      const dark = THREE.MathUtils.smoothstep(alt, 2500, WORLD.ceiling);
+      if (Math.abs(thin - haze) > 0.005 || dark > 0) {
         haze = thin;
-        scene.fog.density = look.fog.density * thin;
+        scene.fog.density = look.fog.density * thin * (1 - dark * 0.5);
+        scene.fog.color.copy(fogBase).lerp(new THREE.Color(0.01, 0.015, 0.04), dark * 0.85);
+        scene.backgroundIntensity = look.bg * (1 - 0.94 * dark);
       }
+      space.stars.visible = dark > 0.02;
+      space.stars.material.color.setScalar(dark);
     }
   }
 
@@ -237,11 +323,27 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         feel.trauma(clamp(e.speed / 120, 0.4, 1));
       } else if (e.type === 'splash') fx.splash(e.at, e.speed);
       else if (e.type === 'takeoff') fx.takeoff(e.at);
+      else if (e.type === 'land' && e.n) {
+        // down on the Moon or Mars: a ring of dust thrown out round him
+        const at = new THREE.Vector3(...e.at);
+        const n = new THREE.Vector3(...e.n);
+        fx.vfx.ring(at.clone().addScaledVector(n, 0.3), { color: e.body === 'mars' ? 0xd99a6a : 0xc8c8c8, from: 1, to: 8 + Math.min(40, e.speed / 60), life: 0.9, normal: n, opacity: 0.8 });
+        fx.vfx.debris(at.clone().addScaledVector(n, 0.5), { count: 24, speed: 10, size: 0.25, dir: n, spread: 0.8, color: e.body === 'mars' ? 0xb0603a : 0x9a9a9a });
+        feel.trauma(clamp(e.speed / 1500, 0.2, 0.8));
+      }
     }
     sim.events.length = 0;
 
     // Mark
-    if (h.mode === 'ground') {
+    if (h.mode === 'perch') {
+      // standing on the Moon (or Mars): his feet on it, his head away from it
+      const n = new THREE.Vector3(...h.perch.n);
+      mark.holder.position.set(...h.p).addScaledVector(n, mark.hipHeight);
+      mark.holder.quaternion.setFromUnitVectors(Y, n).multiply(new THREE.Quaternion().setFromAxisAngle(Y, h.face));
+      mark.lean.identity();
+      mark.body.quaternion.identity();
+      mark.pose(POSES.proud(), dt, 6);
+    } else if (h.mode === 'ground') {
       const flat = Math.hypot(h.v[0], h.v[2]);
       stride += flat * frameDt * 1.55;
       carry(mark, h.p, h.face, [0, 0, 0], dt, { lean: 0, lift: h.crouch > 0 ? -mark.hipHeight * 0.42 : 0 });
@@ -256,27 +358,39 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.pose(k > 0.45 ? POSES.fly() : POSES.hover(t), dt, 9);
     }
 
-    // his father, keeping an eye on things
-    const bob = Math.sin(t * 0.7) * 1.2;
-    carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-    omni.pose(POSES.proud(), dt, 6);
-
-    // (the QA scripts can hold everyone still, to frame them)
-    if (!sim.hold) {
-      npcs.update(frameDt, t, h);
-      jet.update(frameDt, t);
+    if (zone === 'city') {
+      // his father, keeping an eye on things
+      const bob = Math.sin(t * 0.7) * 1.2;
+      carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
+      omni.pose(POSES.proud(), dt, 6);
+      // (the QA scripts can hold everyone still, to frame them)
+      if (!sim.hold) {
+        npcs.update(frameDt, t, h);
+        jet.update(frameDt, t);
+      }
+      if (sim.quests) challenges.update(sim.quests, frameDt, t);
+      // (no traffic to speak of from up where the clouds are)
+      if (h.p[1] < 2200 || scare.length) {
+        traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
+        life.update(traffic, frameDt, camera, look?.night ?? 0);
+      }
+      clouds.update(t, scene.fog);
+    } else {
+      // Allen, waiting by the Moon; Thragg over Mars
+      posePerson(allen, { mode: 'hover', t });
+      carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
+      thragg.pose(POSES.proud(), dt, 6);
     }
-    if (sim.quests) challenges.update(sim.quests, frameDt, t);
-    // (no traffic to speak of from up where the clouds are)
-    if (h.p[1] < 2200 || scare.length) {
-      traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
-      life.update(traffic, frameDt, camera, look?.night ?? 0);
-    }
-    clouds.update(t, scene.fog);
+    space.update(t, camera);
 
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
     ground.update(t);
     city.update(t, look?.night ?? 0);
+    // coming down through the air from space, fast: the air in front of him burns
+    const altNow = zone === 'space' ? altitudeOf(h) : h.p[1];
+    const down = zone === 'space' ? -(h.v[0] * h.p[0] + h.v[1] * h.p[1] + h.v[2] * h.p[2]) / Math.hypot(...h.p) : -h.v[1];
+    const burn = clamp((down - 160) / 260, 0, 1) * (zone === 'space' ? 1 - THREE.MathUtils.smoothstep(altNow, 20000, 40000) : THREE.MathUtils.smoothstep(altNow, 4500, 8000));
+    fx.plasma(burn, h.p, h.dir);
     fx.update(frameDt, camera, engine.size.h, h, speed);
     engine.render();
   }
@@ -285,6 +399,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const project = (p) => engine.project(new THREE.Vector3(p[0], p[1], p[2]));
   // who's near enough to talk to him (his father too, over downtown)
   const talkers = (h) => {
+    if (zone === 'space') {
+      return spaceTalk
+        .map((q) => ({ ...q, head: [q.p[0], q.p[1] + 1.4, q.p[2]], d: Math.hypot(h.p[0] - q.p[0], h.p[1] - q.p[1], h.p[2] - q.p[2]) }))
+        .filter((q) => q.d < q.r)
+        .sort((a, b) => a.d - b.d);
+    }
     const out = npcs.talkers(h);
     const d = Math.hypot(h.p[0] - OMNI.p[0], h.p[1] - OMNI.p[1], h.p[2] - OMNI.p[2]);
     if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [OMNI.p[0], OMNI.p[1] + 1.2, OMNI.p[2]], d });
@@ -301,7 +421,11 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     project,
     talkers,
     jetDistance,
-    debug: { npcs, jet, world },
+    setZone,
+    get zone() {
+      return zone;
+    },
+    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;
@@ -311,6 +435,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       fx.dispose();
       mark.dispose();
       omni.dispose();
+      thragg.dispose();
       engine.dispose();
     },
   };

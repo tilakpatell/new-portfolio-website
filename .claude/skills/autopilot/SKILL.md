@@ -69,6 +69,14 @@ The standing rules (the owner's, from the handoffs; `docs/superpowers/specs/2026
 
 ## 6. Check
 
+For anything visible, shoot the before first, on `main` before you change anything (it builds `main`, so do it straight after branching):
+
+```bash
+node scripts/autopilot-check.mjs --skip lint,test --routes <the first route you'll touch> --shots $ID --before
+```
+
+That writes `public/changes/$ID-before.webp`; the log shows it beside the after.
+
 ```bash
 node scripts/autopilot-check.mjs --routes <the routes you touched, comma-separated> --shots $ID
 ```

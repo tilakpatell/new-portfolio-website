@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { RiCheckLine, RiFileCopyLine, RiGitPullRequestLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import { Waypoint } from '../components/ui';
-import { CHANGES, KINDS, KIND_ORDER, fmtDay, pad, prUrl, revertPhrase, tally } from '../data/changes';
+import { CHANGES, KINDS, KIND_ORDER, fmtDay, isBefore, pad, prUrl, revertPhrase, tally } from '../data/changes';
 import { useDocumentTitle } from '../lib/hooks';
 import { AurebeshLine } from '../components/Wordmark';
 
@@ -53,9 +53,10 @@ function Entry({ c }) {
       {c.measured?.note && <p className="mt-3 text-sm text-muted">{c.measured.note}</p>}
       {c.shots.length > 0 && (
         <div className={`mt-5 grid gap-4 ${c.shots.length > 1 ? 'sm:grid-cols-2' : 'max-w-2xl'}`}>
-          {c.shots.map((s) => (
+          {[...c.shots].sort((a, b) => Number(isBefore(b)) - Number(isBefore(a))).map((s) => (
             <figure key={s} className="overflow-hidden rounded-panel border border-line bg-deep">
-              <img src={s} alt={`${c.title}: the page after the change`} width={960} height={600} loading="lazy" decoding="async" className="block aspect-[16/10] w-full object-cover" />
+              <img src={s} alt={`${c.title}: the page ${isBefore(s) ? 'before' : 'after'} the change`} width={960} height={600} loading="lazy" decoding="async" className="block aspect-[16/10] w-full object-cover" />
+              {c.shots.some(isBefore) && <figcaption className="label border-t border-line px-3 py-1.5">{isBefore(s) ? 'Before' : 'After'}</figcaption>}
             </figure>
           ))}
         </div>

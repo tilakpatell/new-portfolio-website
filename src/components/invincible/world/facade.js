@@ -5,7 +5,9 @@
 // a crown band under the roof, a tall glass lobby at the street,
 // and the windows faded to their average where they'd be smaller than a
 // pixel, so the skyline doesn't crawl when seen from far off. The windows
-// reflect the sky by day and light up, floor by floor, at night.
+// reflect the sky by day and light up, floor by floor, at night. (Each
+// tower's numbers reach the fragments `flat`: a hash of a value that wobbles
+// across a wall, as an interpolated one can, comes out as noise.)
 
 import * as THREE from 'three';
 
@@ -17,7 +19,7 @@ export function towerMaterial(uniforms) {
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uNight = uniforms.uNight;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aStyle;\nvarying vec3 vCity;\nvarying vec3 vCityN;\nvarying vec4 vStyle;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aStyle;\nvarying vec3 vCity;\nvarying vec3 vCityN;\nflat varying vec4 vStyle;')
       .replace(
         '#include <project_vertex>',
         `#include <project_vertex>
@@ -38,7 +40,7 @@ export function towerMaterial(uniforms) {
         uniform float uNight;
         varying vec3 vCity;
         varying vec3 vCityN;
-        varying vec4 vStyle;
+        flat varying vec4 vStyle;
         float cityHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float box(vec2 f, vec4 r) { return step(r.x, f.x) * step(f.x, r.y) * step(r.z, f.y) * step(f.y, r.w); }
         vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }

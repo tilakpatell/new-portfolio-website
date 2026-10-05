@@ -10,7 +10,7 @@ import { education, focusAreas, profile, skills } from '../data/profile';
 import { roles, fmtMonth } from '../data/roles';
 import { featuredProjects, projectById } from '../data/projects';
 import { ClaudeFeature, GameBoyFeature } from '../stages';
-import { ClaudeSpark } from '../stages/ClaudeStage';
+import { ClaudeSpark } from '../stages/ClaudeSpark';
 import ProjectThumb from '../components/ProjectThumb';
 import { useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes, useTheme } from '../theme/ThemeProvider';
