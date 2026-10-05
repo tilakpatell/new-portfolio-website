@@ -1,9 +1,12 @@
-// Dimension C-137, the world: where everything stands (the Smiths' street,
-// the Smith house on two floors and the garage lab, the school, the alien
-// street with Blips and Chitz), how Morty walks about it, how Rick's cruiser
-// flies over it, the things to do there and the pop quiz. No drawing
-// (./scene.js draws it, ./RmWorld.jsx drives it), so it can be tested on its
-// own.
+// Dimension C-137, the world: where everything stands (the Smiths' street
+// with the President's motorcade, the Federation's agents and Shoney's; the
+// Smith house on two floors and the garage lab with the hatch down to Rick's
+// clone lab and Morty's Mind Blowers past it; the Oval Office through the
+// President's portal; the school; the alien street with Blips and Chitz), how
+// Morty walks about it, how Rick's cruiser flies over it, the things to do
+// there and the pop quiz. No drawing (./scene.js draws it, ./RmWorld.jsx
+// drives it), so it can be tested on its own. (The cruiser's voice and the
+// Federation ship's flight are ./ship.js.)
 //
 // Metres; +x is east, +z is south, so north is -z. A figure's heading (`face`)
 // is the angle that turns its +x round to face (cos face, -sin face), as in the
@@ -29,8 +32,15 @@ export const AREAS = {
   garage: { x0: -306, x1: -294, z0: 94, z1: 106 },
   school: { x0: -308, x1: -292, z0: 194, z1: 206 },
   arcade: { x0: -310, x1: -290, z0: 292, z1: 308 },
+  // Rick's clone lab, under the garage floor, and Morty's Mind Blowers through its east door
+  basement: { x0: -310, x1: -290, z0: 494, z1: 510 },
+  mindblowers: { x0: -306, x1: -294, z0: 594, z1: 606 },
+  // the Oval Office, through the President's portal in the garage
+  oval: { x0: -308, x1: -292, z0: 694, z1: 706 },
+  // Shoney's, inside
+  diner: { x0: -307, x1: -293, z0: 794, z1: 804 },
 };
-export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade'];
+export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner'];
 export const OUTDOOR = ['street', 'annex'];
 
 // `pad` grows the area (shrinks it, below zero) all round
@@ -74,7 +84,8 @@ export const SCHOOL_PARTS = [part('bar', 25, 55, 16.5, 24, 6.3), part('entrance'
 // (the house next door to the west is pink, as in the show)
 const TINTS = [0xf0a0a8, 0xb7d3c6, 0xe9c9a1, 0xc2cfe6, 0xf0dd9a, 0xd9bfd8];
 // for the scene: each one's design (a two-storey colonial or a one-storey ranch) and its roof's colour
-const LOOKS = ['colonial', 'ranch', 'colonial', 'ranch', 'colonial', 'ranch'];
+// (the north-east one is Shoney's: a diner, lower, with a parking lot in front)
+const LOOKS = ['colonial', 'ranch', 'diner', 'ranch', 'colonial', 'ranch'];
 const ROOF_TINTS = [0x5d5f6c, 0x6e4a36, 0x7a4038, 0x56606e, 0x6b4c3b, 0x4f5a52];
 export const NEIGHBOURS = [
   [-42, -20],
@@ -83,7 +94,8 @@ export const NEIGHBOURS = [
   [-42, 21],
   [-18, 21],
   [4, 21],
-].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: 5.5, roof: 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
+].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: LOOKS[i] === 'diner' ? 4.2 : 5.5, roof: LOOKS[i] === 'diner' ? 6.6 : 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
+export const DINER = NEIGHBOURS.find((n) => n.look === 'diner');
 export const BUILDINGS = [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS];
 
 // the driveway runs from the garage door to the sidewalk; the cruiser parks on it, nose south
@@ -95,13 +107,25 @@ export const FRONT_WALK = { x0: -7.8, x1: -6.6, z0: -17.4, z1: -7 };
 // on the sidewalk at the foot of the front walk, looking up at the house
 export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
 
+// The President's limousine, parked at the north kerb a little east of the
+// Smiths' front walk, nose east (a box `w` across and `d` long, turned a
+// quarter); he and his Secret Service agent stand on the sidewalk beside it.
+// It's there, and in the way, until Morty has met him (the `president` task):
+// then the motorcade drives off east.
+export const LIMO = { x: 5, z: -3.6, w: 2.3, d: 6.2, turn: Math.PI / 2 };
+// the cars in Shoney's lot, nose in, either side of the way to its door
+const LOT = [
+  { id: 'car1', x: DINER.x - 4.4, tint: 0xa8acb0 },
+  { id: 'car2', x: DINER.x + 4.4, tint: 0xe9dcc6 },
+];
+
 // ── doors, exits and portals ──
 // A link is where you stand to go through. `arrive` is where you come out:
 // a little way outside the matching door (facing away from it), 2 m in from
 // a room's south wall (facing the far wall), or inside the house at the other
 // end of its door or stairs, and always clear of every link's reach so you
 // are never sent straight back. `kind` is 'door', 'exit' (back outside),
-// 'portal' or 'stairs'.
+// 'portal', 'stairs' or 'hatch' (the ladder down to the secret lab, and up).
 
 const ROOM_X = -300;
 const FACE_N = Math.PI / 2;
@@ -109,8 +133,16 @@ const HOUSE_DOOR = { x: -7.2, z: -17.4 };
 const GARAGE_DOOR = { x: -19, z: -13.4 };
 const SCHOOL_DOOR = { x: 40, z: 14.4 };
 const ARCADE_DOOR = { x: 400, z: -3.4 };
+const DINER_DOOR = { x: DINER.x, z: DINER.z + DINER.d / 2 + 0.6 };
 // where you come out by a door: `across` and `along` metres from it, facing straight away from it
 const beside = (door, across, along) => ({ x: door.x + across, z: door.z + along, face: Math.atan2(-along, across) });
+// The hatch in the garage lab's floor, 1.2 m square, in the alcove between the plumbus factory and the
+// Portal panic cabinet (off the bench, the doors, the portal and the shelves). Nothing stands over it
+// and it is floor to walk on: the link is what takes Morty down it.
+export const HATCH = { x: -303.8, z: 101, w: 1.2, d: 1.2 };
+// The President's portal: a steel frame against the garage's south wall in
+// its east corner, facing in; lit once he's put it there (`needs`).
+export const GOV_PORTAL = { x: -296, z: 105.6 };
 const into = (room) => ({ x: ROOM_X, z: AREAS[room].z1 - 2, face: FACE_N });
 const exit = (room, to, arrive) => ({ id: `${room}-exit`, area: room, x: ROOM_X, z: AREAS[room].z1 - 0.6, r: 0.9, kind: 'exit', to, label: 'Back outside', arrive });
 
@@ -132,7 +164,21 @@ export const LINKS = [
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
   { id: 'garage-portal', area: 'garage', x: -294.8, z: 100, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
   { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } },
+  // down the hatch to the foot of the ladder, and up it to beside the hatch
+  { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
+  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.7, 0) },
+  // the clone lab's east door, on to Morty's Mind Blowers, and back
+  { id: 'basement-mind', area: 'basement', x: -291.9, z: 505.6, r: 0.9, kind: 'door', to: 'mindblowers', label: 'Morty’s Mind Blowers', arrive: into('mindblowers') },
+  { id: 'mind-door', area: 'mindblowers', x: ROOM_X, z: AREAS.mindblowers.z1 - 0.6, r: 0.9, kind: 'door', to: 'basement', label: 'Rick’s clone lab', arrive: { x: -293.5, z: 505.6, face: Math.PI } },
+  // the President's portal to the Oval Office (shut till he's met), and its way back
+  { id: 'garage-oval', area: 'garage', x: GOV_PORTAL.x, z: GOV_PORTAL.z - 1.2, r: 1.2, kind: 'portal', to: 'oval', label: 'The Oval Office', needs: 'president', arrive: { x: ROOM_X, z: AREAS.oval.z1 - 2.7, face: FACE_N } },
+  { id: 'oval-portal', area: 'oval', x: ROOM_X, z: AREAS.oval.z1 - 0.6, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: GOV_PORTAL.x, z: GOV_PORTAL.z - 2.8, face: FACE_N } },
+  // Shoney's
+  { id: 'diner-door', area: 'street', ...DINER_DOOR, r: 1.6, kind: 'door', to: 'diner', label: 'Shoney’s', arrive: into('diner') },
+  exit('diner', 'street', beside(DINER_DOOR, 0, 2.4)),
 ];
+// A link with `needs` stays shut until that thing's done
+export const linkOpen = (l, done = []) => !l.needs || done.includes(l.needs);
 
 const nearest = (list, area, x, z) => {
   let best = null;
@@ -146,7 +192,8 @@ const nearest = (list, area, x, z) => {
   }
   return best;
 };
-export const nearLink = (area, x, z) => nearest(LINKS, area, x, z);
+// (`done`, the things done: a link that needs one not done is shut; left out, every link counts)
+export const nearLink = (area, x, z, done) => nearest(done ? LINKS.filter((l) => linkOpen(l, done)) : LINKS, area, x, z);
 
 // ── trees and fences ──
 
@@ -192,9 +239,14 @@ export const DECOR = [
   { id: 'school-tree', kind: 'tree', x: 27.5, z: 11.5, r: 0.35 },
   ...[-2, -1, 0, 1].map((k, i) => ({ id: `pole${i}`, kind: 'pole', x: 20 + 32 * k, z: 7.6, r: 0.15 })),
   { id: 'mailbox-smith', kind: 'mailbox', x: DRIVEWAY.x1 + 0.7, z: -7.5, r: 0.25 },
-  ...NEIGHBOURS.map((n) => ({ id: `mailbox-${n.id}`, kind: 'mailbox', x: n.x + DRIVE_SIDE[n.id] * (n.w / 2 + 1.8) + 2.1, z: Math.sign(n.z) * 7.5, r: 0.25 })),
+  // (where Shoney's would have its mailbox, its tall sign)
+  ...NEIGHBOURS.map((n) => ({ id: n === DINER ? 'shoneys-sign' : `mailbox-${n.id}`, kind: n === DINER ? 'sign' : 'mailbox', x: n.x + DRIVE_SIDE[n.id] * (n.w / 2 + 1.8) + 2.1, z: Math.sign(n.z) * 7.5, r: n === DINER ? 0.3 : 0.25 })),
   { id: 'hydrant', kind: 'hydrant', x: -2.2, z: -7.45, r: 0.25 },
+  // the cars in Shoney's lot, 2.2 by 4.6, nose to the diner
+  ...LOT.map((c) => ({ id: c.id, kind: 'car', x: c.x, z: DINER.z + DINER.d / 2 + 3.6, w: 2.2, d: 4.6, turn: 0, tint: c.tint })),
 ];
+// a small thing's round or (with a width) its box, as what's in the way
+const decorCollider = (d) => (d.w ? box(d.id, d.x, d.z, d.w, d.d, d.turn) : circle(d.id, d.x, d.z, d.r));
 
 // the straight way from the sidewalk to each street door, which no tree stands in
 const LANES = LINKS.filter((l) => l.area === 'street').map((l) => [l.x, l.z, l.x, Math.sign(l.z) * VERGE]);
@@ -238,7 +290,7 @@ export const TREES = (() => {
 const WOOD = 0xc4a77a;
 const room = (id, area, name, x0, x1, z0, z1, floor = WOOD) => ({ id, area, name, x0, x1, z0, z1, floor });
 export const PLAN = [
-  room('kitchen', 'house', 'The kitchen', -312, -306.7, -8, 3.4, 0xe6e1cf),
+  room('kitchen', 'house', 'The kitchen', -312, -306.7, -8, 3.4),
   room('living', 'house', 'The living room', -306.7, -296.9, -8, -1.9),
   room('den', 'house', 'The den', -296.9, -288, -8, -1.6),
   room('dining', 'house', 'The dining room', -306.7, -299.5, -1.9, 3.4),
@@ -247,16 +299,46 @@ export const PLAN = [
   room('stairs', 'house', 'The stairs', -295.7, -294.5, 0.5, 3.4),
   room('rickroom', 'house', 'The back room', -294.5, -288, 0.5, 8.5, 0x8d8aa3),
   room('summer', 'upstairs', 'Summer’s room', -306, -299.8, 394, 399.9, 0xd9a6b8),
-  room('morty', 'upstairs', 'Morty’s room', -299.8, -294.7, 394, 399.9, 0x9fb4c9),
+  room('morty', 'upstairs', 'Morty’s room', -299.8, -294.7, 394, 399.9, 0x7da06a),
   room('upHall', 'upstairs', 'The upstairs hall', -306, -294.7, 399.9, 401.7),
   room('master', 'upstairs', 'Beth and Jerry’s room', -302.4, -294.7, 401.7, 408.8, 0xb9a58f),
   room('balcony', 'upstairs', 'The balcony', -302.4, -294.7, 408.8, 410.3, 0x9a7650),
   // the top of the stairs, a notch in the void, open to the hall and the master bedroom
   room('stairTop', 'upstairs', 'Top of the stairs', -303.6, -302.4, 401.7, 404),
+  // under the garage: Rick's clone lab, and Morty's Mind Blowers past it
+  room('clonelab', 'basement', 'Rick’s clone lab', -310, -290, 494, 510, 0x123548),
+  room('mind', 'mindblowers', 'Morty’s Mind Blowers', -306, -294, 594, 606, 0x1d4a4c),
+  // the Oval Office, and Shoney's
+  room('office', 'oval', 'The Oval Office', -308, -292, 694, 706, 0xd9c79a),
+  room('shoneys', 'diner', 'Shoney’s', -307, -293, 794, 804, 0xe8e2d2),
 ];
 
-// The red rug in the entry
-export const RUGS = [{ id: 'entry', area: 'house', x: -297.6, z: 0.75, w: 2.6, d: 3.4, color: 0xa23a2e }];
+// The round rooms: an ellipse in the area, `a` across x and `b` along z from
+// its middle, walled all round (the scene draws the same ellipse). The clone
+// lab and the Mind Blowers room are round, as the show has them, and the
+// Oval Office is oval.
+export const RINGS = {
+  basement: { x: -300, z: 502, a: 10, b: 8 },
+  mindblowers: { x: -300, z: 600, a: 6, b: 6 },
+  oval: { x: -300, z: 700, a: 8, b: 6 },
+};
+// the ring as `n` straight runs of wall, [x0, z0, x1, z1, thick]
+export const ringWalls = ({ x, z, a, b }, n = 32) =>
+  Array.from({ length: n }, (_, i) => {
+    const [t0, t1] = [(i / n) * Math.PI * 2, ((i + 1) / n) * Math.PI * 2];
+    return [x + a * Math.cos(t0), z + b * Math.sin(t0), x + a * Math.cos(t1), z + b * Math.sin(t1), 0.12];
+  });
+
+// The rugs, flat on the floor and no collider (each is in the room of its own name):
+// the red one in the entry, the olive one under the living room's coffee table,
+// and Morty's round space rug.
+export const RUGS = [
+  { id: 'entry', area: 'house', x: -297.6, z: 0.75, w: 2.6, d: 3.4, color: 0xa23a2e },
+  { id: 'living', area: 'house', x: -299.9, z: -3.5, w: 3, d: 3, color: 0x6b7a3a },
+  { id: 'morty', area: 'upstairs', x: -297.8, z: 397, w: 2.4, d: 2.4, color: 0x2f4a8a, round: true },
+  // the Oval Office's: the seal on blue, between the couches
+  { id: 'office', area: 'oval', x: -300, z: 700.4, w: 5.2, d: 4.4, color: 0x2b3f73, round: true },
+];
 
 // The walls inside, between the rooms: [x0, z0, x1, z1, thick], 2.6 m high.
 // A gap in a line of wall is a door (1.8 m, or 3 m for the living room's wide
@@ -319,15 +401,41 @@ const STAIR_RUN = [-295.13, 1.355, 1.14, 1.59, 1.75];
 // and their banister, a low wall up the open side
 export const BANISTER = [-295.7, 0.56, -295.7, 2.15, 0.06, true];
 export const FURNITURE = [
-  // the kitchen
-  item('counter', 'counter', 'house', -311.4, -6, 4, 1.2, 0.95, E),
-  item('stove', 'stove', 'house', -311.4, -3.4, 1.2, 1.2, 0.95, E),
-  item('fridge', 'fridge', 'house', -307.5, -7.4, 1.2, 1.2, 1.9),
-  // the living room: the TV on the east wall, the couch facing it
+  // the kitchen: counters 0.7 m deep along the west wall (with the stove in
+  // them, Beth at it) and the back wall (the sink under its window, then the
+  // fridge in the corner), a short run on the east wall between the two
+  // doorways, and the breakfast nook by the front window
+  item('counter', 'counter', 'house', -311.65, -5.55, 3.5, 0.7, 0.95, E),
+  item('stove', 'stove', 'house', -311.65, -3.4, 0.8, 0.7, 0.95, E),
+  item('counter-w', 'counter', 'house', -311.65, -2, 2, 0.7, 0.95, E),
+  item('counter-nw', 'counter', 'house', -311.15, -7.65, 1.7, 0.7, 0.95),
+  item('sink', 'sink', 'house', -309.6, -7.65, 1.4, 0.7, 0.95),
+  item('counter-ne', 'counter', 'house', -308.375, -7.65, 1.05, 0.7, 0.95),
+  item('fridge', 'fridge', 'house', -307.375, -7.575, 0.95, 0.85, 1.85),
+  item('counter-e', 'counter', 'house', -307.085, -2.15, 3.1, 0.65, 0.95, W),
+  item('nook-table', 'nook-table', 'house', -309, 2.55, 0.9, 0.9, 0.75),
+  item('chair-nook1', 'chair', 'house', -309.95, 2.55, 0.45, 0.45, 0.85, E),
+  item('chair-nook2', 'chair', 'house', -308.05, 2.55, 0.45, 0.45, 0.85, W),
+  // the living room: the TV on the east wall, the couch facing it with the
+  // coffee table (on the olive rug) between, the armchair at the north of it,
+  // the bookcase on the west wall, and Snuffles' dog bed (low, and a collider
+  // like the rest) by the back wall's sliding door
   item('tv', 'tv', 'house', -297.4, -3.5, 2.6, 0.8, 1.4, W),
   item('couch', 'couch', 'house', -301.6, -3.5, 3, 1.1, 0.9, E),
-  // the dining room's table
-  item('table', 'table', 'house', -303.1, 0.8, 2.8, 1.4, 0.75),
+  item('coffee-table', 'coffee-table', 'house', -299.6, -3.5, 1.2, 0.5, 0.42, E),
+  item('armchair', 'armchair', 'house', -299.6, -6.1, 0.95, 0.95, 0.9),
+  item('bookcase-living', 'bookcase', 'house', -306.42, -7.1, 1.6, 0.4, 1.9, E),
+  item('dog-bed', 'dog-bed', 'house', -304.6, -7.5, 0.9, 0.6, 0.22),
+  // the dining room: the table and its six chairs (two a side, one at each end, each turned to it)
+  item('table', 'dining-table', 'house', -303.1, 0.8, 2.8, 1.3, 0.75),
+  item('chair-d1', 'chair', 'house', -304, -0.35, 0.5, 0.5, 0.95),
+  item('chair-d2', 'chair', 'house', -302.2, -0.35, 0.5, 0.5, 0.95),
+  item('chair-d3', 'chair', 'house', -304, 1.95, 0.5, 0.5, 0.95, N),
+  item('chair-d4', 'chair', 'house', -302.2, 1.95, 0.5, 0.5, 0.95, N),
+  item('chair-d5', 'chair', 'house', -305, 0.8, 0.5, 0.5, 0.95, E),
+  item('chair-d6', 'chair', 'house', -301.2, 0.8, 0.5, 0.5, 0.95, W),
+  // the entry: the grandfather clock against the north wall, off the doorways
+  item('clock', 'clock', 'house', -298.4, -1.62, 0.55, 0.4, 2.1),
   // the den
   item('desk-den', 'desk', 'house', -292.5, -7.5, 2.4, 1, 0.75),
   item('shelf-den', 'shelf', 'house', -288.3, -4.8, 3, 0.5, 1.9, W),
@@ -342,6 +450,10 @@ export const FURNITURE = [
   item('desk-summer', 'desk', 'upstairs', -302, 394.5, 1.6, 0.8, 0.75),
   item('bed-morty', 'bed', 'upstairs', -295.75, 397.5, 1.1, 2.1, 0.6, W),
   item('desk-morty', 'desk', 'upstairs', -297.6, 394.5, 1.4, 0.8, 0.75),
+  // Morty's nightstand at the head of his bed, his bookshelf by the desk, and the desk chair
+  item('nightstand', 'nightstand', 'upstairs', -294.95, 398.35, 0.5, 0.4, 0.55, W),
+  item('bookcase-morty', 'bookcase', 'upstairs', -295.8, 394.175, 1.4, 0.35, 1.5),
+  item('chair-morty', 'chair', 'upstairs', -297.6, 395.4, 0.5, 0.5, 0.9, N),
   item('bed-master', 'bed', 'upstairs', -295.8, 405.3, 1.8, 2.2, 0.6, W),
   item('dresser-master', 'dresser', 'upstairs', -302.15, 406.5, 2, 0.5, 0.9, E),
   // Rick's garage lab
@@ -360,22 +472,78 @@ export const FURNITURE = [
   item('cabinet1', 'arcade', 'arcade', -309.5, 297, 1.4, 1, 1.8, E),
   item('cabinet2', 'arcade', 'arcade', -290.5, 300, 1.4, 1, 1.8, W),
   item('cabinet3', 'arcade', 'arcade', -309.5, 303, 1.4, 1, 1.8, E),
+  // the President's portal, against the south wall in the east corner, facing in
+  item('govportal', 'govportal', 'garage', GOV_PORTAL.x, GOV_PORTAL.z, 1.8, 0.3, 2.5, N),
+  // Rick's clone lab: the clone machine in the middle of the back, curved
+  // desks down both sides (two lengths each, stepped to the round wall), and
+  // the ladder up on the south wall (its foot is the way up, and where the hatch puts Morty)
+  item('clone-machine', 'clone-machine', 'basement', -300, 498.6, 3.4, 3.4, 6),
+  item('desk-w1', 'lab-desk', 'basement', -307.6, 499.2, 2, 0.8, 0.9, E),
+  item('desk-w2', 'lab-desk', 'basement', -309, 501.6, 2, 0.8, 0.9, E),
+  item('desk-e1', 'lab-desk', 'basement', -292.4, 499.2, 2, 0.8, 0.9, W),
+  item('desk-e2', 'lab-desk', 'basement', -291, 501.6, 2, 0.8, 0.9, W),
+  item('ladder', 'ladder', 'basement', -300, 509.94, 0.7, 0.12, 3.5, N),
+  // Morty's Mind Blowers: the reclining chair in the middle, its foot to the
+  // door, the helmet's cart beside it, and vials stood on the floor either side of the way in
+  item('mind-chair', 'mind-chair', 'mindblowers', -300, 599.6, 0.9, 2, 1.1),
+  item('mind-cart', 'mind-cart', 'mindblowers', -298.5, 599, 0.7, 0.5, 1),
+  item('vials1', 'vials', 'mindblowers', -303.2, 603, 1.6, 1, 0.5),
+  item('vials2', 'vials', 'mindblowers', -296.8, 603, 1.6, 1, 0.5),
+  // the Oval Office: the desk before the windows with the flags behind it, the
+  // couches facing over the coffee table, the fireplace on the west wall and the clock on the east
+  item('resolute', 'resolute', 'oval', -300, 696.6, 2.2, 1.1, 0.78),
+  item('flag1', 'flag', 'oval', -302, 694.9, 0.5, 0.5, 2.4),
+  item('flag2', 'flag', 'oval', -298, 694.9, 0.5, 0.5, 2.4),
+  item('couch-oval1', 'couch', 'oval', -302.6, 700.8, 2.2, 0.9, 0.85, E),
+  item('couch-oval2', 'couch', 'oval', -297.4, 700.8, 2.2, 0.9, 0.85, W),
+  item('table-oval', 'coffee-table', 'oval', -300, 700.8, 1.3, 0.7, 0.42, E),
+  item('fireplace', 'fireplace', 'oval', -307.6, 700, 1.8, 0.5, 1.3, E),
+  item('clock-oval', 'clock', 'oval', -292.3, 700, 0.55, 0.4, 2.1, W),
+  // Shoney's: three booths along the windows on the west (a table between two
+  // high-backed benches), the counter along the east wall with four stools at it
+  ...[795.6, 798.1, 800.6].flatMap((z, i) => [
+    item(`booth${i + 1}`, 'booth-table', 'diner', -305.9, z, 1.2, 0.8, 0.75),
+    item(`booth${i + 1}n`, 'booth', 'diner', -305.9, z - 0.75, 1.4, 0.55, 1.1),
+    item(`booth${i + 1}s`, 'booth', 'diner', -305.9, z + 0.75, 1.4, 0.55, 1.1, N),
+  ]),
+  item('diner-counter', 'diner-counter', 'diner', -293.6, 798.5, 6, 0.7, 1.05, W),
+  ...[796.3, 797.8, 799.3, 800.8].map((z, i) => item(`stool${i + 1}`, 'stool', 'diner', -294.6, z, 0.45, 0.45, 0.75)),
 ];
 
 // ── the people ──
 
 // Who is where, and which way they face. Each who stands is a round thing in
 // the way (PERSON m across) just behind the hotspot that talks to them; Jerry
-// sits on the couch, facing the TV, and so is not in the way; the teacher
-// stands behind Mr. Goldenfold's desk, in front of the board.
+// sits on the couch, facing the TV, and the Federation agent in his booth at
+// Shoney's, and so are not in the way; the teacher stands behind Mr.
+// Goldenfold's desk, in front of the board, and the President behind his.
+// `who` is the model, where it isn't the id. `until`: there till that thing's
+// done (the President's visit to the street, and his Secret Service agent).
 const PERSON = 0.3;
+const S = -Math.PI / 2; // facing south
 export const PEOPLE = [
   { id: 'jerry', area: 'house', x: -301.6, z: -3.5, face: 0, sits: true },
-  { id: 'beth', area: 'house', x: -310.45, z: -3.4, face: Math.PI },
+  { id: 'beth', area: 'house', x: -310.95, z: -3.4, face: Math.PI },
   { id: 'summer', area: 'upstairs', x: -302.4, z: 396.9, face: -Math.PI / 2 },
   { id: 'rick', area: 'garage', x: -302, z: 95.55, face: Math.PI / 2 },
   { id: 'teacher', area: 'school', x: -300, z: 194.5, face: -Math.PI / 2 },
+  // the motorcade, on the sidewalk by the limo, looking west along it to the Smiths'
+  { id: 'president', area: 'street', x: LIMO.x - 1, z: -6.1, face: Math.PI, until: 'president' },
+  { id: 'secretservice', area: 'street', x: LIMO.x + 2.3, z: -6.1, face: Math.PI, until: 'president' },
+  // the Federation's agents at their posts: by the pink house, outside Shoney's, by the school
+  { id: 'agent1', who: 'fedagent', area: 'street', x: -34.5, z: -6.2, face: S },
+  { id: 'agent2', who: 'fedagent', area: 'street', x: DINER.x - 2, z: -6.4, face: S },
+  { id: 'agent3', who: 'fedagent', area: 'street', x: 38.5, z: 6.2, face: Math.PI / 2 },
+  // the Oval Office: the President behind the desk, a general either side of it
+  { id: 'ovalpresident', who: 'president', area: 'oval', x: -300, z: 695.5, face: S },
+  { id: 'general1', who: 'general', area: 'oval', x: -303.2, z: 696.8, face: S },
+  { id: 'general2', who: 'general', area: 'oval', x: -296.8, z: 696.8, face: S },
+  // Shoney's: the agent on the aisle end of the middle booth's north bench, facing the door
+  { id: 'dineragent', who: 'fedagent', area: 'diner', x: -305.6, z: 797.35, face: S, sits: true },
 ];
+// Is it there, with `done` done? (left out: everyone is)
+export const present = (o, done) => !done || !o.until || !done.includes(o.until);
+export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && present(p, done));
 
 // ── what's in the way ──
 
@@ -386,6 +554,8 @@ const furnished = (area) => [
   ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn)),
   ...PEOPLE.filter((p) => p.area === area && !p.sits).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
+// the President's motorcade: the limo and the two beside it, in the way till he's met
+export const MOTORCADE = [box('limo', LIMO.x, LIMO.z, LIMO.w, LIMO.d, LIMO.turn), ...PEOPLE.filter((p) => p.until === 'president').map((p) => circle(p.id, p.x, p.z, PERSON))];
 
 export const COLLIDERS = {
   street: [
@@ -394,7 +564,8 @@ export const COLLIDERS = {
     ...HOUSE_PARTS.map((p) => box(`house-${p.id}`, p.x, p.z, p.w, p.d)),
     ...SCHOOL_PARTS.map((p) => box(`school-${p.id}`, p.x, p.z, p.w, p.d)),
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
-    ...DECOR.map((d) => (d.kind === 'box' ? box(d.id, d.x, d.z, d.w, d.d, d.turn) : circle(d.id, d.x, d.z, d.r))),
+    ...DECOR.map(decorCollider),
+    ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
   ],
   annex: [box('arcade', ARCADE.x, ARCADE.z, ARCADE.w, ARCADE.d)],
   // outside, south-west of the entry
@@ -404,6 +575,10 @@ export const COLLIDERS = {
   garage: furnished('garage'),
   school: furnished('school'),
   arcade: furnished('arcade'),
+  basement: furnished('basement'),
+  mindblowers: furnished('mindblowers'),
+  oval: furnished('oval'),
+  diner: furnished('diner'),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -416,19 +591,24 @@ export const WALLS = {
   garage: [],
   school: [],
   arcade: [],
+  basement: ringWalls(RINGS.basement),
+  mindblowers: ringWalls(RINGS.mindblowers),
+  oval: ringWalls(RINGS.oval),
+  diner: [],
 };
 // The parked cruiser is not here: it moves, so whoever walks passes it in.
-export const collidersIn = (area) => COLLIDERS[area];
+// Nor is the motorcade (`motorcade`: with it, as it stands till the President's met).
+export const collidersIn = (area, { motorcade = false } = {}) => (motorcade && area === 'street' ? [...COLLIDERS.street, ...MOTORCADE] : COLLIDERS[area]);
 export const wallsIn = (area) => WALLS[area];
 
 // ── the things to touch ──
 
-const spot = (id, area, x, z, label, verb) => ({ id, area, x, z, r: 1.4, label, verb });
+const spot = (id, area, x, z, label, verb, more) => ({ id, area, x, z, r: 1.4, label, verb, ...more });
 export const HOTSPOTS = [
   // the house: the TV is the east wall's, Jerry's on the couch facing it, Beth at the stove
   spot('cable', 'house', -298.1, -3.5, 'Watch interdimensional cable', 'Watch'),
   spot('jerry', 'house', -301.6, -3.5, 'Jerry', 'Talk'),
-  spot('beth', 'house', -310.3, -3.4, 'Beth', 'Talk'),
+  spot('beth', 'house', -310.8, -3.4, 'Beth', 'Talk'),
   spot('butter', 'house', -302.6, 0.8, 'The butter robot', 'Switch on'),
   spot('summer', 'upstairs', -302.4, 397.2, 'Summer', 'Talk'),
   spot('mortyroom', 'upstairs', -297.2, 397, 'Morty’s room', 'Look round'),
@@ -441,8 +621,27 @@ export const HOTSPOTS = [
   spot('cabinet1', 'arcade', -308.4, 297, 'Arcade cabinet', 'Play'),
   spot('cabinet2', 'arcade', -291.6, 300, 'Arcade cabinet', 'Play'),
   spot('cabinet3', 'arcade', -308.4, 303, 'Arcade cabinet', 'Play'),
+  // Rick's clone lab: the tube, the west desk's screens, Pickle Rick in his jar on the east desk
+  spot('clone', 'basement', -300, 500.9, 'The clone tube', 'Look'),
+  spot('console', 'basement', -306.6, 499.2, 'Rick’s console', 'Look'),
+  spot('pickle', 'basement', -293.4, 499.2, 'Pickle Rick', 'Look'),
+  // Morty's Mind Blowers: at the chair's foot
+  spot('chair', 'mindblowers', -300, 601.2, 'Morty’s Mind Blowers', 'Sit in the chair'),
+  // the street: the President and his agent till he's met, and the Federation's agents
+  spot('president', 'street', LIMO.x - 1.3, -6.1, 'The President', 'Talk', { until: 'president' }),
+  spot('secretservice', 'street', LIMO.x + 2, -6.1, 'Secret Service agent', 'Talk', { until: 'president' }),
+  spot('agent1', 'street', -34.5, -5.9, 'Federation agent', 'Talk'),
+  spot('agent2', 'street', DINER.x - 2, -6.1, 'Federation agent', 'Talk'),
+  spot('agent3', 'street', 38.5, 5.9, 'Federation agent', 'Talk'),
+  // the Oval Office: across the desk from the President, and in front of each general
+  spot('ovalpresident', 'oval', -300, 697.5, 'The President', 'Talk'),
+  spot('general1', 'oval', -303.2, 697.1, 'A general', 'Talk'),
+  spot('general2', 'oval', -296.8, 697.1, 'A general', 'Talk'),
+  // Shoney's: the agent in his booth
+  spot('dineragent', 'diner', -305.6, 797.35, 'Federation agent', 'Sit down'),
 ];
-export const nearHotspot = (area, x, z) => nearest(HOTSPOTS, area, x, z);
+// (`done`: a hotspot whose `until` is done is gone; left out, they all count)
+export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter((h) => present(h, done)) : HOTSPOTS, area, x, z);
 
 // ── walking ──
 
@@ -453,20 +652,27 @@ export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0,
 const walkerFor = (area, extra = []) =>
   makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra], walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
 const WALKERS = Object.fromEntries(Object.keys(AREAS).map((id) => [id, walkerFor(id)]));
+const MOTORCADE_WALKER = walkerFor('street', MOTORCADE);
 // and one for the street with the cruiser parked in it, kept while it stays put
-let parked = { x: NaN, z: NaN, walker: null };
+let parked = { x: NaN, z: NaN, motorcade: false, walker: null };
 
 // One step of walking. `move` is where the visitor wants to go, already turned
 // to the world (the camera does that): { x, z } up to length 1, and `run`.
-// `cruiser` is where the cruiser is parked, if it is: it stands in the street.
-export function stepMorty(m, move, dt, area, { cruiser } = {}) {
+// `cruiser` is where the cruiser is parked, if it is: it stands in the street;
+// `motorcade`, whether the President's limo and his people stand there too.
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
   let walker = WALKERS[area];
-  if (cruiser && area === 'street') {
-    if (parked.x !== cruiser.x || parked.z !== cruiser.z) parked = { x: cruiser.x, z: cruiser.z, walker: walkerFor('street', [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius)]) };
+  if (area === 'street' && cruiser) {
+    if (parked.x !== cruiser.x || parked.z !== cruiser.z || parked.motorcade !== motorcade)
+      parked = { x: cruiser.x, z: cruiser.z, motorcade, walker: walkerFor('street', [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius), ...(motorcade ? MOTORCADE : [])]) };
     walker = parked.walker;
-  }
+  } else if (area === 'street' && motorcade) walker = MOTORCADE_WALKER;
   return walker.step(m, move, dt);
 }
+
+// Over the open hatch in the garage floor (it's open whenever he's this near):
+// the way down, as if he'd taken it
+export const dropAt = (area, x, z) => (area === 'garage' && Math.abs(x - HATCH.x) < HATCH.w / 2 - 0.15 && Math.abs(z - HATCH.z) < HATCH.d / 2 - 0.15 ? LINKS.find((l) => l.id === 'garage-hatch') : null);
 
 // ── the cruiser ──
 
@@ -517,11 +723,14 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
 const inYard = (x, z) => YARDS.some((y) => x >= y.x0 && x <= y.x1 && z >= y.z0 && z <= y.z1);
 const DOORSTEP = CRUISER.radius + MORTY.radius + 0.3;
 const DOORSTEPS = [...LINKS.filter((l) => l.area === 'street'), ...LANDINGS];
-const onSomething = (x, z) =>
+const onSomething = (x, z, motorcade) =>
   TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) ||
-  DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.kind === 'box' ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
-  DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP);
-export const canLand = (c) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z);
+  DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.w ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
+  DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP) ||
+  PEOPLE.some((p) => p.area === 'street' && (motorcade || !p.until) && Math.hypot(x - p.x, z - p.z) < CRUISER.radius + PERSON + 0.3) ||
+  (motorcade && Math.hypot(x - LIMO.x, z - LIMO.z) < CRUISER.radius + Math.hypot(LIMO.w, LIMO.d) / 2);
+// (`motorcade`: the President's limo and people are in the street, and in the way)
+export const canLand = (c, { motorcade = false } = {}) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z, motorcade);
 
 // do the segments a-b and c-d cross?
 const crosses = (ax, az, bx, bz, [cx, cz, dx, dz]) => {
@@ -532,8 +741,8 @@ const crosses = (ax, az, bx, bz, [cx, cz, dx, dz]) => {
 // Where Morty steps out: beside it (its own +x side first, then round the
 // compass), clear of the cruiser and everything else, never on the far side of
 // a fence from it, facing the way its nose points.
-export function exitCruiser(c) {
-  const colliders = [...collidersIn('street'), circle('cruiser', c.x, c.z, CRUISER.radius)];
+export function exitCruiser(c, { motorcade = false } = {}) {
+  const colliders = [...collidersIn('street', { motorcade }), circle('cruiser', c.x, c.z, CRUISER.radius)];
   const walls = wallsIn('street');
   const fx = Math.sin(c.yaw);
   const fz = Math.cos(c.yaw);
@@ -561,10 +770,32 @@ export const TASKS = [
   { id: 'portalpanic', name: 'Play Portal panic', hint: 'Play the Portal panic cabinet in Rick’s garage.' },
   { id: 'quiz', name: 'Pass the pop quiz', hint: 'Sit Mr. Goldenfold’s pop quiz at Harry Herpson High, and get seven right.' },
   { id: 'fly', name: 'Fly the cruiser', hint: 'Board Rick’s space cruiser in the driveway and take it up over the neighbourhood.' },
+  { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
+  { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal in the corner of Rick’s garage.' },
+  { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
   { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal at the back of Rick’s garage.' },
+  { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
+  { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
 ];
+
+// ── Morty's Mind Blowers ──
+
+// The memories Rick took out of Morty's head, one to a vial, as the chair
+// plays them: the vial's colour (blue: Morty's mistakes; purple: the
+// family's; red: Rick's own; pink: from the liquor cabinet) and what it was.
+export const MEMORIES = [
+  { id: 'tortoise', color: 'blue', caption: 'The Truth Tortoise. You looked it in the eye, and for a second everything made sense.' },
+  { id: 'squirrels', color: 'blue', caption: 'You found out who really runs the planet. It was the squirrels. You had to move dimensions.' },
+  { id: 'venzenulon', color: 'red', caption: 'Rick swore it was Venzenulon 7. It was Venzenulon 9.' },
+  { id: 'saved', color: 'purple', caption: 'The day Mom had to choose which kid to save first.' },
+  { id: 'voltematron', color: 'blue', caption: 'Voltematron moved into your body and wouldn’t leave.' },
+  { id: 'zoo', color: 'red', caption: 'Rick got you both out of an alien zoo by talking NASA into taking your place.' },
+  { id: 'snowball', color: 'purple', caption: 'Your head, on Snowball’s body. Nobody at dinner noticed.' },
+  { id: 'cabinet', color: 'pink', caption: 'This one’s from by the liquor cabinet. Rick says don’t.' },
+];
+export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
 // What's done and what's next. `done` is the ids finished, in any order.
 export function progress(done = []) {

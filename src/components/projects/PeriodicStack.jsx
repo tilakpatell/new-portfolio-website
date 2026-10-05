@@ -37,7 +37,7 @@ const symbolFor = (name) => SYMBOL[name] ?? name.replace(/[^A-Za-z]/g, '').slice
 
 const counts = new Map();
 for (const p of projects) for (const t of p.stack) counts.set(t, (counts.get(t) || 0) + 1);
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const TECH = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count], i) => ({ name, count, number: i + 1, symbol: symbolFor(name) }));
 
 export default function PeriodicStack({ active, onPick }) {

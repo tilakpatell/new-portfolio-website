@@ -396,7 +396,7 @@ function Game({ soft, fail }) {
       document.removeEventListener('visibilitychange', onVis);
     };
     // fireAimed reads refs only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [phase, calm, touch, fail, pause, pick, drain, finish]);
 
   // the sea goes quiet while paused or over

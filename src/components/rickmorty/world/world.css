@@ -39,6 +39,10 @@
 /* through a door: a fade to black; through the portal, to green */
 .rm-fade { position: absolute; inset: 0; z-index: 6; background: #07040c; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
 .rm-fade[data-kind='portal'] { background: radial-gradient(circle at 50% 55%, #e9ffb0 0%, #9dff5a 18%, #2c8a2a 46%, #07140a 78%); }
+/* down the hatch (green light below) and up the ladder (the garage's light above): slower */
+.rm-fade[data-kind='down'], .rm-fade[data-kind='up'] { transition-duration: 0.42s; }
+.rm-fade[data-kind='down'] { background: linear-gradient(#07040c 50%, #0b2612); }
+.rm-fade[data-kind='up'] { background: linear-gradient(#2a2416, #07040c 50%); }
 .rm-fade[data-on] { opacity: 1; }
 
 /* the loading line, round a little portal */
@@ -89,6 +93,28 @@
 .rm-toast[data-kind='say'] b { color: #2c7a1e; }
 .rm-toast[data-bad] { border-left: 6px solid var(--rm-red); animation-duration: 3.4s; }
 @keyframes rm-toast { 0% { opacity: 0; transform: translate(-50%, -8px) scale(0.96); } 7%, 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
+
+/* the cruiser talking: a caption by its headlight eyes, low on the left */
+.rm-shipline { position: absolute; left: var(--rm-pad-l); bottom: clamp(9rem, 24%, 12rem); z-index: 4; display: flex; align-items: center; gap: 0.6rem; max-width: min(24rem, calc(100% - 2rem)); margin: 0; padding: 0.55rem 0.85rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: var(--rm-glass); color: #fff; font: 600 0.9rem/1.4 var(--font-sans); box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), inset 0 0 0 1px rgba(255, 236, 160, 0.35); animation: rm-rise-l 0.2s ease-out both; }
+.rm-shipline b { display: block; color: #ffe9a0; font: 400 0.95rem/1.1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; }
+.rm-shipline-eyes { display: flex; flex: none; gap: 0.25rem; }
+.rm-shipline-eyes i { display: block; width: 0.85rem; height: 0.85rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: radial-gradient(circle at 55% 55%, var(--rm-ink) 0 28%, #fff6c8 31%); box-shadow: 0 0 8px rgba(255, 236, 160, 0.8); animation: rm-blink 4.2s infinite; }
+@keyframes rm-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
+@keyframes rm-rise-l { from { opacity: 0; transform: translateY(6px); } }
+/* a phone: up under the objective, over the sky, rather than over the cruiser */
+@media (max-width: 640px) { .rm-shipline { bottom: auto; top: clamp(11.5rem, 30%, 14rem); right: var(--rm-pad-r); max-width: none; font-size: 0.85rem; } }
+
+/* a memory from the Mind Blowers chair, in its vial's colour */
+.rm-memory { position: absolute; bottom: clamp(11rem, 30%, 15rem); left: 50%; z-index: 4; display: grid; gap: 0.35rem; width: min(30rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.8rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: var(--rm-glass); color: #fff; box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 28px color-mix(in srgb, var(--vial) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--vial) 60%, transparent); transform: translateX(-50%); animation: rm-rise 0.25s ease-out both; }
+.rm-memory p { margin: 0; }
+.rm-memory-head { display: flex; align-items: center; gap: 0.5rem; color: var(--vial); font: 400 1rem/1.1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; }
+.rm-memory-vial { display: block; width: 0.6rem; height: 1.3rem; border: 2px solid var(--rm-ink); border-radius: 0.35rem 0.35rem 0.2rem 0.2rem; background: var(--vial); box-shadow: 0 0 10px var(--vial); }
+.rm-memory-text { font: 600 1rem/1.45 var(--font-sans); }
+.rm-memory-hint { color: rgba(255, 255, 255, 0.65); font: 600 0.78rem/1.3 var(--font-sans); }
+
+/* the ship's voice, on or off, at the foot of the list */
+.rm-list-switch { display: flex; align-items: center; gap: 0.55rem; min-height: 44px; padding: 0 0.25rem; color: #fff; font: 600 0.9rem/1.2 var(--font-sans); cursor: pointer; }
+.rm-list-switch input { width: 1.15rem; height: 1.15rem; accent-color: var(--rm-lime); }
 
 /* the prompt for what Morty's next to */
 .rm-prompt { position: absolute; left: 50%; bottom: clamp(5rem, 13%, 7rem); z-index: 3; display: grid; justify-items: center; gap: 0.5rem; min-width: min(17rem, calc(100% - 2rem)); max-width: min(24rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.85rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: var(--rm-glass); text-align: center; box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), inset 0 0 0 1px rgba(157, 255, 90, 0.35); transform: translateX(-50%); animation: rm-rise 0.18s ease-out both; }
@@ -240,6 +266,6 @@
   .rm-cards li[data-place='arcade'] { grid-column: 2; grid-row: 2; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place { animation: none; }
-  .rm-fade { transition-duration: 0.1s; }
+  .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place, .rm-shipline, .rm-shipline-eyes i, .rm-memory { animation: none; }
+  .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }

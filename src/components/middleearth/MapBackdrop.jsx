@@ -151,7 +151,7 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
       last = now;
       if (a.render(ms, state.current.opening ? 0.3 : 1)) {
         frame.current?.();
-        raf = requestAnimationFrame(loop);
+        if (!raf) raf = requestAnimationFrame(loop); // (unless something in the frame kicked already)
       } else last = 0;
     };
     kick.current = () => {
