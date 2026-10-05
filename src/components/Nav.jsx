@@ -13,9 +13,11 @@ import Wordmark from './Wordmark';
 import { CUSTOM_PRESETS } from '../theme/custom';
 import { DROPS, dropped, nextFit } from './navFit';
 import { restartSite } from '../lib/restart';
+import ViewSwitch, { useView } from './ViewSwitch';
 
+// The universe isn't one of them: the view switch next to the name goes
+// there (and back), from wherever you are.
 const LINKS = [
-  { to: '/universe', label: 'Universe' },
   { to: '/experience', label: 'Experience' },
   { to: '/projects', label: 'Projects' },
   { to: '/travel', label: 'Travel' },
@@ -209,6 +211,10 @@ export default function Nav() {
   const menuButton = useRef(null);
   const { mode, toggleMode, active, pinned } = useTheme();
   const { script } = useFun();
+  const { view, start } = useView();
+  // the name goes to the front of the view you're in: the home page, or the
+  // map (at the front door only for whoever picked it, so it doesn't ask again)
+  const front = view === 'classic' ? '/home' : start === 'universe' ? '/' : '/universe';
 
   // The bar never lets its contents spill past its ends (the Résumé button
   // used to stick out of the right end): while they're wider than the bar it
@@ -234,7 +240,7 @@ export default function Nav() {
     // settled: a menu left open with its button gone (the links came back) closes
     if (open && menuButton.current && getComputedStyle(menuButton.current).display === 'none') setOpen(false);
   }, [fit, round, open]);
-  useLayoutEffect(refit, [active, pinned, script, refit]);
+  useLayoutEffect(refit, [active, pinned, script, view, refit]);
   useEffect(() => {
     let frame = 0;
     const later = () => {
@@ -327,14 +333,17 @@ export default function Nav() {
         aria-label="Main"
         data-fit={fit ? DROPS.slice(0, fit).join(' ') : undefined}
       >
-        <Link to="/" className="wordmark flex-none rounded-md" aria-label="Tilak Patel, home">
-          <Wordmark />
-        </Link>
+        <div className="flex min-w-0 flex-none items-center gap-2 lg:gap-3">
+          <Link to={front} className="wordmark flex-none rounded-md" aria-label="Tilak Patel, home">
+            <Wordmark />
+          </Link>
+          <ViewSwitch labels={gone('viewActive') ? 'none' : gone('viewLabel') ? 'active' : 'all'} />
+        </div>
 
         {!collapsed && (
         <div className="hidden flex-none items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} className={({ isActive }) => linkClass({ isActive: isActive || (l.to === '/universe' && pathname === '/') })}>
+            <NavLink key={l.to} to={l.to} className={linkClass}>
               {l.label}
             </NavLink>
           ))}
@@ -395,7 +404,9 @@ export default function Nav() {
       {open &&
         createPortal(
         <div id="mobile-menu" className={`mobile-menu ${collapsed ? '' : 'md:hidden'}`}>
-          <ul className="divide-y divide-[var(--border)]">
+          <p className="eyebrow">View the site as</p>
+          <ViewSwitch size="menu" className="mt-3" />
+          <ul className="mt-5 divide-y divide-[var(--border)]">
             {[{ to: '/home', label: 'Home' }, ...LINKS, { to: '/music', label: 'Music' }, { to: '/terminal', label: 'Terminal' }].map((l) => (
               <li key={l.to}>
                 <NavLink to={l.to} end className={({ isActive }) => `stretch-semi flex items-center justify-between py-4 text-lg font-semibold ${isActive ? 'text-ink' : 'text-body'}`}>
