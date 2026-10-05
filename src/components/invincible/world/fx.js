@@ -202,7 +202,7 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
       for (let i = 0; i < 10; i++) {
         const a = (i / 10) * Math.PI * 2;
         const q = p.clone().add(new THREE.Vector3(Math.cos(a) * (1.5 + k * 3), 0.6, Math.sin(a) * (1.5 + k * 3)));
-        vfx.smoke(q, { size: 2 + k * 5, count: 2, life: 1.6 + k * 2, color: onWater ? 0xe8f2ff : 0x8a8278, to: onWater ? 0xffffff : 0xb3aa9c, rise: 1.5 + k * 3, opacity: 0.6 });
+        vfx.smoke(q, { size: 2 + k * 4, count: 2, life: 1.4 + k * 1.6, color: onWater ? 0xe8f2ff : 0x8a8278, to: onWater ? 0xffffff : 0xb3aa9c, rise: 1.5 + k * 3, opacity: 0.42 });
       }
       vfx.ring(p.clone().addScaledVector(Y, 0.4), { color: onWater ? 0xffffff : 0xd9cbb4, from: 1, to: 10 + k * 40, life: 0.7, opacity: 0.8 });
     },
