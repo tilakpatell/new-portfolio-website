@@ -135,6 +135,20 @@ const HQ = {
 };
 for (const [n, a] of Object.entries(HQ)) ASSETS[n] = { ...a, set: 'hq', style: HQ_STYLE, pbr: true };
 
+// The Citadel of Ricks' people (src/components/rickmorty/citadel/): three
+// of the Council, Cowboy Rick, a Simple Rick's worker and Cop Morty, in the
+// show's style like the portal cast, and written beside it.
+const RICK = 'Rick Sanchez from Rick and Morty, a tall thin old scientist with spiky pale blue-grey hair and a unibrow';
+const CITADEL = {
+  'councilrick-a': { height: 1.8, prompt: `A member of the Council of Ricks: ${RICK}, in a long formal white ceremonial robe with a tall stiff high collar, gold trim down the front and a gold chain of office across his shoulders. ${BODY}` },
+  'councilrick-b': { height: 1.8, prompt: `A member of the Council of Ricks: ${RICK}, with a long grey beard and his hair in a ponytail, in dark navy blue formal robes with silver trim and silver shoulder plates. ${BODY}` },
+  'councilrick-c': { height: 1.8, prompt: `A member of the Council of Ricks: a version of Rick Sanchez from Rick and Morty who is completely bald with a pointed grey goatee and a unibrow, in a white high-collared military dress coat with gold epaulettes, a red sash and dark trousers. ${BODY}` },
+  cowboyrick: { height: 1.8, prompt: `Cowboy Rick from the Citadel of Ricks: ${RICK}, wearing a brown cowboy hat, a brown leather vest over a white shirt, a red bandana round his neck, blue jeans, a belt with a big silver buckle and brown cowboy boots. ${BODY}` },
+  factoryrick: { height: 1.8, prompt: `A worker at the Simple Rick's wafer factory in the Citadel of Ricks: ${RICK}, with a tired face, a white hairnet over his hair, a pale blue factory jumpsuit with a small name patch, and black work boots. ${BODY}` },
+  copmorty: { height: 1.5, prompt: `Cop Morty from the Citadel of Ricks in Rick and Morty: Morty Smith, a 14-year-old boy with short brown hair and a round head, wearing a navy blue police uniform, a navy police cap with a gold badge, a black duty belt and black shoes. Arms hanging down and a little away from the body, hands open and relaxed. ${BODY}` },
+};
+for (const [n, a] of Object.entries(CITADEL)) ASSETS[n] = { ...a, set: 'citadel', rig: true, poly: 14000, tex: 1024 };
+
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -365,7 +379,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), citadel: Object.keys(CITADEL) };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();

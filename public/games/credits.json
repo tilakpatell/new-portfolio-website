@@ -1173,5 +1173,59 @@
       "Kenney"
     ],
     "license": "CC0 1.0"
+  },
+  "meshy/councilrick-a": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8c-2f95-735c-b432-0668c464d6e8",
+    "name": "councilrick-a, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/councilrick-b": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8c-2f19-7131-b9e2-29bc8b21773e",
+    "name": "councilrick-b, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/councilrick-c": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8c-2f90-7264-977b-4c388ffdf543",
+    "name": "councilrick-c, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cowboyrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8c-2f1b-7614-a394-4f116d368aea",
+    "name": "cowboyrick, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/factoryrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8d-61f2-753e-9337-76a33fc442b3",
+    "name": "factoryrick, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/copmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10a8d-b079-73ca-aaf2-4fa70f0ba408",
+    "name": "copmorty, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

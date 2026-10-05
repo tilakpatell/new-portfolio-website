@@ -205,5 +205,41 @@
     "model": "01a108bf-4788-7377-a93b-e7e5b962d67b",
     "rig": "01a108c8-d3e1-7141-a1f8-31495f918c11",
     "idle": "01a108c9-4a7e-76a7-b509-92e3dab6d95f"
+  },
+  "councilrick-a": {
+    "image": "01a10a8a-803b-7488-95ca-9041e0f8082f",
+    "model": "01a10a8c-2f95-735c-b432-0668c464d6e8",
+    "rig": "01a10a8f-5b30-769e-ba7e-5139725a3be6",
+    "idle": "01a10a8f-d2b5-739c-a653-c0345ecbcd35"
+  },
+  "councilrick-b": {
+    "image": "01a10a8a-803b-71cd-b694-2862303243ae",
+    "model": "01a10a8c-2f19-7131-b9e2-29bc8b21773e",
+    "rig": "01a10a8f-5b2b-70d5-b68a-98416a540954",
+    "idle": "01a10a8f-d2b3-719f-bca8-b46a3e9de845"
+  },
+  "councilrick-c": {
+    "image": "01a10a8a-8043-7132-9dcc-490b44002fda",
+    "model": "01a10a8c-2f90-7264-977b-4c388ffdf543",
+    "rig": "01a10a8f-5b23-72fb-b8db-abe1b38c1e6e",
+    "idle": "01a10a8f-d23a-76de-b849-d864d53856fb"
+  },
+  "cowboyrick": {
+    "image": "01a10a8a-803a-74a9-8201-4a64050a252d",
+    "model": "01a10a8c-2f1b-7614-a394-4f116d368aea",
+    "rig": "01a10a8f-5b1b-70e0-8888-e9cb69ecc76f",
+    "idle": "01a10a8f-d2ae-72ad-abf7-6873f7fbb427"
+  },
+  "factoryrick": {
+    "image": "01a10a8a-ea22-74f0-b7cd-184adbfff466",
+    "model": "01a10a8d-61f2-753e-9337-76a33fc442b3",
+    "rig": "01a10a8f-8e78-7461-83da-401c9abca5a8",
+    "idle": "01a10a8f-fbb2-7349-8307-101114e7c896"
+  },
+  "copmorty": {
+    "image": "01a10a8b-9af6-7686-a832-3a4c8de6d79d",
+    "model": "01a10a8d-b079-73ca-aaf2-4fa70f0ba408",
+    "rig": "01a10a8f-900f-71b8-819f-caab89bd7897",
+    "idle": "01a10a8f-fbbe-73a1-8666-f8182bd5b53d"
   }
 }
