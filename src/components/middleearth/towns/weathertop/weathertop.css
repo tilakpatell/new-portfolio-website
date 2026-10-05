@@ -42,6 +42,9 @@
 .wt-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
 
 @media (max-width: 639px) {
+  /* a game's panel takes the top of a phone's screen: the map and the
+     objective wait till it's done */
+  .wt-stage[data-game] .shire-hud-top { display: none; }
   .wt-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
   .wt-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
   .wt-radar { width: 3.8rem; height: 3.8rem; }
