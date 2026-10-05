@@ -158,6 +158,10 @@
 .universe-online-act:focus-visible,
 .universe-online-x:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .universe-online-leave { display: block; margin-top: 1rem; }
+.universe-online-check { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.9rem; color: var(--muted); font-size: 0.78rem; cursor: pointer; }
+.universe-online-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent-text); cursor: pointer; }
+.universe-online-check:hover { color: var(--text); }
+.universe-online-check input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
 .universe-online-list { display: grid; gap: 0.4rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
 .universe-online-pilot {

@@ -1,30 +1,41 @@
 // Targeting, for the ship on the universe map: which hunter the guns are
 // locked on, where to shoot to hit it, how much a shot is helped onto it,
-// and where a thing off the edge of the screen is pointed to from. Pure (no
-// three.js), so it's tested in Node; scene.js reads the ship, the hunters
-// and the camera and draws the brackets (UniverseMap.jsx's HUD).
+// whether a shot touched it, and where a thing off the edge of the screen is
+// pointed to from. Pure (no three.js), so it's tested in Node; scene.js
+// reads the ship, the hunters and the camera and draws the brackets
+// (UniverseMap.jsx's HUD).
 //
 // A lock picks itself up: the hunter nearest the nose, within AIM.cone and
-// AIM.range, and holds while it stays within the wider AIM.hold (a dogfight
-// swings about), dropping once it's been outside that for AIM.lose seconds
-// or is gone. T cycles to the next one round the nose. The lead point is
-// where a bolt fired now meets the target, allowing for its speed and the
-// bolt's; the pip sits there, and a shot within AIM.assist of it bends onto
-// it (so the guns feel like a fighter's, not a pea shooter), with the help
-// fading to nothing by AIM.assistEdge.
+// AIM.range (one coming at you counts as nearer), and holds while it stays
+// within the wider AIM.hold (a dogfight swings about), dropping once it's
+// been outside that for AIM.lose seconds (AIM.loseManual for one picked by
+// hand: T, Shift+T or a tap). When its target goes down the guns move
+// straight on to the next one inside the hold, so a fight flows. The lead
+// point is where a bolt fired now meets the target, allowing for its speed
+// and the bolt's (the bolts are quick, well over twice the fastest hunter,
+// so the lead stays a modest angle off); the pip sits there, and a shot
+// within AIM.assist of it bends onto it (so the guns feel like a fighter's,
+// not a pea shooter), with the help fading to nothing by AIM.assistEdge,
+// a little more forgiving up and down than side to side, all of it scaled
+// by the visitor's aim-assist setting. A hit is tested over the whole frame
+// with both the bolt and the target moving (sweptHit), so nothing fast
+// slips between two frames.
 //
 // Points are { x, y, z } (the ship, a Vector3) or [x, y, z] (the map's
 // places), in the map's own space.
 
 export const AIM = {
-  range: 42, // map units: nothing further out can be locked
+  range: 60, // map units: nothing further out can be locked
   cone: 0.38, // radians off the nose to pick a target up (about 22°)
   hold: 0.8, // radians: a lock holds out to here (about 46°)
   lose: 1.2, // seconds outside the hold cone (or out of range) before it drops
+  loseManual: 4, // the same, for a lock picked by hand
+  threat: 0.25, // how much nearer the nose one coming at you counts (of the pick-up score)
   assist: 0.14, // radians: inside this, a shot bends fully onto the lead point (about 8°)
   assistEdge: 0.36, // radians: beyond this, no help at all
-  bolt: 18, // a bolt's own speed, over the ship's (scene.js adds the ship's)
-  life: 1.1, // seconds a bolt flies
+  vertical: 1.3, // how much more forgiving the help is up and down
+  bolt: 60, // a bolt's own speed, over the ship's (scene.js adds the ship's)
+  life: 0.85, // seconds a bolt flies
 };
 
 const X = (p) => (Array.isArray(p) ? p[0] : p.x);
@@ -57,10 +68,12 @@ export function bearing(s, p) {
   return { dist, off: angleBetween(nose(s), [d[0] / dist, d[1] / dist, d[2] / dist]) };
 }
 
-// The lock, one step on: `lock` is { id, out } (out: seconds its target has
-// been outside the hold cone) or null; `candidates` are { id, at, vel,
-// size } (hunters.targets). Returns the new lock, or null. With `cycle`,
-// moves on to the next candidate round the nose (nearest the nose first).
+// The lock, one step on: `lock` is { id, out, manual? } (out: seconds its
+// target has been outside the hold cone; manual: picked by hand) or null;
+// `candidates` are { id, at, vel, size, threat? } (hunters.targets; threat
+// 0 to 1, how much it's coming at you). Returns the new lock, or null. With
+// `cycle` (true or 1, or −1 the other way), moves on to the next candidate
+// round the nose (nearest the nose first).
 export function track(s, candidates, lock, dt, { cycle = false } = {}) {
   const seen = [];
   for (const c of candidates) {
@@ -75,22 +88,27 @@ export function track(s, candidates, lock, dt, { cycle = false } = {}) {
     const ring = seen.filter(held);
     if (ring.length) {
       const i = current ? ring.findIndex((e) => e.c.id === lock.id) : -1;
-      const next = ring[(i + 1) % ring.length];
-      return { id: next.c.id, out: 0 };
+      const step = cycle === -1 ? -1 : 1;
+      const next = ring[(((i < 0 && step < 0 ? 0 : i) + step) % ring.length + ring.length) % ring.length];
+      return { id: next.c.id, out: 0, manual: true };
     }
   }
   if (current) {
-    if (held(current)) return { id: lock.id, out: 0 };
+    const keep = (out) => (lock.manual ? { id: lock.id, out, manual: true } : { id: lock.id, out });
+    if (held(current)) return keep(0);
     // slipping away: a moment's grace before it lets go
     const out = lock.out + dt;
-    if (out < AIM.lose) return { id: lock.id, out };
+    if (out < (lock.manual ? AIM.loseManual : AIM.lose)) return keep(out);
   }
-  // a fresh one: nearest the nose, and nearer counts for a little
+  // a fresh one: nearest the nose, nearer counting for a little and one
+  // coming at you for more. Its target just gone (shot down), the guns look
+  // as wide as the hold for the next, so the fight goes on
+  const cone = lock && !current ? AIM.hold : AIM.cone;
   let best = null;
   let score = Infinity;
   for (const e of seen) {
-    if (e.off > AIM.cone || e.dist > AIM.range) continue;
-    const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range);
+    if (e.off > cone || e.dist > AIM.range) continue;
+    const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range) - AIM.threat * clamp(e.c.threat || 0, 0, 1);
     if (k < score) {
       score = k;
       best = e;
@@ -129,13 +147,26 @@ export function intercept(from, speed, at, vel) {
   return { x: X(at) + vx * t, y: Y(at) + vy * t, z: Z(at) + vz * t, t };
 }
 
-// A shot's direction, helped onto `want` (the way to the lead point): all
-// the way inside AIM.assist, not at all past AIM.assistEdge, fading between.
-export function assist(dir, want) {
-  const a = angleBetween(dir, want);
-  if (a <= AIM.assist) return [...want];
-  if (a >= AIM.assistEdge) return [...dir];
-  const k = 1 - (a - AIM.assist) / (AIM.assistEdge - AIM.assist);
+// How much of the bend onto `want` (the way to the lead point) a shot along
+// `dir` gets: 1 inside AIM.assist, 0 past AIM.assistEdge, fading between;
+// the cones a little taller than they are wide (AIM.vertical), and both
+// scaled by `strength` (the visitor's setting: 0 is no help at all).
+export function assistAmount(dir, want, strength = 1) {
+  if (!(strength > 0)) return 0;
+  const a = aimAngles(dir);
+  const b = aimAngles(want);
+  const yaw = Math.atan2(Math.sin(b.heading - a.heading), Math.cos(b.heading - a.heading)) * Math.cos((a.pitch + b.pitch) / 2);
+  const off = Math.hypot(yaw, (b.pitch - a.pitch) / AIM.vertical);
+  const full = AIM.assist * strength;
+  const edge = AIM.assistEdge * strength;
+  return off <= full ? 1 : off >= edge ? 0 : 1 - (off - full) / (edge - full);
+}
+
+// A shot's direction, helped onto `want` that much.
+export function assist(dir, want, strength = 1) {
+  const k = assistAmount(dir, want, strength);
+  if (k >= 1) return [...want];
+  if (k <= 0) return [...dir];
   return unit([dir[0] + (want[0] - dir[0]) * k, dir[1] + (want[1] - dir[1]) * k, dir[2] + (want[2] - dir[2]) * k]);
 }
 
@@ -144,6 +175,26 @@ export function assist(dir, want) {
 export function aimAngles(dir) {
   const d = unit(dir);
   return { heading: Math.atan2(-d[0], -d[2]), pitch: Math.asin(clamp(d[1], -1, 1)) };
+}
+
+// Whether a bolt going from `b0` to `b1` this frame touched a target going
+// from `t0` to `t1` (within `r` of its middle), both moving at once: how far
+// through the frame they met (0 to 1), or null. (Tested against where the
+// target is only at the end of the frame, a quick one crossing the bolt's
+// path is missed.)
+export function sweptHit(b0, b1, t0, t1, r) {
+  const rx = X(b0) - X(t0);
+  const ry = Y(b0) - Y(t0);
+  const rz = Z(b0) - Z(t0);
+  const dx = X(b1) - X(t1) - rx;
+  const dy = Y(b1) - Y(t1) - ry;
+  const dz = Z(b1) - Z(t1) - rz;
+  const dd = dx * dx + dy * dy + dz * dz;
+  const k = dd > 1e-12 ? clamp(-(rx * dx + ry * dy + rz * dz) / dd, 0, 1) : 0;
+  const px = rx + dx * k;
+  const py = ry + dy * k;
+  const pz = rz + dz * k;
+  return px * px + py * py + pz * pz <= r * r ? k : null;
 }
 
 // Where a marker for something off the screen goes: on the edge of the open

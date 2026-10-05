@@ -9,7 +9,7 @@
 // Colour: near-white in light mode, a cool grey in dark mode, never the accent.
 
 import * as THREE from 'three';
-import { createRenderer } from '../../lib/three/renderer';
+import { createRenderer, precompile } from '../../lib/three/renderer';
 import { mix } from '../../lib/three/theme';
 
 const VERT = /* glsl */ `
@@ -229,6 +229,8 @@ export function create(canvas, ctx) {
   };
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

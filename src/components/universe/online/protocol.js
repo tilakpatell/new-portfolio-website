@@ -1,12 +1,15 @@
 // Multiplayer on the universe map, as plain rules: what goes over the wire
 // between pilots and how anything that comes in is read. Pure (no three.js,
-// no network), so it's tested in Node; client.js does the talking and
-// pilots.js draws everyone else.
+// no network), so it's tested in Node; client.js does the talking (through
+// nostr.js's relays) and pilots.js draws everyone else.
 //
 // Everything a peer sends is untrusted: a name is cleaned before it's shown
-// (and only ever set as text), numbers are checked and clamped, and a hit is
-// believed only from someone who isn't an ally, shot at you a moment ago,
-// was close enough to, and isn't hitting faster than the guns fire.
+// (and only ever set as text), numbers are checked and clamped, each pilot
+// may send only so much of each kind of message (createLimiter: past that
+// it's dropped, and a flood gets them muted), and a hit is believed only
+// from someone who isn't an ally, fired a shot that would have passed near
+// you a moment ago (aimedAt), was close enough, and isn't hitting faster
+// than the guns fire.
 //
 // The wire, by action:
 //   hi    { n: name, k: ship kind or null, c: kills, w: where on the site }
@@ -33,11 +36,17 @@ export const POSE_MS = 100; // how often a pose goes out
 export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden
 export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
+export const BOLT_LIFE = 1.1; // seconds a bolt flies, at the most (targeting.js's AIM.life, with room to spare)
 export const GUARD = {
   shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
-  gap: 150, // ms between hits from one pilot (the guns fire every 220)
+  gap: 90, // ms between hits from one pilot (the fastest guns, the X-wing's, fire every 120)
   range: 70, // map units: further off than this, they couldn't have hit you
+  near: 2, // map units: how close a shot's path must pass you (more, the faster you go)
+  killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit
 };
+// how many of each message one pilot may send: [a second, at most at once]
+export const RATES = { pose: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] }; // (the X-wing fires 8 a second)
+export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2 };
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
@@ -109,17 +118,66 @@ export function readHit(data) {
   return d === null || d <= 0 ? null : d;
 }
 
+// Did one of these shots ({ p, v, at }, as they came in) pass near enough
+// `me` (where you are now, with your speed) in the last moment to have hit?
+// Its path is the line it flies in its life; you may have moved since, so
+// the faster you go the more room it's given.
+export function aimedAt(shots, me, now) {
+  const room = GUARD.near + Math.abs(me.speed || 0) * BOLT_LIFE;
+  for (const s of shots ?? []) {
+    if (now - s.at > GUARD.shotWindow) continue;
+    const [px, py, pz] = s.p;
+    const dx = s.v[0] * BOLT_LIFE;
+    const dy = s.v[1] * BOLT_LIFE;
+    const dz = s.v[2] * BOLT_LIFE;
+    const len2 = dx * dx + dy * dy + dz * dz || 1;
+    const k = Math.min(1, Math.max(0, ((me.x - px) * dx + (me.y - py) * dy + (me.z - pz) * dz) / len2));
+    if (Math.hypot(px + dx * k - me.x, py + dy * k - me.y, pz + dz * k - me.z) <= room) return true;
+  }
+  return false;
+}
+
 // Should a hit from this pilot count? `peer` is what's known of them: { ally,
-// blocked, shotAt (ms, their last shot), hitAt (ms, their last hit that
-// counted), pose (where they were) }; `me` is where you are (or null, not
-// flying); `now` in ms.
+// blocked, shots (their last few, as they came in), hitAt (ms, their last
+// hit that counted), pose (where they were) }; `me` is where you are (or
+// null, not flying); `now` in ms.
 export function hitCounts(peer, me, now) {
   if (!peer || !me || peer.blocked || peer.ally === 'ally') return false;
-  if (now - (peer.shotAt ?? -Infinity) > GUARD.shotWindow) return false;
+  if (!aimedAt(peer.shots, me, now)) return false;
   if (now - (peer.hitAt ?? -Infinity) < GUARD.gap) return false;
   const p = peer.pose;
   if (!p || Math.hypot(p.x - me.x, p.y - me.y, p.z - me.z) > GUARD.range) return false;
   return true;
+}
+
+// How much one pilot may send: for each kind of message (RATES), a bucket
+// that holds `at most at once` and fills at `a second`; allow(kind, now)
+// takes one if there's one to take. flooding(now): turned away more than
+// FLOOD.denied times in FLOOD.window ms.
+export function createLimiter(rates = RATES) {
+  const buckets = {};
+  const denied = [];
+  return {
+    allow(kind, now) {
+      const r = rates[kind];
+      if (!r) return false;
+      const b = (buckets[kind] ??= { tokens: r[1], at: now });
+      b.tokens = Math.min(r[1], b.tokens + (Math.max(0, now - b.at) / 1000) * r[0]);
+      b.at = now;
+      if (b.tokens >= 1) {
+        b.tokens -= 1;
+        return true;
+      }
+      denied.push(now);
+      while (denied.length && now - denied[0] > FLOOD.window) denied.shift();
+      if (denied.length > FLOOD.denied + 1) denied.shift();
+      return false;
+    },
+    flooding(now) {
+      while (denied.length && now - denied[0] > FLOOD.window) denied.shift();
+      return denied.length > FLOOD.denied;
+    },
+  };
 }
 
 // An alliance between you and one pilot, one step on. States: 'none',

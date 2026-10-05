@@ -6,9 +6,10 @@
 
 import * as THREE from 'three';
 import { pixelRatio } from '../../lib/device';
+import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 
 export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -93,10 +94,16 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
     renderer.dispose();
   };
 
+  // Every shader under `root` (the whole scene by default) linked in the
+  // background (lib/three/renderer's precompile): a view awaits this before
+  // its first frame, and before showing anything it adds later, so drawing
+  // it doesn't stop the page while the GPU links.
+  const precompile = (root = scene) => (lost ? Promise.resolve() : compileFor(renderer, root, camera, scene));
+
   // renderer counts, for checking the scene against its budget
   const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: ratio, shadows: renderer.shadowMap.enabled });
 
-  api = { renderer, scene, camera, size, resize, project, render, dispose, info, coarse, draw: null, onResize: null, get lost() { return lost; } };
+  api = { renderer, scene, camera, size, resize, project, render, dispose, precompile, info, coarse, draw: null, onResize: null, get lost() { return lost; } };
   return api;
 }
 

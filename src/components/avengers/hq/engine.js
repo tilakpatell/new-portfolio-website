@@ -11,6 +11,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
 import { device } from '../../../lib/device';
+import { precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
 // What a device can afford. Phones and small GPUs start lower; the watchdog
 // steps down from there when frames run long.
@@ -44,7 +45,7 @@ export function createEngine(canvas, opts = {}) {
   let tierName = opts.tier ?? startTier();
   let tier = TIERS[tierName];
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, failIfMajorPerformanceCaveat: false });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, failIfMajorPerformanceCaveat: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
@@ -254,7 +255,24 @@ export function createEngine(canvas, opts = {}) {
     composer.dispose?.();
     target.dispose();
     renderer.dispose();
-    renderer.forceContextLoss?.();
+    // the context goes back once nothing is compiling (lib/three/renderer):
+    // let go at once, it would wait for the next game's shaders, mid-scroll
+    releaseContext(renderer);
+  };
+
+  // Every shader the game draws with (and the passes'), linked in the
+  // background (lib/three/renderer's precompile): the page's hosts
+  // (hq/useStage) wait for this before a game's first frame. `root`, already
+  // in the scene, for something built later.
+  let passesDone = false;
+  const precompile = (root = scene) => {
+    if (lost) return Promise.resolve();
+    const jobs = [compileFor(renderer, root, view, scene, composer.readBuffer)];
+    if (!passesDone) {
+      passesDone = true;
+      jobs.push(precompilePasses(renderer, composer, view));
+    }
+    return Promise.all(jobs);
   };
 
   return {
@@ -274,6 +292,7 @@ export function createEngine(canvas, opts = {}) {
     project,
     info,
     dispose,
+    precompile,
     get size() {
       return size;
     },

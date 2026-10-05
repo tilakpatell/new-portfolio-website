@@ -7,7 +7,7 @@
 // It replaces the CSS slow zoom and breathing glow, at the same pace.
 
 import * as THREE from 'three';
-import { clamp01, createRenderer } from '../../lib/three/renderer';
+import { clamp01, createRenderer, precompile } from '../../lib/three/renderer';
 
 const vertexShader = /* glsl */ `
   varying vec2 vUv;
@@ -127,6 +127,8 @@ export async function create(canvas, ctx) {
   const start = performance.now();
   let lastDraw = 0;
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       gl.setSize(w, h);
       uniforms.uView.value.set(Math.max(1, w), Math.max(1, h));
