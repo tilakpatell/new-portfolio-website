@@ -64,6 +64,11 @@ export const ACHIEVEMENTS = {
   weathertop: { name: 'Fire against the dark', desc: 'Held the summit of Weathertop with a brand until Strider came' },
   kingsfoil: { name: 'Kingsfoil', desc: 'Found three plants of athelas by lantern, as Sam' },
   bruinen: { name: 'If you want him, come and claim him', desc: 'Rode with Arwen to the Ford of Bruinen, and the river rose' },
+  elrond: { name: 'The house of Elrond', desc: 'Woke in Rivendell, with Gandalf at your bedside' },
+  narsil: { name: 'The blade that was broken', desc: 'Laid the shards of Narsil back in their order' },
+  iwilltakeit: { name: 'I will take it', desc: 'Stood up at the Council of Elrond, and were heard' },
+  oldring: { name: 'My old ring', desc: 'Kept the Ring from Bilbo, gently, in his pavilion' },
+  fellowship: { name: 'The Fellowship of the Ring', desc: 'Gathered the Nine and led them out of Rivendell' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
@@ -78,6 +83,7 @@ export const ACHIEVEMENTS = {
   regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
+  passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 

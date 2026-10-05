@@ -194,9 +194,9 @@ const FANDOMS = [
   {
     id: 'travel',
     label: 'Travel',
-    world: null,
+    world: 'Earth',
     place: 'Earth',
-    to: '/travel',
+    to: '/earth',
     swatch: '#5cb8ff',
     accent: '#5cb8ff',
     size: 0.68,

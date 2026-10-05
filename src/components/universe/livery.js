@@ -13,12 +13,14 @@
 // glass dome) keep them; a mesh marked userData.noPaint (its crew) is left
 // alone, and so is anything unlit (the engines' glow, the ink).
 //
-// createLivery() → { apply(root, fit, { clone }), set(paint), dispose() }
+// createLivery() → { apply(root, fit, { clone, only }), set(paint), dispose() }
 // fit: { mid, marks: [from, to], dark: [from, to, how much], keep } (linear
 //   luminance and saturation): the luminance of a plain panel, where the
 //   saturation becomes a marking, where darkness does (and how strongly),
 //   and below which the texel is left as it is.
 // clone: copy each material before changing it (it's shared with others).
+// only: which materials are the hull's, by name (a model that brings its
+// cockpit, glass and lights as materials of their own keeps those as they are).
 
 import * as THREE from 'three';
 
@@ -69,14 +71,14 @@ export function createLivery() {
   };
   const copies = [];
   return {
-    apply(root, fit, { clone = false } = {}) {
+    apply(root, fit, { clone = false, only = null } = {}) {
       const uniforms = {
         ...shared,
         paintFit: { value: new THREE.Vector4(fit.mid, fit.marks[0], fit.marks[1], fit.keep) },
         paintDark: { value: new THREE.Vector4(...(fit.dark ?? [0, 0.001, 0]), 0) },
       };
       const one = (m) => {
-        if (!lit(m) || m.userData.painted) return m;
+        if (!lit(m) || m.userData.painted || (only && !only.test(m.name))) return m;
         const p = clone ? m.clone() : m;
         if (clone) copies.push(p);
         teach(p, uniforms);

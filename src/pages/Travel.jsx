@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Photo from '../components/Photo';
@@ -50,10 +50,13 @@ const Hero = memo(function Hero() {
         <p className="lead hero-in mt-6 max-w-[34rem] !text-[clamp(1.1rem,1rem+0.45vw,1.3rem)] !text-white/90" style={{ '--d': '160ms' }}>
           {countWord(COUNTRY_COUNT)} countries and the Caribbean so far, with a soft spot for mountains and lakes.
         </p>
-        <div className="hero-in mt-9" style={{ '--d': '240ms' }}>
+        <div className="hero-in mt-9 flex flex-wrap gap-3" style={{ '--d': '240ms' }}>
           <a href="#globe" className="btn btn-primary btn-lg group" onClick={(e) => jumpTo(e, 'globe')}>
             Spin the globe <RiArrowDownLine className="h-4 w-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
           </a>
+          <Link to="/earth" className="btn btn-ghost btn-lg !border-white/60 !bg-black/20 !text-white backdrop-blur-sm hover:!bg-white/15">
+            Fly it in 3D
+          </Link>
         </div>
       </div>
     </header>

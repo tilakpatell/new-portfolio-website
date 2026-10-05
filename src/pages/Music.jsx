@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import Photo from '../components/Photo';
 import PhotoCredits from '../components/travel/PhotoCredits';
@@ -29,6 +29,7 @@ import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
 import RagaBook from '../components/music/RagaBook';
+import MusicWorld from '../components/music/world/MusicWorld';
 import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
 import Egg from '../components/Egg';
 import { capturePointer } from '../lib/pointer';
@@ -65,15 +66,16 @@ function useDrone() {
 
 function Tuning({ drone }) {
   const [tuning, setTuning] = useTuning();
+  const idBase = useId(); // the courtyard's tanpura opens a second one
   const raga = ragaOf(tuning.raga);
   const quick = QUICK.includes(tuning.raga) ? QUICK : [...QUICK, tuning.raga];
   return (
     <div className="music-tuning card">
       <div>
-        <p className="label" id="sa-label">
+        <p className="label" id={`sa-label-${idBase}`}>
           Sa
         </p>
-        <div className="seg seg-wrap mt-2" role="group" aria-labelledby="sa-label">
+        <div className="seg seg-wrap mt-2" role="group" aria-labelledby={`sa-label-${idBase}`}>
           {SA_NOTES.map((n, i) => (
             <button key={n} type="button" aria-pressed={tuning.sa === i} onClick={() => setTuning({ sa: i })} aria-label={`Sa on ${n}, ${hz(saHz(i))}`}>
               {n}
@@ -85,10 +87,10 @@ function Tuning({ drone }) {
         </p>
       </div>
       <div>
-        <p className="label" id="raga-label">
+        <p className="label" id={`raga-label-${idBase}`}>
           Raga
         </p>
-        <div className="seg seg-wrap mt-2" role="group" aria-labelledby="raga-label">
+        <div className="seg seg-wrap mt-2" role="group" aria-labelledby={`raga-label-${idBase}`}>
           {quick.map((id) => (
             <button key={id} type="button" aria-pressed={tuning.raga === id} onClick={() => setTuning({ raga: id, first: ragaOf(id).first })}>
               {ragaOf(id).name}
@@ -105,10 +107,10 @@ function Tuning({ drone }) {
       </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
         <div>
-          <p className="label" id="first-label">
+          <p className="label" id={`first-label-${idBase}`}>
             Tanpura, first string
           </p>
-          <div className="seg mt-2" role="group" aria-labelledby="first-label">
+          <div className="seg mt-2" role="group" aria-labelledby={`first-label-${idBase}`}>
             {Object.entries(FIRST_STRING).map(([id, f]) => (
               <button key={id} type="button" aria-pressed={tuning.first === id} onClick={() => setTuning({ first: id })}>
                 {f.label}
@@ -212,6 +214,40 @@ function Recorder() {
   );
 }
 
+// Below the sitar: its phrase, and the chikari (press and hold for a roll;
+// from the keyboard, one stroke).
+function SitarButtons({ raga, phrase, play, onPlay, children }) {
+  return (
+    <div className="mt-6 flex flex-wrap gap-3">
+      <button type="button" className="btn btn-primary" onClick={() => play()} disabled={phrase}>
+        {phrase ? 'Playing…' : `Play a phrase in ${raga.name}`}
+      </button>
+      <button
+        type="button"
+        className="btn btn-ghost chikari-btn"
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          capturePointer(e);
+          holdChikari(true, 'button');
+          onPlay('sitar');
+        }}
+        onPointerUp={() => holdChikari(false, 'button')}
+        onPointerCancel={() => holdChikari(false, 'button')}
+        onLostPointerCapture={() => holdChikari(false, 'button')}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={(e) => {
+          if (e.detail !== 0 || !audioContext()) return;
+          chikari();
+          onPlay('sitar');
+        }}
+      >
+        Chikari
+      </button>
+      {children}
+    </div>
+  );
+}
+
 function TanpuraStrings({ pluck }) {
   const [tuning] = useTuning();
   const strings = tanpuraStrings(tuning);
@@ -299,9 +335,30 @@ export default function Music() {
     setTimeout(() => setPhrase(false), seconds * 1000 + 400);
   };
 
+  // what each instrument in the music planet's courtyard opens to: the page's own
+  const panel = (id) => {
+    if (id === 'sitar')
+      return (
+        <>
+          <SitarNeck onPlay={onPlay} />
+          <SitarButtons raga={raga} phrase={phrase} play={play} onPlay={onPlay} />
+        </>
+      );
+    if (id === 'tabla') return <Tabla onPlay={onPlay} />;
+    if (id === 'harmonium') return <Harmonium onPlay={onPlay} />;
+    return (
+      <div className="grid gap-6">
+        <Tuning drone={drone} />
+        <TanpuraStrings pluck={drone.pluck} />
+      </div>
+    );
+  };
+
   return (
     <>
-      <section ref={hero} className="shell relative z-10 pb-12 pt-[calc(var(--nav-h)+40px)] md:pb-20 md:pt-[calc(var(--nav-h)+72px)]" aria-labelledby="music-title">
+      <MusicWorld panel={panel} />
+
+      <section ref={hero} className="shell relative z-10 pb-12 pt-12 md:pb-20 md:pt-20" aria-labelledby="music-title">
         <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
           <div className="relative">
             <Waypoint top="0.6rem" />
@@ -380,34 +437,9 @@ export default function Music() {
         <div className="mt-8">
           <SitarNeck onPlay={onPlay} />
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" className="btn btn-primary" onClick={() => play()} disabled={phrase}>
-            {phrase ? 'Playing…' : `Play a phrase in ${raga.name}`}
-          </button>
-          {/* press and hold for a roll; from the keyboard, one stroke */}
-          <button
-            type="button"
-            className="btn btn-ghost chikari-btn"
-            onPointerDown={(e) => {
-              if (e.button !== 0) return;
-              capturePointer(e);
-              holdChikari(true, 'button');
-              onPlay('sitar');
-            }}
-            onPointerUp={() => holdChikari(false, 'button')}
-            onPointerCancel={() => holdChikari(false, 'button')}
-            onLostPointerCapture={() => holdChikari(false, 'button')}
-            onContextMenu={(e) => e.preventDefault()}
-            onClick={(e) => {
-              if (e.detail !== 0 || !audioContext()) return;
-              chikari();
-              onPlay('sitar');
-            }}
-          >
-            Chikari
-          </button>
+        <SitarButtons raga={raga} phrase={phrase} play={play} onPlay={onPlay}>
           <Listen />
-        </div>
+        </SitarButtons>
         <div className="mt-12 grid items-center gap-8 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-12">
           <figure className="music-photo m-0">
             <Photo id="music-tarab" sizes="(min-width: 768px) 36vw, 100vw" className="h-full w-full object-cover" />
