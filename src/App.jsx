@@ -3,6 +3,7 @@ import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-route
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
+import OnlineProvider from './components/universe/online/OnlineProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
@@ -229,7 +230,7 @@ function Shell() {
   }, []);
 
   return (
-    <>
+    <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
       <ScrollToTop />
       <Nav />
@@ -272,7 +273,7 @@ function Shell() {
       <Lightspeed />
       <PaletteHost />
       <IntroJump />
-    </>
+    </OnlineProvider>
   );
 }
 
