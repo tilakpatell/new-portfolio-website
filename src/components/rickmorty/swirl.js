@@ -85,12 +85,27 @@ void main() {
   gl_FragColor = portal(uv / size, t, open, seed);
 }`;
 
-// A portal on a plain canvas (no Three.js): draw(t, open) paints one frame.
-// Returns null where WebGL isn't there, so the caller can show its CSS one.
-export function createSwirl(canvas, { size = [0.34, 0.45], seed = 0 } = {}) {
+// One WebGL context for every portal on the page. Making a context (and
+// linking the swirl's shader in it) waits on the GPU, and the page has a
+// portal in the hero, one in each crack the cruiser flies through (they come
+// and go as you scroll) and one in the theme change: a context each was a
+// stall each, and another letting each one go. So the swirl is drawn in one
+// hidden canvas and copied onto each portal's own plain 2D canvas. The
+// context outlives its last portal by KEEP, for the next crack along.
+const KEEP = 10000; // ms
+let shared = null;
+let users = 0;
+let letGo = 0;
+
+function sharedGL() {
+  if (shared?.state === 'broken') return null;
+  if (shared && !shared.gl.isContextLost()) return shared;
+  shared = null;
+  const canvas = document.createElement('canvas');
   let gl = null;
   try {
-    gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: true });
+    // a full-screen triangle has no edges to smooth: no multisampling
+    gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
   } catch {
     gl = null;
   }
@@ -105,18 +120,58 @@ export function createSwirl(canvas, { size = [0.34, 0.45], seed = 0 } = {}) {
   gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
   gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
   gl.linkProgram(prog);
+  // the link goes on in the background where the GPU can (asked after on each
+  // draw, without waiting); elsewhere the first draw waits for it, as before
+  const parallel = gl.getExtension('KHR_parallel_shader_compile');
+  shared = { canvas, gl, prog, parallel, state: 'linking', u: null };
+  return shared;
+}
+
+// whether the shared program can draw yet (set up the first time it can)
+function linked(sw) {
+  if (sw.state !== 'linking') return sw.state === 'ok';
+  const { gl, prog } = sw;
+  if (sw.parallel && !gl.getProgramParameter(prog, sw.parallel.COMPLETION_STATUS_KHR)) return false;
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return null;
+    sw.state = 'broken';
+    return false;
   }
   gl.useProgram(prog);
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(prog, 'p');
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const u = Object.fromEntries(['res', 'size', 't', 'open', 'seed'].map((k) => [k, gl.getUniformLocation(prog, k)]));
+  sw.u = Object.fromEntries(['res', 'size', 't', 'open', 'seed'].map((k) => [k, gl.getUniformLocation(prog, k)]));
+  sw.state = 'ok';
+  return true;
+}
+
+const hold = () => {
+  users += 1;
+  clearTimeout(letGo);
+};
+const release = () => {
+  users = Math.max(0, users - 1);
+  if (users) return;
+  clearTimeout(letGo);
+  letGo = setTimeout(() => {
+    if (users || !shared) return;
+    const { gl } = shared;
+    shared = null;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  }, KEEP);
+};
+
+// A portal on a plain canvas (no Three.js): draw(t, open) paints one frame.
+// Returns null where WebGL isn't there, so the caller can show its CSS one;
+// `onFail` hears if the shader turns out not to link after all.
+export function createSwirl(canvas, { size = [0.34, 0.45], seed = 0, onFail } = {}) {
+  if (!sharedGL()) return null;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  hold();
+  let gone = false;
   const fit = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -127,21 +182,36 @@ export function createSwirl(canvas, { size = [0.34, 0.45], seed = 0 } = {}) {
     }
   };
   const draw = (t, open = 1) => {
+    if (gone) return;
+    const sw = sharedGL(); // a fresh one, should the last have been lost
+    if (!sw || !linked(sw)) {
+      if (!sw || sw.state === 'broken') onFail?.();
+      return;
+    }
     fit();
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform2f(u.res, canvas.width, canvas.height);
+    const { gl, u, canvas: src } = sw;
+    const w = canvas.width;
+    const h = canvas.height;
+    // the hidden canvas grows to the biggest portal; each is drawn in its corner
+    if (src.width < w || src.height < h) {
+      src.width = Math.max(src.width, w);
+      src.height = Math.max(src.height, h);
+    }
+    gl.viewport(0, 0, w, h);
+    gl.uniform2f(u.res, w, h);
     gl.uniform2f(u.size, size[0], size[1]);
     gl.uniform1f(u.t, t);
     gl.uniform1f(u.open, open);
     gl.uniform1f(u.seed, seed);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    // and copied over this one's last frame (WebGL's corner is the bottom left)
+    ctx.globalCompositeOperation = 'copy';
+    ctx.drawImage(src, 0, src.height - h, w, h, 0, 0, w, h);
   };
   const dispose = () => {
-    gl.deleteBuffer(buf);
-    gl.deleteProgram(prog);
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    if (gone) return;
+    gone = true;
+    release();
   };
   return { draw, dispose };
 }
@@ -149,8 +219,8 @@ export function createSwirl(canvas, { size = [0.34, 0.45], seed = 0 } = {}) {
 // Run a portal on a canvas until stop(): only while it's on screen and the
 // tab is showing, one still frame for reduced motion. `open()` gives the
 // opening (0…1) for a frame, so a caller can snap it shut and swirl it open.
-export function runSwirl(canvas, { size, seed, open = () => 1, calm = false } = {}) {
-  const s = createSwirl(canvas, { size, seed });
+export function runSwirl(canvas, { size, seed, open = () => 1, calm = false, onFail } = {}) {
+  const s = createSwirl(canvas, { size, seed, onFail });
   if (!s) return null;
   let raf = 0;
   let visible = true;

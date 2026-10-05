@@ -64,8 +64,15 @@ export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
     p.group.rotation.y = c.chair.rotation.y;
     c.parent.add(p.group);
     folks.set(id, p);
-    touch();
-    onChange?.();
+    // shown once their shaders have linked (in the background), so their
+    // first frame doesn't stop the page
+    p.group.visible = false;
+    stage.precompile(p.group).then(() => {
+      if (gone) return;
+      p.group.visible = true;
+      touch();
+      onChange?.();
+    });
   };
   const coming = loadPeople(undefined, (id, c) => {
     cast = c;
@@ -620,6 +627,8 @@ export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
   const touch = () => (dirty = true);
   built = true;
   for (const id of came) sit(id);
+  // the office's shaders, linked before its first frame
+  await stage.precompile();
 
   return {
     render,

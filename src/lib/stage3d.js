@@ -13,6 +13,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget } from './device';
+import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 
 // The last step, on the display-ready picture: a film-like grade.
 export const GRADE = {
@@ -84,7 +85,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // what this device can afford (lib/device): a phone starts less sharp with
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;
@@ -188,8 +189,10 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     else onSlow?.(avg);
   };
 
+  let warming = 0; // precompiles in flight (below)
+  let passesDone = false;
   const render = (ms = 16) => {
-    if (lost || disposed) return;
+    if (lost || disposed || warming) return;
     gradePass.uniforms.uTime.value += ms / 1000;
     // software rendering draws straight to the canvas: every full-screen pass costs
     if (soft) renderer.render(scene, camera);
@@ -209,8 +212,29 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     bloomPass.dispose?.();
     gradePass.dispose?.();
     renderer.dispose();
-    // the canvas is the game's own and goes with it: give the context back now
-    renderer.forceContextLoss();
+    // the canvas is the game's own and goes with it: give the context back
+    // (lib/three/renderer: once nothing is compiling, so the wait for it lands nowhere)
+    releaseContext(renderer);
+  };
+
+  // Every shader the game will draw with, compiled in the background (lib/three/
+  // renderer's precompile): a game awaits this before its first frame, and
+  // calls it again when it builds something new (`root`, already in the
+  // scene; null for the passes alone). The passes are compiled the first time
+  // only. Until it's done render() holds the last frame, rather than drawing
+  // one that would stop the page while the GPU links.
+  const precompile = (root = scene) => {
+    if (lost || disposed) return Promise.resolve();
+    // the scene draws into the composer's buffer, or (soft) straight to the canvas
+    const jobs = root ? [compileFor(renderer, root, camera, scene, soft ? null : composer.readBuffer)] : [];
+    if (!soft && !passesDone) {
+      passesDone = true;
+      jobs.push(precompilePasses(renderer, composer, camera));
+    }
+    warming += 1;
+    return Promise.all(jobs).then(() => {
+      warming -= 1;
+    });
   };
 
   return {
@@ -223,6 +247,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     resize,
     render,
     dispose,
+    precompile,
     setLevel,
     get size() {
       return size;

@@ -16,7 +16,7 @@
 // Reduced motion: no drift, plain cuts, no ring.
 
 import * as THREE from 'three';
-import { clamp01, createRenderer } from '../../../lib/three/renderer';
+import { clamp01, createRenderer, precompile } from '../../../lib/three/renderer';
 import { CUT_MS, minutesOf, settleEase, settleMs } from './day';
 import { lerpStats, measure, toneBetween } from './light';
 
@@ -592,6 +592,8 @@ export function create(canvas, ctx) {
   wantAround(goal);
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
