@@ -12,7 +12,7 @@
 // area, built far apart (the rooms down the x = -300 line, the annex out at
 // x = 400) so a door is a jump.
 
-import { seeded } from '../../middleearth/shire/rules';
+import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
@@ -47,17 +47,35 @@ export const ROAD = { z: 0, w: 10, sidewalk: 2 };
 const VERGE = ROAD.w / 2 + ROAD.sidewalk;
 
 // A building: where its footprint's centre is, its width on x and depth on z,
-// its wall height and its ridge's height.
-// The Smith house as it stands in the show: the garage wing on the west, a
-// metre forward of the house, whose east 8 m (x -3 to 5) is two storeys.
-export const HOUSE = { id: 'house', x: -5, z: -21.5, w: 20, d: 13, h: 3.2, roof: 8.6 };
-export const GARAGE = { id: 'garage', x: -19, z: -19.5, w: 8, d: 11, h: 3.4, roof: 6.2 };
+// its wall height and its ridge's height. The footprint is the box the Meshy
+// model is fitted over; what is in the way of walking is its PARTS, where the
+// model is not a plain box (the Smith house, the school).
+// The Smith house as it stands in the show: the garage wing on the west, 3 m
+// forward of the two-storey east wing (x -3 to 5), the middle set back.
+export const HOUSE = { id: 'house', x: -5, z: -22.6, w: 20, d: 10.8, h: 3.2, roof: 8.6 };
+export const GARAGE = { id: 'garage', x: -19, z: -21, w: 8, d: 14, h: 3.4, roof: 6.2 };
 export const SCHOOL = { id: 'school', x: 40, z: 23, w: 30, d: 16, h: 8, roof: 8.5 };
 export const ARCADE = { id: 'arcade', x: 400, z: -10, w: 18, d: 12, h: 7, roof: 9 };
 // the house and garage as one footprint, which is what the scene fits its model over
 export const HOUSE_GARAGE = { x0: -23, x1: 5, z0: -28, z1: -14 };
 
-const TINTS = [0xe9c9a1, 0xb7d3c6, 0xe7b8b0, 0xc2cfe6, 0xf0dd9a, 0xd9bfd8];
+// a part of a building, from its edges and the height of its roof
+const part = (id, x0, x1, z0, z1, h) => ({ id, x: (x0 + x1) / 2, z: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0, h });
+// The Smith house, as the model has it: the two-storey wing (front -17.2), the
+// middle set back (wall -19.3) and, over the front door, the porch gable (its
+// step -17.8). The heights are the model's own.
+export const HOUSE_PARTS = [part('wing', -3, 5, -28, -17.2, 8.6), part('middle', -15, -3, -28, -19.3, 6.4), part('porch', -8.7, -5.7, -19.3, -17.8, 4.2)];
+// Harry Herpson High, as the model has it (measured off it, fitted over SCHOOL):
+// a long front bar the whole width, the tall entrance block on the doors,
+// standing forward of it, and a rear wing along the west half: the east end
+// has no back to it.
+export const SCHOOL_PARTS = [part('bar', 25, 55, 16.5, 24, 6.3), part('entrance', 35.8, 44.3, 15.8, 22.1, 8.7), part('rear', 25, 42.2, 24, 31, 5.9)];
+
+// (the house next door to the west is pink, as in the show)
+const TINTS = [0xf0a0a8, 0xb7d3c6, 0xe9c9a1, 0xc2cfe6, 0xf0dd9a, 0xd9bfd8];
+// for the scene: each one's design (a two-storey colonial or a one-storey ranch) and its roof's colour
+const LOOKS = ['colonial', 'ranch', 'colonial', 'ranch', 'colonial', 'ranch'];
+const ROOF_TINTS = [0x5d5f6c, 0x6e4a36, 0x7a4038, 0x56606e, 0x6b4c3b, 0x4f5a52];
 export const NEIGHBOURS = [
   [-42, -20],
   [24, -20],
@@ -65,14 +83,14 @@ export const NEIGHBOURS = [
   [-42, 21],
   [-18, 21],
   [4, 21],
-].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: 5.5, roof: 8, tint: TINTS[i] }));
+].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: 5.5, roof: 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
 export const BUILDINGS = [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS];
 
 // the driveway runs from the garage door to the sidewalk; the cruiser parks on it, nose south
 export const DRIVEWAY = { x0: -23, x1: -15, z0: -14, z1: -7 };
 export const BOARD = { x: -19, z: -10.5, yaw: 0 };
-// the red-brick front walk, from the front door to the sidewalk
-export const FRONT_WALK = { x0: -8.6, x1: -7.4, z0: -15, z1: -7 };
+// the red-brick front walk, from the porch step (and the front door) to the sidewalk
+export const FRONT_WALK = { x0: -7.8, x1: -6.6, z0: -17.4, z1: -7 };
 
 // on the sidewalk at the foot of the front walk, looking up at the house
 export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
@@ -87,7 +105,7 @@ export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
 
 const ROOM_X = -300;
 const FACE_N = Math.PI / 2;
-const HOUSE_DOOR = { x: -8, z: -14.4 };
+const HOUSE_DOOR = { x: -7.2, z: -17.4 };
 const GARAGE_DOOR = { x: -19, z: -13.4 };
 const SCHOOL_DOOR = { x: 40, z: 14.4 };
 const ARCADE_DOOR = { x: 400, z: -3.4 };
@@ -142,26 +160,41 @@ const segDist = (px, pz, [x0, z0, x1, z1]) => {
 };
 
 // Each back yard is the house's width, from the back of the house to a low
-// picket fence across behind, with a fence down each side. (The Smiths' house
-// sticks out behind the garage, so their yard's two sides start at different
-// backs.) Nobody gets in: the house and the fences close it.
+// picket fence across behind, with a fence down each side. Nobody gets in: the
+// house and the fences close it.
 const YARD_PLANS = [
-  { x0: HOUSE_GARAGE.x0, x1: HOUSE_GARAGE.x1, far: -33, backWest: GARAGE.z - GARAGE.d / 2, backEast: HOUSE_GARAGE.z0 },
+  { x0: HOUSE_GARAGE.x0, x1: HOUSE_GARAGE.x1, far: -33, back: HOUSE_GARAGE.z0 },
   ...NEIGHBOURS.map((n) => {
     const north = n.z < 0;
-    const back = n.z + (north ? -1 : 1) * (n.d / 2);
-    return { x0: n.x - n.w / 2, x1: n.x + n.w / 2, far: north ? -33 : 33, backWest: back, backEast: back };
+    return { x0: n.x - n.w / 2, x1: n.x + n.w / 2, far: north ? -33 : 33, back: n.z + (north ? -1 : 1) * (n.d / 2) };
   }),
 ];
-export const FENCES = YARD_PLANS.flatMap(({ x0, x1, far, backWest, backEast }) =>
+export const FENCES = YARD_PLANS.flatMap(({ x0, x1, far, back }) =>
   [
-    [x0, backWest, x0, far],
-    [x1, backEast, x1, far],
+    [x0, back, x0, far],
+    [x1, back, x1, far],
     [x0, far, x1, far],
   ].map((run) => [...run, 0.08, true])
 );
 // the ground inside the fences, as rectangles
-export const YARDS = YARD_PLANS.map(({ x0, x1, far, backWest, backEast }) => ({ x0, x1, z0: Math.min(far, backWest, backEast), z1: Math.max(far, backWest, backEast) }));
+export const YARDS = YARD_PLANS.map(({ x0, x1, far, back }) => ({ x0, x1, z0: Math.min(far, back), z1: Math.max(far, back) }));
+
+// ── the street's small things ──
+// Things that stop Morty (and that ./street.js draws from): the flagpole, the
+// "H.H.H.S." marquee and a tree in front of the school, telephone poles every
+// 32 m along the south sidewalk, a mailbox by each house's driveway (the
+// neighbours' on the side that's clear), and the fire hydrant on the Smiths'
+// side. Round (`r`) but for the marquee, a box turned `turn`.
+const DRIVE_SIDE = { n0: 1, n1: -1, n2: 1, s0: 1, s1: 1, s2: -1 };
+export const DECOR = [
+  { id: 'flagpole', kind: 'pole', x: 47.5, z: 11.8, r: 0.15 },
+  { id: 'marquee', kind: 'box', x: 31.5, z: 9.4, w: 2.4, d: 0.5, turn: -2.75 },
+  { id: 'school-tree', kind: 'tree', x: 27.5, z: 11.5, r: 0.35 },
+  ...[-2, -1, 0, 1].map((k, i) => ({ id: `pole${i}`, kind: 'pole', x: 20 + 32 * k, z: 7.6, r: 0.15 })),
+  { id: 'mailbox-smith', kind: 'mailbox', x: DRIVEWAY.x1 + 0.7, z: -7.5, r: 0.25 },
+  ...NEIGHBOURS.map((n) => ({ id: `mailbox-${n.id}`, kind: 'mailbox', x: n.x + DRIVE_SIDE[n.id] * (n.w / 2 + 1.8) + 2.1, z: Math.sign(n.z) * 7.5, r: 0.25 })),
+  { id: 'hydrant', kind: 'hydrant', x: -2.2, z: -7.45, r: 0.25 },
+];
 
 // the straight way from the sidewalk to each street door, which no tree stands in
 const LANES = LINKS.filter((l) => l.area === 'street').map((l) => [l.x, l.z, l.x, Math.sign(l.z) * VERGE]);
@@ -176,6 +209,7 @@ function treeFits(x, z) {
   if (LANDINGS.some((a) => Math.hypot(x - a.x, z - a.z) < 2.5)) return false;
   if (LANES.some((lane) => segDist(x, z, lane) < 2.5)) return false;
   if (FENCES.some((f) => segDist(x, z, f) < 1.2)) return false;
+  if (DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < 2)) return false;
   return Math.hypot(x - START.x, z - START.z) >= 3;
 }
 
@@ -280,6 +314,10 @@ const E = Math.PI / 2; // faces east
 const W = -Math.PI / 2; // faces west
 const N = Math.PI; // faces north
 const item = (id, kind, area, x, z, w, d, h, turn = 0) => ({ id, kind, area, x, z, w, d, h, turn });
+// the stairs: x, z, w (across, x -295.7 to -294.56), d (z 0.56 to its foot at 2.15), h
+const STAIR_RUN = [-295.13, 1.355, 1.14, 1.59, 1.75];
+// and their banister, a low wall up the open side
+export const BANISTER = [-295.7, 0.56, -295.7, 2.15, 0.06, true];
 export const FURNITURE = [
   // the kitchen
   item('counter', 'counter', 'house', -311.4, -6, 4, 1.2, 0.95, E),
@@ -296,6 +334,9 @@ export const FURNITURE = [
   // the back room
   item('bed-back', 'bed', 'house', -291.2, 7.4, 1.6, 2.1, 0.6, N),
   item('dresser-back', 'dresser', 'house', -288.3, 3, 1.8, 0.5, 0.9, W),
+  // the flight of stairs, rising north from its foot (by the stairs-up link)
+  // to the hall's wall, a hair in from the walls either side of it
+  item('stair-run', 'stairs', 'house', ...STAIR_RUN),
   // upstairs: Summer's room, Morty's, Beth and Jerry's
   item('bed-summer', 'bed', 'upstairs', -304.95, 397.5, 1.1, 2.1, 0.6, E),
   item('desk-summer', 'desk', 'upstairs', -302, 394.5, 1.6, 0.8, 0.75),
@@ -308,7 +349,8 @@ export const FURNITURE = [
   item('shelf-garage', 'shelf', 'garage', -305.5, 96, 3, 1, 1.9, E),
   item('plumbus', 'machine', 'garage', -305.75, 99, 2, 0.5, 1.6, E),
   item('portalpanic', 'arcade', 'garage', -305.75, 103, 1.4, 0.5, 1.8, E),
-  item('toolchest', 'cabinet', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
+  // the washer and dryer, side by side by the garage door
+  item('laundry', 'laundry', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
   // Mr. Goldenfold's classroom: the chalkboard, his desk, six desks for the class
   item('chalkboard', 'chalkboard', 'school', -300, 194.1, 6, 0.2, 1.3),
   item('goldenfold-desk', 'goldenfold-desk', 'school', -300, 195.4, 3, 1.2, 0.8),
@@ -346,7 +388,14 @@ const furnished = (area) => [
 ];
 
 export const COLLIDERS = {
-  street: [...BUILDINGS.map((b) => box(b.id, b.x, b.z, b.w, b.d)), ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t)))],
+  street: [
+    // the Smith house and the school as their parts
+    ...BUILDINGS.filter((b) => b !== HOUSE && b !== SCHOOL).map((b) => box(b.id, b.x, b.z, b.w, b.d)),
+    ...HOUSE_PARTS.map((p) => box(`house-${p.id}`, p.x, p.z, p.w, p.d)),
+    ...SCHOOL_PARTS.map((p) => box(`school-${p.id}`, p.x, p.z, p.w, p.d)),
+    ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
+    ...DECOR.map((d) => (d.kind === 'box' ? box(d.id, d.x, d.z, d.w, d.d, d.turn) : circle(d.id, d.x, d.z, d.r))),
+  ],
   annex: [box('arcade', ARCADE.x, ARCADE.z, ARCADE.w, ARCADE.d)],
   // outside, south-west of the entry
   house: [slab('outside', AREAS.house.x0, -294.5, 3.4, AREAS.house.z1), ...furnished('house')],
@@ -356,13 +405,13 @@ export const COLLIDERS = {
   school: furnished('school'),
   arcade: furnished('arcade'),
 };
-// Walls: the street's fences, the house's inner walls and the balcony's low
-// railing on its south edge. A room's outer walls are its area's edge, which
-// `stepMorty` keeps in.
+// Walls: the street's fences, the house's inner walls and the low banister up
+// the stairs' open side, and the balcony's low railing on its south edge. A
+// room's outer walls are its area's edge, which `stepMorty` keeps in.
 export const WALLS = {
   street: FENCES,
   annex: [],
-  house: INNER_WALLS.house,
+  house: [...INNER_WALLS.house, BANISTER],
   upstairs: [...INNER_WALLS.upstairs, [-302.4, AREAS.upstairs.z1, -294.7, AREAS.upstairs.z1, 0.08, true]],
   garage: [],
   school: [],
@@ -428,8 +477,10 @@ const BANK = 0.45; // how far it leans, at most
 export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
+const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
 // the buildings it is over: their footprints, and the cruiser's own width round
-const under = (x, z) => BUILDINGS.filter((b) => Math.abs(x - b.x) <= b.w / 2 + CRUISER.radius && Math.abs(z - b.z) <= b.d / 2 + CRUISER.radius);
+const under = (x, z) => ROOFS.filter((b) => Math.abs(x - b.x) <= b.w / 2 + CRUISER.radius && Math.abs(z - b.z) <= b.d / 2 + CRUISER.radius);
 
 // How low it can fly at (x, z): its hover height, or two metres over the roof
 // of whatever it is over.
@@ -459,10 +510,18 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
   return { x, z, y, yaw, speed, vy, bank };
 }
 
-// Slow, over open ground in the street: not a roof, a fenced back yard or a tree.
+// Slow, over open ground in the street: not a roof, a fenced back yard, a tree
+// or any of the street's small things, and not on a street door or where
+// Morty comes out into the street (it keeps far enough off that he stands
+// clear of it there).
 const inYard = (x, z) => YARDS.some((y) => x >= y.x0 && x <= y.x1 && z >= y.z0 && z <= y.z1);
-const onTree = (x, z) => TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t));
-export const canLand = (c) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onTree(c.x, c.z);
+const DOORSTEP = CRUISER.radius + MORTY.radius + 0.3;
+const DOORSTEPS = [...LINKS.filter((l) => l.area === 'street'), ...LANDINGS];
+const onSomething = (x, z) =>
+  TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) ||
+  DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.kind === 'box' ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
+  DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP);
+export const canLand = (c) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z);
 
 // do the segments a-b and c-d cross?
 const crosses = (ax, az, bx, bz, [cx, cz, dx, dz]) => {
@@ -485,7 +544,8 @@ export function exitCruiser(c) {
   const spots = [0, 0.9, 1.8].flatMap((more) => dirs.map(([dx, dz]) => [c.x + dx * (gap + more), c.z + dz * (gap + more)]));
   const clear = ([x, z]) => {
     const [px, pz] = pushOut(x, z, MORTY.radius, colliders, walls);
-    return inArea('street', x, z, -MORTY.radius) && Math.hypot(px - x, pz - z) < 1e-6 && !walls.some((w) => crosses(c.x, c.z, x, z, w));
+    // (pushOut cannot tell which way to push a point exactly on a wall, so that is not clear either)
+    return inArea('street', x, z, -MORTY.radius) && Math.hypot(px - x, pz - z) < 1e-6 && !walls.some((w) => segDist(x, z, w) < 1e-6 || crosses(c.x, c.z, x, z, w));
   };
   const [x, z] = spots.find(clear) ?? pushOut(...spots[0], MORTY.radius, colliders, walls);
   return { x, z, face: Math.atan2(-fz, fx) };
