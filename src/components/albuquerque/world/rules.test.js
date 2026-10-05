@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAR, COLLIDERS, PLACES, ROADS, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, stepCar, stepHeat } from './rules';
+import { CAR, COLLIDERS, PLACES, ROADS, SENSITIVITY, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, shapeStick, stepCar, stepHeat, stepSteer } from './rules';
 
 const fresh = { served: 0, points: 0, money: 0, upgrades: [], visited: [] };
 const drive = (car, input, seconds) => {
@@ -113,6 +113,101 @@ describe('Albuquerque, the world: driving', () => {
     expect(Math.hypot(car.x, car.z)).toBeLessThanOrEqual(WORLD_RADIUS);
   });
 
+  // along Central Avenue, heading east, with room either way
+  const central = (speed) => ({ x: -150, z: 0, yaw: Math.PI / 2, speed });
+  const sideways = (car) => Math.abs(car.slip ?? 0);
+
+  it('holds its line through a corner on the road: a little slip, no slide', () => {
+    const car = drive(central(20), { throttle: 1, steer: 1 }, 0.6);
+    expect(sideways(car)).toBeGreaterThan(0);
+    expect(sideways(car)).toBeLessThan(4);
+  });
+
+  it('swings its tail out on the handbrake, and slides', () => {
+    const grip = drive(central(20), { throttle: 0, steer: 1 }, 0.6);
+    const slide = drive(central(20), { throttle: 0, steer: 1, handbrake: true }, 0.6);
+    expect(sideways(slide)).toBeGreaterThan(5);
+    expect(sideways(slide)).toBeGreaterThan(sideways(grip) * 2);
+    // and comes round further than it would have gripping
+    expect(slide.yaw).toBeGreaterThan(grip.yaw + 0.1);
+  });
+
+  it('grips again once the handbrake is let go', () => {
+    const slide = drive(central(20), { throttle: 0, steer: 1, handbrake: true }, 0.6);
+    const after = drive(slide, { throttle: 0.5, steer: 0 }, 1);
+    expect(sideways(after)).toBeLessThan(0.3);
+    expect(after.speed).toBeGreaterThan(3);
+  });
+
+  it('slows on the handbrake: more than coasting, less than the brakes', () => {
+    const coast = drive(central(20), { throttle: 0, steer: 0 }, 0.5);
+    const hand = drive(central(20), { throttle: 0, steer: 0, handbrake: true }, 0.5);
+    const brake = drive(central(20), { throttle: -1, steer: 0 }, 0.5);
+    expect(hand.speed).toBeLessThan(coast.speed - 1);
+    expect(hand.speed).toBeGreaterThan(brake.speed + 1);
+  });
+
+  it('slides more on the sand than on the road', () => {
+    const road = drive({ x: -150, z: 0, yaw: Math.PI / 2, speed: 10 }, { throttle: 1, steer: 1 }, 0.5);
+    const sand = drive({ x: 160, z: 140, yaw: Math.PI / 2, speed: 10 }, { throttle: 1, steer: 1 }, 0.5);
+    expect(sideways(sand)).toBeGreaterThan(sideways(road) * 1.3);
+  });
+
+  it('scrapes along a wall it meets at a shallow angle, instead of stopping dead', () => {
+    // the Crossroads Motel's long south wall, met at about eleven degrees
+    const motel = COLLIDERS.find((c) => c.id === 'motel');
+    const south = motel.z + motel.d / 2;
+    let car = { x: motel.x - motel.w / 2 + 2, z: south + CAR.radius + 0.6, yaw: Math.PI / 2 + 0.2, speed: 10 };
+    const from = car.x;
+    let hardest = 0;
+    for (let i = 0; i < 60; i++) {
+      const r = stepCar(car, { throttle: 1, steer: 0 }, 1 / 60);
+      car = r.car;
+      hardest = Math.max(hardest, r.bump);
+    }
+    expect(hardest).toBeGreaterThan(0); // it did touch
+    expect(hardest).toBeLessThan(4); // a scrape, not a crash
+    expect(car.x - from).toBeGreaterThan(6); // and kept going along it
+    expect(car.z).toBeGreaterThanOrEqual(south + CAR.radius - 1e-6); // outside the wall
+  });
+
+  it('turns harder when asked to (the steering setting)', () => {
+    const soft = drive(central(12), { throttle: 0.5, steer: 1, turn: SENSITIVITY.relaxed.turn }, 0.5);
+    const sharp = drive(central(12), { throttle: 0.5, steer: 1, turn: SENSITIVITY.sharp.turn }, 0.5);
+    expect(sharp.yaw).toBeGreaterThan(soft.yaw + 0.05);
+  });
+
+  it('drives a car saved before it could slide', () => {
+    const r = stepCar({ x: 0, z: 0, yaw: 0, speed: 8 }, { throttle: 1, steer: 0.5 }, 1 / 60).car;
+    for (const v of [r.x, r.z, r.yaw, r.speed, r.slip]) expect(Number.isFinite(v)).toBe(true);
+  });
+
+  it('stays in hand whatever is done to it: finite, inside the fence, out of the walls, no faster than it can go', () => {
+    let seed = 7;
+    const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    let car = { ...SPAWN, speed: 0 };
+    let input = { throttle: 1, steer: 0, handbrake: false };
+    const worst = { finite: true, out: 0, fast: 0, wall: Infinity, slid: 0, bumped: 0 };
+    for (let i = 0; i < 60 * 240; i++) {
+      if (i % 20 === 0) input = { throttle: rand() < 0.75 ? 1 : rand() < 0.5 ? -1 : 0, steer: Math.round(rand() * 2 - 1), handbrake: rand() < 0.25 };
+      const r = stepCar(car, input, i % 7 === 0 ? 0.05 : 1 / 60);
+      car = r.car;
+      worst.finite &&= Number.isFinite(car.x + car.z + car.yaw + car.speed + car.slip + r.bump);
+      worst.out = Math.max(worst.out, Math.hypot(car.x, car.z));
+      worst.fast = Math.max(worst.fast, Math.hypot(car.speed, car.slip));
+      worst.slid = Math.max(worst.slid, Math.abs(car.slip));
+      worst.bumped = Math.max(worst.bumped, r.bump);
+      for (const c of COLLIDERS) worst.wall = Math.min(worst.wall, Math.hypot(Math.max(Math.abs(car.x - c.x) - c.w / 2, 0), Math.max(Math.abs(car.z - c.z) - c.d / 2, 0)));
+    }
+    expect(worst.finite).toBe(true);
+    expect(worst.out).toBeLessThanOrEqual(WORLD_RADIUS + 1e-6);
+    expect(worst.fast).toBeLessThanOrEqual(CAR.top + 1e-6);
+    expect(worst.wall).toBeGreaterThan(CAR.radius - 0.05);
+    // (and the four minutes did have slides and knocks in them)
+    expect(worst.slid).toBeGreaterThan(3);
+    expect(worst.bumped).toBeGreaterThan(3);
+  });
+
   it('knows when you’ve pulled up at a place', () => {
     const rv = PLACES.find((p) => p.id === 'rv');
     expect(nearPlace(rv.door.x, rv.door.z).id).toBe('rv');
@@ -165,6 +260,51 @@ describe('Blue Sky', () => {
     expect(crystalAt(c.x + 1, c.z - 1)?.id).toBe(c.id);
     expect(crystalAt(c.x + 9, c.z)).toBe(null);
     expect(crystalAt(c.x, c.z, [c.id])).toBe(null);
+  });
+});
+
+describe('Albuquerque, the world: the wheel', () => {
+  const turn = (from, want, seconds, sens) => {
+    let s = from;
+    for (let t = 0; t < seconds - 1e-9; t += 1 / 120) s = stepSteer(s, want, 1 / 120, sens);
+    return s;
+  };
+
+  it('makes a tap a small correction, and a hold full lock within a quarter of a second', () => {
+    const tap = turn(0, 1, 0.05);
+    expect(tap).toBeGreaterThan(0.15);
+    expect(tap).toBeLessThan(0.5);
+    expect(turn(0, 1, 0.25)).toBe(1);
+  });
+
+  it('comes back to centre faster than it turned in, and crosses over faster still', () => {
+    const turnedIn = turn(0, 1, 0.06);
+    const letGo = 1 - turn(1, 0, 0.06);
+    const crossed = 1 - turn(1, -1, 0.06);
+    expect(letGo).toBeGreaterThan(turnedIn * 1.2);
+    expect(crossed).toBeGreaterThan(letGo * 1.2);
+  });
+
+  it('never overshoots where it’s wanted, and stops at full lock', () => {
+    expect(turn(0, 0.3, 1)).toBeCloseTo(0.3, 9);
+    expect(turn(0.3, 0, 1)).toBe(0);
+    expect(stepSteer(0, 5, 10)).toBe(1);
+    expect(stepSteer(0, -5, 10)).toBe(-1);
+  });
+
+  it('answers faster with a sharper setting', () => {
+    expect(turn(0, 1, 0.05, SENSITIVITY.sharp.rate)).toBeGreaterThan(turn(0, 1, 0.05, SENSITIVITY.relaxed.rate) * 1.3);
+  });
+
+  it('reads a stick finely near its centre and fully at its edge', () => {
+    expect(shapeStick(0)).toBe(0);
+    expect(shapeStick(1)).toBe(1);
+    expect(shapeStick(-1)).toBe(-1);
+    expect(shapeStick(0.5)).toBeLessThan(0.45);
+    expect(shapeStick(0.5)).toBeGreaterThan(0.2);
+    expect(shapeStick(-0.5)).toBe(-shapeStick(0.5));
+    expect(shapeStick(3)).toBe(1); // (two inputs at once)
+    for (let x = 0; x < 1; x += 0.05) expect(shapeStick(x + 0.05)).toBeGreaterThan(shapeStick(x));
   });
 });
 

@@ -116,8 +116,41 @@ export const COLLIDERS = [...PLACES, ...LANDMARKS, ...HOUSES].map(box).concat(TO
 // Walt's car pulls out of his driveway, facing up the street.
 export const SPAWN = { x: -95, z: -62, yaw: Math.PI / 2 };
 
-// The Aztek: m/s and seconds.
-export const CAR = { radius: 1.7, top: 24, dirt: 16, sand: 11, reverse: 7, accel: 11, brake: 26, coast: 4, turn: 1.8 };
+// The Aztek: m/s and seconds. `bog` is how fast speed it can't hold comes
+// off (running wide onto the sand slows it over a second, it doesn't stop
+// it). `turn` is how fast it comes round at full lock
+// (rad/s, before speed takes its share); `grip`, `loose` and `soft` are how
+// quickly its tyres kill a sideways slide on tarmac, dirt and sand (1/s);
+// `hand` is the handbrake: how hard it slows the car, what's left of the
+// rear tyres' grip while it's on, and how much faster the tail comes round;
+// `carry` is how much of a slide's speed comes back as it straightens;
+// `bounce` and `scrape` are what a wall gives back and takes (1/s) along it.
+export const CAR = { radius: 1.7, top: 24, dirt: 16, sand: 11, reverse: 7, accel: 11, brake: 26, coast: 4, bog: 12, turn: 2.1, grip: 8, loose: 4.5, soft: 3.2, hand: { brake: 9, grip: 0.2, turn: 1.4 }, carry: 0.25, bounce: 0.2, scrape: 1.6 };
+
+// The wheel. A key is all or nothing, so the wheel is eased toward it at a
+// steady rate (of full lock, a second): `in` turning away from centre, `out`
+// coming back when the key's let go, `over` crossing from one lock to the
+// other; a tap is a nudge and a hold is full lock in about a sixth of a
+// second. A stick already says how far, so it's only bent (`expo`) to be
+// finer near its centre.
+export const STEER = { in: 6, out: 9, over: 14, expo: 1.6 };
+// The steering setting: how quickly the wheel answers, and how hard the car
+// turns at full lock.
+export const SENSITIVITY = {
+  relaxed: { name: 'Relaxed', rate: 0.7, turn: 0.86 },
+  normal: { name: 'Normal', rate: 1, turn: 1 },
+  sharp: { name: 'Sharp', rate: 1.45, turn: 1.16 },
+};
+const unit = (v) => Math.max(-1, Math.min(1, v));
+// One step of the wheel, from where it is toward where it's wanted (−1…1).
+export function stepSteer(now, want, dt, rate = 1) {
+  const to = unit(want);
+  const rps = to === 0 ? STEER.out : now * to < 0 ? STEER.over : STEER.in;
+  const most = rps * rate * dt;
+  return unit(now + Math.max(-most, Math.min(most, to - now)));
+}
+// A stick's (or a tilt's) reading as a steering wish: finer near the middle.
+export const shapeStick = (v) => Math.sign(v) * Math.min(1, Math.abs(v)) ** STEER.expo;
 
 const toSegment = (x, z, a, b) => {
   const dx = b.x - a.x;
@@ -129,24 +162,66 @@ const toSegment = (x, z, a, b) => {
 const roadAt = (x, z, roads = ROADS) => roads.find((r) => !r.dirt && toSegment(x, z, r.a, r.b) <= r.w / 2 + 0.01) ?? roads.find((r) => toSegment(x, z, r.a, r.b) <= r.w / 2 + 0.01) ?? null;
 export const onRoad = (x, z, roads = ROADS) => roadAt(x, z, roads) !== null;
 
-// One step of driving. input: { throttle -1..1, steer -1..1 }. Returns the
-// car and how hard it bumped into something (m/s, 0 if it didn't).
-export function stepCar(car, { throttle = 0, steer = 0 }, dt) {
+// One step of driving. input: { throttle −1…1, steer −1…1, handbrake,
+// turn (the steering setting's, 1 as it comes) }. The car has a speed along
+// its nose and a `slip` across it (toward the side its nose swings to when
+// its heading grows): turning swings the nose and leaves the car going the
+// way it was, and the tyres pull the two back together, quickly on tarmac,
+// slowly on dirt and sand, hardly at all with the handbrake on, which is a
+// slide. Returns the car and how hard it hit something (m/s into it, 0 if
+// it didn't): a wall met square stops it, one met at a slant is scraped along.
+export function stepCar(car, { throttle = 0, steer = 0, handbrake = false, turn = 1 }, dt) {
   const road = roadAt(car.x, car.z);
   const top = road ? (road.dirt ? CAR.dirt : CAR.top) : CAR.sand;
   let speed = car.speed;
+  let slip = car.slip ?? 0;
   if (throttle > 0) speed += (speed < 0 ? CAR.brake : CAR.accel) * throttle * dt;
   else if (throttle < 0) speed += (speed > 0 ? CAR.brake : CAR.accel * 0.6) * throttle * dt;
   else speed -= Math.sign(speed) * Math.min(Math.abs(speed), CAR.coast * dt);
+  if (handbrake) speed -= Math.sign(speed) * Math.min(Math.abs(speed), CAR.hand.brake * dt);
   // over the limit (onto the sand at speed), it bleeds off rather than stops
-  if (speed > top) speed = Math.max(top, speed - CAR.brake * dt);
+  if (speed > top) speed = Math.max(top, speed - CAR.bog * dt);
   speed = Math.max(-CAR.reverse, speed);
   // it turns as it rolls, and less at speed
-  const grip = Math.min(1, Math.abs(speed) / 4) / (1 + Math.abs(speed) / 30);
-  const yaw = car.yaw + steer * CAR.turn * grip * Math.sign(speed) * dt;
-  let x = car.x + Math.sin(yaw) * speed * dt;
-  let z = car.z + Math.cos(yaw) * speed * dt;
+  const rolling = Math.min(1, Math.abs(speed) / 4) / (1 + Math.abs(speed) / 22);
+  const swing = unit(steer) * CAR.turn * turn * (handbrake ? CAR.hand.turn : 1) * rolling * Math.sign(speed) * dt;
+  const yaw = car.yaw + swing;
+  // the nose has swung; the car is still going where it was
+  const cos = Math.cos(swing);
+  const sin = Math.sin(swing);
+  [speed, slip] = [speed * cos + slip * sin, slip * cos - speed * sin];
+  // the tyres bite: the slide dies away, and some of it comes back as speed
+  const bite = (road ? (road.dirt ? CAR.loose : CAR.grip) : CAR.soft) * (handbrake ? CAR.hand.grip : 1);
+  const kept = slip * Math.exp(-bite * dt);
+  speed += Math.sign(speed) * (Math.abs(slip) - Math.abs(kept)) * CAR.carry;
+  slip = kept;
+  // (all told it goes no faster than the road allows, sideways included)
+  const going = Math.hypot(speed, slip);
+  if (going > top && speed > 0) {
+    const most = Math.max(top, going - CAR.bog * dt);
+    speed *= most / going;
+    slip *= most / going;
+  }
+  // over the ground: along the nose, and across it
+  const hx = Math.sin(yaw);
+  const hz = Math.cos(yaw);
+  let vx = hx * speed + hz * slip;
+  let vz = hz * speed - hx * slip;
+  let x = car.x + vx * dt;
+  let z = car.z + vz * dt;
   let bump = 0;
+  // into something whose face looks back along (nx, nz): what was going
+  // into it comes back a little, what was going along it is scraped
+  const hit = (nx, nz, bounce) => {
+    const into = -(vx * nx + vz * nz);
+    if (into <= 0) return;
+    bump = Math.max(bump, into);
+    vx += nx * into;
+    vz += nz * into;
+    const drag = Math.exp(-CAR.scrape * dt);
+    vx = vx * drag + nx * into * bounce;
+    vz = vz * drag + nz * into * bounce;
+  };
   // the buildings: the car is a circle, pushed out of any footprint it's in
   for (const c of COLLIDERS) {
     const px = Math.max(c.x - c.w / 2, Math.min(x, c.x + c.w / 2));
@@ -158,23 +233,27 @@ export function stepCar(car, { throttle = 0, steer = 0 }, dt) {
     if (d > 1e-6) {
       x = px + (dx / d) * CAR.radius;
       z = pz + (dz / d) * CAR.radius;
+      hit(dx / d, dz / d, CAR.bounce);
     } else {
       // inside it: out the way it came
       x = car.x;
       z = car.z;
+      const v = Math.hypot(vx, vz);
+      if (v > 1e-6) hit(-vx / v, -vz / v, CAR.bounce);
     }
-    bump = Math.max(bump, Math.abs(speed));
-    speed *= -0.2;
   }
-  // the edge of the world
+  // the edge of the world: the fence holds, and lets you run along it
   const r = Math.hypot(x, z);
   if (r > WORLD_RADIUS) {
     x *= WORLD_RADIUS / r;
     z *= WORLD_RADIUS / r;
-    bump = Math.max(bump, Math.abs(speed));
-    speed *= 0.3;
+    hit(-x / WORLD_RADIUS, -z / WORLD_RADIUS, 0);
   }
-  return { car: { x, z, yaw, speed }, bump };
+  if (bump > 0) {
+    speed = vx * hx + vz * hz;
+    slip = vx * hz - vz * hx;
+  }
+  return { car: { x, z, yaw, speed, slip }, bump };
 }
 
 // The place you've pulled up at, if any.

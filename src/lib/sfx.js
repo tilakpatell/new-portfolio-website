@@ -1659,6 +1659,31 @@ export const alarm = once('alarm', alarmRaw);
 export const buzz = once('buzz', buzzRaw);
 export const decode = once('decode', decodeRaw);
 export const ghanta = once('ghanta', ghantaRaw);
+// Tyres letting go: a short, breathy squeal, two narrow bands of noise close
+// together sliding down as the slide scrubs off its speed.
+function screechRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.2, 0.25);
+  for (const [f0, f1, level] of [
+    [1750, 1350, 0.5],
+    [2300, 1800, 0.3],
+  ]) {
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 14;
+    env(f.frequency, t, [[0, f0], [0.6, f1]]);
+    const g = ac.createGain();
+    env(g.gain, t, [[0, 0.0001], [0.05, level, 'lin'], [0.35, level * 0.7, 'lin'], [0.65, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(t);
+    n.stop(t + 0.7);
+  }
+  return 0.7;
+}
+
 // these two fire faster than once()'s quarter second allows
 const every = (ms, fn) => {
   let last = -1e9;
@@ -1678,3 +1703,4 @@ export const warn = every(300, warnRaw);
 export const shatter = once('shatter', shatterRaw);
 export const creak = once('creak', creakRaw);
 export const thunk = every(60, thunkRaw);
+export const screech = every(900, screechRaw);

@@ -28,6 +28,9 @@ export function readPad() {
     rb: b(5),
     lt: b(6),
     rt: b(7),
+    // how far each trigger is pulled, 0…1 (1 or 0 on a pad whose triggers only click)
+    ltv: p.buttons[6]?.value ?? 0,
+    rtv: p.buttons[7]?.value ?? 0,
     start: b(9),
     left: b(14),
     right: b(15),

@@ -11,11 +11,15 @@ import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { COLLIDERS, CRYSTALS, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, onRoad, progress, startRun, stepCar, stepHeat, stepRun, timeName } from './rules';
+import { COLLIDERS, CRYSTALS, DROPS, PLACES, ROADS, SENSITIVITY, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, onRoad, progress, shapeStick, startRun, stepCar, stepHeat, stepRun, stepSteer, timeName } from './rules';
 import './world.css';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
-// places as they open. The rules are in ./rules.js, the drawing in
+// places as they open. It drives like a car in a chase: the wheel answers a
+// tap with a nudge and a hold with full lock, Space (X or RB on a pad, the
+// button by the stick on a phone) is the handbrake that swings the tail out
+// into a slide, a wall met at a slant is scraped along, and the steering
+// setting (C) says how sharp all of that is. The rules are in ./rules.js, the drawing in
 // ./scene.js; this is the wheel, the HUD and the doors. Each place opens over
 // the page (its game, or Walt's house, or Saul's office); leave and you're
 // back in the car at its door. Without 3D, the places are a grid of cards.
@@ -42,6 +46,12 @@ const readSnap = () => {
 };
 const ENTER_LINE = { rv: () => clip('jesseRing', { when: 0.3 }), saul: () => clip('saulHi', { when: 0.3 }), pollos: () => clip('gusHello', { when: 0.4 }) };
 const PIZZAS = 'tp-abq-pizzas'; // how many are on Walt's roof
+const STEERING = 'tp-abq-steering'; // the steering setting: relaxed, normal or sharp
+const SETTINGS = Object.keys(SENSITIVITY);
+const readSteering = () => {
+  const v = local.get(STEERING, 'normal');
+  return SETTINGS.includes(v) ? v : 'normal';
+};
 // the Aztek's horn: two reedy notes
 function honk() {
   const ac = audioContext();
@@ -67,6 +77,7 @@ const BOUND = WORLD_RADIUS + 20; // (how far out a driver's step can be: the fen
 // where you are, for the other drivers (towns/travellers.js's step)
 const stepOf = (car, speed = car.speed) => ({ x: car.x, z: car.z, face: Math.atan2(Math.sin(car.yaw), Math.cos(car.yaw)), speed: Math.abs(speed) });
 const DRIVE = new Set(Object.values(KEYS).flat().concat(' '));
+const ASPHALT = ROADS.filter((r) => !r.dirt); // (the tarmac: no dust off it)
 
 export default function AbqWorld() {
   const three = use3D();
@@ -155,8 +166,16 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   if (!sim.current) {
     const parked = local.get(PARKED, null);
     const ok = parked && Number.isFinite(parked.x) && Math.hypot(parked.x, parked.z) < WORLD_RADIUS;
-    sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id };
+    sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0, slip: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, steering: readSteering(), frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id };
   }
+  const [steering, setSteering] = useState(() => sim.current.steering);
+  // the steering setting, on to the next (kept between visits)
+  const nextSteering = useCallback(() => {
+    const to = SETTINGS[(SETTINGS.indexOf(sim.current.steering) + 1) % SETTINGS.length];
+    sim.current.steering = to;
+    local.set(STEERING, to);
+    setSteering(to);
+  }, []);
   const { unlock } = useAchievements();
   // the other drivers online, as ghosts (towns/useTravellers)
   const trav = useTravellers('abq', gl === 'on', { bound: BOUND });
@@ -289,10 +308,14 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       if (e.key === 'r' || e.key === 'R') runDelivery();
       if (e.key === 'p' || e.key === 'P') throwPizza();
       if (e.key === 'h' || e.key === 'H') honk();
+      if (e.key === 'c' || e.key === 'C') nextSteering();
       if ((e.key === 'e' || e.key === 'E') && !near) washCar();
     };
     const up = (e) => s.keys.delete(e.key);
-    const blur = () => s.keys.clear();
+    const blur = () => {
+      s.keys.clear();
+      s.hand = false;
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
@@ -302,7 +325,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       window.removeEventListener('blur', blur);
       s.keys.clear();
     };
-  }, [live, near, enter, nextTime, runDelivery, throwPizza, washCar]);
+  }, [live, near, enter, nextTime, nextSteering, runDelivery, throwPizza, washCar]);
 
   useFrameLoop((ms) => {
     const a = api.current;
@@ -312,26 +335,36 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const k = s.keys;
     const held = (name) => KEYS[name].some((key) => k.has(key));
     const pad = readPad();
-    let throttle = (held('up') ? 1 : 0) - (held('down') || k.has(' ') ? 1 : 0) - s.stick.y;
-    let steer = (held('left') ? 1 : 0) - (held('right') ? 1 : 0) - s.stick.x;
+    // the pedals, the wheel and the handbrake, from whatever's being used:
+    // keys are all or nothing (rules' stepSteer eases the wheel to them), a
+    // stick or a trigger says how far (bent to be finer near its centre)
+    let throttle = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
+    let steer = (held('left') ? 1 : 0) - (held('right') ? 1 : 0) - shapeStick(s.stick.x);
+    let handbrake = k.has(' ') || s.hand;
     if (pad) {
-      throttle += (pad.rt ? 1 : 0) - (pad.lt ? 1 : 0) - pad.ly;
-      steer -= pad.lx;
+      throttle += Math.max(pad.rtv, pad.rt ? 1 : 0) - Math.max(pad.ltv, pad.lt ? 1 : 0) - pad.ly;
+      steer -= shapeStick(pad.lx);
+      handbrake ||= pad.x || pad.rb;
       if (pad.a && !s.padA && s.near) enter(s.near);
       s.padA = pad.a;
     }
     throttle = Math.max(-1, Math.min(1, throttle));
-    s.steer += (Math.max(-1, Math.min(1, steer)) - s.steer) * Math.min(1, dt * 10);
-    const { car, bump } = stepCar(s.car, { throttle, steer: s.steer }, dt);
+    const feel = SENSITIVITY[s.steering] ?? SENSITIVITY.normal;
+    s.steer = stepSteer(s.steer, steer, dt, feel.rate);
+    const { car, bump } = stepCar(s.car, { throttle, steer: s.steer, handbrake, turn: feel.turn }, dt);
     s.car = car;
     if (Math.abs(throttle) > 0.1) s.moved = true;
+    // a slide worth hearing: the tyres, once as it starts
+    const sliding = Math.abs(car.slip) > 4.5 && Math.abs(car.speed) + Math.abs(car.slip) > 9;
+    if (sliding && !s.sliding) import('../../../lib/sfx').then((x) => x.screech()).catch(() => {});
+    s.sliding = sliding;
     s.t += dt;
     const hank = hankAt(s.t);
     const h = stepHeat(s.heat, Math.hypot(hank.x - car.x, hank.z - car.z), dt);
     s.heat = h.heat;
     if (h.caught) {
       s.heat = 0;
-      s.car = { ...SPAWN, speed: 0 };
+      s.car = { ...SPAWN, speed: 0, slip: 0 };
       setToast({ text: s.run ? 'Hank pulled you over, and found the load. Back home.' : 'Hank pulled you over. Back home, and keep your distance.', at: Date.now(), bad: true });
       if (s.run) {
         s.run = null;
@@ -381,13 +414,13 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         setClock(now);
       }
     }
-    const asphalt = onRoad(car.x, car.z, ROADS.filter((r) => !r.dirt));
+    const asphalt = onRoad(car.x, car.z, ASPHALT);
     // the other drivers: where you are to them, and where they are
     const tv = travRef.current;
     tv?.pose(stepOf(s.car));
     s.others = tv ? tv.list() : [];
     try {
-      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, onRoad: onRoad(car.x, car.z), asphalt, bump, travellers: s.others }, ms);
+      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, handbrake, onRoad: onRoad(car.x, car.z), asphalt, bump, travellers: s.others }, ms);
     } catch {
       a.dispose();
       api.current = null;
@@ -429,6 +462,20 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
   };
 
+  // the handbrake, under the other thumb: on while it's held
+  const onHand = (e) => {
+    const on = e.type === 'pointerdown';
+    sim.current.hand = on;
+    e.currentTarget.toggleAttribute('data-on', on);
+    if (!on) return;
+    audioContext();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId); // (a thumb that slides off it is still holding it)
+    } catch {
+      /* no such pointer any more */
+    }
+  };
+
   const here = near ? prog.places.find((p) => p.id === near) : null;
   const travel = (p) => {
     const s = sim.current;
@@ -437,7 +484,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const ox = p.door.x - p.at.x;
     const oz = p.door.z - p.at.z;
     const len = Math.hypot(ox, oz) || 1;
-    s.car = { x: p.door.x + (ox / len) * 2, z: p.door.z + (oz / len) * 2, yaw: Math.atan2(ox, oz) + Math.PI / 2, speed: 0 };
+    s.car = { x: p.door.x + (ox / len) * 2, z: p.door.z + (oz / len) * 2, yaw: Math.atan2(ox, oz) + Math.PI / 2, speed: 0, slip: 0 };
     s.heat = 0;
     api.current?.settle();
     setList(false);
@@ -525,14 +572,22 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive.' : 'W A S D or the arrows to drive. Space brakes. E goes in. R runs a delivery. H is the horn.'}</p>}
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide for the handbrake.' : 'W A S D or the arrows to drive. Space is the handbrake: pull it into a corner and the tail comes round. E goes in. R runs a delivery. H is the horn.'}</p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (
-          <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
-            <span />
+          <div className="abq-pads">
+            <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
+              <span />
+            </div>
+            <button type="button" className="abq-hand" onPointerDown={onHand} onPointerUp={onHand} onPointerCancel={onHand} onContextMenu={(e) => e.preventDefault()} aria-label="Handbrake: hold it into a corner to slide">
+              Slide
+            </button>
           </div>
         )}
+        <button type="button" className="btn btn-ghost abq-places-btn" onClick={nextSteering} aria-label={`Steering: ${SENSITIVITY[steering].name}. Change it`}>
+          Steering · {SENSITIVITY[steering].name} {!touch && <kbd>C</kbd>}
+        </button>
         <button type="button" className="btn btn-ghost abq-places-btn abq-clock-btn" onClick={runDelivery} disabled={!!hud.run}>
           {hud.run ? 'On a run' : 'Run a delivery'} {!touch && !hud.run && <kbd>R</kbd>}
         </button>
