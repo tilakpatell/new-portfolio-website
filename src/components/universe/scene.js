@@ -6,8 +6,8 @@
 // Two ways to get round it:
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
-// - With a ship (Rick's cruiser, Luke's X-wing or the Falcon), you fly it:
-//   W A S D or the arrows, R and C to climb and dive, Space to boost, F to
+// - With a ship (Rick's cruiser, Luke's X-wing, the Falcon or Walt and
+//   Jesse's RV), you fly it: W A S D or the arrows, R and C to climb and dive, Space to boost, F to
 //   fire, or drag on the map like a stick (with buttons to climb and dive).
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
@@ -47,13 +47,14 @@ const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
-const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
+const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b', rv: '#5cc8ff' };
 // each ship's exhaust (trail.js): its colour, its white-hot core, how wide
 // and how long it is, and the cruiser's portal-plasma ripple
 const PLUME = {
   cruiser: { color: '#4dff3a', core: '#e6ffd2', width: 0.036, life: 0.42, length: 0.32, wobble: 1.3, sparks: 40 },
   falcon: { color: '#5cbcff', core: '#eef8ff', width: 0.034, life: 0.45, length: 0.36, wobble: 0 },
   xwing: { color: '#ff6a36', core: '#fff0dc', width: 0.017, life: 0.38, length: 0.3, wobble: 0 },
+  rv: { color: '#ff9a3c', core: '#fff0d8', width: 0.02, life: 0.4, length: 0.3, wobble: 0 },
 };
 const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the

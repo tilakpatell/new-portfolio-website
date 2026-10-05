@@ -5,7 +5,7 @@ import { audioContext } from '../lib/audio';
 import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { crashPlan, enterPlan } from '../components/universe/flight';
-import { crewById, parseShip } from '../components/universe/crews';
+import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { START_KEY } from './Front';
 import { portalSound } from '../components/universe/sounds';
 import UniverseMap from '../components/universe/UniverseMap';
@@ -13,7 +13,6 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 
-const SHIP_KEY = 'tp-universe-ship';
 const PORTAL = '#97ce4c';
 
 // The universe map: every fandom on the site is a planet, and you travel
@@ -37,6 +36,18 @@ export default function Universe({ ask = false }) {
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
+  // ship it was, with no question first
+  useEffect(() => {
+    const arrive = (e) => {
+      const id = parseShip(e.detail?.ship);
+      if (id) setShip(id);
+      setAsking(false);
+    };
+    window.addEventListener('tp:arrive', arrive);
+    return () => window.removeEventListener('tp:arrive', arrive);
+  }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
 
