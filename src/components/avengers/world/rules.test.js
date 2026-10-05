@@ -49,8 +49,8 @@ describe('The compound, the world: the map', () => {
     expect(walkable(START.x, START.z)).toBe(true);
   });
 
-  it('has a door for each of the seven games, each on the lawn and clear of everything', () => {
-    expect(PLACES.map((p) => p.id)).toEqual(['stark', 'thor', 'cap', 'hawkeye', 'widow', 'banner', 'vault']);
+  it('has a door for each of the eight games, each on the lawn and clear of everything', () => {
+    expect(PLACES.map((p) => p.id)).toEqual(['stark', 'thor', 'cap', 'hawkeye', 'widow', 'banner', 'spidey', 'vault']);
     for (const p of PLACES) {
       expect(inPoly(p.x, p.z, LAWN_W), p.id).toBe(true);
       expect(walkable(p.x, p.z), p.id).toBe(true);
@@ -72,6 +72,7 @@ describe('The compound, the world: the map', () => {
     expect(near('prow', 'widow')).toBe(true);
     expect(near('lab', 'banner')).toBe(true);
     expect(near('hangar', 'vault')).toBe(true);
+    expect(near('gate', 'spidey')).toBe(true);
   });
 
   it('keeps the doors apart, so only one is ever offered', () => {
@@ -205,7 +206,7 @@ describe('The compound, the world: doors and people', () => {
     }
   });
 
-  it('has someone to talk to by four of the doors, with new lines once their game is won', () => {
+  it('has someone to talk to by five of the doors, with new lines once their game is won', () => {
     for (const c of CAST) expect(nearCast(c.x + 1, c.z)?.id).toBe(c.id);
     const thor = CAST.find((c) => c.id === 'thor');
     expect(linesFor(thor, [])).toBe(thor.lines);
@@ -243,6 +244,8 @@ describe('The compound, the world: the heist', () => {
     expect(progress(['space']).objective).toMatch(/portal/);
     const all = progress(['power', 'reality', 'mind', 'soul-clint', 'soul-natasha', 'soul', 'time', 'space']);
     expect(all.finished).toBe(true);
+    // (Spider-Man's gate has a game but no stone, so it's never in the way)
+    expect(all.places.find((p) => p.id === 'spidey').done).toBe(false);
     expect(all.stones).toBe(6);
     expect(all.next).toBe(null);
     expect(all.objective).toMatch(/Thanos/);

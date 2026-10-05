@@ -71,8 +71,9 @@ const PAGES = {
   '/avengers': {
     title: 'Avengers HQ',
     tips: [
-      ['The map', 'Scroll to walk the compound, or pick a pin on the map (or a name under it). On a wide screen the map beside the tour shows where you are.'],
-      ['The buildings', 'Power up Stark’s reactor. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Throw Cap’s shield. Click anywhere on Hawkeye’s range. Tap Widow’s black bars. Make Banner angry three times.'],
+      ['The compound', 'You are Cap. W A S D or the arrows walk, Shift runs, Space jumps, and dragging looks round (on a phone, the stick walks; push it all the way to run). Walk up to a door and press E (or the button) to go in: each building’s game opens over the page, and Escape or Back to the compound brings you out at its door. M lists the buildings, with Go there for each. Thor, Natasha, the Hulk and a training bot have something to say if you walk up to them.'],
+      ['The stones', 'Win a building’s game and its Infinity Stone hangs over the door (Clint’s range and Natasha’s operations room each give half the Soul Stone). The Space Stone, from the hangar, opens a portal over the helipad: walk under it to Titan.'],
+      ['Without 3D', 'The compound is drawn from the air, and its pins open the games, each in its simple version: power up Stark’s reactor, hold to lift Mjolnir (you are worthy once you have found ten easter eggs), throw Cap’s shield, click Hawkeye’s range, tap Widow’s black bars, make Banner angry three times.'],
       ['The gate: Thwip!', 'Spider-Man, late for school. Hold Space (or the mouse, or a finger) to shoot a web at the wall ahead and swing; let go to fly. Let go on the upswing, past where the web caught, for a perfect release: faster, and a flip. A and D steer across the avenue (on a touch screen, hold on the left or right); W reels the web in to climb. Nothing to swing from over the cross streets, so carry your speed over them. Grab Peter’s backpacks on the way, beat the bell, and keep off the street: the traffic gets three chances.'],
       ['The hangar', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
     ],

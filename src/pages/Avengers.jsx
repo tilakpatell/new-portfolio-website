@@ -1,25 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import ArcReactor from '../components/avengers/ArcReactor';
-import Mjolnir from '../components/avengers/Mjolnir';
-import Compound from '../components/avengers/Compound';
-import HQBackdrop, { AvengersMark } from '../components/avengers/HQBackdrop';
-import ShieldThrow from '../components/avengers/ShieldThrow';
-import Range from '../components/avengers/Range';
-import Dossier from '../components/avengers/Dossier';
-import HulkLab from '../components/avengers/HulkLab';
-import RepulsorRange from '../components/avengers/repulsor/RepulsorRange';
-import TrickShot from '../components/avengers/trickshot/TrickShot';
-import HoldTheLawn from '../components/avengers/lawn/HoldTheLawn';
-import SmashRun from '../components/avengers/smash/SmashRun';
-import Ricochet from '../components/avengers/ricochet/Ricochet';
-import Infiltration from '../components/avengers/widow/Infiltration';
+import HQBackdrop from '../components/avengers/HQBackdrop';
+import CompoundWorld from '../components/avengers/world/CompoundWorld';
 import Titan from '../components/avengers/titan/Titan';
-import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
+import { earnedStones, useStones } from '../components/avengers/hq/stones';
 import { useAchievements } from '../components/Achievements';
-import TesseractRun from '../components/avengers/tesseract/TesseractRun';
-import Thwip from '../components/avengers/thwip/Thwip';
-import WebShooter from '../components/avengers/WebShooter';
 import ModelCredits from '../components/ModelCredits';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
@@ -34,38 +19,6 @@ import { jumpTo } from '../lib/anchors';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 
 const sfx = () => import('../lib/sfx');
-
-// The tour of the compound, building by building: scrolling down the page
-// walks it, and the map beside it shows where you are. It ends in the hangar,
-// where the Tesseract is kept.
-const FLOORS = [
-  { id: 'stark', short: 'Workshop', where: 'Main building · glass wing', title: 'Tony Stark’s workshop', text: 'Where the suits get built and tested. Out back is the test field, and Ultron’s drones are coming over the trees.' },
-  { id: 'thor', short: 'The lawn', where: 'Out front', title: 'Thor', text: 'Mjolnir waits in a crater on the terrace, for someone worthy. Lift it, because the Chitauri are coming across the lawn in the rain.' },
-  { id: 'cap', short: 'Training', where: 'Training center', title: 'Captain America', text: 'The training center by the river: twelve rooms of training bots, and a shield that bounces off steel. It always comes back.' },
-  { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
-  { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. On the holotable: a HYDRA facility, eight levels deep, and her file at the bottom of it. Plan her way in a move at a time; every move she makes, the guards make one too. Each level cleared declassifies a line of the file.' },
-  { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him. Push him anyway: it’s 2012, the portal is open over Stark Tower, and Midtown is full of Chitauri.' },
-  { id: 'spidey', short: 'The gate', where: 'The front gate', title: 'Spider-Man', text: 'Happy dropped the kid off here. Inside, Tony had a new suit and a room full of reporters waiting; Peter turned both down and went back to Queens. Now he’s late for school, two kilometres away, and the quickest way there is between the buildings.' },
-  { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. The Tesseract has to come home to it, slung in its case under a Quinjet: over the woods, under the gantry, over the ridge and, with a storm coming in, through the hangar doors. Set it down gently and the Space Stone opens a hole in the sky, as it did over New York.' },
-];
-
-const SPOT_IDS = FLOORS.map((f) => f.id);
-
-// which stone each building gives up (Clint's and Natasha's halves of Soul)
-const FLOOR_STONE = { stark: 'power', thor: 'reality', cap: 'mind', hawkeye: 'soul-clint', widow: 'soul-natasha', banner: 'time', vault: 'space' };
-const stoneOf = (floorId) => {
-  const id = FLOOR_STONE[floorId];
-  if (!id || !hasEarned(id)) return null;
-  return STONES.find((s) => s.id === (id.startsWith('soul') ? 'soul' : id)) ?? null;
-};
-const SPOT_TITLES = FLOORS.map((f, i) => `${i + 1}. ${f.title}`);
-
-const FRIDAY = [
-  'Reactor on standby, boss.',
-  'Reactor online. All systems green.',
-  'Output at 200 percent. The suit’s ready when you are.',
-  'Output at 400 percent. I’d advise against going any higher, boss.',
-];
 
 // Where each stone turned up before Thanos came for it.
 const WHERE = {
@@ -105,37 +58,17 @@ const ON_DISPLAY = [
 ];
 const SCENES = ['marvelAssemble', 'marvelGroot', 'snap'];
 
-function Floor({ i, floor, children, aside }) {
-  return (
-    <section id={`floor-${floor.id}`} data-floor={i} className="tower-floor scroll-mt-28" aria-labelledby={`floor-${floor.id}-title`}>
-      <p className="tower-floor-badge">
-        {i + 1} · {floor.where}
-      </p>
-      <h2 id={`floor-${floor.id}-title`} className="title mt-3">
-        {floor.title}
-      </h2>
-      <p className="lead mt-3 max-w-[48ch]">{floor.text}</p>
-      <div className={aside ? 'mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.6fr)]' : 'mt-7'}>
-        <div>{children}</div>
-        {aside}
-      </div>
-    </section>
-  );
-}
-
-// Avengers HQ: walk the compound past each hero's building to the hangar, open
-// the portal with the Tesseract, and come out in front of Thanos.
+// Avengers HQ: the compound to walk about in 3D (components/avengers/world),
+// each building's game behind its door, an Infinity Stone won back from each;
+// the Tesseract opens the portal, and on the other side, down the page, Thanos.
 export default function Avengers() {
   useDocumentTitle('Avengers HQ');
   const { snap } = useFun();
   const { unlock, notify } = useAchievements();
   const earned = useStones();
   const titan = useRef(null);
-  const [power, setPower] = useState(0);
-  const [blast, setBlast] = useState(0);
   // the gauntlet starts with every stone won back in the games
   const [have, setHave] = useState(earnedStones);
-  const [current, setCurrent] = useState(0);
   const [portal, setPortal] = useState(false);
   const [arrived, setArrived] = useState(false);
   const intro = useRef(null);
@@ -155,31 +88,6 @@ export default function Avengers() {
     [],
   );
 
-  // which floor is in the middle of the screen
-  useEffect(() => {
-    const els = [...document.querySelectorAll('[data-floor]')];
-    if (!els.length || typeof IntersectionObserver === 'undefined') return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) if (e.isIntersecting) setCurrent(Number(e.target.dataset.floor));
-      },
-      { rootMargin: '-45% 0px -45% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-
-  const powerUp = () => {
-    audioContext(); // in the click, so the reactor can be heard
-    sfx().then((s) => s.repulsor());
-    setPower((p) => (p + 1) % 4);
-  };
-  const fire = () => {
-    audioContext();
-    if (!power) setPower(1);
-    sfx().then((s) => s.repulsor());
-    setBlast((n) => n + 1);
-  };
   const playIntro = async () => {
     if (!audioContext()) return;
     if (intro.current) {
@@ -200,7 +108,7 @@ export default function Avengers() {
     });
   };
 
-  // The Space Stone opens the portal over the roof; on the other side, Thanos.
+  // The Space Stone opens the portal over the helipad; on the other side, Thanos.
   const openPortal = () => {
     if (portal) return;
     audioContext();
@@ -244,162 +152,27 @@ export default function Avengers() {
   return (
     <div className="hq-page relative">
       <HQBackdrop />
-      <section className="shell relative z-10 grid items-center gap-10 pb-12 pt-[calc(var(--nav-h)+32px)] md:pb-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14" aria-labelledby="hq-title">
-        <figure className="m-0">
-          <p className="hq-feed" aria-hidden="true">
-            <span>
-              <i className="hq-live-dot" />
-              Live · compound feed
-            </span>
-            <span>F.R.I.D.A.Y.</span>
-          </p>
-          <div className="hq-hud">
-            <Compound spots={SPOT_IDS} titles={SPOT_TITLES} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} onPick={(id) => jumpTo(null, `floor-${id}`)} className="hq-hero-map" live />
-          </div>
-          <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go straight to it.</figcaption>
-        </figure>
-        <div className="relative">
-          <AvengersMark className="hq-hero-mark" />
+      <CompoundWorld onPortal={openPortal} />
+
+      <section className="shell relative z-10 grid gap-6 pb-4 pt-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end" aria-label="About the compound">
+        <div>
           <p className="eyebrow">The Avengers compound · Upstate New York</p>
-          <h1 id="hq-title" className="display hq-steel mt-6 text-[clamp(3rem,1.6rem+4.6vw,5.6rem)]">
-            Avengers HQ
-          </h1>
-          <span className="hq-rule" aria-hidden="true" />
-          <p className="lead mt-6 max-w-[48ch]">Marvel, all of it. Walk the compound: every building belongs to someone, and the Tesseract is waiting in the hangar.</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#floor-stark" className="btn btn-primary" onClick={(e) => jumpTo(e, 'floor-stark')}>
-              Start the tour
-            </a>
-            <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
-              {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
-            </button>
-            <Link to="/" className="btn btn-ghost">
-              Back to the site
-            </Link>
-          </div>
-          <nav className="tower-directory mt-8" aria-label="Places in the compound">
-            <p className="label">On the map</p>
-            <ol className="mt-3">
-              {FLOORS.map((f, i) => (
-                <li key={f.id}>
-                  <a href={`#floor-${f.id}`} onClick={(e) => jumpTo(e, `floor-${f.id}`)}>
-                    <span className="tower-directory-level">{i + 1}</span>
-                    {f.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-          <WorldSwitcher className="mt-8" />
+          <p className="lead mt-4 max-w-[62ch]">
+            Marvel, all of it. Walk the compound as Cap: every building belongs to someone, and each one’s game wins an Infinity Stone back. Tony’s workshop, Mjolnir on the lawn, the training center, Clint’s range, Natasha’s operations room, Bruce’s lab, and the Tesseract in the hangar. Win the Space Stone and a portal opens over the helipad.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className="btn btn-ghost" onClick={playIntro} aria-pressed={playing}>
+            {playing ? 'Stop the intro' : 'Play the Marvel Studios intro'}
+          </button>
+          <Link to="/" className="btn btn-ghost">
+            Back to the site
+          </Link>
         </div>
       </section>
-
-      <div className="shell relative z-10 grid gap-10 lg:grid-cols-[236px_minmax(0,1fr)] lg:gap-14">
-        <aside className="hq-rail" aria-hidden="true">
-          <Compound spots={SPOT_IDS} current={current} stones={SPOT_IDS.map((id) => stoneOf(id)?.color ?? null)} compact />
-          <p className="hq-now">
-            <span className="hq-now-label">You are here</span>
-            {FLOORS[current].title}
-          </p>
-          <ol className="hq-rail-list">
-            {FLOORS.map((f, i) => (
-              <li key={f.id} data-on={i === current || undefined}>
-                <span>{i + 1}</span>
-                {f.short}
-                {stoneOf(f.id) && <i className="stone-dot hq-rail-stone" style={{ '--glow': stoneOf(f.id).color }} title={stoneOf(f.id).name} />}
-              </li>
-            ))}
-          </ol>
-        </aside>
-        <div className="grid gap-20 pb-20 md:gap-28">
-          <Floor i={0} floor={FLOORS[0]}>
-            <RepulsorRange
-              fallback={
-                <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  <figure className="reactor-stage m-0">
-                    <ArcReactor power={power} blast={blast} />
-                  </figure>
-                  <div>
-                    <div className="flex flex-wrap gap-3">
-                      <button type="button" className="btn btn-primary" onClick={powerUp}>
-                        {power === 3 ? 'Power down' : 'Power up'}
-                      </button>
-                      <button type="button" className="btn btn-ghost" onClick={fire}>
-                        Fire a repulsor
-                      </button>
-                    </div>
-                    <p className="mono mt-5 min-h-[1.5em] text-sm text-accent" role="status">
-                      F.R.I.D.A.Y.: {FRIDAY[power]}
-                    </p>
-                  </div>
-                </div>
-              }
-            />
-          </Floor>
-          <Floor i={1} floor={FLOORS[1]}>
-            <HoldTheLawn fallback={<Mjolnir />} />
-          </Floor>
-          <Floor i={2} floor={FLOORS[2]}>
-            <Ricochet fallback={<ShieldThrow />} />
-          </Floor>
-          <Floor i={3} floor={FLOORS[3]}>
-            <TrickShot fallback={<Range />} />
-          </Floor>
-          <Floor i={4} floor={FLOORS[4]}>
-            <Infiltration fallback={<Dossier />} />
-          </Floor>
-          <Floor i={5} floor={FLOORS[5]}>
-            <SmashRun fallback={<HulkLab />} />
-          </Floor>
-          <Floor i={6} floor={FLOORS[6]}>
-            <Thwip fallback={<WebShooter />} />
-          </Floor>
-          <Floor i={7} floor={FLOORS[7]}>
-            <TesseractRun
-              onPortal={openPortal}
-              fallback={
-                <div>
-                  <div className="roof-stage" data-portal={portal || undefined}>
-                    <svg viewBox="0 0 600 260" className="block h-auto w-full" role="img" aria-label="The Tesseract glowing in a glass containment case">
-                      <defs>
-                        <radialGradient id="tess-glow">
-                          <stop offset="0" stopColor="#d6f3ff" />
-                          <stop offset="0.4" stopColor="#4fb8ff" stopOpacity="0.8" />
-                          <stop offset="1" stopColor="#1f5fd1" stopOpacity="0" />
-                        </radialGradient>
-                        <linearGradient id="vault-wall" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stopColor="#0d1420" />
-                          <stop offset="1" stopColor="#1b2534" />
-                        </linearGradient>
-                      </defs>
-                      <rect width="600" height="260" fill="url(#vault-wall)" />
-                      {Array.from({ length: 9 }, (_, i) => (
-                        <path key={i} d={`M${i * 75} 0 V200`} stroke="#22304a" strokeWidth="2" />
-                      ))}
-                      <circle className="roof-portal" cx="300" cy="120" r="60" fill="url(#tess-glow)" />
-                      <path d="M0 200 H600 V260 H0 Z" fill="#141c29" />
-                      <path d="M230 200 h140 l-16 -16 h-108 Z" fill="#2b3748" />
-                      <rect x="262" y="96" width="76" height="88" rx="4" fill="rgba(160, 210, 255, 0.07)" stroke="#9fd4ff" strokeOpacity="0.5" strokeWidth="2" />
-                      <path d="M268 100 l10 0 l-10 18 Z" fill="#ffffff" opacity="0.15" />
-                      <g className="tesseract">
-                        <circle cx="300" cy="140" r="34" fill="url(#tess-glow)" />
-                        <rect x="286" y="126" width="28" height="28" rx="3" fill="#7fd6ff" stroke="#e6f8ff" strokeWidth="2" transform="rotate(12 300 140)" />
-                      </g>
-                      <text x="300" y="222" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2" fill="#7f9ab8">
-                        S.H.I.E.L.D. · CONTAINMENT
-                      </text>
-                    </svg>
-                  </div>
-                  <button type="button" className="btn btn-primary mt-6" onClick={openPortal} disabled={portal}>
-                    Space
-                  </button>
-                  <p className="mt-3 text-sm text-muted">The Space Stone opens a portal. Thanos is on the other side.</p>
-                </div>
-              }
-            />
-          </Floor>
-        </div>
-      </div>
+      <section className="shell relative z-10 pb-2">
+        <WorldSwitcher />
+      </section>
 
       {portal && <div className="portal-flash" aria-hidden="true" />}
 
@@ -469,7 +242,7 @@ export default function Avengers() {
               <button type="button" className="btn btn-ghost" disabled={!have.length} onClick={() => setHave([])}>
                 Take them out
               </button>
-              <a href="#floor-vault" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'floor-vault')}>
+              <a href="#hq-world" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'hq-world')}>
                 Back through the portal
               </a>
             </div>

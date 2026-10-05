@@ -80,7 +80,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Music room | `/music` | Indian classical music | A playable sitar, tabla and harmonium over a tanpura drone |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | A building-by-building tour of the compound, collecting the Infinity Stones, and Spider-Man web-swinging to school down a Queens avenue in *Thwip!* |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game (Spider-Man's *Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
