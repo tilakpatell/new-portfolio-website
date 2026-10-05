@@ -10,10 +10,11 @@
 // (cos face, −sin face), as in the walkable towns.
 //
 // Tiles: '#' counter, 'B' chopping board, 'P' pot, 'O' oven, 'T' tap (or
-// cask), 'W' wash tub, 'X' bin, 'S' serving counter, 'R' where dirty dishes
-// come back, '.' floor, '~' water (not to be walked on), and the level's
-// own crates and shelves (the Pony's: 'c' carrots, 'p' potatoes, 'd' dough,
-// 'm' mugs, 'b' bowls). Anything else is wall.
+// cask), 'L' leaf table (to wrap things in), 'F' fishing line (held down
+// till something bites), 'W' wash tub, 'X' bin, 'S' serving counter, 'R'
+// where dirty dishes come back, '.' floor, '~' water (not to be walked on),
+// and the level's own crates and shelves (the Pony's: 'c' carrots, 'p'
+// potatoes, 'd' dough, 'm' mugs, 'b' bowls). Anything else is wall.
 //
 // Things are { k, s }, of the kinds in KINDS. What a level's stations make
 // is the level's to say (`crates`, `shelves`, `pot`, `oven`, `tap`,
@@ -24,7 +25,7 @@
 // wire counts on the order)
 export const KINDS = {
   mug: ['clean', 'dirty', 'ale'],
-  bowl: ['clean', 'dirty', 'stew', 'soup'],
+  bowl: ['clean', 'dirty', 'stew', 'soup', 'chowder'],
   carrot: ['raw', 'chopped'],
   potato: ['raw', 'chopped'],
   dough: ['raw'],
@@ -39,6 +40,9 @@ export const KINDS = {
   lembas: ['baked', 'burnt', 'wrapped'],
   fibre: ['raw', 'chopped'], // (spun into rope, at the wheel)
   phial: ['clean', 'dirty', 'light'],
+  fish: ['raw', 'chopped'],
+  skewer: ['grilled', 'charred'], // (a fish on a stick, over the campfire)
+  skin: ['clean', 'dirty', 'water'],
 };
 const CONTAINER = (k) => KINDS[k]?.includes('dirty');
 const CHOPS = (k) => KINDS[k]?.includes('chopped');
@@ -56,7 +60,7 @@ const PONY_DISHES = {
 };
 // a level's recipes, with the Pony's where it doesn't say
 export const recipesOf = (level) => ({ ...PONY_RECIPES, ...level?.recipes, dishes: Object.fromEntries(Object.entries(level?.dishes ?? PONY_DISHES).map(([d, x]) => [d, { ...PONY_DISHES[d], ...x }])) });
-const HOLDS = new Set(['#', 'B', 'O', 'T', 'L']); // stations that hold one thing
+const HOLDS = new Set(['#', 'B', 'O', 'T', 'L', 'F']); // stations that hold one thing
 const OPEN = new Set(['.', 'x', '~']); // tiles with no station
 export const RADIUS = 0.3;
 
@@ -355,7 +359,16 @@ export function work(s, p, dt) {
   const sp = s.spots[key(i, j)];
   const T = s.level.times;
   const R = recipesOf(s.level);
-  if (c === 'L' && sp.item && R.wrap && sp.item.k === R.wrap.takes.k && sp.item.s === R.wrap.takes.s) {
+  if (c === 'F' && !sp.item && R.line) {
+    // the fishing line: held till something bites
+    sp.prog += dt / T.fish;
+    ev.push({ type: 'reel', at, p: p.slot });
+    if (sp.prog >= 1) {
+      sp.item = { k: R.line.makes, s: 'raw' };
+      sp.prog = 0;
+      ev.push({ type: 'caught', at, p: p.slot, k: sp.item.k });
+    }
+  } else if (c === 'L' && sp.item && R.wrap && sp.item.k === R.wrap.takes.k && sp.item.s === R.wrap.takes.s) {
     // the leaf table: wrapping (lembas in mallorn leaves), held down
     sp.prog += dt / T.wrap;
     ev.push({ type: 'chop', at, p: p.slot });

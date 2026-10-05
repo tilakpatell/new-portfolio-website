@@ -416,3 +416,85 @@ describe('Lothlórien’s gifts', () => {
     expect(work(s, p, 2)).toEqual([]);
   });
 });
+
+describe('Supper at Parth Galen', () => {
+  it('catches fish off the rocks, grills them, makes chowder, fills a waterskin', async () => {
+    const { AMON_HEN } = await import('./levels/amonhen');
+    const T = AMON_HEN.times;
+    const s = newRush(quiet(AMON_HEN));
+    s.orders.push({ id: 1, dish: 'fish', t: 60, of: 60 }, { id: 2, dish: 'chowder', t: 85, of: 85 }, { id: 3, dish: 'water', t: 45, of: 45 });
+    const p = s.players[0];
+    const fishAt = (i) => {
+      stand(p, i, 6, 'S');
+      const ev = workFor(s, p, T.fish + 0.1);
+      expect(ev.filter((e) => e.type === 'caught')).toHaveLength(1);
+      grab(s, p);
+      expect(p.held).toEqual({ k: 'fish', s: 'raw' });
+    };
+    const chop = () => {
+      stand(p, 4, 1, 'N');
+      grab(s, p);
+      workFor(s, p, T.chop + 0.1);
+      grab(s, p);
+    };
+    // the line: held till one bites, not before; and nothing goes back on it
+    stand(p, 1, 6, 'S');
+    expect(workFor(s, p, T.fish * 0.5).some((e) => e.type === 'caught')).toBe(false);
+    expect(workFor(s, p, T.fish * 0.5 + 0.1).filter((e) => e.type === 'caught')).toHaveLength(1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'fish', s: 'raw' });
+    expect(grab(s, p)[0].type).toBe('nope');
+    // grilled on the spit, out to the boats
+    stand(p, 1, 2, 'W');
+    grab(s, p);
+    run(s, T.bake + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'skewer', s: 'grilled' });
+    stand(p, 3, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'fish' });
+    // chowder: a fish and two herbs, chopped, in the pot
+    fishAt(10);
+    chop();
+    expect(p.held).toEqual({ k: 'fish', s: 'chopped' });
+    stand(p, 7, 1, 'N');
+    grab(s, p);
+    for (let n = 0; n < 2; n++) {
+      stand(p, 1, 1, 'N');
+      grab(s, p);
+      chop();
+      stand(p, 7, 1, 'N');
+      grab(s, p);
+    }
+    expect(s.spots['7,0'].s).toBe('cooking');
+    run(s, T.cook + 0.1);
+    stand(p, 10, 1, 'N');
+    grab(s, p);
+    stand(p, 7, 1, 'N');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'bowl', s: 'chowder' });
+    stand(p, 4, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'chowder' });
+    // a waterskin, filled at the spring
+    stand(p, 1, 5, 'W');
+    grab(s, p);
+    stand(p, 10, 3, 'E');
+    grab(s, p);
+    run(s, T.fill + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'skin', s: 'water' });
+    stand(p, 7, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'water' });
+    // the bowl and the skin come back to be washed
+    run(s, T.back + 0.1);
+    expect(s.spots['11,6']).toEqual({ bowl: 1, skin: 1 });
+    // and a fish left on the spit chars, and goes in the bin
+    s.spots['0,3'].item = { k: 'skewer', s: 'grilled' };
+    run(s, T.char + 0.1);
+    expect(s.spots['0,3'].item.s).toBe('charred');
+    stand(p, 1, 3, 'W');
+    grab(s, p);
+    stand(p, 10, 5, 'E');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'bin' });
+    expect(p.held).toBe(null);
+  });
+});

@@ -7,6 +7,7 @@ import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
 import { PONY } from './levels/pony';
+import { AMON_HEN } from './levels/amonhen';
 import { LORIEN } from './levels/lorien';
 import { MORIA } from './levels/moria';
 import { RIVENDELL } from './levels/rivendell';
@@ -25,7 +26,7 @@ import './rush.css';
 // touch screen).
 
 const BEST = (id) => `tp-rush-best-${id}`;
-const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN };
+const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN, amonhen: AMON_HEN };
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
@@ -291,7 +292,7 @@ function Kitchen({ level, live, invite }) {
     let chopped = false;
     for (const e of ev) {
       a.fx(e);
-      if (e.type === 'chop' || e.type === 'scrub') {
+      if (e.type === 'chop' || e.type === 'scrub' || e.type === 'reel') {
         if (!chopped && Math.floor(sm.t * 7) !== Math.floor((sm.t - 0.016) * 7)) sound(e.type);
         chopped = true;
         continue;
@@ -533,7 +534,7 @@ function Kitchen({ level, live, invite }) {
         <div className="rush-card" role="dialog" aria-label={level.name}>
           <p className="rush-card-title">{level.name}</p>
           <p className="rush-card-say">Three minutes, as many orders as you can. Things burn, the cups run out, and no one waits for long.</p>
-          <Keys touch={touch} />
+          <Keys touch={touch} work={level.work} />
           <div className="shire-panel-row">
             <button type="button" className="btn btn-primary btn-sm" onClick={start}>
               Play alone
@@ -603,7 +604,7 @@ function Kitchen({ level, live, invite }) {
               </li>
             ))}
           </ol>
-          <Keys touch={touch} />
+          <Keys touch={touch} work={level.work} />
           <div className="shire-panel-row">
             {isHost && (
               <>
@@ -713,14 +714,15 @@ function Kitchen({ level, live, invite }) {
   );
 }
 
-function Keys({ touch }) {
+// (what holding Work does: a level can say, if it's more than chopping)
+function Keys({ touch, work = 'chop, wash, scrape' }) {
   return (
     <ul className="rush-keys">
       {touch ? (
         <>
           <li>Stick: walk</li>
           <li>Grab: pick up, put down, serve</li>
-          <li>Hold Work: chop, wash, scrape</li>
+          <li>Hold Work: {work}</li>
           <li>Dash: a quick dash</li>
         </>
       ) : (
@@ -735,7 +737,7 @@ function Keys({ touch }) {
             <kbd>E</kbd> or <kbd>Space</kbd> pick up, put down, serve
           </li>
           <li>
-            hold <kbd>F</kbd> chop, wash, scrape
+            hold <kbd>F</kbd> {work}
           </li>
           <li>
             <kbd>Shift</kbd> dash
