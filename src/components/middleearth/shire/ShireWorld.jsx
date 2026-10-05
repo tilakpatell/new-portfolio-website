@@ -130,6 +130,22 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const lines = useRef({});
   const bubbleRef = useRef(null);
   const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // timers for what comes a moment after an event; cleared if the world goes
+  const timers = useRef(new Set());
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timers.current.delete(id);
+      fn();
+    }, ms);
+    timers.current.add(id);
+  }, []);
+  useEffect(() => {
+    const all = timers.current;
+    return () => {
+      all.forEach(clearTimeout);
+      all.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -486,7 +502,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         } else if (e.type === 'won') {
           complete('rings');
           say('Three through his. Gandalf blows a little smoke ship that sails through yours.');
-          setTimeout(() => sim.current?.mode === 'rings' && leave(), 2600);
+          later(() => sim.current?.mode === 'rings' && leave(), 2600);
         } else if (e.type === 'out') say('Out of pipe-weed. Gandalf fills your pipe again.', true);
       }
     }
@@ -503,12 +519,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           a.fx('dragon', { duration: SHOW.dragon - 0.7 });
           sfx().then((x) => x.roar());
           say('Merry and Pippin have got into the cart. It’s the big one: the dragon!');
-          setTimeout(() => sounds().then((x) => x.bang(2.2)), (SHOW.dragon - 0.7) * 1000);
-          setTimeout(() => sounds().then((x) => x.cheer()), (SHOW.dragon - 0.4) * 1000);
+          later(() => sounds().then((x) => x.bang(2.2)), (SHOW.dragon - 0.7) * 1000);
+          later(() => sounds().then((x) => x.cheer()), (SHOW.dragon - 0.4) * 1000);
         } else if (e.type === 'done') {
           complete('party');
           say('What a party! Bilbo makes his speech, and then he vanishes. Something is waiting at Bag End.');
-          setTimeout(() => sim.current?.mode === 'show' && leave(), 1200);
+          later(() => sim.current?.mode === 'show' && leave(), 1200);
         } else if (e.type === 'over') say('The cheering dies away and everyone drifts off to the food tent. Try again, with more variety.', true);
       }
     }
