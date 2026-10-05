@@ -13,6 +13,7 @@ import { countryName, globeData } from '../travel/globe3d/data';
 import { AROUND_KM, HOME_V, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, fly, kmBetween, logTrail, newFlight, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps, stampDate, useFlown, useStamps } from './stamps';
 import './earth.css';
+import GuideCue from '../guide/GuideCue';
 
 // Earth, the world: it opens in orbit, over the globe as it is right now
 // (the sun where it really is), and flies you down onto it, into the seat
@@ -558,7 +559,7 @@ function World({ gl, setGl }) {
             )}
           </div>
         )}
-        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · P passport</p>}
+        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · P passport<GuideCue /></p>}
 
         {touch && flyingNow && gl === 'on' && (
           <div className="earth-touch">

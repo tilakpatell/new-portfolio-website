@@ -275,9 +275,14 @@ export const PAGES = {
     about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
     keys: [
       { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
-      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch']] },
+      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
+      { label: 'In the armour', rows: [['W A S D', 'Fly (it leans into its speed)'], ['Space', 'Climb'], ['Shift', 'Come down'], ['E', 'Step out, wherever you are']] },
+      { label: 'Anywhere', rows: [['O', 'Settings']] },
     ],
-    touch: [{ rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch']] }],
+    touch: [
+      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
+      { label: 'In the armour', rows: [['Stick', 'Fly'], ['Up', 'Hold to climb'], ['Down', 'Hold to come down'], ['Step out', 'Out of the armour']] },
+    ],
     tips: [
       ['Swinging', 'Let go on the upswing for a perfect release. Hold on with nothing to catch for web wings. Race the swing tour’s rings round the compound.'],
       ['The stones', 'Win a building’s game and its stone hangs over the door. The Space Stone opens a portal over the helipad: walk under it to Titan.'],
@@ -395,7 +400,7 @@ export const PAGES = {
   '/earth': {
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
-      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
+      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
     ],
     touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster']] }],
     tips: [

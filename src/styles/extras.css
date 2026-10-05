@@ -1006,6 +1006,10 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .guide-nudge-close:hover { background: var(--surface-2); color: var(--text); }
 @keyframes guide-nudge-in { from { opacity: 0; transform: translateX(8px); } }
 @media (pointer: coarse) { .guide-foot { display: none; } }
+/* the end of every world's first hint: where the rest of the controls are
+   (guide/GuideCue.jsx). Low weight, so a world's own hint styling wins. */
+:where(.guide-cue) { opacity: 0.85; }
+:where(.guide-cue) kbd { display: inline-grid; place-items: center; min-width: 1.35em; padding: 0 0.3em; border: 1px solid currentColor; border-radius: 4px; font: 600 0.85em/1.35 var(--font-mono); }
 .guide-btn[data-nudge] { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent), 0 10px 24px -14px color-mix(in srgb, var(--text) 60%, transparent); }
 html[data-menu] .guide-nudge { visibility: hidden; }
 /* on a phone the guide is a sheet up from the bottom */

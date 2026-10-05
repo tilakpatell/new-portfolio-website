@@ -766,17 +766,22 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
 .universe-hint {
+  /* across the map's open part, clear of the buttons in its corners: it wraps
+     rather than running off the left edge (it's longer than a laptop's map) */
   position: absolute;
-  left: 50%;
+  left: 184px;
+  right: calc(var(--panel-w) + 36px);
   bottom: 24px;
-  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
-  margin: 0;
-  padding: 0.5rem 0.85rem;
-  border-radius: 999px;
+  max-width: 760px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.5rem 0.95rem;
+  border-radius: 14px;
   background: rgb(3 4 10 / 0.7);
   color: var(--muted);
   font-size: 0.78rem;
-  white-space: nowrap;
+  line-height: 1.75;
+  text-align: center;
   pointer-events: none;
 }
 .universe-hint kbd,
