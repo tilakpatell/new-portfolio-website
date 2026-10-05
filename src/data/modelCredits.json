@@ -453,6 +453,48 @@
       "galaxy"
     ]
   },
+  "surface-airspeeder": {
+    "title": "Star Wars Galaxies - XJ-6 Airspeeder",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-xj-6-airspeeder-7766ca8e7bd047f5ad4bdb86d11ec6d4",
+    "where": "galaxy-surface",
+    "as": "the airspeeders",
+    "file": "/models/galaxy/surface/airspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-arena": {
+    "title": "Geonosis Arena",
+    "author": "StrangeUsernames1",
+    "authorUrl": "https://sketchfab.com/StrangeUsernames1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/geonosis-arena-797d475ee192467399c0ee6ee15b41ed",
+    "where": "galaxy-surface",
+    "as": "the Geonosian arena",
+    "file": "/models/galaxy/surface/arena.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atap": {
+    "title": "-Star Wars- AT-AP Walker",
+    "author": "ARKON MAREK",
+    "authorUrl": "https://sketchfab.com/ARKON-83",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-at-ap-walker-c721bd590a6d465387895d56a2c8aa9a",
+    "where": "galaxy-surface",
+    "as": "the AT-AP walkers",
+    "file": "/models/galaxy/surface/atap.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-atat": {
     "title": "Imperial AT-AT Walker - Star Wars",
     "author": "Quiznos323",
@@ -481,6 +523,20 @@
       "galaxy"
     ]
   },
+  "surface-atrt": {
+    "title": "AT-RT",
+    "author": "Just Ryk",
+    "authorUrl": "https://sketchfab.com/dryk4085",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-rt-6796698b4d564377838c06319ec96f90",
+    "where": "galaxy-surface",
+    "as": "the AT-RT walkers",
+    "file": "/models/galaxy/surface/atrt.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-atst": {
     "title": "Star Wars AT-ST [Rigged]",
     "author": "smithson17",
@@ -491,6 +547,20 @@
     "where": "galaxy-surface",
     "as": "the AT-ST walkers",
     "file": "/models/galaxy/surface/atst.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atte": {
+    "title": "AT-TE Walker",
+    "author": "HarukaS",
+    "authorUrl": "https://sketchfab.com/Haruka_S",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-te-walker-93890aa7a2c84102a4a28af05bd07c9b",
+    "where": "galaxy-surface",
+    "as": "the AT-TE walkers",
+    "file": "/models/galaxy/surface/atte.glb",
     "also": [
       "galaxy"
     ]
@@ -533,6 +603,20 @@
     "where": "galaxy-surface",
     "as": "BB-8",
     "file": "/models/galaxy/surface/bb8.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-bunker": {
+    "title": "Star Wars Endor Bunker",
+    "author": "aclarke064",
+    "authorUrl": "https://sketchfab.com/aclarke064",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-endor-bunker-1c54abb1c6824f26a0a087d2bd7a635a",
+    "where": "galaxy-surface",
+    "as": "the Imperial bunker",
+    "file": "/models/galaxy/surface/bunker.glb",
     "also": [
       "galaxy"
     ]
@@ -593,6 +677,34 @@
       "galaxy"
     ]
   },
+  "surface-dewback": {
+    "title": "Dewback",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/dewback-b84145ed48d143ff8746eda2623b3bd8",
+    "where": "galaxy-surface",
+    "as": "the dewbacks",
+    "file": "/models/galaxy/surface/dewback.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-droideka": {
+    "title": "Star Wars Battlefront - Droideka",
+    "author": "S🅾️Meme star wars",
+    "authorUrl": "https://sketchfab.com/dylantrooper7",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-battlefront-droideka-f3688d384b2042b6a8fc3360f64b9a48",
+    "where": "galaxy-surface",
+    "as": "the droidekas",
+    "file": "/models/galaxy/surface/droideka.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-ewok": {
     "title": "Ewok",
     "author": "Ulrik S. Selvik",
@@ -635,6 +747,20 @@
       "galaxy"
     ]
   },
+  "surface-geonosian": {
+    "title": "Geonosian Zombie",
+    "author": "StrangeUsernames1",
+    "authorUrl": "https://sketchfab.com/StrangeUsernames1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/geonosian-zombie-021a5902e34c4742a828335c86bfe4cd",
+    "where": "galaxy-surface",
+    "as": "the Geonosians",
+    "file": "/models/galaxy/surface/geonosian.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-gungan": {
     "title": "Jar Jar Binks",
     "author": "Mind Mulch for The Masses",
@@ -645,6 +771,20 @@
     "where": "galaxy-surface",
     "as": "the Gungans",
     "file": "/models/galaxy/surface/gungan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-han": {
+    "title": "Han Solo",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/han-solo-b904ffed264a45c7b90d8f032fb0a97a",
+    "where": "galaxy-surface",
+    "as": "Han Solo",
+    "file": "/models/galaxy/surface/han.glb",
     "also": [
       "galaxy"
     ]
@@ -677,6 +817,62 @@
       "galaxy"
     ]
   },
+  "surface-jeditemple": {
+    "title": "Jedi Temple",
+    "author": "Owen Cornelius",
+    "authorUrl": "https://sketchfab.com/omcstudios333",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jedi-temple-317dedec15a845cbb1abc8c90804b840",
+    "where": "galaxy-surface",
+    "as": "the Jedi Temple",
+    "file": "/models/galaxy/surface/jeditemple.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-kaminoan": {
+    "title": "Kaminoan Shrugging",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/kaminoan-shrugging-5d758c4455b24ac383b94d7a4e30bbce",
+    "where": "galaxy-surface",
+    "as": "the Kaminoans",
+    "file": "/models/galaxy/surface/kaminoan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-laat": {
+    "title": "LAAT - Low Altitude Assault Transport",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/laat-low-altitude-assault-transport-cf7f6043210a418abdd818d5e8dd0fd8",
+    "where": "galaxy-surface",
+    "as": "the Republic gunships",
+    "file": "/models/galaxy/surface/laat.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-lambda": {
+    "title": "Star Wars Lambda Shuttle",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-lambda-shuttle-ba88e6e431974dc2b920d43dccc750c6",
+    "where": "galaxy-surface",
+    "as": "the Imperial shuttles",
+    "file": "/models/galaxy/surface/lambda.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-landspeeder": {
     "title": "Star Wars X-34 Landspeeder [FREE]",
     "author": "VertexDon",
@@ -687,6 +883,48 @@
     "where": "galaxy-surface",
     "as": "Luke's landspeeder",
     "file": "/models/galaxy/surface/landspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-luke": {
+    "title": "Pilot Luke Skywalker",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/pilot-luke-skywalker-bedc584f3e8740c59e99320f8425147d",
+    "where": "galaxy-surface",
+    "as": "Luke Skywalker",
+    "file": "/models/galaxy/surface/luke.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-palm": {
+    "title": "Coconut Tree Low poly",
+    "author": "Nodeaxis Interactive",
+    "authorUrl": "https://sketchfab.com/ar.jethin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/coconut-tree-low-poly-8c5d6b661b2f4c37834d87cd187eb907",
+    "where": "galaxy-surface",
+    "as": "the palms",
+    "file": "/models/galaxy/surface/palm.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-podracer": {
+    "title": "Anakins Pod Racer",
+    "author": "tutan09",
+    "authorUrl": "https://sketchfab.com/tutan09",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/anakins-pod-racer-dac6d14dcf914e88af8625b59f4020bc",
+    "where": "galaxy-surface",
+    "as": "the podracers",
+    "file": "/models/galaxy/surface/podracer.glb",
     "also": [
       "galaxy"
     ]
@@ -715,6 +953,20 @@
     "where": "galaxy-surface",
     "as": "the probe droids",
     "file": "/models/galaxy/surface/probe.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-r2d2": {
+    "title": "R2-D2",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
+    "where": "galaxy-surface",
+    "as": "R2-D2",
+    "file": "/models/galaxy/surface/r2d2.glb",
     "also": [
       "galaxy"
     ]
@@ -831,6 +1083,20 @@
       "galaxy"
     ]
   },
+  "surface-tipoca": {
+    "title": "Kamino Platform Simple 1",
+    "author": "svemun",
+    "authorUrl": "https://sketchfab.com/svemun",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/kamino-platform-simple-1-9c569d83df584c06b1c6ea1b496a4704",
+    "where": "galaxy-surface",
+    "as": "Tipoca City",
+    "file": "/models/galaxy/surface/tipoca.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-turret": {
     "title": "Star Wars - DF.9 Turret Battle of Hoth",
     "author": "judpro",
@@ -883,6 +1149,20 @@
     "where": "galaxy-surface",
     "as": "the wampas",
     "file": "/models/galaxy/surface/wampa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yoda": {
+    "title": "Yoda",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/yoda-04face8041ab4b108649093172c49af2",
+    "where": "galaxy-surface",
+    "as": "Yoda",
+    "file": "/models/galaxy/surface/yoda.glb",
     "also": [
       "galaxy"
     ]
