@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
+import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -40,11 +41,11 @@ describe('randomCallsign', () => {
 
 describe('readHello', () => {
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, kills: 3, where: '/middle-earth' });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, kills: 0, where: null });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, kills: 0, where: null });
   });
   it('reads the paint job and parts fitted, and only ones it knows', () => {
     const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
@@ -52,6 +53,16 @@ describe('readHello', () => {
     // a colour, a shape, a part in the wrong slot or too many: none of it's believed
     expect(readHello({ n: 'A', k: 'falcon', p: '#ff0000', o: ['fusion', { r: 1 }, '<b>', 'portal', 'fins', 'srb', 'srb'] }).loadout).toEqual({ ...STOCK_LOADOUT, fins: 'fins' });
     expect(readHello({ n: 'A', k: 'falcon', p: 'aws', o: 'srb' }).loadout).toEqual({ ...STOCK_LOADOUT, paint: 'aws' });
+  });
+  it('reads the garage build flown, as ids it knows, and nothing else', () => {
+    const b = { ...STOCK_BUILD, hull: 'hauler', wings: 'delta', engines: 'quad' };
+    const { seed, ...ids } = b; // eslint-disable-line no-unused-vars
+    expect(readHello({ n: 'A', k: 'rv', b: writeBuild(b) }).build).toEqual(ids);
+    for (const junk of [[[1]], 'x'.repeat(500), 7, { hull: 'dart' }, ['dart', 'bubble', 'swept', 'twincans', 'fin', '<img>'], null]) {
+      const h = readHello({ n: 'A', k: 'rv', b: junk });
+      expect(h.build).toBeNull();
+      expect(h.kind).toBe('rv');
+    }
   });
   it('is null for anything that is not an object', () => {
     expect(readHello(null)).toBeNull();
