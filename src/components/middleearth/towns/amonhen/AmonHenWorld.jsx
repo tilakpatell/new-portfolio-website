@@ -5,15 +5,17 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { SideList } from '../SideList';
+import { readSide, recordSide } from '../side';
 import { useTravellers } from '../useTravellers';
 import { keyDown, keyUp, moveOf } from '../keys';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
-import { COLLIDERS, DECOY, GLADE, RUN_START, SEAT, SHORE_SPOT, SPOTS, STAIR, START, STICKS, URUK_ROUNDS, WALLS, castFor, inLake, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, amonHenProgress } from './story';
-import { BOROMIR, RESCUE, SEAT_GAZE, URUKS, gazeIn, gazeOn, newRescue, newSeat, newUnseen, newWood, pickStick, reach, samUp, stepRescue, stepSeat, stepUnseen } from './rules';
+import { COLLIDERS, DECOY, GLADE, RUN_START, SEAT, SHORE_SPOT, SKIPPING, SPOTS, STAIR, START, STICKS, URUK_ROUNDS, WALLS, castFor, inLake, validAt } from './layout';
+import { CONVOS, QUESTS, SEAL, SIDE, SKIPPING_SAYS, SPEAKERS, amonHenProgress, stoneWord } from './story';
+import { BOROMIR, RESCUE, SEAT_GAZE, SKIP, URUKS, gazeIn, gazeOn, newRescue, newSeat, newSkipping, newStone, newUnseen, newWood, pickStick, pressSkip, reach, samUp, stepRescue, stepSeat, stepSkipping, stepUnseen, stoneAt, strengthAt, tiltAt } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './amonhen.css';
@@ -26,10 +28,13 @@ import './amonhen.css';
 
 const DONE = 'tp-amonhen-done';
 const AT = 'tp-amonhen-at';
+// ducks and drakes, on the side: { won, best } (best: the most skips)
+const SIDE_KEY = 'tp-amonhen-side';
 const sounds = () => import('./sounds');
 const PROMPT = {
   seat: { name: 'The Seat of Seeing', act: 'Climb onto the Seat' },
   boats: { name: 'The boats', act: 'Push a boat out' },
+  skipping: { name: 'Ducks and drakes', act: 'Skip stones' },
 };
 const walker = makeWalker({ radius: 400, colliders: COLLIDERS, walls: WALLS, blocked: inLake });
 // Boromir, blundering round the glade after you
@@ -70,15 +75,28 @@ export default function AmonHenWorld({ onLeave }) {
     },
     [unlock],
   );
+  // ducks and drakes, on the side: kept apart from the story's progress
+  const [side, setSide] = useState(() => readSide(local.get(SIDE_KEY, null)));
+  const recordGo = useCallback(
+    (go) => {
+      setSide((was) => {
+        const { won, best } = recordSide(was, go);
+        local.set(SIDE_KEY, { won, best });
+        return { won, best };
+      });
+      if (go.won) unlock(SIDE.seal);
+    },
+    [unlock],
+  );
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world amonhen-world" aria-labelledby="amonhen-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} complete={complete} side={side} recordGo={recordGo} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, complete, gl, setGl, onLeave }) {
+function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const trav = useTravellers('amon-hen', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -88,12 +106,14 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   if (!sim.current) {
     const at = validAt(local.get(AT, null));
     const h = newWalker(at);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, wood: newWood(STICKS.length), ring: false, unseen: null, boro: null, seat: null, uruks: null, drawn: [], decoyed: false, rescue: null, busy: false, hold: false, paddle: 0 };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, wood: newWood(STICKS.length), ring: false, unseen: null, boro: null, seat: null, uruks: null, drawn: [], decoyed: false, rescue: null, busy: false, hold: false, paddle: 0, skip: null, said: null, saidAt: -9, cheer: 0 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
   const [hud, setHud] = useState({ mode: 'walk', near: null, moved: false });
   const hudKey = useRef('');
+  const needle = useRef(null);
+  const power = useRef(null);
   const [toast, setToast] = useState(null);
   const [bubble, setBubble] = useState(null);
   const [list, setList] = useState(false);
@@ -233,6 +253,48 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     say('Behind you, Sam comes crashing down to the water and wades in after you. He can’t swim! Paddle back (hold W, or the button), and reach for his hand when he comes up (Space).', true);
   }, [say]);
 
+  // ducks and drakes, with Merry and Pippin on the shore
+  const skipSay = useCallback((line) => {
+    const s = sim.current;
+    s.said = line;
+    s.saidAt = s.t;
+  }, []);
+  const startSkipping = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'skipping';
+    s.skip = newSkipping(Math.floor(Math.random() * 1000) + 1);
+    s.h = newWalker(SKIPPING);
+    s.cheer = 0;
+    skipSay(SKIPPING_SAYS.start);
+    later(() => sim.current?.mode === 'skipping' && sim.current.skip?.throws === 0 && skipSay(SKIPPING_SAYS.merry), 4200);
+  }, [later, skipSay]);
+  const leaveSkipping = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'skipping') return;
+    s.mode = 'walk';
+    s.skip = null;
+    s.h = newWalker({ x: SKIPPING.x - 1.5, z: SKIPPING.z, face: Math.PI });
+    s.yaw = behindYaw(Math.PI);
+    s.dragAt = s.t;
+  }, []);
+  // catch the tilt, then the strength
+  const doSkip = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'skipping' || !s.skip) return;
+    const r = pressSkip(s.skip);
+    if (r === 'tilt') sounds().then((x) => x.snap());
+    else if (r === 'throw') {
+      s.cheer = 0;
+      sounds().then((x) => x.whip());
+    }
+  }, []);
+  const otherStone = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'skipping' || !s.skip || !newStone(s.skip)) return;
+    const line = s.skip.flat > 0.9 ? SKIPPING_SAYS.flat : s.skip.flat < 0.7 ? SKIPPING_SAYS.lumpy : null;
+    if (line) skipSay(line);
+  }, [skipSay]);
+
   const enter = useCallback(
     (id) => {
       audioContext();
@@ -241,9 +303,10 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         s.h = newWalker({ x: SEAT.x, z: SEAT.z, face: 0 });
         startTalk('seat');
       } else if (id === 'boats') startRescue();
+      else if (id === 'skipping') startSkipping();
       setList(false);
     },
-    [startTalk, startRescue],
+    [startTalk, startRescue, startSkipping],
   );
 
   const talkOnward = useCallback(
@@ -348,6 +411,14 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         e.preventDefault();
         audioContext();
       }
+      if (s.mode === 'skipping') {
+        if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
+          e.preventDefault();
+          doSkip();
+        } else if (k === 'f' || k === 'F') otherStone();
+        else if (k === 'Escape') leaveSkipping();
+        return;
+      }
       if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
         if (s.mode === 'rescue' || (s.mode === 'walk' && s.near)) {
           e.preventDefault();
@@ -357,7 +428,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct]);
+  }, [live, talkOnward, doAct, doSkip, otherStone, leaveSkipping]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -507,15 +578,39 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       }
     }
 
+    // ducks and drakes
+    const sk = s.mode === 'skipping' ? s.skip : null;
+    if (sk) {
+      if (pad && pressed('a')) doSkip();
+      for (const e of stepSkipping(sk, dt)) {
+        if (e.type === 'touch') {
+          const k = Math.max(0, 1 - e.i / 10);
+          sounds().then((x) => x.skip(k, !e.skip));
+          a.fx('splash', { d: e.d, k, sinks: !e.skip });
+        } else if (e.type === 'sank') {
+          const n = e.skips;
+          const line = e.why === 'steep' ? SKIPPING_SAYS.steep : e.why === 'weak' ? SKIPPING_SAYS.weak : n > SKIP.pippin ? (side.best > SKIP.pippin && n <= side.best ? SKIPPING_SAYS.again(n) : SKIPPING_SAYS.beat(n)) : n === SKIP.pippin ? SKIPPING_SAYS.same : n > 3 ? SKIPPING_SAYS.fair(n) : SKIPPING_SAYS.few(n);
+          skipSay(line);
+          s.cheer = n > SKIP.pippin ? 2 : n >= 4 ? 1 : 0;
+          if (s.cheer) sounds().then((x) => x.cheer());
+          recordGo({ won: n > SKIP.pippin, score: n });
+        }
+      }
+    }
+
     // what's here, and who's here
     let spotHere = null;
     if (s.mode === 'walk' && !s.busy) {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
       spotHere = sp && sp.quest === p.next ? sp.id : null;
       if (spotHere === 'boats' && s.uruks) spotHere = null;
+      // and on the side, ducks and drakes, while the woods are quiet
+      if (!spotHere && !s.ring && !s.uruks && p.next !== 'run' && Math.hypot(s.h.x - SKIPPING.x, s.h.z - SKIPPING.z) < 2.4) spotHere = 'skipping';
     }
     s.near = spotHere;
-    const cast = castFor(p.next);
+    let cast = castFor(p.next);
+    // skipping stones, Merry and Pippin are down at the water with you
+    if (sk) cast = cast.filter((c) => c.look !== 'merry' && c.look !== 'pippin');
     let person = null;
     if (s.mode === 'walk') person = nearest(cast, s.h.x, s.h.z, 2.8)?.id ?? null;
     if (person !== s.person) {
@@ -546,7 +641,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           cast: cast.map((c) => c.id),
           talk: s.person,
           talking: s.talking,
-          speaker: node?.who ?? null,
+          speaker: node?.who ?? (sk && s.said && s.t - s.saidAt < 2.5 ? s.said.who : null),
           line: s.talk?.at ?? null,
           camShot: s.mode === 'talk' && SHOTS[s.talking] ? { id: s.talking, ...SHOTS[s.talking] } : null,
           ring: s.ring,
@@ -561,6 +656,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           decoyed: s.decoyed,
           rescue: r ? { gap: r.gap, up: samUp(r), t: r.t, got: r.state === 'got' } : null,
           promise: s.mode === 'talk' && s.talking === 'promise',
+          skipping: sk ? { phase: sk.phase, thrown: sk.fly?.t ?? 0, touches: sk.fly?.touches ?? null, out: sk.fly ? (stoneAt(sk.fly.touches, sk.fly.t)?.d ?? sk.fly.touches.at(-1).d) : 0, cheer: s.cheer } : null,
           stepT: s.stepT,
           markers,
           camYaw: s.yaw,
@@ -579,10 +675,17 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       return;
     }
 
-    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.ring, s.unseen ? Math.round(s.unseen.pull * 40) : '', st ? Math.round(st.pulling * 20) : '', st ? gazeOn(st) : '', st?.heat, s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert'), s.decoyed, r ? Math.round(r.gap * 4) : '', r ? samUp(r) : '', s.wood.got.length, p.done.length].join('|');
+    const key = [sk ? [sk.phase, sk.throws, sk.best, sk.flat.toFixed(2), s.said?.say].join(',') : '', s.mode, s.near, s.moved, s.talking, s.talk?.at, s.ring, s.unseen ? Math.round(s.unseen.pull * 40) : '', st ? Math.round(st.pulling * 20) : '', st ? gazeOn(st) : '', st?.heat, s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert'), s.decoyed, r ? Math.round(r.gap * 4) : '', r ? samUp(r) : '', s.wood.got.length, p.done.length].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, ring: s.ring, pull: s.unseen?.pull ?? null, seat: st ? { on: gazeOn(st), pulling: st.pulling / SEAT_GAZE.off, heat: st.heat } : null, hunted: Boolean(s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert')), running: Boolean(s.uruks), rescue: r ? { gap: r.gap, up: samUp(r) } : null, sticks: s.wood.got.length });
+      setHud({ mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, ring: s.ring, pull: s.unseen?.pull ?? null, seat: st ? { on: gazeOn(st), pulling: st.pulling / SEAT_GAZE.off, heat: st.heat } : null, hunted: Boolean(s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert')), running: Boolean(s.uruks), rescue: r ? { gap: r.gap, up: samUp(r) } : null, sticks: s.wood.got.length, skip: sk ? { phase: sk.phase, flat: sk.flat, throws: sk.throws, best: sk.best, last: sk.last, tilt: sk.tilt, strength: sk.strength, say: s.said } : null });
+    }
+    // the needle and the strength move every frame, so they're set here
+    if (sk && needle.current) {
+      const tilt = sk.phase === 'tilt' ? tiltAt(sk.clock) : sk.tilt;
+      const strength = sk.phase === 'strength' ? strengthAt(sk.clock) : sk.phase === 'tilt' ? 0 : sk.strength;
+      needle.current.style.left = `${(tilt / SKIP.steep) * 100}%`;
+      if (power.current) power.current.style.transform = `scaleX(${strength})`;
     }
     if (s.person && bubbleRef.current) {
       const at = a.screenOf('cast', s.person);
@@ -601,6 +704,8 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     if (e.type === 'pointerdown') {
       audioContext();
       if (s.mode === 'walk') drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      // skipping stones, a tap on the water is a press
+      else if (s.mode === 'skipping') doSkip();
       return;
     }
     if (e.type === 'pointermove') {
@@ -665,14 +770,22 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     s.yaw = behindYaw(Math.PI);
   };
 
+  const sideTask = { ...SIDE, open: prog.next !== 'run', done: side.won, best: side.best != null ? `Your best: ${side.best} ${side.best === 1 ? 'skip' : 'skips'}. Pippin’s: ${SKIP.pippin}.` : null };
+  const goSide = () => {
+    const s = sim.current;
+    s.h = newWalker({ x: SKIPPING.x - 3, z: SKIPPING.z, face: 0 });
+    s.yaw = behindYaw(0);
+    setList(false);
+  };
   const here = hud.near ? PROMPT[hud.near] : null;
+  const K = hud.mode === 'skipping' ? hud.skip : null;
   const mode = hud.mode;
   const walking = mode === 'walk';
   const convo = hud.talking ? CONVOS[hud.talking] : null;
   const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
   const objective = hud.ring && hud.pull != null ? 'Get away from Boromir to the old stair, west. Walk softly.' : hud.ring ? 'Up the stair to the Seat of Seeing.' : hud.running ? 'Down through the woods to the boats on the lake, east. Stay unseen.' : prog.next === 'camp' ? `Firewood from the edge of the trees: ${hud.sticks ?? 0} of ${STICKS.length}.` : prog.objective;
   return (
-    <div ref={box} className="shire-stage amonhen-stage" data-touch={touch || undefined} data-mode={mode} data-ring={hud.ring || undefined} data-game={['seat', 'rescue'].includes(mode) || hud.ring || hud.running || undefined}>
+    <div ref={box} className="shire-stage amonhen-stage" data-touch={touch || undefined} data-mode={mode} data-ring={hud.ring || undefined} data-game={['seat', 'rescue', 'skipping'].includes(mode) || hud.ring || hud.running || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Amon Hen in 3D: the lawn of Parth Galen by the lake, the woods and the old kings' statues, and the Seat of Seeing on the summit" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Down the river to Parth Galen…</p>}
 
@@ -776,6 +889,53 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           </div>
         </div>
       )}
+      {K && (
+        <div className="shire-panel amonhen-game amonhen-skipping" role="group" aria-label="Ducks and drakes" data-cheer={K.last?.better && K.phase === 'done' ? true : undefined}>
+          <p className="shire-panel-title">Ducks and drakes</p>
+          {K.say && (
+            <p className="shire-panel-say" aria-live="polite">
+              <b>{SPEAKERS[K.say.who]}:</b> {K.say.say}
+            </p>
+          )}
+          <div className="shire-meter amonhen-tilt-meter" role="img" aria-label={K.phase === 'tilt' ? 'The tilt, swinging from flat to steep' : `The tilt: ${Math.round(K.tilt)} degrees`}>
+            <span className="shire-meter-label">Tilt</span>
+            <span className="amonhen-tilt">
+              <span className="amonhen-tilt-best" style={{ left: `${((SKIP.best - 4) / SKIP.steep) * 100}%`, width: `${(8 / SKIP.steep) * 100}%` }} />
+              <span className="amonhen-tilt-steep" style={{ left: `${(SKIP.sink / SKIP.steep) * 100}%` }} />
+              <i ref={needle} />
+            </span>
+          </div>
+          <div className="shire-meter" role="img" aria-label="The strength">
+            <span className="shire-meter-label">Strength</span>
+            <span className="shire-meter-bar amonhen-meter-throw">
+              <span ref={power} />
+            </span>
+          </div>
+          <p className="shire-panel-stats">
+            <span>
+              Stone: <b>{stoneWord(K.flat)}</b>
+            </span>
+            <span>
+              Skips <b>{K.last && K.phase === 'done' ? K.last.skips : '–'}</b>
+            </span>
+            <span>
+              Best <b>{Math.max(K.best, side.best ?? 0)}</b> · Pippin <b>{SKIP.pippin}</b>
+            </span>
+          </p>
+          <div className="shire-panel-row">
+            <button type="button" className="btn btn-primary btn-sm amonhen-big" disabled={K.phase !== 'tilt' && K.phase !== 'strength'} onPointerDown={(e) => (e.preventDefault(), doSkip())} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), doSkip())}>
+              {K.phase === 'strength' ? 'Throw!' : 'Set the tilt'} {!touch && <kbd>Space</kbd>}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={K.phase !== 'tilt' && K.phase !== 'strength'} onClick={otherStone}>
+              Another stone {!touch && <kbd>F</kbd>}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leaveSkipping}>
+              Stop {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+          <p className="shire-panel-help">{touch ? 'Tap once to catch the tilt low (in the green), then again to throw at the top of the strength.' : 'Space once to catch the tilt low (in the green), then again to throw at the top of the strength.'}</p>
+        </div>
+      )}
       {mode === 'end' && (
         <div className="shire-panel amonhen-end" role="dialog" aria-label="Across the lake">
           <p className="shire-panel-title">The Fellowship is broken</p>
@@ -791,7 +951,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         </div>
       )}
       {walking && touch && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do at Amon Hen" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'run' && sim.current.mode === 'walk' && !sim.current.ring && !sim.current.uruks} />}
+      {list && (
+        <QuestList title="Things to do at Amon Hen" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'run' && sim.current.mode === 'walk' && !sim.current.ring && !sim.current.uruks}>
+          <SideList tasks={[sideTask]} onGo={goSide} canGo={(t) => t.open && sim.current.mode === 'walk' && !sim.current.ring && !sim.current.uruks} />
+        </QuestList>
+      )}
     </div>
   );
 }

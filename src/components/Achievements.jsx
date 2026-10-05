@@ -89,6 +89,7 @@ export const ACHIEVEMENTS = {
   seatofseeing: { name: 'The Seat of Seeing', desc: 'Took the Ring off on Amon Hen before the Eye found you' },
   runfrodo: { name: 'Run, Frodo!', desc: 'Got down through the Uruk-hai to the lake unseen' },
   promise: { name: 'I made a promise', desc: 'Pulled Sam out of the lake, and crossed it together' },
+  ducksanddrakes: { name: 'Ducks and drakes', desc: 'Skipped a stone over Nen Hithoel more times than Pippin' },
   elvenrope: { name: 'Real elvish rope', desc: 'Got down the cliffs of the Emyn Muil on Sam’s rope' },
   swearontheprecious: { name: 'Sméagol will swear on the precious', desc: 'Caught Gollum at the foot of the cliff, and spared him' },
   deadmarshes: { name: 'Don’t follow the lights', desc: 'Followed Gollum across the Dead Marshes, and hid from the Nazgûl' },

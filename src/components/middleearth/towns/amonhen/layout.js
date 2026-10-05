@@ -118,6 +118,15 @@ export const TREES = (() => {
   return out;
 })();
 
+// On the side: where you skip stones with Merry and Pippin, on the shore
+// south of the boats, facing out over the lake (east), and where the two
+// of them stand to watch
+export const SKIPPING = { x: shoreX(20) - 1.6, z: 20, face: 0 };
+export const SKIPPERS = [
+  { look: 'pippin', x: SKIPPING.x - 0.6, z: SKIPPING.z + 1.7, face: 0.4 },
+  { look: 'merry', x: SKIPPING.x - 1.7, z: SKIPPING.z + 2.6, face: 0.3 },
+];
+
 // Merry and Pippin, hiding behind a tree when the Uruk-hai come; the
 // boats' spot on the shore
 export const DECOY = { x: -4, z: 15, r: 9 };
