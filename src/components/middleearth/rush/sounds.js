@@ -66,6 +66,12 @@ const SOUNDS = {
     hiss(ac, out, t, { type: 'highpass', f: 2500, gain: 0.05, attack: 0.001, length: 0.04 });
   }),
   scrub: () => play((ac, out, t) => hiss(ac, out, t, { type: 'bandpass', f: 2200, q: 2, gain: 0.05, attack: 0.02, length: 0.16, sweep: 3200 })),
+  // the line's reel, ticking, and the fish out of the water
+  reel: () => play((ac, out, t) => tone(ac, out, t, { type: 'square', f: 2400, gain: 0.02, attack: 0.001, length: 0.025 })),
+  caught: () => play((ac, out, t) => {
+    hiss(ac, out, t, { type: 'lowpass', f: 2200, gain: 0.18, attack: 0.005, length: 0.35, sweep: 400 });
+    tone(ac, out, t + 0.12, { type: 'triangle', f: 520, to: 880, gain: 0.08, length: 0.14 });
+  }),
   add: () => play((ac, out, t) => tone(ac, out, t, { f: 420, to: 160, gain: 0.16, attack: 0.002, length: 0.16 })),
   ladle: () => play((ac, out, t) => hiss(ac, out, t, { type: 'lowpass', f: 900, gain: 0.12, attack: 0.02, length: 0.3, sweep: 300 })),
   filled: () => play((ac, out, t) => [0, 0.07, 0.14].forEach((d, i) => tone(ac, out, t + d, { f: 300 - i * 40, to: 200 - i * 30, gain: 0.08, length: 0.08 }))),

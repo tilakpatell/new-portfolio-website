@@ -86,6 +86,23 @@ describe('the wire', () => {
     expect(ev[0]).toMatchObject({ type: 'served', dish: 'wine', coins: 12 });
   });
 
+  it('carries Parth Galen’s: a fish on the line, a chowder, the catch', async () => {
+    const { AMON_HEN } = await import('./levels/amonhen');
+    const host = newRush(AMON_HEN, { players: 1 });
+    host.players[0].held = { k: 'bowl', s: 'chowder' };
+    host.spots['1,7'].prog = 0.4;
+    host.spots['10,7'].item = { k: 'fish', s: 'raw' };
+    host.spots['11,6'].skin = 1;
+    const guest = newRush(AMON_HEN, { players: 1 });
+    expect(readState(guest, JSON.parse(JSON.stringify(writeState(host))), null)).toBe(true);
+    expect(guest.players[0].held).toEqual({ k: 'bowl', s: 'chowder' });
+    expect(guest.spots['1,7']).toEqual({ item: null, prog: 0.4 });
+    expect(guest.spots['10,7'].item).toEqual({ k: 'fish', s: 'raw' });
+    expect(guest.spots['11,6']).toEqual({ bowl: 0, skin: 1 });
+    const ev = readEvents(JSON.parse(JSON.stringify(writeEvents([{ type: 'caught', at: [1, 7], p: 2 }], AMON_HEN))), AMON_HEN);
+    expect(ev[0]).toMatchObject({ type: 'caught', at: [1, 7], p: 2 });
+  });
+
   it('turns away nonsense', () => {
     const s = newRush(PONY);
     expect(readState(s, null)).toBe(false);
