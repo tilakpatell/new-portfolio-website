@@ -104,6 +104,9 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
   noInk.push(beam);
   group.add(ship);
 
+  // (shadows only on the high tier: they're a draw each, again, for every one of them)
+  if (kit.tier !== 'high') group.traverse((o) => (o.castShadow = false));
+
   // ── the motorcade's leaving, and where everything is each frame ──
   let gone = null; // when it set off (null: still parked), or Infinity once out of sight
   let first = true;

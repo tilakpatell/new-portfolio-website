@@ -13,7 +13,8 @@
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
 // info() }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
-// yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done }.
+// yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
+// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -104,7 +105,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
 
   // ── the models and the cast ──
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const cast = createMeshyCast();
+  // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
+  const cast = createMeshyCast({ cull: true });
   // each of the cast loaded once, however many builders ask, at the same time
   // or not (the clips of the first ask for a name are the ones it gets)
   const asked = new Map();

@@ -17,8 +17,11 @@
 // Hulk, Chitauri, cars, chariot and wall pylon, and Thanos for Titan, into
 // public/hq/meshy/ with a manifest.json the games read.
 //
-// The C-137 world's set: the Smiths (rigged, with clips) go to public/games/meshy/
-// beside Rick and Morty; the house, school, arcade and cabinet to public/models/c137/.
+// The C-137 world's set: the Smiths, the President, his general and Secret
+// Service agent and the Federation's agent (rigged, with clips; the agent
+// sits too) go to public/games/meshy/ beside Rick and Morty; the house,
+// school, arcade, cabinet, Shoney's, the limo and the Federation's ship to
+// public/models/c137/.
 //
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137]
 //
