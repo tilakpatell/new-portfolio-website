@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inPoly } from '../compound/plan';
 import {
+  ARMOUR,
   BUILDINGS,
   CAST,
   DOOR_R,
@@ -90,11 +91,17 @@ describe('The compound, the world: the map', () => {
     }
   });
 
-  it('puts the cast on the lawn, clear of the buildings, and the portal over open ground', () => {
+  it('puts the cast and the armour on the lawn, clear of the buildings, and the portal over open ground', () => {
     for (const c of CAST) {
       expect(inPoly(c.x, c.z, LAWN_W), c.id).toBe(true);
       expect(inBuilding(c.x, c.z), c.id).toBe(false);
     }
+    expect(inPoly(ARMOUR.x, ARMOUR.z, LAWN_W)).toBe(true);
+    expect(inBuilding(ARMOUR.x, ARMOUR.z)).toBe(false);
+    // the armour stands beside the workshop's door, not in front of it
+    const stark = PLACES.find((p) => p.id === 'stark');
+    expect(Math.hypot(ARMOUR.x - stark.x, ARMOUR.z - stark.z)).toBeGreaterThan(2.5);
+    expect(walkable(stark.x, stark.z)).toBe(true);
     expect(inPoly(PORTAL.x, PORTAL.z, LAWN_W)).toBe(true);
     expect(walkable(PORTAL.x, PORTAL.z)).toBe(true);
   });

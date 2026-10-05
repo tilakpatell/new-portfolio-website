@@ -157,5 +157,82 @@
     "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
     "where": "universe",
     "as": "the X-wing you fly"
+  },
+  "avengers-cap": {
+    "title": "Captain America",
+    "author": "alexseagle2004",
+    "authorUrl": "https://sketchfab.com/alexseagle2004",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/captain-america-5bf43af9198f46318d96e23587338913",
+    "where": "avengers",
+    "as": "Captain America, who you walk the compound as",
+    "file": "/models/sketchfab/avengers/cap.glb"
+  },
+  "avengers-thor": {
+    "title": "Thor",
+    "author": "Bhavlin",
+    "authorUrl": "https://sketchfab.com/thakurbhavmanyu5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thor-7cc5f55499cc4d67b7a1c92a6845c8a0",
+    "where": "avengers",
+    "as": "Thor, about the compound",
+    "file": "/models/sketchfab/avengers/thor.glb"
+  },
+  "avengers-hulk": {
+    "title": "Hulk | Marvel Rivals",
+    "author": "King_45",
+    "authorUrl": "https://sketchfab.com/King_45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/hulk-marvel-rivals-1379a9de81b7426ea4ee71ff4c126e80",
+    "where": "avengers",
+    "as": "Hulk, about the compound",
+    "file": "/models/sketchfab/avengers/hulk.glb"
+  },
+  "avengers-widow": {
+    "title": "Black Widow – Animated 3D Character",
+    "author": "Kmirp99",
+    "authorUrl": "https://sketchfab.com/Kmirp99",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/black-widow-animated-3d-character-da36a24d113f49908459bf33e00a1f1e",
+    "where": "avengers",
+    "as": "Black Widow, about the compound",
+    "file": "/models/sketchfab/avengers/widow.glb"
+  },
+  "avengers-ironman": {
+    "title": "Iron Man MK7",
+    "author": "CHANG747",
+    "authorUrl": "https://sketchfab.com/CHANGP453",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/iron-man-mk7-ad4776eea8184283a3e49cf5487df754",
+    "where": "avengers",
+    "as": "an Iron Man armour at the workshop door",
+    "file": "/models/sketchfab/avengers/ironman.glb"
+  },
+  "avengers-anim-basic": {
+    "title": "Basic Human Male",
+    "author": "enzinogenie",
+    "authorUrl": "https://sketchfab.com/enzinogenie",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
+    "where": "avengers",
+    "as": "the idle, walk and run Cap, Thor and Black Widow move with",
+    "file": "/models/sketchfab/avengers/cap.glb"
+  },
+  "avengers-anim-puppet": {
+    "title": "Puppet (rigged with Mixamo)",
+    "author": "SlagPerch 3D",
+    "authorUrl": "https://sketchfab.com/slagperch3d",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/puppet-rigged-with-mixamo-4956fe98240d4644b9e2598a7f506f0e",
+    "where": "avengers",
+    "as": "Captain America’s jump",
+    "file": "/models/sketchfab/avengers/cap.glb"
   }
 }
