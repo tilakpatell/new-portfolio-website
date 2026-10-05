@@ -2,6 +2,7 @@ import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useM
 import { useLocation } from 'react-router-dom';
 import { DEFAULT_THEME, ROUTE_THEMES, THEMES } from './themes';
 import { CUSTOM_DEFAULT, CUSTOM_KEY, customTokens, isHex } from './custom';
+import { usePageActive } from '../lib/page';
 
 const ThemeTransition = lazy(() => import('../components/ThemeTransition'));
 
@@ -218,13 +219,18 @@ export function ThemeProvider({ children }) {
 export const useTheme = () => useContext(ThemeContext);
 
 // Auto theming for a page: whichever [data-theme-section] crosses the middle of
-// the screen sets the site's colours.
+// the screen sets the site's colours. Given the page's root, it watches only
+// that page's sections; in the feed (components/feed), where several pages are
+// mounted at once, only the page on the address watches.
 // eslint-disable-next-line react-refresh/only-export-components
-export function useSectionThemes() {
+export function useSectionThemes(containerRef) {
   const setScrollTheme = useContext(ThemeSetterContext);
   const { pathname } = useLocation();
+  const active = usePageActive();
   useEffect(() => {
-    const sections = [...document.querySelectorAll('[data-theme-section]')];
+    if (!active) return undefined;
+    const root = containerRef?.current ?? document;
+    const sections = [...root.querySelectorAll('[data-theme-section]')];
     if (!sections.length || typeof IntersectionObserver === 'undefined') return undefined;
     const io = new IntersectionObserver(
       (entries) => {
@@ -234,5 +240,5 @@ export function useSectionThemes() {
     );
     sections.forEach((s) => io.observe(s));
     return () => io.disconnect();
-  }, [setScrollTheme, pathname]);
+  }, [setScrollTheme, pathname, active, containerRef]);
 }
