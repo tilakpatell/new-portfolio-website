@@ -72,6 +72,10 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
+      // through a rift, a shot into a leviathan, and (the RV meets both) each kind of leviathan
+      said(linesFor(crew, 'event', 'rifted'), crew, 'rifted');
+      said(linesFor(crew, 'event', 'leviathanHit'), crew, 'leviathanHit');
+      if (family === 'both') for (const sub of ['purrgil', 'cromulon']) said(linesFor(crew, 'event', 'leviathan', sub), crew, `leviathan ${sub}`);
     }
   });
 

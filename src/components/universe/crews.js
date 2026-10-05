@@ -277,6 +277,29 @@ export const CREWS = [
         ['morty', 'Rick, this is way too fast!'],
         ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
       ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (the Cromulon), a shot into it
+      flare: [
+        ['morty', 'Rick, the sun’s doing something! It’s getting brighter!'],
+        ['rick', 'Solar flare, Morty. Coronal mass ejection. Brace for the shockwave and don’t touch anything.'],
+      ],
+      rift: [
+        ['morty', 'Rick, there’s a hole in space! Right there!'],
+        ['rick', 'A rift, Morty. Dimensional tear. Fly into it and we come out somewhere else. Or don’t. Your call, for once.'],
+      ],
+      rifted: [
+        ['morty', 'Where are we, Rick? Where did it put us?'],
+        ['rick', 'Somewhere else, Morty. That’s what rifts do. Check the map if you care.'],
+      ],
+      leviathan: [
+        ['comms', 'SHOW ME WHAT YOU GOT!'],
+        ['morty', 'Oh no. Oh no, Rick, it’s a Cromulon!'],
+        ['rick', 'Keep flying, Morty. We are not doing a musical number today.'],
+      ],
+      leviathanHit: [
+        ['morty', 'Rick, I shot the giant head!'],
+        ['rick', 'Yeah, that’ll show it. Great plan, Morty. Really great.'],
+      ],
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
@@ -623,6 +646,25 @@ export const CREWS = [
         ['luke', 'I’ve never had her going this fast!'],
         ['r2', '[a frantic string of beeps]'],
       ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil), a shot into it
+      flare: [
+        ['r2', '[Solar flare. Shockwave inbound.]'],
+        ['luke', 'I see it, Artoo. Hang on, it’s going to rattle us.'],
+      ],
+      rift: [
+        ['luke', 'Artoo, what is that? Space is… tearing.'],
+        ['r2', '[A rift. Unknown exit. Entering it is your decision.]'],
+      ],
+      rifted: [
+        ['luke', 'Artoo, where are we?'],
+        ['r2', '[Recalculating. Somewhere new. Nav computer updated.]'],
+      ],
+      leviathan: [
+        ['luke', 'Artoo, look at the size of them. Purrgil. I’ve only heard stories.'],
+        ['r2', '[Purrgil pod. Hold your course. Let them pass.]'],
+      ],
+      leviathanHit: [['r2', '[Do not shoot the purrgil. They did nothing to you.]']],
     },
     wonders: {
       citadel: [
@@ -952,6 +994,26 @@ export const CREWS = [
         ['han', 'Pushing her past what she was built for. Just how I like it.'],
         ['chewie', '[a doubtful growl]'],
       ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil), a shot into it
+      flare: [
+        ['han', 'Chewie, that star’s about to blow its top. Hold on to something.'],
+        ['chewie', '[A roar: the shockwave is coming.]'],
+      ],
+      rift: [
+        ['han', 'Well, that’s new. A hole in space, right in front of us.'],
+        ['chewie', '[A worried growl: should we go in?]'],
+        ['han', 'I’ve flown through worse. Probably.'],
+      ],
+      rifted: [
+        ['han', 'See? Told you. We’re… somewhere.'],
+        ['chewie', '[A long, unimpressed groan.]'],
+      ],
+      leviathan: [
+        ['chewie', '[An awed howl: purrgil!]'],
+        ['han', 'Purrgil. Easy, Chewie. They jump to lightspeed on their own. Let’s not give them a reason.'],
+      ],
+      leviathanHit: [['han', 'Don’t shoot the whales, Chewie. We don’t need that kind of trouble.']],
     },
     wonders: {
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
@@ -1305,6 +1367,32 @@ export const CREWS = [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
         ['walt', 'Seatbelt, Jesse.'],
       ],
+      // the director's other happenings: a star flaring, a rift (and going
+      // through one), something enormous passing (purrgil or a Cromulon), a shot into it
+      flare: [
+        ['jesse', 'Mr. White, the sun’s flaring! Is that bad?'],
+        ['walt', 'A coronal mass ejection, Jesse. Charged particles. The shields will take it. Mostly.'],
+      ],
+      rift: [
+        ['jesse', 'Yo, is that a hole in space? That’s a hole in space.'],
+        ['walt', 'A rift. If we fly into it, we come out somewhere else. I’m not sure I want to know where.'],
+      ],
+      rifted: [
+        ['jesse', 'Where are we, Mr. White?'],
+        ['walt', 'Somewhere else, Jesse. Check the map.'],
+      ],
+      leviathan: {
+        purrgil: [
+          ['jesse', 'Mr. White. Space whales. Actual space whales.'],
+          ['walt', 'Purrgil, Jesse. Let them by. We don’t want to be in their way when they jump.'],
+        ],
+        cromulon: [
+          ['comms', 'SHOW ME WHAT YOU GOT!'],
+          ['jesse', 'What does it want, Mr. White? What have we got?'],
+          ['walt', 'Nothing it wants, Jesse. Keep flying.'],
+        ],
+      },
+      leviathanHit: [['walt', 'Jesse. Stop shooting the enormous thing.']],
     },
     wonders: {
       citadel: [
@@ -1430,7 +1518,8 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
-// its id), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
+// its id; an event's lines may be keyed by `sub`, what came: a leviathan's
+// kind), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
 // what: 'star', 'giant', 'citadel'; the plain crash lines otherwise), or
 // something on 'foot' (by what: 'land', 'out', 'squad', 'kill' (`sub`: by
 // kind, or any), 'hurt', 'down', 'up', 'cleared', 'swap' (`sub`: who's
@@ -1442,13 +1531,17 @@ export function linesFor(crew, event, id, sub) {
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
-  if (event === 'event') return crew.events?.[id] ?? null;
+  if (event === 'event') {
+    const f = crew.events?.[id];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
+  }
   if (event === 'siege') return crew.siege?.[id] ?? null;
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
   if (event === 'foot') {
     const f = crew.foot?.[id];
     if (!f) return null;
-    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? null);
+    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? Object.values(f)[0] ?? null);
   }
   return crew[event] ?? null;
 }

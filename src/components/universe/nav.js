@@ -15,7 +15,7 @@
 // Picking a place anywhere on the map (its name, the panel, the nav map)
 // goes by the drive picked.
 
-import { EDGE, GOALS, OVERDRIVE, SHIP, autopilot, parkAt, step } from './ship';
+import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, parkAt, step } from './ship';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
@@ -136,6 +136,40 @@ export function findDestinations(kind = 'all', query = '') {
 export function parkFor(id, from) {
   if (id === MAW.id) return parkNear(from);
   return parkAt(id, from);
+}
+
+// Where a rift (director.js) comes out: any place or wonder on the map but
+// the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
+// thrown into a black hole), never a part of one (the Citadel's domes)
+const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
+export function riftExit(fromId = null, rand = Math.random) {
+  const exits = RIFT_EXITS.filter((id) => id !== fromId);
+  return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
+}
+
+// Where a rift opens: ahead of the ship and off to one side, at its height,
+// the nearest spot of a few (RIFT_AHEAD out, either side) that's clear of
+// anything solid by RIFT_CLEAR past its surface; null if none is (the ship
+// is in a crowd). `rand` picks which side comes first.
+export const RIFT_R = 4;
+const RIFT_AHEAD = [35, 55, 80];
+const RIFT_SIDE = 12;
+const RIFT_CLEAR = RIFT_R + 6;
+export function riftSpot(ship, rand = Math.random) {
+  const [fx, fz] = forward(ship.heading);
+  const rx = -fz;
+  const rz = fx;
+  const first = rand() < 0.5 ? -1 : 1;
+  for (const ahead of RIFT_AHEAD) {
+    for (const side of [first, -first]) {
+      const x = ship.x + fx * ahead + rx * side * RIFT_SIDE;
+      const z = ship.z + fz * ahead + rz * side * RIFT_SIDE;
+      const y = ship.y;
+      if (SOLIDS.some((o) => Math.hypot(x - o.at[0], y - o.at[1], z - o.at[2]) < o.r + RIFT_CLEAR)) continue;
+      return [x, y, z];
+    }
+  }
+  return null;
 }
 
 // how far it is from (x, y, z) to a place: to its parking spot's side of
