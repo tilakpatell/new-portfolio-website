@@ -176,7 +176,10 @@ export function FunProvider({ children }) {
     const clips = import('../lib/clips');
     const { snapPage } = await import('./effects');
     if (!snapPage()) return;
-    clips.then((c) => c.playClip('snap', { keep: true }));
+    clips.then((c) => {
+      c.playClip('snap', { keep: true });
+      c.playClip('mrStark', { when: 1.4, keep: true }); // as the page turns to dust
+    });
     unlock('snap');
     notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
   }, [notify, unlock]);
@@ -194,6 +197,7 @@ export function FunProvider({ children }) {
   const parkour = useCallback(async () => {
     const { parkourPage } = await import('./effects');
     parkourPage();
+    import('../lib/clips').then((c) => c.playClip('parkour', { keep: true }));
     notify('Parkour!', 'Hardcore parkour.', 'note', 'parkour');
   }, [notify]);
 
@@ -216,6 +220,7 @@ export function FunProvider({ children }) {
   );
   const gandalf = useCallback(() => {
     import('../lib/sfx').then((s) => s.thunder());
+    import('../lib/clips').then((c) => c.playClip('youShallNotPass', { keep: true }));
     notify('You shall not pass!', 'Gandalf, on the Bridge of Khazad-dûm', 'note');
     const root = document.documentElement;
     root.classList.remove('stand-ground');
@@ -223,7 +228,10 @@ export function FunProvider({ children }) {
     root.classList.add('stand-ground');
     setTimeout(() => root.classList.remove('stand-ground'), 900);
   }, [notify]);
-  const gollum = useCallback(() => notify('My precious.', 'Gollum', 'note'), [notify]);
+  const gollum = useCallback(() => {
+    import('../lib/clips').then((c) => c.playClip('myPrecious', { keep: true }));
+    notify('My precious.', 'Gollum', 'note');
+  }, [notify]);
 
   // Rick and Morty: get schwifty, and the site goes portal green (or one of
   // the Smiths' colours)
@@ -235,7 +243,10 @@ export function FunProvider({ children }) {
     },
     [pin, unlock],
   );
-  const pickleRick = useCallback(() => notify('I’m Pickle Riiick!', 'Funniest thing I’ve ever seen.', 'note'), [notify]);
+  const pickleRick = useCallback(() => {
+    import('../lib/clips').then((c) => c.playClip('pickleRick', { keep: true }));
+    notify('I’m Pickle Rick!', 'Funniest thing I’ve ever seen.', 'note');
+  }, [notify]);
 
   // Pirates of the Caribbean: savvy hoists the colours (the Pearl's, the
   // Dutchman's or Tortuga's)

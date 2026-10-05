@@ -18,6 +18,8 @@ const sfx = () => import('../../../lib/sfx');
 const cue = () => import('../../games/gameAudio');
 const play = (name) => sfx().then((s) => s[name]?.());
 const playCue = (name) => cue().then((s) => s[name]?.());
+// the show's own lines (lib/clips.js), where it has one for the moment
+const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id));
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -153,6 +155,7 @@ function Game({ soft, fail }) {
         local.set(BEST, next);
       }
       if (won) unlock('peaceamongworlds');
+      else if (g.boss?.alive && g.boss.id === 'cromulon') clip('disqualified'); // lost to the Cromulon
       setUi((u) => ({ ...u, offer: [], result: { won, score: g.score, isBest, prev, dim: g.dim, kills: g.kills, seeds: g.seeds, time: g.t, hero: g.hero } }));
       setPhase(won ? 'won' : 'lost');
       if (won) play('victory');
@@ -219,7 +222,7 @@ function Game({ soft, fail }) {
             playCue('bossSting');
             say(BOSS_LINE[e.id] ?? e.name, 'boss');
             setUi((u) => ({ ...u, boss: e.name }));
-            if (e.id === 'cromulon') play('ding');
+            if (e.id === 'cromulon') clip('showMe').then((h) => h || play('ding'));
             break;
           case 'bossPhase':
             play('roar');
@@ -231,7 +234,10 @@ function Game({ soft, fail }) {
           case 'bossDown':
             play('boom');
             say(`${PANIC.bosses[e.id].name}: down`, 'good');
-            if (e.id === 'cromulon') unlock('showmewhatyougot');
+            if (e.id === 'cromulon') {
+              unlock('showmewhatyougot');
+              clip('likeWhatYouGot');
+            }
             setUi((u) => ({ ...u, boss: null }));
             break;
           case 'travel':

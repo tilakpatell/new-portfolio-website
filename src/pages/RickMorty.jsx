@@ -11,6 +11,7 @@ import PortalPanic from '../components/rickmorty/portal/PortalPanic';
 import { BethFace, JerryFace, MortyFace, RickFace, SummerFace } from '../components/rickmorty/Faces';
 import '../components/rickmorty/rickmorty.css';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import { useAchievements } from '../components/Achievements';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
@@ -24,6 +25,28 @@ const FAMILY = [
   { id: 'jerry', name: 'Jerry Smith', role: 'Between jobs', line: 'Means well. Hungry for apples?', Face: JerryFace, color: '#c8b58a' },
 ];
 
+// the soundboard: the show's own lines, then the sounds made here
+const LINES = [
+  'wubba',
+  'pickleRick',
+  'riggity',
+  'schwifty',
+  'imIn',
+  'myMan',
+  'meeseeks',
+  'canDo',
+  'purpose',
+  'oooWee',
+  'birdCulture',
+  'showMe',
+  'likeWhatYouGot',
+  'disqualified',
+  'krombopulos',
+  'scaryTerry',
+  'cool',
+  'cantTakeIt',
+  ['portalGun', 'The portal gun'],
+];
 const BOARD = [
   ['zap', 'Portal gun'],
   ['portalOpen', 'A portal opens'],
@@ -175,8 +198,10 @@ export default function RickMorty() {
         <h2 id="rm-board-title" className="title">
           Soundboard
         </h2>
-        <p className="lead mt-4 max-w-[54ch]">Synthesized, every one. Type wubbalubbadubdub anywhere on the site and see what happens.</p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <p className="lead mt-4 max-w-[54ch]">From the show, a line at a time. Type wubbalubbadubdub anywhere on the site and see what happens.</p>
+        <ClipBoard className="mt-8" clips={LINES} />
+        <p className="label mt-10">Made here, from scratch</p>
+        <div className="mt-3 flex flex-wrap gap-3">
           {BOARD.map(([id, label]) => (
             <button key={id} type="button" className="btn btn-ghost" onClick={() => play(id)}>
               {label}

@@ -211,6 +211,7 @@ export default function OfficeFloor({ say = (t) => t }) {
   const [sel, setSel] = useState('michael');
   const [done, setDone] = useState(null);
   const panel = useRef(null);
+  const toby = useRef(0); // which of Michael's two lines Toby gets
   const p = STAFF.find((s) => s.id === sel);
   // the office in 3D where there's a graphics chip for it; this map otherwise
   const three = use3D();
@@ -228,10 +229,11 @@ export default function OfficeFloor({ say = (t) => t }) {
     audioContext(); // in the click, so the moment can be heard
     if (sel === 'dwight') return jumpTo(null, 'facts-title');
     if (sel === 'michael') clip('thankYou');
-    if (sel === 'toby') clip('noGod');
+    if (sel === 'toby') clip(toby.current++ % 2 ? 'noGod' : 'whyAreYou'); // Michael, both ways
     if (sel === 'andy') parkour();
     if (sel === 'pam' || sel === 'erin') sfx().then((s) => s.ring());
-    if (sel === 'jim' || sel === 'kevin') sfx().then((s) => s.knock());
+    if (sel === 'jim') clip('dwightPunish').then((h) => h || sfx().then((s) => s.knock())); // Dwight finds the Jell-O
+    if (sel === 'kevin') clip('undercookOnions').then((h) => h || sfx().then((s) => s.knock()));
     setDone(Date.now());
     return undefined;
   };

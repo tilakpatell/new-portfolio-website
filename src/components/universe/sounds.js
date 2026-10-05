@@ -375,6 +375,11 @@ export function flybySound(kind) {
     whoosh(1.1, 400, 1400, 0.12);
     return;
   }
+  // a TIE's own scream, or one made like it
+  playClip('tieScream', { duration: 2.4, gain: 0.7 }).then((h) => h || tieScream());
+}
+
+function tieScream() {
   const ac = audioContext();
   const out = ac ? output() : null;
   if (!ac || !out) return;

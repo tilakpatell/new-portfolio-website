@@ -9,6 +9,9 @@ import { capturePointer } from '../../lib/pointer';
 import { use3D } from '../../lib/gpu';
 
 const sfx = () => import('../../lib/sfx');
+// the films' own lines, where the run says one the site has a recording of
+const SAID = { trench: 'stayOnTarget', vader: 'forceIsStrong' };
+const say = (key) => SAID[key] && import('../../lib/clips').then((c) => c.playClip(SAID[key]));
 // The HUD writes in the site's language when language mode is on.
 const hudFamily = () => {
   const script = SCRIPTS[document.documentElement.dataset.script];
@@ -302,6 +305,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           case 'vader':
           case 'han':
             play('flyby');
+            say(e.type);
             message = e.text;
             break;
           case 'r2':
@@ -313,6 +317,10 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             changed = true;
             break;
           case 'say':
+            say(e.key);
+            message = e.text;
+            changed = true;
+            break;
           case 'hold':
           case 'miss':
             message = e.text;
