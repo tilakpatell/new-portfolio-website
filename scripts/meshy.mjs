@@ -145,6 +145,11 @@ const CITADEL = {
   'councilrick-c': { height: 1.8, prompt: `A member of the Council of Ricks: a version of Rick Sanchez from Rick and Morty who is completely bald with a pointed grey goatee and a unibrow, in a white high-collared military dress coat with gold epaulettes, a red sash and dark trousers. ${BODY}` },
   cowboyrick: { height: 1.8, prompt: `Cowboy Rick from the Citadel of Ricks: ${RICK}, wearing a brown cowboy hat, a brown leather vest over a white shirt, a red bandana round his neck, blue jeans, a belt with a big silver buckle and brown cowboy boots. ${BODY}` },
   factoryrick: { height: 1.8, prompt: `A worker at the Simple Rick's wafer factory in the Citadel of Ricks: ${RICK}, with a tired face, a white hairnet over his hair, a pale blue factory jumpsuit with a small name patch, and black work boots. ${BODY}` },
+  // and the Ricks of the crowd, as the show's commuter train has them
+  constructionrick: { height: 1.8, prompt: `A construction worker from the Citadel of Ricks: ${RICK}, in an orange work jumpsuit with a small name badge and a brown belt, an orange hard hat with a yellow stripe, black work boots. ${BODY}` },
+  sweaterrick: { height: 1.8, prompt: `A Rick from the Citadel of Ricks: ${RICK}, in a red cardigan sweater over a yellow collared shirt, a stethoscope round his neck, brown trousers and brown shoes. ${BODY}` },
+  suitrick: { height: 1.8, prompt: `An office-worker Rick from the Citadel of Ricks: ${RICK}, in a light blue business suit, a white shirt, a navy blue tie and black shoes. ${BODY}` },
+  detectiverick: { height: 1.8, prompt: `A detective Rick from the Citadel of Ricks: ${RICK}, in a long brown checked trench coat, a brown fedora hat, a red scarf, dark trousers and brown shoes. ${BODY}` },
   copmorty: { height: 1.5, prompt: `Cop Morty from the Citadel of Ricks in Rick and Morty: Morty Smith, a 14-year-old boy with short brown hair and a round head, wearing a navy blue police uniform, a navy police cap with a gold badge, a black duty belt and black shoes. Arms hanging down and a little away from the body, hands open and relaxed. ${BODY}` },
 };
 for (const [n, a] of Object.entries(CITADEL)) ASSETS[n] = { ...a, set: 'citadel', rig: true, poly: 14000, tex: 1024 };

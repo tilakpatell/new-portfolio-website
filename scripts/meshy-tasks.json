@@ -241,5 +241,29 @@
     "model": "01a10a8d-b079-73ca-aaf2-4fa70f0ba408",
     "rig": "01a10a8f-900f-71b8-819f-caab89bd7897",
     "idle": "01a10a8f-fbbe-73a1-8666-f8182bd5b53d"
+  },
+  "constructionrick": {
+    "image": "01a10aac-6893-762b-90bb-455dbcfd00c0",
+    "model": "01a10aad-1dbc-724b-a9ac-b2f8e187a437",
+    "rig": "01a10aae-cb1c-7508-845c-7d9f7e097df8",
+    "idle": "01a10aaf-0f33-72a8-85cb-006d4b6de5a4"
+  },
+  "sweaterrick": {
+    "image": "01a10aac-688e-77d2-bbfa-be804e338b5a",
+    "model": "01a10aad-1e2b-75a5-a4c7-5f42ace2281e",
+    "rig": "01a10aae-cb29-762b-b1a4-bae982361765",
+    "idle": "01a10aaf-0ec2-73f7-82a1-712edd4a6dd8"
+  },
+  "suitrick": {
+    "image": "01a10aac-6890-7068-b2cb-4259d8fd19a8",
+    "model": "01a10aad-1db6-773a-b1a4-a457e9ac3a08",
+    "rig": "01a10aae-cbb6-7702-bfff-1d3f321b351c",
+    "idle": "01a10aaf-0ebf-7139-97ab-dd659367f870"
+  },
+  "detectiverick": {
+    "image": "01a10aac-68c2-7435-b942-6eba66c59faf",
+    "model": "01a10aad-1e32-705a-aefb-6a6eff67e01e",
+    "rig": "01a10aae-cb25-70ca-946f-cbc3fe0a538f",
+    "idle": "01a10aaf-0f34-7596-89d8-1b91d99b497c"
   }
 }
