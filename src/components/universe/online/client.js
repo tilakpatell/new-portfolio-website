@@ -361,11 +361,15 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
       p.hitByMeAt = now();
       send.hit({ d: DAMAGE }, id);
     },
-    // your shields are gone: everyone hears who did it
+    // your shields are gone: everyone hears who did it (a pilot whose hit
+    // on you counted, so it's theirs on your list too)
     down(by) {
       send?.down({ b: by ?? null });
       const p = by ? peers.get(by) : null;
-      if (p) feed(`${p.name ?? 'Someone'} shot you down`, 'kill');
+      if (!p) return;
+      p.kills += 1;
+      feed(`${p.name ?? 'Someone'} shot you down`, 'kill');
+      roster();
     },
     ally(id, what) {
       const p = peers.get(id);

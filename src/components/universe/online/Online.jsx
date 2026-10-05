@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
+import { relayOnly } from './privacy';
 import { UNIVERSE, placeName } from './where';
 import { crewById } from '../crews';
 import Face from '../Faces';
@@ -13,11 +14,14 @@ import './online.css';
 // either the way in (your callsign, and what going online means) or who's
 // online, what they fly, their kills, which page they're on (with a button
 // to go there too), and the buttons to ask them to be allies, accept,
-// decline or end an alliance, or block them. What's happening (who came
-// online or came to your page, alliances, who shot down whom) shows in a
-// short feed above the button. useOnline.js keeps the state.
+// decline or end an alliance, or block them, and whether live pointers
+// show on pages. What's happening (who came online or came to your page,
+// alliances, who shot down whom) shows in a short feed above the button.
+// useOnline.js keeps the state; what the card says about your IP address
+// follows how the site was built (privacy.js).
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
+const RELAYED = Boolean(relayOnly()); // every connection through a TURN relay
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
@@ -102,8 +106,9 @@ function Join({ online, onClose }) {
           </button>
         </div>
         <p className="universe-online-fine">
-          Browsers connect straight to each other (WebRTC), with public Nostr relays to introduce them, so other pilots can see your IP address, as in most online games. Nothing is
-          stored anywhere.
+          {RELAYED
+            ? 'Browsers connect through a relay (WebRTC), with public Nostr relays to introduce them, so other pilots never see your IP address. Nothing is stored anywhere.'
+            : 'Browsers connect straight to each other (WebRTC), with public Nostr relays to introduce them, so other pilots can see your public IP address, as in most online games (your home network’s own addresses are kept back). Nothing is stored anywhere.'}
         </p>
       </form>
     </Card>
@@ -163,6 +168,11 @@ function Roster({ online, ship, floating, onClose }) {
         </ul>
       )}
       {!floating && !ship && room.status === 'online' && <p className="universe-online-fine">Pick a ship in the panel to fly with them; till then you’re watching.</p>}
+      <label className="universe-online-check">
+        <input type="checkbox" checked={online.pointers} onChange={(e) => online.showPointers(e.target.checked)} />
+        Live pointers on pages, yours and theirs
+      </label>
+      <p className="universe-online-fine">{RELAYED ? 'Connected through a relay: no one sees your IP address.' : 'Connected straight to each pilot: they can see your public IP address.'}</p>
       <button type="button" className="universe-online-link universe-online-leave" onClick={online.goOffline}>
         Go offline
       </button>
