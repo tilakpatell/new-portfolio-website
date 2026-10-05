@@ -101,7 +101,7 @@ vec3 cyBump(vec3 surfPos, vec3 n, vec2 dHdxy) {
 }
 `;
 
-export function cybertronSkin(mat, { glow = null, sun = new THREE.Vector3(1, 0.5, 0.5).normalize(), city = 0xffc98a, fire = 0xff5a14 } = {}) {
+export function cybertronSkin(mat, { glow = null, sun = new THREE.Vector3(1, 0.5, 0.5).normalize(), city = 0xffc98a, fire = 0xff7614 } = {}) {
   const u = {
     uCyGlow: { value: glow },
     uEnergon: { value: SIDES.autobot.energon.clone() },
@@ -151,7 +151,7 @@ export function cybertronSkin(mat, { glow = null, sun = new THREE.Vector3(1, 0.5
           totalEmissiveRadiance += uEnergon * (cyG.r * cyG.r * 1.6 + cyG.r * 0.4) * run * uLevels.x * (0.75 + 0.25 * cyNight);
           // fires flicker
           float flick = 0.65 + 0.35 * sin(uTime * 6.3 + o.y * 7.0) * sin(uTime * 2.7 + o.z * 5.0 + o.x * 3.0);
-          totalEmissiveRadiance += uFire * cyG.g * flick * uLevels.y;
+          totalEmissiveRadiance += (uFire * cyG.g + vec3(1.0, 0.78, 0.35) * cyG.g * cyG.g * cyG.g * 0.9) * flick * uLevels.y;
           // the cities, on the night side (a little even by day), their
           // windows sharpening up close where the plating is drawn
           totalEmissiveRadiance += uCity * cyG.b * cyNight * uLevels.z * (1.0 - 0.6 * cyA.y);

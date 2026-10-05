@@ -4,11 +4,15 @@
 // stepped chasms, the city-states' discs of rings, the Sea of Rust, the
 // war's craters and fires) and dressed by ./skin.js, which colours the
 // energon by side, lights the cities on the night side and carries the
-// plating on in the shader where the maps run out. Metal wants something to
-// reflect, so it has a sky of its own to shine with (a sun and the galaxy's
-// glow, made into an environment map); a thin air glows at the limb; two
-// moons and a ring of wreckage go round it, and a space bridge, whose portal
-// opens now and then. Bloom carries the energon and the fires.
+// plating on in the shader where the maps run out. And it's at war:
+// fireballs burst out of the fronts and now and then one boils up off the
+// edge (./war.js), a warm light flickering on the plating round the
+// biggest. It hangs in a blue-green nebula, in a haze of its own air that
+// thickens toward the edge. Metal wants something to reflect, so it has a
+// sky of its own to shine with (a sun and the nebula's glow, made into an
+// environment map); two moons and a ring of wreckage go round it, and a
+// space bridge, whose portal opens now and then. Bloom carries the energon,
+// the fires and the explosions, and only those.
 //
 // Drag to turn it. `side` (autobot or decepticon) is the energon's colour,
 // and how much of the planet is burning; changing it cross-fades.
@@ -24,9 +28,11 @@ import { budget, device } from '../../lib/device';
 import { noiseAtlas } from '../../lib/texture';
 import { createRenderer, disposeTree, precompile, precompilePasses } from '../../lib/three/renderer';
 import { SIDES, cybertronSkin } from './skin';
+import { createWar, warZones } from './war';
 
 const MAPS = '/textures/universe/';
 const SUN = new THREE.Vector3(-0.82, 0.34, 0.3).normalize();
+const HAZE = new THREE.Color(0x5cc8f0); // the air's own colour, before the energon tints it
 
 // the air at the limb: the back of a sphere a little bigger than the planet,
 // brightest just outside the edge and on the sunlit side
@@ -49,24 +55,58 @@ const AIR_FRAG = /* glsl */ `
     vec3 n = normalize(vN);
     float c = -dot(n, normalize(vV));
     float x = clamp((sqrt(max(1.0 - c * c, 0.0)) * uReach - 1.0) / (uReach - 1.0), 0.0, 1.0);
-    float lit = 0.1 + 0.9 * smoothstep(-0.5, 0.45, dot(n, uSun));
+    // lit all the way round (the nebula behind it lights it too), most on the sunlit side
+    float lit = 0.4 + 0.6 * smoothstep(-0.5, 0.45, dot(n, uSun));
     // warmer where the light grazes the terminator
-    vec3 col = mix(uColor, vec3(1.0, 0.62, 0.35), smoothstep(0.35, 0.0, abs(dot(n, uSun))) * 0.35);
-    gl_FragColor = vec4(col * pow(1.0 - x, 2.6) * lit * 1.4, 1.0);
+    vec3 col = mix(uColor, vec3(1.0, 0.62, 0.35), smoothstep(0.35, 0.0, abs(dot(n, uSun))) * 0.25);
+    gl_FragColor = vec4(col * (pow(1.0 - x, 2.6) * 1.0 + pow(1.0 - x, 9.0) * 0.55) * lit, 1.0);
   }`;
 
-// the far sky: the galaxy's band and a little colour in the dark
+// and the same air seen against the planet: a haze over the plating that
+// thickens toward the edge, where you look through more of it
+const HAZE_FRAG = /* glsl */ `
+  uniform vec3 uColor;
+  uniform vec3 uSun;
+  varying vec3 vN;
+  varying vec3 vV;
+  void main() {
+    vec3 n = normalize(vN);
+    float edge = 1.0 - clamp(dot(n, normalize(vV)), 0.0, 1.0);
+    float lit = 0.45 + 0.55 * smoothstep(-0.4, 0.5, dot(n, uSun));
+    gl_FragColor = vec4(uColor * (pow(edge, 2.8) * 0.38 + pow(edge, 8.0) * 0.35 + 0.008) * lit, 1.0);
+  }`;
+
+// the far sky: a nebula, deep blue and blue-green, behind the planet. The
+// camera never leaves its spot, so it's laid out flat on the sky ahead (the
+// way it looks from there), the clouds' shapes pushed about by more noise,
+// with brighter wisps through them, dark lanes between, and a glow behind
+// the planet itself; round the back it's just the dark
 const SKY_FRAG = /* glsl */ `
   uniform sampler2D uNoise;
   varying vec3 vDir;
+  float soft(vec2 p) { return texture2D(uNoise, p).r; }
   void main() {
     vec3 d = normalize(vDir);
-    float band = exp(-pow(dot(d, normalize(vec3(0.25, 0.9, -0.35))) * 3.2, 2.0));
-    vec2 uv = vec2(atan(d.z, d.x) / 6.2831853, asin(d.y) / 3.14159265);
-    float n = texture2D(uNoise, uv * vec2(3.0, 2.0)).r * 0.6 + texture2D(uNoise, uv * vec2(9.0, 6.0)).g * 0.4;
-    vec3 col = vec3(0.004, 0.006, 0.014);
-    col += vec3(0.05, 0.035, 0.09) * band * (0.4 + n);
-    col += vec3(0.02, 0.05, 0.08) * smoothstep(0.55, 0.9, n) * (0.4 + band);
+    vec2 p = d.xy / max(0.3, -d.z);
+    vec2 w = vec2(soft(p * 1.7 + 0.13), soft(p * 1.7 + vec2(0.51, 0.27))) - 0.5;
+    float big = soft(p * 0.9 + w * 0.5 + vec2(0.21, 0.6));
+    float mid = soft(p * 2.6 + w * 0.8 + 0.31);
+    float fine = soft(p * 7.0 + w * 1.4 + 0.77);
+    float wisp = texture2D(uNoise, p * 2.1 + w * 1.1 + 0.6).g;
+    float cloud = smoothstep(0.36, 0.72, big * 0.6 + mid * 0.3 + fine * 0.1);
+    float lace = smoothstep(0.62, 0.95, wisp) * smoothstep(0.4, 0.62, mid);
+    // blue-green, blue and indigo, drifting across it
+    float hue = soft(p * 0.6 + vec2(0.71, 0.18)) + (mid - 0.5) * 0.4;
+    vec3 tint = mix(vec3(0.02, 0.1, 0.12), vec3(0.022, 0.045, 0.15), smoothstep(0.38, 0.56, hue));
+    tint = mix(tint, vec3(0.055, 0.028, 0.13), smoothstep(0.58, 0.74, hue));
+    vec3 col = vec3(0.002, 0.004, 0.01);
+    col += tint * cloud * 1.3;
+    col += vec3(0.07, 0.17, 0.22) * lace * cloud;
+    // the glow round the planet: the nebula's thickest just behind it
+    col += vec3(0.012, 0.05, 0.075) * exp(-dot(p, p) * 14.0) * (0.6 + cloud);
+    // dark lanes of dust through it
+    col *= 0.3 + 0.7 * smoothstep(0.32, 0.55, fine * 0.35 + mid * 0.65);
+    col = mix(vec3(0.002, 0.004, 0.01), col, smoothstep(0.15, 0.5, -d.z));
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }`;
@@ -88,8 +128,8 @@ const PORTAL_FRAG = /* glsl */ `
     gl_FragColor = vec4(col, 1.0);
   }`;
 
-// a little environment for the metal to shine with: the sky's dark and its
-// galaxy glow, and the sun
+// a little environment for the metal to shine with: the sky's dark and the
+// nebula's glow, and the sun
 function makeEnvironment(renderer) {
   const scene = new THREE.Scene();
   const sky = new THREE.Mesh(
@@ -101,8 +141,10 @@ function makeEnvironment(renderer) {
         varying vec3 vDir;
         void main() {
           vec3 d = normalize(vDir);
-          vec3 col = mix(vec3(0.02, 0.025, 0.04), vec3(0.09, 0.1, 0.16), smoothstep(-0.4, 0.8, d.y));
-          col += vec3(0.12, 0.08, 0.22) * exp(-pow(dot(d, normalize(vec3(0.25, 0.9, -0.35))) * 3.0, 2.0));
+          vec3 col = mix(vec3(0.02, 0.035, 0.06), vec3(0.07, 0.12, 0.18), smoothstep(-0.4, 0.8, d.y));
+          // the nebula, glowing blue-green behind, indigo overhead
+          col += vec3(0.05, 0.16, 0.2) * smoothstep(0.0, -0.9, d.z);
+          col += vec3(0.08, 0.06, 0.2) * exp(-pow(dot(d, normalize(vec3(0.25, 0.9, -0.35))) * 3.0, 2.0));
           gl_FragColor = vec4(col, 1.0);
         }`,
     }),
@@ -160,6 +202,7 @@ export async function create(canvas, ctx) {
 
   const env = makeEnvironment(renderer);
   scene.environment = env;
+  let starDot = null;
 
   // the sky
   const sky = new THREE.Mesh(
@@ -173,37 +216,57 @@ export async function create(canvas, ctx) {
     }),
   );
   scene.add(sky);
-  // stars, a few coloured, brighter toward the galaxy's band
+  // stars: most of them in the patch of sky behind the planet, the only sky
+  // anyone sees, white, blue-white, a few blue-green and violet; and a few
+  // big soft ones
   {
-    const n = Math.round(2600 * B.stars) + 400;
-    const pos = new Float32Array(n * 3);
-    const col = new Float32Array(n * 3);
     let seed = 11;
     const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
-    const tint = [new THREE.Color(1, 1, 1), new THREE.Color(0.75, 0.85, 1), new THREE.Color(1, 0.88, 0.7)];
-    for (let i = 0; i < n; i++) {
-      const z = rand() * 2 - 1;
-      const a = rand() * Math.PI * 2;
-      const s = Math.sqrt(1 - z * z);
-      pos.set([Math.cos(a) * s * 50, z * 50, Math.sin(a) * s * 50], i * 3);
-      const c = tint[Math.floor(rand() * 3)].clone().multiplyScalar(0.25 + rand() ** 3 * 1.6);
-      col.set([c.r, c.g, c.b], i * 3);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, depthWrite: false })));
+    const tint = [new THREE.Color(1, 1, 1), new THREE.Color(0.72, 0.85, 1), new THREE.Color(0.55, 1, 0.95), new THREE.Color(0.8, 0.62, 1)];
+    const c = new THREE.Color();
+    const stars = (n, size, bright, map) => {
+      const pos = new Float32Array(n * 3);
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        // two in three in a cone round the view, the rest anywhere
+        const ahead = rand() < 0.68;
+        const z = ahead ? 1 - rand() * 0.25 : rand() * 2 - 1;
+        const a = rand() * Math.PI * 2;
+        const s = Math.sqrt(1 - z * z);
+        pos.set([Math.cos(a) * s * 50, Math.sin(a) * s * 50, -z * 50], i * 3);
+        c.copy(tint[Math.floor(rand() ** 1.6 * 4)]).multiplyScalar(bright * (0.25 + rand() ** 3 * 1.6));
+        col.set([c.r, c.g, c.b], i * 3);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const m = new THREE.PointsMaterial({ size, sizeAttenuation: false, vertexColors: true, depthWrite: false, map, transparent: !!map, blending: map ? THREE.AdditiveBlending : THREE.NormalBlending });
+      scene.add(new THREE.Points(g, m));
+    };
+    stars(Math.round(2600 * B.stars) + 400, 1.6, 1, null);
+    // a soft round dot for the big ones
+    const dot = new Uint8Array(16 * 16 * 4);
+    for (let y = 0; y < 16; y++)
+      for (let x = 0; x < 16; x++) {
+        const r = Math.hypot(x - 7.5, y - 7.5) / 7.5;
+        const v = Math.round(255 * Math.max(0, 1 - r) ** 2.2);
+        dot.set([v, v, v, v], (y * 16 + x) * 4);
+      }
+    starDot = new THREE.DataTexture(dot, 16, 16, THREE.RGBAFormat);
+    starDot.needsUpdate = true;
+    stars(Math.round(90 * B.stars) + 20, 6, 1.4, starDot);
   }
 
-  // the light: the sun, a cold fill off the galaxy, and a violet kick on the
-  // dark limb so the night side keeps its shape
-  const sun = new THREE.DirectionalLight(0xfff3e4, 5.2);
+  // the light: a cool white sun, the nebula's blue on the side away from it
+  // so the night side still reads as blued steel, and a blue-green kick on
+  // the far limb so it keeps its shape against the sky
+  const sun = new THREE.DirectionalLight(0xf0f4ff, 4.4);
   sun.position.copy(SUN).multiplyScalar(10);
-  const fill = new THREE.DirectionalLight(0x7d8cff, 0.18);
-  fill.position.set(0.6, -0.3, -0.8);
-  const kick = new THREE.DirectionalLight(0xa070ff, 0.5);
-  kick.position.set(0.9, 0.2, -0.6);
-  scene.add(sun, fill, kick, new THREE.AmbientLight(0x1a2030, 0.2));
+  const fill = new THREE.DirectionalLight(0x5b8cff, 1.1);
+  fill.position.set(0.75, -0.25, 0.6);
+  const kick = new THREE.DirectionalLight(0x4fd0ff, 1.0);
+  kick.position.set(0.9, 0.25, -0.6);
+  scene.add(sun, fill, kick, new THREE.AmbientLight(0x22324a, 0.35));
 
   // the planet
   const from = SIDES[ctx.side] ?? SIDES.autobot;
@@ -217,7 +280,7 @@ export async function create(canvas, ctx) {
     normalScale: new THREE.Vector2(1.1, 1.1),
     metalness: 0.4,
     roughness: 0.58,
-    envMapIntensity: 0.45,
+    envMapIntensity: 0.7,
   });
   const skin = glow && map ? cybertronSkin(mat, { glow, sun: SUN }) : null;
   if (skin) {
@@ -227,10 +290,16 @@ export async function create(canvas, ctx) {
   const planet = new THREE.Mesh(new THREE.SphereGeometry(1, small ? 96 : 192, small ? 64 : 128), mat);
   tilt.add(planet);
 
+  // the war: fireballs out of the fronts (where the glow map burns), two
+  // flares coming up off the edge in turn, and a warm light on the biggest
+  const battle = createWar({ radius: 1, zones: warZones(glow), count: small ? 5 : 8, flares: 2, small, light: true });
+  planet.add(battle.group);
+
+  const airColor = from.energon.clone().lerp(HAZE, 0.7);
   const air = new THREE.Mesh(
-    new THREE.SphereGeometry(1.07, 96, 64),
+    new THREE.SphereGeometry(1.08, 96, 64),
     new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: from.energon.clone().lerp(new THREE.Color(0x9fc4ff), 0.5) }, uSun: { value: SUN }, uReach: { value: 1.07 } },
+      uniforms: { uColor: { value: airColor }, uSun: { value: SUN }, uReach: { value: 1.08 } },
       vertexShader: AIR_VERT,
       fragmentShader: AIR_FRAG,
       side: THREE.BackSide,
@@ -239,7 +308,21 @@ export async function create(canvas, ctx) {
       depthWrite: false,
     }),
   );
+  air.renderOrder = 1;
   scene.add(air);
+  const haze = new THREE.Mesh(
+    new THREE.SphereGeometry(1.004, 96, 64),
+    new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: airColor }, uSun: { value: SUN } },
+      vertexShader: AIR_VERT,
+      fragmentShader: HAZE_FRAG,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  haze.renderOrder = 1;
+  scene.add(haze);
 
   // the moons, cratered, lit by the same sun
   const moonMat = new THREE.MeshStandardMaterial({ color: 0x7c828c, roughness: 0.92, metalness: 0.15, bumpMap: noise, bumpScale: 4 });
@@ -313,7 +396,8 @@ export async function create(canvas, ctx) {
   // bloom for the energon, the fires, the portal
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: B.samples }));
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.85, 0.55, 0.82);
+  // (only what's brighter than lit metal gets it)
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.8, 0.5, 1.0);
   bloom.enabled = B.bloom > 0;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -386,7 +470,7 @@ export async function create(canvas, ctx) {
         skin.uLevels.value.y = 2.2 * war.value;
         skin.uTime.value = clock;
       }
-      air.material.uniforms.uColor.value.copy(skin ? skin.uEnergon.value : want.energon).lerp(new THREE.Color(0x9fc4ff), 0.55);
+      airColor.copy(skin ? skin.uEnergon.value : want.energon).lerp(HAZE, 0.7);
       bridgeGlow.color.copy(skin ? skin.uEnergon.value : want.energon).multiplyScalar(2.2);
       portalU.uColor.value.copy(bridgeGlow.color).multiplyScalar(0.5);
       const settling = Math.abs(want.war - war.value) > 0.004;
@@ -396,6 +480,7 @@ export async function create(canvas, ctx) {
         spin += vel * dt;
       }
       planet.rotation.y = spin;
+      battle.update(clock, camera, war.value);
       for (const m of moons) {
         const a = m.phase + clock * m.speed;
         m.mesh.position.set(Math.cos(a) * m.orbit, Math.sin(a) * m.orbit * Math.sin(m.incl), Math.sin(a) * m.orbit * Math.cos(m.incl));
@@ -423,7 +508,8 @@ export async function create(canvas, ctx) {
       el.style.cursor = '';
       el.style.touchAction = '';
       disposeTree(scene);
-      for (const t of [map, normalMap, glow, noise, env]) t?.dispose();
+      battle.dispose();
+      for (const t of [map, normalMap, glow, noise, env, starDot]) t?.dispose();
       composer.dispose();
       stage.dispose();
     },
