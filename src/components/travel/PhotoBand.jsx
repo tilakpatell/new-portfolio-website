@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Photo, { photoCredit } from '../Photo';
 import Mist from '../mist/Mist';
+import '../../styles/lazy/travel.css';
 
 // A full-bleed landscape that fades into the page through mist at both edges,
 // with slow drifting fog. Children sit over the middle of the photo.

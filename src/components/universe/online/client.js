@@ -24,8 +24,8 @@
 // told to you (hunterHit → a 'hunterHit' event, once it's checked: they'd
 // just fired, and were close to it), so a friend can shoot one off your tail.
 //
-// createClient({ name, kind, loadout, where }) → { selfId, on(fn) → off, snapshot(),
-//   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
+// createClient({ name, kind, loadout, build, where }) → { selfId, on(fn) → off, snapshot(),
+//   setProfile({ name, kind, loadout, build, where }), pose(ship, { hidden, boost, safe,
 //   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
@@ -43,6 +43,7 @@
 // 'siege', from, msg } (another pilot's word on the Citadel's siege, read
 // with siege.js's readSiege).
 
+import { readBuildWire, writeBuild } from '../shipyard/build';
 import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
@@ -58,8 +59,8 @@ const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinRoom }));
 
-export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
-  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), kills: 0, where };
+export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
+  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, kills: 0, where };
   const peers = new Map();
   const listeners = new Set();
   let status = 'connecting'; // connecting | online | failed | left
@@ -84,8 +85,9 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), c: self.kills, w: self.where });
+  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), c: self.kills, w: self.where });
   const same = (a, b) => Object.keys(STOCK_LOADOUT).every((slot) => a[slot] === b[slot]);
+  const sameBuild = (a, b) => (a ? writeBuild(a).join() : '') === (b ? writeBuild(b).join() : '');
 
   const peerOf = (id) => {
     let p = peers.get(id);
@@ -95,6 +97,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
         name: null,
         kind: null,
         loadout: STOCK_LOADOUT,
+        build: null, // the garage build they fly, or null: their stock ship
         kills: 0, // the ones this browser saw
         where: null,
         ally: 'none',
@@ -223,11 +226,12 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       if (!p) return;
       const first = p.name === null;
       const was = p.where;
-      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || p.where !== h.where;
+      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || !sameBuild(p.build, h.build) || p.where !== h.where;
       // (their own count of their kills isn't taken: p.kills is what this browser saw)
       p.name = h.name;
       p.kind = h.kind;
       p.loadout = h.loadout;
+      p.build = h.build;
       p.where = h.where;
       if (was !== p.where) p.cur = null; // (a pointer is only good on the page it was on)
       if (first) feed(`${p.name} came online`, 'join');
@@ -391,17 +395,19 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     // for the page: who's here, as plain data
     snapshot() {
       const list = [];
-      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
+      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, build: p.build, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
       return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where }, peers: list };
     },
-    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, where: w = self.where } = {}) {
+    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, build: b = self.build, where: w = self.where } = {}) {
       const clean = cleanName(n) ?? self.name;
       const fit = readLoadout(l);
-      if (clean === self.name && k === self.kind && same(fit, self.loadout) && w === self.where) return;
+      const hull = b ? readBuildWire(writeBuild(b)) : null;
+      if (clean === self.name && k === self.kind && same(fit, self.loadout) && sameBuild(hull, self.build) && w === self.where) return;
       self.name = clean;
       self.kind = k;
       self.loadout = fit;
+      self.build = hull;
       self.where = w;
       if (!k) me = null;
       send?.hi(hello());

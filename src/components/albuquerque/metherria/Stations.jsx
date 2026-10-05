@@ -3,6 +3,7 @@ import { useFrameLoop } from '../../../lib/hooks';
 import { M, bandAt, cookSeconds, cracksFor, strikeWindow, traysFor, unlocked } from './rules';
 import { PackFace, StickerIcon } from './Ticket';
 import { buzz, holdProps, useKeys } from './keys';
+import '../../../styles/lazy/albuquerque.css';
 
 // The four stations an order goes through in Walt's Metherria. The 3D scene
 // does the drawing: each station writes what it's doing to `live` (its own

@@ -199,3 +199,22 @@ export function clash() {
   hiss(ac, out, t, { type: 'highpass', f: 3500, gain: 0.25, attack: 0.001, length: 0.2 });
   tone(ac, out, t, { type: 'triangle', f: 1480, to: 1320, gain: 0.06, attack: 0.002, length: 0.9 });
 }
+
+// ── crumbs on Sam's cloak ──
+// a brush of the hand over cloth: a soft whisk, and a tick for each crumb
+// flicked away (none: a rustle)
+export function whisk(got = 1) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  hiss(ac, out, t, { type: 'bandpass', f: got ? 2400 : 1200, q: 0.9, gain: got ? 0.06 : 0.1, attack: 0.02, length: got ? 0.18 : 0.35, sweep: got ? 3600 : 700 });
+  for (let i = 0; i < got; i++) tone(ac, out, t + 0.06 + i * 0.05, { type: 'triangle', f: 2200 + i * 260, gain: 0.025, attack: 0.002, length: 0.06 });
+}
+// Frodo, murmuring in his sleep
+export function murmur() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  tone(ac, out, t, { type: 'triangle', f: 180, to: 150, gain: 0.04, attack: 0.08, length: 0.5 });
+  hiss(ac, out, t, { type: 'lowpass', f: 500, gain: 0.05, attack: 0.1, length: 0.5 });
+}

@@ -1,11 +1,12 @@
 import { useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { RiCloseLine, RiDownloadLine, RiPrinterLine } from 'react-icons/ri';
 import ResumeSheet from '../components/ResumeSheet';
 import { profile } from '../data/profile';
 import { skillCount, skillFromSlug, skillSlug } from '../data/resume';
 import { useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import Egg from '../components/Egg';
+import '../styles/lazy/resume.css';
 
 const VIEWS = [
   { id: 'interactive', label: 'Interactive' },
@@ -53,7 +54,7 @@ function PdfView() {
 
 export default function Resume() {
   useDocumentTitle('Résumé');
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = usePageParams();
   const view = params.get('view') === 'pdf' ? 'pdf' : 'interactive';
   const active = useMemo(
     () =>

@@ -20,9 +20,9 @@
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { loadTexture } from '../../lib/three/textures';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
@@ -42,14 +42,12 @@ const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'pap
 const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
-  const loader = new THREE.TextureLoader();
   const T = { small }; // (and whether this is a phone, for the builders)
   const get = async (name, file, colour) => {
     try {
-      const t = await loader.loadAsync(BASE + file);
-      t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-      t.anisotropy = 8;
-      T[name] = t;
+      // (decoded off the main thread, as sharp as the device's tier allows,
+      // and shared with any other scene that wants the same map)
+      T[name] = await loadTexture(BASE + file, { color: colour });
     } catch {
       /* missing: whoever wanted it does without */
     }
@@ -1178,8 +1176,7 @@ export function buildPlanet(u, T = {}) {
 
 // One model, or null if it doesn't load.
 export function loadModel(url) {
-  return new GLTFLoader()
-    .setMeshoptDecoder(MeshoptDecoder)
+  return gltfLoader()
     .loadAsync(url)
     .then((g) => g.scene)
     .catch(() => null);
@@ -1207,7 +1204,7 @@ const MODELS = [
 // Load the models one by one, handing each over as it arrives; a model that
 // fails is skipped.
 export function loadModels(onModel) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   return Promise.all(
     MODELS.map(([id, url, spot]) =>
       loader

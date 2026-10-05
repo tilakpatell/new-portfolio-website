@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { APRON, arcPt, BERM, BRIDGE, C, CRES, CRES_FOOT, depthOf, GATE, HANGAR, K, LAB, LAWN, OX, OY, P, PROW, RIVER, ROADS, SHORE, SPOTS, STALLS, TRAINING, TREES, VH, VW } from './compound/plan';
+import '../../styles/lazy/avengers.css';
 
 // The Avengers compound in upstate New York, from the air, in isometric: the
 // long hangar with the A on its roof and solar panels, the landing pad with two

@@ -15,9 +15,8 @@
 // (the map's space)
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { TRENCH_MODEL, trenchOf } from './deep';
+import { gltfLoader } from '../../lib/three/gltf';
 
 const URL = '/models/universe/trench.glb';
 const CHUNK = 3; // sections to a chunk
@@ -86,8 +85,7 @@ export function createTrench(wonder, { small = false } = {}) {
     load();
   }
   function load() {
-    new GLTFLoader()
-      .setMeshoptDecoder(MeshoptDecoder)
+    gltfLoader()
       .loadAsync(URL)
       .then((gltf) => {
         if (dead) return;

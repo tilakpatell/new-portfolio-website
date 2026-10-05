@@ -14,7 +14,10 @@
 // systems play out (the Death Star's tractor beam and its hangar at
 // Alderaan, Hoth's ion cannon and the transports getting away, the
 // superlaser over Scarif and its shield, the second Death Star's shield at
-// Endor, a Star Destroyer arriving). `hunted` and `kill` are the galaxy's
+// Endor, a Star Destroyer arriving, and the hyperdrive coming back once
+// you're clear of an Interdictor's gravity well). `interdicted` is the
+// Interdictor pulling you out of hyperspace (interdiction.js), over the
+// universe map's own interdiction line. `hunted` and `kill` are the galaxy's
 // own hunters (galaxy/hunted.js): the Separatists' droids, and the Imperial
 // remnant's TIEs over the New Republic's worlds (shot down, they're TIEs:
 // the crews' own lines). galaxyCrew lays all this over a crew's own lines.
@@ -147,7 +150,15 @@ export const GALAXY_LINES = {
         ['morty', 'Rick! A giant triangle just came out of nowhere!'],
         ['rick', 'Star Destroyer, Morty. A mile of Imperial overcompensation. Keep your head down.'],
       ],
+      wellclear: [
+        ['rick', 'Well’s gone, Morty. Hyperdrive’s back. Let’s not get counted again.'],
+        ['morty', 'C-can we take the slow way for a bit?'],
+      ],
     },
+    interdicted: [
+      ['morty', 'Rick! We fell out of hyperspace! Why did we fall out of hyperspace?!'],
+      ['rick', 'Interdictor, Morty. Gravity wells. Somebody counted our jumps. Shoot the somebody.'],
+    ],
     hunted: {
       separatists: [
         ['morty', 'Rick, droid fighters! A whole swarm of ’em!'],
@@ -299,7 +310,15 @@ export const GALAXY_LINES = {
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, coming out of lightspeed right on top of us!'],
       ],
+      wellclear: [
+        ['luke', 'We’re clear of the well. The hyperdrive’s back!'],
+        ['r2', '[a relieved whistle: he’s plotting a quieter route]'],
+      ],
     },
+    interdicted: [
+      ['r2', '[a panicked shriek]'],
+      ['luke', 'We’ve been pulled out of hyperspace! An Interdictor: its gravity well’s got us!'],
+    ],
     hunted: {
       separatists: [
         ['luke', 'Droid starfighters? I thought those went out with the Clone Wars!'],
@@ -450,7 +469,16 @@ export const GALAXY_LINES = {
         ['han', 'Came out of lightspeed way too close. Somebody’s admiral is in trouble.'],
         ['chewie', '[a nervous growl]'],
       ],
+      wellclear: [
+        ['han', 'Out of the well. Hyperdrive’s back. Told you she could do it.'],
+        ['chewie', '[a long, relieved groan]'],
+      ],
     },
+    interdicted: [
+      ['han', 'That’s an Interdictor! They yanked us right out of hyperspace!'],
+      ['chewie', '[a furious roar]'],
+      ['han', 'Somebody’s been counting our jumps. Hold on.'],
+    ],
     hunted: {
       separatists: [
         ['han', 'Droid fighters? What year is it?'],
@@ -601,7 +629,15 @@ export const GALAXY_LINES = {
         ['jesse', 'Yo, a giant triangle just showed up out of nowhere!'],
         ['walt', 'A Star Destroyer, Jesse. The DEA of this galaxy. Don’t speed.'],
       ],
+      wellclear: [
+        ['walt', 'We’re clear of the well, Jesse. The drive will take.'],
+        ['jesse', 'Can we, like, not do that again for a while?'],
+      ],
     },
+    interdicted: [
+      ['jesse', 'Yo, the stretchy stars stopped! Why’d the stretchy stars stop?!'],
+      ['walt', 'An Interdictor, Jesse. A gravity well. Somebody has been counting our jumps.'],
+    ],
     hunted: {
       separatists: [
         ['jesse', 'Yo, robot bird things! They’re shooting at us!'],
@@ -639,5 +675,6 @@ export function galaxyCrew(crew) {
     events: { ...crew.events, ...g.events },
     hunted: { ...crew.hunted, ...g.hunted },
     kill: { ...crew.kill, ...g.kill },
+    interdicted: g.interdicted ?? crew.interdicted,
   };
 }

@@ -1,4 +1,5 @@
 import { CUSTOMERS, M, traysFor } from './rules';
+import '../../../styles/lazy/albuquerque.css';
 
 // The order slip, Papa's style: what to make, top to bottom, in the order
 // the stations make it. Icons do the talking; words back them up.

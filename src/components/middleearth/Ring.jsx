@@ -6,6 +6,7 @@ import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
 import { useReducedMotion } from '../../lib/hooks';
 import Scene3D from './Scene3D';
+import '../../styles/lazy/middleearth.css';
 
 const sfx = () => import('../../lib/sfx');
 const loadScene = () => import('./Ring3D').then((m) => m.createRing3D);

@@ -2,10 +2,11 @@
 // hand to where it stuck (shot out in a blink, and loose for a moment after
 // he lets go), a splash of web on whatever it stuck to, and, while he's in
 // the air, a mark on the anchor a web shot now would catch, so you can see
-// where the next swing will come from. The swinging itself is in ./rules.js.
+// where the next swing will come from; and a mark on the perch a point
+// launch (Q) would take him to. The swinging itself is in ./rules.js.
 //
-// createSwing(scene, { calm }) → { update(h, hand, aim, dt), webbed(at),
-// zipped(to), dispose }
+// createSwing(scene, { calm }) → { update(h, hand, aim, dt, perch),
+// webbed(at), zipped(to), dispose }
 
 import * as THREE from 'three';
 import { canvasTexture } from '../hq/kit/shapes';
@@ -51,6 +52,24 @@ const splashTexture = () =>
     g.addColorStop(1, 'rgba(255,255,255,0)');
     x.fillStyle = g;
     x.fillRect(0, 0, w, w);
+  });
+
+// the mark on the perch a point launch goes to: a chevron over it
+const perchTexture = () =>
+  canvasTexture(128, 128, (x, w) => {
+    const c = w / 2;
+    x.clearRect(0, 0, w, w);
+    x.strokeStyle = 'rgba(255,255,255,1)';
+    x.lineWidth = 11;
+    x.lineCap = 'round';
+    x.lineJoin = 'round';
+    for (const y of [0.3, 0.62]) {
+      x.beginPath();
+      x.moveTo(c - c * 0.42, c * y + c * 0.26);
+      x.lineTo(c, c * y);
+      x.lineTo(c + c * 0.42, c * y + c * 0.26);
+      x.stroke();
+    }
   });
 
 // the mark on the next anchor: a ring with four ticks
@@ -117,7 +136,13 @@ export function createSwing(scene, { calm = false } = {}) {
   mark.scale.setScalar(0.042);
   group.add(mark);
 
-  const W = { shot: 1, out: 0, at: new THREE.Vector3(), hand: new THREE.Vector3(), tip: new THREE.Vector3(), d: new THREE.Vector3(), seen: 0, markAt: new THREE.Vector3(), markK: 0 };
+  // the perch's mark: cyan, over the top of it, the same size on screen too
+  const perchMark = new THREE.Sprite(new THREE.SpriteMaterial({ map: perchTexture(), color: 0x8fe9ff, transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false, opacity: 0, fog: false }));
+  perchMark.renderOrder = 20;
+  perchMark.scale.setScalar(0.04);
+  group.add(perchMark);
+
+  const W = { shot: 1, out: 0, at: new THREE.Vector3(), hand: new THREE.Vector3(), tip: new THREE.Vector3(), d: new THREE.Vector3(), seen: 0, markAt: new THREE.Vector3(), markK: 0, perchAt: new THREE.Vector3(), perchK: 0 };
 
   return {
     group,
@@ -137,9 +162,10 @@ export function createSwing(scene, { calm = false } = {}) {
       Z.t = 0;
       Z.to.set(to[0], to[1], to[2]);
     },
-    // each frame: the hero (rules' state), his web hand (world), and where a
-    // web shot now would catch (rules' aimWeb), or null
-    update(h, hand, aim, dt) {
+    // each frame: the hero (rules' state), his web hand (world), where a web
+    // shot now would catch (rules' aimWeb), or null, and the perch a point
+    // launch would go to (rules' findPerch), or null
+    update(h, hand, aim, dt, perch = null) {
       // the web: out from his hand in a blink, held while he swings, and slack
       // and gone a moment after he lets it go
       W.hand.copy(hand);
@@ -192,6 +218,17 @@ export function createSwing(scene, { calm = false } = {}) {
         mark.material.rotation += dt * 1.2;
         mark.scale.setScalar(0.034 + 0.008 * W.markK);
       }
+      // the perch's mark: while there's one to launch to, and he isn't on his way to one
+      const wantPerch = perch && h.mode !== 'zipto' ? 1 : 0;
+      if (perch) W.perchAt.set(perch.x, perch.y + 1.1, perch.z);
+      W.perchK += (wantPerch - W.perchK) * Math.min(1, dt * 10);
+      perchMark.visible = W.perchK > 0.02;
+      if (perchMark.visible) {
+        perchMark.position.copy(W.perchAt);
+        perchMark.position.y += Math.sin(performance.now() / 260) * 0.18;
+        perchMark.material.opacity = 0.85 * W.perchK;
+        perchMark.scale.setScalar(0.034 + 0.006 * W.perchK);
+      }
     },
     dispose() {
       webGeo.dispose();
@@ -201,6 +238,8 @@ export function createSwing(scene, { calm = false } = {}) {
       for (const s of splashes) s.material.dispose();
       mark.material.map.dispose();
       mark.material.dispose();
+      perchMark.material.map.dispose();
+      perchMark.material.dispose();
       scene.remove(group);
     },
   };

@@ -7,7 +7,7 @@ export default function Photo({ id, sizes = '100vw', className = '', priority = 
   if (!p) return null;
   const largest = p.widths[p.widths.length - 1];
   const srcSet = p.widths.map((w) => `/photos/${id}-${w}.webp ${w}w`).join(', ');
-  const extra = priority ? { fetchpriority: 'high' } : {};
+  const extra = priority ? { fetchPriority: 'high' } : {};
   // React writes these attributes in the order they are listed here, and the
   // browser can start the download the moment it sees sizes, srcset or src. So
   // loading goes first: otherwise, when React builds the page twice (it does

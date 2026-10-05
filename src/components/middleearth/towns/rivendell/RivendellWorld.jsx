@@ -18,6 +18,7 @@ import { RIDDLE, SHARDS, SIDE, answer, asked, closeHand, followAt, gathered, joi
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './rivendell.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Rivendell, the fourth town on the road: wake in the house of Elrond after
 // the Ford, and play the films' days there, from the shards of Narsil to

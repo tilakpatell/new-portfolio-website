@@ -3,6 +3,7 @@ import { use3D } from '../../../lib/gpu';
 import { prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { register, useLive, warmed } from '../hq/useStage';
 import { STONES } from '../../interests/stones';
+import '../../../styles/lazy/avengers.css';
 
 // Titan in 3D (./scene.js) in the gauntlet's panel: the gauntlet raised against
 // the dusk, a button over each socket (they follow the hand), and the snap.

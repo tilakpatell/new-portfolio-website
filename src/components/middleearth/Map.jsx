@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { FORESTS, PLACES, RANGES, REGIONS, RIVERS, SEAS, range, wood } from './mapData';
 import { STOPS } from './road';
+import '../../styles/lazy/middleearth.css';
 
 // Middle-earth, drawn plainly on parchment: the coast, the Misty Mountains,
 // the Anduin, the forests and the mountains around Mordor, with the road the

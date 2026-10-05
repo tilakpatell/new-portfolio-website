@@ -1,4 +1,5 @@
 import './side.css';
+import '../../../styles/lazy/middleearth.css';
 
 // A town's games on the side: things to do that the story doesn't need,
 // listed under the story's own in the list of things to do (TownHud's
