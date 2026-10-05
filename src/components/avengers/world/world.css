@@ -116,6 +116,10 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
   animation: cw-trick 1.3s ease-out both;
 }
 .cw-trick b { color: #ff5a4f; font-weight: 400; text-shadow: 0 2px 0 #fff, 0 4px 18px rgba(0, 0, 0, 0.45); }
+.cw-tour b { color: #ff8a80; }
+.cw-tour-on:empty { display: none; }
+.cw-tour-on { color: #ffb3ad; font-variant-numeric: tabular-nums; }
+.cw-tour-msg { position: absolute; left: 50%; top: 22%; z-index: 2; margin: 0; padding: 0.5rem 0.9rem; border: 1px solid rgba(255, 90, 79, 0.5); border-radius: 8px; background: var(--cw-glass-hi); color: var(--cw-ink); font: 600 0.9rem/1.3 var(--font-sans); transform: translateX(-50%); pointer-events: none; animation: cw-up 0.2s ease-out both; }
 @keyframes cw-trick {
   0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
   12% { opacity: 1; transform: translate(-50%, 0) scale(1.06); }

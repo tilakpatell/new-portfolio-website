@@ -3,8 +3,16 @@ import { inPoly } from '../compound/plan';
 import {
   ANCHORS,
   ARMOUR,
+  BENCHES,
   BODY,
   BUILDINGS,
+  FLAGS,
+  LAMPS,
+  PLANTERS,
+  RING_R,
+  ROOF_PLANT,
+  TOUR,
+  TOUR_GAP,
   CAST,
   DOOR_R,
   HERO,
@@ -31,6 +39,9 @@ import {
   progress,
   solidById,
   stepHero,
+  stepTour,
+  throughRing,
+  newTour,
   underPortal,
   walkable,
 } from './rules';
@@ -591,5 +602,96 @@ describe('The compound, the world: swinging, the way Insomniac do it', () => {
     for (let t = 0; t < 0.5; t += DT) h = stepHero(h, {}, DT);
     // up it with no keys held, faster than he climbs
     expect(h.y - y0).toBeGreaterThan(SWING.climb * 0.5 * 1.5);
+  });
+});
+
+describe('The compound, the world: lamps, benches, planters, flags and roofs', () => {
+  it('stands the street furniture on the lawn, off the drives, clear of the doors and the buildings', () => {
+    expect(LAMPS.length).toBeGreaterThan(8);
+    expect(BENCHES.length).toBeGreaterThan(2);
+    expect(PLANTERS.length).toBeGreaterThan(6);
+    for (const t of [...LAMPS, ...BENCHES, ...PLANTERS, ...FLAGS]) {
+      expect(inPoly(t.x, t.z, LAWN_W)).toBe(true);
+      expect(inBuilding(t.x, t.z)).toBe(false);
+      for (const p of PLACES) expect(Math.hypot(p.x - t.x, p.z - t.z), p.id).toBeGreaterThan(DOOR_R * 0.6);
+    }
+    // and every door can still be walked to
+    for (const p of PLACES) {
+      let h = newHero(START);
+      h = walkTo(h, p.x, START.z);
+      h = walkTo(h, p.x, p.z);
+      expect(Math.hypot(h.x - p.x, h.z - p.z), p.id).toBeLessThan(DOOR_R);
+    }
+  });
+
+  it('has plant on the roofs that stands on them', () => {
+    for (const u of ROOF_PLANT) {
+      const s = solidById(u.id);
+      const under = BUILDINGS.find((b) => u.foot.every(([x, y]) => inPoly(x * 1.6, y * 1.6, b.foot)));
+      expect(under, u.id).toBeTruthy();
+      expect(s.y0).toBeCloseTo(under.h, 5);
+    }
+  });
+});
+
+describe('The compound, the world: the swing tour', () => {
+  it('lays its rings over the lawn, clear of everything, each in swinging distance of the last', () => {
+    expect(TOUR.length).toBeGreaterThan(8);
+    TOUR.forEach((r, i) => {
+      expect(inPoly(r.x, r.z, LAWN_W), `ring ${i}`).toBe(true);
+      expect(solidAt(r.x, r.y, r.z)?.id ?? null, `ring ${i}`).toBe(null);
+      expect(Math.hypot(...r.n)).toBeCloseTo(1, 5);
+      if (i) expect(Math.hypot(r.x - TOUR[i - 1].x, r.z - TOUR[i - 1].z), `ring ${i}`).toBeLessThan(50);
+      // something to swing from near it, or a roof under it to run along
+      const swingable = ANCHORS.some((a) => a.a[1] > r.y + 2 && Math.hypot(a.a[0] - r.x, a.a[1] - r.y, a.a[2] - r.z) < SWING.reach * 0.8);
+      const roof = floorAt(r.x, r.z, r.y) > r.y - RING_R - 0.5;
+      expect(swingable || roof, `ring ${i}`).toBe(true);
+    });
+  });
+
+  it('counts going through a ring forwards, and not round it or backwards', () => {
+    const r = TOUR[1];
+    const p = (k) => [r.x + r.n[0] * k, r.y + r.n[1] * k, r.z + r.n[2] * k];
+    expect(throughRing(p(-1), p(1), r)).toBe(true);
+    expect(throughRing(p(1), p(-1), r)).toBe(false);
+    const off = (k) => [r.x + r.n[0] * k + RING_R * 2, r.y, r.z + r.n[2] * k];
+    expect(throughRing(off(-1), off(1), r)).toBe(false);
+  });
+
+  it('starts the clock at the first ring, takes them in order, and keeps the best time', () => {
+    let t = newTour();
+    const thru = (r) => [
+      [r.x - r.n[0], r.y - r.n[1], r.z - r.n[2]],
+      [r.x + r.n[0], r.y + r.n[1], r.z + r.n[2]],
+    ];
+    // the second ring first does nothing
+    let ev;
+    [t, ev] = stepTour(t, ...thru(TOUR[1]), 0.1);
+    expect(t.on).toBe(false);
+    [t, ev] = stepTour(t, ...thru(TOUR[0]), 0.1);
+    expect(ev.map((e) => e.type)).toEqual(['tour-start']);
+    for (let i = 1; i < TOUR.length; i++) {
+      for (let k = 0; k < 20; k++) [t] = stepTour(t, [0, 0, 0], [0, 0, 0], 0.1);
+      [t, ev] = stepTour(t, ...thru(TOUR[i]), 0.1);
+    }
+    const done = ev.find((e) => e.type === 'tour-done');
+    expect(done.best).toBe(true);
+    expect(done.time).toBeGreaterThan(20);
+    expect(t.best).toBeCloseTo(done.time, 5);
+    expect(t.on).toBe(false);
+  });
+
+  it('gives up a tour that goes too long without a ring', () => {
+    let t = newTour();
+    const r = TOUR[0];
+    [t] = stepTour(t, [r.x - r.n[0], r.y - r.n[1], r.z - r.n[2]], [r.x + r.n[0], r.y + r.n[1], r.z + r.n[2]], 0.1);
+    let lost = false;
+    for (let k = 0; k < (TOUR_GAP + 1) * 10; k++) {
+      let ev;
+      [t, ev] = stepTour(t, [0, 0, 0], [0, 0, 0], 0.1);
+      lost ||= ev.some((e) => e.type === 'tour-lost');
+    }
+    expect(lost).toBe(true);
+    expect(t.on).toBe(false);
   });
 });

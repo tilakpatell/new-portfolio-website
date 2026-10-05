@@ -8,7 +8,8 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { BUILDINGS, HERO_R, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPlace, newHero, outside, placeById, progress, stepHero, underPortal, walkable } from './rules';
+import { BUILDINGS, HERO_R, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPlace, newHero, newTour, outside, placeById, progress, stepHero, stepTour, underPortal, walkable } from './rules';
+import { useAchievements } from '../../Achievements';
 import './world.css';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
@@ -24,6 +25,9 @@ const CompoundMap = lazy(() => import('../Compound'));
 const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
 const AT = 'tp-hq-world-at';
+const TOUR_BEST = 'tp-hq-swing-tour';
+// seconds as 0:41.3
+const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 // the lines the site has the films' own recordings of (lib/clips)
 const SPOKEN = { 'Hulk smash!': 'hulkSmash', 'Puny god.': 'punyGod' };
 const STONE_OF = { 'soul-clint': 'soul', 'soul-natasha': 'soul' };
@@ -105,7 +109,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, mouseWeb: false, touchWeb: false, padBefore: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null) };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -116,6 +120,15 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const lines = useRef({});
   const [list, setList] = useState(false);
   const speedRef = useRef(null);
+  const { unlock } = useAchievements();
+  const tourRef = useRef(null);
+  const [tourBest, setTourBest] = useState(() => sim.current?.tour.best ?? null);
+  const [tourMsg, setTourMsg] = useState(null);
+  useEffect(() => {
+    if (!tourMsg) return undefined;
+    const t = setTimeout(() => setTourMsg(null), 2600);
+    return () => clearTimeout(t);
+  }, [tourMsg]);
   // a perfect release: a word of it at the bottom of the screen
   const [trick, setTrick] = useState(null);
   const trickN = useRef(0);
@@ -282,7 +295,28 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // the web: the jump button held (Space, the right mouse button, the touch
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
+    const p0 = [s.h.x, s.h.y + 1, s.h.z];
     s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip }, dt);
+    // the swing tour: the rings, in order, against the clock
+    const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
+    s.tour = tour;
+    for (const e of tev) {
+      if (e.type === 'tour-start') {
+        sfx('ding');
+        setTourMsg('The tour’s on: through the red rings');
+      } else if (e.type === 'tour-ring') sfx('coin');
+      else if (e.type === 'tour-lost') setTourMsg('Tour lost: back to the first ring to try again');
+      else if (e.type === 'tour-done') {
+        sfx('fanfare');
+        unlock('swingtour');
+        if (e.best) {
+          local.set(TOUR_BEST, e.time);
+          setTourBest(e.time);
+        }
+        setTourMsg(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}`);
+      }
+    }
+    if (tourRef.current && s.frame % 3 === 0) tourRef.current.textContent = s.tour.on ? `Ring ${s.tour.next} of ${TOUR.length - 1} · ${clock(s.tour.t)}` : '';
     s.jump = false;
     s.zip = false;
     for (const e of s.h.ev) {
@@ -330,7 +364,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     tv?.pose(s.h);
     const others = tv ? tv.list() : null;
     try {
-      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -413,6 +447,18 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
   };
 
+  // to the swing tour's start: on the drive behind the first ring, facing it
+  const toTour = () => {
+    const r = TOUR[0];
+    const s = sim.current;
+    const face = Math.atan2(-r.n[2], r.n[0]);
+    s.h = newHero({ x: r.x - r.n[0] * 14, z: r.z - r.n[2] * 14, face });
+    s.yaw = behindYaw(face);
+    s.dragAt = s.t;
+    s.tour = newTour(s.tour.best);
+    setList(false);
+  };
+
   // to a door, from the list
   const travel = (id) => {
     const p = placeById(id);
@@ -430,6 +476,11 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       <div ref={speedRef} className="cw-speed" aria-hidden="true" />
       {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
+      {tourMsg && (
+        <p className="cw-tour-msg" aria-live="polite">
+          {tourMsg}
+        </p>
+      )}
       {trick && (
         <p key={trick.n} className="cw-trick" aria-live="polite">
           Perfect swing{trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
@@ -457,6 +508,10 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
           <button type="button" className="cw-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
             The buildings {!touch && <kbd>M</kbd>}
           </button>
+          <button type="button" className="cw-chip cw-tour" onClick={toTour} title="Rings round the compound, against the clock: through the first red ring to start">
+            Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
+          </button>
+          <p ref={tourRef} className="cw-chip cw-tour-on" aria-live="off" />
           <Players trav={trav} />
         </div>
       </div>

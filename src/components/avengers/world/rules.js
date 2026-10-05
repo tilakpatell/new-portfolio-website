@@ -119,6 +119,14 @@ export const WING_PLANT = [0.25, 0.5, 0.75].map((k) => {
 });
 // the hangar roof's solar panels, in two rows of five
 export const SOLAR = [0, 1, 2, 3, 4].flatMap((i) => [9.5, 18.9].map((x0) => planBox(x0, 19 + i * 6.6, x0 + 7.6, 19 + i * 6.6 + 4.8)));
+// plant on the training center's roof and the lab's, and the main building's comms mast
+export const ROOF_PLANT = [
+  { id: 'hvac-0', foot: planBox(102, 29, 105, 31), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-1', foot: planBox(108, 28.6, 111, 30.6), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-2', foot: planBox(114, 28.2, 117, 30.2), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-3', foot: planBox(101.8, 73, 104.2, 77), y0: 6 * V, h: 6 * V + 2.2 },
+];
+export const COMMS = { x: 57, y: 21, h: 6.5 }; // on the plan; the mast's height over the roof
 // what's up off the ground: the bridge, and what stands on the roofs
 export const OVERHEAD = [
   building('bridge', BRIDGE, 7 * V, 4.6 * V),
@@ -127,6 +135,8 @@ export const OVERHEAD = [
   ...PROW_PLANT.map((f, i) => building(`plant-${i}`, f, 14.1 * V, 13 * V)),
   ...WING_PLANT.map((f, i) => building(`wingplant-${i}`, f, (CRES.h + 1.7) * V, (CRES.h + 0.6) * V)),
   ...SOLAR.map((f, i) => building(`solar-${i}`, f, 9 * V + 1.35, 9 * V)),
+  ...ROOF_PLANT.map((u) => building(u.id, u.foot, u.h, u.y0)),
+  building('comms', planBox(COMMS.x - 0.4, COMMS.y - 0.4, COMMS.x + 0.4, COMMS.y + 0.4), 13 * V + COMMS.h, 13 * V),
 ];
 // everything solid, on the ground and off it
 export const SOLIDS = [...BUILDINGS, ...OVERHEAD];
@@ -389,6 +399,79 @@ export function nearCast(x, z, r = 3.4) {
   return best;
 }
 
+// ── along the drives: street lamps, benches, planters by the doors, flags by the gate ──
+
+// somewhere on the lawn, `r` clear of the buildings and in from the lawn's edge
+const openAt = (x, z, r) => inPoly(x, z, LAWN_W) && nearestEdge(x, z, LAWN_W).d > 2 && !BUILDINGS.some((b) => inPoly(x, z, b.foot) || nearestEdge(x, z, b.foot).d < r);
+const roadGap = (x, z) => Math.min(...ROADS_W.map((pts) => Math.min(...pts.map(([a, b]) => Math.hypot(a - x, b - z)))));
+// clear of the doors, the people, the masts, the trees, the cars, the jet and the portal
+const clearOfThings = (x, z, r) =>
+  !PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 4.5 + r) &&
+  !CAST.some((c) => Math.hypot(c.x - x, c.z - z) < 2.5 + r) &&
+  !MASTS.some((m) => Math.hypot(m.x - x, m.z - z) < 5 + r) &&
+  !LAWN_TREES.some((t) => Math.hypot(t.x - x, t.z - z) < 2.2 + r) &&
+  !PARKED_CARS.some((c) => Math.hypot(c.x - x, c.z - z) < 3.2 + r) &&
+  Math.hypot(PARKED_JET.x - x, PARKED_JET.z - z) > 15 + r &&
+  Math.hypot(CRATER.x - x, CRATER.z - z) > 4.5 + r &&
+  Math.hypot(ARMOUR.x - x, ARMOUR.z - z) > 2 + r &&
+  Math.hypot(PORTAL.x - x, PORTAL.z - z) > PORTAL.r + 2 + r;
+
+// Street lamps down the drives, every 22 m or so on alternate sides, their
+// arms out over the drive: { x, z, yaw } (yaw turns the lamp's +x to the drive).
+export const LAMPS = (() => {
+  const out = [];
+  ROADS_W.forEach((pts, ri) => {
+    let run = 0;
+    let next = 9;
+    let side = ri % 2 ? 1 : -1;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1];
+      const [bx, bz] = pts[i];
+      const l = Math.hypot(bx - ax, bz - az) || 1;
+      run += l;
+      if (run < next) continue;
+      next = run + 22;
+      const tx = (bx - ax) / l;
+      const tz = (bz - az) / l;
+      const off = ROAD_HALF + 1.3;
+      const x = bx - tz * off * side;
+      const z = bz + tx * off * side;
+      side = -side;
+      if (!openAt(x, z, 2.5) || !clearOfThings(x, z, 0.3) || roadGap(x, z) < ROAD_HALF + 0.9) continue;
+      if (out.some((o) => Math.hypot(o.x - x, o.z - z) < 12)) continue;
+      out.push({ x, z, yaw: Math.atan2(-(bz - z), bx - x) });
+    }
+  });
+  return out;
+})();
+// Benches beside every third lamp, a little further back, facing the drive: { x, z, yaw }
+// (yaw turns the bench's front, +z, to the drive)
+export const BENCHES = LAMPS.filter((_, i) => i % 3 === 1)
+  .map((l) => {
+    const ox = Math.cos(l.yaw);
+    const oz = -Math.sin(l.yaw);
+    // back from the drive, and along it from the lamp
+    const x = l.x - ox * 1.6 + oz * 2.4;
+    const z = l.z - oz * 1.6 - ox * 2.4;
+    return { x, z, yaw: Math.atan2(ox, oz) };
+  })
+  .filter((b) => openAt(b.x, b.z, 2) && clearOfThings(b.x, b.z, 1) && roadGap(b.x, b.z) > ROAD_HALF + 0.9);
+// Round planters of shrubs either side of each building's door: { x, z }
+export const PLANTERS = PLACES.filter((p) => p.sign).flatMap((p) => {
+  const ox = Math.cos(p.face);
+  const oz = -Math.sin(p.face);
+  return [-1, 1]
+    .map((k) => ({ x: p.x - ox * 1.1 + oz * 3.4 * k, z: p.z - oz * 1.1 - ox * 3.4 * k }))
+    .filter((q) => openAt(q.x, q.z, 0.85) && !CAST.some((c) => Math.hypot(c.x - q.x, c.z - q.z) < 1.8) && Math.hypot(ARMOUR.x - q.x, ARMOUR.z - q.z) > 1.8);
+});
+// Three flagpoles inside the gate, 12 m tall
+export const FLAG_H = 12;
+export const FLAGS = [
+  [44, 92],
+  [46.5, 91.7],
+  [49, 91.4],
+].map(([x, y]) => ({ x: x * S, z: y * S }));
+
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
@@ -398,6 +481,10 @@ export const ROUND = [
   ...PARKED_CARS.flatMap(carBody),
   ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45, top: 3.2 })),
   ...MASTS.map((m) => ({ x: m.x, z: m.z, r: 0.42, top: MAST_H })),
+  ...LAMPS.map((l) => ({ x: l.x, z: l.z, r: 0.2, top: 4 })),
+  ...BENCHES.flatMap((b) => [-0.55, 0.55].map((k) => ({ x: b.x + Math.cos(b.yaw) * k, z: b.z - Math.sin(b.yaw) * k, r: 0.45, top: 0.85 }))),
+  ...PLANTERS.map((q) => ({ x: q.x, z: q.z, r: 0.72, top: 0.75 })),
+  ...FLAGS.map((f) => ({ x: f.x, z: f.z, r: 0.16, top: FLAG_H })),
   { x: CRATER.x, z: CRATER.z, r: 0.5, top: 0.6 },
   { x: ARMOUR.x, z: ARMOUR.z, r: ARMOUR.r, top: 2.3 },
   ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5, top: c.style === 'hulk' ? 3 : 2.3 })),
@@ -1194,6 +1281,7 @@ export const ANCHORS = [
     return { a: p, at: p, kind: 'tree' };
   }),
   ...MASTS.map((m) => ({ a: [m.x, MAST_H - 1, m.z], at: [m.x, MAST_H - 0.6, m.z], kind: 'mast' })),
+  ...FLAGS.map((f) => ({ a: [f.x, FLAG_H - 0.6, f.z], at: [f.x, FLAG_H - 0.3, f.z], kind: 'mast' })),
 ];
 
 // Whether a web from (x0, y0, z0) to (x1, y1, z1) is clear of the buildings.
@@ -1325,6 +1413,79 @@ export const underPortal = (x, z) => Math.hypot(x - PORTAL.x, z - PORTAL.z) < PO
 // facing out.
 export function outside(p) {
   return newHero({ x: p.x + Math.cos(p.face) * 1.6, z: p.z - Math.sin(p.face) * 1.6, face: p.face });
+}
+
+// ── the swing tour: rings round the compound, against the clock ──
+// Up the main drive, under the bridge, round the back of the main building,
+// over the glass wing's roof, past the training center and the lab's roof,
+// and home by the gate. Through the first ring starts the clock.
+export const RING_R = 3.2;
+export const TOUR = (() => {
+  const at = [
+    [96, 8, 100],
+    [84, 11, 66],
+    [64, 8.5, 56],
+    [64.5, 7, 41.5],
+    [63, 11, 15],
+    [95, 15, 6],
+    [127, 31.5, 27],
+    [140, 13, 60],
+    [178, 10, 66],
+    [160, 11, 102],
+    [148, 18, 126],
+    [104, 8, 132],
+  ];
+  return at.map(([x, y, z], i) => {
+    // facing along the course: from the ring before toward the ring after
+    const a = at[Math.max(0, i - 1)];
+    const b = at[Math.min(at.length - 1, i + 1)];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) || 1;
+    return { x, y, z, n: [(b[0] - a[0]) / l, (b[1] - a[1]) / l, (b[2] - a[2]) / l] };
+  });
+})();
+// how long a tour may go without a ring before it's given up (s)
+export const TOUR_GAP = 30;
+
+// Whether going from p0 to p1 (his middle) took him through a ring.
+export function throughRing(p0, p1, r, rad = RING_R + 0.5) {
+  const d0 = (p0[0] - r.x) * r.n[0] + (p0[1] - r.y) * r.n[1] + (p0[2] - r.z) * r.n[2];
+  const d1 = (p1[0] - r.x) * r.n[0] + (p1[1] - r.y) * r.n[1] + (p1[2] - r.z) * r.n[2];
+  if (d0 > 0 || d1 < 0 || d0 === d1) return false; // (only forwards, along the course)
+  const t = d0 / (d0 - d1);
+  const qx = p0[0] + (p1[0] - p0[0]) * t - r.x;
+  const qy = p0[1] + (p1[1] - p0[1]) * t - r.y;
+  const qz = p0[2] + (p1[2] - p0[2]) * t - r.z;
+  return Math.hypot(qx, qy, qz) < rad;
+}
+
+export const newTour = (best = null) => ({ on: false, next: 0, t: 0, since: 0, best });
+// One step of the tour, from where he was (p0) to where he is (p1): → [tour, events]
+export function stepTour(tour, p0, p1, dt) {
+  const t = { ...tour };
+  const ev = [];
+  if (t.on) {
+    t.t += dt;
+    t.since += dt;
+    if (t.since > TOUR_GAP) {
+      ev.push({ type: 'tour-lost' });
+      return [newTour(t.best), ev];
+    }
+  }
+  if (throughRing(p0, p1, TOUR[t.next])) {
+    if (t.next === 0) {
+      t.on = true;
+      t.t = 0;
+      ev.push({ type: 'tour-start' });
+    } else ev.push({ type: 'tour-ring', n: t.next });
+    t.since = 0;
+    t.next += 1;
+    if (t.next === TOUR.length) {
+      const best = t.best == null || t.t < t.best;
+      ev.push({ type: 'tour-done', time: t.t, best });
+      return [newTour(best ? t.t : t.best), ev];
+    }
+  }
+  return [t, ev];
 }
 
 // ── the heist so far ──
