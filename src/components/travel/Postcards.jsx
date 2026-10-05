@@ -5,6 +5,7 @@ import { PLACES } from '../../data/places';
 import { distanceLine } from './PlacesExplorer';
 import { Waypoint } from '../ui';
 import { prefersReducedMotion, useRowEnds } from '../../lib/hooks';
+import '../../styles/lazy/travel.css';
 
 // One picture per place (and one per city, where a trip took in several) in a
 // row you can swipe. Choosing a card flies the globe above to that place.

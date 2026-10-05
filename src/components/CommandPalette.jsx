@@ -9,11 +9,14 @@ import {
   RiFileTextLine,
   RiGithubFill,
   RiGlobalLine,
+  RiHistoryLine,
+  RiLayoutGridLine,
   RiLinkedinBoxFill,
   RiMailLine,
   RiMusic2Line,
   RiPaletteLine,
   RiRestartLine,
+  RiRocket2Line,
   RiSearchLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
@@ -28,8 +31,9 @@ import { useAchievements } from './Achievements';
 import { useFun } from '../fun/FunProvider';
 import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
-import { local } from '../lib/hooks';
+import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
+import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -51,6 +55,7 @@ export default function CommandPalette({ onClose }) {
   const { pin, toggleMode, mode } = useTheme();
   const { unlock, notify, unlocked } = useAchievements();
   const fun = useFun();
+  const { view, switchTo } = useView();
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef(null);
@@ -74,8 +79,9 @@ export default function CommandPalette({ onClose }) {
     const go = (to) => () => navigate(to);
     const all = [
       { id: 'p-home', group: 'Go to', label: 'Home', keywords: 'about me intro', icon: RiArrowRightLine, run: go('/home') },
-      { id: 's-uni', group: 'Actions', label: 'Start the site in the universe', keywords: 'front door start page landing universe', icon: RiGlobalLine, run: () => local.set('tp-start', 'universe') },
-      { id: 's-home', group: 'Actions', label: 'Start the site on the home page', keywords: 'front door start page landing home plain', icon: RiArrowRightLine, run: () => local.set('tp-start', 'home') },
+      view === 'classic'
+        ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
+        : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
       { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
@@ -85,6 +91,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-contact', group: 'Go to', label: 'Contact', icon: RiMailLine, run: go('/contact') },
       { id: 'p-music', group: 'Go to', label: 'Music room', keywords: 'sitar tanpura harmonium tabla raga indian classical', icon: RiMusic2Line, run: go('/music') },
       { id: 'p-term', group: 'Go to', label: 'Imperial terminal', keywords: 'terminal shell command line', icon: RiTerminalBoxLine, run: go('/terminal') },
+      { id: 'p-changes', group: 'Go to', label: 'What’s changed', hint: 'The ship’s log', keywords: 'changes changelog log autopilot new updates revert history', icon: RiHistoryLine, run: go('/changes') },
       ...projects.map((p) => ({ id: `pr-${p.id}`, group: 'Projects', label: p.title, hint: p.kind, keywords: p.stack.join(' '), icon: RiCodeBoxLine, run: go(`/projects/${p.id}`) })),
       ...roles.map((r) => ({ id: `ro-${r.id}`, group: 'Experience', label: r.company, hint: r.shortTitle, keywords: `${r.short} ${r.title} ${r.stack.join(' ')}`, icon: RiBriefcaseLine, run: go(`/experience/${r.id}`) })),
       ...PLACES.map((p) => ({ id: `pl-${p.id}`, group: 'Places', label: p.name, hint: p.photo, keywords: `travel ${p.region}`, icon: RiGlobalLine, run: go(`/travel?place=${p.id}`) })),
@@ -138,7 +145,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'l-mail', group: 'Links', label: 'Email', hint: profile.email, icon: RiMailLine, run: () => (window.location.href = `mailto:${profile.email}`) },
     ];
     return all;
-  }, [fun, mode, navigate, notify, pin, toggleMode, unlocked]);
+  }, [fun, mode, navigate, notify, pin, switchTo, toggleMode, unlocked, view]);
 
   const shown = useMemo(() => {
     const scored = items.map((it, i) => [score(it, q), i, it]).filter(([s]) => s > 0);

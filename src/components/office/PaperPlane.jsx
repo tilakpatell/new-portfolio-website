@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../../lib/hooks';
+import '../../styles/lazy/office.css';
 
 // A Dunder Mifflin paper airplane that glides down the page with you: it stays
 // at the middle of the screen while it swoops from side to side, turning to

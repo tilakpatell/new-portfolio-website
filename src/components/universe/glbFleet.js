@@ -26,8 +26,8 @@
 // buildTraffic's are.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpenTree } from '../../lib/three/textures';
 import { buildTraffic } from './trafficModels';
 
 // which way each one's nose points as it comes (turned to +z), and whether
@@ -49,7 +49,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
   const stocked = {}; // kind → built ones made ahead, handed out first
   const loading = new Set();
   let dead = false;
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   return {
     // start loading these (the ones that are models), if they aren't yet
     want(list) {
@@ -62,6 +62,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
           .then((gltf) => {
             const root = gltf.scene;
             if (dead) return;
+            sharpenTree(root);
             // centred, nose to +z, its biggest side 1 long
             const turn = new THREE.Group();
             turn.rotation.y = def.nose;

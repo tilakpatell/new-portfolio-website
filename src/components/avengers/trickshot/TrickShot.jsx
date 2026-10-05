@@ -11,6 +11,7 @@ import { capturePointer } from '../../../lib/pointer';
 import { BOW, EYE, ROUNDS, STONE_SCORE, draw, drawCap, letDown, newRange, nockTrick, pathAt, shakeOf, speedFor, startRound, stepRange, targetAt, toggleLob } from './rules';
 import { TRICK_COLORS } from './models';
 import './trickshot.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');
@@ -277,6 +278,8 @@ export default function TrickShot({ fallback }) {
     const stop = () => {
       letDown(game.current);
       aim.current.keys.clear();
+      aim.current.touch = null;
+      aim.current.keyDraw = false;
     };
     window.addEventListener('blur', stop);
     return () => window.removeEventListener('blur', stop);

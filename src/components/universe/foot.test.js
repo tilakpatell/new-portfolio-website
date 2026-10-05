@@ -177,6 +177,31 @@ describe('a squad', () => {
     expect(near.length).toBeGreaterThan(shots.length * 0.3);
   });
 
+  it('raises its gun as it comes into range, and lowers it out of range', () => {
+    const rand = seeded(7);
+    let troops = squad(rand, me, R, { count: 1, kinds: ['cop'] });
+    expect(troops[0].aim ?? 0).toBe(0);
+    let raisedAt = null;
+    for (let t = 0; t < 40; t += 1 / 30) {
+      troops = march(troops, [me], 1 / 30, R, rand).troops;
+      if (raisedAt == null && troops[0].aim > 0.9) raisedAt = t;
+    }
+    expect(raisedAt).not.toBeNull();
+    expect(apart(troops[0], me, R)).toBeLessThan(TROOPS.cop.range[1] * METRE * 1.5);
+    // far off again: it comes down, over more than a moment
+    let far = { ...troops[0], ...person(offset(me, 60 * METRE, 0, R).n, me.f), cool: 1, hold: troops[0].hold };
+    const t0 = far.aim;
+    far = march([far], [me], 1 / 30, R, rand).troops[0];
+    expect(far.aim).toBeLessThan(t0);
+    expect(far.aim).toBeGreaterThan(t0 - 0.2);
+    for (let t = 0; t < 2; t += 1 / 30) far = march([far], [me], 1 / 30, R, rand).troops[0];
+    expect(far.aim).toBe(0);
+    // one without a gun never aims
+    let brute = squad(rand, me, R, { count: 1, kinds: ['gazorpian'], dist: 8 * METRE });
+    for (let t = 0; t < 3; t += 1 / 30) brute = march(brute, [me], 1 / 30, R, rand).troops;
+    expect(brute[0].aim).toBe(0);
+  });
+
   it('charges in without a gun, and lands a blow', () => {
     const rand = seeded(9);
     let troops = squad(rand, me, R, { count: 1, kinds: ['gazorpian'] });

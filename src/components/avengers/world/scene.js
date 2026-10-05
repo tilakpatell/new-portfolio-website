@@ -34,9 +34,10 @@ import { AVENGERS_MODELS } from '../people/models';
 import { clipsFor, loadClips, loadPerson, person } from './people';
 import { createSwing } from './swing';
 import { createFlags, createRings, staticGrounds } from './grounds';
+import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -646,7 +647,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const lintel = part(new THREE.BoxGeometry(3.2, 0.09, 0.06), new THREE.MeshBasicMaterial({ color: hot(p.accent, 2.4), toneMapped: false }), 0, 3.18, 0.27);
     lintel.castShadow = false;
     part(rbox(5, 0.22, 2.4, 0.06), white, 0, 3.7, 1.1);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.72), new THREE.MeshStandardMaterial({ map: signTexture(p.sign), transparent: true, emissive: 0xffffff, emissiveMap: signTexture(p.sign), emissiveIntensity: 0.35, roughness: 0.5, depthWrite: false }));
+    const signTex = signTexture(p.sign);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.72), new THREE.MeshStandardMaterial({ map: signTex, transparent: true, emissive: 0xffffff, emissiveMap: signTex, emissiveIntensity: 0.35, roughness: 0.5, depthWrite: false }));
     sign.position.set(0, 4.35, 0.1);
     g.add(sign);
     doors.add(g);
@@ -1161,10 +1163,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   let portalOpen = 0; // 0..1, opening
 
   // ── the camera ──
-  const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0 };
+  const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, perch: null, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0 };
   const swing = createSwing(scene, { calm });
   const flags = createFlags(scene);
   const rings = createRings(scene);
+  const packs = createPacks(scene);
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -1183,7 +1186,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const X = new THREE.Vector3(1, 0, 0);
   const Z = new THREE.Vector3(0, 0, 1);
   const UP = new THREE.Vector3(0, 1, 0);
-  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || h.mode === 'zipto' || h.mode === 'perch' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0;
+  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || h.mode === 'zipto' || h.mode === 'perch' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0 || Boolean(h.trick);
+  // web wings, and a twist's lay-out: arms out wide, legs together, flat to the air
+  const WINGS = { armL: [1, 0.12, -0.05], foreL: [1, 0.1, 0.02], armR: [-1, 0.12, -0.05], foreR: [-1, 0.1, 0.02], thighL: [0.06, -1, -0.12], calfL: [0.04, -1, -0.15], thighR: [-0.06, -1, -0.12], calfR: [-0.04, -1, -0.15], footL: [0, -1, -0.3], footR: [0, -1, -0.3], torso: { pitch: -0.15, yaw: 0, roll: 0 } };
   // the pose for where he is (the figure's frame: +z ahead, +y up, +x his left)
   const offPose = (h) => {
     if (h.mode === 'zipto') {
@@ -1194,10 +1199,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       // crouched on the top of it, hands between his feet
       return { thighL: [0.3, -0.3, 0.9], calfL: [0.12, -1, -0.3], thighR: [-0.3, -0.3, 0.9], calfR: [-0.12, -1, -0.3], footL: [0.1, -0.3, 1], footR: [-0.1, -0.3, 1], armL: [0.15, -0.85, 0.55], foreL: [0.05, -1, 0.3], armR: [-0.15, -0.85, 0.55], foreR: [-0.05, -1, 0.3], torso: { pitch: 0.6, yaw: 0, roll: 0 } };
     }
-    if (h.glide) {
-      // web wings: arms out wide, legs together, flat to the air
-      return { armL: [1, 0.12, -0.05], foreL: [1, 0.1, 0.02], armR: [-1, 0.12, -0.05], foreR: [-1, 0.1, 0.02], thighL: [0.06, -1, -0.12], calfL: [0.04, -1, -0.15], thighR: [-0.06, -1, -0.12], calfR: [-0.04, -1, -0.15], footL: [0, -1, -0.3], footR: [0, -1, -0.3], torso: { pitch: -0.15, yaw: 0, roll: 0 } };
-    }
+    if (h.glide) return WINGS;
+    // a trick: tucked for a flip, laid out for a twist
+    if (h.trick) return h.trick.kind === 'twist' ? WINGS : POSES.guard();
     if (h.land > 0) {
       // down on one knee, a hand to the ground
       return {
@@ -1346,8 +1350,16 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
     else hero.quaternion.slerp(q, Math.min(1, dt * 12));
     R.placed = true;
-    // a perfect release: a flip, forward, about his middle
-    spidey.body.rotation.x = h.flip > 0 ? Math.PI * 2 * ease(1 - h.flip / 0.7) : 0;
+    // a perfect release's flip, or a trick: a flip forward about his middle, a backflip, or a twist about his height
+    let rx = h.flip > 0 ? Math.PI * 2 * ease(1 - h.flip / 0.7) : 0;
+    let ry = 0;
+    if (h.trick) {
+      const k = ease(1 - Math.max(0, h.trick.t) / TRICK.time);
+      if (h.trick.kind === 'flip') rx = Math.PI * 2 * k;
+      else if (h.trick.kind === 'back') rx = -Math.PI * 2 * k;
+      else ry = h.trick.dir * Math.PI * 2 * k;
+    }
+    spidey.body.rotation.set(rx, ry, 0);
   };
 
   const placeHero = (h, dt) => {
@@ -1476,6 +1488,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       grass.update(s.hero.x + (fx / fl) * 6, s.hero.z + (fz / fl) * 6, clock);
     }
     rings.update(s.tour ?? { on: false, next: 0 }, clock);
+    packs.update(s.found ?? [], clock);
 
     // Mjolnir hums a little when the worthy come near it
     const dh = Math.hypot(s.hero.x - CRATER.x, s.hero.z - CRATER.z);
@@ -1496,22 +1509,25 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     }
     A.flash = Math.max(0, A.flash - dt * 1.5);
 
-    // his web, where it stuck, and the next anchor's mark while he's in the air
+    // his web, where it stuck, the next anchor's mark while he's in the air,
+    // and the perch a point launch (Q) would take him to
     const h = s.hero;
+    const tick = ++A.aimN % 3 === 0;
     if (h.mode === 'air' || h.mode === 'swing') {
-      if (++A.aimN % 3 === 0 || !A.aimed) A.aim = h.web ? null : aimWeb(h);
+      if (tick || !A.aimed) A.aim = h.web ? null : aimWeb(h);
       A.aimed = true;
     } else {
       A.aim = null;
       A.aimed = false;
     }
+    if (tick) A.perch = h.mode === 'zipto' ? null : findPerch(h, s.move);
     if (spidey) {
       const bone = h.web ? (R.arm === 'L' ? spidey.bones.handL : spidey.bones.handR) : spidey.bones.handR;
       if (bone) bone.getWorldPosition(A.hand);
       else A.hand.copy(hero.position);
     } else A.hand.set(h.x, h.y + 1.9, h.z);
     // (a point launch's web, to the perch, drawn as a swing's)
-    swing.update(h.mode === 'zipto' && h.to ? { ...h, web: { at: [h.to.x, h.to.y + 0.3, h.to.z] } } : h, A.hand, A.aim, dt);
+    swing.update(h.mode === 'zipto' && h.to ? { ...h, web: { at: [h.to.x, h.to.y + 0.3, h.to.z] } } : h, A.hand, A.aim, dt, A.perch);
 
     // the camera: behind him, brought in rather than go into a wall
     const yaw = s.camYaw ?? 0;
@@ -1523,7 +1539,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // further back the faster he goes, and wider
     A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * Math.min(1, dt * 2.5);
     const dist = (s.camDist ?? 7.5) + A.dist;
-    const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch;
+    const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch * (s.shake ?? 1);
     A.fov += (fov - A.fov) * Math.min(1, dt * 4);
     A.punch = Math.max(0, A.punch - dt * 9);
     if (Math.abs(camera.fov - A.fov) > 0.05) {
@@ -1602,6 +1618,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'perfect') {
       A.punch = Math.max(A.punch, 5);
       vfx.ring(v3.copy(hero.position), { color: 0xff8a80, from: 0.4, to: 2.4, life: 0.35, opacity: 0.45, normal: v3b.set(d.vx ?? 0, d.vy ?? 0, d.vz ?? 1).normalize() });
+    } else if (type === 'trick') {
+      A.punch = Math.max(A.punch, 2);
+    } else if (type === 'bank') {
+      // the style banked: a gold ring out from where he landed
+      vfx.ring(v3.set(hero.position.x, (d.y ?? hero.position.y) + 0.2, hero.position.z), { color: 0xffd98a, from: 0.5, to: 3.5 + Math.min(4, (d.style ?? 0) / 800), life: 0.55, opacity: 0.6 });
+    } else if (type === 'bail') {
+      if (!calm) vfx.smoke(v3.copy(hero.position), { size: 1, count: 5, life: 0.6, rise: 0.3, opacity: 0.3, color: 0xb8b4a4, to: 0xd8d4c4, spread: 1.2 });
     } else if (type === 'point') {
       A.punch = Math.max(A.punch, 4);
       swing.webbed(d.at);
@@ -1614,6 +1637,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       swing.zipped(d.at);
     } else if (type === 'dive') {
       A.punch = Math.max(A.punch, 4);
+    } else if (type === 'pack') {
+      // a backpack found: a puff of web and a ring where it was
+      const at = packs.at(d.id);
+      if (at) {
+        vfx.ring(at, { color: 0xbfe8ff, from: 0.3, to: 2.6, life: 0.45, opacity: 0.6 });
+        if (!calm) vfx.smoke(at, { size: 0.8, count: 4, life: 0.6, rise: 0.3, opacity: 0.4, color: 0xffffff, to: 0xdde6f0, spread: 0.5 });
+      }
+      A.punch = Math.max(A.punch, 2);
     } else if (type === 'stick' || type === 'kick') {
       if (!calm) vfx.smoke(v3.copy(hero.position), { size: 0.6, count: 3, life: 0.5, rise: 0.1, opacity: 0.18, color: 0xd8d4c4, to: 0xeeeeee, spread: 0.4 });
     }
@@ -1663,6 +1694,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       flags.dispose();
       grass?.dispose();
       rings.dispose();
+      packs.dispose();
       vfx.dispose();
       engine.dispose();
     },
