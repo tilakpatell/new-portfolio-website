@@ -21,6 +21,7 @@ import '../../shire/shire.css';
 import '../bree/bree.css';
 import './marshes.css';
 import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // The Emyn Muil, the Dead Marshes and the Black Gate: the eighth stretch
 // of the road, Frodo and Sam alone with Gollum. The places are in
@@ -811,7 +812,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           </button>
         </div>
       )}
-      {gl === 'on' && walking && !hud.moved && !here && !hud.leading && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && !hud.leading && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={hud.zone === 'marsh' ? 'The Dead Marshes' : hud.zone === 'gate' ? 'The Black Gate' : 'The Emyn Muil'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

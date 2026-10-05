@@ -4,8 +4,10 @@ import {
   ALT,
   AROUND_KM,
   CAPTURE,
+  CLOUD_ALT,
   HOME_V,
   KM,
+  LOOK,
   ROLL,
   STAMPS,
   TRAIL,
@@ -16,6 +18,7 @@ import {
   bearingOf,
   bearingTo,
   dot,
+  easeLook,
   fly,
   headingOf,
   kmBetween,
@@ -23,13 +26,17 @@ import {
   cross,
   logTrail,
   newFlight,
+  newLook,
   nextStamp,
+  packPose,
   rotate,
   routeArc,
   subsolar,
   toLonLat,
   toVec,
+  turnLook,
   unit,
+  unpackPose,
 } from './rules';
 
 const DT = 1 / 30;
@@ -111,6 +118,16 @@ describe('Earth: flying', () => {
     const g = newFlight({ bearing: 90 });
     for (let i = 0; i < 20; i++) fly(g, { turn: -1 }, DT);
     expect(bearingOf(g.p, g.h)).toBeLessThan(85);
+  });
+
+  it('can get down under the cloud deck, and up well over it', () => {
+    expect(ALT.min).toBeLessThan(CLOUD_ALT);
+    expect(ALT.max).toBeGreaterThan(CLOUD_ALT * 4);
+    expect(ALT.start).toBeGreaterThan(CLOUD_ALT);
+    const f = newFlight();
+    for (let i = 0; i < 400; i++) fly(f, { climb: -1 }, DT);
+    expect(f.alt).toBeLessThan(CLOUD_ALT);
+    expect(f.alt * KM).toBeGreaterThan(10); // still well up, in km
   });
 
   it('climbs and descends within its limits, and goes faster with boost', () => {
@@ -226,7 +243,8 @@ describe('Earth: the flight log', () => {
   it('keeps a trail of where the plane has flown, a point every so often, up to a limit', () => {
     const f = newFlight();
     const trail = [];
-    expect(logTrail(trail, f.p)).toBe(true);
+    expect(logTrail(trail, f.p, f.alt)).toBe(true);
+    expect(trail[0][3]).toBe(f.alt); // each point keeps the height it was flown at
     expect(logTrail(trail, f.p)).toBe(false); // not moved: no new point
     let added = 0;
     for (let i = 0; i < 20 / DT; i++) {
@@ -304,5 +322,63 @@ describe('Earth: the barrel roll', () => {
       n++;
     }
     expect(n * DT).toBeCloseTo(ROLL.time, 0);
+  });
+});
+
+describe('Earth: looking round', () => {
+  it('turns the camera round the plane as far as its limits, and no further', () => {
+    const l = newLook();
+    expect(l).toMatchObject({ yaw: 0, pitch: 0, held: false });
+    turnLook(l, 0.5, 0.2);
+    expect(l.yaw).toBeCloseTo(0.5);
+    expect(l.pitch).toBeCloseTo(0.2);
+    expect(l.held).toBe(true);
+    turnLook(l, 100, -100);
+    expect(l.yaw).toBe(LOOK.yaw);
+    expect(l.pitch).toBe(-LOOK.pitch);
+  });
+
+  it('settles back behind the plane once let go, and stays put while held', () => {
+    const l = newLook();
+    turnLook(l, 1, 0.3);
+    for (let i = 0; i < 30; i++) easeLook(l, DT);
+    expect(l.yaw).toBeCloseTo(1);
+    l.held = false;
+    for (let i = 0; i < 30; i++) easeLook(l, DT);
+    expect(Math.abs(l.yaw)).toBeLessThan(0.5);
+    expect(Math.abs(l.yaw)).toBeGreaterThan(0);
+    for (let i = 0; i < 300; i++) easeLook(l, DT);
+    expect(Math.abs(l.yaw)).toBeLessThan(0.01);
+    expect(Math.abs(l.pitch)).toBeLessThan(0.01);
+  });
+});
+
+describe('Earth: the other pilots', () => {
+  it('packs where a plane is into a traveller’s step, and reads it back', () => {
+    const f = newFlight();
+    for (let i = 0; i < 90; i++) fly(f, { turn: 0.4, climb: 1 }, DT);
+    const step = packPose(f);
+    // longitude and latitude in degrees, the heading as a bearing in radians, the height in thousandths
+    expect(step.x).toBeCloseTo(toLonLat(f.p)[0], 5);
+    expect(step.z).toBeCloseTo(toLonLat(f.p)[1], 5);
+    expect(step.face).toBeCloseTo((bearingOf(f.p, f.h) * Math.PI) / 180, 5);
+    expect(step.y).toBeCloseTo(f.alt * 1000, 5);
+    expect(step.speed).toBeGreaterThan(0.4); // always counts as moving
+    expect(step.speed).toBeLessThan(45);
+    expect(Math.abs(step.x)).toBeLessThanOrEqual(180);
+    expect(Math.abs(step.z)).toBeLessThanOrEqual(90);
+    expect(step.y).toBeLessThanOrEqual(80);
+    const back = unpackPose({ ...step, x: Math.round(step.x * 100) / 100, z: Math.round(step.z * 100) / 100, face: Math.round(step.face * 100) / 100 });
+    expect(angle(back.p, f.p)).toBeLessThan(0.0003);
+    expect(dot(back.h, f.h)).toBeGreaterThan(0.9999);
+    expect(back.alt).toBeCloseTo(f.alt, 4);
+    expect(len(back.p)).toBeCloseTo(1, 9);
+    expect(dot(back.p, back.h)).toBeCloseTo(0, 9);
+  });
+
+  it('puts a step with no height at cruising height', () => {
+    const back = unpackPose({ x: 0, z: 0, face: 0 });
+    expect(back.alt).toBe(ALT.start);
+    expect(back.p).toEqual([0, 0, 1]);
   });
 });

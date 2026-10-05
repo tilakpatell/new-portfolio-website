@@ -16,6 +16,8 @@ import * as THREE from 'three';
 import { merge } from '../kit';
 import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, P, PANES, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
 import { BREAK_TABLES, CONFERENCE_TABLE, KITCHEN_COUNTER, KITCHEN_TABLE, STAFF } from '../layout';
+import { buildWindows } from './windows';
+import { TILE_X, buildFixtures } from './fixtures';
 import { sharpen } from '../../../lib/three/textures';
 
 const canvas = (w, h) => {
@@ -50,87 +52,30 @@ function ceilingTex() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-// what's out of the windows: a grey Scranton sky, trees, the business park's lot
-function viewTex() {
-  const c = canvas(512, 256);
-  const x = c.getContext('2d');
-  const sky = x.createLinearGradient(0, 0, 0, 160);
-  sky.addColorStop(0, '#c9d4dd');
-  sky.addColorStop(1, '#eef0ee');
-  x.fillStyle = sky;
-  x.fillRect(0, 0, 512, 256);
-  x.fillStyle = '#9aa39a';
-  for (let i = 0; i < 40; i++) {
-    const tx = Math.random() * 512;
-    x.beginPath();
-    x.ellipse(tx, 130 + Math.random() * 10, 18 + Math.random() * 20, 26 + Math.random() * 14, 0, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.fillStyle = '#7e8a7a';
-  for (let i = 0; i < 24; i++) {
-    const tx = Math.random() * 512;
-    x.beginPath();
-    x.ellipse(tx, 146, 16 + Math.random() * 14, 18, 0, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.fillStyle = '#a5a7a3';
-  x.fillRect(0, 160, 512, 96);
-  x.strokeStyle = 'rgba(255,255,255,0.6)';
-  x.lineWidth = 2;
-  for (let i = 0; i < 512; i += 46) {
-    x.beginPath();
-    x.moveTo(i, 190);
-    x.lineTo(i + 12, 236);
-    x.stroke();
-  }
-  const cars = ['#7c1f24', '#d8d8d2', '#2f3d55', '#5a5d61', '#c9b58a', '#1d1f22'];
-  for (let i = 0; i < 9; i++) {
-    x.fillStyle = cars[i % cars.length];
-    const cx = 16 + i * 56 + Math.random() * 10;
-    x.fillRect(cx, 196, 36, 16);
-    x.fillRect(cx + 6, 188, 22, 10);
-  }
-  return texOf(c);
-}
-// vertical blinds: cream vanes with gaps
-function vanesTex() {
-  const c = canvas(64, 8);
-  const x = c.getContext('2d');
-  for (let i = 0; i < 64; i += 8) {
-    x.fillStyle = 'rgba(226,220,204,0.97)';
-    x.fillRect(i, 0, 5.5, 8);
-    x.fillStyle = 'rgba(190,184,168,0.97)';
-    x.fillRect(i + 4.5, 0, 1, 8);
-  }
-  const t = texOf(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-// Michael's blinds, never quite closed: horizontal slats
-function slatsTex() {
-  const c = canvas(16, 64);
-  const x = c.getContext('2d');
-  for (let y = 0; y < 64; y += 8) {
-    x.fillStyle = 'rgba(236,233,224,0.95)';
-    x.fillRect(0, y, 16, 3.2);
-  }
-  const t = texOf(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
 // the company's name, on the wall in the lobby and behind reception
 function logoTex(dark = false) {
   const c = canvas(1024, 300);
   const x = c.getContext('2d');
   x.fillStyle = dark ? '#2b2e33' : '#f4f2ec';
   x.fillRect(0, 0, 1024, 300);
-  x.textAlign = 'center';
-  x.font = 'bold 132px Arial, Helvetica, sans-serif';
+  // the two words side by side, measured so they never run into each other
+  x.font = 'bold 128px Arial, Helvetica, sans-serif';
+  x.textBaseline = 'alphabetic';
+  const gap = 34;
+  const a = x.measureText('DUNDER').width;
+  const b = x.measureText('MIFFLIN').width;
+  const k = Math.min(1, 940 / (a + gap + b));
+  x.save();
+  x.translate(512, 0);
+  x.scale(k, 1);
+  const left = -(a + gap + b) / 2;
   x.fillStyle = dark ? '#f4f2ec' : '#121212';
-  x.fillText('DUNDER', 330, 160);
-  x.fillStyle = '#1f4e8c';
-  x.fillText('MIFFLIN', 760, 160);
-  x.fillStyle = dark ? '#d8d6cf' : '#121212';
+  x.fillText('DUNDER', left, 168);
+  x.fillStyle = '#2a5ea8';
+  x.fillText('MIFFLIN', left + a + gap, 168);
+  x.restore();
+  x.fillStyle = dark ? '#d8d6cf' : '#3a3a3a';
+  x.textAlign = 'center';
   x.font = 'italic 40px Georgia, serif';
   x.fillText('Paper Company, Inc.', 512, 236);
   return texOf(c);
@@ -318,34 +263,28 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   floorRect({ x: 142, y: 238, w: 19, h: 138 }, carpet, 0.001);
 
   // ── the drop ceiling ──
-  const ceilTex = keep(ceilingTex());
+  // (one texture, one grid: the tiles are laid by the UVs in metres from
+  // the building's origin, so the grid runs on unbroken from room to room,
+  // and where a room's ceiling lies over the bullpen's the two are the same)
+  const ceilMat = mat({ map: keep(ceilingTex()), roughness: 0.95 });
   for (const id of ['bullpen', 'michael', 'conference', 'hallway', 'men', 'women', 'annex', 'darryl', 'supplies', 'lobby', 'stairs']) {
     const m = rect(ROOMS[id]);
-    const t = ceilTex.clone();
-    keep(t);
-    t.repeat.set(m.w / 1.22, m.d / 1.22);
-    t.needsUpdate = true;
+    const y = id === 'stairs' ? CEILING + 1.2 : CEILING;
     const geo = new THREE.PlaneGeometry(m.w, m.d);
     geo.rotateX(Math.PI / 2);
-    const o = mesh(geo, mat({ map: t, roughness: 0.95 }), m.cx, id === 'stairs' ? CEILING + 1.2 : CEILING, m.cz);
+    geo.translate(m.cx, y, m.cz);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / TILE_X, pos.getZ(i) / TILE_X);
+    const o = mesh(geo, ceilMat);
     o.castShadow = false;
   }
-  // the fluorescent troffers, in rows over every room
+  // the fluorescent troffers, in the tile grid (./fixtures.js), and the
+  // diffusers, grilles, sprinklers and smoke detectors round them
+  const fixtures = buildFixtures({ T: 0.12 });
+  add(fixtures.group);
   const lights = [];
-  const troffers = [];
-  const lay = (id, sx = 2.6, sz = 2.2) => {
-    const m = rect(ROOMS[id]);
-    const nx = Math.max(1, Math.round(m.w / sx));
-    const nz = Math.max(1, Math.round(m.d / sz));
-    for (let i = 0; i < nx; i++)
-      for (let k = 0; k < nz; k++) {
-        const x = m.x + ((i + 0.5) * m.w) / nx;
-        const z = m.z + ((k + 0.5) * m.d) / nz;
-        troffers.push([x, z]);
-      }
-  };
-  ['bullpen', 'annex', 'conference', 'hallway'].forEach((id) => lay(id));
-  ['michael', 'darryl', 'men', 'women', 'supplies', 'lobby'].forEach((id) => lay(id, 3, 3));
+  const troffers = fixtures.plan.troffers;
   {
     const frameGeo = keep(new THREE.BoxGeometry(1.2, 0.04, 0.6));
     const glowGeo = keep(new THREE.PlaneGeometry(1.12, 0.52).rotateX(Math.PI / 2));
@@ -390,7 +329,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     const r = d.along === 'x' ? [d.x - half, d.z, d.x + half, d.z] : [d.x, d.z - half, d.x, d.z + half];
     run(r, 2.12, CEILING);
   }
-  const wallMat = kit.surface('wall', 1, 1, 1.5, { color: 0xeee6d3 });
+  const wallMat = kit.surface('wall', 1, 1, 1.5, { color: 0xe4d9c2 });
   wallMat.map = null;
   const wallMesh = mesh(keep(merge(wallGeos)), wallMat);
   wallMesh.castShadow = true;
@@ -419,7 +358,6 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
 
   // ── the glass fronts, and their blinds ──
   const glassMat = mat({ color: 0xd5e6f0, transparent: true, opacity: 0.18, roughness: 0.05, metalness: 0, depthWrite: false });
-  const slats = keep(slatsTex());
   for (const [x0, z0, x1, z1] of PANES) {
     const len = Math.hypot(x1 - x0, z1 - z0);
     const vertical = Math.abs(x1 - x0) < 1e-6;
@@ -429,19 +367,10 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     g.renderOrder = 3;
     const sill = mesh(new THREE.BoxGeometry(len, 0.03, 0.16), kit.M.metal, g.position.x, 0.87, g.position.z);
     sill.rotation.y = g.rotation.y;
-    const t = slats.clone();
-    keep(t);
-    t.repeat.set(1, 1.2 * 6);
-    t.needsUpdate = true;
-    const blinds = mesh(new THREE.PlaneGeometry(len * 0.96, 1.18), mat({ map: t, transparent: true, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide }), g.position.x, 1.5, g.position.z - (vertical ? 0 : 0.06));
-    if (vertical) blinds.position.x -= 0.06;
-    blinds.rotation.y = g.rotation.y;
   }
 
-  // ── windows in the outside walls, with vertical blinds ──
-  const view = keep(viewTex());
-  const vanes = keep(vanesTex());
-  const viewMat = mat({ map: view, emissive: 0xffffff, emissiveMap: view, emissiveIntensity: 0.85, roughness: 0.3 });
+  // ── windows in the outside walls, a view of the lot through each, and
+  // the blinds in them and in the glass fronts (./windows.js) ──
   // [px0, py0, px1, py1, which way the room is: +1 (south/east of the wall) or -1]
   const WINDOWS = [
     [215, 12, 314, 12, 1],
@@ -455,28 +384,8 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     [161, 312, 161, 372, 1],
     [302, 376, 400, 376, -1],
   ];
-  for (const [ax, ay, bx, by, side] of WINDOWS) {
-    const a = W(ax, ay);
-    const b = W(bx, by);
-    const vertical = ax === bx;
-    const len = vertical ? b.z - a.z : b.x - a.x;
-    const cx = (a.x + b.x) / 2;
-    const cz = (a.z + b.z) / 2;
-    const off = (T / 2 + 0.005) * side;
-    const pane = mesh(new THREE.PlaneGeometry(len, 1.35), viewMat, vertical ? cx + off : cx, 1.52, vertical ? cz : cz + off);
-    pane.rotation.y = vertical ? (side > 0 ? Math.PI / 2 : -Math.PI / 2) : side > 0 ? 0 : Math.PI;
-    pane.castShadow = false;
-    const t = vanes.clone();
-    keep(t);
-    t.repeat.set(len * 8, 1);
-    t.needsUpdate = true;
-    const bl = mesh(new THREE.PlaneGeometry(len, 1.5), mat({ map: t, transparent: true, alphaTest: 0.3, roughness: 0.9, side: THREE.DoubleSide }), vertical ? cx + off * 3 : cx, 1.52, vertical ? cz : cz + off * 3);
-    bl.rotation.y = pane.rotation.y;
-    const sill = mesh(new THREE.BoxGeometry(len + 0.08, 0.04, 0.14), kit.M.white, vertical ? cx + off * 2 : cx, 0.83, vertical ? cz : cz + off * 2);
-    sill.rotation.y = vertical ? Math.PI / 2 : 0;
-    const head = mesh(new THREE.BoxGeometry(len + 0.08, 0.06, 0.1), kit.M.metal, vertical ? cx + off * 2 : cx, 2.26, vertical ? cz : cz + off * 2);
-    head.rotation.y = sill.rotation.y;
-  }
+  const windows = buildWindows({ windows: WINDOWS.map(([ax, ay, bx, by, room]) => ({ a: W(ax, ay), b: W(bx, by), room })), panes: PANES, T });
+  add(windows.group);
 
   // ── a wall-mounted picture or sign: a plane on a wall face ──
   // (px, py on the wall line; `face`: the way it looks, in radians, 0 = +z)
@@ -926,7 +835,10 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
       spills.length = 0;
     },
     fireGlow,
+    windows,
     dispose() {
+      windows.dispose();
+      fixtures.dispose();
       for (const o of own) o.dispose?.();
     },
   };

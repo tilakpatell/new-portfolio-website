@@ -32,7 +32,12 @@
 // another dimension: their dimension's code on the tag (dimensionOf, from
 // their pilot) and a tint of its own. crew() is yours, for sending.
 //
-// createFoot({ map, emit, reduced, small, planetOf }) → { phase, begin(...),
+// Each planet's own ground, sky and things round where you come down are
+// its landing's (landings/: the Shire on Middle-earth's, the desert and the
+// RV on Breaking Bad's, the Smiths' street on C-137's), and the place's name
+// comes up as you land (an 'arrive' event).
+//
+// createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -49,6 +54,10 @@ import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBol
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
+import { landingOf } from './landings/landings';
+import { styleOf } from './landings/ground';
+import { createSky } from './landings/sky';
+import { furnish, furnished } from './landings/furnish';
 
 const V = THREE.Vector3;
 const arr = (v) => [v.x, v.y, v.z];
@@ -704,10 +713,12 @@ const PATCH = { radius: 110 * METRE, rings: 46, segs: 72, lift: 0.025 * METRE, t
 const HULL_PATCH = { ...PATCH, radius: 900 * METRE, rings: 64, segs: 96, tile: 32 };
 
 // `trench`: the trench's rim (footScene's band: { half, home, arc }), if the
-// ground stops at one
-function createGround(planet, u, R, trench = null) {
+// ground stops at one; `look`: a landing's ground (landings.js: its style
+// and colours), the planet's own up close
+function createGround(planet, u, R, trench = null, look = null) {
   const plated = Boolean(u.plated);
   const P = plated ? HULL_PATCH : PATCH;
+  const style = plated ? null : styleOf(look);
   const g = new THREE.BufferGeometry();
   const count = (P.rings + 1) * P.segs;
   const pos = new Float32Array(count * 3);
@@ -743,17 +754,29 @@ function createGround(planet, u, R, trench = null) {
     uBand: { value: trench ? Math.sin(trench.half / R) : 0 },
     uHome: { value: trench?.home ?? 0 },
     uArc: { value: trench?.arc ?? Math.PI },
+    // a landing's colours, how many metres its bump map's uv is, the time (for a glow that pulses)
+    uA: { value: new THREE.Color(look?.colors?.[0] ?? '#808080') },
+    uB: { value: new THREE.Color(look?.colors?.[1] ?? '#808080') },
+    uC: { value: new THREE.Color(look?.colors?.[2] ?? '#808080') },
+    uMetres: { value: P.tile / (style?.repeat ?? 1) },
+    uTime: { value: 0 },
   };
+  let bump = plated || style?.bump === 'plating' ? platingTexture() : noiseTexture();
+  if (style?.repeat) {
+    bump = bump.clone();
+    bump.repeat.setScalar(style.repeat);
+    bump.needsUpdate = true;
+  }
   const mat = plated
-    ? new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.35, bumpMap: platingTexture(), bumpScale: 2.2, envMapIntensity: 0.5 })
-    : new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.96, metalness: 0, bumpMap: noiseTexture(), bumpScale: 1.6, envMapIntensity: 0.35 });
+    ? new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.35, bumpMap: bump, bumpScale: 2.2, envMapIntensity: 0.5 })
+    : new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: style?.roughness ?? 0.96, metalness: style?.metalness ?? 0, bumpMap: bump, bumpScale: style?.bumpScale ?? 1.6, envMapIntensity: 0.35 });
   mat.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, uniforms);
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aEdge;\nvarying vec3 vDir;\nvarying float vEdge;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDir = normalize(position);\nvEdge = aEdge;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nuniform float uBand;\nuniform float uHome;\nuniform float uArc;\nvarying vec3 vDir;\nvarying float vEdge;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nuniform float uBand;\nuniform float uHome;\nuniform float uArc;\nuniform vec3 uA;\nuniform vec3 uB;\nuniform vec3 uC;\nuniform float uMetres;\nuniform float uTime;\nvarying vec3 vDir;\nvarying float vEdge;')
       .replace(
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
@@ -777,7 +800,14 @@ function createGround(planet, u, R, trench = null) {
               ? `// the plating, out to the patch's edge (its far side's past the horizon)
           ${PLATE_DETAIL}
           diffuseColor.rgb *= base * detail;`
-              : `// grit, stones and patches over it, fading out toward the patch's edge
+              : style
+                ? `// the landing's own ground (landings/ground.js), the planet's map toward the patch's edge
+          vec2 m = vBumpMapUv * uMetres;
+          vec3 near = vec3(1.0);
+          ${style.bump === 'plating' ? 'vec4 pl = texture2D(bumpMap, vBumpMapUv);\n          float blocks = texture2D(bumpMap, vBumpMapUv * 0.137 + 0.29).g;' : 'float n1 = texture2D(bumpMap, vBumpMapUv).r;\n          float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;\n          float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;'}
+          ${style.glsl}
+          diffuseColor.rgb *= mix(near, base, smoothstep(0.35, 1.0, vEdge));`
+                : `// grit, stones and patches over it, fading out toward the patch's edge
           float n1 = texture2D(bumpMap, vBumpMapUv).r;
           float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;
           float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;
@@ -786,9 +816,9 @@ function createGround(planet, u, R, trench = null) {
           }
         }`,
       )
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : ''}`);
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : style?.glow ? `{${style.glow}\n}` : ''}`);
   };
-  mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : 'foot-ground');
+  mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : style ? `foot-ground-${look.style}` : 'foot-ground');
   const mesh = new THREE.Mesh(g, mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = -1;
@@ -845,9 +875,13 @@ function createGround(planet, u, R, trench = null) {
     sync(toBody) {
       uniforms.uToBody.value.copy(toBody);
     },
+    tick(t) {
+      uniforms.uTime.value = t;
+    },
     dispose() {
       g.dispose();
       mat.dispose();
+      if (bump !== noiseTex && bump !== plateTex) bump.dispose();
     },
   };
 }
@@ -1142,7 +1176,7 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 
 // ── The whole of it ──
 
-export function createFoot({ map, emit, reduced = false, small = false, planetOf }) {
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, warm = null }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -1448,14 +1482,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     planet.hold?.(true);
     if (planet.air) planet.air.visible = false;
     // the ground, the rocks and the air (a station's hull, its blocks and
-    // none; and a trench's walls)
-    ground = createGround(planet, u, S.R, S.band);
+    // none; and a trench's walls); or the planet's own landing: its ground,
+    // its sky and its things, laid out from where the first ship down here
+    // came down (a friend's, if you're coming down beside them)
+    const landing = u.plated ? null : landingOf(id);
+    ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
-    rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
+    if (landing && furnished(id)) {
+      const anchor = near ? { n: near.n, f: near.f } : S.spot;
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, renderer, warm });
+      rocks = { mesh: f.group, solids: f.solids, update: f.update, dispose: f.dispose };
+    } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
-    haze = u.airless ? null : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff') : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
+    if (landing) emit({ type: 'foot', id: 'arrive', title: landing.title, sub: landing.sub });
     sides = S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
     // (a station's own model goes once the camera's low enough that the
@@ -1739,6 +1781,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       ground.sync(m3.transpose());
     }
+    ground?.tick(S.clock);
+    rocks?.update?.(S.clock, dt);
 
     if (S.phase === 'land') {
       const k = Math.min(1, S.t / LAND.down);
@@ -2097,7 +2141,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const k = smooth(-0.25, 0.35, vec.dot(S.me?.n ?? S.spot.n, arr(light)));
       // (only down in the air: gone by the time you're well up)
       const high = S.cam.pos ? S.cam.pos.distanceTo(S.c) - S.R : 0;
-      haze.mat.uniforms.uDay.value = (0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high));
+      haze.set?.({ sun: light });
     },
     // F: a shot at the lock, or straight ahead
     fire() {

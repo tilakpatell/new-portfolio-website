@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { configDefaults } from 'vitest/config'
+import iconsApart from './scripts/icons-apart.mjs'
 
 export default defineConfig({
-  plugins: [react()],
+  // each react-icons icon a module of its own, so the entry chunk carries
+  // only the icons the nav and footer draw (scripts/icons-apart.mjs)
+  plugins: [iconsApart(), react()],
+  // (the icons' modules import react-icons' own GenIcon: bundled up front in dev)
+  optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',
   // the skills and the other branches' worktrees under .claude bring their own tests
   test: { exclude: [...configDefaults.exclude, '.claude/**'] },

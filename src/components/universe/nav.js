@@ -65,7 +65,7 @@ export function hyperState({ last = null, now = 0, interdicted = false } = {}) {
 }
 
 // What each wonder is, in a line (they have no page: the crews have their say as you pass)
-const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station' };
+const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
 const WONDER_ABOUT = {
   aurelia: 'A ringed gas giant, bigger than any world on the map. Its rings go a long way out.',
   glacia: 'An ice giant: cold, blue and very quiet.',
@@ -75,6 +75,10 @@ const WONDER_ABOUT = {
   veil: 'A nebula, purple and rose. Not solid: fly right into it. Slow going inside.',
   cradle: 'A green and gold nebula. Not solid: fly right into it. Slow going inside.',
   citadel: 'The Citadel of Ricks. Fly into it too fast and you’re inside its world.',
+  lantern: 'A pulsar: a dead star the size of a city, spinning, two beams of light sweeping round it. Nobody goes near.',
+  twins: 'Two suns, one gold and one white, close enough to share a bridge of burning gas.',
+  wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. Far out, below the disc.',
+  graveyard: 'A white dwarf with a field of dead ships drifting round it, from every fleet and none. Quiet.',
 };
 const wonderColor = (w) => w.color ?? w.colors?.[0] ?? (w.kind === 'black-hole' ? '#ffb070' : '#7fd6ff');
 

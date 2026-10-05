@@ -18,6 +18,8 @@ import { makeProps } from '../props';
 import { buildSet } from './set';
 import { buildWarehouse } from './warehouse';
 import { buildOutside } from './outside';
+import { buildContactShade } from './ao';
+import { bakeStatic } from './batch';
 import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -68,7 +70,7 @@ function clearance(from, to) {
 export async function createOfficeWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 80, bloom: { strength: 0.32, radius: 0.35, threshold: 0.92 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 80, exposure: 0.94, bloom: { strength: 0.28, radius: 0.55, threshold: 1.6 }, onLost });
   // the show's look: fluorescent, a touch green and flat, with a little grain
   stage.grade({ contrast: 0.02, saturation: 0.92, vignette: 0.22, grain: 0.022, shadow: [0.0, 0.01, 0.006], high: [0.012, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
@@ -93,7 +95,16 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     stage.dispose();
     throw e;
   }
-  scene.add(set.group, wh.group, out.group);
+  // the soft dark where things meet the floor and the walls meet both
+  const shade = buildContactShade();
+  scene.add(set.group, wh.group, out.group, shade.group);
+  // everything that stays put, merged by material a patch of floor at a time
+  const baked = [
+    bakeStatic(set.group, { keep: [set.stapler, set.jelloOnDesk, set.carried, set.pot, set.fireGlow], shadowMin: 0.45 }),
+    bakeStatic(wh.group, { keep: [wh.ball], shadowMin: 0.45 }),
+    bakeStatic(out.group, { cell: 40 }),
+  ];
+  if (import.meta.env.DEV) console.info('office: baked', baked.map((b) => `${b.before}→${b.after}`).join(' '));
   const LAMPS = [...set.lights, ...wh.lights];
   const ballHome = wh.ball.position.clone();
 
@@ -106,7 +117,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   }
   const hemi = new THREE.HemisphereLight(0xf6f8ff, 0x6a6458, 1.15);
   const key = new THREE.DirectionalLight(0xf3f6ff, 1.1);
-  key.position.set(4, 14, 6);
+  key.position.set(1.5, 14, 2.5); // nearly overhead, as under a grid of troffers
   key.target.position.set(0, 0, 0);
   if (tier === 'high') {
     key.castShadow = true;
@@ -124,10 +135,13 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const day = new THREE.DirectionalLight(0xfff4e2, 0.35);
   day.position.set(-6, 5, -10);
   scene.add(hemi, key, key.target, day);
+  // the troffers nearest Jim, as lights: each a wide cone straight down
+  // from the fixture, so it pools on the desks and the carpet and leaves the
+  // ceiling tiles round it alone (a point light there burnt them white)
   const POOL = tier === 'high' ? 6 : tier === 'mid' ? 4 : 2;
   const pool = Array.from({ length: POOL }, () => {
-    const l = new THREE.PointLight(0xf4f6ff, 0, 7, 1.4);
-    scene.add(l);
+    const l = new THREE.SpotLight(0xf4f6ff, 0, 9, 1.18, 0.85, 2);
+    scene.add(l, l.target);
     return l;
   });
   const alarm = new THREE.PointLight(0xff3a2a, 0, 30, 1.2);
@@ -349,9 +363,10 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     pool.forEach((l, i) => {
       const v = A.near[i];
       if (!v) return (l.intensity = 0);
-      l.position.set(v[0], v[1], v[2]);
-      l.intensity = (down ? 26 : 3.2) * (1 - A.fire * 0.4);
-      l.distance = down ? 14 : 7;
+      l.position.set(v[0], v[1] + 0.15, v[2]);
+      l.target.position.set(v[0], 0, v[2]);
+      l.intensity = (down ? 60 : 9) * (1 - A.fire * 0.4);
+      l.distance = down ? 16 : 9;
       return undefined;
     });
     alarm.intensity = A.fire * red * 60;
@@ -413,6 +428,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     }
     camera.lookAt(A.cam.look);
 
+    set.windows.step(t);
     fx.step(dt, t, { night: 0, day: 1 });
     renderer.info.reset();
     stage.render(ms);
@@ -465,6 +481,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
 
   return {
     scene: import.meta.env.DEV ? scene : null,
+    renderer: import.meta.env.DEV ? renderer : null,
     render,
     fx: fxEvent,
     screenOf,
@@ -488,6 +505,8 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       set.dispose();
       wh.dispose();
       out.dispose();
+      shade.dispose();
+      for (const b of baked) b.dispose();
       props.dispose();
       loading.then((c) => c?.dispose());
       kit.dispose();

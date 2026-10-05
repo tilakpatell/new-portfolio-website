@@ -200,14 +200,14 @@ async function report(opts) {
         if (!wanted(t.role, opts.slots)) continue;
         const { ktx2 } = await encodeImage(Buffer.from(t.tex.getImage()), { role: t.role, ...opts });
         const psnr = await psnrOf(ktx2, Buffer.from(t.tex.getImage()), t.role);
-        rows.push({ file: basename(file), name: t.name, role: t.role, size: `${t.width}×${t.height}`, before: t.bytes, after: ktx2.byteLength, gpuBefore: gpuBytes(t.width, t.height, 'rgba'), gpuAfter: gpuBytes(t.width, t.height, opts.etc1s ? 'etc1s' : 'uastc'), psnr });
+        rows.push({ file: basename(file), name: t.name, role: t.role, mime: t.mime, width: t.width, size: `${t.width}×${t.height}`, before: t.bytes, after: ktx2.byteLength, gpuBefore: gpuBytes(t.width, t.height, 'rgba'), gpuAfter: gpuBytes(t.width, t.height, opts.etc1s ? 'etc1s' : 'uastc'), psnr });
       }
     } else {
       const buf = await readFile(file);
       const role = /normal/i.test(basename(file)) ? 'normal' : /arm|rough|metal|occlusion|ao\b/i.test(basename(file)) ? 'arm' : 'color';
       const { ktx2, width, height } = await encodeImage(buf, { role, ...opts });
       const psnr = await psnrOf(ktx2, buf, role);
-      rows.push({ file: basename(file), name: '', role, size: `${width}×${height}`, before: buf.byteLength, after: ktx2.byteLength, gpuBefore: gpuBytes(width, height, 'rgba'), gpuAfter: gpuBytes(width, height, opts.etc1s ? 'etc1s' : 'uastc'), psnr });
+      rows.push({ file: file.split('/').slice(-2).join('/'), name: '', role, mime: /\.jpe?g$/i.test(file) ? 'image/jpeg' : '', width, size: `${width}×${height}`, before: buf.byteLength, after: ktx2.byteLength, gpuBefore: gpuBytes(width, height, 'rgba'), gpuAfter: gpuBytes(width, height, opts.etc1s ? 'etc1s' : 'uastc'), psnr });
     }
   }
   console.log(['file', 'texture', 'role', 'size', 'bytes now', 'bytes ktx2', 'GPU now', 'GPU ktx2', 'PSNR', 'verdict'].join('\t'));

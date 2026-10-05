@@ -11,9 +11,9 @@
 import { UNIVERSES, byId } from './universes';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const FIRST = 1750; // how far out the nearest fandom is
-const STEP = 275; // and how much further each one after it
-const HEIGHT = 475; // how far above or below the disc they go
+const FIRST = 2000; // how far out the nearest fandom is
+const STEP = 330; // and how much further each one after it
+const HEIGHT = 560; // how far above or below the disc they go
 const RING = 85; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
@@ -25,6 +25,10 @@ export const SUN = { at: [0, 0, 0], r: 32 };
 export const BELT = { inner: 130, outer: 185, height: 16 };
 // the home system: the sun, the stations and the belt (what the overview shows)
 export const HOME_RADIUS = 230;
+// the rim: a wide, thin ring of ice rocks right round the outside of the
+// map, out past every world and wonder and short of the edge (belt.js draws
+// it as a second belt; nothing's solid out there)
+export const RIM = { inner: 8000, outer: 8600, height: 60 };
 
 // how far a universe's moons, rings and orbiting things reach from its centre
 export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));

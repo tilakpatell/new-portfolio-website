@@ -14,7 +14,7 @@ export default function RoleBanner({ role, className = '' }) {
       <span className="role-banner-shade" aria-hidden="true" />
       {role === 'bose' && (
         <figcaption className="role-banner-chip">
-          <button type="button" className="role-banner-play" onClick={() => import('../../lib/clips').then((c) => c.playClip('vader'))} aria-label="Play: No, I am your father">
+          <button type="button" className="role-banner-play" onClick={() => import('../../lib/clips').then((c) => c.playClip('vader'))} aria-label="Now playing: “No, I am your father.” Play it">
             <span className="eq" aria-hidden="true">
               <i />
               <i />

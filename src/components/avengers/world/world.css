@@ -73,7 +73,7 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-world .btn-primary, .cw-place .btn-primary { background: var(--cw-accent, var(--cw-cyan)); color: #06121c; border-color: transparent; }
 .cw-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--cw-ink); border-color: rgba(255, 255, 255, 0.35); }
 .cw-cards-wrap .btn-ghost { background: transparent; color: inherit; border-color: var(--border); }
-.cw-cards-wrap .btn-primary { background: var(--accent); color: var(--accent-ink, #fff); }
+.cw-cards-wrap .btn-primary { background: var(--btn-bg); color: var(--btn-ink); }
 .cw-stage[data-touch] .cw-hint { bottom: 10rem; }
 .cw-hint { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.5rem 0.85rem; border-radius: 6px; background: var(--cw-glass); color: var(--cw-ink); font: 500 0.84rem/1.35 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
 @keyframes cw-up { from { opacity: 0; transform: translate(-50%, 8px); } }
@@ -157,6 +157,15 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-list-sub { margin: 0.15rem 0 0; color: #a9b8c8; font-size: 0.82rem; line-height: 1.35; }
 .cw-list-acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 @keyframes cw-in { from { opacity: 0; transform: translateY(-6px); } }
+
+/* photo mode: the HUD away, and a bar of its own */
+.cw-stage[data-photo] :is(.cw-hud, .cw-hint, .cw-door, .cw-bubble, .cw-trick, .cw-pack, .cw-style, .cw-tour-msg, .cw-speed, .cw-list) { display: none; }
+.cw-photo { position: absolute; left: 50%; bottom: clamp(0.8rem, 3%, 1.4rem); z-index: 4; display: grid; gap: 0.5rem; width: min(30rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.85rem; border: 1px solid var(--cw-line); border-radius: 10px; background: var(--cw-glass-hi); color: var(--cw-ink); transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.cw-photo-title { margin: 0; font: 400 1.3rem/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; }
+.cw-photo-hint { margin: 0; color: #a9b8c8; font-size: 0.8rem; line-height: 1.35; }
+.cw-photo-row { display: grid; grid-template-columns: 5rem minmax(0, 1fr) 4rem; align-items: center; gap: 0.6rem; margin: 0; font-size: 0.84rem; }
+.cw-photo-row output { color: var(--cw-cyan); font: 600 0.78rem/1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.cw-photo-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
 
 /* the settings: sliders, live */
 .cw-set-rows { display: grid; gap: 0.8rem; padding: 0.8rem 1rem 1rem; overflow-y: auto; overscroll-behavior: contain; }

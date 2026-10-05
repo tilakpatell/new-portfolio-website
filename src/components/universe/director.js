@@ -20,6 +20,10 @@
 //   somewhere else on the map (nav.js's riftExit)
 // - leviathan: something enormous passes: a pod of purrgil (Star Wars) or
 //   a Cromulon with something to say (Rick and Morty)
+// - meteors: a stream of rocks crosses your path (meteors.js): shoot them
+//   or steer round them
+// - bounty: a bounty hunter comes for you alone, tough and quick (Boba Fett
+//   in Slave I, or Phoenixperson: hunterRules.js)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
@@ -39,6 +43,8 @@ export const EVENTS = {
   flare: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
   rift: { families: ['starwars', 'rickmorty', 'both'], weight: 1.1, heat: 0 },
   leviathan: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0 },
+  meteors: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
+  bounty: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0.8 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 

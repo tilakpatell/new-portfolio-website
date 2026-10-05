@@ -16,7 +16,9 @@ import { HOME, PLACES } from '../../data/places';
 export const KM = 6371; // the Earth's radius, for distances shown in km
 const RAD = Math.PI / 180;
 
-export const ALT = { min: 0.012, max: 0.075, start: 0.032, climb: 0.028 };
+export const CLOUD_ALT = 0.0065; // the cloud deck's height over the ground (about 40 km: a toy, like the plane)
+export const ALT = { min: 0.0035, max: 0.075, start: 0.032, climb: 0.028 }; // down under the clouds, up to the edge of space
+export const LOOK = { yaw: 1.4, pitch: 0.6, settle: 3 }; // looking round the plane: how far, and how quickly it settles back
 export const SPEED = { cruise: 0.11, slow: 0.045, fast: 0.34, ease: 1.6 }; // radians a second
 export const TURN = 1.3; // radians a second, hard over
 export const CAPTURE = 0.025; // within this many radians of a place (about 160 km), you've arrived
@@ -181,15 +183,56 @@ export function nextStamp(f, stamped) {
   return { id: best.s.id, name: best.s.name, km: best.a * KM, rel };
 }
 
+// ── the other pilots ──
+
+// Where a plane is, as a traveller's step for the towns' rooms
+// (middleearth/towns/travellers.js): longitude and latitude in degrees for
+// x and z, the heading as a bearing in radians, the speed in hundredths of
+// a radian a second (always "moving"), the height in thousandths of a
+// radius. And back: a point on the sphere, a heading and a height.
+export const packPose = (f) => {
+  const [lon, lat] = toLonLat(f.p);
+  return { x: lon, z: lat, face: (bearingOf(f.p, f.h) * Math.PI) / 180, speed: f.speed * 100, y: f.alt * 1000 };
+};
+export function unpackPose(step) {
+  const p = toVec(step.x, step.z);
+  const h = headingOf(p, ((step.face ?? 0) * 180) / Math.PI);
+  const alt = step.y == null ? ALT.start : Math.max(ALT.min, Math.min(ALT.max, step.y / 1000));
+  return { p, h, alt };
+}
+
+// ── looking round ──
+
+// The chase camera swung round the plane by a drag (or a pad's right
+// stick): yaw to either side, pitch up and down, within LOOK's limits; let
+// go, it settles back behind the plane.
+export const newLook = () => ({ yaw: 0, pitch: 0, held: false });
+export function turnLook(l, dyaw, dpitch) {
+  l.yaw = Math.max(-LOOK.yaw, Math.min(LOOK.yaw, l.yaw + dyaw));
+  l.pitch = Math.max(-LOOK.pitch, Math.min(LOOK.pitch, l.pitch + dpitch));
+  l.held = true;
+  return l;
+}
+export function easeLook(l, dt) {
+  if (l.held) return l;
+  const k = Math.exp(-LOOK.settle * dt);
+  l.yaw *= k;
+  l.pitch *= k;
+  if (Math.abs(l.yaw) < 1e-4) l.yaw = 0;
+  if (Math.abs(l.pitch) < 1e-4) l.pitch = 0;
+  return l;
+}
+
 // ── the flight log ──
 
-// The trail flown: `trail` is a list of points on the sphere; `p` is added
-// when it's TRAIL.step or more from the last, and the oldest go once there
-// are TRAIL.max. Returns whether a point was added.
-export function logTrail(trail, p) {
+// The trail flown: `trail` is a list of points on the sphere, each with the
+// height it was flown at; `p` is added when it's TRAIL.step or more from
+// the last, and the oldest go once there are TRAIL.max. Returns whether a
+// point was added.
+export function logTrail(trail, p, alt = 0) {
   const last = trail[trail.length - 1];
   if (last && angle(last, p) < TRAIL.step) return false;
-  trail.push([p[0], p[1], p[2]]);
+  trail.push([p[0], p[1], p[2], alt]);
   if (trail.length > TRAIL.max) trail.splice(0, trail.length - TRAIL.max);
   return true;
 }

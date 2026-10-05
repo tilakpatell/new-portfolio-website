@@ -137,7 +137,7 @@
 .dm-cards li[data-got] { background: #8bac0f; }
 .dm-cards a { font: 400 0.68rem/1.5 'Press Start 2P', var(--font-mono); color: #0f380f; text-decoration: underline; text-underline-offset: 3px; }
 .dm-cards p { margin: 0.6rem 0 0; font-size: 0.85rem; line-height: 1.5; }
-.dm-where { font: 400 0.52rem/1.5 'Press Start 2P', var(--font-mono) !important; color: #306230; text-transform: uppercase; }
+.dm-where { font: 400 0.52rem/1.5 'Press Start 2P', var(--font-mono) !important; color: #0f380f; text-transform: uppercase; }
 
 @media (max-width: 640px) {
   .dm-stage { border-width: 5px; border-radius: 10px 10px 28px 10px; max-width: 100%; }
@@ -170,3 +170,12 @@ html[data-mode='dark'] .dm-shelf li[data-got] .dm-shelf-tag { color: #9bbc0f; }
 .dm-swatches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; flex: 1; margin: 0; padding: 0; list-style: none; }
 .dm-swatches li { display: flex; align-items: flex-end; height: 2.9rem; padding: 0.3rem 0.4rem; border-radius: 3px; }
 .dm-swatches span { padding: 0.1rem 0.25rem; border-radius: 2px; background: rgba(255, 255, 255, 0.82); color: #111; font: 600 0.62rem/1.2 var(--font-mono); }
+
+/* the island from above, on the page, in the palette picked under it */
+.dm-map { display: block; width: 100%; max-width: 36rem; height: auto; margin-top: 1.5rem; aspect-ratio: 48 / 40; image-rendering: pixelated; border: 3px solid #2b2b33; border-radius: 4px; }
+.dm-how .guide-keys kbd { display: inline-block; padding: 0.1rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); font: 500 0.78rem/1.4 var(--font-mono); color: var(--ink); }
+
+/* the other islanders' names, over the canvas, in the screen's lettering */
+.dm-names { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.dm-name { position: absolute; left: 0; top: 0; padding: 2px 5px 3px; border: 2px solid var(--dm-0); background: var(--dm-3); color: var(--dm-0); font: 0.5rem/1.2 var(--dm-font); white-space: nowrap; opacity: 0; will-change: transform; }
+.dm-chip-online { border-style: dashed; }
