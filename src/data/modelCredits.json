@@ -453,6 +453,28 @@
       "galaxy"
     ]
   },
+  "surface-atat": {
+    "title": "Imperial AT-AT Walker - Star Wars",
+    "author": "Quiznos323",
+    "authorUrl": "https://sketchfab.com/quiznos323",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/imperial-at-at-walker-star-wars-7eab3f41da9143d8975b9034e91f8920",
+    "where": "galaxy",
+    "as": "the AT-AT walkers",
+    "file": "/models/galaxy/surface/atat.glb"
+  },
+  "surface-atm6": {
+    "title": "AT-M6 First Order Walker",
+    "author": "_Vadim2020_",
+    "authorUrl": "https://sketchfab.com/Maha_Knox",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-m6-first-order-walker-d35fe6f380ac4054bbb6db857ee89051",
+    "where": "galaxy",
+    "as": "the AT-M6 walkers",
+    "file": "/models/galaxy/surface/atm6.glb"
+  },
   "surface-atst": {
     "title": "Star Wars AT-ST [Rigged]",
     "author": "smithson17",
@@ -677,6 +699,17 @@
       "galaxy"
     ]
   },
+  "surface-probe": {
+    "title": "SWBF2 - Viper Droid",
+    "author": "jay2307",
+    "authorUrl": "https://sketchfab.com/jay2307",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/swbf2-viper-droid-d2de16581b574e2584ef75d87e358356",
+    "where": "galaxy",
+    "as": "the probe droids",
+    "file": "/models/galaxy/surface/probe.glb"
+  },
   "surface-scouttrooper": {
     "title": "Scout Trooper",
     "author": "malin.sandred",
@@ -718,6 +751,17 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-snowspeeder": {
+    "title": "SnowSpeeder",
+    "author": "Cristianolop",
+    "authorUrl": "https://sketchfab.com/Cristianolop",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/snowspeeder-983d113a8414457d9a797b9fa7425507",
+    "where": "galaxy",
+    "as": "the snowspeeders",
+    "file": "/models/galaxy/surface/snowspeeder.glb"
   },
   "surface-snowtrooper": {
     "title": "Snow Trooper || Episode VIII: TLJ",
@@ -775,6 +819,17 @@
       "galaxy"
     ]
   },
+  "surface-turret": {
+    "title": "Star Wars - DF.9 Turret Battle of Hoth",
+    "author": "judpro",
+    "authorUrl": "https://sketchfab.com/judpro",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-df9-turret-battle-of-hoth-e15d4f794ed24f8fb385695ce5255bbd",
+    "where": "galaxy",
+    "as": "the DF.9 turrets",
+    "file": "/models/galaxy/surface/turret.glb"
+  },
   "surface-vader": {
     "title": "Darth Vader",
     "author": "HarrisonHag1",
@@ -802,6 +857,17 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-wampa": {
+    "title": "Wampa",
+    "author": "toro ardido modelos 3d",
+    "authorUrl": "https://sketchfab.com/toro_ardido_modelos_3d",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/wampa-fbd7530481db420ab6b6ac29f63019c9",
+    "where": "galaxy",
+    "as": "the wampas",
+    "file": "/models/galaxy/surface/wampa.glb"
   },
   "thragg": {
     "title": "Thragg from invincible s4",
