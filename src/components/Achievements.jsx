@@ -67,6 +67,7 @@ export const ACHIEVEMENTS = {
   whatever: { name: 'Whatever it takes', desc: 'Won all six Infinity Stones back on the compound, and snapped' },
   quinjet: { name: 'Get this man a shield', desc: 'Flew the Tesseract into the hangar at Tesseract Run' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
+  fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 

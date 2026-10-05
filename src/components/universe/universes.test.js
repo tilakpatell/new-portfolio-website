@@ -18,8 +18,9 @@ describe('the universes', () => {
 
   it('each go somewhere real', () => {
     for (const u of UNIVERSES) expect(ROUTES.some((p) => matchPath(p, u.to)), u.to).toBe(true);
-    const id = byPath('/projects/gameboy-emulator') && 'gameboy-emulator';
-    expect(projectById(id)).toBeTruthy();
+    // (the Game Boy's world links to its project page)
+    expect(byPath('/dot-matrix')?.id).toBe('gaming');
+    expect(projectById('gameboy-emulator')).toBeTruthy();
   });
 
   it('have accents that read on the deep-space page', () => {
@@ -27,7 +28,7 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/caribbean']);
+    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/caribbean']);
     expect(WORLDS[0]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
   });
 });

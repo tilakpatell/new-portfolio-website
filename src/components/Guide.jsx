@@ -109,6 +109,16 @@ const PAGES = {
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
+  '/dot-matrix': {
+    title: 'Dot Matrix',
+    tips: [
+      ['Walk and jump', 'The arrows or W A S D walk, Space (or Z) jumps: hold it to jump higher. Q and E turn the camera an eighth of the way round, or drag the island. On a phone, the pad walks, A jumps and B acts. A controller works too.'],
+      ['B', 'X (or Enter) reads a sign, plays the giant Game Boy in the square when you stand in front of it, and takes you down a pipe you are standing on.'],
+      ['The cartridges', 'Eight of them, each one a project of mine: up the plateau, on top of Block Drop tower, in the snake’s pen, among the plants, on the cloud, out on the islet, on a roof and in the long grass. M lists them, with a hint for each you haven’t found.'],
+      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Wait for the gap in the snake. Three hearts, and a "?" block somewhere gives one back.'],
+      ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
+    ],
+  },
   '/universe': {
     title: 'The universe',
     tips: [
