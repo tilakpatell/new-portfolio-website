@@ -264,6 +264,39 @@ export const SKIES = {
   "sky": true,
   "bytes": 902435
  },
+ "night": {
+  "sun": null,
+  "horizon": [
+   0.3392,
+   0.4035,
+   0.485
+  ],
+  "sky": true,
+  "bytes": 870301
+ },
+ "noon": {
+  "sun": {
+   "dir": [
+    0.5542,
+    0.7419,
+    0.3774
+   ],
+   "color": [
+    0.975,
+    1,
+    0.923
+   ],
+   "power": 2.427,
+   "disc": true
+  },
+  "horizon": [
+   0.4444,
+   0.484,
+   0.5973
+  ],
+  "sky": true,
+  "bytes": 632662
+ },
  "pines": {
   "sun": null,
   "horizon": [

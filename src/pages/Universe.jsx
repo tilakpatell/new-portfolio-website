@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
@@ -6,7 +6,9 @@ import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf } from '../components/universe/deep';
-import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { useAchievements } from '../components/Achievements';
 import { START_KEY } from './Front';
 import { portalSound } from '../components/universe/sounds';
 import UniverseMap from '../components/universe/UniverseMap';
@@ -21,8 +23,9 @@ const PORTAL = '#97ce4c';
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
 
 // The universe map: every fandom on the site is a planet, and you travel
-// between them, flying a ship of your choice (remembered between visits) or
-// letting the camera take you. The URL is the selection (/universe/marvel),
+// between them, flying a ship of your choice (remembered between visits,
+// each fitted out in the hangar its own way: outfit.js) or letting the
+// camera take you. The URL is the selection (/universe/marvel),
 // swapped in place so a link shares the view and Back leaves the map in one
 // press. The page accent follows the selected universe, so the panel
 // recolours as you go. Fly into a planet too fast and the crash takes you
@@ -42,8 +45,24 @@ export default function Universe({ ask = false }) {
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
-  const { setKind } = online;
+  const { setKind, setLoadout } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // what each ship's fitted with in the hangar (kept between visits): the
+  // paint job and parts it flies with, while they're still earned
+  const { unlocked } = useAchievements();
+  const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
+  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked), [loadouts, ship, unlocked]);
+  useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
+  const [hangar, setHangar] = useState(false);
+  const fit = (slot, id) => {
+    const r = equip(ship, loadout, slot, id, unlocked);
+    if (r.ok) {
+      const next = { ...loadouts, [ship]: r.loadout };
+      setLoadouts(next);
+      local.set(LOADOUT_KEY, next);
+    }
+    return r;
+  };
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   // the panel, put away to give the map the room (remembered between visits)
@@ -164,6 +183,11 @@ export default function Universe({ ask = false }) {
         handle={map}
         frozen={Boolean(leaving)}
         ship={ship}
+        shipName={crew?.ship ?? ''}
+        loadout={loadout}
+        onFit={ship ? fit : null}
+        hangar={hangar}
+        onHangar={setHangar}
         net={online.client}
         onEvent={(e) => comms.current?.handle(e)}
         onLand={enter}
@@ -171,7 +195,20 @@ export default function Universe({ ask = false }) {
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
       {!asking && !leaving && <Online online={online} ship={ship} />}
-      <UniversePanel universe={universe} onSelect={select} onEnter={enter} onWhole={whole} leaving={Boolean(leaving)} ship={ship} onShip={pickShip} onStartOn={startOn} tucked={tucked} onTuck={tuck} />
+      <UniversePanel
+        universe={universe}
+        onSelect={select}
+        onEnter={enter}
+        onWhole={whole}
+        leaving={Boolean(leaving)}
+        ship={ship}
+        loadout={loadout}
+        onShip={pickShip}
+        onHangar={() => setHangar(true)}
+        onStartOn={startOn}
+        tucked={tucked}
+        onTuck={tuck}
+      />
       {asking && <StartChoice onPick={start} />}
       <div className="universe-fade" aria-hidden="true" style={{ background: fade }} />
       {leaving?.mode === 'beyond' && <Beyond far={beyondOf(leaving.id)} />}

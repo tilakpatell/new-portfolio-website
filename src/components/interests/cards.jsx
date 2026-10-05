@@ -241,9 +241,14 @@ function Gaming() {
       <p className="mt-2 text-sm text-muted">
         Hint: ↑ ↑ ↓ ↓ ← → ← → B A. And there’s a hidden easter egg on every page: {eggsFound()} of {Object.keys(EGGS).length} found.
       </p>
-      <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm mt-auto self-start">
-        Press Start
-      </Link>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Link to="/dot-matrix" className="btn btn-primary btn-sm">
+          Visit Dot Matrix
+        </Link>
+        <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm">
+          Press Start
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -501,6 +506,17 @@ function Caribbean() {
   );
 }
 
+function InvincibleCard() {
+  return (
+    <Card title="Invincible" className="fun-invincible" visual={<img src={`${import.meta.env.BASE_URL}models/invincible/card.webp`} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">A half-Viltrumite kid learning to fly, and a father who is something else. There’s a city to fight over here, in 3D: think, Mark.</p>
+      <Link to="/invincible" className="btn btn-ghost btn-sm mt-auto self-start">
+        Fly over the city
+      </Link>
+    </Card>
+  );
+}
+
 // One card per universe on the map, by its id.
 export const CARDS = {
   starwars: StarWars,
@@ -514,4 +530,5 @@ export const CARDS = {
   gaming: Gaming,
   travel: Travel,
   caribbean: Caribbean,
+  invincible: InvincibleCard,
 };

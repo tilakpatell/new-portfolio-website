@@ -47,6 +47,17 @@
     "where": "middle-earth",
     "as": "Minas Tirith"
   },
+  "omni-man": {
+    "title": "Omni Man Fortnite",
+    "author": "Swimknot19",
+    "authorUrl": "https://sketchfab.com/RafaMario",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
+    "where": "invincible",
+    "as": "Omni-Man",
+    "file": "/models/invincible/omni-man.glb"
+  },
   "orthanc": {
     "title": "Isengard",
     "author": "AndreOrla",
@@ -67,6 +78,17 @@
     "where": "universe",
     "as": "the sitar by the music planet"
   },
+  "spiderman": {
+    "title": "Spiderman Brand New Day",
+    "author": "mpolo0604",
+    "authorUrl": "https://sketchfab.com/mpolo0604",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
+    "where": "avengers",
+    "as": "Spider-Man",
+    "file": "/models/marvel/spiderman.glb"
+  },
   "star-destroyer": {
     "title": "Star Destroyer",
     "author": "rubaun",
@@ -80,6 +102,17 @@
     "also": [
       "galaxy"
     ]
+  },
+  "thragg": {
+    "title": "Thragg from invincible s4",
+    "author": "Gojiram",
+    "authorUrl": "https://sketchfab.com/geoffscool",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
+    "where": "invincible",
+    "as": "Thragg",
+    "file": "/models/invincible/thragg.glb"
   },
   "tie-interceptor": {
     "title": "Star Wars: TIE/in Interceptor",

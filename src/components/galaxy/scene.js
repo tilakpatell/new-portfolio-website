@@ -33,7 +33,9 @@
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { ready, resize, render, update, setVisible, lowerQuality, fire, boost,
 //   climb, seat, escape, jump, goTo, dispose }.
-// Props: system (an id), ship (a crew id), controls, net, stick,
+// Props: system (an id), ship (a crew id), loadout (what's fitted to it in
+// the universe map's hangar: outfit.js; its paint and parts, and how they
+// make it fly), controls, net, stick,
 // shield, hud, tags, labels (refs, as the universe map's), stars (a ref:
 // the other systems' names, by id, moved over their stars), frozen,
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
@@ -65,6 +67,8 @@ import { lockSound, shipEngine } from '../universe/sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
+import { paintById } from '../universe/paint';
+import { STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { createModels } from './models';
 import { createSky } from './sky';
@@ -225,6 +229,8 @@ export async function create(canvas, ctx) {
     nextHunt: 35 + Math.random() * 25, // seconds of flying till they come
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
+    loadout: readLoadout(ctx.loadout ?? STOCK_LOADOUT), // what's fitted in the hangar
+    stats: statsOf(null, STOCK_LOADOUT), // and what it does to how it flies
     lock: null,
     lockTarget: null,
     lead: null,
@@ -312,6 +318,29 @@ export async function create(canvas, ctx) {
     if (!engine) engine = shipEngine(state.kind);
   };
 
+  // What's fitted in the hangar (the universe map's, outfit.js): the paint
+  // job the ship wears (paint.js), on its hull and in its shots; the parts
+  // bolted on, and what they do to how it flies (state.stats, ship.js's tune)
+  const coat = () => paintById(state.loadout.paint);
+  const dress = () => {
+    if (!state.kind) return;
+    state.model?.paint?.(coat());
+    boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
+  };
+  const refit = () => {
+    state.stats = statsOf(state.kind, state.loadout);
+    if (state.kind && state.model) state.model.outfit?.(state.loadout);
+  };
+  const setLoadout = (raw) => {
+    const next = readLoadout(raw ?? STOCK_LOADOUT);
+    const was = state.loadout;
+    if (Object.keys(next).every((k) => next[k] === was[k])) return;
+    state.loadout = next;
+    if (next.paint !== was.paint) dress();
+    refit();
+    ctx.invalidate();
+  };
+
   const setShip = (kind) => {
     if (kind === state.kind) return;
     engine?.stop();
@@ -327,7 +356,6 @@ export async function create(canvas, ctx) {
     cabWanted = null;
     if (kind && state.seat === 'cockpit') buildCab(kind);
     setPlumes(kind, ENGINES[kind] ?? []);
-    if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d').multiplyScalar(4);
     if (!kind) {
       state.ship = null;
       state.auto = null;
@@ -338,9 +366,12 @@ export async function create(canvas, ctx) {
     }
     state.model = buildShip(kind);
     scene.add(state.model.group);
+    refit();
+    dress();
     if (SHIP_MODELS[kind]) {
+      const model = state.model;
       loadModel(SHIP_MODELS[kind])
-        .then((m) => m && warm(m).then(() => m))
+        .then((m) => m && warm(model.dress ? model.dress(m) : m).then(() => m)) // (in its paint before its shaders are made)
         .then((m) => {
           if (!m) return;
           if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
@@ -607,7 +638,7 @@ export async function create(canvas, ctx) {
       climb += d.climb;
       roll += d.roll;
     }
-    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1), climb: clamp(climb, -1, 1), roll: clamp(roll, -1, 1), boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn, pitchRate: c.pitch, rollRate: c.roll, level: c.level };
+    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1), climb: clamp(climb, -1, 1), roll: clamp(roll, -1, 1), boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn, pitchRate: c.pitch, rollRate: c.roll, level: c.level, tune: state.stats };
   };
 
   // ── The guns ──
@@ -1661,7 +1692,9 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
+      if ((next.ship ?? null) !== state.kind) state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
       setShip(next.ship ?? null);
+      setLoadout(next.loadout);
       setNet(next.net);
       // the page asked for another system (a link, the URL): jump there
       if (next.system && state.sys && next.system !== state.sys.id && next.system !== state.jump?.to.id) {

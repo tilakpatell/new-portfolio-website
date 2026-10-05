@@ -17,7 +17,7 @@ import '../universe/universe.css';
 // that the galaxy needs it, and the panel and the map still work.
 const load = () => import('./scene');
 
-export default function GalaxyView({ system, here, handle, ship, net = null, frozen, onEvent, onArrive, onAt, onBoard, onMap }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, net = null, frozen, onEvent, onArrive, onAt, onBoard, onMap }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -42,6 +42,7 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
     props: {
       system,
       ship,
+      loadout,
       controls,
       labels,
       stars,

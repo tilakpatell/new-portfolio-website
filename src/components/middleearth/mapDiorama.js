@@ -17,6 +17,11 @@
 //
 // Everything is placed in the sheet's own 800×560 units (./mapData.js) and
 // made in code. `update` moves it all; `walkTo` sends the hobbits.
+//
+// Other travellers online on the map (towns/travellers.js: the map is a room
+// of its own) walk it too, each a pale Frodo from another world with their
+// name over them (towns/ghosts.js): `travellers(list)` hands them in, and
+// `step` is where your Frodo is, to send.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -27,6 +32,7 @@ import { STOPS } from './road';
 import { EMBER, FIRE, SMOKE, createParticles } from './kit';
 import { makeGollum, makeToyFigure, makeTreebeard, pose } from './mapFigures';
 import { CAST, HOBBIT_LINES } from './mapCast';
+import { createGhosts } from './towns/ghosts';
 
 const SCALE = 10;
 const P = (sx, sy) => [(sx - SHEET.w / 2) / SCALE, (sy - SHEET.h / 2) / SCALE];
@@ -466,6 +472,18 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     return { c, f, face, home: face, wave: 0, talk: 0, greeted: false, line: 0, top: top(f.group) };
   });
   const hobbitTop = top(frodo.group) + 0.1;
+  // other travellers, online, as pale Frodos from other worlds
+  const ghosts = createGhosts({
+    make: () => {
+      const f = makeToyFigure({ hair: 0x3a2214, coat: 0x8a3a2a, cloak: 0x5f6b48, seed: 1 });
+      f.group.scale.setScalar(1.9);
+      return { ...f, top: top(f.group) };
+    },
+    tag: 0.62,
+    halo: 1.9,
+  });
+  scene.add(ghosts.group);
+  let travellers = [];
   const lines = { frodo: 0, sam: 0 };
 
   // what happens on the map, for the page: someone says something
@@ -565,6 +583,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
 
   const S = { erupt: 3, shake: 0, flare: 0 };
   const update = (dt, t, { night = 0 } = {}) => {
+    ghosts.update(travellers, t, dt);
     // Frodo: steered, or walking his path
     const wasMoving = H.moving;
     let vx = 0;
@@ -700,6 +719,15 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     // a model still on its way has nowhere to go now
     dispose() {
       gone = true;
+      ghosts.dispose();
+    },
+    // the other travellers on the map now (towns/travellers.js's list())
+    travellers(list) {
+      travellers = list ?? [];
+    },
+    // where your Frodo is, for them: { x, z, face, speed }
+    get step() {
+      return { x: H.x, z: H.z, face: H.face, speed: H.moving ? H.speed : 0 };
     },
     walkTo,
     walkToPoint,

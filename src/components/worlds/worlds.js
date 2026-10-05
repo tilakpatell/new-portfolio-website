@@ -10,6 +10,7 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
 export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
+  '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 9, // the compound's skies, scanned props and trees
   '/c-137': 6, // the cruiser and Portal panic's cast
@@ -19,6 +20,7 @@ export const WORLD_MB = {
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 1,
+  '/dot-matrix': 1, // drawn in code
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth.

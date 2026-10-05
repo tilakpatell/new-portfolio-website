@@ -32,3 +32,5 @@ lab/
 
 # superpowers brainstorming companion session files
 .superpowers
+# the harmonium's source recording (build-harmonium.py downloads it)
+scripts/data/harmonium/

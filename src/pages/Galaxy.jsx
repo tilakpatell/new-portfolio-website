@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
-import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
@@ -42,8 +44,12 @@ export default function Galaxy() {
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline();
-  const { setKind } = online;
+  const { setKind, setLoadout } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the ship as it's fitted in the universe map's hangar: its paint and parts
+  const { unlocked } = useAchievements();
+  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
+  useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
@@ -169,6 +175,7 @@ export default function Galaxy() {
         here={current}
         handle={view}
         ship={ship}
+        loadout={loadout}
         net={online.client}
         frozen={Boolean(leaving) || intro}
         onEvent={onEvent}

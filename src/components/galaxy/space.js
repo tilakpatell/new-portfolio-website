@@ -48,7 +48,7 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
     edge,
     ceilingAt: () => ceiling,
     openness,
-    boostAt: (x, y, z) => SHIP.boost + (PULSE - SHIP.boost) * openness(x, y, z),
+    boostAt: (x, y, z, boost = SHIP.boost) => boost + (PULSE - boost) * openness(x, y, z),
     brakeAt: (x, y, z) => SHIP.brake * (1 + 2.5 * openness(x, y, z)),
     coastAt: (x, y, z) => SHIP.coast * (1 + 3.5 * openness(x, y, z)),
     solids,

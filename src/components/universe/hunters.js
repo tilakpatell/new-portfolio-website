@@ -23,7 +23,7 @@
 //
 // createHunters(parent, { small, fleet, factions, kinds }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict }) → points,
 //   update(dt, t, ship) → events,
-//   hit(from, to) → hit or null, clear(), dispose(), count, active,
+//   hit(from, to, damage) → hit or null, clear(), dispose(), count, active,
 //   targets: the ones still after you (or their prey), for the guns to lock
 //   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
 //   threat is 1 for one on an attack run at you) }
@@ -343,12 +343,13 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
       return events;
     },
 
-    // a shot of yours from `from` to `to` this frame: the hunter it hit, if
+    // a shot of yours from `from` to `to` this frame, worth `damage` hits
+    // (a fusion cannon's is worth more): the hunter it hit, if
     // any: { kind, at, size, down } (down: it's destroyed; otherwise it took
     // the hit and comes on). Both moved this frame, so it's the whole way
     // each went that counts (a fighter crossing a bolt's path between two
     // frames is still hit), the nearest along the bolt's way first
-    hit(from, to) {
+    hit(from, to, damage = 1) {
       let h = null;
       let first = Infinity;
       for (const o of live) {
@@ -360,8 +361,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         }
       }
       if (h) {
-        h.hp -= 1;
-        h.target.hp = h.hp;
+        h.hp -= damage;
+        h.target.hp = Math.max(0, h.hp);
         h.pack.angry = true; // pirates turn on you once you shoot at them
         if (h.hp > 0) return { kind: h.kind, at: h.pos.clone(), size: h.type.size, down: false };
         h.alive = false;

@@ -2,9 +2,9 @@
 //
 // Sitar: real strokes, pitch-shifted across the neck, with sympathetic
 // strings and a chikari that fills the rests by itself (./sitar.js). Tanpura:
-// a real recorded pluck, retuned to each of its four strings. Harmonium: free
-// reeds, two to a key. Tabla: real strokes, the dayan retuned to Sa
-// (./tabla.js).
+// a real recorded pluck, retuned to each of its four strings. Harmonium: a
+// real one's keys, looped while held, on bass, male and female reeds
+// (./harmonium.js). Tabla: real strokes, the dayan retuned to Sa (./tabla.js).
 //
 // Pitches are just intonation against Sa (./tuning.js). Every function that
 // makes a sound needs `audioContext()` to have run inside the visitor's click
@@ -16,6 +16,7 @@ import { jawariString } from './strings';
 import { FIRST_STRING, getTuning, sa, saHz } from './tuning';
 import { stopTheka } from './tabla';
 import { stopAutoChikari } from './sitar';
+import { harmoniumAllOff } from './harmonium';
 import { dayanTarget } from './tablaRules';
 
 export * from './tuning';
@@ -123,86 +124,10 @@ export function stopTanpura() {
 }
 
 // ── Harmonium ──────────────────────────────────────────────────────────────
-// Two reeds to a key, the second a few cents sharp so they beat gently, like a
-// real harmonium's coupled reeds. The bellows breathe: a slow sway in pressure.
-let reedWave = null;
-let reedBus = null;
-const voices = new Map();
-
-function reeds(ac) {
-  if (reedBus) return reedBus;
-  // a free reed: every harmonic, falling off gently, a little brighter in the middle
-  const n = 40;
-  const real = new Float32Array(n);
-  const imag = new Float32Array(n);
-  for (let k = 1; k < n; k++) imag[k] = (1 / Math.pow(k, 0.9)) * (k >= 3 && k <= 7 ? 1.35 : 1);
-  reedWave = ac.createPeriodicWave(real, imag);
-  const lp = ac.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 4200;
-  lp.Q.value = 0.5;
-  const chamber = ac.createBiquadFilter();
-  chamber.type = 'peaking';
-  chamber.frequency.value = 1150;
-  chamber.Q.value = 1.1;
-  chamber.gain.value = 3;
-  const hp = ac.createBiquadFilter();
-  hp.type = 'highpass';
-  hp.frequency.value = 90;
-  const bellows = ac.createGain();
-  bellows.gain.value = 0.5;
-  const breath = ac.createOscillator();
-  breath.frequency.value = 0.45;
-  const depth = ac.createGain();
-  depth.gain.value = 0.035;
-  breath.connect(depth).connect(bellows.gain);
-  breath.start();
-  bellows.connect(hp).connect(chamber).connect(lp).connect(mix(ac));
-  reedBus = bellows;
-  return reedBus;
-}
-
-export function harmoniumOn(id, ratio, { bass = false } = {}) {
-  const ac = audioContext();
-  if (!ac || voices.has(id)) return;
-  const busIn = reeds(ac);
-  const t = ac.currentTime;
-  const f = ratio * sa();
-  const g = ac.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.13, t + 0.035);
-  g.connect(busIn);
-  const oscs = [
-    [f, 0, 1],
-    [f, 4, 0.7],
-    ...(bass ? [[f / 2, -2, 0.6]] : []),
-  ].map(([hz, cents, level]) => {
-    const o = ac.createOscillator();
-    o.setPeriodicWave(reedWave);
-    o.frequency.value = hz;
-    o.detune.value = cents;
-    const v = ac.createGain();
-    v.gain.value = level;
-    o.connect(v).connect(g);
-    o.start(t);
-    return o;
-  });
-  voices.set(id, { g, oscs });
-}
-
-export function harmoniumOff(id) {
-  const v = voices.get(id);
-  const ac = audioContext();
-  if (!v || !ac) return;
-  voices.delete(id);
-  const t = ac.currentTime;
-  v.g.gain.cancelScheduledValues(t);
-  v.g.gain.setValueAtTime(v.g.gain.value, t);
-  v.g.gain.linearRampToValueAtTime(0, t + 0.14);
-  v.oscs.forEach((o) => o.stop(t + 0.16));
-}
-
-export const harmoniumAllOff = () => [...voices.keys()].forEach(harmoniumOff);
+// A real harmonium's keys, looped as they're held, on its reed banks and
+// through its bellows (./harmonium.js).
+export { bellowsAir, harmoniumOff, harmoniumOn, harmoniumReady, onBellows, pumpBellows, setBellowsMode, setHarmoniumSustain, warmHarmonium } from './harmonium';
+export { harmoniumAllOff };
 
 // The dayan's pitch for the current Sa, for the tuning readout.
 export const dayanHz = () => dayanTarget(sa());
