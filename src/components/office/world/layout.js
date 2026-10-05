@@ -81,6 +81,7 @@ export const rect = (r) => {
 // which room a point is in (the smallest that holds it)
 export function roomAt(x, z) {
   if (x >= 30 && x <= 54 && z >= -8 && z <= 8) return 'warehouse'; // (WAREHOUSE, below)
+  if (x > 54 && x <= 88 && z >= -16 && z <= 16) return 'lot'; // (LOT, below)
   let best = null;
   for (const [id, r] of Object.entries(ROOMS)) {
     const m = rect(r);
@@ -171,20 +172,74 @@ const WH_COLLIDERS = [
   { kind: 'box', x: FORKLIFT.x, z: FORKLIFT.z, w: 1.3, d: 3.0, turn: FORKLIFT.turn, top: 2.3 },
   { kind: 'box', x: WH_STAIRS.x, z: WH_STAIRS.z - 0.8, w: 1.6, d: 1.8, turn: 0, top: 2.4 },
 ];
+// the dock's open door, out to the lot (the other one's shut)
+export const DOCK_DOOR = { z: WAREHOUSE.z + WAREHOUSE.d / 2 + 3.5, w: 3.2 };
 const WH_WALLS = (() => {
   const { x, z, w, d } = WAREHOUSE;
   return [
     [x, z, x + w, z, 0.12],
     [x, z + d, x + w, z + d, 0.12],
     [x, z, x, z + d, 0.12],
-    [x + w, z, x + w, z + d, 0.12],
+    [x + w, z, x + w, DOCK_DOOR.z - DOCK_DOOR.w / 2, 0.12],
+    [x + w, DOCK_DOOR.z + DOCK_DOOR.w / 2, x + w, z + d, 0.12],
   ];
 })();
 WALLS.push(...WH_WALLS);
+
+// ── outside: the Scranton Business Park's lot, off the loading dock ──
+export const LOT = { x: 54, z: -16, w: 34, d: 32 };
+// the building's back, along the lot's west edge, beyond the warehouse
+const LOT_WALLS = [
+  [LOT.x, LOT.z, LOT.x + LOT.w, LOT.z, 0.2],
+  [LOT.x, LOT.z + LOT.d, LOT.x + LOT.w, LOT.z + LOT.d, 0.2],
+  [LOT.x + LOT.w, LOT.z, LOT.x + LOT.w, LOT.z + LOT.d, 0.2],
+  [LOT.x, LOT.z, LOT.x, WAREHOUSE.z, 0.2],
+  [LOT.x, WAREHOUSE.z + WAREHOUSE.d, LOT.x, LOT.z + LOT.d, 0.2],
+];
+WALLS.push(...LOT_WALLS);
+export const inLot = (x, z) => x > LOT.x && x <= LOT.x + LOT.w && z >= LOT.z && z <= LOT.z + LOT.d;
+// parked cars: [x, z, turn, colour, kind]
+export const CARS = [
+  [62, -11, 0, 0x8a1c22, 'transam'],
+  [62, -7.6, 0, 0xc9c9c2, 'sedan'],
+  [62, 7.2, 0, 0x2f3d55, 'sedan'],
+  [62, 10.6, 0, 0x5a5d61, 'suv'],
+  [72, -11, Math.PI, 0xd8d6cf, 'sedan'],
+  [72, -4.2, Math.PI, 0x7c1f24, 'sedan'],
+  [72, 3.2, Math.PI, 0x1d1f22, 'suv'],
+  [72, 10.6, Math.PI, 0xc9b58a, 'sedan'],
+  [78, -7.6, 0, 0x3a6fb8, 'sedan'],
+  [78, 7.2, 0, 0xe0e0da, 'suv'],
+];
+export const PARK_SIGN = { x: 84, z: -1, turn: -Math.PI / 2 };
+export const LIGHT_POLES = [
+  [67, -13],
+  [67, 0],
+  [67, 13],
+  [80, -13],
+  [80, 13],
+];
+export const TREES = [
+  [86, -12],
+  [86, -6],
+  [86, 5],
+  [86, 11],
+  [57, -14.6],
+  [57, 14.6],
+];
+export const DUMPSTER = { x: 56, z: -10.8, w: 1.9, d: 1.2 };
+const LOT_COLLIDERS = [
+  ...CARS.map(([x, z, turn, , kind]) => ({ kind: 'box', x, z, w: kind === 'suv' ? 2.0 : 1.85, d: kind === 'suv' ? 4.8 : 4.5, turn, top: 1.6 })),
+  { kind: 'box', x: PARK_SIGN.x, z: PARK_SIGN.z, w: 0.7, d: 3.6, turn: 0, top: 2.2 },
+  ...LIGHT_POLES.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.25, top: 8 })),
+  ...TREES.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.45, top: 6 })),
+  { kind: 'box', ...DUMPSTER, turn: 0, top: 1.4 },
+];
 export const inWarehouse = (x, z) => x >= WAREHOUSE.x && x <= WAREHOUSE.x + WAREHOUSE.w && z >= WAREHOUSE.z && z <= WAREHOUSE.z + WAREHOUSE.d;
 
 export const COLLIDERS = [
   ...WH_COLLIDERS,
+  ...LOT_COLLIDERS,
   ...SEATS.map((s) => s.box),
   // the chairs, with whoever's in them (not Jim's: he's up)
   ...SEATS.filter((s) => s.who !== 'jim').map((s) => ({ kind: 'circle', x: s.chair.x, z: s.chair.z, r: 0.32, low: true })),
@@ -249,7 +304,10 @@ export const THINGS = [
   { id: 'forklift', x: FORKLIFT.x - 1.4, z: FORKLIFT.z + 0.4, r: 1.4, name: 'The forklift', line: 'Only the warehouse drives the forklift. Michael drove it once. They still talk about it, and not kindly.' },
   { id: 'accident', x: 34, z: -6.9, r: 1.6, name: 'Days without an accident', line: 'Zero. Michael was down here this morning.' },
   { id: 'bales', x: 47.6, z: 2.2, r: 1.2, name: 'A bale of paper', line: 'Shrink-wrapped, on a pallet, waiting for a truck. Somewhere in there is the paper Michael says is “the best in the business”.' },
-  { id: 'dock', x: 52.2, z: 3.5, r: 1.6, name: 'The loading dock', line: 'The roll-up door’s up and the lot’s out there in the sun. A Dunder Mifflin truck is backed up to the next bay.' },
+  { id: 'dock', x: 52.2, z: 6.2, r: 1.2, name: 'The loading dock', line: 'One door up, one down. The trucks come at seven, and Darryl’s been here since six.' },
+  { id: 'parksign', x: 82.4, z: -1, r: 1.8, name: 'Scranton Business Park', line: 'The sign at the front of the lot. Dunder Mifflin, Vance Refrigeration, and a few others nobody has ever met.' },
+  { id: 'transam', x: 64.2, z: -11, r: 1.8, name: 'A red Trans Am', line: 'Dwight’s. Do not lean on it. He will know.' },
+  { id: 'dumpster', x: 57.6, z: -10.8, r: 1.4, name: 'The dumpster', line: 'Behind the warehouse. People come out here to cry, to smoke, or to talk to the camera where nobody can hear.' },
 ];
 
 // ── people: who's where, and what they say as you pass ──
