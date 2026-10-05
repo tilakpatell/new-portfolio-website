@@ -8,10 +8,15 @@ export default defineConfig({
   // the skills and the other branches' worktrees under .claude bring their own tests
   test: { exclude: [...configDefaults.exclude, '.claude/**'] },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        codeSplitting: {
+          groups: [
+            // React and the router change rarely, so they cache apart from the
+            // app. react-dom/server (one world renders SVG markup with it)
+            // stays out, so it only loads with that world.
+            { name: 'vendor', test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|cookie|set-cookie-parser)[\\/](?!.*server)/ },
+          ],
         },
       },
     },
