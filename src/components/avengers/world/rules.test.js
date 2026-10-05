@@ -29,6 +29,7 @@ import {
   PORTAL,
   SOLIDS,
   START,
+  SUIT,
   SWING,
   TRICK,
   aimWeb,
@@ -39,6 +40,7 @@ import {
   findPerch,
   floorAt,
   linesFor,
+  nearArmour,
   nearCast,
   nearPack,
   nearestEdge,
@@ -1109,5 +1111,91 @@ describe('The compound, the world: air tricks', () => {
     expect(h.mode).toBe('swing');
     expect(h.trick).toBe(null);
     expect(h.style).toBe(TRICK.points.flip);
+  });
+});
+
+describe('The compound, the world: the Iron Man armour', () => {
+  const atPlinth = () => newHero({ x: ARMOUR.x + 1.5, z: ARMOUR.z + 1, face: 0 });
+
+  it('suits up at the plinth and nowhere else, and lifts off', () => {
+    expect(nearArmour(ARMOUR.x + 1, ARMOUR.z)).toBe(true);
+    expect(nearArmour(START.x, START.z)).toBe(false);
+    const far = stepHero(newHero(START), { suit: true }, DT);
+    expect(far.mode).toBe('ground');
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    expect(h.mode).toBe('suit');
+    expect(h.ev.map((e) => e.type)).toContain('suitup');
+    h = walk(h, { web: true }, 1.5);
+    expect(h.mode).toBe('suit');
+    expect(h.y).toBeGreaterThan(6);
+    // it coasts to a stop and holds its height idle, and comes down with Shift, never under the ground
+    const held = walk(h, {}, 1.5);
+    const held2 = walk(held, {}, 1);
+    expect(Math.abs(held2.y - held.y)).toBeLessThan(0.2);
+    const down = walk(h, { run: true }, 3);
+    expect(down.y).toBeGreaterThanOrEqual(0);
+    expect(down.mode).toBe('suit');
+  });
+
+  it('flies where the stick points, faster than he can swing, and no faster than it goes', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    // over the middle of the lawn, twenty metres up, then east over the open lawn
+    h = { ...h, x: 60 * 1.6, z: 52 * 1.6, y: 20, vy: 0 };
+    let top = 0;
+    for (let t = 0; t < 2.5; t += DT) {
+      h = stepHero(h, { x: 1, z: 0 }, DT);
+      top = Math.max(top, Math.hypot(h.vx, h.vz));
+    }
+    expect(top).toBeGreaterThan(SWING.maxSpeed * 0.9);
+    expect(top).toBeLessThanOrEqual(SUIT.top + 0.01);
+    expect(Math.cos(h.face)).toBeGreaterThan(0.9); // facing east
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+    // and stops when the stick is let go
+    h = walk(h, {}, 3);
+    expect(Math.hypot(h.vx, h.vz)).toBeLessThan(1);
+  });
+
+  it('can’t fly through a building, nor off the lawn, and rides up over a roof', () => {
+    const prow = solidById('prow');
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const inward = { x: -Math.cos(widow.face), z: Math.sin(widow.face) };
+    // in the suit at the main building's door, driven into it
+    let h = { ...stepHero(atPlinth(), { suit: true }, DT), x: widow.x, z: widow.z, y: 3, vx: 0, vz: 0, vy: 0 };
+    for (let t = 0; t < 3; t += DT) {
+      h = stepHero(h, inward, DT);
+      expect(inPoly(h.x, h.z, prow.foot)).toBe(false);
+    }
+    expect(h.mode).toBe('suit');
+    // up its face, in over it, and down onto its roof
+    h = walk(h, { web: true }, 3);
+    expect(h.y).toBeGreaterThan(prow.h + 2);
+    h = walk(h, inward, 0.5);
+    h = walk(h, { run: true }, 2.5);
+    expect(inPoly(h.x, h.z, prow.foot)).toBe(true);
+    expect(h.y).toBeGreaterThanOrEqual(prow.h - 0.01);
+    expect(h.mode).toBe('suit');
+    // and the lawn's edge holds
+    h = { ...h, x: 20, z: 20, y: 5 };
+    h = walk(h, { x: -1, z: -1 }, 4);
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+  });
+
+  it('steps out of it anywhere, and he’s Spider-Man in the air, who can web', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    h = walk(h, { web: true }, 1.5);
+    const high = h.y;
+    h = stepHero(h, { suit: true }, DT);
+    expect(h.mode).toBe('air');
+    expect(h.ev.map((e) => e.type)).toContain('suitoff');
+    expect(h.y).toBeCloseTo(high, 0);
+    // falling, until he webs or lands
+    for (let t = 0; t < 8 && h.mode === 'air'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    // no web, no tricks, no zips in the armour
+    let s = walk(stepHero(atPlinth(), { suit: true }, DT), { web: true }, 1);
+    s = stepHero(s, { trick: true, zip: true, perch: true }, DT);
+    expect(s.mode).toBe('suit');
+    expect(s.trick).toBe(null);
+    expect(s.web).toBe(null);
   });
 });
