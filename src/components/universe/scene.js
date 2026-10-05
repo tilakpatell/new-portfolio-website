@@ -550,6 +550,8 @@ export async function create(canvas, ctx) {
     heat: 0, // trouble made lately (ships shot down): the director sends more hunters
     saw: new Set(), // the wonders out in deep space you've come up on
     deepSaid: false,
+    trench: 0, // seconds down in the Death Star's trench
+    trenchAt: -1e9,
     flare: 1,
   };
   const t0 = performance.now();
@@ -1046,11 +1048,13 @@ export async function create(canvas, ctx) {
   };
 
   const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
+  const TRENCHED = SOLIDS.filter((o) => o.band); // what has a trench to fly down
   // what the hunters report
   const onHunters = (e) => {
     if (e.type === 'hunted') {
       if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
     } else if (e.type === 'laser') hurt(e.damage);
+    else if (e.type === 'shot') emit(e);
     else if (e.type === 'escaped' || e.type === 'cleared') {
       emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
       // the Star Destroyer's fighters gone: it jumps away
@@ -1129,6 +1133,15 @@ export async function create(canvas, ctx) {
         if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 60) continue;
         state.saw.add(w.id);
         emit({ type: 'wonder', id: w.id });
+      }
+      // down in the Death Star's trench a moment: the trench run (with Luke
+      // or Han, Vader comes down it after you), now and then
+      const ds = TRENCHED.find((o) => Math.abs(live.y - o.at[1]) < o.band.half && Math.hypot(live.x - o.at[0], live.y - o.at[1], live.z - o.at[2]) < o.r - 0.4);
+      state.trench = ds ? state.trench + dt : 0;
+      if (state.trench > 1.2 && state.clock - state.trenchAt > 120) {
+        state.trenchAt = state.clock;
+        emit({ type: 'event', id: 'trench' });
+        if (hunters && FAMILY[state.kind] === 'starwars' && !hunters.active) hunters.pack('empire', live, { size: 3, ace: true });
       }
     } else later.length = 0;
     if (state.hurt > 0) {

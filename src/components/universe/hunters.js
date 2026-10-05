@@ -23,9 +23,10 @@
 // createHunters(parent, { small }) → { pack(faction, ship, { prey, size, ace, from }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to) → hit or null, clear(), dispose(), count, active }
-// Events: { type: 'hunted', faction, kinds, prey }, { type: 'laser', damage,
-// from }, { type: 'escaped', faction } and { type: 'cleared', faction,
-// rescued } (rescued: they were after someone else, and you saw them off).
+// Events: { type: 'hunted', faction, kinds, prey }, { type: 'shot', faction }
+// (one fired at you), { type: 'laser', damage, from } (and hit), { type:
+// 'escaped', faction } and { type: 'cleared', faction, rescued } (rescued:
+// they were after someone else, and you saw them off).
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -41,15 +42,17 @@ export const FACTIONS = {
   // pirates: what's after someone in distress
   bugs: { family: 'rickmorty', kinds: [['gromflomite', 1]], laser: [0.6, 2.2, 6.5], size: [2, 3] },
 };
-// size: its biggest dimension in map units; speed: its top speed; accel: how
-// hard it changes course; hp: hits it takes; fire: seconds between shots
+// size: its biggest dimension in map units; speed: its top speed (a TIE, a
+// patrol fighter or a bug is a little slower than you boost, so you can
+// outrun one; an interceptor, Vader or a Rick isn't); accel: how hard it
+// changes course; hp: hits it takes; fire: seconds between shots
 const KIND = {
-  tie: { size: 0.3, speed: 22, accel: 17, hp: 1, fire: [0.8, 1.6] },
+  tie: { size: 0.3, speed: 19, accel: 17, hp: 1, fire: [0.8, 1.6] },
   interceptor: { size: 0.32, speed: 25, accel: 20, hp: 1, fire: [0.7, 1.3] },
   tieadvanced: { size: 0.36, speed: 26, accel: 22, hp: 5, fire: [0.45, 0.8] },
-  patrol: { size: 0.34, speed: 22, accel: 17, hp: 2, fire: [0.8, 1.5] },
+  patrol: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
   councilship: { size: 0.42, speed: 24, accel: 19, hp: 3, fire: [0.6, 1.1] },
-  gromflomite: { size: 0.3, speed: 20, accel: 16, hp: 1, fire: [0.9, 1.7] },
+  gromflomite: { size: 0.3, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
 };
 const LASER = { speed: 34, life: 1.1, damage: 12, length: 0.36 };
 const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long
@@ -280,6 +283,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
             m.userData.life = LASER.life;
             m.userData.at = prey ? 'prey' : 'you';
             m.visible = true;
+            if (!prey) events.push({ type: 'shot', faction: h.pack.faction });
           }
         }
       }

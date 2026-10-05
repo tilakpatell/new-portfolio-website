@@ -21,6 +21,20 @@ texture each as they came), cut to what they're seen at:
   mario          Mario, standing on the Game Boy world: 8k, 512 px
   piranha        a Piranha Plant in its pipe, on the same world: 6k, 512 px
 
+and these Star Wars models the site owner sent (from Sketchfab), cut to
+what they're seen at:
+
+  star-destroyer   the Star Destroyers (traffic, the one that jumps in, the
+                   fleet at the Death Star): 11k triangles, 512 px
+  tie-interceptor  the TIE interceptors (traffic and hunters, several at once):
+                   gltfpack's aggressive simplifier first, to 3.6k, 256 px
+  cr90             the Corellian corvettes (the Tantive IV): 650k triangles as it
+                   came, mostly greebles, so gltfpack first, to 12k, 256 px
+  death-star       the Death Star (the Star Wars planet, and the one out in deep
+                   space): 19k triangles, its 4096 px maps at 2048
+  trench           the trench run (laid round the deep-space Death Star's
+                   middle): gltfpack first, keeping its names, to 13k, 512 px
+
 and the Millennium Falcon you can fly, made by the site owner with Meshy
 (Meshy_AI_Millennium_Falcon_1004193913, 2M triangles, 11.7 MB as it came):
 it's cut to about 1% of its vertices (24k triangles: it's a few hundred
@@ -42,8 +56,16 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'public/models/universe'
 NAMES = ['gaming', 'marvel', 'breakingbad', 'music']
+# simplified by gltfpack first (aggressively: these are thousands of small
+# parts that glTF Transform's simplifier won't merge): name: (ratio, keep names)
+PACK = {'tie-interceptor': (0.2, False), 'cr90': (0.06, False), 'trench': (0.08, True)}
 # name: (texture px, simplify ratio or None, how far the simplifier may move the surface)
 OPTIONS = {
+    'star-destroyer': (512, 0.5, 0.005),
+    'tie-interceptor': (256, None),
+    'cr90': (256, None),
+    'death-star': (2048, None),
+    'trench': (512, None),
     'falcon': (1024, 0.012),
     'xwing-traffic': (256, 0.05),
     'slave1': (512, 0.08),  # stops at about 34k: its texture seams won't come down further (one at a time, so it's fine)
@@ -63,9 +85,15 @@ def main():
             print(f'skipping {name}: no {name}.glb in {src}')
             continue
         out = OUT / f'{name}.glb'
+        source = src / f'{name}.glb'
+        if name in PACK:
+            ratio, names = PACK[name]
+            packed = src / f'{name}.packed.glb'
+            subprocess.run(['npx', '--yes', 'gltfpack', '-i', str(source), '-o', str(packed), '-si', str(ratio), '-sa', '-noq', *(['-kn', '-km'] if names else [])], check=True, cwd=ROOT)
+            source = packed
         size, ratio, error = (*OPTIONS.get(name, (256, None)), 0.02)[:3]
         simplify = ['--simplify-ratio', str(ratio), '--simplify-error', str(error)] if ratio else ['--simplify', 'false']
-        cmd = ['npx', '--yes', '@gltf-transform/cli@4', 'optimize', str(src / f'{name}.glb'), str(out),
+        cmd = ['npx', '--yes', '@gltf-transform/cli@4', 'optimize', str(source), str(out),
                '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', str(size),
                *simplify, '--palette', 'false', '--join', 'false', '--flatten', 'false']
         subprocess.run(cmd, check=True, cwd=ROOT)

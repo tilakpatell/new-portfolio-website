@@ -59,6 +59,20 @@ export const WONDERS = [
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [260, -40, -690], r: 18, crew: 'rickmorty' },
 ];
 
+// The trench run model (public/models/universe/trench.glb), as measured:
+// its trench runs along x, 24.71 long, 6.6 wide (z −15…−8.4) and 7.1 deep
+// (the rim at y 5.4, the floor at −1.7). trench.js lays it round the Death
+// Star's middle, `segments` sections to the ring.
+export const TRENCH_MODEL = { x: [-1.75, 22.96], z: [-15.0, -8.4], rim: 5.4, floor: -1.7 };
+
+// a wonder's trench, in map units: how many sections, scaled how much, and
+// how wide and deep its channel is
+export function trenchOf(w) {
+  const segments = w.trench.segments;
+  const scale = (2 * Math.PI * w.r) / segments / (TRENCH_MODEL.x[1] - TRENCH_MODEL.x[0]);
+  return { segments, scale, width: (TRENCH_MODEL.z[1] - TRENCH_MODEL.z[0]) * scale, depth: (TRENCH_MODEL.rim - TRENCH_MODEL.floor) * scale };
+}
+
 // where a sun's planet is, in the map's space
 export function planetAt(star, p) {
   return [star.at[0] + Math.cos(p.angle) * p.orbit, star.at[1], star.at[2] + Math.sin(p.angle) * p.orbit];
@@ -73,11 +87,18 @@ export function reachOf(w) {
   return w.r;
 }
 
-// what's solid out here, as ship.js's solids: { id, at, r, reach }. A
-// black hole is solid out past its shadow, where the light bends round it
-const solid = (id, at, r) => ({ id, at, r, reach: r * 1.4, deep: true });
+// what's solid out here, as ship.js's solids: { id, at, r, reach, band }.
+// A black hole is solid out past its shadow, where the light bends round
+// it; a trench (band) lets the ship in, between its walls, down to near its
+// floor
+const solid = (id, at, r, band) => ({ id, at, r, reach: r * 1.4, deep: true, ...(band ? { band } : {}) });
+const bandOf = (w) => {
+  if (!w.trench) return null;
+  const t = trenchOf(w);
+  return { half: t.width / 2 - 0.3, floor: w.r - t.depth + 0.45 };
+};
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
-  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r),
+  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, bandOf(w)),
   ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
 ]);
 

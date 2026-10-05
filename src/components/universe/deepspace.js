@@ -207,8 +207,8 @@ void main() {
   float lon = atan(q.z, q.x + 1e-6) * 1.9099;
   float cellX = fract(lon) - 0.5;
   float oy = (q.y - uOval) / 0.024;
-  float oval = (1.0 - smoothstep(0.55, 1.0, length(vec2(cellX * 3.4, oy)))) * step(0.35, hash12(vec2(floor(lon), uSeed)));
-  albedo = mix(albedo, vec3(0.95, 0.92, 0.86), oval * step(0.001, abs(uOval)) * 0.8);
+  float oval = (1.0 - smoothstep(0.5, 1.0, length(vec2(cellX * 5.5, oy * 1.15)))) * step(0.45, hash12(vec2(floor(lon), uSeed)));
+  albedo = mix(albedo, vec3(0.93, 0.9, 0.84), oval * step(0.001, abs(uOval)) * 0.6);
   // the storm's own colour, an oval with a paler collar
   float core = inStorm * (1.0 - smoothstep(0.2, 0.85, sd));
   float collar = inStorm * smoothstep(0.6, 0.9, sd) * (1.0 - smoothstep(0.9, 1.25, sd));
@@ -393,15 +393,21 @@ void main() {
   vec3 q = p + vec3(w, -w, w * 0.5) * 0.5;
   float cells = snoise(q * 1.8 + t * 1.3);
   float gran = snoise(q * 7.5 - t * 3.0);
-  // white-hot in the middle of the disc (it blooms), its own colour, deeper,
-  // toward the edge (it doesn't, so the colour survives the tone map)
+  // granules: bright cells in its own colour with dark lanes between them,
+  // kept near 1 so the colour survives the tone map close up, and hot spots
+  // where it boils over (they bloom); darker and redder toward the edge
   float mu = sat(dot(nrm(vNW), nrm(cameraPosition - vW)));
-  float middle = smoothstep(0.05, 0.95, mu);
-  vec3 core = mix(uColor, vec3(1.0, 0.93, 0.82), 0.62) * 2.7;
-  vec3 limb = uColor * vec3(1.0, 0.82, 0.75) * 1.15;
-  vec3 col = mix(limb, core, middle * middle) * (0.8 + 0.3 * cells + 0.2 * gran);
-  col += core * smoothstep(0.5, 0.95, cells + gran * 0.3) * 0.3 * middle;
-  col *= 0.55 + 0.45 * sqrt(mu);
+  float heat = sat(0.2 + 0.4 * (0.5 + 0.5 * cells) + 0.45 * smoothstep(-0.45, 0.55, gran));
+  vec3 lanes = uColor * vec3(0.8, 0.55, 0.5) * 0.4;
+  vec3 granules = mix(uColor, vec3(1.0, 0.75, 0.4), 0.25) * 1.15;
+  vec3 hot = mix(uColor, vec3(1.0, 0.95, 0.85), 0.6) * 2.6;
+  vec3 col = mix(lanes, granules, heat);
+  col = mix(col, hot, smoothstep(0.62, 0.95, cells + gran * 0.35) * 0.75);
+  col *= 0.45 + 0.55 * sqrt(mu);
+  col *= mix(vec3(1.0, 0.62, 0.45), vec3(1.0), smoothstep(0.0, 0.55, mu));
+  // from far off it burns brighter, so the whole disc blooms
+  float far = smoothstep(120.0, 700.0, length(cameraPosition - vW));
+  col *= 1.0 + 1.3 * far;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -790,12 +796,13 @@ void main() {
 
 const FOCUS_FRAG = `
 uniform float uTime;
+uniform float uFacing;
 varying vec2 vC;
 varying float vSil;
 varying float vDist;
 void main() {
   float r = length(vC);
-  float a = exp(-r * r * 16.0) * 1.1 + exp(-r * 4.0) * 0.08;
+  float a = (exp(-r * r * 16.0) * 1.1 + exp(-r * 4.0) * 0.08) * uFacing;
   a *= 0.9 + 0.1 * sin(uTime * 3.1);
   a *= 1.0 - smoothstep(0.75, 1.0, r);
   gl_FragColor = vec4(vec3(0.3, 1.0, 0.42) * a, 1.0);
@@ -1733,8 +1740,18 @@ export function buildDeepSpace({ small = false } = {}) {
       g,
     );
     // the green glow at the dish's focus
-    const focus = facingQuad(r * 0.1, FOCUS_FRAG, { uR: { value: r * 0.1 } }, g);
+    const focus = facingQuad(r * 0.1, FOCUS_FRAG, { uR: { value: r * 0.1 }, uFacing: { value: 1 } }, g);
     focus.position.copy(D).multiplyScalar(r - depth + rDish / 2);
+    // it shows only while the dish is turned toward you (side on, it would
+    // float off the limb like a stray light)
+    const focusW = new THREE.Vector3();
+    const dishW = new THREE.Vector3();
+    focus.onBeforeRender = (renderer, scene, camera) => {
+      focus.getWorldPosition(focusW);
+      dishW.copy(D).transformDirection(g.matrixWorld);
+      const k = focusW.sub(camera.position).normalize().dot(dishW);
+      focus.material.uniforms.uFacing.value = THREE.MathUtils.smoothstep(-k, 0.15, 0.6);
+    };
     // three Star Destroyers in a wedge, drifting slowly round it
     const fleet = instancedFleet('destroyer', 3, g);
     fleets.push(fleet);
@@ -2019,7 +2036,7 @@ export function buildDeepSpace({ small = false } = {}) {
       }
       rock.computeVertexNormals();
     }
-    const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.35 });
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0.02, flatShading: true, envMapIntensity: 0.25 });
     mat.onBeforeCompile = (sh) => {
       sh.uniforms.uTime = uTime;
       sh.vertexShader = sh.vertexShader
@@ -2050,7 +2067,7 @@ mat3 tumble(float id) {
     const p = new THREE.Vector3();
     const sc = new THREE.Vector3();
     const c = new THREE.Color();
-    const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466'];
+    const TONES = ['#5d5953', '#4a4743', '#67605a', '#544a40', '#3f3b38', '#6b5a48'];
     let i = 0;
     for (const f of fields) {
       const dir = new THREE.Vector3(...f.dir).normalize();

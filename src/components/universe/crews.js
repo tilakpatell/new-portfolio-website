@@ -143,6 +143,10 @@ export const CREWS = [
         ['morty', 'Rick, where are we going? There’s nothing out here.'],
         ['rick', 'That’s the thing about space, Morty. It’s mostly space. Hit the boost.'],
       ],
+      trench: [
+        ['morty', 'Rick, why are we flying down a trench on the Death Star?'],
+        ['rick', 'Because it’s there, Morty. Floor it.'],
+      ],
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
@@ -372,6 +376,11 @@ export const CREWS = [
         ['luke', 'Nothing but stars out here, Artoo.'],
         ['r2', '[a nervous whistle]'],
       ],
+      trench: [
+        ['comms', 'Stay on target…'],
+        ['luke', 'I’m in the trench! Artoo, watch our backs!'],
+        ['r2', '[an alarmed shriek]'],
+      ],
     },
     wonders: {
       deathstar: [
@@ -590,6 +599,10 @@ export const CREWS = [
       deep: [
         ['han', 'Out here it’s just us and the stars, pal.'],
         ['chewie', '[a contented growl]'],
+      ],
+      trench: [
+        ['han', 'The trench? Chewie, we’re not an X-wing!'],
+        ['chewie', '[a worried roar]'],
       ],
     },
     wonders: {

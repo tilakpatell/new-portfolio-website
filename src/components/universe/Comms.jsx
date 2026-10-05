@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, fireSound, flybySound, hitSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
+import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, enemyFireSound, fireSound, flybySound, hitSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -155,6 +155,8 @@ export default function Comms({ crew, reduced, control }) {
           const ace = e.ace && !said.current.has('ace');
           if (ace) said.current.add('ace');
           if (ace || often('hunted', now)) say(linesFor(crew, 'hunted', ace ? 'ace' : e.faction), { urgent: true });
+        } else if (e.type === 'shot') {
+          if (soundOnce('shot', 90, now)) enemyFireSound();
         } else if (e.type === 'laser') {
           if (soundOnce('hit', 120, now)) hitSound();
           if (often('hit', now)) say(linesFor(crew, 'hit'));
