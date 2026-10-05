@@ -20,6 +20,7 @@ import '../../shire/shire.css';
 import '../bree/bree.css';
 import './amonhen.css';
 import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Amon Hen, the seventh town on the road: the camp at Parth Galen,
 // Boromir in the woods, the Seat of Seeing, the Uruk-hai, and Sam in the
@@ -828,7 +829,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           </button>
         </div>
       )}
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title="Amon Hen" name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

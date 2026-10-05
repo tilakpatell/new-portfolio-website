@@ -12,6 +12,7 @@ import { PALETTES, PALETTE_ORDER } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
 import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import './dotmatrix.css';
+import GuideCue from '../guide/GuideCue';
 
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
 // greens, find the eight cartridges (each one a project of mine), and play
@@ -636,7 +637,7 @@ function World({ gl, setGl }) {
         )}
 
         {!moved && !dialog && !prompt && gl === 'on' && (
-          <p className="dm-hint">{touch ? 'Pad to walk · A jumps · B talks, reads and plays · drag to turn' : 'Arrows or WASD walk · Space jumps · X talks, reads and plays · Q E turn'}</p>
+          <p className="dm-hint">{touch ? 'Pad to walk · A jumps · B talks, reads and plays · drag to turn' : 'Arrows or WASD walk · Space jumps · X talks, reads and plays · Q E turn'}<GuideCue touch={touch} /></p>
         )}
         {prompt && !list && (
           <p className="dm-prompt">

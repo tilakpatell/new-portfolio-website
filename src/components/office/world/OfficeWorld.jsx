@@ -17,6 +17,7 @@ import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import './world.css';
 import '../../../styles/lazy/office.css';
+import GuideCue from '../../guide/GuideCue';
 
 const PaperToss = lazy(() => import('../PaperToss'));
 const FactCheck = lazy(() => import('../FactCheck'));
@@ -889,7 +890,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && !thingHere && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && !thingHere && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && mode === 'talk' && (
         <Convo

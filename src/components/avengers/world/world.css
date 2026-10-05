@@ -73,7 +73,7 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-world .btn-primary, .cw-place .btn-primary { background: var(--cw-accent, var(--cw-cyan)); color: #06121c; border-color: transparent; }
 .cw-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--cw-ink); border-color: rgba(255, 255, 255, 0.35); }
 .cw-cards-wrap .btn-ghost { background: transparent; color: inherit; border-color: var(--border); }
-.cw-cards-wrap .btn-primary { background: var(--accent); color: var(--accent-ink, #fff); }
+.cw-cards-wrap .btn-primary { background: var(--btn-bg); color: var(--btn-ink); }
 .cw-stage[data-touch] .cw-hint { bottom: 10rem; }
 .cw-hint { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.5rem 0.85rem; border-radius: 6px; background: var(--cw-glass); color: var(--cw-ink); font: 500 0.84rem/1.35 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
 @keyframes cw-up { from { opacity: 0; transform: translate(-50%, 8px); } }
