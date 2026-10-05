@@ -7,6 +7,7 @@ import Insignia from '../components/cybertron/Insignia';
 import Megatron from '../components/cybertron/Megatron';
 import Optimus from '../components/cybertron/Optimus';
 import Planet from '../components/cybertron/Planet';
+import TransformStage from '../components/cybertron/TransformStage';
 import Visor from '../components/cybertron/Visor';
 import CybertronBackdrop from '../components/cybertron/world/CybertronBackdrop';
 import AutobotMark from '../components/AutobotMark';
@@ -155,7 +156,7 @@ export default function Cybertron() {
           <Planet side={side} className="cy-planet-canvas" />
           <Insignia side={side} phase={phase} className="cy-planet-mark" />
         </figure>
-        <div>
+        <div className="cy-hero-copy">
           <p className="eyebrow">Cybertron · {s.city}</p>
           <h1 id="cy-title" className="display mt-6 text-[clamp(2.4rem,1.4rem+3.6vw,4.4rem)]">
             {s.motto}
@@ -198,13 +199,15 @@ export default function Cybertron() {
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <figure className="cy-stage m-0" data-side={side}>
             <Skyline faction={side} className="cy-stage-skyline" />
-            <div key={side} className="cy-figure" data-mode={mode}>
-              {side === 'autobot' ? (
-                <Optimus mode={mode === 'alt' ? 'truck' : 'robot'} matrix={matrix && mode === 'robot'} className="cy-figure-art" />
-              ) : (
-                <Megatron mode={mode === 'alt' ? 'jet' : 'robot'} firing={firing} className="cy-figure-art" />
-              )}
-            </div>
+            <TransformStage key={side} side={side} mode={mode} matrix={matrix && mode === 'robot'} firing={firing}>
+              <div className="cy-figure" data-mode={mode}>
+                {side === 'autobot' ? (
+                  <Optimus mode={mode === 'alt' ? 'truck' : 'robot'} matrix={matrix && mode === 'robot'} className="cy-figure-art" />
+                ) : (
+                  <Megatron mode={mode === 'alt' ? 'jet' : 'robot'} firing={firing} className="cy-figure-art" />
+                )}
+              </div>
+            </TransformStage>
           </figure>
           <div>
             <h2 id="transform-title" className="title">
@@ -237,6 +240,15 @@ export default function Cybertron() {
             <p className="mt-4 min-h-[1.5em] text-sm text-muted" role="status">
               {matrix && mode === 'robot' ? 'The Matrix of Leadership: light our darkest hour.' : firing ? 'Fusion cannon: fired.' : ''}
             </p>
+            {side === 'autobot' && (
+              <p className="mt-2 text-xs text-muted">
+                The transformation is{' '}
+                <a className="underline" href="https://sketchfab.com/models/35f9cb09b1b248c7bd6b12912ac8cd3a" target="_blank" rel="noreferrer">
+                  Optimus Prime Transform Animation
+                </a>{' '}
+                by dioiiiii2 on Sketchfab (CC BY 4.0), reduced for the web. Drag to turn him.
+              </p>
+            )}
           </div>
         </div>
       </section>

@@ -38,3 +38,42 @@ describe('normal maps from height', () => {
     expect(at(n, w, w - 1, 3)[0]).not.toBe(128);
   });
 });
+
+describe('tileable noise', () => {
+  it('repeats across the edge and stays within 0..1', async () => {
+    const { tileFbm, tileNoise } = await import('./texture');
+    const n = tileNoise(5, 8);
+    expect(n(0.3, 2.7)).toBeCloseTo(n(8.3, 10.7), 6);
+    const f = tileFbm(3, { base: 4, octaves: 4 });
+    for (const [u, v] of [[0.1, 0.9], [0.5, 0.25], [0.99, 0.01]]) {
+      expect(f(u, v)).toBeCloseTo(f(u + 1, v - 1), 6);
+      expect(f(u, v)).toBeGreaterThanOrEqual(0);
+      expect(f(u, v)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('is the same for the same seed and differs for another', async () => {
+    const { tileFbm } = await import('./texture');
+    expect(tileFbm(4)(0.37, 0.62)).toBe(tileFbm(4)(0.37, 0.62));
+    expect(tileFbm(4)(0.37, 0.62)).not.toBe(tileFbm(5)(0.37, 0.62));
+  });
+
+  it('cells tile, and are zero-distance nowhere but at a point', async () => {
+    const { tileCells } = await import('./texture');
+    const c = tileCells(9, 6);
+    expect(c(0.2, 0.8).near).toBeCloseTo(c(1.2, -0.2).near, 6);
+    expect(c(0.2, 0.8).edge).toBeGreaterThanOrEqual(0);
+  });
+
+  it('packs four noises into an atlas, and maps a surface to colour, normal and roughness', async () => {
+    const { noiseAtlas, surfaceMaps } = await import('./texture');
+    const a = noiseAtlas(16, 2);
+    expect(a.length).toBe(16 * 16 * 4);
+    expect(new Set(a).size).toBeGreaterThan(40);
+    const m = surfaceMaps(8, (u) => ({ r: 10, g: 20, b: 30, h: u, rough: 0.5 }));
+    expect([m.color[0], m.color[1], m.color[2], m.color[3]]).toEqual([10, 20, 30, 255]);
+    expect(m.rough[1]).toBeGreaterThan(120);
+    expect(m.rough[1]).toBeLessThan(135);
+    expect(m.normal[(4 * 8 + 4) * 4]).toBeLessThan(128); // rising to the right
+  });
+});

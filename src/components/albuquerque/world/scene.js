@@ -5,26 +5,53 @@
 // Aztek, Hank's SUV and the buildings are Meshy models made for the site
 // (scripts/meshy-albuquerque.mjs); any that don't load stand in as shapes.
 //
+//
+// The day goes round: golden hour, dusk, a night of stars with the signs and
+// street lights on and the Aztek's headlights out in front, dawn with the
+// Balloon Fiesta up over the valley, noon. The sky and its light are in
+// ./sky.js, the desert floor, the roads' surfaces and the mountains in
+// ./terrain.js, and what moves and glows (balloons, tumbleweeds, the Blue
+// Sky crystals, the lamps, the RV's smoke, the pizza on Walt's roof) in
+// ./life.js. Bright things bloom, and the picture is graded warm.
+//
 // createAbqWorld(canvas) resolves to { render(state, ms), setPlaces(progress),
-// beam(id), resize, info, dispose, lost }. `state` is the component's: the
-// car, Hank, the heat and the place you're at (rules.js does the moving).
+// beam(id), setTime(tod), setBlue(ids), took(id), resize, info, dispose, lost }.
+// `state` is the component's: the car, Hank, the heat and the place you're
+// at (rules.js does the moving).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { loadPeople } from '../../office/people';
 import { createStage } from '../../office/stage3d';
+import { budget } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
+import { prefersReducedMotion } from '../../../lib/hooks';
+import { GRADE } from '../../../lib/stage3d';
 import { splitWord } from '../elements';
-import { COLLIDERS, HOUSES, LANDMARKS, PLACES, ROADS } from './rules';
+import { ABQ } from '../wardrobe';
+import { TOWN_MODELS, createTown } from './buildings';
+import { createBalloons, createCrystals, createNightLights, createPizza, createSmoke, createTumbleweeds, glowTexture } from './life';
+import { COLLIDERS, HOUSES, LANDMARKS, PLACES, ROADS, TIMES, WASH, WORLD_RADIUS, groundHeight } from './rules';
+import { createSky, lightAt } from './sky';
+import { asphaltMaps, createMountains, dirtMaps, groundMaterial } from './terrain';
 
-const MODEL = (name) => `/models/albuquerque/world/${name}.glb`;
+// Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
+// brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
+// tumbleweed and the Pollos bucket. Everything else is the site's own, made with Meshy.
+const SKETCHFAB = { rv: 'rv', esteem: 'esteem', watertank: 'watertower', tank: 'tank', cactus: 'cactus', tumbleweed: 'tumbleweed', bucket: 'bucket' };
+const MODEL = (name) => (SKETCHFAB[name] ? `/models/sketchfab/${SKETCHFAB[name]}.glb` : `/models/albuquerque/world/${name}.glb`);
 // which way each model's front faces as it was made, turned to face +z
-export const FACING = { aztek: Math.PI / 2, rv: Math.PI / 2, suv: -Math.PI / 2, house: -Math.PI / 2, pollos: -Math.PI / 2, laundry: 0, casa: 0, office: 0, carwash: 0 };
-const SKY = { top: new THREE.Color(0x3d6fb0), mid: new THREE.Color(0x9cc0de), horizon: new THREE.Color(0xf3c78f) };
-const HAZE = 0xe9c9a0;
-const SUN = new THREE.Vector3(-0.75, 0.32, 0.45).normalize(); // low in the west
+export const FACING = { aztek: Math.PI / 2, rv: 0, suv: Math.PI / 2, house: -Math.PI / 2, pollos: -Math.PI / 2, laundry: 0, casa: 0, office: 0, carwash: 0 };
+const DAY = 480; // seconds for the sun to go all the way round
+const NEON = { home: 0xfff0c0, rv: 0x8cff6a, saul: 0xffd23a, pollos: 0xff5a3a, superlab: 0x52c8ff, casa: 0xff8ad0 };
 
 // a seeded random, so the desert's the same every visit
 const seeded = (seed) => () => {
@@ -34,63 +61,6 @@ const seeded = (seed) => () => {
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
-
-// ── textures, painted ──
-function canvasTex(size, paint, repeat = 1, srgb = true) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  paint(c.getContext('2d'), size);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(repeat, repeat);
-  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
-}
-const speckle = (g, s, base, flecks, n, rand) => {
-  g.fillStyle = base;
-  g.fillRect(0, 0, s, s);
-  for (let i = 0; i < n; i++) {
-    g.fillStyle = flecks[Math.floor(rand() * flecks.length)];
-    g.globalAlpha = 0.25 + rand() * 0.5;
-    const r = 0.6 + rand() * 1.8;
-    g.fillRect(rand() * s, rand() * s, r, r);
-  }
-  g.globalAlpha = 1;
-};
-const sandTex = () =>
-  canvasTex(
-    512,
-    (g, s) => {
-      const rand = seeded(7);
-      speckle(g, s, '#cfae80', ['#b89568', '#e2c79d', '#a9845a', '#d9bc90', '#8f7150'], 9000, rand);
-      // wind ripples
-      g.strokeStyle = 'rgba(120, 90, 55, 0.08)';
-      g.lineWidth = 3;
-      for (let y = 0; y < s; y += 22) {
-        g.beginPath();
-        for (let x = 0; x <= s; x += 16) g.lineTo(x, y + Math.sin(x * 0.03 + y) * 5);
-        g.stroke();
-      }
-    },
-    90,
-  );
-const asphaltTex = () =>
-  canvasTex(256, (g, s) => {
-    const rand = seeded(3);
-    speckle(g, s, '#3b3a3a', ['#55524f', '#2b2a29', '#6a6662', '#484543'], 5000, rand);
-    g.strokeStyle = 'rgba(20, 18, 16, 0.5)';
-    g.lineWidth = 1.2;
-    for (let i = 0; i < 6; i++) {
-      g.beginPath();
-      let x = rand() * s;
-      let y = rand() * s;
-      g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) g.lineTo((x += (rand() - 0.5) * 40), (y += (rand() - 0.5) * 40));
-      g.stroke();
-    }
-  });
-const dirtTex = () => canvasTex(256, (g, s) => speckle(g, s, '#a88660', ['#8e6f4d', '#c09d73', '#7b5f40'], 6000, seeded(5)));
 
 // A roadside sign: the place's name with its periodic-table tile, as the
 // title cards have it, and LOCKED across it until it's open.
@@ -217,14 +187,23 @@ function standIn(name) {
 }
 
 export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
-  const stage = createStage(canvas, { onLost, onSlow, fov: 58 });
+  const fit = budget();
+  let post = null;
+  const stage = createStage(canvas, {
+    onLost,
+    fov: 58,
+    // frames running long: the stage has already dropped sharpness or shadows; the glow goes next
+    onSlow: (step) => {
+      if (step >= 2 && post) post.bloom.enabled = false;
+      onSlow?.(step);
+    },
+  });
   const { renderer, scene, camera } = stage;
   // far enough for the sky dome and the Sandias
   camera.far = 2600;
   camera.updateProjectionMatrix();
-  renderer.toneMappingExposure = 1.05;
-  scene.background = SKY.horizon.clone();
-  scene.fog = new THREE.Fog(HAZE, 160, 900);
+  scene.background = new THREE.Color(0x0a0f1c);
+  scene.fog = new THREE.Fog(0xe9c9a0, 170, 1500);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
@@ -233,101 +212,81 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   const owned = [env];
   const own = (...xs) => (owned.push(...xs), xs[0]);
   const mobile = stage.coarse;
+  const still = prefersReducedMotion();
+  const aniso = Math.min(fit.aniso, renderer.capabilities.getMaxAnisotropy());
 
-  // ── light: the low sun in the west, the sky, the warm ground ──
-  scene.add(new THREE.HemisphereLight(0xb7d3f0, 0xb08a5a, 0.95));
+  // ── the picture: bright things bloom, then a warm grade (amber in the
+  // highlights, teal in the shadows, the way the shows are timed) ──
+  if (fit.bloom > 0) {
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: fit.samples });
+    const composer = new EffectComposer(renderer, target);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42 * fit.bloom + 0.12, 0.6, 0.92);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+    const grade = new ShaderPass(GRADE);
+    Object.assign(grade.uniforms.uContrast, { value: 0.2 });
+    Object.assign(grade.uniforms.uSat, { value: 1.1 });
+    Object.assign(grade.uniforms.uVignette, { value: 0.26 });
+    grade.uniforms.uShadow.value = new THREE.Color(0, 0.012, 0.022);
+    grade.uniforms.uHigh.value = new THREE.Color(0.03, 0.014, 0);
+    composer.addPass(grade);
+    post = { composer, bloom, grade, target };
+    stage.draw = (ms) => {
+      grade.uniforms.uTime.value += ms / 1000;
+      composer.render();
+    };
+    stage.onResize = (w, h, ratio) => {
+      composer.setPixelRatio(ratio);
+      composer.setSize(w, h);
+      bloom.resolution.set(w / 2, h / 2);
+      grade.uniforms.uAspect.value = w / h;
+    };
+  }
+
+  // ── light: the sun or the moon (whichever's up), the sky, the warm ground ──
+  const hemi = new THREE.HemisphereLight(0xb7d3f0, 0xb08a5a, 0.95);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffd6a0, 2.7);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
+  sun.shadow.mapSize.set(Math.min(fit.shadowMap, 2048), Math.min(fit.shadowMap, 2048));
   Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 260 });
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
 
-  // ── the sky: blue overhead, gold at the horizon, the sun's glow ──
-  const skyMat = own(
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      fog: false,
-      uniforms: { top: { value: SKY.top }, mid: { value: SKY.mid }, horizon: { value: SKY.horizon }, sun: { value: SUN } },
-      vertexShader: 'varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 horizon; uniform vec3 sun; varying vec3 vDir;
-        void main() {
-          float h = max(vDir.y, 0.0);
-          vec3 c = mix(horizon, mid, smoothstep(0.0, 0.18, h));
-          c = mix(c, top, smoothstep(0.18, 0.75, h));
-          float s = max(dot(normalize(vDir), sun), 0.0);
-          c += vec3(1.0, 0.72, 0.42) * (pow(s, 12.0) * 0.55 + pow(s, 600.0) * 2.2);
-          gl_FragColor = vec4(c, 1.0);
-        }`,
-    }),
-  );
-  const sky = new THREE.Mesh(own(new THREE.SphereGeometry(1300, 32, 16)), skyMat);
-  sky.renderOrder = -1;
-  scene.add(sky);
+  // ── the sky, through the whole day ──
+  const sky = own(createSky({ radius: 1300 }));
+  sky.noise.anisotropy = aniso;
+  scene.add(sky.mesh);
+  const L = lightAt(TIMES[0].tod);
+  let tod = TIMES[0].tod;
+  let todTo = null; // a time being run to, fast
 
   // ── the ground: sand, rising into low dunes past the edge of town ──
   const rand = seeded(42);
-  const groundGeo = own(new THREE.PlaneGeometry(1800, 1800, 120, 120));
+  const groundGeo = own(new THREE.PlaneGeometry(1800, 1800, 180, 180));
   groundGeo.rotateX(-Math.PI / 2);
   {
     const p = groundGeo.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i);
-      const z = p.getZ(i);
-      const r = Math.hypot(x, z);
-      const out = Math.max(0, r - 250) / 250;
-      p.setY(i, out * out * (6 + 5 * Math.sin(x * 0.013) * Math.cos(z * 0.017) + 3 * Math.sin((x + z) * 0.031)) - (r > 250 ? 0.05 : 0));
-    }
+    // the rules say how high the ground is (the car rides the same dunes)
+    for (let i = 0; i < p.count; i++) p.setY(i, groundHeight(p.getX(i), p.getZ(i)));
     groundGeo.computeVertexNormals();
   }
-  const sand = own(sandTex());
-  const ground = new THREE.Mesh(groundGeo, own(new THREE.MeshStandardMaterial({ map: sand, color: 0xffffff, roughness: 0.95 })));
+  const ground = new THREE.Mesh(groundGeo, own(groundMaterial({ noise: sky.noise, roads: ROADS, bump: fit.bloom > 0 && !mobile })));
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // ── the mountains: the Sandias to the east, mesas everywhere else ──
-  {
-    const N = 220;
-    const pos = [];
-    const col = [];
-    const base = new THREE.Color(0x8a6a58);
-    const peak = new THREE.Color(0xd99a8a); // the watermelon pink at sunset
-    const mesa = new THREE.Color(0xb08560);
-    const hAt = (a) => {
-      const east = Math.max(0, Math.cos(a)); // the Sandias rise in the east
-      const n = Math.sin(a * 9.1) * 0.35 + Math.sin(a * 23.7 + 1) * 0.2 + Math.sin(a * 51.3 + 2) * 0.1;
-      return 26 + east * east * 120 * (0.75 + n * 0.5) + (1 - east) * (18 + n * 22) * (Math.sin(a * 3.3) > 0.2 ? 1.6 : 0.7);
-    };
-    for (let i = 0; i < N; i++) {
-      const a0 = (i / N) * Math.PI * 2;
-      const a1 = ((i + 1) / N) * Math.PI * 2;
-      const [h0, h1] = [hAt(a0), hAt(a1)];
-      const R = 640;
-      const p = (a, r, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
-      const quad = [p(a0, R, -8), p(a1, R, -8), p(a1, R + 60, h1), p(a0, R + 60, h0)];
-      for (const k of [0, 1, 2, 0, 2, 3]) {
-        pos.push(...quad[k]);
-        const top = k === 2 || k === 3;
-        const east = Math.max(0, Math.cos(a0));
-        const c = top ? peak.clone().lerp(mesa, 1 - east) : base;
-        col.push(c.r, c.g, c.b);
-      }
-    }
-    const g = own(new THREE.BufferGeometry());
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.computeVertexNormals();
-    const m = own(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }));
-    scene.add(new THREE.Mesh(g, m));
-  }
+  // ── the mountains: the Sandias to the east, mesas in front of the rest ──
+  scene.add(own(createMountains()).group);
 
   // ── the roads ──
-  const asphalt = own(asphaltTex());
-  const dirt = own(dirtTex());
-  const roadMat = own(new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.92 }));
-  const dirtMat = own(new THREE.MeshStandardMaterial({ map: dirt, roughness: 1 }));
+  const size = mobile ? 256 : 512;
+  const asphalt = asphaltMaps(size, aniso);
+  const dirt = dirtMaps(size, aniso);
+  own(...Object.values(asphalt), ...Object.values(dirt));
+  const roadMat = own(new THREE.MeshStandardMaterial({ ...asphalt, roughness: 1, normalScale: new THREE.Vector2(0.9, 0.9) }));
+  const dirtMat = own(new THREE.MeshStandardMaterial({ ...dirt, roughness: 1 }));
   const lineMat = own(new THREE.MeshStandardMaterial({ color: 0xf0c330, roughness: 0.6, emissive: 0x2a1f00 }));
   const edgeMat = own(new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: 0.6 }));
   const dashes = [];
@@ -338,7 +297,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const geo = own(new THREE.PlaneGeometry(r.w, len + r.w));
     geo.rotateX(-Math.PI / 2);
     const uv = geo.attributes.uv;
-    for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * (r.w / 6), uv.getY(k) * ((len + r.w) / 6));
+    // asphalt repeats every 7 m; the dirt's two ruts run the track's length
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, r.dirt ? uv.getX(k) : uv.getX(k) * (r.w / 7), uv.getY(k) * ((len + r.w) / 7));
     const mesh = new THREE.Mesh(geo, r.dirt ? dirtMat : roadMat);
     mesh.position.set(mid.x, 0.02 + i * 0.004, mid.z);
     mesh.rotation.y = yaw;
@@ -396,7 +356,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       const z = Math.sin(a) * r;
       if (!clear(x, z, pad)) continue;
       const s = scale[0] + rand() * (scale[1] - scale[0]);
-      o.position.set(x, r > 250 ? (((r - 250) / 250) ** 2) * 6 : 0, z);
+      o.position.set(x, groundHeight(x, z), z);
       o.rotation.set(0, rand() * Math.PI * 2, 0);
       o.scale.setScalar(s);
       o.updateMatrix();
@@ -457,6 +417,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   }
 
   // ── power poles and wires down Central, street lights down 4th ──
+  const lampHeads = [];
   {
     const poleGeo = own(mergeGeometries([new THREE.CylinderGeometry(0.14, 0.2, 9, 6).translate(0, 4.5, 0), new THREE.BoxGeometry(2.4, 0.16, 0.16).translate(0, 8.4, 0)]));
     const xs = [];
@@ -494,6 +455,35 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     });
     lampInst.castShadow = true;
     scene.add(lampInst);
+    for (const l of lamps) lampHeads.push({ x: l.x - 1.75, y: 6.85, z: l.z });
+  }
+
+  // ── the edge of the world: a ranch fence all the way round, where you can see it ──
+  {
+    const R = WORLD_RADIUS + 1.6;
+    const n = Math.round((Math.PI * 2 * R) / 7);
+    const postGeo = own(new THREE.CylinderGeometry(0.07, 0.09, 1.7, 5).translate(0, 0.85, 0));
+    const posts = new THREE.InstancedMesh(postGeo, own(new THREE.MeshStandardMaterial({ color: 0x5b4634, roughness: 1 })), n);
+    const o = new THREE.Object3D();
+    const wire = [];
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2;
+      const a1 = ((i + 1) / n) * Math.PI * 2;
+      const [x0, z0, x1, z1] = [Math.cos(a0) * R, Math.sin(a0) * R, Math.cos(a1) * R, Math.sin(a1) * R];
+      const [y0, y1] = [groundHeight(x0, z0), groundHeight(x1, z1)];
+      o.position.set(x0, y0 - 0.1, z0);
+      o.rotation.set(0, i * 1.7, 0.04 * Math.sin(i * 2.1));
+      o.updateMatrix();
+      posts.setMatrixAt(i, o.matrix);
+      for (const h of [0.55, 1.0, 1.45]) wire.push(x0, y0 + h, z0, (x0 + x1) / 2, (y0 + y1) / 2 + h - 0.07, (z0 + z1) / 2, (x0 + x1) / 2, (y0 + y1) / 2 + h - 0.07, (z0 + z1) / 2, x1, y1 + h, z1);
+    }
+    posts.castShadow = true;
+    posts.frustumCulled = false;
+    const wg = own(new THREE.BufferGeometry());
+    wg.setAttribute('position', new THREE.Float32BufferAttribute(wire, 3));
+    const wires = new THREE.LineSegments(wg, own(new THREE.LineBasicMaterial({ color: 0x3a3028 })));
+    wires.frustumCulled = false;
+    scene.add(posts, wires);
   }
 
   // ── signs and markers at each place ──
@@ -526,7 +516,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     sign.rotation.y = p.yaw;
     sign.traverse((o) => o.isMesh && (o.castShadow = true));
     scene.add(sign);
-    signs[p.id] = { ctx: c.getContext('2d'), tex, key: '' };
+    // a frame of neon round the board, lit after dark
+    const neon = own(new THREE.MeshBasicMaterial({ color: 0x000000 }));
+    const tube = own(mergeGeometries([new THREE.BoxGeometry(5.5, 0.09, 0.09).translate(0, 4.98, 0), new THREE.BoxGeometry(5.5, 0.09, 0.09).translate(0, 2.22, 0), new THREE.BoxGeometry(0.09, 2.85, 0.09).translate(-2.75, 3.6, 0), new THREE.BoxGeometry(0.09, 2.85, 0.09).translate(2.75, 3.6, 0)]));
+    sign.add(new THREE.Mesh(tube, neon));
+    signs[p.id] = { ctx: c.getContext('2d'), tex, key: '', face, neon, hue: new THREE.Color(NEON[p.id] ?? 0xffffff) };
     // the marker: a ring on the ground and a diamond over it
     const ring = new THREE.Mesh(own(new THREE.RingGeometry(p.radius - 1.2, p.radius - 0.7, 48)), ringMat(0xf0c330));
     ring.rotation.x = -Math.PI / 2;
@@ -564,38 +558,61 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   // ── the models ──
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house'];
+  const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house', ...Object.values(TOWN_MODELS), 'tank', 'cactus', 'tumbleweed', 'bucket'];
   const [loaded, cloudTex] = await Promise.all([
     Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
     loadTexture('cloud.webp').catch(() => null),
   ]);
   cloud = cloudTex;
   if (cloud) for (const d of dust) d.s.material.map = cloud;
-  const dressModel = (o) => {
+  const dressModel = (o, name) => {
+    const own3 = !SKETCHFAB[name]; // the site's own Meshy models are matte; a Sketchfab one keeps the materials it came with
     o.traverse((m) => {
       if (!m.isMesh) return;
       m.castShadow = true;
       m.receiveShadow = true;
-      if (m.material.map) m.material.map.anisotropy = 4;
-      m.material.roughness = 0.85;
-      m.material.metalness = 0;
+      if (m.material.map) m.material.map.anisotropy = aniso;
+      if (own3) {
+        m.material.roughness = 0.85;
+        m.material.metalness = 0;
+      } else if (m.material.metalness > 0.2) m.material.metalness = 0.2; // under an open sky, bare metal has only the sky to show
       owned.push(m.geometry, m.material, ...(m.material.map ? [m.material.map] : []));
     });
     return o;
   };
   const make = (name) => {
     const g = new THREE.Group();
-    const m = loaded[name] ? dressModel(loaded[name]) : standIn(name);
+    const m = loaded[name] ? dressModel(loaded[name], name) : standIn(name);
     m.rotation.y = FACING[name] ?? 0;
     g.add(m);
     return g;
   };
+  const placed = {};
   for (const p of [...PLACES, ...LANDMARKS]) {
     const b = make(p.model);
     b.position.set(p.at.x, 0, p.at.z);
     b.rotation.y = p.yaw;
     scene.add(b);
+    placed[p.id] = b;
   }
+  // (for the QA scripts: each building's real footprint, to check the rules' colliders against)
+  const footprints = {};
+  if (import.meta.env.DEV)
+    for (const [id, b] of Object.entries(placed)) {
+      b.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(b);
+      footprints[id] = { x: +((box.min.x + box.max.x) / 2).toFixed(2), z: +((box.min.z + box.max.z) / 2).toFixed(2), w: +(box.max.x - box.min.x).toFixed(2), d: +(box.max.z - box.min.z).toFixed(2), h: +box.max.y.toFixed(2) };
+    }
+  // the rest of town: Meshy's buildings where they've been made, built in code where not
+  const town = own(
+    createTown({
+      aniso,
+      small: mobile,
+      models: Object.fromEntries(Object.entries(TOWN_MODELS).map(([id, name]) => [id, loaded[name] ? dressModel(loaded[name], name) : null])),
+      tankCar: loaded.tank ? dressModel(loaded.tank, 'tank') : null,
+    }),
+  );
+  scene.add(town.object);
   // the neighbours: Walt's house again, turned and tinted, as one draw
   {
     let mesh = null;
@@ -633,12 +650,163 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   hank.add(make('suv'));
   const siren = ['#ff2a2a', '#2a6bff'].map((c, i) => {
     const s = new THREE.Sprite(own(new THREE.SpriteMaterial({ color: c, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })));
-    s.scale.setScalar(1.4);
+    s.material.color.multiplyScalar(3);
+    s.scale.setScalar(1.8);
     s.position.set(i ? 0.5 : -0.5, 2.25, 0.4);
     hank.add(s);
     return s;
   });
   scene.add(hank);
+
+  // ── the Aztek's lights: two beams out front after dark, tail lights always ──
+  const glow = own(glowTexture());
+  const beams = new THREE.SpotLight(0xfff1d0, 0, 70, 0.52, 0.7, 1.1);
+  beams.position.set(0, 1.1, 1.6);
+  beams.target.position.set(0, 0.2, 16);
+  car.add(beams, beams.target);
+  const lampMat = own(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0xfff1d0).multiplyScalar(4), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const tailMat = own(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0xff2a1a).multiplyScalar(3), transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending }));
+  for (const [x, z, m, sc] of [[-0.7, 2.25, lampMat, 0.8], [0.7, 2.25, lampMat, 0.8], [-0.72, -2.2, tailMat, 0.6], [0.72, -2.2, tailMat, 0.6]]) {
+    const sp = new THREE.Sprite(m);
+    sp.position.set(x, 0.95, z);
+    sp.scale.setScalar(sc);
+    car.add(sp);
+  }
+
+  // ── the cast, out where they belong: Jesse by the RV, Saul at his door, Gus
+  // outside Los Pollos, Mike at the laundry, Badger and Skinny Pete at the Dog
+  // House, Tuco at Tampico. They come once the town's up, and not on a phone. ──
+  const cast = [];
+  let people = null;
+  let gone = false;
+  if (!mobile && fit.bloom > 0) {
+    const P = Math.PI;
+    const WHERE = [
+      ['jesse', -146, 124.5, P],
+      ['saul', -55, 10.6, P],
+      ['gus', 66, -9.8, 0],
+      ['mike', 146, -15.5, 0.3],
+      ['badger', -63.5, -12.5, 0.3],
+      ['pete', -62.2, -13.4, -0.5],
+      ['tuco', 12.6, -58, -P / 2],
+    ];
+    loadPeople(WHERE.map(([id]) => ABQ[id]))
+      .then((got) => {
+        if (gone) return got.dispose();
+        people = got;
+        for (const [id, x, z, yaw] of WHERE) {
+          const p = got.person(ABQ[id], { pose: 'stand', idle: true });
+          if (!p) continue;
+          p.group.position.set(x, 0, z);
+          p.group.rotation.y = yaw;
+          scene.add(p.group);
+          cast.push(p);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // ── what moves and glows ──
+  const balloons = own(createBalloons({ count: mobile ? 16 : 34 }));
+  const weeds = own(createTumbleweeds({ count: mobile ? 4 : 7, model: loaded.tumbleweed ? dressModel(loaded.tumbleweed, 'tumbleweed') : null }));
+  // cacti from the pack: each of its nine as its own flock, stood upright on its base
+  if (loaded.cactus) {
+    loaded.cactus.updateMatrixWorld(true);
+    const kinds = [];
+    loaded.cactus.traverse((o) => o.isMesh && kinds.push(o));
+    kinds.slice(0, mobile ? 4 : 9).forEach((src, i) => {
+      const geo = own(src.geometry.clone().applyMatrix4(src.matrixWorld));
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      const tall = Math.max(1e-3, bb.max.y - bb.min.y);
+      geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2).scale(1 / tall, 1 / tall, 1 / tall);
+      if (src.material.map) src.material.map.anisotropy = aniso;
+      owned.push(src.material);
+      scatter(geo, src.material, mobile ? 5 : 9, { pad: 3, rMin: 40, rMax: 400, scale: [2.4 + (i % 3) * 0.6, 4.6 + (i % 3)] });
+    });
+  }
+  const crystals = own(createCrystals({ glow }));
+  const doors = PLACES.map((p) => ({ x: p.door.x, z: p.door.z, r: p.radius + 3, color: NEON[p.id] }));
+  const night = own(
+    createNightLights({
+      glow,
+      lamps: lampHeads,
+      pools: [...lampHeads.map((l) => ({ x: l.x, z: l.z, r: 11 })), ...doors, ...LANDMARKS.map((l) => ({ x: l.at.x, z: l.at.z - 9, r: 12, color: 0x7ab8ff }))],
+    }),
+  );
+  scene.add(balloons.object, weeds.object, crystals.object, night.object);
+  let roof = null; // where on Walt's roof the pizza lies, and which way the slope faces
+  const rv = PLACES.find((p) => p.id === 'rv');
+  const smoke = cloud ? own(createSmoke({ x: rv.at.x + 0.6, y: 3.3, z: rv.at.z, map: cloud })) : null;
+  if (smoke) scene.add(smoke.object);
+  // the pizza, where it landed: find the roof under it and lay it on the slope
+  {
+    const home = PLACES.find((p) => p.id === 'home');
+    const house = loaded.house ? placed.home : null;
+    house?.updateWorldMatrix(true, true);
+    const ray = new THREE.Raycaster(new THREE.Vector3(home.at.x + 3.2, 40, home.at.z + 2.6), new THREE.Vector3(0, -1, 0));
+    const hit = house ? ray.intersectObject(house, true)[0] : null;
+    if (hit && hit.point.y > 1.5) {
+      const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      if (n.y < 0) n.negate();
+      roof = { at: hit.point.clone(), n, q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n) };
+    }
+  }
+  // pizzas: the one that's always been up there, and any you throw
+  const pizzaKit = own(createPizza());
+  const pizzas = [];
+  const flying = [];
+  const landPizza = (k) => {
+    if (!roof) return null;
+    const m = pizzaKit.object.clone();
+    // each lands a little off from the last, up and down the slope
+    const side = new THREE.Vector3(1, 0, 0);
+    const down = new THREE.Vector3().crossVectors(side, roof.n).normalize();
+    m.userData.rest = roof.at.clone().addScaledVector(side, ((k * 1.9) % 5) - 2.4).addScaledVector(down, ((k * 1.3) % 2) - 0.8).addScaledVector(roof.n, 0.06 + k * 0.004);
+    m.position.copy(m.userData.rest);
+    m.quaternion.copy(roof.q);
+    m.rotateY(k * 2.1);
+    scene.add(m);
+    pizzas.push(m);
+    return m;
+  };
+  landPizza(0);
+
+  // a delivery's drop: a column of green light, a ring on the ground and a crate
+  const dropMat = own(new THREE.MeshBasicMaterial({ color: new THREE.Color(0x58ff8a).multiplyScalar(1.5), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+  const drop = new THREE.Group();
+  const dropBeam = new THREE.Mesh(own(new THREE.CylinderGeometry(0.5, 1.6, 90, 16, 1, true).translate(0, 45, 0)), dropMat);
+  const dropRing = new THREE.Mesh(own(new THREE.RingGeometry(5.2, 5.9, 48).rotateX(-Math.PI / 2)), own(new THREE.MeshBasicMaterial({ color: 0x58ff8a, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })));
+  dropRing.position.y = 0.12;
+  const crate = new THREE.Mesh(own(new THREE.BoxGeometry(1.1, 0.8, 0.8)), own(new THREE.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 0.9 })));
+  crate.castShadow = true;
+  // (with the model, what's waiting at the drop is a bucket of Los Pollos Hermanos' finest)
+  if (loaded.bucket) {
+    const b = dressModel(loaded.bucket, 'bucket');
+    b.scale.setScalar(1.7);
+    b.position.y = -0.7;
+    crate.geometry = own(new THREE.BufferGeometry());
+    crate.add(b);
+  }
+  drop.add(dropBeam, dropRing, crate);
+  drop.visible = false;
+  scene.add(drop);
+
+  // suds, for the car wash
+  const foam = [];
+  if (cloud)
+    for (let i = 0; i < 16; i++) {
+      const m = own(new THREE.SpriteMaterial({ map: cloud, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      const sp = new THREE.Sprite(m);
+      sp.visible = false;
+      scene.add(sp);
+      foam.push({ sp, m, ph: i * 2.399 });
+    }
+  let washing = 0;
+  const waterMat = own(new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  const water = new THREE.Mesh(own(new THREE.CylinderGeometry(2.6, 3.2, 3.4, 20, 1, true).translate(0, 1.7, 0)), waterMat);
+  water.position.set(WASH.x, 0, WASH.z);
+  scene.add(water);
 
   // ── per frame ──
   const camPos = new THREE.Vector3(0, 120, 160);
@@ -654,6 +822,36 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   let lastSpeed = 0;
   let shake = 0;
   let fov = 58;
+  let idle = 0; // seconds parked, before the camera wanders off round the car
+  let orbit = 0;
+  let aurora = 0;
+  let auroraTo = 0;
+
+  // the light for the time of day, on everything that takes it
+  function applyLight() {
+    lightAt(tod, L);
+    sky.uniforms.uSun.value.copy(L.sun);
+    sky.uniforms.uMoon.value.copy(L.moon);
+    sun.color.copy(L.keyColor);
+    sun.intensity = L.keyIntensity;
+    hemi.color.copy(L.hemiSky);
+    hemi.groundColor.copy(L.hemiGround);
+    hemi.intensity = L.hemiIntensity;
+    scene.fog.color.copy(L.fog);
+    scene.environmentIntensity = L.env;
+    renderer.toneMappingExposure = L.exposure;
+    const dark = L.night;
+    night.update(dark);
+    beams.intensity = dark * 70;
+    lampMat.opacity = dark * 0.7;
+    for (const p of PLACES) {
+      const s = signs[p.id];
+      s.face.emissiveIntensity = 0.22 + dark * 1.5;
+      s.neon.color.copy(s.hue).multiplyScalar(dark * 5);
+    }
+    if (post) post.bloom.strength = (0.42 * fit.bloom + 0.12) * (1 + dark * 0.9);
+  }
+  applyLight();
 
   function setPlaces(prog) {
     for (const p of prog.places) {
@@ -680,9 +878,36 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const dt = Math.min(0.05, ms / 1000);
     clock += dt;
     const c = state.car;
+    // the day: on its own slowly, or run fast to a time that's been asked for
+    if (todTo != null) {
+      const left = (((todTo - tod) % 1) + 1) % 1;
+      const step = dt * 0.3;
+      if (left <= step) {
+        tod = todTo;
+        todTo = null;
+      } else tod = (tod + step) % 1;
+    } else if (!still) tod = (tod + dt / DAY) % 1;
+    applyLight();
+    sky.uniforms.uTime.value = still ? 40 : clock + tod * 900;
+    aurora += (auroraTo - aurora) * Math.min(1, dt * 0.5);
+    sky.uniforms.uAurora.value = aurora;
+    const dawn = Math.max(0, 1 - Math.abs(L.sun.y) / 0.3); // a low sun, or none: the burners show
+    balloons.update(still ? 0 : clock, Math.min(1, dawn * 0.6 + L.night));
+    if (!still) weeds.update(dt, clock);
+    crystals.update(dt, clock, L.night);
+    town.update(dt, still ? 0 : clock, L.night);
+    if (!still) for (const p of cast) p.update(clock, dt);
+    smoke?.update(still ? 0 : dt, 0.3 + 0.7 * L.day);
+    tailMat.opacity = 0.16 + L.night * 0.34 + ((state.throttle ?? 0) < -0.1 ? 0.5 : 0);
     // the car: where it is, leaning into the turn and back on the throttle
-    car.position.set(c.x, 0, c.z);
-    car.rotation.y = c.yaw;
+    const gy = groundHeight(c.x, c.z);
+    const sn = Math.sin(c.yaw);
+    const cs = Math.cos(c.yaw);
+    // nose up a dune and down the other side, and leaning across a slope
+    const slope = Math.atan2(groundHeight(c.x + sn * 1.4, c.z + cs * 1.4) - groundHeight(c.x - sn * 1.4, c.z - cs * 1.4), 2.8);
+    const lean = Math.atan2(groundHeight(c.x + cs * 0.9, c.z - sn * 0.9) - groundHeight(c.x - cs * 0.9, c.z + sn * 0.9), 1.8);
+    car.position.set(c.x, gy, c.z);
+    car.rotation.set(-slope, c.yaw, -lean, 'YXZ');
     const accel = (c.speed - lastSpeed) / Math.max(dt, 1e-3);
     lastSpeed = c.speed;
     roll += ((-(state.steer ?? 0) * Math.min(1, Math.abs(c.speed) / 18) * 0.06) - roll) * Math.min(1, dt * 6);
@@ -704,7 +929,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         if (d) {
           d.t = 0;
           d.s.visible = true;
-          d.s.position.set(c.x - Math.sin(c.yaw) * 2.3 + (Math.random() - 0.5), 0.5, c.z - Math.cos(c.yaw) * 2.3 + (Math.random() - 0.5));
+          d.s.position.set(c.x - Math.sin(c.yaw) * 2.3 + (Math.random() - 0.5), gy + 0.5, c.z - Math.cos(c.yaw) * 2.3 + (Math.random() - 0.5));
           d.v.set((Math.random() - 0.5) * 1.2, 0.8 + Math.random(), (Math.random() - 0.5) * 1.2);
         }
       }
@@ -727,6 +952,43 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       m.icon.position.y = 5 + Math.sin(clock * 2 + p.door.x) * 0.3;
       m.icon.scale.setScalar(m.next ? 3.2 : 2.4);
     }
+    // a delivery's drop turns and breathes
+    if (drop.visible) {
+      crate.rotation.y = clock * 0.9;
+      crate.position.y = 1.3 + Math.sin(clock * 2.2) * 0.25;
+      dropMat.opacity = 0.22 + 0.12 * Math.sin(clock * 3);
+      dropRing.scale.setScalar(1 + 0.05 * Math.sin(clock * 4));
+    }
+    // pizzas on their way up to the roof
+    for (let i = flying.length - 1; i >= 0; i--) {
+      const f = flying[i];
+      f.t = Math.min(1, f.t + dt / 0.9);
+      f.m.position.lerpVectors(f.from, f.m.userData.rest, f.t);
+      f.m.position.y += Math.sin(f.t * Math.PI) * 5;
+      f.m.rotateY(dt * 14 * (1 - f.t));
+      if (f.t >= 1) {
+        f.m.position.copy(f.m.userData.rest);
+        f.m.quaternion.copy(roof.q);
+        flying.splice(i, 1);
+        shake = Math.max(shake, 0.12);
+      }
+    }
+    // the car wash: water coming down in the bay, and suds all over the Aztek
+    if (washing > 0) {
+      washing = Math.max(0, washing - dt / WASH.seconds);
+      const k = Math.sin(Math.min(1, (1 - washing) * 5) * Math.PI * 0.5) * Math.min(1, washing * 5);
+      waterMat.opacity = 0.16 * k;
+      for (const f of foam) {
+        f.sp.visible = k > 0.01;
+        const a = f.ph + clock * 2.4;
+        f.sp.position.set(c.x + Math.cos(a) * 1.5, gy + 0.7 + ((f.ph * 0.37 + clock * 0.9) % 1.6), c.z + Math.sin(a) * 2.4);
+        f.sp.scale.setScalar(0.9 + 0.5 * Math.sin(f.ph + clock * 3));
+        f.m.opacity = 0.75 * k;
+      }
+    } else if (waterMat.opacity > 0) {
+      waterMat.opacity = 0;
+      for (const f of foam) f.sp.visible = false;
+    }
     // the beam over a place that's just opened
     if (beamAt >= 0) {
       beamAt += dt;
@@ -740,8 +1002,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     // the camera: from over the town, down behind the car, and after it
     const fwd = v.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
     const back = mobile ? 11 : 9.5;
-    want.set(c.x - fwd.x * back, (mobile ? 5.2 : 4.4) + Math.max(0, c.speed) * 0.04, c.z - fwd.z * back);
-    look.set(c.x + fwd.x * 5, 1.3, c.z + fwd.z * 5);
+    want.set(c.x - fwd.x * back, gy + (mobile ? 5.2 : 4.4) + Math.max(0, c.speed) * 0.04, c.z - fwd.z * back);
+    look.set(c.x + fwd.x * 5, gy + 2.3, c.z + fwd.z * 5); // a little up, for the sky
     if (intro < 1) {
       intro = Math.min(1, intro + dt / 2.8);
       const k = intro * intro * (3 - 2 * intro);
@@ -752,11 +1014,30 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camPos.copy(want);
       camLook.copy(look);
     } else {
-      const k = 1 - Math.exp(-dt * 4);
+      // parked for a while (and not at a door): the camera drifts out and round, for the view
+      idle = Math.abs(c.speed) < 0.4 && !state.near && !still ? idle + dt : 0;
+      const wander = Math.min(1, Math.max(0, idle - 7) / 5);
+      if (wander > 0) {
+        orbit += dt * 0.11;
+        const a = c.yaw + Math.PI + orbit;
+        want.set(c.x + Math.sin(a) * 24, gy + 7 + wander * 5, c.z + Math.cos(a) * 24);
+        look.set(c.x, gy + 2.2 + wander * 3, c.z);
+      } else orbit = 0;
+      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 4));
       camPos.lerp(want, k);
-      camLook.lerp(look, 1 - Math.exp(-dt * 8));
+      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 8)));
     }
     camera.position.copy(camPos);
+    // never under a dune, and never inside a building: come in towards the car until it's out
+    camera.position.y = Math.max(camera.position.y, groundHeight(camPos.x, camPos.z) + 1.6);
+    for (let n = 0; n < 8; n++) {
+      const px = camera.position.x;
+      const pz = camera.position.z;
+      if (!COLLIDERS.some((b) => Math.abs(px - b.x) < b.w / 2 + 0.6 && Math.abs(pz - b.z) < b.d / 2 + 0.6)) break;
+      camera.position.x += (c.x - px) * 0.22;
+      camera.position.z += (c.z - pz) * 0.22;
+      camera.position.y += 0.9;
+    }
     if (shake > 0) {
       camera.position.x += (Math.random() - 0.5) * shake * 0.4;
       camera.position.y += (Math.random() - 0.5) * shake * 0.3;
@@ -770,9 +1051,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.updateProjectionMatrix();
     }
     // the sun's shadows follow the car
-    sun.target.position.set(c.x, 0, c.z);
-    sun.position.copy(sun.target.position).addScaledVector(SUN, 160);
-    sky.position.copy(camera.position);
+    sun.target.position.set(c.x, gy, c.z);
+    sun.position.copy(sun.target.position).addScaledVector(L.key, 160);
+    sky.mesh.position.copy(camera.position);
     stage.render(ms);
   }
 
@@ -791,13 +1072,61 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     settle() {
       intro = 1;
       snap = true;
+      idle = 0;
     },
+    // the time of day, 0 to 1 (0.25 is sunrise, 0.75 sunset): run there fast, or be there
+    setTime(t, { jump = still } = {}) {
+      if (jump) {
+        tod = ((t % 1) + 1) % 1;
+        todTo = null;
+      } else todTo = ((t % 1) + 1) % 1;
+    },
+    get time() {
+      return tod;
+    },
+    // the crystals already taken (and, with all of them, the aurora)
+    setBlue(ids, all = false) {
+      crystals.setGot(ids);
+      auroraTo = all ? 1 : 0;
+    },
+    took: (id) => crystals.burst(id),
+    // a delivery's drop, lit up (or put out, with nothing)
+    setDrop(pt) {
+      drop.visible = !!pt;
+      if (pt) drop.position.set(pt.x, groundHeight(pt.x, pt.z), pt.z);
+    },
+    // pizzas already on the roof from before (the first has always been there)
+    setPizzas(n) {
+      while (pizzas.length < Math.min(8, n + 1)) if (!landPizza(pizzas.length)) break;
+    },
+    // one more, thrown from the car: false if there's no roof to land it on
+    throwPizza(from) {
+      const m = landPizza(pizzas.length);
+      if (!m) return false;
+      flying.push({ m, t: 0, from: new THREE.Vector3(from.x, 1.6, from.z) });
+      m.position.set(from.x, 1.6, from.z);
+      if (pizzas.length > 8) scene.remove(pizzas.splice(1, 1)[0]);
+      return true;
+    },
+    wash() {
+      washing = 1;
+    },
+    footprints,
+    townFits: town.fits,
     resize: stage.resize,
     info: stage.info,
     project: stage.project,
     dispose() {
+      gone = true;
+      people?.dispose();
       for (const o of owned) o.dispose?.();
       if (cloud) cloud.dispose();
+      if (post) {
+        post.composer.dispose();
+        post.target.dispose();
+        post.bloom.dispose();
+        post.grade.dispose?.();
+      }
       stage.dispose();
     },
     get lost() {
