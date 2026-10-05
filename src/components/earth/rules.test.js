@@ -4,8 +4,10 @@ import {
   ALT,
   AROUND_KM,
   CAPTURE,
+  CLOUD_ALT,
   HOME_V,
   KM,
+  LOOK,
   ROLL,
   STAMPS,
   TRAIL,
@@ -16,6 +18,7 @@ import {
   bearingOf,
   bearingTo,
   dot,
+  easeLook,
   fly,
   headingOf,
   kmBetween,
@@ -23,12 +26,14 @@ import {
   cross,
   logTrail,
   newFlight,
+  newLook,
   nextStamp,
   rotate,
   routeArc,
   subsolar,
   toLonLat,
   toVec,
+  turnLook,
   unit,
 } from './rules';
 
@@ -111,6 +116,16 @@ describe('Earth: flying', () => {
     const g = newFlight({ bearing: 90 });
     for (let i = 0; i < 20; i++) fly(g, { turn: -1 }, DT);
     expect(bearingOf(g.p, g.h)).toBeLessThan(85);
+  });
+
+  it('can get down under the cloud deck, and up well over it', () => {
+    expect(ALT.min).toBeLessThan(CLOUD_ALT);
+    expect(ALT.max).toBeGreaterThan(CLOUD_ALT * 4);
+    expect(ALT.start).toBeGreaterThan(CLOUD_ALT);
+    const f = newFlight();
+    for (let i = 0; i < 400; i++) fly(f, { climb: -1 }, DT);
+    expect(f.alt).toBeLessThan(CLOUD_ALT);
+    expect(f.alt * KM).toBeGreaterThan(10); // still well up, in km
   });
 
   it('climbs and descends within its limits, and goes faster with boost', () => {
@@ -304,5 +319,33 @@ describe('Earth: the barrel roll', () => {
       n++;
     }
     expect(n * DT).toBeCloseTo(ROLL.time, 0);
+  });
+});
+
+describe('Earth: looking round', () => {
+  it('turns the camera round the plane as far as its limits, and no further', () => {
+    const l = newLook();
+    expect(l).toMatchObject({ yaw: 0, pitch: 0, held: false });
+    turnLook(l, 0.5, 0.2);
+    expect(l.yaw).toBeCloseTo(0.5);
+    expect(l.pitch).toBeCloseTo(0.2);
+    expect(l.held).toBe(true);
+    turnLook(l, 100, -100);
+    expect(l.yaw).toBe(LOOK.yaw);
+    expect(l.pitch).toBe(-LOOK.pitch);
+  });
+
+  it('settles back behind the plane once let go, and stays put while held', () => {
+    const l = newLook();
+    turnLook(l, 1, 0.3);
+    for (let i = 0; i < 30; i++) easeLook(l, DT);
+    expect(l.yaw).toBeCloseTo(1);
+    l.held = false;
+    for (let i = 0; i < 30; i++) easeLook(l, DT);
+    expect(Math.abs(l.yaw)).toBeLessThan(0.5);
+    expect(Math.abs(l.yaw)).toBeGreaterThan(0);
+    for (let i = 0; i < 300; i++) easeLook(l, DT);
+    expect(Math.abs(l.yaw)).toBeLessThan(0.01);
+    expect(Math.abs(l.pitch)).toBeLessThan(0.01);
   });
 });

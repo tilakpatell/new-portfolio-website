@@ -16,7 +16,9 @@ import { HOME, PLACES } from '../../data/places';
 export const KM = 6371; // the Earth's radius, for distances shown in km
 const RAD = Math.PI / 180;
 
-export const ALT = { min: 0.012, max: 0.075, start: 0.032, climb: 0.028 };
+export const CLOUD_ALT = 0.0065; // the cloud deck's height over the ground (about 40 km: a toy, like the plane)
+export const ALT = { min: 0.0035, max: 0.075, start: 0.032, climb: 0.028 }; // down under the clouds, up to the edge of space
+export const LOOK = { yaw: 1.4, pitch: 0.6, settle: 3 }; // looking round the plane: how far, and how quickly it settles back
 export const SPEED = { cruise: 0.11, slow: 0.045, fast: 0.34, ease: 1.6 }; // radians a second
 export const TURN = 1.3; // radians a second, hard over
 export const CAPTURE = 0.025; // within this many radians of a place (about 160 km), you've arrived
@@ -179,6 +181,28 @@ export function nextStamp(f, stamped) {
   let rel = bearingTo(f.p, best.s.v) - bearingOf(f.p, f.h);
   rel = ((rel + 540) % 360) - 180;
   return { id: best.s.id, name: best.s.name, km: best.a * KM, rel };
+}
+
+// ── looking round ──
+
+// The chase camera swung round the plane by a drag (or a pad's right
+// stick): yaw to either side, pitch up and down, within LOOK's limits; let
+// go, it settles back behind the plane.
+export const newLook = () => ({ yaw: 0, pitch: 0, held: false });
+export function turnLook(l, dyaw, dpitch) {
+  l.yaw = Math.max(-LOOK.yaw, Math.min(LOOK.yaw, l.yaw + dyaw));
+  l.pitch = Math.max(-LOOK.pitch, Math.min(LOOK.pitch, l.pitch + dpitch));
+  l.held = true;
+  return l;
+}
+export function easeLook(l, dt) {
+  if (l.held) return l;
+  const k = Math.exp(-LOOK.settle * dt);
+  l.yaw *= k;
+  l.pitch *= k;
+  if (Math.abs(l.yaw) < 1e-4) l.yaw = 0;
+  if (Math.abs(l.pitch) < 1e-4) l.pitch = 0;
+  return l;
 }
 
 // ── the flight log ──

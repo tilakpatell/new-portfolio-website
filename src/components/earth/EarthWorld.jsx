@@ -10,7 +10,7 @@ import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { AROUND_KM, HOME_V, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, fly, kmBetween, logTrail, newFlight, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, unit } from './rules';
+import { AROUND_KM, CLOUD_ALT, HOME_V, KM, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps, stampDate, useFlown, useStamps } from './stamps';
 import './earth.css';
 
@@ -19,13 +19,16 @@ import './earth.css';
 // behind a little plane over Syracuse. Fly it (or let the autopilot) to the
 // places I've been: each one is a stamp in your passport and a postcard.
 // The flight log keeps the trail flown and the distance, over every visit,
-// and the way round the world adds up to an achievement.
+// and the way round the world adds up to an achievement. Drag while flying
+// to look round the plane (it settles back behind), and V swaps the chase
+// camera for the cockpit.
 // The rules are in ./rules.js, the drawing in ./scene.js; this is the keys,
 // the camera's dive, the HUD and the postcards. Without 3D, the passport is
 // a page of postcards.
 
 const sounds = () => import('./sounds');
 const SUN = 'tp-earth-sun'; // 'real' | 'day'
+const CAM = 'tp-earth-cam'; // 'chase' | 'cockpit'
 const DIVE = 2.8; // seconds, orbit to the plane
 const RISE = 1.9;
 const fmt = new Intl.NumberFormat('en-US');
@@ -48,6 +51,7 @@ const CODES = {
   KeyR: 'roll',
 };
 const SAVE_KM = 25; // the distance flown is written down every so many km
+const CLOUD_KM = Math.round(CLOUD_ALT * KM); // the cloud deck, in km up
 
 // what's under the plane: a country (from the travel globe's dots), or a sea
 let land = null;
@@ -101,11 +105,12 @@ function World({ gl, setGl }) {
   if (!sim.current) {
     const f = newFlight();
     const sun = sunVec();
-    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null, trail: [], trailV: 0, flown: readFlown(), kmSaved: 0 };
+    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null, trail: [], trailV: 0, flown: readFlown(), kmSaved: 0, look: newLook(), cockpit: local.get(CAM, 'chase') === 'cockpit' };
   }
   const [mode, setMode] = useState('orbit');
   const [sunMode, setSunMode] = useState(sim.current.sunMode);
-  const [hud, setHud] = useState({ over: '', heading: 0, next: null, target: null, night: false, km: 0 });
+  const [cockpit, setCockpit] = useState(sim.current.cockpit);
+  const [hud, setHud] = useState({ over: '', heading: 0, next: null, target: null, night: false, km: 0, alt: 0 });
   const [postcard, setPostcard] = useState(null);
   const [passport, setPassport] = useState(false);
   const stamps = useStamps();
@@ -215,6 +220,13 @@ function World({ gl, setGl }) {
     setSunMode(s.sunMode);
   }, []);
 
+  const toggleCam = useCallback(() => {
+    const s = sim.current;
+    s.cockpit = !s.cockpit;
+    local.set(CAM, s.cockpit ? 'cockpit' : 'chase');
+    setCockpit(s.cockpit);
+  }, []);
+
   const closePostcard = useCallback(() => setPostcard(null), []);
 
   // the engines, while flying on screen
@@ -264,6 +276,10 @@ function World({ gl, setGl }) {
         toggleSun();
         return;
       }
+      if (e.code === 'KeyV') {
+        toggleCam();
+        return;
+      }
       const k = CODES[e.code];
       if (!k) {
         if (e.key === 'Enter' && !onButton && (s.mode === 'orbit' || s.mode === 'rise')) dive();
@@ -291,15 +307,16 @@ function World({ gl, setGl }) {
       window.removeEventListener('blur', blur);
       s.keys.clear();
     };
-  }, [live, postcard, passport, closePostcard, dive, rise, toggleSun]);
+  }, [live, postcard, passport, closePostcard, dive, rise, toggleSun, toggleCam]);
 
-  // dragging the globe round in orbit; a click on a place flies there
+  // dragging the globe round in orbit (a click on a place flies there);
+  // flying, a drag looks round the plane, and it settles back when let go
   const onPointerDown = (e) => {
     const s = sim.current;
-    if (s.mode !== 'orbit') return;
+    if (s.mode !== 'orbit' && s.mode !== 'fly') return;
     capturePointer(e);
     s.touched = true;
-    s.drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId };
+    s.drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId, look: s.mode === 'fly' };
   };
   const onPointerMove = (e) => {
     const s = sim.current;
@@ -310,6 +327,10 @@ function World({ gl, setGl }) {
     d.moved += Math.abs(dx) + Math.abs(dy);
     d.x = e.clientX;
     d.y = e.clientY;
+    if (d.look) {
+      if (!s.cockpit) turnLook(s.look, -dx * 0.006, dy * 0.004);
+      return;
+    }
     let o = rotate(s.orbit, [0, 1, 0], -dx * 0.005);
     const right = unit(cross([0, 1, 0], o));
     const tilted = rotate(o, right, dy * 0.005);
@@ -320,7 +341,8 @@ function World({ gl, setGl }) {
     const s = sim.current;
     const d = s.drag;
     s.drag = null;
-    if (!d || d.moved > 6 || !api.current) return;
+    s.look.held = false;
+    if (!d || d.look || d.moved > 6 || !api.current) return;
     const r = canvas.current.getBoundingClientRect();
     const id = api.current.pick(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
     if (id) goTo(id);
@@ -360,7 +382,12 @@ function World({ gl, setGl }) {
     if (tapped('y')) setPassport((v) => !v);
     if (tapped('start') || tapped('x')) (s.mode === 'fly' || s.mode === 'dive' ? rise : dive)();
     const roll = s.pressed.has('roll') || tapped('b');
+    if (tapped('rb')) toggleCam();
     s.pressed.clear();
+    // looking round: a pad's right stick holds the view; otherwise it settles
+    if (pad && (Math.abs(pad.rx) > 0 || Math.abs(pad.ry) > 0) && !s.cockpit) turnLook(s.look, -pad.rx * dt * 2.5, pad.ry * dt * 1.5);
+    else if (!s.drag?.look) s.look.held = false;
+    easeLook(s.look, dt);
 
     // the camera's dive and climb
     if (s.mode === 'dive') {
@@ -428,7 +455,7 @@ function World({ gl, setGl }) {
       }
     }
 
-    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV }, ms);
+    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit }, ms);
 
     // the labels over the places on screen
     const close = s.mode === 'fly' || s.mode === 'dive';
@@ -470,8 +497,9 @@ function World({ gl, setGl }) {
           target: goal?.name ?? null,
           night: f.p[0] * s.sun[0] + f.p[1] * s.sun[1] + f.p[2] * s.sun[2] < -0.05,
           km: Math.round(f.km / 10) * 10,
+          alt: Math.round(f.alt * KM),
         };
-        return h.over === next.over && h.heading === next.heading && h.target === next.target && h.night === next.night && h.km === next.km && Math.round(h.next?.km ?? -1) === Math.round(next.next?.km ?? -1) ? h : next;
+        return h.over === next.over && h.heading === next.heading && h.target === next.target && h.night === next.night && h.km === next.km && h.alt === next.alt && Math.round(h.next?.km ?? -1) === Math.round(next.next?.km ?? -1) ? h : next;
       });
     }
   }, live);
@@ -485,7 +513,7 @@ function World({ gl, setGl }) {
   return (
     <div ref={box}>
       <div className="earth-stage" data-mode={mode}>
-        <canvas ref={canvas} className="earth-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => (sim.current.drag = null)} role="img" aria-label="The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, M for orbit, P for the passport." />
+        <canvas ref={canvas} className="earth-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => (sim.current.drag = null)} role="img" aria-label="The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, V for the cockpit, M for orbit, P for the passport." />
         {gl !== 'on' && <p className="earth-loading">Coming in from orbit…</p>}
 
         <div className="earth-labels" aria-hidden={mode !== 'orbit' || undefined}>
@@ -522,6 +550,11 @@ function World({ gl, setGl }) {
             <button type="button" className="earth-chip" onClick={toggleSun} aria-pressed={sunMode === 'day'} title="The sun where it really is now, or always over your shoulder">
               {sunMode === 'day' ? 'Always day' : 'Sun: now'} <kbd>N</kbd>
             </button>
+            {flyingNow && (
+              <button type="button" className="earth-chip" onClick={toggleCam} aria-pressed={cockpit} title="The chase camera, or the view from the cockpit">
+                {cockpit ? 'Cockpit' : 'Chase'} <kbd>V</kbd>
+              </button>
+            )}
           </div>
         </div>
 
@@ -548,8 +581,8 @@ function World({ gl, setGl }) {
                 <b>{hud.next.name}</b> · {km(hud.next.km)}
               </span>
             )}
-            <span className="earth-flown" title="Flown this flight">
-              {km(hud.km)} flown
+            <span className="earth-flown" title="Flown this flight, and how high">
+              {km(hud.km)} flown · {hud.alt} km up{hud.alt * 1 < CLOUD_KM ? ', under the clouds' : ''}
             </span>
             {hud.target && (
               <button type="button" className="earth-chip earth-chip-sm" onClick={() => (sim.current.target = null)}>
@@ -558,7 +591,7 @@ function World({ gl, setGl }) {
             )}
           </div>
         )}
-        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · P passport</p>}
+        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · drag to look round · V cockpit · P passport</p>}
 
         {touch && flyingNow && gl === 'on' && (
           <div className="earth-touch">

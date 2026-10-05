@@ -24,8 +24,8 @@
 }
 .earth-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; touch-action: pan-y; }
 .earth-canvas[data-on] { opacity: 1; }
-.earth-stage[data-mode='orbit'] .earth-canvas { cursor: grab; }
-.earth-stage[data-mode='orbit'] .earth-canvas:active { cursor: grabbing; }
+.earth-stage[data-mode='orbit'] .earth-canvas, .earth-stage[data-mode='fly'] .earth-canvas { cursor: grab; }
+.earth-stage[data-mode='orbit'] .earth-canvas:active, .earth-stage[data-mode='fly'] .earth-canvas:active { cursor: grabbing; }
 .earth-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--earth-ink); font: 500 1rem/1 var(--font-sans); letter-spacing: 0.08em; opacity: 0.8; }
 
 /* the places' names, over their beacons */
