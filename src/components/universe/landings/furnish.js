@@ -29,6 +29,10 @@ const PLANETS = {
   middleearth: () => import('./middleearth.js'),
   breakingbad: () => import('./breakingbad.js'),
   rickmorty: () => import('./rickmorty.js'),
+  transformers: () => import('./transformers.js'),
+  gaming: () => import('./gaming.js'),
+  marvel: () => import('./marvel.js'),
+  office: () => import('./office.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)
@@ -142,8 +146,9 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
   const models = createModels({ renderer });
   // (Rm: the planet's radius in metres; bend: a long flat thing, a road,
   // bent down to the curve of the ground under it)
-  Object.assign(kit, { renderer, models, Rm: R / METRE, bend: (object) => bend(object, R / METRE) });
   const specs = landing.models ?? {};
+  // (specs: the landing's models, for a builder that stands one on something of its own)
+  Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE) });
   // the curve of the ground under something r metres across: how far to sink it so its edges don't float
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
   const add = async (object) => {
