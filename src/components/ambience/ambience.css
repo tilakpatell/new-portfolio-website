@@ -2,7 +2,6 @@
    everything but the page's own colour, faded toward the middle where the
    text column is, and in only once it has drawn. Each family sets how
    strong it is in light and dark mode. */
-html[data-ambience] body { background: transparent; }
 /* the hero's drawn skyline (worlds/Backdrops.jsx) gives way to the live one */
 html[data-ambience] .hero-backdrop { display: none; }
 .ambience {

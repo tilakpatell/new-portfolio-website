@@ -59,20 +59,20 @@ function CustomColor({ onPick }) {
 // Site colours: a small "Auto" control that explains what the colours mean.
 // Auto follows the page; picking a company keeps its colours everywhere.
 // `compact` lays them out as chips, for the phone menu.
-// The fan themes' moving backgrounds (components/ambience), on or off.
+// The themes' backgrounds behind the portfolio pages (components/ambience), on or off.
 function AmbienceToggle({ compact }) {
   const [on, set] = useAmbienceSetting();
   if (compact)
     return (
       <button type="button" className="theme-chip mt-3" aria-pressed={on} onClick={() => set(!on)}>
-        Moving backgrounds: {on ? 'on' : 'off'}
+        Theme backgrounds: {on ? 'on' : 'off'}
       </button>
     );
   return (
     <button type="button" className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm hover:bg-[var(--surface-2)]" aria-pressed={on} onClick={() => set(!on)}>
       <span className="flex-1">
-        <span className="text-ink">Moving backgrounds</span>
-        <span className="block text-xs text-muted">Behind the pages, in the fan themes</span>
+        <span className="text-ink">Theme backgrounds</span>
+        <span className="block text-xs text-muted">Behind the portfolio pages</span>
       </span>
       <span className="text-xs font-semibold text-muted">{on ? 'On' : 'Off'}</span>
     </button>
