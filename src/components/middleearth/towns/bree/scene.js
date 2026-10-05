@@ -566,10 +566,12 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       camAt = c.at;
       camLook = c.look;
     } else if (s.mode === 'talk' && s.talking === 'gate') {
-      // at the gate, over Frodo's head, on the hatch and the face in it
+      // at the gate, over Frodo's head, on the hatch and the face in it:
+      // aimed under it, so the hatch sits high and clear of the talk panel
       camAt = tmp.copy(hatchAt).addScaledVector(gateOut, 4.8).addScaledVector(gateAlong, 0.7);
       camAt.y += 0.55;
       camLook = look.copy(hatchAt);
+      camLook.y -= 0.9;
     } else {
       const yaw = s.camYaw ?? 0;
       const pitch = s.camPitch ?? 0.36;
