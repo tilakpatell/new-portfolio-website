@@ -26,6 +26,12 @@ describe('progress through a town', () => {
     expect(p.done).toEqual([]);
     expect(p.next).toBe('gate');
   });
+  it('a quest can need several', () => {
+    const qs = [{ id: 'a' }, { id: 'b' }, { id: 'c', needs: ['a', 'b'] }];
+    expect(progress(qs, ['a']).quests[2].open).toBe(false);
+    expect(progress(qs, ['a', 'b']).quests[2].open).toBe(true);
+    expect(progress(qs, ['a', 'c']).done).toEqual(['a']);
+  });
 });
 
 describe('what is nearest', () => {
