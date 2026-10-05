@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useInView, useReducedMotion } from '../lib/hooks';
 import './stages.css';
+import { ClaudeSpark } from './ClaudeSpark';
 
 // Claude reading one scanned page and streaming the translation back.
-
-export function ClaudeSpark({ spinning = false, className = '' }) {
-  const rays = [0, 33, 68, 101, 138, 172, 205, 241, 276, 309, 342];
-  return (
-    <svg viewBox="0 0 48 48" className={`claude-spark ${spinning ? 'is-spinning' : ''} ${className}`} aria-hidden="true">
-      {rays.map((deg, i) => (
-        <rect key={deg} x="22.3" y={i % 3 === 0 ? 3 : i % 3 === 1 ? 6 : 4.5} width="3.4" height={i % 3 === 0 ? 21 : i % 3 === 1 ? 18 : 19.5} rx="1.7" transform={`rotate(${deg} 24 24)`} />
-      ))}
-    </svg>
-  );
-}
 
 const ANSWER = [
   { t: 'Chapter 1', b: true, br: 2 },

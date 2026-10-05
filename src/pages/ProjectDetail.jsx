@@ -6,7 +6,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { Breakable, Chips, Reveal, Waypoint } from '../components/ui';
 import { projects, projectById } from '../data/projects';
 import { PROJECT_STAGES } from '../stages';
-import { ClaudeSpark } from '../stages/ClaudeStage';
+import { ClaudeSpark } from '../stages/ClaudeSpark';
 import { useDocumentTitle } from '../lib/hooks';
 import NotFound from './NotFound';
 
