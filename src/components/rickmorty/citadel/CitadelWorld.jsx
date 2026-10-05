@@ -11,7 +11,7 @@ import { nearest } from '../../middleearth/towns/story';
 import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
 import { newWatchers, stepWatchers } from '../../middleearth/towns/watchers';
-import { HERD, calmHerd, newHerd, stepHerd } from './daycare';
+import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
 import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
@@ -524,10 +524,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         complete('daycare');
         sounds().then((x) => x.jingle());
         say('All six back in. The Day Care Rick turns a page. He never knew.');
-      } else if (e.type === 'out') {
+      } else if (e.type === 'out' && stillHerding(s.h, s.mode === 'inside')) {
         say('The Day Care Rick looks up. “What’s going on out there?” They scatter again.', true);
         s.herd = newHerd(s.seed++);
         a.fx('scatter');
+      } else if (e.type === 'out') {
+        // left to it: the Day Care Rick calls them in and shuts the gate
+        s.herd = calmHerd();
       }
     }
 
