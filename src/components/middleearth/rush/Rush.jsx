@@ -45,7 +45,7 @@ export default function Rush({ level = PONY }) {
   // an invite link: straight down to the kitchen
   useEffect(() => {
     if (!invite) return undefined;
-    const t = setTimeout(() => box.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600);
+    const t = setTimeout(() => (box.current?.querySelector('.rush-stage') ?? box.current)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 900);
     return () => clearTimeout(t);
   }, [invite, box]);
   return (
