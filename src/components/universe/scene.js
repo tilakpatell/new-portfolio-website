@@ -3227,6 +3227,7 @@ export async function create(canvas, ctx) {
   }
 
   // ── Keys, while flying ──
+  const held = new Set(); // the keys down now (as e.key, lower case) that steer
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
@@ -3278,6 +3279,7 @@ export async function create(canvas, ctx) {
       e.preventDefault();
       heard();
       if (!e.repeat) fire();
+      held.add(key);
       state.keys.fire = true;
       ctx.invalidate();
       return;
@@ -3312,6 +3314,7 @@ export async function create(canvas, ctx) {
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
+    held.add(key);
     state.keys[k] = true;
     ctx.invalidate();
   };
@@ -3348,15 +3351,31 @@ export async function create(canvas, ctx) {
     const k = FOOT_KEYS[key];
     if (!k || (onControl && ARROWS.has(key))) return;
     e.preventDefault();
+    held.add(key);
     state.keys[k] = true;
     state.lastInput = performance.now();
     ctx.invalidate();
   };
+  // A key let go: what it means is let go, in the ship and on foot (so
+  // nothing sticks from one to the other), unless another key still down
+  // means the same thing now. (D is the roll in the ship and the turn on
+  // foot, and the up arrow the nose in the ship and walking on foot: letting
+  // go of D mustn't let go of the right arrow's turn, nor the up arrow of W's
+  // throttle.)
   const onKeyUp = (e) => {
     const key = e.key.toLowerCase();
-    for (const map of [KEYS, FOOT_KEYS]) if (map[key]) state.keys[map[key]] = false;
+    held.delete(key);
+    const now = onFoot() ? FOOT_KEYS : KEYS;
+    for (const map of [KEYS, FOOT_KEYS]) {
+      const k = map[key];
+      if (!k) continue;
+      let still = false;
+      for (const h of held) if (now[h] === k) still = true;
+      state.keys[k] = still;
+    }
   };
   const onBlur = () => {
+    held.clear();
     state.keys = {};
     state.boostBtn = false;
     state.climbBtn = 0;
@@ -3585,6 +3604,7 @@ export async function create(canvas, ctx) {
       select(next.selected ?? null);
       if (next.frozen) {
         endDrag();
+        held.clear();
         state.keys = {};
         engine?.set({ speed: 0, on: false });
       }
