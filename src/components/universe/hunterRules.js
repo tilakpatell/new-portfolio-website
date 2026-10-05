@@ -255,7 +255,7 @@ export function blocked(a, b, solids) {
 }
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
-// galaxy's Separatists, First Order and Sith, galaxy/hunted.js)
+// galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
 export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KINDS = HUNTER_KINDS, solids = [], lasers: laserCount = 28 } = {}) {
   const allSolids = typeof solids === 'function' ? solids : () => solids;
   const live = []; // hunters in flight

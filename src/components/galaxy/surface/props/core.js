@@ -1672,6 +1672,12 @@ export const SCATTER = {
     list.push(part(new THREE.ConeGeometry(1, 7, 6), { at: [0, 31, 0], color, to: 'stone' }));
     return { parts: [{ geometry: k.geometry(list), material: k.mats.stone }], radius: 3.4 };
   },
+  // a storm buoy off Tipoca City: a float, a mast, its light
+  buoy(k) {
+    const list = [part(cyl(0.9, 0.6, 1.6, 10), { at: [0, -0.8, 0], color: '#d8dde2', to: 'paint' }), part(cyl(0.12, 0.08, 3, 6), { at: [0, 0.8, 0], color: '#8a949e', to: 'paint' })];
+    const glow = [part(new THREE.SphereGeometry(0.3, 8, 6), { at: [0, 3.9, 0], color: lit('#ff4a3a', 3), to: 'glow' })];
+    return { parts: [{ geometry: k.geometry(list), material: k.mats.paint }, { geometry: k.geometry(glow), material: k.mats.glow, shadow: false }], radius: null };
+  },
   // a tuft of long grass, some of it in flower
   grass(k, { color = '#6f9a3e', flower = null } = {}) {
     const r = rng(7);

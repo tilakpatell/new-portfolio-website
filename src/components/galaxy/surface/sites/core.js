@@ -720,6 +720,12 @@ export const SITES = {
       { kind: 'kpad', at: [-260, 330], abs: true, y: 22, solid: false, opts: { r: 22 } },
       { kind: 'kpad', at: [460, 260], abs: true, y: 22, solid: false, opts: { r: 26 } },
     ],
+    // (lifted from the sea floor to the waves: sink below nothing)
+    scatter: [
+      { kind: 'tipoca', n: 30, within: [360, 1000], scale: [0.8, 1.5], sink: -40, dry: false, solid: false },
+      { kind: 'tipoca', n: 10, within: [360, 1000], scale: [0.8, 1.3], sink: -40, dry: false, solid: false, opts: { style: 'tower' } },
+      { kind: 'buoy', n: 40, within: [80, 640], scale: [0.8, 1.2], sink: -40.6, dry: false, solid: false },
+    ],
     life: [
       { kind: 'clone', n: 20, path: [[188, 36], [194, 36], [200, 36], [206, 36], [212, 36], [188, 43], [194, 43], [200, 43], [206, 43], [212, 43], [188, 50], [194, 50], [200, 50], [206, 50], [212, 50], [188, 57], [194, 57], [200, 57], [206, 57], [212, 57]], still: true, face: Math.PI, name: 'Clone trooper', says: ['Sir!', 'Yes, sir.', 'We’re ready to ship out, sir. Just waiting on the order.', 'Training’s over when the Kaminoans say it’s over.'] },
       { kind: 'clone', n: 6, path: [[176, 22], [224, 22], [226, 78], [174, 78]], speed: 1.5, name: 'Clone cadet', says: ['Left, right, left. Sir!', 'Excuse us, sir. Drill.'] },

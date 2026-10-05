@@ -15,7 +15,7 @@ import { RIDES } from './rides';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 
-const CREW_MODELS = { luke: 'luke', han: 'han', artoo: 'r2d2' }; // (scene.js's)
+const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
 const QUIET = 3000; // ms with nothing from them: gone
 const SPECS = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s]));
