@@ -149,8 +149,9 @@ const PAGES = {
   '/music': {
     title: 'The music room',
     tips: [
-      ['Tune up', 'Pick a Sa and a raga, then start the tanpura.'],
-      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa.'],
+      ['The music planet', 'The page opens on a courtyard at dusk: click it, then W A S D to walk, the arrows to turn, drag to look (on a phone, the stick and a swipe). Walk up to an instrument and press E to play it; whatever sounds glows, and its notes float up.'],
+      ['Tune up', 'Pick a Sa and a raga (forty of them, or one of your own), then start the tanpura.'],
+      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa. Hold Space on the sitar for a chikari roll; Record the room keeps what you play.'],
     ],
   },
   '/terminal': {

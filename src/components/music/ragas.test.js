@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RAGAS, THAATS, TIMES, customRaga } from './ragas';
 import { parsePhrase, tarabHz } from './sitarRules';
-import { CHROMATIC, FIRST_STRING, SWARA, frets, isRaga, ragaOf } from './tuning';
+import { CHROMATIC, FIRST_STRING, SWARA, frets, isRaga, ragaOf, swaraOf } from './tuning';
 
 const NOTE = /^([SrRgGmMPdDnN])([.']?)$/;
 // every swara a line of sargam plays, meend and krintan targets included
@@ -123,5 +123,18 @@ describe('a raga of your own', () => {
     expect(ragaOf('nonsense').name).toBe('Yaman');
     // its frets and sympathetic strings follow it like any other's
     expect(frets('custom', { set: 'raga' }).length).toBeGreaterThan(0);
+  });
+});
+
+describe('naming a note heard', () => {
+  it('finds the swara and its octave, in or out of tune by a little', () => {
+    expect(swaraOf(1)).toEqual({ s: 'S', oct: 0 });
+    expect(swaraOf(1.5)).toEqual({ s: 'P', oct: 0 });
+    expect(swaraOf(0.75)).toEqual({ s: 'P', oct: -1 });
+    expect(swaraOf(2)).toEqual({ s: 'S', oct: 1 });
+    expect(swaraOf(1.99)).toEqual({ s: 'S', oct: 1 });
+    expect(swaraOf(0.999)).toEqual({ s: 'S', oct: 0 });
+    expect(swaraOf(32 / 27)).toEqual({ s: 'g', oct: 0 }); // Darbari's low Ga is still Ga
+    expect(swaraOf((15 / 8) * 0.5)).toEqual({ s: 'N', oct: -1 });
   });
 });
