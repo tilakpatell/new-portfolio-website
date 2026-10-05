@@ -8,12 +8,15 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ── The route ──
 
-// The way the scouts go: the waypoints sampled every `step` metres, every
-// sample pushed `margin` clear of whatever's solid there (a trunk, a rock,
-// a hut), then smoothed (the ends kept) and pushed clear again, so a bike on
-// it, or a little either side of it, never meets a tree unless it's knocked
-// off its line. → { pts, len, at(s) → { x, z, tx, tz }, project(x, z) → s }
-export function planRoute(waypoints, solids, { step = 4, margin = 2.6, smooth = 3 } = {}) {
+// The way the scouts go: the waypoints sampled every `step` metres, and any
+// sample too near something solid (a trunk, a rock, a hut) moved sideways,
+// across the way, to the nearest spot `margin` clear of everything round it
+// (so between two trees too close together it goes round them both, where
+// pushing it out of one would put it in the other); then smoothed (the ends
+// kept) and cleared again, so a bike riding any lane of it never touches a
+// tree unless it's knocked off its line.
+// → { pts, len, at(s) → { x, z, tx, tz }, project(x, z) → s }
+export function planRoute(waypoints, solids, { step = 3, margin = 2.8, smooth = 3, reach = 16 } = {}) {
   let pts = [];
   for (let i = 0; i < waypoints.length - 1; i++) {
     const [ax, az] = waypoints[i];
@@ -22,19 +25,32 @@ export function planRoute(waypoints, solids, { step = 4, margin = 2.6, smooth = 
     for (let k = 0; k < n; k++) pts.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n]);
   }
   pts.push([...waypoints[waypoints.length - 1]]);
+  const clearAt = (x, z) => !solids.near(x, z, margin + 8).some((sol) => pushOut(sol, x, z, margin));
   const clear = () => {
-    for (const p of pts)
-      for (let pass = 0; pass < 3; pass++) {
-        let moved = false;
-        for (const sol of solids.near(p[0], p[1], margin + 8)) {
-          const push = pushOut(sol, p[0], p[1], margin);
-          if (!push) continue;
+    pts.forEach((p, i) => {
+      if (clearAt(p[0], p[1])) return;
+      // across the way here, from the samples either side
+      const a = pts[Math.max(0, i - 1)];
+      const b = pts[Math.min(pts.length - 1, i + 1)];
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / l;
+      const nz = (b[0] - a[0]) / l;
+      for (let d = 0.5; d <= reach; d += 0.5)
+        for (const sd of [d, -d])
+          if (clearAt(p[0] + nx * sd, p[1] + nz * sd)) {
+            p[0] += nx * sd;
+            p[1] += nz * sd;
+            return;
+          }
+      // (nowhere clear within reach: out of whatever it's in, as best it can)
+      for (const sol of solids.near(p[0], p[1], margin + 8)) {
+        const push = pushOut(sol, p[0], p[1], margin);
+        if (push) {
           p[0] += push[0];
           p[1] += push[1];
-          moved = true;
         }
-        if (!moved) break;
       }
+    });
   };
   clear();
   for (let k = 0; k < smooth; k++) {
@@ -95,12 +111,28 @@ export function planRoute(waypoints, solids, { step = 4, margin = 2.6, smooth = 
   return { pts, len, at, project };
 }
 
+// How many places along the route (every metre) a bike riding one of
+// `lanes` would touch something solid: none, for a route that's fit to race.
+export function laneHits(route, lanes, solids, r = 0.8) {
+  let hits = 0;
+  for (let s = 0; s <= route.len; s += 1) {
+    const p = route.at(s);
+    for (const lane of lanes) {
+      const x = p.x - p.tz * lane;
+      const z = p.z + p.tx * lane;
+      if (solids.near(x, z, r + 4).some((sol) => pushOut(sol, x, z, r))) hits++;
+    }
+  }
+  return hits;
+}
+
 // ── The scouts ──
 
 const COUNT = 3; // seconds before the off
 const STEP = 0.05; // the longest step the rules take at once
 const SCOUT_R = 0.8; // a scout on its bike, seen from above
 const CRASH = 12; // m/s: meet a solid faster than this and you're down
+const KNOCKED = 0.4; // metres off its lane: only then can a tree have it
 const BUMP = 1.7; // metres apart: you've ridden into it
 const STALL = 1.6; // seconds: thrown off, and back on
 const SHOT = { near: 4, far: 55, every: 2.4, first: 1.5, stagger: 0.6 };
@@ -192,8 +224,10 @@ function step(chase, h, { you, solids }, out) {
       return;
     }
     const p = scoutAt(chase, sc.id);
-    // into a tree (or a rock, a hut) at speed: down
-    if (solids)
+    // knocked off its line into a tree (or a rock, a hut) at speed: down. (One
+    // riding its own line never is: the route's clear of everything by more
+    // than a lane, and a brush with bark at the edge isn't a crash.)
+    if (solids && Math.abs(sc.off - sc.lane) > KNOCKED)
       for (const sol of solids.near(p.x, p.z, SCOUT_R + 4))
         if (pushOut(sol, p.x, p.z, SCOUT_R) && sc.speed * k > CRASH) {
           down(chase, sc, 'tree', out);
@@ -275,6 +309,27 @@ export function aimAssist(from, dir, targets, { cone = 0.12, range = 90 } = {}) 
       best = [v[0] / l, v[1] / l, v[2] / l];
     }
   }
+  return best;
+}
+
+// How far a shot from (x, z) along the unit (dx, dz) goes before a trunk
+// (or a rock: any circle that's solid) stops it, within range; or null.
+export function firstSolid(x, z, dx, dz, solids, range) {
+  let best = null;
+  const seen = new Set();
+  for (let s = 0; s <= range + 6; s += 8)
+    for (const sol of solids.near(x + dx * s, z + dz * s, 6)) {
+      if (seen.has(sol) || sol.type !== 'circle' || sol.off) continue;
+      seen.add(sol);
+      // where the ray meets the circle
+      const ox = sol.x - x;
+      const oz = sol.z - z;
+      const along = ox * dx + oz * dz;
+      const miss = ox * ox + oz * oz - along * along;
+      if (miss > sol.r * sol.r) continue;
+      const t = along - Math.sqrt(sol.r * sol.r - miss);
+      if (t >= 0 && t <= range && (best === null || t < best)) best = t;
+    }
   return best;
 }
 

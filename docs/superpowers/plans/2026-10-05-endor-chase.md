@@ -31,10 +31,10 @@
 
 **Interfaces:**
 - Consumes: `pushOut(solid, x, z, r)` and `createSolids()` from `../walker`.
-- Produces: `planRoute(waypoints: [x, z][], solids, { step = 4, margin = 2.6, smooth = 3 }) → { pts: [x, z][], len: number, at(s) → { x, z, tx, tz }, project(x, z) → s }`.
+- Produces: `planRoute(waypoints: [x, z][], solids, { step = 3, margin = 2.8, smooth = 3, reach = 16 }) → { pts: [x, z][], len: number, at(s) → { x, z, tx, tz }, project(x, z) → s }`; `laneHits(route, lanes, solids, r = 0.8) → number`.
 
 - [ ] Test `planRoute`: (a) straight two-point route, no solids: `len` ≈ distance, `at(len / 2)` is the midpoint, tangent unit length; (b) a circle solid r 2 on the midpoint of a waypoint pair: every `pts` sample is ≥ 2 + 2.6 − 0.05 from its centre; (c) `project` of a point beside the route returns its `s` within one step.
-- [ ] Implement: sample each segment every `step`; push each sample out of every `solids.near(x, z, r)` with `pushOut(sol, x, z, margin)` (three passes); `smooth` passes of neighbour averaging keeping the ends fixed, re-pushing after each; cumulative lengths for `at` (linear between samples) and `project` (nearest sample).
+- [ ] Implement: sample each segment every `step`; move any sample that isn't `margin` clear sideways (across the way, ±0.5 m steps up to `reach`) to the nearest clear spot, falling back to `pushOut` (pushing out of one trunk lands in the next in a dense forest); `smooth` passes of neighbour averaging keeping the ends fixed, re-pushing after each; cumulative lengths for `at` (linear between samples) and `project` (nearest sample).
 - [ ] `npx vitest run src/components/galaxy/surface/missions/chase.test.js` passes.
 
 ### Task 2: The scouts and the result
@@ -46,9 +46,9 @@
   - `newChase(mission, route) → chase` (`{ t, phase: 'count' | 'run' | 'won' | 'lost', count, stall, scouts: [{ id, s, lane, off, vOff, speed, hp, down, how, fireIn }] }`)
   - `stepChase(chase, dt, { you: { x, z, vx, vz }, solids }) → events[]`: `{ type: 'count', n }`, `{ type: 'go' }`, `{ type: 'down', id, how: 'shot' | 'tree' }`, `{ type: 'bump', id, push: [x, z] }`, `{ type: 'shoot', id }`, `{ type: 'escaped', id }`, `{ type: 'won' }`, `{ type: 'lost' }`
   - `hitScout(chase, id) → events[]`, `knockYou(chase)` (sets `stall` 1.6 s), `scoutAt(chase, i) → { x, z, yaw, s }` (the chase keeps its route), `aimAssist(from, dir, targets, { cone = 0.12, range = 90 }) → [dx, dy, dz] | null`, `starsFor(mission, t) → 0..3`, `chaseView(chase) → { phase, count, t, left, total, lead }`
-- Values: count 3 s; scouts move by `s += speed * k * dt` (k 0.85 when the scout is > 140 m ahead of you along the route, 1.12 when < 25 m, else 1); lane spring `vOff += (−(off − lane)·6 − vOff·4)·dt`; down by tree when its r 0.8 circle meets a solid at speed > 12; bump when you're within 1.7 m: `vOff += side·max(9, |lateral relative speed|·1.5)`, your push the opposite; a hit takes 1 hp and kicks `vOff` ±4 (alternating); shoot when you're 4–55 m behind it, every 2.4 s (first after 1.5 + 0.6·i s); escaped at `s ≥ len`; dt split into ≤ 0.05 s steps.
+- Values: count 3 s; scouts move by `s += speed * k * dt` (k 0.85 when the scout is > 140 m ahead of you along the route, 1.12 when < 25 m, else 1); lane spring `vOff += (−(off − lane)·6 − vOff·4)·dt`; down by tree when, knocked more than 0.4 m off its lane, its r 0.8 circle meets a solid at speed > 12 (never on its own line); bump when you're within 1.7 m: `vOff += side·max(9, |lateral relative speed|·1.5)`, your push the opposite; a hit takes 1 hp and kicks `vOff` ±4 (alternating); shoot when you're 4–55 m behind it, every 2.4 s (first after 1.5 + 0.6·i s); escaped at `s ≥ len`; dt split into ≤ 0.05 s steps.
 
-- [ ] Tests: count then go; scouts advance and the leader escapes → `escaped` then `lost`; shove into a tree → `down` how `tree`; three hits → one `down` how `shot`, a fourth hit nothing; all down → `won` once; overtaken scouts keep advancing; `stepChase(dt 1)` ≈ twenty 0.05 steps (no NaN); two `newChase` are independent; `aimAssist` picks the nearer-angled target inside the cone, null outside it; `starsFor` thresholds `[45, 60]` → 3, 2, 1.
+- [ ] Tests: count then go; scouts advance and the leader escapes → `escaped` then `lost`; shove into a tree → `down` how `tree`; three hits → one `down` how `shot` (fixture hp 3), a fourth hit nothing; all down → `won` once; overtaken scouts keep advancing; `stepChase(dt 1)` ≈ twenty 0.05 steps (no NaN); two `newChase` are independent; `aimAssist` picks the nearer-angled target inside the cone, null outside it; `starsFor` thresholds `[45, 60]` → 3, 2, 1.
 - [ ] Implement; tests pass.
 - [ ] Commit (rules).
 
@@ -56,7 +56,7 @@
 
 **Files:** Create `missions/index.js`; extend `missions/chase.test.js`
 
-**Interfaces:** Produces `MISSIONS.endor.chase` (`{ id, system, name, kind: 'chase', start: [x, z], yaw, waypoints, scouts: 4, gaps: [34, 48, 62, 76], lanes: [-1.3, 1.1, -0.4, 0.8], speeds: [31, 32.5, 30, 33.5], hp: 3, stars: [45, 60], achievement: 'speederchase', lines }`) and `missionOf(system, id)`.
+**Interfaces:** Produces `MISSIONS.endor.chase` (`{ id, system, name, kind: 'chase', start: [x, z], yaw, waypoints, scouts: 4, gaps: [34, 48, 62, 76], lanes: [-1.3, 1.1, -0.4, 0.8], speeds: [31, 32.5, 30, 33.5], hp: 4, stars: [20, 35], achievement: 'speederchase', lines }`) and `missionOf(system, id)`.
 
 - Waypoints: `[60, 250] → [-40, 330] → [-210, 250] → [-300, 70] → [-220, -120] → [-40, -230] → [120, -170] → [236, -28]` (the scouts' camp to the bunker's door, about 1.25 km).
 - [ ] Test: lengths of gaps, lanes and speeds equal `scouts`; every system with a mission has a surface site; `missionOf('endor', 'chase')` returns it, unknown ids null.
@@ -80,3 +80,7 @@
 - [ ] HUD: the count, scouts left (four marks), the leading scout's way to the bunker (a bar), the clock; result card: won (time, stars, best, kept as `tp-galaxy-missions`) or lost; **Again** (`input.restart()`), **Back to the system** (`/galaxy/endor`).
 - [ ] `systems.js` Endor: `status: 'live'`, `to: '/galaxy/endor/surface?mission=chase'`; `speederchase` achievement; the lines.
 - [ ] Gate: `node scripts/autopilot-check.mjs --routes /galaxy/endor/surface?mission=chase,/galaxy/endor/mission`; screenshots read; PR; CI; merge.
+
+## Calibration (done while building)
+
+A rules-level bot rode the route at full boost and shot the nearest scout ahead, with skill tiers. With scouts 34–76 m ahead and three hits, a strong rider won in under 3 s; the chase now starts them 70–150 m ahead with four hits each and the bike's cannon at 0.3 s, trees stop bolts and hide scouts from aim assist, and the stars are under 20 s and 35 s. A rider who never boosts loses.

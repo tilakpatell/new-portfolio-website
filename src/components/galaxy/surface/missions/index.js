@@ -26,11 +26,11 @@ export const MISSIONS = {
       // the scouts' camp, out west through the redwoods and round to the bunker's door
       waypoints: [[60, 250], [-40, 330], [-210, 250], [-300, 70], [-220, -120], [-40, -230], [120, -170], [236, -28]],
       scouts: 4,
-      gaps: [34, 48, 62, 76],
+      gaps: [70, 95, 120, 150],
       lanes: [-1.3, 1.1, -0.4, 0.8],
       speeds: [31, 32.5, 30, 33.5],
-      hp: 3,
-      stars: [45, 60],
+      hp: 4,
+      stars: [20, 35],
       achievement: 'speederchase',
       lines: {
         start: {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from '../walker';
-import { aimAssist, chaseView, hitScout, knockYou, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
+import { aimAssist, chaseView, firstSolid, hitScout, knockYou, laneHits, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
 
 const none = createSolids();
 
@@ -19,20 +19,30 @@ describe('the chase: its route', () => {
     const solids = createSolids();
     solids.circle(50, 0, 2);
     const route = planRoute([[0, 0], [100, 0]], solids);
-    for (const [x, z] of route.pts) expect(Math.hypot(x - 50, z)).toBeGreaterThanOrEqual(2 + 2.6 - 0.05);
+    for (const [x, z] of route.pts) expect(Math.hypot(x - 50, z)).toBeGreaterThanOrEqual(2 + 2.8 - 0.05);
   });
 
   it('keeps clear even when a waypoint is inside a trunk', () => {
     const solids = createSolids();
     solids.circle(60, 40, 2.5);
     const route = planRoute([[0, 0], [60, 40], [120, 0]], solids);
-    for (const [x, z] of route.pts) expect(Math.hypot(x - 60, z - 40)).toBeGreaterThanOrEqual(2.5 + 2.6 - 0.05);
+    for (const [x, z] of route.pts) expect(Math.hypot(x - 60, z - 40)).toBeGreaterThanOrEqual(2.5 + 2.8 - 0.05);
   });
 
   it('starts and ends where it was asked to', () => {
     const route = planRoute([[3, 4], [40, -20], [90, 10]], none);
     expect(route.pts[0]).toEqual([3, 4]);
     expect(route.pts[route.pts.length - 1]).toEqual([90, 10]);
+  });
+
+  it('keeps every scout’s lane clear through a dense forest', () => {
+    // a forest as thick as Endor's and more: a trunk every 20 m or so
+    const solids = createSolids();
+    let seed = 7;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 700; i++) solids.circle(rand() * 600 - 300, rand() * 600 - 300, 1 + rand() * 1.6);
+    const route = planRoute([[-280, -250], [-100, 60], [120, -40], [270, 260]], solids);
+    expect(laneHits(route, [-1.3, 1.1, -0.4, 0.8], solids)).toBe(0);
   });
 
   it('finds how far along it a point beside it is', () => {
@@ -89,7 +99,7 @@ describe('the chase: the scouts and how it ends', () => {
 
   it('brings down a scout shoved off its line into a tree', () => {
     const solids = createSolids();
-    solids.circle(150, 4.5, 1.5);
+    solids.circle(150, 4.4, 1.5);
     const route = planRoute([[0, 0], [400, 0]], solids);
     const c = started(route, { ...MISSION, scouts: 1, gaps: [100], lanes: [0.6], speeds: [30] });
     run(c, 1.2, { you: far, solids });
@@ -97,6 +107,15 @@ describe('the chase: the scouts and how it ends', () => {
     const evs = run(c, 1.5, { you: far, solids });
     expect(evs).toContainEqual({ type: 'down', id: 0, how: 'tree' });
     expect(evs).toContainEqual({ type: 'won' });
+  });
+
+  it('never brings down a scout riding its own line, even brushing bark', () => {
+    const solids = createSolids();
+    const route = planRoute([[0, 0], [400, 0]], createSolids());
+    solids.circle(150, 2.2, 1.5); // put there after the route was planned: it overlaps the lane
+    const c = started(route, { ...MISSION, scouts: 1, gaps: [100], lanes: [0.6], speeds: [30] });
+    const evs = run(c, 3, { you: far, solids });
+    expect(evs.filter((e) => e.type === 'down')).toEqual([]);
   });
 
   it('takes three hits to bring one down, and a fourth does nothing', () => {
@@ -204,6 +223,15 @@ describe('the chase: aiming and scoring', () => {
     expect(aimAssist([0, 0, 0], [0, 0, 1], [{ x: 30, y: 0, z: 30 }])).toBeNull();
     expect(aimAssist([0, 0, 0], [0, 0, 1], [{ x: 0, y: 0, z: 120 }])).toBeNull();
     expect(aimAssist([0, 0, 0], [0, 0, 1], [{ x: 0, y: 0, z: -10 }])).toBeNull();
+  });
+  it('stops a shot at the first trunk in its way', () => {
+    const solids = createSolids();
+    solids.circle(30, 0, 2);
+    solids.circle(60, 0, 2);
+    expect(firstSolid(0, 0, 1, 0, solids, 90)).toBeCloseTo(28, 5);
+    expect(firstSolid(0, 5, 1, 0, solids, 90)).toBeNull();
+    expect(firstSolid(0, 0, -1, 0, solids, 90)).toBeNull();
+    expect(firstSolid(0, 0, 1, 0, solids, 20)).toBeNull();
   });
   it('gives stars by the time it took', () => {
     expect(starsFor(MISSION, 40)).toBe(3);
