@@ -19,8 +19,10 @@
 //           (outfit.js), c: kills, w: where on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //         (flags: hidden, boosting, and safe: just back, your hits don't count)
-//   shot  [x, y, z, vx, vy, vz]                          a bolt fired (for drawing it)
-//   hit   { d: damage }                                  to the pilot a bolt of yours hit
+//   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
+//                                                       weapon (weapons.js's code), 0 if left off
+//   hit   { d: damage }                                  to the pilot a bolt of yours hit (up to
+//                                                       DAMAGE_MAX, a heavy round's)
 //   down  { b: who shot you down }                       to everyone, when your shields go
 //   pack  [[id, kind, x, y, z, vx, vy, vz, hits left], …] five times a second while hunters are
 //                                                       after you and someone's there to see ([]: gone)
@@ -29,6 +31,9 @@
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
 //         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
+//   siege { e, m, t, x, l }                              the Citadel's siege (siege.js): its epoch,
+//                                                       your share of each part's damage, the
+//                                                       totals you know, when it went up, the last hit
 //   cur   [x, y, touch]                                  off the universe map: your pointer
 //                                                       (x from the middle of the window, y
 //                                                       down the page, in px), or with touch
@@ -52,8 +57,9 @@ export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden
 export const PACK_MS = 200; // how often the hunters after you go out
 export const PACK_MAX = 8; // hunters in one of those, at most
-export const PUNCH_MAX = 3; // hits one bolt is worth on a hunter, at most (outfit.js's fusion cannon)
+export const PUNCH_MAX = 24; // hits one shot is worth on a hunter, at most (a heavy round, weapons.js, from a fusion-fitted ship)
 export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
+export const DAMAGE_MAX = 30; // a heavy round from another pilot (weapons.js)
 export const BOLT_LIFE = 1.1; // seconds a bolt flies, at the most (targeting.js's AIM.life, with room to spare)
 export const GUARD = {
   shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
@@ -64,7 +70,7 @@ export const GUARD = {
   reach: 95, // map units: further than this from one of your hunters, they couldn't have hit it (a bolt at the boost goes 85)
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 
@@ -124,7 +130,11 @@ export function readPose(data) {
   };
 }
 
-export const writeShot = (p, v) => [p.x, p.y, p.z, v[0], v[1], v[2]].map((n) => Math.round(n * 1000) / 1000);
+export const writeShot = (p, v, w = 0) => {
+  const out = [p.x, p.y, p.z, v[0], v[1], v[2]].map((n) => Math.round(n * 1000) / 1000);
+  if (w) out.push(w);
+  return out;
+};
 
 // a shot as it came in: { p: [x, y, z], v: [vx, vy, vz] }, or null; it has
 // to start near where the pilot was last seen (`from`, a pose, if known)
@@ -135,11 +145,12 @@ export function readShot(data, from = null) {
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
   if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
-  return { p: n.slice(0, 3), v: n.slice(3) };
+  const w = Number.isInteger(data[6]) && data[6] >= 0 && data[6] <= 2 ? data[6] : 0;
+  return { p: n.slice(0, 3), v: n.slice(3), w };
 }
 
 export function readHit(data) {
-  const d = num(data?.d, 0, DAMAGE);
+  const d = num(data?.d, 0, DAMAGE_MAX);
   return d === null || d <= 0 ? null : d;
 }
 

@@ -127,13 +127,18 @@ import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, o
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
+import { arsenalOf, createArmory, fan, steer } from './weapons';
+import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege';
+import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
 const STREAKS = 220;
-const BOLTS = 16; // shots in flight at once
+const BOLTS = 40; // shots in flight at once (a spread throws five)
+const MISSILES = 8; // heavy rounds in flight at once (weapons.js)
+const SIEGE_NEAR = 420; // map units from the Citadel's middle: its parts can be locked on to
 // seconds between shots with the trigger held (the X-wing's four cannons
 // fire in turn, so it's quickest; the RV is a man with a gun out of the window)
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -649,6 +654,79 @@ export async function create(canvas, ctx) {
   const fleet = createFleet(); // the ships that are models, shared
   const traffic = reduced ? null : createTraffic(map, { small, fleet });
   const pops = createCrash(map);
+
+  // heavy rounds (weapons.js): a glowing slug with a halo and a tail of
+  // fire, homing on what the guns had locked when it went
+  const glowTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g2 = c.getContext('2d');
+    const grad = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.3, 'rgba(255,255,255,0.45)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g2.fillStyle = grad;
+    g2.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const missileMat = new THREE.MeshBasicMaterial({ color: '#ffb347', toneMapped: false });
+  const missileGlowMat = new THREE.SpriteMaterial({ map: glowTex, color: '#ffb347', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+  const missileTailMat = new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+  const missileGeo = new THREE.OctahedronGeometry(0.035, 0).scale(1, 1, 2.6);
+  const missileTailGeo = new THREE.ConeGeometry(0.03, 0.5, 8, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 0.3); // (out behind it, along +z)
+  const missiles = Array.from({ length: MISSILES }, () => {
+    const m = new THREE.Mesh(missileGeo, missileMat);
+    const halo = new THREE.Sprite(missileGlowMat);
+    halo.scale.setScalar(0.42);
+    const tail = new THREE.Mesh(missileTailGeo, missileTailMat);
+    m.add(halo, tail);
+    m.visible = false;
+    m.rotation.order = 'YXZ';
+    m.userData = { life: 0, v: [0, 0, 0], target: null };
+    map.add(m);
+    return m;
+  });
+
+  // the Citadel's siege (siege.js has the rules, citadelSiege.js draws it):
+  // what's left of it is shared with everyone online, and comes back
+  const CITADEL = wonderById('citadel');
+  const citadelGeo = CITADEL ? citadelGeometry(CITADEL) : null;
+  const siege = createSiege();
+  const siegeView = citadelGeo ? createCitadelSiege({ parent: map, model: deep.groupOf('citadel'), geo: citadelGeo, small }) : null;
+  const SOLIDS_OPEN = SOLIDS.filter((o) => o.id !== 'citadel' && !o.id.startsWith('citadel-')); // (with it gone, there's nothing there to hit)
+  let siegeSt = siege.state();
+  let siegeLook = 0; // when siegeSt was last read (for its countdowns)
+  let siegeSent = 0; // when your word on it last went out
+  let siegeOwed = false; // something of yours to tell, soon
+  let siegeMine = false; // you've hit it this life (for the achievement)
+  const still3 = new THREE.Vector3();
+  const genTargets = citadelGeo ? citadelGeo.gens.map((p, i) => ({ id: `cit:g${i}`, siegePart: i, at: new THREE.Vector3(...p), vel: still3, size: citadelGeo.gen * 1.2, kind: 'generator', name: 'Shield generator', hp: 1, hpMax: 100 })) : [];
+  const coreTarget = citadelGeo ? { id: 'cit:core', siegePart: CORE, at: new THREE.Vector3(), vel: still3, size: citadelGeo.core * 0.3, kind: 'citadel', name: 'Citadel core', hp: 1, hpMax: 100 } : null;
+  const citadelMid = citadelGeo ? new THREE.Vector3(...citadelGeo.center) : null;
+  // what of it the guns can lock on to, from where the ship is: the
+  // generators still running, then (with the shield down) the core, at the
+  // point of it nearest the ship
+  const siegeTargets = (s) => {
+    if (!citadelGeo || siegeSt.down) return [];
+    const d = apart(s.x, s.y, s.z, citadelMid.x, citadelMid.y, citadelMid.z);
+    if (d > SIEGE_NEAR) return [];
+    const out = [];
+    for (let i = 0; i < GENS; i++) {
+      if (siegeSt.gens[i]) continue;
+      genTargets[i].hp = Math.max(1, siegeSt.hp[i] * 100);
+      out.push(genTargets[i]);
+    }
+    if (!siegeSt.shield) {
+      coreTarget.at.set(s.x - citadelMid.x, s.y - citadelMid.y, s.z - citadelMid.z).setLength(citadelGeo.core).add(citadelMid);
+      coreTarget.hp = Math.max(1, siegeSt.core * 100);
+      out.push(coreTarget);
+    }
+    return out;
+  };
+  const readSiegeState = () => {
+    siegeSt = siege.state(Date.now());
+    siegeLook = performance.now();
+  };
   // shaders made off the main thread before something is first drawn
   // (KHR_parallel_shader_compile), so nothing new stalls a frame: a ship
   // arriving, a loaded model, the cockpit
@@ -1364,6 +1442,10 @@ export async function create(canvas, ctx) {
     if (!state.kind) return;
     state.model?.paint(coat());
     boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
+    const heavy = arsenalOf(state.kind).heavy;
+    missileMat.color.set(heavy).multiplyScalar(3);
+    missileGlowMat.color.set(heavy).multiplyScalar(2.2);
+    missileTailMat.color.set(heavy).multiplyScalar(2);
     const look = PLUME[state.kind] ?? PLUME.falcon;
     streak.setTint(plumeColor());
     for (const pl of plumes) pl.trail.setColors(plumeColor(), look.core);
@@ -1535,36 +1617,159 @@ export async function create(canvas, ctx) {
   // the nose, bent onto the lead point when the guns are locked on and the
   // nose is near enough to it (targeting.js, as much as the aim-assist
   // setting allows); held, the guns keep firing at the ship's own pace
+  // the guns fitted for each ship (weapons.js): the blaster, the spread and
+  // heavy ordnance, R or 1 2 3 to change
+  let armory = null;
+  const arms = () => {
+    if (!armory || armory.kind !== state.kind) armory = Object.assign(createArmory(state.kind), { kind: state.kind });
+    return armory;
+  };
+  const shotAt = new THREE.Vector3();
+  const jitter = () => Math.random() * 2 - 1;
+  // one bolt away, from `at` along `d` (unit) at `speed`
+  const spawnBolt = (at, d, speed, w, g) => {
+    const b = bolts.find((m) => !m.visible) ?? bolts[0];
+    b.position.copy(at);
+    const { heading, pitch } = aimAngles(d);
+    b.rotation.set(pitch, heading, 0);
+    const k = g.bolt * w.scale;
+    b.scale.set(k, k, 1 + (k - 1) * 0.4);
+    b.userData = { life: AIM.life * w.life, v: [d[0] * speed, d[1] * speed, d[2] * speed], punch: (g.punch ?? 1) * w.punch, damage: w.damage, heavy: false };
+    b.visible = true;
+  };
+  // a heavy round away, homing on whatever the guns have locked
+  const launch = (at, d, speed, w, g) => {
+    const m = missiles.find((x) => !x.visible) ?? missiles[0];
+    m.position.copy(at);
+    const { heading, pitch } = aimAngles(d);
+    m.rotation.set(pitch, heading, 0);
+    m.userData = { life: AIM.life * w.life, v: [d[0] * speed, d[1] * speed, d[2] * speed], punch: (g.punch ?? 1) * w.punch, damage: w.damage, heavy: true, homing: w.homing, target: state.lockTarget, age: 0 };
+    m.visible = true;
+    state.kick = Math.max(state.kick, 0.4);
+  };
+
+  // a shot from the nose (the X-wing's from each wingtip in turn): along
+  // the nose, bent onto the lead point when the guns are locked on and the
+  // nose is near enough to it (targeting.js, as much as the aim-assist
+  // setting allows); held, the guns keep firing at the ship's own pace,
+  // each weapon at its own multiple of it
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
     const g = state.stats;
-    if (!s || props.frozen || state.crash || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence) * 1000) return;
+    if (!s || props.frozen || state.crash) return;
+    const arm = arms();
+    const cadence = Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence);
+    if (!arm.ready(now, cadence)) {
+      if (arm.weapon.heavy && arm.ammo < 1 && now - (state.dryAt ?? 0) > 700) {
+        state.dryAt = now;
+        emit({ type: 'dry' });
+      }
+      return;
+    }
+    arm.fired(now);
+    const w = arm.weapon;
     state.lastShot = now;
     state.lastInput = now;
-    const b = bolts.find((m) => !m.visible) ?? bolts[0];
     const [fx, fz] = forward(s.heading);
     let dir = nose(s);
     if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), controls().assist);
-    const { heading, pitch } = aimAngles(dir);
     // from the guns fitted, their barrels in turn; or the ship's own
     const mods = state.model?.modules;
     if (mods?.muzzles.length) {
       state.barrel = (state.barrel + 1) % mods.muzzles.length;
-      map.worldToLocal(state.model.pivot.localToWorld(b.position.set(...mods.muzzles[state.barrel])));
+      map.worldToLocal(state.model.pivot.localToWorld(shotAt.set(...mods.muzzles[state.barrel])));
       mods.fire();
     } else {
       const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
-      b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
+      shotAt.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
     }
-    b.rotation.set(pitch, heading, 0);
-    b.scale.set(g.bolt, g.bolt, 1 + (g.bolt - 1) * 0.4);
-    const v = AIM.bolt + Math.max(0, s.speed);
-    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch };
-    b.visible = true;
-    net?.shot(b.position, b.userData.v);
-    emit({ type: 'fire' });
+    const speed = AIM.bolt * w.speed + Math.max(0, s.speed);
+    if (w.heavy) launch(shotAt, dir, speed, w, g);
+    else for (const d of fan(dir, w.count, w.cone, jitter)) spawnBolt(shotAt, d, speed, w, g);
+    net?.shot(shotAt, [dir[0] * speed, dir[1] * speed, dir[2] * speed], w.code);
+    emit({ type: 'fire', weapon: arm.id });
     ctx.invalidate();
+  };
+  // change weapons: R (Shift+R back), 1 2 3, or the phone's button
+  const pickWeapon = (i) => {
+    const arm = arms();
+    if (i === 'next' || i === 'back') arm.cycle(i === 'back' ? -1 : 1);
+    else if (!arm.select(i)) return;
+    emit({ type: 'weapon', id: arm.id, name: arm.name });
+    ctx.invalidate();
+  };
+
+  // a shot's step (from → to) into the Citadel: its generators, its shield
+  // while that's up, then its core (siege.js). → where it hit, or null
+  const sFrom = [0, 0, 0];
+  const sTo = [0, 0, 0];
+  const siegePoint = new THREE.Vector3();
+  const siegeHit = (from, to, punch, heavy) => {
+    if (!citadelGeo || siegeSt.down) return null;
+    if (apart(to.x, to.y, to.z, citadelMid.x, citadelMid.y, citadelMid.z) > citadelGeo.shield + 40) return null;
+    sFrom[0] = from.x;
+    sFrom[1] = from.y;
+    sFrom[2] = from.z;
+    sTo[0] = to.x;
+    sTo[1] = to.y;
+    sTo[2] = to.z;
+    let part = null;
+    let first = Infinity;
+    for (let i = 0; i < GENS; i++) {
+      if (siegeSt.gens[i]) continue;
+      const k = segmentSphere(sFrom, sTo, citadelGeo.gens[i], citadelGeo.gen);
+      if (k !== null && k < first) {
+        first = k;
+        part = i;
+      }
+    }
+    const k = segmentSphere(sFrom, sTo, citadelGeo.center, siegeSt.shield ? citadelGeo.shield : citadelGeo.core);
+    if (k !== null && k < first) {
+      first = k;
+      part = siegeSt.shield ? 'shield' : CORE;
+    }
+    if (part === null) return null;
+    siegePoint.copy(from).lerp(to, first);
+    const ev = siege.strike(part, punch, heavy, Date.now());
+    readSiegeState();
+    if (!ev) return siegePoint;
+    if (ev.type === 'shielded') {
+      siegeView?.shieldHit(siegePoint);
+      emit({ type: 'siege', what: 'shielded' });
+    } else if (ev.type === 'deflected') {
+      pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: 0.3 });
+      emit({ type: 'siege', what: 'deflected' });
+    } else {
+      // it took it: tell everyone soon, and the Council of Ricks takes notice
+      if (!siegeMine) {
+        siegeMine = true;
+        state.heat += 2;
+        director?.soon?.('council');
+      }
+      siegeOwed = true;
+      state.hitMark = 1;
+      if (typeof ev.part === 'number' && ev.part < GENS) siegeView?.genHit(ev.part);
+      if (ev.type === 'gen') {
+        pops.hit({ point: new THREE.Vector3(...citadelGeo.gens[ev.part]), normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: citadelGeo.gen * 1.2 });
+        if (!reduced) state.shake = Math.max(state.shake, 0.5);
+        emit({ type: 'siege', what: 'gen', left: ev.left, near: true });
+      } else if (ev.type === 'down') siegeDown(true);
+      else pops.hit({ point: siegePoint, normal: popDir.copy(siegePoint).sub(citadelMid).normalize(), radius: heavy ? 0.8 : 0.2 });
+    }
+    return siegePoint;
+  };
+  // it's gone up (yours, or news of it)
+  const siegeDown = (mine) => {
+    readSiegeState();
+    siegeOwed = true;
+    const near = Boolean(state.ship) && apart(state.ship.x, state.ship.y, state.ship.z, citadelMid.x, citadelMid.y, citadelMid.z) < 1600;
+    if (near && !reduced) {
+      state.shake = Math.max(state.shake, 1.2);
+      state.flare = Math.max(state.flare, 3);
+      state.kick = 1;
+    }
+    emit({ type: 'siege', what: 'down', mine: mine || siegeMine, near });
   };
   const popDir = new THREE.Vector3();
   const shotFrom = new THREE.Vector3();
@@ -1610,7 +1815,12 @@ export async function create(canvas, ctx) {
             emit({ type: 'kill', kind: ph.kind });
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
-        } else net?.hit(ph.id);
+        } else net?.hit(ph.id, d.damage);
+        continue;
+      }
+      // the Citadel (its shield, a generator, its core)
+      if (citadelGeo && siegeHit(shotFrom, b.position, d.punch ?? 1, false)) {
+        b.visible = false;
         continue;
       }
       const h = traffic?.hit(shotFrom, b.position);
@@ -1624,6 +1834,136 @@ export async function create(canvas, ctx) {
       }
     }
     return any;
+  };
+
+  // the heavy rounds: steered onto what they were locked on to, and off
+  // with a bang at the first thing they meet (or right by their target)
+  const toTarget = [0, 0, 0];
+  const boom = (m, point, big = false) => {
+    m.visible = false;
+    pops.hit({ point, normal: popDir.set(-m.userData.v[0], 3, -m.userData.v[2]).normalize(), radius: big ? 1.6 : 1 });
+    if (!reduced) state.shake = Math.max(state.shake, big ? 0.6 : 0.3);
+    state.flare = Math.max(state.flare, 1.4);
+    emit({ type: 'boom', big });
+  };
+  const moveMissiles = (dt) => {
+    let any = false;
+    for (const m of missiles) {
+      if (!m.visible) continue;
+      const d = m.userData;
+      d.life -= dt;
+      d.age += dt;
+      if (d.life <= 0) {
+        boom(m, m.position.clone());
+        continue;
+      }
+      any = true;
+      // homing, after a moment's straight run off the rails
+      const tg = d.target;
+      if (tg?.at && d.age > 0.12) {
+        toTarget[0] = tg.at.x - m.position.x;
+        toTarget[1] = tg.at.y - m.position.y;
+        toTarget[2] = tg.at.z - m.position.z;
+        const l = Math.sqrt(toTarget[0] * toTarget[0] + toTarget[1] * toTarget[1] + toTarget[2] * toTarget[2]) || 1;
+        toTarget[0] /= l;
+        toTarget[1] /= l;
+        toTarget[2] /= l;
+        steer(d.v, toTarget, d.homing, dt);
+      }
+      shotFrom.copy(m.position);
+      m.position.x += d.v[0] * dt;
+      m.position.y += d.v[1] * dt;
+      m.position.z += d.v[2] * dt;
+      const { heading, pitch } = aimAngles([d.v[0], d.v[1], d.v[2]]);
+      m.rotation.set(pitch, heading, 0);
+      // right by its target: straight into it (a step to its middle meets it)
+      const to = tg?.at && tg.at.distanceTo(m.position) < (tg.size ?? 0.3) + 0.35 && tg.siegePart === undefined ? tg.at : m.position;
+      const hh = hunters?.hit(shotFrom, to, d.punch);
+      if (hh) {
+        if (hh.down) {
+          emit({ type: 'kill', kind: hh.kind });
+          state.heat += 1;
+        }
+        state.hitMark = 1;
+        boom(m, hh.at, hh.down);
+        continue;
+      }
+      const ph = pilots.hit(shotFrom, to, d.punch);
+      if (ph) {
+        state.hitMark = 1;
+        if (ph.hunter) {
+          // one of the hunters after another pilot: theirs to take down
+          net?.hunterHit(ph.id, ph.hunter, d.punch);
+          if (ph.down) emit({ type: 'kill', kind: ph.kind });
+        } else net?.hit(ph.id, d.damage);
+        boom(m, ph.at, Boolean(ph.down));
+        continue;
+      }
+      if (citadelGeo) {
+        const at = siegeHit(shotFrom, m.position, d.punch, true);
+        if (at) {
+          boom(m, at.clone(), true);
+          continue;
+        }
+      }
+      const h = traffic?.hit(shotFrom, to);
+      if (h) {
+        if (!h.glance) {
+          emit({ type: 'kill', kind: h.kind });
+          state.heat += h.civil ? 1.5 : 1;
+        }
+        boom(m, h.at, !h.glance);
+      }
+    }
+    return any;
+  };
+
+  // the weapon readout (its name, the heavy rounds left, the next one
+  // filling) and the Citadel's state while you're near it; written only
+  // when something in them changes
+  let armsSig = '';
+  let siegeSig = '';
+  const placeArms = () => {
+    const el = props.arms?.current;
+    if (el) {
+      const on = flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen;
+      const arm = arms();
+      const sig = on ? `${arm.index}|${arm.ammo}|${Math.floor(arm.filling * 10)}` : '';
+      if (sig !== armsSig) {
+        armsSig = sig;
+        el.toggleAttribute('data-on', on);
+        if (on) {
+          el.dataset.weapon = arm.id;
+          const name = el.querySelector('.universe-arms-name');
+          if (name) name.textContent = arm.name;
+          el.querySelectorAll('.universe-arms-pip').forEach((pip, i) => {
+            pip.toggleAttribute('data-full', i < arm.ammo);
+            pip.style.setProperty('--fill', i === arm.ammo ? arm.filling.toFixed(2) : '0');
+          });
+        }
+      }
+    }
+    const sl = props.siege?.current;
+    if (!sl || !citadelGeo) return;
+    const s = state.ship;
+    const d = s ? apart(s.x, s.y, s.z, citadelMid.x, citadelMid.y, citadelMid.z) : Infinity;
+    const show = flying() && !onFoot() && !props.frozen && (d < 900 || (siegeSt.down && d < 3000));
+    let text = '';
+    if (show) {
+      if (siegeSt.down) {
+        const sec = Math.ceil(siegeSt.rebuildIn / 1000);
+        text = `Destroyed · the Ricks rebuild it in ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      } else if (siegeSt.shield) text = `Shield up · ${siegeSt.gensLeft} of ${GENS} generators running · knock them out`;
+      else text = `Shield down · core ${Math.max(1, Math.round(siegeSt.core * 100))}% · heavy ordnance only (3)`;
+    }
+    const sig = show ? text : '';
+    if (sig === siegeSig) return;
+    siegeSig = sig;
+    sl.toggleAttribute('data-on', show);
+    if (!show) return;
+    sl.dataset.phase = siegeSt.down ? 'down' : siegeSt.shield ? 'shield' : 'core';
+    const line = sl.querySelector('.universe-siege-state');
+    if (line) line.textContent = text;
   };
 
   // the height gauge: where the ship is between the floor and the ceiling,
@@ -1908,6 +2248,24 @@ export async function create(canvas, ctx) {
   // what the link to the other pilots reports: their hits on you, and
   // someone going down (a pop where they were; yours, if it was your shot)
   const onNet = (e) => {
+    if (e.type === 'siege') {
+      // another pilot's word on the Citadel: behind (an older life of it)? tell them how it is
+      if (e.msg.e < siege.epoch) {
+        siegeOwed = true;
+        return;
+      }
+      const near = Boolean(state.ship) && apart(state.ship.x, state.ship.y, state.ship.z, citadelMid?.x ?? 0, citadelMid?.y ?? 0, citadelMid?.z ?? 0) < 1600;
+      for (const ev of siege.receive(e.from, e.msg, Date.now())) {
+        readSiegeState();
+        if (ev.type === 'gen') emit({ type: 'siege', what: 'gen', left: ev.left, near });
+        else if (ev.type === 'down') siegeDown(false);
+        else if (ev.type === 'rebuilt') {
+          siegeMine = false;
+          emit({ type: 'siege', what: 'rebuilt', near });
+        }
+      }
+      return;
+    }
     if (e.type === 'hit') hurt(e.damage, e.from);
     else if (e.type === 'hunterHit') {
       // another pilot's bolt into one of the hunters after you
@@ -2210,6 +2568,7 @@ export async function create(canvas, ctx) {
         // shot down: back at the nearest place, shields up again
         const near = ORDER.reduce((a, b) => (Math.hypot(...POSITIONS[a].map((v, i) => v - c.from.getComponent(i))) <= Math.hypot(...POSITIONS[b].map((v, i) => v - c.from.getComponent(i))) ? a : b));
         at = parkAt(near, [c.from.x, c.from.z]);
+        arms().reload();
       } else if (c.sun || !isPlace(c.id)) {
         // the sun (or a star), or a wonder out in deep space: back out the way it went in, facing away
         const solid = SOLIDS.find((o) => o.id === c.id) ?? { at: SUN.at, r: SUN.r };
@@ -2290,7 +2649,7 @@ export async function create(canvas, ctx) {
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
-    const { ship: stepped, events } = step(state.ship, input, dt);
+    const { ship: stepped, events } = step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
@@ -2361,7 +2720,8 @@ export async function create(canvas, ctx) {
     // the guns: what they're locked on to (a tick as they pick one up),
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
-    const cands = pilots.count ? [...(hunters?.targets ?? []), ...pilots.targets] : (hunters?.targets ?? []);
+    const siegeCands = siegeTargets(ship);
+    const cands = pilots.count || siegeCands.length ? [...(hunters?.targets ?? []), ...pilots.targets, ...siegeCands] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = 0;
@@ -2779,6 +3139,8 @@ export async function create(canvas, ctx) {
     const ringsWant = flying() && state.view !== 'map' ? 0.012 : 0.05;
     rings.material.opacity += (ringsWant - rings.material.opacity) * clamp01(dt * 3);
     const shooting = moveBolts(dt);
+    const launching = moveMissiles(dt);
+    if (armory) armory.update(dt);
     sun.update(t, camera);
     stars.material.uniforms.uTime.value = t;
     stars.material.uniforms.uDpr.value = gl.ratio; // (the watchdog may have changed it)
@@ -2816,6 +3178,23 @@ export async function create(canvas, ctx) {
     map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     deep.update(t, camera, camLocal);
+    // the Citadel's siege: rebuilt or patched up when it's time, what's left
+    // of it drawn, and your word on it out to everyone (soon after a hit of
+    // yours; every few seconds while there's anything to tell)
+    const wallMs = Date.now();
+    const tick = siege.tick(wallMs);
+    if (tick) {
+      siegeMine = false;
+      readSiegeState();
+      if (tick.type === 'rebuilt') emit({ type: 'siege', what: 'rebuilt', near: camLocal.distanceTo(citadelMid ?? camLocal) < 1600 });
+    } else if (performance.now() - siegeLook > 500) readSiegeState();
+    const sieging = siegeView ? siegeView.update(t, dt, camLocal, siegeSt) : false;
+    if (net?.siege && ((siegeOwed && wallMs - siegeSent > 350) || (siege.active && net.peers.size > 0 && wallMs - siegeSent > 5000))) {
+      net.siege(siege.message());
+      siegeSent = wallMs;
+      siegeOwed = false;
+    }
+    placeArms();
     beacons.update(camLocal);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {
@@ -2844,10 +3223,11 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
+    return !still() || moving || shooting || launching || sieging || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
   }
 
   // ── Keys, while flying ──
+  const held = new Set(); // the keys down now (as e.key, lower case) that steer
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
@@ -2899,8 +3279,16 @@ export async function create(canvas, ctx) {
       e.preventDefault();
       heard();
       if (!e.repeat) fire();
+      held.add(key);
       state.keys.fire = true;
       ctx.invalidate();
+      return;
+    }
+    if (key === 'r' || key === '1' || key === '2' || key === '3') {
+      // the weapons (weapons.js): R on to the next (Shift+R back), or 1 2 3
+      e.preventDefault();
+      heard();
+      pickWeapon(key === 'r' ? (e.shiftKey ? 'back' : 'next') : Number(key) - 1);
       return;
     }
     if (key === 't' || key === 'q') {
@@ -2909,6 +3297,11 @@ export async function create(canvas, ctx) {
       heard();
       state.cycle = key === 'q' || e.shiftKey ? -1 : 1;
       ctx.invalidate();
+      return;
+    }
+    if ((key === 'e' || (key === 'enter' && !onControl)) && state.at === 'citadel' && siegeSt.down) {
+      e.preventDefault();
+      emit({ type: 'siege', what: 'closed' });
       return;
     }
     if ((key === 'e' || (key === 'enter' && !onControl)) && state.at) {
@@ -2921,6 +3314,7 @@ export async function create(canvas, ctx) {
     e.preventDefault();
     heard();
     if (k !== 'boost') takeover();
+    held.add(key);
     state.keys[k] = true;
     ctx.invalidate();
   };
@@ -2957,15 +3351,31 @@ export async function create(canvas, ctx) {
     const k = FOOT_KEYS[key];
     if (!k || (onControl && ARROWS.has(key))) return;
     e.preventDefault();
+    held.add(key);
     state.keys[k] = true;
     state.lastInput = performance.now();
     ctx.invalidate();
   };
+  // A key let go: what it means is let go, in the ship and on foot (so
+  // nothing sticks from one to the other), unless another key still down
+  // means the same thing now. (D is the roll in the ship and the turn on
+  // foot, and the up arrow the nose in the ship and walking on foot: letting
+  // go of D mustn't let go of the right arrow's turn, nor the up arrow of W's
+  // throttle.)
   const onKeyUp = (e) => {
     const key = e.key.toLowerCase();
-    for (const map of [KEYS, FOOT_KEYS]) if (map[key]) state.keys[map[key]] = false;
+    held.delete(key);
+    const now = onFoot() ? FOOT_KEYS : KEYS;
+    for (const map of [KEYS, FOOT_KEYS]) {
+      const k = map[key];
+      if (!k) continue;
+      let still = false;
+      for (const h of held) if (now[h] === k) still = true;
+      state.keys[k] = still;
+    }
   };
   const onBlur = () => {
+    held.clear();
     state.keys = {};
     state.boostBtn = false;
     state.climbBtn = 0;
@@ -3137,7 +3547,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state, foot, planets, startFoot, net: () => net };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -3154,6 +3564,8 @@ export async function create(canvas, ctx) {
       crash: state.crash && { id: state.crash.id, age: state.crash.age },
       shield: +state.shield.toFixed(1),
       heat: +state.heat.toFixed(2),
+      siege: { ...siegeSt },
+      weapon: armory ? { id: armory.id, name: armory.name, ammo: armory.ammo } : null,
       hunters: hunters?.packs ?? [],
       lock: state.lock?.id ?? null,
       manual: Boolean(state.lock?.manual),
@@ -3192,6 +3604,7 @@ export async function create(canvas, ctx) {
       select(next.selected ?? null);
       if (next.frozen) {
         endDrag();
+        held.clear();
         state.keys = {};
         engine?.set({ speed: 0, on: false });
       }
@@ -3211,6 +3624,11 @@ export async function create(canvas, ctx) {
     hover: setHover,
     // the phone's fire button: true pressed (it fires, and keeps firing
     // while held), false let go
+    // the phone's weapon button: on to the next
+    weapon() {
+      heard();
+      if (!onFoot()) pickWeapon('next');
+    },
     fire(down = true) {
       heard();
       if (onFoot()) {

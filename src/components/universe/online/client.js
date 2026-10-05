@@ -28,7 +28,8 @@
 //   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
 //   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
-//   same down on a world in the galaxy: peer.walk), shot(at, v), hit(peerId),
+//   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
+//   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
 //   down(byId), cursor(x, y, touch), pack(get) (get() → hunters.js's wire(),
 //   asked for only when it's time to send), hunterHit(peerId, hunterId,
 //   damage), helped(peerId, what) (their shot took one of yours down),
@@ -38,11 +39,14 @@
 // text, tone }, { type: 'hit', from, damage }, { type: 'downed', id, by }
 // (someone was shot down: where they were, for the scene's pop; `by` is
 // whoever this browser believes did it), { type: 'hunterHit', from, id,
-// damage } (another pilot's bolt hit one of the hunters after you).
+// damage } (another pilot's bolt hit one of the hunters after you), { type:
+// 'siege', from, msg } (another pilot's word on the Citadel's siege, read
+// with siege.js's readSiege).
 
-import { APP_ID, CURSOR_MS, DAMAGE, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
+import { readSiege } from '../siege';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -185,6 +189,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     const cur = action('cur');
     const pack = action('pack');
     const hhit = action('hhit');
+    const siege = action('siege');
     send = {
       pack: (data) => pack.send(data).catch(() => {}),
       hhit: (data, to) => hhit.send(data, { target: to }).catch(() => {}),
@@ -197,6 +202,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       down: (data) => down.send(data).catch(() => {}),
       ally: (data, to) => ally.send(data, { target: to }).catch(() => {}),
       cur: (data) => cur.send(data).catch(() => {}),
+      siege: (data) => siege.send(data).catch(() => {}),
     };
 
     r.onPeerJoin = (id) => {
@@ -252,6 +258,13 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       const p = w && admit('walk', peerId);
       if (!p) return;
       p.walk = w.off ? null : { ...w, at: now() };
+    };
+    siege.onMessage = (data, { peerId }) => {
+      const msg = readSiege(data);
+      const p = msg && admit('siege', peerId);
+      // (only from someone on the universe map, where the Citadel is)
+      if (!p || p.where !== self.where) return;
+      emit({ type: 'siege', from: peerId, msg });
     };
     shot.onMessage = (data, { peerId }) => {
       const known = peers.get(peerId);
@@ -461,11 +474,16 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       walkDown = true;
       send.walk(writeWalk(crew));
     },
-    shot(at, v) {
+    shot(at, v, weapon = 0) {
       const t = now();
-      if (!send || t - lastShot < SHOT_GAP) return;
+      // (a heavy round always goes: there are few of them, and they matter)
+      if (!send || (t - lastShot < SHOT_GAP && weapon !== 2)) return;
       lastShot = t;
-      send.shot(writeShot(at, v));
+      send.shot(writeShot(at, v, weapon));
+    },
+    // your word on the Citadel's siege (siege.js's message())
+    siege(msg) {
+      send?.siege(msg);
     },
     // your pointer, off the universe map (x from the middle of the window,
     // y down the page, in px; with touch, where you're reading)
@@ -481,11 +499,11 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       send.cur(writeCursor(x, y, touch));
     },
     // a bolt of yours hit them: tell them (they take it off their own shields)
-    hit(id) {
+    hit(id, damage = DAMAGE) {
       const p = peers.get(id);
       if (!send || !p || p.blocked || p.ally === 'ally') return;
       p.hitByMeAt = now();
-      send.hit({ d: DAMAGE }, id);
+      send.hit({ d: Math.min(DAMAGE_MAX, Math.max(1, Math.round(damage))) }, id);
     },
     // your shields are gone: everyone hears who did it (a pilot whose hit
     // on you counted, so it's theirs on your list too)

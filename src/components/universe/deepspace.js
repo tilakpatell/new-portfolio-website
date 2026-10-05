@@ -2018,6 +2018,10 @@ mat3 tumble(float id) {
         alphaAttr.needsUpdate = true;
       }
     },
+    // a wonder's own group (the Citadel's, for its siege: citadelSiege.js)
+    groupOf(id) {
+      return wonderGroups[id] ?? null;
+    },
     // where the black hole is (map space) and its shadow's radius, for the
     // post's bending of the light round it
     lens() {
