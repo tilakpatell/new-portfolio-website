@@ -28,7 +28,14 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/earth', '/caribbean', '/invincible']);
-    expect(WORLDS[0]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
+    expect(WORLDS.map((w) => w.to)).toEqual(['/galaxy', '/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/earth', '/caribbean', '/invincible']);
+    expect(WORLDS[0]).toMatchObject({ to: '/galaxy', label: 'A galaxy far, far away', from: 'Star Wars' });
+    expect(WORLDS[1]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
+  });
+
+  it('know the pages inside them', () => {
+    expect(byPath('/galaxy')?.id).toBe('starwars');
+    expect(byPath('/deathstar')?.id).toBe('starwars');
+    for (const u of UNIVERSES) for (const p of u.pages ?? []) expect(ROUTES.some((r) => matchPath(r, p.to)), p.to).toBe(true);
   });
 });

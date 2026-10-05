@@ -35,6 +35,15 @@ describe('steps', () => {
     expect(readStep([1e9, 0, 0], 50).x).toBe(50);
     expect(readStep(['a', 0, 0])).toBe(null);
   });
+
+  it('carry how fast and how high, for a world where people run and jump, and not otherwise', () => {
+    const step = readStep(writeStep({ x: 220, z: 170, face: 1, speed: 9.46, y: 1.234 }, { motion: true }), 260);
+    expect(step).toMatchObject({ x: 220, z: 170, speed: 9.5, y: 1.23, moving: true });
+    expect(writeStep({ x: 0, z: 0, face: 0, speed: 3 })).toHaveLength(5);
+    expect(readStep(writeStep({ x: 0, z: 0, face: 0, speed: 3 }))).not.toHaveProperty('speed');
+    expect(readStep([0, 0, 0, 1, 0, 999, -5]).speed).toBe(30);
+    expect(readStep([0, 0, 0, 1, 0, 2, -5]).y).toBe(0);
+  });
 });
 
 describe('travellers', () => {
@@ -75,6 +84,25 @@ describe('travellers', () => {
     expect(b.list()).toHaveLength(1);
     a.leave();
     expect(b.list()).toEqual([]);
+    b.leave();
+  });
+
+  it('send a pose at once when asked (going indoors), and run and jump in a wide world', async () => {
+    const load = fakeRelay();
+    let t = 1000;
+    const now = () => t;
+    const a = createTravellers({ town: 'avengers', name: 'Peter', load, now, bound: 260, motion: true });
+    const b = createTravellers({ town: 'avengers', name: 'Ned', load, now, bound: 260, motion: true });
+    await settle();
+    await settle();
+    a.pose({ x: 230, z: 175, face: 0, speed: 9.5, y: 1.5 });
+    expect(b.list()[0]).toMatchObject({ x: 230, z: 175, speed: 9.5, y: 1.5 });
+    t += 20;
+    a.pose({ x: 230, z: 175, face: 0, speed: 0, y: 0 }, { inside: true });
+    expect(b.list()[0].inside).toBe(false);
+    a.pose({ x: 230, z: 175, face: 0, speed: 0, y: 0 }, { inside: true }, { force: true });
+    expect(b.list()[0].inside).toBe(true);
+    a.leave();
     b.leave();
   });
 });

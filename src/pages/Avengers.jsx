@@ -158,7 +158,7 @@ export default function Avengers() {
         <div>
           <p className="eyebrow">The Avengers compound · Upstate New York</p>
           <p className="lead mt-4 max-w-[62ch]">
-            Marvel, all of it. Walk the compound as Cap: every building belongs to someone, and each one’s game wins an Infinity Stone back. Tony’s workshop, Mjolnir on the lawn, the training center, Clint’s range, Natasha’s operations room, Bruce’s lab, and the Tesseract in the hangar. Win the Space Stone and a portal opens over the helipad.
+            Marvel, all of it. Walk the compound as Spider-Man: every building belongs to someone, and each one’s game wins an Infinity Stone back. Tony’s workshop, Mjolnir on the lawn, the training center, Clint’s range, Natasha’s operations room, Bruce’s lab, and the Tesseract in the hangar. Win the Space Stone and a portal opens over the helipad. Go online and everyone else walking it shows up as a hologram.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

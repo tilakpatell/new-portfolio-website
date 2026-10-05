@@ -18,7 +18,10 @@
     "source": "https://sketchfab.com/3d-models/star-wars-cr-90-60e26a508ca84126b30f01461f60086e",
     "where": "universe",
     "as": "the Corellian corvettes",
-    "file": "/models/universe/cr90.glb"
+    "file": "/models/universe/cr90.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "death-star": {
     "title": "Death Star - Star Wars",
@@ -29,7 +32,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
     "where": "universe",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb"
+    "file": "/models/universe/death-star.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "earth-plane": {
     "title": "737 MAX Lion Air",
@@ -50,7 +56,10 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/millennium-falcon-2c0783d083e44b959c691682b4cb1f16",
     "where": "universe",
-    "as": "the Millennium Falcon you fly"
+    "as": "the Millennium Falcon you fly",
+    "also": [
+      "galaxy"
+    ]
   },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
@@ -113,7 +122,10 @@
     "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
     "where": "universe",
     "as": "the Star Destroyers",
-    "file": "/models/universe/star-destroyer.glb"
+    "file": "/models/universe/star-destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "thragg": {
     "title": "Thragg from invincible s4",
@@ -135,7 +147,10 @@
     "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
     "where": "universe",
     "as": "the TIE interceptors",
-    "file": "/models/universe/tie-interceptor.glb"
+    "file": "/models/universe/tie-interceptor.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "trench": {
     "title": "Death Star Trench Run",
@@ -146,7 +161,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
     "where": "universe",
     "as": "the Death Star’s trench",
-    "file": "/models/universe/trench.glb"
+    "file": "/models/universe/trench.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
@@ -156,18 +174,10 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
     "where": "universe",
-    "as": "the X-wing you fly"
-  },
-  "avengers-cap": {
-    "title": "Captain America",
-    "author": "alexseagle2004",
-    "authorUrl": "https://sketchfab.com/alexseagle2004",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/captain-america-5bf43af9198f46318d96e23587338913",
-    "where": "avengers",
-    "as": "Captain America, who you walk the compound as",
-    "file": "/models/sketchfab/avengers/cap.glb"
+    "as": "the X-wing you fly",
+    "also": [
+      "galaxy"
+    ]
   },
   "avengers-thor": {
     "title": "Thor",
@@ -221,18 +231,29 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
     "where": "avengers",
-    "as": "the idle, walk and run Cap, Thor and Black Widow move with",
-    "file": "/models/sketchfab/avengers/cap.glb"
+    "as": "the idle, walk and run Thor and Black Widow move with",
+    "file": "/models/sketchfab/avengers/thor.glb"
   },
-  "avengers-anim-puppet": {
-    "title": "Puppet (rigged with Mixamo)",
-    "author": "SlagPerch 3D",
-    "authorUrl": "https://sketchfab.com/slagperch3d",
+  "avengers-anim-spiderman-advanced": {
+    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/puppet-rigged-with-mixamo-4956fe98240d4644b9e2598a7f506f0e",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
     "where": "avengers",
-    "as": "Captain America’s jump",
-    "file": "/models/sketchfab/avengers/cap.glb"
+    "as": "Spider-Man’s idle, walk and jump",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-anim-spiderman-symbiote": {
+    "title": "Spider-Man 2 Symbiote Suit (PS5)",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
+    "where": "avengers",
+    "as": "Spider-Man’s run",
+    "file": "/models/marvel/spiderman.glb"
   }
 }

@@ -10,7 +10,7 @@
 // where they came down, the way footScene.js parks yours (and out of the
 // guns' way: there's no one in it).
 //
-// createPilots(parent, { T, colors }) → { update(dt, now, client, view),
+// createPilots(parent, { T, colors, here }) → { update(dt, now, client, view),
 //   hit(from, to), targets, count, at(id), dispose() }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
@@ -74,7 +74,11 @@ const N = new THREE.Vector3();
 const F = new THREE.Vector3();
 const R = new THREE.Vector3();
 
-export function createPilots(parent, { T = {}, colors = {} } = {}) {
+// `here` is the place they're drawn in: the universe map, unless it's one
+// of the galaxy's systems (a function, read each frame: the galaxy's page
+// stays up from one system to the next)
+export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE } = {}) {
+  const place = typeof here === 'function' ? here : () => here;
   const ships = new Map(); // peer id → { kind, loadout, model, tag, at, vel, shown, ally }
   const cache = new Map(); // url → Promise<scene | null>
   let disposed = false;
@@ -152,7 +156,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
     b.visible = true;
   };
 
-  const place = { x: 0, y: 0, z: 0 };
+  const spot = { x: 0, y: 0, z: 0 };
   let live = 0;
 
   return {
@@ -161,7 +165,8 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
       let busy = false;
       live = 0;
       const peers = client?.peers ?? new Map();
-      const away = (p) => p.where && p.where !== UNIVERSE; // (gone off into a world: no ship out here)
+      const at = place();
+      const away = (p) => (p.where ?? UNIVERSE) !== at; // (somewhere else: gone off into a world, or another system)
       for (const [id, sh] of ships) {
         const p = peers.get(id);
         if (!p || p.blocked || !p.kind || away(p)) {
@@ -235,9 +240,9 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
         // (parked, over the ship, unless you're down there with them: their crew have tags then)
         let show = (on && view.locked !== p.id) || (down && view.footOn !== down.planet);
         if (show) {
-          if (down) view.project(g.position.x, g.position.y, g.position.z, place);
-          else view.project(s.x, s.y + 0.16, s.z, place);
-          show = place.z > 0.3 && place.z < TAG_FAR;
+          if (down) view.project(g.position.x, g.position.y, g.position.z, spot);
+          else view.project(s.x, s.y + 0.16, s.z, spot);
+          show = spot.z > 0.3 && spot.z < TAG_FAR;
         }
         if (show !== sh.tagOn) {
           sh.tagOn = show;
@@ -251,7 +256,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
         tag.toggleAttribute('data-ally', sh.ally);
         tag.toggleAttribute('data-hurt', !down && s.shield < 99.5);
         tag.style.setProperty('--shield', ((down ? 100 : s.shield) / 100).toFixed(2));
-        tag.style.transform = `translate3d(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px, 0)`;
+        tag.style.transform = `translate3d(${spot.x.toFixed(1)}px, ${spot.y.toFixed(1)}px, 0)`;
       }
       // their shots
       for (const s of client?.takeShots() ?? []) fireBolt(s);

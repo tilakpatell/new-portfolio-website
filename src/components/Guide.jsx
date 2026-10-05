@@ -30,6 +30,16 @@ const PAGES = {
       ['The sitar string', 'Pluck it.'],
     ],
   },
+  '/galaxy': {
+    title: 'A galaxy far, far away',
+    tips: [
+      ['Flying', 'The same ship and the same controls as the universe map: W and S the throttle, A and D roll, the arrows swing the nose, Space boosts (out in the open the sublight drive opens up), hold F to fire, T and Q change target, V the cockpit, O the settings. Or drag anywhere like a stick.'],
+      ['Jumping to lightspeed', 'M (or Plot a course) opens the galaxy map. Pick a system, then Jump: the ship comes round onto the bearing for it, the stars stretch, and you’re in hyperspace. Filter the map by era or film to see the galaxy as it was then.'],
+      ['What’s there', 'Every system is a moment from the films: the Tantive IV over Tatooine, Death Squadron at Hoth, the Battle of Endor, the Death Star rounding Yavin (fly its trench), Starkiller Base drinking its sun, the Sith fleet at Exegol. Click a name to fly there.'],
+      ['Missions', 'Each system has one. Most are briefings for games still being built (with their own opening crawl); the trench run and boarding the Death Star are here now. Watch for its tractor beam at Alderaan.'],
+      ['Online', 'Go online and the other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
+    ],
+  },
   '/deathstar': {
     title: 'The Death Star',
     tips: [
@@ -71,7 +81,8 @@ const PAGES = {
   '/avengers': {
     title: 'Avengers HQ',
     tips: [
-      ['The compound', 'You are Cap. W A S D or the arrows walk, Shift runs, Space jumps, and dragging looks round (on a phone, the stick walks; push it all the way to run). Walk up to a door and press E (or the button) to go in: each building’s game opens over the page, and Escape or Back to the compound brings you out at its door. M lists the buildings, with Go there for each. Thor, Natasha, the Hulk and a training bot have something to say if you walk up to them.'],
+      ['The compound', 'You are Spider-Man. W A S D or the arrows walk, Shift runs, Space jumps, and dragging looks round (on a phone, the stick walks; push it all the way to run). Walk up to a door and press E (or the button) to go in: each building’s game opens over the page, and Escape or Back to the compound brings you out at its door. M lists the buildings, with Go there for each. Thor, Natasha, the Hulk and a training bot have something to say if you walk up to them.'],
+      ['Other players', 'See other players goes online (with your callsign, as the universe map does): everyone else walking the compound shows as a pale hologram with their name over them, and on the map in the corner as a dot. They can’t touch your games, nor you theirs; whoever goes into a building fades out until they come back.'],
       ['The stones', 'Win a building’s game and its Infinity Stone hangs over the door (Clint’s range and Natasha’s operations room each give half the Soul Stone). The Space Stone, from the hangar, opens a portal over the helipad: walk under it to Titan.'],
       ['Without 3D', 'The compound is drawn from the air, and its pins open the games, each in its simple version: power up Stark’s reactor, hold to lift Mjolnir (you are worthy once you have found ten easter eggs), throw Cap’s shield, click Hawkeye’s range, tap Widow’s black bars, make Banner angry three times.'],
       ['The gate: Thwip!', 'Spider-Man, late for school. Hold Space (or the mouse, or a finger) to shoot a web at the wall ahead and swing; let go to fly. Let go on the upswing, past where the web caught, for a perfect release: faster, and a flip. A and D steer across the avenue (on a touch screen, hold on the left or right); W reels the web in to climb. Nothing to swing from over the cross streets, so carry your speed over them. Grab Peter’s backpacks on the way, beat the bell, and keep off the street: the traffic gets three chances.'],
@@ -192,6 +203,7 @@ export default function Guide() {
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
+    (pathname.startsWith('/galaxy/') && !pathname.endsWith('/mission') ? PAGES['/galaxy'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

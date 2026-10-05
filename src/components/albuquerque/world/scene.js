@@ -675,12 +675,13 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       const m = loaded.aztek ? loaded.aztek.clone(true) : standIn('aztek');
       m.rotation.y = FACING.aztek;
       g.add(m);
-      return { group: g, top: 2.1, shared: Boolean(loaded.aztek) };
+      // (the real one's geometry and materials: left alone when a ghost goes)
+      return loaded.aztek ? { group: g, top: 2.1, shared: true, dispose: () => {} } : { group: g, top: 2.1 };
     },
     tag: 0.9,
     halo: 6.5,
-    pose: (f, t, { moving }) => {
-      f.group.position.y = moving ? Math.abs(Math.sin(t * 7)) * 0.05 : 0;
+    animate: (f, t, p) => {
+      f.group.position.y = p.moving ? Math.abs(Math.sin(t * 7)) * 0.05 : 0;
     },
     snap: 40, // (a car covers ground between steps)
   });

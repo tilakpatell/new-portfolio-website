@@ -483,6 +483,9 @@ export default function DeathStar() {
               </a>
             )}
             <ScriptToggle id="aurebesh" />
+            <Link to="/galaxy/yavin" className="btn btn-ghost">
+              Out into the galaxy
+            </Link>
             <Link to="/" className="btn btn-ghost">
               Back to the site
             </Link>

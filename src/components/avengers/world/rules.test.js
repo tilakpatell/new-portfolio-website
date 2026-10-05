@@ -134,8 +134,9 @@ describe('The compound, the world: walking', () => {
       top = Math.max(top, h.y);
       if (!h.air) break;
     }
-    expect(top).toBeGreaterThan(0.8);
-    expect(top).toBeLessThan(1.5);
+    // a spider's jump: well over a metre, under two
+    expect(top).toBeGreaterThan(1.3);
+    expect(top).toBeLessThan(2);
     expect(h.y).toBe(0);
   });
 
@@ -213,7 +214,7 @@ describe('The compound, the world: doors and people', () => {
     }
   });
 
-  it('has someone to talk to by five of the doors, with new lines once their game is won', () => {
+  it('has someone to talk to by four of the doors, with new lines once their game is won', () => {
     for (const c of CAST) expect(nearCast(c.x + 1, c.z)?.id).toBe(c.id);
     const thor = CAST.find((c) => c.id === 'thor');
     expect(linesFor(thor, [])).toBe(thor.lines);
