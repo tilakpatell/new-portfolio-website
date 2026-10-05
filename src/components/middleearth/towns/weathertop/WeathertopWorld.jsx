@@ -885,7 +885,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const R = hud.ride;
   const F = hud.fire;
   return (
-    <div ref={box} className="shire-stage wt-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
+    <div ref={box} className="shire-stage wt-stage" data-touch={touch || undefined} data-mode={mode} data-game={(walking && (F || hud.hunt)) || undefined} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Weathertop in 3D: the hill of Amon Sûl with the ruined watchtower on its summit, the old stair through the crags, and the dell where the hobbits camp" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Climbing Weathertop…</p>}
 
