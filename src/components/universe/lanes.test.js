@@ -110,3 +110,32 @@ describe('a flyby', () => {
     }
   });
 });
+
+describe('lanes out in deep space', () => {
+  it('finds lanes near the ship out there, clear of everything', async () => {
+    const { laneNear, convoyLane, clearance, bezier } = await import('./lanes');
+    const { DEEP } = await import('./deep');
+    let rand = seeded(5);
+    let made = 0;
+    for (let i = 0; i < 40; i++) {
+      const a = i * 0.7;
+      const ship = { x: Math.cos(a) * (DEEP.open + 60 + i * 9), y: (i % 5) * 10 - 20, z: Math.sin(a) * (DEEP.open + 60 + i * 9), heading: a };
+      for (const make of [laneNear, convoyLane]) {
+        const pts = make(ship, rand);
+        if (!pts) continue;
+        made++;
+        expect(clearance(pts)).toBeGreaterThan(1.4);
+        // it passes within sight of the ship
+        let near = Infinity;
+        for (let k = 0; k <= 50; k++) {
+          const p = bezier(pts, k / 50);
+          near = Math.min(near, Math.hypot(p[0] - ship.x, p[1] - ship.y, p[2] - ship.z));
+        }
+        expect(near).toBeLessThan(60);
+        expect(near).toBeGreaterThan(3);
+      }
+      rand = seeded(5 + i);
+    }
+    expect(made).toBeGreaterThan(60);
+  });
+});

@@ -9,10 +9,11 @@
 // the Infinity Stones, the crystals and element tiles, the mug, the portal,
 // the travel routes. The models (the site owner's, from Meshy: the sitar,
 // Optimus Prime and Megatron, the gauntlet, the motorhome, the Game Boy,
-// Mario and a Piranha Plant, a Republic attack cruiser; plus Rick's cruiser
-// from the C-137 page and the Black Pearl) load after the map is up and are
-// parked on orbits or stood on the ground; a planet whose model never arrives
-// simply goes without. The sun is sun.js's.
+// Mario and a Piranha Plant, a Republic attack cruiser; the Death Star they
+// sent; plus Rick's cruiser from the C-137 page and the Black Pearl) load
+// after the map is up and are parked on orbits or stood on the ground (the
+// Death Star takes the painted sphere's place); a planet whose model never
+// arrives simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
@@ -222,7 +223,13 @@ const BUILDERS = {
     // orbit goes). Slave I is about too, as traffic (traffic.js)
     const far = orbit(p.group, { radius: r * 1.75, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
     p.orbits.push(far);
-    p.slots = { cruiser: { holder: far.holder, size: r * 0.62, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 } };
+    p.slots = {
+      cruiser: { holder: far.holder, size: r * 0.62, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 },
+      // the Death Star itself, the site owner's model, when it comes: it
+      // takes the painted sphere's place (turning with it), its dish and
+      // trench and lit windows its own
+      skin: { holder: p.body, size: r * 2, turn: [0, 0.6, 0], sway: 0, skin: true },
+    };
   },
 
   music(p, { u, T }) {
@@ -855,6 +862,14 @@ export function buildPlanet(u, T = {}) {
       const holder = fit(model, s.size);
       holder.rotation.set(...s.turn);
       s.holder.add(holder);
+      // a model that's the planet itself: the painted sphere stops drawing
+      // (it stays, for what's laid over it: a crash's shockwave)
+      if (s.skin) {
+        p.body.material.visible = false;
+        model.traverse((o) => {
+          if (o.isMesh && o.material?.emissiveMap) o.material.emissiveIntensity = 1.6; // its lit windows
+        });
+      }
       const sway = s.sway ?? 0.25;
       p.tick.push((t) => {
         holder.rotation.y = s.turn[1] + Math.sin(t * 0.4) * sway;
@@ -890,6 +905,7 @@ const MODELS = [
   ['gaming', '/models/universe/piranha.glb', 'plant'],
   ['caribbean', '/games/caribbean/pearl-far.glb'],
   ['starwars', '/models/universe/venator.glb', 'cruiser'],
+  ['starwars', '/models/universe/death-star.glb', 'skin'],
 ];
 
 // Load the models one by one, handing each over as it arrives; a model that

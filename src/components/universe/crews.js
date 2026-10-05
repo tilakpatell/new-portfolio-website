@@ -73,6 +73,106 @@ export const CREWS = [
         ['morty', 'Rick, I shot Birdperson!'],
         ['rick', 'He’ll be fine, Morty. Phoenixperson’s a whole thing.'],
       ],
+      saucer: [
+        ['morty', 'Rick! That was a family!'],
+        ['rick', 'They had it coming, Morty. Probably.'],
+      ],
+      hauler: [['rick', 'Whoops. There goes somebody’s plumbus delivery.']],
+      gearship: [
+        ['morty', 'Rick, you shot a Gear Person!'],
+        ['rick', 'Revolio’s gonna be so mad, Morty.'],
+      ],
+      councilship: [
+        ['morty', 'I got one of the Ricks!'],
+        ['rick', 'One less Rick, Morty. The multiverse can spare it.'],
+      ],
+    },
+    // hunters after you (hunters.js), by who they are
+    hunted: {
+      federation: [
+        ['morty', 'Rick! The Federation’s on our tail!'],
+        ['rick', 'Course they are, Morty. I’m the most wanted man in the galaxy. Shoot back!'],
+      ],
+      council: [
+        ['comms', 'Rick Sanchez of Earth C-137, by order of the Council of Ricks: surrender your portal gun.'],
+        ['rick', 'The Council. A bunch of Ricks who think they’re better than me. Light ’em up, Morty.'],
+      ],
+    },
+    // their lasers hitting you, your shields low, shot down
+    hit: [
+      ['morty', 'Rick, we’re hit!'],
+      ['rick', 'It’s a scratch, Morty.'],
+    ],
+    shields: [
+      ['morty', 'Rick, the shields are almost gone!'],
+      ['rick', 'Then stop getting hit, Morty!'],
+    ],
+    destroyed: [
+      ['morty', 'We’re going down, Rick!'],
+      ['rick', 'Relax. I backed us up again. Portal’s open.'],
+    ],
+    // getting away from them, and shooting the lot down
+    escaped: [
+      ['rick', 'Lost ’em, Morty. Too easy.'],
+      ['morty', 'Oh man. Oh jeez.'],
+    ],
+    cleared: [
+      ['rick', 'That’s what you get for messing with the smartest man in the universe!'],
+      ['morty', 'I did most of the shooting, Rick.'],
+    ],
+    // the director's set pieces (director.js), and going out into deep space
+    events: {
+      distress: [
+        ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
+        ['morty', 'Rick, that family’s in trouble!'],
+        ['rick', 'Ugh. Fine. Heroics. Shoot the bugs, Morty.'],
+      ],
+      rescued: [
+        ['comms', 'Thank you, strangers! Squanch you very much!'],
+        ['rick', 'Yeah, yeah. Don’t make it a thing.'],
+      ],
+      convoy: [
+        ['morty', 'Look at all those ships, Rick.'],
+        ['rick', 'A convoy, Morty. Plumbuses, mostly. Everybody needs a plumbus.'],
+      ],
+      comet: [
+        ['morty', 'Whoa, Rick, a comet!'],
+        ['rick', 'It’s a dirty snowball, Morty. Don’t make a wish.'],
+      ],
+      deep: [
+        ['morty', 'Rick, where are we going? There’s nothing out here.'],
+        ['rick', 'That’s the thing about space, Morty. It’s mostly space. Hit the boost.'],
+      ],
+    },
+    // the first time you come up on one of deep space's wonders (deep.js)
+    wonders: {
+      deathstar: [
+        ['morty', 'Rick, is that a… moon?'],
+        ['rick', 'Wrong universe, Morty. Don’t touch it. That thing’s got lawyers.'],
+      ],
+      citadel: [
+        ['morty', 'The Citadel of Ricks!'],
+        ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
+      ],
+      maw: [
+        ['morty', 'Rick, why’s the light all bendy?'],
+        ['rick', 'Black hole, Morty. Fly in there and you’re spaghetti. Literal spaghetti.'],
+      ],
+      aurelia: [
+        ['morty', 'That planet’s huge, Rick!'],
+        ['rick', 'Gas giant, Morty. It’s all hydrogen and disappointment.'],
+      ],
+      glacia: [['rick', 'Ice giant. Cold, blue and not interested in you, Morty.']],
+      ember: [
+        ['morty', 'Another sun, Rick!'],
+        ['rick', 'There are billions of ’em, Morty. Don’t get attached.'],
+      ],
+      halcyon: [['rick', 'A blue star, Morty. Burns hot, dies young. Like my first marriage.']],
+      veil: [
+        ['morty', 'It’s beautiful, Rick.'],
+        ['rick', 'It’s a gas cloud, Morty. Stars get born in there. Gross.'],
+      ],
+      cradle: [['rick', 'Another nebula. Seen one, seen ’em all, Morty.']],
     },
     edge: [['rick', 'Nothing out there but more nothing, Morty. Turning back.']],
     arrive: {
@@ -203,6 +303,98 @@ export const CREWS = [
         ['luke', 'Got the bounty hunter!'],
         ['r2', '[a delighted whistle]'],
       ],
+      freighter: [
+        ['comms', 'Red Five, that was a civilian freighter!'],
+        ['luke', 'It came out of nowhere!'],
+      ],
+      transport: [
+        ['comms', 'Red Five! That was one of our transports!'],
+        ['r2', '[a horrified shriek]'],
+      ],
+      tieadvanced: [
+        ['luke', 'I hit Vader’s ship! It’s spinning away!'],
+        ['r2', '[a triumphant whistle]'],
+      ],
+    },
+    hunted: {
+      empire: [
+        ['comms', 'Red Five, you’ve got TIEs on your tail!'],
+        ['luke', 'I see them! Hang on, Artoo!'],
+      ],
+      // Vader himself, in his TIE Advanced
+      ace: [
+        ['luke', 'That TIE… it’s him. It’s Vader!'],
+        ['comms', 'No, I am your father.', 'vader'],
+      ],
+    },
+    hit: [
+      ['r2', '[an alarmed shriek]'],
+      ['luke', 'I’m hit! Artoo, see what you can do!'],
+    ],
+    shields: [
+      ['luke', 'Shields are failing!'],
+      ['comms', 'Use the Force, Luke.', 'useTheForce'],
+    ],
+    destroyed: [
+      ['luke', 'I’ve lost her! Artoo!'],
+      ['r2', '[a long, falling whistle]'],
+    ],
+    escaped: [
+      ['luke', 'We lost them!'],
+      ['r2', '[a relieved whistle]'],
+    ],
+    cleared: [
+      ['luke', 'That’s all of them!'],
+      ['comms', 'Great shot, kid. That was one in a million.'],
+    ],
+    events: {
+      destroyer: [
+        ['r2', '[a frantic warble]'],
+        ['luke', 'Star Destroyer, right on top of us! They’re launching fighters!'],
+      ],
+      distress: [
+        ['comms', 'This is Rebel transport Bright Hope. We’re under attack, requesting assistance!'],
+        ['luke', 'Hang on, Bright Hope. Artoo, lock on!'],
+      ],
+      rescued: [
+        ['comms', 'Thank you, Red Five. The Rebellion owes you one.'],
+        ['luke', 'May the Force be with you.'],
+      ],
+      convoy: [
+        ['luke', 'A Rebel convoy. Looks like they’re moving out.'],
+        ['r2', '[a cheerful beep]'],
+      ],
+      comet: [
+        ['luke', 'A comet! Back on Tatooine you’d see one every few years.'],
+        ['r2', '[an unimpressed beep]'],
+      ],
+      deep: [
+        ['luke', 'Nothing but stars out here, Artoo.'],
+        ['r2', '[a nervous whistle]'],
+      ],
+    },
+    wonders: {
+      deathstar: [
+        ['comms', 'That’s no moon.'],
+        ['luke', 'It’s a space station. I have a bad feeling about this.'],
+      ],
+      citadel: [
+        ['luke', 'A whole city out here, full of… the same old man?'],
+        ['r2', '[a confused warble]'],
+      ],
+      maw: [
+        ['luke', 'A black hole. Keep us well clear, Artoo.'],
+        ['r2', '[an emphatic beep]'],
+      ],
+      aurelia: [['luke', 'Look at the size of that planet!']],
+      glacia: [['luke', 'Reminds me of Hoth. Let’s not stop.']],
+      ember: [['luke', 'Another sun. Almost feels like home.']],
+      halcyon: [['luke', 'A blue sun. I’ve never seen one this close.']],
+      veil: [
+        ['luke', 'A nebula. It’s beautiful, Artoo.'],
+        ['r2', '[a soft whistle]'],
+      ],
+      cradle: [['luke', 'Another nebula. Good place to hide, if we had to.']],
     },
     edge: [['luke', 'Nothing out there, Artoo. Bringing her around.']],
     arrive: {
@@ -331,6 +523,91 @@ export const CREWS = [
         ['han', 'So long, Fett. No bounty today.'],
         ['chewie', '[a triumphant roar]'],
       ],
+      freighter: [
+        ['han', 'Hey, that guy was a smuggler like us!'],
+        ['chewie', '[a scolding roar]'],
+      ],
+      transport: [
+        ['comms', 'Falcon! That was a Rebel transport!'],
+        ['han', 'My hand slipped!'],
+      ],
+      tieadvanced: [
+        ['han', 'Ha! Vader’s spinning off into space!'],
+        ['chewie', '[a delighted roar]'],
+      ],
+    },
+    hunted: {
+      empire: [
+        ['han', 'Imperials on our tail. Chewie, get us some speed!'],
+        ['chewie', '[a worried roar]'],
+      ],
+      ace: [
+        ['han', 'That’s Vader’s TIE. Great. Just great.'],
+        ['comms', 'No, I am your father.', 'vader'],
+      ],
+    },
+    hit: [
+      ['han', 'We’re taking hits!'],
+      ['chewie', '[an angry roar]'],
+    ],
+    shields: [
+      ['han', 'Shields are going! Chewie, angle the deflector!'],
+      ['chewie', '[a frantic roar]'],
+    ],
+    destroyed: [
+      ['han', 'Chewie, punch it!'],
+      ['chewie', '[a mournful howl]'],
+    ],
+    escaped: [
+      ['han', 'Ha! Never tell me the odds.'],
+      ['chewie', '[a happy roar]'],
+    ],
+    cleared: [
+      ['han', 'That’s the last of them. Not bad for a hunk of junk.'],
+      ['chewie', '[a triumphant roar]'],
+    ],
+    events: {
+      destroyer: [
+        ['han', 'Star Destroyer! Why is it always a Star Destroyer?'],
+        ['chewie', '[an alarmed roar]'],
+      ],
+      distress: [
+        ['comms', 'Mayday! Imperial fighters, we can’t shake them!'],
+        ['han', 'Not our problem.'],
+        ['chewie', '[an insistent growl]'],
+        ['han', 'Fine, fine. Let’s go be heroes.'],
+      ],
+      rescued: [
+        ['comms', 'Thanks, Falcon! We owe you one.'],
+        ['han', 'Yeah. Pay up in credits.'],
+      ],
+      convoy: [
+        ['han', 'A convoy. Bet there’s good cargo in those holds.'],
+        ['chewie', '[a disapproving growl]'],
+        ['han', 'I’m just saying.'],
+      ],
+      comet: [['han', 'A comet. Don’t get any ideas, Chewie. We’re not chasing it.']],
+      deep: [
+        ['han', 'Out here it’s just us and the stars, pal.'],
+        ['chewie', '[a contented growl]'],
+      ],
+    },
+    wonders: {
+      deathstar: [
+        ['han', 'That’s no moon. That’s trouble.'],
+        ['chewie', '[a worried roar]'],
+      ],
+      citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
+      aurelia: [['han', 'Big planet. Probably full of smugglers.']],
+      glacia: [['han', 'I’ve had enough ice planets for one lifetime.']],
+      ember: [['han', 'Another sun. Same old galaxy.']],
+      halcyon: [['han', 'Blue star. Pretty. Don’t fly into it, Chewie.']],
+      veil: [
+        ['han', 'A nebula. Good place to lose the Empire.'],
+        ['chewie', '[an agreeing growl]'],
+      ],
+      cradle: [['han', 'More nebula. The Kessel Run had more of these.']],
     },
     edge: [['han', 'Nothing out there but rocks. Turning around.']],
     arrive: {
@@ -414,13 +691,18 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash' or 'idle' (where a crew has those), 'arrive' at a place,
-// 'traffic' going past (by kind) or a 'kill' (by kind, or any). An
-// exchange, or null.
+// 'edge', 'crash', 'idle', 'hit', 'shields', 'destroyed', 'escaped' or
+// 'cleared' (where a crew has those), 'arrive' at a place, 'traffic' going
+// past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
+// faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
+// its id). An exchange, or null.
 export function linesFor(crew, event, id) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
+  if (event === 'hunted') return crew.hunted?.[id] ?? null;
+  if (event === 'event') return crew.events?.[id] ?? null;
+  if (event === 'wonder') return crew.wonders?.[id] ?? null;
   return crew[event] ?? null;
 }

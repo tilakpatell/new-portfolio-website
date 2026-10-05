@@ -12,13 +12,20 @@
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
+//   Out past the home system is deep space (deep.js, deepspace.js), vast,
+//   with wonders to fly to on the pulse drive. You're not alone: traffic
+//   (traffic.js), hunters after you (hunters.js: the Empire, the Federation,
+//   the Council of Ricks), with shields that take their hits and come back,
+//   and now and then the director (director.js) sets something going
+//   (setpieces.js: a Star Destroyer jumping in, portals, a comet; a convoy,
+//   someone in distress).
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
 //   whole, boost, climb, fire, dispose }.
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), alt (a ref to the
-// height gauge), frozen (the page
+// height gauge), shield (a ref to the shields bar), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
 // clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
 // went into a planet or a station too fast and the impact has played: true
@@ -30,11 +37,16 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, SUN } from './layout';
+import { MAP_RADIUS, ORDER, POSITIONS, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { SHIP, SOLIDS, autopilot, forward, headingTo, orbiting, parkAt, spawn, step } from './ship';
+import { SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
+import { createHunters } from './hunters';
+import { createFleet } from './glbFleet';
+import { createDirector } from './director';
+import { createSetPieces } from './setpieces';
+import { DEEP, WONDERS, openness, reachOf } from './deep';
 import { createCrash } from './crash';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
@@ -334,7 +346,7 @@ export async function create(canvas, ctx) {
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 600);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 2600); // (out to the far side of deep space)
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -472,8 +484,15 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   const crashFx = createCrash(map);
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
-  const traffic = reduced ? null : createTraffic(map, { small });
+  const fleet = createFleet(); // the ships that are models, shared
+  const traffic = reduced ? null : createTraffic(map, { small, fleet });
   const pops = createCrash(map);
+  // who comes after you, what the director sets going, and its set pieces
+  // (none of it with reduced motion)
+  const hunters = reduced ? null : createHunters(map, { small, fleet });
+  const director = createDirector();
+  const pieces = createSetPieces(map, { small, fleet });
+  const later = []; // { at, run }: what the director set going, a moment on
 
   // the models arrive after the map is up
   loadModels((id, model, spot) => {
@@ -523,6 +542,14 @@ export async function create(canvas, ctx) {
     crash: null, // { age, id, … } while a crash plays out (startCrash)
     shake: 0,
     kick: 0, // the lens's kick as a boost lights, 1 fading to 0
+    clock: 0, // seconds of frames
+    shield: 100, // the ship's shields: hunters' lasers take them down, and they come back
+    hitAt: -1e9,
+    hurt: 0, // the red flash of a hit, 1 fading to 0
+    lowSaid: false,
+    heat: 0, // trouble made lately (ships shot down): the director sends more hunters
+    saw: new Set(), // the wonders out in deep space you've come up on
+    deepSaid: false,
     flare: 1,
   };
   const t0 = performance.now();
@@ -580,6 +607,14 @@ export async function create(canvas, ctx) {
   };
 
   const flying = () => Boolean(state.ship);
+  // the whole map; out in deep space, pulled back far enough to take in the
+  // ship as well (and the wonders round it)
+  const mapPose = () => {
+    const s = state.ship;
+    const r = s ? Math.hypot(s.x, s.z) : 0;
+    if (!state.overview || r < DEEP.system) return state.overview;
+    return { ...state.overview, dist: state.overview.dist * Math.min(9, (r + 90) / MAP_RADIUS) };
+  };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
   // station comes round a little past the front, so the sun in the middle
@@ -591,7 +626,7 @@ export async function create(canvas, ctx) {
   };
 
   const goal = () => {
-    if (flying()) return state.view === 'map' ? state.overview : state.crash && !state.crash.back ? crashPose() : chasePose();
+    if (flying()) return state.view === 'map' ? mapPose() : state.crash && !state.crash.back ? crashPose() : chasePose();
     return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
   };
 
@@ -761,6 +796,7 @@ export async function create(canvas, ctx) {
     const was = state.kind;
     state.kind = kind;
     traffic?.setCrew(kind);
+    hunters?.clear();
     setPlumes(kind, ENGINES[kind] ?? []);
     state.auto = null;
     state.flown = false;
@@ -876,11 +912,25 @@ export async function create(canvas, ctx) {
       b.position.y += d.v[1] * dt;
       b.position.z += d.v[2] * dt;
       // into someone: a pop (the big ships just take it)
+      // a hunter: down, or (the tougher ones) a hit that sparks off it
+      const hh = hunters?.hit(shotFrom, b.position);
+      if (hh) {
+        b.visible = false;
+        pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
+        if (hh.down) {
+          emit({ type: 'kill', kind: hh.kind });
+          state.heat += 1;
+        }
+        continue;
+      }
       const h = traffic?.hit(shotFrom, b.position);
       if (h) {
         b.visible = false;
         pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
-        if (!h.glance) emit({ type: 'kill', kind: h.kind });
+        if (!h.glance) {
+          emit({ type: 'kill', kind: h.kind });
+          state.heat += h.civil ? 1.5 : 1;
+        }
       }
     }
     return any;
@@ -949,6 +999,147 @@ export async function create(canvas, ctx) {
     engine?.set({ speed: 0, boost: false, on: false });
     retarget(650); // the camera pulls back to watch it
   };
+  // ── Shot down: the hunters' lasers took the last of the shields ──
+  const startDestroyed = () => {
+    const s = state.ship;
+    const from = new THREE.Vector3(s.x, s.y, s.z);
+    state.crash = {
+      age: 0,
+      id: 'shot',
+      shot: true,
+      sun: false,
+      from,
+      into: new THREE.Vector3(), // it tumbles where it is
+      normal: new THREE.Vector3(0, 1, 0),
+      radius: 0.35,
+      point: from.clone(),
+      fwd: forward(s.heading),
+      speed: s.speed,
+      spin: [6 + Math.random() * 6, 4 + Math.random() * 5],
+      impact: false,
+      asked: false,
+      through: false,
+      back: false,
+    };
+    state.auto = null;
+    state.boosting = false;
+    burst.clear();
+    hunters?.clear();
+    engine?.set({ speed: 0, boost: false, on: false });
+    emit({ type: 'destroyed' });
+    retarget(650);
+  };
+
+  // a laser into the shields: down they go (shot down at nothing left)
+  const hurt = (damage) => {
+    if (state.crash || !state.ship) return;
+    state.shield = Math.max(0, state.shield - damage);
+    state.hitAt = state.clock;
+    state.hurt = 1;
+    if (!reduced) state.shake = Math.max(state.shake, 0.3);
+    emit({ type: 'laser' });
+    if (state.shield < 35 && !state.lowSaid) {
+      state.lowSaid = true;
+      emit({ type: 'shields' });
+    }
+    if (state.shield <= 0) startDestroyed();
+  };
+
+  const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
+  // what the hunters report
+  const onHunters = (e) => {
+    if (e.type === 'hunted') {
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+    } else if (e.type === 'laser') hurt(e.damage);
+    else if (e.type === 'escaped' || e.type === 'cleared') {
+      emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
+      // the Star Destroyer's fighters gone: it jumps away
+      if (pieces.destroyerHere && !hunters.active) {
+        pieces.leave();
+        emit({ type: 'event', id: 'leave' });
+      }
+    }
+  };
+
+  // what the director sets going
+  const happen = (id, ship) => {
+    const family = FAMILY[state.kind];
+    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship);
+    else if (id === 'council') pieces.portals(hunters.pack('council', ship));
+    else if (id === 'destroyer') {
+      const d = pieces.destroyer(ship);
+      if (!d) return;
+      emit({ type: 'event', id: 'destroyer' });
+      // its fighters launch a moment after it's here
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack('empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+    } else if (id === 'distress') {
+      const prey = traffic?.distress(ship);
+      if (!prey) return;
+      hunters.pack(family === 'starwars' ? 'empire' : 'bugs', ship, { prey, size: 2, ace: false });
+      emit({ type: 'event', id: 'distress' });
+    } else if (id === 'convoy') traffic?.convoy(ship);
+    else if (id === 'comet') {
+      pieces.comet(ship);
+      later.push({ at: state.clock + 5, run: () => emit({ type: 'event', id: 'comet' }) });
+    }
+  };
+
+  // the shields bar: shown while there's trouble about or they're down at all
+  let shieldOn = false;
+  const placeShield = () => {
+    const el = props.shield?.current;
+    if (!el) return;
+    const on = flying() && state.view === 'chase' && !state.crash && !state.dive && !props.frozen && Boolean(hunters?.active || state.shield < 99.5);
+    if (on !== shieldOn) {
+      shieldOn = on;
+      el.toggleAttribute('data-on', on);
+    }
+    if (!on) return;
+    el.style.setProperty('--shield', (state.shield / 100).toFixed(3));
+    el.toggleAttribute('data-low', state.shield < 35);
+  };
+
+  // everything that goes on round you while you fly: the hunters, the
+  // director and its set pieces, your shields, the wonders you come up on
+  const adventure = (dt, t) => {
+    state.clock += dt;
+    const live = flying() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
+    if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    let busy = pieces.update(dt, t, camera);
+    if (live) {
+      // shields come back once you've been out of trouble a while
+      if (state.clock - state.hitAt > 5 && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12);
+      if (state.shield > 70) state.lowSaid = false;
+      state.heat = Math.max(0, state.heat - dt / 45);
+      if (hunters) {
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view !== 'chase' });
+        if (id) happen(id, live);
+      }
+      for (const l of [...later]) {
+        if (state.clock < l.at) continue;
+        later.splice(later.indexOf(l), 1);
+        l.run();
+      }
+      // out into deep space, and coming up on its wonders
+      if (!state.deepSaid && openness(live.x, live.z) > 0.6) {
+        state.deepSaid = true;
+        emit({ type: 'event', id: 'deep' });
+      }
+      for (const w of WONDERS) {
+        if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 60) continue;
+        state.saw.add(w.id);
+        emit({ type: 'wonder', id: w.id });
+      }
+    } else later.length = 0;
+    if (state.hurt > 0) {
+      state.hurt = Math.max(0, state.hurt - dt * 2.2);
+      busy = true;
+    }
+    post.hit(state.hurt);
+    placeShield();
+    return busy || Boolean(hunters?.count) || later.length > 0;
+  };
+
   // the camera during a crash: back and up from the impact, so you see the
   // ship go in and the shockwave run out over the planet
   const crashPose = () => {
@@ -977,9 +1168,9 @@ export async function create(canvas, ctx) {
       crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun });
       state.shake = reduced ? 0 : 1;
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
-      emit({ type: 'crash', id: c.id });
+      if (!c.shot) emit({ type: 'crash', id: c.id }); // (shot down said so as it began)
     }
-    if (age >= CRASH.through && !c.asked && !c.sun) {
+    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && isPlace(c.id)) {
       // the shockwave running out over the surface: the page takes it from
       // here, if it's going on into the place's page
       c.asked = true;
@@ -990,12 +1181,22 @@ export async function create(canvas, ctx) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
       let at;
-      if (c.sun) {
-        const out = Math.hypot(c.from.x, c.from.z) || 1;
-        const r = SUN.r + 5;
-        at = { x: (c.from.x / out) * r, y: SHIP.height, z: (c.from.z / out) * r, heading: headingTo(c.from.x, c.from.z) }; // facing away from it
+      if (c.shot) {
+        // shot down: back at the nearest place, shields up again
+        const near = ORDER.reduce((a, b) => (Math.hypot(...POSITIONS[a].map((v, i) => v - c.from.getComponent(i))) <= Math.hypot(...POSITIONS[b].map((v, i) => v - c.from.getComponent(i))) ? a : b));
+        at = parkAt(near, [c.from.x, c.from.z]);
+      } else if (c.sun || !isPlace(c.id)) {
+        // the sun, or a wonder out in deep space: back out the way it went in, facing away
+        const solid = SOLIDS.find((o) => o.id === c.id) ?? { at: SUN.at, r: SUN.r };
+        const out = c.from.clone().sub(new THREE.Vector3(...solid.at));
+        if (c.sun) out.y = 0;
+        out.normalize();
+        const r = solid.r + 5;
+        at = { x: solid.at[0] + out.x * r, y: c.sun ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
       state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
+      state.shield = 100;
+      state.lowSaid = false;
       m.group.visible = true;
       m.pivot.rotation.set(0, 0, 0);
       crashFx.arrive({ point: new THREE.Vector3(at.x, state.ship.y, at.z), kind: state.kind, heading: at.heading });
@@ -1194,7 +1395,13 @@ export async function create(canvas, ctx) {
     const crashBusy = crashFx.update(dt, camera);
     const popBusy = pops.update(dt, camera);
     const fxBusy = crashBusy || popBusy;
-    if (traffic) for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) emit(e);
+    if (traffic) {
+      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) {
+        if (e.event === 'convoy') emit({ type: 'event', id: 'convoy' });
+        else if (!e.event) emit(e); // (someone in distress said so as they came)
+      }
+    }
+    const adventuring = adventure(dt, t);
 
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
     const bursting = burst.update(dt);
@@ -1229,7 +1436,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || state.kick > 0 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || bursting || adventuring || state.kick > 0 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -1372,7 +1579,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, state };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -1384,6 +1591,9 @@ export async function create(canvas, ctx) {
       auto: state.auto?.id ?? null,
       view: state.view,
       crash: state.crash && { id: state.crash.id, age: state.crash.age },
+      shield: +state.shield.toFixed(1),
+      heat: +state.heat.toFixed(2),
+      hunters: hunters?.packs ?? [],
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
     });
@@ -1494,6 +1704,9 @@ export async function create(canvas, ctx) {
       if (import.meta.env.DEV) delete window.__universe, delete window.__universeDebug;
       crashFx.dispose();
       pops.dispose();
+      hunters?.dispose();
+      pieces.dispose();
+      fleet.dispose();
       burst.clear();
       burst.dispose();
       traffic?.dispose();

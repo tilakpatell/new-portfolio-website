@@ -1,0 +1,62 @@
+import { describe, expect, it } from 'vitest';
+import { EVENTS, PACE, createDirector } from './director';
+
+// a seeded random, so a run is the same every time
+const seeded = (seed = 7) => () => {
+  seed = (seed * 16807) % 2147483647;
+  return seed / 2147483647;
+};
+const run = (d, seconds, state, dt = 0.5) => {
+  const got = [];
+  for (let t = 0; t < seconds; t += dt) {
+    const e = d.update(dt, typeof state === 'function' ? state(t) : state);
+    if (e) got.push({ t, e });
+  }
+  return got;
+};
+
+describe('the director', () => {
+  it('does nothing without a ship', () => {
+    expect(run(createDirector({ rand: seeded() }), 1200, { family: null })).toHaveLength(0);
+  });
+
+  it('waits a while, then something happens every minute or two', () => {
+    const got = run(createDirector({ rand: seeded() }), 1200, { family: 'starwars' });
+    expect(got[0].t).toBeGreaterThanOrEqual(PACE.first[0]);
+    expect(got[0].t).toBeLessThanOrEqual(PACE.first[1] + 0.5);
+    for (let i = 1; i < got.length; i++) {
+      const gap = got[i].t - got[i - 1].t;
+      expect(gap).toBeGreaterThanOrEqual(PACE.gap[0] - 0.5);
+      expect(gap).toBeLessThanOrEqual(PACE.gap[1] + 0.5);
+    }
+  });
+
+  it('only brings what belongs in your universe, and never the same twice running', () => {
+    for (const family of ['starwars', 'rickmorty']) {
+      const got = run(createDirector({ rand: seeded(11) }), 6000, { family });
+      expect(got.length).toBeGreaterThan(40);
+      for (const { e } of got) expect(EVENTS[e].families, e).toContain(family);
+      for (let i = 1; i < got.length; i++) expect(got[i].e).not.toBe(got[i - 1].e);
+      const kinds = new Set(got.map((g) => g.e));
+      if (family === 'starwars') expect(kinds.has('destroyer') && !kinds.has('council')).toBe(true);
+      else expect(kinds.has('council') && !kinds.has('destroyer')).toBe(true);
+    }
+  });
+
+  it('holds off while something is going on, and comes sooner and angrier with heat', () => {
+    expect(run(createDirector({ rand: seeded() }), 600, { family: 'rickmorty', busy: true })).toHaveLength(0);
+    const calm = run(createDirector({ rand: seeded(3) }), 6000, { family: 'starwars', heat: 0 });
+    const hot = run(createDirector({ rand: seeded(3) }), 6000, { family: 'starwars', heat: 6 });
+    expect(hot.length).toBeGreaterThan(calm.length * 1.5);
+    const share = (got) => got.filter((g) => g.e === 'hunt' || g.e === 'destroyer').length / got.length;
+    expect(share(hot)).toBeGreaterThan(share(calm));
+  });
+
+  it('brings on what it is asked for next', () => {
+    const d = createDirector({ rand: seeded() });
+    d.soon('comet');
+    expect(d.update(0.1, { family: 'starwars' })).toBe('comet');
+    d.soon('council'); // not in Star Wars: ignored
+    expect(d.update(0.1, { family: 'starwars' })).toBeNull();
+  });
+});

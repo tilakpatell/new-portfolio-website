@@ -23,7 +23,7 @@ describe('the crews', () => {
   it('only play clips the site has', async () => {
     const { CLIPS } = await import('../../lib/clips');
     for (const crew of CREWS) {
-      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill].map((o) => Object.values(o ?? {}).flat()));
+      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders].map((o) => Object.values(o ?? {}).flat()));
       for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
     }
   });
@@ -39,6 +39,32 @@ describe('the crews', () => {
           for (const [who] of exchange) expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
         }
       }
+    }
+  });
+
+  it('have a word for being hunted, the director’s events and every wonder out in deep space', async () => {
+    const { FACTIONS } = await import('./hunters');
+    const { EVENTS } = await import('./director');
+    const { WONDERS } = await import('./deep');
+    const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
+    const said = (exchange, crew, what) => {
+      expect(exchange?.length, `${crew.id}: ${what}`).toBeGreaterThan(0);
+      for (const [who, text] of exchange) {
+        expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+        expect(text.length).toBeGreaterThan(2);
+      }
+    };
+    for (const crew of CREWS) {
+      const family = FAMILY[crew.id];
+      // hunters after you (not the pirates in a distress call: that's the event's line)
+      for (const [id, f] of Object.entries(FACTIONS)) if (f.family === family && id !== 'bugs') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
+      if (family === 'starwars') said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
+      for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared']) said(linesFor(crew, event), crew, event);
+      // the director's events (the Council's arrival is its hunted line), rescuing someone, going out into deep space
+      for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council') said(linesFor(crew, 'event', id), crew, `event ${id}`);
+      said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
+      said(linesFor(crew, 'event', 'deep'), crew, 'deep');
+      for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
     }
   });
 
