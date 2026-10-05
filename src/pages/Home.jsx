@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
+import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiRocket2Line } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Portrait from '../components/Portrait';
 import CareerStrip from '../components/CareerStrip';
@@ -149,6 +149,16 @@ export default function Home() {
               </Link>
               <Link to="/resume" className="btn btn-ghost btn-lg">
                 <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
+              </Link>
+            </Reveal>
+            {/* the other way round the site, for anyone who came straight here */}
+            <Reveal delay={220} className="mt-5">
+              <Link to="/universe/home" className="hero-universe group">
+                <RiRocket2Line className="h-4 w-4 flex-none" aria-hidden="true" />
+                <span>
+                  Or fly through it: the whole site as a <span className="hero-universe-em">universe</span>
+                </span>
+                <RiArrowRightLine className="h-4 w-4 flex-none transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
             </Reveal>
           </div>

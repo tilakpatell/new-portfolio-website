@@ -122,4 +122,27 @@ export const CONVOS = {
   },
 };
 
+// ── on the side ──
+// The night on the stair, as it might have gone: crumbs on Sam's cloak.
+// Nothing the story needs, open once you've climbed the stairs. Its own
+// record is kept apart from the story's (../side.js), and its star is an
+// achievement of its own, not one of the chapter's seals.
+export const SIDE = {
+  id: 'crumbs',
+  name: 'Crumbs on Sam’s cloak',
+  where: 'The top of the stair, the night before the lair',
+  blurb: 'Wake first, as Sam, and brush off the lembas crumbs Gollum dusted on your cloak before Frodo stirs.',
+  locked: 'Once you’ve climbed the stairs.',
+  needs: 'stairs',
+  seal: 'notacrumb',
+};
+export const CRUMB_SAYS = {
+  start: 'The night on the stair, as it might have gone. You wake first, as Sam, and there are crumbs of lembas all over your cloak, and none of them yours. Gollum is watching from the dark. Brush them off before Mr. Frodo wakes.',
+  stir: ['Frodo stirs, and mutters, and sleeps on.', 'Frodo turns his head. “Sam?” But he’s still asleep.', 'Grey light on the rock. Frodo’s eyes are moving under their lids.'],
+  rustle: 'A rustle of cloth, and nothing on it. Frodo murmurs in his sleep.',
+  won: (secs) => `The last crumb goes over the edge. When Frodo wakes there’s nothing on your cloak but dust, and Gollum has nothing to show him. (${secs} seconds)`,
+  woke: 'Frodo wakes. Gollum is at his side at once: “Look! Crumbses on his clothes! He took it, master!”',
+  best: (secs) => `Your best: brushed clean in ${secs} seconds.`,
+};
+
 export const SPEAKERS = { gollum: 'Gollum', sam: 'Samwise Gamgee', frodo: 'Frodo', galadriel: 'Galadriel', narrator: '' };

@@ -1,6 +1,5 @@
 import { Component } from 'react';
-
-const STALE = /dynamically imported module|Failed to fetch|Loading chunk|Importing a module script failed/i;
+import { isStale, mayReload, reloadFresh, session } from '../lib/stale';
 
 // Keeps a failure in one page (or a stale chunk after a deploy) from blanking the site.
 export default class ErrorBoundary extends Component {
@@ -10,17 +9,11 @@ export default class ErrorBoundary extends Component {
     return { error };
   }
 
-  // A chunk that 404s after a deploy is fixed by one reload; only try it once
-  // per session so a real outage can't loop.
+  // A file that 404s after a deploy (a page, its stylesheet) is fixed by
+  // reloading from the new build (lib/stale); not twice in a row, so a real
+  // outage can't loop.
   componentDidCatch(error) {
-    if (!STALE.test(error?.message || '')) return;
-    try {
-      if (window.sessionStorage.getItem('tp-stale-reload')) return;
-      window.sessionStorage.setItem('tp-stale-reload', '1');
-    } catch {
-      return;
-    }
-    window.location.reload();
+    if (isStale(error) && mayReload(session())) reloadFresh();
   }
 
   componentDidUpdate(prev) {
@@ -31,7 +24,7 @@ export default class ErrorBoundary extends Component {
     const { error } = this.state;
     if (!error) return this.props.children;
     if (this.props.fallback !== undefined) return this.props.fallback;
-    const stale = STALE.test(error.message || '');
+    const stale = isStale(error);
     return (
       <div className="shell flex min-h-[70vh] items-center py-32">
         <div className="max-w-lg">
@@ -43,7 +36,7 @@ export default class ErrorBoundary extends Component {
               : 'Reload the page, or head back to the home page. Everything else on the site still works.'}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+            <button type="button" className="btn btn-primary" onClick={reloadFresh}>
               Reload page
             </button>
             <a className="btn btn-ghost" href="#/">
