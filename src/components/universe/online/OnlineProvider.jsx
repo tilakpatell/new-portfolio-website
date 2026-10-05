@@ -7,8 +7,8 @@ import { UNIVERSE, whereOf } from './where';
 // above the pages, so it stays up as you go from the universe into a world
 // and on round the site. Off the universe map (which has its own corner and
 // the ships themselves), the other pilots on your page show as live
-// pointers (Presence.jsx) and who's online sits in the bottom-left corner;
-// both load only once you've gone online.
+// pointers (Presence.jsx, unless you've turned them off) and who's online
+// sits in the bottom-left corner; both load only once you've gone online.
 
 const Presence = lazy(() => import('./Presence'));
 const Online = lazy(() => import('./Online'));
@@ -22,7 +22,7 @@ export default function OnlineProvider({ children }) {
       {children}
       {away && (
         <Suspense fallback={null}>
-          <Presence online={online} />
+          {online.pointers && <Presence online={online} />}
           <Online online={online} floating />
         </Suspense>
       )}

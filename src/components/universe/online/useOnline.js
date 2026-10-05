@@ -10,10 +10,18 @@ import { cleanName, randomCallsign } from './names';
 // it), who's here, and a short feed of what's happening (who came online or
 // came to your page, alliances, who shot down whom), each line gone after a
 // few seconds. Pages read it with useOnline().
+//
+// A tab left in the background a couple of minutes (AWAY_MS) leaves the room,
+// so no one's left waiting on a ghost and your connection isn't kept open
+// for nothing, and joins again when you're back. Live pointers off the map
+// (Presence.jsx: yours to them, theirs to you) can be turned off, and that's
+// remembered.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
 const SHIP_KEY = 'tp-universe-ship'; // (crews.js's: the ship last flown)
+const POINTERS_KEY = 'tp-universe-pointers'; // 'off' once you've turned pointers off
+const AWAY_MS = 120000; // a tab hidden this long leaves the room till you're back
 const FEED_MS = 6000;
 const FEED_MAX = 4;
 const OFF = { status: 'off', self: null, peers: [] };
@@ -29,11 +37,31 @@ export function useOnlineState(where) {
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
+  const [away, setAway] = useState(false); // the tab's been in the background a while
+  const [pointers, setPointers] = useState(() => local.get(POINTERS_KEY) !== 'off');
   const latest = useRef({ name, kind, where });
   latest.current = { name, kind, where };
 
+  // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
     if (!on) return undefined;
+    let t = 0;
+    const check = () => {
+      clearTimeout(t);
+      if (document.hidden) t = setTimeout(() => setAway(true), AWAY_MS);
+      else setAway(false);
+    };
+    check();
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', check);
+      setAway(false);
+    };
+  }, [on]);
+
+  useEffect(() => {
+    if (!on || away) return undefined;
     let c = null;
     let off = null;
     let gone = false;
@@ -77,7 +105,7 @@ export function useOnlineState(where) {
       setRoom(OFF);
       setFeed([]);
     };
-  }, [on, attempt]);
+  }, [on, attempt, away]);
 
   useEffect(() => {
     client?.setProfile({ name, kind, where });
@@ -97,6 +125,7 @@ export function useOnlineState(where) {
     client,
     room,
     feed,
+    pointers, // live pointers off the map, yours and theirs
     setKind, // the universe page says which ship you fly
     suggest: () => name ?? randomCallsign(),
     goOnline(callsign) {
@@ -109,6 +138,10 @@ export function useOnlineState(where) {
       setOn(false);
     },
     retry: () => setAttempt((a) => a + 1),
+    showPointers(yes) {
+      local.set(POINTERS_KEY, yes ? 'on' : 'off');
+      setPointers(yes);
+    },
     rename: keepName,
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
