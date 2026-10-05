@@ -8,9 +8,9 @@
 
 // layers a wafer, good wafers wanted, wafers a shift, how wide a good
 // wafer's top must be, the dispenser's swings a second (and how much
-// quicker each layer), how far it swings each way, and the narrowest
-// overlap that still sticks
-export const LINE = { layers: 5, need: 3, wafers: 6, good: 0.7, speed: 0.55, speedUp: 0.12, travel: 0.75, miss: 0.02 };
+// quicker each layer), how far it swings each way, the narrowest overlap
+// that still sticks, and how near square a drop is laid square
+export const LINE = { layers: 5, need: 3, wafers: 6, good: 0.6, speed: 0.45, speedUp: 0.06, travel: 0.75, miss: 0.02, snap: 0.06 };
 
 const TRAY = { x: 0, w: 1 };
 
@@ -49,17 +49,21 @@ function finish(line, events, spoilt) {
   }
 }
 
-// Drop the next layer where the dispenser is. One a press: a second drop
-// before the dispenser has moved on does nothing.
-export function dropLayer(line) {
+// Drop the next layer where the dispenser is: `late` seconds after the last
+// step, when the key went down (so a slow frame doesn't move it), and laid
+// square on the stack if it's all but square already. One a press: a
+// second drop before the dispenser has moved on does nothing.
+export function dropLayer(line, late = 0) {
   if (line.state !== 'ready' || line.dropped) return [];
   line.dropped = true;
   const events = [];
-  const lo = Math.max(line.x - line.w / 2, line.below.x - line.below.w / 2);
-  const hi = Math.min(line.x + line.w / 2, line.below.x + line.below.w / 2);
+  let x = late > 0 ? Math.sin(line.phase + late * (LINE.speed + line.layer * LINE.speedUp) * Math.PI * 2) * LINE.travel : line.x;
+  if (Math.abs(x - line.below.x) < LINE.snap) x = line.below.x;
+  const lo = Math.max(x - line.w / 2, line.below.x - line.below.w / 2);
+  const hi = Math.min(x + line.w / 2, line.below.x + line.below.w / 2);
   const w = hi - lo;
   if (w < LINE.miss) {
-    events.push({ type: 'spoilt', layer: line.layer, x: line.x });
+    events.push({ type: 'spoilt', layer: line.layer, x });
     finish(line, events, true);
     return events;
   }
@@ -67,7 +71,7 @@ export function dropLayer(line) {
   const cut = line.w - w;
   line.stack.push(laid);
   events.push({ type: 'layer', layer: line.layer, ...laid });
-  if (cut > 1e-9) events.push({ type: 'cut', w: cut, side: line.x > line.below.x ? 1 : -1 });
+  if (cut > 1e-9) events.push({ type: 'cut', w: cut, side: x > line.below.x ? 1 : -1 });
   line.below = { x: laid.x, w };
   line.w = w;
   line.layer += 1;

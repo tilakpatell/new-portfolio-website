@@ -418,7 +418,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   // the beats' cameras, in the rooms' frames
   const CAMS = {
     factory: {
-      line: { at: [0, 2.35, 3.7], look: [0, 1.55, 0] },
+      line: { at: [0, 3.0, 4.6], look: [0, 0.55, 0] },
       floor: { at: [9, 4.6, 7], look: [-2, 1.2, -3] },
     },
     council: {

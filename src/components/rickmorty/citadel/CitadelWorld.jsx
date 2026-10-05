@@ -352,8 +352,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const s = sim.current;
     if (s.mode !== 'inside' || s.room !== 'factory' || s.beat !== 'line') return;
     audioContext();
-    const before = { x: s.line.x, w: s.line.w, cream: s.line.layer % 2 === 1 };
-    const events = dropLayer(s.line);
+    const before = { w: s.line.w, cream: s.line.layer % 2 === 1 };
+    // judged where the dispenser is now, not where the last frame left it
+    const late = s.lineAt ? Math.min(0.1, Math.max(0, (performance.now() - s.lineAt) / 1000)) : 0;
+    const events = dropLayer(s.line, late);
     let laid = null;
     for (const e of events) {
       if (e.type === 'layer') {
@@ -365,7 +367,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         api.current?.fx('cut', { x: laid.x + e.side * (laid.w / 2 + e.w / 2), w: e.w, cream: laid.cream, side: e.side, y: 1.3 + laid.layer * 0.12 });
       } else if (e.type === 'spoilt') {
         sounds().then((x) => x.spoil());
-        api.current?.fx('spoilt', { x: before.x, w: before.w, cream: before.cream });
+        api.current?.fx('spoilt', { x: e.x, w: before.w, cream: before.cream });
         say('Missed. That wafer’s spoilt.', true);
       } else if (e.type === 'wafer' && !events.some((x) => x.type === 'good')) {
         say('Too thin. That one’s for the reject bin.', true);
@@ -530,7 +532,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     }
 
     // the line, swinging
-    if (s.mode === 'inside' && s.room === 'factory' && s.beat === 'line') stepLine(s.line, dt);
+    if (s.mode === 'inside' && s.room === 'factory' && s.beat === 'line') {
+      stepLine(s.line, dt);
+      s.lineAt = performance.now();
+    }
 
     // the Cop Ricks, on red alert
     s.chased = false;
