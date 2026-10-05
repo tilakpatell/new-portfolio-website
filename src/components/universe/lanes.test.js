@@ -46,7 +46,7 @@ describe('everyday traffic', () => {
       const pts = laneBetween(rand);
       if (pts) for (const p of [pts[0], pts[2]]) expect(Math.hypot(p[0], p[2])).toBeLessThan(MAP_RADIUS + 24);
       const big = laneBetween(rand, { high: true });
-      expect(laneLength(big)).toBeGreaterThan(MAP_RADIUS);
+      if (big) expect(laneLength(big)).toBeGreaterThan(MAP_RADIUS);
     }
   });
 });

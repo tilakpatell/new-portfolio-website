@@ -2,10 +2,12 @@
 // Node. A lane is a gentle curve (a quadratic Bézier: three points in map
 // space) that something follows from one end to the other.
 //
-// laneBetween(rand, { high }) is everyday traffic: from beside one place to
-// beside another, well above or below the disc the planets sit on (so it
-// never meets a planet, a station, the sun or you), or, for the big ships,
-// higher still, across the whole map. flybyLane(ship, rand) is traffic that
+// laneBetween(rand, { high }) is a lane from beside one place to beside
+// another, well above or below the disc the planets sit on (so it never
+// meets a planet, a station, the sun or you), or, for the big ships, higher
+// still, across the whole map; null when no clear one's found. (Everyday
+// traffic keeps to where you are now, below; this is kept for whatever
+// wants a long way round.) flybyLane(ship, rand) is traffic that
 // comes to you: from ahead of the ship, at its height, past one side of it
 // close enough to see (and shoot), and on behind; none when that would take
 // it through a planet. laneNear(ship, rand) is the traffic out in deep

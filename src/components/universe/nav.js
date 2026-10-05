@@ -77,7 +77,7 @@ const WONDER_ABOUT = {
   citadel: 'The Citadel of Ricks. Fly into it too fast and you’re inside its world.',
   lantern: 'A pulsar: a dead star the size of a city, spinning, two beams of light sweeping round it. Nobody goes near.',
   twins: 'Two suns, one gold and one white, close enough to share a bridge of burning gas.',
-  wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. The furthest thing out.',
+  wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. Far out, below the disc.',
   graveyard: 'A white dwarf with a field of dead ships drifting round it, from every fleet and none. Quiet.',
 };
 const wonderColor = (w) => w.color ?? w.colors?.[0] ?? (w.kind === 'black-hole' ? '#ffb070' : '#7fd6ff');

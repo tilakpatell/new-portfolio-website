@@ -40,7 +40,7 @@ for (const id of ids) {
   const w = WONDERS.find((o) => o.id === id);
   if (!w) continue;
   // the hyperdrive charges ten seconds between jumps (wall clock)
-  await page.waitForFunction(() => !window.__universe().hyper || window.__universe().hyper.ready, null, { timeout: 30000 }).catch(() => {});
+  await page.waitForFunction(() => { const s = window.__universeDebug.state; return !s.jump && (s.hyperAt === null || performance.now() / 1000 - s.hyperAt > 10.2); }, null, { timeout: 30000 }).catch(() => {});
   await click('.universe-navmap-btn');
   await page.waitForSelector('.navmap', { timeout: 60000 });
   await page.evaluate((n) => [...document.querySelectorAll('.navmap-list button')].find((b) => b.textContent.includes(n))?.click(), w.name);

@@ -80,7 +80,7 @@ export const WONDERS = [
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 45, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' },
   { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
   { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230 } },
-  { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, colors: ['#1a2238', '#3a4a70', '#7fd8c8'] },
+  { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)
   { id: 'graveyard', kind: 'graveyard', name: 'The Graveyard', at: [-6400, 160, -1600], r: 14, color: '#dfe8ff', field: 190 },
 ];
 
@@ -123,7 +123,7 @@ export function planetAt(star, p) {
 export function reachOf(w) {
   if (w.kind === 'star') return Math.max(w.r, ...w.planets.map((p) => p.orbit + p.r));
   if (w.kind === 'black-hole') return w.disk;
-  if (w.kind === 'pulsar') return w.r * 10; // (its glare, and its beams: nobody goes near)
+  if (w.kind === 'pulsar') return w.r * 14; // (its glare, and its beams: nobody goes near; the solid's own reach, so the ship parks at it)
   if (w.kind === 'binary') return w.pair.apart + w.pair.r; // (its second sun)
   if (w.kind === 'graveyard') return w.field; // (the hulls)
   if (w.ring) return w.r * 2.3;

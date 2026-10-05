@@ -10,7 +10,7 @@
 // stream past while you fly (and you can feel how fast you're going), fading
 // in from the box's edges so it never shows. One draw, moved on the GPU.
 //
-// createBelt({ small, band, seed, tones, scale, spin }) → { group, update(t) }
+// createBelt({ small, band, seed, tones, scale, spin, count }) → { group, update(t) }
 // rock(seed) → a lumpy rock's geometry, about a unit across (meteors.js uses it too)
 // createDust({ small }) → { points, update(cameraInParent, amount) }
 
@@ -58,12 +58,12 @@ const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466']
 // `tones`: its rocks' colours; `scale`: how many times bigger than the belt's
 // rocks (the rim's are seen from thousands of units off); `spin`: radians
 // a second round the sun
-export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006 } = {}) {
+export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 2400 } = {}) {
   const rand = rng(seed);
-  const N = small ? 900 : 2400;
+  const N = small ? Math.round(count * 0.375) : count;
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 });
-  const shapes = [rock(11 + seed), rock(23 + seed), rock(37 + seed)];
+  const shapes = [11, 23, 37].map((k) => rock(k + seed - 1977)); // (the home belt's own shapes as they always were; another seed, other shapes)
   const counts = [Math.ceil(N * 0.4), Math.ceil(N * 0.35), Math.floor(N * 0.25)];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();

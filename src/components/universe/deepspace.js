@@ -1275,6 +1275,7 @@ void main() {
   float v = band * band * (0.5 + 0.5 * fine) * curtain;
   vec3 col = mix(uColor, vec3(0.85, 0.35, 0.95), k * 0.8) * v * 1.8;
   gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
 }`;
 // a binary's bridge of gas: a soft wisp between the two suns, drawn on two
 // crossed planes along the line between them (uv.x along it)
@@ -1292,6 +1293,7 @@ void main() {
   float wisp = snoise(vec3(along * 6.0 - uTime * 0.25, across * 3.0, uTime * 0.05)) * 0.5 + 0.5;
   float v = body * ends * (0.45 + 0.55 * wisp);
   gl_FragColor = vec4(uColor * v * 1.4, 1.0);
+  #include <colorspace_fragment>
 }`;
 const UV_VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 
@@ -1910,11 +1912,12 @@ export function buildDeepSpace({ small = false } = {}) {
     const mat = world('ROCK', { light: homeW, radius: w.r, base: w.colors[0], accent: w.colors[1], tex: rockTex, rim: w.colors[2], rimStrength: 1.2, dusk: '#2a3a60', seed: 5.5 });
     const body = mesh(new THREE.SphereGeometry(w.r, seg(96, 56), seg(64, 36)), mat, tilt);
     halo(tilt, w.r, w.colors[2], homeW, { reach: 1.06, strength: 0.5 });
-    const inner = w.r * 0.3;
-    const outer = w.r * 1.05;
+    // (an auroral oval over each pole, hanging just off the cap, as one reads from orbit)
+    const inner = w.r * 0.45;
+    const outer = w.r * 1.0;
     for (const pole of [1, -1]) {
       const m = mesh(new THREE.RingGeometry(inner, outer, seg(96, 48), 1).rotateX(-PI / 2), shader(AURORA_VERT, AURORA_FRAG, { uColor: { value: new THREE.Color(w.colors[2]) }, uInner: { value: inner }, uOuter: { value: outer }, uSeed: { value: pole * 3.3 } }, { ...additive, side: THREE.DoubleSide }), tilt, 2);
-      m.position.y = pole * w.r * 0.82;
+      m.position.y = pole * w.r * 0.9;
     }
     const ringTex = own(ringTexture(['#b9d8f0', '#7fa8c8', '#e8f4ff'], w.id, { faint: true }));
     ring(tilt, w.r, [1.6, 2.2], ringTex, homeW, 0.35);
