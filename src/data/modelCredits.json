@@ -1,4 +1,81 @@
 {
+  "avengers-anim-basic": {
+    "title": "Basic Human Male",
+    "author": "enzinogenie",
+    "authorUrl": "https://sketchfab.com/enzinogenie",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
+    "where": "avengers",
+    "as": "the idle, walk and run Thor and Black Widow move with",
+    "file": "/models/sketchfab/avengers/thor.glb"
+  },
+  "avengers-anim-spiderman-advanced": {
+    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
+    "where": "avengers",
+    "as": "Spider-Man’s idle, walk and jump",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-anim-spiderman-symbiote": {
+    "title": "Spider-Man 2 Symbiote Suit (PS5)",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
+    "where": "avengers",
+    "as": "Spider-Man’s run",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-hulk": {
+    "title": "Hulk | Marvel Rivals",
+    "author": "King_45",
+    "authorUrl": "https://sketchfab.com/King_45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/hulk-marvel-rivals-1379a9de81b7426ea4ee71ff4c126e80",
+    "where": "avengers",
+    "as": "Hulk, about the compound",
+    "file": "/models/sketchfab/avengers/hulk.glb"
+  },
+  "avengers-ironman": {
+    "title": "Iron Man MK7",
+    "author": "CHANG747",
+    "authorUrl": "https://sketchfab.com/CHANGP453",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/iron-man-mk7-ad4776eea8184283a3e49cf5487df754",
+    "where": "avengers",
+    "as": "an Iron Man armour at the workshop door",
+    "file": "/models/sketchfab/avengers/ironman.glb"
+  },
+  "avengers-thor": {
+    "title": "Thor",
+    "author": "Bhavlin",
+    "authorUrl": "https://sketchfab.com/thakurbhavmanyu5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thor-7cc5f55499cc4d67b7a1c92a6845c8a0",
+    "where": "avengers",
+    "as": "Thor, about the compound",
+    "file": "/models/sketchfab/avengers/thor.glb"
+  },
+  "avengers-widow": {
+    "title": "Black Widow – Animated 3D Character",
+    "author": "Kmirp99",
+    "authorUrl": "https://sketchfab.com/Kmirp99",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/black-widow-animated-3d-character-da36a24d113f49908459bf33e00a1f1e",
+    "where": "avengers",
+    "as": "Black Widow, about the compound",
+    "file": "/models/sketchfab/avengers/widow.glb"
+  },
   "bag-end-door": {
     "title": "Bilbo's Doors ( Hobbit House Doors )",
     "author": "MattMaksymowicz",
@@ -57,198 +134,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "minas-tirith": {
-    "title": "Minas Tirith Remake",
-    "author": "Mitro123",
-    "authorUrl": "https://sketchfab.com/Mitro123",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/minas-tirith-remake-5b2e96acbf5e4dfaa61996da9ff962ad",
-    "where": "middle-earth",
-    "as": "Minas Tirith"
-  },
-  "omni-man": {
-    "title": "Omni Man Fortnite",
-    "author": "Swimknot19",
-    "authorUrl": "https://sketchfab.com/RafaMario",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
-    "where": "invincible",
-    "as": "Omni-Man",
-    "file": "/models/invincible/omni-man.glb"
-  },
-  "orthanc": {
-    "title": "Isengard",
-    "author": "AndreOrla",
-    "authorUrl": "https://sketchfab.com/andreorla",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/isengard-7c674181195940e3a369018b52756bde",
-    "where": "middle-earth",
-    "as": "Orthanc"
-  },
-  "sitar": {
-    "title": "Classical musical Instrument - Sitar",
-    "author": "Amagi_Arts",
-    "authorUrl": "https://sketchfab.com/natsuboy304",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/classical-musical-instrument-sitar-deef326cddd04784be5d704c4fc44533",
-    "where": "universe",
-    "as": "the sitar by the music planet"
-  },
-  "spiderman": {
-    "title": "Spiderman Brand New Day",
-    "author": "mpolo0604",
-    "authorUrl": "https://sketchfab.com/mpolo0604",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
-    "where": "avengers",
-    "as": "Spider-Man",
-    "file": "/models/marvel/spiderman.glb"
-  },
-  "star-destroyer": {
-    "title": "Star Destroyer",
-    "author": "rubaun",
-    "authorUrl": "https://sketchfab.com/rubaun",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
-    "where": "universe",
-    "as": "the Star Destroyers",
-    "file": "/models/universe/star-destroyer.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "thragg": {
-    "title": "Thragg from invincible s4",
-    "author": "Gojiram",
-    "authorUrl": "https://sketchfab.com/geoffscool",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
-    "where": "invincible",
-    "as": "Thragg",
-    "file": "/models/invincible/thragg.glb"
-  },
-  "tie-interceptor": {
-    "title": "Star Wars: TIE/in Interceptor",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
-    "where": "universe",
-    "as": "the TIE interceptors",
-    "file": "/models/universe/tie-interceptor.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "trench": {
-    "title": "Death Star Trench Run",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
-    "where": "galaxy",
-    "as": "the Death Star’s trench",
-    "file": "/models/universe/trench.glb"
-  },
-  "xwing-hd": {
-    "title": "High Poly X-Wing Fighter",
-    "author": "charles.woods",
-    "authorUrl": "https://sketchfab.com/charles.woods",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
-    "where": "universe",
-    "as": "the X-wing you fly",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "avengers-thor": {
-    "title": "Thor",
-    "author": "Bhavlin",
-    "authorUrl": "https://sketchfab.com/thakurbhavmanyu5",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thor-7cc5f55499cc4d67b7a1c92a6845c8a0",
-    "where": "avengers",
-    "as": "Thor, about the compound",
-    "file": "/models/sketchfab/avengers/thor.glb"
-  },
-  "avengers-hulk": {
-    "title": "Hulk | Marvel Rivals",
-    "author": "King_45",
-    "authorUrl": "https://sketchfab.com/King_45",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/hulk-marvel-rivals-1379a9de81b7426ea4ee71ff4c126e80",
-    "where": "avengers",
-    "as": "Hulk, about the compound",
-    "file": "/models/sketchfab/avengers/hulk.glb"
-  },
-  "avengers-widow": {
-    "title": "Black Widow – Animated 3D Character",
-    "author": "Kmirp99",
-    "authorUrl": "https://sketchfab.com/Kmirp99",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/black-widow-animated-3d-character-da36a24d113f49908459bf33e00a1f1e",
-    "where": "avengers",
-    "as": "Black Widow, about the compound",
-    "file": "/models/sketchfab/avengers/widow.glb"
-  },
-  "avengers-ironman": {
-    "title": "Iron Man MK7",
-    "author": "CHANG747",
-    "authorUrl": "https://sketchfab.com/CHANGP453",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/iron-man-mk7-ad4776eea8184283a3e49cf5487df754",
-    "where": "avengers",
-    "as": "an Iron Man armour at the workshop door",
-    "file": "/models/sketchfab/avengers/ironman.glb"
-  },
-  "avengers-anim-basic": {
-    "title": "Basic Human Male",
-    "author": "enzinogenie",
-    "authorUrl": "https://sketchfab.com/enzinogenie",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
-    "where": "avengers",
-    "as": "the idle, walk and run Thor and Black Widow move with",
-    "file": "/models/sketchfab/avengers/thor.glb"
-  },
-  "avengers-anim-spiderman-advanced": {
-    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
-    "author": "jerrylxia",
-    "authorUrl": "https://sketchfab.com/jerrylxia",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
-    "where": "avengers",
-    "as": "Spider-Man’s idle, walk and jump",
-    "file": "/models/marvel/spiderman.glb"
-  },
-  "avengers-anim-spiderman-symbiote": {
-    "title": "Spider-Man 2 Symbiote Suit (PS5)",
-    "author": "jerrylxia",
-    "authorUrl": "https://sketchfab.com/jerrylxia",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
-    "where": "avengers",
-    "as": "Spider-Man’s run",
-    "file": "/models/marvel/spiderman.glb"
   },
   "galaxy-acclamator": {
     "title": "Acclamator-Class Assault Ship",
@@ -484,6 +369,132 @@
     "where": "galaxy",
     "as": "the Y-wings",
     "file": "/models/galaxy/ywing.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "minas-tirith": {
+    "title": "Minas Tirith Remake",
+    "author": "Mitro123",
+    "authorUrl": "https://sketchfab.com/Mitro123",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/minas-tirith-remake-5b2e96acbf5e4dfaa61996da9ff962ad",
+    "where": "middle-earth",
+    "as": "Minas Tirith"
+  },
+  "omni-man": {
+    "title": "Omni Man Fortnite",
+    "author": "Swimknot19",
+    "authorUrl": "https://sketchfab.com/RafaMario",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
+    "where": "invincible",
+    "as": "Omni-Man",
+    "file": "/models/invincible/omni-man.glb"
+  },
+  "orthanc": {
+    "title": "Isengard",
+    "author": "AndreOrla",
+    "authorUrl": "https://sketchfab.com/andreorla",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/isengard-7c674181195940e3a369018b52756bde",
+    "where": "middle-earth",
+    "as": "Orthanc"
+  },
+  "sitar": {
+    "title": "Classical musical Instrument - Sitar",
+    "author": "Amagi_Arts",
+    "authorUrl": "https://sketchfab.com/natsuboy304",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/classical-musical-instrument-sitar-deef326cddd04784be5d704c4fc44533",
+    "where": "universe",
+    "as": "the sitar by the music planet"
+  },
+  "spiderman": {
+    "title": "Spiderman Brand New Day",
+    "author": "mpolo0604",
+    "authorUrl": "https://sketchfab.com/mpolo0604",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
+    "where": "avengers",
+    "as": "Spider-Man",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "star-destroyer": {
+    "title": "Star Destroyer",
+    "author": "rubaun",
+    "authorUrl": "https://sketchfab.com/rubaun",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
+    "where": "universe",
+    "as": "the Star Destroyers",
+    "file": "/models/universe/star-destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-gungan": {
+    "title": "Jar Jar Binks",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jar-jar-binks-85aef3e496d44e9b95c7386035c0ef10",
+    "where": "galaxy",
+    "as": "the Gungans",
+    "file": "/models/galaxy/surface/gungan.glb"
+  },
+  "thragg": {
+    "title": "Thragg from invincible s4",
+    "author": "Gojiram",
+    "authorUrl": "https://sketchfab.com/geoffscool",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
+    "where": "invincible",
+    "as": "Thragg",
+    "file": "/models/invincible/thragg.glb"
+  },
+  "tie-interceptor": {
+    "title": "Star Wars: TIE/in Interceptor",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
+    "where": "universe",
+    "as": "the TIE interceptors",
+    "file": "/models/universe/tie-interceptor.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "trench": {
+    "title": "Death Star Trench Run",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
+    "where": "galaxy",
+    "as": "the Death Star’s trench",
+    "file": "/models/universe/trench.glb"
+  },
+  "xwing-hd": {
+    "title": "High Poly X-Wing Fighter",
+    "author": "charles.woods",
+    "authorUrl": "https://sketchfab.com/charles.woods",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
+    "where": "universe",
+    "as": "the X-wing you fly",
     "also": [
       "galaxy"
     ]
