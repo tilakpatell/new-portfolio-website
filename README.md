@@ -41,7 +41,7 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable. It opens on a hand of 3D game cartridges, one per project: point at one to lift it, click to open it |
 | Résumé | `/resume` | The résumé on the page, plus a PDF download |
 | Travel | `/travel` | A 3D globe of places visited, with photos |
-| Contact | `/contact` | How to reach me |
+| Contact | `/contact` | How to reach me, with a paper airplane folded from the memo pad gliding by the heading (it takes off when the memo's sent) |
 | Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
 | Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
 
