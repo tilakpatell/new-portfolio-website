@@ -622,6 +622,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           gathering,
           party,
           council: s.council,
+          shards: s.shards,
           stood: s.stood,
           reach: s.reach,
           stepT: s.stepT,

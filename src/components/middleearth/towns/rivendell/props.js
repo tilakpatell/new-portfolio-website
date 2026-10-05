@@ -160,12 +160,12 @@ const bayRise = (a, top, { ratio = 1.75, kick = 0.35, margin = 0.24 } = {}) => M
 function wallShape(w, h, opens = [], kick = 0.35) {
   const doors = opens.filter((o) => o.y <= 0.001).sort((p, q) => p.x - q.x);
   const pts = [[-w / 2, 0]];
-  for (const o of doors) for (const [x, y] of archOpening(o.a, o.hs, o.rise, o.n ?? 8, o.kick ?? kick)) pts.push([o.x + x, y]);
+  for (const o of doors) for (const [x, y] of archOpening(o.a, o.hs, o.rise, o.n ?? 6, o.kick ?? kick)) pts.push([o.x + x, y]);
   pts.push([w / 2, 0], [w / 2, h], [-w / 2, h]);
   const s = shapeOf(pts);
   for (const o of opens) {
     if (o.y <= 0.001) continue;
-    s.holes.push(pathOf(archOpening(o.a, o.hs, o.rise, o.n ?? 8, o.kick ?? kick).map(([x, y]) => [o.x + x, o.y + y])));
+    s.holes.push(pathOf(archOpening(o.a, o.hs, o.rise, o.n ?? 6, o.kick ?? kick).map(([x, y]) => [o.x + x, o.y + y])));
   }
   return s;
 }
@@ -508,10 +508,10 @@ function rockCanvas(S = 256, seed = 5) {
     const big = fbm(n, u * 4, v * 4, { period: 4, octaves: 5 });
     const grain = n(u * 96, v * 96, 96);
     const bed = Math.sin((v * 7 + fbm(n, u * 2, v * 2 + 5, { period: 2, octaves: 2 }) * 0.8) * TAU) * 0.5 + 0.5;
-    const k = cells(u * 6, v * 3, 3);
-    const crack = 1 - smooth(0, 0.035, k.f2 - k.f1);
+    const k = cells(u * 5, v * 5, 5);
+    const crack = (1 - smooth(0, 0.02, k.f2 - k.f1)) * smooth(0.5, 0.62, fbm(n, u * 3 + 5, v * 3, { period: 3, octaves: 2 })) * 0.2;
     field[py * S + px] = clamp01(0.4 + big * 0.4 + grain * 0.15 - crack * 0.35 + bed * 0.08);
-    const t = 0.78 + big * 0.22 + (grain - 0.5) * 0.12 - crack * 0.3 - bed * 0.05;
+    const t = 0.8 + big * 0.2 + (grain - 0.5) * 0.12 - crack * 0.22 - bed * 0.04;
     out[0] = 240 * t;
     out[1] = 236 * t;
     out[2] = 228 * t;
@@ -627,16 +627,16 @@ function ageCanvas(c, { seed = 77, crack = 0.3, flake = 0.66, plaster = [214, 19
   const img = g.getImageData(0, 0, W, H);
   const d = img.data;
   const n = makeNoise(seed);
-  const cells = makeCells(seed + 1);
   const ar = H / W;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const u = x / W;
       const v = y / H;
-      const k = cells(u * cell, v * cell * ar);
-      const cr = (1 - smooth(0, 0.045, k.f2 - k.f1)) * crack;
-      const fl = smooth(flake, flake + 0.03, fbm(n, u * 5, v * 5 * ar, { octaves: 5 }));
-      const fd = 0.86 + fbm(n, u * 3 + 9, v * 3 * ar, { octaves: 3 }) * 0.24;
+      // crazing: the creases of a ridged noise, thin and branching
+      const rdg = 1 - Math.abs(fbm(n, u * cell + 3, v * cell * ar, { octaves: 2 }) * 2 - 1);
+      const cr = smooth(0.93, 0.99, rdg) * crack;
+      const fl = smooth(flake, flake + 0.03, fbm(n, u * 5, v * 5 * ar, { octaves: 3 }));
+      const fd = 0.86 + n(u * 6 + 9, v * 6 * ar) * 0.24;
       const i = (y * W + x) * 4;
       const t = fade + fl * (1 - fade);
       for (let ch = 0; ch < 3; ch++) d[i + ch] = mix(d[i + ch] * fd * (1 - cr), plaster[ch] * (0.92 + fd * 0.08) * (1 - cr * 0.5), t);
@@ -670,8 +670,8 @@ function courtCanvas(S = 1024, R = 8) {
     const dj = Math.min(r - r0, r1 - r, (Math.min(fa, 1 - fa) * TAU * r) / count);
     const joint = 1 - smooth(0.006, 0.035, dj);
     const tone = n(k * 3.7 + b * 11.1, b * 1.9) - 0.5;
-    const cloud = fbm(n, u * 24, v * 24, { octaves: 4 }) - 0.5;
-    const t = 0.9 + tone * 0.12 + cloud * 0.1 - joint * 0.3;
+    const cloud = fbm(n, u * 24, v * 24, { octaves: 2 }) - 0.5;
+    const t = 0.9 + tone * 0.12 + cloud * 0.12 - joint * 0.3;
     const warm = b === 6 ? 0.96 : 1;
     out[0] = 240 * t;
     out[1] = 226 * t * warm;
@@ -772,7 +772,7 @@ function courtCanvas(S = 1024, R = 8) {
     g.restore();
   }
   g.restore();
-  return ageCanvas(c, { seed: 52, crack: 0, flake: 2, fade: 0, cell: 8 });
+  return c;
 }
 
 // The painting in the hall of Narsil, in the manner of an old fresco: the
@@ -799,6 +799,16 @@ function muralCanvas() {
     g.beginPath();
     g.ellipse(r() * W, r() * 280, 60 + r() * 170, 12 + r() * 26, (r() - 0.5) * 0.4, 0, TAU);
     g.fill();
+  }
+  // brushwork swirling round the fire
+  for (let i = 0; i < 70; i++) {
+    const a0 = r() * TAU;
+    const rr = 60 + r() * 420;
+    g.strokeStyle = r() < 0.5 ? `rgba(255,190,90,${0.05 + r() * 0.08})` : `rgba(60,14,8,${0.08 + r() * 0.1})`;
+    g.lineWidth = 2 + r() * 5;
+    g.beginPath();
+    g.arc(330, 190, rr, a0, a0 + 0.3 + r() * 0.6);
+    g.stroke();
   }
   // Orodruin
   poly(g, [[0, 410], [140, 330], [250, 210], [290, 166], [312, 160], [346, 161], [370, 170], [430, 236], [540, 330], [660, 405]], '#2e1912');
@@ -897,6 +907,29 @@ function muralCanvas() {
   const ink = '#070403';
   const rim = '#a84a22';
   const gilt = '#d6a44c';
+  // his cloak, billowing out behind him to the right
+  g.beginPath();
+  g.moveTo(735, 150);
+  g.bezierCurveTo(800, 180, 850, 260, 900, 320);
+  g.bezierCurveTo(930, 360, 960, 420, 990, 470);
+  g.lineTo(940, 466);
+  g.bezierCurveTo(910, 450, 880, 470, 850, 462);
+  g.bezierCurveTo(820, 455, 800, 470, 780, 466);
+  g.lineTo(740, 300);
+  g.closePath();
+  g.fillStyle = '#1e0c0a';
+  g.fill();
+  g.strokeStyle = ink;
+  g.lineWidth = 3;
+  g.stroke();
+  g.strokeStyle = '#5a1810';
+  g.lineWidth = 2;
+  for (const [x0, y0, x1, y1] of [[760, 200, 840, 440], [790, 210, 900, 450], [820, 240, 950, 455]]) {
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo((x0 + x1) / 2 + 20, (y0 + y1) / 2, x1, y1);
+    g.stroke();
+  }
   limb(g, [655, 282], [628, 372], 42, 32, dark, ink, 3);
   limb(g, [628, 372], [612, 456], 32, 25, dark, ink, 3);
   limb(g, [725, 282], [752, 372], 42, 32, dark, ink, 3);
@@ -943,14 +976,32 @@ function muralCanvas() {
   g.strokeStyle = '#ff7a2a';
   g.shadowColor = '#ff5010';
   g.shadowBlur = 6;
-  g.lineWidth = 2.4;
+  g.lineWidth = 2.2;
   g.beginPath();
-  g.moveTo(674, 98);
-  g.lineTo(706, 98);
-  g.moveTo(690, 98);
-  g.lineTo(690, 124);
+  g.moveTo(674, 97);
+  g.lineTo(686, 99);
+  g.moveTo(694, 99);
+  g.lineTo(706, 97);
+  g.stroke();
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.moveTo(690, 104);
+  g.lineTo(690, 126);
   g.stroke();
   g.shadowBlur = 0;
+  // gilt edges on the helm, the crown, the plates
+  g.strokeStyle = gilt;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(668, 128);
+  g.lineTo(663, 94);
+  g.lineTo(670, 67);
+  g.lineTo(690, 59);
+  g.moveTo(646, 252);
+  g.lineTo(616, 146);
+  g.moveTo(640, 238);
+  g.lineTo(608, 338);
+  g.stroke();
   // the arm raised with the mace
   limb(g, [758, 152], [812, 120], 36, 30, dark, ink, 3);
   limb(g, [812, 120], [842, 78], 30, 26, dark, ink, 3);
@@ -1095,7 +1146,7 @@ function muralCanvas() {
     scroll(11, y, -Math.PI / 2);
     scroll(W - 11, y, Math.PI / 2);
   }
-  return ageCanvas(c, { seed: 78, crack: 0.28, flake: 0.7, fade: 0.1, cell: 46 });
+  return ageCanvas(c, { seed: 78, crack: 0.3, flake: 0.82, fade: 0.08, cell: 48 });
 }
 
 // Bilbo's map, of the Lonely Mountain and the lands about it, in brown ink
@@ -1378,39 +1429,52 @@ function inscriptionCanvas() {
   g.shadowColor = '#ff6a10';
   g.shadowBlur = 5;
   const r = rng(66);
-  const top = 24;
+  const top = 22;
   const base = 40;
-  let x = 6;
-  while (x < W - 16) {
+  let x = 8;
+  while (x < W - 18) {
     const k = r();
     g.beginPath();
-    if (k < 0.3) {
-      g.moveTo(x, top - 9);
-      g.lineTo(x, base);
-    } else if (k < 0.5) {
-      g.moveTo(x, top);
-      g.lineTo(x, base + 9);
-    } else {
-      g.moveTo(x, top + 2);
-      g.lineTo(x, base);
-    }
+    // a stem, up or down or neither
+    const up = k < 0.3;
+    const down = k > 0.3 && k < 0.5;
+    g.moveTo(x, up ? top - 10 : top);
+    g.lineTo(x, down ? base + 10 : base);
     g.stroke();
+    // one or two bows, open to either side, or a hooked top
+    const kind = r();
     const bows = 1 + (r() < 0.4 ? 1 : 0);
-    for (let b = 0; b < bows; b++) {
-      g.beginPath();
-      g.arc(x + 4 + b * 7, k < 0.5 ? 33 : 31, 5, -Math.PI / 2, Math.PI / 2);
-      g.stroke();
-    }
-    if (r() < 0.45) {
-      g.beginPath();
-      if (r() < 0.5) g.arc(x + 4, top - 7, 1.6, 0, TAU);
-      else {
-        g.moveTo(x + 1, top - 5);
-        g.lineTo(x + 7, top - 10);
+    let w = 6;
+    if (kind < 0.55) {
+      for (let b = 0; b < bows; b++) {
+        g.beginPath();
+        g.arc(x + 5 + b * 8, 31, 6, -Math.PI / 2, Math.PI / 2);
+        g.stroke();
       }
+      w = 6 + bows * 8;
+    } else if (kind < 0.8) {
+      g.beginPath();
+      g.moveTo(x, top);
+      g.bezierCurveTo(x + 12, top - 2, x + 12, top + 12, x + 2, top + 10);
       g.stroke();
+      w = 12;
+    } else {
+      g.beginPath();
+      g.moveTo(x, base);
+      g.bezierCurveTo(x + 10, base + 2, x + 12, top + 6, x + 4, top + 4);
+      g.stroke();
+      w = 12;
     }
-    x += 9 + bows * 7 + (r() < 0.18 ? 8 : 0);
+    // a mark above: a dot, a stroke, a curl
+    const m = r();
+    g.beginPath();
+    if (m < 0.25) g.arc(x + w / 2, top - 8, 1.8, 0, TAU);
+    else if (m < 0.45) {
+      g.moveTo(x + w / 2 - 3, top - 6);
+      g.lineTo(x + w / 2 + 3, top - 11);
+    } else if (m < 0.6) g.arc(x + w / 2, top - 8, 3.5, Math.PI, TAU);
+    g.stroke();
+    x += w + 5 + (r() < 0.16 ? 9 : 0);
   }
   return c;
 }
@@ -1619,7 +1683,7 @@ function roofOn(bk, K, o, { p = [0, 0, 0], ry = 0, ribs = null, finial = 1.2, ri
   bk.at(p, ry, () => {
     bk.add(mats.roof, roof.geo);
     bk.add(mats.soffit, roof.under);
-    bk.add(mats.gilt, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(roof.eave, true), roof.eave.length * 2, rim, 5, true));
+    bk.add(mats.gilt, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(roof.eave, true), roof.eave.length, rim, 4, true));
     const hips = ribs ?? (o.sides ? Array.from({ length: o.sides }, (_, k) => (o.rot ?? 0) / TAU + k / o.sides) : [0.125, 0.375, 0.625, 0.875]);
     for (const f of hips) {
       const pts = [];
@@ -1627,7 +1691,7 @@ function roofOn(bk, K, o, { p = [0, 0, 0], ry = 0, ribs = null, finial = 1.2, ri
         const [x, y, z] = roof.at(Math.pow(i / 8, 0.9) * 0.995, f);
         pts.push(V3(x, y + 0.015, z));
       }
-      bk.add(mats.gilt, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, rim * 0.75, 4, false));
+      bk.add(mats.gilt, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, rim * 0.75, 3, false));
     }
     const top = o.rise * (o.prof ? o.prof(0) : 1);
     const ridge = o.ridge ?? 0;
@@ -1726,7 +1790,7 @@ function balustrade(bk, K, pts, { h = 0.95, step = 2.2, rep = 0.95, rail = 0.05,
 // frame, x along it), its sill at y: a moulded frame with a gilt edge
 // round it, a sill, and leaded glass set back `depth` into the wall. A door
 // is the same with y = 0 and no sill.
-function archWindow(bk, K, { x, y = 0, a, hs, rise, depth = 0.25, pane = null, frame = 0.11, gilt = true, kick = 0.35, sill = true, finial = false, n = 7 }) {
+function archWindow(bk, K, { x, y = 0, a, hs, rise, depth = 0.25, pane = null, frame = 0.11, gilt = true, kick = 0.35, sill = true, finial = false, n = 6 }) {
   const { mats } = K;
   if (frame) bk.add(mats.carve, ext(shapeOf(archFrame(a, hs, rise, frame, n, kick)), 0.07), { p: [x, y, -0.01], uv: 1 });
   if (gilt) bk.add(mats.gilt, ext(shapeOf(archFrame(a + frame, hs, rise + frame * 1.15, 0.03, n, kick)), 0.085), { p: [x, y, -0.01] });
@@ -1856,7 +1920,7 @@ function house(K) {
     archWindow(bk, K, { ...door, frame: 0.16, pane: false, sill: false, finial: true });
     // two leaves of warm wood, a gilt fan of tracery over them
     const top = door.hs + archTop(door.a, door.rise, 0.35);
-    const outline = archOpening(door.a, door.hs, door.rise, 8, 0.35);
+    const outline = archOpening(door.a, door.hs, door.rise, 6, 0.35);
     const leafPts = outline.filter(([x]) => x <= 1e-6);
     leafPts.push([0, top], [0, 0]);
     for (const s of [-1, 1]) {
@@ -1964,7 +2028,7 @@ function house(K) {
   balustrade(bk, K, rail, { h: 1.0, step: 1.15 });
 
   // the roofs: the long one, the middle bay's across it
-  const main = roofOn(bk, K, { ridge: 3.8, dx: 6.4, dz: 6.3, rise: 5.0, prof: (q) => Math.pow(1 - q, 1.4), lift: 0.3, tips: 0.6, n: 5, rings: 12, around: 72 }, { p: [0, H2 + 0.02, 0], finial: 1.4 });
+  const main = roofOn(bk, K, { ridge: 3.8, dx: 6.4, dz: 6.3, rise: 5.0, prof: (q) => Math.pow(1 - q, 1.4), lift: 0.3, tips: 0.6, n: 5, rings: 11, around: 64 }, { p: [0, H2 + 0.02, 0], finial: 1.4 });
   // curved brackets of warm wood from the cornice up under the eaves
   const bracket = (x, z, nx, nz) => {
     const ex = x + nx * 0.85;
@@ -2001,7 +2065,7 @@ function house(K) {
   return {
     group: g,
     balcony: V3(bx, bTop, 5.9),
-    door: V3(0, base, PZ + 0.6),
+    door: V3(0, base + 0.02, PZ + 0.6),
     lamps,
     footprint: { w: W, d: D },
     porch: { z0: PZ, z1: 5, x0: -9, x1: 9 },
@@ -2069,10 +2133,10 @@ function chairParts(bk, K, { back = 2.0, seatH = 0.5, w = 0.64, d = 0.56, cushio
   bk.add(cushion || mats.velvet, roundBox(d - 0.06, 0.07, w - 0.1, 0.03), { p: [0.01, seatH + 0.03, 0], uv: 1 });
   const ay = seatH + 0.26;
   for (const s of [-1, 1]) {
-    bk.add(wood, tube([[hx - 0.05, seatH - 0.05, s * (hz - 0.05)], [hx, seatH * 0.45, s * (hz - 0.03)], [hx + 0.05, 0.02, s * hz]], 0.03, 0.022, { seg: 5, radial: 5 }), { uv: 2 });
-    bk.add(wood, tube([[-hx + 0.02, 0, s * hz], [-hx + 0.04, seatH, s * (hz - 0.02)], [-hx + 0.01, mix(seatH, back, 0.6), s * (hz - 0.03)], [-hx - 0.02, back - 0.04, s * (hz - 0.05)]], 0.034, 0.026, { seg: 8, radial: 5 }), { uv: 2 });
+    bk.add(wood, tube([[hx - 0.05, seatH - 0.05, s * (hz - 0.05)], [hx, seatH * 0.45, s * (hz - 0.03)], [hx + 0.05, 0.02, s * hz]], 0.03, 0.022, { seg: 4, radial: 4 }), { uv: 2 });
+    bk.add(wood, tube([[-hx + 0.02, 0, s * hz], [-hx + 0.04, seatH, s * (hz - 0.02)], [-hx + 0.01, mix(seatH, back, 0.6), s * (hz - 0.03)], [-hx - 0.02, back - 0.04, s * (hz - 0.05)]], 0.034, 0.026, { seg: 6, radial: 4 }), { uv: 2 });
     bk.add(mats.gilt, leafBlade(0.2, 0.08, { curl: 0.6, seg: 3, thick: 0.008 }), { p: [-hx - 0.02, back - 0.05, s * (hz - 0.05)], r: [0, -Math.PI / 2, 0] });
-    bk.add(wood, tube([[-hx, ay + 0.02, s * (hz - 0.01)], [0, ay + 0.04, s * (hz + 0.03)], [hx, ay, s * (hz + 0.02)], [hx + 0.07, ay - 0.06, s * hz], [hx + 0.03, ay - 0.11, s * hz], [hx - 0.01, ay - 0.06, s * hz]], 0.026, 0.018, { seg: 10, radial: 4 }), { uv: 2 });
+    bk.add(wood, tube([[-hx, ay + 0.02, s * (hz - 0.01)], [0, ay + 0.04, s * (hz + 0.03)], [hx, ay, s * (hz + 0.02)], [hx + 0.07, ay - 0.06, s * hz], [hx + 0.03, ay - 0.11, s * hz], [hx - 0.01, ay - 0.06, s * hz]], 0.026, 0.018, { seg: 8, radial: 4 }), { uv: 2 });
     bk.add(wood, tube([[hx - 0.03, seatH, s * (hz - 0.02)], [hx - 0.01, ay - 0.09, s * hz]], 0.018, 0.018, { seg: 2, radial: 4 }));
   }
   // the back: a pointed arch of wood with a carved rim, gilt tracery in its head
@@ -2080,9 +2144,9 @@ function chairParts(bk, K, { back = 2.0, seatH = 0.5, w = 0.64, d = 0.56, cushio
   const rise = a * 1.7;
   const hs = Math.max(0.2, back - seatH - 0.14 - archTop(a, rise, 0.4) - 0.04);
   bk.at([-hx + 0.0, seatH + 0.1, 0], Math.PI / 2, () => {
-    bk.add(wood, ext(shapeOf(archOpening(a, hs, rise, 8, 0.4)), 0.035), { p: [0, 0, -0.035], uv: 1.5 });
-    bk.add(wood, ext(shapeOf(archFrame(a - 0.05, hs, rise - 0.06, 0.05, 8, 0.4)), 0.025), { p: [0, 0, 0], uv: 1.5 });
-    archFill(bk, mats.giltTracery, { y0: hs, a: a - 0.06, rise: rise - 0.08, kick: 0.4, z: 0.012 });
+    bk.add(wood, ext(shapeOf(archOpening(a, hs, rise, 6, 0.4)), 0.035), { p: [0, 0, -0.035], uv: 1.5 });
+    bk.add(wood, ext(shapeOf(archFrame(a - 0.05, hs, rise - 0.06, 0.05, 6, 0.4)), 0.025), { p: [0, 0, 0], uv: 1.5 });
+    archFill(bk, mats.giltTracery, { y0: hs, a: a - 0.06, rise: rise - 0.08, kick: 0.4, z: 0.012, n: 6 });
     bk.add(mats.gilt, B(2 * a - 0.12, 0.02, 0.02), { p: [0, hs, 0.012] });
     bk.add(mats.gilt, leafBlade(0.22, 0.09, { curl: 0.3, seg: 3, thick: 0.008 }), { p: [0, hs + archTop(a, rise, 0.4) - 0.02, -0.018] });
   });
@@ -2193,7 +2257,7 @@ function bedroom(K) {
   const doorLeaf = new THREE.Group();
   doorLeaf.name = 'doorLeaf';
   const lk = parts();
-  const outline = archOpening(door.a - 0.02, door.hs, door.rise - 0.02, 8, 0.35).map(([x, y]) => [x + door.a, y]);
+  const outline = archOpening(door.a - 0.02, door.hs, door.rise - 0.02, 6, 0.35).map(([x, y]) => [x + door.a, y]);
   lk.add(mats.elfwood, ext(shapeOf(outline), 0.07), { p: [0, 0, -0.035], uv: 1.2 });
   for (const k of [0.35, 0.85]) lk.add(mats.gilt, B(0.03, door.hs - 0.3, 0.02), { p: [door.a * 2 * k, door.hs / 2, 0.04] });
   lk.add(mats.gilt, new THREE.TorusGeometry(0.06, 0.01, 4, 12), { p: [door.a * 2 - 0.15, 1.1, 0.05] });
@@ -2236,6 +2300,7 @@ function bedroom(K) {
     group: g,
     bed: V3(bx, top + 0.06, bz + 0.1),
     chair: V3(2.15, 0.48, -1.0),
+    chairFace: Math.PI,
     door: V3(-W / 2 + 0.5, 0, -door.x),
     sun: V3(W / 2 - 0.5, 2.6, 0),
     doorLeaf,
@@ -2296,6 +2361,8 @@ function pavilion(K) {
   bk.add(mats.carve, new THREE.CylinderGeometry(R + 0.3, R + 0.18, 0.22, 8, 1, false, Math.PI / 8), { p: [0, cy + 0.11, 0], uv: 1 });
   bk.add(mats.gilt, new THREE.CylinderGeometry(R + 0.31, R + 0.31, 0.03, 8, 1, true, Math.PI / 8), { p: [0, cy + 0.17, 0] });
   bk.add(mats.carve, new THREE.CircleGeometry(R + 0.1, 8, Math.PI / 8), { p: [0, cy - 0.01, 0], r: [Math.PI / 2, 0, 0], uv: 0.5 });
+  // a low drum the dome sits on
+  bk.add(mats.frieze, scaleU(new THREE.CylinderGeometry(R + 0.06, R + 0.12, 0.9, 8, 1, true, Math.PI / 8), (8 * 2 * (R + 0.1) * Math.sin(Math.PI / 8)) / 1.4), { p: [0, cy + 0.65, 0] });
   roofOn(bk, K, { sides: 8, rot: Math.PI / 8, dx: 3.75, dz: 3.75, rise: 3.1, prof: (q) => Math.pow(Math.max(0, 1 - Math.pow(q, 0.85)), 0.62), lift: 0.3, tips: 0.4, rings: 14, around: 64 }, { p: [0, cy + 0.2, 0], finial: 1.3 });
   // a low balustrade round all but the front
   for (let k = 0; k < 8; k++) {
@@ -2381,9 +2448,9 @@ function pavilion(K) {
 
 // ── the hall of Narsil ──
 
-// A robed figure in pale stone on a low plinth, facing +z, holding out a
-// tray across both forearms with a cloth of dark red velvet over it.
-// Returns where the cloth's top is.
+// A woman robed in pale stone on a low plinth, facing +z, her veil
+// falling down her back, holding out a tray across both forearms with a
+// cloth of dark red velvet over it. Returns where the cloth's top is.
 function statueParts(bk, K, { x = 0, y = 0, z = 0, tray = 1.7 } = {}) {
   const { mats } = K;
   const m = mats.marble;
@@ -2391,33 +2458,41 @@ function statueParts(bk, K, { x = 0, y = 0, z = 0, tray = 1.7 } = {}) {
   bk.add(m, lathe([[0.62, 0], [0.62, 0.06], [0.55, 0.1], [0.52, ph - 0.06], [0.58, ph - 0.03], [0.6, ph]], 16), { p: [x, y, z], uv: 1 });
   bk.add(m, new THREE.CircleGeometry(0.6, 16), { p: [x, y + ph, z], r: [-Math.PI / 2, 0, 0], uv: 1 });
   const b = y + ph;
-  // the robe, falling in folds deeper towards its hem
-  const robe = lathe([[0.4, 0], [0.38, 0.12], [0.33, 0.45], [0.26, 0.85], [0.2, 1.15], [0.18, 1.3], [0.2, 1.45], [0.22, 1.6], [0.23, 1.7], [0.18, 1.78], [0.07, 1.84]], 28);
+  // the robe: full at the hem, falling in folds, gathered at the waist,
+  // the bodice above it
+  const robe = lathe([[0.36, 0], [0.35, 0.1], [0.3, 0.45], [0.24, 0.85], [0.18, 1.12], [0.16, 1.22], [0.175, 1.3], [0.2, 1.46], [0.19, 1.58], [0.15, 1.66], [0.08, 1.72], [0.055, 1.78]], 28);
   const rp = robe.attributes.position;
   for (let k = 0; k < rp.count; k++) {
     const px = rp.getX(k);
     const pz = rp.getZ(k);
     const py = rp.getY(k);
     const a = Math.atan2(pz, px);
-    const fold = 1 + Math.sin(a * 9 + Math.sin(a * 3) * 0.6) * 0.06 * Math.max(0, 1 - py / 1.25);
-    rp.setXYZ(k, px * fold, py, pz * fold * 0.78 + (py < 0.2 ? 0.04 * (1 - py / 0.2) : 0));
+    const fold = 1 + Math.sin(a * 9 + Math.sin(a * 3) * 0.6) * 0.07 * Math.max(0, 1 - py / 1.15);
+    const flat = py > 1.3 ? 0.72 : 0.82;
+    rp.setXYZ(k, px * fold, py, pz * fold * flat + (py < 0.25 ? 0.05 * (1 - py / 0.25) : 0));
   }
   robe.computeVertexNormals();
   bk.add(m, robe, { p: [x, b, z], uv: 1.5 });
-  // head, veiled
-  bk.add(m, new THREE.SphereGeometry(0.115, 12, 10), { p: [x, b + 1.97, z + 0.01], s: [0.9, 1.12, 1] });
-  bk.add(m, lathe([[0.001, 2.13], [0.08, 2.11], [0.13, 2.04], [0.14, 1.95], [0.16, 1.86], [0.22, 1.78], [0.24, 1.72]], 14, Math.PI * 0.62, Math.PI * 1.76), { p: [x, b, z - 0.01], s: [1, 1, 0.85] });
-  // arms: upper arms down the sides, forearms forward under the tray, wide sleeves
-  const ty = b + 1.08;
-  const tz = z + 0.42;
+  bk.add(m, new THREE.TorusGeometry(0.165, 0.018, 5, 18), { p: [x, b + 1.22, z], r: [Math.PI / 2, 0, 0], s: [1, 0.8, 1] });
+  // shoulders, neck, head, the veil over it and down her back
+  bk.add(m, new THREE.SphereGeometry(0.2, 14, 8), { p: [x, b + 1.62, z - 0.01], s: [1.25, 0.42, 0.75] });
+  bk.add(m, cyl(0.045, 0.05, 0.14, 8), { p: [x, b + 1.78, z + 0.005] });
+  bk.add(m, new THREE.SphereGeometry(0.105, 14, 10), { p: [x, b + 1.93, z + 0.02], s: [0.88, 1.12, 0.98] });
+  bk.add(m, lathe([[0.001, 2.07], [0.07, 2.055], [0.115, 2.0], [0.125, 1.92], [0.13, 1.84], [0.17, 1.76], [0.21, 1.68]], 16, Math.PI * 0.16, Math.PI * 1.68), { p: [x, b, z + 0.0], s: [1, 1, 0.92] });
+  bk.add(m, lathe([[0.16, 1.74], [0.19, 1.55], [0.2, 1.38], [0.19, 1.24]], 10, Math.PI * 0.66, Math.PI * 0.68), { p: [x, b, z - 0.02], s: [0.95, 1, 0.75] });
+  // arms: the upper arms down her sides, the forearms out under the tray,
+  // wide sleeves hanging from them
+  const ty = b + 1.06;
+  const tz = z + 0.44;
   for (const s of [-1, 1]) {
-    bk.add(m, tube([[x + s * 0.21, b + 1.68, z], [x + s * 0.25, b + 1.4, z + 0.02], [x + s * 0.24, b + 1.12, z + 0.08]], 0.065, 0.06, { seg: 5, radial: 7 }), { uv: 1.5 });
-    bk.add(m, tube([[x + s * 0.24, b + 1.12, z + 0.08], [x + s * 0.24, ty - 0.08, z + 0.3], [x + s * 0.24, ty - 0.05, tz + 0.12]], 0.055, 0.045, { seg: 5, radial: 7 }), { uv: 1.5 });
-    bk.add(m, lathe([[0.07, 0], [0.1, 0.12], [0.13, 0.24], [0.11, 0.28]], 10), { p: [x + s * 0.24, b + 1.13, z + 0.1], r: [-1.25, 0, 0], s: [1, 1, 0.8], uv: 1.5 });
+    bk.add(m, tube([[x + s * 0.22, b + 1.62, z], [x + s * 0.26, b + 1.4, z + 0.01], [x + s * 0.25, b + 1.14, z + 0.06]], 0.047, 0.042, { seg: 5, radial: 7 }), { uv: 1.5 });
+    bk.add(m, tube([[x + s * 0.25, b + 1.14, z + 0.06], [x + s * 0.25, ty - 0.07, z + 0.28], [x + s * 0.23, ty - 0.04, tz + 0.12]], 0.042, 0.035, { seg: 5, radial: 7 }), { uv: 1.5 });
+    bk.add(m, lathe([[0.05, 0], [0.08, 0.1], [0.11, 0.24], [0.12, 0.36], [0.09, 0.39]], 10), { p: [x + s * 0.27, ty - 0.08, z + 0.2], r: [Math.PI, 0, 0], s: [0.7, 1, 1], uv: 1.5 });
   }
   // the tray and the cloth over it
   bk.add(m, roundBox(tray, 0.04, 0.56, 0.015), { p: [x, ty, tz], uv: 1 });
   bk.add(mats.velvet, drapeGeo(tray + 0.04, 0.6, 0.26, { folds: 6, depth: 0.03, nx: 30, nz: 10, seed: 5 }), { p: [x, ty + 0.025, tz] });
+  bk.add(mats.gilt, B(tray + 0.06, 0.012, 0.012), { p: [x, ty + 0.02, tz + 0.315] });
   return V3(x, ty + 0.03, tz);
 }
 
@@ -2426,7 +2501,7 @@ function statueParts(bk, K, { x = 0, y = 0, z = 0, tray = 1.7 } = {}) {
 // it. On the solid back wall, in a carved and gilt frame, the painting of
 // Isildur and Sauron (6 m × 3 m); before it a stone statue holding out the
 // shards of Narsil on a cloth.
-function colonnade(K, { withShards = true } = {}) {
+function colonnade(K, { withShards = false } = {}) {
   const { mats } = K;
   const g = new THREE.Group();
   g.name = 'colonnade';
@@ -2441,11 +2516,12 @@ function colonnade(K, { withShards = true } = {}) {
   bk.add(mats.elfstone, B(L + 0.6, y0, D + 0.9), { p: [0, y0 / 2, 0.2], uv: 0.5 });
   bk.add(mats.pave, B(L - 0.6, 0.02, D - 0.45), { p: [0, y0 + 0.01, 0.12], uv: 0.45 });
   bk.add(mats.elfstone, B(L, HT - y0, T), { p: [0, (HT + y0) / 2, -D / 2 + T / 2], uv: 0.5 });
+  // the ends: solid, each with a tall arched screen of pierced stone
   for (const s of [-1, 1]) {
-    const opening = { x: 0, y: 0, a: 0.9, hs: 2.4, rise: 1.2 };
+    const opening = { x: 0, y: 0.5, a: 0.85, hs: 2.0, rise: 1.15 };
     bk.at([s * L / 2, y0, 0], (s * Math.PI) / 2, () => {
       bk.add(mats.elfstone, ext(wallShape(D, HT - y0, [opening]), T), { p: [0, 0, -T], uv: 0.5 });
-      archWindow(bk, K, { ...opening, pane: false, sill: false, frame: 0.13 });
+      archWindow(bk, K, { ...opening, pane: mats.stoneFill, depth: T / 2, frame: 0.13 });
     });
   }
   // the columns and the arcade over them
@@ -2529,40 +2605,40 @@ function shards(K) {
   const r = rng(41);
   const blade = 1.12; // from the guard to the tip
   const halfW = (d) => mix(0.029, 0.017, d / blade) * (d > blade - 0.12 ? Math.max(0.08, (blade - d) / 0.12) : 1);
-  // a piece of blade from d0 to d1 along it, jagged where it broke
+  // a piece of blade from d0 to d1 along it: a flat diamond in section,
+  // thin at its edges with a ridge down the middle, broken jagged at
+  // either end (each of its five lines along it stops at its own place)
   const piece = (d0, d1, jag0, jag1) => {
-    const pts = [];
+    const lines = [-1, -0.5, 0, 0.5, 1];
+    const th = 0.0042;
     const steps = 4;
-    for (let k = 0; k <= steps; k++) {
-      const d = mix(d0, d1, k / steps);
-      pts.push([d, -halfW(d)]);
-    }
-    const end = (d, flip) => {
-      const out = [];
-      const m = 5;
-      for (let k = 1; k < m; k++) {
-        const t = k / m;
-        out.push([d + (r() - 0.5) * 0.022 * (k % 2 ? 1 : -0.6), mix(-halfW(d), halfW(d), t)]);
-      }
-      return flip ? out.reverse() : out;
-    };
-    if (jag1) pts.push(...end(d1, false));
-    for (let k = steps; k >= 0; k--) {
-      const d = mix(d0, d1, k / steps);
-      pts.push([d, halfW(d)]);
-    }
-    if (jag0) pts.push(...end(d0, true));
+    const j0 = lines.map((_, i) => (jag0 ? (r() - 0.5) * 0.03 * (i % 2 ? 1.4 : 0.7) : 0));
+    const j1 = lines.map((_, i) => (jag1 ? (r() - 0.5) * 0.03 * (i % 2 ? 1.4 : 0.7) : 0));
     const mid = (d0 + d1) / 2;
-    const geo = new THREE.ExtrudeGeometry(shapeOf(pts.map(([x, y]) => [x - mid, y])), { depth: 0.004, bevelEnabled: true, bevelThickness: 0.0025, bevelSize: 0.005, bevelSegments: 1, curveSegments: 1 });
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, 0.0065 - 0.002, 0);
-    // the fuller down the middle
-    const fuller = B(d1 - d0 - 0.03, 0.001, 0.009).translate(0, 0.0115, 0);
-    const bk = parts();
-    bk.add(mats.blade, geo);
-    bk.add(mats.fuller, fuller);
-    const holder = new THREE.Group();
-    bk.build(holder, { shadow: true });
+    const P = (li, k, top) => {
+      const d = mix(d0 + j0[li], d1 + j1[li], k / steps);
+      const h = th * (1 - Math.abs(lines[li])) + 0.0006;
+      return [d - mid, th + 0.0006 + (top ? h : -h), halfW(d) * lines[li]];
+    };
+    const pos = [];
+    const quad = (a0, b0, c0, d0_) => pos.push(...a0, ...b0, ...c0, ...b0, ...d0_, ...c0);
+    for (let li = 0; li < 4; li++) {
+      for (let k = 0; k < steps; k++) {
+        quad(P(li, k, true), P(li + 1, k, true), P(li, k + 1, true), P(li + 1, k + 1, true));
+        quad(P(li, k, false), P(li, k + 1, false), P(li + 1, k, false), P(li + 1, k + 1, false));
+      }
+      quad(P(li, 0, true), P(li, 0, false), P(li + 1, 0, true), P(li + 1, 0, false));
+      quad(P(li, steps, true), P(li + 1, steps, true), P(li, steps, false), P(li + 1, steps, false));
+    }
+    for (let k = 0; k < steps; k++) {
+      quad(P(0, k, true), P(0, k + 1, true), P(0, k, false), P(0, k + 1, false));
+      quad(P(4, k, true), P(4, k, false), P(4, k + 1, true), P(4, k + 1, false));
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
+    const holder = new THREE.Mesh(geo, mats.blade);
+    holder.castShadow = true;
     return { holder, mid };
   };
   const pieces = [];
@@ -2591,7 +2667,7 @@ function shards(K) {
   });
   hk.build(hiltPiece);
   const stump = piece(0, 0.17, false, true);
-  stump.holder.position.set(gx + 0.015 + stump.mid - hc, ay - 0.0065, 0);
+  stump.holder.position.set(gx + 0.015 + stump.mid - hc, ay - 0.0048, 0);
   hiltPiece.add(stump.holder);
   hiltPiece.position.set(hc, 0, 0);
   g.add(hiltPiece);
@@ -2613,6 +2689,1041 @@ function shards(K) {
   const mid = x / 2;
   for (const p of pieces) p.position.x -= mid;
   return { group: g, pieces, length: x };
+}
+
+// ── the Council ──
+
+// The Council's court, a round terrace 16 m across on a spur over the
+// river, its paving top at y = 0 and its walls going down 3 m: the floor
+// inlaid with a star and leaves, ten high-backed chairs in a ring facing
+// the middle with a gap to +z where you walk in, the plinth for the Ring in
+// the middle, a balustrade round the edge open to +z, and on the far side
+// two tall slender columns with a pointed arch between, framing the view.
+function court(K) {
+  const { mats } = K;
+  const g = new THREE.Group();
+  g.name = 'court';
+  const bk = parts();
+  const R = 8.2;
+  // the floor, the drum under it, a moulded edge
+  const floor = new THREE.CircleGeometry(R, 72);
+  bk.add(mats.court, floor, { r: [-Math.PI / 2, 0, 0] });
+  bk.add(mats.elfstone, new THREE.CylinderGeometry(R, R + 0.25, 3, 56, 1, true), { p: [0, -1.5, 0], uv: 0.5 });
+  bk.add(mats.carve, lathe([[R - 0.02, 0.02], [R + 0.16, 0.0], [R + 0.22, -0.08], [R + 0.16, -0.18], [R + 0.1, -0.22], [R + 0.12, -0.3], [R + 0.02, -0.34]], 56), { uv: 1 });
+  bk.add(mats.gilt, new THREE.TorusGeometry(R + 0.205, 0.02, 4, 72), { p: [0, -0.1, 0], r: [Math.PI / 2, 0, 0] });
+  bk.add(mats.frieze, scaleU(new THREE.CylinderGeometry(R + 0.04, R + 0.04, 0.45, 56, 1, true), (TAU * R) / 1.8), { p: [0, -0.62, 0] });
+  // the ten chairs, facing the middle, a gap to +z
+  const seats = [];
+  const open = 0.42; // the way in: ± this either side of +z
+  const sr = 5.4;
+  for (let k = 0; k < 10; k++) {
+    const a = Math.PI / 2 + open + 0.35 + (k / 9) * (TAU - 2 * open - 0.7);
+    const x = Math.cos(a) * sr;
+    const z = Math.sin(a) * sr;
+    const face = Math.atan2(z, -x);
+    seats.push({ x, z, face });
+    bk.at([x, 0, z], face, () => chairParts(bk, K, { back: 2.15, seatH: 0.5, w: 0.66, d: 0.58, cushion: mats.moss }));
+  }
+  // the plinth for the Ring: a moulded drum, carved leaves, a gilt band
+  const ph = 0.9;
+  bk.add(mats.carve, lathe([[0.001, ph], [0.5, ph], [0.54, ph - 0.03], [0.5, ph - 0.08], [0.4, ph - 0.12], [0.36, ph - 0.2], [0.34, 0.3], [0.4, 0.22], [0.52, 0.16], [0.62, 0.1], [0.62, 0]], 24), { uv: 1 });
+  bk.add(mats.gilt, new THREE.TorusGeometry(0.4, 0.02, 4, 24), { p: [0, ph - 0.12, 0], r: [Math.PI / 2, 0, 0] });
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU;
+    bk.add(mats.carve, leafBlade(0.5, 0.2, { curl: 1.2, thick: 0.02 }), { p: [Math.cos(a) * 0.33, 0.24, Math.sin(a) * 0.33], r: [0, Math.PI / 2 - a, 0] });
+  }
+  // the balustrade round the edge, open to +z, newel posts with lanterns
+  const br = 7.8;
+  const rail = [];
+  for (let k = 0; k <= 96; k++) {
+    const a = Math.PI / 2 + open + (k / 96) * (TAU - 2 * open);
+    rail.push([Math.cos(a) * br, 0, Math.sin(a) * br]);
+  }
+  balustrade(bk, K, rail, { h: 1.0, step: 2.6, rep: 0.95 });
+  const lamps = [];
+  for (const s of [-1, 1]) {
+    const a = Math.PI / 2 + s * open;
+    const x = Math.cos(a) * br;
+    const z = Math.sin(a) * br;
+    bk.add(mats.carve, lathe([[0.3, 0], [0.3, 0.15], [0.2, 0.25], [0.17, 1.3], [0.24, 1.38], [0.24, 1.46], [0.12, 1.5]], 12), { p: [x, 0, z], uv: 1 });
+    bk.add(mats.gilt, tube([[x, 1.48, z], [x, 1.85, z], [x * 0.97, 2.05, z * 0.97 + 0.05], [x * 0.94, 2.0, z * 0.94 + 0.1]], 0.02, 0.016, { seg: 8, radial: 4 }));
+    lanternParts(bk, K, x * 0.94, 1.78, z * 0.94 + 0.1, 0.8);
+    lamps.push(V3(x * 0.94, 1.78, z * 0.94 + 0.1));
+  }
+  // the two tall columns on the far side and the arch between them
+  const cr = R - 0.1;
+  const spread = 0.24;
+  const tops = [];
+  for (const s of [-1, 1]) {
+    const a = -Math.PI / 2 + s * spread;
+    const x = Math.cos(a) * cr;
+    const z = Math.sin(a) * cr;
+    tops.push([x, z]);
+    bk.add(mats.carve, roundBox(0.62, 0.3, 0.62, 0.03), { p: [x, 0.15, z], uv: 1 });
+    column(bk, K, { x, y: 0.3, z, h: 7.0, r: 0.19, leaves: 8 });
+  }
+  const span = Math.hypot(tops[1][0] - tops[0][0], tops[1][1] - tops[0][1]);
+  const mx = (tops[0][0] + tops[1][0]) / 2;
+  const mz = (tops[0][1] + tops[1][1]) / 2;
+  const a = span / 2 - 0.3;
+  const rise = a * 1.6;
+  bk.at([mx, 7.3, mz], 0, () => {
+    bk.add(mats.carve, ext(shapeOf(archFrame(a, 0, rise, 0.22, 12, 0.6)), 0.3), { p: [0, 0, -0.15], uv: 1 });
+    bk.add(mats.gilt, ext(shapeOf(archFrame(a, 0, rise, 0.04, 12, 0.6)), 0.34), { p: [0, 0, -0.17] });
+    bk.add(mats.gilt, ext(shapeOf(archFrame(a + 0.22, 0, rise + 0.253, 0.03, 12, 0.6)), 0.34), { p: [0, 0, -0.17] });
+    archFill(bk, mats.giltTracery, { y0: rise * 0.25, a: a * 0.86, rise: rise * 0.75, kick: 0.6, n: 10 });
+    bk.add(mats.gilt, leafBlade(0.8, 0.26, { curl: 0.25, seg: 4, thick: 0.015 }), { p: [0, archTop(a, rise, 0.6) + 0.3, 0] });
+    for (const s of [-1, 1]) {
+      const curl = [];
+      for (let k = 0; k <= 16; k++) {
+        const t = k / 16;
+        const ang = t * 4.2;
+        const rr = 0.55 * (1 - t * 0.75);
+        curl.push([s * (span / 2 + 0.15 + Math.sin(ang) * rr * 0.7), 0.1 + (1 - Math.cos(ang)) * rr * 0.8 - t * 0.2, 0]);
+      }
+      bk.add(mats.gilt, tube(curl, 0.025, 0.012, { seg: 24, radial: 4 }));
+    }
+  });
+  bk.build(g);
+  return { group: g, plinthTop: V3(0, ph, 0), seats, seatHeight: 0.5, radius: R, rail: { r: br, open }, lamps };
+}
+
+// ── the bridge ──
+
+// A section ([[across, up], ...], a loop) swept along x through `xs`, lifted
+// by yAt(x): a deck, a fascia, a rail that follows a humped bridge.
+function sweepX(section, xs, yAt) {
+  const pos = [];
+  const idx = [];
+  const m = section.length;
+  for (let e = 0; e < m; e++) {
+    const [az, ay] = section[e];
+    const [bz, by] = section[(e + 1) % m];
+    const base = pos.length / 3;
+    for (const x of xs) {
+      const y = yAt(x);
+      pos.push(x, ay + y, az, x, by + y, bz);
+    }
+    for (let i = 0; i < xs.length - 1; i++) {
+      const p = base + i * 2;
+      idx.push(p, p + 2, p + 1, p + 1, p + 2, p + 3);
+    }
+  }
+  for (const [x, first] of [[xs[0], true], [xs[xs.length - 1], false]]) {
+    const base = pos.length / 3;
+    const y = yAt(x);
+    for (const [z, yy] of section) pos.push(x, yy + y, z);
+    for (let i = 1; i < m - 1; i++) {
+      if (first) idx.push(base, base + i, base + i + 1);
+      else idx.push(base, base + i + 1, base + i);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  return g.toNonIndexed();
+}
+
+// The bridge over the gorge: a slender single arch along x from -len/2 to
+// +len/2, its walkway rising as y = 1.3 · sin(π · (x/len + 0.5)) above the
+// ends (y = 0), between railings of flowing tracery with a gilt-capped
+// handrail and newel posts with lanterns at the ends. Beneath, the arch rib
+// springs from the gorge's sides at y = -6.5, its spandrels open in
+// tracery, onto stone abutments set into the rock at each end.
+function bridge(K, len = 16) {
+  const { mats } = K;
+  const g = new THREE.Group();
+  g.name = 'bridge';
+  const bk = parts();
+  const L = len / 2;
+  const deck = (x) => (Math.abs(x) >= L ? 0 : 1.3 * Math.sin(Math.PI * (x / len + 0.5)));
+  const wd = 2.6;
+  const hw = wd / 2;
+  const xs = [];
+  const N = Math.max(24, Math.round(len * 2.5));
+  for (let i = 0; i <= N; i++) xs.push(-L + (i / N) * len);
+  // the deck: paving on a slab, a carved fascia either side, a gilt line
+  bk.add(mats.pave, sweepX([[-hw + 0.1, -0.06], [hw - 0.1, -0.06], [hw - 0.1, 0], [-hw + 0.1, 0]], xs, deck), { uv: 0.5 });
+  bk.add(mats.elfstone, sweepX([[-hw, -0.42], [hw, -0.42], [hw, -0.06], [-hw, -0.06]], xs, deck), { uv: 0.5 });
+  for (const s of [-1, 1]) {
+    const geo = sweepX(s > 0 ? [[hw, -0.44], [hw + 0.06, -0.44], [hw + 0.06, 0.06], [hw, 0.06]] : [[-hw - 0.06, -0.44], [-hw, -0.44], [-hw, 0.06], [-hw - 0.06, 0.06]], xs, deck);
+    const p = geo.attributes.position;
+    const uv = new Float32Array(p.count * 2);
+    for (let k = 0; k < p.count; k++) {
+      uv[k * 2] = p.getX(k) / 2;
+      uv[k * 2 + 1] = (p.getY(k) - deck(p.getX(k)) + 0.44) / 0.5;
+    }
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    bk.add(mats.frieze, geo);
+    bk.add(mats.gilt, sweepX(s > 0 ? [[hw + 0.06, -0.47], [hw + 0.09, -0.47], [hw + 0.09, -0.44], [hw + 0.06, -0.44]] : [[-hw - 0.09, -0.47], [-hw - 0.06, -0.47], [-hw - 0.06, -0.44], [-hw - 0.09, -0.44]], xs, deck));
+  }
+  // the railings: posts, tracery, a handrail that curls into a scroll at
+  // each end over the newel post
+  const lamps = [];
+  for (const s of [-1, 1]) {
+    const z = s * (hw - 0.06);
+    const line = xs.filter((x) => Math.abs(x) <= L - 0.5).map((x) => [x, deck(x), z]);
+    balustrade(bk, K, line, { h: 1.0, step: 2.0, rep: 0.95, ends: false });
+    for (const e of [-1, 1]) {
+      const x = e * (L - 0.25);
+      const y = deck(x);
+      bk.add(mats.carve, lathe([[0.22, 0], [0.22, 0.12], [0.15, 0.2], [0.13, 1.25], [0.18, 1.32], [0.18, 1.4], [0.1, 1.44]], 10), { p: [x, y, z], uv: 1 });
+      const curl = [];
+      for (let k = 0; k <= 14; k++) {
+        const t = k / 14;
+        const ang = t * 5;
+        const rr = 0.24 * (1 - t * 0.7);
+        curl.push([x - e * 0.3 + e * Math.sin(ang) * rr, y + 1.0 + 0.24 - Math.cos(ang) * rr + 0.0, z]);
+      }
+      bk.add(mats.carve, tube([[x - e * 0.7, deck(x - e * 0.7) + 1.0, z], ...curl], 0.05, 0.03, { seg: 20, radial: 5 }), { uv: 2 });
+      bk.add(mats.gilt, tube([[x, y + 1.44, z], [x, y + 1.95, z], [x + e * 0.12, y + 2.2, z], [x + e * 0.26, y + 2.12, z]], 0.022, 0.016, { seg: 8, radial: 4 }));
+      lanternParts(bk, K, x + e * 0.26, y + 1.86, z, 0.8);
+      lamps.push(V3(x + e * 0.26, y + 1.86, z));
+    }
+  }
+  // the arch beneath: a rib springing from the gorge's sides, its
+  // spandrels pierced with tracery
+  const spring = -6.5;
+  const ai = L - 0.6;
+  const ao = L + 0.4;
+  const crownIn = 0.1;
+  const crownOut = 1.3 - 0.42 - 0.02;
+  const inner = (x) => spring + (crownIn - spring) * Math.sqrt(Math.max(0, 1 - (x / ai) ** 2));
+  const outer = (x) => spring + (crownOut - spring) * Math.sqrt(Math.max(0, 1 - (x / ao) ** 2));
+  const rib = [];
+  const M = 40;
+  for (let i = 0; i <= M; i++) {
+    const x = -ao + (i / M) * 2 * ao;
+    rib.push([x, Math.min(outer(x), deck(x) - 0.4)]);
+  }
+  for (let i = M; i >= 0; i--) {
+    const x = -ai + (i / M) * 2 * ai;
+    rib.push([x, inner(x)]);
+  }
+  const ribW = 1.5;
+  bk.add(mats.elfstone, ext(shapeOf(rib), ribW), { p: [0, 0, -ribW / 2], uv: 0.5 });
+  // a moulding round the arch's soffit edge, gilt-lined
+  for (const s of [-1, 1]) {
+    const band = [];
+    for (let i = 0; i <= M; i++) {
+      const x = -ai + (i / M) * 2 * ai;
+      band.push([x, inner(x) - 0.02]);
+    }
+    for (let i = M; i >= 0; i--) {
+      const x = -ai + (i / M) * 2 * ai;
+      band.push([x * 0.985, inner(x) + 0.22]);
+    }
+    bk.add(mats.carve, ext(shapeOf(band), 0.06), { p: [0, 0, s * (ribW / 2) + (s > 0 ? 0 : -0.06)], uv: 1 });
+    const gl = [];
+    for (let i = 0; i <= M; i++) {
+      const x = -ai + (i / M) * 2 * ai;
+      gl.push([x, inner(x) + 0.23, s * (ribW / 2 + 0.035)]);
+    }
+    bk.add(mats.gilt, tube(gl, 0.018, 0.018, { seg: 60, radial: 3 }));
+  }
+  // the spandrels: tracery between the rib and the deck
+  for (const e of [-1, 1]) {
+    const pts = [];
+    const x0 = e * 0.9;
+    const x1 = e * (ao - 0.05);
+    for (let i = 0; i <= 16; i++) {
+      const x = mix(x0, x1, i / 16);
+      pts.push([x, deck(x) - 0.44]);
+    }
+    for (let i = 16; i >= 0; i--) {
+      const x = mix(x0, x1, i / 16);
+      pts.push([x, Math.min(outer(x), deck(x) - 0.44)]);
+    }
+    const geo = new THREE.ShapeGeometry(shapeOf(e > 0 ? pts : pts.slice().reverse()));
+    shapeUV(geo, 0, 0, 1.1, 1.1);
+    for (const s of [-1, 1]) bk.add(mats.tracery, geo.clone(), { p: [0, 0, s * (ribW / 2 - 0.08)] });
+  }
+  // the abutments, set into the gorge's sides
+  for (const e of [-1, 1]) {
+    bk.add(mats.elfstone, B(2.6, 7.2, wd + 1.0), { p: [e * (L + 0.7), -3.6 - 0.02, 0], uv: 0.4 });
+    bk.add(mats.carve, roundBox(2.8, 0.2, wd + 1.2, 0.03), { p: [e * (L + 0.7), -0.12, 0], uv: 1 });
+    bk.add(mats.pave, B(2.5, 0.02, wd - 0.2), { p: [e * (L + 0.6), 0.0, 0], uv: 0.5 });
+  }
+  bk.build(g);
+  return { group: g, deckY: deck, width: wd, lamps };
+}
+
+// ── falling water ──
+
+const NOISE_GLSL = `
+  float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }`;
+
+// The falling sheet's shader: streaks of white water sliding down it,
+// faster as they fall (their phase goes as the root of the fall), over a
+// translucent blue-white body; ragged at its sides, foam where it pours
+// over the lip and where it breaks at the foot. Finer streaks fade with
+// distance so it doesn't shimmer far off.
+function fallMaterial(uniforms) {
+  return new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    fog: true,
+    vertexShader: `
+      #include <fog_pars_vertex>
+      attribute float aLayer;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying float vLayer;
+      varying float vDist;
+      void main() {
+        vUv = uv;
+        vLayer = aLayer;
+        vec3 p = position;
+        p.x += sin(uv.y * 0.35 + uTime * 1.3 + aLayer * 2.0) * 0.06 * uv.y / 10.0;
+        vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+        vDist = -mvPosition.z;
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <fog_pars_fragment>
+      uniform float uTime;
+      uniform float uBright;
+      uniform vec3 uLight;
+      uniform vec3 uDeep;
+      uniform float uFall;
+      varying vec2 vUv;
+      varying float vLayer;
+      varying float vDist;
+      ${NOISE_GLSL}
+      void main() {
+        float across = vUv.x;
+        float fall = vUv.y / uFall;
+        float ph = sqrt(max(vUv.y, 0.0)) * 2.4 - uTime * (1.5 + vLayer * 0.25) + vLayer * 7.0;
+        float far = smoothstep(40.0, 160.0, vDist);
+        float s1 = vnoise(vec2(across * 34.0 + vLayer * 5.0, ph * 2.2));
+        float s2 = mix(vnoise(vec2(across * 90.0 + 13.0, ph * 5.0 + 3.0)), 0.5, far);
+        float body = vnoise(vec2(across * 9.0 + vLayer * 3.0, ph * 0.8));
+        float streak = smoothstep(0.42, 0.9, s1 * 0.62 + s2 * 0.48);
+        // ragged sides
+        float rag = vnoise(vec2(ph * 3.0, across * 4.0 + vLayer)) * 0.12;
+        float side = smoothstep(0.0, 0.1 + rag, across) * smoothstep(1.0, 0.9 - rag, across);
+        float lip = 1.0 - smoothstep(0.0, 0.06, fall);
+        float foot = smoothstep(0.78, 1.0, fall);
+        float white = clamp(streak * (0.75 + fall * 0.3) + body * 0.25 + lip * 0.6 + foot * 0.85, 0.0, 1.0);
+        // the sheet thins into strands as it falls
+        float strands = mix(1.0, 0.45 + 0.55 * smoothstep(0.25, 0.6, s1), smoothstep(0.15, 0.7, fall) * (1.0 - foot));
+        float alpha = side * strands * (0.42 + 0.55 * white) * (1.0 - vLayer * 0.25);
+        vec3 col = mix(uDeep, vec3(1.0), white) * uLight * uBright;
+        gl_FragColor = vec4(col, alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+}
+
+// Mist and spray at the foot of the falls: camera-facing puffs that rise,
+// swell and thin away on their own clocks, from a few metres to many.
+function mistMaterial(uniforms, map) {
+  return new THREE.ShaderMaterial({
+    uniforms: { ...uniforms, uMap: { value: map } },
+    transparent: true,
+    depthWrite: false,
+    fog: true,
+    vertexShader: `
+      #include <fog_pars_vertex>
+      attribute vec2 corner;
+      attribute vec4 seed;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying float vA;
+      void main() {
+        float life = fract(uTime * seed.y + seed.x);
+        vec3 p = position;
+        p.y += life * seed.z * 1.6;
+        p.xz += normalize(p.xz + vec2(0.001)) * life * seed.z * 0.6;
+        float size = seed.z * (0.55 + life * 0.9);
+        vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+        float a = seed.w * 6.2831 + life * 1.5;
+        mat2 rot = mat2(cos(a), -sin(a), sin(a), cos(a));
+        mvPosition.xy += rot * corner * size;
+        vUv = corner * 0.5 + 0.5;
+        vA = smoothstep(0.0, 0.15, life) * (1.0 - life);
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <fog_pars_fragment>
+      uniform sampler2D uMap;
+      uniform vec3 uLight;
+      uniform float uBright;
+      uniform float uMist;
+      varying vec2 vUv;
+      varying float vA;
+      void main() {
+        float a = texture2D(uMap, vUv).a * vA * uMist * 0.3;
+        gl_FragColor = vec4(uLight * uBright * 0.95, a);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+}
+
+// A waterfall from a cliff's lip at y = h down to y = 0: it pours over the
+// lip (at the origin's x and z, the cliff behind it to -z) and falls out to
+// +z in a curve, widening, in two sheets one before the other; foam where
+// it lands, and a cloud of mist and spray rising round its foot. update(t)
+// runs it (t in seconds). `uniforms.uLight` is the light on it (warm in
+// late sun), `uBright` how bright it is (raise it for bloom), `uMist` how
+// thick the mist.
+function waterfall(K, { h = 30, w = 4 } = {}) {
+  const g = new THREE.Group();
+  g.name = 'waterfall';
+  const uniforms = {
+    ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+    uTime: { value: 0 },
+    uLight: { value: new THREE.Color(1.0, 0.92, 0.8) },
+    uDeep: { value: new THREE.Color(0.36, 0.5, 0.58) },
+    uBright: { value: 1 },
+    uFall: { value: 1 },
+    uMist: { value: 1 },
+  };
+  const v0 = 1.4 + Math.sqrt(h) * 0.12;
+  const zAt = (d) => v0 * Math.sqrt((2 * d) / 9.8);
+  // the centre line, from back on the lip, over, and down
+  const line = [[-0.9, h + 0.14], [-0.45, h + 0.12], [-0.12, h + 0.06], [0, h]];
+  const NY = 46;
+  for (let j = 1; j <= NY; j++) {
+    const d = h * Math.pow(j / NY, 1.35);
+    line.push([zAt(d), h - d]);
+  }
+  let total = 0;
+  const along = [0];
+  for (let j = 1; j < line.length; j++) {
+    total += Math.hypot(line[j][0] - line[j - 1][0], line[j][1] - line[j - 1][1]);
+    along.push(total);
+  }
+  uniforms.uFall.value = total;
+  const sheet = (layer, width, push) => {
+    const NX = 12;
+    const pos = [];
+    const uv = [];
+    const lay = [];
+    const idx = [];
+    line.forEach(([z, y], j) => {
+      const fall = clamp01((h - y) / h);
+      const half = (width / 2) * (1 + 0.5 * fall);
+      for (let i = 0; i <= NX; i++) {
+        const u = i / NX;
+        const a = u * 2 - 1;
+        const bulge = (1 - a * a) * (0.3 + fall * 0.5);
+        pos.push(a * half + Math.sin(fall * 5 + layer * 2) * 0.15 * fall * width, y, z + bulge + push * (0.3 + fall));
+        uv.push(u, along[j]);
+        lay.push(layer);
+        if (i && j) {
+          const p = (j - 1) * (NX + 1) + i - 1;
+          const q = p + NX + 1;
+          idx.push(p, q, p + 1, p + 1, q, q + 1);
+        }
+      }
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setAttribute('aLayer', new THREE.Float32BufferAttribute(lay, 1));
+    geo.setIndex(idx);
+    return geo;
+  };
+  const fallMat = fallMaterial(uniforms);
+  const back = new THREE.Mesh(sheet(0, w, 0), fallMat);
+  const front = new THREE.Mesh(sheet(1, w * 0.72, 0.35), fallMat);
+  back.renderOrder = 1;
+  front.renderOrder = 2;
+  g.add(back, front);
+  // foam where it lands: a churned ring on the water
+  const zf = zAt(h);
+  const foot = V3(0, 0, zf + 0.5);
+  const foamMat = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    fog: true,
+    vertexShader: `
+      #include <fog_pars_vertex>
+      varying vec2 vP;
+      void main() {
+        vP = position.xy;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <fog_pars_fragment>
+      uniform float uTime;
+      uniform vec3 uLight;
+      uniform float uBright;
+      varying vec2 vP;
+      ${NOISE_GLSL}
+      void main() {
+        float r = length(vP);
+        float t = uTime;
+        float n = vnoise(vP * 1.6 + vec2(t * 0.7, -t * 0.4)) * 0.6 + vnoise(vP * 4.0 - vec2(t * 1.1, t * 0.6)) * 0.4;
+        float ring = smoothstep(${(w * 1.6).toFixed(2)}, ${(w * 0.3).toFixed(2)}, r);
+        float a = ring * smoothstep(0.3, 0.75, n + ring * 0.35);
+        gl_FragColor = vec4(uLight * uBright, a * 0.9);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+  const foam = new THREE.Mesh(new THREE.CircleGeometry(w * 1.6, 32), foamMat);
+  foam.rotation.x = -Math.PI / 2;
+  foam.position.set(0, 0.06, zf + 0.3);
+  foam.renderOrder = 3;
+  g.add(foam);
+  // the mist: puffs round the foot, and a few up the face
+  const r = rng(Math.round(h * 7 + w * 13));
+  const N = 64;
+  const pos = [];
+  const corner = [];
+  const seed = [];
+  const idx = [];
+  for (let k = 0; k < N; k++) {
+    const up = k < N * 0.2;
+    const a = r() * TAU;
+    const rad = up ? r() * w * 0.4 : w * (0.3 + r() * 1.0);
+    const x = Math.cos(a) * rad;
+    const y = up ? r() * h * 0.6 : 0.4 + r() * 1.2;
+    const z = (up ? zAt(h - y) + 0.6 : zf) + Math.sin(a) * rad * 0.8;
+    const size = up ? w * (0.25 + r() * 0.3) : w * (0.5 + r() * 0.8);
+    const own = [r(), 0.05 + r() * 0.08, size, r()];
+    for (const [cx, cy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      pos.push(x, y, z);
+      corner.push(cx, cy);
+      seed.push(...own);
+    }
+    const b = k * 4;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  const mg = new THREE.BufferGeometry();
+  mg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  mg.setAttribute('corner', new THREE.Float32BufferAttribute(corner, 2));
+  mg.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 4));
+  mg.setIndex(idx);
+  mg.boundingSphere = new THREE.Sphere(V3(0, h * 0.3, zf), h + w * 4);
+  const mist = new THREE.Mesh(mg, mistMaterial(uniforms, K.tex.puff));
+  mist.renderOrder = 4;
+  mist.frustumCulled = false;
+  g.add(mist);
+  return {
+    group: g,
+    uniforms,
+    foot,
+    update(t) {
+      uniforms.uTime.value = t;
+    },
+  };
+}
+
+// ── the valley ──
+
+// A piece of the valley's wall for instancing, about 20 m high and 14 m
+// wide (x), its face to +z, its foot sunk a little below y = 0, standing
+// from z = -4 to about +3: tall faces of pale rock split by vertical joints
+// into columns, bulging in buttresses and falling back in bays, stepped
+// back at a few ledges (moss on them) that wander along it; streaks of
+// ochre and of old water down it, moss in the cracks; grassy on top.
+function cliffGeo(seed = 1) {
+  const r = rng(seed * 31 + 7);
+  const n = makeNoise(seed * 3 + 1);
+  const W = 14;
+  const H = 20;
+  // the ledges, where the face steps back, and how far
+  const ledges = [];
+  for (let y = 3 + r() * 2; y < H - 2.5; y += 3.2 + r() * 3.5) ledges.push([y, 0.35 + r() * 0.8]);
+  const wander = (x) => (n(x * 0.07 + 3, 9.1) - 0.5) * 2.2;
+  // how far the rock stands out at (along, height), on the front
+  const relief = (d, y) => {
+    const big = (fbm(n, d * 0.075 + 1, y * 0.045, { octaves: 3 }) - 0.5) * 2.8;
+    const ridge = 1 - Math.abs(fbm(n, d * 0.32 + 7, y * 0.035 + 2, { octaves: 2 }) * 2 - 1);
+    const cols = (smooth(0.45, 1.0, ridge) - 0.4) * 0.55;
+    let steps = 0;
+    for (const [ly, k] of ledges) steps -= k * smooth(-0.1, 0.1, y - ly);
+    const fine = (fbm(n, d * 0.6 + 5, y * 0.45, { octaves: 2 }) - 0.5) * 0.5;
+    return [big + cols + steps + fine - y * 0.05, cols + big * 0.25];
+  };
+  // the outline in plan: [x, z, nx, nz, along]
+  const ring = [];
+  // the face curls back at its ends, so neighbours overlap into one wall
+  const front = 24;
+  const curl = (x) => 1.6 - smooth(4.2, 7, Math.abs(x)) * 2.6;
+  for (let i = 0; i <= front; i++) {
+    const x = -W / 2 + (i / front) * W + (i % 2 ? 0.12 : -0.12) * (i > 0 && i < front ? 1 : 0);
+    const dz = (curl(x + 0.05) - curl(x - 0.05)) / 0.1;
+    const l = Math.hypot(dz, 1);
+    ring.push([x, curl(x), -dz / l, 1 / l]);
+  }
+  for (let i = 1; i <= 3; i++) ring.push([W / 2 + Math.sin((i / 4) * Math.PI) * 0.6, mix(curl(W / 2), -4, i / 4), 1, 0]);
+  for (let i = 0; i <= 4; i++) ring.push([W / 2 - (i / 4) * W, -4, 0, -1]);
+  for (let i = 1; i <= 3; i++) ring.push([-W / 2 - Math.sin((i / 4) * Math.PI) * 0.6, mix(-4, curl(-W / 2), i / 4), -1, 0]);
+  let dd = 0;
+  ring.forEach((q, i) => {
+    if (i) dd += Math.hypot(q[0] - ring[i - 1][0], q[1] - ring[i - 1][1]);
+    q.push(dd);
+  });
+  // rows: every metre or so, closer either side of each ledge
+  const ys = new Set();
+  for (let y = 0; y <= H; y += 1.7) ys.add(+y.toFixed(3));
+  for (const [ly] of ledges) for (const dy of [-0.2, 0.2]) ys.add(+(ly + dy).toFixed(3));
+  ys.add(H);
+  const rowsY = [...ys].sort((p, q) => p - q);
+  const M = ring.length;
+  const pos = [];
+  const depth = [];
+  rowsY.forEach((y, j) => {
+    for (const [x, z, nx, nz, d] of ring) {
+      const back = nz < -0.5 ? 0.35 : 1;
+      const [o, cols] = relief(d, y);
+      // the bedding wanders up and down along the face; the foot sinks
+      let yy = j === 0 ? -0.8 : y + wander(d) * clamp01(y / 2.5) * clamp01((H - y) / 2.5);
+      if (j === rowsY.length - 1) yy += (n(d * 0.3, 4.4) - 0.5) * 1.4;
+      pos.push(x + nx * o * back, yy, z + nz * o * back);
+      depth.push(cols);
+    }
+  });
+  const idx = [];
+  for (let j = 0; j < rowsY.length - 1; j++) {
+    for (let i = 0; i < M; i++) {
+      const a0 = j * M + i;
+      const b0 = j * M + ((i + 1) % M);
+      idx.push(a0, b0, a0 + M, b0, b0 + M, a0 + M);
+    }
+  }
+  // a lumpy, grassy top: a ring in from the edge and a fan to its middle
+  const last = (rowsY.length - 1) * M;
+  let cx = 0;
+  let cz = 0;
+  for (let i = 0; i < M; i++) {
+    cx += pos[(last + i) * 3] / M;
+    cz += pos[(last + i) * 3 + 2] / M;
+  }
+  const inner = pos.length / 3;
+  for (let i = 0; i < M; i++) {
+    const k = (last + i) * 3;
+    pos.push(mix(pos[k], cx, 0.3), pos[k + 1] + 0.4 + n(i * 0.7, 8) * 0.8, mix(pos[k + 2], cz, 0.3));
+    depth.push(0);
+  }
+  const mid = pos.length / 3;
+  pos.push(cx, H + 1.2, cz);
+  depth.push(0);
+  for (let i = 0; i < M; i++) {
+    const i1 = (i + 1) % M;
+    idx.push(last + i, last + i1, inner + i, last + i1, inner + i1, inner + i);
+    idx.push(inner + i, inner + i1, mid);
+  }
+  const dep = new Float32Array(idx.map((k) => depth[k]));
+  let geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  // faceted, its facets' edges softened a little; each face's own slope
+  // kept for the moss
+  geo.computeVertexNormals();
+  geo = geo.toNonIndexed();
+  const flat = geo.clone();
+  flat.computeVertexNormals();
+  const sn = geo.attributes.normal;
+  const fn = flat.attributes.normal;
+  for (let k = 0; k < sn.count; k++) {
+    const nx = sn.getX(k) * 0.4 + fn.getX(k) * 0.6;
+    const ny = sn.getY(k) * 0.4 + fn.getY(k) * 0.6;
+    const nz = sn.getZ(k) * 0.4 + fn.getZ(k) * 0.6;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    sn.setXYZ(k, nx / l, ny / l, nz / l);
+  }
+  // colour: smooth over the rock from where each corner is, the face's own
+  // slope for moss and for overhangs
+  const grey = C(0xa2a6a6);
+  const pale = C(0xd0d2ce);
+  const ochre = C(0xc6a676);
+  const water = C(0x8a8a84);
+  const moss = C(0x56662c);
+  const grass = C(0x6e7a32);
+  const p = geo.attributes.position;
+  const nr = flat.attributes.normal;
+  const col = new Float32Array(p.count * 3);
+  const c = new THREE.Color();
+  for (let k = 0; k < p.count; k++) {
+    const x = p.getX(k);
+    const y = p.getY(k);
+    const z = p.getZ(k);
+    const f = Math.floor(k / 3) * 3;
+    const ny = nr.getY(f);
+    c.copy(grey).lerp(pale, smooth(0.35, 0.65, fbm(n, x * 0.12 + 3, y * 0.08, { octaves: 3 })));
+    c.lerp(ochre, smooth(0.55, 0.85, fbm(n, x * 0.18 + 11, y * 0.015 + 2, { octaves: 2 })) * 0.55);
+    c.lerp(water, smooth(0.68, 0.84, n(x * 0.9 + 21, y * 0.02 + 4)) * 0.35);
+    // crevices darker, ridges lighter, the foot damp
+    c.multiplyScalar(0.9 + smooth(-0.6, 0.6, dep[k]) * 0.16);
+    c.multiplyScalar(0.8 + 0.2 * smooth(-0.8, 1.6, y));
+    if (ny < -0.2) c.multiplyScalar(0.62);
+    const m = smooth(0.35, 0.7, ny) * (0.55 + 0.45 * smooth(0.35, 0.6, n(x * 0.5, z * 0.5 + y)));
+    c.lerp(y > H - 0.4 ? grass : moss, m * 0.88);
+    col[k * 3] = c.r;
+    col[k * 3 + 1] = c.g;
+    col[k * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  boxUV(geo, 0.16);
+  geo.computeBoundingSphere();
+  geo.computeBoundingBox();
+  return geo;
+}
+
+// The colours of autumn leaves.
+const AUTUMN = {
+  rust: C(0x7e2c12),
+  red: C(0xa23818),
+  amber: C(0xbc6a1c),
+  gold: C(0xd6a02e),
+  light: C(0xeccc6a),
+  inner: C(0x2a1408),
+};
+const BIRCH = { inner: C(0x3a2808), deep: C(0xa0721a), gold: C(0xdcb432), lime: C(0xc8bc44), light: C(0xf4e08a) };
+
+// A crown of leaf clumps for instancing: blobs round a dome, each vertex's
+// colour from how high and how far out it is (darker under and inside,
+// bright gold out on top), in patches of hue; the normals turned out from
+// the crown's middle, so it shades as one rounded mass.
+function crownGeo(blobs, centre, { seed = 1, palette, detail = 1, span = 4.5 }) {
+  const n = makeNoise(seed + 7);
+  const list = [];
+  const ctr = V3(...centre);
+  const tmp = V3();
+  blobs.forEach(([x, y, z, rad], i) => {
+    const geo = blob(rad, { detail, amp: 0.34, freq: 1.8, seed: seed * 13 + i });
+    geo.translate(x, y, z);
+    const nr = geo.attributes.normal;
+    const p = geo.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      tmp.set(p.getX(k), p.getY(k), p.getZ(k)).sub(ctr).normalize();
+      const nx = nr.getX(k) * 0.4 + tmp.x * 0.6;
+      const ny = nr.getY(k) * 0.4 + tmp.y * 0.6 + 0.15;
+      const nz = nr.getZ(k) * 0.4 + tmp.z * 0.6;
+      const l = Math.hypot(nx, ny, nz);
+      nr.setXYZ(k, nx / l, ny / l, nz / l);
+    }
+    const own = n(i * 3.7 + 0.5, seed + 0.5);
+    tint(geo, (px, py, pz, out) => {
+      const up = (py - ctr.y) / span;
+      const outward = Math.hypot(px - ctr.x, (py - ctr.y) * 0.6, pz - ctr.z) / span;
+      const t = clamp01(0.42 + up * 0.38 + (outward - 0.62) * 0.7 + (n(px * 1.6, py * 1.6 + pz) - 0.5) * 0.3);
+      palette(t, own, out);
+    });
+    list.push(geo);
+  });
+  return list;
+}
+
+// A beech for instancing, 9 to 12 m: a smooth grey trunk that parts into a
+// few heavy limbs under a broad dome of leaf in its autumn colours: gold
+// on top and out in the sun, amber and rust lower and within.
+function beechGeo(seed = 1) {
+  const r = rng(seed * 7 + 3);
+  const n = makeNoise(seed + 20);
+  const H = 9 + r() * 3;
+  const list = [];
+  const trunkH = H * 0.38;
+  const trunk = new THREE.CylinderGeometry(0.26, 0.42, trunkH, 9, 4, true).translate(0, trunkH / 2, 0);
+  const tp = trunk.attributes.position;
+  for (let i = 0; i < tp.count; i++) {
+    const y = tp.getY(i);
+    const a = Math.atan2(tp.getZ(i), tp.getX(i));
+    const flare = 1 + Math.max(0, 1 - y / 0.9) * (0.35 + Math.sin(a * 4) * 0.2);
+    tp.setX(i, tp.getX(i) * flare);
+    tp.setZ(i, tp.getZ(i) * flare);
+  }
+  trunk.computeVertexNormals();
+  const bark = (x, y, z, out) => out.setRGB(0.36, 0.35, 0.33).multiplyScalar(0.8 + n(y * 2, Math.atan2(z, x) * 2) * 0.4);
+  list.push(tint(trunk, bark));
+  const limbs = 4 + Math.floor(r() * 2);
+  const ends = [];
+  for (let k = 0; k < limbs; k++) {
+    const a = (k / limbs) * TAU + r() * 0.8;
+    const reach = 1.6 + r() * 1.4;
+    const top = H * (0.62 + r() * 0.12);
+    const end = [Math.cos(a) * reach, top, Math.sin(a) * reach];
+    ends.push(end);
+    const g = tube([[0, trunkH - 0.4, 0], [end[0] * 0.35, trunkH + (top - trunkH) * 0.45, end[2] * 0.35], end], 0.24, 0.07, { seg: 5, radial: 6 });
+    list.push(tint(g, bark));
+  }
+  // the crown: a broad dome of clumps
+  const cy = H * 0.66;
+  const R = H * 0.42;
+  const blobs = [[0, cy + R * 0.2, 0, R * 0.55]];
+  const count = 19 + Math.floor(r() * 4);
+  for (let k = 0; k < count; k++) {
+    const a = k * 2.39996 + r() * 0.5;
+    const el = Math.asin(mix(-0.25, 0.95, (k + 0.5) / count));
+    const rr = R * (0.72 + r() * 0.22);
+    blobs.push([Math.cos(a) * Math.cos(el) * rr * 1.08, cy + Math.sin(el) * rr * 0.7, Math.sin(a) * Math.cos(el) * rr * 1.08, R * (0.24 + r() * 0.12)]);
+  }
+  const palette = (t, own, out) => {
+    out.copy(AUTUMN.inner).lerp(AUTUMN.rust, smooth(0.0, 0.32, t));
+    out.lerp(own > 0.62 ? AUTUMN.red : AUTUMN.amber, smooth(0.25, 0.55, t));
+    out.lerp(AUTUMN.gold, smooth(0.5, 0.82, t) * (own < 0.7 ? 1 : 0.45));
+    out.lerp(AUTUMN.light, smooth(0.84, 1, t) * 0.55);
+  };
+  list.push(...crownGeo(blobs, [0, cy, 0], { seed, palette, span: R }));
+  return oneGeo(list);
+}
+
+// A golden birch for instancing, about 10 m: a slender pale trunk, a little
+// bent, black-marked and dark at its foot, thin limbs going up, and light
+// airy crowns of clear gold.
+function birchGeo(seed = 1) {
+  const r = rng(seed * 13 + 1);
+  const n = makeNoise(seed + 40);
+  const list = [];
+  const H = 8.6 + r() * 1.4;
+  const lean = (y) => Math.sin(y * 0.3 + seed) * 0.2;
+  const trunk = new THREE.CylinderGeometry(0.09, 0.17, H, 7, 12).translate(0, H / 2, 0);
+  const tp = trunk.attributes.position;
+  for (let i = 0; i < tp.count; i++) tp.setX(i, tp.getX(i) + lean(tp.getY(i)));
+  trunk.computeVertexNormals();
+  list.push(tint(trunk, (x, y, z, out) => {
+    const a = Math.atan2(z, x - lean(y));
+    const mark = n(y * 3.2, a * 1.2) > 0.7 || n(y * 1.2 + 9, a) > 0.8;
+    out.setRGB(0.86, 0.84, 0.78);
+    if (mark) out.setRGB(0.08, 0.07, 0.06);
+    if (y < 1.0) out.lerp(_kc.setRGB(0.1, 0.09, 0.08), 1 - y / 1.0);
+  }));
+  for (let i = 0; i < 6; i++) {
+    const y = 3.8 + i * 0.75;
+    const a = i * 2.3 + r();
+    const l = 1.3 + r() * 0.8;
+    const geo = new THREE.CylinderGeometry(0.02, 0.05, l, 4, 1).translate(0, l / 2, 0);
+    geo.rotateZ(-0.6 - r() * 0.3).rotateY(a).translate(lean(y), y, 0);
+    list.push(tint(geo, (x, yy, z, out) => out.setRGB(0.5, 0.47, 0.42)));
+  }
+  const blobs = [];
+  const count = 9 + Math.floor(r() * 3);
+  for (let k = 0; k < count; k++) {
+    const t = k / count;
+    const a = k * 2.4 + r();
+    const y = mix(5.2, H + 0.6, t) + r() * 0.4;
+    const rr = mix(1.5, 0.5, t) + r() * 0.3;
+    blobs.push([lean(y) + Math.cos(a) * rr, y, Math.sin(a) * rr, mix(1.15, 0.75, t) + r() * 0.25]);
+  }
+  const palette = (t, own, out) => {
+    out.copy(BIRCH.inner).lerp(BIRCH.deep, smooth(0.0, 0.35, t));
+    out.lerp(own > 0.65 ? BIRCH.lime : BIRCH.gold, smooth(0.3, 0.62, t));
+    out.lerp(BIRCH.light, smooth(0.66, 1, t) * 0.8);
+  };
+  list.push(...crownGeo(blobs, [0, H * 0.75, 0], { seed: seed + 50, palette, span: 2.6 }));
+  return oneGeo(list);
+}
+
+// A small scatter of fallen leaves, for instancing on the ground: forty or
+// so, red, rust, amber and gold, each a little pointed leaf folded along
+// its midrib, lying every way within about 1.2 m, a few on top of others.
+function fallenLeavesGeo(seed = 1) {
+  const r = rng(seed * 17 + 9);
+  const pos = [];
+  const col = [];
+  const hues = [AUTUMN.red, AUTUMN.rust, AUTUMN.amber, AUTUMN.gold, AUTUMN.light, C(0x6a3a14)];
+  const c = new THREE.Color();
+  const count = 36 + Math.floor(r() * 12);
+  for (let k = 0; k < count; k++) {
+    const a = r() * TAU;
+    const d = Math.sqrt(r()) * 1.2;
+    const x = Math.cos(a) * d;
+    const z = Math.sin(a) * d;
+    const y = 0.006 + r() * 0.02;
+    const len = 0.07 + r() * 0.06;
+    const wid = len * (0.45 + r() * 0.2);
+    const turn = r() * TAU;
+    const fold = 0.006 + r() * 0.01;
+    const tilt = (r() - 0.5) * 0.3;
+    c.copy(hues[Math.floor(r() * hues.length)]).multiplyScalar(0.8 + r() * 0.3);
+    const P = (u, v, lift) => {
+      const lx = u * len;
+      const lz = v * wid;
+      return [x + Math.cos(turn) * lx - Math.sin(turn) * lz, y + lift + lx * tilt, z + Math.sin(turn) * lx + Math.cos(turn) * lz];
+    };
+    const base = P(-0.5, 0, 0);
+    const tip = P(0.5, 0, 0.004);
+    const l = P(-0.05, -0.5, 0);
+    const rr = P(-0.05, 0.5, 0);
+    const mid = P(0, 0, fold);
+    for (const tri of [[base, mid, l], [mid, tip, l], [base, rr, mid], [mid, rr, tip]]) {
+      for (const v of tri) {
+        pos.push(...v);
+        col.push(c.r, c.g, c.b);
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const nr = geo.attributes.normal;
+  for (let k = 0; k < nr.count; k++) if (nr.getY(k) < 0) nr.setXYZ(k, -nr.getX(k), -nr.getY(k), -nr.getZ(k));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+// ── the gate, lamps, the Ring, terraces ──
+
+// The south gate: two tall carved posts of pale stone, 4.3 m apart inside,
+// each an eight-sided shaft with carved panels and a leaf capital, a gilt
+// leaf on top; between them a high pointed arch with gilt tracery in its
+// head, and gilt tendrils curling off its shoulders. The way through runs
+// along z, its middle at the origin.
+function gate(K) {
+  const { mats } = K;
+  const g = new THREE.Group();
+  g.name = 'gate';
+  const bk = parts();
+  const half = 2.16;
+  const pr = 0.34;
+  const px = half + pr;
+  const postH = 5.4;
+  for (const s of [-1, 1]) {
+    const x = s * px;
+    bk.add(mats.elfstone, roundBox(1.0, 0.5, 1.0, 0.04), { p: [x, 0.25, 0], uv: 0.6 });
+    bk.add(mats.carve, roundBox(0.9, 0.12, 0.9, 0.03), { p: [x, 0.56, 0], uv: 1 });
+    const sh = postH - 1.2;
+    bk.add(mats.carve, new THREE.CylinderGeometry(pr * 0.92, pr * 1.06, sh, 8, 1, true, Math.PI / 8), { p: [x, 0.62 + sh / 2, 0], uv: 1 });
+    for (const y of [0.62 + 0.1, 0.62 + sh - 0.04]) bk.add(mats.carve, new THREE.CylinderGeometry(pr * 1.12, pr * 1.12, 0.1, 8, 1, false, Math.PI / 8), { p: [x, y, 0], uv: 1 });
+    // a gilt vine winding up it, with leaves
+    for (const ph of [0, Math.PI]) {
+      const vine = [];
+      for (let k = 0; k <= 40; k++) {
+        const t = k / 40;
+        const a2 = ph + t * TAU * 2.2;
+        const rr = mix(pr * 1.08, pr * 0.95, t) + 0.015;
+        vine.push([x + Math.cos(a2) * rr, 0.75 + t * (sh - 0.25), Math.sin(a2) * rr]);
+      }
+      bk.add(mats.gilt, tube(vine, 0.016, 0.012, { seg: 60, radial: 4 }));
+      for (let k = 4; k < 40; k += 6) {
+        const [vx, vy, vz] = vine[k];
+        const a2 = Math.atan2(vz, vx - x);
+        bk.add(mats.gilt, leafBlade(0.16, 0.07, { curl: 1.0, seg: 3, thick: 0.006 }), { p: [vx, vy, vz], r: [0, Math.PI / 2 - a2, (k % 12 ? 1 : -1) * 0.7] });
+      }
+    }
+    column(bk, K, { x, y: postH - 0.6, z: 0, h: 0.62, r: pr * 0.9, base: false, leaves: 8 });
+    bk.add(mats.carve, roundBox(pr * 3.4, 0.14, pr * 3.4, 0.03), { p: [x, postH + 0.09, 0], uv: 1 });
+    bk.add(mats.gilt, leafBlade(0.75, 0.26, { curl: 0.15, seg: 4, thick: 0.015 }), { p: [x, postH + 0.16, 0] });
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * TAU + Math.PI / 4;
+      bk.add(mats.gilt, leafBlade(0.4, 0.16, { curl: 1.3, seg: 4, thick: 0.01 }), { p: [x + Math.cos(a) * 0.06, postH + 0.16, Math.sin(a) * 0.06], r: [0, Math.PI / 2 - a, 0] });
+    }
+  }
+  // the arch, springing from the inner faces of the capitals
+  const spring = postH - 0.35;
+  const a = half + 0.05;
+  const rise = a * 1.25;
+  bk.at([0, spring, 0], 0, () => {
+    bk.add(mats.carve, ext(shapeOf(archFrame(a, 0, rise, 0.3, 14, 0.55)), 0.4), { p: [0, 0, -0.2], uv: 1 });
+    for (const z of [-0.22, 0.2]) {
+      bk.add(mats.gilt, ext(shapeOf(archFrame(a + 0.3, 0, rise + 0.345, 0.035, 14, 0.55)), 0.02), { p: [0, 0, z] });
+      bk.add(mats.gilt, ext(shapeOf(archFrame(a, 0, rise, 0.035, 14, 0.55)), 0.02), { p: [0, 0, z] });
+    }
+    archFill(bk, mats.giltTracery, { y0: rise * 0.2, a: a * 0.94, rise: rise * 0.8, kick: 0.55, n: 12 });
+    const top = archTop(a + 0.3, rise + 0.345, 0.55);
+    bk.add(mats.gilt, leafBlade(0.9, 0.3, { curl: 0.1, seg: 4, thick: 0.015 }), { p: [0, top - 0.05, 0] });
+    for (const s of [-1, 1]) {
+      bk.add(mats.gilt, leafBlade(0.55, 0.2, { curl: 0.9, seg: 4, thick: 0.01 }), { p: [s * 0.08, top - 0.12, 0], r: [0, 0, -s * 0.6] });
+      const curl = [];
+      for (let k = 0; k <= 18; k++) {
+        const t = k / 18;
+        const ang = t * 4.6;
+        const rr = 0.7 * (1 - t * 0.78);
+        curl.push([s * (a + 0.5 + Math.sin(ang) * rr * 0.8), 0.2 + (1 - Math.cos(ang)) * rr - t * 0.3, 0]);
+      }
+      bk.add(mats.gilt, tube(curl, 0.03, 0.012, { seg: 26, radial: 4 }));
+    }
+  });
+  bk.add(mats.pave, B(2 * half, 0.04, 1.2), { p: [0, 0.02, 0], uv: 0.6 });
+  bk.build(g);
+  return { group: g, width: 2 * half, posts: [V3(-px, 0, 0), V3(px, 0, 0)], postRadius: 0.5 };
+}
+
+// An elven lantern on a slender post about 2.6 m tall that curves over at
+// the top like a stem bending under a flower, the lantern hanging from it.
+function lamp(K) {
+  const { mats } = K;
+  const g = new THREE.Group();
+  g.name = 'lamp';
+  const bk = parts();
+  bk.add(mats.carve, lathe([[0.2, 0], [0.2, 0.06], [0.14, 0.1], [0.1, 0.2], [0.06, 0.32], [0.045, 0.4]], 10), { uv: 1 });
+  const stem = [[0, 0.35, 0], [0.01, 1.2, 0], [0.04, 2.1, 0], [0.16, 2.5, 0], [0.34, 2.6, 0], [0.46, 2.5, 0], [0.5, 2.38, 0]];
+  bk.add(mats.gilt, tube(stem, 0.04, 0.018, { seg: 18, radial: 6 }));
+  for (const s of [-1, 1]) bk.add(mats.gilt, leafBlade(0.32, 0.12, { curl: 1.2, seg: 3, thick: 0.008 }), { p: [0.02, 1.9, 0], r: [0, s * 1.2 + Math.PI / 2, 0] });
+  bk.add(mats.gilt, leafBlade(0.24, 0.1, { curl: -1.0, seg: 3, thick: 0.008 }), { p: [0.04, 2.15, 0], r: [0, Math.PI / 2, 0] });
+  lanternParts(bk, K, 0.5, 2.1, 0, 0.95);
+  bk.build(g);
+  return { group: g, light: V3(0.5, 2.1, 0) };
+}
+
+// The One Ring: a plain band of gold, 2.4 cm across, lying flat with its
+// foot at y = 0, scaled up four times by default so it can be seen on the
+// plinth (`scale`: 1 for its true size). glow(k), 0 to 1, brings up the
+// fiery letters on it and a halo round it.
+function ring(K, { scale = 4 } = {}) {
+  const g = new THREE.Group();
+  g.name = 'ring';
+  const mat = new THREE.MeshStandardMaterial({ color: 0xf2c04a, metalness: 1, roughness: 0.14, envMap: K.tex.sky, envMapIntensity: 1.4, emissive: hot(0xff5a12, 4), emissiveMap: K.tex.inscription, emissiveIntensity: 0 });
+  const prof = [[0.0101, 0.0003], [0.0106, 0], [0.0114, 0.0002], [0.0119, 0.001], [0.0121, 0.00225], [0.0119, 0.0035], [0.0114, 0.0043], [0.0106, 0.0045], [0.0101, 0.0042], [0.01, 0.00225], [0.0101, 0.0003]];
+  const band = new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 48);
+  const mesh = new THREE.Mesh(band, mat);
+  mesh.castShadow = true;
+  g.add(mesh);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: K.tex.puff, color: hot(0xff7a28, 2), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.setScalar(0.07);
+  halo.position.y = 0.003;
+  g.add(halo);
+  g.scale.setScalar(scale);
+  return {
+    group: g,
+    material: mat,
+    glow(k) {
+      const t = clamp01(k);
+      mat.emissiveIntensity = t;
+      halo.material.opacity = t * 0.55;
+      halo.scale.setScalar(0.05 + t * 0.04);
+    },
+  };
+}
+
+// A raised terrace of pale stone, w × d, its paved top at y = h (the
+// origin at its foot's middle): a moulded plinth at the foot, coursed
+// walls, a carved frieze and a cornice at the top, and a balustrade along
+// its +z edge.
+function terrace(K, w, d, h) {
+  const { mats } = K;
+  const g = new THREE.Group();
+  g.name = 'terrace';
+  const bk = parts();
+  bk.add(mats.elfstone, B(w, h, d), { p: [0, h / 2, 0], uv: 0.45 });
+  bk.add(mats.carve, roundBox(w + 0.2, 0.3, d + 0.2, 0.04), { p: [0, 0.15, 0], uv: 1 });
+  const fh = Math.min(0.4, h * 0.2);
+  if (h > 0.9) {
+    for (const s of [-1, 1]) {
+      bk.add(mats.frieze, friezeGeo(w, fh), { p: [0, h - 0.2 - fh / 2, s * (d / 2 + 0.025)] });
+      bk.add(mats.frieze, friezeGeo(d, fh, 'z'), { p: [s * (w / 2 + 0.025), h - 0.2 - fh / 2, 0] });
+    }
+  }
+  bk.add(mats.carve, roundBox(w + 0.36, 0.2, d + 0.36, 0.04), { p: [0, h - 0.105, 0], uv: 1 });
+  bk.add(mats.gilt, B(w + 0.38, 0.025, d + 0.38), { p: [0, h - 0.175, 0] });
+  bk.add(mats.pave, B(w + 0.2, 0.02, d + 0.2), { p: [0, h - 0.01, 0], uv: 0.45 });
+  balustrade(bk, K, [[-w / 2 + 0.15, h, d / 2 + 0.02], [w / 2 - 0.15, h, d / 2 + 0.02]], { h: 0.95, step: 2.4 });
+  bk.build(g);
+  return { group: g, top: h };
 }
 
 // ── the kit ──
@@ -2642,7 +3753,7 @@ export function createRivendellKit(renderer) {
     roof: T(roof.c),
     roofN: T(normalFromField(roof.field, S, S, 3), { srgb: false }),
     rock: T(rock.c),
-    rockN: T(normalFromField(rock.field, S, S, 3), { srgb: false }),
+    rockN: T(normalFromField(rock.field, S, S, 1.8), { srgb: false }),
     linen: T(linen.c, { repeat: [2, 2] }),
     linenN: T(normalFromField(linen.field, 128, 128, 1.5), { srgb: false, repeat: [2, 2] }),
     tracery: T(traceryCanvas()),
@@ -2706,10 +3817,15 @@ export function createRivendellKit(renderer) {
     mural: M({ map: tex.mural, roughness: 0.92 }),
     marble: M({ map: tex.fine, normalMap: tex.fineN, color: 0xeae6de, roughness: 0.55 }),
     blade: M({ color: 0xdfe3e8, metalness: 0.9, roughness: 0.18, envMap: sky }),
-    fuller: M({ color: 0x9aa0a8, metalness: 0.9, roughness: 0.3, envMap: sky }),
     hiltSteel: M({ color: 0xc8ccd2, metalness: 0.9, roughness: 0.28, envMap: sky }),
     leather: M({ map: K.tex.planks, color: 0x3a2214, roughness: 0.75 }),
+    // the valley: rock, trees, leaves on the ground
+    cliff: M({ map: tex.rock, normalMap: tex.rockN, vertexColors: true, roughness: 0.95 }),
+    tree: M({ vertexColors: true, roughness: 0.88 }),
+    leaves: M({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }),
   });
+  // each material named for its key, to tell them apart in a profiler
+  for (const [k, m] of Object.entries(mats)) if (!m.name) m.name = k;
   K.tex = { ...K.tex, ...tex };
   const shireNight = kit.setNight;
   // dusk and night: windows and lanterns glow
@@ -2729,5 +3845,16 @@ export function createRivendellKit(renderer) {
     pavilion: () => pavilion(K),
     colonnade: (o) => colonnade(K, o),
     shards: () => shards(K),
+    court: () => court(K),
+    bridge: (len = 16) => bridge(K, len),
+    waterfall: (o) => waterfall(K, o),
+    cliff: (seed = 1) => cliffGeo(seed),
+    beech: (seed = 1) => beechGeo(seed),
+    goldBirch: (seed = 1) => birchGeo(seed),
+    fallenLeaves: (seed = 1) => fallenLeavesGeo(seed),
+    gate: () => gate(K),
+    lamp: () => lamp(K),
+    ring: (o) => ring(K, o),
+    terrace: (w = 20, d = 8, h = 2.5) => terrace(K, w, d, h),
   };
 }

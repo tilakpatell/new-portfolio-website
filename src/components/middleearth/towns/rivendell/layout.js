@@ -157,12 +157,15 @@ const box = (id, b, o = {}) => ({ id, kind: 'box', x: b.x, z: b.z, w: b.w, d: b.
 const circle = (id, x, z, r, o = {}) => ({ id, kind: 'circle', x, z, r, ...o });
 export const COLLIDERS = [
   box('house', HOUSE, { top: 12 }),
+  // its round tower, at the back corner, standing out past the walls
+  circle('tower', HOUSE.x - 4.3, HOUSE.z + 8.3, 1.95, { top: 20 }),
   // the hall of Narsil: its back wall and ends, its columns, and the statue
   box('colonnade-back', { x: COLONNADE.x, z: COLONNADE.z - COLONNADE.d / 2 + 0.4, w: COLONNADE.w, d: 0.8 }, { top: 7 }),
   box('colonnade-w', { x: COLONNADE.x - COLONNADE.w / 2 + 0.4, z: COLONNADE.z, w: 0.8, d: COLONNADE.d }, { top: 7 }),
   box('colonnade-e', { x: COLONNADE.x + COLONNADE.w / 2 - 0.4, z: COLONNADE.z, w: 0.8, d: COLONNADE.d }, { top: 7 }),
-  ...[-6, -3, 3, 6].map((lx, i) => circle(`column${i}`, COLONNADE.x + lx, COLONNADE.z + COLONNADE.d / 2 - 0.3, 0.32, { top: 6 })),
-  circle('statue', COLONNADE.x, COLONNADE.z - 0.6, 0.9, { top: 3 }),
+  ...[-5.71, -3.43, -1.14, 1.14, 3.43, 5.71].map((lx, i) => circle(`column${i}`, COLONNADE.x + lx, COLONNADE.z + 2.2, 0.3, { top: 6 })),
+  circle('statue', COLONNADE.x, COLONNADE.z - 1.2, 0.7, { top: 3 }),
+  ...[-1.7, 1.7].map((lx, i) => circle(`candles${i}`, COLONNADE.x + lx, COLONNADE.z - 1, 0.2, { low: true, top: 1.6 })),
   circle('pavilion', PAVILION.x, PAVILION.z, PAVILION.r, { top: 6 }),
   circle('plinth', COURT.x, COURT.z, 0.7, { low: true, top: 1 }),
   ...[-1, 1].map((s, i) => circle(`gate${i}`, GATE.x + s * (GATE.w / 2 + 0.4), GATE.z, 0.55, { top: 6 })),
@@ -185,7 +188,7 @@ function rim(side, z0, z1) {
 const gap = BRIDGE.w / 2 + 0.3;
 export const GORGE_WALLS = [...rim(-1, -70, BRIDGE.z - gap), ...rim(-1, BRIDGE.z + gap, 70), ...rim(1, -70, BRIDGE.z - gap), ...rim(1, BRIDGE.z + gap, 70)];
 // the bridge's railings
-export const BRIDGE_WALLS = [-1, 1].map((s) => [BRIDGE.x - BRIDGE.len / 2, BRIDGE.z + s * (BRIDGE.w / 2 + 0.1), BRIDGE.x + BRIDGE.len / 2, BRIDGE.z + s * (BRIDGE.w / 2 + 0.1), 0.12, true]);
+export const BRIDGE_WALLS = [-1, 1].map((s) => [BRIDGE.x - BRIDGE.len / 2, BRIDGE.z + s * (BRIDGE.w / 2 - 0.1), BRIDGE.x + BRIDGE.len / 2, BRIDGE.z + s * (BRIDGE.w / 2 - 0.1), 0.12, true]);
 // the court's balustrade, round all but its way in (the south, +z)
 export const COURT_OPEN = [Math.PI / 2 - 0.42, Math.PI / 2 + 0.42];
 export const COURT_WALLS = (() => {
@@ -247,7 +250,7 @@ export const CAST = [
   { id: 'arwen', name: 'Arwen', x: BRIDGE.x + 0.6, z: BRIDGE.z - 0.3, face: Math.PI, look: 'arwen', lines: ['“I would rather share one lifetime with him than face all the ages of this world alone.”', 'The Evenstar shines at her throat.'] },
   { id: 'elrond', name: 'Elrond', x: COURT.x - 2, z: COURT.z + 6.2, face: -Math.PI / 2, look: 'elrond', while: ['narsil', 'bilbo', 'fellowship'], lines: ['“Welcome, Frodo Baggins. The Council meets when all are come.”', '“The Ring cannot stay here.”'] },
   { id: 'boromir-shards', name: 'Boromir', x: COLONNADE.x + 2.2, z: COLONNADE.z + 1.2, face: Math.PI, look: 'boromir', while: ['narsil'], lines: ['“The shards of Narsil. The blade that cut the Ring from Sauron’s hand.”', '“It’s still sharp.”'] },
-  { id: 'aragorn-shards', name: 'Aragorn', x: COLONNADE.x - 3.8, z: COLONNADE.z + 2.6, face: 0, look: 'aragorn', while: ['narsil'], lines: ['He says nothing, but watches Boromir with the shards.'] },
+  { id: 'aragorn-shards', name: 'Aragorn', x: COLONNADE.x - 2.3, z: COLONNADE.z + 3.4, face: 0, look: 'aragorn', while: ['narsil'], lines: ['He says nothing, but watches Boromir with the shards.'] },
   { id: 'gimli-walk', name: 'Gimli', x: -12, z: -10, face: 0, look: 'gimli', while: ['narsil', 'council'], lines: ['“Elves. Never trust an Elf.”', '“Have you tried the food? Leaves. All of it, leaves.”'] },
   { id: 'legolas-walk', name: 'Legolas', x: 22, z: -2, face: -0.4, look: 'legolas', while: ['narsil', 'council', 'bilbo'], lines: ['He is watching the falls, and says nothing for a long while.'] },
   { id: 'sam-walk', name: 'Samwise Gamgee', x: -17, z: 3, face: 0.3, look: 'sam', while: ['narsil', 'council', 'bilbo'], lines: ['“I wanted to see the Elves, Mr. Frodo. More than anything.”', '“Mr. Frodo’s not going anywhere without me!”'] },

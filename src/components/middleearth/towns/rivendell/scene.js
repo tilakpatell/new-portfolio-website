@@ -18,10 +18,10 @@ import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
 import { createParticles } from '../../kit';
 import { instances } from '../../shire/ground';
-import { LOOKS } from '../../shire/people';
+import { LOOKS, sit } from '../../shire/people';
 import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
-import { bake } from '../bake';
+import { bake, farTree } from '../bake';
 import { createGhosts } from '../ghosts';
 import { makeTerrain, makeTufts } from '../ground';
 import { makeFolk } from '../bree/props';
@@ -128,7 +128,14 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
 
   // ── the valley floor ──
-  valley.add(makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 240 : tier === 'mid' ? 170 : 110, height, paint, blades: 0.2 }));
+  // (the ground kept just under the court's paving and the bridge's
+  // abutments, so it never shows through them)
+  const under = (x, z) => {
+    const court = 1 - smooth(COURT.r - 0.6, COURT.r + 0.4, Math.hypot(x - COURT.x, z - COURT.z));
+    const ends = Math.abs(z - BRIDGE.z) < 2.2 && Math.abs(Math.abs(x - BRIDGE.x) - BRIDGE.len / 2 - 0.7) < 1.6 ? 1 : 0;
+    return height(x, z) - 0.2 * Math.max(court, ends);
+  };
+  valley.add(makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 240 : tier === 'mid' ? 170 : 110, height: under, paint, blades: 0.2 }));
   const wind = { uWind: { value: 0 } };
   valley.add(makeTufts(Math.round(9000 * many), { radius: WORLD.radius + 4, height, growable, seed: 71, base: 0x4a5a26, tip: 0xb8a052, hue: [0.12, 0.06] }, wind));
 
@@ -159,6 +166,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   shards.group.position.copy(toWorld(colonnade, colonnade.shardsAt));
   shards.group.rotation.y = COLONNADE.turn;
   valley.add(shards.group);
+  // where each piece lies when the sword's laid out whole: the puzzle's places
+  const slotX = shards.pieces.map((p) => p.position.x);
   const ring = kit.ring();
   ring.group.position.copy(toWorld(court, court.plinthTop));
   valley.add(ring.group);
@@ -178,7 +187,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     const r = 66 + rand() * 10;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
-    cliffs.push({ x, z, y: height(x, z) - 4, s: 1.3 + rand() * 0.9, sy: 1.6 + rand() * 1.2, turn: -a + Math.PI / 2 + (rand() - 0.5) * 0.4 });
+    cliffs.push({ x, z, y: height(x, z) - 4, s: 1.3 + rand() * 0.9, sy: 1.6 + rand() * 1.2, turn: -a - Math.PI / 2 + (rand() - 0.5) * 0.4 });
   }
   valley.add(instances(kit.cliff(3), mats.cliff, cliffs.map((c) => ({ ...c, sx: c.s, sz: c.s })), { shadow: false }));
   const falls = FALLS.map(([x, z, h, w, turn]) => {
@@ -246,18 +255,22 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const beeches = [];
   const birches = [];
   for (const [x, z, s, kind] of TREES) (kind ? birches : beeches).push({ x, z, y: height(x, z) - 0.1, s, turn: x * 1.7 });
-  // and woods up the slopes past the rim
-  for (let tries = 0, n = 0; n < Math.round(260 * Math.max(0.5, many)) && tries < 4000; tries++) {
+  valley.add(instances(kit.beech(), new THREE.MeshLambertMaterial({ vertexColors: true }), beeches, { shadow: false }));
+  valley.add(instances(kit.goldBirch(), new THREE.MeshLambertMaterial({ vertexColors: true }), birches, { shadow: false }));
+  // and woods up the slopes past the rim: simpler trees, in the same golds
+  const woods = [[], []];
+  for (let tries = 0, n = 0; n < Math.round(280 * Math.max(0.5, many)) && tries < 4000; tries++) {
     const a = rand() * TAU;
-    const r = WORLD.radius + 2 + rand() * 14;
+    const r = WORLD.radius + 2 + rand() * 16;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
     if (Math.abs(x - riverX(z)) < GORGE.rim + 3) continue;
-    (rand() < 0.6 ? beeches : birches).push({ x, z, y: height(x, z) - 0.2, s: 0.8 + rand() * 0.5, turn: rand() * TAU });
+    woods[n % 2].push({ x, z, y: height(x, z) - 0.2, s: 1.1 + rand() * 0.7, turn: rand() * TAU });
     n += 1;
   }
-  valley.add(instances(kit.beech(), new THREE.MeshLambertMaterial({ vertexColors: true }), beeches, { shadow: false }));
-  valley.add(instances(kit.goldBirch(), new THREE.MeshLambertMaterial({ vertexColors: true }), birches, { shadow: false }));
+  const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  valley.add(instances(farTree({ leaf: [0xd8902a, 0xe8b040, 0xb8541e], trunk: 0x6a5a4a }), woodMat, woods[0], { shadow: false }));
+  valley.add(instances(farTree({ leaf: [0xe8c050, 0xd8a838, 0xc89030], trunk: 0xd8d0c0 }), woodMat, woods[1], { shadow: false }));
   const leaves = [];
   for (const [x, z] of TREES)
     for (let k = 0; k < 4; k++) {
@@ -299,6 +312,11 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     valley.add(p.group);
     people[c.id] = p;
   }
+  // Bilbo, at his desk in the pavilion, writing
+  const bilboSeat = toWorld(pavilion, pavilion.seat);
+  people.bilbo.group.position.set(bilboSeat.x, bilboSeat.y - people.bilbo.baseY, bilboSeat.z);
+  people.bilbo.group.rotation.y = PAVILION.turn;
+  people.bilbo.seated = true;
   const companions = {};
   for (const c of COMPANIONS) {
     const p = blob(folk(c.look));
@@ -322,7 +340,9 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   // in the bedroom: Gandalf in his chair, and Sam at the door
   const roomGandalf = folk('gandalf');
   roomGandalf.group.position.copy(roomAt(room.chair));
-  roomGandalf.group.rotation.y = Math.PI / 2;
+  roomGandalf.group.position.y -= roomGandalf.baseY;
+  roomGandalf.group.rotation.y = room.chairFace ?? Math.PI;
+  sit(roomGandalf);
   scene.add(roomGandalf.group);
   const roomSam = folk('sam');
   roomSam.group.position.copy(roomAt(room.door));
@@ -424,13 +444,13 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     if (inside) {
       // in bed, sitting up as he wakes
       frodo.group.position.copy(roomAt(room.bed));
-      frodo.group.rotation.set(0, Math.PI / 2, Math.min(Math.PI / 2, Math.max(0.3, Math.PI / 2 - s.stepT * 0.4)));
+      frodo.group.rotation.set(0, -Math.PI / 2, Math.min(Math.PI / 2, Math.max(0.3, Math.PI / 2 - s.stepT * 0.4)));
       pose(frodo, t, { moving: false, talk: s.talk === 'frodo' ? 1 : 0 });
     } else if (s.mode === 'council') {
-      frodo.group.position.set(frodoSeat.x, padY('court'), frodoSeat.z);
+      frodo.group.position.set(frodoSeat.x, padY('court') + (s.stood ? 0 : (court.seatHeight ?? 0.5) - frodo.baseY + 0.05), frodoSeat.z);
       frodo.group.rotation.set(0, frodoSeat.face, 0);
       pose(frodo, t, { moving: false });
-      if (s.stood) frodo.body.position.y += 0.08;
+      if (!s.stood) sit(frodo);
     } else {
       frodo.group.position.set(h.x, hy, h.z);
       frodo.group.rotation.set(0, h.face, 0);
@@ -445,16 +465,18 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       p.group.visible = Boolean(on);
       if (!on) continue;
       const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
+      if (!p.seated) turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
       // Bilbo at his desk reaches for the Ring, as the game says
       if (c.id === 'bilbo' && s.mode === 'bilbo' && s.reach) {
         pose(p, t, { moving: false });
+        sit(p);
         p.arms[1].rotation.z = 0.4 + s.reach.hand * 1.1;
         p.arms[1].rotation.x = -0.2;
         if (s.reach.state === 'lunge') p.head.rotation.z = Math.sin(t * 30) * 0.06;
         continue;
       }
       pose(p, t + c.x, { moving: false, talk: s.talk === c.id || s.speaker === c.id ? 1 : 0 });
+      if (p.seated) sit(p);
     }
     // the Nine: about the valley until they join, then behind you
     for (const c of COMPANIONS) {
@@ -486,7 +508,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       const up = heat > 0.4 + (i % 3) * 0.12;
       const s0 = SEATS[i];
       const k = up ? 0.9 : 0;
-      p.group.position.set(s0.x + (COURT.x - s0.x) * 0.12 * k, padY('court'), s0.z + (COURT.z - s0.z) * 0.12 * k);
+      // in their chairs, until the argument gets them up
+      p.group.position.set(s0.x + (COURT.x - s0.x) * 0.12 * k, padY('court') + (up ? 0 : (court.seatHeight ?? 0.5) - p.baseY + 0.05), s0.z + (COURT.z - s0.z) * 0.12 * k);
       // Gimli and his axe
       if (look === 'gimli' && t - A.axe < 1.6) {
         const f = Math.min(1, (t - A.axe) / 0.5);
@@ -494,14 +517,23 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
         p.arms[1].rotation.z = 2.6 - f * 3.2;
       }
       pose(p, t + i, { moving: false, talk: up ? 1 : 0, wave: up && i % 2 ? 0.3 : 0 });
+      if (!up && !(look === 'gimli' && t - A.axe < 1.6)) sit(p);
     });
     // in the bedroom
     roomGandalf.group.visible = inside;
     roomSam.group.visible = inside && s.samIn;
     if (inside) {
       pose(roomGandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
+      sit(roomGandalf);
       pose(roomSam, t, { moving: false, wave: 0.5, talk: s.speaker === 'sam' ? 1 : 0 });
     }
+
+    // the shards on their cloth, in the order the puzzle has them
+    shards.pieces.forEach((piece, i) => {
+      const at = s.shards ? s.shards.order.indexOf(i) : i;
+      piece.position.x += (slotX[at] - piece.position.x) * Math.min(1, dt * 8);
+      piece.position.y = s.shards && s.shards.held === at ? 0.06 : 0;
+    });
 
     // ── markers, and the ring at your feet ──
     markers.forEach((m, i) => {
@@ -575,9 +607,9 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       camAt = tmp.copy(at).add(V(0, 1.8, 2.6));
       camLook = look.copy(at).add(V(0, 0.2, 0));
     } else if (s.mode === 'bilbo') {
-      const desk = toWorld(pavilion, pavilion.desk);
-      camAt = tmp.copy(desk).add(V(3.2, 1.9, 1.6));
-      camLook = look.copy(desk).add(V(0, 1, 0));
+      // in front of him, across the desk (he faces the pavilion's +x)
+      camAt = tmp.copy(toWorld(pavilion, V(2.2, 2.1, -0.4)));
+      camLook = look.copy(toWorld(pavilion, V(-0.4, 1.3, -1)));
     } else if (s.mode === 'talk' && s.speakerAt) {
       const a = tmp2.set(h.x, hy + 1.3, h.z);
       const b = V(...s.speakerAt);
