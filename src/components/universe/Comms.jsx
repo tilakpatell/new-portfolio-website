@@ -180,6 +180,18 @@ export default function Comms({ crew, reduced, control }) {
           if (e.id === 'destroyer') jumpSound();
           if (e.id === 'leave') jumpSound(true);
           else say(linesFor(crew, 'event', e.id), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
+        } else if (e.type === 'foot') {
+          // on foot: down onto a planet and out, the squads, and back in
+          if (e.id === 'kill') {
+            popSound();
+            if (often('kill', now)) say(linesFor(crew, 'foot', 'kill', e.kind), { urgent: true });
+          } else if (e.id === 'hurt') {
+            if (soundOnce('hit', 120, now)) hitSound();
+            if (often('hit', now)) say(linesFor(crew, 'foot', 'hurt'));
+          } else if (e.id === 'swap') say(linesFor(crew, 'foot', 'swap', e.who), { urgent: true });
+          else if (e.id === 'far' || e.id === 'nowhere') {
+            if (often('edge', now)) say(linesFor(crew, 'foot', e.id));
+          } else if (e.id !== 'off') say(linesFor(crew, 'foot', e.id), { urgent: e.id === 'squad' || e.id === 'down' });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;

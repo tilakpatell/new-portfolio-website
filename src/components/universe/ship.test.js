@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, brakeAt, ceilingAt, forward, orbiting, parkAt, spawn, step, turnAt } from './ship';
+import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, boostAt, brakeAt, ceilingAt, forward, orbiting, parkAt, roomAt, spaceAt, spawn, step, turnAt } from './ship';
 import { DEEP, WONDERS } from './deep';
 import { ORDER } from './layout';
 
@@ -13,6 +13,9 @@ const fly = (s, input, seconds, solids = SOLIDS) => {
   }
   return { ship, events };
 };
+// a planet close by, off to one side: no room for the pulse drive (and
+// nothing in the way of flying straight on)
+const NEAR = [{ id: 'near', at: [1006, 0, 0], r: 1000, reach: 1000 }];
 // in something solid (down in the Death Star's trench, between its walls, is allowed)
 const inside = (s) =>
   SOLIDS.some((p) => {
@@ -22,11 +25,11 @@ const inside = (s) =>
 
 describe('flying the ship', () => {
   it('speeds up to cruise, faster with boost, and coasts to a stop', () => {
-    const s = spawn(null); // in open space for this one: nothing to bump into
-    expect(fly(s, { throttle: 1 }, 3, []).ship.speed).toBeCloseTo(SHIP.cruise, 1);
-    expect(fly(s, { throttle: 1, boost: true }, 4, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
-    const going = fly(s, { throttle: 1 }, 3, []).ship;
-    expect(fly(going, {}, 4, []).ship.speed).toBeCloseTo(0, 3);
+    const s = { ...spawn(null), x: 0, z: 0 }; // beside a planet for this one, with nothing ahead to bump into
+    expect(fly(s, { throttle: 1 }, 3, NEAR).ship.speed).toBeCloseTo(SHIP.cruise, 1);
+    expect(fly(s, { throttle: 1, boost: true }, 2.5, NEAR).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    const going = fly(s, { throttle: 1 }, 3, NEAR).ship;
+    expect(fly(going, {}, 4, NEAR).ship.speed).toBeCloseTo(0, 3);
   });
 
   it('goes the way it points, and turns right when told to', () => {
@@ -67,7 +70,7 @@ describe('flying the ship', () => {
     for (const id of ORDER) {
       const park = parkAt(id);
       // pointed straight at the planet, full boost
-      const { ship, events } = fly({ ...spawn(null), x: park.x, z: park.z, heading: park.heading }, { throttle: 1, boost: true }, 2);
+      const { ship, events } = fly({ ...spawn(null), x: park.x, y: park.y, z: park.z, heading: park.heading }, { throttle: 1, boost: true }, 5);
       expect(orbiting({ ...ship, ...park }, null), id).toBe(id); // the parking spot is at this planet, not a neighbour
       expect(inside(ship), id).toBe(false);
       expect(events.some((e) => (e.type === 'bump' || e.type === 'crash') && e.id === id), id).toBe(true);
@@ -76,34 +79,34 @@ describe('flying the ship', () => {
 
   it('crashes into a planet when it hits it fast, and only bumps when slow', () => {
     const park = parkAt('marvel');
-    const at = { ...spawn(null), x: park.x, z: park.z, heading: park.heading };
-    const fast = fly(at, { throttle: 1, boost: true }, 2).events;
+    const at = { ...spawn(null), x: park.x, y: park.y, z: park.z, heading: park.heading };
+    const fast = fly(at, { throttle: 1, boost: true }, 5).events;
     expect(fast.some((e) => e.type === 'crash' && e.id === 'marvel')).toBe(true);
     const crash = fast.find((e) => e.type === 'crash');
     expect(crash.speed).toBeGreaterThan(SHIP.crash);
     expect(Math.hypot(...crash.normal)).toBeCloseTo(1, 6);
-    const slow = fly(at, { throttle: 0.3 }, 4).events;
+    const slow = fly(at, { throttle: 0.3 }, 16).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
 
   it('climbs and dives, nose up or down as it goes, and levels off when let go', () => {
     const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
-    const up = fly(s, { throttle: 1, climb: 1 }, 1, []).ship;
+    const up = fly(s, { throttle: 1, climb: 1 }, 1, NEAR).ship;
     expect(up.y).toBeGreaterThan(s.y + 2);
     expect(up.vy).toBeCloseTo(SHIP.climb, 1);
     expect(up.pitch).toBeGreaterThan(0.3);
-    const down = fly(s, { throttle: 1, climb: -1 }, 1, []).ship;
+    const down = fly(s, { throttle: 1, climb: -1 }, 1, NEAR).ship;
     expect(down.y).toBeLessThan(s.y - 2);
     expect(down.pitch).toBeLessThan(-0.3);
-    const level = fly(up, { throttle: 1 }, 2, []).ship;
+    const level = fly(up, { throttle: 1 }, 2, NEAR).ship;
     expect(level.vy).toBeCloseTo(0, 3);
     expect(Math.abs(level.pitch)).toBeLessThan(0.01);
   });
 
   it('stops at the ceiling and the floor, and says so once', () => {
     for (const way of [1, -1]) {
-      const { ship, events } = fly({ ...spawn(null), x: 0, z: 0 }, { climb: way, boost: true }, 12, []);
+      const { ship, events } = fly({ ...spawn(null), x: 0, z: 0 }, { climb: way, boost: true }, 25, NEAR);
       expect(Math.abs(ship.y)).toBeLessThan(SHIP.ceiling + 1);
       expect(Math.abs(ship.y)).toBeGreaterThan(SHIP.ceiling - 2.5);
       expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
@@ -138,21 +141,38 @@ describe('flying the ship', () => {
 describe('deep space', () => {
   const open = { ...spawn(null), x: 0, z: DEEP.open + 200, heading: Math.PI }; // out past the system, facing further out
 
-  it('boosts up to the pulse drive out there, and only to the boost at home', () => {
+  it('boosts up to the pulse drive with room round it, and only to the boost close to anything', () => {
     expect(fly(open, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2);
-    expect(fly(spawn(null), { throttle: 1, boost: true }, 6, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    // in the wide gaps between the home system's planets, well on the way
+    const gap = { ...spawn(null), heading: Math.PI }; // at the map's edge, facing out
+    expect(fly(gap, { throttle: 1, boost: true }, 4).ship.speed).toBeGreaterThan(SHIP.boost * 3);
+    // skimming a planet, never past the boost
+    expect(fly({ ...spawn(null), x: 0, z: 0 }, { throttle: 1, boost: true }, 2, NEAR).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    expect(spaceAt(0, 0, 0, NEAR)).toBe(0);
+    expect(spaceAt(0, 0, 0, [])).toBe(1);
+    expect(boostAt(0, 0, 0, NEAR)).toBe(SHIP.boost);
+    expect(roomAt(0, 0, 0, NEAR)).toBeCloseTo(6, 6);
   });
 
-  it('falls back to the home system’s speeds by the time it comes home at pulse speed', () => {
-    let s = { ...open, heading: 0, speed: SHIP.pulse }; // facing home, flat out
-    for (let t = 0; t < 30 && Math.hypot(s.x, s.z) > DEEP.system; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship;
-    expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(DEEP.system);
-    expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
+  it('falls back to the boost by the time it comes up on a planet at pulse speed', () => {
+    for (const id of ['marvel', 'starwars', 'home']) {
+      const p = PLANETS.find((o) => o.id === id);
+      // a long way off, flat out straight at it: it hits at no more than the boost
+      let s = { ...spawn(null), x: p.at[0], y: p.at[1], z: p.at[2] + p.r + 900, heading: 0, speed: SHIP.pulse };
+      let hit = null;
+      for (let t = 0; t < 30 && !hit; t += 1 / 60) {
+        const r = step(s, { throttle: 1, boost: true }, 1 / 60);
+        s = r.ship;
+        hit = r.events.find((e) => e.type === 'crash' || e.type === 'bump') ?? null;
+      }
+      expect(hit?.id, id).toBe(id);
+      expect(hit.speed, id).toBeLessThanOrEqual(SHIP.boost + 1);
+    }
   });
 
-  it('brakes and coasts harder out there, to match the speeds', () => {
-    expect(brakeAt(open.x, open.z)).toBeGreaterThan(SHIP.brake * 3.5);
-    expect(brakeAt(0, 0)).toBe(SHIP.brake);
+  it('brakes and coasts harder with room round it, to match the speeds', () => {
+    expect(brakeAt(open.x, open.y, open.z, [])).toBeGreaterThan(SHIP.brake * 3.5);
+    expect(brakeAt(0, 0, 0, NEAR)).toBe(SHIP.brake);
     const flat = { ...open, speed: SHIP.pulse };
     expect(fly(flat, { throttle: -1 }, 3, []).ship.speed).toBeLessThanOrEqual(0);
     expect(fly(flat, {}, 4, []).ship.speed).toBeLessThan(SHIP.pulse * 0.6);
@@ -288,7 +308,7 @@ describe('autopilot', () => {
       const g = GOALS[w.id];
       const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
       expect(d, w.id).toBeGreaterThan(g.reach); // parked off it, not in it
-      expect(d, w.id).toBeLessThan(g.reach + 8);
+      expect(d, w.id).toBeLessThan(g.reach + 24);
       expect(Math.abs(s.y - g.at[1]), w.id).toBeLessThan(0.5); // level with it
     }
     // and home again from the furthest, at the home system's speeds by the end

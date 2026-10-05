@@ -48,6 +48,7 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
+import { createWarmup } from '../../lib/three/warmup';
 import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
@@ -70,6 +71,7 @@ import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { lockSound, shipEngine } from './sounds';
 import { AIM, aimAngles, assist, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
 import { byId } from './universes';
+import { createFoot } from './footScene';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -110,6 +112,12 @@ const STICK = 70; // px of drag for full throttle or a full turn
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
 
 const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'boost', shift: 'boost', r: 'climb', pageup: 'climb', c: 'dive', pagedown: 'dive' };
+// on foot: Space jumps, Shift runs, Q and E step sideways
+const FOOT_KEYS = { ...KEYS, ' ': 'jump', shift: 'boost', q: 'strafeL', e: 'strafeR', r: null, c: null, pageup: null, pagedown: null };
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const FOOT_FOV = 56; // the lens on foot: a person's, wider than the chase's
+const NAMES_ON_FOOT = { gromflomite: 'Gromflomite', cop: 'Federation cop', gazorpian: 'Gazorpian' };
+const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', falcon: 'The Falcon' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -124,7 +132,7 @@ uniform float uTime;
 varying vec3 vColor;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = clamp(aSize * uDpr * (700.0 / -mv.z), 1.0, 6.0 * uDpr);
+  gl_PointSize = clamp(aSize * uDpr * (46000.0 / -mv.z), 1.0, 6.0 * uDpr);
   // a slow twinkle, each star on its own beat
   float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
   vColor = aColor * tw;
@@ -153,7 +161,7 @@ function starfield(rand) {
     // a shell round the map, flatter than a sphere
     const u = rand() * 2 - 1;
     const a = rand() * Math.PI * 2;
-    const r = 320 + rand() * 70; // behind everything, however far out the camera is
+    const r = 21000 + rand() * 4600; // behind everything, however far out the camera is
     const s = Math.sqrt(1 - u * u);
     pos.set([Math.cos(a) * s * r, u * r * 0.8, Math.sin(a) * s * r], i * 3);
     const b = 0.25 + rand() ** 3 * 0.75;
@@ -374,11 +382,12 @@ export async function create(canvas, ctx) {
   let props = ctx;
   let disposed = false;
 
-  const gl = createRenderer(canvas, { ratio: 2, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  // (no antialiasing on the canvas: the post's target has its own, post.js)
+  const gl = createRenderer(canvas, { ratio: 2, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 3200); // (out to the far side of deep space)
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 30000); // (out to the far side of deep space; the near plane follows the view, place())
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -487,6 +496,7 @@ export async function create(canvas, ctx) {
   const env = spaceEnvironment(renderer, T.sky);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
+  const warm = createWarmup(renderer); // shaders compiled off the page's thread (lib/three/warmup)
 
   // the sky: the Milky Way, all the way round, turning with the map and
   // riding with the camera (so it's always as far off). It's always seen
@@ -496,7 +506,7 @@ export async function create(canvas, ctx) {
     T.sky.generateMipmaps = false;
     T.sky.minFilter = THREE.LinearFilter;
     T.sky.anisotropy = 1;
-    sky = new THREE.Mesh(new THREE.SphereGeometry(400, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
+    sky = new THREE.Mesh(new THREE.SphereGeometry(27000, 64, 32), new THREE.MeshBasicMaterial({ map: T.sky, side: THREE.BackSide, depthWrite: false, toneMapped: false }));
     sky.renderOrder = -10;
     map.add(sky);
   }
@@ -511,7 +521,7 @@ export async function create(canvas, ctx) {
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
-  const sunLight = new THREE.PointLight('#ffd6a8', 78, 50, 1.4);
+  const sunLight = new THREE.PointLight('#ffd6a8', 890, 320, 1.4);
   map.add(sunLight);
 
   const planets = ORDER.map((id) => {
@@ -522,6 +532,9 @@ export async function create(canvas, ctx) {
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   const crashFx = createCrash(map);
+  // out of the ship and on foot on a planet (footScene.js)
+  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf });
+  const onFoot = () => Boolean(foot.phase);
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
   const fleet = createFleet(); // the ships that are models, shared
   const traffic = reduced ? null : createTraffic(map, { small, fleet });
@@ -603,6 +616,8 @@ export async function create(canvas, ctx) {
     cycle: false, // T was pressed: on to the next target
     hitMark: 0, // the reticle's flash as a shot lands, 1 fading to 0
     bias: [0, 0, 0], // the camera's lean toward the lock, eased
+    camFrom: null, // { pos, quat, start, dur }: the camera easing over from where it was (onto your feet, or back behind the ship)
+    landable: null, // the planet you could land on and step out onto, where you are
   };
   const t0 = performance.now();
   let engine = null;
@@ -660,7 +675,7 @@ export async function create(canvas, ctx) {
     const [bx, by, bz] = state.bias;
     return {
       target: [wx + dx * look + rx * lean + bx, s.y + 0.06 + (s.vy || 0) * 0.05 + by, wz + dz * look + rz * lean + bz],
-      dist: 1.7 + Math.abs(s.speed) * 0.045 + state.streak * 0.7,
+      dist: 1.7 + Math.min(Math.abs(s.speed), 40) * 0.045 + state.streak * 0.7,
       pitch: 0.21 - tip * 0.45,
     };
   };
@@ -693,7 +708,7 @@ export async function create(canvas, ctx) {
     const s = state.ship;
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
-    return { ...state.overview, dist: state.overview.dist * Math.min(9, (r + 90) / MAP_RADIUS) };
+    return { ...state.overview, dist: state.overview.dist * Math.min(12, (r + 400) / MAP_RADIUS) };
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
@@ -715,6 +730,14 @@ export async function create(canvas, ctx) {
     camera.position.set(...position);
     camera.lookAt(target[0], target[1], target[2]);
     camera.updateMatrixWorld();
+    // the near plane: close in behind the ship (or the cockpit), further out
+    // the further off the view is (so the depth holds up across the map)
+    lens(flying() && state.view !== 'map' ? 0.06 : clamp(pose.dist * 0.02, 0.08, 6));
+  };
+  const lens = (near) => {
+    if (Math.abs(camera.near - near) < near * 0.02) return;
+    camera.near = near;
+    camera.updateProjectionMatrix();
   };
 
   // ── Where each planet is on screen: for the names and for picking ──
@@ -784,13 +807,23 @@ export async function create(canvas, ctx) {
     }
   };
 
+  // on foot: a place below the horizon (behind the ground you stand on) has no name showing
+  const underground = (id) => {
+    const h = foot.horizon();
+    if (!h) return false;
+    const [x, y, z] = POSITIONS[id];
+    const dx = x - h.at.x;
+    const dy = y - h.at.y;
+    const dz = z - h.at.z;
+    return (dx * h.up.x + dy * h.up.y + dz * h.up.z) / (Math.hypot(dx, dy, dz) || 1) < -0.03;
+  };
   const placeLabels = () => {
     const els = props.labels?.current;
     if (!els) return;
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
-      const off = s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
+      const off = s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || (onFoot() && (s.id === foot.id || underground(s.id)));
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
       const behind =
@@ -850,6 +883,17 @@ export async function create(canvas, ctx) {
     return best?.id ?? null;
   };
 
+  // a trooper under the point, on foot (a click shoots at it)
+  const pickTrooper = (px, py) => {
+    const info = foot.info();
+    let best = null;
+    for (const c of info?.troops ?? []) {
+      toScreen(c.at.x, c.at.y, c.at.z, tapped);
+      if (tapped.z > 0.01 && Math.hypot(px - tapped.x, py - tapped.y) <= 34 && (!best || tapped.z < best.z)) best = { id: c.id, z: tapped.z };
+    }
+    return best?.id ?? null;
+  };
+
   const paintStates = () => {
     for (const p of planets) p.setState({ hover: state.hover === p.id, selected: state.sel === p.id, dim: Boolean(state.sel) && state.sel !== p.id });
     const els = props.labels?.current;
@@ -873,7 +917,9 @@ export async function create(canvas, ctx) {
   const select = (id) => {
     if (id === state.sel) return;
     state.sel = id;
-    if (flying()) {
+    if (onFoot()) {
+      // (on foot, the panel just shows it: there's no flying off from here)
+    } else if (flying()) {
       // the ship takes you there (or, with reduced motion, is simply there)
       if (id && id !== state.at) {
         state.view = state.seat;
@@ -927,8 +973,18 @@ export async function create(canvas, ctx) {
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const cabScene = new THREE.Scene();
   const camIn = new THREE.PerspectiveCamera(60, 1, 0.02, 60);
+  camIn.rotation.order = 'YXZ'; // the head turns, then nods
   cabScene.add(camIn);
   let cab = null; // { kind, built, plan, look } once a cockpit is built
+  // where you're looking from the seat, past the nose: the mouse out toward
+  // an edge of the view turns your head that way (as far round as the
+  // cockpit allows: Jesse beside you, Mr. White behind), and now and then
+  // the head turns to the crew by itself (sitting down, arriving somewhere)
+  const cabLook = { ty: 0, tp: 0, glanceAt: -1e9 };
+  const smoothstep = (a, b, x) => {
+    const k = clamp01((x - a) / (b - a));
+    return k * k * (3 - 2 * k);
+  };
   let cabWanted = null; // the kind on its way
   let roomEnv = null;
   const dropCab = () => {
@@ -965,12 +1021,24 @@ export async function create(canvas, ctx) {
         return;
       }
       dropCab();
-      cab = { kind, built, plan: cockpitPlan(kind), look: { yaw: 0, pitch: 0 } };
       cabScene.add(built.inside);
       cabScene.environment = built.environment ?? roomEnv;
       cabScene.environmentIntensity = built.envIntensity ?? 0.35;
+      // its shaders made before it shows (for where it's drawn, over the
+      // world in the post's target), off the page's thread
+      await warm.all(cabScene, camIn, post.target);
+      if (disposed || cabWanted !== kind) {
+        cabScene.remove(built.inside);
+        if (cabScene.environment === built.environment) cabScene.environment = null;
+        if (built.environment && built.environment !== roomEnv) built.environment.dispose?.();
+        built.dispose?.();
+        disposeTree(built.inside);
+        disposeTree(built.outside);
+        return;
+      }
+      cab = { kind, built, plan: cockpitPlan(kind), look: { yaw: 0, pitch: 0 } };
+      cabLook.glanceAt = state.clock; // a look over at the crew, a moment after you sit down
       camIn.position.set(...built.eye);
-      renderer.compile(cabScene, camIn); // now, not on its first frame
       cabWanted = null;
       ctx.invalidate();
     } catch (err) {
@@ -1004,9 +1072,16 @@ export async function create(canvas, ctx) {
       const dz = state.lockTarget.at.z - s.z;
       wantYaw -= clamp(Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz) * 0.2, -0.16, 0.16);
     }
+    // looking about: your own look, or else the glance over at the crew
+    // (out, a moment there, and back)
+    let ty = cabLook.ty;
+    if (import.meta.env.DEV && typeof window.__CABYAW__ === 'number') ty = window.__CABYAW__;
+    const since = state.clock - cabLook.glanceAt;
+    const glance = reduced || ty ? 0 : (cab.built.glance ?? 0) * (smoothstep(1.2, 2.2, since) - smoothstep(3.6, 4.8, since));
+    wantYaw += ty + glance;
     const k = 1 - Math.exp(-dt * 4);
     look.yaw += (wantYaw - look.yaw) * k;
-    look.pitch += ((s.vy || 0) * -0.003 - look.pitch) * k;
+    look.pitch += ((s.vy || 0) * -0.003 + cabLook.tp + (ty || glance ? (cab.built.rest?.[1] ?? 0) : 0) - look.pitch) * k;
     camIn.projectionMatrix.copy(camera.projectionMatrix);
     camIn.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
     camIn.rotation.set(look.pitch + (reduced ? 0 : Math.sin(t * 0.7) * 0.003), look.yaw + (reduced ? 0 : Math.sin(t * 0.43) * 0.004), 0);
@@ -1016,6 +1091,8 @@ export async function create(canvas, ctx) {
 
   const setShip = (kind) => {
     if (kind === state.kind) return;
+    if (onFoot()) foot.end();
+    seatCrew = null;
     engine?.stop();
     engine = null;
     if (state.model) {
@@ -1062,6 +1139,7 @@ export async function create(canvas, ctx) {
             disposeTree(c.group);
             return;
           }
+          seatCrew = c.seated;
           // its exhaust leaves from its own exhaust cans
           if (c.engines?.length) {
             model.group.updateMatrixWorld(true);
@@ -1180,7 +1258,7 @@ export async function create(canvas, ctx) {
   const placeAlt = () => {
     const el = props.alt?.current;
     if (!el) return;
-    const on = flying() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen;
+    const on = flying() && !onFoot() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen;
     if (on !== altOn) {
       altOn = on;
       el.toggleAttribute('data-on', on);
@@ -1259,7 +1337,7 @@ export async function create(canvas, ctx) {
     let best = null;
     for (const wd of WONDERS) {
       const d = Math.hypot(s.x - wd.at[0], s.y - wd.at[1], s.z - wd.at[2]);
-      if (d > 1300 || d < reachOf(wd) * 1.3) continue;
+      if (d > 6500 || d < reachOf(wd) * 1.3) continue;
       const [nx, ny, nz] = nose(s);
       const ahead = ((wd.at[0] - s.x) * nx + (wd.at[1] - s.y) * ny + (wd.at[2] - s.z) * nz) / d;
       if (ahead < 0.45) continue; // within about 63° of the nose
@@ -1271,6 +1349,7 @@ export async function create(canvas, ctx) {
   const placeHud = () => {
     const h = hudEls();
     if (!h.root) return;
+    if (onFoot()) return placeFootHud(h);
     const s = state.ship;
     const on = flying() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen;
     // the gun line: a little way out along the nose (not while it flies itself)
@@ -1453,7 +1532,7 @@ export async function create(canvas, ctx) {
     map.localToWorld(lensAt.copy(L.at));
     const d = lensAt.distanceTo(camera.position);
     lensAt.project(camera);
-    if (d > 700 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
+    if (d > 3500 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
     post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, L.r / (d * tanHalf) / 2);
   };
 
@@ -1462,21 +1541,24 @@ export async function create(canvas, ctx) {
   const placeShield = () => {
     const el = props.shield?.current;
     if (!el) return;
-    const on = flying() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen && Boolean(hunters?.active || state.shield < 99.5);
+    // (on foot, it's your health: while there's trouble about or you're hurt)
+    const info = onFoot() && foot.phase === 'walk' ? foot.info() : null;
+    const on = info ? Boolean(info.troops.length || info.health < 0.995) && !props.frozen : flying() && !onFoot() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen && Boolean(hunters?.active || state.shield < 99.5);
     if (on !== shieldOn) {
       shieldOn = on;
       el.toggleAttribute('data-on', on);
     }
     if (!on) return;
-    el.style.setProperty('--shield', (state.shield / 100).toFixed(3));
-    el.toggleAttribute('data-low', state.shield < 35);
+    const k = info ? info.health : state.shield / 100;
+    el.style.setProperty('--shield', k.toFixed(3));
+    el.toggleAttribute('data-low', k < 0.35);
   };
 
   // everything that goes on round you while you fly: the hunters, the
   // director and its set pieces, your shields, the wonders you come up on
   const adventure = (dt, t) => {
     state.clock += dt;
-    const live = flying() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
+    const live = flying() && !onFoot() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces.update(dt, t, camera);
     if (live) {
@@ -1499,7 +1581,7 @@ export async function create(canvas, ctx) {
         emit({ type: 'event', id: 'deep' });
       }
       for (const w of WONDERS) {
-        if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 60) continue;
+        if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 250) continue;
         state.saw.add(w.id);
         emit({ type: 'wonder', id: w.id });
       }
@@ -1535,7 +1617,7 @@ export async function create(canvas, ctx) {
       return { target: [wx, c.from.y + c.into.y * inward, wz], dist: 2.4, pitch: 0.18 };
     }
     const [wx, wz] = rotate(c.point.x, c.point.z);
-    return { target: [wx, c.point.y, wz], dist: c.radius * 2.4 + 2.6, pitch: 0.42 };
+    return { target: [wx, c.point.y, wz], dist: c.radius * 1.4 + 2.6, pitch: 0.42 };
   };
   // the fall into the black hole: nose first, drawn in and stretched thin
   // (spaghetti, as Rick says), rolling faster as it goes, and gone into the
@@ -1607,7 +1689,7 @@ export async function create(canvas, ctx) {
         const out = c.from.clone().sub(new THREE.Vector3(...solid.at));
         if (c.sun) out.y = 0;
         out.normalize();
-        const r = solid.r + 5;
+        const r = solid.r + 12;
         at = { x: solid.at[0] + out.x * r, y: c.sun ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
       state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
@@ -1677,6 +1759,7 @@ export async function create(canvas, ctx) {
         }
         emit({ type: 'arrive', id: now });
         pulseAt = { id: now, age: 0 };
+        cabLook.glanceAt = state.clock; // the crew have their say: a look over at them
       } else if (left && state.sel === left && !target) {
         state.sel = null;
         props.onPick?.(null);
@@ -1758,6 +1841,161 @@ export async function create(canvas, ctx) {
     );
   };
 
+  // ── On foot: down onto a planet, out of the ship, and back in ──
+  const camWas = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  // the camera eases over from where it is now (`dur` ms)
+  const handOff = (dur) => {
+    if (reduced) return;
+    state.camFrom = { pos: camera.position.clone(), quat: camera.quaternion.clone(), start: performance.now(), dur };
+  };
+  const easeCamera = (now) => {
+    const c = state.camFrom;
+    if (!c) return;
+    const k = clamp01((now - c.start) / c.dur);
+    const e = k * k * (3 - 2 * k);
+    camera.position.lerpVectors(c.pos, camera.position, e);
+    camWas.quat.copy(camera.quaternion);
+    camera.quaternion.slerpQuaternions(c.quat, camWas.quat, e);
+    camera.updateMatrixWorld();
+    if (k >= 1) state.camFrom = null;
+  };
+  // the key light's way, in the map's space (it's day where it falls)
+  const lightInMap = () => LIGHT.clone().applyAxisAngle(Y_AXIS, -state.yaw);
+  // G at a planet: the ship comes down on it, and out they get
+  const startFoot = () => {
+    if (!flying() || onFoot() || state.crash || state.dive || props.frozen || !state.model) return false;
+    const id = state.landable;
+    if (!id) {
+      emit({ type: 'foot', id: 'nowhere' });
+      return false;
+    }
+    handOff(1400);
+    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: lightInMap().toArray() })) return false;
+    state.auto = null;
+    state.streak = 0;
+    state.boosting = false;
+    state.lock = null;
+    state.lockTarget = null;
+    state.lead = null;
+    burst.clear();
+    engine?.set({ speed: 0, boost: false, on: false });
+    emit({ type: 'foot', id: 'land' });
+    ctx.invalidate();
+    return true;
+  };
+  // up and away: flying again from where the ship rose to
+  const endFoot = (done) => {
+    handOff(1200);
+    const m = state.model;
+    state.ship = { ...state.ship, x: done.x, y: done.y, z: done.z, heading: done.heading, speed: 0, vy: 0, rate: 0, pitch: 0, bank: 0, edge: false };
+    foot.end();
+    seated(true);
+    m.group.quaternion.identity();
+    m.group.rotation.set(0, done.heading, 0);
+    m.pivot.rotation.set(0, 0, 0);
+    m.group.scale.setScalar(1);
+    m.park?.(false);
+    state.view = state.seat;
+    if (state.seat === 'cockpit') buildCab(state.kind);
+    state.lastInput = performance.now();
+    emit({ type: 'foot', id: 'off' });
+  };
+  // Rick and Morty in the cruiser's seats, or not (they're out walking)
+  let seatCrew = null;
+  const seated = (on) => seatCrew?.(on);
+  const footInput = () => {
+    const k = state.keys;
+    let move = (k.up ? 1 : 0) - (k.down ? 1 : 0);
+    let turn = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+    const strafe = (k.strafeR ? 1 : 0) - (k.strafeL ? 1 : 0);
+    const st = state.stick;
+    if (st?.on) {
+      move = clamp(move - st.dy / STICK, -1, 1);
+      turn = clamp(turn + st.dx / STICK, -1, 1);
+    }
+    return { move, turn, strafe, run: Boolean(k.boost || state.boostBtn), jump: Boolean(k.jump || state.climbBtn > 0) };
+  };
+  const footFrame = (dt, t) => {
+    const was = foot.phase;
+    foot.update(dt, t, props.frozen ? {} : footInput());
+    if (was !== 'walk' && foot.phase === 'walk' && state.kind === 'cruiser') seated(false);
+    if (foot.phase === 'board' && state.kind === 'cruiser') seated(true);
+    const m = state.model;
+    m.update(t);
+    m.group.visible = true;
+    m.park?.(foot.phase !== 'land' && foot.phase !== 'lift');
+    updatePlumes(dt, t, foot.phase === 'land' || foot.phase === 'lift' ? 0.25 : 0);
+    engine?.set({ speed: foot.phase === 'land' || foot.phase === 'lift' ? SHIP.cruise * 0.6 : 0, boost: false, on: state.shown && !props.frozen && !document.hidden && (foot.phase === 'land' || foot.phase === 'lift') });
+    foot.day(lightInMap());
+    const info = foot.info();
+    if (info && info.hurt > 0.95 && !reduced) state.shake = Math.max(state.shake, 0.08);
+    if (info) state.hurt = Math.max(state.hurt, info.hurt * 0.8);
+    const done = foot.takeoff();
+    if (done) endFoot(done);
+    return true;
+  };
+  const camLook = new THREE.Vector3();
+  const footCamera = (dt) => {
+    const v = foot.view(dt);
+    if (!v) return;
+    map.updateMatrixWorld();
+    map.localToWorld(camera.position.copy(v.pos));
+    camera.up.copy(v.up).transformDirection(map.matrixWorld);
+    camera.lookAt(map.localToWorld(camLook.copy(v.look)));
+    camera.up.set(0, 1, 0);
+    camera.updateMatrixWorld();
+    lens(0.004);
+  };
+  // the HUD on foot: the sights where the gun points, brackets on the
+  // trooper it's on, the way back to the ship, and your health in the
+  // shields' bar
+  const placeFootHud = (h) => {
+    const info = foot.info();
+    const on = Boolean(info) && foot.phase === 'walk' && !props.frozen;
+    setOn(h, h.reticle, on && !info.first);
+    if (on && !info.first) {
+      toScreen(info.aim.x, info.aim.y, info.aim.z, hudAt);
+      h.reticle.style.transform = `translate3d(${hudAt.x.toFixed(1)}px, ${hudAt.y.toFixed(1)}px, 0)`;
+      h.reticle.toggleAttribute('data-hot', Boolean(info.lock));
+      h.reticle.toggleAttribute('data-hit', state.hitMark > 0);
+    }
+    const lock = on ? info.lock : null;
+    setOn(h, h.lock, Boolean(lock));
+    if (lock) {
+      toScreen(lock.at.x, lock.at.y, lock.at.z, hudAt);
+      const px = hudAt.z > 0 ? (lock.size / (hudAt.z * tanHalf)) * (size.h / 2) * 1.6 : 0;
+      placeMark(h.lock, hudAt, clamp(px, 26, 120));
+      h.lock.toggleAttribute('data-hot', true);
+      setText(h, h.lockName, NAMES_ON_FOOT[lock.kind] ?? lock.kind);
+      setText(h, h.lockDist, `${Math.round(lock.dist)} m`);
+    }
+    setOn(h, h.lead, false);
+    const back = on && info.ship.dist > 30 ? info.ship : null;
+    setOn(h, h.nav, Boolean(back));
+    if (back) {
+      toScreen(back.at.x, back.at.y, back.at.z, hudAt);
+      placeMark(h.nav, hudAt, 40);
+      h.nav.toggleAttribute('data-way', false);
+      setText(h, h.navName, SHIP_NAMES[state.kind] ?? 'The ship');
+      setText(h, h.navDist, `${Math.round(back.dist)} m`);
+    }
+  };
+  // the line over the map: what G does here
+  let promptWas = null;
+  const placePrompt = () => {
+    const el = props.prompt?.current;
+    if (!el) return;
+    let text = '';
+    const info = onFoot() ? foot.info() : null;
+    if (props.frozen) text = '';
+    else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
+    else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost) text = `Land on ${byId(state.landable).label} and step out`;
+    if (text === promptWas) return;
+    promptWas = text;
+    el.textContent = text;
+    el.toggleAttribute('data-on', Boolean(text));
+  };
+
   // ── Frames ──
   const still = () => reduced || state.low;
   let last = 0;
@@ -1797,7 +2035,14 @@ export async function create(canvas, ctx) {
       if (Math.abs(state.vel) < 2e-6) state.vel = 0;
     }
     let moving = false;
-    if (flying() && !state.dive && !props.frozen) moving = fly(dt, t);
+    if (flying() && !state.dive && !props.frozen) moving = onFoot() ? footFrame(dt, t) : fly(dt, t);
+    else if (onFoot()) footFrame(0, t); // (frozen: held where it is)
+    // somewhere to land and step out: a planet you're at (not a station)
+    const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' ? state.at : null;
+    if (landable !== state.landable) {
+      state.landable = landable;
+      emit({ type: 'landable', id: landable });
+    }
     placeAlt();
     map.rotation.y = state.yaw;
     map.updateMatrixWorld();
@@ -1827,24 +2072,27 @@ export async function create(canvas, ctx) {
     }
     state.pose = pose;
     apply(pose);
+    if (onFoot()) footCamera(dt);
+    easeCamera(now);
     // into the cockpit and out of it: the ship fades from view and the
     // cockpit takes its place, the horizon rolls with the ship's bank, and
     // your head turns a little (the cockpit with it)
-    const cabWant = flying() && state.view === 'cockpit' && !state.crash && !state.dive ? 1 : 0;
+    const cabWant = flying() && !onFoot() && state.view === 'cockpit' && !state.crash && !state.dive ? 1 : 0;
     const cabWas = state.cabK;
     state.cabK += (cabWant - state.cabK) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     if (Math.abs(state.cabK - cabWant) < 0.002) state.cabK = cabWant;
-    const inCab = flying() && state.cabK > 0.001 && !state.crash;
+    const inCab = flying() && !onFoot() && state.cabK > 0.001 && !state.crash;
     if (inCab) {
       camera.rotateZ(-(state.ship.bank || 0) * 0.85 * state.cabK);
       if (cab) camera.rotateY(cab.look.yaw * state.cabK);
+      if (cab) camera.rotateX(cab.look.pitch * state.cabK);
       camera.updateMatrixWorld();
     }
     // boosting, the lens widens (so the speed shows at the edges), with a
     // kick as a boost lights; the cockpit's lens is the intro's, wider
-    const baseWant = flying() && state.view === 'cockpit' ? cabFov() : FOV;
+    const baseWant = onFoot() ? FOOT_FOV : flying() && state.view === 'cockpit' ? cabFov() : FOV;
     state.fovBase += (baseWant - state.fovBase) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
-    const fov = state.fovBase + (reduced || !flying() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5));
+    const fov = state.fovBase + (reduced || !flying() || onFoot() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5));
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1904,30 +2152,39 @@ export async function create(canvas, ctx) {
     const shooting = moveBolts(dt);
     sun.update(t, camera);
     stars.material.uniforms.uTime.value = t;
+    stars.material.uniforms.uDpr.value = gl.ratio; // (the watchdog may have changed it)
     for (const p of planets) p.update(t, camera);
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
     placeHud();
+    placePrompt();
     // the sky and the far stars stay round the camera, wherever it flies;
     // the dust rides with it too, and shows while you fly (more, the faster)
     map.updateMatrixWorld();
     map.worldToLocal(camLocal.copy(camera.position));
     deep.update(t, camera, camLocal);
-    for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 700) tr.wake();
+    for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 2500) tr.wake();
     bend();
     if (sky) sky.position.copy(camLocal);
     stars.position.copy(camLocal);
-    const dustWant = !reduced && flying() && state.view !== 'map' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
+    const dustWant = !reduced && flying() && !onFoot() && state.view !== 'map' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
     dust.update(camLocal, dustAmount, gl.ratio);
     belt.update(t);
     // the cockpit over the world, once the camera's in the seat
-    const showCab = Boolean(cab && cab.kind === state.kind && flying() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
+    const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
+    // anything new in view whose shaders are still compiling sits the frame out
+    warm.gate(scene, camera, post.target);
+    if (showCab) warm.gate(cabScene, camIn, post.target);
     renderer.info.reset(); // counted over the whole frame, post passes and all
-    post.render(size.w, size.h);
+    try {
+      post.render(size.w, size.h);
+    } finally {
+      warm.open();
+    }
     last = now;
 
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
@@ -1945,6 +2202,19 @@ export async function create(canvas, ctx) {
     const key = e.key.toLowerCase();
     // on a button or link, the arrows, Space and Enter are its own
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
+    if (key === 'g') {
+      // out of the ship onto the planet, or back in
+      e.preventDefault();
+      heard();
+      if (onFoot()) {
+        if (!foot.board()) emit({ type: 'foot', id: 'far' });
+      } else startFoot();
+      return;
+    }
+    if (onFoot()) {
+      footKey(e, key, onControl);
+      return;
+    }
     if (key === 'm') {
       heard();
       state.view = state.view === 'map' ? state.seat : 'map';
@@ -1986,9 +2256,46 @@ export async function create(canvas, ctx) {
     state.keys[k] = true;
     ctx.invalidate();
   };
+  // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
+  // run, Space to jump, F to fire, T the next trooper, X to play the other
+  // one, V out of your own eyes, Enter into the planet's page
+  const footKey = (e, key, onControl) => {
+    if (key === 'f') {
+      e.preventDefault();
+      if (foot.fire()) emit({ type: 'fire' });
+      return;
+    }
+    if (key === 't') {
+      e.preventDefault();
+      foot.cycle();
+      return;
+    }
+    if (key === 'x') {
+      e.preventDefault();
+      const who = foot.swap();
+      if (who) emit({ type: 'foot', id: 'swap', who });
+      return;
+    }
+    if (key === 'v') {
+      e.preventDefault();
+      foot.first();
+      return;
+    }
+    if (key === 'enter' && !onControl && state.at) {
+      e.preventDefault();
+      props.onLand?.();
+      return;
+    }
+    const k = FOOT_KEYS[key];
+    if (!k || (onControl && ARROWS.has(key))) return;
+    e.preventDefault();
+    state.keys[k] = true;
+    state.lastInput = performance.now();
+    ctx.invalidate();
+  };
   const onKeyUp = (e) => {
-    const k = KEYS[e.key.toLowerCase()];
-    if (k) state.keys[k] = false;
+    const key = e.key.toLowerCase();
+    for (const map of [KEYS, FOOT_KEYS]) if (map[key]) state.keys[map[key]] = false;
   };
   const onBlur = () => {
     state.keys = {};
@@ -2022,7 +2329,12 @@ export async function create(canvas, ctx) {
     if (d && d.id === e.pointerId) {
       d.moved = Math.max(d.moved, Math.hypot(x - d.x, y - d.y));
       if (d.moved < DRAG) return;
-      if (flying()) {
+      if (onFoot() && e.pointerType === 'mouse') {
+        // on foot, a mouse drag looks about: round (turning you) and up or down
+        foot.look(x - d.lastX, y - (d.lastY ?? d.y));
+        d.lastX = x;
+        d.lastY = y;
+      } else if (flying()) {
         // a stick wherever the press began
         if (!state.stick) takeover();
         state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true };
@@ -2040,6 +2352,15 @@ export async function create(canvas, ctx) {
       return;
     }
     if (e.pointerType !== 'mouse') return;
+    // from the pilot's seat, out toward an edge looks that way
+    if (cab && state.view === 'cockpit') {
+      const nx = clamp((x - (state.rect.x + state.rect.w / 2)) / (state.rect.w / 2), -1, 1);
+      const ny = clamp((y - (state.rect.y + state.rect.h / 2)) / (state.rect.h / 2), -1, 1);
+      const [ry, rp] = cab.built.range ?? [1, 0.4];
+      cabLook.ty = -Math.sign(nx) * smoothstep(0.3, 0.97, Math.abs(nx)) * ry;
+      cabLook.tp = -Math.sign(ny) * smoothstep(0.45, 0.97, Math.abs(ny)) * rp;
+      ctx.invalidate();
+    }
     const sign = pickSign(x, y);
     const id = sign ? null : pick(x, y);
     canvas.style.cursor = sign || id || (!id && pickWonder(x, y)) ? 'pointer' : 'grab';
@@ -2056,6 +2377,15 @@ export async function create(canvas, ctx) {
     const d = state.drag;
     if (!d || d.id !== e.pointerId) return;
     endDrag();
+    if (d.moved < DRAG && onFoot()) {
+      // on foot, a click fires (at a trooper, if it's on one)
+      const [x, y] = local(e);
+      const tid = pickTrooper(x, y);
+      if (tid) foot.lockOn(tid);
+      if (foot.fire()) emit({ type: 'fire' });
+      ctx.invalidate();
+      return;
+    }
     if (d.moved < DRAG) {
       state.vel = 0;
       const [x, y] = local(e);
@@ -2089,6 +2419,7 @@ export async function create(canvas, ctx) {
   };
   const onLeave = (e) => {
     if (e.pointerType !== 'mouse' || state.drag) return;
+    cabLook.ty = cabLook.tp = 0;
     setHover(null);
     setSignHover(null);
   };
@@ -2100,10 +2431,13 @@ export async function create(canvas, ctx) {
 
   setShip(props.ship ?? null);
   paintStates();
+  // every shader the map holds now, made before its first frame, off the
+  // page's thread (whatever arrives later waits at the gate in render)
+  await warm.all(scene, camera, post.target);
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, state };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, state, foot, planets, startFoot };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -2123,6 +2457,8 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
+      foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }) },
+      landable: state.landable,
       last,
     });
   }
@@ -2163,7 +2499,21 @@ export async function create(canvas, ctx) {
     // the phone's fire button
     fire() {
       heard();
-      fire();
+      if (onFoot()) {
+        if (foot.fire()) emit({ type: 'fire' });
+      } else fire();
+    },
+    // the phone's Land button (and G): down onto the planet and out; on foot, back in
+    out() {
+      heard();
+      if (onFoot()) {
+        if (!foot.board()) emit({ type: 'foot', id: 'far' });
+      } else startFoot();
+    },
+    // the phone's Switch button, on foot: play the other one
+    swap() {
+      const who = foot.swap();
+      if (who) emit({ type: 'foot', id: 'swap', who });
     },
     // the phone's boost button
     boost(on) {
@@ -2221,6 +2571,7 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
+      foot.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();

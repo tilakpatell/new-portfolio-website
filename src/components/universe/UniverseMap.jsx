@@ -24,7 +24,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const alt = useRef(null);
   const shield = useRef(null);
   const hud = useRef(null);
+  const prompt = useRef(null);
   const [flown, setFlown] = useState(false);
+  // out of the ship on a planet (the controls change), and where you could land
+  const [onFoot, setOnFoot] = useState(false);
+  const [landable, setLandable] = useState(null);
+  const [footHint, setFootHint] = useState(false);
   const events = useRef(onEvent);
   events.current = onEvent;
   const { wrap, on, meant, view } = useScene(load, {
@@ -38,6 +43,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       alt,
       shield,
       hud,
+      prompt,
       frozen,
       onPick: onSelect,
       onOpen,
@@ -45,12 +51,27 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
+        if (e.type === 'landable') setLandable(e.id);
+        if (e.type === 'foot' && e.id === 'out') {
+          setOnFoot(true);
+          setFootHint(true);
+        }
+        if (e.type === 'foot' && (e.id === 'off' || e.id === 'in')) setOnFoot(false);
         events.current?.(e);
       },
     },
   });
 
-  useEffect(() => setFlown(false), [ship]);
+  useEffect(() => {
+    setFlown(false);
+    setOnFoot(false);
+  }, [ship]);
+  // the keys on foot, for a while after stepping out
+  useEffect(() => {
+    if (!footHint) return undefined;
+    const t = setTimeout(() => setFootHint(false), 16000);
+    return () => clearTimeout(t);
+  }, [footHint]);
 
   // what the page needs from the map: whether it's drawing, the dive in,
   // and Escape and the whole map while flying
@@ -100,7 +121,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
 
   return (
-    <div ref={wrap} className="universe-map" data-ship={ship || undefined}>
+    <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
           {!on && (
@@ -141,7 +162,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-alt-mark" />
               </div>
               <div ref={shield} className="universe-shield" aria-hidden="true">
-                <span className="universe-shield-label">Shields</span>
+                <span className="universe-shield-label">{onFoot ? 'Health' : 'Shields'}</span>
                 <span className="universe-shield-bar">
                   <span />
                 </span>
@@ -163,13 +184,25 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
+              <p ref={prompt} className="universe-prompt" aria-live="polite" />
               <div className="universe-climbs">
-                {climbButton(1, 'Climb')}
-                {climbButton(-1, 'Dive')}
+                {climbButton(1, onFoot ? 'Jump' : 'Climb')}
+                {!onFoot && climbButton(-1, 'Dive')}
               </div>
-              <button type="button" className="universe-view" onPointerDown={(e) => (e.preventDefault(), view.current?.seat?.())} onContextMenu={(e) => e.preventDefault()}>
-                View
-              </button>
+              {onFoot ? (
+                <button type="button" className="universe-view" onPointerDown={(e) => (e.preventDefault(), view.current?.swap?.())} onContextMenu={(e) => e.preventDefault()}>
+                  Switch
+                </button>
+              ) : (
+                <button type="button" className="universe-view" onPointerDown={(e) => (e.preventDefault(), view.current?.seat?.())} onContextMenu={(e) => e.preventDefault()}>
+                  View
+                </button>
+              )}
+              {(onFoot || landable) && (
+                <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
+                  {onFoot ? 'Ship' : 'Land'}
+                </button>
+              )}
               <button type="button" className="universe-fire" onPointerDown={(e) => (e.preventDefault(), view.current?.fire?.())} onContextMenu={(e) => e.preventDefault()}>
                 Fire
               </button>
@@ -182,14 +215,22 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 onPointerLeave={hold(false)}
                 onContextMenu={(e) => e.preventDefault()}
               >
-                Boost
+                {onFoot ? 'Run' : 'Boost'}
               </button>
-              {!flown && (
+              {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>T</kbd> next target, <kbd>V</kbd> cockpit, <kbd>M</kbd> for the map
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast, View for the cockpit</span>
+                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in</span>
+                </p>
+              )}
+              {!flown && !onFoot && (
+                <p className="universe-hint">
+                  <span className="universe-hint-keys">
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>T</kbd> next target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>M</kbd> for the map
+                  </span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast, View for the cockpit, Land at a planet to step out</span>
                 </p>
               )}
             </>

@@ -818,7 +818,8 @@ export function buildPlanet(u, T = {}) {
     p.tick.push(facing(sign));
   }
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
-  const turn0 = body.rotation.y;
+  let turn0 = body.rotation.y;
+  let held = null; // the turn it's held at, while someone stands on it
   let selected = false;
   let t0 = 0;
 
@@ -829,6 +830,17 @@ export function buildPlanet(u, T = {}) {
     sign,
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
+    body,
+    air,
+    // held still (true) while the crew walk about on it, and turning on
+    // from there once they're gone
+    hold(on) {
+      if (on && held === null) held = body.rotation.y;
+      else if (!on && held !== null) {
+        turn0 = held - t0 * spin;
+        held = null;
+      }
+    },
     // the sign brightens and grows a little under the pointer
     setSignHover(on) {
       if (!sign) return;
@@ -837,7 +849,7 @@ export function buildPlanet(u, T = {}) {
     },
     update(t, camera) {
       t0 = t;
-      body.rotation.y = turn0 + t * spin;
+      body.rotation.y = held ?? turn0 + t * spin;
       for (const o of p.orbits) o.set(t);
       for (const fn of p.tick) fn(t, camera);
     },

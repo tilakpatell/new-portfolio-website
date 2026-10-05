@@ -18,9 +18,10 @@
 //   palette  the colours it's painted in
 
 // how much bigger than its size number each kind is drawn, in map units:
-// the planets big against the ship, the stations a little less so
-const STATION = 2;
-const PLANET = 2.7;
+// the planets huge against the ship (a hundred and more of it across, in the
+// gas giants' league out in deep space, if smaller), the stations a good deal less so
+const STATION = 7;
+const PLANET = 28;
 
 const CORE = [
   {

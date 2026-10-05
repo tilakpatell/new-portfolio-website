@@ -52,7 +52,7 @@ function rock(seed) {
 
 export function createBelt({ small = false } = {}) {
   const rand = rng(1977);
-  const N = small ? 420 : 1100;
+  const N = small ? 900 : 2400;
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 });
   const shapes = [rock(11), rock(23), rock(37)];
@@ -74,7 +74,7 @@ export function createBelt({ small = false } = {}) {
       const y = (rand() - 0.5) * BELT.height * (1 - Math.abs(across) * 1.4);
       at.set(Math.cos(a) * r, y, Math.sin(a) * r);
       // mostly small, now and then a big one
-      const size = 0.04 + rand() ** 4 * 0.46;
+      const size = 0.15 + rand() ** 4 * 1.9;
       sc.set(size, size * (0.7 + rand() * 0.6), size * (0.8 + rand() * 0.4));
       q.setFromEuler(e.set(rand() * 6.3, rand() * 6.3, rand() * 6.3));
       mesh.setMatrixAt(i, m.compose(at, q, sc));

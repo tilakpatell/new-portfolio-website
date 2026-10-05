@@ -18,10 +18,10 @@
 import { MAP_RADIUS } from './layout';
 
 export const DEEP = {
-  system: MAP_RADIUS + 12, // inside this is the home system: boost tops out at SHIP.boost, the ceiling is SHIP.ceiling
-  open: MAP_RADIUS + 72, // out past this, the pulse drive's full speed and the full height
-  edge: 1400, // turned back here
-  ceiling: 230, // how far above or below the disc it can go out in deep space
+  system: MAP_RADIUS + 60, // inside this is the home system: the ceiling is SHIP.ceiling
+  open: MAP_RADIUS + 360, // out past this, the full height
+  edge: 7000, // turned back here
+  ceiling: 650, // how far above or below the disc it can go out in deep space
 };
 
 // kind: what it is (deepspace.js draws each kind its own way); r: its radius
@@ -32,46 +32,46 @@ export const DEEP = {
 // beyond (the black hole's): what's on its far side, { name, what, url },
 // where the page goes when the ship falls in
 export const WONDERS = [
-  { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
-  { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [702, -94, 189], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
+  { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-2230, 135, -2835], r: 140, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
+  { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [3510, -235, 945], r: 80, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
   {
     id: 'ember',
     kind: 'star',
     name: 'Ember',
-    at: [216, 122, 864],
-    r: 26,
+    at: [1080, 305, 4320],
+    r: 90,
     color: '#ff7a3c',
     planets: [
-      { r: 6, orbit: 64, angle: 0.6, color: '#b0623c', kind: 'rock' },
-      { r: 9, orbit: 104, angle: 3.4, color: '#6f86a0', kind: 'ocean' },
+      { r: 22, orbit: 320, angle: 0.6, color: '#b0623c', kind: 'rock' },
+      { r: 30, orbit: 520, angle: 3.4, color: '#6f86a0', kind: 'ocean' },
     ],
   },
   {
     id: 'halcyon',
     kind: 'star',
     name: 'Halcyon',
-    at: [-891, -148, 378],
-    r: 20,
+    at: [-4455, -370, 1890],
+    r: 75,
     color: '#9cc4ff',
     planets: [
-      { r: 5, orbit: 52, angle: 2.2, color: '#d9d3c4', kind: 'rock' },
-      { r: 11, orbit: 90, angle: 5.1, color: '#c58fd8', kind: 'gas' },
+      { r: 18, orbit: 260, angle: 2.2, color: '#d9d3c4', kind: 'rock' },
+      { r: 36, orbit: 450, angle: 5.1, color: '#c58fd8', kind: 'gas' },
     ],
   },
   {
     id: 'maw',
     kind: 'black-hole',
     name: 'The Maw',
-    at: [864, 81, -702],
-    r: 12,
-    disk: 72,
+    at: [4320, 200, -3510],
+    r: 30,
+    disk: 200,
     // on its far side: Shrey Pathak's portfolio, the Matrix (where Rick and Morty come out)
     beyond: { name: 'Shrey Pathak', what: 'the Matrix', url: 'https://shreyaanpathak.github.io/portfolio' },
   },
-  { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
-  { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-756, 40, -243], r: 60, crew: 'starwars', trench: { segments: 34 } },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty' },
+  { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-2230, 505, 4725], r: 700, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
+  { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
+  { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-3780, 100, -1215], r: 150, crew: 'starwars', trench: { segments: 85 } },
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 45, crew: 'rickmorty' },
 ];
 
 // The trench run model (public/models/universe/trench.glb), as measured:

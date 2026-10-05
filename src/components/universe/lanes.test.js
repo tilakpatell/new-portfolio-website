@@ -40,7 +40,7 @@ describe('everyday traffic', () => {
     const rand = seeded(3);
     for (let n = 0; n < 50; n++) {
       const pts = laneBetween(rand);
-      for (const p of [pts[0], pts[2]]) expect(Math.hypot(p[0], p[2])).toBeLessThan(MAP_RADIUS + 8);
+      for (const p of [pts[0], pts[2]]) expect(Math.hypot(p[0], p[2])).toBeLessThan(MAP_RADIUS + 24);
       const big = laneBetween(rand, { high: true });
       expect(laneLength(big)).toBeGreaterThan(MAP_RADIUS);
     }

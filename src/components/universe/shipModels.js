@@ -271,6 +271,7 @@ export function buildShip(kind, T = {}) {
   const group = new THREE.Group();
   group.add(pivot);
   let mounted = null;
+  let ownGlow = false;
   return {
     update(t) {
       mounted?.update?.(t);
@@ -282,6 +283,10 @@ export function buildShip(kind, T = {}) {
     pivot,
     setThrottle(k) {
       for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.5 + 2.8 * k); // past 1 at speed, so it blooms
+    },
+    // parked on a planet (true): the engines' glow goes out
+    park(on) {
+      if (ship.glowMesh) ship.glowMesh.visible = !on && !ownGlow;
     },
     // the ship's model, when it comes: sized to the stand-in, which goes.
     // `extra` is what a built model brings: update(t) each frame, dispose(),
@@ -305,6 +310,7 @@ export function buildShip(kind, T = {}) {
       });
       ship.stand.visible = false;
       ship.group.add(holder);
+      ownGlow = Boolean(extra.ownGlow);
       if (extra.ownGlow && ship.glowMesh) ship.glowMesh.visible = false;
       // the engines' glow at its tail, where the ship has one of its own
       // (its length runs along x if it was turned a quarter)

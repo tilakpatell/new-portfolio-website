@@ -16,8 +16,8 @@
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
 
-const LOW = [5, 9]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
-const HIGH = [12, 20]; // and the big ships
+const LOW = [40, 60]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
+const HIGH = [75, 105]; // and the big ships
 const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
@@ -59,7 +59,7 @@ const between = (rand, [a, b]) => a + rand() * (b - a);
 function beside(id, rand, y) {
   const [x, , z] = POSITIONS[id];
   const a = rand() * Math.PI * 2;
-  const d = REACH[id] + 1.5 + rand() * 2;
+  const d = REACH[id] + 6 + rand() * 10;
   return [x + Math.cos(a) * d, y, z + Math.sin(a) * d];
 }
 
@@ -72,7 +72,7 @@ export function laneBetween(rand, { high = false } = {}) {
     const r = MAP_RADIUS * (0.75 + rand() * 0.35);
     const y = side * between(rand, HIGH);
     const p0 = [Math.cos(a) * r, y, Math.sin(a) * r];
-    const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 2, Math.sin(b) * r];
+    const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 8, Math.sin(b) * r];
     return [p0, [(p0[0] + p2[0]) * 0.3, y, (p0[2] + p2[2]) * 0.3], p2];
   }
   const i = Math.floor(rand() * ORDER.length);
@@ -80,7 +80,7 @@ export function laneBetween(rand, { high = false } = {}) {
   if (j >= i) j += 1;
   const y = side * between(rand, LOW);
   const p0 = beside(ORDER[i], rand, y);
-  const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 1.5);
+  const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 8);
   // the middle bows out to one side, and a little further from the disc
   const mx = (p0[0] + p2[0]) / 2;
   const mz = (p0[2] + p2[2]) / 2;
@@ -88,7 +88,7 @@ export function laneBetween(rand, { high = false } = {}) {
   const dz = p2[2] - p0[2];
   const len = Math.hypot(dx, dz) || 1;
   const bow = (rand() - 0.5) * 0.5 * len;
-  return [p0, [mx - (dz / len) * bow, y + side * rand() * 1.5, mz + (dx / len) * bow], p2];
+  return [p0, [mx - (dz / len) * bow, y + side * rand() * 8, mz + (dx / len) * bow], p2];
 }
 
 // ship: { x, y, z, heading }. Half the time it crosses in front of the

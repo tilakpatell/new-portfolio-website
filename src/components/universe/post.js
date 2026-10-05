@@ -1,6 +1,6 @@
-// How the universe map is drawn, after the scene itself: into a
-// multisampled HDR target (the canvas's own antialiasing doesn't reach an
-// offscreen one), then bloom for what's brighter than lit paint (the sun,
+// How the universe map is drawn, after the scene itself: into an HDR target
+// (multisampled short of a sharp screen: the canvas's own antialiasing
+// doesn't reach an offscreen one, so the canvas goes without), then bloom for what's brighter than lit paint (the sun,
 // lit windows, engines, shots), then one last pass: the tone map, the sRGB
 // encoding and a light grade (a touch of contrast and saturation, a
 // vignette), and, while the ship boosts, a rush: the picture smeared out
@@ -115,7 +115,11 @@ const FINAL = {
 };
 
 export function createPost(renderer, scene, camera, { small = false } = {}) {
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 2 : 4 });
+  // multisampled below a pixel ratio of about 2; at 2 the pixels are too
+  // small for jagged edges to show, and on a half-float target four samples
+  // a pixel cost more than the rest of the frame put together
+  const samples = renderer.getPixelRatio() >= 1.75 ? 0 : small ? 2 : 4;
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   // whatever's drawn over the scene (the cockpit), with a fresh depth
@@ -142,6 +146,10 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     get on() {
       return on;
     },
+    // where the scene is drawn: the post's own target, or the canvas once it's off
+    get target() {
+      return on ? composer.readBuffer : null;
+    },
     // draw a frame (the renderer's pixel ratio can change under us, when the
     // watchdog trades sharpness for speed)
     render(w, h) {
@@ -161,6 +169,11 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         Object.assign(at, { w, h, ratio });
         composer.setPixelRatio(ratio);
         composer.setSize(w, h);
+        // the glow is a blur: worked out at the page's own pixels, not the
+        // screen's, it looks the same on every screen and costs a quarter
+        // as much on a sharp one
+        const k = Math.min(1, ratio);
+        bloom.setSize(Math.round(w * k), Math.round(h * k));
         grade.uniforms.uAspect.value = w / h;
       }
       composer.render();
