@@ -2686,6 +2686,11 @@ export async function create(canvas, ctx) {
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
     crashFx.arrive({ point: new THREE.Vector3(park.x, park.y, park.z), kind: state.kind, heading: park.heading });
+    // (out at a wonder, nothing's picked: the panel goes back to the map's; at a place, arriving picks it)
+    if (!isPlace(exit) && state.sel) {
+      state.sel = null;
+      props.onPick?.(null);
+    }
     emit({ type: 'event', id: 'rifted' });
     emit({ type: 'rifted', id: exit });
   };
