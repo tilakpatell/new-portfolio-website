@@ -195,24 +195,25 @@ export function makeWater() {
 function tuftGeometry() {
   const pos = [];
   const col = [];
-  const base = new THREE.Color(0x2f5a22);
-  const tip = new THREE.Color(0xa8c860);
-  for (let b = 0; b < 3; b++) {
-    const a = (b / 3) * Math.PI + 0.3;
-    const ca = Math.cos(a) * 0.09;
-    const sa = Math.sin(a) * 0.09;
-    const lean = 0.08 * (b - 1);
-    const h = 0.42 + b * 0.06;
-    pos.push(-ca, 0, -sa, ca, 0, sa, lean, h, lean * 0.5);
-    col.push(base.r, base.g, base.b, base.r, base.g, base.b, tip.r, tip.g, tip.b);
+  const base = new THREE.Color(0x3a6a28);
+  const tip = new THREE.Color(0xb4d26a);
+  for (let b = 0; b < 4; b++) {
+    const a = (b / 4) * Math.PI + 0.3;
+    const ca = Math.cos(a) * 0.045;
+    const sa = Math.sin(a) * 0.045;
+    const lean = 0.05 * (b - 1.5);
+    const h = 0.24 + (b % 2) * 0.08;
+    const tx = lean + Math.cos(a + 1.2) * 0.02;
+    const tz = lean * 0.5 + Math.sin(a + 1.2) * 0.02;
+    // both faces, wound each way, so the back of a blade lights like the front
+    pos.push(-ca, 0, -sa, ca, 0, sa, tx, h, tz, ca, 0, sa, -ca, 0, -sa, tx, h, tz);
+    for (let k = 0; k < 2; k++) col.push(base.r, base.g, base.b, base.r, base.g, base.b, tip.r, tip.g, tip.b);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  // point the normals up, so the blades light like the ground they grow from
-  const nrm = g.attributes.normal;
-  for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+  // the normals point up, so the blades light like the ground they grow from
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
   return g;
 }
 
@@ -248,11 +249,40 @@ const growable = (x, z) => {
   return true;
 };
 
+// Instances sorted into squares of the world, one InstancedMesh each, so
+// the ones off screen aren't drawn.
+function chunker(geometry, material, size = 18) {
+  const bins = new Map();
+  return {
+    add(matrix, colour, x, z) {
+      const key = `${Math.floor(x / size)},${Math.floor(z / size)}`;
+      if (!bins.has(key)) bins.set(key, []);
+      bins.get(key).push([matrix.clone(), colour.clone()]);
+    },
+    build({ receive = true } = {}) {
+      const g = new THREE.Group();
+      for (const list of bins.values()) {
+        const mesh = new THREE.InstancedMesh(geometry, material, list.length);
+        list.forEach(([m, c], i) => {
+          mesh.setMatrixAt(i, m);
+          mesh.setColorAt(i, c);
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        mesh.computeBoundingSphere();
+        mesh.receiveShadow = receive;
+        g.add(mesh);
+      }
+      return g;
+    },
+  };
+}
+
 export function makeGrass(count, wind) {
   const geo = tuftGeometry();
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  swaying(material, wind, 0.16);
-  const mesh = new THREE.InstancedMesh(geo, material, count);
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  swaying(material, wind, 0.5);
+  const bins = chunker(geo, material);
   const rand = seeded(99);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -269,29 +299,23 @@ export function makeGrass(count, wind) {
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
     if (!growable(x, z)) continue;
-    const sc = 0.7 + rand() * 0.8;
+    const sc = 0.8 + rand() * 0.7;
     q.setFromAxisAngle(up, rand() * Math.PI * 2);
-    s.set(sc, sc * (0.8 + rand() * 0.6), sc);
+    s.set(sc, sc * (0.7 + rand() * 0.6), sc);
     v.set(x, height(x, z) - 0.03, z);
     m.compose(v, q, s);
-    mesh.setMatrixAt(n, m);
-    tint.setHSL(0.24 + rand() * 0.06, 0.5, 0.42 + rand() * 0.18);
-    mesh.setColorAt(n, tint);
+    tint.setHSL(0.23 + rand() * 0.06, 0.45, 0.62 + rand() * 0.2);
+    bins.add(m, tint, x, z);
     n += 1;
   }
-  mesh.count = n;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return bins.build();
 }
 
 // Flowers: in the gardens before the doors, and in drifts along the verges.
 const FLOWER_COLOURS = [0xf2d24a, 0xe8655a, 0xf3f0e8, 0xb07ad8, 0xf29ac2, 0xf08a3a, 0x7ab0f0];
 export function makeFlowers(geometry, material, count, wind) {
   swaying(material, wind, 0.1);
-  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  const bins = chunker(geometry, material, 24);
   const rand = seeded(57);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -307,9 +331,8 @@ export function makeFlowers(geometry, material, count, wind) {
     s.set(sc, sc, sc);
     v.set(x, height(x, z) - 0.02, z);
     m.compose(v, q, s);
-    mesh.setMatrixAt(n, m);
     tint.set(colour);
-    mesh.setColorAt(n, tint);
+    bins.add(m, tint, x, z);
     n += 1;
   };
   // the gardens: an arc in front of each door
@@ -343,11 +366,7 @@ export function makeFlowers(geometry, material, count, wind) {
     const colour = FLOWER_COLOURS[Math.floor(rand() * FLOWER_COLOURS.length)];
     for (let k = 0; k < 6; k++) put(cx + (rand() - 0.5) * 3, cz + (rand() - 0.5) * 3, colour);
   }
-  mesh.count = n;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  mesh.frustumCulled = false;
-  return mesh;
+  return bins.build({ receive: false });
 }
 
 // Any instanced prop: `list` of { x, z, y?, s?, sy?, turn? }.

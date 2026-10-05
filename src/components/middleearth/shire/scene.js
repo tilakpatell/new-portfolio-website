@@ -12,6 +12,7 @@
 // aim(kind, ndcX, ndcY), screenOf(kind, id), resize, dispose, lost, info }.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createStage } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { pose } from '../mapFigures';
@@ -27,6 +28,7 @@ import {
   BRIDGE,
   CART,
   CAST,
+  COLLIDERS,
   DOG_ROUNDS,
   FENCES,
   FIELD,
@@ -41,6 +43,7 @@ import {
   PASTURE,
   PAVILION,
   POND,
+  RIDER,
   RINGS,
   ROOT_TREE,
   SCARECROW,
@@ -70,6 +73,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.55, threshold: 0.9 }, onLost });
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
+  renderer.info.autoReset = false; // counted over the whole frame, every pass
   scene.fog = new THREE.Fog(0xe8dcb8, 46, 210);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.55 : 0.28;
 
@@ -84,22 +88,29 @@ export function createShireWorld(canvas, { onLost } = {}) {
   sun.shadow.normalBias = 0.04;
   scene.add(hemi, sun, sun.target);
 
+  // everything outside, so it can all be put away while you're in Bag End;
+  // the buildings and props that never move go in `statics`, to be merged
+  const outdoors = new THREE.Group();
+  const statics = new THREE.Group();
+  scene.add(outdoors);
+  outdoors.add(statics);
+
   const sky = makeSky(400);
   scene.add(sky.dome);
   const water = makeWater();
-  scene.add(water.group);
+  outdoors.add(water.group);
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage });
 
   // ── the ground ──
-  scene.add(makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 }));
+  outdoors.add(makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 }));
   const wind = { uWind: { value: 0 } };
-  scene.add(makeGrass(Math.round(16000 * many), wind));
+  outdoors.add(makeGrass(Math.round(21000 * many), wind));
 
   const kit = createShireKit(renderer);
   const mats = kit.mats ?? {};
   const fallback = (colour) => new THREE.MeshStandardMaterial({ color: colour, roughness: 0.9 });
   const flowerGeo = val(kit.flower);
-  if (flowerGeo) scene.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
+  if (flowerGeo) outdoors.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
 
   // ── the buildings ──
   const chimneys = [];
@@ -107,7 +118,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const at = part.doorAt ? V(part.doorAt.x, 0, part.doorAt.z).applyAxisAngle(V(0, 1, 0), turn) : V(0, 0, 0);
     part.group.position.set(x, (y ?? height(x + at.x, z + at.z)) - sink, z);
     part.group.rotation.y = turn;
-    scene.add(part.group);
+    statics.add(part.group);
     part.group.updateMatrixWorld(true);
     if (part.chimneyTop) chimneys.push(part.chimneyTop.clone().applyMatrix4(part.group.matrixWorld));
     return part;
@@ -119,7 +130,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   placed(kit.greenDragon(), INN.x, INN.z, { y: height(INN.x, INN.z), turn: Math.PI, sink: 0.05 });
   const bridge = kit.bridge({ span: BRIDGE.z1 - BRIDGE.z0, width: BRIDGE.w, rise: BRIDGE.rise });
   bridge.group.position.set(BRIDGE.x, bridgeY(BRIDGE.z0) - 0.02, (BRIDGE.z0 + BRIDGE.z1) / 2);
-  scene.add(bridge.group);
+  statics.add(bridge.group);
   placed(kit.partyTree(), PARTY_TREE.x, PARTY_TREE.z, { y: height(PARTY_TREE.x, PARTY_TREE.z), sink: 0.1 });
   placed(kit.pavilion(), PAVILION.x, PAVILION.z, { y: height(PAVILION.x, PAVILION.z), sink: 0.02 });
   placed(kit.cart(), CART.x, CART.z, { y: height(CART.x, CART.z), turn: 0, sink: 0 });
@@ -131,7 +142,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const h = rootTree.hollow ?? V(0, 0, 1.8);
     rootTree.group.rotation.y = Math.PI;
     rootTree.group.position.set(HOLLOW.x + h.x, height(ROOT_TREE.x, ROOT_TREE.z) - 0.1, HOLLOW.z + h.z);
-    scene.add(rootTree.group);
+    statics.add(rootTree.group);
   }
   // the party's light at night (the kit's lanterns glow; these light the grass)
   const lampA = new THREE.PointLight(0xffb060, 0, 22, 1.6);
@@ -150,7 +161,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const p = kit[name](...args);
     p.group.position.set(x, height(x, z), z);
     p.group.rotation.y = turn;
-    scene.add(p.group);
+    statics.add(p.group);
     return p;
   };
   prop('scarecrow', SCARECROW.x, SCARECROW.z, 0.3);
@@ -180,16 +191,18 @@ export function createShireWorld(canvas, { onLost } = {}) {
     rim.push({ x, z, s: 0.9 + rand() * 0.8, kind: Math.floor(rand() * 3), turn: rand() * 6.28 });
     i += 1;
   }
-  if (mats.crown) swaying(mats.crown, wind, 0.03);
+  if (mats.crown) swaying(mats.crown, wind, 0.004);
   oaks.forEach((oak, k) => {
-    const near = TREES.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
-    const far = rim.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
-    for (const [list, shadow] of [[near, true], [far, false]]) {
-      if (!list.length) continue;
-      scene.add(instances(oak.trunk, mats.trunk ?? fallback(0x5a4028), list, { shadow }));
-      scene.add(instances(oak.crown, mats.crown ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), list, { shadow }));
-    }
+    const list = TREES.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
+    if (!list.length) return;
+    // (only the sharpest tier has the trees cast shadows)
+    outdoors.add(instances(oak.trunk, mats.trunk ?? fallback(0x5a4028), list, { shadow: tier === 'high' }));
+    outdoors.add(instances(oak.crown, mats.crown ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), list, { shadow: tier === 'high' }));
   });
+  // the woods on the hills round about: far off, so a few blobs of leaf will do
+  const far = farTree();
+  const rimList = rim.map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.2, s: t.s * 1.1, turn: t.turn }));
+  outdoors.add(instances(far, new THREE.MeshLambertMaterial({ vertexColors: true }), rimList, { shadow: false }));
 
   // hedges along the lane
   const hedgeGeo = val(kit.hedge);
@@ -205,7 +218,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
         list.push({ x, z, y: height(x, z) - 0.05, sx: (len / n) * 1.06, sy: 0.9 + rand() * 0.3, sz: 1, turn: -Math.atan2(z1 - z0, x1 - x0) });
       }
     }
-    scene.add(instances(hedgeGeo, mats.hedge ?? fallback(0x3f6a2a), list));
+    outdoors.add(instances(hedgeGeo, mats.hedge ?? fallback(0x3f6a2a), list));
   }
   // Maggot's fence: posts and two rails between
   const postGeo = val(kit.fencePost);
@@ -229,7 +242,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
       }
     }
     const wood = mats.fence ?? mats.wood ?? fallback(0x7a5a3a);
-    scene.add(instances(postGeo, wood, posts), instances(railGeo, wood, rails));
+    outdoors.add(instances(postGeo, wood, posts), instances(railGeo, wood, rails));
   }
   // Maggot's crops, in rows
   const crops = val(kit.crops) ?? {};
@@ -239,91 +252,124 @@ export function createShireWorld(canvas, { onLost } = {}) {
       if (Math.hypot(x - SCARECROW.x, z - SCARECROW.z) < 1.6) continue;
       if (MUSHROOMS.some((m) => Math.hypot(m.x - x, m.z - z) < 0.9)) continue;
       const kind = x < -42 ? 'wheat' : z > 33 ? 'pumpkin' : 'cabbage';
+      // (thinner rows where the device can afford less)
       if (kind !== 'wheat' && rand() < 0.18) continue;
+      if (rand() > Math.max(0.45, many)) continue;
       rows[kind].push({ x: x + (rand() - 0.5) * 0.25, z: z + (rand() - 0.5) * 0.2, s: 0.85 + rand() * 0.3, turn: rand() * 6.28 });
     }
   }
-  for (const kind of ['cabbage', 'pumpkin', 'wheat']) if (crops[kind] && rows[kind].length) scene.add(instances(crops[kind], mats[kind] ?? fallback(0x6a9a3a), rows[kind], { shadow: kind !== 'wheat' }));
+  for (const kind of ['cabbage', 'pumpkin', 'wheat']) if (crops[kind] && rows[kind].length) outdoors.add(instances(crops[kind], mats[kind] ?? fallback(0x6a9a3a), rows[kind], { shadow: kind !== 'wheat' }));
+
+  // the buildings and props that never move, merged by material: a few
+  // dozen draws instead of several hundred
+  outdoors.add(bake(statics, [mill.wheel]));
 
   // ── the mushrooms, glinting so they can be found ──
-  const mushrooms = MUSHROOMS.map((m) => prop('mushroom', m.x, m.z, m.x * 3));
+  const mushrooms = MUSHROOMS.map((m) => {
+    const p = kit.mushroom();
+    p.group.position.set(m.x, height(m.x, m.z), m.z);
+    p.group.rotation.y = m.x * 3;
+    p.group.scale.setScalar(1.6);
+    outdoors.add(p.group);
+    return p;
+  });
   const glintGeo = new THREE.BufferGeometry();
   const glintPos = new Float32Array(MUSHROOMS.length * 3);
   MUSHROOMS.forEach((m, i) => glintPos.set([m.x, height(m.x, m.z) + 0.55, m.z], i * 3));
   glintGeo.setAttribute('position', new THREE.BufferAttribute(glintPos, 3));
   const glintMat = new THREE.PointsMaterial({ color: new THREE.Color(2.4, 2.1, 1.2), size: 0.5, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, map: dotTexture() });
   const glints = new THREE.Points(glintGeo, glintMat);
-  scene.add(glints);
+  outdoors.add(glints);
 
   // ── the people ──
   const frodo = makePerson('frodo');
-  scene.add(frodo.group);
+  outdoors.add(frodo.group);
   const people = {};
   for (const c of CAST) {
     const p = makePerson(c.look);
     p.group.position.set(c.x, height(c.x, c.z), c.z);
     faceTo(p.group, c.face);
     p.home = { x: c.x, z: c.z, face: c.face };
-    scene.add(p.group);
+    outdoors.add(p.group);
     people[c.id] = p;
   }
   const gandalf = makePerson('gandalf');
-  scene.add(gandalf.group);
+  outdoors.add(gandalf.group);
   // the party: guests about the pavilion, dancing once it's dark
   const guests = [];
-  const GUESTS = tier === 'high' ? 10 : tier === 'mid' ? 5 : 2;
+  const GUESTS = tier === 'high' ? 7 : tier === 'mid' ? 4 : 0;
   for (let i = 0; i < GUESTS; i++) {
     const p = makePerson('guest', { guest: i });
     const a = (i / GUESTS) * Math.PI * 2;
     p.home = { x: PAVILION.x - 1 + Math.cos(a) * 4.2, z: PAVILION.z + 4.8 + Math.sin(a) * 2.2, face: a + Math.PI };
     p.group.position.set(p.home.x, height(p.home.x, p.home.z), p.home.z);
     faceTo(p.group, p.home.face);
-    scene.add(p.group);
+    outdoors.add(p.group);
     guests.push(p);
   }
 
   // ── the animals ──
   const dogs = DOG_ROUNDS.map(() => {
     const d = kit.dog();
-    scene.add(d.group);
+    outdoors.add(d.group);
     return d;
   });
   const coneMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
   const cones = DOG_ROUNDS.map(() => {
     const m = new THREE.Mesh(new THREE.CircleGeometry(HUNT.sight, 24, -HUNT.cone, HUNT.cone * 2).rotateX(-Math.PI / 2), coneMat(0xffd27a));
     m.renderOrder = 1;
-    scene.add(m);
+    outdoors.add(m);
     return m;
   });
   const sheep = [];
-  for (let i = 0; i < Math.round(8 * Math.max(0.5, many)); i++) {
+  for (let i = 0; i < Math.round(6 * Math.max(0.5, many)); i++) {
     const s = kit.sheep();
     const a = rand() * 6.28;
     s.at = { x: PASTURE.x + Math.cos(a) * PASTURE.r * 0.6 * rand(), z: PASTURE.z + Math.sin(a) * PASTURE.r * 0.6 * rand(), face: rand() * 6.28, walk: 0, t: rand() * 5 };
-    scene.add(s.group);
+    s.free = true;
+    outdoors.add(s.group);
     sheep.push(s);
   }
   const rider = kit.blackRider();
   rider.group.visible = false;
-  scene.add(rider.group);
+  outdoors.add(rider.group);
+  // a cold light that comes with it, so it's a shape and not a hole
+  const riderLight = new THREE.PointLight(0x8aa4ff, 0, 14, 1.6);
+  riderLight.position.set(-1.2, 4.2, 1.5);
+  rider.group.add(riderLight);
+  // everyone who moves about, for culling by distance. Only Frodo casts a
+  // real shadow; the rest stand on a soft dark blot, which is one draw
+  // instead of a dozen more in the shadow pass
+  const crowd = [...Object.values(people), gandalf, ...guests, ...sheep];
+  const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
+  const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.26, depthWrite: false });
+  for (const f of [...crowd, ...dogs]) {
+    f.group.traverse((o) => {
+      if (o.isMesh) o.castShadow = false;
+    });
+    const blob = new THREE.Mesh(blobGeo, blobMat);
+    blob.position.y = 0.04;
+    blob.renderOrder = 1;
+    f.group.add(blob);
+  }
 
   // ── markers: where there's something to do ──
   const markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.9, 0.7) });
-  const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.9, 0.4), transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.9, 0.4), transparent: true, opacity: 0.09, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
   const markers = Array.from({ length: 5 }, () => {
     const g = new THREE.Group();
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), markerMat);
     gem.scale.y = 1.5;
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.6, 9, 12, 1, true), beamMat);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.35, 9, 12, 1, true), beamMat);
     beam.position.y = -1.2;
     g.add(gem, beam);
     g.visible = false;
-    scene.add(g);
+    outdoors.add(g);
     return g;
   });
-  const hereRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.7, 0.7), transparent: true, opacity: 0.6, depthWrite: false }));
+  const hereRing = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.08, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 1.05, 0.4), transparent: true, opacity: 0.55, depthWrite: false }));
   hereRing.visible = false;
-  scene.add(hereRing);
+  outdoors.add(hereRing);
 
   // ── effects ──
   const fx = createFx(scene, { scale: many });
@@ -333,14 +379,17 @@ export function createShireWorld(canvas, { onLost } = {}) {
   scene.add(inside.group);
 
   // the sky the fireworks burst in, seen from the Party Field
-  const SHOW_CAM = { at: V(13.5, 2.1, -1.5), look: V(21, 11.5, -26) };
-  const SHOW_SKY = { centre: V(21, 17, -34), across: 17, up: 15 };
+  // the camera low on the field looking up, the great tree to one side and
+  // the sky over the party for the fireworks
+  const SHOW_CAM = { at: V(8.4, 1.9, -9.2), look: V(14, 15, -34) };
+  const SHOW_SKY = { centre: V(15, 22, -38), across: 22, up: 17 };
   const showBasis = (() => {
     const fwd = SHOW_CAM.look.clone().sub(SHOW_CAM.at).normalize();
     const right = fwd.clone().cross(V(0, 1, 0)).normalize();
     const up = right.clone().cross(fwd).normalize();
     return { right, up, normal: fwd.clone().negate() };
   })();
+  const SHOW_BACK = SHOW_CAM.at.clone().sub(SHOW_CAM.look).setY(0).normalize();
   const skyPoint = (u, v, out = new THREE.Vector3()) => out.copy(SHOW_SKY.centre).addScaledVector(showBasis.right, u * SHOW_SKY.across).addScaledVector(showBasis.up, (v - 0.45) * SHOW_SKY.up);
   const cartTop = V(CART.x, height(CART.x, CART.z) + 1.4, CART.z);
 
@@ -354,10 +403,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
+  const WRAITH_FOG = new THREE.Color(0.32, 0.35, 0.42);
   const look = new THREE.Vector3();
 
-  const render = (s, ms) => {
-    const dt = Math.min(0.05, ms / 1000);
+  const render = (s, ms, fast = 1) => {
+    const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
     const t = A.t;
     wind.uWind.value = t;
@@ -384,7 +434,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
-      scene.fog.color.lerp(tmp.set(0.32, 0.35, 0.42), A.wraith * 0.8);
+      scene.fog.color.lerp(WRAITH_FOG, A.wraith * 0.8);
     }
 
     // ── the hobbit ──
@@ -438,13 +488,23 @@ export function createShireWorld(canvas, { onLost } = {}) {
       pose(gandalf, t, { moving: false, talk: s.talk === 'gandalf' ? 1 : 0 });
     }
     guests.forEach((g, i) => {
-      g.group.visible = s.mode !== 'inside' && (A.night > 0.3 || i % 2 === 0);
+      g.group.visible = s.mode !== 'inside' && A.night > 0.3; // they come for the party
       if (A.night > 0.5) dance(g, t, i * 1.3);
       else {
         calm(g);
         pose(g, t + i, { moving: false });
       }
     });
+
+    // the people and animals far off aren't drawn
+    if (s.mode !== 'inside') {
+      const cx = camera.position.x;
+      const cz = camera.position.z;
+      for (const f of crowd) {
+        if (f.free) f.group.visible = true; // the sheep are always out
+        if (f.group.visible && Math.hypot(f.group.position.x - cx, f.group.position.z - cz) > 60) f.group.visible = false;
+      }
+    }
 
     // ── the dogs, and what they can see ──
     const dogsNear = Math.hypot(h.x - (FIELD.x0 + FIELD.x1) / 2, h.z - (FIELD.z0 + FIELD.z1) / 2) < 30;
@@ -523,13 +583,14 @@ export function createShireWorld(canvas, { onLost } = {}) {
         if (rider.rider.head) rider.rider.head.rotation.y = A.sniff * (Math.sin(t * 0.9) * 0.6 - 0.4);
       }
       if (r.phase === 'sniff') A.shake = Math.max(A.shake, 0.03);
+      riderLight.intensity = 6 + Math.sin(t * 2.3) * 1.5;
     }
 
     // ── markers, and the ring at your feet ──
     const showMarks = s.mode === 'walk';
     markers.forEach((m, i) => {
       const q = (s.markers ?? [])[i];
-      m.visible = showMarks && Boolean(q);
+      m.visible = showMarks && Boolean(q) && Math.hypot(q.x - h.x, q.z - h.z) > 6;
       if (!m.visible) return;
       m.position.set(q.x, groundY(q.x, q.z) + 3.1 + Math.sin(t * 2 + i) * 0.15, q.z);
       m.children[0].rotation.y = t * 1.5;
@@ -570,19 +631,30 @@ export function createShireWorld(canvas, { onLost } = {}) {
     // ── the camera ──
     let camAt;
     let camLook;
+    outdoors.visible = s.mode !== 'inside';
+    inside.group.visible = s.mode === 'inside';
     if (s.mode === 'inside') {
+      lampA.intensity = lampB.intensity = innLamp.intensity = doorLamp.intensity = 0;
       const c = inside.update(s.ringStep ?? 'envelope', t, dt);
       camAt = c.at;
       camLook = c.look;
       sun.intensity *= 0.1;
       hemi.intensity *= 0.25;
     } else if (s.mode === 'rings') {
-      RINGS_CAM.at.copy(benchAt).add(tmp.set(-0.2, 1.55, -2.1));
-      RINGS_CAM.look.copy(benchAt).add(tmp.set(-0.4, 1.0, 6));
+      // out in front of the bench, looking back at the two of them, with the
+      // rings coming towards you
+      // (further back on a tall, narrow screen, so his ring stays in view)
+      RINGS_CAM.at.copy(frodoPipe).add(tmp.set(-0.5, 0.9, RINGS.depth + 3.6 + Math.max(0, 1.2 - camera.aspect) * 6));
+      RINGS_CAM.look.copy(frodoPipe).add(tmp.set(-0.5, 0.55, 0));
       camAt = RINGS_CAM.at;
       camLook = RINGS_CAM.look;
+    } else if (s.mode === 'rider' && s.hidden && s.rider && s.rider.phase !== 'warn') {
+      // hiding under the roots: from the side, the hollow and the road above it
+      camAt = tmp.set(HOLLOW.x + 5.5, groundY(HOLLOW.x + 5.5, HOLLOW.z - 9) + 3.4, HOLLOW.z - 9);
+      camLook = look.set(HOLLOW.x + 0.2, groundY(HOLLOW.x, HOLLOW.z) + 1.1, (HOLLOW.z + RIDER.stopAt[1]) / 2 + 0.5);
     } else if (s.mode === 'show') {
-      camAt = SHOW_CAM.at;
+      // (and further back for the sky on a narrow screen)
+      camAt = tmp.copy(SHOW_CAM.at).addScaledVector(SHOW_BACK, Math.max(0, 1.2 - camera.aspect) * 7);
       camLook = SHOW_CAM.look;
     } else {
       const yaw = s.camYaw ?? 0;
@@ -590,10 +662,17 @@ export function createShireWorld(canvas, { onLost } = {}) {
       const dist = s.camDist ?? 6.4;
       look.set(h.x, hy + 1.15, h.z);
       camAt = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, hy + 1.15 + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
-      // never under the ground
+      // in front of anything it would be inside (a mound, a wall, a hedge),
+      // and never under the ground
+      const k = clearance(look, camAt);
+      if (k < 1) camAt.lerpVectors(look, camAt, k);
       const floor = groundY(camAt.x, camAt.z) + 0.6;
       if (camAt.y < floor) camAt.y = floor;
       camLook = look;
+    }
+    if (import.meta.env.DEV && s.debugCam) {
+      camAt = tmp.set(...s.debugCam.at);
+      camLook = look.set(...s.debugCam.look);
     }
     const jump = A.mode !== s.mode;
     A.mode = s.mode;
@@ -613,6 +692,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     sun.target.position.copy(focus);
     sun.position.copy(focus).addScaledVector(sunDir, 70);
     sun.castShadow = renderer.shadowMap.enabled && s.mode !== 'inside';
+    renderer.info.reset();
     stage.render(ms);
   };
 
@@ -633,7 +713,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     } else if (type === 'launch') {
       fx.rocket(cartTop, skyPoint(d.u, d.v), d.flight ?? 0.9);
     } else if (type === 'burst') {
-      fx.burst(skyPoint(d.u, d.v), d.colour, 1);
+      fx.burst(skyPoint(d.u, d.v), d.colour, 1.45);
       A.shake = Math.max(A.shake, 0.015);
     } else if (type === 'dragon') {
       const pts = [cartTop.clone(), V(8, 6, -20), V(14, 13, -32), V(30, 9, -22), V(PAVILION.x, 3.4, PAVILION.z + 3), V(14, 5, -2), V(6, 12, -18), V(20, 21, -34)];
@@ -682,6 +762,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   };
 
   return {
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
     aim,
@@ -699,6 +780,97 @@ export function createShireWorld(canvas, { onLost } = {}) {
       stage.dispose();
     },
   };
+}
+
+// What the camera can't go through, with how high each stands above the
+// ground at its middle: the mounds, the buildings, the hedges.
+const TOPS = { bagend: 6.5, 'party-tree': 4, 'root-tree': 2.6, mill: 7.5, inn: 8, barn: 7.5, cart: 2.2, tables: 1.1 };
+const BLOCKERS = COLLIDERS.filter((c) => !c.id.startsWith('oak') && c.id !== 'scarecrow').map((c) => {
+  const top = TOPS[c.id] ?? (/-p[we]$/.test(c.id) ? 2.2 : /-[we]$/.test(c.id) ? 2.6 : 3.4);
+  return { ...c, y: height(c.x, c.z) + top };
+});
+const HEDGE_TOP = 1.5;
+function inside(x, y, z) {
+  for (const c of BLOCKERS) {
+    if (y > c.y) continue;
+    if (c.kind === 'circle' ? Math.hypot(x - c.x, z - c.z) < c.r + 0.25 : Math.abs(x - c.x) < c.w / 2 + 0.25 && Math.abs(z - c.z) < c.d / 2 + 0.25) return true;
+  }
+  for (const [x0, z0, x1, z1] of HEDGES) {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+    if (Math.hypot(x - (x0 + t * dx), z - (z0 + t * dz)) < 0.75 && y < height(x, z) + HEDGE_TOP) return true;
+  }
+  return false;
+}
+// how far from `from` to `to` the camera can go before it's inside
+// something, as a fraction
+function clearance(from, to) {
+  const N = 14;
+  for (let i = 1; i <= N; i++) {
+    const k = i / N;
+    if (inside(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k, from.z + (to.z - from.z) * k)) return Math.max(0.18, (i - 1) / N);
+  }
+  return 1;
+}
+
+// A tree for the far hills: a trunk and three blobs of leaf, in one
+// geometry with its colours in the vertices.
+function farTree() {
+  const parts = [];
+  const paint = (g, hex) => {
+    const c = new THREE.Color(hex);
+    const n = g.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const k = 0.85 + ((i * 7919) % 13) / 60;
+      col.set([c.r * k, c.g * k, c.b * k], i * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.deleteAttribute('uv');
+    return g;
+  };
+  parts.push(paint(new THREE.CylinderGeometry(0.22, 0.32, 3, 6).translate(0, 1.5, 0), 0x4a3a28));
+  for (const [x, y, z, r, hex, d] of [[0, 3.9, 0, 2.1, 0x3f6e2a, 1], [0.9, 3.3, 0.5, 1.5, 0x4a7a30, 0], [-0.8, 3.5, -0.4, 1.6, 0x36602a, 0]]) parts.push(paint(new THREE.IcosahedronGeometry(r, d).translate(x, y, z).toNonIndexed(), hex));
+  const g = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)), false);
+  g.computeVertexNormals();
+  return g;
+}
+
+// Merge every static mesh under `root` that shares a material into one, in
+// world space; `keep` (and what's under them) stay as they are, to move.
+function bake(root, keep = []) {
+  root.updateMatrixWorld(true);
+  const skip = new Set();
+  for (const k of keep) k?.traverse((o) => skip.add(o));
+  const buckets = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || skip.has(o) || Array.isArray(o.material)) return;
+    const g = o.geometry;
+    const key = `${o.material.uuid}|${g.index ? 'i' : 'n'}|${Object.keys(g.attributes).sort().join()}|${Object.keys(g.morphAttributes).length}|${o.castShadow}|${o.receiveShadow}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(o);
+  });
+  const out = new THREE.Group();
+  out.name = 'baked';
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    const geos = list.map((o) => o.geometry.clone().applyMatrix4(o.matrixWorld));
+    let merged = null;
+    try {
+      merged = mergeGeometries(geos, false);
+    } catch {
+      merged = null;
+    }
+    geos.forEach((g) => g.dispose());
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, list[0].material);
+    mesh.castShadow = list[0].castShadow;
+    mesh.receiveShadow = list[0].receiveShadow;
+    out.add(mesh);
+    for (const o of list) o.parent?.remove(o);
+  }
+  return out;
 }
 
 // a soft round dot, for the glints

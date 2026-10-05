@@ -229,10 +229,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     if (s.mode === 'rings') s.h = newHobbit({ x: SPOTS[0].x, z: SPOTS[0].z + 0.6, face: -Math.PI / 2 });
     if (s.mode === 'show') s.h = newHobbit({ x: SPOTS[1].x, z: SPOTS[1].z + 0.5, face: Math.PI / 2 });
     if (s.mode === 'inside') s.h = newHobbit({ x: SPOTS[2].x, z: SPOTS[2].z + 1.2, face: -Math.PI / 2 });
+    // out of Bag End or up off the bench, the camera stands off to one side
+    // rather than in the Hill behind you
+    s.yaw = behindYaw(s.h.face) + (s.mode === 'inside' || s.mode === 'rings' ? 1.25 : 0);
+    s.dragAt = s.t;
     s.mode = 'walk';
     s.rings = null;
     s.show = null;
-    s.yaw = behindYaw(s.h.face);
   }, []);
 
   const putRing = useCallback(
@@ -351,7 +354,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     if (!a || a.lost) return;
     const s = sim.current;
     const p = progRef.current;
-    const dt = Math.min(0.05, ms / 1000);
+    // (the QA scripts can run the clock faster, in development only)
+    const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
+    const dt = Math.min(0.05, ms / 1000) * fast;
     s.t += dt;
     const k = s.keys;
     const held = (name) => KEYS[name].some((key) => k.has(key));
@@ -562,8 +567,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           near: s.near,
           talk: s.talk,
           markers,
+          debugCam: s.debugCam,
         },
-        ms,
+        ms * fast,
+        fast,
       );
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
@@ -968,7 +975,7 @@ function drawMap(c, h, markers, prog) {
 // Without 3D: what there is to do, as cards.
 function Cards({ prog, three, gl, retry }) {
   return (
-    <div className="shire-cards-wrap">
+    <div className="shell shire-cards-wrap">
       <h1 id="shire-title" className="title">
         Hobbiton
       </h1>

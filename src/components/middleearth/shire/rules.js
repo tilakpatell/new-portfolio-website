@@ -141,7 +141,15 @@ const box = (id, o, pad = 0) => ({ id, kind: 'box', x: o.x, z: o.z, w: o.w + pad
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const BUILT = [
   circle('bagend', BAG_END.x, BAG_END.z - 1.2, BAG_END.r * 0.82),
-  ...HOLES.map((h) => circle(h.id, h.x, h.z - 0.6, h.r * 0.8)),
+  // each hole's mound: the middle and the shoulders, which leave the door
+  // to walk up to, and the stone pillars either side of it
+  ...HOLES.flatMap((h) => [
+    circle(h.id, h.x, h.z - 0.26 * h.r, 0.48 * h.r),
+    circle(`${h.id}-w`, h.x - 0.6 * h.r, h.z - 0.09 * h.r, 0.4 * h.r),
+    circle(`${h.id}-e`, h.x + 0.6 * h.r, h.z - 0.09 * h.r, 0.4 * h.r),
+    circle(`${h.id}-pw`, h.x - 3.2 * (h.r / 4), h.z + 0.235 * h.r, 0.6),
+    circle(`${h.id}-pe`, h.x + 3.2 * (h.r / 4), h.z + 0.235 * h.r, 0.6),
+  ]),
   circle('party-tree', PARTY_TREE.x, PARTY_TREE.z, PARTY_TREE.r),
   circle('root-tree', ROOT_TREE.x, ROOT_TREE.z, ROOT_TREE.r),
   circle('scarecrow', SCARECROW.x, SCARECROW.z, 0.35),
@@ -189,6 +197,21 @@ export const FENCES = [
   [FIELD.x1, FIELD.z1, FIELD.stile[1], FIELD.z1],
   [FIELD.stile[0], FIELD.z1, FIELD.x0, FIELD.z1],
   [FIELD.x0, FIELD.z1, FIELD.x0, FIELD.z0],
+];
+
+// The garden fences in front of Bag End and the holes, with the gate in the
+// middle: [x0, z0, x1, z1].
+export const GARDENS = [
+  [BAG_END.x - 5.2, BAG_END.z + 7.4, BAG_END.x - 0.55, BAG_END.z + 7.4],
+  [BAG_END.x + 0.55, BAG_END.z + 7.4, BAG_END.x + 5.2, BAG_END.z + 7.4],
+  ...HOLES.flatMap((h) => {
+    const z = h.z + 3.94 * (h.r / 4);
+    const span = Math.min(3.65, h.r - 0.1);
+    return [
+      [h.x - span, z, h.x - 0.55, z],
+      [h.x + 0.55, z, h.x + span, z],
+    ];
+  }),
 ];
 
 // Hedges along the lane: [x0, z0, x1, z1], about a metre thick.
@@ -239,7 +262,7 @@ function push(x, z, rad) {
       }
     }
   }
-  for (const [x0, z0, x1, z1, thick = 0.08] of [...FENCES, ...HEDGES.map((h) => [...h, 0.5])]) {
+  for (const [x0, z0, x1, z1, thick = 0.08] of [...FENCES, ...GARDENS, ...HEDGES.map((h) => [...h, 0.5])]) {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
@@ -574,7 +597,7 @@ export function newRings(seed = 1) {
 }
 function hisRing(rand) {
   const side = rand() < 0.5 ? -1 : 1;
-  return { u: side * (RINGS.u - 0.3), v: RINGS.v0 + 0.5 + rand() * 1.2, vu: -side * (0.45 + rand() * 0.35), vv: (rand() - 0.5) * 0.35, r: RINGS.his, age: 0, bob: rand() * 6 };
+  return { u: side * (RINGS.u - 0.3), v: RINGS.v0 + 0.5 + rand() * 1.2, vu: -side * (0.35 + rand() * 0.3), vv: (rand() - 0.5) * 0.3, r: RINGS.his, age: 0, bob: rand() * 6 };
 }
 // a puff aimed at (u, v)
 export function puff(s, u, v) {
@@ -605,14 +628,14 @@ export function stepRings(s, dt) {
     s.mine.splice(i, 1);
     const at = hisAt(his);
     const off = Math.hypot(m.u - at.u, m.v - at.v);
-    if (off < at.r - RINGS.mine * 0.5) {
+    if (off < at.r - RINGS.mine * 0.2) {
       s.hits += 1;
       ev.push({ type: 'through', hits: s.hits, off });
       s.his = hisRing(s.rand);
       ev.push({ type: 'new' });
     } else ev.push({ type: 'miss', off });
   }
-  if (Math.abs(s.his.u) > RINGS.u + 0.8 || s.his.age > 9) {
+  if (Math.abs(s.his.u) > RINGS.u + 0.8 || s.his.age > 11) {
     s.his = hisRing(s.rand);
     ev.push({ type: 'new' });
   }

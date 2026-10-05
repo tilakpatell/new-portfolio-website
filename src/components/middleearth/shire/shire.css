@@ -14,7 +14,7 @@
 
 .shire-stage {
   position: relative;
-  height: clamp(30rem, calc(100svh - var(--nav-h, 64px) - 3.5rem), 54rem);
+  height: clamp(30rem, calc(100svh - var(--nav-h, 64px) - 5.25rem), 54rem);
   overflow: hidden;
   background: linear-gradient(180deg, #4f86c6 0%, #a8c8e4 46%, #f6dfb0 64%, #7a9a4a 66%, #5f8a3a 100%);
   border-block: 1px solid rgba(60, 40, 20, 0.35);
@@ -31,7 +31,7 @@
 /* the HUD sits over the world; only its controls take the pointer */
 .shire-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.7rem, 2vw, 1.2rem); pointer-events: none; }
 .shire-hud > * { pointer-events: auto; }
-.shire-hud-top { top: 0; align-items: flex-start; }
+.shire-hud-top { top: 0; align-items: flex-start; padding-top: 3.4rem; } /* clear of the chapter's bar, which sticks over the top */
 .shire-hud-bottom { bottom: 0; align-items: flex-end; padding-right: calc(16px + 42px + 0.9rem); } /* clear of the site's guide button */
 .shire-brand { display: grid; gap: 0.55rem; max-width: min(32rem, 60%); pointer-events: none; }
 .shire-title { margin: 0; color: var(--shire-ink); font: 600 clamp(1.8rem, 1.1rem + 2.4vw, 3rem)/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; text-shadow: 0 2px 16px rgba(20, 12, 4, 0.6), 0 0 2px rgba(20, 12, 4, 0.5); }
@@ -50,6 +50,7 @@
 .shire-world kbd { margin-left: 0.35rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.75; }
 
 .shire-meter { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.6rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.shire-meter-label { white-space: nowrap; }
 .shire-meter-bar { display: block; flex: 1; min-width: 6rem; height: 0.5rem; border-radius: 99px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
 .shire-meter-bar span { display: block; height: 100%; background: linear-gradient(90deg, #f6d36a, #f08a2a); transform-origin: left; transition: transform 0.15s linear; }
 .shire-meter-eye span { background: linear-gradient(90deg, #ff9a2a, #d8280a); }
@@ -57,9 +58,9 @@
 .shire-tempt { position: absolute; left: 50%; top: clamp(7rem, 22%, 10rem); width: min(22rem, calc(100% - 2rem)); transform: translateX(-50%); border-color: rgba(255, 140, 40, 0.6); animation: shire-tempt 1.1s ease-in-out infinite alternate; }
 .shire-tempt .shire-meter-bar span { background: linear-gradient(90deg, #f0c040, #ff4a1a); }
 
-.shire-toast { position: absolute; top: clamp(6.6rem, 19%, 9.5rem); left: 50%; z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--shire-gold); border-radius: 8px; background: var(--shire-glass-hi); color: var(--shire-ink); font: 500 0.95rem/1.4 var(--font-sans); text-align: center; transform: translateX(-50%); animation: shire-toast 4.2s ease both; pointer-events: none; }
+.shire-toast { position: absolute; top: clamp(8.6rem, 24%, 11.5rem); left: 50%; z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--shire-gold); border-radius: 8px; background: var(--shire-glass-hi); color: var(--shire-ink); font: 500 0.95rem/1.4 var(--font-sans); text-align: center; transform: translateX(-50%); animation: shire-toast 4.2s ease both; pointer-events: none; }
 .shire-toast[data-bad] { border-left-color: #ff7a5a; }
-.shire-stage[data-mode='show'] .shire-toast, .shire-stage[data-mode='rings'] .shire-toast { top: 0.9rem; }
+.shire-stage[data-mode='show'] .shire-toast, .shire-stage[data-mode='rings'] .shire-toast, .shire-stage[data-mode='inside'] .shire-toast { top: 3.6rem; }
 @keyframes shire-toast { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 
 /* who's talking: a bubble over their head */
@@ -95,7 +96,7 @@
 .shire-stick span { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(240, 192, 64, 0.92); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
 
 /* the list of things to do */
-.shire-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: calc(clamp(0.7rem, 2vw, 1.2rem) + 150px + 3.2rem); z-index: 4; width: min(25rem, calc(100% - 1.4rem)); max-height: calc(100% - 150px - 5rem); overflow-y: auto; padding: 0.75rem; border: 1px solid var(--shire-line); border-radius: 12px; background: rgba(24, 30, 18, 0.95); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
+.shire-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: calc(3.4rem + 150px + 3.4rem); z-index: 4; width: min(25rem, calc(100% - 1.4rem)); max-height: calc(100% - 150px - 8rem); overflow-y: auto; padding: 0.75rem; border: 1px solid var(--shire-line); border-radius: 12px; background: rgba(24, 30, 18, 0.95); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
 .shire-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font: 600 1.05rem/1 'Cinzel', Georgia, serif; }
 .shire-list-head p { margin: 0; }
 .shire-list ul { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
@@ -113,7 +114,7 @@
 @keyframes shire-wraith { to { opacity: 0.6; } }
 
 /* without 3D: what there is to do, as cards */
-.shire-cards-wrap { padding: 2.5rem clamp(1rem, 4vw, 2.5rem) 1rem; max-width: 80rem; margin: 0 auto; }
+.shire-cards-wrap { padding-top: 2.5rem; padding-bottom: 1rem; }
 .shire-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.9rem; margin: 2rem 0 0; padding: 0; list-style: none; }
 .shire-cards li { padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .shire-cards .shire-list-sub { color: var(--muted); }
@@ -129,7 +130,8 @@
   .shire-door { bottom: 4.4rem; right: 0.8rem; left: auto; transform: none; width: min(13.5rem, calc(100% - 9.5rem)); padding: 0.7rem 0.8rem; }
   .shire-door-name { font-size: 0.98rem; }
   .shire-hint { bottom: 9.2rem; font-size: 0.78rem; }
-  .shire-panel { bottom: 0.7rem; }
+  .shire-panel { bottom: 0.7rem; width: calc(100% - 5.4rem); } /* clear of the site's guide button */
+  .shire-panel-inside { left: 0.7rem; transform: none; }
   .shire-bubble > div { font-size: 0.8rem; max-width: 13rem; }
 }
 @media (prefers-reduced-motion: reduce) {

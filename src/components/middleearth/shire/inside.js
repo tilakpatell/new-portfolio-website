@@ -131,7 +131,9 @@ export function buildInside(renderer, { fx }) {
   fp.position.set(0, 0, -R + 0.45);
   g.add(fp);
   put(fp, new THREE.BoxGeometry(2.2, 1.6, 0.6), stone, 0, 0.8, -0.1);
-  const mouth = put(fp, new THREE.BoxGeometry(1.2, 0.95, 0.62), std({ color: 0x120a06, roughness: 1 }), 0, 0.48, 0.02);
+  // the grate's dark mouth, in the face of the chimney breast; the fire
+  // burns on the hearth in front of it
+  const mouth = put(fp, new THREE.PlaneGeometry(1.2, 0.95), new THREE.MeshBasicMaterial({ color: 0x0c0604 }), 0, 0.5, 0.205);
   mouth.castShadow = false;
   put(fp, new THREE.TorusGeometry(0.62, 0.11, 6, 16, Math.PI), stone, 0, 0.95, 0.24);
   put(fp, new THREE.BoxGeometry(2.6, 0.16, 1.0), stone, 0, 0.08, 0.35);
@@ -152,7 +154,7 @@ export function buildInside(renderer, { fx }) {
   put(envelope, new THREE.CylinderGeometry(0.045, 0.045, 0.02, 14).rotateX(Math.PI / 2), std({ color: 0xa01818, roughness: 0.5 }), 0, 0, 0.015);
   fp.add(envelope);
   const logs = std({ color: 0x3a2414 });
-  for (const [x, r] of [[-0.25, 0.3], [0.22, -0.4], [0, 0.1]]) put(fp, new THREE.CylinderGeometry(0.09, 0.1, 0.8, 8).rotateZ(Math.PI / 2), logs, x * 0.4, 0.18, 0.05 + r * 0.05).rotation.y = r;
+  for (const [x, r] of [[-0.25, 0.3], [0.22, -0.4], [0, 0.1]]) put(fp, new THREE.CylinderGeometry(0.07, 0.08, 0.7, 8).rotateZ(Math.PI / 2), logs, x * 0.4, 0.22, 0.34 + r * 0.05).rotation.y = r;
 
   // the furniture: an armchair by the fire, a table with a candle and
   // Bilbo's book, a bookcase, a round window, the round door
@@ -208,26 +210,26 @@ export function buildInside(renderer, { fx }) {
 
   // Gandalf by the fire
   const gandalf = makePerson('gandalf');
-  gandalf.group.position.set(1.05, 0, -2.75);
+  gandalf.group.position.set(1.55, 0, -2.6);
   gandalf.group.rotation.y = -Math.PI / 2 - 0.5;
   g.add(gandalf.group);
 
   // the Ring, and its letters
   const ringMat = new THREE.MeshStandardMaterial({ color: 0xffcf5a, metalness: 1, roughness: 0.18, emissive: new THREE.Color(0xff6a14), emissiveIntensity: 0 });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 12, 40), ringMat);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.02, 12, 40), ringMat);
   ring.visible = false;
   g.add(ring);
   const letters = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.082, 0.082, 0.03, 48, 1, true),
+    new THREE.CylinderGeometry(0.098, 0.098, 0.034, 48, 1, true),
     new THREE.MeshBasicMaterial({ map: lettersTexture(renderer), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, color: hot(0xffffff, 2.4) }),
   );
   letters.rotation.x = Math.PI / 2;
   ring.add(letters);
 
   const world = (local) => local.clone().add(INSIDE);
-  const HEARTH = new THREE.Vector3(0, 0.32, -R + 0.62);
+  const HEARTH = new THREE.Vector3(0.06, 0.3, -R + 1.02);
   const PALM = new THREE.Vector3(0, 1.35, 0.9);
-  const FIRE_AT = world(new THREE.Vector3(0, 0.3, -R + 0.5));
+  const FIRE_AT = world(new THREE.Vector3(0, 0.26, -R + 0.8));
   const S = { step: 'envelope', t: 0, from: new THREE.Vector3(), heat: 0, glow: 0 };
   const tmp = new THREE.Vector3();
   const cam = { at: new THREE.Vector3(), look: new THREE.Vector3() };
@@ -272,11 +274,11 @@ export function buildInside(renderer, { fx }) {
     gandalf.head.rotation.y = Math.sin(t * 0.5) * 0.25 - 0.2;
     // where the camera wants to be for this step
     if (step === 'letters') {
-      cam.at.set(0.2, 0.95, -R + 2.3);
-      cam.look.set(0, 0.32, -R + 0.62);
+      cam.at.set(0.15, 0.85, -R + 2.05);
+      cam.look.set(0.06, 0.3, -R + 1.02);
     } else if (step === 'envelope') {
-      cam.at.set(0.4, 1.7, -0.6);
-      cam.look.set(0, 1.5, -R);
+      cam.at.set(-0.5, 1.75, -0.4);
+      cam.look.set(0.1, 1.55, -R);
     } else {
       cam.at.set(0, 1.65, 1.9);
       cam.look.copy(ring.position);

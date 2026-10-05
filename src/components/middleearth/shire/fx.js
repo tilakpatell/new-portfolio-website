@@ -98,18 +98,19 @@ export function createFx(scene, { scale = 1 } = {}) {
   // ── the dragon: a fiery serpent with wings, along a path ──
   const dragon = new THREE.Group();
   const dragonMat = new THREE.MeshBasicMaterial({ color: hot(0xff9a3a, 3.2), toneMapped: true });
-  const wingMat = new THREE.MeshBasicMaterial({ color: hot(0xff6a2a, 2.2), transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  const wingMat = new THREE.MeshBasicMaterial({ color: hot(0xff7a2a, 2.4), transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
   const SEGS = 14;
   const segs = [];
   for (let i = 0; i < SEGS; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.62 * (1 - i / (SEGS + 4)), 10, 8), dragonMat);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.46 * (1 - i / (SEGS + 4)), 10, 8), dragonMat);
     dragon.add(s);
     segs.push(s);
   }
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.6, 8).rotateX(Math.PI / 2), dragonMat);
   dragon.add(head);
   const wingGeo = new THREE.BufferGeometry();
-  wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, -2.2, 5.5, 0.6, -0.6, 0, 0, 0, 5.5, 0.6, -0.6, 3.2, 0, 1.2], 3));
+  // a bat's wing: three fingers of fire from the shoulder, swept back
+  wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.5, 4.2, 0.9, -1.4, 1.6, 0.2, -1.2, 0, 0, 0.2, 3.4, 0.5, -2.4, 1.2, 0.1, -2.0, 0, 0, -0.1, 2.2, 0.2, -3.0, 0.4, 0, -2.4], 3));
   wingGeo.computeVertexNormals();
   const wings = [1, -1].map((s) => {
     const w = new THREE.Mesh(wingGeo, wingMat);
@@ -266,12 +267,13 @@ export function createFx(scene, { scale = 1 } = {}) {
   const chimney = (at) => smoke.emit(at.x + R(0.1), at.y, at.z + R(0.1), R(0.15) + 0.25, 0.7 + Math.random() * 0.3, R(0.15), 4 + Math.random() * 2, 0.35, 1.8);
   const flame = (at, spread = 0.35) => fire.emit(at.x + R(spread), at.y, at.z + R(spread * 0.4), R(0.1), 0.6 + Math.random() * 0.4, R(0.1), 0.5 + Math.random() * 0.4, 0.32, 0.08, 0.9);
 
+  const pools = [...Object.values(sparks), trail, smoke, puffs, fire];
   const step = (dt, t, { night = 0, day = 1 } = {}) => {
-    for (const p of Object.values(sparks)) p.step(dt);
-    trail.step(dt);
-    smoke.step(dt);
-    puffs.step(dt);
-    fire.step(dt);
+    // an empty pool isn't drawn at all
+    for (const p of pools) {
+      p.step(dt);
+      p.mesh.visible = p.count > 0;
+    }
     // rockets: a spark trail up to where they burst
     for (let i = rockets.length - 1; i >= 0; i--) {
       const r = rockets[i];

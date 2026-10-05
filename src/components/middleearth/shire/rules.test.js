@@ -5,6 +5,7 @@ import {
   DOG_ROUNDS,
   FIELD,
   HOBBIT,
+  HOLES,
   HOLLOW,
   HUNT,
   MAGGOT_GATE,
@@ -103,6 +104,21 @@ describe('Hobbiton: the lie of the land', () => {
     expect(fence.z).toBeLessThan(FIELD.z0);
     const gate = walk(newHobbit({ x: -38, z: 19, face: 0 }), { x: 0, z: 1 }, 2);
     expect(inField(gate.x, gate.z)).toBe(true);
+  });
+
+  it('lets you up to each round door, through its garden gate', () => {
+    for (const h of HOLES) {
+      const at = walk(newHobbit({ x: h.x, z: h.z + h.r + 2.4, face: 0 }), { x: 0, z: -1 }, 4);
+      expect(at.z, h.id).toBeLessThan(h.z + 0.62 * h.r);
+    }
+  });
+
+  it('gets you to Gandalf’s bench through Bag End’s gate, but not over the fence', () => {
+    const over = walk(newHobbit({ x: -14, z: -14.5, face: 0 }), { x: 0, z: -1 }, 3);
+    expect(over.z).toBeGreaterThan(-16.6);
+    let h = walk(newHobbit({ x: -18, z: -14.5, face: 0 }), { x: 0, z: -1 }, 0.9);
+    h = walk(h, { x: 1, z: 0 }, 1.4);
+    expect(nearSpot(h.x, h.z)?.id).toBe('rings');
   });
 
   it('hides you under the old tree’s roots', () => {
