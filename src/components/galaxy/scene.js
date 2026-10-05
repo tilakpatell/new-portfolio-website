@@ -70,7 +70,7 @@ import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
 import { STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
-import { createModels } from './models';
+import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createJump } from './hyperspace';
 import { createBolts, createFlashes } from './fx';
@@ -170,7 +170,7 @@ export async function create(canvas, ctx) {
   const flashes = createFlashes(scene, { count: small ? 32 : 56 });
   const crashFx = createCrash(scene);
   const pops = createCrash(scene);
-  const fleet = createFleet({ build: buildGalaxyShip });
+  const fleet = createFleet({ build: buildGalaxyShip, glb: HUNTER_GLB });
   fleet.prepare = (o) => warm(o);
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS });
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet });

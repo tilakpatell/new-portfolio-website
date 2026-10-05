@@ -1,7 +1,9 @@
 // The galaxy's ships and stations as the set pieces place them: the models
 // that load (the Star Destroyer, the corvette, the X-wing, the interceptor,
-// Slave I, the Republic's Venator, the Millennium Falcon, the Death Star) and
-// the ones built in code (galaxy/fleet.js: everything else). Each kind is
+// Slave I, the Republic's Venator, the Millennium Falcon, the Death Star, and
+// the galaxy's own from Sketchfab: the Rebellion's cruisers and fighters, the
+// Executor, the Separatists' and the Republic's ships, the Sith Destroyers)
+// and the ones built in code (galaxy/fleet.js: everything else). Each kind is
 // made once, its first copy kept as a template, and every ship of that kind
 // after it is a copy sharing its geometry and materials (so the fourteen
 // Star Destroyers rising over Exegol cost one build). A kind that loads
@@ -20,14 +22,40 @@ import { GLB } from '../universe/glbFleet';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
 
-// which way each loaded model's nose points as it comes (turned to +z)
+// which way each loaded model's nose points as it comes (turned to +z): the
+// universe's, and the galaxy's own from Sketchfab (scripts/sketchfab-galaxy.mjs),
+// which take over from the ones built in code
 export const MODELS = {
   ...Object.fromEntries(Object.entries(GLB).map(([k, d]) => [k, { url: d.url, nose: d.nose }])),
   venator: { url: '/models/universe/venator.glb', nose: Math.PI / 2 },
   falcon: { url: '/models/universe/falcon.glb', nose: -Math.PI / 2 },
   deathstar: { url: '/models/universe/death-star.glb', nose: 0 },
+  moncal: { url: '/models/galaxy/moncal.glb', nose: 0 },
+  nebulon: { url: '/models/galaxy/nebulon.glb', nose: 0 },
+  awing: { url: '/models/galaxy/awing.glb', nose: 0 },
+  ywing: { url: '/models/galaxy/ywing.glb', nose: 0 },
+  bwing: { url: '/models/galaxy/bwing.glb', nose: 0 },
+  uwing: { url: '/models/galaxy/uwing.glb', nose: Math.PI },
+  executor: { url: '/models/galaxy/executor.glb', nose: 0 },
+  lucrehulk: { url: '/models/galaxy/lucrehulk.glb', nose: 0 },
+  coreship: { url: '/models/galaxy/coreship.glb', nose: 0 },
+  vulture: { url: '/models/galaxy/vulture.glb', nose: Math.PI },
+  trifighter: { url: '/models/galaxy/trifighter.glb', nose: 0 },
+  acclamator: { url: '/models/galaxy/acclamator.glb', nose: 0 },
+  delta7: { url: '/models/galaxy/delta7.glb', nose: 0 },
+  arc170: { url: '/models/galaxy/arc170.glb', nose: Math.PI },
+  n1: { url: '/models/galaxy/n1.glb', nose: 0 },
+  xyston: { url: '/models/galaxy/xyston.glb', nose: Math.PI / 2 },
+  tiefo: { url: '/models/galaxy/tiefo.glb', nose: -Math.PI / 2 },
 };
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
+
+// the models the hunters fly (universe/glbFleet.js flies them, the
+// universe's and the galaxy's droids and TIEs, each built until it's here)
+export const HUNTER_GLB = {
+  ...GLB,
+  ...Object.fromEntries(['vulture', 'trifighter', 'tiefo'].map((k) => [k, { ...MODELS[k], built: true }])),
+};
 
 // a model's materials tuned to the scene's light: engines and lights hot
 // enough to bloom, nothing mirror-shiny
