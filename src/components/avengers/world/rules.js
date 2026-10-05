@@ -1,5 +1,5 @@
 // The Avengers compound, the world: the compound's plan (../compound/plan.js)
-// at walking scale, for Captain America to walk about. What's here: the
+// at walking scale, for Spider-Man to walk about. What's here: the
 // buildings he can't walk through and the lawn he can't leave, the doors into
 // the seven games, the portal the Space Stone opens, who's about and what
 // they say, and how far the stone heist has got. Plain numbers, tested
@@ -60,7 +60,7 @@ export const RIVER_W = footOf(RIVER);
 export const ROADS_W = ROADS.map((d) => samplePath(d, 0.8).map(toWorld));
 export const ROAD_HALF = (3.7 * S) / 2;
 const EDGE = 1.4; // how near the edge of the lawn you can walk
-export const HERO_R = 0.45; // how round Cap is, for bumping into things
+export const HERO_R = 0.45; // how round he is, for bumping into things
 
 // ── the buildings: footprints (metres) and roof heights ──
 
@@ -278,8 +278,8 @@ export const CAST = [
     x: CRATER.x - 3.2,
     z: CRATER.z - 1.6,
     face: faceOf(0.6, 1),
-    lines: ['Whosoever holds this hammer, if they be worthy, shall possess the power of Thor.', 'Go on, Captain. Give it a pull.', 'The Chitauri are coming. I can feel it in the air.'],
-    after: { place: 'thor', lines: ['I knew it!', 'You’re worthy, Captain. I always said so. Mostly.'] },
+    lines: ['Whosoever holds this hammer, if they be worthy, shall possess the power of Thor.', 'Go on, Spider-Man. Give it a pull. Nobody’s judging. Much.', 'The Chitauri are coming. I can feel it in the air.'],
+    after: { place: 'thor', lines: ['I knew it!', 'Worthy! I knew there was something about you, spider.'] },
   },
   {
     id: 'natasha',
@@ -288,7 +288,7 @@ export const CAST = [
     x: PROW[2][0] * S - 4.5,
     z: PROW[2][1] * S + 3.2,
     face: faceOf(-0.4, 1),
-    lines: ['The file’s on the holotable. HYDRA, eight levels down.', 'I’ve got red in my ledger. I’d like to wipe it out.', 'Clint’s at the range, if you want the other half of that stone.'],
+    lines: ['The file’s on the holotable. HYDRA, eight levels down.', 'I’ve got red in my ledger. I’d like to wipe it out.', 'Clint’s at the range, if you want the other half of that stone. Try to keep up, kid.'],
     after: { place: 'widow', lines: ['Clean. Not one guard saw me.', 'Ledger’s a little lighter today.'] },
   },
   {
@@ -298,18 +298,9 @@ export const CAST = [
     x: LAB[0][0] * S + 6,
     z: LAB[0][1] * S - 5,
     face: faceOf(0.2, -1),
-    lines: ['That’s my secret, Cap. I’m always angry.', 'Hulk smash!', 'Puny god.'],
+    lines: ['That’s my secret, kid. I’m always angry.', 'Hulk smash!', 'Puny god.'],
     after: { place: 'banner', lines: ['Hulk smash!', 'Midtown is safe. Mostly.'] },
     r: 0.9,
-  },
-  {
-    id: 'spidey',
-    name: 'Peter Parker',
-    style: 'spiderman',
-    x: GATE[1][0] * S - 2.4,
-    z: GATE[1][1] * S - 3.2,
-    face: faceOf(-0.3, -1),
-    lines: ['Hey, Cap. Big fan. Huge.', 'Mr. Stark said to wait here. That was an hour ago.', 'I’m gonna be so late for school.'],
   },
   {
     id: 'bot',
@@ -318,7 +309,7 @@ export const CAST = [
     x: TRAINING[3][0] * S + 12,
     z: TRAINING[3][1] * S + 4.5,
     face: faceOf(0, 1),
-    lines: ['Training sequence ready, Captain.', 'Twelve rooms. One shield.', 'Please do not throw the shield at me.'],
+    lines: ['Training sequence ready, Spider-Man.', 'Twelve rooms. One shield.', 'Please do not throw the shield at me.'],
     after: { place: 'cap', lines: ['Sequence complete. All units… dented.'] },
   },
 ];
@@ -442,9 +433,9 @@ export function walkable(x, z, rad = HERO_R) {
 
 // ── walking ──
 
-// metres a second, and how fast he gets there: a brisk walk, and a run like a
-// super-soldier's (his model's walk and run clips are paced to match)
-export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 6.6, gravity: 21, air: 0.35 };
+// metres a second, and how fast he gets there: a brisk walk, a run like a
+// super-hero's, and a spider's jump (about a metre and three quarters)
+export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 8.4, gravity: 21, air: 0.35 };
 export const newHero = (at = START) => ({ x: at.x, z: at.z, y: 0, vy: 0, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, air: false });
 
 // One step. `move` is where the visitor wants to go, already turned to the
