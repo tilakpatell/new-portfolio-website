@@ -9,6 +9,7 @@
 // floor is flat, at 0, all the way to the shopfronts round the edge.
 
 import { pushOut } from '../../middleearth/towns/walker';
+import { moodOf } from './story';
 
 // The disc you can walk in: the concourse, up to its shopfronts.
 export const WORLD = { radius: 40 };
@@ -156,15 +157,17 @@ export const ROUNDS = [
 ];
 
 // A saved spot, if it's still a fair one: on the concourse and clear of
-// everything; and on red alert, always the start of the chase.
+// everything, the day's crowds too; and on red alert, always the start of
+// the chase.
 export function validAt(saved, done = []) {
   const has = (id) => done.includes(id);
   if (has('votemorty') && !has('citadelout')) return ESCAPE_START;
   if (!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.z)) return START;
   if (Math.hypot(saved.x, saved.z) > WORLD.radius - 0.5) return START;
+  const all = [...COLLIDERS, ...crowdColliders(moodOf(done))];
   // (dead centre of something round doesn't get pushed anywhere)
-  if (COLLIDERS.some((c) => c.kind === 'circle' && Math.hypot(saved.x - c.x, saved.z - c.z) < c.r + RICK.radius)) return START;
-  const [x, z] = pushOut(saved.x, saved.z, RICK.radius, COLLIDERS, WALLS);
+  if (all.some((c) => c.kind === 'circle' && Math.hypot(saved.x - c.x, saved.z - c.z) < c.r + RICK.radius)) return START;
+  const [x, z] = pushOut(saved.x, saved.z, RICK.radius, all, WALLS);
   if (Math.hypot(x - saved.x, z - saved.z) > 0.05) return START;
   return { x: saved.x, z: saved.z, face: Number.isFinite(saved.face) ? saved.face : 0 };
 }
@@ -228,13 +231,17 @@ function crowdGroups() {
 }
 const DAY = crowdGroups();
 // the rally: rows facing the booth, on its south side, clear of the way to the ballot box
+const RALLY_AT = { x: -26.4, z: -12.6 };
+const RALLY_U = (() => {
+  const ux = RALLY_AT.x - BOOTH.x;
+  const uz = RALLY_AT.z - BOOTH.z;
+  const ul = Math.hypot(ux, uz);
+  return [ux / ul, uz / ul];
+})();
 const RALLY = (() => {
   const out = [];
-  const c = { x: -26.4, z: -12.6 };
-  const ux = c.x - BOOTH.x;
-  const uz = c.z - BOOTH.z;
-  const ul = Math.hypot(ux, uz);
-  const u = [ux / ul, uz / ul];
+  const c = RALLY_AT;
+  const u = RALLY_U;
   const v = [-u[1], u[0]];
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 8; col++) {
@@ -250,6 +257,24 @@ const RALLY = (() => {
 })();
 const CROWDS = { day: DAY, election: [...DAY.filter((c) => c.group !== 'core'), ...RALLY], red: [] };
 export const crowdFor = (mood) => CROWDS[mood] ?? DAY;
-// each of them in Rick's way (but not in a Cop Rick's line of sight)
-const CROWD_COLLIDERS = Object.fromEntries(Object.entries(CROWDS).map(([m, list]) => [m, list.map((c, i) => ({ id: `crowd${i}`, kind: 'circle', x: c.x, z: c.z, r: 0.33, low: true, top: 1.9 }))]));
+// each of them in Rick's way (but not in a Cop Rick's line of sight); the
+// rally, packed too close to walk through, as one block, so that if it
+// gathers round Rick he's pushed out to its edge, not shut in
+const RALLY_BLOCK = {
+  id: 'rally',
+  kind: 'box',
+  ...RALLY_AT,
+  // its rows run along v, its ranks along u (towards the booth's back)
+  w: 7 * 1.02 + 0.24 + 0.66,
+  d: 4 * 1.08 + 0.24 + 0.66,
+  turn: Math.atan2(-RALLY_U[0], -RALLY_U[1]),
+  low: true,
+  top: 1.9,
+};
+const CROWD_COLLIDERS = Object.fromEntries(
+  Object.entries(CROWDS).map(([m, list]) => [
+    m,
+    [...list.filter((c) => c.group !== 'rally').map((c, i) => ({ id: `crowd${i}`, kind: 'circle', x: c.x, z: c.z, r: 0.33, low: true, top: 1.9 })), ...(list.some((c) => c.group === 'rally') ? [RALLY_BLOCK] : [])],
+  ]),
+);
 export const crowdColliders = (mood) => CROWD_COLLIDERS[mood] ?? CROWD_COLLIDERS.day;

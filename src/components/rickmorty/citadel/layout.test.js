@@ -146,6 +146,38 @@ describe('the Citadel’s crowds', () => {
       for (const s of SPOTS) expect(reachableWith(START, s, withCrowd), `${mood} ${s.id}`).toBe(true);
     }
   });
+  it('never shut Rick in when the rally gathers round him', () => {
+    // wherever he's standing when the third scene ends (he may be herding
+    // Mortys out here), he's pushed clear and can still get to the ballot
+    const day = [...COLLIDERS, ...crowdColliders('day')];
+    const election = [...COLLIDERS, ...crowdColliders('election')];
+    const okIn = (list) => (x, z, rad = 0.42) => {
+      const [px, pz] = pushOut(x, z, rad, list, WALLS);
+      return Math.hypot(px - x, pz - z) < 1e-6;
+    };
+    const wasClear = okIn(day);
+    const nowClear = okIn(election);
+    const rally = crowdFor('election').filter((c) => c.group === 'rally');
+    const cx = rally.reduce((s, c) => s + c.x, 0) / rally.length;
+    const cz = rally.reduce((s, c) => s + c.z, 0) / rally.length;
+    let tried = 0;
+    for (let x = cx - 6.75; x <= cx + 6.75; x += 1)
+      for (let z = cz - 6.75; z <= cz + 6.75; z += 1) {
+        if (Math.hypot(x, z) > WORLD.radius - 1 || inPen(x, z) || !wasClear(x, z)) continue;
+        const [px, pz] = pushOut(x, z, 0.42, election, WALLS);
+        tried++;
+        expect(reachableWith({ x: px, z: pz }, spot('ballot'), nowClear), `from ${x.toFixed(2)},${z.toFixed(2)}`).toBe(true);
+      }
+    expect(tried).toBeGreaterThan(100);
+  });
+  it('don’t keep a saved spot in among them', () => {
+    const rally = crowdFor('election').filter((c) => c.group === 'rally');
+    const mid = rally[19];
+    const spotIn = { x: mid.x + 0.5, z: mid.z + 0.5, face: 0 };
+    expect(validAt(spotIn, ['daycare', 'wafers', 'council'])).toEqual(START);
+    // and on an ordinary day the same spot's fine
+    expect(validAt(spotIn, [])).toEqual(spotIn);
+  });
   it('clear off the concourse on red alert', () => {
     expect(crowdFor('red')).toEqual([]);
     expect(crowdColliders('red')).toEqual([]);
@@ -158,6 +190,13 @@ describe('the Citadel’s crowds', () => {
       expect(Math.abs(Math.atan2(Math.sin(c.face - want), Math.cos(c.face - want)))).toBeLessThan(0.35);
     }
     expect(crowdFor('day').some((c) => c.group === 'rally')).toBe(false);
+    // and all of them in Rick's way: nobody in it can be walked through
+    const block = crowdColliders('election').filter((c) => c.id === 'rally');
+    expect(block.length).toBe(1);
+    for (const c of rally) {
+      const [px, pz] = pushOut(c.x, c.z, 0.42, block, []);
+      expect(Math.hypot(px - c.x, pz - c.z), `${c.x},${c.z}`).toBeGreaterThan(0.6);
+    }
   });
 });
 

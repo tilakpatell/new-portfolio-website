@@ -51,13 +51,18 @@ export const QUESTS = [
 // the seal each one wins (../../Achievements.jsx)
 export const SEAL = { daycare: 'daycare', wafers: 'wafers', council: 'council', votemorty: 'votemorty', citadelout: 'citadelout' };
 
-// What's open and next, the objective, and the Citadel's mood: an ordinary
-// day, election day once the first three are done, a red alert once
-// Candidate Morty has won, and an ordinary day again once you're out.
+// The Citadel's mood: an ordinary day, election day once the first three
+// are done, a red alert once Candidate Morty has won, and an ordinary day
+// again once you're out.
+export function moodOf(done = []) {
+  const has = (id) => done.includes(id);
+  return has('votemorty') && !has('citadelout') ? 'red' : THREE.every(has) && !has('votemorty') ? 'election' : 'day';
+}
+
+// What's open and next, the objective, and the mood.
 export function citadelProgress(done = []) {
   const p = progress(QUESTS, done);
-  const has = (id) => p.done.includes(id);
-  const mood = has('votemorty') && !has('citadelout') ? 'red' : THREE.every(has) && !has('votemorty') ? 'election' : 'day';
+  const mood = moodOf(p.done);
   const next = p.quests.find((q) => q.id === p.next);
   const objective = p.finished ? 'The Citadel’s behind you. Portal home, or look round once more.' : next.go;
   return { ...p, objective, mood };
