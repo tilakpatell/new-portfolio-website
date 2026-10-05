@@ -4,6 +4,9 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
+import { keyDown, keyUp, moveOf } from '../towns/keys';
+import { Travellers } from '../towns/TownHud';
+import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
   COLOURS,
@@ -61,8 +64,6 @@ const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).ca
 // the lines the site has the films' own recordings of (lib/clips)
 const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
 const sfx = () => import('../../../lib/sfx');
-const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
-const MOVE = new Set([...Object.values(KEYS).flat(), ' ', 'Shift']);
 const PROMPT = {
   rings: { name: 'The bench at Bag End', act: 'Sit with Gandalf' },
   party: { name: 'Gandalf’s cart', act: 'Light the fireworks' },
@@ -106,6 +107,8 @@ export default function ShireWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, gl, setGl, onLeave }) {
+  // other travellers online in the Shire, as ghosts (../towns/useTravellers)
+  const trav = useTravellers('shire', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -312,6 +315,25 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     [],
   );
 
+  // the walking keys: held while the world's live, by their place on the
+  // keyboard (../towns/keys), and kept when the handlers below are re-made
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => !typing(e.target) && keyDown(s.keys, e);
+    const up = (e) => keyUp(s.keys, e);
+    const blur = () => s.keys.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      s.keys.clear();
+    };
+  }, [live]);
+
   // keys
   const near = hud.near;
   useEffect(() => {
@@ -320,10 +342,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const down = (e) => {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
+      const m = moveOf(e);
       if (s.mode === 'walk' || s.mode === 'rider') {
-        if (MOVE.has(k)) {
+        if (m) {
           e.preventDefault();
-          s.keys.add(k);
           audioContext();
           return;
         }
@@ -339,9 +361,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         leave();
         return;
       }
-      if (s.mode === 'rings' && MOVE.has(k) && k !== ' ' && k !== 'Shift') {
+      if (s.mode === 'rings' && m && m !== 'space' && m !== 'run') {
         e.preventDefault();
-        s.keys.add(k);
         return;
       }
       if (s.mode === 'show' && /^[1-5]$/.test(k)) {
@@ -354,17 +375,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         act();
       }
     };
-    const up = (e) => s.keys.delete(e.key);
-    const blur = () => s.keys.clear();
     window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', blur);
-    return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', blur);
-      s.keys.clear();
-    };
+    return () => window.removeEventListener('keydown', down);
   }, [live, near, enter, leave, act, putRing]);
 
   // ── every frame ──
@@ -378,7 +390,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const dt = Math.min(0.05, ms / 1000) * fast;
     s.t += dt;
     const k = s.keys;
-    const held = (name) => KEYS[name].some((key) => k.has(key));
+    const held = (name) => k.has(name);
     const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
@@ -398,7 +410,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         if (pressed('x')) putRing(!s.wearing);
         if (pressed('y')) setList((v) => !v);
       }
-      const run = k.has('Shift') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
+      const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = stepHobbit(s.h, { x: mv.x, z: mv.z, run }, dt);
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
@@ -567,10 +579,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     // the markers: what's open and not yet done
     const markers = s.mode === 'rider' ? [{ x: HOLLOW.x, z: HOLLOW.z }] : p.finished ? [{ x: SPOTS[3].x, z: SPOTS[3].z }] : p.quests.filter((q) => q.open && !q.done && (q.id !== 'rings' || sky === 'day')).map((q) => q.at);
 
+    // other travellers online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: s.mode === 'inside', ring: s.wearing });
     try {
       a.render(
         {
           hobbit: s.h,
+          travellers: tv ? tv.list() : null,
           sky,
           mode: s.mode,
           wearing: s.wearing,
@@ -738,6 +754,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{count}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Travellers trav={trav} />
             {prog.hasRing && (
               <button type="button" className="shire-chip shire-ring-btn" data-on={hud.wearing || undefined} data-tempt={(hud.rider?.phase === 'sniff' && hud.rider.pull > 0.3) || undefined} onClick={() => putRing(!sim.current.wearing)}>
                 {hud.wearing ? 'Take it off' : 'The Ring'} {!touch && <kbd>R</kbd>}

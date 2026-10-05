@@ -165,6 +165,31 @@ export function disposeTree(root) {
   });
 }
 
+// three.js draws a transparent, double-sided material twice (its back faces,
+// then its front), marking it changed before each, so its shader's settings
+// are worked out afresh twice a frame (and the strings that takes are
+// garbage). Where one pass draws the same picture, `root`'s get one: added
+// light (the sum doesn't care about order) or anything flat (its faces never
+// overlap each other). Glass round a cockpit keeps both.
+const flatBox = new THREE.Box3();
+const flatSize = new THREE.Vector3();
+const flat = (geometry) => {
+  if (!geometry?.attributes?.position) return false;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  flatBox.copy(geometry.boundingBox).getSize(flatSize);
+  return Math.min(flatSize.x, flatSize.y, flatSize.z) <= 1e-6 * Math.max(flatSize.x, flatSize.y, flatSize.z, 1e-9);
+};
+export function singlePass(root) {
+  root.traverse((o) => {
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) {
+      if (!m.transparent || m.side !== THREE.DoubleSide || m.forceSinglePass) continue;
+      if (m.blending === THREE.AdditiveBlending || flat(o.geometry)) m.forceSinglePass = true;
+    }
+  });
+  return root;
+}
+
 // Easing the site already uses in CSS: cubic-bezier(0.16, 1, 0.3, 1) is
 // close to an exponential ease-out.
 export const easeOut = (t) => (t >= 1 ? 1 : t <= 0 ? 0 : 1 - 2 ** (-10 * t));

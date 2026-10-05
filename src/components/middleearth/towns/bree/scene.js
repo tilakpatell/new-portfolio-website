@@ -21,8 +21,10 @@ import { instances } from '../../shire/ground';
 import { makeAtmosphere, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { bake, farTree } from '../bake';
+import { createGhosts } from '../ghosts';
 import { makePuddles, makeTerrain, makeTufts } from '../ground';
 import { makeRain } from '../rain';
+import { createWraithKit } from '../wraiths';
 import { createBreeKit, makeFolk } from './props';
 import { NAZGUL } from './story';
 import { INN, buildInn } from './inn';
@@ -270,6 +272,9 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   };
   const frodo = blob(makeFolk('frodo'));
   outdoors.add(frodo.group);
+  // other travellers, online, from other worlds (../ghosts.js)
+  const ghosts = createGhosts({ height });
+  outdoors.add(ghosts.group);
   const people = {};
   for (const c of CAST) {
     const p = blob(makeFolk(c.look));
@@ -287,26 +292,94 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   outdoors.add(bill.group);
   const billStable = stable.stalls[1].clone().applyMatrix4(stable.group.matrixWorld);
   // the Nazgûl, and two of their horses by the broken gate
-  const nazgul = Array.from({ length: 4 }, () => {
-    const n = blob(kit.nazgul(), 1.3);
+  const wraithKit = createWraithKit(renderer);
+  // (the Ring's pale form, compiled now so putting it on doesn't stall)
+  wraithKit.setRing(0.01);
+  wraithKit.setRing(0);
+  const nazgul = Array.from({ length: 4 }, (_, i) => {
+    const n = blob(wraithKit.nazgul({ seed: i + 1, sword: i % 2 === 0 }), 1.3);
     n.group.visible = false;
     outdoors.add(n.group);
     return n;
   });
-  // what each can see, on the ground: grey while they search, red once they've seen you
-  const coneGeo = (() => {
-    const g = new THREE.CircleGeometry(NAZGUL.sight, 28, -NAZGUL.cone, NAZGUL.cone * 2).rotateX(-Math.PI / 2);
-    const p = g.attributes.position;
-    const rgba = new Float32Array(p.count * 4);
-    for (let i = 0; i < p.count; i++) {
-      const k = Math.hypot(p.getX(i), p.getZ(i)) / NAZGUL.sight;
-      rgba.set([1, 1, 1, (1 - k) * (1 - k)], i * 4);
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(rgba, 4));
+  // what each can see, on the ground: a cold breath of dread spreading from
+  // its feet, grey-blue while it searches, burning red once it's seen you;
+  // soft at every edge, and stirring, so it reads as a sense and not a shape
+  // (a fan of rings and spokes, laid over the ground each frame, so the
+  // lane's rise and fall never cuts it into hard shapes)
+  const RINGS_N = 10;
+  const SPOKES = 18;
+  const fanGeo = () => {
+    const pos = [];
+    const local = [];
+    const idx = [];
+    pos.push(0, 0, 0);
+    local.push(0, 0);
+    for (let r = 1; r <= RINGS_N; r++)
+      for (let k = 0; k <= SPOKES; k++) {
+        const a = -NAZGUL.cone * 1.15 + (k / SPOKES) * NAZGUL.cone * 2.3;
+        const d = (r / RINGS_N) * NAZGUL.sight;
+        pos.push(Math.cos(a) * d, 0, -Math.sin(a) * d);
+        local.push(Math.cos(a) * d, -Math.sin(a) * d);
+      }
+    const at = (r, k) => (r === 0 ? 0 : 1 + (r - 1) * (SPOKES + 1) + k);
+    for (let r = 0; r < RINGS_N; r++)
+      for (let k = 0; k < SPOKES; k++) {
+        if (r === 0) idx.push(0, at(1, k), at(1, k + 1));
+        else idx.push(at(r, k), at(r + 1, k), at(r + 1, k + 1), at(r, k), at(r + 1, k + 1), at(r, k + 1));
+      }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('local', new THREE.Float32BufferAttribute(local, 2));
+    g.setIndex(idx);
+    g.computeBoundingSphere();
+    g.boundingSphere.radius = NAZGUL.sight + 2;
     return g;
-  })();
-  const cones = nazgul.map(() => {
-    const m = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: 0x9ab4ff, vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
+  };
+  const drapeFan = (m, x, z, face) => {
+    const p = m.geometry.attributes.position;
+    const l = m.geometry.attributes.local;
+    const y0 = height(x, z);
+    const c = Math.cos(face);
+    const sn = Math.sin(face);
+    for (let i = 0; i < p.count; i++) {
+      const lx = l.getX(i);
+      const lz = l.getY(i);
+      // the fan turned to the face, in the world
+      const wx = x + lx * c + lz * sn;
+      const wz = z - lx * sn + lz * c;
+      p.setY(i, height(wx, wz) - y0 + 0.06);
+    }
+    p.needsUpdate = true;
+  };
+  const cones = nazgul.map((_, i) => {
+    const m = new THREE.Mesh(
+      fanGeo(),
+      new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color(0x8aa0d8) }, uOpacity: { value: 0.3 }, uTime: { value: 0 }, uSight: { value: NAZGUL.sight }, uCone: { value: NAZGUL.cone }, uSeed: { value: i * 3.7 } },
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        vertexShader: 'attribute vec2 local; varying vec2 vP; void main() { vP = local; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uOpacity, uTime, uSight, uCone, uSeed;
+          varying vec2 vP;
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+          void main() {
+            float r = length(vP) / uSight;
+            float a = abs(atan(-vP.y, vP.x)) / uCone;
+            float edge = 1.0 - smoothstep(0.62, 1.12, a);
+            float reach = pow(1.0 - smoothstep(0.0, 1.0, r), 1.4) * smoothstep(0.0, 0.08, r);
+            vec2 q = vP * 0.55 + vec2(uTime * 0.35 + uSeed, -uTime * 0.22);
+            float mist = 0.55 + 0.45 * noise(q) * noise(q * 2.3 + 4.1);
+            float ripple = 0.85 + 0.15 * sin(r * 22.0 - uTime * 3.0);
+            float alpha = edge * reach * mist * ripple * uOpacity;
+            gl_FragColor = vec4(uColor * (0.7 + 0.5 * (1.0 - r)), alpha);
+          }`,
+      }),
+    );
     m.renderOrder = 2;
     m.visible = false;
     outdoors.add(m);
@@ -354,6 +427,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
+  const DREAD_COLD = new THREE.Color(0x8aa0d8);
+  const DREAD_HOT = new THREE.Color(0xd8341c);
   const WRAITH_FOG = new THREE.Color(0.3, 0.33, 0.4);
   const warm = new THREE.Color(0xffa860);
   const fireCol = new THREE.Color(0xff7a2a);
@@ -395,8 +470,9 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       const set = [
         [inn.lights.fire, fireCol, 26 * flicker, 15],
         [inn.lights.bar, warm, 9, 10],
-        [s.beat === 'strider' ? inn.lights.corner : inn.lights.table, warm, s.beat === 'strider' ? 3.5 : 5, 7],
-        [inn.lights.pipe, fireCol, 0.5 + Math.max(0, Math.sin(t * 0.9)) * 0.9, 3],
+        [s.beat === 'strider' ? inn.lights.corner : inn.lights.table, warm, s.beat === 'strider' ? 1.4 : 5, 7],
+        // his pipe: it lights his face from below as he draws on it
+        [inn.lights.pipe, fireCol, 0.35 + inn.draw * (s.beat === 'strider' ? 1.9 : 1.4), 2.2],
       ];
       pool.forEach((l, i) => {
         const v = set[i];
@@ -456,6 +532,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     frodo.group.visible = A.wraith < 0.5 && !inside;
     pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
     if (s.crouch) frodo.body.position.y -= 0.12;
+    ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
     // ── who's about ──
     const tod = s.sky;
@@ -489,8 +566,11 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     bill.legs.forEach((leg) => (leg.rotation.z = 0));
     bill.neck.rotation.z = -0.25 + Math.sin(t * 0.8) * 0.06;
     bill.tail.rotation.y = Math.sin(t * 1.3) * 0.3;
-    // the Nazgûl
+    // the Nazgûl: stooped and sniffing on their rounds, upright and
+    // reaching once they've a scent; pale, through the Ring
     const ws = s.watchers ?? [];
+    wraithKit.tick(t);
+    wraithKit.setRing(A.wraith);
     nazgul.forEach((n, i) => {
       const w = ws[i];
       n.group.visible = Boolean(w) && tod === 'night' && !inside;
@@ -498,20 +578,20 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       n.group.position.set(w.x, height(w.x, w.z), w.z);
       faceTo(n.group, w.face);
       const hunting = w.mode === 'alert' || w.mode === 'chase';
-      // they glide; the hood goes about, and down to sniff
-      n.body.rotation.z = hunting ? -0.18 : -0.32 + Math.sin(t * 0.7 + i) * 0.05;
-      n.head.rotation.y = (w.look ?? 0) + (hunting ? 0 : Math.sin(t * 0.5 + i * 2) * 0.2);
-      n.group.position.y += Math.sin(t * 2 + i) * 0.02;
+      wraithKit.animate(n, t + i * 1.7, { moving: (w.mode === 'patrol' && w.wait <= 0) || w.mode === 'chase' || w.mode === 'back', hunt: hunting ? 1 : 0, sniff: w.mode === 'patrol' ? 1 : 0, look: w.mode === 'patrol' ? (w.look ?? 0) : 0 });
     });
     cones.forEach((c, i) => {
       const w = ws[i];
       c.visible = Boolean(w) && tod === 'night' && s.mode === 'walk' && w.mode !== 'back';
       if (!c.visible) return;
-      c.position.set(w.x, height(w.x, w.z) + 0.08, w.z);
+      c.position.set(w.x, height(w.x, w.z), w.z);
       c.rotation.y = w.face + (w.mode === 'patrol' ? w.look : 0);
+      drapeFan(c, w.x, w.z, c.rotation.y);
       const alarmed = w.mode === 'alert' || w.mode === 'chase';
-      c.material.color.set(alarmed ? 0xff4a2a : 0x9ab4ff);
-      c.material.opacity = alarmed ? 0.5 : 0.28;
+      const u = c.material.uniforms;
+      u.uColor.value.lerp(alarmed ? DREAD_HOT : DREAD_COLD, Math.min(1, dt * 6));
+      u.uOpacity.value += ((alarmed ? 0.46 : 0.3) - u.uOpacity.value) * Math.min(1, dt * 6);
+      u.uTime.value = t;
     });
     horses.forEach((r, i) => {
       r.group.visible = tod === 'night' && !inside;
@@ -566,10 +646,12 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       camAt = c.at;
       camLook = c.look;
     } else if (s.mode === 'talk' && s.talking === 'gate') {
-      // at the gate, over Frodo's head, on the hatch and the face in it
+      // at the gate, over Frodo's head, on the hatch and the face in it:
+      // aimed under it, so the hatch sits high and clear of the talk panel
       camAt = tmp.copy(hatchAt).addScaledVector(gateOut, 4.8).addScaledVector(gateAlong, 0.7);
       camAt.y += 0.55;
       camLook = look.copy(hatchAt);
+      camLook.y -= 0.9;
     } else {
       const yaw = s.camYaw ?? 0;
       const pitch = s.camPitch ?? 0.36;
@@ -674,6 +756,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      ghosts.dispose();
       disposeTree(inn.group);
       stage.dispose();
     },

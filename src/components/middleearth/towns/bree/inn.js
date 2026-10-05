@@ -17,7 +17,8 @@ import { pose } from '../../mapFigures';
 import { makePerson, sit } from '../../shire/people';
 import { B, barrelParts, beam, benchParts, cyl, cylX, lathe, parts, roundBox, squareWindow } from '../../shire/props';
 import { POUR } from './pints';
-import { BREE_LOOKS, makeFolk } from './props';
+import { makeFolk } from './props';
+import { makeStrider } from './ranger';
 
 export const INN = new THREE.Vector3(0, -60, 0);
 const W = 14; // the room, x
@@ -161,7 +162,6 @@ export function buildInn(renderer, { kit }) {
     return f;
   };
   add('butterbur', makeFolk('butterbur'), V3(0, 0, -3.22), -Math.PI / 2);
-  add('strider', makeFolk('strider', { look: { ...BREE_LOOKS.strider, item: null } }), V3(CORNER.x, 0.18, CORNER.z), -Math.PI / 2 + 0.5, true);
   add('sam', makePerson('sam'), V3(HOBBITS.x - 0.5, 0.18, HOBBITS.z + 0.85), Math.PI / 2, true);
   add('merry', makePerson('merry'), V3(HOBBITS.x + 0.4, 0.18, HOBBITS.z + 0.85), Math.PI / 2, true);
   add('pippin', makePerson('pippin'), V3(HOBBITS.x + 0.2, 0.18, HOBBITS.z - 0.85), -Math.PI / 2, true);
@@ -176,14 +176,12 @@ export function buildInn(renderer, { kit }) {
     }
   });
   for (const [x, f] of [[-2.4, -Math.PI / 2 + 0.3], [-1.5, -Math.PI / 2 - 0.2]]) folk.push(add(`folk${folk.length}`, makeFolk('folk', { n: folk.length + 3 }), V3(x, 0, -1.7), f + Math.PI));
-  // Strider's pipe: an ember that brightens as he draws on it
-  const ember = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: hot(0xff6a1a, 2) }));
-  ember.position.set(0.42, -0.22, 0.05);
-  people.strider.head.add(ember);
-  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 5), new THREE.MeshStandardMaterial({ color: 0x3a2414 }));
-  pipe.rotation.z = Math.PI / 2 - 0.3;
-  pipe.position.set(0.3, -0.2, 0.05);
-  people.strider.head.add(pipe);
+  // the man in the corner: Strider on the settle, hood up, his pipe going
+  // (./ranger.js); he faces his table and the room, his back in the corner
+  const strider = makeStrider(renderer);
+  strider.group.position.set(CORNER.x + 0.1, 0, CORNER.z - 0.2);
+  strider.group.rotation.y = -2.04;
+  g.add(strider.group);
 
   // the Ring, for when it slips
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 8, 20), new THREE.MeshStandardMaterial({ color: 0xffd060, emissive: hot(0xffb030, 1.6), metalness: 1, roughness: 0.2 }));
@@ -197,12 +195,12 @@ export function buildInn(renderer, { kit }) {
   const cam = { at: V3(), look: V3() };
   const world = (v, out) => out.copy(v).add(INN);
   const CAMS = {
-    bar: [V3(-1.0, 1.35, 0.3), V3(0.1, 1.7, -3.2)],
+    bar: [V3(-1.0, 1.35, 0.3), V3(0.1, 1.3, -3.2)],
     ask: [V3(-0.9, 1.6, 0.5), V3(2.4, 1.3, -2.6)],
     room: [V3(-5.9, 2.5, 3.9), V3(4.6, 0.9, -2.6)],
     pints: [V3(2.25, 1.62, -1.62), V3(1.8, 1.36, -2.56)],
     slip: [V3(3.6, 0.7, 4.0), V3(HOBBITS.x - 0.8, 1.2, HOBBITS.z + 0.9)],
-    strider: [V3(3.7, 1.7, -0.9), V3(CORNER.x + 0.2, 1.35, CORNER.z - 0.1)],
+    strider: [V3(4.3, 1.48, -1.4), V3(CORNER.x + 0.12, 1.42, CORNER.z - 0.22)],
   };
   const homeAll = () => {
     for (const f of Object.values(people)) {
@@ -251,8 +249,9 @@ export function buildInn(renderer, { kit }) {
       }
       if (s.ringOn) f.group.visible = false;
     } else if (beat === 'strider') {
-      f.group.position.set(CORNER.x - 1.1, 0, CORNER.z + 0.7);
-      f.group.rotation.y = 0.55;
+      // Frodo at the end of his table, looking up at him
+      f.group.position.set(CORNER.x + 0.55, 0, CORNER.z + 1.65);
+      f.group.rotation.y = 1.81;
     }
     // everyone breathing, Butterbur busy, the Bree-landers chatting
     for (const [id, p] of Object.entries(people)) {
@@ -261,8 +260,10 @@ export function buildInn(renderer, { kit }) {
         sit(p, true);
       } else pose(p, t + id.length, { moving: false, talk: (id === 'butterbur' && (beat === 'bar' || beat === 'ask')) || (id === 'pippin' && beat === 'slip') ? 1 : 0, wave: id === 'pippin' && beat === 'slip' ? 0.8 : 0 });
     }
-    people.strider.head.rotation.y = beat === 'slip' || beat === 'strider' ? 0.5 : 0.25;
-    ember.material.color.copy(hot(0xff6a1a, 1.4 + Math.max(0, Math.sin(t * 0.9)) * 2.2));
+    // Strider watches the hobbits' table, or Frodo when he comes over
+    const watching = beat === 'strider' || beat === 'slip' ? f.group.position.clone().add(INN).add(V3(0, 1.1, 0)) : world(V3(HOBBITS.x, 1.1, HOBBITS.z), V3());
+    strider.update(t, { watch: watching, close: beat === 'strider' });
+    lights.pipe.copy(strider.bowl).add(V3(0.08, 0.12, 0.06));
     setPour(beat === 'pints' ? s.pour : null);
     const [at, look] = CAMS[beat] ?? CAMS.room;
     world(at, cam.at);
@@ -276,9 +277,23 @@ export function buildInn(renderer, { kit }) {
   const lights = { fire: world(V3(FIRE.x + 0.9, 0.7, FIRE.z), V3()), bar: world(V3(0, 2.6, -2.2), V3()), table: world(V3(HOBBITS.x, 2.2, HOBBITS.z), V3()), corner: world(V3(CORNER.x - 0.3, 1.3, CORNER.z + 1.2), V3()), pipe: world(V3(CORNER.x + 0.5, 1.6, CORNER.z + 0.3), V3()) };
   const fireAt = world(V3(FIRE.x + 0.75, 0.3, FIRE.z), V3());
   const headOf = (id) => {
+    if (id === 'strider') return strider.head.getWorldPosition(V3()).add(V3(0, 0.62, 0));
     const p = people[id];
     if (!p) return null;
     return p.group.position.clone().add(INN).add(V3(0, (p.top ?? 1.8) + 0.25 - (p.sitting ? 0.4 : 0), 0));
   };
-  return { group: g, update, people, lights, fireAt, headOf, ring };
+  return {
+    group: g,
+    update,
+    people,
+    lights,
+    fireAt,
+    headOf,
+    ring,
+    strider,
+    // how hard he's drawing on the pipe, 0…1, for the pipe's light
+    get draw() {
+      return strider.draw;
+    },
+  };
 }

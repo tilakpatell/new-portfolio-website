@@ -853,11 +853,14 @@ export function buildPlanet(u, T = {}) {
       sign.scale.setScalar(on ? 1.08 : 1);
       sign.material.color.setScalar(on ? 1.35 : 1);
     },
-    update(t, camera) {
+    // (`live`: it's in view and big enough to see, so its own motion, which
+    // can be a lot, is worth working out; all of it goes by `t`, so it's
+    // where it should be the moment it's back in view)
+    update(t, camera, live = true) {
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
       for (const o of p.orbits) o.set(t);
-      for (const fn of p.tick) fn(t, camera);
+      if (live) for (const fn of p.tick) fn(t, camera);
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {

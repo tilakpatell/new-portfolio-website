@@ -141,9 +141,9 @@
   padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  background: rgb(6 8 16 / 0.9);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  /* (no blur behind it: over a map that's redrawn every frame, a blur is
+     worked out afresh every frame, and at this opacity it barely shows) */
+  background: rgb(6 8 16 / 0.93);
 }
 /* hide (in the panel's corner) and show (the whole bar, once it's away) */
 .universe-tuck {
@@ -741,9 +741,7 @@
   padding: 0.6rem 1rem 0.6rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--who) 40%, transparent);
   border-radius: 16px;
-  background: rgb(6 8 16 / 0.86);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: rgb(6 8 16 / 0.9); /* (no blur: see .universe-panel) */
 }
 .universe-comms[data-motion] .universe-line { animation: universe-line 0.25s ease-out; }
 @keyframes universe-line {
@@ -787,9 +785,7 @@
   padding: 0.9rem 1rem 1rem;
   border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
   border-radius: 14px;
-  background: rgb(6 8 16 / 0.9);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: rgb(6 8 16 / 0.93); /* (no blur: see .universe-panel) */
   color: var(--text);
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
 }

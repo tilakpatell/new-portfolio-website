@@ -115,10 +115,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
             </p>
             <ul className="universe-keys mt-4">
               <li className="universe-keys-board">
-                <kbd>W</kbd> <kbd>S</kbd> for the throttle, <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd> to turn
+                It flies like a Battlefront starfighter: <kbd>W</kbd> <kbd>S</kbd> for the throttle, <kbd>A</kbd> <kbd>D</kbd> to roll, <kbd>←</kbd> <kbd>→</kbd> to swing the nose and <kbd>↑</kbd> <kbd>↓</kbd> to pull it up and down. Or drag on the map like a stick
               </li>
               <li className="universe-keys-board">
-                <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>R</kbd> <kbd>C</kbd>) to tip the nose up and down: the ship flies along it, so it climbs and dives faster the faster it goes. Or drag on the map like a stick
+                Nothing stops the nose: hold <kbd>↑</kbd> to loop right over. To turn hard, roll with <kbd>A</kbd> or <kbd>D</kbd> and pull back. Let go and it rolls itself upright again
               </li>
               <li>The worlds are far apart: boost between them for the pulse drive, and fight your way through</li>
               <li className="universe-keys-board">
@@ -132,10 +132,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 <kbd>T</kbd> for the next target (<kbd>Q</kbd> the one before), or click one; <kbd>E</kbd> to land or dock where you are
               </li>
               <li className="universe-keys-board">
-                <kbd>O</kbd> for the flight settings: steering, climb and dive, drag sensitivity, aim assist, the camera, and up and down the other way round
+                <kbd>O</kbd> for the flight settings: steering, pitch and roll, self-levelling (off, it stays upside down), drag sensitivity, aim assist, the camera, up and down the other way round, and <kbd>A</kbd> <kbd>D</kbd> to turn instead
               </li>
               <li>Out in deep space, click a wonder and the ship flies you there</li>
-              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to climb and dive, hold Boost to go fast and Fire to shoot; View puts you in the cockpit, and the sliders button in the corner sets how it all feels</li>
+              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to pull the nose up and down (all the way over, if you like), hold Boost to go fast and Fire to shoot; View puts you in the cockpit, and the sliders button in the corner sets how it all feels</li>
               <li className="universe-keys-touch">Tap a planet, a station or a wonder to fly there, or a hunter to lock on</li>
             </ul>
             <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>

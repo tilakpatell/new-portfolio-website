@@ -205,16 +205,14 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
           busy = true;
           g.scale.setScalar(1);
           g.position.set(s.x, s.y, s.z);
-          g.rotation.set(0, s.heading, 0);
-          sh.model.pivot.rotation.z = -s.bank;
-          sh.model.pivot.rotation.x = s.pitch;
+          g.rotation.set(s.pitch, s.heading, -s.bank, 'YXZ'); // (any way round: loops, rolls, upside down)
           sh.model.setThrottle(Math.min(1, Math.abs(s.speed) / SHIP.cruise) * (s.boost ? 1 : 0.7));
           sh.model.update(now / 1000);
           // where it was last frame too (just come into view, it hasn't come from anywhere)
           if (was) sh.prev.copy(sh.at);
           else sh.prev.set(s.x, s.y, s.z);
           sh.at.set(s.x, s.y, s.z);
-          sh.vel.set(-Math.sin(s.heading) * s.speed, s.vy, -Math.cos(s.heading) * s.speed);
+          sh.vel.set(-Math.sin(s.heading) * Math.cos(s.pitch) * s.speed, s.vy, -Math.cos(s.heading) * Math.cos(s.pitch) * s.speed);
         }
         // the tag over them
         const tag = sh.tag;

@@ -68,9 +68,9 @@
   padding: 0 0.95rem 0 0.8rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgb(6 8 16 / 0.86);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  /* (no blur behind it: over the universe map, redrawn every frame, a blur
+     is worked out afresh every frame, and at this opacity it barely shows) */
+  background: rgb(6 8 16 / 0.9);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 0.74rem;
@@ -122,9 +122,7 @@
   padding: 1rem 1.1rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  background: rgb(6 8 16 / 0.94);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  background: rgb(6 8 16 / 0.96); /* (no blur: see the pill) */
   box-shadow: 0 20px 60px rgb(0 0 0 / 0.45);
 }
 .universe-online-head { display: flex; align-items: center; justify-content: space-between; margin: -0.25rem -0.4rem 0.35rem 0; }

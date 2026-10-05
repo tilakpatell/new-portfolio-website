@@ -22,6 +22,9 @@
 import * as THREE from 'three';
 
 const POINTS = 36; // samples along the plume
+// (a square root, not Math.hypot, which makes garbage of its arguments: this
+// runs for every sample of every plume, every frame)
+const dist = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 
 const VERT = `
 attribute float aFade;
@@ -113,11 +116,16 @@ function sparkCloud(count) {
         const m = motes[i];
         m.age = 0;
         m.max = 0.25 + Math.random() * 0.35;
-        m.v = [(Math.random() - 0.5) * 0.5, (Math.random() - 0.3) * 0.4, (Math.random() - 0.5) * 0.5];
-        pos.set([nozzle.x, nozzle.y, nozzle.z], i * 3);
+        m.v[0] = (Math.random() - 0.5) * 0.5;
+        m.v[1] = (Math.random() - 0.3) * 0.4;
+        m.v[2] = (Math.random() - 0.5) * 0.5;
+        pos[i * 3] = nozzle.x;
+        pos[i * 3 + 1] = nozzle.y;
+        pos[i * 3 + 2] = nozzle.z;
       }
       let any = false;
-      motes.forEach((m, i) => {
+      for (let i = 0; i < count; i++) {
+        const m = motes[i];
         m.age += dt;
         const k = Math.max(0, 1 - m.age / m.max);
         if (k > 0) any = true;
@@ -125,7 +133,7 @@ function sparkCloud(count) {
         pos[i * 3 + 1] += m.v[1] * dt;
         pos[i * 3 + 2] += m.v[2] * dt;
         lifeAttr[i] = k;
-      });
+      }
       geo.attributes.position.needsUpdate = true;
       geo.attributes.aLife.needsUpdate = true;
       points.visible = any;
@@ -173,6 +181,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
+    forceSinglePass: true, // (added light: one pass draws the same as two)
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false;
@@ -185,7 +194,8 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
   const sparkColour = new THREE.Color();
   const colour = new THREE.Color();
   const hot = new THREE.Color();
-  const path = []; // newest first: { x, y, z, age }
+  const path = []; // newest first: { x, y, z, age, run }
+  const spare = []; // samples that have gone, to be used again (nothing made each frame)
   const dir = new THREE.Vector3();
   const toCam = new THREE.Vector3();
   const across = new THREE.Vector3();
@@ -207,12 +217,18 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       level += (amount - level) * Math.min(1, dt * 5);
       const reachOut = length * stretch;
       for (const p of path) p.age += dt;
-      while (path.length && path[path.length - 1].age > life) path.pop();
+      while (path.length && path[path.length - 1].age > life) spare.push(path.pop());
       since += dt;
       if (level > 0.02 && since > life / POINTS) {
         since = 0;
-        path.unshift({ x: nozzle.x, y: nozzle.y, z: nozzle.z, age: 0 });
-        if (path.length > POINTS) path.length = POINTS;
+        const p = spare.pop() ?? { x: 0, y: 0, z: 0, age: 0, run: 0 };
+        p.x = nozzle.x;
+        p.y = nozzle.y;
+        p.z = nozzle.z;
+        p.age = 0;
+        p.run = 0;
+        path.unshift(p);
+        while (path.length > POINTS) spare.push(path.pop());
       } else if (path.length) {
         // the newest point rides with the nozzle between samples
         path[0].x = nozzle.x;
@@ -228,14 +244,14 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
       u.uCam.value.copy(camera);
       u.uTime.value = t;
-      const reach = Math.hypot(camera.x - nozzle.x, camera.y - nozzle.y, camera.z - nozzle.z); // engine to lens
+      const reach = dist(camera.x, camera.y, camera.z, nozzle.x, nozzle.y, nozzle.z); // engine to lens
       // no longer than a flame: the samples past `length` along it go
       let run = 0;
       for (let i = 1; i < path.length; i++) {
-        run += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y, path[i].z - path[i - 1].z);
+        run += dist(path[i].x, path[i].y, path[i].z, path[i - 1].x, path[i - 1].y, path[i - 1].z);
         path[i].run = run;
         if (run > reachOut) {
-          path.length = i + 1;
+          while (path.length > i + 1) spare.push(path.pop());
           break;
         }
       }
@@ -251,7 +267,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
         if (across.lengthSq() < 1e-12) across.crossVectors(dir.lengthSq() > 1e-12 ? dir : lift, lift);
         across.normalize();
         // 0 at the nozzle, 1 where it's gone: by age, or by coming too near the lens
-        const lens = Math.hypot(camera.x - p.x, camera.y - p.y, camera.z - p.z) / reach;
+        const lens = dist(camera.x, camera.y, camera.z, p.x, p.y, p.z) / reach;
         const k = i < n ? Math.min(1, Math.max(p.age / life, p.run / reachOut, 1 - Math.min(1, Math.max(0, (lens - 0.2) / 0.3)))) : 1;
         // a flame's shape: a little narrow right at the nozzle, swelling,
         // then thinning away (faster than it fades)
@@ -261,7 +277,13 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
         const cx = p.x + across.x * weave;
         const cy = p.y + across.y * weave;
         const cz = p.z + across.z * weave;
-        pos.set([cx - across.x * w, cy - across.y * w, cz - across.z * w, cx + across.x * w, cy + across.y * w, cz + across.z * w], i * 6);
+        const o = i * 6;
+        pos[o] = cx - across.x * w;
+        pos[o + 1] = cy - across.y * w;
+        pos[o + 2] = cz - across.z * w;
+        pos[o + 3] = cx + across.x * w;
+        pos[o + 4] = cy + across.y * w;
+        pos[o + 5] = cz + across.z * w;
         fade[i * 2] = fade[i * 2 + 1] = i < n ? 1 - k : 0;
         along[i * 2] = along[i * 2 + 1] = Math.min(1, k);
       }
@@ -270,7 +292,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       geo.attributes.aAlong.needsUpdate = true;
     },
     clear() {
-      path.length = 0;
+      while (path.length) spare.push(path.pop());
       level = 0;
       mesh.visible = false;
       cloud?.clear();

@@ -30,6 +30,7 @@
 import { parseShip } from '../crews';
 import { FOOT, METRE } from '../foot';
 import { byId } from '../universes';
+import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
 
@@ -74,10 +75,11 @@ export function readCursor(data) {
   return { x, y, touch: data[2] === 1 };
 }
 
-// what goes out as a pose, from ship.js's numbers (and the shields, 0 to 100)
+// what goes out as a pose, from ship.js's numbers (and the shields, 0 to
+// 100); the bank with the lean into a turn on it, so others see that too
 export function writePose(s, flags = 0, shield = 100) {
   const r = (v, k = 1000) => Math.round((v || 0) * k) / k;
-  return [r(s.x, 100), r(s.y, 100), r(s.z, 100), r(s.heading), r(s.pitch), r(s.bank), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+  return [r(s.x, 100), r(s.y, 100), r(s.z, 100), r(s.heading), r(s.pitch), r(wrap((s.bank || 0) + (s.lean || 0))), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
 }
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
@@ -96,7 +98,7 @@ export function readPose(data) {
     z,
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
-    bank: num(data[5], -1.6, 1.6) ?? 0,
+    bank: wrap(num(data[5], -4, 4) ?? 0), // (all the way round: upside down is ±π)
     speed: num(data[6], -600, 600) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
@@ -280,9 +282,10 @@ export function allyStep(state, event) {
 
 // Where a pilot is now, from the poses that came in (oldest first, each
 // with `at`, the ms it arrived): drawn a little in the past (`delay`), between
-// the two poses either side, so the motion is smooth; past the newest, a
-// short guess ahead along its heading. null with nothing to go on, or once
-// it's gone quiet (STALE_MS).
+// the two poses either side, so the motion is smooth (turned the shortest way
+// from one to the next, so it doesn't spin over the top of a loop); past the
+// newest, a short guess ahead along its nose. null with nothing to go on, or
+// once it's gone quiet (STALE_MS).
 export function sample(snaps, now, delay = 140) {
   if (!snaps.length) return null;
   const newest = snaps[snaps.length - 1];
@@ -294,13 +297,14 @@ export function sample(snaps, now, delay = 140) {
     if (t < a.at || t > b.at) continue;
     const k = b.at > a.at ? (t - a.at) / (b.at - a.at) : 1;
     const lerp = (p, q) => p + (q - p) * k;
+    const { heading, pitch, bank } = toAngles(slerp(fromAngles(a.heading, a.pitch, a.bank), fromAngles(b.heading, b.pitch, b.bank), k));
     return {
       x: lerp(a.x, b.x),
       y: lerp(a.y, b.y),
       z: lerp(a.z, b.z),
-      heading: a.heading + wrap(b.heading - a.heading) * k,
-      pitch: lerp(a.pitch, b.pitch),
-      bank: lerp(a.bank, b.bank),
+      heading,
+      pitch,
+      bank,
       speed: lerp(a.speed, b.speed),
       vy: lerp(a.vy, b.vy),
       hidden: b.hidden,
@@ -310,12 +314,13 @@ export function sample(snaps, now, delay = 140) {
   }
   if (t < snaps[0].at) return { ...snaps[0] };
   // ahead of the newest: on the way it was going a little way (no further
-  // than 250 ms; ship.js moves along the heading, and up and down by vy)
+  // than 250 ms; ship.js moves along the nose, vy its way up and down)
   const ahead = Math.min(250, t - newest.at) / 1000;
+  const level = Math.cos(newest.pitch || 0);
   return {
     ...newest,
-    x: newest.x - Math.sin(newest.heading) * newest.speed * ahead,
+    x: newest.x - Math.sin(newest.heading) * level * newest.speed * ahead,
     y: newest.y + newest.vy * ahead,
-    z: newest.z - Math.cos(newest.heading) * newest.speed * ahead,
+    z: newest.z - Math.cos(newest.heading) * level * newest.speed * ahead,
   };
 }

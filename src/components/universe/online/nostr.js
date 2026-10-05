@@ -23,11 +23,14 @@
 // once a relay's listening, rejects if none answer), makeAction(ns) →
 // { send(data, { target }), onMessage(data, { peerId }) }, onPeerJoin(id),
 // onPeerLeave(id), onStatus('online' | 'connecting'), leave() }: what
-// client.js takes.
+// client.js takes. (Other games pass `latest`, the kinds of message of
+// which only the newest in a bundle matters, and `cheap`, those trusted to
+// the relays' own check of the signature.)
 
 import { schnorr } from '@noble/secp256k1';
+import { KIND, checkEvent, hex, signEvent } from './events';
 
-export const KIND = 22742; // ephemeral (20000 to 29999): passed on, never kept
+export { KIND, checkEvent, eventId, hex, signEvent } from './events';
 // relays that took ten events a second for a minute without dropping any
 // (others tried passed half, or banned the test)
 export const RELAYS = ['nostr-01.uid.ovh', 'relay.mostro.network', 'bucket.coracle.social', 'nostr-01.yakihonne.com'].map((h) => `wss://${h}`);
@@ -40,31 +43,50 @@ const QUEUE_MAX = 64; // messages waiting, at most
 const LATEST = new Set(['pose', 'foot', 'cur']); // only the newest of these in a bundle
 const CHEAP = new Set(['pose', 'foot', 'cur', 'shot']); // trusted to the relay's own check of the signature
 
-const enc = new TextEncoder();
-export const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-const unhex = (s) => Uint8Array.from(s.match(/../g) ?? [], (h) => parseInt(h, 16));
-const sha256 = async (s) => new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(s)));
 const isHex = (s, n) => typeof s === 'string' && s.length === n && /^[0-9a-f]+$/.test(s);
 
-// the id a Nostr event must have (NIP-01): the hash of it, serialised just so
-export const eventId = async (ev) => hex(await sha256(JSON.stringify([0, ev.pubkey, ev.created_at, ev.kind, ev.tags, ev.content])));
-
-export async function signEvent(secretKey, pubkey, { tags, content, created_at = Math.floor(Date.now() / 1000) }) {
-  const ev = { pubkey, created_at, kind: KIND, tags, content };
-  const id = await eventId(ev);
-  const sig = hex(await schnorr.signAsync(unhex(id), secretKey));
-  return { id, ...ev, sig };
-}
-
-// is this event what it says it is: its id right, and signed by its pubkey?
-export async function checkEvent(ev) {
+// Signing and checking (events.js) in a worker of their own where the
+// browser has one (signer.worker.js): each is a few milliseconds of sums on
+// big numbers, and ten or more a second, in the page, would take that out of
+// the universe map's frames. Where there's no worker, or it fails, here.
+let worker; // undefined: not made yet; null: none to be had
+let nextJob = 0;
+const jobs = new Map(); // id → (reply or null) → void
+function signer() {
+  if (worker !== undefined) return worker;
+  worker = null;
+  if (typeof Worker === 'undefined') return null;
   try {
-    if ((await eventId(ev)) !== ev.id) return false;
-    return await schnorr.verifyAsync(unhex(ev.sig), unhex(ev.id), unhex(ev.pubkey));
+    worker = new Worker(new URL('./signer.worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => {
+      const job = jobs.get(data?.id);
+      jobs.delete(data?.id);
+      job?.(data);
+    };
+    worker.onerror = () => {
+      // it couldn't start (or broke): what was waiting is done here, and so is the rest
+      worker?.terminate();
+      worker = null;
+      const waiting = [...jobs.values()];
+      jobs.clear();
+      for (const job of waiting) job(null);
+    };
   } catch {
-    return false;
+    worker = null;
   }
+  return worker;
 }
+const offPage = (op, payload, here) => {
+  const w = signer();
+  if (!w) return here();
+  return new Promise((resolve) => {
+    const id = nextJob++;
+    jobs.set(id, (reply) => resolve(reply && !reply.error ? reply.out : here()));
+    w.postMessage({ id, op, ...payload });
+  });
+};
+const signAway = (key, pubkey, ev) => offPage('sign', { key, pubkey, ev }, () => signEvent(key, pubkey, ev));
+const checkAway = (ev) => offPage('check', { ev }, () => checkEvent(ev));
 
 // One relay: kept connected (back off and try again when it drops), with
 // the room's listening asked for each time it opens.
@@ -132,7 +154,7 @@ function relaySocket(url, { WebSocket, req, onEvent, onChange }) {
   };
 }
 
-export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS }, roomId) {
+export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP }, roomId) {
   const { secretKey, publicKey } = schnorr.keygen();
   const self = hex(publicKey);
   const topic = `${appId}/${roomId}`;
@@ -193,10 +215,10 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     // (a goodbye's signed ahead of time, so it may be old)
     if (!leaving && nowS() - ev.created_at - p.skew > STALE_S) return;
     p.heard = Date.now();
-    const check = msgs.some((m) => !CHEAP.has(m[0]));
+    const check = msgs.some((m) => !cheap.has(m[0]));
     // in order, per pilot (a check takes a moment)
     p.chain = p.chain.then(async () => {
-      if (check && !(await checkEvent(ev))) {
+      if (check && !(await checkAway(ev))) {
         seen.delete(ev.id); // (a forged copy mustn't keep the real one out)
         return;
       }
@@ -237,11 +259,11 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     const out = [];
     const last = {};
     for (const m of queue.splice(0)) {
-      if (LATEST.has(m[0])) last[m[0]] = m;
+      if (latest.has(m[0])) last[m[0]] = m;
       else out.push(m);
     }
     out.push(...Object.values(last));
-    broadcast(await signEvent(secretKey, self, { tags, content: JSON.stringify(out) }));
+    broadcast(await signAway(secretKey, self, { tags, content: JSON.stringify(out) }));
   };
   const post = (m) => {
     if (left) return;
@@ -253,7 +275,7 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   // goodbye's signed now, ready for when you go)
   const announce = () => {
     post(['@join']);
-    if (!bye) signEvent(secretKey, self, { tags, content: JSON.stringify([['@bye']]) }).then((ev) => (bye = ev));
+    if (!bye) signAway(secretKey, self, { tags, content: JSON.stringify([['@bye']]) }).then((ev) => (bye = ev));
   };
 
   // pilots not heard from in a while are forgotten (met again if they're back)

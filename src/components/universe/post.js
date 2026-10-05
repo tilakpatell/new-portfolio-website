@@ -16,8 +16,12 @@
 // sphere that draws it). The tone map is the shoulder of Khronos' neutral one without
 // its toe: everything under 0.8 stays exactly as drawn (the faint Milky Way,
 // the planets' night sides, the signs' colours) and only what's brighter is
-// rounded off toward white. When frames run long the scene turns the post
-// off and draws straight to the canvas, as before there was any.
+// rounded off toward white. While frames run long (lib/three/pace) the scene
+// and its passes are drawn less sharp, a step at a time, and the last pass
+// spreads them over the whole canvas (which keeps its size, so the names and
+// the HUD over it stay crisp); still too slow at the softest, the scene
+// turns the post off and draws straight to the canvas, as before there was
+// any.
 //
 // Bloom and the last pass both read the scene through finite(): a pixel
 // that isn't a number (some GPUs make one of a pow() just below zero, or a
@@ -46,6 +50,7 @@ export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
 // bloom: only what's well past lit paint glows (lit surfaces top out near
 // 2 under the key light; the sun, windows and engines are drawn hotter)
 const BLOOM = { strength: 0.8, radius: 0.55, threshold: 1.7 };
+const SOFTEST = 0.6; // device pixels to a CSS one, at the least, however busy
 
 // NaN and infinity both have every exponent bit set; tested on the bits,
 // since a compiler allowed fast maths may drop isnan(). The boolean mix()
@@ -170,6 +175,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   composer.addPass(grade);
 
   let on = true;
+  let sharp = 1; // a share of the renderer's pixel ratio the passes are drawn at
   const at = { w: 0, h: 0, ratio: 0 };
   return {
     get on() {
@@ -181,6 +187,13 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     },
     // (for making its passes' shaders before the first frame)
     composer,
+    // how sharp to draw, 0…1 of the renderer's pixel ratio (lib/three/pace)
+    get sharpness() {
+      return sharp;
+    },
+    set sharpness(k) {
+      sharp = k;
+    },
     // draw a frame (the renderer's pixel ratio can change under us, when the
     // watchdog trades sharpness for speed)
     render(w, h) {
@@ -195,7 +208,8 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         }
         return;
       }
-      const ratio = renderer.getPixelRatio();
+      const full = renderer.getPixelRatio();
+      const ratio = Math.min(full, Math.max(SOFTEST, full * sharp));
       if (w !== at.w || h !== at.h || ratio !== at.ratio) {
         Object.assign(at, { w, h, ratio });
         composer.setPixelRatio(ratio);

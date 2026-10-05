@@ -5,7 +5,9 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
-import { Bubble, Convo, QuestList, Stick } from '../TownHud';
+import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { useTravellers } from '../useTravellers';
+import { keyDown, keyUp, moveOf } from '../keys';
 import { drawMap } from '../map';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
@@ -29,8 +31,6 @@ const sounds = () => import('./sounds');
 const shireSounds = () => import('../../shire/sounds');
 const sfx = () => import('../../../../lib/sfx');
 const clip = (id) => import('../../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
-const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
-const MOVE = new Set([...Object.values(KEYS).flat(), ' ', 'Shift']);
 const PROMPT = {
   gate: { name: 'The West Gate', act: 'Knock' },
   pony: { name: 'The Prancing Pony', act: 'Go in' },
@@ -71,6 +71,8 @@ export default function BreeWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, gl, setGl, onLeave }) {
+  // other travellers online in Bree, as ghosts (../useTravellers)
+  const trav = useTravellers('bree', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -356,6 +358,25 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     [say, complete, later, toBeat],
   );
 
+  // the walking keys: held while the town's live, by their place on the
+  // keyboard (../keys), and kept when the handlers below are re-made
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => !typing(e.target) && keyDown(s.keys, e);
+    const up = (e) => keyUp(s.keys, e);
+    const blur = () => s.keys.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      s.keys.clear();
+    };
+  }, [live]);
+
   // keys
   const near = hud.near;
   useEffect(() => {
@@ -366,9 +387,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const k = e.key;
       const onButton = e.target instanceof HTMLButtonElement;
       if (s.mode === 'walk') {
-        if (MOVE.has(k)) {
+        if (moveOf(e)) {
           e.preventDefault();
-          s.keys.add(k);
           audioContext();
           return;
         }
@@ -402,11 +422,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
     };
     const up = (e) => {
-      s.keys.delete(e.key);
       if (e.key === ' ' && s.mode === 'inside' && s.beat === 'pints') pour(false);
     };
     const blur = () => {
-      s.keys.clear();
       if (s.pour.pouring) pour(false);
     };
     window.addEventListener('keydown', down);
@@ -416,7 +434,6 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
-      s.keys.clear();
     };
   }, [live, near, enter, putRing, talkOnward, pour, leaveInn]);
 
@@ -430,7 +447,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const dt = Math.min(0.05, ms / 1000) * fast;
     s.t += dt;
     const k = s.keys;
-    const held = (name) => KEYS[name].some((key) => k.has(key));
+    const held = (name) => k.has(name);
     const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
@@ -452,7 +469,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         if (pressed('x')) putRing(!s.wearing);
         if (pressed('y')) setList((v) => !v);
       }
-      const run = k.has('Shift') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
+      const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = walker.step(s.h, { x: mv.x, z: mv.z, run }, dt, { closed });
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
@@ -569,10 +586,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const next = p.next;
     const markers = p.finished ? [spot('leave')] : night ? [spot('east')] : next === 'gate' ? [spot('gate')] : [spot('pony')];
 
+    // other travellers online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: s.mode === 'inside', ring: s.wearing });
     try {
       a.render(
         {
           hobbit: s.h,
+          travellers: tv ? tv.list() : null,
           sky: p.sky,
           mode: s.mode,
           beat: s.beat,
@@ -705,6 +726,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Travellers trav={trav} />
             <button type="button" className="shire-chip shire-ring-btn" data-on={hud.wearing || undefined} onClick={() => putRing(!sim.current.wearing)}>
               {hud.wearing ? 'Take it off' : 'The Ring'} {!touch && <kbd>R</kbd>}
             </button>
@@ -757,6 +779,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
                 Who’s that, in the corner?
               </button>
             )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => document.getElementById('pony-rush')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              Help in the kitchen (co-op)
+            </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={leaveInn}>
               Back out into the rain {!touch && <kbd>Esc</kbd>}
             </button>

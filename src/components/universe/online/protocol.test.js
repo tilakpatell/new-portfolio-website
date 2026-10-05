@@ -62,6 +62,11 @@ describe('poses', () => {
     expect(p.boost).toBe(true);
     expect(p.hidden).toBe(false);
   });
+  it('carries a ship upside down, and the lean into a turn on its bank', () => {
+    expect(readPose(writePose({ ...ship, bank: Math.PI - 0.01 })).bank).toBeCloseTo(Math.PI - 0.01, 3);
+    expect(readPose(writePose({ ...ship, bank: 0.2, lean: 0.3 })).bank).toBeCloseTo(0.5, 3);
+    expect(readPose(writePose({ ...ship, bank: 3, lean: 0.3 })).bank).toBeCloseTo(3.3 - 2 * Math.PI, 3); // (round past upside down)
+  });
   it('refuses junk and clamps the rest', () => {
     expect(readPose([1, 2])).toBeNull();
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
@@ -247,6 +252,13 @@ describe('sample', () => {
   it('turns the short way round', () => {
     const s = sample([snap(0, 0, 3.1), snap(100, 0, -3.1)], 190, 140);
     expect(Math.abs(s.heading)).toBeGreaterThan(3.1);
+  });
+  it('goes over the top of a loop the short way, not spinning round', () => {
+    // nose just short of straight up, then just past it (on its back, going the other way)
+    const a = { ...snap(0, 0), pitch: 1.5 };
+    const b = { ...snap(100, 0), heading: Math.PI, pitch: 1.5, bank: Math.PI };
+    const s = sample([a, b], 190, 140);
+    expect(Math.sin(s.pitch)).toBeGreaterThan(0.999); // straight up between them
   });
   it('guesses a little way ahead of the newest, then gives up', () => {
     const moving = { ...snap(0, 0), speed: 10 };
