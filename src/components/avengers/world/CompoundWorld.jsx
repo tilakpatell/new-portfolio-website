@@ -8,7 +8,7 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, stepHero, stepTour, underPortal, walkable } from './rules';
+import { BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readSettings, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 
@@ -27,6 +27,7 @@ const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(
 const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
 const FOUND = 'tp-hq-packs';
+const SET = 'tp-hq-settings';
 // the backpacks found so far (ids), as kept between visits
 const readFound = () => {
   const v = local.get(FOUND, []);
@@ -125,6 +126,16 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const bubbleRef = useRef(null);
   const lines = useRef({});
   const [list, setList] = useState(false);
+  // the settings (O): live (the frame loop reads them) and kept
+  const [settings, setSettings] = useState(() => readSettings(local.get(SET, null)));
+  const setRef = useRef(settings);
+  setRef.current = settings;
+  const [tuning, setTuning] = useState(false);
+  const changeSettings = useCallback((next) => {
+    const d = readSettings(next);
+    setSettings(d);
+    local.set(SET, d);
+  }, []);
   const speedRef = useRef(null);
   const { unlock } = useAchievements();
   const tourRef = useRef(null);
@@ -245,9 +256,17 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       if ((k === 'e' || k === 'E' || k === 'Enter') && !(e.target instanceof HTMLButtonElement) && (s.near || s.portal)) {
         e.preventDefault();
         go();
-      } else if (k === 'm' || k === 'M') setList((v) => !v);
-      else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
-      else if (k === 'Escape') setList(false);
+      } else if (k === 'm' || k === 'M') {
+        setList((v) => !v);
+        setTuning(false);
+      } else if (k === 'o' || k === 'O') {
+        setTuning((v) => !v);
+        setList(false);
+      } else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
+      else if (k === 'Escape') {
+        setList(false);
+        setTuning(false);
+      }
     };
     const up = (e) => keyUp(s.keys, e);
     const blur = () => {
@@ -278,6 +297,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     if (!a || a.lost) return;
     const s = sim.current;
     const p = progRef.current;
+    const set = setRef.current;
     // (the QA scripts can run the clock faster, in development only)
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
     const dt = Math.min(0.05, ms / 1000) * fast;
@@ -294,9 +314,10 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       fwd -= pad.ly;
       side += pad.lx;
       if (Math.abs(pad.rx) > 0) {
-        s.yaw -= pad.rx * dt * 2.4;
+        s.yaw -= pad.rx * dt * 2.4 * set.look;
         s.dragAt = s.t;
       }
+      if (Math.abs(pad.ry) > 0.1) s.pitch = Math.max(0.05, Math.min(0.9, s.pitch + pad.ry * dt * 1.2 * set.look * (set.invert ? -1 : 1)));
       if (pressed('a')) {
         if (s.near || s.portal) go();
         else s.jump = true;
@@ -312,7 +333,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
     const p0 = [s.h.x, s.h.y + 1, s.h.z];
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch }, dt);
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch, assist: set.assist }, dt);
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
@@ -361,15 +382,15 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     if (Math.hypot(mv.x, mv.z) > 0.1 || s.h.mode !== 'ground') s.moved = true;
     // the camera drifts round behind him as he goes (quicker while he's
     // flying), unless you've just turned it
-    if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
+    if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4 && set.follow > 0) {
       let d = behindYaw(s.h.face) - s.yaw;
       d = Math.atan2(Math.sin(d), Math.cos(d));
-      s.yaw += d * Math.min(1, dt * (s.h.fly ? 2.4 : 1.5));
+      s.yaw += d * Math.min(1, dt * (s.h.fly ? 2.4 : 1.5) * set.follow);
     }
     // how fast it feels: lines at the edges of the screen
     if (speedRef.current) {
       const fast = s.h.mode === 'ground' ? 0 : Math.max(0, Math.min(1, (Math.hypot(s.h.vx, s.h.vy, s.h.vz) - 20) / 16));
-      speedRef.current.style.opacity = (fast * 0.7).toFixed(2);
+      speedRef.current.style.opacity = (fast * 0.7 * set.shake).toFixed(2);
     }
 
     // a door, the portal, and who's about (on the lawn, on his feet)
@@ -395,7 +416,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     tv?.pose(s.h);
     const others = tv ? tv.list() : null;
     try {
-      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: (touch ? 8.4 : 7.6) * set.camera, shake: set.shake, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -417,7 +438,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others, s.found);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others, s.found, s.tour);
     if (s.frame % 120 === 0 && s.h.mode === 'ground') local.set(AT, keep(s.h));
   }, live);
 
@@ -444,8 +465,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     if (e.type === 'pointermove') {
       const d = drag.current;
       if (!d || d.id !== e.pointerId) return;
-      s.yaw -= (e.clientX - d.x) * 0.0065;
-      s.pitch = Math.max(0.05, Math.min(0.9, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
+      const set = setRef.current;
+      s.yaw -= (e.clientX - d.x) * 0.0065 * set.look;
+      s.pitch = Math.max(0.05, Math.min(0.9, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0) * set.look * (set.invert ? -1 : 1)));
       d.x = e.clientX;
       d.y = e.clientY;
       s.dragAt = s.t;
@@ -545,8 +567,28 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
             ))}
             <b>{prog.stones}</b> of 6
           </p>
-          <button type="button" className="cw-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
+          <button
+            type="button"
+            className="cw-chip"
+            onClick={() => {
+              setList((v) => !v);
+              setTuning(false);
+            }}
+            aria-expanded={list}
+          >
             The buildings {!touch && <kbd>M</kbd>}
+          </button>
+          <button
+            type="button"
+            className="cw-chip"
+            onClick={() => {
+              setTuning((v) => !v);
+              setList(false);
+            }}
+            aria-expanded={tuning}
+            aria-controls="cw-settings"
+          >
+            Settings {!touch && <kbd>O</kbd>}
           </button>
           <button type="button" className="cw-chip cw-tour" onClick={toTour} title="Rings round the compound, against the clock: through the first red ring to start">
             Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
@@ -593,7 +635,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       )}
 
       {gl === 'on' && !hud.moved && !here && !herePortal && (
-        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch. Jump at a wall to run up it. E at a door.'}</p>
+        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch. Jump at a wall to run up it. E at a door, O for the settings.'}</p>
       )}
 
       {touch && (
@@ -645,6 +687,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         </div>
       )}
 
+      {tuning && <Settings id="cw-settings" settings={settings} onChange={changeSettings} onClose={() => setTuning(false)} />}
       {list && (
         <div className="cw-list" role="dialog" aria-label="The buildings on the compound">
           <div className="cw-list-head">
@@ -682,6 +725,59 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   );
 }
 
+// The settings (rules.js's SETTINGS), from the Settings chip (or O): how the
+// view turns, how far back the camera sits, how much a swing helps you
+// round, how the camera follows, how much it kicks. Every change is live and
+// kept between visits. Not modal: the compound stays playable behind it.
+const shown = (r, v) => (r.toggle ? (v ? 'On' : 'Off') : v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
+function Settings({ id, settings, onChange, onClose }) {
+  return (
+    <section id={id} className="cw-list cw-set" role="dialog" aria-label="Settings">
+      <div className="cw-list-head">
+        <p>Settings</p>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="cw-set-rows">
+        {Object.entries(SETTINGS).map(([k, r]) => {
+          const v = settings[k];
+          return (
+            <label key={k} className="cw-set-row">
+              <span className="cw-set-top">
+                <span className="cw-list-name">{r.label}</span>
+                <output>{shown(r, v)}</output>
+              </span>
+              {r.toggle ? (
+                <input type="checkbox" checked={Boolean(v)} onChange={(e) => onChange({ ...settings, [k]: e.target.checked ? 1 : 0 })} aria-describedby={`${id}-${k}`} />
+              ) : (
+                <input
+                  type="range"
+                  min={r.min}
+                  max={r.max}
+                  step={r.step}
+                  value={v}
+                  style={{ '--fill': `${((v - r.min) / (r.max - r.min)) * 100}%` }}
+                  onChange={(e) => onChange({ ...settings, [k]: Number(e.target.value) })}
+                  // (dragged with a mouse or a thumb, it lets go of the arrow keys again)
+                  onPointerUp={(e) => e.currentTarget.blur()}
+                  aria-describedby={`${id}-${k}`}
+                />
+              )}
+              <span id={`${id}-${k}`} className="cw-list-sub">
+                {r.hint}
+              </span>
+            </label>
+          );
+        })}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ ...SETTINGS_DEFAULTS })}>
+          Back to how it came
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // Other players online here: how many, or a way to see them (going online
 // is the site's own switch, with your callsign, as the universe's map has it).
 function Players({ trav }) {
@@ -701,10 +797,10 @@ function Players({ trav }) {
 
 // The map in the corner: the river, the lawn and its drives, the buildings,
 // the doors (a stone over each one won back), the portal once it's open, the
-// backpacks still to find near you, and you.
+// backpacks still to find near you, the swing tour's next ring, and you.
 const MAP = { x0: -60, z0: -20, size: 300 };
 const PACK_SHOWN = 42; // a backpack shows on the map this near (m)
-function drawMap(c, h, prog, others, found = []) {
+function drawMap(c, h, prog, others, found = [], tour = null) {
   const g = c?.getContext('2d');
   if (!g) return;
   const k = 150 / MAP.size;
@@ -767,6 +863,28 @@ function drawMap(c, h, prog, others, found = []) {
     g.beginPath();
     g.arc(x, y, 4 + pulse * 0.4, 0, Math.PI * 2);
     g.stroke();
+  }
+  // the swing tour: the next ring red (the first, faintly, before a tour), the rest of the course faint
+  if (tour) {
+    const next = tour.on ? tour.next : 0;
+    g.strokeStyle = 'rgba(255, 90, 79, 0.45)';
+    g.lineWidth = 1;
+    g.beginPath();
+    TOUR.forEach((r, i) => (i ? g.lineTo(...at(r.x, r.z)) : g.moveTo(...at(r.x, r.z))));
+    if (tour.on) g.stroke();
+    const r = TOUR[next];
+    const [x, y] = at(r.x, r.z);
+    g.fillStyle = tour.on ? '#ff5a4f' : 'rgba(255, 90, 79, 0.7)';
+    g.beginPath();
+    g.arc(x, y, tour.on ? 3 : 2.4, 0, Math.PI * 2);
+    g.fill();
+    if (tour.on) {
+      g.strokeStyle = '#ff5a4f';
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.arc(x, y, pulse + 1.5, 0, Math.PI * 2);
+      g.stroke();
+    }
   }
   // the backpacks still to find, once you're near one: a white dot, blinking
   if (Math.sin(performance.now() / 180) > -0.3) {

@@ -1530,7 +1530,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // further back the faster he goes, and wider
     A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * Math.min(1, dt * 2.5);
     const dist = (s.camDist ?? 7.5) + A.dist;
-    const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch;
+    const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch * (s.shake ?? 1);
     A.fov += (fov - A.fov) * Math.min(1, dt * 4);
     A.punch = Math.max(0, A.punch - dt * 9);
     if (Math.abs(camera.fov - A.fov) > 0.05) {
