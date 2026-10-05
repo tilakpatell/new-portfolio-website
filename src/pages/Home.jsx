@@ -94,8 +94,8 @@ function HeroName() {
 
 export default function Home() {
   useDocumentTitle(null);
-  useSectionThemes();
   const page = useRef(null);
+  useSectionThemes(page);
 
   // Load the two live demos while the browser is idle, so they don't stall a scroll later.
   useEffect(() => {
