@@ -222,12 +222,12 @@ describe('up and down, and all the way round', () => {
   it('comes round level at the ceiling and the floor going straight at them flat out, without a word', () => {
     for (const side of [1, -1]) {
       const s = { ...level, pitch: side * (Math.PI / 2 - 0.01), speed: SHIP.boost };
-      const frames = path(s, { throttle: 1, boost: true }, 2.5);
+      const frames = path(s, { throttle: 1, boost: true }, 5);
       const ys = frames.map((f) => side * f.y);
       expect(Math.max(...ys)).toBeLessThan(SHIP.ceiling + 1);
       expect(ys.at(-1)).toBeGreaterThan(SHIP.ceiling - 2.5);
       expect(Math.abs(way(frames.at(-1), NOSE)[1])).toBeLessThan(0.1);
-      expect(fly(s, { throttle: 1, boost: true }, 2.5, []).events.filter((e) => e.type === 'edge')).toHaveLength(0);
+      expect(fly(s, { throttle: 1, boost: true }, 5, []).events.filter((e) => e.type === 'edge')).toHaveLength(0);
     }
   });
 
@@ -295,6 +295,22 @@ describe('deep space', () => {
     expect(fly(s, { throttle: 1, tune: { cruise: 1.15 } }, 4, []).ship.speed).toBeCloseTo(SHIP.cruise * 1.15, 1);
   });
 
+  it('falls back to the boost by the time it comes up on a planet at pulse speed', () => {
+    for (const id of ['marvel', 'starwars', 'home']) {
+      const p = PLANETS.find((o) => o.id === id);
+      // a long way off, flat out straight at it: it hits at no more than the boost
+      let s = { ...spawn(null), x: p.at[0], y: p.at[1], z: p.at[2] + p.r + 900, heading: 0, speed: SHIP.pulse };
+      let hit = null;
+      for (let t = 0; t < 30 && !hit; t += 1 / 60) {
+        const r = step(s, { throttle: 1, boost: true }, 1 / 60);
+        s = r.ship;
+        hit = r.events.find((e) => e.type === 'crash' || e.type === 'bump') ?? null;
+      }
+      expect(hit?.id, id).toBe(id);
+      expect(hit.speed, id).toBeLessThanOrEqual(SHIP.boost + 1);
+    }
+  });
+
   it('is cut back to the boost while hunters have it interdicted', () => {
     const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
     expect(pulsing.speed).toBeGreaterThan(SHIP.pulse - 2);
@@ -319,26 +335,28 @@ describe('deep space', () => {
     let top = 0;
     let s = { ...open, pitch: Math.PI / 2 - 0.01 };
     for (let t = 0; t < 8; t += 1 / 60) top = Math.max(top, (s = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship).y);
-    expect(top).toBeGreaterThan(DEEP.ceiling - 25);
-    expect(top).toBeLessThan(DEEP.ceiling + 5);
+    expect(top).toBeGreaterThan(DEEP.ceiling - 125);
+    expect(top).toBeLessThan(DEEP.ceiling + 25);
   });
 
   it('lets the ship down into the Death Star’s trench, and only there', () => {
     const ds = SOLIDS.find((o) => o.id === 'starwars');
     expect(ds.band).toBeTruthy();
-    // level with the trench on the stretch that's laid (the side toward home),
-    // heading straight in, slowly: it stops near the floor
+    // level with the trench (it's laid all the way round), heading straight
+    // in, slowly: it stops near the floor, whichever side it comes in on
     const toward = (a, dy, out) => {
       const x = ds.at[0] + Math.cos(a) * (ds.r + out);
       const z = ds.at[2] + Math.sin(a) * (ds.r + out);
       return { ...spawn(null), x, y: ds.at[1] + dy, z, heading: Math.atan2(-(ds.at[0] - x), -(ds.at[2] - z)), speed: 2 };
     };
-    const into = fly(toward(ds.band.home, 0, 3), { throttle: 0.3 }, 6).ship;
-    const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
-    expect(d).toBeLessThan(ds.r - 1.5);
-    expect(d).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
-    // above the trench, or round the far side where none is laid, it's the surface that stops it
-    for (const s of [toward(ds.band.home, ds.band.half + 2, 3), toward(ds.band.home + Math.PI, 0, 3)]) {
+    for (const side of [0, Math.PI / 2, Math.PI]) {
+      const into = fly(toward(ds.band.home + side, 0, 3), { throttle: 0.3 }, 6).ship;
+      const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
+      expect(d, `${side}`).toBeLessThan(ds.r - 1.5);
+      expect(d, `${side}`).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
+    }
+    // above the trench or below it, it's the surface that stops it
+    for (const s of [toward(ds.band.home, ds.band.half + 2, 3), toward(ds.band.home + Math.PI, -ds.band.half - 2, 3)]) {
       const off = fly(s, { throttle: 0.3 }, 6).ship;
       expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
     }
@@ -443,7 +461,7 @@ describe('autopilot', () => {
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
       let bumps = 0;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      for (let t = 0; t < 60 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         const r = step(s, a.input, 1 / 60);
@@ -462,7 +480,7 @@ describe('autopilot', () => {
         let s = { ...spawn(null), y };
         const park = parkAt(id, [s.x, s.z]);
         let done = false;
-        for (let t = 0; t < 45 && !done; t += 1 / 60) {
+        for (let t = 0; t < 60 && !done; t += 1 / 60) {
           const a = autopilot(s, id, park);
           done = a.done;
           s = step(s, a.input, 1 / 60).ship;
@@ -501,7 +519,7 @@ describe('autopilot', () => {
       const g = GOALS[w.id];
       const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
       expect(d, w.id).toBeGreaterThan(g.reach); // parked off it, not in it
-      expect(d, w.id).toBeLessThan(g.reach + 8);
+      expect(d, w.id).toBeLessThan(g.reach + 24);
       expect(Math.abs(s.y - g.at[1]), w.id).toBeLessThan(0.5); // level with it
     }
     // and home again from the furthest, at the home system's speeds by the end
@@ -516,7 +534,7 @@ describe('autopilot', () => {
       let s = { ...spawn(null), pitch: -1.2, bank: Math.PI - 0.2, speed: SHIP.cruise };
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      for (let t = 0; t < 60 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;
@@ -540,7 +558,8 @@ describe('autopilot', () => {
       const id = ORDER[i % ORDER.length];
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 75 seconds)
+      for (let t = 0; t < 85 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;

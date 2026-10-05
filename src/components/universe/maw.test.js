@@ -41,7 +41,7 @@ describe('the Maw', () => {
   });
 
   it('can be flown out of at its edge, takes the boost nearer in, and never outpulls the boost', () => {
-    expect(speed(pullAt(cx + 100, cy, cz).v)).toBeLessThan(SHIP.cruise * 0.6);
+    expect(speed(pullAt(cx + MAW.reach * 0.83, cy, cz).v)).toBeLessThan(SHIP.cruise * 0.6);
     expect(speed(pullAt(cx + MAW.capture + 4, cy, cz).v)).toBeGreaterThan(SHIP.cruise);
     expect(speed(pullAt(cx + MAW.capture + 1, cy, cz).v)).toBeLessThan(SHIP.boost);
   });

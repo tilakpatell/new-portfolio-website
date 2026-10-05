@@ -25,7 +25,7 @@ const at = (id) => {
 };
 const radius = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
 // a place's dot: bigger than its true size on this scale, so it reads
-const dot = (u) => 5 + Math.min(7, u.size * 0.35);
+const dot = (u) => 5 + Math.min(7, u.size * 0.2);
 // one orbit per distinct radius (the stations share theirs)
 const ORBITS = [...new Set(ORDER.map((id) => radius(id).toFixed(3)))].map(Number);
 

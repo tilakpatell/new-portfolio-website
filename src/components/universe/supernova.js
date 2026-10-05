@@ -21,11 +21,11 @@ import { NOISE_GLSL } from './sun';
 
 // five dying stars, out between the places (deep.test.js keeps them clear)
 export const SUPERNOVA_SITES = [
-  [-771, -130, -590],
-  [1085, -72, 90],
-  [116, -9, 1172],
-  [570, 110, 791],
-  [-1024, 51, -150],
+  [-3855, -650, -2950],
+  [5425, -360, 450],
+  [580, -45, 5860],
+  [2850, 550, 3955],
+  [-5120, 255, -750],
 ];
 
 // the stages, in seconds from the start
@@ -137,7 +137,7 @@ export function createSupernovae({ small = false } = {}) {
       m.renderOrder = 7;
       group.add(m);
     }
-    return { flash, shell, pulsar, colour, age: -1, size: 60, at: new THREE.Vector3() };
+    return { flash, shell, pulsar, colour, age: -1, size: 300, at: new THREE.Vector3() };
   });
   const rim = new THREE.Color();
   const gas = new THREE.Color();
@@ -148,7 +148,7 @@ export function createSupernovae({ small = false } = {}) {
   return {
     group,
     // at: [x, y, z] or a Vector3 (map space); size: the shell's full radius
-    explode(at, { size = 60 + Math.random() * 50, color = '#9fc6ff' } = {}) {
+    explode(at, { size = 300 + Math.random() * 250, color = '#9fc6ff' } = {}) {
       const n = novae.reduce((a, b) => (a.age < 0 ? a : b.age < 0 ? b : a.age > b.age ? a : b)); // a free one, or the oldest
       n.age = 0;
       n.size = small ? size * 0.8 : size;

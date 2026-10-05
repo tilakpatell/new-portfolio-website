@@ -477,7 +477,7 @@ export function buildXwing() {
   const glowM = glowMat('#ff7a4a');
   const glow = mesh(merge(glows), glowM, 'exhaust');
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, nose: 0 };
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, glowMesh: glow, nose: 0 };
 }
 // a geometry mirrored across x (for the port wings; flipped() puts its winding back)
 function mirrorX(g) {
@@ -865,5 +865,5 @@ export function buildFalcon() {
   const glowM = glowMat('#8fd8ff');
   const glow = mesh(merge([[band]]), glowM, 'sublight');
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, nose: 0 };
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, glowMesh: glow, nose: 0 };
 }

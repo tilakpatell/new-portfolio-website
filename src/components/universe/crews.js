@@ -24,6 +24,68 @@ export const CREWS = [
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
       birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
     },
+    // out of the ship on a planet (footScene.js): coming down, getting out,
+    // the Federation's squads, shooting them, getting hit, going down and
+    // getting up, playing the other one, wandering off, and back in
+    foot: {
+      land: [
+        ['rick', 'Alright Morty, we’re putting down. Bring a gun.'],
+        ['morty', 'W-why do I need a gun, Rick?'],
+      ],
+      out: [
+        ['rick', 'Fresh air, Morty! Well, air. Probably air.'],
+        ['morty', 'It smells like feet, Rick.'],
+      ],
+      squad: [
+        ['morty', 'Rick! Federation guys, over the hill!'],
+        ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
+      ],
+      kill: {
+        gromflomite: [['rick', 'Bug splat! Ha!']],
+        cop: [
+          ['morty', 'I-I shot a cop, Rick!'],
+          ['rick', 'A Federation cop, Morty. Different rules.'],
+        ],
+        gazorpian: [['morty', 'The big one went down! The big one went down!']],
+        any: [['rick', 'Wubba lubba dub dub!', 'wubba']],
+      },
+      hurt: [
+        ['morty', 'Ow! Rick, they’re actually shooting!'],
+        ['rick', 'That’s what guns do, Morty.'],
+      ],
+      down: [
+        ['morty', 'Rick! I-I think I’m dead!'],
+        ['rick', 'You’re not dead, Morty. Dead people don’t whine.'],
+      ],
+      up: [['morty', 'Okay. Okay, I’m up.']],
+      cleared: [['rick', 'And that’s a picnic, Morty. Federation-style.']],
+      swap: {
+        rick: [['rick', 'Fine, I’ll drive this one.']],
+        morty: [['morty', 'O-okay, I got this. I think I got this.']],
+      },
+      far: [['rick', 'The cruiser’s back that way, Morty. Walk.']],
+      nowhere: [['rick', 'Land on what, Morty? Space? Find a planet.']],
+      in: [
+        ['morty', 'Can we go home now?'],
+        ['rick', 'We’re going somewhere, Morty.'],
+      ],
+      // another pilot's crew down here too, and the same person from another dimension (by who)
+      friend: [
+        ['morty', 'Rick! Somebody else just landed!'],
+        ['rick', 'Great. Tourists.'],
+      ],
+      alt: {
+        rick: [
+          ['morty', 'Rick, there’s another you over there!'],
+          ['rick', 'A Rick from another dimension. Don’t trust him, Morty. I wouldn’t.'],
+        ],
+        morty: [
+          ['rick', 'Look, Morty, another Morty. Wave at yourself.'],
+          ['morty', 'H-hey, other me. You doing okay?'],
+        ],
+        any: [['rick', 'Somebody’s a long way from their own dimension, Morty.']],
+      },
+    },
     launch: [
       ['rick', 'Wubba lubba dub dub!', 'wubba'],
       ['rick', 'Alright Morty, the whole site’s out here. Try not to touch anything.'],
@@ -285,6 +347,10 @@ export const CREWS = [
         ['morty', 'Rick, there’s a giant tentacle coming out of that ocean!'],
         ['rick', 'The Caribbean, Morty. Pirates. It’s just crime with better hats.'],
       ],
+      invincible: [
+        ['morty', 'Rick, a guy in a cape just flew past us. Really fast.'],
+        ['rick', 'Viltrumites, Morty. Don’t make eye contact. Don’t make any contact.'],
+      ],
     },
   },
   {
@@ -294,6 +360,61 @@ export const CREWS = [
     speakers: {
       luke: { name: 'Luke', color: '#ff9f4a', voice: 'luke' },
       r2: { name: 'R2-D2', color: '#7fb2ff', voice: 'r2' },
+    },
+    foot: {
+      land: [
+        ['luke', 'Setting down, Artoo. Let’s have a look around.'],
+        ['r2', '[a worried whistle]'],
+      ],
+      out: [
+        ['luke', 'Reminds me of Tatooine. Sort of.'],
+        ['r2', '[beeps: it doesn’t]'],
+      ],
+      squad: [
+        ['r2', '[a frantic scream of beeps]'],
+        ['luke', 'I see them, Artoo. Stay behind me.'],
+      ],
+      kill: {
+        any: [
+          ['luke', 'Got him!'],
+          ['r2', '[an approving trill]'],
+        ],
+      },
+      hurt: [['luke', 'Ah! I’m alright, Artoo.']],
+      down: [
+        ['r2', '[a long, sad whistle]'],
+        ['luke', 'I’m okay… I’m okay.'],
+      ],
+      up: [['r2', '[a relieved warble]']],
+      cleared: [
+        ['luke', 'That’s the last of them.'],
+        ['r2', '[a smug warble]'],
+      ],
+      swap: {
+        artoo: [['r2', '[a delighted whistle as he rolls out in front]']],
+        luke: [['luke', 'Okay, Artoo. I’ll take it from here.']],
+      },
+      far: [['r2', '[beeps: the X-wing is back that way]']],
+      nowhere: [['luke', 'There’s nothing to land on out here, Artoo.']],
+      in: [
+        ['luke', 'Back in the cockpit. Let’s go.'],
+        ['r2', '[a happy whistle]'],
+      ],
+      friend: [
+        ['luke', 'Another ship’s come down, Artoo.'],
+        ['r2', '[a curious whistle]'],
+      ],
+      alt: {
+        luke: [
+          ['luke', 'That’s… me? From somewhere else?'],
+          ['r2', '[beeps in total confusion]'],
+        ],
+        artoo: [
+          ['r2', '[an alarmed screech at the other R2 unit]'],
+          ['luke', 'Easy, Artoo. He’s you, from another dimension.'],
+        ],
+        any: [['luke', 'We’re not the only ones from somewhere else, Artoo.']],
+      },
     },
     launch: [
       ['luke', 'Red Five, standing by.'],
@@ -538,6 +659,10 @@ export const CREWS = [
         ['luke', 'A whole world of water, and one black ship on it.'],
         ['r2', '[a wary, bubbling whistle]'],
       ],
+      invincible: [
+        ['luke', 'Two of them, flying round it with no ships at all.'],
+        ['r2', '[an alarmed, rising whistle]'],
+      ],
     },
   },
   {
@@ -547,6 +672,55 @@ export const CREWS = [
     speakers: {
       han: { name: 'Han', color: '#e8d3b0', voice: 'han' },
       chewie: { name: 'Chewbacca', color: '#d0965a', voice: 'chewie' },
+    },
+    foot: {
+      land: [
+        ['han', 'Setting her down, Chewie. Grab your bowcaster.'],
+        ['chewie', '[a happy roar: solid ground]'],
+      ],
+      out: [['han', 'Smells like the back end of a bantha. I love it.']],
+      squad: [
+        ['han', 'Bugs with blasters. I’ve got a bad feeling about this.'],
+        ['chewie', '[a roar: let them come]'],
+      ],
+      kill: {
+        any: [
+          ['chewie', '[a triumphant roar]'],
+          ['han', 'That’s my partner.'],
+        ],
+      },
+      hurt: [
+        ['chewie', '[a pained growl]'],
+        ['han', 'Easy, pal. We’ll patch you up later.'],
+      ],
+      down: [['han', 'Chewie! Get up, you walking carpet!']],
+      up: [['chewie', '[a groggy growl]']],
+      cleared: [['han', 'Nobody shoots at us and walks away. Well, they walked. Then they didn’t.']],
+      swap: {
+        chewie: [['chewie', '[a roar: my turn]']],
+        han: [['han', 'Alright, my turn. Stay close, pal.']],
+      },
+      far: [['han', 'The Falcon’s back that way, Chewie. Don’t wander off.']],
+      nowhere: [['han', 'Land where? There’s nothing out here but vacuum.']],
+      in: [
+        ['han', 'Back in the Falcon. Punch it.'],
+        ['chewie', '[roars]'],
+      ],
+      friend: [
+        ['han', 'Company. Keep a hand near your bowcaster, Chewie.'],
+        ['chewie', '[a low growl]'],
+      ],
+      alt: {
+        han: [
+          ['han', 'Is that me? Huh. I look good.'],
+          ['chewie', '[roars with laughter]'],
+        ],
+        chewie: [
+          ['chewie', '[a puzzled roar at the other Wookiee]'],
+          ['han', 'Yeah, pal, there’s two of you now. The galaxy’s in trouble.'],
+        ],
+        any: [['han', 'Another dimension, huh? Never heard of it.']],
+      },
     },
     launch: [
       ['han', 'Chewie, we’re home.'],
@@ -782,6 +956,10 @@ export const CREWS = [
         ['han', 'Pirates. Finally, some honest people.'],
         ['chewie', '[an approving growl]'],
       ],
+      invincible: [
+        ['han', 'A guy who punches through starships with his bare hands. Let’s not, Chewie.'],
+        ['chewie', '[a worried moan]'],
+      ],
     },
   },
   {
@@ -792,6 +970,67 @@ export const CREWS = [
       walt: { name: 'Walt', color: '#9fd27c', voice: 'walt' },
       jesse: { name: 'Jesse', color: '#ff9d55', voice: 'jesse' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
+    },
+    foot: {
+      land: [
+        ['walt', 'We’re setting down, Jesse. Bring the gun.'],
+        ['jesse', 'Yo, we’re landing the RV? On a planet?!'],
+      ],
+      out: [
+        ['jesse', 'Solid ground, yo!'],
+        ['walt', 'Stay close, Jesse. We don’t know who cooks here.'],
+      ],
+      squad: [
+        ['jesse', 'Mr. White! Bug dudes, coming over the hill!'],
+        ['walt', 'Then we deal with them. Calmly.'],
+      ],
+      kill: {
+        gromflomite: [['jesse', 'Bug spray, yo!']],
+        cop: [['walt', 'A cop, Jesse. That’s the second-worst thing you can shoot.']],
+        gazorpian: [
+          ['jesse', 'Mr. White, I dropped the big one!'],
+          ['walt', 'Good. Now stop admiring it.'],
+        ],
+        any: [['jesse', 'Got him! Yeah, science!', 'yeahScience']],
+      },
+      hurt: [
+        ['jesse', 'Ow! They tagged me, Mr. White!'],
+        ['walt', 'Keep your head down, Jesse.'],
+      ],
+      down: [
+        ['walt', 'Jesse… get up. We’re not done.'],
+        ['jesse', 'Ugh. Space hurts, yo.'],
+      ],
+      up: [['jesse', 'I’m good. I’m good.']],
+      cleared: [
+        ['walt', 'That’s how it’s done. Clean. No evidence.'],
+        ['jesse', 'Yo, that was crazy.'],
+      ],
+      swap: {
+        walt: [['walt', 'I’ll take it from here.']],
+        jesse: [['jesse', 'My turn, yo!']],
+      },
+      far: [['walt', 'The RV’s back there, Jesse. Don’t make me come get you.']],
+      nowhere: [['jesse', 'Land on what? There’s nothing out here, yo.']],
+      in: [
+        ['walt', 'Back in the RV. We’re done here.'],
+        ['jesse', 'Finally.'],
+      ],
+      friend: [
+        ['jesse', 'Yo, somebody else just parked out here.'],
+        ['walt', 'Stay calm. Let them come to us.'],
+      ],
+      alt: {
+        walt: [
+          ['jesse', 'Mr. White, there’s… another you. Like, from another dimension.'],
+          ['walt', 'Then he knows exactly who he’s dealing with.'],
+        ],
+        jesse: [
+          ['jesse', 'Yo, that’s me! That’s literally me, yo!'],
+          ['walt', 'One of you is plenty, Jesse.'],
+        ],
+        any: [['walt', 'Another dimension. The same product, I hope.']],
+      },
     },
     launch: [
       ['walt', 'Jesse. The RV has wings now. Try to keep up.'],
@@ -1061,6 +1300,10 @@ export const CREWS = [
         ['jesse', 'Pirates! Mr. White, there are actual pirates down there!'],
         ['walt', 'Smugglers with a dress code, Jesse.'],
       ],
+      invincible: [
+        ['jesse', 'Yo, that dude just flew through a building. Like, through it.'],
+        ['walt', 'Then we do not owe him money, Jesse. Keep it that way.'],
+      ],
     },
   },
 ];
@@ -1082,10 +1325,12 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
-// its id), 'interdicted' (hunters cut the pulse drive) or 'crashInto' (by
-// what: 'star', 'giant', 'citadel'; the plain crash lines
-// otherwise). An exchange, or null.
-export function linesFor(crew, event, id) {
+// its id), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
+// what: 'star', 'giant', 'citadel'; the plain crash lines otherwise), or
+// something on 'foot' (by what: 'land', 'out', 'squad', 'kill' (`sub`: by
+// kind, or any), 'hurt', 'down', 'up', 'cleared', 'swap' (`sub`: who's
+// played now), 'far', 'nowhere' or 'in'). An exchange, or null.
+export function linesFor(crew, event, id, sub) {
   if (!crew) return null;
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
@@ -1094,5 +1339,10 @@ export function linesFor(crew, event, id) {
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
   if (event === 'event') return crew.events?.[id] ?? null;
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
+  if (event === 'foot') {
+    const f = crew.foot?.[id];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[sub] ?? f.any ?? null);
+  }
   return crew[event] ?? null;
 }

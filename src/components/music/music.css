@@ -36,6 +36,14 @@
 .sn2-inlay-leaf { fill: #efe5cc; opacity: 0.62; }
 .sn2-inlay-dot { fill: #efe5cc; opacity: 0.7; }
 .sn2-fret[data-out] > path:first-of-type { opacity: 0.5; }
+.sn2-chikari-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+.sn2-slider { display: flex; flex: 1 1 220px; align-items: center; gap: 0.75rem; min-width: 0; font-size: 0.875rem; color: var(--text-body); }
+.sn2-slider > span:first-child { min-width: 4.2rem; }
+.sn2-slider > input { flex: 1; min-width: 0; }
+.sn2-slider > .mono { min-width: 4.5rem; text-align: right; }
+.sn2-slider[data-off] > input, .sn2-slider[data-off] > .mono { opacity: 0.55; }
+.chikari-btn { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sn2-chikari { fill: none; stroke: #e6dcc2; stroke-width: 0.9; opacity: 0.85; }
 .sn2-labels > span { display: grid; justify-items: center; gap: 0.1rem; }
 .sn2-labels > span[data-out] { opacity: 0.55; font-weight: 500; }
 .sn2-labels > span[data-out][data-lit] { opacity: 1; }

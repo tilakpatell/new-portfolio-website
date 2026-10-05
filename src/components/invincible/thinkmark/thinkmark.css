@@ -1,0 +1,46 @@
+/* ─── Think, Mark!: the flight brawler on the Invincible page ─────────────── */
+.tm-game { --hq-accent: #ffd23a; }
+.tm-hud-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.tm-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: #fff; font-family: var(--font-sans); font-variant-numeric: tabular-nums; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+.tm-me { position: absolute; top: 12px; left: 14px; display: grid; gap: 5px; }
+.tm-name { font-weight: 800; font-size: 0.72rem; font-stretch: 125%; letter-spacing: 0.16em; text-transform: uppercase; color: #ffd23a; }
+.tm-bar { display: block; width: 170px; height: 9px; overflow: hidden; border-radius: 5px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 210, 58, 0.35); }
+.tm-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #f0b400, #ffe37a); transition: width 0.15s linear; }
+.tm-bar[data-low] > span { background: linear-gradient(90deg, #c4151b, #ff6a4a); }
+.tm-score { font-weight: 700; font-size: 0.9rem; opacity: 0.85; }
+.tm-boss { position: absolute; top: 12px; left: 50%; display: grid; justify-items: center; gap: 5px; width: min(46%, 380px); translate: -50% 0; }
+.tm-boss-name { font-weight: 800; font-size: 0.8rem; font-stretch: 125%; letter-spacing: 0.18em; text-transform: uppercase; }
+.tm-boss-bar { display: block; width: 100%; height: 10px; overflow: hidden; border-radius: 5px; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 110, 80, 0.4); }
+.tm-boss-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #a3101a, #ff5a3a); transition: width 0.2s linear; }
+.tm-boss-tell { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; opacity: 0.85; }
+.tm-boss[data-open] .tm-boss-tell { color: #ffe17a; opacity: 1; }
+.tm-boss[data-open] .tm-boss-bar { box-shadow: inset 0 0 0 1px rgba(255, 225, 122, 0.9), 0 0 12px rgba(255, 210, 58, 0.5); }
+.tm-objective { position: absolute; top: 14px; left: 50%; translate: -50% 0; padding: 0.3rem 0.8rem; border-radius: 999px; background: rgba(0, 0, 0, 0.35); font-weight: 800; font-size: 0.78rem; font-stretch: 112%; letter-spacing: 0.08em; text-transform: uppercase; color: #ffe37a; }
+.tm-combo { position: absolute; top: 74px; right: 16px; font-weight: 900; font-size: 1rem; font-stretch: 112%; color: #ffe37a; }
+.tm-line { position: absolute; left: 50%; bottom: 18px; width: min(86%, 56ch); translate: -50% 0; padding: 0.5rem 0.85rem; border-radius: 10px; background: rgba(6, 8, 14, 0.62); font-size: 0.86rem; font-weight: 500; line-height: 1.4; text-align: center; text-shadow: none; animation: tm-say 0.3s ease-out; }
+.tm-line b { margin-right: 0.35rem; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: #ffd23a; }
+@keyframes tm-say { from { opacity: 0; translate: -50% 6px; } }
+.tm-overlay .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.tm-title { font-family: 'Bebas Neue', var(--font-sans); font-size: clamp(2.6rem, 1.6rem + 4vw, 4.8rem); font-stretch: 100%; letter-spacing: 0.02em; color: #ffd23a; text-shadow: 3px 3px 0 #0f5fae, 0 6px 30px rgba(0, 0, 0, 0.6); }
+.tm-next { font-family: 'Bebas Neue', var(--font-sans); font-size: 1.9rem; letter-spacing: 0.03em; color: #ffd23a; }
+.tm-levels { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
+.tm-level { display: grid; gap: 0.15rem; min-width: 9.5rem; padding: 0.5rem 0.8rem; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: #fff; text-align: left; cursor: pointer; }
+.tm-level b { font-size: 0.85rem; }
+.tm-level small { font-size: 0.68rem; line-height: 1.3; color: rgba(255, 255, 255, 0.7); }
+.tm-level[aria-checked='true'] { border-color: #ffd23a; background: rgba(255, 210, 58, 0.14); box-shadow: 0 0 0 1px #ffd23a inset; }
+.tm-level:focus-visible { outline: 2px solid #ffd23a; outline-offset: 2px; }
+.tm-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .tm-touch { position: absolute; right: 12px; bottom: 64px; z-index: 4; display: grid; grid-template-columns: repeat(2, 54px); gap: 8px; }
+  .tm-touch-btn { width: 54px; height: 54px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; background: rgba(8, 10, 18, 0.45); color: #fff; font: 800 0.8rem/1 var(--font-sans); touch-action: none; }
+  .tm-touch-dodge { grid-column: span 2; width: 100%; border-color: rgba(255, 210, 58, 0.7); color: #ffd23a; }
+}
+@media (max-width: 760px) {
+  .tm-bar { width: 110px; }
+  .tm-boss { top: 54px; width: 70%; }
+  .tm-line { bottom: 12px; font-size: 0.74rem; }
+  .tm-levels { gap: 0.35rem; }
+  .tm-level { min-width: 0; padding: 0.4rem 0.6rem; }
+  .tm-level small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .tm-line { animation: none; } }

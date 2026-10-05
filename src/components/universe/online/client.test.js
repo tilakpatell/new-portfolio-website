@@ -107,6 +107,24 @@ describe('createClient', () => {
     expect(p.pose.at).toBe(1000);
   });
 
+  it('passes a crew on foot along, and says when they are back in', async () => {
+    const { a, b, tick } = await pair();
+    const w = { who: 'han', n: [0, 1, 0], f: [0, 0, 1], h: 0, speed: 0, side: 0, aim: 0 };
+    a.foot({ planet: 'starwars', kind: 'falcon', ship: { n: [0, 1, 0], f: [1, 0, 0] }, lead: w, mate: null });
+    const p = b.peers.get('A');
+    expect(p.foot.planet).toBe('starwars');
+    expect(p.foot.lead.who).toBe('han');
+    expect(p.foot.at).toBe(1000);
+    // no more than ten a second
+    a.foot({ planet: 'starwars', kind: 'falcon', ship: { n: [0, 1, 0], f: [1, 0, 0] }, lead: { ...w, speed: 0.1 }, mate: null });
+    expect(p.foot.lead.speed).toBe(0);
+    tick(120);
+    a.foot(null);
+    expect(p.foot).toBeNull();
+    b.block('A', true);
+    expect(b.peers.get('A').foot).toBeNull();
+  });
+
   it('makes an alliance only when both want one', async () => {
     const { a, b, seen } = await pair();
     a.ally('B', 'ask');
