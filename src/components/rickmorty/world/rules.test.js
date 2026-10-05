@@ -52,6 +52,8 @@ import {
   CLIMB,
   CEILING,
   STOOP,
+  FLY,
+  OUTSKIRTS,
   dropAt,
   exitCruiser,
   floorAt,
@@ -198,10 +200,10 @@ describe('C-137: the areas', () => {
   it('knows the rooms from the outdoors, and pads in and out of an area', () => {
     expect(ROOM_IDS).toEqual(['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner']);
     expect(OUTDOOR).toEqual(['street', 'annex']);
-    expect(inArea('street', 60, 0)).toBe(true);
-    expect(inArea('street', 60.1, 0)).toBe(false);
-    expect(inArea('street', 60, 0, -0.4)).toBe(false);
-    expect(inArea('street', 60.3, 0, 0.4)).toBe(true);
+    expect(inArea('street', 150, 0)).toBe(true);
+    expect(inArea('street', 150.1, 0)).toBe(false);
+    expect(inArea('street', 150, 0, -0.4)).toBe(false);
+    expect(inArea('street', 150.3, 0, 0.4)).toBe(true);
   });
 });
 
@@ -1028,7 +1030,7 @@ describe('C-137: walking about as Morty', () => {
   });
 
   it('keeps to its own area: the edge of the street, and the walls of a room', () => {
-    const west = walk(newMorty(), { x: -1, z: 0, run: true }, 20);
+    const west = walk(newMorty(), { x: -1, z: 0, run: true }, 30);
     expect(west.x).toBeCloseTo(AREAS.street.x0 + MORTY.radius, 1);
     const arrive = link('garage-door').arrive;
     // (east down the clear lane between the washer and the worktable, to the kitchen door's wall)
@@ -1684,9 +1686,11 @@ describe('C-137: the cruiser', () => {
     expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
   });
 
-  it('reaches its top speed under full throttle, and never leaves the street', () => {
-    const inside = (c) => expect(inArea('street', c.x, c.z, -2 + 1e-9)).toBe(true);
-    // along the whole length of the road, from the west end, with room to get there
+  it('reaches its top speed under full throttle, and never leaves where it flies (well past the street)', () => {
+    const inside = (c) => expect(c.x >= FLY.x0 + 2 - 1e-9 && c.x <= FLY.x1 - 2 + 1e-9 && c.z >= FLY.z0 + 2 - 1e-9 && c.z <= FLY.z1 - 2 + 1e-9).toBe(true);
+    expect(FLY.x1).toBeGreaterThan(AREAS.street.x1 + 100);
+    expect(FLY.z1).toBeGreaterThan(AREAS.street.z1 + 100);
+    // along the road, from the west end, with room to get there
     let c = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2 }, { throttle: 1, steer: 0, lift: 0 }, 5, inside);
     expect(Math.abs(c.speed - CRUISER.top)).toBeLessThanOrEqual(1);
     // and out in every direction from the driveway, into the edge and past it
@@ -1696,9 +1700,9 @@ describe('C-137: the cruiser', () => {
     }
   });
 
-  it('slows to nothing when nosed into the edge of the street, and slides on along it when it only skims it', () => {
-    const edge = AREAS.street.x1 - 2;
-    const head = fly({ ...newCruiser(), x: 50, z: 0, yaw: Math.PI / 2 }, { throttle: 1 }, 4);
+  it('slows to nothing when nosed into the edge of where it flies, and slides on along it when it only skims it', () => {
+    const edge = FLY.x1 - 2;
+    const head = fly({ ...newCruiser(), x: edge - 8, z: 0, yaw: Math.PI / 2 }, { throttle: 1 }, 4);
     expect(head.x).toBeCloseTo(edge, 6);
     expect(head.z).toBeCloseTo(0, 6);
     expect(head.speed).toBeLessThan(0.5);
@@ -1712,8 +1716,8 @@ describe('C-137: the cruiser', () => {
     const free = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2, speed: 10 }, { throttle: 1 }, 1);
     expect(free.speed).toBeCloseTo(10 + CRUISER.accel, 0);
     // the same at the other edges
-    expect(fly({ ...newCruiser(), z: 30, yaw: 0 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
-    expect(fly({ ...newCruiser(), x: -50, z: 0, yaw: -Math.PI / 2 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
+    expect(fly({ ...newCruiser(), z: FLY.z1 - 10, yaw: 0 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
+    expect(fly({ ...newCruiser(), x: FLY.x0 + 10, z: 0, yaw: -Math.PI / 2 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
   });
 
   it('speeds up and slows down at its own pace, and can go back', () => {
@@ -1751,13 +1755,14 @@ describe('C-137: the cruiser', () => {
   });
 
   it('climbs under lift and stops at the ceiling', () => {
-    const c = fly(newCruiser(), { lift: 1 }, 10);
+    const c = fly(newCruiser(), { lift: 1 }, 20);
     expect(c.y).toBeCloseTo(CRUISER.ceiling, 6);
+    expect(CRUISER.ceiling).toBeGreaterThanOrEqual(100);
     const a = fly(newCruiser(), { lift: 1 }, 1);
     expect(a.y).toBeGreaterThan(CRUISER.hover + 3);
     expect(a.y).toBeLessThan(CRUISER.hover + CRUISER.climb + 0.01);
     // and it comes back down, but not below its hover
-    const down = fly(c, { lift: -1 }, 12);
+    const down = fly(c, { lift: -1 }, 20);
     expect(down.y).toBeCloseTo(CRUISER.hover, 6);
   });
 
@@ -1800,7 +1805,8 @@ describe('C-137: the cruiser', () => {
     for (const b of [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS]) expect(canLand({ ...newCruiser(), x: b.x, z: b.z, y: b.roof + 2 }), b.id).toBe(false);
     expect(canLand({ ...newCruiser(), x: HOUSE.x, z: HOUSE.z + HOUSE.d / 2 + CRUISER.radius - 0.1 })).toBe(false);
     expect(canLand({ ...newCruiser(), x: -30, z: 0 })).toBe(true);
-    expect(canLand({ ...newCruiser(), x: 100, z: 0 })).toBe(false);
+    expect(canLand({ ...newCruiser(), x: 200, z: 0 })).toBe(false);
+    for (const o of OUTSKIRTS) expect(canLand({ ...newCruiser(), x: o.x, z: o.z, y: o.roof + 2 }), o.id).toBe(false);
   });
 
   it('never lands in a fenced back yard', () => {

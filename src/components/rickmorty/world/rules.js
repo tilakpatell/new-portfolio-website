@@ -23,7 +23,8 @@ export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 // ── the areas ──
 
 export const AREAS = {
-  street: { x0: -60, x1: 60, z0: -40, z1: 40 },
+  // (out to the hedges: the suburb's houses on along the road, and the yards behind)
+  street: { x0: -150, x1: 150, z0: -55, z1: 55 },
   annex: { x0: 370, x1: 430, z0: -22, z1: 22 },
   // the Smith house, ground floor: the plan's rooms (PLAN) fill all of it but the
   // outside corner south-west
@@ -98,6 +99,11 @@ export const NEIGHBOURS = [
 ].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: LOOKS[i] === 'diner' ? 4.2 : 5.5, roof: LOOKS[i] === 'diner' ? 6.6 : 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
 export const DINER = NEIGHBOURS.find((n) => n.look === 'diner');
 export const BUILDINGS = [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS];
+// The houses on along the road past the street's own, both sides, out to the
+// hedges at its ends: solid, and drawn as the neighbours are
+export const OUTSKIRTS = [68, 91, 114, 137].flatMap((d, i) =>
+  [-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ id: `out-${sx < 0 ? 'w' : 'e'}${sz < 0 ? 'n' : 's'}${i}`, x: sx * d, z: sz * 20, w: 12, d: 10, h: 5.5, roof: 8, look: (i + sx + sz) % 4 ? 'colonial' : 'ranch' }))),
+);
 
 // the driveway runs from the garage door to the sidewalk; the cruiser parks on it, nose south
 export const DRIVEWAY = { x0: -23, x1: -15, z0: -14, z1: -7 };
@@ -266,7 +272,7 @@ const LANDINGS = LINKS.filter((l) => l.to === 'street').map((l) => l.arrive);
 
 function treeFits(x, z) {
   if (!inArea('street', x, z, -2) || Math.abs(z - ROAD.z) < VERGE + 0.5) return false;
-  if (BUILDINGS.some((b) => edgeDist(b, x, z) < 2)) return false;
+  if ([...BUILDINGS, ...OUTSKIRTS].some((b) => edgeDist(b, x, z) < 2)) return false;
   if (rectDist(DRIVEWAY.x0, DRIVEWAY.x1, DRIVEWAY.z0, DRIVEWAY.z1, x, z) < 2) return false;
   if (LINKS.some((l) => l.area === 'street' && Math.hypot(x - l.x, z - l.z) < 2.5)) return false;
   if (LANDINGS.some((a) => Math.hypot(x - a.x, z - a.z) < 2.5)) return false;
@@ -587,6 +593,7 @@ export const COLLIDERS = {
     ...BUILDINGS.filter((b) => b !== HOUSE && b !== SCHOOL).map((b) => box(b.id, b.x, b.z, b.w, b.d)),
     ...HOUSE_PARTS.map((p) => box(`house-${p.id}`, p.x, p.z, p.w, p.d)),
     ...SCHOOL_PARTS.map((p) => box(`school-${p.id}`, p.x, p.z, p.w, p.d)),
+    ...OUTSKIRTS.map((b) => box(b.id, b.x, b.z, b.w, b.d)),
     ...STOOP.map((p) => box(p.id, p.x, p.z, p.w, p.d, 0, p.top)),
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
@@ -775,15 +782,17 @@ export const dropAt = (area, x, z, y = 0) => (area === 'garage' && y < 0.2 && Ma
 
 // ── the cruiser ──
 
-export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, climb: 8, ceiling: 40 };
-const EDGE = 2; // it keeps this far in from the street's edge
+export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, climb: 8, ceiling: 120 };
+// where it flies: well past the hedges, over the suburb (it lands only in the street)
+export const FLY = { x0: -400, x1: 400, z0: -260, z1: 260 };
+const EDGE = 2; // it keeps this far in from the edge of where it flies
 const BANK = 0.45; // how far it leans, at most
 
 export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
-const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
+const ROOFS = [...BUILDINGS.filter((b) => b !== SCHOOL), ...OUTSKIRTS, ...SCHOOL_PARTS.map((p) => ({ ...p, roof: p.h }))];
 // the buildings it is over: their footprints, and the cruiser's own width round
 const under = (x, z) => ROOFS.filter((b) => Math.abs(x - b.x) <= b.w / 2 + CRUISER.radius && Math.abs(z - b.z) <= b.d / 2 + CRUISER.radius);
 
@@ -797,7 +806,7 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
   const turn = clamp(steer, -1, 1);
   const yaw = c.yaw + turn * CRUISER.turn * dt;
   let speed = c.speed + clamp(clamp(throttle, -1, 1) * CRUISER.top - c.speed, -CRUISER.accel * dt, CRUISER.accel * dt);
-  const s = AREAS.street;
+  const s = FLY;
   const goX = Math.sin(yaw) * speed * dt;
   const goZ = Math.cos(yaw) * speed * dt;
   const x = clamp(c.x + goX, s.x0 + EDGE, s.x1 - EDGE);
