@@ -30,7 +30,7 @@ import MiniMap from './MiniMap';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, onBuild, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, onBuild, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -93,6 +93,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       frozen,
       drive,
       charting,
+      startAt,
       onPick: onSelect,
       onOpen,
       onLand,

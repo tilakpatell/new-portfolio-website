@@ -77,7 +77,7 @@ function Tuck({ onTuck }) {
   );
 }
 
-export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
   const [changing, setChanging] = useState(false);
   const crew = crewById(ship);
   // a press on hide or show unmounts the button pressed: the focus goes on
@@ -106,6 +106,36 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           </span>
         </button>
         <GuideLink className="universe-guide-tucked" />
+      </aside>
+    );
+  }
+
+  // a wonder, from a link out to it (/universe/aurelia): what it is, and the way there
+  if (!universe && wonder) {
+    return (
+      <aside ref={panel} className="universe-panel" aria-label={wonder.name}>
+        {onTuck && <Tuck onTuck={toggle} />}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <button type="button" className="universe-back" onClick={onWhole}>
+            <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
+          </button>
+          {onNav && (
+            <button type="button" className="universe-back" onClick={onNav}>
+              <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
+            </button>
+          )}
+        </div>
+        <p className="eyebrow mt-3" style={{ color: wonder.color }}>
+          {wonder.type}
+        </p>
+        <h2 className="universe-title">{wonder.name}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-body">{wonder.about}</p>
+        {onFly && (
+          <button type="button" className="btn btn-primary universe-enter mt-4" onClick={() => onFly(wonder.id)} disabled={leaving}>
+            Fly here <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+        <p className="universe-fitted-line mt-4 text-xs text-muted">This link opens the map right here: share it.</p>
       </aside>
     );
   }

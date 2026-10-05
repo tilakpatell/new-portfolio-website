@@ -1569,7 +1569,8 @@ export async function create(canvas, ctx) {
     if (!state.ship) {
       // a new pilot: at the universe picked, or anywhere (ship.js's STARTS),
       // so those joining don't all turn up in the same place
-      state.ship = spawn(state.sel, startAt());
+      // (a link out to a wonder, /universe/aurelia, starts parked beside it: props.startAt)
+      state.ship = spawn(state.sel, !state.sel && props.startAt && isGoal(props.startAt) ? parkFor(props.startAt, [0, 0]) : startAt());
       camQOn = false;
       state.at = state.sel && orbiting(state.ship, null) === state.sel ? state.sel : null;
       state.yaw = -state.ship.heading;
@@ -1611,7 +1612,12 @@ export async function create(canvas, ctx) {
       state.flown = true;
       emit({ type: 'launch' });
     }
-    if (state.auto) state.auto = null; // the pilot has the stick now
+    if (state.auto) {
+      // the pilot has the stick now (and the page hears the trip's off: a tour or a trip on through the gate ends here)
+      const id = state.auto.id;
+      state.auto = null;
+      emit({ type: 'arrived', id, done: false });
+    }
     if (state.view === 'map') {
       state.view = state.seat;
       retarget(700);
@@ -2771,7 +2777,11 @@ export async function create(canvas, ctx) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
       const a = autopilot(state.ship, state.auto.id, state.auto.park, undefined, od);
       input = a.input;
-      if (a.done) state.auto = null;
+      if (a.done) {
+        const id = state.auto.id;
+        state.auto = null;
+        emit({ type: 'arrived', id, done: true }); // (the page's tour, and a trip on through the gate, go on from here)
+      }
       // the crew's word on super speed, the first time it's past the pulse drive
       if (od > 1 && !state.odSaid && state.ship.speed > SHIP.pulse * 1.2) {
         state.odSaid = true;

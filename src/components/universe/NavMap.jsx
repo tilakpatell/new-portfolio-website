@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiRocket2Fill, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
 import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, onChart, speedWord, tripTime } from './nav';
 import { BELT, HOME_RADIUS, SUN } from './layout';
 import { EDGE } from './ship';
@@ -63,7 +63,7 @@ function paintStars(canvas) {
 // how big a thing `reach` across, `d` out from the middle, looks on the chart (SVG units)
 const sizeOn = (d, reach, view) => ((chartRadius(d + reach, view) - chartRadius(Math.max(0, d - reach), view)) / 2) * V;
 
-export default function NavMap({ where, drive, onDrive, selected = null, live = false, onTravel, onEnter, onWhole, onClose }) {
+export default function NavMap({ where, drive, onDrive, selected = null, live = false, onTravel, onEnter, onWhole, onTour, onClose }) {
   const [view, setView] = useState('all');
   const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
@@ -71,6 +71,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   // (what the page has picked, unless that's where the ship is already)
   const [pick, setPick] = useState(() => (selected && destinationById(selected) && selected !== now?.at ? selected : null));
   const [times, setTimes] = useState({});
+  const [copied, setCopied] = useState(null); // the place whose link was just copied
   const canvas = useRef(null);
   const close = useRef(null);
   const search = useRef(null);
@@ -171,10 +172,23 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
 
   const verb = (d) => {
     if (!d) return '';
-    if (!flying) return d.kind === 'wonder' ? 'Pick a ship to fly out to it' : `Show me ${d.name}`;
+    if (!flying) return d.kind === 'wonder' ? 'Pick a ship to fly out to it' : d.via ? `Show me the gate` : `Show me ${d.name}`;
     if (now?.foot) return 'Back in the ship first (G)';
-    if (at(d.id)) return `You’re at ${d.name}`;
-    return `${driveById(fallsBack ? 'super' : drive).verb} to ${d.name}`;
+    if (at(d.id)) return d.via ? `At the gate: through to ${d.name}` : `You’re at ${d.name}`;
+    return d.via ? `${driveById(fallsBack ? 'super' : drive).verb} to the gate, then ${d.name}` : `${driveById(fallsBack ? 'super' : drive).verb} to ${d.name}`;
+  };
+  // a link to a place (a universe, a wonder) that opens the map there
+  const linkTo = (d) => (d.via ? null : `${window.location.origin}${window.location.pathname}#/universe/${d.id}`);
+  const copy = (d) => {
+    const url = linkTo(d);
+    if (!url) return;
+    navigator.clipboard?.writeText(url).then(
+      () => {
+        setCopied(d.id);
+        setTimeout(() => setCopied(null), 1800);
+      },
+      () => {},
+    );
   };
 
   return createPortal(
@@ -198,6 +212,11 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
             {live && flying && onWhole && (
               <button type="button" className="navmap-tool" onClick={onWhole} title="Pull back over the map in 3D">
                 <RiEyeLine className="h-4 w-4" aria-hidden="true" /> <span>3D view</span>
+              </button>
+            )}
+            {live && canFly && onTour && (
+              <button type="button" className="navmap-tool" onClick={onTour} title="The grand tour: every station, world and wonder, nearest first, the crew talking; Escape stops it">
+                <RiRouteLine className="h-4 w-4" aria-hidden="true" /> <span>Tour</span>
               </button>
             )}
             <button ref={close} type="button" className="navmap-close" onClick={onClose} aria-label="Close the nav map">
@@ -313,6 +332,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
               )}
               {DESTINATIONS.map((d) => {
                 if (view === 'all' && d.kind === 'station') return null;
+                if (d.kind === 'system') return null; // (the galaxy's systems all sit at the gate: the list has them)
                 const xy = P(d.at);
                 if (!onChart([xy[0] / V, xy[1] / V])) return null;
                 return (
@@ -407,7 +427,12 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                 </button>
                 {picked.to && onEnter && (
                   <button type="button" className="btn btn-ghost navmap-enter" onClick={() => onEnter(picked.id)}>
-                    {at(picked.id) ? 'Go in' : 'Skip the trip: straight in'}
+                    {picked.via ? `Jump straight to ${picked.name}` : at(picked.id) ? 'Go in' : 'Skip the trip: straight in'}
+                  </button>
+                )}
+                {linkTo(picked) && (
+                  <button type="button" className="navmap-copy" onClick={() => copy(picked)} title={linkTo(picked)}>
+                    <RiLinkM className="h-3.5 w-3.5" aria-hidden="true" /> {copied === picked.id ? 'Link copied' : 'Copy a link here'}
                   </button>
                 )}
               </div>

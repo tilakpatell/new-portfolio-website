@@ -453,6 +453,41 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
    moves them each frame (data-on: shown; data-off: it's off the screen, so
    it's an arrow at the edge, turned --a toward it; data-hot: the nose is
    near enough the lead that a shot bends onto it; data-hit: a shot landed) */
+/* the grand tour's pill: where it's up to, and the way to stop it */
+.universe-tour {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 92px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: rgb(6 10 22 / 0.78);
+  border: 1px solid rgb(159 216 255 / 0.25);
+  color: #dfe8f6;
+  font: 500 12px/1.2 var(--font-mono);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+.universe-tour button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(159 216 255 / 0.12);
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+.universe-tour kbd { font: inherit; opacity: 0.7; }
+@media (max-width: 767px) {
+  .universe-tour { top: auto; bottom: 120px; max-width: calc(100% - 32px); }
+}
+
 .universe-hud {
   --hot: #ff6a52;
   --nav: var(--engine, #e8eefc);

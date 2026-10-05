@@ -33,6 +33,8 @@ import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
+import { DESTINATIONS } from './universe/nav';
+import { byId as universeById } from './universe/universes';
 import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
@@ -131,6 +133,8 @@ export default function CommandPalette({ onClose }) {
       { id: 'w-earth', group: 'Easter eggs', label: 'Earth: fly to every place I’ve been', keywords: 'travel globe earth orbit plane fly flight passport stamps postcards world map countries nasa blue marble', icon: RiSparkling2Line, run: go('/earth') },
       { id: 'w-rm', group: 'Easter eggs', label: 'Dimension C-137: Rick and Morty', keywords: 'rick and morty sanchez smith summer beth jerry portal gun portal panic pickle rick meeseeks interdimensional cable plumbus cromulon snowball evil morty citadel gazorpazorp cronenberg world', icon: RiSparkling2Line, run: go('/c-137') },
       { id: 'w-citadel', group: 'Easter eggs', label: 'The Citadel of Ricks', keywords: 'rick and morty citadel council ricks simple rick wafers morty day care evil morty vote cop rick cowboy rick world walk 3d', icon: RiSparkling2Line, run: go('/c-137/citadel') },
+      // everywhere on the universe map, by name: a station, a world, a wonder or a star system through the gate
+      ...DESTINATIONS.map((d) => ({ id: `fly-${d.id}`, group: 'Fly to', label: `Fly to ${d.name}`, hint: d.via ? 'through the gate' : d.type, keywords: `universe map fly ${d.type} ${d.kind} ${universeById(d.id)?.label ?? ''} ${d.via ? 'star wars galaxy system' : ''}`, icon: RiRocket2Line, run: go(d.via ? d.to : `/universe/${d.id}`) })),
       { id: 'e-jump', group: 'Easter eggs', label: 'Jump to lightspeed', keywords: 'hyperspace star wars falcon', icon: RiSparkling2Line, run: () => window.dispatchEvent(new Event('tp:hyperspace')) },
       { id: 'e-cockpit', group: 'Easter eggs', label: 'Back to the cockpit', keywords: 'cockpit first person pilot seat falcon chewie x-wing red five rick cruiser portal rv walt jesse breaking bad drive launch wings fly', icon: RiSparkling2Line, run: () => window.dispatchEvent(new CustomEvent('tp:cockpit')) },
       { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },

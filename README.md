@@ -42,7 +42,7 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Résumé | `/resume` | The résumé on the page, plus a PDF download |
 | Travel | `/travel` | A 3D globe of places visited, with photos |
 | Contact | `/contact` | How to reach me |
-| Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+| Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`, or `fly hoth`) |
 | Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
 
 The six pages are one feed: scroll to the end of any of them and the next begins under it, with a divider saying what comes next, and the address, the menu and the theme follow whichever page is on screen. After the sixth, an end card. Each page is still its own address, so every link works as before.
@@ -65,7 +65,7 @@ The front door (`/`) is a map of the whole site as places in space. The **Univer
 | `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
-| `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each |
+| `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
 | `J` | Jump to the place picked at hyperspeed |
 
 On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. Every planet is its own place down there, under its own sky: Middle-earth's is the Shire on the day of the party (Bag End, the hobbit holes, the Party Tree, the Green Dragon), Breaking Bad's is the desert where the RV cooks, and Rick and Morty's is the Smiths' street, a portal open on the lawn. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
