@@ -209,3 +209,83 @@ export function stab(d) {
 
 // ── The Tower ──
 export const ORCS = { sight: 9, cone: 0.7, smell: 1.3, hear: 3.2, ringSight: 0, alert: 0.45, chase: 4.4, patrol: 1.5, giveUp: 3.5, leash: 20, catch: 1.3, look: 1.2 };
+
+// ── On the side: crumbs on Sam's cloak ──
+// The night on the stair, as it might have gone: Gollum has dusted lembas
+// crumbs over Sam's cloak while he slept, to make him look a thief in the
+// morning. Wake first, as Sam, and brush every crumb off before Frodo
+// stirs. The crumbs are small and pale on the grey cloth. Brush where your
+// hand is (or where you tap): a sweep takes every crumb within reach, but
+// a sweep at nothing rustles, and brings Frodo's waking nearer.
+//
+// The cloak is `w` by `d` metres, its middle at (0, 0): `u` across it,
+// `v` along it.
+export const CRUMBS = { n: 14, w: 1.2, d: 0.85, edge: 0.06, reach: 0.085, time: 45, miss: 2, hand: 0.55, stirs: [22, 34, 41] };
+// how high the cloak lies over the stone at (u, v): over Sam's legs,
+// stretched out from where he sits against the rock (at -v), and lower
+// towards its edges
+export function cloakLift(u, v) {
+  const legs = Math.exp(-(((Math.abs(u) - 0.11) / 0.12) ** 2)) * 0.085 * (1 - Math.max(0, Math.min(1, (v + 0.1) / 0.5)) * 0.7);
+  const fold = 0.012 * Math.sin(u * 17 + v * 5) * Math.sin(v * 13);
+  return 0.025 + legs + fold;
+}
+
+export function newCrumbs(seed = 1, n = CRUMBS.n) {
+  const rand = seeded(seed);
+  const crumbs = [];
+  for (let k = 0; crumbs.length < n && k < 2000; k++) {
+    const u = (rand() - 0.5) * (CRUMBS.w - 2 * CRUMBS.edge);
+    const v = (rand() - 0.5) * (CRUMBS.d - 2 * CRUMBS.edge);
+    if (crumbs.some((c) => Math.hypot(c.u - u, c.v - v) < CRUMBS.reach * 1.3)) continue;
+    crumbs.push({ u, v, size: 0.6 + rand() * 0.6, turn: rand() * 6.28, gone: false });
+  }
+  return { crumbs, hand: { u: 0, v: 0 }, t: 0, late: 0, left: crumbs.length, sweeps: 0, misses: 0, stirred: 0, state: 'on' };
+}
+// how long till Frodo wakes, in seconds
+export const crumbsLeft = (c) => Math.max(0, CRUMBS.time - c.t - c.late);
+
+// move your hand over the cloak (x across, y along: -1..1), within it
+export function moveHand(c, x, y, dt) {
+  const k = CRUMBS.hand * dt;
+  c.hand.u = Math.max(-CRUMBS.w / 2, Math.min(CRUMBS.w / 2, c.hand.u + x * k));
+  c.hand.v = Math.max(-CRUMBS.d / 2, Math.min(CRUMBS.d / 2, c.hand.v + y * k));
+}
+// Brush at (u, v), or where your hand is. Returns how many crumbs it took
+// (0 is a rustle), or null when it's over.
+export function brush(c, u = c.hand.u, v = c.hand.v) {
+  if (c.state !== 'on') return null;
+  c.hand.u = Math.max(-CRUMBS.w / 2, Math.min(CRUMBS.w / 2, u));
+  c.hand.v = Math.max(-CRUMBS.d / 2, Math.min(CRUMBS.d / 2, v));
+  c.sweeps += 1;
+  let got = 0;
+  for (const cr of c.crumbs) {
+    if (!cr.gone && Math.hypot(cr.u - c.hand.u, cr.v - c.hand.v) < CRUMBS.reach) {
+      cr.gone = true;
+      got += 1;
+    }
+  }
+  c.left -= got;
+  if (!got) {
+    c.misses += 1;
+    c.late += CRUMBS.miss;
+  }
+  if (c.left <= 0) c.state = 'clean';
+  return got;
+}
+// One step. Events: 'stir' { i } as Frodo stirs in his sleep (a warning),
+// and 'woke' when he wakes with crumbs still on the cloak.
+export function stepCrumbs(c, dt) {
+  const ev = [];
+  if (c.state !== 'on') return ev;
+  c.t += dt;
+  const now = c.t + c.late;
+  while (c.stirred < CRUMBS.stirs.length && now >= CRUMBS.stirs[c.stirred]) {
+    ev.push({ type: 'stir', i: c.stirred });
+    c.stirred += 1;
+  }
+  if (crumbsLeft(c) <= 0) {
+    c.state = 'woke';
+    ev.push({ type: 'woke' });
+  }
+  return ev;
+}

@@ -13,12 +13,10 @@ Two pieces of work are on `main`: PR #108 (`claude/hq-web-swinging`, web-swingin
 
 ## Left to do
 
-Done since: phone layout (shorter hint, Zip and Perch stacked beside Jump), grass shorter and denser in a 30 m patch and thinned as the watchdog steps the tier down (`grass.density`), lamps without shadows (start view about 660k triangles), point launch (Q, pad d-pad up, touch Perch: `PERCHES`, `findPerch`, `pointLaunch`, a jump off a perch launches) and web wings (hold the web with nothing to catch while falling: `SWING.glide`). The tour was bot-played at 60 Hz through the real rules (a throwaway script): rings 0 and 5 were lowered; ring 3 under the bridge is reachable but fussy.
+Done since: phone layout (shorter hint, Zip and Perch stacked beside Jump), grass shorter and denser in a 30 m patch and thinned as the watchdog steps the tier down (`grass.density`), lamps without shadows (start view about 660k triangles), point launch (Q, pad d-pad up, touch Perch: `PERCHES`, `findPerch`, `pointLaunch`, a jump off a perch launches) and web wings (hold the web with nothing to catch while falling: `SWING.glide`). Then: tests for the point launch and the web wings; a bot that plays the whole tour through the real rules, kept as a test (`tourBot` in `rules.test.js`: every third of a second it tries a handful of moves for the next second and a half and does whichever brings him through the next ring, or nearest it; it goes round in about 21 s); and a cyan chevron over the perch Q would launch to (`swing.js`, from `findPerch` with the stick's direction, which `CompoundWorld` now hands to the drawing as `move`).
 
 1. A real phone: frame rate on `medium` can't be measured headless here.
-2. Tests for point launch and web wings (none yet, by request).
-3. A bot playtest of the tour kept as a test (`docs`: the throwaway bot steered at the next ring, webbed when falling or low, let go past the anchor, zipped when slow).
-4. Perch target mark: show where Q would go (reuse `swing.js`'s mark with `findPerch`).
+2. Ring 3, under the bridge, is reachable (the bot gets it) but fussy by hand.
 
 ## How to check it
 

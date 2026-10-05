@@ -48,7 +48,7 @@ All of the content (roles, projects, skills, education) lives in [`src/data/`](s
 
 ### The universe
 
-The front door (`/`) is a map of the whole site as places in space. A first visit opens with a crawl, then puts you in a cockpit (the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV) and launches you into the map. Fly to a planet to open its page.
+The front door (`/`) is a map of the whole site as places in space. The **Universe | Classic** switch at the top of every page moves between the map and the plain pages, landing on the same place in the other (Experience's page and its station, say), and the front door opens on whichever you picked last. A first visit opens with a crawl, then puts you in a cockpit (the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV) and launches you into the map. Fly to a planet to open its page.
 
 | Key | Action |
 | --- | --- |
