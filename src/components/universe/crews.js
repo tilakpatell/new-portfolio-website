@@ -40,6 +40,12 @@ export const CREWS = [
       ['morty', 'Rick! We crashed into a planet, Rick!'],
       ['rick', 'Relax, Morty. I backed us up. Portal’s open.'],
     ],
+    // into the black hole: no coming back from this one (on its far side is
+    // a friend's universe, deep.js's `beyond`, and the page goes on to it)
+    swallowed: [
+      ['morty', 'Rick! It’s got us! We’re going in!'],
+      ['rick', 'Relax, Morty. It’s not spaghetti. It’s somebody’s Matrix.'],
+    ],
     // sitting still a while
     idle: [['rick', 'Lick, lick, lick my balls! Ha ha! Yeah! Say that all the time!', 'lickLick']],
     // something flying past you (traffic.js)
@@ -108,10 +114,6 @@ export const CREWS = [
       ['rick', 'Interdictor, Morty. Somebody wants a word. Shoot the word.'],
     ],
     crashInto: {
-      wormhole: [
-        ['morty', 'Rick, where are we?! We went in the black hole!'],
-        ['rick', 'Out the other side, Morty. Different neighbourhood. Same universe. Probably.'],
-      ],
       star: [
         ['rick', 'Yep. Flew into a star. That one’s on me, Morty.'],
         ['morty', 'My eyebrows, Rick!'],
@@ -304,6 +306,10 @@ export const CREWS = [
       ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
+    swallowed: [
+      ['luke', 'It’s pulling us in! Artoo, there’s something on the other side…'],
+      ['r2', '[a long, falling scream]', 'r2Scream'],
+    ],
     traffic: {
       tie: [
         ['luke', 'TIE fighters! Artoo, lock them down!'],
@@ -365,10 +371,6 @@ export const CREWS = [
       ['luke', 'They’ve pulled us out of the drive! Interdictor!'],
     ],
     crashInto: {
-      wormhole: [
-        ['luke', 'Artoo, where are we? That wasn’t a jump…'],
-        ['r2', '[a bewildered warble]'],
-      ],
       star: [
         ['luke', 'Too close to the star! Pull out!'],
         ['r2', '[a frantic shriek]'],
@@ -553,6 +555,10 @@ export const CREWS = [
       ['chewie', '[a horrified roar]'],
       ['han', 'Hold together, baby. Hold together!'],
     ],
+    swallowed: [
+      ['han', 'Told you, Chewie. Nothing outruns that. Hang on, we’re going through.'],
+      ['chewie', '[a long, falling roar]'],
+    ],
     traffic: {
       tie: [
         ['han', 'Here they come!'],
@@ -613,10 +619,6 @@ export const CREWS = [
       ['chewie', '[a furious roar]'],
     ],
     crashInto: {
-      wormhole: [
-        ['han', 'Chewie, where are we? Don’t tell me. I don’t want to know.'],
-        ['chewie', '[a baffled growl]'],
-      ],
       star: [
         ['han', 'That’s a star, Chewie! Why didn’t you say it was a star?!'],
         ['chewie', '[an indignant roar]'],
@@ -794,6 +796,10 @@ export const CREWS = [
       ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
       ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
     ],
+    swallowed: [
+      ['jesse', 'Mr. White! It’s got the RV!'],
+      ['walt', 'Not even light gets out, Jesse. Let’s see where it goes.'],
+    ],
     idle: [
       ['walt', 'Say my name.', 'sayMyName'],
       ['jesse', 'Uh… Heisenberg? Can we go now?'],
@@ -875,10 +881,6 @@ export const CREWS = [
       ['walt', 'Interdiction, Jesse. Someone wants to talk. We don’t.'],
     ],
     crashInto: {
-      wormhole: [
-        ['jesse', 'Mr. White, where are we?! We went in the hole!'],
-        ['walt', 'Somewhere else, Jesse. Relativity. Drive.'],
-      ],
       star: [
         ['walt', 'Fusion, Jesse. Up close. My mistake.'],
         ['jesse', 'Your mistake?! We’re on fire!'],
@@ -1058,12 +1060,13 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash', 'idle', 'hit', 'shields', 'destroyed', 'escaped' or
-// 'cleared' (where a crew has those), 'arrive' at a place, 'traffic' going
+// 'edge', 'crash', 'swallowed' (by the black hole), 'idle', 'hit',
+// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
+// 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
 // its id), 'interdicted' (hunters cut the pulse drive) or 'crashInto' (by
-// what: 'wormhole', 'star', 'giant', 'citadel'; the plain crash lines
+// what: 'star', 'giant', 'citadel'; the plain crash lines
 // otherwise). An exchange, or null.
 export function linesFor(crew, event, id) {
   if (!crew) return null;

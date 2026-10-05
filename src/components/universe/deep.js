@@ -11,8 +11,10 @@
 // suns with planets of their own, a black hole, two nebulae to fly through,
 // and the Citadel of Ricks. Everything but the nebulae is solid: graze it and
 // you bounce off, hit it fast and you crash (and crash.js and the scene make
-// something of it: the Citadel takes you to its world, the black hole
-// throws you out somewhere else).
+// something of it: the Citadel takes you to its world). The black hole is
+// the exception: touch it at any speed and it has you, and you don't come
+// back. What's on its far side (`beyond`) is a friend's universe, their own
+// site, and the page goes on to it (Universe.jsx).
 
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
@@ -30,7 +32,8 @@ export const DEEP = {
 // (a black hole's is its shadow); colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
 // universe it's from (it's there for everyone); world: the universe whose
-// page a crash into it leads to
+// page a crash into it leads to; beyond (the black hole's): what's on its
+// far side, { name, what, url }, where the page goes when the ship falls in
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
   { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [702, -94, 189], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
@@ -58,7 +61,16 @@ export const WONDERS = [
       { r: 11, orbit: 90, angle: 5.1, color: '#c58fd8', kind: 'gas' },
     ],
   },
-  { id: 'maw', kind: 'black-hole', name: 'The Maw', at: [864, 81, -702], r: 12, disk: 72 },
+  {
+    id: 'maw',
+    kind: 'black-hole',
+    name: 'The Maw',
+    at: [864, 81, -702],
+    r: 12,
+    disk: 72,
+    // on its far side: Shrey Pathak's portfolio, the Matrix (where Rick and Morty come out)
+    beyond: { name: 'Shrey Pathak', what: 'the Matrix', url: 'https://shreyaanpathak.github.io/portfolio' },
+  },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty', world: 'rickmorty' },
@@ -106,15 +118,20 @@ export function reachOf(w) {
   return w.r;
 }
 
-// what's solid out here, as ship.js's solids: { id, at, r, reach }. A black
-// hole is solid out past its shadow, where the light bends round it
-const solid = (id, at, r) => ({ id, at, r, reach: r * 1.4, deep: true });
+// what's solid out here, as ship.js's solids: { id, at, r, reach, swallow }.
+// A black hole is solid out past its shadow, where the light bends round
+// it, and it swallows: nothing bounces off it, whatever the speed (ship.js)
+const solid = (id, at, r, swallow = false) => ({ id, at, r, reach: r * 1.4, deep: true, ...(swallow ? { swallow } : {}) });
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
-  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r),
+  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, w.kind === 'black-hole'),
   ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
 ]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
+
+// what's on the far side of the thing the ship fell into (the black hole's
+// `beyond`: { name, what, url }), or null for anything you come back from
+export const beyondOf = (id) => wonderById(id)?.beyond ?? null;
 
 // every place there is to be at, out here and at home: the universes (the
 // stations and the planets) and the wonders, each with how far it reaches

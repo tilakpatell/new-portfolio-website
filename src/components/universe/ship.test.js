@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, PLANETS, SHIP, SOLIDS, autopilot, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, step } from './ship';
+import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, brakeAt, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, step, turnAt } from './ship';
 import { DEEP, WONDERS } from './deep';
 import { ORDER, REACH } from './layout';
 import { byId } from './universes';
@@ -32,6 +32,32 @@ describe('flying the ship', () => {
     expect(ahead.z).toBeLessThan(0); // heading 0 is −z
     const right = fly(s, { throttle: 1, turn: 1 }, 0.5, []).ship;
     expect(forward(right.heading)[0]).toBeGreaterThan(0); // nose toward +x
+  });
+
+  it('rolls into a turn and out of it, banking with it, rather than snapping', () => {
+    const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
+    // the first few frames turn less than a full-rate turn would
+    const early = fly(s, { throttle: 1, turn: 1 }, 0.05, []).ship;
+    expect(Math.abs(early.heading)).toBeLessThan(SHIP.turn * 0.05 * 0.6);
+    expect(early.rate).toBeLessThan(0);
+    // a moment on, it's at the full rate, banked over to the right
+    const going = fly(s, { throttle: 1, turn: 1 }, 1, []).ship;
+    expect(going.rate).toBeCloseTo(-SHIP.turn * turnAt(going.speed), 1);
+    expect(going.bank).toBeGreaterThan(0.3);
+    // let go: the turn eases off, and it levels out
+    const settled = fly(going, { throttle: 1 }, 0.8, []).ship;
+    expect(Math.abs(settled.rate)).toBeLessThan(0.01);
+    expect(Math.abs(settled.bank)).toBeLessThan(0.02);
+  });
+
+  it('turns wider the faster it goes', () => {
+    expect(turnAt(0)).toBe(1);
+    expect(turnAt(SHIP.cruise)).toBe(1);
+    expect(turnAt(SHIP.boost)).toBeCloseTo(SHIP.turnFast, 6);
+    expect(turnAt(SHIP.pulse)).toBeLessThan(SHIP.turnFast);
+    const slow = fly({ ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.cruise }, { throttle: 1, turn: 1 }, 1, []).ship;
+    const fast = fly({ ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.boost }, { throttle: 1, boost: true, turn: 1 }, 1, []).ship;
+    expect(Math.abs(fast.heading)).toBeLessThan(Math.abs(slow.heading) * 0.75);
   });
 
   it('never goes through a planet, and says when it hits one', () => {
@@ -130,6 +156,14 @@ describe('deep space', () => {
     expect(fly(cut, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2); // and off again once they're gone
   });
 
+  it('brakes and coasts harder out there, to match the speeds', () => {
+    expect(brakeAt(open.x, open.y, open.z)).toBeGreaterThan(SHIP.brake * 3.5);
+    expect(brakeAt(0, 0, 0)).toBe(SHIP.brake);
+    const flat = { ...open, speed: SHIP.pulse };
+    expect(fly(flat, { throttle: -1 }, 3, []).ship.speed).toBeLessThanOrEqual(0);
+    expect(fly(flat, {}, 4, []).ship.speed).toBeLessThan(SHIP.pulse * 0.6);
+  });
+
   it('can climb far higher out there than at home', () => {
     expect(ceilingAt(open.x, open.z)).toBe(DEEP.ceiling);
     expect(ceilingAt(0, 0)).toBe(SHIP.ceiling);
@@ -167,6 +201,24 @@ describe('deep space', () => {
       expect(inside(ship), w.id).toBe(false);
       expect(events.some((e) => e.type === 'crash' && e.id === w.id), w.id).toBe(true);
     }
+  });
+
+  it('is swallowed by the black hole at any speed, with no bounce, and only there', () => {
+    const maw = SOLIDS.find((o) => o.id === 'maw');
+    expect(SOLIDS.filter((o) => o.swallow).map((o) => o.id)).toEqual(['maw']);
+    // creeping up on it, far slower than any crash
+    const creep = (o) => ({ ...spawn(null), x: o.at[0], y: o.at[1], z: o.at[2] + o.r + 2, heading: 0, speed: 1 });
+    const { ship, events } = fly(creep(maw), { throttle: 0.15 }, 6);
+    const fall = events.find((e) => e.id === 'maw');
+    expect(fall).toMatchObject({ type: 'crash', swallowed: true });
+    expect(fall.speed).toBeLessThan(SHIP.crash);
+    expect(events.some((e) => e.type === 'bump' && e.id === 'maw')).toBe(false);
+    expect(inside(ship)).toBe(false); // held at its edge for the scene to take over, not through it
+    // the same creep at anything else is only a bump
+    const glacia = SOLIDS.find((o) => o.id === 'glacia');
+    const slow = fly(creep(glacia), { throttle: 0.15 }, 6).events;
+    expect(slow.some((e) => e.type === 'bump' && e.id === 'glacia')).toBe(true);
+    expect(slow.some((e) => e.type === 'crash')).toBe(false);
   });
 });
 
@@ -221,6 +273,47 @@ describe('autopilot', () => {
         expect(orbiting(s, null), id).toBe(id);
       }
     }
+  });
+
+  it('flies out from the home system to every wonder in deep space, and back, without hitting anything', () => {
+    const trip = (from, id, limit) => {
+      let s = from;
+      const park = parkAt(id, [s.x, s.z]);
+      expect(park, id).toBeTruthy();
+      let done = false;
+      let top = 0;
+      let t = 0;
+      for (; t < limit && !done; t += 1 / 60) {
+        const a = autopilot(s, id, park);
+        done = a.done;
+        const r = step(s, a.input, 1 / 60);
+        s = r.ship;
+        top = Math.max(top, s.speed);
+        expect(inside(s), `${id} at ${t.toFixed(2)}s`).toBe(false);
+        expect(r.events.some((e) => e.type === 'crash' || e.type === 'bump'), `${id} at ${t.toFixed(2)}s`).toBe(false);
+      }
+      expect(done, id).toBe(true);
+      return { s, top, t };
+    };
+    for (const w of WONDERS) {
+      const { s, top } = trip(spawn(ORDER[0]), w.id, 90);
+      expect(top, w.id).toBeGreaterThan(SHIP.boost * 2); // on the pulse drive out there
+      const g = GOALS[w.id];
+      const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
+      expect(d, w.id).toBeGreaterThan(g.reach); // parked off it, not in it
+      expect(d, w.id).toBeLessThan(g.reach + 8);
+      expect(Math.abs(s.y - g.at[1]), w.id).toBeLessThan(0.5); // level with it
+    }
+    // and home again from the furthest, at the home system's speeds by the end
+    const far = WONDERS.reduce((a, b) => (Math.hypot(a.at[0], a.at[2]) > Math.hypot(b.at[0], b.at[2]) ? a : b));
+    const there = { ...spawn(null), ...parkAt(far.id), speed: 0 };
+    const back = trip(there, ORDER[0], 90);
+    expect(orbiting(back.s, null)).toBe(ORDER[0]);
+  });
+
+  it('has nowhere to go for anything that is not a place', () => {
+    expect(parkAt('nope')).toBeNull();
+    expect(autopilot(spawn(null), 'nope').done).toBe(true);
   });
 
   it('flies from one universe to the next all the way round', () => {

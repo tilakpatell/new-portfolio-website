@@ -8,7 +8,7 @@
 // functions: the scene drives the engine each frame and the comms box calls
 // the rest.
 
-import { audioContext, output } from '../../lib/audio';
+import { audioContext, loadBuffer, output } from '../../lib/audio';
 import { playClip } from '../../lib/clips';
 
 let noiseBuf = null;
@@ -21,80 +21,71 @@ function noise(ac) {
   return noiseBuf;
 }
 
+// Each ship's engine is a recording, looped (public/audio/engines, credited
+// in the README there): the X-wing's and the Falcon's from the films, a
+// garage-built hum for the cruiser and an old engine for the RV. Each file
+// holds three identical periods of its loop and plays the middle one over
+// and over, so the encoder's padding at either end never lands in it. The
+// pitch rises a little with the speed (`rate`, slowest to flat out), the
+// tone opens up (`tone`, a lowpass in Hz) and it gets louder.
 const ENGINES = {
-  // a jet's whine over a low drone, both rising with the speed
-  xwing: { waves: ['sawtooth', 'sawtooth'], base: 92, per: 15, detune: 1.013, filter: ['bandpass', 700, 70], air: [2600, 0.05], gain: 0.13 },
-  // a deep rumble, brighter when she's pushed
-  falcon: { waves: ['sawtooth', 'sine'], base: 46, per: 6, detune: 0.5, filter: ['lowpass', 260, 90], air: [420, 0.12], gain: 0.2 },
-  // a warbling hum, as a garage-built spaceship would make
-  cruiser: { waves: ['sine', 'triangle'], base: 150, per: 18, detune: 2.01, filter: ['lowpass', 1400, 120], air: [900, 0.025], gain: 0.12, wobble: 7 },
-  // the RV's old V8 burbling under the whine of two home-made jets
-  rv: { waves: ['sawtooth', 'triangle'], base: 52, per: 7, detune: 6.3, filter: ['lowpass', 800, 100], air: [1700, 0.06], gain: 0.16, wobble: 9 },
+  xwing: { src: '/audio/engines/xwing.mp3', period: 0.85, gain: 0.55, rate: [0.86, 1.18], tone: [2200, 12000] },
+  falcon: { src: '/audio/engines/falcon.mp3', period: 3.45, gain: 0.7, rate: [0.84, 1.1], tone: [900, 5500] },
+  cruiser: { src: '/audio/engines/cruiser.mp3', period: 4.1, gain: 0.4, rate: [0.88, 1.22], tone: [1400, 7000] },
+  rv: { src: '/audio/engines/rv.mp3', period: 6.4, gain: 0.5, rate: [0.8, 1.45], tone: [800, 5000] },
 };
+const FLAT_OUT = 12; // the speed (map units a second) where an engine is at its highest
 
 // A running engine: set({ speed, boost, on }) every frame, stop() at the end.
+// It's silent for the moment its recording takes to load.
 export function shipEngine(kind) {
   const spec = ENGINES[kind];
   const ac = audioContext();
   const out = ac ? output() : null;
   if (!spec || !ac || !out) return { set() {}, stop() {} };
-  const t = ac.currentTime;
   const master = ac.createGain();
   master.gain.value = 0;
-  master.connect(out);
-  const filter = ac.createBiquadFilter();
-  filter.type = spec.filter[0];
-  filter.frequency.value = spec.filter[1];
-  filter.Q.value = spec.filter[0] === 'bandpass' ? 0.9 : 1.2;
-  filter.connect(master);
-  const oscs = spec.waves.map((type, i) => {
-    const o = ac.createOscillator();
-    o.type = type;
-    const g = ac.createGain();
-    g.gain.value = i ? 0.5 : 0.8;
-    o.connect(g).connect(filter);
-    return o;
-  });
-  let lfo = null;
-  if (spec.wobble) {
-    lfo = ac.createOscillator();
-    lfo.frequency.value = spec.wobble;
-    const depth = ac.createGain();
-    depth.gain.value = spec.base * 0.08;
-    lfo.connect(depth);
-    for (const o of oscs) depth.connect(o.frequency);
-  }
-  const air = ac.createBufferSource();
-  air.buffer = noise(ac);
-  air.loop = true;
-  const airF = ac.createBiquadFilter();
-  airF.type = 'bandpass';
-  airF.frequency.value = spec.air[0];
-  airF.Q.value = 0.7;
-  const airG = ac.createGain();
-  airG.gain.value = 0;
-  air.connect(airF).connect(airG).connect(master);
-  [...oscs, air, lfo].forEach((n) => n?.start(t));
+  const tone = ac.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = spec.tone[0];
+  tone.Q.value = 0.5;
+  tone.connect(master).connect(out);
+  let src = null;
   let alive = true;
+  let last = { speed: 0, boost: false, on: false };
+  const apply = ({ speed, boost, on }, ease = 0.15) => {
+    const now = ac.currentTime;
+    const n = Math.min(1, Math.abs(speed) / FLAT_OUT);
+    if (src) src.playbackRate.setTargetAtTime(spec.rate[0] + (spec.rate[1] - spec.rate[0]) * Math.sqrt(n) + (boost ? 0.04 : 0), now, ease);
+    tone.frequency.setTargetAtTime(spec.tone[0] + (spec.tone[1] - spec.tone[0]) * n, now, ease);
+    // a low idle when parked, louder as she goes
+    master.gain.setTargetAtTime(on ? spec.gain * (0.35 + 0.65 * Math.min(1, Math.abs(speed) / 3)) * (boost ? 1.15 : 1) : 0, now, 0.2);
+  };
+  loadBuffer(spec.src)
+    .then((buf) => {
+      if (!alive || !buf) return;
+      src = ac.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.loopStart = spec.period;
+      src.loopEnd = spec.period * 2;
+      src.connect(tone);
+      src.start(ac.currentTime, spec.period);
+      apply(last, 0.01);
+    })
+    .catch(() => {});
   return {
     set({ speed = 0, boost = false, on = true }) {
       if (!alive) return;
-      const now = ac.currentTime;
-      const s = Math.abs(speed);
-      const f = spec.base + s * spec.per + (boost ? spec.per * 3 : 0);
-      oscs[0].frequency.setTargetAtTime(f, now, 0.12);
-      oscs[1].frequency.setTargetAtTime(f * spec.detune, now, 0.12);
-      filter.frequency.setTargetAtTime(spec.filter[1] + s * spec.filter[2] + (boost ? 600 : 0), now, 0.15);
-      airG.gain.setTargetAtTime(spec.air[1] * Math.min(1.5, s / 3) * (boost ? 2 : 1), now, 0.15);
-      // a low idle when parked, louder as she goes
-      master.gain.setTargetAtTime(on ? spec.gain * (0.35 + 0.65 * Math.min(1, s / 3)) : 0, now, 0.2);
+      last = { speed, boost, on };
+      apply(last);
     },
     stop() {
       if (!alive) return;
       alive = false;
       const now = ac.currentTime;
       master.gain.setTargetAtTime(0, now, 0.08);
-      [...oscs, air, lfo].forEach((n) => n?.stop(now + 0.5));
+      src?.stop(now + 0.5);
       setTimeout(() => master.disconnect(), 700);
     },
   };
@@ -310,13 +301,12 @@ export async function arrivalSound(id) {
 
 // A burst of speed, each ship its own way (the RV's jets roar over its
 // engine)
+// recorded, each ship's own where there is one (the X-wing's pass and the
+// Falcon's roar from the films), a thruster's burst for the other two
+const BOOST = { xwing: 'xwingPass', falcon: 'falconPass', cruiser: 'thruster', rv: 'thruster' };
 export function boostSound(kind, first) {
   if (kind === 'falcon' && first) playClip('hyperspaceEnter', { duration: 2.6 });
-  else if (kind === 'cruiser') whoosh(0.35, 2400, 500, 0.16);
-  else if (kind === 'rv') {
-    whoosh(1, 160, 2400, 0.22);
-    tones([[62, 0, 0.7]], { type: 'sawtooth', gain: 0.08 });
-  } else whoosh(0.7, 200, 2600, 0.2);
+  else if (BOOST[kind]) playClip(BOOST[kind], { gain: 0.8 });
 }
 
 // A shot: Han's DL-44 from the Falcon, the portal gun from the cruiser, a
@@ -447,6 +437,17 @@ export function alarmSound() {
       [520, 0.7, 0.22],
     ],
     { type: 'square', gain: 0.035 },
+  );
+}
+
+// The guns locking on to a hunter: two quick ticks, the second higher
+export function lockSound() {
+  tones(
+    [
+      [1180, 0, 0.05],
+      [1560, 0.07, 0.07],
+    ],
+    { type: 'triangle', gain: 0.035 },
   );
 }
 

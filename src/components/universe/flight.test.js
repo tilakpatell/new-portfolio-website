@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER, REACH } from './layout';
-import { cover, crashPlan, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
+import { beyondPlan, cover, crashPlan, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
 import { byId } from './universes';
 
 const gap = (a, b) => Math.hypot(a.target[0] - b.target[0], a.target[1] - b.target[1], a.target[2] - b.target[2]) + Math.abs(Math.log(a.dist / b.dist)) + Math.abs(a.pitch - b.pitch);
@@ -108,5 +108,12 @@ describe('crashing into a place', () => {
 
   it('goes straight there with reduced motion', () => {
     expect(crashPlan(byId('resume'), { reduced: true })).toMatchObject({ mode: 'crash', delay: 0 });
+  });
+});
+
+describe('the black hole', () => {
+  it('goes on through to its far side once the fall and the crew’s last words have had their time, or at once without motion', () => {
+    expect(beyondPlan({ reduced: false })).toEqual({ mode: 'beyond', delay: 4600 });
+    expect(beyondPlan({ reduced: true })).toEqual({ mode: 'beyond', delay: 0 });
   });
 });

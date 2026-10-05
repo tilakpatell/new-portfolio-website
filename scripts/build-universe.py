@@ -7,7 +7,9 @@ these prompts, task ids in brackets:
   gaming        a grey 1989 handheld console, green screen, D-pad, red A/B   [01a10822-1032-7569-ac28-1337ee5af8ab]
   marvel        a gold gauntlet with six coloured gems                       [01a10822-1894-7737-b549-b2fb78ca2cff]
   breakingbad   a cream 1980s motorhome with a faded brown stripe            [01a10822-251d-75cb-a368-0d3ac9faae3e]
-  music         a sitar, teak with ivory inlay, brass frets, gourd           [01a10822-332e-766f-8686-483e0782df4f]
+
+(the music planet's sitar was one of these too; it's now Amagi_Arts's model
+from Sketchfab, public/models/sketchfab/sitar.glb: scripts/sketchfab-batch.mjs)
 
 and these, made by the site owner with Meshy (100k triangles and a 2048 px
 texture each as they came), cut to what they're seen at:
@@ -21,8 +23,9 @@ texture each as they came), cut to what they're seen at:
   mario          Mario, standing on the Game Boy world: 8k, 512 px
   piranha        a Piranha Plant in its pipe, on the same world: 6k, 512 px
 
-and these Star Wars models the site owner sent (from Sketchfab), cut to
-what they're seen at:
+and these Star Wars models the site owner sent (from Sketchfab: who made
+each, and its licence, are in src/data/modelCredits.json, which the map's
+panel shows), cut to what they're seen at:
 
   star-destroyer   the Star Destroyers (traffic, the one that jumps in, the
                    fleet at the Death Star): 11k triangles, 512 px
@@ -64,7 +67,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'public/models/universe'
-NAMES = ['gaming', 'marvel', 'breakingbad', 'music']
+NAMES = ['gaming', 'marvel', 'breakingbad']
 # simplified by gltfpack first (aggressively, for the ships: they're
 # thousands of small parts that glTF Transform's simplifier won't merge):
 # name: (ratio, keep names, aggressively)

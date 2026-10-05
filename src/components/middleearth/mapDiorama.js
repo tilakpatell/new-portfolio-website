@@ -9,6 +9,12 @@
 // and Mount Doom, smoking and erupting. Frodo and Sam stand on the road and
 // walk it to wherever they're sent.
 //
+// Two of the places are other people's models, from Sketchfab, in the map's
+// own plain colours (Mitro123's Minas Tirith and AndreOrla's Orthanc:
+// scripts/sketchfab-batch.mjs, credited in data/modelCredits.json). Each is
+// built in code first, and its model takes over when it's come; a device on
+// the low tier, or one saving data, keeps the built ones.
+//
 // Everything is placed in the sheet's own 800×560 units (./mapData.js) and
 // made in code. `update` moves it all; `walkTo` sends the hobbits.
 
@@ -70,9 +76,56 @@ const ROAD = STOPS.map((s) => {
   return new THREE.Vector3(x + dx, 0, z + dz);
 });
 
-export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
+// A place's model: its shape alone (the map gives it its colour), stood on
+// the ground with its middle at the place, `height` tall or `width` across,
+// turned by `turn`, and `stretch` times taller than it came (a toy's
+// proportions: the built places are all taller than they are wide).
+// Resolves to its mesh, or null if it doesn't come.
+const loaders = () => Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/libs/meshopt_decoder.module.js')]);
+function placeModel(name, material, { height, width, turn = 0, stretch = 1 }) {
+  return loaders()
+    .then(([{ GLTFLoader }, { MeshoptDecoder }]) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`/models/sketchfab/${name}.glb`))
+    .then((gltf) => {
+      let mesh = null;
+      gltf.scene.updateMatrixWorld(true);
+      gltf.scene.traverse((o) => o.isMesh && !mesh && (mesh = o));
+      // its corners as plain numbers in the model's own space (they come packed into whole numbers, which can't be moved about)
+      const from = mesh.geometry.attributes.position;
+      const corners = new Float32Array(from.count * 3);
+      const v = new THREE.Vector3();
+      for (let i = 0; i < from.count; i++) v.fromBufferAttribute(from, i).applyMatrix4(mesh.matrixWorld).toArray(corners, i * 3);
+      const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(corners, 3)).setIndex(mesh.geometry.index);
+      geo.computeBoundingBox();
+      const box = geo.boundingBox;
+      const k = width ? width / Math.max(box.max.x - box.min.x, box.max.z - box.min.z) : height / (box.max.y - box.min.y);
+      geo.translate(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2).scale(k, k * stretch, k).rotateY(turn);
+      geo.computeBoundingBox();
+      const m = new THREE.Mesh(geo, material);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    })
+    .catch(() => null);
+}
+
+export function buildDiorama(scene, { soft = false, reduced = false, models = true } = {}) {
   const world = new THREE.Group();
   scene.add(world);
+  let gone = false;
+  // a place built in code gives way to its model: the built parts go, the model stands in their place
+  const takeOver = (group, built, name, material, fit, then) => {
+    if (!models) return;
+    placeModel(name, material, fit).then((m) => {
+      if (!m) return;
+      if (gone) return m.geometry.dispose();
+      for (const b of built) {
+        b.removeFromParent();
+        b.geometry.dispose();
+      }
+      group.add(m);
+      then?.(m);
+    });
+  };
   const n = makeNoise(17);
   const near = (sx, sy, list, r) => list.some(([x, y]) => Math.hypot(sx - x, sy - y) < r);
 
@@ -131,6 +184,7 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
   const stone = mat(0xd9d2c4);
   const whiteStone = mat(0xf1ede4);
   const black = mat(0x1d1716, { roughness: 0.6 });
+  const orthancStone = mat(0x2b2523, { roughness: 0.55 }); // a little lighter than the rest of the black, so the tower's carving shows
   const wood_ = mat(0x7a5634);
   const roof = mat(0x9a3b2a);
 
@@ -225,12 +279,14 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
     const g = at(world, 378, 362);
     const ring = put(g, new THREE.TorusGeometry(1.3, 0.14, 6, 24), mat(0x4a4642), 0, 0.12, 0);
     ring.rotation.x = Math.PI / 2;
-    put(g, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0);
+    const built = [put(g, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0)];
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
       const h = put(g, new THREE.ConeGeometry(0.1, 0.7, 4), black, Math.cos(a) * 0.2, 3.25, Math.sin(a) * 0.2);
       h.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3);
+      built.push(h);
     }
+    takeOver(g, built, 'orthanc', orthancStone, { height: 3.9 });
   }
   // Edoras: the golden hall on its hill
   {
@@ -246,11 +302,30 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
   let banner;
   {
     const g = at(world, 520, 444);
-    for (let i = 0; i < 7; i++) put(g, new THREE.CylinderGeometry(1.6 - i * 0.2, 1.65 - i * 0.2, 0.32, 20), whiteStone, 0, 0.16 + i * 0.32, -i * 0.08);
-    put(g, new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), whiteStone, 0, 2.9, -0.56);
-    put(g, new THREE.ConeGeometry(0.18, 0.3, 8), mat(0xe8e2d0), 0, 3.75, -0.56);
-    put(g, new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4), wood_, 0, 4.1, -0.56);
+    const built = [];
+    for (let i = 0; i < 7; i++) built.push(put(g, new THREE.CylinderGeometry(1.6 - i * 0.2, 1.65 - i * 0.2, 0.32, 20), whiteStone, 0, 0.16 + i * 0.32, -i * 0.08));
+    built.push(put(g, new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), whiteStone, 0, 2.9, -0.56));
+    built.push(put(g, new THREE.ConeGeometry(0.18, 0.3, 8), mat(0xe8e2d0), 0, 3.75, -0.56));
+    const pole = put(g, new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4), wood_, 0, 4.1, -0.56);
     banner = put(g, new THREE.PlaneGeometry(0.4, 0.26, 6, 1), mat(0x1a1a1a, { side: THREE.DoubleSide }), 0.2, 4.25, -0.56, { shadow: false });
+    // the city faces east, to Mordor; here it's turned half towards you, so its gate and its seven levels show
+    takeOver(g, built, 'minas-tirith', whiteStone, { width: 3.6, turn: -Math.PI / 4, stretch: 1.7 }, (city) => {
+      // the banner flies from the Tower of Ecthelion: the model's highest point
+      const p = city.geometry.attributes.position;
+      let top = 0;
+      for (let i = 1; i < p.count; i++) if (p.getY(i) > p.getY(top)) top = i;
+      // the hill it stands on is the mountains' rock, and the city white: by height, with a short blend between
+      const rock = new THREE.Color(0x9a8f80);
+      const white = new THREE.Color(0xf6f3ea);
+      const tint = new THREE.Color();
+      const colors = new Float32Array(p.count * 3);
+      const h = p.getY(top);
+      for (let i = 0; i < p.count; i++) tint.copy(rock).lerp(white, THREE.MathUtils.smoothstep(p.getY(i) / h, 0.47, 0.55)).toArray(colors, i * 3);
+      city.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      city.material = mat(0xffffff, { vertexColors: true });
+      pole.position.set(p.getX(top), p.getY(top) + 0.3, p.getZ(top));
+      banner.position.set(p.getX(top) + 0.2, p.getY(top) + 0.45, p.getZ(top));
+    });
   }
   // the Black Gate
   {
@@ -622,6 +697,10 @@ export function buildDiorama(scene, { soft = false, reduced = false } = {}) {
 
   return {
     update,
+    // a model still on its way has nowhere to go now
+    dispose() {
+      gone = true;
+    },
     walkTo,
     walkToPoint,
     drive,

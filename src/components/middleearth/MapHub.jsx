@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
+import ModelCredits from '../ModelCredits';
 import { CHAPTERS } from './chapters';
 
 // how far from a place on the sheet (800 across) a click still means it
@@ -356,6 +357,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
         <p className="me-hint" aria-hidden="true">
           {touch ? 'Drag to look about · pinch to zoom · tap to walk or talk' : 'Drag to look about · scroll to zoom · click to walk or talk · WASD to steer'}
         </p>
+        {live && <ModelCredits where="middle-earth" line className="me-credit" />}
         <ol className="me-route">
           {CHAPTERS.map((c) => (
             <li key={c.id}>

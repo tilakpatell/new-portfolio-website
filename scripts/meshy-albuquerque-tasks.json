@@ -116,5 +116,37 @@
   "carwash": {
     "image": "01a108fd-7bd3-72a5-bdbe-446a3eaebd33",
     "model": "01a10900-20b0-7746-971e-a5a8d05988c2"
+  },
+  "kimo": {
+    "image": "01a1096b-876a-7738-b117-af0f9cc1a9b7",
+    "model": "01a1096c-020c-70b1-a579-cc1148a7dc81"
+  },
+  "doghouse": {
+    "image": "01a1096b-87e1-720a-8d9e-d0f379276641",
+    "model": "01a1096c-0539-769c-8f77-b201ba40e250"
+  },
+  "dea": {
+    "image": "01a1096b-884f-70b9-9afc-1d06688f518f",
+    "model": "01a1096c-07a6-74b7-a703-545a88698578"
+  },
+  "motel": {
+    "image": "01a1096b-88b9-71fe-afd0-9319c5b127a1",
+    "model": "01a1096c-0a55-74f9-a637-a817a739c81e"
+  },
+  "pest": {
+    "image": "01a1096b-8932-73e7-a7a3-575ff6aea305",
+    "model": "01a1096c-0cd9-7503-865c-e71829204442"
+  },
+  "jesseHouse": {
+    "image": "01a1096b-899f-707a-adb1-8a3fa8d454fb",
+    "model": "01a1096c-0f36-71ee-a08c-73a8fdb3fac3"
+  },
+  "diner": {
+    "image": "01a1096b-8a09-7672-8abb-f3a29ff08a71",
+    "model": "01a1096c-11ac-7376-b8d4-2a30e3e6b3c7"
+  },
+  "hankHouse": {
+    "image": "01a1096b-8a75-747c-a634-e020e636031c",
+    "model": "01a1096c-13fb-74ff-b55a-fedd244c3352"
   }
 }

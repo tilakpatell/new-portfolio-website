@@ -23,7 +23,9 @@
 //
 // createHunters(parent, { small }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict }) → points,
 //   update(dt, t, ship) → events,
-//   hit(from, to) → hit or null, clear(), dispose(), count, active }
+//   hit(from, to) → hit or null, clear(), dispose(), count, active,
+//   targets: the ones still after you (or their prey), for the guns to lock
+//   on to: [{ id, at, vel, size, kind, hp, faction }] (targeting.js) }
 // A pack sent in `ahead` drops in ahead of you (an ambush on the way
 // somewhere) and one that `interdict`s says so in its 'hunted' event: the
 // scene holds the pulse drive down while it's on you.
@@ -59,6 +61,8 @@ const KIND = {
   councilship: { size: 0.42, speed: 24, accel: 19, hp: 3, fire: [0.6, 1.1] },
   gromflomite: { size: 0.3, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
 };
+// what each kind is called on the targeting bracket
+export const NAMES = { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite' };
 const LASER = { speed: 34, life: 1.1, damage: 12, length: 0.36 };
 const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long
 const SHIP_R = 0.2; // how close a laser must pass you to hit
@@ -69,6 +73,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
   const rand = Math.random;
   const pool = {}; // kind → models not in use
   const live = []; // hunters in flight
+  let nextId = 1; // each hunter's own number, for the lock to follow
   const packs = []; // { faction, members, lost, said }
   const lasers = [];
   const laserGeo = new THREE.CylinderGeometry(0.009, 0.009, LASER.length, 5).rotateX(Math.PI / 2);
@@ -153,6 +158,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
         points.push(pos.clone());
         const [fx, fz] = forward(ship.heading);
         const h = {
+          id: nextId++,
           kind,
           type,
           model,
@@ -358,6 +364,13 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
 
     get count() {
       return live.length;
+    },
+    // what the guns can lock on to: everyone still in the fight (not the
+    // ones flying off), where they are and the way they're going
+    get targets() {
+      const out = [];
+      for (const h of live) if (h.alive && !h.pack.gone) out.push({ id: h.id, at: h.pos, vel: h.vel, size: h.type.size, kind: h.kind, hp: h.hp, faction: h.pack.faction });
+      return out;
     },
     // a pack still after you (not leaving)
     get active() {

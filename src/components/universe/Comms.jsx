@@ -9,8 +9,10 @@ import Face from './Faces';
 // over the open part of the map. Reaching a world for the first time this
 // visit plays its sound bite and then the crew's exchange about it;
 // launching, boosting, bumping into things and reaching the edge get a line
-// now and then (not every time); a crash (into a planet too fast), sitting
-// still a while and flying into the sun get one of their own, and so does
+// now and then (not every time); a crash (into a planet too fast), falling
+// into the black hole (a one-way trip: the page goes on to what's beyond
+// it), sitting still a while and flying into the sun get one of their own,
+// and so does
 // traffic going past and a ship shot down. Hunters coming after you, their
 // hits, your shields running low, being shot down, getting away or shooting
 // the lot down, the director's set pieces and the first sight of each of
@@ -121,6 +123,12 @@ export default function Comms({ crew, reduced, control }) {
         } else if (e.type === 'bump') {
           if (soundOnce('bump', 500, now)) bumpSound();
           if (e.hard && often('bump', now)) say(linesFor(crew, 'bump'), { urgent: true });
+        } else if (e.type === 'crash' && e.swallowed) {
+          // into the black hole: through a portal for the cruiser, into
+          // hyperspace for the rest, and the crew's last words on the way
+          if (crew?.id === 'cruiser') portalSound();
+          else jumpSound(true);
+          say(linesFor(crew, 'swallowed'), { urgent: true });
         } else if (e.type === 'crash') {
           crashSound();
           if (e.id === 'sun' && !said.current.has('sun')) {
