@@ -1683,5 +1683,68 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/president": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c5f-2f59-77ae-bf33-2ac0b36e2ddb",
+    "name": "president, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/fedagent": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c5f-2f49-7276-807e-f4ab6fd2662d",
+    "name": "fedagent, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/general": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c5f-2f62-7670-a94e-d3acc7571697",
+    "name": "general, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/secretservice": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c5f-2f7d-7205-b05b-02f24138989d",
+    "name": "secretservice, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/c137/limo": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c61-48ab-7080-b4f9-84feccf3adea",
+    "name": "limo, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/c137/fedship": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c61-5631-766f-8a32-ad3328ba4137",
+    "name": "fedship, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/c137/shoneys": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10c61-553f-7360-b082-55847728f972",
+    "name": "shoneys, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
