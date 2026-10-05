@@ -147,6 +147,7 @@ function Kitchen({ level, live, invite }) {
       const s = newRush(level, { players: 1, seed });
       s.players = slots.map((slot) => newPlayer(level, slot));
       sm.s = s;
+      sm.rounds = (sm.rounds ?? 0) + 1;
       sm.count = 3;
       sm.tickAt = 11;
       sm.grabs = [];

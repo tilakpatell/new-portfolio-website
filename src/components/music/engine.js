@@ -1,9 +1,10 @@
 // The music room's instruments, all tuned to one Sa.
 //
 // Sitar: real strokes, pitch-shifted across the neck, with sympathetic
-// strings (./sitar.js). Tanpura: a real recorded pluck, retuned to each of its
-// four strings. Harmonium: free reeds, two to a key. Tabla: real strokes, the
-// dayan retuned to Sa (./tabla.js).
+// strings and a chikari that fills the rests by itself (./sitar.js). Tanpura:
+// a real recorded pluck, retuned to each of its four strings. Harmonium: free
+// reeds, two to a key. Tabla: real strokes, the dayan retuned to Sa
+// (./tabla.js).
 //
 // Pitches are just intonation against Sa (./tuning.js). Every function that
 // makes a sound needs `audioContext()` to have run inside the visitor's click
@@ -14,14 +15,15 @@ import { mix } from './room';
 import { jawariString } from './strings';
 import { FIRST_STRING, getTuning, sa, saHz } from './tuning';
 import { stopTheka } from './tabla';
+import { stopAutoChikari } from './sitar';
 import { dayanTarget } from './tablaRules';
 
 export * from './tuning';
-export { BOLS, LAYA, TAALS, playBol, setThekaLaya, setThekaTempo, startTheka, stopTheka, thekaPlaying, tihai, warmTabla } from './tabla';
+export { BOLS, LAYA, TAALS, playBol, setThekaLaya, setThekaTempo, startTheka, stopTheka, thekaGrid, thekaPlaying, tihai, warmTabla } from './tabla';
 export { bolLabel } from './tablaRules';
 
 // ── Sitar ──────────────────────────────────────────────────────────────────
-export { LISTEN_URL, chikari, damp, onSitarPluck, playPhrase, pluck, sitarSa, warm, warmNeck } from './sitar';
+export { LISTEN_URL, autoChikari, chikari, damp, holdChikari, onSitarChikari, onSitarPluck, playPhrase, pluck, sitarSa, stopAutoChikari, warm, warmNeck } from './sitar';
 export { parsePhrase } from './sitarRules';
 
 // ── Tanpura ──────────────────────────────────────────────────────────────────
@@ -209,5 +211,6 @@ export const dayanHz = () => dayanTarget(sa());
 export function stopAll() {
   stopTanpura();
   stopTheka();
+  stopAutoChikari();
   harmoniumAllOff();
 }
