@@ -49,6 +49,10 @@ export const MODELS = {
   orthanc: { from: 'isengard', tris: 6000, bare: true, where: 'middle-earth', as: 'Orthanc' },
   // the walkable Shire: Bag End's door, which you walk up to (its planks, knob and lock; the hole keeps its own stone arch)
   'bag-end-door': { from: 'bilbos-doors-hobbit-house-doors', only: /^(pCube|HangleLP|Lock1)/, tris: 4000, own: true, tex: 1024, maps: 512, where: 'middle-earth', as: 'Bag End’s door' },
+  // the universe map: the ships you fly, followed close behind (the Falcon
+  // comes banked and pitched, so it's turned level)
+  'xwing-hd': { from: 'high-poly-x-wing-fighter', tris: 50000, seams: true, own: true, tex: 2048, maps: 1024, where: 'universe', as: 'the X-wing you fly' },
+  'falcon-hd': { from: 'millennium-falcon', tris: 70000, turn: [-7.4, 0, 18.5], own: true, tex: 2048, maps: 1024, where: 'universe', as: 'the Millennium Falcon you fly' },
 };
 
 const split = (s = '') => {
