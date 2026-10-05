@@ -31,6 +31,16 @@
     "as": "the Death Star",
     "file": "/models/universe/death-star.glb"
   },
+  "falcon-hd": {
+    "title": "Millennium Falcon",
+    "author": "fredbear1211",
+    "authorUrl": "https://sketchfab.com/fredbear1211",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/millennium-falcon-2c0783d083e44b959c691682b4cb1f16",
+    "where": "universe",
+    "as": "the Millennium Falcon you fly"
+  },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
     "author": "Mitro123",
@@ -126,5 +136,15 @@
     "where": "universe",
     "as": "the Death Star’s trench",
     "file": "/models/universe/trench.glb"
+  },
+  "xwing-hd": {
+    "title": "High Poly X-Wing Fighter",
+    "author": "charles.woods",
+    "authorUrl": "https://sketchfab.com/charles.woods",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
+    "where": "universe",
+    "as": "the X-wing you fly"
   }
 }
