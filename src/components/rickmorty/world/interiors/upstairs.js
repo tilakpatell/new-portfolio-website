@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { rng, speckle } from '../kit';
-import { BOX, casing, ceilingLights, DOOR_H, doorway, fitText, floors, framed, grainOf, innerWalls, lathe, makeRoom, PLANE, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, wallRun, win, windowView } from './shell';
+import { BOX, CYL8, casing, ceilingLights, DOOR_H, doorway, fitText, floors, framed, grainOf, innerWalls, lathe, makeRoom, PLANE, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, wallRun, win, windowView } from './shell';
 import { needCast, person } from './people';
 import { CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, bed, carpet, desk, dresser, woodFloor } from './furniture';
 import { BOOKS_MORTY, bookcase, chair, domeLight, jacket, mortyBed, mortyDesk, nightstand, openDoor, P, wallShelf } from './smiths';
@@ -26,14 +26,14 @@ export async function buildUpstairs(kit) {
   const wood = tiledPaint(m, 'c137-in-wood', 256, 2.6, woodFloor());
   const deck = tiledPaint(m, 'c137-in-deck', 256, 2.4, woodFloor('#9a7650'));
   // Morty's carpet is the show's grass green, specked
-  const green = tiledPaint(m, 'c137-in-carpet-morty', 128, 1.4, (g, w, h) => speckle(g, w, h, { base: '#ffffff', specks: ['#d2dcc0', '#bccaa4', '#f4f8ec', '#a8b890'], n: 2600, size: 1.6, seed: 23 }), { color: 0x86ad5e });
+  const green = tiledPaint(m, 'c137-in-carpet-morty', 128, 1.4, (g, w, h) => speckle(g, w, h, { base: '#ffffff', specks: ['#d2dcc0', '#bccaa4', '#f4f8ec', '#a8b890'], n: 2600, size: 1.6, seed: 23 }), { color: 0x76984f });
   floors(R, 'upstairs', (r) => (r.id === 'balcony' ? deck : r.id === 'morty' ? green : r.floor === WOOD_FLOOR ? wood : tiledPaint(m, `c137-in-carpet-${r.floor}`, 128, 1.6, carpet, { color: r.floor })));
 
   for (let i = 1; i <= 3; i++) R.cell(`view${i}`, 128, 128, windowView(i + 4));
   posters(R);
   mortyCells(R);
 
-  tintedCeilings(R, [...UP_ROOMS.filter(([id]) => id !== 'balcony').map(([id, ...r]) => [...r, id === 'morty' ? P.ceilMorty : 0xe9e0cc]), [-306, -303.6, 401.7, 404, 0xe9e0cc]], { grain });
+  tintedCeilings(R, [...UP_ROOMS.filter(([id]) => id !== 'balcony').map(([id, ...r]) => [...r, id === 'morty' ? P.ceilMorty : 0xe9e0cc]), [-306, -303.6, 401.7, 404, 0xe9e0cc]], { grain: grainOf(kit, 2.6, { soft: true }) });
   ceilingLights(R, UP_ROOMS.filter(([id]) => !['balcony', 'stairTop', 'morty'].includes(id)).map(([, ...r]) => r));
   domeLight(R.fixed(0, 0, 0), -297.25, 396.95, 2.6);
   const F = R.fixed;
@@ -86,7 +86,7 @@ export async function buildUpstairs(kit) {
     } else if (it.id === 'bed-morty') mortyBed(R, it);
     else if (it.id === 'desk-morty') mortyDesk(R, it);
     else if (it.kind === 'nightstand') nightstand(R, it);
-    else if (it.id === 'bookcase-morty') bookcase(R, it, { wood: P.shelfRed, books: BOOKS_MORTY, seed: 12, levels: 4, gaps: 0.05, toys: MORTY_SHELVES });
+    else if (it.id === 'bookcase-morty') onTop(bookcase(R, it, { wood: P.shelfRed, books: BOOKS_MORTY, seed: 12, levels: 4, gaps: 0.05, toys: MORTY_SHELVES }), it.h);
     else if (it.id === 'chair-morty') chair(R, it, 'windsor');
     else if (it.id === 'bed-master') bed(R, it, { frame: 0x6b4426, blanket: 0xc8b07a, sheet: 0xf4f0e6 });
     else if (it.id === 'dresser-master') {
@@ -174,6 +174,15 @@ const MORTY_SHELVES = [
   },
 ];
 
+// on top of Morty's bookshelf: helmets, a robot's head, a toy truck
+function onTop(f, y) {
+  f.ball(0x6a8ab0, -0.55, y + 0.08, 0, 0.09, 0.9).box(0x2a2a30, -0.55, y + 0.06, 0.07, 0.12, 0.05, 0.02);
+  f.ball(0x5a6a50, -0.33, y + 0.07, 0, 0.08, 0.85);
+  f.box(0x4a5a8a, -0.1, y, 0, 0.14, 0.12, 0.12).box(0x9dd8ff, -0.1, y + 0.05, 0.061, 0.1, 0.03, 0.004);
+  f.box(0xc8d040, 0.3, y + 0.04, 0, 0.34, 0.1, 0.13).box(0x6aa040, 0.4, y + 0.14, 0, 0.13, 0.09, 0.12).box(0x9aa3ab, 0.2, y + 0.14, 0, 0.16, 0.05, 0.11, 0, 0, 0.3);
+  for (const u of [0.18, 0.42]) for (const v of [-0.06, 0.06]) f.cyl(0x2a2a2e, u, y + 0.04, v, 0.04, 0.03, Math.PI / 2, 0, CYL8);
+}
+
 // what's on Morty's walls and floor: the space rug, posters, the pennant, the
 // open door with its dartboard, his jacket, the shelf over his bed, cracks
 function mortysRoom(R) {
@@ -184,9 +193,9 @@ function mortysRoom(R) {
   R.fixed(0, 0, 0).decal('spacerug', rug.x, 0.008, rug.z, rug.w, rug.d, { rx: -Math.PI / 2 });
   // the east wall: the beach, the magnet, a small one, the shelf over the bed's head, a vent
   const east = (z) => R.fixed(-294.7, z, W);
-  east(395.25).decal('beach', 0, 1.58, 0.012, 0.6, 0.75, { rz: 0.04 });
-  east(396.4).decal('magnet', 0, 1.78, 0.012, 0.5, 0.64, { rz: -0.05 });
-  east(397.2).decal('smallposter', 0, 1.5, 0.012, 0.32, 0.43);
+  east(395.2).decal('beach', 0, 1.56, 0.012, 0.72, 0.9, { rz: 0.05 });
+  east(396.42).decal('magnet', 0, 1.74, 0.012, 0.6, 0.76, { rz: -0.05 });
+  east(397.25).decal('smallposter', 0, 1.46, 0.012, 0.36, 0.48);
   wallShelf(east(398.2), 0, 1.52, 0);
   east(399.2).decal('vent', 0, 2.36, 0.012, 0.42, 0.21);
   // the north wall: a map
@@ -197,7 +206,7 @@ function mortysRoom(R) {
   const door = R.fixed(-295.72, 399.7, N);
   openDoor(door, 0.88);
   door.cyl(0x1d1d22, 0.44, 1.55, 0.03, 0.2, 0.02, E).decal('dartboard', 0.44, 1.55, 0.041, 0.38, 0.38);
-  R.fixed(-295.12, 399.78, N).decal('pennant', 0, 1.98, 0.02, 0.62, 0.22, { rz: 0.16 }).cyl(0x8a5a34, 0.3, 1.86, 0.02, 0.008, 0.3);
+  R.fixed(-295.18, 399.78, N).decal('pennant', 0, 2.16, 0.02, 0.8, 0.29, { rz: 0.16 }).cyl(0x8a5a34, -0.4, 1.95, 0.025, 0.01, 0.38, 0, 0.16);
   jacket(R.fixed(-299.15, 399.78, N), 0, 1.72, 0);
   // the plaster cracked and chipped, up by the ceiling
   for (const [x, z, t, u, w] of [

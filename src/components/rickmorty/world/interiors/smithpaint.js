@@ -104,9 +104,9 @@ export function houseCells(R) {
   });
   // the entry's rug: plain brick red, a darker border
   R.cell('rug', 128, 168, (g, w, h) => {
-    g.fillStyle = '#c4553f';
+    g.fillStyle = '#c66a58';
     g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#a2402e';
+    g.strokeStyle = '#a85444';
     g.lineWidth = 5;
     g.strokeRect(7, 7, w - 14, h - 14);
     const r = rng(2);
@@ -117,7 +117,7 @@ export function houseCells(R) {
   });
   // the living room's rug: olive, tufted
   R.cell('livingrug', 192, 192, (g, w, h) => {
-    g.fillStyle = '#a8a33e';
+    g.fillStyle = '#b8aa5c';
     g.fillRect(0, 0, w, h);
     const r = rng(9);
     g.lineWidth = 1.5;
@@ -130,13 +130,13 @@ export function houseCells(R) {
       g.lineTo(x + (r() - 0.5) * 5, y - 4);
       g.stroke();
     }
-    g.strokeStyle = '#8a8630';
+    g.strokeStyle = '#968a44';
     g.lineWidth = 4;
     g.strokeRect(2, 2, w - 4, h - 4);
   });
   // the tablecloth: yellow-green gingham, its checks the same size on the top and the sides
   const gingham = (cols, rows) => (g, w, h) => {
-    g.fillStyle = '#c9c65a';
+    g.fillStyle = '#c8c66e';
     g.fillRect(0, 0, w, h);
     const cw = w / cols;
     const rh = h / rows;
@@ -296,7 +296,7 @@ export function mortyCells(R) {
   R.cell('spacerug', 256, 256, (g, w, h) => {
     g.clearRect(0, 0, w, h);
     circle(g, w / 2, h / 2, w / 2 - 2, '#9a8a6a');
-    circle(g, w / 2, h / 2, w / 2 - 9, '#3c4a66');
+    circle(g, w / 2, h / 2, w / 2 - 9, '#46505e');
     const r = rng(4);
     g.fillStyle = '#e8e6f0';
     for (let i = 0; i < 26; i++) {
@@ -460,7 +460,7 @@ export function mortyCells(R) {
     for (let i = 0; i <= 8; i++) g.lineTo(w * (0.3 + i * 0.05), h * (0.25 + r() * 0.35));
     g.lineTo(w * 0.7, 0);
     g.closePath();
-    g.fillStyle = '#c9c2bc';
+    g.fillStyle = '#d9d4ce';
     g.fill();
     ink(g, 2);
     g.strokeStyle = '#2a2420';

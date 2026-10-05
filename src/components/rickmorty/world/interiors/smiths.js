@@ -17,24 +17,24 @@ import { BALL, BALL8, BOX, CYL, CYL8, lathe, TAU, tube } from './shell';
 // house's light takes some off)
 export const P = {
   // walls, trim, ceilings
-  olive: 0xa5b874,
-  oliveDark: 0x7d8c50,
+  olive: 0xa0b184,
+  oliveDark: 0x7a8a58,
   archCream: 0xf1efd6,
   pink: 0xffc9bb,
-  cream: 0xfcf0c6,
+  cream: 0xfbefbe,
   creamDining: 0xfbf4da,
   trim: 0xfbf7ee,
-  mortyWall: 0xf6ece6,
-  mortyTrim: 0x5e98c4,
+  mortyWall: 0xebe0da,
+  mortyTrim: 0x6aa0c8,
   ceilKitchen: 0xf3d6b8,
-  ceilSlope: 0xe9c9a6,
+  ceilSlope: 0x93a46c,
   ceilLiving: 0xf4ead2,
   ceilEntry: 0xf0e0c4,
-  ceilMorty: 0xe2e2e0,
-  beam: 0x9a6a46,
+  ceilMorty: 0xd6d6d4,
+  beam: 0xbc9068,
   // the kitchen
   cabFrame: 0x8c5a3e,
-  cabDoor: 0xe2b56e,
+  cabDoor: 0xe6bc80,
   knob: 0x7a3a1e,
   kick: 0x5a3a28,
   top: 0xe3e8e5,
@@ -54,12 +54,12 @@ export const P = {
   rod: 0x8a5a34,
   shade: 0xf6dc80,
   // the living room
-  couch: 0xb4dcc2,
-  couchLight: 0xc8eacf,
-  teal: 0x3fa6a2,
-  tealLight: 0x52b8b2,
-  tealDark: 0x2e8682,
-  table: 0xc08a56,
+  couch: 0xc2e4ce,
+  couchLight: 0xd2eedc,
+  teal: 0x5aaca8,
+  tealLight: 0x6cbcb6,
+  tealDark: 0x448c88,
+  table: 0xc89666,
   tableDark: 0x6e4428,
   shelfWood: 0x6e4a32,
   dogBed: 0xd04a5e,
@@ -67,12 +67,12 @@ export const P = {
   slider: 0x5c6872,
   // the dining room
   cloth: 0xccc95e,
-  chairBlue: 0x2f74a0,
+  chairBlue: 0x3d7290,
   chairWood: 0x6a4524,
-  salmon: 0xf0907c,
+  salmon: 0xf4a28f,
   // the entry
-  clock: 0x6a3e28,
-  clockDark: 0x3a2216,
+  clock: 0x7a5038,
+  clockDark: 0x4a3020,
   brass: 0xd8b04a,
   tread: 0x946446,
   riser: 0xf6ece4,
@@ -80,15 +80,15 @@ export const P = {
   // Morty's room
   bedWood: 0x9a5a3e,
   headboard: 0xb0664e,
-  spread: 0xefe8cf,
+  spread: 0xebe6d4,
   pillow: 0xd8e4ee,
-  nightstand: 0x5a9cc6,
+  nightstand: 0x6a9cba,
   drawerPink: 0xb8489a,
   lampRed: 0xb02c40,
   elephant: 0x6c6c78,
   shelfRed: 0x8a4a38,
-  desk: 0xd25c56,
-  deskDark: 0xb04a46,
+  desk: 0xcc6660,
+  deskDark: 0xaa5450,
   chairWindsor: 0x9a6438,
   jacket: 0x72a462,
 };
@@ -108,9 +108,9 @@ export function cupboards(f, u, w, y0, h, vb, d, { drawer = true, n = Math.max(1
     const cu = u - w / 2 + dw * (i + 0.5);
     const side = i % 2 ? -1 : 1;
     if (drawer) {
-      f.box(P.cabDoor, cu, y0 + h - 0.2, vf, dw - 0.08, 0.14, 0.024).ball(P.knob, cu, y0 + h - 0.13, vf + 0.02, 0.02);
-      f.box(P.cabDoor, cu, y0 + 0.06, vf, dw - 0.08, h - 0.32, 0.024).ball(P.knob, cu + side * (dw / 2 - 0.09), y0 + h - 0.34, vf + 0.02, 0.02);
-    } else f.box(P.cabDoor, cu, y0 + 0.05, vf, dw - 0.08, h - 0.1, 0.024).ball(P.knob, cu + side * (dw / 2 - 0.09), knobLow ? y0 + 0.13 : y0 + h - 0.13, vf + 0.02, 0.02);
+      f.box(P.cabDoor, cu, y0 + h - 0.2, vf, dw - 0.08, 0.14, 0.024).ball(P.knob, cu, y0 + h - 0.13, vf + 0.02, 0.02, 1, BALL8);
+      f.box(P.cabDoor, cu, y0 + 0.06, vf, dw - 0.08, h - 0.32, 0.024).ball(P.knob, cu + side * (dw / 2 - 0.09), y0 + h - 0.34, vf + 0.02, 0.02, 1, BALL8);
+    } else f.box(P.cabDoor, cu, y0 + 0.05, vf, dw - 0.08, h - 0.1, 0.024).ball(P.knob, cu + side * (dw / 2 - 0.09), knobLow ? y0 + 0.13 : y0 + h - 0.13, vf + 0.02, 0.02, 1, BALL8);
   }
 }
 
@@ -149,7 +149,7 @@ export function onCounter(f, it) {
       [2, 0.06, 0.17],
     ]) {
       const u = 0.55 - i * 0.2;
-      f.cyl(0xa0302a, u, top, vb + 0.16, r, hh).cyl(0x5a2a1e, u, top + hh, vb + 0.16, r * 0.9, 0.03).ball(0x3a1a12, u, top + hh + 0.04, vb + 0.16, 0.018);
+      f.cyl(0xa0302a, u, top, vb + 0.16, r, hh).cyl(0x5a2a1e, u, top + hh, vb + 0.16, r * 0.9, 0.03).ball(0x3a1a12, u, top + hh + 0.04, vb + 0.16, 0.018, 1, BALL8);
     }
     f.part(new THREE.SphereGeometry(0.15, 12, 6, 0, TAU, Math.PI / 2, Math.PI / 2), 0xe9e2cf, -0.45, top + 0.15, 0.02, 0, 1, 1, 1, Math.PI);
     for (const [du, dv, c] of [
@@ -158,7 +158,7 @@ export function onCounter(f, it) {
       [-0.06, 0.05, 0xf08a2a],
       [0.02, -0.07, 0x7ac74f],
     ])
-      f.ball(c, -0.45 + du, top + 0.06, 0.02 + dv, 0.055);
+      f.ball(c, -0.45 + du, top + 0.06, 0.02 + dv, 0.055, 1, BALL8);
   } else if (it.id === 'counter-nw') {
     // a bread box and a utensil pot
     f.box(0x9a6a3e, -0.3, top, vb + 0.2, 0.42, 0.2, 0.26).box(0x7a4a2a, -0.3, top + 0.2, vb + 0.2, 0.44, 0.02, 0.28);
@@ -206,6 +206,7 @@ export function sink(R, it) {
   // soap, a sponge, a plate drying
   f.cyl(0x5ab05a, -0.58, top, -0.2, 0.03, 0.17).cyl(0xf4f0e6, -0.58, top + 0.17, -0.2, 0.01, 0.04);
   f.box(0xf2d23c, 0.58, top, -0.15, 0.1, 0.035, 0.07).box(0x3f8f3a, 0.58, top + 0.035, -0.15, 0.1, 0.012, 0.07);
+  plant(f, 0.5, top, -0.27, { s: 0.5, pot: 0xc8603a });
   return f;
 }
 const GOOSENECK = tube(
@@ -243,13 +244,14 @@ export function stove(R, it) {
   f.box(0xebe8de, 0, 0.24, d / 2 - 0.035, w - 0.08, 0.6, 0.03).box(0x2a2a30, 0, 0.42, d / 2 - 0.02, 0.44, 0.24, 0.012);
   f.cbox(P.chrome, 0, 0.8, d / 2 + 0.01, 0.56, 0.025, 0.025).box(0xebe8de, 0, 0.04, d / 2 - 0.035, w - 0.08, 0.16, 0.03);
   // a pot on the front burner, a kettle on the back
-  f.cyl(P.steel, -0.19, 0.96, 0.15, 0.12, 0.15).cyl(P.steel, -0.19, 1.11, 0.15, 0.125, 0.015).ball(0x2a2a30, -0.19, 1.135, 0.15, 0.02).cbox(0x2a2a30, -0.37, 1.06, 0.15, 0.14, 0.022, 0.025);
+  f.cyl(P.steel, -0.19, 0.96, 0.15, 0.12, 0.15).cyl(P.steel, -0.19, 1.11, 0.15, 0.125, 0.015).ball(0x2a2a30, -0.19, 1.135, 0.15, 0.02, 1, BALL8).cbox(0x2a2a30, -0.37, 1.06, 0.15, 0.14, 0.022, 0.025);
   f.part(lathe([[0.09, 0], [0.1, 0.06], [0.08, 0.14], [0.03, 0.17]], 12), 0xc8362e, 0.19, 0.96, -0.13, 0);
   f.cbox(0x2a2a30, 0.19, 1.18, -0.13, 0.03, 0.03, 0.14);
   // the hood: steel, a light under it
-  f.box(P.steel, 0, 1.58, vb + 0.25, w, 0.13, 0.5).box(P.steelDark, 0, 1.575, vb + 0.25, w - 0.08, 0.01, 0.42);
-  f.box(P.steel, 0, 1.55, vb + 0.49, w, 0.1, 0.03, 0, 0.25);
-  f.glow(BOX, 0xfff0c8, 1.4, 0, 1.572, vb + 0.36, 0, 0.3, 0.006, 0.06);
+  f.box(P.steel, 0, 1.6, vb + 0.25, w, 0.15, 0.5).box(P.steelDark, 0, 1.595, vb + 0.25, w - 0.08, 0.01, 0.44);
+  f.box(P.steel, 0, 1.53, vb + 0.5, w + 0.02, 0.2, 0.03, 0, 0.3);
+  f.box(P.steelDark, -w / 2 + 0.12, 1.63, vb + 0.535, 0.1, 0.03, 0.01, 0, 0.3).box(P.steelDark, -w / 2 + 0.26, 1.63, vb + 0.535, 0.06, 0.03, 0.01, 0, 0.3);
+  f.glow(BOX, 0xfff0c8, 1.4, 0, 1.592, vb + 0.36, 0, 0.3, 0.006, 0.06);
   cupboards(f, 0, w, 1.75, 0.42, vb, 0.34, { drawer: false, n: 2, knobLow: true });
   return f;
 }
@@ -337,17 +339,17 @@ const SHADE_WIDE = lathe([[0.36, 0], [0.33, 0.04], [0.14, 0.13], [0.04, 0.16]], 
 
 // Curtains either side of a window at u (w wide), from a rod at y1 down to
 // y0, pleated, `v` out from the wall; the rod and its ends
-export function curtains(f, u, w, y0, y1, v, color, { panel = 0.5, rod = P.rod, over = 0.14 } = {}) {
+export function curtains(f, u, w, y0, y1, v, color, { panel = 0.5, rod = P.rod, over = panel * 0.3 } = {}) {
   const n = Math.max(3, Math.round(panel / 0.085));
   const pw = panel / n;
   const shade = new THREE.Color(color).multiplyScalar(0.84);
   for (const s of [-1, 1]) {
     const c = u + s * (w / 2 + panel / 2 - over);
-    for (let i = 0; i < n; i++) f.box(i % 2 ? shade : color, c - panel / 2 + pw * (i + 0.5), y0, v + (i % 2 ? 0.035 : 0.065), pw + 0.012, y1 - y0 - 0.05, 0.03);
+    for (let i = 0; i < n; i++) f.box(i % 2 ? shade : color, c - panel / 2 + pw * (i + 0.5), y0, v + (i % 2 ? 0.03 : 0.08), pw + 0.012, y1 - y0 - 0.05, 0.03);
   }
   const len = w + panel * 2 - over * 2 + 0.2;
   f.cyl(rod, u, y1, v + 0.05, 0.016, len, 0, Math.PI / 2);
-  for (const s of [-1, 1]) f.ball(rod, u + s * (len / 2 + 0.02), y1, v + 0.05, 0.03);
+  for (const s of [-1, 1]) f.ball(rod, u + s * (len / 2 + 0.02), y1, v + 0.05, 0.03, 1, BALL8);
   for (let i = 0; i < 10; i++) f.part(TORUS_RING, rod, u - len / 2 + 0.1 + ((len - 0.2) * i) / 9, y1 - 0.01, v + 0.05, 0, 1, 1, 1, 0, 0);
 }
 const TORUS_RING = new THREE.TorusGeometry(0.022, 0.005, 5, 10);
@@ -508,7 +510,7 @@ export function clock(R, it) {
   f.decal('clockface', 0, 1.73, d / 2 - 0.03 + 0.001, 0.36, 0.36);
   f.box(P.clockDark, 0, 1.96, 0, w + 0.02, 0.05, d + 0.02);
   f.part(PEDIMENT, P.clock, 0, 2.01, 0, 0, w * 0.86, d - 0.08, 0.14, -Math.PI / 2, 0);
-  for (const s of [-1, 0, 1]) f.ball(P.brass, s * (w / 2 - 0.05), s ? 2.04 : h - 0.02, 0, 0.025);
+  for (const s of [-1, 0, 1]) f.ball(P.brass, s * (w / 2 - 0.05), s ? 2.04 : h - 0.02, 0, 0.025, 1, BALL8);
   // the pendulum: its own mesh, so it can swing
   const pend = new THREE.Group();
   const parts = [];
@@ -567,15 +569,16 @@ export function nightstand(R, it) {
   const { w, d, h } = it;
   f.box(P.nightstand, 0, 0.04, 0, w, h - 0.07, d - 0.02).box(new THREE.Color(P.nightstand).multiplyScalar(0.8), 0, 0, 0, w - 0.06, 0.04, d - 0.06);
   f.box(P.nightstand, 0, h - 0.03, 0, w + 0.03, 0.03, d + 0.01);
-  f.box(P.drawerPink, 0, h - 0.2, d / 2, w - 0.08, 0.14, 0.02).ball(0xe8e3d6, 0, h - 0.13, d / 2 + 0.015, 0.018);
+  f.box(P.drawerPink, 0, h - 0.2, d / 2, w - 0.08, 0.14, 0.02).ball(0xe8e3d6, 0, h - 0.13, d / 2 + 0.015, 0.018, 1, BALL8);
   f.box(new THREE.Color(P.nightstand).multiplyScalar(0.55), 0, 0.1, d / 2 - 0.03, w - 0.08, 0.22, 0.01);
   f.box(0x3f8f3a, -0.08, 0.1, 0.05, 0.22, 0.04, 0.16, 0.1);
   // the lamp: a slim stand, a red pleated shade, lit
-  f.cyl(0x8a5a34, -0.08, h, -0.06, 0.06, 0.02).cyl(0x8a5a34, -0.08, h + 0.02, -0.06, 0.01, 0.3);
-  f.part(LAMP_SHADE, P.lampRed, -0.08, h + 0.24, -0.06, 0);
-  f.glow(CYL, 0xffd8a0, 1.6, -0.08, h + 0.245, -0.06, 0, 0.26, 0.01, 0.26);
+  f.cyl(0x8a5a34, -0.08, h, -0.06, 0.07, 0.02).cyl(0x8a5a34, -0.08, h + 0.02, -0.06, 0.012, 0.36);
+  f.part(LAMP_SHADE, P.lampRed, -0.08, h + 0.28, -0.06, 0, 1.35, 1.3, 1.35);
+  f.glow(CYL, 0xffd8a0, 1.6, -0.08, h + 0.285, -0.06, 0, 0.35, 0.01, 0.35);
   // the elephant
-  const e = f.sub(0.12, 0.07, 0.6, h);
+  const e = f.sub(0.13, 0.08, 0.6, h);
+  e.base.multiply(new THREE.Matrix4().makeScale(1.45, 1.45, 1.45));
   e.ball(P.elephant, 0, 0.11, 0, 0.09, 0.8).ball(P.elephant, 0.09, 0.15, 0, 0.055);
   e.cyl(P.elephant, 0.14, 0.04, 0, 0.012, 0.11, 0, 0.3);
   for (const s of [-1, 1]) e.cyl(P.elephant, 0.08, 0.16, s * 0.045, 0.04, 0.008, Math.PI / 2, 0);
@@ -618,7 +621,7 @@ export function wallShelf(f, u, y, v = 0) {
   const ru = u - 0.15;
   f.box(0x5a6ac8, ru, y + 0.03, v + 0.11, 0.1, 0.12, 0.07).box(0x5a6ac8, ru, y + 0.15, v + 0.11, 0.08, 0.07, 0.06).box(0x9dd8ff, ru, y + 0.17, v + 0.142, 0.05, 0.02, 0.003);
   for (const s of [-1, 1]) f.cbox(0x7a8ad8, ru + s * 0.08, y + 0.14, v + 0.11, 0.03, 0.12, 0.03, 0, 0, s * 0.6);
-  f.cyl(0x9aa3ab, ru, y + 0.22, v + 0.11, 0.004, 0.06).ball(0xe0402a, ru, y + 0.28, v + 0.11, 0.012);
+  f.cyl(0x9aa3ab, ru, y + 0.22, v + 0.11, 0.004, 0.06).ball(0xe0402a, ru, y + 0.28, v + 0.11, 0.012, 1, BALL8);
   // the gadget: a grey box, a dial, a green light, wires down the wall
   const gu = u + 0.13;
   f.box(0x8a9096, gu, y + 0.03, v + 0.11, 0.22, 0.12, 0.15).box(0x5a6066, gu, y + 0.15, v + 0.11, 0.14, 0.04, 0.1);
@@ -639,7 +642,7 @@ const GADGET_WIRE = tube(
 
 // Morty's green jacket hanging from a hook
 export function jacket(f, u, y, v = 0) {
-  f.ball(P.brass, u, y + 0.04, v + 0.02, 0.018);
+  f.ball(P.brass, u, y + 0.04, v + 0.02, 0.018, 1, BALL8);
   f.ball(P.jacket, u, y - 0.06, v + 0.06, 0.1, 1.1);
   f.box(P.jacket, u, y - 0.72, v + 0.07, 0.36, 0.6, 0.1, 0, 0, 0.04).box(P.jacket, u, y - 0.18, v + 0.065, 0.26, 0.12, 0.09);
   for (const s of [-1, 1]) f.cyl(P.jacket, u + s * 0.17, y - 0.68, v + 0.07, 0.045, 0.5, 0, s * 0.08);
@@ -663,7 +666,7 @@ export function openDoor(f, w, { color = 0x7a5238, h = 2.05 } = {}) {
     [1.08, 0.78],
   ])
     for (const s of [-1, 1]) f.box(shade, w / 2 + s * w * 0.22, py, 0.022, w * 0.32, ph, 0.01);
-  f.ball(P.brass, 0.08, 0.98, 0.035, 0.03);
+  f.ball(P.brass, 0.08, 0.98, 0.035, 0.03, 1, BALL8);
   return f;
 }
 

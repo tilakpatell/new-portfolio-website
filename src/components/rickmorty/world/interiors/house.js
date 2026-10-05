@@ -44,7 +44,6 @@ function stairs(R, it) {
     const y = (i + 1) * rise;
     f.box(P.riser, cx, 0, z1 - run / 2 - 0.01, x1 - x0, y - 0.03, run);
     f.box(P.tread, cx, y - 0.035, z1 - run / 2 - 0.02, x1 - x0, 0.04, run + 0.035);
-    f.box(TRIM, cx, y - rise, z1 - 0.005, x1 - x0 - 0.02, rise - 0.03, 0.01);
   }
   // the banister, all white: newel posts, a rail up the slope, balusters
   const rail = 0.95;
@@ -55,7 +54,7 @@ function stairs(R, it) {
   const slope = Math.atan2((n - 1) * rise, foot - top);
   f.cbox(P.rail, x0 + 0.05, rail + ((n - 1) * rise) / 2 + 0.12, (foot + top) / 2, 0.08, 0.07, len, 0, slope);
   // a white stringer down the open side
-  f.cbox(P.rail, x0 + 0.02, ((n - 1) * rise) / 2 + 0.1, (foot + top) / 2, 0.04, 0.24, len + 0.1, 0, slope);
+  f.cbox(P.rail, x0 - 0.02, ((n - 1) * rise) / 2 + 0.12, (foot + top) / 2, 0.04, 0.26, len + 0.1, 0, slope);
   for (let i = 0; i < n * 2; i++) {
     const z = foot - (i + 0.5) * (run / 2);
     const step = Math.floor(i / 2) + 1;
@@ -94,15 +93,16 @@ export async function buildHouse(kit) {
   pictures(R);
 
   // ── ceilings: each room's colour; the kitchen's slopes down to its west wall; beams across the living room ──
-  const ceil = tintedCeilings(R, [...ROOMS.map(([id, ...r]) => [...r, look({ id }).ceiling]), [AREAS.house.x0, -294.5, 3.4, AREAS.house.z1, 0xe9e0cc]], { grain });
+  const ceil = tintedCeilings(R, [...ROOMS.map(([id, ...r]) => [...r, look({ id }).ceiling]), [AREAS.house.x0, -294.5, 3.4, AREAS.house.z1, 0xe9e0cc]], { grain: grainOf(kit, 2.6, { soft: true }) });
   ceil.add(P.ceilSlope, at(-311.45, 2.47, -2.3, 0, 1.18, 0.08, 11.4, 0, 0.266));
   const beams = R.fixed(0, 0, 0);
-  for (const z of [-7.3, -6.1, -4.9, -3.7, -2.5]) beams.box(P.beam, -301.8, 2.43, z, 9.8, 0.17, 0.15);
+  for (const z of [-7.05, -5.8, -4.55, -3.3]) beams.box(P.beam, -301.8, 2.43, z, 9.8, 0.17, 0.15);
   ceilingLights(R, ROOMS.filter(([id]) => ['den', 'hall', 'rickroom'].includes(id)).map(([, ...r]) => r));
-  const lamps = R.fixed(0, 0, 0);
-  pendant(lamps, -309.3, -3.0, 2.6, { drop: 0.38 });
-  pendant(lamps, -309, 2.55, 2.6, { drop: 0.42 });
-  pendant(lamps, -303.1, 0.8, 2.6, { drop: 0.38, wide: true, color: 0xf6eed2 });
+  // the pendants (each out of the way while the camera's by it)
+  const hang = (x, z, opts) => pendant(R.overhead(x, z, x, z + 0.001, 0.8)(0, 0, 0), x, z, 2.6, opts);
+  hang(-309.3, -3.0, { drop: 0.38 });
+  hang(-309, 2.55, { drop: 0.42 });
+  hang(-303.1, 0.8, { drop: 0.38, wide: true, color: 0xf6eed2 });
 
   // ── walls ──
   const F = R.fixed;
@@ -119,12 +119,12 @@ export async function buildHouse(kit) {
   wallLine(R, F, [-288, -8.2], [-288, 8.7], { ...of('den'), into: [-1, 0] }, [win(-7.2, 0.9, 1.0, 1.0, view(4)), win(-0.55, 0.8, 1.0, 1.0, view(1)), win(5.6, 1.4, 0.95, 1.05, view(2), { bars: [2, 2] })]);
   wallLine(R, F, [-294.7, 8.5], [-287.8, 8.5], { ...of('rickroom'), into: [0, -1] }, [win(-291.2, 1.2, 1.25, 0.8, view(3))]);
   // the kitchen's west wall and its door to the garage, framed so it reads as one
-  wallLine(R, F, [-312, -8.2], [-312, 3.6], { ...kitchen, into: [1, 0] }, [doorAt(1.1, { color: 0x8a5a34, trim: P.archCream, knob: P.brass })]);
+  wallLine(R, F, [-312, -8.2], [-312, 3.6], { ...kitchen, into: [1, 0] }, [doorAt(1.1, { color: 0x8a5a34, trim: P.archCream, knob: P.brass, casingW: 0.14 })]);
   garageDoor(R.fixed(-312, 1.1, Math.PI / 2));
   // the outer walls with the yard outside them, south-west: they sink when
   // they come between the camera and Morty
   wallLine(R, R.cutaway(-312.2, 3.4, -306.7, 3.4), [-312.2, 3.4], [-306.7, 3.4], { ...kitchen, into: [0, -1] }, [curtained(-309, 1.1, 1.05, 0.95, view(4), P.curtainYellow, { bars: [2, 2], panel: 0.36, y1: 2.25, y0: 0.95 })]);
-  wallLine(R, R.cutaway(-306.7, 3.4, -299.5, 3.4), [-306.7, 3.4], [-299.5, 3.4], { ...of('dining'), into: [0, -1] }, [curtained(-303.1, 1.5, 0.8, 1.4, view(2), P.salmon, { bars: [2, 3], panel: 0.55, y1: 2.4, y0: 0.42, rod: 0xc8ccd0 })]);
+  wallLine(R, R.cutaway(-306.7, 3.4, -299.5, 3.4), [-306.7, 3.4], [-299.5, 3.4], { ...of('dining'), into: [0, -1] }, [curtained(-303.1, 1.5, 0.8, 1.4, view(2), P.salmon, { bars: [2, 3], panel: 0.7, y1: 2.42, y0: 0.4, rod: 0xc8ccd0 })]);
   wallLine(R, R.cutaway(-299.5, 3.4, -294.5, 3.4), [-299.5, 3.4], [-294.5, 3.4], { ...of('entry'), into: [0, -1] }, [doorAt(-297.6, { w: 1.0, color: BROWN, trim: TRIM, knob: P.brass })]);
   wallLine(R, R.cutaway(-294.5, 3.4, -294.5, 8.7), [-294.5, 3.4], [-294.5, 8.7], { ...of('rickroom'), into: [1, 0] }, [win(6.0, 1.2, 1.0, 1.0, view(1))]);
   // between the rooms, each side its own room's; the doorways, arched where the show has them
@@ -138,7 +138,7 @@ export async function buildHouse(kit) {
     const [mx, mz] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
     const front = look(roomAt('house', mx - (dz / n) * 0.3, mz + (dx / n) * 0.3));
     const back = look(roomAt('house', mx + (dz / n) * 0.3, mz - (dx / n) * 0.3));
-    doorway(R, a, b, { thick: INNER, color: front.color, trim: front.trim, crown: front.crown, back: { color: back.color, trim: back.trim, crown: back.crown }, arch, h: arch ? 2.34 : DOOR_H, width: arch ? 0.11 : 0.09 });
+    doorway(R, a, b, { thick: INNER, color: front.color, trim: front.trim, crown: front.crown, back: { color: back.color, trim: back.trim, crown: back.crown }, arch, h: arch ? 2.34 : DOOR_H, width: arch ? 0.11 : 0.09, proud: arch ? 0.06 : 0.04 });
   }
 
   // ── on the floors and the walls ──
@@ -263,7 +263,7 @@ function slidingDoor(c, w) {
 // the kitchen's side of the door to the garage: a mat, a strip of green light under it
 function garageDoor(f) {
   f.box(0x7a4a2a, 0, 0, 0.42, 0.95, 0.012, 0.55).box(0x5a3420, 0, 0.012, 0.42, 0.85, 0.004, 0.45);
-  f.glow(BOX_GEO, 0x9dff5a, 1.6, 0, 0.008, 0.012, 0, 0.84, 0.014, 0.012);
+  f.glow(BOX_GEO, 0x9dff5a, 1.7, 0, 0.012, -0.06, 0, 0.86, 0.024, 0.03);
 }
 const BOX_GEO = new THREE.BoxGeometry(1, 1, 1);
 

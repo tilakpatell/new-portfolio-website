@@ -25,7 +25,7 @@ export const LOOKS = {
 
 // ── paint ──
 
-export const woodFloor = (base = '#c4a77a') => (g, w, h) => {
+export const woodFloor = (base = '#d4b98e') => (g, w, h) => {
   const r = rng(11);
   const c = new THREE.Color(base);
   const rows = 8;
@@ -174,8 +174,10 @@ export function tvStand(R, it) {
   for (let i = 0; i < 5; i++) f.box([0x2f6fb0, 0xd8452f, 0x2b2b30, 0xf3c844, 0x7ac74f][i], -0.6, 0.55 + i * 0.016, 0.1, 0.14, 0.015, 0.19, i * 0.1);
   f.part(lathe([[0, 0], [0.11, 0], [0.13, 0.2], [0.12, 0.22]], 12), 0xb8603a, -w / 2 + 0.22, 0.55, 0, 0);
   for (let i = 0; i < 6; i++) f.part(new THREE.ConeGeometry(0.05, 0.38, 5), 0x4f9c3c, -w / 2 + 0.22 + Math.cos(i) * 0.06, 0.92, Math.sin(i * 2.1) * 0.06, 0, 1, 1, 1, Math.cos(i * 1.7) * 0.4, Math.sin(i * 1.3) * 0.4);
-  f.cyl(0xc9b48a, w / 2 - 0.22, 0.55, 0, 0.07, 0.04).cyl(0x9a8a6a, w / 2 - 0.22, 0.59, 0, 0.012, 0.32);
-  f.part(lathe([[0.16, 0], [0.09, 0.2]], 14), 0xf3e2b0, w / 2 - 0.22, 0.85, 0, 0);
+  // the table lamp: a round orange base, a white shade
+  f.part(lathe([[0.03, 0], [0.1, 0.04], [0.11, 0.14], [0.06, 0.24], [0.02, 0.28]], 14), 0xe0902e, w / 2 - 0.22, 0.55, 0, 0).cyl(0x9a8a6a, w / 2 - 0.22, 0.83, 0, 0.01, 0.06);
+  f.part(lathe([[0.17, 0], [0.11, 0.2]], 14), 0xfaf6ea, w / 2 - 0.22, 0.86, 0, 0);
+  f.glow(CYL8, 0xfff2c8, 1.6, w / 2 - 0.22, 0.865, 0, 0, 0.3, 0.01, 0.3);
   return f;
 }
 
@@ -341,4 +343,5 @@ export function dresser(R, it, { wood = 0x9a6a3e } = {}) {
 
 // the rooms of a floor as [x0, x1, z0, z1], but for some
 export const roomsOf = (area, but = []) => PLAN.filter((p) => p.area === area && !but.includes(p.id)).map((p) => [p.x0, p.x1, p.z0, p.z1]);
-export const HOUSE_LIGHT = { sun: [0xfff1dc, 0.6], hemi: [0xfff6ea, 0xa8957c, 2.2], fog: null, background: 0x1e1712 };
+// (near white, so the show's colours come out as painted)
+export const HOUSE_LIGHT = { sun: [0xfff6ea, 0.65], hemi: [0xffffff, 0xd6d0c6, 2.7], fog: null, background: 0x1e1712 };
