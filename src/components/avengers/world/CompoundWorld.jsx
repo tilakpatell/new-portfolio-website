@@ -12,6 +12,7 @@ import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROAD
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
+import GuideCue from '../../guide/GuideCue';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here
@@ -749,9 +750,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         </div>
       )}
 
-      {gl === 'on' && hud.suit && <p className="cw-hint">{touch ? 'Hold Up to climb, Down to come down, the stick to fly. Step out gets out of the armour.' : 'Space to climb, Shift to come down, W A S D to fly; it leans into its speed. E steps out of the armour, wherever you are.'}</p>}
+      {gl === 'on' && hud.suit && <p className="cw-hint">{touch ? 'Hold Up to climb, Down to come down, the stick to fly. Step out gets out of the armour.' : 'Space to climb, Shift to come down, W A S D to fly; it leans into its speed. E steps out of the armour, wherever you are.'}<GuideCue touch={touch} /></p>}
       {gl === 'on' && !hud.moved && !here && !herePortal && !hud.suit && (
-        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, Trick, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch, T throws a flip (or a twist, with a direction held). Jump at a wall to run up it. E at a door, O for the settings.'}</p>
+        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, Trick, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch, T throws a flip (or a twist, with a direction held). Jump at a wall to run up it. E at a door, O for the settings.'}<GuideCue touch={touch} /></p>
       )}
 
       {touch && (

@@ -20,6 +20,7 @@ import { LANES, NOTES, QUAVER, SIDE, SONG, VERSE, newSong, press as pressSong, s
 import '../../shire/shire.css';
 import './bree.css';
 import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Bree, the town: walk in from the road in the rain as Frodo, the night the
 // hobbits came to the Prancing Pony, and play the five scenes there. The
@@ -852,7 +853,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'gate' ? 'At the West Gate' : 'In the Prancing Pony'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

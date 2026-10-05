@@ -43,7 +43,7 @@ export function intoSpace(h) {
 // down: it's the only city there is), just under the top of the sky,
 // coming down.
 export function outOfSpace(h) {
-  const r = len(h.p);
+  const r = len(h.p) || 1;
   const up = h.p.map((v) => v / r);
   const lim = WORLD.half - 250;
   const over = up[1] > 0.96;
@@ -53,7 +53,7 @@ export function outOfSpace(h) {
   let v = [h.v[0] - up[0] * radial, Math.min(-40, radial), h.v[2] - up[2] * radial];
   const sp = len(v);
   if (sp > 450) v = v.map((c) => (c * 450) / sp);
-  const s = len(v);
+  const s = len(v) || 1;
   return { ...h, zone: 'city', mode: 'air', p: [x, WORLD.ceiling - 300, z], v, spd: s, dir: v.map((c) => c / s), perch: null, boomed: s > 120, exited: true, stun: 0, crouch: 0, ev: [] };
 }
 
@@ -91,7 +91,7 @@ function stepOnce(h, input, dt) {
   for (const b of BODIES) {
     const d = [h.p[0] - b.c[0], h.p[1] - b.c[1], h.p[2] - b.c[2]];
     const dl = len(d);
-    if (dl >= b.r) continue;
+    if (dl >= b.r || dl < 1e-6) continue;
     const n = d.map((c) => c / dl);
     h.p = b.c.map((c, i) => c + n[i] * b.r);
     h.ev.push({ type: 'land', body: b.id, speed: len(h.v), at: [...h.p], n });
@@ -101,7 +101,7 @@ function stepOnce(h, input, dt) {
     return;
   }
   // the Earth: back into the air
-  const r = len(h.p);
+  const r = len(h.p) || 1;
   const radial = (h.v[0] * h.p[0] + h.v[1] * h.p[1] + h.v[2] * h.p[2]) / r;
   if (!h.reentered && r - SPACE.RE < SPACE.reentry && radial < 0) {
     h.reentered = true;

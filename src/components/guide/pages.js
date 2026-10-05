@@ -217,7 +217,8 @@ export const PAGES = {
           ['C', 'Down (and land)'],
           ['Shift', 'Flat out: past about 430 km/h the air breaks with a boom'],
           ['Drag / ← ↑ ↓ →', 'Look round'],
-          ['E', 'Go in at a place'],
+          ['J / F / Click', 'Punch (a little way off, he lunges)'],
+          ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
         ],
       },
@@ -236,11 +237,14 @@ export const PAGES = {
       },
     ],
     touch: [
-      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out']] },
+      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out'], ['Punch', 'Punch']] },
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
+      ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one very high up). Every minute or so someone needs catching: follow the red beacon, catch them before the ground, then land to set them down. Fly alongside the airliner and your father has something to say.'],
+      ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
+      ['Space', 'Keep climbing: the sky goes dark and the stars come out, and past 9 km you’re out of the air with the whole Earth under you. Out there you drift, and flat out you go twenty times faster. The Moon and Mars are on the gauge: land on them (Space jumps off again), and someone’s waiting at each. Dive back at the Earth and you come down through the fire over the city.'],
       ['Think, Mark!', 'Four chapters: your father’s rings, the Flaxans, then Omni-Man and Thragg. A Viltrumite blocks and hits back unless he’s recovering from a charge: dodge as the ring closes round him, then hit him while he’s open. A dodge just in time slows everything down. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
@@ -276,9 +280,14 @@ export const PAGES = {
     about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
     keys: [
       { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
-      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch']] },
+      { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
+      { label: 'In the armour', rows: [['W A S D', 'Fly (it leans into its speed)'], ['Space', 'Climb'], ['Shift', 'Come down'], ['E', 'Step out, wherever you are']] },
+      { label: 'Anywhere', rows: [['O', 'Settings']] },
     ],
-    touch: [{ rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch']] }],
+    touch: [
+      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
+      { label: 'In the armour', rows: [['Stick', 'Fly'], ['Up', 'Hold to climb'], ['Down', 'Hold to come down'], ['Step out', 'Out of the armour']] },
+    ],
     tips: [
       ['Swinging', 'Let go on the upswing for a perfect release. Hold on with nothing to catch for web wings. Race the swing tour’s rings round the compound.'],
       ['The stones', 'Win a building’s game and its stone hangs over the door. The Space Stone opens a portal over the helipad: walk under it to Titan.'],
@@ -396,7 +405,7 @@ export const PAGES = {
   '/earth': {
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
-      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
+      { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
     ],
     touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster']] }],
     tips: [

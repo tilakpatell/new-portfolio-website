@@ -18,6 +18,7 @@ import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import './citadel.css';
+import GuideCue from '../../guide/GuideCue';
 
 // The Citadel of Ricks, the world: walk in through the portal as Rick
 // C-137 and play the five scenes there (Morty Day Care, Simple Rick's,
@@ -798,7 +799,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} onLeave={hud.talking === 'council' && hud.beat === 'hearing' ? leaveHearing : null} />}
 
