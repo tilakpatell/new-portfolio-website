@@ -62,7 +62,7 @@ The front door (`/`) is a map of the whole site as places in space. The **Univer
 | `R` / `1` `2` `3` | Change weapons: blaster, spread, heavy ordnance |
 | `T` / `Q` | Next / previous target |
 | `V` | Switch between the chase camera and the cockpit view |
-| `O` | Flight settings (steering, aim assist, inverted pitch and more) |
+| `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each |

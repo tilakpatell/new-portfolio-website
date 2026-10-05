@@ -126,7 +126,7 @@ import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './out
 import { readBuildWire, writeBuild } from './shipyard/build';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
-import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
@@ -197,6 +197,7 @@ const SHIP_NAMES = { rv: 'The RV', cruiser: 'The cruiser', xwing: 'The X-wing', 
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
 // how far apart, in three dimensions (a square root: Math.hypot makes garbage
 // of its arguments, and these run every frame)
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
@@ -2776,6 +2777,14 @@ export async function create(canvas, ctx) {
     } else {
       input = steering();
       input.tune = state.stats; // (what's fitted; the autopilot flies it as it came, so it stops where it means to)
+      // the nose follows the lock (targeting.js: a nudge toward the lead,
+      // as much as the lock-tracking setting allows, giving way to the
+      // stick); not in the whole-map view, where there's no lock to see
+      if (state.view !== 'map' && state.trackable && state.lead && state.lead.t <= AIM.life) {
+        const n = trackNudge(state.ship, state.lead, controls().track, input);
+        input.turn = clamp(input.turn + n.turn, -1, 1);
+        input.climb = clamp(input.climb + n.climb, -1, 1);
+      }
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
@@ -2859,6 +2868,10 @@ export async function create(canvas, ctx) {
     state.cycle = 0;
     const tgt = state.lock ? (cands.find((c) => c.id === state.lock.id) ?? null) : null;
     state.lockTarget = tgt;
+    // (the nose follows only a lock on a hunter, one picked by hand, or one
+    // being shot at: not a passing pilot or a part of the Citadel the guns
+    // happened on)
+    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
     // (hot: a shot now would bend all the way onto it)

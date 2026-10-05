@@ -18,11 +18,21 @@
 // - 'tail': the quick ones (an interceptor, Vader, a Rick) sometimes stay on
 //   you after a pass instead, sitting behind you and firing for a few
 //   seconds, till you turn on them or shake them off.
-// They fly like fighters: each turns its nose at its own rate and slows
-// into a hard turn (it arcs round; it doesn't stop and come back), banks
-// into it, keeps clear of the others in the pack, steers round planets,
-// moons, stations and stars, and can't be flown through one. A planet
-// between you is cover: they hold their fire, and a laser stops at it.
+// They fly like fighters: each turns its nose at its own rate (a little
+// quicker than yours at the fight's speed, less at its top: turnRateAt) and
+// slows into a hard turn (it arcs round; it doesn't stop and come back),
+// banks into it, keeps clear of the others in the pack, steers round
+// planets, moons, stations and stars, and can't be flown through one. A
+// planet between you is cover: they hold their fire, and a laser stops at
+// it.
+//
+// And they fly the fight at your pace (fightSpeed): in the fight (swinging
+// out, or on a run) one goes a little faster than you're going, never
+// under a floor of its own top speed and never over its top, so at cruise
+// a pass takes seconds and a turn-in can be followed, and when you boost
+// they open up with you (a TIE a shade slower than your boost, so you can
+// outrun one; an interceptor not). Far off they close flat out, so a pack
+// still arrives; after prey they fly at the floor.
 //
 // Everything about you is read in all three dimensions (your nose and the
 // way you're really going, climbing and diving too), so their lead is right
@@ -98,14 +108,45 @@ export const FIGHT = {
   slow: 0.5, // of its speed it gives up in the hardest turn
   flinch: 0.3, // how often one that's hit (and not down) breaks off its run
   far: 140, // solids further than this from you aren't looked at
+  match: 1.15, // of your speed, in the fight (and FIGHT.margin on top)
+  margin: 2.5, // map units a second over yours
+  floor: 0.42, // of its top speed, the least it flies the fight at
+  engageAt: 18, // inside this far from you it's wholly at the fight's speed
+  closeFrom: 34, // past this it closes flat out (between, in between)
+  stiff: 0.4, // of its nose rate gone at its top speed (as yours goes with speed)
+  hurry: 0.4, // swinging out, how much its station's distance counts toward closing flat out
 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const between = (rand, a, b) => a + rand() * (b - a);
 
-// How quick a kind's nose is, in radians a second (a little quicker than
-// yours, which is why you can't just out-turn one)
-export const turnRate = (type) => type.turn ?? 2.2 + type.accel / 12;
+// How quick a kind's nose is, in radians a second, at the fight's speed (a
+// little quicker than yours at cruise, which is why you can't just out-turn
+// one)
+export const turnRate = (type) => type.turn ?? 1.7 + type.accel / 16;
+
+// and at `speed`: all of it up to the floor of the fight's speed, FIGHT.stiff
+// of it gone by its top (the quick pass is a straight one)
+export function turnRateAt(type, speed) {
+  const lo = type.speed * FIGHT.floor;
+  const k = clamp((speed - lo) / Math.max(1e-6, type.speed - lo), 0, 1);
+  return turnRate(type) * (1 - FIGHT.stiff * k);
+}
+
+// The speed a kind flies the fight at, against you going at `yourSpeed`,
+// `gap` away: a little over yours (FIGHT.match of it and FIGHT.margin on
+// top), never under FIGHT.floor of its top and never over its top, out to
+// FIGHT.engageAt; flat out from FIGHT.closeFrom; in between, in between
+export function fightSpeed(type, yourSpeed, gap) {
+  const match = clamp(yourSpeed * FIGHT.match + FIGHT.margin, type.speed * FIGHT.floor, type.speed);
+  const k = clamp((gap - FIGHT.engageAt) / (FIGHT.closeFrom - FIGHT.engageAt), 0, 1);
+  return match + (type.speed - match) * k;
+}
+
+// How near a shot must pass a kind's middle to hit it (a touch more than
+// its size: the guns are forgiving). Here, and for the hunters after
+// another pilot (online/pilots.js), so a shot counts the same either way
+export const hitRadius = (type) => type.size * 0.9 + 0.12;
 
 // How many of a pack of `n` may be on an attack run at once
 export const slotsFor = (n) => (n >= 5 ? 3 : Math.min(n, 2));
@@ -574,6 +615,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         const cVel = onPrey ? zero : yourVel;
         let speed = type.speed;
         const s0 = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+        let fightPace = type.speed;
         if (s0 > 1e-4) {
           dir[0] = vel.x / s0;
           dir[1] = vel.y / s0;
@@ -593,11 +635,20 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           const tz = c.z - pos.z;
           gap = Math.sqrt(tx * tx + ty * ty + tz * tz);
           h.clock += dt;
+          // the fight's pace: at yours (pirates at their floor)
+          fightPace = fightSpeed(type, onPrey ? 0 : yourSpeed, gap);
+          speed = fightPace;
           if (h.mode === 'set') {
             want[0] = c.x + h.off[0] - pos.x;
             want[1] = c.y + h.off[1] - pos.y;
             want[2] = c.z + h.off[2] - pos.z;
             const d = Math.sqrt(want[0] * want[0] + want[1] * want[1] + want[2] * want[2]);
+            // (swinging out, it hurries the further its station is: it gets
+            // out ahead of you to turn in, and doesn't trail along behind)
+            if (!onPrey) {
+              fightPace = Math.max(fightPace, fightSpeed(type, yourSpeed, FIGHT.engageAt + d * FIGHT.hurry));
+              speed = fightPace;
+            }
             if (d < FIGHT.station || h.clock > FIGHT.setFor) {
               if (pack.attacking < pack.slots) {
                 // its turn: in it comes
@@ -658,7 +709,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               want[0] = c.x + h.off[0] - pos.x;
               want[1] = c.y + h.off[1] - pos.y;
               want[2] = c.z + h.off[2] - pos.z;
-              speed = type.speed;
+              speed = fightPace;
             }
           }
           const d = Math.sqrt(want[0] * want[0] + want[1] * want[1] + want[2] * want[2]);
@@ -689,7 +740,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         const bx0 = dir[0];
         const bz0 = dir[2];
         const off = Math.acos(clamp(dir[0] * wantDir[0] + dir[1] * wantDir[1] + dir[2] * wantDir[2], -1, 1));
-        turnToward(dir, wantDir, turnRate(type) * dt, h.side);
+        turnToward(dir, wantDir, turnRateAt(type, s0) * dt, h.side);
         const top = speed * (1 - FIGHT.slow * (off / Math.PI));
         const s1 = s0 + clamp(top - s0, -type.accel * dt, type.accel * dt);
         vel.x = dir[0] * s1;
@@ -784,7 +835,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       let first = Infinity;
       for (const o of live) {
         if (!o.alive || o.pack.gone) continue;
-        const k = sweptHit(from, to, o.prev, o.pos, o.type.size * 0.8 + 0.1);
+        const k = sweptHit(from, to, o.prev, o.pos, hitRadius(o.type));
         if (k !== null && k < first) {
           first = k;
           h = o;
