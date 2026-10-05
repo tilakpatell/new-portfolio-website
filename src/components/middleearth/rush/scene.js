@@ -49,6 +49,13 @@ function itemMaker(K) {
     gill: m(0xeedcc0, { roughness: 0.9 }),
     herb: m(0x3e8a34, { roughness: 0.8 }),
     soup: m(0x8a7438, { roughness: 0.45 }),
+    rock: m(0x5a5a62, { roughness: 0.95 }),
+    fleck: m(0xe8f0ff, { roughness: 0.2, metalness: 0.9, emissive: hot(0x8aa8ff, 0.35) }),
+    clay: m(0x8a6a50, { roughness: 0.9 }),
+    soot: m(0x22201e, { roughness: 1 }),
+    mithril: m(0xf2f6ff, { roughness: 0.12, metalness: 1, emissive: hot(0xa8c0ff, 0.45) }),
+    iron: m(0x3a3a40, { roughness: 0.5, metalness: 0.7 }),
+    haft: m(0x6a4a2a, { roughness: 0.8 }),
   };
   const mesh = (geo, mat, p = [0, 0, 0], r = [0, 0, 0], s = 1) => {
     const o = new THREE.Mesh(geo, mat);
@@ -77,6 +84,12 @@ function itemMaker(K) {
     stem: cyl(0.022, 0.028, 0.08, 8),
     sprig: cyl(0.006, 0.006, 0.2, 4),
     leaf: new THREE.SphereGeometry(0.03, 6, 4),
+    rock: new THREE.IcosahedronGeometry(0.075, 0),
+    pebble: new THREE.IcosahedronGeometry(0.03, 0),
+    tray: B(0.26, 0.05, 0.16),
+    bar: B(0.2, 0.05, 0.08),
+    blade: new THREE.CylinderGeometry(0.11, 0.11, 0.025, 12, 1, false, 0, Math.PI),
+    pole: cyl(0.014, 0.016, 0.34, 6),
   };
   const build = {
     mug(s) {
@@ -156,6 +169,33 @@ function itemMaker(K) {
       }
       return g;
     },
+    ore(s) {
+      const g = new THREE.Group();
+      if (s === 'chopped') for (let i = 0; i < 6; i++) g.add(mesh(G.pebble, i % 3 ? M.rock : M.fleck, [Math.cos(i * 1.1) * 0.06, 0.03 + (i % 2) * 0.02, Math.sin(i * 1.1) * 0.06], [i, i * 2, 0]));
+      else {
+        g.add(mesh(G.rock, M.rock, [0, 0.07, 0], [0.4, 0.8, 0]));
+        for (let i = 0; i < 3; i++) g.add(mesh(G.pebble, M.fleck, [Math.cos(i * 2.1) * 0.05, 0.1, Math.sin(i * 2.1) * 0.05], [i, 0, i], 0.5));
+      }
+      return g;
+    },
+    mould(s) {
+      const g = new THREE.Group();
+      g.add(mesh(G.tray, s === 'dirty' ? M.soot : M.clay, [0, 0.025, 0]));
+      if (s === 'mithril') g.add(mesh(G.bar, M.mithril, [0, 0.055, 0], [0, 0, 0], 0.95));
+      return g;
+    },
+    iron() {
+      const g = new THREE.Group();
+      g.add(mesh(G.bar, M.iron, [0, 0.03, 0]));
+      g.add(mesh(G.bar, M.iron, [0.02, 0.08, 0], [0, 0.4, 0]));
+      return g;
+    },
+    axe(s) {
+      const g = new THREE.Group();
+      g.add(mesh(G.pole, s === 'ruined' ? M.soot : M.haft, [0, 0.02, 0], [0, 0, Math.PI / 2]));
+      g.add(mesh(G.blade, s === 'ruined' ? M.soot : M.iron, [0.15, 0.02, 0], [Math.PI / 2, 0, -Math.PI / 2]));
+      return g;
+    },
     loaf(s) {
       const g = new THREE.Group();
       const o = mesh(G.loaf, s === 'burnt' ? M.burnt : M.loaf, [0, 0.07, 0]);
@@ -175,7 +215,7 @@ function itemMaker(K) {
     M,
     dispose() {
       for (const g of Object.values(G)) g.dispose();
-      for (const x of [M.dirty, M.ale, M.foam, M.stew, M.carrot, M.leaf, M.potato, M.flesh, M.dough, M.loaf, M.burnt, M.smear, M.silver, M.wine, M.cap, M.gill, M.herb, M.soup]) x.dispose();
+      for (const x of [M.dirty, M.ale, M.foam, M.stew, M.carrot, M.leaf, M.potato, M.flesh, M.dough, M.loaf, M.burnt, M.smear, M.silver, M.wine, M.cap, M.gill, M.herb, M.soup, M.rock, M.fleck, M.clay, M.soot, M.mithril, M.iron, M.haft]) x.dispose();
     },
   };
 }
@@ -221,12 +261,15 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const R = recipesOf(level);
   // the Pony's firelit kitchen, or (Rivendell) pale stone open to an evening sky
   const elvish = level.theme === 'rivendell';
+  // (or Moria: dark stone halls, lit by the forges and the molten rock)
+  const dwarf = level.theme === 'moria';
+  const pick3 = (inn, rv, mo) => (elvish ? rv : dwarf ? mo : inn);
 
-  scene.background = new THREE.Color(elvish ? 0x3a3448 : 0x1a120c);
-  scene.fog = new THREE.Fog(elvish ? 0x5a5060 : 0x1a120c, 18, 44);
-  const hemi = new THREE.HemisphereLight(elvish ? 0xfff0d8 : 0xffe2b8, elvish ? 0x5a5040 : 0x3a2414, elvish ? 1.45 : 1.25);
+  scene.background = new THREE.Color(pick3(0x1a120c, 0x3a3448, 0x07070a));
+  scene.fog = new THREE.Fog(pick3(0x1a120c, 0x5a5060, 0x0c0a0a), dwarf ? 14 : 18, dwarf ? 34 : 44);
+  const hemi = new THREE.HemisphereLight(pick3(0xffe2b8, 0xfff0d8, 0x9aa8c8), pick3(0x3a2414, 0x5a5040, 0x2a160c), pick3(1.25, 1.45, 0.75));
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(elvish ? 0xffd8a0 : 0xffe0b0, elvish ? 2.6 : 2.2);
+  const sun = new THREE.DirectionalLight(pick3(0xffe0b0, 0xffd8a0, 0xb8c8ff), pick3(2.2, 2.6, 1.0));
   sun.position.set(elvish ? -7 : -4, 10, elvish ? 4 : 7);
   sun.target.position.set(0, 0, 0);
   sun.castShadow = true;
@@ -241,7 +284,28 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const bk = parts();
   const wallH = 3.2;
   const lamps = [];
-  if (!elvish) {
+  // dark stone for Moria's halls
+  const deep = mats.ashlar.clone();
+  deep.color = new THREE.Color(0x5a5652);
+  if (dwarf) {
+    bk.add(deep, B(W + 2, 0.1, D + 2), { p: [0, -0.05, 0.5], uv: 0.4 });
+    const zb = Z(0) - 0.2;
+    bk.add(deep, B(W + 2, wallH + 1.2, 0.4), { p: [0, (wallH + 1.2) / 2, zb - 0.1], uv: 0.4 });
+    // great square pillars, banded, and a band of carving along the wall
+    for (let n = 0; n <= 4; n++) {
+      const x = -W / 2 + n * (W / 4);
+      bk.add(deep, B(0.62, wallH + 1.2, 0.62), { p: [x, (wallH + 1.2) / 2, zb + 0.2], uv: 1 });
+      for (const y of [0.5, 2.2, 3.6]) bk.add(mats.iron, B(0.7, 0.1, 0.7), { p: [x, y, zb + 0.2] });
+    }
+    bk.add(mats.brass, B(W + 2, 0.06, 0.04), { p: [0, 2.6, zb + 0.12] });
+    bk.add(mats.brass, B(W + 2, 0.06, 0.04), { p: [0, 2.9, zb + 0.12] });
+    for (const sx of [-1, 1]) {
+      bk.add(deep, B(0.4, wallH + 1.2, D + 1), { p: [sx * (W / 2 + 0.2), (wallH + 1.2) / 2, 0], uv: 0.4 });
+      for (let k = 0; k <= 3; k++) bk.add(deep, B(0.5, wallH + 1.2, 0.5), { p: [sx * (W / 2 + 0.1), (wallH + 1.2) / 2, -D / 2 + k * (D / 3)], uv: 1 });
+    }
+    // braziers on the pillars
+    for (let n = 0; n <= 4; n++) lamps.push(V(-W / 2 + n * (W / 4), 1.7, zb + 0.6));
+  } else if (!elvish) {
     // flagstones underfoot, so the counters stand out from the floor
     bk.add(mats.ashlar, B(W + 2, 0.1, D + 2), { p: [0, -0.05, 0.5], uv: 0.45 });
     bk.add(mats.plaster, B(W + 2, wallH, 0.2), { p: [0, wallH / 2, Z(0) - 0.1], uv: 0.5 });
@@ -303,12 +367,19 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       stations[`${i},${j}`] = st;
       const stone = c === 'P' || c === 'O';
       // the counter
-      bk.add(stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
-      bk.add(c === 'S' ? darkWood : stone || elvish ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
+      bk.add(dwarf ? deep : stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
+      bk.add(c === 'S' ? darkWood : dwarf ? mats.ashlar : stone || elvish ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
       // a dark lip round the top, so each counter reads as one
       bk.add(darkWood, B(1.02, 0.05, 1.02), { p: [x, TOP - 0.085, z], uv: 1 });
       bk.at([x, TOP, z], f.turn, () => {
-        if (c === 'B') {
+        if (c === 'B' && dwarf) {
+          // an anvil to crush the ore on, and a hammer
+          bk.add(mats.iron, B(0.5, 0.12, 0.24), { p: [0, 0.2, -0.02] });
+          bk.add(mats.iron, B(0.22, 0.16, 0.16), { p: [0, 0.07, -0.02] });
+          bk.add(mats.iron, cyl(0.08, 0.02, 0.18, 8), { p: [0.3, 0.2, -0.02], r: [0, 0, Math.PI / 2] });
+          bk.add(mats.timber, cyl(0.02, 0.02, 0.32, 6), { p: [0.05, 0.3, 0.22], r: [0, 0.3, Math.PI / 2] });
+          bk.add(mats.iron, B(0.08, 0.1, 0.1), { p: [0.2, 0.3, 0.25] });
+        } else if (c === 'B') {
           bk.add(board, B(0.7, 0.05, 0.5), { p: [0, 0.025, -0.02], uv: 1 });
           bk.add(mats.steel, B(0.26, 0.012, 0.05), { p: [0.18, 0.06, 0.18], r: [0, 0.4, 0] });
           bk.add(mats.timber, B(0.12, 0.025, 0.035), { p: [0.02, 0.06, 0.25], r: [0, 0.4, 0] });
@@ -330,6 +401,9 @@ export function createRushScene(canvas, level, { onLost } = {}) {
           bk.add(mats.brass, cyl(0.025, 0.025, 0.16, 8), { p: [0, 0.34, 0.22], r: [Math.PI / 2, 0, 0] });
           bk.add(mats.brass, cyl(0.022, 0.016, 0.1, 8), { p: [0, 0.29, 0.3] });
           bk.add(mats.brass, B(0.02, 0.12, 0.03), { p: [0, 0.43, 0.24] });
+        } else if (c === 'W' && dwarf) {
+          // a quenching trough
+          bk.add(deep, B(0.86, 0.28, 0.6), { p: [0, 0.14, 0], uv: 1 });
         } else if (c === 'W' && elvish) {
           // a stone basin
           bk.add(mats.dressed, lathe([[0.3, 0], [0.44, 0.24], [0.46, 0.28], [0.41, 0.28], [0.39, 0.25], [0.27, 0.04], [0, 0.04]], 18));
@@ -384,15 +458,16 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   // the stream: water flowing down its channel, stone kerbs along its banks,
   // and a bridge wherever the floor crosses it
   let waterTex = null;
+  const wet = (i, j) => at(i, j) === '~';
   if (rows.some((r) => r.includes('~'))) {
     const cv = document.createElement('canvas');
     cv.width = 64;
     cv.height = 256;
     const g = cv.getContext('2d');
-    g.fillStyle = '#3e6a78';
+    g.fillStyle = dwarf ? '#c83a08' : '#3e6a78';
     g.fillRect(0, 0, 64, 256);
     for (let n = 0; n < 40; n++) {
-      g.strokeStyle = `rgba(200, 235, 245, ${0.08 + Math.random() * 0.18})`;
+      g.strokeStyle = dwarf ? `rgba(${n % 3 ? '40, 16, 8' : '255, 220, 120'}, ${0.25 + Math.random() * 0.4})` : `rgba(200, 235, 245, ${0.08 + Math.random() * 0.18})`;
       g.lineWidth = 1 + Math.random() * 2;
       const x = Math.random() * 64;
       const y = Math.random() * 256;
@@ -404,8 +479,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     waterTex = new THREE.CanvasTexture(cv);
     waterTex.colorSpace = THREE.SRGBColorSpace;
     waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
-    const water = new THREE.MeshStandardMaterial({ map: waterTex, color: 0xbfe0ea, roughness: 0.12, metalness: 0.15, emissive: 0x0a2a36, emissiveIntensity: 0.6 });
-    const kerb = elvish ? mats.dressed : mats.ashlar;
+    const water = dwarf ? new THREE.MeshBasicMaterial({ map: waterTex, color: hot(0xffffff, 1.6) }) : new THREE.MeshStandardMaterial({ map: waterTex, color: 0xbfe0ea, roughness: 0.12, metalness: 0.15, emissive: 0x0a2a36, emissiveIntensity: 0.6 });
+    const kerb = elvish ? mats.dressed : dwarf ? deep : mats.ashlar;
     for (let j = 0; j < D; j++)
       for (let i = 0; i < W; i++) {
         const c = at(i, j);
@@ -414,10 +489,12 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         if (c === '~') {
           bk.add(water, new THREE.PlaneGeometry(1, 1), { p: [x, 0.02, z], r: [-Math.PI / 2, 0, 0] });
           for (const sx of [-1, 1]) if (at(i + sx, j) === '.') bk.add(kerb, B(0.08, 0.14, 1), { p: [x + sx * 0.46, 0.07, z], uv: 1 });
-        } else if (c === '.' && (at(i, j - 1) === '~' || at(i, j + 1) === '~')) {
-          // a bridge over the stream: a slab, and low walls along the water
+          for (const sz of [-1, 1]) if (at(i, j + sz) === '.') bk.add(kerb, B(1, 0.14, 0.08), { p: [x, 0.07, z + sz * 0.46], uv: 1 });
+        } else if (c === '.' && (wet(i, j - 1) || wet(i, j + 1) || wet(i - 1, j) || wet(i + 1, j))) {
+          // a bridge over it: a slab, and low walls along the water's sides
           bk.add(kerb, B(1, 0.08, 1), { p: [x, 0.04, z], uv: 1 });
-          for (const sz of [-1, 1]) if (at(i, j + sz) === '~') bk.add(kerb, B(1, 0.28, 0.1), { p: [x, 0.14, z + sz * 0.46], uv: 1 });
+          for (const sx of [-1, 1]) if (wet(i + sx, j)) bk.add(kerb, B(0.1, 0.28, 1), { p: [x + sx * 0.46, 0.14, z], uv: 1 });
+          for (const sz of [-1, 1]) if (wet(i, j + sz)) bk.add(kerb, B(1, 0.28, 0.1), { p: [x, 0.14, z + sz * 0.46], uv: 1 });
         }
       }
   }
@@ -425,6 +502,30 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   room.traverse((o) => {
     if (o.isMesh) o.receiveShadow = true;
   });
+
+  // Moria: braziers on the pillars, and the molten channel's glow
+  if (dwarf) {
+    const flame = new THREE.MeshBasicMaterial({ color: hot(0xff8a2a, 3) });
+    const flameGeo = new THREE.SphereGeometry(0.12, 8, 6);
+    const bowlGeo = cyl(0.2, 0.1, 0.16, 10);
+    for (const at2 of lamps) {
+      const b = new THREE.Mesh(bowlGeo, mats.iron);
+      b.position.copy(at2);
+      const f = new THREE.Mesh(flameGeo, flame);
+      f.position.copy(at2).add(V(0, 0.14, 0));
+      f.scale.set(1, 1.5, 1);
+      room.add(b, f);
+    }
+    const lava = [];
+    for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) if (at(i, j) === '~') lava.push(V(X(i + 0.5), 0.4, Z(j + 0.5)));
+    for (const k of [0.25, 0.75]) {
+      const p = lava[Math.floor(lava.length * k)];
+      if (!p) continue;
+      const l = new THREE.PointLight(0xff5a1a, 4, 8, 1.4);
+      l.position.copy(p);
+      scene.add(l);
+    }
+  }
 
   // Rivendell: the valley's evening sky through the arches, and lamps
   if (elvish) {
@@ -483,7 +584,9 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   // ── the stations' changing parts ──
   const potTops = {};
   const potMat = (hex) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.5 });
-  const POT = { empty: potMat(0x3a3a3a), part: potMat(0x8a7a5a), cooking: potMat(0x8a5a2a), done: potMat(0x7a4a22), burnt: potMat(0x141010) };
+  const POT = dwarf
+    ? { empty: potMat(0x2a2a2a), part: potMat(0x6a6a72), cooking: new THREE.MeshBasicMaterial({ color: hot(0xff6a1a, 2) }), done: new THREE.MeshStandardMaterial({ color: 0xf2f6ff, metalness: 1, roughness: 0.1, emissive: hot(0xa8c0ff, 0.6) }), burnt: potMat(0x141010) }
+    : { empty: potMat(0x3a3a3a), part: potMat(0x8a7a5a), cooking: potMat(0x8a5a2a), done: potMat(0x7a4a22), burnt: potMat(0x141010) };
   const water = new THREE.MeshStandardMaterial({ color: 0x5a7a8a, roughness: 0.2, metalness: 0.1 });
   for (const [k, st] of Object.entries(stations)) {
     if (st.c === 'P') {

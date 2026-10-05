@@ -32,6 +32,10 @@ export const KINDS = {
   goblet: ['clean', 'dirty', 'wine'],
   mushroom: ['raw', 'chopped'],
   herb: ['raw', 'chopped'],
+  ore: ['raw', 'chopped'], // (crushed, at the forge)
+  mould: ['clean', 'dirty', 'mithril'],
+  iron: ['raw'],
+  axe: ['forged', 'ruined'],
 };
 const CONTAINER = (k) => KINDS[k]?.includes('dirty');
 const CHOPS = (k) => KINDS[k]?.includes('chopped');
@@ -405,13 +409,16 @@ export function stepRush(s, dt, grabs = []) {
       }
     } else if (c === 'O' && sp.item) {
       sp.prog += dt;
+      // (what the oven makes is done, then spoilt: a loaf baked then burnt,
+      // an axe forged then ruined)
+      const [done, spoilt] = KINDS[R.oven.makes];
       if (sp.item.k === R.oven.takes && sp.prog >= T.bake) {
-        sp.item = { k: R.oven.makes, s: 'baked' };
+        sp.item = { k: R.oven.makes, s: done };
         sp.prog = 0;
         ev.push({ type: 'baked', at });
-      } else if (sp.item.k === R.oven.makes && sp.item.s === 'baked' && sp.prog >= T.char) {
-        sp.item.s = 'burnt';
-        ev.push({ type: 'burnt', at, k: 'loaf' });
+      } else if (sp.item.k === R.oven.makes && sp.item.s === done && sp.prog >= T.char) {
+        sp.item.s = spoilt;
+        ev.push({ type: 'burnt', at, k: R.oven.makes });
       }
     } else if (c === 'T' && sp.item?.k === R.tap.into) {
       sp.prog += dt;
