@@ -161,21 +161,47 @@ const BUILD = { xwing: buildXwing, falcon: buildFalcon, cruiser, rv };
 // X-wing's stripes, the cruiser's lights, the Falcon's old red panels), or
 // the darkness (the Falcon's darker plates and machinery, the RV's brown
 // stripe and trim), and below what it's glass or a vent and left alone.
-// The RV's and the cruiser's are for their models; `built` is for the
-// shapes that stand in for them (and the parts bolted on: modules.js).
+// FIT is for each ship's model; HULL_FIT for the X-wing and the Falcon built
+// in code (hulls.js), which stand in while their models load; `built` for
+// the RV's and the cruiser's stand-ins (and the parts bolted on: modules.js).
 const FIT = {
   built: { mid: 0.4, marks: [0.5, 0.7], keep: 0.04 },
-  xwing: { mid: 0.58, marks: [0.45, 0.65], keep: 0.03 },
-  falcon: { mid: 0.55, marks: [0.45, 0.65], dark: [0.14, 0.22, 1], keep: 0.03 },
+  xwing: { mid: 0.36, marks: [0.62, 0.76], keep: 0.04 },
+  falcon: { mid: 0.12, marks: [0.6, 0.7], dark: [0.03, 0.05, 0.35], keep: 0.015 },
   rv: { mid: 0.32, marks: [0.58, 0.7], dark: [0.06, 0.1, 0.7], keep: 0.03 },
   cruiser: { mid: 0.28, marks: [0.5, 0.7], keep: 0.05 },
 };
-const WHOLE = new Set(['xwing', 'falcon']); // (built whole: hulls.js)
+const HULL_FIT = {
+  xwing: { mid: 0.58, marks: [0.45, 0.65], keep: 0.03 },
+  falcon: { mid: 0.55, marks: [0.45, 0.65], dark: [0.14, 0.22, 1], keep: 0.03 },
+};
+// which way each model's nose points, as a turn about y that brings it to −z
+const NOSE = { xwing: Math.PI, falcon: Math.PI };
+// the materials a model's hull is made of, which take a paint job (its
+// cockpit, glass, lights and engines' glow are left as they come)
+const PAINTABLE = { xwing: /^xwing(Fuselage|Engines|Nurnies|Nose)$/, falcon: /^Tex_0095_[12]\.dds$/ };
+// a model's own engine glow, which takes over from the stand-in's (its
+// emissive maps too, as the Falcon's sublight band is): lit with the throttle
+const LIGHTS = { xwing: /EngineGlow/ };
+// where a model sits once it's centred (BUILT units): the Falcon's saucer
+// on the stand-in's, so the parts and the exhaust are where they should be
+const SHIFT = { falcon: [0, 0, -0.047] };
+// how its paint takes the light: these come glossier than painted metal
+// should, from their own maps, so those go
+const FINISH = { xwing: { metalnessMap: null, roughnessMap: null, metalness: 0.15, roughness: 0.72 }, falcon: { metalness: 0.15, roughness: 1 } };
+// a model's hull in its finish (before its shaders are made: a map gone is a different shader)
+const finish = (kind, model) =>
+  FINISH[kind] &&
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (PAINTABLE[kind]?.test(m.name) && !m.userData.finished) Object.assign(m, FINISH[kind], { needsUpdate: true }).userData.finished = true;
+  });
 
 // the models that take over from the built ships, when they load (the
-// cruiser is built by the C-137 page's own code instead; see scene.js; the
-// X-wing and the Falcon are built whole, and need none)
-export const SHIP_MODELS = { rv: '/models/universe/rv-wings.glb' };
+// cruiser is built by the C-137 page's own code instead; see scene.js): the
+// X-wing and the Falcon are others' (Sketchfab, CC BY: scripts/sketchfab-batch.mjs,
+// credited in data/modelCredits.json), and their stand-ins are built whole (hulls.js)
+export const SHIP_MODELS = { xwing: '/models/sketchfab/xwing-hd.glb', falcon: '/models/sketchfab/falcon-hd.glb', rv: '/models/universe/rv-wings.glb' };
 
 export function buildShip(kind, T = {}) {
   const ship = (BUILD[kind] ?? cruiser)(T);
@@ -187,14 +213,21 @@ export function buildShip(kind, T = {}) {
   let mounted = null;
   let ownGlow = false;
   const livery = createLivery();
-  livery.apply(ship.group, WHOLE.has(kind) ? FIT[kind] : FIT.built);
+  livery.apply(ship.group, HULL_FIT[kind] ?? FIT.built);
   for (const g of ship.glow) g.own = g.color.clone();
   let throttle = 0;
   let coat = null; // the paint it wears
   let modules = null; // the parts bolted on
   let fitted = null; // and the loadout they're from
+  let lights = []; // the model's own engine glow, once it's mounted
+  let parked = false;
   const glow = () => {
-    for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.5 + 2.8 * throttle); // past 1 at speed, so it blooms
+    const k = parked ? 0.15 : 0.5 + 2.8 * throttle; // (past 1 at speed, so it blooms)
+    for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(k);
+    for (const m of lights) {
+      m.emissive.set(coat?.glow ?? (m.emissiveMap ? '#ffffff' : ship.glow[0]?.own ?? '#ffffff'));
+      m.emissiveIntensity = m.emissiveMap ? k * 0.9 : k;
+    }
   };
   return {
     update(t) {
@@ -245,11 +278,16 @@ export function buildShip(kind, T = {}) {
     // shaders are made, so mounting it doesn't stall); `clone` when its
     // materials are shared with others
     dress(model, { clone = false } = {}) {
-      return model ? livery.apply(model, FIT[kind] ?? FIT.built, { clone }) : model;
+      if (!model) return model;
+      livery.apply(model, FIT[kind] ?? FIT.built, { clone, only: PAINTABLE[kind] });
+      finish(kind, model);
+      return model;
     },
     // parked on a planet (true): the engines' glow goes out
     park(on) {
+      parked = on;
       if (ship.glowMesh) ship.glowMesh.visible = !on && !ownGlow;
+      glow();
     },
     // the ship's model, when it comes: sized to the stand-in, which goes.
     // `extra` is what a built model brings: update(t) each frame, dispose(),
@@ -257,7 +295,8 @@ export function buildShip(kind, T = {}) {
     mount(model, extra = {}) {
       if (!ship.stand || !model) return false;
       mounted = extra;
-      livery.apply(model, FIT[kind] ?? FIT.built); // (if it wasn't dressed already)
+      livery.apply(model, FIT[kind] ?? FIT.built, { only: PAINTABLE[kind] }); // (if it wasn't dressed already)
+      finish(kind, model);
       if (coat) extra.tint?.(coat.glow);
       const box = new THREE.Box3().setFromObject(model);
       const dims = box.getSize(new THREE.Vector3());
@@ -265,29 +304,33 @@ export function buildShip(kind, T = {}) {
       const holder = new THREE.Group();
       holder.add(model);
       holder.scale.setScalar(BUILT / Math.max(dims.x, dims.z, 1e-6));
-      holder.rotation.y = ship.nose ?? 0; // turned so its nose points along −z
+      holder.rotation.y = NOSE[kind] ?? ship.nose ?? 0; // turned so its nose points along −z
       // painted metal: a little of the space round it reflects in the hull,
       // its maps sharp at a grazing angle (the chase camera's)
       model.traverse((o) => {
         if (!o.isMesh) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-          if ('metalness' in m) m.metalness = 0.22;
-          if ('roughness' in m) m.roughness = Math.min(Math.max(m.roughness ?? 1, 0.42), 0.68);
+          if ('metalness' in m && !m.userData.finished) m.metalness = 0.22; // (unless it has its own finish)
+          if ('roughness' in m && !m.userData.finished) m.roughness = Math.min(Math.max(m.roughness ?? 1, 0.42), 0.68);
           if ('envMapIntensity' in m) m.envMapIntensity = 0.9;
           for (const tex of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap]) if (tex) tex.anisotropy = 8;
+          if (m.emissive && (m.emissiveMap || LIGHTS[kind]?.test(m.name)) && !lights.includes(m)) lights.push(m);
         }
       });
+      if (SHIFT[kind]) holder.position.set(...SHIFT[kind]);
+      if (lights.length) extra = { ...extra, ownGlow: true };
       ship.stand.visible = false;
       ship.group.add(holder);
       ownGlow = Boolean(extra.ownGlow);
       if (extra.ownGlow && ship.glowMesh) ship.glowMesh.visible = false;
       // the engines' glow at its tail, where the ship has one of its own
       // (its length runs along x if it was turned a quarter)
-      if (ship.glowMesh) {
+      if (ship.glowMesh && !ship.glowFixed) {
         const along = Math.abs(Math.sin(holder.rotation.y)) > 0.5 ? dims.x : dims.z;
         ship.glowMesh.position.z = (along / Math.max(dims.x, dims.z)) * (BUILT / 2) + 0.004;
         if (ship.glowOnModel) ship.glowMesh.scale.set(...ship.glowOnModel, 1);
       }
+      glow();
       return true;
     },
   };
