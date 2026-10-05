@@ -16,7 +16,8 @@
 //
 // The wire, by action:
 //   hi    { n: name, k: ship kind or null, p: its paint job, o: its parts
-//           (outfit.js), c: kills, w: where on the site }  on joining, and on any change
+//           (outfit.js), b: its garage build (shipyard/build.js's ids) or
+//           none, c: kills, w: where on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //         (flags: hidden, boosting, and safe: just back, your hits don't count)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
@@ -42,6 +43,7 @@
 import { parseShip } from '../crews';
 import { FOOT, METRE } from '../foot';
 import { readOutfit } from '../outfit';
+import { readBuildWire } from '../shipyard/build';
 import { byId } from '../universes';
 import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
@@ -77,13 +79,14 @@ export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// a hello: { name, kind, loadout, kills, where }, or null if it isn't one
-// (a loadout is only ever outfit.js's ids, never a colour or a shape: the
-// factory's for anything else, or from a pilot whose site is older than
-// the hangar)
+// a hello: { name, kind, loadout, build, kills, where }, or null if it
+// isn't one (a loadout is only ever outfit.js's ids, never a colour or a
+// shape: the factory's for anything else, or from a pilot whose site is
+// older than the hangar; a build only ever shipyard/parts.js's modules, or
+// null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
 }
 
 export const writeCursor = (x, y, touch = false) => [Math.round(x), Math.round(y), touch ? 1 : 0];

@@ -27,7 +27,7 @@ import { sharpen } from '../../lib/three/textures';
 
 // geometries placed by [geometry, position, rotation, scale], merged into one
 // (normals kept: flat-shaded parts stay flat, lathed ones smooth)
-function merge(list) {
+export function merge(list) {
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const geos = list.map(([geo, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1, 1, 1]]) => {
@@ -43,7 +43,7 @@ function merge(list) {
   return merged;
 }
 // a geometry whose triangles are wound the other way (for a mirrored copy)
-function flipped(g) {
+export function flipped(g) {
   const geo = g.index ? g.toNonIndexed() : g;
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i += 3) {
@@ -112,7 +112,7 @@ export function loft(sections, { top = 1, bottom = 1, uvAlong = 1 } = {}) {
         [ua[i + 1], vb],
         [ua[i], vb],
       ];
-      for (const k of [0, 2, 1, 0, 3, 2]) {
+      for (const k of [0, 1, 2, 0, 2, 3]) {
         pos.push(...p[k]);
         uv.push(...t[k]);
       }
@@ -166,7 +166,7 @@ export function turned(profile, seg = 32, { start = 0, length = Math.PI * 2 } = 
 
 // a plate from a 2D outline ([x, z]: across, and along the ship), `t` thick,
 // its edges bevelled
-function plate(points, t, bevel = t * 0.45, uvScale = 6) {
+export function plate(points, t, bevel = t * 0.45, uvScale = 6) {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
   const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1e-4, t - bevel * 2), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 2, curveSegments: 4 });
   g.translate(0, 0, -(t - bevel * 2) / 2);
@@ -180,7 +180,7 @@ const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const LAY = [Math.PI / 2, 0, 0]; // (a cylinder along z)
 
 // a tube from a to b, radius r0 at a and r1 at b: [geometry, position, rotation]
-function strut(a, b, r0, r1, seg = 20) {
+export function strut(a, b, r0, r1, seg = 20) {
   const A = new THREE.Vector3(...a);
   const B = new THREE.Vector3(...b);
   const d = B.clone().sub(A);
@@ -196,7 +196,7 @@ function strut(a, b, r0, r1, seg = 20) {
 // canvas, with the lines as grooves in a normal map and the grime rougher:
 // { map, normalMap, roughnessMap }, shared by every ship of a kind.
 const skins = new Map();
-function panelMaps(kind, { base, seed, cols, rows, grime = 0.25, accent = null }) {
+export function panelMaps(kind, { base, seed, cols, rows, grime = 0.25, accent = null }) {
   if (skins.has(kind)) return skins.get(kind);
   const S = 512;
   const r = rng(seed);
@@ -292,7 +292,7 @@ function panelMaps(kind, { base, seed, cols, rows, grime = 0.25, accent = null }
 }
 
 // The materials a ship's built from (its own copies: the paint goes on per ship)
-function materials(maps) {
+export function materials(maps) {
   const hull = new THREE.MeshStandardMaterial({ color: '#ffffff', map: maps.map, normalMap: maps.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughnessMap: maps.roughnessMap, roughness: 0.62, metalness: 0.18 });
   const panel = hull.clone();
   panel.color.set('#9c9ea3'); // (the darker plates: shaded, and a paint's shade darker)
@@ -303,7 +303,7 @@ function materials(maps) {
   for (const m of [metal, glass, dark]) m.userData.keep = true;
   return { hull, panel, trim, dark, metal, glass };
 }
-const glowMat = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, side: THREE.DoubleSide });
+export const glowMat = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, side: THREE.DoubleSide });
 const mesh = (geo, mat, name) => {
   const m = new THREE.Mesh(geo, mat);
   if (name) m.name = name;

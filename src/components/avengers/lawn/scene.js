@@ -40,7 +40,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   const small = engine.small;
 
   const sets = ['grass', 'sidewalk', 'concrete-wall', 'leather', 'carbon', 'brushed-steel', 'rock'];
-  await preload({ sets, skies: ['storm'], models: ['lamp', 'rocks', 'shrub', 'grass-clump'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  await preload({ sets, skies: ['storm'], models: ['lamp', 'rocks', 'shrub', 'grass-clump'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small, renderer: engine.renderer });
 
   // night, under a low cloud deck lit by the moon behind it; moonlight from
   // the right and behind, cool; the fog the colour of the night

@@ -160,7 +160,14 @@
 .universe-tuck:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
 .universe-tuck:focus-visible,
 .universe-untuck:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-.universe-panel[data-tucked] { overflow: hidden; padding: 0; }
+.universe-panel[data-tucked] { display: flex; overflow: hidden; padding: 0; }
+/* the guide's "?", beside the hide button (the corner one would sit over the panel) */
+.universe-guide { margin: -0.55rem 0 0.25rem 0.25rem; }
+.universe-guide-tucked { display: grid; flex: none; place-items: center; width: 48px; border-left: 1px solid var(--border); color: var(--muted); transition: color 0.15s, background-color 0.15s; }
+.universe-guide-tucked:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
+.universe-guide-tucked:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+body:has(.universe-panel) .guide-btn { display: none; }
+body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); right: auto; bottom: auto; left: 50%; translate: -50% 0; }
 .universe-untuck {
   display: flex;
   align-items: center;
@@ -465,6 +472,16 @@
   will-change: transform;
 }
 .universe-hud > span[data-on] { opacity: 1; }
+/* scrambled: a flare's shockwave through the ship (a jitter, and a flicker) */
+.universe-hud[data-static] > span[data-on] { animation: universe-static 90ms steps(2) infinite; }
+@keyframes universe-static {
+  0% { opacity: 1; margin-left: 0; }
+  50% { opacity: 0.35; margin-left: 3px; }
+  100% { opacity: 0.8; margin-left: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-hud[data-static] > span[data-on] { animation: none; opacity: 0.6; }
+}
 .universe-reticle {
   width: 24px;
   height: 24px;
@@ -1048,11 +1065,11 @@
 .universe-hangar-cells i { flex: 1; height: 8px; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
 .universe-hangar-cells i[data-on] { background: var(--engine, #e8eefc); box-shadow: 0 0 6px color-mix(in srgb, var(--engine, #e8eefc) 60%, transparent); }
 .universe-hangar-power[data-full] .universe-hangar-num { color: #ffb35c; }
-.universe-hangar-slots { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-hangar-slots { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
 .universe-hangar-slots button { min-height: 32px; color: var(--muted); font-size: 0.76rem; transition: background-color 0.15s, color 0.15s; }
-.universe-hangar-slots button:nth-child(3n + 2),
-.universe-hangar-slots button:nth-child(3n + 3) { border-left: 1px solid rgb(255 255 255 / 0.2); }
-.universe-hangar-slots button:nth-child(n + 4) { border-top: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:not(:nth-child(4n + 1)) { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:nth-child(n + 5) { border-top: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:disabled { opacity: 0.4; }
 .universe-hangar-slots button:hover { color: var(--text); }
 .universe-hangar-slots button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
 .universe-hangar-paints { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
@@ -1093,6 +1110,35 @@
 .universe-hangar-paint:focus-visible,
 .universe-hangar-part:focus-visible,
 .universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+/* the shipyard: the hull switch, the roll, the code, a row of modules a slot */
+.universe-yard { display: grid; gap: 0.6rem; }
+.universe-yard-hull { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-yard-hull button { min-height: 34px; color: var(--muted); font-size: 0.8rem; font-weight: 500; transition: background-color 0.15s, color 0.15s; }
+.universe-yard-hull button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-yard-hull button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
+.universe-yard-blurb { margin: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.universe-yard-tools { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; }
+.universe-yard-roll { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: 0 0.85rem; border: 1px solid var(--engine, #e8eefc); border-radius: 8px; color: var(--text); font-size: 0.8rem; font-weight: 600; background: color-mix(in srgb, var(--engine, #e8eefc) 16%, transparent); transition: background-color 0.15s; }
+.universe-yard-roll:hover { background: color-mix(in srgb, var(--engine, #e8eefc) 28%, transparent); }
+.universe-yard-code { min-height: 34px; padding: 0 0.7rem; border: 1px dashed rgb(255 255 255 / 0.28); border-radius: 8px; color: var(--muted); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.04em; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.universe-yard-code:hover { color: var(--text); border-color: rgb(255 255 255 / 0.45); }
+.universe-yard-paste { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.universe-yard-paste input { min-width: 0; min-height: 32px; padding: 0 0.6rem; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; background: rgb(255 255 255 / 0.04); color: var(--text); font-family: var(--font-mono); font-size: 0.74rem; }
+.universe-yard-paste input:focus { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-yard-paste button { min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; color: var(--text); font-size: 0.76rem; }
+.universe-yard-paste button:disabled { opacity: 0.4; }
+.universe-yard-slot { display: grid; gap: 0.3rem; }
+.universe-yard-slot h3 { margin: 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.universe-yard-mods { display: flex; flex-wrap: wrap; gap: 5px; }
+.universe-yard-mod { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 30px; padding: 0 0.65rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--text); font-size: 0.76rem; transition: border-color 0.15s, background-color 0.15s; }
+.universe-yard-mod:hover { border-color: rgb(255 255 255 / 0.36); background: rgb(255 255 255 / 0.05); }
+.universe-yard-mod[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 18%, transparent); }
+.universe-yard-mod[aria-disabled] { opacity: 0.55; }
+.universe-yard-hull button:focus-visible,
+.universe-yard-roll:focus-visible,
+.universe-yard-code:focus-visible,
+.universe-yard-mod:focus-visible,
+.universe-yard-paste button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 .universe-hangar-note { min-height: 2.6em; margin: 0; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
 .universe-hangar-stats { display: grid; gap: 0.35rem; margin: 0; }
 .universe-hangar-stat { display: grid; grid-template-columns: 8.2rem 1fr; align-items: center; gap: 0.6rem; }

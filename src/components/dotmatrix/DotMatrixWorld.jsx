@@ -9,7 +9,7 @@ import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
 import { PALETTES, PALETTE_ORDER } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
-import { CARTRIDGES, COINS, SIGNS, cameraMove, nearAction, newGame, progress, step, talk, walkerAt, WALKERS, warp } from './rules';
+import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import './dotmatrix.css';
 
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
@@ -44,6 +44,10 @@ const CODES = {
   KeyQ: 'turnL',
   KeyE: 'turnR',
   KeyM: 'menu',
+  Equal: 'zoomIn',
+  NumpadAdd: 'zoomIn',
+  Minus: 'zoomOut',
+  NumpadSubtract: 'zoomOut',
 };
 
 function Heart({ full }) {
@@ -73,7 +77,9 @@ function World({ gl, setGl }) {
   const api = useRef(null);
   const sim = useRef(null);
   const { unlock } = useAchievements();
-  if (!sim.current) sim.current = { g: newGame({ found: readFound() }), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, touchA: false, yaw: 0, yawTo: 0, dist: 12.5, padBefore: {}, moved: false, warp: null, music: null, started: false };
+  if (!sim.current) sim.current = { g: newGame({ found: readFound() }), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, touchA: false, yaw: 0, yawTo: 0, dist: ZOOM.start, distTo: ZOOM.start, pinch: null, padBefore: {}, moved: false, warp: null, music: null, started: false };
+  // what the scene draws from: the game, and where the camera stands
+  const view = () => ({ game: sim.current.g, yaw: sim.current.yaw, dist: sim.current.dist, pitch: pitchFor(sim.current.dist) });
   const [palette, setPalette] = useState(() => (PALETTES[local.get(PALETTE, 'dmg')] ? local.get(PALETTE, 'dmg') : 'dmg'));
   const [musicOn, setMusicOn] = useState(() => local.get(MUSIC, true) !== false);
   const [hud, setHud] = useState(() => ({ hearts: 3, coins: 0, found: sim.current.g.found.size, near: null }));
@@ -136,7 +142,7 @@ function World({ gl, setGl }) {
         api.current = a;
         a.setPalette(palette);
         fit();
-        await a.warm({ game: sim.current.g, yaw: sim.current.yaw, dist: sim.current.dist });
+        await a.warm(view());
         if (dead) return undefined;
         if (import.meta.env.DEV) window.__DMG__ = { api: a, sim: sim.current }; // for the QA scripts
         setGl('on');
@@ -160,6 +166,20 @@ function World({ gl, setGl }) {
     // (the palette is applied by its own effect below)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setGl]);
+
+  // the wheel zooms (a native listener: React's is passive, and the page
+  // must not scroll under it)
+  useEffect(() => {
+    const c = canvas.current;
+    if (!c) return undefined;
+    const onWheel = (e) => {
+      if (!api.current) return;
+      e.preventDefault();
+      sim.current.distTo = zoomTo(sim.current.distTo, Math.exp(Math.max(-120, Math.min(120, e.deltaY)) * 0.0022));
+    };
+    c.addEventListener('wheel', onWheel, { passive: false });
+    return () => c.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     api.current?.setPalette(palette);
@@ -238,22 +258,45 @@ function World({ gl, setGl }) {
     return () => window.removeEventListener('keydown', down);
   }, [playing]);
 
-  // drag the world to turn the camera
+  // drag the world to turn the camera; two fingers pinch to zoom
   const drag = useRef(null);
+  const fingers = useRef(new Map());
+  const spread = () => {
+    const [a, b] = [...fingers.current.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   const onPointerDown = (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     capturePointer(e);
-    drag.current = { x: e.clientX, id: e.pointerId };
+    fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.current.size === 2) {
+      sim.current.pinch = spread();
+      drag.current = null;
+    } else drag.current = { x: e.clientX, id: e.pointerId };
     audioContext();
     if (!sim.current.started) startMusic();
   };
   const onPointerMove = (e) => {
+    const f = fingers.current.get(e.pointerId);
+    if (f) {
+      f.x = e.clientX;
+      f.y = e.clientY;
+    }
+    const s = sim.current;
+    if (fingers.current.size >= 2 && s.pinch) {
+      const now = spread();
+      if (now > 1) s.distTo = zoomTo(s.distTo, s.pinch / now);
+      s.pinch = now;
+      return;
+    }
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
-    sim.current.yawTo -= (e.clientX - d.x) * 0.008;
+    s.yawTo -= (e.clientX - d.x) * 0.008;
     d.x = e.clientX;
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e) => {
+    fingers.current.delete(e.pointerId);
+    sim.current.pinch = null;
     drag.current = null;
   };
 
@@ -342,13 +385,18 @@ function World({ gl, setGl }) {
     const turnL = s.pressed.has('turnL') || tapped('lb');
     const turnR = s.pressed.has('turnR') || tapped('rb');
     if (tapped('start') || tapped('y')) setList((v) => !v);
+    if (s.pressed.has('zoomIn')) s.distTo = zoomTo(s.distTo, 0.8);
+    if (s.pressed.has('zoomOut')) s.distTo = zoomTo(s.distTo, 1.25);
     s.pressed.clear();
 
-    // the camera turns an eighth at a time, or with the right stick
+    // the camera turns an eighth at a time, or with the right stick, and
+    // comes in and out with the wheel, a pinch, + and -, or the triggers
     if (turnL) s.yawTo -= Math.PI / 4;
     if (turnR) s.yawTo += Math.PI / 4;
     if (pad && Math.abs(pad.rx) > 0) s.yawTo -= pad.rx * dt * 2.4;
+    if (pad && (pad.ltv || pad.rtv)) s.distTo = zoomTo(s.distTo, Math.exp((pad.ltv - pad.rtv) * dt * 1.6));
     s.yaw += (s.yawTo - s.yaw) * (1 - Math.exp(-8 * dt));
+    s.dist += (s.distTo - s.dist) * (1 - Math.exp(-6 * dt));
 
     // talking: the world waits
     if (dialogRef.current) {
@@ -356,7 +404,7 @@ function World({ gl, setGl }) {
         if (!dialogRef.current.done) setShown(dialogRef.current.text.length);
         else closeDialog();
       }
-      a.render({ game: g, yaw: s.yaw, dist: s.dist }, 0);
+      a.render(view(), 0);
       return;
     }
 
@@ -374,7 +422,7 @@ function World({ gl, setGl }) {
         s.warp = null;
         a.fade = 0;
       }
-      a.render({ game: g, yaw: s.yaw, dist: s.dist }, ms);
+      a.render(view(), ms);
       return;
     }
 
@@ -451,7 +499,7 @@ function World({ gl, setGl }) {
       hudKey.current = key;
       setHud({ hearts: g.hearts, coins: p.coins, found: p.found, near });
     }
-    a.render({ game: g, yaw: s.yaw, dist: s.dist }, ms);
+    a.render(view(), ms);
   }, live);
 
   const p = progress(sim.current.g);
@@ -460,7 +508,7 @@ function World({ gl, setGl }) {
   return (
     <div ref={box}>
       <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
-        <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E." role="img" />
+        <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E, zoom with the wheel or + and -." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
         {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
@@ -497,6 +545,12 @@ function World({ gl, setGl }) {
               </button>
               <button type="button" className="dm-chip" aria-label="Turn the camera right" onClick={() => (sim.current.yawTo += Math.PI / 4)}>
                 ⟳
+              </button>
+              <button type="button" className="dm-chip" aria-label="Zoom in" onClick={() => (sim.current.distTo = zoomTo(sim.current.distTo, 0.8))}>
+                +
+              </button>
+              <button type="button" className="dm-chip" aria-label="Zoom out" onClick={() => (sim.current.distTo = zoomTo(sim.current.distTo, 1.25))}>
+                −
               </button>
             </span>
           </div>

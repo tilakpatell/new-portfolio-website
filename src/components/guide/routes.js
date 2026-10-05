@@ -1,0 +1,53 @@
+// Which guide a page gets, what it's called, and whether its first visit
+// gets a note by the "?" button (`nudge`: it has controls worth knowing). Small
+// on purpose: the corner button needs it from the first page, while what
+// each guide says (pages.js) loads with the panel, the first time it opens.
+
+export const GUIDES = {
+  '/home': { title: 'Home' },
+  '/experience': { title: 'Experience' },
+  '/projects': { title: 'Projects' },
+  '/project': { title: 'This project' },
+  '/resume': { title: 'Résumé' },
+  '/contact': { title: 'Contact' },
+  '/travel': { title: 'Travel' },
+  '/terminal': { title: 'The terminal' },
+  '/universe': { title: 'The universe', nudge: true },
+  '/galaxy': { title: 'A galaxy far, far away', nudge: true },
+  '/galaxy/surface': { title: 'Down on the surface', nudge: true },
+  '/galaxy/mission': { title: 'Mission briefing' },
+  '/deathstar': { title: 'The Death Star', nudge: true },
+  '/caribbean': { title: 'The Caribbean', nudge: true },
+  '/invincible': { title: 'Invincible', nudge: true },
+  '/middle-earth': { title: 'Middle-earth' },
+  '/middle-earth/place': { title: 'A stop on the road', nudge: true },
+  '/avengers': { title: 'Avengers HQ', nudge: true },
+  '/scranton': { title: 'Scranton', nudge: true },
+  '/cybertron': { title: 'Cybertron', nudge: true },
+  '/albuquerque': { title: 'Albuquerque', nudge: true },
+  '/c-137': { title: 'Dimension C-137', nudge: true },
+  '/c-137/citadel': { title: 'The Citadel of Ricks', nudge: true },
+  '/dot-matrix': { title: 'Dot Matrix', nudge: true },
+  '/earth': { title: 'Earth', nudge: true },
+  '/music': { title: 'The music room', nudge: true },
+};
+
+// The deeper paths share their section's guide: every role is Experience,
+// every place on the map the universe.
+const RULES = [
+  [/^\/(universe(\/.*)?)?$/, '/universe'],
+  [/^\/experience\/[^/]+$/, '/experience'],
+  [/^\/projects\/[^/]+$/, '/project'],
+  [/^\/galaxy\/[^/]+\/surface$/, '/galaxy/surface'],
+  [/^\/galaxy\/[^/]+\/mission$/, '/galaxy/mission'],
+  [/^\/galaxy\/[^/]+$/, '/galaxy'],
+  [/^\/middle-earth\/[^/]+$/, '/middle-earth/place'],
+];
+
+export const guideKeyFor = (pathname) => (GUIDES[pathname] ? pathname : (RULES.find(([re]) => re.test(pathname))?.[1] ?? null));
+
+// { key, title, nudge } for a path, or null
+export function guideMeta(pathname) {
+  const key = guideKeyFor(pathname);
+  return key ? { key, nudge: false, ...GUIDES[key] } : null;
+}

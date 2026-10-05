@@ -30,6 +30,7 @@
 // who, text }, { type: 'edge' }, { type: 'fell' }, { type: 'leave' } (the
 // ship's away: back to space).
 
+import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
 import { createRenderer, disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
 import { device } from '../../../lib/device';
@@ -95,7 +96,7 @@ export async function create(canvas, ctx) {
   const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.shadowMap.enabled = !small;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.12, 16000);
   scene.add(camera);
@@ -300,7 +301,8 @@ export async function create(canvas, ctx) {
   const shipTilt = new THREE.Group(); // how it's tilted, coming down
   shipHolder.add(shipTilt);
   scene.add(shipHolder);
-  const ship = buildShip(shipKind);
+  const shipBuild = ctx.build ? readBuildWire(writeBuild(ctx.build)) : null; // (a garage build from the hangar's shipyard)
+  const ship = buildShip(shipKind, {}, { build: shipBuild });
   ship.group.rotation.y = Math.PI; // (built nose to −z: the world's things face +z)
   ship.group.scale.setScalar(S.metres / LENGTH);
   shipTilt.add(ship.group);
@@ -328,7 +330,9 @@ export async function create(canvas, ctx) {
     shipTilt.rotation.copy(tilt);
   };
   seat();
-  if (SHIP_MODELS[shipKind]) {
+  if (shipBuild) {
+    // a garage build is whole as it is
+  } else if (SHIP_MODELS[shipKind]) {
     loadModel(SHIP_MODELS[shipKind])
       .then((m) => m && warm(ship.dress ? ship.dress(m) : m).then(() => m))
       .then((m) => {

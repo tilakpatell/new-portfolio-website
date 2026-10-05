@@ -6,17 +6,16 @@
 // pylons become parts for instanced pools. Anything missing stays procedural.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpenMaterial } from '../../../lib/three/textures';
 
 const BASE = `${import.meta.env?.BASE_URL ?? '/'}hq/meshy`;
 
 let loader = null;
 const gltf = (url) => {
   if (!loader) {
-    loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader = gltfLoader();
   }
   return loader.loadAsync(url);
 };
@@ -50,7 +49,7 @@ export async function loadMeshy({ manifest } = {}) {
           o.castShadow = true;
           o.receiveShadow = true;
           if (o.isSkinnedMesh) o.frustumCulled = false;
-          for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m.map) m.map.anisotropy = 8;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) sharpenMaterial(m);
         });
         out[name] = { scene: g.scene, clips, rig: !!spec.rig, h: spec.h ?? 2 };
       } catch {

@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { hot } from '../../avengers/hq/engine';
 import { KIND, boxField, facadeMaterial } from '../../../lib/three/facade';
 import { CITY, HALF, RIVER, cellKind, rng } from './city';
+import { sharpen } from '../../../lib/three/textures';
 
 // ── the ground: streets, pavements and the park on one texture ──
 const GROUND = 820; // metres the painted ground covers
@@ -76,7 +77,7 @@ function groundTexture(size) {
     }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  sharpen(t);
   return t;
 }
 
