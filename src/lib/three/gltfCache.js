@@ -53,9 +53,17 @@ export function cloneScene(gltf) {
   let skinned = false;
   gltf.scene.traverse((o) => o.isSkinnedMesh && (skinned = true));
   const copy = skinned ? cloneSkinned(gltf.scene) : gltf.scene.clone(true);
-  // (clone shares materials with the original; each copy gets its own)
+  // (clone shares materials with the original; each copy gets its own, one for
+  // each the original has, so meshes that shared a material still do: GLTFLoader
+  // gives every primitive of a glTF material the one Material, and a ship of 30
+  // primitives on 3 materials is 3 in a copy, not 30)
+  const own = new Map(); // the original's material → this copy's
+  const swap = (m) => {
+    if (!own.has(m)) own.set(m, m.clone());
+    return own.get(m);
+  };
   copy.traverse((o) => {
-    if (o.material) o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
+    if (o.material) o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
   });
   return copy;
 }

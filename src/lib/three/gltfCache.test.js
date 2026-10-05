@@ -78,6 +78,32 @@ describe('cloneScene', () => {
     expect(mesh.material[0].map).toBe(gltf.map);
   });
 
+  it('meshes that shared a material share its clone, one new material for the lot', () => {
+    const gltf = model();
+    const shared = gltf.mesh.material;
+    const other = new THREE.Mesh(new THREE.SphereGeometry(), shared);
+    const lone = new THREE.Mesh(new THREE.SphereGeometry(), new THREE.MeshStandardMaterial({ color: 'blue' }));
+    gltf.scene.add(other, lone);
+    const [a, b, c] = cloneScene(gltf).children;
+    expect(a.material).toBe(b.material);
+    expect(a.material).not.toBe(shared);
+    expect(a.material.map).toBe(gltf.map);
+    expect(c.material).not.toBe(a.material);
+    expect(c.material).not.toBe(lone.material);
+    // (and each call makes its own, so a copy's disposal leaves the next alone)
+    expect(cloneScene(gltf).children[0].material).not.toBe(a.material);
+  });
+
+  it('a mesh with several materials shares them with the meshes that use them singly', () => {
+    const gltf = model();
+    const first = gltf.mesh.material;
+    const second = new THREE.MeshStandardMaterial({ color: 'red' });
+    gltf.scene.add(new THREE.Mesh(new THREE.SphereGeometry(), [second, first]));
+    const [a, b] = cloneScene(gltf).children;
+    expect(b.material[1]).toBe(a.material);
+    expect(b.material[0]).not.toBe(second);
+  });
+
   it('a cached entry still clones after an earlier clone is disposed', () => {
     const gltf = model();
     const first = cloneScene(gltf);
