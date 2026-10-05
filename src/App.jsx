@@ -164,8 +164,9 @@ function IntroJump() {
       <Cockpit
         start={ride?.vehicle ?? undefined}
         onPeak={() => {
-          // a replay comes out in the universe; the first visit at the front door's choice
-          if (ride && !/^\/(universe(\/|$)|$)/.test(pathname)) navigate('/universe');
+          // out into the universe (the front door is it, unless a visitor
+          // asked for the home page), flying the ship you launched in
+          if (!/^\/(universe(\/|$)|$)/.test(pathname)) navigate('/universe');
           cover(false);
         }}
         onDone={() => {

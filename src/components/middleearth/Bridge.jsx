@@ -240,6 +240,7 @@ export default function Bridge() {
     later(() => {
       setGrey('falling');
       setSay('Its whip catches him as it falls. Fly, you fools!');
+      import('../../lib/clips').then((c) => c.playClip('flyYouFools', { when: 0.6 }));
     }, 1700);
     later(() => setGrey('gone'), 3200);
   };

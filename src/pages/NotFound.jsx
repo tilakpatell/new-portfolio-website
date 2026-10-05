@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { RiPlayFill } from 'react-icons/ri';
 import { useDocumentTitle } from '../lib/hooks';
 import { AurebeshLine } from '../components/Wordmark';
 import Egg from '../components/Egg';
@@ -29,6 +30,10 @@ export default function NotFound() {
         <p className="mt-10 text-sm text-muted">
           <AurebeshLine>Move along. Move along.</AurebeshLine>
         </p>
+        <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={() => import('../lib/clips').then((c) => c.playClip('notTheDroids'))}>
+          <RiPlayFill className="h-4 w-4" aria-hidden="true" />
+          Hear it from Obi-Wan
+        </button>
       </div>
     </div>
   );

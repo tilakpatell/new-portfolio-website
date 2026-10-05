@@ -161,7 +161,7 @@ const emit = (g, type, extra = {}) => g.events.push({ type, ...extra });
 const say = (g, key, text) => {
   if (g.said[key]) return;
   g.said[key] = true;
-  emit(g, 'say', { text });
+  emit(g, 'say', { key, text });
 };
 
 function lose(g, message) {

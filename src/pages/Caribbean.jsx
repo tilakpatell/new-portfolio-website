@@ -6,6 +6,7 @@ import DeadMansTide from '../components/caribbean/tide/DeadMansTide';
 import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
@@ -53,6 +54,23 @@ const CODE = [
   ['Take what you can.', 'Give nothing back.'],
 ];
 
+// the soundboard: the films' lines, then the sounds made here
+const LINES = [
+  'welcomeCaribbean',
+  'almostCaught',
+  'heardOfMe',
+  'madness',
+  'withoutRum',
+  'notGood',
+  'rumGone',
+  'didEveryoneSee',
+  'jarOfDirt',
+  'bugger',
+  'fearDeath',
+  'afterlife',
+  'takeWhatYouCan',
+  'drinkUp',
+];
 const BOARD = [
   ['cannon', 'A broadside'],
   ['bell', 'The ship’s bell'],
@@ -250,8 +268,10 @@ export default function Caribbean() {
         <h2 id="cb-board-title" className="title cb-title">
           Soundboard
         </h2>
-        <p className="lead mt-4 max-w-[54ch]">Synthesized, every one but the theme.</p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <p className="lead mt-4 max-w-[54ch]">From the films, a line at a time.</p>
+        <ClipBoard className="mt-8" clips={LINES} />
+        <p className="label mt-10">Made here, from scratch (but the theme)</p>
+        <div className="mt-3 flex flex-wrap gap-3">
           {BOARD.map(([id, label]) => (
             <button key={id} type="button" className="btn btn-ghost" onClick={() => sound(id)}>
               {label}

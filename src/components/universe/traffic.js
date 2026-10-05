@@ -6,8 +6,9 @@
 // high over the whole map), Rick and Morty for the cruiser (families in
 // their saucers, junk haulers, Gear People in their gear, Galactic
 // Federation patrols and a Federation cruiser, Gromflomite bugs, Mr.
-// Meeseeks floating by, Birdperson); with no ship picked, a quieter mix of
-// both. fleetStarwars.js and fleetRickmorty.js build the ordinary ships.
+// Meeseeks floating by, Birdperson); both for Walt and Jesse's RV, which
+// belongs to neither; with no ship picked, a quieter mix of both.
+// fleetStarwars.js and fleetRickmorty.js build the ordinary ships.
 // trafficModels.js builds most of them; the X-wings, Slave I, the TIE
 // interceptors, the Star Destroyers and the corvettes are models
 // (glbFleet.js), loaded the first time they're wanted.
@@ -61,6 +62,8 @@ const CIVIL = { starwars: ['freighter', 'transport', 'corvette'], rickmorty: ['s
 const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1', ...CIVIL.starwars], rickmorty: [...TRAFFIC.rickmorty, ...CIVIL.rickmorty] };
 const ESCORT = { starwars: 'xwing', rickmorty: 'patrol' }; // who guards a convoy
 const DISTRESS = { starwars: 'transport', rickmorty: 'saucer' }; // who calls for help
+const BOTH = [...KINDS.starwars, ...KINDS.rickmorty];
+// whose traffic each ship meets (a ship that isn't here meets both)
 const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
 // how far a group flies straight in before its lane begins, and straight on
 // after it ends (ten seconds' worth, 30 to 90 map units): it comes from, and
@@ -83,7 +86,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   let forcedCross; // and how it should come
 
   const ready = (kind) => fleet.has(kind);
-  const kinds = () => (FAMILY[crew] ? KINDS[FAMILY[crew]] : [...KINDS.starwars, ...KINDS.rickmorty]).filter(ready);
+  const kinds = () => (FAMILY[crew] ? KINDS[FAMILY[crew]] : BOTH).filter(ready);
   const pick = (list) => {
     const total = list.reduce((s, k) => s + TYPES[k].weight, 0);
     let r = rand() * total;
@@ -194,6 +197,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   return {
     // the crew picked (or null): changes what flies, from now
     setCrew(id) {
+      // any ship's traffic is worth its models (looking round without one isn't)
+      if (id) fleet.want(FAMILY[id] ? KINDS[FAMILY[id]] : BOTH);
       if ((FAMILY[id] ?? null) === (FAMILY[crew] ?? null)) {
         crew = id;
         return;
@@ -202,7 +207,6 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       while (live.length) end(live[0]);
       nextAt = clock + 1;
       nextFlyby = clock + 14;
-      fleet.want(FAMILY[id] ? KINDS[FAMILY[id]] : []);
     },
 
     // ship: the player's ship ({ x, y, z, heading, speed }) or null. Returns
@@ -275,9 +279,9 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     },
 
     // a convoy past you: a column of the ordinary ships of your universe
-    // with an escort to either side. False when there's no clear way past
-    convoy(ship) {
-      const family = FAMILY[crew];
+    // (or of `family`'s) with an escort to either side. False when there's
+    // no clear way past
+    convoy(ship, family = FAMILY[crew]) {
       const pts = family && ship && convoyLane(ship, rand);
       if (!pts) return false;
       const civil = CIVIL[family];
@@ -287,10 +291,9 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       return true;
     },
 
-    // someone in distress across your bows, slow (they're hit): the ship
-    // the pirates are after, or null
-    distress(ship) {
-      const family = FAMILY[crew];
+    // someone in distress across your bows (from your universe, or from
+    // `family`'s), slow (they're hit): the ship the pirates are after, or null
+    distress(ship, family = FAMILY[crew]) {
       const pts = family && ship && (laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true }));
       if (!pts) return null;
       const g = spawn(DISTRESS[family], pts, true, { kinds: [DISTRESS[family]], speed: 2.6, event: 'distress' });

@@ -23,8 +23,8 @@ const ABOUT_ME = [
 ];
 
 const ABOUT_THE_BRANCH = [
-  { q: 'Bears eat beets.', fact: true, dwight: 'Fact. Bears. Beets. Battlestar Galactica.' },
-  { q: 'Identity theft is a joke.', fact: false, dwight: 'False. Identity theft is not a joke. Millions of families suffer every year.' },
+  { q: 'Bears eat beets.', fact: true, dwight: 'Fact. Bears. Beets. Battlestar Galactica.', clip: 'bearsBeets' },
+  { q: 'Identity theft is a joke.', fact: false, dwight: 'False. Identity theft is not a joke. Millions of families suffer every year.', clip: 'identityTheft' },
   { q: 'Dwight’s middle name is Kurt.', fact: true, dwight: 'Fact. Dwight Kurt Schrute. The Kurt is for my grandfather, who could kill a man with a tuba.' },
   { q: 'Michael bought his own World’s Best Boss mug.', fact: true, dwight: 'Fact. At Spencer Gifts. Which does not make it less true.' },
   { q: 'Dunder Mifflin Scranton is in Pittsburgh.', fact: false, dwight: 'False. The Scranton Business Park, Slough Avenue. Pittsburgh has no Dwight Schrute.' },
@@ -83,6 +83,11 @@ export default function FactCheck() {
   const pick = (fact) => {
     if (answer !== null || done) return;
     setAnswer(fact);
+    // the two the show said out loud, as the show said them
+    if (f.clip) {
+      audioContext();
+      import('../../lib/clips').then((c) => c.playClip(f.clip));
+    }
     if (fact === f.fact) {
       setScore((n) => n + 1);
       setStreak((n) => n + 1);

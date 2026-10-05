@@ -5,11 +5,11 @@ import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { MeeseeksFace } from './Faces';
 
-// A Meeseeks box: press the button, a Mr. Meeseeks appears, give him a task
-// and he does it (to this page) and is gone. Give him one he can't do and he
-// summons help, and the help summons help.
+// A Meeseeks box: press the button, a Mr. Meeseeks appears (in his own
+// voice), give him a task and he does it (to this page) and is gone. Give him
+// one he can't do and he summons help, and the help summons help.
 
-const HELLO = ['I’m Mr. Meeseeks! Look at me!', 'Ooh, I’m Mr. Meeseeks! Look at me!', 'Hi, I’m Mr. Meeseeks! Look at meee!'];
+const HELLO = 'I’m Mr. Meeseeks! Look at me!';
 const STRESS = [
   'Ooh, a tough one! Let me get some help.',
   'I’m Mr. Meeseeks. We’re working on it.',
@@ -20,6 +20,7 @@ const STRESS = [
 ];
 const cue = (name) => import('../games/gameAudio').then((m) => m[name]?.());
 const effect = (name) => import('../../lib/sfx').then((m) => m[name]?.());
+const clip = (id) => import('../../lib/clips').then((m) => m.playClip(id));
 
 export default function MeeseeksBox() {
   const { unlock } = useAchievements();
@@ -35,7 +36,8 @@ export default function MeeseeksBox() {
     audioContext();
     cue('portalHop');
     unlock('meeseeks');
-    setCrew((c) => (c.length ? c : [{ id: Date.now(), hi: HELLO[Math.floor(Math.random() * HELLO.length)] }]));
+    if (!crew.length) clip('meeseeks');
+    setCrew((c) => (c.length ? c : [{ id: Date.now() }]));
     setLine((l) => (crew.length ? l : 'What can I do for you?'));
   };
 
@@ -93,6 +95,13 @@ export default function MeeseeksBox() {
     },
   ];
 
+  // a task he can do: "Ooh, yeah! Can do!", then he does it (turning the
+  // site green has the portal theme's own line, so he lets that speak)
+  const can = (t) => {
+    if (t.id === 'top' || t.id === 'shake') clip('canDo');
+    t.run();
+  };
+
   const many = crew.length > 1;
   return (
     <div className="rm-box card">
@@ -114,12 +123,12 @@ export default function MeeseeksBox() {
       </div>
       <div className="rm-box-talk">
         <p className="rm-box-line" role="status">
-          {crew.length ? (many ? line : crew[0].hi) : line}
+          {crew.length ? (many ? line : HELLO) : line}
         </p>
         {crew.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {(many ? tasks.filter((t) => t.id === 'golf') : tasks).map((t) => (
-              <button key={t.id} type="button" className="btn btn-ghost btn-sm" onClick={t.run}>
+              <button key={t.id} type="button" className="btn btn-ghost btn-sm" onClick={() => (many ? t.run() : can(t))}>
                 {many ? 'Keep trying' : t.label}
               </button>
             ))}

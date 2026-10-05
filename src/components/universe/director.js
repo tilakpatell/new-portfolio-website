@@ -1,7 +1,8 @@
 // The director: now and then, while you fly, something happens. Pure (no
 // three.js), so it's tested in Node; the scene plays each one out.
 //
-// What can happen depends on whose universe you fly in:
+// What can happen depends on whose universe you fly in (Walt and Jesse's RV
+// is in both: it gets the hunts, distress calls, convoys and comets):
 // - hunt: a pack of hunters comes after you (the Empire for Luke and Han,
 //   the Galactic Federation for Rick)
 // - destroyer (Star Wars): a Star Destroyer drops out of hyperspace nearby
@@ -20,12 +21,12 @@
 // createDirector({ rand }) → { update(dt, { family, heat, busy }) → event id or null, soon(id) }
 
 export const EVENTS = {
-  hunt: { families: ['starwars', 'rickmorty'], weight: 3, heat: 1 },
+  hunt: { families: ['starwars', 'rickmorty', 'both'], weight: 3, heat: 1 },
   destroyer: { families: ['starwars'], weight: 1.3, heat: 0.6 },
   council: { families: ['rickmorty'], weight: 1.5, heat: 0.6 },
-  distress: { families: ['starwars', 'rickmorty'], weight: 1.2, heat: 0 },
-  convoy: { families: ['starwars', 'rickmorty'], weight: 1.3, heat: 0 },
-  comet: { families: ['starwars', 'rickmorty'], weight: 0.9, heat: 0 },
+  distress: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
+  convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
+  comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 
@@ -36,7 +37,7 @@ export function createDirector({ rand = Math.random } = {}) {
   let last = null;
   let forced = null;
   return {
-    // family: 'starwars', 'rickmorty' or null (no ship: nothing happens);
+    // family: 'starwars', 'rickmorty', 'both' or null (no ship: nothing happens);
     // heat: 0 and up; busy: something's already going on (hunters after
     // you, a crash playing out), so not now
     update(dt, { family, heat = 0, busy = false }) {

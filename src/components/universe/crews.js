@@ -1,5 +1,6 @@
 // Who flies you round the universe map: Rick and Morty in the space cruiser,
-// Luke and Artoo in an X-wing, or Han and Chewie in the Millennium Falcon.
+// Luke and Artoo in an X-wing, Han and Chewie in the Millennium Falcon, or
+// Walt and Jesse in their RV, which has grown wings.
 // Pure data: the panel offers the ships, the scene builds the one picked and
 // the comms box says these lines as things happen.
 //
@@ -21,6 +22,7 @@ export const CREWS = [
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
     },
     launch: [
       ['rick', 'Wubba lubba dub dub!', 'wubba'],
@@ -56,7 +58,7 @@ export const CREWS = [
       ],
       birdperson: [
         ['morty', 'Is that Birdperson?'],
-        ['rick', 'Birdperson! My man.'],
+        ['rick', 'My man.', 'myMan'],
       ],
     },
     // shooting one down
@@ -70,6 +72,7 @@ export const CREWS = [
         ['rick', 'He’s fine, Morty. Existence is pain to a Meeseeks.'],
       ],
       birdperson: [
+        ['birdperson', 'In bird culture, this is considered a dick move.', 'birdCulture'],
         ['morty', 'Rick, I shot Birdperson!'],
         ['rick', 'He’ll be fine, Morty. Phoenixperson’s a whole thing.'],
       ],
@@ -204,6 +207,7 @@ export const CREWS = [
       terminal: [
         ['rick', 'A terminal. Finally, something for grown-ups.'],
         ['morty', 'Rick, what’s sudo?'],
+        ['rick', 'You son of a bitch. I’m in.', 'imIn'],
       ],
       starwars: [
         ['morty', 'Rick, is that… is that the Death Star?'],
@@ -262,7 +266,7 @@ export const CREWS = [
     },
     launch: [
       ['luke', 'Red Five, standing by.'],
-      ['r2', '[an eager whistle]'],
+      ['r2', '[an eager whistle]', 'r2Whistle'],
     ],
     boost: [
       ['luke', 'Hang on, Artoo!'],
@@ -270,10 +274,10 @@ export const CREWS = [
     ],
     bump: [
       ['r2', '[an alarmed shriek]'],
-      ['luke', 'I’ve got a bad feeling about this.'],
+      ['luke', 'I have a very bad feeling about this.', 'badFeelingLuke'],
     ],
     crash: [
-      ['r2', '[a long, falling scream]'],
+      ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
     traffic: {
@@ -282,6 +286,7 @@ export const CREWS = [
         ['r2', '[an urgent warble]'],
       ],
       interceptor: [
+        ['comms', 'It’s a trap!', 'itsATrap'],
         ['luke', 'Interceptors, coming in fast!'],
         ['r2', '[a frightened whistle]'],
       ],
@@ -424,6 +429,7 @@ export const CREWS = [
         ['r2', '[a data-transfer chirp]'],
       ],
       contact: [
+        ['comms', 'Help me, Obi-Wan Kenobi. You’re my only hope.', 'helpMeObiWan'],
         ['luke', 'A relay station. We can get a message to him from here.'],
         ['r2', '[a hopeful bleep]'],
       ],
@@ -494,7 +500,7 @@ export const CREWS = [
       ['chewie', '[roars]'],
     ],
     bump: [
-      ['han', 'It’s not my fault!'],
+      ['han', 'Never tell me the odds.', 'neverTellOdds'],
       ['chewie', '[a furious roar]'],
     ],
     crash: [
@@ -507,6 +513,7 @@ export const CREWS = [
         ['chewie', '[a roar]'],
       ],
       interceptor: [
+        ['comms', 'It’s a trap!', 'itsATrap'],
         ['han', 'Interceptors. Chewie, get on the guns.'],
         ['chewie', '[an eager growl]'],
       ],
@@ -521,7 +528,7 @@ export const CREWS = [
     },
     kill: {
       any: [
-        ['han', 'Great, kid! Don’t get cocky.'],
+        ['han', 'Great, kid! Don’t get cocky!', 'dontGetCocky'],
         ['chewie', '[a happy roar]'],
       ],
       xwing: [
@@ -694,7 +701,264 @@ export const CREWS = [
       ],
     },
   },
+  {
+    id: 'rv',
+    ship: 'The RV',
+    label: 'Walt and Jesse',
+    speakers: {
+      walt: { name: 'Walt', color: '#9fd27c', voice: 'walt' },
+      jesse: { name: 'Jesse', color: '#ff9d55', voice: 'jesse' },
+      meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
+    },
+    launch: [
+      ['walt', 'Jesse. The RV has wings now. Try to keep up.'],
+      ['jesse', 'Yo, Mr. White, we’re flying! In the RV!'],
+    ],
+    boost: [
+      ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
+      ['walt', 'Physics, Jesse. That one is physics.'],
+    ],
+    bump: [
+      ['jesse', 'Yo! Watch the wings, man!'],
+      ['walt', 'That was a rounding error, Jesse.'],
+    ],
+    crash: [
+      ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
+      ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
+    ],
+    idle: [
+      ['walt', 'Say my name.', 'sayMyName'],
+      ['jesse', 'Uh… Heisenberg? Can we go now?'],
+    ],
+    // the RV crosses over: both families of traffic come past it
+    traffic: {
+      tie: [
+        ['jesse', 'Yo, those things look like bug zappers with wings!'],
+        ['walt', 'TIE fighters. Keep your hands on the wheel, Jesse.'],
+      ],
+      interceptor: [
+        ['jesse', 'Pointy ones! Mr. White, they got pointy ones!'],
+        ['walt', 'Interceptors. Faster than us. We’ll see about smarter.'],
+      ],
+      xwing: [
+        ['jesse', 'Those guys got four wings. We only got two.'],
+        ['walt', 'Ours are home-made, Jesse. That counts double.'],
+      ],
+      slave1: [
+        ['walt', 'A bounty hunter. Nobody says a word. We were never here.'],
+        ['jesse', 'In a flying RV, Mr. White? Kinda hard to miss.'],
+      ],
+      patrol: [
+        ['jesse', 'Cops! Space cops, Mr. White!'],
+        ['walt', 'Act natural, Jesse. We’re a camper.'],
+      ],
+      gromflomite: [
+        ['jesse', 'Giant bugs, yo! Giant space bugs!'],
+        ['walt', 'Federation insects. Keep your voice down.'],
+      ],
+      meeseeks: [
+        ['meeseeks', 'I’m Mr. Meeseeks! Look at me!', 'meeseeks'],
+        ['jesse', 'Yo, that blue dude is way too happy.'],
+      ],
+      birdperson: [
+        ['jesse', 'Is that a bird guy? Like, a whole bird guy?'],
+        ['walt', 'Don’t stare, Jesse. It’s rude in any galaxy.'],
+      ],
+    },
+    kill: {
+      any: [
+        ['jesse', 'Yeah! Got one! That’s sick!'],
+        ['walt', 'We don’t celebrate in the middle of the job, Jesse.'],
+      ],
+      meeseeks: [
+        ['jesse', 'Mr. White, I popped the blue guy!'],
+        ['walt', 'He wanted that, Jesse. Trust me.'],
+      ],
+      birdperson: [
+        ['jesse', 'Oh man, I shot the bird guy!'],
+        ['walt', 'Keep flying. We don’t talk about the bird guy.'],
+      ],
+      xwing: [
+        ['walt', 'Jesse! That one was on our side!'],
+        ['jesse', 'They all look the same, Mr. White!'],
+      ],
+      slave1: [
+        ['jesse', 'Yo, I tagged the bounty hunter!'],
+        ['walt', 'Nobody comes after this RV. Nobody.'],
+      ],
+    },
+    // hunted by whoever's out (the RV is wanted in both universes)
+    hunted: {
+      empire: [
+        ['jesse', 'Mr. White! Those bug zappers are shooting at us!'],
+        ['walt', 'Then shoot back, Jesse.'],
+      ],
+      ace: [
+        ['jesse', 'Who’s the guy in the black TIE, yo?'],
+        ['walt', 'Someone who thinks he’s the danger. He’s mistaken.'],
+      ],
+      federation: [
+        ['jesse', 'Space cops, yo! They’re shooting!'],
+        ['walt', 'We don’t run, Jesse. We do the math. Then we run.'],
+      ],
+    },
+    hit: [
+      ['jesse', 'We’re hit! The RV’s getting holes, yo!'],
+      ['walt', 'Then plug them, Jesse.'],
+    ],
+    shields: [
+      ['jesse', 'The shield thing’s almost dead, Mr. White!'],
+      ['walt', 'Then stop letting them hit us!'],
+    ],
+    destroyed: [
+      ['jesse', 'We’re going down, Mr. White!'],
+      ['walt', 'We’ll rebuild. We always do.'],
+    ],
+    escaped: [
+      ['walt', 'We lost them. Nobody catches Heisenberg.'],
+      ['jesse', 'Yeah, Mr. White! Nobody!'],
+    ],
+    cleared: [
+      ['jesse', 'We got ’em all, Mr. White!'],
+      ['walt', 'Say my name.', 'sayMyName'],
+    ],
+    events: {
+      distress: [
+        ['comms', 'Mayday! Anybody! We’re under attack!'],
+        ['jesse', 'Mr. White, we gotta help them!'],
+        ['walt', 'Fine. But we were never here.'],
+      ],
+      rescued: [
+        ['comms', 'Thank you, whoever you are!'],
+        ['walt', 'Tell no one.'],
+      ],
+      convoy: [
+        ['jesse', 'Whoa, look at all those trucks, yo.'],
+        ['walt', 'Distribution, Jesse. That’s how you build an empire.'],
+      ],
+      comet: [
+        ['jesse', 'Mr. White, a comet!'],
+        ['walt', 'Ice and dust, Jesse. Chemistry, frozen.'],
+      ],
+      deep: [
+        ['jesse', 'Mr. White, where are we even going?'],
+        ['walt', 'Out here, Jesse, nobody is watching.'],
+      ],
+      trench: [
+        ['jesse', 'Why are we flying down a trench on a giant death ball?!'],
+        ['walt', 'Because we can, Jesse.'],
+      ],
+    },
+    wonders: {
+      deathstar: [
+        ['jesse', 'Yo, that’s a moon with a giant dish on it!'],
+        ['walt', 'That is no moon, Jesse. That is a lab.'],
+      ],
+      citadel: [
+        ['jesse', 'A whole city of the same old dude?'],
+        ['walt', 'Imagine their supply chain.'],
+      ],
+      maw: [
+        ['walt', 'A black hole, Jesse. Not even light gets out.'],
+        ['jesse', 'That’s messed up, yo.'],
+      ],
+      aurelia: [
+        ['jesse', 'That planet is huge, yo!'],
+        ['walt', 'Hydrogen and helium, Jesse. The simplest chemistry there is.'],
+      ],
+      glacia: [['walt', 'Methane ice. Beautiful.']],
+      ember: [
+        ['jesse', 'Another sun, Mr. White!'],
+        ['walt', 'Fusion, Jesse. The purest product there is.'],
+      ],
+      halcyon: [['walt', 'A blue star. Ninety-nine point one percent pure.']],
+      veil: [
+        ['jesse', 'Whoa. It’s like, pretty, yo.'],
+        ['walt', 'A stellar nursery, Jesse. Show some respect.'],
+      ],
+      cradle: [
+        ['jesse', 'Another space cloud!'],
+        ['walt', 'Eyes on the road, Jesse.'],
+      ],
+    },
+    edge: [['walt', 'There’s nothing out there, Jesse. Nothing worth the fuel. Turning back.']],
+    arrive: {
+      home: [
+        ['jesse', 'Yo, who parks a whole space station out here?'],
+        ['walt', 'Tilak’s. The man who built every planet out here. Show some respect.'],
+      ],
+      experience: [
+        ['walt', 'Six jobs, Jesse. AWS, RTX, Bose, and every one of them done properly.'],
+        ['jesse', 'Way better than working at a car wash, huh, Mr. White?'],
+      ],
+      projects: [
+        ['jesse', 'Yo, he made his own Game Boy? From nothing? That’s sick!'],
+        ['walt', 'A shell, a file system, an emulator, all from first principles. That is craft, Jesse.'],
+      ],
+      resume: [
+        ['walt', 'One page. Clean, precise, not one wasted word.'],
+        ['jesse', 'Mine just says “Cap’n Cook.”'],
+      ],
+      contact: [
+        ['jesse', 'Yo, that’s a serious antenna. Can it reach Saul?'],
+        ['comms', 'Better call Saul!', 'callSaul'],
+      ],
+      terminal: [
+        ['walt', 'A command line. No buttons, no hand-holding. Just precision.'],
+        ['jesse', 'It’s all green letters, yo. Like a hacker movie.'],
+      ],
+      starwars: [
+        ['jesse', 'Yo, that moon has a giant laser on it!'],
+        ['walt', 'That’s no moon, Jesse. That’s an empire with a very poor security budget.'],
+      ],
+      music: [
+        ['walt', 'Indian classical music. A raga is a formula, Jesse. Every note in its place.'],
+        ['jesse', 'It’s actually super chill, Mr. White.'],
+      ],
+      middleearth: [
+        ['jesse', 'There’s a giant eye on that volcano, yo!'],
+        ['walt', 'Middle-earth. One ring, and everyone loses their minds over it. I understand completely.'],
+      ],
+      transformers: [
+        ['jesse', 'Yo, the cars down there are robots! Could the RV do that?'],
+        ['walt', 'The RV already turned into a plane, Jesse. Let’s not get greedy.'],
+      ],
+      marvel: [
+        ['walt', 'Six stones, Jesse. Whoever holds them all is in the empire business.'],
+        ['jesse', 'Yo, that’s a lot of power for one glove.'],
+      ],
+      // reaching it plays Walt's own 'Say my name.' first (sounds.js)
+      breakingbad: [
+        ['jesse', 'Yo, one four eight three to the three to the six to the nine, representin’ the ABQ.', 'jesseRing'],
+        ['walt', 'Albuquerque. Land quietly, Jesse. Hank lives down there.'],
+      ],
+      office: [
+        ['jesse', 'Yo, the whole planet’s made of paper? Who needs that much paper?'],
+        ['walt', 'Scranton. Thin margins, Jesse, but the product is consistent.'],
+      ],
+      rickmorty: [
+        ['jesse', 'A crazy old scientist and his sidekick live here. Sounds kinda familiar, yo.'],
+        ['walt', 'A genius who drinks on the job. Sloppy, Jesse. Sloppy.'],
+      ],
+      gaming: [
+        ['jesse', 'Yo, it’s all blocks! It’s like being inside a video game!'],
+        ['walt', 'Every chip of a Game Boy, rebuilt in code. That’s chemistry, Jesse, with electrons.'],
+      ],
+      travel: [
+        ['walt', 'Earth, Jesse. Look at those routes. That’s a man who travels with a plan.'],
+        ['jesse', 'Our plan was just “drive into the desert.”'],
+      ],
+      caribbean: [
+        ['jesse', 'Pirates! Mr. White, there are actual pirates down there!'],
+        ['walt', 'Smugglers with a dress code, Jesse.'],
+      ],
+    },
+  },
 ];
+
+// where the ship you fly is remembered (the map's, and the cockpit's launch
+// comes out flying the ship it was)
+export const SHIP_KEY = 'tp-universe-ship';
 
 const BY_ID = new Map(CREWS.map((c) => [c.id, c]));
 
