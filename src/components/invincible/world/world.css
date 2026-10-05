@@ -52,6 +52,7 @@
 .iw-title { margin: 0; font: 400 clamp(2.6rem, 1.6rem + 3.6vw, 4.6rem)/0.86 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.02em; color: var(--iw-yellow); transform: scaleY(1.12); transform-origin: left top; text-shadow: 3px 3px 0 var(--iw-blue), 0 6px 24px rgba(0, 0, 0, 0.45); }
 .iw-goal { justify-self: start; margin: 0.3rem 0 0; padding: 0.4rem 0.75rem; border: 2px solid #000; border-radius: 6px; background: var(--iw-yellow); color: #111; font: 700 0.82rem/1.25 var(--font-sans); box-shadow: 3px 3px 0 #000; }
 .iw-goal:not([data-on='1']) { display: none; }
+.iw-goal[data-purple='1'] { background: #8a2fd0; color: #fff; }
 .iw-goal[data-red='1'] { background: #ff3b30; color: #fff; animation: iw-pulse 1s ease-in-out infinite; }
 @keyframes iw-pulse { 50% { transform: scale(1.03); } }
 .iw-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
@@ -118,6 +119,7 @@
 .iw-buttons button { width: 64px; height: 64px; border: 2px solid #000; border-radius: 50%; background: rgba(8, 14, 28, 0.6); color: var(--iw-ink); font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; }
 .iw-buttons button:active { background: var(--iw-blue); }
 .iw-buttons .iw-boost { background: var(--iw-yellow); color: #111; }
+.iw-buttons .iw-punch { background: var(--iw-blue); }
 
 /* without 3D */
 .iw-cards { padding-block: clamp(2rem, 6vw, 4rem); }
