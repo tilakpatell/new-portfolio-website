@@ -147,7 +147,9 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
 
   // ── the hill ──
-  const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 230 : tier === 'mid' ? 160 : 110, height, paint, blades: 0.2 });
+  // (the ground under the ruin's floor kept a little below its flagstones)
+  const ground = (x, z) => height(x, z) - 0.16 * (1 - smooth(RUIN.r - 0.8, RUIN.r + 0.2, Math.hypot(x, z)));
+  const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 230 : tier === 'mid' ? 160 : 110, height: ground, paint, blades: 0.2 });
   hill.add(terrain);
   const wind = { uWind: { value: 0 } };
   hill.add(makeTufts(Math.round(11000 * many), { radius: WORLD.radius + 6, height, growable, seed: 61, base: 0x2e3a1e, tip: 0x8a8a52, hue: [0.16, 0.05] }, wind));
@@ -158,6 +160,10 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   // the ruin of Amon Sûl on the summit
   const ruin = kit.ruin(RUIN);
   ruin.group.position.set(0, HILL.top, 0);
+  // the blocks tumbled out of the ring lie on the slope where they fell
+  for (const b of ruin.fallen ?? []) {
+    if (Math.hypot(b.position.x, b.position.z) > RUIN.r) b.position.y = height(b.position.x, b.position.z) - HILL.top - 0.15;
+  }
   statics.add(ruin.group);
   // the crags round the crown, two rocks deep, and boulders on the slopes
   const rocks = kit.rocks.map(() => []);
@@ -170,9 +176,6 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     if (stairNear(x2, z2).d > STAIR_W + 1.4) rocks[(i + 1) % rocks.length].push({ x: x2, z: z2, y: height(x2, z2) - s * 0.3, s: s * 0.7, turn: i * 2.7, tilt: Math.cos(i) * 0.2 });
   });
   ROCKS.forEach(([x, z, s], i) => rocks[i % rocks.length].push({ x, z, y: height(x, z) - s * 0.25, s, turn: i * 2.1 }));
-  RUIN.fallen.forEach(([x, z, turn, s], i) => {
-    if (Math.hypot(x, z) > RUIN.r) rocks[i % rocks.length].push({ x, z, y: height(x, z) - 0.2, s: s * 0.6, turn });
-  });
   rocks.forEach((list, i) => list.length && hill.add(instances(kit.rocks[i], mats.rock, list, { shadow: false })));
   // the old stair: worn slabs where it climbs, kerbstones along its sides
   const slabs = [];
@@ -506,6 +509,17 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     g.position.y = rideHeight(s, lat) + y;
     g.rotation.y = -roadTurn(s);
   };
+  // a torch in a figure's hand, held upright and leaning forward by `lean`,
+  // in the figure's own frame (+x ahead), however the arm is turned
+  const qArm = new THREE.Quaternion();
+  const qWant = new THREE.Quaternion();
+  const UP = V(0, 1, 0);
+  const lean = V();
+  const upright = (obj, f, arm, k) => {
+    qArm.copy(f.body.quaternion).multiply(f.arms[arm].quaternion).invert();
+    qWant.setFromUnitVectors(UP, lean.set(Math.sin(k), Math.cos(k), 0));
+    obj.quaternion.copy(qArm.multiply(qWant));
+  };
   const gallopLegs = (legs, t, k = 1) => legs.forEach((leg, j) => (leg.rotation.z = Math.sin(t * 11 + j * (j < 2 ? 0.6 : 2.2)) * 0.7 * k));
 
   const render = (s, ms, fast = 1) => {
@@ -563,8 +577,9 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         const jab = s.brand?.cool > BRAND.thrustCool - 0.2 ? 1 : 0;
         frodo.arms[1].rotation.z = 1.5 - jab * 0.35;
         frodo.arms[1].rotation.x = -0.6;
-        // the brand kept upright in his fist, leaning forward, more so in a jab
-        brand.group.rotation.z = -frodo.arms[1].rotation.z + 0.45 + jab * 0.6;
+        // the brand kept upright in his fist, leaning forward (more so in a
+        // jab), whatever his arm's doing: turned in the arm's own frame
+        upright(brand.group, frodo, 1, 0.45 + jab * 0.6);
         frodo.group.visible = true;
       } else {
         walker.group.position.set(h.x, hy, h.z);
@@ -583,7 +598,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         frodo.group.updateMatrixWorld(true);
         const at = brand.flameAt.clone().applyMatrix4(brand.group.matrixWorld);
         A.brandT = (A.brandT ?? 0) + dt;
-        for (; A.brandT > 0.03; A.brandT -= 0.03) flames.emit(at.x + R(0.04), at.y, at.z + R(0.04), R(0.1), 0.5 + Math.random() * 0.3, R(0.1), 0.3 + Math.random() * 0.25, 0.16, 0.03, 0.75);
+        for (; A.brandT > 0.022; A.brandT -= 0.022) flames.emit(at.x + R(0.05), at.y, at.z + R(0.05), R(0.12), 0.55 + Math.random() * 0.35, R(0.12), 0.32 + Math.random() * 0.25, 0.22, 0.04, 0.9);
         // (its light a little out in front, so it lights them and not his back)
         const aim = s.brand?.aim ?? 0;
         lights.push([at.clone().add(V(Math.cos(aim) * 0.9, 0.3, Math.sin(aim) * 0.9)), warm, 6 + Math.sin(t * 17) * 0.8, 14]);
@@ -703,7 +718,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       pose(striderFire, t, { moving: k < 1 });
       striderFire.arms[0].rotation.z = 1.4 + Math.sin(t * 4) * 0.4;
       striderFire.arms[1].rotation.z = 1.1 - Math.sin(t * 4) * 0.4;
-      torches.forEach((tc, i) => (tc.group.rotation.z = -striderFire.arms[i].rotation.z + 0.35));
+      torches.forEach((tc, i) => upright(tc.group, striderFire, i, 0.3));
       striderFire.group.updateMatrixWorld(true);
       A.torchT = (A.torchT ?? 0) + dt;
       for (; A.torchT > 0.035; A.torchT -= 0.035)
