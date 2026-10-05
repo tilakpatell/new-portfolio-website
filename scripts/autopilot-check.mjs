@@ -7,12 +7,14 @@
 // screenshots for the ship's log.
 //
 //   node scripts/autopilot-check.mjs [--routes /avengers,/galaxy/hoth/surface] [--shots 0012]
-//     [--skip lint,test,build,smoke] [--only smoke] [--phone] [--quality high|mid|low]
+//     [--before] [--skip lint,test,build,smoke] [--only smoke] [--phone] [--quality high|mid|low]
 //     [--settle 8000] [--chromium /path/to/chrome]
 //
 // The core pages are always checked; --routes adds the ones a change touched
 // (the first two are the ones photographed). Screenshots go to
-// public/changes/<id>-a.webp and -b.webp, 960 × 600. Exit code 1 on any failure.
+// public/changes/<id>-a.webp and -b.webp, 960 × 600; with --before, the first
+// route's goes to <id>-before.webp instead (shoot it on main before the
+// change, so the log shows the two side by side). Exit code 1 on any failure.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -53,6 +55,7 @@ const runs = (step) => (only.length ? only.includes(step) : !skip.includes(step)
 const routes = [...new Set([...CORE, ...list(args.routes)])];
 const toShoot = list(args.routes).slice(0, 2);
 const shots = typeof args.shots === 'string' ? args.shots.padStart(4, '0') : null;
+const before = Boolean(args.before);
 const phone = Boolean(args.phone);
 const quality = ['high', 'mid', 'low'].includes(args.quality) ? args.quality : 'high';
 const settle = Number(args.settle) || 8000;
@@ -190,9 +193,10 @@ if (runs('smoke')) {
       if (/This page didn’t load\.|Something went wrong/.test(text)) errors.push('the error boundary showed');
       if (/This isn’t the page you’re looking for\./.test(text)) errors.push('404: no route (a stale dist/? build first)');
       if (text.trim().length < 20) errors.push('the page is empty');
-      if (shots && toShoot.includes(route) && letter < 2) {
+      if (shots && toShoot.includes(route) && letter < (before ? 1 : 2)) {
         const png = await page.screenshot({ type: 'png', timeout: 120000 });
-        const name = `${shots}-${'ab'[letter++]}.webp`;
+        const name = `${shots}-${before ? 'before' : 'ab'[letter]}.webp`;
+        letter++;
         await writeFile(join(ROOT, 'public/changes', name), await sharp(png).resize(960, 600, { fit: 'cover', position: 'top' }).webp({ quality: 78 }).toBuffer());
         note = ` → public/changes/${name}`;
       }

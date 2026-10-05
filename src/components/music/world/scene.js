@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { createStage } from '../../../lib/stage3d';
+import { antiTile } from '../../../lib/three/surface';
 import { budget, device } from '../../../lib/device';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 
@@ -240,7 +241,9 @@ export async function createMusicWorld(el, { onLost } = {}) {
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) p.setY(i, groundAt(p.getX(i), p.getZ(i)));
     g.computeVertexNormals();
-    const sand = scan('music-dunes', [140, 140], { color: new THREE.Color('#ffc890') });
+    // the scan repeats 140 times to the horizon: blended with itself at
+    // another scale, in patches, so no two dunes show the same ripple
+    const sand = antiTile(scan('music-dunes', [140, 140], { color: new THREE.Color('#ffc890') }), { scale: 0.23, strength: 0.65, size: 28 });
     const dunes = new THREE.Mesh(g, sand);
     dunes.receiveShadow = true;
     scene.add(dunes);
@@ -248,7 +251,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
 
   // ── the terrace ──
   const T = TERRACE.half;
-  const stoneFloor = scan('music-terrace', [1, 1], { color: new THREE.Color('#ffd0ae') });
+  const stoneFloor = antiTile(scan('music-terrace', [1, 1], { color: new THREE.Color('#ffd0ae') }), { scale: 0.37, strength: 0.5, size: 6 });
   const stoneWall = scan('music-wall', [1, 1], { color: new THREE.Color('#f0b894') });
   const wallMat = (w, h) => {
     const m = stoneWall.clone();
