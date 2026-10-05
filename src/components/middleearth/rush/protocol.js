@@ -92,9 +92,10 @@ export const readGrab = readPose;
 
 // ── the round ──
 
+// (a fire's fuel, or a carving table's parts so far, ride on the end)
 const writeSpot = (c, sp) => {
-  if ('item' in sp) return [writeItem(sp.item), r2(sp.prog)];
-  if (c === 'P') return [sp.n, POT_STATES.indexOf(sp.s), r2(sp.cook), r2(sp.prog)];
+  if ('item' in sp) return [writeItem(sp.item), r2(sp.prog), ...('fuel' in sp ? [r2(sp.fuel)] : 'parts' in sp ? [sp.parts.map(writeItem)] : [])];
+  if (c === 'P') return [sp.n, POT_STATES.indexOf(sp.s), r2(sp.cook), r2(sp.prog), ...('fuel' in sp ? [r2(sp.fuel)] : [])];
   if (c === 'W') return [sp.dirty.map((k) => KIND_LIST.indexOf(k)), sp.clean.map((k) => KIND_LIST.indexOf(k)), r2(sp.prog)];
   if ('n' in sp) return [sp.n];
   if (c === 'R') return Object.values(sp);
@@ -106,11 +107,14 @@ function readSpot(c, data, sp) {
   if ('item' in sp) {
     sp.item = readItem(data[0]);
     sp.prog = num(data[1], 0, 999) ?? 0;
+    if ('fuel' in sp) sp.fuel = num(data[2], 0, 1) ?? sp.fuel;
+    if ('parts' in sp) sp.parts = Array.isArray(data[2]) ? data[2].slice(0, 4).map(readItem).filter(Boolean) : [];
   } else if (c === 'P') {
     sp.n = int(data[0], 0, 3) ?? 0;
     sp.s = POT_STATES[data[1]] ?? 'empty';
     sp.cook = num(data[2], 0, 999) ?? 0;
     sp.prog = num(data[3], 0, 1) ?? 0;
+    if ('fuel' in sp) sp.fuel = num(data[4], 0, 1) ?? sp.fuel;
   } else if (c === 'W') {
     sp.dirty = Array.isArray(data[0]) ? data[0].slice(0, 32).map(containerOf).filter(Boolean) : [];
     sp.clean = Array.isArray(data[1]) ? data[1].slice(0, 32).map(containerOf).filter(Boolean) : [];
@@ -186,7 +190,7 @@ export function readState(s, d, me = null) {
 
 // What just happened, for a guest's sounds and lines: only the kinds that
 // make a sound, and only what they need.
-const EV_TYPES = ['pick', 'put', 'add', 'ladle', 'bin', 'nope', 'chopped', 'washed', 'scraped', 'cooked', 'burnt', 'baked', 'filled', 'spilt', 'served', 'lapsed', 'order', 'back', 'end', 'caught'];
+const EV_TYPES = ['pick', 'put', 'add', 'ladle', 'bin', 'nope', 'chopped', 'washed', 'scraped', 'cooked', 'burnt', 'baked', 'filled', 'spilt', 'served', 'lapsed', 'order', 'back', 'end', 'caught', 'grown', 'stoked', 'out', 'sneak', 'shooed', 'stolen', 'plated'];
 export const writeEvents = (list, level) =>
   list
     .filter((e) => EV_TYPES.includes(e.type))

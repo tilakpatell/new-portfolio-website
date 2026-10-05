@@ -72,6 +72,15 @@ const SOUNDS = {
     hiss(ac, out, t, { type: 'lowpass', f: 2200, gain: 0.18, attack: 0.005, length: 0.35, sweep: 400 });
     tone(ac, out, t + 0.12, { type: 'triangle', f: 520, to: 880, gain: 0.08, length: 0.14 });
   }),
+  grown: () => play((ac, out, t) => tone(ac, out, t, { type: 'triangle', f: 440, to: 660, gain: 0.06, length: 0.12 })),
+  // wood on the fire, and a fire gone out
+  stoked: () => play((ac, out, t) => hiss(ac, out, t, { type: 'lowpass', f: 600, gain: 0.16, attack: 0.04, length: 0.5, sweep: 1800 })),
+  out: () => play((ac, out, t) => hiss(ac, out, t, { type: 'bandpass', f: 1200, q: 1, gain: 0.12, attack: 0.01, length: 0.6, sweep: 300 })),
+  // the thief: creeping up, shooed off, away with it
+  sneak: () => play((ac, out, t) => [0, 0.16].forEach((d) => tone(ac, out, t + d, { type: 'sine', f: 220, to: 207, gain: 0.07, length: 0.3 }))),
+  shooed: () => play((ac, out, t) => hiss(ac, out, t, { type: 'highpass', f: 2000, gain: 0.08, attack: 0.01, length: 0.25, sweep: 5000 })),
+  stolen: () => play((ac, out, t) => [0, 0.09, 0.18].forEach((d, i) => tone(ac, out, t + d, { type: 'sawtooth', f: 330 - i * 60, gain: 0.05, length: 0.08 }))),
+  plated: () => play((ac, out, t) => [0, 0.08].forEach((d, i) => tone(ac, out, t + d, { type: 'triangle', f: [784, 1046][i], gain: 0.09, length: 0.22 }))),
   add: () => play((ac, out, t) => tone(ac, out, t, { f: 420, to: 160, gain: 0.16, attack: 0.002, length: 0.16 })),
   ladle: () => play((ac, out, t) => hiss(ac, out, t, { type: 'lowpass', f: 900, gain: 0.12, attack: 0.02, length: 0.3, sweep: 300 })),
   filled: () => play((ac, out, t) => [0, 0.07, 0.14].forEach((d, i) => tone(ac, out, t + d, { f: 300 - i * 40, to: 200 - i * 30, gain: 0.08, length: 0.08 }))),
