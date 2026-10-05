@@ -13,14 +13,19 @@ import './universe.css';
 const W = 600;
 const H = 300;
 const TILT = 0.42; // how flat the disc looks: the 3D overview's pitch, roughly
-const K = (W / 2 - 34) / MAP_RADIUS;
+// the far worlds are hundreds of units out and the stations fifteen: drawn
+// to a square-root scale, so the home system opens up and the worlds still fit
+const K = W / 2 - 34;
+const scaled = (r) => Math.sqrt(Math.max(0, r) / MAP_RADIUS) * K;
 const at = (id) => {
   const [x, y, z] = POSITIONS[id];
-  return [W / 2 + x * K, H / 2 - 8 + z * K * TILT - y * K * 0.6];
+  const r = Math.hypot(x, z) || 1;
+  const k = scaled(r) / r;
+  return [W / 2 + x * k, H / 2 - 8 + z * k * TILT - (y / MAP_RADIUS) * K * 0.5];
 };
 const radius = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
 // a place's dot: bigger than its true size on this scale, so it reads
-const dot = (u) => 5 + u.size * K * 0.6;
+const dot = (u) => 5 + Math.min(7, u.size * 0.35);
 // one orbit per distinct radius (the stations share theirs)
 const ORBITS = [...new Set(ORDER.map((id) => radius(id).toFixed(3)))].map(Number);
 
@@ -43,11 +48,11 @@ export default function MiniMap({ selected = null, onSelect, linkTo, kind = null
     <div className={`minimap ${className}`} data-selected={selected || undefined}>
       <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true" className="minimap-svg">
         {radii.map((r) => (
-          <ellipse key={r} className="minimap-orbit" cx={W / 2} cy={H / 2 - 8} rx={r * K} ry={r * K * TILT} />
+          <ellipse key={r} className="minimap-orbit" cx={W / 2} cy={H / 2 - 8} rx={scaled(r)} ry={scaled(r) * TILT} />
         ))}
         {/* the asteroid belt, a dotted band between the stations and the planets */}
-        <ellipse cx={W / 2} cy={H / 2 - 8} rx={((BELT.inner + BELT.outer) / 2) * K} ry={((BELT.inner + BELT.outer) / 2) * K * TILT} fill="none" stroke="#9a8f80" strokeOpacity="0.35" strokeWidth={(BELT.outer - BELT.inner) * K * 0.5} strokeDasharray="1 3" />
-        <circle cx={W / 2} cy={H / 2 - 8} r={SUN.r * K * 0.9} fill="#ffb347" opacity="0.9" />
+        <ellipse cx={W / 2} cy={H / 2 - 8} rx={scaled((BELT.inner + BELT.outer) / 2)} ry={scaled((BELT.inner + BELT.outer) / 2) * TILT} fill="none" stroke="#9a8f80" strokeOpacity="0.35" strokeWidth={(scaled(BELT.outer) - scaled(BELT.inner)) * 0.5} strokeDasharray="1 3" />
+        <circle cx={W / 2} cy={H / 2 - 8} r={Math.max(3, scaled(SUN.r) * 0.35)} fill="#ffb347" opacity="0.9" />
         {shown.map((u) => {
           const [x, y] = at(u.id);
           return (

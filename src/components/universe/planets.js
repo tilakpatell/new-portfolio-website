@@ -223,8 +223,14 @@ const BUILDERS = {
     // orbit goes). Slave I is about too, as traffic (traffic.js)
     const far = orbit(p.group, { radius: r * 1.38, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
     p.orbits.push(far);
+    // and two Star Destroyers on station round it (the site owner's model;
+    // its nose is −z, the way an orbit's holder travels)
+    const guard = [orbit(p.group, { radius: r * 1.3, tilt: -0.1, yaw: 2.4, speed: 0.1, phase: 0.6 }), orbit(p.group, { radius: r * 1.34, tilt: 0.2, yaw: 4.0, speed: 0.09, phase: 3.3 })];
+    p.orbits.push(...guard);
     p.slots = {
       cruiser: { holder: far.holder, size: r * 0.14, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 },
+      escort1: { holder: guard[0].holder, size: r * 0.26, turn: [0, 0, 0.05], sway: 0.04 },
+      escort2: { holder: guard[1].holder, size: r * 0.24, turn: [0, 0, -0.06], sway: 0.04 },
       // the Death Star itself, the site owner's model, when it comes: it
       // takes the painted sphere's place (turning with it), its dish and
       // trench and lit windows its own
@@ -906,6 +912,8 @@ const MODELS = [
   ['caribbean', '/games/caribbean/pearl-far.glb'],
   ['starwars', '/models/universe/venator.glb', 'cruiser'],
   ['starwars', '/models/universe/death-star.glb', 'skin'],
+  ['starwars', '/models/universe/star-destroyer.glb', 'escort1'],
+  ['starwars', '/models/universe/star-destroyer.glb', 'escort2'],
 ];
 
 // Load the models one by one, handing each over as it arrives; a model that

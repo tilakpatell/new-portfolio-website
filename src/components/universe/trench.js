@@ -13,10 +13,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { TRENCH_MODEL, trenchOf } from './deep';
+import { TRENCH_MODEL, TRENCH_STRETCH, trenchOf } from './deep';
 
 const URL = '/models/universe/trench.glb';
-const STRETCH = 6; // sections in the stretch
+const STRETCH = TRENCH_STRETCH; // sections in the stretch (the same as ship.js lets the ship into)
 
 // a copy of a geometry with every attribute in plain floats (the model's are
 // packed into small integers, which can't take a transform: they'd clip)
@@ -39,7 +39,7 @@ export function createTrench(wonder) {
   let woken = false;
   const out = { group, ready: false, wake, dispose };
 
-  const { segments, scale } = trenchOf(wonder);
+  const { segments, scale, home } = trenchOf(wonder);
   // where a section's middle is in the model: halfway along it, in the
   // middle of the trench, level with its rim
   const mid = new THREE.Vector3((TRENCH_MODEL.x[0] + TRENCH_MODEL.x[1]) / 2, TRENCH_MODEL.rim, (TRENCH_MODEL.z[0] + TRENCH_MODEL.z[1]) / 2);
@@ -52,8 +52,7 @@ export function createTrench(wonder) {
   const outward = new THREE.Vector3();
   const axis = new THREE.Vector3(0, 1, 0);
 
-  // the middle of the stretch: square to the way home
-  const home = Math.atan2(-wonder.at[2], -wonder.at[0]);
+  // (the middle of the stretch is square to the way home: trenchOf's `home`)
   function wake() {
     if (woken) return;
     woken = true;

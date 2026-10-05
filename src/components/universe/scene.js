@@ -12,13 +12,20 @@
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
-//   Out past the home system is deep space (deep.js, deepspace.js), vast,
-//   with wonders to fly to on the pulse drive. You're not alone: traffic
-//   (traffic.js), hunters after you (hunters.js: the Empire, the Federation,
-//   the Council of Ricks), with shields that take their hits and come back,
-//   and now and then the director (director.js) sets something going
-//   (setpieces.js: a Star Destroyer jumping in, portals, a comet; a convoy,
-//   someone in distress).
+//   Out past the home system is deep space (deep.js, deepspace.js), vast:
+//   the fandoms' planets are far out in it, hundreds of units apart, each
+//   marked by a beacon (beacons.js) so it reads as somewhere to go, with
+//   wonders between them, all reached on the pulse drive. You're not alone:
+//   traffic (traffic.js), hunters after you (hunters.js: the Empire, the
+//   Federation, the Council of Ricks; a pack that drops in ahead of you on
+//   the way somewhere interdicts you: the pulse drive is cut to the boost
+//   while they're on you, 40 s at most), with shields that take their hits
+//   and come back, and now and then the director (director.js) sets
+//   something going (setpieces.js: a Star Destroyer jumping in, portals, a
+//   comet; a convoy, someone in distress). Fly into a wonder too fast and
+//   it's a crash of its own kind: the Citadel takes you on into its world,
+//   the black hole throws you out beside some other place, a star swallows
+//   you, a giant takes you down into its clouds.
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
@@ -37,18 +44,19 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { MAP_RADIUS, ORDER, POSITIONS, SUN } from './layout';
+import { ORDER, POSITIONS, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
 import { createHunters } from './hunters';
 import { createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { buildDeepSpace } from './deepspace';
 import { createTrench } from './trench';
-import { DEEP, WONDERS, openness, reachOf } from './deep';
+import { createBeacons } from './beacons';
+import { DEEP, WONDERS, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
@@ -75,6 +83,11 @@ const IDLE = 40000; // ms sitting still before the crew get bored
 // impact, on through into its page (a planet or a station, not the sun),
 // or else the ship back again, and the end of its coming back
 const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
+// into the black hole it's a long fall, stretched out, before it's swallowed;
+// into a giant a dive down into the clouds
+const HOLE = { impact: 1.3, through: 2.2, back: 3.1, done: 3.7 };
+const DIVE = { impact: 0.55, through: 1.7, back: 2.8, done: 3.4 };
+const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive down
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -151,11 +164,13 @@ function starfield(rand) {
   return points;
 }
 
-// one faint circle per planet round the map's middle, all in one draw
+// one faint circle per station round the sun, all in one draw (the far
+// planets don't orbit it: they're worlds of their own out in deep space)
 function orbits() {
   const SEG = 160;
   const pts = [];
   for (const id of ORDER) {
+    if (byId(id).kind !== 'core') continue;
     const [x, y, z] = POSITIONS[id];
     const R = Math.hypot(x, z);
     for (let i = 0; i < SEG; i++) {
@@ -476,8 +491,11 @@ export async function create(canvas, ctx) {
   // round the Death Star's middle
   const deep = buildDeepSpace({ small });
   map.add(deep.group);
-  const trenches = WONDERS.filter((w) => w.trench).map((w) => createTrench(w));
+  const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }));
   for (const tr of trenches) map.add(tr.group);
+  // and a beacon over each far world, so it reads as somewhere to go
+  const beacons = createBeacons();
+  map.add(beacons.points);
 
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
@@ -562,6 +580,9 @@ export async function create(canvas, ctx) {
     deepSaid: false,
     trench: 0, // seconds down in the Death Star's trench
     trenchAt: -1e9,
+    interdicted: false, // hunters have the pulse drive held down
+    interdictAt: -1e9,
+    lensBoost: 0, // the black hole's bending, pushed up as it swallows the ship
     flare: 1,
   };
   const t0 = performance.now();
@@ -613,19 +634,21 @@ export async function create(canvas, ctx) {
     const nose = s.pitch || 0;
     return {
       target: [wx + dx * look, s.y + 0.06 + (s.vy || 0) * 0.05, wz + dz * look],
-      dist: 1.7 + Math.abs(s.speed) * 0.045 + state.streak * 0.7,
+      dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7,
       pitch: 0.21 - nose * 0.45,
     };
   };
 
   const flying = () => Boolean(state.ship);
-  // the whole map; out in deep space, pulled back far enough to take in the
-  // ship as well (and the wonders round it)
+  // the whole map: the home system; out in deep space, the view pulls back
+  // over the ship far enough to take in the sun (the way home) and the
+  // places round it
   const mapPose = () => {
     const s = state.ship;
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
-    return { ...state.overview, dist: state.overview.dist * Math.min(9, (r + 90) / MAP_RADIUS) };
+    const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 140, 1400), pitch: 0.62 };
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
@@ -988,10 +1011,16 @@ export async function create(canvas, ctx) {
     const center = new THREE.Vector3(...solid.at);
     const from = new THREE.Vector3(s.x, s.y, s.z);
     const normal = from.clone().sub(center).normalize();
+    // into a wonder, it's a crash of its own kind
+    const wonder = wonderById(e.id) ?? (e.id.includes('-') ? wonderById(e.id.split('-')[0]) : null);
+    const kind = !wonder || wonder.id !== e.id ? null : wonder.kind === 'black-hole' ? 'wormhole' : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? 'world' : null;
     state.crash = {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
       id: e.id,
-      sun: e.id === 'sun',
+      sun: e.id === 'sun' || kind === 'star',
+      kind,
+      world: kind === 'world' ? wonder.world : null,
+      colour: kind === 'giant' ? wonder.colors[0] : null,
       from,
       into: normal.clone().negate(),
       normal,
@@ -1007,6 +1036,7 @@ export async function create(canvas, ctx) {
     };
     state.auto = null;
     state.boosting = false;
+    state.interdicted = false;
     burst.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     retarget(650); // the camera pulls back to watch it
@@ -1065,6 +1095,18 @@ export async function create(canvas, ctx) {
   const onHunters = (e) => {
     if (e.type === 'hunted') {
       if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+      // dropped in ahead of you on the way somewhere: they hold the pulse
+      // drive down while they're on you (a jolt as it cuts)
+      if (e.interdict && !state.interdicted && state.ship) {
+        state.interdicted = true;
+        state.interdictAt = state.clock;
+        if (!reduced) {
+          state.flare = Math.max(state.flare, 1.8);
+          state.shake = Math.max(state.shake, 0.6);
+          state.kick = 1;
+        }
+        emit({ type: 'interdicted', faction: e.faction });
+      }
     } else if (e.type === 'laser') hurt(e.damage);
     else if (e.type === 'shot') emit(e);
     else if (e.type === 'escaped' || e.type === 'cleared') {
@@ -1078,16 +1120,20 @@ export async function create(canvas, ctx) {
   };
 
   // what the director sets going
+  // on the way somewhere (out in the open at speed), a pack comes in ahead
+  // of you and interdicts you: an ambush
+  const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const happen = (id, ship) => {
     const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
-    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship);
-    else if (id === 'council') pieces.portals(hunters.pack('council', ship));
+    const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
+    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship, ambush);
+    else if (id === 'council') pieces.portals(hunters.pack('council', ship, ambush));
     else if (id === 'destroyer') {
       const d = pieces.destroyer(ship);
       if (!d) return;
       emit({ type: 'event', id: 'destroyer' });
       // its fighters launch a moment after it's here
-      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack('empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack('empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35, interdict: ambush.interdict }) });
     } else if (id === 'distress') {
       const prey = traffic?.distress(ship, family);
       if (!prey) return;
@@ -1109,8 +1155,8 @@ export async function create(canvas, ctx) {
     map.localToWorld(lensAt.copy(L.at));
     const d = lensAt.distanceTo(camera.position);
     lensAt.project(camera);
-    if (d > 700 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
-    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, L.r / (d * tanHalf) / 2);
+    if (d > 700 || (d < L.r * 1.2 && !state.lensBoost) || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
+    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, Math.min(0.6, (L.r / (d * tanHalf) / 2) * (1 + state.lensBoost)));
   };
 
   // the shields bar: shown while there's trouble about or they're down at all
@@ -1141,8 +1187,10 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view !== 'chase' });
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view !== 'chase', travelling: travelling(live) });
         if (id) happen(id, live);
+        // the drive comes back once they're off you (or have had their go)
+        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
       }
       for (const l of [...later]) {
         if (state.clock < l.at) continue;
@@ -1168,7 +1216,10 @@ export async function create(canvas, ctx) {
         emit({ type: 'event', id: 'trench' });
         if (hunters && FAMILY[state.kind] !== 'rickmorty' && !hunters.active) hunters.pack('empire', live, { size: 3, ace: true });
       }
-    } else later.length = 0;
+    } else {
+      later.length = 0;
+      state.interdicted = false;
+    }
     if (state.hurt > 0) {
       state.hurt = Math.max(0, state.hurt - dt * 2.2);
       busy = true;
@@ -1190,32 +1241,43 @@ export async function create(canvas, ctx) {
     c.age += dt;
     const age = c.age;
     const m = state.model;
+    const T = c.kind === 'wormhole' ? HOLE : c.kind === 'giant' ? DIVE : CRASH;
     updatePlumes(dt, (performance.now() - t0) / 1000, 0); // the engines are out
-    if (age < CRASH.impact) {
-      // on into it, tumbling, a little way under the surface
-      const k = age / CRASH.impact;
-      const depth = k * k * (SHIP.radius + 0.25);
+    if (age < T.impact) {
+      // on into it, tumbling, a little way under the surface (into the black
+      // hole, a long fall, drawn out thin toward it; into a giant, down into
+      // the clouds)
+      const k = age / T.impact;
+      const depth = k * k * (c.kind === 'wormhole' ? c.radius * 0.9 : c.kind === 'giant' ? SHIP.radius + 2.5 : SHIP.radius + 0.25);
       m.group.position.copy(c.from).addScaledVector(c.into, depth);
       m.group.position.x += c.fwd[0] * k * 0.1;
       m.group.position.z += c.fwd[1] * k * 0.1;
       m.pivot.rotation.x += dt * c.spin[0];
       m.pivot.rotation.z += dt * c.spin[1];
+      if (c.kind === 'wormhole') {
+        m.pivot.scale.set(1 - k * 0.7, 1 - k * 0.7, 1 + k * 3);
+        state.lensBoost = k * 2.5;
+        if (!reduced) state.shake = Math.max(state.shake, 0.4);
+      }
     } else if (!c.impact) {
       c.impact = true;
       m.group.visible = false;
-      crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun });
-      state.shake = reduced ? 0 : 1;
-      state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
-      if (!c.shot) emit({ type: 'crash', id: c.id }); // (shot down said so as it began)
+      m.pivot.scale.setScalar(1);
+      crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun, colour: c.colour });
+      state.shake = reduced ? 0 : c.kind === 'giant' ? 1.4 : 1;
+      state.flare = reduced ? 1 : c.kind === 'wormhole' ? 2.4 : c.sun ? 2.6 : 2;
+      state.lensBoost = 0;
+      if (!c.shot) emit({ type: 'crash', id: c.id, kind: c.kind ?? undefined }); // (shot down said so as it began)
     }
-    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && isPlace(c.id)) {
+    if (age >= T.through && !c.asked && !c.sun && !c.shot && (isPlace(c.id) || c.world)) {
       // the shockwave running out over the surface: the page takes it from
-      // here, if it's going on into the place's page
+      // here, if it's going on into the place's page (a wonder with a world
+      // of its own, the Citadel, takes you into that)
       c.asked = true;
-      c.through = Boolean(props.onCrash?.(c.id));
+      c.through = Boolean(props.onCrash?.(c.world ?? c.id));
     }
     if (c.through) return true; // the camera holds on the crater till the page goes
-    if (age >= CRASH.back && !c.back) {
+    if (age >= T.back && !c.back) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
       let at;
@@ -1223,14 +1285,25 @@ export async function create(canvas, ctx) {
         // shot down: back at the nearest place, shields up again
         const near = ORDER.reduce((a, b) => (Math.hypot(...POSITIONS[a].map((v, i) => v - c.from.getComponent(i))) <= Math.hypot(...POSITIONS[b].map((v, i) => v - c.from.getComponent(i))) ? a : b));
         at = parkAt(near, [c.from.x, c.from.z]);
+      } else if (c.kind === 'wormhole') {
+        // through the black hole: out beside some other place entirely
+        const places = [...ORDER.filter((id) => byId(id).kind !== 'core'), ...SOLIDS.filter((o) => o.deep && o.id !== c.id && !o.id.includes('-')).map((o) => o.id)];
+        const to = places[Math.floor(Math.random() * places.length)];
+        if (isPlace(to)) at = parkAt(to, [c.from.x, c.from.z]);
+        else {
+          const o = SOLIDS.find((s) => s.id === to);
+          const a = Math.random() * Math.PI * 2;
+          const r = o.reach + 4;
+          at = { x: o.at[0] + Math.cos(a) * r, y: o.at[1] + SHIP.height, z: o.at[2] + Math.sin(a) * r, heading: headingTo(-Math.cos(a), -Math.sin(a)) };
+        }
       } else if (c.sun || !isPlace(c.id)) {
-        // the sun, or a wonder out in deep space: back out the way it went in, facing away
+        // the sun (or a star), or a wonder out in deep space: back out the way it went in, facing away
         const solid = SOLIDS.find((o) => o.id === c.id) ?? { at: SUN.at, r: SUN.r };
         const out = c.from.clone().sub(new THREE.Vector3(...solid.at));
-        if (c.sun) out.y = 0;
+        if (c.id === 'sun') out.y = 0;
         out.normalize();
         const r = solid.r + 5;
-        at = { x: solid.at[0] + out.x * r, y: c.sun ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
+        at = { x: solid.at[0] + out.x * r, y: c.id === 'sun' ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
       state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
       state.shield = 100;
@@ -1243,7 +1316,7 @@ export async function create(canvas, ctx) {
     }
     if (c.back) {
       // coming out of the portal, or out of hyperspace (long, then snapping to size)
-      const k = clamp01((age - CRASH.back) / (CRASH.done - CRASH.back));
+      const k = clamp01((age - T.back) / (T.done - T.back));
       const s = state.ship;
       m.group.position.set(s.x, s.y, s.z);
       m.group.rotation.y = s.heading;
@@ -1251,7 +1324,7 @@ export async function create(canvas, ctx) {
       if (state.view === 'chase') state.yaw += wrap(-s.heading - state.yaw) * clamp01(dt * 4.5);
       m.group.scale.set(grow, grow, state.kind === 'cruiser' ? grow : grow * (1 + (1 - k) * 5));
     }
-    if (age >= CRASH.done) {
+    if (age >= T.done) {
       state.crash = null;
       m.group.scale.setScalar(1);
       m.group.visible = true;
@@ -1268,6 +1341,7 @@ export async function create(canvas, ctx) {
       input = a.input;
       if (a.done) state.auto = null;
     } else input = steering();
+    input.interdicted = state.interdicted;
     const { ship, events } = step(state.ship, input, dt);
     state.ship = ship;
     for (const e of events) {
@@ -1317,7 +1391,7 @@ export async function create(canvas, ctx) {
     m.pivot.rotation.x = (ship.pitch || 0) + (reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08));
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
     updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3);
-    engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
+    engine?.set({ speed: Math.min(ship.speed, SHIP.boost * 1.2), boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
     // sitting still a good while: the crew notice
     if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
       state.idleSaid = true;
@@ -1462,6 +1536,7 @@ export async function create(canvas, ctx) {
     map.updateMatrixWorld();
     map.worldToLocal(camLocal.copy(camera.position));
     deep.update(t, camera, camLocal);
+    beacons.update(camLocal);
     for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 700) tr.wake();
     bend();
     if (sky) sky.position.copy(camLocal);
@@ -1750,6 +1825,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       for (const tr of trenches) tr.dispose();
+      beacons.dispose();
       burst.clear();
       burst.dispose();
       traffic?.dispose();
