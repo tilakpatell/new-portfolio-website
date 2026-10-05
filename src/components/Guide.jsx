@@ -200,6 +200,7 @@ const PAGES = {
 };
 
 const SITE = [
+  ['Two ways round', 'The Universe and Classic switch at the top: fly through the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site opens on the one you picked last.'],
   ['Getting around', 'The menu at the top, or ⌘K (Ctrl+K) for the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
   ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
