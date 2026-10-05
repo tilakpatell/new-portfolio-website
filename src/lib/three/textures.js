@@ -133,13 +133,17 @@ const cache = new Map(); // url → Promise<Texture>
 export function loadTexture(url, { renderer = null, color = true, ...rest } = {}) {
   if (!cache.has(url)) {
     const { bitmap, plain } = loaders();
-    const p = bitmap
-      ? bitmap.loadAsync(url).then((img) => {
-          const t = new THREE.Texture(img);
-          t.flipY = false; // (the bitmap was flipped as it was decoded)
-          return t;
-        })
-      : plain.loadAsync(url);
+    // a GPU-compressed texture (KTX2) goes through the shared KTX2 loader,
+    // which is only fetched for one; it comes with its own mipmaps
+    const p = /\.ktx2(?:[?#]|$)/i.test(url)
+      ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(url))
+      : bitmap
+        ? bitmap.loadAsync(url).then((img) => {
+            const t = new THREE.Texture(img);
+            t.flipY = false; // (the bitmap was flipped as it was decoded)
+            return t;
+          })
+        : plain.loadAsync(url);
     cache.set(
       url,
       p.then((t) => sharpen(t, { renderer, color, ...rest })).catch((e) => {

@@ -46,6 +46,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [onFoot, setOnFoot] = useState(false);
   const [landable, setLandable] = useState(null);
   const [footHint, setFootHint] = useState(false);
+  // the place's name as you come down on a planet (landings.js)
+  const [arrive, setArrive] = useState(null);
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const setControls = (c) => {
@@ -99,11 +101,15 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
         if (e.type === 'landable') setLandable(e.id);
+        if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
         if (e.type === 'foot' && e.id === 'out') {
           setOnFoot(true);
           setFootHint(true);
         }
-        if (e.type === 'foot' && (e.id === 'off' || e.id === 'in')) setOnFoot(false);
+        if (e.type === 'foot' && (e.id === 'off' || e.id === 'in')) {
+          setOnFoot(false);
+          setArrive(null);
+        }
         events.current?.(e);
       },
     },
@@ -113,6 +119,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     setFlown(false);
     setOnFoot(false);
   }, [ship]);
+  useEffect(() => {
+    if (!arrive) return undefined;
+    const t = setTimeout(() => setArrive(null), 6500);
+    return () => clearTimeout(t);
+  }, [arrive]);
   // the keys on foot, for a while after stepping out
   useEffect(() => {
     if (!footHint) return undefined;
@@ -317,6 +328,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
               {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} onBuild={onBuild} onFit={onFit} open={hangar} onOpen={openHangar} />}
+              {arrive && (
+                <div className="universe-arrive" key={arrive.at} role="status">
+                  <p className="universe-arrive-title">{arrive.title}</p>
+                  {arrive.sub && <p className="universe-arrive-sub">{arrive.sub}</p>}
+                </div>
+              )}
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">

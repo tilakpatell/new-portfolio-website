@@ -858,12 +858,14 @@ function meeseeks(k) {
 // Birdperson in flight: a man's body in brown feathers with a tan breast,
 // a bird's head with a hooked yellow beak and a crest, his belt and
 // loincloth, legs trailing, great brown wings spread and beating.
-function birdperson(k) {
-  const BROWN = '#6b4a2c';
-  const TAN = '#c9a274';
-  const DARKB = '#3b2716';
-  const BEAK = '#e2b450';
-  const RED = '#7b2b1d';
+// (`paint`: another look in the same shape: Phoenixperson, below)
+function birdperson(k, paint = {}) {
+  const BROWN = paint.feathers ?? '#6b4a2c';
+  const TAN = paint.front ?? '#c9a274';
+  const DARKB = paint.dark ?? '#3b2716';
+  const BEAK = paint.beak ?? '#e2b450';
+  const RED = paint.cloth ?? '#7b2b1d';
+  const WING = paint.wing ?? { base: '#6a4a2c', feather: ['#7a5634', '#5b3d22', '#2e1e10'], rows: ['#9a7348', '#86613b', '#77542f'] };
   const L = [];
   L.push(ball(0.115, [0, 0, 0.17], [1, 0.78, 1.7], { color: BROWN }, 14));
   L.push(ball(0.1, [0, -0.03, 0.22], [0.88, 0.62, 1.35], { color: TAN }, 12));
@@ -924,7 +926,7 @@ function birdperson(k) {
   const feathers = canvasTexture(256, (g, S) => {
     // (drawn on the outline as first measured, before it was scaled to fit him)
     const P = (x, z) => [(x / 0.75) * S, (1 - (z + 0.27) / 0.37) * S];
-    g.fillStyle = '#6a4a2c';
+    g.fillStyle = WING.base;
     g.fillRect(0, 0, S, S);
     // long flight feathers fanning from the arm, darker at their tips
     for (let i = 0; i < 26; i++) {
@@ -932,9 +934,9 @@ function birdperson(k) {
       const [x0, y0] = P(0.05 + f * 0.6, 0.0);
       const [x1, y1] = P(0.02 + f * 0.74, -0.27 + f * 0.1);
       const grad = g.createLinearGradient(x0, y0, x1, y1);
-      grad.addColorStop(0, '#7a5634');
-      grad.addColorStop(0.7, '#5b3d22');
-      grad.addColorStop(1, '#2e1e10');
+      grad.addColorStop(0, WING.feather[0]);
+      grad.addColorStop(0.7, WING.feather[1]);
+      grad.addColorStop(1, WING.feather[2]);
       g.strokeStyle = grad;
       g.lineWidth = 9;
       g.beginPath();
@@ -952,7 +954,7 @@ function birdperson(k) {
     for (let row = 0; row < 3; row++) {
       for (let i = 0; i < 18; i++) {
         const [x, y] = P(0.02 + i * 0.04 + row * 0.02, 0.06 - row * 0.05 - i * 0.004);
-        g.fillStyle = row === 0 ? '#9a7348' : row === 1 ? '#86613b' : '#77542f';
+        g.fillStyle = WING.rows[row] ?? WING.rows[2];
         g.beginPath();
         g.ellipse(x, y, 9, 13, 0.3, 0, PI * 2);
         g.fill();
@@ -977,7 +979,11 @@ function birdperson(k) {
   };
 }
 
-const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
+// Phoenixperson: Birdperson rebuilt by the Federation, in red feathers and
+// chrome, with the same shape (hunterRules.js's bounty hunter)
+const phoenixperson = (k) => birdperson(k, { feathers: '#8a2a20', front: '#d4d7df', dark: '#2a1a16', beak: '#cfd3dc', cloth: '#2b2b33', wing: { base: '#c9ccd4', feather: ['#d8dbe3', '#aeb3bd', '#6a6f78'], rows: ['#e2e5ec', '#cfd3db', '#bfc4cc'] } });
+
+const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, phoenixperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
 // every kind there's a built model of
 export const BUILT_KINDS = Object.keys(BUILD);
 
