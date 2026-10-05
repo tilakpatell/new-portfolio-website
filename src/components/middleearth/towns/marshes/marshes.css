@@ -7,7 +7,7 @@
 .marshes-stage[data-zone='marsh'] { background: linear-gradient(180deg, #4a5448 0%, #8a9080 56%, #2a3022 60%, #0e120c 100%); }
 .marshes-stage[data-zone='gate'] { background: linear-gradient(180deg, #2a2420 0%, #6a5a4a 56%, #2a2622 60%, #0e0c0a 100%); }
 .marshes-stage .shire-loading { color: #d0d4cc; }
-.marshes-stage[data-mode='talk'] .shire-canvas, .marshes-stage[data-mode='rope'] .shire-canvas, .marshes-stage[data-mode='creep'] .shire-canvas, .marshes-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+.marshes-stage[data-mode='talk'] .shire-canvas, .marshes-stage[data-mode='rope'] .shire-canvas, .marshes-stage[data-mode='creep'] .shire-canvas, .marshes-stage[data-mode='end'] .shire-canvas, .marshes-stage[data-mode='way'] .shire-canvas { cursor: default; touch-action: none; }
 
 .marshes-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
 .marshes-stage .shire-hud-top ~ .marshes-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
@@ -21,10 +21,20 @@
 .marshes-hide { position: absolute; right: 1rem; bottom: clamp(6rem, 18vh, 9rem); z-index: 6; }
 .marshes-stage[data-hiding] .shire-canvas { filter: saturate(0.6) brightness(0.85); }
 
+/* on the side, Sméagol's safe way: low in the middle, the pool above it */
+.marshes-way { top: auto; bottom: clamp(0.7rem, 2vw, 1.2rem); gap: 0.4rem; width: min(24rem, calc(100% - 1.4rem)); }
+.marshes-way .shire-panel-say b { color: var(--shire-gold); }
+.marshes-way[data-sunk] { border-color: rgba(140, 255, 190, 0.7); }
+.marshes-way[data-show] { width: min(36rem, calc(100% - 1.4rem)); }
+.marshes-way[data-show] .shire-panel-stats { display: none; }
+.marshes-hops { justify-content: center; }
+.marshes-hops .marshes-big { min-width: 4.6rem; font-size: 1.05rem; }
+
 .marshes-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
 
 @media (max-width: 639px) {
   .marshes-stage[data-game] .shire-hud-top { display: none; }
   .marshes-game, .marshes-stage .shire-hud-top ~ .marshes-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
   .marshes-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+  .marshes-way { top: auto; bottom: 0.7rem; width: calc(100% - 5.4rem); }
 }

@@ -119,3 +119,152 @@ export function reach(r) {
   r.state = 'got';
   return 'got';
 }
+
+// ── On the side: ducks and drakes ──
+// Skipping stones on Nen Hithoel with Merry and Pippin. Each stone is
+// thrown in two goes: catch the tilt first (a needle swinging from flat to
+// steep and back: low is best, but not quite flat), then the strength (a
+// bar rising and falling: the top is best). Each time the stone meets the
+// water it keeps some of its speed, more the nearer the best tilt and the
+// flatter the stone; it skips while it's quick enough, then sinks. Too
+// steep, and it goes straight in.
+export const SKIP = {
+  swing: 2.2, // seconds for the needle to swing up and back
+  steep: 40, // the most it tilts (degrees)
+  best: 14, // the tilt that skips best
+  sink: 32, // steeper than this and it goes straight in
+  rise: 0.9, // seconds for the strength to fill (and as long to fall)
+  speed: [5, 21], // m/s, from a feeble throw to a strong one
+  keep: 0.87, // the speed a perfect touch keeps
+  lose: 0.005, // less kept for each degree off the best tilt
+  rough: 0.3, // and for a rounder stone (by 1 - how flat it is)
+  least: 5, // too slow to skip, under this (m/s)
+  hop: 0.018, // a hop's length per (m/s)²
+  g: 9.8,
+  pause: 1.6, // seconds after it sinks, before the next stone
+  pippin: 7, // Pippin's best (he says)
+  merry: 5,
+};
+
+// the needle's tilt (degrees) and the strength (0..1), `t` seconds in
+export const tiltAt = (t) => SKIP.steep * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / SKIP.swing));
+export const strengthAt = (t) => {
+  const k = (t / SKIP.rise) % 2;
+  return k <= 1 ? k : 2 - k;
+};
+
+// A stone thrown so: where it meets the water (`d` metres out, `t` seconds
+// after it leaves your hand), and how many times it skips. The last touch
+// is where it sinks.
+export function skipsFor(tilt, strength, flat = 1) {
+  const v0 = SKIP.speed[0] + (SKIP.speed[1] - SKIP.speed[0]) * Math.max(0, Math.min(1, strength));
+  // out of the hand to the water first
+  let d = 2 + v0 * 0.4;
+  let t = d / v0 + 0.15;
+  const touches = [{ d, t, v: v0 }];
+  if (tilt <= SKIP.sink) {
+    const keep = SKIP.keep - Math.abs(tilt - SKIP.best) * SKIP.lose - (1 - Math.max(0, Math.min(1, flat))) * SKIP.rough;
+    let v = v0;
+    for (let n = 0; n < 40; n++) {
+      v *= keep;
+      if (v < SKIP.least) break;
+      const len = v * v * SKIP.hop;
+      d += len;
+      t += len / v;
+      touches.push({ d, t, v });
+    }
+  }
+  return { skips: touches.length - 1, touches };
+}
+
+// Where a thrown stone is, `t` seconds after it left your hand: `d` out
+// and `y` above the water (hand height `hand`), or null once it's sunk.
+export function stoneAt(touches, t, hand = 1) {
+  if (!touches.length || t > touches[touches.length - 1].t) return null;
+  let t0 = 0;
+  let d0 = 0;
+  for (let i = 0; i < touches.length; i++) {
+    const p = touches[i];
+    if (t <= p.t) {
+      const span = p.t - t0;
+      const k = span > 0 ? (t - t0) / span : 1;
+      // the first flight drops from the hand; the skips are little arcs
+      const arc = (SKIP.g * span * span) / 8;
+      const y = i === 0 ? hand * (1 - k * k) + arc * 0.8 * k * (1 - k) * 4 : arc * 4 * k * (1 - k);
+      return { d: d0 + (p.d - d0) * k, y };
+    }
+    t0 = p.t;
+    d0 = p.d;
+  }
+  return null;
+}
+
+// a stone from the shore: how flat it is, 0.55 (lumpy) to 1 (a biscuit)
+const pickStone = (rand) => 0.55 + rand() * 0.45;
+
+export function newSkipping(seed = 1) {
+  let s = seed % 2147483647 || 1;
+  const rand = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+  return { rand, phase: 'tilt', clock: 0, tilt: 0, strength: 0, flat: pickStone(rand), throws: 0, best: 0, last: null, fly: null, wait: 0 };
+}
+// look for another stone (only before it's thrown)
+export function newStone(sk) {
+  if (sk.phase !== 'tilt' && sk.phase !== 'strength') return false;
+  sk.flat = pickStone(sk.rand);
+  sk.phase = 'tilt';
+  sk.clock = 0;
+  return true;
+}
+// Space, or the button: catch the tilt, then the strength (and throw).
+// Returns 'tilt', 'throw', or null if it's not the time.
+export function pressSkip(sk) {
+  if (sk.phase === 'tilt') {
+    sk.tilt = tiltAt(sk.clock);
+    sk.phase = 'strength';
+    sk.clock = 0;
+    return 'tilt';
+  }
+  if (sk.phase === 'strength') {
+    sk.strength = strengthAt(sk.clock);
+    const r = skipsFor(sk.tilt, sk.strength, sk.flat);
+    sk.fly = { t: 0, touches: r.touches, i: 0, skips: r.skips };
+    sk.phase = 'flying';
+    sk.throws += 1;
+    return 'throw';
+  }
+  return null;
+}
+// One step. Events: 'touch' { i, d, skip } each time the stone meets the
+// water, 'sank' { skips, best, why } ('steep', 'weak' or null), and 'ready'
+// when there's a new stone in your hand.
+export function stepSkipping(sk, dt) {
+  const ev = [];
+  sk.clock += dt;
+  if (sk.phase === 'flying' && sk.fly) {
+    const f = sk.fly;
+    f.t += dt;
+    while (f.i < f.touches.length && f.touches[f.i].t <= f.t) {
+      ev.push({ type: 'touch', i: f.i, d: f.touches[f.i].d, skip: f.i < f.touches.length - 1 });
+      f.i += 1;
+    }
+    if (f.i >= f.touches.length && f.t > f.touches[f.touches.length - 1].t + 0.3) {
+      const why = f.skips > 0 ? null : sk.tilt > SKIP.sink ? 'steep' : 'weak';
+      const better = f.skips > sk.best;
+      sk.best = Math.max(sk.best, f.skips);
+      sk.last = { skips: f.skips, why, better };
+      sk.phase = 'done';
+      sk.wait = SKIP.pause;
+      ev.push({ type: 'sank', skips: f.skips, best: sk.best, why });
+    }
+  } else if (sk.phase === 'done') {
+    sk.wait -= dt;
+    if (sk.wait <= 0) {
+      sk.fly = null;
+      sk.flat = pickStone(sk.rand);
+      sk.phase = 'tilt';
+      sk.clock = 0;
+      ev.push({ type: 'ready' });
+    }
+  }
+  return ev;
+}

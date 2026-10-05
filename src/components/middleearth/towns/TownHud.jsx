@@ -5,7 +5,8 @@ import { forwardRef } from 'react';
 // a conversation, and the touch stick. The corner map is ./map.js.
 
 // The list of things to do: each with its seal, where it is, and a way there.
-export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false }) {
+// Anything more (the town's games on the side, ./SideList.jsx) comes after.
+export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false, children = null }) {
   return (
     <div className="shire-list" role="dialog" aria-label={title}>
       <div className="shire-list-head">
@@ -32,6 +33,7 @@ export function QuestList({ title, quests, next, onClose, onGo, canGo = () => fa
           </li>
         ))}
       </ul>
+      {children}
     </div>
   );
 }

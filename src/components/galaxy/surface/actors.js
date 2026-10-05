@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { buildFigure } from './figures';
+import { crewFigure } from './crew';
 import { PROPS } from './props';
 import { cloneModel, loadGlb } from './placer';
 import { rng } from './noise';
@@ -174,7 +175,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
   };
   const figureOf = async (kind, spec) => {
     if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec);
-    return (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec);
+    return (await crewFigure(kind)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec);
   };
 
   for (const spec of life) {

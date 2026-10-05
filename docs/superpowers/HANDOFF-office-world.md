@@ -19,7 +19,8 @@ So: the deep photo research was skipped. The floor is the repo's existing resear
   - `OfficeWorld.jsx` — walking (towns walker/keys/stick/gamepad), HUD (towns `TownHud` parts + shire CSS, re-coloured in `world.css`), mini map of the floor, room name chip, bubbles with each person's lines, prompts, the 7 jobs, overlays for the existing `PaperToss` and `FactCheck` (both got an optional `onDone`), card fallback without 3D.
   - `sounds.js` — synthesised room tone (ballast hum, air, distant phone) and fire alarm.
 - `src/components/office/people.js`: `walk(on, rate)` now takes a stride rate (default 1, so other worlds are unchanged).
-- `src/components/Achievements.jsx`: 7 new achievements (`switchboard`, `jello`, `chili`, `olympics`, `falsefact`, `stressrelief`, `bestboss`), so the page's Dundies count them.
+- `src/components/Achievements.jsx`: 8 new achievements (`switchboard`, `jello`, `chili`, `olympics`, `falsefact`, `stressrelief`, `hoops`, `bestboss`), so the page's Dundies count them.
+- The scene's desk cameras (reception, Michael's office, the free-throw line) are used whenever the mode isn't `walk` (`state.deskCam`).
 
 ## The jobs
 
@@ -29,18 +30,24 @@ So: the deep photo research was skipped. The floor is the repo's existing resear
 4. **Office Olympics**: paper toss overlay at Jim's desk (done when a round ends with a score).
 5. **Dwight's fact check**: the fact-check overlay at Dwight's desk.
 6. **Stress relief** (after 2 and 3): Dwight's fire safety seminar in the conference room → fire in the bin, alarm, red pulse, 8 coworkers running in panic lanes → reach the stairwell in 38 s.
-7. **The Dundies** (after all): Michael's office conversation, a Dundie for Jim, applause, `thankYou`.
+7. **Office vs. warehouse**: down the stairwell (E at the stairwell door when there's no fire) to the warehouse; at the free-throw line a power meter swings, Space/Shoot in the green; 3 of 5 to win (`story.js` `HOOPS`, `shoot`, `stepHoops`).
+8. **The Dundies** (after all the rest): Michael's office conversation, a Dundie for Jim, applause, `thankYou`.
+
+### The warehouse (`warehouse.js`, added in the second push)
+
+Its own floor east of the office (`layout.js` `WAREHOUSE`, x 30–54, z −8–8, walls appended to `WALLS`, colliders for racks/bales/forklift/stairs): concrete floor with yellow lines, block walls with a Dunder Mifflin-blue band, corrugated roof and trusses, 12 high-bay lamps, two roll-up dock doors (one up, a painted lot with a Dunder Mifflin truck outside, a spot of daylight), four rows of blue/orange pallet racks loaded with instanced paper boxes, shrink-wrapped bales, a yellow forklift, signs ("Days without an accident: 0", "Dunder Mifflin Warehouse", "Safety first", "Up to the office"), the stairs up, a hoop on the end wall with a free-throw line and a ball. Four more things to look at (forklift, accident sign, bales, dock). The mini map switches to the warehouse when you're in it.
 
 Plus 9 things to look at with E (Michael's mug, Pam's painting, copier, vending machine, water cooler, supply room, whiteboard, lift, Ryan's closet) and every coworker greets you with their own lines as you pass.
 
 ## Not verified yet (no tests/QA, per the user)
 
 - The 3D was seen to start in headless Chromium (`window.__OFFICE__` present, 16 people seated, no page errors), but no screenshot of the 3D view was checked: the software renderer was too slow to capture a frame at 1280×800 on the high tier. Things most likely to need a look: camera clearance in small rooms (Michael's office), blinds/window plane facing (sign of `side` in `WINDOWS`), the Erin standing copy position, the pot/Jell-O hand placement, fire-drill runners clipping desks, performance on `mid`/`low`.
-- `npm test` / `npm run build` were not run locally; eslint passes on the changed files. CI runs lint, tests and build on push.
+- `npm test` was not run. `npx vite build` passes, and eslint passes on the changed files. (This repo's GitHub Actions runs look stale; don't count on CI to catch a broken main.)
 
 ## Next ideas (if continuing)
 
 - Screenshot QA (dev hook: `window.__OFFICE__ = { api, sim, complete }`; set `sim.debugCam = { at: [x,y,z], look: [x,y,z] }` to frame a room).
-- The warehouse downstairs (Darryl, forklift, shelving, loading dock) via the stairwell; the building exterior / Scranton Business Park lot from the lobby.
+- Warehouse people (Roy, Lonny, Madge) would need new models; Darryl could stand down there instead of his office.
+- The building exterior / Scranton Business Park lot from the lobby or the dock.
 - Pretzel Day, the Diversity Day cards, Prison Mike in the conference room, Creed's mung beans.
 - Pick the 3D world's `WORLD_MB['/scranton']` (currently 5) from a measured load.

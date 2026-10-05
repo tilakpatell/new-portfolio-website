@@ -188,3 +188,21 @@ export function gate() {
   tone(ac, out, t + 1, { type: 'sawtooth', f: 38, to: 32, gain: 0.08, attack: 1, length: 5 });
   for (let i = 0; i < 6; i++) hiss(ac, out, t + 1.2 + i * 0.7, { type: 'highpass', f: 2200, gain: 0.05, attack: 0.01, length: 0.2 });
 }
+
+// ── Sméagol's safe way ──
+// a hop onto a tussock: a soft squelch (Gollum's lighter)
+export function squelch(k = 1) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  hiss(ac, out, t, { type: 'lowpass', f: 420 + k * 200, q: 1.5, gain: 0.12 * k, attack: 0.01, length: 0.22, sweep: 160 });
+  tone(ac, out, t, { f: 120, to: 80, gain: 0.05 * k, attack: 0.01, length: 0.15 });
+}
+// a tussock giving way under you: the glug as you go in
+export function sink() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  for (let i = 0; i < 4; i++) tone(ac, out, t + 0.12 + i * 0.13, { f: 200 - i * 25, to: 120 - i * 15, gain: 0.08, attack: 0.01, length: 0.14 });
+  splash();
+}

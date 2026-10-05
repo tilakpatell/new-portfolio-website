@@ -12,11 +12,12 @@ export const QUESTS = [
   { id: 'chili', name: 'Kevin’s famous chili', go: 'Kevin’s chili is waiting at the lift. Carry it to the kitchen without spilling a drop.' },
   { id: 'toss', name: 'Office Olympics', go: 'Paper toss, from your desk to the bin. Play a round.' },
   { id: 'factcheck', name: 'Dwight’s fact check', go: 'Dwight has facts. Tell him which of them are false.' },
+  { id: 'hoops', name: 'Office vs. warehouse', go: 'Down the stairwell to the warehouse. Darryl says the office can’t sink three free throws out of five.' },
   { id: 'fire', name: 'Stress relief', needs: ['jello', 'chili'], go: 'Dwight’s fire safety seminar, in the conference room. Then get out by the stairwell before the clock runs out.' },
-  { id: 'dundies', name: 'The Dundies', needs: ['phones', 'jello', 'chili', 'toss', 'factcheck', 'fire'], go: 'Michael wants to see you in his office. Bring your speech face.' },
+  { id: 'dundies', name: 'The Dundies', needs: ['phones', 'jello', 'chili', 'toss', 'factcheck', 'hoops', 'fire'], go: 'Michael wants to see you in his office. Bring your speech face.' },
 ];
 // each job's award, in the site's Dundies (Achievements.jsx)
-export const SEAL = { phones: 'switchboard', jello: 'jello', chili: 'chili', toss: 'olympics', factcheck: 'falsefact', fire: 'stressrelief', dundies: 'bestboss' };
+export const SEAL = { phones: 'switchboard', jello: 'jello', chili: 'chili', toss: 'olympics', factcheck: 'falsefact', fire: 'stressrelief', hoops: 'hoops', dundies: 'bestboss' };
 
 export function officeProgress(done) {
   const p = progress(QUESTS, done);
@@ -123,6 +124,38 @@ export function stepChili(c, h, dt) {
 // Dwight goes to the men's room when he sees you with the Jell-O; he's back
 // in `away` seconds, then he takes `walk` to come back to his desk.
 export const JELLO = { away: 32, walk: 7 };
+
+// ── free throws in the warehouse ──
+// A power meter swings; stop it in the sweet spot. Five shots, three to win.
+export const HOOPS = { shots: 5, need: 3, sweet: 0.62, swish: 0.05, rim: 0.12, speed: 1.35, flight: 0.95 };
+export const newHoops = () => ({ shots: 0, made: 0, t: 0, ball: null, over: false });
+// the meter, 0..1, at time t (a ping-pong that speeds up a little each shot)
+export const meterAt = (h) => {
+  const k = (h.t * HOOPS.speed * (1 + h.shots * 0.08)) % 2;
+  return k < 1 ? k : 2 - k;
+};
+// a shot at the meter's power: 'swish', 'rim' (in off the rim) or a miss ('short' / 'long')
+export function shoot(h) {
+  if (h.over || h.ball) return null;
+  const p = meterAt(h);
+  const off = p - HOOPS.sweet;
+  const kind = Math.abs(off) <= HOOPS.swish ? 'swish' : Math.abs(off) <= HOOPS.rim ? 'rim' : off < 0 ? 'short' : 'long';
+  h.ball = { t: 0, kind, power: p };
+  return kind;
+}
+// the ball's flight; returns 'in' or 'out' when it lands
+export function stepHoops(h, dt) {
+  h.t += dt;
+  if (!h.ball) return null;
+  h.ball.t += dt;
+  if (h.ball.t < HOOPS.flight) return null;
+  const made = h.ball.kind === 'swish' || h.ball.kind === 'rim';
+  h.shots += 1;
+  if (made) h.made += 1;
+  h.ball = null;
+  if (h.made >= HOOPS.need || h.shots - h.made > HOOPS.shots - HOOPS.need) h.over = true;
+  return made ? 'in' : 'out';
+}
 
 // ── Dwight's fire drill ──
 // From the conference room to the stairwell before the clock runs out.

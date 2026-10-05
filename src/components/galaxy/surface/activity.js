@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
+import { crewFigure } from './crew';
 import { PROPS } from './props';
 import { groundAt, turnToward } from './walker';
 import { stepTarget } from './quests';
@@ -153,7 +154,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   const figure = async (kind, spec) => {
     if (SPECIAL[kind]) return SPECIAL[kind]();
     if (spec.model !== false) {
-      const m = await modelFigure(kind).catch(() => null);
+      const m = (await crewFigure(kind).catch(() => null)) ?? (await modelFigure(kind).catch(() => null));
       if (m) return m;
     }
     const f = buildFigure(kind);

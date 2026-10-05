@@ -49,6 +49,7 @@ import {
   RINGS,
   ROOT_TREE,
   SCARECROW,
+  SPOON_SPOTS,
   SPOTS,
   TREES,
   WORLD,
@@ -59,6 +60,7 @@ import {
   inWater,
   riderAt,
   seeded,
+  spoonLeft,
 } from './rules';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
@@ -297,6 +299,26 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const glints = new THREE.Points(glintGeo, glintMat);
   outdoors.add(glints);
 
+  // ── on the side: Bilbo's silver spoons, out only while Lobelia's after them ──
+  const silver = new THREE.MeshStandardMaterial({ color: 0xeef0f6, metalness: 0.95, roughness: 0.16, emissive: 0x3a3e48, emissiveIntensity: 0.5 });
+  const handleGeo = new THREE.BoxGeometry(0.34, 0.014, 0.036).translate(0.13, 0, 0);
+  const bowlGeo = new THREE.SphereGeometry(0.065, 12, 8).scale(1.35, 0.32, 0.95).translate(-0.1, 0, 0);
+  const spoons = SPOON_SPOTS.map((p, i) => {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(handleGeo, silver), new THREE.Mesh(bowlGeo, silver));
+    g.position.set(p.x, groundY(p.x, p.z) + 0.06, p.z);
+    g.rotation.set(0, i * 1.9, 0.18); // dropped, not laid
+    g.scale.setScalar(2.4);
+    g.visible = false;
+    outdoors.add(g);
+    return g;
+  });
+  const spoonGlintPos = new Float32Array(SPOON_SPOTS.length * 3);
+  const spoonGlintGeo = new THREE.BufferGeometry();
+  spoonGlintGeo.setAttribute('position', new THREE.BufferAttribute(spoonGlintPos, 3));
+  const spoonGlintMat = new THREE.PointsMaterial({ color: new THREE.Color(1.9, 2.1, 2.6), size: 0.7, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, map: dotTexture() });
+  outdoors.add(new THREE.Points(spoonGlintGeo, spoonGlintMat));
+
   // ── the people ──
   const frodo = makePerson('frodo');
   outdoors.add(frodo.group);
@@ -314,6 +336,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
   }
   const gandalf = makePerson('gandalf');
   outdoors.add(gandalf.group);
+  const lobelia = makePerson('lobelia');
+  lobelia.group.visible = false;
+  outdoors.add(lobelia.group);
   // the party: guests about the pavilion, dancing once it's dark
   const guests = [];
   const GUESTS = tier === 'high' ? 7 : tier === 'mid' ? 4 : 0;
@@ -359,7 +384,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // everyone who moves about, for culling by distance. Only Frodo casts a
   // real shadow; the rest stand on a soft dark blot, which is one draw
   // instead of a dozen more in the shadow pass
-  const crowd = [...Object.values(people), gandalf, ...guests, ...sheep];
+  const crowd = [...Object.values(people), gandalf, lobelia, ...guests, ...sheep];
   const blobGeo = new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2);
   const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.26, depthWrite: false });
   for (const f of [...crowd, ...dogs]) {
@@ -375,7 +400,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // ── markers: where there's something to do ──
   const markerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.9, 0.7) });
   const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.9, 0.4), transparent: true, opacity: 0.09, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-  const markers = Array.from({ length: 5 }, () => {
+  const markers = Array.from({ length: 8 }, () => {
     const g = new THREE.Group();
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), markerMat);
     gem.scale.y = 1.5;
@@ -558,6 +583,27 @@ export function createShireWorld(canvas, { onLost } = {}) {
     glintMat.opacity = 0.35 + 0.45 * Math.abs(Math.sin(t * 1.7));
     glintMat.size = Math.hypot(h.x - (FIELD.x0 + FIELD.x1) / 2, h.z - (FIELD.z0 + FIELD.z1) / 2) < 22 ? 0.55 : 0;
 
+    // Bilbo's spoons, and Lobelia: at her post by the lane, or out after them
+    SPOON_SPOTS.forEach((p, i) => {
+      const left = Boolean(s.spoons) && spoonLeft(s.spoons, i) && s.mode !== 'inside';
+      spoons[i].visible = left;
+      spoonGlintPos.set([p.x, left ? groundY(p.x, p.z) + 0.42 + Math.sin(t * 2.4 + i) * 0.08 : -100, p.z], i * 3);
+    });
+    spoonGlintGeo.attributes.position.needsUpdate = true;
+    spoonGlintMat.opacity = 0.45 + 0.5 * Math.abs(Math.sin(t * 2.1));
+    const lb = s.lobelia;
+    lobelia.group.visible = Boolean(lb) && s.mode !== 'inside' && Math.hypot(lb.x - camera.position.x, lb.z - camera.position.z) < 60;
+    if (lb) {
+      lobelia.group.position.set(lb.x, groundY(lb.x, lb.z), lb.z);
+      const near = !lb.moving && Math.hypot(h.x - lb.x, h.z - lb.z) < 5;
+      const want = lb.moving ? lb.face : near ? Math.atan2(-(h.z - lb.z), h.x - lb.x) : lb.face;
+      let d = want - lobelia.group.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      lobelia.group.rotation.y += d * Math.min(1, dt * (lb.moving ? 10 : 4));
+      // talking, she shakes her umbrella at you
+      pose(lobelia, t, { moving: lb.moving, speed: 0.85, wave: s.talk === 'lobelia' ? 0.5 : 0, talk: s.talk === 'lobelia' ? 1 : 0 });
+    }
+
     // sheep, grazing and wandering
     for (const sh of sheep) {
       const a = sh.at;
@@ -721,6 +767,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
     if (type === 'pick') {
       const m = MUSHROOMS[d.i];
       if (m) fx.pop(V(m.x, height(m.x, m.z) + 0.3, m.z), 'gold', 26, 2.6);
+    } else if (type === 'spoon') {
+      const p = SPOON_SPOTS[d.i];
+      if (p) fx.pop(V(p.x, groundY(p.x, p.z) + 0.4, p.z), d.hers ? 'red' : 'white', 24, 2.2);
     } else if (type === 'seen') {
       A.dogHop[d.dog] = 1;
     } else if (type === 'caught') {
@@ -772,6 +821,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     let p = null;
     if (kind === 'cast' && people[id]) p = tmp.copy(people[id].group.position).add(tmp2.set(0, 2.15, 0));
     else if (kind === 'cast' && id === 'gandalf') p = tmp.copy(gandalf.group.position).add(tmp2.set(0, 2.9, 0));
+    else if (kind === 'cast' && id === 'lobelia') p = tmp.copy(lobelia.group.position).add(tmp2.set(0, 2.15, 0));
     else if (kind === 'frodo') p = tmp.copy(frodo.group.position).add(tmp2.set(0, 2.1, 0));
     else if (kind === 'dog' && dogs[id]) p = tmp.copy(dogs[id].group.position).add(tmp2.set(0, 1.2, 0));
     if (!p) return null;

@@ -74,7 +74,7 @@ const SHIPS = { xwing: { metres: 12.5, lift: 0.4 }, falcon: { metres: 34.7, lift
 const LAND = { descend: 7.5, settle: 1.2, out: 1.6 }; // seconds
 // the crew who have models of their own on the worlds (catalog/people.js), by
 // who they are in the universe's crews (footScene.js's PARTY)
-export const CREW_MODELS = { luke: 'luke', han: 'han', artoo: 'r2d2' };
+export const CREW_MODELS = { artoo: 'r2d2' };
 const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something

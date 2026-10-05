@@ -46,3 +46,11 @@
 .dm-card[data-done] { border-color: rgba(31, 78, 140, 0.6); }
 .dm-card-name { margin: 0; font: 700 1.05rem/1.2 'Courier Prime', ui-monospace, monospace; }
 .dm-card-go { margin: 0.4rem 0 0; font-size: 0.92rem; opacity: 0.85; }
+
+/* free throws in the warehouse: the power meter */
+.dm-hoops { left: 50%; transform: translateX(-50%); width: min(24rem, calc(100% - 1.4rem)); }
+.dm-meter { position: relative; height: 0.9rem; border-radius: 99px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.22)); overflow: hidden; }
+.dm-meter-sweet { position: absolute; top: 0; bottom: 0; background: rgba(110, 224, 122, 0.45); }
+.dm-meter-swish { position: absolute; top: 0; bottom: 0; background: #6ee07a; }
+.dm-meter-needle { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }
+@media (max-width: 639px) { .dm-hoops { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); } }

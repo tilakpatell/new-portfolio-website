@@ -24,7 +24,8 @@ import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createAmonHenKit } from './props';
-import { BOATS, CAMP, CAST, COLLIDERS, DECOY_RUN, KINGS, LAKE_Y, PILLARS, SEAT, SHORE_SPOT, STAIR, STICKS, TREES, height, shoreX, toPath } from './layout';
+import { stoneAt } from './rules';
+import { BOATS, CAMP, CAST, COLLIDERS, DECOY_RUN, KINGS, LAKE_Y, PILLARS, SEAT, SHORE_SPOT, SKIPPERS, SKIPPING, STAIR, STICKS, TREES, height, shoreX, toPath } from './layout';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -266,6 +267,38 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   // the boat you push out, and Sam in the water
   const myBoat = kit.boat();
   land.add(myBoat.group);
+  // on the side, ducks and drakes: a little heap of flat stones on the
+  // shore, the one in the air, and the rings where it meets the water
+  const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x8a8a80, roughness: 0.85 });
+  const pebbleGeo = new THREE.SphereGeometry(0.09, 9, 6).scale(1, 0.32, 0.8);
+  {
+    const heap = new THREE.Group();
+    for (let i = 0; i < 9; i++) {
+      const p = new THREE.Mesh(pebbleGeo, pebbleMat);
+      const a = i * 2.4;
+      const r = 0.12 + (i % 3) * 0.1;
+      p.position.set(Math.cos(a) * r, 0.03 + (i > 5 ? 0.05 : 0), Math.sin(a) * r);
+      p.rotation.set(0.2 * Math.sin(i), a, 0.15 * Math.cos(i * 3));
+      p.scale.setScalar(0.8 + (i % 4) * 0.12);
+      heap.add(p);
+    }
+    const hx = SKIPPING.x - 0.9;
+    const hz = SKIPPING.z - 0.9;
+    heap.position.set(hx, height(hx, hz), hz);
+    land.add(heap);
+  }
+  const stone = new THREE.Mesh(pebbleGeo, pebbleMat);
+  stone.visible = false;
+  land.add(stone);
+  const rippleMat = new THREE.MeshBasicMaterial({ color: 0xf2f6f8, transparent: true, opacity: 0, depthWrite: false });
+  const rippleGeo = new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2);
+  const ripples = Array.from({ length: 14 }, () => {
+    const m = new THREE.Mesh(rippleGeo, rippleMat.clone());
+    m.visible = false;
+    m.renderOrder = 2;
+    land.add(m);
+    return { m, age: 9, big: 1 };
+  });
   // the Eye, far off, for the Seat
   const eye = kit.eye();
   eye.group.position.copy(EYE_AT);
@@ -305,6 +338,13 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   const sam = folk('sam');
   sam.group.visible = false;
   land.add(sam.group);
+  // Merry and Pippin by the water, watching your stones
+  const skippers = SKIPPERS.map((c) => {
+    const p = blob(folk(c.look));
+    p.group.visible = false;
+    land.add(p.group);
+    return { ...c, p };
+  });
   const uruks = Array.from({ length: 6 }, (_, i) => {
     const u = kit.uruk(i + 1, { lurtz: i === 0 });
     u.group.visible = false;
@@ -406,6 +446,17 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       frodo.group.position.set(h.x, fy, h.z);
       frodo.group.rotation.set(0, h.face, 0);
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
+      const sk = s.skipping;
+      if (sk) {
+        // side-on to the water, the throwing arm back, then whipped round low
+        frodo.group.rotation.y = SKIPPING.face + 0.5;
+        frodo.body.rotation.z = sk.phase === 'flying' ? 0.12 : -0.18;
+        const arm = frodo.arms?.[1];
+        if (arm) {
+          const k = sk.thrown < 0.35 ? sk.thrown / 0.35 : 1;
+          arm.rotation.x = sk.phase === 'flying' || sk.phase === 'done' ? -1.2 + k * 2.4 : -1.4 - Math.sin(t * 2) * 0.1;
+        }
+      } else frodo.body.rotation.z = 0;
     }
     if (!(s.mode === 'rescue' || s.promise || s.mode === 'end')) myBoat.group.visible = false;
     ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.ring) });
@@ -495,6 +546,33 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       }
     });
 
+    // ── ducks and drakes: Merry and Pippin, the stone, the rings ──
+    const sk = s.skipping;
+    for (const c of skippers) {
+      c.p.group.visible = Boolean(sk);
+      if (!sk) continue;
+      c.p.group.position.set(c.x, height(c.x, c.z), c.z);
+      turnTo(c.p, sk.phase === 'flying' ? 0 : c.face, dt, 3);
+      const cheering = sk.cheer && sk.phase === 'done';
+      pose(c.p, t + c.x, { moving: false, talk: s.speaker === c.look ? 1 : 0, wave: cheering && (c.look === 'pippin' || sk.cheer > 1) ? 0.6 + Math.sin(t * 9) * 0.3 : 0 });
+    }
+    // the stone, out of your hand (about a metre over the shore) and along the water
+    const at = sk?.touches && sk.phase === 'flying' ? stoneAt(sk.touches, sk.thrown, 0.95 + height(SKIPPING.x, SKIPPING.z) - LAKE_Y) : null;
+    stone.visible = Boolean(at);
+    if (at) {
+      stone.position.set(SKIPPING.x + 0.3 + at.d, LAKE_Y + 0.04 + at.y, SKIPPING.z - 0.15);
+      stone.rotation.y = t * 25;
+    }
+    for (const r of ripples) {
+      r.age += dt;
+      const on = r.age < 2.2;
+      r.m.visible = on;
+      if (!on) continue;
+      const k = r.age / 2.2;
+      r.m.scale.setScalar(0.15 + k * 1.6 * r.big);
+      r.m.material.opacity = (1 - k) * 0.55;
+    }
+
     // ── the firewood ──
     sticks.forEach((m, i) => (m.visible = s.next === 'camp' && !s.sticks?.includes(i)));
 
@@ -537,6 +615,13 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       const [lx, ly, lz] = s.camShot.look;
       camAt = tmp.set(ax, height(ax, az) + ay, az);
       camLook = look.set(lx, height(lx, lz) + ly, lz);
+    } else if (s.mode === 'skipping' && s.skipping) {
+      // up on the shore behind you and to your left, Merry and Pippin on
+      // your right, looking out over the water after the stone
+      const out = Math.min(30, s.skipping.out ?? 0);
+      const gy = height(SKIPPING.x, SKIPPING.z);
+      camAt = tmp.set(SKIPPING.x - 4.2, gy + 2.9, SKIPPING.z - 2.6);
+      camLook = look.set(SKIPPING.x + 10 + out * 0.5, LAKE_Y + 0.2, SKIPPING.z + 1.2);
     } else if (s.mode === 'rescue' || s.promise || s.mode === 'end') {
       const bx = myBoat.group.position.x;
       camAt = tmp.set(bx + 4.5, LAKE_Y + 2.6, SHORE_SPOT.z - 3.5);
@@ -560,7 +645,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     const key = `${s.mode}|${s.camShot?.id ?? ''}|${s.onSeat}|${s.aragorn}`;
     const jump = A.mode !== key;
     A.mode = key;
-    const follow = s.mode === 'walk';
+    const follow = s.mode === 'walk' || s.mode === 'skipping';
     const ke = jump ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
@@ -578,11 +663,19 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     stage.render(ms / fast);
   };
 
-  const fxEvent = (type) => {
+  const fxEvent = (type, id) => {
     if (type === 'grab') A.shake = 0.3;
     else if (type === 'eye') A.shake = 0.35;
     else if (type === 'gaze') A.shake = Math.max(A.shake, 0.12);
     else if (type === 'got') fx.pop(tmp2.copy(frodo.group.position).add(V(0, 1, 0)), 'gold', 12, 1);
+    else if (type === 'splash' && id) {
+      // a stone meeting the water `id.d` out from the shore: a ring, and spray
+      const r = ripples.reduce((a, b) => (b.age > a.age ? b : a));
+      r.age = 0;
+      r.big = id.sinks ? 1.3 : 0.7 + Math.min(0.6, id.k * 0.6);
+      r.m.position.set(SKIPPING.x + 0.3 + id.d, LAKE_Y + 0.03, SKIPPING.z - 0.15);
+      fx.pop(tmp2.set(SKIPPING.x + 0.3 + id.d, LAKE_Y + 0.1, SKIPPING.z - 0.15), 'white', id.sinks ? 10 : 5, id.sinks ? 1.1 : 0.7);
+    }
   };
   const screenOf = (kind, id) => {
     const p0 = people[id];

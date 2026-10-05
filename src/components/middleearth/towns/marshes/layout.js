@@ -8,6 +8,7 @@
 
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pushOut } from '../walker';
+import { WAY } from './rules';
 
 const circle = (id, x, z, r, o = {}) => ({ id, kind: 'circle', x, z, r, ...o });
 const seeded = (seed) => {
@@ -120,6 +121,15 @@ export function marshHeight(x, z) {
   const firm = 1 - smooth(FIRM - 0.6, FIRM + 1.4, d);
   return -0.9 + firm * 0.8 + (fbm(marshNoise, x * 0.15, z * 0.15, { octaves: 2 }) - 0.5) * 0.3;
 }
+
+// ── on the side: Sméagol's safe way ──
+// A wide pool north of the path, past halfway across: tussocks in rows
+// (`gap` apart) from the bank out to a little island with a dead tree on
+// it. A tussock is [col, row]; the bank is where you start, on the path.
+export const POOL = { x: 8, z: -6.6, rows: WAY.rows, cols: WAY.cols, gap: 2.1, first: 2.4 };
+export const tussockAt = (col, row) => ({ x: POOL.x + (col - (POOL.cols - 1) / 2) * POOL.gap, z: POOL.z - POOL.first - row * POOL.gap });
+export const POOL_BANK = { x: POOL.x, z: POOL.z, face: Math.PI / 2 };
+export const ISLAND = { x: POOL.x, z: POOL.z - POOL.first - POOL.rows * POOL.gap - 0.6, r: 2 };
 
 // ── before the Black Gate ──
 // A slope of ash and rock above the road, rising north (−z). The Gate is
