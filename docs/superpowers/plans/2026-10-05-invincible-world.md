@@ -14,7 +14,7 @@
 
 - Metres, y up, ground 0 in town, city centre at the origin; +z is south.
 - Flight in fixed steps of 1/120 s.
-- Cruise 40 m/s; boost top 260 m/s; `boom` once on crossing 120 m/s, re-armed under 90 m/s; soft landing under 18 m/s, `slam` above; wall hit over 30 m/s is an `impact`, bounce at 1/3 speed; altitude cap 4000 m.
+- Cruise 40 m/s; boost top 260 m/s; `boom` once on crossing 120 m/s, re-armed under 90 m/s; soft landing under 18 m/s, `slam` above; wall hit over 60 m/s is an `impact`, bounce at 1/3 speed; altitude cap 4000 m.
 - Nothing downloaded beyond what's in `public/` already; new models in code.
 - Comments in the repo's voice: plain sentences saying what a thing is for.
 

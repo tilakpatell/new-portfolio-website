@@ -36,7 +36,7 @@ State: position, velocity, facing, mode (`ground`, `air`), `speed` tier, timers.
 - **In the air**: no input → hover (velocity eases to 0, no gravity: he flies). Input → accelerates toward the camera-relative direction at cruise speed 40 m/s; Space climbs, C dives.
 - **Boost** (Shift in the air): accelerates to 260 m/s over ~3 s along where the camera looks. Crossing 120 m/s fires a `boom` event once (the sound barrier); dropping under 90 m/s resets it.
 - **Landing**: coming down onto the ground or a roof: under 18 m/s, a soft landing; over that, a `slam` event with its speed (the scene cracks the ground and kicks up dust, the camera shakes), and a 0.6 s crouch before he moves.
-- **Buildings**: he can't pass through. A wall hit under 30 m/s stops him along it (slides along); over that, an `impact` event (debris), he bounces off at a third of the speed.
+- **Buildings**: he can't pass through. A wall hit under 60 m/s stops him along it (slides along); over that, an `impact` event (debris), he bounces off at a third of the speed. (60, not the 30 first planned: cruise is 40, and flying into a wall at a cruise should be a bump, not a crash.)
 - **Ceiling**: the sky goes on up. Above 3 km the air thins (`space` event at 12 km in a later part); the first pass caps at 4 km.
 - Fixed steps of 1/120 s, same at any frame rate.
 
