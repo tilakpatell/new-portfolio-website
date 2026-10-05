@@ -133,6 +133,7 @@ export const ACHIEVEMENTS = {
   regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
+  pocketful: { name: 'Pocketful', desc: 'Picked up every coin on Dot Matrix island' },
   passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
   groundside: { name: 'Boots on the ground', desc: 'Landed on a world in a galaxy far, far away' },
   surveyor: { name: 'Surveyor', desc: 'Found every place on a world in a galaxy far, far away' },
