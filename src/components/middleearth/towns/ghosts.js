@@ -49,7 +49,7 @@ function nameTag(name) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
-  sp.scale.set((w / 44) * 0.3, 0.3, 1);
+  sp.scale.set((w / 44) * 0.42, 0.42, 1);
   sp.renderOrder = 5;
   return sp;
 }
