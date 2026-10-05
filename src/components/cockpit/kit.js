@@ -6,6 +6,7 @@
 // own code, so they stay sharp up close and cost no bandwidth.
 
 import * as THREE from 'three';
+import { sharpen } from '../../lib/three/textures';
 
 // A seeded random number source (mulberry32), so a cockpit is the same
 // every time.
@@ -27,8 +28,9 @@ export function freeKit() {
   owned.clear();
 }
 
-// A texture painted by `draw(ctx, w, h)` on a canvas.
-export function painted(w, h, draw, { srgb = true, repeat = null, aniso = 4, mips = true } = {}) {
+// A texture painted by `draw(ctx, w, h)` on a canvas. `aniso` left out
+// takes the device tier's (lib/device: 16 on a desktop, 4 on a phone).
+export function painted(w, h, draw, { srgb = true, repeat = null, aniso = null, mips = true } = {}) {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -40,7 +42,7 @@ export function painted(w, h, draw, { srgb = true, repeat = null, aniso = 4, mip
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(repeat[0], repeat[1]);
   }
-  t.anisotropy = aniso;
+  sharpen(t, { aniso });
   t.generateMipmaps = mips;
   if (!mips) t.minFilter = THREE.LinearFilter;
   owned.add(t);
