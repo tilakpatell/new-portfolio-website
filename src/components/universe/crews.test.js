@@ -64,8 +64,8 @@ describe('the crews', () => {
       if (family !== 'rickmorty') said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
       for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
       for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
-      // the director's events (the Council's arrival is its hunted line), rescuing someone, going out into deep space
-      for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council') said(linesFor(crew, 'event', id), crew, `event ${id}`);
+      // the director's events (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
+      for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
       // the nav map's drives: a jump to lightspeed, and super speed

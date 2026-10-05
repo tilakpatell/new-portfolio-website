@@ -181,7 +181,10 @@ export default function Universe({ ask = false }) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
     } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
-    else comms.current?.handle(e);
+    else {
+      if (e.type === 'kill' && (e.kind === 'slave1' || e.kind === 'phoenixperson')) unlock('wanted'); // (a bounty hunter shot down)
+      comms.current?.handle(e);
+    }
   };
 
   // off from the nav map: with a ship, it flies (or jumps) there, and a

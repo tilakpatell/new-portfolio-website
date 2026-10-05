@@ -3,7 +3,8 @@
 // dev server up (npx vite --port 5173) and Chrome at $CHROME:
 //   OUT=/tmp/shots node scripts/events-check.mjs [cruiser|xwing|falcon|rv]
 // It asks the director for each in turn and checks the scene plays it out:
-// the rift opens and takes the ship through, the flare goes, the leviathans pass.
+// the rift opens and takes the ship through, the flare goes, the leviathans pass,
+// the meteors come (and pop when shot), a bounty hunter comes alone.
 import { chromium } from 'playwright-core';
 
 const out = process.env.OUT ?? '.';
@@ -66,6 +67,26 @@ check(await dbg(() => window.__universeDebug.leviathans.busy), 'leviathans are p
 await page.waitForTimeout(6000);
 await page.screenshot({ path: `${out}/leviathan.png`, timeout: 120000 });
 console.log('comms:', await dbg(() => document.querySelector('.universe-comms')?.textContent ?? ''));
+
+await dbg(() => window.__universeDebug.director.soon('meteors'));
+await page.waitForFunction(() => window.__universeDebug.meteors.count > 0, null, { timeout: 30000 }).catch(() => {});
+const rocks = await dbg(() => window.__universeDebug.meteors.count);
+check(rocks > 0, `a meteor stream: ${rocks} rocks`);
+// a bolt through one pops it
+const popped = await dbg(() => {
+  const d = window.__universeDebug;
+  const r = d.meteors.targets[0];
+  if (!r) return false;
+  const from = r.at.clone().add(new d.THREE.Vector3(0, 0, 5));
+  return Boolean(d.meteors.hit(from, r.at.clone()));
+});
+check(popped, 'a bolt through a rock pops it');
+await page.screenshot({ path: `${out}/meteors.png`, timeout: 120000 });
+
+await dbg(() => window.__universeDebug.director.soon('bounty'));
+await page.waitForFunction(() => window.__universeDebug.hunters.targets.length > 0, null, { timeout: 30000 }).catch(() => {});
+const hunter = await dbg(() => window.__universeDebug.hunters.targets.map((t) => t.kind));
+check(hunter.length === 1 && ['slave1', 'phoenixperson', 'tieadvanced'].includes(hunter[0]), `a bounty hunter alone: ${JSON.stringify(hunter)}`);
 
 console.log('errors:', errors);
 console.log(problems.length ? `FAILED: ${problems.length}` : 'ALL OK');

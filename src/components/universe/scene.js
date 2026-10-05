@@ -108,6 +108,7 @@ import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
+import { createMeteors } from './meteors';
 import { buildDeepSpace } from './deepspace';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
@@ -743,6 +744,7 @@ export async function create(canvas, ctx) {
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
   const leviathans = createLeviathans(map, { small }); // (purrgil, or a Cromulon)
+  const meteors = createMeteors(map, { small }); // (a stream of rocks across your path)
   let leviathanSaidAt = -1e9; // the crew's last word about shooting one
   const later = []; // { at, run }: what the director set going, a moment on
   // the other pilots, once online (with reduced motion too: they're people)
@@ -1843,6 +1845,13 @@ export async function create(canvas, ctx) {
       } else if (leviathans.hit(shotFrom, b.position)) {
         b.visible = false;
         leviathanShot();
+      } else {
+        const mh = meteors.hit(shotFrom, b.position);
+        if (mh) {
+          b.visible = false;
+          pops.hit({ point: mh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: mh.size * 1.6 });
+          state.hitMark = 1;
+        }
       }
     }
     return any;
@@ -1933,6 +1942,9 @@ export async function create(canvas, ctx) {
       } else if (leviathans.hit(shotFrom, to)) {
         boom(m, m.position.clone());
         leviathanShot();
+      } else {
+        const mh = meteors.hit(shotFrom, to);
+        if (mh) boom(m, mh.at);
       }
     }
     return any;
@@ -2401,6 +2413,15 @@ export async function create(canvas, ctx) {
       const sub = leviathans.pass(ship, family);
       if (!sub) return;
       later.push({ at: state.clock + 3, run: () => emit({ type: 'event', id: 'leviathan', sub }) });
+    } else if (id === 'meteors') {
+      if (meteors.storm(ship)) emit({ type: 'event', id: 'meteors' });
+    } else if (id === 'bounty') {
+      // one hunter, tough and quick: Boba Fett in Slave I (its model, once it's
+      // here: Vader stands in till then), or Phoenixperson
+      if (family === 'starwars' && !fleet.loaded('slave1')) {
+        fleet.want(['slave1']);
+        hunters.pack('empire', ship, { size: 1, ace: true, interdict: ambush.interdict });
+      } else hunters.pack(family === 'starwars' ? 'fett' : 'phoenix', ship, { size: 1, ace: false, interdict: ambush.interdict });
     }
   };
 
@@ -2464,6 +2485,14 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces.update(dt, t, camera);
     busy = leviathans.update(dt, t, camera) || busy;
+    if (meteors.count) {
+      busy = true;
+      for (const e of meteors.update(dt, live)) {
+        pops.hit({ point: e.at, normal: popDir.set(0, 1, 0), radius: e.size * 1.6 });
+        hurt(e.damage);
+        if (!reduced) state.shake = Math.max(state.shake, 0.5);
+      }
+    }
     if (live) {
       // shields come back once you've been out of trouble a while
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
@@ -2801,7 +2830,7 @@ export async function create(canvas, ctx) {
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
     const siegeCands = siegeTargets(ship);
-    const cands = pilots.count || siegeCands.length ? [...(hunters?.targets ?? []), ...pilots.targets, ...siegeCands] : (hunters?.targets ?? []);
+    const cands = pilots.count || siegeCands.length || meteors.count ? [...(hunters?.targets ?? []), ...pilots.targets, ...siegeCands, ...(meteors.count ? meteors.targets : [])] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = 0;
@@ -3628,7 +3657,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, leviathans, novae, pilots, state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, leviathans, meteors, fleet, novae, pilots, state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -3838,6 +3867,7 @@ export async function create(canvas, ctx) {
       pilots.dispose();
       pieces.dispose();
       leviathans.dispose();
+      meteors.dispose();
       fleet.dispose();
       deep.dispose();
       for (const tr of trenches) tr.dispose();
