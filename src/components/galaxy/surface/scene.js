@@ -44,6 +44,7 @@ import { flybySound, shipEngine } from '../../universe/sounds';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
 import { createMeshyCast } from '../../rickmorty/portal/meshyCast';
+import { withWardrobe } from '../../rickmorty/wardrobe/wear';
 import { buildGalaxyShip } from '../fleet';
 import { audioContext } from '../../../lib/audio';
 import { siteOf } from './sites';
@@ -380,7 +381,7 @@ export async function create(canvas, ctx) {
   }
   (async () => {
     if (people.some((p) => p.spec.src.meshy)) {
-      cast = createMeshyCast();
+      cast = createMeshyCast(withWardrobe());
       await cast
         .load(
           null,
@@ -424,7 +425,7 @@ export async function create(canvas, ctx) {
   let strode = 0;
 
   // ── The other pilots down here (online) ──
-  const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast()) });
+  const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
   // ── State ──
   const state = {

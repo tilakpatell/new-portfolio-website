@@ -17,6 +17,8 @@ import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
+import Wardrobe from '../wardrobe/Wardrobe';
+import { useLooks } from '../wardrobe/useLooks';
 import './citadel.css';
 
 // The Citadel of Ricks, the world: walk in through the portal as Rick
@@ -97,6 +99,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const [toast, setToast] = useState(null);
   const [bubble, setBubble] = useState(null);
   const [list, setList] = useState(false);
+  // the wardrobe: how Rick looks here (and Morty, wherever he turns up)
+  const [looks, setLook] = useLooks();
+  const looksRef = useRef(looks);
+  looksRef.current = looks;
+  const [wardrobe, setWardrobe] = useState(false);
+  const wardrobeRef = useRef(wardrobe);
+  wardrobeRef.current = wardrobe;
+  const closeWardrobe = useCallback(() => setWardrobe(false), []);
+  useEffect(() => {
+    api.current?.setLooks?.(looks);
+  }, [looks]);
   const lines = useRef({});
   const bubbleRef = useRef(null);
   const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
@@ -133,7 +146,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     import('./scene')
       .then(({ createCitadelWorld }) => {
         if (dead || !canvas.current) return null;
-        return createCitadelWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+        return createCitadelWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
       .then((a) => {
         if (!a) return;
@@ -142,6 +155,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           return;
         }
         api.current = a;
+        a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
         setGl('on');
@@ -408,7 +422,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   useEffect(() => {
     if (!live) return undefined;
     const s = sim.current;
-    const down = (e) => !typing(e.target) && keyDown(s.keys, e);
+    const down = (e) => !typing(e.target) && !wardrobeRef.current && keyDown(s.keys, e); // (not while the wardrobe's open over him)
     const up = (e) => keyUp(s.keys, e);
     const blur = () => s.keys.clear();
     window.addEventListener('keydown', down);
@@ -428,7 +442,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     if (!live) return undefined;
     const s = sim.current;
     const down = (e) => {
-      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || wardrobeRef.current) return;
       const k = e.key;
       const onButton = e.target instanceof HTMLButtonElement;
       if (s.mode === 'walk') {
@@ -441,6 +455,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           e.preventDefault();
           enter(s.near);
         } else if (k === 'm' || k === 'M') setList((v) => !v);
+        else if (k === 'c' || k === 'C') {
+          e.preventDefault();
+          s.keys.clear();
+          setWardrobe(true);
+        }
         return;
       }
       if (s.talk) {
@@ -761,6 +780,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <button type="button" className="shire-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog">
+              Wardrobe {!touch && <kbd>C</kbd>}
+            </button>
             {herding && (
               <div className="shire-meter" role="meter" aria-label="Mortys back in the pen" aria-valuemin={0} aria-valuemax={HERD.count} aria-valuenow={hud.herd.penned}>
                 <span className="shire-meter-label">Mortys</span>
@@ -843,6 +865,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {walking && touch && <Stick onStick={onStick} />}
 
+      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
       {list && <QuestList title="Things to do in the Citadel" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id !== 'citadelout' || red)} />}
     </div>
   );
