@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
-import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
 import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
@@ -173,7 +173,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
   }, [setGl, complete]);
 
-  const live = gl === 'on' && inView;
+  // live: on, on screen, and not in a hidden tab (the hum and siren stop too)
+  const showing = usePageVisible();
+  const live = gl === 'on' && inView && showing;
 
   // the concourse's hum, while it's on screen
   useEffect(() => {
