@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiRestartLine } from 'react-icons/ri';
+import { useEffect, useRef, useState } from 'react';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { restartSite } from '../../lib/restart';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
@@ -7,11 +7,14 @@ import { CREWS, crewById } from './crews';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
+import ModelCredits from '../ModelCredits';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
 // ships to fly (or how to fly the one you're in). With a universe selected:
 // its card, the way into its world, previous / next in map order, and back
-// out to the whole map.
+// out to the whole map. Put away (tucked), it's a small bar naming where you
+// are, so the map has the room; the same element either way, so the scene
+// sees it change size and moves the planets into the space it leaves.
 
 function Ships({ ship, onShip }) {
   return (
@@ -35,14 +38,52 @@ function Ships({ ship, onShip }) {
   );
 }
 
-export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, onShip, onStartOn }) {
+// Put the panel away, from its top corner
+function Tuck({ onTuck }) {
+  return (
+    <button type="button" className="universe-tuck" onClick={() => onTuck(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
+      <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
+export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, onShip, onStartOn, tucked = false, onTuck }) {
   const [changing, setChanging] = useState(false);
   const [homeFirst, setHomeFirst] = useState(false);
   const crew = crewById(ship);
+  // a press on hide or show unmounts the button pressed: the focus goes on
+  // to the one that takes its place
+  const panel = useRef(null);
+  const refocus = useRef(false);
+  const toggle = (on) => {
+    refocus.current = true;
+    onTuck(on);
+  };
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    panel.current?.querySelector('.universe-tuck, .universe-untuck')?.focus();
+  }, [tucked]);
+
+  if (tucked) {
+    return (
+      <aside ref={panel} className="universe-panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
+        <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
+          <span className="eyebrow truncate" style={universe ? { color: universe.accent } : undefined}>
+            {universe ? universe.label : 'The universe'}
+          </span>
+          <span className="universe-untuck-say">
+            <RiSideBarLine className="h-4 w-4" aria-hidden="true" /> Show the panel
+          </span>
+        </button>
+      </aside>
+    );
+  }
 
   if (!universe) {
     return (
-      <aside className="universe-panel" aria-label="About the map">
+      <aside ref={panel} className="universe-panel" aria-label="About the map">
+        {onTuck && <Tuck onTuck={toggle} />}
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">My whole site, as a universe</h2>
         {!crew || changing ? (
@@ -124,6 +165,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           </a>{' '}
           (CC0).
         </p>
+        <ModelCredits where="universe" className="universe-credit universe-models" />
       </aside>
     );
   }
@@ -132,7 +174,8 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
-    <aside className="universe-panel" aria-label={universe.label}>
+    <aside ref={panel} className="universe-panel" aria-label={universe.label}>
+      {onTuck && <Tuck onTuck={toggle} />}
       <button type="button" className="universe-back" onClick={onWhole}>
         <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
       </button>

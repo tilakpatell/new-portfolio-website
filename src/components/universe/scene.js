@@ -36,8 +36,9 @@
 // are its children), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
 // clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
-// went into a planet or a station too fast and the impact has played: true
-// if the page goes on into its page, so the ship doesn't come back).
+// went into a planet or a station too fast and the impact has played, or
+// fell into the black hole and is gone: true if the page goes on into its
+// page, or on through to what's beyond the hole, so the ship doesn't come back).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -99,8 +100,10 @@ const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
 // a crash, in seconds from the moment it hits: on into the planet, the
 // impact, on through into its page (a planet or a station, not the sun),
-// or else the ship back again, and the end of its coming back
-const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
+// or else the ship back again, and the end of its coming back. Into the
+// black hole there's no impact: the fall takes `fall` seconds instead, and
+// `through` goes on to what's beyond it
+const CRASH = { impact: 0.32, fall: 1.4, through: 1.6, back: 2.7, done: 3.3 };
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -605,7 +608,8 @@ export async function create(canvas, ctx) {
   let engine = null;
 
   // The open part of the canvas: the panel covers the right side on a
-  // desktop and the bottom on a phone, the nav the top.
+  // desktop and the bottom on a phone (or, put away, a corner or a slim
+  // bar), the nav the top.
   const panelEl = () => ctx.el.closest('.universe-page')?.querySelector('.universe-panel');
   const measure = () => {
     const box = ctx.el.getBoundingClientRect();
@@ -614,8 +618,9 @@ export async function create(canvas, ctx) {
     let side = 0;
     let sheet = 0;
     if (panel && panel.width > 0) {
-      if (panel.width < box.width * 0.75) side = Math.max(0, box.right - panel.left);
-      else sheet = Math.max(0, box.bottom - panel.top);
+      // put away on a desktop, it's a bar up in the corner: the map has the width
+      if (panel.width >= box.width * 0.75) sheet = Math.max(0, box.bottom - panel.top);
+      else if (!panelEl().hasAttribute('data-tucked')) side = Math.max(0, box.right - panel.left);
     }
     state.rect = cover({ w: size.w, h: size.h, panel: side, sheet, top: Math.max(0, nav - box.top) });
     state.overview = overviewPose(size, state.rect);
@@ -1329,6 +1334,7 @@ export async function create(canvas, ctx) {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
       id: e.id,
       sun: e.id === 'sun',
+      swallow: Boolean(e.swallowed), // into the black hole: the fall, then on through to what's beyond it
       from,
       into: normal.clone().negate(),
       normal,
@@ -1347,6 +1353,7 @@ export async function create(canvas, ctx) {
     burst.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     retarget(650); // the camera pulls back to watch it
+    if (state.crash.swallow) emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
   };
   // ── Shot down: the hunters' lasers took the last of the shields ──
   const startDestroyed = () => {
@@ -1519,8 +1526,40 @@ export async function create(canvas, ctx) {
   // ship go in and the shockwave run out over the planet
   const crashPose = () => {
     const c = state.crash;
+    if (c.swallow) {
+      // from just outside the shadow, a little way in after the ship,
+      // watching it go down into the black
+      const k = clamp01(c.age / CRASH.fall);
+      const inward = k * k * c.radius * 0.18;
+      const [wx, wz] = rotate(c.from.x + c.into.x * inward, c.from.z + c.into.z * inward);
+      return { target: [wx, c.from.y + c.into.y * inward, wz], dist: 2.4, pitch: 0.18 };
+    }
     const [wx, wz] = rotate(c.point.x, c.point.z);
     return { target: [wx, c.point.y, wz], dist: c.radius * 2.4 + 2.6, pitch: 0.42 };
+  };
+  // the fall into the black hole: nose first, drawn in and stretched thin
+  // (spaghetti, as Rick says), rolling faster as it goes, and gone into the
+  // shadow by CRASH.fall. No impact and nothing thrown out: nothing comes
+  // back out of it. The camera comes round to look down the way it went
+  const NOSE = new THREE.Vector3(0, 0, -1);
+  const swallowing = (dt) => {
+    const c = state.crash;
+    const m = state.model;
+    const k = clamp01(c.age / CRASH.fall);
+    const ease = k * k;
+    m.group.position.copy(c.from).addScaledVector(c.into, ease * c.radius * 0.6); // from where it touched to well inside the shadow
+    m.group.quaternion.setFromUnitVectors(NOSE, c.into);
+    m.pivot.rotation.z += dt * (1 + ease * 7);
+    const thin = 1 - ease * 0.92;
+    m.group.scale.set(thin, thin, 1 + ease * 7);
+    if (state.view === 'chase') state.yaw += wrap(-headingTo(c.into.x, c.into.z) - state.yaw) * clamp01(dt * 2.5);
+    if (k >= 1 && !c.impact) {
+      c.impact = true;
+      m.group.visible = false;
+      m.group.scale.setScalar(1);
+      m.group.quaternion.identity();
+      m.pivot.rotation.set(0, 0, 0);
+    }
   };
   const crashing = (dt) => {
     const c = state.crash;
@@ -1528,7 +1567,8 @@ export async function create(canvas, ctx) {
     const age = c.age;
     const m = state.model;
     updatePlumes(dt, (performance.now() - t0) / 1000, 0); // the engines are out
-    if (age < CRASH.impact) {
+    if (c.swallow) swallowing(dt);
+    else if (age < CRASH.impact) {
       // on into it, tumbling, a little way under the surface
       const k = age / CRASH.impact;
       const depth = k * k * (SHIP.radius + 0.25);
@@ -1545,9 +1585,10 @@ export async function create(canvas, ctx) {
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
       if (!c.shot) emit({ type: 'crash', id: c.id }); // (shot down said so as it began)
     }
-    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && isPlace(c.id)) {
-      // the shockwave running out over the surface: the page takes it from
-      // here, if it's going on into the place's page
+    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && (isPlace(c.id) || c.swallow)) {
+      // the shockwave running out over the surface (or the ship gone into
+      // the black hole): the page takes it from here, if it's going on into
+      // the place's page, or on through to what's beyond the hole
       c.asked = true;
       c.through = Boolean(props.onCrash?.(c.id));
     }

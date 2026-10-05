@@ -189,6 +189,24 @@ describe('deep space', () => {
       expect(events.some((e) => e.type === 'crash' && e.id === w.id), w.id).toBe(true);
     }
   });
+
+  it('is swallowed by the black hole at any speed, with no bounce, and only there', () => {
+    const maw = SOLIDS.find((o) => o.id === 'maw');
+    expect(SOLIDS.filter((o) => o.swallow).map((o) => o.id)).toEqual(['maw']);
+    // creeping up on it, far slower than any crash
+    const creep = (o) => ({ ...spawn(null), x: o.at[0], y: o.at[1], z: o.at[2] + o.r + 2, heading: 0, speed: 1 });
+    const { ship, events } = fly(creep(maw), { throttle: 0.15 }, 6);
+    const fall = events.find((e) => e.id === 'maw');
+    expect(fall).toMatchObject({ type: 'crash', swallowed: true });
+    expect(fall.speed).toBeLessThan(SHIP.crash);
+    expect(events.some((e) => e.type === 'bump' && e.id === 'maw')).toBe(false);
+    expect(inside(ship)).toBe(false); // held at its edge for the scene to take over, not through it
+    // the same creep at anything else is only a bump
+    const glacia = SOLIDS.find((o) => o.id === 'glacia');
+    const slow = fly(creep(glacia), { throttle: 0.15 }, 6).events;
+    expect(slow.some((e) => e.type === 'bump' && e.id === 'glacia')).toBe(true);
+    expect(slow.some((e) => e.type === 'crash')).toBe(false);
+  });
 });
 
 describe('being at a universe', () => {

@@ -9,7 +9,7 @@ describe('the crews', () => {
 
   it('have something to say everywhere, and only their own crew says it', () => {
     for (const crew of CREWS) {
-      const all = [...['launch', 'boost', 'bump', 'edge', 'crash'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
+      const all = [...['launch', 'boost', 'bump', 'edge', 'crash', 'swallowed'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
       for (const exchange of all) {
         expect(exchange?.length, crew.id).toBeGreaterThan(0);
         for (const [who, text] of exchange) {

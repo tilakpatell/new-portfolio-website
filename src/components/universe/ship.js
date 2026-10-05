@@ -20,6 +20,9 @@
 // bite harder to match, the ceiling lifts to DEEP.ceiling, and the wonders
 // out there are as solid as the planets, and places the autopilot can take
 // you (GOALS: every planet and station, and every wonder, the nebulae too).
+// All but the black hole, which swallows: touch it at any speed and that's a
+// crash, with no bounce (the scene plays out the fall, and the page goes on
+// to what's beyond it).
 
 import { DEEP, DEEP_SOLIDS, WONDERS, openness } from './deep';
 import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
@@ -128,8 +131,9 @@ export function spawn(id) {
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
 // way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
-// normal: [x, y, z], speed } (into something too fast: the scene plays it
-// out) and { type: 'edge' } (at the edge, the ceiling or the floor).
+// normal: [x, y, z], speed, swallowed? } (into something too fast, or into
+// something that swallows at any speed: the scene plays it out) and
+// { type: 'edge' } (at the edge, the ceiling or the floor).
 // `solids` is what it can bump into (everything on the map, unless a test
 // says otherwise).
 export function step(s, input, dt, solids = SOLIDS) {
@@ -211,6 +215,12 @@ export function step(s, input, dt, solids = SOLIDS) {
     z = p.at[2] + nz * min;
     const ahead = fx * nx + fz * nz;
     const into = -(ahead * v + ny * vy); // speed toward the planet
+    if (p.swallow) {
+      // the black hole: nothing bounces off it. Touching it at any speed
+      // is the fall (the scene takes it from here)
+      events.push({ type: 'crash', id: p.id, at: [x, y, z], normal: [nx, ny, nz], speed: Math.max(0, into), swallowed: true });
+      continue;
+    }
     if (into > 0) {
       // too fast is a crash (the scene plays it out); otherwise a bump
       if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, y, z], normal: [nx, ny, nz], speed: into });

@@ -24,6 +24,7 @@ export const ACHIEVEMENTS = {
   polyglot: { name: 'Polyglot', desc: 'Read the site in Aurebesh, Cybertronian and Dwarf runes' },
   heisenberg: { name: 'Heisenberg', desc: 'Said my name' },
   bluesky: { name: 'Blue Sky', desc: 'Served a 95% order at Walt’s Metherria' },
+  purity: { name: '99.1% pure', desc: 'Found all twelve Blue Sky crystals in the Albuquerque desert' },
   snap: { name: 'Perfectly balanced', desc: 'Snapped half the page away' },
   dundie: { name: 'Dundie winner', desc: 'That’s what she said' },
   raga: { name: 'Raga', desc: 'Played eight notes on the sitar' },
