@@ -744,6 +744,7 @@ function gromflomite(k) {
         transparent: true,
         opacity: 0.42,
         side: THREE.DoubleSide,
+        forceSinglePass: true, // (thin as a leaf: one pass draws the same)
         depthWrite: false,
         roughness: 0.35,
         metalness: 0,

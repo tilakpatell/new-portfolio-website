@@ -42,7 +42,7 @@ const X = (p) => (Array.isArray(p) ? p[0] : p.x);
 const Y = (p) => (Array.isArray(p) ? p[1] : p.y);
 const Z = (p) => (Array.isArray(p) ? p[2] : p.z);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-const len = (v) => Math.hypot(v[0], v[1], v[2]);
+const len = (v) => Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); // (not Math.hypot: it makes garbage, and this runs every frame)
 const unit = (v) => {
   const l = len(v) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
@@ -156,7 +156,8 @@ export function assistAmount(dir, want, strength = 1) {
   const a = aimAngles(dir);
   const b = aimAngles(want);
   const yaw = Math.atan2(Math.sin(b.heading - a.heading), Math.cos(b.heading - a.heading)) * Math.cos((a.pitch + b.pitch) / 2);
-  const off = Math.hypot(yaw, (b.pitch - a.pitch) / AIM.vertical);
+  const dp = (b.pitch - a.pitch) / AIM.vertical;
+  const off = Math.sqrt(yaw * yaw + dp * dp);
   const full = AIM.assist * strength;
   const edge = AIM.assistEdge * strength;
   return off <= full ? 1 : off >= edge ? 0 : 1 - (off - full) / (edge - full);
@@ -207,7 +208,7 @@ export function edgeOf(dx, dy, rect, pad = 28) {
   const cy = rect.y + rect.h / 2;
   const hw = Math.max(1, rect.w / 2 - pad);
   const hh = Math.max(1, rect.h / 2 - pad);
-  const l = Math.hypot(dx, dy);
+  const l = Math.sqrt(dx * dx + dy * dy);
   if (l < 1e-6) return { x: cx, y: cy - hh, angle: -Math.PI / 2 };
   const ux = dx / l;
   const uy = dy / l;
