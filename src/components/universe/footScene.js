@@ -2250,3 +2250,8 @@ const rotateAbout = (v, k, a) => {
   const d = vec.dot(k, v) * (1 - c);
   return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d];
 };
+
+// A crew member as a figure, for the galaxy's worlds (galaxy/surface/scene.js):
+// in map units (scale by 1 / METRE for metres); `cast` is createMeshyCast()'s,
+// for the cruiser's two
+export { loadModel as loadPartyFigure };

@@ -1,0 +1,305 @@
+/* A world, from the ground (pages/GalaxySurface.jsx): the 3D under it all,
+   and over it where you are, the compass, what E does, who's talking, what
+   you've just found, the landing's title, the controls and the touch
+   controls. Quiet: thin type, dark glass, the world's own colour. */
+
+.surface-page {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  background: #03040a;
+  color: #f2efe8;
+  --glass: rgba(6, 8, 14, 0.58);
+  --line: rgba(255, 255, 255, 0.14);
+}
+.surface-map { position: absolute; inset: 0; }
+.surface-map > .scene-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.surface-map > .scene-canvas:active { cursor: grabbing; }
+.surface-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  color: rgba(242, 239, 232, 0.7);
+}
+
+/* where you are */
+.surface-where {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  top: calc(var(--nav-h, 64px) + 12px);
+  max-width: min(320px, 60vw);
+  pointer-events: none;
+}
+.surface-world {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-decoration: none;
+}
+.surface-world:hover { text-decoration: underline; }
+.surface-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.surface-place {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
+.surface-count { margin: 0.2rem 0 0; font-size: 0.78rem; color: rgba(242, 239, 232, 0.72); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
+
+/* the compass: a bar along the top, the places slid along it */
+.surface-compass {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: calc(var(--nav-h, 64px) + 14px);
+  width: min(560px, 54vw);
+  height: 40px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  border-top: 1px solid var(--line);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+.surface-mark {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 0;
+  white-space: nowrap;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.surface-mark i { width: 2px; height: 9px; background: var(--accent); }
+.surface-mark b { margin-top: 3px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.surface-mark em { font-size: 0.6rem; font-style: normal; color: rgba(255, 255, 255, 0.65); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.surface-mark:not([data-found]) b { color: var(--accent); font-size: 0.8rem; }
+.surface-mark[data-found] i { background: rgba(255, 255, 255, 0.55); }
+.surface-mark-dir { color: rgba(255, 255, 255, 0.55); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; padding-top: 4px; }
+.surface-mark-ship i { background: #7fd0ff; }
+.surface-mark-ship b { color: #bfe6ff; }
+
+/* what E does */
+.surface-prompt {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  font-size: 0.86rem;
+  white-space: nowrap;
+  animation: surface-in 0.25s ease-out;
+}
+.surface-prompt kbd,
+.surface-help kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  margin-right: 0.25em;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  font: 600 0.75rem/1.5 ui-monospace, monospace;
+  color: var(--accent);
+}
+
+/* who's talking */
+.surface-talk {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  animation: surface-in 0.3s ease-out;
+}
+.surface-talk b { display: block; margin-bottom: 0.15rem; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+
+/* what you've just found */
+.surface-toast {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 70px);
+  width: min(340px, calc(100vw - 32px));
+  padding: 0.85rem 1rem 0.95rem;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.surface-toast-title { margin: 0; font-size: 1.02rem; font-weight: 650; }
+.surface-toast-title::before { content: 'Found · '; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); vertical-align: 0.12em; }
+.surface-toast-text { margin: 0.35rem 0 0; font-size: 0.85rem; line-height: 1.45; color: rgba(242, 239, 232, 0.86); }
+
+/* coming in: the world's name over the landing */
+.surface-title {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 14vh;
+  text-align: center;
+  pointer-events: none;
+  animation: surface-title 7.5s ease-out both;
+}
+.surface-title-world { margin: 0; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); }
+.surface-title-place { margin: 0.4rem 0 0; font-size: clamp(1.8rem, 5vw, 3.2rem); font-weight: 600; letter-spacing: 0.04em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6); }
+.surface-title-line { margin: 0.5rem 0 0; font-size: 1rem; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+.surface-title-skip { margin: 1.4rem 0 0; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+
+/* the corner: the controls, and the way back up */
+.surface-corner {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 12px);
+  display: flex;
+  gap: 0.5rem;
+}
+.surface-help-btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.surface-help-btn:hover { border-color: var(--accent); color: var(--accent); }
+.surface-help {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 56px);
+  width: min(360px, calc(100vw - 32px));
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 8, 14, 0.82);
+  backdrop-filter: blur(10px);
+  font-size: 0.85rem;
+}
+.surface-help ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
+.surface-credits { margin: 0.8rem 0 0; font-size: 0.7rem; line-height: 1.5; color: rgba(242, 239, 232, 0.6); }
+.surface-credits a { color: inherit; }
+
+/* leaving: the screen goes */
+.surface-fade { position: absolute; z-index: 4; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.7s ease-in; }
+.surface-page[data-leaving] .surface-fade { opacity: 1; }
+.surface-page[data-phase='landing'] :is(.surface-where, .surface-compass, .surface-corner) { opacity: 0; }
+.surface-page :is(.surface-where, .surface-compass, .surface-corner) { transition: opacity 0.8s; }
+
+/* on a touch screen: the stick, the look pad, the buttons */
+.surface-touch { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.surface-pad { position: absolute; inset: 0; pointer-events: auto; touch-action: none; }
+.surface-stick {
+  position: absolute;
+  left: calc(22px + env(safe-area-inset-left, 0px));
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(6, 8, 14, 0.28);
+  pointer-events: auto;
+  touch-action: none;
+}
+.surface-stick span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.surface-buttons {
+  position: absolute;
+  right: calc(18px + env(safe-area-inset-right, 0px));
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 12px;
+  pointer-events: auto;
+}
+.surface-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(6, 8, 14, 0.45);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.surface-btn-act { grid-row: span 2; align-self: center; border-color: var(--accent); color: var(--accent); }
+.surface-btn:active { background: rgba(255, 255, 255, 0.2); }
+
+@keyframes surface-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+@keyframes surface-found { from { opacity: 0; transform: translateX(24px); } }
+@keyframes surface-title {
+  0% { opacity: 0; transform: translateY(10px); }
+  12% { opacity: 1; transform: none; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .surface-compass { width: calc(100vw - 32px); top: calc(var(--nav-h, 64px) + 64px); }
+  .surface-where { top: calc(var(--nav-h, 64px) + 6px); }
+  .surface-corner { top: calc(var(--nav-h, 64px) + 6px); }
+  .surface-help-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
+  .surface-toast { top: auto; bottom: calc(170px + env(safe-area-inset-bottom, 0px)); right: 16px; }
+  .surface-prompt { bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+  .surface-talk { bottom: calc(210px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .surface-prompt, .surface-talk, .surface-toast, .surface-title { animation: none; }
+  .surface-fade { transition: none; }
+}
