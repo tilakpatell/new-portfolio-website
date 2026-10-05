@@ -7,9 +7,10 @@ import { use3D } from '../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
+import { useTravellers } from '../middleearth/towns/useTravellers';
 import { PALETTES, PALETTE_ORDER } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
-import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
+import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import './dotmatrix.css';
 import GuideCue from '../guide/GuideCue';
 
@@ -18,6 +19,8 @@ import GuideCue from '../guide/GuideCue';
 // the giant Game Boy in the square, which is the real console from the
 // emulator's project page. The rules are in ./rules.js, the drawing in
 // ./scene.js and ./dither.js; this is the keys, the HUD and the talking.
+// Everyone else online on the island shows as a pale ghost with their name
+// over them (the Middle-earth towns' travellers, in a room of its own).
 // Without 3D, the cartridges are a list and the Game Boy plays on its own.
 
 const GameBoyStage = lazy(() => import('../../stages/GameBoyStage'));
@@ -78,9 +81,14 @@ function World({ gl, setGl }) {
   const api = useRef(null);
   const sim = useRef(null);
   const { unlock } = useAchievements();
-  if (!sim.current) sim.current = { g: newGame({ found: readFound() }), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, touchA: false, yaw: 0, yawTo: 0, dist: ZOOM.start, distTo: ZOOM.start, pinch: null, padBefore: {}, moved: false, warp: null, music: null, started: false };
-  // what the scene draws from: the game, and where the camera stands
-  const view = () => ({ game: sim.current.g, yaw: sim.current.yaw, dist: sim.current.dist, pitch: pitchFor(sim.current.dist) });
+  if (!sim.current) sim.current = { g: newGame({ found: readFound() }), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, touchA: false, yaw: 0, yawTo: 0, dist: ZOOM.start, distTo: ZOOM.start, pinch: null, padBefore: {}, moved: false, warp: null, music: null, started: false, others: [], eased: {} };
+  // what the scene draws from: the game, where the camera stands, and who else is here
+  const view = () => ({ game: sim.current.g, yaw: sim.current.yaw, dist: sim.current.dist, pitch: pitchFor(sim.current.dist), travellers: sim.current.others });
+  // the other islanders online (middleearth/towns/useTravellers), and their names over the canvas
+  const trav = useTravellers('dotmatrix', gl === 'on', { motion: true });
+  const [others, setOthers] = useState([]);
+  const names = useRef({});
+  const othersKey = useRef('');
   const [palette, setPalette] = useState(() => (PALETTES[local.get(PALETTE, 'dmg')] ? local.get(PALETTE, 'dmg') : 'dmg'));
   const [musicOn, setMusicOn] = useState(() => local.get(MUSIC, true) !== false);
   const [hud, setHud] = useState(() => ({ hearts: 3, coins: 0, found: sim.current.g.found.size, near: null }));
@@ -493,6 +501,30 @@ function World({ gl, setGl }) {
     }
     if (pressB) act();
 
+    // the other islanders: where you are to them, where they are, and their names
+    const tv = trav.ref.current;
+    tv?.pose(islanderStep(g.hero));
+    s.others = tv ? tv.list() : [];
+    const ok = s.others.map((o) => `${o.id}:${o.name}`).join('|');
+    if (ok !== othersKey.current) {
+      othersKey.current = ok;
+      setOthers(s.others.map((o) => ({ id: o.id, name: o.name })));
+    }
+    const ease = 1 - Math.exp(-dt * 9);
+    for (const o of s.others) {
+      const e = s.eased[o.id] ?? (s.eased[o.id] = { x: o.x, y: o.y ?? 0, z: o.z });
+      if (Math.hypot(o.x - e.x, o.z - e.z) > 6) Object.assign(e, { x: o.x, z: o.z, y: o.y ?? 0 });
+      e.x += (o.x - e.x) * ease;
+      e.z += (o.z - e.z) * ease;
+      e.y += ((o.y ?? 0) - e.y) * ease;
+      const el = names.current[o.id];
+      if (!el) continue;
+      const at = a.screenOf(e.x, e.y + 1.25, e.z);
+      el.style.opacity = at.on ? '1' : '0';
+      el.style.transform = `translate(${at.x.toFixed(0)}px, ${at.y.toFixed(0)}px) translate(-50%, -100%)`;
+    }
+    for (const id of Object.keys(s.eased)) if (!s.others.some((o) => o.id === id)) delete s.eased[id];
+
     const near = nearAction(g);
     const p = progress(g);
     const key = `${g.hearts}|${p.coins}|${p.found}|${near?.kind}:${near?.id}`;
@@ -511,6 +543,13 @@ function World({ gl, setGl }) {
       <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
         <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E, zoom with the wheel or + and -." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
+        <div className="dm-names" aria-hidden="true">
+          {others.map((o) => (
+            <span key={o.id} ref={(el) => (names.current[o.id] = el)} className="dm-name">
+              {o.name}
+            </span>
+          ))}
+        </div>
         {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
         <div className="dm-hud dm-hud-top">
@@ -540,6 +579,16 @@ function World({ gl, setGl }) {
             <button type="button" className="dm-chip" onClick={() => setMusicOn((v) => !v)} aria-pressed={musicOn}>
               Music {musicOn ? 'on' : 'off'}
             </button>
+            {trav.available &&
+              (trav.on ? (
+                <span className="dm-chip dm-chip-online" title="Everyone else online on the island walks about as a pale ghost from another world: nothing passes between you but where each of you is">
+                  {trav.count} {trav.count === 1 ? 'other' : 'others'} here
+                </span>
+              ) : (
+                <button type="button" className="dm-chip dm-chip-online" onClick={trav.join} title="Go online, and see everyone else on the island as a ghost from another world">
+                  Go online
+                </button>
+              ))}
             <span className="dm-turn">
               <button type="button" className="dm-chip" aria-label="Turn the camera left" onClick={() => (sim.current.yawTo -= Math.PI / 4)}>
                 ⟲

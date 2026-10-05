@@ -183,6 +183,24 @@ export function nextStamp(f, stamped) {
   return { id: best.s.id, name: best.s.name, km: best.a * KM, rel };
 }
 
+// ── the other pilots ──
+
+// Where a plane is, as a traveller's step for the towns' rooms
+// (middleearth/towns/travellers.js): longitude and latitude in degrees for
+// x and z, the heading as a bearing in radians, the speed in hundredths of
+// a radian a second (always "moving"), the height in thousandths of a
+// radius. And back: a point on the sphere, a heading and a height.
+export const packPose = (f) => {
+  const [lon, lat] = toLonLat(f.p);
+  return { x: lon, z: lat, face: (bearingOf(f.p, f.h) * Math.PI) / 180, speed: f.speed * 100, y: f.alt * 1000 };
+};
+export function unpackPose(step) {
+  const p = toVec(step.x, step.z);
+  const h = headingOf(p, ((step.face ?? 0) * 180) / Math.PI);
+  const alt = step.y == null ? ALT.start : Math.max(ALT.min, Math.min(ALT.max, step.y / 1000));
+  return { p, h, alt };
+}
+
 // ── looking round ──
 
 // The chase camera swung round the plane by a drag (or a pad's right

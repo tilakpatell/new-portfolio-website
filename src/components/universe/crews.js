@@ -313,6 +313,22 @@ export const CREWS = [
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
+      lantern: [
+        ['morty', 'Rick, that star’s blinking at us!'],
+        ['rick', 'Pulsar, Morty. A dead star spinning a thousand times a second. Get close and it cooks you. Don’t get close.'],
+      ],
+      twins: [
+        ['morty', 'Two suns, Rick! Like in that movie!'],
+        ['rick', 'Binary star, Morty. Every system’s got one. It’s not special. Okay, the gas bridge is a little special.'],
+      ],
+      wanderer: [
+        ['morty', 'It’s so dark out here, Rick. Where’s its sun?'],
+        ['rick', 'It doesn’t have one, Morty. A rogue planet. Kicked out of its system. I relate.'],
+      ],
+      graveyard: [
+        ['morty', 'Rick… those are all dead ships.'],
+        ['rick', 'Ship graveyard round a white dwarf, Morty. Somebody’s bad day, times a thousand. Don’t touch anything.'],
+      ],
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
@@ -685,6 +701,19 @@ export const CREWS = [
       leviathanHit: [['r2', '[Do not shoot the purrgil. They did nothing to you.]']],
     },
     wonders: {
+      lantern: [
+        ['r2', '[Warning: pulsar. Radiation past the safe line.]'],
+        ['luke', 'I see it, Artoo. We’re keeping our distance.'],
+      ],
+      twins: [['luke', 'Two suns. For a second there I thought I was home.']],
+      wanderer: [
+        ['luke', 'A planet with no sun. It’s so dark.'],
+        ['r2', '[A rogue planet. Surface temperature: very low.]'],
+      ],
+      graveyard: [
+        ['luke', 'Look at them all. A whole fleet, just… drifting.'],
+        ['r2', '[A low, sad whistle.]'],
+      ],
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
@@ -1042,6 +1071,13 @@ export const CREWS = [
       leviathanHit: [['han', 'Don’t shoot the whales, Chewie. We don’t need that kind of trouble.']],
     },
     wonders: {
+      lantern: [['han', 'Pulsar. Chewie, give it a wide berth. I like my hair.']],
+      twins: [['han', 'Two suns. Reminds me of a job on Tatooine I’d rather forget.']],
+      wanderer: [['han', 'A planet out here on its own, no sun. Good place to hide, bad place to live.']],
+      graveyard: [
+        ['chewie', '[A low, uneasy growl.]'],
+        ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
+      ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -1434,6 +1470,22 @@ export const CREWS = [
       leviathanHit: [['walt', 'Jesse. Stop shooting the enormous thing.']],
     },
     wonders: {
+      lantern: [
+        ['jesse', 'Yo, Mr. White, that star’s flashing.'],
+        ['walt', 'A pulsar, Jesse. A neutron star. A teaspoon of it weighs more than a mountain. We are not stopping.'],
+      ],
+      twins: [
+        ['jesse', 'Two suns, Mr. White!'],
+        ['walt', 'A binary pair. The smaller one is pulling gas off the larger. Chemistry, Jesse, on a scale you can see.'],
+      ],
+      wanderer: [
+        ['jesse', 'Where’s the sun for this one?'],
+        ['walt', 'There isn’t one. A rogue planet. It left, Jesse. Some things do.'],
+      ],
+      graveyard: [
+        ['jesse', 'Mr. White. Those are wrecks. Like, hundreds.'],
+        ['walt', 'A graveyard round a dead star. Whatever happened here, Jesse, it happened fast.'],
+      ],
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],

@@ -107,6 +107,7 @@ export const PAGES = {
     tips: [
       ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has something to say about every place you reach. No ship? Pick a place and the camera flies there.'],
       ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back as you near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise.'],
+      ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map. The crew have a word about each as you come up on it.'],
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
