@@ -15,6 +15,8 @@ export const projects = [
     stack: ['C++', 'SDL3', 'CMake'],
     stage: 'gameboy',
     links: [{ label: 'Source', href: 'https://github.com/tilakpatell/gameboy-emulator' }],
+    // its world on this site: the console, giant, on an island to walk round
+    world: { to: '/dot-matrix', label: 'Dot Matrix, the Game Boy island' },
   },
   {
     id: 'swaminarayan-translator',

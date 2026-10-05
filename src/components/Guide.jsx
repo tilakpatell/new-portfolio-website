@@ -129,6 +129,15 @@ const PAGES = {
       ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
+  '/earth': {
+    title: 'Earth',
+    tips: [
+      ['From orbit', 'The Earth as it is right now: the sun is where it really is, so the night side is the real night. Drag to turn it, or pick a place to fly there. It comes down onto the globe on its own after a moment; M goes back up.'],
+      ['Fly', 'The arrows or W A S D: left and right turn, up and down climb and descend. Shift (or Space) goes faster. On a phone, the stick flies and the button goes faster. A controller works too.'],
+      ['The passport', 'Fly over a place to stamp your passport and get its postcard. P opens the passport; Fly here sets the autopilot, which follows the great circle there (Escape, or any turn, takes the controls back). The arrow at the bottom points at the next place, or wherever the autopilot is going.'],
+      ['Night', 'N keeps the sun over your shoulder, always day, if the real one has set where you are.'],
+    ],
+  },
   '/universe': {
     title: 'The universe',
     tips: [
