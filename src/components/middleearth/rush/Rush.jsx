@@ -472,7 +472,7 @@ function Kitchen({ level, live, invite }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     };
-    if (navigator.share && touch) navigator.share({ title: level.name, text: `Help in the Pony's kitchen: room ${room.code}`, url: link }).catch(() => {});
+    if (navigator.share && touch) navigator.share({ title: level.name, text: `Help in the kitchen, ${level.name}: room ${room.code}`, url: link }).catch(() => {});
     else navigator.clipboard?.writeText(link).then(done, () => {});
   };
 
