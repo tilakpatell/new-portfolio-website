@@ -33,6 +33,7 @@ import { ANNEX_LIGHT, ANNEX_SKY, buildAnnex } from './annex';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
+import { buildMindBlowers } from './interiors/mindblowers';
 
 export { kitMaterials };
 
@@ -50,7 +51,7 @@ export { kitMaterials };
 // { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
 // tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
 // The rooms and the annex add theirs here.
-export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade, basement: buildBasement };
+export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers };
 
 // the models the world loads (public/models/c137/), shared with the builders by name
 const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];

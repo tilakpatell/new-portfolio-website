@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { farTree } from '../../middleearth/towns/bake';
-import { AREAS, DECOR, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SCHOOL, TREES } from './rules';
+import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SCHOOL, TREES } from './rules';
 import { at, batch, mergeParts, rng, speckle } from './kit';
 import { buildingMaterials, flagpole, marquee, neighbourHouses, school, smithHouse } from './buildings';
 import { STREET_SKY, makeSky } from './sky';
@@ -132,8 +132,9 @@ export function buildStreet(kit) {
   const r = rng(77);
   const pick = (list) => list[Math.floor(r() * list.length)];
   // each driveway is where its mailbox (rules.js's DECOR) stands beside it
-  const drives = NEIGHBOURS.map((n) => ({ x: DECOR.find((d) => d.id === `mailbox-${n.id}`).x - 2.1, z: n.z, s: Math.sign(n.z) }));
-  const houses = NEIGHBOURS.map((n) => ({ x: n.x, z: n.z, turn: n.z < 0 ? 0 : Math.PI, look: n.look, tint: n.tint, roofTint: n.roofTint, id: n.id }));
+  // (Shoney's has its sign there, and a parking lot for a driveway: ./buildings.js)
+  const drives = NEIGHBOURS.filter((n) => n !== DINER).map((n) => ({ x: DECOR.find((d) => d.id === `mailbox-${n.id}`).x - 2.1, z: n.z, s: Math.sign(n.z) }));
+  const houses = NEIGHBOURS.filter((n) => n !== DINER).map((n) => ({ x: n.x, z: n.z, turn: n.z < 0 ? 0 : Math.PI, look: n.look, tint: n.tint, roofTint: n.roofTint, id: n.id }));
   const suburb = [];
   let k = 0;
   for (let x = AREAS.street.x1 + 8; x < plan.side; x += 21 + r() * 4, k++)
