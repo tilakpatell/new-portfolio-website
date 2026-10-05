@@ -5,6 +5,8 @@ import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf } from '../towns/keys';
+import { Travellers } from '../towns/TownHud';
+import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
   COLOURS,
@@ -105,6 +107,8 @@ export default function ShireWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, gl, setGl, onLeave }) {
+  // other travellers online in the Shire, as ghosts (../towns/useTravellers)
+  const trav = useTravellers('shire', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -575,10 +579,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     // the markers: what's open and not yet done
     const markers = s.mode === 'rider' ? [{ x: HOLLOW.x, z: HOLLOW.z }] : p.finished ? [{ x: SPOTS[3].x, z: SPOTS[3].z }] : p.quests.filter((q) => q.open && !q.done && (q.id !== 'rings' || sky === 'day')).map((q) => q.at);
 
+    // other travellers online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: s.mode === 'inside', ring: s.wearing });
     try {
       a.render(
         {
           hobbit: s.h,
+          travellers: tv ? tv.list() : null,
           sky,
           mode: s.mode,
           wearing: s.wearing,
@@ -746,6 +754,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{count}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Travellers trav={trav} />
             {prog.hasRing && (
               <button type="button" className="shire-chip shire-ring-btn" data-on={hud.wearing || undefined} data-tempt={(hud.rider?.phase === 'sniff' && hud.rider.pull > 0.3) || undefined} onClick={() => putRing(!sim.current.wearing)}>
                 {hud.wearing ? 'Take it off' : 'The Ring'} {!touch && <kbd>R</kbd>}

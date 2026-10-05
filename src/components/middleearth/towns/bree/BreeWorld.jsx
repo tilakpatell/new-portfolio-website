@@ -5,7 +5,8 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
-import { Bubble, Convo, QuestList, Stick } from '../TownHud';
+import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { useTravellers } from '../useTravellers';
 import { keyDown, keyUp, moveOf } from '../keys';
 import { drawMap } from '../map';
 import { nearest } from '../story';
@@ -70,6 +71,8 @@ export default function BreeWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, gl, setGl, onLeave }) {
+  // other travellers online in Bree, as ghosts (../useTravellers)
+  const trav = useTravellers('bree', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -583,10 +586,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const next = p.next;
     const markers = p.finished ? [spot('leave')] : night ? [spot('east')] : next === 'gate' ? [spot('gate')] : [spot('pony')];
 
+    // other travellers online: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: s.mode === 'inside', ring: s.wearing });
     try {
       a.render(
         {
           hobbit: s.h,
+          travellers: tv ? tv.list() : null,
           sky: p.sky,
           mode: s.mode,
           beat: s.beat,
@@ -719,6 +726,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
             <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
               <b>{done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
             </button>
+            <Travellers trav={trav} />
             <button type="button" className="shire-chip shire-ring-btn" data-on={hud.wearing || undefined} onClick={() => putRing(!sim.current.wearing)}>
               {hud.wearing ? 'Take it off' : 'The Ring'} {!touch && <kbd>R</kbd>}
             </button>
@@ -771,6 +779,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
                 Who’s that, in the corner?
               </button>
             )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => document.getElementById('pony-rush')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              Help in the kitchen (co-op)
+            </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={leaveInn}>
               Back out into the rain {!touch && <kbd>Esc</kbd>}
             </button>

@@ -133,7 +133,7 @@ export function createCrash(parent) {
   const portal = new THREE.Mesh(keep(new THREE.PlaneGeometry(1, 1)), portalMat);
   portal.visible = false;
   parent.add(portal);
-  const ringMat = keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 3, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, side: THREE.DoubleSide }));
+  const ringMat = keep(new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 3, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, side: THREE.DoubleSide, forceSinglePass: true }));
   const ring = new THREE.Mesh(keep(new THREE.RingGeometry(0.92, 1, 64)), ringMat);
   ring.visible = false;
   parent.add(ring);
@@ -171,7 +171,9 @@ export function createCrash(parent) {
         sp.life = 0;
         sp.max = rand(0.5, 1.4);
         sp.heat = rand(0.6, 1.4);
-        sparkPos.set([point.x, point.y, point.z], i * 3);
+        sparkPos[i * 3] = point.x;
+        sparkPos[i * 3 + 1] = point.y;
+        sparkPos[i * 3 + 2] = point.z;
       }
       sparks.visible = true;
       // the hull: not from the sun, which takes it all
@@ -244,7 +246,9 @@ export function createCrash(parent) {
           sparkPos[i * 3 + 1] += sp.v.y * dt;
           sparkPos[i * 3 + 2] += sp.v.z * dt;
           const h = k * k * sp.heat;
-          sparkCol.set([5 * h, 2.4 * h * k, 0.7 * h * k * k], i * 3);
+          sparkCol[i * 3] = 5 * h;
+          sparkCol[i * 3 + 1] = 2.4 * h * k;
+          sparkCol[i * 3 + 2] = 0.7 * h * k * k;
         }
         sparkGeo.attributes.position.needsUpdate = true;
         sparkGeo.attributes.color.needsUpdate = true;

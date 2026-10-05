@@ -251,7 +251,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         place(g, t);
         if (g.flyby && !g.said && ship) {
           const lead = g.members.find((m) => m.alive)?.model.group.position;
-          if (lead && Math.hypot(lead.x - ship.x, lead.y - ship.y, lead.z - ship.z) < 8) {
+          if (lead && (lead.x - ship.x) ** 2 + (lead.y - ship.y) ** 2 + (lead.z - ship.z) ** 2 < 64) {
             g.said = true;
             events.push({ type: 'traffic', kind: g.kind, event: g.event });
           }
@@ -276,7 +276,11 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
           const type = TYPES[m.kind];
           const r = m.size * (type.big ? 0.3 : 0.6) + 0.12;
           const k = Math.min(1, Math.max(0, ((p.x - from.x) * sx + (p.y - from.y) * sy + (p.z - from.z) * sz) / ss));
-          if (Math.hypot(p.x - (from.x + sx * k), p.y - (from.y + sy * k), p.z - (from.z + sz * k)) < r) {
+          // (squares, not Math.hypot: every bolt, every ship, every frame)
+          const ex = p.x - (from.x + sx * k);
+          const ey = p.y - (from.y + sy * k);
+          const ez = p.z - (from.z + sz * k);
+          if (ex * ex + ey * ey + ez * ez < r * r) {
             // too big to bring down (a Star Destroyer, a corvette)
             if (type.big || m.size > 2) return { kind: m.kind, at: p.clone(), size: m.size, glance: true, civil: Boolean(type.civil) };
             m.alive = false;

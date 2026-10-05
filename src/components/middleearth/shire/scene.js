@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
 import { bake, dotTexture, farTree } from '../towns/bake';
+import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
@@ -299,6 +300,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // ── the people ──
   const frodo = makePerson('frodo');
   outdoors.add(frodo.group);
+  // other travellers, online, from other worlds (../towns/ghosts.js)
+  const ghosts = createGhosts({ height: groundY });
+  outdoors.add(ghosts.group);
   const people = {};
   for (const c of CAST) {
     const p = makePerson(c.look);
@@ -472,6 +476,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
       if (s.mode === 'rider' && s.rider?.phase === 'sniff' && s.hidden) frodo.body.position.y = frodo.baseY - 0.18; // crouched
     }
     frodoPipe.copy(frodo.group.position).add(tmp.set(0, 1.08, 0.32));
+    ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
     // ── the cast ──
     for (const c of CAST) {
@@ -793,6 +798,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      ghosts.dispose();
       stage.dispose();
     },
   };

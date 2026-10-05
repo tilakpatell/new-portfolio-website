@@ -142,14 +142,22 @@ export const PLACES = [
 const far = PLACES.filter((p) => p.kind !== 'station'); // (the stations are the home system)
 
 // the place nearest (x, y, z), and how far past its reach it is (negative: inside)
+// (it runs a few times a frame: plain square roots, and one answer made)
 export function nearestPlace(x, y, z) {
-  let best = null;
+  let place = null;
+  let gap = Infinity;
   for (const p of far) {
-    const gap = Math.hypot(x - p.at[0], y - p.at[1], z - p.at[2]) - p.reach;
-    if (!best || gap < best.gap) best = { place: p, gap };
+    const dx = x - p.at[0];
+    const dy = y - p.at[1];
+    const dz = z - p.at[2];
+    const g = Math.sqrt(dx * dx + dy * dy + dz * dz) - p.reach;
+    if (g < gap) {
+      gap = g;
+      place = p;
+    }
   }
-  const home = Math.hypot(x, z) - HOME_RADIUS;
-  return home < best.gap ? { place: null, gap: home } : best;
+  const home = Math.sqrt(x * x + z * z) - HOME_RADIUS;
+  return home < gap ? { place: null, gap: home } : { place, gap };
 }
 
 // 0 at a place (the home system, a planet, a wonder: in its space you fly at
