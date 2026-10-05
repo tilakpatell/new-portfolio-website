@@ -52,6 +52,14 @@ describe('the director', () => {
     expect(share(hot)).toBeGreaterThan(share(calm));
   });
 
+  it('comes sooner, and angrier, on the way somewhere', () => {
+    const still = run(createDirector({ rand: seeded(5) }), 3000, { family: 'starwars' });
+    const moving = run(createDirector({ rand: seeded(5) }), 3000, { family: 'starwars', travelling: true });
+    expect(moving.length).toBeGreaterThan(still.length * 1.5);
+    const hunts = (got) => got.filter((g) => g.e === 'hunt' || g.e === 'destroyer').length / got.length;
+    expect(hunts(moving)).toBeGreaterThan(hunts(still));
+  });
+
   it('brings on what it is asked for next', () => {
     const d = createDirector({ rand: seeded() });
     d.soon('comet');

@@ -13,7 +13,7 @@
 // camera.setViewOffset(w, h, -sx, -sy, w, h).
 
 import { easeOut } from '../../lib/three/renderer';
-import { MAP_RADIUS, POSITIONS, REACH } from './layout';
+import { HOME_RADIUS, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
 export const FOV = 34; // vertical, degrees
@@ -72,14 +72,14 @@ export function worldPos(id, yaw = 0) {
   return [x * c + z * s, y, -x * s + z * c];
 }
 
-// The whole map in the open area, whichever way it's turned: the nearest
-// distance at which a ring round its outer edge (planets, moons and labels)
-// fits inside it.
+// The home system in the open area, whichever way it's turned: the nearest
+// distance at which a ring round its outer edge (the stations, the belt and
+// their labels) fits inside it. The far worlds are lights beyond it.
 export function overviewPose(size, rect) {
   const ring = [];
   for (let i = 0; i < 48; i++) {
     const a = (i / 48) * Math.PI * 2;
-    ring.push([MAP_RADIUS * Math.cos(a), 0, MAP_RADIUS * Math.sin(a)]);
+    ring.push([HOME_RADIUS * 1.25 * Math.cos(a), 0, HOME_RADIUS * 1.25 * Math.sin(a)]);
   }
   const shift = { sx: rect.sx, sy: rect.sy };
   const fits = (pose) =>

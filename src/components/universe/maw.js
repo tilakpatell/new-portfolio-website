@@ -92,6 +92,17 @@ export function pullAt(x, y, z) {
 // past the point of no return
 export const captured = (x, y, z) => len(sub([x, y, z], MAW.at)) <= MAW.capture;
 
+// Where the autopilot leaves you, taken to the Maw (from [x, z]): not in it,
+// but just inside the edge of its pull, level with it and facing it, on the
+// side you came from. Sit there and it creeps up on you.
+export function parkNear(from) {
+  const dx = from[0] - MAW.at[0];
+  const dz = from[1] - MAW.at[2];
+  const l = Math.hypot(dx, dz) || 1;
+  const d = MAW.reach * 0.9;
+  return { x: MAW.at[0] + (dx / l) * d, y: MAW.at[1], z: MAW.at[2] + (dz / l) * d, heading: Math.atan2(dx / l, dz / l) };
+}
+
 // The fall, from where it had the ship (and where the camera was, `cam`, to
 // keep the camera's swing round to watch it short): { from, r0, u, v, view }.
 // The ship goes round in the plane of u (out toward where it started) and v

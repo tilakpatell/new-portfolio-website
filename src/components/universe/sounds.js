@@ -533,6 +533,17 @@ export function alarmSound() {
   );
 }
 
+// The guns locking on to a hunter: two quick ticks, the second higher
+export function lockSound() {
+  tones(
+    [
+      [1180, 0, 0.05],
+      [1560, 0.07, 0.07],
+    ],
+    { type: 'triangle', gain: 0.035 },
+  );
+}
+
 // A hunter's shot going past: a short, thin zap
 export function enemyFireSound() {
   tones([[1400, 0, 0.07]], { type: 'sawtooth', gain: 0.012 });
@@ -541,4 +552,17 @@ export function enemyFireSound() {
 // Something big dropping out of hyperspace (or into it)
 export function jumpSound(out = false) {
   playClip(out ? 'hyperspaceEnter' : 'hyperspaceExit', { duration: 2.2 });
+}
+
+// Pulled out of the pulse drive: the drive's whine dropping away, and a thud
+export function interdictSound() {
+  whoosh(0.9, 2400, 120, 0.3);
+  tones([[60, 0.05, 0.3]], { type: 'sine', gain: 0.28 });
+  tones(
+    [
+      [520, 0.1, 0.1],
+      [390, 0.25, 0.14],
+    ],
+    { type: 'square', gain: 0.03 },
+  );
 }

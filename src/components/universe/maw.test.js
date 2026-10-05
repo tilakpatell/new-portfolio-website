@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { DISK_N, MAW, TILT, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
-import { SHIP } from './ship';
+import { DISK_N, MAW, TILT, captured, fallAt, parkNear, plungeAt, pullAt, startFall } from './maw';
+import { SHIP, forward } from './ship';
 
 const [cx, cy, cz] = MAW.at;
 const away = (p) => Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz);
@@ -49,6 +49,17 @@ describe('the Maw', () => {
   it('has you past the point of no return', () => {
     expect(captured(cx + MAW.capture - 0.5, cy, cz)).toBe(true);
     expect(captured(cx + MAW.capture + 0.5, cy, cz)).toBe(false);
+  });
+
+  it('parks the autopilot just inside its pull, facing it, on the side you came from', () => {
+    const p = parkNear([cx + 400, cz - 300]);
+    const d = Math.hypot(p.x - cx, p.y - cy, p.z - cz);
+    expect(d).toBeLessThan(MAW.reach);
+    expect(d).toBeGreaterThan(MAW.capture * 1.6);
+    expect(pullAt(p.x, p.y, p.z).k).toBeLessThan(0.1);
+    expect((p.x - cx) * 400 + (p.z - cz) * -300).toBeGreaterThan(0);
+    const [fx, fz] = forward(p.heading);
+    expect(fx * (cx - p.x) + fz * (cz - p.z)).toBeCloseTo(d, 4);
   });
 
   it('starts the fall where it had the ship, and spirals it down to the edge of the shadow', () => {

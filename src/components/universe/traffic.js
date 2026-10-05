@@ -13,9 +13,10 @@
 // interceptors, the Star Destroyers and the corvettes are models
 // (glbFleet.js), loaded the first time they're wanted.
 //
-// Everyday traffic flies lanes between the places, well above or below the
-// disc (lanes.js), so it never meets a planet or you; out in deep space,
-// where there are no places to go between, it crosses the space round you.
+// Everyday traffic keeps to where you are: round the place you're at and
+// leaving it (lanes.js), well above or below the disc, so it never meets a
+// planet or you; out in deep space between places it crosses the space
+// round you. With no ship picked it's the home system's.
 // Every so often while you fly, a group comes to you instead: from ahead,
 // at your height, past one side close enough to see and shoot, and away
 // (the crew have something to say about it). A shot that hits one ends it,
@@ -31,8 +32,9 @@
 import * as THREE from 'three';
 import { TRAFFIC } from './trafficModels';
 import { createFleet } from './glbFleet';
-import { bezier, convoyLane, flybyLane, laneBetween, laneLength, laneNear, tangent } from './lanes';
-import { openness } from './deep';
+import { bezier, convoyLane, flybyLane, laneDepart, laneLength, laneLocal, laneNear, tangent } from './lanes';
+import { DEEP, nearestPlace, openness } from './deep';
+import { HOME_RADIUS } from './layout';
 
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
 // wingspan, Meeseeks' height); speed: map units a second; crew: how many
@@ -72,6 +74,7 @@ const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
 const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 
 const between = (rand, a, b) => a + rand() * (b - a);
+const HOME = { id: 'home', at: [0, 0, 0], reach: HOME_RADIUS }; // the home system, as a place to fly round
 
 export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
   const rand = Math.random;
@@ -219,8 +222,15 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         nextAt = clock + between(rand, small ? 3 : 1.4, small ? 7 : 4);
         let kind = pick(kinds());
         if (TYPES[kind].big && bigs > 0) kind = pick(kinds().filter((k) => !TYPES[k].big));
-        // out in deep space it crosses the space round you instead
-        const pts = ship && openness(ship.x, ship.z) > 0.5 ? laneNear(ship, rand) : laneBetween(rand, { high: TYPES[kind].big });
+        // round the place you're at (or the home system), leaving it now and
+        // then; out in the open between places it crosses the space round you
+        let pts = null;
+        if (ship && openness(ship.x, ship.y, ship.z) > 0.5) pts = laneNear(ship, rand);
+        else {
+          const near = ship ? nearestPlace(ship.x, ship.y, ship.z) : { place: null, gap: 0 };
+          const place = near.gap < DEEP.near + 40 ? (near.place ?? HOME) : null;
+          if (place) pts = TYPES[kind].big || rand() < 0.7 ? laneLocal(place, rand, { high: TYPES[kind].big }) : laneDepart(place, rand);
+        }
         if (pts) spawn(kind, pts);
       }
       // now and then, something comes to you (only while you're flying)
