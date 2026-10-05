@@ -178,6 +178,7 @@ The asset pipeline scripts regenerate committed files. You don't need them to ru
 | `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
 | `npm run globe` | Rebuild the dotted globe on the Travel page |
 | `python3 scripts/build-harmonium.py` | Rebuild the music room's harmonium from its CC0 recording (downloads it the first time) |
+| `node scripts/ktx2.mjs report <files>` | For each texture in the given GLBs or images: what it would cost and save as a GPU-compressed KTX2 (bytes, GPU memory, PSNR) and whether it's worth it. `convert` rewrites them; the site's loader reads KTX2 already |
 
 The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.env.local`. Sketchfab downloads are brought down to web size by `scripts/sketchfab-import.mjs` and `scripts/sketchfab-batch.mjs`.
 
