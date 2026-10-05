@@ -45,7 +45,6 @@ const PEOPLE = {
   kenobi: { tall: 1.82, body: '#d8ccb0', legs: '#c8b896', skin: '#e0b8a0', robe: '#6a4a2a', hair: '#e8e4dc', beard: '#e8e4dc', bulk: 1 },
   farmer: { tall: 1.78, body: '#c8b8a0', legs: '#8a7a62', skin: '#d0a07a', hair: '#5a4a3a', robe: '#a89878', bulk: 1.05 },
   hutt: { tall: 1.9, creature: 'hutt' },
-  porg: { tall: 0.3, creature: 'porg' },
   droid: { tall: 1.09, creature: 'astromech' },
 };
 
@@ -656,59 +655,38 @@ function hutt(spec) {
   };
 }
 
-// small ones: a porg, an astromech
+// small ones: an astromech
 function small(spec) {
   const k = kitOf();
   const model = new THREE.Group();
   let t = Math.random() * 10;
   let bobber = model;
-  if (spec.creature === 'porg') {
-    const b = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.13, 12, 10)), k.mat('#8a6a50'));
-    b.scale.set(1, 1.1, 1);
-    b.position.y = 0.14;
-    const belly = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.11, 12, 8)), k.mat('#f2ebe0'));
-    belly.position.set(0, 0.12, 0.05);
-    const face = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.08, 12, 8)), k.mat('#f4ede2'));
-    face.position.set(0, 0.22, 0.07);
-    model.add(b, belly, face);
-    for (const x of [-0.035, 0.035]) {
-      const e = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.022, 8, 6)), k.mat('#0a0806', { roughness: 0.2 }));
-      e.position.set(x, 0.24, 0.13);
-      model.add(e);
-    }
-    const beak = new THREE.Mesh(k.geo(new THREE.ConeGeometry(0.015, 0.04, 6)), k.mat('#e8a040'));
-    beak.rotation.x = PI / 2;
-    beak.position.set(0, 0.2, 0.15);
-    model.add(beak);
-  } else {
-    const white = k.mat('#e9edf2', { roughness: 0.4 });
-    const blue = k.mat('#2f62c9');
-    const barrel = new THREE.Mesh(k.geo(new THREE.CylinderGeometry(0.2, 0.19, 0.5, 18)), white);
-    barrel.position.y = 0.55;
-    const dome = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.2, 18, 10, 0, PI * 2, 0, PI / 2)), k.mat('#c9ced6', { metalness: 0.6, roughness: 0.35 }));
-    dome.position.y = 0.8;
-    const panel = new THREE.Mesh(k.geo(new THREE.BoxGeometry(0.1, 0.18, 0.02)), blue);
-    panel.position.set(0, 0.6, 0.2);
-    const eye = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.035, 8, 6)), k.mat('#ff3030', { glow: 2 }));
-    eye.position.set(0, 0.9, 0.17);
-    const top = new THREE.Group();
-    top.add(barrel, dome, panel, eye);
-    for (const x of [-0.24, 0.24]) {
-      const leg = new THREE.Mesh(k.geo(new THREE.BoxGeometry(0.07, 0.62, 0.12)), white);
-      leg.position.set(x, 0.38, -0.02);
-      model.add(leg);
-    }
-    model.add(top);
-    bobber = top;
-    model.scale.setScalar(spec.tall / 1.0);
+  const white = k.mat('#e9edf2', { roughness: 0.4 });
+  const blue = k.mat('#2f62c9');
+  const barrel = new THREE.Mesh(k.geo(new THREE.CylinderGeometry(0.2, 0.19, 0.5, 18)), white);
+  barrel.position.y = 0.55;
+  const dome = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.2, 18, 10, 0, PI * 2, 0, PI / 2)), k.mat('#c9ced6', { metalness: 0.6, roughness: 0.35 }));
+  dome.position.y = 0.8;
+  const panel = new THREE.Mesh(k.geo(new THREE.BoxGeometry(0.1, 0.18, 0.02)), blue);
+  panel.position.set(0, 0.6, 0.2);
+  const eye = new THREE.Mesh(k.geo(new THREE.SphereGeometry(0.035, 8, 6)), k.mat('#ff3030', { glow: 2 }));
+  eye.position.set(0, 0.9, 0.17);
+  const top = new THREE.Group();
+  top.add(barrel, dome, panel, eye);
+  for (const x of [-0.24, 0.24]) {
+    const leg = new THREE.Mesh(k.geo(new THREE.BoxGeometry(0.07, 0.62, 0.12)), white);
+    leg.position.set(x, 0.38, -0.02);
+    model.add(leg);
   }
+  model.add(top);
+  bobber = top;
+  model.scale.setScalar(spec.tall / 1.0);
   return {
     model: shadowed(model),
     tall: spec.tall,
     update(dt, move) {
       t += dt;
-      if (spec.creature === 'porg') model.rotation.z = sin(t * 12) * 0.08 * move;
-      else bobber.rotation.z = sin(t * 9) * 0.05 * move;
+      bobber.rotation.z = sin(t * 9) * 0.05 * move;
     },
     dispose() {
       for (const o of k.owned) o.dispose();

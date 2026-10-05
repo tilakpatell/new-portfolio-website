@@ -754,8 +754,8 @@ export const SITES = {
       {
         id: 'summit',
         name: 'The temple summit',
-        at: [0, -250],
-        r: 8,
+        at: [0, -256],
+        r: 6,
         about: 'The top of the Great Temple, high over the canopy, where Rebel lookouts watched the sky for the Death Star. On a clear day, the jungle goes on forever, and Yavin fills the horizon.',
         lines: {
           xwing: [['luke', 'You can see the whole jungle from up here. And Yavin, like it’s right on top of us.']],

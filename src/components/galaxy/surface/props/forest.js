@@ -1494,21 +1494,27 @@ const MASSASSI_DARK = '#6a6354';
 const VINE = '#3c5a26';
 
 // a straight flight of steps along z, from (x, z0) at y0 rising by `rise`
-// per step to y1, `dir` ±1 along z: its parts and its floors (with a
-// landing at the top, a step long)
-function flight(x, z0, y0, y1, dir, { wide = 3, rise = 0.45, tread = 0.8, color = MASSASSI } = {}) {
+// per step to y1, `dir` ±1 along z: its parts and its floors, with a
+// landing at the top that reaches across to the wall it climbs beside (at
+// x = wall)
+function flight(x, z0, y0, y1, dir, wall, { wide = 3, rise = 0.45, tread = 0.8, color = MASSASSI } = {}) {
   const parts = [];
   const floors = [];
-  const n = Math.round((y1 - y0) / rise) - 1;
+  // (the rise spread evenly, so the last step up to the landing is no taller)
+  const n = Math.ceil((y1 - y0) / rise) - 1;
+  const r = (y1 - y0) / (n + 1);
   for (let i = 0; i < n; i++) {
-    const y = y0 + (i + 1) * rise;
+    const y = y0 + (i + 1) * r;
     const z = z0 + dir * (i + 0.5) * tread;
     parts.push(part(box(wide, 0.5, tread + 0.04), { at: [x, y - 0.5, z], color, to: 'stone' }));
     floors.push({ x, z, hw: wide / 2, hd: tread / 2 + 0.04, yaw: 0, y });
   }
   const zl = z0 + dir * (n + 0.75) * tread;
-  parts.push(part(box(wide, 0.5, tread * 1.5), { at: [x, y1 - 0.5, zl], color, to: 'stone' }));
-  floors.push({ x, z: zl, hw: wide / 2, hd: tread * 0.75 + 0.05, yaw: 0, y: y1 });
+  // the landing, from the stair's outer edge to just over the wall's top
+  const outer = x + Math.sign(x - wall) * (wide / 2);
+  const inner = wall - Math.sign(x - wall) * 0.8;
+  parts.push(part(box(Math.abs(outer - inner), 0.5, tread * 1.5), { at: [(outer + inner) / 2, y1 - 0.5, zl], color, to: 'stone' }));
+  floors.push({ x: (outer + inner) / 2, z: zl, hw: Math.abs(outer - inner) / 2, hd: tread * 0.75 + 0.05, yaw: 0, y: y1 });
   // a sloped plinth under the steps
   const len = n * tread;
   parts.push(part(new THREE.BoxGeometry(wide * 0.9, 0.5, Math.hypot(len, y1 - y0)), { at: [x, (y0 + y1) / 2 - 0.6, z0 + (dir * len) / 2], rot: [dir * Math.atan2(y1 - y0, len), 0, 0], color: MASSASSI_DARK, to: 'stone' }));
@@ -1517,22 +1523,22 @@ function flight(x, z0, y0, y1, dir, { wide = 3, rise = 0.45, tread = 0.8, color 
 
 // a stepped block of tiers (x, z half-sizes and heights), each with its
 // cornice and a vine or two over its lip
-function tiers(list, { seed = 1 } = {}) {
+function tiers(list, { seed = 1, zo = 0 } = {}) {
   const rand = rng(seed);
   const parts = [];
   let y = 0;
   for (const [hw, hd, h] of list) {
-    parts.push(part(box(hw * 2, h, hd * 2), { at: [0, y, 0], color: MASSASSI, to: 'stone' }));
-    parts.push(part(box(hw * 2 + 1.2, 0.9, hd * 2 + 1.2), { at: [0, y + h - 0.9, 0], color: MASSASSI_DARK, to: 'stone' }));
+    parts.push(part(box(hw * 2, h, hd * 2), { at: [0, y, zo], color: MASSASSI, to: 'stone' }));
+    parts.push(part(box(hw * 2 + 1.2, 0.9, hd * 2 + 1.2), { at: [0, y + h - 0.9, zo], color: MASSASSI_DARK, to: 'stone' }));
     // courses: a dark band halfway up
-    parts.push(part(box(hw * 2 + 0.3, 0.35, hd * 2 + 0.3), { at: [0, y + h * 0.45, 0], color: MASSASSI_DARK, to: 'stone' }));
+    parts.push(part(box(hw * 2 + 0.3, 0.35, hd * 2 + 0.3), { at: [0, y + h * 0.45, zo], color: MASSASSI_DARK, to: 'stone' }));
     // vines and moss down its faces
     for (let i = 0; i < 6; i++) {
       const side = Math.floor(rand() * 4);
       const along = (rand() - 0.5) * 1.7;
       const [x, z, ry] = side === 0 ? [along * hw, hd + 0.3, 0] : side === 1 ? [along * hw, -hd - 0.3, 0] : side === 2 ? [hw + 0.3, along * hd, PI / 2] : [-hw - 0.3, along * hd, PI / 2];
       const l = h * (0.4 + rand() * 0.55);
-      parts.push(part(new THREE.BoxGeometry(1.5 + rand() * 3, l, 0.3), { at: [x, y + h - l / 2, z], rot: [0, ry, 0], color: new THREE.Color(VINE).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+      parts.push(part(new THREE.BoxGeometry(1.5 + rand() * 3, l, 0.3), { at: [x, y + h - l / 2, z + zo], rot: [0, ry, 0], color: new THREE.Color(VINE).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
     }
     y += h;
   }
@@ -1540,43 +1546,45 @@ function tiers(list, { seed = 1 } = {}) {
 }
 
 const YAVIN = {
-  // the Great Temple of Massassi: five tiers of stone, 100 m across, the
-  // Rebel hangar cut into its foot (open at the front, +z), flights of
-  // steps up its east side to the summit; built by the Massassi for the Sith
-  // thousands of years ago
+  // the Great Temple of Massassi: a broad stone platform 100 m across with
+  // the Rebel hangar cut into its front (+z), four tiers stepping up behind
+  // it, flights of steps up its east side to the summit; built by the
+  // Massassi for the Sith thousands of years ago
   massassi(k) {
     const parts = [];
     const floors = [];
     const solids = [];
+    const ZO = -16; // (the tiers' middle, behind the hangar)
     const T = [
-      [50, 40, 18],
-      [42, 33, 13],
-      [33, 25, 11],
-      [24, 17, 9],
-      [14, 11, 7],
+      [42, 20, 13],
+      [33, 15, 11],
+      [24, 10, 9],
+      [14, 7, 7],
     ];
-    // the base, round the hangar (x ±18, z 0…40, 12 high)
+    // the base, round the hangar (x ±18, z 4…40, 12 high)
     const S = { color: MASSASSI, to: 'stone' };
-    parts.push(part(box(32, 18, 80), { at: [-34, 0, 0], ...S }), part(box(32, 18, 80), { at: [34, 0, 0], ...S }), part(box(36, 18, 40), { at: [0, 0, -20], ...S }), part(box(36, 6, 40), { at: [0, 12, 20], ...S }));
+    parts.push(part(box(32, 18, 80), { at: [-34, 0, 0], ...S }), part(box(32, 18, 80), { at: [34, 0, 0], ...S }), part(box(36, 18, 44), { at: [0, 0, -18], ...S }), part(box(36, 6, 36), { at: [0, 12, 22], ...S }));
     parts.push(part(box(101.2, 0.9, 81.2), { at: [0, 17.1, 0], color: MASSASSI_DARK, to: 'stone' }));
     parts.push(part(box(100.3, 0.35, 80.3), { at: [0, 8, 0], color: MASSASSI_DARK, to: 'stone' }));
     // the hangar's mouth: a lintel, its floor, the lights in its ceiling
     parts.push(part(box(40, 2.2, 2), { at: [0, 11, 40.2], color: MASSASSI_DARK, to: 'stone' }));
-    parts.push(part(box(35.6, 0.1, 39.6), { at: [0, 0.02, 20], color: '#6a665c', to: 'stone' }));
-    for (let i = 0; i < 4; i++) for (const x of [-10, 0, 10]) parts.push(part(box(3, 0.15, 0.6), { at: [x, 11.8, 6 + i * 9], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
-    parts.push(part(box(30, 6, 0.3), { at: [0, 0, 0.2], color: '#4a4842', to: 'metal' }));
-    solids.push({ box: [-34, 0, 16, 40, 0], top: 18 }, { box: [34, 0, 16, 40, 0], top: 18 }, { box: [0, -20, 18, 20, 0], top: 18 });
+    parts.push(part(box(35.6, 0.1, 35.6), { at: [0, 0.02, 22], color: '#6a665c', to: 'stone' }));
+    for (let i = 0; i < 4; i++) for (const x of [-10, 0, 10]) parts.push(part(box(3, 0.15, 0.6), { at: [x, 11.8, 9 + i * 8.5], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
+    parts.push(part(box(30, 6, 0.3), { at: [0, 0, 4.2], color: '#4a4842', to: 'metal' }));
+    solids.push({ box: [-34, 0, 16, 40, 0], top: 18 }, { box: [34, 0, 16, 40, 0], top: 18 }, { box: [0, -18, 18, 22, 0], top: 18 });
     floors.push({ x: 0, z: 0, hw: 50, hd: 40, yaw: 0, y: 18 });
-    // the tiers above
-    const up = tiers(T.slice(1), { seed: 4 });
+    // the tiers above, behind the hangar
+    const up = tiers(T, { seed: 4, zo: ZO });
     for (const p of up.parts) parts.push({ ...p, at: [p.at[0], p.at[1] + 18, p.at[2]] });
     let y = 18;
-    for (const [hw, hd, h] of T.slice(1)) {
+    const tops = [18];
+    for (const [hw, hd, h] of T) {
       y += h;
-      solids.push({ box: [0, 0, hw, hd, 0], top: y });
-      floors.push({ x: 0, z: 0, hw, hd, yaw: 0, y });
+      tops.push(y);
+      solids.push({ box: [0, ZO, hw, hd, 0], top: y });
+      floors.push({ x: 0, z: ZO, hw, hd, yaw: 0, y });
     }
-    // vines down the base
+    // vines down the front
     const rand = rng(12);
     for (let i = 0; i < 10; i++) {
       const x = (rand() - 0.5) * 96;
@@ -1584,15 +1592,17 @@ const YAVIN = {
       const l = 6 + rand() * 10;
       parts.push(part(new THREE.BoxGeometry(2 + rand() * 3, l, 0.3), { at: [x, 18 - l / 2, 40.3], color: VINE, to: 'leaf' }));
     }
-    // the summit: a parapet round it, and the throne room's doors
-    parts.push(part(box(29, 1.1, 0.5), { at: [0, 58, 11.2], ...S }), part(box(29, 1.1, 0.5), { at: [0, 58, -11.2], ...S }), part(box(0.5, 1.1, 22), { at: [-14.2, 58, 0], ...S }));
-    parts.push(part(box(8, 4.5, 0.4), { at: [0, 51, 17.2], color: '#2a2620', to: 'dark' }));
-    // the steps up the east side: ground → 18 → 31 → 42 → 51 → 58
-    const flights = [flight(52, 38, 0, 18, -1, { wide: 3.6 })];
-    flights.push(flight(45, flights[0].end - 1, 18, 31, 1));
-    flights.push(flight(37.5, flights[1].end + 1, 31, 42, -1));
-    flights.push(flight(28.5, flights[2].end - 1, 42, 51, 1));
-    flights.push(flight(19, flights[3].end + 1, 51, 58, -1));
+    // the summit: a parapet round its back and sides, the throne room's
+    // doors on the tier below
+    const top = tops.at(-1);
+    parts.push(part(box(29, 1.1, 0.5), { at: [0, top, ZO - 7.2], ...S }), part(box(0.5, 1.1, 14), { at: [-14.2, top, ZO], ...S }));
+    parts.push(part(box(8, 4.5, 0.4), { at: [0, tops[3], ZO + 10.2], color: '#2a2620', to: 'dark' }));
+    // the steps up the east side, each flight beside the tier it climbs to
+    const flights = [flight(52, 38, 0, tops[0], -1, 50, { wide: 3.6 })];
+    flights.push(flight(45, 6, tops[0], tops[1], -1, 42));
+    flights.push(flight(36, -32, tops[1], tops[2], 1, 33));
+    flights.push(flight(27, -5, tops[2], tops[3], -1, 24));
+    flights.push(flight(17, -24, tops[3], tops[4], 1, 14));
     for (const f of flights) {
       parts.push(...f.parts);
       floors.push(...f.floors);
