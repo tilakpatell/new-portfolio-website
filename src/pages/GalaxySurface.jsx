@@ -9,7 +9,7 @@ import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
-import { siteOf } from '../components/galaxy/surface/sites';
+import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
@@ -20,6 +20,7 @@ import '../components/galaxy/surface/surface.css';
 
 export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what you've found on each world
 export const LAUNCH_KEY = 'tp-galaxy-launch'; // (session) the world you've just taken off from
+const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 
 const readFound = () => {
   const all = local.get(FOUND_KEY);
@@ -41,7 +42,7 @@ export default function GalaxySurface() {
   const reduced = useReducedMotion();
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
   const crew = crewById(ship);
-  const { unlocked } = useAchievements();
+  const { unlocked, unlock } = useAchievements();
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
   // online: the other pilots down here with you
   const online = useOnline();
@@ -59,6 +60,7 @@ export default function GalaxySurface() {
   const view = useRef({ live: false });
   const compass = useRef(null);
   const comms = useRef(null);
+  const landed = useRef(false);
   const timers = useRef({});
   useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
   const later = (key, ms, fn) => {
@@ -82,7 +84,15 @@ export default function GalaxySurface() {
     (e) => {
       if (e.type === 'phase') {
         setPhase(e.phase);
-        if (e.phase === 'out') comms.current?.handle({ type: 'event', id: 'surface:out' });
+        if (e.phase === 'out' || (e.phase === 'walk' && !landed.current)) {
+          if (e.phase === 'out') comms.current?.handle({ type: 'event', id: 'surface:out' });
+          // set foot on it: one more world
+          landed.current = true;
+          const worlds = new Set([...(Array.isArray(local.get(LANDED_KEY)) ? local.get(LANDED_KEY) : []), id]);
+          local.set(LANDED_KEY, [...worlds]);
+          unlock('groundside');
+          if (LANDABLE.every((w) => worlds.has(w))) unlock('wanderer');
+        }
         if (e.phase === 'leaving') comms.current?.handle({ type: 'event', id: 'surface:leave' });
         if (e.phase === 'ride') comms.current?.handle({ type: 'event', id: `surface:ride` });
       } else if (e.type === 'prompt') setPrompt(e.text);
@@ -97,6 +107,7 @@ export default function GalaxySurface() {
           if (was.includes(e.id)) return was;
           const next = [...was, e.id];
           local.set(FOUND_KEY, { ...readFound(), [id]: next });
+          if (site.places.every((p) => next.includes(p.id))) unlock('surveyor');
           return next;
         });
         setToast((t) => ({ title: place.name, text: place.about, n: (t?.n ?? 0) + 1 }));
@@ -111,7 +122,7 @@ export default function GalaxySurface() {
       } else if (e.type === 'leave') takeOff();
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
     },
-    [site, id, takeOff],
+    [site, id, takeOff, unlock],
   );
 
   // H for the controls; Escape shuts them

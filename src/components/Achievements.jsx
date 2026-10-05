@@ -119,6 +119,9 @@ export const ACHIEVEMENTS = {
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
+  groundside: { name: 'Boots on the ground', desc: 'Landed on a world in a galaxy far, far away' },
+  surveyor: { name: 'Surveyor', desc: 'Found every place on a world in a galaxy far, far away' },
+  wanderer: { name: 'Wanderer', desc: 'Set foot on every world you can land on in a galaxy far, far away' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 
