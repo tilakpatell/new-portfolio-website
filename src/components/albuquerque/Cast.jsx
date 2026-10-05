@@ -65,7 +65,7 @@ const ICONS = {
 
 const CAST = [
   { id: 'walt', name: 'Walter White', role: 'Chemistry teacher', text: 'A high-school chemistry teacher in Albuquerque who goes by another name in the business he gets into.', action: 'Say my name', done: 'Heisenberg.' },
-  { id: 'jesse', name: 'Jesse Pinkman', role: 'His former student', text: 'Walt’s old student and partner, who learns more chemistry than either of them planned.', action: 'Science!', done: 'Yeah, science!' },
+  { id: 'jesse', name: 'Jesse Pinkman', role: 'His former student', text: 'Walt’s old student and partner, who learns more chemistry than either of them planned.', action: 'Science!', done: 'Yeah, Mr. White! Yeah, science!' },
   { id: 'gus', name: 'Gustavo Fring', role: 'Los Pollos Hermanos', text: 'Owns a chain of chicken restaurants. Calm, polite, meticulous. Hides in plain sight.', action: 'Order the chicken', done: 'Your order is ready. The manager hopes you enjoy it.' },
   { id: 'mike', name: 'Mike Ehrmantraut', role: 'Security', text: 'A retired Philadelphia cop who handles problems quietly, and never halfway.', action: 'Half measures?', done: 'No more half measures.' },
   { id: 'saul', name: 'Saul Goodman', role: 'Attorney at law', text: 'Jimmy McGill, practicing law as Saul Goodman, from an office with an inflatable Statue of Liberty on the roof.', action: 'Better call Saul', done: 'S’all good, man.' },
@@ -82,7 +82,7 @@ export default function Cast() {
     if (id === 'saul') clip('callSaul');
     if (id === 'gus') clip('gusHello');
     if (id === 'hector') for (const when of [0, 0.42, 0.84]) clip('hectorBell', { when });
-    if (id === 'jesse') sfx().then((s) => s.beeps());
+    if (id === 'jesse') clip('yeahScience').then((h) => h || sfx().then((s) => s.beeps()));
     if (id === 'hank') clip('hankRing');
     if (id === 'mike' || id === 'lalo') sfx().then((s) => s.knock());
     setDone((d) => ({ ...d, [id]: Date.now() }));

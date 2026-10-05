@@ -19,6 +19,8 @@ const SCENES = {
   club: { x: 0.27, line: 'Yeah, welcome to the club, pal.', sad: true, rick: true },
 };
 const cue = (name) => import('../games/gameAudio').then((m) => m[name]?.());
+// it asks in its own voice
+const ask = () => import('../../lib/clips').then((m) => m.playClip('purpose', { when: 0.3 }));
 
 export default function ButterRobot() {
   const [scene, setScene] = useState('off');
@@ -31,6 +33,7 @@ export default function ButterRobot() {
   const wake = () => {
     audioContext();
     cue('zap');
+    ask();
     setScene('awake');
   };
   // off down the table and back, the butter in its claw on the way back
@@ -46,6 +49,7 @@ export default function ButterRobot() {
       setButter('plate');
       setScene('served');
       cue('portalHop');
+      ask();
     }, trip * 2 + (quick ? 0 : 500));
   };
   const tell = () => setScene('told');
@@ -54,6 +58,7 @@ export default function ButterRobot() {
     timers.current = [];
     setButter('dish');
     setScene('awake');
+    ask();
   };
 
   const [label, act] = {

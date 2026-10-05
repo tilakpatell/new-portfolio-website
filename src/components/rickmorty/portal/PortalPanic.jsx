@@ -234,7 +234,10 @@ function Game({ soft, fail }) {
           case 'bossDown':
             play('boom');
             say(`${PANIC.bosses[e.id].name}: down`, 'good');
-            if (e.id === 'cromulon') unlock('showmewhatyougot');
+            if (e.id === 'cromulon') {
+              unlock('showmewhatyougot');
+              clip('likeWhatYouGot');
+            }
             setUi((u) => ({ ...u, boss: null }));
             break;
           case 'travel':

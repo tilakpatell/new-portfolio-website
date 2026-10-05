@@ -39,7 +39,7 @@ export const VEHICLES = [
     ship: 'xwing',
     lines: {
       board: [['r2', '[a cheerful whistle: systems are go]']],
-      launch: [['r2', '[an excited warble: hold on]']],
+      launch: [['r2', '[an excited warble: hold on]', 'r2Whistle']],
     },
   },
   {
@@ -69,7 +69,7 @@ export const VEHICLES = [
     ship: null,
     lines: {
       board: [['jesse', 'Yo, you’re driving? Okay. Just stay off the main roads.']],
-      launch: [['jesse', 'Yeah, Mr. White! Yeah, science!']],
+      launch: [['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience']],
     },
   },
 ];

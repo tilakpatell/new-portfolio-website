@@ -12,16 +12,18 @@ const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 
 // The moment a theme is picked: a short scene in its own style, a line it's
 // known for and an original sound, while the new colours land underneath.
+// `clip` is a recording that plays in place of the sound (cut to its second
+// element, in seconds); `line` is the quote said aloud over the sound.
 // Click, tap or any key skips it. Reduced motion keeps the words, not the motion.
 
 const sfx = () => import('../lib/sfx');
 
 const SCENES = {
-  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Star Wars', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), clip: ['binarySunset', 10] },
-  sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith') },
+  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Han Solo', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), line: 'mayTheForce' },
+  sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith'), line: 'lackOfFaith' },
   stark: { kind: 'hud', color: '#7fdcff', quote: 'I am Iron Man.', by: 'Tony Stark', sound: (s) => s.repulsor(), clip: ['marvel', 6] },
   arcade: { kind: 'pixels', color: '#d6246e', quote: 'Let’s-a go!', by: 'Player one', sound: (s) => s.coin() },
-  heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), clip: ['bbIntro', 6] },
+  heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), line: 'oneWhoKnocks' },
   dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() , clip: ['officeTheme', 7] },
   tortuga: { kind: 'ripple', color: '#d9a436', quote: 'Take what you can. Give nothing back.', by: 'The pirates’ toast', clip: ['pirates', 6] },
   pearl: { kind: 'ripple', color: '#f2c45a', quote: 'Now, bring me that horizon.', by: 'Captain Jack Sparrow', clip: ['pirates', 6] },
@@ -174,6 +176,7 @@ export default function ThemeTransition({ id, onDone }) {
         if (!played) made();
       });
     else if (scene.sound || scene.cue) made();
+    if (scene.line) import('../lib/clips').then((c) => c.playClip(scene.line, { when: 0.25, keep: true }));
     else if (id === 'raga')
       import('./music/engine').then((m) => {
         m.pluck(1, { vel: 0.8 });

@@ -21,6 +21,7 @@ export const CREWS = [
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
     },
     launch: [
       ['rick', 'Wubba lubba dub dub!', 'wubba'],
@@ -56,7 +57,7 @@ export const CREWS = [
       ],
       birdperson: [
         ['morty', 'Is that Birdperson?'],
-        ['rick', 'Birdperson! My man.'],
+        ['rick', 'My man.', 'myMan'],
       ],
     },
     // shooting one down
@@ -70,6 +71,7 @@ export const CREWS = [
         ['rick', 'He’s fine, Morty. Existence is pain to a Meeseeks.'],
       ],
       birdperson: [
+        ['birdperson', 'In bird culture, this is considered a dick move.', 'birdCulture'],
         ['morty', 'Rick, I shot Birdperson!'],
         ['rick', 'He’ll be fine, Morty. Phoenixperson’s a whole thing.'],
       ],
@@ -100,6 +102,7 @@ export const CREWS = [
       terminal: [
         ['rick', 'A terminal. Finally, something for grown-ups.'],
         ['morty', 'Rick, what’s sudo?'],
+        ['rick', 'You son of a bitch. I’m in.', 'imIn'],
       ],
       starwars: [
         ['morty', 'Rick, is that… is that the Death Star?'],
@@ -158,7 +161,7 @@ export const CREWS = [
     },
     launch: [
       ['luke', 'Red Five, standing by.'],
-      ['r2', '[an eager whistle]'],
+      ['r2', '[an eager whistle]', 'r2Whistle'],
     ],
     boost: [
       ['luke', 'Hang on, Artoo!'],
@@ -166,10 +169,10 @@ export const CREWS = [
     ],
     bump: [
       ['r2', '[an alarmed shriek]'],
-      ['luke', 'I’ve got a bad feeling about this.'],
+      ['luke', 'I have a very bad feeling about this.', 'badFeelingLuke'],
     ],
     crash: [
-      ['r2', '[a long, falling scream]'],
+      ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
     traffic: {
@@ -178,6 +181,7 @@ export const CREWS = [
         ['r2', '[an urgent warble]'],
       ],
       interceptor: [
+        ['comms', 'It’s a trap!', 'itsATrap'],
         ['luke', 'Interceptors, coming in fast!'],
         ['r2', '[a frightened whistle]'],
       ],
@@ -223,6 +227,7 @@ export const CREWS = [
         ['r2', '[a data-transfer chirp]'],
       ],
       contact: [
+        ['comms', 'Help me, Obi-Wan Kenobi. You’re my only hope.', 'helpMeObiWan'],
         ['luke', 'A relay station. We can get a message to him from here.'],
         ['r2', '[a hopeful bleep]'],
       ],
@@ -293,7 +298,7 @@ export const CREWS = [
       ['chewie', '[roars]'],
     ],
     bump: [
-      ['han', 'It’s not my fault!'],
+      ['han', 'Never tell me the odds.', 'neverTellOdds'],
       ['chewie', '[a furious roar]'],
     ],
     crash: [
@@ -306,6 +311,7 @@ export const CREWS = [
         ['chewie', '[a roar]'],
       ],
       interceptor: [
+        ['comms', 'It’s a trap!', 'itsATrap'],
         ['han', 'Interceptors. Chewie, get on the guns.'],
         ['chewie', '[an eager growl]'],
       ],
@@ -320,7 +326,7 @@ export const CREWS = [
     },
     kill: {
       any: [
-        ['han', 'Great, kid! Don’t get cocky.'],
+        ['han', 'Great, kid! Don’t get cocky!', 'dontGetCocky'],
         ['chewie', '[a happy roar]'],
       ],
       xwing: [
