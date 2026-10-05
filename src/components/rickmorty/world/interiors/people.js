@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { BASE } from '../../portal/meshyCast';
 import { mergeParts } from '../kit';
 import { CYL } from './shell';
 
@@ -21,10 +22,10 @@ export async function needCast(kit, names) {
 }
 
 // A person standing at (x, z), facing `face` (rules.js's heading), `h` tall:
-// the Meshy figure for `kind`, or a code-drawn one to `look`. Its tick plays
-// the idle.
-export function person(R, kind, { x, z, face, h, look, y = 0 }) {
-  const c = R.kit.cast.make(kind);
+// the Meshy figure for `kind`, or a code-drawn one to `look` (if it won't
+// load, or `meshy` is false). Its tick plays the idle.
+export function person(R, kind, { x, z, face, h, look, y = 0, meshy = true }) {
+  const c = meshy ? R.kit.cast.make(kind) : null;
   let fig;
   if (c) {
     c.group.scale.setScalar(h / c.height);
@@ -38,18 +39,27 @@ export function person(R, kind, { x, z, face, h, look, y = 0 }) {
 }
 
 // Rick's sat clip, for the Smiths who haven't one of their own (the same
-// skeleton): turns only, so it keeps the sitter's own proportions.
+// skeleton): turns only, so it keeps the sitter's own proportions. Null if it
+// won't load, or takes longer than SIT_WAIT (so a room never waits on it).
+const SIT_WAIT = 8000;
 let sitClip = null;
-export async function sitting() {
-  if (sitClip) return sitClip;
-  try {
-    const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/games/meshy/rick-sit.glb');
-    const clip = g.animations[0];
-    clip.tracks = clip.tracks.filter((t) => t.name.endsWith('.quaternion'));
-    sitClip = clip;
-  } catch {
-    sitClip = null;
-  }
+export function sitting() {
+  sitClip ??= Promise.race([
+    new GLTFLoader()
+      .setMeshoptDecoder(MeshoptDecoder)
+      .loadAsync(`${BASE}/rick-sit.glb`)
+      .then((g) => {
+        const clip = g.animations[0] ?? null;
+        if (clip) clip.tracks = clip.tracks.filter((t) => t.name.endsWith('.quaternion'));
+        return clip;
+      }),
+    new Promise((done) => setTimeout(() => done(null), SIT_WAIT)),
+  ])
+    .catch(() => null)
+    .then((clip) => {
+      if (!clip) sitClip = null; // (asked again, it tries again)
+      return clip;
+    });
   return sitClip;
 }
 

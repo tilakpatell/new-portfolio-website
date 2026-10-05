@@ -111,6 +111,9 @@ export function cableTV(R, f, u, y, v, w, h) {
   const g = c.getContext('2d');
   const tex = R.own(new THREE.CanvasTexture(c));
   tex.colorSpace = THREE.SRGBColorSpace;
+  // (redrawn a dozen times a second: no mipmaps to rebuild each time)
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
   const mat = R.own(new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.15, 1.15, 1.15) }));
   const screen = new THREE.Mesh(PLANE, mat);
   screen.matrixAutoUpdate = false;

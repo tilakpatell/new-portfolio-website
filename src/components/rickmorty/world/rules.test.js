@@ -3,6 +3,7 @@ import { pushOut } from '../../middleearth/towns/walker';
 import {
   AREAS,
   ARCADE,
+  BANISTER,
   BOARD,
   BUILDINGS,
   COLLIDERS,
@@ -512,7 +513,7 @@ describe('C-137: the furniture', () => {
 
   it('has the kinds the scene draws', () => {
     const kinds = new Set(FURNITURE.map((f) => f.kind));
-    for (const k of ['couch', 'tv', 'table', 'counter', 'stove', 'fridge', 'bed', 'desk', 'dresser', 'workbench', 'shelf', 'cabinet', 'arcade', 'roy', 'goldenfold-desk', 'school-desk', 'chalkboard']) expect(kinds.has(k), k).toBe(true);
+    for (const k of ['couch', 'tv', 'table', 'counter', 'stove', 'fridge', 'bed', 'desk', 'dresser', 'stairs', 'workbench', 'shelf', 'laundry', 'arcade', 'roy', 'goldenfold-desk', 'school-desk', 'chalkboard']) expect(kinds.has(k), k).toBe(true);
     expect(FURNITURE.filter((f) => f.kind === 'bed').map((f) => f.id)).toEqual(expect.arrayContaining(['bed-summer', 'bed-morty', 'bed-master']));
   });
 
@@ -668,14 +669,40 @@ describe('C-137: the Smith house, room by room', () => {
         expect(thick).toBe(0.12);
       }
     }
-    expect(WALLS.house).toBe(INNER_WALLS.house);
-    expect(wallsIn('house')).toBe(INNER_WALLS.house);
+    // the house's walls are its inner walls and the stairs' low banister
+    expect(WALLS.house).toEqual([...INNER_WALLS.house, BANISTER]);
+    expect(wallsIn('house')).toBe(WALLS.house);
+    expect(BANISTER[5]).toBe(true);
     expect(wallsIn('upstairs')).toEqual(expect.arrayContaining(INNER_WALLS.upstairs));
     // the balcony has its railing on the south edge, low
     const rail = wallsIn('upstairs').find((w) => w[5] === true);
     expect(rail).toBeTruthy();
     expect(rail[1]).toBe(rail[3]);
     expect(rail[1]).toBeGreaterThan(AREAS.upstairs.z1 - 0.5);
+  });
+
+  it('keeps Morty off the stairs: the flight and its banister are in the way, and the foot is where you go up', () => {
+    const run = FURNITURE.find((f) => f.id === 'stair-run');
+    const stairs = PLAN.find((r) => r.id === 'stairs');
+    expect(run).toMatchObject({ area: 'house', kind: 'stairs', turn: 0 });
+    // in the stairs' own room, rising from the foot by the link to the hall's wall
+    expect(run.x - run.w / 2).toBeGreaterThanOrEqual(stairs.x0);
+    expect(run.x + run.w / 2).toBeLessThanOrEqual(stairs.x1);
+    expect(run.z - run.d / 2).toBeGreaterThanOrEqual(stairs.z0);
+    expect(run.z + run.d / 2).toBeLessThan(link('stairs-up').z - MORTY.radius);
+    // nowhere on the steps to stand
+    for (let x = stairs.x0 + 0.05; x < stairs.x1; x += 0.1) for (let z = run.z - run.d / 2; z <= run.z + run.d / 2; z += 0.1) expect(free('house', x, z), `${x.toFixed(2)}, ${z.toFixed(2)}`).toBe(false);
+    // walking east from the entry into the side of the flight, he stops at the banister
+    const m = walk(newMorty({ x: -297.2, z: 1.3, face: 0 }), { x: 1, z: 0, run: false }, 2, 'house');
+    expect(m.x).toBeLessThanOrEqual(BANISTER[0] - MORTY.radius + 1e-6);
+    expect(Math.abs(BANISTER[0] - (run.x - run.w / 2))).toBeLessThan(1e-9);
+    expect(BANISTER[1]).toBeCloseTo(run.z - run.d / 2, 6);
+    expect(BANISTER[3]).toBeCloseTo(run.z + run.d / 2, 6);
+    // the foot of the stairs, where the link is, is clear, and walked to from the front door, the hall and the kitchen
+    const up = link('stairs-up');
+    expect(free('house', up.x, up.z)).toBe(true);
+    // (to within half its reach, on the half-metre walking grid)
+    for (const from of [link('house-door').arrive, { x: -292.1, z: -0.4 }, link('garage-kitchen').arrive, link('stairs-down').arrive]) expect(canWalk('house', from, up, up.r / 2), `${from.x}, ${from.z}`).toBe(true);
   });
 
   it('has no way out of the house’s outline: the blocked part south of the kitchen, and the void by the stairs', () => {

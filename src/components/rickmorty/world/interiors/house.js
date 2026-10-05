@@ -7,7 +7,9 @@
 // white skirting, wood floors, every piece of furniture on its collider
 // (./furniture.js). Upstairs is ./upstairs.js.
 
-import { FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
+import * as THREE from 'three';
+import { faceForward, heading } from '../../portal/meshyCast';
+import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { ceilingLights, ceilings, doorAt, doorway, floors, framed, makeRoom, scribble, TAU, tiledPaint, wallLine, wallRun, win, windowView } from './shell';
 import { needCast, person, sitting } from './people';
 import { BROWN, CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, butterRobot, carpet, computer, couch, counter, desk, deskLamp, dresser, fridge, lino, roomsOf, shelf, stove, table, tvStand, bed, woodFloor } from './furniture';
@@ -16,16 +18,17 @@ import { cableTV } from './tv';
 // ── the stairs ──
 
 // steps rising north from the foot of the stairs (by the 'stairs-up' link),
-// with a banister up their open side
-function stairs(R) {
+// with a banister up their open side (the rules' low wall)
+function stairs(R, it) {
   const f = R.frame(0, 0, 0, { list: 'fixed' });
-  const x0 = -295.7;
-  const x1 = -294.62;
-  const foot = 2.15;
-  const top = 0.5;
+  // on the rules' stair-run: its front (+z) is the foot, its height the top step's
+  const x0 = it.x - it.w / 2;
+  const x1 = it.x + it.w / 2;
+  const foot = it.z + it.d / 2;
+  const top = it.z - it.d / 2;
   const n = 7;
   const run = (foot - top) / n;
-  const rise = 0.25;
+  const rise = it.h / n;
   const cx = (x0 + x1) / 2;
   for (let i = 0; i < n; i++) {
     const z1 = foot - i * run;
@@ -37,7 +40,7 @@ function stairs(R) {
   // the banister: newel posts, a rail up the slope, balusters
   const rail = 0.95;
   const post = (z, y) => f.box(0x8a5a34, x0 + 0.05, 0, z, 0.09, y + rail + 0.08, 0.09).box(0x8a5a34, x0 + 0.05, y + rail + 0.08, z, 0.12, 0.06, 0.12);
-  post(foot + 0.02, 0);
+  post(foot - 0.06, 0);
   post(top + 0.05, n * rise - rise);
   const len = Math.hypot(foot - top, (n - 1) * rise);
   const slope = Math.atan2((n - 1) * rise, foot - top);
@@ -209,7 +212,8 @@ export async function buildHouse(kit) {
   }, { border: '#2b2b30', inner: 4 }));
 
   // ── walls and ceilings ──
-  ceilings(R, roomsOf('house'));
+  // (and over the yard in the corner outside, for when the camera's out there behind a sunk wall)
+  ceilings(R, [...roomsOf('house'), [AREAS.house.x0, -294.5, 3.4, AREAS.house.z1]]);
   ceilingLights(R, roomsOf('house', ['stairs']));
   const F = R.fixed;
   const wall = { color: CREAM, skirt: TRIM, crown: TRIM };
@@ -246,7 +250,6 @@ export async function buildHouse(kit) {
   R.fixed(-299.36, -1.0, Math.PI / 2).decal('mirror', 0, 1.5, 0, 0.42, 0.75);
   R.fixed(-296.76, -4.1, Math.PI / 2).decal('photo', 0, 1.7, 0, 0.36, 0.28);
   R.fixed(-288, 1.6, -Math.PI / 2).decal('family', 0, 1.6, 0.012, 0.5, 0.4);
-  stairs(R);
 
   // ── furniture ──
   for (const it of FURNITURE.filter((f) => f.area === 'house')) {
@@ -263,6 +266,7 @@ export async function buildHouse(kit) {
       f.box(0xf4f0e6, 0.25, it.h, 0.1, 0.3, 0.01, 0.22, 0.2).cyl(0xc8362e, 0.6, it.h, 0.15, 0.04, 0.1);
     } else if (it.kind === 'shelf') shelf(R, it);
     else if (it.kind === 'bed') bed(R, it, { blanket: 0x7a7f8f, frame: 0x5a4a3a });
+    else if (it.kind === 'stairs') stairs(R, it);
     else if (it.kind === 'dresser') {
       const f = dresser(R, it, { wood: 0x6b5a48 });
       f.box(0x9aa3ab, 0.5, it.h, 0, 0.12, 0.2, 0.12).decal('photo', -0.3, it.h + 0.14, 0, 0.3, 0.24, { rx: -0.2 });
@@ -273,13 +277,13 @@ export async function buildHouse(kit) {
   const P = (id) => PEOPLE.find((p) => p.id === id);
   const beth = P('beth');
   person(R, 'beth', { ...beth, h: HEIGHTS.beth, look: LOOKS.beth });
-  // Jerry on the couch, facing the TV: Rick's sat clip on his skeleton, or a
-  // stand-in lowered on to the cushions
+  // Jerry on the couch, facing the TV: Rick's sat clip on his skeleton, or,
+  // without it, sat in shapes
   const jerry = P('jerry');
-  const j = person(R, 'jerry', { ...jerry, h: HEIGHTS.jerry, look: { ...LOOKS.jerry, sit: true } });
-  if (j.cast?.mixer && clip) {
+  const j = person(R, 'jerry', { ...jerry, h: HEIGHTS.jerry, look: { ...LOOKS.jerry, sit: true }, meshy: !!clip });
+  if (j.cast?.mixer) {
     const c = j.cast;
-    const sit = c.mixer.clipAction(clip);
+    const sit = c.mixer.clipAction(facingAhead(c, clip));
     sit.play();
     for (const a of Object.values(c.act)) a.setEffectiveWeight(0);
     sit.setEffectiveWeight(1);
@@ -298,6 +302,22 @@ export async function buildHouse(kit) {
   butterRobot(R, -302.6, 0.75, 0.8, -Math.PI / 2 + 0.3);
 
   return R.build({ light: HOUSE_LIGHT });
+}
+
+// Rick's sat clip for someone else of the cast, turned (as meshyCast turns
+// every clip it loads) so its hips face the way the sitter's walk does: ahead
+function facingAhead(c, clip) {
+  const own = clip.clone();
+  const hips = c.group.getObjectByName('Hips');
+  const ref = (c.act.walk ?? c.act.idle)?.getClip();
+  if (!hips?.parent || !ref) return own;
+  c.group.updateMatrixWorld(true);
+  // up, in the hips' parent's frame within the model
+  const rel = c.body.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(hips.parent.getWorldQuaternion(new THREE.Quaternion()));
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rel.invert());
+  const ahead = heading(ref, up);
+  if (ahead != null) faceForward(own, up, ahead);
+  return own;
 }
 
 // how far Jerry sits back from where he stands, and how low (the sat clip turns his bones only)

@@ -434,7 +434,7 @@ export async function buildGarage(kit) {
   wallLamp(R, a.x0, 2.25, 96.9, Math.PI / 2);
   machine(R, it('plumbus'));
   cabinet(R, it('portalpanic'));
-  laundry(R, it('toolchest'), glass);
+  laundry(R, it('laundry'), glass);
   // on the east wall past the portal: a shelf of paint cans, a coiled cable, the fuse box
   const ew = R.fixed(a.x1, 103.6, -Math.PI / 2);
   ew.box(0x5a3a20, 0, 1.45, 0.14, 1.3, 0.04, 0.28);

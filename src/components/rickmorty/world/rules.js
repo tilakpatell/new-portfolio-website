@@ -314,6 +314,10 @@ const E = Math.PI / 2; // faces east
 const W = -Math.PI / 2; // faces west
 const N = Math.PI; // faces north
 const item = (id, kind, area, x, z, w, d, h, turn = 0) => ({ id, kind, area, x, z, w, d, h, turn });
+// the stairs: x, z, w (across, x -295.7 to -294.56), d (z 0.56 to its foot at 2.15), h
+const STAIR_RUN = [-295.13, 1.355, 1.14, 1.59, 1.75];
+// and their banister, a low wall up the open side
+export const BANISTER = [-295.7, 0.56, -295.7, 2.15, 0.06, true];
 export const FURNITURE = [
   // the kitchen
   item('counter', 'counter', 'house', -311.4, -6, 4, 1.2, 0.95, E),
@@ -330,6 +334,9 @@ export const FURNITURE = [
   // the back room
   item('bed-back', 'bed', 'house', -291.2, 7.4, 1.6, 2.1, 0.6, N),
   item('dresser-back', 'dresser', 'house', -288.3, 3, 1.8, 0.5, 0.9, W),
+  // the flight of stairs, rising north from its foot (by the stairs-up link)
+  // to the hall's wall, a hair in from the walls either side of it
+  item('stair-run', 'stairs', 'house', ...STAIR_RUN),
   // upstairs: Summer's room, Morty's, Beth and Jerry's
   item('bed-summer', 'bed', 'upstairs', -304.95, 397.5, 1.1, 2.1, 0.6, E),
   item('desk-summer', 'desk', 'upstairs', -302, 394.5, 1.6, 0.8, 0.75),
@@ -342,7 +349,8 @@ export const FURNITURE = [
   item('shelf-garage', 'shelf', 'garage', -305.5, 96, 3, 1, 1.9, E),
   item('plumbus', 'machine', 'garage', -305.75, 99, 2, 0.5, 1.6, E),
   item('portalpanic', 'arcade', 'garage', -305.75, 103, 1.4, 0.5, 1.8, E),
-  item('toolchest', 'cabinet', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
+  // the washer and dryer, side by side by the garage door
+  item('laundry', 'laundry', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
   // Mr. Goldenfold's classroom: the chalkboard, his desk, six desks for the class
   item('chalkboard', 'chalkboard', 'school', -300, 194.1, 6, 0.2, 1.3),
   item('goldenfold-desk', 'goldenfold-desk', 'school', -300, 195.4, 3, 1.2, 0.8),
@@ -397,13 +405,13 @@ export const COLLIDERS = {
   school: furnished('school'),
   arcade: furnished('arcade'),
 };
-// Walls: the street's fences, the house's inner walls and the balcony's low
-// railing on its south edge. A room's outer walls are its area's edge, which
-// `stepMorty` keeps in.
+// Walls: the street's fences, the house's inner walls and the low banister up
+// the stairs' open side, and the balcony's low railing on its south edge. A
+// room's outer walls are its area's edge, which `stepMorty` keeps in.
 export const WALLS = {
   street: FENCES,
   annex: [],
-  house: INNER_WALLS.house,
+  house: [...INNER_WALLS.house, BANISTER],
   upstairs: [...INNER_WALLS.upstairs, [-302.4, AREAS.upstairs.z1, -294.7, AREAS.upstairs.z1, 0.08, true]],
   garage: [],
   school: [],

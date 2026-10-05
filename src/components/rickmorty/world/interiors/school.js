@@ -231,8 +231,9 @@ function chairDesks(R, it) {
       f.box(0x9aa3ab, u + a * 0.2, 0.02, 0, 0.025, 0.025, d - 0.12);
     }
     f.box(0x9aa3ab, u + 0.28, 0.42, 0.05, 0.025, 0.3, 0.025);
-    // a book, a pencil, on some
-    if ((it.x + it.z + s) % 3 > 0.5) f.box([0xd8302a, 0x2a5ab0, 0x3f8f3a][Math.abs(Math.round(it.z + s)) % 3], u - 0.08, 0.755, d / 2 - 0.22, 0.2, 0.025, 0.26, 0.2);
+    // a book on two desks in three, a pencil by it
+    const pick = Math.abs(Math.round(it.x * 3 + it.z * 2 + s)) % 3;
+    if (pick) f.box([0xd8302a, 0x2a5ab0, 0x3f8f3a][Math.abs(Math.round(it.z + s)) % 3], u - 0.08, 0.755, d / 2 - 0.22, 0.2, 0.025, 0.26, 0.2 * s).box(0xf2c23c, u + 0.12, 0.755, d / 2 - 0.2, 0.012, 0.012, 0.16, 0.4);
   }
 }
 

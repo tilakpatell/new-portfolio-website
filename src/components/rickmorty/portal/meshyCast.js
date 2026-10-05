@@ -24,7 +24,7 @@ const lightRamp = () => {
 };
 const paint = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
 
-const BASE = '/games/meshy';
+export const BASE = '/games/meshy';
 
 // game kind → the model, how tall it stands in the arena (world units; a
 // little over the shapes' sizes, as slim figures read smaller from above)
@@ -213,7 +213,7 @@ export function createMeshyCast() {
 // a clip's hips about the up axis (`up`, in the hips' parent's space) so its
 // mean heading matches `target` (the walk's, which faces ahead).
 const hipsTrack = (clip) => clip?.tracks.find((t) => /^hips\.quaternion$/i.test(t.name));
-function heading(clip, up) {
+export function heading(clip, up) {
   const v = hipsTrack(clip)?.values;
   if (!v) return null;
   let sx = 0;
@@ -226,7 +226,7 @@ function heading(clip, up) {
   }
   return Math.atan2(sy, sx);
 }
-function faceForward(clip, up, target) {
+export function faceForward(clip, up, target) {
   const v = hipsTrack(clip)?.values;
   const now = heading(clip, up);
   if (!v || now == null) return;

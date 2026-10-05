@@ -398,7 +398,16 @@ function phoneIn(R, fig) {
     fig.group.add(phone);
   }
 }
-// the turns (Euler x, y, z in each bone's own frame, after its rest turn)
-// that hold the phone up in front of her: right arm, forearm, hand, found by
-// trying them on Summer's model; and where the phone sits in her hand
+// The turns (Euler x, y, z in each bone's own frame, after its rest turn)
+// that hold the phone up in front of her: right arm, forearm, hand; where the
+// phone sits in her hand, and its turn there. Found on summer.glb by search:
+// in the lab harness, with the scene showing her, each candidate's turns were
+// set on the bones and the hand's place read back in her own frame
+// (getWorldPosition, then her group's worldToLocal); the score was the hand's
+// distance from just in front of her chest (-0.1, 1.2, 0.3 m) plus the
+// elbow's from beside her ribs (-0.22, 0.98, 0.06), over a grid of turns
+// (arm -1.8..1.8 in 0.3 steps on each axis, the forearm ±1.5..2.4 on one).
+// `turn` aims the phone's face at her 'headfront' node. A re-exported
+// summer.glb with another rest pose needs the search run again.
+
 const PHONE_POSE = { bones: [[0.3, 0.3, 0.9], [0, 0, 2.1], [0, 0, 0]], at: [0, 0.07, 0], turn: [-1.07, -0.52, 2.68] };

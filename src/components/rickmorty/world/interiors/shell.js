@@ -46,6 +46,7 @@ export function makeRoom(kit, id) {
   const noInk = [];
   const ticks = [];
   const cuts = [];
+  let shownAt = null; // the last frame's time, to tell a first frame back
 
   // A frame to draw in: (u across, y up, v out of its front) about (x, z),
   // turned by `turn` (rules.js's furniture turn: 0 faces south). `list` is
@@ -173,7 +174,10 @@ export function makeRoom(kit, id) {
         noInk,
         light,
         update(t, dt, state, camera) {
-          if (cuts.length) sink(dt, state, camera);
+          // (the first frame back in the area: the walls go straight to where they belong)
+          const snap = shownAt == null || t - shownAt > 0.25;
+          shownAt = t;
+          if (cuts.length) sink(dt, state, camera, snap);
           for (const fn of ticks) fn(t, dt, state, camera);
           update?.(t, dt, state, camera);
         },
@@ -280,7 +284,7 @@ export function makeRoom(kit, id) {
     const t = Math.max(0, Math.min(1, ((px - x0) * dx + (pz - z0) * dz) / (dx * dx + dz * dz || 1)));
     return Math.hypot(px - (x0 + t * dx), pz - (z0 + t * dz));
   };
-  function sink(dt, state, camera) {
+  function sink(dt, state, camera, snap) {
     const m = state.morty;
     if (!m) return;
     const c = camera.position;
@@ -291,7 +295,7 @@ export function makeRoom(kit, id) {
         continue;
       }
       const want = crosses(c.x, c.z, m.x, m.z, cut.line) ? 0.06 : 1;
-      cut.k += (want - cut.k) * Math.min(1, dt * 9);
+      cut.k = snap ? want : cut.k + (want - cut.k) * Math.min(1, dt * 9);
       if (Math.abs(cut.k - want) < 0.002) cut.k = want;
       cut.mesh.scale.y = cut.k;
       cut.mesh.visible = cut.k > 0.01;
