@@ -1,7 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { use3D } from '../../lib/gpu';
-import { prefersReducedMotion, useFrameLoop } from '../../lib/hooks';
-import { register, useLive, warmed } from './hq/useStage';
+import { memo } from 'react';
 import { APRON, arcPt, BERM, BRIDGE, C, CRES, CRES_FOOT, depthOf, GATE, HANGAR, K, LAB, LAWN, OX, OY, P, PROW, RIVER, ROADS, SHORE, SPOTS, STALLS, TRAINING, TREES, VH, VW } from './compound/plan';
 
 // The Avengers compound in upstate New York, from the air, in isometric: the
@@ -485,105 +482,14 @@ function Pin({ id, n, current, onPick, title, stone }) {
   );
 }
 
-// The compound in 3D (./compound/scene.js), over the drawing: made when it's
-// the page's live 3D view (hq/useStage's useLive: one at a time), drawn while
-// it's on screen. The drawing stays underneath until the 3D is ready, and
-// comes back when another view takes over, or if the 3D can't start or loses
-// its graphics chip.
-const load3d = () => import('./compound/scene');
-function useCompound3D(enabled) {
-  const wrap = useRef(null);
-  const canvas = useRef(null);
-  const view = useRef(null);
-  const [status, setStatus] = useState('idle'); // idle | loading | on | failed
-  const calm = useRef(typeof window !== 'undefined' && prefersReducedMotion());
-
-  const { active: near, visible } = useLive(wrap, { id: 'compound', enabled, warm: load3d });
-
-  useEffect(() => {
-    if (!enabled || !near || status === 'failed') return undefined;
-    let dead = false;
-    const fail = () => {
-      view.current?.dispose();
-      view.current = null;
-      if (!dead) setStatus('failed');
-    };
-    setStatus('loading');
-    load3d()
-      .then(async (mod) => {
-        if (dead || !canvas.current) return;
-        try {
-          const v = await mod.create(canvas.current, { calm: calm.current, onLost: fail });
-          if (dead) {
-            v.dispose();
-            return;
-          }
-          await warmed(v); // its shaders linked before the first frame
-          if (dead || v.engine?.lost) {
-            v.dispose();
-            return;
-          }
-          view.current = v;
-          const r = wrap.current.getBoundingClientRect();
-          v.resize(r.width, r.height);
-          v.render(1 / 60);
-          setStatus('on');
-        } catch (err) {
-          if (import.meta.env.DEV) console.error('[compound] 3D failed', err);
-          fail();
-        }
-      })
-      .catch(fail);
-    return () => {
-      dead = true;
-      view.current?.dispose();
-      view.current = null;
-      setStatus((s) => (s === 'failed' ? s : 'idle'));
-    };
-    // status is read only to stay down after a failure
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, near]);
-
-  useEffect(() => {
-    const el = wrap.current;
-    if (status !== 'on' || !el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(([e]) => view.current?.resize(e.contentRect.width, e.contentRect.height));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [status]);
-
-  useEffect(() => (status === 'on' ? register('compound', { view: view.current }) : undefined), [status]);
-
-  // a phone draws every other frame; with reduced motion it holds still
-  const skip = useRef(0);
-  useFrameLoop(
-    (dt) => {
-      const v = view.current;
-      if (!v) return;
-      if (v.engine.small && (skip.current = 1 - skip.current)) return;
-      v.render((dt / 1000) * (v.engine.small ? 2 : 1));
-    },
-    status === 'on' && visible && !calm.current,
-  );
-  return { wrap, canvas, status, view };
-}
-
-export default function Compound({ spots = [], titles = [], current = -1, compact = false, live = false, stones = [], onPick, className = '' }) {
-  const three = use3D();
-  const { wrap, canvas, status, view } = useCompound3D(live && !compact && three.on);
-  // the stones won back float over the buildings that gave them up
-  const stoneKey = stones.join(',');
-  useEffect(() => {
-    view.current?.setStones?.(spots.map((id, i) => (stones[i] ? { id, color: stones[i] } : null)).filter(Boolean));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, stoneKey]);
-  const on = status === 'on';
+// The compound walked in 3D is ./world; this is the drawing, for a browser
+// without 3D, its pins opening the buildings' games.
+export default function Compound({ spots = [], titles = [], current = -1, compact = false, stones = [], onPick, className = '' }) {
   return (
-    <div ref={wrap} className={`hq-map ${className}`} data-compact={compact || undefined} data-3d={on || undefined}>
+    <div className={`hq-map ${className}`} data-compact={compact || undefined}>
       <Base compact={compact} />
-      {live && !compact && <canvas ref={canvas} className="hq-3d" data-on={on || undefined} aria-hidden="true" />}
       <svg viewBox={`0 0 ${VW} ${VH}`} className="hq-live" aria-hidden="true">
-        {!compact && !on && (
+        {!compact && (
           <>
             <g className="hq-shimmer" transform={ground(0)}>
               {[

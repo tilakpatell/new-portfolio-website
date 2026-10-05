@@ -148,10 +148,13 @@ const CRATER = { x: 45 * S, z: 58 * S, r: 2.6 };
 
 // The seven doors, in the order of the tour. `stone` is what winning there
 // earns (Clint's and Natasha's halves of the Soul Stone are a stone between
-// them); `face` is the way out of the door, which the hero faces as he leaves.
+// them); `face` is the way out of the door, which the hero faces as he leaves;
+// `accent` is the game's own colour and `sign` what's over its door.
 export const PLACES = [
   {
     id: 'stark',
+    accent: '#8fe9ff',
+    sign: 'Workshop',
     name: 'Tony Stark’s workshop',
     where: 'Main building · the glass wing',
     act: 'Suit up',
@@ -162,6 +165,8 @@ export const PLACES = [
   },
   {
     id: 'thor',
+    accent: '#bfe0ff',
+    sign: null,
     name: 'Mjolnir',
     where: 'The lawn, out front',
     act: 'Lift it',
@@ -174,6 +179,8 @@ export const PLACES = [
   },
   {
     id: 'cap',
+    accent: '#ff6b5e',
+    sign: 'Training',
     name: 'The training center',
     where: 'The training center',
     act: 'Train',
@@ -184,6 +191,8 @@ export const PLACES = [
   },
   {
     id: 'hawkeye',
+    accent: '#c9a2ff',
+    sign: 'Range',
     name: 'The range',
     where: 'Past the hangar',
     act: 'Pick up the bow',
@@ -194,6 +203,8 @@ export const PLACES = [
   },
   {
     id: 'widow',
+    accent: '#ff4b3e',
+    sign: 'Operations',
     name: 'Operations',
     where: 'Main building · the front door',
     act: 'Go in',
@@ -204,6 +215,8 @@ export const PLACES = [
   },
   {
     id: 'banner',
+    accent: '#7dff6a',
+    sign: 'Laboratory',
     name: 'Bruce Banner’s lab',
     where: 'The lab',
     act: 'Go in',
@@ -214,6 +227,8 @@ export const PLACES = [
   },
   {
     id: 'vault',
+    accent: '#6cc8ff',
+    sign: 'Hangar 1',
     name: 'The hangar',
     where: 'The hangar · the Tesseract',
     act: 'Go in',
@@ -495,13 +510,14 @@ export function outside(p) {
 const WHOLE = ['space', 'mind', 'reality', 'power', 'time', 'soul'];
 
 // From the stones earned (as hq/stones keeps them, halves of Soul included):
-// each place done or not, the next one to go to, how many stones are back,
+// each place done or not, the next one to go to, which stones are back,
 // whether the portal is open, and the line at the top of the screen.
 export function progress(earned = []) {
   const has = new Set(earned);
   const places = PLACES.map((p) => ({ ...p, done: has.has(p.stone) }));
   const next = places.find((p) => !p.done) ?? null;
-  const stones = WHOLE.filter((s) => has.has(s)).length;
+  const have = WHOLE.filter((s) => has.has(s));
+  const stones = have.length;
   const portal = has.has('space');
   const finished = !next;
   const objective = finished
@@ -509,5 +525,5 @@ export function progress(earned = []) {
     : portal
       ? `The portal is open over the helipad. ${stones} of 6 stones: ${next.hint}`
       : next.hint;
-  return { places, next: next?.id ?? null, stones, portal, finished, objective, done: places.filter((p) => p.done).map((p) => p.id) };
+  return { places, next: next?.id ?? null, have, stones, portal, finished, objective, done: places.filter((p) => p.done).map((p) => p.id) };
 }
