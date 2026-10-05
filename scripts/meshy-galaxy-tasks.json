@@ -1,0 +1,48 @@
+{
+  "han": {
+    "image": "01a10cab-3edb-7704-84a7-1232417bc6bd",
+    "model": "01a10cc8-13c5-766b-b802-35c4bb78eb1b",
+    "rig": "01a10ccb-c63f-7474-8d0d-407454714ac6"
+  },
+  "jabba": {
+    "image": "01a10cab-d13e-702a-9766-93459c55dea8",
+    "model": "01a10cc8-1690-72b7-8b07-f25089754a50"
+  },
+  "mando": {
+    "image": "01a10cae-1d8a-7581-8de7-fd252308fa9b",
+    "model": "01a10cc8-1958-70a5-a6e9-86db32d1b234"
+  },
+  "ahsoka": {
+    "image": "01a10cb0-6eda-7053-b784-4e0f2d28f333",
+    "model": "01a10cc8-1d2a-7778-918f-fa19084153f5",
+    "rig": "01a10ccb-fc37-7572-9daf-9963e218f1ce"
+  },
+  "oldben": {
+    "image": "01a10cb2-ac33-75a9-98a1-0fa6334d6d66",
+    "model": "01a10cc8-2110-7573-916f-5b731bbd2eed"
+  },
+  "greedo": {
+    "image": "01a10cb5-0057-7046-9fba-adfd730d2f80",
+    "model": "01a10cc8-23e6-719a-b8be-32f987458ad1",
+    "rig": "01a10ccc-3367-7377-97b0-8ecfe0bcfb6e"
+  },
+  "gamorrean": {
+    "image": "01a10cb5-6adb-73f4-af27-23c6242a2e0d",
+    "model": "01a10cc8-26a8-75fc-a973-8932a05ecde6",
+    "rig": "01a10ccc-6bff-71cf-982d-9ffe89780584"
+  },
+  "luke": {
+    "image": "01a10cc2-a093-72c2-9c98-039d05c8cadf",
+    "model": "01a10cc7-cf05-7657-b026-a552b95cc82c"
+  },
+  "bobafett": {
+    "image": "01a10cc4-f2a9-77db-b6d3-36b87c221f8c",
+    "model": "01a10cc8-2a1c-741f-81bd-6652288fa1db",
+    "rig": "01a10ccc-b5d2-73e7-a356-a3ac871155fc"
+  },
+  "bith": {
+    "image": "01a10cc7-2fe7-744b-ab17-ec82c462ee46",
+    "model": "01a10cc8-2d1e-70f1-a752-78eeb6325a42",
+    "rig": "01a10ccc-eb8c-717d-94a9-4a89a9bd1f67"
+  }
+}
