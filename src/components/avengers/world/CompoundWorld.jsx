@@ -28,6 +28,9 @@ const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
 const FOUND = 'tp-hq-packs';
 const SET = 'tp-hq-settings';
+const STYLE_BEST = 'tp-hq-style-best';
+const SHOWBOAT = 2000; // style banked in one flight for the achievement
+const TRICK_NAME = { flip: 'Front flip', back: 'Backflip', twist: 'Twist' };
 // the backpacks found so far (ids), as kept between visits
 const readFound = () => {
   const v = local.get(FOUND, []);
@@ -116,7 +119,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound() };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound() };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -154,10 +157,12 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const t = setTimeout(() => setPack(null), 5200);
     return () => clearTimeout(t);
   }, [pack]);
-  // a perfect release: a word of it at the bottom of the screen
+  // a perfect release, a trick, the style banked: a word of it on the screen
   const [trick, setTrick] = useState(null);
   const trickN = useRef(0);
-  const showTrick = useCallback((combo) => setTrick({ n: ++trickN.current, combo }), []);
+  const showTrick = useCallback((text, combo = 0, cls = '') => setTrick({ n: ++trickN.current, text, combo, cls }), []);
+  const styleRef = useRef(null);
+  const [styleBest, setStyleBest] = useState(() => (Number.isFinite(local.get(STYLE_BEST, null)) ? local.get(STYLE_BEST, null) : 0));
   useEffect(() => {
     if (!trick) return undefined;
     const t = setTimeout(() => setTrick(null), 1300);
@@ -263,6 +268,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         setTuning((v) => !v);
         setList(false);
       } else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
+      else if ((k === 't' || k === 'T') && !e.repeat) s.trick = true;
       else if (k === 'Escape') {
         setList(false);
         setTuning(false);
@@ -325,6 +331,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       if (pressed('b')) s.jump = true;
       if (pressed('x')) s.zip = true;
       if (pressed('up')) s.perch = true;
+      if (pressed('down')) s.trick = true;
       if (pressed('y')) setList((v) => !v);
     }
     const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
@@ -333,7 +340,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
     const p0 = [s.h.x, s.h.y + 1, s.h.z];
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch, assist: set.assist }, dt);
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch, trick: s.trick, assist: set.assist }, dt);
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
@@ -354,9 +361,12 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       }
     }
     if (tourRef.current && s.frame % 3 === 0) tourRef.current.textContent = s.tour.on ? `Ring ${s.tour.next} of ${TOUR.length - 1} · ${clock(s.tour.t)}` : '';
+    // the flight's style so far, while there is some
+    if (styleRef.current && s.frame % 3 === 1) styleRef.current.textContent = s.h.style > 0 ? `Style ${s.h.style.toLocaleString()} · ×${s.h.combo}` : '';
     s.jump = false;
     s.zip = false;
     s.perch = false;
+    s.trick = false;
     // a backpack within reach: found
     const pk = nearPack(s.h.x, s.h.y, s.h.z, s.found);
     if (pk) {
@@ -375,7 +385,21 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       if (e.type === 'web' || e.type === 'zip' || e.type === 'corner' || e.type === 'point') sfx('zip');
       else if (e.type === 'perfect') {
         sfx('ding');
-        showTrick(e.combo);
+        showTrick('Perfect swing', e.combo);
+      } else if (e.type === 'trick') {
+        sfx('pop');
+        showTrick(TRICK_NAME[e.kind] ?? 'Trick', e.combo);
+      } else if (e.type === 'bank') {
+        sfx('oneUp');
+        showTrick(`Style ${e.style.toLocaleString()}`, 0, 'cw-bank');
+        if (e.style > styleBest) {
+          local.set(STYLE_BEST, e.style);
+          setStyleBest(e.style);
+        }
+        if (e.style >= SHOWBOAT) unlock('showboat');
+      } else if (e.type === 'bail') {
+        sfx('thunk');
+        showTrick('Bailed', 0, 'cw-bail');
       } else if (e.type === 'land' && e.impact > 14) sfx('thunk');
       if (e.type !== 'jump' && e.type !== 'release') a.fx(e.type, { ...e, vx: s.h.vx, vy: s.h.vy, vz: s.h.vz });
     }
@@ -544,10 +568,12 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         </div>
       )}
       {trick && (
-        <p key={trick.n} className="cw-trick" aria-live="polite">
-          Perfect swing{trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
+        <p key={trick.n} className={`cw-trick ${trick.cls}`} aria-live="polite">
+          {trick.text}
+          {trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
         </p>
       )}
+      <p ref={styleRef} className="cw-style" aria-live="off" />
 
       <div className="cw-hud cw-hud-top">
         <div className="cw-brand">
@@ -593,6 +619,11 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
           <button type="button" className="cw-chip cw-tour" onClick={toTour} title="Rings round the compound, against the clock: through the first red ring to start">
             Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
           </button>
+          {styleBest > 0 && (
+            <p className="cw-chip cw-style-best" title="The most style banked in one flight: flips, twists and perfect releases, one after another, and a landing">
+              Best style <b>{styleBest.toLocaleString()}</b>
+            </p>
+          )}
           <p ref={tourRef} className="cw-chip cw-tour-on" aria-live="off" />
           <p className="cw-chip cw-packs" title="Peter’s backpacks, webbed up round the compound: on the roofs, up the masts, under the bridge. Walk up to one." aria-label={`${found} of ${PACKS.length} backpacks found`}>
             <span aria-hidden="true">🎒</span> <b>{found}</b> of {PACKS.length}
@@ -635,7 +666,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       )}
 
       {gl === 'on' && !hud.moved && !here && !herePortal && (
-        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch. Jump at a wall to run up it. E at a door, O for the settings.'}</p>
+        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, Trick, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch, T throws a flip (or a twist, with a direction held). Jump at a wall to run up it. E at a door, O for the settings.'}</p>
       )}
 
       {touch && (
@@ -682,6 +713,17 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
               }}
             >
               Perch
+            </button>
+            <button
+              type="button"
+              className="cw-jump cw-zip"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                audioContext();
+                sim.current.trick = true;
+              }}
+            >
+              Trick
             </button>
           </div>
         </div>
