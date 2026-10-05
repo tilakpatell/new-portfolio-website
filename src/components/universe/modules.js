@@ -14,7 +14,8 @@
 //   flame (how much longer the main exhaust burns, boosting), muzzles
 //   (where the shots leave from, in turn), fire(), update(dt, { throttle,
 //   boost, turn, climb }), dispose() }
-// fresh: the slots just fitted, which ease in.
+// fresh: the slots just fitted, which ease in. mounts: a garage build's
+// hardpoints (shipyard/parts.js), in place of the ship's own.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -131,8 +132,8 @@ const rounded = (w, h, d, r = Math.min(w, h, d) * 0.3) => new RoundedBoxGeometry
 const tube = (r, len, seg = 32) => new THREE.CylinderGeometry(r, r, len, seg); // (stood on y)
 const LAY = [Math.PI / 2, 0, 0]; // (a CylinderGeometry laid along z, its top toward +z)
 
-export function buildModules(kind, loadout = {}, engines = [], { fresh = [] } = {}) {
-  const at = MOUNTS[kind] ?? MOUNTS.falcon;
+export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mounts = null } = {}) {
+  const at = mounts ?? MOUNTS[kind] ?? MOUNTS.falcon; // (a garage build brings its hull's own)
   const group = new THREE.Group();
   group.name = 'modules';
   const made = []; // materials and geometries to dispose

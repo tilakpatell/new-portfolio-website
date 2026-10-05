@@ -9,6 +9,7 @@ import { beyondOf } from '../components/universe/deep';
 import { DRIVE_KEY, parseDrive } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
@@ -57,7 +58,17 @@ export default function Universe({ ask = false }) {
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
   const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
-  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked), [loadouts, ship, unlocked]);
+  // and the hull each crew flies: its stock ship, or a garage build from the
+  // hangar's shipyard (shipyard/build.js), kept between visits
+  const [hulls, setHulls] = useState(() => readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id)));
+  const build = (ship && hulls[ship]) || null;
+  const setBuild = (b) => {
+    if (!ship) return;
+    const next = { ...hulls, [ship]: b };
+    setHulls(next);
+    local.set(HULL_KEY, next);
+  };
+  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   const [hangar, setHangar] = useState(false);
   // the nav map, and the drive picked on it (kept between visits)
@@ -70,7 +81,7 @@ export default function Universe({ ask = false }) {
   };
   const jumped = useRef(false); // the crew's had their say about a jump this visit
   const fit = (slot, id) => {
-    const r = equip(ship, loadout, slot, id, unlocked);
+    const r = equip(ship, loadout, slot, id, unlocked, build);
     if (r.ok) {
       const next = { ...loadouts, [ship]: r.loadout };
       setLoadouts(next);
@@ -235,6 +246,8 @@ export default function Universe({ ask = false }) {
         ship={ship}
         shipName={crew?.ship ?? ''}
         loadout={loadout}
+        build={build}
+        onBuild={ship ? setBuild : null}
         onFit={ship ? fit : null}
         hangar={hangar}
         onHangar={setHangar}
