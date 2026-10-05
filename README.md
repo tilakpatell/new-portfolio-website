@@ -4,7 +4,7 @@
 
 **The code behind [tilakpatell.com](https://tilakpatell.com), Tilak Patel's personal site: a portfolio you can fly through.**
 
-A résumé on the surface. Underneath it, a 3D universe with a starfighter, ten hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
+A résumé on the surface. Underneath it, a 3D universe with a starfighter, eleven hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
 
 [**Visit tilakpatell.com →**](https://tilakpatell.com)
 
@@ -84,6 +84,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
+| Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square |
 | The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
 | Invincible | `/invincible` | Invincible | Fly *Think, Mark!* over the city as Invincible: rings with your father, the Flaxans, Omni-Man and Thragg, with HD figures |
 
@@ -195,6 +196,6 @@ Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows
 
 ## Disclaimer
 
-This is a personal, non-commercial portfolio. The hidden worlds are fan-made tributes: Star Wars, The Lord of the Rings, Transformers, Marvel, Breaking Bad, The Office, Rick and Morty, Pirates of the Caribbean and Invincible belong to their creators and studios. The site isn't affiliated with or endorsed by any of them.
+This is a personal, non-commercial portfolio. The hidden worlds are fan-made tributes: Star Wars, The Lord of the Rings, Transformers, Marvel, Breaking Bad, The Office, Rick and Morty, Pirates of the Caribbean and Invincible belong to their creators and studios, and Game Boy is Nintendo's. The site isn't affiliated with or endorsed by any of them.
 
 There's no open-source licence on this repository. The code and original content are © Tilak Patel. Third-party assets remain under their own licences, listed above.

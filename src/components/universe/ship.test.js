@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, STARTS, autopilot, brakeAt, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
-import { ORDER, REACH } from './layout';
+import { HOME_RADIUS, ORDER, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
@@ -265,26 +265,61 @@ describe('up and down, and all the way round', () => {
 describe('deep space', () => {
   const open = { ...spawn(null), x: 0, z: DEEP.open + 200, heading: Math.PI }; // out past the system, facing further out
 
-  it('boosts up to the pulse drive out there, and only to the boost at home', () => {
+  it('boosts up to the pulse drive out there, and at home opens it between the stations, down by any of them', () => {
     expect(fly(open, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2);
-    expect(fly(spawn(null), { throttle: 1, boost: true }, 6, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
+    // halfway between two stations it's open some way; right by one, and under the ceiling, it's down
+    const [a, b] = ['home', 'experience'].map((id) => PLANETS.find((p) => p.id === id));
+    const mid = a.at.map((v, i) => (v + b.at[i]) / 2);
+    expect(boostAt(...mid)).toBeGreaterThan(SHIP.boost * 3);
+    expect(boostAt(a.at[0], a.at[1] + a.r + 5, a.at[2])).toBe(SHIP.boost);
+    expect(boostAt(0, SHIP.ceiling - 5, HOME_RADIUS)).toBe(SHIP.boost);
+    expect(driveAt(...mid)).toBeLessThan(1);
   });
 
-  it('falls back to the home system’s speeds by the time it comes home at pulse speed', () => {
+  it('falls back to the boost by the time it comes home at pulse speed, and up on the sun', () => {
     let s = { ...open, heading: 0, speed: SHIP.pulse }; // facing home, flat out
-    for (let t = 0; t < 30 && Math.hypot(s.x, s.z) > DEEP.system; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship;
-    expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(DEEP.system);
+    for (let t = 0; t < 30 && Math.hypot(s.x, s.z) > SUN.r + 20; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship;
+    expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(SUN.r + 20);
     expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
+  });
+
+  // (the next station along, and the one across the sun: round it, without
+  // stalling by it)
+  it.each([
+    [1, 8],
+    [3, 14],
+  ])('hops %i stations along in a few seconds, and comes up on it at the boost', (along, most) => {
+    const order = ORDER.filter((id) => byId(id).kind === 'core');
+    for (let i = 0; i < order.length; i++) {
+      const id = order[(i + along) % order.length];
+      let s = spawn(order[i]);
+      const park = parkAt(id, [s.x, s.z]);
+      let done = false;
+      let t = 0;
+      let bump = null;
+      for (; t < 30 && !done; t += 1 / 60) {
+        const a = autopilot(s, id, park);
+        done = a.done;
+        const r = step(s, a.input, 1 / 60);
+        s = r.ship;
+        bump ??= r.events.find((e) => e.type === 'bump' || e.type === 'crash') ?? null;
+      }
+      expect(done, id).toBe(true);
+      expect(bump, id).toBeNull();
+      expect(t, `${order[i]} to ${id}`).toBeLessThan(most);
+    }
   });
 
   it('boosts harder at home with boosters fitted, and gets there sooner, but no faster out there', () => {
     const tune = { boost: 1.55, accel: 1.3 };
-    expect(fly(spawn(null), { throttle: 1, boost: true, tune }, 3.5, []).ship.speed).toBeCloseTo(SHIP.boost * 1.55, 1); // (still in the home system)
-    const stock = fly(spawn(null), { throttle: 1, boost: true }, 1, []).ship.speed;
-    expect(fly(spawn(null), { throttle: 1, boost: true, tune }, 1, []).ship.speed).toBeGreaterThan(stock * 1.2);
+    // (in the home system, up under its ceiling, where the drive's down)
+    const home = { ...spawn(null), y: SHIP.ceiling - 6 };
+    expect(fly(home, { throttle: 1, boost: true, tune }, 3.5, []).ship.speed).toBeCloseTo(SHIP.boost * 1.55, 1);
+    const stock = fly(home, { throttle: 1, boost: true }, 1, []).ship.speed;
+    expect(fly(home, { throttle: 1, boost: true, tune }, 1, []).ship.speed).toBeGreaterThan(stock * 1.2);
     expect(fly(open, { throttle: 1, boost: true, tune }, 6, []).ship.speed).toBeLessThanOrEqual(SHIP.pulse + 0.01);
     // (and a tune that's out of reach of any fit is held to what one can do)
-    expect(fly(spawn(null), { throttle: 1, boost: true, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
+    expect(fly(home, { throttle: 1, boost: true, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
   });
 
   it('turns quicker with thrusters fitted, and cruises faster with racing exhausts', () => {

@@ -77,6 +77,7 @@ export const ACHIEVEMENTS = {
   thinkmark: { name: 'Think, Mark!', desc: 'Saw Omni-Man off over the city' },
   regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
+  fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 
