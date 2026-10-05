@@ -31,6 +31,17 @@
     "as": "the Death Star",
     "file": "/models/universe/death-star.glb"
   },
+  "earth-plane": {
+    "title": "737 MAX Lion Air",
+    "author": "Sofyan Kurniawan",
+    "authorUrl": "https://sketchfab.com/sofyankurniawan",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/737-max-lion-air-2747cad8b4c64122abe992c9ad1e8bd1",
+    "where": "earth",
+    "as": "the plane you fly (repainted in the site’s colours, without its airline’s livery)",
+    "file": "/models/sketchfab/earth-plane.glb"
+  },
   "falcon-hd": {
     "title": "Millennium Falcon",
     "author": "fredbear1211",

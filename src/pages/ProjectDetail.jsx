@@ -123,6 +123,15 @@ export default function ProjectDetail() {
                 </dl>
               </>
             )}
+            {project.world && (
+              <>
+                <div className="divider my-6" />
+                <p className="label">On this site</p>
+                <Link to={project.world.to} className="btn btn-ghost btn-sm mt-3">
+                  {project.world.label} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </>
+            )}
             {project.links.length > 0 && (
               <>
                 <div className="divider my-6" />

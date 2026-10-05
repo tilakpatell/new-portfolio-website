@@ -4,7 +4,7 @@
 
 **The code behind [tilakpatell.com](https://tilakpatell.com), Tilak Patel's personal site: a portfolio you can fly through.**
 
-A résumé on the surface. Underneath it, a 3D universe with a starfighter, eleven hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
+A résumé on the surface. Underneath it, a 3D universe with a starfighter, twelve hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
 
 [**Visit tilakpatell.com →**](https://tilakpatell.com)
 
@@ -84,6 +84,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
+| Earth | `/earth` | Travel | Down from orbit onto the globe as it is right now (NASA's Blue Marble and Black Marble, the real sun), then fly a little plane to every place I've been: a passport stamp and a postcard at each |
 | Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square |
 | The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
 | Invincible | `/invincible` | Invincible | Fly *Think, Mark!* over the city as Invincible: rings with your father, the Flaxans, Omni-Man and Thragg, with HD figures |
@@ -187,6 +188,7 @@ For the details of each subsystem, see [`docs/architecture.md`](docs/architectur
 - **Game assets** are CC0 and credited one by one in [`public/games/credits.json`](public/games/credits.json). *Portal panic* uses [Kenney](https://kenney.nl/)'s kits.
 - **Sketchfab models** are used under Creative Commons Attribution licences. Each one's author, licence and source are in [`src/data/modelCredits.json`](src/data/modelCredits.json), and they're credited on the pages that use them.
 - **Characters and buildings** in the worlds were generated for this site with [Meshy](https://www.meshy.ai/).
+- **Earth's globe** is NASA Earth Observatory's Blue Marble Next Generation (July, with topography and bathymetry), Black Marble 2016, cloud and GEBCO images, all public domain, brought to 8K and phone sizes by `scripts/build-earth.mjs`. Its plane is a 737 from Sketchfab (CC BY 4.0), repainted without its airline's livery by `scripts/earth-plane-livery.mjs`.
 - **Rigged characters from Sketchfab** (Invincible's Omni-Man and Thragg, Avengers HQ's Spider-Man) are brought to web size with their skeletons whole by `scripts/sketchfab-characters.mjs`, and posed in the browser by `src/lib/three/rig.js`, which poses any humanoid skeleton the same way.
 
 ## Deployment
