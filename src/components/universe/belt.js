@@ -10,7 +10,7 @@
 // stream past while you fly (and you can feel how fast you're going), fading
 // in from the box's edges so it never shows. One draw, moved on the GPU.
 //
-// createBelt({ small }) → { group, update(t) }
+// createBelt({ small, band, seed, tones, scale, spin, count }) → { group, update(t) }
 // rock(seed) → a lumpy rock's geometry, about a unit across (meteors.js uses it too)
 // createDust({ small }) → { points, update(cameraInParent, amount) }
 
@@ -51,12 +51,19 @@ export function rock(seed) {
   return g;
 }
 
-export function createBelt({ small = false } = {}) {
-  const rand = rng(1977);
-  const N = small ? 1100 : 3200;
+const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466'];
+
+// `band`: where it goes ({ inner, outer, height }: the home belt, layout.js's
+// BELT, unless another ring is wanted: the rim at the edge of the map, RIM);
+// `tones`: its rocks' colours; `scale`: how many times bigger than the belt's
+// rocks (the rim's are seen from thousands of units off); `spin`: radians
+// a second round the sun
+export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 3200 } = {}) {
+  const rand = rng(seed);
+  const N = small ? Math.round(count * 0.375) : count;
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 });
-  const shapes = [rock(11), rock(23), rock(37)];
+  const shapes = [11, 23, 37].map((k) => rock(k + seed - 1977)); // (the home belt's own shapes as they always were; another seed, other shapes)
   const counts = [Math.ceil(N * 0.4), Math.ceil(N * 0.35), Math.floor(N * 0.25)];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -64,22 +71,21 @@ export function createBelt({ small = false } = {}) {
   const at = new THREE.Vector3();
   const sc = new THREE.Vector3();
   const c = new THREE.Color();
-  const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466'];
   shapes.forEach((geo, s) => {
     const mesh = new THREE.InstancedMesh(geo, mat, counts[s]);
     for (let i = 0; i < counts[s]; i++) {
       // across the band: most in the middle, a few toward its edges
       const across = (rand() + rand() + rand()) / 3 - 0.5;
-      const r = (BELT.inner + BELT.outer) / 2 + across * (BELT.outer - BELT.inner);
+      const r = (band.inner + band.outer) / 2 + across * (band.outer - band.inner);
       const a = rand() * Math.PI * 2;
-      const y = (rand() - 0.5) * BELT.height * (1 - Math.abs(across) * 1.4);
+      const y = (rand() - 0.5) * band.height * (1 - Math.abs(across) * 1.4);
       at.set(Math.cos(a) * r, y, Math.sin(a) * r);
       // mostly small, now and then a big one
-      const size = 0.15 + rand() ** 4 * 1.9;
+      const size = (0.15 + rand() ** 4 * 1.9) * scale;
       sc.set(size, size * (0.7 + rand() * 0.6), size * (0.8 + rand() * 0.4));
       q.setFromEuler(e.set(rand() * 6.3, rand() * 6.3, rand() * 6.3));
       mesh.setMatrixAt(i, m.compose(at, q, sc));
-      mesh.setColorAt(i, c.set(TONES[Math.floor(rand() * TONES.length)]).multiplyScalar(0.75 + rand() * 0.45));
+      mesh.setColorAt(i, c.set(tones[Math.floor(rand() * tones.length)]).multiplyScalar(0.75 + rand() * 0.45));
     }
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor.needsUpdate = true;
@@ -89,7 +95,7 @@ export function createBelt({ small = false } = {}) {
   return {
     group,
     update(t) {
-      group.rotation.y = t * 0.006; // slowly round the sun
+      group.rotation.y = t * spin; // slowly round the sun
     },
   };
 }

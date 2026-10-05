@@ -28,21 +28,25 @@ describe('a lane', () => {
 describe('everyday traffic', () => {
   it('never meets a planet, a station or the sun, and stays off the disc you fly on', () => {
     const rand = seeded(7);
+    let made = 0;
     for (let n = 0; n < 300; n++) {
       const high = n % 5 === 0;
       const pts = laneBetween(rand, { high });
+      if (!pts) continue; // (no clear way between the two it picked: nothing flies)
+      made++;
       expect(clearance(pts), `lane ${n}`).toBeGreaterThan(0.5);
       for (let i = 0; i <= 20; i++) expect(Math.abs(bezier(pts, i / 20)[1] - SHIP.height), `lane ${n}`).toBeGreaterThan(2.5);
     }
+    expect(made).toBeGreaterThan(250);
   });
 
   it('flies between places inside the map, and the big ships right across it', () => {
     const rand = seeded(3);
     for (let n = 0; n < 50; n++) {
       const pts = laneBetween(rand);
-      for (const p of [pts[0], pts[2]]) expect(Math.hypot(p[0], p[2])).toBeLessThan(MAP_RADIUS + 24);
+      if (pts) for (const p of [pts[0], pts[2]]) expect(Math.hypot(p[0], p[2])).toBeLessThan(MAP_RADIUS + 24);
       const big = laneBetween(rand, { high: true });
-      expect(laneLength(big)).toBeGreaterThan(MAP_RADIUS);
+      if (big) expect(laneLength(big)).toBeGreaterThan(MAP_RADIUS);
     }
   });
 });

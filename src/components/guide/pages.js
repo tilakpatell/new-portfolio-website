@@ -107,6 +107,7 @@ export const PAGES = {
     tips: [
       ['Pick a ship', 'Rick and Morty’s space cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has something to say about every place you reach. No ship? Pick a place and the camera flies there.'],
       ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back as you near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise.'],
+      ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map. The crew have a word about each as you come up on it.'],
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
@@ -216,7 +217,8 @@ export const PAGES = {
           ['C', 'Down (and land)'],
           ['Shift', 'Flat out: past about 430 km/h the air breaks with a boom'],
           ['Drag / ← ↑ ↓ →', 'Look round'],
-          ['E', 'Go in at a place'],
+          ['J / F / Click', 'Punch (a little way off, he lunges)'],
+          ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
         ],
       },
@@ -235,11 +237,14 @@ export const PAGES = {
       },
     ],
     touch: [
-      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out']] },
+      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out'], ['Punch', 'Punch']] },
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
+      ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one very high up). Every minute or so someone needs catching: follow the red beacon, catch them before the ground, then land to set them down. Fly alongside the airliner and your father has something to say.'],
+      ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
+      ['Space', 'Keep climbing: the sky goes dark and the stars come out, and past 9 km you’re out of the air with the whole Earth under you. Out there you drift, and flat out you go twenty times faster. The Moon and Mars are on the gauge: land on them (Space jumps off again), and someone’s waiting at each. Dive back at the Earth and you come down through the fire over the city.'],
       ['Think, Mark!', 'Four chapters: your father’s rings, the Flaxans, then Omni-Man and Thragg. A Viltrumite blocks and hits back unless he’s recovering from a charge: dodge as the ring closes round him, then hit him while he’s open. A dodge just in time slows everything down. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],

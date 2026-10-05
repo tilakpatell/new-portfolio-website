@@ -33,7 +33,7 @@ The session's network policy refused `api.meshy.ai`, `api.sketchfab.com` and Pol
 
 ## Not done / next ideas
 
-1. **Combat in the open world.** Mark can't punch out here yet; *Think, Mark!* (down the page) is where the fights are. The natural next step is a Flaxan portal over the river: they pour out and he knocks them back. `thinkmark/rules.js` has the combat rules to borrow. The code-built Flaxans are in `thinkmark/scene.js` (`buildHumanoid({ style: 'chitauri' })`).
+1. **Combat.** Done after this handoff was first written: `fight.js` (tested) and `flaxans.js`. The Flaxans come through a portal over the river, started by Cecil (E at the GDA) or on their own four minutes in. Punch with J, F, a click or pad X (a lunge carries him to one a little way off), or ram one at speed. Their bolts knock him about. Next could be bosses in the open world (Omni-Man sparring, Thragg in space), which *Think, Mark!* has rules for.
 2. **Phones.** The low tier draws about 1.2–1.4M triangles in town, the 'small' counts already applied. Phone frame rate hasn't been measured on hardware. Levers, if it's slow:
    - fewer suburb trees and houses drawn far off (a distance cull on the instanced meshes);
    - the land disc's ring step;

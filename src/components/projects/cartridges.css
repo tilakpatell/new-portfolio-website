@@ -1,0 +1,9 @@
+/* The hand of cartridges beside the projects page's heading (Cartridges.jsx).
+   It fades in once it has drawn; until then (or without 3D) the space stays
+   quiet. */
+.cartridges { position: relative; margin: 0; opacity: 0; transition: opacity 0.6s ease; }
+.cartridges[data-on] { opacity: 1; }
+.cartridges-stage { position: relative; height: clamp(280px, 30vw, 420px); touch-action: pan-y; }
+.cartridges-stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cartridges-caption { margin-top: 0.25rem; text-align: center; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 1023px) { .cartridges-stage { height: 280px; } }

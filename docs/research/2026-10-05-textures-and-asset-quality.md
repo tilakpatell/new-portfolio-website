@@ -60,6 +60,30 @@ What that says:
 3. **Normal maps are the exception where UASTC is simply right.** A high-quality normal map costs ~1.2–1.4 MB at 1K in any format (WebP near-lossless 1.4 MB, UASTC 1.3 MB with mips); JPEG and lossy WebP only look cheap because they've thrown the normals away (26–27 dB). UASTC gives the quality at a quarter of the GPU memory. Where 1.3 MB per set is too much, a 512 UASTC normal (~330 KB) is a better buy than a 1K JPEG one. This needs the originals: re-encoding the shipped JPEGs can't bring back what they lost.
 4. **Skies and planet maps stay JPEG/WebP**: UASTC at 4K is 5–9 MB a map, ETC1S bands. Their cost is the decode and the upload, which `ImageBitmapLoader` moves off the main thread.
 
+## The report over the whole repo
+
+`scripts/ktx2.mjs report` was run over every GLB and loose texture set (1,169 textures) with UASTC level 2, RDO λ 1, zstd 18, mipmaps. Per folder, the download if everything were converted, the GPU memory, and how many textures pass the rule (GPU down, bytes within 1.25×, 34 dB kept):
+
+| Folder | Textures | Download now → UASTC | GPU now → UASTC | Pass the rule |
+| --- | --- | --- | --- | --- |
+| `hq/models` | 52 | 6.0 MB → 15.3 MB (×2.6) | 105 MB → 26 MB | 9 (every normal map at 512, and two at 1024) |
+| `hq/tex` (loose sets, 1K + 512) | 78 | 18.2 MB → 67.4 MB (×3.7) | 392 MB → 98 MB | 1 |
+| `games/models` (Poly Haven scans) | 45 | 2.9 MB → 19.9 MB (×6.8) | 108 MB → 27 MB | 0 |
+| `games/tex` + `cc0/materials` | 79 | 7.8 MB → 54.4 MB (×7.0) | 421 MB → 105 MB | 0 |
+| `games/meshy` (the casts) | 96 | 6.7 MB → 41.0 MB (×6.1) | 252 MB → 63 MB | 0 |
+| `games/caribbean` | 36 | 7.9 MB → 39.9 MB (×5.0) | 210 MB → 52 MB | 0 |
+| `models/galaxy` (ships) | 48 | 1.2 MB → 8.2 MB (×6.9) | 84 MB → 21 MB | 0 |
+| `models/galaxy/surface` | 378 | 9.6 MB → 58.1 MB (×6.0) | 420 MB → 105 MB | 0 |
+| `models/sketchfab` | 190 | 8.0 MB → 51.3 MB (×6.4) | 447 MB → 112 MB | 1 (a flat map) |
+| `models/albuquerque` | 31 | 3.2 MB → 27.0 MB (×8.5) | 165 MB → 41 MB | 0 |
+| the rest of `models/` | 136 | 12.2 MB → 80.6 MB (×6.6) | 686 MB → 172 MB | 1 (a flat map) |
+
+So: across the site, UASTC would cost 5 to 8 times the download for a 4× cut in GPU memory, and only normal maps come out even, because a lossy WebP of a normal map is already large (its noise doesn't compress) while UASTC's size is fixed by the pixel count. The quality floor was met almost everywhere (UASTC held 37–57 dB against the shipped files); the bytes were the problem, not the encode.
+
+**What was converted**: the normal maps of eight HQ models (`barrel`, `barrier`, `crate`, `lamp`, `rocks`, `shelves`, `toolchest`, `tyre`; `npm run ktx2:hq` repeats it after `hq-assets` regenerates them). Together they're 91 KB larger on disk, their normal maps take 11 MB less GPU memory with their mipmaps built offline, and they decode in a worker. The first visit to the compound also fetches the Basis transcoder once (about 280 KB, cached after). The fir sapling's were left (its twigs' normal would have grown 240 KB), and nothing else met the rule. Everything else stays WebP, and the loader reads both.
+
+**Where KTX2 pays next**, if the download budget allows: the 2K colour maps seen close (the music room's instruments at 0.6–1 MB each are 21 MB apiece on the GPU; Spider-Man's two; the Pearl) would each drop to 5 MB of GPU memory for 3–4 MB more download, and normal maps regenerated from Poly Haven's PNGs as UASTC (the HQ texture sets' 36 JPEG normals) would gain quality as well as memory.
+
 ## What raises quality without raising cost
 
 In order of visible gain per unit of work and per frame cost, all doable from what's in the repo:
