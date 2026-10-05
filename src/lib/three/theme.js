@@ -16,6 +16,7 @@ const TOKENS = {
   surface2: '--surface-2',
   border: '--border',
   borderStrong: '--border-strong',
+  saber: '--saber',
 };
 
 const FALLBACK = {
@@ -29,6 +30,7 @@ const FALLBACK = {
   surface2: [242, 243, 243],
   border: [229, 231, 235],
   borderStrong: [135, 149, 150],
+  saber: [255, 179, 71],
 };
 
 // '#f90', '#ff9900', 'rgb(255, 153, 0)', 'rgba(…)', 'color(srgb 1 0.6 0)' → [r, g, b] in 0-255

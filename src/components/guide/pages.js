@@ -435,7 +435,7 @@ export const SHORTCUTS = [
 export const SITE = [
   ['Two ways round', 'The Universe and Classic switch at the top: fly through the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site opens on the one you picked last.'],
   ['Getting around', 'The menu at the top, or the command palette, which can take you anywhere and do most things. The Terminal page takes commands too.'],
-  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color.'],
+  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color. A fan theme brings a moving background to the portfolio pages (click on empty page); switch it off at the bottom of the same menu.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'A small one is tucked away on each of the main pages, and one more on the page that isn’t there. Some words work if you type them anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],

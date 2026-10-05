@@ -135,6 +135,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 - **↑ ↑ ↓ ↓ ← → ← → B A** jumps to lightspeed.
 - **⌘K / Ctrl+K** opens a command palette that can go anywhere on the site and run its tricks.
 - There are dozens of achievements to unlock. Scranton's Dundies hand them out as awards.
+- The fan colour schemes the eggs unlock each bring a live background to the portfolio pages: a dogfight crossing the stars for the Jedi and the Sith, Heisenberg's blue crystals, Iron Man's HUD tracking the pointer, Dunder Mifflin's paper and paper airplanes, invaders marching over a synthwave grid, diyas and sky lanterns, a ship on the horizon at Tortuga, Cybertron's energon and insignia, the Shire's fireworks or the Eye of Sauron watching you, and portals. Click on empty page for a surprise. They can be switched off under the colour picker.
 
 ## Tech stack
 
