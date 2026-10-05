@@ -27,6 +27,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { budget, device } from '../../lib/device';
 import { noiseAtlas } from '../../lib/texture';
 import { createRenderer, disposeTree, precompile, precompilePasses } from '../../lib/three/renderer';
+import { loadTexture } from '../../lib/three/textures';
 import { SIDES, cybertronSkin } from './skin';
 import { createWar, warZones } from './war';
 
@@ -160,18 +161,8 @@ function makeEnvironment(renderer) {
   return env;
 }
 
-const loadTexture = (loader, url, colour) =>
-  new Promise((resolve) => {
-    loader.load(
-      url,
-      (t) => {
-        t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-        resolve(t);
-      },
-      undefined,
-      () => resolve(null),
-    );
-  });
+// a map, or null if it can't be had (lib/three/textures shares it by URL)
+const fetchMap = (url, color, renderer) => loadTexture(url, { renderer, color }).catch(() => null);
 
 export async function create(canvas, ctx) {
   const tier = device().tier;
@@ -183,15 +174,12 @@ export async function create(canvas, ctx) {
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 80);
   camera.position.set(0, 0, 5.4);
 
-  const loader = new THREE.TextureLoader();
   const small = tier === 'low';
-  const [map, normalMap, glow] = await Promise.all([
-    loadTexture(loader, `${MAPS}transformers${small ? '-sm' : ''}.webp`, true),
-    loadTexture(loader, `${MAPS}transformers-normal.webp`, false),
-    loadTexture(loader, `${MAPS}transformers-glow.webp`, false),
+  const [albedo, normalMap, glow] = await Promise.all([
+    fetchMap(`${MAPS}transformers${small ? '-sm' : ''}.webp`, true, renderer),
+    fetchMap(`${MAPS}transformers-normal.webp`, false, renderer),
+    fetchMap(`${MAPS}transformers-glow.webp`, false, renderer),
   ]);
-  const aniso = Math.min(renderer.capabilities.getMaxAnisotropy(), B.aniso);
-  for (const t of [map, normalMap, glow]) if (t) t.anisotropy = aniso;
 
   const noise = new THREE.DataTexture(noiseAtlas(256, 1984), 256, 256, THREE.RGBAFormat);
   noise.wrapS = noise.wrapT = THREE.RepeatWrapping;
@@ -274,15 +262,15 @@ export async function create(canvas, ctx) {
   tilt.rotation.set(0.38, 0, -0.18);
   scene.add(tilt);
   const mat = new THREE.MeshStandardMaterial({
-    map,
-    color: map ? 0xffffff : 0x3a404a,
+    map: albedo,
+    color: albedo ? 0xffffff : 0x3a404a,
     normalMap,
     normalScale: new THREE.Vector2(1.1, 1.1),
     metalness: 0.4,
     roughness: 0.58,
     envMapIntensity: 0.7,
   });
-  const skin = glow && map ? cybertronSkin(mat, { glow, sun: SUN }) : null;
+  const skin = glow && albedo ? cybertronSkin(mat, { glow, sun: SUN }) : null;
   if (skin) {
     skin.uEnergon.value.copy(from.energon);
     skin.uLevels.value.y = 2.2 * from.war;
@@ -509,7 +497,8 @@ export async function create(canvas, ctx) {
       el.style.touchAction = '';
       disposeTree(scene);
       battle.dispose();
-      for (const t of [map, normalMap, glow, noise, env, starDot]) t?.dispose();
+      // (the maps are shared by URL: lib/three/textures keeps them for the next visit)
+      for (const t of [noise, env, starDot]) t?.dispose();
       composer.dispose();
       stage.dispose();
     },
