@@ -1022,7 +1022,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
           d.s.visible = true;
           d.s.material.color.setHex(state.asphalt ? 0xe2ddd4 : 0xd9bf98);
           d.s.position.set(c.x - Math.sin(c.yaw) * 2.3 + (Math.random() - 0.5), gy + 0.5, c.z - Math.cos(c.yaw) * 2.3 + (Math.random() - 0.5));
-          d.v.set((Math.random() - 0.5) * 1.2, 0.8 + Math.random(), (Math.random() - 0.5) * 1.2);
+          // (a slide's smoke is left behind where the car was going, not where it points)
+          d.v.set((Math.random() - 0.5) * 1.2 + (smoking ? cs * slide * 0.12 : 0), 0.8 + Math.random(), (Math.random() - 0.5) * 1.2 - (smoking ? sn * slide * 0.12 : 0));
         }
       }
     }

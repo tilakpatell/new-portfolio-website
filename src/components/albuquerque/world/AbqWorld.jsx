@@ -383,7 +383,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     let stick = -s.stick.x;
     let handbrake = k.has(' ') || s.hand;
     if (pad) {
-      throttle += (pad.rt ? 1 : 0) - (pad.lt ? 1 : 0) - pad.ly;
+      // (the triggers by how far they're pulled, where the pad says)
+      throttle += Math.max(pad.rtv ?? 0, pad.rt ? 1 : 0) - Math.max(pad.ltv ?? 0, pad.lt ? 1 : 0) - pad.ly;
       stick -= pad.lx;
       handbrake ||= pad.x || pad.b || pad.rb;
       if (pad.a && !s.padA && s.near) enter(s.near);
@@ -516,8 +517,12 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   const onHand = (e) => {
     const down = e.type === 'pointerdown';
     if (down) {
-      e.currentTarget.setPointerCapture(e.pointerId);
       audioContext();
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId); // (a thumb that slides off it is still holding it)
+      } catch {
+        /* no such pointer any more */
+      }
     }
     sim.current.hand = down;
     if (down) {
@@ -626,18 +631,18 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold the handbrake into a turn to swing the tail round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}</p>}
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}</p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (
-          <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
-            <span />
+          <div className="abq-pads">
+            <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
+              <span />
+            </div>
+            <button type="button" className="abq-hand" onPointerDown={onHand} onPointerUp={onHand} onPointerCancel={onHand} onContextMenu={(e) => e.preventDefault()} aria-label="Handbrake: hold it into a corner to slide">
+              Slide
+            </button>
           </div>
-        )}
-        {touch && (
-          <button type="button" className="abq-hand" onPointerDown={onHand} onPointerUp={onHand} onPointerCancel={onHand} onContextMenu={(e) => e.preventDefault()} aria-label="Handbrake">
-            <span aria-hidden="true">(P)</span>
-          </button>
         )}
         <button
           type="button"
@@ -745,7 +750,7 @@ function Driving({ id, driving, onChange, onClose, touch }) {
       })}
       <ul className="abq-drive-moves">
         <li>
-          <b>Handbrake turn</b> {touch ? 'Hold the handbrake and steer' : 'Hold Space and steer'}: the tail swings round. Let go and it grips where it points.
+          <b>Handbrake turn</b> {touch ? 'Hold Slide and steer' : 'Hold Space and steer'}: the tail swings round. Let go and it grips where it points.
         </li>
         <li>
           <b>Drift</b> A dab of handbrake into a corner, then the throttle. Dirt and sand slide on their own.

@@ -1194,6 +1194,8 @@ void main() {
   float keep = 1.0 - uLift;
   c = mix(c, uHaze * 0.8, (1.0 - smoothstep(rh - 0.0015, rh + 0.0015, h)) * keep);
   c = mix(c, uHaze, (1.0 - smoothstep(-0.004, 0.07, h)) * 0.55 * keep);
+  // from up high: the air along the horizon, faintly lit, over the dark land
+  c += vec3(0.012, 0.02, 0.05) * uLift * exp(-max(h, 0.0) * 26.0);
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -1529,6 +1531,7 @@ function chaseAt(u) {
 const CRYSTALS = 70;
 const DOOR = [0.4, -0.6, 3.8];
 
+const LATE = 4000; // how long the cab waits for these three (ms)
 const WING_URL = '/models/cockpit/rv-wing.glb';
 const FLYER_URL = '/models/universe/rv-wings.glb';
 const SUV_URL = '/models/albuquerque/world/suv.glb';
@@ -1647,7 +1650,7 @@ function chaserOf(model) {
         lamp.core.material.opacity = on ? 1 : 0.12;
         lamp.halo.material.opacity = on ? 0.3 : 0.03;
       });
-      for (const m of mats) m.emissiveIntensity = 0.12;
+      for (const m of mats) m.emissiveIntensity = 0.2;
     },
   };
 }
@@ -1735,7 +1738,7 @@ function flyerOf(model) {
   };
 }
 
-export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
+export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   const inside = new THREE.Group();
   const outside = new THREE.Group();
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -1745,11 +1748,14 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
   // in his suit
   const jesseP = loadCrew('jesse', { clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
-  // the wings and the winged RV: they come when they come (without them the
-  // RV just drives off into the night)
+  // the wings, the winged RV and Hank's SUV: waited for a little (LATE, so
+  // they're there to be drawn once with everything else before you see the
+  // cab), and after that they come when they come (without them the RV just
+  // drives off into the night)
   const wingP = loadModel(WING_URL);
   const flyerP = loadModel(FLYER_URL);
   const suvP = loadModel(SUV_URL);
+  const extras = Promise.race([Promise.all([wingP, flyerP, suvP]), new Promise((done) => setTimeout(done, LATE))]);
   const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.6, 0.98, 0.9], face: Math.PI + 0.6 });
 
   const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone, sitClip, idleClip] = await Promise.all([
@@ -1769,6 +1775,7 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
     models.load('rock'),
     loadClip('jesse-sit'),
     loadClip('walt-idle'),
+    extras,
   ]);
   for (const set of [bench, panelling, lino, asphalt, dirt, rock]) for (const t of Object.values(set)) if (t) t.anisotropy = aniso;
 
@@ -2687,30 +2694,18 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
   let gone = false;
   let wings = null;
   let flyer = null;
-  // (none of these is seen until well into the drive: `ready` gets their
-  // pictures onto the graphics chip and their shaders linked as they arrive,
-  // so the frame that first shows one, the wings swinging out or the cut to
-  // outside, doesn't stall on it)
-  const ready = (root, where) => {
-    root.traverse((o) => {
-      for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : [])
-        for (const v of Object.values(m))
-          if (v?.isTexture && v.image)
-            try {
-              renderer.initTexture(v);
-            } catch {
-              /* it will go up on its first frame instead */
-            }
-    });
-    warm?.(root, where);
-  };
+  // (none of these is seen until well into the drive. Here in time, each is
+  // drawn once with the cab before you see it; one that comes after tells
+  // the scene (`added`), which gets it onto the graphics chip then and not
+  // at the moment it's first seen: the wings swinging out, the cut to outside)
+  let handed = false;
   wingP.then((m) => {
     if (!m) return;
     if (gone) disposeTree(m);
     else {
       wings = wingPair(m);
       inside.add(wings.group);
-      ready(wings.group, 'inside');
+      if (handed) added?.(wings.group, 'inside');
     }
   });
   flyerP.then((m) => {
@@ -2719,7 +2714,7 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
     else {
       flyer = flyerOf(m);
       outside.add(flyer.group);
-      ready(flyer.group, 'outside');
+      if (handed) added?.(flyer.group, 'outside');
     }
   });
   let hank = null;
@@ -2729,9 +2724,10 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
     else {
       hank = chaserOf(m);
       outside.add(hank.group);
-      ready(hank.group, 'outside');
+      if (handed) added?.(hank.group, 'outside');
     }
   });
+  queueMicrotask(() => (handed = true));
   const blue = crystals(small ? Math.round(CRYSTALS * 0.6) : CRYSTALS);
   outside.add(blue.mesh);
   // moonlight on the RV from outside, at the last (none until then)
@@ -2840,7 +2836,9 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
       // the blur of speed on the ground and the road (hazy's `rush`)
       const rush = smooth((v - 15) / 110);
       haze.rush.value = 8 * rush;
-      groundM.normalScale.setScalar(1.2 * (1 - rush));
+      // (and a lamp as low as a headlight rakes the dirt, every grain of its
+      // relief lit or black: it eases off as the lamps come on too)
+      groundM.normalScale.setScalar((1.2 - 0.8 * lights) * (1 - rush));
       roadM.normalScale.setScalar(1 - rush);
       stars.set({ fade: starsK });
       sunGlow.position.copy(sunDir).multiplyScalar(2400).add(skyDome.position);
@@ -2852,7 +2850,8 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
       // once the sun is down nothing casts a shadow (the sun outside and the
       // key light in the cab both go with it): the shadow maps stop being
       // redrawn, which is most of a frame's geometry for the rest of the drive
-      if (rich) renderer.shadowMap.autoUpdate = up > 0;
+      sunLight.shadow.autoUpdate = up > 0;
+      key.shadow.autoUpdate = up > 0;
       sunLight.color.copy(sunCol[0]).lerp(sunCol[1], dusk);
       landHemi.color.copy(landSky[0]).lerp(landSky[2], dusk).lerp(landSky[1], night);
       landHemi.groundColor.copy(landGround[0]).lerp(landGround[1], night);
@@ -2986,7 +2985,6 @@ export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
       walt?.dispose();
       models.dispose();
       renderer.shadowMap.enabled = false;
-      renderer.shadowMap.autoUpdate = true;
       env?.dispose();
     },
   };

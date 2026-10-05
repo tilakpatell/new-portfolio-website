@@ -117,7 +117,9 @@ export const COLLIDERS = [...PLACES, ...LANDMARKS, ...HOUSES].map(box).concat(TO
 export const SPAWN = { x: -95, z: -62, yaw: Math.PI / 2 };
 
 // The Aztek: metres, seconds and radians. How fast it goes on each surface,
-// how hard it pulls, brakes and coasts down, and how it turns: `lock` is the
+// how hard it pulls, brakes and coasts down (`bog` is how fast speed it
+// can't hold comes off: running wide onto the sand slows it over a second,
+// it doesn't stop it), and how it turns: `lock` is the
 // front wheels' full lock and `wheelbase` the distance between its axles (a
 // turning circle under eight metres across at parking speed); `grip` is the
 // sideways pull its tyres hold on each surface (m/s²) before they slide, and
@@ -143,6 +145,7 @@ export const CAR = {
   taper: 0.5,
   brake: 28,
   coast: 3.5,
+  bog: 12,
   handbrake: 6.5,
   wheelbase: 2.7,
   lock: 0.62,
@@ -247,8 +250,8 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out) {
   if (handbrake) f -= Math.sign(f) * Math.min(Math.abs(f), CAR.handbrake * h);
   // over the limit (onto the sand at speed; backwards out of a spin, faster
   // than reverse goes), it bleeds off rather than stops
-  if (f > top) f = Math.max(top, f - CAR.brake * 0.6 * h);
-  if (f < -CAR.reverse) f = Math.min(-CAR.reverse, f + CAR.brake * 0.6 * h);
+  if (f > top) f = Math.max(top, f - CAR.bog * h);
+  if (f < -CAR.reverse) f = Math.min(-CAR.reverse, f + CAR.bog * h);
 
   // ── round: the wheel, as far as it goes at this speed ──
   const v = Math.abs(f);
@@ -295,6 +298,13 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out) {
   const sliding = clamp((Math.abs(s) - 0.5) / 2, 0, 1);
   const grip = CAR.grip[surface] * (handbrake ? CAR.loose : 1) * (1 - sliding * (0.15 + CAR.power * Math.max(0, throttle)));
   s = Math.abs(s) <= grip * h ? 0 : s - Math.sign(s) * grip * h;
+  // (all told it goes no faster than the road allows, sideways included)
+  const all = Math.hypot(f, s);
+  if (all > top && f > 0) {
+    const most = Math.max(top, all - CAR.bog * h) / all;
+    f *= most;
+    s *= most;
+  }
 
   // ── where that takes it ──
   const hx = Math.sin(yaw);
@@ -376,7 +386,8 @@ export function readDriving(raw) {
 // The wheel, turned toward where the keys or the stick ask (−1…1), one step
 // on. Keys are all or nothing, so the wheel goes over at a rate: quickly at
 // parking speed, slower the faster the car is going (a twitch at speed is a
-// swerve), and back to the middle quicker than it left. A stick (`analog`)
+// swerve), back to the middle quicker than it left, and across from one
+// lock to the other quickest of all. A stick (`analog`)
 // says how far itself, with fine control near its middle, and the wheel
 // follows it almost at once. `steer` is the setting above.
 export function stepSteer(wheel, target, speed, dt, { steer = 1, analog = false } = {}) {
@@ -384,7 +395,8 @@ export function stepSteer(wheel, target, speed, dt, { steer = 1, analog = false 
   if (analog) to = Math.sign(to) * Math.abs(to) ** 1.7;
   const k = clamp(Math.abs(speed) / CAR.top, 0, 1);
   const away = Math.abs(to) > Math.abs(wheel) && to * wheel >= 0;
-  const rate = (analog ? 12 : away ? 8 - 4.6 * k : 10) * steer;
+  const over = to * wheel < 0;
+  const rate = (analog || over ? 14 : away ? 8 - 4.6 * k : 10) * steer;
   const d = to - wheel;
   const step = rate * dt;
   return Math.abs(d) <= step ? to : wheel + Math.sign(d) * step;

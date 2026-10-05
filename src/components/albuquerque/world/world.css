@@ -113,8 +113,15 @@ button.abq-hud-online:hover, button.abq-hud-online:focus-visible { border-color:
 .abq-cards-wrap { padding-top: 2.5rem; padding-bottom: 1rem; }
 .abq-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.9rem; margin: 2rem 0 0; padding: 0; list-style: none; }
 /* the handbrake, under the other thumb, and the speedometer */
-.abq-hand { position: absolute; right: clamp(0.75rem, 2vw, 1.25rem); bottom: 4.9rem; width: 76px; height: 76px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(15, 18, 14, 0.45); color: var(--abq-ink); font: 700 1.05rem/1 var(--font-mono); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.abq-hand[data-on] { background: rgba(214, 60, 44, 0.85); border-color: #ffd9d2; }
+/* a touch screen's controls, a row of their own over the buttons: the stick
+   under the left thumb, the handbrake under the right (held, it's on) */
+.abq-pads { flex: 1 0 100%; display: flex; align-items: flex-end; justify-content: space-between; pointer-events: none !important; }
+.abq-pads > * { pointer-events: auto; }
+.abq-world-stage[data-touch] .abq-hud-bottom { flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
+.abq-world-stage[data-touch] .abq-places-btn { margin-left: 0 !important; }
+.abq-world-stage[data-touch] .abq-door, .abq-world-stage[data-touch] .abq-hint { bottom: 15rem; }
+.abq-hand { flex: none; width: 84px; height: 84px; margin: 0 0 0.5rem; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(15, 18, 14, 0.45); color: var(--abq-ink); font: 700 0.72rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.abq-hand[data-on] { background: rgba(240, 195, 48, 0.9); border-color: rgba(240, 195, 48, 1); color: #1a1608; }
 .abq-hud-speed b { display: inline-block; min-width: 2ch; color: var(--abq-ink); font-variant-numeric: tabular-nums; text-align: right; }
 
 /* the driving settings: the Places list's panel, with sliders */
@@ -157,11 +164,6 @@ button.abq-hud-online:hover, button.abq-hud-online:focus-visible { border-color:
   .abq-hud-chip { font-size: 0.72rem; }
   .abq-heat-bar { width: 4.5rem; }
   .abq-door { bottom: 9.5rem; }
-  /* the handbrake over the buttons' end, the door's prompt over the handbrake, the hint over the stick */
-  .abq-hand { bottom: 7.4rem; width: 70px; height: 70px; }
-  .abq-stick { margin-right: auto; }
-  .abq-world-stage[data-touch] .abq-door { bottom: 12.8rem; }
-  .abq-world-stage[data-touch] .abq-hint { bottom: 13rem; }
   .abq-place-head .btn kbd { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

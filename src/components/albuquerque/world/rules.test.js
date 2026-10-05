@@ -281,6 +281,41 @@ describe('Albuquerque, the world: the Aztek’s handling', () => {
     expect(stepSteer(0.5, NaN, 10, 1 / 60)).toBeLessThan(0.5);
   });
 
+  it('runs wide onto the sand without stopping dead: the speed comes off over a second', () => {
+    // flat out along Central's edge, then off it
+    const off = run({ x: 90, z: 140, yaw: EAST, speed: CAR.top }, { throttle: 1, steer: 0 }, 0.5).car;
+    expect(onRoad(90, 140)).toBe(false);
+    expect(off.speed).toBeGreaterThan(CAR.sand + 4);
+    expect(off.speed).toBeLessThan(CAR.top - 3);
+    expect(run(off, { throttle: 1, steer: 0 }, 1).car.speed).toBeCloseTo(CAR.sand, 6);
+  });
+
+  it('stays in hand whatever is done to it: finite, inside the fence, out of the walls, no faster than it can go', () => {
+    let seed = 7;
+    const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+    let car = { ...SPAWN, speed: 0 };
+    let input = { throttle: 1, steer: 0, handbrake: false };
+    const worst = { finite: true, out: 0, fast: 0, wall: Infinity, slid: 0, bumped: 0 };
+    for (let i = 0; i < 60 * 240; i++) {
+      if (i % 20 === 0) input = { throttle: rand() < 0.75 ? 1 : rand() < 0.5 ? -1 : 0, steer: Math.round(rand() * 2 - 1), handbrake: rand() < 0.25 };
+      const r = stepCar(car, input, i % 7 === 0 ? 0.05 : 1 / 60);
+      car = r.car;
+      worst.finite &&= Number.isFinite(car.x + car.z + car.yaw + car.speed + car.slide + car.yawRate + r.bump + r.slip);
+      worst.out = Math.max(worst.out, Math.hypot(car.x, car.z));
+      worst.fast = Math.max(worst.fast, Math.hypot(car.speed, car.slide));
+      worst.slid = Math.max(worst.slid, Math.abs(car.slide));
+      worst.bumped = Math.max(worst.bumped, r.bump);
+      for (const c of COLLIDERS) worst.wall = Math.min(worst.wall, Math.hypot(Math.max(Math.abs(car.x - c.x) - c.w / 2, 0), Math.max(Math.abs(car.z - c.z) - c.d / 2, 0)));
+    }
+    expect(worst.finite).toBe(true);
+    expect(worst.out).toBeLessThanOrEqual(WORLD_RADIUS + 1e-6);
+    expect(worst.fast).toBeLessThanOrEqual(CAR.top + 1e-6);
+    expect(worst.wall).toBeGreaterThan(CAR.radius - 0.05);
+    // (and the four minutes did have slides and knocks in them)
+    expect(worst.slid).toBeGreaterThan(3);
+    expect(worst.bumped).toBeGreaterThan(3);
+  });
+
   it('takes a car that was parked before any of this (no slide, no spin) as it is', () => {
     const r = stepCar({ x: 0, z: 0, yaw: EAST, speed: 5 }, { throttle: 1, steer: 0 }, 1 / 60);
     for (const k of ['x', 'z', 'yaw', 'speed', 'slide', 'yawRate']) expect(Number.isFinite(r.car[k]), k).toBe(true);
@@ -305,6 +340,17 @@ describe('Albuquerque, the world: the wheel in your hands', () => {
     expect(back).toBeGreaterThan(over);
     expect(turnFor(1.5, 0, 1, CAR.top)).toBe(1);
     expect(turnFor(1.5, 1, 0, CAR.top)).toBe(0);
+  });
+
+  it('makes a tap a small correction, and crosses from lock to lock quickest of all', () => {
+    const tap = turnFor(0.05, 0, 1, 12);
+    expect(tap).toBeGreaterThan(0.15);
+    expect(tap).toBeLessThan(0.5);
+    const letGo = 1 - turnFor(0.06, 1, 0, 12);
+    const crossed = 1 - turnFor(0.06, 1, -1, 12);
+    expect(crossed).toBeGreaterThan(letGo * 1.2);
+    // and never past where it's wanted
+    expect(turnFor(1, 0, 0.3, 12)).toBeCloseTo(0.3, 9);
   });
 
   it('turns faster the higher the steering is set, and never past full lock', () => {
