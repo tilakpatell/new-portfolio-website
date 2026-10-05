@@ -23,7 +23,7 @@ export { BOLS, LAYA, TAALS, playBol, setThekaLaya, setThekaTempo, startTheka, st
 export { bolLabel } from './tablaRules';
 
 // ── Sitar ──────────────────────────────────────────────────────────────────
-export { LISTEN_URL, autoChikari, chikari, damp, onSitarChikari, onSitarPluck, playPhrase, pluck, sitarSa, stopAutoChikari, warm, warmNeck } from './sitar';
+export { LISTEN_URL, autoChikari, chikari, damp, holdChikari, onSitarChikari, onSitarPluck, playPhrase, pluck, sitarSa, stopAutoChikari, warm, warmNeck } from './sitar';
 export { parsePhrase } from './sitarRules';
 
 // ── Tanpura ──────────────────────────────────────────────────────────────────

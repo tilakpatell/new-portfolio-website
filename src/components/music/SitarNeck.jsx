@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
-import { chikari, damp, onSitarChikari, onSitarPluck, pluck, warmNeck } from './sitar';
+import { damp, holdChikari, onSitarChikari, onSitarPluck, pluck, warmNeck } from './sitar';
+import { CHIKARI, chikariLevel, chikariSpeed } from './sitarRules';
 import { fretForKey, fretOf, keyForFret, meendTarget, sameNote, tarabHz } from './sitarRules';
 import { frets, RAGAS } from './tuning';
 import SwaraLabel from './SwaraLabel';
@@ -17,9 +18,11 @@ import './music.css';
 // On a phone the neck stands upright so every fret is big enough to touch.
 // Keys: 1 to = then Q to ] play the frets in order; Shift with a fret key
 // moves to it without a new stroke (krintan); hold ↑ to pull the note to the
-// raga's next one (meend); Space strikes the chikari; Esc stops the string.
-// With auto chikari on (the default), the right hand strikes the chikari in
-// the rests between the notes played here, on the tabla's beat if it plays.
+// raga's next one (meend); Space strikes the chikari, and held, rolls it on at
+// its speed (play frets over it for a jhala); Esc stops the string. With auto
+// chikari on (the default), the right hand strikes the chikari in the rests
+// between the notes played here, following the music (the player's pulse, the
+// tabla's beat) or at a speed set below the neck.
 
 const NECK = { x0: 44, x1: 836, top: 96, bottom: 204 };
 const MAIN_Y = 132;
@@ -47,6 +50,9 @@ export default function SitarNeck({ onPlay }) {
   const [tuning, setTuning] = useTuning();
   const all = tuning.allFrets !== false;
   const auto = tuning.autoChikari !== false;
+  const follow = tuning.chikariFollow !== false;
+  const speed = chikariSpeed(tuning.chikariSpeed);
+  const level = chikariLevel(tuning.chikariLevel);
   const list = useMemo(() => frets(tuning.raga, { all }), [tuning.raga, all]);
   const vertical = useMediaQuery('(max-width: 639px)');
   // the stretch of the neck on screen, in neck units (along the strings)
@@ -58,13 +64,14 @@ export default function SitarNeck({ onPlay }) {
   const [lit, setLit] = useState(-1);
   const [pull, setPull] = useState(0);
   const [plucks, setPlucks] = useState(0);
-  const [chiks, setChiks] = useState(0); // a count, so the chikari's glow restarts each time it's struck
   const [played, setPlayed] = useState([]); // the last few notes, for the notation strip
   // a count per sympathetic string, so its glow restarts each time it's set ringing
   const [ring, setRing] = useState(() => new Array(11).fill(0));
   const svg = useRef(null);
   const press = useRef(null);
   const keyHeld = useRef(null); // the last fret played from the keyboard, and its handle
+  const spaceHeld = useRef(false); // the chikari, held from the keyboard
+  const chikPath = useRef(null);
   const listRef = useRef(list);
   listRef.current = list;
   const raga = useRef(tuning.raga);
@@ -86,7 +93,33 @@ export default function SitarNeck({ onPlay }) {
       }),
     [],
   );
-  useEffect(() => onSitarChikari(() => setChiks((k) => k + 1)), []);
+  // the chikari strings flash as they're struck; drawn straight onto the path,
+  // since a roll can strike ten times a second and the neck needn't redraw for it
+  useEffect(
+    () =>
+      onSitarChikari(() => {
+        const el = chikPath.current;
+        if (!el?.animate) return;
+        el.animate([{ stroke: '#fff4d6', opacity: 1 }, { stroke: '#e6dcc2', opacity: 0.85 }], { duration: 650, easing: 'ease-out' });
+      }),
+    [],
+  );
+  // a chikari held from the keyboard or the button is let go of when the page loses focus
+  useEffect(() => {
+    const letGo = () => {
+      spaceHeld.current = false;
+      holdChikari(false, 'space');
+      holdChikari(false, 'button');
+    };
+    const hidden = () => document.hidden && letGo();
+    window.addEventListener('blur', letGo);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      window.removeEventListener('blur', letGo);
+      document.removeEventListener('visibilitychange', hidden);
+      letGo();
+    };
+  }, []);
   // the frets change with the raga; let go of whatever was held
   useEffect(() => {
     press.current = null;
@@ -163,7 +196,9 @@ export default function SitarNeck({ onPlay }) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === ' ') {
       e.preventDefault();
-      if (!e.repeat && audioContext()) chikari();
+      if (e.repeat || spaceHeld.current) return;
+      spaceHeld.current = true;
+      holdChikari(true, 'space'); // struck now, and rolling on while it's held
       onPlay?.('sitar');
       return;
     }
@@ -199,7 +234,13 @@ export default function SitarNeck({ onPlay }) {
       if (keyHeld.current === k) k.handle = h;
     });
   };
+  const letGoOfSpace = () => {
+    if (!spaceHeld.current) return;
+    spaceHeld.current = false;
+    holdChikari(false, 'space');
+  };
   const onKeyUp = (e) => {
+    if (e.key === ' ') letGoOfSpace();
     const held = keyHeld.current;
     if (e.key === 'ArrowUp' && held) {
       held.handle?.slide(list[held.i].ratio, 0.12);
@@ -222,15 +263,49 @@ export default function SitarNeck({ onPlay }) {
             {RAGAS[tuning.raga].name}’s frets only
           </button>
         </div>
+        <p className="text-sm text-muted">{all ? `${n} frets, mandra Pa to taar Ga. ${RAGAS[tuning.raga].name}’s notes are lit.` : `${n} frets, set for ${RAGAS[tuning.raga].name}.`}</p>
+      </div>
+      <div className="sn2-chikari-bar mb-4" role="group" aria-label="Chikari">
+        <span className="label">Chikari</span>
         <div className="seg">
           <button type="button" aria-pressed={auto} onClick={() => setTuning({ autoChikari: !auto })}>
-            Auto chikari
+            Auto
           </button>
         </div>
-        <p className="text-sm text-muted">
-          {all ? `${n} frets, mandra Pa to taar Ga. ${RAGAS[tuning.raga].name}’s notes are lit.` : `${n} frets, set for ${RAGAS[tuning.raga].name}.`}
-          {auto ? ' The chikari fills the rests between your notes.' : ''}
-        </p>
+        <div className="seg" role="group" aria-label="Chikari speed">
+          <button type="button" aria-pressed={follow} onClick={() => setTuning({ chikariFollow: true })}>
+            Follow the music
+          </button>
+          <button type="button" aria-pressed={!follow} onClick={() => setTuning({ chikariFollow: false })}>
+            Set speed
+          </button>
+        </div>
+        <label className="sn2-slider" data-off={follow || undefined}>
+          <span>Speed</span>
+          <input
+            type="range"
+            min={CHIKARI.speeds[0]}
+            max={CHIKARI.speeds[1]}
+            step="10"
+            value={speed}
+            onChange={(e) => setTuning({ chikariSpeed: chikariSpeed(e.target.value), chikariFollow: false })}
+            aria-valuetext={follow ? `Following the music; set to ${speed} strokes a minute` : `${speed} strokes a minute`}
+          />
+          <span className="mono tabular-nums">{follow ? 'follows' : `${speed}/min`}</span>
+        </label>
+        <label className="sn2-slider">
+          <span>Strength</span>
+          <input
+            type="range"
+            min={CHIKARI.level[0]}
+            max={CHIKARI.level[1]}
+            step="0.05"
+            value={level}
+            onChange={(e) => setTuning({ chikariLevel: chikariLevel(e.target.value) })}
+            aria-valuetext={`${Math.round(level * 100)} percent`}
+          />
+          <span className="mono tabular-nums">{Math.round(level * 100)}%</span>
+        </label>
       </div>
       <div className="sitar-neck" data-vertical={vertical || undefined} style={vertical ? { '--sn2-h': phoneHeight } : undefined}>
         <svg
@@ -238,10 +313,11 @@ export default function SitarNeck({ onPlay }) {
           viewBox={vertical ? `60 ${view.x} 180 ${view.w}` : `${view.x} 32 ${view.w} 236`}
           className="sitar-neck-svg sn2-svg"
           role="group"
-          aria-label={`Sitar with ${n} frets. Keys 1 to ${keyForFret(n - 1).toUpperCase()} play them in order; Shift with a key moves there without a new stroke; hold the up arrow for meend; space strikes the chikari; Escape stops the string.`}
+          aria-label={`Sitar with ${n} frets. Keys 1 to ${keyForFret(n - 1).toUpperCase()} play them in order; Shift with a key moves there without a new stroke; hold the up arrow for meend; space strikes the chikari, and held, rolls it; Escape stops the string.`}
           tabIndex={0}
           onKeyDown={onKey}
           onKeyUp={onKeyUp}
+          onBlur={letGoOfSpace}
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -315,12 +391,7 @@ export default function SitarNeck({ onPlay }) {
               <path key={`${i}-${count}`} d={`M${150 + i * 6} ${TARAB_Y(i)} L${BRIDGE} ${TARAB_Y(i)}`} className="sn-tarab" data-ring={count > 0 || undefined} />
             ))}
             {/* the chikari, the two high drones */}
-            <path
-              key={`c${chiks}`}
-              d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`}
-              className="sn2-chikari"
-              data-ring={chiks > 0 || undefined}
-            />
+            <path ref={chikPath} d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`} className="sn2-chikari" />
             {/* the bridge (jawari), and the main string */}
             <rect x={BRIDGE - 5} y="106" width="11" height="90" rx="2.5" fill="url(#sn2-bone)" />
             <path key={`m${plucks}`} d={mainPath} stroke="#f6eedb" strokeWidth="2.2" fill="none" className={lit >= 0 ? 'sitar-ring' : undefined} />
