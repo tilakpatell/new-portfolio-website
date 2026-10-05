@@ -314,6 +314,38 @@ Use the real parameter list of `starAhead`.
 - [ ] **Step 4: Run the tests.** `npx vitest run src/components/galaxy src/components/universe`. Expected: PASS.
 - [ ] **Step 5: Commit.** "Galaxy: no garbage made every frame in the flying, the camera, the jump or the set pieces".
 
+### Task 8b: The new Sketchfab ships in the galaxy
+
+The network was opened mid-phase. Ten ships came out better from Sketchfab than code-built would: they're processed on branch `claude/galaxy-assets-wip` (commit 6ef170b; report in `lab/assets-report.md`). They're wired in here, before Task 9, so they get LODs too.
+
+**Files:**
+- Merge: branch `claude/galaxy-assets-wip`. It adds `public/models/galaxy/{tie,tiebomber,tieadvanced,shuttle,lightcruiser,gozanti,munificent,providence,nubian,ghost}.glb`, their entries in `scripts/sketchfab-galaxy.mjs`, and `galaxy-<kind>` credits in `src/data/modelCredits.json`.
+- Modify: `src/components/galaxy/models.js` (`MODELS` and `HUNTER_GLB`); `src/data/modelCredits.json` (`surface-razorcrest`'s `also` gains `'galaxy'`); `src/components/galaxy/models.test.js`.
+
+**Interfaces:**
+- `MODELS` gains:
+  - `tie: { url: '/models/galaxy/tie.glb', nose: 0 }`
+  - `tiebomber: { url: '/models/galaxy/tiebomber.glb', nose: 0 }`
+  - `tieadvanced: { url: '/models/galaxy/tieadvanced.glb', nose: 0 }`
+  - `shuttle: { url: '/models/galaxy/shuttle.glb', nose: 0 }`
+  - `lightcruiser: { url: '/models/galaxy/lightcruiser.glb', nose: -Math.PI / 2 }`
+  - `gozanti: { url: '/models/galaxy/gozanti.glb', nose: 0 }`
+  - `munificent: { url: '/models/galaxy/munificent.glb', nose: 0 }`
+  - `providence: { url: '/models/galaxy/providence.glb', nose: 0 }`
+  - `nubian: { url: '/models/galaxy/nubian.glb', nose: 0 }`
+  - `ghost: { url: '/models/galaxy/ghost.glb', nose: 0 }`
+  - `razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }`
+- `HUNTER_GLB` gains `tie` and `tieadvanced`, from `MODELS` with `built: true`, so the galaxy's Imperial hunters fly the Sketchfab TIEs once they load.
+- The header comment lists the new ones.
+- `STAND_IN` gains `tiebomber: 'tie'`, `lightcruiser: 'destroyer'`, `gozanti: 'freighter'`, `providence: 'munificent'` and `ghost: 'freighter'`, so none of them is ever invisible. Kinds that have a built version (`tie`, `tieadvanced`, `shuttle`, `munificent`, `nubian`, `razorcrest`) fly it until the GLB loads.
+
+- [ ] **Step 1: Merge** `git merge --no-ff claude/galaxy-assets-wip`. Resolve `modelCredits.json` by keeping both sides' entries.
+- [ ] **Step 2: Write the failing test.** `models.test.js`: every new kind is in `MODELS` with an existing file, and every kind in `MODELS` without a built version has a `STAND_IN` that is built. The existing test then covers the new ones too. `src/data/modelCredits.test.js` passes, so every new credit is referenced.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run the tests.** `npx vitest run src/components/galaxy src/data`
+- [ ] **Step 5: Check it in the browser.** `space endor,hoth,coruscant,nevarro`. The TIEs, the Munificents and the Razor Crest are the new models, with no errors.
+- [ ] **Step 6: Commit.** "Galaxy: ten Sketchfab ships in place of the built ones: TIEs, the Lambda, the Ghost, Gideon's cruiser, the Gozanti, the Munificent, the Invisible Hand, the Naboo royal starship"
+
 ### Task 9: Fighter and capital-ship LODs, made offline
 
 **Files:**
