@@ -5,6 +5,7 @@ import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
 import AkdStage from './akd3d/AkdStage';
 import TimeTrack from './akd3d/TimeTrack';
+import '../../styles/lazy/travel.css';
 
 // A day at each of the two Akshardhams, in their own photographs: pick
 // Robbinsville or New Delhi, then slide through the day, play it, swipe it or

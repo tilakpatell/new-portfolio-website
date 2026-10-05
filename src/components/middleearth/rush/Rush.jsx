@@ -22,6 +22,7 @@ import { COLOURS, NAMES } from './cast';
 import { sound } from './sounds';
 import '../shire/shire.css';
 import './rush.css';
+import '../../../styles/lazy/middleearth.css';
 
 // The rush: a busy kitchen for one to four hobbits, Overcooked-style (the
 // rules in ./rules.js, the drawing in ./scene.js, a level from ./levels,

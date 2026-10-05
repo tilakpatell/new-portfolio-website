@@ -23,6 +23,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { audioContext } from '../lib/audio';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import ScriptToggle from '../components/ScriptToggle';
+import '../styles/lazy/cybertron.css';
 
 const SIDES = {
   autobot: { city: 'Iacon', motto: 'Till all are one.', leader: 'optimus', theme: 'optimus', call: 'Autobots, roll out' },

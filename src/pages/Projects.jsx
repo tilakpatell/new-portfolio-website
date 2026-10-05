@@ -13,6 +13,7 @@ import { usePageParams } from '../lib/page';
 import PeriodicStack from '../components/projects/PeriodicStack';
 import SitarDivider from '../components/SitarDivider';
 import Egg from '../components/Egg';
+import '../styles/lazy/projects.css';
 
 const CTA = {
   'gameboy-emulator': 'Play it and see how it works',

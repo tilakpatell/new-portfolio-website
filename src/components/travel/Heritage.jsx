@@ -4,6 +4,7 @@ import Photo from '../Photo';
 import Lightbox from '../Lightbox';
 import { Reveal, Waypoint } from '../ui';
 import AkshardhamDay, { DAY } from './AkshardhamDay';
+import '../../styles/lazy/travel.css';
 
 // Indian architecture: a day at the two Akshardhams in photographs, their
 // facts from the official sites, then the carving up close, over a faint jali

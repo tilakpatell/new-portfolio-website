@@ -5,6 +5,7 @@ import Gif from '../../Gif';
 import TitleCard from '../TitleCard';
 import { UPGRADES, buy, rankFor } from '../metherria/rules';
 import { CAREER, readCareer } from './career';
+import '../../../styles/lazy/albuquerque.css';
 
 // The two places that aren't a game of their own: Walt's house (how the
 // career's going, and the title card) and Saul's office (his card, and the

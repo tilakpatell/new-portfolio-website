@@ -5,6 +5,7 @@ import { local, useFrameLoop, useInView } from '../../../lib/hooks';
 import HectorBell from '../HectorBell';
 import HectorBoard from '../HectorBoard';
 import { newGame, ring as ringBell, score, stepGame } from './rules';
+import '../../../styles/lazy/albuquerque.css';
 
 // Face Off at Casa Tranquila, in 3D: spell Hector's three words on the
 // nurse's letter board with his bell, then Gus comes to visit. Ring with the

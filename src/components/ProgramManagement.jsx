@@ -1,6 +1,7 @@
 import { Chips, Reveal, SectionHeading } from './ui';
 import { programSteps, programToolkit } from '../data/program';
 import { roles } from '../data/roles';
+import '../styles/lazy/programmanagement.css';
 
 const short = (id) => roles.find((r) => r.id === id)?.short ?? id;
 

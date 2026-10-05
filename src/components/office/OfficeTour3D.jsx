@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RiAddLine, RiArrowGoBackLine, RiArrowLeftSLine, RiArrowRightSLine, RiSubtractLine } from 'react-icons/ri';
 import { STAFF } from './layout';
+import '../../styles/lazy/office.css';
 
 // The office in 3D, over the 2D map it replaces: the same people, as pins
 // that follow their desks (real buttons, so the keyboard and screen readers

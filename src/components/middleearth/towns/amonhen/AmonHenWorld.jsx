@@ -19,6 +19,7 @@ import { BOROMIR, RESCUE, SEAT_GAZE, SKIP, URUKS, gazeIn, gazeOn, newRescue, new
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './amonhen.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Amon Hen, the seventh town on the road: the camp at Parth Galen,
 // Boromir in the woods, the Seat of Seeing, the Uruk-hai, and Sam in the
