@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut, sightClear } from '../../middleearth/towns/walker';
-import { CAST, COLLIDERS, CROWD_LOOPS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, inPen, spot, validAt } from './layout';
+import { CAST, COLLIDERS, CROWD_LOOPS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, crowdColliders, crowdFor, inPen, spot, validAt } from './layout';
 
 const clear = (x, z, rad = 0.45, walls = WALLS) => {
   const [px, pz] = pushOut(x, z, rad, COLLIDERS, walls);
@@ -104,3 +104,86 @@ describe('the Citadel’s concourse', () => {
     expect(validAt({ x: 10, z: 10, face: 1 }, ['daycare', 'wafers', 'council', 'votemorty'])).toEqual(ESCAPE_START);
   });
 });
+
+describe('the Citadel’s crowds', () => {
+  const MOODS = ['day', 'election'];
+  it('stand clear of everything, of each other and of the places to stop', () => {
+    for (const mood of MOODS) {
+      const crowd = crowdFor(mood);
+      expect(crowd.length, mood).toBeGreaterThan(30);
+      crowd.forEach((c, i) => {
+        expect(clear(c.x, c.z, 0.38), `${mood} ${i} ${c.x},${c.z}`).toBe(true);
+        expect(Math.hypot(c.x, c.z)).toBeLessThan(WORLD.radius - 0.6);
+        expect(inPen(c.x, c.z)).toBe(false);
+        for (const s of SPOTS) expect(Math.hypot(c.x - s.x, c.z - s.z), `${mood} ${i} by ${s.id}`).toBeGreaterThan(s.r + 0.6);
+        for (const p of CAST) expect(Math.hypot(c.x - p.x, c.z - p.z), `${mood} ${i} by ${p.id}`).toBeGreaterThan(0.95);
+        for (let j = 0; j < i; j++) expect(Math.hypot(c.x - crowd[j].x, c.z - crowd[j].z), `${mood} ${i}/${j}`).toBeGreaterThan(0.8);
+        expect(Number.isFinite(c.face)).toBe(true);
+      });
+    }
+  });
+  it('leave the walkers’ loops clear', () => {
+    for (const mood of MOODS) {
+      const crowd = crowdFor(mood);
+      for (const loop of CROWD_LOOPS)
+        for (const [a, b] of legs(loop)) {
+          const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.25);
+          for (let k = 0; k <= n; k++) {
+            const x = a[0] + ((b[0] - a[0]) * k) / n;
+            const z = a[1] + ((b[1] - a[1]) * k) / n;
+            for (const c of crowd) expect(Math.hypot(x - c.x, z - c.z), `${mood} loop by ${c.x},${c.z}`).toBeGreaterThan(0.85);
+          }
+        }
+    }
+  });
+  it('still let you reach every place, round them', () => {
+    for (const mood of MOODS) {
+      const extra = crowdColliders(mood);
+      const withCrowd = (x, z, rad = 0.42) => {
+        const [px, pz] = pushOut(x, z, rad, [...COLLIDERS, ...extra], WALLS);
+        return Math.hypot(px - x, pz - z) < 1e-6;
+      };
+      for (const s of SPOTS) expect(reachableWith(START, s, withCrowd), `${mood} ${s.id}`).toBe(true);
+    }
+  });
+  it('clear off the concourse on red alert', () => {
+    expect(crowdFor('red')).toEqual([]);
+    expect(crowdColliders('red')).toEqual([]);
+  });
+  it('rally in front of Candidate Morty’s booth on election day, facing it', () => {
+    const rally = crowdFor('election').filter((c) => c.group === 'rally');
+    expect(rally.length).toBeGreaterThanOrEqual(30);
+    for (const c of rally) {
+      const want = Math.atan2(-(-21.5 - c.z), -21.5 - c.x);
+      expect(Math.abs(Math.atan2(Math.sin(c.face - want), Math.cos(c.face - want)))).toBeLessThan(0.35);
+    }
+    expect(crowdFor('day').some((c) => c.group === 'rally')).toBe(false);
+  });
+});
+
+// reachability with a clear() of its own
+function reachableWith(a, b, ok) {
+  const S = 0.5;
+  const key = (i, j) => `${i},${j}`;
+  const cell = (x, z) => [Math.round(x / S), Math.round(z / S)];
+  const [bi, bj] = cell(b.x, b.z);
+  const seen = new Set();
+  const queue = [cell(a.x, a.z)];
+  seen.add(key(...queue[0]));
+  while (queue.length) {
+    const [i, j] = queue.shift();
+    if (Math.hypot(i - bi, j - bj) * S < (b.r ?? 1)) return true;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      const k = key(ni, nj);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const x = ni * S;
+      const z = nj * S;
+      if (Math.hypot(x, z) > WORLD.radius - 0.45 || !ok(x, z)) continue;
+      queue.push([ni, nj]);
+    }
+  }
+  return false;
+}

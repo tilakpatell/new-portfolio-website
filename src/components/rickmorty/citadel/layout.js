@@ -168,3 +168,88 @@ export function validAt(saved, done = []) {
   if (Math.hypot(x - saved.x, z - saved.z) > 0.05) return START;
   return { x: saved.x, z: saved.z, face: Number.isFinite(saved.face) ? saved.face : 0 };
 }
+
+// ── the crowds ──
+// Where the Citadel's crowds stand, by mood (./crowd.js draws them, a mix of
+// every kind of Rick and Morty): onlookers at the terrace's edge looking out
+// over the city, a queue at Simple Rick's, a crowd watching the core's
+// holo-ads, petitioners at the Council's doors and a few talking in threes;
+// on election day the watchers go to a rally in front of Candidate Morty's
+// booth, and on red alert everyone's gone. [{ x, z, face, group }]
+const faceTo = (x, z, tx, tz) => Math.atan2(-(tz - z), tx - x);
+const jitter = (i, k = 1) => (((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1) + 1) % 1;
+function crowdGroups() {
+  const out = [];
+  const add = (group, x, z, face) => out.push({ group, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, face: face + (jitter(out.length) - 0.5) * 0.3 });
+  // at the edge, looking out
+  for (const [a0, a1, n] of [
+    [-2.75, -2.05, 8],
+    [2.1, 2.62, 6],
+    [0.32, 0.6, 5],
+  ]) {
+    for (let i = 0; i < n; i++) {
+      const a = a0 + ((a1 - a0) * i) / Math.max(1, n - 1);
+      add('edge', Math.cos(a) * 38.3, Math.sin(a) * 38.3, Math.atan2(-Math.sin(a), Math.cos(a)));
+    }
+  }
+  // the queue at Simple Rick's
+  for (const [x, z] of [
+    [35.2, 3.6],
+    [34.3, 4.5],
+    [33.4, 5.4],
+    [32.6, 6.3],
+  ])
+    add('queue', x, z, faceTo(x, z, DOORS.factory.x, DOORS.factory.z));
+  // watching the holo-ads on the core, on its south-west side
+  for (const [r, n] of [
+    [8, 6],
+    [10.2, 6],
+  ]) {
+    for (let i = 0; i < n; i++) {
+      const a = 1.95 + (1.4 * i) / (n - 1) + (r > 9 ? 0.12 : 0);
+      add('core', Math.cos(a) * r, Math.sin(a) * r, faceTo(Math.cos(a) * r, Math.sin(a) * r, 0, 0));
+    }
+  }
+  // at the Council's doors, either side of the way in
+  for (const x of [-9, -7.6, -6.2, 6.2, 7.6, 9]) for (const z of [-33.4, -34.8]) add('council', x, z, faceTo(x, z, 0, -40));
+  // talking in threes
+  for (const [cx, cz] of [
+    [16.6, -8.6],
+    [-3.9, 19.3],
+  ]) {
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + cx;
+      const x = cx + Math.cos(a) * 0.72;
+      const z = cz + Math.sin(a) * 0.72;
+      add('talk', x, z, faceTo(x, z, cx, cz));
+    }
+  }
+  return out;
+}
+const DAY = crowdGroups();
+// the rally: rows facing the booth, on its south side, clear of the way to the ballot box
+const RALLY = (() => {
+  const out = [];
+  const c = { x: -26.4, z: -12.6 };
+  const ux = c.x - BOOTH.x;
+  const uz = c.z - BOOTH.z;
+  const ul = Math.hypot(ux, uz);
+  const u = [ux / ul, uz / ul];
+  const v = [-u[1], u[0]];
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 8; col++) {
+      const i = row * 8 + col;
+      const a = (row - 2) * 1.08 + (jitter(i, 3) - 0.5) * 0.24;
+      const b = (col - 3.5) * 1.02 + (jitter(i, 5) - 0.5) * 0.24;
+      const x = c.x + u[0] * a + v[0] * b;
+      const z = c.z + u[1] * a + v[1] * b;
+      out.push({ group: 'rally', x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, face: faceTo(x, z, BOOTH.x, BOOTH.z) + (jitter(i, 7) - 0.5) * 0.3 });
+    }
+  }
+  return out;
+})();
+const CROWDS = { day: DAY, election: [...DAY.filter((c) => c.group !== 'core'), ...RALLY], red: [] };
+export const crowdFor = (mood) => CROWDS[mood] ?? DAY;
+// each of them in Rick's way (but not in a Cop Rick's line of sight)
+const CROWD_COLLIDERS = Object.fromEntries(Object.entries(CROWDS).map(([m, list]) => [m, list.map((c, i) => ({ id: `crowd${i}`, kind: 'circle', x: c.x, z: c.z, r: 0.33, low: true, top: 1.9 }))]));
+export const crowdColliders = (mood) => CROWD_COLLIDERS[mood] ?? CROWD_COLLIDERS.day;
