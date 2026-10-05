@@ -21,18 +21,18 @@
 //   = path         : grass, one up ! grass, two up  % grass, three up
 //   T tree         Y tree, one up  o boulder        O stepping stone
 //   # stone wall   H house         G the Game Boy   P pipe
-//   B the dock     s a sign
+//   B the dock     s a sign        L the lighthouse M the windmill, three up
 export const MAP = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 1
-  '~~~~~~~~~~~~~~~~~~~~~~~~,,,,,,,~~~~~~~~~~~~~,,,~', // 2
+  '~~~~~~~~~~~~~~~~~~~~~~~~,,,,,,,~~~~~~~~~~~~~,,L~', // 2
   '~~~~~~~~~~~~~~~~~,,,,,,,,..T..,,,,~~~~~~~~~,,.,~', // 3
   '~~~~~~~~~~~~~~,,,T...T....T.....,,,~~~~~~~~~,,,~', // 4
   '~~~~~~~~~~~~Y::...T....T..........,,~~~~~~O~~~~~', // 5
   '~~~~~~~~~~~!!::..T...............T.,~~~~O~~~~~~~', // 6
   '~~~~~~~~~%%!!!::........T..........,,~O~~~~~~~~~', // 7
   '~~~~~~~~%%%%%!!::...T.........s.....,~~~~~~~~~~~', // 8
-  '~~~~~~~!%%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
+  '~~~~~~~!M%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
   '~~~~~~!!!%%%%!!::.==============.....,,~~~~~~~~~', // 10
   '~~~~~~Y:!!!!!!!::.==============......,,~~~~~~~~', // 11
   '~~~~~~,::!!!!!:::.=====GGGG=====.......,~~~~~~~~', // 12
@@ -90,6 +90,8 @@ const LEGEND = {
   P: { kind: 'pipe', ground: 0, top: 1.25 },
   B: { kind: 'dock', ground: SEA, top: 0 },
   s: { kind: 'sign', ground: 0, top: 1.1 },
+  L: { kind: 'lighthouse', ground: 0, top: 4.6 },
+  M: { kind: 'mill', ground: 3, top: 7 },
 };
 export const legend = (c) => LEGEND[c] ?? LEGEND['~'];
 
@@ -309,6 +311,13 @@ export const VILLAGERS = [
 ];
 const VILLAGER = Object.fromEntries(VILLAGERS.map((v) => [v.id, v]));
 export const HEART_EVERY = 15; // coins picked up between hearts back
+
+// The camera: how far it stands from the hero (the wheel, a pinch, + and -,
+// or a pad's triggers change it), and how steeply it looks down from there
+// (less, the closer it comes, so a close view is more over his shoulder).
+export const ZOOM = { min: 7, start: 12.5, max: 20 };
+export const zoomTo = (dist, k) => Math.max(ZOOM.min, Math.min(ZOOM.max, dist * k));
+export const pitchFor = (dist) => 0.68 + (dist - ZOOM.start) * 0.018;
 
 // ── the columns ──
 
