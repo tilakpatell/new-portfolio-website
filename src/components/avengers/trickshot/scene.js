@@ -88,7 +88,7 @@ export async function create(canvas, { onLost, onSlow } = {}) {
 
   // start every download at once
   const sets = ['forest-floor', 'grass', 'hay', 'planks', 'bark', 'brushed-steel', 'leather', 'plywood'];
-  await preload({ sets, skies: ['pines'], models: ['stump', 'rocks', 'grass-clump', 'shrub', 'crate'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  await preload({ sets, skies: ['pines'], models: ['stump', 'rocks', 'grass-clump', 'shrub', 'crate'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small, renderer: engine.renderer });
 
   // a soft, high light through the mist, from over your left shoulder
   await engine.setSky('pines', { sunDir: [-0.42, 0.82, 0.38], sunIntensity: 1.35, sunColor: [1, 0.96, 0.9], envIntensity: 1.05, bgIntensity: 0.98, fill: 0.08, fog: { density: 0.0088, tint: 1.04 } });

@@ -218,7 +218,6 @@ def main():
     W, H = 2048, 1024
     P = {n: size(planet(n, urls), W, H) for n in SSS}
     plates1 = material('MetalPlates001', 'Color')
-    plates6 = material('MetalPlates006', 'Color')
     paper = material('Paper001', 'Color')
 
     # The music room: Jupiter in saffron
@@ -294,27 +293,7 @@ def main():
     save(ds, 'starwars')
     save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False)
 
-    # Cybertron: dark steel plates over Mercury, some seams lit
-    base = ramp(stretch(lum(P['mercury'])), [(0, '#232a36'), (1, '#8a94a8')])
-    plates = tile(plates6, W, H, 24, 12)
-    pl = stretch(lum(plates), 1, 99)
-    # armour plates of many sizes, each its own shade of steel, dark seams
-    # between, and here and there a seam lit from inside
-    rects = panels(W, H, 64, 9, 4)
-    patch, seams = plate_maps(W, H, rects, 10, 0.06)
-    seams = arr(img(np.stack([seams] * 3, -1)).filter(ImageFilter.MaxFilter(3)))[..., 0]
-    cy = base * (0.6 + pl[..., None] * 0.45) + patch[..., None] * np.array([0.8, 0.85, 1.0])
-    cy = cy * (1 - seams[..., None] * 0.65)
-    save(cy, 'transformers')
-    rng = np.random.default_rng(12)
-    lit = np.zeros((H, W), np.float32)
-    for x0, y0, x1, y1 in rects:
-        if rng.random() < 0.1:
-            lit[max(0, y0 - 1):y0 + 2, x0:x1] = 1
-            lit[y0:y1, max(0, x0 - 1):x0 + 2] = 1
-    lit = arr(img(np.stack([lit] * 3, -1)).filter(ImageFilter.GaussianBlur(1.2)))[..., 0] * 1.6
-    hue = noise(W, H, 11, 3, 2)[..., None]
-    save(lit[..., None] * (hexrgb('#7fd8ff') * (1 - hue) + hexrgb('#a48cff') * hue), 'transformers-glow', small=False)
+    # (Cybertron's maps are worked out on their own: scripts/build-cybertron-planet.mjs)
 
     # The Office: a sheet of paper round a planet, ruled, with its margins
     # and punched holes
@@ -386,8 +365,7 @@ def main():
             im.save(OUT / f'{short}{suffix}.webp', quality=86, method=6)
             print(f'  {short}{suffix}.webp')
     material('Paper001', 'NormalGL').resize((512, 512), Image.LANCZOS).save(OUT / 'paper-normal.webp', quality=86, method=6)
-    material('MetalPlates006', 'NormalGL').resize((512, 512), Image.LANCZOS).save(OUT / 'cybertron-normal.webp', quality=86, method=6)
-    print('  paper-normal.webp, cybertron-normal.webp')
+    print('  paper-normal.webp')
 
 
 if __name__ == '__main__':

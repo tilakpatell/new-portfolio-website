@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { sharpen } from '../../lib/three/textures';
 
 // A tiling copy of a texture (the image is shared; the repeat is its own).
 export function tiled(t, nx, ny) {
@@ -35,7 +36,7 @@ export function paint(draw, w, h) {
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 

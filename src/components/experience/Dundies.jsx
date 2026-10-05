@@ -1,5 +1,6 @@
 import { RiTrophyLine } from 'react-icons/ri';
 import { Reveal, Waypoint } from '../ui';
+import '../../styles/lazy/experience.css';
 
 // The Office's awards night, for real results. Every award is a line from the
 // roles above.

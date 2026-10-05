@@ -16,6 +16,7 @@ import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks'
 import { use3D } from '../lib/gpu';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
 import ScriptToggle from '../components/ScriptToggle';
+import '../styles/lazy/deathstar.css';
 
 const sfx = () => import('../lib/sfx');
 

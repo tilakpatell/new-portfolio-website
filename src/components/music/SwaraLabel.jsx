@@ -1,4 +1,5 @@
 import { SWARA_NAME, swaraMark } from './engine';
+import '../../styles/lazy/music.css';
 
 // A swara written the way sargam notation writes it: a dot below for the lower
 // octave (mandra), a dot above for the upper (taar), a line under a komal

@@ -129,6 +129,14 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
   100% { opacity: 0; transform: translate(-50%, -14px); }
 }
 
+/* style: the flight's points while they're in the air, and the bank when he lands */
+.cw-style:empty { display: none; }
+.cw-style { position: absolute; left: 50%; bottom: clamp(4.4rem, 14%, 6.4rem); z-index: 2; margin: 0; padding: 0.35rem 0.7rem; border: 1px solid rgba(255, 200, 90, 0.5); border-radius: 6px; background: var(--cw-glass); color: #ffd98a; font: 600 0.84rem/1.2 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; transform: translateX(-50%); pointer-events: none; }
+.cw-stage[data-touch] .cw-style { bottom: 12.4rem; }
+.cw-bank { color: #ffd98a; text-shadow: 0 2px 0 #7a4a00, 0 4px 18px rgba(0, 0, 0, 0.45); }
+.cw-bank b { color: #fff; text-shadow: 0 2px 0 #7a4a00, 0 4px 18px rgba(0, 0, 0, 0.45); }
+.cw-bail { color: #c9d4e0; text-shadow: 0 2px 0 #1d2f5c, 0 4px 18px rgba(0, 0, 0, 0.45); }
+
 /* a backpack found: what was in it, and a word from Peter */
 .cw-pack { position: absolute; left: 50%; top: 22%; z-index: 2; display: grid; gap: 0.25rem; width: min(26rem, calc(100% - 2rem)); margin: 0; padding: 0.75rem 1rem 0.85rem; border: 1px solid rgba(160, 210, 255, 0.5); border-radius: 10px; background: var(--cw-glass-hi); color: var(--cw-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); pointer-events: none; animation: cw-up 0.2s ease-out both; }
 .cw-pack-n { margin: 0; color: var(--cw-cyan); font: 600 0.68rem/1.3 var(--font-sans); font-stretch: 125%; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -149,6 +157,15 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-list-sub { margin: 0.15rem 0 0; color: #a9b8c8; font-size: 0.82rem; line-height: 1.35; }
 .cw-list-acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 @keyframes cw-in { from { opacity: 0; transform: translateY(-6px); } }
+
+/* photo mode: the HUD away, and a bar of its own */
+.cw-stage[data-photo] :is(.cw-hud, .cw-hint, .cw-door, .cw-bubble, .cw-trick, .cw-pack, .cw-style, .cw-tour-msg, .cw-speed, .cw-list) { display: none; }
+.cw-photo { position: absolute; left: 50%; bottom: clamp(0.8rem, 3%, 1.4rem); z-index: 4; display: grid; gap: 0.5rem; width: min(30rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.85rem; border: 1px solid var(--cw-line); border-radius: 10px; background: var(--cw-glass-hi); color: var(--cw-ink); transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.cw-photo-title { margin: 0; font: 400 1.3rem/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.05em; }
+.cw-photo-hint { margin: 0; color: #a9b8c8; font-size: 0.8rem; line-height: 1.35; }
+.cw-photo-row { display: grid; grid-template-columns: 5rem minmax(0, 1fr) 4rem; align-items: center; gap: 0.6rem; margin: 0; font-size: 0.84rem; }
+.cw-photo-row output { color: var(--cw-cyan); font: 600 0.78rem/1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.cw-photo-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
 
 /* the settings: sliders, live */
 .cw-set-rows { display: grid; gap: 0.8rem; padding: 0.8rem 1rem 1rem; overflow-y: auto; overscroll-behavior: contain; }

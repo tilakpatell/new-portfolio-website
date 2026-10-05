@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import Gif from '../Gif';
+import '../../styles/lazy/albuquerque.css';
 
 // The counter at Los Pollos Hermanos: order, and the tray fills up.
 const MENU = [

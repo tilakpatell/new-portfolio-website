@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { local } from '../../lib/hooks';
+import '../../styles/lazy/albuquerque.css';
 
 // Talking the way Hector does: a nurse holds up a letter board and runs a
 // finger along it, and he rings his bell to pick. Here the rows light up in

@@ -35,6 +35,7 @@ import Egg from '../components/Egg';
 import { capturePointer } from '../lib/pointer';
 import { recordRoom, setRoom } from '../components/music/room';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import '../styles/lazy/music.css';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
 // the ragas offered at the top; the rest are in the database further down

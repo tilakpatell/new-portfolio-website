@@ -29,21 +29,22 @@
 // the guns are locked on, whose name the lock shows instead; footOn, the
 // planet you're down on, if you are: the crews there have tags of their own) }
 
+import { writeBuild } from '../shipyard/build';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { disposeTree } from '../../../lib/three/renderer';
 import { SHIP_MODELS, buildShip } from '../shipModels';
 import { paintById } from '../paint';
 import { PARTS_SLOTS, STOCK, STOCK_LOADOUT, partById } from '../outfit';
 import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
+import { hitRadius } from '../hunterRules';
 import { PARKED } from '../foot';
 import { WEAPONS, arsenalOf, fan } from '../weapons';
 import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
 import { UNIVERSE } from './where';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const MODELS = { ...SHIP_MODELS, cruiser: '/games/meshy/saucer.glb' }; // (the cruiser the C-137 planet flies; your own is the page's, crew aboard)
 const SIZE = 0.3; // across, for the guns and for hits
@@ -56,7 +57,7 @@ const PACK_STALE = 1500; // ms: hunters not heard of for this long are gone
 const PACK_AHEAD = 0.4; // seconds, at most, a hunter's flown on from where it was last said to be
 const GONE_MS = 2500; // a hunter your shot should have finished stays off the sky this long, unless its pilot says it's down
 
-const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const loader = gltfLoader();
 
 // how far a ship's lowest point is below its middle, flying size (it sits
 // that much off the ground, parked, scaled up by PARKED)
@@ -136,11 +137,13 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     sh.tag?.remove();
   };
 
-  const build = (id, kind, tags) => {
-    const model = buildShip(kind, T);
+  // (hull: their garage build, or null for their stock ship)
+  const hullKey = (b) => (b ? writeBuild(b).join() : '');
+  const build = (id, kind, tags, hull = null) => {
+    const model = buildShip(kind, T, { build: hull });
     model.group.visible = false;
     parent.add(model.group);
-    const url = MODELS[kind];
+    const url = hull ? null : MODELS[kind]; // (a garage build is whole as it is)
     if (url) {
       modelFor(url).then((scene) => {
         const sh = ships.get(id);
@@ -161,7 +164,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       tag.append(name, bar);
       tags.append(tag);
     }
-    return { kind, loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null };
+    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null };
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
@@ -231,12 +234,12 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       for (const p of peers.values()) {
         if (p.blocked || !p.kind || !p.name || away(p)) continue;
         let sh = ships.get(p.id);
-        if (sh && sh.kind !== p.kind) {
+        if (sh && (sh.kind !== p.kind || sh.hull !== hullKey(p.build))) {
           drop(sh);
           sh = null;
         }
         if (!sh) {
-          sh = build(p.id, p.kind, view?.tags ?? null);
+          sh = build(p.id, p.kind, view?.tags ?? null, p.build ?? null);
           ships.set(p.id, sh);
         }
         if (sh.loadout !== p.loadout) {
@@ -394,7 +397,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       }
       for (const g of ghosts.values()) {
         if (clock < g.goneUntil) continue;
-        const k = sweptHit(from, to, g.prev, g.at, g.type.size * 0.8 + 0.1);
+        const k = sweptHit(from, to, g.prev, g.at, hitRadius(g.type));
         if (k !== null && k < first) {
           first = k;
           ghost = g;

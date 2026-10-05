@@ -10,6 +10,7 @@ import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
 import { KINDS, LANE, RUN, STONE_AT, leap, moveLane, newRun, smash, startRun, stepRun } from './rules';
 import './smash.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');

@@ -1,8 +1,8 @@
 // The visitor's own flying settings for the universe map, kept between
 // visits: how quickly the ship turns, pitches and rolls, how quickly it
 // rolls itself back upright when let go (or not at all), how far a drag goes
-// for full stick, how much the guns help a shot onto the lead, how tightly
-// the camera follows, whether up and down are the other way round (as in a
+// for full stick, how much the guns help a shot onto the lead, how much the
+// nose follows a lock, how tightly the camera follows, whether up and down are the other way round (as in a
 // flight sim, push forward to dive), what A and D do (roll, as in
 // Battlefront, or turn) and what dragging up and down does (tips the nose
 // with a mouse and works the throttle on a touch screen, as it comes). Pure,
@@ -20,11 +20,12 @@ export const CONTROLS = {
   level: { min: 0, max: 2, step: 0.1, label: 'Self-levelling', hint: 'How quickly it rolls back upright when you let go' },
   drag: { min: 0.4, max: 2.5, step: 0.05, label: 'Drag sensitivity', hint: 'Mouse and touch: less drag for full stick' },
   assist: { min: 0, max: 1.6, step: 0.1, label: 'Aim assist', hint: 'How far shots bend onto the lead' },
+  track: { min: 0, max: 1.6, step: 0.1, label: 'Lock tracking', hint: 'How much the nose follows a locked target' },
   camera: { min: 0.5, max: 2, step: 0.05, label: 'Camera follow', hint: 'How tightly it swings round behind' },
 };
 export const DRAG_UP = ['auto', 'pitch', 'speed'];
 export const AD = ['roll', 'turn'];
-export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll' };
+export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, track: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll' };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 

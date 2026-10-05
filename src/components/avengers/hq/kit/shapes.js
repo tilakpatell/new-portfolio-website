@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { sharpen } from '../../../../lib/three/textures';
 
 export const rbox = (w, h, d, r = Math.min(w, h, d) * 0.18, seg = 3) => new RoundedBoxGeometry(w, h, d, seg, r);
 
@@ -87,7 +88,7 @@ export function canvasTexture(w, h, draw, { srgb = true, repeat } = {}) {
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  sharpen(t);
   if (repeat) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(...repeat);

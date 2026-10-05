@@ -1,4 +1,5 @@
 import { DECEPTICON_PATH, DECEPTICON_VIEWBOX } from '../marks';
+import '../../styles/lazy/cybertron.css';
 
 // Megatron as he is in Prime: gunmetal, a crested helmet with swept horns, red
 // optics, spiked shoulders, the fusion cannon on his right arm and a blade on

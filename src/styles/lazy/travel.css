@@ -1,0 +1,291 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.globe-canvas {
+  cursor: grab;
+  touch-action: pan-y; /* vertical swipes still scroll the page on phones */
+  border-radius: 50%;
+}
+.globe-canvas:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.globe-tip,
+.globe-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.globe-tip {
+  translate: 12px -120%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--text) 40%, transparent);
+}
+.globe-pin {
+  translate: -50% calc(-100% - 12px);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+}
+.globe-controls { position: absolute; right: 0; bottom: 0; display: flex; gap: 0.4rem; }
+.globe-btn-wide { padding: 0 0.85rem; font-size: 0.8125rem; }
+.globe-skeleton {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: radial-gradient(circle at 35% 30%, var(--surface), var(--surface-2));
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-pulse { 50% { opacity: 0.55; } }
+.place-card { min-height: 4.75rem; padding: 0.15rem 0 0.15rem 1rem; border-left: 2px solid var(--accent); }
+
+.travel-hero { color: #fff; }
+.travel-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(5, 12, 12, 0.45), transparent 26%),
+    linear-gradient(to right, rgba(5, 12, 12, 0.62), rgba(5, 12, 12, 0.18) 55%, transparent 80%),
+    linear-gradient(to top, rgba(5, 12, 12, 0.35), transparent 50%);
+}
+  /* On phones the text runs the full width, so darken where it sits instead of the left side */
+@media (max-width: 767px) {
+  .travel-hero-scrim {
+    background:
+      linear-gradient(to bottom, rgba(5, 12, 12, 0.45), transparent 22%),
+      linear-gradient(to top, transparent 8%, rgba(5, 12, 12, 0.55) 30%, rgba(5, 12, 12, 0.5) 62%, transparent 82%);
+  }
+}
+.hero-mist,
+.band-mist { position: absolute; inset: 0; pointer-events: none; }
+.hero-mist { background: linear-gradient(to bottom, transparent 72%, color-mix(in srgb, var(--bg) 70%, transparent) 90%, var(--bg)); }
+.band-mist {
+  background:
+    linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 55%, transparent) 14%, transparent 32%, transparent 68%, color-mix(in srgb, var(--bg) 55%, transparent) 86%, var(--bg)),
+    linear-gradient(rgba(5, 12, 12, 0.4), rgba(5, 12, 12, 0.4));
+}
+@media (max-width: 767px) {
+  .band-mist {
+    background:
+      linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 55%, transparent) 10%, transparent 24%, transparent 76%, color-mix(in srgb, var(--bg) 55%, transparent) 90%, var(--bg)),
+      linear-gradient(rgba(5, 12, 12, 0.52), rgba(5, 12, 12, 0.52));
+  }
+}
+/* Fog: two soft layers drifting past each other, slow enough to feel like weather.
+   No blur filter (a blurred layer that moves is costly on phones, Safari most of
+   all): the gradients are soft on their own. They drift only while on screen:
+   the animation is named only then, because a paused animation still keeps its
+   element on a GPU layer. At rest the fog sits where the drift starts, so it
+   never jumps. */
+.fog {
+  position: absolute;
+  inset: auto -12% 4% -12%;
+  height: 46%;
+  pointer-events: none;
+  opacity: 0.75;
+  background:
+    radial-gradient(38% 50% at 18% 60%, color-mix(in srgb, var(--bg) 58%, transparent), color-mix(in srgb, var(--bg) 22%, transparent) 45%, transparent 75%),
+    radial-gradient(30% 44% at 52% 72%, color-mix(in srgb, var(--bg) 48%, transparent), color-mix(in srgb, var(--bg) 18%, transparent) 45%, transparent 75%),
+    radial-gradient(34% 48% at 84% 58%, color-mix(in srgb, var(--bg) 54%, transparent), color-mix(in srgb, var(--bg) 20%, transparent) 45%, transparent 75%);
+  transform: translateX(-5%);
+  animation: 70s ease-in-out infinite alternate;
+}
+.photo-band[data-live] .fog { animation-name: fog-drift; }
+.fog-b { bottom: 12%; height: 34%; opacity: 0.5; transform: translateX(5%); animation-duration: 95s; animation-direction: alternate-reverse; }
+@media (max-width: 767px) { .fog-b { display: none; } }
+@keyframes fog-drift { from { transform: translate3d(-5%, 0, 0); } to { transform: translate3d(5%, 0, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .fog { animation: none; transform: none; }
+}
+
+.photo-band { color: #fff; }
+.photo-credit {
+  position: absolute;
+  right: max(var(--gutter-r), calc((100% - 1280px) / 2 + var(--gutter-r)));
+  bottom: 14%;
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.photo-credit a { text-decoration: underline; text-underline-offset: 2px; }
+.band-fact { border-top: 1px solid rgba(255, 255, 255, 0.45); padding-top: 1rem; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
+
+/* Rows that swipe: the postcards here, the interests row on the home page.
+   A row starts at the page column and runs off the right edge of the screen,
+   so a card is always peeking in to say there are more. It used to start at
+   the left edge of the screen with the gutter as its padding, and its cards
+   then slid through the gutter, under the route line and its crystal.
+   The row keeps a little padding of its own on the left (--swipe-inset) so the
+   first card's focus ring has room. It is never wider than the gap between
+   cards, so a card that has scrolled away leaves nothing behind. */
+.swipe-frame { position: relative; }
+  /* Mist over that padding: a card leaving on the left fades into the page
+     instead of meeting a hard edge. A gradient of the page color, not a mask
+     on the row (a mask is redrawn on every frame the row moves). It only
+     covers the padding, which is empty until a card passes through it, and
+     it clears before the last 7px, where a card's focus ring sits. */
+@media (min-width: 768px) {
+  .swipe-frame::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: calc(max(0px, (100% - 1280px) / 2) + var(--gutter-l) - var(--swipe-inset));
+    width: var(--swipe-inset);
+    pointer-events: none;
+    background: linear-gradient(to right, var(--bg), color-mix(in srgb, var(--bg) 0%, transparent) calc(100% - 7px));
+  }
+}
+.swipe-arrows { display: flex; gap: 0.5rem; }
+/* An arrow with nowhere left to go. It stays focusable: a disabled button
+   would drop the keyboard's place the moment the row reached its end. */
+.swipe-arrows .globe-btn[aria-disabled='true'] { opacity: 0.4; pointer-events: none; }
+@media (hover: none) and (pointer: coarse) { .swipe-arrows { display: none; } }
+.postcard-photo {
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--r-photo);
+  background: var(--surface-2);
+  box-shadow: 0 18px 40px -26px color-mix(in srgb, var(--text) 60%, transparent);
+}
+
+.heritage-photo { overflow: hidden; border-radius: var(--r-photo); background: var(--surface-2); }
+.heritage-photo img { transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
+.heritage-photo:hover img { transform: scale(1.03); }
+
+.school-card {
+  position: absolute;
+  left: -0.5rem;
+  bottom: 0;
+  width: min(300px, 78%);
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  background: var(--surface);
+  box-shadow: 0 24px 50px -28px color-mix(in srgb, var(--text) 55%, transparent);
+}
+@media (min-width: 1024px) { .school-card { left: -2.5rem; } }
+.jali-pattern { position: absolute; inset: 0; display: block; color: var(--accent); opacity: 0.08; }
+html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
+.jali-fade { position: absolute; left: 0; right: 0; height: 18%; }
+.jali-fade-top { top: 0; background: linear-gradient(var(--bg), color-mix(in srgb, var(--bg) 0%, transparent)); }
+.jali-fade-bottom { bottom: 0; background: linear-gradient(color-mix(in srgb, var(--bg) 0%, transparent), var(--bg)); }
+.peace-gu {
+  margin: 0;
+  font-size: clamp(1.45rem, 1rem + 1.7vw, 2.35rem);
+  font-weight: 560;
+  line-height: 1.38;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-wrap: balance;
+}
+.peace-en {
+  margin: 1.4rem auto 0;
+  max-width: 44ch;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--text-body);
+  text-wrap: balance;
+}
+.peace-ref { padding: 0 0.15em; color: var(--accent-text); font-weight: 600; text-decoration: none; }
+.peace-ref:hover { text-decoration: underline; }
+.peace-note { margin: 2rem auto 0; max-width: 60ch; font-size: 0.875rem; line-height: 1.6; color: var(--muted); }
+/* The photo drifts and the glow breathes only while the section is on screen
+   (the animations are named only then), so they hold no GPU layers and wake
+   nothing while you are elsewhere on the page. Each rests on its first frame. */
+.peace-photo { transform: scale(1.08); animation: 40s ease-in-out infinite alternate; }
+.peace[data-live] .peace-photo { animation-name: peace-drift; }
+@keyframes peace-drift { from { transform: scale(1.08) translate(0, 0); } to { transform: scale(1.16) translate(-1.5%, -1%); } }
+.peace-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, var(--bg), rgba(6, 6, 12, 0.55) 16%, rgba(6, 6, 12, 0.72) 50%, rgba(6, 6, 12, 0.55) 84%, var(--bg));
+}
+.peace-glow {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: min(900px, 120vw);
+  aspect-ratio: 1.6;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, rgba(255, 196, 110, 0.22), rgba(255, 160, 70, 0.08) 55%, transparent);
+  opacity: 0.75;
+  animation: 7s ease-in-out infinite;
+}
+.peace[data-live] .peace-glow { animation-name: peace-breathe; }
+@keyframes peace-breathe { 0%, 100% { opacity: 0.75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+.peace-rule { display: block; width: 72px; height: 2px; margin: 2rem auto 2.25rem; background: linear-gradient(90deg, transparent, #ffd27a, transparent); }
+.peace .peace-gu { color: #ffffff; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45); }
+.peace .peace-en { color: rgba(255, 255, 255, 0.9); }
+.peace .peace-note { color: rgba(255, 255, 255, 0.72); }
+.peace .peace-ref { color: #ffd27a; }
+.peace-listen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 0.55rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 210, 122, 0.55);
+  color: #ffe9bf;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: rgba(10, 8, 6, 0.35);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.peace-listen:hover { background: rgba(255, 210, 122, 0.12); border-color: #ffd27a; }
+.peace-listen[aria-pressed='true'] { background: rgba(255, 210, 122, 0.18); }
+.peace-listen:focus-visible { outline: 2px solid #ffd27a; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .peace-photo, .peace-glow { animation: none; } .peace-glow { opacity: 1; } }
+.heritage-zoom { position: relative; display: block; overflow: hidden; padding: 0; text-align: left; cursor: zoom-in; }
+.heritage-zoom-icon { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: rgba(8, 9, 12, 0.6); color: #ffffff; opacity: 0; transition: opacity 0.2s ease; }
+.heritage-zoom:hover .heritage-zoom-icon,
+.heritage-zoom:focus-visible .heritage-zoom-icon { opacity: 1; }
+.heritage-zoom:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.temple-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
+.akd-stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--r-photo); background: #10131a; box-shadow: var(--shadow-card); outline: none; touch-action: pan-y; }
+.akd-stage:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+@media (max-width: 639px) { .akd-stage { aspect-ratio: 4 / 5; } }
+.akd-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease; }
+.akd-slide[data-on] { opacity: 1; z-index: 1; }
+.akd-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* no fill: the drift ends where the photo rests, and an animation that holds
+   its last frame keeps the photo (and the text over it) on GPU layers for good */
+.akd-slide[data-on] .akd-img { animation: akd-drift 14s ease-out; }
+@keyframes akd-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
+.akd-scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(6, 8, 12, 0.78), rgba(6, 8, 12, 0.25) 38%, transparent 62%); }
+.akd-text { position: absolute; left: clamp(1rem, 0.6rem + 2vw, 2rem); right: clamp(4rem, 3rem + 4vw, 7rem); bottom: clamp(1rem, 0.6rem + 1.6vw, 1.75rem); z-index: 3; color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4); }
+.akd-time { font: 600 0.75rem/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #ffe2a8; }
+.akd-caption { margin-top: 0.4rem; max-width: 48ch; font-size: clamp(1rem, 0.9rem + 0.45vw, 1.3rem); line-height: 1.4; font-weight: 500; }
+.akd-arrow { position: absolute; top: 50%; z-index: 3; display: grid; place-items: center; width: 44px; height: 44px; translate: 0 -50%; border-radius: 999px; background: rgba(8, 10, 14, 0.45); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); transition: background-color 0.2s ease; }
+.akd-arrow:hover { background: rgba(8, 10, 14, 0.7); }
+.akd-prev { left: 12px; }
+.akd-next { right: 12px; }
+.akd-zoom { position: absolute; top: 12px; right: 12px; z-index: 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: rgba(8, 10, 14, 0.45); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); }
+.akd-bell-ring { position: absolute; left: 50%; top: 40%; z-index: 3; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 3px solid rgba(255, 226, 168, 0.9); border-radius: 999px; opacity: 0; pointer-events: none; }
+.akd-bell-ring[data-on] { animation: akd-ring 1.6s ease-out; }
+@keyframes akd-ring { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(3); opacity: 0; } }
+.akd-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.9rem 1.5rem; margin-top: 1rem; }
+.akd-times { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.akd-times button { min-height: 2.25rem; padding: 0.3rem 0.8rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-body); font-size: 0.85rem; font-weight: 600; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+.akd-times button:hover { border-color: var(--border-strong); color: var(--text); }
+.akd-times button[aria-current] { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+@media (max-width: 639px) { .akd-arrow { width: 36px; height: 36px; top: 42%; } .akd-prev { left: 8px; } .akd-next { right: 8px; } .akd-text { right: 1rem; } }
+@media (prefers-reduced-motion: reduce) { .akd-slide { transition-duration: 0.01s; } .akd-slide[data-on] .akd-img, .akd-bell-ring[data-on] { animation: none; } }
+.akd-places { display: inline-flex; gap: 0.25rem; margin-bottom: 0.85rem; padding: 0.25rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.akd-places button { min-height: 2.25rem; padding: 0.3rem 1rem; border-radius: 999px; color: var(--text-body); font-size: 0.9rem; font-weight: 600; transition: background-color 0.2s ease, color 0.2s ease; }
+.akd-places button:hover { color: var(--text); }
+.akd-places button[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); }

@@ -13,6 +13,7 @@ import {
   PACKS,
   PACK_R,
   PERCHES,
+  PHOTO,
   PLANTERS,
   RING_R,
   ROOF_PLANT,
@@ -24,12 +25,15 @@ import {
   DOOR_R,
   HERO,
   HERO_R,
+  LAP,
   LAWN_W,
   PLACES,
   PORTAL,
   SOLIDS,
   START,
+  SUIT,
   SWING,
+  TRICK,
   aimWeb,
   behindYaw,
   camRoom,
@@ -37,7 +41,9 @@ import {
   collide,
   findPerch,
   floorAt,
+  lapAt,
   linesFor,
+  nearArmour,
   nearCast,
   nearPack,
   nearestEdge,
@@ -46,12 +52,17 @@ import {
   outside,
   pastAnchor,
   progress,
+  readLap,
   readSettings,
+  recordLap,
   solidById,
   stepHero,
   stepTour,
   throughRing,
   newTour,
+  newPhoto,
+  photoView,
+  readPhoto,
   underPortal,
   walkable,
 } from './rules';
@@ -1017,5 +1028,269 @@ describe('The compound, the world: the settings', () => {
     expect(run(0)).toBeLessThan(0.12);
     expect(run(1)).toBeGreaterThan(0.4);
     expect(run(2)).toBeGreaterThan(run(1));
+  });
+});
+
+describe('The compound, the world: air tricks', () => {
+  // flung off a web, high over the middle of the lawn, going north
+  const flung = (over = {}) => ({ ...newHero(START), x: 60 * 1.6, z: 52 * 1.6, y: 20, vx: 0, vy: 6, vz: -14, mode: 'air', fly: true, airT: 0.5, face: Math.PI / 2, ...over });
+
+  it('flips on a press in free flight, once at a time, and not on the ground, on a web, or in a hop', () => {
+    let h = stepHero(flung(), { trick: true }, DT);
+    expect(h.trick?.kind).toBe('flip');
+    expect(h.ev.map((e) => e.type)).toContain('trick');
+    expect(h.combo).toBe(1);
+    expect(h.style).toBe(TRICK.points.flip);
+    // another press mid-trick does nothing
+    h = stepHero(h, { trick: true }, DT);
+    expect(h.combo).toBe(1);
+    // on the ground: nothing
+    const ground = stepHero(newHero(START), { trick: true }, DT);
+    expect(ground.trick).toBe(null);
+    // on a web: nothing
+    const onWeb = stepHero(stepHero(flung({ vy: -4 }), { web: true }, DT), { web: true, trick: true }, DT);
+    expect(onWeb.mode).toBe('swing');
+    expect(onWeb.trick).toBe(null);
+    // a hop from the ground isn't a flight
+    const hop = stepHero(stepHero(newHero(START), { jump: true }, DT), { trick: true }, DT);
+    expect(hop.trick).toBe(null);
+  });
+
+  it('a backflip with the stick pulled back, a twist with it to a side', () => {
+    const back = stepHero(flung(), { trick: true, x: 0, z: 1 }, DT);
+    expect(back.trick?.kind).toBe('back');
+    const twist = stepHero(flung(), { trick: true, x: 1, z: 0 }, DT);
+    expect(twist.trick?.kind).toBe('twist');
+    const other = stepHero(flung(), { trick: true, x: -1, z: 0 }, DT);
+    expect(other.trick?.kind).toBe('twist');
+    expect(other.trick.dir).toBe(-twist.trick.dir);
+  });
+
+  it('counts tricks in a row for more each, with a perfect release among them, and banks them on landing', () => {
+    // east over the open lawn, from high up
+    let h = flung({ y: 40, vy: 10, vx: 14, vz: 0, face: 0 });
+    const kinds = [];
+    let banked = null;
+    for (let t = 0; t < 8 && !banked; t += DT) {
+      // a press whenever one can be done, while there's height to finish it
+      h = stepHero(h, { trick: h.y > 20 }, DT);
+      for (const e of h.ev) {
+        if (e.type === 'trick') kinds.push(e.combo);
+        if (e.type === 'bank') banked = e;
+        expect(e.type).not.toBe('bail');
+      }
+    }
+    expect(kinds.length).toBeGreaterThan(2);
+    expect(kinds).toEqual(kinds.map((_, i) => i + 1));
+    expect(banked).not.toBe(null);
+    expect(banked.style).toBe(kinds.reduce((s, c) => s + TRICK.points.flip * c, 0));
+    expect(h.style).toBe(0);
+    expect(h.combo).toBe(0);
+    // a perfect release adds to the flight's style, after a trick
+    const a = [START.x, 30, START.z - 40];
+    const swing = { ...newHero(START), x: a[0], z: a[2] - 6, y: 12, vx: 0, vy: 9, vz: -22, mode: 'swing', fly: true, style: 100, combo: 1, web: { a, at: a, len: 20 } };
+    const after = stepHero(swing, { web: false }, DT);
+    expect(after.style).toBe(100 + TRICK.points.perfect * 2);
+  });
+
+  it('landing mid-trick is a bail: the style is lost and he stumbles', () => {
+    // low, coming down fast: the trick won't be done before he lands
+    let h = flung({ y: 3, vy: -8 });
+    h = stepHero(h, { trick: true }, DT);
+    expect(h.trick).not.toBe(null);
+    let bail = null;
+    for (let t = 0; t < 2 && h.mode !== 'ground'; t += DT) {
+      h = stepHero(h, {}, DT);
+      bail ??= h.ev.find((e) => e.type === 'bail') ?? null;
+    }
+    expect(h.mode).toBe('ground');
+    expect(bail).not.toBe(null);
+    expect(bail.style).toBe(TRICK.points.flip);
+    expect(h.style).toBe(0);
+    expect(h.land).toBeGreaterThan(0);
+    expect(h.ev.map((e) => e.type)).not.toContain('bank');
+  });
+
+  it('a web caught mid-trick ends it without a bail, and the style carries on', () => {
+    // by the main building, where a web catches
+    let h = stepHero(flung({ z: 75, y: 18, vy: 2 }), { trick: true }, DT);
+    expect(h.trick).not.toBe(null);
+    h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    expect(h.trick).toBe(null);
+    expect(h.style).toBe(TRICK.points.flip);
+  });
+});
+
+describe('The compound, the world: the Iron Man armour', () => {
+  const atPlinth = () => newHero({ x: ARMOUR.x + 1.5, z: ARMOUR.z + 1, face: 0 });
+
+  it('suits up at the plinth and nowhere else, and lifts off', () => {
+    expect(nearArmour(ARMOUR.x + 1, ARMOUR.z)).toBe(true);
+    expect(nearArmour(START.x, START.z)).toBe(false);
+    const far = stepHero(newHero(START), { suit: true }, DT);
+    expect(far.mode).toBe('ground');
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    expect(h.mode).toBe('suit');
+    expect(h.ev.map((e) => e.type)).toContain('suitup');
+    h = walk(h, { web: true }, 1.5);
+    expect(h.mode).toBe('suit');
+    expect(h.y).toBeGreaterThan(6);
+    // it coasts to a stop and holds its height idle, and comes down with Shift, never under the ground
+    const held = walk(h, {}, 1.5);
+    const held2 = walk(held, {}, 1);
+    expect(Math.abs(held2.y - held.y)).toBeLessThan(0.2);
+    const down = walk(h, { run: true }, 3);
+    expect(down.y).toBeGreaterThanOrEqual(0);
+    expect(down.mode).toBe('suit');
+  });
+
+  it('flies where the stick points, faster than he can swing, and no faster than it goes', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    // over the middle of the lawn, twenty metres up, then east over the open lawn
+    h = { ...h, x: 60 * 1.6, z: 52 * 1.6, y: 20, vy: 0 };
+    let top = 0;
+    for (let t = 0; t < 2.5; t += DT) {
+      h = stepHero(h, { x: 1, z: 0 }, DT);
+      top = Math.max(top, Math.hypot(h.vx, h.vz));
+    }
+    expect(top).toBeGreaterThan(SWING.maxSpeed * 0.9);
+    expect(top).toBeLessThanOrEqual(SUIT.top + 0.01);
+    expect(Math.cos(h.face)).toBeGreaterThan(0.9); // facing east
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+    // and stops when the stick is let go
+    h = walk(h, {}, 3);
+    expect(Math.hypot(h.vx, h.vz)).toBeLessThan(1);
+  });
+
+  it('can’t fly through a building, nor off the lawn, and rides up over a roof', () => {
+    const prow = solidById('prow');
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const inward = { x: -Math.cos(widow.face), z: Math.sin(widow.face) };
+    // in the suit at the main building's door, driven into it
+    let h = { ...stepHero(atPlinth(), { suit: true }, DT), x: widow.x, z: widow.z, y: 3, vx: 0, vz: 0, vy: 0 };
+    for (let t = 0; t < 3; t += DT) {
+      h = stepHero(h, inward, DT);
+      expect(inPoly(h.x, h.z, prow.foot)).toBe(false);
+    }
+    expect(h.mode).toBe('suit');
+    // up its face, in over it, and down onto its roof
+    h = walk(h, { web: true }, 3);
+    expect(h.y).toBeGreaterThan(prow.h + 2);
+    h = walk(h, inward, 0.5);
+    h = walk(h, { run: true }, 2.5);
+    expect(inPoly(h.x, h.z, prow.foot)).toBe(true);
+    expect(h.y).toBeGreaterThanOrEqual(prow.h - 0.01);
+    expect(h.mode).toBe('suit');
+    // and the lawn's edge holds
+    h = { ...h, x: 20, z: 20, y: 5 };
+    h = walk(h, { x: -1, z: -1 }, 4);
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+  });
+
+  it('steps out of it anywhere, and he’s Spider-Man in the air, who can web', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    h = walk(h, { web: true }, 1.5);
+    const high = h.y;
+    h = stepHero(h, { suit: true }, DT);
+    expect(h.mode).toBe('air');
+    expect(h.ev.map((e) => e.type)).toContain('suitoff');
+    expect(h.y).toBeCloseTo(high, 0);
+    // falling, until he webs or lands
+    for (let t = 0; t < 8 && h.mode === 'air'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    // no web, no tricks, no zips in the armour
+    let s = walk(stepHero(atPlinth(), { suit: true }, DT), { web: true }, 1);
+    s = stepHero(s, { trick: true, zip: true, perch: true }, DT);
+    expect(s.mode).toBe('suit');
+    expect(s.trick).toBe(null);
+    expect(s.web).toBe(null);
+  });
+});
+
+describe('The compound, the world: the best lap, as a ghost', () => {
+  it('records him every tenth of a second, to a decimal, and no more than two minutes', () => {
+    let rec = [];
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let t = 0;
+    for (let i = 0; i < 180; i++) {
+      h = stepHero(h, pilot(h, t), DT);
+      t += DT;
+      rec = recordLap(rec, h, t);
+    }
+    expect(rec.length).toBeGreaterThanOrEqual(29);
+    expect(rec.length).toBeLessThanOrEqual(31);
+    for (const p of rec) {
+      expect(p.length).toBe(4);
+      for (const v of p) expect(Math.abs(v * 100 - Math.round(v * 100))).toBeLessThan(1e-6);
+    }
+    expect(Math.hypot(rec.at(-1)[0] - h.x, rec.at(-1)[2] - h.z)).toBeLessThan(0.1 + HERO.run * LAP.every);
+    // and the same recording back when it isn't time yet
+    const same = recordLap(rec, h, t);
+    expect(same).toBe(rec);
+    const full = Array.from({ length: LAP.max }, () => [0, 0, 0, 0]);
+    expect(recordLap(full, h, 999)).toBe(full);
+  });
+
+  it('plays the ghost back between the samples, held at the ends, with its speed', () => {
+    const rec = [
+      [0, 0, 0, 0],
+      [4, 1, 0, 0.5],
+      [8, 1, 0, 1],
+    ];
+    expect(lapAt(rec, -1)).toMatchObject({ x: 0, y: 0, z: 0, face: 0 });
+    const mid = lapAt(rec, 0.05);
+    expect(mid.x).toBeCloseTo(2, 5);
+    expect(mid.y).toBeCloseTo(0.5, 5);
+    expect(mid.face).toBeCloseTo(0.25, 5);
+    expect(mid.speed).toBeCloseTo(40, 5);
+    expect(lapAt(rec, 0.1)).toMatchObject({ x: 4, y: 1 });
+    expect(lapAt(rec, 5)).toMatchObject({ x: 8, y: 1, z: 0, face: 1 });
+    expect(lapAt(null, 1)).toBe(null);
+    expect(lapAt([], 1)).toBe(null);
+    // the face goes the short way round
+    const turn = lapAt([[0, 0, 0, 3], [0, 0, 0, -3]], 0.05);
+    expect(Math.abs(turn.face)).toBeGreaterThan(3);
+  });
+
+  it('reads a kept lap back, and nothing else', () => {
+    expect(readLap(null)).toBe(null);
+    expect(readLap([[1, 2, 3, 4]])).toBe(null);
+    expect(readLap([[1, 2, 3], [1, 2, 3]])).toBe(null);
+    expect(readLap([[1, 2, 3, 4], [1, 2, 'x', 4]])).toBe(null);
+    const ok = [[1, 2, 3, 4], [2, 3, 4, 5]];
+    expect(readLap(ok)).toEqual(ok);
+    expect(readLap(Array.from({ length: LAP.max + 5 }, () => [0, 0, 0, 0])).length).toBe(LAP.max);
+  });
+});
+
+describe('The compound, the world: photo mode', () => {
+  it('puts the camera round him where it’s asked, looking at his chest, out on the lawn', () => {
+    const h = newHero(START);
+    const v = photoView(h, { yaw: 0.7, pitch: 0.3, dist: 6 });
+    expect(Math.hypot(v.at[0] - v.look[0], v.at[1] - v.look[1], v.at[2] - v.look[2])).toBeCloseTo(6, 3);
+    expect(v.look).toEqual([h.x, h.y + 1.1, h.z]);
+    expect(v.at[1]).toBeGreaterThan(v.look[1]);
+  });
+
+  it('never goes into a building, nor under the ground', () => {
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const h = newHero(widow);
+    // looking back from inside the main building
+    const inward = Math.atan2(-Math.cos(widow.face), Math.sin(widow.face));
+    for (const yaw of [inward, inward + 0.4, inward - 0.4]) {
+      const v = photoView(h, { yaw, pitch: 0.1, dist: 20 });
+      expect(inBuilding(v.at[0], v.at[2]) && v.at[1] < 30).toBe(false);
+    }
+    // from under his feet
+    const low = photoView(newHero(START), { yaw: 0, pitch: PHOTO.pitch[0], dist: PHOTO.dist[1] });
+    expect(low.at[1]).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it('keeps its numbers in range', () => {
+    expect(readPhoto(null)).toEqual(newPhoto(0, 0.25));
+    const r = readPhoto({ yaw: 2, pitch: 9, dist: 0, fov: 500 });
+    expect(r).toEqual({ yaw: 2, pitch: PHOTO.pitch[1], dist: PHOTO.dist[0], fov: PHOTO.fov[1] });
+    expect(newPhoto(1, -3).pitch).toBe(PHOTO.pitch[0]);
   });
 });

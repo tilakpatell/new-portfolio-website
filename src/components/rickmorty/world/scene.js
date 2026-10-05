@@ -17,8 +17,6 @@
 // { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createStage, disposeTree } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
@@ -37,6 +35,7 @@ import { buildBasement } from './interiors/basement';
 import { buildMindBlowers } from './interiors/mindblowers';
 import { buildOval } from './interiors/oval';
 import { buildDiner } from './interiors/diner';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 export { kitMaterials };
 
@@ -104,7 +103,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   const mats = kitMaterials(renderer);
 
   // ── the models and the cast ──
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
   const cast = createMeshyCast({ cull: true });
   // each of the cast loaded once, however many builders ask, at the same time

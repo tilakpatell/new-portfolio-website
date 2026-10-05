@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
+import { createGhosts } from '../middleearth/towns/ghosts';
 import { device } from '../../lib/device';
 import { H as SCREEN_H, W as SCREEN_W } from '../../stages/gb/font';
 import { newConsole, renderConsole, stepConsole } from '../../stages/gb/console';
@@ -30,6 +31,7 @@ import {
   PIPES,
   SIGNS,
   TOWER,
+  VILLAGERS,
   W,
   WALKERS,
   WALKER_BACK,
@@ -144,7 +146,7 @@ function buildTerrain() {
       col.push(c.r, c.g, c.b);
     }
   };
-  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, pipe: 0.64, sign: 0.64 };
+  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, pipe: 0.64, sign: 0.64, lighthouse: 0.99, mill: 0.64 };
   const SIDE = { sand: 0.82, path: 0.6 };
   const BOTTOM = -1.4;
   for (let iz = 0; iz < H; iz++) {
@@ -541,8 +543,12 @@ function buildWalker() {
   return { group: g, feet };
 }
 
-// the hero: a little lad in a cap, all boxes, who swings his arms and legs
-function buildHero() {
+// An islander, all boxes, who swings his arms and legs: the hero in his cap,
+// or a villager in their own clothes. `look`: cap (a peaked cap, forwards or
+// backwards), hat (a brimmed one), bun (hair up), and the shades of body,
+// legs and skin; `scale` for a kid.
+function buildFigure(look = {}) {
+  const { cap = true, back = false, hat = false, bun = false, body: bodyShade = 0.55, legs = 0.16, skin = 0.93, scale = 1 } = look;
   const g = new THREE.Group();
   const part = (w, h, d, v, x, y, z) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lambert(v));
@@ -557,30 +563,224 @@ function buildHero() {
     pivot.add(m);
     return pivot;
   };
-  const legL = limb(0.14, 0.32, 0.16, 0.16, -0.1, 0.32);
-  const legR = limb(0.14, 0.32, 0.16, 0.16, 0.1, 0.32);
-  const body = part(0.4, 0.32, 0.28, 0.55, 0, 0.47, 0);
-  const armL = limb(0.1, 0.28, 0.12, 0.55, -0.26, 0.6);
-  const armR = limb(0.1, 0.28, 0.12, 0.55, 0.26, 0.6);
+  const legL = limb(0.14, 0.32, 0.16, legs, -0.1, 0.32);
+  const legR = limb(0.14, 0.32, 0.16, legs, 0.1, 0.32);
+  const body = part(0.4, 0.32, 0.28, bodyShade, 0, 0.47, 0);
+  const armL = limb(0.1, 0.28, 0.12, bodyShade, -0.26, 0.6);
+  const armR = limb(0.1, 0.28, 0.12, bodyShade, 0.26, 0.6);
   const head = new THREE.Group();
   head.position.y = 0.78;
-  head.add(part(0.36, 0.3, 0.32, 0.93, 0, 0, 0));
-  head.add(part(0.4, 0.11, 0.36, 0.1, 0, 0.17, -0.01)); // the cap
-  head.add(part(0.3, 0.04, 0.16, 0.1, 0, 0.13, 0.22)); // its peak
+  head.add(part(0.36, 0.3, 0.32, skin, 0, 0, 0));
+  if (cap) {
+    head.add(part(0.4, 0.11, 0.36, 0.1, 0, 0.17, -0.01)); // the cap
+    head.add(part(0.3, 0.04, 0.16, 0.1, 0, 0.13, back ? -0.22 : 0.22)); // its peak
+  } else if (hat) {
+    head.add(part(0.56, 0.04, 0.52, 0.3, 0, 0.14, 0)); // the brim
+    head.add(part(0.3, 0.14, 0.28, 0.3, 0, 0.22, 0)); // the crown
+  } else if (bun) {
+    head.add(part(0.38, 0.1, 0.34, 0.82, 0, 0.17, -0.01)); // the hair
+    head.add(part(0.16, 0.12, 0.16, 0.82, 0, 0.26, -0.08)); // the bun
+  } else {
+    head.add(part(0.38, 0.08, 0.34, 0.2, 0, 0.17, -0.01)); // hair
+  }
   head.add(part(0.05, 0.08, 0.02, 0.04, -0.08, 0.0, 0.165));
   head.add(part(0.05, 0.08, 0.02, 0.04, 0.08, 0.0, 0.165));
   g.add(legL, legR, body, armL, armR, head);
-  // seen through whatever's in front of him: the same shapes, drawn dark,
-  // only where they're hidden
+  g.scale.setScalar(scale);
+  return { group: g, legL, legR, armL, armR, head, body, scale };
+}
+
+// walking: legs and arms swung by `phase`, as far as `sp` (0 to 1) says;
+// standing: everything hanging, with a little breathing
+function poseWalk(f, phase, sp, now = 0) {
+  const swing = Math.sin(phase) * 0.75 * sp;
+  f.legL.rotation.x = swing;
+  f.legR.rotation.x = -swing;
+  f.armL.rotation.x = -swing * 0.9;
+  f.armR.rotation.x = swing * 0.9;
+  f.armR.rotation.z = 0;
+  f.body.position.y = 0.47 + Math.abs(Math.sin(phase)) * 0.03 * sp + (sp < 0.05 ? Math.sin(now * 2.2) * 0.008 : 0);
+}
+
+// the hero: the lad in the cap, seen through whatever's in front of him
+// (the same shapes, drawn dark, only where they're hidden)
+function buildHero() {
+  const f = buildFigure();
   const xray = new THREE.MeshBasicMaterial({ color: 0x000000, depthFunc: THREE.GreaterDepth, depthWrite: false });
   const solid = [];
-  g.traverse((o) => o.isMesh && solid.push(o));
+  f.group.traverse((o) => o.isMesh && solid.push(o));
   for (const o of solid) {
     const ghost = new THREE.Mesh(o.geometry, xray);
     ghost.renderOrder = 10;
     o.add(ghost);
   }
-  return { group: g, legL, legR, armL, armR, head, body };
+  return f;
+}
+
+// what each villager looks like
+const LOOKS = {
+  nana: { cap: false, bun: true, body: 0.74, legs: 0.74, skin: 0.9 },
+  fisher: { cap: false, hat: true, body: 0.3, legs: 0.36, skin: 0.88 },
+  gardener: { cap: true, body: 0.46, legs: 0.3, skin: 0.9 },
+  kid: { cap: true, back: true, body: 0.86, legs: 0.22, skin: 0.94, scale: 0.78 },
+};
+
+// the lighthouse on the islet: a banded tower, its lamp, and a beam that
+// sweeps round over the sea
+function buildLighthouse(ix, iz) {
+  const g = new THREE.Group();
+  g.position.set(ix + 0.5, 0, iz + 0.5);
+  const bands = pixels(16, (c, n) => {
+    c.fillStyle = hex(0.96);
+    c.fillRect(0, 0, n, n);
+    c.fillStyle = hex(0.3);
+    c.fillRect(0, 4, n, 4);
+    c.fillRect(0, 12, n, 4);
+  });
+  bands.wrapS = bands.wrapT = THREE.RepeatWrapping;
+  bands.repeat.set(1, 2);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.44, 3.4, 12).translate(0, 1.7, 0), new THREE.MeshLambertMaterial({ map: bands }));
+  const gallery = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.5, 0.14, 12).translate(0, 3.45, 0), lambert(0.25));
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 10).translate(0, 3.77, 0), lambert(1, { emissive: grey(0.6) }));
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.45, 10).translate(0, 4.24, 0), lambert(0.2));
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.06).translate(0, 0.25, 0.43), lambert(0.1));
+  for (const m of [tower, gallery, lamp, cap, door]) {
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  // the beam: a long cone from the lamp, turning, tilted down a little to
+  // play over the water
+  const beam = new THREE.Group();
+  beam.position.y = 3.8;
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1, 18, 10, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 9), new THREE.MeshBasicMaterial({ color: grey(0.98), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  cone.rotation.x = 0.1;
+  cone.renderOrder = 5;
+  beam.add(cone);
+  g.add(beam);
+  return {
+    group: g,
+    tick(now) {
+      beam.rotation.y = now * 0.7;
+    },
+  };
+}
+
+// the windmill on the plateau: a tapered body, a cap, and four sails
+// turning on its south face
+function buildWindmill(ix, iz, y) {
+  const g = new THREE.Group();
+  g.position.set(ix + 0.5, y, iz + 0.5);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.5, 2.4, 8).translate(0, 1.2, 0), lambert(0.78, { flatShading: true }));
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.6, 8).translate(0, 2.7, 0), lambert(0.22, { flatShading: true }));
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.06).translate(0, 0.25, 0.49), lambert(0.1));
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6).rotateX(Math.PI / 2).translate(0, 2.2, 0.5), lambert(0.3));
+  for (const m of [body, cap, door, axle]) {
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  const sails = new THREE.Group();
+  sails.position.set(0, 2.2, 0.72);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8).rotateX(Math.PI / 2), lambert(0.2));
+  sails.add(hub);
+  for (let i = 0; i < 4; i++) {
+    const arm = new THREE.Group();
+    arm.rotation.z = (i * Math.PI) / 2;
+    const spar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 0.05).translate(0, 0.57, 0), lambert(0.3));
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.85, 0.02).translate(0.17, 0.68, 0), lambert(0.95));
+    spar.castShadow = cloth.castShadow = true;
+    arm.add(spar, cloth);
+    sails.add(arm);
+  }
+  g.add(sails);
+  return {
+    group: g,
+    tick(now) {
+      sails.rotation.z = -now * 0.9;
+    },
+  };
+}
+
+// gulls over the dock: three of them wheeling round, wings beating
+function buildGulls(rand) {
+  const group = new THREE.Group();
+  const white = lambert(0.97);
+  const dark = lambert(0.25);
+  const wingGeo = new THREE.BoxGeometry(0.5, 0.03, 0.16).translate(-0.25, 0, 0);
+  const list = [];
+  for (let i = 0; i < 3; i++) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.11, 0.4), white);
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.1), dark);
+    beak.position.set(0, 0, 0.24);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.1), dark);
+    tail.position.set(0, 0.02, -0.22);
+    const wL = new THREE.Group();
+    wL.position.x = -0.06;
+    wL.add(new THREE.Mesh(wingGeo, white));
+    const wR = new THREE.Group();
+    wR.position.x = 0.06;
+    wR.rotation.y = Math.PI;
+    wR.add(new THREE.Mesh(wingGeo, white));
+    g.add(body, beak, tail, wL, wR);
+    g.traverse((o) => o.isMesh && (o.castShadow = true));
+    g.userData = { cx: 27 + rand() * 4, cz: 35 + rand() * 3, r: 3 + rand() * 3.5, y: 3.2 + rand() * 2.2, speed: 0.45 + rand() * 0.3, phase: rand() * 6.3, wL, wR };
+    list.push(g);
+    group.add(g);
+  }
+  return {
+    group,
+    tick(now) {
+      for (const g of list) {
+        const { cx, cz, r, y, speed, phase, wL, wR } = g.userData;
+        const ang = phase + now * speed;
+        g.position.set(cx + Math.cos(ang) * r, y + Math.sin(now * 1.3 + phase) * 0.35, cz + Math.sin(ang) * r);
+        g.rotation.y = Math.atan2(-Math.sin(ang), Math.cos(ang));
+        g.rotation.z = -0.25; // banked into the turn
+        const flap = Math.sin(now * 6 + phase) * 0.55;
+        wL.rotation.z = flap;
+        wR.rotation.z = flap;
+      }
+    },
+  };
+}
+
+// butterflies over the long grass, wandering and fluttering
+function buildButterflies(rand) {
+  const spots = [];
+  for (let iz = 0; iz < H; iz++) for (let ix = 0; ix < W; ix++) if (legend(MAP[iz][ix]).kind === 'long') spots.push([ix + 0.5, iz + 0.5]);
+  const group = new THREE.Group();
+  const wingGeo = new THREE.PlaneGeometry(0.16, 0.13).rotateX(-Math.PI / 2).translate(-0.08, 0, 0);
+  const mat = new THREE.MeshBasicMaterial({ color: grey(0.98), side: THREE.DoubleSide });
+  const list = [];
+  for (let i = 0; i < 7; i++) {
+    const [ox, oz] = spots[Math.floor(rand() * spots.length)];
+    const g = new THREE.Group();
+    const wL = new THREE.Group();
+    wL.add(new THREE.Mesh(wingGeo, mat));
+    const wR = new THREE.Group();
+    wR.rotation.y = Math.PI;
+    wR.add(new THREE.Mesh(wingGeo, mat));
+    g.add(wL, wR);
+    g.userData = { ox, oz, ax: 1 + rand() * 1.5, az: 1 + rand() * 1.5, fx: 0.25 + rand() * 0.3, fz: 0.2 + rand() * 0.3, phase: rand() * 6.3, wL, wR };
+    list.push(g);
+    group.add(g);
+  }
+  return {
+    group,
+    tick(now) {
+      for (const g of list) {
+        const { ox, oz, ax, az, fx, fz, phase, wL, wR } = g.userData;
+        const x = ox + Math.sin(now * fx + phase) * ax;
+        const z = oz + Math.cos(now * fz + phase * 1.7) * az;
+        const y = 0.55 + Math.sin(now * 2.6 + phase) * 0.18 + Math.abs(Math.sin(now * 14 + phase)) * 0.05;
+        g.rotation.y = Math.atan2(x - g.position.x, z - g.position.z);
+        g.position.set(x, y, z);
+        const flap = 0.2 + Math.abs(Math.sin(now * 14 + phase)) * 1.1;
+        wL.rotation.z = flap;
+        wR.rotation.z = -flap;
+      }
+    },
+  };
 }
 
 // the giant Game Boy in the square, its screen the console's own demo
@@ -855,6 +1055,39 @@ export function createDotMatrix(canvas, { onLost } = {}) {
 
   const hero = buildHero();
   scene.add(hero.group);
+  const folk = new Map();
+  for (const v of VILLAGERS) {
+    const f = buildFigure(LOOKS[v.id]);
+    scene.add(f.group);
+    folk.set(v.id, { ...f, phase: 0 });
+  }
+  // the other islanders online, as pale ghosts (the towns' ghosts, in this
+  // island's figure; their names are the component's, over the canvas)
+  const ghosts = createGhosts({
+    height: () => 0,
+    make: () => {
+      const f = buildFigure({ cap: true, body: 0.7, legs: 0.3 });
+      return { group: f.group, top: 1.0, fig: f };
+    },
+    animate: (f, t, p) => poseWalk(f.fig, t * 7, p.moving ? 1 : 0, t),
+    tag: 0.0001,
+    halo: 0.6,
+    snap: 6,
+  });
+  scene.add(ghosts.group);
+  const gulls = buildGulls(rand);
+  scene.add(gulls.group);
+  const landmarks = [];
+  for (let iz = 0; iz < H; iz++) {
+    for (let ix = 0; ix < W; ix++) {
+      const t = legend(MAP[iz][ix]);
+      if (t.kind === 'lighthouse') landmarks.push(buildLighthouse(ix, iz));
+      else if (t.kind === 'mill') landmarks.push(buildWindmill(ix, iz, t.ground));
+    }
+  }
+  for (const l of landmarks) scene.add(l.group);
+  const flutter = buildButterflies(rand);
+  scene.add(flutter.group);
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
   scene.add(blob);
 
@@ -922,6 +1155,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const look = new THREE.Vector3();
   const cam = { x: 0, y: 0, z: 0, ready: false };
   let walkPhase = 0;
+  let idleT = 0;
   let disposed = false;
   let lost = false;
   let warmed = false;
@@ -930,7 +1164,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const render = (state, ms = 16) => {
     if (disposed || gl.lost) return;
     const dt = Math.min(0.05, ms / 1000);
-    const { game, yaw = 0, dist = 12.5, pitch = 0.68 } = state;
+    const { game, yaw = 0, dist = 12.5, pitch = 0.68, travellers = null } = state;
     const t = game.t;
     const h = game.hero;
     const now = performance.now() / 1000;
@@ -940,15 +1174,11 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     hero.group.rotation.y = h.face;
     const sp = Math.min(1, h.moving / 4.6);
     walkPhase += dt * (4 + sp * 8) * (h.ground ? sp : 0);
-    if (h.ground) {
-      const swing = Math.sin(walkPhase) * 0.75 * sp;
-      hero.legL.rotation.x = swing;
-      hero.legR.rotation.x = -swing;
-      hero.armL.rotation.x = -swing * 0.9;
-      hero.armR.rotation.x = swing * 0.9;
-      hero.armR.rotation.z = 0;
-      hero.body.position.y = 0.47 + Math.abs(Math.sin(walkPhase)) * 0.03 * sp;
-    } else {
+    // stood still a while, he has a look round
+    idleT = h.ground && sp < 0.05 ? idleT + dt : 0;
+    hero.head.rotation.y += ((idleT > 2.5 ? Math.sin((idleT - 2.5) * 1.1) * 0.55 : 0) - hero.head.rotation.y) * (1 - Math.exp(-5 * dt));
+    if (h.ground) poseWalk(hero, walkPhase, sp, now);
+    else {
       hero.legL.rotation.x = 0.6;
       hero.legR.rotation.x = -0.35;
       hero.armL.rotation.x = 0.3;
@@ -983,7 +1213,35 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     sea.mat.uniforms.uTime.value = now;
     sea.mat.uniforms.uCam.value.copy(camera.position);
     skyClouds.tick(now);
+    gulls.tick(now);
+    flutter.tick(now);
+    for (const l of landmarks) l.tick(now);
     gameboy.tick(dt);
+    ghosts.update(travellers ?? [], now, dt);
+    // (the towns' ghosts are pale blue, lit and see-through; dithered, that
+    // vanishes against the sand, so here they're a dark grey and nearly
+    // solid, with the rim of light still on their edges and the shimmer)
+    ghosts.group.traverse((o) => {
+      if (!o.isMesh || !o.material.emissive) return; // (the figure's materials; not the ring of light's)
+      if (!o.material.userData.dmg) {
+        o.material.userData.dmg = true;
+        o.material.color.setRGB(0.22, 0.22, 0.22);
+        o.material.emissive.setRGB(0.1, 0.1, 0.1);
+        o.material.emissiveIntensity = 1;
+      }
+      o.material.opacity = Math.min(1, o.material.opacity * 2.3);
+    });
+
+    // the villagers, on their beats, or stood facing the hero
+    for (const v of VILLAGERS) {
+      const f = folk.get(v.id);
+      const st = game.folk[v.id];
+      const moving = !st.stopped && st.wait <= 0;
+      f.phase += dt * (4 + 8 * 0.6) * (moving ? 1 : 0);
+      f.group.position.set(st.x, 0, st.z);
+      f.group.rotation.y = st.face;
+      poseWalk(f, f.phase, moving ? Math.min(1, v.speed / 1.3) : 0, now + v.speed * 10);
+    }
 
     // coins spin; the ones taken are gone
     COINS.forEach((c, i) => {
@@ -1097,6 +1355,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     },
     info: size,
     renderer,
+    ghosts, // (for the QA scripts)
     render,
     resize,
     setPalette: (id) => dither.setPalette(id),
@@ -1123,6 +1382,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       else if (type === 'land' && at) spray(at.x, at.y + 0.05, at.z, 6, { speed: 1.6, up: 0.8, g: 6, life: 0.3, shade: 0.6, size: 0.8 });
       else if (type === 'splash' && at) spray(at.x, WATER + 0.1, at.z, 18, { speed: 1.8, up: 5, g: 14, life: 0.7, shade: 1 });
       else if (type === 'hurt' && at) spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+      else if (type === 'coinheart' && at) spray(at.x, at.y + 0.9, at.z, 14, { speed: 1.6, up: 3.5, g: 5, life: 0.9, shade: 0.98 });
+      else if (type === 'allcoins' && at) spray(at.x, at.y + 0.7, at.z, 40, { speed: 3.4, up: 6, g: 7, life: 1.3, shade: 1 });
       else if (type === 'warp') {
         fx.warp = 1;
         fx.warpDir = data.dir ?? -1;
@@ -1142,11 +1403,13 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     },
     dispose() {
       disposed = true;
+      ghosts.dispose();
       disposeTree(scene);
       dither.dispose();
       target.depthTexture?.dispose();
       target.dispose();
       for (const t of [block, brickTex, plankTex, qTex, spentTex]) t.dispose();
+      for (const l of landmarks) l.group.traverse((o) => o.material?.map?.dispose?.());
       gl.dispose();
     },
   };

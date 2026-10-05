@@ -1,3 +1,4 @@
+import '../../../styles/lazy/albuquerque.css';
 // The lab's customers, as simple portraits whose faces change: content while
 // they wait, restless when they've waited too long, and pleased or furious
 // with what they get.

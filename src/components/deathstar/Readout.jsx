@@ -3,6 +3,7 @@ import { RiArrowLeftLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { audioContext } from '../../lib/audio';
 import Gif from '../Gif';
 import { PARTS } from './parts';
+import '../../styles/lazy/deathstar.css';
 
 // The stolen plans: a cutaway of the station. Every numbered part opens what
 // happened there in the film. The numbers sit in a layer the same size as the

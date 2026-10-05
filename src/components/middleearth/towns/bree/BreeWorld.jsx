@@ -19,6 +19,7 @@ import { POUR, newPour, nextMug, startPour, stepPour, stopPour } from './pints';
 import { LANES, NOTES, QUAVER, SIDE, SONG, VERSE, newSong, press as pressSong, stepSong } from './song';
 import '../../shire/shire.css';
 import './bree.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Bree, the town: walk in from the road in the rain as Frodo, the night the
 // hobbits came to the Prancing Pony, and play the five scenes there. The

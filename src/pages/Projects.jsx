@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiArrowRightUpLine, RiGithubFill } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import ProjectThumb from '../components/ProjectThumb';
@@ -9,9 +9,12 @@ import { profile } from '../data/profile';
 import { ROUTE_THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import PeriodicStack from '../components/projects/PeriodicStack';
+import Cartridges from '../components/projects/Cartridges';
 import SitarDivider from '../components/SitarDivider';
 import Egg from '../components/Egg';
+import '../styles/lazy/projects.css';
 
 const CTA = {
   'gameboy-emulator': 'Play it and see how it works',
@@ -82,11 +85,11 @@ function ProjectRow({ project, dim = false }) {
 
 export default function Projects() {
   useDocumentTitle('Projects');
-  useSectionThemes();
   const page = useRef(null);
+  useSectionThemes(page);
   const [gameboy, translator, devspace, copilot] = featuredProjects;
   // the technology filter is in the address, so a link can open on it
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = usePageParams();
   const tech = params.get('tech');
   const setTech = (t) => {
     const next = new URLSearchParams(params);
@@ -114,6 +117,7 @@ export default function Projects() {
               demos.
             </p>
           </div>
+          <Cartridges />
         </div>
       </header>
 

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
@@ -9,19 +9,18 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
-import Hyperspace from './components/Hyperspace';
+// fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
+import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
 import { introPlaying } from './lib/stale';
 import WorldGate from './components/worlds/WorldGate';
+import Ambience from './components/ambience/Ambience';
+import { categoryAt, isFeedMove } from './components/feed/feed';
 
-const Experience = lazy(() => import('./pages/Experience'));
-const Projects = lazy(() => import('./pages/Projects'));
+const Feed = lazy(() => import('./components/feed/Feed'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
-const Contact = lazy(() => import('./pages/Contact'));
-const Travel = lazy(() => import('./pages/Travel'));
 const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Invincible = lazy(() => import('./pages/Invincible'));
-const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
 const Galaxy = lazy(() => import('./pages/Galaxy'));
@@ -38,21 +37,33 @@ const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
-const Home = lazy(() => import('./pages/Home'));
+const Changes = lazy(() => import('./pages/Changes'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const Hyperspace = lazy(() => import('./components/Hyperspace'));
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
 function ScrollToTop() {
-  const { pathname, search } = useLocation();
+  const location = useLocation();
+  const navType = useNavigationType();
+  const { pathname, search } = location;
+  // the feed (components/feed) moves the address as you scroll: not a new page
+  const feed = isFeedMove(location, navType);
+  // a link to one role (/experience/aws) lands on that role, not the top
+  const top = !feed && !search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname);
+  // Both only on a new path, read through a ref: a page's own search params
+  // (a filter, a tab) change neither. As dependencies, a filter picked after
+  // the feed had moved the address flipped them, which threw the visitor to
+  // the top of the feed (the page it started on) and stopped the page's music.
+  const now = useRef({ top, feed });
+  now.current = { top, feed };
   useEffect(() => {
-    // a link to one role (/experience/aws) lands on that role, not the top
-    if (!search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname)) window.scrollTo(0, 0);
-  }, [pathname, search]);
+    if (now.current.top) window.scrollTo(0, 0);
+  }, [pathname]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
-    import('./lib/clips').then((c) => c.stopPageClips());
+    if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
   }, [pathname]);
   return null;
 }
@@ -85,7 +96,11 @@ function Lightspeed() {
     };
   }, [unlock]);
   if (!on) return null;
-  return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
+  return (
+    <Suspense fallback={null}>
+      <Hyperspace key={on} sound onDone={() => setOn(0)} />
+    </Suspense>
+  );
 }
 
 // A first visit to the site opens on a welcome (what the site is, what the
@@ -244,6 +259,9 @@ function PaletteHost() {
 // (/middle-earth/moria) keep one page the same way, so its map stays up,
 // and so do the galaxy's systems (/galaxy/hoth), so a jump from one to the
 // next keeps the one scene (its missions' briefings are pages of their own).
+// The portfolio's six pages are one feed (components/feed): reach the end of
+// one and the next begins under it, with the address following the scroll, so
+// they share a key too.
 const pageKey = (pathname) =>
   pathname === '/' || pathname.startsWith('/universe')
     ? '/universe'
@@ -251,7 +269,9 @@ const pageKey = (pathname) =>
       ? '/middle-earth'
       : /^\/galaxy(\/[a-z0-9-]+)?$/.test(pathname)
         ? '/galaxy'
-        : pathname;
+        : categoryAt(pathname)
+          ? '/feed'
+          : pathname;
 
 function Shell() {
   const { pathname } = useLocation();
@@ -260,11 +280,16 @@ function Shell() {
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
     const id = idle(() => {
+      import('./components/feed/Feed');
       import('./pages/Home');
       import('./pages/Experience');
       import('./pages/Projects');
+      import('./pages/Resume');
       import('./pages/Contact');
       import('./pages/Travel');
+      import('./components/Hyperspace');
+      // so the first ⌘K opens at once, instead of showing nothing while it loads
+      import('./components/CommandPalette');
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
@@ -272,25 +297,28 @@ function Shell() {
   return (
     <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
+      <Ambience />
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
-        <ErrorBoundary resetKey={page}>
+        {/* (every feed page shares a page key, so it's the path that lets the nav's links clear an error) */}
+        <ErrorBoundary resetKey={pathname}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
               {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
               <WorldGate pathname={pathname}>
               <Routes>
                 <Route path="/" element={<Front />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/experience/:roleId?" element={<Experience />} />
-                <Route path="/projects" element={<Projects />} />
+                {/* the portfolio: six pages, one feed */}
+                <Route path="/home" element={<Feed />} />
+                <Route path="/experience/:roleId?" element={<Feed />} />
+                <Route path="/projects" element={<Feed />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/travel" element={<Travel />} />
+                <Route path="/resume" element={<Feed />} />
+                <Route path="/contact" element={<Feed />} />
+                <Route path="/travel" element={<Feed />} />
                 <Route path="/caribbean" element={<Caribbean />} />
                 <Route path="/invincible" element={<Invincible />} />
-                <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
@@ -307,6 +335,7 @@ function Shell() {
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
+                <Route path="/changes" element={<Changes />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </WorldGate>

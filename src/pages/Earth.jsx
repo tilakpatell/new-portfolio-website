@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import EarthWorld from '../components/earth/EarthWorld';
-import { HOME_V, STAMPS, kmBetween } from '../components/earth/rules';
-import { stampDate, useStamps } from '../components/earth/stamps';
+import { HOME_V, STAMPS, aroundWorld, kmBetween } from '../components/earth/rules';
+import { stampDate, useFlown, useStamps } from '../components/earth/stamps';
 import Photo from '../components/Photo';
 import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -14,9 +14,24 @@ const fmt = new Intl.NumberFormat('en-US');
 // it, and the flight to every place I've been; then the passport, how the
 // globe is made, and the way to the travel page, which has the photos and
 // the stories.
+const KEYS = [
+  ['← → or A D', 'Turn'],
+  ['↑ ↓ or W S', 'Climb and descend: up to the edge of space, or down under the cloud deck'],
+  ['Shift or Space (A, RT)', 'Faster'],
+  ['R (B on a pad)', 'A barrel roll'],
+  ['Drag (the right stick)', 'Look round the plane; it settles back behind. In orbit, turn the globe'],
+  ['V (RB)', 'The chase camera, or the view from the cockpit'],
+  ['Click a place, or Enter', 'Fly there on the autopilot; fly down from orbit'],
+  ['Esc', 'Take the controls back from the autopilot'],
+  ['M (Start)', 'Up to orbit, and back down'],
+  ['P (Y)', 'The passport, with the flight log'],
+  ['N', 'The sun where it really is now, or always over your shoulder'],
+];
+
 export default function Earth() {
   useDocumentTitle('Earth');
   const stamps = useStamps();
+  const flown = useFlown();
   const count = Object.keys(stamps).length;
 
   return (
@@ -48,6 +63,11 @@ export default function Earth() {
           The passport
         </h2>
         <p className="lead mt-4 max-w-[58ch]">{count === STAMPS.length ? 'Every stamp. You’ve been everywhere I have.' : `${count} of ${STAMPS.length} stamped so far.`} Each postcard opens on the travel page.</p>
+        {flown > 0 && (
+          <p className="mt-3 text-sm text-muted">
+            Flight log: {fmt.format(Math.round(flown / 10) * 10)} km flown over every flight, {aroundWorld(flown) >= 1 ? 'the whole way round the world and more' : `${Math.round(aroundWorld(flown) * 100)}% of the way round the world`}.
+          </p>
+        )}
         <ul className="earth-shelf mt-8">
           {STAMPS.map((st) => (
             <li key={st.id} data-got={stamps[st.id] ? '' : undefined}>
@@ -68,6 +88,30 @@ export default function Earth() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="earth-keys-title">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+          <div>
+            <h2 id="earth-keys-title" className="title">
+              Flying it
+            </h2>
+            <p className="lead mt-4 max-w-[54ch]">A little plane, a long way up. It follows great circles, so the way to Europe heads north-east first; the autopilot does the same, and slows down to turn.</p>
+            <p className="mt-4 max-w-[60ch] leading-relaxed text-body">The flight log keeps the trail you’ve flown and draws the route home to every place you’ve stamped. The distance adds up over every visit, and once it comes to the Earth’s circumference, that’s an achievement.</p>
+          </div>
+          <table className="guide-keys earth-keys">
+            <tbody>
+              {KEYS.map(([k, what]) => (
+                <tr key={k}>
+                  <th scope="row">
+                    <kbd>{k}</kbd>
+                  </th>
+                  <td>{what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="earth-how-title">

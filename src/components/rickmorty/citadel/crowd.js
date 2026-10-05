@@ -5,10 +5,9 @@
 // kinds, Ricks four to one Morty or so, as in the show's crowd scenes.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { toon } from '../portal/toon';
 import { crowdFor } from './layout';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const BASE = '/games/meshy/crowd';
 const RICKS = ['rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'wizardrick', 'hazmatrick', 'sheriffrick', 'retrorick', 'visorrick', 'doofusrick', 'mulletrick', 'chefrick', 'pilotrick', 'punkrick'];
@@ -51,8 +50,7 @@ export function standing(geometry, matrix, height) {
 }
 
 export async function createCrowd(parent, { tier = 'high' } = {}) {
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const kinds = KINDS_BY_TIER[tier] ?? KINDS_BY_TIER.high;
   const owned = [];
   // each kind: its geometry (feet on the ground, centred) and material
