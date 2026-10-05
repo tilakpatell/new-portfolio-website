@@ -9,7 +9,13 @@
 // engines and lights are turned up so they glow like the built ones.
 // Traffic, hunters and the director's set pieces share one fleet.
 //
-// createFleet() → { want(kinds), loaded(kind), has(kind), make(kind) → model, dispose() }
+// Its shaders are made before anything new is drawn (`prepare`, the
+// scene's: compiled off the main thread, so a ship arriving doesn't stall a
+// frame): a loaded model only takes over from its stand-in once they're
+// ready, and each ship made keeps out of sight until they are (a frame or
+// so, after the first of its kind).
+//
+// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -29,7 +35,7 @@ export const GLB = {
   corvette: { url: '/models/universe/cr90.glb', nose: 0, built: true },
 };
 
-export function createFleet() {
+export function createFleet({ prepare = null } = {}) {
   const templates = {};
   const loading = new Set();
   let dead = false;
@@ -66,7 +72,10 @@ export function createFleet() {
                 m.emissiveIntensity = 3.2;
               } else if (m.emissiveMap) m.emissiveIntensity = 2.4;
             });
-            templates[kind] = { holder, size: size.divideScalar(Math.max(size.x, size.y, size.z)) };
+            const ready = () => {
+              if (!dead) templates[kind] = { holder, size: size.divideScalar(Math.max(size.x, size.y, size.z)) };
+            };
+            return prepare ? prepare(holder).then(ready) : ready();
           })
           .catch(() => {});
       }
@@ -77,10 +86,21 @@ export function createFleet() {
     has: (kind) => !GLB[kind] || Boolean(templates[kind]) || GLB[kind].built,
     make(kind) {
       const t = templates[kind];
-      if (!t) return buildTraffic(kind);
-      const group = new THREE.Group();
-      group.add(t.holder.clone());
-      return { group, size: t.size.clone(), model: true, update() {}, dispose() {} }; // shares its template's geometry and textures
+      let made;
+      if (t) {
+        const group = new THREE.Group();
+        group.add(t.holder.clone());
+        made = { group, size: t.size.clone(), model: true, update() {}, dispose() {} }; // shares its template's geometry and textures
+      } else made = buildTraffic(kind);
+      // out of sight until its shaders are made
+      const inner = made.group.children[0];
+      if (prepare && inner) {
+        inner.visible = false;
+        prepare(made.group).then(() => {
+          inner.visible = true;
+        });
+      }
+      return made;
     },
     dispose() {
       dead = true;

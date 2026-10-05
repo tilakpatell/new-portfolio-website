@@ -518,6 +518,9 @@ export async function createToss3D(canvas, { onLost, onSlow } = {}) {
     });
   };
 
+  // the room's shaders, linked in the background before its first frame
+  await stage.precompile();
+
   // A new round: the misses are swept up.
   const clear = () => {
     for (const m of misses) scene.remove(m);

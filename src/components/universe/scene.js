@@ -7,9 +7,13 @@
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
 // - With a ship (Rick's cruiser, Luke's X-wing, the Falcon or Walt and
-//   Jesse's RV), you fly it: W A S D or the arrows, R and C to climb and dive, Space to boost, F to
-//   fire, T to switch target, or drag on the map like a stick (with buttons
-//   to climb and dive). The camera rides behind it, leaning into the turns,
+//   Jesse's RV), you fly it: W and S for the throttle, A and D (or the
+//   left and right arrows) to turn, the up and down arrows (or R and C) to
+//   tip the nose up and down, Space to boost, F (held) to fire, T (Shift+T
+//   back) to switch target, or drag on the map like a stick (a mouse tips the
+//   nose, a finger works the throttle, with buttons to climb and dive). How
+//   quick each of those is, and more, is the visitor's to set
+//   (controls.js, FlightSettings.jsx). The camera rides behind it, leaning into the turns,
 //   or, with V, you sit in the cockpit (the intro's, cockpit/vehicles, drawn
 //   over the world from the pilot's seat; the choice is kept between visits).
 //   Fly close to a planet and you're at it (the panel shows its card); pick
@@ -44,7 +48,8 @@
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
 //   whole, boost, climb, fire, dispose }.
-// Props: selected (an id or null), ship (a crew id or null), labels (a ref
+// Props: selected (an id or null), ship (a crew id or null), controls (the
+// visitor's flying settings: controls.js), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), alt (a ref to the
 // height gauge), shield (a ref to the shields bar), hud (a ref to the
 // targeting HUD's box: the reticle, the lock, the lead and the nav bracket
@@ -63,7 +68,7 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, precompile, precompilePasses } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { ORDER, POSITIONS, REACH, SUN } from './layout';
@@ -71,8 +76,8 @@ import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
 import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
-import { NAMES, createHunters } from './hunters';
-import { createFleet } from './glbFleet';
+import { FACTIONS, NAMES, createHunters } from './hunters';
+import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
 import { buildDeepSpace } from './deepspace';
@@ -87,15 +92,20 @@ import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
+import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
-import { AIM, aimAngles, assist, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
+import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyClimb, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
 const STREAKS = 220;
-const BOLTS = 10; // shots in flight at once
+const BOLTS = 16; // shots in flight at once
+// seconds between shots with the trigger held (the X-wing's four cannons
+// fire in turn, so it's quickest; the RV is a man with a gun out of the window)
+const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
 const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b', rv: '#5cc8ff' };
 // each ship's exhaust (trail.js): its colour, its white-hot core, how wide
 // and how long it is, and the cruiser's portal-plasma ripple
@@ -134,10 +144,10 @@ const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive dow
 const STREAK_SPEED = 36; // the streaks' speed tops out here: faster they'd be a wall
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
-const STICK = 70; // px of drag for full throttle or a full turn
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
 
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'boost', shift: 'boost', r: 'climb', pageup: 'climb', c: 'dive', pagedown: 'dive' };
+// (the up and down arrows tip the nose, as a stick does; W and S are the throttle)
+const KEYS = { w: 'up', s: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', r: 'climb', pageup: 'climb', c: 'dive', pagedown: 'dive', f: 'fire' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -404,7 +414,10 @@ export async function create(canvas, ctx) {
   let props = ctx;
   let disposed = false;
 
-  const gl = createRenderer(canvas, { ratio: 2, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  // (at most 1.5 device pixels to a CSS one: the whole sky, bloom and all,
+  // filling a retina screen at 2 is more than most graphics chips draw
+  // smoothly while flying, and the names and the HUD are crisp DOM anyway)
+  const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
@@ -494,7 +507,7 @@ export async function create(canvas, ctx) {
   camera.add(streak.lines);
 
   // shots: a few glowing bolts, reused
-  const boltGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.28, 6).rotateX(Math.PI / 2);
+  const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6).rotateX(Math.PI / 2); // (long: they're quick)
   const boltMat = new THREE.MeshBasicMaterial({ color: '#ff4a3d', toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const bolts = Array.from({ length: BOLTS }, () => {
     const m = new THREE.Mesh(boltGeo, boltMat);
@@ -559,7 +572,12 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   const crashFx = createCrash(map);
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
-  const fleet = createFleet(); // the ships that are models, shared
+  // shaders made off the main thread before something is first drawn
+  // (KHR_parallel_shader_compile), so nothing new stalls a frame: a ship
+  // arriving, a loaded model, the cockpit
+  // (drawn into the passes' buffer while they're on, so made for it)
+  const warm = (root, cam = camera, target = scene) => precompile(renderer, root, cam, target, post.on ? post.composer.readBuffer : undefined);
+  const fleet = createFleet({ prepare: (o) => warm(o) }); // the ships that are models, shared
   const traffic = reduced ? null : createTraffic(map, { small, fleet });
   const pops = createCrash(map);
   // who comes after you, what the director sets going, and its set pieces
@@ -612,6 +630,7 @@ export async function create(canvas, ctx) {
     stick: null, // { id, x, y, dx, dy, on }
     boostBtn: false,
     climbBtn: 0, // the phone's climb (1) or dive (−1) button, held
+    fireBtn: false, // the phone's fire button, held
     boosting: false,
     boosts: 0,
     streak: 0,
@@ -643,7 +662,7 @@ export async function create(canvas, ctx) {
     lockTarget: null, // and what it is this frame: { id, at, vel, size, kind }
     lead: null, // where to shoot to hit it: { x, y, z, t }
     hot: false, // the nose is near enough the lead that a shot bends onto it
-    cycle: false, // T was pressed: on to the next target
+    cycle: 0, // T was pressed: on to the next target (1), or Shift+T, back one (−1)
     hitMark: 0, // the reticle's flash as a shot lands, 1 fading to 0
     bias: [0, 0, 0], // the camera's lean toward the lock, eased
     pull: 0, // how hard the Maw has you (maw.js), 0 … 1
@@ -705,10 +724,14 @@ export async function create(canvas, ctx) {
     const [rx, rz] = rotate(-fz, fx);
     const lean = (s.bank || 0) * 0.45;
     const [bx, by, bz] = state.bias;
+    // (up and down, it swings most of the way round under or over the
+    // ship, looking out along the nose, so a climb or a dive shows where
+    // it's going)
+    const level = Math.cos(tip);
     return {
-      target: [wx + dx * look + rx * lean + bx, s.y + 0.06 + (s.vy || 0) * 0.05 + by, wz + dz * look + rz * lean + bz],
+      target: [wx + dx * look * level + rx * lean + bx, s.y + 0.06 + Math.sin(tip) * look + by, wz + dz * look * level + rz * lean + bz],
       dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7,
-      pitch: 0.21 - tip * 0.45,
+      pitch: 0.21 - tip * 0.72,
     };
   };
 
@@ -888,14 +911,16 @@ export async function create(canvas, ctx) {
     for (const s of wscreen) if (s.z > 0.3 && Math.hypot(px - s.x, py - s.y) <= Math.max(Math.min(s.r, 160), 24) && (!best || s.z < best.z)) best = s;
     return best?.id ?? null;
   };
-  // a hunter under the point (a tap locks the guns on to it)
+  // a hunter under the point, or near it (they're small and quick): a tap
+  // locks the guns on to the nearest
   const tapped = { x: 0, y: 0, z: 0 };
   const pickHunter = (px, py) => {
     if (!flying()) return null;
     let best = null;
     for (const c of [...(hunters?.targets ?? []), ...pilots.targets]) {
       toScreen(c.at.x, c.at.y, c.at.z, tapped);
-      if (tapped.z > 0.3 && Math.hypot(px - tapped.x, py - tapped.y) <= 28 && (!best || tapped.z < best.z)) best = { id: c.id, z: tapped.z };
+      const d = Math.hypot(px - tapped.x, py - tapped.y);
+      if (tapped.z > 0.3 && d <= 48 && (!best || d < best.d)) best = { id: c.id, d };
     }
     return best?.id ?? null;
   };
@@ -928,7 +953,7 @@ export async function create(canvas, ctx) {
       if (id && id !== state.at) {
         state.view = state.seat;
         if (reduced) {
-          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, pitch: 0 };
+          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, lift: 0, pitch: 0 };
           state.yaw = -state.ship.heading;
         } else {
           state.auto = { id, park: parkAt(id, [state.ship.x, state.ship.z]) };
@@ -1016,12 +1041,19 @@ export async function create(canvas, ctx) {
         return;
       }
       dropCab();
-      cab = { kind, built, plan: cockpitPlan(kind), look: { yaw: 0, pitch: 0 } };
       cabScene.add(built.inside);
       cabScene.environment = built.environment ?? roomEnv;
       cabScene.environmentIntensity = built.envIntensity ?? 0.35;
       camIn.position.set(...built.eye);
-      renderer.compile(cabScene, camIn); // now, not on its first frame
+      await warm(cabScene, camIn, cabScene); // now, and off the main thread, not on its first frame
+      if (disposed || cabWanted !== kind) {
+        cabScene.remove(built.inside);
+        built.dispose?.();
+        disposeTree(built.inside);
+        disposeTree(built.outside);
+        return;
+      }
+      cab = { kind, built, plan: cockpitPlan(kind), look: { yaw: 0, pitch: 0 } };
       cabWanted = null;
       ctx.invalidate();
     } catch (err) {
@@ -1098,11 +1130,13 @@ export async function create(canvas, ctx) {
     state.model = buildShip(kind, T);
     map.add(state.model.group);
     if (SHIP_MODELS[kind]) {
-      loadModel(SHIP_MODELS[kind]).then((m) => {
-        if (!m) return;
-        if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
-        ctx.invalidate();
-      });
+      loadModel(SHIP_MODELS[kind])
+        .then((m) => m && warm(m).then(() => m))
+        .then((m) => {
+          if (!m) return;
+          if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
+          ctx.invalidate();
+        });
     } else if (kind === 'cruiser') {
       // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
       const model = state.model;
@@ -1147,33 +1181,39 @@ export async function create(canvas, ctx) {
     }
   };
 
+  // the visitor's flying settings (controls.js), as the page last passed them
+  const controls = () => props.controls ?? CONTROL_DEFAULTS;
   const steering = () => {
     const k = state.keys;
+    const c = controls();
     let throttle = (k.up ? 1 : 0) - (k.down ? 1 : 0);
     let turn = (k.right ? 1 : 0) - (k.left ? 1 : 0);
-    const climb = clamp((k.climb ? 1 : 0) - (k.dive ? 1 : 0) + state.climbBtn, -1, 1);
+    let climb = keyClimb(k, c) + state.climbBtn;
     const st = state.stick;
     if (st?.on) {
-      throttle = clamp(throttle - st.dy / STICK, -1, 1);
-      turn = clamp(turn + st.dx / STICK, -1, 1);
+      const d = stickInput(st.dx, st.dy, c, st.pointer);
+      throttle += d.throttle;
+      turn += d.turn;
+      climb += d.climb;
     }
-    return { throttle, turn, climb, boost: Boolean(k.boost || state.boostBtn) };
+    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1), climb: clamp(climb, -1, 1), boost: Boolean(k.boost || state.boostBtn), turnRate: c.turn, pitchRate: c.pitch };
   };
 
   // a shot from the nose (the X-wing's from each wingtip in turn): along
   // the nose, bent onto the lead point when the guns are locked on and the
-  // nose is near enough to it (targeting.js)
+  // nose is near enough to it (targeting.js, as much as the aim-assist
+  // setting allows); held, the guns keep firing at the ship's own pace
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    if (!s || props.frozen || state.crash || now - state.lastShot < 220) return;
+    if (!s || props.frozen || state.crash || now - state.lastShot < (CADENCE[state.kind] ?? 0.18) * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
     const [fx, fz] = forward(s.heading);
     const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
     let dir = nose(s);
-    if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead));
+    if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), controls().assist);
     const { heading, pitch } = aimAngles(dir);
     b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
     b.rotation.set(pitch, heading, 0);
@@ -1264,7 +1304,7 @@ export async function create(canvas, ctx) {
     }
     el.setAttribute('data-on', '');
     el.style.transform = `translate3d(${st.x}px, ${st.y}px, 0)`;
-    const k = Math.min(1, Math.hypot(st.dx, st.dy) / STICK);
+    const k = Math.min(1, (Math.hypot(st.dx, st.dy) * controls().drag) / STICK);
     const a = Math.atan2(st.dy, st.dx);
     el.style.setProperty('--kx', `${(Math.cos(a) * k * 28).toFixed(1)}px`);
     el.style.setProperty('--ky', `${(Math.sin(a) * k * 28).toFixed(1)}px`);
@@ -1277,7 +1317,7 @@ export async function create(canvas, ctx) {
     const root = props.hud?.current ?? null;
     if (root !== hud.root) {
       const q = (c) => root?.querySelector(c) ?? null;
-      hud = { root, reticle: q('.universe-reticle'), lock: q('.universe-lock'), lockName: q('.universe-lock-name'), lockDist: q('.universe-lock-dist'), lead: q('.universe-lead'), nav: q('.universe-nav'), navName: q('.universe-nav-name'), navDist: q('.universe-nav-dist'), text: new Map(), on: new Map() };
+      hud = { root, reticle: q('.universe-reticle'), lock: q('.universe-lock'), lockName: q('.universe-lock-name'), lockDist: q('.universe-lock-dist'), lead: q('.universe-lead'), nav: q('.universe-nav'), navName: q('.universe-nav-name'), navDist: q('.universe-nav-dist'), threats: [...(root?.querySelectorAll('.universe-threat') ?? [])], text: new Map(), on: new Map() };
     }
     return hud;
   };
@@ -1292,6 +1332,7 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-on', on);
   };
   const hudAt = { x: 0, y: 0, z: 0 };
+  const threatList = [];
   // a bracket at its point when that's in view, else an arrow at the edge of
   // the open area pointing the way (its size `r`, in px, when it has one)
   const placeMark = (el, p, r = 0) => {
@@ -1357,7 +1398,29 @@ export async function create(canvas, ctx) {
       h.lock.toggleAttribute('data-hot', state.hot);
       setText(h, h.lockName, tgt.name ?? NAMES[tgt.kind] ?? tgt.kind);
       setText(h, h.lockDist, range(Math.hypot(tgt.at.x - s.x, tgt.at.y - s.y, tgt.at.z - s.z)));
+      // what it has left, for the ones that take a few hits
+      const tough = (tgt.hpMax ?? 1) > 1;
+      h.lock.toggleAttribute('data-tough', tough);
+      if (tough) h.lock.style.setProperty('--hp', (tgt.hp / tgt.hpMax).toFixed(3));
     }
+    // the ones coming at you that you can't see: an arrow at the edge each
+    // (nearest first), so a fight behind you isn't a surprise
+    let n = 0;
+    if (on && hunters && h.threats.length) {
+      const cands = hunters.targets;
+      threatList.length = 0;
+      for (const c of cands) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      threatList.sort((a, b) => Math.hypot(a.at.x - s.x, a.at.y - s.y, a.at.z - s.z) - Math.hypot(b.at.x - s.x, b.at.y - s.y, b.at.z - s.z));
+      for (const c of threatList) {
+        if (n >= h.threats.length) break;
+        toScreen(c.at.x, c.at.y, c.at.z, hudAt);
+        if (onScreen(hudAt.x, hudAt.y, hudAt.z, state.rect)) continue;
+        const el = h.threats[n++];
+        setOn(h, el, true);
+        placeMark(el, hudAt);
+      }
+    }
+    for (let i = n; i < h.threats.length; i++) setOn(h, h.threats[i], false);
     const lead = tgt && state.lead && state.lead.t <= AIM.life ? state.lead : null;
     let leadOn = false;
     if (lead) {
@@ -1790,7 +1853,7 @@ export async function create(canvas, ctx) {
         const r = solid.r + 5;
         at = { x: solid.at[0] + out.x * r, y: c.id === 'sun' ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
-      state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
+      state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, edge: false };
       if (c.swallow) {
         // (the page didn't take it on through: back out past the Maw's reach)
         const out = new THREE.Vector3(c.from.x - MAW.at[0], 0, c.from.z - MAW.at[2]).normalize();
@@ -1836,6 +1899,7 @@ export async function create(canvas, ctx) {
       input = a.input;
       if (a.done) state.auto = null;
     } else input = steering();
+    if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     input.interdicted = state.interdicted;
     const { ship: stepped, events } = step(state.ship, input, dt);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
@@ -1899,7 +1963,7 @@ export async function create(canvas, ctx) {
 
     // the camera swings round behind the ship (not in the map view); in the
     // cockpit it's your head, all but fixed to the ship
-    if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * (1 - Math.exp(-dt * (reduced ? 12 : 4.5)));
+    if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * (1 - Math.exp(-dt * (reduced ? 12 : 4.5 * controls().camera)));
     else if (state.view === 'cockpit') state.yaw += wrap(-ship.heading - state.yaw) * (1 - Math.exp(-dt * 20));
 
     // the guns: what they're locked on to (a tick as they pick one up),
@@ -1908,16 +1972,13 @@ export async function create(canvas, ctx) {
     const cands = pilots.count ? [...(hunters?.targets ?? []), ...pilots.targets] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
-    state.cycle = false;
+    state.cycle = 0;
     const tgt = state.lock ? (cands.find((c) => c.id === state.lock.id) ?? null) : null;
     state.lockTarget = tgt;
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
-    if (state.lead && state.lead.t <= AIM.life) {
-      const n = nose(ship);
-      const d = dirTo(ship, state.lead);
-      state.hot = n[0] * d[0] + n[1] * d[1] + n[2] * d[2] > Math.cos(AIM.assist);
-    } else state.hot = false;
+    // (hot: a shot now would bend all the way onto it)
+    state.hot = Boolean(state.lead && state.lead.t <= AIM.life && assistAmount(nose(ship), dirTo(ship, state.lead), controls().assist) >= 1);
     // and the camera leans a little toward the lock (eased, so a lock coming
     // or going doesn't jolt it)
     let bx = 0;
@@ -2194,16 +2255,19 @@ export async function create(canvas, ctx) {
       return;
     }
     if (key === 'f') {
+      // the trigger, held: the guns keep firing at their own pace (fly())
       e.preventDefault();
       heard();
-      fire();
+      if (!e.repeat) fire();
+      state.keys.fire = true;
+      ctx.invalidate();
       return;
     }
-    if (key === 't') {
-      // the next target round the nose
+    if (key === 't' || key === 'q') {
+      // the next target round the nose (Q, or Shift+T, the one before)
       e.preventDefault();
       heard();
-      state.cycle = true;
+      state.cycle = key === 'q' || e.shiftKey ? -1 : 1;
       ctx.invalidate();
       return;
     }
@@ -2228,6 +2292,7 @@ export async function create(canvas, ctx) {
     state.keys = {};
     state.boostBtn = false;
     state.climbBtn = 0;
+    state.fireBtn = false;
   };
   const onHidden = () => engine?.set({ speed: 0, on: !document.hidden && state.shown });
   window.addEventListener('keydown', onKeyDown);
@@ -2259,13 +2324,14 @@ export async function create(canvas, ctx) {
       if (flying()) {
         // a stick wherever the press began
         if (!state.stick) takeover();
-        state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true };
+        state.stick = { id: e.pointerId, x: d.x, y: d.y, dx: x - d.x, dy: y - d.y, on: true, pointer: e.pointerType };
         placeStick();
       } else {
         const now = performance.now();
         state.yawTo = null;
-        state.yaw = d.yaw + (x - d.x) * TURN;
-        state.vel = ((x - d.lastX) * TURN) / Math.max(1, now - d.lastT);
+        const turn = TURN * controls().drag;
+        state.yaw = d.yaw + (x - d.x) * turn;
+        state.vel = ((x - d.lastX) * turn) / Math.max(1, now - d.lastT);
         d.lastX = x;
         d.lastT = now;
       }
@@ -2301,12 +2367,12 @@ export async function create(canvas, ctx) {
       const id = pick(x, y);
       if (id) props.onPick?.(id);
       else if (flying()) {
-        // a hunter: the guns lock on to it (with a good while's grace, even
-        // if it's off the nose); a wonder: the ship flies itself there
+        // a hunter: the guns lock on to it (picked by hand, so it holds a good
+        // while even off the nose); a wonder: the ship flies itself there
         const hid = pickHunter(x, y);
         if (hid) {
           heard();
-          state.lock = { id: hid, out: -2 };
+          state.lock = { id: hid, out: 0, manual: true };
         } else {
           const wid = pickWonder(x, y);
           if (wid) navTo(wid);
@@ -2336,6 +2402,24 @@ export async function create(canvas, ctx) {
   setNet(props.net);
   paintStates();
 
+  // a ship of every kind that may come (the hunters, the traffic, the set
+  // pieces' big ships, as built until their models load), out of sight, so
+  // their shaders are made with everything else's; and then every shader
+  // the map draws with, its passes' too, made before the first frame (the
+  // page waits for them, so the first look round doesn't stall)
+  const spares = new THREE.Group();
+  spares.visible = false;
+  if (!reduced) {
+    const kinds = new Set([...Object.values(FACTIONS).flatMap((f) => [...f.kinds.map(([k]) => k), f.ace].filter(Boolean)), ...BUILT_KINDS, ...Object.keys(GLB).filter((k) => GLB[k].built)]);
+    for (const k of kinds) spares.add(buildTraffic(k).group);
+  }
+  map.add(spares);
+  const ready = Promise.all([warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
+    // made: out of the scene (so nothing walks them each frame), but kept
+    // till the end, so their shaders are kept too
+    map.remove(spares);
+  });
+
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
     window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state };
@@ -2358,6 +2442,8 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, kind: p.kind, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
       online: net?.snapshot().status ?? null,
+      manual: Boolean(state.lock?.manual),
+      controls: controls(),
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
@@ -2365,6 +2451,8 @@ export async function create(canvas, ctx) {
   }
 
   return {
+    // every shader made (the page waits for it before the first frame)
+    ready,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
@@ -2398,10 +2486,13 @@ export async function create(canvas, ctx) {
     },
     // a name under the pointer lights its planet too
     hover: setHover,
-    // the phone's fire button
-    fire() {
+    // the phone's fire button: true pressed (it fires, and keeps firing
+    // while held), false let go
+    fire(down = true) {
       heard();
-      fire();
+      state.fireBtn = down;
+      if (down) fire();
+      ctx.invalidate();
     },
     // the phone's boost button
     boost(on) {
@@ -2478,6 +2569,7 @@ export async function create(canvas, ctx) {
       if (st) st.removeAttribute('data-on');
       for (const el of props.hud?.current?.children ?? []) el.removeAttribute('data-on');
       if (import.meta.env.DEV) delete window.__universe, delete window.__universeDebug;
+      disposeTree(spares);
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();

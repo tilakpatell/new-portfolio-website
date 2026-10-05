@@ -20,7 +20,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { createRenderer, disposeTree } from '../../lib/three/renderer';
+import { createRenderer, disposeTree, precompile, precompilePasses } from '../../lib/three/renderer';
 import { gpu } from '../../lib/gpu';
 import { flashAt, phaseAt, plan as planOf, skipTo, smooth, throttleAt } from './timeline';
 import { freeKit } from './kit';
@@ -157,6 +157,7 @@ export function run(canvas, opts) {
   let raf = 0;
   let last = 0;
   let clock = 0;
+  let warming = null; // a vehicle whose shaders are still linking (pick): not drawn yet
   let fade = 1; // the black between vehicles: 1 covers, 0 clear
   let fadeTo = 1;
   let firstDrawn = false;
@@ -197,7 +198,7 @@ export function run(canvas, opts) {
       }
     }
 
-    if (v) {
+    if (v && v !== warming) {
       // the head: where you're looking, eased; drawn back ahead as you go
       const ahead = L.on ? smooth(Math.min(1, L.t / (L.plan.spool * 0.9 + 1))) : 0;
       const since = clock - look.sat;
@@ -333,9 +334,14 @@ export function run(canvas, opts) {
       look.sat = clock;
       L.plan = planOf(id);
       fit();
-      // compile everything now, behind the black, so the first look doesn't stall
-      renderer.compile(outside, camOut);
-      renderer.compile(inside, camIn);
+      // compile everything now, behind the black, so the first look doesn't
+      // stall: the GPU links in the background while the frames hold off
+      // drawing it (lib/three/renderer's precompile)
+      warming = built;
+      const into = composer ? composer.readBuffer : null;
+      await Promise.all([precompile(renderer, outside, camOut, outside, into), precompile(renderer, inside, camIn, inside, into), composer ? precompilePasses(renderer, composer, camIn) : null]);
+      if (warming === built) warming = null;
+      if (stopped || v !== built) return;
       sound = cockpitSound(id);
       fadeTo = 0;
       cb.onBoarded?.(id);

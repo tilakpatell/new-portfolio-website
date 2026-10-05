@@ -25,6 +25,7 @@ import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
 import { pixelRatio } from '../../../lib/device';
+import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
 const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
@@ -785,7 +786,7 @@ const LOOK = [
 // ─── the city ──────────────────────────────────────────────────────────────
 
 export async function createCybertronBackdrop(canvas, { side = 0, dark = true, calm = false, onLost } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.info.autoReset = false;
@@ -1503,11 +1504,14 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     output.dispose?.();
     target.dispose();
     renderer.dispose();
-    renderer.forceContextLoss();
+    releaseContext(renderer); // (lib/three/renderer: once nothing is compiling)
   };
 
   light();
   place();
+  // every shader (the city's, into the composer's buffer, and the passes')
+  // linked in the background before the first frame, so drawing it doesn't stop the page
+  await Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
 
   return {
     renderer,

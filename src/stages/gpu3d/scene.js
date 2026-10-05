@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { clamp01, color, createRenderer, disposeTree } from '../../lib/three/renderer';
+import { clamp01, color, createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
 import { mix, parseColor } from '../../lib/three/theme';
 
 // ── the plan, in world units (about 40 SVG px each; z runs toward the viewer) ──
@@ -589,6 +589,8 @@ export function create(canvas, ctx) {
   };
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

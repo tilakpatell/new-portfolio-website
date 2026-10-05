@@ -25,7 +25,8 @@
 //   update(dt, t, ship) → events,
 //   hit(from, to) → hit or null, clear(), dispose(), count, active,
 //   targets: the ones still after you (or their prey), for the guns to lock
-//   on to: [{ id, at, vel, size, kind, hp, faction }] (targeting.js) }
+//   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
+//   threat is 1 for one on an attack run at you) }
 // A pack sent in `ahead` drops in ahead of you (an ambush on the way
 // somewhere) and one that `interdict`s says so in its 'hunted' event: the
 // scene holds the pulse drive down while it's on you.
@@ -39,6 +40,7 @@
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
 import { forward } from './ship';
+import { sweptHit } from './targeting';
 
 // who hunts for whom: which kinds come (and how often each), their ace (a
 // tougher one who joins now and then), their lasers' colour
@@ -108,6 +110,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
     return list[list.length - 1][0];
   };
 
+  const targets = []; // what the guns can lock on to (reused)
   const tmp = new THREE.Vector3();
   const want = new THREE.Vector3();
   const aim = new THREE.Vector3();
@@ -164,6 +167,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
           model,
           pack,
           pos,
+          prev: pos.clone(), // where it was at the start of the frame (a shot's tested against the whole way)
           // (an ambush comes at you; the rest come up behind you)
           vel: new THREE.Vector3(fx, 0, fz).multiplyScalar(type.speed * (ahead ? -0.8 : 0.8)),
           hp: type.hp,
@@ -177,6 +181,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
           grow: f.portal ? 0 : 1,
           alive: true,
         };
+        h.target = { id: h.id, at: pos, vel: h.vel, size: type.size, kind, hp: h.hp, hpMax: type.hp, faction, threat: 0 };
         pack.members.push(h);
         live.push(h);
       });
@@ -219,6 +224,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
 
       for (const h of [...live]) {
         const { type, pos, vel } = h;
+        h.prev.copy(pos);
         const gone = h.pack.gone;
         const prey = !gone && h.pack.prey && !h.pack.angry ? h.pack.prey.position : null;
         const center = prey ?? (ship && !gone ? you : null);
@@ -335,15 +341,23 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
 
     // a shot of yours from `from` to `to` this frame: the hunter it hit, if
     // any: { kind, at, size, down } (down: it's destroyed; otherwise it took
-    // the hit and comes on)
+    // the hit and comes on). Both moved this frame, so it's the whole way
+    // each went that counts (a fighter crossing a bolt's path between two
+    // frames is still hit), the nearest along the bolt's way first
     hit(from, to) {
-      aim.copy(to).sub(from);
-      const len2 = aim.lengthSq() || 1;
-      for (const h of live) {
-        if (!h.alive || h.pack.gone) continue;
-        const k = THREE.MathUtils.clamp(tmp.copy(h.pos).sub(from).dot(aim) / len2, 0, 1);
-        if (want.copy(from).addScaledVector(aim, k).distanceTo(h.pos) > h.type.size * 0.75 + 0.08) continue;
+      let h = null;
+      let first = Infinity;
+      for (const o of live) {
+        if (!o.alive || o.pack.gone) continue;
+        const k = sweptHit(from, to, o.prev, o.pos, o.type.size * 0.8 + 0.1);
+        if (k !== null && k < first) {
+          first = k;
+          h = o;
+        }
+      }
+      if (h) {
         h.hp -= 1;
+        h.target.hp = h.hp;
         h.pack.angry = true; // pirates turn on you once you shoot at them
         if (h.hp > 0) return { kind: h.kind, at: h.pos.clone(), size: h.type.size, down: false };
         h.alive = false;
@@ -367,10 +381,15 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
     },
     // what the guns can lock on to: everyone still in the fight (not the
     // ones flying off), where they are and the way they're going
+    // (the same objects frame to frame, kept up to date, and one list)
     get targets() {
-      const out = [];
-      for (const h of live) if (h.alive && !h.pack.gone) out.push({ id: h.id, at: h.pos, vel: h.vel, size: h.type.size, kind: h.kind, hp: h.hp, faction: h.pack.faction });
-      return out;
+      targets.length = 0;
+      for (const h of live) {
+        if (!h.alive || h.pack.gone) continue;
+        h.target.threat = h.mode === 'run' && !(h.pack.prey && !h.pack.angry) ? 1 : 0;
+        targets.push(h.target);
+      }
+      return targets;
     },
     // a pack still after you (not leaving)
     get active() {

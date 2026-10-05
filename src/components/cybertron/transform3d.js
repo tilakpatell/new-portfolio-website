@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { createRenderer, disposeTree, easeInOut } from '../../lib/three/renderer';
+import { createRenderer, disposeTree, easeInOut, precompile } from '../../lib/three/renderer';
 
 const SIDES = {
   autobot: { model: 'optimus-prime', energon: 0x4fd8ff, rim: 0x2fbfff, key: 0xfff1dc },
@@ -651,6 +651,8 @@ export async function create(canvas, ctx) {
   }
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       stage.setSize(w, h);
       camera.aspect = w / Math.max(1, h);

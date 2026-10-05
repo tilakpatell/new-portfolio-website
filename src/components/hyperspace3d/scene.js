@@ -7,7 +7,7 @@
 // ship drops out. Same timeline and callbacks as the 2D version.
 
 import * as THREE from 'three';
-import { createRenderer } from '../../lib/three/renderer';
+import { createRenderer, precompile } from '../../lib/three/renderer';
 import { T, clamp, darkAt, ease, exposureAt, flashAt, speedAt } from './timeline';
 
 const SEG = 10; // segments along a streak, so the swirl can bend it
@@ -338,7 +338,11 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
       onDone?.();
     }
   };
-  raf = requestAnimationFrame(frame);
+  // the first frame waits for the shaders to link in the background (a few
+  // frames), rather than stopping the page to link them
+  precompile(renderer, scene, camera).then(() => {
+    if (!failed && !done && !raf) raf = requestAnimationFrame(frame);
+  });
 
   function stop() {
     cancelAnimationFrame(raf);
