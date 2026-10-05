@@ -20,8 +20,12 @@
 //   (the intro's, cockpit/vehicles, drawn over the world from the pilot's
 //   seat; the choice is kept between visits).
 //   Fly close to a planet and you're at it (the panel shows its card); pick
-//   one from its name or by clicking it and the ship flies itself there. M
-//   shows the whole map. ship.js has the physics. A new ship starts
+//   one from its name or by clicking it and the ship flies itself there,
+//   by the drive picked on the nav map (M, or the map button: NavMap.jsx,
+//   nav.js): a jump to lightspeed that brings it out parked there
+//   (hyperspeed, J for the place picked), or the autopilot on super speed
+//   (the pulse drive pushed past itself) or cruising. The nav map can pull
+//   back to the whole map in 3D, too. ship.js has the physics. A new ship starts
 //   anywhere, unless a place is picked: at the edge of the home system, or
 //   out in deep space off a fandom's planet or a wonder (ship.js's startAt),
 //   so pilots joining don't all turn up in one spot.
@@ -92,7 +96,8 @@ import { ORDER, POSITIONS, REACH, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { HYPER, driveById, hyperState, parkFor } from './nav';
 import { FACTIONS, NAMES, createHunters } from './hunters';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
@@ -104,7 +109,7 @@ import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createInfall } from './infall';
-import { DISK_N, MAW, captured, fallAt, parkNear, plungeAt, pullAt, startFall } from './maw';
+import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
@@ -697,7 +702,10 @@ export async function create(canvas, ctx) {
     view: 'chase', // the seat, or 'map' (the whole map, keeping the ship)
     cabK: 0, // how far into the cockpit view the camera is, 0 to 1, eased
     fovBase: FOV, // the lens, eased between the chase's and the cockpit's
-    auto: null, // { id, park } while it flies itself somewhere
+    auto: null, // { id, park, od } while it flies itself somewhere (od: super speed's overdrive, 1 cruising)
+    jump: null, // { id, park, at }: a jump to lightspeed under way (out at the place at `at`, wall()'s seconds)
+    hyperAt: null, // when it last jumped, wall()'s seconds (the hyperdrive charges again: nav.js)
+    odSaid: false, // the crew's said their piece about super speed
     at: null, // the universe it's at
     keys: {},
     stick: null, // { id, x, y, dx, dy, on }
@@ -1142,17 +1150,11 @@ export async function create(canvas, ctx) {
     if (onFoot()) {
       // (on foot, the panel just shows it: there's no flying off from here)
     } else if (flying()) {
-      // the ship takes you there (or, with reduced motion, is simply there)
+      // the ship takes you there, by the drive picked (or, with reduced
+      // motion, is simply there); unless it's on its way there already
       if (id && id !== state.at) {
-        state.view = state.seat;
-        if (reduced) {
-          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0 };
-          state.yaw = -state.ship.heading;
-        } else {
-          state.auto = { id, park: parkAt(id, [state.ship.x, state.ship.z]) };
-          retarget(700);
-        }
-      } else if (!id) state.auto = null;
+        if (state.auto?.id !== id && state.jump?.id !== id) travel(id);
+      } else if (!id && isPlace(state.auto?.id)) state.auto = null; // (a trip out to a wonder isn't the page's to stop)
     } else {
       state.yawTo = id ? frontYaw(id) : null;
       state.vel = 0;
@@ -1163,25 +1165,61 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  // fly itself to a wonder out in deep space (a planet is select(), through
-  // the page and its URL)
-  const navTo = (id) => {
+  // Off to a place (a station, a world or a wonder out in deep space), by
+  // `drive` (nav.js's: the one picked on the nav map, unless it says):
+  // hyperspeed jumps (once the hyperdrive's charged, and not while hunters
+  // have it interdicted: then it goes on super speed instead, and says why),
+  // super speed and cruising fly it there on the autopilot. With reduced
+  // motion it's simply there. (A planet picked by the page comes through
+  // select(), with its URL; a wonder clicked on the map comes straight here.)
+  // False when it can't go: no ship, on foot, mid-crash or mid-jump.
+  // (a jump keeps to the wall clock, not the frames': the site's jump plays
+  // over the page in real time, and the ship has to be out under its flash
+  // however slowly the frames come)
+  const wall = () => performance.now() / 1000;
+  const travel = (id, drive = props.drive) => {
     const s = state.ship;
-    if (!s || state.crash || props.frozen) return;
+    if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !isGoal(id)) return false;
     // (the Maw's own spot is past its point of no return: to the edge of its pull instead)
-    const park = id === MAW.id ? parkNear([s.x, s.z]) : parkAt(id, [s.x, s.z]);
-    if (!park) return;
+    const park = parkFor(id, [s.x, s.z]);
+    if (!park) return false;
     heard();
-    state.auto = { id, park };
     state.view = state.seat;
     state.lastInput = performance.now();
     if (!state.flown) {
       state.flown = true;
       emit({ type: 'launch' });
     }
+    if (reduced) {
+      state.auto = null;
+      arriveAt(park);
+      ctx.invalidate();
+      return true;
+    }
+    const hyper = drive === 'hyper' ? hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }) : null;
+    if (hyper?.ready) {
+      // the jump: the page plays the site's own over the map, and at its
+      // flash the ship's out at the place (fly())
+      state.auto = null;
+      state.jump = { id, park, at: wall() + HYPER.flash };
+      state.hyperAt = wall();
+      emit({ type: 'jump', id });
+    } else {
+      if (hyper) emit({ type: 'hyper', why: hyper.why, wait: hyper.wait }); // (not yet: on super speed instead)
+      state.auto = { id, park, od: driveById(hyper ? 'super' : drive).od };
+    }
     retarget(700);
     ctx.invalidate();
+    return true;
   };
+  // the ship put straight down at a parking spot, still, level and facing
+  // the place (reduced motion's trip, and a jump's way out of hyperspace)
+  const arriveAt = (park) => {
+    state.ship = { ...state.ship, ...park, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    state.yaw = -state.ship.heading;
+    camQOn = false;
+  };
+  const navTo = (id) => travel(id);
 
   // ── The ship ──
   const heard = () => {
@@ -2004,7 +2042,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view === 'map', travelling: travelling(live) });
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view === 'map' || Boolean(props.charting), travelling: travelling(live) });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -2198,10 +2236,30 @@ export async function create(canvas, ctx) {
   const fly = (dt, t) => {
     if (state.crash) return crashing(dt);
     let input;
-    if (state.auto) {
-      const a = autopilot(state.ship, state.auto.id, state.auto.park);
+    if (state.jump && wall() >= state.jump.at) {
+      // out of hyperspace, under the jump's flash: parked at the place, the
+      // hunters left behind, and a flash and a ring of light (or a portal,
+      // for the cruiser) where it comes out
+      const j = state.jump;
+      state.jump = null;
+      arriveAt(j.park);
+      hunters?.clear();
+      state.interdicted = false;
+      state.safeUntil = state.clock + SAFE;
+      crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
+      emit({ type: 'jumped', id: j.id });
+    }
+    if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
+    else if (state.auto) {
+      const od = state.interdicted ? 1 : (state.auto.od ?? 1);
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, undefined, od);
       input = a.input;
       if (a.done) state.auto = null;
+      // the crew's word on super speed, the first time it's past the pulse drive
+      if (od > 1 && !state.odSaid && state.ship.speed > SHIP.pulse * 1.2) {
+        state.odSaid = true;
+        emit({ type: 'event', id: 'overdrive' });
+      }
     } else {
       input = steering();
       input.tune = state.stats; // (what's fitted; the autopilot flies it as it came, so it stops where it means to)
@@ -2761,7 +2819,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
+    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
   }
 
   // ── Keys, while flying ──
@@ -2787,10 +2845,21 @@ export async function create(canvas, ctx) {
       return;
     }
     if (key === 'm') {
+      // the nav map (the page opens it); from the whole map in 3D, back to the ship
       heard();
-      state.view = state.view === 'map' ? state.seat : 'map';
-      retarget(900);
-      ctx.invalidate();
+      if (state.view === 'map') {
+        state.view = state.seat;
+        retarget(900);
+        ctx.invalidate();
+      } else emit({ type: 'map' });
+      return;
+    }
+    if (key === 'j') {
+      // hyperspeed to the place picked, if it's not where you are; or the nav map, to pick one
+      e.preventDefault();
+      heard();
+      if (state.sel && state.sel !== state.at) travel(state.sel, 'hyper');
+      else emit({ type: 'map' });
       return;
     }
     if (key === 'v') {
@@ -3172,6 +3241,27 @@ export async function create(canvas, ctx) {
         return true;
       }
       return false;
+    },
+    // the nav map's: off to a place by a drive (travel above; false if it can't go)
+    travel(id, drive) {
+      return travel(id, drive);
+    },
+    // and what it shows: where the ship is and which way it points, where
+    // it's going and how, whether the hyperdrive's charged, and the other
+    // pilots online (null for the ship with none picked)
+    where() {
+      const s = state.ship;
+      const going = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      return {
+        ship: s ? { x: s.x, y: s.y, z: s.z, heading: s.heading, speed: s.speed } : null,
+        at: state.at,
+        going,
+        foot: onFoot(),
+        crashed: Boolean(state.crash),
+        interdicted: state.interdicted,
+        hyper: hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }),
+        pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, x: p.at.x, z: p.at.z })),
+      };
     },
     // the whole map: the view pulls out while you keep the ship (false
     // without one; the page clears the selection instead)
