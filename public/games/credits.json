@@ -1083,5 +1083,95 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "kenney/station-chair": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "chair-cushion",
+    "name": "Space Station Kit: chair-cushion",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-table": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "table-large",
+    "name": "Space Station Kit: table-large",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-computer": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "computer-system",
+    "name": "Space Station Kit: computer-system",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-computer-wide": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "computer-wide",
+    "name": "Space Station Kit: computer-wide",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-container": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "container-flat",
+    "name": "Space Station Kit: container-flat",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-container-tall": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "container-tall",
+    "name": "Space Station Kit: container-tall",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-rail": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "rail",
+    "name": "Space Station Kit: rail",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-pipe": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "pipe",
+    "name": "Space Station Kit: pipe",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-banner": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "wall-banner",
+    "name": "Space Station Kit: wall-banner",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
+  },
+  "kenney/station-display": {
+    "source": "https://kenney.nl/assets/space-station-kit",
+    "id": "display-wall-wide",
+    "name": "Space Station Kit: display-wall-wide",
+    "authors": [
+      "Kenney"
+    ],
+    "license": "CC0 1.0"
   }
 }
