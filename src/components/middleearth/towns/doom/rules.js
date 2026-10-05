@@ -235,3 +235,85 @@ export function stepFlight(f, dt, steer = 0) {
   }
   return ev;
 }
+
+// ── On the side: do you remember the Shire? ──
+// At the foot of the mountain, Frodo can't recall the taste of food, nor
+// the sound of water, nor the touch of grass. Sam tells him the Shire, a
+// thing at a time, and he says them back in Sam's order: two to begin
+// with, then one more each time, up to six. Get one wrong and Sam tells
+// that many again.
+export const SHIRE = [
+  { id: 'blossom', name: 'The orchards in blossom', say: '“It’ll be spring soon. And the orchards will be in blossom.”' },
+  { id: 'birds', name: 'Birds in the hazel thicket', say: '“And the birds will be nesting in the hazel thicket.”' },
+  { id: 'barley', name: 'Barley in the lower fields', say: '“And they’ll be sowing the summer barley in the lower fields.”' },
+  { id: 'strawberries', name: 'Strawberries and cream', say: '“And eating the first of the strawberries with cream.”' },
+  { id: 'water', name: 'The sound of water', say: '“The Water, going over the weir by the mill. You can hear it from Bag End, of a still night.”' },
+  { id: 'grass', name: 'The touch of grass', say: '“Grass under your feet, Mr. Frodo, cool and wet first thing.”' },
+  { id: 'bread', name: 'New bread', say: '“Bread from the oven, with butter running off it.”' },
+  { id: 'rosie', name: 'Rosie Cotton dancing', say: '“Rosie Cotton, dancing at the party, with flowers in her hair.”' },
+];
+export const RECALL = { length: 6, first: 2, wait: 0.9, show: 1.5, gap: 0.35, pause: 1.4 };
+
+export function newRecall(seed = 1) {
+  const rand = seeded(seed);
+  const pool = SHIRE.map((m) => m.id);
+  const order = [];
+  while (order.length < RECALL.length) order.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
+  return { order, round: RECALL.first, phase: 'tell', t: 0, told: -1, said: 0, slips: 0, state: 'on' };
+}
+// what Sam is saying just now, while he tells them (an id, or null)
+export function telling(r) {
+  if (r.phase !== 'tell') return null;
+  const u = (r.t - RECALL.wait) / (RECALL.show + RECALL.gap);
+  const i = Math.floor(u);
+  if (i < 0 || i >= r.round || u - i > RECALL.show / (RECALL.show + RECALL.gap)) return null;
+  return r.order[i];
+}
+// One step. Events: 'tell' { i, id } as Sam names each one, and 'ask'
+// when it's Frodo's turn to say them back.
+export function stepRecall(r, dt) {
+  const ev = [];
+  if (r.state !== 'on') return ev;
+  r.t += dt;
+  if (r.phase === 'tell') {
+    const i = Math.floor((r.t - RECALL.wait) / (RECALL.show + RECALL.gap));
+    while (r.told < Math.min(i, r.round - 1)) {
+      r.told += 1;
+      ev.push({ type: 'tell', i: r.told, id: r.order[r.told] });
+    }
+    if (r.t >= RECALL.wait + r.round * (RECALL.show + RECALL.gap)) {
+      r.phase = 'ask';
+      r.said = 0;
+      r.t = 0;
+      ev.push({ type: 'ask' });
+    }
+  } else if ((r.phase === 'next' || r.phase === 'wrong') && r.t >= RECALL.pause) {
+    r.phase = 'tell';
+    r.t = 0;
+    r.told = -1;
+  }
+  return ev;
+}
+// Frodo says one back: 'right' (so far), 'round' (all of this many: one
+// more next), 'remembered' (all six), 'wrong', or null when it isn't his
+// turn.
+export function recall(r, id) {
+  if (r.state !== 'on' || r.phase !== 'ask') return null;
+  if (r.order[r.said] !== id) {
+    r.slips += 1;
+    r.phase = 'wrong';
+    r.t = 0;
+    return 'wrong';
+  }
+  r.said += 1;
+  if (r.said < r.round) return 'right';
+  if (r.round >= RECALL.length) {
+    r.state = 'remembered';
+    r.phase = 'done';
+    return 'remembered';
+  }
+  r.round += 1;
+  r.phase = 'next';
+  r.t = 0;
+  return 'round';
+}
