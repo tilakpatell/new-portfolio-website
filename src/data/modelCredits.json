@@ -549,6 +549,17 @@
     "as": "the First Order stormtroopers",
     "file": "/models/galaxy/surface/fotrooper.glb"
   },
+  "surface-gungan": {
+    "title": "Jar Jar Binks",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jar-jar-binks-85aef3e496d44e9b95c7386035c0ef10",
+    "where": "galaxy",
+    "as": "the Gungans",
+    "file": "/models/galaxy/surface/gungan.glb"
+  },
   "surface-jawa": {
     "title": "SM_jawa",
     "author": "michael50",
