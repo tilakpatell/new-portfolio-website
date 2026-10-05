@@ -293,3 +293,44 @@ spheres; tall diagonal neon pillars framed in yellow bulb chevrons; balconies
 on two or three levels lined with glowing screens and game cabinets; round
 teal-topped tables on the floor; magenta, purple, teal and gold neon. Roy's
 cabinet sits on the floor among the others.
+
+## Amendment 3 (2026-10-05, from the user): the house inside, as the show draws it, and the way down from the lab
+
+The user sent stills of the kitchen, Morty's room, the entry, the dining room
+and the living room, and asked for more things in the rooms, and for the lab's
+way down (they chose both: a hatch in the lab floor down to Rick's secret
+underground lab, and a clearer door between the garage and the kitchen).
+
+- **Kitchen:** olive-green walls, wood plank floor, a sloped ceiling with two
+  pendant lamps; tan cabinets with brown frames above and below the counters
+  (pale grey tops); the sink under a window, a paper-towel roll on the wall, a
+  knife block; a steel range hood over the stove; a white fridge with magnets
+  and notes; a breakfast nook: a small table and chairs by a window with yellow
+  curtains; arched doorways out.
+- **Living room:** cream walls under exposed wooden ceiling beams; a mint-green
+  couch (Jerry sits on it), a teal armchair, a wooden coffee table on an olive
+  rug, a bookcase, a table lamp, a mirror and a potted plant, a sliding glass
+  door to the back yard, Snuffles' red dog bed; the TV keeps playing cable.
+- **Entry:** pink walls, arched doorways, the red rug, a white staircase with
+  white balusters and wood treads, a grandfather clock, a wall sconce, a framed
+  grid of horse photos (Beth), the front door.
+- **Dining room:** cream walls, the table under a yellow-green checked cloth,
+  six blue upholstered chairs, salmon curtains, framed paintings (one of
+  sunflowers), a pendant lamp; the butter robot on the table.
+- **Morty's room:** pale walls with blue trim and cracked plaster, green
+  carpet, a round space rug (planets and a sun), the bed with a beige spread, a
+  blue nightstand with a red lamp and a little elephant, a bookshelf of books
+  and toys, a wall shelf with a robot toy and a gadget, posters (a magnet, a
+  small one, a beach with palm trees — no pin-up), a SCIENCE pennant, a
+  dartboard on the door, a green jacket on a hook, a red desk with a rocket
+  model and a chair, a ceiling light.
+- **More things:** mugs and a coffee maker on the counters, pictures on walls,
+  rugs, plants.
+- **The lab's ways out:** the door between the garage and the kitchen is a
+  clear, framed door on both sides; a floor hatch in the lab opens (it lifts as
+  Morty comes near) onto a ladder down to **Rick's secret lab**, a new walkable
+  room under the garage: concrete and riveted steel, pipes and cables along the
+  ceiling, glowing green vats (one with a floating pickle), a big humming
+  machine, consoles with green screens, a rack of gadgets, a containment cell,
+  a tank of portal fluid, warning signs; the ladder back up. A new thing to do:
+  find Rick's secret lab.
