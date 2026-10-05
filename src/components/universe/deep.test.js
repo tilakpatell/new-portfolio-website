@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, nearestStar, openness, planetAt, reachOf, wonderById } from './deep';
+import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
@@ -121,6 +121,12 @@ describe('deep space', () => {
     expect(DEEP_SOLIDS.filter((s) => s.id.startsWith('graveyard'))).toHaveLength(1);
     // and none of them is a star a flare comes from
     expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+  });
+
+  it('reads a wonder from a link, and nothing else', () => {
+    expect(parseWonder('aurelia')).toBe('aurelia');
+    expect(parseWonder('lantern')).toBe('lantern');
+    for (const bad of ['marvel', 'home', 'AURELIA', '__proto__', 'constructor', '', null, undefined, 3]) expect(parseWonder(bad)).toBeNull();
   });
 
   it('knows its stars, and which is nearest', () => {
