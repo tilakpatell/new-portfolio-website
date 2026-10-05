@@ -44,6 +44,7 @@ export const MODULES = [
   // ── hulls ──
   mod('hull', 'dart', 'Dart', 'A fighter’s fuselage, fine at the nose and broad at the back. Quick to turn.', {
     does: { agility: 0.1, plant: 7 },
+    scale: 1, // (how big its cockpit, tail and extras are on it)
     length: [-0.17, 0.12],
     sockets: {
       cockpit: [0, 0.019, -0.07],
@@ -76,6 +77,7 @@ export const MODULES = [
     weight: 0.6,
     achievement: 'offthegrid',
     hint: 'Take Roy off the grid at Blips and Chitz',
+    scale: 1.2, // (how big its cockpit, tail and extras are on it)
     length: [-0.12, 0.12],
     sockets: {
       cockpit: [0, 0.024, -0.025],
@@ -105,6 +107,7 @@ export const MODULES = [
   }),
   mod('hull', 'hauler', 'Hauler', 'A freighter’s box of a hull. Slow to turn, but its plant runs anything.', {
     does: { agility: -0.15, cruise: -0.05, plant: 10 },
+    scale: 1.35, // (how big its cockpit, tail and extras are on it)
     length: [-0.15, 0.13],
     sockets: {
       cockpit: [0, 0.04, -0.095],
@@ -134,6 +137,7 @@ export const MODULES = [
   }),
   mod('hull', 'needle', 'Needle', 'A racer’s long thin hull. The fastest cruise of any, if not the nimblest.', {
     does: { cruise: 0.15, agility: -0.05, plant: 6 },
+    scale: 0.85, // (how big its cockpit, tail and extras are on it)
     length: [-0.19, 0.13],
     sockets: {
       cockpit: [0, 0.016, -0.085],
