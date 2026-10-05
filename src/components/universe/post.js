@@ -23,6 +23,11 @@
 // spaceEnvironment(renderer, sky) is what shiny things reflect: the Milky
 // Way, brought up, with the key light's glow where the key light is and a
 // cool fill opposite, so metal catches the same light the scene is lit by.
+//
+// overlay(scene, camera) draws a second scene over the first with its own
+// depth, before the bloom (the cockpit, from the pilot's seat, so its frame
+// is always in front of whatever is out there and its lights glow too); null
+// takes it off again.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -113,6 +118,12 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 2 : 4 });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
+  // whatever's drawn over the scene (the cockpit), with a fresh depth
+  const over = new RenderPass(scene, camera);
+  over.clear = false;
+  over.clearDepth = true;
+  over.enabled = false;
+  composer.addPass(over);
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
   // its first step (picking out what's bright enough to glow) reads through finite()
   const bright = bloom.materialHighPassFilter;
@@ -136,6 +147,13 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     render(w, h) {
       if (!on) {
         renderer.render(scene, camera);
+        if (over.enabled) {
+          const was = renderer.autoClear;
+          renderer.autoClear = false;
+          renderer.clearDepth();
+          renderer.render(over.scene, over.camera);
+          renderer.autoClear = was;
+        }
         return;
       }
       const ratio = renderer.getPixelRatio();
@@ -146,6 +164,12 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         grade.uniforms.uAspect.value = w / h;
       }
       composer.render();
+    },
+    // a scene drawn over the first, from `cam` (null: nothing)
+    overlay(s, cam) {
+      over.enabled = Boolean(s);
+      over.scene = s ?? scene;
+      over.camera = cam ?? camera;
     },
     // bloom's strength, for a moment's flare (a boost, an arrival)
     flare(k) {

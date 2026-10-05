@@ -125,10 +125,15 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
                 <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the whole map
               </li>
               <li className="universe-keys-board">
-                <kbd>E</kbd> to land or dock where you are
+                <kbd>V</kbd> for the cockpit, or back behind the ship
               </li>
-              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to climb and dive, hold Boost to go fast, and tap Fire</li>
-              <li className="universe-keys-touch">Tap a planet or a station to fly there</li>
+              <li>The guns lock on to whoever comes after you: shoot at the pip ahead of them, and the shots bend home</li>
+              <li className="universe-keys-board">
+                <kbd>T</kbd> for the next target, <kbd>E</kbd> to land or dock where you are
+              </li>
+              <li>Out in deep space, click a wonder and the ship flies you there</li>
+              <li className="universe-keys-touch">Drag anywhere on the map to fly, hold the arrows to climb and dive, hold Boost to go fast, and tap Fire; View puts you in the cockpit</li>
+              <li className="universe-keys-touch">Tap a planet, a station or a wonder to fly there, or a hunter to lock on</li>
             </ul>
             <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
               Change ship

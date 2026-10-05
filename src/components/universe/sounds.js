@@ -440,6 +440,17 @@ export function alarmSound() {
   );
 }
 
+// The guns locking on to a hunter: two quick ticks, the second higher
+export function lockSound() {
+  tones(
+    [
+      [1180, 0, 0.05],
+      [1560, 0.07, 0.07],
+    ],
+    { type: 'triangle', gain: 0.035 },
+  );
+}
+
 // A hunter's shot going past: a short, thin zap
 export function enemyFireSound() {
   tones([[1400, 0, 0.07]], { type: 'sawtooth', gain: 0.012 });
