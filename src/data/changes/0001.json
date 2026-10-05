@@ -1,0 +1,20 @@
+{
+  "id": 1,
+  "date": "2026-10-05",
+  "title": "The ship’s log, and the autopilot that writes it",
+  "kind": "infra",
+  "summary": "The site now improves itself: a scheduled Claude session makes one change well, checks it in a browser, merges it and logs it on this page with a picture. Every pull request now runs lint, the tests and the build before it can merge, and any change here can be taken out again with one phrase.",
+  "routes": [
+    "/changes"
+  ],
+  "pr": 153,
+  "shots": [
+    "/changes/0001-a.webp"
+  ],
+  "measured": {
+    "js": 8559329,
+    "note": "Total JS shipped: 8.2 MB over 315 lazy chunks; the entry chunk 174 kB. The first numbers for later changes to measure against."
+  },
+  "session": "session_01JfGSEHknQb3AfVDHunaKc2",
+  "reverted": null
+}

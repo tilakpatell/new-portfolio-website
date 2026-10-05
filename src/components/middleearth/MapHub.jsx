@@ -8,6 +8,7 @@ import { hidden as hiddenPlace, hiddenAt } from './hidden';
 import { roadRecord } from './record';
 import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
+import '../../styles/lazy/middleearth.css';
 
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;

@@ -1,3 +1,4 @@
+import '../../styles/lazy/cybertron.css';
 // Optimus Prime, front on, who folds into a cab-over truck and back. Every
 // part is drawn where it sits in robot mode; `--truck` is the transform that
 // tucks it into the truck. Transitions run in an order (wheels and legs, then

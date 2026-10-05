@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { RiVolumeUpLine } from 'react-icons/ri';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { audioContext } from '../../lib/audio';
+import '../../styles/lazy/experience.css';
 
 // An opening crawl. `variant="career"` (the Experience page) tells the career
 // so far, every line from the roles there; `variant="intro"` is the site's

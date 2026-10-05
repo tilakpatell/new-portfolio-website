@@ -40,6 +40,7 @@ export default function Footer() {
           <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
           <Link className="text-body hover:text-ink" to="/resume">Résumé</Link>
           <Link className="text-body hover:text-ink" to="/deathstar" title="Classified">DS-1 plans</Link>
+          <Link className="text-body hover:text-ink" to="/changes" title="The ship’s log: what the site’s autopilot changed">What’s changed</Link>
           <button type="button" className="text-left text-body hover:text-ink" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
             Start over
           </button>

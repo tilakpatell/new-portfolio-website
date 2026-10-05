@@ -1,5 +1,6 @@
 import Gif from '../Gif';
 import { GIFS } from '../../data/gifs';
+import '../../styles/lazy/worlds.css';
 
 // A few scenes from the studio's own GIPHY channel, embedded with credit.
 export default function Scenes({ names }) {

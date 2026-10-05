@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import '../../styles/lazy/middleearth.css';
 
 // The West-gate of Moria, after Tolkien's drawing in The Fellowship of the
 // Ring: two pillars and an arch carrying the inscription, the crown and seven
