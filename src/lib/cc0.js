@@ -4,28 +4,18 @@
 // from it can repeat its textures without uploading them again.
 
 import * as THREE from 'three';
-import { budget } from './device';
+import { loadTexture } from './three/textures';
 
 export function createLibrary(renderer) {
   const sets = new Map();
   const made = [];
-  const loader = new THREE.TextureLoader();
-  const aniso = Math.min(budget().aniso, renderer.capabilities.getMaxAnisotropy());
 
+  // (decoded off the main thread, as sharp at a slant as the device's tier
+  // allows, and shared with any other scene that wants the same map)
   const one = (name, file, srgb) =>
-    new Promise((resolve, reject) => {
-      loader.load(
-        `/games/tex/${name}/${file}.webp`,
-        (t) => {
-          t.wrapS = t.wrapT = THREE.RepeatWrapping;
-          t.anisotropy = aniso;
-          if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-          made.push(t);
-          resolve(t);
-        },
-        undefined,
-        reject,
-      );
+    loadTexture(`/games/tex/${name}/${file}.webp`, { renderer, color: srgb, wrap: true }).then((t) => {
+      made.push(t);
+      return t;
     });
 
   // Resolves to { color, normal, arm, emission? }, or null if any part can't

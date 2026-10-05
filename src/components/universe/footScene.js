@@ -38,8 +38,8 @@
 //   guests(list), end(), dispose() }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpen } from '../../lib/three/textures';
 import { createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { smoothNormals } from '../cockpit/crew';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
@@ -95,14 +95,7 @@ const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres,
 
 // ── Loading the people ──
 
-let loader = null;
-const getLoader = () => {
-  if (!loader) {
-    loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
-  }
-  return loader;
-};
+const getLoader = () => gltfLoader();
 
 // Rick's clips, for every Meshy figure without its own: the bones' turns,
 // and the hips' height scaled to the figure's (no other bone's length)
@@ -552,7 +545,7 @@ function noiseTexture() {
   noiseTex.magFilter = THREE.LinearFilter;
   noiseTex.minFilter = THREE.LinearMipmapLinearFilter;
   noiseTex.generateMipmaps = true;
-  noiseTex.anisotropy = 8;
+  sharpen(noiseTex);
   noiseTex.needsUpdate = true;
   return noiseTex;
 }
@@ -677,7 +670,7 @@ function platingTexture() {
   plateTex.magFilter = THREE.LinearFilter;
   plateTex.minFilter = THREE.LinearMipmapLinearFilter;
   plateTex.generateMipmaps = true;
-  plateTex.anisotropy = 8;
+  sharpen(plateTex);
   plateTex.needsUpdate = true;
   return plateTex;
 }

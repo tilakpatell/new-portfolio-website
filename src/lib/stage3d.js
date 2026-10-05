@@ -14,6 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget } from './device';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
+import { sharpen } from './three/textures';
 
 // The last step, on the display-ready picture: a film-like grade.
 export const GRADE = {
@@ -54,12 +55,7 @@ export const hot = (hex, k = 1) => new THREE.Color(hex).multiplyScalar(k);
 
 // A canvas as a texture, repeating, sharp at a glancing angle.
 export function canvasTexture(canvas, renderer, { repeat = [1, 1], srgb = true, wrap = true } = {}) {
-  const t = new THREE.CanvasTexture(canvas);
-  if (wrap) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(repeat[0], repeat[1]);
-  t.anisotropy = Math.min(budget().aniso, renderer.capabilities.getMaxAnisotropy());
-  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return sharpen(new THREE.CanvasTexture(canvas), { renderer, color: srgb ? true : undefined, wrap: Boolean(wrap), repeat });
 }
 
 // Free a whole tree: geometries, materials and every texture they hold.
