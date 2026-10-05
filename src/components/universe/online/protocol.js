@@ -39,7 +39,7 @@ export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
 export const BOLT_LIFE = 1.1; // seconds a bolt flies (targeting.js's AIM.life)
 export const GUARD = {
   shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
-  gap: 150, // ms between hits from one pilot (the guns fire every 220)
+  gap: 90, // ms between hits from one pilot (the fastest guns, the X-wing's, fire every 120)
   range: 70, // map units: further off than this, they couldn't have hit you
   near: 2, // map units: how close a shot's path must pass you (more, the faster you go)
   killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit

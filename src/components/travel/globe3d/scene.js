@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { HOME, PLACES } from '../../../data/places';
 import { capturePointer } from '../../../lib/pointer';
-import { clamp01, color, createRenderer, disposeTree, easeInOut, easeOut } from '../../../lib/three/renderer';
+import { clamp01, color, createRenderer, disposeTree, easeInOut, easeOut, precompile } from '../../../lib/three/renderer';
 import { ARC_STEPS, RAD, countryName, countryOf, globeData } from './data';
 import * as S from './shaders';
 
@@ -795,6 +795,8 @@ export function create(canvas, ctx) {
   window.addEventListener('scroll', onScroll, { passive: true });
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

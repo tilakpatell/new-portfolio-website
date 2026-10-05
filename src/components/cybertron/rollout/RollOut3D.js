@@ -433,6 +433,8 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     world = w;
     world.attach(scene, stage);
     pending = null;
+    // the new world's shaders link in the background; the stage holds its last frame till then
+    stage.precompile();
   };
 
   // ── the boss, built when it comes out ──
@@ -448,6 +450,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       : (cast.boss(kind) ?? buildBoss(M, kind, tex));
     boss = { kind, ...m };
     scene.add(boss.group);
+    stage.precompile(boss.group); // its shaders link before it's drawn (the stage holds a frame or two)
     return boss;
   };
 
@@ -858,15 +861,9 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     stage.render(ms);
   }
 
-  // A first frame of every material before play, so nothing stalls mid-run.
-  const warm = () => {
-    try {
-      renderer.compile(scene, camera);
-    } catch {
-      /* compile is a hint */
-    }
-  };
-  warm();
+  // Every material's shader (and the passes'), linked in the background before
+  // play (lib/stage3d's precompile), so neither the first frame nor the run stalls.
+  await stage.precompile();
   progress(1, 'Ready');
 
   // where a point in the world is on screen, in CSS pixels

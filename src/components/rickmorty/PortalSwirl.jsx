@@ -30,7 +30,8 @@ export default function PortalSwirl({ shot = 0, size = [0.3, 0.42], seed = 0, cl
     let run = null;
     let canvas = null;
     const start = () => {
-      // a canvas of its own each time: a context given back can't be used again
+      // a plain canvas of its own each time (./swirl.js copies the swirl onto
+      // it from the one WebGL context all the page's portals share)
       canvas = document.createElement('canvas');
       el.append(canvas);
       const calm = prefersReducedMotion();
@@ -42,7 +43,14 @@ export default function PortalSwirl({ shot = 0, size = [0.3, 0.42], seed = 0, cl
         if (fired.current.at < 0 || since > 0.75) return born;
         return born * (since < 0.22 ? 1 - since / 0.22 : settle(Math.min(1, (since - 0.22) / 0.53)));
       };
-      run = runSwirl(canvas, { ...opts.current, open, calm });
+      // (the shader failing to link turns up a frame or so later)
+      const onFail = () => {
+        run?.stop();
+        run = null;
+        canvas?.remove();
+        setFailed(true);
+      };
+      run = runSwirl(canvas, { ...opts.current, open, calm, onFail });
       if (!run) {
         canvas.remove();
         setFailed(true);

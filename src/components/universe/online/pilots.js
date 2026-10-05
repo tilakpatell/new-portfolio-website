@@ -18,6 +18,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { disposeTree } from '../../../lib/three/renderer';
 import { SHIP_MODELS, buildShip } from '../shipModels';
 import { SHIP } from '../ship';
+import { sweptHit } from '../targeting';
 import { sample } from './protocol';
 import { UNIVERSE } from './where';
 
@@ -74,7 +75,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
       tag.append(name, bar);
       tags.append(tag);
     }
-    return { kind, model, tag, name: '', at: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, ally: false, tagOn: null };
+    return { kind, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, ally: false, tagOn: null };
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
@@ -104,9 +105,6 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
   };
 
   const place = { x: 0, y: 0, z: 0 };
-  const seg = new THREE.Vector3();
-  const tmp = new THREE.Vector3();
-  const near = new THREE.Vector3();
   let live = 0;
 
   return {
@@ -136,6 +134,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
         }
         const s = sample(p.snaps, now);
         const on = Boolean(s && !s.hidden);
+        const was = sh.shown;
         sh.shown = on;
         sh.ally = p.ally === 'ally';
         const g = sh.model.group;
@@ -149,6 +148,9 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
           sh.model.pivot.rotation.x = s.pitch;
           sh.model.setThrottle(Math.min(1, Math.abs(s.speed) / SHIP.cruise) * (s.boost ? 1 : 0.7));
           sh.model.update(now / 1000);
+          // where it was last frame too (just come into view, it hasn't come from anywhere)
+          if (was) sh.prev.copy(sh.at);
+          else sh.prev.set(s.x, s.y, s.z);
           sh.at.set(s.x, s.y, s.z);
           sh.vel.set(-Math.sin(s.heading) * s.speed, s.vy, -Math.cos(s.heading) * s.speed);
         }
@@ -191,17 +193,21 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
     },
 
     // a bolt of yours from `from` to `to` this frame: the pilot it hit (not
-    // an ally), if any: { id, at, size }
+    // an ally), if any: { id, at, size }. Tested against the whole way each
+    // ship went in its last frame, as it was drawn (one crossing the bolt's
+    // path between two frames is still hit), the nearest along the bolt first
     hit(from, to) {
-      seg.copy(to).sub(from);
-      const len2 = seg.lengthSq() || 1;
+      let hit = null;
+      let first = Infinity;
       for (const [id, sh] of ships) {
         if (!sh.shown || sh.ally) continue;
-        const k = THREE.MathUtils.clamp(tmp.copy(sh.at).sub(from).dot(seg) / len2, 0, 1);
-        if (near.copy(from).addScaledVector(seg, k).distanceTo(sh.at) > HIT_R) continue;
-        return { id, at: sh.at.clone(), size: SIZE };
+        const k = sweptHit(from, to, sh.prev, sh.at, HIT_R);
+        if (k !== null && k < first) {
+          first = k;
+          hit = { id, at: sh.at.clone(), size: SIZE };
+        }
       }
-      return null;
+      return hit;
     },
 
     // what the guns can lock on to: everyone in view who isn't an ally

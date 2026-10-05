@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
 import { pixelRatio } from '../../lib/device';
+import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
 const INK = 0x1b1424;
 const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 across)
@@ -188,7 +189,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
 export async function createCruiser3D(canvas) {
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
+    renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' }));
   } catch {
     return null;
   }
@@ -225,6 +226,9 @@ export async function createCruiser3D(canvas) {
     camera.updateProjectionMatrix();
   };
   fit();
+  // its shaders linked in the background before its first frame (the flat
+  // drawing flies meanwhile), so drawing it doesn't stop the page
+  await precompile(renderer, scene, camera);
 
   return {
     // h: how much it's heading right (-1 left … 1 right), v: down (0 … 1),
@@ -243,7 +247,7 @@ export async function createCruiser3D(canvas) {
     dispose() {
       cruiser.dispose();
       renderer.dispose();
-      renderer.forceContextLoss();
+      releaseContext(renderer); // (lib/three/renderer: once nothing is compiling)
     },
   };
 }

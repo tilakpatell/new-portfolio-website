@@ -15,6 +15,9 @@
 //   update?(props)           new props from the page
 //   lowerQuality?()          still slow at the lowest sharpness: simplify
 //   dispose()
+//   ready?                   a promise: its shaders are compiled (see
+//                            lib/three/renderer's precompile); the first
+//                            frame waits for it (READY_WAIT at most)
 // ctx is { el, colors, reduced, invalidate, onLost, onSlow, ...props }
 // (colours as seen inside `el`, so a scene in a .dark-scope gets dark ones):
 // `el` is the scene's box (for pointer events), `invalidate()` asks for frames.
@@ -22,9 +25,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../gpu';
 import { useReducedMotion } from '../hooks';
+import { settle } from '../settle';
 import { readTheme, watchTheme } from './theme';
 
 const DROP_AFTER = 10000; // ms far from the viewport before the scene is let go
+const READY_WAIT = 4000; // ms at most a scene's `ready` holds back its first frame
 
 // Something full screen over the whole page (the opening crawl, the cockpit)
 // sets html[data-covered]: scenes underneath stay made but draw nothing until
@@ -163,9 +168,20 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
             v.dispose();
             return;
           }
-          view.current = v;
           const r = wrap.current?.getBoundingClientRect();
           if (r) v.resize(r.width, r.height);
+          // its shaders compiling in the background: the first frame waits
+          // for them (still 'loading'), so drawing it doesn't stall the page
+          if (v.ready) {
+            await settle(v.ready, READY_WAIT);
+            if (dead || failed.current) {
+              v.dispose();
+              return;
+            }
+            // props the page changed meanwhile (update() runs on every render, so it's safe to repeat)
+            v.update?.(propsRef.current);
+          }
+          view.current = v;
           v.setVisible?.(visible.current);
           setStatus('ready');
           L.kick();

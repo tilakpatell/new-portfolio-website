@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { use3D } from '../../../lib/gpu';
 import { prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
-import { register, useLive } from '../hq/useStage';
+import { register, useLive, warmed } from '../hq/useStage';
 import { STONES } from '../../interests/stones';
 
 // Titan in 3D (./scene.js) in the gauntlet's panel: the gauntlet raised against
@@ -38,6 +38,11 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
         try {
           const v = await mod.create(canvas.current, { calm: calm.current, onLost: fail });
           if (dead) {
+            v.dispose();
+            return;
+          }
+          await warmed(v); // its shaders linked before the first frame
+          if (dead || v.engine?.lost) {
             v.dispose();
             return;
           }
