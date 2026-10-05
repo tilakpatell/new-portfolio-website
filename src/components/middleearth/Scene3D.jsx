@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion, useFrameLoop, useInView } from '../../lib/hooks';
+import '../../styles/lazy/middleearth.css';
 
 // A Middle-earth scene in WebGL, laid over the drawing it stands in for.
 // It loads Three.js and the scene only once it is near the screen, hands the

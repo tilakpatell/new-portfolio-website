@@ -1,5 +1,6 @@
 import Photo from '../Photo';
 import { useOnceVisible } from '../ui';
+import '../../styles/lazy/experience.css';
 
 // A wide photograph for each role, in the same misty treatment as the travel
 // page: data-centre racks for AWS, F-35s for RTX, headphones for Bose, laser

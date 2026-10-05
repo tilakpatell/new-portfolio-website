@@ -1,5 +1,6 @@
 import AutobotMark from '../AutobotMark';
 import DecepticonMark from '../DecepticonMark';
+import '../../styles/lazy/cybertron.css';
 
 // The faction insignia, cut into slats so it can transform: the slats slide
 // out in alternate directions, the face changes, and they slide back in.

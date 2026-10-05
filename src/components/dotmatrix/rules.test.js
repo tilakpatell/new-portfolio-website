@@ -8,23 +8,29 @@ import {
   COINS,
   GAMEBOY,
   H,
+  HEART_EVERY,
   HERO,
   MAP,
+  PEN,
   PIPES,
   SIGNS,
   SNAKE,
   START,
+  TALK_R,
   TOWER,
+  VILLAGERS,
   W,
   WALKERS,
   alongLoop,
   bites,
+  blocked,
   cameraMove,
   column,
   floorAt,
   legend,
   moveHero,
   nearAction,
+  newFolk,
   newGame,
   newHero,
   newPlant,
@@ -34,6 +40,8 @@ import {
   snakeAt,
   step,
   stepPlant,
+  stepVillager,
+  talk,
   tileAt,
   walkerAt,
   warp,
@@ -436,5 +444,138 @@ describe('Dot Matrix: the B button', () => {
     const g = newGame();
     g.hero = at(28, 0, 30);
     expect(nearAction(g)).toBeNull();
+  });
+});
+
+describe('Dot Matrix: the villagers', () => {
+  const faraway = { x: 0, y: 0, z: 0 };
+
+  it('walk on flat open ground, clear of the pen, the walkers and the snake', () => {
+    expect(VILLAGERS.length).toBeGreaterThanOrEqual(4);
+    for (const v of VILLAGERS) {
+      expect(v.lines.length).toBeGreaterThanOrEqual(2);
+      expect(typeof v.done).toBe('string');
+      for (let k = 0; k <= 20; k++) {
+        const x = v.from[0] + ((v.to[0] - v.from[0]) * k) / 20;
+        const z = v.from[1] + ((v.to[1] - v.from[1]) * k) / 20;
+        const t = tileAt(x, z);
+        expect(['grass', 'long', 'path', 'sand'], `${v.id} at ${x},${z}`).toContain(t.kind);
+        expect(t.ground).toBe(0);
+        expect(blocked(x, z, 0, 0.02), `${v.id} at ${x},${z}`).toBe(false);
+        expect(x > PEN.x0 && x < PEN.x1 + 1 && z > PEN.z0 && z < PEN.z1 + 1, `${v.id} in the pen`).toBe(false);
+        for (const w of WALKERS) {
+          const d = Math.min(...[0, 0.25, 0.5, 0.75, 1].map((f) => Math.hypot(w.from[0] + (w.to[0] - w.from[0]) * f - x, w.from[1] + (w.to[1] - w.from[1]) * f - z)));
+          expect(d, `${v.id} crosses ${w.id}`).toBeGreaterThan(0.9);
+        }
+      }
+    }
+  });
+
+  it('walk there and back, and wait a while at each end', () => {
+    const v = VILLAGERS[0];
+    const f = newFolk()[v.id];
+    const xs = [];
+    let atEnd = 0;
+    for (let i = 0; i < 40 / DT; i++) {
+      stepVillager(v, f, DT, faraway);
+      xs.push(f.x);
+      if (Math.abs(f.x - v.to[0]) < 1e-6 && Math.abs(f.z - v.to[1]) < 1e-6) atEnd++;
+    }
+    expect(Math.min(...xs)).toBeCloseTo(Math.min(v.from[0], v.to[0]), 5);
+    expect(Math.max(...xs)).toBeCloseTo(Math.max(v.from[0], v.to[0]), 5);
+    expect(atEnd * DT).toBeGreaterThanOrEqual(v.dwell * 0.9);
+    expect(f.stopped).toBe(false);
+  });
+
+  it('stop and turn to face you when you come up to them, then walk on', () => {
+    const v = VILLAGERS[0];
+    const f = newFolk()[v.id];
+    for (let i = 0; i < 2 / DT; i++) stepVillager(v, f, DT, faraway);
+    const was = { x: f.x, z: f.z };
+    const hero = { x: f.x + 0.9, y: 0, z: f.z + 0.4 };
+    for (let i = 0; i < 1 / DT; i++) stepVillager(v, f, DT, hero);
+    expect(f.stopped).toBe(true);
+    expect(f.x).toBe(was.x);
+    expect(f.z).toBe(was.z);
+    expect(f.face).toBeCloseTo(Math.atan2(hero.x - f.x, hero.z - f.z), 1);
+    for (let i = 0; i < 1 / DT; i++) stepVillager(v, f, DT, faraway);
+    expect(f.stopped).toBe(false);
+    expect(f.x === was.x && f.z === was.z).toBe(false);
+  });
+
+  it('are talked to with B, ahead of a sign but behind the Game Boy', () => {
+    const kid = VILLAGERS.find((v) => v.id === 'kid');
+    const g = newGame();
+    const f = g.folk.kid;
+    const sign = SIGNS.find((s) => s.id === 'square');
+    // the kid beside the square's sign: the kid comes first
+    Object.assign(f, { x: sign.ix + 0.5, z: sign.iz + 1.5, stopped: true });
+    g.hero = at(sign.ix + 0.5, 0, sign.iz + 1.3);
+    expect(nearAction(g)).toEqual({ kind: 'talk', id: 'kid' });
+    // in front of the Game Boy, the Game Boy comes first
+    Object.assign(f, { x: 25, z: 15.2 });
+    g.hero = at(25, 0, 15);
+    expect(nearAction(g)).toEqual({ kind: 'gameboy', id: 'gameboy' });
+    // out of reach, nothing
+    Object.assign(f, { x: kid.from[0], z: kid.from[1] });
+    g.hero = at(kid.from[0] + TALK_R + 1, 0, kid.from[1]);
+    expect(nearAction(g)).toBeNull();
+  });
+
+  it('have something new to say each time, round again, and a last word once the set is complete', () => {
+    const v = VILLAGERS[0];
+    const g = newGame();
+    const heard = v.lines.map(() => talk(g, v.id));
+    expect(heard.map((h) => h.text)).toEqual(v.lines);
+    expect(heard[0].name).toBe(v.name);
+    expect(talk(g, v.id).text).toBe(v.lines[0]);
+    const done = newGame({ found: CARTRIDGES.map((c) => c.id) });
+    expect(talk(done, v.id).text).toBe(v.done);
+    expect(talk(g, 'nobody')).toBeNull();
+  });
+
+  it('stand still and keep facing you while you talk, every step of the game', () => {
+    const v = VILLAGERS[0];
+    const g = newGame();
+    const f = g.folk[v.id];
+    g.hero = at(f.x + 0.8, 0, f.z);
+    play(g, idle, 1);
+    expect(f.stopped).toBe(true);
+    expect(nearAction(g)).toEqual({ kind: 'talk', id: v.id });
+  });
+});
+
+describe('Dot Matrix: the coins', () => {
+  const coinAt = (c) => at(c.x, c.y - 0.55, c.z);
+
+  it('give a heart back every so many, when one is missing', () => {
+    expect(HEART_EVERY).toBeGreaterThan(5);
+    const g = newGame();
+    g.hearts = 1;
+    COINS.slice(0, HEART_EVERY - 1).forEach((c) => g.coins.add(c.id));
+    g.hero = coinAt(COINS[HEART_EVERY - 1]);
+    const ev = step(g, idle, DT);
+    expect(ev.some((e) => e.type === 'coin')).toBe(true);
+    expect(ev.some((e) => e.type === 'coinheart')).toBe(true);
+    expect(g.hearts).toBe(2);
+    // with full hearts, the coin counts but there's nothing to give back
+    const g2 = newGame();
+    COINS.slice(0, HEART_EVERY - 1).forEach((c) => g2.coins.add(c.id));
+    g2.hero = coinAt(COINS[HEART_EVERY - 1]);
+    const ev2 = step(g2, idle, DT);
+    expect(ev2.some((e) => e.type === 'coinheart')).toBe(false);
+    expect(g2.hearts).toBe(HERO.hearts);
+  });
+
+  it('say so, once, when the last one is picked up', () => {
+    const g = newGame();
+    for (const c of COINS.slice(1)) g.coins.add(c.id);
+    for (const b of BLOCKS) if (!b.heart) g.coins.add(b.id);
+    expect(progress(g).coins).toBe(progress(g).coinsOf - 1);
+    g.hero = coinAt(COINS[0]);
+    const ev = step(g, idle, DT);
+    expect(ev.filter((e) => e.type === 'allcoins')).toHaveLength(1);
+    expect(progress(g).coins).toBe(progress(g).coinsOf);
+    expect(step(g, idle, DT).some((e) => e.type === 'allcoins')).toBe(false);
   });
 });

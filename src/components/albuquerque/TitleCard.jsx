@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { splitWord } from './elements';
+import '../../styles/lazy/albuquerque.css';
 
 // Any name as a Breaking Bad title card, one element from the periodic table
 // at a time; "Say my name", and the opening.

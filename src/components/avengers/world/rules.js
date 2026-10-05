@@ -741,6 +741,62 @@ export const SWING = {
   restick: 0.4, // seconds before the wall he kicked off will hold him again
   stick: 1.5, // how hard into a wall he has to be going to stick to it (m/s)
 };
+// Air tricks, as Insomniac's: in free flight (off a web, a wall or a perch,
+// not on a web), a press turns a flip (forward, or back with the stick
+// pulled back) or a twist (with the stick to a side). Each is worth style
+// points, more for each in a row without touching down; a perfect release
+// counts too; landing banks the lot, landing mid-trick loses it (a bail).
+// The Iron Man armour by the workshop's door: suit up in it (E at the
+// plinth) and it flies, on its repulsors: it hovers, Space takes it up and
+// Shift brings it down, the stick drives it, and it leans into its speed.
+// E again steps out of it, wherever you are, and the armour goes home.
+export const SUIT = {
+  r: 3.2, // how near the plinth you have to be to suit up
+  accel: 26, // along the stick (m/s²)
+  lift: 22, // up with Space, and down with Shift (m/s²)
+  top: 38, // as fast as it goes (m/s)
+  climb: 16, // and up or down
+  drag: 1.4, // how quickly it stops when nothing's pressed (per second)
+  hover: 1.3, // how high over the ground it holds, idle
+  turn: 7, // how quickly it faces the way it's going (rad/s)
+  ceiling: 120,
+};
+export const nearArmour = (x, z) => Math.hypot(x - ARMOUR.x, z - ARMOUR.z) < SUIT.r;
+
+export const TRICK = {
+  time: 0.75, // seconds a trick takes
+  gap: 0.1, // between one and the next
+  points: { flip: 100, back: 120, twist: 110, perfect: 150 },
+  minAir: 0.15, // seconds off the ground before a trick counts (not a hop)
+  bail: 0.45, // the crouch a bail lands in (s)
+};
+
+// ── the settings (O): how it feels, each live and kept between visits ──
+// `look` scales the drag and the pad's right stick; `invert` turns the pitch
+// over; `camera` scales how far back the camera sits; `assist` how much a
+// swing (and a flight) comes round toward where you steer; `follow` how
+// quickly the camera comes round behind him; `shake` the field-of-view
+// bumps and the speed lines.
+export const SETTINGS = {
+  look: { label: 'Look sensitivity', min: 0.4, max: 2, step: 0.05, value: 1, hint: 'How far a drag of the mouse, or the pad’s right stick, turns the view.' },
+  invert: { label: 'Invert the pitch', toggle: true, value: 0, hint: 'Drag up to look down, as a pilot would.' },
+  camera: { label: 'Camera distance', min: 0.7, max: 1.6, step: 0.05, value: 1, hint: 'How far behind him the camera sits. It pulls back on its own with speed.' },
+  assist: { label: 'Swing assist', min: 0, max: 2, step: 0.1, value: 1, hint: 'How much a swing comes round toward where you steer. Off, it’s a rope and nothing else.' },
+  follow: { label: 'Camera follow', min: 0, max: 2, step: 0.1, value: 1, hint: 'How quickly the camera drifts round behind him once you let the view go.' },
+  shake: { label: 'Camera kick', min: 0, max: 1, step: 0.05, value: 1, hint: 'The bump in the view with every web, and the lines at the edges when he’s fast.' },
+};
+export const SETTINGS_DEFAULTS = Object.fromEntries(Object.entries(SETTINGS).map(([k, r]) => [k, r.value]));
+// Settings as kept (or anything): each within its range, the rest as they came.
+export function readSettings(raw) {
+  const out = { ...SETTINGS_DEFAULTS };
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, r] of Object.entries(SETTINGS)) {
+    const v = raw[k];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    out[k] = r.toggle ? (v ? 1 : 0) : Math.max(r.min, Math.min(r.max, v));
+  }
+  return out;
+}
 
 export const newHero = (at = START) => ({
   x: at.x,
@@ -753,7 +809,8 @@ export const newHero = (at = START) => ({
   speed: 0,
   running: false,
   air: false,
-  mode: 'ground', // ground | air | swing | wall | zipto | perch
+  mode: 'ground', // ground | air | swing | wall | zipto | perch | suit (the armour)
+  flown: 0, // metres flown in the armour
   to: null, // a point launch's perch: { x, y, z, roof }
   perchT: 0, // after landing on a perch: a jump now is a point launch
   glide: false, // web wings out
@@ -771,6 +828,9 @@ export const newHero = (at = START) => ({
   fly: false, // off a web or a wall: his own momentum, not a jump's
   flip: 0, // a perfect release's flip, seconds left
   combo: 0,
+  trick: null, // an air trick going: { kind: 'flip' | 'back' | 'twist', dir, t: seconds left }
+  trickGap: 0,
+  style: 0, // style points this flight, banked on landing
   land: 0, // a hard landing's crouch, seconds left
   climb: 0, // metres climbed, for his hands and feet
   ev: [], // what happened this step
@@ -778,8 +838,9 @@ export const newHero = (at = START) => ({
 
 // One step. `move` is where the visitor wants to go, already turned to the
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
-// `jump` (a press, not a hold), `web` (the jump button, held) and `zip` (a press).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false } = {}, dt) {
+// `jump` (a press, not a hold), `web` (the jump button, held), `zip` and
+// `perch` (presses), and `assist` (the settings' swing assist, 1 as it comes).
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, trick = false, suit = false, assist = 1 } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -791,11 +852,28 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
-  const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip };
+  const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip, assist };
   h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
+  h.trickGap = Math.max(0, (h.trickGap ?? 0) - dt);
+  h.style ??= 0;
+  // the armour: into it at the plinth, out of it anywhere
+  if (suit) {
+    if (h.mode === 'suit') suitOff(h);
+    else if (h.mode === 'ground' && nearArmour(h.x, h.z)) suitUp(h);
+  }
   // a point launch: to the perch ahead
-  if (perch && h.mode !== 'zipto') pointLaunch(h, i);
-  if (h.mode === 'zipto') stepZipTo(h, dt);
+  if (perch && h.mode !== 'zipto' && h.mode !== 'suit') pointLaunch(h, i);
+  // an air trick: in free flight, and only one at a time
+  if (trick && h.mode === 'air' && h.fly && !h.web && !h.glide && !h.trick && h.trickGap <= 0 && h.airT >= TRICK.minAir) startTrick(h, i);
+  if (h.trick) {
+    h.trick = { ...h.trick, t: h.trick.t - dt };
+    if (h.trick.t <= 0) {
+      h.trick = null;
+      h.trickGap = TRICK.gap;
+    }
+  }
+  if (h.mode === 'suit') stepSuit(h, i, dt);
+  else if (h.mode === 'zipto') stepZipTo(h, dt);
   else if (h.mode === 'perch') stepPerch(h, i, dt);
   else if (h.mode === 'wall') stepWall(h, i, dt);
   else if (h.mode === 'ground') stepGround(h, i, dt);
@@ -909,6 +987,7 @@ function attach(h, turn) {
   h.web = { a: w.a, at: w.at, len: w.len, target: ropeFor(w.a, w.len, h.y, floorAt(h.x, h.z, h.y)), hand: w.hand, entry: h.y };
   h.mode = 'swing';
   h.fly = true;
+  h.trick = null;
   h.zips = SWING.zip.charges;
   h.ev.push({ type: 'web', at: w.at, hand: w.hand, kind: w.kind });
   return true;
@@ -935,7 +1014,8 @@ function letGo(h) {
     h.vz *= P.boost;
     h.combo = (h.combo ?? 0) + 1;
     h.flip = 0.7;
-    h.ev.push({ type: 'perfect', combo: h.combo });
+    h.style = (h.style ?? 0) + TRICK.points.perfect * h.combo;
+    h.ev.push({ type: 'perfect', combo: h.combo, style: h.style });
   } else h.ev.push({ type: 'release' });
 }
 
@@ -1022,7 +1102,7 @@ function stepZipTo(h, dt) {
   const sp = Math.min(P.speed, Math.hypot(h.vx, h.vy, h.vz) + P.accel * dt);
   if (d <= sp * dt + 0.3) {
     // there: on top of it
-    Object.assign(h, { x: t.x, y: t.y, z: t.z, vx: 0, vy: 0, vz: 0, mode: t.roof ? 'ground' : 'perch', to: null, fly: false, perchT: P.window, speed: 0 });
+    Object.assign(h, { x: t.x, y: t.y, z: t.z, vx: 0, vy: 0, vz: 0, mode: t.roof ? 'ground' : 'perch', to: null, fly: false, trick: null, perchT: P.window, speed: 0 });
     h.ev.push({ type: 'perched' });
     return;
   }
@@ -1064,6 +1144,115 @@ function launchOff(h, { mx, mz, len }) {
   Object.assign(h, { mode: 'air', fly: true, vx: (dx / l) * L.out, vz: (dz / l) * L.out, vy: L.up, perchT: 0, airT: 0 });
   h.face = Math.atan2(-dz, dx);
   h.ev.push({ type: 'launch' });
+}
+
+// Into the armour: it lifts off the ground at once
+function suitUp(h) {
+  Object.assign(h, { mode: 'suit', fly: true, web: null, wall: null, glide: false, trick: null, to: null, vy: 3, airT: 0, speed: 0, running: false, flown: 0 });
+  h.ev.push({ type: 'suitup' });
+}
+// Out of it: he's Spider-Man again, in the air wherever the armour was
+function suitOff(h) {
+  Object.assign(h, { mode: 'air', fly: true, airT: 0, held: true, rearm: SWING.rearm, flown: 0 });
+  h.ev.push({ type: 'suitoff', x: h.x, y: h.y, z: h.z });
+}
+// The armour flying: it hovers, Space takes it up and Shift down, the stick
+// drives it, and it goes no faster than it goes. Walls stop it, a roof or
+// the lawn holds it up, and it keeps to the lawn.
+function stepSuit(h, { mx, mz, len, run, web }, dt) {
+  h.web = null;
+  h.fly = true;
+  h.airT += dt;
+  let vx = h.vx + mx * SUIT.accel * dt;
+  let vz = h.vz + mz * SUIT.accel * dt;
+  let vy = h.vy;
+  // up on the repulsors, down with Shift; idle, it holds its height
+  if (web) vy += SUIT.lift * dt;
+  else if (run) vy -= SUIT.lift * dt;
+  else vy -= vy * Math.min(1, 4 * dt);
+  const k = Math.exp(-SUIT.drag * dt);
+  if (len < 0.05) {
+    vx *= k;
+    vz *= k;
+  }
+  const hs = Math.hypot(vx, vz);
+  if (hs > SUIT.top) {
+    vx *= SUIT.top / hs;
+    vz *= SUIT.top / hs;
+  }
+  vy = Math.max(-SUIT.climb, Math.min(SUIT.climb, vy));
+  // on its way, in steps short enough not to go through a wall
+  const n = Math.max(1, Math.ceil((Math.hypot(vx, vy, vz) * dt) / 0.45));
+  const sdt = dt / n;
+  let { x, y, z } = h;
+  for (let s = 0; s < n; s++) {
+    const py = y;
+    x += vx * sdt;
+    y += vy * sdt;
+    z += vz * sdt;
+    if (y > SUIT.ceiling) {
+      y = SUIT.ceiling;
+      vy = Math.min(0, vy);
+    }
+    const c = collide3(py, x, y, z);
+    x = c.x;
+    y = c.y;
+    z = c.z;
+    if (c.head) vy = Math.min(0, vy);
+    if (c.lawn) {
+      const into = vx * c.lawn.nx + vz * c.lawn.nz;
+      if (into < 0) {
+        vx -= c.lawn.nx * into;
+        vz -= c.lawn.nz * into;
+      }
+    }
+    if (c.wall) {
+      const into = -(vx * c.wall.nx + vz * c.wall.nz);
+      if (into > 0) {
+        vx += c.wall.nx * into;
+        vz += c.wall.nz * into;
+      }
+    }
+    // the ground (or a roof) holds it up: it hovers a little over it, never below
+    const floor = floorAt(x, z, Math.max(py, y));
+    if (y < floor + SUIT.hover && vy <= 0 && !run) {
+      y = Math.min(floor + SUIT.hover, y + SUIT.hover * sdt * 2);
+      vy = 0;
+    } else if (c.landed != null && vy <= 0) {
+      y = c.landed;
+      vy = 0;
+    }
+  }
+  h.flown = (h.flown ?? 0) + Math.hypot(x - h.x, y - h.y, z - h.z);
+  Object.assign(h, { x, y, z, vx, vy, vz });
+  const hs2 = Math.hypot(vx, vz);
+  if (hs2 > 1.5) turnTo(h, vx, vz, SUIT.turn, dt);
+  else if (len > 0.05) turnTo(h, mx, mz, HERO.turn, dt);
+  h.speed = hs2;
+  h.running = false;
+}
+
+// A trick: a flip forward, a backflip with the stick pulled back, a twist
+// with it to a side (against the way he's going), worth more for each in a row
+function startTrick(h, { mx, mz, len }) {
+  let kind = 'flip';
+  let dir = 1;
+  if (len > 0.3) {
+    const hs = Math.hypot(h.vx, h.vz);
+    const fx = hs > 1 ? h.vx / hs : Math.cos(h.face);
+    const fz = hs > 1 ? h.vz / hs : -Math.sin(h.face);
+    const along = mx * fx + mz * fz;
+    const side = fx * mz - fz * mx;
+    if (along < -0.5) kind = 'back';
+    else if (Math.abs(side) > 0.5) {
+      kind = 'twist';
+      dir = side > 0 ? 1 : -1;
+    }
+  }
+  h.trick = { kind, dir, t: TRICK.time };
+  h.combo = (h.combo ?? 0) + 1;
+  h.style = (h.style ?? 0) + TRICK.points[kind] * h.combo;
+  h.ev.push({ type: 'trick', kind, dir, combo: h.combo, style: h.style });
 }
 
 // A corner swing: steering hard (the stick well off the way he's going) with
@@ -1156,7 +1345,7 @@ function alongside(h) {
   return best;
 }
 
-function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
+function stepAir(h, { mx, mz, len, run, web, zip, assist = 1 }, dt) {
   h.airT = (h.airT ?? 0) + dt;
   const turn = len > 0.1 ? { x: mx, z: mz } : null;
   // the web: shot as the button goes down in the air (or after a moment, held
@@ -1176,9 +1365,10 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
   const w = h.web;
   if (h.fly && turn) {
     // he goes where you steer: the swing (or the flight) comes round toward it (fast, whipping round a corner)
-    steerToward(h, mx, mz, SWING.assist * (w ? 1 : 0.5) * (h.cornerT > 0 ? SWING.corner.whip : 1) * len * dt);
-    h.vx += mx * SWING.steer * dt;
-    h.vz += mz * SWING.steer * dt;
+    // (the assist is the settings', down to none: then it's a rope and nothing else)
+    steerToward(h, mx, mz, SWING.assist * assist * (w ? 1 : 0.5) * (h.cornerT > 0 ? SWING.corner.whip : 1) * len * dt);
+    h.vx += mx * SWING.steer * assist * dt;
+    h.vz += mz * SWING.steer * assist * dt;
   }
   let vx = h.vx;
   let vy = h.vy;
@@ -1302,7 +1492,7 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
         // a spider: he sticks to it, and the speed he hit it with carries him up it
         const hit = Math.hypot(vx, vy, vz);
         const R = SWING.wallRun;
-        Object.assign(h, { x, y, z, vx: 0, vy: 0, vz: 0, mode: 'wall', web: null, fly: false, wall: { id: c.wall.s.id, nx: c.wall.nx, nz: c.wall.nz } });
+        Object.assign(h, { x, y, z, vx: 0, vy: 0, vz: 0, mode: 'wall', web: null, fly: false, trick: null, wall: { id: c.wall.s.id, nx: c.wall.nx, nz: c.wall.nz } });
         h.runUp = hit > R.min ? Math.min(R.max, hit * R.carry) : 0;
         h.face = Math.atan2(c.wall.nz, -c.wall.nx);
         h.speed = 0;
@@ -1334,9 +1524,18 @@ function land(h, impact) {
   h.web = null;
   h.fly = false;
   h.airT = 0;
-  h.combo = 0;
   h.speed = Math.hypot(h.vx, h.vz);
   h.running = false;
+  // the flight's style: banked, unless he's still mid-trick, which is a bail
+  if (h.trick) {
+    h.ev.push({ type: 'bail', style: h.style, combo: h.combo });
+    h.trick = null;
+    h.land = Math.max(h.land, TRICK.bail);
+    h.vx *= 0.3;
+    h.vz *= 0.3;
+  } else if (h.style > 0) h.ev.push({ type: 'bank', style: h.style, combo: h.combo });
+  h.style = 0;
+  h.combo = 0;
   // a long way down: down on one knee, the way he does, and the run taken out of him
   if (impact > 14) {
     h.land = 0.45;

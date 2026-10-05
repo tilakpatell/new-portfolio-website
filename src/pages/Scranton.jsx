@@ -15,6 +15,7 @@ import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
 import { useDocumentTitle } from '../lib/hooks';
 import '@fontsource/courier-prime/700.css';
+import '../styles/lazy/office.css';
 
 const sfx = () => import('../lib/sfx');
 // the office to walk about in, as Jim (components/office/world), on top of the page

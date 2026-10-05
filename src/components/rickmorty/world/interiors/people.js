@@ -4,11 +4,10 @@
 // way, for the teacher and for anyone whose model won't load.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { BASE, faceForward, heading } from '../../portal/meshyCast';
 import { mergeParts } from '../kit';
 import { CYL } from './shell';
+import { gltfLoader } from '../../../../lib/three/gltf';
 
 // The cast (Rick and the Smiths), loaded once for every room that asks;
 // whoever doesn't load is drawn in shapes. They only stand (and Jerry sits),
@@ -47,8 +46,7 @@ const SIT_WAIT = 8000;
 let sitClip = null;
 export function sitting() {
   sitClip ??= Promise.race([
-    new GLTFLoader()
-      .setMeshoptDecoder(MeshoptDecoder)
+    gltfLoader()
       .loadAsync(`${BASE}/rick-sit.glb`)
       .then((g) => {
         const clip = g.animations[0] ?? null;

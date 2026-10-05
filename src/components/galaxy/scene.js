@@ -76,6 +76,7 @@ import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../uni
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
 import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
+import { readBuildWire, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
@@ -269,6 +270,7 @@ export async function create(canvas, ctx) {
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
     loadout: readLoadout(ctx.loadout ?? STOCK_LOADOUT), // what's fitted in the hangar
+    build: null, // the garage build flown in place of the stock hull (universe/shipyard), or null
     stats: statsOf(null, STOCK_LOADOUT), // and what it does to how it flies
     lock: null,
     lockTarget: null,
@@ -371,7 +373,7 @@ export async function create(canvas, ctx) {
     boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout);
+    state.stats = statsOf(state.kind, state.loadout, state.build);
     if (state.kind && state.model) state.model.outfit?.(state.loadout);
   };
   const setLoadout = (raw) => {
@@ -384,8 +386,19 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  const setShip = (kind) => {
-    if (kind === state.kind) return;
+  // The garage build flown in place of the stock hull (or null): the ship
+  // built again when it changes, where it was.
+  const buildKey = (b) => (b ? writeBuild(b).join() : '');
+  const sameBuild = (b) => buildKey(b) === buildKey(state.build);
+  const setBuild = (raw) => {
+    if (sameBuild(raw)) return;
+    state.build = raw ? readBuildWire(writeBuild(raw)) : null;
+    if (state.kind) setShip(state.kind, true);
+  };
+
+  // (force: the same crew, built again: its garage build changed)
+  const setShip = (kind, force = false) => {
+    if (kind === state.kind && !force) return;
     engine?.stop();
     engine = null;
     if (state.model) {
@@ -407,11 +420,14 @@ export async function create(canvas, ctx) {
       hunters?.clear();
       return;
     }
-    state.model = buildShip(kind);
+    state.model = buildShip(kind, {}, { build: state.build });
     scene.add(state.model.group);
+    if (state.build) setPlumes(kind, state.model.engines); // (its own engines)
     refit();
     dress();
-    if (SHIP_MODELS[kind]) {
+    if (state.build) {
+      // a garage build is whole as it is: no model to load over it
+    } else if (SHIP_MODELS[kind]) {
       const model = state.model;
       loadModel(SHIP_MODELS[kind])
         .then((m) => m && warm(model.dress ? model.dress(m) : m).then(() => m)) // (in its paint before its shaders are made)
@@ -1850,8 +1866,12 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
-      if ((next.ship ?? null) !== state.kind) state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
+      if ((next.ship ?? null) !== state.kind) {
+        state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
+        state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+      }
       setShip(next.ship ?? null);
+      setBuild(next.build ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
       // the page asking for another system (a link, the URL): jump there, but

@@ -11,6 +11,7 @@ import { capturePointer } from '../../../lib/pointer';
 import { CASE, LEGS, PADS, STEP, caseHeight, groundAt, inHangar, newGame, setInput, startLeg, stepGame, windAt } from './rules';
 import { createHum } from './hum';
 import './tesseract.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');

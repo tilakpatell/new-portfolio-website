@@ -53,6 +53,7 @@ import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
 import { buildTraffic } from './trafficModels';
+import { sharpen } from '../../lib/three/textures';
 
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
@@ -948,7 +949,7 @@ function dataTexture(data, w, h, { colour = false, repeat = false, mips = true }
   t.generateMipmaps = mips;
   t.wrapS = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
   t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  t.anisotropy = 4;
+  sharpen(t);
   t.needsUpdate = true;
   return t;
 }
@@ -960,7 +961,7 @@ function canvasTexture(w, h, draw) {
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 

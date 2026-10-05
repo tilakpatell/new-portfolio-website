@@ -10,8 +10,6 @@
 // if it never does) one built from simple shapes, the same size.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -21,6 +19,7 @@ import { TRENCH, portZ } from './trench';
 import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
+import { gltfLoader } from '../../lib/three/gltf';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
@@ -481,8 +480,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   scene.add(xw.group);
   // the Meshy model, when it comes: its shaders made first, so it doesn't stall a frame
   let disposed = false;
-  new GLTFLoader()
-    .setMeshoptDecoder(MeshoptDecoder)
+  gltfLoader()
     .loadAsync('/models/meshy/x-wing-fighter.glb')
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);

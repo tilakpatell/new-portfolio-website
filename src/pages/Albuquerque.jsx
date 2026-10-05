@@ -7,6 +7,7 @@ import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useDocumentTitle } from '../lib/hooks';
+import '../styles/lazy/albuquerque.css';
 
 const PLACES = [
   { id: 'bb-albuquerque', title: 'Albuquerque, New Mexico', note: 'Where both shows are set, and where they were filmed.' },

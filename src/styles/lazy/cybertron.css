@@ -1,0 +1,156 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.cy-stage { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: radial-gradient(80% 70% at 50% 35%, #1d2a3d 0%, #0a0f17 70%); box-shadow: var(--shadow-card); }
+.cy-stage[data-side='decepticon'] { background: radial-gradient(80% 70% at 50% 35%, #2a1d3d 0%, #0d0a14 70%); }
+.cy-stage-skyline { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 42%; opacity: 0.9; }
+.cy-stage-3d { position: absolute; inset: 0; }
+.cy-stage-3d > .scene-canvas { display: block; width: 100%; height: 100%; }
+/* the hero's words, over the city: a pane of the page's own colour behind them */
+.cy-hero-copy { padding: clamp(1rem, 0.6rem + 1.4vw, 1.75rem); border-radius: var(--r-card); background: color-mix(in srgb, var(--bg) 74%, transparent); backdrop-filter: blur(10px) saturate(1.1); -webkit-backdrop-filter: blur(10px) saturate(1.1); }
+html[data-mode='dark'] .cy-hero-copy { background: color-mix(in srgb, var(--bg) 52%, transparent); }
+.tf-insignia[data-side='autobot'] { color: #e3112f; filter: drop-shadow(0 0 18px rgba(227, 17, 47, 0.45)); }
+.tf-insignia[data-side='decepticon'] { color: #9a5cf0; filter: drop-shadow(0 0 18px rgba(154, 92, 240, 0.5)); }
+.tf-slat { transform-box: view-box; }
+.tf-insignia[data-phase='out'] .tf-slat { animation: tf-out 0.36s cubic-bezier(0.5, 0, 0.9, 0.6) calc(var(--i) * 18ms) forwards; }
+.tf-insignia[data-phase='in'] .tf-slat { animation: tf-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.2) calc(var(--i) * 18ms) backwards; }
+@keyframes tf-out { to { transform: translateX(calc(var(--dir) * 70px)); opacity: 0; } }
+.cy-translator { padding: clamp(1.25rem, 1rem + 1vw, 2rem); }
+.cy-glyphs { min-height: 1.4em; font-family: 'Cybertron Script', var(--font-mono); font-size: clamp(2rem, 1.2rem + 3.4vw, 3.6rem); line-height: 1.3; color: var(--text); overflow-wrap: anywhere; }
+.cy-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
+.cy-member { position: relative; display: flex; flex-direction: column; padding: 1.25rem; border-top: 4px solid var(--bot); }
+.cy-member-mark { display: block; width: 44px; height: 44px; color: var(--bot); }
+.cy-member-mark svg { width: 100%; height: 100%; }
+.cy-visor { display: block; width: 100%; height: 54px; border-radius: 6px; background: linear-gradient(#0b1730, #0f2244); box-shadow: inset 0 0 0 1px rgba(127, 232, 255, 0.3); }
+@media (prefers-reduced-motion: reduce) { .tf-insignia .tf-slat { animation: none !important; } }
+
+/* Cybertron: the planet, and the transforming bot */
+.cy-planet { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: radial-gradient(60% 50% at 70% 25%, rgba(70, 60, 140, 0.35), transparent 70%), radial-gradient(50% 45% at 20% 80%, rgba(40, 90, 160, 0.3), transparent 70%), #04060c; box-shadow: var(--shadow-card); }
+.cy-planet::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 12% 18%, #fff 50%, transparent), radial-gradient(1px 1px at 68% 12%, #dfe8ff 50%, transparent), radial-gradient(1.5px 1.5px at 84% 40%, #fff 50%, transparent), radial-gradient(1px 1px at 30% 72%, #cfe0ff 50%, transparent), radial-gradient(1px 1px at 92% 82%, #fff 50%, transparent), radial-gradient(1px 1px at 8% 56%, #fff 50%, transparent), radial-gradient(1.2px 1.2px at 52% 92%, #fff 50%, transparent), radial-gradient(1px 1px at 44% 6%, #fff 50%, transparent); opacity: 0.8; }
+.cy-planet::after { content: ''; position: absolute; left: 10%; top: 10%; width: 80%; height: 80%; border-radius: 50%; box-shadow: 0 0 40px 6px rgba(79, 216, 255, 0.28), inset 0 0 30px rgba(79, 216, 255, 0.25); pointer-events: none; }
+.cy-planet[data-side='decepticon']::after { box-shadow: 0 0 40px 6px rgba(180, 120, 255, 0.3), inset 0 0 30px rgba(255, 70, 90, 0.2); }
+.cy-planet-canvas { position: relative; display: block; width: 100%; height: 100%; }
+.cy-planet-canvas > canvas { display: block; width: 100%; height: 100%; }
+.cy-planet:has([data-gl])::after { display: none; } /* the globe in WebGL brings its own glow */
+.cy-planet-mark { position: absolute; right: 5%; bottom: 5%; width: 16%; height: auto; overflow: visible; }
+.cy-figure { position: absolute; left: 50%; bottom: 3%; width: 70%; translate: -50% 0; animation: cy-figure-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) backwards; }
+.cy-figure-art { display: block; width: 100%; height: auto; }
+@keyframes cy-figure-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+.tf-bot { --tf-body: #c8102e; --tf-trim: #1f4fa8; --tf-trim-dark: #173a7c; --tf-glass-1: #9fd8ff; --tf-glass-2: #2b6fae; --tf-eye: #59d6ff; overflow: visible; }
+.tf-bot[data-side='decepticon'] { --tf-body: #7d838d; --tf-trim: #5b2a86; --tf-trim-dark: #3e1c5e; --tf-glass-1: #5c4a7a; --tf-glass-2: #1d1430; --tf-eye: #ff3b3b; }
+.tf-part { transform-box: view-box; transform-origin: var(--o); transition: transform 0.62s cubic-bezier(0.6, -0.25, 0.3, 1.3); }
+.tf-bot[data-mode='robot'] .tf-part { transform: none; transition-delay: var(--d-robot); }
+.tf-bot[data-mode='truck'] .tf-part { transform: var(--truck); transition-delay: var(--d-truck); }
+.tf-eye { fill: var(--tf-eye); filter: drop-shadow(0 0 3px var(--tf-eye)); }
+.tf-bot[data-mode='truck'] .tf-eye { opacity: 0; }
+.tf-light { fill: #ffe9a8; filter: drop-shadow(0 0 4px #ffd25a); }
+.tf-cannon { opacity: 0; transition: opacity 0.3s ease; }
+.tf-bot[data-side='decepticon'][data-mode='robot'] .tf-cannon { opacity: 1; }
+.tf-pane { transform-box: fill-box; transition: transform 0.6s cubic-bezier(0.5, 0, 0.2, 1); }
+.tf-bot[data-matrix] .tf-pane-l { transform: translateX(-44px); }
+.tf-bot[data-matrix] .tf-pane-r { transform: translateX(44px); }
+.tf-matrix-glow { transform-box: fill-box; transform-origin: 50% 50%; }
+.tf-bot[data-matrix] .tf-matrix-glow { animation: tf-matrix 1.2s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .tf-part, .tf-pane { transition-duration: 0.01s !important; transition-delay: 0s !important; } .tf-bot[data-matrix] .tf-matrix-glow { animation: none; } }
+
+/* Megatron, as in Prime: his own body, a jet for an alt mode, the fusion cannon */
+.mg-bot { --mg-steel: #9aa3ae; --mg-steel-2: #6c7581; --mg-hi: #e1e6ec; --mg-dark: #3b4048; --mg-darker: #1f2227; --mg-face: #c3cad3; --mg-blade: #d2d8df; --mg-purple: #9b5cff; --mg-eye: #ff2b2b; overflow: visible; }
+.mg-part { transform-box: view-box; transform-origin: var(--o); transition: transform 0.62s cubic-bezier(0.6, -0.25, 0.3, 1.3), opacity 0.35s ease; }
+.mg-bot[data-mode='robot'] .mg-part { transform: var(--robot); transition-delay: var(--d-robot); }
+.mg-bot[data-mode='jet'] .mg-part { transform: var(--jet); transition-delay: var(--d-jet); }
+.mg-bot[data-mode='robot'] .mg-wing { opacity: 0; }
+.mg-eye { fill: var(--mg-eye); filter: drop-shadow(0 0 3px var(--mg-eye)); }
+.mg-exhaust, .mg-spine { opacity: 0; transition: opacity 0.4s ease; }
+.mg-bot[data-mode='jet'] :is(.mg-exhaust, .mg-spine) { opacity: 1; transition-delay: 0.7s; }
+.mg-exhaust { transform-box: fill-box; transform-origin: 50% 0; }
+.mg-bot[data-mode='jet'] .mg-exhaust { animation: mg-burn 0.16s ease-in-out infinite alternate; }
+@keyframes mg-burn { from { transform: scale(0.85, 0.8); } to { transform: scale(1.1, 1.35); } }
+.mg-insignia, .mg-robot-only, .mg-jet-only { transition: opacity 0.3s ease; }
+.mg-jet-only { opacity: 0; }
+.mg-bot[data-mode='jet'] .mg-jet-only { opacity: 1; transition-delay: 0.45s; }
+.mg-bot[data-mode='jet'] .mg-robot-only { opacity: 0; }
+.mg-blade { transform-box: fill-box; transform-origin: 50% 0; transition: transform 0.3s ease, opacity 0.3s ease; }
+.mg-bot[data-mode='jet'] .mg-blade { transform: scaleY(0.2); opacity: 0; }
+.mg-bot[data-mode='jet'] .mg-insignia { opacity: 0; }
+.mg-shadow { transform-box: fill-box; transform-origin: 50% 50%; transition: transform 0.6s ease, opacity 0.6s ease; }
+.mg-bot[data-mode='jet'] .mg-shadow { transform: scale(0.5); opacity: 0.15; }
+.cy-figure[data-mode='alt'] .mg-bot { animation: mg-hover 2.6s ease-in-out 0.9s infinite alternate; }
+@keyframes mg-hover { from { transform: translateY(-8px); } to { transform: translateY(-20px); } }
+.mg-muzzle { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0.35; }
+.mg-beam { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); opacity: 0; }
+.mg-bot[data-firing] .mg-muzzle { animation: mg-charge 0.45s ease-in both; }
+.mg-bot[data-firing] .mg-beam { animation: mg-fire 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) 0.42s both; }
+.mg-bot[data-mode='robot'][data-firing] .mg-arm-l { transform: rotate(124deg); transition-duration: 0.35s; transition-delay: 0s; }
+@keyframes mg-charge { 0% { transform: scale(0.6); opacity: 0.4; } 90% { transform: scale(2.4); opacity: 1; } 100% { transform: scale(1.4); opacity: 0.8; } }
+@media (prefers-reduced-motion: reduce) {
+  .mg-part { transition-duration: 0.01s !important; transition-delay: 0s !important; }
+  .cy-figure[data-mode='alt'] .mg-bot, .mg-bot[data-mode='jet'] .mg-exhaust, .cy-figure { animation: none; }
+}
+
+/* The ground bridge: a desert road, the vortex, Team Prime and the Vehicons */
+.gbr-stage { position: relative; aspect-ratio: 16 / 7; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #1b1838; box-shadow: var(--shadow-card); container-type: inline-size; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.gbr-stage[data-phase='run'] { touch-action: none; cursor: pointer; }
+@media (max-width: 639px) { .gbr-stage { aspect-ratio: 4 / 3; } }
+@media (min-width: 1024px) { .gbr-stage { aspect-ratio: 3 / 1; } }
+.gbr-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gbr-road { position: absolute; left: 0; right: 0; bottom: 7%; height: 0; }
+.gbr-car { position: absolute; left: 0; bottom: 0; width: 80px; will-change: transform; }
+.gbr-art { display: block; width: 100%; height: auto; overflow: visible; }
+.gbr-car[data-con] .gbr-art { filter: drop-shadow(0 0 6px rgba(139, 77, 255, 0.55)); }
+.gbr-bridge { --gbr-h: clamp(70px, 16cqw, 160px); position: absolute; left: 80%; bottom: 5%; width: calc(var(--gbr-h) * 0.62); height: var(--gbr-h); translate: -50% 0; pointer-events: none; }
+.gbr-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed rgba(140, 255, 200, 0.45); transition: opacity 0.15s ease; }
+.gbr-vortex { position: absolute; inset: 0; overflow: hidden; border-radius: 50%; box-shadow: 0 0 22px 6px rgba(61, 255, 178, 0.55), inset 0 0 18px rgba(255, 255, 255, 0.6); transform: scale(0.08); opacity: 0; transition: transform 0.14s cubic-bezier(0.3, 1.4, 0.5, 1), opacity 0.12s ease; }
+.gbr-vortex::before { content: ''; position: absolute; inset: -30%; background: repeating-conic-gradient(from 0deg, #3dffb2 0deg 22deg, #0f8a68 22deg 50deg, #b6ffe4 50deg 64deg, #157a5e 64deg 90deg); }
+.gbr-vortex::after { content: ''; position: absolute; inset: 0; background: radial-gradient(closest-side, #f4fff8 0%, rgba(141, 255, 207, 0.85) 22%, rgba(34, 201, 138, 0.25) 55%, rgba(13, 107, 82, 0.55) 100%); }
+.gbr-stage[data-open] .gbr-vortex { transform: scale(1); opacity: 1; }
+.gbr-stage[data-open] .gbr-vortex::before { animation: gbr-spin 0.8s linear infinite; }
+.gbr-stage[data-open] .gbr-ring { opacity: 0; }
+@keyframes gbr-spin { to { rotate: 360deg; } }
+.gbr-hud { position: absolute; left: 0.75rem; top: 0.75rem; right: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; align-items: center; font-family: var(--font-mono); font-size: 0.78rem; color: #f3e9ff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); pointer-events: none; }
+.gbr-hud b { color: #8dffcf; font-weight: 700; }
+.gbr-strikes { display: inline-flex; gap: 0.3rem; }
+.gbr-strikes i { width: 10px; height: 10px; border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, 0.7); }
+.gbr-strikes i[data-on] { background: #ff4d6d; border-color: #ff4d6d; box-shadow: 0 0 8px #ff4d6d; }
+.gbr-card { position: absolute; left: 50%; top: 50%; width: min(92%, 380px); translate: -50% -50%; padding: 1rem 1.15rem 1.1rem; border-radius: calc(var(--r-card) * 0.8); background: rgba(12, 10, 26, 0.84); border: 1px solid rgba(141, 255, 207, 0.35); color: #f4f1ff; text-align: center; backdrop-filter: blur(4px); }
+.gbr-card-title { font-weight: 700; font-size: 1.05rem; }
+.gbr-card-text { margin-top: 0.35rem; font-size: 0.88rem; line-height: 1.45; color: #d9d2ee; }
+.gbr-hold { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; min-width: 15rem; }
+.gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #22c98a 22%, transparent); }
+@media (max-width: 639px) { .gbr-hold { width: 100%; min-height: 3.25rem; } .gbr-hud { font-size: 0.7rem; left: 0.5rem; top: 0.5rem; } .gbr-card { padding: 0.8rem 0.9rem 0.9rem; } .gbr-card-text { font-size: 0.8rem; } }
+@media (prefers-reduced-motion: reduce) { .gbr-stage[data-open] .gbr-vortex::before { animation: none; } }
+/* the Decepticons' space bridge: the same vortex, in purple and violet */
+.gbr[data-side='decepticon'] .gbr-ring { border-color: rgba(206, 170, 255, 0.5); }
+.gbr[data-side='decepticon'] .gbr-vortex { box-shadow: 0 0 22px 6px rgba(150, 82, 255, 0.6), inset 0 0 18px rgba(255, 255, 255, 0.6); }
+.gbr[data-side='decepticon'] .gbr-vortex::before { background: repeating-conic-gradient(from 0deg, #b77bff 0deg 22deg, #4a1c8c 22deg 50deg, #ead9ff 50deg 64deg, #6b2fa0 64deg 90deg); }
+.gbr[data-side='decepticon'] .gbr-vortex::after { background: radial-gradient(closest-side, #fbf6ff 0%, rgba(214, 180, 255, 0.85) 22%, rgba(139, 77, 255, 0.25) 55%, rgba(58, 18, 104, 0.55) 100%); }
+.gbr[data-side='decepticon'] .gbr-hud b { color: #d6b8ff; }
+.gbr[data-side='decepticon'] .gbr-card { border-color: rgba(190, 150, 255, 0.4); }
+.gbr[data-side='decepticon'] .gbr-hold[aria-pressed='true'] { background: color-mix(in srgb, #8b4dff 24%, transparent); }
+.iacon-console { padding: clamp(1.1rem, 0.9rem + 1vw, 1.75rem); }
+.iacon-bar { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.iacon-body { padding-top: 1.25rem; }
+.iacon-glyphs { min-height: 1.3em; font-family: 'Cybertron Script', var(--font-mono); font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3rem); line-height: 1.25; letter-spacing: 0.04em; color: var(--accent-text); overflow-wrap: anywhere; }
+.iacon-decrypt { height: 6px; margin-top: 1rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.iacon-decrypt span { display: block; height: 100%; background: var(--iacon-rival); transform-origin: left; transition: transform 0.1s linear; }
+.iacon-options { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.iacon-option { min-height: 2.9rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: var(--r-btn, 10px); background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-align: left; line-height: 1.25; transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+.iacon-option:hover:not(:disabled) { border-color: var(--accent); }
+.iacon-option:active:not(:disabled) { transform: translateY(1px); }
+.iacon-option[data-wrong] { opacity: 0.5; text-decoration: line-through; animation: iacon-shake 0.3s ease; }
+.iacon-option[data-right] { border-color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 16%, var(--surface)); }
+.iacon-option:disabled:not([data-right]) { cursor: default; }
+@keyframes iacon-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.iacon-result { min-height: 3.5rem; margin-top: 1rem; }
+.iacon-found { display: flex; gap: 0.85rem; align-items: flex-start; }
+.iacon-found-icon { flex: none; width: 40px; height: 40px; padding: 7px; border-radius: 10px; color: var(--iacon-ok); background: color-mix(in srgb, var(--iacon-ok) 14%, transparent); }
+.iacon-keybar { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.iacon-key { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 0.4rem; margin-top: 0.85rem; }
+.iacon-key li { display: grid; place-items: center; gap: 0.1rem; padding: 0.35rem 0.2rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+.iacon-key-glyph { font-family: 'Cybertron Script', var(--font-mono); font-size: 1.35rem; line-height: 1; color: var(--accent-text); }
+.iacon-key-letter { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+.iacon-relics { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.iacon-relic { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--muted); font-size: 0.85rem; line-height: 1.25; }
+.iacon-relic[data-have] { border-style: solid; border-color: color-mix(in srgb, var(--iacon-ok) 55%, var(--border)); color: var(--text); background: color-mix(in srgb, var(--iacon-ok) 8%, var(--surface)); }
+.iacon-relic-icon { flex: none; width: 26px; height: 26px; }
+.iacon-relic[data-have] .iacon-relic-icon { color: var(--iacon-ok); }
+.iacon-relic-unknown { font-family: 'Cybertron Script', var(--font-mono); font-size: 1rem; letter-spacing: 0.03em; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .iacon-option[data-wrong] { animation: none; } }

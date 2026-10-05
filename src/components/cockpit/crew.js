@@ -7,16 +7,15 @@
 // reaching for a lever.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpenMaterial } from '../../lib/three/textures';
 
 const BASE = '/models/cockpit';
 
 let loader = null;
 const getLoader = () => {
   if (!loader) {
-    loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader = gltfLoader();
   }
   return loader;
 };
@@ -51,7 +50,7 @@ export async function loadCrew(name, { clip = 'sit', height, hips = [0, 0.5, 0],
       // Meshy's colours carry their own shading: keep them matte
       m.roughness = rough;
       m.metalness = 0;
-      if (m.map) m.map.anisotropy = 4;
+      sharpenMaterial(m);
       owned.push(m, m.map);
     }
     // Meshy's remeshed surfaces come flat-shaded; smooth them, so fur and

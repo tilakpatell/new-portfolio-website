@@ -14,9 +14,8 @@
 // the same skeleton: { id, model (its .glb), height }.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneRig } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from '../../lib/three/gltf';
 
 // Who is in, and how tall (metres, the actor's).
 export const CAST = {
@@ -120,7 +119,7 @@ function reach(upper, lower, end, target, pole) {
 // their model comes (cast.person(who) can be had from then), so a scene
 // needn't wait for everyone.
 export async function loadPeople(ids = Object.keys(CAST), each) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const models = new Map(); // id -> their model
   const skeletons = []; // each figure's own, to dispose
   // A person (an office id or a spec), facing +z. Returns { group, id,

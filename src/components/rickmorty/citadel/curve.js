@@ -7,6 +7,7 @@
 // curveHologram({ radius, height, tier }) → { group, update(t), setMood(m), dispose() }
 
 import * as THREE from 'three';
+import { sharpen } from '../../../lib/three/textures';
 
 const ARC = Math.PI * 2 * 0.84;
 const W = 4096;
@@ -106,7 +107,7 @@ export function curveHologram({ radius = 7.4, height = 2.4 } = {}) {
   const canvas = paintBand();
   const map = new THREE.CanvasTexture(canvas);
   map.colorSpace = THREE.SRGBColorSpace;
-  map.anisotropy = 4;
+  sharpen(map);
   const mat = new THREE.ShaderMaterial({
     uniforms: { uMap: { value: map }, uTime: { value: 0 }, uRed: { value: 0 } },
     vertexShader: VERT,

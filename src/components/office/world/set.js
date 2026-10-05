@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { merge } from '../kit';
 import { CEILING, COPIER, COOLER, DOORS, FILES, FIRE_BIN, FRIDGE, P, PANES, PLANTS, RECEPTION, ROOMS, SEATS, SHELVES, SOLID, STAIRWELL, U, VENDING, rect } from './layout';
 import { BREAK_TABLES, CONFERENCE_TABLE, KITCHEN_COUNTER, KITCHEN_TABLE, STAFF } from '../layout';
+import { sharpen } from '../../../lib/three/textures';
 
 const canvas = (w, h) => {
   const c = document.createElement('canvas');
@@ -26,7 +27,7 @@ const canvas = (w, h) => {
 const texOf = (c, srgb = true) => {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 };
 

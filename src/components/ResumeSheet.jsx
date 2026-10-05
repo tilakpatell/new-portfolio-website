@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { fmtMonth } from '../data/roles';
 import { entryMatches, resume, skillCount, skillPattern } from '../data/resume';
+import '../styles/lazy/resumesheet.css';
 
 // Wrap every match of the active skills in <mark>.
 function Marked({ text, active }) {

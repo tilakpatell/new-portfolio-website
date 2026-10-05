@@ -1,0 +1,25 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+/* The home page's way into the travel page */
+.travel-teaser { min-height: clamp(320px, 42vw, 520px); display: grid; align-items: center; }
+.element-sym { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 0.08em; font-size: 0.66em; letter-spacing: -0.02em; }
+.element-in { animation: element-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+
+/* Northeastern's lockup: black wordmark in light mode, white in dark */
+.nu-logo-dark { display: none; }
+html[data-mode='dark'] .nu-logo-light { display: none; }
+html[data-mode='dark'] .nu-logo-dark { display: block; }
+.hero-backdrop {
+  position: absolute; left: 50%; bottom: 0; z-index: -1; width: 100vw; height: clamp(160px, 24vw, 330px); translate: -50% 0; opacity: 0.95;
+  /* fades into the page, so the next heading has clear space under the skyline */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+/* the hero's "open to" line, with a live dot */
+.open-to { display: inline-flex; align-items: flex-start; gap: 0.65rem; padding: 0.55rem 0.95rem; border: 1px solid var(--border); border-radius: 1rem; background: color-mix(in srgb, var(--surface) 85%, transparent); font-size: 0.92rem; line-height: 1.45; color: var(--text-body); }
+.open-to strong { color: var(--text); font-weight: 600; }
+.open-dot { position: relative; flex: none; width: 8px; height: 8px; margin-top: 0.42rem; border-radius: 999px; background: #22c55e; }
+.open-dot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: rgba(34, 197, 94, 0.45); animation: open-pulse 2.4s ease-out infinite; }
+@keyframes open-pulse { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .open-dot::after { animation: none; display: none; } }
