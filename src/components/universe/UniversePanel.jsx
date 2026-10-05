@@ -7,6 +7,7 @@ import { CREWS, crewById } from './crews';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
+import ModelCredits from '../ModelCredits';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
 // ships to fly (or how to fly the one you're in). With a universe selected:
@@ -119,6 +120,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
           </a>{' '}
           (CC0).
         </p>
+        <ModelCredits where="universe" className="universe-credit universe-models" />
       </aside>
     );
   }
