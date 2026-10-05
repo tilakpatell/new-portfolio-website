@@ -125,7 +125,11 @@ function invert4(m) {
 // after (as scripts/sketchfab-galaxy.mjs does); its animations go too.
 const unskinned = () => (doc) => {
   const root = doc.getRoot();
-  for (const a of root.listAnimations()) a.dispose();
+  // (the animations' samplers too: their keyframes would stay in the file)
+  for (const a of root.listAnimations()) {
+    for (const s of a.listSamplers()) s.dispose();
+    a.dispose();
+  }
   for (const node of root.listNodes()) {
     const skin = node.getSkin();
     if (!skin || !node.getMesh()) continue;
