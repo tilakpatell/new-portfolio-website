@@ -40,6 +40,11 @@ export const CREWS = [
       ['morty', 'Rick! We crashed into a planet, Rick!'],
       ['rick', 'Relax, Morty. I backed us up. Portal’s open.'],
     ],
+    // caught in the black hole's pull (maw.js), and still able to get out
+    pulled: [
+      ['morty', 'R-Rick, it’s pulling us in! Rick!'],
+      ['rick', 'Then hit the boost, Morty! Gravity doesn’t care how smart you are!'],
+    ],
     // into the black hole: no coming back from this one (on its far side is
     // a friend's universe, deep.js's `beyond`, and the page goes on to it)
     swallowed: [
@@ -306,6 +311,10 @@ export const CREWS = [
       ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
+    pulled: [
+      ['luke', 'We’re caught in its gravity! Artoo, all the power you’ve got to the engines!'],
+      ['r2', '[frantic beeping]'],
+    ],
     swallowed: [
       ['luke', 'It’s pulling us in! Artoo, there’s something on the other side…'],
       ['r2', '[a long, falling scream]', 'r2Scream'],
@@ -555,6 +564,10 @@ export const CREWS = [
       ['chewie', '[a horrified roar]'],
       ['han', 'Hold together, baby. Hold together!'],
     ],
+    pulled: [
+      ['han', 'Chewie, it’s got its hooks in us. Punch it!'],
+      ['chewie', '[an alarmed roar]'],
+    ],
     swallowed: [
       ['han', 'Told you, Chewie. Nothing outruns that. Hang on, we’re going through.'],
       ['chewie', '[a long, falling roar]'],
@@ -795,6 +808,10 @@ export const CREWS = [
     crash: [
       ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
       ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
+    ],
+    pulled: [
+      ['jesse', 'Yo, Mr. White, it’s pulling us in! Floor it!'],
+      ['walt', 'Gravity doesn’t negotiate, Jesse. Boost!'],
     ],
     swallowed: [
       ['jesse', 'Mr. White! It’s got the RV!'],
@@ -1060,7 +1077,7 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash', 'swallowed' (by the black hole), 'idle', 'hit',
+// 'edge', 'crash', 'pulled' and 'swallowed' (by the black hole), 'idle', 'hit',
 // 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the

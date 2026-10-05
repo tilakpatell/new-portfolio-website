@@ -47,6 +47,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { DEEP, WONDERS, planetAt, reachOf } from './deep';
+import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
 import { buildTraffic } from './trafficModels';
@@ -1341,7 +1342,7 @@ export function buildDeepSpace({ small = false } = {}) {
   const blackHole = (w) => {
     const g = place(w);
     const tilt = new THREE.Group();
-    tilt.rotation.set(0.36, 0.5, -0.18);
+    tilt.rotation.set(...TILT); // (maw.js: its pull goes round the way the disk does)
     g.add(tilt);
     mesh(new THREE.SphereGeometry(w.r, 48, 32), new THREE.MeshBasicMaterial({ color: 0x000000 }), g);
     const reach = 2.6;

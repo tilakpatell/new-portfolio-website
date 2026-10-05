@@ -146,5 +146,5 @@ export function crashPlan(universe, { reduced }) {
 // you're through, out of the site and into what's on the hole's far side (a
 // friend's universe, deep.js's `beyond`). Straight there with reduced motion.
 export function beyondPlan({ reduced }) {
-  return { mode: 'beyond', delay: reduced ? 0 : 4600 };
+  return { mode: 'beyond', delay: reduced ? 0 : 4000 };
 }

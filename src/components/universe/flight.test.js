@@ -113,7 +113,7 @@ describe('crashing into a place', () => {
 
 describe('the black hole', () => {
   it('goes on through to its far side once the fall and the crew’s last words have had their time, or at once without motion', () => {
-    expect(beyondPlan({ reduced: false })).toEqual({ mode: 'beyond', delay: 4600 });
+    expect(beyondPlan({ reduced: false })).toEqual({ mode: 'beyond', delay: 4000 });
     expect(beyondPlan({ reduced: true })).toEqual({ mode: 'beyond', delay: 0 });
   });
 });
