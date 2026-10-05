@@ -253,3 +253,43 @@ stairs up beside it; a room south-east. Upstairs: Summer's room and Morty's
 room along the north, a hallway, the stairs, Beth and Jerry's room to the
 south with the balcony off it. Where everyone is: Jerry on the couch, Beth
 in the kitchen, Summer in her room on her phone, Rick in the garage.
+
+## Amendment 2 (2026-10-05, from the user): the lab, the high school and Blips and Chitz, accurate
+
+The user sent show stills of each.
+
+**Rick's garage lab:** dark brown wood-plank walls, a dark beamed ceiling
+with a long fluorescent light fixture, a pale grey-green concrete floor. Left
+wall: a pegboard of tools, reels and coils over an L-shaped workbench (pale
+grey top, dark cabinets under, one door open), a round-bottomed flask on a
+stand with glass tubing, conical flasks and beakers of orange, green and pink
+liquid, a green radio-like device, a desk lamp with a magnifier, a teal
+gadget and a coil-wrapped gizmo on the bench, a red office chair. Back wall:
+a corkboard of notes linked with red string and pins, a round wall clock
+over a mountain-picture calendar, a pinkish-tan machine on a stand, a cream
+washer and dryer. Right wall: an orange floral lampshade on a wall arm, grey
+metal shelving of boxes ("Time travel stuff"), jars and alien curios (a
+spiky ball, a green alien head).
+
+**Harry Herpson High School:** red-brown brick with a cream band along the
+top, flat roofs with air-conditioning units; a taller entrance block with
+"HARRY HERPSON HIGH SCHOOL" in raised letters on the brick over a flat cream
+canopy and glass double doors with side lights; a long single-storey wing to
+the left with big many-paned windows; a two-storey wing to the right with
+smaller windows; a flagpole with the US flag by the entrance; an "H.H.H.S."
+marquee sign on a brick base; bushes and trees along the front; a
+crosswalk. The Meshy model is remade to this (without the text: the
+lettering, the marquee and the flagpole are drawn in code). **The
+classroom:** pale blue square floor tiles, cream walls over a grey dado,
+rows of chair-desks (pale wood tops, blue-grey seats), a "MATH! 2+2" poster
+and a corkboard on the front wall, a round clock, a big world map on the
+back wall, a bookcase, a row of windows on one side, fluorescent ceiling
+panels. The teacher at the front desk.
+
+**Blips and Chitz (inside):** a huge multi-level atrium under a starry
+space ceiling: in the middle, a giant orange planet with "BLIPS AND CHITZ"
+across it, hanging over a round central kiosk with colourful orbiting
+spheres; tall diagonal neon pillars framed in yellow bulb chevrons; balconies
+on two or three levels lined with glowing screens and game cabinets; round
+teal-topped tables on the floor; magenta, purple, teal and gold neon. Roy's
+cabinet sits on the floor among the others.
