@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window, document, localStorage */
 // A browser check of the universe nav map (NavMap.jsx): opens it, picks a
 // world, flies there at super speed, jumps to a wonder, then the phone layout.
 // Needs the dev server (npx vite --port 5173) and Chrome; screenshots go to $OUT.
