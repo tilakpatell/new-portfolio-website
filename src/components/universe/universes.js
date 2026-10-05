@@ -115,6 +115,7 @@ const FANDOMS = [
     reach: 1.45, // Alderaan orbits it close in
     trench: { segments: 85 }, // (sections the size the ship flies down, all the way round)
     airless: true, // a station: no air glowing round it (from inside its trench it would wash the view out)
+    plated: true, // and on foot, its ground's hull plating, with blocks standing on it for rocks (footScene.js)
     palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
   },
   {

@@ -9,9 +9,11 @@
 // and then, and where they are a few times a second while walking (once a
 // second standing still); anyone not heard from in a while is gone.
 //
-// createTravellers({ town, name }) → { status, list(), pose(h, { inside,
-// ring }), rename(name), leave() }; list() gives [{ id, name, x, z, face,
-// moving, inside, ring, at }].
+// createTravellers({ town, name, bound, motion }) → { status, list(),
+// pose(h, { inside, ring }, { force }), rename(name), leave() }; list()
+// gives [{ id, name, x, z, face, moving, inside, ring, at }] (and speed and
+// y, with `motion`). `bound` is how far from the middle a town reaches, in
+// metres; `force` sends a pose now (going indoors, say), whatever the pace.
 
 import { createLimiter } from '../../universe/online/protocol';
 import { cleanName } from '../../universe/online/names';
@@ -31,8 +33,14 @@ const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinR
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null);
 const r2 = (v) => Math.round(v * 100) / 100;
 
-// [x, z, face, moving, flags], and back (flags: 1 indoors, 2 wearing the Ring)
-export const writeStep = (h, { inside = false, ring = false } = {}) => [r2(h.x), r2(h.z), r2(h.face), (h.speed ?? 0) > 0.4 ? 1 : 0, (inside ? 1 : 0) | (ring ? 2 : 0)];
+// [x, z, face, moving, flags], and back (flags: 1 indoors, 2 wearing the Ring).
+// A world whose people run and jump (the Avengers compound) adds how fast
+// and how high, [… speed, y], with `motion`; a town that doesn't never sees them.
+export const writeStep = (h, { inside = false, ring = false, motion = false } = {}) => {
+  const step = [r2(h.x), r2(h.z), r2(h.face), (h.speed ?? 0) > 0.4 ? 1 : 0, (inside ? 1 : 0) | (ring ? 2 : 0)];
+  if (motion) step.push(Math.round((h.speed ?? 0) * 10) / 10, r2(h.y ?? 0));
+  return step;
+};
 export function readStep(data, bound = 200) {
   if (!Array.isArray(data) || data.length < 3) return null;
   const x = num(data[0], -bound, bound);
@@ -40,10 +48,15 @@ export function readStep(data, bound = 200) {
   const face = num(data[2], -10, 10);
   if (x == null || z == null || face == null) return null;
   const flags = Number.isInteger(data[4]) ? data[4] : 0;
-  return { x, z, face, moving: data[3] === 1, inside: Boolean(flags & 1), ring: Boolean(flags & 2) };
+  const step = { x, z, face, moving: data[3] === 1, inside: Boolean(flags & 1), ring: Boolean(flags & 2) };
+  if (data.length >= 7) {
+    step.speed = num(data[5], 0, 30) ?? 0;
+    step.y = num(data[6], 0, 20) ?? 0;
+  }
+  return step;
 }
 
-export function createTravellers({ town, name, load = loadRoom, now = () => Date.now(), bound = 200 }) {
+export function createTravellers({ town, name, load = loadRoom, now = () => Date.now(), bound = 200, motion = false }) {
   const peers = new Map();
   const limits = new Map();
   let me = { name: cleanName(name) ?? 'Traveller' };
@@ -128,12 +141,12 @@ export function createTravellers({ town, name, load = loadRoom, now = () => Date
       return [...peers.values()].filter((p) => p.placed);
     },
     // where you are: sent often while you walk, now and then when you don't
-    pose(h, flags = {}) {
+    pose(h, flags = {}, { force = false } = {}) {
       if (status !== 'online' || !acts.p) return;
       const t = now();
-      const step = writeStep(h, flags);
+      const step = writeStep(h, { ...flags, motion });
       const changed = !lastSent || step.some((v, i) => v !== lastSent[i]);
-      if (t - lastStep < (changed ? MOVING_MS : STILL_MS)) return;
+      if (!force && t - lastStep < (changed ? MOVING_MS : STILL_MS)) return;
       lastStep = t;
       lastSent = step;
       acts.p.send(step);

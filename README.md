@@ -62,7 +62,7 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 
-On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then.
+On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
 
 The hangar fits each ship out its own way, like a space sim's outfitting screen, and remembers it. Paint jobs are the site's own colour schemes: the six companies' come with the Cartographer achievement, and each fan scheme's with the easter egg that unlocks it. Parts bolt on and change how it flies and fights: strap-on boosters (solid rockets, an afterburner, repulsor pods, portal-fluid tanks), thrusters, twin or fusion guns, plating or fast-charge shields, and fins. Each draws power from the ship's plant and adds mass, so you can't fit the best of everything; the best parts are earned with achievements in the worlds. Other pilots see your paint and parts. The X-wing and the Falcon you fly are other people's models from Sketchfab (CC BY, credited on the map), brought to web size by `scripts/sketchfab-batch.mjs`; while they load, versions modelled in code (`universe/hulls.js`) stand in.
 
@@ -95,7 +95,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game (Spider-Man's *Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, with everyone else online as holograms. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |

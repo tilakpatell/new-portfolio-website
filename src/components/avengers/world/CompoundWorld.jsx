@@ -5,13 +5,15 @@ import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } f
 import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
 import { BUILDINGS, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, behindYaw, cameraMove, linesFor, nearCast, nearPlace, newHero, outside, placeById, progress, stepHero, underPortal, walkable } from './rules';
 import './world.css';
 
-// The Avengers compound, the world: walk about the compound as Captain
-// America, and go into the buildings to play their games. The rules are in
+// The Avengers compound, the world: walk about the compound as Spider-Man,
+// and go into the buildings to play their games. Anyone else online here
+// shows as a hologram (as in the Middle-earth towns). The rules are in
 // ./rules.js, the drawing in ./scene.js; this is the walking, the HUD and the
 // doors. Each game opens over the page (./Place.jsx); leave it and you're
 // back outside its door. Without 3D, the compound is the drawing from the
@@ -83,8 +85,13 @@ export default function CompoundWorld({ onPortal }) {
   );
 }
 
+// the compound reaches past the towns' 200 m, and its people run and jump
+const ROOM = { bound: 260, motion: true };
+
 function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  // other players online here, as holograms (middleearth/towns/useTravellers)
+  const trav = useTravellers('avengers', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.25 });
   const canvas = useRef(null);
   const map = useRef(null);
@@ -153,6 +160,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   useEffect(() => {
     const from = was.current;
     was.current = inside;
+    // gone indoors: the others see you go (they'd otherwise see you stand at the door)
+    if (inside) trav.ref.current?.pose(sim.current.h, { inside: true }, { force: true });
     if (inside || !from) return;
     const p = placeById(from);
     if (!p) return;
@@ -161,6 +170,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     s.yaw = behindYaw(p.face) + 0.85;
     s.dragAt = s.t;
     s.keys.clear();
+    // (trav.ref is a ref: read when it changes, not a reason to run)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inside]);
 
   const live = gl === 'on' && inView && !inside;
@@ -269,8 +280,12 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       } else setBubble(null);
     }
 
+    // other players: where you are to them, and where they are
+    const tv = trav.ref.current;
+    tv?.pose(s.h);
+    const others = tv ? tv.list() : null;
     try {
-      a.render({ hero: s.h, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -292,7 +307,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others);
     if (s.frame % 120 === 0) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
 
@@ -356,7 +371,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const herePortal = hud.portal && !here;
   return (
     <div ref={box} className="cw-stage" data-touch={touch || undefined}>
-      <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Captain America on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
 
       <div className="cw-hud cw-hud-top">
@@ -380,6 +395,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
           <button type="button" className="cw-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
             The buildings {!touch && <kbd>M</kbd>}
           </button>
+          <Players trav={trav} />
         </div>
       </div>
 
@@ -476,10 +492,27 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   );
 }
 
+// Other players online here: how many, or a way to see them (going online
+// is the site's own switch, with your callsign, as the universe's map has it).
+function Players({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="cw-chip" onClick={trav.join} title="Go online, and see everyone else walking the compound as a hologram">
+        See other players
+      </button>
+    );
+  return (
+    <span className="cw-chip cw-players" title="Everyone else online here shows as a hologram: they can’t touch your games, nor you theirs">
+      <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
+    </span>
+  );
+}
+
 // The map in the corner: the river, the lawn and its drives, the buildings,
 // the doors (a stone over each one won back), the portal once it's open, and you.
 const MAP = { x0: -60, z0: -20, size: 300 };
-function drawMap(c, h, prog) {
+function drawMap(c, h, prog, others) {
   const g = c?.getContext('2d');
   if (!g) return;
   const k = 150 / MAP.size;
@@ -542,6 +575,17 @@ function drawMap(c, h, prog) {
     g.beginPath();
     g.arc(x, y, 4 + pulse * 0.4, 0, Math.PI * 2);
     g.stroke();
+  }
+  // the others online, pale
+  if (others?.length) {
+    g.fillStyle = 'rgba(190, 215, 255, 0.95)';
+    for (const o of others) {
+      if (o.inside) continue;
+      const [x, y] = at(o.x, o.z);
+      g.beginPath();
+      g.arc(x, y, 2.4, 0, Math.PI * 2);
+      g.fill();
+    }
   }
   g.restore();
   // you
