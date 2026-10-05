@@ -1,3 +1,4 @@
+import { HULL_KEY, readHulls } from '../shipyard/build';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
@@ -37,14 +38,16 @@ export function useOnlineState(where) {
   const [kind, setKind] = useState(() => (typeof local.get(SHIP_KEY) === 'string' ? local.get(SHIP_KEY) : null));
   // (as it was last fitted; the universe page says what it flies with now)
   const [loadout, setLoadout] = useState(() => (kind && readLoadouts(local.get(LOADOUT_KEY), [kind])[kind]) || STOCK_LOADOUT);
+  // and the hull it flies: its garage build (shipyard/), or null for its stock ship
+  const [build, setBuild] = useState(() => (kind && readHulls(local.get(HULL_KEY), [kind])[kind]) || null);
   const [client, setClient] = useState(null);
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
   const [away, setAway] = useState(false); // the tab's been in the background a while
   const [pointers, setPointers] = useState(() => local.get(POINTERS_KEY) !== 'off');
-  const latest = useRef({ name, kind, loadout, where });
-  latest.current = { name, kind, loadout, where };
+  const latest = useRef({ name, kind, loadout, build, where });
+  latest.current = { name, kind, loadout, build, where };
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -112,8 +115,8 @@ export function useOnlineState(where) {
   }, [on, attempt, away]);
 
   useEffect(() => {
-    client?.setProfile({ name, kind, loadout, where });
-  }, [client, name, kind, loadout, where]);
+    client?.setProfile({ name, kind, loadout, build, where });
+  }, [client, name, kind, loadout, build, where]);
 
   const keepName = (callsign) => {
     const next = cleanName(callsign) ?? name ?? randomCallsign();
@@ -132,6 +135,7 @@ export function useOnlineState(where) {
     pointers, // live pointers off the map, yours and theirs
     setKind, // the universe page says which ship you fly
     setLoadout, // and what's fitted to it
+    setBuild, // and the hull it is: a garage build, or null
     suggest: () => name ?? randomCallsign(),
     goOnline(callsign) {
       keepName(callsign);
