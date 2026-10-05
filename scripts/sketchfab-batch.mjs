@@ -56,8 +56,6 @@ export const MODELS = {
   'xwing-hd': { from: 'high-poly-x-wing-fighter', tris: 100000, error: 0.05, only: /^Object_([4-9]|12|2[67]|39|[45][0-9]|6[0-3])$/, own: true, tex: 2048, maps: 1024, where: 'universe', as: 'the X-wing you fly' },
   // other X-wings to choose from, kept whole (xwing-ag less three stray
   // lines, which the crop can't take, and turned level: it comes banked)
-  'xwing-da': { from: 'star-wars-x-wing', tris: 60000, own: true, tex: 2048, maps: 1024, where: 'universe', as: 'the X-wing you fly' },
-  'xwing-ag': { from: 'x-wing-starfighter-t-65c-a2', only: /^Object_(?!(18|51|53)$)/, tris: 120000, turn: [165.7, -16.6, 170.2], own: true, tex: 1024, maps: 512, where: 'universe', as: 'the X-wing you fly' },
   'falcon-hd': { from: 'millennium-falcon', tris: 70000, turn: [-7.4, 0, 18.5], own: true, tex: 2048, maps: 1024, where: 'universe', as: 'the Millennium Falcon you fly' },
 };
 
