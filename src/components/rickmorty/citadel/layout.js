@@ -42,6 +42,9 @@ export const DOORS = {
 
 // Candidate Morty's booth, in the north-west, facing the core
 export const BOOTH = { x: -21.5, z: -21.5, w: 3.6, d: 1.6, turn: Math.PI / 4 };
+// its backboard, `back` metres behind the podium's middle (Candidate Morty
+// stands between them)
+export const BOOTH_BACK = { w: 4.2, d: 0.3, back: 2.75 };
 export const DESKS = {
   customs: { x: 5, z: 29, w: 3.2, d: 1.2, turn: 0 },
   daycare: { x: -15, z: -9, w: 2.4, d: 1, turn: 0 },
@@ -76,7 +79,8 @@ const circle = (id, x, z, r, o = {}) => ({ id, kind: 'circle', x, z, r, ...o });
 
 export const COLLIDERS = [
   circle('core', CORE.x, CORE.z, CORE.r, { top: 60 }),
-  box('booth', BOOTH, { top: 3.2 }),
+  box('booth', BOOTH, { top: 1.2 }),
+  box('boothback', { x: BOOTH.x - Math.SQRT1_2 * BOOTH_BACK.back, z: BOOTH.z - Math.SQRT1_2 * BOOTH_BACK.back, w: BOOTH_BACK.w, d: BOOTH_BACK.d, turn: BOOTH.turn }, { top: 3.1 }),
   box('customs', DESKS.customs, { low: true, top: 1.1 }),
   box('daycaredesk', DESKS.daycare, { low: true, top: 1 }),
   ...KIOSKS.map((k, i) => box(`kiosk${i}`, k, { top: 3.4 })),
