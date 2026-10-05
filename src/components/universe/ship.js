@@ -93,7 +93,7 @@ export const isGoal = (id) => Boolean(GOALS[id]);
 // drive out in the open, the boost at any place; and how hard it brakes and
 // coasts there (harder out in the open, to match the speeds)
 export function ceilingAt(x, z) {
-  const k = clamp((Math.hypot(x, z) - DEEP.system) / (DEEP.open - DEEP.system), 0, 1);
+  const k = clamp((Math.sqrt(x * x + z * z) - DEEP.system) / (DEEP.open - DEEP.system), 0, 1);
   return SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * k * k * (3 - 2 * k);
 }
 export const boostAt = (x, y, z) => SHIP.boost + (SHIP.pulse - SHIP.boost) * openness(x, y, z);
@@ -121,7 +121,12 @@ export function inTrench(p, x, y, z) {
   return Math.abs(wrap(a - p.band.home)) < p.band.arc;
 }
 
-const away = (s, p) => Math.hypot(s.x - p.at[0], (s.y ?? SHIP.height) - p.at[1], s.z - p.at[2]);
+const away = (s, p) => {
+  const dx = s.x - p.at[0];
+  const dy = (s.y ?? SHIP.height) - p.at[1];
+  const dz = s.z - p.at[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+};
 
 // Parked a little way off a planet, facing it: on a side that's clear of
 // the other planets (so being parked there is being at this one), as near
@@ -144,8 +149,8 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
     const x = p.at[0] + dx * d;
     const z = p.at[2] + dz * d;
     let clear = Infinity;
-    for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.hypot(x - o.at[0], z - o.at[2]) - o.reach);
-    const inMap = Math.hypot(x, z) < MAP_RADIUS + 6;
+    for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.sqrt((x - o.at[0]) ** 2 + (z - o.at[2]) ** 2) - o.reach);
+    const inMap = Math.sqrt(x * x + z * z) < MAP_RADIUS + 6;
     const score = dx * ax + dz * az + (clear > ORBIT_IN + 0.2 ? 4 : clear) + (inMap ? 2 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
   }
@@ -194,7 +199,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   let heading = wrap(s.heading + rate * dt);
 
   // turned back at the edge: the nose comes round toward the middle
-  const out = Math.hypot(s.x, s.z);
+  const out = Math.sqrt(s.x * s.x + s.z * s.z);
   if (out > EDGE - 2) {
     const home = headingTo(-s.x, -s.z);
     const k = clamp((out - (EDGE - 2)) / 2, 0, 1);
@@ -240,7 +245,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   let y = s.y + vy * dt;
   let z = s.z + fz * along * dt;
   let v = speed;
-  const r = Math.hypot(x, z);
+  const r = Math.sqrt(x * x + z * z);
   const ceil = ceilingAt(x, z);
   let edge = s.edge && (r > EDGE - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
   if (r > EDGE) {
@@ -261,7 +266,7 @@ export function step(s, input, dt, solids = SOLIDS) {
     const dx = x - p.at[0];
     const dy = y - p.at[1];
     const dz = z - p.at[2];
-    const d = Math.hypot(dx, dy, dz);
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (d >= min) continue;
     const [nx, ny, nz] = d > 1e-6 ? [dx / d, dy / d, dz / d] : [-fx, 0, -fz];
     x = p.at[0] + nx * min;
@@ -324,7 +329,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z])) {
   if (!p || !park) return { input: { throttle: 0, turn: 0 }, done: true };
   const tx = park.x - s.x;
   const tz = park.z - s.z;
-  const dist = Math.hypot(tx, tz);
+  const dist = Math.sqrt(tx * tx + tz * tz);
   // up or down to the planet's height, easing in (and no lower or higher
   // than it can go here: the home system's floor and ceiling are near)
   const ceil = ceilingAt(s.x, s.z) - 2;
@@ -362,7 +367,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z])) {
     const cross = ox * uz - oz * ux; // > 0: it's to the left of the line
     const clear = r + SHIP.radius + Math.max(1, r * 0.3);
     if (Math.abs(cross) > clear) continue;
-    const gap = (Math.hypot(ox, oz) - r) / Math.max(4, r); // in its own radii (so a world counts like a moon)
+    const gap = (Math.sqrt(ox * ox + oz * oz) - r) / Math.max(4, r); // in its own radii (so a world counts like a moon)
     const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;

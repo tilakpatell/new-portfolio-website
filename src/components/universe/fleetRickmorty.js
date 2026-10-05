@@ -27,9 +27,11 @@ const { PI, sin, cos, abs, min } = Math;
 
 // See-through glass for a dome with someone inside: tinted, glossy, both
 // faces drawn (the far side shows through the near). Not too sharp a gloss,
-// or the sun's highlight on it blooms.
+// or the sun's highlight on it blooms. Both faces in one pass: the same tint
+// over the same tint looks the same in either order, and two passes would
+// work its shader's settings out again twice a frame.
 const bubble = (k, color, opacity = 0.26) =>
-  k.own(new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity, roughness: 0.18, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+  k.own(new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity, roughness: 0.18, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.22, side: THREE.DoubleSide, forceSinglePass: true, depthWrite: false }));
 
 // Bobbing: lift every vertex of the parts with a given mark by dy (the
 // family in the saucer), sending the positions again only when asked.
