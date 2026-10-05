@@ -1,0 +1,42 @@
+{
+  "corvette": {
+    "title": "Star Wars: CR-90",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-cr-90-60e26a508ca84126b30f01461f60086e",
+    "where": "universe",
+    "as": "the Rebel corvette in the traffic"
+  },
+  "minas-tirith": {
+    "title": "Minas Tirith Remake",
+    "author": "Mitro123",
+    "authorUrl": "https://sketchfab.com/Mitro123",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/minas-tirith-remake-5b2e96acbf5e4dfaa61996da9ff962ad",
+    "where": "middle-earth",
+    "as": "Minas Tirith"
+  },
+  "orthanc": {
+    "title": "Isengard",
+    "author": "AndreOrla",
+    "authorUrl": "https://sketchfab.com/andreorla",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/isengard-7c674181195940e3a369018b52756bde",
+    "where": "middle-earth",
+    "as": "Orthanc"
+  },
+  "sitar": {
+    "title": "Classical musical Instrument - Sitar",
+    "author": "Amagi_Arts",
+    "authorUrl": "https://sketchfab.com/natsuboy304",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/classical-musical-instrument-sitar-deef326cddd04784be5d704c4fc44533",
+    "where": "universe",
+    "as": "the sitar by the music planet"
+  }
+}

@@ -13,7 +13,7 @@ import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
 import { prefersReducedMotion } from '../../lib/hooks';
-import { budget, pixelRatio } from '../../lib/device';
+import { budget, device, pixelRatio } from '../../lib/device';
 
 const SCALE = 10; // sheet units to one of the scene's
 const at = (x, y) => [(x - SHEET.w / 2) / SCALE, (y - SHEET.h / 2) / SCALE];
@@ -63,7 +63,8 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
 
   // the toy world on the sheet, and Frodo and Sam on the road
   const reduced = prefersReducedMotion();
-  const world = buildDiorama(scene, { reduced });
+  const dev = device();
+  const world = buildDiorama(scene, { reduced, models: dev.tier !== 'low' && !dev.saveData });
   // by day, by candle at night, and by Mordor's fire
   const day = { ambient: new THREE.Color(0xfff1dc), candle: new THREE.Color(0xffd6a0), low: new THREE.Color(0xfff0dc) };
   const night = { ambient: new THREE.Color(0x6a7590), candle: new THREE.Color(0xffa458), low: new THREE.Color(0x8fa2c8) };
@@ -215,6 +216,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
 
   const dispose = () => {
     canvas.removeEventListener('webglcontextlost', onContextLost);
+    world.dispose();
     map.dispose();
     relief.dispose();
     scene.traverse((o) => {

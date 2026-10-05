@@ -158,6 +158,8 @@
 .universe-back { text-align: left; }
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
 .universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
+.universe-models { margin-top: 0.6rem; }
+.universe-models ul { display: grid; gap: 0.35rem; margin: 0.5rem 0 0; padding: 0 3.25rem 0 0; list-style: none; } /* clear of the guide's button in the corner */
 .universe-enter { width: 100%; justify-content: center; }
 .universe-card { margin: 0; padding: 0; list-style: none; }
 .universe-card .fun-card { min-height: 0; }

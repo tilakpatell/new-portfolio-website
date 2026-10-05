@@ -1,15 +1,17 @@
 // Traffic: everyone else out here. Which traffic depends on who you fly
 // with: Star Wars for Luke's X-wing and Han's Falcon (TIE fighters in
 // twos and threes, interceptors, X-wings in formation, an Imperial shuttle,
-// Boba Fett's Slave I, and now and then a Star Destroyer high over the whole
-// map), Rick and Morty for the cruiser (Galactic Federation patrols and a
-// Federation cruiser, Gromflomite bugs, Mr. Meeseeks floating by,
-// Birdperson); both for Walt and Jesse's RV, which belongs to neither; with
-// no ship picked, a quieter mix of both.
+// a Rebel corvette, Boba Fett's Slave I, and now and then a Star Destroyer
+// high over the whole map), Rick and Morty for the cruiser (Galactic
+// Federation patrols and a Federation cruiser, Gromflomite bugs, Mr. Meeseeks
+// floating by, Birdperson); both for Walt and Jesse's RV, which belongs to
+// neither; with no ship picked, a quieter mix of both.
 // trafficModels.js builds most of them; the X-wings and Slave I are the site
-// owner's Meshy models (scripts/build-universe.py), loaded the first time
-// they're wanted (the X-wings are built until then; Slave I just doesn't fly
-// until it's come).
+// owner's Meshy models (scripts/build-universe.py), and the corvette is
+// Daniel Andersson's, from Sketchfab (scripts/sketchfab-batch.mjs, credited
+// in data/modelCredits.json), loaded the first time they're wanted (the
+// X-wings are built until then; Slave I and the corvette just don't fly
+// until they've come).
 //
 // Everyday traffic flies lanes between the places, well above or below the
 // disc (lanes.js), so it never meets a planet or you. Every so often while
@@ -30,12 +32,13 @@ import { bezier, flybyLane, laneBetween, laneLength, tangent } from './lanes';
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
 // wingspan, Meeseeks' height); speed: map units a second; crew: how many
 // fly together; weight: how often it comes up; big: high over the map, one
-// at a time; flyby: whether it comes to you
+// at a time; tough: a shot only glances off it; flyby: whether it comes to you
 const TYPES = {
   tie: { size: 0.3, speed: 9, crew: [2, 3], weight: 3, flyby: true },
   interceptor: { size: 0.32, speed: 10.5, crew: [1, 2], weight: 2, flyby: true },
   xwing: { size: 0.36, speed: 8.7, crew: [2, 4], weight: 2, flyby: true },
   shuttle: { size: 0.55, speed: 4.5, crew: [1, 1], weight: 1.4 },
+  corvette: { size: 1.7, speed: 5.2, crew: [1, 1], weight: 0.9, tough: true },
   destroyer: { size: 11, speed: 1.6, crew: [1, 1], weight: 0.5, big: true },
   patrol: { size: 0.34, speed: 9.5, crew: [2, 3], weight: 3, flyby: true },
   federation: { size: 5, speed: 2, crew: [1, 1], weight: 0.6, big: true },
@@ -44,12 +47,13 @@ const TYPES = {
   birdperson: { size: 0.4, speed: 5.9, crew: [1, 1], weight: 1, flyby: true },
   slave1: { size: 0.55, speed: 8.4, crew: [1, 1], weight: 0.9, flyby: true },
 };
-const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1'], rickmorty: TRAFFIC.rickmorty };
+const KINDS = { starwars: [...TRAFFIC.starwars, 'corvette', 'slave1'], rickmorty: TRAFFIC.rickmorty };
 const BOTH = [...KINDS.starwars, ...KINDS.rickmorty];
 // the ones that are models, and which way their noses point (to turn to +z)
 const MODELS = {
   xwing: { url: '/models/universe/xwing-traffic.glb', nose: 0 },
   slave1: { url: '/models/universe/slave1.glb', nose: 0 },
+  corvette: { url: '/models/sketchfab/corvette.glb', nose: 0 },
 };
 // whose traffic each ship meets (a ship that isn't here meets both)
 const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
@@ -206,6 +210,11 @@ export function createTraffic(parent, { small = false } = {}) {
         nextAt = clock + between(rand, small ? 5 : 3, small ? 11 : 8);
         let kind = pick(kinds());
         if (TYPES[kind].big && bigs > 0) kind = pick(kinds().filter((k) => !TYPES[k].big));
+        // one asked for by soon() that keeps to the lanes
+        if (forced && !TYPES[forced].flyby) {
+          kind = forced;
+          forced = null;
+        }
         spawn(kind, laneBetween(rand, { high: TYPES[kind].big }));
       }
       // now and then, something comes to you (only while you're flying)
@@ -248,10 +257,10 @@ export function createTraffic(parent, { small = false } = {}) {
         for (const m of g.members) {
           if (!m.alive) continue;
           const p = m.model.group.position;
-          const r = g.type.size * (g.type.big ? 0.3 : 0.6) + 0.06;
+          const r = g.type.size * (g.type.big || g.type.tough ? 0.3 : 0.6) + 0.06; // the long ones are narrow for their length
           const k = Math.min(1, Math.max(0, ((p.x - from.x) * sx + (p.z - from.z) * sz) / ss));
           if (Math.hypot(p.x - (from.x + sx * k), p.z - (from.z + sz * k)) < r && Math.abs(p.y - to.y) < r + 0.55) {
-            if (g.type.big) return { kind: g.kind, at: p.clone(), size: g.type.size, glance: true }; // too big to bring down
+            if (g.type.big || g.type.tough) return { kind: g.kind, at: p.clone(), size: g.type.size, glance: true }; // too big to bring down
             m.alive = false;
             give(g.kind, m.model);
             return { kind: g.kind, at: p.clone(), size: g.type.size };
