@@ -71,7 +71,7 @@ function Mission({ system }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -87,13 +87,14 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
   const era = eraById(eraOf(system));
   const goals = goalsOf(system);
   const toward = jumping ? systemById(jumping.to) : null;
+  const short = held ? (systemById(held.to) ?? system) : null; // (where the Interdictor pulled you out short of)
 
   if (tucked) {
     return (
       <aside ref={panel} className="universe-panel galaxy-panel" aria-label={system.name} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
-          <span className="eyebrow truncate" style={{ color: system.accent }}>
-            {toward ? `Jumping to ${toward.name}…` : system.name}
+          <span className="eyebrow truncate" style={{ color: short && !toward ? '#ff8a80' : system.accent }}>
+            {toward ? `Jumping to ${toward.name}…` : short ? 'Interdicted!' : system.name}
           </span>
           <span className="universe-untuck-say">
             <RiSideBarLine className="h-4 w-4" aria-hidden="true" /> Show the panel
@@ -113,6 +114,17 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       {toward && (
         <p className="galaxy-jumping" role="status">
           {jumping.phase === 'align' ? 'Coming round onto the bearing for' : 'Jumping to lightspeed:'} <b>{toward.name}</b>
+        </p>
+      )}
+      {short && !toward && (
+        <p className="galaxy-jumping" data-held="" data-balked={balked || undefined} role="alert">
+          <b>Interdicted.</b> An Imperial Interdictor pulled you out of hyperspace short of {short.name}. Its gravity well holds you: no jump till you’re clear of it. Shoot its fighters down, or run for the edge of the well.
+          {balked && (
+            <>
+              {' '}
+              <b>The hyperdrive won’t take.</b>
+            </>
+          )}
         </p>
       )}
       <h2 className="universe-title galaxy-title">{system.name}</h2>

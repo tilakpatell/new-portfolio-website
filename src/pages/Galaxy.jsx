@@ -48,12 +48,16 @@ export default function Galaxy() {
   const { setKind, setLoadout } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
   // the ship as it's fitted in the universe map's hangar: its paint and parts
-  const { unlocked } = useAchievements();
+  const { unlocked, unlock } = useAchievements();
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
+  const [held, setHeld] = useState(null); // { to } while an Interdictor's gravity well holds you (galaxy/interdiction.js)
+  const [balked, setBalked] = useState(false); // the hyperdrive asked for under the hold, for a moment
+  const balk = useRef(0);
+  useEffect(() => () => clearTimeout(balk.current), []);
   const [leaving, setLeaving] = useState(null); // { to } once you're on your way out of the page
   const [tucked, setTucked] = useState(() => local.get(PANEL_KEY) === 'tucked');
   const [intro, setIntro] = useState(() => {
@@ -131,9 +135,26 @@ export default function Galaxy() {
         return;
       }
       if (e.type === 'jump') {
+        // asked for under the Interdictor's hold: the panel says why not
+        if (e.phase === 'held') {
+          setBalked(true);
+          clearTimeout(balk.current);
+          balk.current = setTimeout(() => setBalked(false), 3000);
+          return;
+        }
         setJumping(e.phase === 'cancel' ? null : { to: e.to, phase: e.phase });
         if (e.phase === 'spool') comms.current?.handle({ type: 'event', id: 'jump' });
         return;
+      }
+      if (e.type === 'interdicted') {
+        setHeld({ to: e.to });
+        comms.current?.handle(e);
+        return;
+      }
+      if (e.type === 'event' && e.id === 'wellclear') {
+        setHeld(null);
+        setBalked(false);
+        unlock('interdicted');
       }
       if (e.type === 'tractor') {
         comms.current?.handle({ type: 'event', id: 'tractor' });
@@ -152,7 +173,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land],
+    [current, leave, navigate, land, unlock],
   );
   const onArrive = useCallback(
     (id) => {
@@ -193,10 +214,10 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : 'fade') : undefined} data-jumping={jumping?.phase}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
-        {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : `In the ${sys.system ?? sys.name} system`}
+        {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : held ? `Interdicted short of ${systemById(held.to)?.name ?? sys.name}: an Imperial Interdictor's gravity well holds you` : `In the ${sys.system ?? sys.name} system`}
       </p>
       <GalaxyView
         system={wanted}
@@ -227,6 +248,8 @@ export default function Galaxy() {
         tucked={tucked}
         onTuck={tuck}
         jumping={jumping}
+        held={held}
+        balked={balked}
       />
       {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
       {intro && (
