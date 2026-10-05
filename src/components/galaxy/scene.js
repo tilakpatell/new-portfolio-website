@@ -51,6 +51,7 @@ import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
+import { dropTransmission } from '../../lib/three/glass';
 import { createPace } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
@@ -159,7 +160,7 @@ export async function create(canvas, ctx) {
   const { reduced } = ctx;
   let props = ctx;
   let disposed = false;
-  const gl = createRenderer(canvas, { ratio: 1.5, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow }); // (the post's own target is the multisampled one)
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
@@ -277,6 +278,9 @@ export async function create(canvas, ctx) {
   const flying = () => Boolean(state.ship);
 
   // ── The system you're in ──
+  let ratioSeen = renderer.getPixelRatio(); // the pixel ratio the sky and the skylanes were last sized for
+  let detail = 1; // how finely the planets are drawn (0…1), as the world was last told
+  let capDetail = false; // set when the scene is told to give up quality: the planets at their coarsest
   let env = null;
   let warmed = false;
   const enter = (sys) => {
@@ -284,7 +288,8 @@ export async function create(canvas, ctx) {
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
-    const world = buildSystem(sys, { models, bolts, flashes, small });
+    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
+    world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
     state.space = makeSpace(world.solids);
@@ -395,7 +400,7 @@ export async function create(canvas, ctx) {
     if (SHIP_MODELS[kind]) {
       const model = state.model;
       loadModel(SHIP_MODELS[kind])
-        .then((m) => m && warm(model.dress ? model.dress(m) : m).then(() => m)) // (in its paint before its shaders are made)
+        .then((m) => m && (dropTransmission(m), warm(model.dress ? model.dress(m) : m).then(() => m))) // (the Falcon's glass, without its extra pass; in its paint before its shaders are made)
         .then((m) => {
           if (!m) return;
           if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
@@ -1375,6 +1380,19 @@ export async function create(canvas, ctx) {
     gl.watch(now);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;
+    // what's sized by the pixel ratio (the watchdog changes it) follows it,
+    // and the planets' detail follows the sharpness the pace asks for
+    const ratio = renderer.getPixelRatio();
+    if (ratio !== ratioSeen) {
+      ratioSeen = ratio;
+      sky.setRatio(ratio);
+      state.world?.setRatio(ratio);
+    }
+    const wanted = capDetail ? 0 : post.sharpness;
+    if (Math.abs(wanted - detail) >= 0.05) {
+      detail = wanted;
+      state.world?.setDetail(detail);
+    }
     const dt = ms / 1000;
     const t = reduced ? 0 : (now - t0) / 1000;
     const wt = wall();
@@ -1786,7 +1804,8 @@ export async function create(canvas, ctx) {
       if (!on) engine?.set({ speed: 0, on: false });
     },
     lowerQuality() {
-      post.off();
+      post.lite();
+      capDetail = true;
       ctx.invalidate();
     },
     fire(down = true) {

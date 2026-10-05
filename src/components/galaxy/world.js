@@ -16,12 +16,14 @@
 // online, the Death Star fires on Scarif for everyone at once. (The
 // battles' shots and who's hit are each pilot's own.)
 //
-// buildSystem(sys, { models, bolts, flashes, small }) → { group, solids,
+// buildSystem(sys, { models, bolts, flashes, small, ratio }) → { group, solids,
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
-//   events (drained by the scene), wake(ship), dispose() }
+//   setDetail(k), setRatio(r), events (drained by the scene), wake(ship), dispose() }
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
-// can take you to, with their names.
+// can take you to, with their names. setDetail(k): how finely to draw the
+// planets (0…1, bodies.js); setRatio(r): the renderer's pixel ratio, for the
+// ships of the skylanes (the size of a point is in pixels).
 
 import * as THREE from 'three';
 import { buildBody } from './bodies';
@@ -86,12 +88,14 @@ function pointAlong(obj, dir, up = Y) {
   obj.quaternion.setFromRotationMatrix(basis);
 }
 
-export function buildSystem(sys, { models, bolts, flashes, small = false }) {
+export function buildSystem(sys, { models, bolts, flashes, small = false, ratio = 1 }) {
   const group = new THREE.Group();
   group.name = `system-${sys.id}`;
   const solids = [];
   const ticks = []; // (t, dt, camera, ship) → busy
   const disposers = [];
+  const bodies = []; // every planet and moon made, for setDetail
+  const dpr = []; // the uniforms that hold the pixel ratio, for setRatio
   const events = [];
   const capitals = []; // the big ships, for the ion cannon and the battles: { slot, side, size }
   const sunDirs = sys.suns.map((s) => new THREE.Vector3(...s.dir).normalize());
@@ -113,6 +117,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
   const body = (look, r) => {
     const b = buildBody(look, { r, small });
     b.setSuns(sunLights);
+    bodies.push(b);
     disposers.push(() => b.dispose());
     return b;
   };
@@ -653,7 +658,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
             gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: `varying vec3 vColor; void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vColor * smoothstep(0.5, 0.15, d), 1.0); }`,
-        uniforms: { uTime: { value: 0 }, uDpr: { value: Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1) } },
+        uniforms: { uTime: { value: 0 }, uDpr: { value: ratio } },
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
@@ -661,6 +666,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
       const pts = new THREE.Points(geo, mat);
       pts.frustumCulled = false;
       group.add(pts);
+      dpr.push(mat.uniforms.uDpr);
       disposers.push(() => (geo.dispose(), mat.dispose()));
       ticks.push((t) => {
         mat.uniforms.uTime.value = t % 7200;
@@ -777,6 +783,12 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
     if (out.dsShield) out.dsShield.mat.uniforms.uHit.value = 1;
   };
   out.sunLights = sunLights;
+  out.setDetail = (k) => {
+    for (const b of bodies) b.setDetail(k);
+  };
+  out.setRatio = (r) => {
+    for (const u of dpr) u.value = r;
+  };
   out.dispose = () => {
     dead = true;
     for (const id of timers) clearTimeout(id);

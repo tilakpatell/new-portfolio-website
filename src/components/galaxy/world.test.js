@@ -7,8 +7,13 @@ import { LASER } from './fx';
 
 // the parts that draw (the planets' shaders, the rocks, the ships) stood in
 // for: these are about what's built, where, and what it does over time
+const made = vi.hoisted(() => []); // (the bodies it was asked for)
 vi.mock('./bodies', () => ({
-  buildBody: (look, { r }) => ({ group: new THREE.Group(), radius: r, reach: r * 1.08, update() {}, setSuns() {}, set() {}, dispose() {} }),
+  buildBody: (look, { r }) => {
+    const b = { group: new THREE.Group(), radius: r, reach: r * 1.08, update() {}, setSuns() {}, set() {}, setDetail: vi.fn(), dispose() {} };
+    made.push(b);
+    return b;
+  },
 }));
 vi.mock('./rocks', () => ({
   createRocks: ({ at = [0, 0, 0] }) => ({ group: new THREE.Group(), solids: [{ id: 'rock-1', at: [at[0] + 3, at[1], at[2]], r: 2, reach: 2 }], update() {}, dispose() {} }),
@@ -33,6 +38,29 @@ describe('buildSystem', () => {
       for (const o of w.solids) for (const v of o.at) expect(Number.isFinite(v), `${sys.id} ${o.id}`).toBe(true);
       w.dispose();
     }
+  });
+
+  it('passes the detail it is given to every body it made', () => {
+    const sys = systemById('tatooine');
+    made.length = 0;
+    const w = buildSystem(sys, { ...kit(), small: false });
+    expect(made.length).toBe(1 + (sys.parent ? 1 : 0) + sys.moons.length);
+    w.setDetail(0.4);
+    for (const b of made) expect(b.setDetail).toHaveBeenCalledWith(0.4);
+    w.dispose();
+  });
+
+  it('sizes its skylanes’ ships for the pixel ratio it is told', () => {
+    const lanesOf = (w) => {
+      const found = [];
+      w.group.traverse((o) => o.material?.uniforms?.uDpr && found.push(o.material));
+      return found;
+    };
+    const w = buildSystem(systemById('coruscant'), { ...kit(), small: false, ratio: 0.75 });
+    expect(lanesOf(w).map((m) => m.uniforms.uDpr.value)).toEqual([0.75]); // (built at the ratio it's drawn at)
+    w.setRatio(1.25);
+    expect(lanesOf(w).map((m) => m.uniforms.uDpr.value)).toEqual([1.25]);
+    w.dispose();
   });
 
   it('keeps every ship and station clear of the planet', () => {

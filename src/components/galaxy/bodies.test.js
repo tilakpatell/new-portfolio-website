@@ -55,6 +55,28 @@ describe('buildBody', () => {
     }
   });
 
+  it('drops its noise octaves with the detail asked for, never under 4', () => {
+    const octaves = (b) => b.group.children[0].material.uniforms.uMaxOct.value;
+    const b = buildBody('tatooine', { r: 30, small: false });
+    b.setDetail(1);
+    expect(octaves(b)).toBe(9);
+    b.setDetail(0);
+    expect(octaves(b)).toBe(4);
+    b.setDetail(0.5);
+    expect(octaves(b)).toBe(7); // round(4 + 5 * 0.5) = round(6.5)
+    b.setDetail(7);
+    expect(octaves(b)).toBe(9); // (asked for more than all: all)
+    b.setDetail(-1);
+    expect(octaves(b)).toBe(4);
+    const s = buildBody('tatooine', { r: 30, small: true });
+    s.setDetail(1);
+    expect(octaves(s)).toBe(5);
+    s.setDetail(0);
+    expect(octaves(s)).toBe(4);
+    s.setDetail(0.5);
+    expect(octaves(s)).toBe(5); // round(4 + 1 * 0.5)
+  });
+
   it('puts Scarif inside its shield, and nothing else in one', () => {
     expect(buildBody('scarif', { r: 32 }).reach).toBeCloseTo(32 * 1.12);
     expect(buildBody('hoth', { r: 36 }).reach).toBeLessThan(36 * 1.1);
