@@ -8,7 +8,7 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { BUILDINGS, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, behindYaw, cameraMove, linesFor, nearCast, nearPlace, newHero, outside, placeById, progress, stepHero, underPortal, walkable } from './rules';
+import { BUILDINGS, HERO_R, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPlace, newHero, outside, placeById, progress, stepHero, underPortal, walkable } from './rules';
 import './world.css';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
@@ -22,6 +22,7 @@ import './world.css';
 const Place = lazy(() => import('./Place'));
 const CompoundMap = lazy(() => import('../Compound'));
 const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
+const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
 const AT = 'tp-hq-world-at';
 // the lines the site has the films' own recordings of (lib/clips)
 const SPOKEN = { 'Hulk smash!': 'hulkSmash', 'Puny god.': 'punyGod' };
@@ -35,6 +36,8 @@ const stoneLine = (p) => {
 };
 // every stone won back, and either half of the Soul Stone
 const readHeist = () => [...earnedStones(), ...SOUL_HALVES.filter(hasEarned)];
+// where he is, to come back to (on the lawn or a roof, never mid-air)
+const keep = (h) => ({ x: h.x, z: h.z, face: h.face, y: h.mode === 'ground' ? h.y : 0 });
 
 export default function CompoundWorld({ onPortal }) {
   const three = use3D();
@@ -98,9 +101,11 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
-    const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && walkable(kept.x, kept.z);
-    const h = newHero(ok ? kept : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, padBefore: null };
+    // (where he was last time: on the lawn, or up on a roof)
+    const ky = Number.isFinite(kept?.y) ? kept.y : 0;
+    const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
+    const h = newHero(ok ? { ...kept, y: ky } : START);
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, mouseWeb: false, touchWeb: false, padBefore: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -110,6 +115,16 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const bubbleRef = useRef(null);
   const lines = useRef({});
   const [list, setList] = useState(false);
+  const speedRef = useRef(null);
+  // a perfect release: a word of it at the bottom of the screen
+  const [trick, setTrick] = useState(null);
+  const trickN = useRef(0);
+  const showTrick = useCallback((combo) => setTrick({ n: ++trickN.current, combo }), []);
+  useEffect(() => {
+    if (!trick) return undefined;
+    const t = setTimeout(() => setTrick(null), 1300);
+    return () => clearTimeout(t);
+  }, [trick]);
 
   // the world: made once, kept while you're inside a building
   useEffect(() => {
@@ -149,7 +164,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     return () => {
       dead = true;
       ro?.disconnect();
-      local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+      local.set(AT, keep(s.h));
       api.current?.dispose();
       api.current = null;
     };
@@ -195,6 +210,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         e.preventDefault();
         audioContext();
         if (m === 'space' && !e.repeat) s.jump = true;
+        // Shift in the air: a web zip
+        if (m === 'run' && !e.repeat && s.h.mode !== 'ground' && s.h.mode !== 'wall') s.zip = true;
         return;
       }
       const k = e.key;
@@ -205,14 +222,24 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       else if (k === 'Escape') setList(false);
     };
     const up = (e) => keyUp(s.keys, e);
-    const blur = () => s.keys.clear();
+    const blur = () => {
+      s.keys.clear();
+      s.mouseWeb = false;
+      s.touchWeb = false;
+    };
+    // (the right button let go anywhere, off the canvas too)
+    const mouseUp = (e) => {
+      if (e.button === 2) s.mouseWeb = false;
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
+    window.addEventListener('pointerup', mouseUp);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
+      window.removeEventListener('pointerup', mouseUp);
       s.keys.clear();
     };
   }, [live, go]);
@@ -247,26 +274,44 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         else s.jump = true;
       }
       if (pressed('b')) s.jump = true;
+      if (pressed('x')) s.zip = true;
       if (pressed('y')) setList((v) => !v);
     }
     const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
     const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
-    const wasAir = s.h.air;
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump }, dt);
+    // the web: the jump button held (Space, the right mouse button, the touch
+    // button, or a pad's A or right trigger)
+    const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip }, dt);
     s.jump = false;
-    if (wasAir && !s.h.air) a.fx('land', s.h);
-    if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
-    // the camera drifts round behind him as he goes, unless you've just turned it
+    s.zip = false;
+    for (const e of s.h.ev) {
+      if (e.type === 'web' || e.type === 'zip') sfx('zip');
+      else if (e.type === 'perfect') {
+        sfx('ding');
+        showTrick(e.combo);
+      } else if (e.type === 'land' && e.impact > 14) sfx('thunk');
+      if (e.type !== 'jump' && e.type !== 'release') a.fx(e.type, { ...e, vx: s.h.vx, vy: s.h.vy, vz: s.h.vz });
+    }
+    if (Math.hypot(mv.x, mv.z) > 0.1 || s.h.mode !== 'ground') s.moved = true;
+    // the camera drifts round behind him as he goes (quicker while he's
+    // flying), unless you've just turned it
     if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
       let d = behindYaw(s.h.face) - s.yaw;
       d = Math.atan2(Math.sin(d), Math.cos(d));
-      s.yaw += d * Math.min(1, dt * 1.5);
+      s.yaw += d * Math.min(1, dt * (s.h.fly ? 2.4 : 1.5));
+    }
+    // how fast it feels: lines at the edges of the screen
+    if (speedRef.current) {
+      const fast = s.h.mode === 'ground' ? 0 : Math.max(0, Math.min(1, (Math.hypot(s.h.vx, s.h.vy, s.h.vz) - 20) / 16));
+      speedRef.current.style.opacity = (fast * 0.7).toFixed(2);
     }
 
-    // a door, the portal, and who's about
-    s.near = nearPlace(s.h.x, s.h.z)?.id ?? null;
-    s.portal = !s.near && p.portal && underPortal(s.h.x, s.h.z);
-    const person = nearCast(s.h.x, s.h.z);
+    // a door, the portal, and who's about (on the lawn, on his feet)
+    const grounded = s.h.mode === 'ground' && s.h.y < 0.3;
+    s.near = grounded ? (nearPlace(s.h.x, s.h.z)?.id ?? null) : null;
+    s.portal = grounded && !s.near && p.portal && underPortal(s.h.x, s.h.z);
+    const person = grounded ? nearCast(s.h.x, s.h.z) : null;
     const talk = person?.id ?? null;
     if (talk !== s.talk) {
       s.talk = talk;
@@ -308,13 +353,24 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       } else bubbleRef.current.style.opacity = '0';
     }
     if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others);
-    if (s.frame % 120 === 0) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+    if (s.frame % 120 === 0 && s.h.mode === 'ground') local.set(AT, keep(s.h));
   }, live);
 
   // drag to look round
   const drag = useRef(null);
   const onPointer = (e) => {
     const s = sim.current;
+    // the right mouse button is the web (and a jump, from the ground); a
+    // press while the left is down comes as a move
+    if (e.pointerType === 'mouse' && e.button === 2) {
+      const down = Boolean(e.buttons & 2);
+      if (down && !s.mouseWeb) {
+        audioContext();
+        s.jump = true;
+      }
+      s.mouseWeb = down;
+      if (e.type !== 'pointermove') return;
+    }
     if (e.type === 'pointerdown') {
       audioContext();
       drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
@@ -372,7 +428,13 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   return (
     <div ref={box} className="cw-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      <div ref={speedRef} className="cw-speed" aria-hidden="true" />
       {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
+      {trick && (
+        <p key={trick.n} className="cw-trick" aria-live="polite">
+          Perfect swing{trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
+        </p>
+      )}
 
       <div className="cw-hud cw-hud-top">
         <div className="cw-brand">
@@ -433,7 +495,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       )}
 
       {gl === 'on' && !hud.moved && !here && !herePortal && (
-        <p className="cw-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E at a door to go in.'}</p>
+        <p className="cw-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Hold Jump in the air to swing on a web; let go on the upswing to fly. Zip for a burst. Jump at a wall to climb it.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, steer with W A S D, let go on the upswing to fly; Shift in the air zips. Jump at a wall to run up it. E at a door to go in.'}</p>
       )}
 
       {touch && (
@@ -446,11 +508,28 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
             className="cw-jump"
             onPointerDown={(e) => {
               e.preventDefault();
+              e.currentTarget.setPointerCapture?.(e.pointerId);
               audioContext();
               sim.current.jump = true;
+              sim.current.touchWeb = true;
             }}
+            onPointerUp={() => (sim.current.touchWeb = false)}
+            onPointerCancel={() => (sim.current.touchWeb = false)}
+            onLostPointerCapture={() => (sim.current.touchWeb = false)}
           >
             Jump
+            <small>hold: swing</small>
+          </button>
+          <button
+            type="button"
+            className="cw-jump cw-zip"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              audioContext();
+              sim.current.zip = true;
+            }}
+          >
+            Zip
           </button>
         </div>
       )}

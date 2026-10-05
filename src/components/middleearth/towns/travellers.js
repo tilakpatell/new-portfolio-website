@@ -50,8 +50,9 @@ export function readStep(data, bound = 200) {
   const flags = Number.isInteger(data[4]) ? data[4] : 0;
   const step = { x, z, face, moving: data[3] === 1, inside: Boolean(flags & 1), ring: Boolean(flags & 2) };
   if (data.length >= 7) {
-    step.speed = num(data[5], 0, 30) ?? 0;
-    step.y = num(data[6], 0, 20) ?? 0;
+    // (Spider-Man swings at up to 40 m/s, and as high as the roofs and more)
+    step.speed = num(data[5], 0, 45) ?? 0;
+    step.y = num(data[6], 0, 80) ?? 0;
   }
   return step;
 }

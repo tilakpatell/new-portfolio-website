@@ -83,6 +83,46 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-stick span { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(230, 245, 255, 0.85); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
 .cw-jump { width: 76px; height: 76px; border: 2px solid rgba(160, 210, 255, 0.55); border-radius: 50%; background: rgba(10, 16, 26, 0.55); color: var(--cw-ink); font: 700 0.78rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; touch-action: none; }
 .cw-jump:active { background: rgba(143, 233, 255, 0.35); }
+.cw-jump { display: grid; place-content: center; gap: 0.2rem; }
+.cw-jump small { font: 600 0.52rem/1 var(--font-sans); letter-spacing: 0.06em; opacity: 0.75; }
+.cw-zip { width: 58px; height: 58px; font-size: 0.7rem; }
+.cw-hud-bottom .cw-jump { margin-left: auto; }
+.cw-hud-bottom .cw-zip { margin-left: 0.5rem; }
+
+/* swinging: lines at the edges when he's going fast, and a word for a perfect release */
+.cw-speed {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 46%, rgba(255, 255, 255, 0.22) 0deg 0.6deg, transparent 0.6deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse 72% 68% at 50% 46%, transparent 52%, #000 100%);
+  mask-image: radial-gradient(ellipse 72% 68% at 50% 46%, transparent 52%, #000 100%);
+  transition: opacity 0.25s linear;
+}
+.cw-trick {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 2;
+  margin: 0;
+  color: #fff;
+  font: 400 clamp(1.6rem, 1.2rem + 1.6vw, 2.6rem)/1 'Bebas Neue', Impact, sans-serif;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 0 #b3261e, 0 4px 18px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: cw-trick 1.3s ease-out both;
+}
+.cw-trick b { color: #ff5a4f; font-weight: 400; text-shadow: 0 2px 0 #fff, 0 4px 18px rgba(0, 0, 0, 0.45); }
+@keyframes cw-trick {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
+  12% { opacity: 1; transform: translate(-50%, 0) scale(1.06); }
+  24% { transform: translate(-50%, 0) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -14px); }
+}
 
 /* the buildings, as a list to go to */
 .cw-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: clamp(0.7rem, 2vw, 1.2rem); bottom: clamp(0.7rem, 2vw, 1.2rem); z-index: 4; display: flex; flex-direction: column; width: min(26rem, calc(100% - 1.4rem)); border: 1px solid var(--cw-line); border-radius: 12px; background: var(--cw-glass-hi); color: var(--cw-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); overflow: hidden; animation: cw-in 0.18s ease-out both; }
@@ -130,4 +170,6 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 }
 @media (prefers-reduced-motion: reduce) {
   .cw-door, .cw-list, .cw-place { animation: none; }
+  .cw-trick { animation: none; }
+  .cw-speed { display: none; }
 }
