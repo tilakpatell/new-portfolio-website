@@ -40,6 +40,8 @@ import {
   cameraMove,
   canLand,
   exitCruiser,
+  floorAt,
+  inArea,
   nearHotspot,
   nearLink,
   newCruiser,
@@ -59,7 +61,7 @@ import './world.css';
 // Roy); close it and you're back in the room. Without 3D, the places are
 // cards that open the same things.
 
-const Roy = lazy(() => import('./roy/Roy'));
+const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
 const sound = (name) =>
   import('../../games/gameAudio')
     .then((g) => g[name]?.())
@@ -74,6 +76,22 @@ const readDone = () => {
 };
 // the best age as Roy so far, or null before a life's been lived
 const readBest = () => Math.max(0, Math.floor(Number(local.get(ROY, null)?.best) || 0)) || null;
+// Roy's tasks from what Roy keeps (tp-c137-roy): a life lived, and one past Morty's 55
+const royDone = () => {
+  const r = local.get(ROY, null);
+  const best = Number(r?.best) || 0;
+  return [...((Number(r?.lives) || 0) > 0 || best > 0 ? ['roy'] : []), ...(best > MORTY_BEST ? ['roy55'] : [])];
+};
+// what's done, with Roy's caught up (a life that ended before the page was left)
+const startDone = () => {
+  const d = readDone();
+  const more = royDone().filter((id) => !d.includes(id));
+  if (!more.length) return d;
+  const next = [...d, ...more];
+  local.set(DONE, next);
+  return next;
+};
+const CANT_LAND = 'Can’t land here. Slow right down over open ground: the road or a front lawn.';
 
 // what opens over the page, and the task opening it ticks off
 const PLACES = {
@@ -141,6 +159,7 @@ const newSim = () => ({
   c: newCruiser(),
   flying: false,
   landing: false,
+  landT: 0,
   boardAt: null,
   yaw: behindYaw(START.face),
   pitch: PITCH,
@@ -160,7 +179,7 @@ const newSim = () => ({
 export default function RmWorld() {
   const three = use3D();
   const { unlock } = useAchievements();
-  const [done, setDone] = useState(readDone);
+  const [done, setDone] = useState(startDone);
   const doneRef = useRef(done);
   const [open, setOpen] = useState(null);
   const openRef = useRef(null);
@@ -222,10 +241,8 @@ export default function RmWorld() {
   // Roy's headset off: a life lived (and past Morty's 55), and the arcade's board shows the best
   const royLeft = useCallback(
     (age) => {
-      if (age != null) {
-        complete('roy');
-        if (age > MORTY_BEST) complete('roy55');
-      }
+      const ids = age != null ? ['roy', ...(age > MORTY_BEST ? ['roy55'] : [])] : [];
+      for (const id of new Set([...ids, ...royDone()])) complete(id);
       close();
       api.current?.act?.('arcade', 'setBoard', readBest());
     },
@@ -294,6 +311,14 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
   const [list, setList] = useState(false);
   const listRef = useRef(list);
   listRef.current = list;
+  const chip = useRef(null);
+  const listBox = useRef(null);
+  // closing the list: if the focus was in it, back to the chip that opened it
+  const closeList = useCallback(() => {
+    const inside = listBox.current?.contains(document.activeElement);
+    setList(false);
+    if (inside) chip.current?.focus({ preventScroll: true });
+  }, []);
   const [fade, setFade] = useState(null); // null, or the kind of link being gone through
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
@@ -373,9 +398,12 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     audioContext();
     if (s.flying) {
       if (canLand(s.c)) {
+        // straight down from here: no drift into a roof's edge on the way
         s.landing = true;
+        s.landT = 0;
+        s.c = { ...s.c, speed: 0 };
         s.keys.clear();
-      } else say({ kind: 'note', bad: true, text: 'Can’t land here. Slow right down over open ground: the road or a front lawn.' });
+      } else say({ kind: 'note', bad: true, text: CANT_LAND });
       return;
     }
     const n = s.near;
@@ -444,6 +472,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       ro?.disconnect();
       api.current?.dispose();
       api.current = null;
+      setGl((g) => (g === 'on' ? 'loading' : g));
     };
   }, [api, setGl, complete]);
 
@@ -460,7 +489,8 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       const f = e.metaKey || e.ctrlKey || e.altKey ? null : FLY_KEYS[e.code];
       if (f) s.keys.add(f);
       if (m || f) {
-        if (m !== 'run' && !(onButton && m === 'space')) e.preventDefault();
+        // (Space is the cruiser's climb; walking, it's the page's)
+        if (m !== 'run' && !(m === 'space' && (onButton || !s.flying))) e.preventDefault();
         audioContext();
         return;
       }
@@ -469,7 +499,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         e.preventDefault();
         fns.current.act();
       } else if (e.key === 'm' || e.key === 'M') setList((v) => !v);
-      else if (e.key === 'Escape' && listRef.current) setList(false);
+      else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
       keyUp(s.keys, e);
@@ -485,7 +515,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       window.removeEventListener('blur', blur);
       s.keys.clear();
     };
-  }, [live]);
+  }, [live, closeList]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -500,7 +530,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     s.padBefore = pad ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
-    if (pressed('b')) setList(false);
+    if (pressed('b') && listRef.current) closeList();
     if (pressed('y')) setList((v) => !v);
 
     if (s.flying) {
@@ -515,11 +545,19 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (s.landing) throttle = steer = lift = 0;
       s.c = stepCruiser(s.c, { throttle: clamp1(throttle), steer: clamp1(steer), lift: clamp1(lift) }, dt);
       if (Math.abs(throttle) + Math.abs(steer) + Math.abs(lift) > 0.1) s.moved = true;
-      // set down: it sinks to its hover height, quicker the higher it is
+      // set down: it sinks to its hover height, quicker the higher it is; if
+      // the ground under it isn't open after all (or it takes too long), it
+      // stays up and the controls come back
       if (s.landing) {
-        s.c.y = Math.max(CRUISER.hover, s.c.y - Math.max(4, (s.c.y - CRUISER.hover) * 2.6) * dt);
-        s.c.vy = -2;
-        if (s.c.y <= CRUISER.hover + 0.01 && Math.abs(s.c.speed) < 0.3) touchDown();
+        s.landT += dt;
+        if (floorAt(s.c.x, s.c.z) > CRUISER.hover + 0.01 || !inArea('street', s.c.x, s.c.z) || s.landT > 6) {
+          s.landing = false;
+          say({ kind: 'note', bad: true, text: CANT_LAND });
+        } else {
+          s.c.y = Math.max(CRUISER.hover, s.c.y - Math.max(4, (s.c.y - CRUISER.hover) * 2.6) * dt);
+          s.c.vy = -2;
+          if (s.c.y <= CRUISER.hover + 0.01) touchDown();
+        }
       }
       // the first take-off: up off the driveway, or away along the street
       if (s.flying && s.boardAt && !doneRef.current.includes('fly') && (s.c.y > CRUISER.hover + 1.5 || Math.hypot(s.c.x - s.boardAt.x, s.c.z - s.boardAt.z) > 5)) complete('fly');
@@ -600,11 +638,16 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       audioContext();
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      e.currentTarget.setPointerCapture?.(e.pointerId);
       return;
     }
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     if (e.type === 'pointermove') {
+      if (e.pointerType === 'mouse' && e.buttons === 0) {
+        drag.current = null;
+        return;
+      }
       s.yaw -= (e.clientX - d.x) * 0.0065;
       s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
       d.x = e.clientX;
@@ -696,7 +739,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
             <canvas ref={map} width={MAP_W * MAP_PX} height={MAP_H * MAP_PX} aria-hidden="true" />
             <figcaption>{placeName}</figcaption>
           </figure>
-          <button type="button" className="rm-chip" onClick={() => setList((v) => !v)} aria-expanded={list} aria-controls="rm-list">
+          <button ref={chip} type="button" className="rm-chip" onClick={() => setList((v) => !v)} aria-expanded={list} aria-controls="rm-list" aria-label={`Things to do, ${prog.count} of ${prog.total} done`}>
             <RiListCheck2 aria-hidden="true" />
             <span>Things to do</span>
             <b>
@@ -780,15 +823,15 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         )}
       </div>
 
-      {list && <ThingsToDo prog={prog} done={done} onClose={() => setList(false)} />}
+      {list && <ThingsToDo box={listBox} prog={prog} done={done} onClose={closeList} />}
     </div>
   );
 }
 
 // The list (M): every thing to do, ticked when it's done, with where to go for the rest.
-function ThingsToDo({ prog, done, onClose }) {
+function ThingsToDo({ box, prog, done, onClose }) {
   return (
-    <div className="rm-list" id="rm-list" role="dialog" aria-label="Things to do in Dimension C-137">
+    <div ref={box} className="rm-list" id="rm-list" role="region" aria-label="Things to do in Dimension C-137">
       <div className="rm-list-head">
         <p>
           Things to do <b>{prog.count}</b>/{prog.total}
@@ -1049,6 +1092,18 @@ function Cards({ done, openPlace, three, gl, toast, retry }) {
   );
 }
 
+// Roy, if its code won't load (offline, or a deploy since the page opened)
+function RoyDown({ onLeave }) {
+  return (
+    <div className="rm-place-down" role="alert">
+      <p>Roy’s headset didn’t load. Check the connection, then reload the page to try again.</p>
+      <button type="button" className="rm-btn" onClick={() => onLeave?.(null, null)}>
+        Back to the arcade
+      </button>
+    </div>
+  );
+}
+
 // ── what opens over the page ──
 // Its component, and the way back to the room (Esc, the button, or B on a
 // controller). Roy fills the screen and has its own way out.
@@ -1056,14 +1111,18 @@ function Place({ id, onClose, onQuiz, onRoy }) {
   const p = PLACES[id];
   const back = useRef(null);
   const shell = useRef(null);
+  // where the focus was before this opened (read while rendering, before the toy takes it)
+  const before = useRef(typeof document === 'undefined' ? null : document.activeElement);
   useEffect(() => {
-    const before = document.activeElement;
-    (back.current ?? shell.current)?.focus({ preventScroll: true });
+    const from = before.current;
+    if (!shell.current?.contains(document.activeElement)) (back.current ?? shell.current)?.focus({ preventScroll: true });
     const html = document.documentElement;
     const was = html.style.overflow;
     html.style.overflow = 'hidden';
-    // (Roy takes its own Esc, to end the life it's in first, once it's there)
-    const esc = (e) => e.key === 'Escape' && !e.defaultPrevented && !(p.full && shell.current?.querySelector('[data-owns-escape]')) && onClose();
+    // (a game that marks itself [data-owns-escape] takes Esc for itself: Roy
+    // to end the life it's in, Portal panic to pause a run; the next Esc, or
+    // its own way out, leaves)
+    const esc = (e) => e.key === 'Escape' && !e.defaultPrevented && !shell.current?.querySelector('[data-owns-escape]') && onClose();
     window.addEventListener('keydown', esc);
     // B on a controller, for the ones that aren't games with their own buttons
     let raf = 0;
@@ -1079,7 +1138,7 @@ function Place({ id, onClose, onQuiz, onRoy }) {
       html.style.overflow = was;
       window.removeEventListener('keydown', esc);
       cancelAnimationFrame(raf);
-      if (before instanceof HTMLElement) before.focus({ preventScroll: true });
+      if (from instanceof HTMLElement) from.focus({ preventScroll: true });
     };
   }, [id, p.full, onClose]);
   const body = {

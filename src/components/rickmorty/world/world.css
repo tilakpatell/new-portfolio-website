@@ -141,7 +141,7 @@
 .rm-list-back:hover { color: var(--rm-lime); }
 
 /* ── what opens over the page ── */
-.rm-place { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); animation: rm-in 0.22s ease-out both; }
+.rm-place { position: fixed; inset: 0; z-index: 58; /* over the nav (40) and the guide (46), under the achievement toasts (60) */ display: flex; flex-direction: column; background: var(--bg); animation: rm-in 0.22s ease-out both; }
 .rm-place:focus { outline: none; }
 .rm-place-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: max(0.75rem, env(safe-area-inset-top)) max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-right)) 0.75rem max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-left)); border-bottom: 2px solid var(--rm-ink); background: #1f1729; color: #fff; }
 .rm-place-where { margin: 0; color: var(--rm-lime, #c9ff5a); font: 700 0.78rem/1.2 var(--font-sans); }
@@ -152,6 +152,7 @@
 .rm-place[data-full] .rm-place-body > * { flex: 1; }
 .rm-place-wait { margin: 0; padding: 2rem; color: var(--muted); }
 .rm-place[data-full] .rm-place-wait { display: grid; place-items: center; color: #c9ff5a; font: 700 1rem/1 var(--font-sans); }
+.rm-place-down { display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 2rem; color: #fff; font: 600 1rem/1.5 var(--font-sans); text-align: center; }
 @keyframes rm-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* ── the pop quiz, on the chalkboard ── */

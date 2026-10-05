@@ -40,12 +40,12 @@ export default function Quiz({ onDone }) {
     setGo((n) => n + 1);
   };
 
-  // the button that moves on gets the focus once an answer's marked, and the
-  // first answer when a question comes up
+  // the button that moves on gets the focus once an answer's marked (and on
+  // the result), and the first answer when a question comes up
   useEffect(() => {
-    if (marked) next.current?.focus({ preventScroll: true });
+    if (marked || over) next.current?.focus({ preventScroll: true });
     else first.current?.focus({ preventScroll: true });
-  }, [marked, at, go]);
+  }, [marked, over, at, go]);
 
   // the result, once a sitting
   useEffect(() => {
