@@ -16,7 +16,7 @@ import { makePerson } from '../shire/people';
 import { B, ball, barrelParts, createShireKit, cyl, lathe, parts } from '../shire/props';
 import { dotTexture } from '../towns/bake';
 import { COLOURS, HOBBITS } from './cast';
-import { facingTile, recipesOf } from './rules';
+import { facingTile, KINDS, recipesOf } from './rules';
 
 const TOP = 0.92; // a counter's top
 const SCALE = 0.92; // the hobbits, to the tiles
@@ -56,6 +56,12 @@ function itemMaker(K) {
     mithril: m(0xf2f6ff, { roughness: 0.12, metalness: 1, emissive: hot(0xa8c0ff, 0.45) }),
     iron: m(0x3a3a40, { roughness: 0.5, metalness: 0.7 }),
     haft: m(0x6a4a2a, { roughness: 0.8 }),
+    lembas: m(0xf2e6c4, { roughness: 0.85 }),
+    mallorn: m(0x5a8a3a, { roughness: 0.7 }),
+    twine: m(0xc8b890, { roughness: 1 }),
+    silk: m(0xe8ecf0, { roughness: 0.5, metalness: 0.2 }),
+    glass: m(0xd8ecff, { roughness: 0.05, transparent: true, opacity: 0.55 }),
+    starlight: new THREE.MeshBasicMaterial({ color: hot(0xe8f2ff, 3) }),
   };
   const mesh = (geo, mat, p = [0, 0, 0], r = [0, 0, 0], s = 1) => {
     const o = new THREE.Mesh(geo, mat);
@@ -90,6 +96,13 @@ function itemMaker(K) {
     bar: B(0.2, 0.05, 0.08),
     blade: new THREE.CylinderGeometry(0.11, 0.11, 0.025, 12, 1, false, 0, Math.PI),
     pole: cyl(0.014, 0.016, 0.34, 6),
+    cake: B(0.15, 0.035, 0.15),
+    parcel: B(0.17, 0.06, 0.17),
+    band: B(0.18, 0.064, 0.025),
+    coil: new THREE.TorusGeometry(0.07, 0.022, 6, 16),
+    strand: cyl(0.006, 0.006, 0.22, 4),
+    vial: lathe([[0, 0], [0.04, 0], [0.045, 0.02], [0.045, 0.1], [0.018, 0.13], [0.016, 0.16], [0, 0.16]], 12),
+    glow: ball(0.035, 8, 6),
   };
   const build = {
     mug(s) {
@@ -196,6 +209,31 @@ function itemMaker(K) {
       g.add(mesh(G.blade, s === 'ruined' ? M.soot : M.iron, [0.15, 0.02, 0], [Math.PI / 2, 0, -Math.PI / 2]));
       return g;
     },
+    lembas(s) {
+      const g = new THREE.Group();
+      if (s === 'wrapped') {
+        g.add(mesh(G.parcel, M.mallorn, [0, 0.03, 0], [0, 0.4, 0]));
+        g.add(mesh(G.band, M.twine, [0, 0.03, 0], [0, 0.4, 0]));
+      } else {
+        g.add(mesh(G.cake, s === 'burnt' ? M.burnt : M.lembas, [0, 0.02, 0], [0, 0.3, 0]));
+        g.add(mesh(G.cake, s === 'burnt' ? M.burnt : M.lembas, [0.03, 0.055, -0.02], [0, 0.9, 0], 0.9));
+      }
+      return g;
+    },
+    fibre(s) {
+      const g = new THREE.Group();
+      if (s === 'chopped') {
+        g.add(mesh(G.coil, M.silk, [0, 0.025, 0], [Math.PI / 2, 0, 0]));
+        g.add(mesh(G.coil, M.silk, [0, 0.06, 0], [Math.PI / 2, 0, 0.6], 0.85));
+      } else for (let i = 0; i < 7; i++) g.add(mesh(G.strand, M.silk, [Math.cos(i) * 0.03, 0.03, Math.sin(i) * 0.03], [0.3, i, Math.PI / 2 + (i - 3) * 0.08]));
+      return g;
+    },
+    phial(s) {
+      const g = new THREE.Group();
+      g.add(mesh(G.vial, s === 'dirty' ? M.dirty : M.glass));
+      if (s === 'light') g.add(mesh(G.glow, M.starlight, [0, 0.06, 0], [0, 0, 0], 1.1));
+      return g;
+    },
     loaf(s) {
       const g = new THREE.Group();
       const o = mesh(G.loaf, s === 'burnt' ? M.burnt : M.loaf, [0, 0.07, 0]);
@@ -215,7 +253,7 @@ function itemMaker(K) {
     M,
     dispose() {
       for (const g of Object.values(G)) g.dispose();
-      for (const x of [M.dirty, M.ale, M.foam, M.stew, M.carrot, M.leaf, M.potato, M.flesh, M.dough, M.loaf, M.burnt, M.smear, M.silver, M.wine, M.cap, M.gill, M.herb, M.soup, M.rock, M.fleck, M.clay, M.soot, M.mithril, M.iron, M.haft]) x.dispose();
+      for (const x of [M.dirty, M.ale, M.foam, M.stew, M.carrot, M.leaf, M.potato, M.flesh, M.dough, M.loaf, M.burnt, M.smear, M.silver, M.wine, M.cap, M.gill, M.herb, M.soup, M.rock, M.fleck, M.clay, M.soot, M.mithril, M.iron, M.haft, M.lembas, M.mallorn, M.twine, M.silk, M.glass, M.starlight]) x.dispose();
     },
   };
 }
@@ -263,13 +301,15 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const elvish = level.theme === 'rivendell';
   // (or Moria: dark stone halls, lit by the forges and the molten rock)
   const dwarf = level.theme === 'moria';
-  const pick3 = (inn, rv, mo) => (elvish ? rv : dwarf ? mo : inn);
+  // (or Lothlórien: flets high in the mallorns at night, rope bridges, the drop)
+  const tree = level.theme === 'lorien';
+  const pick3 = (inn, rv, mo, lo = inn) => (elvish ? rv : dwarf ? mo : tree ? lo : inn);
 
-  scene.background = new THREE.Color(pick3(0x1a120c, 0x3a3448, 0x07070a));
-  scene.fog = new THREE.Fog(pick3(0x1a120c, 0x5a5060, 0x0c0a0a), dwarf ? 14 : 18, dwarf ? 34 : 44);
-  const hemi = new THREE.HemisphereLight(pick3(0xffe2b8, 0xfff0d8, 0x9aa8c8), pick3(0x3a2414, 0x5a5040, 0x2a160c), pick3(1.25, 1.45, 0.75));
+  scene.background = new THREE.Color(pick3(0x1a120c, 0x3a3448, 0x07070a, 0x0a1222));
+  scene.fog = new THREE.Fog(pick3(0x1a120c, 0x5a5060, 0x0c0a0a, 0x0e1a2a), dwarf ? 14 : 18, dwarf ? 34 : tree ? 30 : 44);
+  const hemi = new THREE.HemisphereLight(pick3(0xffe2b8, 0xfff0d8, 0x9aa8c8, 0xb8ccff), pick3(0x3a2414, 0x5a5040, 0x2a160c, 0x1a2a20), pick3(1.25, 1.45, 0.75, 1.05));
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(pick3(0xffe0b0, 0xffd8a0, 0xb8c8ff), pick3(2.2, 2.6, 1.0));
+  const sun = new THREE.DirectionalLight(pick3(0xffe0b0, 0xffd8a0, 0xb8c8ff, 0xc8d8ff), pick3(2.2, 2.6, 1.0, 1.5));
   sun.position.set(elvish ? -7 : -4, 10, elvish ? 4 : 7);
   sun.target.position.set(0, 0, 0);
   sun.castShadow = true;
@@ -287,7 +327,28 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   // dark stone for Moria's halls
   const deep = mats.ashlar.clone();
   deep.color = new THREE.Color(0x5a5652);
-  if (dwarf) {
+  // silver-grey planks and mallorn bark for Lothlórien's flets
+  const flet = paint(0xc8c0a8);
+  const fletSide = paint(0x8e8a76);
+  const fletTop = paint(0xe8e2cc);
+  // (the bark's own map is brown; without it the trunks come out silver)
+  const bark = mats.trunk.clone();
+  bark.map = null;
+  bark.color = new THREE.Color(0xc4c8cc);
+  if (tree) {
+    // a plank floor everywhere but the drop
+    for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) if (at(i, j) !== '~') bk.add(flet, B(1, 0.1, 1), { p: [X(i + 0.5), -0.05, Z(j + 0.5)], uv: 1 });
+    // the mallorns' great silver trunks, rising through the back of the flets
+    const zb = Z(0) - 0.5;
+    for (const x of [-W / 2 + 0.6, -1.5, 2.5, W / 2 - 0.6]) bk.add(bark, cyl(0.55, 0.7, wallH + 3, 14), { p: [x, (wallH + 3) / 2 - 1.5, zb] });
+    // a railing round the flets' outer edges
+    for (const sx of [-1, 1]) {
+      bk.add(flet, B(0.08, 0.08, D), { p: [sx * (W / 2 + 0.08), 0.7, 0] });
+      for (let k = 0; k <= 4; k++) bk.add(flet, B(0.08, 0.7, 0.08), { p: [sx * (W / 2 + 0.08), 0.35, -D / 2 + k * (D / 4)] });
+    }
+    // blue-white lanterns hung from the trunks
+    for (const x of [-W / 2 + 0.6, -1.5, 2.5, W / 2 - 0.6]) lamps.push(V(x + 0.7, 2.1, zb + 0.4));
+  } else if (dwarf) {
     bk.add(deep, B(W + 2, 0.1, D + 2), { p: [0, -0.05, 0.5], uv: 0.4 });
     const zb = Z(0) - 0.2;
     bk.add(deep, B(W + 2, wallH + 1.2, 0.4), { p: [0, (wallH + 1.2) / 2, zb - 0.1], uv: 0.4 });
@@ -367,12 +428,26 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       stations[`${i},${j}`] = st;
       const stone = c === 'P' || c === 'O';
       // the counter
-      bk.add(dwarf ? deep : stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
-      bk.add(c === 'S' ? darkWood : dwarf ? mats.ashlar : stone || elvish ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
+      bk.add(dwarf ? deep : tree ? (stone ? mats.dressed : fletSide) : stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
+      bk.add(c === 'S' ? darkWood : dwarf ? mats.ashlar : tree && !stone ? fletTop : stone || elvish || tree ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
       // a dark lip round the top, so each counter reads as one
       bk.add(darkWood, B(1.02, 0.05, 1.02), { p: [x, TOP - 0.085, z], uv: 1 });
       bk.at([x, TOP, z], f.turn, () => {
-        if (c === 'B' && dwarf) {
+        if (c === 'B' && tree) {
+          // a spinning wheel
+          bk.add(flet, new THREE.TorusGeometry(0.26, 0.025, 6, 20), { p: [0, 0.36, -0.1] });
+          for (let k = 0; k < 6; k++) bk.add(flet, B(0.015, 0.5, 0.015), { p: [0, 0.36, -0.1], r: [0, 0, (k * Math.PI) / 6] });
+          for (const sx of [-1, 1]) bk.add(flet, B(0.04, 0.4, 0.04), { p: [sx * 0.05, 0.18, -0.1] });
+          bk.add(flet, B(0.5, 0.04, 0.3), { p: [0, 0.02, 0.05] });
+        } else if (c === 'L') {
+          // the leaf table: a pile of mallorn leaves to wrap the lembas in
+          for (let k = 0; k < 7; k++) bk.add(items.M.mallorn, new THREE.SphereGeometry(0.1, 8, 4), { p: [Math.cos(k * 1.9) * 0.24, 0.02 + k * 0.006, Math.sin(k * 1.9) * 0.2 - 0.1], s: [1.4, 0.15, 0.8], r: [0, k, 0] });
+        } else if (c === 'T' && tree) {
+          // the fountain: a stone bowl, and a spout of light
+          bk.add(mats.dressed, lathe([[0.1, 0], [0.32, 0.12], [0.34, 0.2], [0.3, 0.2], [0.28, 0.14], [0, 0.1]], 16), { p: [0, 0, -0.1] });
+          bk.add(mats.dressed, cyl(0.04, 0.05, 0.5, 8), { p: [0, 0.25, -0.38] });
+          bk.add(items.M.starlight, cyl(0.012, 0.012, 0.3, 6), { p: [0, 0.38, -0.25], r: [0.9, 0, 0] });
+        } else if (c === 'B' && dwarf) {
           // an anvil to crush the ore on, and a hammer
           bk.add(mats.iron, B(0.5, 0.12, 0.24), { p: [0, 0.2, -0.02] });
           bk.add(mats.iron, B(0.22, 0.16, 0.16), { p: [0, 0.07, -0.02] });
@@ -390,7 +465,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
           for (const s of [-1, 1]) bk.add(mats.iron, cyl(0.02, 0.02, 0.5, 5), { p: [s * 0.4, 0.2, 0] });
           bk.add(mats.iron, cyl(0.015, 0.015, 0.82, 5), { p: [0, 0.45, 0], r: [0, 0, Math.PI / 2] });
         } else if (c === 'O') {
-          bk.add(elvish ? mats.ashlar : brick, new THREE.SphereGeometry(0.44, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), { p: [0, 0, -0.04], uv: 1 });
+          bk.add(elvish || tree ? mats.ashlar : brick, new THREE.SphereGeometry(0.44, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), { p: [0, 0, -0.04], uv: 1 });
           bk.add(mats.void, new THREE.CircleGeometry(0.2, 12, 0, Math.PI), { p: [0, 0.0, 0.405], r: [0, 0, 0] });
           bk.add(mats.iron, cyl(0.05, 0.06, 0.3, 8), { p: [0.12, 0.5, -0.12] });
         } else if (c === 'T') {
@@ -404,7 +479,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         } else if (c === 'W' && dwarf) {
           // a quenching trough
           bk.add(deep, B(0.86, 0.28, 0.6), { p: [0, 0.14, 0], uv: 1 });
-        } else if (c === 'W' && elvish) {
+        } else if (c === 'W' && (elvish || tree)) {
           // a stone basin
           bk.add(mats.dressed, lathe([[0.3, 0], [0.44, 0.24], [0.46, 0.28], [0.41, 0.28], [0.39, 0.25], [0.27, 0.04], [0, 0.04]], 18));
         } else if (c === 'W') {
@@ -459,7 +534,42 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   // and a bridge wherever the floor crosses it
   let waterTex = null;
   const wet = (i, j) => at(i, j) === '~';
-  if (rows.some((r) => r.includes('~'))) {
+  if (tree) {
+    // the drop between the flets: the forest floor far below, and the
+    // lights of Caras Galadhon among the trunks
+    const below = new THREE.Mesh(new THREE.PlaneGeometry(W + 30, D + 30), new THREE.MeshBasicMaterial({ color: 0x0c1a14 }));
+    below.rotation.x = -Math.PI / 2;
+    below.position.y = -7;
+    room.add(below);
+    const lightGeo = new THREE.SphereGeometry(0.12, 6, 4);
+    const lightMat = new THREE.MeshBasicMaterial({ color: hot(0xdce8ff, 2.2) });
+    for (let k = 0; k < 18; k++) {
+      const m = new THREE.Mesh(lightGeo, lightMat);
+      m.position.set(Math.sin(k * 7.3) * (W / 2 + 4), -2 - (k % 5) * 0.9, Math.cos(k * 3.1) * (D / 2 + 3));
+      room.add(m);
+    }
+    const rope = items.M.twine;
+    for (let j = 0; j < D; j++)
+      for (let i = 0; i < W; i++) {
+        const c = at(i, j);
+        const x = X(i + 0.5);
+        const z = Z(j + 0.5);
+        if (c === '~') {
+          // the flet's edge, where the drop begins
+          for (const sx of [-1, 1]) if (at(i + sx, j) !== '~' && at(i + sx, j) !== 'x') bk.add(flet, B(0.06, 0.18, 1), { p: [x + sx * 0.5, -0.01, z] });
+        } else if (c === '.' && (wet(i, j - 1) || wet(i, j + 1) || wet(i - 1, j) || wet(i + 1, j))) {
+          // a rope bridge: planks, posts and the ropes along its sides
+          const wide = wet(i - 1, j) || wet(i + 1, j);
+          for (let k = -2; k <= 2; k++) bk.add(flet, B(wide ? 1 : 0.18, 0.05, wide ? 0.18 : 1), { p: [x + (wide ? 0 : k * 0.2), 0.0, z + (wide ? k * 0.2 : 0)] });
+          for (const side of [-1, 1]) {
+            const px = wide ? 0 : side * 0.45;
+            const pz = wide ? side * 0.45 : 0;
+            for (const e of [-1, 1]) bk.add(flet, B(0.05, 0.6, 0.05), { p: [x + px + (wide ? e * 0.45 : 0), 0.3, z + pz + (wide ? 0 : e * 0.45)] });
+            bk.add(rope, cyl(0.015, 0.015, 1, 5), { p: [x + px, 0.55, z + pz], r: wide ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0] });
+          }
+        }
+      }
+  } else if (rows.some((r) => r.includes('~'))) {
     const cv = document.createElement('canvas');
     cv.width = 64;
     cv.height = 256;
@@ -523,6 +633,22 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       if (!p) continue;
       const l = new THREE.PointLight(0xff5a1a, 4, 8, 1.4);
       l.position.copy(p);
+      scene.add(l);
+    }
+  }
+
+  // Lothlórien: blue-white lanterns on the trunks, and their light
+  if (tree) {
+    const glow = new THREE.MeshBasicMaterial({ color: hot(0xdce8ff, 2.6) });
+    const geo = new THREE.SphereGeometry(0.1, 10, 8);
+    for (const at2 of lamps) {
+      const m = new THREE.Mesh(geo, glow);
+      m.position.copy(at2);
+      room.add(m);
+    }
+    for (const sx of [-0.3, 0.3]) {
+      const l = new THREE.PointLight(0xc8d8ff, 2.4, 10, 1.5);
+      l.position.set(sx * W, 2.4, Z(0) + 0.8);
       scene.add(l);
     }
   }
@@ -726,13 +852,17 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         if (st.c === 'B' && sp.item?.s === 'raw' && sp.prog > 0) ring(x, TOP + 0.75, z, sp.prog, GREEN);
       } else if (st.c === 'O') {
         if (sp.item) place(k, sp.item, x + front.a * 0.18, TOP + 0.02, z + front.b * 0.18, front.turn);
-        if (sp.item?.k === 'dough') ring(x, TOP + 0.95, z, sp.prog / T.bake, GREEN);
-        else if (sp.item?.k === 'loaf' && sp.item.s === 'baked' && sp.prog > T.char * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.char, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);
+        if (sp.item?.k === R.oven.takes) ring(x, TOP + 0.95, z, sp.prog / T.bake, GREEN);
+        else if (sp.item?.k === R.oven.makes && sp.item.s === KINDS[R.oven.makes][0] && sp.prog > T.char * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.char, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);
         if (sp.item?.s === 'burnt' && Math.random() < dt * 6) puff(x, TOP + 0.6, z, { color: 0x222222, size: 0.5, life: 1.8, opacity: 0.5 });
+      } else if (st.c === 'L') {
+        // on the leaves, and wrapped while someone works at it
+        if (sp.item) place(k, sp.item, x, TOP + 0.04, z, front.turn);
+        if (sp.prog > 0) ring(x, TOP + 0.75, z, sp.prog, GREEN);
       } else if (st.c === 'T') {
         if (sp.item) place(k, sp.item, x + front.a * 0.3, TOP, z + front.b * 0.3, front.turn);
         if (sp.item?.s === 'clean') ring(x, TOP + 0.95, z, sp.prog / T.fill, GOLD);
-        else if (sp.item?.s === 'ale' && sp.prog > T.spill * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.spill, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);
+        else if (sp.item?.s === R.tap.makes && sp.prog > T.spill * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.spill, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);
       } else if (st.c === 'P') {
         const top = potTops[k];
         top.material = POT[sp.s] ?? POT.empty;

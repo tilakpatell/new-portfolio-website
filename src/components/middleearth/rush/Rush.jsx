@@ -7,6 +7,7 @@ import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
 import { PONY } from './levels/pony';
+import { LORIEN } from './levels/lorien';
 import { MORIA } from './levels/moria';
 import { RIVENDELL } from './levels/rivendell';
 import { cleanCode, makeCode } from './protocol';
@@ -24,7 +25,7 @@ import './rush.css';
 // touch screen).
 
 const BEST = (id) => `tp-rush-best-${id}`;
-const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA };
+const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN };
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
