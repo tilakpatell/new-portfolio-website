@@ -21,7 +21,7 @@ import { pbr, preload } from '../hq/assets';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
-import { logoTexture, trees } from '../hq/kit/world';
+import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
@@ -33,8 +33,9 @@ import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { AVENGERS_MODELS } from '../people/models';
 import { clipsFor, loadClips, loadPerson, person } from './people';
 import { createSwing } from './swing';
+import { createFlags, createRings, staticGrounds } from './grounds';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CRATER, HERO, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, aimWeb, camRoom, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, nearestEdge, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -228,8 +229,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.32, radius: 0.5, threshold: 1.05 }, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
-  const sets = ['grass', 'forest-floor', 'concrete-floor', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal'];
-  await preload({ sets, skies: ['airfield'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
+  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
 
   // ── light: the airfield's late-afternoon sky, the sun a little higher than it has it ──
   await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.3, sunColor: [1, 0.9, 0.76], fill: 0.1 });
@@ -320,9 +321,30 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the drives: pale concrete, a darker kerb either side
   const roadTex = await pbr('concrete-floor', { repeat: [1, 1], small, roughness: 0.85, metalness: 0 });
   // pale concrete, as the compound has it: the texture's relief, not its dark colour
-  const roadMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xb9bbb3, roughness: 0.86, metalness: 0, normalMap: roadTex.normalMap ?? null, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: roadTex.roughnessMap ?? null }), 'road');
+  const roadMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xaeb0a9, roughness: 0.86, metalness: 0, normalMap: roadTex.normalMap ?? null, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: roadTex.roughnessMap ?? null }), 'road');
+  {
+    // poured in 4 m slabs: a joint across every slab and one down the middle,
+    // the wheels' tracks a little darker, and the concrete's own blotches
+    const before = roadMat.onBeforeCompile;
+    roadMat.onBeforeCompile = (sh, r) => {
+      before(sh, r);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSlab;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvSlab = uv;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vSlab;').replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        {
+          float across = 1.0 - smoothstep(0.0, 0.012, abs(fract(vSlab.y) - 0.5) - 0.488);
+          float down = 1.0 - smoothstep(0.0, 0.004, abs(vSlab.x - 0.5) - 0.002);
+          float tracks = smoothstep(0.1, 0.0, abs(abs(vSlab.x - 0.5) - 0.24));
+          float blotch = cNoise(vCloudPos.xz * 0.35) * 0.6 + cNoise(vCloudPos.xz * 1.7) * 0.4;
+          diffuseColor.rgb *= (1.0 - max(across, down) * 0.38) * (1.0 - tracks * 0.07) * mix(0.9, 1.05, blotch);
+        }`,
+      );
+    };
+    roadMat.customProgramCacheKey = () => 'road-slabs';
+  }
   for (const t of [roadMat.normalMap, roadMat.roughnessMap]) if (t) t.repeat.set(1 / 4, 1 / 4);
-  const kerbMat = cloudy(new THREE.MeshStandardMaterial({ color: 0x9a9f98, roughness: 0.9 }), 'kerb');
+  const kerbMat = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
   const roadGeos = [];
   const kerbGeos = [];
   for (const pts of ROADS_W) {
@@ -356,11 +378,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     t.repeat.set(1 / 8, 1 / 8);
     return t;
   };
-  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xf1f3f5, roughness: 0.42, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.4, normalMap: panels(2, 1.5), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
+  // (white panels, but not paper white: in a low sun they'd bloom)
+  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xe1e4e8, roughness: 0.46, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.5, normalMap: panels(2, 1.5), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
   const hangarWall = cloudy(await pbr('corrugated', { repeat: [1 / 2.2, 1 / 2.2], small, roughness: 0.45, metalness: 0.4, color: 0xf2f4f6 }), 'hangar');
   const doorMat = cloudy(await pbr('corrugated', { repeat: [1 / 2.6, 1 / 2.6], small, roughness: 0.5, metalness: 0.5, color: 0xa9b1bb, rotation: Math.PI / 2 }), 'hdoor');
   const grey = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xbcc4cd, roughness: 0.4, metalness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.35, normalMap: panels(1.6, 1.5), normalScale: new THREE.Vector2(0.6, 0.6) }), 'grey');
-  const roofMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xd9dcdf, roughness: 0.88, metalness: 0, normalMap: panels(4, 4), normalScale: new THREE.Vector2(0.25, 0.25) }), 'roof');
+  // the roofs, somewhere to stand now: weathered concrete, its slabs' seams in it
+  const roofMat = cloudy(await pbr('concrete-worn', { repeat: [1 / 4, 1 / 4], small, roughness: 0.95, metalness: 0, color: 0xc4c7c6, normalScale: 0.8 }), 'roof');
   const darkMetal = cloudy(new THREE.MeshStandardMaterial({ color: 0x2f3640, roughness: 0.45, metalness: 0.8 }), 'dark');
   const red = cloudy(new THREE.MeshStandardMaterial({ color: 0xb8332c, roughness: 0.55, metalness: 0.2 }), 'red');
   const earth = cloudy(await pbr('rock', { repeat: [1 / 4, 1 / 4], small: true, roughness: 1, metalness: 0, color: 0x9a8a66 }), 'earth');
@@ -511,24 +535,15 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     [4.2, 5.4],
   ])
     add(prismWalls(grow(TRAINING, 0.05), z0, z1, 1, SC), glassBand, { cast: false });
-  const clere = [
-    [100, 21],
-    [119, 19],
-    [120, 24],
-    [101, 26],
-  ];
-  add(walls(clere, 7, 8.4), glassBand);
-  add(top(clere, 8.4), white);
+  add(walls(CLERESTORY, 7, 8.4), glassBand);
+  add(top(CLERESTORY, 8.4), white);
+  // parapets round the training center's roof and the lab's
+  add(prismWalls(grow(TRAINING, 0.06), 7, 7.32, 1, SC), white);
+  add(prismWalls(grow(LAB, 0.06), 6, 6.32, 1, SC), white);
   add(walls(LAB, 0, 6), white);
   add(top(LAB, 6), roofMat);
   add(prismWalls(grow(LAB, 0.05), 1.6, 3.4, 1, SC), glassBand, { cast: false });
-  for (let k = 0; k < 3; k++) {
-    const f = [
-      [84, 72.5 + k * 5],
-      [101.5, 71 + k * 5],
-      [101.7, 72.6 + k * 5],
-      [84.2, 74.1 + k * 5],
-    ];
+  for (const f of ROOF_LIGHTS) {
     add(walls(f, 6, 7.2), glassBand);
     add(top(f, 7.2), white);
   }
@@ -599,8 +614,16 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
 
   // ── floodlight masts round the lawn, the helipad and the drives (out on the
   // open lawn, they're what there is to swing from) ──
+  const steel = cloudy(new THREE.MeshStandardMaterial({ color: 0x9ba3ab, metalness: 0.85, roughness: 0.36 }), 'steel');
+  // benches, planters, flagpoles, the roof plant and the comms mast (./grounds.js)
   {
-    const steel = cloudy(new THREE.MeshStandardMaterial({ color: 0x9ba3ab, metalness: 0.85, roughness: 0.36 }), 'steel');
+    const wood = cloudy(await pbr('planks', { repeat: [1, 1], small, roughness: 0.8, metalness: 0, color: 0xb08a62 }), 'wood');
+    const concrete = cloudy(new THREE.MeshStandardMaterial({ color: 0xb5b6b0, roughness: 0.9, metalness: 0 }), 'concrete');
+    const soil = new THREE.MeshStandardMaterial({ color: 0x3b2d22, roughness: 1, metalness: 0 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd8b25a, roughness: 0.3, metalness: 1 });
+    staticGrounds(add, { steel, concrete, wood, soil, gold, dark: darkMetal, white });
+  }
+  {
     const housing = cloudy(new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.7, roughness: 0.45 }), 'lamphouse');
     const lens = new THREE.MeshStandardMaterial({ color: 0x1c2026, metalness: 0.2, roughness: 0.08, emissive: 0xfff0d2, emissiveIntensity: 0.45 });
     const mid = P3(60, 52);
@@ -690,6 +713,18 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }
     for (const t of LAWN_TREES) woods.push([t.x, t.z, treeHeight(t), 3, t.tone * 97]);
     scene.add(await trees(woods));
+    // street lamps down the drives (Poly Haven's, CC0), their arms out over the drive
+    scene.add(await scatter('lamp', LAMPS.map((l) => [l.x, l.z, 1.15, l.yaw]), { shadows: !small }));
+    // shrubs in the planters by the doors
+    const shrubs = [];
+    PLANTERS.forEach((p, i) => {
+      for (let k = 0; k < (small ? 1 : 2); k++) {
+        const a = i * 1.7 + k * 1.57;
+        shrubs.push([p.x + Math.cos(a) * 0.22, p.z + Math.sin(a) * 0.22, 2.6 + ((i + k) % 3) * 0.3, a * 2.1 + k * 3.1]);
+      }
+    });
+    const shrubGroup = await scatter('shrub', shrubs, { heightAt: () => 0.58, shadows: false });
+    scene.add(shrubGroup);
     // the lawn's trees cast no shadow of their own (they're pictures): a soft one under each
     const blobs = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), LAWN_TREES.length);
     LAWN_TREES.forEach((t, i) => {
@@ -1082,6 +1117,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // ── the camera ──
   const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0 };
   const swing = createSwing(scene, { calm });
+  const flags = createFlags(scene);
+  const rings = createRings(scene);
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -1365,6 +1402,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
+    flags.update(clock);
+    rings.update(s.tour ?? { on: false, next: 0 }, clock);
 
     // Mjolnir hums a little when the worthy come near it
     const dh = Math.hypot(s.hero.x - CRATER.x, s.hero.z - CRATER.z);
@@ -1433,6 +1472,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // list, out of a building): straight there, no swing across the lawn
     if (!A.started || Math.hypot(h.x - A.hx, h.z - A.hz) > 6) {
       A.started = true;
+      want.y += ly - A.ly;
+      look.y = ly;
+      A.ly = ly;
       A.at.copy(want);
       A.look.copy(look);
     }
@@ -1538,6 +1580,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       moves?.dispose();
       spidey?.dispose();
       swing.dispose();
+      flags.dispose();
+      rings.dispose();
       vfx.dispose();
       engine.dispose();
     },
