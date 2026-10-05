@@ -1,5 +1,5 @@
 // Dimension C-137, the world, in WebGL: the Smiths' street (./street.js),
-// the rooms and the alien street (registered in AREAS_BUILT below), Morty
+// the rooms and the alien street (registered in AREA_BUILDERS below), Morty
 // walking about as the rigged Meshy Morty, and Rick's space cruiser, parked
 // in the driveway or flown with Morty at the wheel. Toon-shaded and inked
 // like the show (portal/toon.js), on lib/stage3d's renderer with
@@ -22,11 +22,11 @@ import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
-import { AREAS, BUILDINGS, CRUISER, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, behindYaw, wallsIn } from './rules';
+import { ARCADE, AREAS, BUILDINGS, CRUISER, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, wallsIn } from './rules';
 import { kitMaterials, toonModel } from './kit';
 import { ROAD_Y, buildStreet } from './street';
 import { STREET_SKY, makeSky } from './sky';
-import { createFx } from './fx';
+import { createFx, portalMaterial } from './fx';
 
 export { kitMaterials };
 
@@ -37,7 +37,7 @@ export { kitMaterials };
 // rules.js's AREAS and shown only while Morty is there. An area with no
 // builder gets a plain lit room (or, outdoors, plain ground under a sky).
 // The rooms and the annex add theirs here.
-export const AREAS_BUILT = { street: buildStreet };
+export const AREA_BUILDERS = { street: buildStreet };
 
 // the models the world loads (public/models/c137/), shared with the builders by name
 const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];
@@ -56,7 +56,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.1, far: 1000, exposure: 1.05, bloom: { strength: 0.5, radius: 0.45, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.1, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
   const { renderer, scene, camera } = stage;
   // a tone map that keeps the show's flat bright colours bright
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -87,14 +87,13 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     cast.load(null, ['morty', 'saucer'], { clips: ['idle', 'walk', 'run', 'sit'] }),
   ]);
   const models = new Map(loaded);
-  if (stage.disposed) return null;
 
   // ── the areas ──
-  const kit = { renderer, models, cast, mats, tier, camera, fit };
+  const kit = { renderer, models, cast, mats, tier, camera, fit, portal: portalMaterial };
   const areas = {};
   const building = {};
   const build = async (id) => {
-    const make = AREAS_BUILT[id] ?? (OUTDOOR.includes(id) ? plainGround : plainRoom);
+    const make = AREA_BUILDERS[id] ?? (OUTDOOR.includes(id) ? plainGround : plainRoom);
     let a = null;
     try {
       a = await make(kit, id);
@@ -107,7 +106,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     areas[id] = a;
     return a;
   };
-  await Promise.all(Object.keys(AREAS_BUILT).map(build));
+  await Promise.all(Object.keys(AREA_BUILDERS).map(build));
 
   // ── Morty, walking, and sat at the cruiser's wheel ──
   const morty = cast.make('morty') ?? standInMorty();
@@ -167,11 +166,13 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   const cam = { at: new THREE.Vector3(), look: new THREE.Vector3(), area: null, flying: null };
   const want = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   // how far from the head to the camera it can go before it's inside a
-  // building (outdoors) or through a wall (indoors), as a share
-  const blocked = (area, x, y, z) => {
-    if (area === 'street') return BUILDINGS.some((b) => y < b.roof + 0.5 && Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35);
-    return false;
-  };
+  // building or a tree (outdoors) or through a wall (indoors), as a share
+  const solid = { street: BUILDINGS, annex: [ARCADE] };
+  const parked = { x: 0, z: 0, on: false }; // the cruiser, while it stands in the street
+  const blocked = (area, x, y, z) =>
+    (solid[area] ?? []).some((b) => y < b.roof + 0.5 && Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35) ||
+    (area === 'street' && TREES.some((tr) => y < 8 * tr.s && Math.hypot(x - tr.x, z - tr.z) < 0.45 * tr.s + 0.35)) ||
+    (area === 'street' && parked.on && y < SAUCER + 0.6 && Math.hypot(x - parked.x, z - parked.z) < CRUISER.radius + 0.6);
   const crossesWall = (area, ax, az, bx, bz) =>
     wallsIn(area).some(([x0, z0, x1, z1, , low]) => {
       if (low) return false;
@@ -223,14 +224,17 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     return true;
   };
 
-  // every shader compiled before the first frame
-  for (const a of Object.values(areas)) a.group.visible = true;
-  await stage.precompile();
-  if (stage.disposed) return null;
-  for (const a of Object.values(areas)) a.group.visible = false;
+  // every shader compiled before the first frame, an area at a time (each
+  // with its own lights, which pick which shaders the materials need)
+  for (const id of Object.keys(areas)) {
+    showArea(id);
+    await stage.precompile();
+  }
+  shown = null;
 
   // ── each frame ──
   const pace = createPace();
+  const pending = []; // effects asked for, for the next frame
   let sharp = 1;
   let t = 0;
   let mortyY = 0;
@@ -285,6 +289,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       cruiserShadow.scale.setScalar(clamp(1 - (hy - 1.4) / 40, 0.4, 1));
       cruiserShadow.material.opacity = clamp(0.4 - (hy - 1.4) / 60, 0.08, 0.4);
     } else cruiserShadow.visible = false;
+    parked.on = !!c && outdoors && !state.flying;
+    if (parked.on) Object.assign(parked, { x: c.x, z: c.z });
 
     // the rings at the doors, the marker over what you're next to
     for (const [id, mk] of fx.marks) mk.userData.near = state.near?.link === id;
@@ -306,8 +312,9 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const yaw = state.camYaw ?? behindYaw(m.face ?? 0);
       const pitch = clamp(state.camPitch ?? 0.17, -0.25, 1.2);
       const dist = outdoors || OUTDOOR.includes(area) ? 5.6 : 3.6;
-      want.look.set(m.x, mortyY + 1.45, m.z);
-      want.at.set(m.x + Math.sin(yaw) * Math.cos(pitch) * dist, mortyY + 1.45 + Math.sin(pitch) * dist, m.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+      // (looking a little over his head, so more of the street is in view)
+      want.look.set(m.x, mortyY + 1.75, m.z);
+      want.at.set(m.x + Math.sin(yaw) * Math.cos(pitch) * dist, mortyY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(yaw) * Math.cos(pitch) * dist);
       const k = clearance(area, want.look, want.at);
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
       if (!OUTDOOR.includes(area)) {
@@ -332,6 +339,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     sun.position.copy(focus).addScaledVector(sunDir, 70);
     sun.castShadow = renderer.shadowMap.enabled;
 
+    // effects asked for since the last frame, where everyone is now
+    for (const [type, d] of pending.splice(0)) fire(type, d);
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
@@ -351,7 +360,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     }
   };
 
-  const fxEvent = (type, d = {}) => {
+  const fire = (type, d) => {
     const m = morty.group.position;
     if (type === 'done') fx.burst(m.x, m.y + 2.1, m.z, 110, 4.5);
     else if (type === 'portal') {
@@ -361,6 +370,9 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       fx.ring(cruiser.position.x, 0, cruiser.position.z, 0x9dff5a, 3.5, 0.6);
       fx.burst(cruiser.position.x, cruiser.position.y + 0.6, cruiser.position.z, 40, 3);
     } else if (type === 'land') fx.ring(cruiser.position.x, 0, cruiser.position.z, 0xf2efe6, 6, 0.9);
+  };
+  const fxEvent = (type, d = {}) => {
+    if (pending.length < 16) pending.push([type, d]);
   };
 
   const api = {
@@ -380,6 +392,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       // models a builder never put in the scene
       for (const o of models.values()) if (o && !o.parent) disposeTree(o);
       fx.dispose();
+      ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
       for (const g of glassMats) g.dispose();
       cast.dispose();
@@ -394,8 +407,9 @@ export async function createRmWorld(canvas, { onLost } = {}) {
 
 // ── stand-ins and plain areas ──
 
-// A room with nothing in it yet: floor, walls and a ceiling light, at the
-// area's place.
+// A room with nothing in it yet: floor and walls, at the area's place, lit
+// by the room light (no lamp of its own: a light more or less makes every
+// material's shader change).
 function plainRoom(kit, id) {
   const a = AREAS[id];
   const group = new THREE.Group();
@@ -414,9 +428,6 @@ function plainRoom(kit, id) {
     wall.receiveShadow = true;
     group.add(wall);
   }
-  const lamp = new THREE.PointLight(0xfff0d8, 2.5, Math.max(w, d) * 1.2, 1.4);
-  lamp.position.set(cx, 2.5, cz);
-  group.add(lamp);
   return { group, light: ROOM_LIGHT };
 }
 
@@ -426,7 +437,7 @@ function plainGround(kit, id) {
   const group = new THREE.Group();
   const sky = makeSky(560, id === 'street' ? STREET_SKY : ANNEX_SKY);
   group.add(sky.dome);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400).rotateX(-Math.PI / 2), kit.mats.floor(id === 'street' ? 0x62b347 : 0x7b5aa6));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400).rotateX(-Math.PI / 2), kit.mats.floor(id === 'street' ? 0x62b347 : 0x7b5aa6));
   ground.position.set((a.x0 + a.x1) / 2, 0, (a.z0 + a.z1) / 2);
   ground.receiveShadow = true;
   group.add(ground);
@@ -447,14 +458,25 @@ function standInMorty() {
   };
   const legs = [-0.12, 0.12].map((x) => part(new THREE.CapsuleGeometry(0.1, 0.5, 4, 8), 0x3b5fa8, x, 0.38, 0));
   part(new THREE.CapsuleGeometry(0.24, 0.36, 4, 10), 0xf2d23c, 0, 0.98, 0);
+  const arms = [-1, 1].map((s) => {
+    const a = part(new THREE.CapsuleGeometry(0.07, 0.45, 4, 8), 0xf2d23c, s * 0.3, 1.0, 0);
+    a.rotation.z = s * 0.25;
+    return a;
+  });
   part(new THREE.SphereGeometry(0.27, 16, 12), 0xf6d2b0, 0, 1.48, 0);
-  part(new THREE.SphereGeometry(0.29, 16, 12, 0, Math.PI * 2, 0, 1.3), 0x6b3a1e, 0, 1.52, -0.02);
+  part(new THREE.IcosahedronGeometry(0.29, 1), 0x6b3a1e, 0, 1.56, -0.05).scale.set(1, 0.8, 1);
+  // his eyes: white, round, a dot in each
+  for (const s of [-1, 1]) {
+    part(new THREE.SphereGeometry(0.075, 10, 8), 0xffffff, s * 0.09, 1.5, 0.23);
+    part(new THREE.SphereGeometry(0.02, 6, 4), 0x111111, s * 0.09, 1.5, 0.3);
+  }
   return {
     group,
     body,
     height: 1.78,
     update(t, move) {
       legs.forEach((l, i) => (l.rotation.x = Math.sin(t * 9 + i * Math.PI) * 0.5 * move));
+      arms.forEach((a, i) => (a.rotation.x = -Math.sin(t * 9 + i * Math.PI) * 0.5 * move));
       body.position.y = Math.abs(Math.sin(t * 9)) * 0.05 * move;
     },
   };

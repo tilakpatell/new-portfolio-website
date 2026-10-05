@@ -60,11 +60,8 @@ export function buildStreet(kit) {
     256,
     (g, w, h) => {
       speckle(g, w, h, { base: '#74777c', specks: ['#707378', '#787b80', '#6d7075', '#7c7f84'], n: 2500, size: 1.5, seed: 33 });
-      // a patch or two, darker
-      const r = rng(12);
-      g.fillStyle = 'rgba(70,72,77,0.35)';
-      for (let i = 0; i < 3; i++) g.fillRect(r() * w, h * 0.15 + r() * h * 0.6, 30 + r() * 60, 14 + r() * 26);
-      g.strokeStyle = 'rgba(52,54,58,0.35)';
+      // a crack, mended with tar
+      g.strokeStyle = 'rgba(52,54,58,0.3)';
       g.lineWidth = 1.5;
       g.beginPath();
       g.moveTo(w * 0.62, h * 0.2);
@@ -179,7 +176,7 @@ export function buildStreet(kit) {
   }
   const pickets = new THREE.InstancedMesh(picket, white, spots.length);
   const tmp = new THREE.Matrix4();
-  spots.forEach(([x, z, turn], i) => pickets.setMatrixAt(i, tmp.makeRotationY(turn).setPosition(x, 0, z + 0)));
+  spots.forEach(([x, z, turn], i) => pickets.setMatrixAt(i, tmp.makeRotationY(turn).setPosition(x, 0, z)));
   pickets.castShadow = true;
   pickets.receiveShadow = true;
   group.add(pickets);
@@ -215,9 +212,9 @@ export function buildStreet(kit) {
 
   // ── trees: round puffs in two greens on brown trunks ──
   const treeSpots = TREES.map((t) => ({ x: t.x, z: t.z, s: t.s, kind: t.kind, turn: t.turn }));
-  // two more in front of the school, and the suburb's trees past the street
+  // one more in front of the school (the rules' tree by its east wing is the other), and the suburb's trees past the street
   treeSpots.push({ x: SCHOOL.x - 12.5, z: front - 3.5, s: 1.05, kind: 0, turn: 1 });
-  const away = Math.round(260 * many);
+  const away = Math.round(190 * many);
   for (let i = 0, tries = 0; i < away && tries < 6000; tries++) {
     const x = (r() * 2 - 1) * SUBURB;
     const z = (r() < 0.5 ? -1 : 1) * (12 + r() * SUBURB * 0.6);
@@ -282,7 +279,7 @@ function treeGeometry(kind, detail = 1) {
   const TRUNK = 0x7a5232;
   const parts = [];
   const puff = (x, y, z, r, color) => parts.push({ geo: new THREE.IcosahedronGeometry(r, detail), color, matrix: at(x, y, z) });
-  const trunkH = kind === 1 ? 2.4 : kind === 2 ? 2.0 : 2.6;
+  const trunkH = kind === 1 ? 3.0 : kind === 2 ? 2.7 : 3.2;
   parts.push({ geo: new THREE.CylinderGeometry(0.2, 0.3, trunkH + 0.6, 7), color: TRUNK, matrix: at(0, (trunkH + 0.6) / 2, 0) });
   if (kind === 0) {
     puff(0, trunkH + 1.5, 0, 1.75, DARK);

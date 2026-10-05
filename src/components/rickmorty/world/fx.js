@@ -160,6 +160,7 @@ export function createFx() {
     }
     geo.attributes.position.needsUpdate = true;
     geo.attributes.aLife.needsUpdate = true;
+    geo.attributes.aSize.needsUpdate = true;
     for (let i = rings.length - 1; i >= 0; i--) {
       const r = rings[i];
       r.age += dt;

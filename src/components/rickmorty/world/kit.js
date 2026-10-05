@@ -11,8 +11,9 @@ import { toon } from '../portal/toon';
 
 const key = (c) => new THREE.Color(c).getHexString();
 
-// Materials by role, one per colour. `renderer` is for the painted ones
-// (their filtering). dispose() frees them all and their textures.
+// Materials by role, one per colour (and per `extra` options, for toon()).
+// painted() keeps one per name, drawn the first time. `renderer` is for the
+// painted ones' filtering. dispose() frees them all and their textures.
 export function kitMaterials(renderer) {
   const made = new Map();
   const once = (k, make) => {
@@ -20,7 +21,7 @@ export function kitMaterials(renderer) {
     return made.get(k);
   };
   return {
-    toon: (color, extra = null) => (extra ? once(`t${key(color)}${JSON.stringify(extra)}`, () => toon(color, extra)) : once(`t${key(color)}`, () => toon(color))),
+    toon: (color, extra = null) => once(`t${key(color)}${extra ? JSON.stringify(extra, (k, v) => (v?.isTexture ? v.uuid : v)) : ''}`, () => toon(color, extra ?? {})),
     wall: (color = 0xeee0bf) => once(`t${key(color)}`, () => toon(color)),
     floor: (color = 0xc4a77a) => once(`t${key(color)}`, () => toon(color)),
     get wood() {
