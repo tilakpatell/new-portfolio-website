@@ -1927,6 +1927,36 @@ export function nearPack(x, y, z, found = []) {
   return best?.p ?? null;
 }
 
+// ── the best lap, as a ghost ──
+// A tour is recorded as it goes: where he is every tenth of a second, as
+// [x, y, z, face] to a decimal, and the best lap's recording is kept, so
+// the next tour can race it: a hologram of him going round his best time.
+export const LAP = { every: 0.1, max: 1200 }; // samples: two minutes at most
+// The recording with a sample added, if a tenth of a second has gone since
+// the last (`t` is the tour's clock): → the recording (the same one if not).
+export function recordLap(rec, h, t) {
+  if (rec.length >= LAP.max) return rec;
+  const n = rec.length;
+  if (n && t < n * LAP.every - 1e-6) return rec;
+  const r1 = (v) => Math.round(v * 10) / 10;
+  return [...rec, [r1(h.x), r1(h.y), r1(h.z), Math.round(h.face * 100) / 100]];
+}
+// Where the ghost is at `t` seconds into the lap: between the samples either
+// side, held at the ends. → { x, y, z, face, speed } or null for no lap.
+export function lapAt(rec, t) {
+  if (!rec?.length) return null;
+  const k = Math.max(0, Math.min(rec.length - 1, t / LAP.every));
+  const i = Math.floor(k);
+  const a = rec[i];
+  const b = rec[Math.min(rec.length - 1, i + 1)];
+  const f = k - i;
+  let df = b[3] - a[3];
+  df = Math.atan2(Math.sin(df), Math.cos(df));
+  return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: a[2] + (b[2] - a[2]) * f, face: a[3] + df * f, speed: Math.hypot(b[0] - a[0], b[2] - a[2]) / LAP.every };
+}
+// A recording as kept (or anything): a list of four-number samples, or null.
+export const readLap = (raw) => (Array.isArray(raw) && raw.length > 1 && raw.every((p) => Array.isArray(p) && p.length === 4 && p.every(Number.isFinite)) ? raw.slice(0, LAP.max) : null);
+
 // ── the heist so far ──
 
 const WHOLE = ['space', 'mind', 'reality', 'power', 'time', 'soul'];
