@@ -37,6 +37,7 @@ import { paintById } from '../paint';
 import { PARTS_SLOTS, STOCK, STOCK_LOADOUT, partById } from '../outfit';
 import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
+import { hitRadius } from '../hunterRules';
 import { PARKED } from '../foot';
 import { WEAPONS, arsenalOf, fan } from '../weapons';
 import { POSITIONS } from '../layout';
@@ -396,7 +397,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       }
       for (const g of ghosts.values()) {
         if (clock < g.goneUntil) continue;
-        const k = sweptHit(from, to, g.prev, g.at, g.type.size * 0.8 + 0.1);
+        const k = sweptHit(from, to, g.prev, g.at, hitRadius(g.type));
         if (k !== null && k < first) {
           first = k;
           ghost = g;

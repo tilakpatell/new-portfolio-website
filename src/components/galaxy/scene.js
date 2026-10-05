@@ -71,7 +71,7 @@ import { createTrail } from '../universe/trail';
 import { ENGINES, SHIP_MODELS, buildShip, BUILT } from '../universe/shipModels';
 import { loadModel } from '../universe/planets';
 import { lockSound, shipEngine } from '../universe/sounds';
-import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from '../universe/targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
@@ -119,6 +119,7 @@ const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '])
 const DRAG = 6;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 // the wall clock, in seconds: every pilot's set pieces keep the same time
 const wall = () => Date.now() / 1000;
@@ -1069,7 +1070,16 @@ export async function create(canvas, ctx) {
         state.auto = null;
         emit({ type: 'parked' });
       }
-    } else input = steering();
+    } else {
+      input = steering();
+      // the nose follows the lock (targeting.js: a nudge toward the lead,
+      // as much as the lock-tracking setting allows, giving way to the stick)
+      if (state.trackable && state.lead && state.lead.t <= AIM.life) {
+        const n = trackNudge(state.ship, state.lead, controls().track, input);
+        input.turn = clamp(input.turn + n.turn, -1, 1);
+        input.climb = clamp(input.climb + n.climb, -1, 1);
+      }
+    }
     if (state.keys.fire || state.fireBtn) fire();
     // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
     const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
@@ -1156,6 +1166,10 @@ export async function create(canvas, ctx) {
     state.cycle = 0;
     const tgt = state.lock ? (cands.find((c) => c.id === state.lock.id) ?? null) : null;
     state.lockTarget = tgt;
+    // (the nose follows only a lock on a hunter, one picked by hand, or one
+    // being shot at: not a passing pilot or a part of the Citadel the guns
+    // happened on)
+    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
     state.hot = Boolean(state.lead && state.lead.t <= AIM.life && assistAmount(nose(ship), dirTo(ship, state.lead), controls().assist) >= 1);

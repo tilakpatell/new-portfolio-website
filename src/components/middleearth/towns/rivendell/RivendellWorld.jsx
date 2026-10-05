@@ -19,6 +19,7 @@ import '../../shire/shire.css';
 import '../bree/bree.css';
 import './rivendell.css';
 import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Rivendell, the fourth town on the road: wake in the house of Elrond after
 // the Ford, and play the films' days there, from the shards of Narsil to
@@ -891,7 +892,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={CONVO_TITLE[hud.talking] ?? 'Rivendell'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 
