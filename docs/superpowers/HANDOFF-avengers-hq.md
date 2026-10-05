@@ -13,13 +13,12 @@ Two pieces of work are on `main`: PR #108 (`claude/hq-web-swinging`, web-swingin
 
 ## Left to do
 
-Done since the first note (PR from `claude/hq-world-pass`): grass blades on the lawn (`world/grass.js`, masked off the drives, apron, paint and buildings), the lighting pass (glass flare and bloom threshold, louvred grey plant rooms, sun 3.1), flags and lamps confirmed in captures, shrubs centred in planters, roof-standing holograms no longer play the jump clip, and corner swings (`CORNERS`, `cornerSwing` in `rules.js`, tested).
+Done since: phone layout (shorter hint, Zip and Perch stacked beside Jump), grass shorter and denser in a 30 m patch and thinned as the watchdog steps the tier down (`grass.density`), lamps without shadows (start view about 660k triangles), point launch (Q, pad d-pad up, touch Perch: `PERCHES`, `findPerch`, `pointLaunch`, a jump off a perch launches) and web wings (hold the web with nothing to catch while falling: `SWING.glide`). The tour was bot-played at 60 Hz through the real rules (a throwaway script): rings 0 and 5 were lowered; ring 3 under the bridge is reachable but fussy.
 
-1. **Phones.** A 390×844 capture is at the end of the last session but wasn't looked at: check the Jump and Zip buttons (`.cw-hud-bottom` in `world.css`), the hint text's fit, and the frame rate on `medium` with the grass (16k blades) and props.
-2. **Triangle budget.** About 720k at the start view on `high` (budget 750k). If it creeps over: fewer grass blades, or lamps without shadows.
-3. **Play the swing tour at full frame rate** and move rings or retune `SWING` from what a player actually does (ring 6 over the glass wing, ring 3 under the bridge most of all).
-4. **More Insomniac moves**, if wanted: a point launch to a perch (needs a key: E is the doors), web wings.
-5. **Grass polish**: blades read as spikes up close; denser and shorter, or clumps, would read more like a mown lawn.
+1. A real phone: frame rate on `medium` can't be measured headless here.
+2. Tests for point launch and web wings (none yet, by request).
+3. A bot playtest of the tour kept as a test (`docs`: the throwaway bot steered at the next ring, webbed when falling or low, let go past the anchor, zipped when slow).
+4. Perch target mark: show where Q would go (reuse `swing.js`'s mark with `findPerch`).
 
 ## How to check it
 

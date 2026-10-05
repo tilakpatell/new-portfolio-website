@@ -555,6 +555,13 @@ export const PEOPLE = [
   { id: 'general1', who: 'general', area: 'oval', x: -303.2, z: 696.8, face: S },
   { id: 'general2', who: 'general', area: 'oval', x: -296.8, z: 696.8, face: S },
   // Shoney's: the agent on the aisle end of the middle booth's north bench, facing the door
+  // Harry Herpson High: the principal at the front by the board, and the class at their desks
+  { id: 'principal', area: 'school', x: -303.4, z: 196.2, face: S },
+  { id: 'jessica', area: 'school', x: -295.9, z: 199.25, face: Math.PI / 2, sits: true },
+  { id: 'brad', area: 'school', x: -294.9, z: 201.25, face: Math.PI / 2, sits: true },
+  { id: 'tammy', area: 'school', x: -304.1, z: 199.25, face: Math.PI / 2, sits: true },
+  { id: 'ethan', area: 'school', x: -305.1, z: 201.25, face: Math.PI / 2, sits: true },
+  { id: 'tinyrick', area: 'school', x: -304.1, z: 203.25, face: Math.PI / 2, sits: true },
   { id: 'dineragent', who: 'fedagent', area: 'diner', x: -305.6, z: 797.35, face: S, sits: true },
 ];
 // Is it there, with `done` done? (left out: everyone is)
@@ -635,6 +642,13 @@ export const HOTSPOTS = [
   spot('plumbus', 'garage', -297.45, 99, 'The plumbus factory', 'Watch'),
   spot('portalpanic', 'garage', -302.45, 103.1, 'Portal panic cabinet', 'Play'),
   spot('quiz', 'school', -300, 196.4, 'Mr. Goldenfold’s pop quiz', 'Sit the quiz'),
+  // the principal, and the class from the aisle beside their desks
+  spot('principal', 'school', -303.4, 196.55, 'Principal Vagina', 'Talk'),
+  spot('jessica', 'school', -296.9, 199.25, 'Jessica', 'Talk'),
+  spot('brad', 'school', -296.9, 201.25, 'Brad', 'Talk'),
+  spot('tammy', 'school', -303.1, 199.25, 'Tammy', 'Talk'),
+  spot('ethan', 'school', -303.1, 201.25, 'Ethan', 'Talk'),
+  spot('tinyrick', 'school', -303.1, 203.25, 'Tiny Rick', 'Talk'),
   spot('roy', 'arcade', -300, 293.6, 'Roy: A Life Well Lived', 'Put the headset on'),
   spot('cabinet1', 'arcade', -308.4, 297, 'Arcade cabinet', 'Play'),
   spot('cabinet2', 'arcade', -291.6, 300, 'Arcade cabinet', 'Play'),

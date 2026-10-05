@@ -25,8 +25,8 @@ import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createMarshesKit } from './props';
-import { BED, BOULDERS, EMYN, GATE_AT, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_Y, ROAD, SNAGS, SPIKES, emynHeight, marshHeight, slopeHeight, toPath } from './layout';
-import { CREEP, FELL, ROPE } from './rules';
+import { BED, BOULDERS, EMYN, GATE_AT, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_Y, POOL as SAFE, POOL_BANK, ROAD, SNAGS, SPIKES, emynHeight, marshHeight, slopeHeight, toPath, tussockAt } from './layout';
+import { CREEP, FELL, ROPE, WAY } from './rules';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -199,12 +199,59 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       const d = toPath(x, z, MARSH_PATH);
       if (d < 0.8 || d > 22) continue;
       if (LIGHTS.some(([lx, lz]) => Math.hypot(x - lx, z - lz) < 1.4)) continue;
+      // (and the pool of Sméagol's safe way kept clear, to see the tussocks)
+      if (Math.abs(x - SAFE.x) < SAFE.cols * SAFE.gap * 0.5 + 0.8 && z < SAFE.z - SAFE.first + 1.4 && z > ISLAND.z - ISLAND.r) continue;
       if (d < 2.4) tufts.push({ x, z, y: marshHeight(x, z) - 0.05, s: 0.7 + rand() * 0.6, turn: rand() * TAU });
       else reeds.push({ x, z, y: MARSH_Y - 0.2, s: 0.7 + rand() * 0.8, turn: rand() * TAU });
     }
     zones.marsh.add(instances(kit.reeds(2), reedMat, reeds, { shadow: false }));
     zones.marsh.add(instances(kit.tussock(3), reedMat, tufts, { shadow: false }));
   }
+  // ── on the side: Sméagol's safe way ──
+  // tussocks in rows across a pool, each on its own mound of mud so it can
+  // sink; an island past them with a dead tree; and lights over the wrong
+  // ones while you cross
+  const mudMat = new THREE.MeshLambertMaterial({ color: 0x2e2a1e });
+  const moundGeo = new THREE.CylinderGeometry(0.5, 0.78, 0.7, 9).translate(0, -0.35, 0);
+  const tussockGeo = kit.tussock(5);
+  const tussocks = [];
+  for (let row = 0; row < SAFE.rows; row++)
+    for (let col = 0; col < SAFE.cols; col++) {
+      const g = new THREE.Group();
+      const mound = new THREE.Mesh(moundGeo, mudMat);
+      const tuft = new THREE.Mesh(tussockGeo, reedMat);
+      tuft.scale.setScalar(0.95 + ((row * 7 + col * 3) % 5) * 0.05);
+      tuft.rotation.y = row * 1.3 + col * 2.1;
+      g.add(mound, tuft);
+      const { x, z } = tussockAt(col, row);
+      g.position.set(x, MARSH_Y + 0.16, z);
+      zones.marsh.add(g);
+      tussocks.push({ g, row, col, sink: 0 });
+    }
+  {
+    const island = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, TAU, 0, Math.PI / 2).scale(ISLAND.r, 0.5, ISLAND.r * 0.8), mudMat);
+    island.position.set(ISLAND.x, MARSH_Y - 0.12, ISLAND.z);
+    zones.marsh.add(island);
+    const snag = new THREE.Mesh(kit.deadTree(4), snagMat);
+    snag.position.set(ISLAND.x + 0.6, MARSH_Y + 0.1, ISLAND.z - 0.5);
+    snag.scale.setScalar(0.9);
+    zones.marsh.add(snag);
+    const tuft = new THREE.Mesh(tussockGeo, reedMat);
+    tuft.position.set(ISLAND.x - 0.9, MARSH_Y + 0.25, ISLAND.z + 0.3);
+    zones.marsh.add(tuft);
+  }
+  const lures = Array.from({ length: SAFE.rows }, () => {
+    const w = kit.wisp();
+    w.group.visible = false;
+    zones.marsh.add(w.group);
+    return w;
+  });
+  // where he has just put his foot, as he shows you: a pale flash on it
+  const footMark = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.62, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xe8fff0, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  footMark.renderOrder = 3;
+  zones.marsh.add(footMark);
+  const tileAt = (row, col, path) => (row < 0 ? { x: POOL_BANK.x - 0.6, z: POOL_BANK.z, y: marshHeight(POOL_BANK.x, POOL_BANK.z) } : row >= SAFE.rows ? { x: ISLAND.x - 0.4, z: ISLAND.z + 0.7, y: MARSH_Y + 0.3 } : { ...tussockAt(path ? path[row] : col, row), y: MARSH_Y + 0.42 });
+
   const wisps = LIGHTS.map(([x, z], i) => {
     const w = kit.wisp();
     w.group.position.set(x, MARSH_Y + 0.2, z);
@@ -428,6 +475,19 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       pose(sam, t + 1, { moving: false });
       rope.set?.([ropeTop, V(0, cliffFoot + 0.3, EMYN.cliff + 0.6)]);
       fy = frodo.group.position.y;
+    } else if (zone === 'marsh' && s.way) {
+      // hopping from tussock to tussock, or going under one
+      const w = s.way;
+      const to = w.sankAt ? tileAt(w.sankAt.row, w.sankAt.col) : tileAt(w.row, w.col);
+      if (!A.hop || A.hop.row !== w.row || A.hop.col !== w.col) A.hop = { row: w.row, col: w.col, from: A.hop && w.row >= 0 ? A.hop.to : to, to };
+      const k = Math.min(1, w.hopT / (WAY.step * 0.9));
+      const f = A.hop.from;
+      const y = f.y + (to.y - f.y) * k + Math.sin(k * Math.PI) * 0.55 - (w.phase === 'sunk' ? Math.min(1.6, Math.max(0, w.t - 0.15) * 2.4) : 0);
+      wpos('marsh', f.x + (to.x - f.x) * k, y, f.z + (to.z - f.z) * k, frodo.group.position);
+      frodo.group.rotation.set(0, Math.PI / 2, 0);
+      frodo.group.visible = !(w.phase === 'sunk' && w.t > 0.9);
+      pose(frodo, t, { moving: k < 1, speed: 1.2, wave: w.phase === 'sunk' ? 1 : w.phase === 'across' ? 0.7 : 0 });
+      fy = frodo.group.position.y;
     } else {
       wpos(zone, h.x, fy, h.z, frodo.group.position);
       frodo.group.rotation.set(0, h.face, 0);
@@ -504,6 +564,24 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       wpos('emyn', BED.x - 2.6, emynHeight(BED.x - 2.6, BED.z - 0.4), BED.z - 0.4, gollum.group.position);
       gollum.group.rotation.set(0, 0, 0);
       gollum.animate?.(t, { pose: 'cower' });
+    } else if (zone === 'marsh' && s.way) {
+      // showing you the way, a hop at a time, then waiting on the island
+      gollum.group.visible = true;
+      const w = s.way;
+      let at;
+      let next;
+      let k = 0;
+      if (w.phase === 'show') {
+        const u = (w.t - WAY.wait) / WAY.hop + 1;
+        const i = Math.max(-1, Math.min(SAFE.rows, Math.floor(u) - 1));
+        k = i >= SAFE.rows ? 0 : Math.max(0, Math.min(1, (u - Math.floor(u) - 0.5) / 0.5));
+        at = tileAt(i, 0, w.path);
+        next = tileAt(Math.min(SAFE.rows, i + 1), 0, w.path);
+      } else at = next = tileAt(SAFE.rows, 0, w.path);
+      if (at.x === POOL_BANK.x - 0.6) at = { ...at, x: POOL_BANK.x + 0.8 };
+      wpos('marsh', at.x + (next.x - at.x) * k, at.y + (next.y - at.y) * k + Math.sin(k * Math.PI) * 0.45 - 0.05, at.z + (next.z - at.z) * k, gollum.group.position);
+      gollum.group.rotation.set(0, w.phase === 'show' ? Math.atan2(-(next.z - at.z), next.x - at.x || 0.001) : -Math.PI / 2, 0);
+      gollum.animate?.(t, { pose: w.phase === 'show' && k > 0 ? 'crawl' : 'crouch', speed: w.phase === 'show' ? 1 : 0, look: s.speaker === 'gollum' ? Math.sin(t * 5) * 0.3 : 0 });
     } else if (zone === 'marsh' && s.lead) {
       gollum.group.visible = true;
       wpos('marsh', s.lead.x, marshHeight(s.lead.x, s.lead.z), s.lead.z, gollum.group.position);
@@ -519,6 +597,37 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       gollum.animate?.(t, { pose: 'crouch', speed: 0, look: s.speaker === 'gollum' ? Math.sin(t * 5) * 0.3 : 0 });
     }
 
+    // ── the safe way: a wrong tussock going under, the lights over the wrong ones ──
+    if (zone === 'marsh') {
+      const w = s.way;
+      for (const tu of tussocks) {
+        const sunk = w?.sankAt && w.sankAt.row === tu.row && w.sankAt.col === tu.col && w.phase === 'sunk';
+        tu.sink += ((sunk ? 1 : 0) - tu.sink) * Math.min(1, dt * (sunk ? 5 : 1.5));
+        tu.g.position.y = MARSH_Y + 0.16 - tu.sink * 0.9;
+        tu.g.rotation.z = tu.sink * 0.3;
+      }
+      // his last footstep, flashing on its tussock as he lands
+      footMark.visible = false;
+      if (w?.phase === 'show') {
+        const u = (w.t - WAY.wait) / WAY.hop + 1;
+        const i = Math.floor(u) - 1;
+        if (i >= 0 && i < SAFE.rows) {
+          const at = tussockAt(w.path[i], i);
+          footMark.visible = true;
+          footMark.position.set(at.x, MARSH_Y + 0.5, at.z);
+          footMark.material.opacity = 0.85 * (1 - Math.min(1, (u - Math.floor(u)) * 1.4));
+          footMark.scale.setScalar(1 + (u - Math.floor(u)) * 0.4);
+        }
+      }
+      lures.forEach((l, i) => {
+        l.group.visible = Boolean(w);
+        if (!w) return;
+        const { x, z } = tussockAt(w.lures[i], i);
+        l.group.position.set(x + 0.3, MARSH_Y + 0.45, z - 0.2);
+        l.update?.(t * 1.1 + i * 1.7);
+      });
+    }
+
     // ── the marsh: lights, faces, the fell beast ──
     if (zone === 'marsh') {
       const cam = camera.position;
@@ -527,6 +636,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
         const at = w.group.getWorldPosition(tmp2);
         if (at.distanceToSquared(cam) < 900) lights.push([at.clone().add(V(0, 0.6, 0)), wispCol, 1.4 + Math.sin(t * 3 + i) * 0.3, 7]);
       });
+      if (s.way) lures.slice(0, 3).forEach((l, i) => lights.unshift([l.group.getWorldPosition(V()).add(V(0, 0.4, 0)), wispCol, 1.1 + Math.sin(t * 3 + i) * 0.25, 5]));
       A.drawn += ((s.lure ?? 0) - A.drawn) * Math.min(1, dt * 3);
       faces.forEach((f, i) => f.update?.(t + i, Math.max(A.drawn, s.talking === 'faces' ? 1 : 0)));
       // the Nazgûl, passing over
@@ -636,6 +746,15 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
       // low by your head, looking up the rock where he comes
       camAt = wpos('emyn', BED.x + 1.6, emynHeight(BED.x, BED.z) + 0.9, BED.z + 2.4, tmp);
       camLook = gollum.group.position.clone().lerp(frodo.group.position, 0.35);
+    } else if (zone === 'marsh' && s.way && s.way.phase === 'show') {
+      // up behind the bank, the whole pool laid out before you
+      camAt = wpos('marsh', SAFE.x + 0.3, MARSH_Y + 9.5, SAFE.z + 6.5, tmp);
+      camLook = wpos('marsh', SAFE.x, MARSH_Y - 0.4, SAFE.z - 8, look);
+    } else if (zone === 'marsh' && s.way) {
+      // over your shoulder, the next rows of tussocks ahead of you
+      const rz = s.way.row >= 0 ? tussockAt(0, s.way.row).z : SAFE.z;
+      camAt = wpos('marsh', SAFE.x + 0.2, MARSH_Y + 5.5, rz + 4.5, tmp);
+      camLook = wpos('marsh', SAFE.x, MARSH_Y, rz + 0.3, look);
     } else if (s.mode === 'talk' && s.camShot?.faces) {
       // down into the pool by the light that had you
       let best = LIGHTS[0];
@@ -698,6 +817,10 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     else if (type === 'caught') A.shake = 0.3;
     else if (type === 'gate') A.shake = 0.2;
     else if (type === 'rope') fx.puff(tmp2.copy(frodo.group.position).add(V(-1, 0.3, -0.5)), V(0, 1, 0), 6);
+    else if (type === 'sank') {
+      A.shake = 0.18;
+      fx.pop(tmp2.copy(frodo.group.position).add(V(0, 0.3, 0)), 'green', 12, 0.9);
+    } else if (type === 'across') fx.pop(tmp2.copy(frodo.group.position).add(V(0, 1.2, 0)), 'gold', 14, 1);
   };
 
   return {

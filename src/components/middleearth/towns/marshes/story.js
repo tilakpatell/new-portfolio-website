@@ -106,4 +106,30 @@ export const CONVOS = {
   },
 };
 
+// ── on the side ──
+// Sméagol's safe way across a pool, once you've crossed the marshes with
+// him. Nothing the story needs: its record is kept apart from the story's
+// (../side.js), and its star is an achievement of its own, not one of the
+// chapter's seals.
+export const SIDE = {
+  id: 'safeway',
+  name: 'Sméagol’s safe way',
+  where: 'A pool north of the path, past halfway across the marshes',
+  blurb: 'Gollum hops across the tussocks once. Put your feet exactly where he put his.',
+  locked: 'Once you’ve crossed the marshes with Gollum.',
+  needs: 'marsh',
+  seal: 'safeway',
+};
+// what Gollum says at the pool
+export const WAY_SAYS = {
+  start: '“Sméagol knows safe ways, yes, old ways. Watch Sméagol’s feet, master. Only where Sméagol puts them. Not where the lights are!”',
+  shown: '“Now master. Exactly where Sméagol stepped. Exactly!”',
+  safe: ['“Yes…”', '“Good, good.”', '“Careful, careful.”', '“Nearly, precious, nearly.”'],
+  lit: '“Don’t follow the lights! Stupid, stupid… careful, master!” He drags you out by the collar.',
+  sank: '“No, no, not that one!” A thin hand drags you out, dripping, onto the bank.',
+  again: '“Master forgets. Watch again. Sméagol shows once more, only once more.”',
+  won: (slips) => (slips === 0 ? '“Master remembers! Clever master. Sméagol is pleased, yes, pleased.”' : `“Across! Wet, but across.” He counts on his fingers. “Fell in ${slips === 1 ? 'once' : slips === 2 ? 'twice' : `${slips} times`}, master did. Gollum.”`),
+  best: (slips) => (slips === 0 ? 'Your best: across without a slip.' : `Your best: across with ${slips} ${slips === 1 ? 'slip' : 'slips'}.`),
+};
+
 export const SPEAKERS = { gollum: 'Gollum', sam: 'Samwise Gamgee', frodo: 'Frodo', narrator: '' };

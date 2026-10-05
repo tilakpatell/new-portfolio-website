@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut } from '../walker';
-import { BED, BOULDERS, EMYN_COLLIDERS, EMYN_START, EMYN_WALLS, GATE_COLLIDERS, GATE_WALLS, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_START, SCOUT_ROUNDS, SLOPE_START, SNAGS, SPOTS, marshHeight, onFirm, slopeHeight, toPath, validAt } from './layout';
+import { BED, BOULDERS, EMYN_COLLIDERS, EMYN_START, EMYN_WALLS, FIRM, GATE_COLLIDERS, GATE_WALLS, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_START, POOL, POOL_BANK, SCOUT_ROUNDS, SLOPE_START, SNAGS, SPOTS, marshHeight, onFirm, slopeHeight, toPath, tussockAt, validAt } from './layout';
 import { marshesProgress } from './story';
 
 const freeIn = (cs, ws) => (x, z, r = 0.4) => {
@@ -68,5 +68,24 @@ describe('the story', () => {
     expect(validAt({ zone: 'marsh', x: -40, z: 2 }, 'marsh')).toEqual({ zone: 'marsh', x: -40, z: 2, face: 0 });
     expect(validAt({ zone: 'marsh', x: -40, z: 20 }, 'marsh')).toEqual({ zone: 'marsh', ...MARSH_START });
     expect(validAt({ zone: 'emyn', x: 0, z: 0 }, 'gate')).toEqual({ zone: 'gate', ...SLOPE_START });
+  });
+});
+
+describe('Sméagol’s safe way', () => {
+  it('starts on the path’s bank, with every tussock out in the pool, clear of the dead trees and the lights', () => {
+    expect(onFirm(POOL_BANK.x, POOL_BANK.z)).toBe(true);
+    for (let row = 0; row < POOL.rows; row++)
+      for (let col = 0; col < POOL.cols; col++) {
+        const { x, z } = tussockAt(col, row);
+        expect(toPath(x, z, MARSH_PATH), `${col}, ${row}`).toBeGreaterThan(FIRM + 0.8);
+        for (const [sx, sz] of [...SNAGS, ...LIGHTS]) expect(Math.hypot(sx - x, sz - z), `${col}, ${row}`).toBeGreaterThan(2.5);
+      }
+    // a hop from the bank to the first row, and from row to row
+    expect(Math.hypot(tussockAt(1, 0).x - POOL_BANK.x, tussockAt(1, 0).z - POOL_BANK.z)).toBeLessThan(3.4);
+    expect(Math.hypot(tussockAt(0, 0).x - tussockAt(1, 1).x, tussockAt(0, 0).z - tussockAt(1, 1).z)).toBeLessThan(3.2);
+    // the island beyond the last row, and nothing on it
+    expect(tussockAt(2, POOL.rows - 1).z - ISLAND.z).toBeGreaterThan(ISLAND.r);
+    expect(toPath(ISLAND.x, ISLAND.z, MARSH_PATH)).toBeGreaterThan(FIRM + ISLAND.r);
+    for (const [sx, sz] of SNAGS) expect(Math.hypot(sx - ISLAND.x, sz - ISLAND.z)).toBeGreaterThan(ISLAND.r + 1);
   });
 });

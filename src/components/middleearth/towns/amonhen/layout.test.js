@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut } from '../walker';
-import { CAST, COLLIDERS, DECOY, GLADE, PATH, RUN_START, SEAT, SPOTS, START, STAIR, STICKS, TREES, URUK_ROUNDS, WALLS, height, inLake, shoreX, toPath, validAt } from './layout';
+import { CAST, COLLIDERS, DECOY, GLADE, PATH, RUN_START, SEAT, SKIPPERS, SKIPPING, SPOTS, START, STAIR, STICKS, TREES, URUK_ROUNDS, WALLS, height, inLake, shoreX, toPath, validAt } from './layout';
 import { QUESTS } from './story';
 
 const free = (x, z, r = 0.4) => {
@@ -58,5 +58,19 @@ describe('Amon Hen', () => {
     expect(validAt({ x: 20, z: 1, face: 1 })).toEqual({ x: 20, z: 1, face: 1 });
     expect(validAt({ x: 80, z: 0 })).toEqual(START);
     expect(validAt(null)).toEqual(START);
+  });
+});
+
+describe('ducks and drakes', () => {
+  it('puts you on the shore with the lake before you, and Merry and Pippin on dry land by you', () => {
+    expect(free(SKIPPING.x, SKIPPING.z)).toBe(true);
+    expect(shoreX(SKIPPING.z) - SKIPPING.x).toBeLessThan(2.5);
+    expect(inLake(SKIPPING.x + 4, SKIPPING.z)).toBe(true);
+    for (const p of SKIPPERS) {
+      expect(free(p.x, p.z, 0.3), p.look).toBe(true);
+      expect(Math.hypot(p.x - SKIPPING.x, p.z - SKIPPING.z), p.look).toBeLessThan(4);
+    }
+    // well away from the boats you push out, and the camp
+    for (const s of SPOTS) expect(Math.hypot(s.x - SKIPPING.x, s.z - SKIPPING.z), s.id).toBeGreaterThan(8);
   });
 });

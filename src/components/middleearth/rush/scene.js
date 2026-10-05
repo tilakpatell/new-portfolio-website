@@ -211,7 +211,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     import('../towns/marshes/props').then(({ createGollum }) => {
       if (gone) return;
       thief.model = createGollum(renderer);
-      thief.model.group.scale.setScalar(SCALE);
+      thief.model.group.scale.setScalar(SCALE * 1.4); // (crouched, he's small: big enough to see him coming)
       thief.model.group.visible = false;
       scene.add(thief.model.group);
     });
@@ -370,7 +370,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         st.bob.position.y = -0.05 + (sp.prog > 0 ? Math.sin(t * 9) * 0.025 - sp.prog * 0.03 : Math.sin(t * 1.4 + x) * 0.008);
       } else if (st.c === 'O') {
         if (sp.item && theme.spit) place(k, sp.item, x, TOP + 0.46 - 0.05 * BIG, z, front.turn);
-        else if (sp.item) place(k, sp.item, x + front.a * 0.18, TOP + 0.02, z + front.b * 0.18, front.turn);
+        else if (sp.item) place(k, sp.item, x + front.a * (theme.ovenAt?.out ?? 0.18), TOP + (theme.ovenAt?.y ?? 0.02), z + front.b * (theme.ovenAt?.out ?? 0.18), front.turn);
         const o = sp.item && ovenFor(R, sp.item.k);
         if (o && sp.item.k === o.takes) ring(x, TOP + 0.95, z, sp.prog / T.bake, GREEN);
         else if (o && sp.item.s === KINDS[o.makes][0] && sp.prog > T.char * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.char, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);

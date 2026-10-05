@@ -48,6 +48,6 @@ Plus 9 things to look at with E (Michael's mug, Pam's painting, copier, vending 
 
 - Screenshot QA (dev hook: `window.__OFFICE__ = { api, sim, complete }`; set `sim.debugCam = { at: [x,y,z], look: [x,y,z] }` to frame a room).
 - Warehouse people (Roy, Lonny, Madge) would need new models; Darryl could stand down there instead of his office.
-- The building exterior / Scranton Business Park lot from the lobby or the dock.
+- Done (third push): `outside.js`, the lot off the warehouse's open dock door (`layout.js` `LOT`, `CARS`, `PARK_SIGN`, `LIGHT_POLES`, `TREES`, `DUMPSTER`): the building's white back with ribbon windows, asphalt with stall lines and curbs, ten parked cars (a red Trans Am), light poles, trees, the dumpster, the Scranton Business Park sign, an overcast sky dome. Three more things to look at there. Nothing to do outside yet: a job there would be next (Michael's car, a fun run, the Dunder Mifflin truck).
 - Pretzel Day, the Diversity Day cards, Prison Mike in the conference room, Creed's mung beans.
 - Pick the 3D world's `WORLD_MB['/scranton']` (currently 5) from a measured load.

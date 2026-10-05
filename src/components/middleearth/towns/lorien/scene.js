@@ -2,7 +2,8 @@
 // sight and their leaves coming down; Caras Galadhon round its great tree,
 // the flets and the stair and the blue-white lanterns at night; the Mirror
 // in its hollow; the landing and the boats; then the Anduin between its
-// cliffs, and the Pillars of the Kings. Made in code (./props.js,
+// cliffs, and the Pillars of the Kings. And on the side, Legolas's painted
+// boards among the trees, and the arrows you shoot at them. Made in code (./props.js,
 // ../ground.js), so nothing is downloaded.
 //
 // The wood is at the origin and the river is drawn well off to the east;
@@ -26,10 +27,11 @@ import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createLorienKit } from './props';
-import { AMBUSH, BANK, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
-import { RIVER, riverBend, riverWide } from './rules';
+import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
+import { RIVER, aimDir, riverBend, riverWide } from './rules';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const X_AXIS = new THREE.Vector3(1, 0, 0);
 const TAU = Math.PI * 2;
 // where each place is drawn
 const AT = { wood: V(0, 0, 0), river: V(3000, 0, 0) };
@@ -412,6 +414,85 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   table.position.set(TABLE.x, woodHeight(TABLE.x, TABLE.z), TABLE.z);
   wood.add(table);
 
+  // ── on the side: Legolas's targets ──
+  // five painted boards on their stands, face on to the mark by the path
+  // (green, a white ring, the gold), and a quiver on a post at the mark
+  const boardMat = {
+    rim: new THREE.MeshStandardMaterial({ color: 0x4e6036, roughness: 0.8, emissive: 0x0e1408 }),
+    white: new THREE.MeshStandardMaterial({ color: 0xece4c8, roughness: 0.7, emissive: 0x1c1a12 }),
+    gold: new THREE.MeshStandardMaterial({ color: 0xe0b040, roughness: 0.4, metalness: 0.3, emissive: 0x3a2806 }),
+  };
+  const ring = (r, m, x) => {
+    const d = new THREE.Mesh(new THREE.CircleGeometry(r, 32).rotateY(Math.PI / 2), m);
+    d.position.x = x;
+    return d;
+  };
+  for (const b of BOARDS) {
+    const g = new THREE.Group();
+    const face = new THREE.Group();
+    const back = new THREE.Mesh(new THREE.CylinderGeometry(b.r + 0.05, b.r + 0.05, 0.08, 32).rotateZ(Math.PI / 2), mats.elfwood);
+    face.add(back, ring(b.r, boardMat.rim, 0.041), ring(b.r * 0.68, boardMat.white, 0.043), ring(b.r * 0.35, boardMat.gold, 0.045));
+    face.position.y = b.up;
+    g.add(face);
+    // two legs splayed, and a strut behind
+    for (const sz of [-0.34, 0.34]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, b.up + 0.25, 6), mats.elfwood);
+      leg.position.set(-0.08, (b.up + 0.25) / 2 - 0.05, sz);
+      leg.rotation.x = sz > 0 ? -0.14 : 0.14;
+      g.add(leg);
+    }
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, b.up + 0.2, 6), mats.elfwood);
+    strut.position.set(-0.42, (b.up + 0.2) / 2 - 0.05, 0);
+    strut.rotation.z = -0.36;
+    g.add(strut);
+    g.position.set(b.x, groundHeight(b.x, b.z), b.z);
+    g.rotation.y = b.face;
+    wood.add(g);
+  }
+  // an arrow: its point along +x, at x 0.43
+  const arrowMat = { shaft: new THREE.MeshStandardMaterial({ color: 0xd8cca0, roughness: 0.6 }), head: new THREE.MeshStandardMaterial({ color: 0xd8dce0, roughness: 0.3, metalness: 0.8 }), fletch: new THREE.MeshStandardMaterial({ color: 0xf4f0e0, roughness: 0.8, side: THREE.DoubleSide }) };
+  const shaftGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.78, 5).rotateZ(Math.PI / 2);
+  const headGeo = new THREE.ConeGeometry(0.022, 0.08, 6).rotateZ(-Math.PI / 2).translate(0.43, 0, 0);
+  const fletchGeo = new THREE.PlaneGeometry(0.12, 0.035).translate(-0.31, 0.02, 0);
+  const makeArrow = () => {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(shaftGeo, arrowMat.shaft), new THREE.Mesh(headGeo, arrowMat.head));
+    for (const a of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) {
+      const f = new THREE.Mesh(fletchGeo, arrowMat.fletch);
+      f.rotation.x = a;
+      g.add(f);
+    }
+    return g;
+  };
+  const quiver = new THREE.Group();
+  {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 7).translate(0, 0.65, 0), mats.elfwood);
+    const case_ = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.6, 9), new THREE.MeshStandardMaterial({ color: 0x5a4a2a, roughness: 0.8 }));
+    case_.position.set(0.11, 0.62, 0);
+    case_.rotation.z = -0.12;
+    quiver.add(post, case_);
+    for (let i = 0; i < 5; i++) {
+      const a = makeArrow();
+      a.scale.setScalar(0.85);
+      a.rotation.z = Math.PI / 2 - 0.12 + (i - 2) * 0.05;
+      a.rotation.y = i * 1.3;
+      a.position.set(0.11 + (i - 2) * 0.02, 0.85, (i % 2 ? 0.02 : -0.02));
+      quiver.add(a);
+    }
+    const mark = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.06, 18), new THREE.MeshStandardMaterial({ color: 0xc8c2a8, roughness: 0.9 }));
+    mark.position.set(-1.3, 0.02, 0.2);
+    quiver.add(mark);
+  }
+  quiver.position.set(BUTTS.x + 1.3, groundHeight(BUTTS.x + 1.3, BUTTS.z - 0.2), BUTTS.z - 0.2);
+  wood.add(quiver);
+  // the arrows in the air and stuck where they ended
+  const arrows = Array.from({ length: 8 }, () => {
+    const a = makeArrow();
+    a.visible = false;
+    wood.add(a);
+    return a;
+  });
+
   // ── the river: the Anduin between its cliffs, and the Kings ──
   const river = zones.river;
   const along = (s, lat = 0, y = 0, out = V()) => out.set(AT.river.x + s, AT.river.y + y, AT.river.z + riverBend(s) + lat);
@@ -492,6 +573,13 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   };
   const frodo = blob(folk('frodo'));
   scene.add(frodo.group);
+  // at the targets: you with a bow, and Legolas by the mark
+  const archer = blob(makeFolk('frodo', { look: { ...LOOKS.frodo, item: 'bow' } }));
+  const legolasMark = blob(folk('legolas'));
+  for (const p of [archer, legolasMark]) {
+    p.group.visible = false;
+    wood.add(p.group);
+  }
   const ghosts = createGhosts({ height: woodHeight });
   wood.add(ghosts.group);
   const people = {};
@@ -555,7 +643,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   scene.add(ladyLight);
 
   // ── state ──
-  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0 };
+  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0, sight: V(), sightD: 20 };
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -666,6 +754,40 @@ export function createLorienWorld(canvas, { onLost } = {}) {
         frodo.body.rotation.z = -0.25 - (s.pull?.pull ?? 0) * 0.35;
       } else frodo.body.rotation.z = 0;
     }
+    // at the targets: the bow up and drawn, Legolas watching, the arrows
+    const range = zone === 'wood' && s.mode === 'archery' ? s.range : null;
+    archer.group.visible = Boolean(range);
+    legolasMark.group.visible = Boolean(range);
+    const shown = [];
+    if (range) {
+      frodo.group.visible = false;
+      // at the mark, the bow out in front at arm's length
+      const d = aimDir(range.aim.yaw, 0);
+      const ax = RANGE.from.x - d.x * 0.3;
+      const az = RANGE.from.z - d.z * 0.3;
+      archer.group.position.set(ax, groundHeight(ax, az), az);
+      archer.group.rotation.y = range.aim.yaw;
+      pose(archer, t, { moving: false });
+      const up = range.state === 'aim' || range.draw > 0;
+      if (archer.arms?.[0]) archer.arms[0].rotation.x = up ? -1.5 : 0;
+      if (archer.arms?.[1]) archer.arms[1].rotation.x = 1.3 * range.draw;
+      const lx = BUTTS.x + 2;
+      const lz = BUTTS.z + 1.1;
+      legolasMark.group.position.set(lx, groundHeight(lx, lz), lz);
+      turnTo(legolasMark, range.aim.yaw + 0.25, dt, 3);
+      pose(legolasMark, t, { moving: false, talk: s.speaker === 'legolas' ? 1 : 0 });
+      if (range.arrow) shown.push([range.arrow, 0.43]);
+      for (const a of range.stuck) shown.push([a, 0.3]);
+    }
+    arrows.forEach((m, i) => {
+      const q = shown[i];
+      m.visible = Boolean(q);
+      if (!q) return;
+      const [a, back] = q;
+      tmp2.set(a.vx, a.vy, a.vz).normalize();
+      m.quaternion.setFromUnitVectors(X_AXIS, tmp2);
+      m.position.set(a.x, a.y, a.z).addScaledVector(tmp2, -back);
+    });
     ghosts.update(zone === 'wood' ? (s.travellers ?? []) : [], t, dt, { ringOn: false });
 
     // ── who's about ──
@@ -828,6 +950,27 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       // beside you, over the basin
       camAt = tmp.set(MIRROR.x - 0.6, floor + 2.7, MIRROR.z - 2.0);
       camLook = look.set(MIRROR.x + 0.1, floor + 0.95, MIRROR.z + 0.1);
+    } else if (s.mode === 'archery' && s.range) {
+      // over your right shoulder, looking down the arrow's line; the sight
+      // (screenOf('sight')) is on that line as far off as the board it's on
+      const d = aimDir(s.range.aim.yaw, s.range.aim.pitch);
+      const f = RANGE.from;
+      camAt = tmp.set(f.x - d.x * 1.7 - d.z * 0.5, f.y + 0.45 - d.y * 1.7, f.z - d.z * 1.7 + d.x * 0.5);
+      camLook = look.set(f.x + d.x * 30, f.y + d.y * 30, f.z + d.z * 30);
+      let best = Infinity;
+      A.sightD = 20;
+      for (const b of RANGE.targets) {
+        const dx = b.x - f.x;
+        const dy = b.y - f.y;
+        const dz = b.z - f.z;
+        const dist = Math.hypot(dx, dy, dz);
+        const off = 1 - (dx * d.x + dy * d.y + dz * d.z) / dist;
+        if (off < best) {
+          best = off;
+          A.sightD = dist;
+        }
+      }
+      A.sight.set(f.x + d.x * A.sightD, f.y + d.y * A.sightD, f.z + d.z * A.sightD);
     } else if (s.mode === 'table') {
       camAt = tmp.set(TABLE.x - 2.6, woodHeight(TABLE.x, TABLE.z) + 2.4, TABLE.z + 1.2);
       camLook = look.set(TABLE.x, woodHeight(TABLE.x, TABLE.z) + 0.8, TABLE.z);
@@ -851,7 +994,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'river' || s.mode === 'climb';
-    const k = jump ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const k = jump || s.mode === 'archery' ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
     A.cam.at.lerp(camAt, k);
     A.cam.look.lerp(camLook, k);
     camera.position.copy(A.cam.at);
@@ -873,12 +1016,21 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     else if (type === 'eye') A.shake = Math.max(A.shake, 0.06);
     else if (type === 'touched') A.shake = 0.3;
     else if (type === 'tempt') A.shake = 0.12;
-    else if (type === 'gift') {
+    else if (type === 'board') {
+      const b = BOARDS[id];
+      if (b) fx.pop(tmp2.set(b.x, groundHeight(b.x, b.z) + b.up, b.z), 'gold', 16, 1.2);
+    } else if (type === 'gift') {
       const p = people[id];
       if (p) fx.pop(tmp2.copy(p.group.position).add(V(0, 1.6, 0)), 'gold', 14, 1);
     }
   };
   const screenOf = (kind, id) => {
+    if (kind === 'sight') {
+      const p = tmp.copy(A.sight).project(camera);
+      if (p.z > 1) return null;
+      const { w, h: hh } = stage.size;
+      return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh };
+    }
     const p0 = people[id];
     if (kind !== 'cast' || !p0 || !p0.group.visible) return null;
     const p = p0.group.getWorldPosition(tmp).add(tmp2.set(0, 2.3, 0)).project(camera);

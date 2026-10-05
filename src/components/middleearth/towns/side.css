@@ -1,0 +1,10 @@
+/* A town's games on the side (./SideList.jsx), under the story's list in
+   the Shire's look (../shire/shire.css): set apart by a rule and a small
+   heading, with a gold star where the story has its wax seal. */
+
+.town-side { margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid rgba(240, 216, 150, 0.22); }
+.town-side-head { margin: 0 0 0.45rem; color: var(--shire-gold, #f0c040); font: 700 0.7rem/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; }
+.town-side li { background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(240, 216, 150, 0.18); }
+.town-side-star { border-style: dotted; font-size: 0.95rem; }
+.shire-list .town-side li[data-done] .town-side-star { background: radial-gradient(circle at 35% 35%, #f6d36a, #b8862a); color: #3a2a08; }
+.town-side-best { color: var(--shire-gold, #f0c040); font-weight: 600; }

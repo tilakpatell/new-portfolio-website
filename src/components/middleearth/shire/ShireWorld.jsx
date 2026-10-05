@@ -14,6 +14,9 @@ import {
   GANDALF_LINES,
   HOLLOW,
   HUNT,
+  LOBELIA,
+  LOBELIA_LEN,
+  LOBELIA_LINES,
   MAGGOT_GATE,
   POND,
   QUESTS,
@@ -21,6 +24,9 @@ import {
   RINGS,
   ROADS,
   SHOW,
+  SIDE,
+  SPOONS,
+  SPOON_SPOTS,
   SPOTS,
   START,
   STREAM,
@@ -30,6 +36,7 @@ import {
   hidden,
   inField,
   launch,
+  lobeliaNow,
   nearCast,
   nearSpot,
   newHobbit,
@@ -37,16 +44,19 @@ import {
   newRider,
   newRings,
   newShow,
+  newSpoons,
   nextRingStep,
   progress,
   puff,
   riderTrigger,
+  spoonLeft,
   stepGaze,
   stepHobbit,
   stepHunt,
   stepRider,
   stepRings,
   stepShow,
+  stepSpoons,
 } from './rules';
 import { SWATCH } from './fx';
 import './shire.css';
@@ -54,9 +64,11 @@ import './shire.css';
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the
 // drawing in ./scene.js; this is the walking, the HUD, the speech and the
-// five things to do. Without 3D, they're listed as cards.
+// five things to do, and one on the side (Bilbo's spoons) that the story
+// never waits on. Without 3D, they're listed as cards.
 
 const DONE = 'tp-shire-done';
+const SIDE_DONE = 'tp-shire-side'; // kept apart, so the story's count stays the story's
 const AT = 'tp-shire-at';
 const ACH = { maggot: 'mushrooms', rings: 'smokerings', party: 'fireworks', ring: 'secretsafe', rider: 'getoffroad' };
 const sounds = () => import('./sounds');
@@ -69,6 +81,7 @@ const PROMPT = {
   party: { name: 'Gandalf’s cart', act: 'Light the fireworks' },
   ring: { name: 'Bag End', act: 'Go in' },
   leave: { name: 'The East Road', act: 'On to Bree' },
+  spoons: { name: 'Lobelia Sackville-Baggins', act: 'Race her for Bilbo’s spoons' },
 };
 const INSIDE_TEXT = {
   envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
@@ -84,8 +97,18 @@ export default function ShireWorld({ onLeave }) {
     return Array.isArray(d) ? d.filter((x) => ACH[x]) : [];
   });
   const prog = progress(done);
+  const [side, setSide] = useState(() => {
+    const d = local.get(SIDE_DONE, []);
+    return Array.isArray(d) && d.includes(SIDE.id);
+  });
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const { unlock } = useAchievements();
+  // the spoons, won: on the side, with its own seal but none on the map
+  const winSide = useCallback(() => {
+    setSide(true);
+    local.set(SIDE_DONE, [SIDE.id]);
+    unlock('spoons');
+  }, [unlock]);
   const complete = useCallback(
     (id) => {
       setDone((d) => {
@@ -101,12 +124,12 @@ export default function ShireWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world" aria-labelledby="shire-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   // other travellers online in the Shire, as ghosts (../towns/useTravellers)
   const trav = useTravellers('shire', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
@@ -119,12 +142,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const kept = local.get(AT, null);
     const ok = kept && Number.isFinite(kept.x) && Math.hypot(kept.x, kept.z) < WORLD.radius;
     const h = newHobbit(ok ? kept : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', hunt: newHunt(), rings: null, show: null, rider: null, ringStep: 'envelope', stepT: 0, wearing: false, gaze: 0, aim: { u: 0, v: 1.2 }, colour: 'gold', near: null, talk: null, frame: 0, moved: false, t: 0, hoof: null, air: null, wraith: null, padBefore: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', hunt: newHunt(), rings: null, show: null, rider: null, ringStep: 'envelope', stepT: 0, spoons: null, wearing: false, gaze: 0, aim: { u: 0, v: 1.2 }, colour: 'gold', near: null, talk: null, frame: 0, moved: false, t: 0, hoof: null, air: null, wraith: null, padBefore: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
   const doneRef = useRef(done);
   doneRef.current = done;
+  const sideRef = useRef(side);
+  sideRef.current = side;
   const [hud, setHud] = useState({ mode: 'walk', near: null, picked: 0, chased: false, moved: false });
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
@@ -224,6 +249,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const s = sim.current;
       audioContext();
       if (id === 'leave') return onLeave?.();
+      if (id === 'spoons') {
+        s.spoons = newSpoons();
+        sounds().then((x) => x.spoon());
+        say('“Bilbo’s hidden the good silver about Hobbiton, I know he has,” says Lobelia, and off she goes. Beat her to the spoons: two to a pocket, up to Bag End’s gate. Five home wins.');
+        setList(false);
+        return undefined;
+      }
       if (id === 'rings') {
         s.mode = 'rings';
         s.rings = newRings(Math.floor(Math.random() * 1e6));
@@ -541,6 +573,34 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
     }
 
+    // on the side: Bilbo's spoons, while Lobelia's after them
+    if (s.mode === 'walk' && s.spoons) {
+      for (const e of stepSpoons(s.spoons, s.h, dt)) {
+        const where = SPOON_SPOTS[e.i]?.where;
+        if (e.type === 'found') {
+          a.fx('spoon', e);
+          sounds().then((x) => x.spoon());
+          say(e.carried >= SPOONS.pocket ? `A spoon ${where}. Both pockets full: up to Bag End’s gate with them.` : `A silver spoon, ${where}!`);
+        } else if (e.type === 'full') say('Your pockets are full. Take these up to Bag End’s gate first.', true);
+        else if (e.type === 'pocketed') {
+          a.fx('spoon', { ...e, hers: true });
+          sounds().then((x) => x.pocketed());
+          say(`Lobelia got there first: the spoon ${where} goes into her bag.`, true);
+        } else if (e.type === 'home') {
+          sounds().then((x) => x.chime(1));
+          say(`${e.n === 1 ? 'A spoon' : 'Two spoons'} home in Bag End’s dresser: ${e.home} of ${SPOONS.need}.`);
+        } else if (e.type === 'won') {
+          sounds().then((x) => x.chime(3));
+          winSide();
+          s.spoons = null;
+          say('Five of Bilbo’s spoons safe home. Lobelia sniffs, and says she never cared for them anyway.');
+        } else if (e.type === 'lost') {
+          s.spoons = null;
+          say('Two spoons in Lobelia’s bag, and that’s that. “Finders keepers,” she says. Ask her again, and she’ll “find” them back.', true);
+        }
+      }
+    }
+
     // Bag End
     if (s.mode === 'inside') {
       s.stepT += dt;
@@ -554,10 +614,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // what's here, and who's here
     const spot = s.mode === 'walk' ? nearSpot(s.h.x, s.h.z) : null;
-    s.near = spot && (spot.id !== 'leave' || p.finished) && (spot.id !== 'rings' || p.sky === 'day') ? spot.id : null;
+    s.near = spot && (spot.id !== 'leave' || p.finished) && (spot.id !== 'rings' || p.sky === 'day') && (spot.id !== 'spoons' || !s.spoons) ? spot.id : null;
     const sky = p.sky;
     const person = s.mode === 'walk' ? nearCast(s.h.x, s.h.z, sky === 'day' ? 'day' : 'night') : null;
     let talk = person?.id ?? null;
+    if (!talk && s.mode === 'walk' && !s.spoons && Math.hypot(s.h.x - LOBELIA.x, s.h.z - LOBELIA.z) < 3.2) talk = 'lobelia';
     if (!talk && s.mode === 'walk') {
       // Gandalf on the bench by day, at the road's end at dawn
       const g = sky === 'day' ? { x: SPOTS[0].x + 0.6, z: SPOTS[0].z - 1 } : sky === 'dawn' ? { x: SPOTS[3].x - 1.5, z: SPOTS[3].z - 2 } : null;
@@ -567,21 +628,25 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       s.talk = talk;
       if (talk) {
         const c = CAST.find((x) => x.id === talk);
-        const pool = c ? c.lines : GANDALF_LINES;
+        const lob = talk === 'lobelia';
+        const pool = c ? c.lines : lob ? LOBELIA_LINES[sideRef.current ? 'after' : 'before'] : GANDALF_LINES;
         const n = lines.current[talk] ?? 0;
         lines.current[talk] = n + 1;
         const line = pool[n % pool.length];
-        setBubble({ id: talk, name: c ? c.name : 'Gandalf', line });
+        setBubble({ id: talk, name: c ? c.name : lob ? 'Lobelia Sackville-Baggins' : 'Gandalf', line });
         if (SPOKEN[line]) clip(SPOKEN[line]);
       } else setBubble(null);
     }
 
     // the markers: what's open and not yet done
-    const markers = s.mode === 'rider' ? [{ x: HOLLOW.x, z: HOLLOW.z }] : p.finished ? [{ x: SPOTS[3].x, z: SPOTS[3].z }] : p.quests.filter((q) => q.open && !q.done && (q.id !== 'rings' || sky === 'day')).map((q) => q.at);
+    // (and while you're after the spoons, where they are, and Bag End's gate
+    // once you've some to bring home)
+    const markers = s.mode === 'rider' ? [{ x: HOLLOW.x, z: HOLLOW.z }] : s.spoons ? [...(s.spoons.carried.length ? [SPOONS.home] : []), ...SPOON_SPOTS.filter((_, i) => spoonLeft(s.spoons, i))] : p.finished ? [{ x: SPOTS[3].x, z: SPOTS[3].z }] : p.quests.filter((q) => q.open && !q.done && (q.id !== 'rings' || sky === 'day')).map((q) => q.at);
 
     // other travellers online: where you are to them, and where they are
     const tv = trav.ref.current;
     tv?.pose(s.h, { inside: s.mode === 'inside', ring: s.wearing });
+    const lobelia = { ...lobeliaNow(s.spoons), moving: Boolean(s.spoons) && s.mode === 'walk' && s.spoons.t > SPOONS.wait && s.spoons.s < LOBELIA_LEN };
     try {
       a.render(
         {
@@ -598,6 +663,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           show: s.show,
           ringStep: s.ringStep,
           rider: s.rider,
+          spoons: s.spoons,
+          lobelia,
           hidden: hidden(s.h),
           camYaw: s.yaw,
           camPitch: s.pitch,
@@ -620,7 +687,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // the HUD, when what it shows changes
     const chased = s.hunt.dogs.some((d) => d.mode === 'chase' || d.mode === 'alert');
-    const key = [s.mode, s.near, s.hunt.picked.length, chased, s.moved, s.rings?.hits, s.rings?.puffs, s.rings?.state, s.show && Math.round(s.show.cheer * 40), s.show && Math.ceil(SHOW.time - s.show.t), s.show?.state, s.ringStep, s.ringStep === 'letters' && s.stepT > 2.6, s.rider?.phase, s.rider && Math.round(s.rider.pull * 20), s.wearing, Math.round(s.gaze * 20), s.colour, inField(s.h.x, s.h.z, 3)].join('|');
+    const key = [s.mode, s.near, s.hunt.picked.length, chased, s.moved, s.rings?.hits, s.rings?.puffs, s.rings?.state, s.show && Math.round(s.show.cheer * 40), s.show && Math.ceil(SHOW.time - s.show.t), s.show?.state, s.ringStep, s.ringStep === 'letters' && s.stepT > 2.6, s.rider?.phase, s.rider && Math.round(s.rider.pull * 20), s.wearing, Math.round(s.gaze * 20), s.colour, inField(s.h.x, s.h.z, 3), s.spoons && `${s.spoons.carried.length}.${s.spoons.home.length}.${s.spoons.hers.length}`].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
       setHud({
@@ -638,6 +705,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         wearing: s.wearing,
         gaze: s.gaze,
         colour: s.colour,
+        spoons: s.spoons && { carried: s.spoons.carried.length, home: s.spoons.home.length, hers: s.spoons.hers.length },
       });
     }
     // the speech bubble follows whoever's talking
@@ -648,7 +716,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, markers, p);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.h, markers, p, s.spoons ? lobelia : null);
     if (s.frame % 120 === 0) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
 
@@ -731,7 +799,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       ? hud.rider?.phase === 'sniff'
         ? 'Keep still. Don’t put it on.'
         : 'Get off the road! Into the hollow under the old tree’s roots.'
-      : hud.inField && !done.includes('maggot')
+      : hud.spoons
+        ? `Bilbo’s spoons: ${hud.spoons.home} of ${SPOONS.need} home, ${hud.spoons.carried} in your pockets. Lobelia has ${hud.spoons.hers}; two, and she’s won.`
+        : hud.inField && !done.includes('maggot')
         ? `Mushrooms: ${hud.picked} of ${HUNT.mushrooms}. Keep out of the dogs’ sight; run for the gate if they see you.`
         : prog.objective;
   return (
@@ -916,13 +986,32 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
                   <p className="shire-list-name">{q.name}</p>
                   <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
                 </div>
-                {q.open && (q.id !== 'rings' || prog.sky === 'day') && (
+                {q.open && !hud.spoons && (q.id !== 'rings' || prog.sky === 'day') && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
                     Go there
                   </button>
                 )}
               </li>
             ))}
+          </ul>
+          <p className="shire-list-side">On the side</p>
+          <ul>
+            <li data-done={side || undefined} data-open data-side>
+              <span className="shire-seal" aria-hidden="true">
+                {side ? '✓' : ''}
+              </span>
+              <div>
+                <p className="shire-list-name">{SIDE.name}</p>
+                <p className="shire-list-sub">
+                  {SIDE.where}. {SIDE.blurb}
+                </p>
+              </div>
+              {!hud.spoons && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(SIDE)}>
+                  Go there
+                </button>
+              )}
+            </li>
           </ul>
         </div>
       )}
@@ -932,7 +1021,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
 // The map in the corner: the water, the lanes, Maggot's field, where to go, and you.
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 8);
-function drawMap(c, h, markers, prog) {
+function drawMap(c, h, markers, prog, lobelia = null) {
   const g = c?.getContext('2d');
   if (!g) return;
   const at = (x, z) => [75 + x * MAP_SCALE, 75 + z * MAP_SCALE];
@@ -987,6 +1076,17 @@ function drawMap(c, h, markers, prog) {
     g.arc(x, y, pulse + 2, 0, Math.PI * 2);
     g.stroke();
   }
+  // Lobelia, when she's out after the spoons
+  if (lobelia) {
+    const [x, y] = at(lobelia.x, lobelia.z);
+    g.fillStyle = '#a03a8a';
+    g.strokeStyle = '#fff4e8';
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.arc(x, y, 4, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
   g.restore();
   // you
   const [cx, cy] = at(h.x, h.z);
@@ -1012,7 +1112,7 @@ function drawMap(c, h, markers, prog) {
 }
 
 // Without 3D: what there is to do, as cards.
-function Cards({ prog, three, gl, retry }) {
+function Cards({ prog, side, three, gl, retry }) {
   return (
     <div className="shell shire-cards-wrap">
       <h1 id="shire-title" className="title">
@@ -1043,6 +1143,13 @@ function Cards({ prog, three, gl, retry }) {
             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
           </li>
         ))}
+        <li data-side>
+          <p className="shire-list-side">On the side</p>
+          <p className="shire-list-name">{SIDE.name}</p>
+          <p className="shire-list-sub">{SIDE.where}</p>
+          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
+          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
+        </li>
       </ul>
     </div>
   );

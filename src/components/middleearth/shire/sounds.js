@@ -1,7 +1,8 @@
 // The Shire's sounds, synthesised so nothing is downloaded: birdsong by day
 // and crickets by night, a mushroom picked, Maggot's dogs barking, a puff of
 // pipe smoke and a ring going through, rockets and their bangs, hoofbeats on
-// the East Road and the Rider's sniffing and its scream. All through the
+// the East Road and the Rider's sniffing and its scream, and on the side a
+// silver spoon found or pocketed by Lobelia. All through the
 // site's master volume, so the sound setting mutes them.
 
 import { audioContext, output } from '../../../lib/audio';
@@ -59,6 +60,25 @@ export function pick() {
   const t = ac.currentTime;
   tone(ac, out, t, { type: 'triangle', f: 880, to: 1320, gain: 0.12, length: 0.12 });
   tone(ac, out, t + 0.07, { type: 'sine', f: 1760, gain: 0.08, length: 0.2 });
+}
+
+// a silver spoon found: a bright little ting, and its ring dying away
+export function spoon() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, out, t, { type: 'sine', f: 2637, gain: 0.09, attack: 0.002, length: 0.5 });
+  tone(ac, out, t, { type: 'sine', f: 3951, gain: 0.04, attack: 0.002, length: 0.3 });
+  tone(ac, out, t + 0.09, { type: 'triangle', f: 1760, gain: 0.05, length: 0.35 });
+}
+
+// Lobelia pockets one: a sour little drop
+export function pocketed() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, out, t, { type: 'triangle', f: 392, to: 370, gain: 0.12, length: 0.18 });
+  tone(ac, out, t + 0.16, { type: 'triangle', f: 311, to: 262, gain: 0.12, length: 0.32 });
 }
 
 export function bark() {

@@ -17,6 +17,8 @@ export const LOOKS = {
   rosie: { robe: 0xc0705e, hairStyle: 'long', hair: 0xa0602a, shirt: 0xf4ead8, seed: 25 },
   maggot: { tall: 1.12, wide: 1.3, hair: 0x6a5a4a, beard: { color: 0x7a6a5a, len: 0.22 }, coat: 0x5a4a2a, shirt: 0xc8b890, feet: 'boots', seed: 27 },
   gaffer: { hair: 0xd8d2c8, coat: 0x6a5a3a, shirt: 0xd8ccb0, seed: 29 },
+  // Lobelia Sackville-Baggins, in her best plum, with her umbrella
+  lobelia: { robe: 0x5e2a52, hairStyle: 'long', hair: 0x6e6258, shirt: 0xe8dcc8, umbrella: true, seed: 31 },
 };
 const CROWD = [0x8a3a5a, 0x3a6a5a, 0xc08a3a, 0x5a3a8a, 0xa05a2a, 0x2a5a8a, 0x7a7a2a, 0x9a3a3a];
 const HAIR = [0x3a2214, 0x8a5a2b, 0x5a3a1a, 0xa0703a, 0x2a1a10];
@@ -79,8 +81,28 @@ export function makePerson(id, { guest = null } = {}) {
       if (o.isMesh && o.geometry.type === 'TorusGeometry') f.ringMesh = o;
     });
   }
+  if (look.umbrella) f.umbrella = umbrella(f.arms[1]);
   f.top = f.baseY + 0.5 * (look.tall ?? 1) + 0.3 + 0.32 + (look.hat === 'wizard' ? 0.9 : 0);
   return f;
+}
+
+// A furled umbrella in the right hand, used as a walking stick: crook on
+// top, plum silk wrapped tight, a ferrule at the tip.
+function umbrella(arm) {
+  const g = new THREE.Group();
+  g.position.set(0.05, -0.32, 0);
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.6 });
+  const silk = new THREE.MeshStandardMaterial({ color: 0x3e1838, roughness: 0.75 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.66, 6), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.5 }));
+  shaft.position.y = -0.2;
+  const furl = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.38, 8), silk);
+  furl.rotation.x = Math.PI;
+  furl.position.y = -0.3;
+  const crook = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 6, 12, Math.PI), wood);
+  crook.position.set(0.05, 0.13, 0);
+  g.add(shaft, furl, crook);
+  arm.add(g);
+  return g;
 }
 
 // Sitting on a bench: legs out in front, a little lower.

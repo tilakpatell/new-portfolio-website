@@ -15,6 +15,7 @@
 //   flame     ['O', …]: the stations whose fire is a flame in the middle (a campfire)
 //   pan       true: the pots are frying pans (their contents sit low)
 //   spit      true: what's on the oven sits up on a spit over it
+//   ovenAt    { y, out }: or where it sits on the oven (a forge's coals)
 //
 // ctx = { kit, mats, paint, items, bk, room, scene, W, D, X, Z, at, wet, R,
 // lamps, wallH, m (the shared materials: darkWood, board, topWood,
@@ -24,6 +25,7 @@
 import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { B, ball, barrelParts, cyl, lathe } from '../../shire/props';
+import { dotTexture } from '../../towns/bake';
 
 export const TOP = 0.92; // a counter's top
 export const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -222,4 +224,80 @@ export function webTexture() {
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
+}
+
+// Motes in the air: sparks rising off molten rock, leaves drifting down
+// through lantern light, fireflies. `from()` says where each one starts
+// (a Vector3); they rise (or fall), sway, glow and fade. → { tick(dt, t) }
+export function motes({ scene }, { n = 60, from, colour, size = 0.1, rise = 0.6, sway = 0.3, life = [1.5, 3], glow = 1.5 }) {
+  const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const map = dotTexture();
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pts.frustumCulled = false;
+  scene.add(pts);
+  const age = new Float32Array(n);
+  const max = new Float32Array(n);
+  const seed = Float32Array.from({ length: n }, () => Math.random() * 10);
+  const base = new THREE.Color(colour).multiplyScalar(glow);
+  const spawn = (i) => {
+    const p = from(i);
+    pos.set([p.x, p.y, p.z], i * 3);
+    age[i] = 0;
+    max[i] = life[0] + Math.random() * (life[1] - life[0]);
+  };
+  for (let i = 0; i < n; i++) {
+    spawn(i);
+    age[i] = Math.random() * max[i];
+  }
+  return {
+    tick(dt, t) {
+      for (let i = 0; i < n; i++) {
+        age[i] += dt;
+        if (age[i] >= max[i]) spawn(i);
+        pos[i * 3] += Math.sin(t * 1.3 + seed[i]) * sway * dt;
+        pos[i * 3 + 1] += rise * dt;
+        pos[i * 3 + 2] += Math.cos(t * 1.1 + seed[i] * 2) * sway * 0.5 * dt;
+        const k = Math.min(1, age[i] * 3) * (1 - age[i] / max[i]);
+        col[i * 3] = base.r * k;
+        col[i * 3 + 1] = base.g * k;
+        col[i * 3 + 2] = base.b * k;
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.color.needsUpdate = true;
+    },
+  };
+}
+
+// a painted board on a post, with words on it
+export function sign({ room }, lines, { at, turn = 0, w = 1.1, h = 0.55, board = '#d8c8a0', ink = '#3a2412', font = 'italic 600 30px Georgia, serif' } = {}) {
+  const cv = document.createElement('canvas');
+  cv.width = 256;
+  cv.height = Math.round((256 * h) / w);
+  const g = cv.getContext('2d');
+  g.fillStyle = board;
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.strokeStyle = ink;
+  g.lineWidth = 4;
+  g.strokeRect(6, 6, cv.width - 12, cv.height - 12);
+  g.fillStyle = ink;
+  g.font = font;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  lines.forEach((l, k) => g.fillText(l, cv.width / 2, ((k + 1) * cv.height) / (lines.length + 1)));
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const group = new THREE.Group();
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+  face.position.y = 1.1;
+  const post = new THREE.Mesh(cyl(0.035, 0.04, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0x5a3e24, roughness: 1 }));
+  post.position.set(0, 0.55, -0.03);
+  group.add(face, post);
+  group.position.copy(at);
+  group.rotation.y = turn;
+  room.add(group);
+  return group;
 }
