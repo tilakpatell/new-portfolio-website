@@ -5,6 +5,7 @@ import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } f
 import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
+import { FIGHT, PORTAL, newFight, startInvasion, stepFight } from './fight';
 import { FLY, newHero, stepHero } from './flight';
 import { BODIES, altitudeOf, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
@@ -66,7 +67,7 @@ function World({ gl, setGl }) {
     const ok = kept && [kept.x, kept.y, kept.z].every(Number.isFinite) && Math.abs(kept.x) < WORLD.half && Math.abs(kept.z) < WORLD.half && !waterAt(kept.x, kept.z);
     const at = ok ? kept : SPAWN;
     const h = newHero(at);
-    sim.current = { quests: newQuests(local.get(QUESTS, {})), h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { quests: newQuests(local.get(QUESTS, {})), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
   }
 
   const say = useCallback((text, ms = 2400) => {
@@ -133,12 +134,29 @@ function World({ gl, setGl }) {
     if (!wind.current) import('./sounds').then((m) => (wind.current ??= m.windSound()));
   }, []);
 
+  // the Flaxans come through over the river
+  const invade = useCallback(
+    (why) => {
+      const s = sim.current;
+      if (s.fight.on) return;
+      s.fight = startInvasion(s.fight);
+      s.invaded = true;
+      sfx('alarm');
+      say(why === 'cecil' ? 'Cecil: “Portal over the river. Flaxans again. Go.”' : 'Something’s coming through over the river. Purple. Lots of it.', 4600);
+    },
+    [say],
+  );
+
   const act = useCallback(() => {
     const p = sim.current.near;
     if (!p) return;
+    if (p.id === 'gda' && !sim.current.fight.on) {
+      invade('cecil');
+      return;
+    }
     sfx('ding');
     say(`${p.name}: ${p.line}`, 3200);
-  }, [say]);
+  }, [say, invade]);
 
   // the keys
   useEffect(() => {
@@ -155,7 +173,10 @@ function World({ gl, setGl }) {
         s.moved = true;
         return;
       }
-      if (e.code === 'KeyE' || e.key === 'Enter') {
+      if ((e.code === 'KeyJ' || e.code === 'KeyF') && !e.repeat) {
+        startSound();
+        s.punch = true;
+      } else if (e.code === 'KeyE' || e.key === 'Enter') {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
       else if (e.code === 'KeyH' || e.key === '?') setHelp((v) => !v);
@@ -183,7 +204,7 @@ function World({ gl, setGl }) {
   const onPointerDown = (e) => {
     if (e.pointerType === 'touch' && e.clientX < (canvas.current?.getBoundingClientRect().left ?? 0) + (canvas.current?.clientWidth ?? 0) * 0.4) return; // the left of a phone's screen is the stick
     startSound();
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, at: performance.now() };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e) => {
@@ -198,7 +219,11 @@ function World({ gl, setGl }) {
     d.y = e.clientY;
   };
   const onPointerUp = (e) => {
-    if (drag.current?.id === e.pointerId) drag.current = null;
+    const d = drag.current;
+    if (d?.id !== e.pointerId) return;
+    // a click (not a drag) with the mouse: a punch
+    if (e.pointerType === 'mouse' && e.button === 0 && performance.now() - d.at < 260 && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 6) sim.current.punch = true;
+    drag.current = null;
   };
 
   // ── every frame ──
@@ -231,8 +256,9 @@ function World({ gl, setGl }) {
     const downKey = k.has('down') || s.touchDown || Boolean(pad?.b || pad?.lb);
     const boost = k.has('boost') || s.touchBoost || Boolean(pad?.rt || (pad?.rtv ?? 0) > 0.4);
     if (pressed('a')) s.jump = true;
-    if (pressed('x')) act();
-    if (pressed('y')) cycleTime();
+    if (pressed('x')) s.punch = true;
+    if (pressed('y')) act();
+    if (pressed('start')) cycleTime();
     const look = [Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), Math.cos(s.yaw) * Math.cos(s.pitch)];
     const input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
     s.h = s.h.zone === 'space' ? stepSpace(s.h, input, dt) : stepHero(s.h, input, dt, s.world);
@@ -301,6 +327,37 @@ function World({ gl, setGl }) {
       }
       if (['card', 'saved', 'lesson-done'].includes(e.type)) local.set(QUESTS, keepQuests(s.quests));
     }
+    // the Flaxans: four minutes in if nobody's started them sooner
+    s.punchT = Math.max(0, s.punchT - dt);
+    if (!inSpace) {
+      if (!s.invaded && s.t > s.invadeAt) invade('auto');
+      const r = stepFight(s.fight, h, { punch: s.punch, look }, dt);
+      s.fight = r.fight;
+      if (r.push) {
+        const l = Math.hypot(...r.push) || 1;
+        s.h = { ...s.h, mode: 'air', crouch: 0, v: r.push, spd: l, dir: r.push.map((c) => c / l) };
+      }
+      if (r.stun) s.h = { ...s.h, stun: Math.max(s.h.stun ?? 0, r.stun) };
+      for (const e of r.ev) {
+        s.events.push(e);
+        if (e.type === 'punch') {
+          s.punchT = 0.25;
+          sfx('zip');
+        } else if (e.type === 'ko') sfx('blast');
+        else if (e.type === 'bolt') sfx('laser');
+        else if (e.type === 'hurt') sfx('hit');
+        else if (e.type === 'spawn') sfx('pop');
+        else if (e.type === 'beaten') {
+          sfx('boom');
+          say('That one hurt. Get back up.');
+        } else if (e.type === 'won') {
+          sfx('fanfare');
+          unlock('flaxans');
+          say('The portal’s closed. Every last Flaxan, back where they came from.', 4200);
+        }
+      }
+    }
+    s.punch = false;
     for (const e of h.ev) {
       s.events.push(e);
       if (e.type === 'boom') {
@@ -345,16 +402,20 @@ function World({ gl, setGl }) {
       if (H.lines) H.lines.style.opacity = String(clamp((speed - 70) / 160, 0, 0.85));
       const marks = [];
       const q = s.quests;
+      if (s.fight.on) marks.push({ x: PORTAL.p[0], z: PORTAL.p[2], color: '#d04dff', name: 'Portal' });
       if (q.rescue && !q.rescue.carried) marks.push({ x: q.rescue.p[0], z: q.rescue.p[2], color: '#ff3b30', name: 'Help' });
       if (q.lesson.on) marks.push({ x: RINGS[q.lesson.next].p[0], z: RINGS[q.lesson.next].p[2], color: '#ffd23a', name: `Ring ${q.lesson.next + 1}` });
       s.marks = marks;
       if (H.compass) drawCompass(H.compass, s.yaw, h, s.world.places, marks);
       if (H.goal) {
         const d = q.rescue ? Math.round(Math.hypot(q.rescue.p[0] - h.p[0], q.rescue.p[1] - h.p[1], q.rescue.p[2] - h.p[2])) : 0;
-        const text = q.rescue ? (q.rescue.carried ? 'Set them down: land anywhere' : `${WHAT[q.rescue.kind]} · ${d} m`) : q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '';
+        const left = s.fight.on ? FIGHT.count - s.fight.foes.filter((e) => e.state === 'ko' || e.state === 'down').length : 0;
+        const fightText = s.fight.on ? `Flaxans over the river · ${left} left · you ${Math.max(0, Math.round(s.fight.hp))}%` : '';
+        const text = fightText || (q.rescue ? (q.rescue.carried ? 'Set them down: land anywhere' : `${WHAT[q.rescue.kind]} · ${d} m`) : q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
         if (H.goal.textContent !== text) H.goal.textContent = text;
         H.goal.dataset.on = text ? '1' : '';
-        H.goal.dataset.red = q.rescue ? '1' : '';
+        H.goal.dataset.red = q.rescue && !s.fight.on ? '1' : '';
+        H.goal.dataset.purple = s.fight.on ? '1' : '';
       }
     }
     if (s.frame % 4 === 0 && mapRef.current) drawMap(mapRef.current, h, s.yaw, alt, s.world, s.marks);
@@ -471,14 +532,16 @@ function World({ gl, setGl }) {
             <dd>Flat out. Past Mach 0.35 the air breaks</dd>
             <dt>Drag · arrows</dt>
             <dd>Look round</dd>
+            <dt>J · F · click</dt>
+            <dd>Punch (a little way off, he lunges)</dd>
             <dt>E</dt>
-            <dd>At a place: go in</dd>
+            <dd>At a place: go in (Cecil, at the GDA, has a job)</dd>
             <dt>T</dt>
             <dd>Noon, dusk, night</dd>
             <dt>Up, up</dt>
             <dd>Past 9 km you’re out of the air: the Moon and Mars are out there</dd>
           </dl>
-          <p>A pad works: left stick flies, right stick looks, A up, B down, RT flat out.</p>
+          <p>A pad works: left stick flies, right stick looks, A up, B down, RT flat out, X punches, Y goes in.</p>
           <p>
             Things to do: Dad’s rings start over the street outside the house; {found} of {CARDS.length} title cards found; rescues come in on their own.
           </p>
@@ -530,6 +593,9 @@ function World({ gl, setGl }) {
             </button>
             <button type="button" className="iw-boost" {...hold('touchBoost')}>
               Boost
+            </button>
+            <button type="button" className="iw-punch" onPointerDown={() => (startSound(), (sim.current.punch = true))}>
+              Punch
             </button>
           </div>
         </div>
