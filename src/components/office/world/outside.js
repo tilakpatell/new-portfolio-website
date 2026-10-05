@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { merge } from '../kit';
 import { CARS, DUMPSTER, LIGHT_POLES, LOT, PARK_SIGN, TREES, WAREHOUSE } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 function asphaltTex() {
   const c = document.createElement('canvas');
@@ -40,7 +41,7 @@ function asphaltTex() {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 function signTex() {

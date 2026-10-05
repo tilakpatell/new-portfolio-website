@@ -18,7 +18,8 @@ import { budget, device } from '../../../lib/device';
 import { antiTile } from '../../../lib/three/surface';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 
-const loaders = () => Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/libs/meshopt_decoder.module.js')]);
+// (the site's shared loader, fetched only once the courtyard is up)
+const loaders = () => import('../../../lib/three/gltf');
 
 // dusk, in display colours
 const SKY = { zenith: '#16173a', mid: '#4b2f5c', horizon: '#f2894a', sun: '#ffc27a' };
@@ -496,8 +497,8 @@ export async function createMusicWorld(el, { onLost } = {}) {
   const glows = new Map(); // instrument -> { mats, level }
   const base = small ? '/models/music/sm/' : '/models/music/';
   const toLoad = ['pavilion', 'gaddi', 'lamp', 'sitar', 'tanpura', 'harmonium', 'tabla'];
-  const models = loaders().then(([{ GLTFLoader }, { MeshoptDecoder }]) => {
-    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const models = loaders().then(({ gltfLoader }) => {
+    const loader = gltfLoader();
     return Promise.all(toLoad.map((n) => loader.loadAsync(`${base}${n}.glb`).then((g) => [n, g.scene]).catch(() => [n, null])));
   });
   const placeModel = (name, model) => {

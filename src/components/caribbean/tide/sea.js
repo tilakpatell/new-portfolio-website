@@ -11,6 +11,7 @@
 // water that's drawn.
 
 import * as THREE from 'three';
+import { sharpen, loadTexture } from '../../../lib/three/textures';
 
 const TAU = Math.PI * 2;
 
@@ -145,7 +146,7 @@ function rippleTexture(size = 256) {
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = true;
-  t.anisotropy = 4;
+  sharpen(t);
   t.needsUpdate = true;
   return t;
 }
@@ -183,21 +184,12 @@ function discGeometry({ around = 224, near = 44, step = 1.6, grow = 1.034, far =
 }
 
 export function loadSky() {
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(
-      '/games/caribbean/sky.webp',
-      (t) => {
-        t.colorSpace = THREE.NoColorSpace;
-        t.generateMipmaps = false;
-        t.minFilter = THREE.LinearFilter;
-        t.magFilter = THREE.LinearFilter;
-        t.wrapS = THREE.RepeatWrapping;
-        t.wrapT = THREE.ClampToEdgeWrapping;
-        resolve(t);
-      },
-      undefined,
-      reject,
-    );
+  // (decoded off the main thread; always seen magnified, so no mipmaps)
+  return loadTexture('/games/caribbean/sky.webp', { color: false, mipmaps: false, aniso: 1 }).then((t) => {
+    t.magFilter = THREE.LinearFilter;
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+    return t;
   });
 }
 

@@ -20,7 +20,6 @@
 import * as THREE from 'three';
 import { createKit } from '../../galaxy/surface/kit';
 import { rng } from '../../galaxy/surface/noise';
-import { disposeTree } from '../../../lib/three/renderer';
 import { METRE, facingAlong, place, solidsOn, vec } from '../foot';
 import { SCATTER_MAX, scatterSpots, seedOf } from './landings';
 import { createModels } from './models';
@@ -96,6 +95,32 @@ function scaleLights(object, k) {
   });
 }
 
+// Free what a landing made: every geometry, material and texture but the
+// shared models' (the loader's cache keeps those), and every instanced
+// mesh's own buffers
+function release(root) {
+  const seen = new Set();
+  const free = (x) => {
+    if (!x || seen.has(x)) return;
+    seen.add(x);
+    x.dispose?.();
+  };
+  const walk = (o, shared) => {
+    shared ||= Boolean(o.userData.shared);
+    if (o.isInstancedMesh) o.dispose();
+    if (!shared) {
+      free(o.geometry);
+      for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+        for (const v of Object.values(m)) if (v?.isTexture) free(v);
+        if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) free(u.value);
+        free(m);
+      }
+    }
+    for (const c of o.children) walk(c, shared);
+  };
+  walk(root, false);
+}
+
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
 function partsOf(object) {
   const out = [];
@@ -114,7 +139,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
   const updates = [];
   let dead = false;
   const kit = createKit({ seed: seedOf(id) % 1000 });
-  const models = createModels();
+  const models = createModels({ renderer });
   // (Rm: the planet's radius in metres; bend: a long flat thing, a road,
   // bent down to the curve of the ground under it)
   Object.assign(kit, { renderer, models, Rm: R / METRE, bend: (object) => bend(object, R / METRE) });
@@ -163,10 +188,12 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     let parts = null;
     let reach = 0.5;
     let tints = null;
+    let shared = false; // (a model's: its geometry and materials are the loader's cache's)
     if (spec) {
       const object = await models.get(spec);
       if (!object) return;
       parts = partsOf(object);
+      shared = true;
       reach = object.userData.footprint * 0.7;
     } else if (planet.SCATTER?.[entry.kind]) {
       const made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
@@ -198,6 +225,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     });
     const holder = new THREE.Group();
     holder.name = `scatter-${entry.kind}`;
+    holder.userData.shared = shared;
     holder.add(...meshes);
     if (!(await add(holder))) return;
     if (entry.solid !== false) for (const x of mats) solids.push({ n: x.spot.n, r: x.r * METRE });
@@ -224,9 +252,8 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     dispose() {
       dead = true;
       group.removeFromParent();
-      disposeTree(group);
+      release(group);
       kit.dispose();
-      models.dispose();
       updates.length = 0;
       solids.length = 0;
     },
