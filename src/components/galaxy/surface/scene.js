@@ -56,6 +56,7 @@ import { createPlacer } from './placer';
 import { createActors } from './actors';
 import { RIDES } from './rides';
 import { createPeers } from './peers';
+import { createSounds } from './sounds';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -358,6 +359,22 @@ export async function create(canvas, ctx) {
     );
   })();
 
+  // ── Sound: the air, your steps, a speeder's whine (once you've touched
+  // something: browsers only let sound start then) ──
+  const kinds = new Set(site.weather.map((w) => w.kind));
+  const sounds = createSounds({
+    ...site,
+    sound: site.sound ?? {
+      wind: kinds.has('sand') ? 0.8 : kinds.has('snow') ? 1 : 0.35,
+      rain: kinds.has('rain') ? 1 : 0,
+      sea: site.water?.kind === 'sea' ? 0.7 : 0,
+      lava: site.water?.kind === 'lava' || kinds.has('embers') ? 0.7 : 0,
+      critters: kinds.has('motes') ? 0.6 : 0,
+      ground: kinds.has('snow') ? 'snow' : site.water?.kind === 'swamp' ? 'mud' : 'sand',
+    },
+  });
+  let strode = 0;
+
   // ── The other pilots down here (online) ──
   const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast()) });
 
@@ -471,6 +488,7 @@ export async function create(canvas, ctx) {
     if (!k) return;
     if (k === 'jump' || k === 'up' || k === 'down') e.preventDefault();
     if (down && !e.repeat) {
+      sounds.start();
       if (state.phase === 'landing') skipLanding();
       if (k === 'jump') state.jumpQueued = true;
       if (k === 'act') state.actQueued = true;
@@ -489,6 +507,7 @@ export async function create(canvas, ctx) {
   const down = (e) => {
     if (e.pointerType === 'touch') return; // (the page's own look pad, on a phone)
     dragging = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    sounds.start();
     canvas.setPointerCapture?.(e.pointerId);
     if (state.phase === 'landing') skipLanding();
   };
@@ -681,8 +700,17 @@ export async function create(canvas, ctx) {
     const mag = gd > 0.8 ? clamp((gd - 0.6) / 2, 0, 1) : 0;
     walk(q, { x: 0, y: mag, heading: toward, run: gd > 7, jump: false }, dt, world);
     if (mag === 0) q.yaw = turnToward(q.yaw, p.yaw, dt * 2);
-    // footprints and marks
+    // footprints and marks, and footsteps
     if (p.grounded && p.speed > 0.5 && site.ground.palette.mark && r() < dt * 6) marks.dab(p.x, p.z, 0.7, 0.18);
+    if (p.grounded) {
+      strode += p.speed * dt;
+      const stride = p.speed > WALK.walk + 1 ? 1.25 : 0.8;
+      if (strode > stride) {
+        strode = 0;
+        sounds.step(p.speed > WALK.walk + 1 ? 1.3 : 1);
+      }
+    }
+    if (o.landed > 3) sounds.step(1.6);
   }
 
   function stepRide(dt) {
@@ -890,6 +918,7 @@ export async function create(canvas, ctx) {
     stepDust(dt);
     storm(dt);
     online(dt);
+    sounds.update(dt, { riding: state.phase === 'ride' ? Math.abs(state.riding.state.speed) + 1 : 0 });
     marks.flush();
     ship.update?.(t);
 
@@ -996,6 +1025,7 @@ export async function create(canvas, ctx) {
       },
       look,
       press(name) {
+        sounds.start();
         if (state.phase === 'landing') skipLanding();
         if (name === 'jump') state.jumpQueued = true;
         if (name === 'act') state.actQueued = true;
@@ -1047,6 +1077,7 @@ export async function create(canvas, ctx) {
       canvas.removeEventListener('wheel', wheel);
       engine?.stop();
       props.net?.walk?.(null);
+      sounds.dispose();
       peers.dispose();
       life.dispose();
       placer.dispose();
