@@ -1,17 +1,20 @@
 import { useEffect, useId, useRef } from 'react';
-import { CONTROLS, DEFAULTS, DRAG_UP } from './controls';
+import { AD, CONTROLS, DEFAULTS, DRAG_UP } from './controls';
 
 // The flying settings (controls.js), from the button in the map's corner
-// (or O): how quickly the ship turns and pitches, how far a drag goes for
-// full stick, how much the guns help a shot home, how tightly the camera
-// follows, up and down turned over, and what dragging up and down does.
+// (or O): how quickly the ship turns, pitches and rolls, how quickly it
+// rolls back upright, how far a drag goes for full stick, how much the guns
+// help a shot home, how tightly the camera follows, up and down turned
+// over, what A and D do, and what dragging up and down does.
 // Every change is live (the scene reads them each frame) and kept between
 // visits by the page. Not modal: the map stays flyable behind it; Escape,
 // the close button or a click on the map puts it away.
-const ORDER = ['turn', 'pitch', 'drag', 'assist', 'camera'];
+const ORDER = ['turn', 'pitch', 'roll', 'level', 'drag', 'assist', 'camera'];
 const DRAG_LABEL = { auto: 'Auto', pitch: 'Nose', speed: 'Throttle' };
 const DRAG_HINT = { auto: 'Mouse tips the nose, touch works the throttle', pitch: 'Up and down tips the nose', speed: 'Up and down works the throttle' };
-const pct = (k, v) => (k === 'assist' && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
+const AD_LABEL = { roll: 'Roll', turn: 'Turn' };
+const AD_HINT = { roll: 'As in Battlefront: roll over, then pull the nose round', turn: 'Swing the nose left and right, like the arrows' };
+const pct = (k, v) => ((k === 'assist' || k === 'level') && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
 
 export default function FlightSettings({ controls, onChange, open, onOpen }) {
   const id = useId();
@@ -107,6 +110,17 @@ export default function FlightSettings({ controls, onChange, open, onOpen }) {
             <span className="universe-setting-name">Invert up and down</span>
             <input type="checkbox" role="switch" checked={controls.invert} onChange={(e) => set({ invert: e.target.checked })} />
           </label>
+          <fieldset className="universe-setting">
+            <legend className="universe-setting-name">A and D</legend>
+            <span className="universe-seg">
+              {AD.map((m) => (
+                <button key={m} type="button" aria-pressed={controls.ad === m} onClick={() => set({ ad: m })}>
+                  {AD_LABEL[m]}
+                </button>
+              ))}
+            </span>
+            <span className="universe-setting-hint">{AD_HINT[controls.ad]}</span>
+          </fieldset>
           <fieldset className="universe-setting">
             <legend className="universe-setting-name">Drag up and down</legend>
             <span className="universe-seg">

@@ -7,18 +7,24 @@
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
 // - With a ship (Rick's cruiser, Luke's X-wing, the Falcon or Walt and
-//   Jesse's RV), you fly it: W and S for the throttle, A and D (or the
-//   left and right arrows) to turn, the up and down arrows (or R and C) to
-//   tip the nose up and down, Space to boost, F (held) to fire, T (Shift+T
-//   back) to switch target, or drag on the map like a stick (a mouse tips the
-//   nose, a finger works the throttle, with buttons to climb and dive). How
-//   quick each of those is, and more, is the visitor's to set
-//   (controls.js, FlightSettings.jsx). The camera rides behind it, leaning into the turns,
-//   or, with V, you sit in the cockpit (the intro's, cockpit/vehicles, drawn
-//   over the world from the pilot's seat; the choice is kept between visits).
+//   Jesse's RV), you fly it, Battlefront's way, free all the way round (it
+//   loops, rolls and flies upside down): W and S for the throttle, A and D
+//   to roll, the arrows to swing the nose left and right and pull it up and
+//   down, Space to boost, F (held) to fire, T (Shift+T back) to switch
+//   target, or drag on the map like a stick (a mouse swings the nose, a
+//   finger turns it and works the throttle, with buttons to pull the nose up
+//   and down). Let go and it rolls itself back upright. How quick each of
+//   those is, and more (A and D can turn instead), is the visitor's to set
+//   (controls.js, FlightSettings.jsx). The camera rides behind it, rolling
+//   with it and swinging round after it, or, with V, you sit in the cockpit
+//   (the intro's, cockpit/vehicles, drawn over the world from the pilot's
+//   seat; the choice is kept between visits).
 //   Fly close to a planet and you're at it (the panel shows its card); pick
 //   one from its name or by clicking it and the ship flies itself there. M
-//   shows the whole map. ship.js has the physics.
+//   shows the whole map. ship.js has the physics. A new ship starts
+//   anywhere, unless a place is picked: at the edge of the home system, or
+//   out in deep space off a fandom's planet or a wonder (ship.js's startAt),
+//   so pilots joining don't all turn up in one spot.
 //   Out past the home system is deep space (deep.js, deepspace.js), vast:
 //   the fandoms' planets are far out in it, hundreds of units apart, each
 //   marked by a beacon (beacons.js) so it reads as somewhere to go, with
@@ -68,7 +74,7 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
@@ -76,7 +82,7 @@ import { ORDER, POSITIONS, REACH, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { FACTIONS, NAMES, createHunters } from './hunters';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
@@ -96,7 +102,7 @@ import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
-import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyClimb, stickInput } from './controls';
+import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 
@@ -147,8 +153,9 @@ const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
 
-// (the up and down arrows tip the nose, as a stick does; W and S are the throttle)
-const KEYS = { w: 'up', s: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', r: 'climb', pageup: 'climb', c: 'dive', pagedown: 'dive', f: 'fire' };
+// (Battlefront's: W and S the throttle, A and D the roll, the arrows the
+// nose, as a stick: controls.js's keyAxes)
+const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -620,6 +627,8 @@ export async function create(canvas, ctx) {
     hover: null,
     drag: null,
     flight: null,
+    blend: null, // flying, the camera's way from one view to the next: { from, start, dur }
+    cam: null, // the view the camera had last frame (in the map's own frame: viewOfPose)
     dive: null,
     low: false,
     rect: cover({ w: 1, h: 1 }),
@@ -640,7 +649,7 @@ export async function create(canvas, ctx) {
     keys: {},
     stick: null, // { id, x, y, dx, dy, on }
     boostBtn: false,
-    climbBtn: 0, // the phone's climb (1) or dive (−1) button, held
+    climbBtn: 0, // the phone's nose-up (1) or nose-down (−1) button, held
     fireBtn: false, // the phone's fire button, held
     boosting: false,
     boosts: 0,
@@ -675,7 +684,7 @@ export async function create(canvas, ctx) {
     hot: false, // the nose is near enough the lead that a shot bends onto it
     cycle: 0, // T was pressed: on to the next target (1), or Shift+T, back one (−1)
     hitMark: 0, // the reticle's flash as a shot lands, 1 fading to 0
-    bias: [0, 0, 0], // the camera's lean toward the lock, eased
+    bias: [0, 0, 0], // the camera's lean toward the lock, eased (the map's own frame)
     pull: 0, // how hard the Maw has you (maw.js), 0 … 1
     pullSaid: false,
   };
@@ -714,52 +723,110 @@ export async function create(canvas, ctx) {
   };
   watchPanel();
 
-  // Where the camera rides with a ship: behind and a little above it, looking
-  // past it the way it points, further back the faster it goes.
+  // A point in the map's own frame, in the turned one (the map's turn,
+  // `yaw`, is applied to the planets, not the camera)
   const rotate = (x, z) => {
     const c = Math.cos(state.yaw);
     const s = Math.sin(state.yaw);
     return [x * c + z * s, -x * s + z * c];
   };
-  const chasePose = () => {
+
+  // Flying, the camera works in views: { target, quat, dist } in the map's
+  // own frame (so the map turning under it doesn't move it), the camera
+  // `dist` back from `target` along the way `quat` looks. It rides with the
+  // ship's own way round, rolls and all (`camQ`: easing after the ship, so
+  // it swings round after it through a turn, a loop or a roll), and goes
+  // from one view to the next (behind the ship, the cockpit, the whole map,
+  // a crash) by easing the target, the distance and the way it looks
+  // together, so it never flips over the top of a loop.
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+  const yawQ = new THREE.Quaternion();
+  const lookM = new THREE.Matrix4();
+  const shipQ = new THREE.Quaternion();
+  const headQ = new THREE.Quaternion();
+  const shipEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const camQ = new THREE.Quaternion();
+  let camQOn = false; // (off: it's put straight onto the ship's, next frame)
+  const TILT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.21); // looking down at the ship a little
+  const leanQ = new THREE.Quaternion();
+  const Z_AXIS = new THREE.Vector3(0, 0, 1);
+  const camF = new THREE.Vector3();
+  const camU = new THREE.Vector3();
+  const camR = new THREE.Vector3();
+  const camP = new THREE.Vector3();
+  const orientOf = (s, q) => q.setFromEuler(shipEuler.set(s.pitch || 0, s.heading, -(s.bank || 0), 'YXZ'));
+
+  // a pose (flight.js's, in the turned frame) as a view
+  const viewOfPose = (pose) => {
+    const { position, target } = cameraFrom(pose);
+    const t = new THREE.Vector3(...target);
+    const quat = new THREE.Quaternion().setFromRotationMatrix(lookM.lookAt(camP.set(...position), t, Y_AXIS));
+    yawQ.setFromAxisAngle(Y_AXIS, -state.yaw);
+    return { target: t.applyQuaternion(yawQ), quat: quat.premultiply(yawQ), dist: pose.dist };
+  };
+  // and a view as near a pose as there is (for the things that start from
+  // one: the dive into a planet, landing back on the overview)
+  const poseOfView = (v) => {
+    yawQ.setFromAxisAngle(Y_AXIS, state.yaw);
+    const t = v.target.clone().applyQuaternion(yawQ);
+    camF.set(0, 0, -1).applyQuaternion(v.quat).applyQuaternion(yawQ);
+    return { target: t.toArray(), dist: v.dist, pitch: Math.asin(clamp(-camF.y, -0.999, 0.999)) };
+  };
+  const blendView = (a, b, k) => ({
+    target: a.target.clone().lerp(b.target, k),
+    quat: a.quat.clone().slerp(b.quat, k),
+    dist: Math.exp(Math.log(a.dist) + (Math.log(b.dist) - Math.log(a.dist)) * k),
+  });
+  const applyView = (v) => {
+    yawQ.setFromAxisAngle(Y_AXIS, state.yaw);
+    camera.quaternion.copy(v.quat).premultiply(yawQ);
+    camera.position.copy(v.target).applyQuaternion(yawQ).addScaledVector(camF.set(0, 0, -1).applyQuaternion(camera.quaternion), -v.dist);
+    camera.updateMatrixWorld();
+  };
+
+  // The camera's own way round eases after the ship's (quickly in the
+  // cockpit, where it's your head; as the settings say behind it). The map
+  // turns with the way it looks, as far as it looks along the disc (so the
+  // light stays where it was on the screen, and the whole map comes up the
+  // way the ship was going)
+  const follow = (dt) => {
     const s = state.ship;
-    const [wx, wz] = rotate(s.x, s.z);
-    const [fx, fz] = forward(s.heading);
-    const [dx, dz] = rotate(fx, fz);
-    const look = 0.4;
-    // climbing, it drops a little below the ship's line (so you see it rise
-    // against the sky); diving, it rises above (so you see what's coming);
-    // turning, it slides out the way the ship banks, so you see where it's
-    // going; and it leans a little toward whatever the guns are locked on
-    const tip = s.pitch || 0;
-    const [rx, rz] = rotate(-fz, fx);
-    const lean = (s.bank || 0) * 0.45;
+    orientOf(s, shipQ);
+    if (!camQOn || reduced) camQ.copy(shipQ);
+    else camQ.slerp(shipQ, 1 - Math.exp(-dt * (state.view === 'cockpit' ? 20 : 4.5 * controls().camera)));
+    camQOn = true;
+    if (state.view === 'map' || (state.crash && !state.crash.back)) return;
+    camF.set(0, 0, -1).applyQuaternion(camQ);
+    const level = camF.x * camF.x + camF.z * camF.z;
+    if (level > 1e-6) state.yaw += wrap(-Math.atan2(-camF.x, -camF.z) - state.yaw) * (1 - Math.exp(-dt * 8 * level));
+  };
+
+  // Behind the ship and a little above it (above as the ship sees it:
+  // upside down, the camera's upside down too), looking past it the way it
+  // points, further back the faster it goes; sliding out the way it leans
+  // into a turn, so you see where it's going, and leaning a little toward
+  // whatever the guns are locked on
+  const chaseView = () => {
+    const s = state.ship;
+    camF.set(0, 0, -1).applyQuaternion(camQ);
+    camU.set(0, 1, 0).applyQuaternion(camQ);
+    camR.set(1, 0, 0).applyQuaternion(camQ);
     const [bx, by, bz] = state.bias;
-    // (up and down, it swings most of the way round under or over the
-    // ship, looking out along the nose, so a climb or a dive shows where
-    // it's going)
-    const level = Math.cos(tip);
-    return {
-      target: [wx + dx * look * level + rx * lean + bx, s.y + 0.06 + Math.sin(tip) * look + by, wz + dz * look * level + rz * lean + bz],
-      dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7,
-      pitch: 0.21 - tip * 0.72,
-    };
+    const target = new THREE.Vector3(s.x + bx, s.y + by, s.z + bz)
+      .addScaledVector(camF, 0.4)
+      .addScaledVector(camU, 0.06)
+      .addScaledVector(camR, (s.lean || 0) * 0.45);
+    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed), 30) * 0.045 + state.streak * 0.7 };
   };
 
   // From the pilot's seat: the eye a little ahead of the ship's middle and
-  // above it, looking along the nose (the map's turn keeps the nose down −z,
-  // so the pose's camera lands on the eye); the roll comes after, in render
-  const cockpitPose = () => {
+  // above it, looking along the nose, the horizon tilting a little more with
+  // the lean of a turn
+  const cockpitView = () => {
     const s = state.ship;
-    const [wx, wz] = rotate(s.x, s.z);
-    const [fx, fz] = forward(s.heading);
-    const [dx, dz] = rotate(fx, fz);
-    const tip = s.pitch || 0;
-    const level = Math.cos(tip);
-    const ex = wx + dx * EYE.ahead * level;
-    const ey = s.y + EYE.up + EYE.ahead * Math.sin(tip);
-    const ez = wz + dz * EYE.ahead * level;
-    return { target: [ex + dx * level, ey + Math.sin(tip), ez + dz * level], dist: 1, pitch: -tip };
+    const quat = camQ.clone().multiply(leanQ.setFromAxisAngle(Z_AXIS, -(s.lean || 0) * 0.85));
+    const eye = new THREE.Vector3(0, EYE.up, -EYE.ahead).applyQuaternion(camQ).add(camP.set(s.x, s.y, s.z));
+    return { target: eye.addScaledVector(camF.set(0, 0, -1).applyQuaternion(quat), 1), quat, dist: 1 };
   };
   const cabFov = () => {
     const a = size.w / size.h;
@@ -788,9 +855,13 @@ export async function create(canvas, ctx) {
     return state.yaw + Math.atan2(Math.sin(a - state.yaw), Math.cos(a - state.yaw));
   };
 
-  const goal = () => {
-    if (flying()) return state.view === 'map' ? mapPose() : state.crash && !state.crash.back ? crashPose() : state.view === 'cockpit' ? cockpitPose() : chasePose();
-    return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
+  // where the camera's going: with no ship, a pose (flight.js); flying, a view
+  const goal = () => (state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview);
+  const flightView = () => {
+    const whole = state.view === 'map' ? mapPose() : null;
+    if (whole) return viewOfPose(whole);
+    if (state.crash && !state.crash.back) return viewOfPose(crashPose());
+    return state.view === 'cockpit' ? cockpitView() : chaseView();
   };
 
   const apply = (pose) => {
@@ -967,6 +1038,11 @@ export async function create(canvas, ctx) {
 
   // the camera eases from wherever it is to wherever it's going next
   const retarget = (dur) => {
+    if (flying()) {
+      state.flight = null;
+      state.blend = reduced || !state.cam || !dur ? null : { from: state.cam, start: performance.now(), dur };
+      return;
+    }
     state.flight = reduced || !state.pose ? null : startFlight(state.pose, performance.now(), dur);
   };
 
@@ -978,7 +1054,7 @@ export async function create(canvas, ctx) {
       if (id && id !== state.at) {
         state.view = state.seat;
         if (reduced) {
-          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, lift: 0, pitch: 0 };
+          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0 };
           state.yaw = -state.ship.heading;
         } else {
           state.auto = { id, park: parkAt(id, [state.ship.x, state.ship.z]) };
@@ -1107,14 +1183,14 @@ export async function create(canvas, ctx) {
     // and the other way from something off to the right)
     let wantYaw = (s.rate || 0) * 0.05;
     if (state.lockTarget) {
-      const [fx, fz] = forward(s.heading);
-      const dx = state.lockTarget.at.x - s.x;
-      const dz = state.lockTarget.at.z - s.z;
-      wantYaw -= clamp(Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz) * 0.2, -0.16, 0.16);
+      // (where it is as the ship sees it, whichever way up it is)
+      const at = state.lockTarget.at;
+      camP.set(at.x - s.x, at.y - s.y, at.z - s.z).applyQuaternion(orientOf(s, headQ).invert());
+      wantYaw += clamp(Math.atan2(-camP.x, -camP.z) * 0.2, -0.16, 0.16);
     }
     const k = 1 - Math.exp(-dt * 4);
     look.yaw += (wantYaw - look.yaw) * k;
-    look.pitch += ((s.vy || 0) * -0.003 - look.pitch) * k;
+    look.pitch += ((s.tipRate || 0) * -0.012 - look.pitch) * k;
     camIn.projectionMatrix.copy(camera.projectionMatrix);
     camIn.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
     camIn.rotation.set(look.pitch + (reduced ? 0 : Math.sin(t * 0.7) * 0.003), look.yaw + (reduced ? 0 : Math.sin(t * 0.43) * 0.004), 0);
@@ -1185,7 +1261,10 @@ export async function create(canvas, ctx) {
         .catch(() => {});
     }
     if (!state.ship) {
-      state.ship = spawn(state.sel);
+      // a new pilot: at the universe picked, or anywhere (ship.js's STARTS),
+      // so those joining don't all turn up in the same place
+      state.ship = spawn(state.sel, startAt());
+      camQOn = false;
       state.at = state.sel && orbiting(state.ship, null) === state.sel ? state.sel : null;
       state.yaw = -state.ship.heading;
     }
@@ -1236,19 +1315,28 @@ export async function create(canvas, ctx) {
   // the visitor's flying settings (controls.js), as the page last passed them
   const controls = () => props.controls ?? CONTROL_DEFAULTS;
   const steering = () => {
-    const k = state.keys;
     const c = controls();
-    let throttle = (k.up ? 1 : 0) - (k.down ? 1 : 0);
-    let turn = (k.right ? 1 : 0) - (k.left ? 1 : 0);
-    let climb = keyClimb(k, c) + state.climbBtn;
+    let { throttle, turn, climb, roll } = keyAxes(state.keys, c);
+    climb += state.climbBtn;
     const st = state.stick;
     if (st?.on) {
       const d = stickInput(st.dx, st.dy, c, st.pointer);
       throttle += d.throttle;
       turn += d.turn;
       climb += d.climb;
+      roll += d.roll;
     }
-    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1), climb: clamp(climb, -1, 1), boost: Boolean(k.boost || state.boostBtn), turnRate: c.turn, pitchRate: c.pitch };
+    return {
+      throttle: clamp(throttle, -1, 1),
+      turn: clamp(turn, -1, 1),
+      climb: clamp(climb, -1, 1),
+      roll: clamp(roll, -1, 1),
+      boost: Boolean(state.keys.boost || state.boostBtn),
+      turnRate: c.turn,
+      pitchRate: c.pitch,
+      rollRate: c.roll,
+      level: c.level,
+    };
   };
 
   // a shot from the nose (the X-wing's from each wingtip in turn): along
@@ -1905,7 +1993,8 @@ export async function create(canvas, ctx) {
         const r = solid.r + 5;
         at = { x: solid.at[0] + out.x * r, y: c.id === 'sun' ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
-      state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, edge: false };
+      state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+      camQOn = false; // (the camera's straight on behind it)
       if (c.swallow) {
         // (the page didn't take it on through: back out past the Maw's reach)
         const out = new THREE.Vector3(c.from.x - MAW.at[0], 0, c.from.z - MAW.at[2]).normalize();
@@ -1928,9 +2017,8 @@ export async function create(canvas, ctx) {
       const k = clamp01((age - T.back) / (T.done - T.back));
       const s = state.ship;
       m.group.position.set(s.x, s.y, s.z);
-      m.group.rotation.y = s.heading;
+      m.group.rotation.set(s.pitch || 0, s.heading, -(s.bank || 0), 'YXZ');
       const grow = 1 - (1 - k) ** 3;
-      if (state.view !== 'map') state.yaw += wrap(-s.heading - state.yaw) * (1 - Math.exp(-dt * (state.view === 'cockpit' ? 20 : 4.5)));
       m.group.scale.set(grow, grow, state.kind === 'cruiser' ? grow : grow * (1 + (1 - k) * 5));
     }
     if (age >= T.done) {
@@ -2013,11 +2101,6 @@ export async function create(canvas, ctx) {
       paintStates();
     }
 
-    // the camera swings round behind the ship (not in the map view); in the
-    // cockpit it's your head, all but fixed to the ship
-    if (state.view === 'chase') state.yaw += wrap(-ship.heading - state.yaw) * (1 - Math.exp(-dt * (reduced ? 12 : 4.5 * controls().camera)));
-    else if (state.view === 'cockpit') state.yaw += wrap(-ship.heading - state.yaw) * (1 - Math.exp(-dt * 20));
-
     // the guns: what they're locked on to (a tick as they pick one up),
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
@@ -2037,11 +2120,9 @@ export async function create(canvas, ctx) {
     let by = 0;
     let bz = 0;
     if (tgt && !reduced) {
-      const [lx, lz] = rotate(tgt.at.x, tgt.at.z);
-      const [sx, sz] = rotate(ship.x, ship.z);
-      const vx = lx - sx;
+      const vx = tgt.at.x - ship.x;
       const vy = tgt.at.y - ship.y;
-      const vz = lz - sz;
+      const vz = tgt.at.z - ship.z;
       const l = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1;
       const k = Math.min(0.3, l * 0.08) / l;
       bx = vx * k;
@@ -2057,9 +2138,10 @@ export async function create(canvas, ctx) {
     m.update(t);
     m.group.visible = state.cabK < 0.6; // (from inside, the ship is the cockpit)
     m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
-    m.group.rotation.y = ship.heading;
-    m.pivot.rotation.z = -ship.bank;
-    m.pivot.rotation.x = (ship.pitch || 0) + (reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08));
+    // which way round it is, exactly (loops, rolls, upside down); inside
+    // that, the lean into a turn and a dip of the nose with the throttle
+    m.group.rotation.set(ship.pitch || 0, ship.heading, -(ship.bank || 0), 'YXZ');
+    m.pivot.rotation.set(reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08), 0, -(ship.lean || 0));
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
     updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3);
     engine?.set({ speed: Math.min(ship.speed, SHIP.boost * 1.2), boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
@@ -2074,13 +2156,16 @@ export async function create(canvas, ctx) {
         input.throttle ||
         input.turn ||
         input.climb ||
+        input.roll ||
         Math.abs(ship.speed) > 0.01 ||
         Math.abs(ship.vy) > 0.01 ||
         Math.abs(ship.rate || 0) > 0.002 ||
-        Math.abs(ship.pitch) > 0.002 ||
+        Math.abs(ship.tipRate || 0) > 0.002 ||
+        Math.abs(ship.rollRate || 0) > 0.002 ||
+        Math.abs(ship.lean || 0) > 0.002 ||
         state.streak > 0.01 ||
         state.lock ||
-        Math.abs(wrap(-ship.heading - state.yaw)) > 0.002 ||
+        camQ.angleTo(shipQ) > 0.002 ||
         apart(state.bias[0], state.bias[1], state.bias[2], 0, 0, 0) > 0.001,
     );
   };
@@ -2098,10 +2183,10 @@ export async function create(canvas, ctx) {
     if (sharp !== null) post.sharpness = sharp;
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
-    if (!state.pose) {
-      // first frame: straight onto a universe from a link (or behind the
-      // ship parked there); the overview drifts in from a little further out
-      if (!flying() && state.sel) {
+    if (!state.pose && !flying()) {
+      // first frame: straight onto a universe from a link; the overview
+      // drifts in from a little further out (flying, it's below)
+      if (state.sel) {
         state.yaw = frontYaw(state.sel);
         state.yawTo = null;
         map.rotation.y = state.yaw;
@@ -2130,6 +2215,7 @@ export async function create(canvas, ctx) {
     }
     let moving = false;
     if (flying() && !state.dive && !props.frozen) moving = fly(dt, t);
+    if (flying() && !state.dive) follow(dt);
     placeAlt();
     map.rotation.y = state.yaw;
     map.updateMatrixWorld();
@@ -2152,24 +2238,45 @@ export async function create(canvas, ctx) {
         const g = state.model.group.position;
         g.set(g.x + (px - g.x) * e * 0.25, g.y + (py - g.y) * e * 0.25, g.z + (pz - g.z) * e * 0.25);
       }
-    } else {
+    } else if (!flying()) {
       const r = poseAt(state.flight, goal(), now);
       pose = r.pose;
       if (r.done) state.flight = null;
     }
-    state.pose = pose;
-    apply(pose);
+    if (pose) {
+      state.blend = null;
+      state.pose = pose;
+      apply(pose);
+      state.cam = viewOfPose(pose);
+    } else {
+      // flying: riding with the ship (first frame: straight in behind it
+      // parked at a universe from a link, or in from a little way out over
+      // the overview)
+      if (!state.cam && !state.sel && !reduced && state.overview) {
+        const o = state.overview;
+        state.blend = { from: viewOfPose({ target: [...o.target], dist: o.dist * 1.35, pitch: o.pitch + 0.12 }), start: now, dur: 1800 };
+      }
+      const to = flightView();
+      let view = to;
+      if (state.blend) {
+        const k = clamp01((now - state.blend.start) / state.blend.dur);
+        if (k >= 1) state.blend = null;
+        else view = blendView(state.blend.from, to, easeOut(k));
+      }
+      state.cam = view;
+      applyView(view);
+      state.pose = poseOfView(view);
+    }
     // into the cockpit and out of it: the ship fades from view and the
-    // cockpit takes its place, the horizon rolls with the ship's bank, and
-    // your head turns a little (the cockpit with it)
+    // cockpit takes its place, and your head turns a little (the cockpit
+    // with it); the horizon rolls with the ship, all the way round
     const cabWant = flying() && state.view === 'cockpit' && !state.crash && !state.dive ? 1 : 0;
     const cabWas = state.cabK;
     state.cabK += (cabWant - state.cabK) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     if (Math.abs(state.cabK - cabWant) < 0.002) state.cabK = cabWant;
     const inCab = flying() && state.cabK > 0.001 && !state.crash;
-    if (inCab) {
-      camera.rotateZ(-(state.ship.bank || 0) * 0.85 * state.cabK);
-      if (cab) camera.rotateY(cab.look.yaw * state.cabK);
+    if (inCab && cab) {
+      camera.rotateY(cab.look.yaw * state.cabK);
       camera.updateMatrixWorld();
     }
     // boosting, the lens widens (so the speed shows at the edges), with a
@@ -2296,7 +2403,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
   }
 
   // ── Keys, while flying ──
