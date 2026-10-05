@@ -7,6 +7,7 @@ import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import GpuGate from '../../games/GpuGate';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import ButterRobot from '../ButterRobot';
@@ -91,7 +92,7 @@ const startDone = () => {
   local.set(DONE, next);
   return next;
 };
-const CANT_LAND = 'Can’t land here. Slow right down over open ground: the road or a front lawn.';
+const CANT_LAND = 'Can’t land here. Slow right down over open ground, clear of the doors: the road or a front lawn.';
 
 // what opens over the page, and the task opening it ticks off
 const PLACES = {
@@ -498,8 +499,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (e.key === 'e' || e.key === 'E' || (e.key === 'Enter' && !onButton)) {
         e.preventDefault();
         fns.current.act();
-      } else if (e.key === 'm' || e.key === 'M') setList((v) => !v);
-      else if (e.key === 'Escape' && listRef.current) closeList();
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (listRef.current) closeList();
+        else setList(true);
+      } else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
       keyUp(s.keys, e);
@@ -531,7 +534,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     const pressed = (b) => pad?.[b] && !before[b];
     if (pressed('a')) fns.current.act();
     if (pressed('b') && listRef.current) closeList();
-    if (pressed('y')) setList((v) => !v);
+    if (pressed('y')) {
+      if (listRef.current) closeList();
+      else setList(true);
+    }
 
     if (s.flying) {
       let throttle = (k.has('up') ? 1 : 0) - (k.has('down') ? 1 : 0) - s.stick.y;
@@ -1120,8 +1126,9 @@ function Place({ id, onClose, onQuiz, onRoy }) {
     const was = html.style.overflow;
     html.style.overflow = 'hidden';
     // (a game that marks itself [data-owns-escape] takes Esc for itself: Roy
-    // to end the life it's in, Portal panic to pause a run; the next Esc, or
-    // its own way out, leaves)
+    // and Portal panic pause what's being played, and Esc on the pause card,
+    // or its own way out, leaves; Roy also leaves on Esc from its intro or
+    // end card, or while it's loading)
     const esc = (e) => e.key === 'Escape' && !e.defaultPrevented && !shell.current?.querySelector('[data-owns-escape]') && onClose();
     window.addEventListener('keydown', esc);
     // B on a controller, for the ones that aren't games with their own buttons
@@ -1148,7 +1155,19 @@ function Place({ id, onClose, onQuiz, onRoy }) {
     plumbus: <PlumbusFactory />,
     portalpanic: <PortalPanic />,
     quiz: <Quiz onDone={onQuiz} />,
-    roy: <Roy onLeave={onRoy} />,
+    // (behind the site's 3D gate, as Portal panic is, with a way back from its cards)
+    roy: (
+      <GpuGate
+        className="rm-roy-gate"
+        extra={
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onRoy(null, null)}>
+            Back to the arcade
+          </button>
+        }
+      >
+        {() => <Roy onLeave={onRoy} />}
+      </GpuGate>
+    ),
   }[id];
   return createPortal(
     <div ref={shell} className="rm-place" data-full={p.full || undefined} data-place={id} role="dialog" aria-modal="true" aria-label={p.full ? p.title : undefined} aria-labelledby={p.full ? undefined : 'rm-place-title'} tabIndex={-1}>

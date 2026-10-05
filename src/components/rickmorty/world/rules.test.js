@@ -1321,6 +1321,56 @@ describe('C-137: the cruiser', () => {
     }
   });
 
+  // the street's doors, and where Morty comes out into the street
+  const DOORS = LINKS.filter((l) => l.area === 'street');
+  const ARRIVALS = LINKS.filter((l) => l.to === 'street').map((l) => ({ id: l.id, ...l.arrive }));
+  // how near the cruiser's middle Morty's can be without his being inside it
+  const BODY = CRUISER.radius + MORTY.radius;
+
+  it('never sets down where Morty comes out of a door, nor on a door', () => {
+    expect(DOORS.map((l) => l.id).sort()).toEqual(['garage-door', 'house-door', 'school-door']);
+    for (const a of ARRIVALS) expect(canLand({ ...newCruiser(), x: a.x, z: a.z }), a.id).toBe(false);
+    for (const l of DOORS) expect(canLand({ ...newCruiser(), x: l.x, z: l.z + Math.sign(-l.z) * (l.r - 0.1) }), l.id).toBe(false);
+    // the ones the review found: over the house's way out, and hard by the garage's and the school's doors
+    expect(canLand({ ...newCruiser(), x: -9.3, z: -15 })).toBe(false);
+    expect(canLand({ ...newCruiser(), x: -19.2, z: -12.3 })).toBe(false);
+    expect(canLand({ ...newCruiser(), x: 39.7, z: 14 })).toBe(false);
+    // and it still parks on its spot in the driveway
+    expect(canLand(newCruiser())).toBe(true);
+  });
+
+  it('wherever it can land, leaves every street door somewhere to stand and every way out into the street clear', () => {
+    // each door's spots Morty can stand on within its reach, the door's own first
+    const spots = DOORS.map((l) => {
+      const out = [];
+      for (let i = -16; i <= 16; i++)
+        for (let j = -16; j <= 16; j++) {
+          const x = l.x + i * 0.1;
+          const z = l.z + j * 0.1;
+          if (Math.hypot(x - l.x, z - l.z) < l.r && free('street', x, z)) out.push({ x, z, d: Math.hypot(x - l.x, z - l.z) });
+        }
+      return { id: l.id, out: out.sort((p, q) => p.d - q.d) };
+    });
+    for (const s of spots) expect(s.out.length, s.id).toBeGreaterThan(0);
+    // every 10 cm within 4.5 m of each door and each way out
+    const blocked = [];
+    const onTop = [];
+    let landed = 0;
+    for (const p of [...DOORS, ...ARRIVALS])
+      for (let i = -45; i <= 45; i++)
+        for (let j = -45; j <= 45; j++) {
+          const c = { ...newCruiser(), x: p.x + i * 0.1, z: p.z + j * 0.1 };
+          if (!canLand(c)) continue;
+          landed++;
+          for (const s of spots) if (!s.out.some((o) => Math.hypot(o.x - c.x, o.z - c.z) >= BODY)) blocked.push(`${s.id} by ${c.x.toFixed(1)}, ${c.z.toFixed(1)}`);
+          for (const a of ARRIVALS) if (Math.hypot(a.x - c.x, a.z - c.z) < BODY) onTop.push(`${a.id} under ${c.x.toFixed(1)}, ${c.z.toFixed(1)}`);
+        }
+    expect(blocked.slice(0, 3)).toEqual([]);
+    expect(onTop.slice(0, 3)).toEqual([]);
+    // (and there was somewhere to land round them all the same)
+    expect(landed).toBeGreaterThan(1000);
+  });
+
   // Where it might be set down, and where Morty steps out: a 2 m grid across the street, and a band
   // along both sides of every fence (where an exit could end up across it), at four headings. Worked
   // out once, and only the failures are written down, so a pass costs nothing to report.

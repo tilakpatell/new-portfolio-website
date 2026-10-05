@@ -12,7 +12,7 @@
 // area, built far apart (the rooms down the x = -300 line, the annex out at
 // x = 400) so a door is a jump.
 
-import { seeded } from '../../middleearth/shire/rules';
+import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
@@ -511,10 +511,16 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
 }
 
 // Slow, over open ground in the street: not a roof, a fenced back yard, a tree
-// or any of the street's small things.
+// or any of the street's small things, and not on a street door or where
+// Morty comes out into the street (it keeps far enough off that he stands
+// clear of it there).
 const inYard = (x, z) => YARDS.some((y) => x >= y.x0 && x <= y.x1 && z >= y.z0 && z <= y.z1);
+const DOORSTEP = CRUISER.radius + MORTY.radius + 0.3;
+const DOORSTEPS = [...LINKS.filter((l) => l.area === 'street'), ...LANDINGS];
 const onSomething = (x, z) =>
-  TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) || DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.kind === 'box' ? Math.hypot(d.w, d.d) / 2 : d.r));
+  TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) ||
+  DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.kind === 'box' ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
+  DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP);
 export const canLand = (c) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z);
 
 // do the segments a-b and c-d cross?

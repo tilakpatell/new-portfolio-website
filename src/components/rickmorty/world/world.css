@@ -150,6 +150,9 @@
 .rm-place[data-full] { background: #04070a; }
 .rm-place[data-full] .rm-place-body { display: flex; overflow: hidden; }
 .rm-place[data-full] .rm-place-body > * { flex: 1; }
+/* Roy behind the 3D gate: the gate's card fills the screen, and so does the game past it */
+.rm-place[data-full] .rm-place-body > .contents > * { flex: 1; }
+.rm-place[data-full] .rm-roy-gate { aspect-ratio: auto; min-height: 0; max-width: none; border: 0; border-radius: 0; overflow-y: auto; }
 .rm-place-wait { margin: 0; padding: 2rem; color: var(--muted); }
 .rm-place[data-full] .rm-place-wait { display: grid; place-items: center; color: #c9ff5a; font: 700 1rem/1 var(--font-sans); }
 .rm-place-down { display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 2rem; color: #fff; font: 600 1rem/1.5 var(--font-sans); text-align: center; }

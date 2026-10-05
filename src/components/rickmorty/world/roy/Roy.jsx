@@ -33,6 +33,8 @@ const CARD_MS = 2400;
 const WIPE_MS = 950;
 const DYING_MS = { cancer: 2600, carpet: 2700, log: 2700, old: 3800 };
 const SLOW_LOAD_MS = 1500; // how long before the loading screen offers a way out
+// the phases of a life that pause (by P, Esc, Start, the button or the tab being hidden)
+const PAUSES = ['wipe', 'card', 'choose', 'play', 'hold'];
 
 const KEYS = {
   left: ['ArrowLeft', 'a', 'A'],
@@ -427,7 +429,7 @@ export default function Roy({ onLeave }) {
   const leave = () => onLeave?.(session.current.best, session.current.last);
   const pause = (on) => {
     const p = phaseRef.current;
-    if (on && ['play', 'hold', 'card', 'choose'].includes(p)) {
+    if (on && PAUSES.includes(p)) {
       resumeTo.current = p;
       take();
       setPhase('paused');
@@ -529,7 +531,7 @@ export default function Roy({ onLeave }) {
 
   // the latest handlers, for listeners bound once
   const fns = useRef({});
-  fns.current = { start, leave, pause, choose, toPlay, advance, react, setPhase };
+  fns.current = { start, leave, pause, finish, choose, toPlay, advance, react, setPhase };
 
   // ── keys, anywhere while the headset's on ──
   useEffect(() => {
@@ -538,9 +540,13 @@ export default function Roy({ onLeave }) {
       const F = fns.current;
       const p = phaseRef.current;
       const k = e.key;
+      // Esc pauses a life (the pause card has the way out), skips a death to
+      // its end card, and otherwise (loading, the intro, paused, the end) leaves
       if (k === 'Escape') {
         e.preventDefault();
-        F.leave();
+        if (PAUSES.includes(p)) F.pause(true);
+        else if (p === 'dying') F.finish();
+        else F.leave();
         return;
       }
       if (p === 'loading') return;
@@ -681,7 +687,7 @@ export default function Roy({ onLeave }) {
   const r = result;
 
   return (
-    <div ref={wrap} className="roy" data-phase={phase} data-stage={hud.stage} role="group" data-owns-escape="" style={{ '--band': KID.band }} aria-label="Roy: A Life Well Lived. Arrows or A and D move, Space or Enter acts, Escape takes the headset off.">
+    <div ref={wrap} className="roy" data-phase={phase} data-stage={hud.stage} role="group" data-owns-escape="" style={{ '--band': KID.band }} aria-label="Roy: A Life Well Lived. Arrows or A and D move, Space or Enter acts, P or Escape pauses.">
       <p className="roy-sr" aria-live="polite" aria-atomic="true">
         {announce}
       </p>
@@ -714,10 +720,10 @@ export default function Roy({ onLeave }) {
 
           <div className="roy-side">
             <div className="roy-tools">
-              <button type="button" className="roy-tool" data-roy onClick={() => pause(phase !== 'paused')} aria-label={phase === 'paused' ? 'Carry on' : 'Pause'} title="Pause (P)">
+              <button type="button" className="roy-tool" data-roy onClick={() => pause(phase !== 'paused')} aria-label={phase === 'paused' ? 'Carry on' : 'Pause'} title="Pause (P or Esc)">
                 <RiPauseLine aria-hidden="true" />
               </button>
-              <button type="button" className="roy-tool" data-roy onClick={leave} aria-label="Take the headset off" title="Take the headset off (Esc)">
+              <button type="button" className="roy-tool" data-roy onClick={leave} aria-label="Take the headset off" title="Take the headset off">
                 <RiCloseLine aria-hidden="true" />
               </button>
             </div>
@@ -860,7 +866,7 @@ export default function Roy({ onLeave }) {
             <p className="roy-keys">
               <kbd>←</kbd>
               <kbd>→</kbd> or <kbd>A</kbd>
-              <kbd>D</kbd> move · <kbd>Space</kbd> or <kbd>Enter</kbd> act · <kbd>Esc</kbd> takes the headset off
+              <kbd>D</kbd> move · <kbd>Space</kbd> or <kbd>Enter</kbd> act · <kbd>P</kbd> or <kbd>Esc</kbd> pauses
             </p>
           </div>
         </div>

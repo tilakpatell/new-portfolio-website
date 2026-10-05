@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RiCpuLine, RiFileCopyLine, RiRefreshLine, RiRestartLine } from 'react-icons/ri';
 import { reprobe, use3D } from '../../lib/gpu';
 import { storage, useInView } from '../../lib/hooks';
@@ -18,7 +18,8 @@ import './games.css';
 //
 // children({ soft, fail }): soft is true when the game is running on
 // software WebGL because the visitor asked to play anyway; fail(reason)
-// ('lost' or 'failed') hands the frame back to the gate.
+// ('lost' or 'failed') hands the frame back to the gate. `extra` goes after
+// each card's own buttons (a way back, for a game that fills the screen).
 
 const ANYWAY = 'tp-gl-anyway';
 
@@ -86,14 +87,26 @@ function Card({ title, children, actions, className = '' }) {
   );
 }
 
-export default function GpuGate({ children, className = '' }) {
+// The frame that holds the game's place until it comes within a screen and a
+// half of the view. Its own component, so it watches from whenever it first
+// shows, after one of the cards as much as at the start.
+function Waiting({ className, onNear }) {
+  const [frame, near] = useInView({ once: true, rootMargin: '150% 0px 150% 0px' });
+  useEffect(() => {
+    if (near) onNear();
+  }, [near, onNear]);
+  return <div ref={frame} className={`gate ${className}`} aria-hidden="true" />;
+}
+
+export default function GpuGate({ children, className = '', extra = null }) {
   const three = use3D();
   const [anyway, setAnyway] = useState(() => storage.get(ANYWAY, false) === true);
   const [failure, setFailure] = useState(null);
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState('');
   const fail = useCallback((reason) => setFailure(reason === 'lost' ? 'lost' : 'failed'), []);
-  const [frame, near] = useInView({ once: true, rootMargin: '150% 0px 150% 0px' });
+  const [near, setNear] = useState(false);
+  const isNear = useCallback(() => setNear(true), []);
 
   const status = three.status;
   const soft = status === 'software';
@@ -126,9 +139,12 @@ export default function GpuGate({ children, className = '' }) {
         className={className}
         title="This game is drawn in 3D."
         actions={
-          <button type="button" className="btn btn-primary btn-sm" onClick={three.hold.load}>
-            Load the 3D{three.hold.mb ? ` (about ${three.hold.mb} MB)` : ''}
-          </button>
+          <>
+            <button type="button" className="btn btn-primary btn-sm" onClick={three.hold.load}>
+              Load the 3D{three.hold.mb ? ` (about ${three.hold.mb} MB)` : ''}
+            </button>
+            {extra}
+          </>
         }
       >
         <p className="gate-lede">To save your data and battery, {three.hold.name ?? 'this world'} hasn’t downloaded its 3D yet. Load it to play.</p>
@@ -141,9 +157,12 @@ export default function GpuGate({ children, className = '' }) {
         className={className}
         title="3D graphics are switched off on this site."
         actions={
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => three.set('auto')}>
-            Turn 3D back on
-          </button>
+          <>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => three.set('auto')}>
+              Turn 3D back on
+            </button>
+            {extra}
+          </>
         }
       >
         <p className="gate-lede">You turned them off under one of the games. This one only comes in 3D.</p>
@@ -165,6 +184,7 @@ export default function GpuGate({ children, className = '' }) {
                 Play anyway (slow)
               </button>
             )}
+            {extra}
           </>
         }
       >
@@ -181,16 +201,19 @@ export default function GpuGate({ children, className = '' }) {
         className={className}
         title={failure === 'lost' ? 'The graphics chip reset.' : 'Sorry, the 3D couldn’t start here.'}
         actions={
-          <button type="button" className="btn btn-primary btn-sm" onClick={restart}>
-            <RiRestartLine aria-hidden="true" /> {failure === 'lost' ? 'Restart the game' : 'Try again'}
-          </button>
+          <>
+            <button type="button" className="btn btn-primary btn-sm" onClick={restart}>
+              <RiRestartLine aria-hidden="true" /> {failure === 'lost' ? 'Restart the game' : 'Try again'}
+            </button>
+            {extra}
+          </>
         }
       >
         {failure === 'lost' ? <p className="gate-lede">That happens after a driver update, when the computer wakes from sleep, or with a lot of tabs open.</p> : soft ? <Steps status={status} /> : <p className="gate-lede">Something in this browser stopped the 3D from starting. Reloading the page usually clears it.</p>}
       </Card>
     );
 
-  if (!near) return <div ref={frame} className={`gate ${className}`} aria-hidden="true" />;
+  if (!near) return <Waiting className={className} onNear={isNear} />;
 
   return <div key={attempt} className="contents">{children({ soft, fail })}</div>;
 }

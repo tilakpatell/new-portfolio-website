@@ -309,7 +309,7 @@ export async function buildHouse(kit) {
 function facingAhead(c, clip) {
   const own = clip.clone();
   const hips = c.group.getObjectByName('Hips');
-  const ref = (c.act.walk ?? c.act.idle)?.getClip();
+  const ref = c.act.walk?.getClip();
   if (!hips?.parent || !ref) return own;
   c.group.updateMatrixWorld(true);
   // up, in the hips' parent's frame within the model

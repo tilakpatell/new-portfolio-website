@@ -11,11 +11,13 @@ import { mergeParts } from '../kit';
 import { CYL } from './shell';
 
 // The cast (Rick and the Smiths), loaded once for every room that asks;
-// whoever doesn't load is drawn in shapes.
+// whoever doesn't load is drawn in shapes. They only stand (and Jerry sits),
+// so no run; the walk stays, as the cast turns the idle (Meshy's stands 41°
+// off to one side) and Jerry's sat clip to face the way it does.
 export async function needCast(kit, names) {
   const need = kit.need ?? ((n, o) => kit.cast.load(null, n, o));
   try {
-    await need(names, { clips: ['idle', 'walk', 'run'] });
+    await need(names, { clips: ['idle', 'walk'] });
   } catch {
     /* stand-ins */
   }
