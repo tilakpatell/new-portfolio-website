@@ -30,7 +30,7 @@ const WEAK_GPU = /mali-(4\d\d|t\d|g(31|51|52)\b)|adreno[^\d]*[2-5]\d\d|powervr|s
 const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i;
 
 export const BUDGETS = {
-  high: { ratio: 2, antialias: true, samples: 4, shadows: true, shadowMap: 2048, bloom: 1, aniso: 8, stars: 1 },
+  high: { ratio: 2, antialias: true, samples: 4, shadows: true, shadowMap: 2048, bloom: 1, aniso: 16, stars: 1 },
   mid: { ratio: 1.5, antialias: true, samples: 2, shadows: true, shadowMap: 1024, bloom: 0.5, aniso: 4, stars: 0.6 },
   low: { ratio: 1, antialias: false, samples: 0, shadows: false, shadowMap: 512, bloom: 0, aniso: 1, stars: 0.35 },
 };
