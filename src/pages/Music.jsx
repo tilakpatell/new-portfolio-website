@@ -10,6 +10,8 @@ import {
   FIRST_STRING,
   LISTEN_URL,
   RAGAS,
+  ragaOf,
+  TIMES,
   SA_NOTES,
   chikari,
   dayanHz,
@@ -26,12 +28,15 @@ import {
 import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
+import RagaBook from '../components/music/RagaBook';
 import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
 import Egg from '../components/Egg';
 import { capturePointer } from '../lib/pointer';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
+// the ragas offered at the top; the rest are in the database further down
+const QUICK = ['yaman', 'bhupali', 'bhairav', 'bhairavi', 'kafi', 'malkauns', 'darbari'];
 const hz = (f) => `${f.toFixed(1)} Hz`;
 
 // The tanpura's drone, shared by the controls at the top and the floating one.
@@ -59,6 +64,8 @@ function useDrone() {
 
 function Tuning({ drone }) {
   const [tuning, setTuning] = useTuning();
+  const raga = ragaOf(tuning.raga);
+  const quick = QUICK.includes(tuning.raga) ? QUICK : [...QUICK, tuning.raga];
   return (
     <div className="music-tuning card">
       <div>
@@ -81,14 +88,18 @@ function Tuning({ drone }) {
           Raga
         </p>
         <div className="seg seg-wrap mt-2" role="group" aria-labelledby="raga-label">
-          {Object.entries(RAGAS).map(([id, r]) => (
-            <button key={id} type="button" aria-pressed={tuning.raga === id} onClick={() => setTuning({ raga: id, first: r.first })}>
-              {r.name}
+          {quick.map((id) => (
+            <button key={id} type="button" aria-pressed={tuning.raga === id} onClick={() => setTuning({ raga: id, first: ragaOf(id).first })}>
+              {ragaOf(id).name}
             </button>
           ))}
+          <button type="button" onClick={() => document.getElementById('ragas-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            All {Object.keys(RAGAS).length} ragas, or your own ↓
+          </button>
         </div>
         <p className="mt-2 text-sm text-muted">
-          {RAGAS[tuning.raga].name}, a raga for the {RAGAS[tuning.raga].time.toLowerCase()}. The sitar’s frets and sympathetic strings follow it.
+          {raga.name}
+          {raga.time ? `, sung ${TIMES[raga.time].when}` : ', a raga of your own'}. The sitar’s frets and sympathetic strings follow it.
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
@@ -164,6 +175,7 @@ function Listen() {
 export default function Music() {
   useDocumentTitle('Indian classical music');
   const [tuning] = useTuning();
+  const raga = ragaOf(tuning.raga);
   const { unlock } = useAchievements();
   const drone = useDrone();
   const [phrase, setPhrase] = useState(false);
@@ -186,12 +198,13 @@ export default function Music() {
     if (used.current.size === 3) unlock('jugalbandi');
     if (instrument === 'sitar' && ++notes.current >= 8) unlock('raga');
   };
-  const play = async () => {
+  // the raga's phrase, or other sargam in it (`text`: its aroha and avaroha, say)
+  const play = async (text) => {
     if (!audioContext()) return;
     onPlay('sitar');
     notes.current += 8;
     unlock('raga');
-    const seconds = await playPhrase(tuning.raga);
+    const seconds = await playPhrase(tuning.raga, { text: typeof text === 'string' ? text : undefined });
     if (!seconds) return;
     setPhrase(true);
     setTimeout(() => setPhrase(false), seconds * 1000 + 400);
@@ -247,6 +260,22 @@ export default function Music() {
         </div>
       </section>
 
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="ragas-title">
+        <div className="relative">
+          <Waypoint top="0.9rem" />
+          <h2 id="ragas-title" className="title scroll-mt-[calc(var(--nav-h)+24px)]">
+            Ragas
+          </h2>
+          <p className="lead mt-4 max-w-[62ch]">
+            A raga is more than its notes: a way up and a way down, a note it dwells on (vadi) and its companion (samvadi), a time of day, phrases that are
+            its own. Pick one and the whole room tunes to it, or make your own.
+          </p>
+        </div>
+        <div className="mt-8">
+          <RagaBook onPhrase={play} playing={phrase} />
+        </div>
+      </section>
+
       <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="sitar-title">
         <div className="relative">
           <Waypoint top="0.9rem" />
@@ -263,8 +292,8 @@ export default function Music() {
           <SitarNeck onPlay={onPlay} />
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" className="btn btn-primary" onClick={play} disabled={phrase}>
-            {phrase ? 'Playing…' : `Play a phrase in ${RAGAS[tuning.raga].name}`}
+          <button type="button" className="btn btn-primary" onClick={() => play()} disabled={phrase}>
+            {phrase ? 'Playing…' : `Play a phrase in ${raga.name}`}
           </button>
           {/* press and hold for a roll; from the keyboard, one stroke */}
           <button
@@ -302,7 +331,7 @@ export default function Music() {
               and krintan move the note without a new stroke, the way the left hand pulls and lets go of the string.
             </p>
             <p className="mt-3">
-              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {RAGAS[tuning.raga].name}. Nobody plucks them; they ring when a
+              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {raga.name}. Nobody plucks them; they ring when a
               note you play matches one, and you hear them bloom after it, a modelled string with its own jawari for each. They glow on the neck as they ring.
             </p>
             <p className="mt-3">
@@ -351,7 +380,7 @@ export default function Music() {
               Harmonium
             </h2>
             <p className="lead mt-4 max-w-[56ch]">
-              Pumped by hand, two reeds to every key. The labels show where each note falls from your Sa; the dotted ones are in {RAGAS[tuning.raga].name}.
+              Pumped by hand, two reeds to every key. The labels show where each note falls from your Sa; the dotted ones are in {raga.name}.
             </p>
           </div>
           <figure className="music-photo music-photo-wide m-0">
@@ -394,7 +423,7 @@ export default function Music() {
           <span className="drone-pill-dot" data-on={drone.on || undefined} aria-hidden="true" />
           <span className="text-sm">
             Tanpura · Sa {SA_NOTES[tuning.sa]}
-            <span className="drone-pill-raga text-muted"> · {RAGAS[tuning.raga].name}</span>
+            <span className="drone-pill-raga text-muted"> · {raga.name}</span>
           </span>
           <button type="button" className="drone-pill-btn" onClick={drone.toggle} aria-pressed={drone.on} aria-label={drone.on ? 'Stop the tanpura' : 'Start the tanpura'}>
             {drone.on ? <RiPauseFill className="h-4 w-4" aria-hidden="true" /> : <RiPlayFill className="h-4 w-4" aria-hidden="true" />}

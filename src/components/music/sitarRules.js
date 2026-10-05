@@ -3,7 +3,7 @@
 // a phrase written in sargam falls in time. Tested in sitarRules.test.js.
 
 import { SITAR_VARIANTS } from './sitarSamples';
-import { RAGAS, SWARA } from './tuning';
+import { SWARA, ragaOf, swaraIn } from './tuning';
 
 // ── Which recording ────────────────────────────────────────────────────────
 // The recording nearest in pitch (there is one every fourth semitone), and the
@@ -37,7 +37,8 @@ export const keyForFret = (i) => FRET_KEYS[i] ?? '';
 // The next note of the raga above a ratio (in any octave): where a meend from
 // that note naturally pulls to. Returns semitones above the ratio, 1 to 5.
 export function meendTarget(ratio, ragaId) {
-  const notes = [...RAGAS[ragaId].notes].map((s) => SWARA[s]);
+  const raga = ragaOf(ragaId);
+  const notes = [...raga.notes].map((s) => swaraIn(raga, s));
   let best = Infinity;
   for (const r of notes)
     for (const k of [-2, -1, 0, 1, 2, 3]) {
@@ -59,32 +60,34 @@ export const fretOf = (ratio, list) => list.findIndex((f) => Math.abs(1200 * Mat
 // ── Phrases ────────────────────────────────────────────────────────────────
 // A phrase in sargam: N. is mandra Ni, S' is taar Sa, X>Y a meend from X to Y,
 // X~ an andolan (a slow sway on the note), X^Y a krintan (the left hand pulls
-// off to Y with no new stroke), - holds, | strikes the chikari.
-export function ratioOf(tok) {
+// off to Y with no new stroke), - holds, | strikes the chikari. `tune` puts a
+// raga's notes where it plays them (Darbari's ati komal Ga, say).
+export function ratioOf(tok, tune = null) {
   const m = /^([SrRgGmMPdDnN])([.']?)$/.exec(tok);
   if (!m) return null;
-  return SWARA[m[1]] * (m[2] === '.' ? 0.5 : m[2] === "'" ? 2 : 1);
+  return (tune?.[m[1]] ?? SWARA[m[1]]) * (m[2] === '.' ? 0.5 : m[2] === "'" ? 2 : 1);
 }
 
-export function parsePhrase(text, beat) {
+export function parsePhrase(text, beat, tune = null) {
+  const pitch = (tok) => ratioOf(tok, tune);
   const events = [];
   let t = 0;
   for (const tok of text.trim().split(/\s+/)) {
     if (tok === '|') events.push({ t, kind: 'chikari' });
     else if (tok === '-') t += beat;
     else if (tok.includes('>')) {
-      const [a, b] = tok.split('>').map(ratioOf);
+      const [a, b] = tok.split('>').map(pitch);
       if (a) events.push({ t, kind: 'pluck', ratio: a });
       if (a && b) events.push({ t: t + beat * 0.45, kind: 'glide', ratio: b, tau: 0.07 });
       t += beat;
     } else if (tok.includes('^')) {
-      const [a, b] = tok.split('^').map(ratioOf);
+      const [a, b] = tok.split('^').map(pitch);
       if (a) events.push({ t, kind: 'pluck', ratio: a });
       // a pull-off is quick and sharp: the string jumps to the lower fret
       if (a && b) events.push({ t: t + beat * 0.5, kind: 'glide', ratio: b, tau: 0.008 });
       t += beat;
     } else if (tok.endsWith('~')) {
-      const r = ratioOf(tok.slice(0, -1));
+      const r = pitch(tok.slice(0, -1));
       if (r) {
         events.push({ t, kind: 'pluck', ratio: r });
         // andolan: a slow sway a little below the note and back, twice
@@ -92,7 +95,7 @@ export function parsePhrase(text, beat) {
       }
       t += beat;
     } else {
-      const r = ratioOf(tok);
+      const r = pitch(tok);
       if (r) events.push({ t, kind: 'pluck', ratio: r });
       t += beat;
     }
@@ -104,7 +107,8 @@ export function parsePhrase(text, beat) {
 // The eleven sympathetic strings, in Hz: the raga's notes from the sitar's Sa
 // upwards, the way they are tuned for the raga before a performance.
 export function tarabHz(ragaId, sitarSa) {
-  const notes = [...RAGAS[ragaId].notes].map((s) => SWARA[s]);
+  const raga = ragaOf(ragaId);
+  const notes = [...raga.notes].map((s) => swaraIn(raga, s));
   const out = [];
   for (let oct = 1; out.length < 11; oct *= 2) for (const r of notes) if (out.length < 11) out.push(r * oct * sitarSa);
   return out;
