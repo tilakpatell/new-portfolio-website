@@ -5,7 +5,7 @@ import { capturePointer } from '../../lib/pointer';
 import { damp, holdChikari, onSitarChikari, onSitarPluck, pluck, warmNeck } from './sitar';
 import { CHIKARI, chikariLevel, chikariSpeed } from './sitarRules';
 import { fretForKey, fretOf, keyForFret, meendTarget, sameNote, tarabHz } from './sitarRules';
-import { CHROMATIC, FRET_SETS, customNotes, frets, isFretSet, RAGAS } from './tuning';
+import { CHROMATIC, FRET_SETS, customNotes, frets, isFretSet, ragaOf } from './tuning';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import './music.css';
@@ -51,7 +51,7 @@ function Inlay({ y, flip = false }) {
 export default function SitarNeck({ onPlay }) {
   const [tuning, setTuning] = useTuning();
   const fretSet = isFretSet(tuning.frets) ? tuning.frets : 'all';
-  const custom = customNotes(tuning.customFrets || RAGAS[tuning.raga].notes);
+  const custom = customNotes(tuning.customFrets || ragaOf(tuning.raga).notes);
   const auto = tuning.autoChikari !== false;
   const follow = tuning.chikariFollow !== false;
   const speed = chikariSpeed(tuning.chikariSpeed);
@@ -254,7 +254,7 @@ export default function SitarNeck({ onPlay }) {
   const x = lit >= 0 ? center(lit) : 0;
   const mainPath = lit >= 0 && pull > 0 ? `M8 ${MAIN_Y} L${x} ${MAIN_Y + pull * 26} L${BRIDGE} ${MAIN_Y}` : `M8 ${MAIN_Y} L${BRIDGE} ${MAIN_Y}`;
   const phoneHeight = `clamp(420px, ${n * 34}px, 92vh)`;
-  const ragaName = RAGAS[tuning.raga].name;
+  const ragaName = ragaOf(tuning.raga).name;
   const lights = `${ragaName}’s notes are lit.`;
   const about = {
     all: `${n} frets, mandra Pa to taar Ga. ${lights}`,

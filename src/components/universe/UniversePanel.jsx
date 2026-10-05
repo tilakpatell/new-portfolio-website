@@ -4,13 +4,16 @@ import { restartSite } from '../../lib/restart';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
+import { PARTS_SLOTS, STOCK, partById } from './outfit';
+import { paintById } from './paint';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
 import ModelCredits from '../ModelCredits';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
-// ships to fly (or how to fly the one you're in). With a universe selected:
+// ships to fly (or how to fly the one you're in, and what it's fitted with
+// in the hangar). With a universe selected:
 // its card, the way into its world, previous / next in map order, and back
 // out to the whole map. Put away (tucked), it's a small bar naming where you
 // are, so the map has the room; the same element either way, so the scene
@@ -38,6 +41,28 @@ function Ships({ ship, onShip }) {
   );
 }
 
+const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+
+// What the ship's fitted with (outfit.js), and the way into the hangar
+function Fitted({ loadout, onHangar }) {
+  const paint = paintById(loadout.paint);
+  const parts = PARTS_SLOTS.filter((slot) => loadout[slot] !== STOCK).map((slot) => partById(slot, loadout[slot]));
+  return (
+    <div className="universe-fitted mt-4">
+      <p className="universe-fitted-line">
+        <span className="universe-fitted-swatch" style={{ background: paint.hull ? `linear-gradient(135deg, ${paint.hull} 50%, ${paint.trim} 50%)` : undefined }} aria-hidden="true" />
+        <span>
+          {paint.hull ? `${paint.name} paint` : 'Factory paint'}
+          {parts.length ? `, with ${and(parts.map((p) => p.name))}` : ', nothing bolted on'}
+        </span>
+      </p>
+      <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={onHangar}>
+        Open the hangar
+      </button>
+    </div>
+  );
+}
+
 // Put the panel away, from its top corner
 function Tuck({ onTuck }) {
   return (
@@ -47,7 +72,7 @@ function Tuck({ onTuck }) {
   );
 }
 
-export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, onShip, onStartOn, tucked = false, onTuck }) {
+export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onStartOn, tucked = false, onTuck }) {
   const [changing, setChanging] = useState(false);
   const [homeFirst, setHomeFirst] = useState(false);
   const crew = crewById(ship);
@@ -113,6 +138,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
               You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
               you.
             </p>
+            {loadout && onHangar && <Fitted loadout={loadout} onHangar={onHangar} />}
             <ul className="universe-keys mt-4">
               <li className="universe-keys-board">
                 It flies like a Battlefront starfighter: <kbd>W</kbd> <kbd>S</kbd> for the throttle, <kbd>A</kbd> <kbd>D</kbd> to roll, <kbd>←</kbd> <kbd>→</kbd> to swing the nose and <kbd>↑</kbd> <kbd>↓</kbd> to pull it up and down. Or drag on the map like a stick
@@ -131,6 +157,10 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
               <li className="universe-keys-board">
                 <kbd>T</kbd> for the next target (<kbd>Q</kbd> the one before), or click one; <kbd>E</kbd> to land or dock where you are
               </li>
+              <li className="universe-keys-board">
+                <kbd>H</kbd> for the hangar: a paint job (more come with achievements), and boosters, thrusters, guns, shields and fins that change how it flies, as much as its power plant can run
+              </li>
+              <li className="universe-keys-touch">The wrench in the corner is the hangar: paint and parts for the ship</li>
               <li className="universe-keys-board">
                 <kbd>O</kbd> for the flight settings: steering, pitch and roll, self-levelling (off, it stays upside down), drag sensitivity, aim assist, the camera, up and down the other way round, and <kbd>A</kbd> <kbd>D</kbd> to turn instead
               </li>

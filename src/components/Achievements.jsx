@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { local, storage } from '../lib/hooks';
 import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
+import { partsUnlockedBy } from './universe/outfit';
+import { paintsFor } from './universe/paint';
 import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -57,6 +59,11 @@ export const ACHIEVEMENTS = {
   pints: { name: 'It comes in pints?', desc: 'Poured Pippin three good pints at the Prancing Pony' },
   strider: { name: 'Not nearly frightened enough', desc: 'Met Strider, after the Ring slipped on in the Pony' },
   slipaway: { name: 'Through Bree unseen', desc: 'Got past the Nazgûl in Bree’s lanes to Strider at the East Gate' },
+  amonsul: { name: 'Amon Sûl', desc: 'Climbed the old stair to the ruined watchtower on Weathertop' },
+  putitout: { name: 'Put it out, you fools!', desc: 'Stamped out Sam’s supper fire before the Nazgûl saw it' },
+  weathertop: { name: 'Fire against the dark', desc: 'Held the summit of Weathertop with a brand until Strider came' },
+  kingsfoil: { name: 'Kingsfoil', desc: 'Found three plants of athelas by lantern, as Sam' },
+  bruinen: { name: 'If you want him, come and claim him', desc: 'Rode with Arwen to the Ford of Bruinen, and the river rose' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
@@ -82,6 +89,15 @@ const newThemes = (themeId) => {
   if (names.length < 2) return `New theme: ${names[0] ?? THEMES[themeId].company}.`;
   return `New themes: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 };
+// "New in the hangar: …": the paint jobs and ship parts an achievement opens
+// on the universe map (universe/outfit.js), or null.
+const list = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+const newInHangar = (id) => {
+  const paints = paintsFor(id).map((p) => p.name);
+  const parts = partsUnlockedBy(id).map((p) => p.name);
+  const said = [paints.length ? `${list(paints)} ${paints.length === 1 ? 'paint' : 'paints'}` : null, parts.length ? list(parts) : null].filter(Boolean);
+  return said.length ? `New in your ship’s hangar: ${said.join('; ')}.` : null;
+};
 const KEY = 'tp-achievements';
 
 const AchievementContext = createContext({ unlock: () => {}, notify: () => {}, unlocked: [] });
@@ -97,8 +113,8 @@ export function AchievementProvider({ children }) {
   const { pathname } = useLocation();
   const { seen } = useTheme();
 
-  const notify = useCallback((title, desc = '', kind = 'note', gif = null) => {
-    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc, gif }]);
+  const notify = useCallback((title, desc = '', kind = 'note', gif = null, hangar = null) => {
+    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc, gif, hangar }]);
   }, []);
 
   const unlock = useCallback(
@@ -109,7 +125,7 @@ export function AchievementProvider({ children }) {
       setUnlocked(next);
       local.set(KEY, next);
       const theme = FAN_THEMES.find((t) => t.achievement === id);
-      notify(ACHIEVEMENTS[id].name, ACHIEVEMENTS[id].desc, theme ? `theme:${theme.id}` : 'achievement');
+      notify(ACHIEVEMENTS[id].name, ACHIEVEMENTS[id].desc, theme ? `theme:${theme.id}` : 'achievement', null, newInHangar(id));
     },
     [notify],
   );
@@ -163,6 +179,7 @@ export function AchievementProvider({ children }) {
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
               {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colors.</p>}
+              {toast.hangar && <p className="mt-1 text-sm text-body">{toast.hangar}</p>}
               {toast.gif && <Gif name={toast.gif} eager />}
             </div>
           </div>

@@ -56,3 +56,28 @@
 @keyframes sn2-in { from { opacity: 0; transform: translateY(4px); } }
 @media (max-width: 639px) { .sitar-neck[data-vertical] .sn2-labels > span { font-size: 0.85rem; } }
 @media (prefers-reduced-motion: reduce) { .sn2-strip-note { animation: none; } }
+
+/* ── Ragas ─────────────────────────────────────────────────────────────── */
+.raga-filters { display: grid; gap: 0.75rem; }
+.raga-search input { width: 100%; max-width: 30rem; min-height: 44px; padding: 0 0.9rem; border: 1px solid var(--border); border-radius: var(--r-chip, 999px); background: var(--surface); color: var(--text); font-size: 0.95rem; }
+.raga-search input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.raga-body { display: grid; gap: 1.25rem; margin-top: 1.25rem; align-items: start; }
+@media (min-width: 900px) { .raga-body { grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); } .raga-card { position: sticky; top: calc(var(--nav-h, 64px) + 16px); } }
+.raga-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr)); gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+/* on a phone, the raga you're in comes before the list of the rest */
+@media (max-width: 899px) { .raga-card { order: -1; } .raga-list button { min-height: 48px; padding: 0.4rem 0.6rem; } }
+.raga-list button { display: grid; gap: 0.1rem; width: 100%; min-height: 54px; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); text-align: left; transition: background-color 0.15s ease, border-color 0.15s ease; }
+.raga-list button:hover { border-color: var(--border-strong); }
+.raga-list button[aria-pressed='true'] { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+.raga-list button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.raga-list-name { font-weight: 600; font-size: 0.95rem; }
+.raga-list-meta { font-size: 0.75rem; opacity: 0.72; }
+.raga-card { padding: 1.25rem 1.35rem; }
+.raga-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.55rem 1rem; margin-top: 1rem; align-items: center; }
+.raga-facts dt { font-size: 0.8rem; color: var(--muted); }
+.raga-facts dd { margin: 0; font-weight: 600; }
+.raga-sargam { display: inline-flex; flex-wrap: wrap; gap: 0.15rem 0.55rem; }
+.raga-own { margin-top: 1.25rem; padding: 1.25rem 1.35rem; }
+.raga-own-name { display: flex; align-items: center; gap: 0.75rem; }
+.raga-own-name input { flex: 0 1 18rem; min-width: 0; min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
+.raga-own .seg > button[disabled] { opacity: 1; cursor: default; }

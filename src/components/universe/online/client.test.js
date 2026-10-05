@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
+import { STOCK_LOADOUT } from '../outfit';
 
 // An in-memory room: what one client sends, the others get straight away.
 // room(id) on its own is a pilot with no client, sending whatever it likes.
@@ -76,8 +77,25 @@ describe('createClient', () => {
   it('each sees the other, by name and ship', async () => {
     const { a, b } = await pair();
     expect(a.snapshot().status).toBe('online');
-    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', kills: 0, where: '/universe', ally: 'none', blocked: false }]);
+    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
     expect(b.snapshot().peers[0].name).toBe('Han');
+  });
+
+  it('shows each what the other has fitted, and any refit', async () => {
+    const { a, b, seen } = await pair();
+    const fit = { ...STOCK_LOADOUT, paint: 'aws', booster: 'srb', guns: 'twin' };
+    a.setProfile({ loadout: fit });
+    expect(b.peers.get('A').loadout).toEqual(fit);
+    expect(b.snapshot().peers[0].loadout).toEqual(fit);
+    expect(seen.b.some((e) => e.type === 'roster')).toBe(true);
+    // the same again is no news
+    const before = seen.b.length;
+    a.setProfile({ loadout: { ...fit } });
+    expect(seen.b.length).toBe(before);
+    // and their shots come with their guns and colours
+    a.pose(ship(3));
+    a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
+    expect(b.takeShots()[0]).toMatchObject({ paint: 'aws', guns: 'twin' });
   });
 
   it('passes poses along, read and timed', async () => {
