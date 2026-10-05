@@ -30,6 +30,26 @@ const lightRamp = () => {
 };
 const hash = (i, k = 0) => (((Math.sin(i * 91.345 + k * 47.853) * 43758.5453) % 1) + 1) % 1;
 
+// a figure's geometry in the world, standing on the floor at `height`
+// metres, centred over its feet. The baked copies are quantized (positions
+// as normalized Int16 in -1…1, the node's matrix holding the real size),
+// so every attribute is decoded to floats first: moved in place, a point
+// past 1 would wrap round to the other end.
+export function standing(geometry, matrix, height) {
+  const geo = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(geometry.attributes)) {
+    const out = new Float32Array(a.count * a.itemSize);
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) out[i * a.itemSize + c] = a.getComponent(i, c);
+    geo.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize));
+  }
+  if (geometry.index) geo.setIndex(geometry.index.clone());
+  geo.applyMatrix4(matrix);
+  geo.computeBoundingBox();
+  const b = geo.boundingBox;
+  const k = height / (b.max.y - b.min.y);
+  return geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2).scale(k, k, k);
+}
+
 export async function createCrowd(parent, { tier = 'high' } = {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -47,11 +67,7 @@ export async function createCrowd(parent, { tier = 'high' } = {}) {
           });
           if (!mesh) return null;
           g.scene.updateMatrixWorld(true);
-          const geo = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
-          geo.computeBoundingBox();
-          const b = geo.boundingBox;
-          const k = heightOf(name) / (b.max.y - b.min.y);
-          geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2).scale(k, k, k);
+          const geo = standing(mesh.geometry, mesh.matrixWorld, heightOf(name));
           const mat = toon(0xffffff, { map: mesh.material.map ?? null, gradientMap: lightRamp() });
           owned.push(geo, mat, mesh.geometry);
           if (mesh.material.map) owned.push(mesh.material.map);
