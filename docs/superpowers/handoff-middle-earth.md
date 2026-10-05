@@ -86,11 +86,19 @@ above.
 
 ## Ideas not done yet
 
-- Kitchen dressing still thin in places: the orcs' mess (no screenshot
-  reviewed yet), Amon Hen (ducks, the falls' mist), the Pony floor.
-- A kitchens list on the map hub (best stars per chapter).
+- Kitchen dressing: Amon Hen (ducks, the falls' mist). The orcs' mess is
+  dressed now (`rush/themes/tower.js`: torches on every wall, the Eye's
+  banner, a slit window on Mordor with the beam sweeping, Frodo's cage on
+  its chain, spears, a whip, skulls on the spikes, spilt draught, grime,
+  embers and ash, and Shelob's children creeping down the side walls as
+  the round goes on). All ten shot and looked at (`lab/rush-shots.mjs`).
 - Shots of every walkable world after the side games land, then dress
   what looks bare.
+- Done: the road so far on the map hub (`middleearth/record.js`, tested;
+  `MapHub.jsx`'s "The road so far" button): every chapter's seals, its
+  side game's star and its kitchen's stars and best coins, with totals.
+  `rush/levels/index.js` now holds the level list (`LEVELS`, `levelOf`,
+  `bestKey`) for the hub and `Rush.jsx` both.
 
 ## How to check things (local, git-ignored `lab/`)
 
@@ -129,7 +137,9 @@ above.
 
 ## Steps left (in order)
 
-1. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
-   and dress it like the others; re-shoot the dressed ones and fix
-   anything off (`lab/rush-shots.mjs`, canvas readback).
-2. Then the ideas list above.
+1. The ideas list above, less what's done (the orcs' mess is dressed, the
+   hub has the road so far). Shots of every walkable world after the side
+   games, then dress what looks bare, is the big one left.
+2. Amon Hen's kitchen could still take ducks on the lake and the falls'
+   mist; the Pony's floor is fine as it is (looked at: flagstones under a
+   plaster room, reads well).
