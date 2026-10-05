@@ -73,6 +73,7 @@ const PAGES = {
     tips: [
       ['The map', 'Scroll to walk the compound, or pick a pin on the map (or a name under it). On a wide screen the map beside the tour shows where you are.'],
       ['The buildings', 'Power up Stark’s reactor. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Throw Cap’s shield. Click anywhere on Hawkeye’s range. Tap Widow’s black bars. Make Banner angry three times.'],
+      ['The gate: Thwip!', 'Spider-Man, late for school. Hold Space (or the mouse, or a finger) to shoot a web at the wall ahead and swing; let go to fly. Let go on the upswing, past where the web caught, for a perfect release: faster, and a flip. A and D steer across the avenue (on a touch screen, hold on the left or right); W reels the web in to climb. Nothing to swing from over the cross streets, so carry your speed over them. Grab Peter’s backpacks on the way, beat the bell, and keep off the street: the traffic gets three chances.'],
       ['The hangar', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
     ],
   },
