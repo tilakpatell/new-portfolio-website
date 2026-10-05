@@ -157,10 +157,10 @@ export function run(canvas, opts) {
   let raf = 0;
   let last = 0;
   let clock = 0;
-  let warming = null; // a vehicle whose shaders are still linking (pick): not drawn yet
   let fade = 1; // the black between vehicles: 1 covers, 0 clear
   let fadeTo = 1;
   let firstDrawn = false;
+  let warming = null; // a vehicle whose shaders are still linking (pick): not drawn yet
   const flashColor = new THREE.Color();
   const shake = new THREE.Vector2();
 

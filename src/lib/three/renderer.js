@@ -20,10 +20,10 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   const preserveDrawingBuffer = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpKeepFrames;
   // a weak device skips multisampling: at its pixel ratio it costs more than it shows
   const renderer = new THREE.WebGLRenderer({ canvas, alpha, antialias: antialias && budget().antialias, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer });
-  quiet(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
+  quiet(renderer);
   if (alpha) renderer.setClearColor(0x000000, 0);
 
   let pixelRatio = maxRatio(ratio);
@@ -104,6 +104,31 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
     },
   };
 }
+
+// Free every geometry, material and texture under `root`.
+export function disposeTree(root) {
+  const seen = new Set();
+  const free = (thing) => {
+    if (!thing || seen.has(thing)) return;
+    seen.add(thing);
+    thing.dispose?.();
+  };
+  root.traverse((o) => {
+    free(o.geometry);
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) {
+      for (const value of Object.values(m)) if (value?.isTexture) free(value);
+      if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) free(u.value);
+      free(m);
+    }
+  });
+}
+
+// Easing the site already uses in CSS: cubic-bezier(0.16, 1, 0.3, 1) is
+// close to an exponential ease-out.
+export const easeOut = (t) => (t >= 1 ? 1 : t <= 0 ? 0 : 1 - 2 ** (-10 * t));
+export const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+export const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 
 // Reading a shader's error log waits for the GPU to finish linking it, and
 // three.js reads it on every program's first draw: that wait is most of a
@@ -273,28 +298,3 @@ export function releaseContext(renderer) {
   losing.add(renderer);
   flushLosses();
 }
-
-// Free every geometry, material and texture under `root`.
-export function disposeTree(root) {
-  const seen = new Set();
-  const free = (thing) => {
-    if (!thing || seen.has(thing)) return;
-    seen.add(thing);
-    thing.dispose?.();
-  };
-  root.traverse((o) => {
-    free(o.geometry);
-    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-    for (const m of mats) {
-      for (const value of Object.values(m)) if (value?.isTexture) free(value);
-      if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) free(u.value);
-      free(m);
-    }
-  });
-}
-
-// Easing the site already uses in CSS: cubic-bezier(0.16, 1, 0.3, 1) is
-// close to an exponential ease-out.
-export const easeOut = (t) => (t >= 1 ? 1 : t <= 0 ? 0 : 1 - 2 ** (-10 * t));
-export const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-export const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);

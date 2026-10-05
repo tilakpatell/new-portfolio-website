@@ -15,7 +15,7 @@
 // ready, and each ship made keeps out of sight until they are (a frame or
 // so, after the first of its kind).
 //
-// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, dispose() }
+// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, prepare (settable), dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -101,6 +101,11 @@ export function createFleet({ prepare = null } = {}) {
         });
       }
       return made;
+    },
+    // what makes a model's shaders (it can be set after the fleet is, before
+    // any model is made)
+    set prepare(fn) {
+      prepare = fn;
     },
     dispose() {
       dead = true;

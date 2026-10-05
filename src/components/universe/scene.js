@@ -572,14 +572,15 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   const crashFx = createCrash(map);
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
+  const fleet = createFleet(); // the ships that are models, shared
+  const traffic = reduced ? null : createTraffic(map, { small, fleet });
+  const pops = createCrash(map);
   // shaders made off the main thread before something is first drawn
   // (KHR_parallel_shader_compile), so nothing new stalls a frame: a ship
   // arriving, a loaded model, the cockpit
   // (drawn into the passes' buffer while they're on, so made for it)
   const warm = (root, cam = camera, target = scene) => precompile(renderer, root, cam, target, post.on ? post.composer.readBuffer : undefined);
-  const fleet = createFleet({ prepare: (o) => warm(o) }); // the ships that are models, shared
-  const traffic = reduced ? null : createTraffic(map, { small, fleet });
-  const pops = createCrash(map);
+  fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   const hunters = reduced ? null : createHunters(map, { small, fleet });
