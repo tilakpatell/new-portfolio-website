@@ -1150,7 +1150,7 @@ export async function create(canvas, ctx) {
         l.run();
       }
       // out into deep space, and coming up on its wonders
-      if (!state.deepSaid && openness(live.x, live.z) > 0.6) {
+      if (!state.deepSaid && openness(live.x, live.y, live.z) > 0.6) {
         state.deepSaid = true;
         emit({ type: 'event', id: 'deep' });
       }

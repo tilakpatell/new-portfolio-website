@@ -1,22 +1,27 @@
-// Deep space: everything out past the home system (the sun, the stations and
-// the fandoms' planets, layout.js). Pure numbers, so it's tested in Node:
-// deepspace.js draws it, ship.js flies through it.
+// Deep space: everything out past the home system (the sun and the stations,
+// layout.js). Pure numbers, so it's tested in Node: deepspace.js draws it,
+// ship.js flies through it.
 //
-// Out here it opens up. The ship's boost becomes a pulse drive, its ceiling
-// lifts from the home system's 14 to DEEP.ceiling, and the edge of the map is
-// DEEP.edge away. Far out are the wonders: places to fly to that dwarf the
-// home system's planets. A ringed gas giant and an ice giant, two other suns
-// with planets of their own, a black hole, two nebulae to fly through, and
-// one landmark from each crew's universe, the Empire's Death Star and the
-// Citadel of Ricks. Everything but the nebulae is solid. A solid wonder
-// counts as a planet: graze it and you bounce off, hit it fast and you
-// crash, and you come back beside it.
+// The fandoms' planets are out here too, far apart (layout.js), and between
+// them it's open: the ship's boost becomes a pulse drive, the ceiling lifts
+// from the home system's 14 to DEEP.ceiling, and the edge of the map is
+// DEEP.edge away. Near any place (the home system, a planet, a wonder) the
+// drive drops back to the boost, so you arrive at flying speed. Among the
+// planets are the wonders: a ringed gas giant and an ice giant, two other
+// suns with planets of their own, a black hole, two nebulae to fly through,
+// and the Citadel of Ricks. Everything but the nebulae is solid: graze it and
+// you bounce off, hit it fast and you crash (and crash.js and the scene make
+// something of it: the Citadel takes you to its world, the black hole
+// throws you out somewhere else).
 
-import { MAP_RADIUS } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
+import { byId } from './universes';
 
 export const DEEP = {
-  system: MAP_RADIUS + 12, // inside this is the home system: boost tops out at SHIP.boost, the ceiling is SHIP.ceiling
-  open: MAP_RADIUS + 72, // out past this, the pulse drive's full speed and the full height
+  system: HOME_RADIUS + 30, // inside this is the home system: boost tops out at SHIP.boost, the ceiling is SHIP.ceiling
+  open: HOME_RADIUS + 110, // out past this (and this far from any place), the pulse drive's full speed and the full height
+  near: 30, // how far past a place's reach you're still at it (the drive stays down)
+  ramp: 80, // and how much further the drive takes to open all the way
   edge: 1400, // turned back here
   ceiling: 230, // how far above or below the disc it can go out in deep space
 };
@@ -24,8 +29,8 @@ export const DEEP = {
 // kind: what it is (deepspace.js draws each kind its own way); r: its radius
 // (a black hole's is its shadow); colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
-// universe it's from (it's there for everyone); trench: the Death Star's,
-// the trench run round its middle (trench.js), deep enough to fly down
+// universe it's from (it's there for everyone); world: the universe whose
+// page a crash into it leads to
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
   { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [702, -94, 189], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
@@ -56,22 +61,34 @@ export const WONDERS = [
   { id: 'maw', kind: 'black-hole', name: 'The Maw', at: [864, 81, -702], r: 12, disk: 72 },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-756, 40, -243], r: 60, crew: 'starwars', trench: { segments: 34 } },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty' },
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty', world: 'rickmorty' },
 ];
 
 // The trench run model (public/models/universe/trench.glb), as measured:
 // its trench runs along x, 24.71 long, 6.6 wide (z −15…−8.4) and 7.1 deep
-// (the rim at y 5.4, the floor at −1.7). trench.js lays it round the Death
-// Star's middle, `segments` sections to the ring.
+// (the rim at y 5.4, the floor at −1.7). trench.js lays a stretch of it in
+// the Death Star's trench (the Star Wars planet's, universes.js), on the
+// side that faces home: `segments` sections would go all the way round.
 export const TRENCH_MODEL = { x: [-1.75, 22.96], z: [-15.0, -8.4], rim: 5.4, floor: -1.7 };
+export const TRENCH_STRETCH = 6; // sections laid
 
-// a wonder's trench, in map units: how many sections, scaled how much, and
-// how wide and deep its channel is
-export function trenchOf(w) {
-  const segments = w.trench.segments;
-  const scale = (2 * Math.PI * w.r) / segments / (TRENCH_MODEL.x[1] - TRENCH_MODEL.x[0]);
-  return { segments, scale, width: (TRENCH_MODEL.z[1] - TRENCH_MODEL.z[0]) * scale, depth: (TRENCH_MODEL.rim - TRENCH_MODEL.floor) * scale };
+// a place's trench, in map units: how many sections to the ring, scaled how
+// much, how wide and deep its channel is, and the arc (round the place's
+// middle, from the way home) the stretch covers
+export function trenchOf(place) {
+  const segments = place.trench.segments;
+  const scale = (2 * Math.PI * place.r) / segments / (TRENCH_MODEL.x[1] - TRENCH_MODEL.x[0]);
+  const home = Math.atan2(-place.at[2], -place.at[0]);
+  const arc = (TRENCH_STRETCH / segments) * Math.PI;
+  return { segments, scale, width: (TRENCH_MODEL.z[1] - TRENCH_MODEL.z[0]) * scale, depth: (TRENCH_MODEL.rim - TRENCH_MODEL.floor) * scale, home, arc };
+}
+
+// the band a trench lets the ship into (ship.js): how far above and below
+// the place's middle, how far in (the floor), and the arc it covers
+export function trenchBand(place) {
+  if (!place.trench) return null;
+  const t = trenchOf(place);
+  return { half: t.width / 2 - 0.3, floor: place.r - t.depth + 0.45, home: t.home, arc: t.arc };
 }
 
 // where a sun's planet is, in the map's space
@@ -88,26 +105,41 @@ export function reachOf(w) {
   return w.r;
 }
 
-// what's solid out here, as ship.js's solids: { id, at, r, reach, band }.
-// A black hole is solid out past its shadow, where the light bends round
-// it; a trench (band) lets the ship in, between its walls, down to near its
-// floor
-const solid = (id, at, r, band) => ({ id, at, r, reach: r * 1.4, deep: true, ...(band ? { band } : {}) });
-const bandOf = (w) => {
-  if (!w.trench) return null;
-  const t = trenchOf(w);
-  return { half: t.width / 2 - 0.3, floor: w.r - t.depth + 0.45 };
-};
+// what's solid out here, as ship.js's solids: { id, at, r, reach }. A black
+// hole is solid out past its shadow, where the light bends round it
+const solid = (id, at, r) => ({ id, at, r, reach: r * 1.4, deep: true });
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
-  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, bandOf(w)),
+  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r),
   ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
 ]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
 
-// 0 in the home system, rising to 1 out in open space (smoothly): how far the
-// pulse drive and the ceiling have opened up, at (x, z)
-export function openness(x, z) {
-  const k = Math.min(1, Math.max(0, (Math.hypot(x, z) - DEEP.system) / (DEEP.open - DEEP.system)));
+// every place there is to be at, out here and at home: the universes (the
+// stations and the planets) and the wonders, each with how far it reaches
+export const PLACES = [
+  ...ORDER.map((id) => ({ id, at: POSITIONS[id], reach: REACH[id], kind: byId(id).kind === 'core' ? 'station' : 'planet' })),
+  ...WONDERS.map((w) => ({ id: w.id, at: w.at, reach: reachOf(w), kind: w.kind })),
+];
+const far = PLACES.filter((p) => p.kind !== 'station'); // (the stations are the home system)
+
+// the place nearest (x, y, z), and how far past its reach it is (negative: inside)
+export function nearestPlace(x, y, z) {
+  let best = null;
+  for (const p of far) {
+    const gap = Math.hypot(x - p.at[0], y - p.at[1], z - p.at[2]) - p.reach;
+    if (!best || gap < best.gap) best = { place: p, gap };
+  }
+  const home = Math.hypot(x, z) - HOME_RADIUS;
+  return home < best.gap ? { place: null, gap: home } : best;
+}
+
+// 0 at a place (the home system, a planet, a wonder: in its space you fly at
+// the boost, under the home ceiling), rising smoothly to 1 out in the open
+// between them (the pulse drive's full speed): how far it's opened up at
+// (x, y, z)
+export function openness(x, y, z) {
+  const { gap } = nearestPlace(x, y, z);
+  const k = Math.min(1, Math.max(0, (gap - DEEP.near) / DEEP.ramp));
   return k * k * (3 - 2 * k);
 }

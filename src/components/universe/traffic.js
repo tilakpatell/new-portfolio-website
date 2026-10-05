@@ -220,7 +220,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         let kind = pick(kinds());
         if (TYPES[kind].big && bigs > 0) kind = pick(kinds().filter((k) => !TYPES[k].big));
         // out in deep space it crosses the space round you instead
-        const pts = ship && openness(ship.x, ship.z) > 0.5 ? laneNear(ship, rand) : laneBetween(rand, { high: TYPES[kind].big });
+        const pts = ship && openness(ship.x, ship.y, ship.z) > 0.5 ? laneNear(ship, rand) : laneBetween(rand, { high: TYPES[kind].big });
         if (pts) spawn(kind, pts);
       }
       // now and then, something comes to you (only while you're flying)

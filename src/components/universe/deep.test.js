@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEEP, DEEP_SOLIDS, WONDERS, openness, planetAt, reachOf } from './deep';
-import { MAP_RADIUS } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
+import { byId } from './universes';
 
 describe('deep space', () => {
   it('puts every wonder well out past the home system and inside the edge, within the ceiling', () => {
@@ -25,18 +26,39 @@ describe('deep space', () => {
   it('makes everything but the nebulae solid, a sun with its planets', () => {
     const ids = DEEP_SOLIDS.map((s) => s.id);
     expect(ids).toContain('aurelia');
-    expect(ids).toContain('deathstar');
+    expect(ids).toContain('citadel');
     expect(ids).toContain('ember-2');
     expect(ids).not.toContain('veil');
     const ember = WONDERS.find((w) => w.id === 'ember');
     expect(DEEP_SOLIDS.find((s) => s.id === 'ember-2').at).toEqual(planetAt(ember, ember.planets[1]));
   });
 
+  it('keeps the wonders clear of the fandoms’ planets, and stays closed round each planet', () => {
+    for (const w of WONDERS) {
+      for (const id of ORDER) {
+        const gap = Math.hypot(w.at[0] - POSITIONS[id][0], w.at[1] - POSITIONS[id][1], w.at[2] - POSITIONS[id][2]);
+        expect(gap, `${w.id} and ${id}`).toBeGreaterThan(reachOf(w) + REACH[id] + 60);
+      }
+    }
+    for (const id of ORDER) {
+      const [x, y, z] = POSITIONS[id];
+      expect(openness(x + REACH[id] + 10, y, z), id).toBe(0);
+      if (byId(id).kind === 'core') continue; // (the stations share the home system's space)
+      // and some way out from it (whichever way is clear of the others) it's open
+      const open = [0, 1, 2, 3, 4, 5, 6, 7].some((i) => openness(x + Math.cos(i * 0.785) * (REACH[id] + DEEP.near + DEEP.ramp + 1), y, z + Math.sin(i * 0.785) * (REACH[id] + DEEP.near + DEEP.ramp + 1)) === 1);
+      expect(open, id).toBe(true);
+    }
+  });
+
   it('opens up smoothly from the home system out to open space', () => {
-    expect(openness(0, 0)).toBe(0);
-    expect(openness(MAP_RADIUS, 0)).toBe(0);
-    expect(openness(DEEP.open + 1, 0)).toBe(1);
-    const mid = openness((DEEP.system + DEEP.open) / 2, 0);
+    expect(openness(0, 0, 0)).toBe(0);
+    expect(openness(HOME_RADIUS, 0, 0)).toBe(0);
+    expect(openness(HOME_RADIUS + DEEP.near, 0, 0)).toBe(0);
+    // leaving home the way none of the planets lie
+    const clear = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => i * 0.785).find((a) => openness(Math.cos(a) * (DEEP.open + 1), 0, Math.sin(a) * (DEEP.open + 1)) === 1);
+    expect(clear).toBeDefined();
+    const half = HOME_RADIUS + DEEP.near + DEEP.ramp / 2;
+    const mid = openness(Math.cos(clear) * half, 0, Math.sin(clear) * half);
     expect(mid).toBeGreaterThan(0.4);
     expect(mid).toBeLessThan(0.6);
   });

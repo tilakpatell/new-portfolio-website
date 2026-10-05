@@ -213,7 +213,7 @@ const BUILDERS = {
 
     // Alderaan, while it lasts
     const moon = new THREE.Mesh(new THREE.SphereGeometry(r * 0.2, 32, 20), new THREE.MeshStandardMaterial({ map: T.alderaan ?? null, color: T.alderaan ? '#ffffff' : '#2b6aa3', roughness: 1 }));
-    const o = orbit(p.group, { radius: r * 1.6, tilt: 0.28, speed: 0.32, phase: 2.2 });
+    const o = orbit(p.group, { radius: r * 1.25, tilt: 0.28, speed: 0.32, phase: 2.2 });
     o.holder.add(moon);
     p.orbits.push(o);
     p.tick.push((t) => (moon.rotation.y = t * 0.4));
@@ -221,10 +221,10 @@ const BUILDERS = {
     // a Republic attack cruiser further out (the site owner's Meshy model,
     // when it comes; its nose is −x, so a quarter turn points it the way the
     // orbit goes). Slave I is about too, as traffic (traffic.js)
-    const far = orbit(p.group, { radius: r * 1.75, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
+    const far = orbit(p.group, { radius: r * 1.38, tilt: 0.12, yaw: 0.8, speed: 0.14, phase: 4.1 });
     p.orbits.push(far);
     p.slots = {
-      cruiser: { holder: far.holder, size: r * 0.62, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 },
+      cruiser: { holder: far.holder, size: r * 0.14, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 },
       // the Death Star itself, the site owner's model, when it comes: it
       // takes the painted sphere's place (turning with it), its dish and
       // trench and lit windows its own

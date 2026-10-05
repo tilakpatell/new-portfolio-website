@@ -20,7 +20,7 @@
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets big against the ship, the stations a little less so
 const STATION = 2;
-const PLANET = 2.7;
+const PLANET = 16; // the fandoms are worlds: far bigger than the ship (0.26 long), as far-off planets are
 
 const CORE = [
   {
@@ -100,7 +100,9 @@ const FANDOMS = [
     swatch: '#ffe81f',
     accent: '#ffe81f',
     rim: '#c9ced6', // the station's own grey, not the crawl's yellow
-    size: 0.78,
+    size: 3.75, // the Death Star itself (60 across the map, after PLANET), its trench run round its middle
+    reach: 1.45, // Alderaan orbits it close in
+    trench: { segments: 34 },
     palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
   },
   {

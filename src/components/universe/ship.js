@@ -11,13 +11,16 @@
 // can't go through a planet (it bounces off) and is turned back at the edge
 // of the map, and eased back from the ceiling and the floor.
 //
-// Out past the home system (deep.js) it opens up: the boost becomes a pulse
-// drive (up to SHIP.pulse, dropping back as it comes home, hard enough that
-// it never arrives at a planet at pulse speed), the ceiling lifts to
-// DEEP.ceiling, and the wonders out there are as solid as the planets.
+// Between the places (deep.js) it opens up: the boost becomes a pulse drive
+// (up to SHIP.pulse, dropping back as it nears any place, hard enough that
+// it never arrives at a planet at pulse speed; and cut to the boost while
+// hunters have it interdicted, `input.interdicted`), the ceiling lifts to
+// DEEP.ceiling out of the home system, and the wonders out there are as
+// solid as the planets. The Death Star's trench lets the ship down into it,
+// along the stretch of trench run laid there.
 
-import { DEEP, DEEP_SOLIDS, openness } from './deep';
-import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { DEEP, DEEP_SOLIDS, openness, trenchBand } from './deep';
+import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const SHIP = {
@@ -43,7 +46,12 @@ const ORBIT_IN = 2.4; // past a planet's reach: closer than this, you're at it
 const ORBIT_OUT = 3.8; // and you've left once you're this far
 const PARK = 1.2; // where autopilot stops, past the planet's reach
 
-export const PLANETS = ORDER.map((id) => ({ id, at: POSITIONS[id], r: byId(id).size, reach: REACH[id] }));
+export const PLANETS = ORDER.map((id) => {
+  const u = byId(id);
+  const place = { id, at: POSITIONS[id], r: u.size, reach: REACH[id], trench: u.trench };
+  const band = trenchBand(place);
+  return band ? { ...place, band } : place;
+});
 const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
 // what the ship can't fly through: every planet and station, the sun, and
 // the wonders out in deep space
@@ -51,9 +59,13 @@ export const SOLIDS = [...PLANETS, { id: 'sun', at: SUN.at, r: SUN.r, reach: SUN
 export const isPlace = (id) => Boolean(PLANET[id]);
 
 // how high it can go at (x, z): the home system's ceiling, lifting to deep
-// space's out past it; and how fast its boost goes there
-export const ceilingAt = (x, z) => SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * openness(x, z);
-export const boostAt = (x, z) => SHIP.boost + (SHIP.pulse - SHIP.boost) * openness(x, z);
+// space's out past it; and how fast its boost goes at (x, y, z): the pulse
+// drive out in the open, the boost at any place
+export function ceilingAt(x, z) {
+  const k = clamp((Math.hypot(x, z) - DEEP.system) / (DEEP.open - DEEP.system), 0, 1);
+  return SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * k * k * (3 - 2 * k);
+}
+export const boostAt = (x, y, z) => SHIP.boost + (SHIP.pulse - SHIP.boost) * openness(x, y, z);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)); // to −π…π
@@ -61,13 +73,20 @@ export const forward = (h) => [-Math.sin(h), -Math.cos(h)];
 // the heading that points along (dx, dz)
 export const headingTo = (dx, dz) => Math.atan2(-dx, -dz);
 
+// in a place's trench: level with it, and along the stretch of it that's laid
+export function inTrench(p, x, y, z) {
+  if (!p.band || Math.abs(y - p.at[1]) >= p.band.half) return false;
+  const a = Math.atan2(z - p.at[2], x - p.at[0]);
+  return Math.abs(wrap(a - p.band.home)) < p.band.arc;
+}
+
 const away = (s, p) => Math.hypot(s.x - p.at[0], (s.y ?? SHIP.height) - p.at[1], s.z - p.at[2]);
 
 // Parked a little way off a planet, facing it: on a side that's clear of
 // the other planets (so being parked there is being at this one), as near
 // as it can be to the side the ship comes from (`from`, or the camera's side
 // of the map).
-export function parkAt(id, from = [0, MAP_RADIUS]) {
+export function parkAt(id, from = [0, HOME_RADIUS]) {
   const p = PLANET[id];
   const d = p.reach + PARK;
   const al = Math.hypot(from[0] - p.at[0], from[1] - p.at[2]) || 1;
@@ -89,10 +108,10 @@ export function parkAt(id, from = [0, MAP_RADIUS]) {
   return { x: best.x, y: p.at[1] + SHIP.height, z: best.z, heading: best.heading };
 }
 
-// A new ship: parked at a universe, or at the near edge of the map facing
-// its middle.
+// A new ship: parked at a universe, or at the near edge of the home system
+// facing its middle.
 export function spawn(id) {
-  const at = id && PLANET[id] ? parkAt(id) : { x: 0, y: SHIP.height, z: MAP_RADIUS + 1.5, heading: 0 };
+  const at = id && PLANET[id] ? parkAt(id) : { x: 0, y: SHIP.height, z: HOME_RADIUS + 1.5, heading: 0 };
   return { ...at, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
 }
 
@@ -108,8 +127,8 @@ export function step(s, input, dt, solids = SOLIDS) {
   const throttle = clamp(input.throttle || 0, -1, 1);
   const turn = clamp(input.turn || 0, -1, 1);
   const climb = clamp(input.climb || 0, -1, 1);
-  const open = openness(s.x, s.z);
-  const limit = boostAt(s.x, s.z);
+  const open = input.interdicted ? 0 : openness(s.x, s.y, s.z);
+  const limit = input.interdicted ? SHIP.boost : boostAt(s.x, s.y, s.z);
   const top = input.boost && throttle > 0 ? limit : SHIP.cruise;
   const want = throttle > 0 ? throttle * top : throttle * SHIP.reverse;
   const faster = Math.abs(want) > Math.abs(s.speed) && Math.sign(want) !== -Math.sign(s.speed);
@@ -163,9 +182,9 @@ export function step(s, input, dt, solids = SOLIDS) {
   // off a planet, never through it: out along the line from its middle,
   // whichever way the ship came at it (from the side, from above or below).
   // A solid with a trench round its middle (the Death Star) lets the ship
-  // down into it, as far as its floor
+  // down into it, as far as its floor, along the stretch that's laid
   for (const p of solids) {
-    const min = (p.band && Math.abs(y - p.at[1]) < p.band.half ? p.band.floor : p.r) + SHIP.radius;
+    const min = (p.band && inTrench(p, x, y, z) ? p.band.floor : p.r) + SHIP.radius;
     const dx = x - p.at[0];
     const dy = y - p.at[1];
     const dz = z - p.at[2];
@@ -233,27 +252,34 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   }
   // toward the parking spot, steering round anything the straight line
   // would clip (further ahead the faster it goes, and harder the closer it
-  // is), on the side the ship already passes it
+  // is), on the side the ship already passes it. What's well above or below
+  // the ship's height isn't in the way: a body counts by its width at that
+  // height
   const ux = tx / dist;
   const uz = tz / dist;
   let dx = ux;
   let dz = uz;
-  let blocked = false;
-  let closest = Infinity; // the gap to the nearest thing in the way
+  let closest = Infinity; // the gap to the nearest thing in the way, in its own radii (so a world counts like a moon)
   const look = 5 + Math.abs(s.speed) * 1;
+  const widthAt = (o) => {
+    const dy = o.at[1] - s.y;
+    const rr = (o.r + SHIP.radius + 0.5) ** 2 - dy * dy;
+    return rr > 0 ? Math.sqrt(rr) : 0;
+  };
   for (const o of SOLIDS) {
     if (o.id === id) continue;
+    const r = widthAt(o);
+    if (r <= 0) continue;
     const ox = o.at[0] - s.x;
     const oz = o.at[2] - s.z;
     const along = ox * ux + oz * uz;
-    if (along < -o.r || along > Math.min(dist, look) + o.r) continue; // behind, past the stop, or not yet
+    if (along < -r || along > Math.min(dist, look) + r) continue; // behind, past the stop, or not yet
     const cross = ox * uz - oz * ux; // > 0: it's to the left of the line
-    const clear = o.r + SHIP.radius + 1;
+    const clear = r + SHIP.radius + Math.max(1, r * 0.3);
     if (Math.abs(cross) > clear) continue;
-    blocked = true;
-    const gap = Math.hypot(ox, oz) - o.r;
+    const gap = (Math.hypot(ox, oz) - r) / Math.max(4, r);
     closest = Math.min(closest, gap);
-    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap / 4, 0, 1));
+    const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;
     dz += side * ux * k;
@@ -265,16 +291,17 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   let danger = false;
   for (const o of SOLIDS) {
     if (o.id === id) continue;
+    const r = widthAt(o);
+    if (r <= 0) continue;
     const ox = o.at[0] - s.x;
     const oz = o.at[2] - s.z;
     const along = ox * hx + oz * hz;
-    if (along < 0 || along > stopping + o.r) continue;
+    if (along < 0 || along > stopping + r) continue;
     const cross = ox * hz - oz * hx;
-    const clear = o.r + SHIP.radius + 0.8;
+    const clear = r + SHIP.radius + Math.max(0.8, r * 0.2);
     if (Math.abs(cross) > clear) continue;
     danger = true;
-    blocked = true;
-    closest = Math.min(closest, Math.hypot(ox, oz) - o.r);
+    closest = Math.min(closest, (Math.hypot(ox, oz) - r) / Math.max(4, r));
     const side = Math.sign(cross) || 1;
     dx += -side * hz * 2.5;
     dz += side * hx * 2.5;
@@ -282,9 +309,12 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const want = headingTo(dx, dz);
   const diff = wrap(want - s.heading);
   const turn = clamp(-diff * 2.5, -1, 1);
-  // slow for sharp turns, and for anything close ahead, so it can steer
-  // round; hard, for anything dead ahead within stopping distance
-  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * (danger ? 0.12 : clamp(closest / 5, 0.3, 1));
+  // slow for sharp turns, and hard for anything dead ahead within stopping
+  // distance (something merely in the way of the straight line is steered
+  // round at speed)
+  const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * (danger ? 0.12 : 1);
   const throttle = brake * clamp(dist / 5, 0.12, 1);
-  return { input: { throttle, turn, climb, boost: !blocked && dist > 18 && Math.abs(diff) < 0.25 }, done: false };
+  // flat out (the pulse drive, out in the open) once it's pointed right and
+  // nothing's dead ahead
+  return { input: { throttle, turn, climb, boost: !danger && dist > 18 && Math.abs(diff) < 0.25 }, done: false };
 }

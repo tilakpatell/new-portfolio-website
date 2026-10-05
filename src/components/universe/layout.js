@@ -1,16 +1,19 @@
 // Where each universe sits on the map, and how to step between them. Pure:
 // the 3D scene, the SVG mini-map and the world pages' links all use it.
 //
-// A sun sits in the middle of the disc (x, z), the site's own pages are
-// stations on a ring round it, and the fandoms are planets further out on a
-// golden-angle spiral, radius growing with their order, so no two line up.
-// A little height (y) each keeps the tilted view from looking flat.
+// A sun sits in the middle of the disc (x, z) with the site's own pages as
+// stations on a ring round it: the home system, HOME_RADIUS across. The
+// fandoms are planets far out in deep space, scattered on a golden-angle
+// spiral that grows with their order, hundreds of map units apart, each at
+// its own height: getting between them is a journey (ship.js's pulse
+// drive), and a fight (hunters.js). deep.js keeps them clear of its wonders.
 
 import { UNIVERSES, byId } from './universes';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const SPREAD = 12; // map units per √step, out past the stations
-const HUB = 27; // where the fandoms' spiral starts
+const FIRST = 350; // how far out the nearest fandom is
+const STEP = 55; // and how much further each one after it
+const HEIGHT = 95; // how far above or below the disc they go
 const RING = 15; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
@@ -18,11 +21,13 @@ export const ORDER = UNIVERSES.map((u) => u.id);
 // the sun in the middle: something to fly round, not somewhere to go
 export const SUN = { at: [0, 0, 0], r: 3.2 };
 
-// the asteroid belt, in the gap between the stations and the planets
+// the asteroid belt, round the outside of the stations
 export const BELT = { inner: 21, outer: 28.5, height: 4.5 };
+// the home system: the sun, the stations and the belt (what the overview shows)
+export const HOME_RADIUS = 36;
 
 // how far a universe's moons, rings and orbiting things reach from its centre
-export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.kind === 'core' ? 2.0 : 1.9)]));
+export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
 
 const core = UNIVERSES.filter((u) => u.kind === 'core');
 const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
@@ -32,12 +37,13 @@ export const POSITIONS = Object.fromEntries([
     return [u.id, [RING * Math.cos(a), 0.45 * Math.sin(i * 2.1), RING * Math.sin(a)]];
   }),
   ...fandoms.map((u, i) => {
-    const r = HUB + SPREAD * Math.sqrt(i + 0.6);
-    const a = i * GOLDEN + 0.4;
-    return [u.id, [r * Math.cos(a), 1.4 * Math.sin(i * 2.4), r * Math.sin(a)]];
+    const r = FIRST + STEP * i;
+    const a = i * GOLDEN + 0.32;
+    return [u.id, [r * Math.cos(a), HEIGHT * Math.sin(i * 2.4 + 1), r * Math.sin(a)]];
   }),
 ]);
 
+// how far out the furthest fandom reaches
 export const MAP_RADIUS = Math.max(...ORDER.map((id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]));
 
 const step = (id, by) => {
