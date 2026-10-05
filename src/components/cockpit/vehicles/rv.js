@@ -1061,7 +1061,9 @@ function roadMapMap() {
 // The sky: the photographed evening sky (range-compressed in the file, as
 // the games store it), sinking as the sun goes down; the dusk after it, the
 // night, the sun itself, far ranges along the horizon, and the haze the
-// land fades into. `uLift` is the RV rising: the horizon gives way to the dark.
+// land fades into. `uLift` is the RV rising: the far ranges sink out of
+// sight and the air along the horizon shows. (Below the horizon is the
+// land's: `beyond`, in build.)
 const SKY_VERT = /* glsl */ `
 varying vec3 vDir;
 void main() {
@@ -1114,7 +1116,8 @@ void main() {
   float keep = 1.0 - uLift;
   c = mix(c, uHaze * 0.8, smoothstep(rh + 0.0015, rh - 0.0015, h) * keep);
   c = mix(c, uHaze, (1.0 - smoothstep(-0.004, 0.07, h)) * 0.55 * keep);
-  c *= 1.0 - uLift * smoothstep(0.08, -0.12, h);
+  // from up high: the air along the horizon, faintly lit, over the dark land
+  c += vec3(0.012, 0.02, 0.05) * uLift * exp(-max(h, 0.0) * 26.0);
   gl_FragColor = vec4(c, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -1426,6 +1429,7 @@ function chaseAt(u) {
 const CRYSTALS = 70;
 const DOOR = [0.4, -0.6, 3.8];
 
+const LATE = 4000; // how long the cab waits for these three (ms)
 const WING_URL = '/models/cockpit/rv-wing.glb';
 const FLYER_URL = '/models/universe/rv-wings.glb';
 const SUV_URL = '/models/albuquerque/world/suv.glb';
@@ -1538,7 +1542,7 @@ function chaserOf(model) {
       const a = Math.sin(t * 19) > 0;
       bar[0].material.opacity = a ? 1 : 0.1;
       bar[1].material.opacity = a ? 0.1 : 1;
-      for (const m of mats) m.emissiveIntensity = 0.12;
+      for (const m of mats) m.emissiveIntensity = 0.2;
     },
   };
 }
@@ -1626,7 +1630,7 @@ function flyerOf(model) {
   };
 }
 
-export async function build({ rich, coarse, renderer, pmrem, say }) {
+export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   const inside = new THREE.Group();
   const outside = new THREE.Group();
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -1636,11 +1640,14 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
   // in his suit
   const jesseP = loadCrew('jesse', { clip: 'sit', height: 1.73, hips: [0.6, 0.6, 0.2] });
-  // the wings and the winged RV: they come when they come (without them the
-  // RV just drives off into the night)
+  // the wings, the winged RV and Hank's SUV: waited for a little (LATE, so
+  // they're there to be drawn once with everything else before you see the
+  // cab), and after that they come when they come (without them the RV just
+  // drives off into the night)
   const wingP = loadModel(WING_URL);
   const flyerP = loadModel(FLYER_URL);
   const suvP = loadModel(SUV_URL);
+  const extras = Promise.race([Promise.all([wingP, flyerP, suvP]), new Promise((done) => setTimeout(done, LATE))]);
   const waltP = loadCrew('walt', { clip: 'idle', height: 1.79, hips: [0.6, 0.98, 0.9], face: Math.PI + 0.6 });
 
   const [bench, panelling, lino, asphalt, dirt, rock, photo, env, jesse, walt, brush, shrub, boulder, stone, sitClip, idleClip] = await Promise.all([
@@ -1660,6 +1667,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     models.load('rock'),
     loadClip('jesse-sit'),
     loadClip('walt-idle'),
+    extras,
   ]);
   for (const set of [bench, panelling, lino, asphalt, dirt, rock]) for (const t of Object.values(set)) if (t) t.anisotropy = aniso;
 
@@ -2413,6 +2421,17 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   nebula.renderOrder = -11;
   stars.set({ fade: 0 });
   outer.add(stars.group);
+  // The land beyond the land: everything below the horizon that the ground
+  // itself doesn't reach (it ends at the far plane, which from the road is
+  // the horizon, and from a kilometre up is a straight edge well short of
+  // it), in the haze the ground has faded to by there. Drawn after the stars
+  // so none shine through the earth, and behind everything that's really
+  // there: the ground, the mesas, the town's lights.
+  const beyond = new THREE.Mesh(new THREE.SphereGeometry(4300, 48, 10, 0, TAU, Math.PI / 2, Math.PI / 2), new THREE.MeshBasicMaterial({ color: dayHaze, side: THREE.BackSide, transparent: true, depthWrite: false, fog: false }));
+  beyond.position.set(...EYE);
+  beyond.renderOrder = -8;
+  beyond.frustumCulled = false;
+  outer.add(beyond);
   // the low sun's glare
   const sunGlow = glowSprite('#ffd9a8', 230, 0.85);
   const sunHalo = glowSprite('#ff9a58', 1100, 0.14);
@@ -2564,7 +2583,10 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   }
 
   // ── the wings ──
+  // (`added`: tells the scene one has come, once the cab is being drawn, so
+  // it's sent to the graphics chip then and not at the moment it's first seen)
   let gone = false;
+  let handed = false;
   let wings = null;
   let flyer = null;
   wingP.then((m) => {
@@ -2573,6 +2595,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     else {
       wings = wingPair(m);
       inside.add(wings.group);
+      if (handed) added?.();
     }
   });
   flyerP.then((m) => {
@@ -2581,6 +2604,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     else {
       flyer = flyerOf(m);
       outside.add(flyer.group);
+      if (handed) added?.();
     }
   });
   let hank = null;
@@ -2590,8 +2614,10 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     else {
       hank = chaserOf(m);
       outside.add(hank.group);
+      if (handed) added?.();
     }
   });
+  queueMicrotask(() => (handed = true));
   const blue = crystals(small ? Math.round(CRYSTALS * 0.6) : CRYSTALS);
   outside.add(blue.mesh);
   // moonlight on the RV from outside, at the last (none until then)
@@ -2692,6 +2718,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       if (k < 0.55) haze.color.value.copy(dayHaze).lerp(duskHaze, dusk);
       else haze.color.value.copy(duskHaze).lerp(nightHaze, night);
       haze.k.value = 1 / (3200 - 1600 * night);
+      beyond.material.color.copy(haze.color.value);
       stars.set({ fade: starsK });
       sunGlow.position.copy(sunDir).multiplyScalar(2400).add(skyDome.position);
       sunHalo.position.copy(sunGlow.position);
@@ -2699,12 +2726,22 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       sunHalo.material.opacity = 0.13 * up + 0.1 * dusk * (1 - night);
       sunLight.position.copy(sunDir).multiplyScalar(450).add(sunLight.target.position);
       sunLight.intensity = 2.6 * up;
+      // no sun, no shadows to draw (the maps stay as they were, unlit)
+      sunLight.shadow.autoUpdate = up > 0;
+      key.shadow.autoUpdate = up > 0;
       sunLight.color.copy(sunCol[0]).lerp(sunCol[1], dusk);
       landHemi.color.copy(landSky[0]).lerp(landSky[2], dusk).lerp(landSky[1], night);
       landHemi.groundColor.copy(landGround[0]).lerp(landGround[1], night);
       landHemi.intensity = 1.0 - 0.3 * dusk - 0.45 * night;
       town.material.opacity = smooth((k - 0.42) / 0.3);
-      beams.intensity = 420 * lights * (1 - lift);
+      // from outside (the last shot), the RV ahead of you: -1 until then
+      const out = flyer && launching && lt >= p.cut ? clamp01((lt - p.cut) / (p.peak - p.cut)) : -1;
+      // the headlights are the cab's, shining from where you sit: off for
+      // the shot from outside, where the RV ahead would be standing in them
+      beams.intensity = out < 0 ? 420 * lights * (1 - lift) : 0;
+      // a lamp that low rakes the dirt: every grain of its relief would be
+      // lit or black, so the ground's relief eases off as the lamps come on
+      groundM.normalScale.setScalar(1.2 - 0.8 * lights);
 
       // ── the road going by ──
       if (d !== lastD) {
@@ -2729,7 +2766,6 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       if (wings && open[1] > 0.92 && open[1] < 1) swing.v += (Math.random() - 0.5) * 2 * dt * 30; // the lock shakes the little tree
       // and from outside, at the last: the cab gone, the RV ahead of you
       // climbing away into the stars
-      const out = flyer && launching && lt >= p.cut ? clamp01((lt - p.cut) / (p.peak - p.cut)) : -1;
       inside.visible = out < 0;
       if (flyer) {
         flyer.group.visible = out >= 0;
