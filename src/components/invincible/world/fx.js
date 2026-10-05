@@ -139,6 +139,33 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
   });
   let next = 0;
 
+  // ── re-entry: the air in front of him burning, streaming back past him ──
+  const sheath = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 32, 16),
+    new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uBurn: { value: 0 }, uTime: { value: 0 } },
+      vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main() { vP = position; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: /* glsl */ `
+        uniform float uBurn, uTime;
+        varying vec3 vN; varying vec3 vV; varying vec3 vP;
+        float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+        void main() {
+          float front = smoothstep(-0.6, 1.0, vP.y); // hottest at the leading edge
+          float rim = pow(1.0 - abs(dot(vN, vV)), 1.5) * smoothstep(-0.5, 0.7, vP.y); // and gone at the back
+          float flick = 0.75 + 0.25 * h(floor(vP * 8.0 + uTime * 30.0));
+          vec3 col = mix(vec3(1.0, 0.35, 0.08), vec3(1.0, 0.92, 0.75), front);
+          gl_FragColor = vec4(col * (rim * 1.6 + front * 0.5) * flick * uBurn * 2.2, 1.0);
+        }`,
+    }),
+  );
+  sheath.visible = false;
+  sheath.renderOrder = 7;
+  scene.add(sheath);
+  let fireAcc = 0;
+
   const side = new THREE.Vector3();
   const toCam = new THREE.Vector3();
   const seg = new THREE.Vector3();
@@ -195,6 +222,18 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
       vfx.sparks(p, { count: Math.round(20 + Math.min(60, speed / 3)), speed: 6 + speed / 20, color: 0xffffff, to: 0xbfe0ff, life: 0.9, size: 0.2, dir: Y, spread: 0.5, gravity: 14 });
       vfx.ring(p.clone().addScaledVector(Y, 0.2), { color: 0xffffff, from: 1, to: 8 + speed / 10, life: 0.8, opacity: 0.7 });
     },
+    // how hard the air's burning round him (0…1), where he is, which way he's going
+    plasma(k, p, dir) {
+      sheath.visible = k > 0.02;
+      if (!sheath.visible) return;
+      const d = V(dir).normalize();
+      sheath.material.uniforms.uBurn.value = k;
+      sheath.position.set(p[0], p[1] + 1, p[2]).addScaledVector(d, 0.6);
+      sheath.quaternion.setFromUnitVectors(Y, d);
+      sheath.scale.set(1.05 + k * 0.4, 2.2 + k * 1.6, 1.05 + k * 0.4);
+      fireAcc += 1;
+      if (k > 0.3 && fireAcc % 2 === 0) vfx.fire(sheath.position.clone().addScaledVector(d, -2.5), { size: 1.2 + k * 1.6, count: 2, life: 0.5, color: 0xffd08a, to: 0xc2410c, rise: 0 });
+    },
     takeoff(at) {
       const p = V(at);
       vfx.ring(p.clone().addScaledVector(Y, 0.15), { color: 0xd9cbb4, from: 0.5, to: 6, life: 0.45, opacity: 0.5 });
@@ -214,6 +253,7 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
         cone.material.uniforms.uTime.value += dt;
         cone.visible = coneLife > 0;
       }
+      sheath.material.uniforms.uTime.value += dt;
       // the contrail: a point every few hundredths of a second, faster than 70 m/s
       trail.acc += dt;
       const chest = [hero.p[0], hero.p[1] + 1.1, hero.p[2]];

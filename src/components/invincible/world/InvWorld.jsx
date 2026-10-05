@@ -6,6 +6,7 @@ import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { FLY, newHero, stepHero } from './flight';
+import { BODIES, altitudeOf, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WORLD, groundAt, waterAt } from './map';
 import './world.css';
@@ -54,6 +55,8 @@ function World({ gl, setGl }) {
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
   const [bubble, setBubble] = useState(null);
+  const [zone, setZoneUi] = useState('city');
+  const [flash, setFlash] = useState(null);
   const { unlock } = useAchievements();
   const [found, setFound] = useState(() => newQuests(local.get(QUESTS, {})).cards.length);
   const bubbleRef = useRef(null);
@@ -108,7 +111,7 @@ function World({ gl, setGl }) {
     return () => {
       dead = true;
       ro?.disconnect();
-      if (s.h.mode === 'ground' && !waterAt(s.h.p[0], s.h.p[2])) local.set(AT, { x: s.h.p[0], y: s.h.p[1], z: s.h.p[2], face: s.h.face });
+      if (s.h.zone !== 'space' && s.h.mode === 'ground' && !waterAt(s.h.p[0], s.h.p[2])) local.set(AT, { x: s.h.p[0], y: s.h.p[1], z: s.h.p[2], face: s.h.face });
       wind.current?.stop();
       wind.current = null;
       api.current?.dispose();
@@ -231,9 +234,29 @@ function World({ gl, setGl }) {
     if (pressed('x')) act();
     if (pressed('y')) cycleTime();
     const look = [Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), Math.cos(s.yaw) * Math.cos(s.pitch)];
-    s.h = stepHero(s.h, { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look }, dt, s.world);
+    const input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
+    s.h = s.h.zone === 'space' ? stepSpace(s.h, input, dt) : stepHero(s.h, input, dt, s.world);
     s.jump = false;
+    // up through the top of the sky, or back down into it: the other world takes over
+    if (s.h.ev.some((e) => e.type === 'exit')) {
+      for (const e of s.h.ev) s.events.push(e);
+      s.h = intoSpace(s.h);
+      a.setZone('space');
+      setZoneUi('space');
+      setFlash({ kind: 'out', key: s.t });
+      sfx('hyperspace');
+      unlock('karman');
+      say('Out of the air. That’s the whole world under your feet. (The Moon’s that way. So’s Mars, a long way further.)', 5200);
+    } else if (s.h.ev.some((e) => e.type === 'reenter')) {
+      s.h = outOfSpace(s.h);
+      a.setZone('city');
+      setZoneUi('city');
+      setFlash({ kind: 'in', key: s.t });
+      sfx('thunder');
+      say('Re-entry. Hold on: home’s right under you.');
+    }
     const h = s.h;
+    const inSpace = h.zone === 'space';
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
     // the camera swings round behind him when he's going somewhere fast (and you're not looking about)
     if (h.mode === 'air' && speed > 18 && s.t - s.dragAt > 1.2) {
@@ -243,8 +266,9 @@ function World({ gl, setGl }) {
       s.yaw += wrap(vy - s.yaw) * (1 - Math.exp(-r * dt));
       s.pitch += (clamp(vp * 0.85 - 0.08, -1.2, 1.1) - s.pitch) * (1 - Math.exp(-r * 0.8 * dt));
     }
-    // the things to do: the rings, the cards, the rescues
-    s.quests = stepQuests(s.quests, h, dt, s.world);
+    // the things to do: the rings, the cards, the rescues (in the city)
+    if (!inSpace) s.quests = stepQuests(s.quests, h, dt, s.world);
+    else s.quests = { ...s.quests, ev: [] };
     for (const e of s.quests.ev) {
       if (e.type === 'lesson-start') {
         sfx('ding');
@@ -292,14 +316,20 @@ function World({ gl, setGl }) {
       } else if (e.type === 'impact') sfx('crumble');
       else if (e.type === 'takeoff') sfx('zip');
       else if (e.type === 'splash') sfx('knock');
+      else if (e.type === 'land') {
+        // on the Moon, or Mars
+        sfx(e.speed > 300 ? 'crumble' : 'thunk');
+        unlock(e.body === 'moon' ? 'moonwalk' : 'redplanet');
+        say(e.body === 'moon' ? 'The Moon. Neil Armstrong, eat your heart out. (Space or W to go.)' : 'Mars. A long way from home. (Space to go.)', 4200);
+      }
     }
     a.frame(s, dt);
     s.frame++;
 
     // what's near: a place's door, on the ground or just over it
-    const alt = h.p[1] - groundAt(h.p[0], h.p[2]);
+    const alt = inSpace ? altitudeOf(h) : h.p[1] - groundAt(h.p[0], h.p[2]);
     let nearP = null;
-    if (alt < 12) for (const p of s.world.places) if (Math.hypot(h.p[0] - p.door[0], h.p[2] - p.door[1]) < p.r + 6) nearP = p;
+    if (alt < 12 && !inSpace) for (const p of s.world.places) if (Math.hypot(h.p[0] - p.door[0], h.p[2] - p.door[1]) < p.r + 6) nearP = p;
     if (nearP !== s.near) {
       s.near = nearP;
       setNear(nearP ? { id: nearP.id, name: nearP.name } : null);
@@ -308,9 +338,10 @@ function World({ gl, setGl }) {
     const H = hud.current;
     if (s.frame % 2 === 0) {
       if (H.speed) H.speed.textContent = String(Math.round(speed * 3.6));
-      if (H.mach) H.mach.textContent = speed > 60 ? `Mach ${(speed / MACH).toFixed(2)}` : h.mode === 'ground' ? (speed > 5 ? 'Running' : speed > 0.5 ? 'Walking' : 'Standing') : speed < 1 ? 'Hovering' : 'Flying';
-      if (H.alt) H.alt.textContent = `${Math.max(0, Math.round(alt))} m`;
-      if (H.bar) H.bar.style.transform = `scaleX(${Math.min(1, speed / FLY.top)})`;
+      const far = (b) => Math.round((Math.hypot(h.p[0] - b.c[0], h.p[1] - b.c[1], h.p[2] - b.c[2]) - b.r) / 1000);
+      if (H.mach) H.mach.textContent = inSpace ? (h.mode === 'perch' ? `On ${h.perch.body === 'moon' ? 'the Moon' : 'Mars'}` : BODIES.map((b) => `${b.id === 'moon' ? 'Moon' : 'Mars'} ${far(b)} km`).join(' · ')) : speed > 60 ? `Mach ${(speed / MACH).toFixed(2)}` : h.mode === 'ground' ? (speed > 5 ? 'Running' : speed > 0.5 ? 'Walking' : 'Standing') : speed < 1 ? 'Hovering' : 'Flying';
+      if (H.alt) H.alt.textContent = alt > 20000 ? `${Math.round(alt / 1000)} km` : `${Math.max(0, Math.round(alt))} m`;
+      if (H.bar) H.bar.style.transform = `scaleX(${Math.min(1, inSpace ? Math.log10(1 + speed) / Math.log10(6001) : speed / FLY.top)})`;
       if (H.lines) H.lines.style.opacity = String(clamp((speed - 70) / 160, 0, 0.85));
       const marks = [];
       const q = s.quests;
@@ -393,9 +424,10 @@ function World({ gl, setGl }) {
   });
 
   return (
-    <div className="iw-stage" ref={box}>
+    <div className="iw-stage" ref={box} data-zone={zone}>
       <canvas ref={canvas} className="iw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onContextMenu={(e) => e.preventDefault()} aria-label="The city, from the air. Fly with W, A, S and D; Space to go up, C to go down, Shift to go flat out." />
       <div className="iw-lines" ref={(el) => (hud.current.lines = el)} aria-hidden="true" />
+      {flash && <div className="iw-flash" data-kind={flash.kind} key={flash.key} aria-hidden="true" onAnimationEnd={() => setFlash(null)} />}
       {bubble && (
         <div className="iw-bubble" ref={bubbleRef} aria-live="polite">
           <div>
@@ -443,6 +475,8 @@ function World({ gl, setGl }) {
             <dd>At a place: go in</dd>
             <dt>T</dt>
             <dd>Noon, dusk, night</dd>
+            <dt>Up, up</dt>
+            <dd>Past 9 km you’re out of the air: the Moon and Mars are out there</dd>
           </dl>
           <p>A pad works: left stick flies, right stick looks, A up, B down, RT flat out.</p>
           <p>
