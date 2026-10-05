@@ -1065,5 +1065,23 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "universe/rv-wings": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10933-257e-742e-a0d2-54b1e1e85f24",
+    "name": "the RV with wings, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "cockpit/rv-wing": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10935-f6d2-747b-a11b-8346128460b2",
+    "name": "the RV’s wing, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
