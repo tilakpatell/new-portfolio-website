@@ -267,7 +267,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   for (const k of COLOURS) cur[k] = new THREE.Color(MOODS.plain[k]);
   for (const k of NUMBERS) cur[k] = MOODS.plain[k];
   const sunDir = V(...MOODS.plain.sun).normalize();
-  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, mood: '', erupt: 0, fall: 0, lash: 0, hit: 0, ash: 0, sparks: 0, gollumT: 0, ringK: 0, fov: 52, sink: 0 };
+  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, mood: '', erupt: 0, fall: 0, lash: 0, hit: 0, ash: 0, sparks: 0, gollumT: 0, ringK: 0, fov: 52, sink: 0, shire: 0 };
   const tmp = V();
   const tmp2 = V();
   const tmp3 = V();
@@ -276,6 +276,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const blend = new THREE.Color();
   const fireCol = new THREE.Color(0xff6a20);
   const lavaCol = new THREE.Color(0xff5a10);
+  const shireCol = new THREE.Color(0xffd890);
   const hostM = new THREE.Matrix4();
   const hostQ = new THREE.Quaternion();
   const hostE = new THREE.Euler();
@@ -307,7 +308,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     const h = s.hobbit;
     const lights = [];
     const done = s.done ?? [];
-    const after = done.includes('crack') || s.talking === 'refuge' || s.mode === 'flight' || (s.mode === 'end' && done.includes('eagles'));
+    // (remembering the Shire at the mountain's foot, it isn't erupting yet)
+    const after = s.mode !== 'remember' && (done.includes('crack') || s.talking === 'refuge' || s.mode === 'flight' || (s.mode === 'end' && done.includes('eagles')));
     // the mountain wakes as the Ring goes into the fire
     const wantErupt = after ? 1 : inNaur && (s.talking === 'done' || (s.talking === 'crack' && s.line === 'fall')) ? 0.7 : 0;
     A.erupt += (wantErupt - A.erupt) * Math.min(1, dt * 0.8);
@@ -581,13 +583,24 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       refuge.glow?.(1);
       lavaMesh.visible = true;
       lights.push([seat.clone().add(V(0, 4, 0)), lavaCol, 14, 60]);
-    } else if (s.talking === 'foot') {
+    } else if (s.talking === 'foot' || s.mode === 'remember') {
       // at the foot, Frodo down
       stand(frodo, FOOT.x, groundHeight(FOOT.x, FOOT.z), FOOT.z, 0);
       sit(frodo, true);
       frodo.group.rotation.z = 0.9;
-      stand(sam, FOOT.x - 0.9, groundHeight(FOOT.x - 0.9, FOOT.z + 0.6), FOOT.z + 0.6, -0.5);
+      // (Sam a step off, so the two of them read apart)
+      stand(sam, FOOT.x - 1.5, groundHeight(FOOT.x - 1.5, FOOT.z + 1.1), FOOT.z + 1.1, -0.7);
       sit(sam, true);
+      if (s.mode === 'remember') {
+        // the Shire coming back to him: a little warm light round the two
+        // of them, more the more he remembers
+        const k = s.remember?.k ?? 0;
+        A.shire += (k - A.shire) * Math.min(1, dt * 1.5);
+        lights.unshift([V(FOOT.x - 0.4, groundHeight(FOOT.x, FOOT.z) + 1.2, FOOT.z + 0.6), shireCol, 1.5 + A.shire * 9 + Math.sin(t * 2) * 0.3, 6 + A.shire * 6]);
+        pose(sam, t, { moving: false, talk: s.speaker === 'sam' ? 1 : 0 });
+        sit(sam, true); // (pose straightens the legs; he stays sitting)
+        frodo.group.rotation.z = 0.9 - A.shire * 0.5;
+      }
     } else if (s.talking === 'column' || s.talking === 'halt' || (s.mode === 'walk' && !s.search && s.next === 'column')) {
       // by the road, the column behind
       const [x, z, a] = s.talking === 'halt' ? marchAt(MARCH_LEN + 6) : marchAt(-2);
@@ -622,7 +635,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       sit(sam, false);
       pose(sam, t + 1, { moving: h.speed > 0.3 });
     }
-    if (frodo.group.rotation.z !== 0 && s.talking !== 'foot') frodo.group.rotation.z = 0;
+    if (frodo.group.rotation.z !== 0 && s.talking !== 'foot' && s.mode !== 'remember') frodo.group.rotation.z = 0;
 
     // ash in the air, everywhere but inside
     if (!inNaur) {
@@ -687,9 +700,10 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     } else if (s.talking === 'refuge') {
       camAt = tmp.copy(seat).add(V(-7, 3.2, 6));
       camLook = s.line === 'eagles' ? look.copy(seat).add(V(10, 8, -4)) : look.copy(seat).add(V(0, 0.8, 0));
-    } else if (s.talking === 'foot') {
-      camAt = tmp.copy(fp).add(V(-3.5, 1.8, 3));
-      camLook = look.copy(fp).add(V(2, 1.2, -1));
+    } else if (s.talking === 'foot' || s.mode === 'remember') {
+      // the two of them at the foot: Frodo down, Sam a step off to his left
+      camAt = tmp.copy(fp).add(V(1.8, 2.0, 4.6));
+      camLook = look.copy(fp).add(V(-0.7, 0.9, 0.4));
     } else if (s.talking === 'column' || s.talking === 'halt' || (s.mode === 'walk' && !s.search && s.next === 'column')) {
       // from the road, out over the plain to the mountain
       // behind and beside you two, out to the mountain
@@ -756,6 +770,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     else if (type === 'stumble') A.shake = Math.max(A.shake, 0.2);
     else if (type === 'caught') A.shake = 0.15;
     else if (type === 'erupt') A.shake = 0.5;
+    else if (type === 'recall') fx.pop(tmp2.copy(frodo.group.position).add(V(-0.3, 1.1, 0.3)), 'gold', 10, 0.6);
     else if (type === 'hit') {
       A.shake = 0.4;
       A.hit = 1;
