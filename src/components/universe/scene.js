@@ -34,8 +34,10 @@
 //   marked by a beacon (beacons.js) so it reads as somewhere to go, with
 //   wonders between them, all reached on the pulse drive (click a wonder
 //   and the ship takes you: ship.js's autopilot). You're not alone: traffic
-//   (traffic.js), hunters after you (hunters.js: the Empire, the
-//   Federation, the Council of Ricks; a pack that drops in ahead of you on
+//   (traffic.js), hunters after you (hunters.js, flown by hunterRules.js:
+//   the Empire, the Federation, the Council of Ricks, more of them the more
+//   trouble you make and nobody new while your shields are low; they steer
+//   round the planets, which are cover; a pack that drops in ahead of you on
 //   the way somewhere interdicts you: the pulse drive is cut to the boost
 //   while they're on you, 40 s at most), with shields that take their hits
 //   and come back, and now and then the director (director.js) sets
@@ -59,8 +61,11 @@
 //   it as it came, so it still stops where it means to.
 //   Gone online (online/), the other visitors flying it are here too
 //   (online/pilots.js): their ships and callsigns, and their shots; the guns
-//   lock on to anyone who isn't your ally, a hit comes off their shields
-//   (they're told, and take it themselves), and theirs off yours.
+//   lock on to anyone who isn't your ally (nor just back from being shot
+//   down), a hit comes off their shields (they're told, and take it
+//   themselves), and theirs off yours. The hunters after each pilot are in
+//   everyone's sky: yours go out to the others (net.pack), theirs are
+//   drawn here and can be shot at, the hit told to whoever they're after.
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
@@ -98,7 +103,7 @@ import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
 import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isGoal, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, driveById, hyperState, parkFor } from './nav';
-import { FACTIONS, NAMES, createHunters } from './hunters';
+import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
@@ -654,12 +659,13 @@ export async function create(canvas, ctx) {
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
-  const hunters = reduced ? null : createHunters(map, { small, fleet });
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS });
+  let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
   const later = []; // { at, run }: what the director set going, a moment on
   // the other pilots, once online (with reduced motion too: they're people)
-  const pilots = createPilots(map, { T, colors: BOLT_COLOR });
+  const pilots = createPilots(map, { T, colors: BOLT_COLOR, fleet: reduced ? null : fleet, kinds: HUNTER_KINDS });
   let net = null;
   let netOff = null;
 
@@ -1592,12 +1598,19 @@ export async function create(canvas, ctx) {
         continue;
       }
       // another pilot: they're told, and it comes off their shields
-      const ph = pilots.hit(shotFrom, b.position);
+      // (or one of the hunters after them: it's theirs, so they're told that too)
+      const ph = pilots.hit(shotFrom, b.position, d.punch ?? 1);
       if (ph) {
         b.visible = false;
-        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: 0.2 });
+        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: ph.down ? ph.size * 1.8 : 0.2 });
         state.hitMark = 1;
-        net?.hit(ph.id);
+        if (ph.hunter) {
+          net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
+          if (ph.down) {
+            emit({ type: 'kill', kind: ph.kind });
+            if (!reduced) state.shake = Math.max(state.shake, 0.2);
+          }
+        } else net?.hit(ph.id);
         continue;
       }
       const h = traffic?.hit(shotFrom, b.position);
@@ -1743,10 +1756,11 @@ export async function create(canvas, ctx) {
     // the ones coming at you that you can't see: an arrow at the edge each
     // (nearest first), so a fight behind you isn't a surprise
     let n = 0;
-    if (on && hunters && h.threats.length) {
-      const cands = hunters.targets;
+    if (on && h.threats.length) {
       threatList.length = 0;
-      for (const c of cands) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      for (const c of hunters?.targets ?? []) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      // (and a pilot whose shots have been landing on you)
+      if (pilots.count) for (const c of pilots.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
       for (const c of threatList) {
         if (n >= h.threats.length) break;
@@ -1895,7 +1909,14 @@ export async function create(canvas, ctx) {
   // someone going down (a pop where they were; yours, if it was your shot)
   const onNet = (e) => {
     if (e.type === 'hit') hurt(e.damage, e.from);
-    else if (e.type === 'downed') {
+    else if (e.type === 'hunterHit') {
+      // another pilot's bolt into one of the hunters after you
+      const r = hunters?.damage(e.id, e.damage);
+      if (r) {
+        pops.hit({ point: r.at, normal: new THREE.Vector3(0, 1, 0), radius: r.down ? r.size * 1.8 : 0.2 });
+        if (r.down) net?.helped?.(e.from, NAMES[r.kind] ?? 'hunter');
+      }
+    } else if (e.type === 'downed') {
       const at = pilots.at(e.id);
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
@@ -1951,8 +1972,11 @@ export async function create(canvas, ctx) {
   const happen = (id, ship) => {
     const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
     const ambush = travelling(ship) ? { ahead: true, interdict: true } : {};
-    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship, ambush);
-    else if (id === 'council') pieces.portals(hunters.pack('council', ship, ambush));
+    // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
+    const strength = { heat: state.heat, first: hunts === 0 };
+    if (id === 'hunt' || id === 'council') hunts += 1;
+    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship, { ...ambush, ...strength });
+    else if (id === 'council') pieces.portals(hunters.pack('council', ship, { ...ambush, ...strength }));
     else if (id === 'destroyer') {
       const d = pieces.destroyer(ship);
       if (!d) return;
@@ -2042,7 +2066,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view === 'map' || Boolean(props.charting), travelling: travelling(live) });
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -2778,6 +2802,7 @@ export async function create(canvas, ctx) {
     if (net) {
       const s = flying() ? state.ship : null;
       net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.pack?.(() => (s && !state.crash && !state.dive && !props.frozen && !onFoot() ? (hunters?.wire() ?? []) : []));
       net.foot?.(onFoot() && !props.frozen ? foot.crew() : null);
       if (onFoot()) foot.guests(guestsOnFoot(now));
     }
@@ -3136,7 +3161,7 @@ export async function create(canvas, ctx) {
       loadout: { ...state.loadout },
       stats: { ...state.stats },
       modules: state.model?.modules ? { nozzles: state.model.modules.nozzles.length, muzzles: state.model.modules.muzzles.length, flame: state.model.modules.flame } : null,
-      pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, kind: p.kind, loadout: p.loadout, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
+      pilots: pilots.targets.filter((p) => p.peer).map((p) => ({ id: p.peer, name: p.name, kind: p.kind, loadout: p.loadout, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
       online: net?.snapshot().status ?? null,
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),

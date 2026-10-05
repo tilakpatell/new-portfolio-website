@@ -17,9 +17,10 @@
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
-// thing twice running.
+// thing twice running. While your shields are low (`calm`), nobody new comes
+// after you: what happens then is one of the sights.
 //
-// createDirector({ rand }) → { update(dt, { family, heat, busy }) → event id or null, soon(id) }
+// createDirector({ rand }) → { update(dt, { family, heat, busy, travelling, calm }) → event id or null, soon(id) }
 
 export const EVENTS = {
   hunt: { families: ['starwars', 'rickmorty', 'both'], weight: 3, heat: 1 },
@@ -43,8 +44,9 @@ export function createDirector({ rand = Math.random } = {}) {
     // heat: 0 and up; busy: something's already going on (hunters after
     // you, a crash playing out), so not now; travelling: out in the open at
     // speed, between places, where things come sooner and more of them are
-    // hunters (an ambush on the way)
-    update(dt, { family, heat = 0, busy = false, travelling = false }) {
+    // hunters (an ambush on the way); calm: your shields are low, so
+    // nothing that comes after you (the hunts wait till they're back)
+    update(dt, { family, heat = 0, busy = false, travelling = false, calm = false }) {
       if (!family) return null;
       clock += dt;
       if (busy) {
@@ -61,7 +63,8 @@ export function createDirector({ rand = Math.random } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last);
+      const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last && !(calm && e.heat > 0));
+      if (!choices.length) return null;
       const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
       let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
       let id = choices[choices.length - 1][0];
