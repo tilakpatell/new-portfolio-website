@@ -17,6 +17,7 @@ import { CAST as STAFF_HEIGHTS, loadPeople } from '../people';
 import { makeProps } from '../props';
 import { buildSet } from './set';
 import { buildWarehouse } from './warehouse';
+import { buildOutside } from './outside';
 import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -79,18 +80,20 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   let set;
   let cast;
   let wh;
+  let out;
   try {
     kit = await loadKit(renderer);
     props = makeProps(kit);
     set = await buildSet(kit, props, { tier });
     wh = buildWarehouse(kit);
+    out = buildOutside();
   } catch (e) {
     set?.dispose();
     kit?.dispose();
     stage.dispose();
     throw e;
   }
-  scene.add(set.group, wh.group);
+  scene.add(set.group, wh.group, out.group);
   const LAMPS = [...set.lights, ...wh.lights];
   const ballHome = wh.ball.position.clone();
 
@@ -484,6 +487,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       fx.dispose?.();
       set.dispose();
       wh.dispose();
+      out.dispose();
       props.dispose();
       loading.then((c) => c?.dispose());
       kit.dispose();

@@ -60,40 +60,6 @@ function signTex(lines, bg, fg, w = 512, h = 256) {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-function lotTex() {
-  const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 256;
-  const x = c.getContext('2d');
-  const sky = x.createLinearGradient(0, 0, 0, 120);
-  sky.addColorStop(0, '#bcd0e0');
-  sky.addColorStop(1, '#eef1ee');
-  x.fillStyle = sky;
-  x.fillRect(0, 0, 256, 256);
-  x.fillStyle = '#86917f';
-  for (let i = 0; i < 16; i++) {
-    x.beginPath();
-    x.ellipse(Math.random() * 256, 104, 16 + Math.random() * 12, 22, 0, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.fillStyle = '#8f908c';
-  x.fillRect(0, 118, 256, 138);
-  // a Dunder Mifflin box truck, backed up to the next door along
-  x.fillStyle = '#f2f1ec';
-  x.fillRect(150, 70, 100, 80);
-  x.fillStyle = '#1f4e8c';
-  x.font = 'bold 15px Arial';
-  x.fillText('DUNDER MIFFLIN', 156, 104);
-  x.fillStyle = '#222';
-  x.beginPath();
-  x.arc(175, 156, 10, 0, Math.PI * 2);
-  x.arc(230, 156, 10, 0, Math.PI * 2);
-  x.fill();
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
 export function buildWarehouse(kit) {
   const group = new THREE.Group();
   const own = [];
@@ -213,10 +179,6 @@ export function buildWarehouse(kit) {
     mesh(keep(merge(slats)), rollup);
     // the open one: rolled up under its header, the lot out beyond
     mesh(new THREE.CylinderGeometry(0.3, 0.3, dw, 16).rotateX(Math.PI / 2), rollup, x1 - 0.25, 3.85, doors[1]);
-    const lot = keep(lotTex());
-    const view = mesh(new THREE.PlaneGeometry(dw * 2.4, 3.6 * 1.7), mat({ map: lot, emissive: 0xffffff, emissiveMap: lot, emissiveIntensity: 0.9 }), x1 + 2.5, 2.1, doors[1]);
-    view.rotation.y = -Math.PI / 2;
-    view.castShadow = false;
     // the leveller and its bumpers, both doors
     const black = mat({ color: 0x18191b, roughness: 0.8 });
     for (const d of doors) {

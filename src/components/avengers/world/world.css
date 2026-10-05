@@ -85,9 +85,10 @@ button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-
 .cw-jump:active { background: rgba(143, 233, 255, 0.35); }
 .cw-jump { display: grid; place-content: center; gap: 0.2rem; }
 .cw-jump small { font: 600 0.52rem/1 var(--font-sans); letter-spacing: 0.06em; opacity: 0.75; }
-.cw-zip { width: 58px; height: 58px; font-size: 0.7rem; }
+.cw-zip { width: 52px; height: 52px; font-size: 0.62rem; }
 .cw-hud-bottom .cw-jump { margin-left: auto; }
-.cw-hud-bottom .cw-zip { margin-left: 0.5rem; }
+.cw-acts { display: grid; gap: 0.45rem; margin-left: 0.5rem; }
+.cw-acts .cw-zip { margin: 0; }
 
 /* swinging: lines at the edges when he's going fast, and a word for a perfect release */
 .cw-speed {

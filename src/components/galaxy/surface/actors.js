@@ -1,5 +1,5 @@
 // Who's about on a world: Jawas round their sandcrawler, banthas grazing,
-// stormtroopers on patrol, Ewoks in their village, porgs on the rocks.
+// stormtroopers on patrol, Ewoks in their village, Gamorreans at a Hutt's gate.
 // Each wanders near its home (stopping, looking about, going on), or walks
 // its beat (a patrol's path, round and round), or stands where it was put;
 // someone with something to say turns to you as you come up, and says it

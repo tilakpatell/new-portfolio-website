@@ -34,7 +34,7 @@ const clip = (id, o) => import('../../../lib/clips').then((c) => c.playClip(id, 
 const sfx = () => import('../../../lib/sfx');
 const sounds = () => import('./sounds');
 const walker = makeWalker({ radius: WORLD.radius, centre: WORLD.centre, colliders: COLLIDERS, walls: WALLS, body: JIM });
-const ROOM_NAMES = { bullpen: 'The bullpen', michael: 'Michael’s office', conference: 'The conference room', hallway: 'The kitchen', men: 'The men’s room', women: 'The women’s room', closet: 'Ryan’s closet', stairs: 'The stairwell', annex: 'The annex', breakroom: 'The break room', darryl: 'Darryl’s office', supplies: 'The supply room', lobby: 'The lobby', warehouse: 'The warehouse' };
+const ROOM_NAMES = { bullpen: 'The bullpen', michael: 'Michael’s office', conference: 'The conference room', hallway: 'The kitchen', men: 'The men’s room', women: 'The women’s room', closet: 'Ryan’s closet', stairs: 'The stairwell', annex: 'The annex', breakroom: 'The break room', darryl: 'Darryl’s office', supplies: 'The supply room', lobby: 'The lobby', warehouse: 'The warehouse', lot: 'Scranton Business Park' };
 const BOUNDS = (() => {
   const all = Object.values(ROOMS).map(rect);
   const x0 = Math.min(...all.map((r) => r.x));
