@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { B, cyl } from '../../shire/props';
-import { V, basin, fountain, lampsAt } from './common';
+import { V, basin, fountain, lampsAt, motes } from './common';
 
 export const LORIEN = {
   sky: { background: 0x0a1222, fog: [0x0e1a2a, 18, 30], hemi: [0xb8ccff, 0x1a2a20, 1.05], sun: [0xc8d8ff, 1.5] },
@@ -80,5 +80,10 @@ export const LORIEN = {
       }
     return null;
   },
-  extras: (ctx) => lampsAt(ctx, { glow: 0xdce8ff, size: 0.1, light: 0xc8d8ff, intensity: 2.4, range: 10, y: 2.4, z: 0.8 }),
+  extras(ctx) {
+    const { W, D, Z } = ctx;
+    lampsAt(ctx, { glow: 0xdce8ff, size: 0.1, light: 0xc8d8ff, intensity: 2.4, range: 10, y: 2.4, z: 0.8 });
+    // mallorn leaves, gold, drifting down through the lantern light
+    return motes(ctx, { n: 36, colour: 0xffcf6a, size: 0.13, rise: -0.32, sway: 0.6, life: [6, 10], glow: 1.1, from: () => V((Math.random() - 0.5) * (W + 2), 3.2 + Math.random(), Z(0) + Math.random() * D) });
+  },
 };

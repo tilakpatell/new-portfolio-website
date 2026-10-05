@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { B, cyl } from '../../shire/props';
-import { V, stream } from './common';
+import { V, motes, stream } from './common';
 
 export const MORIA = {
   sky: { background: 0x07070a, fog: [0x0c0a0a, 14, 34], hemi: [0x9aa8c8, 0x2a160c, 0.75], sun: [0xb8c8ff, 1.0] },
@@ -13,7 +13,9 @@ export const MORIA = {
     // dark stone for Moria's halls
     const deep = mats.ashlar.clone();
     deep.color = new THREE.Color(0x5a5652);
-    return { deep };
+    const coals = new THREE.MeshBasicMaterial({ color: hot(0xff5a1a, 2.2) });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.9 });
+    return { deep, coals, leather };
   },
   room({ bk, mats, W, D, Z, wallH, lamps }, { deep }) {
     bk.add(deep, B(W + 2, 0.1, D + 2), { p: [0, -0.05, 0.5], uv: 0.4 });
@@ -48,9 +50,23 @@ export const MORIA = {
       // a quenching trough
       bk.add(deep, B(0.86, 0.28, 0.6), { p: [0, 0.14, 0], uv: 1 });
     },
+    O({ bk, mats }, { deep, coals, leather }) {
+      // a dwarf-forge: a stone hearth with its bed of coals, a hood and
+      // chimney over it, and the bellows at its side
+      bk.add(deep, B(0.84, 0.22, 0.72), { p: [0, 0.11, -0.04], uv: 1 });
+      bk.add(coals, B(0.62, 0.03, 0.5), { p: [0, 0.235, -0.04] });
+      for (let k = 0; k < 9; k++) bk.add(mats.iron, new THREE.IcosahedronGeometry(0.045, 0), { p: [Math.cos(k * 2.4) * 0.22, 0.25, -0.04 + Math.sin(k * 2.4) * 0.17], r: [k, k * 2, 0] });
+      bk.add(mats.iron, new THREE.CylinderGeometry(0.1, 0.46, 0.42, 4, 1, true), { p: [0, 0.78, -0.1], r: [0, Math.PI / 4, 0] });
+      bk.add(deep, B(0.18, 0.9, 0.18), { p: [0, 1.4, -0.1], uv: 1 });
+      bk.add(leather, B(0.1, 0.18, 0.34), { p: [0.47, 0.16, -0.06], r: [0, 0, 0.15] });
+      bk.add(mats.timber, B(0.04, 0.04, 0.34), { p: [0.52, 0.27, -0.06] });
+    },
   },
+  // (what's on the forge sits on its coals)
+  ovenAt: { y: 0.25, out: 0.04 },
   water: (ctx, { deep }) => stream(ctx, { lava: true, kerb: deep }),
-  extras({ room, scene, lamps, at, W, D, X, Z, mats }) {
+  extras(ctx) {
+    const { room, scene, lamps, at, W, D, X, Z, mats } = ctx;
     // braziers on the pillars, and the molten channel's glow
     const flame = new THREE.MeshBasicMaterial({ color: hot(0xff8a2a, 3) });
     const flameGeo = new THREE.SphereGeometry(0.12, 8, 6);
@@ -72,6 +88,9 @@ export const MORIA = {
       l.position.copy(p);
       scene.add(l);
     }
+    // sparks, rising off the molten rock
+    const sparks = lava.length ? motes(ctx, { n: 80, colour: 0xff8a3a, size: 0.08, rise: 0.9, sway: 0.25, life: [0.8, 2.2], glow: 2, from: () => lava[Math.floor(Math.random() * lava.length)].clone().add(V((Math.random() - 0.5) * 0.9, -0.35, (Math.random() - 0.5) * 0.9)) }) : null;
+    return { tick: (dt, t) => sparks?.tick(dt, t) };
   },
   // the crucibles: grey ore, molten, then mithril
   pot: (potMat) => ({ empty: potMat(0x2a2a2a), part: potMat(0x6a6a72), cooking: new THREE.MeshBasicMaterial({ color: hot(0xff6a1a, 2) }), done: new THREE.MeshStandardMaterial({ color: 0xf2f6ff, metalness: 1, roughness: 0.1, emissive: hot(0xa8c0ff, 0.6) }), burnt: potMat(0x141010) }),

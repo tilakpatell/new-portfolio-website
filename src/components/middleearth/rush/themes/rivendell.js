@@ -2,8 +2,8 @@
 // the valley's evening sky, elvish lamps, and a stream through the kitchen.
 
 import * as THREE from 'three';
-import { B, cyl } from '../../shire/props';
-import { V, basin, lampsAt, skyBehind, stream } from './common';
+import { B, ball, cyl } from '../../shire/props';
+import { V, basin, lampsAt, motes, skyBehind, stream } from './common';
 
 export const RIVENDELL = {
   sky: { background: 0x3a3448, fog: [0x5a5060, 18, 44], hemi: [0xfff0d8, 0x5a5040, 1.45], sun: [0xffd8a0, 2.6], sunAt: [-7, 10, 4] },
@@ -34,7 +34,30 @@ export const RIVENDELL = {
   shelf: ({ mats, m }) => [m.paleWood, mats.dressed],
   water: (ctx) => stream(ctx, { kerb: ctx.mats.dressed }),
   extras(ctx) {
-    const { room, W, Z } = ctx;
+    const { room, at, W, D, X, Z } = ctx;
+    // lily pads on the stream, and a little fall where it comes in under the wall
+    const pad = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.6 });
+    const bloom = new THREE.MeshStandardMaterial({ color: 0xf6e8f0, roughness: 0.5 });
+    const wet = [];
+    for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) if (at(i, j) === '~') wet.push([i, j]);
+    wet.forEach(([i, j], n) => {
+      if (n % 3) return;
+      const p = new THREE.Mesh(new THREE.CircleGeometry(0.14, 12, 0.3, Math.PI * 1.8), pad);
+      p.rotation.set(-Math.PI / 2, 0, n);
+      p.position.set(X(i + 0.3 + (n % 2) * 0.4), 0.03, Z(j + 0.35 + ((n * 7) % 3) * 0.15));
+      room.add(p);
+      if (n % 2 === 0) {
+        const f = new THREE.Mesh(ball(0.04, 8, 6), bloom);
+        f.position.copy(p.position).add(V(0, 0.03, 0));
+        room.add(f);
+      }
+    });
+    const top = wet.filter(([, j]) => j === 0);
+    const fall = new THREE.Mesh(new THREE.PlaneGeometry(top.length || 2, 0.7), new THREE.MeshStandardMaterial({ color: 0xcfeef8, transparent: true, opacity: 0.7, roughness: 0.1, emissive: 0x1a4a5a }));
+    const fx = top.length ? X(top.reduce((a, [i]) => a + i, 0) / top.length + 0.5) : 0;
+    fall.position.set(fx, 0.38, Z(0) - 0.12);
+    room.add(fall);
+    const spray = motes(ctx, { n: 30, colour: 0xe8f8ff, size: 0.09, rise: 0.25, sway: 0.2, life: [0.6, 1.4], glow: 0.9, from: () => V(fx + (Math.random() - 0.5) * (top.length || 2), 0.05, Z(0) + 0.15) });
     // the valley's evening sky through the arches, and its far cliffs, dark against it
     skyBehind(ctx, [[0, '#2a2a4a'], [0.55, '#a8708a'], [0.8, '#f0b870'], [1, '#f8d898']]);
     const cliffs = new THREE.Shape();
@@ -45,5 +68,6 @@ export const RIVENDELL = {
     hills.position.set(0, 0, Z(0) - 3.8);
     room.add(hills);
     lampsAt(ctx, { glow: 0xffe2a8, light: 0xffd8a0 });
+    return spray;
   },
 };
