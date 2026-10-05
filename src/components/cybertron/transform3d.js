@@ -6,12 +6,17 @@
 // Transform Animation" by dioiiiii2, CC Attribution, from Sketchfab: see
 // public/cc0/README.md), run forwards and backwards here.
 //
-// Megatron has no such model, so his is staged: his jet is built here from
-// plated parts, the robot is the Meshy model the site owner made
-// (public/models/meshy), and between them the jet's parts fly apart while a
-// ring of energon sweeps up and the robot is there below it. Optimus falls
-// back to the same staging (with a truck built from parts) if his model
-// can't be had. Drag to turn the figure round.
+// Megatron has no such model, so his change is animated here, from the two
+// the site owner made for Roll out with Meshy: the seeker jet, and Megatron
+// rigged. The jet stands up on its tail, turning, and thins out; he forms in
+// its place folded down on his haunches, unfolds and stands, and then
+// breathes (his idle clip). His fusion cannon rides his right forearm: Fire,
+// and the arm comes up, the muzzle charges, and the beam goes out along it.
+//
+// If a model can't be had, the change is staged instead: a vehicle built
+// here from plated parts flies apart while a ring of energon sweeps up and
+// the Meshy statue (public/models/meshy) is there below it. Drag to turn
+// the figure round.
 //
 // `mode` is 'alt' or 'robot'; `matrix` opens the Matrix of Leadership in
 // Optimus's chest; `firing` fires Megatron's fusion cannon.
@@ -187,6 +192,7 @@ export async function create(canvas, ctx) {
   }
 
   // Megatron's jet: the seeker the site owner made for Roll out, in place of the one built from parts
+  let jet3d = null; // the seeker, under a pivot that pitches it and one that spins it
   if (ctx.side === 'decepticon') {
     const g = await loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/seeker.glb`).catch(() => null);
     if (g) {
@@ -197,19 +203,133 @@ export async function create(canvas, ctx) {
       const jetModel = new THREE.Group();
       g.scene.scale.setScalar(k);
       g.scene.position.set(-((box.min.x + box.max.x) / 2) * k, -((box.min.y + box.max.y) / 2) * k, -((box.min.z + box.max.z) / 2) * k);
+      const mats = [];
       g.scene.traverse((o) => {
         if (!o.isMesh) return;
         o.material.metalness = 0.5;
         o.material.roughness = 0.4;
+        o.material.alphaHash = true; // thins out grain by grain, with nothing to sort
         if (o.material.map) o.material.map.anisotropy = 8;
+        mats.push(o.material);
       });
       jetModel.add(g.scene);
       jetModel.rotation.y = Math.PI / 2; // made nose to -x; turned nose-forward
-      jetModel.position.y = 1.25;
+      const pitch = new THREE.Group();
+      pitch.add(jetModel);
+      const spin = new THREE.Group();
+      spin.add(pitch);
+      spin.position.y = 1.25;
       for (const p of alt.parts) alt.group.remove(p.m);
       alt.parts.length = 0;
-      alt.group.add(jetModel);
-      alt.parts.push({ m: jetModel, home: jetModel.position.clone(), turn: jetModel.rotation.clone(), seed: 1.3 });
+      alt.group.add(spin);
+      alt.parts.push({ m: spin, home: spin.position.clone(), turn: spin.rotation.clone(), seed: 1.3 });
+      jet3d = { spin, pitch, mats };
+    }
+  }
+
+  // Megatron himself, rigged: his bones fold him down and stand him up, and raise the cannon
+  let meg = null;
+  if (jet3d) {
+    const [rig, idle] = await Promise.all([
+      loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/megatron.glb`).catch(() => null),
+      loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/megatron-idle.glb`).catch(() => null),
+    ]);
+    let body = null;
+    rig?.scene.traverse((o) => {
+      if (o.isSkinnedMesh) body = o;
+    });
+    if (body) {
+      const model = rig.scene;
+      model.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(model);
+      const k = TALL / Math.max(1e-3, box.max.y - box.min.y);
+      const holder = new THREE.Group();
+      holder.scale.setScalar(k);
+      holder.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+      holder.add(model);
+      const figure = new THREE.Group();
+      figure.add(holder);
+      turntable.add(figure);
+      body.frustumCulled = false; // its bounds move with its bones
+      const mats = [].concat(body.material);
+      for (const m of mats) {
+        m.metalness = 0.6;
+        m.roughness = 0.38;
+        m.alphaHash = true;
+        if (m.map) m.map.anisotropy = 8;
+      }
+      const mixer = idle?.animations?.[0] ? new THREE.AnimationMixer(model) : null;
+      mixer?.clipAction(idle.animations[0]).play();
+      mixer?.update(0);
+      turntable.updateMatrixWorld(true);
+      const bones = body.skeleton.bones;
+      const bone = (n) => model.getObjectByName(n);
+      const stand = bones.map((b) => b.quaternion.clone());
+      // turn a bone about one of the figure's own axes (x is across him), whatever the bone's are
+      const [qa, qb, qc, qf] = [0, 0, 0, 0].map(() => new THREE.Quaternion());
+      const ax = new THREE.Vector3();
+      const turn = (b, angle, axis = 'x') => {
+        if (!b || !angle) return;
+        ax.set(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0).applyQuaternion(figure.getWorldQuaternion(qf));
+        b.getWorldQuaternion(qa);
+        qb.setFromAxisAngle(ax, angle).multiply(qa);
+        b.parent.getWorldQuaternion(qc);
+        b.quaternion.copy(qc.invert().multiply(qb));
+        b.updateMatrixWorld(true);
+      };
+      const at = new THREE.Vector3();
+      const soles = () => Math.min(...['LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase'].map((n) => bone(n)?.getWorldPosition(at).y ?? 0));
+      // folded down: knees up, back curled, arms in
+      const floor = soles();
+      turn(bone('Spine02'), 0.5);
+      turn(bone('Spine'), 0.5);
+      turn(bone('Head'), 0.5);
+      for (const side2 of ['Left', 'Right']) {
+        turn(bone(`${side2}UpLeg`), -1.7);
+        turn(bone(`${side2}Leg`), 2.3);
+        turn(bone(`${side2}Arm`), -0.9);
+        turn(bone(`${side2}ForeArm`), -1.6);
+      }
+      const folded = bones.map((b) => b.quaternion.clone());
+      const lift = soles() - floor; // how far folding lifts his feet: he comes down by that
+      bones.forEach((b, i) => b.quaternion.copy(stand[i]));
+      model.updateMatrixWorld(true);
+
+      // the fusion cannon, along his right forearm and out past the hand
+      const fore = bone('RightForeArm');
+      const hand = bone('RightHand');
+      const cannon = new THREE.Group();
+      const muzzle = new THREE.Object3D();
+      if (fore && hand) {
+        const from = fore.getWorldPosition(new THREE.Vector3());
+        const dir = hand.getWorldPosition(new THREE.Vector3()).sub(from);
+        const len = dir.length();
+        dir.normalize();
+        const long = len * 2.1;
+        const steel = metal(0x1d1f27, { roughness: 0.42, metalness: 0.8 });
+        const hot = new THREE.MeshBasicMaterial({ color: new THREE.Color(side.energon).multiplyScalar(1.6) });
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.125, long, 16), steel);
+        const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, long * 0.34, 16), steel);
+        sleeve.position.y = -long * 0.2;
+        const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.11, 0.09, 16), steel);
+        lip.position.y = long / 2;
+        cannon.add(barrel, sleeve, lip);
+        for (const y of [-0.02, 0.16, 0.34]) {
+          const band = new THREE.Mesh(new THREE.TorusGeometry(0.118, 0.016, 8, 24).rotateX(Math.PI / 2), hot);
+          band.position.y = long * y;
+          cannon.add(band);
+        }
+        muzzle.position.y = long / 2 + 0.04;
+        cannon.add(muzzle);
+        // on the outside of the arm, lying along it
+        const out = new THREE.Vector3(Math.sign(from.x) || -1, 0.25, 0).normalize();
+        cannon.position.copy(from).addScaledVector(dir, len * 0.75).addScaledVector(out, 0.13);
+        cannon.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        scene.add(cannon);
+        fore.attach(cannon);
+      }
+      alt.group.visible = true;
+      meg = { figure, mats, mixer, bones, stand, folded, lift, bone, turn, muzzle, cannon, from: stand.map((q) => q.clone()), was: 0 };
     }
   }
 
@@ -218,12 +338,13 @@ export async function create(canvas, ctx) {
   const robot = new THREE.Group();
   turntable.add(robot);
   let robotReady = false;
-  const loaded = change
-    ? null
-    : await loader.loadAsync(`${import.meta.env.BASE_URL}models/meshy/${side.model}.glb`).then(
-        (g) => g.scene,
-        () => null,
-      );
+  const loaded =
+    change || meg
+      ? null
+      : await loader.loadAsync(`${import.meta.env.BASE_URL}models/meshy/${side.model}.glb`).then(
+          (g) => g.scene,
+          () => null,
+        );
   if (loaded) {
     loaded.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(loaded);
@@ -248,15 +369,86 @@ export async function create(canvas, ctx) {
   const scanDisc = new THREE.Mesh(new THREE.CircleGeometry(1.15, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: energon, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   scene.add(scan, scanDisc);
 
-  // the Matrix in Optimus's chest, and Megatron's cannon
-  const spark = new THREE.PointLight(0xffe7a0, 0, 5, 1.4);
-  spark.position.set(0, TALL * 0.7, 0.42);
-  const sparkGlow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 14), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd98a).multiplyScalar(1.6), transparent: true, opacity: 0 }));
-  sparkGlow.position.copy(spark.position);
-  turntable.add(spark, sparkGlow);
-  const boltMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xc9a0ff).multiplyScalar(3.5), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
-  const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 9, 12).rotateX(Math.PI / 2).translate(0, 0, 4.5), boltMat);
-  turntable.add(bolt);
+  // light, drawn: a soft round glow, and a streak for rays
+  const paint = (w, h, draw) => {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    draw(c.getContext('2d'));
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  };
+  const glowTex = paint(128, 128, (g) => {
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,0.6)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.13)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+  });
+  const rayTex = paint(256, 32, (g) => {
+    const grad = g.createLinearGradient(0, 0, 256, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 13, 256, 6);
+    g.globalAlpha = 0.35;
+    g.fillRect(0, 6, 256, 20);
+  });
+  const lit = (map, color, o = {}) => new THREE.SpriteMaterial({ map, color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, ...o });
+
+  // the Matrix of Leadership, in Optimus's chest: found on the model itself
+  // (the front of his chest, by a ray from in front of him), so it sits on
+  // him and turns with him. A core, a halo, and rays that turn slowly.
+  const chest = new THREE.Vector3(0, TALL * 0.7, 0.42);
+  if (change) {
+    change.at(change.duration);
+    change.holder.position.copy(change.to);
+    turntable.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster();
+    let best = null;
+    for (const h of [0.66, 0.7, 0.74]) {
+      ray.set(new THREE.Vector3(0, TALL * h, 6), new THREE.Vector3(0, 0, -1));
+      const hit = ray.intersectObject(change.holder, true)[0];
+      if (hit && (!best || hit.point.z > best.z)) best = hit.point;
+    }
+    if (best) chest.set(0, best.y, best.z + 0.05);
+    change.at(0);
+    change.holder.position.copy(change.from);
+  }
+  const matrixGroup = new THREE.Group();
+  matrixGroup.position.copy(chest);
+  const spark = new THREE.PointLight(0xffd27a, 0, 4.5, 1.6);
+  spark.position.z = 0.25;
+  const core = new THREE.Sprite(lit(glowTex, new THREE.Color(0xfff3c4).multiplyScalar(1.6)));
+  const halo = new THREE.Sprite(lit(glowTex, 0xffb648));
+  const blue = new THREE.Sprite(lit(glowTex, 0x7fd4ff));
+  const rays = [0, 1, 2].map((i) => {
+    const r = new THREE.Sprite(lit(rayTex, 0xffe0a0, { rotation: (i * Math.PI) / 3 }));
+    matrixGroup.add(r);
+    return r;
+  });
+  matrixGroup.add(spark, halo, blue, core);
+  turntable.add(matrixGroup);
+
+  // the fusion cannon's fire: a charge gathering at the muzzle, then the beam
+  // (a white-hot core in a sheath of violet) out along the barrel, and the flash
+  const beam = new THREE.Group();
+  const coreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xf4e8ff).multiplyScalar(2), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const sheathMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(side.energon).multiplyScalar(1.5), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const LONG = 18;
+  const beamCore = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, LONG, 10, 1, true).rotateX(Math.PI / 2).translate(0, 0, LONG / 2), coreMat);
+  const beamSheath = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, LONG, 14, 1, true).rotateX(Math.PI / 2).translate(0, 0, LONG / 2), sheathMat);
+  const flash = new THREE.Sprite(lit(glowTex, new THREE.Color(side.energon).lerp(new THREE.Color(0xffffff), 0.55).multiplyScalar(1.8)));
+  const flare = new THREE.PointLight(side.energon, 0, 7, 1.5);
+  beam.add(beamCore, beamSheath, flash, flare);
+  scene.add(beam);
+  const muzzleAt = new THREE.Vector3();
+  const aimAt = new THREE.Vector3();
+  const pivot = new THREE.Vector3();
 
   // where things are
   let mode = ctx.mode === 'robot' ? 'robot' : 'alt';
@@ -297,6 +489,7 @@ export async function create(canvas, ctx) {
   el.style.touchAction = 'pan-y';
   el.style.cursor = 'grab';
 
+  const pivotQ = new THREE.Quaternion();
   function pose() {
     if (change) {
       // the real thing: run the change to where `t` says, and keep the figure over the middle
@@ -307,6 +500,47 @@ export async function create(canvas, ctx) {
       scanMat.opacity = 0;
       scanDisc.material.opacity = 0;
       const moving = t > 0.001 && t < 0.999;
+      ringMat.opacity = 0.55 + (moving ? 0.45 * Math.sin(clock * 18) ** 2 : 0.2 * Math.sin(clock * 1.6) ** 2);
+      return;
+    }
+    if (meg) {
+      const ss = (a, b, x) => {
+        const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
+        return u * u * (3 - 2 * u);
+      };
+      // the jet: up on its tail, turning, drawing in, and thinning out
+      const up = ss(0.03, 0.42, t);
+      jet3d.pitch.rotation.x = -up * (Math.PI / 2);
+      jet3d.spin.rotation.y = up * Math.PI * 2.5;
+      jet3d.spin.position.y = 1.25 + up * 0.2 + (!ctx.reduced ? Math.sin(clock * 1.3) * 0.06 * (1 - up) : 0);
+      jet3d.spin.scale.setScalar(1 - 0.36 * up);
+      const gone = ss(0.4, 0.62, t);
+      for (const m of jet3d.mats) m.opacity = 1 - gone;
+      alt.group.visible = gone < 0.999;
+      // Megatron: forming where it stood, folded down; then he unfolds and stands
+      const here = ss(0.38, 0.6, t);
+      const rise = ss(0.56, 1, t);
+      for (const m of meg.mats) m.opacity = here;
+      meg.figure.visible = here > 0.001;
+      meg.cannon.visible = here > 0.5;
+      if (t >= 1 && meg.mixer) meg.mixer.update(Math.min(0.05, clock - meg.was));
+      else {
+        // (coming back down from his idle, he starts from however he was standing)
+        if (meg.at === 1 && t < 1) meg.bones.forEach((b, i) => meg.from[i].copy(b.quaternion));
+        const blend = ss(0.8, 1, rise);
+        meg.bones.forEach((b, i) => b.quaternion.copy(meg.folded[i]).slerp(pivotQ.copy(meg.stand[i]).slerp(meg.from[i], blend), rise));
+      }
+      meg.at = t;
+      meg.was = clock;
+      meg.figure.position.y = -meg.lift * (1 - rise);
+      meg.figure.scale.setScalar(0.9 + 0.1 * rise);
+      // the floor answers: a ring of energon out from under him as he forms
+      const moving = t > 0.001 && t < 0.999;
+      const shock = ss(0.36, 0.8, t);
+      scan.position.y = scanDisc.position.y = 0.03;
+      scan.scale.setScalar(0.35 + shock * 1.7);
+      scanMat.opacity = moving ? Math.sin(shock * Math.PI) * 0.9 : 0;
+      scanDisc.material.opacity = 0;
       ringMat.opacity = 0.55 + (moving ? 0.45 * Math.sin(clock * 18) ** 2 : 0.2 * Math.sin(clock * 1.6) ** 2);
       return;
     }
@@ -353,21 +587,68 @@ export async function create(canvas, ctx) {
       if (stage.lost) return false;
       const dt = Math.min(0.05, ms / 1000);
       clock += dt;
-      const to = mode === 'robot' && (robotReady || change) ? 1 : 0;
-      // Optimus's own change takes its time (a little quicker than it was animated); the staged one is brisk
-      const span = change ? change.duration / 2.3 : 1.25;
+      const to = mode === 'robot' && (robotReady || change || meg) ? 1 : 0;
+      // Optimus's own change takes its time (a little quicker than it was animated); Megatron's is its own; the staged one is brisk
+      const span = change ? change.duration / 2.3 : meg ? 2.6 : 1.25;
       if (ctx.reduced) t = to;
       else if (t !== to) t = to > t ? Math.min(1, t + dt / span) : Math.max(0, t - dt / span);
       pose();
       // the Matrix, and the cannon
-      matrix += ((wantMatrix && t > 0.99 ? 1 : 0) - matrix) * Math.min(1, dt * 5);
-      spark.intensity = matrix * (9 + Math.sin(clock * 9) * 1.5);
-      sparkGlow.material.opacity = matrix;
-      sparkGlow.scale.setScalar(0.6 + matrix * (0.9 + Math.sin(clock * 7) * 0.12));
-      if (fire > 0) fire = Math.max(0, fire - dt / 1.1);
-      boltMat.opacity = fire > 0 ? Math.min(1, fire * 3) * (0.6 + 0.4 * Math.sin(clock * 60)) : 0;
-      bolt.position.set(t > 0.5 ? 0.62 : 0, t > 0.5 ? TALL * 0.5 : 0.95, t > 0.5 ? 0.3 : 1.5);
-      bolt.scale.set(0.6 + fire * 0.9, 0.6 + fire * 0.9, 1);
+      matrix += ((wantMatrix && t > 0.99 ? 1 : 0) - matrix) * Math.min(1, dt * 4);
+      const beat = 0.85 + 0.15 * Math.sin(clock * 5.5);
+      spark.intensity = matrix * 7 * beat;
+      core.material.opacity = matrix;
+      core.scale.setScalar(0.34 * (0.5 + 0.5 * matrix) * beat);
+      halo.material.opacity = matrix * 0.7;
+      halo.scale.setScalar(1.25 * matrix * beat);
+      blue.material.opacity = matrix * 0.28;
+      blue.scale.setScalar(2.1 * matrix);
+      rays.forEach((r, i) => {
+        r.material.opacity = matrix * (0.5 + 0.25 * Math.sin(clock * 3 + i * 2));
+        r.material.rotation = (i * Math.PI) / 3 + clock * 0.22 * (i % 2 ? -1 : 1);
+        r.scale.set((1.5 + 0.35 * Math.sin(clock * 2.2 + i)) * matrix, 0.16, 1);
+      });
+      matrixGroup.visible = matrix > 0.005;
+
+      // the cannon: the arm comes up, the muzzle charges, the beam goes, the arm kicks and comes down
+      if (fire > 0) fire = Math.max(0, fire - dt / 1.5);
+      const shot = fire > 0 ? 1 - fire : -1; // 0 to 1 through the shot
+      const band = (a, b, x) => Math.max(0, Math.min(1, (x - a) / (b - a)));
+      const aim = shot < 0 ? 0 : band(0, 0.16, shot) * (1 - band(0.78, 1, shot));
+      const charge = shot < 0 ? 0 : band(0.1, 0.3, shot) * (shot < 0.3 ? 1 : 0);
+      const going = shot < 0 ? 0 : (shot >= 0.3 ? 1 : 0) * (1 - band(0.5, 0.66, shot));
+      const kick = shot < 0.3 ? 0 : Math.exp(-(shot - 0.3) * 14);
+      const robotNow = meg && t > 0.6;
+      if (robotNow && aim > 0) {
+        // (after the pose is set for this frame, so it rides on his breathing)
+        meg.turn(meg.bone('RightShoulder'), -0.25 * aim);
+        meg.turn(meg.bone('RightArm'), -1.28 * aim + 0.16 * kick);
+        meg.turn(meg.bone('Spine'), 0.07 * kick);
+      }
+      // where the fire comes from, and which way it goes: the cannon's own muzzle and barrel, or the jet's nose
+      turntable.rotation.y = yaw;
+      turntable.updateMatrixWorld(true);
+      if (robotNow) {
+        meg.muzzle.getWorldPosition(muzzleAt);
+        meg.cannon.getWorldPosition(pivot);
+        aimAt.copy(muzzleAt).sub(pivot).normalize();
+      } else if (jet3d) {
+        aimAt.set(0, 0, 1).applyQuaternion(turntable.quaternion);
+        muzzleAt.set(0, jet3d.spin.position.y - 0.1, 0).applyMatrix4(turntable.matrixWorld).addScaledVector(aimAt, 2.2);
+      } else {
+        aimAt.set(0, 0, 1).applyQuaternion(turntable.quaternion);
+        muzzleAt.set(0.62, TALL * 0.5, 0.3).applyMatrix4(turntable.matrixWorld);
+      }
+      beam.position.copy(muzzleAt);
+      beam.lookAt(pivot.copy(muzzleAt).add(aimAt));
+      const flick = 0.75 + 0.25 * Math.sin(clock * 70);
+      coreMat.opacity = going * flick;
+      sheathMat.opacity = going * 0.5 * flick;
+      beamSheath.scale.set(1 + kick * 1.6, 1 + kick * 1.6, 1);
+      flash.material.opacity = Math.max(charge * 0.9, going * flick);
+      flash.scale.setScalar(0.25 + charge * 0.5 + going * 0.9 + kick * 1.2);
+      flare.intensity = (charge * 5 + going * 26) * flick;
+      beam.visible = charge > 0 || going > 0;
       // turning: by hand, then back to a slow turn of its own
       if (!drag) {
         vel += ((ctx.reduced ? 0 : 0.16) - vel) * Math.min(1, dt * 1.4);
@@ -377,11 +658,11 @@ export async function create(canvas, ctx) {
       // the camera sits back for the vehicle and stands up for the robot
       const k = easeInOut(t);
       const wide = camera.aspect < 1 ? 1.25 : 1;
-      camera.position.set(0, 1.5 + k * 0.25, (change ? 7.9 - k * 0.3 : 8.6 - k * 1.3) * wide);
+      camera.position.set((Math.random() - 0.5) * kick * 0.07, 1.5 + k * 0.25 + (Math.random() - 0.5) * kick * 0.05, (change ? 7.9 - k * 0.3 : 8.6 - k * 1.3) * wide);
       camera.lookAt(0, 0.85 + k * 0.45, 0);
       renderer.render(scene, camera);
       stage.watch(now);
-      const busy = t !== to || fire > 0 || Math.abs(matrix - (wantMatrix ? 1 : 0)) > 0.01 || !!drag;
+      const busy = t !== to || fire > 0 || Math.abs(matrix - (wantMatrix && t > 0.99 ? 1 : 0)) > 0.01 || !!drag;
       return visible && (!ctx.reduced || busy);
     },
     dispose() {
@@ -392,6 +673,9 @@ export async function create(canvas, ctx) {
       el.style.cursor = '';
       el.style.touchAction = '';
       change?.mixer.stopAllAction();
+      meg?.mixer?.stopAllAction();
+      glowTex.dispose();
+      rayTex.dispose();
       disposeTree(scene);
       env.dispose();
       stage.dispose();

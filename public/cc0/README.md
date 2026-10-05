@@ -34,3 +34,5 @@ In `../models/sketchfab/`. Each is its author's, used under [CC BY 4.0](https://
 - `watertower.glb`: [water tower](https://sketchfab.com/models/1c2f86dc8f794c85a91706d401d104db) by Lora_o. The water tank out by one of the drops.
 - `bucket.glb`: [LosPollosHermanos bucket](https://sketchfab.com/models/d9bbe6d4a7e54d87bb51d518bad2c7c8) by Batuhan13. What's waiting at a delivery's drop.
 - `optimus-transform.glb`: [Bumblebee - Optimus Prime Transform Animation](https://sketchfab.com/models/35f9cb09b1b248c7bd6b12912ac8cd3a) by dioiiiii2. Optimus's truck, his robot, and the whole change between them, on the Cybertron page.
+
+Megatron's own change on that page uses two models the site owner made with Meshy for Roll out (`../games/meshy/rollout/seeker.glb`, the jet, and `megatron.glb` with `megatron-idle.glb`, rigged): `src/components/cybertron/transform3d.js` animates between them, and builds his fusion cannon.
