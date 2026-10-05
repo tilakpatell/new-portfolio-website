@@ -8,7 +8,7 @@
 // in figures.js: Vader, the shoretroopers, K-2SO, Mustafarians, Lando.
 
 import * as THREE from 'three';
-import { box, cyl, dome, part, place, ring, rod, rockGeometry } from '../kit';
+import { box, cyl, part, place, ring, rod, rockGeometry } from '../kit';
 import { loft, trap8, upright } from '../../../universe/trafficKit';
 
 const { PI, cos, sin, abs, max } = Math;
@@ -96,6 +96,7 @@ function figure(k, o) {
 }
 
 // a hood over a face in shadow (Jedi, Sith, hermits)
+// eslint-disable-next-line no-unused-vars -- (kept for the worlds still to come)
 const hood = (color, face = '#0a0806', r = 0.15) => [
   part(new THREE.SphereGeometry(r, 14, 10, 0, PI * 2, 0, PI * 0.62), { at: [0, 0.01, -0.01], scale: [1, 1.12, 1.08], color, to: 'cloth' }),
   part(new THREE.CylinderGeometry(r * 1.02, r * 1.25, 0.16, 14, 1, true, PI * 0.25, PI * 1.5), { at: [0, -0.07, -0.01], color, to: 'cloth' }),

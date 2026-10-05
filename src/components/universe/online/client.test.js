@@ -143,6 +143,93 @@ describe('createClient', () => {
     expect(p.walk).toBeNull();
   });
 
+  it('says when you are just back, so nobody wastes a shot on you', async () => {
+    const { a, b, tick } = await pair();
+    a.pose(ship(4), { safe: true });
+    expect(b.peers.get('A').pose.safe).toBe(true);
+    tick(120);
+    a.pose(ship(4));
+    expect(b.peers.get('A').pose.safe).toBe(false);
+  });
+
+  it('shows the others the hunters after you, a few times a second, and says when they are gone', async () => {
+    const { a, b, tick } = await pair();
+    let asked = 0;
+    const wire = () => {
+      asked += 1;
+      return [[3, 'tie', 5, 0, 0, 19, 0, 0, 1]];
+    };
+    a.pack(wire);
+    expect(b.peers.get('A').hunters).toEqual({ at: 1000, list: [{ id: 3, kind: 'tie', x: 5, y: 0, z: 0, vx: 19, vy: 0, vz: 0, hp: 1 }] });
+    // no more often than it should (and the hunters aren't even asked for)
+    tick(50);
+    a.pack(wire);
+    expect(asked).toBe(1);
+    tick(200);
+    a.pack(wire);
+    expect(asked).toBe(2);
+    expect(b.peers.get('A').hunters.at).toBe(1250);
+    // gone: said once
+    tick(250);
+    a.pack(() => []);
+    expect(b.peers.get('A').hunters).toBeNull();
+    const sent = vi.fn(() => []);
+    tick(250);
+    a.pack(sent);
+    expect(sent).toHaveBeenCalledTimes(1);
+    // a blocked pilot's are dropped
+    tick(250);
+    a.pack(wire);
+    expect(b.peers.get('A').hunters).not.toBeNull();
+    b.block('A', true);
+    expect(b.peers.get('A').hunters).toBeNull();
+  });
+
+  it('keeps the hunters to itself when nobody is in the same place', async () => {
+    const { a, b } = await pair();
+    b.setProfile({ where: '/projects' });
+    const wire = vi.fn(() => [[3, 'tie', 5, 0, 0, 19, 0, 0, 1]]);
+    a.pack(wire);
+    expect(wire).not.toHaveBeenCalled();
+    expect(b.peers.get('A').hunters).toBeNull();
+  });
+
+  it('takes a friend’s hit on one of your hunters, once it could have been one', async () => {
+    const { a, b, seen, tick } = await pair();
+    const hits = () => seen.a.filter((e) => e.type === 'hunterHit');
+    a.pose(ship(0));
+    a.pack(() => [[3, 'tieadvanced', 5, 0, 0, 19, 0, 0, 5]]);
+    b.pose(ship(8));
+    // not from someone who hasn't fired
+    b.hunterHit('A', 3, 1);
+    expect(hits()).toHaveLength(0);
+    b.shot({ x: 8, y: 0, z: 0 }, [-60, 0, 0]);
+    b.hunterHit('A', 3, 3);
+    expect(hits()).toEqual([{ type: 'hunterHit', from: 'B', id: 3, damage: 3 }]);
+    // not one you never had, and never worth more than a bolt can be
+    tick(150);
+    b.hunterHit('A', 99, 1);
+    expect(hits()).toHaveLength(1);
+    b.hunterHit('A', 3, 500);
+    expect(hits()[1]).toMatchObject({ damage: 3 });
+    // two in the same moment both count (they come in bundles)
+    b.hunterHit('A', 3, 1);
+    expect(hits()).toHaveLength(3);
+    // but no more of them than the guns could fire
+    for (let i = 0; i < 40; i++) b.hunterHit('A', 3, 1);
+    expect(hits().length).toBeLessThanOrEqual(13);
+    tick(3000);
+    b.shot({ x: 8, y: 0, z: 0 }, [-60, 0, 0]);
+    const before = hits().length;
+    // nor from across the map
+    b.pose(ship(500));
+    b.hunterHit('A', 3, 1);
+    expect(hits()).toHaveLength(before);
+    // and the one who helped is named
+    a.helped('B', 'TIE Advanced');
+    expect(feeds(seen.a)).toContain('Rick shot down a TIE Advanced that was after you');
+  });
+
   it('makes an alliance only when both want one', async () => {
     const { a, b, seen } = await pair();
     a.ally('B', 'ask');

@@ -903,6 +903,27 @@
 .universe-hangar-btn:hover,
 .universe-hangar-btn[aria-expanded='true'] { border-color: var(--engine, #e8eefc); background: rgb(255 255 255 / 0.08); }
 .universe-hangar-btn:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
+/* the nav map's button (NavMap.jsx): beside the settings and the hangar with
+   a ship; in their place in the corner without one */
+.universe-navmap-btn {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: 68px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgb(159 216 255 / 0.45);
+  border-radius: 12px;
+  background: rgb(3 4 10 / 0.6);
+  color: #cfe9ff;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.universe-navmap-btn[data-ship] { left: 120px; }
+.universe-navmap-btn:hover { border-color: #9fd8ff; background: rgb(159 216 255 / 0.1); }
+.universe-navmap-btn:focus-visible { outline: 2px solid #9fd8ff; outline-offset: 2px; }
+.universe-page[data-leaving] .universe-navmap-btn { display: none; }
 .universe-hangar {
   position: absolute;
   z-index: 3;
@@ -1029,6 +1050,8 @@
   .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
   .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-hangar-btn { left: 62px; bottom: calc(var(--sheet-h) + 66px); }
+  .universe-navmap-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
+  .universe-navmap-btn[data-ship] { left: 112px; }
   .universe-hangar { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: calc(100% - 24px); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-hangar-stat { grid-template-columns: 7rem 1fr; }
   .universe-comms { right: 16px; left: 16px; }

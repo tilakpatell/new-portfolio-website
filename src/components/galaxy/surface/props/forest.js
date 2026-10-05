@@ -8,7 +8,6 @@
 import * as THREE from 'three';
 import { between, box, cyl, dome, part, ring, rod, upright } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
-import { buildGalaxyShip } from '../../fleet';
 import { rng } from '../noise';
 
 const { PI, cos, sin, max, min } = Math;

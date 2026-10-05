@@ -40,8 +40,8 @@ const STALE_S = 30; // an event this much older than the pilot's others is a rep
 const QUIET_MS = 60000; // a pilot not heard from this long is forgotten (they'll be met again)
 const CONTENT_MAX = 16000; // characters of content taken from an event
 const QUEUE_MAX = 64; // messages waiting, at most
-const LATEST = new Set(['pose', 'foot', 'walk', 'cur']); // only the newest of these in a bundle
-const CHEAP = new Set(['pose', 'foot', 'walk', 'cur', 'shot']); // trusted to the relay's own check of the signature
+const LATEST = new Set(['pose', 'foot', 'walk', 'cur', 'pack']); // only the newest of these in a bundle
+const CHEAP = new Set(['pose', 'foot', 'walk', 'cur', 'shot', 'pack']); // trusted to the relay's own check of the signature
 
 const isHex = (s, n) => typeof s === 'string' && s.length === n && /^[0-9a-f]+$/.test(s);
 

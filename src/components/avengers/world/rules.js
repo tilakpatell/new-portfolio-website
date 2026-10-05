@@ -7,7 +7,7 @@
 //
 // The world is in metres: x east, z south (the plan's y), y up.
 
-import { BERM, CRES, CRES_FOOT, GATE, HANGAR, LAB, LAWN, PROW, RIVER, ROADS, STALLS, TRAINING, TREES, arcPt, inPoly } from '../compound/plan';
+import { BERM, BRIDGE, CRES, CRES_FOOT, GATE, HANGAR, LAB, LAWN, PROW, RIVER, ROADS, STALLS, TRAINING, TREES, arcPt, inPoly } from '../compound/plan';
 
 // A plan unit is about four metres from the air; on foot the compound is
 // drawn smaller across the ground, so a walk between buildings takes seconds,
@@ -69,22 +69,78 @@ const bounds = (foot) => {
   const zs = foot.map((p) => p[1]);
   return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)];
 };
-const building = (id, foot, h) => {
+// `h` is the roof, where he stands on it; `y0` its foot (above the ground
+// for what's overhead: the bridge, and what stands on the roofs)
+const building = (id, foot, h, y0 = 0) => {
   const f = footOf(foot);
-  return { id, foot: f, h, box: bounds(f) };
+  return { id, foot: f, h, y0, box: bounds(f) };
 };
+// a box on the plan, [x0, y0]–[x1, y1] (units)
+const planBox = (x0, y0, x1, y1) => [
+  [x0, y0],
+  [x1, y0],
+  [x1, y1],
+  [x0, y1],
+];
+// what stands on the ground (the walls you walk round)
 export const BUILDINGS = [
-  building('hangar', HANGAR, 9.35 * V),
-  building('prow', PROW, 13.4 * V),
-  building('wing', CRES_FOOT, (CRES.h + 1.7) * V),
-  building('training', TRAINING, 8.4 * V),
-  building('lab', LAB, 7.2 * V),
+  building('hangar', HANGAR, 9 * V),
+  building('prow', PROW, 13 * V),
+  building('wing', CRES_FOOT, (CRES.h + 0.6) * V),
+  building('training', TRAINING, 7 * V),
+  building('lab', LAB, 6 * V),
   building('gate', GATE, 3.2 * V),
   building('berm', BERM, 2.2 * V),
   building('stalls', STALLS, 3 * V),
   // the bridge from the hangar to the main building is overhead: only its pier stands on the lawn
   building('pier', [[36.6, 25.6], [37.6, 25.6], [37.6, 26.6], [36.6, 26.6]], 4.6 * V),
 ];
+// the training center's clerestory, the lab's three roof lights (the drawing's too)
+export const CLERESTORY = [
+  [100, 21],
+  [119, 19],
+  [120, 24],
+  [101, 26],
+];
+export const ROOF_LIGHTS = [0, 1, 2].map((k) => [
+  [84, 72.5 + k * 5],
+  [101.5, 71 + k * 5],
+  [101.7, 72.6 + k * 5],
+  [84.2, 74.1 + k * 5],
+]);
+// the plant rooms on the main building's roof and the glass wing's
+export const PROW_PLANT = [
+  [48, 23],
+  [55, 27],
+].map(([x, y]) => planBox(x, y, x + 3, y + 2.4));
+export const WING_PLANT = [0.25, 0.5, 0.75].map((k) => {
+  const [x, y] = arcPt((CRES.rIn + CRES.rOut) / 2, CRES.a0 + (CRES.a1 - CRES.a0) * k);
+  return planBox(x - 1.6, y - 1.2, x + 1.6, y + 1.2);
+});
+// the hangar roof's solar panels, in two rows of five
+export const SOLAR = [0, 1, 2, 3, 4].flatMap((i) => [9.5, 18.9].map((x0) => planBox(x0, 19 + i * 6.6, x0 + 7.6, 19 + i * 6.6 + 4.8)));
+// plant on the training center's roof and the lab's, and the main building's comms mast
+export const ROOF_PLANT = [
+  { id: 'hvac-0', foot: planBox(102, 29, 105, 31), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-1', foot: planBox(108, 28.6, 111, 30.6), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-2', foot: planBox(114, 28.2, 117, 30.2), y0: 7 * V, h: 7 * V + 2.4 },
+  { id: 'hvac-3', foot: planBox(101.8, 73, 104.2, 77), y0: 6 * V, h: 6 * V + 2.2 },
+];
+export const COMMS = { x: 57, y: 21, h: 6.5 }; // on the plan; the mast's height over the roof
+// what's up off the ground: the bridge, and what stands on the roofs
+export const OVERHEAD = [
+  building('bridge', BRIDGE, 7 * V, 4.6 * V),
+  building('clerestory', CLERESTORY, 8.4 * V, 7 * V),
+  ...ROOF_LIGHTS.map((f, i) => building(`rooflight-${i}`, f, 7.2 * V, 6 * V)),
+  ...PROW_PLANT.map((f, i) => building(`plant-${i}`, f, 14.1 * V, 13 * V)),
+  ...WING_PLANT.map((f, i) => building(`wingplant-${i}`, f, (CRES.h + 1.7) * V, (CRES.h + 0.6) * V)),
+  ...SOLAR.map((f, i) => building(`solar-${i}`, f, 9 * V + 1.35, 9 * V)),
+  ...ROOF_PLANT.map((u) => building(u.id, u.foot, u.h, u.y0)),
+  building('comms', planBox(COMMS.x - 0.4, COMMS.y - 0.4, COMMS.x + 0.4, COMMS.y + 0.4), 13 * V + COMMS.h, 13 * V),
+];
+// everything solid, on the ground and off it
+export const SOLIDS = [...BUILDINGS, ...OVERHEAD];
+export const solidById = (id) => SOLIDS.find((s) => s.id === id) ?? null;
 // the bridge itself, for the drawing and the camera: overhead from 4.6 to 7 units
 export const BRIDGE_SPAN = { y0: 4.6 * V, y1: 7 * V };
 
@@ -101,18 +157,38 @@ export const PARKED_CARS = [
   [53.9, 103.3, Math.PI, 'suv', 0xf2f2f2],
   [60.4, 103.3, 0, 'sedan', 0x1e2a44],
 ].map(([x, y, yaw, kind, color]) => ({ x: x * S, z: y * S, yaw, kind, color }));
+// Floodlight masts round the lawn, the helipad and the drives (the open lawn
+// has nothing else to swing from): [x, y] on the plan, 18 m tall.
+export const MAST_H = 18;
+export const MASTS = [
+  [25, 96.9],
+  [58.8, 53.1],
+  [83.8, 48.1],
+  [63.8, -1.3],
+  [6.9, 95],
+  [113.8, 43.8],
+  [48.8, 78.1],
+  [95.6, 50.6],
+  [36.9, 85.6],
+  [106.3, 1.9],
+  [116.3, 64.4],
+  [-1.9, 82.5],
+  [53.8, 65.6],
+  [71.3, 63.8],
+  [-20.6, 48.1],
+].map(([x, y]) => ({ x: x * S, z: y * S }));
 // the trees that stand on the lawn (the rest are the woods round it)
 export const LAWN_TREES = TREES.filter((t) => inPoly(t.x, t.y, LAWN)).map((t) => ({ x: t.x * S, z: t.y * S, r: t.r * S, tone: t.tone }));
 
-// Round things the hero bumps into: { x, z, r }.
+// Round things the hero bumps into: { x, z, r, top } (he goes over them, higher up).
 const jetBody = () => {
   const out = [];
   const s = PARKED_JET.scale;
   // along the fuselage, nose (+) to tail (−), in the jet's own metres
-  for (const along of [12, 6, 0, -6, -12]) out.push({ x: PARKED_JET.x + Math.sin(PARKED_JET.yaw) * along * s, z: PARKED_JET.z + Math.cos(PARKED_JET.yaw) * along * s, r: 2.6 * s + 0.4 });
+  for (const along of [12, 6, 0, -6, -12]) out.push({ x: PARKED_JET.x + Math.sin(PARKED_JET.yaw) * along * s, z: PARKED_JET.z + Math.cos(PARKED_JET.yaw) * along * s, r: 2.6 * s + 0.4, top: 4.6 });
   return out;
 };
-const carBody = (c) => [-1.25, 1.25].map((along) => ({ x: c.x + Math.sin(c.yaw) * along, z: c.z + Math.cos(c.yaw) * along, r: c.kind === 'suv' ? 1.15 : 1.05 }));
+const carBody = (c) => [-1.25, 1.25].map((along) => ({ x: c.x + Math.sin(c.yaw) * along, z: c.z + Math.cos(c.yaw) * along, r: c.kind === 'suv' ? 1.15 : 1.05, top: c.kind === 'suv' ? 1.8 : 1.45 }));
 
 // ── the doors into the games ──
 
@@ -323,10 +399,96 @@ export function nearCast(x, z, r = 3.4) {
   return best;
 }
 
+// ── along the drives: street lamps, benches, planters by the doors, flags by the gate ──
+
+// somewhere on the lawn, `r` clear of the buildings and in from the lawn's edge
+const openAt = (x, z, r) => inPoly(x, z, LAWN_W) && nearestEdge(x, z, LAWN_W).d > 2 && !BUILDINGS.some((b) => inPoly(x, z, b.foot) || nearestEdge(x, z, b.foot).d < r);
+const roadGap = (x, z) => Math.min(...ROADS_W.map((pts) => Math.min(...pts.map(([a, b]) => Math.hypot(a - x, b - z)))));
+// clear of the doors, the people, the masts, the trees, the cars, the jet and the portal
+const clearOfThings = (x, z, r) =>
+  !PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 4.5 + r) &&
+  !CAST.some((c) => Math.hypot(c.x - x, c.z - z) < 2.5 + r) &&
+  !MASTS.some((m) => Math.hypot(m.x - x, m.z - z) < 5 + r) &&
+  !LAWN_TREES.some((t) => Math.hypot(t.x - x, t.z - z) < 2.2 + r) &&
+  !PARKED_CARS.some((c) => Math.hypot(c.x - x, c.z - z) < 3.2 + r) &&
+  Math.hypot(PARKED_JET.x - x, PARKED_JET.z - z) > 15 + r &&
+  Math.hypot(CRATER.x - x, CRATER.z - z) > 4.5 + r &&
+  Math.hypot(ARMOUR.x - x, ARMOUR.z - z) > 2 + r &&
+  Math.hypot(PORTAL.x - x, PORTAL.z - z) > PORTAL.r + 2 + r;
+
+// Street lamps down the drives, every 22 m or so on alternate sides, their
+// arms out over the drive: { x, z, yaw } (yaw turns the lamp's +x to the drive).
+export const LAMPS = (() => {
+  const out = [];
+  ROADS_W.forEach((pts, ri) => {
+    let run = 0;
+    let next = 9;
+    let side = ri % 2 ? 1 : -1;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1];
+      const [bx, bz] = pts[i];
+      const l = Math.hypot(bx - ax, bz - az) || 1;
+      run += l;
+      if (run < next) continue;
+      next = run + 22;
+      const tx = (bx - ax) / l;
+      const tz = (bz - az) / l;
+      const off = ROAD_HALF + 1.3;
+      const x = bx - tz * off * side;
+      const z = bz + tx * off * side;
+      side = -side;
+      if (!openAt(x, z, 2.5) || !clearOfThings(x, z, 0.3) || roadGap(x, z) < ROAD_HALF + 0.9) continue;
+      if (out.some((o) => Math.hypot(o.x - x, o.z - z) < 12)) continue;
+      out.push({ x, z, yaw: Math.atan2(-(bz - z), bx - x) });
+    }
+  });
+  return out;
+})();
+// Benches beside every third lamp, a little further back, facing the drive: { x, z, yaw }
+// (yaw turns the bench's front, +z, to the drive)
+export const BENCHES = LAMPS.filter((_, i) => i % 3 === 1)
+  .map((l) => {
+    const ox = Math.cos(l.yaw);
+    const oz = -Math.sin(l.yaw);
+    // back from the drive, and along it from the lamp
+    const x = l.x - ox * 1.6 + oz * 2.4;
+    const z = l.z - oz * 1.6 - ox * 2.4;
+    return { x, z, yaw: Math.atan2(ox, oz) };
+  })
+  .filter((b) => openAt(b.x, b.z, 2) && clearOfThings(b.x, b.z, 1) && roadGap(b.x, b.z) > ROAD_HALF + 0.9);
+// Round planters of shrubs either side of each building's door: { x, z }
+export const PLANTERS = PLACES.filter((p) => p.sign).flatMap((p) => {
+  const ox = Math.cos(p.face);
+  const oz = -Math.sin(p.face);
+  return [-1, 1]
+    .map((k) => ({ x: p.x - ox * 1.1 + oz * 3.4 * k, z: p.z - oz * 1.1 - ox * 3.4 * k }))
+    .filter((q) => openAt(q.x, q.z, 0.85) && !CAST.some((c) => Math.hypot(c.x - q.x, c.z - q.z) < 1.8) && Math.hypot(ARMOUR.x - q.x, ARMOUR.z - q.z) > 1.8);
+});
+// Three flagpoles inside the gate, 12 m tall
+export const FLAG_H = 12;
+export const FLAGS = [
+  [44, 92],
+  [46.5, 91.7],
+  [49, 91.4],
+].map(([x, y]) => ({ x: x * S, z: y * S }));
+
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
-export const ROUND = [...jetBody(), ...PARKED_CARS.flatMap(carBody), ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45 })), { x: CRATER.x, z: CRATER.z, r: 0.5 }, { x: ARMOUR.x, z: ARMOUR.z, r: ARMOUR.r }, ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5 }))];
+// (a tree's trunk, up to its crown: he goes through the leaves)
+export const ROUND = [
+  ...jetBody(),
+  ...PARKED_CARS.flatMap(carBody),
+  ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45, top: 3.2 })),
+  ...MASTS.map((m) => ({ x: m.x, z: m.z, r: 0.42, top: MAST_H })),
+  ...LAMPS.map((l) => ({ x: l.x, z: l.z, r: 0.2, top: 4 })),
+  ...BENCHES.flatMap((b) => [-0.55, 0.55].map((k) => ({ x: b.x + Math.cos(b.yaw) * k, z: b.z - Math.sin(b.yaw) * k, r: 0.45, top: 0.85 }))),
+  ...PLANTERS.map((q) => ({ x: q.x, z: q.z, r: 0.72, top: 0.75 })),
+  ...FLAGS.map((f) => ({ x: f.x, z: f.z, r: 0.16, top: FLAG_H })),
+  { x: CRATER.x, z: CRATER.z, r: 0.5, top: 0.6 },
+  { x: ARMOUR.x, z: ARMOUR.z, r: ARMOUR.r, top: 2.3 },
+  ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5, top: c.style === 'hulk' ? 3 : 2.3 })),
+];
 
 // The nearest point on a polygon's edge to (x, z), and how far it is.
 export function nearestEdge(x, z, foot) {
@@ -399,36 +561,131 @@ function onLawn(x, z, rad) {
   return [e.x + ux * rad, e.z + uz * rad];
 }
 
-// Where (x, z) ends up for something `rad` round: out of the buildings and the
-// things on the lawn, and on the lawn.
-export function collide(x, z, rad) {
+export const BODY = 1.7; // how tall he is, for heads under the bridge
+const STEP = 0.35; // a ledge he steps up onto, rather than walks into
+// whether a solid is in the way of someone whose feet are at `y`
+const atHeight = (s, y) => y < s.h - STEP && y + BODY > s.y0;
+
+// Where (x, z) ends up for something `rad` round with its feet at `y`: out of
+// whatever's at that height (the buildings, and the things on the lawn), and
+// on the lawn.
+export function collide(x, z, rad, y = 0) {
   for (let pass = 0; pass < 2; pass++) {
-    for (const b of BUILDINGS) {
+    for (const b of SOLIDS) {
+      if (!atHeight(b, y)) continue;
       const [x0, z0, x1, z1] = b.box;
       if (x < x0 - rad || x > x1 + rad || z < z0 - rad || z > z1 + rad) continue;
       [x, z] = outOf(x, z, b.foot, rad);
     }
-    for (const c of ROUND) {
-      const dx = x - c.x;
-      const dz = z - c.z;
-      const d = Math.hypot(dx, dz);
-      const min = c.r + rad;
-      if (d < min) {
-        if (d > 1e-6) {
-          x = c.x + (dx / d) * min;
-          z = c.z + (dz / d) * min;
-        } else x = c.x + min;
-      }
-    }
+    [x, z] = offRound(x, z, rad, y);
     [x, z] = onLawn(x, z, Math.max(rad, EDGE));
   }
   return [x, z];
 }
 
-// Whether (x, z) is somewhere you can stand: on the lawn and in nothing.
-export function walkable(x, z, rad = HERO_R) {
-  const [cx, cz] = collide(x, z, rad);
+function offRound(x, z, rad, y) {
+  for (const c of ROUND) {
+    if (y >= c.top) continue;
+    const dx = x - c.x;
+    const dz = z - c.z;
+    const d = Math.hypot(dx, dz);
+    const min = c.r + rad;
+    if (d < min) {
+      if (d > 1e-6) {
+        x = c.x + (dx / d) * min;
+        z = c.z + (dz / d) * min;
+      } else x = c.x + min;
+    }
+  }
+  return [x, z];
+}
+
+// Whether (x, z) is somewhere you can stand (on the lawn, or a roof at `y`,
+// and in nothing).
+export function walkable(x, z, rad = HERO_R, y = 0) {
+  const [cx, cz] = collide(x, z, rad, y);
   return Math.hypot(cx - x, cz - z) < 1e-6;
+}
+
+// The ground under (x, z) for someone whose feet are at `y`: the highest roof
+// there he's on or over, or the lawn.
+export function floorAt(x, z, y = 0) {
+  let f = 0;
+  for (const s of SOLIDS) {
+    if (s.h > y + STEP || s.h <= f) continue;
+    const [x0, z0, x1, z1] = s.box;
+    if (x < x0 || x > x1 || z < z0 || z > z1) continue;
+    if (inPoly(x, z, s.foot)) f = s.h;
+  }
+  return f;
+}
+
+// The way out of a footprint from (x, z) beside it: the nearest edge's normal.
+function wallNormal(x, z, foot) {
+  const e = nearestEdge(x, z, foot);
+  let nx = e.nx;
+  let nz = e.nz;
+  const l = Math.hypot(nx, nz) || 1;
+  nx /= l;
+  nz /= l;
+  if (inPoly(e.x + nx * 0.05, e.z + nz * 0.05, foot)) {
+    nx = -nx;
+    nz = -nz;
+  }
+  return { x: e.x, z: e.z, nx, nz };
+}
+
+// A body come to (x, y, z) from a height `py`: onto a roof it came down on,
+// under whatever it hit its head on, out of the walls it went into, over the
+// things on the lawn it cleared, still on the lawn, and down on the ground.
+// → { x, y, z, landed (the floor it's down on, or null), head, wall (the
+// solid it's against, with the way out of it: nx, nz), lawn (the way back
+// onto the lawn, if it went off it) }
+function collide3(py, x, y, z) {
+  let landed = null;
+  let head = false;
+  let wall = null;
+  let lawn = null;
+  for (let pass = 0; pass < 2; pass++) {
+    for (const s of SOLIDS) {
+      if (y >= s.h || y + BODY <= s.y0) continue;
+      const [x0, z0, x1, z1] = s.box;
+      if (x < x0 - HERO_R || x > x1 + HERO_R || z < z0 - HERO_R || z > z1 + HERO_R) continue;
+      const inside = inPoly(x, z, s.foot);
+      if (inside && py >= s.h - 0.05) {
+        // came down on its roof
+        y = s.h;
+        landed = Math.max(landed ?? 0, s.h);
+        continue;
+      }
+      if (inside && py + BODY <= s.y0 + 0.05) {
+        // came up under it
+        y = s.y0 - BODY;
+        head = true;
+        continue;
+      }
+      const [ox, oz] = outOf(x, z, s.foot, HERO_R);
+      if (ox === x && oz === z) continue;
+      x = ox;
+      z = oz;
+      const n = wallNormal(x, z, s.foot);
+      wall = { s, nx: n.nx, nz: n.nz };
+    }
+    [x, z] = offRound(x, z, HERO_R, y);
+    const [lx, lz] = onLawn(x, z, Math.max(HERO_R, EDGE));
+    if (lx !== x || lz !== z) {
+      const d = Math.hypot(lx - x, lz - z) || 1;
+      lawn = { nx: (lx - x) / d, nz: (lz - z) / d };
+      x = lx;
+      z = lz;
+    }
+  }
+  const f = floorAt(x, z, Math.max(py, y));
+  if (y <= f) {
+    y = f;
+    landed = f;
+  }
+  return { x, y, z, landed, head, wall, lawn };
 }
 
 // ── walking ──
@@ -436,44 +693,677 @@ export function walkable(x, z, rad = HERO_R) {
 // metres a second, and how fast he gets there: a brisk walk, a run like a
 // super-hero's, and a spider's jump (about a metre and three quarters)
 export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 8.4, gravity: 21, air: 0.35 };
-export const newHero = (at = START) => ({ x: at.x, z: at.z, y: 0, vy: 0, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, air: false });
+
+// ── swinging, and climbing ──
+// Engineered from how Insomniac describe their web-swinging and how the
+// open re-creations of it work (docs/research/2026-10-05-web-swinging.md):
+// a web only ever sticks to something real (a roof's edge, a tree, a mast),
+// picked as the best point ahead and above for where he's going; the swing is
+// a rope, but not pure physics: it turns toward where you steer, pushes him
+// off a wall he's swinging alongside, keeps a chain of swings at its height,
+// turns a dive into speed, and hangs him a beat at the top of each flight.
+// Let go on the upswing, past the anchor, for a perfect release (faster,
+// higher, a flip); go into a wall and he sticks to it, running up it with the
+// speed he had; come down on a roof and he's on it. A web zip (Shift in the
+// air) is a burst along the way he's going.
+export const SWING = {
+  reach: 46, // the furthest a web catches (m)
+  minUp: 4.5, // an anchor at least this far over his feet
+  near: 7, // and no nearer than this: that's no swing at all
+  elev: [0.45, 1.3], // the web's angle above the horizontal a swing wants (radians: 26° to 75°)
+  arm: 0.22, // seconds of a jump held from the ground before it becomes a web
+  rearm: 0.2, // a beat after letting go before a held button webs again (no pumping speed out of web spam)
+  pump: 6.5, // a swing's own push along its arc (m/s²): he swings, he doesn't just hang
+  pumpMax: 1.25, // and it never pushes an arc past this far from the vertical (radians)
+  assist: 1.2, // how fast a swing (and a flight, at half that) turns toward where you steer (rad/s)
+  steer: 5, // and a little push that way besides (m/s²)
+  takeUp: 14, // how fast a web takes up its slack (m/s)
+  clear: 1.4, // the lowest a swing comes to the ground, or a roof
+  dip: 6, // nor further than this under where he caught the web: a chain of swings keeps its height
+  push: 14, // out from a wall he's swinging alongside (m/s²), within `pushAt` of it
+  pushAt: 3.2,
+  maxSpeed: 40,
+  ceiling: 75, // the sky, as far as he goes
+  drag: 0.0035, // air resistance, per metre a second
+  hang: 0.6, // gravity at the top of a flight (|vy| < 3): a beat of hang time
+  dive: 0.6, // how much of a dive's fall a web turns into speed along the way he's going
+  release: { boost: 1.03, pop: 2.5, popMax: 12 }, // letting go on the way up
+  perfect: { from: 0.2, to: 0.95, boost: 1.1, lift: 4 }, // the release window: past the vertical, forward (radians)
+  letGo: 1.25, // that far past the anchor, the web would only pull him back: he lets go
+  zip: { speed: 11, up: 3, cool: 0.6, charges: 2, max: 30, reach: 20 }, // a web zip: +11 m/s forward, two per flight
+  climb: 4.2, // up a wall (m/s), and with Shift
+  climbRun: 7,
+  wallRun: { carry: 0.75, min: 8, max: 16, fade: 9 }, // the speed he hits a wall with, carried up it
+  kick: { out: 7.5, up: 8.6 }, // off a wall
+  restick: 0.4, // seconds before the wall he kicked off will hold him again
+  stick: 1.5, // how hard into a wall he has to be going to stick to it (m/s)
+};
+
+export const newHero = (at = START) => ({
+  x: at.x,
+  z: at.z,
+  y: at.y ?? 0,
+  vy: 0,
+  face: at.face ?? 0,
+  vx: 0,
+  vz: 0,
+  speed: 0,
+  running: false,
+  air: false,
+  mode: 'ground', // ground | air | swing | wall
+  web: null, // { a: the point he swings about, at: where it sticks, len, target, hand }
+  wall: null, // { id, nx, nz }: the solid he's on, and the way out of it
+  airT: 0,
+  held: false, // the web button, last step
+  rearm: 0,
+  zips: SWING.zip.charges,
+  zipT: 0,
+  stuck: 0,
+  lastWall: null,
+  runUp: 0, // speed carried up a wall
+  fly: false, // off a web or a wall: his own momentum, not a jump's
+  flip: 0, // a perfect release's flip, seconds left
+  combo: 0,
+  land: 0, // a hard landing's crouch, seconds left
+  climb: 0, // metres climbed, for his hands and feet
+  ev: [], // what happened this step
+});
 
 // One step. `move` is where the visitor wants to go, already turned to the
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
-// and `jump` (a press, not a hold).
-export function stepHero(h, { x: mx = 0, z: mz = 0, run = false, jump = false } = {}, dt) {
+// `jump` (a press, not a hold), `web` (the jump button, held) and `zip` (a press).
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false } = {}, dt) {
+  const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
+  h.mode ??= h.y > 0 ? 'air' : 'ground';
+  h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
+  h.flip = Math.max(0, (h.flip ?? 0) - dt);
+  h.land = Math.max(0, (h.land ?? 0) - dt);
+  h.rearm = Math.max(0, (h.rearm ?? 0) - dt);
+  h.zipT = Math.max(0, (h.zipT ?? 0) - dt);
+  h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
+  const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip };
+  if (h.mode === 'wall') stepWall(h, i, dt);
+  else if (h.mode === 'ground') stepGround(h, i, dt);
+  else stepAir(h, i, dt);
+  // on something solid again: the zips come back
+  if (h.mode === 'ground' || h.mode === 'wall') h.zips = SWING.zip.charges;
+  h.held = Boolean(web);
+  h.air = h.mode !== 'ground';
+  return h;
+}
+
+// turned toward the way (dx, dz), at `rate`
+function turnTo(h, dx, dz, rate, dt) {
+  const want = Math.atan2(-dz, dx);
+  let d = want - h.face;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  h.face += d * Math.min(1, rate * dt);
+}
+
+// his horizontal velocity turned toward (dx, dz), by at most `max` radians,
+// keeping its speed (the swing-where-you-steer assist)
+function steerToward(h, dx, dz, max) {
+  const hs = Math.hypot(h.vx, h.vz);
+  if (hs < 4 || max <= 0) return;
+  let d = Math.atan2(dz, dx) - Math.atan2(h.vz, h.vx);
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  // (not round to go back the way he came: a hard turn is a corner, a little at a time)
+  const t = Math.max(-max, Math.min(max, d));
+  const c = Math.cos(t);
+  const sn = Math.sin(t);
+  const vx = h.vx * c - h.vz * sn;
+  h.vz = h.vx * sn + h.vz * c;
+  h.vx = vx;
+}
+
+function stepGround(h, { mx, mz, len, run, jump }, dt) {
   const top = run ? HERO.run : HERO.walk;
-  const tx = mx * k * top;
-  const tz = mz * k * top;
-  const grip = (h.air ? HERO.air : 1) * Math.min(1, ((HERO.accel * dt) / Math.max(1, top)) * 2.2);
-  let vx = h.vx + (tx - h.vx) * grip;
-  let vz = h.vz + (tz - h.vz) * grip;
+  const grip = Math.min(1, ((HERO.accel * dt) / Math.max(1, top)) * 2.2);
+  let vx = h.vx + (mx * top - h.vx) * grip;
+  let vz = h.vz + (mz * top - h.vz) * grip;
   if (len < 0.05 && Math.hypot(vx, vz) < 0.05) {
     vx = 0;
     vz = 0;
   }
-  // up and down: a jump off the ground, gravity back to it
-  let vy = h.vy;
-  let y = h.y;
-  if (jump && y <= 0 && vy <= 0) vy = HERO.jump;
-  vy -= HERO.gravity * dt;
-  y += vy * dt;
-  if (y <= 0) {
-    y = 0;
-    vy = 0;
-  }
-  let [x, z] = collide(h.x + vx * dt, h.z + vz * dt, HERO_R);
+  const [x, z] = collide(h.x + vx * dt, h.z + vz * dt, HERO_R, h.y);
   const moved = Math.hypot(x - h.x, z - h.z) / Math.max(dt, 1e-6);
-  let face = h.face;
-  if (len > 0.05) {
-    const want = Math.atan2(-mz, mx);
-    let d = want - face;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    face += d * Math.min(1, HERO.turn * dt);
+  if (len > 0.05) turnTo(h, mx, mz, HERO.turn, dt);
+  h.vx = (x - h.x) / Math.max(dt, 1e-6);
+  h.vz = (z - h.z) / Math.max(dt, 1e-6);
+  h.x = x;
+  h.z = z;
+  h.speed = moved;
+  h.running = run && moved > HERO.walk + 0.5;
+  h.airT = 0;
+  h.fly = false;
+  h.web = null;
+  h.wall = null;
+  h.runUp = 0;
+  if (jump) {
+    h.mode = 'air';
+    h.vy = HERO.jump - HERO.gravity * dt;
+    h.y += h.vy * dt;
+    h.ev.push({ type: 'jump' });
+    return;
   }
-  return { x, z, y, vy, face, vx: (x - h.x) / Math.max(dt, 1e-6), vz: (z - h.z) / Math.max(dt, 1e-6), speed: moved, running: run && moved > HERO.walk + 0.5, air: y > 0 };
+  // off the edge of a roof
+  const f = floorAt(x, z, h.y);
+  h.vy = 0;
+  if (f < h.y - 0.05) h.mode = 'air';
+  else h.y = f;
+}
+
+// How far past straight down from the anchor he's swung, the way he's
+// going: 0 under it, more once he's past it (radians).
+export function pastAnchor(h, w = h.web) {
+  if (!w) return 0;
+  const hs = Math.hypot(h.vx, h.vz);
+  if (hs < 0.5) return 0;
+  const along = ((h.x - w.a[0]) * h.vx + (h.z - w.a[2]) * h.vz) / hs;
+  return Math.atan2(along, w.a[1] - h.y);
+}
+
+// The rope a web wants: no longer than it is, short enough that the bottom
+// of the swing clears the ground (or the roof) under him, and no more than
+// `dip` under where he caught it.
+function ropeFor(a, len, entry, floor) {
+  const bottom = Math.max(floor + SWING.clear, entry - SWING.dip);
+  return Math.max(4, Math.min(len, a[1] - bottom));
+}
+
+// A web out to the best anchor; false if there's nothing to catch.
+function attach(h, turn) {
+  const w = aimWeb(h, turn);
+  if (!w) return false;
+  // a dive into a web: the fall turned into speed along the way he's going
+  if (h.vy < -8) {
+    const hs = Math.hypot(h.vx, h.vz);
+    const dx = hs > 1 ? h.vx / hs : Math.cos(h.face);
+    const dz = hs > 1 ? h.vz / hs : -Math.sin(h.face);
+    const more = (-h.vy - 8) * SWING.dive;
+    h.vx += dx * more;
+    h.vz += dz * more;
+    h.vy *= 0.55;
+    h.ev.push({ type: 'dive', more });
+  }
+  h.web = { a: w.a, at: w.at, len: w.len, target: ropeFor(w.a, w.len, h.y, floorAt(h.x, h.z, h.y)), hand: w.hand, entry: h.y };
+  h.mode = 'swing';
+  h.fly = true;
+  h.zips = SWING.zip.charges;
+  h.ev.push({ type: 'web', at: w.at, hand: w.hand, kind: w.kind });
+  return true;
+}
+
+function letGo(h) {
+  const w = h.web;
+  h.web = null;
+  h.mode = 'air';
+  h.rearm = SWING.rearm;
+  const past = pastAnchor(h, w);
+  const sp = Math.hypot(h.vx, h.vy, h.vz);
+  const P = SWING.perfect;
+  const R = SWING.release;
+  // let go on the way up and he's flung on and up; on the way down, he drops
+  if (h.vy > 0) {
+    h.vx *= R.boost;
+    h.vz *= R.boost;
+    h.vy = Math.min(Math.max(h.vy, R.popMax), h.vy + R.pop);
+  }
+  if (past > P.from && past < P.to && h.vy > 0 && sp > 11) {
+    h.vx *= P.boost;
+    h.vy = h.vy * P.boost + P.lift;
+    h.vz *= P.boost;
+    h.combo = (h.combo ?? 0) + 1;
+    h.flip = 0.7;
+    h.ev.push({ type: 'perfect', combo: h.combo });
+  } else h.ev.push({ type: 'release' });
+}
+
+// A web zip: a quick web out ahead and a burst along it.
+function webZip(h, { mx, mz, len }) {
+  const hs = Math.hypot(h.vx, h.vz);
+  let dx;
+  let dz;
+  if (len > 0.1) {
+    dx = mx;
+    dz = mz;
+  } else if (hs > 1) {
+    dx = h.vx / hs;
+    dz = h.vz / hs;
+  } else {
+    dx = Math.cos(h.face);
+    dz = -Math.sin(h.face);
+  }
+  const l = Math.hypot(dx, dz) || 1;
+  dx /= l;
+  dz /= l;
+  const Z = SWING.zip;
+  const along = Math.max(0, h.vx * dx + h.vz * dz);
+  const want = Math.min(Z.max, along + Z.speed);
+  // what's left of his speed off to the side mostly goes
+  const sx = h.vx - dx * along;
+  const sz = h.vz - dz * along;
+  h.vx = dx * want + sx * 0.3;
+  h.vz = dz * want + sz * 0.3;
+  h.vy = Math.max(h.vy, Z.up);
+  h.zips -= 1;
+  h.zipT = Z.cool;
+  h.fly = true;
+  h.ev.push({ type: 'zip', at: [h.x + dx * Z.reach, h.y + 1.6 + Math.min(4, Z.reach * 0.12), h.z + dz * Z.reach] });
+}
+
+// The wall he's swinging alongside, if any: { nx, nz, d } (the way out of
+// it and how far it is), and only one he's going along rather than into.
+function alongside(h) {
+  let best = null;
+  for (const s of SOLIDS) {
+    if (!atHeight(s, h.y)) continue;
+    const [x0, z0, x1, z1] = s.box;
+    const r = SWING.pushAt;
+    if (h.x < x0 - r || h.x > x1 + r || h.z < z0 - r || h.z > z1 + r) continue;
+    if (inPoly(h.x, h.z, s.foot)) continue;
+    const e = nearestEdge(h.x, h.z, s.foot);
+    if (e.d >= r || (best && e.d >= best.d)) continue;
+    best = { nx: (h.x - e.x) / (e.d || 1), nz: (h.z - e.z) / (e.d || 1), d: e.d };
+  }
+  if (!best) return null;
+  const hs = Math.hypot(h.vx, h.vz);
+  if (hs > 1 && (h.vx * best.nx + h.vz * best.nz) / hs < -0.55) return null; // heading into it: let him hit it
+  return best;
+}
+
+function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
+  h.airT = (h.airT ?? 0) + dt;
+  const turn = len > 0.1 ? { x: mx, z: mz } : null;
+  // the web: shot as the button goes down in the air (or after a moment, held
+  // from a jump), let go as it comes up
+  if (h.web && !web) letGo(h);
+  else if (!h.web && web && h.rearm <= 0 && (!h.held || h.airT >= SWING.arm)) attach(h, turn);
+  if (zip && !h.web && h.zips > 0 && h.zipT <= 0) webZip(h, { mx, mz, len });
+  const w = h.web;
+  if (h.fly && turn) {
+    // he goes where you steer: the swing (or the flight) comes round toward it
+    steerToward(h, mx, mz, SWING.assist * (w ? 1 : 0.5) * len * dt);
+    h.vx += mx * SWING.steer * dt;
+    h.vz += mz * SWING.steer * dt;
+  }
+  let vx = h.vx;
+  let vy = h.vy;
+  let vz = h.vz;
+  if (!h.fly) {
+    // a jump: a little say in where it goes, as on foot
+    const top = run ? HERO.run : HERO.walk;
+    const grip = HERO.air * Math.min(1, ((HERO.accel * dt) / Math.max(1, top)) * 2.2);
+    vx += (mx * top - vx) * grip;
+    vz += (mz * top - vz) * grip;
+  }
+  // gravity, and a beat of hang time at the top of a flight
+  vy -= HERO.gravity * (h.fly && !w && Math.abs(vy) < 3 ? SWING.hang : 1) * dt;
+  let sp = Math.hypot(vx, vy, vz);
+  // air resistance, more the faster he goes
+  const drag = Math.exp(-SWING.drag * sp * dt);
+  vx *= drag;
+  vy *= drag;
+  vz *= drag;
+  if (w) {
+    // the swing's own push, along the way he's going, under the anchor, so
+    // long as the arc wouldn't go past pumpMax for it
+    const energy = 0.5 * sp * sp + HERO.gravity * (h.y - w.a[1]);
+    const reach = -energy / (HERO.gravity * Math.max(1, w.len)); // cos of the furthest the arc goes
+    if (sp > 1 && h.y < w.a[1] && reach > Math.cos(SWING.pumpMax)) {
+      vx += (vx / sp) * SWING.pump * dt;
+      vy += (vy / sp) * SWING.pump * dt;
+      vz += (vz / sp) * SWING.pump * dt;
+    }
+    // pushed off a wall he's swinging alongside, and his swing with him (so
+    // he swings down the middle, not along the wall), as Insomniac do
+    const side = alongside({ ...h, vx, vz });
+    if (side) {
+      const k = 1 - side.d / SWING.pushAt;
+      vx += side.nx * SWING.push * k * dt;
+      vz += side.nz * SWING.push * k * dt;
+      w.a = [w.a[0] + side.nx * 3 * k * dt, w.a[1], w.a[2] + side.nz * 3 * k * dt];
+    }
+    // the web takes up its slack, down to what it wants
+    w.target = Math.min(w.target, ropeFor(w.a, w.len, w.entry, floorAt(h.x, h.z, h.y)));
+    if (w.len > w.target) w.len = Math.max(w.target, w.len - SWING.takeUp * dt);
+  }
+  sp = Math.hypot(vx, vy, vz);
+  if (sp > SWING.maxSpeed) {
+    vx *= SWING.maxSpeed / sp;
+    vy *= SWING.maxSpeed / sp;
+    vz *= SWING.maxSpeed / sp;
+  }
+
+  // on its way, in steps short enough not to go through a wall
+  const n = Math.max(1, Math.ceil((Math.hypot(vx, vy, vz) * dt) / 0.45));
+  const sdt = dt / n;
+  let { x, y, z } = h;
+  const before = -vy;
+  for (let s = 0; s < n; s++) {
+    const py = y;
+    x += vx * sdt;
+    y += vy * sdt;
+    z += vz * sdt;
+    // the web is a rope: past its length it pulls him back onto the circle
+    if (h.web) {
+      const a = h.web.a;
+      const dx = x - a[0];
+      const dy = y - a[1];
+      const dz = z - a[2];
+      const l = Math.hypot(dx, dy, dz);
+      if (l > h.web.len) {
+        const ux = dx / l;
+        const uy = dy / l;
+        const uz = dz / l;
+        x = a[0] + ux * h.web.len;
+        y = a[1] + uy * h.web.len;
+        z = a[2] + uz * h.web.len;
+        const out = vx * ux + vy * uy + vz * uz;
+        if (out > 0) {
+          vx -= ux * out;
+          vy -= uy * out;
+          vz -= uz * out;
+        }
+      }
+    }
+    if (y > SWING.ceiling) {
+      y = SWING.ceiling;
+      vy = Math.min(0, vy);
+    }
+    const c = collide3(py, x, y, z);
+    x = c.x;
+    y = c.y;
+    z = c.z;
+    if (c.head) vy = Math.min(0, vy);
+    if (c.lawn) {
+      const into = vx * c.lawn.nx + vz * c.lawn.nz;
+      if (into < 0) {
+        vx -= c.lawn.nx * into;
+        vz -= c.lawn.nz * into;
+      }
+    }
+    if (c.landed != null && vy <= 0) {
+      Object.assign(h, { x, y, z, vx, vz });
+      land(h, before);
+      return;
+    }
+    if (c.wall) {
+      const into = -(vx * c.wall.nx + vz * c.wall.nz);
+      const pushing = -(mx * c.wall.nx + mz * c.wall.nz) > 0.3;
+      const fresh = h.stuck <= 0 || c.wall.s.id !== h.lastWall;
+      if (fresh && c.wall.s.h - y > 0.25 && (into > SWING.stick || pushing)) {
+        // a spider: he sticks to it, and the speed he hit it with carries him up it
+        const hit = Math.hypot(vx, vy, vz);
+        const R = SWING.wallRun;
+        Object.assign(h, { x, y, z, vx: 0, vy: 0, vz: 0, mode: 'wall', web: null, fly: false, wall: { id: c.wall.s.id, nx: c.wall.nx, nz: c.wall.nz } });
+        h.runUp = hit > R.min ? Math.min(R.max, hit * R.carry) : 0;
+        h.face = Math.atan2(c.wall.nz, -c.wall.nx);
+        h.speed = 0;
+        h.ev.push({ type: 'stick', id: c.wall.s.id, run: h.runUp });
+        return;
+      }
+      // or slides along it
+      if (into > 0) {
+        vx += c.wall.nx * into;
+        vz += c.wall.nz * into;
+      }
+    }
+  }
+  Object.assign(h, { x, y, z, vx, vy, vz });
+  // well past the anchor, the web would only pull him back: he lets it go
+  if (h.web && pastAnchor(h) > SWING.letGo) letGo(h);
+  const hs = Math.hypot(vx, vz);
+  if (h.fly) {
+    if (hs > 1) turnTo(h, vx, vz, 8, dt);
+  } else if (len > 0.05) turnTo(h, mx, mz, HERO.turn, dt);
+  h.speed = hs;
+  h.running = false;
+}
+
+function land(h, impact) {
+  h.ev.push({ type: 'land', impact, x: h.x, y: h.y, z: h.z });
+  h.mode = 'ground';
+  h.vy = 0;
+  h.web = null;
+  h.fly = false;
+  h.airT = 0;
+  h.combo = 0;
+  h.speed = Math.hypot(h.vx, h.vz);
+  h.running = false;
+  // a long way down: down on one knee, the way he does, and the run taken out of him
+  if (impact > 14) {
+    h.land = 0.45;
+    h.vx *= 0.3;
+    h.vz *= 0.3;
+  }
+}
+
+function stepWall(h, { mx, mz, run, jump }, dt) {
+  const s = solidById(h.wall?.id);
+  if (!s) {
+    h.mode = 'air';
+    h.wall = null;
+    return;
+  }
+  h.airT = 0;
+  h.web = null;
+  h.fly = false;
+  const { nx, nz } = h.wall;
+  const tx = -nz;
+  const tz = nx;
+  const c = run ? SWING.climbRun : SWING.climb;
+  // into the wall climbs, away from it climbs down, and along it goes along
+  const into = Math.max(-1, Math.min(1, -(mx * nx + mz * nz)));
+  let up = into * c;
+  const side = Math.max(-1, Math.min(1, mx * tx + mz * tz)) * c * 0.75;
+  // the speed he hit it with, carried on up it (unless he's pulling away)
+  if (h.runUp > 0) {
+    if (into > -0.2) up = Math.max(up, h.runUp);
+    h.runUp = Math.max(0, h.runUp - SWING.wallRun.fade * dt);
+  }
+  if (jump) {
+    // off the wall: out, up, and on along it the way he was going
+    h.mode = 'air';
+    h.fly = true;
+    h.vx = nx * SWING.kick.out + tx * side * 0.8;
+    h.vz = nz * SWING.kick.out + tz * side * 0.8;
+    h.vy = SWING.kick.up + Math.max(0, up) * 0.4;
+    h.x += nx * 0.05;
+    h.z += nz * 0.05;
+    h.stuck = SWING.restick;
+    h.lastWall = s.id;
+    h.wall = null;
+    h.runUp = 0;
+    h.face = Math.atan2(-h.vz, h.vx);
+    h.ev.push({ type: 'kick' });
+    return;
+  }
+  const y = h.y + up * dt;
+  // along it, and back onto it wherever that is (round a corner, round the curve)
+  const e = wallNormal(h.x + tx * side * dt, h.z + tz * side * dt, s.foot);
+  let x = e.x + e.nx * (HERO_R + 0.02);
+  let z = e.z + e.nz * (HERO_R + 0.02);
+  if (y >= s.h - 0.15) {
+    // over the top, onto the roof (running, if he came up it at a run)
+    let rx = e.x - e.nx * 0.9;
+    let rz = e.z - e.nz * 0.9;
+    if (!inPoly(rx, rz, s.foot)) {
+      rx = e.x - e.nx * 0.3;
+      rz = e.z - e.nz * 0.3;
+    }
+    const on = Math.max(2, Math.min(HERO.run, up * 0.6));
+    Object.assign(h, { x: rx, z: rz, y: s.h, vx: -e.nx * on, vz: -e.nz * on, vy: 0, mode: 'ground', wall: null, speed: on, runUp: 0 });
+    h.face = Math.atan2(e.nz, -e.nx);
+    h.ev.push({ type: 'mantle', id: s.id });
+    return;
+  }
+  [x, z] = onLawn(x, z, Math.max(HERO_R, EDGE));
+  const f = floorAt(x, z, y);
+  if (y <= f) {
+    // climbed down to the ground (or a roof below)
+    Object.assign(h, { x, z, y: f, vx: 0, vz: 0, vy: 0, mode: 'ground', wall: null, speed: 0, runUp: 0 });
+    return;
+  }
+  if (y < s.y0 - 0.5) {
+    // off the bottom of something overhead
+    Object.assign(h, { x, z, y, vx: 0, vz: 0, vy: 0, mode: 'air', wall: null, speed: 0, runUp: 0 });
+    return;
+  }
+  Object.assign(h, { x, z, y, vx: tx * side, vz: tz * side, vy: up, wall: { id: s.id, nx: e.nx, nz: e.nz } });
+  h.face = Math.atan2(e.nz, -e.nx); // facing the wall
+  h.speed = Math.hypot(up, side);
+  h.climb = (h.climb ?? 0) + h.speed * dt;
+  h.running = false;
+}
+
+// ── what a web can catch ──
+// { a: the point he swings about, at: where the web sticks, n: the way out
+// of the wall it's on (roof edges), kind }. Insomniac tag every edge in the
+// city a web can stick to; here they're every roof's edges, the trees and the
+// masts. A web sticks to a roof's edge, but he swings about a point a couple
+// of metres out from the wall, as in every Spider-Man game: anchored at the
+// wall itself, a swing would carry him into it.
+const OUT = 2.2;
+function edgeAnchors(s, every = 3.5) {
+  const out = [];
+  const f = s.foot;
+  for (let i = 0; i < f.length; i++) {
+    const [ax, az] = f[i];
+    const [bx, bz] = f[(i + 1) % f.length];
+    const l = Math.hypot(bx - ax, bz - az);
+    if (l < 0.5) continue;
+    const n = wallNormal((ax + bx) / 2, (az + bz) / 2, f);
+    const k = Math.max(1, Math.round(l / every));
+    for (let j = 0; j < k; j++) {
+      const t = (j + 0.5) / k;
+      const x = ax + (bx - ax) * t;
+      const z = az + (bz - az) * t;
+      const px = x + n.nx * OUT;
+      const pz = z + n.nz * OUT;
+      if (!inPoly(px, pz, LAWN_W) || BUILDINGS.some((o) => inPoly(px, pz, o.foot))) continue;
+      out.push({ a: [px, s.h - 0.5, pz], at: [x + n.nx * 0.05, s.h - 0.1, z + n.nz * 0.05], n: [n.nx, n.nz], kind: 'roof', id: s.id });
+    }
+  }
+  return out;
+}
+// the firs round the lawn (there are none on the river's side): the web goes
+// into one a few metres back in the woods, but he swings along the lawn's edge
+function woodsAnchors(every = 9) {
+  const out = [];
+  const f = LAWN_W;
+  for (let i = 0; i < f.length; i++) {
+    const [ax, az] = f[i];
+    const [bx, bz] = f[(i + 1) % f.length];
+    const l = Math.hypot(bx - ax, bz - az);
+    const n = wallNormal((ax + bx) / 2, (az + bz) / 2, f);
+    const k = Math.max(1, Math.round(l / every));
+    for (let j = 0; j < k; j++) {
+      const t = (j + 0.5) / k;
+      const x = ax + (bx - ax) * t;
+      const z = az + (bz - az) * t;
+      if (inPoly(x + n.nx * 5, z + n.nz * 5, RIVER_W) || inPoly(x + n.nx * 12, z + n.nz * 12, RIVER_W)) continue;
+      out.push({ a: [x - n.nx * 3, 11.5, z - n.nz * 3], at: [x + n.nx * 5, 12.5, z + n.nz * 5], kind: 'tree' });
+    }
+  }
+  return out;
+}
+// (the lawn's trees are 9 to 12.5 m tall, as the drawing has them)
+export const treeHeight = (t) => 9 + t.tone * 3.5;
+export const ANCHORS = [
+  ...BUILDINGS.filter((b) => b.id !== 'pier').flatMap((b) => edgeAnchors(b)),
+  ...['bridge', 'clerestory'].flatMap((id) => edgeAnchors(solidById(id))),
+  ...woodsAnchors(),
+  ...LAWN_TREES.map((t) => {
+    const p = [t.x, treeHeight(t) * 0.78, t.z];
+    return { a: p, at: p, kind: 'tree' };
+  }),
+  ...MASTS.map((m) => ({ a: [m.x, MAST_H - 1, m.z], at: [m.x, MAST_H - 0.6, m.z], kind: 'mast' })),
+  ...FLAGS.map((f) => ({ a: [f.x, FLAG_H - 0.6, f.z], at: [f.x, FLAG_H - 0.3, f.z], kind: 'mast' })),
+];
+
+// Whether a web from (x0, y0, z0) to (x1, y1, z1) is clear of the buildings.
+export function clearLine(x0, y0, z0, x1, y1, z1) {
+  for (let i = 1; i < 8; i++) {
+    const t = i / 8;
+    const x = x0 + (x1 - x0) * t;
+    const y = y0 + (y1 - y0) * t;
+    const z = z0 + (z1 - z0) * t;
+    for (const s of SOLIDS) {
+      if (y >= s.h - 0.3 || y <= s.y0) continue;
+      const [bx0, bz0, bx1, bz1] = s.box;
+      if (x < bx0 || x > bx1 || z < bz0 || z > bz1) continue;
+      if (inPoly(x, z, s.foot)) return false;
+    }
+  }
+  return true;
+}
+
+// Where a web shot now would catch, as Insomniac's and its re-creations'
+// searches do it: a point he'd like to swing from, ahead of him (further the
+// faster he goes, toward where you steer if you are) and above him (but not
+// far above the height a chain of swings likes, so the next arc dips back
+// down rather than stair-stepping up the roofs); then the anchor nearest it
+// that's in reach, in front of the wall it's on, at a good angle up (26° to
+// 75°), not off to one side, with nothing between him and it nor in the way
+// of the swing. → { a, at, len, hand ('L' | 'R'), kind } or null.
+export function aimWeb(h, turn = null) {
+  const hs = Math.hypot(h.vx, h.vz);
+  let fx = hs > 3 ? h.vx / hs : Math.cos(h.face);
+  let fz = hs > 3 ? h.vz / hs : -Math.sin(h.face);
+  if (turn) {
+    // steering: the way he's going, bent toward the way you want
+    fx = fx * 0.55 + turn.x * 0.9;
+    fz = fz * 0.55 + turn.z * 0.9;
+    const l = Math.hypot(fx, fz) || 1;
+    fx /= l;
+    fz /= l;
+  }
+  const speed = Math.hypot(h.vx, h.vy, h.vz);
+  const floor = floorAt(h.x, h.z, h.y);
+  const band = floor + Math.min(34, 24 + speed * 0.25);
+  const high = h.y > band - 4;
+  const minUp = high ? 2 : SWING.minUp;
+  const ahead = Math.min(32, Math.max(12, 10 + speed * 0.6));
+  const dy = Math.max(minUp + 1, Math.min(13 + speed * 0.2, band - h.y));
+  const D = [h.x + fx * ahead, h.y + dy, h.z + fz * ahead];
+  const [lo, hi] = SWING.elev;
+  const pick = (strict) => {
+    const found = [];
+    for (const an of ANCHORS) {
+      const rx = an.a[0] - h.x;
+      const ry = an.a[1] - h.y;
+      const rz = an.a[2] - h.z;
+      if (ry < (strict ? minUp : SWING.minUp)) continue;
+      const len = Math.hypot(rx, ry, rz);
+      if (len < SWING.near || len > SWING.reach) continue;
+      const fwd = rx * fx + rz * fz;
+      if (fwd < (strict ? 1 : -1)) continue;
+      // in front of the wall it's on, not along it or behind it
+      if (an.n && (h.x - an.at[0]) * an.n[0] + (h.z - an.at[2]) * an.n[1] < (strict ? 2.5 : 0.5)) continue;
+      const lat = Math.abs(rx * fz - rz * fx);
+      const elev = Math.atan2(ry, Math.hypot(rx, rz));
+      let score = Math.hypot(an.a[0] - D[0], an.a[1] - D[1], an.a[2] - D[2]) / 8;
+      score += Math.max(0, lat - 14) * 0.3 + Math.max(0, lo - elev) * 4 + Math.max(0, elev - hi) * 3 - Math.min(fwd, 30) * 0.02;
+      found.push({ an, len, score });
+    }
+    found.sort((p, q) => p.score - q.score);
+    for (const f of found.slice(0, 10)) {
+      const { an } = f;
+      if (!clearLine(h.x, h.y + 1.5, h.z, an.at[0], an.at[1], an.at[2])) continue;
+      // and the way down to the bottom of the swing is clear too
+      const rope = ropeFor(an.a, f.len, h.y, floor);
+      if (!clearLine(h.x, h.y + 1, h.z, an.a[0], an.a[1] - rope + 1, an.a[2])) continue;
+      // the hand on the anchor's side (his left is +x when he faces +z)
+      const left = (an.a[0] - h.x) * fz - (an.a[2] - h.z) * fx;
+      return { a: [...an.a], at: [...an.at], len: f.len, hand: left > 0 ? 'L' : 'R', kind: an.kind };
+    }
+    return null;
+  };
+  // (and if nothing fits, whatever's in reach and over him)
+  return pick(true) ?? pick(false);
 }
 
 // The walking keys and the stick, turned by the camera's yaw into the world.
@@ -495,9 +1385,9 @@ export function camRoom(lx, lz, cx, cy, cz) {
     const z = lz + (cz - lz) * t;
     const y = cy; // (the camera's height; it barely changes along the way)
     let hit = !inPoly(x, z, LAWN_W) && y < 22;
-    for (const b of BUILDINGS) {
+    for (const b of SOLIDS) {
       if (hit) break;
-      if (y > b.h + 0.6) continue;
+      if (y > b.h + 0.6 || y < b.y0 - 0.6) continue;
       const [x0, z0, x1, z1] = b.box;
       if (x < x0 - 0.4 || x > x1 + 0.4 || z < z0 - 0.4 || z > z1 + 0.4) continue;
       hit = inPoly(x, z, b.foot) || nearestEdge(x, z, b.foot).d < 0.4;
@@ -523,6 +1413,79 @@ export const underPortal = (x, z) => Math.hypot(x - PORTAL.x, z - PORTAL.z) < PO
 // facing out.
 export function outside(p) {
   return newHero({ x: p.x + Math.cos(p.face) * 1.6, z: p.z - Math.sin(p.face) * 1.6, face: p.face });
+}
+
+// ── the swing tour: rings round the compound, against the clock ──
+// Up the main drive, under the bridge, round the back of the main building,
+// over the glass wing's roof, past the training center and the lab's roof,
+// and home by the gate. Through the first ring starts the clock.
+export const RING_R = 3.2;
+export const TOUR = (() => {
+  const at = [
+    [96, 8, 100],
+    [84, 11, 66],
+    [64, 8.5, 56],
+    [64.5, 7, 41.5],
+    [63, 11, 15],
+    [95, 15, 6],
+    [127, 31.5, 27],
+    [140, 13, 60],
+    [178, 10, 66],
+    [160, 11, 102],
+    [148, 18, 126],
+    [104, 8, 132],
+  ];
+  return at.map(([x, y, z], i) => {
+    // facing along the course: from the ring before toward the ring after
+    const a = at[Math.max(0, i - 1)];
+    const b = at[Math.min(at.length - 1, i + 1)];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) || 1;
+    return { x, y, z, n: [(b[0] - a[0]) / l, (b[1] - a[1]) / l, (b[2] - a[2]) / l] };
+  });
+})();
+// how long a tour may go without a ring before it's given up (s)
+export const TOUR_GAP = 30;
+
+// Whether going from p0 to p1 (his middle) took him through a ring.
+export function throughRing(p0, p1, r, rad = RING_R + 0.5) {
+  const d0 = (p0[0] - r.x) * r.n[0] + (p0[1] - r.y) * r.n[1] + (p0[2] - r.z) * r.n[2];
+  const d1 = (p1[0] - r.x) * r.n[0] + (p1[1] - r.y) * r.n[1] + (p1[2] - r.z) * r.n[2];
+  if (d0 > 0 || d1 < 0 || d0 === d1) return false; // (only forwards, along the course)
+  const t = d0 / (d0 - d1);
+  const qx = p0[0] + (p1[0] - p0[0]) * t - r.x;
+  const qy = p0[1] + (p1[1] - p0[1]) * t - r.y;
+  const qz = p0[2] + (p1[2] - p0[2]) * t - r.z;
+  return Math.hypot(qx, qy, qz) < rad;
+}
+
+export const newTour = (best = null) => ({ on: false, next: 0, t: 0, since: 0, best });
+// One step of the tour, from where he was (p0) to where he is (p1): → [tour, events]
+export function stepTour(tour, p0, p1, dt) {
+  const t = { ...tour };
+  const ev = [];
+  if (t.on) {
+    t.t += dt;
+    t.since += dt;
+    if (t.since > TOUR_GAP) {
+      ev.push({ type: 'tour-lost' });
+      return [newTour(t.best), ev];
+    }
+  }
+  if (throughRing(p0, p1, TOUR[t.next])) {
+    if (t.next === 0) {
+      t.on = true;
+      t.t = 0;
+      ev.push({ type: 'tour-start' });
+    } else ev.push({ type: 'tour-ring', n: t.next });
+    t.since = 0;
+    t.next += 1;
+    if (t.next === TOUR.length) {
+      const best = t.best == null || t.t < t.best;
+      ev.push({ type: 'tour-done', time: t.t, best });
+      return [newTour(best ? t.t : t.best), ev];
+    }
+  }
+  return [t, ev];
 }
 
 // ── the heist so far ──

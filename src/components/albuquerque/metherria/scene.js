@@ -62,7 +62,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   renderer.toneMappingExposure = 1.1;
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   let ratio = pixelRatio(1.75); // lib/device: lower on a phone or a weak device
   renderer.setPixelRatio(ratio);
   const big = renderer.capabilities.maxTextureSize >= 4096 && !(window.matchMedia?.('(pointer: coarse)').matches ?? false);

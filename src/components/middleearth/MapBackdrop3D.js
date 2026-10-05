@@ -29,7 +29,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   // lib/device: less sharp, and no shadows, on a weak device
   renderer.setPixelRatio(pixelRatio(1.5));
   renderer.shadowMap.enabled = budget().shadows;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x140d08);
   const camera = new THREE.PerspectiveCamera(34, 16 / 9, 1, 400);

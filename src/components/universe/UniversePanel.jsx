@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { restartSite } from '../../lib/restart';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
@@ -18,6 +18,7 @@ import ModelCredits from '../ModelCredits';
 // out to the whole map. Put away (tucked), it's a small bar naming where you
 // are, so the map has the room; the same element either way, so the scene
 // sees it change size and moves the planets into the space it leaves.
+// `onNav` opens the nav map (NavMap.jsx): everywhere, and how to get there.
 
 function Ships({ ship, onShip }) {
   return (
@@ -72,7 +73,7 @@ function Tuck({ onTuck }) {
   );
 }
 
-export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onStartOn, tucked = false, onTuck }) {
+export default function UniversePanel({ universe, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onStartOn, tucked = false, onTuck, onNav }) {
   const [changing, setChanging] = useState(false);
   const [homeFirst, setHomeFirst] = useState(false);
   const crew = crewById(ship);
@@ -111,6 +112,11 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
         {onTuck && <Tuck onTuck={toggle} />}
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">My whole site, as a universe</h2>
+        {onNav && (
+          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" onClick={onNav}>
+            <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Open the nav map
+          </button>
+        )}
         {!crew || changing ? (
           <>
             <p className="mt-3 text-sm leading-relaxed">
@@ -146,9 +152,9 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
               <li className="universe-keys-board">
                 Nothing stops the nose: hold <kbd>↑</kbd> to loop right over. To turn hard, roll with <kbd>A</kbd> or <kbd>D</kbd> and pull back. Let go and it rolls itself upright again
               </li>
-              <li>The worlds are far apart: boost between them for the pulse drive, and fight your way through</li>
+              <li>The worlds are far apart: boost between them for the pulse drive, and fight your way through. Or open the nav map and let the ship take you, at hyperspeed (a jump), super speed or cruising</li>
               <li className="universe-keys-board">
-                <kbd>Space</kbd> to boost, hold <kbd>F</kbd> to fire, <kbd>M</kbd> for the whole map
+                <kbd>Space</kbd> to boost, hold <kbd>F</kbd> to fire, <kbd>M</kbd> for the nav map, <kbd>J</kbd> to jump to the place picked
               </li>
               <li className="universe-keys-board">
                 <kbd>V</kbd> for the cockpit, or back behind the ship
@@ -209,9 +215,16 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
   return (
     <aside ref={panel} className="universe-panel" aria-label={universe.label}>
       {onTuck && <Tuck onTuck={toggle} />}
-      <button type="button" className="universe-back" onClick={onWhole}>
-        <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
-      </button>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <button type="button" className="universe-back" onClick={onWhole}>
+          <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
+        </button>
+        {onNav && (
+          <button type="button" className="universe-back" onClick={onNav}>
+            <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
+          </button>
+        )}
+      </div>
       <div className="flex items-center justify-between gap-2">
         <button type="button" className="globe-btn" onClick={() => onSelect(before.id)} aria-label={`Previous: ${before.label}`} title={before.label}>
           <RiArrowLeftLine className="h-4 w-4" aria-hidden="true" />

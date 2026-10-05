@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../gpu';
 import { useReducedMotion } from '../hooks';
 import { settle } from '../settle';
+import { createLoop } from './loop';
 import { readTheme, watchTheme } from './theme';
 
 const DROP_AFTER = 10000; // ms far from the viewport before the scene is let go
@@ -44,7 +45,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
   const [status, setStatus] = useState('idle'); // idle | loading | ready | on | failed | slow | lost
   const [near, setNear] = useState(false);
   const visible = useRef(false);
-  const loop = useRef({ raf: 0, last: 0, kick: () => {} });
+  const loop = useRef({ last: 0, kick: () => {} });
   const loadRef = useRef(load);
   loadRef.current = load;
   const propsRef = useRef(props);
@@ -100,10 +101,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     let dead = false;
     let shown = false;
     const L = loop.current;
-    const stop = () => {
-      cancelAnimationFrame(L.raf);
-      L.raf = 0;
-    };
+    const stop = () => chain.stop();
     // a fresh canvas for every scene: a context that has been let go can't
     // be had again from the same element
     const canvas = document.createElement('canvas');
@@ -120,9 +118,8 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
       if (!dead) setStatus(why);
     };
     const frame = (now) => {
-      L.raf = 0;
       const v = view.current;
-      if (!v || !visible.current || document.hidden || covered()) return;
+      if (!v || !visible.current || document.hidden || covered()) return false;
       const ms = L.last ? Math.min(50, now - L.last) : 16;
       L.last = now;
       let more = false;
@@ -131,18 +128,19 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
       } catch (err) {
         if (import.meta.env.DEV) console.error(`[${id}] 3D frame failed`, err);
         drop('failed');
-        return;
+        return false;
       }
       if (!shown && !dead) {
         shown = true; // drawn once: now whatever it replaces can step aside
         setStatus('on');
       }
-      if (more) L.raf = requestAnimationFrame(frame);
-      else L.last = 0;
+      if (!more) L.last = 0;
+      return more;
     };
-    L.kick = () => {
-      if (!L.raf && view.current && visible.current && !document.hidden && !covered()) L.raf = requestAnimationFrame(frame);
-    };
+    // one chain of frames: a kick from inside a frame (a shot fired with the
+    // trigger held) is folded into it, not a second chain drawing beside it
+    const chain = createLoop(frame, { can: () => Boolean(view.current && visible.current && !document.hidden && !covered()) });
+    L.kick = () => chain.kick();
     const onVis = () => (document.hidden ? stop() : L.kick());
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('tp:uncover', onVis);

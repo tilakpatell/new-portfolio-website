@@ -7,7 +7,7 @@
 // catalog/core.js), and what there's no model of at all.
 
 import * as THREE from 'three';
-import { box, cyl, dome, part, ring, rod, rockGeometry } from '../kit';
+import { box, cyl, dome, part, ring, rod } from '../kit';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
 
@@ -40,6 +40,7 @@ const prism = (w, d, h) =>
 
 // posts round a disc's rim you can't get past (a railing, or just the
 // edge), leaving gaps: [angle (from +z toward +x), half-width (radians)]
+// eslint-disable-next-line no-unused-vars -- (kept for the worlds still to come)
 function rim(x, z, r, gaps = [], step = 0.8) {
   const out = [];
   const n = Math.ceil((2 * PI * r) / step);

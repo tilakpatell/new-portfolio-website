@@ -164,6 +164,10 @@ export function run(canvas, opts) {
   const flashColor = new THREE.Color();
   const shake = new THREE.Vector2();
 
+  // (development: window.__tpStats counts a whole frame's draws, both passes
+  // and the bloom's, for info() below)
+  const stats = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpStats ? { calls: 0, triangles: 0, ms: 0 } : null;
+  if (stats) renderer.info.autoReset = false;
   const draw = () => {
     if (composer) composer.render();
     else {
@@ -173,6 +177,40 @@ export function run(canvas, opts) {
       renderer.render(inside, camIn);
     }
   };
+
+  // Everything a vehicle has, drawn once: what's hidden too (the RV's wings,
+  // what its launch cuts to) and what's behind you, so their textures and
+  // meshes are on the graphics chip before the moment they're first seen
+  // (three.js sends each the first time it's drawn, and that frame waits).
+  // Lights stay as they were: a hidden one shown would link shaders of its own.
+  const warm = () => {
+    const undo = [];
+    const set = (o, key, to) => {
+      if (o[key] === to) return;
+      undo.push([o, key, o[key]]);
+      o[key] = to;
+    };
+    const show = (o, hidden) => {
+      const was = hidden || !o.visible;
+      if (o.isLight) {
+        if (was) set(o, 'visible', false);
+        return;
+      }
+      set(o, 'visible', true);
+      if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
+      for (const child of o.children) show(child, was);
+    };
+    show(inside, false);
+    show(outside, false);
+    try {
+      draw();
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[cockpit] warm-up failed', err);
+    } finally {
+      for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+    }
+  };
+  let late = false; // something arrived after the vehicle was drawn (`added`, below)
 
   const frame = (now) => {
     raf = 0;
@@ -226,7 +264,19 @@ export function run(canvas, opts) {
       camIn.getWorldPosition(camOut.position);
       camIn.getWorldQuaternion(camOut.quaternion);
       camOut.updateMatrixWorld(true);
-      draw();
+      // (not during a launch: better a model that pops in than a held frame)
+      if (late && !L.on) {
+        late = false;
+        warm();
+      }
+      if (stats) {
+        renderer.info.reset();
+        const t0 = performance.now();
+        draw();
+        stats.ms = performance.now() - t0;
+        stats.calls = renderer.info.render.calls;
+        stats.triangles = renderer.info.render.triangles;
+      } else draw();
       if (!firstDrawn) {
         firstDrawn = true;
         cb.onFirstFrame?.();
@@ -260,7 +310,7 @@ export function run(canvas, opts) {
       }
       return;
     }
-    raf = requestAnimationFrame(frame);
+    if (!raf) raf = requestAnimationFrame(frame); // (one chain, even if the frame kicked)
   };
   const kick = () => {
     if (!raf && !stopped && !failed) {
@@ -289,6 +339,36 @@ export function run(canvas, opts) {
     v = null;
   };
 
+  // A part of a vehicle that arrives after the vehicle is on screen (a model
+  // still downloading when the rest was ready). Sat in the cockpit, it's
+  // drawn once on the next frame with everything else (`warm`). During a
+  // launch a frame can't be held for it: its pictures go to the graphics
+  // chip now and its shaders link in the background, which is most of what
+  // its first frame would have waited for.
+  function added(root, where) {
+    if (stopped || failed) return;
+    if (!L.on) {
+      late = true;
+      kick();
+      return;
+    }
+    const scene = where === 'inside' ? inside : outside;
+    let o = root;
+    while (o && o !== scene) o = o.parent;
+    if (!o) return;
+    root.traverse((m) => {
+      for (const mat of Array.isArray(m.material) ? m.material : m.material ? [m.material] : [])
+        for (const v of Object.values(mat))
+          if (v?.isTexture && v.image)
+            try {
+              renderer.initTexture(v);
+            } catch {
+              /* it will go up on its first frame instead */
+            }
+    });
+    precompile(renderer, root, where === 'inside' ? camIn : camOut, scene, composer ? composer.readBuffer : null);
+  }
+
   async function pick(id) {
     if (L.on || !BUILD[id]) return;
     if (id === vid && (v || building)) return;
@@ -303,7 +383,7 @@ export function run(canvas, opts) {
     try {
       const mod = await BUILD[id]();
       if (building !== mine || stopped) return;
-      const built = await mod.build({ renderer, pmrem, rich, reduced, coarse: coarse(), say: (line) => cb.onLine?.(line) });
+      const built = await mod.build({ renderer, pmrem, rich, reduced, coarse: coarse(), say: (line) => cb.onLine?.(line), added });
       if (building !== mine || stopped) {
         built.dispose?.();
         disposeTree(built.inside);
@@ -342,6 +422,11 @@ export function run(canvas, opts) {
       await Promise.all([precompile(renderer, outside, camOut, outside, into), precompile(renderer, inside, camIn, inside, into), composer ? precompilePasses(renderer, composer, camIn) : null]);
       if (warming === built) warming = null;
       if (stopped || v !== built) return;
+      // still behind the black: draw it all once, then black again
+      late = false;
+      warm();
+      renderer.setRenderTarget(null);
+      renderer.clear();
       sound = cockpitSound(id);
       fadeTo = 0;
       cb.onBoarded?.(id);
@@ -403,6 +488,12 @@ export function run(canvas, opts) {
     },
     get launching() {
       return L.on;
+    },
+    // (development: what the renderer holds and what the last frame drew;
+    // a count that grows during a launch is something made or linked late)
+    info() {
+      if (!import.meta.env.DEV) return null;
+      return { t: L.t, programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries, ...stats };
     },
     // (development: jump to a moment of the launch, for screenshots)
     seek(ms) {
