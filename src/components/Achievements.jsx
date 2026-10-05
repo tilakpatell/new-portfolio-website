@@ -128,6 +128,7 @@ export const ACHIEVEMENTS = {
   quinjet: { name: 'Get this man a shield', desc: 'Flew the Tesseract into the hangar at Tesseract Run' },
   spidey: { name: 'Your friendly neighbourhood', desc: 'Swung two kilometres down the avenue to school at Thwip!' },
   swingtour: { name: 'Rings round the compound', desc: 'Swung through every ring of the tour round Avengers HQ' },
+  backpacks: { name: 'He keeps losing them', desc: 'Found all twelve of Peter’s backpacks webbed up round the Avengers compound' },
   thinkmark: { name: 'Think, Mark!', desc: 'Saw Omni-Man off over the city' },
   regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },

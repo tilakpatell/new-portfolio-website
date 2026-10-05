@@ -34,6 +34,7 @@ import { AVENGERS_MODELS } from '../people/models';
 import { clipsFor, loadClips, loadPerson, person } from './people';
 import { createSwing } from './swing';
 import { createFlags, createRings, staticGrounds } from './grounds';
+import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
@@ -1166,6 +1167,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const swing = createSwing(scene, { calm });
   const flags = createFlags(scene);
   const rings = createRings(scene);
+  const packs = createPacks(scene);
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -1477,6 +1479,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       grass.update(s.hero.x + (fx / fl) * 6, s.hero.z + (fz / fl) * 6, clock);
     }
     rings.update(s.tour ?? { on: false, next: 0 }, clock);
+    packs.update(s.found ?? [], clock);
 
     // Mjolnir hums a little when the worthy come near it
     const dh = Math.hypot(s.hero.x - CRATER.x, s.hero.z - CRATER.z);
@@ -1618,6 +1621,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       swing.zipped(d.at);
     } else if (type === 'dive') {
       A.punch = Math.max(A.punch, 4);
+    } else if (type === 'pack') {
+      // a backpack found: a puff of web and a ring where it was
+      const at = packs.at(d.id);
+      if (at) {
+        vfx.ring(at, { color: 0xbfe8ff, from: 0.3, to: 2.6, life: 0.45, opacity: 0.6 });
+        if (!calm) vfx.smoke(at, { size: 0.8, count: 4, life: 0.6, rise: 0.3, opacity: 0.4, color: 0xffffff, to: 0xdde6f0, spread: 0.5 });
+      }
+      A.punch = Math.max(A.punch, 2);
     } else if (type === 'stick' || type === 'kick') {
       if (!calm) vfx.smoke(v3.copy(hero.position), { size: 0.6, count: 3, life: 0.5, rise: 0.1, opacity: 0.18, color: 0xd8d4c4, to: 0xeeeeee, spread: 0.4 });
     }
@@ -1667,6 +1678,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       flags.dispose();
       grass?.dispose();
       rings.dispose();
+      packs.dispose();
       vfx.dispose();
       engine.dispose();
     },
