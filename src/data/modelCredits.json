@@ -72,6 +72,17 @@
     "where": "universe",
     "as": "the sitar by the music planet"
   },
+  "spiderman": {
+    "title": "Spiderman Brand New Day",
+    "author": "mpolo0604",
+    "authorUrl": "https://sketchfab.com/mpolo0604",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
+    "where": "avengers",
+    "as": "Spider-Man",
+    "file": "/models/marvel/spiderman.glb"
+  },
   "star-destroyer": {
     "title": "Star Destroyer",
     "author": "rubaun",
