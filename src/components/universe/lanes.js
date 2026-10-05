@@ -12,6 +12,11 @@
 // space, where there are no places to go between: across the space ahead
 // of you, from one side to the other, near enough to see. convoyLane(ship,
 // rand) is a long straight run past you at a good distance, for a convoy.
+// Now that the places are far apart (a lane between two would run for
+// minutes out of sight), everyday traffic keeps to where you are:
+// laneLocal(place, rand) curves round the place you're at, from beside it
+// to beside it further round; laneDepart(place, rand) leaves it (or comes
+// in to it, flown backwards) straight out into the open.
 
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
@@ -61,6 +66,41 @@ function beside(id, rand, y) {
   const a = rand() * Math.PI * 2;
   const d = REACH[id] + 1.5 + rand() * 2;
   return [x + Math.cos(a) * d, y, z + Math.sin(a) * d];
+}
+
+// place: { at: [x, y, z], reach }
+export function laneLocal(place, rand, { high = false } = {}) {
+  const side = rand() < 0.5 ? -1 : 1;
+  const y = place.at[1] + side * between(rand, high ? HIGH : LOW) * (place.reach > 20 ? 1.6 : 1);
+  for (let i = 0; i < 8; i++) {
+    const a = rand() * Math.PI * 2;
+    const b = a + (rand() < 0.5 ? -1 : 1) * (Math.PI / 3 + rand() * (Math.PI * 5) / 9); // 60–160° round
+    const d0 = place.reach + 2 + rand() * 6;
+    const d2 = place.reach + 2 + rand() * 6;
+    const p0 = [place.at[0] + Math.cos(a) * d0, y, place.at[2] + Math.sin(a) * d0];
+    const p2 = [place.at[0] + Math.cos(b) * d2, y + (rand() - 0.5) * 2, place.at[2] + Math.sin(b) * d2];
+    // the middle bows out, away from the place, so the curve goes round it
+    const m = (a + b) / 2;
+    const dm = Math.max(d0, d2) + place.reach * 0.35 + 2;
+    const pts = [p0, [place.at[0] + Math.cos(m) * dm, y + side * rand() * 1.5, place.at[2] + Math.sin(m) * dm], p2];
+    if (clearance(pts) > 0.6) return pts;
+  }
+  return null;
+}
+
+export function laneDepart(place, rand) {
+  const side = rand() < 0.5 ? -1 : 1;
+  const y = place.at[1] + side * between(rand, LOW);
+  for (let i = 0; i < 8; i++) {
+    const a = rand() * Math.PI * 2;
+    const d0 = place.reach + 2 + rand() * 4;
+    const far = d0 + 80 + rand() * 60;
+    const p0 = [place.at[0] + Math.cos(a) * d0, y, place.at[2] + Math.sin(a) * d0];
+    const p2 = [place.at[0] + Math.cos(a + 0.2) * far, y + (rand() - 0.5) * 12, place.at[2] + Math.sin(a + 0.2) * far];
+    const pts = rand() < 0.5 ? [p0, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p2] : [p2, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p0];
+    if (clearance(pts) > 0.6) return pts;
+  }
+  return null;
 }
 
 export function laneBetween(rand, { high = false } = {}) {

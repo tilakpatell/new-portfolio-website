@@ -9,18 +9,23 @@ import MiniMap from './MiniMap';
 // scene moves them as it draws. The names are one focus group: the arrow
 // keys step through the universes, Home and End jump to the ends. With a
 // ship picked there's a ring that shows the drag-to-steer stick, a gauge of
-// how high it flies, its shields (while there's trouble about), Boost, Fire
-// and climb and dive buttons on touch screens and a line on how to fly
-// until you do. While the
+// how high it flies, its shields (while there's trouble about), the
+// targeting HUD (the gun line, the lock on a hunter with the lead to shoot
+// at, and the way to wherever you're going; the scene places them), Boost,
+// Fire, View (the cockpit or behind the ship) and climb and dive buttons on
+// touch screens and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
-// if 3D is off, fails or is lost, the flat MiniMap takes the box.
+// if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
+// the other pilots' callsigns ride over their ships (the scene moves them).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand, onCrash }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, net = null, onEvent, onLand, onCrash }) {
   const labels = useRef({});
+  const tags = useRef(null);
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
+  const hud = useRef(null);
   const [flown, setFlown] = useState(false);
   const events = useRef(onEvent);
   events.current = onEvent;
@@ -34,6 +39,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       stick,
       alt,
       shield,
+      hud,
+      net,
+      tags,
       frozen,
       onPick: onSelect,
       onOpen,
@@ -128,6 +136,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               </li>
             ))}
           </ul>
+          <div ref={tags} className="universe-tags" aria-hidden="true" />
           {ship && on && (
             <>
               <div ref={stick} className="universe-stick" aria-hidden="true">
@@ -142,10 +151,30 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <span />
                 </span>
               </div>
+              <div ref={hud} className="universe-hud" aria-hidden="true">
+                <span className="universe-reticle" />
+                <span className="universe-lock">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <b className="universe-lock-name" />
+                  <b className="universe-lock-dist" />
+                </span>
+                <span className="universe-lead" />
+                <span className="universe-nav">
+                  <i />
+                  <b className="universe-nav-name" />
+                  <b className="universe-nav-dist" />
+                </span>
+              </div>
               <div className="universe-climbs">
                 {climbButton(1, 'Climb')}
                 {climbButton(-1, 'Dive')}
               </div>
+              <button type="button" className="universe-view" onPointerDown={(e) => (e.preventDefault(), view.current?.seat?.())} onContextMenu={(e) => e.preventDefault()}>
+                View
+              </button>
               <button type="button" className="universe-fire" onPointerDown={(e) => (e.preventDefault(), view.current?.fire?.())} onContextMenu={(e) => e.preventDefault()}>
                 Fire
               </button>
@@ -163,9 +192,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the map
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>T</kbd> next target, <kbd>V</kbd> cockpit, <kbd>M</kbd> for the map
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast, View for the cockpit</span>
                 </p>
               )}
             </>

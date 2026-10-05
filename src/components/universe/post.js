@@ -8,7 +8,12 @@
 // vignette drawn in. A laser hit flashes the edges red. Near the black hole
 // out in deep space the picture bends round it: what's behind it is drawn
 // pulled out round its shadow, as a real one's gravity bends the light
-// (lens: where it is on the canvas and how big its shadow looks there). The tone map is the shoulder of Khronos' neutral one without
+// (lens: where it is on the canvas and how big its shadow looks there), and
+// twisted a little round with its spin. Only what's behind it: the scene's
+// depth says what's nearer than the hole (the ship, in front of it), and
+// that's drawn as it is. The shadow itself is drawn black over all but
+// that (no glow gets into it, and falling in, the camera can be in past the
+// sphere that draws it). The tone map is the shoulder of Khronos' neutral one without
 // its toe: everything under 0.8 stays exactly as drawn (the faint Milky Way,
 // the planets' night sides, the signs' colours) and only what's brighter is
 // rounded off toward white. When frames run long the scene turns the post
@@ -23,6 +28,11 @@
 // spaceEnvironment(renderer, sky) is what shiny things reflect: the Milky
 // Way, brought up, with the key light's glow where the key light is and a
 // cool fill opposite, so metal catches the same light the scene is lit by.
+//
+// overlay(scene, camera) draws a second scene over the first with its own
+// depth, before the bloom (the cockpit, from the pilot's seat, so its frame
+// is always in front of whatever is out there and its lights glow too); null
+// takes it off again.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -57,6 +67,12 @@ const FINAL = {
     uCenter: { value: new THREE.Vector2(0.5, 0.5) },
     uHit: { value: 0 },
     uLens: { value: new THREE.Vector3(0.5, 0.5, 0) },
+    // nearer than x (along the view) isn't bent; y the twist; z the shadow's
+    // radius on the canvas, where it's to be drawn black itself (0: not)
+    uLensMore: { value: new THREE.Vector3(1e9, 0, 0) },
+    tDepth: { value: null },
+    uNear: { value: 0.1 },
+    uFar: { value: 1000 },
   },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
@@ -64,6 +80,9 @@ const FINAL = {
     uniform float uContrast, uSat, uVignette, uAspect, uRush, uHit;
     uniform vec2 uCenter;
     uniform vec3 uLens;
+    uniform vec3 uLensMore;
+    uniform sampler2D tDepth;
+    uniform float uNear, uFar;
     varying vec2 vUv;
     ${FINITE}
     vec3 shoulder(vec3 c) {
@@ -77,17 +96,31 @@ const FINAL = {
       return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
     }
     vec3 scene(vec2 uv) { return finite(texture2D(tDiffuse, uv).rgb); }
+    // how far off what's drawn at uv is, along the view
+    float depthAt(vec2 uv) {
+      float d = texture2D(tDepth, uv).x;
+      return uNear * uFar / max(uFar - d * (uFar - uNear), 1e-6);
+    }
     void main() {
       vec2 uv = vUv;
-      if (uLens.z > 0.0005) {
+      float shadow = 1.0;
+      if (uLens.z > 0.0005 && depthAt(vUv) > uLensMore.x) {
         // bent light round the black hole: each pixel shows what's a little
-        // further out from it, by the shadow's size squared over the distance
+        // further out from it, by the shadow's size squared over the distance,
+        // and turned a little round it, more the closer in
         vec2 d = (uv - uLens.xy) * vec2(uAspect, 1.0);
         float r = max(length(d), 1e-4);
-        float bend = uLens.z * uLens.z / r * (1.0 - smoothstep(uLens.z * 2.0, uLens.z * 9.0, r));
-        uv -= d / r * min(bend, r * 0.95) / vec2(uAspect, 1.0);
+        float z = uLens.z;
+        float bend = z * z / r * (1.0 - smoothstep(z * 2.0, z * 9.0, r));
+        float a = uLensMore.y * min(z * z / (r * r), 3.0);
+        vec2 dir = d / r;
+        dir = vec2(dir.x * cos(a) - dir.y * sin(a), dir.x * sin(a) + dir.y * cos(a));
+        vec2 bent = uLens.xy + dir * (r - min(bend, r * 0.95)) / vec2(uAspect, 1.0);
+        // (what lands on something in front of the hole isn't what's behind it)
+        if (depthAt(bent) > uLensMore.x) uv = bent;
+        if (uLensMore.z > 0.0) shadow = smoothstep(uLensMore.z * 0.96, uLensMore.z, r);
       }
-      vec3 lin = scene(uv);
+      vec3 lin = scene(uv) * shadow;
       if (uRush > 0.001) {
         // a few taps back toward the ship, more smeared the further out
         vec2 d = uv - uCenter;
@@ -110,9 +143,16 @@ const FINAL = {
 };
 
 export function createPost(renderer, scene, camera, { small = false } = {}) {
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 2 : 4 });
+  // (with its depth, for the black hole's lens to tell what's in front of it)
+  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 2 : 4, depthTexture: new THREE.DepthTexture(1, 1) });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
+  // whatever's drawn over the scene (the cockpit), with a fresh depth
+  const over = new RenderPass(scene, camera);
+  over.clear = false;
+  over.clearDepth = true;
+  over.enabled = false;
+  composer.addPass(over);
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
   // its first step (picking out what's bright enough to glow) reads through finite()
   const bright = bloom.materialHighPassFilter;
@@ -136,6 +176,13 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     render(w, h) {
       if (!on) {
         renderer.render(scene, camera);
+        if (over.enabled) {
+          const was = renderer.autoClear;
+          renderer.autoClear = false;
+          renderer.clearDepth();
+          renderer.render(over.scene, over.camera);
+          renderer.autoClear = was;
+        }
         return;
       }
       const ratio = renderer.getPixelRatio();
@@ -145,7 +192,17 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         composer.setSize(w, h);
         grade.uniforms.uAspect.value = w / h;
       }
+      // the scene draws into the composer's read buffer, and the last pass reads it there
+      grade.uniforms.tDepth.value = composer.readBuffer.depthTexture;
+      grade.uniforms.uNear.value = camera.near;
+      grade.uniforms.uFar.value = camera.far;
       composer.render();
+    },
+    // a scene drawn over the first, from `cam` (null: nothing)
+    overlay(s, cam) {
+      over.enabled = Boolean(s);
+      over.scene = s ?? scene;
+      over.camera = cam ?? camera;
     },
     // bloom's strength, for a moment's flare (a boost, an arrival)
     flare(k) {
@@ -161,9 +218,13 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
       grade.uniforms.uHit.value = k;
     },
     // the black hole's bending: at (x, y) on the canvas (0…1, y up), its
-    // shadow r high (as a share of the canvas's height); r 0 for none
-    lens(x, y, r) {
+    // shadow r high (as a share of the canvas's height); r 0 for none.
+    // front: nearer than this (along the view) is in front of it, and not
+    // bent; twist: radians, at its edge, turned round with its spin; black:
+    // the shadow's radius on the canvas, drawn black (0: left to the scene)
+    lens(x, y, r, { front = 1e9, twist = 0, black = 0 } = {}) {
       grade.uniforms.uLens.value.set(x, y, r);
+      grade.uniforms.uLensMore.value.set(front, twist, black);
     },
     off() {
       if (!on) return;

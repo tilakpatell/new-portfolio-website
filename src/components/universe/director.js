@@ -13,6 +13,7 @@
 //   family saucer and Gromflomites), yours to save or not
 // - convoy: a line of freighters under escort goes by
 // - comet: a comet crosses the sky
+// - supernova: a star blows, far out, the flash seen from anywhere
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
@@ -27,6 +28,7 @@ export const EVENTS = {
   distress: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
   convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
   comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
+  supernova: { families: ['starwars', 'rickmorty', 'both'], weight: 0.8, heat: 0 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 
@@ -39,8 +41,10 @@ export function createDirector({ rand = Math.random } = {}) {
   return {
     // family: 'starwars', 'rickmorty', 'both' or null (no ship: nothing happens);
     // heat: 0 and up; busy: something's already going on (hunters after
-    // you, a crash playing out), so not now
-    update(dt, { family, heat = 0, busy = false }) {
+    // you, a crash playing out), so not now; travelling: out in the open at
+    // speed, between places, where things come sooner and more of them are
+    // hunters (an ambush on the way)
+    update(dt, { family, heat = 0, busy = false, travelling = false }) {
       if (!family) return null;
       clock += dt;
       if (busy) {
@@ -54,9 +58,11 @@ export function createDirector({ rand = Math.random } = {}) {
         nextAt = clock + between(PACE.gap);
         return id;
       }
+      // travelling, the wait runs down faster
+      if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
       const choices = Object.entries(EVENTS).filter(([id, e]) => e.families.includes(family) && id !== last);
-      const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5);
+      const weight = (e) => e.weight * (1 + e.heat * Math.min(heat, 6) * 0.5) * (travelling && e.heat > 0 ? 2 : 1);
       let r = rand() * choices.reduce((s, [, e]) => s + weight(e), 0);
       let id = choices[choices.length - 1][0];
       for (const [k, e] of choices) {
@@ -66,7 +72,7 @@ export function createDirector({ rand = Math.random } = {}) {
         }
       }
       last = id;
-      nextAt = clock + between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25);
+      nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1);
       return id;
     },
     // bring an event on next (for checking from a browser)

@@ -235,6 +235,21 @@
 @keyframes universe-beyond {
   from { opacity: 0; translate: 0 8px; }
 }
+/* the far side's falling code (Rain.jsx), faint where the words are */
+.universe-rain {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 42% 30% at 50% 52%, transparent 30%, #000 100%);
+  animation: universe-rain 1.6s ease-in 0.4s both;
+}
+@keyframes universe-rain {
+  from { opacity: 0; }
+}
 
 /* flying: the steering ring, Boost (touch screens), the first-flight hint */
 .universe-stick {
@@ -334,6 +349,142 @@
 }
 .universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
 @keyframes universe-shield-blink { 50% { opacity: 0.45; } }
+/* the targeting HUD: the gun line out along the nose, the lock's brackets
+   round a hunter (with its name and range under), the pip where a shot
+   would meet it, and the nav bracket round wherever you're going; the scene
+   moves them each frame (data-on: shown; data-off: it's off the screen, so
+   it's an arrow at the edge, turned --a toward it; data-hot: the nose is
+   near enough the lead that a shot bends onto it; data-hit: a shot landed) */
+.universe-hud {
+  --hot: #ff6a52;
+  --nav: var(--engine, #e8eefc);
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+.universe-hud > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transition: opacity 0.18s;
+  will-change: transform;
+}
+.universe-hud > span[data-on] { opacity: 1; }
+.universe-reticle {
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1.5px solid rgb(255 255 255 / 0.6);
+  border-radius: 50%;
+  transition: opacity 0.18s, border-color 0.15s, box-shadow 0.15s;
+}
+.universe-reticle::before,
+.universe-reticle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgb(255 255 255 / 0.85);
+}
+.universe-reticle::before { width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; }
+.universe-reticle::after { width: 1px; height: 7px; margin: -17px 0 0 -0.5px; }
+.universe-reticle[data-hot] { border-color: var(--hot); box-shadow: 0 0 10px rgb(255 106 82 / 0.55); }
+.universe-reticle[data-hit] { animation: universe-hit 0.25s ease-out; }
+@keyframes universe-hit {
+  from { scale: 1.5; border-color: #fff; box-shadow: 0 0 14px rgb(255 255 255 / 0.8); }
+}
+.universe-lock,
+.universe-nav {
+  --r: 40px;
+  width: var(--r);
+  height: var(--r);
+  margin: calc(var(--r) / -2) 0 0 calc(var(--r) / -2);
+}
+.universe-lock { color: var(--hot); }
+.universe-lock > i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  filter: drop-shadow(0 0 3px rgb(255 106 82 / 0.5));
+}
+.universe-lock > i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+.universe-lock > i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.universe-lock > i:nth-child(3) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+.universe-lock > i:nth-child(4) { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+.universe-lock[data-on] > i { animation: universe-lock-in 0.3s ease-out; }
+@keyframes universe-lock-in {
+  from { scale: 1.9; opacity: 0; }
+}
+.universe-lock[data-hot] > i { border-color: #fff; border-width: 2px; }
+.universe-lock-name,
+.universe-lock-dist,
+.universe-nav-name,
+.universe-nav-dist {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  font-weight: 400;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgb(3 4 10 / 0.9), 0 1px 2px rgb(3 4 10 / 0.9);
+}
+.universe-lock-name { top: calc(100% + 5px); }
+.universe-lock-dist { top: calc(100% + 18px); opacity: 0.75; }
+/* the lead: a small diamond, filled once the nose is on it */
+.universe-lead {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 1.5px solid var(--hot);
+  rotate: 45deg;
+  filter: drop-shadow(0 0 3px rgb(255 106 82 / 0.6));
+  transition: opacity 0.18s, background-color 0.15s;
+}
+.universe-lead[data-hot] { background: #fff; border-color: #fff; }
+/* the way to go: a thin diamond round the place, its name and range over it
+   (under it would sit on the place's own name) */
+.universe-nav { color: var(--nav); opacity: 0; }
+.universe-nav[data-on] { opacity: 0.85; }
+.universe-nav[data-on][data-way] { opacity: 0.5; }
+.universe-nav > i {
+  position: absolute;
+  inset: 0;
+  border: 1px solid currentColor;
+  rotate: 45deg;
+  scale: 0.72;
+  filter: drop-shadow(0 0 4px rgb(3 4 10 / 0.8));
+}
+.universe-nav-name { bottom: calc(100% + 6px); }
+.universe-nav-dist { bottom: calc(100% + 19px); opacity: 0.75; }
+/* off the screen: an arrow at the edge, pointing the way, the labels beside it */
+.universe-hud > span[data-off] > i { display: none; }
+.universe-hud > span[data-off]::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: -8px 0 0 -8px;
+  border: 8px solid transparent;
+  border-left: 14px solid currentColor;
+  border-right: 0;
+  transform-origin: 2px 50%;
+  rotate: var(--a, 0rad);
+  filter: drop-shadow(0 0 4px rgb(3 4 10 / 0.8));
+}
+.universe-hud > span[data-off] .universe-lock-name,
+.universe-hud > span[data-off] .universe-nav-name { top: calc(50% + 14px); bottom: auto; }
+.universe-hud > span[data-off] .universe-lock-dist,
+.universe-hud > span[data-off] .universe-nav-dist { top: calc(50% + 27px); bottom: auto; }
 .universe-map[data-ship='cruiser'] { --engine: #8dff6a; }
 .universe-map[data-ship='falcon'] { --engine: #7cc8ff; }
 .universe-map[data-ship='xwing'] { --engine: #ff8a5c; }
@@ -404,6 +555,28 @@
   -webkit-touch-callout: none;
 }
 .universe-fire:active { background: rgb(255 120 100 / 0.25); }
+/* View: the cockpit, or back behind the ship */
+.universe-view {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 204px);
+  bottom: 36px;
+  display: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-view:active { background: rgb(255 255 255 / 0.18); }
 .universe-hint {
   position: absolute;
   left: 50%;
@@ -435,7 +608,8 @@
 .universe-keys-touch { display: none; }
 @media (pointer: coarse) {
   .universe-boost,
-  .universe-fire { display: grid; }
+  .universe-fire,
+  .universe-view { display: grid; }
   .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
@@ -513,6 +687,11 @@
   .universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
+  .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
+  .universe-lock-name,
+  .universe-lock-dist,
+  .universe-nav-name,
+  .universe-nav-dist { font-size: 0.55rem; }
   .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
@@ -527,6 +706,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .universe-shield-bar > span { animation: none; }
+  .universe-reticle[data-hit],
+  .universe-lock[data-on] > i { animation: none; }
+  .universe-hud > span { transition: none; }
   .universe-labels,
   .universe-label,
   .universe-fade { transition: none; }

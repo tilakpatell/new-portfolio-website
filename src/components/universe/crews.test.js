@@ -9,7 +9,7 @@ describe('the crews', () => {
 
   it('have something to say everywhere, and only their own crew says it', () => {
     for (const crew of CREWS) {
-      const all = [...['launch', 'boost', 'bump', 'edge', 'crash', 'swallowed'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
+      const all = [...['launch', 'boost', 'bump', 'edge', 'crash', 'pulled', 'swallowed'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
       for (const exchange of all) {
         expect(exchange?.length, crew.id).toBeGreaterThan(0);
         for (const [who, text] of exchange) {
@@ -23,7 +23,7 @@ describe('the crews', () => {
   it('only play clips the site has', async () => {
     const { CLIPS } = await import('../../lib/clips');
     for (const crew of CREWS) {
-      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders].map((o) => Object.values(o ?? {}).flat()));
+      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders, crew.crashInto].map((o) => Object.values(o ?? {}).flat()));
       for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
     }
   });
@@ -62,7 +62,8 @@ describe('the crews', () => {
       // (the RV, in both universes, is hunted by the Empire or the Federation)
       for (const [id, f] of Object.entries(FACTIONS)) if ((f.family === family || (family === 'both' && id !== 'council')) && id !== 'bugs') said(linesFor(crew, 'hunted', id), crew, `hunted ${id}`);
       if (family !== 'rickmorty') said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
-      for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared']) said(linesFor(crew, event), crew, event);
+      for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
+      for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
       // the director's events (the Council's arrival is its hunted line), rescuing someone, going out into deep space
       for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
