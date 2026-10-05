@@ -428,6 +428,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     }
     camera.lookAt(A.cam.look);
 
+    set.windows.step(t);
     fx.step(dt, t, { night: 0, day: 1 });
     renderer.info.reset();
     stage.render(ms);

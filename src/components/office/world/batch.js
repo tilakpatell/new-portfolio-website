@@ -65,6 +65,7 @@ const texKey = (t) => (t ? [t.source.uuid, t.repeat.x, t.repeat.y, t.offset.x, t
 const PROPS = ['color', 'emissive', 'roughness', 'metalness', 'emissiveIntensity', 'opacity', 'transparent', 'alphaTest', 'side', 'flatShading', 'depthWrite', 'depthTest', 'toneMapped', 'vertexColors', 'envMapIntensity', 'polygonOffset', 'polygonOffsetFactor', 'polygonOffsetUnits', 'visible', 'wireframe', 'fog'];
 const MAPS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap', 'bumpMap', 'envMap', 'lightMap'];
 function materialKey(m) {
+  if (m.isShaderMaterial) return null; // (its uniforms are its own)
   if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey) return null;
   const v = (x) => (x?.isColor ? x.getHexString() : x);
   return [m.type, ...PROPS.map((k) => v(m[k])), m.normalScale ? `${m.normalScale.x},${m.normalScale.y}` : '', ...MAPS.map((k) => texKey(m[k]))].join('|');
