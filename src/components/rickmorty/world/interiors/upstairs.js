@@ -87,11 +87,11 @@ export async function buildUpstairs(kit) {
   }
   // posters and pictures on the walls
   R.fixed(-306, 396.4, Math.PI / 2).decal('summerposter', 0, 1.65, 0.01, 0.6, 0.84);
-  R.fixed(-299.92, 396.4, -Math.PI / 2).decal('summerposter2', 0, 1.6, 0, 0.55, 0.75);
-  R.fixed(-299.68, 397.1, Math.PI / 2).decal('mortyposter', 0, 1.6, 0, 0.6, 0.85);
+  R.fixed(-299.92, 396.4, -Math.PI / 2).decal('summerposter2', 0, 1.6, 0.012, 0.55, 0.75);
+  R.fixed(-299.68, 397.1, Math.PI / 2).decal('mortyposter', 0, 1.6, 0.012, 0.6, 0.85);
   R.fixed(-294.7, 395.3, -Math.PI / 2).decal('mortyposter2', 0, 1.65, 0.01, 0.5, 0.7);
   R.fixed(-294.7, 405.3, -Math.PI / 2).decal('landscape2', 0, 1.6, 0.01, 1.1, 0.72);
-  R.fixed(-304, 401.58, Math.PI).decal('photo2', 0, 1.6, 0, 0.42, 0.32);
+  R.fixed(-300.7, 401.58, Math.PI).decal('photo2', 0, 1.6, 0.012, 0.42, 0.32);
 
   // Summer on her phone: a purple phone in her right hand
   const s = PEOPLE.find((p) => p.id === 'summer');
@@ -246,7 +246,7 @@ function stairwell(R) {
   rail([x0, z0 + 0.06], [x1, z0 + 0.06]);
   rail([x1 + 0.04, z0 + 0.06], [x1 + 0.04, z1 - 0.1]);
   // the roof of the single-storey middle outside, south of the stairwell
-  const roof = R.kit.mats.painted('c137-in-shingle', 128, 128, (g, w, h) => {
+  const roof = tiledPaint(R.kit.mats, 'c137-in-shingle', 128, 1.8, (g, w, h) => {
     const r = rng(4);
     g.fillStyle = '#6f452b';
     g.fillRect(0, 0, w, h);
@@ -258,7 +258,6 @@ function stairwell(R) {
         g.fillRect(x * 24 + (y % 2) * 12, y * 16 + 13, 24, 3);
       }
   });
-  roof.userData.tile = 1.8;
   R.tiled.add(BOX, roof, new THREE.Matrix4().compose(new THREE.Vector3(-304.5, -0.75, 407.4), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, 0)), new THREE.Vector3(4.2, 0.08, 7.2)));
 }
 
@@ -378,12 +377,13 @@ function phoneIn(R, fig) {
   const bones = c ? Object.fromEntries(['RightArm', 'RightForeArm', 'RightHand'].map((n) => [n, c.group.getObjectByName(n)])) : {};
   if (c && bones.RightHand && bones.RightForeArm && bones.RightArm) {
     bones.RightHand.add(phone);
-    const q = new THREE.Quaternion();
+    // her right arm held still, the phone up where she can see it: each
+    // bone's rest turn and then PHONE_POSE's, set after the idle's every frame
+    // (so the idle's swing of that arm never moves it)
     const e = new THREE.Euler();
+    const held = ['RightArm', 'RightForeArm', 'RightHand'].map((n, i) => [bones[n], bones[n].quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(e.set(...PHONE_POSE.bones[i])))]);
     R.tick(() => {
-      // after the idle has set the bones: the arm in, the elbow bent up
-      bones.RightArm.quaternion.multiply(q.setFromEuler(e.set(...PHONE_POSE.arm)));
-      bones.RightForeArm.quaternion.multiply(q.setFromEuler(e.set(...PHONE_POSE.fore)));
+      for (const [b, q] of held) b.quaternion.copy(q);
     });
     // the hand's own scale is the model's: undo it, so the phone is its size in metres
     fig.group.updateMatrixWorld(true);
@@ -398,6 +398,7 @@ function phoneIn(R, fig) {
     fig.group.add(phone);
   }
 }
-// the turns (Euler x, y, z in each bone's own frame) that lift the phone,
-// found by trying them on Summer's model; where it sits in her hand
-const PHONE_POSE = { arm: [0.3, 0.9, 0], fore: [0, 0, -1.9], at: [0, 0.07, 0], turn: [1.5, 0.75, 0] };
+// the turns (Euler x, y, z in each bone's own frame, after its rest turn)
+// that hold the phone up in front of her: right arm, forearm, hand, found by
+// trying them on Summer's model; and where the phone sits in her hand
+const PHONE_POSE = { bones: [[0.3, 0.3, 0.9], [0, 0, 2.1], [0, 0, 0]], at: [0, 0.07, 0], turn: [-1.07, -0.52, 2.68] };

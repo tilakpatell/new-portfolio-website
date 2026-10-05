@@ -167,7 +167,7 @@ export function makeRoom(kit, id) {
         R.add(mesh, { ink: false });
       }
       buildAtlas();
-      tiled.build(group, { cast: false, receive: true });
+      for (const mesh of tiled.build(group, { cast: false, receive: true })) owned.push(mesh.geometry);
       return {
         group,
         noInk,
@@ -482,11 +482,7 @@ export function ceilingLights(R, rects, y = WALL_H, color = 0xfff2d0) {
 }
 
 // a material with world-space uvs, `tile` metres to a repeat, painted once
-export function tiledPaint(mats, name, px, tile, draw, opts) {
-  const m = mats.painted(name, px, px, draw, opts);
-  m.userData.tile = tile;
-  return m;
-}
+export const tiledPaint = (mats, name, px, tile, draw, opts) => mats.painted(name, px, px, draw, { ...opts, tile });
 
 // ── painting ──
 

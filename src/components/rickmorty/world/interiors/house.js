@@ -240,12 +240,12 @@ export async function buildHouse(kit) {
   fl.decal('rug', rug.x, 0.006, rug.z, rug.w, rug.d, { rx: -Math.PI / 2 });
   fl.decal('livingrug', -300.2, 0.006, -3.5, 2.6, 3.0, { rx: -Math.PI / 2, ry: Math.PI / 2 });
   // pictures: over the couch, in the hall, the dining room, the den; a mirror in the entry
-  R.fixed(-306.58, -3.6, Math.PI / 2).decal('landscape', 0, 1.6, 0, 1.1, 0.78);
-  R.fixed(-293.2, -1.46, 0).decal('family', 0, 1.6, 0, 0.6, 0.46).decal('photo', 1.2, 1.55, 0, 0.42, 0.32);
+  R.fixed(-306.58, -3.6, Math.PI / 2).decal('landscape', 0, 1.6, 0.012, 1.1, 0.78);
+  R.fixed(-294.9, -1.46, 0).decal('family', 0, 1.6, 0, 0.6, 0.46).decal('photo', 0.95, 1.55, 0, 0.42, 0.32);
   R.fixed(-303.1, -1.76, 0).decal('landscape', 0, 1.6, 0, 0.9, 0.62);
   R.fixed(-299.36, -1.0, Math.PI / 2).decal('mirror', 0, 1.5, 0, 0.42, 0.75);
   R.fixed(-296.76, -4.1, Math.PI / 2).decal('photo', 0, 1.7, 0, 0.36, 0.28);
-  R.fixed(-288.14, 1.6, -Math.PI / 2).decal('family', 0, 1.6, 0, 0.5, 0.4);
+  R.fixed(-288, 1.6, -Math.PI / 2).decal('family', 0, 1.6, 0.012, 0.5, 0.4);
   stairs(R);
 
   // ── furniture ──
