@@ -260,7 +260,7 @@ export function run(canvas, opts) {
       }
       return;
     }
-    raf = requestAnimationFrame(frame);
+    if (!raf) raf = requestAnimationFrame(frame); // (one chain, even if the frame kicked)
   };
   const kick = () => {
     if (!raf && !stopped && !failed) {

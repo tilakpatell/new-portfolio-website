@@ -116,7 +116,7 @@ export default function CybertronBackdrop({ side = 'autobot' }) {
           }
         }
       }
-      if (busy || !calm) raf = requestAnimationFrame(loop);
+      if ((busy || !calm) && !raf) raf = requestAnimationFrame(loop); // (one chain, even if the frame kicked)
       else last = 0;
     };
     kick.current = () => {
