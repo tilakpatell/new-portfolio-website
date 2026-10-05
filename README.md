@@ -44,6 +44,8 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Contact | `/contact` | How to reach me |
 | Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
 
+The six pages are one feed: scroll to the end of any of them and the next begins under it, with a divider saying what comes next, and the address, the menu and the theme follow whichever page is on screen. After the sixth, an end card. Each page is still its own address, so every link works as before.
+
 All of the content (roles, projects, skills, education) lives in [`src/data/`](src/data). Every page and the terminal read from there.
 
 ### The universe

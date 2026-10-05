@@ -7,6 +7,9 @@ import { WORLDS } from './worlds/worlds';
 // A guide to the site, and to whatever the page you're on lets you play. The
 // "?" button in the corner (or the ? key) opens it.
 
+// the portfolio pages run into one another (components/feed)
+const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of this one and the next begins, and the address and the menu follow. After the sixth, the end.'];
+
 const PAGES = {
   '/home': {
     title: 'Home',
@@ -14,6 +17,7 @@ const PAGES = {
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
       ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons. In Super Tilak Land a fire flower lets B throw fire, stomps in a row score more each time, and a king waits at the end of the castle. Each game keeps its best score.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
+      FEED_TIP,
     ],
   },
   '/experience': {
@@ -21,6 +25,7 @@ const PAGES = {
     tips: [
       ['Company colors', 'Each role re-themes the site as you scroll past it.'],
       ['The crawl', 'Play the opening crawl for the whole story so far.'],
+      FEED_TIP,
     ],
   },
   '/projects': {
@@ -28,6 +33,7 @@ const PAGES = {
     tips: [
       ['The periodic table', 'Click a tile to light up the projects built with it. Click again to clear.'],
       ['The sitar string', 'Pluck it.'],
+      FEED_TIP,
     ],
   },
   '/galaxy': {
@@ -194,9 +200,23 @@ const PAGES = {
       ['Keys', 'Tab completes, up and down walk the history, Ctrl+L clears.'],
     ],
   },
+  '/resume': {
+    title: 'Résumé',
+    tips: [
+      ['Skills', 'Click any skill on the résumé to light up every line that uses it; the PDF tab has the one-page version.'],
+      FEED_TIP,
+    ],
+  },
+  '/contact': {
+    title: 'Contact',
+    tips: [
+      ['The memo', 'The form opens your email app with the memo filled in. Nothing is sent from this page.'],
+      FEED_TIP,
+    ],
+  },
   '/travel': {
     title: 'Travel',
-    tips: [['The globe', 'Drag to spin it, and click a place to fly there.']],
+    tips: [['The globe', 'Drag to spin it, and click a place to fly there.'], FEED_TIP],
   },
 };
 
