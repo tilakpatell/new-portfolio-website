@@ -109,6 +109,17 @@ const PAGES = {
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
+  '/c-137/citadel': {
+    title: 'The Citadel of Ricks',
+    tips: [
+      ['Walk', 'W A S D or the arrows, Shift to run, and drag to look round; on a phone, the stick and a swipe. E does what the panel says, M lists what there is to do.'],
+      ['Morty Day Care', 'Six Mortys are loose. They run from you, so come at them from the far side and drive them through the gate. All six in before the clock runs out.'],
+      ['Simple Rick’s', 'Space (or Drop) lays the next layer as the dispenser swings over the stack. What hangs over is cut off, so keep it narrow and true. Three good wafers.'],
+      ['The Council', 'Answer the way C-137 would. Grovelling gets you held in contempt.'],
+      ['Election day', 'Once the first three are done: hear out three voters, then vote at Candidate Morty’s booth. It doesn’t matter how.'],
+      ['Red alert', 'The Cop Ricks see in a cone and hear you running close by. The core, the kiosks and the planters hide you; the benches don’t. Get to the hangar.'],
+    ],
+  },
   '/universe': {
     title: 'The universe',
     tips: [
@@ -117,7 +128,7 @@ const PAGES = {
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash (the crew will have words), then come back beside it.'],
       ['Traffic', 'You’re not alone out here: freighters, transports and corvettes, TIE fighters and X-wings if you fly with Luke or Han; families in their saucers, junk haulers, Gear People, Federation patrols, Gromflomites, Meeseeks and Birdperson if you fly with Rick. Now and then some come your way; you can shoot them down.'],
       ['Deep space', 'The home system is the sun and the stations. The worlds are far out in deep space, hundreds of units apart, each marked by a beacon in its colour, with a ringed gas giant, an ice giant, two other suns, a black hole, two nebulae and the Citadel of Ricks between them. Boost out in the open and the pulse drive takes over; it drops back as you near any place, so you arrive at flying speed. You can climb much higher out there. M pulls out far enough to find your way home.'],
-      ['On the way', 'Hunters drop in ahead of you between places and pull you out of the pulse drive (an interdiction): fight them off or wait them out, and the drive comes back. Fly into the Citadel too fast and its portals take you to C-137; a sun burns you back; a giant takes you down into its clouds and spits you out.'],
+      ['On the way', 'Hunters drop in ahead of you between places and pull you out of the pulse drive (an interdiction): fight them off or wait them out, and the drive comes back. Fly into the Citadel too fast and its portals take you inside it; a sun burns you back; a giant takes you down into its clouds and spits you out.'],
       ['The black hole', 'The one thing out there you don’t come back from. Touch it at any speed and it has you, and on its far side is a friend’s universe: Shrey Pathak’s portfolio, the Matrix. Back brings you home.'],
       ['Hunted', 'Now and then someone comes after you: the Empire if you fly with Luke or Han (Vader too, sometimes), the Federation or the Council of Ricks if you fly with Rick, either if you fly the RV, and sooner if you’ve been shooting things up. Your shields take their hits and come back; shoot them down or outrun them. Lose your shields and you’re back at the nearest place.'],
       ['Happenings', 'Other things happen too: a Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a comet crosses the sky.'],

@@ -100,7 +100,7 @@ export default function Universe({ ask = false }) {
   // Fallen into the black hole: on through to what's on its far side, a
   // friend's universe (deep.js's `beyond`), the screen going black on the
   // way, and the site left behind (Back brings you home)
-  const crashInto = (id) => {
+  const crashInto = (id, page = null) => {
     if (leaving) return false;
     const far = beyondOf(id);
     if (far) {
@@ -113,7 +113,8 @@ export default function Universe({ ask = false }) {
     const plan = crashPlan(u, { reduced });
     if (!plan) return false;
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(u.to), plan.delay);
+    // (a wonder with a page of its own, the Citadel, goes there)
+    timer.current = setTimeout(() => navigate(page ?? u.to), plan.delay);
     return true;
   };
 

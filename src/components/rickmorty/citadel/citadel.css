@@ -39,3 +39,6 @@
 @media (max-width: 639px) {
   .citadel-line, .citadel-floor { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
 }
+
+/* no chapter bar over the top here, as Middle-earth has */
+.citadel-stage .shire-hud-top { padding-top: clamp(0.7rem, 2vw, 1.2rem); }

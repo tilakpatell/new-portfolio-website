@@ -11,7 +11,7 @@ export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 9, // the compound's skies, scanned props and trees
-  '/c-137': 6, // the cruiser and Portal panic's cast
+  '/c-137': 7, // the cruiser and Portal panic's cast; the Citadel inside, its cast and its own six
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)

@@ -32,7 +32,8 @@ export const DEEP = {
 // (a black hole's is its shadow); colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
 // universe it's from (it's there for everyone); world: the universe whose
-// page a crash into it leads to; beyond (the black hole's): what's on its
+// page a crash into it leads to (and `page`, a page of its own there, if it
+// has one); beyond (the black hole's): what's on its
 // far side, { name, what, url }, where the page goes when the ship falls in
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
@@ -73,7 +74,7 @@ export const WONDERS = [
   },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty', world: 'rickmorty' },
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' },
 ];
 
 // The trench run model (public/models/universe/trench.glb), as measured:
