@@ -19,12 +19,17 @@
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit
 //   down  { b: who shot you down }                       to everyone, when your shields go
 //   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
+//   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
+//         ten times a second while your crew are down on a planet ({ p: null }: back in);
+//         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
 //   cur   [x, y, touch]                                  off the universe map: your pointer
 //                                                       (x from the middle of the window, y
 //                                                       down the page, in px), or with touch
 //                                                       where you're reading
 
 import { parseShip } from '../crews';
+import { FOOT, METRE } from '../foot';
+import { byId } from '../universes';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
@@ -46,7 +51,7 @@ export const GUARD = {
   killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2 };
 
@@ -81,9 +86,9 @@ export function writePose(s, flags = 0, shield = 100) {
 // boost, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -6000, 6000);
-  const y = num(data[1], -600, 600);
-  const z = num(data[2], -6000, 6000);
+  const x = num(data[0], -7500, 7500);
+  const y = num(data[1], -1300, 1300);
+  const z = num(data[2], -7500, 7500);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -94,7 +99,7 @@ export function readPose(data) {
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
     bank: wrap(num(data[5], -4, 4) ?? 0), // (all the way round: upside down is ±π)
-    speed: num(data[6], -300, 300) ?? 0,
+    speed: num(data[6], -600, 600) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
@@ -108,16 +113,79 @@ export const writeShot = (p, v) => [p.x, p.y, p.z, v[0], v[1], v[2]].map((n) => 
 // to start near where the pilot was last seen (`from`, a pose, if known)
 export function readShot(data, from = null) {
   if (!Array.isArray(data) || data.length < 6) return null;
-  const n = data.slice(0, 6).map((v) => num(v, -6000, 6000));
+  const n = data.slice(0, 6).map((v) => num(v, -7500, 7500));
   if (n.some((v) => v === null)) return null;
-  if (Math.hypot(n[3], n[4], n[5]) > 400) return null;
-  if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6) return null;
+  if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
+  // (as far as it could have gone since that pose, on the pulse drive)
+  if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
   return { p: n.slice(0, 3), v: n.slice(3) };
 }
 
 export function readHit(data) {
   const d = num(data?.d, 0, DAMAGE);
   return d === null || d <= 0 ? null : d;
+}
+
+// ── On foot: where a pilot's crew are, down on a planet ──
+// (in the planet's own space, foot.js: n out from its middle, f along the
+// ground, both in the map's axes, so it's the same spot for everyone
+// whatever turn their planet was held at when they landed)
+export const FOOT_MS = 100; // how often it goes out, while they're down
+export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo']; // footScene.js's PARTY
+const r5 = (v) => Math.round((v || 0) * 1e5) / 1e5;
+const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100] : null);
+
+// what goes out while down: { planet, kind, ship: { n, f }, lead, mate }
+// (each walker { who, n, f, h, speed, side, aim }), or null once back in
+export function writeFoot(f) {
+  if (!f) return { p: null };
+  return { p: f.planet, k: f.kind, s: [...f.ship.n.map(r5), ...f.ship.f.map(r5)], a: writeWalker(f.lead), b: writeWalker(f.mate) };
+}
+
+// a direction as it came in, made a unit one (null if it's nowhere near one)
+const unit3 = (data, i) => {
+  const v = [0, 1, 2].map((k) => num(data[i + k], -1.5, 1.5));
+  if (v.some((x) => x === null)) return null;
+  const l = Math.hypot(...v);
+  return l < 0.5 || l > 1.5 ? null : v.map((x) => x / l);
+};
+// along the ground at n: f with its part out from the middle taken off
+const along = (f, n) => {
+  const d = f[0] * n[0] + f[1] * n[1] + f[2] * n[2];
+  const g = [f[0] - n[0] * d, f[1] - n[1] * d, f[2] - n[2] * d];
+  const l = Math.hypot(...g);
+  return l < 0.2 ? null : g.map((x) => x / l);
+};
+const readWalker = (data) => {
+  if (!Array.isArray(data) || data.length < 11 || !WALKERS.includes(data[0])) return null;
+  const n = unit3(data, 1);
+  const f = n && unit3(data, 4) && along(unit3(data, 4), n);
+  if (!f) return null;
+  return {
+    who: data[0],
+    n,
+    f,
+    h: num(data[7], 0, 3 * METRE) ?? 0,
+    speed: num(data[8], -FOOT.run * 1.5, FOOT.run * 1.5) ?? 0,
+    side: num(data[9], -FOOT.side * 1.5, FOOT.side * 1.5) ?? 0,
+    aim: num(data[10], 0, 1) ?? 0,
+  };
+};
+
+// a crew on foot as it came in: { planet, kind, ship, lead, mate }, { off:
+// true } (back in their ship), or null if it isn't one (a planet you can't
+// land on, someone who isn't in a crew)
+export function readFoot(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  if (data.p === null) return { off: true };
+  const u = typeof data.p === 'string' ? byId(data.p) : null;
+  if (!u || u.kind === 'core' || !Array.isArray(data.s) || data.s.length < 6) return null;
+  const n = unit3(data.s, 0);
+  const f = n && unit3(data.s, 3) && along(unit3(data.s, 3), n);
+  // (nobody out yet, while the ship's coming down: a = null)
+  const lead = data.a === null ? null : readWalker(data.a);
+  if (!f || (data.a !== null && !lead)) return null;
+  return { planet: u.id, kind: parseShip(data.k), ship: { n, f }, lead, mate: lead ? readWalker(data.b) : null };
 }
 
 // Did one of these shots ({ p, v, at }, as they came in) pass near enough

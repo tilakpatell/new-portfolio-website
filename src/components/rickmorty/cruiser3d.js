@@ -168,6 +168,10 @@ export async function buildCruiser({ ink = 1 } = {}) {
   return {
     group: ship,
     engines: glows, // the exhaust cans, for a scene that draws their exhaust
+    // Rick and Morty in their seats (false: they've got out)
+    seated(on) {
+      for (const c of crew) c.group.visible = on;
+    },
     update(t) {
       for (const c of crew) {
         c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));

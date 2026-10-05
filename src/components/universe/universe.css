@@ -603,6 +603,60 @@
   -webkit-touch-callout: none;
 }
 .universe-view:active { background: rgb(255 255 255 / 0.18); }
+/* Land (at a planet) and Ship (on foot, to get back in) */
+.universe-out {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 270px);
+  bottom: 40px;
+  display: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid color-mix(in srgb, var(--engine, #ffb35c) 70%, transparent);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-out:active { background: rgb(255 255 255 / 0.18); }
+/* what G does where you are: land and step out, or get back in */
+.universe-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.72);
+  color: var(--text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.universe-prompt[data-on] { opacity: 1; }
+.universe-prompt::before {
+  content: 'G';
+  display: inline-block;
+  min-width: 1.5em;
+  margin-right: 0.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+@media (pointer: coarse) { .universe-prompt::before { content: none; } }
 .universe-hint {
   position: absolute;
   left: 50%;
@@ -635,7 +689,8 @@
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire,
-  .universe-view { display: grid; }
+  .universe-view,
+  .universe-out { display: grid; }
   .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
@@ -840,6 +895,8 @@
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
+  .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
+  .universe-prompt { bottom: calc(var(--sheet-h) + 64px); translate: -50% 0; }
   .universe-lock-name,
   .universe-lock-dist,
   .universe-nav-name,
