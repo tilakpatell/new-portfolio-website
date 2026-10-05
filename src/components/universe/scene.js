@@ -2237,6 +2237,7 @@ export async function create(canvas, ctx) {
     return Boolean(
       state.auto ||
         g ||
+        m.modules?.easing || // (a part just fitted, swinging into place)
         input.throttle ||
         input.turn ||
         input.climb ||
