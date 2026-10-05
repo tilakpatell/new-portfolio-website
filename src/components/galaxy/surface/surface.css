@@ -259,7 +259,7 @@
 .surface-buttons {
   position: absolute;
   right: calc(18px + env(safe-area-inset-right, 0px));
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   display: grid;
   grid-template-columns: repeat(2, 64px);
   gap: 12px;
@@ -291,7 +291,7 @@
 }
 
 @media (max-width: 640px) {
-  .surface-compass { width: calc(100vw - 32px); top: calc(var(--nav-h, 64px) + 64px); }
+  .surface-compass { width: calc(100vw - 32px); top: calc(var(--nav-h, 64px) + 82px); }
   .surface-where { top: calc(var(--nav-h, 64px) + 6px); }
   .surface-corner { top: calc(var(--nav-h, 64px) + 6px); }
   .surface-help-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
@@ -314,5 +314,5 @@
 }
 .surface-page .universe-line { background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(8px); }
 @media (pointer: coarse) {
-  .surface-page .universe-comms { bottom: auto; top: calc(var(--nav-h, 64px) + 112px); }
+  .surface-page .universe-comms { bottom: auto; top: calc(var(--nav-h, 64px) + 128px); }
 }

@@ -11,7 +11,7 @@
 // position and a turn and nothing else. It's written to
 // public/models/galaxy/surface/<kind>.glb, and who made it, its licence and
 // where it came from go into src/data/modelCredits.json (as
-// `surface-<kind>`), which the galaxy's panel shows.
+// `surface-<kind>`), which the surface page and the galaxy's panel show.
 //
 // The models are listed by group, each group in a catalogue of its own
 // (src/components/galaxy/surface/catalog/<group>.js, which the surface
@@ -90,9 +90,10 @@ async function credit(kind, uid, as) {
     license,
     licenseUrl: m.license.url,
     source: m.viewerUrl,
-    where: 'galaxy',
+    where: 'galaxy-surface',
     as,
     file: `/models/galaxy/surface/${kind}.glb`,
+    also: ['galaxy'],
   };
 }
 

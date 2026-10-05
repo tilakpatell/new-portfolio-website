@@ -446,9 +446,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/tatooine-styled-house-v2-66893ef6ad5f434e9db954b1f5496dfc",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the adobe houses",
-    "file": "/models/galaxy/surface/adobe.glb"
+    "file": "/models/galaxy/surface/adobe.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-atst": {
     "title": "Star Wars AT-ST [Rigged]",
@@ -457,9 +460,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-at-st-rigged-18164d3b3eb64ea1b8d3dc2ad5f4f9cf",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the AT-ST walkers",
-    "file": "/models/galaxy/surface/atst.glb"
+    "file": "/models/galaxy/surface/atst.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-bantha": {
     "title": "Star Wars Bantha Walk",
@@ -468,9 +474,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-bantha-walk-3581f3a312dc426d87af3031f5198edf",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the banthas",
-    "file": "/models/galaxy/surface/bantha.glb"
+    "file": "/models/galaxy/surface/bantha.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-battledroid": {
     "title": "Star Wars B1 Battle Droid",
@@ -479,9 +488,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-b1-battle-droid-ade3a1205cce449caf91f78e595e5676",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the battle droids",
-    "file": "/models/galaxy/surface/battledroid.glb"
+    "file": "/models/galaxy/surface/battledroid.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-bb8": {
     "title": "BB-8",
@@ -490,9 +502,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/bb-8-69c8b77c726e406c99ab0839baee3ce9",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "BB-8",
-    "file": "/models/galaxy/surface/bb8.glb"
+    "file": "/models/galaxy/surface/bb8.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-c3po": {
     "title": "C-3PO Weight Shift",
@@ -501,9 +516,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "C-3PO",
-    "file": "/models/galaxy/surface/c3po.glb"
+    "file": "/models/galaxy/surface/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-clone": {
     "title": "phase-II-clone-trooper-dc-15s-rigged",
@@ -512,9 +530,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/phase-ii-clone-trooper-dc-15s-rigged-8519076c1bf24bcbb352f96930a29b55",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the clone troopers",
-    "file": "/models/galaxy/surface/clone.glb"
+    "file": "/models/galaxy/surface/clone.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-cloudcar": {
     "title": "Star Wars Galaxies - Twin-pod cloud car",
@@ -523,9 +544,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-galaxies-twin-pod-cloud-car-0ee339ff87a043a88a1a5d45bb229c49",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the cloud cars",
-    "file": "/models/galaxy/surface/cloudcar.glb"
+    "file": "/models/galaxy/surface/cloudcar.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-deathtrooper": {
     "title": "Death trooper || Rogue One: A Star Wars Story",
@@ -534,9 +558,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/death-trooper-rogue-one-a-star-wars-story-503860c8c63b419daa391f296ab874f1",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the death troopers",
-    "file": "/models/galaxy/surface/deathtrooper.glb"
+    "file": "/models/galaxy/surface/deathtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-ewok": {
     "title": "Ewok",
@@ -545,9 +572,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/ewok-77fb4fc353c64b8098bc2f71667f1062",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the Ewoks",
-    "file": "/models/galaxy/surface/ewok.glb"
+    "file": "/models/galaxy/surface/ewok.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-fortress": {
     "title": "Vader's Castle",
@@ -556,9 +586,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "Vader's castle",
-    "file": "/models/galaxy/surface/fortress.glb"
+    "file": "/models/galaxy/surface/fortress.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-fotrooper": {
     "title": "First Order Stormtrooper",
@@ -567,9 +600,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/first-order-stormtrooper-b7341f5280484497a72451c3f62cd0c1",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the First Order stormtroopers",
-    "file": "/models/galaxy/surface/fotrooper.glb"
+    "file": "/models/galaxy/surface/fotrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-gungan": {
     "title": "Jar Jar Binks",
@@ -578,9 +614,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/jar-jar-binks-85aef3e496d44e9b95c7386035c0ef10",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the Gungans",
-    "file": "/models/galaxy/surface/gungan.glb"
+    "file": "/models/galaxy/surface/gungan.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-jawa": {
     "title": "SM_jawa",
@@ -589,9 +628,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/sm-jawa-08124df6beef4ca18b2d24a25f5fd6bf",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the Jawas",
-    "file": "/models/galaxy/surface/jawa.glb"
+    "file": "/models/galaxy/surface/jawa.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-jedihut": {
     "title": "Refectory, Skellig Michael, Co Kerry, Ireland",
@@ -600,9 +642,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/refectory-skellig-michael-co-kerry-ireland-3babf7e7bd1d4835aac1e118f1f2506b",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the Jedi village huts",
-    "file": "/models/galaxy/surface/jedihut.glb"
+    "file": "/models/galaxy/surface/jedihut.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-landspeeder": {
     "title": "Star Wars X-34 Landspeeder [FREE]",
@@ -611,9 +656,12 @@
     "license": "CC-BY-NC-SA-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-x-34-landspeeder-free-3adfdc41c67f4731910800404ba97b4e",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "Luke's landspeeder",
-    "file": "/models/galaxy/surface/landspeeder.glb"
+    "file": "/models/galaxy/surface/landspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-porg": {
     "title": "Porg",
@@ -622,9 +670,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/porg-df73eb95169b4f3882bcde58dec58ae7",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the porgs",
-    "file": "/models/galaxy/surface/porg.glb"
+    "file": "/models/galaxy/surface/porg.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-scouttrooper": {
     "title": "Scout Trooper",
@@ -633,9 +684,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/scout-trooper-bdcf732e6f374b6d87b02cd023991aae",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the scout troopers",
-    "file": "/models/galaxy/surface/scouttrooper.glb"
+    "file": "/models/galaxy/surface/scouttrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-shoretrooper": {
     "title": "Shore trooper || Rogue One: A Star Wars Story",
@@ -644,9 +698,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/shore-trooper-rogue-one-a-star-wars-story-67611b62211648b7805359ab148c949a",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the shoretroopers",
-    "file": "/models/galaxy/surface/shoretrooper.glb"
+    "file": "/models/galaxy/surface/shoretrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-sithtrooper": {
     "title": "Sith trooper || Episode IX: TROS",
@@ -655,9 +712,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/sith-trooper-episode-ix-tros-91f4fd40a92e4d05b3bbbe011e91d910",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the Sith troopers",
-    "file": "/models/galaxy/surface/sithtrooper.glb"
+    "file": "/models/galaxy/surface/sithtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-snowtrooper": {
     "title": "Snow Trooper || Episode VIII: TLJ",
@@ -666,9 +726,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/snow-trooper-episode-viii-tlj-751b09d5b8aa49d4809a94676190ea2b",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the snowtroopers",
-    "file": "/models/galaxy/surface/snowtrooper.glb"
+    "file": "/models/galaxy/surface/snowtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-speederbike": {
     "title": "Star Wars Aratech 74z Speeder Bike",
@@ -677,9 +740,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-aratech-74z-speeder-bike-efbdcedb6f0a483b9046daa716d1ff6a",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the speeder bikes",
-    "file": "/models/galaxy/surface/speederbike.glb"
+    "file": "/models/galaxy/surface/speederbike.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-stormtrooper": {
     "title": "Stormtrooper Walk",
@@ -688,9 +754,12 @@
     "license": "CC-BY-NC-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
     "source": "https://sketchfab.com/3d-models/stormtrooper-walk-dc7237f92c824cd78abc0f5bb4cb6290",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the stormtroopers",
-    "file": "/models/galaxy/surface/stormtrooper.glb"
+    "file": "/models/galaxy/surface/stormtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-superdroid": {
     "title": "Super Battle Droid B2 Animated (Training)",
@@ -699,9 +768,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/super-battle-droid-b2-animated-training-a0f947934672450bad323d6438499812",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the super battle droids",
-    "file": "/models/galaxy/surface/superdroid.glb"
+    "file": "/models/galaxy/surface/superdroid.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-vader": {
     "title": "Darth Vader",
@@ -710,9 +782,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/darth-vader-15c6b612a5834924b0959261aa89e80f",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "Darth Vader",
-    "file": "/models/galaxy/surface/vader.glb"
+    "file": "/models/galaxy/surface/vader.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-vaporator": {
     "title": "Star Wars Moisture Vaporator",
@@ -721,9 +796,12 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/star-wars-moisture-vaporator-acf6211d84eb4a46bb38c9a321771826",
-    "where": "galaxy",
+    "where": "galaxy-surface",
     "as": "the moisture vaporators",
-    "file": "/models/galaxy/surface/vaporator.glb"
+    "file": "/models/galaxy/surface/vaporator.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "thragg": {
     "title": "Thragg from invincible s4",

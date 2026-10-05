@@ -49,6 +49,7 @@ describe('placeName', () => {
     expect(placeName('/galaxy')).toBe('a galaxy far, far away');
     expect(placeName('/galaxy/ahchto')).toBe('Ahch-To');
     expect(placeName('/galaxy/hoth/mission')).toBe('the Hoth briefing');
+    expect(placeName('/galaxy/hoth/surface')).toBe('down on Hoth');
     expect(placeName('/galaxy/nowhere')).toBe('Galaxy');
   });
 });

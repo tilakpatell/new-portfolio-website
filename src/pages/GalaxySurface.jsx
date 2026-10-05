@@ -8,6 +8,7 @@ import Comms from '../components/universe/Comms';
 import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { siteOf } from '../components/galaxy/surface/sites';
+import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import ModelCredits from '../components/ModelCredits';
@@ -122,6 +123,8 @@ export default function GalaxySurface() {
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   const left = site.places.filter((p) => !found.includes(p.id)).length;
+  // the models on this world, for their credits
+  const kinds = [...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind));
   return (
     <div className="dark-scope surface-page" style={accent} data-phase={phase} data-leaving={leaving ? '' : undefined}>
       <h1 className="sr-only">
@@ -215,7 +218,7 @@ export default function GalaxySurface() {
               <kbd>Tab</kbd> swap to {crew?.label?.split(' and ')[1] ?? 'your crewmate'}
             </li>
           </ul>
-          <ModelCredits where="galaxy-surface" line className="surface-credits" />
+          <ModelCredits where="galaxy-surface" only={kinds} line className="surface-credits" />
         </div>
       )}
       {crew && talkCrew && <Comms control={comms} crew={talkCrew} reduced={reduced} />}
