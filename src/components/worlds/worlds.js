@@ -9,6 +9,7 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).map((u) => ({ to: u.to, l
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
 export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
+  '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 9, // the compound's skies, scanned props and trees
   '/c-137': 6, // the cruiser and Portal panic's cast

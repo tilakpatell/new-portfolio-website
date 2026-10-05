@@ -26,6 +26,7 @@ import ClipBoard from '../components/worlds/ClipBoard';
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
 const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
+const WeathertopWorld = lazy(() => import('../components/middleearth/towns/weathertop/WeathertopWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -287,13 +288,19 @@ export default function MiddleEarth() {
 
       {here?.id === 'bree' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
-          <BreeWorld onLeave={() => go('rivendell')} />
+          <BreeWorld onLeave={() => go('weathertop')} />
         </Suspense>
       )}
 
       {here?.id === 'bree' && (
         <Suspense fallback={null}>
           <Rush />
+        </Suspense>
+      )}
+
+      {here?.id === 'weathertop' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <WeathertopWorld onLeave={() => go('rivendell')} />
         </Suspense>
       )}
 
@@ -325,6 +332,11 @@ export default function MiddleEarth() {
                 {STOPS[step].id === 'bree' && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('bree')}>
                     Go to Bree
+                  </button>
+                )}
+                {STOPS[step].id === 'weathertop' && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('weathertop')}>
+                    Go to Weathertop
                   </button>
                 )}
                 {STOPS[step].id === 'moria' && (

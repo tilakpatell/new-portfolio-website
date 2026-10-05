@@ -603,6 +603,60 @@
   -webkit-touch-callout: none;
 }
 .universe-view:active { background: rgb(255 255 255 / 0.18); }
+/* Land (at a planet) and Ship (on foot, to get back in) */
+.universe-out {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 270px);
+  bottom: 40px;
+  display: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid color-mix(in srgb, var(--engine, #ffb35c) 70%, transparent);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-out:active { background: rgb(255 255 255 / 0.18); }
+/* what G does where you are: land and step out, or get back in */
+.universe-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.72);
+  color: var(--text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.universe-prompt[data-on] { opacity: 1; }
+.universe-prompt::before {
+  content: 'G';
+  display: inline-block;
+  min-width: 1.5em;
+  margin-right: 0.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+@media (pointer: coarse) { .universe-prompt::before { content: none; } }
 .universe-hint {
   position: absolute;
   left: 50%;
@@ -635,7 +689,8 @@
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire,
-  .universe-view { display: grid; }
+  .universe-view,
+  .universe-out { display: grid; }
   .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
@@ -824,6 +879,124 @@
 .universe-settings-reset { justify-self: start; padding: 0.2rem 0; color: var(--muted); font-size: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
 .universe-settings-reset:hover { color: var(--text); }
 
+/* what's fitted, in the panel */
+.universe-fitted-line { display: flex; align-items: flex-start; gap: 0.6rem; margin: 0; font-size: 0.85rem; line-height: 1.45; }
+.universe-fitted-swatch { flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1.5px solid var(--border-strong); border-radius: 50%; background: linear-gradient(135deg, #e2ded5 50%, #8a8f99 50%); }
+
+/* the hangar: a button beside the flight settings', and its sheet in the
+   same place (one's open at a time) */
+.universe-hangar-btn {
+  position: absolute;
+  z-index: 2;
+  left: 68px;
+  bottom: 68px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgb(255 255 255 / 0.28);
+  border-radius: 12px;
+  background: rgb(3 4 10 / 0.6);
+  color: var(--text);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.universe-hangar-btn:hover,
+.universe-hangar-btn[aria-expanded='true'] { border-color: var(--engine, #e8eefc); background: rgb(255 255 255 / 0.08); }
+.universe-hangar-btn:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
+.universe-hangar {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  bottom: 122px;
+  width: min(372px, calc(100% - 32px));
+  max-height: calc(100% - var(--nav-h, 68px) - 154px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
+  border-radius: 14px;
+  background: rgb(6 8 16 / 0.94);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .universe-hangar { animation: universe-line 0.2s ease-out; }
+}
+.universe-hangar h2 { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.01em; }
+.universe-hangar-ship { margin: 0; color: var(--muted); font-size: 0.72rem; }
+.universe-hangar-label,
+.universe-hangar-num { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.universe-hangar-num { color: var(--muted); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.universe-hangar-power { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.6rem; }
+.universe-hangar-cells { display: flex; gap: 3px; }
+.universe-hangar-cells i { flex: 1; height: 8px; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
+.universe-hangar-cells i[data-on] { background: var(--engine, #e8eefc); box-shadow: 0 0 6px color-mix(in srgb, var(--engine, #e8eefc) 60%, transparent); }
+.universe-hangar-power[data-full] .universe-hangar-num { color: #ffb35c; }
+.universe-hangar-slots { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-hangar-slots button { min-height: 32px; color: var(--muted); font-size: 0.76rem; transition: background-color 0.15s, color 0.15s; }
+.universe-hangar-slots button:nth-child(3n + 2),
+.universe-hangar-slots button:nth-child(3n + 3) { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:nth-child(n + 4) { border-top: 1px solid rgb(255 255 255 / 0.2); }
+.universe-hangar-slots button:hover { color: var(--text); }
+.universe-hangar-slots button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
+.universe-hangar-paints { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+.universe-hangar-paint { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; }
+.universe-hangar-swatch {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgb(255 255 255 / 0.15);
+  border-radius: 50%;
+  color: #fff;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.universe-hangar-paint:hover .universe-hangar-swatch { transform: scale(1.08); }
+.universe-hangar-paint[aria-pressed='true'] .universe-hangar-swatch { border-color: var(--engine, #e8eefc); box-shadow: 0 0 0 2px rgb(6 8 16), 0 0 0 4px var(--engine, #e8eefc); }
+.universe-hangar-paint[aria-disabled] .universe-hangar-swatch { filter: grayscale(0.85) brightness(0.45); }
+.universe-hangar-paint[aria-disabled] .universe-hangar-swatch svg { filter: none; }
+.universe-hangar-parts { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.universe-hangar-part {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 9px;
+  text-align: left;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.universe-hangar-part:hover { border-color: rgb(255 255 255 / 0.32); background: rgb(255 255 255 / 0.04); }
+.universe-hangar-part[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 14%, transparent); }
+.universe-hangar-part[aria-disabled] { opacity: 0.6; }
+.universe-hangar-part-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.universe-hangar-part-name { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; font-weight: 500; }
+.universe-hangar-part-cost { flex: none; color: var(--muted); font-family: var(--font-mono); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+.universe-hangar-part[data-short] .universe-hangar-part-cost { color: #ffb35c; }
+.universe-hangar-part-does { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
+.universe-hangar-paint:focus-visible,
+.universe-hangar-part:focus-visible,
+.universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-hangar-note { min-height: 2.6em; margin: 0; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
+.universe-hangar-stats { display: grid; gap: 0.35rem; margin: 0; }
+.universe-hangar-stat { display: grid; grid-template-columns: 8.2rem 1fr; align-items: center; gap: 0.6rem; }
+.universe-hangar-stat dt { font-size: 0.74rem; }
+.universe-hangar-stat dd { display: grid; grid-template-columns: 1fr 3.4em; align-items: center; gap: 0.5rem; margin: 0; }
+.universe-hangar-bar { position: relative; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 0.12); overflow: hidden; }
+.universe-hangar-bar > i,
+.universe-hangar-bar > b { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.universe-hangar-bar > i { width: calc(var(--now) * 100%); background: var(--engine, #e8eefc); }
+.universe-hangar-bar > b { width: calc(var(--then) * 100%); background: transparent; }
+.universe-hangar-bar[data-up] > b { background: #6ee7a0; }
+.universe-hangar-bar[data-up] > i { z-index: 1; }
+.universe-hangar-bar[data-down] > b { z-index: 1; background: var(--engine, #e8eefc); }
+.universe-hangar-bar[data-down] > i { background: #ff7a6b; }
+.universe-hangar-change { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; font-variant-numeric: tabular-nums; text-align: right; }
+.universe-hangar-change[data-up] { color: #6ee7a0; }
+.universe-hangar-change[data-down] { color: #ff7a6b; }
+
 @media (max-width: 767px) {
   .universe-panel {
     top: auto;
@@ -840,6 +1013,8 @@
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
+  .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
+  .universe-prompt { bottom: calc(var(--sheet-h) + 64px); translate: -50% 0; }
   .universe-lock-name,
   .universe-lock-dist,
   .universe-nav-name,
@@ -850,9 +1025,12 @@
   .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
-  .universe-hint { left: 68px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
+  .universe-hint { left: 116px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
   .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
   .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
+  .universe-hangar-btn { left: 62px; bottom: calc(var(--sheet-h) + 66px); }
+  .universe-hangar { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: calc(100% - 24px); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
+  .universe-hangar-stat { grid-template-columns: 7rem 1fr; }
   .universe-comms { right: 16px; left: 16px; }
   /* the bar keeps clear of the guide's button in the corner */
   .universe-panel[data-tucked] { padding-bottom: env(safe-area-inset-bottom, 0px); }
