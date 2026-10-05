@@ -10,7 +10,10 @@
 //   QUALITY=mid … (the device tier: ?quality=), SHIP=falcon …, JSON=1 …
 // Headless Chromium draws in software (SwiftShader), slowly: the frame times
 // only mean something compared with another run on the same machine, the
-// counts mean the same anywhere.
+// counts mean the same anywhere. So that two runs see the same thing, the
+// page's clock is held at one moment (the set pieces move by the wall
+// clock) and its random numbers are seeded (where the ship starts), unless
+// LIVE=1.
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
@@ -34,6 +37,19 @@ for (const id of list.split(',')) {
     window.localStorage.setItem('tp-galaxy-panel', 'tucked');
     window.sessionStorage.setItem('tp-galaxy-intro', '1');
   }, ship);
+  if (!process.env.LIVE) {
+    await ctx.addInitScript(() => {
+      let a = 0x2f6b9c1d;
+      Math.random = () => {
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const held = Date.UTC(2026, 9, 5, 12);
+      Date.now = () => held;
+    });
+  }
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
