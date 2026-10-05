@@ -235,7 +235,10 @@ export function FunProvider({ children }) {
     },
     [pin, unlock],
   );
-  const pickleRick = useCallback(() => notify('I’m Pickle Riiick!', 'Funniest thing I’ve ever seen.', 'note'), [notify]);
+  const pickleRick = useCallback(() => {
+    import('../lib/clips').then((c) => c.playClip('pickleRick', { keep: true }));
+    notify('I’m Pickle Rick!', 'Funniest thing I’ve ever seen.', 'note');
+  }, [notify]);
 
   // Pirates of the Caribbean: savvy hoists the colours (the Pearl's, the
   // Dutchman's or Tortuga's)
