@@ -1492,6 +1492,12 @@ export async function create(canvas, ctx) {
     state.build = raw ? readBuildWire(writeBuild(raw)) : null;
     if (state.kind) setShip(state.kind, true);
   };
+  // the wardrobe's new looks: the cruiser's crew in their seats are dressed
+  // in them, so the cruiser is built again
+  const onLooks = () => {
+    if (!disposed && state.kind === 'cruiser' && !state.build) setShip('cruiser', true);
+  };
+  window.addEventListener('tp:looks', onLooks);
 
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
@@ -3882,6 +3888,7 @@ export async function create(canvas, ctx) {
     },
     dispose() {
       disposed = true;
+      window.removeEventListener('tp:looks', onLooks);
       engine?.stop();
       well?.stop();
       infall?.dispose();

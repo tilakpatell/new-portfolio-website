@@ -1154,6 +1154,10 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
 .universe-hangar-paint:focus-visible,
 .universe-hangar-part:focus-visible,
 .universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+/* the cruiser's crew: to the wardrobe */
+.universe-hangar-crew { justify-self: start; min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
+.universe-hangar-crew:hover { border-color: #97ce4c; background: rgb(151 206 76 / 0.14); }
+.universe-hangar-crew:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 /* the shipyard: the hull switch, the roll, the code, a row of modules a slot */
 .universe-yard { display: grid; gap: 0.6rem; }
 .universe-yard-hull { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }

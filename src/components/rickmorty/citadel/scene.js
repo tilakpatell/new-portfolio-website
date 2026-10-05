@@ -64,7 +64,8 @@ function clearance(from, to) {
   return 1;
 }
 
-export async function createCitadelWorld(canvas, { onLost } = {}) {
+// looks: the wardrobe's ({ rick, morty }): Rick's is the one you walk about as
+export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
   const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
@@ -104,7 +105,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
   try {
     [concourse, rooms] = await allOrUndo([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })], made);
     scene.add(concourse.group, rooms.factory, rooms.council);
-    [people, crowd] = await allOrUndo([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier }), createCrowd(concourse.group, { tier })], made);
+    [people, crowd] = await allOrUndo([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier, look: looks?.rick ?? null }), createCrowd(concourse.group, { tier })], made);
     // the cruiser, waiting in the hangar
     props = createMeshyCast();
     made.push(props);
@@ -316,6 +317,8 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
     fx: fxEvent,
     screenOf,
     resize: stage.resize,
+    // a new look from the wardrobe
+    setLooks: (next) => people.setRick(next?.rick),
     info() {
       const i = renderer.info;
       return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, quality: stage.quality, tier };
