@@ -35,7 +35,9 @@ console.log('city up in', ((Date.now() - t0) / 1000).toFixed(1), 's');
 // shots: [name, hero { p, mode, v }, yaw, pitch, time]
 const SHOTS = {
   spawn: { at: null, time: 'noon' },
-  street: { p: [0, 1.5, 300], mode: 'air', yaw: Math.PI, pitch: 0.08 },
+  street: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22 },
+  curb: { p: [44, 3, 120], mode: 'air', yaw: Math.PI, pitch: -0.12 },
+  streetnight: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22, time: 'night' },
   downtown: { p: [-300, 140, 600], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.12 },
   high: { p: [-900, 1400, 1500], mode: 'air', yaw: Math.PI * 0.85, pitch: -0.45 },
   suburb: { p: [-2060, 30, 330], mode: 'air', yaw: Math.PI, pitch: -0.25 },

@@ -318,16 +318,19 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
   floorRect({ x: 142, y: 238, w: 19, h: 138 }, carpet, 0.001);
 
   // ── the drop ceiling ──
-  const ceilTex = keep(ceilingTex());
+  // (one texture for every room: the tiles are laid by the UVs, a 1.22 m
+  // grid in metres, so the rooms share a material and draw together)
+  const ceilMat = mat({ map: keep(ceilingTex()), roughness: 0.95 });
+  const metresUV = (geo, w, d, tile) => {
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / tile, (uv.getY(i) * d) / tile);
+    return geo;
+  };
   for (const id of ['bullpen', 'michael', 'conference', 'hallway', 'men', 'women', 'annex', 'darryl', 'supplies', 'lobby', 'stairs']) {
     const m = rect(ROOMS[id]);
-    const t = ceilTex.clone();
-    keep(t);
-    t.repeat.set(m.w / 1.22, m.d / 1.22);
-    t.needsUpdate = true;
-    const geo = new THREE.PlaneGeometry(m.w, m.d);
+    const geo = metresUV(new THREE.PlaneGeometry(m.w, m.d), m.w, m.d, 1.22);
     geo.rotateX(Math.PI / 2);
-    const o = mesh(geo, mat({ map: t, roughness: 0.95 }), m.cx, id === 'stairs' ? CEILING + 1.2 : CEILING, m.cz);
+    const o = mesh(geo, ceilMat, m.cx, id === 'stairs' ? CEILING + 1.2 : CEILING, m.cz);
     o.castShadow = false;
   }
   // the fluorescent troffers, in rows over every room
@@ -390,7 +393,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     const r = d.along === 'x' ? [d.x - half, d.z, d.x + half, d.z] : [d.x, d.z - half, d.x, d.z + half];
     run(r, 2.12, CEILING);
   }
-  const wallMat = kit.surface('wall', 1, 1, 1.5, { color: 0xeee6d3 });
+  const wallMat = kit.surface('wall', 1, 1, 1.5, { color: 0xe4d9c2 });
   wallMat.map = null;
   const wallMesh = mesh(keep(merge(wallGeos)), wallMat);
   wallMesh.castShadow = true;
@@ -433,14 +436,14 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     keep(t);
     t.repeat.set(1, 1.2 * 6);
     t.needsUpdate = true;
-    const blinds = mesh(new THREE.PlaneGeometry(len * 0.96, 1.18), mat({ map: t, transparent: true, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide }), g.position.x, 1.5, g.position.z - (vertical ? 0 : 0.06));
+    const blinds = mesh(new THREE.PlaneGeometry(len * 0.96, 1.18), mat({ map: t, alphaTest: 0.35, roughness: 0.85, side: THREE.DoubleSide }), g.position.x, 1.5, g.position.z - (vertical ? 0 : 0.06));
     if (vertical) blinds.position.x -= 0.06;
     blinds.rotation.y = g.rotation.y;
   }
 
   // ── windows in the outside walls, with vertical blinds ──
   const view = keep(viewTex());
-  const vanes = keep(vanesTex());
+  const vaneMat = mat({ map: keep(vanesTex()), alphaTest: 0.3, roughness: 0.9, side: THREE.DoubleSide });
   const viewMat = mat({ map: view, emissive: 0xffffff, emissiveMap: view, emissiveIntensity: 0.85, roughness: 0.3 });
   // [px0, py0, px1, py1, which way the room is: +1 (south/east of the wall) or -1]
   const WINDOWS = [
@@ -466,11 +469,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     const pane = mesh(new THREE.PlaneGeometry(len, 1.35), viewMat, vertical ? cx + off : cx, 1.52, vertical ? cz : cz + off);
     pane.rotation.y = vertical ? (side > 0 ? Math.PI / 2 : -Math.PI / 2) : side > 0 ? 0 : Math.PI;
     pane.castShadow = false;
-    const t = vanes.clone();
-    keep(t);
-    t.repeat.set(len * 8, 1);
-    t.needsUpdate = true;
-    const bl = mesh(new THREE.PlaneGeometry(len, 1.5), mat({ map: t, transparent: true, alphaTest: 0.3, roughness: 0.9, side: THREE.DoubleSide }), vertical ? cx + off * 3 : cx, 1.52, vertical ? cz : cz + off * 3);
+    const bl = mesh(metresUV(new THREE.PlaneGeometry(len, 1.5), len * 8, 1, 1), vaneMat, vertical ? cx + off * 3 : cx, 1.52, vertical ? cz : cz + off * 3);
     bl.rotation.y = pane.rotation.y;
     const sill = mesh(new THREE.BoxGeometry(len + 0.08, 0.04, 0.14), kit.M.white, vertical ? cx + off * 2 : cx, 0.83, vertical ? cz : cz + off * 2);
     sill.rotation.y = vertical ? Math.PI / 2 : 0;

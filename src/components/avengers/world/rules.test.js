@@ -13,6 +13,7 @@ import {
   PACKS,
   PACK_R,
   PERCHES,
+  PHOTO,
   PLANTERS,
   RING_R,
   ROOF_PLANT,
@@ -59,6 +60,9 @@ import {
   stepTour,
   throughRing,
   newTour,
+  newPhoto,
+  photoView,
+  readPhoto,
   underPortal,
   walkable,
 } from './rules';
@@ -1257,5 +1261,36 @@ describe('The compound, the world: the best lap, as a ghost', () => {
     const ok = [[1, 2, 3, 4], [2, 3, 4, 5]];
     expect(readLap(ok)).toEqual(ok);
     expect(readLap(Array.from({ length: LAP.max + 5 }, () => [0, 0, 0, 0])).length).toBe(LAP.max);
+  });
+});
+
+describe('The compound, the world: photo mode', () => {
+  it('puts the camera round him where it’s asked, looking at his chest, out on the lawn', () => {
+    const h = newHero(START);
+    const v = photoView(h, { yaw: 0.7, pitch: 0.3, dist: 6 });
+    expect(Math.hypot(v.at[0] - v.look[0], v.at[1] - v.look[1], v.at[2] - v.look[2])).toBeCloseTo(6, 3);
+    expect(v.look).toEqual([h.x, h.y + 1.1, h.z]);
+    expect(v.at[1]).toBeGreaterThan(v.look[1]);
+  });
+
+  it('never goes into a building, nor under the ground', () => {
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const h = newHero(widow);
+    // looking back from inside the main building
+    const inward = Math.atan2(-Math.cos(widow.face), Math.sin(widow.face));
+    for (const yaw of [inward, inward + 0.4, inward - 0.4]) {
+      const v = photoView(h, { yaw, pitch: 0.1, dist: 20 });
+      expect(inBuilding(v.at[0], v.at[2]) && v.at[1] < 30).toBe(false);
+    }
+    // from under his feet
+    const low = photoView(newHero(START), { yaw: 0, pitch: PHOTO.pitch[0], dist: PHOTO.dist[1] });
+    expect(low.at[1]).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it('keeps its numbers in range', () => {
+    expect(readPhoto(null)).toEqual(newPhoto(0, 0.25));
+    const r = readPhoto({ yaw: 2, pitch: 9, dist: 0, fov: 500 });
+    expect(r).toEqual({ yaw: 2, pitch: PHOTO.pitch[1], dist: PHOTO.dist[0], fov: PHOTO.fov[1] });
+    expect(newPhoto(1, -3).pitch).toBe(PHOTO.pitch[0]);
   });
 });
