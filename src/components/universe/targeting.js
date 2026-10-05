@@ -26,16 +26,30 @@
 // with both the bolt and the target moving (sweptHit), so nothing fast
 // slips between two frames.
 //
+// And the nose follows the lock (trackNudge): with a lead point inside
+// AIM.trackCone, the stick gets a nudge toward it, at most AIM.trackMax of
+// full stick, growing with the angle off (AIM.trackGain), fading to nothing
+// at the cone's edge, in the ship's own frame (a target above a ship rolled
+// on its side is a turn), and giving way to the pilot's own stick as far as
+// it pushes the other way; the visitor's lock-tracking setting scales it.
+// The fighters' pace is hunterRules.js's (they fly the fight at a little
+// over your speed), so between the two a fight can be followed.
+//
 // Points are { x, y, z } (the ship, a Vector3) or [x, y, z] (the map's
 // places), in the map's own space.
 
+import { conj, fromAngles, rotate } from './orient';
+
 export const AIM = {
   range: 60, // map units: nothing further out can be locked
-  cone: 0.38, // radians off the nose to pick a target up (about 22°)
-  hold: 0.8, // radians: a lock holds out to here (about 46°)
-  lose: 1.2, // seconds outside the hold cone (or out of range) before it drops
+  cone: 0.5, // radians off the nose to pick a target up (about 29°)
+  hold: 1.05, // radians: a lock holds out to here (about 60°)
+  lose: 2, // seconds outside the hold cone (or out of range) before it drops
   loseManual: 4, // the same, for a lock picked by hand
-  swap: 0.6, // seconds a lock the guns picked may sit wide of the nose, or out of reach, before they take another that's squarely ahead
+  swap: 0.8, // seconds a lock the guns picked may sit wide of the nose, or out of reach, before they take another that's squarely ahead
+  trackCone: 0.7, // radians off the nose within which the nose follows the lock (about 40°)
+  trackGain: 3, // how quickly the nudge grows with the angle off (full at a third of a radian)
+  trackMax: 0.5, // of full stick, at most: the pilot's own stick always wins
   threat: 0.25, // how much nearer the nose one coming at you counts (of the pick-up score)
   assist: 0.14, // radians: inside this, a shot bends fully onto the lead point (about 8°)
   assistEdge: 0.36, // radians: beyond this, no help at all
@@ -189,6 +203,37 @@ export function assist(dir, want, strength = 1) {
   if (k >= 1) return [...want];
   if (k <= 0) return [...dir];
   return unit([dir[0] + (want[0] - dir[0]) * k, dir[1] + (want[1] - dir[1]) * k, dir[2] + (want[2] - dir[2]) * k]);
+}
+
+// The nudge the stick gets toward a lock's lead point (`lead`: { x, y, z }
+// or [x, y, z]), in the ship's own frame: { turn, climb }, each −1…1 (turn
+// right and climb positive), at most AIM.trackMax of full stick, growing
+// with the angle off (AIM.trackGain) and fading to nothing at AIM.trackCone;
+// `strength` is the visitor's setting (0: none). `stick` is what the pilot
+// is asking for already ({ turn, climb }): on an axis where they push the
+// other way, the nudge gives way as far as they push.
+export function trackNudge(s, lead, strength = 1, stick = null) {
+  const none = { turn: 0, climb: 0 };
+  if (!(strength > 0) || !lead) return none;
+  const d = dirTo(s, lead);
+  const q = fromAngles(s.heading || 0, s.pitch || 0, s.bank || 0);
+  const [x, y, z] = rotate(conj(q), d); // in the ship's frame: nose −z, up +y, right +x
+  const off = Math.acos(clamp(-z, -1, 1));
+  if (off >= AIM.trackCone || off < 1e-9) return none;
+  const edge = 1 - clamp((off - AIM.trackCone * 0.6) / (AIM.trackCone * 0.4), 0, 1);
+  const k = AIM.trackMax * strength * edge;
+  const yaw = Math.atan2(x, -z);
+  const pitch = Math.asin(clamp(y, -1, 1));
+  let turn = clamp(yaw * AIM.trackGain, -1, 1) * k;
+  let climb = clamp(pitch * AIM.trackGain, -1, 1) * k;
+  if (stick) {
+    const against = (n, v) => (n * (v || 0) < 0 ? n * (1 - Math.min(1, Math.abs(v))) : n);
+    turn = against(turn, stick.turn);
+    climb = against(climb, stick.climb);
+  }
+  if (Math.abs(turn) < 1e-12) turn = 0;
+  if (Math.abs(climb) < 1e-12) climb = 0;
+  return { turn, climb };
 }
 
 // a direction as the ship's own angles: the heading that points along it

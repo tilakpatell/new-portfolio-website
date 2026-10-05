@@ -123,7 +123,7 @@ import { paintById } from './paint';
 import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
-import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from './targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
@@ -2651,6 +2651,13 @@ export async function create(canvas, ctx) {
     } else {
       input = steering();
       input.tune = state.stats; // (what's fitted; the autopilot flies it as it came, so it stops where it means to)
+      // the nose follows the lock (targeting.js: a nudge toward the lead,
+      // as much as the lock-tracking setting allows, giving way to the stick)
+      if (state.lead && state.lead.t <= AIM.life) {
+        const n = trackNudge(state.ship, state.lead, controls().track, input);
+        input.turn = clamp(input.turn + n.turn, -1, 1);
+        input.climb = clamp(input.climb + n.climb, -1, 1);
+      }
     }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)

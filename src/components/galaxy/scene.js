@@ -64,7 +64,7 @@ import { createTrail } from '../universe/trail';
 import { ENGINES, SHIP_MODELS, buildShip, BUILT } from '../universe/shipModels';
 import { loadModel } from '../universe/planets';
 import { lockSound, shipEngine } from '../universe/sounds';
-import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from '../universe/targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
@@ -993,7 +993,16 @@ export async function create(canvas, ctx) {
         state.auto = null;
         emit({ type: 'parked' });
       }
-    } else input = steering();
+    } else {
+      input = steering();
+      // the nose follows the lock (targeting.js: a nudge toward the lead,
+      // as much as the lock-tracking setting allows, giving way to the stick)
+      if (state.lead && state.lead.t <= AIM.life) {
+        const n = trackNudge(state.ship, state.lead, controls().track, input);
+        input.turn = clamp(input.turn + n.turn, -1, 1);
+        input.climb = clamp(input.climb + n.climb, -1, 1);
+      }
+    }
     if (state.keys.fire || state.fireBtn) fire();
     const { ship: stepped, events } = step(state.ship, input, dt, state.space.solids, state.space);
     let ship = stepped;

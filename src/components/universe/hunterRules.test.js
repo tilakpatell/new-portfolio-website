@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, blocked, clearOf, createHunt, entryPoint, packPlan, shipVelocity, slotsFor, turnRate, turnToward } from './hunterRules';
+import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, blocked, clearOf, createHunt, entryPoint, fightSpeed, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -161,6 +161,83 @@ describe('what they know of you', () => {
     expect(blocked({ x: -20, y: 0, z: 0 }, { x: 20, y: 0, z: 0 }, moon)).toBe(true);
     expect(blocked({ x: -20, y: 6, z: 0 }, { x: 20, y: 6, z: 0 }, moon)).toBe(false);
     expect(blocked({ x: -20, y: 0, z: 0 }, { x: -10, y: 0, z: 0 }, moon)).toBe(false); // (it stops short of it)
+  });
+});
+
+describe('the pace of a fight', () => {
+  const tie = HUNTER_KINDS.tie;
+  const interceptor = HUNTER_KINDS.interceptor;
+  it('flies the fight at a little over your speed, never under its floor nor over its top', () => {
+    // at cruise, close in: near you, not its top
+    expect(fightSpeed(tie, 5.5, 8)).toBeLessThan(11);
+    expect(fightSpeed(tie, 5.5, 8)).toBeGreaterThan(5.5);
+    // sitting still: the floor
+    expect(fightSpeed(tie, 0, 8)).toBeCloseTo(tie.speed * FIGHT.floor, 9);
+    // boosting at 20: a TIE flat out (you can outrun one), an interceptor with you
+    expect(fightSpeed(tie, 20, 8)).toBe(tie.speed);
+    expect(fightSpeed(interceptor, 20, 8)).toBeGreaterThan(20);
+    expect(fightSpeed(interceptor, 20, 8)).toBeLessThanOrEqual(interceptor.speed);
+    // far off, it comes in flat out whatever you're doing; between, in between
+    expect(fightSpeed(tie, 0, FIGHT.closeFrom + 5)).toBe(tie.speed);
+    const mid = fightSpeed(tie, 0, (FIGHT.engageAt + FIGHT.closeFrom) / 2);
+    expect(mid).toBeGreaterThan(tie.speed * FIGHT.floor);
+    expect(mid).toBeLessThan(tie.speed);
+  });
+
+  it('turns a little quicker than you at the fight’s speed, and less at its top', () => {
+    for (const type of Object.values(HUNTER_KINDS)) {
+      expect(turnRate(type)).toBeGreaterThan(2);
+      expect(turnRate(type)).toBeLessThan(3.3);
+      expect(turnRateAt(type, type.speed * FIGHT.floor)).toBeCloseTo(turnRate(type), 9);
+      expect(turnRateAt(type, type.speed)).toBeCloseTo(turnRate(type) * (1 - FIGHT.stiff), 9);
+      expect(turnRateAt(type, type.speed * 2)).toBeCloseTo(turnRate(type) * (1 - FIGHT.stiff), 9);
+    }
+  });
+
+  it('is flown at your pace: at cruise, the ones near you are slow enough to follow, and still shoot', () => {
+    let sum = 0;
+    let n = 0;
+    let fastest = 0;
+    const seen = fight({
+      seconds: 50,
+      fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.3 * DT }),
+      each: (hunt, s, t) => {
+        if (t < 6) return; // (in from where they came)
+        for (const h of hunt.live) {
+          if (apart(h.pos, s) > FIGHT.engageAt) continue;
+          const v = Math.hypot(h.vel.x, h.vel.y, h.vel.z);
+          sum += v;
+          n += 1;
+          fastest = Math.max(fastest, v);
+        }
+      },
+    });
+    expect(n).toBeGreaterThan(100);
+    expect(sum / n).toBeLessThan(11);
+    expect(fastest).toBeLessThan(HUNTER_KINDS.tie.speed * 0.8);
+    expect(seen.shots).toBeGreaterThan(20);
+  });
+
+  it('opens up with you when you boost: the pack keeps pace, an interceptor faster than a TIE', () => {
+    let tie = 0;
+    let fast = 0;
+    fight({
+      seconds: 24,
+      opts: { size: 4, ace: false },
+      fly: (s, t) => ({ ...s, speed: t < 10 ? 5.5 : 20 }), // (a fight at cruise, then the boost)
+      each: (hunt, s, t) => {
+        if (t < 12) return;
+        for (const h of hunt.live) {
+          if (apart(h.pos, s) > 45 || h.mode === 'tail') continue;
+          const v = Math.hypot(h.vel.x, h.vel.y, h.vel.z);
+          if (h.kind === 'tie') tie = Math.max(tie, v);
+          else fast = Math.max(fast, v);
+        }
+      },
+    });
+    expect(tie).toBeGreaterThan(15);
+    expect(tie).toBeLessThanOrEqual(HUNTER_KINDS.tie.speed + 1e-6);
+    if (fast > 0) expect(fast).toBeGreaterThan(tie);
   });
 });
 
