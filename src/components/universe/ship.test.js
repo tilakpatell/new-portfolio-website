@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
-import { DEEP, WONDERS } from './deep';
+import { DEEP, WONDERS, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
-import { HOME_RADIUS, ORDER, REACH, SUN } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
@@ -374,8 +374,10 @@ describe('deep space', () => {
     expect(top).toBeLessThan(DEEP.ceiling + 25);
   });
 
-  it('lets the ship down into the Death Star’s trench, and only there', () => {
-    const ds = SOLIDS.find((o) => o.id === 'starwars');
+  it('lets the ship down into a Death Star’s trench, and only there', () => {
+    // (the galaxy's, at Yavin: galaxy/world.js lays its trench all the way round)
+    const place = { id: 'deathstar', at: POSITIONS.starwars, r: byId('starwars').size, trench: { segments: 85 } };
+    const ds = { ...place, band: trenchBand(place) };
     expect(ds.band).toBeTruthy();
     // level with the trench (it's laid all the way round), heading straight
     // in, slowly: it stops near the floor, whichever side it comes in on
@@ -385,14 +387,14 @@ describe('deep space', () => {
       return { ...spawn(null), x, y: ds.at[1] + dy, z, heading: Math.atan2(-(ds.at[0] - x), -(ds.at[2] - z)), speed: 2 };
     };
     for (const side of [0, Math.PI / 2, Math.PI]) {
-      const into = fly(toward(ds.band.home + side, 0, 3), { throttle: 0.3 }, 6).ship;
+      const into = fly(toward(ds.band.home + side, 0, 3), { throttle: 0.3 }, 6, [ds]).ship;
       const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
       expect(d, `${side}`).toBeLessThan(ds.r - 1.5);
       expect(d, `${side}`).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
     }
     // above the trench or below it, it's the surface that stops it
     for (const s of [toward(ds.band.home, ds.band.half + 2, 3), toward(ds.band.home + Math.PI, -ds.band.half - 2, 3)]) {
-      const off = fly(s, { throttle: 0.3 }, 6).ship;
+      const off = fly(s, { throttle: 0.3 }, 6, [ds]).ship;
       expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
     }
   });

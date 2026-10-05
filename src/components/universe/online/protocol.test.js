@@ -117,6 +117,7 @@ describe('crews on foot', () => {
   });
   it('refuses a station, a stranger, junk numbers, and clamps the rest', () => {
     expect(readFoot(writeFoot({ ...crew, planet: 'home' }))).toBeNull(); // (no landing on a station)
+    expect(readFoot(writeFoot({ ...crew, planet: 'starwars' }))).toBeNull(); // (nor on the gate into the galaxy)
     expect(readFoot(writeFoot({ ...crew, planet: 'nowhere' }))).toBeNull();
     expect(readFoot(writeFoot({ ...crew, lead: walker('vader') }))).toBeNull();
     expect(readFoot({ ...writeFoot(crew), s: [0, 0, 0, 1, 0, 0] })).toBeNull(); // (no way up)

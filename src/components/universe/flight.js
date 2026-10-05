@@ -127,8 +127,8 @@ export function poseAt(flight, to, now) {
 export function enterPlan(universe, { reduced, three, ship = null }) {
   if (!universe) return null;
   if (reduced || !three) return { mode: 'now', delay: 0 };
+  if (universe.portal) return { mode: 'jump', delay: 1250 }; // (a gate: to lightspeed, whatever you fly)
   if (ship === 'cruiser') return { mode: 'portal', delay: DIVE_MS };
-  if (universe.id === 'starwars') return { mode: 'jump', delay: 1250 };
   return { mode: 'dive', delay: DIVE_MS };
 }
 

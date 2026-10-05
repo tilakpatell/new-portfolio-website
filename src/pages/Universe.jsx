@@ -190,7 +190,7 @@ export default function Universe({ ask = false }) {
         hangar={hangar}
         onHangar={setHangar}
         net={online.client}
-        onEvent={(e) => comms.current?.handle(e)}
+        onEvent={(e) => (e.type === 'portal' ? go(byId(e.id)) : comms.current?.handle(e))}
         onLand={enter}
         onCrash={crashInto}
       />
