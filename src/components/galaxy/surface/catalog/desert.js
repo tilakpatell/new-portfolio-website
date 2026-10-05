@@ -12,4 +12,7 @@ export const MODELS = {
   bantha: { uid: '3581f3a312dc426d87af3031f5198edf', as: 'the banthas', metres: 2.8, along: 'y', yaw: 0, up: 'y', tris: 10000, tex: 512, gain: 1.3, rig: true, anim: { walk: 'Bantha_Walk' } },
   // a domed adobe house of Mos Eisley
   adobe: { uid: '66893ef6ad5f434e9db954b1f5496dfc', as: 'the adobe houses', metres: 10, along: 'max', yaw: Math.PI, up: 'y', tris: 35000, tex: 1024 },
+  dewback: { uid: 'b84145ed48d143ff8746eda2623b3bd8', as: 'the dewbacks', metres: 4, along: 'max', yaw: 0, up: 'y', tris: 10000, tex: 512 },
+  // Anakin's podracer
+  podracer: { uid: 'dac6d14dcf914e88af8625b59f4020bc', as: 'the podracers', metres: 10, along: 'max', yaw: 0, up: 'y', tris: 16000, tex: 512, maps: 128 },
 };

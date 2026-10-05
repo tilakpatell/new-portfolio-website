@@ -22,4 +22,8 @@ export const MODELS = {
   vader: { uid: '15c6b612a5834924b0959261aa89e80f', as: 'Darth Vader', metres: 2.02, yaw: 0, tris: 8000, tex: 512 },
   // a death trooper (Rogue One)
   deathtrooper: { uid: '503860c8c63b419daa391f296ab874f1', as: 'the death troopers', metres: 2.0, yaw: 0, tris: 8000, tex: 512 },
+  // Luke in his orange X-wing flight suit (from Disney Magic Kingdoms, as Han and R2-D2 are)
+  luke: { uid: 'bedc584f3e8740c59e99320f8425147d', as: 'Luke Skywalker', metres: 1.72, yaw: 0, tris: 8000, tex: 512 },
+  han: { uid: 'b904ffed264a45c7b90d8f032fb0a97a', as: 'Han Solo', metres: 1.85, yaw: 0, tris: 8000, tex: 512 },
+  r2d2: { uid: 'b251906902104fddb6f1a9a38bfe92ab', as: 'R2-D2', metres: 1.09, yaw: 0, tris: 8000, tex: 512 },
 };
