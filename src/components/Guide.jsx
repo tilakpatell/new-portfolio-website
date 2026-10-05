@@ -130,6 +130,15 @@ const PAGES = {
       ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
+  '/earth': {
+    title: 'Earth',
+    tips: [
+      ['From orbit', 'The Earth as it is right now: the sun is where it really is, so the night side is the real night. Drag to turn it, or pick a place to fly there. It comes down onto the globe on its own after a moment; M goes back up.'],
+      ['Fly', 'The arrows or W A S D: left and right turn, up and down climb and descend. Shift (or Space) goes faster. On a phone, the stick flies and the button goes faster. A controller works too.'],
+      ['The passport', 'Fly over a place to stamp your passport and get its postcard. P opens the passport; Fly here sets the autopilot, which follows the great circle there (Escape, or any turn, takes the controls back). The arrow at the bottom points at the next place, or wherever the autopilot is going.'],
+      ['Night', 'N keeps the sun over your shoulder, always day, if the real one has set where you are.'],
+    ],
+  },
   '/universe': {
     title: 'The universe',
     tips: [
@@ -149,8 +158,9 @@ const PAGES = {
   '/music': {
     title: 'The music room',
     tips: [
-      ['Tune up', 'Pick a Sa and a raga, then start the tanpura.'],
-      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa.'],
+      ['The music planet', 'The page opens on a courtyard at dusk: click it, then W A S D to walk, the arrows to turn, drag to look (on a phone, the stick and a swipe). Walk up to an instrument and press E to play it; whatever sounds glows, and its notes float up.'],
+      ['Tune up', 'Pick a Sa and a raga (forty of them, or one of your own), then start the tanpura.'],
+      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa. Hold Space on the sitar for a chikari roll; Record the room keeps what you play.'],
     ],
   },
   '/terminal': {
