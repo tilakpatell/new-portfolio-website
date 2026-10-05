@@ -24,10 +24,10 @@
 // A lib/three/useScene scene: create(canvas, ctx) → { resize, render, update, dispose }.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createRenderer, disposeTree, easeInOut, precompile } from '../../lib/three/renderer';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpenMaterial } from '../../lib/three/textures';
 
 const SIDES = {
   autobot: { model: 'optimus-prime', energon: 0x4fd8ff, rim: 0x2fbfff, key: 0xfff1dc },
@@ -152,7 +152,7 @@ export async function create(canvas, ctx) {
   const alt = ctx.side === 'decepticon' ? jet() : truck();
   turntable.add(alt.group);
 
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   // Optimus, animated through the whole change: stood on the floor at the
   // robot's height, the truck and the robot each centred on the turntable
   let change = null;
@@ -183,7 +183,7 @@ export async function create(canvas, ctx) {
       g.scene.traverse((o) => {
         if (!o.isMesh) return;
         o.frustumCulled = false; // its parts travel a long way from where they start
-        if (o.material.map) o.material.map.anisotropy = 8;
+        sharpenMaterial(o.material);
       });
       turntable.add(holder);
       alt.group.visible = false;
@@ -209,7 +209,7 @@ export async function create(canvas, ctx) {
         o.material.metalness = 0.5;
         o.material.roughness = 0.4;
         o.material.alphaHash = true; // thins out grain by grain, with nothing to sort
-        if (o.material.map) o.material.map.anisotropy = 8;
+        sharpenMaterial(o.material);
         mats.push(o.material);
       });
       jetModel.add(g.scene);
@@ -256,7 +256,7 @@ export async function create(canvas, ctx) {
         m.metalness = 0.6;
         m.roughness = 0.38;
         m.alphaHash = true;
-        if (m.map) m.map.anisotropy = 8;
+        sharpenMaterial(m);
       }
       const mixer = idle?.animations?.[0] ? new THREE.AnimationMixer(model) : null;
       mixer?.clipAction(idle.animations[0]).play();
@@ -356,7 +356,7 @@ export async function create(canvas, ctx) {
       if (!o.isMesh) return;
       const src = o.material;
       o.material = new THREE.MeshStandardMaterial({ map: src.map ?? null, color: src.color ?? 0xffffff, metalness: 0.55, roughness: 0.4, clippingPlanes: [clip] });
-      if (o.material.map) o.material.map.anisotropy = 8;
+      sharpenMaterial(o.material);
       src.dispose();
     });
     robot.add(loaded);

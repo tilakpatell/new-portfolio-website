@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PAGES, SHORTCUTS, SITE, guideFor } from './pages';
+import { GUIDES, guideMeta } from './routes';
 import { keyTokens } from './keys';
 import { WORLDS } from '../worlds/worlds';
 
@@ -34,12 +35,32 @@ describe('which guide a page gets', () => {
   });
 });
 
+describe('the corner button’s side of it (routes.js)', () => {
+  it('knows every page the guide has, and no other', () => {
+    expect(Object.keys(GUIDES).sort()).toEqual(Object.keys(PAGES).sort());
+  });
+
+  it('agrees with the panel on the page and its title', () => {
+    for (const p of ['/', '/universe/marvel', '/galaxy/hoth/surface', '/middle-earth/moria', '/experience/aws', '/home']) {
+      expect(guideMeta(p).key, p).toBe(guideFor(p).key);
+      expect(guideMeta(p).title, p).toBe(guideFor(p).title);
+    }
+    expect(guideMeta('/nowhere')).toBe(null);
+  });
+
+  it('leaves a note only on pages that have controls to tell', () => {
+    for (const [path, g] of Object.entries(GUIDES)) if (g.nudge) expect(Boolean(PAGES[path].keys || PAGES[path].touch), path).toBe(true);
+    for (const path of ['/universe', '/galaxy/surface', '/albuquerque', '/middle-earth/place']) expect(guideMeta(path).nudge, path).toBe(true);
+    for (const path of ['/home', '/terminal', '/projects']) expect(guideMeta(path).nudge, path).toBe(false);
+  });
+});
+
 describe('what the guide says', () => {
   const entries = Object.entries(PAGES);
 
   it('gives every page a title and something to say', () => {
     for (const [path, page] of entries) {
-      expect(page.title, path).toBeTruthy();
+      expect(GUIDES[path].title, path).toBeTruthy();
       expect(Boolean(page.tips?.length || page.keys || page.touch), path).toBe(true);
     }
   });

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
+import '../../styles/lazy/avengers.css';
 
 const sfx = () => import('../../lib/sfx');
 

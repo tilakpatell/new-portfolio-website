@@ -1,9 +1,13 @@
+import { GUIDES, guideKeyFor } from './routes';
+
 // What the guide says about each page: a line on what it is, its controls
 // (`keys` for a keyboard, `touch` for a phone; each a list of groups, a group
 // a label and rows of [keys, what they do], keys written as keys.js reads
-// them) and its tips. A page with controls gets a note by the "?" button the
-// first time you're on it, unless `nudge` is false (its controls are a small
-// part of it). `guideFor` finds a page's entry from its path.
+// them) and its tips. Its title, and whether its first visit gets a note,
+// are in routes.js. Loaded with the guide's panel, not before.
+
+// the portfolio pages run into one another (components/feed)
+const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of this one and the next begins, and the address and the menu follow. After the sixth, the end.'];
 
 const FLY = [
   ['W S', 'Throttle'],
@@ -32,12 +36,11 @@ const WALK_TOUCH = [
 
 export const PAGES = {
   '/home': {
-    title: 'Home',
-    nudge: false,
     tips: [
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
       ['The Game Boy', 'It plays. In Super Tilak Land a fire flower lets B throw fire, stomps in a row score more each time, and a king waits at the end of the castle. Each game keeps its best score.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
+      FEED_TIP,
     ],
     keys: [
       {
@@ -54,37 +57,38 @@ export const PAGES = {
     touch: [{ label: 'The Game Boy', rows: [['Tap', 'Its own buttons']] }],
   },
   '/experience': {
-    title: 'Experience',
     tips: [
       ['Company colors', 'Each role re-themes the site as you scroll past it.'],
       ['The crawl', 'Play the opening crawl for the whole story so far.'],
       ['Share a role', 'Each role has its own address (/experience/aws): a link opens right on it.'],
+      FEED_TIP,
     ],
   },
   '/projects': {
-    title: 'Projects',
     tips: [
       ['The periodic table', 'Click a tile to light up the projects built with it. Click again to clear.'],
       ['The sitar string', 'Pluck it.'],
+      FEED_TIP,
     ],
   },
   '/project': {
-    title: 'This project',
     tips: [['The demo', 'The panel at the top is live: try it.']],
   },
   '/resume': {
-    title: 'Résumé',
     tips: [
-      ['The PDF', 'Download it from the bar at the top, or print the page: it prints as the résumé, without the site round it.'],
+      ['Skills', 'Click any skill on the résumé to light up every line that uses it; the PDF tab has the one-page version.'],
       ['Elsewhere', 'Every role and project on it has its own page, under Experience and Projects.'],
+      FEED_TIP,
     ],
   },
   '/contact': {
-    title: 'Contact',
-    tips: [['Email', 'The address copies with one press. ⌘K (Ctrl+K) can copy it from anywhere on the site, too.']],
+    tips: [
+      ['The memo', 'The form opens your email app with the memo filled in. Nothing is sent from this page.'],
+      ['Email', 'Copy address copies it with one press; ⌘K (Ctrl+K) can copy it from anywhere on the site, too.'],
+      FEED_TIP,
+    ],
   },
   '/universe': {
-    title: 'The universe',
     about: 'The whole site as places in space: the stations round the sun are its pages, the planets out in deep space its worlds. Fly a ship to any of them, or just pick one.',
     keys: [
       { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['G', 'Land and step out (G again to get back in)'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
@@ -106,12 +110,12 @@ export const PAGES = {
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
+      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say.'],
       ['The black hole', 'The one thing out there you don’t come back from. On its far side is a friend’s universe; Back brings you home.'],
       ['Online', 'Multiplayer, bottom left: everyone else flying the map is there in their own ships. Fly together, or shoot each other down.'],
     ],
   },
   '/galaxy': {
-    title: 'A galaxy far, far away',
     about: 'Eighteen star systems from the films and the shows, each a moment from them playing out round you.',
     keys: [{ label: 'Flying', rows: [...FLY, ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }],
     touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose']] }],
@@ -122,7 +126,6 @@ export const PAGES = {
     ],
   },
   '/galaxy/surface': {
-    title: 'Down on the surface',
     about: 'A world from the films, on foot: its places to find, its people to talk to, things to ride.',
     keys: [
       {
@@ -157,11 +160,9 @@ export const PAGES = {
     ],
   },
   '/galaxy/mission': {
-    title: 'Mission briefing',
     tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run and boarding the Death Star play now; the rest are games still being built.']],
   },
   '/deathstar': {
-    title: 'The Death Star',
     keys: [
       {
         label: 'The trench run',
@@ -182,7 +183,6 @@ export const PAGES = {
     ],
   },
   '/caribbean': {
-    title: 'The Caribbean',
     keys: [
       {
         label: 'Dead man’s tide',
@@ -206,8 +206,20 @@ export const PAGES = {
     ],
   },
   '/invincible': {
-    title: 'Invincible',
+    about: 'The Graysons’ city to fly about as Mark, and Think, Mark!, the game.',
     keys: [
+      {
+        label: 'The city',
+        rows: [
+          ['W A S D', 'Fly the way you’re looking (walk, on the ground)'],
+          ['Space', 'Up (and take off)'],
+          ['C', 'Down (and land)'],
+          ['Shift', 'Flat out: past about 430 km/h the air breaks with a boom'],
+          ['Drag / ← ↑ ↓ →', 'Look round'],
+          ['E', 'Go in at a place'],
+          ['T', 'The time of day'],
+        ],
+      },
       {
         label: 'Think, Mark!',
         rows: [
@@ -222,8 +234,12 @@ export const PAGES = {
         ],
       },
     ],
-    touch: [{ label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] }],
+    touch: [
+      { label: 'The city', rows: [['Stick', 'Fly (on the left)'], ['Up', 'Up'], ['Down', 'Down'], ['Boost', 'Flat out']] },
+      { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
+    ],
     tips: [
+      ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
       ['Think, Mark!', 'Four chapters: your father’s rings, the Flaxans, then Omni-Man and Thragg. A Viltrumite blocks and hits back unless he’s recovering from a charge: dodge as the ring closes round him, then hit him while he’s open. A dodge just in time slows everything down. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
@@ -231,7 +247,6 @@ export const PAGES = {
     ],
   },
   '/middle-earth': {
-    title: 'Middle-earth',
     about: 'A map of the road from Hobbiton to Mount Doom. Every stop is a chapter: a place to walk as Frodo, a kitchen to cook in, and its own game.',
     tips: [
       ['The map', 'Pick a place and the camera flies down to it. The map button takes you back up. A wax seal marks each place you’ve won.'],
@@ -242,7 +257,6 @@ export const PAGES = {
     ],
   },
   '/middle-earth/place': {
-    title: 'A stop on the road',
     about: 'Walk the place as Frodo, then cook in its kitchen, Overcooked-style, alone or with friends.',
     keys: [
       { label: 'Walking', rows: [...WALK, ['R', 'The Ring, on or off (in the Shire)'], ['Esc', 'Leave what you’re doing']] },
@@ -258,7 +272,6 @@ export const PAGES = {
     ],
   },
   '/avengers': {
-    title: 'Avengers HQ',
     about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
     keys: [
       { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
@@ -274,7 +287,6 @@ export const PAGES = {
     ],
   },
   '/scranton': {
-    title: 'Scranton',
     about: 'Dunder Mifflin in 3D, as Jim. A week of seven jobs: reception, the stapler in Jell-O, Kevin’s chili, paper toss, the fact check, Dwight’s fire drill and the Dundies.',
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Pick what to say'], ['Space / Enter', 'Go on (a talk), throw (paper toss)'], ['Esc', 'Leave a job']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and what to say']] }],
@@ -286,7 +298,6 @@ export const PAGES = {
     ],
   },
   '/cybertron': {
-    title: 'Cybertron',
     keys: [
       {
         label: 'Roll out',
@@ -308,7 +319,6 @@ export const PAGES = {
     ],
   },
   '/albuquerque': {
-    title: 'Albuquerque',
     about: 'Drive round town in Walt’s Aztek. Places open up as Walt’s career grows, each with its own game.',
     keys: [
       {
@@ -336,7 +346,6 @@ export const PAGES = {
     ],
   },
   '/c-137': {
-    title: 'Dimension C-137',
     about: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
     keys: [
       { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games'], ['M', 'Things to do']] },
@@ -353,7 +362,6 @@ export const PAGES = {
     ],
   },
   '/c-137/citadel': {
-    title: 'The Citadel of Ricks',
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Answer'], ['Space', 'Drop a wafer (Simple Rick’s)'], ['Esc', 'Leave a scene']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and the answers']] }],
     tips: [
@@ -365,7 +373,6 @@ export const PAGES = {
     ],
   },
   '/dot-matrix': {
-    title: 'Dot Matrix',
     keys: [
       {
         rows: [
@@ -386,7 +393,6 @@ export const PAGES = {
     ],
   },
   '/earth': {
-    title: 'Earth',
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
       { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
@@ -399,7 +405,6 @@ export const PAGES = {
     ],
   },
   '/music': {
-    title: 'The music room',
     keys: [{ label: 'The courtyard', rows: [['W A S D', 'Walk'], ['← →', 'Turn'], ['Drag', 'Look round'], ['E', 'Play the instrument you’re by']] }, { label: 'The sitar', rows: [['hold Space', 'A chikari roll']] }],
     touch: [{ label: 'The courtyard', rows: [...WALK_TOUCH, ['Tap', 'An instrument’s button to play it']] }],
     tips: [
@@ -408,16 +413,14 @@ export const PAGES = {
     ],
   },
   '/terminal': {
-    title: 'The terminal',
-    nudge: false,
     keys: [{ rows: [['Enter', 'Run a command'], ['Tab', 'Complete'], ['↑ ↓', 'Walk the history'], ['Ctrl+L', 'Clear']] }],
     tips: [['Commands', 'Type help. Try worlds, order66, deathstar or language.']],
   },
   '/travel': {
-    title: 'Travel',
     tips: [
       ['The globe', 'Drag to spin it, and click a place to fly there.'],
       ['Fly there yourself', 'Earth, out on the universe map, puts you in a little plane to every place on it.'],
+      FEED_TIP,
     ],
   },
 };
@@ -438,20 +441,8 @@ export const SITE = [
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],
 ];
 
-// A path's entry (with its `key`, the entry's own path), or null. The
-// deeper paths share their section's: every role is Experience, every place
-// on the map the universe.
-const RULES = [
-  [/^\/(universe(\/.*)?)?$/, '/universe'],
-  [/^\/experience\/[^/]+$/, '/experience'],
-  [/^\/projects\/[^/]+$/, '/project'],
-  [/^\/galaxy\/[^/]+\/surface$/, '/galaxy/surface'],
-  [/^\/galaxy\/[^/]+\/mission$/, '/galaxy/mission'],
-  [/^\/galaxy\/[^/]+$/, '/galaxy'],
-  [/^\/middle-earth\/[^/]+$/, '/middle-earth/place'],
-];
-
+// A path's entry, with its `key` (the entry's own path) and title, or null
 export function guideFor(pathname) {
-  const key = PAGES[pathname] ? pathname : (RULES.find(([re]) => re.test(pathname))?.[1] ?? null);
-  return key ? { key, ...PAGES[key] } : null;
+  const key = guideKeyFor(pathname);
+  return key && PAGES[key] ? { key, ...GUIDES[key], ...PAGES[key] } : null;
 }

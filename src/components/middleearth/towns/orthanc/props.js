@@ -483,6 +483,12 @@ function hall(K) {
     bk.add(K.mats.cushion, new THREE.BoxGeometry(1.2, 0.08, 0.86), { p: [x, y + 0.6, z + 0.18] });
   }
 
+  // a pale lamp hanging on a long chain before the throne
+  const lamp = V3(THRONE.x, 7, THRONE.z + 3);
+  bk.add(mats.iron, new THREE.CylinderGeometry(0.02, 0.02, HALL_H + 4 - lamp.y, 4), { p: [lamp.x, (HALL_H + 4 + lamp.y) / 2, lamp.z] });
+  bk.add(mats.iron, lathe([[0.04, -0.5], [0.3, -0.3], [0.36, 0.1], [0.2, 0.4], [0.03, 0.55]], 8), { p: [lamp.x, lamp.y, lamp.z] });
+  bk.add(mats.lampGlow, new THREE.SphereGeometry(0.24, 14, 10), { p: [lamp.x, lamp.y, lamp.z] });
+
   // braziers: iron bowls on tripods, glowing
   const fires = [];
   for (const [x, z] of BRAZIERS) {
@@ -495,7 +501,7 @@ function hall(K) {
     fires.push(V3(x, 1.38, z));
   }
   bk.build(g, { shadow: false, receive: true });
-  return { group: g, windows, fires };
+  return { group: g, windows, fires, lamp };
 }
 
 // ── the palantír on its pillar ──
@@ -1033,6 +1039,7 @@ export function createOrthancKit(renderer) {
     page: M({ color: 0xd8ccb0, roughness: 0.9, side: THREE.DoubleSide }),
     parchment: M({ color: 0x9a8662, roughness: 0.95, side: THREE.DoubleSide }),
     lanternGlow: new THREE.MeshBasicMaterial({ color: hot(0xffa850, 1.8) }),
+    lampGlow: new THREE.MeshBasicMaterial({ color: hot(0xdfe8ff, 1.6) }),
     wax: M({ color: 0xf0e6cc, roughness: 0.6, emissive: hot(0xffc890, 0.15) }),
     jar: M({ color: 0x7a4a2a, roughness: 0.55 }),
     towerStone: M({ map: tex.stone, normalMap: tex.stoneN, color: 0x9a9ca8, roughness: 0.3, metalness: 0.35, envMap: stormEnv, envMapIntensity: 1.5 }),

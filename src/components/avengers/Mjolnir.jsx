@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { capturePointer } from '../../lib/pointer';
+import '../../styles/lazy/avengers.css';
 
 const sfx = () => import('../../lib/sfx');
 const HOLD = 1800; // ms of holding before the hammer decides

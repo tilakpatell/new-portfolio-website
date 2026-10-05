@@ -2,12 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import ModelCredits from '../ModelCredits';
+import { local, storage } from '../../lib/hooks';
 import { CHAPTERS } from './chapters';
 import { hidden as hiddenPlace, hiddenAt } from './hidden';
+import { roadRecord } from './record';
+import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
+import '../../styles/lazy/middleearth.css';
 
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;
+
+const RECORD_OPEN = 'tp-me-record'; // the road so far, left open this visit
 
 // A wax seal, for a place whose trials are won.
 function Seal({ title }) {
@@ -300,6 +306,18 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const won = (c) => c.seals.length > 0 && c.seals.every((s) => unlocked.includes(s));
   const here = CHAPTERS.find((c) => c.id === near);
   const live = Boolean(api.current?.tap);
+  // the road so far: every chapter's seals, its game on the side, and its
+  // kitchen's best (./record.js), under the route when asked for
+  const [record, setRecord] = useState(() => Boolean(storage.get(RECORD_OPEN, false)));
+  const toggleRecord = () => {
+    setRecord((v) => {
+      storage.set(RECORD_OPEN, !v);
+      return !v;
+    });
+  };
+  // (a kitchen's best is read from the browser when the panel opens: it
+  // can only have changed on a kitchen's page, never here)
+  const road = useMemo(() => (record ? roadRecord({ unlocked, best: (id) => local.get(bestKey(id), null) }) : null), [record, unlocked]);
 
   return (
     <div className="me-hub" data-leaving={leaving || undefined} data-hidden={hidden || undefined} data-roam={roam || undefined}>
@@ -404,11 +422,71 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
               Find Frodo
             </button>
           )}
+          <button type="button" className="btn btn-ghost btn-sm me-record-btn" data-on={record || undefined} aria-expanded={record} aria-controls="me-record" onClick={toggleRecord}>
+            The road so far
+          </button>
           <Link to="/" className="btn btn-ghost btn-sm">
             Back to the site
           </Link>
         </div>
+        {road && <RoadSoFar road={road} onGo={onGo} onClose={toggleRecord} />}
       </nav>
     </div>
+  );
+}
+
+// The road so far: each chapter with its seals (filled as they're won), its
+// game on the side (a star once won) and its kitchen's stars and best coins.
+function RoadSoFar({ road, onGo, onClose }) {
+  const t = road.totals;
+  return (
+    <aside id="me-record" className="me-record" aria-label="The road so far">
+      <div className="me-record-head">
+        <p className="eyebrow">The road so far</p>
+        <p className="me-record-totals">
+          <span>
+            <b>{t.seals.won}</b> of {t.seals.total} seals
+          </span>
+          <span>
+            <b>{t.sides.won}</b> of {t.sides.total} on the side
+          </span>
+          <span>
+            <b>{t.stars.won}</b> of {t.stars.total} kitchen stars
+          </span>
+        </p>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <ol className="me-record-list">
+        {road.chapters.map((c) => (
+          <li key={c.id} data-won={c.won || undefined}>
+            <button type="button" className="me-record-name" onClick={() => onGo(c.id)}>
+              {c.name}
+            </button>
+            <span className="me-record-seals" role="img" aria-label={`${c.seals.won} of ${c.seals.total} seals`} title={`${c.seals.won} of ${c.seals.total} seals`}>
+              {Array.from({ length: c.seals.total }, (_, i) => (
+                <i key={i} data-on={i < c.seals.won || undefined} />
+              ))}
+            </span>
+            {c.side && (
+              <span className="me-record-side" data-on={c.side.won || undefined} role="img" aria-label={`${c.side.name}: ${c.side.won ? 'won' : 'not yet'}`} title={`On the side: ${c.side.name}${c.side.won ? ', won' : ''}`}>
+                ★
+              </span>
+            )}
+            {c.kitchen && (
+              <span className="me-record-kitchen" role="img" aria-label={`${c.kitchen.name}: ${c.kitchen.stars} of 3 stars, best ${c.kitchen.best} coins`} title={`${c.kitchen.name}: stars at ${c.kitchen.marks.join(', ')} coins`}>
+                {[0, 1, 2].map((i) => (
+                  <b key={i} data-on={i < c.kitchen.stars || undefined}>
+                    ★
+                  </b>
+                ))}
+                <small>{c.kitchen.best > 0 ? `${c.kitchen.best} coins` : 'not yet cooked'}</small>
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </aside>
   );
 }

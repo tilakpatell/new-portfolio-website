@@ -20,6 +20,7 @@ import { CREEP, ROPE, SCOUTS, WAY, hopWay, newCreep, newDescent, newFell, newLur
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './marshes.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // The Emyn Muil, the Dead Marshes and the Black Gate: the eighth stretch
 // of the road, Frodo and Sam alone with Gollum. The places are in

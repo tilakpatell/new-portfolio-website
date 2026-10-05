@@ -17,14 +17,13 @@
 //   where there's a model), opts (for a built one) }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpenMaterial } from '../../../lib/three/textures';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { PROPS, SCATTER } from './props';
 
-let loader = null;
-const getLoader = () => (loader ??= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder));
+const getLoader = () => gltfLoader();
 const cache = new Map(); // url → promise of the gltf (shared by every world, while the page is up)
 export function loadGlb(url) {
   if (!cache.has(url))
@@ -49,7 +48,7 @@ function prepared(gltf) {
       if (!o.isMesh) return;
       o.castShadow = true;
       o.receiveShadow = true;
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) for (const t of [m.map, m.normalMap]) if (t) t.anisotropy = 4;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) sharpenMaterial(m);
     });
     root.userData.prepared = true;
   }

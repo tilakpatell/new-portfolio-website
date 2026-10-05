@@ -1,0 +1,66 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.resume-sheet {
+  max-width: 880px;
+  margin-inline: auto;
+  padding: clamp(1.4rem, 4vw, 3.4rem) clamp(1.1rem, 4.5vw, 3.6rem);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 30px 60px -40px color-mix(in srgb, var(--text) 55%, transparent);
+  color: var(--text-body);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.resume-name { font-stretch: 112%; font-size: clamp(1.7rem, 1.3rem + 1.4vw, 2.3rem); font-weight: 700; letter-spacing: -0.015em; color: var(--text); margin: 0; }
+.resume-contact { margin-top: 0.35rem; font-size: 0.8125rem; color: var(--text-body); }
+.resume-contact a { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--border-strong); }
+.resume-section { margin-top: 1.35rem; }
+.resume-h {
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--text);
+  font-variant: small-caps;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+.resume-skills > div { margin-bottom: 0.15rem; }
+.resume-skills dt { display: inline; font-weight: 700; color: var(--text); }
+.resume-skills dd { display: inline; margin: 0; }
+.resume-skill {
+  padding: 0 1px;
+  border-radius: 4px;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.resume-skill:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.resume-skill[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); text-decoration: none; }
+.resume-entry { position: relative; margin-bottom: 0.7rem; transition: opacity 0.25s ease; }
+.resume-entry[data-dim] { opacity: 0.35; }
+.resume-entry[data-lit]::before { content: ''; position: absolute; left: -0.9rem; top: 0.15rem; bottom: 0.15rem; width: 3px; border-radius: 2px; background: var(--accent); }
+.resume-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 1rem; }
+.resume-row strong,
+.resume-title { font-weight: 700; color: var(--text); }
+.resume-title:hover { text-decoration: underline; text-underline-offset: 3px; }
+.resume-sub { font-size: 0.875rem; }
+.resume-stack { font-style: italic; font-size: 0.875rem; }
+.resume-link { font-size: 0.875rem; text-decoration: underline; text-underline-offset: 2px; }
+.resume-bullets { margin: 0.25rem 0 0; padding-left: 1.2rem; list-style: disc; }
+.resume-bullets li { margin: 0.12rem 0; transition: opacity 0.25s ease; }
+.resume-entry[data-lit] .resume-bullets li[data-dim] { opacity: 0.55; }
+.resume-bullets mark { padding: 0 0.12em; border-radius: 3px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
+.resume-course { margin: 0.3rem 0 0; font-size: 0.875rem; }
+
+@media print {
+  .resume-sheet { max-width: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; color: #111; background: #fff; font-size: 10.5pt; }
+  .resume-entry[data-dim], .resume-bullets li[data-dim] { opacity: 1; }
+  .resume-entry[data-lit]::before { display: none; }
+  .resume-skill { text-decoration: none; padding: 0; }
+  .resume-skill[aria-pressed='true'] { background: none; color: inherit; }
+  .resume-bullets mark { background: none; }
+}

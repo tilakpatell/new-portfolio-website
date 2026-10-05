@@ -16,6 +16,7 @@ import { CALL_COUNT, CHILI, CONVOS, FIRE, HOOPS, JELLO, QUESTS, SEAL, SPEAKERS, 
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import './world.css';
+import '../../../styles/lazy/office.css';
 
 const PaperToss = lazy(() => import('../PaperToss'));
 const FactCheck = lazy(() => import('../FactCheck'));

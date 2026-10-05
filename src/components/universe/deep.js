@@ -16,7 +16,7 @@
 // back. What's on its far side (`beyond`) is a friend's universe, their own
 // site, and the page goes on to it (Universe.jsx).
 
-import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const DEEP = {
@@ -160,6 +160,24 @@ export const PLACES = [
   ...WONDERS.map((w) => ({ id: w.id, at: w.at, reach: reachOf(w), kind: w.kind })),
 ];
 const far = PLACES.filter((p) => p.kind !== 'station'); // (the stations are the home system)
+
+// every star on the map: the home sun, and the suns out among the wonders
+// (each { id, at, r, color }: what a solar flare (director.js) comes from)
+export const STARS = [{ id: 'sun', at: SUN.at, r: SUN.r, color: '#ffcf6a' }, ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, color: w.color }))];
+
+// the star nearest (x, y, z), and how far its middle is
+export function nearestStar(x, y, z) {
+  let star = STARS[0];
+  let dist = Infinity;
+  for (const s of STARS) {
+    const d = Math.hypot(x - s.at[0], y - s.at[1], z - s.at[2]);
+    if (d < dist) {
+      dist = d;
+      star = s;
+    }
+  }
+  return { star, dist };
+}
 
 // the place nearest (x, y, z), and how far past its reach it is (negative: inside)
 // (it runs a few times a frame: plain square roots, and one answer made)
