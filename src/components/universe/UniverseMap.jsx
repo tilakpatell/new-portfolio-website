@@ -3,6 +3,7 @@ import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from './controls';
 import FlightSettings from './FlightSettings';
+import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
@@ -18,14 +19,15 @@ import MiniMap from './MiniMap';
 // the ones coming at you that you can't see, and the way to wherever you're
 // going; the scene places them), Boost, Fire (held, it keeps firing), View
 // (the cockpit or behind the ship) and nose-up and nose-down buttons on touch
-// screens, the flight settings (FlightSettings.jsx, kept between visits)
-// and a line on how to fly until you do. While the
+// screens, the flight settings (FlightSettings.jsx, kept between visits),
+// the hangar (Hangar.jsx: the ship's paint job and parts, which the page
+// keeps) and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, net = null, onEvent, onLand, onCrash }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -45,7 +47,21 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     setControlsState(next);
     local.set(CONTROLS_KEY, next);
   };
-  const openSettings = useCallback((on) => setSettingsOpen(on), []);
+  // (the settings and the hangar sit in the same place: one at a time)
+  const openSettings = useCallback(
+    (on) => {
+      setSettingsOpen(on);
+      if (on) onHangar?.(false);
+    },
+    [onHangar],
+  );
+  const openHangar = useCallback(
+    (on) => {
+      onHangar?.(on);
+      if (on) setSettingsOpen(false);
+    },
+    [onHangar],
+  );
   const events = useRef(onEvent);
   events.current = onEvent;
   const { wrap, on, meant, view } = useScene(load, {
@@ -54,6 +70,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     props: {
       selected,
       ship,
+      loadout,
       controls,
       labels,
       stick,
@@ -255,6 +272,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 {onFoot ? 'Run' : 'Boost'}
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
+              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} onFit={onFit} open={hangar} onOpen={openHangar} />}
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
@@ -266,7 +284,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                   </span>
                   <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out</span>
                 </p>

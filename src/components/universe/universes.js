@@ -211,6 +211,18 @@ const FANDOMS = [
     size: 0.62,
     palette: { base: '#0f6b70', dark: '#06323a', light: '#e9d9a6', glow: '#f2c45a' },
   },
+  {
+    id: 'invincible',
+    label: 'Invincible',
+    world: 'Invincible',
+    place: 'the Graysons’ city',
+    to: '/invincible',
+    swatch: '#ffd23a',
+    accent: '#ffd23a',
+    rim: '#e8743a', // Viltrum's own air, not the suit's yellow
+    size: 0.64,
+    palette: { base: '#a8482a', dark: '#4a1a10', light: '#e6a05a', glow: '#ffd23a' },
+  },
 ].map((u) => ({ ...u, size: u.size * PLANET, kind: 'fandom', place: u.place ?? u.world }));
 
 export const UNIVERSES = [...CORE, ...FANDOMS];

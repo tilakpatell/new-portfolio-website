@@ -115,6 +115,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
     c.group.scale.setScalar(tall / c.height);
     c.group.position.set(x, CREW.y, CREW.z);
     for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    c.group.traverse((o) => (o.userData.noPaint = true)); // (a paint job on the universe map's cruiser is the hull's, not theirs)
     hull.add(c.group);
     crew.push(c);
   }
@@ -168,6 +169,10 @@ export async function buildCruiser({ ink = 1 } = {}) {
   return {
     group: ship,
     engines: glows, // the exhaust cans, for a scene that draws their exhaust
+    // the cans' glow in another colour (a paint job's), or its own green with null
+    tint(color) {
+      glowMat.color.set(color ?? '#ffffff');
+    },
     // Rick and Morty in their seats (false: they've got out)
     seated(on) {
       for (const c of crew) c.group.visible = on;
