@@ -36,7 +36,7 @@ export const POSE_MS = 100; // how often a pose goes out
 export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden
 export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
-export const BOLT_LIFE = 1.1; // seconds a bolt flies (targeting.js's AIM.life)
+export const BOLT_LIFE = 1.1; // seconds a bolt flies, at the most (targeting.js's AIM.life, with room to spare)
 export const GUARD = {
   shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
   gap: 90, // ms between hits from one pilot (the fastest guns, the X-wing's, fire every 120)
@@ -45,7 +45,7 @@ export const GUARD = {
   killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], cur: [25, 40], shot: [6, 8], hit: [6, 8], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] };
+export const RATES = { pose: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2 };
 

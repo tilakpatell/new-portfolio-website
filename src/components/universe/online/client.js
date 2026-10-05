@@ -34,7 +34,7 @@ import { UNIVERSE, placeName } from './where';
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
 const AIMS = 8; // each pilot's last shots, kept to check a hit against
-const SHOT_GAP = 150; // ms between shots sent (the guns fire every 220)
+const SHOT_GAP = 100; // ms between shots sent (the fastest guns, the X-wing's, fire every 120)
 const PILOTS = 32; // pilots kept track of, at most (each one flying sends ten bundles a second)
 const HEARTBEAT_MS = 15000; // a hello this often, so a pilot sitting still isn't dropped
 const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
