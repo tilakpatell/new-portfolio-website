@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { AREAS, FURNITURE, LINKS, PEOPLE } from '../rules';
 import { paint, rng } from '../kit';
 import { BOX, CYL8, TAU, ceilings, doorAt, fitText, makeRoom, scribble, tiledPaint, wallLine, win, windowView } from './shell';
-import { toonPerson } from './people';
+import { facingAhead, needCast, person, sitting } from './people';
 
 const H = 2.9;
 const CREAM = 0xf1e7c6;
@@ -237,6 +237,42 @@ function chairDesks(R, it) {
   }
 }
 
+// the class: who, how tall, and in shapes if their models won't load
+const CLASS = [
+  ['jessica', 1.72, { skin: 0xf6dcc8, shirt: 0xd9cdf0, coat: 0xd9cdf0, pants: 0xb59ad8, shoes: 0xf0a0c0, hair: 0xf08a3c }],
+  ['brad', 1.95, { skin: 0x6b4a32, shirt: 0xc8302a, coat: 0x2f7a46, pants: 0x3a4048, shoes: 0xc8302a, hair: 0x1a1410 }],
+  ['tammy', 1.72, { skin: 0xf6dcc8, shirt: 0x9cc4ea, coat: 0x9cc4ea, pants: 0xcdb98e, shoes: 0x5a5a3a, hair: 0x7a4a2a }],
+  ['ethan', 1.8, { skin: 0xf0d2b8, shirt: 0xeee6cc, coat: 0x6f8494, pants: 0x7a2e3a, shoes: 0x9aa3ab, hair: 0xe0c060 }],
+  ['tinyrick', 1.7, { skin: 0xe8dccb, shirt: 0x9fe0e8, coat: 0xf4f4f0, pants: 0x7a5a3a, shoes: 0x3a3d42, hair: 0xa8d8f0 }],
+];
+const PRINCIPAL = { skin: 0xf2d0b0, shirt: 0xc8e4f4, coat: 0xc8e4f4, pants: 0x8a7e6a, shoes: 0x8a4a2a, hair: 0x3a2a1e, tie: 0x2f6fb0 };
+const SIT = { back: 0.12, y: -0.4 }; // into the seat from where they're put, for one 1.9 m tall
+async function seatClass(R, kit) {
+  const clip = await sitting();
+  for (const [id, h, look] of CLASS) {
+    const p = PEOPLE.find((o) => o.id === id);
+    const c = clip ? (kit.cast?.make?.(id) ?? null) : null;
+    if (!c?.mixer) {
+      person(R, id, { ...p, h, look, meshy: false });
+      continue;
+    }
+    c.group.scale.setScalar(h / c.height);
+    // (back into the seat: away from the way they face)
+    c.group.position.set(p.x - Math.cos(p.face) * SIT.back, (SIT.y * h) / 1.9, p.z + Math.sin(p.face) * SIT.back);
+    c.group.rotation.y = p.face + Math.PI / 2;
+    R.group.add(c.group);
+    const sit = c.mixer.clipAction(facingAhead(c, clip));
+    sit.play();
+    for (const a of Object.values(c.act)) a.setEffectiveWeight(0);
+    sit.setEffectiveWeight(1);
+    let last = null;
+    R.tick((t) => {
+      c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
+      last = t;
+    });
+  }
+}
+
 function teacherDesk(R, it) {
   const f = R.frame(it.x, it.z, it.turn);
   const { w, d, h } = it;
@@ -280,6 +316,7 @@ function bookcase(R, x, z, turn, w = 1.6, h = 1.85, d = 0.34) {
 
 export async function buildSchoolRoom(kit) {
   const R = makeRoom(kit, 'school');
+  await needCast(kit, ['goldenfold', 'principal', ...CLASS.map(([id]) => id)]);
   const m = kit.mats;
   const a = AREAS.school;
   paintCells(R);
@@ -368,18 +405,15 @@ export async function buildSchoolRoom(kit) {
     else if (it.kind === 'goldenfold-desk') teacherDesk(R, it);
   }
 
-  // the teacher, behind his desk: yellow shirt, dark hair, a moustache
+  // Mr. Goldenfold, behind his desk, looking round the class now and then
   const t = PEOPLE.find((p) => p.id === 'teacher');
-  const fig = toonPerson(R, TEACHER, 1.95);
-  fig.group.position.set(t.x, 0, t.z);
-  fig.group.rotation.y = t.face + Math.PI / 2;
-  R.group.add(fig.group);
+  const fig = person(R, 'goldenfold', { ...t, h: 1.95, look: TEACHER });
   const turn0 = fig.group.rotation.y;
-  R.tick((tt) => {
-    fig.tick(tt);
-    // looking round the class now and then
-    fig.group.rotation.y = turn0 + Math.sin(tt * 0.35) * 0.35;
-  });
+  R.tick((tt) => (fig.group.rotation.y = turn0 + Math.sin(tt * 0.35) * 0.35));
+  // the principal, at the front by the board
+  person(R, 'principal', { ...PEOPLE.find((p) => p.id === 'principal'), h: 1.85, look: PRINCIPAL });
+  // and the class, sat at their desks (Rick's sat clip, as the Smiths have it)
+  await seatClass(R, kit);
 
   return R.build({ light: { sun: [0xffffff, 0.5], hemi: [0xf4f8ff, 0x8d9aa8, 2.0], fog: null, background: 0x101418 } });
 }

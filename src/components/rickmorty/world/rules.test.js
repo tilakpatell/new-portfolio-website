@@ -1302,6 +1302,12 @@ describe('C-137: the things to touch', () => {
       'plumbus',
       'portalpanic',
       'quiz',
+      'principal',
+      'jessica',
+      'brad',
+      'tammy',
+      'ethan',
+      'tinyrick',
       'roy',
       'cabinet1',
       'cabinet2',
@@ -1608,11 +1614,13 @@ describe('C-137: the people', () => {
   const HOTSPOT_OF = { jerry: 'jerry', beth: 'beth', summer: 'summer', rick: 'rick', teacher: 'quiz' };
   // the people behind a desk, across it from their hotspot
   const ACROSS = ['teacher', 'ovalpresident'];
+  // (the class, sat at their desks, are talked to from the aisle beside them)
+  const CLASS = ['jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
   const hotspotOf = (p) => HOTSPOT_OF[p.id] ?? p.id;
 
   it('has Jerry, Beth, Summer, Rick and the teacher, each in their own room, and the visitors in theirs', () => {
-    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'dineragent']);
-    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'diner']);
+    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher', 'president', 'secretservice', 'agent1', 'agent2', 'agent3', 'ovalpresident', 'general1', 'general2', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', 'dineragent']);
+    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school', 'street', 'street', 'street', 'street', 'street', 'oval', 'oval', 'oval', 'school', 'school', 'school', 'school', 'school', 'school', 'diner']);
     // each new one says which model they are, where it's not their id
     for (const p of PEOPLE.filter((o) => o.who)) expect(['president', 'fedagent', 'general', 'secretservice'], p.id).toContain(p.who);
     const room = (id) => PLAN.find((r) => r.id === id);
@@ -1630,7 +1638,7 @@ describe('C-137: the people', () => {
     expect(Math.cos(at('jerry').face)).toBeCloseTo(1, 6);
     const desk = FURNITURE.find((f) => f.id === 'goldenfold-desk');
     expect(at('teacher').z).toBeLessThan(desk.z - desk.d / 2);
-    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', 'dineragent']);
+    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry', ...CLASS, 'dineragent']);
   });
 
   it('puts each one at the hotspot that talks to them: just behind it, or Jerry on the couch', () => {
@@ -1640,8 +1648,8 @@ describe('C-137: the people', () => {
       expect(h.area, p.id).toBe(p.area);
       expect(h.until, p.id).toBe(p.until);
       // the teacher and the President are across their desks from theirs, with the whole desk between
-      expect(Math.hypot(p.x - h.x, p.z - h.z), p.id).toBeLessThan(ACROSS.includes(p.id) ? 2.2 : 0.4);
-      expect(nearHotspot(p.area, p.x, p.z)?.id, p.id).toBe(ACROSS.includes(p.id) ? undefined : h.id);
+      expect(Math.hypot(p.x - h.x, p.z - h.z), p.id).toBeLessThan(ACROSS.includes(p.id) || CLASS.includes(p.id) ? 2.2 : 0.4);
+      if (!CLASS.includes(p.id)) expect(nearHotspot(p.area, p.x, p.z)?.id, p.id).toBe(ACROSS.includes(p.id) ? undefined : h.id);
     }
   });
 

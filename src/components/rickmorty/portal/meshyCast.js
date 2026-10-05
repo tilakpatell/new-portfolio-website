@@ -51,9 +51,17 @@ export const MESHY = {
   fedagent: { a: 'fedagent', h: 1.9 },
   general: { a: 'general', h: 1.82 },
   secretservice: { a: 'secretservice', h: 1.84 },
+  goldenfold: { a: 'goldenfold', h: 1.8 },
+  principal: { a: 'principal', h: 1.7 },
+  jessica: { a: 'jessica', h: 1.62 },
+  brad: { a: 'brad', h: 1.85 },
+  tammy: { a: 'tammy', h: 1.62 },
+  ethan: { a: 'ethan', h: 1.72 },
+  tinyrick: { a: 'tinyrick', h: 1.6 },
 };
-const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
+const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick']);
+const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL]);
 // and the set pieces round the arenas (the C-137 Smiths load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
