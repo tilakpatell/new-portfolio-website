@@ -28,9 +28,9 @@ export const SITES = {
       clouds: { cover: 0.42, color: '#ffffff', shade: '#b4c2d6', scale: 0.6, speed: 0.006 },
       // Hoth's three moons, pale in the day
       bodies: [
-        { az: -0.35, el: 0.42, size: 0.03, color: '#e4e9f0', color2: '#c4ccd8', bands: 0 },
-        { az: -0.12, el: 0.55, size: 0.014, color: '#d8dee6' },
-        { az: 0.5, el: 0.33, size: 0.009, color: '#dce2ea' },
+        { az: -0.62, el: 0.24, size: 0.034, color: '#e6ebf2', color2: '#c4ccd8', bands: 0 },
+        { az: -0.3, el: 0.31, size: 0.013, color: '#d8dee6' },
+        { az: 0.42, el: 0.2, size: 0.009, color: '#dce2ea' },
       ],
     },
     fog: { color: '#e2eaf3', density: 0.0011 },
@@ -74,7 +74,7 @@ export const SITES = {
     land: { at: [0, 0], yaw: -0.75 },
     lines: {
       out: {
-        xwing: [['luke', 'Hoth. I swore I’d never be this cold again.'], ['r2', '(A shivering, chattering warble.)']],
+        xwing: [['luke', 'Hoth. Keep your sensors on the ridges, Artoo. There are wampas out here.'], ['r2', '(A shivering, chattering warble.)']],
         falcon: [['han', 'Hoth. Of all the frozen rocks in the galaxy.'], ['chewie', '(A miserable, freezing howl.)']],
         cruiser: [['morty', 'R-Rick, it’s s-so cold!'], ['rick', 'It’s an ice planet, Morty. Should’ve brought a jacket. Or a tauntaun.']],
         rv: [['jesse', 'Yo, it is mad cold out here, Mr. White.'], ['walt', 'Then we work fast.']],
