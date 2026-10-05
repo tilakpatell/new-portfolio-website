@@ -97,7 +97,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, REACH, SUN } from './layout';
+import { ORDER, POSITIONS, REACH, RIM, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
@@ -500,6 +500,9 @@ export async function create(canvas, ctx) {
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
   const belt = createBelt({ small: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600 });
   map.add(belt.group);
+  // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
+  const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012 });
+  map.add(rim.group);
   const dust = createDust({ small: Math.min(window.innerWidth, window.innerHeight) < 600 });
   map.add(dust.points);
   const camLocal = new THREE.Vector3();
@@ -1508,6 +1511,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     traffic?.setCrew(kind);
     hunters?.clear();
+    meteors.clear();
     dropCab();
     cabWanted = null;
     if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -2199,7 +2203,7 @@ export async function create(canvas, ctx) {
     // into a wonder, it's a crash of its own kind
     const wonder = wonderById(e.id) ?? (e.id.includes('-') ? wonderById(e.id.split('-')[0]) : null);
     // (a wonder with a world of its own, the Citadel, crashes under its own name)
-    const kind = !wonder || (wonder.id !== e.id && !solid.part) ? null : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? wonder.id : null;
+    const kind = !wonder || (wonder.id !== e.id && !solid.part) ? null : wonder.kind === 'star' || wonder.kind === 'pulsar' || wonder.kind === 'binary' || wonder.kind === 'graveyard' ? 'star' : wonder.kind.endsWith('giant') || wonder.kind === 'rogue' ? 'giant' : wonder.world ? wonder.id : null;
     const swallow = Boolean(e.swallowed);
     state.crash = {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
@@ -2208,7 +2212,7 @@ export async function create(canvas, ctx) {
       kind,
       world: wonder?.world ?? null,
       page: wonder?.page ?? null, // (the Citadel: its own world, inside)
-      colour: kind === 'giant' ? wonder.colors[0] : null,
+      colour: kind === 'giant' ? (wonder.colors?.[0] ?? null) : null,
       swallow, // into the black hole: the fall, then on through to what's beyond it
       fall: swallow ? startFall([s.x, s.y, s.z], camLocal.toArray()) : null, // (maw.js)
       fell: null, // where the ship is in it (fallAt)
@@ -2237,6 +2241,7 @@ export async function create(canvas, ctx) {
       state.crash.yaw = -headingTo(-vx, -vz);
       state.view = 'chase'; // (from outside, whichever seat you were in)
       hunters?.clear();
+      meteors.clear();
       infall?.dispose();
       infall = createInfall(map, { color: plumeColor(), shadow: MAW.shadow, at: MAW.at });
       infall.start();
@@ -2272,6 +2277,7 @@ export async function create(canvas, ctx) {
     state.boosting = false;
     burst.clear();
     hunters?.clear();
+    meteors.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
     emit({ type: 'destroyed' });
@@ -2730,6 +2736,7 @@ export async function create(canvas, ctx) {
     state.auto = null;
     arriveAt(park);
     hunters?.clear();
+    meteors.clear();
     state.interdicted = false;
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
@@ -2755,6 +2762,7 @@ export async function create(canvas, ctx) {
       state.jump = null;
       arriveAt(j.park);
       hunters?.clear();
+      meteors.clear();
       state.interdicted = false;
       state.safeUntil = state.clock + SAFE;
       crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
@@ -3345,6 +3353,7 @@ export async function create(canvas, ctx) {
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
     dust.update(camLocal, dustAmount, gl.ratio);
     belt.update(t);
+    rim.update(t);
     // the cockpit over the world, once the camera's in the seat
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
@@ -3680,7 +3689,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, leviathans, meteors, fleet, novae, pilots, state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
