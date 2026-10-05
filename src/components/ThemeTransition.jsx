@@ -12,29 +12,31 @@ const AUTOBOTS = new Set(['optimus', 'bumblebee']);
 
 // The moment a theme is picked: a short scene in its own style, a line it's
 // known for and an original sound, while the new colours land underneath.
+// `clip` is a recording that plays in place of the sound (cut to its second
+// element, in seconds); `line` is the quote said aloud over the sound.
 // Click, tap or any key skips it. Reduced motion keeps the words, not the motion.
 
 const sfx = () => import('../lib/sfx');
 
 const SCENES = {
-  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Star Wars', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), clip: ['binarySunset', 10] },
-  sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith') },
-  stark: { kind: 'hud', color: '#7fdcff', quote: 'I am Iron Man.', by: 'Tony Stark', sound: (s) => s.repulsor(), clip: ['marvel', 6] },
+  jedi: { kind: 'saber', color: '#4aa3ff', quote: 'May the Force be with you.', by: 'Han Solo', sound: (s) => s.saber(undefined, undefined, 0, 'jedi'), line: 'mayTheForce' },
+  sith: { kind: 'saber', color: '#ff2a36', quote: 'I find your lack of faith disturbing.', by: 'Darth Vader', sound: (s) => s.saber(undefined, undefined, 0, 'sith'), line: 'lackOfFaith' },
+  stark: { kind: 'hud', color: '#7fdcff', quote: 'I am Iron Man.', by: 'Tony Stark', sound: (s) => s.repulsor(), line: 'ironMan' },
   arcade: { kind: 'pixels', color: '#d6246e', quote: 'Let’s-a go!', by: 'Player one', sound: (s) => s.coin() },
-  heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), clip: ['bbIntro', 6] },
+  heisenberg: { kind: 'tiles', color: '#5ec8f0', quote: 'I am the one who knocks.', by: 'Walter White', sound: (s) => s.knock(), line: 'oneWhoKnocks' },
   dunder: { kind: 'memo', color: '#1f4e8c', quote: 'Limitless paper in a paperless world.', by: 'Dunder Mifflin', sound: (s) => s.ding() , clip: ['officeTheme', 7] },
-  tortuga: { kind: 'ripple', color: '#d9a436', quote: 'Take what you can. Give nothing back.', by: 'The pirates’ toast', clip: ['pirates', 6] },
+  tortuga: { kind: 'ripple', color: '#d9a436', quote: 'Take what you can! Give nothing back!', by: 'The pirates’ toast', clip: ['pirates', 6], line: 'takeWhatYouCan' },
   pearl: { kind: 'ripple', color: '#f2c45a', quote: 'Now, bring me that horizon.', by: 'Captain Jack Sparrow', clip: ['pirates', 6] },
-  dutchman: { kind: 'ripple', color: '#5df2c0', quote: 'Do you fear death?', by: 'Davy Jones', clip: ['pirates', 6] },
+  dutchman: { kind: 'ripple', color: '#5df2c0', quote: 'Do you fear death?', by: 'Davy Jones', clip: ['pirates', 6], line: 'fearDeath' },
   raga: { kind: 'ripple', color: '#e8871e', quote: 'Sa. Where every raga begins and ends.', by: 'Raga', sound: null },
   shire: { kind: 'ring', color: '#e8b44c', quote: 'Even the smallest person can change the course of the future.', by: 'Galadriel', clip: ['lotr', 7] },
-  mordor: { kind: 'ring', color: '#ff6a1a', quote: 'One Ring to rule them all.', by: 'J.R.R. Tolkien', clip: ['lotr', 7] },
-  optimus: { kind: 'transform', color: '#c8102e', quote: 'Autobots, roll out!', by: 'Optimus Prime', sound: (s) => s.transform(), clip: ['transform'] },
+  mordor: { kind: 'ring', color: '#ff6a1a', quote: 'One Ring to rule them all.', by: 'J.R.R. Tolkien', clip: ['lotr', 7], line: 'oneRing' },
+  optimus: { kind: 'transform', color: '#c8102e', quote: 'Autobots, roll out!', by: 'Optimus Prime', sound: (s) => s.transform(), clip: ['transform'], line: 'autobotsRollOut' },
   megatron: { kind: 'transform', color: '#8b5cf6', quote: 'Peace through tyranny.', by: 'Megatron', sound: (s) => s.transform(), clip: ['transform'] },
   bumblebee: { kind: 'transform', color: '#f7c600', quote: 'Bumblebee, ready to roll.', by: 'Bumblebee', sound: (s) => s.transform(), clip: ['transform'] },
   shockwave: { kind: 'transform', color: '#a855f7', quote: 'Logic dictates only one outcome.', by: 'Shockwave', sound: (s) => s.transform(), clip: ['transform'] },
-  soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'] },
-  portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen' },
+  soundwave: { kind: 'transform', color: '#4fd8ff', quote: 'Soundwave superior. Autobots inferior.', by: 'Soundwave', sound: (s) => s.transform(), clip: ['transform'], line: 'soundwaveSuperior' },
+  portal: { kind: 'portal', color: '#97ce4c', quote: 'Wubba lubba dub dub!', by: 'Rick Sanchez', cue: 'portalOpen', clip: ['wubba'] },
   morty: { kind: 'portal', color: '#f3d84b', quote: 'Aw geez, Rick.', by: 'Morty Smith', cue: 'portalOpen' },
   summer: { kind: 'portal', color: '#e2557f', quote: 'Keep Summer safe.', by: 'Rick’s car', cue: 'portalOpen' },
   beth: { kind: 'portal', color: '#8e2b48', quote: 'I’m a horse surgeon.', by: 'Beth Smith', cue: 'portalOpen' },
@@ -164,13 +166,17 @@ export default function ThemeTransition({ id, onDone }) {
 
   useEffect(() => {
     // a recorded clip where there is one (cut short with a fade), else the synthesised sound
+    const made = () => {
+      if (scene.sound) sfx().then((s) => scene.sound(s));
+      else if (scene.cue) import('./games/gameAudio').then((m) => m[scene.cue]?.());
+    };
     if (scene.clip)
       import('../lib/clips').then(async (c) => {
         const played = await c.playClip(scene.clip[0], { duration: scene.clip[1], keep: true });
-        if (!played && scene.sound) sfx().then((s) => scene.sound(s));
+        if (!played) made();
       });
-    else if (scene.sound) sfx().then((s) => scene.sound(s));
-    else if (scene.cue) import('./games/gameAudio').then((m) => m[scene.cue]?.());
+    else if (scene.sound || scene.cue) made();
+    if (scene.line) import('../lib/clips').then((c) => c.playClip(scene.line, { when: 0.25, keep: true }));
     else if (id === 'raga')
       import('./music/engine').then((m) => {
         m.pluck(1, { vel: 0.8 });

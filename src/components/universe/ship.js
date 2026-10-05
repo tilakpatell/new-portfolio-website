@@ -3,36 +3,57 @@
 // so it's tested in Node; the scene copies the numbers onto the model and
 // the camera.
 //
-// The ship flies over the map's disc (x, z) at a fixed height, pointing
-// along `heading` (0 is −z, the way the camera looks; it grows turning
-// left). Input is { throttle: −1…1, turn: −1…1 (right is +), boost }.
-// It turns on the spot, coasts to a stop, can't go through a planet (it
-// bounces off) and is turned back at the edge of the map.
+// The ship flies over the map's disc (x, z) and up and down (y, as far as
+// SHIP.ceiling above or below it), pointing along `heading` (0 is −z, the
+// way the camera looks; it grows turning left). Input is { throttle: −1…1,
+// turn: −1…1 (right is +), climb: −1…1 (up is +), boost }. It turns on the
+// spot, coasts to a stop, climbs and dives (nose up or down as it does),
+// can't go through a planet (it bounces off) and is turned back at the edge
+// of the map, and eased back from the ceiling and the floor.
+//
+// Out past the home system (deep.js) it opens up: the boost becomes a pulse
+// drive (up to SHIP.pulse, dropping back as it comes home, hard enough that
+// it never arrives at a planet at pulse speed), the ceiling lifts to
+// DEEP.ceiling, and the wonders out there are as solid as the planets.
 
+import { DEEP, DEEP_SOLIDS, openness } from './deep';
 import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { byId } from './universes';
 
 export const SHIP = {
   cruise: 5.5, // map units a second (the ship is 0.26 long)
   boost: 20,
+  pulse: 95, // the boost out in deep space
+  pulseAccel: 38, // map units a second, a second, getting up to it
+  drop: 120, // and how hard it falls back to the home system's speeds coming home
   reverse: 2,
   accel: 5.5,
   brake: 11,
   coast: 2.4,
   turn: 2.0, // radians a second
   radius: 0.15,
-  height: 0.3,
+  height: 0.3, // above a planet's middle, where it parks
+  climb: 4.5, // map units a second, up or down (more with boost)
+  lift: 7, // how quickly it gets to the climb it's asked for
+  ceiling: 14, // how far above or below the disc it can go (the big ships' lanes start at 12)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
 };
-export const EDGE = MAP_RADIUS + 8;
+export const EDGE = DEEP.edge;
 const ORBIT_IN = 2.4; // past a planet's reach: closer than this, you're at it
 const ORBIT_OUT = 3.8; // and you've left once you're this far
 const PARK = 1.2; // where autopilot stops, past the planet's reach
 
 export const PLANETS = ORDER.map((id) => ({ id, at: POSITIONS[id], r: byId(id).size, reach: REACH[id] }));
 const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
-// what the ship can't fly through: every planet and station, and the sun
-export const SOLIDS = [...PLANETS, { id: 'sun', at: SUN.at, r: SUN.r, reach: SUN.r * 1.4 }];
+// what the ship can't fly through: every planet and station, the sun, and
+// the wonders out in deep space
+export const SOLIDS = [...PLANETS, { id: 'sun', at: SUN.at, r: SUN.r, reach: SUN.r * 1.4 }, ...DEEP_SOLIDS];
+export const isPlace = (id) => Boolean(PLANET[id]);
+
+// how high it can go at (x, z): the home system's ceiling, lifting to deep
+// space's out past it; and how fast its boost goes there
+export const ceilingAt = (x, z) => SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * openness(x, z);
+export const boostAt = (x, z) => SHIP.boost + (SHIP.pulse - SHIP.boost) * openness(x, z);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)); // to −π…π
@@ -40,7 +61,7 @@ export const forward = (h) => [-Math.sin(h), -Math.cos(h)];
 // the heading that points along (dx, dz)
 export const headingTo = (dx, dz) => Math.atan2(-dx, -dz);
 
-const flat = (s, p) => Math.hypot(s.x - p.at[0], s.z - p.at[2]);
+const away = (s, p) => Math.hypot(s.x - p.at[0], (s.y ?? SHIP.height) - p.at[1], s.z - p.at[2]);
 
 // Parked a little way off a planet, facing it: on a side that's clear of
 // the other planets (so being parked there is being at this one), as near
@@ -61,23 +82,24 @@ export function parkAt(id, from = [0, MAP_RADIUS]) {
     const z = p.at[2] + dz * d;
     let clear = Infinity;
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.hypot(x - o.at[0], z - o.at[2]) - o.reach);
-    const inMap = Math.hypot(x, z) < EDGE - 2;
+    const inMap = Math.hypot(x, z) < MAP_RADIUS + 6;
     const score = dx * ax + dz * az + (clear > ORBIT_IN + 0.2 ? 4 : clear) + (inMap ? 2 : 0);
     if (!best || score > best.score) best = { score, x, z, heading: headingTo(-dx, -dz) };
   }
-  return { x: best.x, z: best.z, heading: best.heading };
+  return { x: best.x, y: p.at[1] + SHIP.height, z: best.z, heading: best.heading };
 }
 
 // A new ship: parked at a universe, or at the near edge of the map facing
 // its middle.
 export function spawn(id) {
-  const at = id && PLANET[id] ? parkAt(id) : { x: 0, z: MAP_RADIUS + 1.5, heading: 0 };
-  return { ...at, y: SHIP.height, speed: 0, bank: 0, edge: false };
+  const at = id && PLANET[id] ? parkAt(id) : { x: 0, y: SHIP.height, z: MAP_RADIUS + 1.5, heading: 0 };
+  return { ...at, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
-// way: { type: 'bump', id, hard }, { type: 'crash', id, at, normal, speed }
-// (into something too fast: the scene plays it out) and { type: 'edge' }.
+// way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
+// normal: [x, y, z], speed } (into something too fast: the scene plays it
+// out) and { type: 'edge' } (at the edge, the ceiling or the floor).
 // `solids` is what it can bump into (everything on the map, unless a test
 // says otherwise).
 export function step(s, input, dt, solids = SOLIDS) {
@@ -85,11 +107,20 @@ export function step(s, input, dt, solids = SOLIDS) {
   const events = [];
   const throttle = clamp(input.throttle || 0, -1, 1);
   const turn = clamp(input.turn || 0, -1, 1);
-  const top = input.boost && throttle > 0 ? SHIP.boost : SHIP.cruise;
+  const climb = clamp(input.climb || 0, -1, 1);
+  const open = openness(s.x, s.z);
+  const limit = boostAt(s.x, s.z);
+  const top = input.boost && throttle > 0 ? limit : SHIP.cruise;
   const want = throttle > 0 ? throttle * top : throttle * SHIP.reverse;
   const faster = Math.abs(want) > Math.abs(s.speed) && Math.sign(want) !== -Math.sign(s.speed);
-  const rate = throttle === 0 ? SHIP.coast : faster ? SHIP.accel * (input.boost ? 1.8 : 1) : SHIP.brake;
-  const speed = s.speed + clamp(want - s.speed, -rate * dt, rate * dt);
+  // past what the boost allows where it is now (coming home at pulse speed),
+  // it falls back hard, so it's at the home system's speeds by the time it's there
+  const over = s.speed > limit;
+  let rate = SHIP.brake;
+  if (over) rate = SHIP.drop;
+  else if (throttle === 0) rate = SHIP.coast;
+  else if (faster) rate = input.boost ? SHIP.accel * 1.8 + (s.speed > SHIP.boost - 1 ? SHIP.pulseAccel * open : 0) : SHIP.accel;
+  const speed = s.speed + clamp((over ? Math.min(want, limit) : want) - s.speed, -rate * dt, rate * dt);
   let heading = wrap(s.heading - turn * SHIP.turn * dt * (speed > SHIP.cruise ? 0.65 : 1));
 
   // turned back at the edge: the nose comes round toward the middle
@@ -100,53 +131,78 @@ export function step(s, input, dt, solids = SOLIDS) {
     heading = wrap(heading + clamp(wrap(home - heading), -2.2 * dt * k, 2.2 * dt * k));
   }
 
+  // up and down: toward the climb it's asked for, easing off as it nears
+  // the ceiling (or the floor) and pushed back once past it
+  const vy0 = s.vy || 0;
+  const ceiling = ceilingAt(s.x, s.z);
+  // (faster out in deep space, where there's further to go)
+  let rise = climb * SHIP.climb * (input.boost ? 1.35 : 1) * (1 + 3 * open);
+  const high = Math.abs(s.y) - (ceiling - 2);
+  if (high > 0 && rise * s.y > 0) rise *= clamp(1 - high / 2, 0, 1);
+  if (Math.abs(s.y) > ceiling) rise = -Math.sign(s.y) * Math.max(1.5, (Math.abs(s.y) - ceiling) * 1.2);
+  const lift = SHIP.lift * (1 + 3 * open) * dt;
+  let vy = vy0 + clamp(rise - vy0, -lift, lift);
+
   const [fx, fz] = forward(heading);
   let x = s.x + fx * speed * dt;
+  let y = s.y + vy * dt;
   let z = s.z + fz * speed * dt;
   let v = speed;
   const r = Math.hypot(x, z);
-  let edge = s.edge && r > EDGE - 1; // clears once well back inside
+  const ceil = ceilingAt(x, z);
+  let edge = s.edge && (r > EDGE - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
   if (r > EDGE) {
     x *= EDGE / r;
     z *= EDGE / r;
+  }
+  if (r > EDGE || Math.abs(y) > ceil) {
     if (!edge) events.push({ type: 'edge' });
     edge = true;
   }
 
-  // off a planet's side, never through it
+  // off a planet, never through it: out along the line from its middle,
+  // whichever way the ship came at it (from the side, from above or below).
+  // A solid with a trench round its middle (the Death Star) lets the ship
+  // down into it, as far as its floor
   for (const p of solids) {
-    const dy = s.y - p.at[1];
-    const min = p.r + SHIP.radius;
-    if (Math.abs(dy) >= min) continue;
-    const reach = Math.sqrt(min * min - dy * dy);
+    const min = (p.band && Math.abs(y - p.at[1]) < p.band.half ? p.band.floor : p.r) + SHIP.radius;
     const dx = x - p.at[0];
+    const dy = y - p.at[1];
     const dz = z - p.at[2];
-    const d = Math.hypot(dx, dz);
-    if (d >= reach) continue;
-    const [nx, nz] = d > 1e-6 ? [dx / d, dz / d] : [-fx, -fz];
-    x = p.at[0] + nx * reach;
-    z = p.at[2] + nz * reach;
-    const into = -(fx * nx + fz * nz) * v; // speed toward the planet
+    const d = Math.hypot(dx, dy, dz);
+    if (d >= min) continue;
+    const [nx, ny, nz] = d > 1e-6 ? [dx / d, dy / d, dz / d] : [-fx, 0, -fz];
+    x = p.at[0] + nx * min;
+    y = p.at[1] + ny * min;
+    z = p.at[2] + nz * min;
+    const ahead = fx * nx + fz * nz;
+    const into = -(ahead * v + ny * vy); // speed toward the planet
     if (into > 0) {
       // too fast is a crash (the scene plays it out); otherwise a bump
-      if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, z], normal: [nx, nz], speed: into });
+      if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, y, z], normal: [nx, ny, nz], speed: into });
       else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55 });
-      v = -0.3 * into; // a little bounce back
+      // a little bounce back: what it had toward the planet, the other way
+      // and smaller (what's left of the ship's speed that it can still fly)
+      v += 1.3 * into * ahead;
+      vy += 1.3 * into * ny;
     }
   }
 
   const bank = s.bank + (turn * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)) - s.bank) * clamp(dt * 6, 0, 1);
-  return { ship: { x, y: s.y, z, heading, speed: v, bank, edge }, events };
+  // nose up climbing, down diving (steeper the slower it goes forward)
+  const pitch0 = s.pitch || 0;
+  const pitch = pitch0 + (clamp(Math.atan2(vy, Math.max(Math.abs(v), 3)), -0.55, 0.55) - pitch0) * clamp(dt * 6, 0, 1);
+  return { ship: { x, y, z, heading, speed: v, vy, pitch, bank, edge }, events };
 }
 
 // The universe the ship is at, if any. Once at one, it stays at it until
 // it's clearly left, so the panel doesn't flicker at the edge.
 export function orbiting(s, current) {
-  if (current && PLANET[current] && flat(s, PLANET[current]) < PLANET[current].reach + ORBIT_OUT) return current;
+  if (current && PLANET[current] && away(s, PLANET[current]) < PLANET[current].reach + ORBIT_OUT) return current;
   let best = null;
   let bd = Infinity;
   for (const p of PLANETS) {
-    const d = flat(s, p) - p.reach;
+    const d = away(s, p) - p.reach;
     if (d < ORBIT_IN && d < bd) {
       best = p.id;
       bd = d;
@@ -156,19 +212,24 @@ export function orbiting(s, current) {
 }
 
 // Flying itself to a universe: the input for this step, and whether it's
-// there (parked, facing it). Steers round any planet in the way. `park` is
-// where it's going, worked out once when the trip starts.
+// there (parked, facing it, level with it). Steers round any planet in the
+// way (as if each went all the way up and down: it changes height as it
+// goes, so it never cuts across one from above). `park` is where it's going,
+// worked out once when the trip starts.
 export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const p = PLANET[id];
   if (!p) return { input: { throttle: 0, turn: 0 }, done: true };
   const tx = park.x - s.x;
   const tz = park.z - s.z;
   const dist = Math.hypot(tx, tz);
+  // up or down to the planet's height, easing in
+  const ty = (park.y ?? SHIP.height) - s.y;
+  const climb = clamp(ty * 0.8 - (s.vy || 0) * 0.35, -1, 1);
   if (dist < 0.4) {
-    // there: stop and turn to face it
+    // there: stop, level off and turn to face it
     const face = wrap(park.heading - s.heading);
-    const done = Math.abs(face) < 0.08 && Math.abs(s.speed) < 0.25;
-    return { input: { throttle: 0, turn: clamp(-face * 3, -1, 1) }, done };
+    const done = Math.abs(face) < 0.08 && Math.abs(s.speed) < 0.25 && Math.abs(ty) < 0.25 && Math.abs(s.vy || 0) < 0.3;
+    return { input: { throttle: 0, turn: clamp(-face * 3, -1, 1), climb }, done };
   }
   // toward the parking spot, steering round anything the straight line
   // would clip (further ahead the faster it goes, and harder the closer it
@@ -225,5 +286,5 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   // round; hard, for anything dead ahead within stopping distance
   const brake = (Math.abs(diff) > 1.1 ? 0.15 : 1) * (danger ? 0.12 : clamp(closest / 5, 0.3, 1));
   const throttle = brake * clamp(dist / 5, 0.12, 1);
-  return { input: { throttle, turn, boost: !blocked && dist > 18 && Math.abs(diff) < 0.25 }, done: false };
+  return { input: { throttle, turn, climb, boost: !blocked && dist > 18 && Math.abs(diff) < 0.25 }, done: false };
 }

@@ -21,6 +21,7 @@ import TesseractRun from '../components/avengers/tesseract/TesseractRun';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import WorldPhotos from '../components/worlds/WorldPhotos';
 import Scenes from '../components/worlds/Scenes';
 import { hasPhotos, hasScenes } from '../components/worlds/media';
@@ -71,6 +72,26 @@ const WHERE = {
   time: 'Inside the Eye of Agamotto. Doctor Strange.',
   soul: 'On Vormir, for a price. Avengers: Infinity War.',
 };
+
+// the soundboard: the films' lines, then the sounds
+const BOARD = [
+  'avengersAssemble',
+  'ironMan',
+  'canDoThisAllDay',
+  'iAmGroot',
+  'wakandaForever',
+  'hulkSmash',
+  'punyGod',
+  'weHaveAHulk',
+  'heIsAdopted',
+  'mrStark',
+  'iAmInevitable',
+  'salvation',
+  'doItMyself',
+  ['hulkRoar', 'The Hulk roars'],
+  ['snap', 'The snap'],
+  ['marvel', 'The Marvel Studios opening'],
+];
 
 const ON_DISPLAY = [
   { id: 'marvel-ironman', title: 'Iron Man armor', note: 'From the cave-built Mark I to the suits that followed, under glass.' },
@@ -202,6 +223,8 @@ export default function Avengers() {
   const heist = earned.length === STONES.length;
   const doSnap = () => {
     audioContext();
+    // whoever has the gauntlet says it first
+    import('../lib/clips').then((c) => c.playClip(heist ? 'ironMan' : 'iAmInevitable'));
     const after = (tony) => {
       if (!tony) {
         snap();
@@ -445,6 +468,14 @@ export default function Avengers() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="shell relative z-10 py-14" aria-labelledby="av-board-title">
+        <h2 id="av-board-title" className="title">
+          Soundboard
+        </h2>
+        <p className="lead mt-4 max-w-[54ch]">From the films, a line at a time.</p>
+        <ClipBoard className="mt-8" clips={BOARD} />
       </section>
 
       {hasScenes(SCENES) && (

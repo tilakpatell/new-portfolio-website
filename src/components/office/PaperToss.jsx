@@ -47,6 +47,8 @@ const SAY = {
   desk: 'Dwight’s desk is in the way.',
 };
 const pick = (list) => (Array.isArray(list) ? list[Math.floor(Math.random() * list.length)] : list);
+// Michael, from the show (lib/clips.js)
+const clip = (id, when) => import('../../lib/clips').then((c) => c.playClip(id, { when }));
 
 export default function PaperToss() {
   const three = use3D();
@@ -141,12 +143,14 @@ export default function PaperToss() {
         else if (e.type === 'desk' || e.type === 'bin' || e.type === 'wall') playToss('knock');
         else if (e.type === 'in') {
           playToss('swish');
+          if (e.swish) clip('boomRoasted', 0.3); // nothing but net
           view.current?.celebrate?.(e.swish);
           speak(`${pick(e.swish ? SAY.swish : SAY.rimIn)} +${e.points}${e.streak > 1 ? `  ×${Math.min(3, 1 + 0.5 * (e.streak - 1))}` : ''}`, true);
         } else if (e.type === 'miss') {
           speak(pick(e.rim ? SAY.rimOut : e.short ? SAY.short : e.long ? SAY.long : SAY.wide));
         } else if (e.type === 'fan') {
           playToss('fan');
+          clip('fireDrill', 0.4);
           setTimeout(() => speak(SAY.fan), 900);
         } else if (e.type === 'moved' && g?.desk) setTimeout(() => speak(SAY.desk), 900);
         else if (e.type === 'over') {

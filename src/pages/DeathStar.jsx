@@ -11,6 +11,7 @@ import { useAchievements } from '../components/Achievements';
 import { jumpTo } from '../lib/anchors';
 import Hyperspace from '../components/Hyperspace';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import ClipBoard from '../components/worlds/ClipBoard';
 import { useDocumentTitle, useMediaQuery, useReducedMotion } from '../lib/hooks';
 import { use3D } from '../lib/gpu';
 import { audioContext, onSoundChange, setSound, soundOn } from '../lib/audio';
@@ -66,6 +67,36 @@ function Medal() {
     </svg>
   );
 }
+
+// the soundboard: the films' lines, then their sounds
+const BOARD = [
+  'vader',
+  'lackOfFaith',
+  'forceIsStrong',
+  'fireWhenReady',
+  'noMoon',
+  'shortStormtrooper',
+  'helpMeObiWan',
+  'notTheDroids',
+  'useTheForce',
+  'forceAlways',
+  'mayTheForce',
+  'stayOnTarget',
+  'almostThere',
+  'dontGetCocky',
+  'neverTellOdds',
+  'badFeelingLuke',
+  'badFeelingHan',
+  'itsATrap',
+  'doOrDoNot',
+  ['chewieRoar', 'Chewie roars'],
+  ['r2Whistle', 'Artoo whistles'],
+  ['r2Scream', 'Artoo screams'],
+  ['saberOn', 'A lightsaber'],
+  ['dl44', 'Han’s blaster'],
+  ['tieScream', 'A TIE fighter'],
+  'imperialMarch',
+];
 
 export default function DeathStar() {
   useDocumentTitle('DS-1');
@@ -133,6 +164,7 @@ export default function DeathStar() {
   const fire = () => {
     if (phase !== 'idle' || destroyed || jumping) return;
     audioContext();
+    import('../lib/clips').then((c) => c.playClip('fireWhenReady'));
     sfx().then((s) => s.superlaser(undefined, undefined, 0, 1.1));
     setShots((n) => n + 1);
     setPhase('charging');
@@ -194,7 +226,15 @@ export default function DeathStar() {
     sfx().then((s) => s.boom());
     if (outcome !== 'empire') return undefined;
     unlock('empire');
-    const t = setTimeout(() => sfx().then((s) => s.imperial()), 650);
+    // the Imperial March, or the synthesised one if it can't play
+    const t = setTimeout(
+      () =>
+        import('../lib/clips').then(async (c) => {
+          music.current = await c.playClip('imperialMarch');
+          if (!music.current) sfx().then((s) => s.imperial());
+        }),
+      650,
+    );
     return () => clearTimeout(t);
   }, [phase, shots, outcome, unlock]);
   useEffect(() => {
@@ -478,7 +518,7 @@ export default function DeathStar() {
         </div>
       </div>
       <Readout onAction={onAction} />
-      <section id="trench" className="shell relative z-10 scroll-mt-24 pb-28" aria-labelledby="trench-title">
+      <section id="trench" className="shell relative z-10 scroll-mt-24 pb-14 md:pb-20" aria-labelledby="trench-title">
         <h2 id="trench-title" className="title">
           Trench run
         </h2>
@@ -486,6 +526,13 @@ export default function DeathStar() {
         <div className="mt-8">
           <TrenchRun onWin={onWin} clock={battle ? clock : null} over={outcome === 'empire' ? 'Too late. The Death Star cleared Yavin and fired on the moon.' : null} />
         </div>
+      </section>
+      <section className="shell relative z-10 pb-28" aria-labelledby="ds-board-title">
+        <h2 id="ds-board-title" className="title">
+          Soundboard
+        </h2>
+        <p className="lead mt-4 max-w-[54ch]">From the films, a line at a time.</p>
+        <ClipBoard className="mt-8" clips={BOARD} />
       </section>
     </div>
   );

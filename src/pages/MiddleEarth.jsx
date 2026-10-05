@@ -21,6 +21,7 @@ import { jumpTo } from '../lib/anchors';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import '@fontsource/cinzel/600.css';
 import ScriptToggle from '../components/ScriptToggle';
+import ClipBoard from '../components/worlds/ClipBoard';
 
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
@@ -35,6 +36,27 @@ const LOCATIONS = [
   { id: 'me-anduin', title: 'Kawarau River, Otago', note: 'The Anduin, where the Argonath stand.' },
 ];
 const SCENES = ['lotrPass', 'lotrPrecious', 'lotrRing'];
+// Rivendell's soundboard: the films' lines, then a sound and the music
+const BOARD = [
+  'worldIsChanged',
+  'oneRing',
+  'wizardLate',
+  'secondBreakfast',
+  'taskAppointed',
+  'gandalfRun',
+  'youShallNotPass',
+  'flyYouFools',
+  'andMyAxe',
+  'findYouABox',
+  'meatsBack',
+  'myPrecious',
+  'nobodyLikesYou',
+  'carryYou',
+  'bowToNoOne',
+  ['nazgul', 'A Nazgûl'],
+  ['lotr', 'The theme'],
+  ['kingsArrival', 'The Return of the King'],
+];
 
 // What the doors say back to a wrong word, as the Watcher wakes up.
 const WRONG = [
@@ -326,12 +348,13 @@ export default function MiddleEarth() {
           <h1 id="me-scenes-title" className="title">
             From the films
           </h1>
-          <p className="lead mt-4 max-w-[54ch]">Elrond’s house keeps the old tales. A few of them, as the films told them.</p>
+          <p className="lead mt-4 max-w-[54ch]">Elrond’s house keeps the old tales. A few of them, as the films told them, and the lines everyone remembers.</p>
           {hasScenes(SCENES) && (
             <div className="mt-8">
               <Scenes names={SCENES} />
             </div>
           )}
+          <ClipBoard className="mt-10" clips={BOARD} />
         </section>
       )}
 

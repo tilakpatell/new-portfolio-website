@@ -195,6 +195,105 @@
   background: rgb(255 255 255 / 0.35);
   translate: var(--kx, 0) var(--ky, 0);
 }
+/* how high the ship is: a slim scale on the left, the map's level at its
+   middle, the ship's mark sliding up and down it */
+.universe-alt {
+  position: absolute;
+  left: 22px;
+  top: calc(50% + var(--nav-h, 68px) / 2);
+  width: 14px;
+  height: 150px;
+  margin-top: -75px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.5)) center / 9px 1.5px no-repeat,
+    linear-gradient(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.3)) top / 7px 1px no-repeat,
+    linear-gradient(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.3)) bottom / 7px 1px no-repeat,
+    linear-gradient(rgb(255 255 255 / 0), rgb(255 255 255 / 0.22) 20%, rgb(255 255 255 / 0.22) 80%, rgb(255 255 255 / 0)) center / 1px 100% no-repeat;
+}
+.universe-alt[data-on] { opacity: 0.55; }
+.universe-alt[data-on][data-moving] { opacity: 1; }
+.universe-alt-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: -5px 0 0 3px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 8px solid var(--engine, #e8eefc);
+  translate: 0 calc(var(--alt, 0) * -75px);
+  filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
+}
+/* the shields: a slim bar under the height gauge, while there's trouble */
+.universe-shield {
+  position: absolute;
+  left: 16px;
+  top: calc(50% + var(--nav-h, 68px) / 2 + 92px);
+  display: grid;
+  gap: 4px;
+  width: 92px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.universe-shield[data-on] { opacity: 1; }
+.universe-shield-label {
+  color: rgb(255 255 255 / 0.65);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.universe-shield-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 4px;
+  background: rgb(3 4 10 / 0.6);
+}
+.universe-shield-bar > span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #4fd2ff, #9ef3ff);
+  box-shadow: 0 0 8px rgb(120 220 255 / 0.6);
+  transform-origin: left;
+  scale: var(--shield, 1) 1;
+  transition: scale 0.15s;
+}
+.universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
+@keyframes universe-shield-blink { 50% { opacity: 0.45; } }
+.universe-map[data-ship='cruiser'] { --engine: #8dff6a; }
+.universe-map[data-ship='falcon'] { --engine: #7cc8ff; }
+.universe-map[data-ship='xwing'] { --engine: #ff8a5c; }
+.universe-climbs {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 46px);
+  bottom: 112px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+.universe-climb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 46px;
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 14px;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.universe-climb:active { background: rgb(255 255 255 / 0.18); }
 .universe-boost {
   position: absolute;
   z-index: 1;
@@ -270,6 +369,7 @@
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire { display: grid; }
+  .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
   .universe-hint-touch { display: inline; }
@@ -346,12 +446,17 @@
   .universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
+  .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
+  .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
+  .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
+  .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
   .universe-hint { bottom: calc(var(--sheet-h) + 16px); translate: -50% 0; }
   .universe-comms { right: 16px; left: 16px; }
   .universe-face { width: 36px; height: 36px; }
   .universe-said { font-size: 0.85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .universe-shield-bar > span { animation: none; }
   .universe-labels,
   .universe-label,
   .universe-fade { transition: none; }

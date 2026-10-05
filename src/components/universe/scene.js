@@ -6,18 +6,26 @@
 // Two ways to get round it:
 // - With no ship picked, the camera flies between the planets (flight.js
 //   does the numbers), a drag turns the map and a click picks a planet.
-// - With a ship (Rick's cruiser, Luke's X-wing or the Falcon), you fly it:
-//   W A S D or the arrows, Space to boost, F to fire, or drag on the map
-//   like a stick.
+// - With a ship (Rick's cruiser, Luke's X-wing, the Falcon or Walt and
+//   Jesse's RV), you fly it: W A S D or the arrows, R and C to climb and dive, Space to boost, F to
+//   fire, or drag on the map like a stick (with buttons to climb and dive).
 //   The camera rides behind it. Fly close to a planet and you're at it (the
 //   panel shows its card); pick one from its name or by clicking it and the
 //   ship flies itself there. M shows the whole map. ship.js has the physics.
+//   Out past the home system is deep space (deep.js, deepspace.js), vast,
+//   with wonders to fly to on the pulse drive. You're not alone: traffic
+//   (traffic.js), hunters after you (hunters.js: the Empire, the Federation,
+//   the Council of Ricks), with shields that take their hits and come back,
+//   and now and then the director (director.js) sets something going
+//   (setpieces.js: a Star Destroyer jumping in, portals, a comet; a convoy,
+//   someone in distress).
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
-//   whole, boost, fire, dispose }.
+//   whole, boost, climb, fire, dispose }.
 // Props: selected (an id or null), ship (a crew id or null), labels (a ref
-// to { id: element }), stick (a ref to the steering ring), frozen (the page
+// to { id: element }), stick (a ref to the steering ring), alt (a ref to the
+// height gauge), shield (a ref to the shields bar), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
 // clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
 // went into a planet or a station too fast and the impact has played: true
@@ -29,11 +37,18 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { ORDER, POSITIONS, SUN } from './layout';
+import { MAP_RADIUS, ORDER, POSITIONS, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { SHIP, SOLIDS, autopilot, forward, headingTo, orbiting, parkAt, spawn, step } from './ship';
+import { SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
+import { createHunters } from './hunters';
+import { createFleet } from './glbFleet';
+import { createDirector } from './director';
+import { createSetPieces } from './setpieces';
+import { buildDeepSpace } from './deepspace';
+import { createTrench } from './trench';
+import { DEEP, WONDERS, openness, reachOf } from './deep';
 import { createCrash } from './crash';
 import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
@@ -46,13 +61,14 @@ const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
 const STREAKS = 220;
 const BOLTS = 10; // shots in flight at once
-const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b' };
+const BOLT_COLOR = { falcon: '#ff4a3d', xwing: '#ff3b30', cruiser: '#9df06b', rv: '#5cc8ff' };
 // each ship's exhaust (trail.js): its colour, its white-hot core, how wide
 // and how long it is, and the cruiser's portal-plasma ripple
 const PLUME = {
   cruiser: { color: '#4dff3a', core: '#e6ffd2', width: 0.036, life: 0.42, length: 0.32, wobble: 1.3, sparks: 40 },
   falcon: { color: '#5cbcff', core: '#eef8ff', width: 0.034, life: 0.45, length: 0.36, wobble: 0 },
   xwing: { color: '#ff6a36', core: '#fff0dc', width: 0.017, life: 0.38, length: 0.3, wobble: 0 },
+  rv: { color: '#ff9a3c', core: '#fff0d8', width: 0.02, life: 0.4, length: 0.3, wobble: 0 },
 };
 const IDLE = 40000; // ms sitting still before the crew get bored
 // a crash, in seconds from the moment it hits: on into the planet, the
@@ -64,7 +80,7 @@ const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // key light, upper left
 
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'boost', shift: 'boost' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'boost', shift: 'boost', r: 'climb', pageup: 'climb', c: 'dive', pagedown: 'dive' };
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -153,37 +169,173 @@ function orbits() {
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#9fb0d0', transparent: true, opacity: 0.05, depthWrite: false }));
 }
 
-// Stars streaming past when the ship boosts: lines round the camera's line
-// of sight, riding with the camera.
+// Stars streaming past when the ship boosts: thin streaks of light round
+// the camera's line of sight (none down the middle, where the ship is),
+// riding with the camera, rushing at it out of the distance. Each is a
+// sliver that turns its face to the lens, brightest at its head and fading
+// to nothing down its tail, faint far off and gone before it reaches you;
+// longer, brighter and more of them the harder it boosts, white with a
+// touch of the ship's own colour (portal green, hyperspace blue, the
+// X-wing's orange). It all moves on the GPU: one draw, no per-frame upload.
+const STREAK_VERT = `
+attribute vec4 aStreak; // angle round the line of sight, distance out from it, where along the run, a random
+attribute vec2 aCorner; // across (−1, 1), along (0 the tail, 1 the head)
+uniform float uTravel;
+uniform float uLen;
+uniform float uAmount;
+varying float vHead;
+varying float vSide;
+varying float vFade;
+void main() {
+  float run = fract(aStreak.z + uTravel * (0.8 + 0.4 * aStreak.w) / 17.6); // 0 far ahead … 1 at the camera
+  float z = -17.0 + run * 17.6;
+  float len = uLen * (0.55 + 0.9 * aStreak.w);
+  vec2 dir = vec2(cos(aStreak.x), sin(aStreak.x));
+  vec3 p = vec3(dir * aStreak.y * vec2(1.0, 0.72), z - len * (1.0 - aCorner.y));
+  // a little wider the closer it is, and the heavier ones a little wider still
+  p.xy += vec2(-dir.y, dir.x) * aCorner.x * (0.003 + 0.0035 * aStreak.w * aStreak.w);
+  vHead = aCorner.y;
+  vSide = aCorner.x;
+  // in from the dark ahead, out before the lens; only some show at a low boost
+  float shown = smoothstep(aStreak.w * 0.75, aStreak.w * 0.75 + 0.2, uAmount);
+  vFade = smoothstep(0.0, 0.25, run) * (1.0 - smoothstep(0.8, 0.97, run)) * shown;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+}`;
+const STREAK_FRAG = `
+uniform vec3 uColor;
+uniform float uAmount;
+varying float vHead;
+varying float vSide;
+varying float vFade;
+void main() {
+  float across = clamp(1.0 - abs(vSide), 0.0, 1.0);
+  float head = vHead * vHead;
+  gl_FragColor = vec4(uColor * head * across * vFade * (0.3 + 0.4 * uAmount), 1.0);
+}`;
 function streaks(rand) {
-  const seg = new Float32Array(STREAKS * 6);
-  const at = [];
+  const info = new Float32Array(STREAKS * 4 * 4);
+  const corner = new Float32Array(STREAKS * 4 * 2);
+  const index = [];
   for (let i = 0; i < STREAKS; i++) {
     const a = rand() * Math.PI * 2;
-    const r = 0.5 + rand() * 2.6;
-    at.push([Math.cos(a) * r, Math.sin(a) * r * 0.7, -2 - rand() * 14]);
+    const r = 0.6 + rand() ** 0.8 * 2.3;
+    const along = rand();
+    const weight = rand();
+    for (let c = 0; c < 4; c++) {
+      info.set([a, r, along, weight], (i * 4 + c) * 4);
+      corner.set([c % 2 ? 1 : -1, c < 2 ? 0 : 1], (i * 4 + c) * 2);
+    }
+    const o = i * 4;
+    index.push(o, o + 1, o + 2, o + 1, o + 3, o + 2);
   }
   const g = new THREE.BufferGeometry();
-  const attr = new THREE.BufferAttribute(seg, 3).setUsage(THREE.DynamicDrawUsage);
-  g.setAttribute('position', attr);
-  const mat = new THREE.LineBasicMaterial({ color: '#cfe3ff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-  const lines = new THREE.LineSegments(g, mat);
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(STREAKS * 4 * 3), 3));
+  g.setAttribute('aStreak', new THREE.BufferAttribute(info, 4));
+  g.setAttribute('aCorner', new THREE.BufferAttribute(corner, 2));
+  g.setIndex(index);
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: STREAK_VERT,
+    fragmentShader: STREAK_FRAG,
+    uniforms: { uTravel: { value: 0 }, uLen: { value: 1 }, uAmount: { value: 0 }, uColor: { value: new THREE.Color('#dfe9ff') } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+  const lines = new THREE.Mesh(g, mat);
   lines.frustumCulled = false;
   lines.visible = false;
+  lines.renderOrder = 2;
+  const tint = new THREE.Color();
   return {
     lines,
+    // white, with a touch of the ship's colour (brighter than white at the
+    // head, so the nearest catch the bloom)
+    setTint(color) {
+      tint.set(color);
+      mat.uniforms.uColor.value.set('#ffffff').lerp(tint, 0.35).multiplyScalar(1.5);
+    },
     update(dt, speed, amount) {
       lines.visible = amount > 0.01;
-      mat.opacity = amount * 0.32;
       if (!lines.visible) return;
-      const len = 0.3 + speed * 0.12;
-      for (let i = 0; i < STREAKS; i++) {
-        const p = at[i];
-        p[2] += speed * dt * 2.2;
-        if (p[2] > 1) p[2] -= 16;
-        seg.set([p[0], p[1], p[2], p[0], p[1], p[2] - len], i * 6);
-      }
-      attr.needsUpdate = true;
+      const u = mat.uniforms;
+      u.uAmount.value = amount;
+      u.uTravel.value += speed * dt * 2.2;
+      u.uLen.value = (0.4 + speed * 0.13) * (0.4 + 0.8 * amount);
+    },
+  };
+}
+
+// The moment a boost lights: a ring of the engines' light bursting out
+// behind the ship, square to its line of flight, rippling (the cruiser's
+// swirls, like a portal's edge), gone in half a second.
+const BURST_FRAG = `
+uniform vec3 uColor;
+uniform float uAge;
+uniform float uSwirl;
+varying vec2 vUv;
+void main() {
+  vec2 c = vUv * 2.0 - 1.0;
+  float r = length(c);
+  float a = atan(c.y, c.x);
+  float grow = 1.0 - (1.0 - uAge) * (1.0 - uAge);
+  float front = 0.25 + 0.7 * grow;
+  float wobble = uSwirl * 0.03 * sin(a * 7.0 + r * 18.0 - uAge * 14.0);
+  float d = (r - front + wobble) / (0.03 + 0.05 * uAge);
+  float band = exp(-d * d);
+  // a flash at the nozzles (the cruiser's turning, like a portal opening)
+  float spiral = mix(1.0, 0.5 + 0.5 * sin(a * 3.0 + r * 16.0 - uAge * 12.0), uSwirl);
+  float inner = exp(-r * r * 14.0) * (1.0 - grow) * 0.5 * spiral;
+  float fade = (1.0 - uAge) * (1.0 - uAge);
+  // white-hot along the crest of the ring, the engines' colour either side
+  vec3 col = uColor * (band + inner) + vec3(1.6) * band * band * band * band;
+  gl_FragColor = vec4(col * fade * step(r, 1.0), 1.0);
+}`;
+function boostBurst() {
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: BURST_FRAG,
+    uniforms: { uColor: { value: new THREE.Color() }, uAge: { value: 0 }, uSwirl: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  mesh.visible = false;
+  mesh.frustumCulled = false;
+  let age = 1;
+  const LIFE = 0.55;
+  return {
+    mesh,
+    // on the ship (its pivot, so it pitches and banks with it), at the
+    // middle of its engines (in the pivot's units, nose toward −z)
+    fire(pivot, at, color, swirl) {
+      age = 0;
+      pivot.add(mesh);
+      mesh.position.copy(at);
+      mat.uniforms.uColor.value.set(color).multiplyScalar(2.6);
+      mat.uniforms.uSwirl.value = swirl;
+      mesh.visible = true;
+    },
+    // it drifts back from the engines a little as it grows
+    update(dt) {
+      if (!mesh.visible) return false;
+      age += dt / LIFE;
+      if (age >= 1) return (this.clear(), false);
+      mat.uniforms.uAge.value = age;
+      mesh.scale.setScalar(0.18 + age * 0.5);
+      mesh.position.z += dt * 0.5;
+      return true;
+    },
+    // off the ship (before it's changed or thrown away, which would take this with it)
+    clear() {
+      mesh.visible = false;
+      mesh.removeFromParent();
+    },
+    dispose() {
+      mesh.geometry.dispose();
+      mat.dispose();
     },
   };
 }
@@ -197,7 +349,7 @@ export async function create(canvas, ctx) {
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 600);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 3200); // (out to the far side of deep space)
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -234,6 +386,7 @@ export async function create(canvas, ctx) {
   let plumes = []; // { trail, at: where its engine is, inside the ship's pivot }
   const nozzle = new THREE.Vector3();
   const setPlumes = (kind, engines) => {
+    burst.clear();
     for (const pl of plumes) {
       map.remove(pl.trail.mesh);
       pl.trail.dispose();
@@ -241,6 +394,7 @@ export async function create(canvas, ctx) {
     plumes = [];
     if (!kind) return;
     const look = PLUME[kind] ?? PLUME.falcon;
+    streak.setTint(look.color);
     plumes = engines.map((at) => {
       const trail = createTrail(look);
       trail.setColors(look.color, look.core);
@@ -248,14 +402,29 @@ export async function create(canvas, ctx) {
       return { trail, at: new THREE.Vector3(...at) };
     });
   };
-  const updatePlumes = (dt, t, amount) => {
+  const updatePlumes = (dt, t, amount, stretch = 1) => {
     const m = state.model;
     if (!m) return;
     m.group.updateMatrixWorld(true);
     for (const pl of plumes) {
       map.worldToLocal(m.pivot.localToWorld(nozzle.copy(pl.at)));
-      pl.trail.update(dt, t, nozzle, amount, camLocal);
+      pl.trail.update(dt, t, nozzle, amount, camLocal, stretch);
     }
+  };
+  // a boost lighting: the burst at the engines, a flare of the bloom and a
+  // kick of the camera's lens (not with reduced motion)
+  const burst = boostBurst();
+  const ignite = () => {
+    const m = state.model;
+    if (reduced || !m || !plumes.length) return;
+    const mid = new THREE.Vector3();
+    for (const pl of plumes) mid.add(pl.at);
+    mid.divideScalar(plumes.length);
+    mid.z += 0.02;
+    const look = PLUME[state.kind] ?? PLUME.falcon;
+    burst.fire(m.pivot, mid, look.color, state.kind === 'cruiser' ? 1 : 0);
+    state.flare = Math.max(state.flare, 1.5);
+    state.kick = 1;
   };
   const pulse = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 128), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   pulse.rotation.x = -Math.PI / 2;
@@ -271,7 +440,8 @@ export async function create(canvas, ctx) {
   const bolts = Array.from({ length: BOLTS }, () => {
     const m = new THREE.Mesh(boltGeo, boltMat);
     m.visible = false;
-    m.userData = { life: 0, v: [0, 0] };
+    m.rotation.order = 'YXZ';
+    m.userData = { life: 0, v: [0, 0, 0] };
     map.add(m);
     return m;
   });
@@ -302,6 +472,13 @@ export async function create(canvas, ctx) {
     map.add(sky);
   }
 
+  // deep space, out past the home system: its wonders, and the trench run
+  // round the Death Star's middle
+  const deep = buildDeepSpace({ small });
+  map.add(deep.group);
+  const trenches = WONDERS.filter((w) => w.trench).map((w) => createTrench(w));
+  for (const tr of trenches) map.add(tr.group);
+
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
   map.add(sun.group);
@@ -317,8 +494,15 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   const crashFx = createCrash(map);
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
-  const traffic = reduced ? null : createTraffic(map, { small });
+  const fleet = createFleet(); // the ships that are models, shared
+  const traffic = reduced ? null : createTraffic(map, { small, fleet });
   const pops = createCrash(map);
+  // who comes after you, what the director sets going, and its set pieces
+  // (none of it with reduced motion)
+  const hunters = reduced ? null : createHunters(map, { small, fleet });
+  const director = createDirector();
+  const pieces = createSetPieces(map, { small, fleet });
+  const later = []; // { at, run }: what the director set going, a moment on
 
   // the models arrive after the map is up
   loadModels((id, model, spot) => {
@@ -355,6 +539,7 @@ export async function create(canvas, ctx) {
     keys: {},
     stick: null, // { id, x, y, dx, dy, on }
     boostBtn: false,
+    climbBtn: 0, // the phone's climb (1) or dive (−1) button, held
     boosting: false,
     boosts: 0,
     streak: 0,
@@ -366,6 +551,17 @@ export async function create(canvas, ctx) {
     lastShot: 0,
     crash: null, // { age, id, … } while a crash plays out (startCrash)
     shake: 0,
+    kick: 0, // the lens's kick as a boost lights, 1 fading to 0
+    clock: 0, // seconds of frames
+    shield: 100, // the ship's shields: hunters' lasers take them down, and they come back
+    hitAt: -1e9,
+    hurt: 0, // the red flash of a hit, 1 fading to 0
+    lowSaid: false,
+    heat: 0, // trouble made lately (ships shot down): the director sends more hunters
+    saw: new Set(), // the wonders out in deep space you've come up on
+    deepSaid: false,
+    trench: 0, // seconds down in the Death Star's trench
+    trenchAt: -1e9,
     flare: 1,
   };
   const t0 = performance.now();
@@ -412,14 +608,25 @@ export async function create(canvas, ctx) {
     const [fx, fz] = forward(s.heading);
     const [dx, dz] = rotate(fx, fz);
     const look = 0.4;
+    // climbing, it drops a little below the ship's line (so you see it rise
+    // against the sky); diving, it rises above (so you see what's coming)
+    const nose = s.pitch || 0;
     return {
-      target: [wx + dx * look, s.y + 0.06, wz + dz * look],
+      target: [wx + dx * look, s.y + 0.06 + (s.vy || 0) * 0.05, wz + dz * look],
       dist: 1.7 + Math.abs(s.speed) * 0.045 + state.streak * 0.7,
-      pitch: 0.21,
+      pitch: 0.21 - nose * 0.45,
     };
   };
 
   const flying = () => Boolean(state.ship);
+  // the whole map; out in deep space, pulled back far enough to take in the
+  // ship as well (and the wonders round it)
+  const mapPose = () => {
+    const s = state.ship;
+    const r = s ? Math.hypot(s.x, s.z) : 0;
+    if (!state.overview || r < DEEP.system) return state.overview;
+    return { ...state.overview, dist: state.overview.dist * Math.min(9, (r + 90) / MAP_RADIUS) };
+  };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
   // station comes round a little past the front, so the sun in the middle
@@ -431,7 +638,7 @@ export async function create(canvas, ctx) {
   };
 
   const goal = () => {
-    if (flying()) return state.view === 'map' ? state.overview : state.crash && !state.crash.back ? crashPose() : chasePose();
+    if (flying()) return state.view === 'map' ? mapPose() : state.crash && !state.crash.back ? crashPose() : chasePose();
     return state.sel ? focusPose(state.sel, state.yaw, size, state.rect) : state.overview;
   };
 
@@ -450,7 +657,7 @@ export async function create(canvas, ctx) {
   const shown = new Map(); // what each name element was last given
   const v = new THREE.Vector3();
   const w = new THREE.Vector3();
-  const tanHalf = Math.tan((FOV * Math.PI) / 360);
+  let tanHalf = Math.tan((FOV * Math.PI) / 360); // follows the lens (it widens boosting)
 
   const locate = () => {
     planets.forEach((p, i) => {
@@ -563,7 +770,7 @@ export async function create(canvas, ctx) {
       if (id && id !== state.at) {
         state.view = 'chase';
         if (reduced) {
-          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0 };
+          state.ship = { ...state.ship, ...parkAt(id, [state.ship.x, state.ship.z]), speed: 0, vy: 0, pitch: 0 };
           state.yaw = -state.ship.heading;
         } else {
           state.auto = { id, park: parkAt(id, [state.ship.x, state.ship.z]) };
@@ -601,6 +808,7 @@ export async function create(canvas, ctx) {
     const was = state.kind;
     state.kind = kind;
     traffic?.setCrew(kind);
+    hunters?.clear();
     setPlumes(kind, ENGINES[kind] ?? []);
     state.auto = null;
     state.flown = false;
@@ -668,12 +876,13 @@ export async function create(canvas, ctx) {
     const k = state.keys;
     let throttle = (k.up ? 1 : 0) - (k.down ? 1 : 0);
     let turn = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+    const climb = clamp((k.climb ? 1 : 0) - (k.dive ? 1 : 0) + state.climbBtn, -1, 1);
     const st = state.stick;
     if (st?.on) {
       throttle = clamp(throttle - st.dy / STICK, -1, 1);
       turn = clamp(turn + st.dx / STICK, -1, 1);
     }
-    return { throttle, turn, boost: Boolean(k.boost || state.boostBtn) };
+    return { throttle, turn, climb, boost: Boolean(k.boost || state.boostBtn) };
   };
 
   // a shot from the nose (the X-wing's from each wingtip in turn)
@@ -686,10 +895,13 @@ export async function create(canvas, ctx) {
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
     const [fx, fz] = forward(s.heading);
     const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
-    b.position.set(s.x + fx * 0.16 - fz * side, s.y, s.z + fz * 0.16 + fx * side);
-    b.rotation.set(0, s.heading, 0);
+    // along the nose, up or down as it points
+    const up = Math.sin(s.pitch || 0);
+    const level = Math.cos(s.pitch || 0);
+    b.position.set(s.x + fx * 0.16 * level - fz * side, s.y + 0.16 * up, s.z + fz * 0.16 * level + fx * side);
+    b.rotation.set(s.pitch || 0, s.heading, 0);
     const v = 18 + Math.max(0, s.speed);
-    b.userData = { life: 1.1, v: [fx * v, fz * v] };
+    b.userData = { life: 1.1, v: [fx * v * level, v * up + (s.vy || 0) * 0.5, fz * v * level] };
     b.visible = true;
     emit({ type: 'fire' });
     ctx.invalidate();
@@ -709,16 +921,48 @@ export async function create(canvas, ctx) {
       any = true;
       shotFrom.copy(b.position);
       b.position.x += d.v[0] * dt;
-      b.position.z += d.v[1] * dt;
+      b.position.y += d.v[1] * dt;
+      b.position.z += d.v[2] * dt;
       // into someone: a pop (the big ships just take it)
+      // a hunter: down, or (the tougher ones) a hit that sparks off it
+      const hh = hunters?.hit(shotFrom, b.position);
+      if (hh) {
+        b.visible = false;
+        pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
+        if (hh.down) {
+          emit({ type: 'kill', kind: hh.kind });
+          state.heat += 1;
+        }
+        continue;
+      }
       const h = traffic?.hit(shotFrom, b.position);
       if (h) {
         b.visible = false;
-        pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[1]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
-        if (!h.glance) emit({ type: 'kill', kind: h.kind });
+        pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
+        if (!h.glance) {
+          emit({ type: 'kill', kind: h.kind });
+          state.heat += h.civil ? 1.5 : 1;
+        }
       }
     }
     return any;
+  };
+
+  // the height gauge: where the ship is between the floor and the ceiling,
+  // shown while you fly it (brighter while it climbs or dives)
+  let altOn = false;
+  const placeAlt = () => {
+    const el = props.alt?.current;
+    if (!el) return;
+    const on = flying() && state.view === 'chase' && !state.crash && !state.dive && !props.frozen;
+    if (on !== altOn) {
+      altOn = on;
+      el.toggleAttribute('data-on', on);
+    }
+    if (!on) return;
+    const s = state.ship;
+    el.style.setProperty('--alt', clamp(s.y / SHIP.ceiling, -1, 1).toFixed(3));
+    el.toggleAttribute('data-moving', Math.abs(s.vy || 0) > 0.4);
   };
 
   const placeStick = () => {
@@ -763,9 +1007,177 @@ export async function create(canvas, ctx) {
     };
     state.auto = null;
     state.boosting = false;
+    burst.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     retarget(650); // the camera pulls back to watch it
   };
+  // ── Shot down: the hunters' lasers took the last of the shields ──
+  const startDestroyed = () => {
+    const s = state.ship;
+    const from = new THREE.Vector3(s.x, s.y, s.z);
+    state.crash = {
+      age: 0,
+      id: 'shot',
+      shot: true,
+      sun: false,
+      from,
+      into: new THREE.Vector3(), // it tumbles where it is
+      normal: new THREE.Vector3(0, 1, 0),
+      radius: 0.35,
+      point: from.clone(),
+      fwd: forward(s.heading),
+      speed: s.speed,
+      spin: [6 + Math.random() * 6, 4 + Math.random() * 5],
+      impact: false,
+      asked: false,
+      through: false,
+      back: false,
+    };
+    state.auto = null;
+    state.boosting = false;
+    burst.clear();
+    hunters?.clear();
+    engine?.set({ speed: 0, boost: false, on: false });
+    emit({ type: 'destroyed' });
+    retarget(650);
+  };
+
+  // a laser into the shields: down they go (shot down at nothing left)
+  const hurt = (damage) => {
+    if (state.crash || !state.ship) return;
+    state.shield = Math.max(0, state.shield - damage);
+    state.hitAt = state.clock;
+    state.hurt = 1;
+    if (!reduced) state.shake = Math.max(state.shake, 0.3);
+    emit({ type: 'laser' });
+    if (state.shield < 35 && !state.lowSaid) {
+      state.lowSaid = true;
+      emit({ type: 'shields' });
+    }
+    if (state.shield <= 0) startDestroyed();
+  };
+
+  // whose universe each ship flies in (Walt and Jesse's RV: both)
+  const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars', rv: 'both' };
+  const either = () => (Math.random() < 0.5 ? 'starwars' : 'rickmorty');
+  const TRENCHED = SOLIDS.filter((o) => o.band); // what has a trench to fly down
+  // what the hunters report
+  const onHunters = (e) => {
+    if (e.type === 'hunted') {
+      if (!e.prey) emit({ type: 'hunted', faction: e.faction, ace: e.kinds.includes('tieadvanced') });
+    } else if (e.type === 'laser') hurt(e.damage);
+    else if (e.type === 'shot') emit(e);
+    else if (e.type === 'escaped' || e.type === 'cleared') {
+      emit(e.rescued ? { type: 'event', id: 'rescued' } : e);
+      // the Star Destroyer's fighters gone: it jumps away
+      if (pieces.destroyerHere && !hunters.active) {
+        pieces.leave();
+        emit({ type: 'event', id: 'leave' });
+      }
+    }
+  };
+
+  // what the director sets going
+  const happen = (id, ship) => {
+    const family = FAMILY[state.kind] === 'both' ? either() : FAMILY[state.kind];
+    if (id === 'hunt') hunters.pack(family === 'starwars' ? 'empire' : 'federation', ship);
+    else if (id === 'council') pieces.portals(hunters.pack('council', ship));
+    else if (id === 'destroyer') {
+      const d = pieces.destroyer(ship);
+      if (!d) return;
+      emit({ type: 'event', id: 'destroyer' });
+      // its fighters launch a moment after it's here
+      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && hunters.pack('empire', state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+    } else if (id === 'distress') {
+      const prey = traffic?.distress(ship, family);
+      if (!prey) return;
+      hunters.pack(family === 'starwars' ? 'empire' : 'bugs', ship, { prey, size: 2, ace: false });
+      emit({ type: 'event', id: 'distress' });
+    } else if (id === 'convoy') traffic?.convoy(ship, family);
+    else if (id === 'comet') {
+      pieces.comet(ship);
+      later.push({ at: state.clock + 5, run: () => emit({ type: 'event', id: 'comet' }) });
+    }
+  };
+
+  // the light bending round the black hole: where it is on the canvas and
+  // how big its shadow looks there (none behind you, or too far to matter)
+  const lensAt = new THREE.Vector3();
+  const bend = () => {
+    const L = deep.lens?.();
+    if (!L || reduced) return post.lens(0, 0, 0);
+    map.localToWorld(lensAt.copy(L.at));
+    const d = lensAt.distanceTo(camera.position);
+    lensAt.project(camera);
+    if (d > 700 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
+    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, L.r / (d * tanHalf) / 2);
+  };
+
+  // the shields bar: shown while there's trouble about or they're down at all
+  let shieldOn = false;
+  const placeShield = () => {
+    const el = props.shield?.current;
+    if (!el) return;
+    const on = flying() && state.view === 'chase' && !state.crash && !state.dive && !props.frozen && Boolean(hunters?.active || state.shield < 99.5);
+    if (on !== shieldOn) {
+      shieldOn = on;
+      el.toggleAttribute('data-on', on);
+    }
+    if (!on) return;
+    el.style.setProperty('--shield', (state.shield / 100).toFixed(3));
+    el.toggleAttribute('data-low', state.shield < 35);
+  };
+
+  // everything that goes on round you while you fly: the hunters, the
+  // director and its set pieces, your shields, the wonders you come up on
+  const adventure = (dt, t) => {
+    state.clock += dt;
+    const live = flying() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
+    if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    let busy = pieces.update(dt, t, camera);
+    if (live) {
+      // shields come back once you've been out of trouble a while
+      if (state.clock - state.hitAt > 5 && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12);
+      if (state.shield > 70) state.lowSaid = false;
+      state.heat = Math.max(0, state.heat - dt / 45);
+      if (hunters) {
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || state.view !== 'chase' });
+        if (id) happen(id, live);
+      }
+      for (const l of [...later]) {
+        if (state.clock < l.at) continue;
+        later.splice(later.indexOf(l), 1);
+        l.run();
+      }
+      // out into deep space, and coming up on its wonders
+      if (!state.deepSaid && openness(live.x, live.z) > 0.6) {
+        state.deepSaid = true;
+        emit({ type: 'event', id: 'deep' });
+      }
+      for (const w of WONDERS) {
+        if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 60) continue;
+        state.saw.add(w.id);
+        emit({ type: 'wonder', id: w.id });
+      }
+      // down in the Death Star's trench a moment: the trench run (with Luke
+      // or Han, Vader comes down it after you), now and then
+      const ds = TRENCHED.find((o) => Math.abs(live.y - o.at[1]) < o.band.half && Math.hypot(live.x - o.at[0], live.y - o.at[1], live.z - o.at[2]) < o.r - 0.4);
+      state.trench = ds ? state.trench + dt : 0;
+      if (state.trench > 1.2 && state.clock - state.trenchAt > 120) {
+        state.trenchAt = state.clock;
+        emit({ type: 'event', id: 'trench' });
+        if (hunters && FAMILY[state.kind] !== 'rickmorty' && !hunters.active) hunters.pack('empire', live, { size: 3, ace: true });
+      }
+    } else later.length = 0;
+    if (state.hurt > 0) {
+      state.hurt = Math.max(0, state.hurt - dt * 2.2);
+      busy = true;
+    }
+    post.hit(state.hurt);
+    placeShield();
+    return busy || Boolean(hunters?.count) || later.length > 0;
+  };
+
   // the camera during a crash: back and up from the impact, so you see the
   // ship go in and the shockwave run out over the planet
   const crashPose = () => {
@@ -794,9 +1206,9 @@ export async function create(canvas, ctx) {
       crashFx.hit({ point: c.point, normal: c.normal, body: planetOf[c.id]?.surface ?? null, radius: c.radius, sun: c.sun });
       state.shake = reduced ? 0 : 1;
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
-      emit({ type: 'crash', id: c.id });
+      if (!c.shot) emit({ type: 'crash', id: c.id }); // (shot down said so as it began)
     }
-    if (age >= CRASH.through && !c.asked && !c.sun) {
+    if (age >= CRASH.through && !c.asked && !c.sun && !c.shot && isPlace(c.id)) {
       // the shockwave running out over the surface: the page takes it from
       // here, if it's going on into the place's page
       c.asked = true;
@@ -807,12 +1219,22 @@ export async function create(canvas, ctx) {
       // back again: parked off the planet on the side it hit (well clear of the sun)
       c.back = true;
       let at;
-      if (c.sun) {
-        const out = Math.hypot(c.from.x, c.from.z) || 1;
-        const r = SUN.r + 5;
-        at = { x: (c.from.x / out) * r, z: (c.from.z / out) * r, heading: headingTo(c.from.x, c.from.z) }; // facing away from it
+      if (c.shot) {
+        // shot down: back at the nearest place, shields up again
+        const near = ORDER.reduce((a, b) => (Math.hypot(...POSITIONS[a].map((v, i) => v - c.from.getComponent(i))) <= Math.hypot(...POSITIONS[b].map((v, i) => v - c.from.getComponent(i))) ? a : b));
+        at = parkAt(near, [c.from.x, c.from.z]);
+      } else if (c.sun || !isPlace(c.id)) {
+        // the sun, or a wonder out in deep space: back out the way it went in, facing away
+        const solid = SOLIDS.find((o) => o.id === c.id) ?? { at: SUN.at, r: SUN.r };
+        const out = c.from.clone().sub(new THREE.Vector3(...solid.at));
+        if (c.sun) out.y = 0;
+        out.normalize();
+        const r = solid.r + 5;
+        at = { x: solid.at[0] + out.x * r, y: c.sun ? SHIP.height : solid.at[1] + out.y * r, z: solid.at[2] + out.z * r, heading: headingTo(out.x, out.z) };
       } else at = parkAt(c.id, [c.from.x, c.from.z]);
-      state.ship = { ...state.ship, x: at.x, z: at.z, heading: at.heading, speed: 0, bank: 0, edge: false };
+      state.ship = { ...state.ship, x: at.x, y: at.y, z: at.z, heading: at.heading, speed: 0, vy: 0, pitch: 0, bank: 0, edge: false };
+      state.shield = 100;
+      state.lowSaid = false;
       m.group.visible = true;
       m.pivot.rotation.set(0, 0, 0);
       crashFx.arrive({ point: new THREE.Vector3(at.x, state.ship.y, at.z), kind: state.kind, heading: at.heading });
@@ -856,7 +1278,10 @@ export async function create(canvas, ctx) {
 
     // a burst of speed
     const boosting = input.boost && input.throttle > 0 && ship.speed > SHIP.cruise * 0.7;
-    if (boosting && !state.boosting) emit({ type: 'boost', first: state.boosts++ === 0 });
+    if (boosting && !state.boosting) {
+      emit({ type: 'boost', first: state.boosts++ === 0 });
+      ignite();
+    }
     state.boosting = boosting;
     const want = !reduced && ship.speed > SHIP.cruise + 0.2 ? clamp01((ship.speed - SHIP.cruise) / (SHIP.boost - SHIP.cruise)) : 0;
     state.streak += (want - state.streak) * clamp01(dt * 4);
@@ -889,16 +1314,16 @@ export async function create(canvas, ctx) {
     m.group.position.set(ship.x, ship.y + (reduced ? 0 : Math.sin(t * 2.1) * 0.012), ship.z);
     m.group.rotation.y = ship.heading;
     m.pivot.rotation.z = -ship.bank;
-    m.pivot.rotation.x = reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08);
+    m.pivot.rotation.x = (ship.pitch || 0) + (reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08));
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
-    updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak));
+    updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3);
     engine?.set({ speed: ship.speed, boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
     // sitting still a good while: the crew notice
     if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
       state.idleSaid = true;
       emit({ type: 'idle' });
     }
-    return Boolean(state.auto || input.throttle || input.turn || Math.abs(ship.speed) > 0.01 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
+    return Boolean(state.auto || input.throttle || input.turn || input.climb || Math.abs(ship.speed) > 0.01 || Math.abs(ship.vy) > 0.01 || Math.abs(ship.pitch) > 0.002 || state.streak > 0.01 || Math.abs(wrap(-ship.heading - state.yaw)) > 0.002);
   };
 
   // ── Frames ──
@@ -941,6 +1366,7 @@ export async function create(canvas, ctx) {
     }
     let moving = false;
     if (flying() && !state.dive && !props.frozen) moving = fly(dt, t);
+    placeAlt();
     map.rotation.y = state.yaw;
     map.updateMatrixWorld();
 
@@ -969,6 +1395,15 @@ export async function create(canvas, ctx) {
     }
     state.pose = pose;
     apply(pose);
+    // boosting, the lens widens (so the speed shows at the edges), with a
+    // kick as a boost lights
+    const fov = FOV + (reduced || !flying() || state.view !== 'chase' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5));
+    if (Math.abs(camera.fov - fov) > 0.005) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      tanHalf = Math.tan((fov * Math.PI) / 360);
+    }
+    if (state.kick > 0) state.kick = Math.max(0, state.kick - dt * 1.8);
     // a crash shakes the camera a moment (not with reduced motion), and the
     // glare flares
     if (state.shake > 0) {
@@ -998,9 +1433,21 @@ export async function create(canvas, ctx) {
     const crashBusy = crashFx.update(dt, camera);
     const popBusy = pops.update(dt, camera);
     const fxBusy = crashBusy || popBusy;
-    if (traffic) for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) emit(e);
+    if (traffic) {
+      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null)) {
+        if (e.event === 'convoy') emit({ type: 'event', id: 'convoy' });
+        else if (!e.event) emit(e); // (someone in distress said so as they came)
+      }
+    }
+    const adventuring = adventure(dt, t);
 
     streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
+    const bursting = burst.update(dt);
+    if (!reduced && flying() && state.view === 'chase' && state.streak > 0.001 && state.model) {
+      // out from the ship, where it is on the canvas
+      state.model.group.getWorldPosition(v).project(camera);
+      post.rush(state.streak, (v.x + 1) / 2, (v.y + 1) / 2);
+    } else post.rush(0);
     // the orbits fade while you fly down among them (edge-on they'd be stripes)
     const ringsWant = flying() && state.view === 'chase' ? 0.012 : 0.05;
     rings.material.opacity += (ringsWant - rings.material.opacity) * clamp01(dt * 3);
@@ -1014,6 +1461,9 @@ export async function create(canvas, ctx) {
     // the dust rides with it too, and shows while you fly (more, the faster)
     map.updateMatrixWorld();
     map.worldToLocal(camLocal.copy(camera.position));
+    deep.update(t, camera, camLocal);
+    for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 700) tr.wake();
+    bend();
     if (sky) sky.position.copy(camLocal);
     stars.position.copy(camLocal);
     const dustWant = !reduced && flying() && state.view === 'chase' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
@@ -1027,7 +1477,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || bursting || adventuring || state.kick > 0 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -1072,6 +1522,7 @@ export async function create(canvas, ctx) {
   const onBlur = () => {
     state.keys = {};
     state.boostBtn = false;
+    state.climbBtn = 0;
   };
   const onHidden = () => engine?.set({ speed: 0, on: !document.hidden && state.shown });
   window.addEventListener('keydown', onKeyDown);
@@ -1169,7 +1620,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { post, scene, renderer, camera, traffic };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, state };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -1181,6 +1632,9 @@ export async function create(canvas, ctx) {
       auto: state.auto?.id ?? null,
       view: state.view,
       crash: state.crash && { id: state.crash.id, age: state.crash.age },
+      shield: +state.shield.toFixed(1),
+      heat: +state.heat.toFixed(2),
+      hunters: hunters?.packs ?? [],
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
     });
@@ -1229,6 +1683,13 @@ export async function create(canvas, ctx) {
       heard();
       state.boostBtn = on;
       if (on) takeover();
+      ctx.invalidate();
+    },
+    // the phone's climb and dive buttons: 1 held to climb, −1 to dive, 0 let go
+    climb(way) {
+      heard();
+      state.climbBtn = way;
+      if (way) takeover();
       ctx.invalidate();
     },
     // Escape: back from the map view, or stop flying itself. False when
@@ -1284,6 +1745,13 @@ export async function create(canvas, ctx) {
       if (import.meta.env.DEV) delete window.__universe, delete window.__universeDebug;
       crashFx.dispose();
       pops.dispose();
+      hunters?.dispose();
+      pieces.dispose();
+      fleet.dispose();
+      deep.dispose();
+      for (const tr of trenches) tr.dispose();
+      burst.clear();
+      burst.dispose();
       traffic?.dispose();
       disposeTree(scene);
       post.dispose();
