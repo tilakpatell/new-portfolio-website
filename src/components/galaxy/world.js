@@ -7,9 +7,9 @@
 // the fighters streaming up from the temple, its trench to fly down; Cloud
 // City on Bespin's cloud tops; the blockade of Naboo; Coruscant's traffic
 // and the battle over it; Geonosis's ring and its core ships lifting off;
-// the Shield Gate, the battle and the Death Star's shot at Scarif; the
-// wrecks over Jakku; Starkiller Base drinking its sun and firing; the Sith
-// fleet in Exegol's lightning.
+// the Shield Gate, the battle and the Death Star's shot at Scarif; the Razor
+// Crest with a TIE on its tail over Nevarro; the Mandalorians' Gauntlets
+// against Moff Gideon's TIEs over the glass of Mandalore.
 //
 // Everything moves by `t`, the time on the wall (seconds), not this page's
 // own clock: every pilot in a system sees its moment at the same point, so
@@ -18,8 +18,7 @@
 //
 // buildSystem(sys, { models, bolts, flashes, small }) → { group, solids,
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
-//   dim (the star's light, 0…1), flash (lightning, 0…1), events (drained
-//   by the scene), wake(ship), dispose() }
+//   events (drained by the scene), wake(ship), dispose() }
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
 // can take you to, with their names.
@@ -62,7 +61,6 @@ function seeded(text) {
 const HULLS = {
   destroyer: [[-0.4, 0.09], [-0.24, 0.085], [-0.08, 0.075], [0.08, 0.06], [0.24, 0.045], [0.38, 0.03]],
   executor: [[-0.45, 0.04], [-0.36, 0.035], [-0.27, 0.032], [-0.18, 0.03], [-0.09, 0.028], [0, 0.026], [0.09, 0.024], [0.18, 0.021], [0.27, 0.018], [0.36, 0.014], [0.44, 0.01]],
-  xyston: [[-0.4, 0.08], [-0.24, 0.075], [-0.08, 0.07], [0.08, 0.055], [0.24, 0.042], [0.38, 0.028]],
   venator: [[-0.4, 0.085], [-0.22, 0.08], [-0.04, 0.07], [0.14, 0.055], [0.32, 0.035]],
   acclamator: [[-0.36, 0.11], [-0.12, 0.1], [0.12, 0.08], [0.34, 0.05]],
   munificent: [[-0.36, 0.08], [-0.12, 0.08], [0.12, 0.08], [0.36, 0.1]],
@@ -98,7 +96,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
   const capitals = []; // the big ships, for the ion cannon and the battles: { slot, side, size }
   const sunDirs = sys.suns.map((s) => new THREE.Vector3(...s.dir).normalize());
   const sunLights = sys.suns.map((s, i) => ({ dir: sunDirs[i], color: new THREE.Color(s.color).multiplyScalar(i === 0 ? 1.25 : 0.7) }));
-  const out = { group, solids, goals: [], body: null, shield: null, tractor: null, dim: 1, flash: 0, events };
+  const out = { group, solids, goals: [], body: null, shield: null, tractor: null, events };
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const tmp3 = new THREE.Vector3();
@@ -187,7 +185,8 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
 
   // ── The set pieces ──
   const BUILD = {
-    // a big ship chasing a small one round the planet, firing as it goes
+    // one ship chasing another round the planet, firing as it goes (its
+    // bolts its side's colour, or a big ship's green and a small one's red)
     chase(p, i) {
       const runner = place(models.slot(p.runner.kind, p.runner.size), [0, 0, 0]);
       const hunter = place(models.slot(p.hunter.kind, p.hunter.size), [0, 0, 0]);
@@ -196,7 +195,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
       const at = (a, v) => v.set(Math.cos(a) * p.radius, p.height, Math.sin(a) * p.radius).applyQuaternion(tilt);
       const solid = addSolid({ id: `chase-${i}`, at: [0, 0, 0], r: p.hunter.size * 0.12, reach: p.hunter.size * 0.12 });
       const small = p.fire === 'small';
-      const color = small ? LASER.rebel : LASER.empire;
+      const color = LASER[p.side] ?? (small ? LASER.rebel : LASER.empire);
       let cool = 0.5;
       const up = new THREE.Vector3();
       ticks.push((t, dt) => {
@@ -234,22 +233,6 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
           slot.holder.position.y = y0 + Math.sin(t * 0.07 + j * 1.7) * s.size * 0.012;
           if (s.spin) slot.holder.rotation.y = s.yaw + Math.sin(t * s.spin) * 0.4;
           return false;
-        });
-      });
-    },
-
-    // the wrecks over Jakku: what's left, drifting and turning over slowly
-    wrecks(p) {
-      p.ships.forEach((s, j) => {
-        const slot = place(models.slot(s.kind, s.size, { tint: '#6f6457' }), s.at, { yaw: s.yaw, pitch: s.pitch, roll: s.roll });
-        hull(slot, `wreck-${j}`);
-        ticks.push((t, dt) => {
-          slot.holder.rotation.z = s.roll + Math.sin(t * 0.01 + j) * 0.08;
-          if (Math.random() < dt * 0.4) {
-            tmp.set((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.15, (Math.random() - 0.5)).multiplyScalar(s.size).applyQuaternion(slot.holder.quaternion).add(slot.holder.position);
-            flashes.at(tmp, { size: 0.6 + Math.random(), color: [2.4, 1.2, 0.4], life: 0.5 });
-          }
-          return true;
         });
       });
     },
@@ -780,108 +763,6 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
       });
     },
 
-    // Starkiller Base drinks its sun, then fires through hyperspace
-    starkiller(p) {
-      const sun = sunDirs[0];
-      const r0 = sys.body.r;
-      // the light pouring in from the star, and the beam going out
-      const streamGeo = new THREE.CylinderGeometry(1, 1, 1, 24, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
-      const streamMat = new THREE.ShaderMaterial({
-        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-        fragmentShader: 'uniform float uT; uniform float uOn; varying vec2 vUv; void main() { float flow = 0.55 + 0.45 * sin(vUv.y * 90.0 + uT * 14.0) * sin(vUv.x * 25.0 + uT * 3.0); float edge = sin(vUv.x * 3.14159 * 2.0) * 0.5 + 0.5; vec3 c = vec3(3.2, 1.3, 0.5) * flow * (0.4 + 0.6 * vUv.y) * uOn; gl_FragColor = vec4(c, 1.0); }',
-        uniforms: { uT: { value: 0 }, uOn: { value: 0 } },
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      });
-      const stream = new THREE.Mesh(streamGeo, streamMat);
-      const start = sun.clone().multiplyScalar(1600);
-      const end = sun.clone().multiplyScalar(r0 * 0.98);
-      stream.position.copy(start);
-      tmp.copy(end).sub(start);
-      stream.scale.set(r0 * 0.3, r0 * 0.3, tmp.length());
-      pointAlong(stream, tmp);
-      stream.visible = false;
-      group.add(stream);
-      const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 0.9, 0.5), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-      const way = sun.clone().negate().add(new THREE.Vector3(0.2, 0.35, 0.1)).normalize();
-      const beams = [0, 1, 2, 3, 4].map((j) => {
-        const m = new THREE.Mesh(streamGeo, beamMat);
-        const from = j === 0 ? way.clone().multiplyScalar(r0) : way.clone().multiplyScalar(900);
-        const dir = j === 0 ? way.clone() : way.clone().add(new THREE.Vector3(Math.cos(j * 1.6), Math.sin(j * 1.6), Math.sin(j * 2.3)).multiplyScalar(0.18)).normalize();
-        m.position.copy(from);
-        m.scale.set(j === 0 ? 5 : 2.2, j === 0 ? 5 : 2.2, j === 0 ? 900 : 2600);
-        pointAlong(m, dir);
-        m.visible = false;
-        group.add(m);
-        return m;
-      });
-      disposers.push(() => (streamGeo.dispose(), streamMat.dispose(), beamMat.dispose()));
-      let phase = null;
-      ticks.push((t) => {
-        const k = frac(t / p.every);
-        const drain = smooth((k - 0.55) / 0.25);
-        const fire = k >= 0.8 && k < 0.86;
-        const back = smooth((k - 0.86) / 0.14);
-        const charge = k < 0.55 ? 0 : k < 0.8 ? drain : fire ? 1 : 1 - back;
-        out.dim = k < 0.55 ? 1 : k < 0.86 ? 1 - drain * 0.85 : 0.15 + 0.85 * back;
-        out.body?.set?.('charge', charge);
-        streamMat.uniforms.uT.value = t % 1000;
-        streamMat.uniforms.uOn.value = k >= 0.55 && k < 0.82 ? Math.min(1, drain * 3) * (1 - smooth((k - 0.78) / 0.04)) : 0;
-        stream.visible = streamMat.uniforms.uOn.value > 0.001;
-        for (const b of beams) b.visible = fire;
-        const now = k < 0.55 ? 'idle' : k < 0.8 ? 'drain' : fire ? 'fire' : 'back';
-        if (now !== phase) {
-          if (phase !== null && now === 'drain') events.push({ type: 'event', id: 'starkiller-charge' });
-          if (phase !== null && now === 'fire') {
-            events.push({ type: 'event', id: 'starkiller-fire' });
-            flashes.at(way.clone().multiplyScalar(r0 + 4), { size: 30, color: [3, 0.6, 0.3], life: 1.4 });
-          }
-          phase = now;
-        }
-        return k >= 0.55;
-      });
-    },
-
-    // the Sith fleet over Exegol, rising out of the storms
-    armada(p) {
-      const r0 = sys.body.r;
-      const rand = seeded(`${sys.id}-armada`);
-      const heading = new THREE.Vector3(1, 0, 0.3).normalize();
-      for (let j = 0; j < p.count; j++) {
-        const d = new THREE.Vector3(rand() - 0.5, 0.55 + rand() * 0.45, rand() - 0.5).normalize();
-        const alt = r0 + 12 + rand() * 30;
-        const at = d.clone().multiplyScalar(alt);
-        const slot = place(models.slot(p.kind, p.size * (0.85 + rand() * 0.3)), at.toArray());
-        const fwd = heading.clone().addScaledVector(d, -heading.dot(d)).normalize();
-        pointAlong(slot.holder, fwd, d);
-        hull(slot, `armada-${j}`);
-        const base = at.clone();
-        ticks.push((t) => {
-          slot.holder.position.copy(base).addScaledVector(d, Math.sin(t * 0.04 + j) * p.rise * 6);
-          return false;
-        });
-      }
-    },
-
-    // lightning in Exegol's storms, lighting the fleet
-    lightning(p) {
-      let next = 0;
-      let k = 0;
-      ticks.push((t, dt) => {
-        if (next === 0) next = t + Math.random() * p.every;
-        if (t >= next) {
-          next = t + p.every * (0.3 + Math.random() * 1.4);
-          k = 1;
-        }
-        k = Math.max(0, k - dt * 3.2);
-        const flick = k > 0 ? k * (0.6 + 0.4 * Math.sin(t * 90)) : 0;
-        out.flash = flick;
-        out.body?.set?.('flash', flick);
-        return k > 0;
-      });
-    },
   };
   sys.pieces.forEach((p, i) => BUILD[p.type]?.(p, i));
 

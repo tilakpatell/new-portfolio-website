@@ -1,15 +1,14 @@
 // The edge worlds' props, built in code (props/index.js has what a builder
 // returns): Mustafar's mining facility, lava fleas and Fortress Vader;
-// Scarif's Citadel, palms and AT-ACTs; Exegol's throne and statues;
-// Ahch-To's beehive huts and first Jedi temple; Cloud City's towers,
-// platforms and cloud cars. What a model (catalog/edge.js) takes over when
-// it comes, and what there's no model of at all (the lava geysers, the
-// carbon-freezing chamber, the reactor shaft…). And the people who aren't
-// in figures.js: Vader, the shoretroopers, K-2SO, Mustafarians, Lando.
+// Scarif's Citadel, palms and AT-ACTs; Cloud City's towers, platforms and
+// cloud cars. What a model (catalog/edge.js) takes over when it comes, and
+// what there's no model of at all (the lava geysers, the carbon-freezing
+// chamber, the reactor shaft…). And the people who aren't in figures.js:
+// Vader, the shoretroopers, K-2SO, Mustafarians, Lando.
 
 import * as THREE from 'three';
-import { box, cyl, part, place, ring, rod, rockGeometry } from '../kit';
-import { loft, trap8, upright } from '../../../universe/trafficKit';
+import { box, cyl, dome, part, place, ring, rod, rockGeometry } from '../kit';
+import { canvasTexture, loft, trap8, upright } from '../../../universe/trafficKit';
 
 const { PI, cos, sin, abs, max } = Math;
 const hot = (c, k = 2) => new THREE.Color(c).multiplyScalar(k);
@@ -95,13 +94,6 @@ function figure(k, o) {
   };
 }
 
-// a hood over a face in shadow (Jedi, Sith, hermits)
-// eslint-disable-next-line no-unused-vars -- (kept for the worlds still to come)
-const hood = (color, face = '#0a0806', r = 0.15) => [
-  part(new THREE.SphereGeometry(r, 14, 10, 0, PI * 2, 0, PI * 0.62), { at: [0, 0.01, -0.01], scale: [1, 1.12, 1.08], color, to: 'cloth' }),
-  part(new THREE.CylinderGeometry(r * 1.02, r * 1.25, 0.16, 14, 1, true, PI * 0.25, PI * 1.5), { at: [0, -0.07, -0.01], color, to: 'cloth' }),
-  part(new THREE.SphereGeometry(r * 0.72, 12, 8), { at: [0, -0.01, 0.03], color: face, to: 'cloth' }),
-];
 // a face, bare (skin, eyes, hair)
 const face = (skin, hair, { beard = null, bald = false } = {}) => {
   const P = [part(new THREE.SphereGeometry(0.11, 14, 10), { scale: [0.95, 1.08, 1], color: skin, to: 'cloth' })];
@@ -121,7 +113,6 @@ const helmet = (white, visor = '#0a0a0c', { band = null, brow = white } = {}) =>
 // ── Mustafar ──
 
 const BASALT = '#242020';
-const MUSTAFAR_STEEL = '#3e3c3e';
 const LAVA = '#ff6a1c';
 
 export const PROPS = {
@@ -271,54 +262,133 @@ export const PROPS = {
   },
 
   // the Klegger Corp mining facility, where the Separatist council hid at
-  // the end of the war: a long hall up on its struts, the control tower and
-  // the council's room at its top, two collector arms reaching back over
-  // the lava with their scoops (60 m tall), its windows lit amber
+  // the end of the war: a long hall up on its podium, lit amber in rows,
+  // the control tower with the council's room round its top, spires on its
+  // roof, heat shields on its flanks, and two collector arms reaching back
+  // over the lava with their scoops (70 m to the tower's tip)
   mining(k) {
+    const steel = '#4c494c';
     const amber = hot('#ffb062', 1.9);
     const P = [];
-    // the podium it stands on, and the struts under the hall
-    P.push(part(box(46, 5, 34), { at: [0, 0, -2], color: '#2c2a2a', to: 'stone' }));
-    for (const x of [-15, -5, 5, 15]) for (const z of [-14, 10]) P.push(part(cyl(1.2, 0.9, 6, 10), { at: [x, 4.5, z], color: '#2a2829', to: 'metal' }));
-    // the hall: sloped walls, a ridge on top, a band of windows down each side
+    // the podium it stands on, its door (the way in), the struts under the hall
+    P.push(part(box(46, 5, 34), { at: [0, 0, -2], color: '#3a3634', to: 'stone' }));
+    P.push(part(box(5, 4.2, 0.4), { at: [0, 0, 15.1], color: '#120f0e', to: 'dark' }));
+    P.push(part(new THREE.BoxGeometry(5.8, 0.3, 0.45), { at: [0, 4.3, 15.1], color: amber, to: 'glow' }));
+    for (const s of [-1, 1]) P.push(part(new THREE.BoxGeometry(0.3, 4.2, 0.45), { at: [s * 2.8, 2.1, 15.1], color: amber, to: 'glow' }));
+    for (const x of [-15, -5, 5, 15]) for (const z of [-14, 10]) P.push(part(cyl(1.2, 0.9, 6, 10), { at: [x, 4.5, z], color: '#2e2c2e', to: 'metal' }));
+    // the hall: sloped walls, a ridge, rows of windows down each side and across the front
     P.push(part(loft([
       { z: -19, pts: trap8(30, 20, 12, 1.5, 16) },
       { z: 13, pts: trap8(30, 20, 12, 1.5, 16) },
       { z: 17, pts: trap8(24, 14, 9, 1.2, 15) },
-    ]), { color: MUSTAFAR_STEEL, to: 'paint' }));
+    ]), { color: steel, to: 'paint' }));
     P.push(part(loft([
       { z: -16, pts: trap8(18, 9, 5, 0.8, 24.5) },
       { z: 10, pts: trap8(18, 9, 5, 0.8, 24.5) },
-    ]), { color: '#333133', to: 'paint' }));
-    for (const s of [-1, 1]) P.push(part(new THREE.BoxGeometry(0.3, 1.2, 28), { at: [s * 13.3, 17.5, -3], rot: [0, 0, s * 0.39], color: amber, to: 'glow' }));
-    P.push(part(new THREE.BoxGeometry(16, 1.4, 0.3), { at: [0, 15.5, 16.5], color: amber, to: 'glow' }));
-    // the control tower and the council's room, round and lit, at its top
-    P.push(part(cyl(3.6, 2.6, 34, 14), { at: [-9, 20, 6], color: '#363436', to: 'paint' }));
-    P.push(part(upright([[2.6, 0], [8.5, 2.5], [9, 5], [7, 7.5], [2, 8.5]], 20), { at: [-9, 50, 6], color: '#3c3a3c', to: 'paint' }));
-    P.push(part(new THREE.CylinderGeometry(8.85, 8.6, 1.1, 24, 1, true), { at: [-9, 54.8, 6], color: amber, to: 'glow' }));
-    P.push(rod([-9, 58, 6], [-9, 66, 6], 0.35, 0.12, { color: '#4a4648', to: 'metal' }));
-    P.push(part(new THREE.SphereGeometry(0.4, 8, 6), { at: [-9, 66.2, 6], color: hot('#ff3a20', 3), to: 'glow' }));
-    // a second, thinner stack at the back, venting
-    P.push(part(cyl(2.4, 1.6, 30, 12), { at: [10, 20, -12], color: '#2e2c2e', to: 'metal' }));
+    ]), { color: '#423f42', to: 'paint' }));
+    for (const s of [-1, 1]) for (const [y, x] of [[13.5, 14.4], [17.5, 12.9]]) P.push(part(new THREE.BoxGeometry(0.3, 1.0, 28), { at: [s * x, y, -3], rot: [0, 0, s * 0.39], color: amber, to: 'glow' }));
+    for (const y of [13, 16.5]) P.push(part(new THREE.BoxGeometry(y > 14 ? 13 : 20, 1.1, 0.3), { at: [0, y, 17.05], color: amber, to: 'glow' }));
+    for (let i = 0; i < 7; i++) P.push(part(new THREE.BoxGeometry(0.6, 9, 0.6), { at: [-10.5 + i * 3.5, 15, 17.1], color: '#3a373a', to: 'metal' }));
+    // the control tower, and the council's room round its top, lit
+    P.push(part(cyl(4, 2.8, 40, 14), { at: [-9, 20, 6], color: '#454246', to: 'paint' }));
+    P.push(part(upright([[2.8, 0], [9, 2.5], [9.6, 5.5], [7.5, 8], [2.4, 9]], 24), { at: [-9, 58, 6], color: '#4c494c', to: 'paint' }));
+    P.push(part(new THREE.CylinderGeometry(9.45, 9.2, 1.6, 28, 1, true), { at: [-9, 62.6, 6], color: amber, to: 'glow' }));
+    P.push(part(new THREE.CylinderGeometry(7.8, 7.5, 0.6, 24, 1, true), { at: [-9, 65.4, 6], color: hot('#ff8a4a', 1.6), to: 'glow' }));
+    for (let i = 0; i < 4; i++) P.push(part(new THREE.BoxGeometry(0.35, 32, 0.35), { at: [-9 + sin(i * PI / 2) * 3.9, 36, 6 + cos(i * PI / 2) * 3.9], color: amber, to: 'glow' }));
+    // spires on the roof, red lights on their tips
+    for (const [x, z, h] of [[-9, 6, 80], [6, -8, 50], [11, 4, 42], [-2, -14, 46], [14, -14, 38]]) {
+      P.push(rod([x, x === -9 ? 66 : 27, z], [x, h, z], 0.45, 0.1, { color: '#555256', to: 'metal' }));
+      P.push(part(new THREE.SphereGeometry(0.45, 8, 6), { at: [x, h + 0.2, z], color: hot('#ff3a20', 3), to: 'glow' }));
+    }
+    // a stack at the back, venting fire
+    P.push(part(cyl(2.4, 1.6, 30, 12), { at: [10, 20, -12], color: '#3a383a', to: 'metal' }));
     P.push(part(ring(1.7, 0.3, 14), { at: [10, 50, -12], color: hot('#ff7a2a', 2.2), to: 'glow' }));
+    P.push(part(new THREE.ConeGeometry(1.4, 4, 10), { at: [10, 52, -12], color: hot('#ff9a3a', 2.6), to: 'glow' }));
+    // heat shields on its flanks, curved against the spray off the lava
+    for (const s of [-1, 1]) P.push(part(new THREE.CylinderGeometry(14, 14, 16, 16, 1, true, s > 0 ? PI * 0.35 : PI * 1.15, PI * 0.5), { at: [s * 6, 6, -10], color: '#3e3b3e', to: 'cloth' }));
     // the collector arms: girders out over the lava behind, scoops on their ends
     for (const s of [-1, 1]) {
       const a = [s * 8, 18, -18];
       const b = [s * 15, 4, -58];
-      P.push(rod(a, b, 1.3, 0.9, { color: '#4a4446', to: 'metal' }));
-      P.push(rod([a[0], a[1] + 4, a[2]], [b[0], b[1] + 6, b[2] + 2], 0.5, 0.4, { color: '#3a3638', to: 'metal' }));
+      P.push(rod(a, b, 1.3, 0.9, { color: '#5a5456', to: 'metal' }));
+      P.push(rod([a[0], a[1] + 4, a[2]], [b[0], b[1] + 6, b[2] + 2], 0.5, 0.4, { color: '#4a4648', to: 'metal' }));
       for (let i = 1; i < 6; i++) {
         const f = i / 6;
         const p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-        P.push(rod(p, [p[0], p[1] + 4 + f * 2, p[2] + 0.4], 0.25, 0.25, { color: '#3a3638', to: 'metal' }));
+        P.push(rod(p, [p[0], p[1] + 4 + f * 2, p[2] + 0.4], 0.25, 0.25, { color: '#4a4648', to: 'metal' }));
       }
-      P.push(part(new THREE.SphereGeometry(4, 16, 10, 0, PI * 2, PI / 2, PI / 2), { at: [b[0], b[1] + 1, b[2] - 2], color: '#3a3436', to: 'metal' }));
+      P.push(part(new THREE.SphereGeometry(4, 16, 10, 0, PI * 2, PI / 2, PI / 2), { at: [b[0], b[1] + 1, b[2] - 2], color: '#4a4446', to: 'metal' }));
       P.push(part(new THREE.CircleGeometry(3.7, 16).rotateX(-PI / 2), { at: [b[0], b[1] + 0.9, b[2] - 2], color: hot(LAVA, 2.4), to: 'glow' }));
       P.push(part(new THREE.ConeGeometry(0.6, 3, 8), { at: [b[0], b[1] - 4, b[2] - 2], rot: [PI, 0, 0], color: hot(LAVA, 2.6), to: 'glow' }));
     }
     // pipes along its flanks
-    for (const s of [-1, 1]) P.push(part(new THREE.CylinderGeometry(0.7, 0.7, 34, 10), { at: [s * 21, 6.5, -2], rot: [PI / 2, 0, 0], color: '#4a4244', to: 'metal' }));
+    for (const s of [-1, 1]) P.push(part(new THREE.CylinderGeometry(0.7, 0.7, 34, 10), { at: [s * 21, 6.5, -2], rot: [PI / 2, 0, 0], color: '#5a5254', to: 'metal' }));
     return { object: k.build(P, { name: 'mining' }), solids: [{ box: [0, -2, 23, 17, 0] }, { circle: [-9, 6, 4] }] };
+  },
+
+  // a lava fall: a curtain of molten rock pouring over a lip and down into
+  // the lava below, flowing (its streaks run down), steam at its foot.
+  // Stands on its lip at y = 0, falling `h` metres toward −z… well, down.
+  lavafall(k, { w = 22, h = 16, bend = 0.9 } = {}) {
+    const tex = k.own(
+      canvasTexture(128, (c, n) => {
+        const g = c.createLinearGradient(0, 0, n, 0);
+        g.addColorStop(0, '#ff5a10');
+        g.addColorStop(0.5, '#ffb040');
+        g.addColorStop(1, '#ff5a10');
+        c.fillStyle = '#ff6a18';
+        c.fillRect(0, 0, n, n);
+        const r = rand(5);
+        for (let i = 0; i < 60; i++) {
+          c.fillStyle = r() < 0.5 ? 'rgba(255,220,120,0.55)' : 'rgba(150,30,0,0.45)';
+          c.fillRect(r() * n, r() * n, 1 + r() * 4, 10 + r() * 50);
+        }
+      }),
+    );
+    tex.repeat.set(3, 1.5);
+    const mat = k.own(new THREE.MeshBasicMaterial({ map: tex, color: hot('#ffd0b0', 1.45), toneMapped: false, side: THREE.DoubleSide }));
+    // the curtain: a sheet curving out over the lip and down
+    const seg = 12;
+    const g = new THREE.PlaneGeometry(w, h, 8, seg);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const v = (h / 2 - pos.getY(i)) / h; // 0 at the lip … 1 at the foot
+      pos.setXYZ(i, pos.getX(i) * (1 + v * 0.15), -v * h, sin(Math.min(1, v * 2.2) * PI * 0.5) * bend * 3 - v * 1.2);
+    }
+    g.computeVertexNormals();
+    const sheet = new THREE.Mesh(k.own(g), mat);
+    const object = new THREE.Group();
+    object.add(sheet);
+    object.add(k.build([part(box(w + 4, 1.6, 3), { at: [0, -1.4, -1.2], color: '#1e1a18', to: 'stone' }), part(new THREE.BoxGeometry(w * 1.1, 0.3, 4), { at: [0, -h + 0.2, 2.5], color: hot('#ffa040', 2.6), to: 'glow' })], { name: 'lavafall-lip', shadows: false }));
+    return {
+      object,
+      update(t) {
+        tex.offset.y = t * 0.35;
+      },
+    };
+  },
+
+  // smoke, going up in a slow column and spreading as it goes
+  smoke(k, { h = 60, n = 9, color = '#2e2624', spread = 1 } = {}) {
+    const mat = k.own(new THREE.MeshStandardMaterial({ color, roughness: 1, transparent: true, opacity: 0.55, depthWrite: false }));
+    const puffs = new THREE.InstancedMesh(k.own(new THREE.IcosahedronGeometry(1, 1)), mat, n);
+    puffs.frustumCulled = false;
+    const object = new THREE.Group();
+    object.add(puffs);
+    const m = new THREE.Matrix4();
+    const ph = k.rand();
+    return {
+      object,
+      update(t) {
+        for (let i = 0; i < n; i++) {
+          const p = (t * 0.03 + i / n + ph) % 1;
+          const s = (3 + p * 14) * spread;
+          m.makeScale(s, s * 0.8, s).setPosition(sin(i * 1.9 + t * 0.05) * p * 8 * spread + p * 10 * spread, p * h, cos(i * 2.3) * p * 6 * spread);
+          puffs.setMatrixAt(i, m);
+        }
+        puffs.instanceMatrix.needsUpdate = true;
+      },
+    };
   },
 
   // Fortress Vader: two black towers like the tines of a fork, 120 m tall,
@@ -399,7 +469,7 @@ export const PROPS = {
 
   // a geyser of lava: a glowing mound, and gouts of it thrown up and
   // falling back, over and over
-  lavaspout(k, { h = 16, n = 10 } = {}) {
+  lavaspout(k, { h = 16, n = 10, lit = false } = {}) {
     const object = k.build([
       part(new THREE.ConeGeometry(6, 3.2, 14, 1, true), { at: [0, 1.4, 0], color: '#1e1a18', to: 'stone' }),
       part(new THREE.CircleGeometry(2.2, 14).rotateX(-PI / 2), { at: [0, 2.9, 0], color: hot(LAVA, 3), to: 'glow' }),
@@ -411,9 +481,11 @@ export const PROPS = {
     object.add(blobs);
     const dirs = Array.from({ length: n }, (_, i) => [cos(i * 2.4) * (0.3 + (i % 3) * 0.25), sin(i * 2.4) * (0.3 + (i % 3) * 0.25), 0.8 + (i % 4) * 0.15, i / n]);
     const m = new THREE.Matrix4();
-    const light = new THREE.PointLight('#ff7a2a', 30, 40, 2);
-    light.position.y = 4;
-    object.add(light);
+    const light = lit ? new THREE.PointLight('#ff7a2a', 30, 40, 2) : null;
+    if (light) {
+      light.position.y = 4;
+      object.add(light);
+    }
     return {
       object,
       solids: [{ circle: [0, 0, 3.5] }],
@@ -426,7 +498,7 @@ export const PROPS = {
           blobs.setMatrixAt(i, m);
         });
         blobs.instanceMatrix.needsUpdate = true;
-        light.intensity = 24 + 8 * sin(t * 7);
+        if (light) light.intensity = 24 + 8 * sin(t * 7);
       },
     };
   },
@@ -447,8 +519,8 @@ export const PROPS = {
       P.push(rod(top, mid, r * 0.012, r * 0.016, { color: hot('#ff5a14', 2.6), to: 'glow' }));
       if (i % 2 === 0) P.push(rod(mid, low, r * 0.016, r * 0.01, { color: hot('#ff4a10', 2.2), to: 'glow' }));
     }
-    // the plume
-    for (let i = 0; i < 6; i++) P.push(part(new THREE.SphereGeometry(r * (0.16 + i * 0.05), 12, 8), { at: [i * r * 0.06, h * (1.05 + i * 0.22), i * r * 0.03], scale: [1, 0.7, 1], color: shade('#2a2220', -i * 0.01), to: 'stone' }));
+    // the plume, lit from under by the crater
+    for (let i = 0; i < 5; i++) P.push(part(new THREE.SphereGeometry(r * (0.09 + i * 0.035), 12, 8), { at: [i * r * 0.05, h * (1.02 + i * 0.12), i * r * 0.02], scale: [1, 0.75, 1], color: i ? shade('#4a3028', -i * 0.03) : '#7a3a20', to: 'stone' }));
     return { object: k.build(P, { name: 'volcano', shadows: false }) };
   },
 
@@ -628,7 +700,7 @@ export const PROPS = {
     const object = new THREE.Group();
     const P = [
       // the podium (the vault's in it), stepped
-      part(upright([[52, 0], [52, 7], [46, 8], [46, 15], [40, 16], [40, 20]], 40), { color: '#6a6c6e', to: 'paint' }),
+      part(upright([[52, 0], [52, 7], [46, 8], [46, 15], [40, 16], [40, 20]], 40), { color: '#7a7c7e', to: 'paint' }),
       // the shaft, slimming, then out again for the head
       part(upright([[24, 18], [21, 60], [17, 200], [17, 236], [24, 252], [25, 262], [18, 270], [14, 272]], 32), { color: grey, to: 'paint' }),
     ];
@@ -638,11 +710,19 @@ export const PROPS = {
       P.push(rod([cos(a) * 23.5, 20, sin(a) * 23.5], [cos(a) * 17.2, 232, sin(a) * 17.2], 0.9, 0.7, { color: '#4a4c50', to: 'metal' }, 4));
     }
     for (const [y, r] of [[40, 22.1], [90, 20.3], [140, 18.6], [190, 17.3], [244, 21]]) P.push(part(new THREE.CylinderGeometry(r + 0.3, r + 0.3, 2.2, 32, 1, true), { at: [0, y, 0], color: hot('#ffe2a8', 1.5), to: 'glow' }));
-    // the vault's doors, and the hangar mouths round the podium
+    // the vault's doors, and the hangar mouths round the podium, lit over
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * PI * 2 + PI / 4;
       P.push(part(box(12, 6, 1), { at: [sin(a) * 51.8, 0, cos(a) * 51.8], rot: [0, a, 0], color: '#1a1c1e', to: 'dark' }));
+      P.push(part(new THREE.BoxGeometry(13, 0.4, 0.3), { at: [sin(a) * 52.4, 6.4, cos(a) * 52.4], rot: [0, a, 0], color: hot('#ffd27a', 1.8), to: 'glow' }));
     }
+    // pilasters round the podium, a band of light round its upper step
+    for (let i = 0; i < 44; i++) {
+      const a = (i / 44) * PI * 2;
+      if (abs(Math.atan2(sin(4 * (a - PI / 4)), cos(4 * (a - PI / 4)))) / 4 < 0.14) continue; // (not over the doors)
+      P.push(part(box(1.3, 7.4, 0.9), { at: [sin(a) * 52.3, 0, cos(a) * 52.3], rot: [0, a, 0], color: '#56585c', to: 'metal' }));
+    }
+    P.push(part(new THREE.CylinderGeometry(46.3, 46.3, 0.8, 48, 1, true), { at: [0, 13.6, 0], color: hot('#ffe8c0', 1.3), to: 'glow' }));
     // the beacon on its mast
     P.push(rod([0, 270, 0], [0, 300, 0], 1.6, 0.5, { color: '#6a6c70', to: 'metal' }));
     P.push(part(new THREE.SphereGeometry(1.4, 10, 8), { at: [0, 301, 0], color: hot('#ff3a2a', 3), to: 'glow' }));
@@ -784,19 +864,700 @@ export const PROPS = {
     const mat = k.own(k.mats.paint.clone());
     mat.fog = false;
     const mesh = new THREE.Mesh(k.geometry(P), mat);
-    const crater = new THREE.Mesh(k.geometry([part(new THREE.SphereGeometry(r * 0.26, 24, 12, 0, PI * 2, 0, PI * 0.5), { color: '#5a5c60', to: 'paint' })]), mat);
-    // the dish, up in the northern half, facing out (+z)
+    // the dish, up in the northern half, facing out (+z): caps laid on the
+    // surface, darker toward the focus
+    const crater = new THREE.Mesh(
+      k.geometry([
+        part(new THREE.SphereGeometry(r * 1.005, 32, 6, 0, PI * 2, 0, 0.27), { color: '#6a6c70', to: 'paint' }),
+        part(new THREE.SphereGeometry(r * 1.01, 32, 4, 0, PI * 2, 0, 0.2), { color: '#58595d', to: 'paint' }),
+        part(new THREE.SphereGeometry(r * 1.015, 24, 3, 0, PI * 2, 0, 0.11), { color: '#4a4b4f', to: 'paint' }),
+        part(new THREE.SphereGeometry(r * 1.02, 12, 2, 0, PI * 2, 0, 0.025), { color: '#7a7c80', to: 'paint' }),
+      ]),
+      mat,
+    );
     const dir = new THREE.Vector3(0.35, 0.45, 1).normalize();
-    crater.position.copy(dir).multiplyScalar(r * 0.99);
-    crater.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+    crater.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     dish.add(mesh, crater);
     return { object: dish };
+  },
+
+  // Scarif's shield, high overhead: a faint shimmer of hexagons across the
+  // whole sky (out of the fog: it's that far off)
+  scarifshield(k, { r = 6000, opacity = 0.09 } = {}) {
+    const tex = k.own(
+      canvasTexture(256, (c, n) => {
+        c.fillStyle = '#000';
+        c.fillRect(0, 0, n, n);
+        c.strokeStyle = 'rgba(255,255,255,0.85)';
+        c.lineWidth = 2;
+        const R = n / 6;
+        const h = Math.sqrt(3) * R;
+        for (let col = -1; col < 5; col++)
+          for (let row = -1; row < 4; row++) {
+            const cx = col * 1.5 * R;
+            const cy = row * h + (col % 2 ? h / 2 : 0);
+            c.beginPath();
+            for (let i = 0; i <= 6; i++) c[i ? 'lineTo' : 'moveTo'](cx + R * cos((i * PI) / 3), cy + R * sin((i * PI) / 3));
+            c.stroke();
+          }
+      }),
+    );
+    tex.repeat.set(36, 9);
+    const mat = k.own(new THREE.MeshBasicMaterial({ map: tex, color: '#7ad0ff', transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
+    const mesh = new THREE.Mesh(k.own(new THREE.SphereGeometry(r, 64, 24, 0, PI * 2, 0, PI * 0.46)), mat);
+    mesh.renderOrder = -5;
+    const object = new THREE.Group();
+    object.add(mesh);
+    return {
+      object,
+      update(t) {
+        tex.offset.set(t * 0.002, 0);
+        mat.opacity = opacity * (0.8 + 0.2 * sin(t * 0.7));
+      },
+    };
+  },
+
+  // a firefight: blaster bolts across the beach between two lines (the
+  // Imperials' at −z, the Rebels' at +z), and now and then a blast
+  firefight(k, { n = 14, w = 70, d = 50 } = {}) {
+    const object = new THREE.Group();
+    const bolt = k.geometry([part(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6).rotateX(PI / 2), { color: hot('#ff3a2a', 3.2), to: 'glow' })]);
+    const bolts = new THREE.InstancedMesh(bolt, k.mats.glow, n);
+    bolts.frustumCulled = false;
+    const blastG = k.geometry([part(new THREE.IcosahedronGeometry(1, 1), { color: hot('#ffb050', 2.6), to: 'glow' })]);
+    const blasts = new THREE.InstancedMesh(blastG, k.mats.glow, 3);
+    blasts.frustumCulled = false;
+    object.add(bolts, blasts);
+    const r = rand(19);
+    const shots = Array.from({ length: n }, (_, i) => ({ x0: (r() - 0.5) * w, x1: (r() - 0.5) * w, y: 1 + r() * 1.5, dir: i % 3 ? 1 : -1, ph: r(), speed: 0.9 + r() * 0.5 }));
+    const booms = Array.from({ length: 3 }, () => ({ x: 0, z: 0, ph: r() }));
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const one = new THREE.Vector3(1, 1, 1);
+    return {
+      object,
+      update(t) {
+        shots.forEach((s, i) => {
+          const p = (t * s.speed + s.ph) % 1;
+          const z0 = (-d / 2) * s.dir;
+          const x = s.x0 + (s.x1 - s.x0) * p;
+          const z = z0 + d * s.dir * p;
+          q.setFromAxisAngle(v.set(0, 1, 0), Math.atan2(s.x1 - s.x0, d * s.dir));
+          m.compose(v.set(x, s.y + sin(p * PI) * 0.6, z), q, one);
+          bolts.setMatrixAt(i, m);
+        });
+        bolts.instanceMatrix.needsUpdate = true;
+        booms.forEach((b, i) => {
+          const p = (t * 0.25 + b.ph) % 1;
+          if (p < 0.02) {
+            b.x = (r() - 0.5) * w;
+            b.z = (r() - 0.5) * d;
+          }
+          const s = p < 0.15 ? 0.5 + p * 22 : 0.001;
+          m.makeScale(s, s * 0.8, s).setPosition(b.x, s * 0.4, b.z);
+          blasts.setMatrixAt(i, m);
+        });
+        blasts.instanceMatrix.needsUpdate = true;
+      },
+    };
+  },
+
+  // ── Bespin ──
+
+  // Lando Calrissian, Baron Administrator: blue shirt, his cape (blue,
+  // lined gold), the moustache
+  lando(k) {
+    return figure(k, {
+      tall: 1.78,
+      body: '#3e5a8a',
+      legs: '#24283a',
+      boots: '#14141a',
+      skin: '#7a5038',
+      sleeves: '#3e5a8a',
+      cape: { color: '#4e6e9e', lining: '#c8a040' },
+      head: () => [...face('#7a5038', '#1a120c'), part(new THREE.BoxGeometry(0.07, 0.015, 0.02), { at: [0, -0.035, 0.105], color: '#1a120c', to: 'cloth' })],
+      extra: () => [part(new THREE.CylinderGeometry(0.175, 0.18, 0.06, 14), { at: [0, 0.98, 0], color: '#c8a040', to: 'cloth' })],
+    });
+  },
+
+  // Lobot: Lando's aide, bald, the computer band round the back of his head
+  lobot(k) {
+    return figure(k, {
+      tall: 1.75,
+      body: '#c8c0b4',
+      legs: '#8a8478',
+      boots: '#2a2622',
+      skin: '#e2b896',
+      sleeves: '#c8c0b4',
+      head: () => [...face('#e2b896', '#000', { bald: true }), part(new THREE.TorusGeometry(0.11, 0.025, 6, 16, PI * 1.2), { at: [0, 0.01, -0.01], rot: [0, PI * 0.9, 0], color: '#9a9ca0', to: 'metal' }), part(new THREE.SphereGeometry(0.012, 6, 4), { at: [0.1, 0.02, -0.05], color: hot('#ff4a3a', 3), to: 'glow' })],
+    });
+  },
+
+  // an Ugnaught: short, stout, a pink snout and white whiskers, in work
+  // overalls
+  ugnaught(k) {
+    const overalls = ['#4a5a7a', '#7a5a3a', '#5a6a4a'][Math.floor(k.rand() * 3)];
+    return figure(k, {
+      tall: 1.0,
+      bulk: 1.35,
+      body: overalls,
+      legs: overalls,
+      boots: '#2a2018',
+      skin: '#d8a08a',
+      head: () => [
+        part(new THREE.SphereGeometry(0.13, 12, 10), { scale: [1, 1, 1], color: '#d8a08a', to: 'cloth' }),
+        part(new THREE.CylinderGeometry(0.05, 0.06, 0.07, 10), { at: [0, -0.02, 0.12], rot: [PI / 2, 0, 0], color: '#e8b0a0', to: 'cloth' }),
+        part(new THREE.SphereGeometry(0.1, 10, 8, 0, PI * 2, PI * 0.45, PI * 0.55), { at: [0, -0.04, 0.03], color: '#f0ece4', to: 'cloth' }),
+        part(new THREE.SphereGeometry(0.014, 6, 4), { at: [-0.045, 0.04, 0.115], color: '#100c0a', to: 'dark' }),
+        part(new THREE.SphereGeometry(0.014, 6, 4), { at: [0.045, 0.04, 0.115], color: '#100c0a', to: 'dark' }),
+        part(new THREE.SphereGeometry(0.135, 12, 8, 0, PI * 2, 0, PI * 0.4), { at: [0, 0.02, 0], color: '#5a4a3a', to: 'cloth' }),
+      ],
+    });
+  },
+
+  // a Wing Guard of Cloud City: the navy uniform, the peaked cap
+  wingguard(k) {
+    return figure(k, {
+      tall: 1.8,
+      body: '#26386a',
+      legs: '#1e2c54',
+      boots: '#101014',
+      skin: '#d8a888',
+      gun: true,
+      head: () => [...face('#d8a888', '#3a2a1e'), part(new THREE.CylinderGeometry(0.125, 0.12, 0.08, 14), { at: [0, 0.07, 0], color: '#26386a', to: 'cloth' }), part(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 12, 1, false, -PI / 2, PI), { at: [0, 0.035, 0.07], color: '#141820', to: 'dark' })],
+      extra: () => [part(new THREE.CylinderGeometry(0.175, 0.18, 0.05, 14), { at: [0, 0.98, 0], color: '#c8b07a', to: 'metal' })],
+    });
+  },
+
+  // Boba Fett: the dented green armour, the T of his visor, his jetpack
+  bobafett(k) {
+    return figure(k, {
+      tall: 1.83,
+      body: '#6a7458',
+      legs: '#8a8a74',
+      boots: '#4a3a2a',
+      glove: '#5a3a2a',
+      sleeves: '#8a8a74',
+      gun: true,
+      cape: { color: '#5a4a32' },
+      head: () => [
+        part(new THREE.SphereGeometry(0.14, 16, 12), { scale: [1, 1.08, 1.05], color: '#4e6a4a', to: 'paint' }),
+        part(new THREE.BoxGeometry(0.16, 0.035, 0.05), { at: [0, 0.02, 0.125], color: '#0a0a0a', to: 'dark' }),
+        part(new THREE.BoxGeometry(0.035, 0.11, 0.05), { at: [0, -0.04, 0.13], color: '#0a0a0a', to: 'dark' }),
+        rod([0.13, 0.05, 0], [0.14, 0.22, 0.03], 0.008, 0.008, { color: '#3a3a3a', to: 'metal' }),
+        part(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 16), { at: [0, -0.1, 0], color: '#7a2a20', to: 'paint' }),
+      ],
+      extra: () => [
+        part(box(0.3, 0.3, 0.04), { at: [0, 1.06, 0.12], color: '#5a6a4a', to: 'paint' }),
+        part(new THREE.CylinderGeometry(0.07, 0.07, 0.42, 10), { at: [-0.08, 1.24, -0.2], color: '#4e6a4a', to: 'paint' }),
+        part(new THREE.CylinderGeometry(0.07, 0.07, 0.42, 10), { at: [0.08, 1.24, -0.2], color: '#4e6a4a', to: 'paint' }),
+        part(new THREE.ConeGeometry(0.06, 0.18, 10), { at: [0, 1.55, -0.22], color: '#8a8a7a', to: 'metal' }),
+        part(new THREE.SphereGeometry(0.1, 10, 6, 0, PI * 2, 0, PI / 2), { at: [-0.25, 1.38, 0], color: '#6a7458', to: 'paint' }),
+      ],
+    });
+  },
+
+  // Luke on Bespin: tan fatigues, his father's lightsaber lit
+  luke(k, { saber = '#4a8cff' } = {}) {
+    return figure(k, {
+      tall: 1.72,
+      body: '#c8b48a',
+      legs: '#b4a078',
+      boots: '#4a3a2a',
+      skin: '#e8bc98',
+      saber,
+      head: () => face('#e8bc98', '#c8a060'),
+      extra: () => [part(new THREE.CylinderGeometry(0.175, 0.18, 0.05, 14), { at: [0, 0.98, 0], color: '#3a2a1e', to: 'cloth' })],
+    });
+  },
+
+  // a twin-pod cloud car: two round cockpits side by side on the engine
+  // between them, orange, nose to +z (hovering, bobbing)
+  cloudcar(k, { color = '#d0582c' } = {}) {
+    const object = new THREE.Group();
+    const P = [
+      part(new THREE.CapsuleGeometry(0.75, 3.4, 6, 14), { at: [0, 1.6, -0.6], rot: [PI / 2, 0, 0], color: '#c8c2b8', to: 'metal' }),
+      part(new THREE.CylinderGeometry(0.62, 0.62, 0.06, 14), { at: [0, 1.6, -3.4], rot: [PI / 2, 0, 0], color: hot('#ff9a5a', 2.4), to: 'glow' }),
+    ];
+    for (const s of [-1, 1]) {
+      P.push(part(new THREE.SphereGeometry(1.25, 18, 14), { at: [s * 1.95, 1.6, 0.6], scale: [1, 0.95, 1.5], color, to: 'paint' }));
+      P.push(part(new THREE.SphereGeometry(0.95, 14, 10, 0, PI * 2, 0, PI * 0.45), { at: [s * 1.95, 1.75, 1.3], rot: [1.15, 0, 0], color: '#2a3a4a', to: 'glass' }));
+      P.push(part(new THREE.BoxGeometry(0.2, 0.9, 1.4), { at: [s * 1.95, 0.6, 0.2], color: '#8a3a1e', to: 'paint' }));
+      P.push(rod([s * 0.6, 1.6, 0.2], [s * 1.2, 1.6, 0.4], 0.3, 0.3, { color: '#a8a296', to: 'metal' }));
+    }
+    const inner = k.build(P, { name: 'cloudcar' });
+    object.add(inner);
+    const ph = k.rand() * 10;
+    return {
+      object,
+      solids: [{ box: [0, 0, 3.2, 2.4, 0] }],
+      update(t, dt, move = 0) {
+        inner.position.y = sin(t * 1.6 + ph) * 0.15;
+        inner.rotation.z = sin(t * 0.8 + ph) * 0.05 + move * 0.08;
+      },
+    };
+  },
+
+  // a tower of Cloud City, 60 m: a white column flaring at its foot, bands
+  // of lit windows, a rounded crown and a spire
+  cloudcity(k, opts = {}) {
+    return { object: k.build(towerParts(opts), { name: 'cloudcity' }), solids: [{ circle: [0, 0, 8.5] }] };
+  },
+
+  // the city's top deck: a great disc of white plating, its plazas ringed,
+  // a parapet round its edge (open where the bridges go out), the bowl of
+  // the city's underside going down beneath it, a band of windows round
+  // its rim; you walk on it
+  bespindeck(k, { r = 170, gaps = [] } = {}) {
+    const cream = '#efe6da';
+    const P = [
+      part(cyl(r, r, 3, 96), { at: [0, -3, 0], color: cream, to: 'adobe' }),
+      part(new THREE.RingGeometry(r * 0.3, r * 0.34, 72).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#bfb4a6', to: 'paint' }),
+      part(new THREE.RingGeometry(r * 0.62, r * 0.65, 96).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#bfb4a6', to: 'paint' }),
+      part(new THREE.RingGeometry(r * 0.88, r * 0.9, 96).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#c9a888', to: 'paint' }),
+      // the underside: a bowl down to the stalk
+      part(upright([[6, -250], [10, -215], [16, -120], [r * 0.22, -78], [r * 0.45, -48], [r * 0.72, -22], [r * 0.93, -8], [r, -3]], 64), { color: '#b9b0a4', to: 'paint' }),
+      // the rim's windows, lit
+      part(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 1.0, 96, 1, true), { at: [0, -1.7, 0], color: hot('#ffd2a0', 1.6), to: 'glow' }),
+    ];
+    // ribs down the bowl
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * PI * 2;
+      const at = (rr, y) => [sin(a) * rr, y, cos(a) * rr];
+      P.push(rod(at(r * 0.99, -4), at(r * 0.72, -23), 1.4, 1.2, { color: '#a8a094', to: 'metal' }, 6));
+      P.push(rod(at(r * 0.72, -23), at(r * 0.45, -49), 1.2, 1.0, { color: '#a8a094', to: 'metal' }, 6));
+      P.push(rod(at(r * 0.45, -49), at(r * 0.22, -79), 1.0, 0.8, { color: '#a8a094', to: 'metal' }, 6));
+    }
+    // the parapet: arcs between the gaps, and solid all along them
+    const gap = (a) => gaps.some((g) => abs(Math.atan2(sin(a - g), cos(a - g))) < 6 / r);
+    const solids = [];
+    const n = Math.round((PI * 2 * r) / 7);
+    let arcFrom = null;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * PI * 2;
+      const open = gap(a) || i === n;
+      if (!open && i < n) solids.push({ box: [sin(a) * (r - 0.6), cos(a) * (r - 0.6), 3.7, 0.6, a] });
+      if (!open && arcFrom === null) arcFrom = a;
+      if (open && arcFrom !== null) {
+        const len = a - (PI * 2) / n - arcFrom;
+        if (len > 0.001) P.push(part(new THREE.TorusGeometry(r - 0.6, 0.45, 5, Math.max(2, Math.round(len * 40)), len).rotateX(PI / 2), { at: [0, 0.75, 0], rot: [0, a - (PI * 2) / n - PI / 2, 0], scale: [1, 1, 1], color: '#ebe4da', to: 'paint', m: new THREE.Matrix4().compose(new THREE.Vector3(0, 0.75, 0), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a - (PI * 2) / n - PI / 2), new THREE.Vector3(1, 2.4, 1)) }));
+        arcFrom = null;
+      }
+    }
+    return { object: k.build(P, { name: 'bespindeck' }), solids, floors: [{ x: 0, z: 0, r, y: 0 }] };
+  },
+
+  // a landing platform off the city's edge: a round deck, its rim lit,
+  // the landing circle, a cone of supports under it
+  bespinplatform(k, { r = 26, color = '#e6ddd0' } = {}) {
+    const P = [
+      part(cyl(r, r * 0.98, 1.6, 64), { at: [0, -1.6, 0], color, to: 'adobe' }),
+      part(new THREE.RingGeometry(r * 0.2, r * 0.22, 48).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#a89e90', to: 'adobe' }),
+      part(new THREE.RingGeometry(r * 0.55, r * 0.58, 64).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#d8783a', to: 'paint' }),
+      part(new THREE.RingGeometry(r * 0.9, r * 0.92, 64).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#a89e90', to: 'paint' }),
+      part(new THREE.ConeGeometry(r * 0.7, 16, 32, 1, true), { at: [0, -9.6, 0], rot: [PI, 0, 0], color: '#b4aca0', to: 'cloth' }),
+      part(cyl(2.5, 3.5, 30, 12), { at: [0, -40, 0], color: '#a8a094', to: 'metal' }),
+    ];
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * PI * 2;
+      P.push(part(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 8), { at: [sin(a) * r * 0.96, 0.05, cos(a) * r * 0.96], color: hot(i % 2 ? '#ffb070' : '#ff7a4a', 3), to: 'glow' }));
+    }
+    return { object: k.build(P, { name: 'bespinplatform' }), floors: [{ x: 0, z: 0, r, y: 0 }] };
+  },
+
+  // a walkway between the city and a platform: a deck along +z, low walls
+  // each side, white ribs arching over it
+  bespinbridge(k, { len = 40, w = 6 } = {}) {
+    const P = [
+      part(box(w, 1.2, len), { at: [0, -1.2, 0], color: '#e2d9cc', to: 'adobe' }),
+      part(box(w * 0.4, 0.3, len), { at: [0, -1.5, 0], color: '#a8a094', to: 'metal' }),
+    ];
+    for (const s of [-1, 1]) {
+      P.push(part(box(0.4, 1.1, len), { at: [s * (w / 2 + 0.2), 0, 0], color: '#ebe4da', to: 'paint' }));
+      P.push(part(new THREE.BoxGeometry(0.12, 0.12, len), { at: [s * (w / 2 + 0.2), 1.15, 0], color: hot('#ffcf9a', 1.4), to: 'glow' }));
+    }
+    for (let z = -len / 2 + 3; z < len / 2; z += 6) P.push(part(new THREE.TorusGeometry(w / 2 + 0.3, 0.16, 5, 18, PI), { at: [0, 1.0, z], color: '#ebe4da', to: 'paint' }));
+    return {
+      object: k.build(P, { name: 'bespinbridge' }),
+      floors: [{ x: 0, z: 0, hw: w / 2 + 0.4, hd: len / 2, y: 0 }],
+      solids: [{ box: [-(w / 2 + 0.2), 0, 0.25, len / 2, 0] }, { box: [w / 2 + 0.2, 0, 0.25, len / 2, 0] }],
+    };
+  },
+
+  // the carbon-freezing chamber: a dark round pit of a room, the freezing
+  // platform in its middle with the hole, the hydraulic claws over it, steam
+  // rising, all of it lit red
+  carbonchamber(k) {
+    const object = new THREE.Group();
+    const P = [
+      part(cyl(17, 17, 0.12, 48), { color: '#2a2626', to: 'metal' }),
+      // the curved back wall, its pipes and its lights
+      part(new THREE.CylinderGeometry(17, 17, 11, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 5.5, 0], color: '#2c2828', to: 'cloth' }),
+      part(new THREE.CylinderGeometry(17.4, 17.6, 11.4, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 5.7, 0], color: '#e4dacd', to: 'adobe' }),
+      part(new THREE.CylinderGeometry(17.7, 17.7, 0.8, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 8.6, 0], color: hot('#ff8a5a', 1.4), to: 'glow' }),
+      part(new THREE.TorusGeometry(16.6, 0.25, 6, 48, PI * 1.76).rotateX(PI / 2), { at: [0, 10.8, 0], rot: [0, PI * 1.38, 0], color: '#3a3434', to: 'metal' }),
+      // the platform, ringed, and the hole in it
+      part(cyl(5.2, 5.2, 0.5, 32), { color: '#3a3434', to: 'metal' }),
+      part(new THREE.CircleGeometry(2.2, 24).rotateX(-PI / 2), { at: [0, 0.52, 0], color: '#050404', to: 'dark' }),
+      part(new THREE.TorusGeometry(2.25, 0.12, 6, 32).rotateX(PI / 2), { at: [0, 0.55, 0], color: hot('#ff6a2a', 2.6), to: 'glow' }),
+      part(new THREE.TorusGeometry(5.1, 0.1, 6, 40).rotateX(PI / 2), { at: [0, 0.55, 0], color: hot('#ff3a1a', 2), to: 'glow' }),
+    ];
+    // the claws, arching over the hole
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * PI * 2 + PI / 4;
+      const base = [sin(a) * 4.6, 0.5, cos(a) * 4.6];
+      const top = [sin(a) * 3.6, 6.2, cos(a) * 3.6];
+      const tip = [sin(a) * 1.6, 4.2, cos(a) * 1.6];
+      P.push(rod(base, top, 0.35, 0.3, { color: '#4a4242', to: 'metal' }));
+      P.push(rod(top, tip, 0.28, 0.18, { color: '#4a4242', to: 'metal' }));
+      P.push(part(new THREE.SphereGeometry(0.4, 8, 6), { at: top, color: '#3a3434', to: 'metal' }));
+    }
+    // the pipes up the wall, and the lamps
+    for (let i = 0; i < 12; i++) {
+      const a = PI * 0.16 + (i / 11) * PI * 1.68;
+      P.push(part(new THREE.CylinderGeometry(0.3, 0.3, 11, 8), { at: [sin(a) * 16.4, 5.5, cos(a) * 16.4], color: '#3e3838', to: 'metal' }));
+      if (i % 2) P.push(part(new THREE.BoxGeometry(1.4, 0.4, 0.1), { at: [sin(a) * 16.3, 8.5, cos(a) * 16.3], rot: [0, a, 0], color: hot('#ff5a2a', 2.2), to: 'glow' }));
+    }
+    object.add(k.build(P, { name: 'carbonchamber' }));
+    // steam, rising from the hole and fading
+    const n = 10;
+    const steamMat = k.own(new THREE.MeshBasicMaterial({ color: '#f4e4d8', transparent: true, opacity: 0.18, depthWrite: false }));
+    const steamGeo = k.own(new THREE.IcosahedronGeometry(1, 1));
+    const steam = new THREE.InstancedMesh(steamGeo, steamMat, n);
+    steam.frustumCulled = false;
+    object.add(steam);
+    const m = new THREE.Matrix4();
+    const light = new THREE.PointLight('#ff5a2a', 60, 36, 1.6);
+    light.position.set(0, 6, 0);
+    object.add(light);
+    // the wall's solid, round the back (the open side, +z, is the way in)
+    const solids = [{ circle: [0, 0, 2.3] }];
+    for (let i = 0; i < 26; i++) {
+      const a = PI * 0.16 + (i / 25) * PI * 1.68;
+      solids.push({ box: [sin(a) * 17, cos(a) * 17, 2.2, 0.4, a] });
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * PI * 2 + PI / 4;
+      solids.push({ circle: [sin(a) * 4.6, cos(a) * 4.6, 0.5] });
+    }
+    return {
+      object,
+      solids,
+      update(t) {
+        for (let i = 0; i < n; i++) {
+          const p = (t * 0.22 + i / n) % 1;
+          const s = 0.8 + p * 3.2;
+          m.makeScale(s, s * 0.8, s).setPosition(sin(i * 2.1 + t * 0.3) * p * 2, 0.8 + p * 12, cos(i * 1.7) * p * 2);
+          steam.setMatrixAt(i, m);
+        }
+        steam.instanceMatrix.needsUpdate = true;
+        light.intensity = 52 + 10 * sin(t * 3.1) * sin(t * 1.3);
+      },
+    };
+  },
+
+  // Han Solo in carbonite: the slab stood on end, the shape of him in it,
+  // hands up, the controls down its sides lit
+  carbonite(k) {
+    const slab = '#4e4842';
+    const P = [
+      part(box(1.0, 2.2, 0.5), { at: [0, 0.2, 0], color: slab, to: 'metal' }),
+      part(box(1.3, 0.25, 0.8), { color: '#2a2828', to: 'metal' }),
+      // him, coming out of it
+      part(new THREE.SphereGeometry(0.13, 12, 10), { at: [0, 1.95, 0.24], scale: [1, 1.15, 0.5], color: slab, to: 'metal' }),
+      part(new THREE.SphereGeometry(0.3, 12, 10), { at: [0, 1.35, 0.23], scale: [0.9, 1.4, 0.3], color: slab, to: 'metal' }),
+      part(new THREE.SphereGeometry(0.075, 8, 6), { at: [-0.28, 1.95, 0.27], scale: [1, 1.3, 0.6], color: slab, to: 'metal' }),
+      part(new THREE.SphereGeometry(0.075, 8, 6), { at: [0.24, 1.85, 0.27], scale: [1, 1.3, 0.6], color: slab, to: 'metal' }),
+      rod([-0.25, 1.6, 0.25], [-0.28, 1.88, 0.27], 0.05, 0.05, { color: slab, to: 'metal' }),
+      rod([0.22, 1.55, 0.25], [0.24, 1.78, 0.27], 0.05, 0.05, { color: slab, to: 'metal' }),
+      part(new THREE.SphereGeometry(0.22, 10, 8), { at: [-0.1, 0.7, 0.22], scale: [0.6, 1.5, 0.3], color: slab, to: 'metal' }),
+      part(new THREE.SphereGeometry(0.22, 10, 8), { at: [0.12, 0.7, 0.22], scale: [0.6, 1.5, 0.3], color: slab, to: 'metal' }),
+    ];
+    for (const s of [-1, 1]) {
+      P.push(part(box(0.12, 1.6, 0.4), { at: [s * 0.56, 0.5, 0], color: '#3a3634', to: 'metal' }));
+      for (let i = 0; i < 4; i++) P.push(part(new THREE.BoxGeometry(0.05, 0.08, 0.05), { at: [s * 0.62, 0.8 + i * 0.25, 0.1], color: hot(i % 2 ? '#ff4a3a' : '#4aff6a', 2.2), to: 'glow' }));
+    }
+    return { object: k.build(P, { name: 'carbonite' }), solids: [{ box: [0, 0, 0.65, 0.4, 0] }] };
+  },
+
+  // the reactor shaft: a great well going down into the city's core, rings
+  // of light down it, and the gantry sticking out into it from the
+  // corridor (along +z) where Luke and Vader fought
+  reactorshaft(k, { r = 15, gantry = 13 } = {}) {
+    const P = [
+      // the shaft, open where the corridor comes in (at −z), seen from in and out
+      part(new THREE.CylinderGeometry(r, r, 100, 40, 1, true, PI * 0.07 + PI, PI * 1.86), { at: [0, -38, 0], color: '#3a3e48', to: 'cloth' }),
+      part(new THREE.CylinderGeometry(r + 0.6, r + 0.6, 100, 40, 1, true, PI * 0.07 + PI, PI * 1.86), { at: [0, -38, 0], color: '#cfc6ba', to: 'adobe' }),
+      part(new THREE.ConeGeometry(r + 0.6, 26, 40, 1, true), { at: [0, -101, 0], rot: [PI, 0, 0], color: '#b9b0a4', to: 'adobe' }),
+      part(new THREE.CircleGeometry(r - 0.5, 32).rotateX(-PI / 2), { at: [0, -86, 0], color: hot('#ffb070', 1.6), to: 'glow' }),
+      part(new THREE.TorusGeometry(r, 0.7, 6, 40).rotateX(PI / 2), { at: [0, 10, 0], color: '#6a6e78', to: 'metal' }),
+      // the gantry, out over the drop, its railing on one side
+      part(box(1.8, 0.4, gantry), { at: [0, -0.4, -r + gantry / 2], color: '#5a5e68', to: 'metal' }),
+      part(new THREE.BoxGeometry(0.06, 0.06, gantry), { at: [0.9, 1.0, -r + gantry / 2], color: '#7a7e88', to: 'metal' }),
+      part(box(1.6, 1.0, 1.0), { at: [0, 0, -r + gantry - 0.6], color: '#4a4e58', to: 'metal' }),
+      part(new THREE.BoxGeometry(0.5, 0.2, 0.05), { at: [0, 0.7, -r + gantry - 0.08], color: hot('#ff5a3a', 2.4), to: 'glow' }),
+    ];
+    for (let y = 6; y > -84; y -= 14) P.push(part(new THREE.TorusGeometry(r - 0.4, 0.22, 4, 40).rotateX(PI / 2), { at: [0, y, 0], color: hot(y > -40 ? '#a8c8ff' : '#ffb27a', 1.8), to: 'glow' }));
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * PI * 2 + PI / 6;
+      P.push(part(new THREE.BoxGeometry(1.2, 96, 1.2), { at: [sin(a) * (r - 0.8), -38, cos(a) * (r - 0.8)], color: '#2a2e36', to: 'metal' }));
+    }
+    for (let i = 0; i < 4; i++) P.push(rod([0.9, 0.0, -r + 2 + i * 3], [0.9, 1.0, -r + 2 + i * 3], 0.04, 0.04, { color: '#7a7e88', to: 'metal' }));
+    return {
+      object: k.build(P, { name: 'reactorshaft' }),
+      floors: [{ x: 0, z: -r + gantry / 2, hw: 0.95, hd: gantry / 2, y: 0 }],
+      solids: [{ box: [0.95, -r + gantry / 2, 0.08, gantry / 2, 0] }],
+    };
+  },
+
+  // the dining room: a white rotunda open at the front, its tall windows,
+  // the long table and its chairs (and whoever's waiting at the end of it)
+  diningroom(k) {
+    const P = [
+      part(cyl(13, 13, 0.15, 48), { color: '#cfc4b6', to: 'paint' }),
+      part(new THREE.CylinderGeometry(13, 13, 9, 48, 1, true, PI * 0.22, PI * 1.56), { at: [0, 4.5, 0], color: '#ece6dc', to: 'cloth' }),
+      part(new THREE.SphereGeometry(13.2, 40, 12, PI * 0.72, PI * 1.56, 0, PI * 0.5), { at: [0, 9, 0], scale: [1, 0.35, 1], color: '#e4ddd2', to: 'cloth' }),
+      // the table, the chairs down each side
+      part(box(1.8, 0.08, 9), { at: [0, 0.82, -1], color: '#d8d2c8', to: 'paint' }),
+      part(cyl(0.3, 0.4, 0.82, 10), { at: [0, 0, -4], color: '#a8a094', to: 'metal' }),
+      part(cyl(0.3, 0.4, 0.82, 10), { at: [0, 0, 2], color: '#a8a094', to: 'metal' }),
+    ];
+    for (let z = -4.5; z <= 2.5; z += 1.75)
+      for (const s of [-1, 1]) {
+        P.push(part(box(0.55, 0.5, 0.55), { at: [s * 1.35, 0, z], color: '#3a3438', to: 'cloth' }));
+        P.push(part(box(0.55, 0.7, 0.1), { at: [s * 1.62, 0.5, z], color: '#3a3438', to: 'cloth' }));
+      }
+    // the tall windows, glowing with the sunset outside
+    for (let i = 0; i < 9; i++) {
+      const a = PI * 0.32 + (i / 8) * PI * 1.36;
+      P.push(part(new THREE.BoxGeometry(1.4, 6, 0.1), { at: [sin(a) * 12.9, 4.4, cos(a) * 12.9], rot: [0, a, 0], color: hot('#ffc89a', 1.3), to: 'glow' }));
+    }
+    const solids = [{ box: [0, -1, 1.0, 4.6, 0], top: 0.9 }];
+    for (let i = 0; i < 24; i++) {
+      const a = PI * 0.24 + (i / 23) * PI * 1.52;
+      solids.push({ box: [sin(a) * 13, cos(a) * 13, 1.9, 0.35, a] });
+    }
+    return { object: k.build(P, { name: 'diningroom' }), solids };
+  },
+
+  // the weather vane, hanging under the city: a long mast down from the
+  // stalk, its crossbars and its antenna fins (where Luke hung)
+  weathervane(k, { h = 70 } = {}) {
+    const P = [part(cyl(1.4, 2.2, h, 10), { at: [0, -h, 0], color: '#9a948a', to: 'metal' })];
+    for (let i = 0; i < 6; i++) {
+      const y = -h * (0.25 + i * 0.12);
+      const w = 6 + i * 2.2;
+      P.push(part(new THREE.BoxGeometry(w * 2, 0.8, 0.8), { at: [0, y, 0], rot: [0, i * 0.6, 0], color: '#a8a296', to: 'metal' }));
+      for (const s of [-1, 1]) P.push(part(new THREE.BoxGeometry(0.3, 6, 3), { at: [s * w * cos(i * 0.6), y - 3, -s * w * sin(i * 0.6)], rot: [0, i * 0.6, 0], color: '#b8b2a6', to: 'paint' }));
+    }
+    P.push(part(new THREE.SphereGeometry(1.2, 8, 6), { at: [0, -h - 0.8, 0], color: hot('#ff5a3a', 3), to: 'glow' }));
+    return { object: k.build(P, { name: 'weathervane', shadows: false }) };
+  },
+
+  // a hover sled, for loading cargo (a carbonite slab, say) aboard ship
+  cargosled(k) {
+    const P = [
+      part(box(1.6, 0.3, 2.6), { at: [0, 0.5, 0], color: '#8a8478', to: 'metal' }),
+      part(box(1.2, 0.08, 2.2), { at: [0, 0.8, 0], color: '#5a5650', to: 'metal' }),
+      part(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), { at: [0, 0.32, 0], color: hot('#9ad8ff', 2), to: 'glow' }),
+      rod([0, 0.8, -1.2], [0, 1.6, -1.6], 0.05, 0.05, { color: '#3a3836', to: 'metal' }),
+      part(box(0.6, 0.06, 0.12), { at: [0, 1.6, -1.6], color: '#3a3836', to: 'metal' }),
+    ];
+    return { object: k.build(P, { name: 'cargosled' }), solids: [{ box: [0, 0, 0.8, 1.3, 0], top: 0.85 }] };
+  },
+
+  // ── Inside (the zones: built out of sight, walked into through a door) ──
+
+  // Nute Gunray, Viceroy of the Trade Federation: green-grey, red-eyed, in
+  // his robes and his tall mitre
+  neimoidian(k) {
+    return figure(k, {
+      tall: 1.91,
+      body: '#4e4a32',
+      legs: '#3e3a28',
+      boots: '#2a2618',
+      skin: '#7a8a6e',
+      sleeves: '#5a5438',
+      robe: { color: '#5a5438', len: 1.0, y: 0.5 },
+      cape: { color: '#6a3a2a' },
+      head: () => [
+        part(new THREE.SphereGeometry(0.12, 14, 10), { scale: [1, 1.05, 1.1], color: '#7a8a6e', to: 'cloth' }),
+        part(new THREE.SphereGeometry(0.02, 6, 4), { at: [-0.045, 0.01, 0.11], color: hot('#ff4a20', 2), to: 'glow' }),
+        part(new THREE.SphereGeometry(0.02, 6, 4), { at: [0.045, 0.01, 0.11], color: hot('#ff4a20', 2), to: 'glow' }),
+        part(new THREE.CylinderGeometry(0.06, 0.13, 0.32, 4), { at: [0, 0.24, -0.01], rot: [0, PI / 4, 0], scale: [1, 1, 0.55], color: '#2a2a22', to: 'cloth' }),
+      ],
+    });
+  },
+
+  // Director Krennic: the white uniform and the white cape, lined black
+  krennic(k) {
+    return figure(k, {
+      tall: 1.8,
+      body: '#e8e6e0',
+      legs: '#d8d6d0',
+      boots: '#141414',
+      skin: '#e2b896',
+      glove: '#141414',
+      cape: { color: '#eeece6', lining: '#141416' },
+      head: () => face('#e2b896', '#b8b0a4'),
+      extra: () => [part(new THREE.CylinderGeometry(0.175, 0.18, 0.05, 14), { at: [0, 0.98, 0], color: '#1a1a1a', to: 'dark' }), part(box(0.08, 0.05, 0.02), { at: [-0.1, 1.32, 0.13], color: '#c8a040', to: 'metal' })],
+    });
+  },
+
+  // the Separatist council's room at the top of the facility's tower: a
+  // round room, its tall windows burning with the lava outside, the round
+  // table, a hologram of their master over it
+  councilroom(k, { R = 11 } = {}) {
+    const P = [
+      part(cyl(R + 0.4, R + 0.4, 0.3, 48), { at: [0, -0.3, 0], color: '#2a2628', to: 'metal' }),
+      part(new THREE.TorusGeometry(R * 0.55, 0.06, 4, 48).rotateX(PI / 2), { at: [0, 0.02, 0], color: hot('#ff8a3a', 1.6), to: 'glow' }),
+      part(new THREE.CylinderGeometry(R, R, 7.4, 48, 1, true), { at: [0, 3.7, 0], color: '#2e2a2c', to: 'cloth' }),
+      part(new THREE.CircleGeometry(R, 48).rotateX(PI / 2), { at: [0, 7.4, 0], color: '#1e1b1c', to: 'cloth' }),
+      part(new THREE.TorusGeometry(R * 0.6, 0.1, 4, 48).rotateX(PI / 2), { at: [0, 7.3, 0], color: hot('#ffb070', 1.4), to: 'glow' }),
+      // the table, and the hologram over it
+      part(cyl(3.2, 2.6, 0.9, 32), { color: '#3a3436', to: 'metal' }),
+      part(cyl(3.3, 3.3, 0.08, 32), { at: [0, 0.9, 0], color: '#4a4448', to: 'paint' }),
+      part(new THREE.CircleGeometry(0.7, 20).rotateX(-PI / 2), { at: [0, 0.99, 0], color: hot('#6ab8ff', 1.6), to: 'glow' }),
+      part(new THREE.ConeGeometry(0.32, 1.1, 12, 1, true), { at: [0, 1.6, 0], color: hot('#5aa8ff', 0.9), to: 'glow' }),
+      part(new THREE.SphereGeometry(0.15, 10, 8), { at: [0, 2.25, 0], scale: [1, 1.2, 1], color: hot('#5aa8ff', 0.9), to: 'glow' }),
+      // the door, at +z
+      part(box(2.4, 3.2, 0.3), { at: [0, 0, R - 0.1], color: '#141214', to: 'dark' }),
+      part(new THREE.BoxGeometry(2.8, 0.15, 0.32), { at: [0, 3.3, R - 0.1], color: hot('#ffb070', 1.6), to: 'glow' }),
+    ];
+    // the windows, all round but the door, the lava's light coming in
+    for (let i = 0; i < 11; i++) {
+      const a = PI * 0.2 + (i / 10) * PI * 1.6;
+      P.push(part(new THREE.BoxGeometry(2.6, 5, 0.1), { at: [sin(a) * (R - 0.08), 3.4, cos(a) * (R - 0.08)], rot: [0, a, 0], color: hot(i % 2 ? '#ff6a24' : '#ff8a3a', 1.5), to: 'glow' }));
+      P.push(part(new THREE.BoxGeometry(0.4, 7.2, 0.4), { at: [sin(a + 0.13) * (R - 0.2), 3.6, cos(a + 0.13) * (R - 0.2)], color: '#1a1718', to: 'metal' }));
+    }
+    // chairs round the table, consoles round the wall
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * PI * 2 + PI / 8;
+      P.push(part(box(0.7, 0.55, 0.7), { at: [sin(a) * 4.1, 0, cos(a) * 4.1], rot: [0, a, 0], color: '#5a3a2e', to: 'cloth' }));
+      P.push(part(box(0.7, 1.0, 0.12), { at: [sin(a) * 4.5, 0.55, cos(a) * 4.5], rot: [0, a, 0], color: '#5a3a2e', to: 'cloth' }));
+    }
+    for (const a of [PI * 0.5, PI, PI * 1.5]) {
+      P.push(part(box(2.2, 1.1, 0.8), { at: [sin(a) * (R - 1.2), 0, cos(a) * (R - 1.2)], rot: [0, a, 0], color: '#3a3638', to: 'metal' }));
+      P.push(part(new THREE.BoxGeometry(1.3, 0.4, 0.05), { at: [sin(a) * (R - 1.62), 1.3, cos(a) * (R - 1.62)], rot: [-0.5, a, 0, 'YXZ'], color: hot('#5ab0ff', 1.1), to: 'glow' }));
+    }
+    const solids = [{ circle: [0, 0, 3.3] }];
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 28) * PI * 2;
+      solids.push({ box: [sin(a) * (R + 0.2), cos(a) * (R + 0.2), 1.4, 0.3, a] });
+    }
+    return { object: k.build(P, { name: 'councilroom', shadows: false }), floors: [{ x: 0, z: 0, r: R, y: 0 }], solids };
+  },
+
+  // the Citadel's data vault: a long hall of racks, the data tapes in them
+  // blinking, the aisle down the middle to the terminal at the far end,
+  // the claw on its rail overhead that fetches the tapes
+  datavault(k, { hw = 8, hd = 26, h = 14 } = {}) {
+    const P = [
+      part(box(hw * 2, 0.3, hd * 2), { at: [0, -0.3, 0], color: '#2a2e34', to: 'metal' }),
+      part(box(hw * 2, 0.3, hd * 2), { at: [0, h, 0], color: '#1e2228', to: 'cloth' }),
+      part(box(0.3, h, hd * 2), { at: [-hw, 0, 0], color: '#262a30', to: 'cloth' }),
+      part(box(0.3, h, hd * 2), { at: [hw, 0, 0], color: '#262a30', to: 'cloth' }),
+      part(box(hw * 2, h, 0.3), { at: [0, 0, -hd], color: '#262a30', to: 'cloth' }),
+      part(box(hw * 2, h, 0.3), { at: [0, 0, hd], color: '#262a30', to: 'cloth' }),
+      // the aisle's lights, and the door
+      part(new THREE.BoxGeometry(0.12, 0.02, hd * 1.9), { at: [-1.4, 0.02, 0], color: hot('#6ab8ff', 1.6), to: 'glow' }),
+      part(new THREE.BoxGeometry(0.12, 0.02, hd * 1.9), { at: [1.4, 0.02, 0], color: hot('#6ab8ff', 1.6), to: 'glow' }),
+      part(box(3, 4, 0.4), { at: [0, 0, hd - 0.2], color: '#101216', to: 'dark' }),
+      part(new THREE.BoxGeometry(3.4, 0.16, 0.42), { at: [0, 4.1, hd - 0.2], color: hot('#ffd27a', 1.6), to: 'glow' }),
+      // the terminal at the far end
+      part(box(3, 1.1, 1.0), { at: [0, 0, -hd + 2.2], color: '#3a3e46', to: 'metal' }),
+      part(new THREE.BoxGeometry(2.4, 1.2, 0.06), { at: [0, 1.8, -hd + 1.8], rot: [-0.2, 0, 0], color: hot('#7ac0ff', 1.5), to: 'glow' }),
+      // the claw's rail, and the claw
+      part(new THREE.BoxGeometry(0.6, 0.6, hd * 1.9), { at: [0, h - 1.2, 0], color: '#4a4e56', to: 'metal' }),
+      part(box(1.4, 1.0, 1.6), { at: [0, h - 2.4, -hd * 0.45], color: '#5a5e66', to: 'metal' }),
+      rod([0, h - 2.4, -hd * 0.45], [0, h - 5.5, -hd * 0.45], 0.12, 0.12, { color: '#6a6e76', to: 'metal' }),
+      rod([0, h - 5.5, -hd * 0.45], [-0.5, h - 6.4, -hd * 0.45], 0.08, 0.06, { color: '#6a6e76', to: 'metal' }),
+      rod([0, h - 5.5, -hd * 0.45], [0.5, h - 6.4, -hd * 0.45], 0.08, 0.06, { color: '#6a6e76', to: 'metal' }),
+    ];
+    // the racks, down both sides of the aisle, tapes lit in rows
+    for (let z = -hd + 6; z <= hd - 5; z += 4.2)
+      for (const s of [-1, 1]) {
+        P.push(part(box(3.6, h - 2.4, 2.4), { at: [s * (hw - 3.6), 0, z], color: '#34383f', to: 'metal' }));
+        for (let y = 1.2; y < h - 3; y += 1.3) P.push(part(new THREE.BoxGeometry(0.05, 0.1, 2.0), { at: [s * (hw - 5.45), y, z], color: hot((y * 7 + z) % 3 < 1 ? '#ff6a4a' : '#6ab8ff', 1.4), to: 'glow' }));
+      }
+    const solids = [{ box: [0, -hd + 2.2, 1.5, 0.6, 0] }, { box: [-hw, 0, 0.3, hd, 0] }, { box: [hw, 0, 0.3, hd, 0] }, { box: [0, -hd, hw, 0.3, 0] }, { box: [0, hd, hw, 0.3, 0] }];
+    for (let z = -hd + 6; z <= hd - 5; z += 4.2) for (const s of [-1, 1]) solids.push({ box: [s * (hw - 3.6), z, 1.8, 1.2, 0] });
+    return { object: k.build(P, { name: 'datavault', shadows: false }), floors: [{ x: 0, z: 0, hw, hd, y: 0 }], solids };
   },
 
 };
 
 // Things scattered by the dozen (drawn instanced)
 export const SCATTER = {
+  // a low building of Cloud City: a white drum, its dome, a band of
+  // windows, a doorway (by the dozen, between the towers)
+  cloudblock(k, { color = '#ece4d8' } = {}) {
+    const r = 7;
+    const h = 7;
+    const P = [
+      part(cyl(r, r * 0.94, h, 28), { color, to: 'adobe' }),
+      part(dome(r * 0.96, r * 0.5, 28), { at: [0, h, 0], color: shade(color, -0.04), to: 'adobe' }),
+      part(ring(r * 0.97, 0.25, 28), { at: [0, h, 0], color: shade(color, -0.1), to: 'adobe' }),
+      part(cyl(1.1, 1.1, 2.2, 10), { at: [r * 0.3, h + r * 0.42, -r * 0.2], color: shade(color, -0.08), to: 'adobe' }),
+      part(new THREE.CylinderGeometry(r + 0.04, r * 0.99, 1.0, 28, 1, true), { at: [0, h * 0.62, 0], color: hot('#ffd6a8', 1.5), to: 'glow' }),
+      part(box(2.4, 3, 0.6), { at: [0, 0, r * 0.95], color: '#3a3238', to: 'dark' }),
+    ];
+    const by = (to) => P.filter((p) => p.to === to);
+    return {
+      parts: [
+        { geometry: k.geometry(by('adobe')), material: k.mats.adobe },
+        { geometry: k.geometry(by('glow')), material: k.mats.glow },
+        { geometry: k.geometry(by('dark')), material: k.mats.dark },
+      ],
+      radius: r,
+    };
+  },
+  // a crack in the crust with the lava glowing through it: a jagged line
+  // of fire, lying on the rock
+  lavacrack(k, { seed = 13, color = '#ff5a14' } = {}) {
+    const r = rand(seed);
+    const P = [];
+    let p = [0, 0.04, 0];
+    let a = r() * PI * 2;
+    for (let i = 0; i < 7; i++) {
+      a += (r() - 0.5) * 1.4;
+      const len = 0.8 + r() * 1.6;
+      const q = [p[0] + sin(a) * len, 0.04, p[2] + cos(a) * len];
+      const w = 0.22 - i * 0.022;
+      P.push(part(new THREE.BoxGeometry(w, 0.05, len + w), { at: [(p[0] + q[0]) / 2, 0.02, (p[2] + q[2]) / 2], rot: [0, a, 0], color: hot(i % 2 ? color : '#ff8a2a', 2.4 - i * 0.15), to: 'glow' }));
+      if (r() < 0.35) {
+        const b = a + (r() < 0.5 ? 1 : -1) * (0.6 + r() * 0.6);
+        const l2 = 0.5 + r() * 0.9;
+        P.push(part(new THREE.BoxGeometry(w * 0.6, 0.05, l2), { at: [q[0] + sin(b) * l2 * 0.5, 0.02, q[2] + cos(b) * l2 * 0.5], rot: [0, b, 0], color: hot(color, 2), to: 'glow' }));
+      }
+      p = q;
+    }
+    return { parts: [{ geometry: k.geometry(P), material: k.mats.glow, shadow: false }], radius: null };
+  },
+  // a clump of beach grass: blades fanned out from the sand
+  tuft(k, { color = '#7a9a4a', seed = 9 } = {}) {
+    const r = rand(seed);
+    const P = [];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * PI * 2 + r() * 0.4;
+      const h = 0.5 + r() * 0.5;
+      P.push(part(new THREE.PlaneGeometry(0.09, h).translate(0, h / 2, 0), { at: [cos(a) * 0.08, 0, sin(a) * 0.08], rot: [cos(a) * 0.5, -a, sin(a) * 0.5], color: shade(color, (r() - 0.5) * 0.1), to: 'leaf' }));
+    }
+    return { parts: [{ geometry: k.geometry(P), material: k.mats.leaf, shadow: false }], radius: null };
+  },
+  // Cloud City's towers, in a skyline
+  cloudcity(k, opts = {}) {
+    const P = towerParts(opts);
+    return {
+      parts: [
+        { geometry: k.geometry(P.filter((p) => p.to === 'paint')), material: k.mats.paint },
+        { geometry: k.geometry(P.filter((p) => p.to === 'glow')), material: k.mats.glow },
+        { geometry: k.geometry(P.filter((p) => p.to === 'metal')), material: k.mats.metal },
+      ],
+      radius: 8.5,
+    };
+  },
   // Scarif's palms (12 m), by the hundred
   palm(k, opts = {}) {
     const p = palmParts(opts);
@@ -838,7 +1599,7 @@ function rand(seed) {
 
 // a palm frond: a spine arching out along +x and drooping, its leaflets
 // either side in a shallow V (a strip of triangles), `len` long
-function frond(len = 5, w = 0.8, lift = 0.55, droop = 0.95, n = 9) {
+function frond(len = 5, w = 0.8, lift = 0.55, droop = 0.95, n = 7) {
   const pos = [];
   const spine = (s) => [s * len, len * (lift * s - droop * s * s), 0];
   const wide = (s) => w * Math.sin(PI * Math.min(1, s * 1.1 + 0.05));
@@ -875,4 +1636,16 @@ function palmParts({ h = 11.5, lean = 1.8, seed = 7, color = '#4e7a34' } = {}) {
     leaves.push(part(g, { at: top, rot: [0, a, 0], color: shade(color, (r() - 0.5) * 0.08), to: 'leaf' }));
   }
   return { trunk, leaves };
+}
+
+// a Cloud City tower: a white column flaring at its foot, bands of lit
+// windows, a rounded crown, a spire (60 m)
+function towerParts({ h = 60, r = 6.5, color = '#e6ddd0' } = {}) {
+  const P = [
+    part(upright([[r * 1.35, 0], [r * 1.2, h * 0.08], [r, h * 0.16], [r * 0.92, h * 0.7], [r * 1.12, h * 0.8], [r * 1.1, h * 0.86], [r * 0.7, h * 0.93], [r * 0.25, h * 0.97]], 24), { color, to: 'paint' }),
+    part(new THREE.SphereGeometry(r * 1.13, 20, 6, 0, PI * 2, PI * 0.45, PI * 0.1), { at: [0, h * 0.83, 0], color: shade(color, -0.06), to: 'paint' }),
+    rod([0, h * 0.95, 0], [0, h * 1.08, 0], 0.4, 0.12, { color: '#b8b0a6', to: 'metal' }),
+  ];
+  for (const [y, rr] of [[0.3, 0.97], [0.45, 0.95], [0.6, 0.93], [0.83, 1.13]]) P.push(part(new THREE.CylinderGeometry(r * rr + 0.06, r * rr + 0.06, h * 0.025, 24, 1, true), { at: [0, h * y, 0], color: hot('#ffd6a8', 1.5), to: 'glow' }));
+  return P;
 }

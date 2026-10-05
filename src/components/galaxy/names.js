@@ -20,11 +20,10 @@ export const SYSTEM_NAMES = {
   kamino: 'Kamino',
   geonosis: 'Geonosis',
   scarif: 'Scarif',
-  jakku: 'Jakku',
-  crait: 'Crait',
-  starkiller: 'Starkiller Base',
-  exegol: 'Exegol',
-  ahchto: 'Ahch-To',
+  nevarro: 'Nevarro',
+  mandalore: 'Mandalore',
+  lothal: 'Lothal',
+  sorgan: 'Sorgan',
 };
 
 // Where each system sits on the galaxy's disc, for the universe map's
@@ -47,11 +46,10 @@ export const SYSTEM_MARKS = {
   kamino: [0.602, 0.435, '#8ec7e8'],
   geonosis: [0.481, 0.565, '#ff9a6a'],
   scarif: [0.611, -0.37, '#6fe0d8'],
-  jakku: [-0.611, 0.315, '#e8cf9a'],
-  crait: [-0.519, 0.833, '#ff8f8a'],
-  starkiller: [-0.889, -0.352, '#ff6a5a'],
-  exegol: [-1, -0.056, '#c48aff'],
-  ahchto: [-0.926, 0.333, '#9fd0c0'],
+  nevarro: [-0.241, 0.85, '#f4a27c'],
+  mandalore: [0.241, -0.426, '#c3b8f0'],
+  lothal: [0.713, -0.093, '#d8dc84'],
+  sorgan: [-0.639, 0.333, '#86d6a6'],
 };
 
 // a galaxy path's system ('/galaxy/hoth' and '/galaxy/hoth/mission' are

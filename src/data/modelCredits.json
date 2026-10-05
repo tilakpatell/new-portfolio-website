@@ -289,20 +289,6 @@
       "galaxy"
     ]
   },
-  "galaxy-tiefo": {
-    "title": "First Order Tie Fighter",
-    "author": "ImWillows",
-    "authorUrl": "https://sketchfab.com/jcreadingtutor",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/first-order-tie-fighter-a6f29bb8f80149c5a83ca1341fc10093",
-    "where": "galaxy",
-    "as": "the First Order’s TIEs",
-    "file": "/models/galaxy/tiefo.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "galaxy-trifighter": {
     "title": "Trade Federation Droid Tri-Fighter",
     "author": "scarlequin",
@@ -341,20 +327,6 @@
     "where": "galaxy",
     "as": "the vulture droids",
     "file": "/models/galaxy/vulture.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "galaxy-xyston": {
-    "title": "Xyston Overhaul",
-    "author": "Admiral_Forever",
-    "authorUrl": "https://sketchfab.com/Admiral_Forever",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/xyston-overhaul-8fe215c3b4154320b89ec60e6d0cd5ec",
-    "where": "galaxy",
-    "as": "the Sith Star Destroyers",
-    "file": "/models/galaxy/xyston.glb",
     "also": [
       "galaxy"
     ]

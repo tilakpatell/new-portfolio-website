@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SYSTEMS, goalsOf, systemById } from './systems';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
+import { LASER } from './fx';
 
 // the parts that draw (the planets' shaders, the rocks, the ships) stood in
 // for: these are about what's built, where, and what it does over time
@@ -55,7 +56,6 @@ describe('buildSystem', () => {
       for (let i = 0; i < 600; i++) w.update(T0 + i * 0.5, 1 / 60, camera, ship);
       for (const o of w.solids) for (const v of o.at) expect(Number.isFinite(v), `${sys.id} ${o.id}`).toBe(true);
       for (const e of w.events) expect(e.type, sys.id).toBe('event');
-      expect(w.dim).toBeGreaterThan(0);
       w.dispose();
     }
   });
@@ -69,7 +69,7 @@ describe('buildSystem', () => {
     }
   });
 
-  it('has its moments: the trench, the tractor beam, the shields, the drained sun, the lightning', () => {
+  it('has its moments: the trench, the tractor beam, the shields', () => {
     const yavin = buildSystem(systemById('yavin'), { ...kit(), small: false });
     expect(yavin.solids.find((o) => o.id === 'deathstar').band).toBeTruthy();
     const alderaan = buildSystem(systemById('alderaan'), { ...kit(), small: false });
@@ -85,21 +85,20 @@ describe('buildSystem', () => {
       seen.add(shell.r > 0);
     }
     expect([...seen].sort()).toEqual([false, true]); // up, and down for a while
-    const starkiller = buildSystem(systemById('starkiller'), { ...kit(), small: false });
-    let darkest = 1;
-    for (let i = 0; i < 240; i++) {
-      starkiller.update(T0 + i * 0.5, 0.5, camera, null);
-      darkest = Math.min(darkest, starkiller.dim);
-    }
-    expect(darkest).toBeLessThan(0.3);
-    const exegol = buildSystem(systemById('exegol'), { ...kit(), small: false });
-    let flash = 0;
-    for (let i = 0; i < 600; i++) {
-      exegol.update(T0 + i / 30, 1 / 30, camera, null);
-      flash = Math.max(flash, exegol.flash);
-    }
-    expect(flash).toBeGreaterThan(0.3);
-    for (const w of [yavin, alderaan, scarif, endor, starkiller, exegol]) w.dispose();
+    for (const w of [yavin, alderaan, scarif, endor]) w.dispose();
+  });
+
+  it('puts a TIE on the Razor Crest’s tail over Nevarro, firing the Empire’s green', () => {
+    const k = kit();
+    const placed = [];
+    const slot = k.models.slot;
+    k.models.slot = (kind, size) => (placed.push(kind), slot(kind, size));
+    const w = buildSystem(systemById('nevarro'), { ...k, small: false });
+    expect(placed).toEqual(expect.arrayContaining(['razorcrest', 'tie']));
+    for (let i = 0; i < 240; i++) w.update(T0 + i / 30, 1 / 30, camera, null);
+    expect(k.bolts.fire.mock.calls.length).toBeGreaterThan(5);
+    for (const [, , o] of k.bolts.fire.mock.calls) expect(o.color).toEqual(LASER.remnant);
+    w.dispose();
   });
 
   it('fires the battles’ guns', () => {

@@ -6,9 +6,10 @@
 // (catalog/forest.js) is drawn as the model; these are what's drawn without.
 
 import * as THREE from 'three';
-import { between, box, cyl, dome, part, ring, rod, upright } from '../kit';
+import { between, box, cyl, dome, part, ring, rockGeometry, rod, upright } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
 import { rng } from '../noise';
+import { buildGalaxyShip } from '../../fleet';
 
 const { PI, cos, sin, max, min } = Math;
 const TAU = PI * 2;
@@ -130,7 +131,7 @@ function gait(legs, body, { rate = 0.55, swing = 0.32, fold = 0.55, bob = 0.18, 
 
 // an Endor redwood: a vast furrowed trunk on its buttress roots, its
 // branches and foliage high overhead
-function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a4224' } = {}) {
+function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a4224', lo = false } = {}) {
   const rand = rng(seed);
   const prof = [
     [r * 1.55, 0],
@@ -142,15 +143,16 @@ function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a
     [r * 0.2, h * 0.94],
     [0.05, h],
   ];
-  const parts = [part(trunkGeometry(prof, { seg: 12, furrow: 0.1, ridges: 7, seed, lean: [(rand() - 0.5) * 2, (rand() - 0.5) * 2] }), { color: bark, to: 'bark' })];
+  const parts = [part(trunkGeometry(prof, { seg: lo ? 7 : 12, furrow: 0.1, ridges: 7, seed, lean: [(rand() - 0.5) * 2, (rand() - 0.5) * 2] }), { color: bark, to: 'bark' })];
   // the buttress roots, flaring into the ground
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU + rand() * 0.5;
-    const out = r * (1.9 + rand() * 0.7);
-    parts.push(rod([cos(a) * r * 0.55, 3.5 + rand() * 2, sin(a) * r * 0.55], [cos(a) * out, -0.3, sin(a) * out], r * 0.5, r * 0.14, { color: bark, to: 'bark' }, 5));
+  const nRoots = lo ? 3 : 6;
+  for (let i = 0; i < nRoots; i++) {
+    const a = (i / nRoots) * TAU + rand() * 0.5;
+    const out = r * (1.55 + rand() * 0.45);
+    parts.push(rod([cos(a) * r * 0.6, 2.6 + rand() * 1.6, sin(a) * r * 0.6], [cos(a) * out, -0.3, sin(a) * out], r * 0.36, r * 0.1, { color: bark, to: 'bark' }, 6));
   }
   // dead branch stubs low down
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < (lo ? 0 : 3); i++) {
     const a = rand() * TAU;
     const y = h * (0.2 + rand() * 0.25);
     const rr = radiusAt(prof, y);
@@ -158,7 +160,7 @@ function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a
   }
   // the crown: a tall, narrow column of foliage in clumps hugging the
   // trunk on short limbs, from halfway up to the top
-  const clumps = 9;
+  const clumps = lo ? 5 : 7;
   for (let i = 0; i < clumps; i++) {
     const f = i / (clumps - 1);
     const y = h * (0.5 + 0.44 * f);
@@ -166,9 +168,9 @@ function redwoodParts({ h = 68, r = 2.6, seed = 1, bark = '#6a3826', leaf = '#2a
     const rr = radiusAt(prof, y);
     const len = (1 - f) * 3.5 + 1.5 + rand() * 1.5;
     const end = [cos(a) * (rr + len), y + 1.2 + rand(), sin(a) * (rr + len)];
-    parts.push(rod([cos(a) * rr * 0.7, y - 0.8, sin(a) * rr * 0.7], end, 0.4, 0.15, { color: bark, to: 'bark' }, 5));
-    const s = (1 - f) * 3 + 3.2 + rand() * 1.4;
-    parts.push(part(blob(seed * 31 + i, { lump: 0.45 }), { at: [end[0] * 0.8, end[1] - 0.6, end[2] * 0.8], scale: [s, s * (0.75 + rand() * 0.3), s], rot: [0, rand() * PI, 0], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.07), to: 'leaf' }));
+    if (!lo) parts.push(rod([cos(a) * rr * 0.7, y - 0.8, sin(a) * rr * 0.7], end, 0.4, 0.15, { color: bark, to: 'bark' }, 5));
+    const s = (1 - f) * 3 + 3.6 + rand() * 1.4;
+    parts.push(part(blob(seed * 31 + i, { lump: 0.45, detail: lo ? 0 : 1 }), { at: [end[0] * 0.8, end[1] - 0.6, end[2] * 0.8], scale: [s, s * (0.75 + rand() * 0.3), s], rot: [0, rand() * PI, 0], color: new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.07), to: 'leaf' }));
   }
   parts.push(part(blob(seed * 7, { lump: 0.3 }), { at: [0, h * 0.96, 0], scale: [3.6, 7, 3.6], color: leaf, to: 'leaf' }));
   return { parts, prof };
@@ -231,7 +233,7 @@ function gnarlParts({ seed = 4, bark = '#4c463a', moss = '#7d8a5a', leaf = '#465
   for (let i = 0; i < steps; i++) {
     const next = [at[0] + (rand() - 0.5) * 1.4, at[1] + (h - base) / steps, at[2] + (rand() - 0.5) * 1.4];
     parts.push(rod(at, next, 1.0 - i * 0.14, 0.86 - i * 0.14, B, 7));
-    parts.push(part(new THREE.SphereGeometry(0.9 - i * 0.14, 7, 5), { at: next, color: bark, to: 'bark' }));
+    parts.push(part(new THREE.SphereGeometry(0.9 - i * 0.14, 6, 4), { at: next, color: bark, to: 'bark' }));
     at = next;
   }
   const top = at;
@@ -399,8 +401,8 @@ function fungusParts({ seed = 10, color = '#c8c0a0', cap = '#a8885a' } = {}) {
     const a = rand() * TAU;
     const d = rand() * 0.5;
     const h = 0.15 + rand() * 0.35;
-    parts.push(part(cyl(0.04, 0.03, h, 6), { at: [cos(a) * d, 0, sin(a) * d], color, to: 'leaf' }));
-    parts.push(part(dome(0.08 + h * 0.4, 0.06 + h * 0.15, 8), { at: [cos(a) * d, h, sin(a) * d], color: cap, to: 'leaf' }));
+    parts.push(part(new THREE.CylinderGeometry(0.03, 0.04, h, 5, 1, true).translate(0, h / 2, 0), { at: [cos(a) * d, 0, sin(a) * d], color, to: 'leaf' }));
+    parts.push(part(new THREE.SphereGeometry(0.08 + h * 0.4, 7, 2, 0, TAU, 0, PI / 2), { at: [cos(a) * d, h, sin(a) * d], scale: [1, 0.6, 1], color: cap, to: 'leaf' }));
   }
   return { parts };
 }
@@ -777,7 +779,8 @@ const ENDOR = {
     const P = { color: IMPERIAL, to: 'paint' };
     const M = { color: '#5c5e5a', to: 'metal' };
     // the mound it's dug into, mossy
-    parts.push(part(blob(41, { lump: 0.3, flat: 0.2 }), { at: [0, -1.2, -6], scale: [26, 15, 22], color: '#4a5530', to: 'adobe' }));
+    parts.push(part(blob(41, { lump: 0.3, flat: 0.2 }), { at: [0, -2.5, -11], scale: [38, 22, 30], color: '#4a5530', to: 'adobe' }));
+    parts.push(part(blob(42, { lump: 0.4, flat: 0.2 }), { at: [-12, -2, -4], scale: [16, 11, 14], color: '#46502c', to: 'adobe' }), part(blob(43, { lump: 0.4, flat: 0.2 }), { at: [12, -2, -4], scale: [16, 10, 14], color: '#4a5430', to: 'adobe' }));
     // the entrance block: sloped sides, a flat roof
     parts.push(
       part(
@@ -811,9 +814,9 @@ const ENDOR = {
     for (let i = 0; i < 6; i++) {
       const f = fernParts({ seed: 70 + i, len: 1.6 }).parts;
       const a = (i / 6) * PI + 0.2;
-      for (const fp of f) parts.push({ ...fp, at: [cos(a) * 9, 3.5 + sin(i) * 1.5, -6 - sin(a) * 6] });
+      for (const fp of f) parts.push({ ...fp, at: [cos(a) * 10, 6.5 + sin(i) * 1.5, -10 - sin(a) * 7] });
     }
-    return { object: k.build(parts, { name: 'bunker' }), solids: [{ box: [0, -4, 7.2, 7.5, 0] }, { box: [-5.6, 3.6, 0.5, 1.8, -0.35] }, { box: [5.6, 3.6, 0.5, 1.8, 0.35] }] };
+    return { object: k.build(parts, { name: 'bunker' }), solids: [{ box: [0, -8, 14, 12, 0] }, { box: [-5.6, 3.6, 0.5, 1.8, -0.35] }, { box: [5.6, 3.6, 0.5, 1.8, 0.35] }] };
   },
 
   // the shield generator: a great dish turned to the sky on its tower over
@@ -981,4 +984,708 @@ const ENDOR = {
   },
 };
 
-export const PROPS = { ...TREES, ...ENDOR };
+// ── Kashyyyk ──
+
+const WOOKIEE_WOOD = '#8a6842';
+const WOOKIEE_DARK = '#4e3a26';
+const REPUBLIC = '#c4c2b8';
+const REPUBLIC_RED = '#8e3424';
+
+// a Wookiee pod-house: walls of curved slats swelling up to a peak, a big
+// round doorway; `y` up (on a deck)
+function podParts({ r = 3.6, h = 6.4, y = 0, seed = 1, front = 0 } = {}) {
+  const prof = [
+    [r * 0.92, 0],
+    [r, h * 0.2],
+    [r * 0.95, h * 0.45],
+    [r * 0.72, h * 0.7],
+    [r * 0.36, h * 0.88],
+    [0.08, h],
+  ];
+  const parts = [part(trunkGeometry(prof, { seg: 18, furrow: 0.05, ridges: 18, seed }), { at: [0, y, 0], color: WOOKIEE_WOOD, to: 'bark' })];
+  // a roof of leaf shingles over the top half, its finial
+  parts.push(part(upright(prof.slice(2).map(([rr, yy]) => [rr * 1.04 + 0.1, yy + 0.05]), 18), { at: [0, y, 0], color: '#5a6a34', to: 'leaf' }));
+  parts.push(rod([0, y + h - 0.2, 0], [0, y + h + 1.4, 0], 0.12, 0.03, { color: WOOKIEE_DARK, to: 'bark' }, 5));
+  // the round doorway, its frame, a window
+  const dx = sin(front);
+  const dz = cos(front);
+  parts.push(part(new THREE.CircleGeometry(r * 0.38, 16), { at: [dx * (r * 0.99), y + r * 0.45, dz * (r * 0.99)], rot: [0, front, 0], color: '#140e08', to: 'dark' }));
+  parts.push(part(new THREE.TorusGeometry(r * 0.4, 0.12, 6, 18), { at: [dx * (r * 1.0), y + r * 0.45, dz * (r * 1.0)], rot: [0, front, 0], color: WOOKIEE_DARK, to: 'bark' }));
+  parts.push(part(new THREE.CircleGeometry(r * 0.16, 10), { at: [sin(front + 1.2) * r * 0.93, y + h * 0.48, cos(front + 1.2) * r * 0.93], rot: [0, front + 1.2, 0], color: new THREE.Color('#ffb860').multiplyScalar(1.6), to: 'glow' }));
+  return parts;
+}
+
+const KASHYYYK = {
+  // a Wookiee house: a pod of curved slats on a deck on stilts, a ramp up
+  // to it; 10 m tall
+  wookieehouse(k) {
+    const parts = [];
+    const D = { color: WOOKIEE_DARK, to: 'bark' };
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + 0.3;
+      parts.push(rod([cos(a) * 4.2, -0.3, sin(a) * 4.2], [cos(a) * 4.2, 3.0, sin(a) * 4.2], 0.32, 0.28, D, 7));
+      parts.push(rod([cos(a) * 4.2, 0.6, sin(a) * 4.2], [cos(a) * 1.0, 3.0, sin(a) * 1.0], 0.14, 0.12, D, 5));
+    }
+    parts.push(part(new THREE.CylinderGeometry(5.4, 5.2, 0.5, 24), { at: [0, 3.0, 0], color: WOOKIEE_WOOD, to: 'bark' }));
+    parts.push(part(ring(5.35, 0.14, 28), { at: [0, 3.25, 0], color: WOOKIEE_DARK, to: 'bark' }));
+    parts.push(...podParts({ r: 3.4, h: 6.6, y: 3.25, seed: 9 }));
+    // the ramp, the lanterns either side of it
+    parts.push(part(new THREE.BoxGeometry(1.8, 0.2, 5.4), { at: [0, 1.6, 7.4], rot: [-0.62, 0, 0], color: WOOKIEE_WOOD, to: 'bark' }));
+    for (const x of [-1.6, 1.6]) {
+      parts.push(rod([x, 3.2, 5.0], [x, 4.6, 5.0], 0.06, 0.06, D, 5));
+      parts.push(part(new THREE.SphereGeometry(0.18, 8, 6), { at: [x, 4.7, 5.0], color: new THREE.Color('#ffb860').multiplyScalar(2.4), to: 'glow' }));
+    }
+    return { object: k.build(parts, { name: 'wookieehouse' }), solids: [{ circle: [0, 0, 5.3] }] };
+  },
+
+  // Kachirho: the great wroshyr tree on the shore, a city round its foot
+  // and up its trunk, a deck you can climb onto at the bottom
+  kachirho(k, { H = 230 } = {}) {
+    const prof = [
+      [24, 0],
+      [17, 8],
+      [14.5, 30],
+      [12.5, 80],
+      [10.5, 140],
+      [8, 185],
+      [4, H],
+    ];
+    const rand = rng(77);
+    const parts = [part(trunkGeometry(prof, { seg: 24, furrow: 0.08, ridges: 9, seed: 77 }), { color: '#7d6c56', to: 'bark' })];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU + rand() * 0.3;
+      parts.push(rod([cos(a) * 9, 26 + rand() * 10, sin(a) * 9], [cos(a) * (34 + rand() * 8), -1, sin(a) * (34 + rand() * 8)], 6.5, 2.2, { color: '#7d6c56', to: 'bark' }, 7));
+    }
+    // the city: rings of decks up the trunk, pod-houses on them, lights
+    const floors = [];
+    for (const [y, R, pods] of [
+      [7, 34, 0],
+      [34, 24, 5],
+      [62, 21, 4],
+      [96, 18, 3],
+    ]) {
+      parts.push(part(new THREE.CylinderGeometry(R, R * 0.96, 1.2, 40), { at: [0, y - 0.6, 0], color: WOOKIEE_WOOD, to: 'bark' }));
+      parts.push(part(ring(R, 0.4, 44), { at: [0, y - 0.5, 0], color: WOOKIEE_DARK, to: 'bark' }));
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU;
+        const rr = radiusAt(prof, y - 8);
+        parts.push(rod([cos(a) * rr, y - 9, sin(a) * rr], [cos(a) * R * 0.9, y - 1, sin(a) * R * 0.9], 0.8, 0.6, { color: WOOKIEE_DARK, to: 'bark' }, 6));
+      }
+      for (let i = 0; i < pods; i++) {
+        const a = (i / pods) * TAU + y;
+        const d = R - 5;
+        for (const p of podParts({ r: 3.2, h: 6, y, seed: i + y, front: a })) parts.push({ ...p, at: [cos(a) * d + (p.at?.[0] ?? 0), p.at?.[1] ?? y, sin(a) * d + (p.at?.[2] ?? 0)] });
+      }
+      if (y === 7) floors.push({ x: 0, z: 0, r: R, y });
+    }
+    // round the bottom deck, pod-houses on the beach side, a broad stair
+    for (const a of [0.6, 1.3, -0.6, -1.3, 2.4, -2.4]) {
+      const d = 26;
+      for (const p of podParts({ r: 3.4, h: 6.2, y: 7, seed: a * 10, front: a })) parts.push({ ...p, at: [sin(a) * d + (p.at?.[0] ?? 0), p.at?.[1] ?? 7, cos(a) * d + (p.at?.[2] ?? 0)] });
+    }
+    const n = 15;
+    for (let i = 0; i < n; i++) {
+      const z = 34.4 + i * 0.8;
+      const y = 7 - (i + 1) * 0.45;
+      parts.push(part(box(7, 0.25, 0.86), { at: [0, y - 0.25, z], color: WOOKIEE_WOOD, to: 'bark' }));
+      floors.push({ x: 0, z, hw: 3.6, hd: 0.44, yaw: 0, y });
+    }
+    for (const x of [-3.6, 3.6]) parts.push(rod([x, 7.6, 34], [x, 0.4, 34.4 + n * 0.8], 0.15, 0.15, { color: WOOKIEE_DARK, to: 'bark' }, 5));
+    // the crown, vast, far overhead
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU + rand();
+      const y = H * (0.62 + rand() * 0.32);
+      const len = 30 + rand() * 30;
+      const rr = radiusAt(prof, y);
+      const end = [cos(a) * (rr + len), y + 10, sin(a) * (rr + len)];
+      parts.push(rod([cos(a) * rr * 0.6, y - 6, sin(a) * rr * 0.6], end, 3.2, 1.2, { color: '#7d6c56', to: 'bark' }, 7));
+      const s = 34 + rand() * 18;
+      parts.push(part(blob(400 + i, { lump: 0.45, flat: 0.5 }), { at: end, scale: [s, s * 0.38, s], color: new THREE.Color('#4a6a2c').offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+    }
+    parts.push(part(blob(499, { lump: 0.4 }), { at: [0, H, 0], scale: [50, 22, 50], color: '#47662a', to: 'leaf' }));
+    // lights in its windows, up the trunk
+    for (let i = 0; i < 24; i++) {
+      const y = 12 + rand() * 120;
+      const a = rand() * TAU;
+      const rr = radiusAt(prof, y);
+      parts.push(part(new THREE.CircleGeometry(0.9, 8), { at: [cos(a) * rr * 1.01, y, sin(a) * rr * 1.01], rot: [0, PI / 2 - a, 0], color: new THREE.Color('#ffb860').multiplyScalar(1.8), to: 'glow' }));
+    }
+    return { object: k.build(parts, { name: 'kachirho', shadows: false }), floors, solids: [{ circle: [0, 0, 18] }] };
+  },
+
+  // a Wookiee catamaran: two slender hulls, a gunner's seat with twin
+  // cannons between them, great curved fins sweeping up at the back;
+  // riding the lagoon (bobbing)
+  catamaran(k) {
+    const W = { color: WOOKIEE_WOOD, to: 'bark' };
+    const D = { color: WOOKIEE_DARK, to: 'bark' };
+    const parts = [];
+    for (const x of [-1.7, 1.7]) {
+      parts.push(part(new THREE.CapsuleGeometry(0.42, 7.4, 4, 10), { at: [x, 0.5, 0], rot: [PI / 2, 0, 0], scale: [1, 1, 0.8], ...W }));
+      parts.push(part(new THREE.ConeGeometry(0.42, 1.6, 10), { at: [x, 0.55, 4.7], rot: [PI / 2, 0, 0], ...W }));
+      // the fin, sweeping up and back
+      const fin = new THREE.Shape([new THREE.Vector2(-3.8, 0), new THREE.Vector2(-1.4, 0), new THREE.Vector2(-3.2, 2.4), new THREE.Vector2(-5.6, 4.6), new THREE.Vector2(-5.2, 2.2)]);
+      parts.push(part(new THREE.ExtrudeGeometry(fin, { depth: 0.12, bevelEnabled: false }).translate(0, 0, -0.06).rotateY(-PI / 2), { at: [x, 0.8, 0], rot: [0, 0, -Math.sign(x) * 0.22], color: '#a07a4a', to: 'bark' }));
+    }
+    for (const z of [-2.4, 0.4, 2.6]) parts.push(rod([-1.7, 0.9, z], [1.7, 0.9, z], 0.12, 0.12, D, 6));
+    parts.push(part(new THREE.SphereGeometry(0.7, 12, 8), { at: [0, 1.1, 1.0], scale: [1, 0.6, 1.4], ...W }));
+    parts.push(part(box(0.7, 0.6, 0.15), { at: [0, 1.2, 0.2], color: WOOKIEE_DARK, to: 'cloth' }));
+    for (const x of [-0.22, 0.22]) parts.push(rod([x, 1.5, 1.4], [x, 1.55, 3.4], 0.07, 0.06, { color: '#5a5a54', to: 'metal' }, 6));
+    const object = k.build(parts, { name: 'catamaran' });
+    const holder = new THREE.Group();
+    holder.add(object);
+    const ph = k.rand() * 10;
+    return {
+      object: holder,
+      solids: [{ box: [0, 0, 2.2, 4.4, 0] }],
+      update(t) {
+        object.position.y = sin(t * 1.1 + ph) * 0.18;
+        object.rotation.z = sin(t * 0.8 + ph) * 0.04;
+        object.rotation.x = sin(t * 0.6 + ph * 2) * 0.025;
+      },
+    };
+  },
+
+  // the pod Yoda left Kashyyyk in: a squat rounded capsule on short legs,
+  // its hatch open
+  yodapod(k) {
+    const P = { color: '#b8b6ac', to: 'paint' };
+    const parts = [
+      part(new THREE.SphereGeometry(1.5, 18, 12), { at: [0, 1.75, 0], scale: [1, 0.9, 1.25], ...P }),
+      part(ring(1.5, 0.12, 24), { at: [0, 1.75, 0], color: '#6a6a64', to: 'metal' }),
+      part(new THREE.CircleGeometry(0.75, 16), { at: [0, 1.9, 1.86], color: new THREE.Color('#ffd8a0').multiplyScalar(1.2), to: 'glow' }),
+      part(new THREE.CylinderGeometry(0.8, 0.8, 0.12, 16), { at: [0.4, 0.95, 2.1], rot: [1.1, 0, 0], ...P }),
+      part(cyl(0.5, 0.6, 0.6, 12), { at: [0, 3.0, -0.2], color: '#6a6a64', to: 'metal' }),
+    ];
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + 0.5;
+      parts.push(rod([cos(a) * 0.9, 1.0, sin(a) * 0.9], [cos(a) * 1.5, 0, sin(a) * 1.5], 0.09, 0.07, { color: '#6a6a64', to: 'metal' }, 6));
+    }
+    return { object: k.build(parts, { name: 'yodapod' }), solids: [{ circle: [0, 0, 1.6] }] };
+  },
+
+  // a Wookiee barricade: crossed, sharpened logs along the beach, `len` long
+  barricade(k, { len = 10 } = {}) {
+    const parts = [];
+    const B = { color: '#6a4e34', to: 'bark' };
+    const n = Math.max(2, Math.round(len / 2.2));
+    for (let i = 0; i < n; i++) {
+      const x = -len / 2 + (i + 0.5) * (len / n);
+      for (const s of [-1, 1]) parts.push(rod([x - s * 1.0, -0.2, -0.6], [x + s * 1.0, 2.4, 0.9], 0.18, 0.06, B, 6));
+    }
+    parts.push(rod([-len / 2, 1.1, 0.1], [len / 2, 1.1, 0.1], 0.2, 0.2, B, 6));
+    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0] }] };
+  },
+
+  // an AT-RT: a clone trooper in an open cockpit on two legs, a repeating
+  // blaster under its chin; 3.2 m tall; it walks
+  atrt(k) {
+    const object = new THREE.Group();
+    const body = new THREE.Group();
+    object.add(body);
+    const P = { color: REPUBLIC, to: 'paint' };
+    const M = { color: '#5a5a56', to: 'metal' };
+    const parts = [
+      // the seat and its frame, the side armour
+      part(new THREE.BoxGeometry(0.9, 0.25, 0.9), { at: [0, 2.35, 0], ...P }),
+      part(new THREE.BoxGeometry(0.8, 0.9, 0.18), { at: [0, 2.85, -0.42], rot: [-0.15, 0, 0], ...P }),
+      part(new THREE.BoxGeometry(0.15, 0.55, 1.2), { at: [-0.55, 2.55, 0.1], ...P }),
+      part(new THREE.BoxGeometry(0.15, 0.55, 1.2), { at: [0.55, 2.55, 0.1], ...P }),
+      part(new THREE.BoxGeometry(0.6, 0.25, 0.5), { at: [0, 2.3, 0.7], rot: [0.3, 0, 0], color: REPUBLIC_RED, to: 'paint' }),
+      // the gun under its chin, the hip block
+      rod([0, 2.05, 0.55], [0, 2.05, 1.9], 0.07, 0.06, M, 6),
+      part(new THREE.BoxGeometry(0.35, 0.3, 0.5), { at: [0, 2.05, 0.5], ...M }),
+      part(new THREE.BoxGeometry(0.8, 0.35, 0.5), { at: [0, 2.12, -0.05], ...M }),
+      // the clone at the controls
+      part(new THREE.BoxGeometry(0.42, 0.55, 0.28), { at: [0, 2.78, -0.15], color: '#eeeeea', to: 'paint' }),
+      part(new THREE.SphereGeometry(0.15, 12, 10), { at: [0, 3.18, -0.12], color: '#eeeeea', to: 'paint' }),
+      part(new THREE.BoxGeometry(0.17, 0.04, 0.05), { at: [0, 3.2, 0.02], color: '#101010', to: 'dark' }),
+      part(new THREE.BoxGeometry(0.04, 0.09, 0.05), { at: [0, 3.14, 0.025], color: '#101010', to: 'dark' }),
+    ];
+    for (const x of [-0.26, 0.26]) parts.push(rod([x, 2.95, -0.1], [x * 0.8, 2.6, 0.35], 0.05, 0.05, { color: '#eeeeea', to: 'paint' }, 5));
+    body.add(k.build(parts, { name: 'atrt-body' }));
+    const legs = [];
+    for (const x of [-0.5, 0.5]) {
+      const leg = walkerLeg(k, {
+        name: 'atrt',
+        at: [x, 2.1, -0.05],
+        thigh: [-0.95, 0.42],
+        shin: [-1.0, -0.48],
+        parts: {
+          upper: [part(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 10), { rot: [0, 0, PI / 2], ...M }), between(new THREE.BoxGeometry(0.2, 1, 0.32), [0, 0, 0], [0, -0.95, 0.42], P)],
+          lower: [part(new THREE.CylinderGeometry(0.12, 0.12, 0.26, 10), { rot: [0, 0, PI / 2], ...M }), between(new THREE.BoxGeometry(0.16, 1, 0.22), [0, 0, 0], [0, -1.0, -0.48], P)],
+          foot: [part(new THREE.BoxGeometry(0.42, 0.12, 0.7), { at: [0, -0.1, 0.1], ...P }), part(new THREE.BoxGeometry(0.14, 0.1, 0.3), { at: [0, -0.12, 0.55], ...M })],
+        },
+      });
+      object.add(leg.hip);
+      legs.push(leg);
+    }
+    return { object, solids: [{ circle: [0, 0, 0.7] }], update: gait(legs, body, { rate: 0.9, swing: 0.34, fold: 0.6, bob: 0.08 }) };
+  },
+
+  // an AT-AP: a long armoured body on two legs, a heavy cannon over its
+  // nose, its third leg folded under; 10 m tall; it walks
+  atap(k) {
+    const object = new THREE.Group();
+    const body = new THREE.Group();
+    object.add(body);
+    const P = { color: '#a29f94', to: 'paint' };
+    const M = { color: '#55554f', to: 'metal' };
+    const hull = loft([
+      { z: -3.2, pts: trap8(2.8, 2.4, 2.4, 0.3, 7.6) },
+      { z: 1.8, pts: trap8(3.2, 2.8, 2.8, 0.3, 7.7) },
+      { z: 3.6, pts: trap8(2.4, 1.6, 1.8, 0.25, 7.5) },
+    ]);
+    const parts = [part(hull, P)];
+    parts.push(part(new THREE.BoxGeometry(2.6, 0.35, 0.1), { at: [0, 7.9, 3.45], rot: [0.55, 0, 0], color: '#101418', to: 'dark' }));
+    parts.push(part(new THREE.BoxGeometry(3.3, 0.4, 2.2), { at: [0, 9.15, -0.6], color: REPUBLIC_RED, to: 'paint' }));
+    // the heavy cannon on top, the chin guns
+    parts.push(part(new THREE.BoxGeometry(1.1, 0.8, 2.2), { at: [0, 9.6, 0.6], ...P }));
+    parts.push(rod([0, 9.7, 1.6], [0, 9.9, 6.2], 0.24, 0.18, M, 8));
+    for (const x of [-0.5, 0.5]) parts.push(rod([x, 6.6, 3.0], [x, 6.6, 4.6], 0.08, 0.07, M, 6));
+    // the third leg, folded under the back
+    parts.push(rod([0, 6.4, -2.2], [0, 4.6, -3.8], 0.3, 0.26, P, 6));
+    parts.push(rod([0, 4.6, -3.8], [0, 5.6, -5.2], 0.24, 0.22, P, 6));
+    parts.push(part(new THREE.BoxGeometry(1.0, 0.25, 1.2), { at: [0, 5.6, -5.4], ...M }));
+    // the hip block
+    parts.push(part(new THREE.BoxGeometry(3.6, 1.0, 1.6), { at: [0, 6.4, -0.4], ...M }));
+    body.add(k.build(parts, { name: 'atap-body' }));
+    const legs = [];
+    for (const x of [-2.0, 2.0]) {
+      const leg = walkerLeg(k, {
+        name: 'atap',
+        at: [x, 6.4, -0.4],
+        thigh: [-2.7, 1.2],
+        shin: [-3.1, -1.1],
+        parts: {
+          upper: [part(new THREE.CylinderGeometry(0.55, 0.55, 0.5, 12), { rot: [0, 0, PI / 2], ...M }), between(new THREE.BoxGeometry(0.6, 1, 0.9), [0, 0, 0], [0, -2.7, 1.2], P)],
+          lower: [part(new THREE.CylinderGeometry(0.45, 0.45, 0.7, 12), { rot: [0, 0, PI / 2], ...M }), between(new THREE.BoxGeometry(0.5, 1, 0.7), [0, 0, 0], [0, -3.1, -1.1], P)],
+          foot: [part(new THREE.CylinderGeometry(0.9, 1.1, 0.5, 12), { at: [0, -0.45, 0.1], ...P }), part(new THREE.BoxGeometry(0.3, 0.2, 1.2), { at: [0, -0.6, 0.9], ...M })],
+        },
+      });
+      object.add(leg.hip);
+      legs.push(leg);
+    }
+    return { object, solids: [{ circle: [0, 0, 2.6] }], update: gait(legs, body, { rate: 0.4, swing: 0.28, fold: 0.5, bob: 0.2 }) };
+  },
+};
+
+// ── Dagobah ──
+
+const MUD = '#6a5a40';
+
+const DAGOBAH = {
+  // Yoda's hut: a lumpy dome of mud and stone under a gnarltree's roots,
+  // a smaller one beside it, round windows glowing; 5 m
+  yodahut(k) {
+    const parts = [];
+    const lump = (seed, at, s) => {
+      const g = blob(seed, { lump: 0.18, flat: 0 });
+      parts.push(part(g, { at, scale: s, color: MUD, to: 'adobe' }));
+    };
+    lump(61, [0, 0, 0], [5.2, 5.0, 5.0]);
+    lump(62, [2.6, 0, -1.4], [3.0, 3.2, 3.0]);
+    lump(63, [-2.2, 0, -1.6], [2.4, 2.4, 2.4]);
+    // stones in the walls
+    for (let i = 0; i < 10; i++) {
+      const a = i * 0.7;
+      parts.push(part(blob(70 + i, { lump: 0.3, detail: 0 }), { at: [cos(a) * 2.5, 0.4 + (i % 3) * 0.6, sin(a) * 2.5], scale: [0.5, 0.35, 0.4], color: '#7a7464', to: 'stone' }));
+    }
+    // the door, round, and the windows, glowing
+    parts.push(part(new THREE.CircleGeometry(0.6, 16), { at: [0.2, 0.75, 2.52], rot: [-0.25, 0.1, 0], color: '#120c08', to: 'dark' }));
+    parts.push(part(new THREE.TorusGeometry(0.62, 0.08, 6, 16), { at: [0.2, 0.75, 2.52], rot: [-0.25, 0.1, 0], color: '#5a4a34', to: 'adobe' }));
+    parts.push(part(new THREE.CircleGeometry(0.32, 12), { at: [-1.4, 1.75, 1.95], rot: [-0.4, -0.6, 0], color: new THREE.Color('#ffb050').multiplyScalar(2.2), to: 'glow' }));
+    parts.push(part(new THREE.CircleGeometry(0.26, 12), { at: [2.85, 1.3, 0.05], rot: [-0.3, 1.0, 0], color: new THREE.Color('#ffb050').multiplyScalar(2.2), to: 'glow' }));
+    // the chimney pipe, and the roots over it all
+    parts.push(rod([-0.6, 2.2, -0.8], [-0.7, 3.3, -0.9], 0.18, 0.14, { color: '#5a5446', to: 'metal' }, 8));
+    const B = { color: '#4c463a', to: 'bark' };
+    for (const [a, h] of [
+      [0.4, 4.6],
+      [1.6, 4.2],
+      [2.9, 4.8],
+      [4.3, 4.0],
+    ]) {
+      parts.push(rod([cos(a) * 4.2, -0.2, sin(a) * 4.2], [cos(a) * 2.6, h * 0.7, sin(a) * 2.6], 0.4, 0.34, B, 6));
+      parts.push(rod([cos(a) * 2.6, h * 0.7, sin(a) * 2.6], [cos(a + 0.6) * 0.6, h, sin(a + 0.6) * 0.6], 0.34, 0.3, B, 6));
+    }
+    parts.push(part(blob(69, { lump: 0.4 }), { at: [0, 4.4, 0], scale: [3.6, 1.6, 3.2], color: '#5a6a3a', to: 'leaf' }));
+    const object = k.build(parts, { name: 'yodahut' });
+    const light = new THREE.PointLight('#ffb060', 5, 9, 2);
+    light.position.set(0, 1.4, 2.8);
+    object.add(light);
+    return { object, solids: [{ circle: [0, 0, 2.5] }, { circle: [2.6, -1.4, 1.5] }, { circle: [-2.2, -1.6, 1.2] }] };
+  },
+
+  // Yoda: 0.66 m, his robe, his ears, his stick
+  yoda(k) {
+    const skin = '#8b9a5c';
+    const parts = [
+      part(new THREE.ConeGeometry(0.17, 0.42, 12).translate(0, 0.21, 0), { color: '#b0a07c', to: 'cloth' }),
+      part(new THREE.CylinderGeometry(0.11, 0.16, 0.2, 12), { at: [0, 0.4, 0], color: '#8a7a5c', to: 'cloth' }),
+      part(new THREE.SphereGeometry(0.115, 14, 10), { at: [0, 0.56, 0.01], scale: [1.1, 0.95, 1], color: skin, to: 'paint' }),
+      part(new THREE.SphereGeometry(0.03, 8, 6), { at: [-0.045, 0.57, 0.1], color: '#2a2418', to: 'dark' }),
+      part(new THREE.SphereGeometry(0.03, 8, 6), { at: [0.045, 0.57, 0.1], color: '#2a2418', to: 'dark' }),
+      // hands, and the gimer stick
+      part(new THREE.SphereGeometry(0.03, 8, 6), { at: [0.12, 0.34, 0.08], color: skin, to: 'paint' }),
+      rod([0.14, 0.02, 0.14], [0.11, 0.48, 0.08], 0.012, 0.01, { color: '#6a5a3a', to: 'bark' }, 5),
+    ];
+    const object = new THREE.Group();
+    const body = k.build(parts, { name: 'yoda' });
+    object.add(body);
+    // the ears (they droop, and twitch)
+    const ears = [];
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Group();
+      ear.position.set(s * 0.1, 0.58, 0);
+      ear.add(k.build([part(new THREE.ConeGeometry(0.045, 0.2, 8).translate(0, 0.1, 0), { rot: [0, 0, -s * 1.35], scale: [1, 1, 0.45], color: skin, to: 'paint' })], { name: 'yoda-ear' }));
+      object.add(ear);
+      ears.push({ ear, s });
+    }
+    return {
+      object,
+      solids: [{ circle: [0, 0, 0.2] }],
+      update(t, dt, move = 0) {
+        body.position.y = Math.abs(sin(t * 6)) * 0.02 * move;
+        body.rotation.z = sin(t * 6) * 0.06 * move;
+        for (const { ear, s } of ears) ear.rotation.z = s * (sin(t * 0.7 + s) * 0.08 + (sin(t * 3.1) > 0.97 ? 0.15 : 0));
+      },
+    };
+  },
+
+  // Obi-Wan, more powerful than you can possibly imagine: a figure of blue
+  // light in his robe, flickering
+  ghostben(k) {
+    const parts = [
+      part(new THREE.ConeGeometry(0.38, 1.1, 14, 1, true).translate(0, 0.55, 0), { color: '#9ccaff', to: 'glow' }),
+      part(new THREE.CylinderGeometry(0.18, 0.24, 0.6, 12), { at: [0, 1.3, 0], color: '#9ccaff', to: 'glow' }),
+      part(new THREE.SphereGeometry(0.12, 12, 10), { at: [0, 1.7, 0.02], color: '#c8e2ff', to: 'glow' }),
+      part(new THREE.ConeGeometry(0.09, 0.2, 8), { at: [0, 1.58, 0.08], rot: [PI, 0, 0], color: '#d8ecff', to: 'glow' }),
+      rod([-0.22, 1.5, 0], [-0.18, 1.0, 0.18], 0.07, 0.06, { color: '#9ccaff', to: 'glow' }, 6),
+      rod([0.22, 1.5, 0], [0.18, 1.0, 0.18], 0.07, 0.06, { color: '#9ccaff', to: 'glow' }, 6),
+    ];
+    const mat = k.own(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    const mesh = new THREE.Mesh(k.geometry(parts), mat);
+    const object = new THREE.Group();
+    object.add(mesh);
+    return {
+      object,
+      update(t) {
+        mat.opacity = 0.36 + 0.06 * sin(t * 2.3) + 0.03 * sin(t * 17);
+        mesh.position.y = 0.05 + sin(t * 0.9) * 0.04;
+      },
+    };
+  },
+
+  // Luke's X-wing, sinking in the bog, its nose up out of the water
+  xwingbog(k, { pitch = -0.32, roll = 0.18, sink = 1.4 } = {}) {
+    const m = buildGalaxyShip('xwing');
+    k.own({ dispose: () => m.dispose() });
+    m.group.scale.setScalar(12.5);
+    m.group.rotation.set(pitch, 0, roll, 'YXZ');
+    m.group.position.y = -sink;
+    const object = new THREE.Group();
+    object.add(m.group);
+    // weed and slime hanging off its wings
+    const weed = [];
+    for (let i = 0; i < 5; i++) weed.push(part(new THREE.ConeGeometry(0.15, 0.9, 4), { at: [-4 + i * 2, 0.6 + (i % 2) * 0.5, -1 + i * 0.4], rot: [PI, 0, 0], color: '#4a5a30', to: 'leaf' }));
+    object.add(k.build(weed, { name: 'weed' }));
+    return { object, solids: [{ box: [0, 0, 4.5, 5.5, 0] }], update: (t) => m.update?.(t) };
+  },
+
+  // the cave: a vast black tree, dead, its roots arching over a hole down
+  // into the dark side
+  cavetree(k) {
+    const g = gnarlParts({ seed: 66, bark: '#2a2622', moss: '#3a3e2c', leaf: '#2e3424', h: 14, roots: 7 });
+    const parts = g.parts.map((p) => ({ ...p, scale: 1 }));
+    const object = new THREE.Group();
+    const tree = k.build(parts, { name: 'cavetree' });
+    tree.scale.setScalar(1.9);
+    object.add(tree);
+    // the mouth: a black hollow under the roots, at the front
+    const mouth = k.build(
+      [
+        part(new THREE.SphereGeometry(2.2, 16, 10, 0, TAU, 0, PI / 2), { at: [0, -0.6, 4.5], scale: [1.3, 1.0, 1.0], color: '#050505', to: 'dark' }),
+        part(blob(67, { lump: 0.3, flat: 0 }), { at: [0, -0.3, 1.5], scale: [8, 4, 6], color: '#2c2a22', to: 'adobe' }),
+      ],
+      { name: 'cavemouth' },
+    );
+    object.add(mouth);
+    return { object, solids: [{ circle: [0, 0, 4.2] }, { circle: [-3.5, 2.5, 1.5] }, { circle: [3.5, 2.5, 1.5] }] };
+  },
+
+  // the rocks Luke lifted, still hanging in the air, turning slowly
+  floatrocks(k) {
+    const object = new THREE.Group();
+    const rocks = [];
+    for (let i = 0; i < 4; i++) {
+      const r = k.build([part(rockGeometry(80 + i, { sharp: 0.4 }), { scale: 0.5 + i * 0.2, color: '#6e6a5a', to: 'stone' })], { name: 'floatrock' });
+      r.position.set(cos(i * 1.7) * 1.6, 1.2 + i * 0.5, sin(i * 1.7) * 1.6);
+      object.add(r);
+      rocks.push(r);
+    }
+    return {
+      object,
+      update(t) {
+        rocks.forEach((r, i) => {
+          r.position.y = 1.2 + i * 0.5 + sin(t * 0.8 + i * 1.3) * 0.25;
+          r.rotation.y = t * 0.15 * (i % 2 ? 1 : -1);
+          r.rotation.x = sin(t * 0.4 + i) * 0.2;
+        });
+      },
+    };
+  },
+
+  // a dragonsnake, its coils breaking the black water as it circles
+  dragonsnake(k, { r = 7 } = {}) {
+    const mat = k.own(new THREE.MeshStandardMaterial({ color: '#3a4430', roughness: 0.4 }));
+    const hump = k.own(new THREE.TorusGeometry(0.9, 0.32, 8, 12, PI));
+    const object = new THREE.Group();
+    const humps = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(hump, mat);
+      m.scale.setScalar(1 - i * 0.1);
+      object.add(m);
+      humps.push(m);
+    }
+    const head = new THREE.Mesh(k.own(new THREE.ConeGeometry(0.35, 1.4, 8).rotateX(PI / 2)), mat);
+    object.add(head);
+    return {
+      object,
+      update(t) {
+        const s = t * 0.18;
+        humps.forEach((m, i) => {
+          const a = s - i * 0.28;
+          m.position.set(cos(a) * r, -0.35 + sin(t * 1.4 + i) * 0.12, sin(a) * r);
+          m.rotation.set(0, -a, 0);
+        });
+        const up = Math.max(0, sin(t * 0.35)) ** 3;
+        const a = s + 0.3;
+        head.position.set(cos(a) * r, -0.6 + up * 1.4, sin(a) * r);
+        head.rotation.set(-up * 0.6, -a + PI, 0);
+      },
+    };
+  },
+
+  // a bogwing: a little flapping swamp-flier
+  bogwing(k, { color = '#5a5040' } = {}) {
+    const body = k.build([part(new THREE.SphereGeometry(0.1, 8, 6), { scale: [1, 0.8, 2.2], color, to: 'leaf' }), part(new THREE.ConeGeometry(0.04, 0.3, 5), { at: [0, 0, -0.3], rot: [-PI / 2, 0, 0], color, to: 'leaf' })], { name: 'bogwing' });
+    const object = new THREE.Group();
+    object.add(body);
+    const wings = [];
+    for (const s of [-1, 1]) {
+      const w = new THREE.Group();
+      w.add(k.build([part(new THREE.PlaneGeometry(0.42, 0.26).translate(s * 0.22, 0, 0), { rot: [-PI / 2, 0, 0], color: '#7a6a50', to: 'leaf' })], { name: 'wing' }));
+      object.add(w);
+      wings.push({ w, s });
+    }
+    return {
+      object,
+      update(t) {
+        for (const { w, s } of wings) w.rotation.z = s * sin(t * 16) * 0.8;
+      },
+    };
+  },
+};
+
+// ── Yavin 4 ──
+
+const MASSASSI = '#8c8472';
+const MASSASSI_DARK = '#6a6354';
+const VINE = '#3c5a26';
+
+// a straight flight of steps along z, from (x, z0) at y0 rising by `rise`
+// per step to y1, `dir` ±1 along z: its parts and its floors (with a
+// landing at the top, a step long)
+function flight(x, z0, y0, y1, dir, { wide = 3, rise = 0.45, tread = 0.8, color = MASSASSI } = {}) {
+  const parts = [];
+  const floors = [];
+  const n = Math.round((y1 - y0) / rise) - 1;
+  for (let i = 0; i < n; i++) {
+    const y = y0 + (i + 1) * rise;
+    const z = z0 + dir * (i + 0.5) * tread;
+    parts.push(part(box(wide, 0.5, tread + 0.04), { at: [x, y - 0.5, z], color, to: 'stone' }));
+    floors.push({ x, z, hw: wide / 2, hd: tread / 2 + 0.04, yaw: 0, y });
+  }
+  const zl = z0 + dir * (n + 0.75) * tread;
+  parts.push(part(box(wide, 0.5, tread * 1.5), { at: [x, y1 - 0.5, zl], color, to: 'stone' }));
+  floors.push({ x, z: zl, hw: wide / 2, hd: tread * 0.75 + 0.05, yaw: 0, y: y1 });
+  // a sloped plinth under the steps
+  const len = n * tread;
+  parts.push(part(new THREE.BoxGeometry(wide * 0.9, 0.5, Math.hypot(len, y1 - y0)), { at: [x, (y0 + y1) / 2 - 0.6, z0 + (dir * len) / 2], rot: [dir * Math.atan2(y1 - y0, len), 0, 0], color: MASSASSI_DARK, to: 'stone' }));
+  return { parts, floors, end: zl };
+}
+
+// a stepped block of tiers (x, z half-sizes and heights), each with its
+// cornice and a vine or two over its lip
+function tiers(list, { seed = 1 } = {}) {
+  const rand = rng(seed);
+  const parts = [];
+  let y = 0;
+  for (const [hw, hd, h] of list) {
+    parts.push(part(box(hw * 2, h, hd * 2), { at: [0, y, 0], color: MASSASSI, to: 'stone' }));
+    parts.push(part(box(hw * 2 + 1.2, 0.9, hd * 2 + 1.2), { at: [0, y + h - 0.9, 0], color: MASSASSI_DARK, to: 'stone' }));
+    // courses: a dark band halfway up
+    parts.push(part(box(hw * 2 + 0.3, 0.35, hd * 2 + 0.3), { at: [0, y + h * 0.45, 0], color: MASSASSI_DARK, to: 'stone' }));
+    // vines and moss down its faces
+    for (let i = 0; i < 6; i++) {
+      const side = Math.floor(rand() * 4);
+      const along = (rand() - 0.5) * 1.7;
+      const [x, z, ry] = side === 0 ? [along * hw, hd + 0.3, 0] : side === 1 ? [along * hw, -hd - 0.3, 0] : side === 2 ? [hw + 0.3, along * hd, PI / 2] : [-hw - 0.3, along * hd, PI / 2];
+      const l = h * (0.4 + rand() * 0.55);
+      parts.push(part(new THREE.BoxGeometry(1.5 + rand() * 3, l, 0.3), { at: [x, y + h - l / 2, z], rot: [0, ry, 0], color: new THREE.Color(VINE).offsetHSL(0, 0, (rand() - 0.5) * 0.08), to: 'leaf' }));
+    }
+    y += h;
+  }
+  return { parts, top: y };
+}
+
+const YAVIN = {
+  // the Great Temple of Massassi: five tiers of stone, 100 m across, the
+  // Rebel hangar cut into its foot (open at the front, +z), flights of
+  // steps up its east side to the summit; built by the Massassi for the Sith
+  // thousands of years ago
+  massassi(k) {
+    const parts = [];
+    const floors = [];
+    const solids = [];
+    const T = [
+      [50, 40, 18],
+      [42, 33, 13],
+      [33, 25, 11],
+      [24, 17, 9],
+      [14, 11, 7],
+    ];
+    // the base, round the hangar (x ±18, z 0…40, 12 high)
+    const S = { color: MASSASSI, to: 'stone' };
+    parts.push(part(box(32, 18, 80), { at: [-34, 0, 0], ...S }), part(box(32, 18, 80), { at: [34, 0, 0], ...S }), part(box(36, 18, 40), { at: [0, 0, -20], ...S }), part(box(36, 6, 40), { at: [0, 12, 20], ...S }));
+    parts.push(part(box(101.2, 0.9, 81.2), { at: [0, 17.1, 0], color: MASSASSI_DARK, to: 'stone' }));
+    parts.push(part(box(100.3, 0.35, 80.3), { at: [0, 8, 0], color: MASSASSI_DARK, to: 'stone' }));
+    // the hangar's mouth: a lintel, its floor, the lights in its ceiling
+    parts.push(part(box(40, 2.2, 2), { at: [0, 11, 40.2], color: MASSASSI_DARK, to: 'stone' }));
+    parts.push(part(box(35.6, 0.1, 39.6), { at: [0, 0.02, 20], color: '#6a665c', to: 'stone' }));
+    for (let i = 0; i < 4; i++) for (const x of [-10, 0, 10]) parts.push(part(box(3, 0.15, 0.6), { at: [x, 11.8, 6 + i * 9], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
+    parts.push(part(box(30, 6, 0.3), { at: [0, 0, 0.2], color: '#4a4842', to: 'metal' }));
+    solids.push({ box: [-34, 0, 16, 40, 0], top: 18 }, { box: [34, 0, 16, 40, 0], top: 18 }, { box: [0, -20, 18, 20, 0], top: 18 });
+    floors.push({ x: 0, z: 0, hw: 50, hd: 40, yaw: 0, y: 18 });
+    // the tiers above
+    const up = tiers(T.slice(1), { seed: 4 });
+    for (const p of up.parts) parts.push({ ...p, at: [p.at[0], p.at[1] + 18, p.at[2]] });
+    let y = 18;
+    for (const [hw, hd, h] of T.slice(1)) {
+      y += h;
+      solids.push({ box: [0, 0, hw, hd, 0], top: y });
+      floors.push({ x: 0, z: 0, hw, hd, yaw: 0, y });
+    }
+    // vines down the base
+    const rand = rng(12);
+    for (let i = 0; i < 10; i++) {
+      const x = (rand() - 0.5) * 96;
+      if (Math.abs(x) < 20) continue;
+      const l = 6 + rand() * 10;
+      parts.push(part(new THREE.BoxGeometry(2 + rand() * 3, l, 0.3), { at: [x, 18 - l / 2, 40.3], color: VINE, to: 'leaf' }));
+    }
+    // the summit: a parapet round it, and the throne room's doors
+    parts.push(part(box(29, 1.1, 0.5), { at: [0, 58, 11.2], ...S }), part(box(29, 1.1, 0.5), { at: [0, 58, -11.2], ...S }), part(box(0.5, 1.1, 22), { at: [-14.2, 58, 0], ...S }));
+    parts.push(part(box(8, 4.5, 0.4), { at: [0, 51, 17.2], color: '#2a2620', to: 'dark' }));
+    // the steps up the east side: ground → 18 → 31 → 42 → 51 → 58
+    const flights = [flight(52, 38, 0, 18, -1, { wide: 3.6 })];
+    flights.push(flight(45, flights[0].end - 1, 18, 31, 1));
+    flights.push(flight(37.5, flights[1].end + 1, 31, 42, -1));
+    flights.push(flight(28.5, flights[2].end - 1, 42, 51, 1));
+    flights.push(flight(19, flights[3].end + 1, 51, 58, -1));
+    for (const f of flights) {
+      parts.push(...f.parts);
+      floors.push(...f.floors);
+    }
+    return { object: k.build(parts, { name: 'massassi' }), solids, floors };
+  },
+
+  // a lesser temple, swallowed by the jungle: three worn tiers, a dark
+  // doorway, a tree growing out of its top, blocks fallen round it
+  ruin(k, { seed = 21 } = {}) {
+    const t = tiers(
+      [
+        [15, 15, 6],
+        [11, 11, 5],
+        [7, 7, 4.5],
+      ],
+      { seed },
+    );
+    const parts = [...t.parts];
+    parts.push(part(box(4, 4, 0.4), { at: [0, 0, 15.1], color: '#1a1814', to: 'dark' }));
+    parts.push(part(box(5.4, 0.8, 1), { at: [0, 4, 15.2], color: MASSASSI_DARK, to: 'stone' }));
+    const rand = rng(seed);
+    for (let i = 0; i < 7; i++) {
+      const a = rand() * TAU;
+      const d = 17 + rand() * 5;
+      parts.push(part(box(1.5 + rand() * 1.5, 0.8 + rand(), 1.2 + rand()), { at: [cos(a) * d, -0.2, sin(a) * d], rot: [(rand() - 0.5) * 0.4, rand() * PI, (rand() - 0.5) * 0.3], color: MASSASSI, to: 'stone' }));
+    }
+    for (const p of jungleParts({ h: 22, r: 0.8, seed: seed + 3 }).parts) parts.push({ ...p, at: [(p.at?.[0] ?? 0) + 2, (p.at?.[1] ?? 0) + t.top - 1, (p.at?.[2] ?? 0) - 1] });
+    return { object: k.build(parts, { name: 'ruin' }), solids: [{ box: [0, 0, 15, 15, 0] }] };
+  },
+
+  // the lookout: a steel tower up through the canopy, a platform on top
+  // with a sentry's rail, a ladder up one leg; 34 m
+  lookout(k, { h = 34 } = {}) {
+    const parts = [];
+    const M = { color: '#6a6a62', to: 'metal' };
+    const legs = [
+      [-2.4, -2.4],
+      [2.4, -2.4],
+      [2.4, 2.4],
+      [-2.4, 2.4],
+    ];
+    for (const [x, z] of legs) parts.push(rod([x * 1.6, 0, z * 1.6], [x * 0.7, h, z * 0.7], 0.22, 0.16, M, 6));
+    for (let i = 0; i < 4; i++) {
+      const [x0, z0] = legs[i];
+      const [x1, z1] = legs[(i + 1) % 4];
+      for (let j = 0; j < 4; j++) {
+        const f0 = j / 4;
+        const f1 = (j + 1) / 4;
+        const s0 = 1.6 - 0.9 * f0;
+        const s1 = 1.6 - 0.9 * f1;
+        parts.push(rod([x0 * s0, h * f0, z0 * s0], [x1 * s1, h * f1, z1 * s1], 0.07, 0.07, M, 4));
+        parts.push(rod([x1 * s0, h * f0, z1 * s0], [x0 * s1, h * f1, z0 * s1], 0.07, 0.07, M, 4));
+      }
+    }
+    parts.push(part(box(5.4, 0.3, 5.4), { at: [0, h, 0], color: '#7a786e', to: 'metal' }));
+    for (const [x, z, w, d] of [
+      [0, 2.6, 5.4, 0.08],
+      [0, -2.6, 5.4, 0.08],
+      [2.6, 0, 0.08, 5.4],
+      [-2.6, 0, 0.08, 5.4],
+    ])
+      parts.push(part(box(w, 0.08, d), { at: [x, h + 1.1, z], ...M }));
+    for (const [x, z] of legs) parts.push(rod([x * 1.08, h, z * 1.08], [x * 1.08, h + 1.15, z * 1.08], 0.05, 0.05, M, 4));
+    parts.push(part(cyl(0.6, 0.6, 0.6, 10), { at: [-1.6, h + 0.3, -1.6], color: '#4a4a44', to: 'metal' }));
+    parts.push(rod([1.8, h + 0.3, -1.8], [1.8, h + 4, -1.8], 0.04, 0.03, M, 4));
+    parts.push(part(new THREE.SphereGeometry(0.12, 6, 4), { at: [1.8, h + 4.05, -1.8], color: new THREE.Color('#ff5040').multiplyScalar(2.4), to: 'glow' }));
+    return { object: k.build(parts, { name: 'lookout' }), solids: [{ box: [0, 0, 3.6, 3.6, 0] }], floors: [{ x: 0, z: 0, hw: 2.7, hd: 2.7, yaw: 0, y: h + 0.15 }] };
+  },
+
+  // a starfighter set down (one of the galaxy's: an X-wing, a Y-wing, a
+  // U-wing…), on its landing struts
+  parked(k, { kind = 'xwing', metres = 12.5, lift = 1.1 } = {}) {
+    const m = buildGalaxyShip(kind);
+    k.own({ dispose: () => m.dispose() });
+    m.group.scale.setScalar(metres);
+    const size = m.size.clone().multiplyScalar(metres);
+    m.group.position.y = lift + size.y / 2;
+    const object = new THREE.Group();
+    object.add(m.group);
+    const M = { color: '#4a4a46', to: 'metal' };
+    const gear = [];
+    for (const [x, z] of [
+      [0, size.z * 0.3],
+      [-size.x * 0.12, -size.z * 0.22],
+      [size.x * 0.12, -size.z * 0.22],
+    ]) {
+      gear.push(rod([x, lift + size.y * 0.3, z], [x, 0.1, z], 0.08, 0.08, M, 6));
+      gear.push(part(cyl(0.22, 0.25, 0.12, 8), { at: [x, 0, z], ...M }));
+    }
+    object.add(k.build(gear, { name: 'gear' }));
+    return { object, solids: [{ box: [0, 0, Math.max(1, size.x * 0.3), size.z * 0.42, 0] }], update: (t) => m.update?.(t) };
+  },
+};
+
+export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };
