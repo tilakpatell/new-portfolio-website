@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { farTree } from '../../middleearth/towns/bake';
-import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SCHOOL, TREES } from './rules';
+import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SCHOOL, STOOP, TREES } from './rules';
 import { at, batch, mergeParts, rng, speckle } from './kit';
 import { buildingMaterials, flagpole, marquee, neighbourHouses, school, smithHouse } from './buildings';
 import { STREET_SKY, makeSky } from './sky';
@@ -111,6 +111,11 @@ export async function buildStreet(kit) {
   // the front walk, edged in red brick, from the porch step to the sidewalk
   pad(FRONT_WALK.x0, FRONT_WALK.x1, FRONT_WALK.z0, FRONT_WALK.z1, 0.035);
   for (const x of [FRONT_WALK.x0 - 0.08, FRONT_WALK.x1 + 0.08]) b.add(BOX, m.brick, at(x, 0.04, (FRONT_WALK.z0 + FRONT_WALK.z1) / 2, 0, 0.16, 0.08, FRONT_WALK.z1 - FRONT_WALK.z0));
+  // the stoop at the front door and its two steps: red brick under a concrete top
+  for (const p of STOOP) {
+    b.add(BOX, m.brick, at(p.x, (p.top - 0.06) / 2, p.z, 0, p.w - 0.04, p.top - 0.06, p.d - 0.04));
+    flat.add(BOX, slab, at(p.x, p.top - 0.03, p.z, 0, p.w, 0.06, p.d));
+  }
 
   // ── the Smith house and the school ──
   const bushes = [];

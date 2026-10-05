@@ -47,6 +47,11 @@ import {
   areaAt,
   canLand,
   collidersIn,
+  solidIn,
+  supportAt,
+  CLIMB,
+  CEILING,
+  STOOP,
   dropAt,
   exitCruiser,
   floorAt,
@@ -77,7 +82,8 @@ const street = [...BUILDINGS];
 const free = (area, x, z, rad = MORTY.radius, opts) => {
   if (!inArea(area, x, z, -rad)) return false;
   if (wallsIn(area).some((w) => segDist(x, z, w) < 1e-6)) return false;
-  const [px, pz] = pushOut(x, z, rad, collidersIn(area, opts), wallsIn(area));
+  // (what's low enough to get up onto is somewhere to stand)
+  const [px, pz] = pushOut(x, z, rad, solidIn(area, opts), wallsIn(area));
   return Math.hypot(px - x, pz - z) < 1e-6;
 };
 
@@ -562,15 +568,16 @@ describe('C-137: the furniture', () => {
   it('makes each piece a box in the way, where it stands, turned as it is drawn', () => {
     for (const f of FURNITURE) {
       const c = collidersIn(f.area).find((o) => o.id === f.id);
-      expect(c, f.id).toMatchObject({ kind: 'box', x: f.x, z: f.z, w: f.w, d: f.d, turn: f.turn });
+      expect(c, f.id).toMatchObject({ kind: 'box', x: f.x, z: f.z, w: f.w, d: f.d, turn: f.turn, top: f.h });
     }
-    // a turned piece is in the way along its turned sides: the couch is long on z, facing the TV
+    // a turned piece is in the way (of his feet, on the floor) along its turned sides: the couch is long on z, facing the TV
     const couch = FURNITURE.find((f) => f.id === 'couch');
+    const onFloor = (x, z) => Math.hypot(...((p) => [p[0] - x, p[1] - z])(pushOut(x, z, MORTY.radius, collidersIn('house'), wallsIn('house')))) < 1e-6;
     expect(Math.abs(Math.sin(couch.turn))).toBeCloseTo(1, 6);
-    expect(free('house', couch.x, couch.z - couch.w / 2 + 0.05)).toBe(false);
-    expect(free('house', couch.x, couch.z - couch.w / 2 - MORTY.radius - 0.05)).toBe(true);
-    expect(free('house', couch.x, couch.z - couch.w / 2 - MORTY.radius + 0.05)).toBe(false);
-    expect(free('house', couch.x + couch.d / 2 + MORTY.radius - 0.05, couch.z)).toBe(false);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 + 0.05)).toBe(false);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 - MORTY.radius - 0.05)).toBe(true);
+    expect(onFloor(couch.x, couch.z - couch.w / 2 - MORTY.radius + 0.05)).toBe(false);
+    expect(onFloor(couch.x + couch.d / 2 + MORTY.radius - 0.05, couch.z)).toBe(false);
   });
 
   it('keeps every piece of furniture clear of the walls inside the house: none stands on a wall line', () => {
@@ -2001,3 +2008,107 @@ describe('C-137: the pop quiz', () => {
     expect(grade(undefined)).toMatchObject({ right: 0, pass: false });
   });
 });
+
+describe('C-137: jumping', () => {
+  // a jump (on the first step only), then `seconds` more of `move`
+  const hop = (m, move, seconds, area = 'street', opts) => {
+    m = stepMorty(m, { ...move, jump: true }, DT, area, opts);
+    return walk(m, move, seconds, area, opts);
+  };
+  const at = (area, x, z) => newMorty({ x, z, face: 0 });
+  const thing = (id) => FURNITURE.find((f) => f.id === id);
+
+  it('goes up and comes down where he stood, about 0.8 m at the top', () => {
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    expect(m.air).toBe(true);
+    let top = 0;
+    for (let t = 0; t < 1.5; t += DT) {
+      m = stepMorty(m, {}, DT, 'street');
+      top = Math.max(top, m.y);
+    }
+    expect(top).toBeGreaterThan(0.7);
+    expect(top).toBeLessThan(0.9);
+    expect(m).toMatchObject({ x: START.x, z: START.z, y: 0, vy: 0, air: false });
+    expect(CLIMB).toBeCloseTo(MORTY.step + top, 1);
+  });
+
+  it('jumps only from his feet', () => {
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    m = walk(m, {}, 0.2, 'street');
+    const vy = m.vy;
+    m = stepMorty(m, { jump: true }, DT, 'street');
+    expect(m.vy).toBeLessThan(vy);
+  });
+
+  it('walks up the stoop’s steps to the front door, and jumps off its side to the lawn', () => {
+    const [stoop] = STOOP;
+    let m = walk(at('street', -7.2, -14.6), { x: 0, z: -1 }, 3);
+    expect(m.y).toBe(stoop.top);
+    expect(m.z).toBeLessThan(stoop.z);
+    expect(nearLink('street', m.x, m.z).id).toBe('house-door');
+    // off the side: down to the lawn
+    m = walk(m, { x: 1, z: 0 }, 0.9);
+    expect(m.x).toBeGreaterThan(stoop.x + stoop.w / 2);
+    expect(m.y).toBe(0);
+    // and back up it only by jumping
+    const blocked = walk(m, { x: -1, z: 0 }, 1);
+    expect(blocked.x).toBeGreaterThan(stoop.x + stoop.w / 2);
+    expect(blocked.y).toBe(0);
+    const up = hop(m, { x: -1, z: 0 }, 0.7);
+    expect(up.y).toBe(stoop.top);
+    expect(up.x).toBeLessThan(stoop.x + stoop.w / 2);
+  });
+
+  it('jumps up onto the kitchen counter, the couch and Morty’s bed, and walks off them', () => {
+    const counter = thing('counter');
+    let m = hop(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house');
+    expect(m.y).toBe(counter.h);
+    expect(m.x).toBeLessThan(counter.x + counter.d / 2);
+    m = walk(m, { x: 1, z: 0 }, 1, 'house');
+    expect(m.y).toBe(0);
+    const couch = thing('couch');
+    expect(hop(at('house', couch.x + 1.4, couch.z - 1), { x: -1, z: 0 }, 0.45, 'house').y).toBe(couch.h);
+    const bed = thing('bed-morty');
+    expect(hop(at('upstairs', bed.x - bed.d / 2 - 0.6, bed.z), { x: 1, z: 0 }, 0.45, 'upstairs').y).toBe(bed.h);
+    // walking into them, he doesn't climb them
+    expect(walk(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house').y).toBe(0);
+  });
+
+  it('can’t get onto anything taller than a jump, or with no room under the ceiling', () => {
+    const fridge = thing('fridge');
+    expect(fridge.h).toBeGreaterThan(CLIMB);
+    const m = hop(at('house', fridge.x, fridge.z + 1.4), { x: 0, z: -1 }, 1, 'house');
+    expect(m.y).toBe(0);
+    expect(m.z).toBeGreaterThan(fridge.z + fridge.d / 2);
+    for (const c of solidIn('house')) expect(c.top == null || c.top > CLIMB || c.top + MORTY.height > CEILING.house, c.id).toBe(true);
+  });
+
+  it('never puts his head through a ceiling', () => {
+    const counter = thing('counter');
+    let m = hop(at('house', counter.x + 1.3, counter.z), { x: -1, z: 0 }, 1, 'house');
+    let top = 0;
+    m = stepMorty(m, { jump: true }, DT, 'house');
+    for (let t = 0; t < 1; t += DT) {
+      m = stepMorty(m, {}, DT, 'house');
+      top = Math.max(top, m.y);
+    }
+    expect(top + MORTY.height).toBeLessThanOrEqual(CEILING.house + 1e-9);
+    expect(m.y).toBe(counter.h);
+  });
+
+  it('stands on the highest thing under him, and the floor elsewhere', () => {
+    const [stoop, step1, step2] = STOOP;
+    expect(supportAt('street', stoop.x, stoop.z, stoop.top)).toBe(stoop.top);
+    expect(supportAt('street', step2.x, step2.z + 0.1, 0)).toBe(step2.top);
+    // too high to step up onto from the lawn
+    expect(supportAt('street', stoop.x, stoop.z, 0)).toBe(0);
+    expect(supportAt('street', step1.x, step1.z, step2.top)).toBe(step1.top);
+    expect(supportAt('street', START.x, START.z, 0)).toBe(0);
+  });
+
+  it('only drops down the hatch on his feet', () => {
+    expect(dropAt('garage', HATCH.x, HATCH.z, 0)?.id).toBe('garage-hatch');
+    expect(dropAt('garage', HATCH.x, HATCH.z, 0.5)).toBe(null);
+  });
+});
+

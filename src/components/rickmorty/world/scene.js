@@ -25,7 +25,7 @@ import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
 import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
-import { ARCADE, AREAS, BUILDINGS, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, wallsIn } from './rules';
+import { ARCADE, AREAS, BUILDINGS, CEILING, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, supportAt, wallsIn } from './rules';
 import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { STREET_SKY, SUN_DIR, makeSky } from './sky';
@@ -238,12 +238,12 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     });
   // where the walking camera wants to be, `turn` round Morty (indoors, kept in the room)
   const aim = (area, m, turn, pitch, dist) => {
-    want.at.set(m.x + Math.sin(turn) * Math.cos(pitch) * dist, mortyY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(turn) * Math.cos(pitch) * dist);
+    want.at.set(m.x + Math.sin(turn) * Math.cos(pitch) * dist, eyeY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(turn) * Math.cos(pitch) * dist);
     if (OUTDOOR.includes(area)) return;
     const a = AREAS[area];
     want.at.x = clamp(want.at.x, a.x0 + 0.3, a.x1 - 0.3);
     want.at.z = clamp(want.at.z, a.z0 + 0.3, a.z1 - 0.3);
-    want.at.y = Math.min(want.at.y, 2.35);
+    want.at.y = Math.min(want.at.y, CEILING[area] - 0.25);
   };
   let hitBy = 0; // what clearance() last stopped at
   const clearance = (area, from, to) => {
@@ -305,6 +305,9 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   let sharp = 1;
   let t = 0;
   let mortyY = 0;
+  let groundY = 0; // the ground under him (the road's a little lower)
+  let standY = 0; // what he stands on over it, eased: the camera's level, which doesn't bob with his jumps
+  let eyeY = 0;
   let craftY = CRUISER.hover;
   const render = (state, ms = 16) => {
     if (stage.lost || stage.disposed) return;
@@ -324,13 +327,17 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     // Morty
     const m = state.morty;
     const ground = outdoors && Math.abs(m.z - ROAD.z) < ROAD.w / 2 ? ROAD_Y : 0;
-    mortyY = jump ? ground : mortyY + (ground - mortyY) * Math.min(1, dt * 14);
+    groundY = jump ? ground : groundY + (ground - groundY) * Math.min(1, dt * 14);
+    const stand = supportAt(area, m.x, m.z, m.y ?? 0);
+    standY = jump ? stand : standY + (stand - standY) * Math.min(1, dt * 6);
+    mortyY = groundY + (m.y ?? 0);
+    eyeY = groundY + standY;
     morty.group.visible = !state.flying;
     morty.group.position.set(m.x, mortyY, m.z);
     morty.group.rotation.y = (m.face ?? 0) + Math.PI / 2;
     morty.update?.(t, clamp((m.speed ?? 0) / MORTY.run, 0, 1), 0);
     mortyShadow.visible = morty.group.visible;
-    mortyShadow.position.set(m.x, mortyY + 0.02, m.z);
+    mortyShadow.position.set(m.x, groundY + stand + 0.02, m.z);
 
     // the cruiser: in the street only; its pilot only while flying; its
     // height eased over the step its floor makes at a roof's edge
@@ -386,7 +393,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const pitch = clamp(state.camPitch ?? 0.17, -0.25, 1.2);
       const dist = outdoors || OUTDOOR.includes(area) ? 5.6 : 3.6;
       // (looking a little over his head, so more of the street is in view)
-      want.look.set(m.x, mortyY + 1.75, m.z);
+      want.look.set(m.x, Math.min(eyeY + 1.75, CEILING[area] - 0.2), m.z);
       // indoors: kept in the room first, then pulled in front of whatever's in the way
       aim(area, m, yaw, pitch, dist);
       let k = clearance(area, want.look, want.at);
@@ -416,7 +423,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
         k = clearance(area, want.look, want.at);
       }
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
-      want.at.y = Math.max(want.at.y, mortyY + 0.4);
+      want.at.y = Math.max(want.at.y, eyeY + 0.4);
     }
     const ease = jump ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
     cam.at.lerp(want.at, ease);
