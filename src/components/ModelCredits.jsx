@@ -3,14 +3,16 @@ import MODELS from '../data/modelCredits.json';
 
 // Who made the 3D models a page shows that aren't the site's own: each one's
 // title, author, licence and where it came from, as the Creative Commons
-// licences ask (and as the travel page does for its photos). The list is kept
-// by scripts/sketchfab-batch.mjs, which reads it out of the downloads.
+// licences ask (and as the travel page does for its photos). The list
+// (data/modelCredits.json) is kept by scripts/sketchfab-batch.mjs, which reads
+// it out of the downloads; the universe map's Star Wars models, which
+// scripts/build-universe.py makes, are in it by hand.
 //
 // `where`: the page ('universe', 'middle-earth'). As a list that opens, like
 // the photo credits; or with `line`, as one sentence for a page with no room
 // for a list.
 
-const licence = (m) => m.license.replace(/^CC-BY-/, 'CC BY ').replace(/-/g, ' ');
+const licence = (m) => m.license.replace(/^CC-/, 'CC ').replace(/-(\d)/, ' $1'); // 'CC-BY-NC-SA-4.0' → 'CC BY-NC-SA 4.0'
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const out = { target: '_blank', rel: 'noopener noreferrer' };
 

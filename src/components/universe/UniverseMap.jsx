@@ -9,8 +9,9 @@ import MiniMap from './MiniMap';
 // scene moves them as it draws. The names are one focus group: the arrow
 // keys step through the universes, Home and End jump to the ends. With a
 // ship picked there's a ring that shows the drag-to-steer stick, a gauge of
-// how high it flies, Boost, Fire and climb and dive buttons on touch
-// screens and a line on how to fly until you do. While the
+// how high it flies, its shields (while there's trouble about), Boost, Fire
+// and climb and dive buttons on touch screens and a line on how to fly
+// until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box.
 const load = () => import('./scene');
@@ -19,6 +20,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const labels = useRef({});
   const stick = useRef(null);
   const alt = useRef(null);
+  const shield = useRef(null);
   const [flown, setFlown] = useState(false);
   const events = useRef(onEvent);
   events.current = onEvent;
@@ -31,6 +33,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       labels,
       stick,
       alt,
+      shield,
       frozen,
       onPick: onSelect,
       onOpen,
@@ -132,6 +135,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               </div>
               <div ref={alt} className="universe-alt" aria-hidden="true">
                 <span className="universe-alt-mark" />
+              </div>
+              <div ref={shield} className="universe-shield" aria-hidden="true">
+                <span className="universe-shield-label">Shields</span>
+                <span className="universe-shield-bar">
+                  <span />
+                </span>
               </div>
               <div className="universe-climbs">
                 {climbButton(1, 'Climb')}

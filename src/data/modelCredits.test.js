@@ -16,8 +16,8 @@ describe('the 3D models that are other people’s', () => {
       for (const key of ['title', 'author', 'as']) expect(m[key], `${name}: ${key}`).toBeTruthy();
       expect(m.source, name).toMatch(/^https:\/\/sketchfab\.com\/3d-models\//);
       expect(m.authorUrl, name).toMatch(/^https:\/\/sketchfab\.com\//);
-      // attribution licences only: nothing that forbids changing it (they're all reduced for the web) or showing it here
-      expect(m.license, name).toMatch(/^CC-BY-(SA-)?4\.0$/);
+      // attribution licences, share-alike and non-commercial ones too (the site sells nothing), but none that forbids changing it: they're all reduced for the web
+      expect(m.license, name).toMatch(/^CC-BY-(NC-)?(SA-)?4\.0$/);
       expect(m.licenseUrl, name).toMatch(/creativecommons\.org\/licenses\//);
     }
   });
@@ -26,9 +26,11 @@ describe('the 3D models that are other people’s', () => {
     const code = sources().join('\n');
     const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
-      expect(existsSync(at(`public/models/sketchfab/${name}.glb`)), `${name}.glb`).toBe(true);
+      // where it is: its own `file`, or under its name with the rest from Sketchfab
+      const file = m.file ?? `/models/sketchfab/${name}.glb`;
+      expect(existsSync(at(`public${file}`)), file).toBe(true);
       // by its own path, or by the folder and its name (the map's places are loaded by name)
-      expect(code.includes(`/models/sketchfab/${name}.glb`) || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
+      expect(code.includes(file) || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
     }

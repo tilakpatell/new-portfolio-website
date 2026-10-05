@@ -6,7 +6,9 @@
 // licence and where it came from are read out of the download itself
 // (Sketchfab writes them into the file) and kept in src/data/modelCredits.json,
 // which the pages show (components/ModelCredits.jsx). The downloads stay out
-// of the repo.
+// of the repo. (The same file also credits the universe map's Star Wars
+// models, which scripts/build-universe.py makes: those entries carry their
+// own `file`, are written by hand, and are left as they are here.)
 //
 // A model for the Middle-earth map is kept as its shape alone (`bare`): the
 // map's toys are plain colours, flat-shaded, and the map gives it its colour.
@@ -34,14 +36,12 @@ const CREDITS = path(ROOT, 'src', 'data', 'modelCredits.json');
 
 // name → from: the download's file name; tris: triangles to keep; tex: the
 // sheet's size, or bare: its shape alone; seams and error: for the simplifier
-// (below); turn: degrees
-// about x, y and z, to stand it the way the model it takes over from stood;
-// where: the page that shows it; as: what it is there (both for the credits)
+// (below); turn: degrees about x, y and z, to stand it the way the model it
+// takes over from stood; where: the page that shows it; as: what it is there
+// (both for the credits)
 export const MODELS = {
-  // the universe map: what stands by each planet, a few dozen pixels across
+  // the universe map: what stands by its planet, a few dozen pixels across
   sitar: { from: 'classical-musical-instrument-sitar', tris: 9000, tex: 512, seams: true, turn: [0, 0, -57], where: 'universe', as: 'the sitar by the music planet' },
-  // and its traffic
-  corvette: { from: 'cr-90', tris: 12000, tex: 256, seams: true, error: 0.02, where: 'universe', as: 'the Rebel corvette in the traffic' },
   // the Middle-earth map: toys a few units tall, which you can zoom in on
   'minas-tirith': { from: 'minas-tirith-remake', tris: 14000, bare: true, where: 'middle-earth', as: 'Minas Tirith' },
   orthanc: { from: 'isengard', tris: 6000, bare: true, where: 'middle-earth', as: 'Orthanc' },

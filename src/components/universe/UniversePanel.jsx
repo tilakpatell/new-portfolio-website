@@ -80,6 +80,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
               <li className="universe-keys-board">
                 <kbd>R</kbd> to climb, <kbd>C</kbd> to dive
               </li>
+              <li>Out past the planets is deep space: boost there for the pulse drive</li>
               <li className="universe-keys-board">
                 <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>M</kbd> for the whole map
               </li>
