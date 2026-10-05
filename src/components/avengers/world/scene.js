@@ -31,7 +31,7 @@ import { apronMarks, buildQuinjet, curtainTexture, flatShape, groundPaint, panel
 import { STONES } from '../../interests/stones';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { AVENGERS_MODELS } from '../people/models';
-import { loadPerson, person } from './people';
+import { clipsFor, loadClips, loadPerson, person } from './people';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { ARMOUR, BUILDINGS, CAST, CRATER, HERO, LAWN_TREES, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, camRoom, nearestEdge, samplePath } from './rules';
 
@@ -824,6 +824,40 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const hero = spidey?.holder ?? cap.root;
   const heroTop = spidey ? SPIDEY.h + 0.35 : 2.2;
 
+  // his own moves, once there are any: motion-captured idle, walk, run and
+  // jump retargeted onto his skeleton (manifest.json's spiderman, made by
+  // scripts/sketchfab-avengers.mjs), each paced to how fast he's going; until
+  // then, and if they can't be had, the rig's stride
+  const MOVES = await (async () => {
+    if (!spideyT) return null;
+    try {
+      const man = await fetch(`${import.meta.env?.BASE_URL ?? '/'}models/sketchfab/avengers/manifest.json`).then((r) => (r.ok ? r.json() : null));
+      const spec = man?.spiderman;
+      if (!spec?.moves) return null;
+      const clips = await loadClips(spec.moves);
+      if (!clips?.walk || !clips?.run || !clips?.idle) return null;
+      return { clips: Object.values(clips), speeds: { walk: 1.6, run: 4.3, ...spec.speeds }, jump: clips.jump ? { takeoff: 0, land: clips.jump.duration, ...spec.jump } : null };
+    } catch {
+      return null;
+    }
+  })();
+  // which clip, how fast: the same for him and for the holograms of everyone else
+  const AIR = (2 * HERO.jump) / HERO.gravity; // seconds off the ground in a jump
+  const drive = (d, speed, air, rising) => {
+    if (air && MOVES.jump) {
+      if (d.playing !== 'jump') {
+        const { takeoff, land } = MOVES.jump;
+        // the clip's flight fitted to the jump's, from just before its feet leave
+        d.play('jump', { loop: false, from: Math.max(0, takeoff - 0.06), speed: Math.max(0.5, Math.min(3, (land - takeoff) / AIR)) });
+      }
+    } else if (air) d.play(rising ? 'run' : 'walk', { speed: 0.6 });
+    else if (speed < 0.35) d.play('idle');
+    else if (speed < (HERO.walk + HERO.run) / 2.2) d.play('walk', { speed: Math.max(0.6, Math.min(2.2, speed / MOVES.speeds.walk)) });
+    else d.play('run', { speed: Math.max(0.8, Math.min(2.4, speed / MOVES.speeds.run)) });
+  };
+  const moves = MOVES && spidey ? clipsFor(spidey.model, MOVES.clips) : null;
+  moves?.play('idle');
+
   // other players online, walking this compound in their own worlds, as
   // holograms (as the Middle-earth towns show theirs: ../../middleearth/towns):
   // each a pale, shimmering Spider-Man with his name over him; nothing here
@@ -836,7 +870,19 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
           f.holder.rotation.y = Math.PI / 2; // the rig faces +z; a ghost's face, like a hero's, is measured from +x
           const group = new THREE.Group();
           group.add(f.holder);
-          return { group, top: SPIDEY.h, fig: f, gait: 0, dispose: () => f.dispose() };
+          const clips = MOVES ? clipsFor(f.model, MOVES.clips) : null;
+          clips?.play('idle', { from: Math.random() * 2 });
+          return {
+            group,
+            top: SPIDEY.h,
+            fig: f,
+            clips,
+            gait: 0,
+            dispose: () => {
+              clips?.dispose();
+              f.dispose();
+            },
+          };
         }
       : () => {
           const h = buildHumanoid({ style: 'cap', materials: capMats, scale: 0.98 });
@@ -849,7 +895,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       const speed = p.speed ?? (p.moving ? HERO.walk : 0);
       const run = Math.min(1, Math.max(0, (speed - HERO.walk) / (HERO.run - HERO.walk)));
       f.gait += (speed * dt * Math.PI * 2) / (1.5 + run * 1.7);
-      if (f.fig) f.fig.pose((p.y ?? 0) > 0.05 ? POSES.leap(0) : POSES.stride(f.gait, Math.min(1, speed / 1.2), run), dt, 30);
+      if (f.clips) {
+        drive(f.clips, speed, (p.y ?? 0) > 0.05, true);
+        f.clips.update(dt);
+      } else if (f.fig) f.fig.pose((p.y ?? 0) > 0.05 ? POSES.leap(0) : POSES.stride(f.gait, Math.min(1, speed / 1.2), run), dt, 30);
       else poseHumanoid(f.hum, { t: f.gait / 5, mode: speed < 0.35 ? 'idle' : run > 0.3 ? 'run' : 'walk' });
     },
     tag: 0.42,
@@ -1007,6 +1056,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // out, so his feet keep to the ground; off it, knees up; he dips at each step
   const placeSpidey = (h, dt) => {
     const speed = Math.hypot(h.vx, h.vz);
+    if (moves) {
+      // his own clips: the hips' rise and fall are in them
+      drive(moves, speed, h.air, h.vy > 0);
+      moves.update(dt);
+      hero.position.set(h.x, h.y + spidey.hipHeight, h.z);
+      hero.rotation.y = h.face + Math.PI / 2;
+      return;
+    }
     const run = Math.min(1, Math.max(0, (speed - HERO.walk) / (HERO.run - HERO.walk)));
     const amount = Math.min(1, speed / 1.2);
     A.gait += (speed * dt * Math.PI * 2) / (1.5 + run * 1.7);
@@ -1253,6 +1310,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       gone = true;
       for (const p of Object.values(people)) p.model?.dispose();
       ghosts.dispose();
+      moves?.dispose();
       spidey?.dispose();
       vfx.dispose();
       engine.dispose();
