@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FAMILY, familyFor, showsOn } from './kinds';
-import { FAN_THEMES, THEMES } from '../../theme/themes';
+import { COMPANIES, FAMILY, companyFor, familyFor, showsOn } from './kinds';
+import { FAN_THEMES, THEMES, THEME_ORDER } from '../../theme/themes';
 
 describe('ambience kinds', () => {
   it('gives every fan theme a family', () => {
@@ -13,6 +13,12 @@ describe('ambience kinds', () => {
 
   it('leaves the company and project themes alone', () => {
     for (const id of ['aws', 'rtx', 'bose', 'pendar', 'empowerreg', 'src', 'gameboy', 'travel', 'custom']) expect(familyFor(id)).toBeNull();
+  });
+
+  it('gives every company theme its quiet motif, and nothing else one', () => {
+    expect([...COMPANIES].sort()).toEqual([...THEME_ORDER].sort());
+    for (const id of THEME_ORDER) expect(companyFor(id)).toBe(id);
+    for (const id of ['jedi', 'gameboy', 'travel', 'custom']) expect(companyFor(id)).toBeNull();
   });
 
   it('shows on the portfolio pages and nowhere else', () => {
