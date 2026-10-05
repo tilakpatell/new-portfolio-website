@@ -179,6 +179,8 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     get target() {
       return on ? composer.readBuffer : null;
     },
+    // (for making its passes' shaders before the first frame)
+    composer,
     // draw a frame (the renderer's pixel ratio can change under us, when the
     // watchdog trades sharpness for speed)
     render(w, h) {

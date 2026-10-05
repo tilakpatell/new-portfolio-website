@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../../lib/gpu';
+import { settle } from '../../lib/settle';
 import { opened } from './opening';
 import { SHEET } from './mapData';
 
@@ -182,7 +183,12 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
           await mapFont();
           // only now, and only if still wanted: a canvas has one context to give
           if (dead || !canvas.current) return;
-          ready(createMapBackdrop(canvas.current, { onLost: () => setOn(false) }));
+          const a = createMapBackdrop(canvas.current, { onLost: () => setOn(false) });
+          // its shaders link in the background (the page's own map meanwhile),
+          // so its first frame doesn't stop the page
+          await settle(a.ready);
+          if (dead || a.lost) return a.dispose();
+          ready(a);
         })
         .catch(() => !dead && setOn(false));
     } else flat().catch(() => {});

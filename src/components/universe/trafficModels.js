@@ -977,6 +977,8 @@ function birdperson(k) {
 }
 
 const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
+// every kind there's a built model of
+export const BUILT_KINDS = Object.keys(BUILD);
 
 // A model's own things to free, and its own random numbers (the same every
 // time for the same kind, so a model always looks the same).

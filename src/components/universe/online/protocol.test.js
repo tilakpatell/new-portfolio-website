@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE, GUARD, NAME_MAX, STALE_MS, allyStep, cleanName, hitCounts, randomCallsign, readCursor, readHello, readHit, readPose, readShot, sample, writeCursor, writePose, writeShot } from './protocol';
+import { DAMAGE, FLOOD, GUARD, NAME_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, randomCallsign, readCursor, readHello, readHit, readPose, readShot, sample, writeCursor, writePose, writeShot } from './protocol';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -16,6 +16,10 @@ describe('cleanName', () => {
   it('counts an emoji as one character, not its halves', () => {
     const name = cleanName('🚀'.repeat(20));
     expect([...name].length).toBe(NAME_MAX);
+  });
+  it('shows no slurs or obscenities, leetspeak and all, but leaves innocent words be', () => {
+    for (const bad of ['sh1t lord', 'F.U.C.K', 'fuuuuck', 'Big Dick', 'KKK']) expect(cleanName(bad), bad).toBeNull();
+    for (const ok of ['Cockpit Ace', 'Torpedo 7', 'Grape Ape', 'Class Act', 'Spicy Rick', 'Therapist', 'Hello Kitty', 'Kirk', 'Pass Go']) expect(cleanName(ok), ok).toBe(ok);
   });
   it('turns nothing into null', () => {
     expect(cleanName('   ')).toBeNull();
@@ -100,15 +104,26 @@ describe('hits', () => {
     expect(readHit({ d: -1 })).toBeNull();
     expect(readHit({})).toBeNull();
   });
-  const me = { x: 0, y: 0, z: 0 };
-  const peer = (o = {}) => ({ ally: 'none', blocked: false, shotAt: 1000, hitAt: -Infinity, pose: { x: 5, y: 0, z: 0 }, ...o });
+  const me = { x: 0, y: 0, z: 0, speed: 0 };
+  const atMe = { p: [5, 0, 0], v: [-18, 0, 0], at: 1000 }; // from 5 off, straight at you
+  const peer = (o = {}) => ({ ally: 'none', blocked: false, shots: [atMe], hitAt: -Infinity, pose: { x: 5, y: 0, z: 0 }, ...o });
   it('counts a fair hit', () => {
     expect(hitCounts(peer(), me, 1200)).toBe(true);
   });
   it('ignores allies, the blocked, and anyone with no shot lately', () => {
     expect(hitCounts(peer({ ally: 'ally' }), me, 1200)).toBe(false);
     expect(hitCounts(peer({ blocked: true }), me, 1200)).toBe(false);
-    expect(hitCounts(peer({ shotAt: 1000 }), me, 1000 + GUARD.shotWindow + 1)).toBe(false);
+    expect(hitCounts(peer(), me, 1000 + GUARD.shotWindow + 1)).toBe(false);
+  });
+  it('ignores a hit from a shot that went nowhere near you', () => {
+    const wide = { p: [5, 0, 0], v: [0, 0, -18], at: 1000 }; // fired off to the side
+    expect(hitCounts(peer({ shots: [wide] }), me, 1200)).toBe(false);
+    expect(hitCounts(peer({ shots: [] }), me, 1200)).toBe(false);
+  });
+  it('gives the aim more room the faster you were going', () => {
+    const near = { p: [5, 0, 4], v: [-18, 0, 0], at: 1000 }; // passes 4 off
+    expect(aimedAt([near], me, 1200)).toBe(false);
+    expect(aimedAt([near], { ...me, speed: 5.5 }, 1200)).toBe(true);
   });
   it('ignores hits faster than the guns fire, or from too far', () => {
     expect(hitCounts(peer({ hitAt: 1150 }), me, 1200)).toBe(false);
@@ -116,6 +131,33 @@ describe('hits', () => {
   });
   it('ignores hits while you are not flying', () => {
     expect(hitCounts(peer(), null, 1200)).toBe(false);
+  });
+});
+
+describe('createLimiter', () => {
+  it('lets a pilot send their share, then turns the rest away', () => {
+    const lim = createLimiter();
+    const [, burst] = RATES.shot;
+    let ok = 0;
+    for (let i = 0; i < 20; i++) ok += lim.allow('shot', 1000) ? 1 : 0;
+    expect(ok).toBe(burst);
+    expect(lim.allow('shot', 1000 + 1000 / RATES.shot[0] + 1)).toBe(true); // one more, a moment on
+  });
+  it('turns away a kind it does not know', () => {
+    expect(createLimiter().allow('bogus', 0)).toBe(false);
+  });
+  it('calls a flood a flood, and forgets it in time', () => {
+    const lim = createLimiter();
+    for (let i = 0; i < 200; i++) lim.allow('pose', 1000);
+    expect(lim.flooding(1000)).toBe(true);
+    expect(lim.flooding(1000 + FLOOD.window + 1)).toBe(false);
+  });
+  it('a steady pose stream is fine', () => {
+    const lim = createLimiter();
+    let ok = 0;
+    for (let t = 0; t < 10000; t += 100) ok += lim.allow('pose', t) ? 1 : 0;
+    expect(ok).toBe(100);
+    expect(lim.flooding(10000)).toBe(false);
   });
 });
 

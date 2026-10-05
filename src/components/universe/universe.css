@@ -485,6 +485,32 @@
 .universe-hud > span[data-off] .universe-nav-name { top: calc(50% + 14px); bottom: auto; }
 .universe-hud > span[data-off] .universe-lock-dist,
 .universe-hud > span[data-off] .universe-nav-dist { top: calc(50% + 27px); bottom: auto; }
+/* a tough one's bracket shows what it has left: a bar under its name */
+.universe-lock-hp {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 32px);
+  width: 34px;
+  height: 3px;
+  margin-left: -17px;
+  display: none;
+  background: rgb(255 106 82 / 0.25);
+}
+.universe-lock-hp::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  transform-origin: left;
+  scale: var(--hp, 1) 1;
+  transition: scale 0.15s;
+}
+.universe-lock[data-tough] .universe-lock-hp { display: block; }
+.universe-hud > span[data-off] .universe-lock-hp { top: calc(50% + 41px); }
+/* one coming at you, off the screen: a red arrow at the edge, pulsing */
+.universe-threat { color: var(--hot); }
+.universe-threat[data-on] { animation: universe-threat 0.9s ease-in-out infinite; }
+@keyframes universe-threat { 50% { opacity: 0.45; } }
 .universe-map[data-ship='cruiser'] { --engine: #8dff6a; }
 .universe-map[data-ship='falcon'] { --engine: #7cc8ff; }
 .universe-map[data-ship='xwing'] { --engine: #ff8a5c; }
@@ -727,6 +753,136 @@
 .universe-who { display: block; color: var(--who); font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .universe-said { display: block; color: var(--text); font-size: 0.92rem; line-height: 1.4; }
 
+/* the flight settings: a button in the map's corner (over the multiplayer
+   pill, online.css), and the sheet over it */
+.universe-settings-btn {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: 68px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgb(255 255 255 / 0.28);
+  border-radius: 12px;
+  background: rgb(3 4 10 / 0.6);
+  color: var(--text);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.universe-settings-btn:hover,
+.universe-settings-btn[aria-expanded='true'] { border-color: var(--engine, #e8eefc); background: rgb(255 255 255 / 0.08); }
+.universe-settings-btn:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
+.universe-settings {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  bottom: 122px;
+  width: min(312px, calc(100% - 32px));
+  max-height: calc(100% - var(--nav-h, 68px) - 154px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
+  border-radius: 14px;
+  background: rgb(6 8 16 / 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .universe-settings { animation: universe-line 0.2s ease-out; }
+}
+.universe-settings-head { display: flex; align-items: center; justify-content: space-between; }
+.universe-settings-head h2 { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.01em; }
+.universe-settings-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.universe-settings-close:hover { color: var(--text); background: rgb(255 255 255 / 0.08); }
+.universe-settings-close:focus-visible,
+.universe-seg button:focus-visible,
+.universe-settings-reset:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-setting { display: grid; gap: 0.3rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.universe-setting-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.universe-setting-name { padding: 0; font-size: 0.82rem; font-weight: 500; }
+.universe-setting-value { min-width: 3.4em; color: var(--engine, #e8eefc); font-family: var(--font-mono); font-size: 0.75rem; font-variant-numeric: tabular-nums; text-align: right; }
+.universe-setting-hint { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
+.universe-setting input[type='range'] {
+  --fill: 50%;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: pan-y;
+}
+.universe-setting input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--engine, #e8eefc) var(--fill), rgb(255 255 255 / 0.16) var(--fill));
+}
+.universe-setting input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: rgb(255 255 255 / 0.16); }
+.universe-setting input[type='range']::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--engine, #e8eefc); }
+.universe-setting input[type='range']::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 2px solid rgb(6 8 16);
+  border-radius: 50%;
+  background: var(--engine, #e8eefc);
+  box-shadow: 0 0 0 1px var(--engine, #e8eefc), 0 0 8px color-mix(in srgb, var(--engine, #e8eefc) 60%, transparent);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.universe-setting input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border: 2px solid rgb(6 8 16); border-radius: 50%; background: var(--engine, #e8eefc); }
+.universe-setting input[type='range']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 3px; border-radius: 4px; }
+.universe-setting-row { grid-template-columns: 1fr auto; align-items: center; cursor: pointer; }
+.universe-setting-row input[type='checkbox'] {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 0.06);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.universe-setting-row input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: translate 0.15s, background-color 0.15s;
+}
+.universe-setting-row input[type='checkbox']:checked { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 30%, transparent); }
+.universe-setting-row input[type='checkbox']:checked::after { translate: 16px 0; background: var(--engine, #e8eefc); }
+.universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
+.universe-seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-seg button { min-height: 34px; color: var(--muted); font-size: 0.78rem; transition: background-color 0.15s, color 0.15s; }
+.universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
+.universe-seg button:hover { color: var(--text); }
+.universe-seg button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
+.universe-settings-reset { justify-self: start; padding: 0.2rem 0; color: var(--muted); font-size: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
+.universe-settings-reset:hover { color: var(--text); }
+
 @media (max-width: 767px) {
   .universe-panel {
     top: auto;
@@ -753,7 +909,11 @@
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
   .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
-  .universe-hint { bottom: calc(var(--sheet-h) + 16px); translate: -50% 0; }
+  /* (wrapped, above the buttons, clear of the settings button on the left and
+     the climb and dive ones on the right) */
+  .universe-hint { left: 68px; right: 96px; bottom: calc(var(--sheet-h) + 92px); translate: none; border-radius: 12px; white-space: normal; line-height: 1.4; }
+  .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
+  .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-comms { right: 16px; left: 16px; }
   /* the bar keeps clear of the guide's button in the corner */
   .universe-panel[data-tucked] { padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -765,6 +925,7 @@
   .universe-shield-bar > span { animation: none; }
   .universe-reticle[data-hit],
   .universe-lock[data-on] > i { animation: none; }
+  .universe-threat[data-on] { animation: none; }
   .universe-hud > span { transition: none; }
   .universe-labels,
   .universe-label,

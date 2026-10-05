@@ -13,9 +13,10 @@ import './online.css';
 // either the way in (your callsign, and what going online means) or who's
 // online, what they fly, their kills, which page they're on (with a button
 // to go there too), and the buttons to ask them to be allies, accept,
-// decline or end an alliance, or block them. What's happening (who came
-// online or came to your page, alliances, who shot down whom) shows in a
-// short feed above the button. useOnline.js keeps the state.
+// decline or end an alliance, or block them, and whether live pointers
+// show on pages. What's happening (who came online or came to your page,
+// alliances, who shot down whom) shows in a short feed above the button.
+// useOnline.js keeps the state.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
 
@@ -102,8 +103,8 @@ function Join({ online, onClose }) {
           </button>
         </div>
         <p className="universe-online-fine">
-          Browsers connect straight to each other (WebRTC), with public Nostr relays to introduce them, so other pilots can see your IP address, as in most online games. Nothing is
-          stored anywhere.
+          Everything goes through public Nostr relays (free servers run by others), so it works from any network and other pilots never see your IP address. Your callsign, ship and
+          moves pass through them as you play; nothing is stored.
         </p>
       </form>
     </Card>
@@ -163,6 +164,11 @@ function Roster({ online, ship, floating, onClose }) {
         </ul>
       )}
       {!floating && !ship && room.status === 'online' && <p className="universe-online-fine">Pick a ship in the panel to fly with them; till then you’re watching.</p>}
+      <label className="universe-online-check">
+        <input type="checkbox" checked={online.pointers} onChange={(e) => online.showPointers(e.target.checked)} />
+        Live pointers on pages, yours and theirs
+      </label>
+      <p className="universe-online-fine">Through public relays: other pilots never see your IP address.</p>
       <button type="button" className="universe-online-link universe-online-leave" onClick={online.goOffline}>
         Go offline
       </button>

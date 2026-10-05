@@ -12,7 +12,7 @@
 
 import * as THREE from 'three';
 import { noiseAtlas } from '../../lib/texture';
-import { createRenderer, disposeTree } from '../../lib/three/renderer';
+import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
 
 const SIDES = {
   autobot: { energon: new THREE.Color(0x4fd8ff), gold: new THREE.Color(0xffc446), war: 0.55 },
@@ -270,6 +270,8 @@ export function create(canvas, ctx) {
   const idle = ctx.reduced ? 0 : 0.05;
 
   return {
+    // its shaders, linked in the background: useScene holds the first frame for this
+    ready: precompile(renderer, scene, camera),
     resize(w, h) {
       stage.setSize(w, h);
       camera.aspect = w / Math.max(1, h);

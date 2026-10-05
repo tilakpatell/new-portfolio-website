@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScene } from '../../lib/three/useScene';
+import { local } from '../../lib/hooks';
+import { CONTROLS_KEY, readControls } from './controls';
+import FlightSettings from './FlightSettings';
 import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
@@ -11,9 +14,12 @@ import MiniMap from './MiniMap';
 // ship picked there's a ring that shows the drag-to-steer stick, a gauge of
 // how high it flies, its shields (while there's trouble about), the
 // targeting HUD (the gun line, the lock on a hunter with the lead to shoot
-// at, and the way to wherever you're going; the scene places them), Boost,
-// Fire, View (the cockpit or behind the ship) and climb and dive buttons on
-// touch screens and a line on how to fly until you do. While the
+// at and, for the tough ones, what they have left, arrows at the edge for
+// the ones coming at you that you can't see, and the way to wherever you're
+// going; the scene places them), Boost, Fire (held, it keeps firing), View
+// (the cockpit or behind the ship) and climb and dive buttons on touch
+// screens, the flight settings (FlightSettings.jsx, kept between visits)
+// and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
@@ -32,6 +38,14 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [onFoot, setOnFoot] = useState(false);
   const [landable, setLandable] = useState(null);
   const [footHint, setFootHint] = useState(false);
+  const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const setControls = (c) => {
+    const next = readControls(c);
+    setControlsState(next);
+    local.set(CONTROLS_KEY, next);
+  };
+  const openSettings = useCallback((on) => setSettingsOpen(on), []);
   const events = useRef(onEvent);
   events.current = onEvent;
   const { wrap, on, meant, view } = useScene(load, {
@@ -40,6 +54,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     props: {
       selected,
       ship,
+      controls,
       labels,
       stick,
       alt,
@@ -102,6 +117,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const hold = (down) => (e) => {
     e.preventDefault();
     view.current?.boost?.(down);
+  };
+  const trigger = (down) => (e) => {
+    e.preventDefault();
+    view.current?.fire?.(down);
   };
   const climb = (way) => (e) => {
     e.preventDefault();
@@ -181,7 +200,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <i />
                   <b className="universe-lock-name" />
                   <b className="universe-lock-dist" />
+                  <b className="universe-lock-hp" />
                 </span>
+                <span className="universe-threat" />
+                <span className="universe-threat" />
+                <span className="universe-threat" />
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />
@@ -208,7 +231,16 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   {onFoot ? 'Ship' : 'Land'}
                 </button>
               )}
-              <button type="button" className="universe-fire" onPointerDown={(e) => (e.preventDefault(), view.current?.fire?.())} onContextMenu={(e) => e.preventDefault()}>
+              <button
+                type="button"
+                className="universe-fire"
+                onPointerDown={trigger(true)}
+                onPointerUp={trigger(false)}
+                onPointerCancel={trigger(false)}
+                onPointerLeave={trigger(false)}
+                onLostPointerCapture={trigger(false)}
+                onContextMenu={(e) => e.preventDefault()}
+              >
                 Fire
               </button>
               <button
@@ -222,6 +254,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               >
                 {onFoot ? 'Run' : 'Boost'}
               </button>
+              {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
@@ -233,9 +266,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to fly, <kbd>R</kbd> <kbd>C</kbd> to climb and dive, <kbd>Space</kbd> to boost, <kbd>F</kbd> to fire, <kbd>T</kbd> next target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>M</kbd> for the map
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> turn, <kbd>↑</kbd> <kbd>↓</kbd> nose up and down, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>O</kbd> settings
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast, View for the cockpit, Land at a planet to step out</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out</span>
                 </p>
               )}
             </>
