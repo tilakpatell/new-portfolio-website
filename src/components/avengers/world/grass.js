@@ -89,7 +89,7 @@ function lawnMask(px = 1024) {
 // one blade: a tapering strip, two segments up to a point, a metre tall
 // (scaled per blade: a mown lawn's is a hand high), its uv.y how far up it is
 function bladeGeometry() {
-  const w = 0.05;
+  const w = 0.04;
   const pos = [];
   const uv = [];
   const ys = [0, 0.5];
@@ -109,7 +109,7 @@ function bladeGeometry() {
   return g;
 }
 
-export function createGrass(scene, { count = 40000, patch = 38, material }) {
+export function createGrass(scene, { count = 44000, patch = 30, material }) {
   const geo = bladeGeometry();
   // each blade's place in the patch (x, z), and two random numbers
   const offs = new Float32Array(count * 4);
@@ -169,7 +169,7 @@ export function createGrass(scene, { count = 40000, patch = 38, material }) {
           float grow = texture2D(uMask, muv).r;
           float d = length(wp - uCenter) / uPatch;
           float fade = 1.0 - smoothstep(0.3, 0.5, d);
-          float h = (0.1 + aBlade.z * 0.12) * grow * fade;
+          float h = (0.07 + aBlade.z * 0.08) * grow * fade;
           float a = aBlade.w * 6.2832;
           float c = cos(a), sn = sin(a);
           vec3 p = vec3(position.x * c, position.y * h, position.x * sn);
@@ -204,6 +204,11 @@ export function createGrass(scene, { count = 40000, patch = 38, material }) {
   scene.add(mesh);
   return {
     mesh,
+    // how much of it to draw, 0 to 1 (the frame rate's watchdog thins it)
+    density(k) {
+      geo.instanceCount = Math.round(count * Math.max(0, Math.min(1, k)));
+      mesh.visible = k > 0;
+    },
     // round (x, z), at time t (s)
     update(x, z, t) {
       U.uCenter.value.set(x, z);
