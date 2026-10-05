@@ -32,3 +32,4 @@ lab/
 
 # superpowers brainstorming companion session files
 .superpowers
+.claude/worktrees/

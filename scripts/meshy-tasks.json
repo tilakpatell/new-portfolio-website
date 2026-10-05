@@ -205,5 +205,39 @@
     "model": "01a108bf-4788-7377-a93b-e7e5b962d67b",
     "rig": "01a108c8-d3e1-7141-a1f8-31495f918c11",
     "idle": "01a108c9-4a7e-76a7-b509-92e3dab6d95f"
+  },
+  "beth": {
+    "image": "01a10a84-2f60-7006-89f8-88d616217028",
+    "model": "01a10a85-42d3-7627-8c87-96720abf484b",
+    "rig": "01a10a88-64b1-75e8-bd54-a422471a59f4",
+    "idle": "01a10a88-9f98-7319-8996-d6c9d3ed4e16"
+  },
+  "arcade": {
+    "image": "01a10a84-aabb-7488-9a48-eccd0c1a63b1",
+    "model": "01a10a86-c943-7577-be11-d8097c33d14e"
+  },
+  "roy-cabinet": {
+    "image": "01a10a84-ad19-76a3-8595-7d1c69e874f0",
+    "model": "01a10a87-2b75-707f-9899-dbb2b5fc47ea"
+  },
+  "summer": {
+    "image": "01a10a93-8271-77f3-badb-a4a2513700f2",
+    "model": "01a10a94-eb45-76f2-9dd7-2400bc0349aa",
+    "rig": "01a10a96-9085-77ee-98a1-fe912df5c77d",
+    "idle": "01a10a96-cb8a-7435-aeef-aba2af312c76"
+  },
+  "jerry": {
+    "image": "01a10a93-8268-77e6-b339-1cbc7a682b79",
+    "model": "01a10a94-eb46-7579-9b6a-9823e0d27fb5",
+    "rig": "01a10a96-9075-7627-a614-f2ef52810d8c",
+    "idle": "01a10a96-cb1d-72e6-9cda-35c5acb4bc07"
+  },
+  "smith-house": {
+    "image": "01a10a93-8267-7637-8e70-507fdde67b4b",
+    "model": "01a10a94-eb51-741c-82d5-16da205dc5c6"
+  },
+  "school": {
+    "image": "01a10aa0-8780-749e-95ee-7cc0b0e330c8",
+    "model": "01a10aa1-9b96-7113-9041-bca5101cc407"
   }
 }
