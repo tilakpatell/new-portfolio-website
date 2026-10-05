@@ -43,6 +43,7 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Travel | `/travel` | A 3D globe of places visited, with photos |
 | Contact | `/contact` | How to reach me |
 | Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+| Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
 
 All of the content (roles, projects, skills, education) lives in [`src/data/`](src/data). Every page and the terminal read from there.
 
@@ -163,6 +164,7 @@ To try a lower graphics tier on a desktop, add `?quality=low` (or `mid` or `high
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest suite (game rules, flight model, multiplayer protocol and more) |
+| `node scripts/autopilot-check.mjs` | Everything the autopilot checks before a merge: lint, tests, build, bundle sizes, every page in headless Chromium |
 
 The asset pipeline scripts regenerate committed files. You don't need them to run the site.
 
@@ -180,8 +182,10 @@ The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.e
 ## Project structure
 
 ```
+├── .github/workflows/ci.yml       # lint, test and build on every pull request
 ├── .github/workflows/deploy.yml   # lint, test, build and deploy on every push to main
 ├── docs/                          # architecture notes, research and design plans
+│   └── autopilot/                 # the self-improvement loop: its backlog and switches
 ├── public/                        # static files: models, textures, audio, photos, résumé PDF
 │   ├── cc0/                       # CC0 materials and HDRIs (credited in its README)
 │   ├── games/                     # game assets, credited in credits.json
@@ -232,6 +236,10 @@ For the details of each subsystem, see [`docs/architecture.md`](docs/architectur
 Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). It installs dependencies with `npm ci`, then lints, runs the tests and builds, and deploys `dist/` to GitHub Pages at the custom domain in `public/CNAME`. A failing lint or test stops the deploy.
 
 > **Working with Claude Code?** Agent skills live in `.claude/skills` (their sources are pinned in `skills-lock.json`). Lint and tests skip them.
+
+## The autopilot
+
+The site improves itself. A scheduled Claude Code session comes round (every four hours), makes one improvement well (something faster or better-looking more often than something new), checks it with `node scripts/autopilot-check.mjs` (lint, the tests, the build, every page in a headless browser), opens a pull request, waits for CI, merges it, and logs it on [`/changes`](https://tilakpatell.com/#/changes), the ship's log, with a screenshot. Any change there can be taken out again by telling a Claude session `Revert change 12`. The protocol is [`.claude/skills/autopilot/SKILL.md`](.claude/skills/autopilot/SKILL.md), the queue is [`docs/autopilot/backlog.md`](docs/autopilot/backlog.md), and the switches (pause, runs a day, the plan's limit) are in [`docs/autopilot/budget.json`](docs/autopilot/budget.json). [`docs/autopilot/README.md`](docs/autopilot/README.md) has the details.
 
 ## Disclaimer
 
