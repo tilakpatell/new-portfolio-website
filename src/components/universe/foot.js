@@ -246,7 +246,8 @@ function troopsFrom(rand, w, R, count, dist, kinds) {
 // up as a target comes within reach (`aim`, 0…1: up in a quarter of a
 // second, down in half of one once they've gone), for the drawing to read.
 // Returns { troops, shots, hits }: shots are new bolts ({ from, dir, owner:
-// 'troop', kind }), hits are blows landed ({ target, damage }).
+// 'troop', kind, damage, by (the trooper), range (to what it's aimed at) }),
+// hits are blows landed ({ target, damage }).
 export function march(troops, targets, dt, R, rand, obstacles = []) {
   const shots = [];
   const hits = [];
@@ -281,7 +282,7 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
         const from = add(at(next, R), next.n, spec.tall * 0.62);
         const to = add(at(best, R), best.n, METRE * 1.1);
         const dir = unit(add(add(to, from, -1), [rand() - 0.5, rand() - 0.5, rand() - 0.5], spec.spread * apart(t, best, R)));
-        shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage });
+        shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage, by: t.id, range: len(add(to, from, -1)) });
       } else if (!spec.fire && bd <= spec.range[1] * METRE + FOOT.radius) {
         cool = 1.1;
         hits.push({ target: best.id, damage: spec.damage, from: t.id });

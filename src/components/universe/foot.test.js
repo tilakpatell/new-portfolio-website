@@ -168,6 +168,12 @@ describe('a squad', () => {
       expect(d).toBeGreaterThan(TROOPS.gromflomite.range[0] * METRE * 0.5);
     }
     expect(shots.length).toBeGreaterThan(6);
+    // each says who fired it and how far off its mark was (so the drawing can start it at the muzzle)
+    for (const s of shots) {
+      expect(troops.some((t) => t.id === s.by)).toBe(true);
+      expect(s.range).toBeGreaterThan(5 * METRE);
+      expect(s.range).toBeLessThan(TROOPS.gromflomite.range[1] * METRE * 1.5);
+    }
     // a shot at you passes near you
     const near = shots.filter((s) => {
       const toMe = vec.add(vec.add(at(me, R), me.n, METRE), s.from, -1);

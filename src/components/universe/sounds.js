@@ -630,3 +630,73 @@ export function shieldSound() {
   );
   whoosh(0.25, 4200, 1800, 0.08);
 }
+
+// ── Guns on foot ──
+// A burst of noise through a filter: the crack and the tail of a gunshot
+function burst(ac, out, { at, dur, gain, type = 'highpass', f = 1500, q = 0.7, decay = 1 }) {
+  const src = ac.createBufferSource();
+  src.buffer = noise(ac);
+  const flt = ac.createBiquadFilter();
+  flt.type = type;
+  flt.frequency.value = f;
+  flt.Q.value = q;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(gain, at + 0.004);
+  g.gain.setTargetAtTime(0.0001, at + 0.004, dur / (4 * decay));
+  src.connect(flt).connect(g).connect(out);
+  src.start(at, Math.random() * 1.5);
+  src.stop(at + dur + 0.1);
+}
+
+// A shot from a gun on foot (gunplay.js's kinds), `soft` for your crewmate's
+// (a little further off): a powder gun's crack, its thump and the street
+// throwing it back, and the pistol's brass landing; the blasters' recorded
+// shot (Han's DL-44), heavier for Chewie's bowcaster; the portal gun's; and
+// Morty's laser, a quick falling zap.
+export function gunSound(gun, { soft = false } = {}) {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const k = soft ? 0.55 : 1;
+  const t = ac.currentTime + 0.005;
+  if (gun === 'revolver' || gun === 'pistol') {
+    burst(ac, out, { at: t, dur: 0.07, gain: 0.5 * k, type: 'highpass', f: 1800 }); // the crack
+    burst(ac, out, { at: t, dur: 0.22, gain: 0.32 * k, type: 'lowpass', f: 900 }); // the blast
+    blip(ac, out, { type: 'sine', f: 140, at: t, dur: 0.16, gain: 0.32 * k, glide: 0.35 }); // the thump
+    burst(ac, out, { at: t + 0.05, dur: 0.6, gain: 0.05 * k, type: 'bandpass', f: 700, q: 0.6 }); // the echo
+    if (gun === 'pistol' && !soft) {
+      // the case landing: two light ticks
+      for (const [f, at] of [
+        [5200, 0.42],
+        [6100, 0.53],
+        [5600, 0.6],
+      ])
+        blip(ac, out, { type: 'triangle', f, at: t + at, dur: 0.05, gain: 0.012, glide: 0.92 });
+    }
+    return;
+  }
+  if (gun === 'blaster' || gun === 'bowcaster') {
+    playClip('dl44', { gain: 0.8 * k });
+    if (gun === 'bowcaster') blip(ac, out, { type: 'sine', f: 95, at: t, dur: 0.25, gain: 0.28 * k, glide: 0.5 }); // a quarrel's weight
+    return;
+  }
+  if (gun === 'portal') {
+    playClip('portalGun', { gain: 0.8 * k, duration: 1.4 });
+    return;
+  }
+  // a laser: a bright zap falling away, a little fizz
+  blip(ac, out, { type: 'sawtooth', f: 2400, at: t, dur: 0.13, gain: 0.06 * k, glide: 0.22, filter: 4200 });
+  blip(ac, out, { type: 'square', f: 1600, at: t + 0.01, dur: 0.1, gain: 0.03 * k, glide: 0.3, filter: 3000 });
+  burst(ac, out, { at: t, dur: 0.08, gain: 0.05 * k, type: 'highpass', f: 4000 });
+}
+
+// A shot landing near you on foot: a sharp crack of something hit
+export function impactSound(near = 1) {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.005;
+  burst(ac, out, { at: t, dur: 0.12, gain: 0.14 * near, type: 'bandpass', f: 2400, q: 0.9 });
+  blip(ac, out, { type: 'sine', f: 110, at: t, dur: 0.1, gain: 0.08 * near, glide: 0.5 });
+}

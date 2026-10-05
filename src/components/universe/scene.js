@@ -3330,7 +3330,8 @@ export async function create(canvas, ctx) {
   const footKey = (e, key, onControl) => {
     if (key === 'f') {
       e.preventDefault();
-      if (foot.fire()) emit({ type: 'fire' });
+      const gun = foot.fire();
+      if (gun) emit({ type: 'fire', gun });
       return;
     }
     if (key === 't') {
@@ -3468,7 +3469,8 @@ export async function create(canvas, ctx) {
       const [x, y] = local(e);
       const tid = pickTrooper(x, y);
       if (tid) foot.lockOn(tid);
-      if (foot.fire()) emit({ type: 'fire' });
+      const gun = foot.fire();
+      if (gun) emit({ type: 'fire', gun });
       ctx.invalidate();
       return;
     }
@@ -3638,7 +3640,8 @@ export async function create(canvas, ctx) {
     fire(down = true) {
       heard();
       if (onFoot()) {
-        if (down && foot.fire()) emit({ type: 'fire' });
+        const gun = down && foot.fire();
+        if (gun) emit({ type: 'fire', gun });
         return;
       }
       state.fireBtn = down;
