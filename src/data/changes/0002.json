@@ -1,0 +1,18 @@
+{
+  "id": 2,
+  "date": "2026-10-05",
+  "title": "The ship’s log shows a before and an after, side by side",
+  "kind": "infra",
+  "summary": "A change you can see now comes with two pictures: the page as it was, shot before anything was touched, and the page after, captioned side by side on this page. There’s nothing to see on this entry itself; the next visible change is the first to carry a before picture.",
+  "routes": [
+    "/changes"
+  ],
+  "pr": 192,
+  "shots": [],
+  "measured": {
+    "js": 8967077,
+    "note": "Total JS 8.6 MB (entry 136 kB). The 4.8% since change 1 is other sessions’ work merged to main, not this change."
+  },
+  "session": "session_01JfGSEHknQb3AfVDHunaKc2",
+  "reverted": null
+}

@@ -23,6 +23,9 @@ export const VIEWS = {
   warehouse: { at: [31, 2.6, -6.5], look: [44, 1.2, 3] },
   lot: { at: [57, 2.2, -12], look: [70, 1.0, 0] },
   counter: { at: [2.9, 1.55, -0.75], look: [2.5, 0.6, -2.5] },
+  window: { at: [-7.4, 1.65, 0.0], look: [-10, 1.25, 1.9] },
+  eastwin: { at: [11.6, 1.6, 0.6], look: [14.6, 1.4, -1.7] },
+  conferencewin: { at: [-1.5, 1.6, -5.4], look: [-2.0, 1.4, -8.0] },
 };
 const browser = await chromium.launch({
   executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',

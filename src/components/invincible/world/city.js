@@ -58,7 +58,7 @@ function houseMaterial(uniforms) {
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uNight = uniforms.uNight;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aHouse;\nvarying vec3 vH;\nvarying vec3 vHN;\nvarying vec4 vHouse;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aHouse;\nvarying vec3 vH;\nvarying vec3 vHN;\nflat varying vec4 vHouse;')
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
@@ -73,7 +73,7 @@ function houseMaterial(uniforms) {
         uniform float uNight;
         varying vec3 vH;
         varying vec3 vHN;
-        varying vec4 vHouse;
+        flat varying vec4 vHouse;
         float hh(float n) { return fract(sin(n * 91.7) * 43758.5); }
         float box2(vec2 f, vec4 r) { return step(r.x, f.x) * step(f.x, r.y) * step(r.z, f.y) * step(f.y, r.w); }`,
       )
