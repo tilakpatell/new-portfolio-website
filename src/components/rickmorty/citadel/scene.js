@@ -145,12 +145,12 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
         if (!v) return (l.intensity = 0);
         l.position.set(v[0], v[1], v[2]);
         l.color.set(v[3]);
-        l.intensity = s.room === 'council' ? (i < 2 ? 34 : 18) : 30;
+        l.intensity = s.room === 'council' ? (i < 2 ? 22 : 12) : 14;
         l.distance = 18;
         return undefined;
       });
       key.intensity *= 0.25;
-      hemi.intensity *= s.room === 'council' ? 0.35 : 0.7;
+      hemi.intensity *= s.room === 'council' ? 0.35 : 0.45;
     } else {
       // the nearest of the concourse's lamps to Rick, picked now and then
       if (t - A.nearAt > 0.5) {

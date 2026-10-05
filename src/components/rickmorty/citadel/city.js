@@ -249,13 +249,17 @@ export function buildCity(renderer, { tier = 'high', gaps = [] }) {
       place(new THREE.BoxGeometry(len, 0.12, 0.12), glow, Math.cos(a) * (RAIL.r - 1.32), RAIL.y - 0.7, Math.sin(a) * (RAIL.r - 1.32), turn);
     }
     // piers, and arches between them, as the show's viaducts have
+    // (none behind the buildings at the edge: the hangar's bay opens
+    // through there, and the cruiser flies out of it)
     const piers = 32;
+    const stands = (i) => clearOf((i / piers) * Math.PI * 2, 0.1);
     for (let i = 0; i < piers; i++) {
       const a = (i / piers) * Math.PI * 2;
       const x = Math.cos(a) * RAIL.r;
       const z = Math.sin(a) * RAIL.r;
       const turn = Math.atan2(-Math.cos(a), -Math.sin(a));
-      place(paint(new THREE.BoxGeometry(1.6, RAIL.y - LOW, 2.2), '#4f8a80', { win: false }), plainMat, x, (RAIL.y + LOW) / 2 - 0.4, z, turn);
+      if (stands(i)) place(paint(new THREE.BoxGeometry(1.6, RAIL.y - LOW, 2.2), '#4f8a80', { win: false }), plainMat, x, (RAIL.y + LOW) / 2 - 0.4, z, turn);
+      if (!stands(i) || !stands((i + 1) % piers)) continue;
       const next = ((i + 0.5) / piers) * Math.PI * 2;
       const span = (Math.PI * 2 * RAIL.r) / piers;
       const arch = place(paint(new THREE.TorusGeometry(span / 2 - 0.8, 0.45, 6, 16, Math.PI), '#4f8a80', { win: false }), plainMat, Math.cos(next) * RAIL.r, RAIL.y - 0.8 - (span / 2 - 0.8), Math.sin(next) * RAIL.r, 0);

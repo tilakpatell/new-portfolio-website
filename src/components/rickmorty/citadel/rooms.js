@@ -292,7 +292,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   const council = new THREE.Group();
   council.name = 'council';
   council.position.copy(ROOMS.council);
-  const tankMat = fluidMaterial({ dark: 0.35, scale: [7, 3] });
+  const tankMat = fluidMaterial({ dark: 0.6, scale: [7, 3] });
   {
     const floorTex = tex(
       textCanvas(1024, 1024, (g, w, h) => {
@@ -412,7 +412,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   const at = (room, x, y, z) => [ROOMS[room].x + x, ROOMS[room].y + y, ROOMS[room].z + z];
   const lightsOf = {
     factory: [at('factory', 0, 4.5, 1.5), at('factory', -6, 5, -2), at('factory', 6, 5, -2), at('factory', 0, 5, -5)].map((p) => [...p, 0xfff0d0]),
-    council: [at('council', 0, 5, -5.2), at('council', 0, 3, -1.5), at('council', -6, 5, 2), at('council', 6, 5, 2)].map((p, i) => [...p, i < 2 ? 0x7dff6a : 0xf3e7a0]),
+    council: [at('council', 0, 5, -5.2), at('council', 0, 4.5, 2.6), at('council', -6, 5, 2), at('council', 6, 5, 2)].map((p, i) => [...p, i < 1 ? 0x7dff6a : 0xf3e7a0]),
   };
 
   // the beats' cameras, in the rooms' frames
@@ -422,7 +422,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
       floor: { at: [9, 4.6, 7], look: [-2, 1.2, -3] },
     },
     council: {
-      hearing: { at: [0, 1.85, 5.6], look: [0, 2.7, -3.5] },
+      hearing: { at: [0, 2.1, 6.2], look: [0, 1.75, -3.5] },
       dismissed: { at: [0, 4.2, 10.4], look: [0, 3.6, -5] },
     },
   };

@@ -78,11 +78,12 @@ function paintBand() {
   return c;
 }
 
-const VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+const VERT = 'varying vec2 vUv; varying float vDist; void main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }';
 const FRAG = `
 uniform sampler2D uMap;
 uniform float uTime, uRed;
 varying vec2 vUv;
+varying float vDist;
 void main() {
   // the words only on the side facing out: from inside they'd read backwards
   vec3 band = texture2D(uMap, vec2(vUv.x, 0.5 + vUv.y * 0.5)).rgb;
@@ -95,7 +96,9 @@ void main() {
   // on red alert it stutters
   float flick = mix(1.0, step(0.25, fract(sin(floor(uTime * 9.0 + vUv.x * 14.0) * 12.9898) * 43758.5453)), uRed);
   vec3 c = band * pulse * scan * 1.7 + vec3(0.8, 1.0, 0.85) * words * 1.35;
-  c *= ends * flick * (gl_FrontFacing ? 1.0 : 0.45);
+  // and gone where the camera comes right up to it, rather than a smear
+  float near = smoothstep(1.2, 4.5, vDist);
+  c *= ends * flick * near * (gl_FrontFacing ? 1.0 : 0.45);
   gl_FragColor = vec4(c, 1.0);
 }`;
 
