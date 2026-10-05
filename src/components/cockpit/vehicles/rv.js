@@ -2301,7 +2301,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   inside.add(key, key.target);
   if (rich) {
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     const c = key.shadow.camera;

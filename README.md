@@ -112,8 +112,8 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 ## Tech stack
 
-- **[React 18](https://react.dev/)** with [React Router 7](https://reactrouter.com/) (hash routing, so it works on static hosting)
-- **[Vite 5](https://vitejs.dev/)** for the dev server and build
+- **[React 19](https://react.dev/)** with [React Router 7](https://reactrouter.com/) (hash routing, so it works on static hosting)
+- **[Vite 8](https://vitejs.dev/)** (Rolldown) for the dev server and build
 - **[Tailwind CSS 3](https://tailwindcss.com/)** plus per-company and per-world themes
 - **[Three.js](https://threejs.org/)** for every 3D scene and game, loaded only when needed
 - **[Nostr](https://nostr.com/)** public relays for multiplayer, with events signed using [`@noble/secp256k1`](https://github.com/paulmillr/noble-secp256k1). There's no backend.

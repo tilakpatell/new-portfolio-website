@@ -297,7 +297,7 @@ function Bridge({ side }) {
       window.removeEventListener('blur', blur);
     };
     // setBridge only touches refs and state setters
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [phase]);
 
   useEffect(() => () => cancelAnimationFrame(game.current?.raf ?? 0), []);

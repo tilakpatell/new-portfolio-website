@@ -14,7 +14,7 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false);
   let ratio = pixelRatio(2); // lib/device: 1.5 on a phone, 1 on a weak device
   renderer.setPixelRatio(ratio);
