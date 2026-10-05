@@ -1,0 +1,2858 @@
+diff --git a/src/components/Achievements.jsx b/src/components/Achievements.jsx
+index f49cada..6d75b37 100644
+--- a/src/components/Achievements.jsx
++++ b/src/components/Achievements.jsx
+@@ -60,6 +60,7 @@ export const ACHIEVEMENTS = {
+   pints: { name: 'It comes in pints?', desc: 'Poured Pippin three good pints at the Prancing Pony' },
+   strider: { name: 'Not nearly frightened enough', desc: 'Met Strider, after the Ring slipped on in the Pony' },
+   slipaway: { name: 'Through Bree unseen', desc: 'Got past the Nazgûl in Bree’s lanes to Strider at the East Gate' },
++  maninthemoon: { name: 'The Man in the Moon stayed up too late', desc: 'Sang on the table at the Prancing Pony, and the room roared for more' },
+   daycare: { name: 'Morty Day Care', desc: 'Got six loose Mortys back into the Citadel’s day care' },
+   wafers: { name: 'Simple Rick’s', desc: 'Stacked three good wafers on Simple Rick’s line' },
+   council: { name: 'Rickest Rick', desc: 'Talked your way out of the Council of Ricks' },
+@@ -70,15 +71,18 @@ export const ACHIEVEMENTS = {
+   weathertop: { name: 'Fire against the dark', desc: 'Held the summit of Weathertop with a brand until Strider came' },
+   kingsfoil: { name: 'Kingsfoil', desc: 'Found three plants of athelas by lantern, as Sam' },
+   bruinen: { name: 'If you want him, come and claim him', desc: 'Rode with Arwen to the Ford of Bruinen, and the river rose' },
++  gandalfsmark: { name: 'G, and three strokes', desc: 'Found Gandalf’s mark on the stones of Amon Sûl, and read it' },
+   elrond: { name: 'The house of Elrond', desc: 'Woke in Rivendell, with Gandalf at your bedside' },
+   narsil: { name: 'The blade that was broken', desc: 'Laid the shards of Narsil back in their order' },
+   iwilltakeit: { name: 'I will take it', desc: 'Stood up at the Council of Elrond, and were heard' },
+   oldring: { name: 'My old ring', desc: 'Kept the Ring from Bilbo, gently, in his pavilion' },
+   fellowship: { name: 'The Fellowship of the Ring', desc: 'Gathered the Nine and led them out of Rivendell' },
++  riddlesinthedark: { name: 'Riddles in the dark', desc: 'Beat Bilbo at riddles by his candle in Rivendell' },
+   dwarrowdelf: { name: 'Dwarrowdelf', desc: 'Followed your nose through the dark of Moria, and Gandalf risked a little more light' },
+   fooloftook: { name: 'Fool of a Took!', desc: 'Caught what you could as it all went down the well in Balin’s tomb' },
+   mithril: { name: 'More to this hobbit', desc: 'Kept out of the cave troll’s sight, and the mithril took the spear' },
+   flyyoufools: { name: 'Fly, you fools', desc: 'Ran the broken stair and crossed the Bridge of Khazad-dûm ahead of the Balrog' },
++  mindthewell: { name: 'Nothing woke', desc: 'Fetched Gandalf’s pipe off the plank over an old shaft in Moria, and dropped nothing down it' },
+   goldenwood: { name: 'The golden wood', desc: 'Came into Lothlórien under the Galadhrim’s bows, and followed Haldir in' },
+   carasgaladhon: { name: 'Caras Galadhon', desc: 'Climbed the great mallorn to the Lord and Lady of the wood' },
+   ipassthetest: { name: 'I pass the test', desc: 'Kept the Ring from the Mirror’s water, then offered it to Galadriel' },
+diff --git a/src/components/middleearth/towns/TownHud.jsx b/src/components/middleearth/towns/TownHud.jsx
+index 71962d2..f1ef3da 100644
+--- a/src/components/middleearth/towns/TownHud.jsx
++++ b/src/components/middleearth/towns/TownHud.jsx
+@@ -5,7 +5,9 @@ import { forwardRef } from 'react';
+ // a conversation, and the touch stick. The corner map is ./map.js.
+ 
+ // The list of things to do: each with its seal, where it is, and a way there.
+-export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false }) {
++// Under them, anything a town has on the side (`side`: the same shape, with
++// `done`), which the story never waits on.
++export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false, side = [] }) {
+   return (
+     <div className="shire-list" role="dialog" aria-label={title}>
+       <div className="shire-list-head">
+@@ -32,6 +34,31 @@ export function QuestList({ title, quests, next, onClose, onGo, canGo = () => fa
+           </li>
+         ))}
+       </ul>
++      {side.length > 0 && (
++        <>
++          <p className="shire-list-side">On the side</p>
++          <ul>
++            {side.map((q) => (
++              <li key={q.id} data-done={q.done || undefined} data-open data-side>
++                <span className="shire-seal" aria-hidden="true">
++                  {q.done ? '✓' : ''}
++                </span>
++                <div>
++                  <p className="shire-list-name">{q.name}</p>
++                  <p className="shire-list-sub">
++                    {q.where}. {q.blurb}
++                  </p>
++                </div>
++                {canGo(q) && (
++                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onGo(q)}>
++                    Go there
++                  </button>
++                )}
++              </li>
++            ))}
++          </ul>
++        </>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/components/middleearth/towns/bree/BreeWorld.jsx b/src/components/middleearth/towns/bree/BreeWorld.jsx
+index 29d64ed..3358eb3 100644
+--- a/src/components/middleearth/towns/bree/BreeWorld.jsx
++++ b/src/components/middleearth/towns/bree/BreeWorld.jsx
+@@ -16,6 +16,7 @@ import { newWatchers, stepWatchers } from '../watchers';
+ import { COLLIDERS, GATE_WALLS, INN_DOOR, ROADS, ROUNDS, SPOTS, START, TOWN, WALLS, WORLD, castFor, spot, validAt } from './layout';
+ import { CONVOS, NAZGUL, QUESTS, SEAL, SLIP, SPEAKERS, breeProgress } from './story';
+ import { POUR, newPour, nextMug, startPour, stepPour, stopPour } from './pints';
++import { LANES, NOTES, QUAVER, SIDE, SONG, VERSE, newSong, press as pressSong, stepSong } from './song';
+ import '../../shire/shire.css';
+ import './bree.css';
+ 
+@@ -23,9 +24,11 @@ import './bree.css';
+ // hobbits came to the Prancing Pony, and play the five scenes there. The
+ // town is in ./layout.js, the story in ./story.js, the drawing in
+ // ./scene.js; this is the walking, the HUD, the talk, the inn, the pints,
+-// the Ring and the Nazgûl. Without 3D, the scenes are listed as cards.
++// the Ring and the Nazgûl, and on the side a song on the table (./song.js),
++// which the story never waits on. Without 3D, the scenes are listed as cards.
+ 
+ const DONE = 'tp-bree-done';
++const SIDE_DONE = 'tp-bree-side'; // kept apart, so the story's count stays the story's
+ const AT = 'tp-bree-at';
+ const sounds = () => import('./sounds');
+ const shireSounds = () => import('../../shire/sounds');
+@@ -38,6 +41,9 @@ const PROMPT = {
+   leave: { name: 'The road to Weathertop', act: 'On to Weathertop' },
+ };
+ const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
++// how far into the song (./song.js) it is, by the song's own clock (which
++// the QA scripts can hold where they like, in development only)
++const songTime = (s) => (import.meta.env.DEV && s.songClock != null ? s.songClock : (performance.now() - s.songAt) / 1000);
+ const pushNazgul = (x, z) => walker.push(x, z, 0.45);
+ const MAP_SCALE = 150 / (TOWN.r * 2 + 30);
+ 
+@@ -48,8 +54,18 @@ export default function BreeWorld({ onLeave }) {
+     return breeProgress(Array.isArray(d) ? d : []).done;
+   });
+   const prog = breeProgress(done);
++  const [side, setSide] = useState(() => {
++    const d = local.get(SIDE_DONE, []);
++    return Array.isArray(d) && d.includes(SIDE.id);
++  });
+   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+   const { unlock } = useAchievements();
++  // the song, sung: on the side, with its own seal but none on the map
++  const winSide = useCallback(() => {
++    setSide(true);
++    local.set(SIDE_DONE, [SIDE.id]);
++    unlock(SIDE.seal);
++  }, [unlock]);
+   const complete = useCallback(
+     (id) => {
+       setDone((d) => {
+@@ -65,23 +81,24 @@ export default function BreeWorld({ onLeave }) {
+   const world = three.on && gl !== 'failed' && gl !== 'lost';
+   return (
+     <section className="shire-world bree-world" aria-labelledby="bree-title" data-mode={world ? '3d' : 'cards'}>
+-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
++      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
+     </section>
+   );
+ }
+ 
+-function World({ prog, done, complete, gl, setGl, onLeave }) {
++function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
+   // other travellers online in Bree, as ghosts (../useTravellers)
+   const trav = useTravellers('bree', gl === 'on');
+   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+   const canvas = useRef(null);
+   const map = useRef(null);
++  const lanes = useRef(null);
+   const api = useRef(null);
+   const sim = useRef(null);
+   if (!sim.current) {
+     const h = newWalker(validAt(local.get(AT, null), done));
+-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, beat: 'room', stepT: 0, pour: newPour(), pourStop: null, wearing: false, gaze: 0, near: null, person: null, watchers: newWatchers(ROUNDS), chased: false, frame: 0, moved: false, t: 0, air: null, wraith: null, padBefore: null, edgeAt: -9, hidden: false };
++    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, beat: 'room', stepT: 0, pour: newPour(), pourStop: null, song: null, songAt: null, songStop: null, flash: null, wearing: false, gaze: 0, near: null, person: null, watchers: newWatchers(ROUNDS), chased: false, frame: 0, moved: false, t: 0, air: null, wraith: null, padBefore: null, edgeAt: -9, hidden: false };
+   }
+   const progRef = useRef(prog);
+   progRef.current = prog;
+@@ -155,6 +172,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       const at = s.mode === 'inside' ? INN_DOOR : s.h;
+       local.set(AT, { x: at.x, z: at.z, face: at.face });
+       s.pourStop?.();
++      s.songStop?.();
+       s.air?.stop();
+       s.wraith?.();
+       api.current?.dispose();
+@@ -206,6 +224,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+   // ── into and out of things ──
+   const toBeat = useCallback((beat) => {
+     const s = sim.current;
++    // the fiddle stops when you get down off the table
++    s.songStop?.();
++    s.songStop = null;
++    s.song = null;
++    s.songAt = null;
+     s.beat = beat;
+     s.stepT = 0;
+     s.slipped = false;
+@@ -219,6 +242,20 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       s.gaze = 0;
+       sounds().then((x) => x.cheer());
+     }
++    if (beat === 'song') {
++      const song = newSong();
++      s.song = song;
++      say('Up on the table! The fiddler strikes up. Stamp and clap as each beat comes down to the line.');
++      sounds().then((x) => {
++        if (sim.current?.song !== song) return;
++        const delay = 0.3;
++        s.songStop = x.jig(VERSE.map((v) => v.tune), { quaver: QUAVER, count: SONG.count, delay });
++        // the song's clock: when its first quaver sounds (and a little more
++        // for the speakers' own lag)
++        const lag = (audioContext()?.outputLatency || audioContext()?.baseLatency || 0) * 1000;
++        s.songAt = performance.now() + delay * 1000 + lag;
++      });
++    }
+   }, [say]);
+ 
+   const outside = useCallback(
+@@ -226,6 +263,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       const s = sim.current;
+       s.pourStop?.();
+       s.pourStop = null;
++      s.songStop?.();
++      s.songStop = null;
++      s.song = null;
+       s.mode = 'walk';
+       s.talking = null;
+       s.talk = null;
+@@ -255,7 +295,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           setTimeout(() => x.hatch(), 900);
+         });
+       } else if (id === 'pony') {
+-        if (p.sky !== 'evening') return say('The door’s barred, and every window dark.');
++        // (shut at night; open again at dawn, for breakfast and a song before the road)
++        if (p.sky === 'night') return say('The door’s barred, and every window dark.');
+         s.mode = 'inside';
+         s.air?.inside(1);
+         sounds().then((x) => x.door());
+@@ -358,6 +399,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     [say, complete, later, toBeat],
+   );
+ 
++  // a stamp (lane 0) or a clap (lane 1), on the table
++  const sing = useCallback((lane) => {
++    const s = sim.current;
++    if (s.mode !== 'inside' || s.beat !== 'song' || !s.song || s.songAt == null) return;
++    audioContext();
++    const r = pressSong(s.song, lane, songTime(s));
++    if (!r) return;
++    const good = r.how !== 'stray';
++    sounds().then((x) => (lane === 0 ? x.stamp(good) : x.clap(good)));
++    s.flash = { lane, how: r.how, at: performance.now() };
++  }, []);
++
+   // the walking keys: held while the town's live, by their place on the
+   // keyboard (../keys), and kept when the handlers below are re-made
+   useEffect(() => {
+@@ -413,6 +466,19 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         }
+         return;
+       }
++      if (s.mode === 'inside' && s.beat === 'song') {
++        // stamp on the left (A or ←), clap on the right (D or →)
++        if (e.repeat) return;
++        const c = e.code || '';
++        if (c === 'KeyA' || c === 'ArrowLeft' || k === 'ArrowLeft') {
++          e.preventDefault();
++          sing(0);
++        } else if (c === 'KeyD' || c === 'ArrowRight' || k === 'ArrowRight') {
++          e.preventDefault();
++          sing(1);
++        } else if (k === 'Escape') toBeat('room');
++        return;
++      }
+       if (s.mode === 'inside') {
+         if (s.beat === 'pints' && k === ' ' && !e.repeat && !onButton) {
+           e.preventDefault();
+@@ -435,7 +501,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       window.removeEventListener('keyup', up);
+       window.removeEventListener('blur', blur);
+     };
+-  }, [live, near, enter, putRing, talkOnward, pour, leaveInn]);
++  }, [live, near, enter, putRing, talkOnward, pour, leaveInn, sing, toBeat]);
+ 
+   // ── every frame ──
+   useFrameLoop((ms) => {
+@@ -557,13 +623,37 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         toBeat('strider');
+       }
+       if (s.beat !== 'slip') s.slipped = false;
++      // on the side: the song on the table, by the song's own clock
++      if (s.beat === 'song' && s.song && s.songAt != null) {
++        const st = songTime(s);
++        if (pressed('x')) sing(0);
++        if (pressed('b')) sing(1);
++        for (const e of stepSong(s.song, Math.max(0, st))) {
++          if (e.type === 'won') {
++            winSide();
++            sounds().then((x) => x.cheer());
++            say('The whole room roars for more, and bangs its tankards on the tables. Even the man in the corner smiles.');
++            later(() => sim.current?.beat === 'song' && toBeat('room'), 3200);
++          } else if (e.type === 'flat') {
++            say('The room goes back to its beer. Try again, and keep better time.', true);
++            later(() => sim.current?.beat === 'song' && toBeat('room'), 2600);
++          } else if (e.type === 'fell') {
++            s.songStop?.();
++            s.songStop = null;
++            sounds().then((x) => x.clunk());
++            say('Your foot catches a tankard, and down you come off the table with a bump. Pippin hauls you back up. Try again?', true);
++            later(() => sim.current?.beat === 'song' && toBeat('room'), 2600);
++          }
++        }
++        drawLanes(lanes.current, s.song, st, s.flash);
++      }
+     }
+ 
+     // what's here, and who's here
+     let spotHere = null;
+     if (s.mode === 'walk') {
+       const sp = nearest(SPOTS, s.h.x, s.h.z);
+-      const ok = sp && ((sp.id === 'gate' && !p.gateOpen) || (sp.id === 'pony' && p.gateOpen && p.sky === 'evening') || (sp.id === 'east' && night && !s.chased) || (sp.id === 'leave' && p.finished));
++      const ok = sp && ((sp.id === 'gate' && !p.gateOpen) || (sp.id === 'pony' && p.gateOpen && p.sky !== 'night') || (sp.id === 'east' && night && !s.chased) || (sp.id === 'leave' && p.finished));
+       spotHere = ok ? sp.id : null;
+     }
+     s.near = spotHere;
+@@ -599,6 +689,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           beat: s.beat,
+           stepT: s.stepT,
+           pour: s.pour,
++          song: s.song && s.songAt != null ? { t: Math.max(0, songTime(s)), beat: QUAVER * 2 } : null,
+           wearing: s.wearing,
+           gaze: s.gaze,
+           gateOpen: p.gateOpen,
+@@ -627,10 +718,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     }
+ 
+     // the HUD, when what it shows changes
+-    const key = [s.mode, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.pour.state, s.pour.good, s.pour.tries, s.pour.pouring, Math.round(s.pour.level * 60), s.wearing, Math.round(s.gaze * 20), s.chased].join('|');
++    const key = [s.mode, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.pour.state, s.pour.good, s.pour.tries, s.pour.pouring, Math.round(s.pour.level * 60), s.wearing, Math.round(s.gaze * 20), s.chased, s.song?.state, s.song?.line, s.song && Math.round(s.song.cheer * 20)].join('|');
+     if (key !== hudKey.current) {
+       hudKey.current = key;
+-      setHud({ mode: s.mode, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, pour: { ...s.pour }, wearing: s.wearing, gaze: s.gaze, chased: s.chased });
++      setHud({ mode: s.mode, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, pour: { ...s.pour }, wearing: s.wearing, gaze: s.gaze, chased: s.chased, song: s.song && { state: s.song.state, line: s.song.line, cheer: s.song.cheer } });
+     }
+     if (s.person && bubbleRef.current) {
+       const at = a.screenOf('cast', s.person);
+@@ -692,7 +783,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+   // the list's "go there": straight to where each scene starts
+   const travel = (q) => {
+     const s = sim.current;
+-    const at = q.id === 'gate' ? { x: -40, z: 4.2, face: 0 } : q.id === 'slip' ? INN_DOOR : { x: 4, z: 0.6, face: Math.PI / 2 };
++    const at = q.id === 'gate' ? { x: -40, z: 4.2, face: 0 } : q.id === 'slip' ? INN_DOOR : { x: 4, z: 0.6, face: Math.PI / 2 }; // (the song's in the Pony too)
+     s.h = newWalker(at);
+     s.yaw = behindYaw(s.h.face);
+     setList(false);
+@@ -767,7 +858,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       {inside && hud.beat === 'room' && (
+         <div className="shire-panel bree-room">
+           <p className="shire-panel-title">The Prancing Pony</p>
+-          <p className="shire-panel-say">Smoke, firelight and a roomful of Big Folk. Pippin is eyeing the beer; in the dark corner, a hooded man is watching you.</p>
++          <p className="shire-panel-say">{prog.sky === 'dawn' ? 'Morning, and Butterbur is clearing up. The hobbits want one more song before the road.' : 'Smoke, firelight and a roomful of Big Folk. Pippin is eyeing the beer; in the dark corner, a hooded man is watching you.'}</p>
+           <div className="shire-panel-row">
+             {!done.includes('pints') && (
+               <button type="button" className="btn btn-primary btn-sm" onClick={() => toBeat('pints')}>
+@@ -779,6 +870,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+                 Who’s that, in the corner?
+               </button>
+             )}
++            <button type="button" className="btn btn-ghost btn-sm bree-side-btn" data-done={side || undefined} onClick={() => toBeat('song')}>
++              {side ? 'Sing it again' : 'A song on the table'} <small>on the side</small>
++            </button>
+             <button type="button" className="btn btn-ghost btn-sm" onClick={() => document.getElementById('pony-rush')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+               Help in the kitchen (co-op)
+             </button>
+@@ -833,6 +927,42 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         </div>
+       )}
+ 
++      {inside && hud.beat === 'song' && hud.song && (
++        <div className="shire-panel bree-song">
++          <p className="shire-panel-title">The Man in the Moon</p>
++          <p className="bree-song-words" aria-live="polite">
++            {hud.song.line < 0 ? 'The fiddler plays the tune through once…' : VERSE[hud.song.line].words}
++          </p>
++          <canvas ref={lanes} className="bree-lanes" width="320" height="130" aria-hidden="true" />
++          <div className="shire-meter" role="meter" aria-label="The room" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.song.cheer * 100) / 100}>
++            <span className="shire-meter-label">The room</span>
++            <span className="shire-meter-bar">
++              <span style={{ transform: `scaleX(${hud.song.cheer})` }} />
++            </span>
++          </div>
++          <div className="shire-panel-row bree-song-keys">
++            {LANES.map((name, lane) => (
++              <button
++                key={name}
++                type="button"
++                className="btn btn-primary btn-sm bree-beat"
++                disabled={hud.song.state !== 'on'}
++                onPointerDown={(e) => {
++                  e.preventDefault();
++                  sing(lane);
++                }}
++                onContextMenu={(e) => e.preventDefault()}
++              >
++                {lane === 0 ? 'Stamp' : 'Clap'} {!touch && <kbd>{lane === 0 ? 'A ←' : 'D →'}</kbd>}
++              </button>
++            ))}
++            <button type="button" className="btn btn-ghost btn-sm" onClick={() => toBeat('room')}>
++              Get down {!touch && <kbd>Esc</kbd>}
++            </button>
++          </div>
++        </div>
++      )}
++
+       {inside && hud.beat === 'slip' && (
+         <div className="shire-panel bree-slip">
+           <p className="shire-panel-title">{hud.wearing ? 'The Ring!' : 'Frodo Baggins!'}</p>
+@@ -855,7 +985,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+ 
+       {walking && touch && <Stick onStick={onStick} />}
+ 
+-      {list && <QuestList title="Things to do in Bree" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id === 'gate' || (q.id === 'slip' ? prog.sky === 'night' : prog.gateOpen && prog.sky === 'evening'))} />}
++      {list && (
++        <QuestList
++          title="Things to do in Bree"
++          quests={prog.quests}
++          next={prog.next}
++          side={[{ ...SIDE, done: side }]}
++          onClose={() => setList(false)}
++          onGo={travel}
++          canGo={(q) => (q.id === SIDE.id ? done.includes('pony') && prog.sky !== 'night' : q.open && !q.done && (q.id === 'gate' || (q.id === 'slip' ? prog.sky === 'night' : prog.gateOpen && prog.sky === 'evening')))}
++        />
++      )}
+     </div>
+   );
+ }
+@@ -900,8 +1040,57 @@ const drawTown = (prog) => (g, at) => {
+   }
+ };
+ 
++// The song's two lanes, stamp and clap: each beat coming down to the line,
++// gone in a puff when it's hit, red when it's let go by.
++const LEAD = 1.7; // seconds a beat is in sight before it lands
++function drawLanes(c, song, t, flash) {
++  const g = c?.getContext('2d');
++  if (!g) return;
++  const W = c.width;
++  const H = c.height;
++  const hitY = H - 26;
++  const laneX = (lane) => W * (lane === 0 ? 0.3 : 0.7);
++  g.clearRect(0, 0, W, H);
++  for (const lane of [0, 1]) {
++    const x = laneX(lane);
++    const grad = g.createLinearGradient(0, 0, 0, H);
++    grad.addColorStop(0, 'rgba(255,255,255,0)');
++    grad.addColorStop(1, 'rgba(255,255,255,0.08)');
++    g.fillStyle = grad;
++    g.fillRect(x - 34, 0, 68, H);
++    // the flash of the last stamp or clap in this lane
++    const f = flash && flash.lane === lane ? 1 - (performance.now() - flash.at) / 260 : 0;
++    g.strokeStyle = f > 0 ? (flash.how === 'stray' ? `rgba(255,110,80,${f})` : `rgba(255,236,170,${f})`) : 'rgba(240,192,64,0.55)';
++    g.lineWidth = 3;
++    g.beginPath();
++    g.arc(x, hitY, 17 + Math.max(0, f) * 5, 0, Math.PI * 2);
++    g.stroke();
++    g.fillStyle = 'rgba(251,244,226,0.7)';
++    g.font = '600 11px system-ui, sans-serif';
++    g.textAlign = 'center';
++    g.fillText(LANES[lane].toUpperCase(), x, H - 3);
++  }
++  NOTES.forEach((n, i) => {
++    const ahead = n.t - t;
++    if (ahead > LEAD || ahead < -0.4) return;
++    const hit = song.hit[i];
++    if (hit === 'good' || hit === 'ok') return;
++    const x = laneX(n.lane);
++    const y = hitY - (ahead / LEAD) * (hitY - 8);
++    g.globalAlpha = hit === 'miss' ? 0.45 : 1;
++    g.fillStyle = hit === 'miss' ? '#c8503a' : n.lane === 0 ? '#c8873a' : '#fbf4e2';
++    g.beginPath();
++    g.arc(x, y, 12, 0, Math.PI * 2);
++    g.fill();
++    g.strokeStyle = 'rgba(30,20,10,0.6)';
++    g.lineWidth = 2;
++    g.stroke();
++    g.globalAlpha = 1;
++  });
++}
++
+ // Without 3D: the scenes, as cards.
+-function Cards({ prog, three, gl, retry }) {
++function Cards({ prog, side, three, gl, retry }) {
+   return (
+     <div className="shell shire-cards-wrap">
+       <h1 id="bree-title" className="title">
+@@ -932,6 +1121,13 @@ function Cards({ prog, three, gl, retry }) {
+             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+           </li>
+         ))}
++        <li data-side>
++          <p className="shire-list-side">On the side</p>
++          <p className="shire-list-name">{SIDE.name}</p>
++          <p className="shire-list-sub">{SIDE.where}</p>
++          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
++          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
++        </li>
+       </ul>
+     </div>
+   );
+diff --git a/src/components/middleearth/towns/bree/bree.css b/src/components/middleearth/towns/bree/bree.css
+index e28508a..b91cd94 100644
+--- a/src/components/middleearth/towns/bree/bree.css
++++ b/src/components/middleearth/towns/bree/bree.css
+@@ -1,5 +1,6 @@
+ /* Bree, the town: the Shire's HUD (../../shire/shire.css) on a wet night,
+-   with a conversation panel, the inn's panels and the pint glass. */
++   with a conversation panel, the inn's panels, the pint glass, and the song
++   on the table. */
+ 
+ .bree-world { --shire-glass: rgba(16, 20, 26, 0.78); --shire-glass-hi: rgba(20, 24, 30, 0.92); }
+ .bree-stage { background: linear-gradient(180deg, #1c2430 0%, #3a4452 58%, #2a2a22 60%, #1a1c16 100%); }
+@@ -30,7 +31,19 @@
+ .bree-tap { touch-action: none; user-select: none; -webkit-user-select: none; }
+ .bree-tap[data-pouring] { box-shadow: 0 0 0 3px rgba(240, 192, 64, 0.45); }
+ 
++/* on the side: the song on the table, its two lanes and the words */
++.bree-side-btn small { margin-left: 0.3rem; color: var(--shire-gold); font: 700 0.6rem/1 var(--font-sans); letter-spacing: 0.1em; text-transform: uppercase; }
++.bree-side-btn[data-done]::before { content: '✓'; margin-right: 0.3rem; color: var(--shire-gold); }
++/* (bottom left, as the pints are, so Frodo up on the table stays in view) */
++.bree-song { width: min(21rem, calc(100% - 1.4rem)); justify-items: center; text-align: center; }
++.bree-song-words { margin: 0; min-height: 2.6em; color: var(--shire-ink); font: italic 500 1.02rem/1.3 'Cinzel', Georgia, serif; letter-spacing: 0.01em; }
++.bree-lanes { display: block; width: min(18rem, 100%); height: auto; aspect-ratio: 320 / 130; border-radius: 10px; background: rgba(0, 0, 0, 0.28); }
++.bree-song .shire-meter { width: 100%; box-sizing: border-box; }
++.bree-song-keys { justify-content: center; }
++.bree-beat { min-width: 6.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
++
+ @media (max-width: 639px) {
+   .town-convo, .bree-room, .bree-slip { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
++  .bree-song { width: calc(100% - 5.4rem); }
+   .bree-glass { width: 2.6rem; height: 5.2rem; }
+ }
+diff --git a/src/components/middleearth/towns/bree/inn.js b/src/components/middleearth/towns/bree/inn.js
+index f61bded..d05d114 100644
+--- a/src/components/middleearth/towns/bree/inn.js
++++ b/src/components/middleearth/towns/bree/inn.js
+@@ -9,12 +9,13 @@
+ // update(beat, …) poses everyone for the beat and says where the camera
+ // goes: bar (Butterbur, at the counter), room (the whole room), pints (the
+ // tap and a glass under it), slip (Frodo jumps up and the Ring flies),
+-// strider (the corner).
++// strider (the corner), and on the side song (Frodo up on the hobbits'
++// table, singing, and the room clapping along).
+ 
+ import * as THREE from 'three';
+ import { hot } from '../../../../lib/stage3d';
+ import { pose } from '../../mapFigures';
+-import { makePerson, sit } from '../../shire/people';
++import { calm, dance, makePerson, sit } from '../../shire/people';
+ import { B, barrelParts, beam, benchParts, cyl, cylX, lathe, parts, roundBox, squareWindow } from '../../shire/props';
+ import { POUR } from './pints';
+ import { makeFolk } from './props';
+@@ -201,16 +202,20 @@ export function buildInn(renderer, { kit }) {
+     pints: [V3(2.25, 1.62, -1.62), V3(1.8, 1.36, -2.56)],
+     slip: [V3(3.6, 0.7, 4.0), V3(HOBBITS.x - 0.8, 1.2, HOBBITS.z + 0.9)],
+     strider: [V3(4.3, 1.48, -1.4), V3(CORNER.x + 0.12, 1.42, CORNER.z - 0.22)],
++    song: [V3(-1.7, 2.0, 4.25), V3(HOBBITS.x + 0.1, 1.8, HOBBITS.z - 0.3)],
+   };
+   const homeAll = () => {
+     for (const f of Object.values(people)) {
+       f.group.position.copy(f.home.at);
+       f.group.rotation.set(0, f.home.face, 0);
+       if (f.sitting !== f.home.seated) sit(f, f.home.seated);
++      calm(f);
+     }
+   };
+ 
+-  // s: { stepT (s into the beat), pour, ringOn (it's on his finger), ringOff }
++  // s: { stepT (s into the beat), pour, ringOn (it's on his finger), ringOff,
++  // song (seconds into the song, and the beat's length), dawn (Strider's gone
++  // out to the East Gate) }
+   const update = (beat, t, dt, s = {}) => {
+     homeAll();
+     const f = people.frodo;
+@@ -252,14 +257,33 @@ export function buildInn(renderer, { kit }) {
+       // Frodo at the end of his table, looking up at him
+       f.group.position.set(CORNER.x + 0.55, 0, CORNER.z + 1.65);
+       f.group.rotation.y = 1.81;
++    } else if (beat === 'song') {
++      // up on the hobbits' table, facing the room
++      f.group.position.set(HOBBITS.x - 0.2, 0.96, HOBBITS.z);
++      f.group.rotation.y = -2.6;
+     }
+     // everyone breathing, Butterbur busy, the Bree-landers chatting
+     for (const [id, p] of Object.entries(people)) {
+       if (p.sitting) {
+-        pose(p, t + id.length, { moving: false, talk: id.startsWith('folk') && Math.sin(t * 0.7 + id.length) > 0.4 ? 1 : 0 });
++        pose(p, t + id.length, { moving: false, talk: id.startsWith('folk') && (beat === 'song' || Math.sin(t * 0.7 + id.length) > 0.4) ? 1 : 0 });
+         sit(p, true);
+       } else pose(p, t + id.length, { moving: false, talk: (id === 'butterbur' && (beat === 'bar' || beat === 'ask')) || (id === 'pippin' && beat === 'slip') ? 1 : 0, wave: id === 'pippin' && beat === 'slip' ? 0.8 : 0 });
+     }
++    if (beat === 'song') {
++      // Frodo hops on every beat; the hobbits clap on the off-beats
++      const st = s.song?.t ?? 0;
++      const per = s.song?.beat ?? 0.54;
++      dance(f, (st / per) * (Math.PI * 2) / 7 - 0.22, 0);
++      for (const id of ['sam', 'merry', 'pippin']) {
++        const p = people[id];
++        // hands out in front, and together on the beat
++        const k = Math.abs(Math.cos((st / per) * Math.PI)) ** 3;
++        p.arms[0].rotation.x = -(0.3 + 0.6 * k);
++        p.arms[1].rotation.x = 0.3 + 0.6 * k;
++        p.arms[0].rotation.z = p.arms[1].rotation.z = 0.9;
++      }
++    }
++    strider.group.visible = !s.dawn;
+     // Strider watches the hobbits' table, or Frodo when he comes over
+     const watching = beat === 'strider' || beat === 'slip' ? f.group.position.clone().add(INN).add(V3(0, 1.1, 0)) : world(V3(HOBBITS.x, 1.1, HOBBITS.z), V3());
+     strider.update(t, { watch: watching, close: beat === 'strider' });
+diff --git a/src/components/middleearth/towns/bree/scene.js b/src/components/middleearth/towns/bree/scene.js
+index cf9058a..18590dd 100644
+--- a/src/components/middleearth/towns/bree/scene.js
++++ b/src/components/middleearth/towns/bree/scene.js
+@@ -642,7 +642,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
+     outdoors.visible = !inside;
+     inn.group.visible = inside;
+     if (inside) {
+-      const c = inn.update(s.beat ?? 'room', t, dt, { stepT: s.stepT, pour: s.pour, ringOn: s.wearing });
++      const c = inn.update(s.beat ?? 'room', t, dt, { stepT: s.stepT, pour: s.pour, ringOn: s.wearing, song: s.song, dawn: s.sky === 'dawn' });
+       camAt = c.at;
+       camLook = c.look;
+     } else if (s.mode === 'talk' && s.talking === 'gate') {
+diff --git a/src/components/middleearth/towns/bree/song.js b/src/components/middleearth/towns/bree/song.js
+new file mode 100644
+index 0000000..0b86fda
+--- /dev/null
++++ b/src/components/middleearth/towns/bree/song.js
+@@ -0,0 +1,102 @@
++// On the side: a song on the table. In the book it's Frodo, not Pippin, who
++// gets up on the table in the Prancing Pony, and he sings Bilbo's silly song
++// about the Man in the Moon. Here the hobbits keep time for him: stamp on
++// the table and clap as each beat comes down to the line. Keep the room with
++// you to the end of the verse and they roar for more; lose them, and your
++// foot goes from under you.
++//
++// Time is in seconds from the first note of the count-in. The chart is in
++// quavers (eighth notes), sixteen to a line of the verse: `s` a stamp, `c` a
++// clap, `.` neither. The tune (MIDI notes, or null for a rest) is for the
++// fiddle in ./sounds.js; it's an old-fashioned jig made up for this, not
++// anyone's recording.
++
++// the task, for the list: on the side, so the story never waits on it
++export const SIDE = { id: 'song', name: 'The Man in the Moon', where: 'The hobbits’ table, in the Pony', blurb: 'Get up on the table and sing Bilbo’s song, with the hobbits keeping time.', seal: 'maninthemoon' };
++
++export const SONG = {
++  bpm: 112,
++  count: 16, // quavers of fiddle before the singing starts
++  good: 0.09, // seconds either side of the beat: spot on
++  ok: 0.17, // near enough
++  need: 0.7, // of the best you could do, to bring the house down
++  start: 0.5, // the room's mood when you get up
++  lift: 0.07, // a good one cheers them
++  lift2: 0.035, // a near one, a little
++  drop: 0.11, // a missed one costs
++  stray: 0.05, // and so does stamping out of time
++};
++export const QUAVER = 60 / SONG.bpm / 2;
++
++export const VERSE = [
++  { words: 'There is an inn, a merry old inn', chart: 's...c...s...c...', tune: [69, null, 74, 74, 74, null, 76, 78, 76, null, 74, null, 78, null, 81, null] },
++  { words: 'beneath an old grey hill,', chart: 's...c...s.c.s...', tune: [81, null, 79, 78, 76, null, 74, null, 76, null, null, null, 69, null, null, null] },
++  { words: 'And there they brew a beer so brown', chart: 's.c.s.c.s.c.s.c.', tune: [69, 74, 74, 74, 78, 78, 81, 81, 79, 78, 76, null, 78, null, 74, null] },
++  { words: 'That the Man in the Moon himself came down', chart: 's.c.ssc.s.c.ssc.', tune: [81, 81, 83, 81, 79, 78, 76, 78, 79, 81, 79, 78, 76, null, 73, null] },
++  { words: 'one night to drink his fill.', chart: 's.c.s.c.ssc.s...', tune: [69, null, 74, 76, 78, null, 76, 74, 76, null, 73, null, 74, null, null, null] },
++];
++export const LANES = ['stamp', 'clap'];
++
++// every note to hit: { t, lane (0 stamp, 1 clap), line }
++export const NOTES = VERSE.flatMap((v, line) =>
++  [...v.chart].flatMap((ch, q) => (ch === 's' || ch === 'c' ? [{ t: (SONG.count + line * 16 + q) * QUAVER, lane: ch === 's' ? 0 : 1, line }] : [])),
++);
++export const LENGTH = (SONG.count + VERSE.length * 16 + 4) * QUAVER;
++
++export const newSong = () => ({ t: 0, cheer: SONG.start, hit: NOTES.map(() => null), line: -1, state: 'on' });
++
++// how well it's gone so far, 0…1 of the best you could do
++export const score = (song) => song.hit.reduce((n, h) => n + (h === 'good' ? 1 : h === 'ok' ? 0.5 : 0), 0) / NOTES.length;
++
++// A stamp (lane 0) or a clap (lane 1) at time `t`: { how: 'good' | 'ok' |
++// 'stray', i } — the nearest note in that lane not yet judged.
++export function press(song, lane, t = song.t) {
++  if (song.state !== 'on') return null;
++  let best = -1;
++  let bestD = Infinity;
++  NOTES.forEach((n, i) => {
++    if (n.lane !== lane || song.hit[i]) return;
++    const d = Math.abs(n.t - t);
++    if (d < bestD) {
++      bestD = d;
++      best = i;
++    }
++  });
++  if (best < 0 || bestD > SONG.ok) {
++    song.cheer = Math.max(0, song.cheer - SONG.stray);
++    return { how: 'stray', i: -1 };
++  }
++  const how = bestD <= SONG.good ? 'good' : 'ok';
++  song.hit[best] = how;
++  song.cheer = Math.min(1, song.cheer + (how === 'good' ? SONG.lift : SONG.lift2));
++  return { how, i: best };
++}
++
++// The song moves on to time `t`: events 'line' { line } as each line of the
++// verse starts, 'miss' { i } for each note let go by, then 'won', 'flat'
++// (not enough of them in time: the room goes back to its beer) or 'fell'
++// (the room's lost, and so's your footing).
++export function stepSong(song, t) {
++  const ev = [];
++  if (song.state !== 'on') return ev;
++  song.t = t;
++  const line = Math.floor((t / QUAVER - SONG.count) / 16);
++  if (line > song.line && line >= 0 && line < VERSE.length) {
++    song.line = line;
++    ev.push({ type: 'line', line });
++  }
++  NOTES.forEach((n, i) => {
++    if (song.hit[i] || t - n.t <= SONG.ok) return;
++    song.hit[i] = 'miss';
++    song.cheer = Math.max(0, song.cheer - SONG.drop);
++    ev.push({ type: 'miss', i });
++  });
++  if (song.cheer <= 0) {
++    song.state = 'fell';
++    ev.push({ type: 'fell' });
++  } else if (t >= LENGTH) {
++    song.state = score(song) >= SONG.need ? 'won' : 'flat';
++    ev.push({ type: song.state });
++  }
++  return ev;
++}
+diff --git a/src/components/middleearth/towns/bree/song.test.js b/src/components/middleearth/towns/bree/song.test.js
+new file mode 100644
+index 0000000..9ab7711
+--- /dev/null
++++ b/src/components/middleearth/towns/bree/song.test.js
+@@ -0,0 +1,75 @@
++import { describe, expect, it } from 'vitest';
++import { LENGTH, NOTES, QUAVER, SONG, VERSE, newSong, press, score, stepSong } from './song';
++
++// play the song through: `when(n)` is when you hit note n (or null to let
++// it go by), every frame at 60 a second
++function play(when) {
++  const song = newSong();
++  const hits = NOTES.map((n, i) => ({ at: when(n, i), lane: n.lane })).filter((h) => h.at != null).sort((a, b) => a.at - b.at);
++  const types = [];
++  let k = 0;
++  for (let t = 0; t <= LENGTH + 0.1 && song.state === 'on'; t += 1 / 60) {
++    while (k < hits.length && hits[k].at <= t) press(song, hits[k++].lane, t);
++    types.push(...stepSong(song, t).map((e) => e.type));
++  }
++  return { song, types };
++}
++
++describe('a song on the table', () => {
++  it('has a verse of five lines, sixteen quavers each, with something to hit in every line', () => {
++    expect(VERSE).toHaveLength(5);
++    for (const v of VERSE) {
++      expect(v.chart).toHaveLength(16);
++      expect(v.tune).toHaveLength(16);
++      expect(v.chart).toMatch(/^[sc.]+$/);
++    }
++    for (let line = 0; line < VERSE.length; line++) expect(NOTES.some((n) => n.line === line)).toBe(true);
++    // in time order, after the count-in, and before the end
++    expect(NOTES[0].t).toBeCloseTo(SONG.count * QUAVER);
++    for (let i = 1; i < NOTES.length; i++) expect(NOTES[i].t).toBeGreaterThanOrEqual(NOTES[i - 1].t);
++    expect(NOTES[NOTES.length - 1].t).toBeLessThan(LENGTH);
++  });
++
++  it('brings the house down when every beat is on time', () => {
++    const { song, types } = play((n) => n.t);
++    expect(song.state).toBe('won');
++    expect(score(song)).toBe(1);
++    expect(types.filter((x) => x === 'line')).toHaveLength(VERSE.length);
++    expect(types).not.toContain('miss');
++  });
++
++  it('counts near enough as half, and a little late is still near enough', () => {
++    const song = newSong();
++    const n = NOTES[0];
++    expect(press(song, n.lane, n.t + SONG.good * 0.5).how).toBe('good');
++    const m = NOTES[1];
++    expect(press(song, m.lane, m.t + (SONG.good + SONG.ok) / 2).how).toBe('ok');
++    expect(press(song, 0, 0.1).how).toBe('stray');
++  });
++
++  it('only takes a note in its own lane', () => {
++    const song = newSong();
++    const n = NOTES[0];
++    expect(press(song, 1 - n.lane, n.t).how).toBe('stray');
++    expect(song.hit[0]).toBe(null);
++  });
++
++  it('goes flat if too many are missed, but you keep your feet', () => {
++    // let every third one go by, and hit the rest spot on
++    const { song, types } = play((n, i) => (i % 3 === 0 ? null : n.t));
++    expect(song.state).toBe('flat');
++    expect(types[types.length - 1]).toBe('flat');
++  });
++
++  it('puts you off the table if you lose the room', () => {
++    const { song, types } = play(() => null);
++    expect(song.state).toBe('fell');
++    expect(types[types.length - 1]).toBe('fell');
++    expect(song.t).toBeLessThan(LENGTH);
++  });
++
++  it('lets a hobbit off a few, and still wins', () => {
++    const { song } = play((n, i) => (i % 9 === 4 ? null : n.t + (i % 2 ? 0.05 : -0.05)));
++    expect(song.state).toBe('won');
++  });
++});
+diff --git a/src/components/middleearth/towns/bree/sounds.js b/src/components/middleearth/towns/bree/sounds.js
+index 5eecc6b..25f250a 100644
+--- a/src/components/middleearth/towns/bree/sounds.js
++++ b/src/components/middleearth/towns/bree/sounds.js
+@@ -1,7 +1,9 @@
+ // Bree's sounds, synthesised so nothing is downloaded: the rain and its
+ // gusts (muffled once you're indoors, with the fire crackling), a knock on
+ // the gate, its hatch and its bolts, the tap running and a pint set down,
+-// and the Nazgûl. All through the site's master volume.
++// and the Nazgûl; and on the side, a fiddle for the song on the table, and
++// the stamps and claps that keep its time. All through the site's master
++// volume.
+ 
+ import { audioContext, output } from '../../../../lib/audio';
+ 
+@@ -139,6 +141,93 @@ export function cheer() {
+   for (let i = 0; i < 6; i++) tone(ac, out, t + Math.random() * 0.2, { type: 'triangle', f: 300 + Math.random() * 300, to: 500 + Math.random() * 300, gain: 0.04, attack: 0.02, length: 0.4 });
+ }
+ 
++// ── the song on the table (./song.js) ──
++// a hobbit's foot on the table top, and a clap from the hobbits' table
++export function stamp(good = true) {
++  const [ac, out] = ready();
++  if (!ac) return;
++  const t = ac.currentTime + 0.005;
++  tone(ac, out, t, { type: 'sine', f: good ? 150 : 110, to: 55, gain: 0.45, attack: 0.002, length: 0.14 });
++  hiss(ac, out, t, { type: 'lowpass', f: 700, gain: 0.18, attack: 0.002, length: 0.05 });
++}
++export function clap(good = true) {
++  const [ac, out] = ready();
++  if (!ac) return;
++  const t = ac.currentTime + 0.005;
++  for (const d of [0, 0.012, 0.024]) hiss(ac, out, t + d, { type: 'bandpass', f: good ? 1500 : 900, q: 1.1, gain: 0.32, attack: 0.001, length: 0.06 });
++}
++const hz = (m) => 440 * 2 ** ((m - 69) / 12);
++// The fiddle and the bodhrán for the whole song, laid down from `delay`
++// seconds on: the tune (MIDI notes, one a quaver), a drum on every beat, and
++// a drone under it. Returns stop().
++export function jig(lines, { quaver, count, delay = 0.15 }) {
++  const [ac, out] = ready();
++  if (!ac) return () => {};
++  const bus = ac.createGain();
++  bus.gain.value = 0.9;
++  bus.connect(out);
++  const t0 = ac.currentTime + delay;
++  const fiddle = (at, m, len) => {
++    const o = ac.createOscillator();
++    o.type = 'sawtooth';
++    o.frequency.setValueAtTime(hz(m), at);
++    const vib = ac.createOscillator();
++    vib.frequency.value = 5.5;
++    const depth = ac.createGain();
++    depth.gain.value = hz(m) * 0.006;
++    vib.connect(depth).connect(o.frequency);
++    const lp = ac.createBiquadFilter();
++    lp.type = 'lowpass';
++    lp.frequency.value = 2600;
++    lp.Q.value = 2;
++    const g = ac.createGain();
++    env(g.gain, at, [[0, 0.0001], [0.02, 0.07], [len * 0.7, 0.05], [len, 0.0001]]);
++    o.connect(lp).connect(g).connect(bus);
++    o.start(at);
++    vib.start(at);
++    o.stop(at + len + 0.05);
++    vib.stop(at + len + 0.05);
++  };
++  const tune = lines.flatMap((l) => l);
++  const total = count + tune.length + 4;
++  for (let q = 0; q < total; q++) {
++    const at = t0 + q * quaver;
++    // the drum: every beat, a little louder on the one
++    if (q % 2 === 0) tone(ac, bus, at, { type: 'sine', f: q % 8 === 0 ? 120 : 95, to: 50, gain: q % 8 === 0 ? 0.32 : 0.2, attack: 0.003, length: 0.18 });
++    else hiss(ac, bus, at, { type: 'highpass', f: 5000, gain: 0.05, attack: 0.001, length: 0.04 });
++    const m = q >= count ? tune[q - count] : null;
++    if (m != null) {
++      // held through any rests after it
++      let len = 1;
++      while (q - count + len < tune.length && tune[q - count + len] == null && len < 4) len++;
++      fiddle(at, m, len * quaver * 0.95);
++    }
++  }
++  // a drone of D and A under it all, as a bagpipe might
++  const drone = [50, 57].map((m) => {
++    const o = ac.createOscillator();
++    o.type = 'triangle';
++    o.frequency.value = hz(m);
++    const g = ac.createGain();
++    env(g.gain, t0, [[0, 0.0001], [0.5, 0.035], [total * quaver - 0.3, 0.03], [total * quaver, 0.0001]]);
++    o.connect(g).connect(bus);
++    o.start(t0);
++    o.stop(t0 + total * quaver + 0.1);
++    return o;
++  });
++  return () => {
++    bus.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05);
++    drone.forEach((o) => {
++      try {
++        o.stop(ac.currentTime + 0.3);
++      } catch {
++        // already done
++      }
++    });
++    setTimeout(() => bus.disconnect(), 400);
++  };
++}
++
+ // The weather: rain hissing, gusting now and then, and at the door's
+ // worth of distance a rumble of thunder. inside(k) muffles it and lights
+ // the fire's crackle; level(k) lets it die away at dawn. { inside, level, stop }.
+diff --git a/src/components/middleearth/towns/moria/MoriaWorld.jsx b/src/components/middleearth/towns/moria/MoriaWorld.jsx
+index 41de63d..4c0075a 100644
+--- a/src/components/middleearth/towns/moria/MoriaWorld.jsx
++++ b/src/components/middleearth/towns/moria/MoriaWorld.jsx
+@@ -12,9 +12,9 @@ import { newTalk, talkNode, talkOn } from '../talk';
+ import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
+ import { newWatchers, stepWatchers } from '../watchers';
+ import { followAt, lead, newParty } from '../rivendell/rules';
+-import { CHAMBER, CHAMBER_DOOR_WALL, COMPANY, DASH_START, DOOR_WALL, FLIGHT, FORK, GATE, GATE_COLLIDERS, GATE_WALLS, HALL, HALL_COLLIDERS, HALL_START, HALL_WALLS, SPOTS, TOMB, TROLL_FRODO, TROLL_ROUNDS, TROLL_ZONE, WELL, castFor, inLake, validAt, wayAt } from './layout';
++import { CHAMBER, CHAMBER_DOOR_WALL, COMPANY, DASH_START, DOOR_WALL, FLIGHT, FORK, GATE, GATE_COLLIDERS, GATE_WALLS, HALL, HALL_COLLIDERS, HALL_START, HALL_WALLS, SHAFT, SPOTS, TOMB, TROLL_FRODO, TROLL_ROUNDS, TROLL_ZONE, WELL, castFor, inLake, validAt, wayAt } from './layout';
+ import { CONVOS, QUESTS, SEAL, SPEAKERS, moriaProgress } from './story';
+-import { FLY, TROLL, WATCHER, grab, newDash, newFlight, newTumble, stepDash, stepFlight, stepTumble } from './rules';
++import { FLY, PLANK, SIDE, TROLL, WATCHER, grab, newDash, newFlight, newPlank, newTumble, stepDash, stepFlight, stepPlank, stepTumble } from './rules';
+ import '../../shire/shire.css';
+ import '../bree/bree.css';
+ import './moria.css';
+@@ -23,15 +23,18 @@ import './moria.css';
+ // long dark, Balin's tomb, the cave troll, and the Bridge of Khazad-dûm.
+ // The places are in ./layout.js, the story in ./story.js, the games in
+ // ./rules.js, the drawing in ./scene.js; this is the walking, the HUD, the
+-// talk and the games. Without 3D, the scenes are listed as cards.
++// talk and the games, and on the side the plank over the old shaft, which
++// the story never waits on. Without 3D, the scenes are listed as cards.
+ 
+ const DONE = 'tp-moria-done';
++const SIDE_DONE = 'tp-moria-side'; // kept apart, so the story's count stays the story's
+ const AT = 'tp-moria-at';
+ const sounds = () => import('./sounds');
+ const PROMPT = {
+   doors: { name: 'The Doors of Durin', act: 'Look at the Doors' },
+   tomb: { name: 'The Chamber of Mazarbul', act: 'Go in' },
+   east: { name: 'The east door', act: 'Run!' },
++  plank: { name: 'An old shaft, and a plank', act: 'Fetch Gandalf’s pipe' },
+ };
+ const walkers = {
+   gate: makeWalker({ radius: 400, colliders: GATE_COLLIDERS, walls: GATE_WALLS, blocked: inLake }),
+@@ -78,8 +81,18 @@ export default function MoriaWorld({ onLeave }) {
+     return moriaProgress(Array.isArray(d) ? d : []).done;
+   });
+   const prog = moriaProgress(done);
++  const [side, setSide] = useState(() => {
++    const d = local.get(SIDE_DONE, []);
++    return Array.isArray(d) && d.includes(SIDE.id);
++  });
+   const [gl, setGl] = useState('loading');
+   const { unlock } = useAchievements();
++  // the pipe, fetched: on the side, with its own seal but none on the map
++  const winSide = useCallback(() => {
++    setSide(true);
++    local.set(SIDE_DONE, [SIDE.id]);
++    unlock(SIDE.seal);
++  }, [unlock]);
+   const complete = useCallback(
+     (id) => {
+       setDone((d) => {
+@@ -95,12 +108,12 @@ export default function MoriaWorld({ onLeave }) {
+   const world = three.on && gl !== 'failed' && gl !== 'lost';
+   return (
+     <section className="shire-world moria-world" aria-labelledby="moria-title" data-mode={world ? '3d' : 'cards'}>
+-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
++      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
+     </section>
+   );
+ }
+ 
+-function World({ prog, done, complete, gl, setGl, onLeave }) {
++function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
+   const trav = useTravellers('moria', gl === 'on');
+   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+@@ -110,7 +123,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+   if (!sim.current) {
+     const at = validAt(local.get(AT, null), done);
+     const h = newWalker(at);
+-    sim.current = { zone: at.zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ithildin: false, doorsOpen: done.includes('doors'), dash: null, held: 0, forkTold: false, revealing: false, tumble: null, troll: null, trollT: 0, flight: null, fallen: 0, whip: 0, party: trailBehind(h), busy: false, steer: 0, jump: false, deadEnd: -1 };
++    sim.current = { zone: at.zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.36, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, ithildin: false, doorsOpen: done.includes('doors'), dash: null, held: 0, forkTold: false, revealing: false, tumble: null, troll: null, trollT: 0, flight: null, fallen: 0, whip: 0, party: trailBehind(h), busy: false, steer: 0, jump: false, deadEnd: -1, plank: null, plankWalk: 0, plankLean: 0 };
+   }
+   const progRef = useRef(prog);
+   progRef.current = prog;
+@@ -265,10 +278,30 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         s.h = newWalker({ x: TOMB.x - 1.2, z: TOMB.z + 3.2, face: Math.PI / 2 });
+         startTalk('tomb');
+       } else if (id === 'east') startFlight();
++      else if (id === 'plank') {
++        // on the side: out along the plank over the old shaft
++        s.mode = 'plank';
++        s.plank = newPlank(Math.floor(Math.random() * 1e6) + 1);
++        s.h = newWalker({ x: SHAFT.x - PLANK.half - 0.15, z: SHAFT.z, face: 0 });
++        sounds().then((x) => x.creak?.());
++        say('Gandalf’s pipe, out on the plank over the middle. Walk out (W or ↑) and back, and lean against the sway (A and D).');
++      }
+       setList(false);
+     },
+-    [startTalk, startFlight],
++    [startTalk, startFlight, say],
+   );
++  // off the plank, back on the floor of the hall at its west end
++  const leavePlank = useCallback(() => {
++    const s = sim.current;
++    if (s.mode !== 'plank') return;
++    s.mode = 'walk';
++    s.plank = null;
++    s.plankWalk = 0;
++    s.plankLean = 0;
++    s.h = newWalker({ x: SHAFT.x - SHAFT.plank / 2 - 0.6, z: SHAFT.z, face: Math.PI });
++    s.yaw = behindYaw(s.h.face);
++    s.dragAt = s.t;
++  }, []);
+ 
+   const talkOnward = useCallback(
+     (choice = null) => {
+@@ -387,6 +420,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         e.preventDefault();
+         audioContext();
+       }
++      if (s.mode === 'plank') {
++        if (k === 'Escape') leavePlank();
++        else if ((k === ' ' || k === 'Enter') && s.plank?.state === 'fell' && !onButton) {
++          e.preventDefault();
++          enter('plank');
++        }
++        return;
++      }
+       if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
+         if (s.mode === 'flight') {
+           e.preventDefault();
+@@ -399,7 +440,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     };
+     window.addEventListener('keydown', down);
+     return () => window.removeEventListener('keydown', down);
+-  }, [live, talkOnward, doAct]);
++  }, [live, talkOnward, doAct, leavePlank, enter]);
+ 
+   // ── every frame ──
+   useFrameLoop((ms) => {
+@@ -577,11 +618,39 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     }
+     if (s.fallen > 0) s.fallen = Math.min(1, s.fallen + dt * 0.35);
+ 
++    // on the side: out along the plank over the old shaft
++    if (s.mode === 'plank' && s.plank) {
++      const pl = s.plank;
++      const walkOn = held('up') || s.plankWalk > 0 || (pad?.ly ?? 0) < -0.4 || Boolean(pad?.a);
++      const lean = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.plankLean + (pad?.lx ?? 0);
++      for (const e of stepPlank(pl, dt, { walk: walkOn, lean })) {
++        if (e.type === 'wobble') sounds().then((x) => x.creak?.());
++        else if (e.type === 'pipe') {
++          sounds().then((x) => x.catchIt());
++          say('You have it. Now back, slowly, the same way.');
++        } else if (e.type === 'won') {
++          winSide();
++          say('Back on the floor of the hall, and the pipe safe. Gandalf takes it without a word, then: “Thank you, Frodo.”');
++          later(() => sim.current?.plank === pl && leavePlank(), 2600);
++        } else if (e.type === 'fell') {
++          sounds().then((x) => {
++            x.clatter(1.2);
++            setTimeout(() => x.drums(), 2600);
++          });
++          api.current?.fx('break');
++          say(e.pipe ? 'You throw your arms out, and Gandalf’s pipe goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”' : 'You throw your arms out, and something goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”', true);
++        }
++      }
++      s.h.x = SHAFT.x - PLANK.half - 0.15 + pl.at;
++      s.h.face = pl.back ? Math.PI : 0;
++      s.h.speed = walkOn && pl.state === 'on' ? PLANK.walk : 0;
++    }
++
+     // what's here, and who's here
+     let spotHere = null;
+     if (s.mode === 'walk') {
+       const sp = nearest(SPOTS.filter((x) => x.zone === s.zone), s.h.x, s.h.z);
+-      const ok = sp && ((sp.id === 'doors' && p.next === 'doors') || (sp.id === 'tomb' && p.next === 'tomb') || (sp.id === 'east' && p.next === 'bridge'));
++      const ok = sp && ((sp.id === 'doors' && p.next === 'doors') || (sp.id === 'tomb' && p.next === 'tomb') || (sp.id === 'east' && p.next === 'bridge') || (sp.id === 'plank' && (p.next === 'tomb' || p.finished)));
+       spotHere = ok ? sp.id : null;
+     }
+     s.near = spotHere;
+@@ -659,6 +728,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           tumble: s.tumble,
+           troll: s.troll?.list ?? null,
+           flight: s.flight,
++          plank: s.plank,
++          pipeTaken: side,
+           fallen: s.fallen,
+           whip: s.whip,
+           stepT: s.stepT,
+@@ -681,10 +752,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+ 
+     const f = s.flight;
+     const tm = s.tumble;
+-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, s.dash?.grabs, tm ? tm.caught.length + tm.falling : '', s.mode === 'troll' ? Math.floor(s.trollT) : '', s.troll?.list?.[0]?.mode, f ? Math.round(f.s / 2) : '', f ? Math.round(f.behind) : '', f?.air > 0, p.done.length].join('|');
++    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, s.dash?.grabs, tm ? tm.caught.length + tm.falling : '', s.mode === 'troll' ? Math.floor(s.trollT) : '', s.troll?.list?.[0]?.mode, f ? Math.round(f.s / 2) : '', f ? Math.round(f.behind) : '', f?.air > 0, p.done.length, s.plank ? `${s.plank.state}.${s.plank.back}.${Math.round(s.plank.lean * 24)}.${Math.round(s.plank.at * 8)}` : ''].join('|');
+     if (key !== hudKey.current) {
+       hudKey.current = key;
+-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, grabs: s.dash?.grabs ?? 0, tumble: tm ? { caught: tm.caught.length, falling: tm.falling } : null, troll: s.mode === 'troll' ? { t: s.trollT, hunting: ['alert', 'chase'].includes(s.troll?.list?.[0]?.mode) } : null, flight: f ? { s: f.s, behind: f.behind, air: f.air > 0 } : null });
++      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, grabs: s.dash?.grabs ?? 0, tumble: tm ? { caught: tm.caught.length, falling: tm.falling } : null, troll: s.mode === 'troll' ? { t: s.trollT, hunting: ['alert', 'chase'].includes(s.troll?.list?.[0]?.mode) } : null, flight: f ? { s: f.s, behind: f.behind, air: f.air > 0 } : null, plank: s.plank ? { state: s.plank.state, back: s.plank.back, lean: s.plank.lean, at: s.plank.at } : null });
+     }
+     if (s.person && bubbleRef.current) {
+       const at = a.screenOf('cast', s.person);
+@@ -758,7 +829,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       s.h = newWalker({ x: -4, z: GATE.cliff + 5, face: Math.PI / 2 });
+     } else {
+       if (s.zone !== 'halls') toHalls();
+-      const at = q.id === 'dark' ? { x: FORK.x - 5, z: 0, face: 0 } : q.id === 'bridge' ? { x: 20, z: 0, face: 0 } : { x: CHAMBER.x, z: -HALL.d / 2 + 4, face: Math.PI / 2 };
++      const at = q.id === 'dark' ? { x: FORK.x - 5, z: 0, face: 0 } : q.id === 'bridge' ? { x: 20, z: 0, face: 0 } : q.id === SIDE.id ? { x: SHAFT.x - SHAFT.plank / 2 - 1, z: SHAFT.z, face: 0 } : { x: CHAMBER.x, z: -HALL.d / 2 + 4, face: Math.PI / 2 };
+       s.h = newWalker(at);
+       s.party = trailBehind(s.h);
+       s.gandalf = null;
+@@ -783,7 +854,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+   const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
+   const F = hud.flight;
+   return (
+-    <div ref={box} className="shire-stage moria-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['dash', 'tumble', 'troll', 'flight'].includes(mode) || undefined}>
++    <div ref={box} className="shire-stage moria-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['dash', 'tumble', 'troll', 'flight', 'plank'].includes(mode) || undefined}>
+       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Moria in 3D: the Doors of Durin under the moon, the great halls of Dwarrowdelf in the dark, Balin's tomb, and the Bridge of Khazad-dûm" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+       {gl === 'loading' && <p className="shire-loading">Into the dark of Moria…</p>}
+ 
+@@ -894,6 +965,49 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           )}
+         </div>
+       )}
++      {/* on the side: the plank over the old shaft */}
++      {mode === 'plank' && hud.plank && (
++        <div className="shire-panel moria-game moria-plank" role="group" aria-label="Mind the well" data-fell={hud.plank.state === 'fell' || undefined}>
++          <p className="shire-panel-title">{hud.plank.state === 'fell' ? 'Fool of a Baggins!' : hud.plank.back ? 'Back, slowly' : 'Out to the pipe'}</p>
++          <div className="moria-balance" role="meter" aria-label="Your balance" aria-valuemin={-1} aria-valuemax={1} aria-valuenow={Math.round(hud.plank.lean * 100) / 100}>
++            <span className="moria-balance-safe" style={{ left: `${50 - PLANK.wobble * 50}%`, right: `${50 - PLANK.wobble * 50}%` }} />
++            <span className="moria-balance-needle" style={{ left: `${50 + Math.max(-1, Math.min(1, hud.plank.lean)) * 50}%` }} />
++          </div>
++          <div className="shire-meter" role="meter" aria-label="Along the plank" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round((hud.plank.back ? 1 + (PLANK.half - hud.plank.at) / PLANK.half : hud.plank.at / PLANK.half) * 50) / 100}>
++            <span className="shire-meter-label">{hud.plank.back ? 'Back' : 'Out'}</span>
++            <span className="shire-meter-bar">
++              <span style={{ transform: `scaleX(${(hud.plank.back ? 1 + (PLANK.half - hud.plank.at) / PLANK.half : hud.plank.at / PLANK.half) / 2})` }} />
++            </span>
++          </div>
++          {hud.plank.state === 'fell' ? (
++            <div className="shire-panel-row">
++              <button type="button" className="btn btn-primary btn-sm" onClick={() => enter('plank')}>
++                Try again {!touch && <kbd>Space</kbd>}
++              </button>
++              <button type="button" className="btn btn-ghost btn-sm" onClick={leavePlank}>
++                Leave it {!touch && <kbd>Esc</kbd>}
++              </button>
++            </div>
++          ) : touch ? (
++            <div className="shire-panel-row">
++              <button type="button" className="btn btn-ghost btn-sm" aria-label="Lean left" {...hold('plankLean', -1)}>
++                ◀
++              </button>
++              <button type="button" className="btn btn-primary btn-sm moria-big" {...hold('plankWalk', 1)}>
++                Walk
++              </button>
++              <button type="button" className="btn btn-ghost btn-sm" aria-label="Lean right" {...hold('plankLean', 1)}>
++                ▶
++              </button>
++            </div>
++          ) : (
++            <p className="shire-panel-help">
++              Hold W or ↑ to walk. When the needle swings one way, lean the other: A or ←, D or →. <kbd>Esc</kbd> to step off.
++            </p>
++          )}
++        </div>
++      )}
++
+       {mode === 'end' && (
+         <div className="shire-panel moria-end" role="dialog" aria-label="Out of Moria">
+           <p className="shire-panel-title">Fly, you fools</p>
+@@ -909,13 +1023,23 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         </div>
+       )}
+       {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onStick={onStick} />}
+-      {list && <QuestList title="Things to do in Moria" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && sim.current.mode === 'walk' && (q.id === 'doors') === (sim.current.zone === 'gate')} />}
++      {list && (
++        <QuestList
++          title="Things to do in Moria"
++          quests={prog.quests}
++          next={prog.next}
++          side={[{ ...SIDE, done: side }]}
++          onClose={() => setList(false)}
++          onGo={travel}
++          canGo={(q) => (q.id === SIDE.id ? (prog.next === 'tomb' || prog.finished) && sim.current.mode === 'walk' && sim.current.zone !== 'flight' : q.open && !q.done && sim.current.mode === 'walk' && (q.id === 'doors') === (sim.current.zone === 'gate'))}
++        />
++      )}
+     </div>
+   );
+ }
+ 
+ // Without 3D: the scenes, as cards.
+-function Cards({ prog, three, gl, retry }) {
++function Cards({ prog, side, three, gl, retry }) {
+   return (
+     <div className="shell shire-cards-wrap">
+       <h1 id="moria-title" className="title">
+@@ -946,6 +1070,13 @@ function Cards({ prog, three, gl, retry }) {
+             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+           </li>
+         ))}
++        <li data-side>
++          <p className="shire-list-side">On the side</p>
++          <p className="shire-list-name">{SIDE.name}</p>
++          <p className="shire-list-sub">{SIDE.where}</p>
++          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
++          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
++        </li>
+       </ul>
+     </div>
+   );
+diff --git a/src/components/middleearth/towns/moria/layout.js b/src/components/middleearth/towns/moria/layout.js
+index 9eb6999..a7a25b5 100644
+--- a/src/components/middleearth/towns/moria/layout.js
++++ b/src/components/middleearth/towns/moria/layout.js
+@@ -95,6 +95,9 @@ export const WELL = { x: CHAMBER.x + 5, z: CHAMBER.z - 5, r: 1.05 };
+ export const CHAMBER_COLUMNS = [-7, 7].flatMap((dx) => [-4.5, 0, 4.5].map((dz) => ({ x: CHAMBER.x + dx, z: CHAMBER.z + dz, r: 0.72 })));
+ // the way out to the stair and the bridge
+ export const EAST_DOOR = { x: HALL.w / 2, z: 0, w: 4 };
++// on the side: an old shaft in the floor between the pillars of the hall's
++// south-west, with a plank laid across it (`plank` long, east to west)
++export const SHAFT = { x: -10.5, z: 9, r: 1.45, plank: 3.9 };
+ 
+ // the floor of the halls is level, but for steps up to the fork
+ export const hallHeight = (x) => (x < FORK.x + 1 ? 0.6 * smooth(FORK.x + 1, FORK.x - 1, x) : 0);
+@@ -145,6 +148,7 @@ export const HALL_COLLIDERS = [
+   ...PILLARS.map((p, i) => box(`pillar${i}`, { x: p.x, z: p.z, w: p.w, d: p.w }, { top: 30 })),
+   box('tomb', TOMB, { low: true, top: 1.2 }),
+   circle('well', WELL.x, WELL.z, WELL.r, { low: true, top: 1 }),
++  circle('shaft', SHAFT.x, SHAFT.z, SHAFT.r, { low: true, top: 0.2 }),
+   ...CHAMBER_COLUMNS.map((c, i) => circle(`column${i}`, c.x, c.z, c.r, { top: 10 })),
+ ];
+ // the chamber's doors, when they're barred
+@@ -156,6 +160,8 @@ export const SPOTS = [
+   { zone: 'gate', id: 'doors', x: 0, z: GATE.cliff + 3, r: 2.6 },
+   { zone: 'halls', id: 'tomb', x: CHAMBER.x, z: -hd + 2, r: 2.8 },
+   { zone: 'halls', id: 'east', x: EAST_DOOR.x - 2.5, z: EAST_DOOR.z, r: 2.6 },
++  // on the side: the west end of the plank over the old shaft
++  { zone: 'halls', id: 'plank', x: SHAFT.x - SHAFT.plank / 2 - 0.5, z: SHAFT.z, r: 1.3 },
+ ];
+ export const spot = (id) => SPOTS.find((s) => s.id === id);
+ // in the chamber, where the troll comes in and walks; and where Frodo
+diff --git a/src/components/middleearth/towns/moria/moria.css b/src/components/middleearth/towns/moria/moria.css
+index a695f6a..1639dae 100644
+--- a/src/components/middleearth/towns/moria/moria.css
++++ b/src/components/middleearth/towns/moria/moria.css
+@@ -27,3 +27,9 @@
+   .moria-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
+   .moria-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+ }
++
++/* on the side: the plank over the old shaft, and your balance on it */
++.moria-plank[data-fell] { border-color: rgba(255, 110, 70, 0.7); }
++.moria-balance { position: relative; height: 1.1rem; border-radius: 99px; background: linear-gradient(90deg, rgba(220, 70, 40, 0.55), rgba(255, 255, 255, 0.08) 22%, rgba(255, 255, 255, 0.08) 78%, rgba(220, 70, 40, 0.55)); box-shadow: inset 0 0 0 1px var(--shire-line); }
++.moria-balance-safe { position: absolute; top: 0.3rem; bottom: 0.3rem; border-radius: 99px; background: rgba(150, 200, 255, 0.18); }
++.moria-balance-needle { position: absolute; top: -0.25rem; bottom: -0.25rem; width: 0.3rem; margin-left: -0.15rem; border-radius: 99px; background: #fbf4e2; box-shadow: 0 0 8px rgba(255, 244, 220, 0.8); transition: left 0.06s linear; }
+diff --git a/src/components/middleearth/towns/moria/rules.js b/src/components/middleearth/towns/moria/rules.js
+index 2b3209f..60f3586 100644
+--- a/src/components/middleearth/towns/moria/rules.js
++++ b/src/components/middleearth/towns/moria/rules.js
+@@ -1,7 +1,7 @@
+ // Moria's games, as rules with no drawing, so they can be tested: dodging
+ // the Watcher's tentacles to the Doors, catching what falls down the well,
+ // keeping out of the troll's sight, and the flight down the stair and over
+-// the bridge. ./MoriaWorld.jsx steps them; ./scene.js draws them.
++// the bridge; and on the side, the plank over the old shaft. ./MoriaWorld.jsx steps them; ./scene.js draws them.
+ 
+ export function seeded(seed = 1) {
+   let s = seed % 2147483647 || 1;
+@@ -198,3 +198,68 @@ export function stepFlight(f, dt, { steer = 0, jump = false } = {}, path) {
+   }
+   return ev;
+ }
++
++// ── On the side: mind the well ──
++// In the great hall an old shaft goes down through the floor, with a plank
++// across it, and Pippin (who was only looking) has left Gandalf's pipe lying
++// on the plank right over the middle. Walk out, pick it up, and walk back,
++// keeping your balance: the plank sways, a draught comes up the shaft in
++// gusts, and you lean against it, left or right. Lean too far and the pipe
++// goes down the shaft, and something far below wakes. "Fool of a Baggins!"
++// It's on the side: the story never waits on it.
++//
++// `at` is how far out along the plank you are (0 at the edge, `half` over
++// the middle); `lean` how far you're tipping (−1 left … 1 right, over at
++// either end) and `spin` how fast.
++export const PLANK = { half: 1.75, walk: 0.42, unstable: 1.3, gust: 0.75, step: 0.85, push: 3.2, damp: 1.5, wobble: 0.62 };
++// the task, for the list
++export const SIDE = { id: 'plank', name: 'Mind the well', where: 'An old shaft in the great hall', blurb: 'Pippin left Gandalf’s pipe on the plank across an old shaft. Fetch it back without dropping anything down.', seal: 'mindthewell' };
++
++export function newPlank(seed = 5) {
++  const rand = seeded(seed);
++  return { t: 0, at: 0, back: false, lean: (rand() - 0.5) * 0.1, spin: 0, state: 'on', phase: [0, 1, 2, 3].map(() => rand() * 6.28), shaky: false };
++}
++
++// the draught up the shaft, as a push: a few slow gusts on top of each
++// other, strongest out over the middle
++export const draught = (pl, t = pl.t) => PLANK.gust * (0.6 + 0.6 * (pl.at / PLANK.half)) * (0.55 * Math.sin(1.1 * t + pl.phase[0]) + 0.35 * Math.sin(2.3 * t + pl.phase[1]) + 0.3 * Math.sin(0.53 * t + pl.phase[2]));
++
++// One step. `walk` (on or off) moves you along: out to the pipe, then back;
++// `lean` (−1 … 1) throws your weight that way, so you lean left when you're
++// tipping right. Events: 'wobble' as you start to tip, 'pipe' when you have
++// it, 'won' back at the edge with it, 'fell' over.
++export function stepPlank(pl, dt, { walk = false, lean = 0 } = {}) {
++  const ev = [];
++  if (pl.state !== 'on') return ev;
++  pl.t += dt;
++  // each step rocks the plank a little
++  const steps = walk ? PLANK.step * Math.sin(7.4 * pl.t + pl.phase[3]) : 0;
++  const acc = PLANK.unstable * pl.lean + draught(pl) + steps + PLANK.push * Math.max(-1, Math.min(1, lean)) - PLANK.damp * pl.spin;
++  pl.spin += acc * dt;
++  pl.lean += pl.spin * dt;
++  const shaky = Math.abs(pl.lean) > PLANK.wobble;
++  if (shaky && !pl.shaky) ev.push({ type: 'wobble', side: Math.sign(pl.lean) });
++  pl.shaky = shaky;
++  if (Math.abs(pl.lean) >= 1) {
++    pl.lean = Math.sign(pl.lean);
++    pl.state = 'fell';
++    ev.push({ type: 'fell', pipe: pl.back });
++    return ev;
++  }
++  if (walk) {
++    if (!pl.back) {
++      pl.at = Math.min(PLANK.half, pl.at + PLANK.walk * dt);
++      if (pl.at >= PLANK.half) {
++        pl.back = true;
++        ev.push({ type: 'pipe' });
++      }
++    } else {
++      pl.at = Math.max(0, pl.at - PLANK.walk * dt);
++      if (pl.at <= 0) {
++        pl.state = 'won';
++        ev.push({ type: 'won' });
++      }
++    }
++  }
++  return ev;
++}
+diff --git a/src/components/middleearth/towns/moria/rules.test.js b/src/components/middleearth/towns/moria/rules.test.js
+index cc9628a..f72ca31 100644
+--- a/src/components/middleearth/towns/moria/rules.test.js
++++ b/src/components/middleearth/towns/moria/rules.test.js
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from 'vitest';
+ import { DASH_START, FLIGHT, GATE } from './layout';
+-import { FLY, STONES, TUMBLE, WATCHER, grab, newDash, newFlight, newTumble, stepDash, stepFlight, stepTumble } from './rules';
++import { FLY, PLANK, STONES, TUMBLE, WATCHER, draught, grab, newDash, newFlight, newPlank, newTumble, stepDash, stepFlight, stepPlank, stepTumble } from './rules';
+ 
+ const DT = 1 / 30;
+ const door = { x: 0, z: GATE.cliff + 0.5 };
+@@ -167,3 +167,62 @@ describe('the flight to the bridge', () => {
+     expect(f.lat).toBeCloseTo(FLY.wide.bridge, 5);
+   });
+ });
++
++describe('on the side: mind the well', () => {
++  // out along the plank and back, leaning as `steer` says, for up to 30 s
++  const cross = (steer, { seed = 5, walk = true } = {}) => {
++    const pl = newPlank(seed);
++    const seen = [];
++    const types = [];
++    for (let t = 0; t < 30 && pl.state === 'on'; t += DT) {
++      seen.push({ lean: pl.lean, spin: pl.spin });
++      types.push(...stepPlank(pl, DT, { walk, lean: steer(pl, seen) }).map((e) => e.type));
++    }
++    return { pl, types };
++  };
++  // a hobbit who leans against it, a moment after he feels it go
++  const steady = (pl, seen) => {
++    const p = seen[Math.max(0, seen.length - 1 - Math.round(0.25 / DT))];
++    const v = p.lean + 0.3 * p.spin;
++    return v > 0.1 ? -1 : v < -0.1 ? 1 : 0;
++  };
++
++  it('tips you over if you do nothing, even standing still', () => {
++    for (const seed of [1, 5, 21]) {
++      const { pl, types } = cross(() => 0, { seed, walk: false });
++      expect(pl.state, `seed ${seed}`).toBe('fell');
++      expect(types).toEqual(['wobble', 'fell']);
++      expect(pl.t).toBeLessThan(12);
++    }
++  });
++
++  it('gets the pipe and you back, for a hobbit who leans against it', () => {
++    for (const seed of [1, 5, 21]) {
++      const { pl, types } = cross(steady, { seed });
++      expect(pl.state, `seed ${seed}`).toBe('won');
++      expect(types.filter((x) => x !== 'wobble')).toEqual(['pipe', 'won']);
++      expect(pl.t).toBeCloseTo((PLANK.half * 2) / PLANK.walk, 0);
++    }
++  });
++
++  it('is over quickly if you lean the wrong way', () => {
++    const { pl } = cross((p) => (p.lean > 0 ? 1 : -1));
++    expect(pl.state).toBe('fell');
++    expect(pl.t).toBeLessThan(2);
++  });
++
++  it('only gets you anywhere while you walk, and the draught is worst over the middle', () => {
++    const pl = newPlank(5);
++    for (let t = 0; t < 3; t += DT) stepPlank(pl, DT, { walk: false, lean: -Math.sign(pl.lean + 0.3 * pl.spin) });
++    expect(pl.state).toBe('on');
++    expect(pl.at).toBe(0);
++    const out = cross(steady, { seed: 5 });
++    expect(out.pl.back).toBe(true);
++    // gusting harder out over the middle
++    const p = newPlank(5);
++    const edge = Math.max(...Array.from({ length: 200 }, (_, k) => Math.abs(draught(p, k * 0.1))));
++    p.at = PLANK.half;
++    const middle = Math.max(...Array.from({ length: 200 }, (_, k) => Math.abs(draught(p, k * 0.1))));
++    expect(middle).toBeGreaterThan(edge * 1.5);
++  });
++});
+diff --git a/src/components/middleearth/towns/moria/scene.js b/src/components/middleearth/towns/moria/scene.js
+index 9c8d146..25490c8 100644
+--- a/src/components/middleearth/towns/moria/scene.js
++++ b/src/components/middleearth/towns/moria/scene.js
+@@ -27,8 +27,8 @@ import { createGhosts } from '../ghosts';
+ import { makeTerrain } from '../ground';
+ import { makeFolk } from '../bree/props';
+ import { createMoriaKit } from './props';
+-import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, TOMB, WELL, gateHeight, hallHeight } from './layout';
+-import { TUMBLE } from './rules';
++import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
++import { PLANK, TUMBLE } from './rules';
+ 
+ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+ const TAU = Math.PI * 2;
+@@ -217,6 +217,41 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
+         { shadow: false },
+       ),
+     );
++  // on the side: an old shaft in the floor of the hall with a plank across
++  // it, and Gandalf's pipe lying on the plank over the middle, where Pippin
++  // left it
++  const shaft = (() => {
++    const g = new THREE.Group();
++    g.position.set(SHAFT.x, 0, SHAFT.z);
++    const c = document.createElement('canvas');
++    c.width = c.height = 64;
++    const x = c.getContext('2d');
++    const grad = x.createRadialGradient(32, 32, 2, 32, 32, 32);
++    grad.addColorStop(0, '#000000');
++    grad.addColorStop(0.7, '#020202');
++    grad.addColorStop(1, '#1c1a17');
++    x.fillStyle = grad;
++    x.fillRect(0, 0, 64, 64);
++    const hole = new THREE.Mesh(new THREE.CircleGeometry(SHAFT.r, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
++    hole.position.y = 0.012;
++    const kerb = new THREE.Mesh(new THREE.TorusGeometry(SHAFT.r + 0.06, 0.15, 6, 30).rotateX(Math.PI / 2), darkStone);
++    kerb.scale.y = 0.55;
++    kerb.position.y = 0.05;
++    const plank = new THREE.Mesh(new THREE.BoxGeometry(SHAFT.plank, 0.07, 0.36), new THREE.MeshStandardMaterial({ color: 0x5c4129, roughness: 0.85 }));
++    plank.position.y = 0.17;
++    const pipe = new THREE.Group();
++    const briar = new THREE.MeshStandardMaterial({ color: 0x4a2c18, roughness: 0.6 });
++    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.44, 6).rotateZ(Math.PI / 2), briar);
++    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.08, 10), briar);
++    bowl.position.set(-0.22, 0.03, 0);
++    pipe.add(stem, bowl);
++    pipe.position.set(0.05, 0.22, 0.05);
++    pipe.rotation.y = 0.6;
++    g.add(hole, kerb, plank, pipe);
++    zones.halls.add(g);
++    return { plank, pipe };
++  })();
++
+   // the falling dwarf at the well: his skull, his body, the bucket and chain
+   const bone = new THREE.MeshStandardMaterial({ color: 0xd8d0b8, roughness: 0.8 });
+   const iron = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.5, metalness: 0.7 });
+@@ -391,6 +426,14 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
+       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
+       if (s.held) frodo.body.rotation.z = -0.5;
+       else frodo.body.rotation.z = 0;
++      // out on the plank: tipping as the balance goes, arms out to keep it
++      if (s.mode === 'plank' && s.plank) {
++        const lean = s.plank.lean;
++        frodo.group.position.y += 0.2;
++        frodo.group.rotation.set(lean * 0.55, h.face, 0);
++        frodo.arms[0].rotation.x = 1.2 + lean * 0.4;
++        frodo.arms[1].rotation.x = -1.2 + lean * 0.4;
++      } else frodo.arms[0].rotation.x = 0;
+     }
+     ghosts.update(zone === 'gate' ? (s.travellers ?? []) : [], t, dt, { ringOn: Boolean(s.wearing) });
+ 
+@@ -523,6 +566,13 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
+       return undefined;
+     });
+ 
++    // the plank over the old shaft sways with you, and the pipe lies on it
++    // till you have it (or it's gone down the shaft, or Gandalf has it back)
++    const pl = s.mode === 'plank' ? s.plank : null;
++    shaft.plank.rotation.x = pl ? pl.lean * 0.07 : 0;
++    shaft.pipe.visible = pl ? !pl.back : !s.pipeTaken;
++    shaft.pipe.rotation.x = pl ? pl.lean * 0.07 : 0;
++
+     // ── the camera ──
+     let camAt;
+     let camLook;
+@@ -539,6 +589,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
+     } else if (s.mode === 'talk' && s.camShot) {
+       camAt = wpos(zone, ...s.camShot.at, tmp);
+       camLook = wpos(zone, ...s.camShot.look, look);
++    } else if (s.mode === 'plank') {
++      // from the west end, along the plank: tipping shows left and right
++      camAt = wpos('halls', SHAFT.x - PLANK.half - 3.6, 2.3, SHAFT.z + 0.4, tmp);
++      camLook = wpos('halls', SHAFT.x + 0.4, 0.55, SHAFT.z, look);
+     } else if (s.mode === 'tumble') {
+       camAt = wpos('halls', WELL.x - 3.2, 2.4, WELL.z + 3.2, tmp);
+       camLook = wpos('halls', WELL.x, 0.6, WELL.z, look);
+diff --git a/src/components/middleearth/towns/moria/sounds.js b/src/components/middleearth/towns/moria/sounds.js
+index e88c267..9d8dcca 100644
+--- a/src/components/middleearth/towns/moria/sounds.js
++++ b/src/components/middleearth/towns/moria/sounds.js
+@@ -1,8 +1,9 @@
+ // Moria's sounds, synthesised so nothing is downloaded: the still lake and
+ // the night wind outside, the deep's hum and its drips within; the Watcher
+ // rising and slamming, the Doors grinding and the gate coming down; the
+-// dwarf down the well; the drums; the troll; the stair and the Balrog. All
+-// through the site's master volume.
++// dwarf down the well; the drums; the troll; the stair and the Balrog; and
++// on the side, an old plank creaking over a shaft. All through the site's
++// master volume.
+ 
+ import { audioContext, output } from '../../../../lib/audio';
+ 
+@@ -186,6 +187,14 @@ export function clatter(k = 1) {
+     tone(ac, out, at, { type: 'triangle', f: 600 + Math.random() * 900, gain: 0.03 * k, attack: 0.001, length: 0.2 });
+   }
+ }
++// an old plank, creaking under a hobbit
++export function creak() {
++  const [ac, out] = ready();
++  if (!ac) return;
++  const t = ac.currentTime + 0.01;
++  tone(ac, out, t, { type: 'sawtooth', f: 140 + Math.random() * 40, to: 95, gain: 0.05, attack: 0.04, length: 0.35 });
++  hiss(ac, out, t, { type: 'bandpass', f: 700, q: 6, gain: 0.05, attack: 0.05, length: 0.3 });
++}
+ // boom. Boom. Boom-boom: drums in the deep
+ export function drums() {
+   const [ac, out] = ready();
+diff --git a/src/components/middleearth/towns/rivendell/RivendellWorld.jsx b/src/components/middleearth/towns/rivendell/RivendellWorld.jsx
+index a661a08..8233433 100644
+--- a/src/components/middleearth/towns/rivendell/RivendellWorld.jsx
++++ b/src/components/middleearth/towns/rivendell/RivendellWorld.jsx
+@@ -14,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
+ import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
+ import { BRIDGE, COLLIDERS, COMPANIONS, COURT, GATE, GORGE, HOUSE, HOUSE_DOOR, PATHS, SPOTS, WALLS, WORLD, blocked, castFor, riverX, spot, validAt } from './layout';
+ import { CONVOS, QUESTS, SEAL, SPEAKERS, rivendellProgress } from './story';
+-import { SHARDS, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newShards, placed, speak, stepCouncil, stepReach, tapShard } from './rules';
++import { RIDDLE, SHARDS, SIDE, answer, asked, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newRiddles, newShards, placed, speak, stepCouncil, stepReach, stepRiddles, tapShard } from './rules';
+ import '../../shire/shire.css';
+ import '../bree/bree.css';
+ import './rivendell.css';
+@@ -23,10 +23,12 @@ import './rivendell.css';
+ // the Ford, and play the films' days there, from the shards of Narsil to
+ // the Fellowship setting out. The valley is in ./layout.js, the story in
+ // ./story.js, the games in ./rules.js, the drawing in ./scene.js; this is
+-// the walking, the HUD, the talk and the games. Without 3D, the scenes are
++// the walking, the HUD, the talk and the games, and on the side riddles
++// with Bilbo, which the story never waits on. Without 3D, the scenes are
+ // listed as cards.
+ 
+ const DONE = 'tp-rivendell-done';
++const SIDE_DONE = 'tp-rivendell-side'; // kept apart, so the story's count stays the story's
+ const AT = 'tp-rivendell-at';
+ const sounds = () => import('./sounds');
+ const sfx = () => import('../../../../lib/sfx');
+@@ -35,6 +37,7 @@ const PROMPT = {
+   council: { name: 'The Council of Elrond', act: 'Take your seat' },
+   bilbo: { name: 'Bilbo’s pavilion', act: 'Go in' },
+   gate: { name: 'The south gate', act: 'Set out' },
++  riddles: { name: 'Bilbo, by his fire', act: 'Riddles with Bilbo' },
+ };
+ const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS, blocked });
+ const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
+@@ -58,8 +61,18 @@ export default function RivendellWorld({ onLeave }) {
+     return rivendellProgress(Array.isArray(d) ? d : []).done;
+   });
+   const prog = rivendellProgress(done);
++  const [side, setSide] = useState(() => {
++    const d = local.get(SIDE_DONE, []);
++    return Array.isArray(d) && d.includes(SIDE.id);
++  });
+   const [gl, setGl] = useState('loading');
+   const { unlock } = useAchievements();
++  // the riddles, won: on the side, with their own seal but none on the map
++  const winSide = useCallback(() => {
++    setSide(true);
++    local.set(SIDE_DONE, [SIDE.id]);
++    unlock(SIDE.seal);
++  }, [unlock]);
+   const complete = useCallback(
+     (id) => {
+       setDone((d) => {
+@@ -75,12 +88,12 @@ export default function RivendellWorld({ onLeave }) {
+   const world = three.on && gl !== 'failed' && gl !== 'lost';
+   return (
+     <section className="shire-world riv-world" aria-labelledby="riv-title" data-mode={world ? '3d' : 'cards'}>
+-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
++      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
+     </section>
+   );
+ }
+ 
+-function World({ prog, done, complete, gl, setGl, onLeave }) {
++function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
+   const trav = useTravellers('rivendell', gl === 'on');
+   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+@@ -122,6 +135,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       reach: null,
+       party: newParty(),
+       busy: false,
++      riddles: null,
+     };
+   }
+   const progRef = useRef(prog);
+@@ -267,7 +281,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         s.argued = 0;
+         startTalk('council', 'council');
+       } else if (id === 'bilbo') startTalk('bilbo', 'bilbo');
+-      else if (id === 'gate') {
++      else if (id === 'riddles') {
++        // on the side: riddles by Bilbo's fire
++        s.mode = 'riddles';
++        s.riddles = newRiddles(Math.floor(Math.random() * 1e6) + 1);
++        sounds().then((x) => x.chime?.(1));
++        say('Bilbo lights a fresh candle. “Riddles, my lad! Answer before it burns down, mind.”');
++      } else if (id === 'gate') {
+         if (p.finished) return onLeave?.();
+         startTalk('gate', 'leaving');
+       } else if (COMPANIONS.some((c) => c.id === id)) {
+@@ -394,6 +414,52 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     [complete, say, later, outside],
+   );
+ 
++  // ── on the side: riddles with Bilbo ──
++  const leaveRiddles = useCallback(() => {
++    const s = sim.current;
++    if (s.mode !== 'riddles') return;
++    s.riddles = null;
++    outside({ x: spot('bilbo').x + 0.8, z: spot('bilbo').z, face: 0 });
++  }, [outside]);
++  // (once, when a game's just ended)
++  const riddleOver = useCallback(
++    (g) => {
++      if (g.told || g.state === 'ask') return;
++      g.told = true;
++      if (g.state === 'won') {
++        winSide();
++        api.current?.fx('joined');
++        sounds().then((x) => x.chime?.(5));
++        say('“Well! You’d have beaten Gollum in half the time,” says Bilbo, and laughs till he coughs. “Don’t tell him I said so.”');
++        later(() => sim.current?.riddles === g && leaveRiddles(), 4200);
++      } else if (g.state === 'lost') {
++        say('“Ha! Two against you, and the game’s mine,” says Bilbo. “Another candle?”', true);
++        later(() => sim.current?.riddles === g && leaveRiddles(), 3400);
++      }
++    },
++    [winSide, say, later, leaveRiddles],
++  );
++  const doRiddle = useCallback(
++    (i) => {
++      const s = sim.current;
++      const g = s.riddles;
++      if (s.mode !== 'riddles' || !g || g.state !== 'ask') return;
++      const q = asked(g);
++      const r = answer(g, i);
++      if (!r) return;
++      if (r === 'right') {
++        sounds().then((x) => x.chime?.(Math.min(5, g.right)));
++        say(['“Right you are!”', '“Hm! Quite right.”', '“Bless me, you know that one.”', '“Right again!”', '“Right!”'][(g.right - 1) % 5]);
++      } else {
++        sounds().then((x) => x.clink?.(false));
++        say(`“No, no! ${q.a[0]}.”`, true);
++      }
++      riddleOver(g);
++      setHud((h) => ({ ...h, riddles: { at: g.at, right: g.right, wrong: g.wrong, state: g.state, candle: g.candle } }));
++    },
++    [say, riddleOver],
++  );
++
+   const doAct = useCallback(() => {
+     const s = sim.current;
+     if (s.mode === 'council') return doStand();
+@@ -437,6 +503,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         }
+         return;
+       }
++      if (s.mode === 'riddles') {
++        if (/^[1-4]$/.test(k)) {
++          e.preventDefault();
++          doRiddle(Number(k) - 1);
++        } else if (k === 'Escape') leaveRiddles();
++        return;
++      }
+       if (s.mode === 'narsil' && /^[1-6]$/.test(k)) {
+         e.preventDefault();
+         doShard(Number(k) - 1);
+@@ -462,7 +535,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     };
+     window.addEventListener('keydown', down);
+     return () => window.removeEventListener('keydown', down);
+-  }, [live, putRing, talkOnward, doAct, doShard]);
++  }, [live, putRing, talkOnward, doAct, doShard, doRiddle, leaveRiddles]);
+ 
+   // ── every frame ──
+   useFrameLoop((ms) => {
+@@ -562,6 +635,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       }
+     }
+ 
++    // on the side: Bilbo's candle, burning down on each riddle
++    if (s.mode === 'riddles' && s.riddles) {
++      const g = s.riddles;
++      for (const e of stepRiddles(g, dt)) {
++        if (e.type === 'out') {
++          sounds().then((x) => x.clink?.(false));
++          say('The candle gutters out. “Time’s up!” says Bilbo, and lights another.', true);
++        }
++      }
++      riddleOver(g);
++    }
++
+     // the Ring: the Eye comes nearer while it's on
+     s.gaze = stepGaze(s.gaze, s.wearing, dt);
+     if (s.wearing && s.gaze >= 1) {
+@@ -576,6 +661,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       const sp = nearest(SPOTS, s.h.x, s.h.z);
+       const ok = sp && ((sp.id === 'narsil' && p.next === 'narsil') || (sp.id === 'council' && p.next === 'council') || (sp.id === 'bilbo' && p.next === 'bilbo') || (sp.id === 'gate' && ((gathering && gathered(s.party, COMPANIONS)) || p.finished)));
+       spotHere = ok ? sp.id : null;
++      // on the side: Bilbo's always glad of a game of riddles
++      if (!spotHere && sp?.id === 'bilbo' && p.next !== 'awake' && p.next !== 'bilbo') spotHere = 'riddles';
+       if (!spotHere && gathering) spotHere = nearest(COMPANIONS.filter((c) => !s.party.joined.includes(c.id)), s.h.x, s.h.z, 2.6)?.id ?? null;
+     }
+     s.near = spotHere;
+@@ -625,6 +712,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           shards: s.shards,
+           stood: s.stood,
+           reach: s.reach,
++          riddles: s.riddles,
+           stepT: s.stepT,
+           wearing: s.wearing,
+           gaze: s.gaze,
+@@ -651,7 +739,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     const c = s.council;
+     const r = s.reach;
+     const sh = s.shards;
+-    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), c ? Math.round(c.heat * 30) : '', c?.spoken, s.stood, r ? Math.round(r.hand * 20) : '', r?.state, sh ? sh.order.join() + sh.held : '', s.party.joined.length].join('|');
++    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), c ? Math.round(c.heat * 30) : '', c?.spoken, s.stood, r ? Math.round(r.hand * 20) : '', r?.state, sh ? sh.order.join() + sh.held : '', s.party.joined.length, s.riddles ? `${s.riddles.at}.${s.riddles.state}.${Math.ceil(s.riddles.candle * 32)}` : ''].join('|');
+     if (key !== hudKey.current) {
+       hudKey.current = key;
+       setHud({
+@@ -667,6 +755,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         reach: r ? { hand: r.hand, state: r.state } : null,
+         shards: sh ? { order: [...sh.order], held: sh.held, solved: sh.solved } : null,
+         joined: s.party.joined.length,
++        riddles: s.riddles ? { at: s.riddles.at, right: s.riddles.right, wrong: s.riddles.wrong, state: s.riddles.state, candle: s.riddles.candle } : null,
+       });
+     }
+     if (s.person && bubbleRef.current) {
+@@ -861,6 +950,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         </div>
+       )}
+ 
++      {/* on the side: riddles with Bilbo */}
++      {mode === 'riddles' && hud.riddles && (
++        <RiddlePanel game={sim.current.riddles} hud={hud.riddles} touch={touch} onAnswer={doRiddle} onLeave={leaveRiddles} />
++      )}
++
+       {mode === 'end' && (
+         <div className="shire-panel riv-end" role="dialog" aria-label="The Fellowship sets out">
+           <p className="shire-panel-title">The Fellowship sets out</p>
+@@ -878,7 +972,56 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+ 
+       {walking && touch && <Stick onStick={onStick} />}
+ 
+-      {list && <QuestList title="Things to do in Rivendell" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'awake' && sim.current.mode === 'walk'} />}
++      {list && (
++        <QuestList
++          title="Things to do in Rivendell"
++          quests={prog.quests}
++          next={prog.next}
++          side={[{ ...SIDE, done: side }]}
++          onClose={() => setList(false)}
++          onGo={travel}
++          canGo={(q) => (q.id === SIDE.id ? prog.next !== 'awake' && prog.next !== 'bilbo' && sim.current.mode === 'walk' : q.open && !q.done && q.id !== 'awake' && sim.current.mode === 'walk')}
++        />
++      )}
++    </div>
++  );
++}
++
++// Bilbo's riddle, his candle, and the answers to pick from (1–4).
++function RiddlePanel({ game, hud, touch, onAnswer, onLeave }) {
++  const q = game ? asked(game) : null;
++  const over = hud.state !== 'ask';
++  return (
++    <div className="shire-panel riv-game riv-riddles" role="group" aria-label="Riddles with Bilbo">
++      <p className="shire-panel-title">
++        Riddle {Math.min(RIDDLE.ask, hud.at + 1)} of {RIDDLE.ask}
++      </p>
++      <p className="shire-panel-say riv-riddle" aria-live="polite">
++        {over ? (hud.state === 'won' ? '“Well played, my lad. Well played.”' : '“The game’s mine, I think!”') : q?.q}
++      </p>
++      <div className="shire-meter riv-meter-candle" role="meter" aria-label="Bilbo’s candle" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.candle * 100) / 100}>
++        <span className="shire-meter-label">The candle</span>
++        <span className="shire-meter-bar">
++          <span style={{ transform: `scaleX(${over ? 0 : hud.candle})` }} />
++        </span>
++        <span className="shire-meter-time">
++          {hud.right} right · {hud.wrong} of {RIDDLE.lose} against
++        </span>
++      </div>
++      {!over && q && (
++        <div className="town-choices riv-answers">
++          {q.shown.map((a, i) => (
++            <button key={a} type="button" className="btn btn-ghost btn-sm town-choice" onClick={() => onAnswer(i)}>
++              {!touch && <kbd>{i + 1}</kbd>} {a}
++            </button>
++          ))}
++        </div>
++      )}
++      <div className="shire-panel-row">
++        <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
++          {over ? 'Back out' : 'Enough riddles'} {!touch && <kbd>Esc</kbd>}
++        </button>
++      </div>
+     </div>
+   );
+ }
+@@ -936,7 +1079,7 @@ function drawValley(g, at) {
+ }
+ 
+ // Without 3D: the scenes, as cards.
+-function Cards({ prog, three, gl, retry }) {
++function Cards({ prog, side, three, gl, retry }) {
+   return (
+     <div className="shell shire-cards-wrap">
+       <h1 id="riv-title" className="title">
+@@ -967,6 +1110,13 @@ function Cards({ prog, three, gl, retry }) {
+             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+           </li>
+         ))}
++        <li data-side>
++          <p className="shire-list-side">On the side</p>
++          <p className="shire-list-name">{SIDE.name}</p>
++          <p className="shire-list-sub">{SIDE.where}</p>
++          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
++          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
++        </li>
+       </ul>
+     </div>
+   );
+diff --git a/src/components/middleearth/towns/rivendell/rivendell.css b/src/components/middleearth/towns/rivendell/rivendell.css
+index 7b36fab..56b572d 100644
+--- a/src/components/middleearth/towns/rivendell/rivendell.css
++++ b/src/components/middleearth/towns/rivendell/rivendell.css
+@@ -32,3 +32,13 @@
+   .riv-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+   .riv-shard { height: 2.6rem; }
+ }
++
++/* on the side: riddles with Bilbo, by his candle */
++.riv-riddles { width: min(30rem, calc(100% - 1.4rem)); }
++.riv-riddle { font-family: 'Cinzel', Georgia, serif; font-style: italic; line-height: 1.45; }
++.riv-meter-candle .shire-meter-bar span { background: linear-gradient(90deg, #ff9a2a, #ffe6a0); }
++.riv-meter-candle .shire-meter-time { min-width: auto; font-size: 0.66rem; letter-spacing: 0.02em; }
++.riv-answers { grid-template-columns: 1fr 1fr; }
++@media (max-width: 639px) {
++  .riv-answers { grid-template-columns: 1fr; }
++}
+diff --git a/src/components/middleearth/towns/rivendell/rules.js b/src/components/middleearth/towns/rivendell/rules.js
+index 75399dc..e395cb9 100644
+--- a/src/components/middleearth/towns/rivendell/rules.js
++++ b/src/components/middleearth/towns/rivendell/rules.js
+@@ -1,7 +1,8 @@
+ // Rivendell's games, as rules with no drawing, so they can be tested: the
+ // shards of Narsil laid back in order, the Council's argument and the
+ // moment to stand, Bilbo's hand and the Ring, and the Nine falling in
+-// behind you. ./RivendellWorld.jsx steps them; ./scene.js draws them.
++// behind you; and on the side, riddles with Bilbo. ./RivendellWorld.jsx
++// steps them; ./scene.js draws them.
+ 
+ // a small seeded random, so a shuffle or a lunge is the same each test
+ export function seeded(seed = 1) {
+@@ -179,3 +180,80 @@ export function followAt(p, n) {
+   const end = p.trail.at(-1);
+   return end ? { x: end.x, z: end.z, face: 0 } : null;
+ }
++
++// ── On the side: riddles with Bilbo ──
++// Bilbo, by the fire in his pavilion, has a riddle or two left over from a
++// game he once played in the dark under the Misty Mountains (he tells them
++// his own way now). Answer each before his candle burns down: a wrong
++// answer, or the candle out, counts against you, and two of those and he's
++// won. Get through five with no more than one against you and you've beaten
++// him. It's on the side: the story never waits on it.
++export const RIDDLE = { ask: 5, lose: 2, candle: 16 };
++// the task, for the list
++export const SIDE = { id: 'riddles', name: 'Riddles in the dark', where: 'Bilbo’s pavilion', blurb: 'Bilbo has a riddle or two left over from the Misty Mountains. Answer five before his candle burns down.', seal: 'riddlesinthedark' };
++// each with its answer first, then three it isn't
++export const RIDDLES = [
++  { id: 'mountain', q: 'My roots are hidden under the land, I’m taller than the trees that stand; I climb for ever into the sky, and never grow an inch. What am I?', a: ['A mountain', 'An oak', 'A tower', 'A cloud'] },
++  { id: 'teeth', q: 'Thirty white horses on a red hill: first they champ, then they stamp, then they stand still.', a: ['Teeth', 'Snowflakes', 'Sheep on a hillside', 'Candles on a cake'] },
++  { id: 'wind', q: 'I’ve no mouth, and yet I howl; no wings, and yet I fly; no teeth, and yet I bite. What am I?', a: ['The wind', 'A ghost', 'A wolf', 'A bat'] },
++  { id: 'dark', q: 'The more of me there is, the less you see. I fill a cave to the brim, and I run from a single candle.', a: ['The dark', 'Smoke', 'Fog', 'Water'] },
++  { id: 'egg', q: 'No hinge, no lid, no key, no seam; and yet inside, a golden gleam.', a: ['An egg', 'A dragon’s hoard', 'A locked chest', 'An acorn'] },
++  { id: 'fish', q: 'It wears a coat of mail but never goes to war; it drinks all day and never thirsts; it lives, and never draws a breath.', a: ['A fish', 'A knight', 'A frog', 'A river'] },
++  { id: 'time', q: 'It eats the iron and gnaws the stone, wears the mountain down to the bone, brings down kings and ruins towns, and no one ever sees it come.', a: ['Time', 'Rust', 'A dragon', 'Rain'] },
++  { id: 'hole', q: 'A round green door, a garden gate, a pantry full, and never late for second breakfast. Where am I?', a: ['In a hobbit-hole', 'In an inn', 'In a mill', 'In a barn'] },
++];
++
++// A game of riddles: which ones, in what order, and each one's answers
++// shuffled, all from `seed`.
++const shuffle = (list, rand) => {
++  for (let i = list.length - 1; i > 0; i--) {
++    const j = Math.floor(rand() * (i + 1));
++    [list[i], list[j]] = [list[j], list[i]];
++  }
++  return list;
++};
++export function newRiddles(seed = 11) {
++  const rand = seeded(seed);
++  const order = shuffle(RIDDLES.map((_, i) => i), rand).slice(0, RIDDLE.ask);
++  const game = { rand, order, at: 0, right: 0, wrong: 0, candle: 1, opts: [], state: 'ask' };
++  shuffleOpts(game);
++  return game;
++}
++function shuffleOpts(g) {
++  g.opts = shuffle([0, 1, 2, 3], g.rand);
++}
++// the riddle being asked, and its answers in the order they're shown
++export function asked(g) {
++  const r = RIDDLES[g.order[g.at]];
++  return r ? { ...r, shown: g.opts.map((i) => r.a[i]) } : null;
++}
++function settle(g, ok) {
++  if (ok) g.right += 1;
++  else g.wrong += 1;
++  if (g.wrong >= RIDDLE.lose) g.state = 'lost';
++  else if (g.at + 1 >= g.order.length) g.state = 'won';
++  else {
++    g.at += 1;
++    g.candle = 1;
++    shuffleOpts(g);
++  }
++}
++// Answer with the i-th of the answers shown: 'right' or 'wrong', or null
++// if the game's over.
++export function answer(g, i) {
++  if (g.state !== 'ask') return null;
++  const ok = g.opts[i] === 0;
++  settle(g, ok);
++  return ok ? 'right' : 'wrong';
++}
++// The candle burns: an event { type: 'out' } if it goes out on a riddle
++// (that counts against you), then 'won' or 'lost' if that ends it.
++export function stepRiddles(g, dt) {
++  if (g.state !== 'ask') return [];
++  g.candle = Math.max(0, g.candle - dt / RIDDLE.candle);
++  if (g.candle > 0) return [];
++  settle(g, false);
++  const ev = [{ type: 'out' }];
++  if (g.state !== 'ask') ev.push({ type: g.state });
++  return ev;
++}
+diff --git a/src/components/middleearth/towns/rivendell/rules.test.js b/src/components/middleearth/towns/rivendell/rules.test.js
+index 07833a1..de4fa18 100644
+--- a/src/components/middleearth/towns/rivendell/rules.test.js
++++ b/src/components/middleearth/towns/rivendell/rules.test.js
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { COUNCIL, FOLLOW, REACH, SHARDS, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newShards, placed, speak, stepCouncil, stepReach, tapShard } from './rules';
++import { COUNCIL, FOLLOW, REACH, RIDDLE, RIDDLES, SHARDS, answer, asked, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newRiddles, newShards, placed, speak, stepCouncil, stepReach, stepRiddles, tapShard } from './rules';
+ 
+ describe('the shards of Narsil', () => {
+   it('starts scattered, and the same way for the same seed', () => {
+@@ -137,3 +137,60 @@ describe('the Nine', () => {
+     expect(p.trail.length).toBeLessThanOrEqual(FOLLOW.keep);
+   });
+ });
++
++describe('on the side: riddles with Bilbo', () => {
++  // the shown answer that's right, for the riddle being asked
++  const right = (g) => g.opts.indexOf(0);
++  const wrongOne = (g) => g.opts.findIndex((k) => k !== 0);
++
++  it('has riddles enough, each with one answer and three it isn’t', () => {
++    expect(RIDDLES.length).toBeGreaterThanOrEqual(RIDDLE.ask);
++    for (const r of RIDDLES) {
++      expect(r.a).toHaveLength(4);
++      expect(new Set(r.a).size).toBe(4);
++      expect(r.q.length).toBeGreaterThan(20);
++    }
++  });
++
++  it('asks five different ones, the same way for the same seed', () => {
++    const g = newRiddles(5);
++    expect(new Set(g.order).size).toBe(RIDDLE.ask);
++    expect(newRiddles(5).order).toEqual(g.order);
++    expect(newRiddles(5).opts).toEqual(g.opts);
++    const q = asked(g);
++    expect(q.shown).toHaveLength(4);
++    expect(q.shown[right(g)]).toBe(q.a[0]);
++  });
++
++  it('is won by a hobbit who knows them all, or misses just one', () => {
++    const g = newRiddles(9);
++    for (let i = 0; i < RIDDLE.ask; i++) expect(answer(g, right(g))).toBe('right');
++    expect(g.state).toBe('won');
++    expect(answer(g, 0)).toBe(null);
++    const h = newRiddles(9);
++    answer(h, wrongOne(h));
++    while (h.state === 'ask') answer(h, right(h));
++    expect(h.state).toBe('won');
++    expect(h.right).toBe(RIDDLE.ask - 1);
++  });
++
++  it('is lost on the second wrong answer', () => {
++    const g = newRiddles(2);
++    expect(answer(g, wrongOne(g))).toBe('wrong');
++    answer(g, right(g));
++    expect(answer(g, wrongOne(g))).toBe('wrong');
++    expect(g.state).toBe('lost');
++  });
++
++  it('counts the candle going out against you', () => {
++    const g = newRiddles(4);
++    const ev = [];
++    for (let t = 0; t < RIDDLE.candle * 2 + 1 && g.state === 'ask'; t += 0.1) ev.push(...stepRiddles(g, 0.1).map((e) => e.type));
++    expect(ev).toEqual(['out', 'out', 'lost']);
++    // a fresh candle for each riddle
++    const h = newRiddles(4);
++    stepRiddles(h, RIDDLE.candle * 0.8);
++    answer(h, right(h));
++    expect(h.candle).toBe(1);
++  });
++});
+diff --git a/src/components/middleearth/towns/rivendell/scene.js b/src/components/middleearth/towns/rivendell/scene.js
+index ef727c9..c90b24a 100644
+--- a/src/components/middleearth/towns/rivendell/scene.js
++++ b/src/components/middleearth/towns/rivendell/scene.js
+@@ -154,6 +154,19 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
+   const house = place(kit.house(), HOUSE, padY('house'));
+   const colonnade = place(kit.colonnade(), COLONNADE, padY('colonnade'));
+   const pavilion = place(kit.pavilion(), PAVILION, padY('pavilion'));
++  // on the side: Bilbo's riddle candle, on the desk in front of him, burning
++  // down as each riddle waits for its answer
++  const riddleCandle = (() => {
++    const g = new THREE.Group();
++    const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.028, 1, 10).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0xf2e8cc, roughness: 0.6 }));
++    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.06, 8).translate(0, 0.03, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.9, 0.7) }));
++    g.add(wax, flame);
++    pavilion.group.updateMatrixWorld(true);
++    g.position.copy(pavilion.desk).add(V(0.06, 0, -0.32)).applyMatrix4(pavilion.group.matrixWorld);
++    g.visible = false;
++    scene.add(g);
++    return { g, wax, flame };
++  })();
+   const court = place(kit.court(), COURT, padY('court'));
+   place(kit.gate(), GATE);
+   place(kit.bridge(BRIDGE.len), { x: BRIDGE.x, z: BRIDGE.z, turn: 0 }, BRIDGE.y0);
+@@ -475,7 +488,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
+         if (s.reach.state === 'lunge') p.head.rotation.z = Math.sin(t * 30) * 0.06;
+         continue;
+       }
+-      pose(p, t + c.x, { moving: false, talk: s.talk === c.id || s.speaker === c.id ? 1 : 0 });
++      pose(p, t + c.x, { moving: false, talk: s.talk === c.id || s.speaker === c.id || (c.id === 'bilbo' && s.mode === 'riddles') ? 1 : 0 });
+       if (p.seated) sit(p);
+     }
+     // the Nine: about the valley until they join, then behind you
+@@ -550,12 +563,24 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
+       hereRing.scale.setScalar(1 + Math.sin(t * 4) * 0.06);
+     }
+ 
++    // Bilbo's riddle candle, as far burnt down as the riddle's gone
++    riddleCandle.g.visible = s.mode === 'riddles';
++    if (riddleCandle.g.visible) {
++      const k = s.riddles?.state === 'ask' ? s.riddles.candle : 0;
++      const h = 0.03 + 0.16 * k;
++      riddleCandle.wax.scale.y = h;
++      riddleCandle.flame.position.y = h;
++      riddleCandle.flame.visible = k > 0;
++      riddleCandle.flame.scale.set(1, 0.85 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08, 1);
++    }
++
+     // ── the lamps, at dusk; the room's sunlight ──
+     if (inside) lights.push([roomAt(room.sun), warm, 14, 12]);
+     else {
+       const lit = A.night;
+       if (lit > 0.05) for (const l of lampAt) lights.push([l, warm, 5 * lit, 10]);
+       if (s.mode === 'bilbo') lights.push([toWorld(pavilion, pavilion.desk).add(V(0, 1.2, 0)), warm, 4, 6]);
++      if (s.mode === 'riddles') lights.push([riddleCandle.g.position.clone().add(V(0, 0.3, 0)), warm, 1.5 + 3 * (s.riddles?.candle ?? 0), 5]);
+     }
+     if (s.mode === 'council' && A.eye > 0.3) lights.push([ring.group.position.clone().add(V(0, 0.6, 0)), new THREE.Color(1, 0.4, 0.1), A.eye * 4, 6]);
+     pool.forEach((l, i) => {
+@@ -606,7 +631,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
+       const at = shards.group.position;
+       camAt = tmp.copy(at).add(V(0, 1.8, 2.6));
+       camLook = look.copy(at).add(V(0, 0.2, 0));
+-    } else if (s.mode === 'bilbo') {
++    } else if (s.mode === 'bilbo' || s.mode === 'riddles') {
+       // in front of him, across the desk (he faces the pavilion's +x)
+       camAt = tmp.copy(toWorld(pavilion, V(2.2, 2.1, -0.4)));
+       camLook = look.copy(toWorld(pavilion, V(-0.4, 1.3, -1)));
+diff --git a/src/components/middleearth/towns/weathertop/WeathertopWorld.jsx b/src/components/middleearth/towns/weathertop/WeathertopWorld.jsx
+index 36d529c..65d215b 100644
+--- a/src/components/middleearth/towns/weathertop/WeathertopWorld.jsx
++++ b/src/components/middleearth/towns/weathertop/WeathertopWorld.jsx
+@@ -14,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
+ import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
+ import { BED, COLLIDERS, DELL, GAPS, HILL, PATCHES, PLANTS, RUIN, SAM_START, SPOTS, START, STAIR, WALLS, WORLD, castFor, spot, validAt } from './layout';
+ import { CONVOS, QUESTS, SEAL, SPEAKERS, weathertopProgress } from './story';
+-import { ATHELAS, BRAND, FIRE, RIDE, newBrand, newFire, newHunt, newRide, pick, pickable, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
++import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
+ import '../../shire/shire.css';
+ import '../bree/bree.css';
+ import './weathertop.css';
+@@ -23,9 +23,11 @@ import './weathertop.css';
+ // dusk as Frodo, and play the night there as the films tell it. The land
+ // is in ./layout.js, the story in ./story.js, the games in ./rules.js, the
+ // drawing in ./scene.js; this is the walking, the HUD, the talk and the
+-// games. Without 3D, the scenes are listed as cards.
++// games, and on the side Gandalf's mark on the stone at the top, which the
++// story never waits on. Without 3D, the scenes are listed as cards.
+ 
+ const DONE = 'tp-weathertop-done';
++const SIDE_DONE = 'tp-weathertop-side'; // kept apart, so the story's count stays the story's
+ const AT = 'tp-weathertop-at';
+ const sounds = () => import('./sounds');
+ const shireSounds = () => import('../../shire/sounds');
+@@ -37,6 +39,7 @@ const PROMPT = {
+   camp: { name: 'The hobbits’ fire, in the dell', act: 'Wake up' },
+   wounded: { name: 'Strider, by Frodo', act: 'Give him the kingsfoil' },
+   leave: { name: 'The road to Rivendell', act: 'On to Rivendell' },
++  mark: { name: 'The broken plinth', act: 'Look at the stone' },
+ };
+ const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
+ const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
+@@ -49,8 +52,18 @@ export default function WeathertopWorld({ onLeave }) {
+     return weathertopProgress(Array.isArray(d) ? d : []).done;
+   });
+   const prog = weathertopProgress(done);
++  const [side, setSide] = useState(() => {
++    const d = local.get(SIDE_DONE, []);
++    return Array.isArray(d) && d.includes(SIDE.id);
++  });
+   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+   const { unlock } = useAchievements();
++  // the mark, read: on the side, with its own seal but none on the map
++  const winSide = useCallback(() => {
++    setSide(true);
++    local.set(SIDE_DONE, [SIDE.id]);
++    unlock(SIDE.seal);
++  }, [unlock]);
+   const complete = useCallback(
+     (id) => {
+       setDone((d) => {
+@@ -66,18 +79,19 @@ export default function WeathertopWorld({ onLeave }) {
+   const world = three.on && gl !== 'failed' && gl !== 'lost';
+   return (
+     <section className="shire-world wt-world" aria-labelledby="wt-title" data-mode={world ? '3d' : 'cards'}>
+-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
++      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
+     </section>
+   );
+ }
+ 
+-function World({ prog, done, complete, gl, setGl, onLeave }) {
++function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
+   // other travellers online on Weathertop, as ghosts (../useTravellers)
+   const trav = useTravellers('weathertop', gl === 'on');
+   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+   const canvas = useRef(null);
+   const map = useRef(null);
++  const stone = useRef(null);
+   const api = useRef(null);
+   const sim = useRef(null);
+   if (!sim.current) {
+@@ -117,12 +131,16 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       stepT: 0,
+       flood: 0,
+       busy: false,
++      mark: null,
++      cursor: { u: 0.5, v: 0.5, at: -9 },
+     };
+   }
+   const progRef = useRef(prog);
+   progRef.current = prog;
+   const doneRef = useRef(done);
+   doneRef.current = done;
++  const sideRef = useRef(side);
++  sideRef.current = side;
+   const [hud, setHud] = useState({ mode: 'walk', near: null, moved: false });
+   const hudKey = useRef('');
+   const [toast, setToast] = useState(null);
+@@ -289,12 +307,20 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       if (id === 'summit') {
+         if (p.next === 'climb') startTalk('amonsul');
+         else if (p.next === 'brand') startBrand();
++      } else if (id === 'mark') {
++        // on the side: up to the plinth, and the lichen on its east face
++        const s = sim.current;
++        s.mode = 'mark';
++        s.mark = newMark();
++        s.cursor = { u: 0.5, v: 0.5, at: -9 };
++        s.h = newWalker({ x: spot('mark').x, z: spot('mark').z, face: Math.atan2(spot('mark').z, -spot('mark').x) });
++        say('Lichen on the old stone, and under it… scratches? Scrape it away: drag across the stone, or steer with the arrows.');
+       } else if (id === 'camp') startTalk('supper');
+       else if (id === 'wounded') startTalk('arwen');
+       setList(false);
+       return undefined;
+     },
+-    [onLeave, startTalk, startBrand],
++    [onLeave, startTalk, startBrand, say],
+   );
+ 
+   // a reply picked, or on to the next line
+@@ -406,6 +432,49 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     if (hit.length) api.current?.fx('thrust');
+   }, []);
+ 
++  // ── on the side: Gandalf's mark ──
++  const leaveMark = useCallback(() => {
++    const s = sim.current;
++    if (s.mode !== 'mark') return;
++    s.mode = 'walk';
++    s.mark = null;
++    s.yaw = behindYaw(s.h.face) + 0.9;
++    s.dragAt = s.t;
++  }, []);
++  // scrape at (u, v) on the stone, as hard as `amount`
++  const scrapeAt = useCallback((u, v, amount) => {
++    const s = sim.current;
++    const m = s.mark;
++    if (s.mode !== 'mark' || !m || m.state !== 'scrub') return;
++    const off = scrape(m, u, v, amount);
++    if (off > 0.05 && s.t - (s.scrapeAt ?? -9) > 0.12) {
++      s.scrapeAt = s.t;
++      sounds().then((x) => x.scrape?.());
++    }
++    if (m.state === 'read') {
++      sounds().then((x) => x.found?.(1));
++      say('There: a rune, and strokes cut after it. Count them. What does it say?');
++    }
++  }, [say]);
++  const doRead = useCallback(
++    (i) => {
++      const s = sim.current;
++      const m = s.mark;
++      if (s.mode !== 'mark' || !m) return;
++      const r = readMark(m, i);
++      if (r == null) return;
++      if (!r) {
++        say('That’s not it. Count the strokes again.', true);
++        return;
++      }
++      winSide();
++      api.current?.fx('mark');
++      say('G, for Gandalf, and three strokes: he was here on the third of October, three days ahead of you. Something drove him on.');
++      later(() => sim.current?.mode === 'mark' && leaveMark(), 3800);
++    },
++    [say, later, winSide, leaveMark],
++  );
++
+   const doAct = useCallback(() => {
+     const s = sim.current;
+     if (s.mode === 'brand') return doThrust();
+@@ -466,6 +535,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         else if (k === 'm' || k === 'M') setList((v) => !v);
+         return;
+       }
++      if (s.mode === 'mark') {
++        if (k === 'Escape') leaveMark();
++        else if (/^[1-3]$/.test(k) && s.mark?.state === 'read') doRead(Number(k) - 1);
++        if (moveOf(e)) e.preventDefault();
++        return;
++      }
+       if (s.mode === 'brand' && (k === ' ' || k === 'e' || k === 'E') && !onButton) {
+         e.preventDefault();
+         if (!e.repeat) doThrust();
+@@ -476,7 +551,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     };
+     window.addEventListener('keydown', down);
+     return () => window.removeEventListener('keydown', down);
+-  }, [live, putRing, talkOnward, doAct, doThrust]);
++  }, [live, putRing, talkOnward, doAct, doThrust, leaveMark, doRead]);
+ 
+   // ── every frame ──
+   useFrameLoop((ms) => {
+@@ -665,11 +740,27 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+       say('The Eye. You pull the Ring off, shaking.', true);
+     }
+ 
++    // on the side: scraping at Gandalf's mark, the arrows (or a pad's
++    // stick) steering the scraper across the stone
++    if (s.mode === 'mark' && s.mark) {
++      const du = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + (pad?.lx ?? 0);
++      const dv = (held('down') ? 1 : 0) - (held('up') ? 1 : 0) + (pad?.ly ?? 0);
++      if (Math.hypot(du, dv) > 0.1) {
++        const c = s.cursor;
++        c.u = Math.max(0, Math.min(1, c.u + du * dt * 0.5));
++        c.v = Math.max(0, Math.min(1, c.v + dv * dt * 0.8));
++        c.at = s.t;
++        scrapeAt(c.u, c.v, dt * 2.6);
++      }
++      if (pressed('b')) leaveMark();
++      drawStone(stone.current, s.mark, s.t - s.cursor.at < 2 ? s.cursor : null);
++    }
++
+     // what's here, and who's here
+     let spotHere = null;
+     if (s.mode === 'walk' && !s.fire) {
+       const sp = nearest(SPOTS, s.h.x, s.h.z);
+-      const ok = sp && ((sp.id === 'summit' && (p.next === 'climb' || p.next === 'brand')) || (sp.id === 'camp' && p.next === 'supper') || (sp.id === 'wounded' && p.next === 'ford') || (sp.id === 'leave' && p.finished));
++      const ok = sp && ((sp.id === 'summit' && (p.next === 'climb' || p.next === 'brand')) || (sp.id === 'camp' && p.next === 'supper') || (sp.id === 'wounded' && p.next === 'ford') || (sp.id === 'leave' && p.finished) || (sp.id === 'mark' && p.as === 'frodo' && p.next !== 'brand'));
+       spotHere = ok ? sp.id : null;
+     }
+     s.near = spotHere;
+@@ -718,6 +809,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           brand: s.brand,
+           ride: s.ride,
+           flood: s.mode === 'end' ? 1 : s.flood,
++          markShown: s.mark ? Math.max(revealed(s.mark), sideRef.current ? 1 : 0) : sideRef.current ? 1 : 0,
+           riders: p.riders,
+           stepT: s.stepT,
+           wearing: s.wearing,
+@@ -746,7 +838,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     const f = s.fire;
+     const b = s.brand;
+     const r = s.ride;
+-    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), f ? f.heat.map((x) => Math.round(x * 8)).join() : '', f ? Math.ceil(f.left) : '', s.stampable, s.plant, s.hunt ? Math.round(s.hunt.cold * 40) : '', s.found.length, b ? Math.round(b.t * 2) : '', b ? Math.round(b.pull * 30) : '', b ? b.wraiths.map((w) => `${Math.round(w.a * 8)}.${Math.round(w.r * 2)}.${w.mode}`).join() : '', b ? Math.round(b.aim * 12) : '', b && b.cool > 0, r ? Math.round(r.s / 6) : '', r ? Math.round(r.gap) : '', r && r.spurCool > 0].join('|');
++    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), f ? f.heat.map((x) => Math.round(x * 8)).join() : '', f ? Math.ceil(f.left) : '', s.stampable, s.plant, s.hunt ? Math.round(s.hunt.cold * 40) : '', s.found.length, b ? Math.round(b.t * 2) : '', b ? Math.round(b.pull * 30) : '', b ? b.wraiths.map((w) => `${Math.round(w.a * 8)}.${Math.round(w.r * 2)}.${w.mode}`).join() : '', b ? Math.round(b.aim * 12) : '', b && b.cool > 0, r ? Math.round(r.s / 6) : '', r ? Math.round(r.gap) : '', r && r.spurCool > 0, s.mark?.state, s.mark ? Math.round(revealed(s.mark) * 40) : ''].join('|');
+     if (key !== hudKey.current) {
+       hudKey.current = key;
+       setHud({
+@@ -763,6 +855,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         hunt: s.hunt ? { cold: s.hunt.cold, found: s.hunt.found.length } : null,
+         brand: b ? { t: b.t, pull: b.pull, aim: b.aim, ready: b.cool <= 0, state: b.state, wraiths: b.wraiths.map((w) => ({ a: w.a, r: w.r, mode: w.mode })) } : null,
+         ride: r ? { s: r.s, gap: r.gap, ready: r.spurCool <= 0, state: r.state } : null,
++        mark: s.mark ? { state: s.mark.state, shown: revealed(s.mark) } : null,
+       });
+     }
+     if (s.person && bubbleRef.current) {
+@@ -857,10 +950,40 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+     else if (q.id === 'brand') {
+       const [x, z] = STAIR.at(-3);
+       s.h = newWalker({ x, z, face: -2.5 });
++    } else if (q.id === SIDE.id) {
++      // on the side: by the plinth, looking at its east face
++      const m = spot('mark');
++      s.h = newWalker({ x: m.x + 0.6, z: m.z, face: Math.atan2(m.z, -m.x) });
+     }
+     s.yaw = behindYaw(s.h.face);
+     setList(false);
+   };
++  // the stone, under the pointer: drag to scrape
++  const scraping = useRef(null);
++  const onStone = (e) => {
++    const r = e.currentTarget.getBoundingClientRect();
++    const u = (e.clientX - r.left) / r.width;
++    const v = (e.clientY - r.top) / r.height;
++    if (e.type === 'pointerdown') {
++      e.preventDefault();
++      e.currentTarget.setPointerCapture(e.pointerId);
++      audioContext();
++      scraping.current = { u, v, id: e.pointerId };
++      scrapeAt(u, v, 0.25);
++      return;
++    }
++    const was = scraping.current;
++    if (!was || was.id !== e.pointerId) return;
++    if (e.type !== 'pointermove') {
++      scraping.current = null;
++      return;
++    }
++    // as hard as the stroke is long, a cell's width at a time
++    const cells = Math.hypot((u - was.u) * MARK.cols, (v - was.v) * MARK.rows);
++    for (let k = 1, n = Math.max(1, Math.ceil(cells)); k <= n; k++) scrapeAt(was.u + ((u - was.u) * k) / n, was.v + ((v - was.v) * k) / n, 0.3);
++    scraping.current = { u, v, id: e.pointerId };
++  };
++
+   // after the ride: stay on Weathertop, at dawn
+   const stay = () => {
+     const s = sim.current;
+@@ -1092,6 +1215,38 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+         </div>
+       )}
+ 
++      {/* On the side: Gandalf's mark */}
++      {mode === 'mark' && hud.mark && (
++        <div className="shire-panel wt-mark" role="group" aria-label="Gandalf’s mark">
++          <p className="shire-panel-title">The broken plinth</p>
++          <canvas ref={stone} className="wt-stone" width="300" height="180" aria-label="The stone’s face, under its lichen" onPointerDown={onStone} onPointerMove={onStone} onPointerUp={onStone} onPointerCancel={onStone} onLostPointerCapture={onStone} onContextMenu={(e) => e.preventDefault()} />
++          {hud.mark.state === 'scrub' ? (
++            <>
++              <div className="shire-meter" role="meter" aria-label="The mark, scraped clean" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(Math.min(1, hud.mark.shown / MARK.need) * 100) / 100}>
++                <span className="shire-meter-label">Scraped clean</span>
++                <span className="shire-meter-bar">
++                  <span style={{ transform: `scaleX(${Math.min(1, hud.mark.shown / MARK.need)})` }} />
++                </span>
++              </div>
++              <p className="shire-panel-help">{touch ? 'Drag across the stone to scrape the lichen off.' : 'Drag across the stone, or steer with the arrows, to scrape the lichen off.'}</p>
++            </>
++          ) : (
++            <div className="town-choices">
++              {READINGS.map((r, i) => (
++                <button key={r.text} type="button" className="btn btn-ghost btn-sm town-choice" disabled={hud.mark.state === 'done'} onClick={() => doRead(i)}>
++                  {!touch && <kbd>{i + 1}</kbd>} {r.text}
++                </button>
++              ))}
++            </div>
++          )}
++          <div className="shire-panel-row">
++            <button type="button" className="btn btn-ghost btn-sm" onClick={leaveMark}>
++              Leave it {!touch && <kbd>Esc</kbd>}
++            </button>
++          </div>
++        </div>
++      )}
++
+       {walking && touch && <Stick onStick={onStick} />}
+ 
+       {list && (
+@@ -1099,9 +1254,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
+           title="Things to do on Weathertop"
+           quests={prog.quests}
+           next={prog.next}
++          side={[{ ...SIDE, done: side }]}
+           onClose={() => setList(false)}
+           onGo={(q) => (q.id === 'ford' && prog.finished ? rideAgain() : travel(q))}
+-          canGo={(q) => (q.open && !q.done && q.id !== 'athelas' && sim.current.mode === 'walk' && !sim.current.fire) || (q.id === 'ford' && prog.finished)}
++          canGo={(q) => (q.id === SIDE.id ? done.includes('climb') && prog.as === 'frodo' && prog.next !== 'brand' && sim.current.mode === 'walk' && !sim.current.fire : (q.open && !q.done && q.id !== 'athelas' && sim.current.mode === 'walk' && !sim.current.fire) || (q.id === 'ford' && prog.finished))}
+         />
+       )}
+     </div>
+@@ -1140,8 +1296,69 @@ const drawHill = (prog) => (g, at) => {
+   g.fill();
+ };
+ 
++// The stone's face, for the side task: weathered grey, Gandalf's scratches
++// cut into it, and the lichen over them as thick as it still is.
++const speck = (i) => {
++  const x = Math.sin(i * 127.1) * 43758.5453;
++  return x - Math.floor(x);
++};
++function drawStone(c, m, cursor) {
++  const g = c?.getContext('2d');
++  if (!g || !m) return;
++  const W = c.width;
++  const H = c.height;
++  const cw = W / MARK.cols;
++  const ch = H / MARK.rows;
++  const grad = g.createLinearGradient(0, 0, W, H);
++  grad.addColorStop(0, '#99938a');
++  grad.addColorStop(1, '#77726a');
++  g.fillStyle = grad;
++  g.fillRect(0, 0, W, H);
++  for (let i = 0; i < 160; i++) {
++    g.fillStyle = i % 3 ? 'rgba(50, 46, 40, 0.2)' : 'rgba(230, 224, 210, 0.16)';
++    g.fillRect(speck(i) * W, speck(i + 500) * H, 1 + speck(i + 900) * 4, 1 + speck(i + 1300) * 2);
++  }
++  // the scratches: a dark groove with a pale cut edge
++  g.lineCap = 'round';
++  const cut = (dx, dy, colour, width) => {
++    g.strokeStyle = colour;
++    g.lineWidth = width;
++    for (const [u0, v0, u1, v1] of MARK_LINES) {
++      g.beginPath();
++      g.moveTo(u0 * W + dx, v0 * H + dy);
++      g.lineTo(u1 * W + dx, v1 * H + dy);
++      g.stroke();
++    }
++  };
++  cut(0, 0, 'rgba(28, 24, 20, 0.8)', 6);
++  cut(-1, -1, 'rgba(236, 228, 206, 0.85)', 2);
++  // the lichen
++  for (let r = 0; r < MARK.rows; r++) {
++    for (let col = 0; col < MARK.cols; col++) {
++      const i = r * MARK.cols + col;
++      const k = m.lichen[i];
++      if (k <= 0.02) continue;
++      const n = speck(i + 77);
++      g.fillStyle = `rgba(${Math.round(92 + n * 34)}, ${Math.round(108 + n * 26)}, ${Math.round(66 + n * 12)}, ${Math.min(1, k * 1.12)})`;
++      g.fillRect(col * cw - 0.5, r * ch - 0.5, cw + 1, ch + 1);
++      if (k > 0.45 && n > 0.62) {
++        g.fillStyle = `rgba(196, 200, 138, ${k * 0.7})`;
++        g.fillRect(col * cw + 2, r * ch + 2, 3, 3);
++      }
++    }
++  }
++  // the scraper, while the keys steer it
++  if (cursor) {
++    g.strokeStyle = 'rgba(255, 236, 170, 0.85)';
++    g.lineWidth = 2;
++    g.beginPath();
++    g.arc(cursor.u * W, cursor.v * H, MARK.brush * cw, 0, Math.PI * 2);
++    g.stroke();
++  }
++}
++
+ // Without 3D: the scenes, as cards.
+-function Cards({ prog, three, gl, retry }) {
++function Cards({ prog, side, three, gl, retry }) {
+   return (
+     <div className="shell shire-cards-wrap">
+       <h1 id="wt-title" className="title">
+@@ -1172,6 +1389,13 @@ function Cards({ prog, three, gl, retry }) {
+             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+           </li>
+         ))}
++        <li data-side>
++          <p className="shire-list-side">On the side</p>
++          <p className="shire-list-name">{SIDE.name}</p>
++          <p className="shire-list-sub">{SIDE.where}</p>
++          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
++          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
++        </li>
+       </ul>
+     </div>
+   );
+diff --git a/src/components/middleearth/towns/weathertop/layout.js b/src/components/middleearth/towns/weathertop/layout.js
+index 5c5481c..57a1433 100644
+--- a/src/components/middleearth/towns/weathertop/layout.js
++++ b/src/components/middleearth/towns/weathertop/layout.js
+@@ -270,6 +270,8 @@ export const SPOTS = [
+   { id: 'camp', x: DELL.x + 2.6, z: DELL.z + 2.2, r: 2.6 },
+   { id: 'wounded', x: -33.2, z: 35.8, r: 2.6 },
+   { id: 'leave', x: 41, z: 40, r: 3.6 },
++  // on the side: Gandalf's mark, scratched on the plinth's east face
++  { id: 'mark', x: 1.55, z: 0.25, r: 1.3 },
+ ];
+ export const spot = (id) => SPOTS.find((s) => s.id === id);
+ // where Frodo lies, wounded, at the stair's foot while Sam searches
+diff --git a/src/components/middleearth/towns/weathertop/rules.js b/src/components/middleearth/towns/weathertop/rules.js
+index 2275ed2..2aa61c8 100644
+--- a/src/components/middleearth/towns/weathertop/rules.js
++++ b/src/components/middleearth/towns/weathertop/rules.js
+@@ -1,6 +1,7 @@
+ // Weathertop's four games, as rules with no drawing, so they can be
+ // tested: stamping out the fire in the dell, holding the summit with a
+-// brand, Sam's search for the kingsfoil, and the ride to the Ford.
++// brand, Sam's search for the kingsfoil, and the ride to the Ford; and on
++// the side, Gandalf's mark on the stone at the top.
+ // ./WeathertopWorld.jsx steps them; ./scene.js draws them.
+ 
+ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+@@ -335,3 +336,89 @@ export function stepRide(r, dt, { steer = 0, spur = false } = {}) {
+   }
+   return ev;
+ }
++
++// ── On the side: Gandalf's mark ──
++// On the broken plinth at the top of Amon Sûl, under the lichen, Gandalf
++// scratched his G-rune and three strokes: he was here on the third of
++// October, three days ahead of you. Scrape the lichen off the stone (the
++// stone's face is a grid of cells, each with its lichen, 1 thick to 0 gone),
++// then read what's there. It's on the side: the story never waits on it.
++
++export const MARK = { cols: 30, rows: 18, brush: 1.7, need: 0.85, bare: 0.3 };
++// the task, for the list
++export const SIDE = { id: 'mark', name: 'Gandalf’s mark', where: 'The broken plinth, on the summit', blurb: 'Gandalf came this way ahead of you. Scrape the lichen off the stone at the top, and read what he left.', seal: 'gandalfsmark' };
++// the scratches, as strokes across the stone's face (u across, v down, 0…1)
++export const MARK_LINES = [
++  // the G-rune, like a cross laid on its side
++  [0.12, 0.2, 0.4, 0.8],
++  [0.4, 0.2, 0.12, 0.8],
++  // and three strokes
++  [0.6, 0.24, 0.6, 0.76],
++  [0.72, 0.24, 0.72, 0.76],
++  [0.84, 0.24, 0.84, 0.76],
++];
++// what it might say; one's right, if you count the strokes
++export const READINGS = [
++  { text: 'G, and two strokes: Gandalf was here on the second of October.', ok: false },
++  { text: 'G, and three strokes: Gandalf was here on the third of October.', ok: true },
++  { text: 'G, and four strokes: Gandalf was here on the fourth of October.', ok: false },
++];
++
++// which cells the scratches run through
++export const MARK_CELLS = (() => {
++  const out = [];
++  for (let r = 0; r < MARK.rows; r++) {
++    for (let c = 0; c < MARK.cols; c++) {
++      const x = c + 0.5;
++      const y = r + 0.5;
++      const on = MARK_LINES.some(([u0, v0, u1, v1]) => {
++        const ax = u0 * MARK.cols;
++        const ay = v0 * MARK.rows;
++        const dx = u1 * MARK.cols - ax;
++        const dy = v1 * MARK.rows - ay;
++        const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
++        return Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) < 0.75;
++      });
++      if (on) out.push(r * MARK.cols + c);
++    }
++  }
++  return out;
++})();
++
++export const newMark = () => ({ lichen: new Array(MARK.cols * MARK.rows).fill(1), state: 'scrub', tries: 0 });
++
++// how much of the mark shows: 0…1 of its cells scraped bare
++export const revealed = (m) => MARK_CELLS.filter((i) => m.lichen[i] <= MARK.bare).length / MARK_CELLS.length;
++
++// Scrape at (u, v), as hard as `amount` (a stroke of the pointer, or a
++// moment of the key held): the lichen thins under the brush, most in the
++// middle. Returns how much came off.
++export function scrape(m, u, v, amount = 0.5) {
++  if (m.state !== 'scrub') return 0;
++  const cx = u * MARK.cols;
++  const cy = v * MARK.rows;
++  const R = MARK.brush;
++  let off = 0;
++  for (let r = Math.max(0, Math.floor(cy - R)); r <= Math.min(MARK.rows - 1, Math.floor(cy + R)); r++) {
++    for (let c = Math.max(0, Math.floor(cx - R)); c <= Math.min(MARK.cols - 1, Math.floor(cx + R)); c++) {
++      const d = Math.hypot(c + 0.5 - cx, r + 0.5 - cy);
++      if (d > R) continue;
++      const i = r * MARK.cols + c;
++      const was = m.lichen[i];
++      m.lichen[i] = Math.max(0, was - amount * (1 - (d / R) * 0.6));
++      off += was - m.lichen[i];
++    }
++  }
++  if (revealed(m) >= MARK.need) m.state = 'read';
++  return off;
++}
++
++// Read it, once it shows: true if that's what it says. A wrong reading
++// leaves it to be read again.
++export function readMark(m, i) {
++  if (m.state !== 'read') return null;
++  m.tries += 1;
++  if (!READINGS[i]?.ok) return false;
++  m.state = 'done';
++  return true;
++}
+diff --git a/src/components/middleearth/towns/weathertop/rules.test.js b/src/components/middleearth/towns/weathertop/rules.test.js
+index 651519b..c36a11b 100644
+--- a/src/components/middleearth/towns/weathertop/rules.test.js
++++ b/src/components/middleearth/towns/weathertop/rules.test.js
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from 'vitest';
+ import { GAPS, PATCHES, PLANTS } from './layout';
+-import { ATHELAS, BRAND, FIRE, OBSTACLES, RIDE, glowOf, newBrand, newFire, newHunt, newRide, pick, pickable, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
++import { ATHELAS, BRAND, FIRE, MARK, MARK_CELLS, MARK_LINES, OBSTACLES, READINGS, RIDE, glowOf, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
+ 
+ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+ const DT = 1 / 30;
+@@ -260,3 +260,56 @@ describe('the ride to the ford', () => {
+     for (let s = 0; s <= RIDE.length; s += 5) expect(Math.abs(roadTurn(s))).toBeLessThan(0.6);
+   });
+ });
++
++describe('on the side: Gandalf’s mark', () => {
++  // drag along a line across the stone, a little at a time
++  const along = (m, [u0, v0, u1, v1], amount = 0.5) => {
++    for (let k = 0; k <= 1; k += 0.02) scrape(m, u0 + (u1 - u0) * k, v0 + (v1 - v0) * k, amount);
++  };
++
++  it('has the G-rune and three strokes under the lichen', () => {
++    expect(MARK_LINES).toHaveLength(5);
++    expect(MARK_CELLS.length).toBeGreaterThan(40);
++    expect(MARK_CELLS.length).toBeLessThan(MARK.cols * MARK.rows * 0.4);
++    expect(READINGS.filter((r) => r.ok)).toHaveLength(1);
++    expect(READINGS.find((r) => r.ok).text).toMatch(/three strokes/);
++  });
++
++  it('shows nothing till it’s scraped, and nothing for scraping the bare corners', () => {
++    const m = newMark();
++    expect(revealed(m)).toBe(0);
++    along(m, [0.02, 0.03, 0.98, 0.03]);
++    along(m, [0.02, 0.97, 0.98, 0.97]);
++    expect(revealed(m)).toBeLessThan(0.2);
++    expect(m.state).toBe('scrub');
++    expect(readMark(m, 1)).toBe(null);
++  });
++
++  it('comes up stroke by stroke as you scrape along them, then wants reading', () => {
++    const m = newMark();
++    MARK_LINES.slice(0, 2).forEach((l) => along(m, l));
++    const half = revealed(m);
++    expect(half).toBeGreaterThan(0.2);
++    expect(half).toBeLessThan(MARK.need);
++    MARK_LINES.slice(2).forEach((l) => along(m, l));
++    expect(revealed(m)).toBeGreaterThanOrEqual(MARK.need);
++    expect(m.state).toBe('read');
++  });
++
++  it('comes up for a hobbit who scrubs the whole stone, back and forth', () => {
++    const m = newMark();
++    for (let v = 0.05; v < 1; v += 0.08) along(m, [0.02, v, 0.98, v], 0.35);
++    expect(m.state).toBe('read');
++  });
++
++  it('wants the right reading, and lets you count again', () => {
++    const m = newMark();
++    MARK_LINES.forEach((l) => along(m, l));
++    const wrong = READINGS.findIndex((r) => !r.ok);
++    expect(readMark(m, wrong)).toBe(false);
++    expect(m.state).toBe('read');
++    expect(readMark(m, READINGS.findIndex((r) => r.ok))).toBe(true);
++    expect(m.state).toBe('done');
++    expect(m.tries).toBe(2);
++  });
++});
+diff --git a/src/components/middleearth/towns/weathertop/scene.js b/src/components/middleearth/towns/weathertop/scene.js
+index e67c394..72132a3 100644
+--- a/src/components/middleearth/towns/weathertop/scene.js
++++ b/src/components/middleearth/towns/weathertop/scene.js
+@@ -28,7 +28,7 @@ import { makeFolk } from '../bree/props';
+ import { createWraithKit } from '../wraiths';
+ import { createWeathertopKit } from './props';
+ import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCHES, PLANTS, ROCKS, RUIN, SPOTS, STAIR, STAIR_W, STAND, TREES, TROLLS, WALLS, WORLD, WOUNDED, height, pathAmount, stairNear } from './layout';
+-import { BRAND, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
++import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
+ 
+ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+ const TAU = Math.PI * 2;
+@@ -165,6 +165,35 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
+     if (Math.hypot(b.position.x, b.position.z) > RUIN.r) b.position.y = height(b.position.x, b.position.z) - HILL.top - 0.15;
+   }
+   statics.add(ruin.group);
++  // on the side: Gandalf's mark, cut in the broken column on the plinth, on
++  // its east side. It shows as the lichen comes off (and stays, once read).
++  const markTex = (() => {
++    const c = document.createElement('canvas');
++    c.width = 256;
++    c.height = 154;
++    const g = c.getContext('2d');
++    g.lineCap = 'round';
++    for (const [w, colour] of [[12, 'rgba(18, 14, 10, 0.9)'], [4, 'rgba(244, 236, 214, 1)']]) {
++      g.strokeStyle = colour;
++      g.lineWidth = w;
++      for (const [u0, v0, u1, v1] of MARK_LINES) {
++        g.beginPath();
++        g.moveTo(u0 * c.width, v0 * c.height);
++        g.lineTo(u1 * c.width, v1 * c.height);
++        g.stroke();
++      }
++    }
++    const tex = new THREE.CanvasTexture(c);
++    tex.colorSpace = THREE.SRGBColorSpace;
++    return tex;
++  })();
++  const markMat = new THREE.MeshBasicMaterial({ map: markTex, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
++  // a curved patch of the column's face (CylinderGeometry's theta 0 is +z,
++  // so π/2 is east)
++  const markFace = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.34, 12, 1, true, Math.PI / 2 - 0.42, 0.84), markMat);
++  markFace.position.set(RUIN.plinth.x, HILL.top + 0.92, RUIN.plinth.z);
++  markFace.renderOrder = 2;
++  hill.add(markFace);
+   // the crags round the crown, two rocks deep, and boulders on the slopes
+   const rocks = kit.rocks.map(() => []);
+   CRAGS.forEach(([x, z, s, i]) => {
+@@ -556,6 +585,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
+     }
+     hill.visible = !riding;
+     ride.visible = riding;
++    markMat.opacity += ((s.markShown ?? 0) * 0.92 - markMat.opacity) * Math.min(1, dt * 6);
++    markFace.visible = markMat.opacity > 0.01;
+ 
+     const h = s.hobbit;
+     const asSam = s.as === 'sam';
+@@ -586,6 +617,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
+         walker.group.rotation.y = h.face;
+         pose(walker, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
+         if (s.stamping > 0) walker.legs[0].rotation.z = -0.9 * s.stamping;
++        // at the stone, his hand on it, scraping at the lichen
++        if (s.mode === 'mark') walker.arms[1].rotation.z = 1.15 + Math.sin(t * 13) * 0.12;
+         // asleep in the dell, before the smell of bacon wakes him
+         if (s.mode === 'sleep') {
+           frodo.group.position.set(BED.x, height(BED.x, BED.z) + 0.15, BED.z);
+@@ -858,6 +891,10 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
+       camAt.y = rideHeight(RIDE.length + FORD[1] + 12, 6) + 2.4 + flood * 2.5;
+       camLook = roadAt(RIDE.length + FORD[0] - 2 + flood * 4, -flood * 14, look);
+       camLook.y = 1.8 + flood * 2;
++    } else if (s.mode === 'mark') {
++      // close on the column's east face, Frodo bent over it to one side
++      camAt = tmp.set(RUIN.plinth.x + 2.3, HILL.top + 1.55, RUIN.plinth.z - 1.35);
++      camLook = look.set(RUIN.plinth.x + 0.45, HILL.top + 0.95, RUIN.plinth.z + 0.1);
+     } else if (s.mode === 'talk' && s.speakerAt) {
+       // over the shoulder, at whoever's speaking
+       const a = tmp2.set(h.x, hy + 1.3, h.z);
+@@ -929,6 +966,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
+     else if (type === 'close' || type === 'seen') A.shake = Math.max(A.shake, 0.1);
+     else if (type === 'found') fx.pop(tmp2.copy(sam.group.position).add(V(0, 0.6, 0)), 'green', 24, 1.6);
+     else if (type === 'out') fx.puff(tmp2.copy(frodo.group.position).add(V(0, 0.3, 0)), V(0, 0.6, 0), 10);
++    else if (type === 'mark') fx.pop(tmp2.set(RUIN.plinth.x + 0.6, HILL.top + 0.95, RUIN.plinth.z), 'gold', 26, 1.4);
+   };
+ 
+   // Where someone is on screen, for the speech bubbles: { x, y } in CSS
+diff --git a/src/components/middleearth/towns/weathertop/sounds.js b/src/components/middleearth/towns/weathertop/sounds.js
+index 7ffcb1d..eaf39a2 100644
+--- a/src/components/middleearth/towns/weathertop/sounds.js
++++ b/src/components/middleearth/towns/weathertop/sounds.js
+@@ -1,8 +1,9 @@
+ // Weathertop's sounds, synthesised so nothing is downloaded: the wind over
+ // the hilltop (and a fire's crackle when one's near), a stamp on burning
+ // grass, the brand's whoosh, a sword's ring, the kingsfoil found, the
+-// gallop to the Ford and the river rising. The Nazgûl's shriek is the
+-// Shire's (../../shire/sounds.js). All through the site's master volume.
++// gallop to the Ford and the river rising, and on the side the scrape of
++// lichen off old stone. The Nazgûl's shriek is the Shire's
++// (../../shire/sounds.js). All through the site's master volume.
+ 
+ import { audioContext, output } from '../../../../lib/audio';
+ 
+@@ -140,6 +141,12 @@ export function found(n = 1) {
+   const t = ac.currentTime + 0.02;
+   [523, 659, 784, 1047].slice(0, 2 + Math.min(2, n)).forEach((f, i) => tone(ac, out, t + i * 0.09, { type: 'sine', f, gain: 0.1, attack: 0.01, length: 0.6 }));
+ }
++// lichen scraped off old stone: a short dry rasp
++export function scrape() {
++  const [ac, out] = ready();
++  if (!ac) return;
++  hiss(ac, out, ac.currentTime + 0.01, { type: 'bandpass', f: 1800 + Math.random() * 900, q: 2.2, gain: 0.07, attack: 0.01, length: 0.11 });
++}
+ // a weed pulled up
+ export function rustle() {
+   const [ac, out] = ready();
+diff --git a/src/components/middleearth/towns/weathertop/weathertop.css b/src/components/middleearth/towns/weathertop/weathertop.css
+index e09b335..8589653 100644
+--- a/src/components/middleearth/towns/weathertop/weathertop.css
++++ b/src/components/middleearth/towns/weathertop/weathertop.css
+@@ -1,5 +1,6 @@
+ /* Weathertop: the Shire's HUD (../../shire/shire.css) at dusk and by night,
+-   with the panels for the fire, the brand, the kingsfoil and the ride. */
++   with the panels for the fire, the brand, the kingsfoil and the ride, and
++   on the side the stone with Gandalf's mark. */
+ 
+ .wt-world { --shire-glass: rgba(14, 16, 26, 0.78); --shire-glass-hi: rgba(16, 18, 28, 0.92); }
+ .wt-stage { background: linear-gradient(180deg, #1c2a4a 0%, #d88a5a 58%, #3a3428 60%, #1a1812 100%); }
+@@ -49,3 +50,14 @@
+   .wt-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+   .wt-radar { width: 3.8rem; height: 3.8rem; }
+ }
++
++/* on the side: the stone's face, to scrape the lichen off */
++.wt-mark { left: 50%; transform: translateX(-50%); width: min(24rem, calc(100% - 1.4rem)); justify-items: center; text-align: center; }
++.wt-mark .shire-meter { width: 100%; box-sizing: border-box; }
++.wt-stone { display: block; width: min(20rem, 100%); height: auto; aspect-ratio: 300 / 180; border-radius: 6px 10px 8px 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.4); cursor: grab; touch-action: none; }
++.wt-stone:active { cursor: grabbing; }
++.wt-mark .town-choices { width: 100%; text-align: left; }
++.wt-stage[data-mode='mark'] .shire-canvas { cursor: default; touch-action: none; }
++@media (max-width: 639px) {
++  .wt-mark { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
++}
