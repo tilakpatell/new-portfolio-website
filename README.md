@@ -77,7 +77,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | World | Route | Fandom | Highlights |
 | --- | --- | --- | --- |
 | Death Star | `/deathstar` | Star Wars | Fly the trench run before Yavin 4 comes into range |
-| Music room | `/music` | Indian classical music | A playable sitar, tabla and harmonium over a tanpura drone |
+| Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
 | Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game (Spider-Man's *Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
@@ -139,6 +139,7 @@ The asset pipeline scripts regenerate committed files. You don't need them to ru
 | `npm run kenney` | Convert Kenney's kits for *Portal panic* (`KENNEY=/path/to/kits npm run kenney`) |
 | `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
 | `npm run globe` | Rebuild the dotted globe on the Travel page |
+| `python3 scripts/build-harmonium.py` | Rebuild the music room's harmonium from its CC0 recording (downloads it the first time) |
 
 The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.env.local`. Sketchfab downloads are brought down to web size by `scripts/sketchfab-import.mjs` and `scripts/sketchfab-batch.mjs`.
 

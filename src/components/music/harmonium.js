@@ -123,6 +123,12 @@ function recordedReed(ac, hit, t, dest) {
 
 // ── Playing ────────────────────────────────────────────────────────────────
 const voices = new Map(); // id -> { g, sources, reeds }
+// listeners for each note as it's struck (the music planet's harmonium shows them)
+const noteListeners = new Set();
+export const onHarmoniumNote = (fn) => {
+  noteListeners.add(fn);
+  return () => noteListeners.delete(fn);
+};
 const held = new Set(); // ids whose key is down
 let sustain = false;
 
@@ -149,6 +155,7 @@ export function harmoniumOn(id, ratio, { banks = { male: true }, vel = 1 } = {})
   });
   voices.set(id, { g, sources, reeds: reeds.length });
   bellowsAwake(ac);
+  noteListeners.forEach((fn) => fn(ratio));
 }
 
 function release(ac, id) {

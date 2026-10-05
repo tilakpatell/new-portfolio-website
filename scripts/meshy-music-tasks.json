@@ -1,0 +1,30 @@
+{
+  "sitar": {
+    "image": "01a10aa0-0752-7707-a2f9-68b979dbb4ec",
+    "model": "01a10aa0-bf62-7693-b875-9951bd17872e"
+  },
+  "tabla": {
+    "image": "01a10aa0-07ba-715d-b55d-0302a304c12a",
+    "model": "01a10aa0-c1eb-758d-96fc-b4d66c8e3bbd"
+  },
+  "tanpura": {
+    "image": "01a10aa0-0815-7186-a344-3b1eded0dfe3",
+    "model": "01a10aa0-c465-768d-9333-93d0de5de727"
+  },
+  "harmonium": {
+    "image": "01a10aa0-0893-71e0-9b5f-b7043ba94dc5",
+    "model": "01a10aa0-c69e-70ca-ae65-6ab7ed8bced5"
+  },
+  "pavilion": {
+    "image": "01a10aa0-08ec-73b6-9b5c-d41cf13b4650",
+    "model": "01a10aa0-c93c-778d-8c8d-a07ea9001cfc"
+  },
+  "lamp": {
+    "image": "01a10aa0-0949-7309-b18d-f4c321b277c4",
+    "model": "01a10aa0-cbbe-727b-853a-7525912ab892"
+  },
+  "gaddi": {
+    "image": "01a10aa0-09b0-742f-910a-22b4a26b9767",
+    "model": "01a10aa0-ce10-7726-944f-1ac5a655a0fa"
+  }
+}

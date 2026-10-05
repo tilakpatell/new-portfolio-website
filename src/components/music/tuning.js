@@ -40,6 +40,23 @@ export function ragaOf(id, t = tuning) {
 }
 export const isRaga = (id) => id === 'custom' || Object.hasOwn(RAGAS, id);
 
+// The swara nearest a ratio over Sa, and its octave (0 is the middle one), for naming a note heard.
+export function swaraOf(ratio) {
+  const oct = Math.floor(Math.log2(ratio) + 1 / 48); // a hair under Sa still counts as Sa
+  const r = ratio / 2 ** oct;
+  let best = 'S';
+  let dist = Infinity;
+  for (const s of CHROMATIC) {
+    const d = Math.min(Math.abs(Math.log2(r / SWARA[s])), Math.abs(Math.log2(r / (SWARA[s] * 2))));
+    if (d < dist) {
+      dist = d;
+      best = s;
+    }
+  }
+  // close enough to the next Sa up is that Sa
+  return Math.abs(Math.log2(r / 2)) < Math.abs(Math.log2(r / SWARA[best])) ? { s: 'S', oct: oct + 1 } : { s: best, oct };
+}
+
 // Where a raga plays a swara, over Sa.
 export const swaraIn = (raga, s) => raga?.tune?.[s] ?? SWARA[s];
 
