@@ -302,7 +302,7 @@ export const SITES = {
         r: 30,
         flat: { r: 20 },
         about: 'A fallen AT-AT, lying on its side in the sand: Rey made a home in its belly, scratching off the days she waited.',
-        things: [{ kind: 'atat', at: [0, 0], yaw: 0.9, sink: 2, roll: true }],
+        things: [{ kind: 'atat', at: [0, 0], yaw: 0.9, sink: 3, roll: 1.45 }],
       },
     ],
     things: [],
@@ -317,7 +317,7 @@ export const SITES = {
     rides: [{ kind: 'reyspeeder', at: [16, -12], yaw: 2.1 }],
     flyovers: [
       { kind: 'tiefo', n: 2, metres: 7, alt: 80, speed: 120, every: 60 },
-      { kind: 'falcon', n: 1, metres: 34, alt: 60, speed: 90, every: 110 },
+      { kind: 'freighter', n: 1, metres: 34, alt: 60, speed: 90, every: 110 },
     ],
   },
 };

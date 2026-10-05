@@ -6,7 +6,9 @@
 // when you ask (the scene shows it).
 //
 // A kind with a model (catalog/*.js) is that model (walking with its own
-// clips, if it came rigged); otherwise figures.js builds it.
+// clips, if it came rigged); otherwise figures.js builds it, or props/*.js
+// does (a walker: an AT-AT, an AT-ST, its legs going as it goes). `model:
+// false` builds it even where there's a model (a walker that should walk).
 //
 // site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
@@ -15,6 +17,7 @@
 import * as THREE from 'three';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { buildFigure } from './figures';
+import { PROPS } from './props';
 import { cloneModel, loadGlb } from './placer';
 import { rng } from './noise';
 import { groundAt, turnToward } from './walker';
@@ -82,7 +85,7 @@ export function think(b, spec, dt, r, { avoid = null } = {}) {
   b.z = nz;
 }
 
-export function createActors({ parent, world, life = [], seed = 5, warm = (o) => Promise.resolve(o), small = false }) {
+export function createActors({ parent, world, life = [], seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -90,7 +93,25 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
   const actors = [];
   let dead = false;
 
-  const figureOf = async (kind) => {
+  // one of props/*.js's, walking: its update(t, dt, move) swings its legs
+  const propFigure = (kind, spec) => {
+    const make = PROPS[kind];
+    if (!make || !kit) return null;
+    const made = make(kit, spec.opts ?? {});
+    let t = Math.random() * 10;
+    const box = new THREE.Box3().setFromObject(made.object);
+    return {
+      model: made.object,
+      tall: box.max.y - box.min.y,
+      update(dt, move) {
+        t += dt;
+        made.update?.(t, dt, move);
+      },
+      dispose() {},
+    };
+  };
+  const figureOf = async (kind, spec) => {
+    if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec);
     if (SURFACE_MODELS[kind]) {
       const gltf = await loadGlb(surfaceUrl(kind));
       if (gltf) {
@@ -135,7 +156,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
         };
       }
     }
-    return buildFigure(kind);
+    return buildFigure(kind) ?? propFigure(kind, spec);
   };
 
   for (const spec of life) {
@@ -151,7 +172,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
       group.add(holder);
       const actor = { spec, b, holder, fig: null, said: 0, near: false, i };
       actors.push(actor);
-      figureOf(spec.kind)
+      figureOf(spec.kind, spec)
         .then((fig) => {
           if (dead || !fig) return;
           fig.model.scale.multiplyScalar(spec.scale ?? 1);

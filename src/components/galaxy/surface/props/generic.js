@@ -3,10 +3,87 @@
 
 import * as THREE from 'three';
 import { box, cyl, part, rockGeometry, rod } from '../kit';
+import { loft, trap8 } from '../../../universe/trafficKit';
 
 const { PI, cos, sin } = Math;
 
 export const PROPS = {
+
+  // an AT-AT: the body on its four long legs, the head out front on its
+  // neck, 22.5 m tall; its legs walk as it goes (update's `move`, 0…1)
+  atat(k, { color = '#a2a29e' } = {}) {
+    const dark = '#5a5a58';
+    const object = new THREE.Group();
+    const body = new THREE.Group();
+    body.position.y = 15.4;
+    object.add(body);
+    const hull = loft([
+      { z: -9.5, pts: trap8(6.2, 4.6, 5.4, 0.9, 0) },
+      { z: -8.6, pts: trap8(7.2, 5.4, 6.4, 1.1, 0) },
+      { z: 8.2, pts: trap8(7.2, 5.4, 6.4, 1.1, 0) },
+      { z: 9.4, pts: trap8(6.0, 4.4, 5.2, 0.9, 0) },
+    ]);
+    const parts = [part(hull, { color, to: 'paint' })];
+    // the ribs along its flanks, and the hatch on top
+    for (const z of [-6, -3, 0, 3, 6]) for (const x of [-3.62, 3.62]) parts.push(part(new THREE.BoxGeometry(0.15, 4.6, 0.5), { at: [x, 0.2, z], color: dark, to: 'metal' }));
+    parts.push(part(new THREE.CylinderGeometry(1.0, 1.0, 0.4, 14), { at: [0, 3.35, -2], color: dark, to: 'metal' }));
+    // the neck: rings of plating out to the head
+    for (let i = 0; i < 4; i++) parts.push(part(new THREE.CylinderGeometry(1.1 - i * 0.05, 1.2 - i * 0.05, 0.75, 12), { at: [0, -0.4, 9.9 + i * 0.8], rot: [Math.PI / 2, 0, 0], color: i % 2 ? color : dark, to: i % 2 ? 'paint' : 'metal' }));
+    // the head: a blunt box, cheek guns, the chin gun, the viewports
+    const head = loft([
+      { z: 12.6, pts: trap8(3.0, 2.0, 2.8, 0.4, -0.5) },
+      { z: 15.8, pts: trap8(3.4, 2.4, 3.0, 0.45, -0.5) },
+      { z: 17.4, pts: trap8(2.6, 1.8, 2.2, 0.35, -0.7) },
+    ]);
+    parts.push(part(head, { color, to: 'paint' }));
+    for (const x of [-1.85, 1.85]) parts.push(part(new THREE.CylinderGeometry(0.18, 0.22, 3.4, 8), { at: [x, -1.4, 17.4], rot: [Math.PI / 2, 0, 0], color: dark, to: 'metal' }));
+    for (const x of [-0.35, 0.35]) parts.push(part(new THREE.CylinderGeometry(0.12, 0.14, 2.6, 8), { at: [x, -1.9, 17.7], rot: [Math.PI / 2, 0, 0], color: dark, to: 'metal' }));
+    for (const x of [-0.7, 0.7]) parts.push(part(new THREE.BoxGeometry(0.5, 0.18, 0.1), { at: [x, 0.0, 17.42], rot: [-0.3, 0, 0], color: new THREE.Color('#ffb070').multiplyScalar(1.6), to: 'glow' }));
+    body.add(k.build(parts, { name: 'atat-body' }));
+    // the legs: hips under the corners, a knee halfway down, a foot
+    const legs = [];
+    for (const [x, z, phase] of [
+      [-2.7, 6.6, 0],
+      [2.7, 6.6, 0.5],
+      [-2.7, -6.6, 0.75],
+      [2.7, -6.6, 0.25],
+    ]) {
+      const hip = new THREE.Group();
+      hip.position.set(x * 1.06, 13.4, z);
+      const thigh = k.build([part(new THREE.BoxGeometry(1.5, 6.6, 1.8).translate(0, -3.3, 0), { color, to: 'paint' }), part(new THREE.CylinderGeometry(1.1, 1.1, 2.0, 14), { rot: [0, 0, Math.PI / 2], color: dark, to: 'metal' })], { name: 'atat-thigh' });
+      hip.add(thigh);
+      const knee = new THREE.Group();
+      knee.position.y = -6.4;
+      const shin = k.build(
+        [
+          part(new THREE.CylinderGeometry(0.95, 0.95, 1.9, 14), { rot: [0, 0, Math.PI / 2], color: dark, to: 'metal' }),
+          part(new THREE.BoxGeometry(1.3, 6.2, 1.5).translate(0, -3.2, 0), { color, to: 'paint' }),
+          part(new THREE.CylinderGeometry(0.5, 0.6, 0.8, 10), { at: [0, -6.6, 0], color: dark, to: 'metal' }),
+          part(new THREE.CylinderGeometry(1.5, 1.7, 0.75, 16), { at: [0, -7.3, 0], color, to: 'paint' }),
+        ],
+        { name: 'atat-shin' },
+      );
+      knee.add(shin);
+      hip.add(knee);
+      object.add(hip);
+      legs.push({ hip, knee, phase });
+    }
+    let cycle = 0;
+    return {
+      object,
+      solids: legs.map((l) => ({ circle: [l.hip.position.x, l.hip.position.z, 1.6] })),
+      update(t, dt, move = 0) {
+        cycle += (dt ?? 0) * 0.32 * move;
+        for (const l of legs) {
+          const a = (cycle + l.phase) * Math.PI * 2;
+          l.hip.rotation.x = Math.sin(a) * 0.2 * move;
+          l.knee.rotation.x = -Math.max(0, Math.sin(a + 0.9)) * 0.42 * move;
+        }
+        body.position.y = 15.4 + Math.abs(Math.sin(cycle * Math.PI * 4)) * 0.25 * move;
+        body.rotation.z = Math.sin(cycle * Math.PI * 2) * 0.012 * move;
+      },
+    };
+  },
 
   // a 74-Z speeder bike: a long thin body, the steering vanes out front on
   // their booms, a saddle, 3.2 m long, nose to +z

@@ -9,9 +9,11 @@
 // createPlacer({ parent, kit, world, warm }) → { put(spec), scatter(kind,
 // items, opts), update(t, dt), ready (a promise: everything asked for so far
 // is in), dispose() }
-//   spec: { kind, at: [x, z], yaw, scale, y (over the ground), sink (into
-//   it), solid (false: walk through it; or { r } / { box: [hw, hd] } in
-//   place of its own), opts (for a built one) }
+//   spec: { kind, at: [x, z], yaw, pitch, roll (radians: a walker on its
+//   side), scale, y (over the ground), sink (into it), abs (y is the height
+//   itself, not over the ground), solid (false: walk through it; or { r } /
+//   { box: [hw, hd] } in place of its own), model (false: its build, even
+//   where there's a model), opts (for a built one) }
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -95,11 +97,18 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     const made = make(kit, spec.opts ?? {});
     const o = made.object;
     o.position.set(...at);
-    o.rotation.y = spec.yaw ?? 0;
+    o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
     group.add(o);
-    if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, spec.yaw ?? 0, spec.scale ?? 1, null);
-    for (const f of made.floors ?? []) world.floors.push({ ...f, x: at[0] + f.x, z: at[2] + f.z, y: at[1] + f.y * (spec.scale ?? 1), r: f.r != null ? f.r * (spec.scale ?? 1) : undefined });
+    const yaw = spec.yaw ?? 0;
+    const k = spec.scale ?? 1;
+    if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
+    // its floors, turned and scaled with it
+    for (const f of made.floors ?? []) {
+      const c = Math.cos(yaw);
+      const sn = Math.sin(yaw);
+      world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
+    }
     if (made.update) updates.push(made.update);
     return o;
   };
@@ -136,7 +145,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             if (!gltf) return build(spec, at);
             const o = cloneModel(gltf);
             o.position.set(...at);
-            o.rotation.y = spec.yaw ?? 0;
+            o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
             group.add(o);
             footprint(o, spec, at);

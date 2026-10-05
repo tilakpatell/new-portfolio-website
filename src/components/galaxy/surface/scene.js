@@ -172,7 +172,7 @@ export async function create(canvas, ctx) {
     }
     placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
   }
-  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small });
+  const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit });
 
   // what you can ride, where it's parked
   const rides = site.rides
@@ -882,6 +882,7 @@ export async function create(canvas, ctx) {
     life.update(dt, state.phase === 'walk' ? me().st : null);
     placer.update(t, dt);
     stepDust(dt);
+    storm(dt);
     marks.flush();
     ship.update?.(t);
 
@@ -908,6 +909,21 @@ export async function create(canvas, ctx) {
         flights.splice(i, 1);
       }
     }
+  }
+
+  // lightning (Kamino's storms, Exegol's): a flash across the sky now and
+  // then, lighting everything up for a moment
+  let nextBolt = 4 + r() * 6;
+  function storm(dt) {
+    if (!site.lightning || reduced) return;
+    if (state.t > nextBolt) {
+      flash.k = 1;
+      nextBolt = state.t + (site.lightning.every ?? 8) * (0.4 + r() * 1.2);
+    }
+    flash.k = Math.max(0, flash.k - dt * (flash.k > 0.5 ? 6 : 2.5));
+    // (a flicker, not a fade)
+    const k = flash.k * (0.6 + 0.4 * Math.sin(state.t * 90));
+    hemi.intensity = (site.light.ambient ?? 0.9) + k * (site.lightning.strength ?? 2.5);
   }
 
   function draw(now) {

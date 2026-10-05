@@ -303,3 +303,16 @@
   .surface-prompt, .surface-talk, .surface-toast, .surface-title { animation: none; }
   .surface-fade { transition: none; }
 }
+
+/* the crew's comms (universe/Comms.jsx): along the bottom, over the stick */
+.surface-page .universe-comms {
+  top: auto;
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
+  z-index: 2;
+}
+.surface-page .universe-line { background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(8px); }
+@media (pointer: coarse) {
+  .surface-page .universe-comms { bottom: auto; top: calc(var(--nav-h, 64px) + 112px); }
+}
