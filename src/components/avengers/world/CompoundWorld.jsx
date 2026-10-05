@@ -8,7 +8,7 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, stepHero, stepTour, underPortal, walkable } from './rules';
+import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, newPhoto, readPhoto, PHOTO, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
@@ -122,7 +122,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -137,6 +137,24 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const setRef = useRef(settings);
   setRef.current = settings;
   const [tuning, setTuning] = useState(false);
+  // photo mode (P): time stopped, the HUD away, a camera to put anywhere round him
+  const [photo, setPhoto] = useState(null);
+  const photoMode = useCallback((on) => {
+    const s = sim.current;
+    s.photo = on ? newPhoto(s.yaw, s.pitch) : null;
+    s.keys.clear();
+    setPhoto(s.photo ? { ...s.photo } : null);
+    if (on) {
+      setList(false);
+      setTuning(false);
+    }
+  }, []);
+  const changePhoto = useCallback((patch) => {
+    const s = sim.current;
+    if (!s.photo) return;
+    s.photo = readPhoto({ ...s.photo, ...patch });
+    setPhoto({ ...s.photo });
+  }, []);
   const changeSettings = useCallback((next) => {
     const d = readSettings(next);
     setSettings(d);
@@ -271,11 +289,14 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       } else if (k === 'o' || k === 'O') {
         setTuning((v) => !v);
         setList(false);
-      } else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
+      } else if ((k === 'p' || k === 'P') && !e.repeat) photoMode(!s.photo);
+      else if (s.photo && (k === '[' || k === ']')) changePhoto({ fov: s.photo.fov + (k === '[' ? -4 : 4) });
+      else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
       else if ((k === 't' || k === 'T') && !e.repeat) s.trick = true;
       else if (k === 'Escape') {
         setList(false);
         setTuning(false);
+        if (s.photo) photoMode(false);
       }
     };
     const up = (e) => keyUp(s.keys, e);
@@ -300,7 +321,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       window.removeEventListener('pointerup', mouseUp);
       s.keys.clear();
     };
-  }, [live, go]);
+  }, [live, go, photoMode, changePhoto]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -309,6 +330,17 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const s = sim.current;
     const p = progRef.current;
     const set = setRef.current;
+    // photo mode: nothing moves; the drawing puts the camera where the photo says
+    if (s.photo) {
+      const tv = trav.ref.current;
+      tv?.pose(s.h);
+      try {
+        a.render({ hero: s.h, travellers: tv ? tv.list() : null, camYaw: s.yaw, camPitch: s.pitch, camDist: 7.6, near: null, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, photo: s.photo }, 0);
+      } catch (err) {
+        if (import.meta.env.DEV) console.error(err);
+      }
+      return;
+    }
     // (the QA scripts can run the clock faster, in development only)
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
     const dt = Math.min(0.05, ms / 1000) * fast;
@@ -522,6 +554,12 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       const d = drag.current;
       if (!d || d.id !== e.pointerId) return;
       const set = setRef.current;
+      if (s.photo) {
+        s.photo = readPhoto({ ...s.photo, yaw: s.photo.yaw - (e.clientX - d.x) * 0.0065 * set.look, pitch: s.photo.pitch + (e.clientY - d.y) * 0.005 * set.look * (set.invert ? -1 : 1) });
+        d.x = e.clientX;
+        d.y = e.clientY;
+        return;
+      }
       s.yaw -= (e.clientX - d.x) * 0.0065 * set.look;
       s.pitch = Math.max(0.05, Math.min(0.9, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0) * set.look * (set.invert ? -1 : 1)));
       d.x = e.clientX;
@@ -582,8 +620,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const here = hud.near ? prog.places.find((p) => p.id === hud.near) : null;
   const herePortal = hud.portal && !here;
   return (
-    <div ref={box} className="cw-stage" data-touch={touch || undefined}>
-      <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+    <div ref={box} className="cw-stage" data-touch={touch || undefined} data-photo={photo ? '' : undefined}>
+      <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} onWheel={(e) => sim.current.photo && changePhoto({ dist: sim.current.photo.dist * (e.deltaY > 0 ? 1.1 : 1 / 1.1) })} />
       <div ref={speedRef} className="cw-speed" aria-hidden="true" />
       {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
       {tourMsg && (
@@ -648,6 +686,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
             aria-controls="cw-settings"
           >
             Settings {!touch && <kbd>O</kbd>}
+          </button>
+          <button type="button" className="cw-chip" onClick={() => photoMode(true)} title="Stop time, put the camera anywhere round him, and save a picture">
+            Photo {!touch && <kbd>P</kbd>}
           </button>
           <button type="button" className="cw-chip cw-tour" onClick={toTour} title="Rings round the compound, against the clock: through the first red ring to start">
             Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
@@ -779,6 +820,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         </div>
       )}
 
+      {photo && <PhotoBar photo={photo} onChange={changePhoto} onSave={() => savePhoto(api.current, canvas.current, sim.current, progRef.current)} onClose={() => photoMode(false)} touch={touch} />}
       {tuning && <Settings id="cw-settings" settings={settings} onChange={changeSettings} onClose={() => setTuning(false)} />}
       {list && (
         <div className="cw-list" role="dialog" aria-label="The buildings on the compound">
@@ -868,6 +910,53 @@ function Settings({ id, settings, onChange, onClose }) {
       </div>
     </section>
   );
+}
+
+// Photo mode's bar: the lens and the distance (the drag turns the camera,
+// the wheel brings it in), a picture saved, and the way back.
+function PhotoBar({ photo, onChange, onSave, onClose, touch }) {
+  const row = (label, k, [min, max], step, shown) => (
+    <label className="cw-photo-row">
+      <span>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={photo[k]} style={{ '--fill': `${((photo[k] - min) / (max - min)) * 100}%` }} onChange={(e) => onChange({ [k]: Number(e.target.value) })} onPointerUp={(e) => e.currentTarget.blur()} />
+      <output>{shown}</output>
+    </label>
+  );
+  return (
+    <section className="cw-photo cw-set" role="dialog" aria-label="Photo mode">
+      <p className="cw-photo-title">Photo mode</p>
+      <p className="cw-photo-hint">{touch ? 'Drag to move the camera round him.' : 'Drag to move the camera round him, scroll to bring it in, [ and ] for the lens.'}</p>
+      {row('Lens', 'fov', PHOTO.fov, 1, `${Math.round(photo.fov)}°`)}
+      {row('Distance', 'dist', PHOTO.dist, 0.1, `${photo.dist.toFixed(1)} m`)}
+      <div className="cw-photo-acts">
+        <button type="button" className="btn btn-primary btn-sm" onClick={onSave}>
+          Save the picture
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Back {!touch && <kbd>P</kbd>}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// The picture: drawn once more and read off the canvas in the same breath
+// (before the browser clears it), then handed over as a PNG.
+function savePhoto(a, c, s, p) {
+  if (!a || !c || !s.photo) return;
+  try {
+    a.render({ hero: s.h, travellers: null, camYaw: s.yaw, camPitch: s.pitch, camDist: 7.6, near: null, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, photo: s.photo }, 0);
+    const url = c.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `avengers-hq-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    sfx('ding');
+  } catch (err) {
+    if (import.meta.env.DEV) console.error(err);
+  }
 }
 
 // Other players online here: how many, or a way to see them (going online
