@@ -7,6 +7,7 @@ import {
   BUILDINGS,
   COLLIDERS,
   CRUISER,
+  DECOR,
   DRIVEWAY,
   FENCES,
   FRONT_WALK,
@@ -15,6 +16,7 @@ import {
   HOTSPOTS,
   HOUSE,
   HOUSE_GARAGE,
+  HOUSE_PARTS,
   INNER_WALLS,
   LINKS,
   MORTY,
@@ -27,6 +29,7 @@ import {
   ROOM_IDS,
   RUGS,
   SCHOOL,
+  SCHOOL_PARTS,
   START,
   TASKS,
   TREES,
@@ -212,15 +215,17 @@ describe('C-137: the layout', () => {
   });
 
   it('puts the garage on the west, the house on the east, the two joined, the garage standing forward', () => {
-    expect(GARAGE).toMatchObject({ x: -19, z: -19.5, w: 8, d: 11, h: 3.4, roof: 6.2 });
-    expect(HOUSE).toMatchObject({ x: -5, z: -21.5, w: 20, d: 13, h: 3.2, roof: 8.6 });
+    expect(GARAGE).toEqual({ id: 'garage', x: -19, z: -21, w: 8, d: 14, h: 3.4, roof: 6.2 });
+    expect(HOUSE).toEqual({ id: 'house', x: -5, z: -22.6, w: 20, d: 10.8, h: 3.2, roof: 8.6 });
     expect(HOUSE_GARAGE).toEqual({ x0: -23, x1: 5, z0: -28, z1: -14 });
     // they share a wall, with no gap between
     expect(GARAGE.x + GARAGE.w / 2).toBe(HOUSE.x - HOUSE.w / 2);
     expect(GARAGE.x).toBeLessThan(HOUSE.x);
-    // the garage's front face is a metre forward of the house's
+    // the garage runs the whole depth and stands 3 m forward of the two-storey front (-17.2)
     expect(GARAGE.z + GARAGE.d / 2).toBe(-14);
-    expect(HOUSE.z + HOUSE.d / 2).toBe(-15);
+    expect(GARAGE.z - GARAGE.d / 2).toBe(-28);
+    expect(HOUSE.z + HOUSE.d / 2).toBeCloseTo(-17.2, 9);
+    expect(HOUSE.z - HOUSE.d / 2).toBeCloseTo(-28, 9);
     // the combined footprint is exactly the two
     expect(HOUSE_GARAGE.x0).toBe(GARAGE.x - GARAGE.w / 2);
     expect(HOUSE_GARAGE.x1).toBe(HOUSE.x + HOUSE.w / 2);
@@ -233,13 +238,36 @@ describe('C-137: the layout', () => {
     expect(DRIVEWAY.x0).toBe(GARAGE.x - GARAGE.w / 2);
     expect(DRIVEWAY.x1).toBe(GARAGE.x + GARAGE.w / 2);
     expect(DRIVEWAY.z1).toBe(-(ROAD.w / 2 + ROAD.sidewalk));
-    expect(FRONT_WALK).toEqual({ x0: -8.6, x1: -7.4, z0: -15, z1: -7 });
+    expect(FRONT_WALK).toEqual({ x0: -7.8, x1: -6.6, z0: -17.4, z1: -7 });
     const door = link('house-door');
-    expect(door.x).toBeGreaterThan(FRONT_WALK.x0);
-    expect(door.x).toBeLessThan(FRONT_WALK.x1);
-    expect(door.z).toBeGreaterThan(FRONT_WALK.z0);
-    expect(FRONT_WALK.z0).toBe(HOUSE.z + HOUSE.d / 2);
+    // centred on the door, which is where it ends
+    expect((FRONT_WALK.x0 + FRONT_WALK.x1) / 2).toBeCloseTo(door.x, 9);
+    expect(FRONT_WALK.z0).toBe(door.z);
     expect(FRONT_WALK.z1).toBe(DRIVEWAY.z1);
+  });
+
+  it('follows the Smith house as the model has it: a two-storey wing, a set-back middle, the porch gable', () => {
+    const part = (id) => HOUSE_PARTS.find((p) => p.id === id);
+    expect(HOUSE_PARTS.map((p) => p.id)).toEqual(['wing', 'middle', 'porch']);
+    const edges = (p) => ({ x0: p.x - p.w / 2, x1: p.x + p.w / 2, z0: p.z - p.d / 2, z1: p.z + p.d / 2 });
+    // the two-storey wing is the east 8 m, front at -17.2; the middle is set back to -19.3; both are the house's depth
+    const close = (got, want) => Object.keys(want).forEach((k) => expect(got[k], k).toBeCloseTo(want[k], 9));
+    close(edges(part('wing')), { x0: -3, x1: 5, z0: -28, z1: -17.2 });
+    close(edges(part('middle')), { x0: -15, x1: -3, z0: -28, z1: -19.3 });
+    // the porch is on the middle, over the door, its step (the porch's south face) at -17.8
+    const porch = edges(part('porch'));
+    expect(porch.z1).toBeCloseTo(-17.8, 9);
+    expect(porch.z0).toBeCloseTo(-19.3, 9);
+    expect(porch.x1 - porch.x0).toBeGreaterThan(2);
+    expect(Math.abs(part('porch').x - link('house-door').x)).toBeLessThan(0.05);
+    // and every part is inside the house's footprint (the box the model is fitted to)
+    for (const p of HOUSE_PARTS) {
+      const e = edges(p);
+      expect(e.x0, p.id).toBeGreaterThanOrEqual(HOUSE.x - HOUSE.w / 2 - 1e-9);
+      expect(e.x1, p.id).toBeLessThanOrEqual(HOUSE.x + HOUSE.w / 2 + 1e-9);
+      expect(e.z0, p.id).toBeGreaterThanOrEqual(HOUSE.z - HOUSE.d / 2 - 1e-9);
+      expect(e.z1, p.id).toBeLessThanOrEqual(HOUSE.z + HOUSE.d / 2 + 1e-9);
+    }
   });
 
   it('parks the cruiser on the driveway, in front of the garage, nose to the road', () => {
@@ -265,6 +293,7 @@ describe('C-137: the layout', () => {
       for (const l of doors) expect(Math.hypot(t.x - l.x, t.z - l.z), l.id).toBeGreaterThanOrEqual(2);
       for (const a of landings) expect(Math.hypot(t.x - a.x, t.z - a.z), 'landing').toBeGreaterThanOrEqual(2);
       expect(Math.hypot(t.x - START.x, t.z - START.z), 'start').toBeGreaterThanOrEqual(2);
+      for (const d of DECOR) expect(Math.hypot(t.x - d.x, t.z - d.z), d.id).toBeGreaterThanOrEqual(1.5);
       for (const f of FENCES) expect(segDist(t.x, t.z, f), 'fence').toBeGreaterThanOrEqual(1);
     }
     vi.resetModules();
@@ -287,8 +316,13 @@ describe('C-137: the layout', () => {
 
   it('puts a collider on every building, the annex arcade included, and on every tree', () => {
     const boxes = collidersIn('street').filter((c) => c.kind === 'box');
-    for (const b of street) expect(boxes.some((c) => c.x === b.x && c.z === b.z && c.w === b.w && c.d === b.d), b.id).toBe(true);
-    expect(collidersIn('street').filter((c) => c.kind === 'circle')).toHaveLength(TREES.length);
+    const hasBox = (b) => boxes.some((c) => c.x === b.x && c.z === b.z && c.w === b.w && c.d === b.d);
+    // the Smith house and the school are boxes for each part, not for their footprints
+    for (const b of street.filter((o) => o !== HOUSE && o !== SCHOOL)) expect(hasBox(b), b.id).toBe(true);
+    for (const p of [...HOUSE_PARTS, ...SCHOOL_PARTS]) expect(hasBox(p), p.id ?? 'school part').toBe(true);
+    expect(hasBox(HOUSE)).toBe(false);
+    expect(hasBox(SCHOOL)).toBe(false);
+    expect(collidersIn('street').filter((c) => c.kind === 'circle' && c.id.startsWith('tree'))).toHaveLength(TREES.length);
     expect(collidersIn('annex').some((c) => c.x === ARCADE.x && c.z === ARCADE.z && c.w === ARCADE.w && c.d === ARCADE.d)).toBe(true);
     expect(COLLIDERS.street).toBe(collidersIn('street'));
   });
@@ -312,6 +346,144 @@ describe('C-137: the layout', () => {
         expect(c.z - d / 2, `${id} ${c.id}`).toBeGreaterThanOrEqual(room.z0 - 1e-9);
         expect(c.z + d / 2, `${id} ${c.id}`).toBeLessThanOrEqual(room.z1 + 1e-9);
       }
+    }
+  });
+});
+
+describe('C-137: Harry Herpson High, the neighbours and the street’s small things', () => {
+  const hit = (p, x, z) => Math.abs(x - p.x) <= p.w / 2 && Math.abs(z - p.z) <= p.d / 2;
+  const overParts = (x, z) => SCHOOL_PARTS.some((p) => hit(p, x, z));
+
+  it('keeps the school’s footprint for the model to be fitted to', () => {
+    expect(SCHOOL).toEqual({ id: 'school', x: 40, z: 23, w: 30, d: 16, h: 8, roof: 8.5 });
+  });
+
+  it('follows the model’s L: a front bar the whole width, the tall entrance block on the door, a rear wing on the west', () => {
+    expect(SCHOOL_PARTS).toHaveLength(3);
+    for (const p of SCHOOL_PARTS) {
+      for (const k of ['x', 'z', 'w', 'd', 'h']) expect(Number.isFinite(p[k]), `${p.id} ${k}`).toBe(true);
+      // inside the footprint, and under the roof the footprint has
+      expect(p.x - p.w / 2, p.id).toBeGreaterThanOrEqual(SCHOOL.x - SCHOOL.w / 2 - 1e-9);
+      expect(p.x + p.w / 2, p.id).toBeLessThanOrEqual(SCHOOL.x + SCHOOL.w / 2 + 1e-9);
+      expect(p.z - p.d / 2, p.id).toBeGreaterThanOrEqual(SCHOOL.z - SCHOOL.d / 2 - 1e-9);
+      expect(p.z + p.d / 2, p.id).toBeLessThanOrEqual(SCHOOL.z + SCHOOL.d / 2 + 1e-9);
+      expect(p.h, p.id).toBeLessThanOrEqual(SCHOOL.roof + 0.3);
+    }
+    // one spans the footprint
+    expect(SCHOOL_PARTS.some((p) => p.w >= SCHOOL.w - 1e-9)).toBe(true);
+    // the entrance block stands over the door, and is the tallest, and comes furthest forward
+    const door = link('school-door');
+    const tallest = SCHOOL_PARTS.reduce((a, b) => (b.h > a.h ? b : a));
+    expect(Math.abs(tallest.x - door.x)).toBeLessThan(1);
+    expect(tallest.x - tallest.w / 2).toBeLessThan(door.x);
+    expect(tallest.x + tallest.w / 2).toBeGreaterThan(door.x);
+    expect(tallest.z - tallest.d / 2).toBeLessThan(Math.min(...SCHOOL_PARTS.filter((p) => p !== tallest).map((p) => p.z - p.d / 2)));
+    expect(tallest.z - tallest.d / 2).toBeGreaterThan(door.z);
+    // an L: the west wing goes on back, the east does not
+    expect(overParts(30, 28)).toBe(true);
+    expect(overParts(50, 20)).toBe(true);
+    expect(overParts(50, 28)).toBe(false);
+    expect(overParts(40, 28)).toBe(true);
+    expect(overParts(44, 28)).toBe(false);
+  });
+
+  it('puts a box in the way for each part and none for the whole footprint, with the notch and the front step to walk in', () => {
+    // the notch east of the rear wing is open ground to stand in; so is the way up to the doors
+    expect(free('street', 50, 28)).toBe(true);
+    expect(free('street', 40, 15.2)).toBe(true);
+    const door = link('school-door');
+    const entrance = SCHOOL_PARTS.reduce((a, b) => (b.h > a.h ? b : a));
+    // walking from the road up to the entrance block stops at its front, inside the door's reach
+    const up = walk(newMorty({ x: door.x, z: 9, face: -Math.PI / 2 }), { x: 0, z: 1 }, 3);
+    expect(up.z).toBeCloseTo(entrance.z - entrance.d / 2 - MORTY.radius, 1);
+    expect(Math.hypot(up.x - door.x, up.z - door.z)).toBeLessThan(door.r);
+  });
+
+  it('flies over each part at its own height: the entrance block highest, the notch not at all', () => {
+    const topOf = (x, z) => Math.max(CRUISER.hover, ...SCHOOL_PARTS.filter((p) => Math.abs(x - p.x) <= p.w / 2 + CRUISER.radius && Math.abs(z - p.z) <= p.d / 2 + CRUISER.radius).map((p) => p.h + 2));
+    for (const p of SCHOOL_PARTS) expect(floorAt(p.x, p.z), p.id).toBe(topOf(p.x, p.z));
+    const entrance = SCHOOL_PARTS.reduce((a, b) => (b.h > a.h ? b : a));
+    expect(floorAt(entrance.x, entrance.z)).toBe(entrance.h + 2);
+    // over the far end of the rear wing and the far east of the bar, it is lower than over the block
+    expect(floorAt(27, 29)).toBeLessThan(floorAt(entrance.x, entrance.z));
+    expect(floorAt(53, 20)).toBeLessThan(floorAt(entrance.x, entrance.z));
+    // out over the notch it is the hover height; it can land there and not on the wings
+    expect(floorAt(52, 29)).toBe(CRUISER.hover);
+    expect(canLand({ ...newCruiser(), x: 52, z: 29 })).toBe(true);
+    expect(canLand({ ...newCruiser(), x: 30, z: 28 })).toBe(false);
+    expect(canLand({ ...newCruiser(), x: 50, z: 20 })).toBe(false);
+  });
+
+  it('has the house next door to the west pink, and every neighbour a different colour', () => {
+    const [r, g, b] = [(NEIGHBOURS[0].tint >> 16) & 255, (NEIGHBOURS[0].tint >> 8) & 255, NEIGHBOURS[0].tint & 255];
+    expect(r).toBeGreaterThanOrEqual(0xe8);
+    expect(g).toBeLessThanOrEqual(0xb8);
+    expect(b).toBeLessThanOrEqual(0xc0);
+    expect(r - g).toBeGreaterThan(0x30);
+    expect(NEIGHBOURS[0].x).toBe(-42);
+    expect(new Set(NEIGHBOURS.map((n) => n.tint)).size).toBe(6);
+  });
+
+  it('lists the street’s small things, each a thing in the way: the flagpole, the marquee, the school tree, poles, mailboxes, the hydrant', () => {
+    const at = (id) => DECOR.find((d) => d.id === id);
+    expect(at('flagpole')).toEqual({ id: 'flagpole', kind: 'pole', x: 47.5, z: 11.8, r: 0.15 });
+    expect(at('marquee')).toEqual({ id: 'marquee', kind: 'box', x: 31.5, z: 9.4, w: 2.4, d: 0.5, turn: -2.75 });
+    expect(at('school-tree')).toEqual({ id: 'school-tree', kind: 'tree', x: 27.5, z: 11.5, r: 0.35 });
+    expect(at('hydrant')).toEqual({ id: 'hydrant', kind: 'hydrant', x: -2.2, z: -7.45, r: 0.25 });
+    // telephone poles every 32 m along the south sidewalk, inside the street
+    const poles = DECOR.filter((d) => d.kind === 'pole' && d.id !== 'flagpole');
+    expect(poles.map((d) => d.x)).toEqual([-44, -12, 20, 52]);
+    for (const d of poles) expect(d).toMatchObject({ z: 7.6, r: 0.15 });
+    // a mailbox by each house's driveway, on its own side of the street, at the sidewalk's edge
+    const boxes = DECOR.filter((d) => d.kind === 'mailbox');
+    expect(boxes.map((d) => d.id).sort()).toEqual(['mailbox-n0', 'mailbox-n1', 'mailbox-n2', 'mailbox-s0', 'mailbox-s1', 'mailbox-s2', 'mailbox-smith']);
+    for (const d of boxes) {
+      expect(d.r, d.id).toBe(0.25);
+      expect(Math.abs(d.z), d.id).toBe(7.5);
+    }
+    expect(at('mailbox-smith')).toMatchObject({ x: DRIVEWAY.x1 + 0.7, z: -7.5 });
+    for (const n of NEIGHBOURS) {
+      const d = at(`mailbox-${n.id}`);
+      expect(Math.sign(d.z), n.id).toBe(Math.sign(n.z));
+      expect(Math.abs(d.x - n.x), n.id).toBeLessThan(n.w / 2 + 5);
+    }
+    expect(new Set(DECOR.map((d) => d.id)).size).toBe(DECOR.length);
+    // each is in the way, as a round thing (the marquee, a turned box)
+    for (const d of DECOR) {
+      const c = collidersIn('street').find((o) => o.id === d.id);
+      expect(c, d.id).toBeTruthy();
+      if (d.kind === 'box') expect(c).toMatchObject({ kind: 'box', x: d.x, z: d.z, w: d.w, d: d.d, turn: d.turn });
+      else expect(c).toMatchObject({ kind: 'circle', x: d.x, z: d.z, r: d.r });
+    }
+  });
+
+  it('keeps the cruiser from setting down on any of them', () => {
+    for (const d of DECOR) {
+      expect(canLand({ ...newCruiser(), x: d.x, z: d.z }), d.id).toBe(false);
+      // but it can land close by, clear of it
+      const reach = CRUISER.radius + (d.kind === 'box' ? Math.hypot(d.w, d.d) / 2 : d.r) + 0.3;
+      const near = [0, 1, 2, 3, 4, 5, 6, 7].some((k) => canLand({ ...newCruiser(), x: d.x + Math.cos((k * Math.PI) / 4) * reach, z: d.z + Math.sin((k * Math.PI) / 4) * reach }));
+      expect(near, `${d.id}, close by`).toBe(true);
+    }
+  });
+
+  it('stands them clear of the buildings, the road, the doors and the front walk, and nothing is cut off', () => {
+    const edge = (b, x, z) => Math.hypot(Math.max(Math.abs(x - b.x) - b.w / 2, 0), Math.max(Math.abs(z - b.z) - b.d / 2, 0));
+    const solids = [...street.filter((b) => b !== HOUSE && b !== SCHOOL), ...HOUSE_PARTS, ...SCHOOL_PARTS];
+    for (const d of DECOR) {
+      const r = d.kind === 'box' ? Math.max(d.w, d.d) / 2 : d.r;
+      expect(inArea('street', d.x, d.z, -r), `${d.id} in the street`).toBe(true);
+      expect(Math.abs(d.z - ROAD.z) - r, `${d.id} off the road`).toBeGreaterThan(ROAD.w / 2);
+      for (const b of solids) expect(edge(b, d.x, d.z), `${d.id} in ${b.id}`).toBeGreaterThan(r);
+      for (const l of LINKS.filter((o) => o.area === 'street')) expect(Math.hypot(d.x - l.x, d.z - l.z), `${d.id} by ${l.id}`).toBeGreaterThan(r + MORTY.radius + 0.5);
+      for (const l of LINKS.filter((o) => o.to === 'street')) expect(Math.hypot(d.x - l.arrive.x, d.z - l.arrive.z), `${d.id} by the landing from ${l.id}`).toBeGreaterThan(r + MORTY.radius + 0.5);
+      // not on the front walk, nor in the way of the lane to a door
+      expect(d.x + r < FRONT_WALK.x0 - 0.4 || d.x - r > FRONT_WALK.x1 + 0.4 || d.z > FRONT_WALK.z1 + 0.5 || d.z < FRONT_WALK.z0 - 0.5, `${d.id} off the front walk`).toBe(true);
+    }
+    // the lane from the sidewalk to each street door stays clear of them, with Morty's width
+    for (const l of LINKS.filter((o) => o.area === 'street')) {
+      const edgeZ = Math.sign(l.z) * (ROAD.w / 2 + ROAD.sidewalk);
+      for (let k = 0; k <= 1; k += 0.02) expect(free('street', l.x, edgeZ + (l.z - edgeZ) * k), `${l.id} lane`).toBe(true);
     }
   });
 });
@@ -561,16 +733,31 @@ describe('C-137: walking about as Morty', () => {
     expect(b.running).toBe(true);
   });
 
-  it('walks up the front walk to the front door, and stops at the front wall of the house', () => {
+  it('walks up the front walk to the porch step, with no invisible wall in front of it', () => {
     const door = link('house-door');
+    const porch = HOUSE_PARTS.find((p) => p.id === 'porch');
+    const step = porch.z + porch.d / 2;
     const m = walk(newMorty({ x: door.x, z: -9, face: Math.PI / 2 }), { x: 0, z: -1 }, 4);
-    expect(m.z).toBeCloseTo(HOUSE.z + HOUSE.d / 2 + MORTY.radius, 1);
+    // within half a metre of the step, and at the door
+    expect(m.z - step).toBeGreaterThanOrEqual(MORTY.radius - 1e-6);
+    expect(m.z - step).toBeLessThanOrEqual(0.5);
     expect(m.x).toBeCloseTo(door.x, 1);
-    expect(Math.hypot(m.x - door.x, m.z - door.z)).toBeLessThan(door.r);
+    expect(Math.hypot(m.x - door.x, m.z - door.z)).toBeLessThan(0.1);
     expect(free('street', m.x, m.z)).toBe(true);
+    // and along the whole walk, the middle of it is clear
+    for (let z = FRONT_WALK.z1; z >= FRONT_WALK.z0; z -= 0.1) expect(free('street', (FRONT_WALK.x0 + FRONT_WALK.x1) / 2, z), `walk at ${z.toFixed(1)}`).toBe(true);
   });
 
-  it('stops at the garage door, a metre before the house’s front wall, and walks round the garage’s corner', () => {
+  it('stops at the Smith house’s own walls: the middle’s, the wing’s and the porch’s', () => {
+    const part = (id) => HOUSE_PARTS.find((p) => p.id === id);
+    const go = (x) => walk(newMorty({ x, z: -9, face: Math.PI / 2 }), { x: 0, z: -1 }, 4);
+    expect(go(-12).z).toBeCloseTo(part('middle').z + part('middle').d / 2 + MORTY.radius, 1);
+    expect(go(1).z).toBeCloseTo(part('wing').z + part('wing').d / 2 + MORTY.radius, 1);
+    // and into the corner of the middle and the wing, he is pushed out, never into either
+    for (const x of [-4, -3, -2.8]) expect(free('street', go(x).x, go(x).z), String(x)).toBe(true);
+  });
+
+  it('stops at the garage door, 3 m ahead of the house’s front, and walks round the garage’s corner', () => {
     const door = link('garage-door');
     const m = walk(newMorty({ x: door.x, z: -8, face: Math.PI / 2 }), { x: 0, z: -1 }, 4);
     expect(m.z).toBeCloseTo(GARAGE.z + GARAGE.d / 2 + MORTY.radius, 1);
@@ -674,7 +861,7 @@ describe('C-137: doors, exits and portals', () => {
       'stairs-down',
       'stairs-up',
     ]);
-    expect(link('house-door')).toMatchObject({ area: 'street', x: -8, z: -14.4, r: 1.6, to: 'house', kind: 'door', label: 'Smith house' });
+    expect(link('house-door')).toMatchObject({ area: 'street', x: -7.2, z: -17.4, r: 1.6, to: 'house', kind: 'door', label: 'Smith house' });
     expect(link('garage-door')).toMatchObject({ area: 'street', x: -19, z: -13.4, r: 1.6, to: 'garage', label: 'Rick’s garage' });
     expect(link('school-door')).toMatchObject({ area: 'street', x: 40, z: 14.4, to: 'school', label: 'Harry Herpson High' });
     expect(link('arcade-door')).toMatchObject({ area: 'annex', x: 400, z: -3.4, to: 'arcade', label: 'Blips and Chitz' });
@@ -1035,7 +1222,8 @@ describe('C-137: the cruiser', () => {
     expect(floorAt(0, 0)).toBe(CRUISER.hover);
     expect(floorAt(HOUSE.x, HOUSE.z)).toBe(HOUSE.roof + 2);
     expect(floorAt(GARAGE.x, GARAGE.z)).toBe(GARAGE.roof + 2);
-    expect(floorAt(SCHOOL.x, SCHOOL.z)).toBe(SCHOOL.roof + 2);
+    // (the school's floor is its parts', below)
+    expect(floorAt(SCHOOL.x, SCHOOL.z)).toBeGreaterThan(SCHOOL.roof);
     for (const n of NEIGHBOURS) expect(floorAt(n.x, n.z), n.id).toBe(n.roof + 2);
     // padded by the cruiser's own size, so it clears the eaves
     expect(floorAt(HOUSE.x + HOUSE.w / 2 + CRUISER.radius - 0.1, HOUSE.z)).toBe(HOUSE.roof + 2);
@@ -1098,6 +1286,31 @@ describe('C-137: the cruiser', () => {
     }
   });
 
+  // Where it might be set down, and where Morty steps out: a 2 m grid across the street, and a band
+  // along both sides of every fence (where an exit could end up across it), at four headings. Worked
+  // out once, and only the failures are written down, so a pass costs nothing to report.
+  let exits = null;
+  const exitsFrom = () => {
+    if (exits) return exits;
+    const spots = [];
+    for (let x = -57; x <= 57; x += 2) for (let z = -37; z <= 37; z += 2) spots.push([x, z]);
+    for (const [x0, z0, x1, z1] of FENCES) {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const nx = -(z1 - z0) / len;
+      const nz = (x1 - x0) / len;
+      for (let t = 0; t <= len; t += 1)
+        for (const off of [-3.5, -2.5, -1.5, -0.8, -0.3, 0.3, 0.8, 1.5, 2.5, 3.5]) spots.push([x0 + ((x1 - x0) * t) / len + nx * off, z0 + ((z1 - z0) * t) / len + nz * off]);
+    }
+    exits = [];
+    for (const [x, z] of spots)
+      for (const yaw of [0, 1, 2.5, -2]) {
+        const c = { ...newCruiser(), x, z, yaw };
+        if (canLand(c)) exits.push({ c, out: exitCruiser(c) });
+      }
+    return exits;
+  };
+  const where = ({ c, out }) => `from ${c.x.toFixed(2)}, ${c.z.toFixed(2)}, ${c.yaw} to ${out.x.toFixed(2)}, ${out.z.toFixed(2)}`;
+
   it('lets Morty out beside it, standing clear, wherever it can land', () => {
     const e = exitCruiser(newCruiser());
     expect(free('street', e.x, e.z)).toBe(true);
@@ -1105,18 +1318,9 @@ describe('C-137: the cruiser', () => {
     expect(Math.hypot(e.x - BOARD.x, e.z - BOARD.z)).toBeLessThan(4);
     expect(Math.cos(e.face)).toBeCloseTo(Math.sin(BOARD.yaw), 6);
     expect(-Math.sin(e.face)).toBeCloseTo(Math.cos(BOARD.yaw), 6);
-    let tried = 0;
-    for (let x = -57; x <= 57; x += 1.5)
-      for (let z = -37; z <= 37; z += 1.5)
-        for (const yaw of [0, 1, 2.5]) {
-          const c = { ...newCruiser(), x, z, yaw };
-          if (!canLand(c)) continue;
-          tried++;
-          const out = exitCruiser(c);
-          expect(free('street', out.x, out.z), `from ${x}, ${z}, ${yaw}`).toBe(true);
-          expect(Math.hypot(out.x - x, out.z - z), `from ${x}, ${z}, ${yaw}`).toBeGreaterThanOrEqual(CRUISER.radius + MORTY.radius - 1e-6);
-        }
-    expect(tried).toBeGreaterThan(500);
+    const bad = exitsFrom().filter((o) => !free('street', o.out.x, o.out.z) || Math.hypot(o.out.x - o.c.x, o.out.z - o.c.z) < CRUISER.radius + MORTY.radius - 1e-6);
+    expect(bad.slice(0, 3).map(where)).toEqual([]);
+    expect(exitsFrom().length).toBeGreaterThan(5000);
   });
 
   it('lets Morty out on the cruiser’s own side of every fence, on ground he can walk back to the start from', () => {
@@ -1129,20 +1333,11 @@ describe('C-137: the cruiser', () => {
       for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) if (reach.has(`${i0 + di},${j0 + dj}`) && Math.hypot(START.x + (i0 + di) * S - x, START.z + (j0 + dj) * S - z) < 0.7) return true;
       return false;
     };
-    let tried = 0;
-    for (let x = -57; x <= 57; x += 1)
-      for (let z = -37; z <= 37; z += 1)
-        for (const yaw of [0, 1, 2.5, -2]) {
-          const c = { ...newCruiser(), x, z, yaw };
-          if (!canLand(c)) continue;
-          tried++;
-          const out = exitCruiser(c);
-          const at = `from ${x}, ${z}, ${yaw} to ${out.x.toFixed(2)}, ${out.z.toFixed(2)}`;
-          for (const f of FENCES) expect(crosses(x, z, out.x, out.z, f), `${at} across a fence`).toBe(false);
-          expect(connected(out.x, out.z), `${at} can be walked back from`).toBe(true);
-        }
-    expect(tried).toBeGreaterThan(5000);
-  });
+    const across = exitsFrom().filter((o) => FENCES.some((f) => crosses(o.c.x, o.c.z, o.out.x, o.out.z, f)));
+    expect(across.slice(0, 3).map(where)).toEqual([]);
+    const stuck = exitsFrom().filter((o) => !connected(o.out.x, o.out.z));
+    expect(stuck.slice(0, 3).map(where)).toEqual([]);
+  }, 30000);
 });
 
 describe('C-137: what there is to do', () => {
