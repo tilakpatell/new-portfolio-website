@@ -7,6 +7,7 @@ import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
 import { PONY } from './levels/pony';
+import { RIVENDELL } from './levels/rivendell';
 import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
@@ -22,8 +23,7 @@ import './rush.css';
 // touch screen).
 
 const BEST = (id) => `tp-rush-best-${id}`;
-const ICON = { pint: '🍺', stew: '🍲', bread: '🍞' };
-const STEPS = { pint: ['mug', 'tap'], stew: ['chop 3', 'pot', 'bowl'], bread: ['dough', 'oven'] };
+const LEVELS = { pony: PONY, rivendell: RIVENDELL };
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
@@ -33,7 +33,8 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 const relay = () => (import.meta.env.DEV && typeof window !== 'undefined' && window.__RUSH_RELAY__ ? { load: window.__RUSH_RELAY__ } : {});
 const inviteLink = (level, code) => `${window.location.origin}${window.location.pathname}#/middle-earth/${level.town}?rush=${code}`;
 
-export default function Rush({ level = PONY }) {
+export default function Rush({ level: which = 'pony' }) {
+  const level = typeof which === 'string' ? (LEVELS[which] ?? PONY) : which;
   const three = use3D();
   const { search } = useLocation();
   const invite = cleanCode(new URLSearchParams(search).get('rush'));
@@ -55,16 +56,14 @@ export default function Rush({ level = PONY }) {
         <h2 id={`${level.id}-rush-title`} className="rush-title">
           {level.name}
         </h2>
-        <p className="rush-lead">
-          The common room’s full, Nob and Bob are nowhere, and {level.host} wants pints, stew and bread out through the hatch. Fetch, chop, cook, pour, serve, and wash up before the mugs run out. Alone, or with friends anywhere: make a room and send them the code.
-        </p>
+        <p className="rush-lead">{level.lead} Alone, or with friends anywhere: make a room and send them the code.</p>
       </div>
       {three.on ? seen && <Kitchen level={level} live={inView} invite={invite} /> : <p className="shell rush-no3d">This one needs 3D. {three.can ? 'Switch 3D on in the settings to play it.' : 'This browser can’t draw it.'}</p>}
       <ul className="rush-recipes shell">
         {Object.entries(level.dishes).map(([d, r]) => (
           <li key={d}>
             <span className="rush-recipe-icon" aria-hidden="true">
-              {ICON[d]}
+              {r.icon}
             </span>
             <b>{r.name}</b> <span>{r.note}</span>
           </li>
@@ -496,11 +495,11 @@ function Kitchen({ level, live, invite }) {
               return (
                 <li key={o.id} className="rush-ticket" data-late={k < 0.3 || undefined}>
                   <span className="rush-ticket-icon" aria-hidden="true">
-                    {ICON[o.dish]}
+                    {level.dishes[o.dish].icon}
                   </span>
                   <span className="rush-ticket-name">{level.dishes[o.dish].name}</span>
                   <span className="rush-ticket-steps" aria-hidden="true">
-                    {STEPS[o.dish].join(' › ')}
+                    {level.dishes[o.dish].steps.join(' › ')}
                   </span>
                   <span className="rush-ticket-bar" aria-hidden="true">
                     <span style={{ transform: `scaleX(${Math.max(0, k)})`, background: `hsl(${Math.round(k * 110)} 70% 48%)` }} />

@@ -129,7 +129,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
         if (fromHost(peerId)) snap = data;
       };
       acts.ev.onMessage = (data, { peerId }) => {
-        if (fromHost(peerId)) events.push(...readEvents(data));
+        if (fromHost(peerId)) events.push(...readEvents(data, level));
       };
       acts.hi.onMessage = (_, { peerId }) => {
         if (state.role !== 'host' || !allow(peerId, 'hi')) return;
@@ -241,7 +241,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     // after a step: what happened, the round now and then, the lobby now and then
     hostSend(s, list = [], t = now()) {
       if (state.status !== 'online') return;
-      const ev = writeEvents(list);
+      const ev = writeEvents(list, level);
       if (ev.length) send('ev', ev);
       if (s && t - lastState >= STATE_MS) {
         lastState = t;
