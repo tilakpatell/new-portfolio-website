@@ -11,8 +11,8 @@ import { drawMap } from '../../middleearth/towns/map';
 import { nearest } from '../../middleearth/towns/story';
 import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
-import { CAST, COLLIDERS, DOORS, JIM, LINES, NAMES, P, ROOMS, SPOTS, THINGS, WALLS, WORLD, rect, roomAt, seatOf, spot, validAt } from './layout';
-import { CALL_COUNT, CHILI, CONVOS, FIRE, JELLO, QUESTS, SEAL, SPEAKERS, callOf, fireLeft, newChili, officeProgress, stepChili } from './story';
+import { CAST, COLLIDERS, DOORS, HOOP, JIM, LINES, NAMES, OFFICE_ARRIVE, P, RACKS, ROOMS, SPOTS, THINGS, WALLS, WAREHOUSE, WH_ARRIVE, WORLD, inWarehouse, rect, roomAt, seatOf, spot, validAt } from './layout';
+import { CALL_COUNT, CHILI, CONVOS, FIRE, HOOPS, JELLO, QUESTS, SEAL, SPEAKERS, callOf, fireLeft, meterAt, newChili, newHoops, officeProgress, shoot, stepChili, stepHoops } from './story';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import './world.css';
@@ -34,7 +34,7 @@ const clip = (id, o) => import('../../../lib/clips').then((c) => c.playClip(id, 
 const sfx = () => import('../../../lib/sfx');
 const sounds = () => import('./sounds');
 const walker = makeWalker({ radius: WORLD.radius, centre: WORLD.centre, colliders: COLLIDERS, walls: WALLS, body: JIM });
-const ROOM_NAMES = { bullpen: 'The bullpen', michael: 'Michael’s office', conference: 'The conference room', hallway: 'The kitchen', men: 'The men’s room', women: 'The women’s room', closet: 'Ryan’s closet', stairs: 'The stairwell', annex: 'The annex', breakroom: 'The break room', darryl: 'Darryl’s office', supplies: 'The supply room', lobby: 'The lobby' };
+const ROOM_NAMES = { bullpen: 'The bullpen', michael: 'Michael’s office', conference: 'The conference room', hallway: 'The kitchen', men: 'The men’s room', women: 'The women’s room', closet: 'Ryan’s closet', stairs: 'The stairwell', annex: 'The annex', breakroom: 'The break room', darryl: 'Darryl’s office', supplies: 'The supply room', lobby: 'The lobby', warehouse: 'The warehouse' };
 const BOUNDS = (() => {
   const all = Object.values(ROOMS).map(rect);
   const x0 = Math.min(...all.map((r) => r.x));
@@ -44,6 +44,8 @@ const BOUNDS = (() => {
   return { x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
 })();
 const MAP_SCALE = 150 / (BOUNDS.x1 - BOUNDS.x0 + 2);
+const WH_C = { x: WAREHOUSE.x + WAREHOUSE.w / 2, z: WAREHOUSE.z + WAREHOUSE.d / 2 };
+const WH_SCALE = 150 / (WAREHOUSE.w + 2);
 
 export default function OfficeWorld() {
   const three = use3D();
@@ -302,6 +304,19 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         s.deskCam = deskCam('dundies');
       } else if (id === 'exit') {
         if (s.fire) endFire(true);
+      } else if (id === 'downstairs') {
+        sfx().then((x) => x.knock?.());
+        toWalk(WH_ARRIVE);
+        say('Down two flights to the warehouse. It’s colder down here, and louder, and everyone’s looking at your shoes.');
+      } else if (id === 'upstairs') {
+        sfx().then((x) => x.knock?.());
+        toWalk(OFFICE_ARRIVE);
+      } else if (id === 'hoop') {
+        s.mode = 'hoops';
+        s.hoops = newHoops();
+        s.h = newWalker({ x: HOOP.x + HOOP.line + 0.3, z: HOOP.z, face: Math.PI });
+        s.deskCam = { at: [HOOP.x + HOOP.line + 3.4, 2.15, HOOP.z + 0.9], look: [HOOP.x + 0.4, 2.55, HOOP.z] };
+        say(has('hoops') ? 'Free throws again. Darryl’s keeping count anyway.' : 'Darryl: “Three out of five, office man. Michael said you were the ringer. Michael says a lot of things.”');
       }
       return undefined;
     },
@@ -349,6 +364,23 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     },
     [complete, say],
   );
+  // a free throw
+  const throwBall = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'hoops' || !s.hoops) return;
+    audioContext();
+    const kind = shoot(s.hoops);
+    if (!kind) return;
+    sfx().then((x) => x.knock?.());
+  }, []);
+  const leaveHoops = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'hoops') return;
+    s.hoops = null;
+    s.deskCam = null;
+    toWalk({ x: HOOP.x + HOOP.line + 1.4, z: HOOP.z, face: 0 });
+  }, [toWalk]);
+
   const leaveTalk = useCallback(() => {
     const s = sim.current;
     if (s.mode !== 'talk') return;
@@ -412,6 +444,13 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         } else if (k === 'm' || k === 'M') setList((v) => !v);
         return;
       }
+      if (s.mode === 'hoops') {
+        if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !e.repeat && !onButton) {
+          e.preventDefault();
+          throwBall();
+        } else if (k === 'Escape') leaveHoops();
+        return;
+      }
       if (s.talk) {
         if (/^[1-4]$/.test(k)) {
           e.preventDefault();
@@ -424,7 +463,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, enter, talkOnward, leaveTalk, lookAt]);
+  }, [live, enter, talkOnward, leaveTalk, lookAt, throwBall, leaveHoops]);
 
 
   // ── every frame ──
@@ -529,6 +568,44 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         }
       }
     }
+    // free throws: the meter, the ball in flight, the count
+    let ballAt = null;
+    if (s.mode === 'hoops' && s.hoops) {
+      const hh = s.hoops;
+      const res = stepHoops(hh, dt);
+      if (res === 'in') {
+        sfx().then((x) => x.ding?.());
+        a.fx('pop', { x: HOOP.x, y: HOOP.y, z: HOOP.z, colour: 'gold' });
+      } else if (res === 'out') sfx().then((x) => x.knock?.());
+      if (res && hh.over) {
+        const won = hh.made >= HOOPS.need;
+        if (won) {
+          complete('hoops');
+          sfx().then((x) => x.applause());
+          say(`${hh.made} of ${hh.shots}. Darryl, slowly: “Okay. Okay. The office has one.” The warehouse goes back to work.`);
+        } else say(`${hh.made} of ${hh.shots}. Darryl: “That’s what I thought.” Step up and go again.`, true);
+        later(() => {
+          const ss = sim.current;
+          if (ss.mode !== 'hoops') return;
+          if (won) leaveHoops();
+          else ss.hoops = newHoops();
+        }, 2200);
+      }
+      // the ball: in flight on its arc, or in Jim's hands
+      const start = { x: s.h.x - 0.35, y: 1.75, z: s.h.z };
+      if (hh.ball) {
+        const k = Math.min(1, hh.ball.t / HOOPS.flight);
+        const miss = hh.ball.kind === 'short' ? -0.55 : hh.ball.kind === 'long' ? 0.5 : 0;
+        const end = { x: HOOP.x + miss * -1, y: HOOP.y + (hh.ball.kind === 'short' ? -0.35 : 0.05), z: HOOP.z };
+        const after = Math.max(0, k - 0.82) / 0.18; // through the net and down
+        ballAt = {
+          x: start.x + (end.x - start.x) * k,
+          y: start.y + (end.y - start.y) * k + Math.sin(Math.PI * Math.min(1, k / 0.82)) * 1.7 - after * 1.2,
+          z: start.z + (end.z - start.z) * k + (hh.ball.kind === 'long' ? k * 0.4 : 0),
+          spin: true,
+        };
+      } else ballAt = start;
+    }
     // the fire drill's clock
     if (s.fire) {
       s.fireT += dt;
@@ -555,6 +632,8 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
           if (sp.id === 'kitchen') return s.carry === 'chili';
           if (sp.id === 'seminar') return open('fire') && !has('fire');
           if (sp.id === 'dundies') return open('dundies') && !has('dundies');
+          if (sp.id === 'downstairs' || sp.id === 'upstairs') return !s.carry;
+          if (sp.id === 'hoop') return !s.carry;
           return false;
         });
         const sp = nearest(candidates, s.h.x, s.h.z);
@@ -607,6 +686,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
               !has('chili') && spot('chili'),
               !has('toss') && spot('toss'),
               !has('factcheck') && spot('factcheck'),
+              !has('hoops') && (inWarehouse(s.h.x, s.h.z) ? spot('hoop') : spot('downstairs')),
               p.quests.find((q) => q.id === 'fire')?.open && !has('fire') && spot('seminar'),
               p.quests.find((q) => q.id === 'dundies')?.open && !has('dundies') && spot('dundies'),
             ].filter(Boolean);
@@ -633,6 +713,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
           camPitch: s.pitch,
           camDist: touch ? 3.8 : 3.4,
           snapCam: s.snap,
+          ballAt,
           debugCam: s.debugCam,
         },
         ms,
@@ -649,10 +730,11 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     }
 
     const slosh = s.carry === 'chili' ? Math.round((s.chili.slosh / CHILI.brim) * 20) : -1;
-    const key = [s.mode, s.near, s.thing, s.moved, s.talking, s.talk?.at, s.carry, slosh, s.dwight, s.dwight === 'away' ? Math.ceil(JELLO.away - s.dwightT) : 0, s.fire, s.fire ? fireLeft(s.fireT) : 0, s.room].join('|');
+    const hk = s.hoops ? [s.hoops.shots, s.hoops.made, !!s.hoops.ball, s.hoops.over].join(',') : '';
+    const key = [hk, s.mode, s.near, s.thing, s.moved, s.talking, s.talk?.at, s.carry, slosh, s.dwight, s.dwight === 'away' ? Math.ceil(JELLO.away - s.dwightT) : 0, s.fire, s.fire ? fireLeft(s.fireT) : 0, s.room].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ mode: s.mode, near: s.near, thing: s.thing, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, carry: s.carry, slosh: Math.max(0, slosh) / 20, dwight: s.dwight, dwightLeft: Math.max(0, Math.ceil(JELLO.away - s.dwightT)), fire: s.fire, fireLeft: fireLeft(s.fireT), room: s.room });
+      setHud({ mode: s.mode, near: s.near, thing: s.thing, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, carry: s.carry, slosh: Math.max(0, slosh) / 20, dwight: s.dwight, dwightLeft: Math.max(0, Math.ceil(JELLO.away - s.dwightT)), fire: s.fire, fireLeft: fireLeft(s.fireT), room: s.room, hoops: s.hoops ? { shots: s.hoops.shots, made: s.hoops.made, flying: !!s.hoops.ball, over: s.hoops.over } : null });
     }
     if (s.person && bubbleRef.current) {
       const at = a.screenOf(s.person);
@@ -661,7 +743,12 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, { scale: MAP_SCALE, h: { ...s.h, x: s.h.x - BOUNDS.cx, z: s.h.z - BOUNDS.cz }, markers: markers.map((m) => ({ ...m, x: m.x - BOUNDS.cx, z: m.z - BOUNDS.cz })), night: s.fire, base: drawFloor(s.fire) });
+    if (++s.frame % 4 === 0) {
+      const wh = inWarehouse(s.h.x, s.h.z);
+      const c = wh ? WH_C : { x: BOUNDS.cx, z: BOUNDS.cz };
+      const here = markers.filter((m) => inWarehouse(m.x, m.z) === wh);
+      drawMap(map.current, { scale: wh ? WH_SCALE : MAP_SCALE, h: { ...s.h, x: s.h.x - c.x, z: s.h.z - c.z }, markers: here.map((m) => ({ ...m, x: m.x - c.x, z: m.z - c.z })), night: s.fire, base: wh ? drawWarehouse : drawFloor(s.fire) });
+    }
     if (s.frame % 120 === 0 && s.mode === 'walk' && !s.fire) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
 
@@ -711,7 +798,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
 
   // the list's "go there"
   const travel = (q) => {
-    const at = { phones: spot('phones'), jello: spot('fridge'), chili: spot('chili'), toss: spot('toss'), factcheck: spot('factcheck'), fire: spot('seminar'), dundies: spot('dundies') }[q.id];
+    const at = { phones: spot('phones'), jello: spot('fridge'), chili: spot('chili'), toss: spot('toss'), factcheck: spot('factcheck'), fire: spot('seminar'), dundies: spot('dundies'), hoops: spot('hoop') }[q.id];
     if (!at) return;
     toWalk({ x: at.x, z: at.z + 0.6, face: Math.PI / 2 });
     setList(false);
@@ -727,6 +814,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     kitchen: ['The kitchen counter', 'Set the chili down'],
     seminar: ['The conference room', 'Dwight’s fire safety seminar'],
     exit: ['The stairwell', 'Get out!'],
+    downstairs: ['The stairwell', 'Down to the warehouse'],
+    upstairs: ['The stairs', 'Up to the office'],
+    hoop: ['The free-throw line', 'Shoot some free throws'],
     dundies: ['Michael’s office', 'Go in'],
   };
   const here = hud.near ? PROMPT[hud.near] : null;
@@ -813,11 +903,71 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         />
       )}
 
+      {mode === 'hoops' && hud.hoops && <Hoops hud={hud.hoops} touch={touch} sim={sim} onShoot={throwBall} onLeave={leaveHoops} />}
+
       {walking && touch && <Stick onStick={onStick} />}
 
       {list && <QuestList title="This week at Dunder Mifflin" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && !hud.fire && !hud.carry} />}
     </div>
   );
+}
+
+// the free throws' panel: the count, the meter (its needle moved straight
+// from the sim each frame), Shoot and the way out
+function Hoops({ hud, touch, sim, onShoot, onLeave }) {
+  const needle = useRef(null);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const h = sim.current?.hoops;
+      if (h && needle.current) needle.current.style.left = `${(meterAt(h) * 100).toFixed(1)}%`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [sim]);
+  return (
+    <div className="shire-panel dm-hoops">
+      <p className="shire-panel-title">Office vs. warehouse</p>
+      <p className="shire-panel-stats">
+        <span>
+          In <b>{hud.made}</b> of {HOOPS.need} needed
+        </span>
+        <span>
+          Shots <b>{hud.shots}</b> of {HOOPS.shots}
+        </span>
+      </p>
+      <div className="dm-meter" aria-hidden="true">
+        <span className="dm-meter-sweet" style={{ left: `${(HOOPS.sweet - HOOPS.rim) * 100}%`, width: `${HOOPS.rim * 200}%` }} />
+        <span className="dm-meter-swish" style={{ left: `${(HOOPS.sweet - HOOPS.swish) * 100}%`, width: `${HOOPS.swish * 200}%` }} />
+        <span ref={needle} className="dm-meter-needle" />
+      </div>
+      <p className="shire-panel-help">{touch ? 'Tap Shoot with the needle in the green.' : 'Space (or Shoot) with the needle in the green.'}</p>
+      <div className="shire-panel-row">
+        <button type="button" className="btn btn-primary btn-sm" disabled={hud.flying || hud.over} onPointerDown={(e) => (e.preventDefault(), onShoot())} onClick={(e) => e.detail === 0 && onShoot()}>
+          Shoot
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+          Done {!touch && <kbd>Esc</kbd>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// the warehouse on the corner map: its floor, the racks
+function drawWarehouse(g, at) {
+  const [x, z] = at(WAREHOUSE.x - WH_C.x, WAREHOUSE.z - WH_C.z);
+  g.fillStyle = '#9b9890';
+  g.fillRect(x, z, WAREHOUSE.w * WH_SCALE, WAREHOUSE.d * WH_SCALE);
+  g.fillStyle = '#1f5fa8';
+  for (const r of RACKS) {
+    const [rx, rz] = at(r.x - r.w / 2 - WH_C.x, r.z - r.d / 2 - WH_C.z);
+    g.fillRect(rx, rz, r.w * WH_SCALE, r.d * WH_SCALE);
+  }
+  g.strokeStyle = '#3d4350';
+  g.lineWidth = 1.5;
+  g.strokeRect(x, z, WAREHOUSE.w * WH_SCALE, WAREHOUSE.d * WH_SCALE);
 }
 
 // where the camera sits for a job at a desk

@@ -80,6 +80,7 @@ export const rect = (r) => {
 };
 // which room a point is in (the smallest that holds it)
 export function roomAt(x, z) {
+  if (x >= 30 && x <= 54 && z >= -8 && z <= 8) return 'warehouse'; // (WAREHOUSE, below)
   let best = null;
   for (const [id, r] of Object.entries(ROOMS)) {
     const m = rect(r);
@@ -146,7 +147,44 @@ export const RECEPTION_COUNTER = [box(162, 178, 52, 14, { low: true }), box(200,
 // the stairs going down in the stairwell, and its rail
 export const STAIRWELL = { ...rect(ROOMS.stairs), flight: box(565, 24, 112, 60, { low: true }) };
 
+// ── the warehouse, downstairs: its own floor east of the office, reached by
+// the stairwell (metres) ──
+export const WAREHOUSE = { x: 30, z: -8, w: 24, d: 16 };
+export const WH_STAIRS = { x: 32.2, z: -5.6 }; // the foot of the stairs up
+export const HOOP = { x: 30.75, y: 3.05, z: 4, line: 4.2 }; // the rim, and the free-throw line's distance from it
+export const RACKS = [
+  { x: 44.5, z: -7.25, w: 15, d: 1.1 },
+  { x: 44, z: -3.6, w: 14, d: 2.2 },
+  { x: 44, z: 3.8, w: 14, d: 2.2 },
+  { x: 45, z: 7.25, w: 13, d: 1.1 },
+];
+export const BALES = [
+  { x: 52.4, z: 6.5, w: 1.1, d: 1.1 },
+  { x: 52.4, z: -6.5, w: 1.1, d: 1.1 },
+  { x: 47.6, z: 0.9, w: 1.1, d: 1.1 },
+  { x: 35.2, z: -1.4, w: 1.1, d: 1.1 },
+];
+export const FORKLIFT = { x: 50.6, z: 0.2, turn: -Math.PI / 2 + 0.35 };
+const WH_COLLIDERS = [
+  ...RACKS.map((r) => ({ kind: 'box', x: r.x, z: r.z, w: r.w, d: r.d, turn: 0, top: 4.2 })),
+  ...BALES.map((b) => ({ kind: 'box', x: b.x, z: b.z, w: b.w, d: b.d, turn: 0, top: 1.6 })),
+  { kind: 'box', x: FORKLIFT.x, z: FORKLIFT.z, w: 1.3, d: 3.0, turn: FORKLIFT.turn, top: 2.3 },
+  { kind: 'box', x: WH_STAIRS.x, z: WH_STAIRS.z - 0.8, w: 1.6, d: 1.8, turn: 0, top: 2.4 },
+];
+const WH_WALLS = (() => {
+  const { x, z, w, d } = WAREHOUSE;
+  return [
+    [x, z, x + w, z, 0.12],
+    [x, z + d, x + w, z + d, 0.12],
+    [x, z, x, z + d, 0.12],
+    [x + w, z, x + w, z + d, 0.12],
+  ];
+})();
+WALLS.push(...WH_WALLS);
+export const inWarehouse = (x, z) => x >= WAREHOUSE.x && x <= WAREHOUSE.x + WAREHOUSE.w && z >= WAREHOUSE.z && z <= WAREHOUSE.z + WAREHOUSE.d;
+
 export const COLLIDERS = [
+  ...WH_COLLIDERS,
   ...SEATS.map((s) => s.box),
   // the chairs, with whoever's in them (not Jim's: he's up)
   ...SEATS.filter((s) => s.who !== 'jim').map((s) => ({ kind: 'circle', x: s.chair.x, z: s.chair.z, r: 0.32, low: true })),
@@ -171,7 +209,7 @@ export const COLLIDERS = [
 // Jim's body: an office's walk, not a hobbit's
 export const JIM = { radius: 0.28, walk: 2.3, run: 4.4, accel: 14, turn: 10 };
 // the whole floor sits inside this disc (walls do the real work)
-export const WORLD = { radius: 30, centre: [0, 0] };
+export const WORLD = { radius: 60, centre: [0, 0] };
 
 // where you start: off the lift, facing the suite's door
 export const START = { ...P(96, 60), face: 0 };
@@ -188,7 +226,13 @@ export const SPOTS = [
   spotAt('seminar', 340, 140, 1.2), // the conference room door: Dwight's fire safety seminar
   spotAt('exit', 703, 150, 1.4), // the stairwell, the way out in a fire
   spotAt('dundies', 270, 102, 1.3), // Michael's office
+  spotAt('downstairs', 703, 150, 1.4), // the stairwell, down to the warehouse
+  { id: 'upstairs', x: WH_STAIRS.x, z: WH_STAIRS.z + 0.6, r: 1.3 }, // and back up
+  { id: 'hoop', x: HOOP.x + HOOP.line + 0.3, z: HOOP.z, r: 1.1 }, // the free-throw line
 ];
+// where you come out on each floor
+export const WH_ARRIVE = { x: WH_STAIRS.x, z: WH_STAIRS.z + 1.4, face: -Math.PI / 2 };
+export const OFFICE_ARRIVE = { ...P(703, 200), face: -Math.PI / 2 };
 export const spot = (id) => SPOTS.find((s) => s.id === id);
 
 // Things to look at (E): a line each.
@@ -202,6 +246,10 @@ export const THINGS = [
   { id: 'whiteboard', ...P(334, 70), r: 1.3, name: 'The whiteboard', line: 'Today’s agenda, in Michael’s writing: 1. Morale. 2. Fun. 3. Morale (again). 4. Toby (no).' },
   { id: 'lift', ...P(94, 82), r: 1.2, name: 'The lift', line: 'It works. Mostly. The stairs are on the other side of the office, past the kitchen.' },
   { id: 'closet', ...P(600, 266), r: 1.0, name: 'Ryan’s closet', line: 'Ryan’s office, between the restrooms. He calls it his “workspace”. It has a door, which is more than the annex has.' },
+  { id: 'forklift', x: FORKLIFT.x - 1.4, z: FORKLIFT.z + 0.4, r: 1.4, name: 'The forklift', line: 'Only the warehouse drives the forklift. Michael drove it once. They still talk about it, and not kindly.' },
+  { id: 'accident', x: 34, z: -6.9, r: 1.6, name: 'Days without an accident', line: 'Zero. Michael was down here this morning.' },
+  { id: 'bales', x: 47.6, z: 2.2, r: 1.2, name: 'A bale of paper', line: 'Shrink-wrapped, on a pallet, waiting for a truck. Somewhere in there is the paper Michael says is “the best in the business”.' },
+  { id: 'dock', x: 52.2, z: 3.5, r: 1.6, name: 'The loading dock', line: 'The roll-up door’s up and the lot’s out there in the sun. A Dunder Mifflin truck is backed up to the next bay.' },
 ];
 
 // ── people: who's where, and what they say as you pass ──
