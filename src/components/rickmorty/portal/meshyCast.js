@@ -47,9 +47,13 @@ export const MESHY = {
   summer: { a: 'summer', h: 1.6 },
   beth: { a: 'beth', h: 1.68 },
   jerry: { a: 'jerry', h: 1.78 },
+  president: { a: 'president', h: 1.88 },
+  fedagent: { a: 'fedagent', h: 1.9 },
+  general: { a: 'general', h: 1.82 },
+  secretservice: { a: 'secretservice', h: 1.84 },
 };
-const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry']);
-const C137_PEOPLE = new Set(['summer', 'beth', 'jerry']);
+const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice']);
 // and the set pieces round the arenas (the C-137 Smiths load with their own world)
 export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 

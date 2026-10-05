@@ -13,7 +13,8 @@
 // resize(w, h), dispose(), lost, fx(type, data), act(area, name, ...args),
 // info() }, where state is
 // { area, morty: { x, z, face, speed, running }, flying, cruiser: { x, z, y,
-// yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done }.
+// yaw, speed, bank }, camYaw, camPitch, near: { link, hotspot }, done, fed:
+// { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it) }.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -32,6 +33,10 @@ import { createFx, portalMaterial } from './fx';
 import { ANNEX_LIGHT, ANNEX_SKY, buildAnnex } from './annex';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
+import { buildBasement } from './interiors/basement';
+import { buildMindBlowers } from './interiors/mindblowers';
+import { buildOval } from './interiors/oval';
+import { buildDiner } from './interiors/diner';
 
 export { kitMaterials };
 
@@ -49,10 +54,18 @@ export { kitMaterials };
 // { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
 // tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
 // The rooms and the annex add theirs here.
-export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade };
+export const AREA_BUILDERS = { street: buildStreet, house: buildHouse, upstairs: buildUpstairs, garage: buildGarage, school: buildSchoolRoom, annex: buildAnnex, arcade: buildArcade, basement: buildBasement, mindblowers: buildMindBlowers, oval: buildOval, diner: buildDiner };
+
+// The cruiser's headlights, which are its eyes (the saucer's, in the hull's
+// frame: its nose is +z): where each is, and how far round it looks out
+const EYES = [
+  { x: -0.79, y: 0.86, z: 1.37, turn: -0.5 },
+  { x: 0.79, y: 0.86, z: 1.37, turn: 0.5 },
+];
+const EYES_STANDIN = EYES.map((e) => ({ ...e, y: 0.95, z: 1.45 }));
 
 // the models the world loads (public/models/c137/), shared with the builders by name
-const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];
+const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet', 'shoneys', 'limo', 'fedship'];
 const MORTY_H = 1.7; // how tall Morty stands here
 const SAUCER = 2.4; // the cruiser's height (it's 3.8 m across): cruiser3d.js's saucer, bigger
 const K = SAUCER / TALL; // and its measurements to match
@@ -92,7 +105,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
 
   // ── the models and the cast ──
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const cast = createMeshyCast();
+  // (figures out of view aren't drawn: a skinned mesh's bounds don't follow its pose)
+  const cast = createMeshyCast({ cull: true });
   // each of the cast loaded once, however many builders ask, at the same time
   // or not (the clips of the first ask for a name are the ones it gets)
   const asked = new Map();
@@ -161,6 +175,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     hull.add(g);
     return g;
   });
+  const eyes = shipEyes(hull, saucer ? EYES : EYES_STANDIN);
   scene.add(cruiser);
   const cruiserShadow = fx.blob(2.1);
 
@@ -326,6 +341,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const bob = Math.sin(t * 2.2) * (state.flying ? 0.12 : 0.05);
       cruiser.position.set(c.x, craftY + 0.15 + bob, c.z);
       cruiser.rotation.set(-clamp((c.vy ?? 0) * 0.03, -0.22, 0.22), c.yaw ?? 0, -(c.bank ?? 0));
+      // its eyes: on Morty while it's parked, ahead while it flies, narrowed flat out
+      eyes.update(t, dt, state.flying ? null : m, Math.abs(c.speed ?? 0) / CRUISER.top);
       if (pilot) {
         pilot.group.visible = !!state.flying;
         pilot.mixer?.update(dt);
@@ -576,4 +593,58 @@ function standInSaucer(mats) {
     g.add(o);
   }
   return g;
+}
+
+// The cruiser's eyes: its headlights, pale yellow and glowing, with dark
+// pupils. update(t, dt, at, fast): they turn to look at `at` ({ x, z }, Morty)
+// or ahead, blink now and then, and narrow as `fast` (its share of top speed)
+// nears one.
+function shipEyes(hull, spots) {
+  const white = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xfff2b8).multiplyScalar(1.25) });
+  const black = new THREE.MeshBasicMaterial({ color: 0x15121a });
+  const ball = new THREE.SphereGeometry(0.24, 16, 10);
+  const dot = new THREE.SphereGeometry(0.11, 12, 8);
+  const eyes = spots.map((e) => {
+    const g = new THREE.Group();
+    g.position.set(e.x, e.y, e.z);
+    g.rotation.y = e.turn;
+    const w = new THREE.Mesh(ball, white);
+    w.scale.z = 0.55;
+    const p = new THREE.Mesh(dot, black);
+    p.position.z = 0.12;
+    p.scale.z = 0.4;
+    g.add(w, p);
+    hull.add(g);
+    return { g, p, turn: e.turn };
+  });
+  const look = { x: 0, y: 0 };
+  const v = new THREE.Vector3();
+  let blinkAt = 3;
+  return {
+    update(t, dt, at, fast) {
+      // where to look, in the hull's frame: Morty, or straight ahead
+      let wx = 0;
+      let wy = 0;
+      if (at) {
+        hull.updateWorldMatrix(true, false);
+        v.set(at.x, 1.2, at.z);
+        hull.worldToLocal(v);
+        const d = Math.hypot(v.x, v.z) || 1;
+        wx = clamp(v.x / d, -1, 1);
+        wy = clamp((v.y - 0.9) / d, -0.6, 0.6);
+        if (v.z < -0.5) wx = Math.sign(wx || 1); // (behind it: as far round as it goes)
+      }
+      look.x += (wx - look.x) * Math.min(1, dt * 6);
+      look.y += (wy - look.y) * Math.min(1, dt * 6);
+      // a blink every few seconds
+      if (t > blinkAt + 0.16) blinkAt = t + 2.5 + ((Math.sin(t * 12.9898) * 43758.5453) % 1 + 1) * 2.2;
+      const shut = t > blinkAt ? 0.08 : 1;
+      const open = shut * (1 - clamp((fast - 0.6) / 0.4, 0, 1) * 0.5);
+      for (const e of eyes) {
+        e.g.scale.y = open;
+        e.p.position.x = look.x * 0.11 - Math.sin(e.turn) * 0.03;
+        e.p.position.y = look.y * 0.1;
+      }
+    },
+  };
 }
