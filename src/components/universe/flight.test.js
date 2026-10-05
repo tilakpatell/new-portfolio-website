@@ -13,12 +13,12 @@ const SCREENS = [
 
 describe('the overview', () => {
   for (const [name, screen] of SCREENS) {
-    it(`fits every universe in the open area: ${name}`, () => {
+    it(`fits the home system (the stations) in the open area: ${name}`, () => {
       const size = { w: screen.w, h: screen.h };
       const rect = cover(screen);
       const pose = overviewPose(size, rect);
       for (const yaw of [0, 1, 2.5]) {
-        for (const id of ORDER) {
+        for (const id of ORDER.filter((id) => byId(id).kind === 'core')) {
           const p = worldPos(id, yaw);
           for (const dx of [-REACH[id], REACH[id]]) {
             const [x, y, z] = project([p[0] + dx, p[1], p[2]], pose, size, rect);

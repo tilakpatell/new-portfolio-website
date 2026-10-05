@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, enemyFireSound, fireSound, flybySound, hitSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
+import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, enemyFireSound, fireSound, flybySound, hitSound, interdictSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -135,7 +135,8 @@ export default function Comms({ crew, reduced, control }) {
             // straight into the sun: once a visit
             said.current.add('sun');
             say([['comms', 'Oh shit, mother—', 'ohShit']], { urgent: true });
-          } else if (often('crash', now)) say(linesFor(crew, 'crash'), { urgent: true });
+          } else if (e.kind) say(linesFor(crew, 'crashInto', e.kind), { urgent: true }); // (a wonder: its own lines, every time)
+          else if (often('crash', now)) say(linesFor(crew, 'crash'), { urgent: true });
         } else if (e.type === 'respawn') {
           respawnSound(crew?.id);
         } else if (e.type === 'traffic') {
@@ -157,6 +158,9 @@ export default function Comms({ crew, reduced, control }) {
           say(linesFor(crew, 'idle'));
         } else if (e.type === 'fire') {
           if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+        } else if (e.type === 'interdicted') {
+          interdictSound();
+          say(linesFor(crew, 'interdicted'), { urgent: true });
         } else if (e.type === 'hunted') {
           // a pack after you: Vader gets his own line, the first time
           if (e.faction === 'council') portalSound();

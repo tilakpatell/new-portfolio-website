@@ -39,6 +39,14 @@ panel shows), cut to what they're seen at:
                    Death Star's trench): gltfpack first, keeping its names (the
                    map takes just the trench), its trench to 25k, 512 px
 
+and the X-wing you fly (public/models/meshy/x-wing-fighter.glb), the site
+owner's Meshy model cut to 5% of its triangles with its 2048 px texture kept
+whole (it's the one ship on screen, close behind the camera):
+
+  npx @gltf-transform/cli@4 optimize x-wing-fighter.glb public/models/meshy/x-wing-fighter.glb
+    --compress meshopt --texture-compress webp --texture-size 2048
+    --simplify-ratio 0.05 --simplify-error 0.02 --palette false --join false --flatten false
+
 and the Millennium Falcon you can fly, made by the site owner with Meshy
 (Meshy_AI_Millennium_Falcon_1004193913, 2M triangles, 11.7 MB as it came):
 it's cut to about 1% of its vertices (24k triangles: it's a few hundred
