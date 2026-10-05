@@ -204,7 +204,22 @@ export function makeStrider(renderer) {
         x -= k * 0.17;
         y += k * 0.09;
       }
-      hp.setXYZ(i, x, y, z);
+      // seen from the front a cowl, not a ball: close at the sides of his
+      // head, drawn up to a soft point over it, and falling wide below
+      // over his neck and on to his shoulders
+      let w = 0.84;
+      if (y > 0.12) {
+        const k = (y - 0.12) / 0.3;
+        y += k * k * 0.12;
+        w *= 1 - Math.min(0.7, k * 0.55);
+      }
+      if (y < -0.08) {
+        const k = (-0.08 - y) / 0.2;
+        y -= k * 0.16;
+        w *= 1 + k * 0.75;
+        x -= k * 0.05;
+      }
+      hp.setXYZ(i, x, y, z * w);
     }
     hood.computeVertexNormals();
   }
