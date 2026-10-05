@@ -145,13 +145,23 @@ const STARK = (() => {
   return { x: x * S, z: y * S, face: faceOf(Math.cos(a), Math.sin(a)) };
 })();
 const CRATER = { x: 45 * S, z: 58 * S, r: 2.6 };
+// an Iron Man armour on a plinth beside the workshop's door, facing out
+const ARMOUR = (() => {
+  const ox = Math.cos(STARK.face);
+  const oz = -Math.sin(STARK.face);
+  return { x: STARK.x - ox * 0.6 + oz * 4, z: STARK.z - oz * 0.6 - ox * 4, face: STARK.face, r: 0.75 };
+})();
 
-// The seven doors, in the order of the tour. `stone` is what winning there
-// earns (Clint's and Natasha's halves of the Soul Stone are a stone between
-// them); `face` is the way out of the door, which the hero faces as he leaves.
+// The doors, in the order of the tour: the seven buildings with a stone to
+// win, and Spider-Man at the front gate, who has a game but no stone.
+// `stone` is what winning there earns (Clint's and Natasha's halves of the
+// Soul Stone are a stone between them); `face` is the way out of the door, which the hero faces as he leaves;
+// `accent` is the game's own colour and `sign` what's over its door.
 export const PLACES = [
   {
     id: 'stark',
+    accent: '#8fe9ff',
+    sign: 'Workshop',
     name: 'Tony Stark’s workshop',
     where: 'Main building · the glass wing',
     act: 'Suit up',
@@ -162,6 +172,8 @@ export const PLACES = [
   },
   {
     id: 'thor',
+    accent: '#bfe0ff',
+    sign: null,
     name: 'Mjolnir',
     where: 'The lawn, out front',
     act: 'Lift it',
@@ -174,6 +186,8 @@ export const PLACES = [
   },
   {
     id: 'cap',
+    accent: '#ff6b5e',
+    sign: 'Training',
     name: 'The training center',
     where: 'The training center',
     act: 'Train',
@@ -184,6 +198,8 @@ export const PLACES = [
   },
   {
     id: 'hawkeye',
+    accent: '#c9a2ff',
+    sign: 'Range',
     name: 'The range',
     where: 'Past the hangar',
     act: 'Pick up the bow',
@@ -194,6 +210,8 @@ export const PLACES = [
   },
   {
     id: 'widow',
+    accent: '#ff4b3e',
+    sign: 'Operations',
     name: 'Operations',
     where: 'Main building · the front door',
     act: 'Go in',
@@ -204,6 +222,8 @@ export const PLACES = [
   },
   {
     id: 'banner',
+    accent: '#7dff6a',
+    sign: 'Laboratory',
     name: 'Bruce Banner’s lab',
     where: 'The lab',
     act: 'Go in',
@@ -213,7 +233,21 @@ export const PLACES = [
     ...at(doorOf(LAB, 0, 1.6)),
   },
   {
+    id: 'spidey',
+    accent: '#ff5a4f',
+    sign: null,
+    name: 'The front gate',
+    where: 'Spider-Man · the gatehouse',
+    act: 'Swing to school',
+    stone: null,
+    hint: 'Peter’s at the front gate, late for school, two kilometres away.',
+    blurb: 'Happy dropped the kid off here. Inside, Tony had a new suit and a room full of reporters waiting; Peter turned both down and went back to Queens. Now he’s late for school, two kilometres away, and the quickest way there is between the buildings.',
+    ...at(doorOf(GATE, 0, 1.6)),
+  },
+  {
     id: 'vault',
+    accent: '#6cc8ff',
+    sign: 'Hangar 1',
     name: 'The hangar',
     where: 'The hangar · the Tesseract',
     act: 'Go in',
@@ -225,7 +259,7 @@ export const PLACES = [
 ];
 export const placeById = (id) => PLACES.find((p) => p.id === id) ?? null;
 export const DOOR_R = 3.4; // how near a door you have to be to go in
-export { CRATER };
+export { ARMOUR, CRATER };
 
 // The portal the Space Stone opens, over the helipad: walk under it to Titan.
 export const PORTAL = { x: 70 * S, z: 52 * S, r: 6, y: 24 };
@@ -269,6 +303,15 @@ export const CAST = [
     r: 0.9,
   },
   {
+    id: 'spidey',
+    name: 'Peter Parker',
+    style: 'spiderman',
+    x: GATE[1][0] * S - 2.4,
+    z: GATE[1][1] * S - 3.2,
+    face: faceOf(-0.3, -1),
+    lines: ['Hey, Cap. Big fan. Huge.', 'Mr. Stark said to wait here. That was an hour ago.', 'I’m gonna be so late for school.'],
+  },
+  {
     id: 'bot',
     name: 'Training bot',
     style: 'bot',
@@ -292,7 +335,7 @@ export function nearCast(x, z, r = 3.4) {
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
-export const ROUND = [...jetBody(), ...PARKED_CARS.flatMap(carBody), ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45 })), { x: CRATER.x, z: CRATER.z, r: 0.5 }, ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5 }))];
+export const ROUND = [...jetBody(), ...PARKED_CARS.flatMap(carBody), ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45 })), { x: CRATER.x, z: CRATER.z, r: 0.5 }, { x: ARMOUR.x, z: ARMOUR.z, r: ARMOUR.r }, ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5 }))];
 
 // The nearest point on a polygon's edge to (x, z), and how far it is.
 export function nearestEdge(x, z, foot) {
@@ -399,8 +442,9 @@ export function walkable(x, z, rad = HERO_R) {
 
 // ── walking ──
 
-// metres a second, and how fast he gets there; Cap runs like a super-soldier
-export const HERO = { walk: 4.2, run: 11, accel: 15, turn: 11, jump: 6.6, gravity: 21, air: 0.35 };
+// metres a second, and how fast he gets there: a brisk walk, and a run like a
+// super-soldier's (his model's walk and run clips are paced to match)
+export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 6.6, gravity: 21, air: 0.35 };
 export const newHero = (at = START) => ({ x: at.x, z: at.z, y: 0, vy: 0, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, air: false });
 
 // One step. `move` is where the visitor wants to go, already turned to the
@@ -495,13 +539,15 @@ export function outside(p) {
 const WHOLE = ['space', 'mind', 'reality', 'power', 'time', 'soul'];
 
 // From the stones earned (as hq/stones keeps them, halves of Soul included):
-// each place done or not, the next one to go to, how many stones are back,
+// each place done or not, the next one to go to, which stones are back,
 // whether the portal is open, and the line at the top of the screen.
 export function progress(earned = []) {
   const has = new Set(earned);
-  const places = PLACES.map((p) => ({ ...p, done: has.has(p.stone) }));
-  const next = places.find((p) => !p.done) ?? null;
-  const stones = WHOLE.filter((s) => has.has(s)).length;
+  const places = PLACES.map((p) => ({ ...p, done: p.stone ? has.has(p.stone) : false }));
+  // (the gate has no stone: it's never the next one for the heist)
+  const next = places.find((p) => p.stone && !p.done) ?? null;
+  const have = WHOLE.filter((s) => has.has(s));
+  const stones = have.length;
   const portal = has.has('space');
   const finished = !next;
   const objective = finished
@@ -509,5 +555,5 @@ export function progress(earned = []) {
     : portal
       ? `The portal is open over the helipad. ${stones} of 6 stones: ${next.hint}`
       : next.hint;
-  return { places, next: next?.id ?? null, stones, portal, finished, objective, done: places.filter((p) => p.done).map((p) => p.id) };
+  return { places, next: next?.id ?? null, have, stones, portal, finished, objective, done: places.filter((p) => p.done).map((p) => p.id) };
 }

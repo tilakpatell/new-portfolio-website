@@ -1987,8 +1987,7 @@ html[data-mode='dark'] .of-floor-alt { fill: #191b21; }
 .of-stair { stroke: #9aa0a8; stroke-width: 1.5; }
 html[data-mode='dark'] .of-lift { fill: #23262d; }
 
-/* Avengers HQ: the tour of the compound, one stop per hero */
-.tower-floor-badge { display: inline-block; padding: 0.2rem 0.6rem; border: 1px solid var(--border-strong); border-radius: 999px; font: 600 0.72rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+/* Avengers HQ: the buildings' toys, for a browser without 3D */
 .floor-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
 .dummy { transform-box: view-box; transition: transform 0.5s cubic-bezier(0.5, 1.6, 0.4, 1); }
 .dummy[data-down] { transform: rotate(-80deg); }
@@ -2035,7 +2034,7 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
   --hud: #7fdcff;
   color-scheme: dark;
 }
-.hq-sky, .hq-feed, .hq-rule, .hq-hero-mark { display: none; }
+.hq-sky { display: none; }
 .hq-page { isolation: isolate; }
 :root[data-world='avengers'][data-theme='stark'] .hq-sky { display: block; position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .hq-sky-glow {
@@ -2053,11 +2052,6 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
 }
 .hq-sky-stars { position: absolute; inset: 0; opacity: 0.32; }
 
-/* the hero: a live feed of the compound, the A behind the steel title */
-:root[data-world='avengers'][data-theme='stark'] .hq-feed { display: flex; justify-content: space-between; gap: 1rem; margin: 0 0 0.75rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-.hq-feed span { display: inline-flex; align-items: center; }
-.hq-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 0.6em; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 8px #ff3b30; animation: hq-live 1.6s ease-in-out infinite; }
-@keyframes hq-live { 50% { opacity: 0.35; } }
 .hq-hud { position: relative; }
 :root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::before,
 :root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::after {
@@ -2069,33 +2063,21 @@ html[data-mode='dark'] .of-lift { fill: #23262d; }
 :root[data-world='avengers'][data-theme='stark'] .hq-hud::after { bottom: -8px; right: -8px; border-width: 0 2px 2px 0; }
 :root[data-world='avengers'][data-theme='stark'] .hq-game::after { top: -8px; right: -8px; border-width: 2px 2px 0 0; }
 :root[data-world='avengers'][data-theme='stark'] .hq-game { position: relative; }
-/* the rail's little map is clipped, so its brackets sit inside it */
-:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::before { top: 6px; left: 6px; width: 14px; height: 14px; border-width: 2px 0 0 2px; }
-:root[data-world='avengers'][data-theme='stark'] .hq-rail .hq-map::after { bottom: 6px; right: 6px; width: 14px; height: 14px; border-width: 0 2px 2px 0; }
 :root[data-world='avengers'][data-theme='stark'] :is(.hq-map, .hq-screen, .reactor-stage, .roof-stage, .floor-stage, .gauntlet-stage) { border-color: rgba(127, 220, 255, 0.16); }
 :root[data-world='avengers'][data-theme='stark'] :is(.hq-hero-map, .hq-screen) { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 40px 100px -45px rgba(64, 132, 230, 0.55); }
-:root[data-world='avengers'][data-theme='stark'] .hq-hero-mark { display: block; position: absolute; z-index: -1; top: 50%; right: -2rem; width: min(500px, 78%); translate: 0 -54%; opacity: 0.075; pointer-events: none; }
 :root[data-world='avengers'][data-theme='stark'] .hq-page .eyebrow { color: var(--hud); }
 :root[data-world='avengers'][data-theme='stark'] .hq-page :is(.display, .title) {
   background: linear-gradient(180deg, #ffffff 0%, #e2e7ee 40%, #8e9aab 53%, #e8edf2 72%, #a3aebb 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 :root[data-world='avengers'][data-theme='stark'] .hq-steel { filter: drop-shadow(0 4px 24px rgba(64, 132, 230, 0.28)); }
-:root[data-world='avengers'][data-theme='stark'] .hq-rule { display: block; width: 72px; height: 3px; margin-top: 1.1rem; border-radius: 2px; background: linear-gradient(90deg, #c8161d, #e3b450); box-shadow: 0 0 14px rgba(224, 50, 47, 0.6); }
 
-/* the tour: each stop marked off like a HUD readout */
-:root[data-world='avengers'][data-theme='stark'] .tower-floor-badge { border-color: rgba(127, 220, 255, 0.35); border-radius: 3px; background: rgba(127, 220, 255, 0.06); color: var(--hud); }
-:root[data-world='avengers'][data-theme='stark'] .tower-floor { position: relative; padding-top: 2.25rem; }
-:root[data-world='avengers'][data-theme='stark'] .tower-floor::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(127, 220, 255, 0.45), rgba(127, 220, 255, 0.08) 55%, transparent); }
-:root[data-world='avengers'][data-theme='stark'] .tower-floor::after { content: ''; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--hud); box-shadow: 0 0 10px var(--hud); }
-:root[data-world='avengers'][data-theme='stark'] .hq-rail-list li[data-on] span { box-shadow: 0 0 10px rgba(224, 50, 47, 0.7); }
 :root[data-world='avengers'][data-theme='stark'] .btn-primary { box-shadow: 0 8px 24px -10px rgba(200, 22, 29, 0.8); }
 :root[data-world='avengers'][data-theme='stark'] .btn-ghost { background: rgba(13, 19, 28, 0.7); }
 /* Titan's space fades in and out of the night instead of starting at an edge */
 :root[data-world='avengers'][data-theme='stark'] .space-scope {
   background: linear-gradient(var(--bg), transparent 140px, transparent calc(100% - 140px), var(--bg)), radial-gradient(70% 60% at 30% 30%, rgba(108, 47, 160, 0.4), transparent 70%), radial-gradient(60% 60% at 80% 80%, rgba(40, 60, 140, 0.35), transparent 70%), #05040b;
 }
-@media (prefers-reduced-motion: reduce) { .hq-live-dot { animation: none; } }
 
 /* ─── The scroll bar, per theme ──────────────────────────────────────────── */
 /* Sting: an elven blade that glows blue (orange in Mordor) */
@@ -2176,10 +2158,6 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 .gg-eye { animation: eye-flicker 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
 .gg-lava { animation: me-flicker 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .me-scene svg { transition-duration: 0.2s; } .map-walker { transition: none; } .gg-eye, .gg-lava, .map-fire { animation: none; } }
-.tower-directory ol { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 0.35rem 1rem; }
-.tower-directory a { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0; color: var(--text-body); font-size: 0.92rem; border-bottom: 1px solid var(--border); transition: color 0.15s ease, border-color 0.15s ease; }
-.tower-directory a:hover { color: var(--text); border-color: var(--accent); }
-.tower-directory-level { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border: 1px solid var(--border-strong); border-radius: 4px; font: 700 0.75rem/1 var(--font-mono); color: var(--accent-text); }
 
 /* Albuquerque: the cast, Los Pollos Hermanos, Saul's card */
 .abq-cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
@@ -2267,13 +2245,10 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 @keyframes open-pulse { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(3); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .open-dot::after { animation: none; display: none; } }
 
-/* ─── Avengers HQ: the compound from the air, and the you-are-here rail ───── */
+/* ─── Avengers HQ: the compound from the air (without 3D) ───────────────── */
 .hq-map { position: relative; aspect-ratio: 720 / 480; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #2c4a2b; box-shadow: var(--shadow-card); }
 .hq-base, .hq-live { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .hq-live { pointer-events: none; }
-.hq-3d { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
-.hq-3d[data-on] { opacity: 1; }
-.hq-map[data-3d] .hq-base { visibility: hidden; transition: visibility 0s 1s; }
 .hq-live .hq-pin[data-pick] { pointer-events: auto; cursor: pointer; }
 .hq-pin { transform: translate(var(--px), var(--py)) scale(var(--ps, 1.3)); }
 .hq-map[data-compact] { --ps: 2.4; }
@@ -2284,25 +2259,12 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .hq-pin[data-on] .hq-pin-body { fill: var(--btn-bg); stroke: #ffffff; }
 .hq-pin[data-on] .hq-pin-num { fill: var(--btn-ink); }
 .hq-pin-stone { fill: none; stroke: var(--glow); stroke-width: 2.6; filter: drop-shadow(0 0 3px var(--glow)); }
-.hq-rail-stone { width: 8px; height: 8px; margin-left: auto; }
 .hq-pin-pulse { fill: none; stroke: var(--btn-bg); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: hq-pulse 1.6s ease-out infinite; }
 @keyframes hq-pulse { from { transform: scale(0.8); opacity: 0.9; } to { transform: scale(2.3); opacity: 0; } }
 .hq-fly { opacity: 0; animation: hq-fly 20s linear infinite; }
 @keyframes hq-fly { 0% { transform: translate(0, 0); opacity: 0; } 3% { opacity: 1; } 55% { transform: translate(var(--fx), var(--fy)); opacity: 1; } 56%, 100% { transform: translate(var(--fx), var(--fy)); opacity: 0; } }
 .hq-shimmer { animation: hq-shimmer 7s ease-in-out infinite alternate; }
 @keyframes hq-shimmer { from { transform: translate(-6px, -3px); opacity: 0.6; } to { transform: translate(8px, 4px); opacity: 1; } }
-.hq-rail { display: none; }
-@media (min-width: 1024px) {
-  .hq-rail { position: sticky; top: calc(var(--nav-h) + 28px); display: flex; flex-direction: column; gap: 0.9rem; align-self: start; }
-}
-.hq-rail .hq-map { box-shadow: none; }
-.hq-now { display: grid; gap: 0.15rem; font: 600 0.95rem/1.3 var(--font-sans); color: var(--text); }
-.hq-now-label { font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); }
-.hq-rail-list { display: grid; gap: 0.15rem; font-size: 0.85rem; color: var(--muted); }
-.hq-rail-list li { display: flex; align-items: center; gap: 0.55rem; padding: 0.2rem 0; transition: color 0.2s ease; }
-.hq-rail-list span { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; border: 1px solid var(--border-strong); border-radius: 999px; font: 700 0.65rem/1 var(--font-mono); }
-.hq-rail-list li[data-on] { color: var(--text); font-weight: 600; }
-.hq-rail-list li[data-on] span { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-ink); }
 @media (prefers-reduced-motion: reduce) { .hq-fly, .hq-shimmer, .hq-pin-pulse { animation: none; } }
 
 /* Experience: highlighting one track dims the other roles, without moving anything */
@@ -2708,6 +2670,9 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-route button:hover, .me-route button:focus-visible { border-color: var(--me-wax); color: var(--me-wax); }
 .me-route button[data-won]::after { content: ' ✦'; color: var(--me-wax); }
 .me-hub-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.me-travellers { border-color: rgba(154, 184, 255, 0.55); }
+.me-travellers[data-on] { cursor: default; }
+.me-travellers b { color: #c9a95a; font-variant-numeric: tabular-nums; }
 
 .me-bar { position: sticky; top: calc(var(--nav-h) + 10px); display: flex; align-items: center; gap: 0.75rem; margin-top: calc(var(--nav-h) + 18px); }
 .me-bar > * { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import ModelCredits from '../ModelCredits';
 import { CHAPTERS } from './chapters';
+import { useTravellers } from './towns/useTravellers';
 
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;
@@ -35,6 +36,9 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const nearRef = useRef(null);
   const heard = useRef(null);
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches, []);
+  // other travellers online on the map, as ghosts from other worlds (towns/useTravellers)
+  const trav = useTravellers('map', !hidden);
+  const travRef = trav.ref;
 
   const place = useCallback(() => {
     const a = api.current;
@@ -45,6 +49,12 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
       const p = a.project(...c.at, c.lift);
       el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
       el.style.visibility = p.on ? '' : 'hidden';
+    }
+    // other travellers: where your Frodo is, out to them; where they are, drawn
+    const tv = travRef.current;
+    if (a.step) {
+      tv?.pose(a.step);
+      a.travellers?.(tv ? tv.list() : []);
     }
     // listen for the people on the map, once it's up
     if (a.on && heard.current !== a) {
@@ -79,7 +89,7 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
       const h = pr && a.headOf?.('frodo');
       if (h) pr.style.transform = `translate3d(${h.x.toFixed(1)}px, ${(h.y - 8).toFixed(1)}px, 0)`;
     }
-  }, [api]);
+  }, [api, travRef]);
 
   useEffect(() => {
     frameRef.current = place;
@@ -368,6 +378,16 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
           ))}
         </ol>
         <div className="me-hub-links">
+          {live && trav.available && !trav.on && (
+            <button type="button" className="btn btn-ghost btn-sm me-travellers" onClick={trav.join} title="Go online, and see everyone else walking the map as a ghost from another world">
+              See other travellers
+            </button>
+          )}
+          {live && trav.on && (
+            <span className="btn btn-ghost btn-sm me-travellers" data-on="" title="Everyone else online on the map shows as a pale Frodo from another world">
+              <b>{trav.count}</b> {trav.count === 1 ? 'traveller' : 'travellers'} here
+            </span>
+          )}
           {live && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.current?.lookAtFrodo?.()}>
               Find Frodo

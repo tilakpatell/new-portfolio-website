@@ -1,9 +1,14 @@
 // The music room's shared mix: every instrument goes through here, with a
-// little air around it (a short, dark room), to the site's master volume.
+// little air around it (a short, dark room, as much as the player sets), to
+// the site's master volume; and the room's recorder.
 
 import { output } from '../../lib/audio';
 
 let bus = null;
+let wet = null;
+let sum = null;
+let roomLevel = 0.35; // how much room: 0 (dry) to 1 (a hall)
+const wetFor = (v) => 0.46 * Math.max(0, Math.min(1, v)) ** 1.2;
 
 export function mix(ac) {
   if (bus) return bus;
@@ -11,15 +16,64 @@ export function mix(ac) {
   dry.gain.value = 0.9;
   const room = ac.createConvolver();
   room.buffer = roomImpulse(ac, 1.5);
-  const wet = ac.createGain();
-  wet.gain.value = 0.16;
-  const sum = ac.createGain();
+  wet = ac.createGain();
+  wet.gain.value = wetFor(roomLevel);
+  sum = ac.createGain();
   sum.gain.value = 0.85;
   dry.connect(sum);
   dry.connect(room).connect(wet).connect(sum);
   sum.connect(output());
   bus = dry;
   return bus;
+}
+
+// How much of the room is heard, 0 to 1. Kept until the mix exists.
+export function setRoom(v) {
+  roomLevel = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : roomLevel;
+  if (wet) wet.gain.setTargetAtTime(wetFor(roomLevel), wet.context.currentTime, 0.08);
+}
+
+// ── Recording ──────────────────────────────────────────────────────────────
+// Everything the room plays, as it's heard (room and all), recorded in the
+// browser and handed back as a file. Returns null where the browser can't.
+export const canRecord = () => typeof window !== 'undefined' && typeof window.MediaRecorder === 'function';
+
+export function recordRoom(ac) {
+  if (!canRecord() || !ac?.createMediaStreamDestination) return null;
+  mix(ac);
+  const dest = ac.createMediaStreamDestination();
+  sum.connect(dest);
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => window.MediaRecorder.isTypeSupported?.(t));
+  let rec;
+  try {
+    rec = new window.MediaRecorder(dest.stream, type ? { mimeType: type } : undefined);
+  } catch {
+    sum.disconnect(dest);
+    return null;
+  }
+  const chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  rec.start(500);
+  let done = null;
+  return {
+    stop() {
+      if (!done)
+        done = new Promise((resolve) => {
+          rec.onstop = () => {
+            try {
+              sum.disconnect(dest);
+            } catch {
+              /* already gone */
+            }
+            const mime = rec.mimeType || type || 'audio/webm';
+            resolve({ blob: new Blob(chunks, { type: mime }), ext: mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm' });
+          };
+          if (rec.state === 'inactive') rec.onstop();
+          else rec.stop();
+        });
+      return done;
+    },
+  };
 }
 
 function roomImpulse(ac, seconds) {
