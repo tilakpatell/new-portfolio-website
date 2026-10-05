@@ -363,3 +363,56 @@ describe('Moria’s forges', () => {
     expect(p.z).toBeGreaterThan(5);
   });
 });
+
+describe('Lothlórien’s gifts', () => {
+  it('bakes lembas and wraps it in leaves, spins rope, fills a phial', async () => {
+    const { LORIEN } = await import('./levels/lorien');
+    const s = newRush({ ...LORIEN, orders: { ...LORIEN.orders, first: 1e9 } });
+    s.orders.push({ id: 1, dish: 'lembas', t: 80, of: 80 }, { id: 2, dish: 'rope', t: 60, of: 60 }, { id: 3, dish: 'phial', t: 55, of: 55 });
+    const p = s.players[0];
+    // lembas: dough, over the bridge to the oven, then to a leaf table
+    stand(p, 2, 1, 'N');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'dough', s: 'raw' });
+    stand(p, 9, 1, 'N');
+    grab(s, p);
+    run(s, LORIEN.times.bake + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'lembas', s: 'baked' });
+    stand(p, 10, 1, 'E');
+    grab(s, p); // on the leaf table
+    workFor(s, p, LORIEN.times.wrap + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'lembas', s: 'wrapped' });
+    stand(p, 9, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'lembas' });
+    // rope: fibre spun on the wheel
+    stand(p, 1, 1, 'N');
+    grab(s, p);
+    stand(p, 4, 1, 'N');
+    grab(s, p);
+    workFor(s, p, LORIEN.times.chop + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'fibre', s: 'chopped' });
+    stand(p, 3, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'rope' });
+    // a phial, filled at the fountain
+    stand(p, 1, 4, 'W');
+    grab(s, p);
+    stand(p, 10, 3, 'E');
+    grab(s, p);
+    run(s, LORIEN.times.fill + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'phial', s: 'light' });
+    stand(p, 10, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'phial' });
+    // and a lembas left in the oven burns; a burnt one won't wrap
+    s.spots['10,0'].item = { k: 'lembas', s: 'baked' };
+    run(s, LORIEN.times.char + 0.1);
+    expect(s.spots['10,0'].item.s).toBe('burnt');
+    s.spots['11,2'].item = { k: 'lembas', s: 'burnt' };
+    stand(p, 10, 2, 'E');
+    p.held = null;
+    expect(work(s, p, 2)).toEqual([]);
+  });
+});
