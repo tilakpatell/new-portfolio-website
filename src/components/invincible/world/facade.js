@@ -111,10 +111,10 @@ export function towerMaterial(uniforms) {
         {
           // a lit window, here and there: whole floors of an office, a few flats
           float floorOn = step(0.55, cityHash(vec2(wid.y, seed * 9.0)));
-          float lit = step(mix(0.8, 0.42, floorOn), cityHash(wid * 1.7 + seed * 5.0)) * cityWin * uNight;
+          float lit = step(mix(0.86, 0.55, floorOn), cityHash(wid * 1.7 + seed * 5.0)) * cityWin * uNight;
           vec3 warm = mix(vec3(1.0, 0.68, 0.36), vec3(0.72, 0.84, 1.0), step(0.72, cityHash(wid + seed)));
-          totalEmissiveRadiance += lit * warm * (0.4 + 0.5 * cityHash(wid * 3.1 + seed));
-          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * 0.9;
+          totalEmissiveRadiance += lit * warm * (0.22 + 0.4 * cityHash(wid * 3.1 + seed));
+          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * 0.3;
           // the crown lit from below on the tall ones
           totalEmissiveRadiance += crown * step(90.0, top) * uNight * vec3(0.9, 0.85, 0.75) * 0.25;
           diffuseColor.rgb *= 1.0 - 0.5 * uNight * (1.0 - cityWin);
