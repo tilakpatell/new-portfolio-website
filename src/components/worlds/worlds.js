@@ -12,7 +12,7 @@ export const WORLD_MB = {
   '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 9, // the compound's skies, scanned props and trees
-  '/c-137': 6, // the cruiser and Portal panic's cast
+  '/c-137': 9, // the Smiths' street, the house, the school and Blips and Chitz, the Smiths, the cruiser, and Portal panic's cast
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)

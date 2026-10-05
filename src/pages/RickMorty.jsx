@@ -6,6 +6,7 @@ import CruiserFlight from '../components/rickmorty/CruiserFlight';
 import MeeseeksBox from '../components/rickmorty/MeeseeksBox';
 import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
+import RmWorld from '../components/rickmorty/world/RmWorld';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
 import PortalPanic from '../components/rickmorty/portal/PortalPanic';
 import { BethFace, JerryFace, MortyFace, RickFace, SummerFace } from '../components/rickmorty/Faces';
@@ -55,9 +56,10 @@ const BOARD = [
   ['showMe', 'Show me what you got'],
 ];
 
-// Dimension C-137: fire the portal gun into other dimensions, play Portal
-// panic, press the Meeseeks box, flip through interdimensional cable, see
-// how a plumbus is made, give the butter robot its purpose.
+// Dimension C-137: the Smiths' neighbourhood to walk about in 3D first, then
+// fire the portal gun into other dimensions, play Portal panic, press the
+// Meeseeks box, flip through interdimensional cable, see how a plumbus is
+// made, give the butter robot its purpose.
 export default function RickMorty() {
   useDocumentTitle('Dimension C-137');
   const { getSchwifty } = useFun();
@@ -86,6 +88,7 @@ export default function RickMorty() {
 
   return (
     <div className="relative rm-page">
+      <RmWorld />
       <CruiserFlight />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">
         <figure className="rm-hero m-0">
