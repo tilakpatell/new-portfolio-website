@@ -16,14 +16,16 @@ const URL = `http://localhost:5173/?quality=${Q}#/invincible`;
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errors = [];
-const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: W < 600 });
-await ctx.addInitScript((q) => {
+const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: W < 600, isMobile: W < 600 });
+await ctx.addInitScript(([q, intro]) => {
   window.localStorage.setItem('tp-intro', '1');
   window.localStorage.setItem('tp-3d', '"on"');
   window.localStorage.setItem('tp-worlds', '"load"');
   window.localStorage.setItem('tp-quality', JSON.stringify(q));
-  window.localStorage.removeItem('tp-inv-world-at');
-}, Q);
+  // (a first visit drops him in from the sky: INTRO=1 to see it, otherwise he's already on the lawn)
+  if (intro) window.localStorage.removeItem('tp-inv-world-at');
+  else window.localStorage.setItem('tp-inv-world-at', JSON.stringify({ x: -2044, y: 0, z: 253.5, face: 1.694 }));
+}, [Q, Boolean(process.env.INTRO)]);
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));

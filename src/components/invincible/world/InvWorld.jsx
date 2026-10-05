@@ -58,6 +58,7 @@ function World({ gl, setGl }) {
   const [bubble, setBubble] = useState(null);
   const [zone, setZoneUi] = useState('city');
   const [flash, setFlash] = useState(null);
+  const [card, setCard] = useState(() => !prefersReducedMotion());
   const { unlock } = useAchievements();
   const [found, setFound] = useState(() => newQuests(local.get(QUESTS, {})).cards.length);
   const bubbleRef = useRef(null);
@@ -66,8 +67,10 @@ function World({ gl, setGl }) {
     const kept = local.get(AT, null);
     const ok = kept && [kept.x, kept.y, kept.z].every(Number.isFinite) && Math.abs(kept.x) < WORLD.half && Math.abs(kept.z) < WORLD.half && !waterAt(kept.x, kept.z);
     const at = ok ? kept : SPAWN;
-    const h = newHero(at);
-    sim.current = { quests: newQuests(local.get(QUESTS, {})), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
+    // a first time here, he comes down out of the sky onto the lawn
+    const drop = !ok && !prefersReducedMotion();
+    const h = drop ? { ...newHero(at), p: [at.x, 420, at.z], mode: 'air', v: [0, -60, 0], spd: 60, dir: [0, -1, 0] } : newHero(at);
+    sim.current = { intro: drop, quests: newQuests(local.get(QUESTS, {})), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
   }
 
   const say = useCallback((text, ms = 2400) => {
@@ -148,6 +151,13 @@ function World({ gl, setGl }) {
   );
 
   const act = useCallback(() => {
+    // next to Dad over downtown: spar with him (Think, Mark!, down the page)
+    if (sim.current.talking?.id === 'omni') {
+      sfx('drum');
+      say('“Think, Mark!” Down the page, over the city.');
+      document.getElementById('inv-game')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      return;
+    }
     const p = sim.current.near;
     if (!p) return;
     if (p.id === 'gda' && !sim.current.fight.on) {
@@ -260,7 +270,14 @@ function World({ gl, setGl }) {
     if (pressed('y')) act();
     if (pressed('start')) cycleTime();
     const look = [Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), Math.cos(s.yaw) * Math.cos(s.pitch)];
-    const input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
+    let input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
+    if (s.intro) {
+      // the drop: straight down, flat out, the camera above him, until the ground stops him
+      input = { fwd: 0, side: 0, up: 0, down: 1, boost: true, run: false, jump: false, look };
+      s.pitch = -0.32;
+      s.dragAt = s.t;
+      if (s.h.mode === 'ground') s.intro = false;
+    }
     s.h = s.h.zone === 'space' ? stepSpace(s.h, input, dt) : stepHero(s.h, input, dt, s.world);
     s.jump = false;
     // up through the top of the sky, or back down into it: the other world takes over
@@ -489,6 +506,11 @@ function World({ gl, setGl }) {
       <canvas ref={canvas} className="iw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onContextMenu={(e) => e.preventDefault()} aria-label="The city, from the air. Fly with W, A, S and D; Space to go up, C to go down, Shift to go flat out." />
       <div className="iw-lines" ref={(el) => (hud.current.lines = el)} aria-hidden="true" />
       {flash && <div className="iw-flash" data-kind={flash.kind} key={flash.key} aria-hidden="true" onAnimationEnd={() => setFlash(null)} />}
+      {card && gl === 'on' && (
+        <div className="iw-card" aria-hidden="true" onAnimationEnd={() => setCard(false)}>
+          <span>INVINCIBLE</span>
+        </div>
+      )}
       {bubble && (
         <div className="iw-bubble" ref={bubbleRef} aria-live="polite">
           <div>
@@ -576,8 +598,8 @@ function World({ gl, setGl }) {
             </p>
           )}
         </div>
-        <canvas className="iw-map" ref={mapRef} width="180" height="180" aria-hidden="true" />
       </div>
+      <canvas className="iw-map" ref={mapRef} width="180" height="180" aria-hidden="true" />
 
       {touch && (
         <div className="iw-touch">
