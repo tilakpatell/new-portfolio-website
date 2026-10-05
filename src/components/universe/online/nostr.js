@@ -23,7 +23,9 @@
 // once a relay's listening, rejects if none answer), makeAction(ns) →
 // { send(data, { target }), onMessage(data, { peerId }) }, onPeerJoin(id),
 // onPeerLeave(id), onStatus('online' | 'connecting'), leave() }: what
-// client.js takes.
+// client.js takes. (Other games pass `latest`, the kinds of message of
+// which only the newest in a bundle matters, and `cheap`, those trusted to
+// the relays' own check of the signature.)
 
 import { schnorr } from '@noble/secp256k1';
 
@@ -132,7 +134,7 @@ function relaySocket(url, { WebSocket, req, onEvent, onChange }) {
   };
 }
 
-export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS }, roomId) {
+export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP }, roomId) {
   const { secretKey, publicKey } = schnorr.keygen();
   const self = hex(publicKey);
   const topic = `${appId}/${roomId}`;
@@ -193,7 +195,7 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     // (a goodbye's signed ahead of time, so it may be old)
     if (!leaving && nowS() - ev.created_at - p.skew > STALE_S) return;
     p.heard = Date.now();
-    const check = msgs.some((m) => !CHEAP.has(m[0]));
+    const check = msgs.some((m) => !cheap.has(m[0]));
     // in order, per pilot (a check takes a moment)
     p.chain = p.chain.then(async () => {
       if (check && !(await checkEvent(ev))) {
@@ -237,7 +239,7 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     const out = [];
     const last = {};
     for (const m of queue.splice(0)) {
-      if (LATEST.has(m[0])) last[m[0]] = m;
+      if (latest.has(m[0])) last[m[0]] = m;
       else out.push(m);
     }
     out.push(...Object.values(last));

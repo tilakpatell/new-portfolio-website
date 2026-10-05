@@ -26,6 +26,7 @@ import ClipBoard from '../components/worlds/ClipBoard';
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
 const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
+const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
 const LOCATIONS = [
@@ -287,6 +288,12 @@ export default function MiddleEarth() {
       {here?.id === 'bree' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <BreeWorld onLeave={() => go('rivendell')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'bree' && (
+        <Suspense fallback={null}>
+          <Rush />
         </Suspense>
       )}
 
