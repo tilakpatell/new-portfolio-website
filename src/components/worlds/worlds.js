@@ -17,7 +17,7 @@ export const WORLD_MB = {
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
-  '/music': 1,
+  '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky
   '/dot-matrix': 1, // drawn in code
 };
 
