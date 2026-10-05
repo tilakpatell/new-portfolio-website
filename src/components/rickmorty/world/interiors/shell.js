@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hot } from '../../../../lib/stage3d';
 import { toon } from '../../portal/toon';
-import { at, batch, mergeParts, paint } from '../kit';
+import { at, batch, coloured, mergeParts, paint, rng } from '../kit';
 import { PLAN } from '../rules';
 
 export const WALL_H = 2.6;
@@ -51,7 +51,7 @@ export function makeRoom(kit, id) {
   // A frame to draw in: (u across, y up, v out of its front) about (x, z),
   // turned by `turn` (rules.js's furniture turn: 0 faces south). `list` is
   // where its solids go: 'solid' casts shadows, 'fixed' doesn't.
-  const frame = (x, z, turn = 0, { y = 0, list = 'solid' } = {}) => {
+  const frame = (x, z, turn = 0, { y = 0, list = 'solid', glows = lists.glow } = {}) => {
     const base = at(x, y, z, turn);
     const put = (m) => base.clone().multiply(m);
     const into = Array.isArray(list) ? list : lists[list];
@@ -83,18 +83,18 @@ export function makeRoom(kit, id) {
       },
       // a glow (unlit, bright enough to bloom at k > ~1.2)
       glow(geo, color, k, u, y, v, ry = 0, sx = 1, sy = sx, sz = sx, rx = 0, rz = 0) {
-        lists.glow.push({ geo, color: hot(color, k), matrix: put(at(u, y, v, ry, sx, sy, sz, rx, rz)) });
+        glows.push({ geo, color: hot(color, k), matrix: put(at(u, y, v, ry, sx, sy, sz, rx, rz)) });
         return f;
       },
       // a painted picture from the atlas, facing out of the frame's front,
       // w × h, centred on (u, y, v); `bright` ones are unlit (windows, screens)
-      decal(name, u, y, v, w, h, { ry = 0, rx = 0, bright = false, geo = PLANE, sz = 1 } = {}) {
-        decals[bright ? 'bright' : 'lit'].push({ name, geo, matrix: put(at(u, y, v, ry, w, h, sz, rx)) });
+      decal(name, u, y, v, w, h, { ry = 0, rx = 0, rz = 0, bright = false, geo = PLANE, sz = 1 } = {}) {
+        decals[bright ? 'bright' : 'lit'].push({ name, geo, matrix: put(at(u, y, v, ry, w, h, sz, rx, rz)) });
         return f;
       },
       // a frame inside this one
       sub(u, v, turn2 = 0, y2 = 0) {
-        const s = frame(0, 0, 0, { list: into });
+        const s = frame(0, 0, 0, { list: into, glows });
         s.base.copy(base).multiply(at(u, y2, v, turn2));
         return s;
       },
@@ -139,29 +139,52 @@ export function makeRoom(kit, id) {
       return (x, z, turn = 0) => frame(x, z, turn, { list: parts });
     },
     // What's over a doorway: hidden while the camera is under it (it can
-    // go through a doorway, as high as 2.35 m)
-    overhead(x0, z0, x1, z1) {
+    // go through a doorway, as high as 2.35 m), within `near` of the line
+    // (or the point); its glows go with it
+    overhead(x0, z0, x1, z1, near = 0.55) {
       const parts = [];
-      cuts.push({ line: [x0, z0, x1, z1], parts, k: 1, mesh: null, near: 0.55 });
-      return (x, z, turn = 0) => frame(x, z, turn, { list: parts });
+      const glow = [];
+      cuts.push({ line: [x0, z0, x1, z1], parts, glow, k: 1, mesh: null, near });
+      return (x, z, turn = 0) => frame(x, z, turn, { list: parts, glows: glow });
     },
-    build({ light, update } = {}) {
+    // `grain`: { map, tile } laid over the walls and the furniture in world
+    // space (tile metres to a repeat), the show's mottled paint
+    build({ light, update, grain = null } = {}) {
       const vc = kit.mats.toon(0xffffff, { vertexColors: true });
+      const gm = grain && own(toon(0xffffff, { vertexColors: true, map: grain.map }));
+      if (gm) gm.userData.tile = grain.tile;
+      // a list of parts as one mesh into the group: merged, or batched with the grain's uvs
+      const merge = (parts, cast) => {
+        let mesh;
+        if (gm) {
+          const b = batch();
+          for (const p of parts) {
+            const g = coloured(p.geo, p.color);
+            b.add(g, gm, p.matrix);
+            g.dispose();
+          }
+          [mesh] = b.build(group, { cast, receive: true });
+        } else {
+          mesh = new THREE.Mesh(mergeParts(parts), vc);
+          mesh.castShadow = cast;
+          mesh.receiveShadow = true;
+          group.add(mesh);
+        }
+        own(mesh.geometry);
+        parts.length = 0;
+        return mesh;
+      };
       for (const [name, cast] of [
         ['solid', true],
         ['fixed', false],
-      ]) {
-        if (!lists[name].length) continue;
-        const mesh = new THREE.Mesh(own(mergeParts(lists[name])), vc);
-        mesh.castShadow = cast;
-        mesh.receiveShadow = true;
-        group.add(mesh);
-      }
+      ])
+        if (lists[name].length) merge(lists[name], cast);
       for (const cut of cuts) {
-        if (!cut.parts.length) continue;
-        cut.mesh = new THREE.Mesh(own(mergeParts(cut.parts)), vc);
-        cut.mesh.receiveShadow = true;
-        group.add(cut.mesh);
+        if (cut.parts.length) cut.mesh = merge(cut.parts, false);
+        if (cut.glow?.length) {
+          cut.lit = new THREE.Mesh(own(mergeParts(cut.glow)), own(new THREE.MeshBasicMaterial({ vertexColors: true })));
+          R.add(cut.lit, { ink: false });
+        }
       }
       if (lists.glow.length) {
         const mesh = new THREE.Mesh(own(mergeParts(lists.glow)), own(new THREE.MeshBasicMaterial({ vertexColors: true })));
@@ -292,6 +315,7 @@ export function makeRoom(kit, id) {
       if (!cut.mesh) continue;
       if (cut.near) {
         cut.mesh.visible = segDist(c.x, c.z, cut.line) > cut.near;
+        if (cut.lit) cut.lit.visible = cut.mesh.visible;
         continue;
       }
       const want = crosses(c.x, c.z, m.x, m.z, cut.line) ? 0.06 : 1;
@@ -315,13 +339,16 @@ export function makeRoom(kit, id) {
 // colours the skirting on the room side (both sides if centred). Returns a
 // frame on the wall's room face (v out into the room; u along it, from a or
 // from b: u(s) says where s metres from a is).
-export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = WALL_H, color = 0xf1e6c8, mat = null, dado = null, skirt = 0xf6f2e8, skirtH = 0.11, crown = null, holes = [] }) {
+export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = WALL_H, color = 0xf1e6c8, mat = null, dado = null, skirt = 0xf6f2e8, skirtH = 0.11, crown = null, holes = [], back = null, side = 0 }) {
   let [x0, z0] = a;
   let [x1, z1] = b;
   let len = Math.hypot(x1 - x0, z1 - z0);
   let dx = (x1 - x0) / len;
   let dz = (z1 - z0) / len;
   let list = holes.map((o) => ({ ...o }));
+  // `back`: a centred wall's far side in another room's look ({ color, skirt, skirtH, crown }), the wall split down its middle
+  let F = { color, skirt, skirtH, crown };
+  let B = back ? { ...F, ...back } : null;
   // run it so that the frame's front (v) faces into the room
   const flip = !!into && into[0] * -dz + into[1] * dx < 0;
   if (flip) {
@@ -329,6 +356,7 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
     dx = -dx;
     dz = -dz;
     list = list.map((o) => ({ ...o, at: len - o.at }));
+    if (B) [F, B] = [B, F];
   }
   const turn = Math.atan2(-dz, dx);
   const f = f0(x0, z0, turn);
@@ -346,6 +374,17 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
     u = o.at + o.w / 2;
   }
   if (u < len) spans.push([u, len]);
+  // a box of wall from v a to v b, in a look's colour (or the tiled material, or the dado)
+  const slab = (L, ua, ub, ya, yb, va, vb) => {
+    const vm = (va + vb) / 2;
+    const tt = vb - va;
+    if (mat) R.tiled.add(BOX, mat, f.mat((ua + ub) / 2, (ya + yb) / 2, vm, 0, ub - ua, yb - ya, tt));
+    else if (dado) {
+      const [dh, dc] = dado;
+      if (ya < dh) f.box(dc, (ua + ub) / 2, ya, vm, ub - ua, Math.min(yb, dh) - ya, tt);
+      if (yb > dh) f.box(L.color, (ua + ub) / 2, Math.max(ya, dh), vm, ub - ua, yb - Math.max(ya, dh), tt);
+    } else f.box(L.color, (ua + ub) / 2, ya, vm, ub - ua, yb - ya, tt);
+  };
   const piece = (ua0, ub0, ya0, yb0) => {
     if (ub0 - ua0 < 1e-3 || yb0 - ya0 < 1e-3) return;
     // each a hair into the next, so no crack opens between them for the ink to find
@@ -353,30 +392,30 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
     const ub = ub0 + 0.003;
     const ya = ya0 > 0 ? ya0 - 0.003 : ya0;
     const yb = yb0 < h ? yb0 + 0.003 : yb0;
-    if (mat) R.tiled.add(BOX, mat, f.mat((ua + ub) / 2, (ya + yb) / 2, mid, 0, ub - ua, yb - ya, t));
-    else if (dado) {
-      const [dh, dc] = dado;
-      if (ya < dh) f.box(dc, (ua + ub) / 2, ya, mid, ub - ua, Math.min(yb, dh) - ya, t);
-      if (yb > dh) f.box(color, (ua + ub) / 2, Math.max(ya, dh), mid, ub - ua, yb - Math.max(ya, dh), t);
-    } else f.box(color, (ua + ub) / 2, ya, mid, ub - ua, yb - ya, t);
+    // (`side` 1 or -1: a centred wall's front half or back half alone, in the look given)
+    if (side === 1) slab(F, ua, ub, ya, yb, mid, v1);
+    else if (side === -1) slab(F, ua, ub, ya, yb, v0, mid);
+    else if (B) {
+      slab(F, ua, ub, ya, yb, mid, v1);
+      slab(B, ua, ub, ya, yb, v0, mid);
+    } else slab(F, ua, ub, ya, yb, v0, v1);
   };
+  const S = side === -1 ? F : (B ?? F);
+  const front = side !== -1;
+  const rear = centred && side !== 1;
   for (const [ua, ub] of spans) {
     piece(ua, ub, 0, h);
     // (trim stands well proud of the wall: a thin step leaves the ink a dotted line)
-    if (skirt != null) {
-      f.box(skirt, (ua + ub) / 2, 0, v1 + 0.016, ub - ua, skirtH, 0.032);
-      if (centred) f.box(skirt, (ua + ub) / 2, 0, v0 - 0.016, ub - ua, skirtH, 0.032);
-    }
+    if (front && F.skirt != null) f.box(F.skirt, (ua + ub) / 2, 0, v1 + 0.016, ub - ua, F.skirtH, 0.032);
+    if (rear && S.skirt != null) f.box(S.skirt, (ua + ub) / 2, 0, v0 - 0.016, ub - ua, S.skirtH, 0.032);
   }
   for (const o of list) {
     piece(o.at - o.w / 2, o.at + o.w / 2, 0, o.y0 ?? 0);
     piece(o.at - o.w / 2, o.at + o.w / 2, o.y1 ?? DOOR_H, h);
   }
   // a moulding where the wall meets the ceiling
-  if (crown != null) {
-    f.box(crown, len / 2, h - 0.08, v1 + 0.03, len, 0.08, 0.06);
-    if (centred) f.box(crown, len / 2, h - 0.08, v0 - 0.03, len, 0.08, 0.06);
-  }
+  if (front && F.crown != null) f.box(F.crown, len / 2, h - 0.08, v1 + 0.03, len, 0.08, 0.06);
+  if (rear && S.crown != null) f.box(S.crown, len / 2, h - 0.08, v0 - 0.03, len, 0.08, 0.06);
   // u(s): where s metres from a is along the frame
   return { f, len, thick: t, v0, v1, turn, u: (s) => (flip ? len - s : s) };
 }
@@ -396,17 +435,114 @@ export const win = (c, w, y0, h, view, opts = {}) => ({ c, w, y0, y1: y0 + h, dr
 export const doorAt = (c, opts = {}) => ({ c, w: opts.w ?? 0.92, y0: 0, y1: opts.h ?? DOOR_H, draw: (f, u, wl) => door(f, u, { v1: wl.v1, thick: wl.thick, ...opts }) });
 
 // An open doorway in a wall between rooms, from a to b on the wall's line:
-// the wall over it and a casing round it.
-export function doorway(R, a, b, { thick = 0.24, color = 0xf1e6c8, trim = 0xf6f2e8, h = DOOR_H, top = WALL_H, crown = null } = {}) {
+// the wall over it and a casing round it. `back` is the far side's look
+// ({ color, trim, crown }), when the rooms either side differ; `arch` (its
+// rise, in metres) rounds its head, `h` being the arch's top then.
+export function doorway(R, a, b, { thick = 0.24, color = 0xf1e6c8, trim = 0xf6f2e8, h = DOOR_H, top = WALL_H, crown = null, back = null, arch = 0, width = 0.09, proud = 0.04 } = {}) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const B = back ? { color, trim, crown, ...back } : null;
   // the jambs stay; the wall over the door and the casing's head go with the camera under them
   const over = R.overhead(a[0], a[1], b[0], b[1]);
-  const w = wallRun(R, over, a, b, { centred: true, thick, color, skirt: null, crown, h: top, holes: [{ at: len / 2, w: len, y0: 0, y1: h }] });
+  const w = wallRun(R, over, a, b, { centred: true, thick, color, skirt: null, crown, h: top, back: B && { color: B.color, crown: B.crown }, holes: [{ at: len / 2, w: len, y0: 0, y1: arch ? top : h }] });
   const jf = R.fixed(a[0], a[1], w.turn);
   const t = w.v1 - w.v0;
-  const width = 0.09;
-  for (const s of [-1, 1]) jf.box(trim, len / 2 + s * (len / 2 + width / 2 - 0.01), 0, 0, width, h + width - 0.01, t + 0.08);
-  w.f.box(trim, len / 2, h, 0, len + width * 2 - 0.02, width, t + 0.08);
+  const d = t + proud * 2;
+  const spring = h - arch;
+  // the casing, each face in its own room's trim
+  const faces = B && B.trim !== trim ? [[trim, d / 4, d / 2], [B.trim, -d / 4, d / 2]] : [[trim, 0, d]];
+  for (const [c, vc, dd] of faces) {
+    for (const s of [-1, 1]) jf.box(c, len / 2 + s * (len / 2 + width / 2 - 0.01), 0, vc, width, arch ? spring : h + width - 0.01, dd);
+    if (arch) w.f.part(archGeo(len / 2 - 0.01, arch, { ring: width }), c, len / 2, spring, vc - dd / 2, 0, 1, 1, dd);
+    else w.f.box(c, len / 2, h, vc, len + width * 2 - 0.02, width, dd);
+  }
+  // the wall round the arch, up to the top
+  if (arch) {
+    const fill = archGeo(len / 2 + 0.003, arch, { fill: top - spring });
+    if (B) w.f.part(fill, color, len / 2, spring, 0, 0, 1, 1, t / 2).part(fill, B.color, len / 2, spring, -t / 2, 0, 1, 1, t / 2);
+    else w.f.part(fill, color, len / 2, spring, -t / 2, 0, 1, 1, t);
+  }
+}
+
+// An arch's shapes, a metre deep (scale z to the depth), standing on its
+// spring line, centred: the wall from it up to `fill` metres, or a band
+// `ring` wide round it. `rx` is its half-width and `ry` its rise.
+const arches = new Map();
+export function archGeo(rx, ry, { ring = 0, fill = 0 } = {}) {
+  const key = `${rx.toFixed(3)},${ry.toFixed(3)},${ring.toFixed(3)},${fill.toFixed(3)}`;
+  if (arches.has(key)) return arches.get(key);
+  const s = new THREE.Shape();
+  if (ring) {
+    s.moveTo(rx + ring, 0);
+    s.absellipse(0, 0, rx + ring, ry + ring, 0, Math.PI, false);
+    s.lineTo(-rx, 0);
+    s.absellipse(0, 0, rx, ry, Math.PI, 0, true);
+  } else {
+    s.moveTo(rx, 0);
+    s.lineTo(rx, fill);
+    s.lineTo(-rx, fill);
+    s.lineTo(-rx, 0);
+    s.absellipse(0, 0, rx, ry, Math.PI, 0, true);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 18 });
+  arches.set(key, g);
+  return g;
+}
+
+// The plan's room at (x, z) in `area`, or null
+// (where two of the plan's rects overlap, the one it's furthest inside)
+export function roomAt(area, x, z) {
+  let best = null;
+  let depth = -Infinity;
+  for (const p of PLAN) {
+    if (p.area !== area) continue;
+    const d = Math.min(x - p.x0, p.x1 - x, z - p.z0, p.z1 - z);
+    if (d >= 0 && d > depth) [best, depth] = [p, d];
+  }
+  return best;
+}
+
+// The walls between rooms (rules.js's INNER_WALLS for `area`, each [x0, z0,
+// x1, z1, half-thickness] along x or z), each side in the look of the room
+// it faces: look(room) → { color, skirt, skirtH, crown } (room null outside
+// the plan). A wall is split where the rooms either side change, and runs on
+// into the walls at its ends.
+export function innerWalls(R, frames, area, walls, look) {
+  for (const [x0, z0, x1, z1, th] of walls) {
+    const L = Math.hypot(x1 - x0, z1 - z0);
+    const dx = (x1 - x0) / L;
+    const dz = (z1 - z0) / L;
+    const alongX = Math.abs(dz) < 1e-6;
+    const cuts = [0, L];
+    for (const p of PLAN)
+      if (p.area === area)
+        for (const e of alongX ? [p.x0, p.x1] : [p.z0, p.z1]) {
+          const s = alongX ? (e - x0) / dx : (e - z0) / dz;
+          if (s > 0.02 && s < L - 0.02 && !cuts.some((c) => Math.abs(c - s) < 0.02)) cuts.push(s);
+        }
+    cuts.sort((p, q) => p - q);
+    // the look on each side of each piece between the cuts (the front faces (-dz, dx))
+    const off = th + 0.05;
+    const pieces = [];
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const m = (cuts[i] + cuts[i + 1]) / 2;
+      const [mx, mz] = [x0 + dx * m, z0 + dz * m];
+      pieces.push({ sa: cuts[i], sb: cuts[i + 1], 1: look(roomAt(area, mx - dz * off, mz + dx * off)), [-1]: look(roomAt(area, mx + dz * off, mz - dx * off)) });
+    }
+    // each side drawn in runs of one look, so a face is one piece wherever its colour doesn't change
+    const same = (p, q) => p.color === q.color && p.skirt === q.skirt && p.crown === q.crown && (p.skirtH ?? 0.11) === (q.skirtH ?? 0.11);
+    for (const side of [1, -1]) {
+      let i = 0;
+      while (i < pieces.length) {
+        let j = i;
+        while (j + 1 < pieces.length && same(pieces[j + 1][side], pieces[i][side])) j++;
+        const ea = i === 0 ? th - 0.006 : 0;
+        const eb = j === pieces.length - 1 ? th - 0.006 : 0;
+        const [sa, sb] = [pieces[i].sa - ea, pieces[j].sb + eb];
+        wallRun(R, frames, [x0 + dx * sa, z0 + dz * sa], [x0 + dx * sb, z0 + dz * sb], { centred: true, thick: th * 2, ...pieces[i][side], side });
+        i = j + 1;
+      }
+    }
+  }
 }
 
 // A door's casing round a hole (in a wall run's frame): jambs and a head,
@@ -421,7 +557,7 @@ export function casing(f, u, w, h, v0, v1, color = 0xf6f2e8, { both = true, widt
 
 // A closed door in a hole: the slab a little in from the room face, panels,
 // a knob, casing on the room side.
-export function door(f, u, { w = 0.92, h = DOOR_H, v1 = 0, thick = 0.2, color = 0x7a4a2a, trim = 0xf6f2e8, panels = true, knob = 0xd8b25a, glass = null } = {}) {
+export function door(f, u, { w = 0.92, h = DOOR_H, v1 = 0, thick = 0.2, color = 0x7a4a2a, trim = 0xf6f2e8, panels = true, knob = 0xd8b25a, glass = null, casingW = 0.09 } = {}) {
   f.box(color, u, 0, v1 - thick / 2, w, h, 0.05);
   if (panels) {
     const shade = new THREE.Color(color).multiplyScalar(0.82);
@@ -434,7 +570,7 @@ export function door(f, u, { w = 0.92, h = DOOR_H, v1 = 0, thick = 0.2, color = 
   if (glass) f.decal(glass, u, h * 0.72, v1 - thick / 2 + 0.04, w * 0.36, h * 0.32, { bright: true });
   f.ball(knob, u - w * 0.38, 0.98, v1 - thick / 2 + 0.06, 0.035);
   f.ball(knob, u - w * 0.38, 0.98, v1 - thick / 2 - 0.06, 0.035);
-  casing(f, u, w, h, v1 - thick, v1, trim, { both: false });
+  casing(f, u, w, h, v1 - thick, v1, trim, { both: false, width: casingW });
 }
 
 // A window in a hole: frame, glazing bars, sill and a painted view
@@ -483,6 +619,52 @@ export function ceilingLights(R, rects, y = WALL_H, color = 0xfff2d0) {
     f.cyl(0xf6f2e8, x, y - 0.03, z, 0.26, 0.03);
     f.glow(new THREE.SphereGeometry(0.2, 16, 6, 0, TAU, Math.PI / 2, Math.PI / 2), color, 1.7, x, y - 0.03, z, 0, 1, 0.45, 1);
   }
+}
+
+// Ceilings in each room's own colour, one mesh: rects [x0, x1, z0, z1,
+// color] at y, flat and unlit, with the grain if given. add(color, matrix)
+// puts in another piece (a slope).
+export function tintedCeilings(R, rects, { y = WALL_H, grain = null } = {}) {
+  const mat = R.own(new THREE.MeshBasicMaterial({ vertexColors: true, map: grain?.map ?? null }));
+  if (grain) mat.userData.tile = grain.tile;
+  const add = (color, matrix) => {
+    const g = coloured(BOX, color);
+    R.tiled.add(g, mat, matrix);
+    g.dispose();
+  };
+  for (const [x0, x1, z0, z1, color] of rects) add(color, at((x0 + x1) / 2, y + 0.04, (z0 + z1) / 2, 0, x1 - x0 + 0.02, 0.08, z1 - z0 + 0.02));
+  return { mat, add };
+}
+
+// The show's paint: soft blotches and specks, near white, to multiply a
+// colour by (one texture, kept with the shared materials). { map, tile }.
+export function grainOf(kit, tile = 1.7, { soft = false } = {}) {
+  // (`soft`: half as strong, for the ceilings, which are lit by nothing)
+  const k = soft ? 0.45 : 1;
+  const m = kit.mats.painted(soft ? 'c137-in-grain-soft' : 'c137-in-grain', 256, 256, (g, w, h) => {
+    const r = rng(17);
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, w, h);
+    // drawn at each wrap, so it tiles
+    const wrap = (fn) => {
+      for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) fn(ox, oy);
+    };
+    for (let i = 0; i < 60; i++) {
+      const [x, y, rad, a] = [r() * w, r() * h, 12 + r() * 36, (0.018 + r() * 0.03) * k];
+      wrap((ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+        gr.addColorStop(0, `rgba(60,58,50,${a})`);
+        gr.addColorStop(1, 'rgba(60,58,50,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+      });
+    }
+    for (let i = 0; i < 700; i++) {
+      g.fillStyle = r() < 0.5 ? `rgba(60,50,30,${0.06 * k})` : 'rgba(255,255,255,0.4)';
+      g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5);
+    }
+  });
+  return { map: m.map, tile };
 }
 
 // a material with world-space uvs, `tile` metres to a repeat, painted once

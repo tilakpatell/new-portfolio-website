@@ -17,8 +17,11 @@
 // Hulk, Chitauri, cars, chariot and wall pylon, and Thanos for Titan, into
 // public/hq/meshy/ with a manifest.json the games read.
 //
-// The C-137 world's set: the Smiths (rigged, with clips) go to public/games/meshy/
-// beside Rick and Morty; the house, school, arcade and cabinet to public/models/c137/.
+// The C-137 world's set: the Smiths, the President, his general and Secret
+// Service agent and the Federation's agent (rigged, with clips; the agent
+// sits too) go to public/games/meshy/ beside Rick and Morty; the house,
+// school, arcade, cabinet, Shoney's, the limo and the Federation's ship to
+// public/models/c137/.
 //
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137]
 //
@@ -109,6 +112,14 @@ export const ASSETS = {
   school: { rig: false, poly: 18000, tex: 1024, set: 'c137', prompt: `Harry Herpson High School from Rick and Morty: a 1960s American public high school of red-brown brick with a cream band along the top of the walls and flat roofs with grey air-conditioning units on them. In the middle, a taller entrance block of brick with a blank brick panel above a flat cream canopy over glass double doors with tall glass side panels; to the left, a long single-storey wing with big many-paned windows; to the right, a two-storey wing with rows of smaller windows. Green bushes along the front, no text, no flag. ${BUILDING}` },
   arcade: { rig: false, poly: 14000, tex: 1024, set: 'c137', prompt: `Blips and Chitz from Rick and Morty: an alien arcade building on another planet with rounded purple and teal walls, glowing neon tubes, a big arched entrance and a blank sign board over the door. ${BUILDING}` },
   'roy-cabinet': { rig: false, poly: 8000, tex: 1024, set: 'c137', prompt: `The Roy virtual reality arcade machine from Rick and Morty: a sci-fi VR arcade cabinet, a reclining padded chair under a hooded console with a VR headset hanging from a cable and a glowing green screen. ${PROP}` },
+  // the President's visit, the Galactic Federation and Shoney's
+  president: { rig: true, height: 1.88, poly: 12000, tex: 1024, set: 'c137', prompt: `The President of the United States from Rick and Morty: a tall broad-shouldered Black man in his fifties with short black hair greying and receding at the temples, a stern square face with heavy brows, in a dark navy two-button suit, a white shirt, a red tie and black shoes. ${BODY}` },
+  fedagent: { rig: true, height: 1.9, poly: 10000, tex: 1024, set: 'c137', prompt: `A Galactic Federation agent from Rick and Morty: a Gromflomite, a thin insect man with a pale olive-green fly head, two big orange-red compound eyes with a dark grid on them, two short antennae with knobs, a small mouth with little mandibles and wispy tendrils hanging from the chin, thin pale green hands with long fingers, wearing a black suit, a white shirt, a dark teal tie, a small silver triangle pin on the lapel and black shoes. ${BODY}` },
+  general: { rig: true, height: 1.82, poly: 10000, tex: 1024, set: 'c137', prompt: `A US Army general from Rick and Morty: a stern bald middle-aged white man with a lined face, in a dark olive-green army dress uniform jacket with brass buttons, rows of coloured medal ribbons on the chest and gold insignia on the collar, a pale green shirt, a black tie, dark green trousers and black shoes. ${BODY}` },
+  secretservice: { rig: true, height: 1.84, poly: 10000, tex: 1024, set: 'c137', prompt: `A Secret Service agent from Rick and Morty: a square-jawed man with short dark brown hair, black sunglasses and a curly earpiece wire behind his ear, in a black suit, a white shirt, a black tie and black shoes. ${BODY}` },
+  limo: { rig: false, poly: 12000, tex: 1024, set: 'c137', prompt: `The US President's black armoured limousine as drawn in Rick and Morty: a long heavy glossy black stretch car with dark tinted windows, chrome grille and trim, and two small American flags on short poles above the front wheels. ${CAR}` },
+  fedship: { rig: false, poly: 14000, tex: 1024, set: 'c137', prompt: `A Galactic Federation patrol ship from Rick and Morty: a big rounded dark green armoured capsule like an upright egg seen front-on, a tall glass canopy strip running up its middle, rows of round glowing green lights along its top, round red lights on each side, two bulging pale green engine pods low on the left and right with glowing green jets underneath, and a black mechanical insect-like snout with mandibles at the front bottom. ${PROP}` },
+  shoneys: { rig: false, poly: 16000, tex: 1024, set: 'c137', prompt: `The Shoney's family restaurant from Rick and Morty: a single-storey American roadside diner with pale yellow stucco walls, a dark brown shingled hip roof with a red trim along the eaves and a front gable over the door, glass double doors in the middle, wide windows along the front each under a red and white striped awning, small green shrubs in red planters, and a tall pole sign with a yellow board framed in red. No text. ${BUILDING}` },
 };
 
 // Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and

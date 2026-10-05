@@ -1,14 +1,20 @@
 // The Smith house upstairs, for ../interiors.js: Summer's room (pink and
-// teal, Summer on her purple phone), Morty's room (his bed, his desk and its
-// lamp, the window, posters), the hall and the stairwell, Beth and Jerry's
-// room, and the balcony with its railing, the street painted beyond it.
+// teal, Summer on her purple phone), Morty's room as the show draws it (pale
+// walls with blue trim and cracked plaster, green carpet and the round space
+// rug, his bed, the blue nightstand with its red lamp and little elephant,
+// the bookshelf of books and toys, the red desk with a rocket on it, posters,
+// the SCIENCE pennant, the dartboard on the door, his jacket on its hook),
+// the hall and the stairwell, Beth and Jerry's room, and the balcony with its
+// railing, the street painted beyond it.
 
 import * as THREE from 'three';
-import { AREAS, FURNITURE, INNER_WALLS, PEOPLE } from '../rules';
-import { rng } from '../kit';
-import { BOX, casing, ceilingLights, ceilings, DOOR_H, doorway, fitText, floors, framed, lathe, makeRoom, PLANE, TAU, tiledPaint, wallLine, wallRun, win, windowView } from './shell';
+import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
+import { rng, speckle } from '../kit';
+import { BOX, CYL8, casing, ceilingLights, DOOR_H, doorway, fitText, floors, framed, grainOf, innerWalls, lathe, makeRoom, PLANE, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, wallRun, win, windowView } from './shell';
 import { needCast, person } from './people';
-import { CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, bed, carpet, deskLamp, desk, dresser, roomsOf, woodFloor } from './furniture';
+import { CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, bed, carpet, desk, dresser, woodFloor } from './furniture';
+import { BOOKS_MORTY, bookcase, chair, domeLight, jacket, mortyBed, mortyDesk, nightstand, openDoor, P, wallShelf } from './smiths';
+import { mortyCells } from './smithpaint';
 
 export async function buildUpstairs(kit) {
   const R = makeRoom(kit, 'upstairs');
@@ -16,35 +22,42 @@ export async function buildUpstairs(kit) {
   await needCast(kit, ['summer']);
   const a = AREAS.upstairs;
 
+  const grain = grainOf(kit);
   const wood = tiledPaint(m, 'c137-in-wood', 256, 2.6, woodFloor());
   const deck = tiledPaint(m, 'c137-in-deck', 256, 2.4, woodFloor('#9a7650'));
-  floors(R, 'upstairs', (r) => (r.id === 'balcony' ? deck : r.floor === WOOD_FLOOR ? wood : tiledPaint(m, `c137-in-carpet-${r.floor}`, 128, 1.6, carpet, { color: r.floor })));
+  // Morty's carpet is the show's grass green, specked
+  const green = tiledPaint(m, 'c137-in-carpet-morty', 128, 1.4, (g, w, h) => speckle(g, w, h, { base: '#ffffff', specks: ['#d2dcc0', '#bccaa4', '#f4f8ec', '#a8b890'], n: 2600, size: 1.6, seed: 23 }), { color: 0x76984f });
+  floors(R, 'upstairs', (r) => (r.id === 'balcony' ? deck : r.id === 'morty' ? green : r.floor === WOOD_FLOOR ? wood : tiledPaint(m, `c137-in-carpet-${r.floor}`, 128, 1.6, carpet, { color: r.floor })));
 
   for (let i = 1; i <= 3; i++) R.cell(`view${i}`, 128, 128, windowView(i + 4));
   posters(R);
+  mortyCells(R);
 
-  ceilings(R, [...roomsOf('upstairs', ['balcony']), [-306, -303.6, 401.7, 404]]);
-  ceilingLights(R, roomsOf('upstairs', ['balcony', 'stairTop']));
+  tintedCeilings(R, [...UP_ROOMS.filter(([id]) => id !== 'balcony').map(([id, ...r]) => [...r, id === 'morty' ? P.ceilMorty : 0xe9e0cc]), [-306, -303.6, 401.7, 404, 0xe9e0cc]], { grain: grainOf(kit, 2.6, { soft: true }) });
+  ceilingLights(R, UP_ROOMS.filter(([id]) => !['balcony', 'stairTop', 'morty'].includes(id)).map(([, ...r]) => r));
+  domeLight(R.fixed(0, 0, 0), -297.25, 396.95, 2.6);
   const F = R.fixed;
   const cream = { color: CREAM, skirt: TRIM, crown: TRIM };
   const pink = { color: 0xf3c6d6, skirt: TRIM, crown: TRIM };
-  const blue = { color: 0xc6d8e6, skirt: TRIM, crown: TRIM };
-  // Summer's walls pink, Morty's blue, the rest cream: the walls are split where the rooms are
+  const morty = { color: P.mortyWall, skirt: P.mortyTrim, skirtH: 0.1, crown: P.mortyTrim };
+  const looks = { summer: pink, morty };
+  // Summer's walls pink, Morty's pale with blue trim, the rest cream: the walls are split where the rooms are
   wallLine(R, F, [-306.2, 394], [-299.8, 394], { ...pink, into: [0, 1] }, [win(-302, 1.2, 1.05, 0.95, 'view1')]);
-  wallLine(R, F, [-299.8, 394], [-294.5, 394], { ...blue, into: [0, 1] }, [win(-297.6, 1.2, 1.05, 0.95, 'view2', { bars: [2, 2] })]);
+  wallLine(R, F, [-299.8, 394], [-294.5, 394], { ...morty, into: [0, 1] }, [win(-297.6, 1.2, 1.05, 0.95, 'view2', { bars: [2, 2], frame: P.mortyTrim })]);
   wallLine(R, F, [-306, 393.8], [-306, 399.9], { ...pink, into: [1, 0] });
   wallLine(R, F, [-306, 399.9], [-306, 401.7], { ...cream, into: [1, 0] });
-  wallLine(R, F, [-294.7, 393.8], [-294.7, 399.9], { ...blue, into: [-1, 0] });
+  wallLine(R, F, [-294.7, 393.8], [-294.7, 399.9], { ...morty, into: [-1, 0] });
   wallLine(R, F, [-294.7, 399.9], [-294.7, 408.8], { ...cream, into: [-1, 0] }, [win(407.4, 0.9, 1.05, 0.95, 'view3')]);
-  // inner walls: Summer's side pink, Morty's blue, the hall cream
-  for (const [x0, z0, x1, z1, th] of INNER_WALLS.upstairs) {
-    const L = Math.hypot(x1 - x0, z1 - z0);
-    const ex = ((x1 - x0) / L) * (th - 0.006);
-    const ez = ((z1 - z0) / L) * (th - 0.006);
-    const colour = z0 === z1 && z0 < 400 ? (x1 <= -299.8 ? 0xf3c6d6 : x0 >= -299.8 ? 0xc6d8e6 : CREAM) : x0 === -299.8 ? 0xdcc6dc : CREAM;
-    wallRun(R, F, [x0 - ex, z0 - ez], [x1 + ex, z1 + ez], { centred: true, thick: th * 2, color: colour, skirt: TRIM, crown: TRIM });
+  // inner walls: each side its own room's
+  innerWalls(R, F, 'upstairs', INNER_WALLS.upstairs, (r) => looks[r?.id] ?? cream);
+  for (const [p, q] of UP_DOORWAYS) {
+    const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    // (each of these runs along x: its front is the hall's side, south)
+    const front = looks[roomAt('upstairs', mx, mz + 0.3)?.id] ?? cream;
+    const back = looks[roomAt('upstairs', mx, mz - 0.3)?.id] ?? cream;
+    const trimOf = (L) => (L === morty ? P.mortyTrim : TRIM);
+    doorway(R, p, q, { thick: INNER, color: front.color, trim: trimOf(front), crown: front.crown, back: { color: back.color, trim: trimOf(back), crown: back.crown } });
   }
-  for (const [p, q] of UP_DOORWAYS) doorway(R, p, q, { thick: INNER, color: CREAM, trim: TRIM, crown: TRIM });
   // the balcony's wide glass door: its frame over the gap, a pane slid aside
   const gd = wallRun(R, F, [-300.12, 408.8], [-296.88, 408.8], { centred: true, thick: INNER, color: CREAM, skirt: null, holes: [{ at: 1.62, w: 3.24, y0: 0, y1: DOOR_H }] });
   casing(gd.f, 1.62, 3.24, DOOR_H, gd.v0, gd.v1, 0xe9e4d8);
@@ -70,14 +83,12 @@ export async function buildUpstairs(kit) {
       f.decal('mirror', 0.2, it.h + 0.45, -it.d / 2 + 0.04, 0.42, 0.62);
       f.box(0x3fb5b0, -0.45, it.h, -0.05, 0.36, 0.02, 0.25).box(0x3fb5b0, -0.45, it.h + 0.02, -0.17, 0.36, 0.24, 0.015, 0, -0.25);
       for (let i = 0; i < 4; i++) f.cyl([0xf0559a, 0xe0402a, 0xf2d23c, 0x6b3a7a][i], 0.45 + i * 0.06, it.h, 0.1, 0.018, 0.08 + (i % 2) * 0.04);
-    } else if (it.id === 'bed-morty') bed(R, it, { frame: 0x7c5232, blanket: 0x3a5a8a, sheet: 0xd6e2ea });
-    else if (it.id === 'desk-morty') {
-      const f = desk(R, it, { top: 0x9a6a3e, legs: 0x6b4426 });
-      deskLamp(f, -0.5, it.h, -0.2, 0x3a6fb0);
-      f.box(0x2b2b30, 0.1, it.h, -0.05, 0.4, 0.025, 0.28).box(0x2b2b30, 0.1, it.h + 0.02, -0.19, 0.4, 0.27, 0.015, 0, -0.2);
-      f.decal('monitor', 0.1, it.h + 0.15, -0.178, 0.34, 0.22, { bright: true, rx: -0.2 });
-      for (let i = 0; i < 3; i++) f.box([0xd8452f, 0x2f6fb0, 0xf3c844][i], 0.5, it.h + i * 0.04, 0.05, 0.25, 0.035, 0.18, i * 0.15);
-    } else if (it.id === 'bed-master') bed(R, it, { frame: 0x6b4426, blanket: 0xc8b07a, sheet: 0xf4f0e6 });
+    } else if (it.id === 'bed-morty') mortyBed(R, it);
+    else if (it.id === 'desk-morty') mortyDesk(R, it);
+    else if (it.kind === 'nightstand') nightstand(R, it);
+    else if (it.id === 'bookcase-morty') onTop(bookcase(R, it, { wood: P.shelfRed, books: BOOKS_MORTY, seed: 12, levels: 4, gaps: 0.05, toys: MORTY_SHELVES }), it.h);
+    else if (it.id === 'chair-morty') chair(R, it, 'windsor');
+    else if (it.id === 'bed-master') bed(R, it, { frame: 0x6b4426, blanket: 0xc8b07a, sheet: 0xf4f0e6 });
     else if (it.id === 'dresser-master') {
       const f = dresser(R, it, { wood: 0x8a5a34 });
       f.decal('mirrorwide', 0, it.h + 0.6, -it.d / 2 + 0.03, 1.2, 0.8);
@@ -88,17 +99,16 @@ export async function buildUpstairs(kit) {
   // posters and pictures on the walls
   R.fixed(-306, 396.4, Math.PI / 2).decal('summerposter', 0, 1.65, 0.01, 0.6, 0.84);
   R.fixed(-299.92, 396.4, -Math.PI / 2).decal('summerposter2', 0, 1.6, 0.012, 0.55, 0.75);
-  R.fixed(-299.68, 397.1, Math.PI / 2).decal('mortyposter', 0, 1.6, 0.012, 0.6, 0.85);
-  R.fixed(-294.7, 395.3, -Math.PI / 2).decal('mortyposter2', 0, 1.65, 0.01, 0.5, 0.7);
   R.fixed(-294.7, 405.3, -Math.PI / 2).decal('landscape2', 0, 1.6, 0.01, 1.1, 0.72);
   R.fixed(-300.7, 401.58, Math.PI).decal('photo2', 0, 1.6, 0.012, 0.42, 0.32);
+  mortysRoom(R);
 
   // Summer on her phone: a purple phone in her right hand
   const s = PEOPLE.find((p) => p.id === 'summer');
   const sum = person(R, 'summer', { ...s, h: HEIGHTS.summer, look: LOOKS.summer });
   phoneIn(R, sum);
 
-  return R.build({ light: { ...HOUSE_LIGHT, background: 0x1e1712 } });
+  return R.build({ light: { ...HOUSE_LIGHT, background: 0x1e1712 }, grain });
 }
 
 const UP_DOORWAYS = [
@@ -115,6 +125,99 @@ const UP_DOORWAYS = [
     [-297.32, 401.7],
   ],
 ];
+
+// the plan's rooms upstairs, [id, x0, x1, z0, z1]
+const UP_ROOMS = [
+  ['summer', -306, -299.8, 394, 399.9],
+  ['morty', -299.8, -294.7, 394, 399.9],
+  ['upHall', -306, -294.7, 399.9, 401.7],
+  ['master', -302.4, -294.7, 401.7, 408.8],
+  ['balcony', -302.4, -294.7, 408.8, 410.3],
+  ['stairTop', -303.6, -302.4, 401.7, 404],
+];
+
+// Morty's bookshelf, shelf by shelf (bottom first): a basketball, a robot
+// and a ship; folders and a box; books, a robot head, test tubes; books and
+// a little alien bust
+const MORTY_SHELVES = [
+  (f, y) => {
+    f.ball(0xe0782e, -0.45, y + 0.12, 0.02, 0.12);
+    f.box(0x2f4fa0, -0.18, y, 0.02, 0.1, 0.16, 0.08).box(0xc8362e, -0.18, y + 0.16, 0.02, 0.08, 0.08, 0.07).box(0xd8b04a, -0.18, y + 0.24, 0.02, 0.05, 0.05, 0.05);
+    f.box(0x8a5a34, 0.3, y, 0.03, 0.42, 0.08, 0.12).cyl(0x6b4426, 0.3, y + 0.08, 0.03, 0.008, 0.3);
+    f.box(0xf4f0e6, 0.2, y + 0.1, 0.03, 0.18, 0.2, 0.006).box(0xd8d4f0, 0.39, y + 0.1, 0.03, 0.14, 0.16, 0.006);
+  },
+  (f, y) => {
+    for (let i = 0; i < 6; i++) f.box([0x5a9ac8, 0xe8e3d6, 0x3f8f3a, 0xe8c45a, 0xd8452f, 0x2b2b30][i], -0.5, y + i * 0.025, 0.02, 0.26, 0.022, 0.24, i * 0.08);
+    f.box(0xe08ac8, -0.05, y, 0.03, 0.2, 0.22, 0.04, 0.1).box(0x9ad8f0, -0.05, y + 0.04, 0.052, 0.14, 0.1, 0.004, 0.1);
+    f.box(0x2a2a2e, 0.35, y, 0.03, 0.34, 0.13, 0.22).box(0xd8b04a, 0.35, y + 0.06, 0.142, 0.06, 0.03, 0.006);
+  },
+  (f, y) => {
+    let u = -0.62;
+    for (let i = 0; i < 10; i++) {
+      const bw = 0.035 + ((i * 7) % 4) * 0.008;
+      f.box(BOOKS_MORTY[(i * 3) % BOOKS_MORTY.length], u + bw / 2, y, 0.02, bw, 0.2 + ((i * 5) % 3) * 0.03, 0.22);
+      u += bw + 0.005;
+    }
+    f.box(0xf4f0e6, 0.02, y, 0.02, 0.14, 0.14, 0.12).box(0x2a2a2e, 0.02, y + 0.06, 0.081, 0.08, 0.03, 0.004).ball(0x6a8ab0, 0.02, y + 0.17, 0.02, 0.06);
+    f.box(0x8a5a34, 0.35, y, 0.02, 0.32, 0.03, 0.08);
+    for (let i = 0; i < 4; i++) f.cyl([0x9dff5a, 0xe0402a, 0x5ab0e8, 0xf2d23c][i], 0.23 + i * 0.08, y + 0.02, 0.02, 0.016, 0.14 + (i % 2) * 0.03);
+  },
+  (f, y) => {
+    let u = -0.62;
+    for (let i = 0; i < 12; i++) {
+      const bw = 0.03 + ((i * 5) % 3) * 0.012;
+      f.box(BOOKS_MORTY[(i * 5 + 2) % BOOKS_MORTY.length], u + bw / 2, y, 0.02, bw, 0.18 + ((i * 7) % 4) * 0.02, 0.22, 0, 0, i === 11 ? 0.25 : 0);
+      u += bw + 0.005;
+    }
+    f.box(0xe8c45a, 0.22, y, 0.03, 0.08, 0.08, 0.08, 0.4).box(0xd8452f, 0.24, y + 0.08, 0.03, 0.06, 0.06, 0.06, 0.2);
+    f.ball(0x8ad870, 0.42, y + 0.14, 0.03, 0.07, 1.2).box(0x5a5a62, 0.42, y, 0.03, 0.1, 0.06, 0.1);
+  },
+];
+
+// on top of Morty's bookshelf: helmets, a robot's head, a toy truck
+function onTop(f, y) {
+  f.ball(0x6a8ab0, -0.55, y + 0.08, 0, 0.09, 0.9).box(0x2a2a30, -0.55, y + 0.06, 0.07, 0.12, 0.05, 0.02);
+  f.ball(0x5a6a50, -0.33, y + 0.07, 0, 0.08, 0.85);
+  f.box(0x4a5a8a, -0.1, y, 0, 0.14, 0.12, 0.12).box(0x9dd8ff, -0.1, y + 0.05, 0.061, 0.1, 0.03, 0.004);
+  f.box(0xc8d040, 0.3, y + 0.04, 0, 0.34, 0.1, 0.13).box(0x6aa040, 0.4, y + 0.14, 0, 0.13, 0.09, 0.12).box(0x9aa3ab, 0.2, y + 0.14, 0, 0.16, 0.05, 0.11, 0, 0, 0.3);
+  for (const u of [0.18, 0.42]) for (const v of [-0.06, 0.06]) f.cyl(0x2a2a2e, u, y + 0.04, v, 0.04, 0.03, Math.PI / 2, 0, CYL8);
+}
+
+// what's on Morty's walls and floor: the space rug, posters, the pennant, the
+// open door with its dartboard, his jacket, the shelf over his bed, cracks
+function mortysRoom(R) {
+  const E = Math.PI / 2;
+  const W = -Math.PI / 2;
+  const N = Math.PI;
+  const rug = RUGS.find((r) => r.id === 'morty');
+  R.fixed(0, 0, 0).decal('spacerug', rug.x, 0.008, rug.z, rug.w, rug.d, { rx: -Math.PI / 2 });
+  // the east wall: the beach, the magnet, a small one, the shelf over the bed's head, a vent
+  const east = (z) => R.fixed(-294.7, z, W);
+  east(395.2).decal('beach', 0, 1.56, 0.012, 0.72, 0.9, { rz: 0.05 });
+  east(396.42).decal('magnet', 0, 1.74, 0.012, 0.6, 0.76, { rz: -0.05 });
+  east(397.25).decal('smallposter', 0, 1.46, 0.012, 0.36, 0.48);
+  wallShelf(east(398.2), 0, 1.52, 0);
+  east(399.2).decal('vent', 0, 2.36, 0.012, 0.42, 0.21);
+  // the north wall: a map
+  R.fixed(-299.15, 394, 0).decal('map', 0, 1.55, 0.012, 0.52, 0.4);
+  // the west wall: his space poster
+  R.fixed(-299.68, 397.1, E).decal('mortyposter', 0, 1.6, 0.012, 0.6, 0.85);
+  // the south wall: the door open against it, its dartboard; the pennant; his jacket on a hook
+  const door = R.fixed(-295.72, 399.7, N);
+  openDoor(door, 0.88);
+  door.cyl(0x1d1d22, 0.44, 1.55, 0.03, 0.2, 0.02, E).decal('dartboard', 0.44, 1.55, 0.041, 0.38, 0.38);
+  R.fixed(-295.18, 399.78, N).decal('pennant', 0, 2.16, 0.02, 0.8, 0.29, { rz: 0.16 }).cyl(0x8a5a34, -0.4, 1.95, 0.025, 0.01, 0.38, 0, 0.16);
+  jacket(R.fixed(-299.15, 399.78, N), 0, 1.72, 0);
+  // the plaster cracked and chipped, up by the ceiling
+  for (const [x, z, t, u, w] of [
+    [-294.7, 395.9, W, 0, 0.42],
+    [-298.3, 394, 0, 0, 0.36],
+    [-295.4, 399.78, N, 0, 0.3],
+    [-299.68, 395.6, E, 0, 0.4],
+  ])
+    R.fixed(x, z, t).decal(w > 0.38 ? 'crack1' : 'crack2', u, 2.37, 0.014, w, w * 0.6);
+  R.fixed(0, 0, 0).decal('crack2', -296.4, 2.595, 395.6, 0.5, 0.3, { rx: Math.PI / 2 });
+}
 
 function posters(R) {
   R.cell('summerposter', 96, 136, framed((g, w, h) => {
@@ -158,18 +261,6 @@ function posters(R) {
     g.fill();
     fitText(g, 'SPACE', w / 2, h * 0.85, w - 10, 22, { color: '#f2d23c' });
   }, { border: '#2b2b30', inner: 3 }));
-  R.cell('mortyposter2', 80, 112, framed((g, w, h) => {
-    g.fillStyle = '#d8452f';
-    g.fillRect(0, 0, w, h);
-    fitText(g, 'BALL', w / 2, h * 0.3, w - 10, 20, { color: '#fff2c0' });
-    fitText(g, 'FONDLERS', w / 2, h * 0.48, w - 10, 16, { color: '#fff2c0' });
-    for (let i = 0; i < 3; i++) {
-      g.fillStyle = ['#f2d23c', '#3fa0d8', '#7ac74f'][i];
-      g.beginPath();
-      g.arc(18 + i * 22, h * 0.75, 9, 0, TAU);
-      g.fill();
-    }
-  }, { border: '#2b2b30', inner: 3 }));
   R.cell('mirror', 64, 96, framed((g, w, h) => {
     const gr = g.createLinearGradient(0, 0, w, h);
     gr.addColorStop(0, '#f2e6f0');
@@ -207,14 +298,6 @@ function posters(R) {
     g.arc(w * 0.65, h * 0.5, 9, 0, TAU);
     g.fill();
   }, { border: '#2b2b30', inner: 4 }));
-  R.cell('monitor', 64, 48, (g, w, h) => {
-    g.fillStyle = '#1a2240';
-    g.fillRect(0, 0, w, h);
-    g.fillStyle = '#9dff5a';
-    g.fillRect(6, 8, 30, 4);
-    g.fillRect(6, 16, 44, 4);
-    g.fillRect(6, 24, 22, 4);
-  });
 }
 
 // the stairwell beside the hall: steps going down into it, a banister round it

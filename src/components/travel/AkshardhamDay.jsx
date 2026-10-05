@@ -44,7 +44,7 @@ export const PLACES = [
   },
 ];
 // every photo, for the lightbox
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const DAY = PLACES.flatMap((p) => p.day.map((d) => ({ ...d, place: p.place })));
 const STEP_MS = 4200;
 

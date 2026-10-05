@@ -374,5 +374,42 @@
   "chefrick": {
     "image": "01a10ab8-3188-739c-b713-17b043e95ba1",
     "model": "01a10aba-c9eb-762c-a73e-7f797b21450b"
+  },
+  "president": {
+    "image": "01a10c5a-b674-73f6-9e39-09862c7c0c3a",
+    "model": "01a10c5f-2f59-77ae-bf33-2ac0b36e2ddb",
+    "rig": "01a10c63-f42b-7557-a475-da38c4436705",
+    "idle": "01a10c64-4785-73b0-8e57-bbe76a8fc2e9"
+  },
+  "fedagent": {
+    "image": "01a10c5a-b68f-70c1-9a11-8db4c1188638",
+    "model": "01a10c5f-2f49-7276-807e-f4ab6fd2662d",
+    "rig": "01a10c63-f44c-7745-9ee7-0a527cfe9042",
+    "idle": "01a10c64-4761-756a-9855-055fccd01f3f",
+    "sit": "01a10c64-634b-776a-8025-210d949bfcbe"
+  },
+  "general": {
+    "image": "01a10c5a-b6b7-709b-8c7d-94d844f289f7",
+    "model": "01a10c5f-2f62-7670-a94e-d3acc7571697",
+    "rig": "01a10c63-f425-71c7-988b-c966de0b2d41",
+    "idle": "01a10c64-475a-70d5-b94c-5fc20c36177c"
+  },
+  "secretservice": {
+    "image": "01a10c5a-b6a6-70dc-8780-8bc718b60008",
+    "model": "01a10c5f-2f7d-7205-b05b-02f24138989d",
+    "rig": "01a10c63-f456-7247-80d3-48276fa7a0d8",
+    "idle": "01a10c64-4789-7136-bf71-ab5585f9e073"
+  },
+  "limo": {
+    "image": "01a10c5a-ff53-7127-8ea5-a81a11d6a299",
+    "model": "01a10c61-48ab-7080-b4f9-84feccf3adea"
+  },
+  "fedship": {
+    "image": "01a10c5b-29db-756c-b81a-2ca35d865559",
+    "model": "01a10c61-5631-766f-8a32-ad3328ba4137"
+  },
+  "shoneys": {
+    "image": "01a10c5b-7acf-7684-882f-d9858d0ec73b",
+    "model": "01a10c61-553f-7360-b082-55847728f972"
   }
 }

@@ -61,6 +61,8 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `O` | Flight settings (steering, aim assist, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
+| `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each |
+| `J` | Jump to the place picked at hyperspeed |
 
 On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
 
@@ -95,10 +97,10 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk every stop on the road in 3D as Frodo, from Hobbiton to Mount Doom; cook in co-op, Overcooked-style, in a kitchen at each one (Bilbo's party, the Prancing Pony, Weathertop, Elrond's table, the forges of Moria, Lórien's flets, Parth Galen, Ithilien, the orcs' mess in Cirith Ungol and the feast at Cormallen); open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, with everyone else online as holograms. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
-| Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game. Other drivers online show up as ghost Azteks |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, or swing across it the way Insomniac's games do: hold the jump in the air to web a roof edge, a tree or a floodlight mast, steer the swing, let go on the upswing for a perfect release, zip with Shift, run up any wall you hit and along the roofs, and race the swing tour's rings round the compound. Everyone else online shows as a hologram. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Albuquerque | `/albuquerque` | Breaking Bad | Drive around town in Walt's Aztek, which slides if you ask it to: `Space` is the handbrake (handbrake turns, drifts, a J-turn out of reverse), and `O` opens the driving settings (steering, stability, camera). Places open up as Walt's career grows, each with its own game. Other drivers online show up as ghost Azteks |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
-| Dimension C-137 | `/c-137` | Rick and Morty | Walk the Smiths' street in 3D as Morty, fly Rick's cruiser, go through the garage portal to Blips and Chitz and play *Roy*; the portal gun, *Portal panic*, the Meeseeks box and interdimensional cable; and the Citadel of Ricks (`/c-137/citadel`, or fly into it on the map), walked in 3D as Rick C-137: a terrace over the show's city of Ricks, crowds of every Rick and Morty variant, a core of portal fluid with the Central Finite Curve turning round it, and five scenes from the show (Morty Day Care, Simple Rick's line, the Council, election day, the red alert) |
+| Dimension C-137 | `/c-137` | Rick and Morty | Walk the Smiths' street in 3D as Morty, fly Rick's cruiser (it talks, and the Federation's patrol ship flies alongside), meet the President at his limo and take his portal to the Oval Office, breakfast with a Federation agent at Shoney's, find Rick's clone lab under the garage and Morty's Mind Blowers past it, go through the garage portal to Blips and Chitz and play *Roy*; the portal gun, *Portal panic*, the Meeseeks box and interdimensional cable; and the Citadel of Ricks (`/c-137/citadel`, or fly into it on the map), walked in 3D as Rick C-137: a terrace over the show's city of Ricks, crowds of every Rick and Morty variant, a core of portal fluid with the Central Finite Curve turning round it, and five scenes from the show (Morty Day Care, Simple Rick's line, the Council, election day, the red alert) |
 | Earth | `/earth` | Travel | Down from orbit onto the globe as it is right now (NASA's Blue Marble and Black Marble, the real sun), then fly a little plane to every place I've been: a passport stamp and a postcard at each |
 | Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square |
 | The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
@@ -112,8 +114,8 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 ## Tech stack
 
-- **[React 18](https://react.dev/)** with [React Router 7](https://reactrouter.com/) (hash routing, so it works on static hosting)
-- **[Vite 5](https://vitejs.dev/)** for the dev server and build
+- **[React 19](https://react.dev/)** with [React Router 7](https://reactrouter.com/) (hash routing, so it works on static hosting)
+- **[Vite 8](https://vitejs.dev/)** (Rolldown) for the dev server and build
 - **[Tailwind CSS 3](https://tailwindcss.com/)** plus per-company and per-world themes
 - **[Three.js](https://threejs.org/)** for every 3D scene and game, loaded only when needed
 - **[Nostr](https://nostr.com/)** public relays for multiplayer, with events signed using [`@noble/secp256k1`](https://github.com/paulmillr/noble-secp256k1). There's no backend.

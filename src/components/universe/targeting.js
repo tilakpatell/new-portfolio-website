@@ -10,7 +10,12 @@
 // within the wider AIM.hold (a dogfight swings about), dropping once it's
 // been outside that for AIM.lose seconds (AIM.loseManual for one picked by
 // hand: T, Shift+T or a tap). When its target goes down the guns move
-// straight on to the next one inside the hold, so a fight flows. The lead
+// straight on to the next one inside the hold, so a fight flows; and a lock
+// the guns picked themselves gives way when its target has sat wide of the
+// nose (outside the pick-up cone) or out of the bolts' reach for AIM.swap
+// seconds while another is squarely ahead: they don't stay on one flying
+// off while the next comes down your throat. (One picked by hand never
+// gives way like that.) The lead
 // point is where a bolt fired now meets the target, allowing for its speed
 // and the bolt's (the bolts are quick, well over twice the fastest hunter,
 // so the lead stays a modest angle off); the pip sits there, and a shot
@@ -30,6 +35,7 @@ export const AIM = {
   hold: 0.8, // radians: a lock holds out to here (about 46°)
   lose: 1.2, // seconds outside the hold cone (or out of range) before it drops
   loseManual: 4, // the same, for a lock picked by hand
+  swap: 0.6, // seconds a lock the guns picked may sit wide of the nose, or out of reach, before they take another that's squarely ahead
   threat: 0.25, // how much nearer the nose one coming at you counts (of the pick-up score)
   assist: 0.14, // radians: inside this, a shot bends fully onto the lead point (about 8°)
   assistEdge: 0.36, // radians: beyond this, no help at all
@@ -68,8 +74,9 @@ export function bearing(s, p) {
   return { dist, off: angleBetween(nose(s), [d[0] / dist, d[1] / dist, d[2] / dist]) };
 }
 
-// The lock, one step on: `lock` is { id, out, manual? } (out: seconds its
-// target has been outside the hold cone; manual: picked by hand) or null;
+// The lock, one step on: `lock` is { id, out, manual?, wide? } (out: seconds
+// its target has been outside the hold cone; manual: picked by hand; wide:
+// seconds it's been held but outside the pick-up cone or out of reach) or null;
 // `candidates` are { id, at, vel, size, threat? } (hunters.targets; threat
 // 0 to 1, how much it's coming at you). Returns the new lock, or null. With
 // `cycle` (true or 1, or −1 the other way), moves on to the next candidate
@@ -93,27 +100,40 @@ export function track(s, candidates, lock, dt, { cycle = false } = {}) {
       return { id: next.c.id, out: 0, manual: true };
     }
   }
+  // the best to pick up inside `cone`: nearest the nose, nearer counting
+  // for a little and one coming at you for more
+  const pick = (cone, not = null) => {
+    let best = null;
+    let score = Infinity;
+    for (const e of seen) {
+      if (e === not || e.off > cone || e.dist > AIM.range) continue;
+      const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range) - AIM.threat * clamp(e.c.threat || 0, 0, 1);
+      if (k < score) {
+        score = k;
+        best = e;
+      }
+    }
+    return best;
+  };
   if (current) {
     const keep = (out) => (lock.manual ? { id: lock.id, out, manual: true } : { id: lock.id, out });
-    if (held(current)) return keep(0);
+    if (held(current)) {
+      if (lock.manual) return keep(0);
+      // held, but wide of the nose or out of reach: after a moment of that,
+      // the guns take one that's squarely ahead, if there is one
+      const astray = current.off > AIM.cone || current.dist > AIM.range;
+      if (!astray) return keep(0);
+      const wide = (lock.wide || 0) + dt;
+      const next = wide >= AIM.swap ? pick(AIM.cone, current) : null;
+      return next ? { id: next.c.id, out: 0 } : { id: lock.id, out: 0, wide };
+    }
     // slipping away: a moment's grace before it lets go
     const out = lock.out + dt;
     if (out < (lock.manual ? AIM.loseManual : AIM.lose)) return keep(out);
   }
-  // a fresh one: nearest the nose, nearer counting for a little and one
-  // coming at you for more. Its target just gone (shot down), the guns look
-  // as wide as the hold for the next, so the fight goes on
-  const cone = lock && !current ? AIM.hold : AIM.cone;
-  let best = null;
-  let score = Infinity;
-  for (const e of seen) {
-    if (e.off > cone || e.dist > AIM.range) continue;
-    const k = e.off / AIM.cone + 0.35 * (e.dist / AIM.range) - AIM.threat * clamp(e.c.threat || 0, 0, 1);
-    if (k < score) {
-      score = k;
-      best = e;
-    }
-  }
+  // a fresh one. Its target just gone (shot down), the guns look as wide as
+  // the hold for the next, so the fight goes on
+  const best = pick(lock && !current ? AIM.hold : AIM.cone);
   return best ? { id: best.c.id, out: 0 } : null;
 }
 

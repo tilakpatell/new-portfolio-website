@@ -41,7 +41,8 @@ describe('steps', () => {
     expect(step).toMatchObject({ x: 220, z: 170, speed: 9.5, y: 1.23, moving: true });
     expect(writeStep({ x: 0, z: 0, face: 0, speed: 3 })).toHaveLength(5);
     expect(readStep(writeStep({ x: 0, z: 0, face: 0, speed: 3 }))).not.toHaveProperty('speed');
-    expect(readStep([0, 0, 0, 1, 0, 999, -5]).speed).toBe(30);
+    expect(readStep([0, 0, 0, 1, 0, 999, -5]).speed).toBe(45);
+    expect(readStep([0, 0, 0, 1, 0, 2, 999]).y).toBe(80);
     expect(readStep([0, 0, 0, 1, 0, 2, -5]).y).toBe(0);
   });
 });

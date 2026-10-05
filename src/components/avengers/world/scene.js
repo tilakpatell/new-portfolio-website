@@ -21,7 +21,7 @@ import { pbr, preload } from '../hq/assets';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
-import { logoTexture, trees } from '../hq/kit/world';
+import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
@@ -32,8 +32,10 @@ import { STONES } from '../../interests/stones';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { AVENGERS_MODELS } from '../people/models';
 import { clipsFor, loadClips, loadPerson, person } from './people';
+import { createSwing } from './swing';
+import { createFlags, createRings, staticGrounds } from './grounds';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CRATER, HERO, LAWN_TREES, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, camRoom, nearestEdge, samplePath } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, nearestEdge, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -227,8 +229,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.32, radius: 0.5, threshold: 1.05 }, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
-  const sets = ['grass', 'forest-floor', 'concrete-floor', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal'];
-  await preload({ sets, skies: ['airfield'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
+  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
 
   // ── light: the airfield's late-afternoon sky, the sun a little higher than it has it ──
   await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.3, sunColor: [1, 0.9, 0.76], fill: 0.1 });
@@ -319,9 +321,30 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the drives: pale concrete, a darker kerb either side
   const roadTex = await pbr('concrete-floor', { repeat: [1, 1], small, roughness: 0.85, metalness: 0 });
   // pale concrete, as the compound has it: the texture's relief, not its dark colour
-  const roadMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xb9bbb3, roughness: 0.86, metalness: 0, normalMap: roadTex.normalMap ?? null, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: roadTex.roughnessMap ?? null }), 'road');
+  const roadMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xaeb0a9, roughness: 0.86, metalness: 0, normalMap: roadTex.normalMap ?? null, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: roadTex.roughnessMap ?? null }), 'road');
+  {
+    // poured in 4 m slabs: a joint across every slab and one down the middle,
+    // the wheels' tracks a little darker, and the concrete's own blotches
+    const before = roadMat.onBeforeCompile;
+    roadMat.onBeforeCompile = (sh, r) => {
+      before(sh, r);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSlab;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvSlab = uv;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vSlab;').replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        {
+          float across = 1.0 - smoothstep(0.0, 0.012, abs(fract(vSlab.y) - 0.5) - 0.488);
+          float down = 1.0 - smoothstep(0.0, 0.004, abs(vSlab.x - 0.5) - 0.002);
+          float tracks = smoothstep(0.1, 0.0, abs(abs(vSlab.x - 0.5) - 0.24));
+          float blotch = cNoise(vCloudPos.xz * 0.35) * 0.6 + cNoise(vCloudPos.xz * 1.7) * 0.4;
+          diffuseColor.rgb *= (1.0 - max(across, down) * 0.38) * (1.0 - tracks * 0.07) * mix(0.9, 1.05, blotch);
+        }`,
+      );
+    };
+    roadMat.customProgramCacheKey = () => 'road-slabs';
+  }
   for (const t of [roadMat.normalMap, roadMat.roughnessMap]) if (t) t.repeat.set(1 / 4, 1 / 4);
-  const kerbMat = cloudy(new THREE.MeshStandardMaterial({ color: 0x9a9f98, roughness: 0.9 }), 'kerb');
+  const kerbMat = cloudy(new THREE.MeshStandardMaterial({ color: 0x8c918a, roughness: 0.9 }), 'kerb');
   const roadGeos = [];
   const kerbGeos = [];
   for (const pts of ROADS_W) {
@@ -355,11 +378,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     t.repeat.set(1 / 8, 1 / 8);
     return t;
   };
-  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xf1f3f5, roughness: 0.42, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.4, normalMap: panels(2, 1.5), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
+  // (white panels, but not paper white: in a low sun they'd bloom)
+  const white = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xe1e4e8, roughness: 0.46, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.5, normalMap: panels(2, 1.5), normalScale: new THREE.Vector2(0.7, 0.7) }), 'white');
   const hangarWall = cloudy(await pbr('corrugated', { repeat: [1 / 2.2, 1 / 2.2], small, roughness: 0.45, metalness: 0.4, color: 0xf2f4f6 }), 'hangar');
   const doorMat = cloudy(await pbr('corrugated', { repeat: [1 / 2.6, 1 / 2.6], small, roughness: 0.5, metalness: 0.5, color: 0xa9b1bb, rotation: Math.PI / 2 }), 'hdoor');
   const grey = cloudy(new THREE.MeshPhysicalMaterial({ color: 0xbcc4cd, roughness: 0.4, metalness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.35, normalMap: panels(1.6, 1.5), normalScale: new THREE.Vector2(0.6, 0.6) }), 'grey');
-  const roofMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xd9dcdf, roughness: 0.88, metalness: 0, normalMap: panels(4, 4), normalScale: new THREE.Vector2(0.25, 0.25) }), 'roof');
+  // the roofs, somewhere to stand now: weathered concrete, its slabs' seams in it
+  const roofMat = cloudy(await pbr('concrete-worn', { repeat: [1 / 4, 1 / 4], small, roughness: 0.95, metalness: 0, color: 0xc4c7c6, normalScale: 0.8 }), 'roof');
   const darkMetal = cloudy(new THREE.MeshStandardMaterial({ color: 0x2f3640, roughness: 0.45, metalness: 0.8 }), 'dark');
   const red = cloudy(new THREE.MeshStandardMaterial({ color: 0xb8332c, roughness: 0.55, metalness: 0.2 }), 'red');
   const earth = cloudy(await pbr('rock', { repeat: [1 / 4, 1 / 4], small: true, roughness: 1, metalness: 0, color: 0x9a8a66 }), 'earth');
@@ -510,24 +535,15 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     [4.2, 5.4],
   ])
     add(prismWalls(grow(TRAINING, 0.05), z0, z1, 1, SC), glassBand, { cast: false });
-  const clere = [
-    [100, 21],
-    [119, 19],
-    [120, 24],
-    [101, 26],
-  ];
-  add(walls(clere, 7, 8.4), glassBand);
-  add(top(clere, 8.4), white);
+  add(walls(CLERESTORY, 7, 8.4), glassBand);
+  add(top(CLERESTORY, 8.4), white);
+  // parapets round the training center's roof and the lab's
+  add(prismWalls(grow(TRAINING, 0.06), 7, 7.32, 1, SC), white);
+  add(prismWalls(grow(LAB, 0.06), 6, 6.32, 1, SC), white);
   add(walls(LAB, 0, 6), white);
   add(top(LAB, 6), roofMat);
   add(prismWalls(grow(LAB, 0.05), 1.6, 3.4, 1, SC), glassBand, { cast: false });
-  for (let k = 0; k < 3; k++) {
-    const f = [
-      [84, 72.5 + k * 5],
-      [101.5, 71 + k * 5],
-      [101.7, 72.6 + k * 5],
-      [84.2, 74.1 + k * 5],
-    ];
+  for (const f of ROOF_LIGHTS) {
     add(walls(f, 6, 7.2), glassBand);
     add(top(f, 7.2), white);
   }
@@ -596,6 +612,47 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     doors.add(g);
   }
 
+  // ── floodlight masts round the lawn, the helipad and the drives (out on the
+  // open lawn, they're what there is to swing from) ──
+  const steel = cloudy(new THREE.MeshStandardMaterial({ color: 0x9ba3ab, metalness: 0.85, roughness: 0.36 }), 'steel');
+  // benches, planters, flagpoles, the roof plant and the comms mast (./grounds.js)
+  {
+    const wood = cloudy(await pbr('planks', { repeat: [1, 1], small, roughness: 0.8, metalness: 0, color: 0xb08a62 }), 'wood');
+    const concrete = cloudy(new THREE.MeshStandardMaterial({ color: 0xb5b6b0, roughness: 0.9, metalness: 0 }), 'concrete');
+    const soil = new THREE.MeshStandardMaterial({ color: 0x3b2d22, roughness: 1, metalness: 0 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd8b25a, roughness: 0.3, metalness: 1 });
+    staticGrounds(add, { steel, concrete, wood, soil, gold, dark: darkMetal, white });
+  }
+  {
+    const housing = cloudy(new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.7, roughness: 0.45 }), 'lamphouse');
+    const lens = new THREE.MeshStandardMaterial({ color: 0x1c2026, metalness: 0.2, roughness: 0.08, emissive: 0xfff0d2, emissiveIntensity: 0.45 });
+    const mid = P3(60, 52);
+    const m4m = new THREE.Matrix4();
+    const qm = new THREE.Quaternion();
+    for (const m of MASTS) {
+      // facing the middle of the lawn
+      const yaw = Math.atan2(mid.x - m.x, mid.z - m.z);
+      const at = (geo) => geo.applyMatrix4(m4m.compose(new THREE.Vector3(m.x, 0, m.z), qm.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1)));
+      add(at(new THREE.CylinderGeometry(0.85, 1, 0.5, 20).translate(0, 0.25, 0)), kerbMat);
+      add(at(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 12).translate(0, 0.6, 0)), steel);
+      add(at(new THREE.CylinderGeometry(0.12, 0.28, MAST_H, 12).translate(0, MAST_H / 2, 0)), steel);
+      add(at(new THREE.BoxGeometry(0.45, 0.8, 0.28).translate(0, 1.2, -0.38)), housing); // the switch cabinet
+      // the head: two rails across, four lamps under them, tipped down at the lawn
+      for (const y of [MAST_H - 0.25, MAST_H + 0.55]) add(at(new THREE.BoxGeometry(2.7, 0.1, 0.1).translate(0, y, 0.18)), steel);
+      for (const x of [-1.25, 1.25]) add(at(new THREE.BoxGeometry(0.08, 0.95, 0.08).translate(x, MAST_H + 0.15, 0.18)), steel);
+      for (const [x, y] of [
+        [-0.65, MAST_H - 0.05],
+        [0.65, MAST_H - 0.05],
+        [-0.65, MAST_H + 0.4],
+        [0.65, MAST_H + 0.4],
+      ]) {
+        add(at(new THREE.BoxGeometry(0.62, 0.42, 0.24).rotateX(0.35).translate(x, y, 0.36)), housing);
+        add(at(new THREE.BoxGeometry(0.52, 0.33, 0.02).rotateX(0.35).translate(x, y - 0.04, 0.49)), lens, { cast: false });
+      }
+      add(at(new THREE.ConeGeometry(0.2, 0.35, 10).translate(0, MAST_H + 0.75, 0)), steel);
+    }
+  }
+
   {
     const groups = new Map();
     for (const p of statics) {
@@ -622,6 +679,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const v3 = new THREE.Vector3();
+  const v3b = new THREE.Vector3();
   for (const p of Object.values(cars)) {
     scene.add(p.group);
     p.begin();
@@ -653,8 +711,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
         if (e < 2 || e > (small ? 50 : 70)) continue;
         tree(px, py, woods.length);
       }
-    for (const t of LAWN_TREES) woods.push([t.x, t.z, 9 + t.tone * 3.5, 3, t.tone * 97]);
+    for (const t of LAWN_TREES) woods.push([t.x, t.z, treeHeight(t), 3, t.tone * 97]);
     scene.add(await trees(woods));
+    // street lamps down the drives (Poly Haven's, CC0), their arms out over the drive
+    scene.add(await scatter('lamp', LAMPS.map((l) => [l.x, l.z, 1.15, l.yaw]), { shadows: !small }));
+    // shrubs in the planters by the doors
+    const shrubs = [];
+    PLANTERS.forEach((p, i) => {
+      for (let k = 0; k < (small ? 1 : 2); k++) {
+        const a = i * 1.7 + k * 1.57;
+        shrubs.push([p.x + Math.cos(a) * 0.22, p.z + Math.sin(a) * 0.22, 2.6 + ((i + k) % 3) * 0.3, a * 2.1 + k * 3.1]);
+      }
+    });
+    const shrubGroup = await scatter('shrub', shrubs, { heightAt: () => 0.58, shadows: false });
+    scene.add(shrubGroup);
     // the lawn's trees cast no shadow of their own (they're pictures): a soft one under each
     const blobs = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), LAWN_TREES.length);
     LAWN_TREES.forEach((t, i) => {
@@ -1045,37 +1115,176 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   let portalOpen = 0; // 0..1, opening
 
   // ── the camera ──
-  const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false };
+  const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0 };
+  const swing = createSwing(scene, { calm });
+  const flags = createFlags(scene);
+  const rings = createRings(scene);
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
   const shadowAt = new THREE.Vector3();
   let clock = 0;
 
+  // ── off the ground: swinging, flying, climbing, landing ──
+  // His clips (or the rig's stride) do the walking; everything else is posed
+  // by the rig, faded in over the clips as he leaves the ground and out again
+  // as he lands, so neither snaps. The holder leans him along his web, into a
+  // dive, or round in a perfect release's flip.
+  const bones = [];
+  spidey?.model.traverse((o) => o.isBone && bones.push(o));
+  const clipQ = bones.map(() => new THREE.Quaternion());
+  const R = { w: 0, arm: 'R', q: new THREE.Quaternion(), up: new THREE.Vector3(), fwd: new THREE.Vector3(), side: new THREE.Vector3(), m: new THREE.Matrix4(), yaw: new THREE.Quaternion(), tilt: new THREE.Quaternion(), bank: new THREE.Quaternion(), roll: 0, hx: null, hz: null, placed: false };
+  const X = new THREE.Vector3(1, 0, 0);
+  const Z = new THREE.Vector3(0, 0, 1);
+  const UP = new THREE.Vector3(0, 1, 0);
+  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0;
+  // the pose for where he is (the figure's frame: +z ahead, +y up, +x his left)
+  const offPose = (h) => {
+    if (h.land > 0) {
+      // down on one knee, a hand to the ground
+      return {
+        thighL: [0.18, -0.35, 0.92],
+        calfL: [0.1, -1, -0.15],
+        thighR: [-0.22, -0.85, -0.25],
+        calfR: [-0.1, -0.35, -1],
+        footL: [0, -0.3, 1],
+        footR: [0, -0.9, -0.4],
+        armR: [-0.3, -1, 0.45],
+        foreR: [-0.1, -1, 0.2],
+        armL: [0.85, -0.1, -0.5],
+        foreL: [0.6, 0.2, -0.3],
+        torso: { pitch: 0.55, yaw: 0.1, roll: 0 },
+      };
+    }
+    if (h.mode === 'wall') {
+      // on the wall: hands and feet on it by turns, knees out
+      const c = h.climb * 2.4;
+      const sn = Math.sin(c);
+      return {
+        armL: [0.55, 0.7 + 0.3 * sn, 0.55],
+        foreL: [0.25, 0.55 + 0.35 * sn, 0.85],
+        armR: [-0.55, 0.7 - 0.3 * sn, 0.55],
+        foreR: [-0.25, 0.55 - 0.35 * sn, 0.85],
+        thighL: [0.65, -0.35 + 0.3 * sn, 0.65],
+        calfL: [0.3, -1, -0.1],
+        thighR: [-0.65, -0.35 - 0.3 * sn, 0.65],
+        calfR: [-0.3, -1, -0.1],
+        footL: [0.2, -0.2, 1],
+        footR: [-0.2, -0.2, 1],
+        torso: { pitch: 0.18, yaw: 0, roll: 0 },
+      };
+    }
+    if (h.flip > 0) return POSES.guard();
+    if (h.mode === 'swing') {
+      // the web arm up the line, the other out for balance, knees up through the bottom of it
+      const a = R.arm;
+      const o = a === 'R' ? 'L' : 'R';
+      const sgn = (k) => (k === 'L' ? 1 : -1);
+      return {
+        [`arm${a}`]: [sgn(a) * 0.08, 1, 0.06],
+        [`fore${a}`]: [sgn(a) * 0.05, 1, 0.04],
+        [`arm${o}`]: [sgn(o) * 0.95, -0.15, 0.3],
+        [`fore${o}`]: [sgn(o) * 0.7, 0.25, 0.55],
+        thighL: [0.07, -0.75, 0.55],
+        calfL: [0.04, -1, -0.3],
+        thighR: [-0.07, -0.95, 0.2],
+        calfR: [-0.04, -1, -0.45],
+        footL: [0, -0.6, 0.8],
+        footR: [0, -0.8, 0.5],
+        torso: { pitch: 0.12, yaw: 0, roll: 0 },
+      };
+    }
+    // flying: tucked going up, a dive coming down fast, spread in between
+    if (h.vy > 3) return POSES.leap(1);
+    if (h.vy < -13)
+      return {
+        ...{ armL: [0.4, 0.15, -1], foreL: [0.3, 0.1, -1], armR: [-0.4, 0.15, -1], foreR: [-0.3, 0.1, -1] },
+        thighL: [0.08, -1, -0.2],
+        calfL: [0.05, -1, -0.3],
+        thighR: [-0.08, -1, -0.15],
+        calfR: [-0.05, -1, -0.35],
+        footL: [0, -0.6, -0.8],
+        footR: [0, -0.6, -0.8],
+        torso: { pitch: 0.15, yaw: 0, roll: 0 },
+      };
+    return POSES.fall(clock);
+  };
+  // which way round he is: upright, facing `face`; along his web while he
+  // swings; tipped into a dive; facing the wall he's on
+  const holderAt = (h) => {
+    R.yaw.setFromAxisAngle(UP, h.face + Math.PI / 2);
+    if (h.mode === 'swing' && h.web) {
+      R.up.set(h.web.a[0] - h.x, h.web.a[1] - h.y, h.web.a[2] - h.z).normalize().lerp(UP, 0.12).normalize();
+      R.fwd.set(h.vx, h.vy, h.vz);
+      if (R.fwd.lengthSq() < 0.5) R.fwd.set(Math.cos(h.face), 0, -Math.sin(h.face));
+      R.fwd.addScaledVector(R.up, -R.fwd.dot(R.up)).normalize();
+      R.side.crossVectors(R.up, R.fwd).normalize();
+      R.fwd.crossVectors(R.side, R.up);
+      return R.q.setFromRotationMatrix(R.m.makeBasis(R.side, R.up, R.fwd)).multiply(R.bank.setFromAxisAngle(Z, R.roll * 0.6));
+    }
+    if (h.mode === 'air' && h.fly) {
+      const dive = THREE.MathUtils.clamp(-h.vy / 26, -0.3, 0.95);
+      return R.q.copy(R.yaw).multiply(R.tilt.setFromAxisAngle(X, dive)).multiply(R.bank.setFromAxisAngle(Z, R.roll));
+    }
+    return R.q.copy(R.yaw);
+  };
+  // leaning into his turns while he swings and flies, as far as 20°
+  const bankFor = (h, dt) => {
+    const hs = Math.hypot(h.vx, h.vz);
+    let want = 0;
+    if ((h.mode === 'swing' || (h.mode === 'air' && h.fly)) && hs > 4 && R.hx != null) {
+      const turn = Math.atan2(R.hx * h.vz - R.hz * h.vx, R.hx * h.vx + R.hz * h.vz);
+      want = THREE.MathUtils.clamp((turn / Math.max(dt, 1e-3)) * 0.22, -0.35, 0.35);
+    }
+    R.hx = hs > 1 ? h.vx / hs : null;
+    R.hz = hs > 1 ? h.vz / hs : null;
+    R.roll += (want - R.roll) * Math.min(1, dt * 6);
+  };
+
   // Spider-Man's stride: a stride (two steps) every 1.5 m walking, 3.2 m flat
   // out, so his feet keep to the ground; off it, knees up; he dips at each step
   const placeSpidey = (h, dt) => {
     const speed = Math.hypot(h.vx, h.vz);
+    const off = posedOff(h);
+    R.w += ((off ? 1 : 0) - R.w) * Math.min(1, dt * (off ? 16 : 7));
+    // the web hand: the one on the anchor's side
+    if (h.web?.hand) R.arm = h.web.hand;
     if (moves) {
       // his own clips: the hips' rise and fall are in them
-      drive(moves, speed, h.air, h.vy > 0);
+      drive(moves, speed, h.air && !off, h.vy > 0);
       moves.update(dt);
-      hero.position.set(h.x, h.y + spidey.hipHeight, h.z);
-      hero.rotation.y = h.face + Math.PI / 2;
-      return;
+      if (R.w > 0.01) {
+        for (let i = 0; i < bones.length; i++) clipQ[i].copy(bones[i].quaternion);
+        spidey.pose(offPose(h), dt, 18);
+        if (R.w < 0.99) for (let i = 0; i < bones.length; i++) bones[i].quaternion.slerp(clipQ[i], 1 - R.w);
+      }
+    } else {
+      const run = Math.min(1, Math.max(0, (speed - HERO.walk) / (HERO.run - HERO.walk)));
+      const amount = Math.min(1, speed / 1.2);
+      A.gait += (speed * dt * Math.PI * 2) / (1.5 + run * 1.7);
+      if (h.air) A.landed = 0;
+      else A.landed += dt;
+      let target = h.air ? POSES.leap(h.vy > 0 ? 1 : -1) : { ...POSES.stride(A.gait, amount, run) };
+      if (off) target = offPose(h);
+      else if (!h.air && amount < 0.05) target.torso = { pitch: 0.03 + Math.sin(clock * 1.7) * 0.012, yaw: Math.sin(clock * 0.5) * 0.06, roll: 0 };
+      // eased into a leap and back out of it; a stride straight from the step's own rhythm
+      spidey.pose(target, dt, h.air || A.landed < 0.18 || off ? 14 : 45);
     }
-    const run = Math.min(1, Math.max(0, (speed - HERO.walk) / (HERO.run - HERO.walk)));
-    const amount = Math.min(1, speed / 1.2);
-    A.gait += (speed * dt * Math.PI * 2) / (1.5 + run * 1.7);
-    if (h.air) A.landed = 0;
-    else A.landed += dt;
-    const target = h.air ? POSES.leap(h.vy > 0 ? 1 : -1) : { ...POSES.stride(A.gait, amount, run) };
-    if (!h.air && amount < 0.05) target.torso = { pitch: 0.03 + Math.sin(clock * 1.7) * 0.012, yaw: Math.sin(clock * 0.5) * 0.06, roll: 0 };
-    // eased into a leap and back out of it; a stride straight from the step's own rhythm
-    spidey.pose(target, dt, h.air || A.landed < 0.18 ? 14 : 45);
-    const bob = h.air ? 0 : -Math.abs(Math.cos(A.gait)) * (0.025 + run * 0.05) * amount;
-    hero.position.set(h.x, h.y + spidey.hipHeight + bob, h.z);
-    hero.rotation.y = h.face + Math.PI / 2;
+    // where he is: his hips over his feet, or up his web from them while he swings
+    if (h.mode === 'swing' && h.web) {
+      R.up.set(h.web.a[0] - h.x, h.web.a[1] - h.y, h.web.a[2] - h.z).normalize();
+      hero.position.set(h.x, h.y, h.z).addScaledVector(R.up, spidey.hipHeight);
+    } else if (h.mode === 'wall' && h.wall) {
+      // in close to the wall
+      hero.position.set(h.x - h.wall.nx * 0.16, h.y + spidey.hipHeight, h.z - h.wall.nz * 0.16);
+    } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 ? 0.62 : 1), h.z);
+    bankFor(h, dt);
+    const q = holderAt(h);
+    if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
+    else hero.quaternion.slerp(q, Math.min(1, dt * 12));
+    R.placed = true;
+    // a perfect release: a flip, forward, about his middle
+    spidey.body.rotation.x = h.flip > 0 ? Math.PI * 2 * ease(1 - h.flip / 0.7) : 0;
   };
 
   const placeHero = (h, dt) => {
@@ -1193,6 +1402,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
+    flags.update(clock);
+    rings.update(s.tour ?? { on: false, next: 0 }, clock);
 
     // Mjolnir hums a little when the worthy come near it
     const dh = Math.hypot(s.hero.x - CRATER.x, s.hero.z - CRATER.z);
@@ -1213,13 +1424,46 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     }
     A.flash = Math.max(0, A.flash - dt * 1.5);
 
-    // the camera: behind him, brought in rather than go into a wall
+    // his web, where it stuck, and the next anchor's mark while he's in the air
     const h = s.hero;
+    if (h.mode === 'air' || h.mode === 'swing') {
+      if (++A.aimN % 3 === 0 || !A.aimed) A.aim = h.web ? null : aimWeb(h);
+      A.aimed = true;
+    } else {
+      A.aim = null;
+      A.aimed = false;
+    }
+    if (spidey) {
+      const bone = h.web ? (R.arm === 'L' ? spidey.bones.handL : spidey.bones.handR) : spidey.bones.handR;
+      if (bone) bone.getWorldPosition(A.hand);
+      else A.hand.copy(hero.position);
+    } else A.hand.set(h.x, h.y + 1.9, h.z);
+    swing.update(h, A.hand, A.aim, dt);
+
+    // the camera: behind him, brought in rather than go into a wall
     const yaw = s.camYaw ?? 0;
-    const pitch = s.camPitch ?? 0.2;
-    const dist = s.camDist ?? 7.5;
-    // a little over his head, so the buildings and the sky get the screen, not the grass
-    look.set(h.x, h.y * 0.6 + 1.85, h.z);
+    const speed = Math.hypot(h.vx, h.vy, h.vz);
+    const flying = h.mode !== 'ground' && h.mode !== 'wall' && (h.fly || h.mode === 'swing');
+    // the camera's pitch follows his arc: up over him as he drops, level as he climbs
+    A.arc += ((flying ? THREE.MathUtils.clamp(-h.vy * 0.012, -0.1, 0.28) : 0) - A.arc) * Math.min(1, dt * 3);
+    const pitch = Math.min(1.1, (s.camPitch ?? 0.2) + A.arc);
+    // further back the faster he goes, and wider
+    A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * Math.min(1, dt * 2.5);
+    const dist = (s.camDist ?? 7.5) + A.dist;
+    const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch;
+    A.fov += (fov - A.fov) * Math.min(1, dt * 4);
+    A.punch = Math.max(0, A.punch - dt * 9);
+    if (Math.abs(camera.fov - A.fov) > 0.05) {
+      camera.fov = A.fov;
+      camera.updateProjectionMatrix();
+    }
+    // a little over his head, so the buildings and the sky get the screen, not
+    // the grass: his own height, but only some of a hop's (it would bob the view)
+    if (h.mode === 'ground') A.floor = h.y;
+    // (on a wall: looking up it, a little further out)
+    const ly = (h.mode === 'air' && !h.fly ? A.floor + (h.y - A.floor) * 0.6 : h.y) + 1.85 + (h.mode === 'wall' ? 1.4 : 0);
+    A.ly = A.started ? A.ly + (ly - A.ly) * Math.min(1, dt * (h.mode === 'ground' ? 10 : 7)) : ly;
+    look.set(h.x, A.ly, h.z);
     const want = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
     const k = camRoom(look.x, look.z, want.x, want.y, want.z);
     if (k < 1) want.lerpVectors(look, want, Math.max(0.12, k));
@@ -1228,6 +1472,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // list, out of a building): straight there, no swing across the lawn
     if (!A.started || Math.hypot(h.x - A.hx, h.z - A.hz) > 6) {
       A.started = true;
+      want.y += ly - A.ly;
+      look.y = ly;
+      A.ly = ly;
       A.at.copy(want);
       A.look.copy(look);
     }
@@ -1268,7 +1515,27 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       A.flash = 1.2;
       vfx.ring(v3.set(PORTAL.x, 0.3, PORTAL.z), { color: 0x9fdcff, from: 1, to: 14, life: 0.8 });
     } else if (type === 'land') {
-      if (!calm) vfx.smoke(v3.set(d.x, 0.1, d.z), { size: 1.2, count: 5, life: 0.7, rise: 0.4, opacity: 0.25, color: 0xb8b4a4, to: 0xd8d4c4, spread: 0.8 });
+      const hard = Math.max(0, Math.min(1, ((d.impact ?? 0) - 9) / 14));
+      if (!calm) vfx.smoke(v3.set(d.x, (d.y ?? 0) + 0.1, d.z), { size: 1.2 + hard * 2.2, count: 5 + Math.round(hard * 10), life: 0.7 + hard * 0.6, rise: 0.4 + hard * 0.5, opacity: 0.25 + hard * 0.15, color: 0xb8b4a4, to: 0xd8d4c4, spread: 0.8 + hard * 2.4 });
+      if (hard > 0.3) {
+        vfx.ring(v3.set(d.x, (d.y ?? 0) + 0.15, d.z), { color: 0xfff1d8, from: 0.4, to: 3 + hard * 4, life: 0.45, opacity: 0.5 * hard });
+        A.punch = Math.max(A.punch, 3 * hard);
+      }
+    } else if (type === 'web') {
+      // every web out: a bump in the field of view, Insomniac's heartbeat of a swing
+      A.punch = Math.max(A.punch, 3.5);
+      swing.webbed(d.at);
+      if (!calm) vfx.smoke(v3.set(d.at[0], d.at[1], d.at[2]), { size: 0.7, count: 3, life: 0.5, rise: 0.1, opacity: 0.35, color: 0xffffff, to: 0xe8ecf2, spread: 0.3 });
+    } else if (type === 'perfect') {
+      A.punch = Math.max(A.punch, 5);
+      vfx.ring(v3.copy(hero.position), { color: 0xff8a80, from: 0.4, to: 2.4, life: 0.35, opacity: 0.45, normal: v3b.set(d.vx ?? 0, d.vy ?? 0, d.vz ?? 1).normalize() });
+    } else if (type === 'zip') {
+      A.punch = Math.max(A.punch, 5);
+      swing.zipped(d.at);
+    } else if (type === 'dive') {
+      A.punch = Math.max(A.punch, 4);
+    } else if (type === 'stick' || type === 'kick') {
+      if (!calm) vfx.smoke(v3.copy(hero.position), { size: 0.6, count: 3, life: 0.5, rise: 0.1, opacity: 0.18, color: 0xd8d4c4, to: 0xeeeeee, spread: 0.4 });
     }
   };
 
@@ -1312,6 +1579,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       ghosts.dispose();
       moves?.dispose();
       spidey?.dispose();
+      swing.dispose();
+      flags.dispose();
+      rings.dispose();
       vfx.dispose();
       engine.dispose();
     },

@@ -50,7 +50,7 @@ export function createEngine(canvas, opts = {}) {
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.info.autoReset = false; // count a whole frame: shadows, scene and every pass
   renderer.setPixelRatio(Math.min(tier.dpr, window.devicePixelRatio || 1));
 

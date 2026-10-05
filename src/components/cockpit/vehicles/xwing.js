@@ -382,7 +382,7 @@ export async function build({ rich, coarse, renderer }) {
   inside.add(sun, sun.target);
   if (rich) {
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -1.5, right: 1.5, top: 1.5, bottom: -1.5, near: 0.5, far: 9 });
