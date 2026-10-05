@@ -29,6 +29,7 @@ const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWo
 const WeathertopWorld = lazy(() => import('../components/middleearth/towns/weathertop/WeathertopWorld'));
 const RivendellWorld = lazy(() => import('../components/middleearth/towns/rivendell/RivendellWorld'));
 const MoriaWorld = lazy(() => import('../components/middleearth/towns/moria/MoriaWorld'));
+const LorienWorld = lazy(() => import('../components/middleearth/towns/lorien/LorienWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -417,10 +418,16 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'lorien' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <LorienWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'lorien' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-places-title">
-          <h1 id="me-places-title" className="title">
+          <h2 id="me-places-title" className="title">
             The Mirror of Galadriel
-          </h1>
+          </h2>
           <p className="lead mt-4 max-w-[54ch]">It shows things that were, and things that are. Look in, and Middle-earth is New Zealand: a few of the places it was filmed, as they look today.</p>
           {hasPhotos(LOCATIONS) && (
             <div className="mt-8">
