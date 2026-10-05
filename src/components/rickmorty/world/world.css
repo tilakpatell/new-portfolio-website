@@ -101,6 +101,8 @@
 .rm-shipline-eyes i { display: block; width: 0.85rem; height: 0.85rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: radial-gradient(circle at 55% 55%, var(--rm-ink) 0 28%, #fff6c8 31%); box-shadow: 0 0 8px rgba(255, 236, 160, 0.8); animation: rm-blink 4.2s infinite; }
 @keyframes rm-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
 @keyframes rm-rise-l { from { opacity: 0; transform: translateY(6px); } }
+/* a phone: up under the objective, over the sky, rather than over the cruiser */
+@media (max-width: 640px) { .rm-shipline { bottom: auto; top: clamp(11.5rem, 30%, 14rem); right: var(--rm-pad-r); max-width: none; font-size: 0.85rem; } }
 
 /* a memory from the Mind Blowers chair, in its vial's colour */
 .rm-memory { position: absolute; bottom: clamp(11rem, 30%, 15rem); left: 50%; z-index: 4; display: grid; gap: 0.35rem; width: min(30rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.8rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: var(--rm-glass); color: #fff; box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 28px color-mix(in srgb, var(--vial) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--vial) 60%, transparent); transform: translateX(-50%); animation: rm-rise 0.25s ease-out both; }
