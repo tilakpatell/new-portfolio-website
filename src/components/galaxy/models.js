@@ -16,9 +16,8 @@
 // its holder centred, nose along +z, +y up, its biggest side `size` long.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
@@ -113,7 +112,6 @@ function tinted(root, color) {
 }
 
 export function createModels({ prepare = null } = {}) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const loaded = new Map(); // kind → { holder, size } (a loaded model, normalised)
   const loading = new Map(); // kind → Promise
   const built = new Map(); // kind → { model (buildGalaxyShip's), holder, size }
@@ -124,14 +122,16 @@ export function createModels({ prepare = null } = {}) {
   const load = (kind) => {
     const def = MODELS[kind];
     if (!def || loading.has(kind)) return loading.get(kind);
-    const p = loader
-      .loadAsync(def.url)
-      .then(async (gltf) => {
-        if (dead) return;
-        tune(gltf.scene);
-        const n = normalise(gltf.scene, def.nose);
+    // (the parse is the page's, shared with the fleets and the planets' models: this
+    // works on a copy of it, which tune and normalise change as they like)
+    const p = loadGLTF(def.url)
+      .then((gltf) => (gltf && !dead ? cloneScene(gltf) : null))
+      .then(async (root) => {
+        if (!root) return;
+        tune(root);
+        const n = normalise(root, def.nose);
         // (a skinned one's copies need bones of their own: SkeletonUtils)
-        gltf.scene.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
+        root.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
         if (prepare) await prepare(n.holder);
         if (dead) return;
         loaded.set(kind, n);
@@ -214,6 +214,8 @@ export function createModels({ prepare = null } = {}) {
         b.holder.traverse((o) => o.isMesh && o.geometry.dispose());
       }
       built.clear();
+      // (a loaded model's geometry and textures are the page's cached ones, shared with
+      // the fleets: freed with this scene, uploaded again if something draws them later)
       for (const l of loaded.values()) {
         l.holder.traverse((o) => {
           if (!o.isMesh) return;

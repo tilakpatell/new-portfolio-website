@@ -52,6 +52,7 @@ import { audioContext } from '../../lib/audio';
 import { clamp01, createRenderer, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { dropTransmission } from '../../lib/three/glass';
+import { gltfStats } from '../../lib/three/gltfCache';
 import { createPace } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
@@ -1775,6 +1776,7 @@ export async function create(canvas, ctx) {
       solids: state.space?.solids.length,
     });
     window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo };
+    window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
   return {
@@ -1870,7 +1872,7 @@ export async function create(canvas, ctx) {
       canvas.removeEventListener('pointercancel', onCancel);
       props.stick?.current?.removeAttribute('data-on');
       for (const el of props.hud?.current?.children ?? []) el.removeAttribute('data-on');
-      if (import.meta.env.DEV) delete window.__galaxy, delete window.__galaxyDebug;
+      if (import.meta.env.DEV) delete window.__galaxy, delete window.__galaxyDebug, delete window.__gltfStats;
       disposeTree(spares);
       state.world?.dispose();
       crashFx.dispose();
