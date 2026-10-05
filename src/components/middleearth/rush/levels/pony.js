@@ -10,6 +10,7 @@ export const PONY = {
   town: 'bree',
   name: 'A busy night at the Pony',
   host: 'Barliman Butterbur',
+  lead: 'The common room’s full, Nob and Bob are nowhere, and Barliman Butterbur wants pints, stew and bread out through the hatch. Fetch, chop, cook, pour, serve, and wash up before the mugs run out.',
   tiles: [
     '#cp#BB#PP#O#',
     'd..........O',
@@ -43,9 +44,9 @@ export const PONY = {
   time: 180,
   stars: [60, 130, 200],
   dishes: {
-    pint: { name: 'A pint', note: 'Mug, tap, wait' },
-    stew: { name: 'Stew', note: 'Chop three, pot, bowl' },
-    bread: { name: 'A loaf', note: 'Dough, oven' },
+    pint: { name: 'A pint', note: 'Mug, tap, wait', icon: '🍺', steps: ['mug', 'tap'] },
+    stew: { name: 'Stew', note: 'Chop three, pot, bowl', icon: '🍲', steps: ['chop 3', 'pot', 'bowl'] },
+    bread: { name: 'A loaf', note: 'Dough, oven', icon: '🍞', steps: ['dough', 'oven'] },
   },
   // Butterbur, through the hatch
   lines: {

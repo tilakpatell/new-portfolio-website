@@ -69,6 +69,23 @@ describe('the wire', () => {
     expect(JSON.stringify(wire).length).toBeLessThan(4000);
   });
 
+  it('carries Rivendell’s things too: goblets, soup, its own dishes', async () => {
+    const { RIVENDELL } = await import('./levels/rivendell');
+    const host = newRush(RIVENDELL, { players: 1 });
+    host.players[0].held = { k: 'goblet', s: 'wine' };
+    host.spots['2,7'].goblet = 2;
+    host.spots['10,7'].dirty.push('goblet');
+    host.orders.push({ id: 4, dish: 'soup', t: 20, of: 85 });
+    const guest = newRush(RIVENDELL, { players: 1 });
+    expect(readState(guest, JSON.parse(JSON.stringify(writeState(host))), null)).toBe(true);
+    expect(guest.players[0].held).toEqual({ k: 'goblet', s: 'wine' });
+    expect(guest.spots['2,7']).toEqual({ goblet: 2, bowl: 0 });
+    expect(guest.spots['10,7'].dirty).toEqual(['goblet']);
+    expect(guest.orders[0].dish).toBe('soup');
+    const ev = readEvents(JSON.parse(JSON.stringify(writeEvents([{ type: 'served', dish: 'wine', coins: 12 }], RIVENDELL))), RIVENDELL);
+    expect(ev[0]).toMatchObject({ type: 'served', dish: 'wine', coins: 12 });
+  });
+
   it('turns away nonsense', () => {
     const s = newRush(PONY);
     expect(readState(s, null)).toBe(false);
@@ -77,10 +94,10 @@ describe('the wire', () => {
 
   it('events go and come back', () => {
     const ev = [{ type: 'served', at: [4, 7], p: 1, dish: 'stew', coins: 20, order: 3 }, { type: 'chop', at: [5, 0] }, { type: 'lapsed', dish: 'pint', order: 2 }];
-    const back = readEvents(JSON.parse(JSON.stringify(writeEvents(ev))));
+    const back = readEvents(JSON.parse(JSON.stringify(writeEvents(ev, PONY))), PONY);
     expect(back).toHaveLength(2); // 'chop' makes no sound of its own on the wire
     expect(back[0]).toMatchObject({ type: 'served', at: [4, 7], p: 1, dish: 'stew', coins: 20, order: 3 });
     expect(back[1]).toMatchObject({ type: 'lapsed', dish: 'pint' });
-    expect(readEvents([[99], 'x', null])).toEqual([]);
+    expect(readEvents([[99], 'x', null], PONY)).toEqual([]);
   });
 });
