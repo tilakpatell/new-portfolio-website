@@ -9,7 +9,7 @@ import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
 import { PALETTES, PALETTE_ORDER } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
-import { CARTRIDGES, COINS, SIGNS, cameraMove, nearAction, newGame, progress, step, walkerAt, WALKERS, warp } from './rules';
+import { CARTRIDGES, COINS, SIGNS, cameraMove, nearAction, newGame, progress, step, talk, walkerAt, WALKERS, warp } from './rules';
 import './dotmatrix.css';
 
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
@@ -296,6 +296,9 @@ function World({ gl, setGl }) {
     if (near.kind === 'sign') {
       const sign = SIGNS.find((x) => x.id === near.id);
       say({ kind: 'sign', title: sign.title, text: sign.text });
+    } else if (near.kind === 'talk') {
+      const said = talk(s.g, near.id);
+      if (said) say({ kind: 'talk', title: said.name, text: said.text });
     } else if (near.kind === 'gameboy') {
       s.keys.clear();
       setPlaying(true);
@@ -407,6 +410,16 @@ function World({ gl, setGl }) {
         const c = COINS.find((x) => x.id === e.id);
         a.fx('coin', { at: c });
         sounds().then((x) => x.coin());
+      } else if (e.type === 'coinheart') {
+        a.fx('coinheart', { at: h });
+        sounds().then((x) => x.heart());
+        setBanner('A heart back');
+        setTimeout(() => setBanner(null), 1600);
+      } else if (e.type === 'allcoins') {
+        a.fx('allcoins', { at: h });
+        unlock('pocketful');
+        say({ kind: 'done', title: 'Every coin', text: 'That’s all of them, every last coin on the island. Spend them on another go on the Game Boy.' });
+        setTimeout(() => sounds().then((x) => x.fullSet()), 400);
       } else if (e.type === 'cart') {
         const c = CARTRIDGES.find((x) => x.id === e.id);
         a.fx('cart', { at: { x: c.at[0], y: c.at[1], z: c.at[2] } });
@@ -442,12 +455,12 @@ function World({ gl, setGl }) {
   }, live);
 
   const p = progress(sim.current.g);
-  const prompt = hud.near && !dialog ? { sign: 'Read', gameboy: 'Play the Game Boy', pipe: 'Go down the pipe' }[hud.near.kind] : null;
+  const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', pipe: 'Go down the pipe' }[hud.near.kind] : null;
 
   return (
     <div ref={box}>
       <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
-        <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, read and play with X, turn the camera with Q and E." role="img" />
+        <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
         {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
@@ -520,7 +533,7 @@ function World({ gl, setGl }) {
         )}
 
         {!moved && !dialog && !prompt && gl === 'on' && (
-          <p className="dm-hint">{touch ? 'Pad to walk · A jumps · B reads and plays · drag to turn' : 'Arrows or WASD walk · Space jumps · X reads and plays · Q E turn'}</p>
+          <p className="dm-hint">{touch ? 'Pad to walk · A jumps · B talks, reads and plays · drag to turn' : 'Arrows or WASD walk · Space jumps · X talks, reads and plays · Q E turn'}</p>
         )}
         {prompt && !list && (
           <p className="dm-prompt">
