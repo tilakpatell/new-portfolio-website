@@ -19,7 +19,7 @@
 
 import { audioContext, prefetch } from '../../lib/audio';
 import { decode, mix } from './room';
-import { getTuning, onTuning, RAGAS, sa } from './tuning';
+import { getTuning, isRaga, onTuning, ragaOf, sa } from './tuning';
 import { SITAR_VARIANTS } from './sitarSamples';
 import { CHIKARI, chikariLevel, chikariPlan, chikariSpeed, parsePhrase, sampleFor, sitarSaFor, tarabHz } from './sitarRules';
 import { jawariString } from './strings';
@@ -317,16 +317,18 @@ export function damp() {
   voice = null;
 }
 
-// Play a raga's phrase. Resolves to its length in seconds (0 if no sound).
-// The phrase strikes its own chikari, so the auto chikari keeps out of it.
-export async function playPhrase(ragaId = getTuning().raga) {
+// Play a raga's phrase, or `text` in it (its aroha and avaroha, say), with its
+// notes where the raga puts them. Resolves to its length in seconds (0 if no
+// sound). The phrase strikes its own chikari, so the auto chikari keeps out
+// of it.
+export async function playPhrase(ragaId = getTuning().raga, { text } = {}) {
   const ac = audioContext();
-  if (!ac || !RAGAS[ragaId]) return 0;
+  if (!ac || !isRaga(ragaId)) return 0;
   rest(ac);
   hand.quiet = Infinity;
   try {
-    const raga = RAGAS[ragaId];
-    const { events, seconds } = parsePhrase(raga.phrase, raga.beat);
+    const raga = ragaOf(ragaId);
+    const { events, seconds } = parsePhrase(typeof text === 'string' && text.trim() ? text : raga.phrase, raga.beat, raga.tune);
     const s = sitarSa();
     const dest = out(ac);
     // every recording the phrase needs, before its first note
