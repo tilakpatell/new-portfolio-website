@@ -4,7 +4,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
+import { useAchievements } from '../../Achievements';
 import { FLY, newHero, stepHero } from './flight';
+import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WORLD, groundAt, waterAt } from './map';
 import './world.css';
 
@@ -17,6 +19,9 @@ import './world.css';
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
+const QUESTS = 'tp-inv-world-quests';
+const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+const WHAT = { fall: 'Someone’s slipping off a roof', heli: 'A news helicopter’s lost its tail rotor' };
 const TIMES = ['noon', 'dusk', 'night'];
 const TIME_NAME = { noon: 'Noon', dusk: 'Dusk', night: 'Night' };
 const MACH = 343;
@@ -48,13 +53,17 @@ function World({ gl, setGl }) {
   const [help, setHelp] = useState(false);
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
+  const [bubble, setBubble] = useState(null);
+  const { unlock } = useAchievements();
+  const [found, setFound] = useState(() => newQuests(local.get(QUESTS, {})).cards.length);
+  const bubbleRef = useRef(null);
   const hud = useRef({});
   if (!sim.current) {
     const kept = local.get(AT, null);
     const ok = kept && [kept.x, kept.y, kept.z].every(Number.isFinite) && Math.abs(kept.x) < WORLD.half && Math.abs(kept.z) < WORLD.half && !waterAt(kept.x, kept.z);
     const at = ok ? kept : SPAWN;
     const h = newHero(at);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { quests: newQuests(local.get(QUESTS, {})), h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
   }
 
   const say = useCallback((text, ms = 2400) => {
@@ -234,10 +243,45 @@ function World({ gl, setGl }) {
       s.yaw += wrap(vy - s.yaw) * (1 - Math.exp(-r * dt));
       s.pitch += (clamp(vp * 0.85 - 0.08, -1.2, 1.1) - s.pitch) * (1 - Math.exp(-r * 0.8 * dt));
     }
+    // the things to do: the rings, the cards, the rescues
+    s.quests = stepQuests(s.quests, h, dt, s.world);
+    for (const e of s.quests.ev) {
+      if (e.type === 'lesson-start') {
+        sfx('ding');
+        say('Dad’s rings: in order, to the Guardians’ hall. Go.');
+      } else if (e.type === 'ring') sfx('coin');
+      else if (e.type === 'lesson-done') {
+        sfx('fanfare');
+        unlock('dadsrings');
+        say(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}. “Not bad. For a start.”`, 4200);
+      } else if (e.type === 'lesson-lost') say('Dad’s given up waiting. Back to the first ring, over the street outside the house.');
+      else if (e.type === 'card') {
+        sfx('oneUp');
+        setFound(s.quests.cards.length);
+        say(`Title card: episode ${e.ep}, “${e.title}”. ${s.quests.cards.length} of ${CARDS.length}.`, 3400);
+        if (e.all) unlock('titlecards');
+      } else if (e.type === 'emergency') {
+        sfx('alarm');
+        say(`${WHAT[e.kind]}! Follow the red beacon.`, 4200);
+      } else if (e.type === 'slip') sfx('warn');
+      else if (e.type === 'caught') {
+        sfx('ding');
+        say(e.kind === 'heli' ? 'Got it. Now set it down somewhere.' : 'Got them. Now put them down gently.');
+      } else if (e.type === 'saved') {
+        sfx('victory');
+        unlock('rescue');
+        say(`Safe. That’s ${e.count} ${e.count === 1 ? 'rescue' : 'rescues'}.`);
+      } else if (e.type === 'missed') {
+        sfx('crumble');
+        say(e.kind === 'heli' ? 'Too late: the crew jumped clear, and the street has a new hole in it.' : 'Too late, but the GDA had a net out. Barely.', 4200);
+      }
+      if (['card', 'saved', 'lesson-done'].includes(e.type)) local.set(QUESTS, keepQuests(s.quests));
+    }
     for (const e of h.ev) {
       s.events.push(e);
       if (e.type === 'boom') {
         sfx('boom');
+        unlock('soundbarrier');
         if (!s.boomSaid) {
           s.boomSaid = true;
           say('The sound barrier. Keep going.');
@@ -268,9 +312,51 @@ function World({ gl, setGl }) {
       if (H.alt) H.alt.textContent = `${Math.max(0, Math.round(alt))} m`;
       if (H.bar) H.bar.style.transform = `scaleX(${Math.min(1, speed / FLY.top)})`;
       if (H.lines) H.lines.style.opacity = String(clamp((speed - 70) / 160, 0, 0.85));
-      if (H.compass) drawCompass(H.compass, s.yaw, h, s.world.places);
+      const marks = [];
+      const q = s.quests;
+      if (q.rescue && !q.rescue.carried) marks.push({ x: q.rescue.p[0], z: q.rescue.p[2], color: '#ff3b30', name: 'Help' });
+      if (q.lesson.on) marks.push({ x: RINGS[q.lesson.next].p[0], z: RINGS[q.lesson.next].p[2], color: '#ffd23a', name: `Ring ${q.lesson.next + 1}` });
+      s.marks = marks;
+      if (H.compass) drawCompass(H.compass, s.yaw, h, s.world.places, marks);
+      if (H.goal) {
+        const d = q.rescue ? Math.round(Math.hypot(q.rescue.p[0] - h.p[0], q.rescue.p[1] - h.p[1], q.rescue.p[2] - h.p[2])) : 0;
+        const text = q.rescue ? (q.rescue.carried ? 'Set them down: land anywhere' : `${WHAT[q.rescue.kind]} · ${d} m`) : q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '';
+        if (H.goal.textContent !== text) H.goal.textContent = text;
+        H.goal.dataset.on = text ? '1' : '';
+        H.goal.dataset.red = q.rescue ? '1' : '';
+      }
     }
-    if (s.frame % 4 === 0 && mapRef.current) drawMap(mapRef.current, h, s.yaw, alt, s.world);
+    if (s.frame % 4 === 0 && mapRef.current) drawMap(mapRef.current, h, s.yaw, alt, s.world, s.marks);
+    // who's talking to him: a bubble over the nearest, a new line every few seconds
+    if (s.frame % 3 === 0) {
+      const t = a.talkers(h)[0] ?? null;
+      const said = s.said ?? (s.said = {});
+      if (t?.id !== s.talking?.id) {
+        s.talking = t;
+        if (t) {
+          said[t.id] = ((said[t.id] ?? -1) + 1) % t.lines.length;
+          s.talkAt = s.t;
+          setBubble({ name: t.name, text: t.lines[said[t.id]] });
+        } else setBubble(null);
+      } else if (t && s.t - s.talkAt > 5) {
+        said[t.id] = (said[t.id] + 1) % t.lines.length;
+        s.talkAt = s.t;
+        setBubble({ name: t.name, text: t.lines[said[t.id]] });
+      }
+      s.talking = t ?? null;
+    }
+    if (s.talking && bubbleRef.current) {
+      const q = a.project(s.talking.head);
+      bubbleRef.current.style.transform = `translate(${Math.round(q.x)}px, ${Math.round(q.y)}px)`;
+      bubbleRef.current.style.opacity = q.front ? '1' : '0';
+    }
+    // flying alongside the airliner: what your father would say
+    if (!s.mimicSaid && s.frame % 10 === 0 && a.jetDistance(h) < 90) {
+      s.mimicSaid = true;
+      sfx('flyby');
+      unlock('mimic');
+      say('Dad, in your ear: “Look what they need to mimic a fraction of our power.”', 4200);
+    }
     wind.current?.set({ speed, alt });
   }, live);
 
@@ -310,6 +396,14 @@ function World({ gl, setGl }) {
     <div className="iw-stage" ref={box}>
       <canvas ref={canvas} className="iw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onContextMenu={(e) => e.preventDefault()} aria-label="The city, from the air. Fly with W, A, S and D; Space to go up, C to go down, Shift to go flat out." />
       <div className="iw-lines" ref={(el) => (hud.current.lines = el)} aria-hidden="true" />
+      {bubble && (
+        <div className="iw-bubble" ref={bubbleRef} aria-live="polite">
+          <div>
+            <b>{bubble.name}</b>
+            {bubble.text}
+          </div>
+        </div>
+      )}
       {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
 
       <div className="iw-hud iw-hud-top">
@@ -318,6 +412,7 @@ function World({ gl, setGl }) {
           <h2 id="iw-title" className="iw-title">
             Fly, Mark.
           </h2>
+          <p className="iw-goal" ref={(el) => (hud.current.goal = el)} aria-live="polite" />
         </div>
         <div className="iw-tools">
           <button type="button" className="iw-btn" onClick={cycleTime} aria-label={`Time of day: ${TIME_NAME[time]}. Change it.`}>
@@ -350,6 +445,9 @@ function World({ gl, setGl }) {
             <dd>Noon, dusk, night</dd>
           </dl>
           <p>A pad works: left stick flies, right stick looks, A up, B down, RT flat out.</p>
+          <p>
+            Things to do: Dad’s rings start over the street outside the house; {found} of {CARDS.length} title cards found; rescues come in on their own.
+          </p>
         </div>
       )}
 
@@ -413,7 +511,7 @@ const DIRS = [
   [Math.PI, 'N'],
   [-Math.PI / 2, 'W'],
 ];
-function drawCompass(c, yaw, h, places) {
+function drawCompass(c, yaw, h, places, marks = []) {
   const x = c.getContext('2d');
   const W = c.width;
   const H = c.height;
@@ -445,6 +543,17 @@ function drawCompass(c, yaw, h, places) {
       x.font = '600 14px system-ui, sans-serif';
       x.fillText(p.name.replace(/^The /, ''), px, 12);
     }
+  }
+  for (const m of marks) {
+    const px = at(Math.atan2(m.x - h.p[0], m.z - h.p[2]));
+    const cx = Math.max(10, Math.min(W - 10, px));
+    x.fillStyle = m.color;
+    x.beginPath();
+    x.moveTo(cx, 26);
+    x.lineTo(cx + 7, 40);
+    x.lineTo(cx - 7, 40);
+    x.closePath();
+    x.fill();
   }
   x.fillStyle = '#ffd23a';
   x.fillRect(W / 2 - 1, 22, 2, 18);
@@ -478,7 +587,7 @@ function mapBase() {
   base = { c, k, P };
   return base;
 }
-function drawMap(c, h, yaw, alt, world) {
+function drawMap(c, h, yaw, alt, world, marks = []) {
   const x = c.getContext('2d');
   const W = c.width;
   const b = mapBase();
@@ -510,6 +619,19 @@ function drawMap(c, h, yaw, alt, world) {
     x.lineWidth = 2;
     x.beginPath();
     x.arc(W / 2 + (mx - W / 2) * q, W / 2 + (my - W / 2) * q, 5, 0, Math.PI * 2);
+    x.fill();
+    x.stroke();
+  }
+  for (const m of marks) {
+    const mx = W / 2 + ((m.x - h.p[0]) / span) * W;
+    const my = W / 2 + ((m.z - h.p[2]) / span) * W;
+    const r = Math.hypot(mx - W / 2, my - W / 2);
+    const q = r > W / 2 - 10 ? (W / 2 - 10) / r : 1;
+    x.fillStyle = m.color;
+    x.strokeStyle = '#000';
+    x.lineWidth = 2;
+    x.beginPath();
+    x.arc(W / 2 + (mx - W / 2) * q, W / 2 + (my - W / 2) * q, 6, 0, Math.PI * 2);
     x.fill();
     x.stroke();
   }

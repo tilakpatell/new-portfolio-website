@@ -1800,6 +1800,31 @@ export function camRoom(lx, lz, cx, cy, cz) {
   return 1;
 }
 
+// ── photo mode: time stopped, a camera to put anywhere round him ──
+// { yaw, pitch, dist, fov }: round him, up over him (or a little under),
+// how far, and the lens. photoView puts the camera there, looking at his
+// chest, brought in rather than go into a building and never under the
+// ground or a roof.
+export const PHOTO = { dist: [1.6, 30], pitch: [-0.35, 1.45], fov: [18, 90] };
+export const newPhoto = (yaw = 0, pitch = 0.25) => ({ yaw, pitch: Math.max(PHOTO.pitch[0], Math.min(PHOTO.pitch[1], pitch)), dist: 5.5, fov: 50 });
+export function readPhoto(p) {
+  const c = (v, [a, b], d) => (Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
+  return { yaw: Number.isFinite(p?.yaw) ? p.yaw : 0, pitch: c(p?.pitch, PHOTO.pitch, 0.25), dist: c(p?.dist, PHOTO.dist, 5.5), fov: c(p?.fov, PHOTO.fov, 50) };
+}
+export function photoView(h, photo) {
+  const { yaw, pitch, dist } = readPhoto(photo);
+  const look = [h.x, h.y + 1.1, h.z];
+  let at = [h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look[1] + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist];
+  const k = camRoom(look[0], look[2], at[0], at[1], at[2]);
+  if (k < 1) {
+    const kk = Math.max(0.12, k);
+    at = at.map((v, i) => look[i] + (v - look[i]) * kk);
+  }
+  const floor = floorAt(at[0], at[2], Math.max(at[1], h.y)) + 0.3;
+  if (at[1] < floor) at[1] = floor;
+  return { at, look };
+}
+
 // ── where you are ──
 
 export function nearPlace(x, z, r = DOOR_R) {
@@ -1926,6 +1951,36 @@ export function nearPack(x, y, z, found = []) {
   }
   return best?.p ?? null;
 }
+
+// ── the best lap, as a ghost ──
+// A tour is recorded as it goes: where he is every tenth of a second, as
+// [x, y, z, face] to a decimal, and the best lap's recording is kept, so
+// the next tour can race it: a hologram of him going round his best time.
+export const LAP = { every: 0.1, max: 1200 }; // samples: two minutes at most
+// The recording with a sample added, if a tenth of a second has gone since
+// the last (`t` is the tour's clock): → the recording (the same one if not).
+export function recordLap(rec, h, t) {
+  if (rec.length >= LAP.max) return rec;
+  const n = rec.length;
+  if (n && t < n * LAP.every - 1e-6) return rec;
+  const r1 = (v) => Math.round(v * 10) / 10;
+  return [...rec, [r1(h.x), r1(h.y), r1(h.z), Math.round(h.face * 100) / 100]];
+}
+// Where the ghost is at `t` seconds into the lap: between the samples either
+// side, held at the ends. → { x, y, z, face, speed } or null for no lap.
+export function lapAt(rec, t) {
+  if (!rec?.length) return null;
+  const k = Math.max(0, Math.min(rec.length - 1, t / LAP.every));
+  const i = Math.floor(k);
+  const a = rec[i];
+  const b = rec[Math.min(rec.length - 1, i + 1)];
+  const f = k - i;
+  let df = b[3] - a[3];
+  df = Math.atan2(Math.sin(df), Math.cos(df));
+  return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: a[2] + (b[2] - a[2]) * f, face: a[3] + df * f, speed: Math.hypot(b[0] - a[0], b[2] - a[2]) / LAP.every };
+}
+// A recording as kept (or anything): a list of four-number samples, or null.
+export const readLap = (raw) => (Array.isArray(raw) && raw.length > 1 && raw.every((p) => Array.isArray(p) && p.length === 4 && p.every(Number.isFinite)) ? raw.slice(0, LAP.max) : null);
 
 // ── the heist so far ──
 

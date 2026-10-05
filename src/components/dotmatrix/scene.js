@@ -145,7 +145,7 @@ function buildTerrain() {
       col.push(c.r, c.g, c.b);
     }
   };
-  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, pipe: 0.64, sign: 0.64 };
+  const TOP = { grass: 0.64, long: 0.56, path: 0.93, sand: 0.99, tree: 0.64, boulder: 0.64, wall: 0.64, house: 0.64, gameboy: 0.93, pipe: 0.64, sign: 0.64, lighthouse: 0.99, mill: 0.64 };
   const SIDE = { sand: 0.82, path: 0.6 };
   const BOTTOM = -1.4;
   for (let iz = 0; iz < H; iz++) {
@@ -624,6 +624,81 @@ const LOOKS = {
   kid: { cap: true, back: true, body: 0.86, legs: 0.22, skin: 0.94, scale: 0.78 },
 };
 
+// the lighthouse on the islet: a banded tower, its lamp, and a beam that
+// sweeps round over the sea
+function buildLighthouse(ix, iz) {
+  const g = new THREE.Group();
+  g.position.set(ix + 0.5, 0, iz + 0.5);
+  const bands = pixels(16, (c, n) => {
+    c.fillStyle = hex(0.96);
+    c.fillRect(0, 0, n, n);
+    c.fillStyle = hex(0.3);
+    c.fillRect(0, 4, n, 4);
+    c.fillRect(0, 12, n, 4);
+  });
+  bands.wrapS = bands.wrapT = THREE.RepeatWrapping;
+  bands.repeat.set(1, 2);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.44, 3.4, 12).translate(0, 1.7, 0), new THREE.MeshLambertMaterial({ map: bands }));
+  const gallery = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.5, 0.14, 12).translate(0, 3.45, 0), lambert(0.25));
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 10).translate(0, 3.77, 0), lambert(1, { emissive: grey(0.6) }));
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.45, 10).translate(0, 4.24, 0), lambert(0.2));
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.06).translate(0, 0.25, 0.43), lambert(0.1));
+  for (const m of [tower, gallery, lamp, cap, door]) {
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  // the beam: a long cone from the lamp, turning, tilted down a little to
+  // play over the water
+  const beam = new THREE.Group();
+  beam.position.y = 3.8;
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1, 18, 10, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 9), new THREE.MeshBasicMaterial({ color: grey(0.98), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  cone.rotation.x = 0.1;
+  cone.renderOrder = 5;
+  beam.add(cone);
+  g.add(beam);
+  return {
+    group: g,
+    tick(now) {
+      beam.rotation.y = now * 0.7;
+    },
+  };
+}
+
+// the windmill on the plateau: a tapered body, a cap, and four sails
+// turning on its south face
+function buildWindmill(ix, iz, y) {
+  const g = new THREE.Group();
+  g.position.set(ix + 0.5, y, iz + 0.5);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.5, 2.4, 8).translate(0, 1.2, 0), lambert(0.78, { flatShading: true }));
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.6, 8).translate(0, 2.7, 0), lambert(0.22, { flatShading: true }));
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.06).translate(0, 0.25, 0.49), lambert(0.1));
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6).rotateX(Math.PI / 2).translate(0, 2.2, 0.5), lambert(0.3));
+  for (const m of [body, cap, door, axle]) {
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  const sails = new THREE.Group();
+  sails.position.set(0, 2.2, 0.72);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8).rotateX(Math.PI / 2), lambert(0.2));
+  sails.add(hub);
+  for (let i = 0; i < 4; i++) {
+    const arm = new THREE.Group();
+    arm.rotation.z = (i * Math.PI) / 2;
+    const spar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 0.05).translate(0, 0.57, 0), lambert(0.3));
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.85, 0.02).translate(0.17, 0.68, 0), lambert(0.95));
+    spar.castShadow = cloth.castShadow = true;
+    arm.add(spar, cloth);
+    sails.add(arm);
+  }
+  g.add(sails);
+  return {
+    group: g,
+    tick(now) {
+      sails.rotation.z = -now * 0.9;
+    },
+  };
+}
+
 // gulls over the dock: three of them wheeling round, wings beating
 function buildGulls(rand) {
   const group = new THREE.Group();
@@ -987,6 +1062,15 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   }
   const gulls = buildGulls(rand);
   scene.add(gulls.group);
+  const landmarks = [];
+  for (let iz = 0; iz < H; iz++) {
+    for (let ix = 0; ix < W; ix++) {
+      const t = legend(MAP[iz][ix]);
+      if (t.kind === 'lighthouse') landmarks.push(buildLighthouse(ix, iz));
+      else if (t.kind === 'mill') landmarks.push(buildWindmill(ix, iz, t.ground));
+    }
+  }
+  for (const l of landmarks) scene.add(l.group);
   const flutter = buildButterflies(rand);
   scene.add(flutter.group);
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
@@ -1056,6 +1140,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const look = new THREE.Vector3();
   const cam = { x: 0, y: 0, z: 0, ready: false };
   let walkPhase = 0;
+  let idleT = 0;
   let disposed = false;
   let lost = false;
   let warmed = false;
@@ -1074,6 +1159,9 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     hero.group.rotation.y = h.face;
     const sp = Math.min(1, h.moving / 4.6);
     walkPhase += dt * (4 + sp * 8) * (h.ground ? sp : 0);
+    // stood still a while, he has a look round
+    idleT = h.ground && sp < 0.05 ? idleT + dt : 0;
+    hero.head.rotation.y += ((idleT > 2.5 ? Math.sin((idleT - 2.5) * 1.1) * 0.55 : 0) - hero.head.rotation.y) * (1 - Math.exp(-5 * dt));
     if (h.ground) poseWalk(hero, walkPhase, sp, now);
     else {
       hero.legL.rotation.x = 0.6;
@@ -1112,6 +1200,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     skyClouds.tick(now);
     gulls.tick(now);
     flutter.tick(now);
+    for (const l of landmarks) l.tick(now);
     gameboy.tick(dt);
 
     // the villagers, on their beats, or stood facing the hero
@@ -1289,6 +1378,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       target.depthTexture?.dispose();
       target.dispose();
       for (const t of [block, brickTex, plankTex, qTex, spentTex]) t.dispose();
+      for (const l of landmarks) l.group.traverse((o) => o.material?.map?.dispose?.());
       gl.dispose();
     },
   };

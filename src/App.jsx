@@ -51,14 +51,19 @@ function ScrollToTop() {
   const feed = isFeedMove(location, navType);
   // a link to one role (/experience/aws) lands on that role, not the top
   const top = !feed && !search.includes('role=') && !/^\/(experience|universe)\/[^/]+$/.test(pathname);
+  // Both only on a new path, read through a ref: a page's own search params
+  // (a filter, a tab) change neither. As dependencies, a filter picked after
+  // the feed had moved the address flipped them, which threw the visitor to
+  // the top of the feed (the page it started on) and stopped the page's music.
+  const now = useRef({ top, feed });
+  now.current = { top, feed };
   useEffect(() => {
-    // on a new path, not on a page's own search params (a filter, a tab)
-    if (top) window.scrollTo(0, 0);
-  }, [pathname, top]);
+    if (now.current.top) window.scrollTo(0, 0);
+  }, [pathname]);
   // a page's music and lines stop when you leave it
   useEffect(() => {
-    if (!feed) import('./lib/clips').then((c) => c.stopPageClips());
-  }, [pathname, feed]);
+    if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
+  }, [pathname]);
   return null;
 }
 
@@ -282,6 +287,8 @@ function Shell() {
       import('./pages/Contact');
       import('./pages/Travel');
       import('./components/Hyperspace');
+      // so the first ⌘K opens at once, instead of showing nothing while it loads
+      import('./components/CommandPalette');
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
@@ -292,7 +299,8 @@ function Shell() {
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
-        <ErrorBoundary resetKey={page}>
+        {/* (every feed page shares a page key, so it's the path that lets the nav's links clear an error) */}
+        <ErrorBoundary resetKey={pathname}>
           <Suspense fallback={<div className="min-h-[100svh]" />}>
             <div key={page} className="page-enter">
               {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}

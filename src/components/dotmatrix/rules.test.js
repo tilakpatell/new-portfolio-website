@@ -21,6 +21,7 @@ import {
   VILLAGERS,
   W,
   WALKERS,
+  ZOOM,
   alongLoop,
   bites,
   blocked,
@@ -35,6 +36,7 @@ import {
   newHero,
   newPlant,
   pipeTop,
+  pitchFor,
   plantOut,
   progress,
   snakeAt,
@@ -45,6 +47,7 @@ import {
   tileAt,
   walkerAt,
   warp,
+  zoomTo,
 } from './rules';
 
 const DT = 1 / 60;
@@ -67,8 +70,30 @@ describe('Dot Matrix: the island', () => {
     for (const row of MAP) expect(row).toHaveLength(W);
     expect(H).toBe(MAP.length);
     for (const row of MAP) for (const c of row) expect(legend(c), c).toBe(legend(c)); // (and no unknown letters:)
-    const known = new Set([...'~,."=:!%TYoO#HGPBs']);
+    const known = new Set([...'~,."=:!%TYoO#HGPBsLM']);
     for (const row of MAP) for (const c of row) expect(known.has(c), c).toBe(true);
+  });
+
+  it('has a lighthouse on the islet and a windmill on the plateau, which nobody stands on', () => {
+    const find = (c) => MAP.flatMap((row, iz) => [...row].map((ch, ix) => (ch === c ? [ix, iz] : null)).filter(Boolean));
+    const [light] = find('L');
+    const [mill] = find('M');
+    expect(find('L')).toHaveLength(1);
+    expect(find('M')).toHaveLength(1);
+    expect(legend('L')).toMatchObject({ kind: 'lighthouse', ground: 0 });
+    expect(legend('M')).toMatchObject({ kind: 'mill', ground: 3 });
+    expect(legend('L').top).toBeGreaterThan(4);
+    expect(legend('M').top).toBeGreaterThan(6);
+    // out on the islet, on sand; up on the plateau, on its top
+    expect(light[0]).toBeGreaterThan(43);
+    expect(light[1]).toBeLessThan(5);
+    expect(tileAt(mill[0] + 0.5, mill[1] + 0.5).ground).toBe(3);
+    // solid: walked into, not onto
+    expect(blocked(light[0] + 0.5, light[1] + 0.5, 0, HERO.step)).toBe(true);
+    expect(blocked(mill[0] + 0.5, mill[1] + 0.5, 3, HERO.step)).toBe(true);
+    // the islet's cartridge still has room to be stood by
+    const islet = CARTRIDGES.find((c) => c.id === 'awesome-copilot');
+    expect(blocked(islet.at[0], islet.at[2], 0, 0.02)).toBe(false);
   });
 
   it('is sea all the way round its edge', () => {
@@ -136,6 +161,24 @@ describe('Dot Matrix: the island', () => {
       expect(p.x).toBeLessThan(42);
     }
     expect(snakeAt(3)).toHaveLength(SNAKE.length);
+  });
+});
+
+describe('Dot Matrix: the camera', () => {
+  it('zooms between its limits, and looks down less the closer it is', () => {
+    expect(ZOOM.min).toBeLessThan(ZOOM.start);
+    expect(ZOOM.start).toBeLessThan(ZOOM.max);
+    expect(zoomTo(ZOOM.start, 1)).toBe(ZOOM.start);
+    expect(zoomTo(ZOOM.start, 1.1)).toBeCloseTo(ZOOM.start * 1.1);
+    expect(zoomTo(ZOOM.start, 100)).toBe(ZOOM.max);
+    expect(zoomTo(ZOOM.start, 0.001)).toBe(ZOOM.min);
+    expect(pitchFor(ZOOM.min)).toBeLessThan(pitchFor(ZOOM.start));
+    expect(pitchFor(ZOOM.start)).toBeLessThan(pitchFor(ZOOM.max));
+    expect(pitchFor(ZOOM.start)).toBeCloseTo(0.68, 2); // what it always was, at the start
+    for (const d of [ZOOM.min, ZOOM.start, ZOOM.max]) {
+      expect(pitchFor(d)).toBeGreaterThan(0.45);
+      expect(pitchFor(d)).toBeLessThan(0.9);
+    }
   });
 });
 

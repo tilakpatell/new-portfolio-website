@@ -16,10 +16,15 @@ import { HOME, PLACES } from '../../data/places';
 export const KM = 6371; // the Earth's radius, for distances shown in km
 const RAD = Math.PI / 180;
 
-export const ALT = { min: 0.012, max: 0.075, start: 0.032, climb: 0.028 };
+export const CLOUD_ALT = 0.0065; // the cloud deck's height over the ground (about 40 km: a toy, like the plane)
+export const ALT = { min: 0.0035, max: 0.075, start: 0.032, climb: 0.028 }; // down under the clouds, up to the edge of space
+export const LOOK = { yaw: 1.4, pitch: 0.6, settle: 3 }; // looking round the plane: how far, and how quickly it settles back
 export const SPEED = { cruise: 0.11, slow: 0.045, fast: 0.34, ease: 1.6 }; // radians a second
 export const TURN = 1.3; // radians a second, hard over
 export const CAPTURE = 0.025; // within this many radians of a place (about 160 km), you've arrived
+export const ROLL = { time: 1.1 }; // seconds, a barrel roll
+export const TRAIL = { step: 0.004, max: 1600 }; // the trail flown: a point every so many radians, and how many are kept
+export const AROUND_KM = 2 * Math.PI * KM; // once round the Earth
 
 // ── vectors ──
 
@@ -87,12 +92,28 @@ export const kmBetween = (a, b) => angle(a, b) * KM;
 
 export function newFlight({ at = HOME.at, bearing = 75 } = {}) {
   const p = toVec(...at);
-  return { p, h: headingOf(p, bearing), speed: SPEED.cruise, alt: ALT.start, turn: 0, climb: 0, km: 0, t: 0 };
+  return { p, h: headingOf(p, bearing), speed: SPEED.cruise, alt: ALT.start, turn: 0, climb: 0, km: 0, t: 0, roll: 0, rolling: false, rollT: 0 };
 }
 
-// One step. input: { turn (-1 left … 1 right), climb (-1 … 1), boost, slow }.
+// One step. input: { turn (-1 left … 1 right), climb (-1 … 1), boost, slow,
+// roll (pressed: a barrel roll, if one isn't on) }.
 export function fly(f, input, dt) {
   f.t += dt;
+  // the barrel roll: right round about the nose over ROLL.time, eased, and
+  // back to level exactly; the course is untouched
+  if (input.roll && !f.rolling) {
+    f.rolling = true;
+    f.rollT = 0;
+  }
+  if (f.rolling) {
+    f.rollT += dt;
+    const k = Math.min(1, f.rollT / ROLL.time);
+    f.roll = 2 * Math.PI * k * k * (3 - 2 * k);
+    if (k >= 1) {
+      f.roll = 0;
+      f.rolling = false;
+    }
+  }
   // the controls answer smoothly: the wings bank into a turn, the nose into a climb
   const ease = 1 - Math.exp(-4 * dt);
   f.turn += (Math.max(-1, Math.min(1, input.turn ?? 0)) - f.turn) * ease;
@@ -119,14 +140,15 @@ export function autopilot(f, target) {
   let d = bearingTo(f.p, target) - bearingOf(f.p, f.h);
   d = ((d + 540) % 360) - 180;
   const far = angle(f.p, target);
-  // (close by and well off the nose, it slows down to turn tighter, or it
-  // would go round and round the place outside its turning circle)
+  // (well off the nose it slows down to turn tighter: a U-turn at cruising
+  // speed is a thousand kilometres round; and close by and off the nose too,
+  // or it would go round and round the place outside its turning circle)
   const tight = (2.5 * SPEED.cruise) / TURN;
   return {
     turn: Math.max(-1, Math.min(1, d / 35)),
     climb: Math.max(-1, Math.min(1, (ALT.start - f.alt) * 40)),
     boost: far > 0.35 && Math.abs(d) < 25,
-    slow: far < tight && Math.abs(d) > 30,
+    slow: Math.abs(d) > 40 || (far < tight && Math.abs(d) > 30),
   };
 }
 
@@ -160,6 +182,53 @@ export function nextStamp(f, stamped) {
   rel = ((rel + 540) % 360) - 180;
   return { id: best.s.id, name: best.s.name, km: best.a * KM, rel };
 }
+
+// ── looking round ──
+
+// The chase camera swung round the plane by a drag (or a pad's right
+// stick): yaw to either side, pitch up and down, within LOOK's limits; let
+// go, it settles back behind the plane.
+export const newLook = () => ({ yaw: 0, pitch: 0, held: false });
+export function turnLook(l, dyaw, dpitch) {
+  l.yaw = Math.max(-LOOK.yaw, Math.min(LOOK.yaw, l.yaw + dyaw));
+  l.pitch = Math.max(-LOOK.pitch, Math.min(LOOK.pitch, l.pitch + dpitch));
+  l.held = true;
+  return l;
+}
+export function easeLook(l, dt) {
+  if (l.held) return l;
+  const k = Math.exp(-LOOK.settle * dt);
+  l.yaw *= k;
+  l.pitch *= k;
+  if (Math.abs(l.yaw) < 1e-4) l.yaw = 0;
+  if (Math.abs(l.pitch) < 1e-4) l.pitch = 0;
+  return l;
+}
+
+// ── the flight log ──
+
+// The trail flown: `trail` is a list of points on the sphere, each with the
+// height it was flown at; `p` is added when it's TRAIL.step or more from
+// the last, and the oldest go once there are TRAIL.max. Returns whether a
+// point was added.
+export function logTrail(trail, p, alt = 0) {
+  const last = trail[trail.length - 1];
+  if (last && angle(last, p) < TRAIL.step) return false;
+  trail.push([p[0], p[1], p[2], alt]);
+  if (trail.length > TRAIL.max) trail.splice(0, trail.length - TRAIL.max);
+  return true;
+}
+
+// The route from a to b along the great circle: n + 1 points, evenly spaced.
+export function routeArc(a, b, n) {
+  const total = angle(a, b);
+  if (total < 1e-9) return Array.from({ length: n + 1 }, () => [a[0], a[1], a[2]]);
+  const axis = unit(cross(a, b));
+  return Array.from({ length: n + 1 }, (_, i) => (i === 0 ? [a[0], a[1], a[2]] : i === n ? [b[0], b[1], b[2]] : unit(rotate(a, axis, (total * i) / n))));
+}
+
+// how far round the world a distance flown comes to, 0 to 1
+export const aroundWorld = (km) => Math.max(0, Math.min(1, km / AROUND_KM));
 
 // ── the sun ──
 

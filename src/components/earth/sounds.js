@@ -140,6 +140,28 @@ export function stamp() {
 }
 
 // the rush of air, coming down out of space or going back up
+// a barrel roll: the air swelling past the cabin and dying away again
+export function roll() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime;
+  const s = ac.createBufferSource();
+  s.buffer = noise(ac);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 0.8;
+  f.frequency.setValueAtTime(300, t);
+  f.frequency.exponentialRampToValueAtTime(1400, t + 0.5);
+  f.frequency.exponentialRampToValueAtTime(260, t + 1.1);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.45);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
+  s.connect(f).connect(g).connect(out);
+  s.start(t, Math.random());
+  s.stop(t + 1.2);
+}
+
 export function rush(seconds = 2.6) {
   const [ac, out] = ready();
   if (!ac) return;

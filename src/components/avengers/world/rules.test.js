@@ -13,6 +13,7 @@ import {
   PACKS,
   PACK_R,
   PERCHES,
+  PHOTO,
   PLANTERS,
   RING_R,
   ROOF_PLANT,
@@ -24,6 +25,7 @@ import {
   DOOR_R,
   HERO,
   HERO_R,
+  LAP,
   LAWN_W,
   PLACES,
   PORTAL,
@@ -39,6 +41,7 @@ import {
   collide,
   findPerch,
   floorAt,
+  lapAt,
   linesFor,
   nearArmour,
   nearCast,
@@ -49,12 +52,17 @@ import {
   outside,
   pastAnchor,
   progress,
+  readLap,
   readSettings,
+  recordLap,
   solidById,
   stepHero,
   stepTour,
   throughRing,
   newTour,
+  newPhoto,
+  photoView,
+  readPhoto,
   underPortal,
   walkable,
 } from './rules';
@@ -1197,5 +1205,92 @@ describe('The compound, the world: the Iron Man armour', () => {
     expect(s.mode).toBe('suit');
     expect(s.trick).toBe(null);
     expect(s.web).toBe(null);
+  });
+});
+
+describe('The compound, the world: the best lap, as a ghost', () => {
+  it('records him every tenth of a second, to a decimal, and no more than two minutes', () => {
+    let rec = [];
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let t = 0;
+    for (let i = 0; i < 180; i++) {
+      h = stepHero(h, pilot(h, t), DT);
+      t += DT;
+      rec = recordLap(rec, h, t);
+    }
+    expect(rec.length).toBeGreaterThanOrEqual(29);
+    expect(rec.length).toBeLessThanOrEqual(31);
+    for (const p of rec) {
+      expect(p.length).toBe(4);
+      for (const v of p) expect(Math.abs(v * 100 - Math.round(v * 100))).toBeLessThan(1e-6);
+    }
+    expect(Math.hypot(rec.at(-1)[0] - h.x, rec.at(-1)[2] - h.z)).toBeLessThan(0.1 + HERO.run * LAP.every);
+    // and the same recording back when it isn't time yet
+    const same = recordLap(rec, h, t);
+    expect(same).toBe(rec);
+    const full = Array.from({ length: LAP.max }, () => [0, 0, 0, 0]);
+    expect(recordLap(full, h, 999)).toBe(full);
+  });
+
+  it('plays the ghost back between the samples, held at the ends, with its speed', () => {
+    const rec = [
+      [0, 0, 0, 0],
+      [4, 1, 0, 0.5],
+      [8, 1, 0, 1],
+    ];
+    expect(lapAt(rec, -1)).toMatchObject({ x: 0, y: 0, z: 0, face: 0 });
+    const mid = lapAt(rec, 0.05);
+    expect(mid.x).toBeCloseTo(2, 5);
+    expect(mid.y).toBeCloseTo(0.5, 5);
+    expect(mid.face).toBeCloseTo(0.25, 5);
+    expect(mid.speed).toBeCloseTo(40, 5);
+    expect(lapAt(rec, 0.1)).toMatchObject({ x: 4, y: 1 });
+    expect(lapAt(rec, 5)).toMatchObject({ x: 8, y: 1, z: 0, face: 1 });
+    expect(lapAt(null, 1)).toBe(null);
+    expect(lapAt([], 1)).toBe(null);
+    // the face goes the short way round
+    const turn = lapAt([[0, 0, 0, 3], [0, 0, 0, -3]], 0.05);
+    expect(Math.abs(turn.face)).toBeGreaterThan(3);
+  });
+
+  it('reads a kept lap back, and nothing else', () => {
+    expect(readLap(null)).toBe(null);
+    expect(readLap([[1, 2, 3, 4]])).toBe(null);
+    expect(readLap([[1, 2, 3], [1, 2, 3]])).toBe(null);
+    expect(readLap([[1, 2, 3, 4], [1, 2, 'x', 4]])).toBe(null);
+    const ok = [[1, 2, 3, 4], [2, 3, 4, 5]];
+    expect(readLap(ok)).toEqual(ok);
+    expect(readLap(Array.from({ length: LAP.max + 5 }, () => [0, 0, 0, 0])).length).toBe(LAP.max);
+  });
+});
+
+describe('The compound, the world: photo mode', () => {
+  it('puts the camera round him where it’s asked, looking at his chest, out on the lawn', () => {
+    const h = newHero(START);
+    const v = photoView(h, { yaw: 0.7, pitch: 0.3, dist: 6 });
+    expect(Math.hypot(v.at[0] - v.look[0], v.at[1] - v.look[1], v.at[2] - v.look[2])).toBeCloseTo(6, 3);
+    expect(v.look).toEqual([h.x, h.y + 1.1, h.z]);
+    expect(v.at[1]).toBeGreaterThan(v.look[1]);
+  });
+
+  it('never goes into a building, nor under the ground', () => {
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const h = newHero(widow);
+    // looking back from inside the main building
+    const inward = Math.atan2(-Math.cos(widow.face), Math.sin(widow.face));
+    for (const yaw of [inward, inward + 0.4, inward - 0.4]) {
+      const v = photoView(h, { yaw, pitch: 0.1, dist: 20 });
+      expect(inBuilding(v.at[0], v.at[2]) && v.at[1] < 30).toBe(false);
+    }
+    // from under his feet
+    const low = photoView(newHero(START), { yaw: 0, pitch: PHOTO.pitch[0], dist: PHOTO.dist[1] });
+    expect(low.at[1]).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it('keeps its numbers in range', () => {
+    expect(readPhoto(null)).toEqual(newPhoto(0, 0.25));
+    const r = readPhoto({ yaw: 2, pitch: 9, dist: 0, fov: 500 });
+    expect(r).toEqual({ yaw: 2, pitch: PHOTO.pitch[1], dist: PHOTO.dist[0], fov: PHOTO.fov[1] });
+    expect(newPhoto(1, -3).pitch).toBe(PHOTO.pitch[0]);
   });
 });

@@ -12,10 +12,16 @@ import { createEngine } from '../../avengers/hq/engine';
 import { createFeel } from '../../avengers/hq/feel';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
+import { createChallenges } from './challenges';
 import { buildCity } from './city';
 import { createFlightFx } from './fx';
 import { buildGround } from './ground';
+import { buildJet } from './jet';
 import { buildLandmarks } from './landmarks';
+import { buildLife } from './life';
+import { LINES, createNpcs } from './npcs';
+import { buildClouds } from './sky';
+import { createTraffic, stepTraffic } from './traffic';
 import { WORLD, buildWorld, groundAt, near } from './map';
 
 const FOV = 64;
@@ -26,9 +32,9 @@ const Y = new THREE.Vector3(0, 1, 0);
 // the times of day: the sky, how it sits, the light, the haze, the night
 export const TIMES = ['noon', 'dusk', 'night'];
 const LOOK = {
-  noon: { sky: 'noon', rotate: 0.6, env: 1, bg: 1, sun: 3, fill: 0.22, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1 },
-  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1 },
-  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1 },
+  noon: { sky: 'noon', rotate: 0.6, env: 1, bg: 1, sun: 3, fill: 0.22, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1, cloud: { lit: [1, 1, 1], shade: [0.62, 0.66, 0.74] } },
+  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1, cloud: { lit: [1, 0.74, 0.52], shade: [0.42, 0.36, 0.42] } },
+  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1, cloud: { lit: [0.14, 0.16, 0.22], shade: [0.06, 0.07, 0.1], opacity: 0.7 } },
 };
 
 // Down on one knee, a fist on the ground: how a hard landing ends.
@@ -77,6 +83,16 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const city = buildCity(world, { small });
   const landmarks = await buildLandmarks(world, city.uniforms);
   scene.add(ground.group, city.group, landmarks.group);
+  // who's about, the clouds, and the airliner going round
+  const npcs = createNpcs(scene, world);
+  const clouds = buildClouds({ small });
+  scene.add(clouds.mesh);
+  const jet = buildJet();
+  scene.add(jet.group);
+  // the traffic and the people on the pavements, always round the camera
+  let traffic = createTraffic({ cars: small ? 260 : 420, walkers: small ? 160 : 260 });
+  const life = buildLife(traffic);
+  scene.add(life.group);
   // (a shadow box this big wants more bias than the HQ games' rooms)
   engine.sun.shadow.normalBias = 0.12;
   engine.sun.shadow.bias = -0.0006;
@@ -94,6 +110,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const OMNI = { p: [40, 150, -60], yaw: Math.PI * 0.85 };
 
   const fx = createFlightFx(scene, { calm, small });
+  const challenges = createChallenges(scene, world, fx.vfx);
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
   // ── the time of day ──
@@ -109,6 +126,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     ground.setNight(L.night);
     city.setNight(L.night);
     landmarks.setNight(L.night);
+    clouds.setLook(L.cloud);
     haze = 1;
   }
   await setTime('noon');
@@ -201,8 +219,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     t += frameDt;
     const h = sim.h;
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
-    // what happened this frame
+    // what happened this frame (and what sends the people and the traffic running)
+    const scare = [];
     for (const e of sim.events) {
+      if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
+      else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
+      else if (e.type === 'boom' && e.at[1] - groundAt(e.at[0], e.at[2]) < 90) scare.push({ x: e.at[0], z: e.at[2], r: 60 });
       if (e.type === 'boom') {
         fx.boom(e.at, e.dir);
         feel.trauma(0.45);
@@ -239,6 +261,19 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
     omni.pose(POSES.proud(), dt, 6);
 
+    // (the QA scripts can hold everyone still, to frame them)
+    if (!sim.hold) {
+      npcs.update(frameDt, t, h);
+      jet.update(frameDt, t);
+    }
+    if (sim.quests) challenges.update(sim.quests, frameDt, t);
+    // (no traffic to speak of from up where the clouds are)
+    if (h.p[1] < 2200 || scare.length) {
+      traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
+      life.update(traffic, frameDt, camera, look?.night ?? 0);
+    }
+    clouds.update(t, scene.fog);
+
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
     ground.update(t);
     city.update(t, look?.night ?? 0);
@@ -248,6 +283,15 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   // where a world point is on the screen
   const project = (p) => engine.project(new THREE.Vector3(p[0], p[1], p[2]));
+  // who's near enough to talk to him (his father too, over downtown)
+  const talkers = (h) => {
+    const out = npcs.talkers(h);
+    const d = Math.hypot(h.p[0] - OMNI.p[0], h.p[1] - OMNI.p[1], h.p[2] - OMNI.p[2]);
+    if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [OMNI.p[0], OMNI.p[1] + 1.2, OMNI.p[2]], d });
+    return out.sort((a, b) => a.d - b.d);
+  };
+  const tmpV = new THREE.Vector3();
+  const jetDistance = (h) => jet.near(tmpV.set(h.p[0], h.p[1] + 1, h.p[2]));
 
   return {
     engine,
@@ -255,6 +299,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     frame,
     setTime,
     project,
+    talkers,
+    jetDistance,
+    debug: { npcs, jet, world },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;
