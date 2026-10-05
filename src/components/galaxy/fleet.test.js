@@ -44,7 +44,7 @@ describe('the galaxy’s fleet', () => {
       const info = SHIP_INFO[kind];
       expect(info?.name, kind).toBeTruthy();
       expect(info.meters, kind).toBeGreaterThan(0);
-      expect(['rebel', 'empire', 'republic', 'separatist', 'naboo', 'firstorder', 'sith', 'neutral'], kind).toContain(info.side);
+      expect(['rebel', 'empire', 'republic', 'separatist', 'naboo', 'mandalorian', 'neutral'], kind).toContain(info.side);
     }
   });
 });

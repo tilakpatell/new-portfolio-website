@@ -24,8 +24,8 @@ const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this 
 // A galaxy far, far away: the Star Wars galaxy as a universe of its own,
 // inside the universe map (the Star Wars planet there jumps you here). You
 // fly the same ship, the same way, one star system at a time (Tatooine,
-// Hoth, Endor, Yavin, Coruscant, Naboo… nineteen of them), and jump to
-// lightspeed between them from the galaxy map (HoloMap.jsx, M). The URL is
+// Hoth, Endor, Yavin, Coruscant, Naboo, Nevarro… eighteen of them), and jump
+// to lightspeed between them from the galaxy map (HoloMap.jsx, M). The URL is
 // the system you're in (/galaxy/hoth), swapped in place as you arrive, so a
 // link drops you out of hyperspace there, and a link to another system
 // while you're here sends you jumping to it. Each system's card (the

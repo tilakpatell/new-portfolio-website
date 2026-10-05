@@ -3,7 +3,7 @@
 // miniature, hanging in space. A spiral of thousands of stars round a warm
 // core, turning slowly, with the galaxy's own systems lit where they are on
 // it (names.js SYSTEM_MARKS: Coruscant in the bright middle, Tatooine out
-// on the rim, Exegol off in the Unknown Regions), and in front of it, always
+// on the rim, Sorgan far out west), and in front of it, always
 // facing you, a hyperspace gate: a ring of blue light round a tunnel of
 // stars streaming away into it. Fly into the gate and you jump to lightspeed
 // into the galaxy (the universe map's scene and page do that: the place is

@@ -5,9 +5,9 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'starkiller-charge', 'starkiller-fire', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
-const HUNTED = ['separatists', 'firstorder', 'sith'];
-const KILLS = ['vulture', 'trifighter', 'tiefo'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
+const HUNTED = ['separatists', 'remnant'];
+const KILLS = ['vulture', 'trifighter'];
 const sorted = (a) => [...a].sort();
 const words = (p) => p.split(/\s+/).filter(Boolean).length;
 
@@ -118,7 +118,9 @@ describe('the crawls', () => {
     for (const s of SYSTEMS) {
       const c = CRAWLS[s.id];
       const film = FILMS[s.game.film];
-      expect(c.episode, s.id).toBe(film.episode ? `Episode ${film.episode}` : 'A Star Wars Story');
+      // (a show's: its title and the chapter)
+      if (film.show) expect(c.episode, s.id).toMatch(new RegExp(`^${film.title}, (Chapter|Part) [A-Z0-9]`));
+      else expect(c.episode, s.id).toBe(film.episode ? `Episode ${film.episode}` : 'A Star Wars Story');
       expect(c.title, s.id).toBe(s.game.title);
       expect(c.paragraphs, s.id).toHaveLength(3);
       for (const p of c.paragraphs) {

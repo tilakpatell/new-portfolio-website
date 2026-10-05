@@ -1,6 +1,6 @@
 // The planets' shaders (bodies.js builds the meshes and feeds them). One
 // surface shader, specialised per family of looks with #defines (desert,
-// ice, lush, city, lava, storm, gas, moon) so no world pays for another's
+// ice, lush, city, lava, gas, moon) so no world pays for another's
 // features: 3D value noise with analytic derivatives sampled on the
 // object-space unit sphere (no seams, no pinching at the poles), FBM whose
 // octave count follows each pixel's footprint (a few octaves for a disc in
@@ -12,8 +12,7 @@
 // down in it) and Scarif's shield.
 //
 // Everything's in linear light: lit ground tops out ~1.0–1.4, the things
-// that glow (lava, city lights, Starkiller's trench) go well past the
-// bloom's 1.7.
+// that glow (lava, city lights) go well past the bloom's 1.7.
 
 // ── Noise ──
 export const NOISE = /* glsl */ `
@@ -135,8 +134,6 @@ uniform vec4 uAtmoP;
 uniform vec3 uSunset;
 uniform vec4 uCloud;
 uniform vec3 uCloudCol;
-uniform float uCharge;
-uniform float uFlash;
 varying vec3 vObj;
 varying vec3 vWorld;
 
@@ -271,9 +268,9 @@ vec3 inscatter(vec3 ro, vec3 rd, float tMax, out float trans) {
 // light of its own, clouds. P is the point on the unit sphere in the
 // planet's own frame; every gradient is with respect to P, in radii. ──
 
-// Deserts (Tatooine, Jakku, Geonosis): sand seas of sharp-crested dunes
-// bent by the land, rock country terraced into mesas and cut by canyons,
-// salt pans in the low ground, craters, crash scars.
+// Deserts (Tatooine, Geonosis, and Mandalore's glassed crust): sand seas of
+// sharp-crested dunes bent by the land, rock country terraced into mesas and
+// cut by canyons, salt pans (or glass) in the low ground, craters, scars.
 // pal: sand, sand2, rock, dark, salt, crest
 // uP0 = (dunes, rock threshold, craters, salt), uP1 = (scars, dune frequency, canyons, mesas)
 const DESERT = /* glsl */ `
@@ -360,7 +357,7 @@ void surface(vec3 P, inout Surf s) {
   alb = mix(alb, DARK, clamp(-(c1.x * 6.0 + c2.x * 17.0) / 0.05, 0.0, 1.0) * 0.35);
   #endif
   #ifdef SCARS
-  // crash sites: a long dark gouge ploughed into the sand, a crater at its end
+  // where the bombs fell: a long dark gouge ploughed into the ground, a crater at its end
   vec3 sq = P * 9.0;
   vec3 base = floor(sq - 0.5);
   float scar = 0.0;
@@ -388,11 +385,9 @@ void surface(vec3 P, inout Surf s) {
   s.grad = G;
 }`;
 
-// Ice (Hoth, Crait, Starkiller Base): snow plains, blue glacial ice and
-// crevasses, dark rock ranges; Crait's red under its salt; Starkiller's
-// forests and its trench.
-// pal: snow, ice, rock, deep, accent, accent2, glow
-// uP0 = (ice, mountains, crevasses, red streaks), uP1 = (forest, trench width, -, -)
+// Ice (Hoth): snow plains, blue glacial ice and crevasses, dark rock ranges.
+// pal: snow, ice, rock, deep
+// uP0 = (ice, mountains, crevasses, -)
 const ICE = /* glsl */ `
 uniform vec3 uDir;
 void surface(vec3 P, inout Surf s) {
@@ -436,54 +431,14 @@ void surface(vec3 P, inout Surf s) {
   alb = mix(alb, rockC, rock * mix(0.6, 1.0, steep));
   alb = mix(alb, mix(SNOW, ROCK, 0.25), mtn * (1.0 - rock) * 0.5);
   alb = mix(alb, DEEP, crev * 0.85);
-  #ifdef STREAKS
-  // Crait: the white's a crust of salt; scuff it and the red shows
-  vec3 tq = P * 7.0 - uDir * dot(P, uDir) * 6.4;
-  float st1 = fbm(tq + 2.0, min(octs(7.0), 6.0));
-  float red = smoothstep(0.14, 0.3, st1 + mtn * 0.15 + noise(P * 2.0) * 0.12) * uP0.w;
-  vec4 sc = noised2(P * 22.0 + vec3(st1));
-  float ks = max(0.03, gFoot * 22.0 * 2.5);
-  float scar = smoothstep(1.0 - ks, 1.0 - ks * 0.3, 1.0 - abs(sc.x)) * min(1.0, 0.03 / ks);
-  red = max(red, scar * 0.9 * uP0.w);
-  red = max(red, rock * 0.6);
-  alb = mix(alb, mix(ACCENT, ACCENT2, smoothstep(-0.2, 0.4, flow + sparkle * 0.3)), red);
-  #endif
-  #ifdef FOREST
-  // dark conifer forest in the lowlands, snow caught in it
-  float fz = fbm(P * 3.5 + 3.0, min(octs(3.5), 4.0)) + fbm(P * 30.0, min(octs(30.0), 3.0)) * 0.15;
-  float forest = uP1.x * smoothstep(0.02, 0.12, fz + 0.08 - mtn * 0.8 - abs(P.y) * 0.3) * (1.0 - ice * 0.7);
-  float tree = noise(P * 900.0) * fade(900.0);
-  alb = mix(alb, ACCENT * (0.8 + 0.4 * tree + 0.3 * fz) + SNOW * 0.05 * max(tree, 0.0), forest);
-  #endif
-  #ifdef TRENCH
-  // Starkiller: a trench cut round the whole equator, the weapon's glow inside it
-  float W = uP1.y;
-  float y = P.y + 0.012 * noise(P * 14.0) + 0.004 * noise(P * 60.0);
-  float ay = abs(y);
-  float tw = max(W * 0.12, gFoot * 2.0);
-  float tr = 1.0 - smoothstep(W - tw, W, ay);
-  float tt = clamp((ay - (W - tw)) / tw, 0.0, 1.0);
-  G += vec3(0.0, sign(y), 0.0) * 0.006 * 6.0 * tt * (1.0 - tt) / tw;
-  // inside: dark rock in machined segments
-  float seg = fract(atan(P.z, P.x) * 180.0 / 3.14159);
-  float ribs = smoothstep(0.42, 0.5, abs(seg - 0.5)) * fade(360.0);
-  vec3 floorC = ACCENT2 * (0.8 + 0.4 * ribs);
-  alb = mix(alb, floorC, tr);
-  float core = 1.0 - smoothstep(0.0, W * 0.32, ay);
-  float ch = uCharge * uCharge;
-  float pulse = 0.85 + 0.15 * sin(uTime * (2.0 + ch * 10.0) - atan(P.z, P.x) * 8.0);
-  s.emit += GLOW * (core * core * (0.45 + 7.0 * ch) + tr * (0.02 + 0.5 * ch)) * pulse * (1.0 - ribs * 0.4);
-  // the snow along its rim lit orange as it charges
-  s.emit += GLOW * exp(-max(ay - W, 0.0) / (W * 0.6)) * (1.0 - tr) * ch * 0.25;
-  #endif
   s.alb = alb;
   s.grad = G;
 }`;
 
-// Living worlds (Endor, Yavin 4, Kashyyyk, Dagobah, Naboo, Scarif, Ahch-To,
-// Kamino): oceans deep and shallow, coasts bent by a warp, forest and
+// Living worlds (Endor, Yavin 4, Kashyyyk, Dagobah, Naboo, Scarif, Kamino,
+// Lothal, Sorgan): oceans deep and shallow, coasts bent by a warp, forest and
 // grassland by how wet it is, mountains, snow, polar caps; Scarif's island
-// chains, Dagobah's pools, Yavin's rivers.
+// chains, Dagobah's pools and Sorgan's ponds, Yavin's and Lothal's rivers.
 // pal: deep, shallow, forest, grass, rock, snow, beach, murk
 // uP0 = (sea level, forest, mountains, polar caps), uP1 = (island chains, swamp, rivers, scale)
 const LUSH = /* glsl */ `
@@ -530,7 +485,7 @@ void surface(vec3 P, inout Surf s) {
   wet = max(wet, river);
   #endif
   #ifdef SWAMP
-  // Dagobah: the low ground all pools and channels of murky water
+  // Dagobah, Sorgan: the low ground all pools and channels of murky water
   float pz = noise(P * 30.0 + warp * 3.0) * 0.6 + noise(P * 110.0) * 0.4 * fade(110.0);
   float pool = smoothstep(0.05, 0.2, pz) * (1.0 - smoothstep(0.05, 0.25, alt)) * uP1.y * land;
   landC = mix(landC, MURK, pool);
@@ -634,8 +589,8 @@ void surface(vec3 P, inout Surf s) {
   s.wet = plaza * 0.15;
 }`;
 
-// Volcanic (Mustafar): black crust, rivers and lakes of lava glowing
-// through it, the crust beside them lit red.
+// Volcanic (Mustafar, Nevarro): black crust, rivers and lakes of lava
+// glowing through it, the crust beside them lit red.
 // pal: crust, ash, hot, lava, ember
 // uP0 = (rivers, lakes, glow, pulse)
 const LAVA = /* glsl */ `
@@ -670,42 +625,6 @@ void surface(vec3 P, inout Surf s) {
   s.emit = mix(LAVA, HOT, core * core) * lava * (1.9 + 1.2 * core) * pulse * uP0.z;
   s.emit += EMBER * clamp(near, 0.0, 1.0) * 0.1 * pulse * uP0.z;
   s.grad = G * (1.0 - lava);
-}`;
-
-// The Sith world (Exegol): nothing but storm, dark cloud tops whirling, and
-// lightning flickering inside them.
-// pal: dark, mid, light, bolt
-// uP0 = (bolts, swirl, speed, -)
-const STORM = /* glsl */ `
-void surface(vec3 P, inout Surf s) {
-  vec3 q = spinY(P, uTime * uP0.z);
-  q = whirl(q, normalize(vec3(0.3, 0.8, 0.5)), 0.1, 2.6 * uP0.y);
-  q = whirl(q, normalize(vec3(-0.6, -0.3, -0.7)), 0.08, -2.2 * uP0.y);
-  q = whirl(q, normalize(vec3(0.7, -0.5, 0.2)), 0.07, 2.4 * uP0.y);
-  float o = octs(3.0);
-  vec3 w = vec3(noise(q * 2.0 + 1.0), noise(q * 2.0 + 5.0), noise(q * 2.0 + 9.0));
-  vec4 c = fbmd(q * 3.0 + w * 0.6 + vec3(0.0, uTime * 0.012, 0.0), o, 0.52);
-  float dens = clamp(c.x * 0.8 + 0.5, 0.0, 1.0);
-  vec3 alb = mix(DARK, MID, smoothstep(0.25, 0.75, dens));
-  alb = mix(alb, LIGHT, smoothstep(0.7, 1.0, dens) * 0.7);
-  // lightning: cells of cloud flaring at their own random moments
-  vec3 lq = q * 6.0;
-  vec3 base = floor(lq - 0.5);
-  float bolt = 0.0;
-  for (int i = 0; i < 8; i++) {
-    vec3 cell = base + vec3(float(i & 1), float((i >> 1) & 1), float((i >> 2) & 1));
-    vec3 hh = hash33(cell + 13.0);
-    if (hh.x > uP0.x) continue;
-    vec3 cp = cell + 0.5 + (hash33(cell + 51.0) - 0.5) * 0.5;
-    float ph = fract(uTime * (0.07 + 0.12 * hh.y) + hh.z * 7.0);
-    float on = smoothstep(0.0, 0.004, ph) * (1.0 - smoothstep(0.006, 0.05, ph)) * (0.55 + 0.45 * sin(uTime * 70.0 + hh.y * 30.0));
-    vec3 dv = lq - cp;
-    bolt += on * exp(-dot(dv, dv) * 9.0);
-  }
-  float lit = 0.35 + 0.65 * smoothstep(-0.4, 0.5, noise(q * 1.7 + floor(uTime * 4.0) * 3.1));
-  s.emit = BOLT * (bolt * (0.4 + dens * 1.2) * 4.0 + uFlash * (0.04 + dens * dens * 0.9) * lit);
-  s.alb = alb;
-  s.grad = c.yzw * 3.0 * uBump;
 }`;
 
 // Gas giants (Yavin, Endor's giant, Bespin): bands at their own speeds,
@@ -778,7 +697,7 @@ void surface(vec3 P, inout Surf s) {
   s.grad = G;
 }`;
 
-const FAMILIES = { desert: DESERT, ice: ICE, lush: LUSH, city: CITY, lava: LAVA, storm: STORM, gas: GAS, moon: MOON };
+const FAMILIES = { desert: DESERT, ice: ICE, lush: LUSH, city: CITY, lava: LAVA, gas: GAS, moon: MOON };
 
 // relief, clouds, sunlight (one or two suns), the sea's glint, a faint
 // light on the night side, the look's own light, then the haze
@@ -865,7 +784,6 @@ uniform vec3 uSunCol[2];
 uniform vec3 uAtmo;
 uniform vec4 uAtmoP;
 uniform vec3 uSunset;
-uniform float uFlash;
 uniform float uInner;
 varying vec3 vWorld;
 ${ATMO}
@@ -882,7 +800,6 @@ void main() {
   }
   float tr;
   vec3 col = inscatter(ro, rd, tMax, tr);
-  col += uAtmo * uFlash * (1.0 - tr) * 1.2;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;

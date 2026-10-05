@@ -65,9 +65,6 @@ export const MODELS = {
   delta7: { uid: 'b4a8ad8a1e8b4e5b961cf4726d8a8646', tris: 12000, tex: 512, as: 'the Jedi starfighters' },
   arc170: { uid: 'b9407262cdf34d37b0720ca6b70469be', tris: 14000, tex: 512, as: 'the ARC-170s' },
   n1: { uid: '3cf69f6c85234aac8844e845e74ac75b', tris: 12000, tex: 512, as: 'the Naboo N-1 starfighters' },
-  // the sequels'
-  xyston: { uid: '8fe215c3b4154320b89ec60e6d0cd5ec', tris: 30000, tex: 1024, gain: 0.35, as: 'the Sith Star Destroyers' },
-  tiefo: { uid: 'a6f29bb8f80149c5a83ca1341fc10093', tris: 10000, tex: 512, drop: /^WorldGridMaterial$/, as: 'the First Order’s TIEs' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;

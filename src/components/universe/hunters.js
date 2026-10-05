@@ -74,7 +74,7 @@ const SHIP_R = 0.2; // how close a laser must pass you to hit
 const between = (rand, a, b) => a + rand() * (b - a);
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
-// galaxy's Separatists, First Order and Sith, galaxy/hunted.js)
+// galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
 export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds: KINDS = KIND } = {}) {
   const rand = Math.random;
   const pool = {}; // kind → models not in use

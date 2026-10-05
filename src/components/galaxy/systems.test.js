@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
 import { SYSTEM_MARKS, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, RIM, FILMS, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
+import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
 
-const LOOKS = ['tatooine', 'jakku', 'geonosis', 'hoth', 'starkiller', 'crait', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'coruscant', 'mustafar', 'kamino', 'scarif', 'bespin', 'exegol', 'ahchto', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
-const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser', 'wrecks', 'starkiller', 'armada', 'lightning'];
+const LOOKS = ['tatooine', 'geonosis', 'mandalore', 'hoth', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'lothal', 'sorgan', 'coruscant', 'mustafar', 'nevarro', 'kamino', 'scarif', 'bespin', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
+const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser'];
 const len = (v) => Math.hypot(...v);
 
 describe('the films and eras', () => {
@@ -20,6 +20,17 @@ describe('the films and eras', () => {
     expect(yearLabel(0)).toBe('0 ABY');
     expect(filmLabel('esb')).toBe('Episode V: The Empire Strikes Back');
     expect(filmLabel('rogue')).toBe('Rogue One');
+    expect(filmLabel('mando')).toBe('The Mandalorian');
+    expect(filmShort('esb')).toBe('V');
+    expect(filmShort('rogue')).toBe('R1');
+    expect(filmShort('ahsoka')).toBe('Ahsoka');
+    // every one has a name short enough for a button
+    for (const id of FILM_ORDER) expect(filmShort(id).length, id).toBeGreaterThan(0), expect(filmShort(id).length, id).toBeLessThanOrEqual(6);
+  });
+  it('goes no further than Return of the Jedi but for the two shows', () => {
+    for (const [id, f] of Object.entries(FILMS)) if (f.year > FILMS.rotj.year) expect(['mando', 'ahsoka'], id).toContain(id);
+    expect(Object.values(FILMS).filter((f) => f.show).map((f) => f.title)).toEqual(['The Mandalorian', 'Ahsoka']);
+    for (const s of SYSTEMS) for (const f of s.films) expect(FILMS[f].year <= FILMS.rotj.year || FILMS[f].show, `${s.id}: ${f}`).toBe(true);
   });
   it('has systems in every era', () => {
     for (const e of ERAS) expect(inEra(e.id).length).toBeGreaterThan(3);
@@ -129,9 +140,9 @@ describe('the systems', () => {
   it('knows its eras and films in order', () => {
     const t = systemById('tatooine');
     expect(eraOf(t)).toBe('empire');
-    expect(erasOf(t)).toEqual(expect.arrayContaining(['republic', 'empire', 'firstorder']));
-    expect(filmsOf(t).map((f) => f.id)).toEqual(['tpm', 'aotc', 'anh', 'rotj', 'tros']);
-    expect(eraOf(systemById('exegol'))).toBe('firstorder');
+    expect(erasOf(t)).toEqual(expect.arrayContaining(['republic', 'empire', 'newrepublic']));
+    expect(filmsOf(t).map((f) => f.id)).toEqual(['tpm', 'aotc', 'anh', 'rotj', 'mando']);
+    for (const id of ['nevarro', 'mandalore', 'lothal', 'sorgan']) expect(eraOf(systemById(id)), id).toBe('newrepublic');
     expect(eraOf(systemById('naboo'))).toBe('republic');
   });
 });
@@ -202,7 +213,7 @@ describe('the map', () => {
   });
   it('makes a jump take a few seconds, longer for longer ones', () => {
     const near = jumpSeconds(systemById('hoth'), systemById('bespin'));
-    const far = jumpSeconds(systemById('exegol'), systemById('kamino'));
+    const far = jumpSeconds(systemById('sorgan'), systemById('lothal'));
     expect(near).toBeGreaterThanOrEqual(1.8);
     expect(far).toBeGreaterThan(near);
     expect(far).toBeLessThanOrEqual(4.2);
@@ -211,7 +222,7 @@ describe('the map', () => {
     let seed = 1;
     const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (const s of SYSTEMS) {
-      for (const from of [null, systemById('coruscant'), systemById('exegol')]) {
+      for (const from of [null, systemById('coruscant'), systemById('sorgan')]) {
         const a = arrival(s, from === s ? null : from, rand);
         const d = Math.hypot(a.x, a.y, a.z);
         expect(d, s.id).toBeGreaterThan(reachOf(s));

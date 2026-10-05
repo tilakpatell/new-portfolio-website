@@ -13,7 +13,7 @@
 // it (scene.js); the one picked pulses. Everything rides with the camera, so
 // it's always as far off.
 //
-// createSky({ small }) → { group, setSystem(system), update(camera, dim, t),
+// createSky({ small }) → { group, setSystem(system), update(camera, t),
 //   focus(id), beacons, sunDirs, dispose() }; beacons: [{ id, dir }] (unit
 //   vectors), the other systems' stars
 
@@ -66,8 +66,6 @@ uniform vec3 uNeb1;
 uniform vec3 uNeb2;
 uniform vec3 uNebCol1;
 uniform vec3 uNebCol2;
-uniform vec3 uTint;
-uniform float uDim;
 varying vec3 vDir;
 ${NOISE}
 void main() {
@@ -100,7 +98,6 @@ void main() {
   col += uNebCol1 * n1 * 0.16 + uNebCol2 * n2 * 0.12;
   // and the dark between
   col += vec3(0.0035, 0.005, 0.011);
-  col = col * uTint * uDim;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -109,12 +106,11 @@ const STAR_VERT = /* glsl */ `
 attribute float aSize;
 attribute vec3 aColor;
 uniform float uDpr;
-uniform float uDim;
 varying vec3 vColor;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = clamp(aSize * uDpr, 1.0, 5.0 * uDpr);
-  vColor = aColor * uDim;
+  vColor = aColor;
   vec4 p = projectionMatrix * mv;
   gl_Position = vec4(p.xy, p.w * 0.99999, p.w);
 }`;
@@ -133,7 +129,6 @@ attribute float aSize;
 attribute vec3 aColor;
 attribute float aFocus;
 uniform float uDpr;
-uniform float uDim;
 uniform float uTime;
 varying vec3 vColor;
 varying float vFocus;
@@ -141,7 +136,7 @@ void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   float pulse = 1.0 + aFocus * (0.45 + 0.2 * sin(uTime * 6.0));
   gl_PointSize = aSize * uDpr * pulse;
-  vColor = aColor * uDim;
+  vColor = aColor;
   vFocus = aFocus;
   vec4 p = projectionMatrix * mv;
   gl_Position = vec4(p.xy, p.w * 0.99998, p.w);
@@ -173,7 +168,6 @@ void main() {
 }`;
 const SUN_FRAG = /* glsl */ `
 uniform vec3 uColor;
-uniform float uDim;
 varying vec2 vUv;
 void main() {
   float r = length(vUv);
@@ -182,7 +176,7 @@ void main() {
   float a = atan(vUv.y, vUv.x);
   float rays = pow(abs(cos(a * 3.0)), 60.0) * exp(-r * 4.0) * 0.35 + pow(abs(cos(a * 2.0 + 0.6)), 90.0) * exp(-r * 5.0) * 0.25;
   vec3 c = uColor * (glow + rays) + vec3(6.0) * disc;
-  gl_FragColor = vec4(c * uDim * smoothstep(1.0, 0.7, r), 1.0);
+  gl_FragColor = vec4(c * smoothstep(1.0, 0.7, r), 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -222,8 +216,6 @@ export function createSky({ small = false } = {}) {
       uNeb2: { value: new THREE.Vector3(1, -0.2, 0).normalize() },
       uNebCol1: { value: new THREE.Color('#c4508f') },
       uNebCol2: { value: new THREE.Color('#4f7fd0') },
-      uTint: { value: new THREE.Color(1, 1, 1) },
-      uDim: { value: 1 },
     },
     side: THREE.BackSide,
     depthWrite: false,
@@ -240,7 +232,7 @@ export function createSky({ small = false } = {}) {
   starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   starGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n), 1));
   starGeo.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-  const starMat = new THREE.ShaderMaterial({ vertexShader: STAR_VERT, fragmentShader: STAR_FRAG, uniforms: { uDpr: { value: 1 }, uDim: { value: 1 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const starMat = new THREE.ShaderMaterial({ vertexShader: STAR_VERT, fragmentShader: STAR_FRAG, uniforms: { uDpr: { value: 1 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
   const stars = new THREE.Points(starGeo, starMat);
   stars.frustumCulled = false;
   stars.renderOrder = -19;
@@ -251,7 +243,7 @@ export function createSky({ small = false } = {}) {
   const sunGeo = new THREE.PlaneGeometry(2, 2);
   made.push(sunGeo);
   const suns = [0, 1].map(() => {
-    const mat = new THREE.ShaderMaterial({ vertexShader: SUN_VERT, fragmentShader: SUN_FRAG, uniforms: { uColor: { value: new THREE.Color() }, uDim: { value: 1 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+    const mat = new THREE.ShaderMaterial({ vertexShader: SUN_VERT, fragmentShader: SUN_FRAG, uniforms: { uColor: { value: new THREE.Color() } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
     const m = new THREE.Mesh(sunGeo, mat);
     m.frustumCulled = false;
     m.renderOrder = -18;
@@ -269,7 +261,7 @@ export function createSky({ small = false } = {}) {
   beaconGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(nb), 1));
   beaconGeo.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(nb * 3), 3));
   beaconGeo.setAttribute('aFocus', new THREE.BufferAttribute(new Float32Array(nb), 1));
-  const beaconMat = new THREE.ShaderMaterial({ vertexShader: BEACON_VERT, fragmentShader: BEACON_FRAG, uniforms: { uDpr: { value: 1 }, uDim: { value: 1 }, uTime: { value: 0 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const beaconMat = new THREE.ShaderMaterial({ vertexShader: BEACON_VERT, fragmentShader: BEACON_FRAG, uniforms: { uDpr: { value: 1 }, uTime: { value: 0 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
   const beaconPoints = new THREE.Points(beaconGeo, beaconMat);
   beaconPoints.frustumCulled = false;
   beaconPoints.renderOrder = -17;
@@ -306,7 +298,6 @@ export function createSky({ small = false } = {}) {
       const neb = NEBULAE[Math.floor(rand() * NEBULAE.length)];
       u.uNebCol1.value.set(neb[0]);
       u.uNebCol2.value.set(neb[1]);
-      u.uTint.value.set(sys.id === 'exegol' ? '#b8a0c8' : '#ffffff');
       // the stars: half anywhere, the rest along the band, thickest toward the core
       const pos = starGeo.attributes.position.array;
       const size = starGeo.attributes.aSize.array;
@@ -386,15 +377,10 @@ export function createSky({ small = false } = {}) {
       beacons.forEach((b, i) => (bf[i] = b.id === id ? 1 : 0));
       beaconGeo.attributes.aFocus.needsUpdate = true;
     },
-    // the sky and its stars round the camera, wherever it flies; `dim`, 0…1:
-    // a star being drained (Starkiller Base), the sky going with it
-    update(camera, dim = 1, t = 0) {
+    // the sky and its stars round the camera, wherever it flies
+    update(camera, t = 0) {
       group.position.copy(camera.position);
-      beaconMat.uniforms.uDim.value = 0.55 + 0.45 * dim;
       beaconMat.uniforms.uTime.value = t;
-      skyMat.uniforms.uDim.value = 0.6 + 0.4 * dim;
-      starMat.uniforms.uDim.value = 0.5 + 0.5 * dim;
-      for (const m of suns) m.material.uniforms.uDim.value = dim;
     },
     setRatio(dpr) {
       starMat.uniforms.uDpr.value = dpr;
