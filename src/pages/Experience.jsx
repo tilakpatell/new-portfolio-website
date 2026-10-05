@@ -10,6 +10,7 @@ import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
 import AwsLogoAnimated from '../components/AwsLogoAnimated';
 import { Chips, Reveal, Saber, useFitTitle, Waypoint } from '../components/ui';
+import '../styles/lazy/experience.css';
 
 const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'));
 import { roles, fmtRange, fmtMonth, monthIndex, nowMonth, roleLink, TRACKS } from '../data/roles';

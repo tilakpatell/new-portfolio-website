@@ -7,6 +7,7 @@ import { BELLOWS, REED_NAMES, computerKeyFor, keyForComputer, keyForMidi } from 
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import './music.css';
+import '../../styles/lazy/music.css';
 
 // A harmonium: a real one's keys (./harmonium.js), labelled in sargam from
 // wherever Sa is, the way a player finds their Sa on a fixed keyboard (or in

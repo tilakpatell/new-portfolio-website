@@ -1,0 +1,84 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.dundie-stage { position: relative; aspect-ratio: 5 / 4; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: radial-gradient(70% 80% at 50% 10%, #2b3149 0%, #10121c 62%, #07080d 100%); box-shadow: var(--shadow-card); }
+.dundie-curtain { position: absolute; top: 0; bottom: 0; width: 17%; background: repeating-linear-gradient(90deg, #5e0b12 0 9px, #8f1420 9px 18px, #6d0d16 18px 26px); box-shadow: inset -12px 0 20px rgba(0, 0, 0, 0.45); }
+.dundie-curtain-l { left: 0; border-bottom-right-radius: 40% 12%; }
+.dundie-curtain-r { right: 0; transform: scaleX(-1); border-bottom-right-radius: 40% 12%; }
+.dundie-spot { position: absolute; left: 50%; top: -10%; width: 70%; height: 110%; translate: -50% 0; background: radial-gradient(ellipse 50% 85% at 50% 0%, rgba(255, 244, 214, 0.32), rgba(255, 244, 214, 0.08) 55%, transparent 72%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.dundie-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(#1b1d29, #0b0c12); border-top: 1px solid rgba(255, 255, 255, 0.07); }
+.dundie-big { position: absolute; left: 50%; bottom: 17%; height: 56%; width: auto; translate: -50% 0; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(255, 214, 120, 0.25)); animation: dundie-pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes dundie-pop { from { transform: translateY(14px) scale(0.86); opacity: 0.4; } }
+.dundie-award { position: absolute; left: 50%; bottom: 3.5%; translate: -50% 0; width: min(88%, 30rem); padding: 0.5rem 0.9rem; border: 1px solid rgba(246, 215, 122, 0.45); border-radius: 6px; background: rgba(10, 10, 14, 0.82); text-align: center; color: #f3ead2; }
+.dundie-award-title { display: block; font: 700 clamp(0.95rem, 0.8rem + 0.6vw, 1.15rem)/1.25 'Courier Prime', var(--font-mono); color: #f6d77a; }
+.dundie-award-desc { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: #d8d0bb; }
+.dundie-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 1.1rem 0.75rem; text-align: center; }
+.dundie-shelf svg { height: 3.25rem; }
+@media (min-width: 640px) { .dundie-shelf { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 1.25rem 1rem; } .dundie-shelf svg { height: 4rem; } }
+.dundie-shelf li { display: flex; flex-direction: column; align-items: center; color: var(--border-strong); }
+.dundie-shelf li:not([data-won]) span { color: var(--muted); font-weight: 400; }
+/* the ones still to find: a compact row of empty trophies */
+.dundie-shelf-empty { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 0.6rem 0.35rem; }
+.dundie-shelf-empty svg { height: 2.1rem; }
+@media (min-width: 640px) { .dundie-shelf-empty { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 0.75rem 0.4rem; } .dundie-shelf-empty svg { height: 2.4rem; } }
+.factcheck { padding: clamp(1.25rem, 1rem + 1vw, 2rem); }
+.factcheck-q { font: 700 clamp(1.25rem, 1rem + 1vw, 1.65rem)/1.35 'Courier Prime', var(--font-mono); color: var(--text); }
+@media (max-width: 639px) { .dundie-stage { aspect-ratio: 1 / 1; } .dundie-big { bottom: 28%; height: 52%; } .dundie-award-desc { font-size: 0.75rem; } }
+@media (prefers-reduced-motion: reduce) { .dundie-big { animation: none; } }
+
+/* Scranton: a paper airplane down the page */
+.paper-flight { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.paper-flight-trail { z-index: 5; }
+.paper-flight-plane { z-index: 30; }
+.paper-trail-window { position: absolute; left: 0; top: 0; width: 100%; overflow: hidden; will-change: transform; }
+.paper-trail-inner { display: block; will-change: transform; }
+.paper-trail-line { fill: none; stroke: color-mix(in srgb, var(--accent) 60%, transparent); stroke-width: 2.4; stroke-dasharray: 1 11; stroke-linecap: round; }
+.paper-plane { position: absolute; left: -44px; top: -25px; display: grid; place-items: center; width: 88px; height: 50px; transform-origin: 44px 25px; filter: drop-shadow(0 10px 10px rgba(15, 20, 30, 0.22)); will-change: transform; }
+.paper-plane-art { width: 88px; height: 50px; overflow: visible; }
+@media (max-width: 639px) { .paper-plane-art { width: 60px; height: 34px; } }
+
+/* Scranton: the office from above */
+.office-plan { position: relative; align-self: start; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); }
+/* smaller on phones; sized inside the box so the flight path's position isn't scaled */
+.of-floor { fill: #ece7da; }
+html[data-mode='dark'] .of-floor { fill: #1c1f26; }
+.of-wall { fill: none; stroke: #6b6f78; stroke-width: 4; stroke-linecap: square; }
+.of-glass { fill: none; stroke: #8fc3ea; stroke-width: 3; stroke-dasharray: 10 4; }
+.of-door { stroke: #c0392b; stroke-width: 5; }
+.of-label { font: 700 9px/1 var(--font-mono); letter-spacing: 1.2px; fill: #7a7f88; }
+.of-desk { fill: #c9a878; stroke: #8a6a3e; stroke-width: 1.5; }
+html[data-mode='dark'] .of-desk { fill: #6d5636; stroke: #a8865a; }
+.office-mark { position: absolute; display: grid; place-items: center; width: 34px; height: 34px; translate: -50% -50%; border: 2px solid var(--surface); border-radius: 999px; background: var(--text); color: var(--bg); font: 700 0.72rem/1 var(--font-sans); box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.45); transition: transform 0.15s ease, background-color 0.15s ease; }
+.office-mark:hover { transform: scale(1.12); }
+.office-mark[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); transform: scale(1.18); }
+.office-mark:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+@media (max-width: 639px) {
+  .office-mark { width: 13px; height: 13px; font-size: 0; border-width: 1.5px; pointer-events: none; }
+  .office-mark[aria-pressed='true'] { width: 20px; height: 20px; transform: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--btn-bg) 30%, transparent); }
+}
+/* on a phone, pick someone by name */
+.office-roll { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.office-roll button { min-height: 2.25rem; padding: 0.3rem 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 0.85rem; font-weight: 600; }
+.office-roll button[aria-pressed='true'] { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+.office-panel { padding: 1.5rem; }
+.office-item { display: block; width: 96px; height: 96px; overflow: visible; }
+.office-item[data-active] .mug-coffee { animation: mug-fill 0.9s ease forwards; transform-box: fill-box; transform-origin: 50% 0; }
+@keyframes mug-fill { from { transform: scaleY(0); } }
+.office-item[data-active] .jello { transform-box: fill-box; transform-origin: 50% 100%; animation: jello 0.9s ease; }
+.office-item[data-active] .chili-pot { transform-box: fill-box; transform-origin: 85% 100%; animation: chili-tip 0.8s cubic-bezier(0.5, 0, 0.5, 1.4) forwards; }
+@keyframes chili-tip { to { transform: rotate(38deg) translate(6px, 4px); } }
+.chili-spill { opacity: 0; transform-box: fill-box; transform-origin: 20% 50%; }
+.office-item[data-active] .chili-spill { animation: chili-spill 0.6s ease 0.5s forwards; }
+.office-item[data-active] .phone-handset { transform-box: fill-box; transform-origin: 50% 100%; animation: handset 0.6s ease; }
+@media (prefers-reduced-motion: reduce) { .office-item * { animation-duration: 0.01s !important; } }
+.office-gif { position: relative; }
+.office-gif-item { position: absolute; right: -6px; bottom: 18px; width: 64px; height: 64px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
+.office-gif-item .office-item { width: 64px; height: 64px; }
+.of-outside { fill: #d9d9d4; }
+html[data-mode='dark'] .of-outside { fill: #121419; }
+.of-floor-alt { fill: #e3ddcd; }
+html[data-mode='dark'] .of-floor-alt { fill: #191b21; }
+.of-lift { fill: #c9c9c4; stroke: #6b6f78; stroke-width: 2; }
+.of-lift-x { stroke: #8a8e96; stroke-width: 1.2; }
+.of-wall-in { stroke-width: 2.5; }
+.of-stair { stroke: #9aa0a8; stroke-width: 1.5; }
+html[data-mode='dark'] .of-lift { fill: #23262d; }

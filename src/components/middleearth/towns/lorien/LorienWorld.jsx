@@ -19,6 +19,7 @@ import { BOW, GIFTS, MIRROR_PULL, RIVER, aimOf, allGiven, eyeOn, eyeSoon, giveGi
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './lorien.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Lothlórien, the sixth town on the road: the golden wood, Caras
 // Galadhon, the Mirror, the gifts, and the river to the Argonath. The

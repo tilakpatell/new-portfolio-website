@@ -7,6 +7,7 @@ import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
 import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
+import '../../../styles/lazy/music.css';
 
 // The music planet: land in a courtyard at dusk and walk about it, first
 // person. The instruments lie on a rug before a sandstone chhatri; walk up to

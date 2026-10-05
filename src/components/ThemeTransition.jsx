@@ -6,6 +6,7 @@ import '@fontsource/cinzel/600.css';
 import AutobotMark from './AutobotMark';
 import DecepticonMark from './DecepticonMark';
 import PortalSwirl from './rickmorty/PortalSwirl';
+import '../styles/lazy/themetransition.css';
 
 // each Transformer wears their faction's insignia
 const AUTOBOTS = new Set(['optimus', 'bumblebee']);

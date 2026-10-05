@@ -3,6 +3,7 @@ import { CHROMATIC, RAGAS, SWARA_NAME, THAATS, TIMES, ragaOf } from './tuning';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import './music.css';
+import '../../styles/lazy/music.css';
 
 // The raga database (./ragas.js), to browse and tune the room to: find one
 // by name, thaat or the time it is sung; see its notes, its way up and down,

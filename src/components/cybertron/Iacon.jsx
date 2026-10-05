@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { local } from '../../lib/hooks';
 import { useAchievements } from '../Achievements';
+import '../../styles/lazy/cybertron.css';
 
 // The Iacon database: entries on the relics the Autobots hid, in Cybertronian.
 // Read each one (the key helps) before the Decepticons decrypt it. What you

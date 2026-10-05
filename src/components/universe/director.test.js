@@ -73,4 +73,14 @@ describe('the director', () => {
     d.soon('council'); // not in Star Wars: ignored
     expect(d.update(0.1, { family: 'starwars' })).toBeNull();
   });
+
+  it('knows the flare, the rift and the leviathans, for every crew, and none of them is trouble', () => {
+    for (const id of ['flare', 'rift', 'leviathan']) {
+      expect(EVENTS[id].families).toEqual(['starwars', 'rickmorty', 'both']);
+      expect(EVENTS[id].heat).toBe(0);
+    }
+    const d = createDirector({ rand: seeded() });
+    d.soon('rift');
+    expect(d.update(0.1, { family: 'rickmorty', calm: true })).toBe('rift');
+  });
 });

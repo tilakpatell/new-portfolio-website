@@ -16,6 +16,7 @@ import { blinkers, consoleMaps, consoleMat, glassMat, glowSprite, plated, platin
 import { hyperspace, planet, sky } from '../space';
 import { loadCrew, nudge, prefetchCrew } from '../crew';
 import { clamp01, smooth } from '../timeline';
+import { loadTexture } from '../../../lib/three/textures';
 
 const EYE = [-0.42, 1.16, 0.3];
 // the canopy: a cone down −z, from its back ring to its front
@@ -545,11 +546,8 @@ export async function build({ rich, coarse, renderer }) {
   const space = sky({ seed: 11, nebula: ['#23356a', '#5b2a5e'], band: [0.6, 1, -0.2] });
   outside.add(space.group);
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
-  const tex = await new THREE.TextureLoader().loadAsync(`/textures/universe/breakingbad${small ? '-sm' : ''}.webp`).catch(() => null);
-  if (tex) {
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
-  }
+  // (decoded off the main thread, and shared with the universe map's planets)
+  const tex = await loadTexture(`/textures/universe/breakingbad${small ? '-sm' : ''}.webp`, { color: true }).catch(() => null);
   const world = planet({ map: tex, radius: 900, sun: [-0.7, 0.45, 0.55], atmosphere: '#ffd9a0', strength: 1.1, tint: 0xf3dcc0 });
   world.group.position.set(820, -820, -1900);
   world.body.rotation.set(0.3, 2.2, 0.15);

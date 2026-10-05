@@ -3,6 +3,7 @@ import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
 import { audioContext } from '../../lib/audio';
 import './office.css';
+import '../../styles/lazy/office.css';
 
 // Dwight checks the facts: half about me, half about the branch, eight a
 // round, shuffled. F says fact, X says false, Enter moves on. Dwight's

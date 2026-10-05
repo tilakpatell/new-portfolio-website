@@ -9,7 +9,8 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
-import Hyperspace from './components/Hyperspace';
+// fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
+import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
 import { introPlaying } from './lib/stale';
 import WorldGate from './components/worlds/WorldGate';
@@ -35,8 +36,10 @@ const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
+const Changes = lazy(() => import('./pages/Changes'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const Hyperspace = lazy(() => import('./components/Hyperspace'));
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -87,7 +90,11 @@ function Lightspeed() {
     };
   }, [unlock]);
   if (!on) return null;
-  return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
+  return (
+    <Suspense fallback={null}>
+      <Hyperspace key={on} sound onDone={() => setOn(0)} />
+    </Suspense>
+  );
 }
 
 // A first visit to the site opens on a welcome (what the site is, what the
@@ -274,6 +281,7 @@ function Shell() {
       import('./pages/Resume');
       import('./pages/Contact');
       import('./pages/Travel');
+      import('./components/Hyperspace');
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
@@ -317,6 +325,7 @@ function Shell() {
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
+                <Route path="/changes" element={<Changes />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </WorldGate>
