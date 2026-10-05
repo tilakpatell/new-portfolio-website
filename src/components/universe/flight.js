@@ -140,3 +140,11 @@ export function crashPlan(universe, { reduced }) {
   if (!universe) return null;
   return { mode: 'crash', delay: reduced ? 0 : 700 };
 }
+
+// Falling into the black hole: the fall plays, the screen goes black with
+// where you're going written on it while the crew have their say, and then
+// you're through, out of the site and into what's on the hole's far side (a
+// friend's universe, deep.js's `beyond`). Straight there with reduced motion.
+export function beyondPlan({ reduced }) {
+  return { mode: 'beyond', delay: reduced ? 0 : 4600 };
+}
