@@ -1,22 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { CONTROLS, DEFAULTS, STICK, keyClimb, readControls, stickInput } from './controls';
+import { CONTROLS, DEFAULTS, STICK, keyAxes, readControls, stickInput } from './controls';
 
 describe('the flying settings', () => {
   it('start as they come, and come back that way from anything unreadable', () => {
     expect(readControls(null)).toEqual(DEFAULTS);
     expect(readControls('nonsense')).toEqual(DEFAULTS);
-    expect(readControls({ turn: 'fast', invert: 'yes', dragUp: 'sideways' })).toEqual(DEFAULTS);
+    expect(readControls({ turn: 'fast', invert: 'yes', dragUp: 'sideways', ad: 'strafe' })).toEqual(DEFAULTS);
   });
 
   it('keep what was set, inside each slider’s range', () => {
-    const c = readControls({ turn: 1.4, pitch: 99, drag: -3, assist: 0, camera: 1.2, invert: true, dragUp: 'speed' });
+    const c = readControls({ turn: 1.4, pitch: 99, roll: 1.5, level: 0, drag: -3, assist: 0, camera: 1.2, invert: true, dragUp: 'speed', ad: 'turn' });
     expect(c.turn).toBe(1.4);
     expect(c.pitch).toBe(CONTROLS.pitch.max);
     expect(c.drag).toBe(CONTROLS.drag.min);
-    expect(c.assist).toBe(0); // (aim assist can be off altogether)
+    expect(c.roll).toBe(1.5);
+    expect(c.level).toBe(0); // (self-levelling can be off altogether)
+    expect(c.assist).toBe(0); // (and aim assist)
     expect(c.camera).toBe(1.2);
     expect(c.invert).toBe(true);
     expect(c.dragUp).toBe('speed');
+    expect(c.ad).toBe('turn');
   });
 
   it('has every default inside its own range', () => {
@@ -55,20 +58,28 @@ describe('dragging to fly', () => {
   });
 });
 
-describe('the keys for up and down', () => {
-  it('climb with R or the up arrow, dive with C or the down arrow', () => {
-    expect(keyClimb({ climb: true }, DEFAULTS)).toBe(1);
-    expect(keyClimb({ pitchUp: true }, DEFAULTS)).toBe(1);
-    expect(keyClimb({ dive: true }, DEFAULTS)).toBe(-1);
-    expect(keyClimb({ pitchDown: true }, DEFAULTS)).toBe(-1);
-    expect(keyClimb({ climb: true, pitchUp: true }, DEFAULTS)).toBe(1);
-    expect(keyClimb({}, DEFAULTS)).toBe(0);
+describe('the keys', () => {
+  it('are Battlefront’s as they come: W and S the throttle, A and D the roll, the arrows the nose', () => {
+    expect(keyAxes({ up: true }, DEFAULTS)).toEqual({ throttle: 1, turn: 0, climb: 0, roll: 0 });
+    expect(keyAxes({ down: true }, DEFAULTS).throttle).toBe(-1);
+    expect(keyAxes({ d: true }, DEFAULTS)).toEqual({ throttle: 0, turn: 0, climb: 0, roll: 1 });
+    expect(keyAxes({ a: true }, DEFAULTS).roll).toBe(-1);
+    expect(keyAxes({ right: true }, DEFAULTS).turn).toBe(1);
+    expect(keyAxes({ left: true }, DEFAULTS).turn).toBe(-1);
+    expect(keyAxes({ pitchUp: true }, DEFAULTS).climb).toBe(1);
+    expect(keyAxes({ pitchDown: true }, DEFAULTS).climb).toBe(-1);
+    expect(keyAxes({}, DEFAULTS)).toEqual({ throttle: 0, turn: 0, climb: 0, roll: 0 });
   });
 
-  it('turn the arrows over when inverted, and leave R and C as they say', () => {
+  it('turn with A and D instead, if the settings say', () => {
+    const c = { ...DEFAULTS, ad: 'turn' };
+    expect(keyAxes({ d: true }, c)).toEqual({ throttle: 0, turn: 1, climb: 0, roll: 0 });
+    expect(keyAxes({ a: true, left: true }, c).turn).toBe(-1);
+  });
+
+  it('turn the nose over when inverted', () => {
     const inv = { ...DEFAULTS, invert: true };
-    expect(keyClimb({ pitchUp: true }, inv)).toBe(-1);
-    expect(keyClimb({ pitchDown: true }, inv)).toBe(1);
-    expect(keyClimb({ climb: true }, inv)).toBe(1);
+    expect(keyAxes({ pitchUp: true }, inv).climb).toBe(-1);
+    expect(keyAxes({ pitchDown: true }, inv).climb).toBe(1);
   });
 });

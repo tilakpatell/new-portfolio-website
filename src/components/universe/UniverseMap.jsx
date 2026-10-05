@@ -17,7 +17,7 @@ import MiniMap from './MiniMap';
 // at and, for the tough ones, what they have left, arrows at the edge for
 // the ones coming at you that you can't see, and the way to wherever you're
 // going; the scene places them), Boost, Fire (held, it keeps firing), View
-// (the cockpit or behind the ship) and climb and dive buttons on touch
+// (the cockpit or behind the ship) and nose-up and nose-down buttons on touch
 // screens, the flight settings (FlightSettings.jsx, kept between visits)
 // and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
@@ -192,8 +192,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 </span>
               </div>
               <div className="universe-climbs">
-                {climbButton(1, 'Climb')}
-                {climbButton(-1, 'Dive')}
+                {climbButton(1, 'Nose up')}
+                {climbButton(-1, 'Nose down')}
               </div>
               <button type="button" className="universe-view" onPointerDown={(e) => (e.preventDefault(), view.current?.seat?.())} onContextMenu={(e) => e.preventDefault()}>
                 View
@@ -225,9 +225,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> turn, <kbd>↑</kbd> <kbd>↓</kbd> nose up and down, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>O</kbd> settings
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to climb and dive, hold Boost to go fast and Fire to shoot, View for the cockpit</span>
+                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit</span>
                 </p>
               )}
             </>
