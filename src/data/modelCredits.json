@@ -487,5 +487,27 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-jedihut": {
+    "title": "Refectory, Skellig Michael, Co Kerry, Ireland",
+    "author": "amasinton",
+    "authorUrl": "https://sketchfab.com/amasinton",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/refectory-skellig-michael-co-kerry-ireland-3babf7e7bd1d4835aac1e118f1f2506b",
+    "where": "galaxy",
+    "as": "the Jedi village huts",
+    "file": "/models/galaxy/surface/jedihut.glb"
+  },
+  "surface-porg": {
+    "title": "Porg",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/porg-df73eb95169b4f3882bcde58dec58ae7",
+    "where": "galaxy",
+    "as": "the porgs",
+    "file": "/models/galaxy/surface/porg.glb"
   }
 }
