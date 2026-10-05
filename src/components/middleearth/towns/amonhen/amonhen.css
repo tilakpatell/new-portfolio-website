@@ -1,0 +1,28 @@
+/* Amon Hen: the Shire's HUD (../../shire/shire.css) in the late gold of
+   the woods, grey when the Ring is on, with the panels for the Ring, the
+   Seat, the Uruk-hai and Sam in the water. */
+
+.amonhen-world { --shire-glass: rgba(18, 22, 16, 0.76); --shire-glass-hi: rgba(20, 24, 18, 0.92); }
+.amonhen-stage { background: linear-gradient(180deg, #7a9ab8 0%, #e8d8a8 56%, #4a5a2a 60%, #1e2414 100%); }
+.amonhen-stage[data-ring] { background: linear-gradient(180deg, #3a3a40 0%, #8a8a88 56%, #3a3a36 60%, #141414 100%); }
+.amonhen-stage .shire-loading { color: #2a2a14; }
+.amonhen-stage[data-mode='talk'] .shire-canvas, .amonhen-stage[data-mode='seat'] .shire-canvas, .amonhen-stage[data-mode='rescue'] .shire-canvas, .amonhen-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+/* a game's panel, up top in the middle */
+.amonhen-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.amonhen-stage .shire-hud-top ~ .amonhen-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
+.amonhen-game .shire-meter { width: 100%; box-sizing: border-box; }
+.amonhen-game[data-gaze], .amonhen-game[data-hunted] { border-color: rgba(255, 90, 30, 0.8); animation: shire-tempt 0.45s ease-in-out infinite alternate; }
+.amonhen-game[data-up] { border-color: rgba(140, 200, 255, 0.7); }
+.amonhen-big { min-width: 7.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.amonhen-meter-eye span { background: linear-gradient(90deg, #d8d0b0, #ff8a2a 60%, #ff3010); }
+.amonhen-meter-off span { background: linear-gradient(90deg, #f0c040, #fff2c8); }
+.amonhen-meter-near span { background: linear-gradient(90deg, #4a7a9a, #c8e4f8); }
+
+.amonhen-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .amonhen-stage[data-game] .shire-hud-top { display: none; }
+  .amonhen-game, .amonhen-stage .shire-hud-top ~ .amonhen-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .amonhen-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}
