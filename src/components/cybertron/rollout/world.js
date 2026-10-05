@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { canvasTexture } from '../../../lib/stage3d';
+import { antiTile } from '../../../lib/three/surface';
 import { paintChasm, paintConcrete, paintDeck, paintFacade, paintLanes, paintPavement, paintRoad, paintSand, paintSign, paintStrata, ROAD_TILE } from './paint';
 import { ROLL } from './rules';
 import { createLand, cutFace, cutWiden, CUT_PAD } from './terrain';
@@ -528,6 +529,9 @@ export async function buildWorld(id, renderer, { big = true, M, shared, lib, mod
       groundMat = new THREE.MeshStandardMaterial({ map: T(groundP.color, { repeat: [GW / GT, GL / GT] }), normalMap: T(groundP.normal, { repeat: [GW / GT, GL / GT], srgb: false }), roughnessMap: T(groundP.rough, { repeat: [GW / GT, GL / GT], srgb: false }), roughness: 1 });
     }
     holes(groundMat, `ground-${id}`);
+    // (the scan repeats every 2 m over 500: a turned second copy, blended in
+    // by a slow noise, keeps the repeat from showing; lib/three/surface)
+    antiTile(groundMat, { frequency: 0.05 });
     ground = new THREE.Mesh(new THREE.PlaneGeometry(GW, GL), groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.03;

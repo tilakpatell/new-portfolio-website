@@ -1,0 +1,130 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.reactor-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #04070c; box-shadow: var(--shadow-card); }
+.ar-text { font: 600 9.5px/1 var(--font-mono); letter-spacing: 1px; fill: #9fe7ff; }
+.ar-dim { fill: #5f8ea3; }
+.ar-ring { transform-box: view-box; transform-origin: 50% 50%; }
+.ar-ring-a { animation: ar-spin 24s linear infinite; }
+.ar-ring-b { animation: ar-spin 36s linear infinite reverse; }
+@keyframes ar-spin { to { transform: rotate(360deg); } }
+.ar-core { transition: opacity 0.6s ease, filter 0.6s ease; opacity: 0.35; }
+.ar-halo { opacity: 0; transition: opacity 0.6s ease; }
+.reactor[data-power='1'] .ar-core { opacity: 0.9; }
+.reactor[data-power='1'] .ar-halo { opacity: 0.35; }
+.reactor[data-power='2'] .ar-core { opacity: 1; }
+.reactor[data-power='2'] .ar-halo { opacity: 0.65; }
+.reactor[data-power='3'] .ar-core { opacity: 1; animation: ar-throb 0.5s ease-in-out infinite alternate; }
+.reactor[data-power='3'] .ar-halo { opacity: 1; }
+@keyframes ar-throb { to { filter: brightness(1.35); } }
+.ar-blast { transform-box: fill-box; transform-origin: 50% 50%; animation: ar-blast 0.7s ease-out forwards; }
+.mjolnir-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.mj-hammer { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.mjolnir-stage[data-state='straining'] .mj-hammer { animation: mj-strain 0.09s linear infinite alternate; }
+@keyframes mj-strain { from { transform: rotate(-0.8deg); } to { transform: rotate(0.8deg) translateY(-1px); } }
+.mjolnir-stage[data-state='lifted'] .mj-hammer { transform: translateY(-150px) rotate(-8deg); }
+.mj-bolt { opacity: 0; }
+.mjolnir-stage[data-state='lifted'] .mj-bolt { animation: mj-bolt 1.2s ease-out; }
+.gauntlet-stage { aspect-ratio: 4 / 3; height: auto; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.stone-list { display: grid; gap: 0.2rem; }
+.stone-list li { display: block; }
+.stone-pick { display: flex; gap: 0.75rem; align-items: flex-start; width: calc(100% + 1.2rem); margin: 0 -0.6rem; padding: 0.45rem 0.6rem; border: 1px solid transparent; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; }
+.stone-pick:hover { border-color: color-mix(in srgb, var(--glow) 45%, transparent); background: color-mix(in srgb, var(--glow) 8%, transparent); }
+.stone-pick:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.stone-pick[aria-pressed='true'] { border-color: color-mix(in srgb, var(--glow) 55%, transparent); background: color-mix(in srgb, var(--glow) 12%, transparent); }
+.stone-pick-state { margin-left: auto; align-self: center; padding: 0.15rem 0.5rem; border: 1px solid color-mix(in srgb, var(--glow) 50%, transparent); border-radius: 999px; font: 600 0.68rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; color: var(--glow); }
+.stone-pick[aria-pressed='true'] .stone-pick-state { background: var(--glow); color: #0b0812; }
+.stone-list .stone-dot { opacity: 0.4; transition: opacity 0.3s ease, box-shadow 0.3s ease; }
+.stone-list li[data-on] .stone-dot { opacity: 1; }
+.stone-dot { width: 12px; height: 12px; margin-top: 0.35rem; flex: none; border-radius: 999px; background: var(--glow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow) 25%, transparent); }
+.stone-list li[data-on] .stone-dot { box-shadow: 0 0 10px var(--glow), 0 0 0 3px color-mix(in srgb, var(--glow) 35%, transparent); }
+@media (prefers-reduced-motion: reduce) { .ar-ring-a, .ar-ring-b, .reactor[data-power='3'] .ar-core, .mjolnir-stage[data-state='straining'] .mj-hammer { animation: none; } }
+
+/* Avengers HQ: the buildings' toys, for a browser without 3D */
+.floor-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.range-arrow { animation: arrow-in 0.18s ease-out; }
+@keyframes arrow-in { from { transform: translate(-60px, 26px); opacity: 0; } }
+.dossier { padding: 1.5rem; border: 1px solid #c9b88f; border-radius: 4px; background: #f4ecd8; color: #2b2418; box-shadow: var(--shadow-card); font-family: 'Courier Prime', var(--font-mono); }
+.dossier-head { font-weight: 700; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #8a1c1c; }
+.dossier-label { font-weight: 700; font-size: 0.85rem; color: #5a4c33; }
+.dossier dd { font-size: 0.95rem; line-height: 1.5; }
+.redacted { display: inline; padding: 0 0.15rem; border-radius: 1px; background: #15120c; color: transparent; font: inherit; cursor: pointer; transition: background-color 0.35s ease, color 0.35s ease; }
+.redacted[data-open] { background: #f7e07a; color: #2b2418; cursor: default; }
+.redacted:focus-visible { outline: 2px solid #8a1c1c; outline-offset: 2px; }
+.hulk-stage { position: relative; display: grid; place-items: center; min-height: 220px; padding: 2rem; background: radial-gradient(80% 90% at 50% 30%, #1d2a22, #0b100d); transition: background 0.3s ease; }
+.hulk-stage[data-hulk] { background: radial-gradient(80% 90% at 50% 40%, #3d8b2f, #0f2a0d); animation: hulk-shake 0.5s ease 3; }
+.hulk-meter { position: absolute; top: 1rem; left: 1rem; display: flex; gap: 6px; }
+.hulk-meter span { width: 28px; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); }
+.hulk-meter span[data-on] { background: #6fdc4f; box-shadow: 0 0 8px #6fdc4f; }
+.hulk-text { font: 700 clamp(1.3rem, 1rem + 1.6vw, 2.2rem)/1.2 var(--font-sans); color: #e8f5e2; text-align: center; }
+.hulk-stage[data-hulk] .hulk-text { font-size: clamp(2.4rem, 1.6rem + 3vw, 4rem); letter-spacing: 0.04em; color: #d6ffc4; text-shadow: 0 0 20px rgba(111, 220, 79, 0.6); }
+.roof-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.roof-portal { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+.roof-stage[data-portal] .roof-portal { animation: portal-open 1.3s ease-in forwards; }
+@keyframes portal-open { from { opacity: 0.2; transform: scale(0.2) rotate(0deg); } to { opacity: 1; transform: scale(6) rotate(180deg); } }
+.portal-flash { position: fixed; inset: 0; z-index: 70; pointer-events: none; background: radial-gradient(circle at 50% 40%, rgba(214, 243, 255, 0.95), rgba(79, 184, 255, 0.75) 30%, rgba(10, 16, 40, 0.95) 70%); animation: portal-flash 2.6s ease forwards; }
+.space-scope { background: radial-gradient(70% 60% at 30% 30%, rgba(108, 47, 160, 0.4), transparent 70%), radial-gradient(60% 60% at 80% 80%, rgba(40, 60, 140, 0.35), transparent 70%), #05040b; color: #e9e6f5; --text: #ffffff; --text-body: #dcd8ec; --muted: #a9a3c4; --surface: #13111e; --border: #2c2742; --border-strong: #4c4568; --btn-bg: #8e2de2; --btn-ink: #ffffff; --accent-text: #c79bff; }
+.space-scope[data-arrived] .gauntlet-stage { animation: arrive 1s ease both; }
+@media (prefers-reduced-motion: reduce) { .portal-flash { animation-duration: 0.4s; } }
+.hq-sky { display: none; }
+.hq-page { isolation: isolate; }
+:root[data-world='avengers'][data-theme='stark'] .hq-sky { display: block; position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.hq-sky-glow {
+  position: absolute; inset: 0 0 auto; height: min(1600px, 100%);
+  background:
+    radial-gradient(55% 45% at 70% 0%, rgba(64, 132, 230, 0.3), transparent 72%),
+    radial-gradient(38% 30% at 10% 14%, rgba(200, 22, 29, 0.13), transparent 72%),
+    radial-gradient(60% 38% at 40% 55%, rgba(127, 220, 255, 0.05), transparent 72%);
+}
+.hq-sky-grid {
+  position: absolute; inset: 0 0 auto; height: min(1400px, 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0L28 8V24L14 32L0 24V8ZM14 32V48' fill='none' stroke='%237fdcff' stroke-opacity='.2' stroke-width='.8'/%3E%3C/svg%3E") 0 0 / 35px 60px;
+  -webkit-mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+  mask-image: radial-gradient(90% 70% at 62% 0%, #000 0%, rgba(0, 0, 0, 0.35) 45%, transparent 80%);
+}
+.hq-sky-stars { position: absolute; inset: 0; opacity: 0.32; }
+
+.hq-hud { position: relative; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::before,
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game, .hq-map)::after {
+  content: ''; position: absolute; z-index: 3; width: 24px; height: 24px; border: 0 solid var(--hud); opacity: 0.7; pointer-events: none;
+}
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::before,
+:root[data-world='avengers'][data-theme='stark'] .hq-hud .hq-map::after { content: none; }
+:root[data-world='avengers'][data-theme='stark'] :is(.hq-hud, .hq-game)::before { top: -8px; left: -8px; border-width: 2px 0 0 2px; }
+:root[data-world='avengers'][data-theme='stark'] .hq-hud::after { bottom: -8px; right: -8px; border-width: 0 2px 2px 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game::after { top: -8px; right: -8px; border-width: 2px 2px 0 0; }
+:root[data-world='avengers'][data-theme='stark'] .hq-game { position: relative; }
+:root[data-world='avengers'][data-theme='stark'] .hq-page .eyebrow { color: var(--hud); }
+:root[data-world='avengers'][data-theme='stark'] .hq-steel { filter: drop-shadow(0 4px 24px rgba(64, 132, 230, 0.28)); }
+/* Titan's space fades in and out of the night instead of starting at an edge */
+:root[data-world='avengers'][data-theme='stark'] .space-scope {
+  background: linear-gradient(var(--bg), transparent 140px, transparent calc(100% - 140px), var(--bg)), radial-gradient(70% 60% at 30% 30%, rgba(108, 47, 160, 0.4), transparent 70%), radial-gradient(60% 60% at 80% 80%, rgba(40, 60, 140, 0.35), transparent 70%), #05040b;
+}
+.hq-map { position: relative; aspect-ratio: 720 / 480; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #2c4a2b; box-shadow: var(--shadow-card); }
+.hq-base, .hq-live { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.hq-live { pointer-events: none; }
+.hq-live .hq-pin[data-pick] { pointer-events: auto; cursor: pointer; }
+.hq-pin { transform: translate(var(--px), var(--py)) scale(var(--ps, 1.3)); }
+.hq-map[data-compact] { --ps: 2.4; }
+@media (max-width: 639px) { .hq-hero-map { --ps: 2; } }
+.hq-pin-body { fill: #ffffff; stroke: #1c2430; stroke-width: 1.2; transition: fill 0.2s ease; }
+.hq-pin-num { font: 700 8.5px/1 var(--font-mono); fill: #1c2430; }
+.hq-pin[data-pick]:hover .hq-pin-body { fill: #ffe7a3; }
+.hq-pin[data-on] .hq-pin-body { fill: var(--btn-bg); stroke: #ffffff; }
+.hq-pin[data-on] .hq-pin-num { fill: var(--btn-ink); }
+.hq-pin-stone { fill: none; stroke: var(--glow); stroke-width: 2.6; filter: drop-shadow(0 0 3px var(--glow)); }
+.hq-pin-pulse { fill: none; stroke: var(--btn-bg); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: hq-pulse 1.6s ease-out infinite; }
+@keyframes hq-pulse { from { transform: scale(0.8); opacity: 0.9; } to { transform: scale(2.3); opacity: 0; } }
+.hq-fly { opacity: 0; animation: hq-fly 20s linear infinite; }
+.hq-shimmer { animation: hq-shimmer 7s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .hq-fly, .hq-shimmer, .hq-pin-pulse { animation: none; } }
+
+/* Titan in 3D, in the gauntlet's panel */
+.titan-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.titan-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; }
+.titan-canvas[data-on] { opacity: 1; }
+.titan-sockets { position: absolute; inset: 0; pointer-events: none; }
+.titan-socket { pointer-events: auto; }
+
+/* Still in styles/extras.css too; repeated here because this file loads after it */
+@media (prefers-reduced-motion: reduce) { .tesseract, .hulk-stage[data-hulk] { animation: none; } }

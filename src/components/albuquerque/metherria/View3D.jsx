@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFrameLoop } from '../../../lib/hooks';
+import '../../../styles/lazy/albuquerque.css';
 
 // The 3D room, as a canvas that fills its box. Three.js and the scene load
 // only when this mounts; it draws `live` every frame while `active`, and

@@ -6,6 +6,7 @@ import { local, useFrameLoop } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { WALK, newWalk, spotOf, stepWalk } from './walk';
 import Scene3D from './Scene3D';
+import '../../styles/lazy/middleearth.css';
 
 const sfx = () => import('../../lib/sfx');
 const BEST = 'tp-gorgoroth-best';

@@ -24,6 +24,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { sharpenMaterial } from '../../lib/three/textures';
 import { tiled } from './kit';
 import { createLivery } from './livery';
 import { buildModules } from './modules';
@@ -327,7 +328,7 @@ export function buildShip(kind, T = {}, { build = null } = {}) {
           if ('metalness' in m && !m.userData.finished) m.metalness = 0.22; // (unless it has its own finish)
           if ('roughness' in m && !m.userData.finished) m.roughness = Math.min(Math.max(m.roughness ?? 1, 0.42), 0.68);
           if ('envMapIntensity' in m) m.envMapIntensity = 0.9;
-          for (const tex of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap]) if (tex) tex.anisotropy = 8;
+          sharpenMaterial(m);
           if (m.emissive && (m.emissiveMap || LIGHTS[kind]?.test(m.name)) && !lights.includes(m)) lights.push(m);
         }
       });

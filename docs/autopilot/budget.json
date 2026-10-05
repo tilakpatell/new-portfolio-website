@@ -1,0 +1,5 @@
+{
+  "paused": false,
+  "runsPerDay": 6,
+  "stopAtUtilization": 0.8
+}

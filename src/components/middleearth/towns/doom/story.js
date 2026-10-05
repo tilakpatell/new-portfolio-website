@@ -130,4 +130,30 @@ export const CONVOS = {
   },
 };
 
+// ── on the side ──
+// Do you remember the Shire? At the foot of the mountain, Sam tells Frodo
+// the Shire, and Frodo says it back. Nothing the story needs, open once
+// you're across Gorgoroth. Its own record is kept apart from the story's
+// (../side.js), and its star is an achievement of its own, not one of the
+// chapter's seals.
+export const SIDE = {
+  id: 'remember',
+  name: 'Do you remember the Shire?',
+  where: 'The foot of Mount Doom',
+  blurb: 'Sam tells Frodo the Shire, a thing at a time. Say them back in his order, up to six.',
+  locked: 'Once you’re across Gorgoroth.',
+  needs: 'gorgoroth',
+  seal: 'remembertheshire',
+};
+// what's said, as { who, say }
+export const REMEMBER_SAYS = {
+  start: { who: 'sam', say: '“Do you remember the Shire, Mr. Frodo? Listen. I’ll tell it you, a bit at a time, and you say it back to me.”' },
+  ask: (n) => ({ who: 'sam', say: n === 2 ? '“Now you. What did I say first?”' : `“Now you. All ${n} of them, in order.”` }),
+  right: { who: 'frodo', say: '“…Yes.”' },
+  round: (n) => ({ who: 'frodo', say: ['', '', '“I can almost see it.”', '“I remember that.”', '“There was a smell of it, Sam. Of the Shire.”', '“Go on. Tell me more.”'][Math.min(5, n)] || '“Go on.”' }),
+  wrong: { who: 'frodo', say: '“I can’t, Sam. It’s gone. There’s nothing.” Sam takes his hand. “Then I’ll tell you again.”' },
+  won: (slips) => ({ who: 'frodo', say: slips === 0 ? '“I can see it, Sam. All of it. The Shire.” Sam: “Then let us be rid of it, once and for all.”' : '“I can see it, Sam. The Shire.” Sam: “Then let us be rid of it, once and for all.”' }),
+  best: (slips) => (slips === 0 ? 'Your best: all six, without a slip.' : `Your best: all six, with ${slips} ${slips === 1 ? 'slip' : 'slips'}.`),
+};
+
 export const SPEAKERS = { sam: 'Samwise Gamgee', frodo: 'Frodo', orc: 'An orc', narrator: '' };

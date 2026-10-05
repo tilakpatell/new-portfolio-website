@@ -465,6 +465,16 @@
   will-change: transform;
 }
 .universe-hud > span[data-on] { opacity: 1; }
+/* scrambled: a flare's shockwave through the ship (a jitter, and a flicker) */
+.universe-hud[data-static] > span[data-on] { animation: universe-static 90ms steps(2) infinite; }
+@keyframes universe-static {
+  0% { opacity: 1; margin-left: 0; }
+  50% { opacity: 0.35; margin-left: 3px; }
+  100% { opacity: 0.8; margin-left: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-hud[data-static] > span[data-on] { animation: none; opacity: 0.6; }
+}
 .universe-reticle {
   width: 24px;
   height: 24px;

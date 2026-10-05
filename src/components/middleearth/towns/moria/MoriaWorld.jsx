@@ -18,6 +18,7 @@ import { FLY, PLANK, SIDE, TROLL, WATCHER, grab, newDash, newFlight, newPlank, n
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './moria.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Moria, the fifth town on the road: the Doors of Durin by moonlight, the
 // long dark, Balin's tomb, the cave troll, and the Bridge of Khazad-dûm.

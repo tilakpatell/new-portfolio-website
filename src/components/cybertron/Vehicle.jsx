@@ -1,3 +1,4 @@
+import '../../styles/lazy/cybertron.css';
 // Team Prime, Knock Out, Breakdown and the Vehicons in vehicle mode, side on and
 // facing right, in their Prime colors. Every drawing is 40 high; the bridge's
 // `WIDTH` gives each one's width.

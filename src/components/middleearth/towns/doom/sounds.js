@@ -213,3 +213,27 @@ export function done() {
   const t = ac.currentTime + 0.05;
   [262, 330, 392, 523].forEach((f, i) => tone(ac, out, t + i * 0.25, { f, gain: 0.04, attack: 0.6, length: 4 }));
 }
+
+// ── do you remember the Shire? ──
+// a thing of the Shire remembered: its own note, low and gentle (a tune
+// in the old Shire way), with a little of the thing itself in it
+const SHIRE_NOTES = [294, 330, 370, 440, 494, 587, 659, 740];
+export function memory(i = 0, k = 1) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  const f = SHIRE_NOTES[i % SHIRE_NOTES.length];
+  tone(ac, out, t, { type: 'triangle', f, gain: 0.07 * k, attack: 0.03, length: 1.1 });
+  tone(ac, out, t + 0.02, { f: f * 2, gain: 0.02 * k, attack: 0.05, length: 0.8 });
+  // water, birds, wind in the barley…
+  if (i === 1) for (let j = 0; j < 3; j++) tone(ac, out, t + 0.15 + j * 0.11, { f: 2400 + j * 300, to: 2900 + j * 200, gain: 0.015 * k, attack: 0.005, length: 0.07 });
+  else if (i === 4) hiss(ac, out, t, { type: 'bandpass', f: 900, q: 0.6, gain: 0.05 * k, attack: 0.2, length: 1, sweep: 1400 });
+  else if (i === 2 || i === 5) hiss(ac, out, t, { type: 'highpass', f: 3000, gain: 0.03 * k, attack: 0.3, length: 0.9 });
+}
+// a slip: a low falling note
+export function forget() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  tone(ac, out, t, { type: 'triangle', f: 196, to: 147, gain: 0.07, attack: 0.02, length: 0.9 });
+}

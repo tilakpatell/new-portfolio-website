@@ -60,6 +60,7 @@ import {
 } from './rules';
 import { SWATCH } from './fx';
 import './shire.css';
+import '../../../styles/lazy/middleearth.css';
 
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the

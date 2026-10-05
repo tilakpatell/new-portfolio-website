@@ -4,6 +4,7 @@ import { CODE_ALPHABET, fibonacciPoint } from '../../data/globe-lattice';
 import { HOME, PLACES } from '../../data/places';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
+import '../../styles/lazy/travel.css';
 
 // A dotted globe on a plain 2D canvas: no WebGL, so it runs the same with
 // hardware acceleration off. Land is the Fibonacci lattice from

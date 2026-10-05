@@ -14,6 +14,7 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { CITY, COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
 import { carSound } from './sounds';
 import './world.css';
+import '../../../styles/lazy/albuquerque.css';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
