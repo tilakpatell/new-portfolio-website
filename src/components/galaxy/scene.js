@@ -229,6 +229,7 @@ export async function create(canvas, ctx) {
     nextHunt: 35 + Math.random() * 25, // seconds of flying till they come
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
+    courseSaid: false,
     loadout: readLoadout(ctx.loadout ?? STOCK_LOADOUT), // what's fitted in the hangar
     stats: statsOf(null, STOCK_LOADOUT), // and what it does to how it flies
     lock: null,
@@ -816,7 +817,13 @@ export async function create(canvas, ctx) {
     const was = state.aim?.id ?? null;
     state.aim = ship && state.sys ? starAhead(state.sys, nose(ship), { keep: was }) : null;
     const id = state.aim?.id ?? null;
-    if (id !== was) emit({ type: 'aim', id });
+    if (id === was) return;
+    emit({ type: 'aim', id });
+    // (the first time, the crew say what it means)
+    if (id && !state.courseSaid) {
+      state.courseSaid = true;
+      emit({ type: 'event', id: 'course' });
+    }
   };
   let pendingSystem = null; // the system the URL asks for, if a jump to it is waiting
   const jumpDir = new THREE.Vector3();

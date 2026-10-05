@@ -5,7 +5,7 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'tractor', 'boarded', 'ion', 'superlaser', 'starkiller-charge', 'starkiller-fire', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'starkiller-charge', 'starkiller-fire', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
 const HUNTED = ['separatists', 'firstorder', 'sith'];
 const KILLS = ['vulture', 'trifighter', 'tiefo'];
 const sorted = (a) => [...a].sort();

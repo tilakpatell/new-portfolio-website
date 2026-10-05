@@ -9,7 +9,8 @@
 // hyperspace there: Luke and Han have history with half of them (and Artoo,
 // whose memory was never wiped, with more than Luke knows), Rick and Morty
 // are tourists from another universe, and Walt and Jesse are a long way from
-// Albuquerque. `events` are the jump between systems and the moments the
+// Albuquerque. `events` are the jump between systems (and `course`, the
+// first time the nose comes onto another system's star), and the moments the
 // systems play out (the Death Star's tractor beam and its hangar at
 // Alderaan, Hoth's ion cannon and the transports getting away, the
 // superlaser over Scarif and its shield, Starkiller Base drinking its sun,
@@ -107,6 +108,10 @@ export const GALAXY_LINES = {
       jump: [
         ['morty', 'Rick, why are the stars all stretchy?'],
         ['rick', 'Hyperspace, Morty. It’s a portal for people with time to kill.'],
+      ],
+      course: [
+        ['morty', 'Rick, that star’s got a name on it!'],
+        ['rick', 'They all do, Morty. Every one’s a system. Nose on it, punch the hyperdrive, we’re there.'],
       ],
       tractor: [
         ['morty', 'Rick, the controls aren’t working! It’s pulling us in!'],
@@ -275,6 +280,10 @@ export const GALAXY_LINES = {
         ['luke', 'Coordinates set. Hang on, Artoo!'],
         ['r2', '[a whoop as the stars stretch into lines]'],
       ],
+      course: [
+        ['luke', 'Artoo, that star. Can you plot a course?'],
+        ['r2', '[a quick run of beeps: course plotted, say the word]'],
+      ],
       tractor: [
         ['luke', 'Why are we still moving towards it?'],
         ['r2', '[a frantic warble: tractor beam]'],
@@ -442,6 +451,10 @@ export const GALAXY_LINES = {
       jump: [
         ['chewie', '[a hopeful whine: will the hyperdrive work this time?]'],
         ['han', 'It’ll work. Punch it!'],
+      ],
+      course: [
+        ['han', 'Every star out there’s somewhere, pal. Point her nose at one and we punch it.'],
+        ['chewie', '[an impatient roar: then punch it]'],
       ],
       tractor: [
         ['han', 'We’re caught in a tractor beam! It’s pulling us in!'],
@@ -612,6 +625,10 @@ export const GALAXY_LINES = {
       jump: [
         ['walt', 'Pull the lever, Jesse.'],
         ['jesse', 'Yo, the stars went all stretchy! The RV’s doing lightspeed!'],
+      ],
+      course: [
+        ['jesse', 'Yo, Mr. White, that star’s got a name. They all got names!'],
+        ['walt', 'Every one is a system, Jesse. We point at one, and we jump.'],
       ],
       tractor: [
         ['jesse', 'Mr. White, the wheel’s not doing anything! Something’s got us!'],
