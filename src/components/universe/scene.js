@@ -21,7 +21,10 @@
 //   seat; the choice is kept between visits).
 //   Fly close to a planet and you're at it (the panel shows its card); pick
 //   one from its name or by clicking it and the ship flies itself there. M
-//   shows the whole map. ship.js has the physics.
+//   shows the whole map. ship.js has the physics. A new ship starts
+//   anywhere, unless a place is picked: at the edge of the home system, or
+//   out in deep space off a fandom's planet or a wonder (ship.js's startAt),
+//   so pilots joining don't all turn up in one spot.
 //   Out past the home system is deep space (deep.js, deepspace.js), vast:
 //   the fandoms' planets are far out in it, hundreds of units apart, each
 //   marked by a beacon (beacons.js) so it reads as somewhere to go, with
@@ -78,7 +81,7 @@ import { ORDER, POSITIONS, REACH, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
 import { createPost, spaceEnvironment } from './post';
-import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, step } from './ship';
+import { PLANETS, SHIP, SOLIDS, autopilot, forward, headingTo, isPlace, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { FACTIONS, NAMES, createHunters } from './hunters';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector } from './director';
@@ -1233,7 +1236,9 @@ export async function create(canvas, ctx) {
         .catch(() => {});
     }
     if (!state.ship) {
-      state.ship = spawn(state.sel);
+      // a new pilot: at the universe picked, or anywhere (ship.js's STARTS),
+      // so those joining don't all turn up in the same place
+      state.ship = spawn(state.sel, startAt());
       camQOn = false;
       state.at = state.sel && orbiting(state.ship, null) === state.sel ? state.sel : null;
       state.yaw = -state.ship.heading;

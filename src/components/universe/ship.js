@@ -38,8 +38,9 @@
 // Death Star's trench lets the ship down into it, along the stretch of
 // trench run laid there.
 
-import { DEEP, DEEP_SOLIDS, WONDERS, openness, trenchBand } from './deep';
+import { DEEP, DEEP_SOLIDS, WONDERS, openness, reachOf, trenchBand } from './deep';
 import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
 
@@ -159,10 +160,53 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
   return { x: best.x, y: p.at[1] + (deep ? 0 : SHIP.height), z: best.z, heading: best.heading };
 }
 
-// A new ship: parked at a universe, or at the near edge of the home system
-// facing its middle; level, and still.
-export function spawn(id) {
-  const at = id && PLANET[id] ? parkAt(id) : { x: 0, y: SHIP.height, z: HOME_RADIUS + 1.5, heading: 0 };
+// Where a new ship can start with nowhere picked, so the pilots joining
+// don't all turn up in one spot (online, on top of each other): round the
+// edge of the home system facing its middle, or out in deep space a way off
+// one of the fandoms' planets or one of the wonders, facing it. Never by the
+// Maw, whose pull would have a new ship before it had flown. Each is { id,
+// at, y, d }: what it starts off, the height it starts at, and how far from
+// its middle: out past its reach (so it isn't at it yet), and far enough
+// back from a big one to see all of it
+const startOff = (reach, r) => Math.max(reach * 1.15 + 12, r * 2.4);
+export const STARTS = [
+  { id: 'sun', at: SUN.at, y: SHIP.height, d: HOME_RADIUS + 1.5 }, // (the home system's middle)
+  ...PLANETS.filter((p) => byId(p.id).kind !== 'core').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
+  ...WONDERS.filter((w) => w.id !== MAW.id).map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : w.r) })),
+];
+// the near edge of the home system, facing its middle: where a ship starts
+// unless told otherwise
+const HOME_EDGE = { x: 0, y: SHIP.height, z: HOME_RADIUS + 1.5, heading: 0 };
+
+// clear to start at: well inside the edge and the ceiling, out of the Maw's
+// pull, and clear of everything solid (and not at any planet or station)
+const clearToStart = (x, y, z) =>
+  Math.hypot(x, z) < EDGE - 10 &&
+  Math.abs(y) < ceilingAt(x, z) - 1 &&
+  Math.hypot(x - MAW.at[0], y - MAW.at[1], z - MAW.at[2]) > MAW.reach + 20 &&
+  SOLIDS.every((o) => Math.hypot(x - o.at[0], y - o.at[1], z - o.at[2]) > o.reach + (PLANET[o.id] ? ORBIT_OUT : 2));
+
+// A start for a new ship: one of STARTS (`rand` picks which, and from which
+// side), level with it and facing it; round to the next side along should
+// that one not be clear.
+export function startAt(rand = Math.random) {
+  const s = STARTS[Math.min(STARTS.length - 1, Math.floor(rand() * STARTS.length))];
+  const a0 = rand() * Math.PI * 2;
+  for (let i = 0; i < 24; i++) {
+    const a = a0 + (i / 24) * Math.PI * 2;
+    const x = s.at[0] + Math.cos(a) * s.d;
+    const z = s.at[2] + Math.sin(a) * s.d;
+    if (clearToStart(x, s.y, z)) return { x, y: s.y, z, heading: headingTo(s.at[0] - x, s.at[2] - z) };
+  }
+  return { ...HOME_EDGE };
+}
+
+// A new ship: parked at a universe, or (nowhere picked) at `start`: the near
+// edge of the home system facing its middle, unless it's given one (a new
+// pilot's comes from startAt, so everyone starts somewhere different);
+// level, and still.
+export function spawn(id, start = HOME_EDGE) {
+  const at = id && PLANET[id] ? parkAt(id) : start;
   return { ...at, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
 }
 
