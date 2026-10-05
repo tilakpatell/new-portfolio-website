@@ -56,10 +56,11 @@ const ANIMS = {
 export const CHARACTERS = {
   cap: { file: 'cap.glb', h: 1.9, anims: ['basic', 'puppet'], tex: 2048, tris: 30000, as: 'Captain America, who you walk the compound as' },
   thor: { file: 'thor.glb', h: 1.98, anims: ['basic'], tex: 1024, tris: 30000, as: 'Thor, about the compound' },
-  hulk: { file: 'hulk.glb', h: 2.55, clips: { idle: 'Like_Idle', walk: 'Walk_Fwd_C', run: 'Run_Fwd_C' }, tex: 1024, tris: 30000, as: 'Hulk, about the compound' },
+  // (the people standing about are seen a few metres off: half-size textures)
+  hulk: { file: 'hulk.glb', h: 2.55, clips: { idle: 'Like_Idle', walk: 'Walk_Fwd_C', run: 'Run_Fwd_C' }, tex: 512, tris: 30000, as: 'Hulk, about the compound' },
   // an armour on its stand (no skeleton)
   ironman: { file: 'ironman.glb', h: 1.98, still: true, tex: 1024, tris: 30000, as: 'an Iron Man armour at the workshop door' },
-  widow: { file: 'widow.glb', h: 1.7, anims: ['basic'], tex: 1024, tris: 28000, as: 'Black Widow, about the compound' },
+  widow: { file: 'widow.glb', h: 1.7, anims: ['basic'], tex: 512, tris: 28000, as: 'Black Widow, about the compound' },
 };
 
 // ---------------------------------------------------------------------------

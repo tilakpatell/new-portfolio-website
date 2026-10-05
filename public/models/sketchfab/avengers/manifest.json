@@ -90,7 +90,7 @@
       "footR": "foot_r"
     },
     "tris": 32527,
-    "bytes": 2714064,
+    "bytes": 2063856,
     "credit": "avengers-hulk"
   },
   "widow": {
@@ -121,7 +121,7 @@
       "footR": "foot_r"
     },
     "tris": 28072,
-    "bytes": 1946812,
+    "bytes": 934508,
     "credit": "avengers-widow"
   },
   "ironman": {

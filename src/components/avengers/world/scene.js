@@ -30,7 +30,9 @@ import { APRON, BERM, BRIDGE, CRES, GATE, HANGAR, LAB, LAWN, PROW, RIVER, SHORE,
 import { apronMarks, buildQuinjet, curtainTexture, flatShape, groundPaint, panelNormal, prismTop, prismWalls, solarTexture } from '../compound/models';
 import { STONES } from '../../interests/stones';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
-import { BUILDINGS, CAST, CRATER, LAWN_TREES, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, camRoom, nearestEdge, samplePath } from './rules';
+import { AVENGERS_MODELS } from '../people/models';
+import { loadPerson, person } from './people';
+import { ARMOUR, BUILDINGS, CAST, CRATER, HERO, LAWN_TREES, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, camRoom, nearestEdge, samplePath } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -800,12 +802,31 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     skin: new THREE.MeshStandardMaterial({ color: 0xd2a07e, roughness: 0.6 }),
     helmet: new THREE.MeshPhysicalMaterial({ color: 0x223a70, metalness: 0.4, roughness: 0.35, clearcoat: 0.8 }),
   };
-  const cap = buildHumanoid({ style: 'cap', materials: capMats, scale: 0.98 });
-  scene.add(cap.root);
+  // Cap: the Sketchfab model with his clips (./people.js), or, if it can't be
+  // had, the HQ games' figure of him; his shield on his back either way
   const shield = await buildShield({ radius: 0.42, small });
-  cap.bones.chest.add(shield);
-  shield.position.set(0, 0.17, -0.2);
-  shield.rotation.set(0.12, Math.PI, 0);
+  const capModel = await loadPerson(AVENGERS_MODELS.cap)
+    .then((t) => person(t))
+    .catch(() => null);
+  const cap = capModel ? null : buildHumanoid({ style: 'cap', materials: capMats, scale: 0.98 });
+  if (capModel) {
+    scene.add(capModel.root);
+    capModel.play('idle');
+    // strapped across his back: placed against him standing at the origin, then carried by his chest
+    const chest = capModel.bone('Spine2') ?? capModel.bone('Spine1') ?? capModel.root;
+    capModel.root.updateMatrixWorld(true);
+    shield.position.set(0, capModel.height * 0.7, -0.19);
+    shield.rotation.set(0.1, Math.PI, 0);
+    scene.add(shield);
+    shield.updateMatrixWorld(true);
+    chest.attach(shield);
+  } else {
+    scene.add(cap.root);
+    cap.bones.chest.add(shield);
+    shield.position.set(0, 0.17, -0.2);
+    shield.rotation.set(0.12, Math.PI, 0);
+  }
+  const hero = capModel?.root ?? cap.root;
 
   const thorMats = {
     armour: await pbr('leather', { repeat: [3, 3], small, roughness: 0.75, metalness: 0.15, color: 0x3a3d44, normalScale: 1.4 }),
@@ -882,6 +903,55 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     people[c.id] = person;
   }
 
+  // the real Thor, Natasha and Hulk (./people.js), swapped in for the figures
+  // above as each arrives, the Hulk's (the biggest) last
+  const MODEL_OF = { thor: 'thor', widow: 'widow', hulk: 'hulk' };
+  const swapIn = async (p) => {
+    const t = await loadPerson(AVENGERS_MODELS[MODEL_OF[p.c.style]]);
+    if (gone || engine.lost) return;
+    const m = person(t);
+    m.root.position.copy(p.h.root.position);
+    m.root.rotation.y = p.yaw;
+    m.root.visible = false;
+    m.play('idle', { from: p.phase % 3 });
+    m.update(0);
+    scene.add(m.root);
+    await engine.precompile(m.root);
+    if (gone) return;
+    m.root.visible = true;
+    p.h.root.visible = false;
+    p.model = m;
+  };
+  (async () => {
+    for (const p of Object.values(people).filter((x) => MODEL_OF[x.c.style]).sort((a, b) => (a.c.style === 'hulk') - (b.c.style === 'hulk'))) {
+      await swapIn(p).catch(() => {
+        /* no model: the figure stays */
+      });
+    }
+  })();
+
+  // an Iron Man armour on a plinth by the workshop's door, lit from below
+  {
+    const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 0.28, 40), frameMat);
+    plinth.position.set(ARMOUR.x, 0.14, ARMOUR.z);
+    plinth.castShadow = plinth.receiveShadow = true;
+    scene.add(plinth);
+    const glow = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.02, 8, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: hot(0x8fe9ff, 2.4), toneMapped: false }));
+    glow.position.set(ARMOUR.x, 0.285, ARMOUR.z);
+    scene.add(glow);
+    loadPerson(AVENGERS_MODELS.ironman)
+      .then((t) => {
+        if (gone) return;
+        const m = person(t);
+        m.root.position.set(ARMOUR.x, 0.28, ARMOUR.z);
+        m.root.rotation.y = ARMOUR.face + Math.PI / 2;
+        scene.add(m.root);
+      })
+      .catch(() => {
+        /* no armour: an empty plinth */
+      });
+  }
+
   // ── the doors' beams and rings, and the stones won back over them ──
   const markers = {};
   const ringGeo = new THREE.RingGeometry(1.5, 1.85, 48).rotateX(-Math.PI / 2);
@@ -927,9 +997,25 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const shadowAt = new THREE.Vector3();
   let clock = 0;
 
+  // his clips, paced to how fast he's going over the ground (each clip's own
+  // pace, measured: the walk covers 1.65 m a second, the run 4.3)
+  const placeModel = (h, dt) => {
+    const speed = Math.hypot(h.vx, h.vz);
+    if (h.air) {
+      if (capModel.playing !== 'jump') capModel.play('jump', { loop: false, from: 0.6, speed: 2 });
+    } else if (speed < 0.35) capModel.play('idle');
+    else if (speed < (HERO.walk + HERO.run) / 2.4) capModel.play('walk', { speed: Math.min(2, Math.max(0.6, speed / 1.65)) });
+    else capModel.play('run', { speed: Math.min(2.3, Math.max(0.9, speed / 4.3)) });
+    capModel.update(dt);
+  };
+
   const placeHero = (h, dt) => {
-    cap.root.position.set(h.x, h.y, h.z);
-    cap.root.rotation.y = h.face + Math.PI / 2;
+    hero.position.set(h.x, h.y, h.z);
+    hero.rotation.y = h.face + Math.PI / 2;
+    if (capModel) {
+      placeModel(h, dt);
+      return;
+    }
     const speed = Math.hypot(h.vx, h.vz);
     const run = speed > 6.2;
     A.gait += speed * dt * (run ? 0.27 : 0.85);
@@ -967,7 +1053,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       dy = Math.atan2(Math.sin(dy), Math.cos(dy));
       p.yaw += dy * Math.min(1, dt * 2.5);
       p.h.root.rotation.y = p.yaw;
-      poseHumanoid(p.h, { t: clock, mode: p.c.style === 'bot' ? 'idle' : 'idle', phase: p.phase });
+      if (p.model) {
+        p.model.root.rotation.y = p.yaw;
+        p.model.update(dt);
+        continue;
+      }
+      poseHumanoid(p.h, { t: clock, mode: 'idle', phase: p.phase });
       const b = p.h.bones;
       b.chest.rotation.x = Math.sin(clock * 1.4 + p.phase) * 0.025;
       b.head.rotation.y = Math.sin(clock * 0.5 + p.phase) * 0.2 * (d < 9 ? 0.2 : 1);
@@ -1134,9 +1225,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // bubbles; null when it's behind the camera or off the edge.
   const screenOf = (kind, id) => {
     let p = null;
-    if (kind === 'cast' && people[id]) p = tmp.copy(people[id].h.root.position).add(tmp2.set(0, people[id].h.height + 0.35, 0));
+    if (kind === 'cast' && people[id]) p = tmp.copy(people[id].h.root.position).add(tmp2.set(0, (people[id].model?.height ?? people[id].h.height) + 0.35, 0));
     else if (kind === 'cast' && hd[id]) p = tmp.copy(hd[id].f.holder.position).add(tmp2.set(0, hd[id].f.height - hd[id].f.hipHeight + 0.35, 0));
-    else if (kind === 'hero') p = tmp.copy(cap.root.position).add(tmp2.set(0, 2.2, 0));
+    else if (kind === 'hero') p = tmp.copy(hero.position).add(tmp2.set(0, 2.2, 0));
     if (!p) return null;
     p.project(camera);
     if (p.z > 1 || Math.abs(p.x) > 1.15 || Math.abs(p.y) > 1.15) return null;
@@ -1168,6 +1259,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     dispose() {
       gone = true;
       for (const p of Object.values(hd)) p.f.dispose();
+      for (const p of Object.values(people)) p.model?.dispose();
+      capModel?.dispose();
       vfx.dispose();
       engine.dispose();
     },

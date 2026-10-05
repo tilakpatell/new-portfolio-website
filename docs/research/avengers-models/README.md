@@ -103,5 +103,5 @@ Neither was good enough to be worth adding.
 
 - Load with `GLTFLoader().setMeshoptDecoder(MeshoptDecoder)`. Clip names are `idle`, `walk`, `run`, and for Cap also `jump`. Walk and run are in place.
 - The rest poses differ. Cap and Thor are in an A-pose, Widow in a T-pose, and Hulk in his game's bind pose. If you pose one by hand with the bone map, work relative to each bone's rest quaternion.
-- Hulk's file is the largest at 2.6 MB, because 19 textures are kept at 1024 px. If that matters, re-run with `tex: 512` for him.
+- Hulk and Widow are seen a few metres off in the world, so their textures were brought down to 512 px (`tex: 512` in the script): Hulk 2.6 → 2.0 MB (most of the rest is his 279-bone, 11.7 s idle), Widow 1.9 → 0.9 MB.
 - `cap.glb` has no shield. The HQ's own shield can be parented to the `RightHand` or `LeftHand` bone.

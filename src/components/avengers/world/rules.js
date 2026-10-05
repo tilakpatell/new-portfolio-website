@@ -145,6 +145,12 @@ const STARK = (() => {
   return { x: x * S, z: y * S, face: faceOf(Math.cos(a), Math.sin(a)) };
 })();
 const CRATER = { x: 45 * S, z: 58 * S, r: 2.6 };
+// an Iron Man armour on a plinth beside the workshop's door, facing out
+const ARMOUR = (() => {
+  const ox = Math.cos(STARK.face);
+  const oz = -Math.sin(STARK.face);
+  return { x: STARK.x - ox * 0.6 + oz * 4, z: STARK.z - oz * 0.6 - ox * 4, face: STARK.face, r: 0.75 };
+})();
 
 // The doors, in the order of the tour: the seven buildings with a stone to
 // win, and Spider-Man at the front gate, who has a game but no stone.
@@ -253,7 +259,7 @@ export const PLACES = [
 ];
 export const placeById = (id) => PLACES.find((p) => p.id === id) ?? null;
 export const DOOR_R = 3.4; // how near a door you have to be to go in
-export { CRATER };
+export { ARMOUR, CRATER };
 
 // The portal the Space Stone opens, over the helipad: walk under it to Titan.
 export const PORTAL = { x: 70 * S, z: 52 * S, r: 6, y: 24 };
@@ -329,7 +335,7 @@ export function nearCast(x, z, r = 3.4) {
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
-export const ROUND = [...jetBody(), ...PARKED_CARS.flatMap(carBody), ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45 })), { x: CRATER.x, z: CRATER.z, r: 0.5 }, ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5 }))];
+export const ROUND = [...jetBody(), ...PARKED_CARS.flatMap(carBody), ...LAWN_TREES.map((t) => ({ x: t.x, z: t.z, r: 0.45 })), { x: CRATER.x, z: CRATER.z, r: 0.5 }, { x: ARMOUR.x, z: ARMOUR.z, r: ARMOUR.r }, ...CAST.map((c) => ({ x: c.x, z: c.z, r: c.r ?? 0.5 }))];
 
 // The nearest point on a polygon's edge to (x, z), and how far it is.
 export function nearestEdge(x, z, foot) {
@@ -436,8 +442,9 @@ export function walkable(x, z, rad = HERO_R) {
 
 // ── walking ──
 
-// metres a second, and how fast he gets there; Cap runs like a super-soldier
-export const HERO = { walk: 4.2, run: 11, accel: 15, turn: 11, jump: 6.6, gravity: 21, air: 0.35 };
+// metres a second, and how fast he gets there: a brisk walk, and a run like a
+// super-soldier's (his model's walk and run clips are paced to match)
+export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 6.6, gravity: 21, air: 0.35 };
 export const newHero = (at = START) => ({ x: at.x, z: at.z, y: 0, vy: 0, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, air: false });
 
 // One step. `move` is where the visitor wants to go, already turned to the
