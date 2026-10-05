@@ -425,7 +425,7 @@ export const CREWS = [
       ['jesse', 'Yo, Mr. White, we’re flying! In the RV!'],
     ],
     boost: [
-      ['jesse', 'Yeah, Mr. White! Yeah, science!'],
+      ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
       ['walt', 'Physics, Jesse. That one is physics.'],
     ],
     bump: [
