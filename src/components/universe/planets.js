@@ -892,9 +892,11 @@ export function loadModel(url) {
     .catch(() => null);
 }
 
-// [planet, model, and which of its spots, if not its own]
+// [planet, model, and which of its spots, if not its own]. The sitar is
+// Amagi_Arts's model, from Sketchfab (scripts/sketchfab-batch.mjs, credited
+// in data/modelCredits.json)
 const MODELS = [
-  ['music', '/models/universe/music.glb'],
+  ['music', '/models/sketchfab/sitar.glb'],
   ['transformers', '/models/universe/optimus.glb'],
   ['transformers', '/models/universe/megatron.glb', 'rival'],
   ['marvel', '/models/universe/marvel.glb'],

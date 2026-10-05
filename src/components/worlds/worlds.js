@@ -15,7 +15,7 @@ export const WORLD_MB = {
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
-  '/middle-earth': 1, // drawn in code too
+  '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 1,
 };
 
