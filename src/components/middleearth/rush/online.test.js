@@ -152,6 +152,44 @@ describe('a room', () => {
     guest.leave();
   });
 
+  it('a guest let go of for a moment keeps its own hobbit where it is', async () => {
+    const relay = fakeRelay();
+    let t = 0;
+    const now = () => t;
+    const host = createSession({ level: PONY, code: 'VWXZ', host: true, load: relay.load, now });
+    const guest = createSession({ level: PONY, code: 'VWXZ', host: false, load: relay.load, now });
+    await settle();
+    await settle();
+    const local = newRush(PONY, { players: 1 });
+    guest.guestPump(local, (t = 2000));
+    host.setPhase('play', 1);
+    const hs = newRush(PONY, { players: 2 });
+    guest.guestPump(local, (t += 100));
+    const me = local.players.find((p) => p.slot === 1);
+    me.x = 10.4;
+    guest.guestPump(local, (t += 100));
+    host.hostPump(hs, (t += 16));
+    // the guest's page stalls: the host lets go of it, then it says hello again
+    relay.mute(guest.selfId);
+    host.hostPump(hs, (t += 11000));
+    host.hostPump(hs, (t += 16)); // (and its hobbit's gone from the host's round)
+    expect(hs.players.map((p) => p.slot)).toEqual([0]);
+    host.hostSend(hs, [], (t += 200));
+    expect(guest.state.mine).toBe(null);
+    me.x = 8.2; // meanwhile it walks on, at home
+    guest.guestPump(local, (t += 16)); // the host's round, without the guest in it
+    relay.mute(guest.selfId, false);
+    guest.guestPump(local, (t += 3100)); // hello: seated again
+    host.hostPump(hs, (t += 16));
+    host.hostSend(hs, [], (t += 200)); // the host's copy has the guest back at the door
+    guest.guestPump(local, (t += 16));
+    expect(guest.state.mine).toBe(1);
+    expect(local.players.find((p) => p.slot === 1).x).toBe(8.2);
+    expect(hs.players.find((p) => p.slot === 1).x).toBe(8.2); // and the host has it there too
+    host.leave();
+    guest.leave();
+  });
+
   it('turns a fifth away', async () => {
     const relay = fakeRelay();
     let t = 2000;
