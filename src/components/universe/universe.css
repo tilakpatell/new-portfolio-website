@@ -57,6 +57,9 @@
   background: #03040a;
 }
 .universe-page[data-card] { --sheet-h: 46svh; }
+/* the panel put away: the map has the whole width (the bar left of it sits
+   up in the corner) or, on a phone, all but a slim bar at the bottom */
+.universe-page[data-tucked] { --panel-w: 0px; --tab-w: 230px; --sheet-h: calc(56px + env(safe-area-inset-bottom, 0px)); }
 .universe-map { position: absolute; inset: 0; }
 .universe-map > .scene-canvas {
   position: absolute;
@@ -141,6 +144,44 @@
   background: rgb(6 8 16 / 0.9);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+}
+/* hide (in the panel's corner) and show (the whole bar, once it's away) */
+.universe-tuck {
+  float: right;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -0.55rem -0.55rem 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: var(--muted);
+  transition: color 0.2s, background-color 0.2s;
+}
+.universe-tuck:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
+.universe-tuck:focus-visible,
+.universe-untuck:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.universe-panel[data-tucked] { overflow: hidden; padding: 0; }
+.universe-untuck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: inherit;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+.universe-untuck:hover { background: rgb(255 255 255 / 0.05); }
+.universe-untuck .eyebrow { min-width: 0; margin: 0; }
+.universe-untuck-say { display: inline-flex; flex: none; align-items: center; gap: 0.4rem; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; }
+.universe-untuck:hover .universe-untuck-say { color: var(--text); }
+@media (min-width: 768px) {
+  .universe-panel[data-tucked] { bottom: auto; width: var(--tab-w); height: 48px; }
+  /* the crew's lines keep clear of the bar */
+  .universe-page[data-tucked] .universe-comms { right: calc(var(--tab-w) + 28px); }
 }
 .universe-title { margin-top: 0.4rem; color: var(--text); font-size: 1.5rem; font-weight: 600; }
 .universe-back {
@@ -454,6 +495,9 @@
   .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
   .universe-hint { bottom: calc(var(--sheet-h) + 16px); translate: -50% 0; }
   .universe-comms { right: 16px; left: 16px; }
+  /* the bar keeps clear of the guide's button in the corner */
+  .universe-panel[data-tucked] { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .universe-untuck { padding-right: 4.25rem; }
   .universe-face { width: 36px; height: 36px; }
   .universe-said { font-size: 0.85rem; }
 }

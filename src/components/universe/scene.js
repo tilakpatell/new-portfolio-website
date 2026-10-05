@@ -568,7 +568,8 @@ export async function create(canvas, ctx) {
   let engine = null;
 
   // The open part of the canvas: the panel covers the right side on a
-  // desktop and the bottom on a phone, the nav the top.
+  // desktop and the bottom on a phone (or, put away, a corner or a slim
+  // bar), the nav the top.
   const panelEl = () => ctx.el.closest('.universe-page')?.querySelector('.universe-panel');
   const measure = () => {
     const box = ctx.el.getBoundingClientRect();
@@ -577,8 +578,9 @@ export async function create(canvas, ctx) {
     let side = 0;
     let sheet = 0;
     if (panel && panel.width > 0) {
-      if (panel.width < box.width * 0.75) side = Math.max(0, box.right - panel.left);
-      else sheet = Math.max(0, box.bottom - panel.top);
+      // put away on a desktop, it's a bar up in the corner: the map has the width
+      if (panel.width >= box.width * 0.75) sheet = Math.max(0, box.bottom - panel.top);
+      else if (!panelEl().hasAttribute('data-tucked')) side = Math.max(0, box.right - panel.left);
     }
     state.rect = cover({ w: size.w, h: size.h, panel: side, sheet, top: Math.max(0, nav - box.top) });
     state.overview = overviewPose(size, state.rect);
