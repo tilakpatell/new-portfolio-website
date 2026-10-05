@@ -25,11 +25,12 @@ const UP = LINKS.find((l) => l.id === 'basement-ladder');
 const SHAFT = { x0: UP.x - 0.6, x1: UP.x + 0.6, z0: A.z1 - 1.2, z1: A.z1 };
 const RISE = 1.9;
 // how much each tier draws: round things' sides, the light down the shaft,
-// the cables, the screens' redraws a second, the bubbles in a vat
+// the cables, the screens' redraws a second, the bubbles in a vat, the
+// machine's rings
 const PLAN = {
-  high: { seg: 24, haze: true, cables: 3, hz: 10, bubbles: 7 },
-  mid: { seg: 16, haze: true, cables: 2, hz: 6, bubbles: 5 },
-  low: { seg: 12, haze: false, cables: 1, hz: 4, bubbles: 3 },
+  high: { seg: 24, haze: true, cables: 3, hz: 10, bubbles: 7, rings: 2 },
+  mid: { seg: 16, haze: false, cables: 2, hz: 6, bubbles: 5, rings: 1 },
+  low: { seg: 12, haze: false, cables: 1, hz: 4, bubbles: 3, rings: 1 },
 };
 const STEEL = 0x56606a;
 const DARK = 0x2e3436;
@@ -37,6 +38,7 @@ const PIPE = 0x7d878c;
 const GREEN = 0x48ff6a;
 const ACROSS = [-303.9, -296.1]; // the two pipes across the ceiling, between the beams
 const piece = (id) => FURNITURE.find((f) => f.id === id);
+const RIVET = new THREE.IcosahedronGeometry(0.5, 0); // (a rivet's a few pixels across: twenty sides will do)
 
 export async function buildBasement(kit) {
   const R = makeRoom(kit, 'basement');
@@ -424,7 +426,7 @@ function vat(R, it, i, spills) {
   f.cyl(0x3f474c, 0, 0, 0, 0.8, 0.3).cyl(0x2c3236, 0, 0.3, 0, 0.72, 0.05);
   for (let k = 0; k < 12; k++) {
     const a = (k / 12) * TAU;
-    f.ball(0x9aa3ab, Math.cos(a) * 0.78, 0.2, Math.sin(a) * 0.78, 0.022, 1, BALL8);
+    f.ball(0x9aa3ab, Math.cos(a) * 0.78, 0.2, Math.sin(a) * 0.78, 0.022, 1, RIVET);
   }
   f.cbox(0x2c3236, 0, 0.16, 0.79, 0.34, 0.18, 0.04).decal(`vat${i + 1}`, 0, 0.16, 0.812, 0.3, 0.15);
   const ring = new THREE.TorusGeometry(VAT_R + 0.03, 0.035, 8, 32);
@@ -436,7 +438,7 @@ function vat(R, it, i, spills) {
   f.cyl(0x4a5358, 0, VAT_Y[1], 0, 0.72, 0.22).cyl(0x3a4046, 0, VAT_Y[1] + 0.22, 0, 0.42, 0.1).cyl(0x5a636a, 0, VAT_Y[1] + 0.32, 0, 0.12, H - VAT_Y[1] - 0.32);
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * TAU;
-    f.ball(0x9aa3ab, Math.cos(a) * 0.62, VAT_Y[1] + 0.22, Math.sin(a) * 0.62, 0.025, 1, BALL8);
+    f.ball(0x9aa3ab, Math.cos(a) * 0.62, VAT_Y[1] + 0.22, Math.sin(a) * 0.62, 0.025, 1, RIVET);
   }
   // a hose back to the wall, a valve on it
   f.cyl(0x2b2b30, 0.35, 0.15, -1.3, 0.07, 1.2, Math.PI / 2).part(new THREE.TorusGeometry(0.1, 0.018, 6, 16), 0xc8302a, 0.35, 0.36, -1.1, 0, 1, 1, 1, Math.PI / 2).cyl(0x6f7880, 0.35, 0.22, -1.1, 0.02, 0.14);
@@ -653,7 +655,7 @@ function machineParts(R, it, plan) {
   }
   const ringGeo = R.own(mergeParts(parts.map((p) => ({ ...p, matrix: p.matrix ?? at(0, 0, 0, 0, 1, 1, 1, Math.PI / 2) }))));
   const ringMat = R.own(new THREE.MeshBasicMaterial({ vertexColors: true }));
-  const rings = [1.32, 1.92].map((y, i) => {
+  const rings = [1.32, 1.92].slice(0, plan.rings).map((y, i) => {
     const r = new THREE.Mesh(ringGeo, ringMat);
     r.position.set(centre.x, y, centre.z);
     r.rotation.x = i ? -0.08 : 0.08;
@@ -667,7 +669,7 @@ function machineParts(R, it, plan) {
   R.add(core, { ink: false });
   return (t, dt) => {
     rings[0].rotation.y += dt * 1.6;
-    rings[1].rotation.y -= dt * 2.2;
+    if (rings[1]) rings[1].rotation.y -= dt * 2.2;
     coreMat.color.copy(base).multiplyScalar(0.82 + 0.18 * Math.sin(t * 9) + 0.08 * Math.sin(t * 23));
   };
 }
@@ -891,7 +893,7 @@ function tank(R, it, spills) {
   for (const y of [0.68, 2.34])
     for (let k = 0; k < 20; k++) {
       const a = (k / 20) * TAU;
-      f.ball(0x9aa3ab, Math.sin(a) * (TANK_R + 0.01), y, Math.cos(a) * (TANK_R + 0.01), 0.018, 1, BALL8);
+      f.ball(0x9aa3ab, Math.sin(a) * (TANK_R + 0.01), y, Math.cos(a) * (TANK_R + 0.01), 0.018, 1, RIVET);
     }
   f.cyl(0x5a636a, 0, 2.88, 0, 0.2, 0.1).cyl(PIPE, 0.35, 2.85, -0.2, 0.08, H - 2.85).cyl(0x3a4046, 0.35, 2.82, -0.2, 0.11, 0.08);
   // the porthole: its collar out of the tank, the bezel ring and its bolts
@@ -900,7 +902,7 @@ function tank(R, it, spills) {
   f.part(new THREE.TorusGeometry(0.47, 0.02, 6, 40), 0x6f7880, 0, PORT, TANK_R + 0.036);
   for (let k = 0; k < 12; k++) {
     const a = (k / 12) * TAU;
-    f.ball(0xc9ccc6, Math.cos(a) * 0.56, PORT + Math.sin(a) * 0.56, TANK_R + 0.04, 0.022, 1, BALL8);
+    f.ball(0xc9ccc6, Math.cos(a) * 0.56, PORT + Math.sin(a) * 0.56, TANK_R + 0.04, 0.022, 1, RIVET);
   }
   // the label under it
   f.cbox(0x2b2b30, 0, 0.86, TANK_R - 0.02, 0.66, 0.3, 0.06).decal('fluid', 0, 0.86, TANK_R + 0.012, 0.62, 0.26);

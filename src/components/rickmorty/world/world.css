@@ -39,6 +39,10 @@
 /* through a door: a fade to black; through the portal, to green */
 .rm-fade { position: absolute; inset: 0; z-index: 6; background: #07040c; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
 .rm-fade[data-kind='portal'] { background: radial-gradient(circle at 50% 55%, #e9ffb0 0%, #9dff5a 18%, #2c8a2a 46%, #07140a 78%); }
+/* down the hatch (green light below) and up the ladder (the garage's light above): slower */
+.rm-fade[data-kind='down'], .rm-fade[data-kind='up'] { transition-duration: 0.42s; }
+.rm-fade[data-kind='down'] { background: linear-gradient(#07040c 50%, #0b2612); }
+.rm-fade[data-kind='up'] { background: linear-gradient(#2a2416, #07040c 50%); }
 .rm-fade[data-on] { opacity: 1; }
 
 /* the loading line, round a little portal */
@@ -241,5 +245,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place { animation: none; }
-  .rm-fade { transition-duration: 0.1s; }
+  .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }

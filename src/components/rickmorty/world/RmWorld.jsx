@@ -25,6 +25,7 @@ import {
   FRONT_WALK,
   FURNITURE,
   GARAGE,
+  HATCH,
   HOTSPOTS,
   HOUSE_PARTS,
   INNER_WALLS,
@@ -111,14 +112,17 @@ const SAY = {
   summer: { who: null, text: 'Summer doesn’t look up from her phone. “Get out of my room, Morty.”' },
   rick: { who: 'Rick', text: 'The portal’s on the wall, Morty. Blips and Chitz is through there. Don’t touch anything else.' },
   mortyroom: { who: null, text: 'Morty’s room: the bed, the desk, and the window Rick climbs in through at night.' },
+  vats: { who: null, text: 'Rick’s spare bodies? Pickles? Best not to ask.' },
+  console: { who: null, text: 'Readings from the vats, a map of other dimensions, and a big red button under a guard. Best leave that alone.' },
   cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
   cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
   cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
 };
-const AREA_NAME = { street: 'The Smiths’ street', house: 'The Smith house', upstairs: 'Upstairs', garage: 'Rick’s garage', school: 'Mr. Goldenfold’s classroom', annex: 'The alien street', arcade: 'Blips and Chitz' };
+const AREA_NAME = { street: 'The Smiths’ street', house: 'The Smith house', upstairs: 'Upstairs', garage: 'Rick’s garage', school: 'Mr. Goldenfold’s classroom', annex: 'The alien street', arcade: 'Blips and Chitz', basement: 'Rick’s secret lab' };
 
 // the prompt for each thing Morty can be next to
-const linkVerb = (l) => (l.kind === 'portal' ? 'Step through' : l.kind === 'exit' ? 'Go out' : l.kind === 'stairs' ? (l.to === 'upstairs' ? 'Go up' : 'Go down') : 'Go in');
+const linkVerb = (l) =>
+  l.kind === 'portal' ? 'Step through' : l.kind === 'exit' ? 'Go out' : l.kind === 'stairs' ? (l.to === 'upstairs' ? 'Go up' : 'Go down') : l.kind === 'hatch' ? (l.to === 'basement' ? 'Go down' : 'Climb up') : 'Go in';
 const PROMPT = {
   ...Object.fromEntries(LINKS.map((l) => [`link:${l.id}`, { kind: 'link', id: l.id, name: l.label, verb: linkVerb(l), link: l }])),
   ...Object.fromEntries(HOTSPOTS.map((h) => [`spot:${h.id}`, { kind: 'spot', id: h.id, name: h.label, verb: h.verb, spot: h }])),
@@ -129,14 +133,14 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'] };
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', school: 'school-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', school: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', school: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', school: 'school-door', annex: 'garage-door', arcade: 'garage-door' },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', school: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', school: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit' };
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder' };
 function goalOf(next, s) {
   if (!next || s.flying) return null;
   const [to, key] = GOAL[next.id];
@@ -151,6 +155,7 @@ function goalOf(next, s) {
 
 const PITCH = 0.17; // the walking camera's lift, as the scene has it
 const FADE_MS = 260;
+const CLIMB_MS = 480; // down the hatch or up the ladder: a slower fade
 const FLY_KEYS = { KeyR: 'rise', KeyF: 'sink', KeyC: 'sink' };
 const clamp1 = (v) => Math.max(-1, Math.min(1, v));
 const roomAt = (area, x, z) => PLAN.find((r) => r.area === area && x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1)?.name ?? null;
@@ -339,15 +344,18 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
 
   // ── what E does ──
   // through a door, up the stairs or through the portal: a fade to black (or
-  // green), and out the other side, the camera behind him
+  // green), and out the other side, the camera behind him; down the hatch or
+  // up the ladder, a slower one, the lid clanking
   const go = useCallback(
     (l) => {
       const s = sim.current;
       if (s.fading) return;
       s.fading = true;
       s.keys.clear();
-      setFade(l.kind === 'portal' ? 'portal' : 'door');
+      const climb = l.kind === 'hatch';
+      setFade(l.kind === 'portal' ? 'portal' : climb ? (l.to === 'basement' ? 'down' : 'up') : 'door');
       if (l.kind === 'portal') sound('portalOpen');
+      else if (climb) sound('splat');
       later(() => {
         s.area = l.to;
         s.m = newMorty(l.arrive);
@@ -365,8 +373,9 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
           sound('portalHop');
           complete('portal');
         }
+        if (l.id === 'garage-hatch') complete('basement');
         setFade(null);
-      }, FADE_MS);
+      }, climb ? CLIMB_MS : FADE_MS);
     },
     [api, complete, later],
   );
@@ -987,6 +996,14 @@ function drawMap(c, s, goal, t) {
       g.stroke();
     }
     for (const h of HOTSPOTS) if (h.area === s.area) disc(h.x, h.z, 2.1 * u, '#c9ff5a');
+    // the hatch in the garage floor
+    if (s.area === 'garage') {
+      g.fillStyle = '#3a4046';
+      g.strokeStyle = '#f2c23c';
+      g.lineWidth = 1 * u;
+      rect(HATCH.x - HATCH.w / 2, HATCH.x + HATCH.w / 2, HATCH.z - HATCH.d / 2, HATCH.z + HATCH.d / 2);
+      edge(HATCH.x - HATCH.w / 2, HATCH.x + HATCH.w / 2, HATCH.z - HATCH.d / 2, HATCH.z + HATCH.d / 2);
+    }
   }
 
   // the doors and portals
@@ -1028,7 +1045,7 @@ function drawMap(c, s, goal, t) {
 // ── without 3D: the places as cards ──
 const CARDS = [
   { id: 'house', name: 'The Smith house', blurb: 'Jerry’s on the couch with the TV on, and Rick left something at the breakfast table.', items: ['cable', 'butter'] },
-  { id: 'garage', name: 'Rick’s garage', blurb: 'The workbench, the plumbus machine, a Portal panic cabinet, and a portal on the wall.', items: ['meeseeks', 'plumbus', 'portalpanic'] },
+  { id: 'garage', name: 'Rick’s garage', blurb: 'The workbench, the plumbus machine, a Portal panic cabinet, a portal on the wall, and a hatch in the floor down to Rick’s secret lab.', items: ['meeseeks', 'plumbus', 'portalpanic'] },
   { id: 'school', name: 'Harry Herpson High', blurb: 'Mr. Goldenfold has a pop quiz on the board. Seven right is a pass.', items: ['quiz'] },
   { id: 'arcade', name: 'Blips and Chitz', blurb: 'The arcade on the far side of the portal, and the game everyone queues for.', items: ['roy'] },
 ];
