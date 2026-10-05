@@ -10,7 +10,10 @@
 // one landmark from each crew's universe, the Empire's Death Star and the
 // Citadel of Ricks. Everything but the nebulae is solid. A solid wonder
 // counts as a planet: graze it and you bounce off, hit it fast and you
-// crash, and you come back beside it.
+// crash, and you come back beside it. The black hole is the exception:
+// touch it at any speed and it has you, and you don't come back. What's on
+// its far side (`beyond`) is a friend's universe, their own site, and the
+// page goes on to it (Universe.jsx).
 
 import { MAP_RADIUS } from './layout';
 
@@ -25,7 +28,9 @@ export const DEEP = {
 // (a black hole's is its shadow); colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
 // universe it's from (it's there for everyone); trench: the Death Star's,
-// the trench run round its middle (trench.js), deep enough to fly down
+// the trench run round its middle (trench.js), deep enough to fly down;
+// beyond (the black hole's): what's on its far side, { name, what, url },
+// where the page goes when the ship falls in
 export const WONDERS = [
   { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
   { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [702, -94, 189], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
@@ -53,7 +58,16 @@ export const WONDERS = [
       { r: 11, orbit: 90, angle: 5.1, color: '#c58fd8', kind: 'gas' },
     ],
   },
-  { id: 'maw', kind: 'black-hole', name: 'The Maw', at: [864, 81, -702], r: 12, disk: 72 },
+  {
+    id: 'maw',
+    kind: 'black-hole',
+    name: 'The Maw',
+    at: [864, 81, -702],
+    r: 12,
+    disk: 72,
+    // on its far side: Shrey Pathak's portfolio, the Matrix (where Rick and Morty come out)
+    beyond: { name: 'Shrey Pathak', what: 'the Matrix', url: 'https://shreyaanpathak.github.io/portfolio' },
+  },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
   { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-756, 40, -243], r: 60, crew: 'starwars', trench: { segments: 34 } },
@@ -88,22 +102,27 @@ export function reachOf(w) {
   return w.r;
 }
 
-// what's solid out here, as ship.js's solids: { id, at, r, reach, band }.
-// A black hole is solid out past its shadow, where the light bends round
-// it; a trench (band) lets the ship in, between its walls, down to near its
-// floor
-const solid = (id, at, r, band) => ({ id, at, r, reach: r * 1.4, deep: true, ...(band ? { band } : {}) });
+// what's solid out here, as ship.js's solids: { id, at, r, reach, band,
+// swallow }. A black hole is solid out past its shadow, where the light
+// bends round it, and it swallows: nothing bounces off it, whatever the
+// speed (ship.js); a trench (band) lets the ship in, between its walls,
+// down to near its floor
+const solid = (id, at, r, band, swallow = false) => ({ id, at, r, reach: r * 1.4, deep: true, ...(band ? { band } : {}), ...(swallow ? { swallow } : {}) });
 const bandOf = (w) => {
   if (!w.trench) return null;
   const t = trenchOf(w);
   return { half: t.width / 2 - 0.3, floor: w.r - t.depth + 0.45 };
 };
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
-  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, bandOf(w)),
+  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, bandOf(w), w.kind === 'black-hole'),
   ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
 ]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
+
+// what's on the far side of the thing the ship fell into (the black hole's
+// `beyond`: { name, what, url }), or null for anything you come back from
+export const beyondOf = (id) => wonderById(id)?.beyond ?? null;
 
 // 0 in the home system, rising to 1 out in open space (smoothly): how far the
 // pulse drive and the ceiling have opened up, at (x, z)
