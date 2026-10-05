@@ -137,6 +137,16 @@
     "as": "the Death Star’s trench",
     "file": "/models/universe/trench.glb"
   },
+  "xwing-ag": {
+    "title": "X-wing starfighter | T-65C-A2",
+    "author": "Alana G",
+    "authorUrl": "https://sketchfab.com/alanaguidry05",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/x-wing-starfighter-t-65c-a2-2397144aa2314e8fb03bf131d8f56af4",
+    "where": "universe",
+    "as": "the X-wing you fly"
+  },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
     "author": "charles.woods",
