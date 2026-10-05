@@ -9,6 +9,7 @@ import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
+import { canLand } from '../components/galaxy/surface/sites';
 import { galaxyCrew } from '../components/galaxy/lines';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
@@ -97,15 +98,25 @@ export default function Galaxy() {
     local.set(SHIP_KEY, id);
   };
 
-  // out of the page: the screen fades, and on
+  // out of the page: the screen fades, and on (down through the air, glowing,
+  // when it's onto the planet)
   const leave = useCallback(
-    (to, { jump = false } = {}) => {
+    (to, { jump = false, land = false } = {}) => {
       if (leaving) return;
-      setLeaving({ to });
+      setLeaving({ to, land });
       if (jump) window.dispatchEvent(new Event('tp:hyperspace'));
-      timer.current = setTimeout(() => navigate(to), jump ? 1250 : 650);
+      timer.current = setTimeout(() => navigate(to), jump ? 1250 : land ? 1500 : 650);
     },
     [leaving, navigate],
+  );
+  // down onto the planet you're at
+  const land = useCallback(
+    (id) => {
+      if (!canLand(id)) return;
+      audioContext();
+      leave(`/galaxy/${id}/surface`, { land: true });
+    },
+    [leave],
   );
 
   // what the scene says: to the comms, and to the page
@@ -135,12 +146,13 @@ export default function Galaxy() {
       if (e.type === 'action') {
         const s = systemById(current);
         if (e.id === 'deathstar') leave('/deathstar');
+        else if ((e.id === 'planet' || e.id === 'cloudcity') && canLand(s.id)) land(s.id);
         else if (e.id === 'planet' || e.id === 'cloudcity') navigate(s.game.status === 'live' && s.game.to ? s.game.to : `/galaxy/${s.id}/mission`);
         return;
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate],
+    [current, leave, navigate, land],
   );
   const onArrive = useCallback(
     (id) => {
@@ -181,7 +193,7 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? 'fade' : undefined} data-jumping={jumping?.phase}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : 'fade') : undefined} data-jumping={jumping?.phase}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
         {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : `In the ${sys.system ?? sys.name} system`}
@@ -211,6 +223,7 @@ export default function Galaxy() {
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}
         onBoard={(path) => leave(path)}
+        onLand={canLand(sys.id) ? () => land(sys.id) : null}
         tucked={tucked}
         onTuck={tuck}
         jumping={jumping}
@@ -228,6 +241,12 @@ export default function Galaxy() {
           }}
         />
       )}
+      {ship && !leaving && !jumping && at && (at === 'planet' || at === 'cloudcity') && canLand(current) && (
+        <button type="button" className="galaxy-land" onClick={() => land(current)}>
+          <kbd>E</kbd> Land on {at === 'cloudcity' ? 'Cloud City' : sys.name}
+        </button>
+      )}
+      {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       <div className="universe-fade" aria-hidden="true" style={{ background: '#000' }} />
     </div>
   );
