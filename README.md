@@ -4,7 +4,7 @@
 
 **The code behind [tilakpatell.com](https://tilakpatell.com), Tilak Patel's personal site: a portfolio you can fly through.**
 
-A résumé on the surface. Underneath it, a 3D universe with a starfighter, nine hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
+A résumé on the surface. Underneath it, a 3D universe with a starfighter, eleven hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
 
 [**Visit tilakpatell.com →**](https://tilakpatell.com)
 
@@ -59,9 +59,12 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `T` / `Q` | Next / previous target |
 | `V` | Switch between the chase camera and the cockpit view |
 | `O` | Flight settings (steering, aim assist, inverted pitch and more) |
+| `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 
 On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then.
+
+The hangar fits each ship out its own way, like a space sim's outfitting screen, and remembers it. Paint jobs are the site's own colour schemes: the six companies' come with the Cartographer achievement, and each fan scheme's with the easter egg that unlocks it. Parts bolt on and change how it flies and fights: strap-on boosters (solid rockets, an afterburner, repulsor pods, portal-fluid tanks), thrusters, twin or fusion guns, plating or fast-charge shields, and fins. Each draws power from the ship's plant and adds mass, so you can't fit the best of everything; the best parts are earned with achievements in the worlds. Other pilots see your paint and parts. The X-wing and the Falcon are modelled in code (`universe/hulls.js`), so they stay crisp at any size.
 
 Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension.
 
@@ -77,11 +80,13 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Music room | `/music` | Indian classical music | A playable sitar, tabla and harmonium over a tanpura drone |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game, and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game (Spider-Man's *Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
+| Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square |
 | The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
+| Invincible | `/invincible` | Invincible | Fly *Think, Mark!* over the city as Invincible: rings with your father, the Flaxans, Omni-Man and Thragg, with HD figures |
 
 ### Easter eggs
 
@@ -181,6 +186,7 @@ For the details of each subsystem, see [`docs/architecture.md`](docs/architectur
 - **Game assets** are CC0 and credited one by one in [`public/games/credits.json`](public/games/credits.json). *Portal panic* uses [Kenney](https://kenney.nl/)'s kits.
 - **Sketchfab models** are used under Creative Commons Attribution licences. Each one's author, licence and source are in [`src/data/modelCredits.json`](src/data/modelCredits.json), and they're credited on the pages that use them.
 - **Characters and buildings** in the worlds were generated for this site with [Meshy](https://www.meshy.ai/).
+- **Rigged characters from Sketchfab** (Invincible's Omni-Man and Thragg, Avengers HQ's Spider-Man) are brought to web size with their skeletons whole by `scripts/sketchfab-characters.mjs`, and posed in the browser by `src/lib/three/rig.js`, which poses any humanoid skeleton the same way.
 
 ## Deployment
 
@@ -190,6 +196,6 @@ Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows
 
 ## Disclaimer
 
-This is a personal, non-commercial portfolio. The hidden worlds are fan-made tributes: Star Wars, The Lord of the Rings, Transformers, Marvel, Breaking Bad, The Office, Rick and Morty and Pirates of the Caribbean belong to their creators and studios. The site isn't affiliated with or endorsed by any of them.
+This is a personal, non-commercial portfolio. The hidden worlds are fan-made tributes: Star Wars, The Lord of the Rings, Transformers, Marvel, Breaking Bad, The Office, Rick and Morty, Pirates of the Caribbean and Invincible belong to their creators and studios, and Game Boy is Nintendo's. The site isn't affiliated with or endorsed by any of them.
 
 There's no open-source licence on this repository. The code and original content are © Tilak Patel. Third-party assets remain under their own licences, listed above.

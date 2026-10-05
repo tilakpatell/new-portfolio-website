@@ -2670,6 +2670,9 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-route button:hover, .me-route button:focus-visible { border-color: var(--me-wax); color: var(--me-wax); }
 .me-route button[data-won]::after { content: ' ✦'; color: var(--me-wax); }
 .me-hub-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.me-travellers { border-color: rgba(154, 184, 255, 0.55); }
+.me-travellers[data-on] { cursor: default; }
+.me-travellers b { color: #c9a95a; font-variant-numeric: tabular-nums; }
 
 .me-bar { position: sticky; top: calc(var(--nav-h) + 10px); display: flex; align-items: center; gap: 0.75rem; margin-top: calc(var(--nav-h) + 18px); }
 .me-bar > * { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

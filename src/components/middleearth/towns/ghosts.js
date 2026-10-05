@@ -4,8 +4,11 @@
 // not in your story: nothing bumps into them and nothing sees them. One
 // wearing the Ring shows only while you wear it too.
 //
-// createGhosts({ height }) → { group, update(list, t, dt, { ringOn }),
-// dispose() }; add `group` to the town (the scene's layer()).
+// createGhosts({ height, make, tag, halo }) → { group, update(list, t, dt,
+// { ringOn }), dispose() }; add `group` to the town (the scene's layer()).
+// `make` builds the figure ({ group, top }: a Shire Frodo unless it says;
+// the map's are its own big-headed toys), `tag` is the name card's height
+// and `halo` the size of the ring of light, in the scene's units.
 
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
@@ -30,7 +33,7 @@ function ghostMaterial() {
 }
 
 // a name, on a little card that faces the camera
-function nameTag(name) {
+function nameTag(name, size = 0.42) {
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
   const font = '600 30px system-ui, sans-serif';
@@ -49,19 +52,19 @@ function nameTag(name) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
-  sp.scale.set((w / 44) * 0.42, 0.42, 1);
+  sp.scale.set((w / 44) * size, size, 1);
   sp.renderOrder = 5;
   return sp;
 }
 
-export function createGhosts({ height = () => 0 } = {}) {
+export function createGhosts({ height = () => 0, make: build = () => makePerson('frodo'), tag: tagSize = 0.42, halo: haloSize = 1 } = {}) {
   const group = new THREE.Group();
   group.name = 'travellers';
   const ringGeo = new THREE.RingGeometry(0.28, 0.44, 28).rotateX(-Math.PI / 2);
   const ghosts = new Map();
 
   const make = (p) => {
-    const f = makePerson('frodo');
+    const f = build();
     const mat = ghostMaterial();
     const old = new Set();
     f.group.traverse((o) => {
@@ -76,8 +79,9 @@ export function createGhosts({ height = () => 0 } = {}) {
     const root = new THREE.Group();
     const halo = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9ab8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
     halo.position.y = 0.04;
-    const tag = nameTag(p.name);
-    tag.position.y = (f.top ?? 1.6) + 0.35;
+    halo.scale.setScalar(haloSize);
+    const tag = nameTag(p.name, tagSize);
+    tag.position.y = (f.top ?? 1.6) + tagSize * 0.85;
     root.add(f.group, halo, tag);
     group.add(root);
     return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, face: p.face, fade: 0 };
@@ -109,8 +113,8 @@ export function createGhosts({ height = () => 0 } = {}) {
           g.root.remove(g.tag);
           g.tag.material.map.dispose();
           g.tag.material.dispose();
-          g.tag = nameTag(p.name);
-          g.tag.position.y = (g.f.top ?? 1.6) + 0.35;
+          g.tag = nameTag(p.name, tagSize);
+          g.tag.position.y = (g.f.top ?? 1.6) + tagSize * 0.85;
           g.root.add(g.tag);
           g.name = p.name;
         }

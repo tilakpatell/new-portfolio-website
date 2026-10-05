@@ -24,7 +24,13 @@ const AT = 'tp-hq-world-at';
 // the lines the site has the films' own recordings of (lib/clips)
 const SPOKEN = { 'Hulk smash!': 'hulkSmash', 'Puny god.': 'punyGod' };
 const STONE_OF = { 'soul-clint': 'soul', 'soul-natasha': 'soul' };
-const stoneFor = (p) => STONES.find((s) => s.id === (STONE_OF[p.stone] ?? p.stone));
+const stoneFor = (p) => (p.stone ? STONES.find((s) => s.id === (STONE_OF[p.stone] ?? p.stone)) : null);
+// what a door's card and the lists say about its stone
+const stoneLine = (p) => {
+  const st = stoneFor(p);
+  if (!st) return 'No stone here: just Peter, and school';
+  return p.done ? `${st.name}: won back` : `Win it for the ${p.stone.startsWith('soul-') ? 'half of the ' : ''}${st.name}`;
+};
 // every stone won back, and either half of the Soul Stone
 const readHeist = () => [...earnedStones(), ...SOUL_HALVES.filter(hasEarned)];
 
@@ -390,9 +396,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         <div className="cw-door" style={{ '--cw-accent': here.accent }}>
           <p className="cw-door-sub">{here.where}</p>
           <p className="cw-door-name">{here.name}</p>
-          <p className="cw-door-stone" style={{ '--glow': stoneFor(here).color }}>
-            <i className="stone-dot" data-on={here.done || undefined} aria-hidden="true" />
-            {here.done ? `${stoneFor(here).name}: won back` : `Win it for the ${here.stone.startsWith('soul-') ? 'half of the ' : ''}${stoneFor(here).name}`}
+          <p className="cw-door-stone" style={{ '--glow': stoneFor(here)?.color ?? here.accent }}>
+            {stoneFor(here) && <i className="stone-dot" data-on={here.done || undefined} aria-hidden="true" />}
+            {stoneLine(here)}
           </p>
           <button type="button" className="btn btn-primary" onClick={() => enter(here.id)}>
             {here.act} {!touch && <kbd>E</kbd>}
@@ -443,14 +449,14 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
           </div>
           <ol>
             {prog.places.map((p, i) => (
-              <li key={p.id} data-done={p.done || undefined} data-next={p.id === prog.next || undefined} style={{ '--glow': stoneFor(p).color, '--cw-accent': p.accent }}>
+              <li key={p.id} data-done={p.done || undefined} data-next={p.id === prog.next || undefined} style={{ '--glow': stoneFor(p)?.color ?? p.accent, '--cw-accent': p.accent }}>
                 <span className="cw-list-n" aria-hidden="true">
                   {p.done ? '✓' : i + 1}
                 </span>
                 <div>
                   <p className="cw-list-name">{p.name}</p>
                   <p className="cw-list-sub">
-                    {p.where} · {p.done ? `${stoneFor(p).name} won back` : stoneFor(p).name}
+                    {p.where} · {stoneLine(p)}
                   </p>
                 </div>
                 <div className="cw-list-acts">
@@ -517,7 +523,7 @@ function drawMap(c, h, prog) {
   const pulse = 3.2 + Math.sin(performance.now() / 260) * 1.2;
   for (const p of prog.places) {
     const [x, y] = at(p.x, p.z);
-    g.fillStyle = p.done ? stoneFor(p).color : p.accent;
+    g.fillStyle = p.done ? stoneFor(p)?.color ?? p.accent : p.accent;
     g.beginPath();
     g.arc(x, y, p.done ? 3.4 : 2.8, 0, Math.PI * 2);
     g.fill();
@@ -571,7 +577,7 @@ function Cards({ prog, enter, three, gl, retry }) {
       <h1 id="cw-title" className="display hq-steel mt-4 text-[clamp(2.6rem,1.6rem+3.6vw,4.6rem)]">
         Avengers HQ
       </h1>
-      <p className="lead mt-4 max-w-[60ch]">Marvel, all of it. Every building on the compound belongs to someone, and each has a game that wins an Infinity Stone back. {prog.objective}</p>
+      <p className="lead mt-4 max-w-[60ch]">Marvel, all of it. Every building on the compound belongs to someone, and each has a game that wins an Infinity Stone back (and Spider-Man has one at the front gate). {prog.objective}</p>
       {three.can && (
         <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
           {gl === 'lost' ? 'The graphics chip reset, so here’s the compound from the air.' : gl === 'failed' ? 'The 3D compound couldn’t start here, so here it is from the air.' : three.held ? 'The 3D compound isn’t loaded yet, so here it is from the air.' : '3D is switched off, so here’s the compound from the air.'}
@@ -591,19 +597,19 @@ function Cards({ prog, enter, three, gl, retry }) {
         <figure className="m-0">
           <div className="hq-hud">
             <Suspense fallback={<div className="hq-map" aria-hidden="true" />}>
-              <CompoundMap spots={ids} titles={prog.places.map((p, i) => `${i + 1}. ${p.name}`)} stones={prog.places.map((p) => (p.done ? stoneFor(p).color : null))} onPick={enter} className="hq-hero-map" />
+              <CompoundMap spots={ids} titles={prog.places.map((p, i) => `${i + 1}. ${p.name}`)} stones={prog.places.map((p) => (p.done ? stoneFor(p)?.color ?? null : null))} onPick={enter} className="hq-hero-map" />
             </Suspense>
           </div>
           <figcaption className="mt-3 text-sm text-muted">The compound from the air. Pick a pin to go in.</figcaption>
         </figure>
         <ol className="cw-cards">
           {prog.places.map((p, i) => (
-            <li key={p.id} data-done={p.done || undefined} style={{ '--glow': stoneFor(p).color }}>
+            <li key={p.id} data-done={p.done || undefined} style={{ '--glow': stoneFor(p)?.color ?? p.accent }}>
               <p className="cw-list-name">
                 {i + 1}. {p.name}
               </p>
               <p className="cw-list-sub">
-                {p.where} · {p.done ? `${stoneFor(p).name} won back` : stoneFor(p).name}
+                {p.where} · {stoneLine(p)}
               </p>
               <button type="button" className="btn btn-primary btn-sm mt-3" onClick={() => enter(p.id)}>
                 {p.act}

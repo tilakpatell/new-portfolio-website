@@ -6,12 +6,13 @@ import ShieldThrow from '../ShieldThrow';
 import Range from '../Range';
 import Dossier from '../Dossier';
 import HulkLab from '../HulkLab';
+import WebShooter from '../WebShooter';
 import { STONES } from '../../interests/stones';
 import { audioContext } from '../../../lib/audio';
 import { hasEarned } from '../hq/stones';
 import { placeById } from './rules';
 
-// A building's game, open over the page: what the place is, the game itself
+// A building's game (or Spider-Man's, at the gate), open over the page: what the place is, the game itself
 // (each keeps its own 3D, and its old toy for a browser without it), and the
 // way back out to the compound. Loaded with the first door you go through,
 // so walking about never fetches a game.
@@ -22,6 +23,7 @@ const Ricochet = lazy(() => import('../ricochet/Ricochet'));
 const TrickShot = lazy(() => import('../trickshot/TrickShot'));
 const Infiltration = lazy(() => import('../widow/Infiltration'));
 const SmashRun = lazy(() => import('../smash/SmashRun'));
+const Thwip = lazy(() => import('../thwip/Thwip'));
 const TesseractRun = lazy(() => import('../tesseract/TesseractRun'));
 
 const sfx = () => import('../../../lib/sfx');
@@ -136,6 +138,8 @@ function Game({ id, onPortal }) {
       return <Infiltration fallback={<Dossier />} />;
     case 'banner':
       return <SmashRun fallback={<HulkLab />} />;
+    case 'spidey':
+      return <Thwip fallback={<WebShooter />} />;
     case 'vault':
       return <TesseractRun onPortal={onPortal} fallback={<TesseractToy onPortal={onPortal} />} />;
     default:
@@ -166,9 +170,9 @@ export default function Place({ id, onLeave, onPortal }) {
     };
   }, []);
   if (!p) return null;
-  const stone = STONES.find((s) => s.id === (STONE_OF[p.stone] ?? p.stone));
-  const won = hasEarned(p.stone);
-  const half = p.stone.startsWith('soul-') ? (p.id === 'hawkeye' ? 'Clint’s half of the ' : 'Natasha’s half of the ') : 'the ';
+  const stone = p.stone ? STONES.find((s) => s.id === (STONE_OF[p.stone] ?? p.stone)) : null;
+  const won = p.stone ? hasEarned(p.stone) : false;
+  const half = p.stone?.startsWith('soul-') ? (p.id === 'hawkeye' ? 'Clint’s half of the ' : 'Natasha’s half of the ') : 'the ';
   // on the body, so nothing on the page (the nav, a transition) sits over it
   return createPortal(
     <div className="cw-place" role="dialog" aria-modal="true" aria-labelledby="cw-place-title" style={{ '--cw-accent': p.accent }}>
@@ -187,10 +191,12 @@ export default function Place({ id, onLeave, onPortal }) {
         <div className="shell py-6 md:py-8">
           <div className="cw-place-intro">
             <p className="lead max-w-[62ch]">{p.blurb}</p>
-            <p className="cw-place-stone" data-won={won || undefined} style={{ '--glow': stone.color }}>
-              <i className="stone-dot" aria-hidden="true" />
-              {won ? `You won ${half}${stone.name} back here.` : `Win it, and ${half}${stone.name} comes back to the compound.`}
-            </p>
+            {stone && (
+              <p className="cw-place-stone" data-won={won || undefined} style={{ '--glow': stone.color }}>
+                <i className="stone-dot" aria-hidden="true" />
+                {won ? `You won ${half}${stone.name} back here.` : `Win it, and ${half}${stone.name} comes back to the compound.`}
+              </p>
+            )}
           </div>
           <div className="mt-6">
             <Suspense fallback={<p className="text-muted">Opening the door…</p>}>

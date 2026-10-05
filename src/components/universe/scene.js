@@ -46,6 +46,13 @@
 //   point of no return (maw.js) you watch your ship spiral down it from a
 //   way off, then go in after it (infall.js draws the fall), and the page
 //   goes on to what's beyond.
+//   The ship is fitted out in the hangar (outfit.js): a paint job on its
+//   hull, glow and shots (livery.js), and parts bolted on (modules.js) that
+//   change how it flies (ship.js's tune: boosters push the boost, thrusters
+//   turn it quicker, mass slows it), how its guns fire (faster, or harder
+//   on a hunter, from barrels of their own) and what its shields take; its
+//   boosters burn exhausts of their own as it boosts. The autopilot flies
+//   it as it came, so it still stops where it means to.
 //   Gone online (online/), the other visitors flying it are here too
 //   (online/pilots.js): their ships and callsigns, and their shots; the guns
 //   lock on to anyone who isn't your ally, a hit comes off their shields
@@ -54,7 +61,9 @@
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
 //   whole, boost, climb, fire, dispose }.
-// Props: selected (an id or null), ship (a crew id or null), controls (the
+// Props: selected (an id or null), ship (a crew id or null), loadout (what's
+// fitted to it in the hangar: outfit.js's paint job and parts, which it
+// wears and flies on), controls (the
 // visitor's flying settings: controls.js), labels (a ref
 // to { id: element }), stick (a ref to the steering ring), alt (a ref to the
 // height gauge), shield (a ref to the shields bar), hud (a ref to the
@@ -99,6 +108,8 @@ import { createTraffic } from './traffic';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
+import { paintById } from './paint';
+import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
@@ -125,6 +136,7 @@ const PLUME = {
   rv: { color: '#ff9a3c', core: '#fff0d8', width: 0.02, life: 0.4, length: 0.3, wobble: 0 },
 };
 const IDLE = 40000; // ms sitting still before the crew get bored
+const PARTS_CHANGED = (a, b) => PARTS_SLOTS.some((slot) => a[slot] !== b[slot]);
 const SAFE = 3; // seconds after coming back when other pilots' shots don't count
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
@@ -486,21 +498,43 @@ export async function create(canvas, ctx) {
     plumes = [];
     if (!kind) return;
     const look = PLUME[kind] ?? PLUME.falcon;
-    streak.setTint(look.color);
+    streak.setTint(plumeColor());
     plumes = engines.map((at) => {
       const trail = createTrail(look);
-      trail.setColors(look.color, look.core);
+      trail.setColors(plumeColor(), look.core);
       map.add(trail.mesh);
       return { trail, at: new THREE.Vector3(...at) };
     });
   };
-  const updatePlumes = (dt, t, amount, stretch = 1) => {
+  // the boosters' exhausts (modules.js's nozzles), lit only as it boosts
+  let boosterPlumes = [];
+  const BOOSTER_PLUME = { width: 0.014, life: 0.32, length: 0.24, wobble: 0 };
+  const setBoosterPlumes = (nozzles = [], color = null) => {
+    for (const pl of boosterPlumes) {
+      map.remove(pl.trail.mesh);
+      pl.trail.dispose();
+    }
+    boosterPlumes = [];
+    if (!color) return;
+    boosterPlumes = nozzles.map((at) => {
+      const trail = createTrail(BOOSTER_PLUME);
+      trail.setColors(color, '#fff6e2');
+      map.add(trail.mesh);
+      return { trail, at: new THREE.Vector3(...at) };
+    });
+  };
+  const updatePlumes = (dt, t, amount, stretch = 1, boosting = 0) => {
     const m = state.model;
     if (!m) return;
     m.group.updateMatrixWorld(true);
+    const flame = m.modules?.flame ?? 1;
     for (const pl of plumes) {
       map.worldToLocal(m.pivot.localToWorld(nozzle.copy(pl.at)));
-      pl.trail.update(dt, t, nozzle, amount, camLocal, stretch);
+      pl.trail.update(dt, t, nozzle, amount, camLocal, 1 + (stretch - 1) * flame);
+    }
+    for (const pl of boosterPlumes) {
+      map.worldToLocal(m.pivot.localToWorld(nozzle.copy(pl.at)));
+      pl.trail.update(dt, t, nozzle, boosting, camLocal, 1 + boosting);
     }
   };
   // a boost lighting: the burst at the engines, a flare of the bloom and a
@@ -513,8 +547,7 @@ export async function create(canvas, ctx) {
     for (const pl of plumes) mid.add(pl.at);
     mid.divideScalar(plumes.length);
     mid.z += 0.02;
-    const look = PLUME[state.kind] ?? PLUME.falcon;
-    burst.fire(m.pivot, mid, look.color, state.kind === 'cruiser' ? 1 : 0);
+    burst.fire(m.pivot, mid, plumeColor(), state.kind === 'cruiser' ? 1 : 0);
     state.flare = Math.max(state.flare, 1.5);
     state.kick = 1;
   };
@@ -677,6 +710,9 @@ export async function create(canvas, ctx) {
     lastInput: performance.now(),
     idleSaid: false,
     side: 1, // which wing the X-wing fires from next
+    barrel: 0, // and which of the fitted guns' barrels
+    loadout: STOCK_LOADOUT, // what's fitted in the hangar (outfit.js)
+    stats: statsOf(null, STOCK_LOADOUT), // and what it does
     lastShot: 0,
     crash: null, // { age, id, … } while a crash plays out (startCrash)
     shake: 0,
@@ -1272,6 +1308,36 @@ export async function create(canvas, ctx) {
     cab.built.update(dt, t, { launching: false, t: 0, phase: null, throttle: 0, plan: cab.plan, look });
   };
 
+  // What's fitted in the hangar (outfit.js): the paint job the ship wears
+  // (paint.js), on its hull, in its engines' glow and exhaust and in its
+  // shots (the factory's is each ship's own); and the parts bolted on, with
+  // what they do to how it flies and fights (state.stats).
+  const coat = () => paintById(state.loadout.paint);
+  const plumeColor = () => coat().glow ?? (PLUME[state.kind] ?? PLUME.falcon).color;
+  const dress = () => {
+    if (!state.kind) return;
+    state.model?.paint(coat());
+    boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
+    const look = PLUME[state.kind] ?? PLUME.falcon;
+    streak.setTint(plumeColor());
+    for (const pl of plumes) pl.trail.setColors(plumeColor(), look.core);
+  };
+  const refit = () => {
+    state.stats = statsOf(state.kind, state.loadout);
+    if (!state.kind || !state.model) return setBoosterPlumes();
+    const mods = state.model.outfit(state.loadout);
+    state.barrel = 0;
+    setBoosterPlumes(mods.nozzles, mods.boosterColor);
+  };
+  const setLoadout = (raw) => {
+    const next = readLoadout(raw);
+    const was = state.loadout;
+    state.loadout = next;
+    if (next.paint !== was.paint) dress();
+    if (PARTS_CHANGED(was, next)) refit();
+    ctx.invalidate();
+  };
+
   const setShip = (kind) => {
     if (kind === state.kind) return;
     if (onFoot()) foot.end();
@@ -1297,8 +1363,8 @@ export async function create(canvas, ctx) {
     stockUp(); // (the hunters this ship's side meets)
     state.auto = null;
     state.flown = false;
-    if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
     if (!kind) {
+      refit();
       state.ship = null;
       state.at = null;
       state.yaw = 0;
@@ -1307,12 +1373,15 @@ export async function create(canvas, ctx) {
     }
     state.model = buildShip(kind, T);
     map.add(state.model.group);
+    refit();
+    dress();
     if (SHIP_MODELS[kind]) {
+      const model = state.model;
       loadModel(SHIP_MODELS[kind])
-        .then((m) => m && warm(m).then(() => m))
+        .then((m) => m && warm(model.dress(m)).then(() => m)) // (in its paint before its shaders are made)
         .then((m) => {
           if (!m) return;
-          if (disposed || state.kind !== kind || !state.model?.mount(m)) disposeTree(m);
+          if (disposed || state.model !== model || !model.mount(m)) disposeTree(m); // (the ship it was dressed for)
           ctx.invalidate();
         });
     } else if (kind === 'cruiser') {
@@ -1322,7 +1391,7 @@ export async function create(canvas, ctx) {
         .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
         .then((c) => {
           if (!c) return;
-          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
+          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint })) {
             c.dispose();
             disposeTree(c.group);
             return;
@@ -1423,19 +1492,29 @@ export async function create(canvas, ctx) {
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    if (!s || props.frozen || state.crash || now - state.lastShot < (CADENCE[state.kind] ?? 0.18) * 1000) return;
+    const g = state.stats;
+    if (!s || props.frozen || state.crash || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence) * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
     const [fx, fz] = forward(s.heading);
-    const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
     let dir = nose(s);
     if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), controls().assist);
     const { heading, pitch } = aimAngles(dir);
-    b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
+    // from the guns fitted, their barrels in turn; or the ship's own
+    const mods = state.model?.modules;
+    if (mods?.muzzles.length) {
+      state.barrel = (state.barrel + 1) % mods.muzzles.length;
+      map.worldToLocal(state.model.pivot.localToWorld(b.position.set(...mods.muzzles[state.barrel])));
+      mods.fire();
+    } else {
+      const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
+      b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
+    }
     b.rotation.set(pitch, heading, 0);
+    b.scale.set(g.bolt, g.bolt, 1 + (g.bolt - 1) * 0.4);
     const v = AIM.bolt + Math.max(0, s.speed);
-    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v] };
+    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch };
     b.visible = true;
     net?.shot(b.position, b.userData.v);
     emit({ type: 'fire' });
@@ -1460,7 +1539,7 @@ export async function create(canvas, ctx) {
       b.position.z += d.v[2] * dt;
       // into someone: a pop (the big ships just take it)
       // a hunter: down, or (the tougher ones) a hit that sparks off it
-      const hh = hunters?.hit(shotFrom, b.position);
+      const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1);
       if (hh) {
         b.visible = false;
         pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
@@ -1715,7 +1794,7 @@ export async function create(canvas, ctx) {
       state.view = 'chase'; // (from outside, whichever seat you were in)
       hunters?.clear();
       infall?.dispose();
-      infall = createInfall(map, { color: (PLUME[state.kind] ?? PLUME.falcon).color, shadow: MAW.shadow, at: MAW.at });
+      infall = createInfall(map, { color: plumeColor(), shadow: MAW.shadow, at: MAW.at });
       infall.start();
       retarget(reduced ? 0 : 1700);
       emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
@@ -1759,7 +1838,7 @@ export async function create(canvas, ctx) {
   const hurt = (damage, by = null) => {
     if (state.crash || !state.ship) return;
     if (by && state.clock < state.safeUntil) return;
-    state.shield = Math.max(0, state.shield - damage);
+    state.shield = Math.max(0, state.shield - damage * state.stats.armor); // (less, with plating fitted)
     state.hitAt = state.clock;
     state.hurt = 1;
     if (!reduced) state.shake = Math.max(state.shake, 0.3);
@@ -1918,7 +1997,7 @@ export async function create(canvas, ctx) {
     let busy = pieces.update(dt, t, camera);
     if (live) {
       // shields come back once you've been out of trouble a while
-      if (state.clock - state.hitAt > 5 && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
@@ -2029,6 +2108,7 @@ export async function create(canvas, ctx) {
     const m = state.model;
     const T = c.swallow ? FALL : c.kind === 'giant' ? DIVE : CRASH;
     updatePlumes(dt, (performance.now() - t0) / 1000, 0); // the engines are out
+    state.model?.drive(dt, {});
     if (c.swallow) swallowing(dt);
     else if (age < T.impact) {
       // on into it, tumbling, a little way under the surface (into a giant,
@@ -2119,7 +2199,10 @@ export async function create(canvas, ctx) {
       const a = autopilot(state.ship, state.auto.id, state.auto.park);
       input = a.input;
       if (a.done) state.auto = null;
-    } else input = steering();
+    } else {
+      input = steering();
+      input.tune = state.stats; // (what's fitted; the autopilot flies it as it came, so it stops where it means to)
+    }
     input.interdicted = state.interdicted;
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const { ship: stepped, events } = step(state.ship, input, dt);
@@ -2225,7 +2308,8 @@ export async function create(canvas, ctx) {
     m.group.rotation.set(ship.pitch || 0, ship.heading, -(ship.bank || 0), 'YXZ');
     m.pivot.rotation.set(reduced ? 0 : clamp(-input.throttle * 0.06, -0.08, 0.08), 0, -(ship.lean || 0));
     m.setThrottle(clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3));
-    updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3);
+    updatePlumes(dt, t, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak), 1 + state.streak * 1.3, clamp01(state.streak * 1.4));
+    m.drive(dt, { throttle: clamp01(Math.abs(ship.speed) / SHIP.cruise), boost: state.streak > 0.3, turn: input.turn || 0, climb: input.climb || 0 });
     engine?.set({ speed: Math.min(ship.speed, SHIP.boost * 1.2), boost: state.streak > 0.3, on: state.shown && !props.frozen && !document.hidden });
     // sitting still a good while: the crew notice
     if (!state.idleSaid && !state.auto && Math.abs(ship.speed) < 0.05 && state.shown && !document.hidden && performance.now() - state.lastInput > IDLE) {
@@ -2235,6 +2319,7 @@ export async function create(canvas, ctx) {
     return Boolean(
       state.auto ||
         g ||
+        m.modules?.easing || // (a part just fitted, swinging into place)
         input.throttle ||
         input.turn ||
         input.climb ||
@@ -2910,6 +2995,7 @@ export async function create(canvas, ctx) {
   canvas.addEventListener('pointercancel', onCancel);
   canvas.addEventListener('pointerleave', onLeave);
 
+  state.loadout = readLoadout(props.loadout);
   setShip(props.ship ?? null);
   setNet(props.net);
   paintStates();
@@ -2968,7 +3054,10 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       manual: Boolean(state.lock?.manual),
       controls: controls(),
-      pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, kind: p.kind, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
+      loadout: { ...state.loadout },
+      stats: { ...state.stats },
+      modules: state.model?.modules ? { nozzles: state.model.modules.nozzles.length, muzzles: state.model.modules.muzzles.length, flame: state.model.modules.flame } : null,
+      pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, kind: p.kind, loadout: p.loadout, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
       online: net?.snapshot().status ?? null,
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
@@ -2992,7 +3081,9 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
+      if ((next.ship ?? null) !== state.kind) state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
       setShip(next.ship ?? null);
+      setLoadout(next.loadout);
       setNet(next.net);
       select(next.selected ?? null);
       if (next.frozen) {
@@ -3100,6 +3191,7 @@ export async function create(canvas, ctx) {
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();
+      setBoosterPlumes();
       panelRO?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);

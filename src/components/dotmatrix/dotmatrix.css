@@ -1,0 +1,172 @@
+/* Dot Matrix, the world: the island on a Game Boy's screen, in its bezel,
+   with a HUD drawn in the screen's own four shades and pixel lettering.
+   --dm-0 … --dm-3 are the palette, darkest first (set from dither.js). */
+
+.dm-world {
+  --dm-0: #0f380f;
+  --dm-1: #306230;
+  --dm-2: #8bac0f;
+  --dm-3: #9bbc0f;
+  --dm-px: 3px;
+  --dm-font: 'Press Start 2P', var(--font-mono);
+  position: relative;
+  z-index: 10;
+  padding-top: calc(var(--nav-h, 64px) + 12px);
+}
+
+.dm-stage {
+  position: relative;
+  height: clamp(28rem, calc(100svh - var(--nav-h, 64px) - 4.5rem), 52rem);
+  margin-inline: auto;
+  overflow: hidden;
+  background: var(--dm-3);
+  border: clamp(6px, 1.2vw, 14px) solid #4b4b57;
+  border-radius: 14px 14px 46px 14px; /* the handheld's one rounded corner */
+  box-shadow: inset 0 0 0 2px #2b2b33, 0 18px 50px rgba(0, 0, 0, 0.28);
+  max-width: min(1500px, calc(100% - 2 * clamp(0px, 2vw, 32px)));
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--dm-font);
+}
+.dm-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity 0.5s steps(4);
+  touch-action: pan-y;
+  cursor: grab;
+}
+.dm-canvas:active { cursor: grabbing; }
+.dm-canvas[data-on] { opacity: 1; }
+/* the screen's pixel grid, faintly, at the size the island is drawn at */
+.dm-lcd {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.07) 1px, transparent 1px);
+  background-size: var(--dm-px) var(--dm-px);
+  mix-blend-mode: multiply;
+}
+.dm-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--dm-0); font: 0.8rem/1.6 var(--dm-font); }
+
+/* the HUD sits over the screen; only its controls take the pointer */
+.dm-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.6rem, 1.6vw, 1rem); pointer-events: none; }
+.dm-hud > * { pointer-events: auto; }
+.dm-hud-top { top: 0; align-items: flex-start; }
+.dm-stats { display: grid; gap: 0.45rem; padding: 0.6rem 0.75rem 0.65rem; background: var(--dm-3); border: 3px solid var(--dm-0); box-shadow: 3px 3px 0 var(--dm-1); color: var(--dm-0); pointer-events: none; }
+.dm-title { margin: 0 0 0.15rem; font: 400 clamp(0.72rem, 0.6rem + 0.4vw, 0.95rem)/1.2 var(--dm-font); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dm-0); }
+.dm-row { display: flex; align-items: center; gap: 0.35rem; margin: 0; font: 400 0.62rem/1 var(--dm-font); }
+.dm-heart { width: 14px; height: 12px; fill: var(--dm-2); shape-rendering: crispEdges; }
+.dm-heart[data-full] { fill: var(--dm-0); }
+.dm-coin { display: inline-block; width: 8px; height: 12px; border: 2px solid var(--dm-0); border-radius: 4px; background: var(--dm-2); }
+.dm-cart { display: inline-block; width: 11px; height: 13px; background: linear-gradient(var(--dm-0) 0 0) 2px 3px / 7px 5px no-repeat, var(--dm-2); border: 2px solid var(--dm-0); }
+
+.dm-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; max-width: 60%; }
+.dm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border: 3px solid var(--dm-0);
+  background: var(--dm-3);
+  color: var(--dm-0);
+  box-shadow: 3px 3px 0 var(--dm-1);
+  font: 400 0.58rem/1 var(--dm-font);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dm-chip:hover, .dm-chip:focus-visible { background: var(--dm-2); outline: none; }
+.dm-chip:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--dm-1); }
+.dm-chip[aria-pressed='false'] { color: var(--dm-1); }
+.dm-chip kbd { font: inherit; opacity: 0.65; }
+.dm-turn { display: inline-flex; gap: 0.4rem; }
+.dm-turn .dm-chip { font-size: 0.8rem; padding: 0.35rem 0.5rem; }
+
+.dm-banner { position: absolute; left: 50%; top: 42%; margin: 0; padding: 0.9rem 1.2rem; transform: translate(-50%, -50%); background: var(--dm-0); color: var(--dm-3); font: 400 clamp(0.9rem, 0.7rem + 0.8vw, 1.4rem)/1 var(--dm-font); text-transform: uppercase; box-shadow: 4px 4px 0 var(--dm-1); }
+
+/* the cartridge list */
+.dm-list { position: absolute; right: clamp(0.6rem, 1.6vw, 1rem); top: 3.6rem; z-index: 3; width: min(23rem, calc(100% - 1.2rem)); max-height: calc(100% - 5rem); overflow: auto; padding: 0.8rem 0.9rem; border: 3px solid var(--dm-0); background: var(--dm-3); color: var(--dm-0); box-shadow: 4px 4px 0 var(--dm-1); }
+.dm-list-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 0.6rem; font: 400 0.66rem/1.2 var(--dm-font); text-transform: uppercase; }
+.dm-x { border: 0; background: none; color: var(--dm-0); font: 400 1rem/1 var(--dm-font); cursor: pointer; }
+.dm-list ol { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; counter-reset: cart; }
+.dm-list li { position: relative; padding-left: 1.6rem; font: 400 0.56rem/1.6 var(--dm-font); counter-increment: cart; }
+.dm-list li::before { content: counter(cart); position: absolute; left: 0; top: 0; width: 1.1rem; text-align: center; background: var(--dm-1); color: var(--dm-3); }
+.dm-list li[data-got]::before { background: var(--dm-0); }
+.dm-list a { color: var(--dm-0); text-decoration: underline; text-underline-offset: 3px; }
+.dm-list b { font-weight: 400; color: var(--dm-0); }
+.dm-list span { color: var(--dm-1); }
+
+/* bottom: the hint, the B prompt, the dialog box */
+.dm-hint, .dm-prompt { position: absolute; left: 50%; bottom: clamp(0.8rem, 3%, 1.4rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.55rem 0.75rem; transform: translateX(-50%); border: 3px solid var(--dm-0); background: var(--dm-3); color: var(--dm-0); box-shadow: 3px 3px 0 var(--dm-1); font: 400 0.56rem/1.6 var(--dm-font); text-align: center; text-transform: uppercase; pointer-events: none; }
+.dm-prompt b { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; margin-right: 0.35rem; border-radius: 50%; background: var(--dm-0); color: var(--dm-3); font-weight: 400; }
+.dm-dialog { position: absolute; left: 50%; bottom: clamp(0.8rem, 3%, 1.4rem); z-index: 4; width: min(40rem, calc(100% - 1.6rem)); padding: 0.9rem 1.1rem 0.7rem; transform: translateX(-50%); background: var(--dm-3); color: var(--dm-0); border: 4px double var(--dm-0); outline: 3px solid var(--dm-3); box-shadow: 0 0 0 6px var(--dm-0); }
+.dm-dialog-kicker { margin: 0 0 0.45rem; color: var(--dm-1); font: 400 0.52rem/1.2 var(--dm-font); text-transform: uppercase; }
+.dm-dialog-title { margin: 0 0 0.6rem; font: 400 clamp(0.66rem, 0.6rem + 0.25vw, 0.82rem)/1.35 var(--dm-font); text-transform: uppercase; }
+.dm-dialog-text { margin: 0; font: 400 clamp(0.56rem, 0.52rem + 0.2vw, 0.68rem)/1.9 var(--dm-font); }
+.dm-ghost { visibility: hidden; }
+.dm-dialog-foot { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; margin-top: 0.4rem; }
+.dm-dialog-link { color: var(--dm-0); font: 400 0.56rem/1.2 var(--dm-font); text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; }
+.dm-dialog-next { border: 0; background: none; color: var(--dm-0); font: 400 0.7rem/1 var(--dm-font); cursor: pointer; animation: dm-blink 0.9s steps(2) infinite; }
+@keyframes dm-blink { 50% { opacity: 0; } }
+
+/* touch: a D-pad on the left, B and A on the right */
+.dm-touch { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 1rem calc(1rem + env(safe-area-inset-bottom)); pointer-events: none; }
+.dm-pad { position: relative; width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
+.dm-pad span { position: absolute; left: 50%; top: 50%; background: #2b2b33; border-radius: 6px; transform: translate(-50%, -50%); box-shadow: 0 4px 0 #15151a; opacity: 0.88; }
+.dm-pad span:first-child { width: 44px; height: 124px; }
+.dm-pad span:last-child { width: 124px; height: 44px; }
+.dm-ab { display: flex; align-items: flex-end; gap: 0.9rem; transform: rotate(-22deg); margin-bottom: 1.2rem; margin-right: 3.6rem; pointer-events: auto; } /* clear of the site's guide button */
+.dm-btn { width: 62px; height: 62px; border: 0; border-radius: 50%; background: #9b2257; color: #f3d8e4; font: 400 0.8rem/1 var(--dm-font); box-shadow: 0 5px 0 #5c1032; touch-action: none; opacity: 0.92; }
+.dm-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #5c1032; }
+.dm-btn-a { margin-bottom: 2.2rem; }
+.dm-stage:has(.dm-touch) .dm-prompt, .dm-stage:has(.dm-touch) .dm-hint { bottom: 9.5rem; }
+
+/* playing the giant Game Boy */
+.dm-play { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 1rem; overflow: auto; background: color-mix(in srgb, var(--dm-0) 82%, transparent); }
+.dm-play-inner { display: grid; justify-items: center; gap: 0.6rem; }
+.dm-play .mono { color: var(--dm-3); }
+
+/* without 3D */
+.dm-cards-wrap { padding-block: 2rem 1rem; }
+.dm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.9rem; margin: 1.8rem 0 0; padding: 0; list-style: none; }
+.dm-cards li { padding: 1rem; border: 3px solid #0f380f; background: #9bbc0f; color: #0f380f; box-shadow: 4px 4px 0 #306230; }
+.dm-cards li[data-got] { background: #8bac0f; }
+.dm-cards a { font: 400 0.68rem/1.5 'Press Start 2P', var(--font-mono); color: #0f380f; text-decoration: underline; text-underline-offset: 3px; }
+.dm-cards p { margin: 0.6rem 0 0; font-size: 0.85rem; line-height: 1.5; }
+.dm-where { font: 400 0.52rem/1.5 'Press Start 2P', var(--font-mono) !important; color: #306230; text-transform: uppercase; }
+
+@media (max-width: 640px) {
+  .dm-stage { border-width: 5px; border-radius: 10px 10px 28px 10px; max-width: 100%; }
+  .dm-chips { max-width: 52%; }
+  .dm-chip { font-size: 0.5rem; padding: 0.42rem 0.45rem; }
+  .dm-stats { padding: 0.45rem 0.55rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-dialog-next { animation: none; }
+}
+
+/* the page under the world: the shelf of cartridges, and how it's drawn */
+.dm-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1rem; margin-inline: 0; margin-bottom: 0; padding: 0; list-style: none; }
+.dm-shelf li { position: relative; display: grid; align-content: start; gap: 0.55rem; padding: 1.1rem 1.1rem 1.2rem; border-radius: 6px 6px 6px 6px; background: color-mix(in srgb, var(--surface, #fff) 92%, #8a8a8a); border: 1px solid var(--border); box-shadow: inset 0 -6px 0 color-mix(in srgb, var(--border) 70%, transparent); }
+.dm-shelf li::before { content: ''; position: absolute; right: 0.9rem; top: 0.9rem; width: 1.6rem; height: 0.9rem; border-radius: 2px; background: repeating-linear-gradient(90deg, var(--border) 0 2px, transparent 2px 5px); }
+.dm-shelf li[data-got] { border-color: color-mix(in srgb, #306230 55%, var(--border)); }
+.dm-shelf li[data-got] .dm-shelf-tag { color: #306230; }
+html[data-mode='dark'] .dm-shelf li[data-got] .dm-shelf-tag { color: #9bbc0f; }
+.dm-shelf-console { background: #9bbc0f !important; border-color: #306230 !important; color: #0f380f; }
+.dm-shelf-console .dm-shelf-name, .dm-shelf-console .dm-shelf-text, .dm-shelf-console .dm-shelf-tag { color: #0f380f !important; }
+.dm-shelf-tag { margin: 0; color: var(--muted); font: 400 0.52rem/1.5 'Press Start 2P', var(--font-mono); text-transform: uppercase; padding-right: 2.2rem; }
+.dm-shelf-name { color: var(--ink); font: 400 0.74rem/1.5 'Press Start 2P', var(--font-mono); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.dm-shelf-text { margin: 0; color: var(--body); font-size: 0.9rem; line-height: 1.55; }
+
+.dm-how { padding: clamp(1rem, 2.5vw, 1.6rem); }
+.dm-ramp { display: block; width: 100%; height: auto; aspect-ratio: 128 / 20; image-rendering: pixelated; border: 3px solid #2b2b33; }
+.dm-bayer { display: grid; grid-template-columns: repeat(4, 1.8rem); gap: 2px; margin: 0; padding: 0; list-style: none; }
+.dm-bayer li { display: grid; place-items: center; height: 1.8rem; background: color-mix(in srgb, var(--ink) calc(var(--k, 0) * 1%), transparent); border: 1px solid var(--border); font: 600 0.72rem/1 var(--font-mono); color: var(--ink); }
+.dm-swatches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; flex: 1; margin: 0; padding: 0; list-style: none; }
+.dm-swatches li { display: flex; align-items: flex-end; height: 2.9rem; padding: 0.3rem 0.4rem; border-radius: 3px; }
+.dm-swatches span { padding: 0.1rem 0.25rem; border-radius: 2px; background: rgba(255, 255, 255, 0.82); color: #111; font: 600 0.62rem/1.2 var(--font-mono); }

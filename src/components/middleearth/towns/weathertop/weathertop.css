@@ -1,0 +1,48 @@
+/* Weathertop: the Shire's HUD (../../shire/shire.css) at dusk and by night,
+   with the panels for the fire, the brand, the kingsfoil and the ride. */
+
+.wt-world { --shire-glass: rgba(14, 16, 26, 0.78); --shire-glass-hi: rgba(16, 18, 28, 0.92); }
+.wt-stage { background: linear-gradient(180deg, #1c2a4a 0%, #d88a5a 58%, #3a3428 60%, #1a1812 100%); }
+.wt-stage[data-sky='night'] { background: linear-gradient(180deg, #03060f 0%, #14203a 60%, #10120e 62%, #08090a 100%); }
+.wt-stage[data-sky='dawn'] { background: linear-gradient(180deg, #4a5a7a 0%, #c8aa98 60%, #4a463a 62%, #2a2a22 100%); }
+.wt-stage .shire-loading { color: #e8e0cc; }
+.wt-stage[data-mode='brand'] .shire-canvas { cursor: crosshair; touch-action: none; }
+.wt-stage[data-mode='ride'] .shire-canvas, .wt-stage[data-mode='ford'] .shire-canvas, .wt-stage[data-mode='talk'] .shire-canvas { cursor: default; touch-action: none; }
+
+/* a game's panel, up top in the middle, out of the way of the action */
+.wt-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.wt-game .shire-meter { width: 100%; box-sizing: border-box; }
+.wt-game-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.wt-meter-fire span { background: linear-gradient(90deg, #f6d36a, #ff4a1a); }
+.wt-meter-cold span { background: linear-gradient(90deg, #9ab8ff, #e8f0ff); }
+.wt-meter-hold span { background: linear-gradient(90deg, #f08a2a, #ffd06a); }
+.wt-meter-gap span { background: linear-gradient(90deg, #d8280a, #f6d36a 60%, #9ad86a); }
+.wt-meter-road span { background: linear-gradient(90deg, #6a8cff, #e8f0ff); }
+.wt-meter-ring .shire-meter-bar span { background: linear-gradient(90deg, #f0c040, #ff4a1a); }
+.wt-meter-ring[data-pull] { border-color: rgba(255, 140, 40, 0.7); animation: shire-tempt 0.9s ease-in-out infinite alternate; }
+
+/* the five fires: each a flame that shrinks as you stamp it out */
+.wt-flames { display: flex; gap: 0.6rem; justify-content: center; }
+.wt-flame { width: 1.1rem; height: 1.6rem; border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%; background: radial-gradient(ellipse at 50% 80%, #fff2b0 0%, #ffb030 35%, #e84a10 70%, transparent 72%); transform-origin: bottom; transition: transform 0.15s, opacity 0.15s; }
+.wt-flame[data-out] { opacity: 0.18; filter: grayscale(1); }
+
+/* where the Nazgûl are, round you: the brand points up */
+.wt-radar { position: relative; width: 4.6rem; height: 4.6rem; flex: none; border: 1px solid var(--shire-line); border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.04) 0 30%, rgba(255, 255, 255, 0.02) 30% 60%, transparent 60%); }
+.wt-radar::before { content: ''; position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-left: 1.15rem solid transparent; border-right: 1.15rem solid transparent; border-bottom: 2.3rem solid rgba(255, 160, 60, 0.28); transform: translate(-50%, -100%); }
+.wt-radar::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0.4rem; height: 0.4rem; margin: -0.2rem 0 0 -0.2rem; border-radius: 50%; background: #fff4dc; }
+.wt-radar i { position: absolute; left: 50%; top: 50%; width: 0.55rem; height: 0.55rem; margin: -0.275rem 0 0 -0.275rem; border-radius: 50%; background: #0c0c12; box-shadow: 0 0 0 1.5px #9aa8d8; }
+.wt-radar i[data-near] { box-shadow: 0 0 0 2px #ff4a1a, 0 0 8px #ff4a1a; }
+.wt-radar i[data-held] { box-shadow: 0 0 0 2px #ffb030; }
+
+.wt-big { min-width: 7rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.wt-steer { display: flex; gap: 0.5rem; }
+.wt-steer .btn { min-width: 3.6rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* the end: Frodo in Rivendell */
+.wt-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .wt-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
+  .wt-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+  .wt-radar { width: 3.8rem; height: 3.8rem; }
+}

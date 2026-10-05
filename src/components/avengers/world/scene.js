@@ -29,6 +29,7 @@ import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/mod
 import { APRON, BERM, BRIDGE, CRES, GATE, HANGAR, LAB, LAWN, PROW, RIVER, SHORE, STALLS, TRAINING, TREES, arcPt, inPoly, rng } from '../compound/plan';
 import { apronMarks, buildQuinjet, curtainTexture, flatShape, groundPaint, panelNormal, prismTop, prismWalls, solarTexture } from '../compound/models';
 import { STONES } from '../../interests/stones';
+import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { BUILDINGS, CAST, CRATER, LAWN_TREES, PARKED_CARS, PARKED_JET, PLACES, PORTAL, ROADS_W, ROAD_HALF, S, V, camRoom, nearestEdge, samplePath } from './rules';
 
 const SC = { s: S, v: V };
@@ -840,9 +841,33 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     visor: new THREE.MeshBasicMaterial({ color: hot(0x58c8ff, 2.2), toneMapped: false }),
   };
   const MATS = { thor: thorMats, widow: widowMats, hulk: hulkMats, bot: botMats };
+  let gone = false; // disposed: what's still loading isn't wanted
   const SCALE = { thor: 1.05, widow: 1.0, hulk: 1.35, bot: 0.92 };
   const people = {};
-  for (const c of CAST) {
+  // the HD figures (Spider-Man, from his game) come in their own time, posed by lib/three/rig
+  const hd = {};
+  const HD = { spiderman: { url: '/models/marvel/spiderman.glb', h: 1.72 } };
+  for (const c of CAST.filter((x) => HD[x.style])) {
+    const spec = HD[c.style];
+    loadFigure(`${import.meta.env?.BASE_URL ?? '/'}${spec.url.replace(/^\//, '')}`)
+      .then(async (t) => {
+        if (engine.lost || gone) return;
+        const f = figure(t, { h: spec.h });
+        f.holder.position.set(c.x, f.hipHeight, c.z);
+        f.holder.rotation.y = c.face + Math.PI / 2;
+        f.holder.visible = false;
+        f.snap(POSES.stand);
+        scene.add(f.holder);
+        await engine.precompile(f.holder);
+        if (gone) return;
+        f.holder.visible = true;
+        hd[c.id] = { f, c, yaw: c.face + Math.PI / 2 };
+      })
+      .catch(() => {
+        /* no figure: the gate is just the gate */
+      });
+  }
+  for (const c of CAST.filter((x) => !HD[x.style])) {
     const h = buildHumanoid({ style: c.style, materials: MATS[c.style], scale: SCALE[c.style] });
     h.root.position.set(c.x, 0, c.z);
     h.root.rotation.y = c.face + Math.PI / 2;
@@ -871,8 +896,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const beamMat = beamMaterial(p.accent);
     const beam = new THREE.Mesh(beamGeo, beamMat);
     beam.renderOrder = 4;
-    const stone = STONES.find((s) => s.id === STONE_OF[p.stone]);
-    const gem = new THREE.Mesh(gemGeo, new THREE.MeshStandardMaterial({ color: stone.color, emissive: new THREE.Color(stone.color), emissiveIntensity: 2.6, roughness: 0.15, metalness: 0.1 }));
+    // (the gate has no stone to win: a gem nobody will see, in its own colour)
+    const color = STONES.find((s) => s.id === STONE_OF[p.stone])?.color ?? p.accent;
+    const gem = new THREE.Mesh(gemGeo, new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 2.6, roughness: 0.15, metalness: 0.1 }));
     gem.position.y = 4.6;
     gem.scale.setScalar(0.55);
     gem.castShadow = false;
@@ -973,6 +999,24 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     }
   };
 
+  const placeHd = (s, dt) => {
+    const h = s.hero;
+    for (const id of Object.keys(hd)) {
+      const p = hd[id];
+      const d = Math.hypot(h.x - p.c.x, h.z - p.c.z);
+      let want = p.c.face + Math.PI / 2;
+      if (d < 9) want = Math.atan2(h.x - p.c.x, h.z - p.c.z);
+      let dy = want - p.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      p.yaw += dy * Math.min(1, dt * 2.5);
+      p.f.holder.rotation.y = p.yaw;
+      // at ease, shifting his weight, a hand up to wave when you come by
+      const pose = { ...POSES.stand, torso: { pitch: 0.02, yaw: Math.sin(clock * 0.6) * 0.08, roll: Math.sin(clock * 0.9) * 0.03 } };
+      if (d < 6) Object.assign(pose, { armR: [-0.55, 0.75, 0.25], foreR: [-0.1, 1, 0.1 + Math.sin(clock * 9) * 0.35] });
+      p.f.pose(pose, dt, 8);
+    }
+  };
+
   const placeMarkers = (s) => {
     const done = new Set(s.done ?? []);
     for (const p of PLACES) {
@@ -1005,6 +1049,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     placeJet(clock + 6, dt);
     placeHero(s.hero, dt);
     placePeople(s, dt);
+    placeHd(s, dt);
     placeMarkers(s);
 
     // Mjolnir hums a little when the worthy come near it
@@ -1090,6 +1135,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const screenOf = (kind, id) => {
     let p = null;
     if (kind === 'cast' && people[id]) p = tmp.copy(people[id].h.root.position).add(tmp2.set(0, people[id].h.height + 0.35, 0));
+    else if (kind === 'cast' && hd[id]) p = tmp.copy(hd[id].f.holder.position).add(tmp2.set(0, hd[id].f.height - hd[id].f.hipHeight + 0.35, 0));
     else if (kind === 'hero') p = tmp.copy(cap.root.position).add(tmp2.set(0, 2.2, 0));
     if (!p) return null;
     p.project(camera);
@@ -1120,6 +1166,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       A.intro = 0;
     },
     dispose() {
+      gone = true;
+      for (const p of Object.values(hd)) p.f.dispose();
       vfx.dispose();
       engine.dispose();
     },

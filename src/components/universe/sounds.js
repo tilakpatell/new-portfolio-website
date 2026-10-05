@@ -276,6 +276,20 @@ const ARRIVE = {
     ms: 1400,
   },
   caribbean: { clip: 'pirates', duration: 6 },
+  invincible: {
+    // something going past at the speed of sound, then a punch landing
+    play: () => {
+      whoosh(0.7, 1800, 180, 0.24);
+      tones(
+        [
+          [82, 0.62, 0.35],
+          [55, 0.66, 0.5],
+        ],
+        { type: 'sine', gain: 0.16 },
+      );
+    },
+    ms: 1300,
+  },
 };
 
 // docking at one of the stations: two soft tones, up

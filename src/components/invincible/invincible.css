@@ -1,0 +1,93 @@
+/* ─── /invincible: the Graysons' city ─────────────────────────────────────── */
+/* comic-book yellow and blue, Bebas for the show's lettering */
+.inv-page { --inv-yellow: #ffd23a; --inv-blue: #1d6fd6; --inv-navy: #0e1a33; }
+.inv-page :is(.inv-display, .inv-title) { font-family: 'Bebas Neue', var(--font-sans); font-weight: 400; font-stretch: normal; letter-spacing: 0.015em; line-height: 0.92; }
+.inv-page .inv-title { font-size: clamp(2.4rem, 1.6rem + 2.8vw, 3.8rem); }
+.inv-page .inv-display { color: var(--inv-yellow); text-shadow: 3px 3px 0 var(--inv-blue); }
+html[data-mode='light'] .inv-page .inv-display { color: var(--inv-blue); text-shadow: 3px 3px 0 var(--inv-yellow); }
+
+/* behind the page: halftone dots, fading out */
+.inv-dots {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+  background: radial-gradient(circle, color-mix(in srgb, var(--inv-yellow) 55%, transparent) 1.2px, transparent 1.6px) 0 0 / 14px 14px;
+  -webkit-mask-image: radial-gradient(90% 70% at 85% 10%, #000 0%, transparent 70%);
+  mask-image: radial-gradient(90% 70% at 85% 10%, #000 0%, transparent 70%);
+}
+html[data-mode='light'] .inv-dots { opacity: 0.5; }
+
+/* "Think": the page takes the hit */
+.inv-page[data-shake] > section { animation: inv-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes inv-shake {
+  10%, 90% { transform: translate3d(-2px, 1px, 0); }
+  20%, 80% { transform: translate3d(5px, -2px, 0); }
+  30%, 50%, 70% { transform: translate3d(-9px, 3px, 0); }
+  40%, 60% { transform: translate3d(9px, -3px, 0); }
+}
+
+/* the top: the title card, and the line */
+.inv-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+@media (max-width: 899px) { .inv-hero { grid-template-columns: 1fr; } }
+.inv-card {
+  position: relative; display: grid; place-content: center; justify-items: center; gap: 0.6rem; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: var(--r-card); background: var(--card); color: var(--inv-yellow); cursor: pointer; isolation: isolate;
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: background-color 0.35s ease;
+}
+.inv-card::after { /* the season's wear: red flecks, more of them each week */
+  content: ''; position: absolute; inset: 0; z-index: -1; opacity: calc((var(--ep, 1) - 1) / 7 * 0.85); pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 26%, #b0121b 0 3%, transparent 3.4%),
+    radial-gradient(circle at 23% 31%, #b0121b 0 1.2%, transparent 1.5%),
+    radial-gradient(circle at 74% 64%, #9c0f17 0 5%, transparent 5.5%),
+    radial-gradient(circle at 81% 58%, #9c0f17 0 1.6%, transparent 2%),
+    radial-gradient(circle at 66% 72%, #b0121b 0 1%, transparent 1.3%),
+    radial-gradient(circle at 40% 80%, #8a0c13 0 2.2%, transparent 2.6%),
+    radial-gradient(ellipse 30% 12% at 70% 30%, rgba(140, 10, 18, 0.9), transparent 70%);
+  transition: opacity 0.4s ease;
+}
+.inv-card[data-ep='1'] { --ep: 1; } .inv-card[data-ep='2'] { --ep: 2; } .inv-card[data-ep='3'] { --ep: 3; } .inv-card[data-ep='4'] { --ep: 4; }
+.inv-card[data-ep='5'] { --ep: 5; } .inv-card[data-ep='6'] { --ep: 6; } .inv-card[data-ep='7'] { --ep: 7; } .inv-card[data-ep='8'] { --ep: 8; }
+.inv-card-word { font: 400 clamp(3rem, 1.4rem + 8vw, 7.6rem)/0.85 'Bebas Neue', var(--font-sans); letter-spacing: 0.02em; transform: scaleY(1.35); color: var(--inv-yellow); text-shadow: 4px 4px 0 #0b3f86, 0 0 40px rgba(0, 0, 0, 0.25); }
+.inv-card-ep { margin-top: 0.4rem; font: 700 clamp(0.7rem, 0.62rem + 0.35vw, 0.9rem)/1.2 var(--font-sans); font-stretch: 112%; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.92); }
+.inv-card-hint { position: absolute; right: 12px; bottom: 10px; font: 600 0.62rem/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.inv-card:hover .inv-card-word { animation: inv-wobble 0.45s ease; }
+.inv-card:focus-visible { outline: 3px solid var(--inv-yellow); outline-offset: 3px; }
+@keyframes inv-wobble { 30% { transform: scaleY(1.42) translateY(-3px); } 60% { transform: scaleY(1.3); } }
+
+/* with no 3D: the title card says so */
+.inv-fallback { display: grid; gap: 0.8rem; padding: clamp(1.2rem, 4vw, 2.5rem); border: 1px solid var(--border); border-radius: var(--r-card); background: var(--inv-navy); color: #dfe8ff; }
+.inv-fallback-word { font: 400 clamp(2.6rem, 2rem + 3vw, 4.4rem)/0.9 'Bebas Neue', var(--font-sans); color: var(--inv-yellow); transform: scaleY(1.3); transform-origin: left; text-shadow: 3px 3px 0 var(--inv-blue); }
+
+/* the GDA's files: the turntable and the folder */
+.gda { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: clamp(1.2rem, 3vw, 2.5rem); align-items: start; }
+@media (max-width: 899px) { .gda { grid-template-columns: 1fr; } }
+.gda-stage { display: grid; gap: 0.7rem; }
+.gda-screen { position: relative; aspect-ratio: 4 / 5; max-height: 640px; overflow: hidden; border: 1px solid rgba(95, 200, 255, 0.25); border-radius: var(--r-card); background: #070a12; cursor: grab; touch-action: pan-y; outline: none; }
+.gda-screen:active { cursor: grabbing; }
+.gda-screen:focus-visible { outline: 2px solid #5fc8ff; outline-offset: 3px; }
+.gda-flat { display: grid; place-items: center; font: 400 2.6rem/1 'Bebas Neue', var(--font-sans); color: var(--inv-yellow); background: radial-gradient(circle at 50% 40%, #1b2a4a, #070a12 70%); cursor: default; }
+.gda-stamp { position: absolute; left: 14px; top: 12px; padding: 0.25rem 0.55rem; border: 1px solid rgba(95, 200, 255, 0.5); border-radius: 4px; font: 600 0.62rem/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #8fd8ff; background: rgba(5, 12, 24, 0.6); pointer-events: none; }
+.gda-poses { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.gda-poses button, .gda-tabs button { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; font-size: 0.8rem; font-weight: 600; color: var(--body); background: var(--surface); transition: border-color 0.15s, background-color 0.15s; }
+.gda-poses button[aria-checked='true'], .gda-tabs button[aria-selected='true'] { border-color: var(--inv-yellow); color: var(--ink); background: color-mix(in srgb, var(--inv-yellow) 18%, var(--surface)); }
+.gda-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.gda-card { margin-top: 0.9rem; padding: clamp(1.1rem, 3vw, 1.6rem); border: 1px solid var(--border); border-left: 4px solid var(--inv-yellow); border-radius: var(--r-card); background: var(--surface); }
+.gda-kicker { font: 600 0.66rem/1.2 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.gda-name { margin-top: 0.5rem; font: 400 clamp(2.2rem, 1.6rem + 2vw, 3.1rem)/0.95 'Bebas Neue', var(--font-sans); letter-spacing: 0.02em; color: var(--ink); }
+.gda-real { margin-top: 0.15rem; font-size: 0.9rem; color: var(--muted); }
+.gda-facts { display: grid; gap: 0.5rem; margin-top: 1rem; padding-left: 1.1rem; list-style: square; color: var(--body); }
+.gda-facts li::marker { color: var(--inv-yellow); }
+.gda-note { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--border); font-size: 0.92rem; color: var(--body); }
+
+/* the lines: speech balloons that do something */
+.inv-lines { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr)); gap: 1rem; }
+.inv-quote { position: relative; display: flex; flex-direction: column; padding: 1.1rem 1.1rem 1rem; border: 2px solid var(--ink); border-radius: 18px; background: var(--surface); box-shadow: 5px 5px 0 var(--inv-yellow); }
+.inv-quote-said { font: 400 1.75rem/1 'Bebas Neue', var(--font-sans); letter-spacing: 0.015em; color: var(--ink); }
+.inv-quote-who { margin-top: 0.5rem; font-size: 0.78rem; color: var(--muted); }
+.inv-quote-reply { min-height: 2.6em; margin-top: 0.7rem; font-size: 0.88rem; line-height: 1.4; color: var(--body); }
+.inv-quote-act { align-self: flex-start; margin-top: auto; padding: 0.45rem 0.9rem; border-radius: 999px; background: var(--inv-blue); color: #fff; font-weight: 700; font-size: 0.82rem; transition: transform 0.1s, background-color 0.15s; }
+.inv-quote-act:hover { background: #1558ad; }
+.inv-quote-act:active { transform: translateY(1px); }
+.inv-credits { max-width: 80ch; font-size: 0.78rem; line-height: 1.55; color: var(--muted); }
+.inv-credits a { text-decoration: underline; text-underline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .inv-card:hover .inv-card-word { animation: none; } .inv-page[data-shake] > section { animation: none; } }

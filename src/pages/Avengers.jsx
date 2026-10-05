@@ -5,6 +5,7 @@ import CompoundWorld from '../components/avengers/world/CompoundWorld';
 import Titan from '../components/avengers/titan/Titan';
 import { earnedStones, useStones } from '../components/avengers/hq/stones';
 import { useAchievements } from '../components/Achievements';
+import ModelCredits from '../components/ModelCredits';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -267,6 +268,10 @@ export default function Avengers() {
           </div>
         </section>
       )}
+
+      <section className="shell relative z-10 pb-6 pt-4">
+        <ModelCredits where="avengers" line className="text-xs text-muted" />
+      </section>
 
       {hasPhotos(ON_DISPLAY) && (
         <section className="shell relative z-10 pb-24 pt-10 md:pb-28" aria-labelledby="av-display-title">

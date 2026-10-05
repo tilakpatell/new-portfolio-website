@@ -99,4 +99,5 @@ export const ROUTE_THEMES = {
   '/cybertron': 'optimus',
   '/albuquerque': 'heisenberg',
   '/c-137': 'portal',
+  '/dot-matrix': 'gameboy',
 };

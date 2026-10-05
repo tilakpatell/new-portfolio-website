@@ -146,9 +146,10 @@ const STARK = (() => {
 })();
 const CRATER = { x: 45 * S, z: 58 * S, r: 2.6 };
 
-// The seven doors, in the order of the tour. `stone` is what winning there
-// earns (Clint's and Natasha's halves of the Soul Stone are a stone between
-// them); `face` is the way out of the door, which the hero faces as he leaves;
+// The doors, in the order of the tour: the seven buildings with a stone to
+// win, and Spider-Man at the front gate, who has a game but no stone.
+// `stone` is what winning there earns (Clint's and Natasha's halves of the
+// Soul Stone are a stone between them); `face` is the way out of the door, which the hero faces as he leaves;
 // `accent` is the game's own colour and `sign` what's over its door.
 export const PLACES = [
   {
@@ -226,6 +227,18 @@ export const PLACES = [
     ...at(doorOf(LAB, 0, 1.6)),
   },
   {
+    id: 'spidey',
+    accent: '#ff5a4f',
+    sign: null,
+    name: 'The front gate',
+    where: 'Spider-Man · the gatehouse',
+    act: 'Swing to school',
+    stone: null,
+    hint: 'Peter’s at the front gate, late for school, two kilometres away.',
+    blurb: 'Happy dropped the kid off here. Inside, Tony had a new suit and a room full of reporters waiting; Peter turned both down and went back to Queens. Now he’s late for school, two kilometres away, and the quickest way there is between the buildings.',
+    ...at(doorOf(GATE, 0, 1.6)),
+  },
+  {
     id: 'vault',
     accent: '#6cc8ff',
     sign: 'Hangar 1',
@@ -282,6 +295,15 @@ export const CAST = [
     lines: ['That’s my secret, Cap. I’m always angry.', 'Hulk smash!', 'Puny god.'],
     after: { place: 'banner', lines: ['Hulk smash!', 'Midtown is safe. Mostly.'] },
     r: 0.9,
+  },
+  {
+    id: 'spidey',
+    name: 'Peter Parker',
+    style: 'spiderman',
+    x: GATE[1][0] * S - 2.4,
+    z: GATE[1][1] * S - 3.2,
+    face: faceOf(-0.3, -1),
+    lines: ['Hey, Cap. Big fan. Huge.', 'Mr. Stark said to wait here. That was an hour ago.', 'I’m gonna be so late for school.'],
   },
   {
     id: 'bot',
@@ -514,8 +536,9 @@ const WHOLE = ['space', 'mind', 'reality', 'power', 'time', 'soul'];
 // whether the portal is open, and the line at the top of the screen.
 export function progress(earned = []) {
   const has = new Set(earned);
-  const places = PLACES.map((p) => ({ ...p, done: has.has(p.stone) }));
-  const next = places.find((p) => !p.done) ?? null;
+  const places = PLACES.map((p) => ({ ...p, done: p.stone ? has.has(p.stone) : false }));
+  // (the gate has no stone: it's never the next one for the heist)
+  const next = places.find((p) => p.stone && !p.done) ?? null;
   const have = WHOLE.filter((s) => has.has(s));
   const stones = have.length;
   const portal = has.has('space');

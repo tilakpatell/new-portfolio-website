@@ -4,6 +4,7 @@ import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
 import { UNIVERSE, placeName } from './where';
 import { crewById } from '../crews';
+import { paintById } from '../paint';
 import Face from '../Faces';
 import './online.css';
 
@@ -11,7 +12,7 @@ import './online.css';
 // you're online, of every other page: `floating`): a button that says how
 // many pilots are online (or offers to go online), and a card above it with
 // either the way in (your callsign, and what going online means) or who's
-// online, what they fly, their kills, which page they're on (with a button
+// online, what they fly (and in what paint), their kills, which page they're on (with a button
 // to go there too), and the buttons to ask them to be allies, accept,
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
@@ -180,6 +181,7 @@ function Pilot({ p, online }) {
   const navigate = useNavigate();
   const crew = crewById(p.kind);
   const who = crew ? Object.keys(crew.speakers)[0] : null;
+  const coat = paintById(p.loadout?.paint);
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
   const at = !p.where ? '' : elsewhere ? ` · on ${placeName(p.where)}` : ' · here';
@@ -189,7 +191,7 @@ function Pilot({ p, online }) {
       <span className="universe-online-who">
         <b>{p.blocked ? 'Blocked pilot' : p.name}</b>
         <span>
-          {p.blocked ? 'hidden' : crew ? crew.ship.replace(/^(The|An) /, '') : 'no ship yet'}
+          {p.blocked ? 'hidden' : crew ? `${crew.ship.replace(/^(The|An) /, '')}${coat.hull ? ` in ${coat.name}` : ''}` : 'no ship yet'}
           {!p.blocked && at}
           {!p.blocked && p.kills ? ` · ${p.kills} ${p.kills === 1 ? 'kill' : 'kills'}` : ''}
           {p.ally === 'ally' && !p.blocked ? ' · ally' : ''}
