@@ -509,5 +509,27 @@
     "where": "galaxy",
     "as": "the porgs",
     "file": "/models/galaxy/surface/porg.glb"
+  },
+  "surface-cloudcar": {
+    "title": "Star Wars Galaxies - Twin-pod cloud car",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-twin-pod-cloud-car-0ee339ff87a043a88a1a5d45bb229c49",
+    "where": "galaxy",
+    "as": "the cloud cars",
+    "file": "/models/galaxy/surface/cloudcar.glb"
+  },
+  "surface-fortress": {
+    "title": "Vader's Castle",
+    "author": "art16c",
+    "authorUrl": "https://sketchfab.com/art16c",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
+    "where": "galaxy",
+    "as": "Vader's castle",
+    "file": "/models/galaxy/surface/fortress.glb"
   }
 }
