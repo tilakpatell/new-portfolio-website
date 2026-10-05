@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createEngine, hot } from '../hq/engine';
 import { pbr, preload } from '../hq/assets';
+import { antiTile, detailNormal } from '../../../lib/three/surface';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
@@ -257,7 +258,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   }
 
   // ── the ground ──
-  const floorMat = cloudy(await pbr('forest-floor', { repeat: [1 / 6, 1 / 6], small, roughness: 1, metalness: 0, color: 0x6a6a52 }));
+  // (the scans repeat every few metres over hundreds: a second, turned copy
+  // of each is blended in by a slow noise so the repeat never lines up, and
+  // a fine grain fades in underfoot: lib/three/surface)
+  const grain = detailNormal({ renderer: engine.renderer });
+  const floorMat = antiTile(cloudy(await pbr('forest-floor', { repeat: [1 / 6, 1 / 6], small, roughness: 1, metalness: 0, color: 0x6a6a52 })), { frequency: 0.035, detail: { texture: grain, scale: 0.9, strength: 0.35, range: 30 } });
   const floorGeo = new THREE.PlaneGeometry(3600, 3600).rotateX(-Math.PI / 2).translate(100, -0.4, 80);
   {
     const uv = floorGeo.attributes.uv;
@@ -286,6 +291,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }`,
     );
   };
+  antiTile(lawnMat, { frequency: 0.05, detail: { texture: grain, scale: 1.4, strength: 0.3, range: 26 } });
   const lawn = new THREE.Mesh(flatShape(LAWN, 0, 1, SC), lawnMat);
   lawn.receiveShadow = true;
   scene.add(lawn);
@@ -607,7 +613,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the landing pad: a low slab, its markings
   const apronTop = await pbr('asphalt', { repeat: [1 / 5, 1 / 5], small, roughness: 0.85, metalness: 0, color: 0x6a7076 });
   add(prismWalls(APRON, 0, 0.06, 1, SC), cloudy(grey.clone(), 'grey'));
-  add(prismTop(APRON, 0.06, 1, SC), cloudy(apronTop, 'apron'));
+  add(prismTop(APRON, 0.06, 1, SC), antiTile(cloudy(apronTop, 'apron'), { frequency: 0.06, detail: { texture: grain, scale: 2.2, strength: 0.25, range: 24 } }));
   {
     const b2 = [-1, 66, 38, 99];
     const g = new THREE.PlaneGeometry(39 * S, 33 * S).rotateX(-Math.PI / 2).translate(18.5 * S, 0.06 * V + 0.03, 82.5 * S);
