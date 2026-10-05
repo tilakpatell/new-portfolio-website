@@ -10,6 +10,10 @@
 // (the parked ship); the ground curves away under them, so a walk in a
 // straight line goes round the planet.
 //
+// A planet with a trench round its middle (the Death Star's) has its rim
+// to walk up to and no further: the ship comes down beside it, its door
+// toward it, and a squad comes from your side of it.
+//
 // The planets are huge against a person (a few hundred of them tall at the
 // smallest), so a squad of the Galactic Federation (who are after every crew
 // that lands anywhere) comes over the horizon now and then: they walk at
@@ -96,6 +100,34 @@ export function facingAlong(n, toward) {
   return flat(any, n);
 }
 
+// ── A trench round the middle ──
+// `band`: a planet's trench, in its own space ({ half, home, arc }): its
+// channel's half width either side of the planet's middle (y = 0: it runs
+// round level), in map units, and the arc of it there is (round from the
+// way `home`, an angle, either way: all the way round at π)
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const alongArc = (n, band, pad) => band.arc >= Math.PI || Math.abs(wrap(Math.atan2(n[2], n[0]) - band.home)) <= band.arc + pad;
+// whether n is in the trench (or within `pad` of its rim, map units)
+export const inTrench = (n, band, R, pad = 0) => Boolean(band) && Math.abs(n[1]) < Math.sin((band.half + pad) / R) && alongArc(n, band, pad / R);
+
+// Where to come down by a trench, from `n` (where it'd come down anyway):
+// `back` from the rim (map units) on the side of it n is on, as near n as
+// that is, facing along it with the door (on the right) toward it.
+export function byTrench(n, band, R, back) {
+  const lat = (band.half + back) / R;
+  const side = n[1] < 0 ? -1 : 1;
+  let lon = Math.atan2(n[2], n[0]);
+  if (band.arc < Math.PI) {
+    // (in from the trench's ends, if it doesn't go all the way round)
+    const most = Math.max(0, band.arc - back / R);
+    lon = band.home + clamp(wrap(lon - band.home), -most, most);
+  }
+  const spot = [Math.cos(lon) * Math.cos(lat), side * Math.sin(lat), Math.sin(lon) * Math.cos(lat)];
+  let f = flat([-Math.sin(lon), 0, Math.cos(lon)], spot);
+  if (dot(cross(f, spot), [0, -side, 0]) < 0) f = scale(f, -1);
+  return { n: spot, f };
+}
+
 // someone standing at n, facing f
 export const person = (n, f, extra = {}) => ({ n: unit(n), f: flat(f, unit(n)), h: 0, vh: 0, speed: 0, side: 0, ...extra });
 
@@ -121,7 +153,8 @@ export function bearing(n, f, to) {
 // One step of `dt` seconds for someone on a planet of radius R.
 // input: { move: −1…1 (forward +), strafe: −1…1 (right +), turn: −1…1
 // (right +), run, jump, speed? (a top speed of their own) }; obstacles:
-// [{ n, r }] they go round (r along the ground, map units).
+// [{ n, r }] they go round (r along the ground, map units), and a trench
+// ({ band }, as byTrench's) they stop at the rim of.
 export function walk(w, input, dt, R, obstacles = []) {
   dt = clamp(dt, 0, 0.05);
   const move = clamp(input.move || 0, -1, 1);
@@ -145,6 +178,16 @@ export function walk(w, input, dt, R, obstacles = []) {
   }
   // round anything in the way
   for (const o of obstacles) {
+    if (o.band) {
+      // back up onto the rim, on the side they were on
+      if (!inTrench(n, o.band, R, FOOT.radius)) continue;
+      const lim = Math.sin((o.band.half + FOOT.radius) / R);
+      const side = Math.sign(w.n[1]) || Math.sign(n[1]) || 1;
+      const k = Math.sqrt(1 - lim * lim) / (Math.hypot(n[0], n[2]) || 1);
+      n = [n[0] * k, side * lim, n[2] * k];
+      f = flat(f, n);
+      continue;
+    }
     const gap = Math.acos(clamp(dot(n, o.n), -1, 1)) * R;
     const min = o.r + FOOT.radius;
     if (gap >= min) continue;
@@ -173,8 +216,17 @@ export const turnToward = (w, to, gain = 3) => clamp(-bearing(w.n, w.f, to) * ga
 let nextId = 1;
 
 // A squad coming over the horizon at `w` (the player), from one side:
-// `count` of them, spread out, `dist` away along the ground
-export function squad(rand, w, R, { count = 3, dist = 46 * METRE, kinds = ['gromflomite', 'gromflomite', 'cop'] } = {}) {
+// `count` of them, spread out, `dist` away along the ground (and on a
+// planet with a trench, `band`, from somewhere on the player's side of it)
+export function squad(rand, w, R, { count = 3, dist = 46 * METRE, kinds = ['gromflomite', 'gromflomite', 'cop'], band = null } = {}) {
+  let out = [];
+  for (let tries = 0; tries < 12; tries++) {
+    out = troopsFrom(rand, w, R, count, dist, kinds);
+    if (!band || out.every((t) => !inTrench(t.n, band, R, 2 * METRE) && Math.sign(t.n[1]) === Math.sign(w.n[1]))) break;
+  }
+  return out;
+}
+function troopsFrom(rand, w, R, count, dist, kinds) {
   const from = rand() * Math.PI * 2;
   const out = [];
   for (let i = 0; i < count; i++) {
