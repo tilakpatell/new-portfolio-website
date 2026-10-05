@@ -1,0 +1,834 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAchievements } from '../../../Achievements';
+import { audioContext } from '../../../../lib/audio';
+import { use3D } from '../../../../lib/gpu';
+import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { readPad, typing } from '../../../games/pad';
+import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
+import { useTravellers } from '../useTravellers';
+import { keyDown, keyUp, moveOf } from '../keys';
+import { nearest } from '../story';
+import { newTalk, talkNode, talkOn } from '../talk';
+import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
+import { newWatchers, stepWatchers } from '../watchers';
+import { COLLIDERS, DECOY, GLADE, RUN_START, SEAT, SHORE_SPOT, SPOTS, STAIR, START, STICKS, URUK_ROUNDS, WALLS, castFor, inLake, validAt } from './layout';
+import { CONVOS, QUESTS, SEAL, SPEAKERS, amonHenProgress } from './story';
+import { BOROMIR, RESCUE, SEAT_GAZE, URUKS, gazeIn, gazeOn, newRescue, newSeat, newUnseen, newWood, pickStick, reach, samUp, stepRescue, stepSeat, stepUnseen } from './rules';
+import '../../shire/shire.css';
+import '../bree/bree.css';
+import './amonhen.css';
+
+// Amon Hen, the seventh town on the road: the camp at Parth Galen,
+// Boromir in the woods, the Seat of Seeing, the Uruk-hai, and Sam in the
+// water. The places are in ./layout.js, the story in ./story.js, the
+// games in ./rules.js, the drawing in ./scene.js; this is the walking, the
+// HUD, the talk and the games. Without 3D, the scenes are listed as cards.
+
+const DONE = 'tp-amonhen-done';
+const AT = 'tp-amonhen-at';
+const sounds = () => import('./sounds');
+const PROMPT = {
+  seat: { name: 'The Seat of Seeing', act: 'Climb onto the Seat' },
+  boats: { name: 'The boats', act: 'Push a boat out' },
+};
+const walker = makeWalker({ radius: 400, colliders: COLLIDERS, walls: WALLS, blocked: inLake });
+// Boromir, blundering round the glade after you
+const BOROMIR_ROUND = [
+  [GLADE.x + 3, GLADE.z + 2],
+  [GLADE.x - 6, GLADE.z - 5],
+  [GLADE.x - 14, GLADE.z - 6],
+  [GLADE.x - 8, GLADE.z + 4],
+];
+const STAIR_FOOT = { x: STAIR.x0 + 1, z: STAIR.z };
+// camera shots for the conversations: where from, and at what
+const SHOTS = {
+  boromir: { at: [GLADE.x + 5.5, 1.9, GLADE.z + 3.5], look: [GLADE.x - 1, 1.3, GLADE.z - 0.6] },
+  sorry: { at: [STAIR.x0 + 6, 2.6, STAIR.z + 6], look: [GLADE.x - 6, 1, GLADE.z - 3] },
+  seat: { seat: true },
+  aragorn: { at: [SEAT.x + 6.5, 2.2, SEAT.z + 4.5], look: [SEAT.x + 2.6, 1.6, SEAT.z] },
+  horn: { at: [SHORE_SPOT.x - 2, 2, SHORE_SPOT.z + 4], look: [10, 6, 0] },
+};
+
+export default function AmonHenWorld({ onLeave }) {
+  const three = use3D();
+  const [done, setDone] = useState(() => {
+    const d = local.get(DONE, []);
+    return amonHenProgress(Array.isArray(d) ? d : []).done;
+  });
+  const prog = amonHenProgress(done);
+  const [gl, setGl] = useState('loading');
+  const { unlock } = useAchievements();
+  const complete = useCallback(
+    (id) => {
+      setDone((d) => {
+        if (d.includes(id)) return d;
+        const next = amonHenProgress([...d, id]).done;
+        local.set(DONE, next);
+        return next;
+      });
+      if (SEAL[id]) unlock(SEAL[id]);
+    },
+    [unlock],
+  );
+  const world = three.on && gl !== 'failed' && gl !== 'lost';
+  return (
+    <section className="shire-world amonhen-world" aria-labelledby="amonhen-title" data-mode={world ? '3d' : 'cards'}>
+      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+    </section>
+  );
+}
+
+function World({ prog, complete, gl, setGl, onLeave }) {
+  const trav = useTravellers('amon-hen', gl === 'on');
+  const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
+  const canvas = useRef(null);
+  const api = useRef(null);
+  const sim = useRef(null);
+  if (!sim.current) {
+    const at = validAt(local.get(AT, null));
+    const h = newWalker(at);
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, person: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, wood: newWood(STICKS.length), ring: false, unseen: null, boro: null, seat: null, uruks: null, drawn: [], decoyed: false, rescue: null, busy: false, hold: false, paddle: 0 };
+  }
+  const progRef = useRef(prog);
+  progRef.current = prog;
+  const [hud, setHud] = useState({ mode: 'walk', near: null, moved: false });
+  const hudKey = useRef('');
+  const [toast, setToast] = useState(null);
+  const [bubble, setBubble] = useState(null);
+  const [list, setList] = useState(false);
+  const lines = useRef({});
+  const bubbleRef = useRef(null);
+  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  const timers = useRef(new Set());
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timers.current.delete(id);
+      fn();
+    }, ms);
+    timers.current.add(id);
+  }, []);
+  useEffect(() => {
+    const all = timers.current;
+    return () => {
+      all.forEach(clearTimeout);
+      all.clear();
+    };
+  }, []);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 5500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    let dead = false;
+    const fit = () => {
+      const c = canvas.current;
+      if (!c || !api.current) return;
+      const r = c.getBoundingClientRect();
+      api.current.resize(Math.round(r.width), Math.round(r.height));
+    };
+    import('./scene')
+      .then(({ createAmonHenWorld }) => {
+        if (dead || !canvas.current) return null;
+        return createAmonHenWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+      })
+      .then((a) => {
+        if (!a) return;
+        if (dead) {
+          a.dispose();
+          return;
+        }
+        api.current = a;
+        if (import.meta.env.DEV) window.__AMONHEN__ = { api: a, sim: sim.current, complete };
+        fit();
+        setGl('on');
+      })
+      .catch((e) => {
+        if (import.meta.env.DEV) console.error(e);
+        if (!dead) setGl('failed');
+      });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    if (canvas.current) ro?.observe(canvas.current);
+    const s = sim.current;
+    return () => {
+      dead = true;
+      ro?.disconnect();
+      if (s.mode === 'walk' && !s.ring) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+      s.air?.stop();
+      api.current?.dispose();
+      api.current = null;
+    };
+  }, [setGl, complete]);
+
+  const live = gl === 'on' && inView;
+  // the air: the woods, the lake lapping, the falls far off
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    let stop = false;
+    sounds().then((x) => {
+      if (stop || !s) return;
+      s.air = x.air();
+      s.air.ring(s.ring ? 1 : 0);
+    });
+    return () => {
+      stop = true;
+      s.air?.stop();
+      s.air = null;
+    };
+  }, [live]);
+
+  const startTalk = useCallback((id) => {
+    const s = sim.current;
+    s.mode = 'talk';
+    s.talking = id;
+    s.talk = newTalk(CONVOS[id]);
+    s.stepT = 0;
+  }, []);
+
+  const startUnseen = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'walk';
+    s.ring = true;
+    s.air?.ring(1);
+    s.h = newWalker({ x: GLADE.x - 1.5, z: GLADE.z - 0.5, face: Math.PI });
+    s.unseen = newUnseen();
+    s.boro = newWatchers([BOROMIR_ROUND]);
+    s.boro.list[0].x = GLADE.x + 1.2;
+    s.boro.list[0].z = GLADE.z;
+    s.busy = false;
+    sounds().then((x) => x.ringOn());
+  }, []);
+
+  const startSeat = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'seat';
+    s.seat = newSeat();
+    s.hold = false;
+    s.busy = false;
+  }, []);
+
+  const startRun = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'walk';
+    s.ring = false;
+    s.air?.ring(0);
+    s.h = newWalker(RUN_START);
+    s.yaw = behindYaw(RUN_START.face);
+    s.uruks = newWatchers(URUK_ROUNDS);
+    s.drawn = [];
+    s.decoyed = false;
+    s.busy = false;
+  }, []);
+
+  const startRescue = useCallback(() => {
+    const s = sim.current;
+    s.mode = 'rescue';
+    s.rescue = newRescue();
+    s.paddle = 0;
+    s.busy = false;
+    sounds().then((x) => x.splash(1));
+    say('Behind you, Sam comes crashing down to the water and wades in after you. He can’t swim! Paddle back (hold W, or the button), and reach for his hand when he comes up (Space).', true);
+  }, [say]);
+
+  const enter = useCallback(
+    (id) => {
+      audioContext();
+      if (id === 'seat') {
+        const s = sim.current;
+        s.h = newWalker({ x: SEAT.x, z: SEAT.z, face: 0 });
+        startTalk('seat');
+      } else if (id === 'boats') startRescue();
+      setList(false);
+    },
+    [startTalk, startRescue],
+  );
+
+  const talkOnward = useCallback(
+    (choice = null) => {
+      const s = sim.current;
+      if (!s.talk || !s.talking) return;
+      const convo = CONVOS[s.talking];
+      const node = talkNode(convo, s.talk);
+      if (node?.choices && choice == null) return;
+      s.talk = talkOn(convo, s.talk, choice);
+      if (!s.talk.end) {
+        if (s.talking === 'boromir' && s.talk.at === 'ring') sounds().then((x) => x.ringOn());
+        return setHud((h) => ({ ...h, line: s.talk.at }));
+      }
+      const which = s.talking;
+      s.talking = null;
+      s.talk = null;
+      setHud((h) => ({ ...h, line: null }));
+      if (which === 'boromir') {
+        startUnseen();
+        say('Get to the old stair up the hill, west. Walk softly: he hears you if you run near him. And the Ring is pulling.', true);
+      } else if (which === 'sorry') {
+        complete('boromir');
+        s.mode = 'walk';
+        s.unseen = null;
+        s.boro = null;
+        say('Up the stair to the Seat of Seeing, with the Ring still on.', false);
+      } else if (which === 'seat') startSeat();
+      else if (which === 'aragorn') {
+        complete('seat');
+        startRun();
+        say('Uruk-hai in the woods. Get down to the boats on the lake, east, unseen. Keep the trees between you and them.', true);
+      } else if (which === 'horn') {
+        s.mode = 'walk';
+        s.uruks = null;
+        s.drawn = [];
+        say('The boats are drawn up on the shore. Push one out.', false);
+      } else if (which === 'promise') {
+        complete('promise');
+        s.rescue = null;
+        s.mode = 'end';
+      } else s.mode = 'walk';
+      return undefined;
+    },
+    [complete, say, startRun, startSeat, startUnseen],
+  );
+
+  const doReach = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'rescue' || !s.rescue) return;
+    const r = reach(s.rescue);
+    if (r === 'got') {
+      sounds().then((x) => x.splash(0.6));
+      api.current?.fx('got');
+      later(() => sim.current?.mode === 'rescue' && startTalk('promise'), 900);
+    } else if (r === 'far') say('He’s too far off. Paddle back to him!', true);
+    else if (r === 'under') say('Your hand closes on water. He’s under! Wait for him to come up.', true);
+  }, [later, say, startTalk]);
+
+  const doAct = useCallback(() => {
+    const s = sim.current;
+    if (s.mode === 'rescue') return doReach();
+    if (s.mode === 'walk' && s.near) return enter(s.near);
+    return undefined;
+  }, [doReach, enter]);
+
+  // keys
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => !typing(e.target) && keyDown(s.keys, e);
+    const up = (e) => keyUp(s.keys, e);
+    const blur = () => s.keys.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+      s.keys.clear();
+    };
+  }, [live]);
+  useEffect(() => {
+    if (!live) return undefined;
+    const s = sim.current;
+    const down = (e) => {
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key;
+      const onButton = e.target instanceof HTMLButtonElement;
+      if (s.talk) {
+        if (/^[1-4]$/.test(k)) {
+          e.preventDefault();
+          talkOnward(Number(k) - 1);
+        } else if ((k === ' ' || k === 'Enter' || k === 'e' || k === 'E') && !onButton) {
+          e.preventDefault();
+          talkOnward();
+        }
+        return;
+      }
+      if (moveOf(e) && s.mode !== 'end') {
+        e.preventDefault();
+        audioContext();
+      }
+      if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
+        if (s.mode === 'rescue' || (s.mode === 'walk' && s.near)) {
+          e.preventDefault();
+          doAct();
+        } else if (s.mode === 'seat') e.preventDefault();
+      } else if ((k === 'm' || k === 'M') && s.mode === 'walk' && !s.ring && !s.uruks) setList((v) => !v);
+    };
+    window.addEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
+  }, [live, talkOnward, doAct]);
+
+  // ── every frame ──
+  useFrameLoop((ms) => {
+    const a = api.current;
+    if (!a || a.lost) return;
+    const s = sim.current;
+    const p = progRef.current;
+    const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
+    const dt = Math.min(0.05, ms / 1000) * fast;
+    s.t += dt;
+    s.stepT += dt;
+    const k = s.keys;
+    const held = (name) => k.has(name);
+    const pad = readPad();
+    const before = s.padBefore ?? {};
+    const pressed = (b) => pad?.[b] && !before[b];
+    s.padBefore = pad ?? {};
+    if (pad && s.talk && pressed('a')) talkOnward(0);
+
+    // walking
+    if (s.mode === 'walk' && !s.busy) {
+      let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
+      let side = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.stick.x;
+      if (pad) {
+        fwd -= pad.ly;
+        side += pad.lx;
+        if (Math.abs(pad.rx) > 0) {
+          s.yaw -= pad.rx * dt * 2.4;
+          s.dragAt = s.t;
+        }
+        if (pressed('a')) doAct();
+      }
+      const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
+      const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
+      s.h = walker.step(s.h, { x: mv.x, z: mv.z, run }, dt);
+      if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
+        let d = behindYaw(s.h.face) - s.yaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        s.yaw += d * Math.min(1, dt * 1.6);
+      }
+    }
+
+    // firewood
+    if (s.mode === 'walk' && p.next === 'camp') {
+      STICKS.forEach(([x, z], i) => {
+        if (s.wood.got.includes(i) || Math.hypot(s.h.x - x, s.h.z - z) > 1.5) return;
+        const r = pickStick(s.wood, i);
+        sounds().then((x2) => x2.snap());
+        if (r === 'all') {
+          complete('camp');
+          say('“Where’s Frodo?” Sam looks round, but you have gone off up into the woods to think, alone.', false);
+        } else say(`Firewood: ${s.wood.got.length} of ${STICKS.length}.`);
+      });
+    }
+    // Boromir finds you in the glade
+    if (s.mode === 'walk' && p.next === 'boromir' && !s.unseen && Math.hypot(s.h.x - GLADE.x, s.h.z - GLADE.z) < GLADE.r - 1) {
+      s.h = newWalker({ x: GLADE.x - 1.5, z: GLADE.z - 0.5, face: 0 });
+      startTalk('boromir');
+    }
+    // getting away from him, unseen
+    if (s.mode === 'walk' && s.unseen && s.boro && !s.busy) {
+      for (const e of stepUnseen(s.unseen, dt, s.h, STAIR_FOOT)) {
+        if (e.type === 'away') {
+          s.boro.list[0].mode = 'patrol';
+          startTalk('sorry');
+        } else if (e.type === 'found') {
+          s.busy = true;
+          a.fx('eye');
+          sounds().then((x) => x.eye());
+          say('The Eye! It’s too much: the Ring comes off in your hand, and Boromir is on you. You wrench free and run back… Again: get to the stair, softly.', true);
+          later(() => sim.current?.unseen && startUnseen(), 2000);
+        }
+      }
+      for (const e of stepWatchers(s.boro, s.h, dt, BOROMIR, { colliders: COLLIDERS, walls: WALLS, ring: false, active: s.mode === 'walk' && !s.busy, push: (x, z) => walker.push(x, z, 0.5) })) {
+        if (e.type === 'seen') {
+          sounds().then((x) => x.boromir());
+          say('He hears you! “Frodo!” He’s coming. Go softly, round the trees.', true);
+        } else if (e.type === 'caught') {
+          s.busy = true;
+          a.fx('grab');
+          say('His hand closes on your cloak. You tear free, and he falls among the leaves… Again: softly, to the stair.', true);
+          later(() => sim.current?.unseen && startUnseen(), 1800);
+        }
+      }
+    }
+
+    // the Seat: the Ring off before the Eye has you
+    if (s.mode === 'seat' && s.seat && !s.busy) {
+      const hold = s.hold || held('space') || held('down') || Boolean(pad?.a);
+      for (const e of stepSeat(s.seat, dt, hold)) {
+        if (e.type === 'gaze') {
+          a.fx('gaze');
+          sounds().then((x) => x.eye());
+        } else if (e.type === 'off') {
+          s.ring = false;
+          s.air?.ring(0);
+          s.busy = true;
+          sounds().then((x) => x.ringOff());
+          later(() => sim.current?.mode === 'seat' && startTalk('aragorn'), 1200);
+        } else if (e.type === 'seen') {
+          s.busy = true;
+          a.fx('eye');
+          say('“I see you.” The Eye has you, and Gandalf’s voice in your head: “Take it off! Take it off!” You fall from the Seat… Again: pull at the Ring just after its gaze has passed.', true);
+          later(() => sim.current?.mode === 'seat' && startSeat(), 2400);
+        }
+      }
+    }
+
+    // the Uruk-hai (straight into it, if you come back to it)
+    if (s.mode === 'walk' && p.next === 'run' && !s.uruks) startRun();
+    if (s.mode === 'walk' && s.uruks && !s.busy) {
+      for (const e of stepWatchers(s.uruks, s.h, dt, URUKS, { colliders: COLLIDERS, walls: WALLS, ring: false, active: true, push: (x, z) => walker.push(x, z, 0.6) })) {
+        if (e.type === 'seen') {
+          sounds().then((x) => x.roar());
+          say('An Uruk has seen you! Run, and break its sight behind the trees.', true);
+        } else if (e.type === 'caught') {
+          s.busy = true;
+          a.fx('grab');
+          sounds().then((x) => x.clash());
+          say('A great black hand reaches for you, and Aragorn’s sword is there first. “Run, Frodo!” Again: down to the shore unseen.', true);
+          later(() => sim.current?.uruks && startRun(), 2000);
+        }
+      }
+      // Merry and Pippin draw them off
+      if (!s.decoyed && Math.hypot(s.h.x - DECOY.x, s.h.z - DECOY.z) < DECOY.r) {
+        s.decoyed = true;
+        const near = [...s.uruks.list].sort((x, y) => Math.hypot(x.x - DECOY.x, x.z - DECOY.z) - Math.hypot(y.x - DECOY.x, y.z - DECOY.z)).slice(0, 2);
+        s.drawn = near.map((w) => ({ x: w.x, z: w.z, face: w.face, t: 0 }));
+        s.uruks.list = s.uruks.list.filter((w) => !near.includes(w));
+        sounds().then((x) => x.shout());
+        say('Merry and Pippin leap out from behind a tree, waving: “Hey! Over here! This way!” Two of the Uruk-hai go after them. Run, Frodo!', true);
+        later(() => sounds().then((x) => x.horn()), 3500);
+      }
+      if (s.h.x > SHORE_SPOT.x - 6) {
+        complete('run');
+        startTalk('horn');
+      }
+    }
+
+    // Sam in the water
+    if (s.mode === 'rescue' && s.rescue && s.rescue.state === 'on') {
+      const paddle = s.paddle > 0 || held('up') || s.stick.y < -0.5 || Boolean(pad?.rb);
+      if (pad && pressed('a')) doReach();
+      for (const e of stepRescue(s.rescue, dt, paddle)) {
+        if (e.type === 'up') sounds().then((x) => x.splash(0.5));
+      }
+    }
+
+    // what's here, and who's here
+    let spotHere = null;
+    if (s.mode === 'walk' && !s.busy) {
+      const sp = nearest(SPOTS, s.h.x, s.h.z);
+      spotHere = sp && sp.quest === p.next ? sp.id : null;
+      if (spotHere === 'boats' && s.uruks) spotHere = null;
+    }
+    s.near = spotHere;
+    const cast = castFor(p.next);
+    let person = null;
+    if (s.mode === 'walk') person = nearest(cast, s.h.x, s.h.z, 2.8)?.id ?? null;
+    if (person !== s.person) {
+      s.person = person;
+      if (person) {
+        const c = cast.find((x) => x.id === person);
+        const n = lines.current[person] ?? 0;
+        lines.current[person] = n + 1;
+        setBubble({ id: person, name: c.name, line: c.lines[n % c.lines.length] });
+      } else setBubble(null);
+    }
+    // the two drawn off, running away after Merry and Pippin
+    for (const d of s.drawn) d.t += dt;
+
+    const markers = p.finished || s.uruks ? [] : p.next === 'camp' ? STICKS.filter((_, i) => !s.wood.got.includes(i)).map(([x, z]) => ({ x, z })) : p.next === 'boromir' ? [s.unseen ? STAIR_FOOT : GLADE] : SPOTS.filter((x) => x.quest === p.next);
+    const node = s.talk ? talkNode(CONVOS[s.talking], s.talk) : null;
+    const tv = trav.ref.current;
+    tv?.pose(s.h, { inside: false, ring: s.ring });
+    const st = s.seat;
+    const r = s.rescue;
+    try {
+      a.render(
+        {
+          mode: s.mode,
+          next: p.next,
+          hobbit: s.h,
+          travellers: tv ? tv.list() : null,
+          cast: cast.map((c) => c.id),
+          talk: s.person,
+          talking: s.talking,
+          speaker: node?.who ?? null,
+          line: s.talk?.at ?? null,
+          camShot: s.mode === 'talk' && SHOTS[s.talking] ? { id: s.talking, ...SHOTS[s.talking] } : null,
+          ring: s.ring,
+          pull: s.unseen?.pull ?? 0,
+          sticks: s.wood.got,
+          boromir: s.boro?.list?.[0] ?? (s.talking === 'boromir' ? { x: GLADE.x + 1.2, z: GLADE.z, face: Math.PI, mode: 'talk' } : null),
+          seat: st ? { on: gazeOn(st), in: gazeIn(st), pulling: st.pulling / SEAT_GAZE.off, heat: st.heat, state: st.state } : null,
+          onSeat: s.mode === 'seat' || (s.mode === 'talk' && (s.talking === 'seat' || s.talking === 'aragorn')),
+          aragorn: s.mode === 'talk' && s.talking === 'aragorn',
+          uruks: s.uruks?.list ?? null,
+          drawn: s.drawn,
+          decoyed: s.decoyed,
+          rescue: r ? { gap: r.gap, up: samUp(r), t: r.t, got: r.state === 'got' } : null,
+          promise: s.mode === 'talk' && s.talking === 'promise',
+          stepT: s.stepT,
+          markers,
+          camYaw: s.yaw,
+          camPitch: s.pitch,
+          camDist: s.uruks ? 8.5 : touch ? 7.2 : 6.4,
+          debugCam: s.debugCam,
+        },
+        ms * fast,
+        fast,
+      );
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      a.dispose();
+      api.current = null;
+      setGl('failed');
+      return;
+    }
+
+    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.ring, s.unseen ? Math.round(s.unseen.pull * 40) : '', st ? Math.round(st.pulling * 20) : '', st ? gazeOn(st) : '', st?.heat, s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert'), s.decoyed, r ? Math.round(r.gap * 4) : '', r ? samUp(r) : '', s.wood.got.length, p.done.length].join('|');
+    if (key !== hudKey.current) {
+      hudKey.current = key;
+      setHud({ mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, ring: s.ring, pull: s.unseen?.pull ?? null, seat: st ? { on: gazeOn(st), pulling: st.pulling / SEAT_GAZE.off, heat: st.heat } : null, hunted: Boolean(s.uruks?.list.some((w) => w.mode === 'chase' || w.mode === 'alert')), running: Boolean(s.uruks), rescue: r ? { gap: r.gap, up: samUp(r) } : null, sticks: s.wood.got.length });
+    }
+    if (s.person && bubbleRef.current) {
+      const at = a.screenOf('cast', s.person);
+      if (at) {
+        bubbleRef.current.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+        bubbleRef.current.style.opacity = '1';
+      } else bubbleRef.current.style.opacity = '0';
+    }
+    if (++s.frame % 120 === 0 && s.mode === 'walk' && !s.ring && !s.uruks) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+  }, live);
+
+  // look round by dragging; the stick on touch
+  const drag = useRef(null);
+  const onPointer = (e) => {
+    const s = sim.current;
+    if (e.type === 'pointerdown') {
+      audioContext();
+      if (s.mode === 'walk') drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      return;
+    }
+    if (e.type === 'pointermove') {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      s.yaw -= (e.clientX - d.x) * 0.0065;
+      s.pitch = Math.max(0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' ? 0.004 : 0)));
+      d.x = e.clientX;
+      d.y = e.clientY;
+      s.dragAt = s.t;
+      return;
+    }
+    drag.current = null;
+  };
+  const stick = useRef(null);
+  const onStick = (e) => {
+    const s = sim.current;
+    if (e.type === 'pointerdown') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      audioContext();
+    }
+    if (!stick.current || stick.current.id !== e.pointerId) return;
+    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
+      stick.current = null;
+      s.stick = { x: 0, y: 0 };
+      e.currentTarget.style.setProperty('--sx', '0px');
+      e.currentTarget.style.setProperty('--sy', '0px');
+      return;
+    }
+    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
+    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
+    s.stick = { x: dx, y: dy };
+    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
+    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
+  };
+  const hold = (name, v) => ({
+    onPointerDown: (e) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      sim.current[name] = v;
+      audioContext();
+    },
+    onPointerUp: () => (sim.current[name] = 0),
+    onPointerCancel: () => (sim.current[name] = 0),
+    onLostPointerCapture: () => (sim.current[name] = 0),
+    onContextMenu: (e) => e.preventDefault(),
+  });
+  const travel = (q) => {
+    const s = sim.current;
+    const at = q.id === 'camp' ? START : q.id === 'boromir' ? { x: GLADE.x + 10, z: GLADE.z + 2, face: Math.PI } : q.id === 'seat' ? { x: STAIR.x0 + 3, z: STAIR.z, face: Math.PI } : q.id === 'promise' ? { x: SHORE_SPOT.x - 3, z: SHORE_SPOT.z, face: 0 } : null;
+    if (!at) return;
+    if (q.id === 'run') return;
+    s.h = newWalker(at);
+    s.yaw = behindYaw(at.face);
+    setList(false);
+  };
+  const stay = () => {
+    const s = sim.current;
+    s.mode = 'walk';
+    s.h = newWalker({ x: SHORE_SPOT.x - 4, z: SHORE_SPOT.z, face: Math.PI });
+    s.yaw = behindYaw(Math.PI);
+  };
+
+  const here = hud.near ? PROMPT[hud.near] : null;
+  const mode = hud.mode;
+  const walking = mode === 'walk';
+  const convo = hud.talking ? CONVOS[hud.talking] : null;
+  const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
+  const objective = hud.ring && hud.pull != null ? 'Get away from Boromir to the old stair, west. Walk softly.' : hud.ring ? 'Up the stair to the Seat of Seeing.' : hud.running ? 'Down through the woods to the boats on the lake, east. Stay unseen.' : prog.next === 'camp' ? `Firewood from the edge of the trees: ${hud.sticks ?? 0} of ${STICKS.length}.` : prog.objective;
+  return (
+    <div ref={box} className="shire-stage amonhen-stage" data-touch={touch || undefined} data-mode={mode} data-ring={hud.ring || undefined} data-game={['seat', 'rescue'].includes(mode) || hud.ring || hud.running || undefined}>
+      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Amon Hen in 3D: the lawn of Parth Galen by the lake, the woods and the old kings' statues, and the Seat of Seeing on the summit" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      {gl === 'loading' && <p className="shire-loading">Down the river to Parth Galen…</p>}
+
+      {walking && (
+        <div className="shire-hud shire-hud-top">
+          <div className="shire-brand">
+            <h1 id="amonhen-title" className="shire-title">
+              Amon Hen
+            </h1>
+            <p className="shire-objective" aria-live="polite">
+              <span aria-hidden="true">✦</span> {objective}
+            </p>
+          </div>
+          <div className="shire-side">
+            <button type="button" className="shire-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
+              <b>{prog.done.length}</b> of {QUESTS.length} done {!touch && <kbd>M</kbd>}
+            </button>
+            <Travellers trav={trav} />
+          </div>
+        </div>
+      )}
+      {!walking && (
+        <h1 id="amonhen-title" className="sr-only">
+          Amon Hen
+        </h1>
+      )}
+
+      {toast && (
+        <p className="shire-toast" data-bad={toast.bad || undefined} role="status" key={toast.at}>
+          {toast.text}
+        </p>
+      )}
+      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {here && walking && (
+        <div className="shire-door">
+          <p className="shire-door-name">{here.name}</p>
+          <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
+            {here.act} {!touch && <kbd>E</kbd>}
+          </button>
+        </div>
+      )}
+      {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
+
+      {node && <Convo title="Amon Hen" name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
+
+      {walking && hud.ring && hud.pull != null && (
+        <div className="shire-panel amonhen-game" role="group" aria-label="The Ring">
+          <p className="shire-panel-title">The Ring is on</p>
+          <div className="shire-meter" role="meter" aria-label="The Ring’s pull" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(hud.pull * 100)}>
+            <span className="shire-meter-label">The Eye</span>
+            <span className="shire-meter-bar amonhen-meter-eye">
+              <span style={{ transform: `scaleX(${Math.min(1, hud.pull)})` }} />
+            </span>
+          </div>
+          <p className="shire-panel-help">Walk: running pulls the Ring harder, and he hears it.</p>
+        </div>
+      )}
+      {walking && hud.running && (
+        <div className="shire-panel amonhen-game" role="group" aria-label="The Uruk-hai" data-hunted={hud.hunted || undefined}>
+          <p className="shire-panel-title">{hud.hunted ? 'An Uruk has seen you!' : 'The Uruk-hai are in the woods'}</p>
+          <p className="shire-panel-help">Down to the lake, east. Keep the trees between you and them.</p>
+        </div>
+      )}
+      {mode === 'seat' && hud.seat && (
+        <div className="shire-panel amonhen-game" role="group" aria-label="The Seat of Seeing" data-gaze={hud.seat.on || undefined}>
+          <p className="shire-panel-title">{hud.seat.on ? 'The Eye is on you!' : 'Get the Ring off!'}</p>
+          <div className="shire-meter" role="meter" aria-label="The Ring coming off" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(hud.seat.pulling * 100)}>
+            <span className="shire-meter-label">Off</span>
+            <span className="shire-meter-bar amonhen-meter-off">
+              <span style={{ transform: `scaleX(${Math.min(1, hud.seat.pulling)})` }} />
+            </span>
+          </div>
+          <p className="shire-panel-stats">
+            <span>
+              Found you <b>{hud.seat.heat}</b> of {SEAT_GAZE.passes}
+            </span>
+          </p>
+          <div className="shire-panel-row">
+            <button type="button" className="btn btn-primary btn-sm amonhen-big" {...hold('hold', true)}>
+              Pull it off {!touch && <kbd>Space</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+      {mode === 'rescue' && hud.rescue && (
+        <div className="shire-panel amonhen-game" role="group" aria-label="Sam in the water" data-up={hud.rescue.up || undefined}>
+          <p className="shire-panel-title">{hud.rescue.up ? 'He’s up! Grab him!' : 'Sam’s under…'}</p>
+          <div className="shire-meter" role="meter" aria-label="How far off he is" aria-valuemin={0} aria-valuemax={RESCUE.gap} aria-valuenow={Math.round(hud.rescue.gap)}>
+            <span className="shire-meter-label">To Sam</span>
+            <span className="shire-meter-bar amonhen-meter-near">
+              <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, 1 - (hud.rescue.gap - RESCUE.near) / (RESCUE.gap - RESCUE.near)))})` }} />
+            </span>
+          </div>
+          <div className="shire-panel-row">
+            <button type="button" className="btn btn-ghost btn-sm amonhen-big" {...hold('paddle', 1)}>
+              Paddle back {!touch && <kbd>W</kbd>}
+            </button>
+            <button type="button" className="btn btn-primary btn-sm amonhen-big" onPointerDown={(e) => (e.preventDefault(), doReach())}>
+              Reach! {!touch && <kbd>Space</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+      {mode === 'end' && (
+        <div className="shire-panel amonhen-end" role="dialog" aria-label="Across the lake">
+          <p className="shire-panel-title">The Fellowship is broken</p>
+          <p className="shire-panel-say">Frodo and Sam cross Nen Hithoel alone, into the Emyn Muil, a maze of razor-sharp rock. Behind them, Aragorn, Legolas and Gimli set off after the Uruk-hai who took Merry and Pippin. Ahead: the Dead Marshes, and something following in the dark.</p>
+          <div className="shire-panel-row" style={{ justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => onLeave?.()}>
+              On to the Dead Marshes
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={stay}>
+              Stay at Amon Hen
+            </button>
+          </div>
+        </div>
+      )}
+      {walking && touch && <Stick onStick={onStick} />}
+      {list && <QuestList title="Things to do at Amon Hen" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'run' && sim.current.mode === 'walk' && !sim.current.ring && !sim.current.uruks} />}
+    </div>
+  );
+}
+
+// Without 3D: the scenes, as cards.
+function Cards({ prog, three, gl, retry }) {
+  return (
+    <div className="shell shire-cards-wrap">
+      <h1 id="amonhen-title" className="title">
+        Amon Hen
+      </h1>
+      <p className="lead mt-4 max-w-[60ch]">Parth Galen and the hill of Amon Hen, where the Fellowship breaks, to walk through in 3D. {prog.objective}</p>
+      {three.can && (
+        <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
+          {gl === 'lost' ? 'The graphics chip reset, so here’s Amon Hen as cards.' : gl === 'failed' ? 'The 3D Amon Hen couldn’t start here, so here it is as cards.' : three.held ? 'The 3D Amon Hen isn’t loaded yet, so here it is as cards.' : '3D is switched off, so here’s Amon Hen as cards.'}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              if (!three.on) three.set('auto');
+              retry();
+            }}
+          >
+            {three.on ? 'Try 3D again' : three.held ? 'Load the 3D' : 'Turn 3D on'}
+          </button>
+        </p>
+      )}
+      <ul className="shire-cards">
+        {prog.quests.map((q) => (
+          <li key={q.id} data-done={q.done || undefined}>
+            <p className="shire-list-name">{q.name}</p>
+            <p className="shire-list-sub">{q.where}</p>
+            <p className="mt-2 text-sm text-muted">{q.blurb}</p>
+            {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

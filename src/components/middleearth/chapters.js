@@ -73,6 +73,17 @@ export const CHAPTERS = [
     seals: ['goldenwood', 'carasgaladhon', 'ipassthetest', 'earendil', 'argonath'],
   },
   {
+    id: 'amon-hen',
+    stop: 'amon-hen',
+    lift: 3.2,
+    name: 'Amon Hen',
+    title: 'The breaking of the Fellowship',
+    blurb: 'Parth Galen by the lake, Boromir among the old kings, the Seat of Seeing and the Eye, the Uruk-hai in the woods, and Sam in the water.',
+    at: [486, 346],
+    theme: 'shire',
+    seals: ['parthgalen', 'wanderalone', 'seatofseeing', 'runfrodo', 'promise'],
+  },
+  {
     id: 'mordor',
     stop: 'mount-doom',
     lift: 4.2,
