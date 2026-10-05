@@ -111,10 +111,10 @@ export const CHAPTERS = [
     lift: 4.2,
     name: 'Mordor',
     title: 'Gorgoroth and Mount Doom',
-    blurb: 'Across the plain under the Eye, to the fire the Ring was made in.',
+    blurb: 'In orc-gear in the column, across Gorgoroth under the Eye, Sam carrying Frodo up the mountain, the Crack of Doom, and the eagles.',
     at: [660, 420],
     theme: 'mordor',
-    seals: ['gorgoroth', 'ringbearer'],
+    seals: ['maggots', 'gorgoroth', 'carryyou', 'ringbearer', 'eagles'],
   },
 ];
 
