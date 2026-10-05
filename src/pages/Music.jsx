@@ -13,6 +13,7 @@ import {
   SA_NOTES,
   chikari,
   dayanHz,
+  holdChikari,
   playPhrase,
   saHz,
   setTanpuraListener,
@@ -27,6 +28,7 @@ import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
 import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
 import Egg from '../components/Egg';
+import { capturePointer } from '../lib/pointer';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
@@ -263,11 +265,22 @@ export default function Music() {
           <button type="button" className="btn btn-primary" onClick={play} disabled={phrase}>
             {phrase ? 'Playing…' : `Play a phrase in ${RAGAS[tuning.raga].name}`}
           </button>
+          {/* press and hold for a roll; from the keyboard, one stroke */}
           <button
             type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              if (!audioContext()) return;
+            className="btn btn-ghost chikari-btn"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              capturePointer(e);
+              holdChikari(true, 'button');
+              onPlay('sitar');
+            }}
+            onPointerUp={() => holdChikari(false, 'button')}
+            onPointerCancel={() => holdChikari(false, 'button')}
+            onLostPointerCapture={() => holdChikari(false, 'button')}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => {
+              if (e.detail !== 0 || !audioContext()) return;
               chikari();
               onPlay('sitar');
             }}
@@ -294,11 +307,13 @@ export default function Music() {
             <p className="mt-3">
               Above the main string run the chikari, two high strings tuned to Sa, struck for rhythm. With Auto chikari on, the right hand strikes them by
               itself in the rests between your notes: in your own pulse when you play alone, on the tabla’s beat when it keeps a taal (hardest on sam), and
-              never on top of a note, a slide or a meend. When your notes come evenly, it leaves the next one its beat.
+              never on top of a note, a slide or a meend. When your notes come evenly, it leaves the next one its beat. Set a speed of your own under the
+              neck (with the tabla it keeps to the nearest division of the beat), and how hard it’s struck. Hold Space, or hold the Chikari button, and it
+              rolls on at that speed; play frets over it for a jhala.
             </p>
             <p className="mt-3">
               On a keyboard, 1 to = and Q to ] play the frets in order. Shift with a fret’s key moves to it without a new stroke (krintan), holding ↑ pulls
-              the note up to the raga’s next one (meend), Space strikes the chikari and Esc stops the string.
+              the note up to the raga’s next one (meend), Space strikes the chikari (hold it for a roll) and Esc stops the string.
             </p>
             <p className="mt-3 text-sm text-muted">
               Sitar strokes by{' '}
