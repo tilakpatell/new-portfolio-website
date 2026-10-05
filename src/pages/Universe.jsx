@@ -113,7 +113,7 @@ export default function Universe({ ask = false }) {
     const plan = crashPlan(u, { reduced });
     if (!plan) return false;
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(u.crashTo ?? u.to), plan.delay);
     return true;
   };
 

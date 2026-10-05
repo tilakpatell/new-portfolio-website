@@ -21,7 +21,7 @@
 // pirates on a freighter), and it shoots at that instead until you deal with
 // it, or turns on you if you shoot at it.
 //
-// createHunters(parent, { small }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict }) → points,
+// createHunters(parent, { small, fleet, factions, kinds }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to) → hit or null, clear(), dispose(), count, active,
 //   targets: the ones still after you (or their prey), for the guns to lock
@@ -63,6 +63,8 @@ const KIND = {
   councilship: { size: 0.42, speed: 24, accel: 19, hp: 3, fire: [0.6, 1.1] },
   gromflomite: { size: 0.3, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
 };
+// (the galaxy's hunters build on these: galaxy/hunted.js)
+export { KIND as HUNTER_KINDS };
 // what each kind is called on the targeting bracket
 export const NAMES = { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite' };
 const LASER = { speed: 34, life: 1.1, damage: 12, length: 0.36 };
@@ -71,7 +73,9 @@ const SHIP_R = 0.2; // how close a laser must pass you to hit
 
 const between = (rand, a, b) => a + rand() * (b - a);
 
-export function createHunters(parent, { small = false, fleet = createFleet() } = {}) {
+// (`factions` and `kinds` are these, unless another map brings its own: the
+// galaxy's Separatists, First Order and Sith, galaxy/hunted.js)
+export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds: KINDS = KIND } = {}) {
   const rand = Math.random;
   const pool = {}; // kind → models not in use
   const live = []; // hunters in flight
@@ -80,10 +84,10 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
   const lasers = [];
   const laserGeo = new THREE.CylinderGeometry(0.009, 0.009, LASER.length, 5).rotateX(Math.PI / 2);
   const laserMats = Object.fromEntries(
-    Object.entries(FACTIONS).map(([id, f]) => [id, new THREE.MeshBasicMaterial({ color: new THREE.Color(...f.laser), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })]),
+    Object.entries(factions).map(([id, f]) => [id, new THREE.MeshBasicMaterial({ color: new THREE.Color(...f.laser), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })]),
   );
   for (let i = 0; i < (small ? 16 : 28); i++) {
-    const m = new THREE.Mesh(laserGeo, laserMats.empire);
+    const m = new THREE.Mesh(laserGeo, laserMats.empire ?? Object.values(laserMats)[0]);
     m.visible = false;
     m.frustumCulled = false;
     m.userData = { v: new THREE.Vector3(), life: 0, at: null };
@@ -147,7 +151,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
     // of something else, e.g. a freighter in distress). Returns the points
     // they came in at (the scene opens a portal or flashes a jump at each)
     pack(faction, ship, { prey = null, size, ace = rand() < 0.22, from = null, ahead = false, interdict = false } = {}) {
-      const f = FACTIONS[faction];
+      const f = factions[faction];
       if (!f || !ship) return [];
       const n = size ?? Math.round(between(rand, f.size[0], f.size[1] + 0.49));
       const kinds = Array.from({ length: n }, () => pick(f.kinds));
@@ -155,7 +159,7 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
       const pack = { faction, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict };
       const points = [];
       kinds.forEach((kind, i) => {
-        const type = KIND[kind];
+        const type = KINDS[kind];
         const model = take(kind);
         const pos = entry(ship, i, n, f.portal && !from && !ahead, from, ahead);
         points.push(pos.clone());

@@ -29,7 +29,7 @@
 // whoever this browser believes did it).
 
 import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
-import { UNIVERSE, placeName } from './where';
+import { UNIVERSE, isFlight, placeName } from './where';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -221,7 +221,9 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       const d = readHit(data);
       const p = d && admit('hit', peerId);
       const t = now();
-      if (!p || !hitCounts(p, me, t)) return;
+      // (from someone in the same place: the same numbers in another of the
+      // galaxy's systems, or on the universe map, are somewhere else entirely)
+      if (!p || p.where !== self.where || !hitCounts(p, me, t)) return;
       p.hitAt = t;
       emit({ type: 'hit', from: peerId, damage: d });
     };
@@ -254,7 +256,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     cur.onMessage = (data, { peerId }) => {
       const c = readCursor(data);
       const p = c && admit('cur', peerId);
-      if (!p || p.where === UNIVERSE) return;
+      if (!p || isFlight(p.where)) return;
       c.at = now();
       p.cur = c;
     };
@@ -345,7 +347,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     // your pointer, off the universe map (x from the middle of the window,
     // y down the page, in px; with touch, where you're reading)
     cursor(x, y, touch = false) {
-      if (!send || self.where === UNIVERSE) return;
+      if (!send || isFlight(self.where)) return;
       clearTimeout(cursorLater);
       const wait = lastCursor + CURSOR_MS - now();
       if (wait > 0) {

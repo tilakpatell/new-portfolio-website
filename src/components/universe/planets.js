@@ -218,6 +218,43 @@ const BUILDERS = {
     p.orbits.push(o);
     p.tick.push((t) => (moon.rotation.y = t * 0.4));
 
+    // and the galaxy it's from, far, far away beside it: a little spiral of
+    // stars turning slowly, the way into it (the planet's own: picking Star
+    // Wars and going jumps you into it, galaxy/)
+    const swirl = new THREE.Mesh(
+      new THREE.PlaneGeometry(r * 1.25, r * 1.25),
+      new THREE.ShaderMaterial({
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `
+          uniform float uT;
+          varying vec2 vUv;
+          void main() {
+            vec2 p = vUv * 2.0 - 1.0;
+            float r = length(p);
+            if (r > 1.0) discard;
+            float a = atan(p.y, p.x);
+            float arm = cos(2.0 * (a - log(r + 0.05) * 2.8 + uT * 0.05));
+            float arms = arm > 0.0 ? arm * arm * arm : 0.0;
+            arms *= smoothstep(1.0, 0.25, r) * smoothstep(0.02, 0.18, r);
+            float core = exp(-r * r * 30.0);
+            float glow = exp(-r * 3.2);
+            float n = fract(sin(dot(floor(p * 90.0), vec2(12.9898, 78.233))) * 43758.5453);
+            float stars = step(0.985, n) * arms * 2.0;
+            vec3 col = vec3(1.0, 0.86, 0.6) * core * 3.0 + vec3(0.55, 0.7, 1.0) * arms * 0.9 + vec3(0.7, 0.75, 1.0) * glow * 0.25 + vec3(1.0) * stars;
+            gl_FragColor = vec4(col * smoothstep(1.0, 0.82, r), 1.0);
+          }`,
+        uniforms: { uT: { value: 0 } },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    swirl.position.set(-r * 1.55, r * 0.85, -r * 1.35);
+    swirl.rotation.set(-1.05, 0.4, 0.3);
+    p.group.add(swirl);
+    p.tick.push((t) => (swirl.material.uniforms.uT.value = t));
+
     // a Republic attack cruiser further out (the site owner's Meshy model,
     // when it comes; its nose is −x, so a quarter turn points it the way the
     // orbit goes). Slave I is about too, as traffic (traffic.js)

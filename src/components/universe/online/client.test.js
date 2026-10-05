@@ -116,6 +116,29 @@ describe('createClient', () => {
     expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
   });
 
+  it('a hit from someone somewhere else does nothing (another of the galaxy\'s systems)', async () => {
+    const { a, b, seen } = await pair();
+    a.setProfile({ where: '/galaxy/hoth' });
+    b.setProfile({ where: '/galaxy/endor' });
+    lineUp(a, b);
+    a.hit('B');
+    expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(0);
+    a.setProfile({ where: '/galaxy/endor' });
+    lineUp(a, b);
+    a.hit('B');
+    expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
+  });
+
+  it('sends no pointer from a system in the galaxy, where you fly', async () => {
+    const { a, b } = await pair();
+    a.setProfile({ where: '/galaxy/hoth' });
+    a.cursor(10, 200);
+    expect(b.peers.get('A').cur).toBe(null);
+    a.setProfile({ where: '/galaxy/hoth/mission' });
+    a.cursor(10, 200);
+    expect(b.peers.get('A').cur?.y).toBe(200);
+  });
+
   it('a hit from a shot fired the other way does nothing', async () => {
     const { a, b, seen } = await pair();
     b.pose(ship(0));

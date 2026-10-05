@@ -30,6 +30,16 @@ const PAGES = {
       ['The sitar string', 'Pluck it.'],
     ],
   },
+  '/galaxy': {
+    title: 'A galaxy far, far away',
+    tips: [
+      ['Flying', 'The same ship and the same controls as the universe map: W and S the throttle, A and D roll, the arrows swing the nose, Space boosts (out in the open the sublight drive opens up), hold F to fire, T and Q change target, V the cockpit, O the settings. Or drag anywhere like a stick.'],
+      ['Jumping to lightspeed', 'M (or Plot a course) opens the galaxy map. Pick a system, then Jump: the ship comes round onto the bearing for it, the stars stretch, and you’re in hyperspace. Filter the map by era or film to see the galaxy as it was then.'],
+      ['What’s there', 'Every system is a moment from the films: the Tantive IV over Tatooine, Death Squadron at Hoth, the Battle of Endor, the Death Star rounding Yavin (fly its trench), Starkiller Base drinking its sun, the Sith fleet at Exegol. Click a name to fly there.'],
+      ['Missions', 'Each system has one. Most are briefings for games still being built (with their own opening crawl); the trench run and boarding the Death Star are here now. Watch for its tractor beam at Alderaan.'],
+      ['Online', 'Go online and the other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
+    ],
+  },
   '/deathstar': {
     title: 'The Death Star',
     tips: [
@@ -161,6 +171,7 @@ export default function Guide() {
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
+    (pathname.startsWith('/galaxy/') && !pathname.endsWith('/mission') ? PAGES['/galaxy'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

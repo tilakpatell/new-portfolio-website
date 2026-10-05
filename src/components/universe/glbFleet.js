@@ -20,7 +20,7 @@
 // over (`stock`), so the first of a kind to fly doesn't stall a frame being
 // built.
 //
-// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
+// createFleet({ prepare(object) → Promise, build(kind) → model }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -40,7 +40,9 @@ export const GLB = {
   corvette: { url: '/models/universe/cr90.glb', nose: 0, built: true },
 };
 
-export function createFleet({ prepare = null } = {}) {
+// (`build` makes a built one: the universe's own, unless another fleet's
+// builder is given, as the galaxy gives its own, galaxy/fleet.js)
+export function createFleet({ prepare = null, build = buildTraffic } = {}) {
   const templates = {};
   const stocked = {}; // kind → built ones made ahead, handed out first
   const loading = new Set();
@@ -101,7 +103,7 @@ export function createFleet({ prepare = null } = {}) {
         group.add(t.holder.clone());
         made = { group, size: t.size.clone(), model: true, update() {}, dispose() {} }; // shares its template's geometry and textures
       } else if (stocked[kind]?.length) return stocked[kind].pop(); // (made ahead, its shaders with it)
-      else made = buildTraffic(kind);
+      else made = build(kind);
       // out of sight until its shaders are made
       const inner = made.group.children[0];
       if (prepare && inner) {
