@@ -425,7 +425,8 @@ describe('autopilot', () => {
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
       let bumps = 0;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      // (the longest leg, out to the twelfth world, takes the best part of 45 seconds)
+      for (let t = 0; t < 50 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         const r = step(s, a.input, 1 / 60);
@@ -498,7 +499,8 @@ describe('autopilot', () => {
       let s = { ...spawn(null), pitch: -1.2, bank: Math.PI - 0.2, speed: SHIP.cruise };
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      // (the longest leg, out to the twelfth world, takes the best part of 45 seconds)
+      for (let t = 0; t < 50 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;
@@ -522,7 +524,8 @@ describe('autopilot', () => {
       const id = ORDER[i % ORDER.length];
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 40 && !done; t += 1 / 60) {
+      // (the longest leg, out to the twelfth world, takes the best part of 45 seconds)
+      for (let t = 0; t < 50 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;

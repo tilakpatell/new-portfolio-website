@@ -41,6 +41,17 @@
     "where": "middle-earth",
     "as": "Minas Tirith"
   },
+  "omni-man": {
+    "title": "Omni Man Fortnite",
+    "author": "Swimknot19",
+    "authorUrl": "https://sketchfab.com/RafaMario",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
+    "where": "invincible",
+    "as": "Omni-Man",
+    "file": "/models/invincible/omni-man.glb"
+  },
   "orthanc": {
     "title": "Isengard",
     "author": "AndreOrla",
@@ -71,6 +82,17 @@
     "where": "universe",
     "as": "the Star Destroyers",
     "file": "/models/universe/star-destroyer.glb"
+  },
+  "thragg": {
+    "title": "Thragg from invincible s4",
+    "author": "Gojiram",
+    "authorUrl": "https://sketchfab.com/geoffscool",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
+    "where": "invincible",
+    "as": "Thragg",
+    "file": "/models/invincible/thragg.glb"
   },
   "tie-interceptor": {
     "title": "Star Wars: TIE/in Interceptor",

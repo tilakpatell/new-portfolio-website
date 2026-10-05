@@ -115,20 +115,28 @@ export function laneBetween(rand, { high = false } = {}) {
     const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 2, Math.sin(b) * r];
     return [p0, [(p0[0] + p2[0]) * 0.3, y, (p0[2] + p2[2]) * 0.3], p2];
   }
-  const i = Math.floor(rand() * ORDER.length);
-  let j = Math.floor(rand() * (ORDER.length - 1));
-  if (j >= i) j += 1;
-  const y = side * between(rand, LOW);
-  const p0 = beside(ORDER[i], rand, y);
-  const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 1.5);
-  // the middle bows out to one side, and a little further from the disc
-  const mx = (p0[0] + p2[0]) / 2;
-  const mz = (p0[2] + p2[2]) / 2;
-  const dx = p2[0] - p0[0];
-  const dz = p2[2] - p0[2];
-  const len = Math.hypot(dx, dz) || 1;
-  const bow = (rand() - 0.5) * 0.5 * len;
-  return [p0, [mx - (dz / len) * bow, y + side * rand() * 1.5, mz + (dx / len) * bow], p2];
+  // between two places, bowed out to one side; with a dozen worlds out there
+  // the straight way between two of them can run through a third, so a few
+  // pairs are tried, and the first that's clear of everything flies
+  let pts = null;
+  for (let tries = 0; tries < 8; tries++) {
+    const i = Math.floor(rand() * ORDER.length);
+    let j = Math.floor(rand() * (ORDER.length - 1));
+    if (j >= i) j += 1;
+    const y = side * between(rand, LOW);
+    const p0 = beside(ORDER[i], rand, y);
+    const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 1.5);
+    // the middle bows out to one side, and a little further from the disc
+    const mx = (p0[0] + p2[0]) / 2;
+    const mz = (p0[2] + p2[2]) / 2;
+    const dx = p2[0] - p0[0];
+    const dz = p2[2] - p0[2];
+    const len = Math.hypot(dx, dz) || 1;
+    const bow = (rand() - 0.5) * 0.5 * len;
+    pts = [p0, [mx - (dz / len) * bow, y + side * rand() * 1.5, mz + (dx / len) * bow], p2];
+    if (clearance(pts) > 1) return pts;
+  }
+  return pts;
 }
 
 // ship: { x, y, z, heading }. Half the time it crosses in front of the
