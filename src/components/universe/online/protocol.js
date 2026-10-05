@@ -35,7 +35,7 @@ export const STALE_MS = 2500; // a ship with no pose this long is hidden
 export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
 export const GUARD = {
   shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
-  gap: 150, // ms between hits from one pilot (the guns fire every 220)
+  gap: 90, // ms between hits from one pilot (the fastest guns, the X-wing's, fire every 120)
   range: 70, // map units: further off than this, they couldn't have hit you
 };
 export const FLAG = { hidden: 1, boost: 2 };
