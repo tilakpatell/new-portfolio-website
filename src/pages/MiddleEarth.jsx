@@ -427,6 +427,12 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'lorien' && (
+        <Suspense fallback={null}>
+          <Rush level="lorien" />
+        </Suspense>
+      )}
+
+      {here?.id === 'lorien' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-places-title">
           <h2 id="me-places-title" className="title">
             The Mirror of Galadriel

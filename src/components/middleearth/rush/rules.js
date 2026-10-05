@@ -36,6 +36,9 @@ export const KINDS = {
   mould: ['clean', 'dirty', 'mithril'],
   iron: ['raw'],
   axe: ['forged', 'ruined'],
+  lembas: ['baked', 'burnt', 'wrapped'],
+  fibre: ['raw', 'chopped'], // (spun into rope, at the wheel)
+  phial: ['clean', 'dirty', 'light'],
 };
 const CONTAINER = (k) => KINDS[k]?.includes('dirty');
 const CHOPS = (k) => KINDS[k]?.includes('chopped');
@@ -53,7 +56,7 @@ const PONY_DISHES = {
 };
 // a level's recipes, with the Pony's where it doesn't say
 export const recipesOf = (level) => ({ ...PONY_RECIPES, ...level?.recipes, dishes: Object.fromEntries(Object.entries(level?.dishes ?? PONY_DISHES).map(([d, x]) => [d, { ...PONY_DISHES[d], ...x }])) });
-const HOLDS = new Set(['#', 'B', 'O', 'T']); // stations that hold one thing
+const HOLDS = new Set(['#', 'B', 'O', 'T', 'L']); // stations that hold one thing
 const OPEN = new Set(['.', 'x', '~']); // tiles with no station
 export const RADIUS = 0.3;
 
@@ -262,7 +265,7 @@ export function grab(s, p) {
       sp.item = null;
       sp.prog = 0;
     } else if (held && !sp.item) {
-      const fits = c === '#' || c === 'B' || (c === 'O' && held.k === R.oven.takes) || (c === 'T' && held.k === R.tap.into && held.s === 'clean');
+      const fits = c === '#' || c === 'B' || c === 'L' || (c === 'O' && held.k === R.oven.takes) || (c === 'T' && held.k === R.tap.into && held.s === 'clean');
       if (!fits) {
         nope();
         return ev;
@@ -351,7 +354,17 @@ export function work(s, p, dt) {
   const c = s.level.tiles[j][i];
   const sp = s.spots[key(i, j)];
   const T = s.level.times;
-  if (c === 'B' && sp.item && CHOPS(sp.item.k) && sp.item.s === 'raw') {
+  const R = recipesOf(s.level);
+  if (c === 'L' && sp.item && R.wrap && sp.item.k === R.wrap.takes.k && sp.item.s === R.wrap.takes.s) {
+    // the leaf table: wrapping (lembas in mallorn leaves), held down
+    sp.prog += dt / T.wrap;
+    ev.push({ type: 'chop', at, p: p.slot });
+    if (sp.prog >= 1) {
+      sp.item.s = R.wrap.makes;
+      sp.prog = 0;
+      ev.push({ type: 'chopped', at, p: p.slot, k: sp.item.k });
+    }
+  } else if (c === 'B' && sp.item && CHOPS(sp.item.k) && sp.item.s === 'raw') {
     sp.prog += dt / T.chop;
     ev.push({ type: 'chop', at, p: p.slot });
     if (sp.prog >= 1) {
