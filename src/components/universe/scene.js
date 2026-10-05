@@ -118,6 +118,7 @@ import { createCrash } from './crash';
 import { createInfall } from './infall';
 import { DISK_N, MAW, captured, fallAt, plungeAt, pullAt, startFall } from './maw';
 import { createTraffic } from './traffic';
+import { createWingmen } from './wingmen';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
@@ -745,6 +746,7 @@ export async function create(canvas, ctx) {
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS });
+  const wingmen = hunters ? createWingmen(map, { fleet }) : null; // (friends in a long fight)
   let hunts = 0; // packs the director has sent this visit (the first is a small one)
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
@@ -831,6 +833,8 @@ export async function create(canvas, ctx) {
     static: 0, // seconds of the HUD scrambling (a flare's shockwave)
     lowSaid: false,
     heat: 0, // trouble made lately (ships shot down): the director sends more hunters
+    huntFor: 0, // seconds the hunters have been after you, this time
+    wingAsked: false, // whether a wing's been asked for, this hunt
     saw: new Set(), // the wonders out in deep space you've come up on
     deepSaid: false,
     trench: 0, // seconds down in the Death Star's trench
@@ -1519,6 +1523,7 @@ export async function create(canvas, ctx) {
     traffic?.setCrew(kind);
     hunters?.clear();
     meteors.clear();
+    wingmen?.clear();
     dropCab();
     cabWanted = null;
     if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -2255,6 +2260,7 @@ export async function create(canvas, ctx) {
       state.view = 'chase'; // (from outside, whichever seat you were in)
       hunters?.clear();
       meteors.clear();
+      wingmen?.clear();
       infall?.dispose();
       infall = createInfall(map, { color: plumeColor(), shadow: MAW.shadow, at: MAW.at });
       infall.start();
@@ -2290,6 +2296,7 @@ export async function create(canvas, ctx) {
     burst.clear();
     hunters?.clear();
     meteors.clear();
+    wingmen?.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
     emit({ type: 'destroyed' });
@@ -2512,6 +2519,35 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-low', k < 0.35);
   };
 
+  // friends in a long fight (wingmen.js): once a hunt has dragged on, or
+  // the shields are low in one, a wing comes up from behind you (once a
+  // hunt, more often than not: X-wings for Luke and Han, Birdperson for
+  // Rick, either for Walt and Jesse), and what it hits is put on the hunters
+  const WING_CALL = { after: 14, low: 55, lowAfter: 5, chance: 0.7 };
+  const helpFrom = (dt, t, live) => {
+    const fighting = Boolean(live && hunters.active);
+    state.huntFor = fighting ? state.huntFor + dt : 0;
+    if (!fighting && !wingmen.active) state.wingAsked = false;
+    if (fighting && !state.wingAsked && !wingmen.active && (state.huntFor > WING_CALL.after || (state.shield < WING_CALL.low && state.huntFor > WING_CALL.lowAfter))) {
+      state.wingAsked = true;
+      const many = hunters.targets.length;
+      if (many >= 2 && Math.random() < WING_CALL.chance) {
+        const family = FAMILY[state.kind];
+        const kind = family === 'rickmorty' ? 'birdperson' : family === 'starwars' ? 'xwing' : Math.random() < 0.5 ? 'xwing' : 'birdperson';
+        wingmen.join(kind, live, many >= 4 ? 3 : 2);
+      }
+    }
+    const r = wingmen.update(dt, t, live, live ? hunters.targets : []);
+    for (const h of r.hits) {
+      const got = hunters.damage(h.id, h.damage);
+      if (got) pops.hit({ point: got.at, normal: popDir.set(0, 1, 0), radius: got.down ? got.size * 1.8 : 0.2 });
+    }
+    for (const e of r.events) {
+      if (e.type === 'joined') emit({ type: 'event', id: 'wingmen', sub: e.kind });
+      else if (e.type === 'leaving' && live) emit({ type: 'event', id: 'wingmenGone' });
+    }
+  };
+
   // everything that goes on round you while you fly: the hunters, the
   // director and its set pieces, your shields, the wonders you come up on
   let staticOn = false;
@@ -2519,6 +2555,7 @@ export async function create(canvas, ctx) {
     state.clock += dt;
     const live = flying() && !onFoot() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    if (wingmen) helpFrom(dt, t, live);
     let busy = pieces.update(dt, t, camera);
     busy = leviathans.update(dt, t, camera) || busy;
     if (meteors.count) {
@@ -2748,6 +2785,7 @@ export async function create(canvas, ctx) {
     arriveAt(park);
     hunters?.clear();
     meteors.clear();
+    wingmen?.clear();
     state.interdicted = false;
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
@@ -2773,6 +2811,7 @@ export async function create(canvas, ctx) {
       arriveAt(j.park);
       hunters?.clear();
       meteors.clear();
+      wingmen?.clear();
       state.interdicted = false;
       state.safeUntil = state.clock + SAFE;
       crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
@@ -3711,7 +3750,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, director, pieces, leviathans, meteors, fleet, novae, pilots, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, net: () => net, siege, citadelGeo, arms, readSiegeState };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -3731,6 +3770,7 @@ export async function create(canvas, ctx) {
       siege: { ...siegeSt },
       weapon: armory ? { id: armory.id, name: armory.name, ammo: armory.ammo } : null,
       hunters: hunters?.packs ?? [],
+      wing: wingmen?.live ?? [],
       lock: state.lock?.id ?? null,
       manual: Boolean(state.lock?.manual),
       controls: controls(),
@@ -3961,6 +4001,7 @@ export async function create(canvas, ctx) {
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();
+      wingmen?.dispose();
       netOff?.();
       pilots.dispose();
       pieces.dispose();

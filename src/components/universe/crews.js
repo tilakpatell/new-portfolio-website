@@ -245,6 +245,15 @@ export const CREWS = [
     ],
     // the director's set pieces (director.js), and going out into deep space
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['birdperson', 'Rick. I am here to assist. It is what friends do.'],
+        ['rick', 'Birdperson! Thank God. I mean, took you long enough.'],
+      ],
+      wingmenGone: [
+        ['birdperson', 'Our work here is done. Goodbye, old friend.'],
+        ['morty', 'Bye, Birdperson!'],
+      ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
         ['morty', 'Rick, that family’s in trouble!'],
@@ -635,6 +644,15 @@ export const CREWS = [
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Red Two here, Luke. Coming in on your wing!'],
+        ['luke', 'Wedge! Good to see you. Watch yourself, they’re quick.'],
+      ],
+      wingmenGone: [
+        ['comms', 'Red Two, breaking off. Good flying, Luke.'],
+        ['r2', '[a cheerful whistle]'],
+      ],
       destroyer: [
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, right on top of us! They’re launching fighters!'],
@@ -1005,6 +1023,16 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again
+      wingmen: [
+        ['comms', 'Falcon, this is Rogue Squadron. Thought you could use a hand.'],
+        ['han', 'I had it under control. But sure, come on in.'],
+        ['chewie', '[an approving roar]'],
+      ],
+      wingmenGone: [
+        ['comms', 'Rogue Squadron out. Try to stay out of trouble, Solo.'],
+        ['han', 'No promises.'],
+      ],
       destroyer: [
         ['han', 'Star Destroyer! Why is it always a Star Destroyer?'],
         ['chewie', '[an alarmed roar]'],
@@ -1401,6 +1429,23 @@ export const CREWS = [
       ['walt', 'Say my name.', 'sayMyName'],
     ],
     events: {
+      // friends on your wing in a long fight (wingmen.js), and going again:
+      // whoever's out here, from either universe
+      wingmen: {
+        xwing: [
+          ['comms', 'Unidentified, uh, camper van. This is Rogue Squadron. We’ve got your back.'],
+          ['jesse', 'Yo, Mr. White, the Star Wars guys are helping us!'],
+          ['walt', 'Allies, Jesse. Every empire needs them.'],
+        ],
+        birdperson: [
+          ['comms', 'I am Birdperson. I will defend your flying house.'],
+          ['jesse', 'Yo, there’s a bird dude out there with a laser!'],
+        ],
+      },
+      wingmenGone: [
+        ['jesse', 'Later, yo! Thanks!'],
+        ['walt', 'We were never here.'],
+      ],
       distress: [
         ['comms', 'Mayday! Anybody! We’re under attack!'],
         ['jesse', 'Mr. White, we gotta help them!'],
