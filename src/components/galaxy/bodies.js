@@ -42,7 +42,7 @@ export const LOOKS = {
   tatooine: {
     name: 'Tatooine', swatch: '#d9b680', family: 'desert', bump: 0.022,
     pal: { sand: '#d4b88c', sand2: '#bf9868', rock: '#9a6c46', dark: '#5a3c26', salt: '#ece6d8', crest: '#e6d2ac' },
-    p: { dunes: 1, rock: 0.04, craters: 0, salt: 0.75, scars: 0, duneFreq: 48, canyons: 1, mesas: 0.85 },
+    p: { dunes: 1, rock: 0.12, craters: 0, salt: 0.75, scars: 0, duneFreq: 48, canyons: 1, mesas: 0.85 },
     atmo: air('#ffe0b8', 1.3, 1.04, '#ffa060', 4),
   },
   jakku: {
@@ -60,7 +60,7 @@ export const LOOKS = {
   // ── Ice ──
   hoth: {
     name: 'Hoth', swatch: '#e6f0fa', family: 'ice', bump: 0.02,
-    pal: { snow: '#f2f6fc', ice: '#9cc2e8', rock: '#40444c', deep: '#2c4c7c', accent: '#ffffff', accent2: '#ffffff', glow: '#000000' },
+    pal: { snow: '#e6edf6', ice: '#94bae2', rock: '#40444c', deep: '#2c4c7c', accent: '#ffffff', accent2: '#ffffff', glow: '#000000' },
     p: { ice: 0.75, mountains: 0.8, crevasses: 0.9, streaks: 0, forest: 0, trench: 0 },
     clouds: sky(0.26, '#ffffff', 1.4, 3.2, 0.005),
     atmo: air('#a6ccff', 2.2, 1.065),
@@ -118,7 +118,7 @@ export const LOOKS = {
   scarif: {
     name: 'Scarif', swatch: '#2fb8c0', family: 'lush', bump: 0.02, flags: ['ISLANDS'], shield: true,
     pal: { deep: '#0a3c7a', shallow: '#26cfc6', forest: '#2a8a34', grass: '#5ac04a', rock: '#6a7058', snow: '#ffffff', beach: '#f4ecd0', murk: '#2a3a2a' },
-    p: { sea: 0.2, forest: 0.6, mountains: 0.3, caps: 0, islands: 1, swamp: 0, rivers: 0, scale: 2.0 },
+    p: { sea: 0.36, forest: 0.6, mountains: 0.3, caps: 0, islands: 1, swamp: 0, rivers: 0, scale: 2.0 },
     clouds: sky(0.26, '#ffffff', 2.4, 5),
     atmo: air('#86c6ff', 2.2, 1.065),
   },
@@ -155,7 +155,7 @@ export const LOOKS = {
   // ── The Sith world ──
   exegol: {
     name: 'Exegol', swatch: '#2a2236', family: 'storm', bump: 0.012,
-    pal: { dark: '#221c2c', mid: '#4e4366', light: '#857898', bolt: '#b4c2ff' },
+    pal: { dark: '#241e2e', mid: '#564a6e', light: '#8e82a2', bolt: '#b4c2ff' },
     p: { bolts: 0.5, swirl: 1, speed: 0.003 },
     atmo: air('#5c4a86', 1.6, 1.05, '#8060a0'),
   },
@@ -202,7 +202,6 @@ export const LOOKS = {
 };
 
 const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
-const PIX_ROWS = 1000; // the screen's height in pixels the octave counts are judged by
 const SHIELD_R = 1.12;
 const DUNE_DIR = new THREE.Vector3(0.62, 0.32, 0.72).normalize();
 
@@ -248,7 +247,6 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   };
   const uniforms = {
     ...shared,
-    uPix: { value: 0.0012 },
     uMaxOct: { value: small ? 5 : 9 },
     uBump: { value: L.bump ?? 0.02 },
     uPal: { value: colors(L) },
@@ -296,12 +294,12 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     group,
     radius: r,
     reach,
-    update(t, camera) {
+    // (the camera needn't be passed: the shaders know where it is)
+    update(t) {
       shared.uTime.value = t;
       group.updateWorldMatrix(true, false);
       shared.uCenter.value.setFromMatrixPosition(group.matrixWorld);
       shared.uRot.value.setFromMatrix4(group.matrixWorld);
-      if (camera?.isPerspectiveCamera) uniforms.uPix.value = (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / (PIX_ROWS * (camera.zoom || 1));
     },
     setSuns(suns = []) {
       const list = suns.length ? suns : [{ dir: new THREE.Vector3(1, 0.3, 0.4).normalize(), color: new THREE.Color(1.25, 1.2, 1.1) }];

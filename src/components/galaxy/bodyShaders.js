@@ -85,6 +85,13 @@ vec4 fbmd(vec3 p, float n, float gain) {
   }
   return vec4(v, g);
 }
+// two octaves of value noise turned against each other (one alone shows its
+// lattice, squared off, wherever it's cut into lines or coasts)
+vec4 noised2(vec3 p) {
+  vec4 a = noised(p);
+  vec4 b = noised(M3 * p * 1.7 + 7.3);
+  return vec4(0.8 * a.x + 0.55 * b.x, 0.8 * a.yzw + 0.55 * 1.7 * (M3T * b.yzw));
+}
 float fbm(vec3 p, float n) {
   float a = 0.5;
   float v = 0.0;
@@ -114,7 +121,6 @@ void main() {
 export const SURFACE_HEAD = /* glsl */ `
 uniform float uTime;
 uniform float uR;
-uniform float uPix;
 uniform float uMaxOct;
 uniform float uBump;
 uniform vec3 uCenter;
@@ -134,7 +140,7 @@ uniform float uFlash;
 varying vec3 vObj;
 varying vec3 vWorld;
 
-float gFoot;  // how much of the unit sphere one pixel covers, here
+float gFoot;  // how much of the unit sphere one pixel covers, here (radii)
 float gNight; // 0 in sunlight .. 1 on the night side
 vec3 gSunObj; // the main sun's direction in the planet's own frame
 float gCloudThick; // how thick the cloud is, here (thicker: brighter tops)
@@ -286,8 +292,8 @@ void surface(vec3 P, inout Surf s) {
   float hr = mix(b.x, terr, uP1.w);
   vec3 gr = b.yzw * 2.2 * mix(1.0, dst, uP1.w);
   // gullies and canyons cut through it (Beggar's Canyon), two sizes of crease
-  vec4 n1 = noised(P * 9.0 + vec3(b.x * 0.5) + 9.1);
-  vec4 n2 = noised(P * 31.0 + vec3(b.x) + 2.7);
+  vec4 n1 = noised2(P * 9.0 + vec3(b.x * 0.5) + 9.1);
+  vec4 n2 = noised2(P * 31.0 + vec3(b.x) + 2.7);
   float k1 = max(0.08, gFoot * 9.0 * 2.5);
   float k2 = max(0.08, gFoot * 31.0 * 2.5);
   float r1 = 1.0 - abs(n1.x);
@@ -393,8 +399,8 @@ void surface(vec3 P, inout Surf s) {
   float o = octs(2.4);
   vec4 b = fbmd(P * 2.4, o, 0.48);
   // mountain ranges: long spines along the crests of a ridged field
-  vec4 r1 = noised(P * 2.6 + 17.0);
-  vec4 r2 = noised(P * 5.3 + 4.0);
+  vec4 r1 = noised2(P * 2.6 + 17.0);
+  vec4 r2 = noised2(P * 5.3 + 4.0);
   float rv = (1.0 - abs(r1.x)) * 0.7 + (1.0 - abs(r2.x)) * 0.3;
   vec3 grv = -sign(r1.x) * r1.yzw * 2.6 * 0.7 - sign(r2.x) * r2.yzw * 5.3 * 0.3;
   float zone = smoothstep(-0.15, 0.25, noise(P * 1.4 + 8.0)) * uP0.y;
@@ -409,16 +415,19 @@ void surface(vec3 P, inout Surf s) {
   float flow = fbm(sq + 4.0, min(octs(6.0), 5.0));
   float ice = uP0.x * smoothstep(0.05, -0.3, b.x + flow * 0.35) * (1.0 - rock);
   // crevasses: thin dark-blue cracks across the ice and the snow round the ranges
-  vec4 cv = noised(P * 38.0 + vec3(flow * 2.0));
+  vec4 cv = noised2(P * 38.0 + vec3(flow * 2.0));
   float kc = max(0.04, gFoot * 38.0 * 2.5);
   float crev = smoothstep(1.0 - kc, 1.0 - kc * 0.3, 1.0 - abs(cv.x)) * min(1.0, 0.04 / kc) * uP0.z * clamp(ice * 1.5 + mtn * 0.6, 0.0, 1.0);
   vec4 cv2 = noised(P * 160.0 + 3.0);
   crev = max(crev, smoothstep(0.96, 0.99, 1.0 - abs(cv2.x)) * fade(160.0 * 3.0) * uP0.z * clamp(ice * 1.5 + mtn, 0.0, 1.0));
   // sastrugi: wind ripples in the snow, up close
   float sp = fract(dot(P, uDir) * 420.0 + flow * 6.0);
-  G += uDir * (sp < 0.75 ? 1.0 / 0.75 : -1.0 / 0.25) * 0.004 * fade(420.0 * 1.5) * (1.0 - rock);
+  G += uDir * (sp < 0.75 ? 1.0 / 0.75 : -1.0 / 0.25) * 0.012 * fade(420.0 * 1.5) * (1.0 - rock);
+  // drifts: the snow heaped and scoured, close up
+  vec4 dr = noised2(P * 120.0 - uDir * dot(P, uDir) * 80.0 + 3.0);
+  G += dr.yzw * 120.0 * 0.0007 * fade(120.0) * (1.0 - rock);
   float sparkle = noise(P * 700.0) * fade(700.0);
-  vec3 snow = SNOW * (0.94 + 0.06 * flow + 0.04 * sparkle);
+  vec3 snow = mix(SNOW * (0.93 + 0.07 * flow + 0.04 * sparkle), ICE, smoothstep(0.1, 0.7, -dr.x) * 0.3 * fade(120.0));
   vec3 alb = mix(snow, ICE, ice * (0.65 + 0.35 * smoothstep(-0.3, 0.3, flow)));
   alb = mix(alb, mix(ICE, DEEP, 0.3), smoothstep(0.1, 0.5, flow) * ice * 0.5);
   vec3 rockC = mix(ROCK, ROCK * 1.5, smoothstep(-0.3, 0.5, flow));
@@ -432,7 +441,7 @@ void surface(vec3 P, inout Surf s) {
   vec3 tq = P * 7.0 - uDir * dot(P, uDir) * 6.4;
   float st1 = fbm(tq + 2.0, min(octs(7.0), 6.0));
   float red = smoothstep(0.14, 0.3, st1 + mtn * 0.15 + noise(P * 2.0) * 0.12) * uP0.w;
-  vec4 sc = noised(P * 22.0 + vec3(st1));
+  vec4 sc = noised2(P * 22.0 + vec3(st1));
   float ks = max(0.03, gFoot * 22.0 * 2.5);
   float scar = smoothstep(1.0 - ks, 1.0 - ks * 0.3, 1.0 - abs(sc.x)) * min(1.0, 0.03 / ks);
   red = max(red, scar * 0.9 * uP0.w);
@@ -488,9 +497,9 @@ void surface(vec3 P, inout Surf s) {
   vec3 g = b.yzw * F;
   #ifdef ISLANDS
   // chains of islands strung along the crests of a ridged field
-  vec4 ch = noised(P * 3.2 + 3.3 + warp * 1.4);
+  vec4 ch = noised2(P * 3.2 + 3.3 + warp * 1.4);
   float chain = 1.0 - abs(ch.x);
-  vec4 bead = noised(P * 16.0 + warp * 2.0 + 1.0);
+  vec4 bead = noised2(P * 16.0 + warp * 2.0 + 1.0);
   h = h * 0.45 + uP1.x * ((chain * chain - 0.55) * 0.9 + 0.3 * bead.x * chain);
   g = g * 0.45 + uP1.x * (0.9 * 2.0 * chain * -sign(ch.x) * ch.yzw * 3.2 + 0.3 * chain * bead.yzw * 16.0);
   #endif
@@ -514,7 +523,7 @@ void surface(vec3 P, inout Surf s) {
   float wet = 1.0 - land;
   #ifdef RIVERS
   // rivers winding to the sea through the lowlands
-  vec4 rv = noised(P * 7.0 + warp * 2.0 + 21.0);
+  vec4 rv = noised2(P * 7.0 + warp * 2.0 + 21.0);
   float kr = max(0.025, gFoot * 7.0 * 2.5);
   float river = smoothstep(1.0 - kr, 1.0 - kr * 0.3, 1.0 - abs(rv.x)) * min(1.0, 0.025 / kr) * land * (1.0 - smoothstep(0.1, 0.3, alt)) * uP1.z;
   landC = mix(landC, SHALLOW * 0.7, river);
@@ -635,8 +644,8 @@ void surface(vec3 P, inout Surf s) {
   vec4 b = fbmd(P * 2.6, o, 0.5);
   vec4 rough = noised(P * 260.0 + 5.0);
   vec3 G = b.yzw * 2.6 * uBump + rough.yzw * 260.0 * 0.00004 * fade(260.0);
-  vec4 r1 = noised(P * 4.0 + vec3(b.x * 0.7));
-  vec4 r2 = noised(P * 13.0 + vec3(b.x * 1.3) + 5.0);
+  vec4 r1 = noised2(P * 4.0 + vec3(b.x * 0.7));
+  vec4 r2 = noised2(P * 13.0 + vec3(b.x * 1.3) + 5.0);
   float k1 = max(0.03, gFoot * 4.0 * 3.0);
   float k2 = max(0.025, gFoot * 13.0 * 3.0);
   float v1 = 1.0 - abs(r1.x);
@@ -644,11 +653,11 @@ void surface(vec3 P, inout Surf s) {
   float riv = smoothstep(1.0 - k1, 1.0 - k1 * 0.3, v1) * min(1.0, 0.03 / k1);
   riv = max(riv, smoothstep(1.0 - k2, 1.0 - k2 * 0.3, v2) * min(1.0, 0.025 / k2) * smoothstep(0.6, 0.9, v1 + b.x * 0.3) * 0.9);
   riv *= uP0.x;
-  float lake = smoothstep(-0.4, -0.47, b.x) * uP0.y;
+  float lake = smoothstep(-0.44, -0.5, b.x) * uP0.y;
   // and cracks in the crust glowing through, seen close
-  vec4 r3 = noised(P * 70.0 + vec3(b.x * 2.0) + 11.0);
+  vec4 r3 = noised2(P * 70.0 + vec3(b.x * 2.0) + 11.0);
   float k3 = max(0.04, gFoot * 70.0 * 3.0);
-  float crack = smoothstep(1.0 - k3, 1.0 - k3 * 0.3, 1.0 - abs(r3.x)) * min(1.0, 0.04 / k3) * smoothstep(0.3, 0.75, v1 + b.x * 0.2) * 0.8;
+  float crack = smoothstep(1.0 - k3, 1.0 - k3 * 0.3, 1.0 - abs(r3.x)) * min(1.0, 0.04 / k3) * smoothstep(0.55, 0.9, v1 + b.x * 0.2) * 0.8;
   float lava = max(max(riv, lake), crack * uP0.x);
   // the lava's skin: crusted rafts drifting on it
   float skin = noise(P * 60.0 + vec3(uTime * 0.03, 0.0, uTime * 0.02)) * 0.5 + noise(P * 220.0 - vec3(uTime * 0.05)) * 0.5 * fade(220.0);
@@ -758,10 +767,10 @@ void surface(vec3 P, inout Surf s) {
   vec3 alb = mix(BASE, DARK, mar) * (0.9 + 0.2 * mott);
   alb = mix(alb, BRIGHT, clamp(cr, 0.0, 1.0) * 0.35);
   alb *= 1.0 - clamp(-cr, 0.0, 1.0) * 0.15;
-  vec4 ck = noised(P * 5.0 + 2.0);
+  vec4 ck = noised2(P * 5.0 + 2.0);
   float kk = max(0.018, gFoot * 5.0 * 2.5);
   float crack = smoothstep(1.0 - kk, 1.0 - kk * 0.3, 1.0 - abs(ck.x)) * min(1.0, 0.018 / kk);
-  vec4 ck2 = noised(P * 17.0 + 7.0);
+  vec4 ck2 = noised2(P * 17.0 + 7.0);
   float kk2 = max(0.02, gFoot * 17.0 * 2.5);
   crack = max(crack, smoothstep(1.0 - kk2, 1.0 - kk2 * 0.3, 1.0 - abs(ck2.x)) * min(1.0, 0.02 / kk2) * 0.8);
   alb = mix(alb, CRACK, crack * uP0.z);
@@ -776,8 +785,10 @@ const FAMILIES = { desert: DESERT, ice: ICE, lush: LUSH, city: CITY, lava: LAVA,
 const SURFACE_MAIN = /* glsl */ `
 void main() {
   vec3 P = normalize(vObj);
-  float dist = length(vWorld - cameraPosition);
-  gFoot = max(dist * uPix / uR, 1e-7);
+  // how much of the unit sphere this pixel covers (whatever the screen's size)
+  float lx = length(dFdx(P));
+  float ly = length(dFdy(P));
+  gFoot = max(max(sqrt(lx * ly), 0.4 * max(lx, ly)), 1e-7);
   mat3 R = uRot;
   vec3 Ng = normalize(R * P);
   gSunObj = normalize(transpose(R) * uSunDir[0]);
