@@ -141,3 +141,6 @@
 .earth-facts { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
 .earth-facts li { padding-left: 1rem; border-left: 2px solid color-mix(in srgb, #1f5f99 60%, var(--border)); color: var(--body); line-height: 1.6; }
 .earth-facts b { color: var(--ink); }
+
+/* the controls, on the page */
+.earth-keys kbd { display: inline-block; padding: 0.1rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); font: 500 0.78rem/1.4 var(--font-mono); color: var(--ink); }
