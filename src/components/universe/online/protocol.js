@@ -70,9 +70,9 @@ export function writePose(s, flags = 0, shield = 100) {
 // boost, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -6000, 6000);
-  const y = num(data[1], -600, 600);
-  const z = num(data[2], -6000, 6000);
+  const x = num(data[0], -7500, 7500);
+  const y = num(data[1], -1300, 1300);
+  const z = num(data[2], -7500, 7500);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -83,7 +83,7 @@ export function readPose(data) {
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
     bank: num(data[5], -1.6, 1.6) ?? 0,
-    speed: num(data[6], -300, 300) ?? 0,
+    speed: num(data[6], -600, 600) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
@@ -97,10 +97,11 @@ export const writeShot = (p, v) => [p.x, p.y, p.z, v[0], v[1], v[2]].map((n) => 
 // to start near where the pilot was last seen (`from`, a pose, if known)
 export function readShot(data, from = null) {
   if (!Array.isArray(data) || data.length < 6) return null;
-  const n = data.slice(0, 6).map((v) => num(v, -6000, 6000));
+  const n = data.slice(0, 6).map((v) => num(v, -7500, 7500));
   if (n.some((v) => v === null)) return null;
-  if (Math.hypot(n[3], n[4], n[5]) > 400) return null;
-  if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6) return null;
+  if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
+  // (as far as it could have gone since that pose, on the pulse drive)
+  if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
   return { p: n.slice(0, 3), v: n.slice(3) };
 }
 

@@ -63,9 +63,9 @@ describe('poses', () => {
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     expect(readPose([NaN, 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     const p = readPose([1e9, 0, 0, 0, 9, 0, 1e6, 0, 1]);
-    expect(p.x).toBe(6000);
+    expect(p.x).toBe(7500);
     expect(p.pitch).toBe(1.6);
-    expect(p.speed).toBe(300);
+    expect(p.speed).toBe(600);
     expect(p.hidden).toBe(true);
   });
 });
