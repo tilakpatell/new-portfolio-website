@@ -33,28 +33,30 @@ If the network opens later, the hero ships and figures (Luke, Mando, the Ghost) 
 
 ## Baseline (measured)
 
-Measured with `scripts/galaxy-check.mjs`: 1280×720, `?quality=high`, X-wing, headless Chromium on SwiftShader, one full frame's counts including every pass. Frame times under SwiftShader aren't meaningful; the counts are.
+`scripts/galaxy-check.mjs`, 1280×720, `?quality=high`, X-wing unless noted, headless Chromium (SwiftShader), one full frame's counts including every pass. The page's clock is held at one moment and its random numbers seeded, so a view is the same frame every run (the original code, measured from a worktree at the design commit). Frame times under SwiftShader aren't meaningful; the counts are.
 
 | Space | Calls | Triangles | Geometries | Textures |
 | --- | --- | --- | --- | --- |
-| Tatooine | 60 | 213,889 | 63 | 48 |
-| Hoth | 83 | 281,605 | 72 | 51 |
-| Endor | 115 | 359,421 | 138 | 70 |
-| Coruscant | 44 | 180,618 | 67 | 34 |
-| Geonosis | 54 | 422,686 | 49 | 24 |
-| Scarif | 54 | 223,528 | 61 | 38 |
+| Tatooine | 54 | 189,737 | 61 | 48 |
+| Tatooine (Falcon) | 76 | 245,422 | 52 | 59 |
+| Hoth | 86 | 270,080 | 63 | 47 |
+| Endor | 62 | 235,518 | 94 | 55 |
+| Endor (Falcon) | 144 | 443,308 | 100 | 73 |
+| Coruscant | 46 | 180,598 | 42 | 22 |
+| Geonosis | 53 | 422,682 | 49 | 24 |
+| Scarif | 52 | 196,608 | 53 | 35 |
 
 | Surface | Calls | Triangles | Geometries | Textures |
 | --- | --- | --- | --- | --- |
 | Tatooine | 438 | 1,086,424 | 334 | 80 |
-| Hoth | 291 | 1,088,769 | 137 | 72 |
-| Endor | 120 | 2,176,793 | 76 | 34 |
+| Hoth | 291 | 1,088,769 | 137 | 73 |
+| Endor | 120 | 2,176,793 | 67 | 30 |
 | Naboo | 376 | 838,004 | 346 | 30 |
-| Kamino | 82 | 630,226 | 60 | 38 |
-| Bespin | 167 | 380,802 | 136 | 36 |
-| Lothal | 48 | 516,266 | 32 | 51 |
+| Kamino | 84 | 630,274 | 62 | 38 |
+| Bespin | 199 | 386,118 | 136 | 36 |
+| Lothal | 48 | 516,266 | 23 | 48 |
 
-The render budget from `threejs-aaa-graphics-builder/references/technical-art.md` (desktop): 300 calls, 750k triangles, 300 geometries, 60 textures. Several worlds are over it on triangles, and the space battles pay for things they don't need (below).
+The render budget from `threejs-aaa-graphics-builder/references/technical-art.md` (desktop): 300 calls, 750k triangles, 300 geometries, 60 textures. Several worlds are over it on triangles, the Falcon doubles the frame (its glass's transmission pass draws everything twice), and the space battles pay for things they don't need (below).
 
 ## Phase 1: performance and fixes
 
@@ -128,7 +130,8 @@ Every change here is measured before and after with `scripts/galaxy-check.mjs`, 
 
 | View | Calls | Triangles |
 | --- | --- | --- |
-| Space, Endor | ≤ 90 (from 115) | ≤ 200k (from 359k) |
+| Space, Endor | ≤ 55 (from 62) | ≤ 170k (from 236k) |
+| Space, Endor (Falcon) | ≤ 75 (from 144) | ≤ 250k (from 443k) |
 | Space, Geonosis | — | ≤ 300k (from 423k) |
 | Surface, Tatooine | ≤ 250 (from 438) | ≤ 650k (from 1.09M) |
 | Surface, Endor | — | ≤ 1.0M (from 2.18M) |
