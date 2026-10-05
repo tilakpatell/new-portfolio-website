@@ -117,6 +117,7 @@ export function reachOf(w) {
   if (w.kind === 'star') return Math.max(w.r, ...w.planets.map((p) => p.orbit + p.r));
   if (w.kind === 'black-hole') return w.disk;
   if (w.ring) return w.r * 2.3;
+  if (w.kind === 'citadel') return w.r * 1.9; // (its arms and its crystal: CITADEL_PARTS)
   return w.r;
 }
 
@@ -124,9 +125,26 @@ export function reachOf(w) {
 // A black hole is solid out past its shadow, where the light bends round
 // it, and it swallows: nothing bounces off it, whatever the speed (ship.js)
 const solid = (id, at, r, swallow = false) => ({ id, at, r, reach: r * 1.4, deep: true, ...(swallow ? { swallow } : {}) });
+// The Citadel reaches past its great dome: its four domes out on their
+// arms, the blades hanging under it and the crystal under them, as
+// deepspace.js draws it for a radius of 18 ([x, y, z, r] in those units)
+const CITADEL_PARTS = [
+  [21.3, -2.2, 5.4, 6.4],
+  [-7.4, 6.2, 17.5, 5],
+  [-22, -3, -6.8, 6.8],
+  [2.7, 0.9, -17.8, 4.8],
+  [0.2, -15, 0.3, 5],
+  [0.3, -23, 0.2, 1.6],
+  [0.3, -27.5, 0.2, 1.4],
+  [0.3, -32, 0.2, 1.2],
+];
+// (each a part of it: hitting one is hitting the Citadel, and none is
+// somewhere of its own to fly to)
+const partsOf = (w) => (w.kind === 'citadel' ? CITADEL_PARTS.map(([x, y, z, r], i) => ({ ...solid(`${w.id}-part${i + 1}`, [w.at[0] + (x * w.r) / 18, w.at[1] + (y * w.r) / 18, w.at[2] + (z * w.r) / 18], (r * w.r) / 18), part: true })) : []);
 export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
   solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, w.kind === 'black-hole'),
   ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
+  ...partsOf(w),
 ]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;

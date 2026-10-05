@@ -8,9 +8,14 @@
 // z1, thick, low]: a stockade, a fence, a gate that's shut. `low` things
 // (a well, a fence) are in the way of feet but not of eyes.
 
-import { behindYaw, cameraMove } from '../shire/rules';
-
-export { behindYaw, cameraMove };
+// The camera's two helpers, the Shire's (../shire/rules.js), copied so a town needn't load the Shire's rules for them.
+// The camera sits at `yaw` round the walker (0 is due south of him, looking
+// north). Forward on the keys is away from the camera.
+export function cameraMove(yaw, forward, right) {
+  return { x: -Math.sin(yaw) * forward + Math.cos(yaw) * right, z: -Math.cos(yaw) * forward - Math.sin(yaw) * right };
+}
+// the yaw that puts the camera behind a walker facing `face`
+export const behindYaw = (face) => Math.atan2(-Math.cos(face), Math.sin(face));
 
 export const HOBBIT = { radius: 0.4, walk: 3.4, run: 6.2, accel: 16, turn: 11 };
 

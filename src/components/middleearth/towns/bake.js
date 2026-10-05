@@ -58,7 +58,7 @@ export function farTree({ leaf = [0x3f6e2a, 0x4a7a30, 0x36602a], trunk = 0x4a3a2
     return g;
   };
   parts.push(paint(new THREE.CylinderGeometry(0.22, 0.32, 3, 6).translate(0, 1.5, 0), trunk));
-  for (const [x, y, z, r, hex, d] of [[0, 3.9, 0, 2.1, leaf[0], 1], [0.9, 3.3, 0.5, 1.5, leaf[1], 0], [-0.8, 3.5, -0.4, 1.6, leaf[2], 0]]) parts.push(paint(new THREE.IcosahedronGeometry(r, d).translate(x, y, z).toNonIndexed(), hex));
+  for (const [x, y, z, r, hex, d] of [[0, 3.9, 0, 2.1, leaf[0], 1], [0.9, 3.3, 0.5, 1.5, leaf[1], 0], [-0.8, 3.5, -0.4, 1.6, leaf[2], 0]]) parts.push(paint(new THREE.IcosahedronGeometry(r, d).translate(x, y, z), hex));
   const g = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)), false);
   g.computeVertexNormals();
   return g;

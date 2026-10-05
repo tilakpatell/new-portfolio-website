@@ -29,12 +29,32 @@ export const STAGE_INFO = {
 export const stageTitle = (life) => (life.route === 'offgrid' && STAGE_INFO[life.stage].offgrid) || STAGE_INFO[life.stage].title;
 
 // the tire starts at the far end of its swing, so the first throw is no free hit
-const KID = { swing: 2.4, band: 0.28, throws: 5, start: -Math.PI / 2 };
-const FOOTBALL = { spawn: 0.9, ahead: 40, speed: 14, run: 9, goal: 100, stun: 1.5, limit: 16 };
-const CARPET = { customers: 8, patience: 4, gap: 0.6 };
-const CANCER = { beat: 0.75, window: 0.16, need: 12, offbeats: 6, limit: 24 };
-const FINALE = { ahead: 30, from: 46 };
-const GRIT = { hits: 4, sales: 6 };
+const KID = Object.freeze({ swing: 2.4, band: 0.28, throws: 5, start: -Math.PI / 2 });
+const FOOTBALL = Object.freeze({ spawn: 0.9, ahead: 40, speed: 14, run: 9, goal: 100, stun: 1.5, limit: 16 });
+const CARPET = Object.freeze({ customers: 8, patience: 4, gap: 0.6 });
+const CANCER = Object.freeze({ beat: 0.75, window: 0.16, need: 12, offbeats: 6, limit: 24 });
+const FINALE = Object.freeze({ ahead: 30, from: 46 });
+const GRIT = Object.freeze({ hits: 4, sales: 6 });
+// the numbers, for the drawing and the HUD (read only)
+export const TUNING = Object.freeze({ kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER, finale: FINALE, grit: GRIT });
+
+// a throw now would go through the tire
+export const inBand = (phase) => Math.abs(phase) < KID.band;
+
+// the beat a press now would take (k sounds at k * beat seconds), or 0 for none:
+// just after a beat (not before the first has sounded), or just before the next
+function beatAt(s) {
+  const late = s.beatT;
+  const early = CANCER.beat - s.beatT;
+  return s.elapsed >= 1 && late <= CANCER.window ? s.elapsed : early <= CANCER.window ? s.elapsed + 1 : 0;
+}
+// what a press would do now in the diagnosis: 'open' (a beat), 'taken' (that
+// beat's already had its press: an offbeat) or 'closed' (no beat near: an offbeat)
+export function beatWindow(life) {
+  if (life.stage !== 'cancer' || life.over) return 'closed';
+  const k = beatAt(life.s);
+  return k === 0 ? 'closed' : k > life.s.hit ? 'open' : 'taken';
+}
 
 // mulberry32 on a uint32 (as shire/rules.js `seeded`), but the state is passed in and out
 export function rand(state) {
@@ -104,7 +124,7 @@ function stepKid(L, input) {
   if (input.act) {
     s.throws++;
     L.events.push('throw');
-    const hit = Math.abs(s.phase) < KID.band;
+    const hit = inBand(s.phase);
     if (hit) {
       s.hits++;
       L.stats.dream = s.hits;
@@ -192,9 +212,7 @@ function stepCancer(L, input, dt) {
   const s = L.s;
   L.age = 45;
   if (input.act) {
-    const late = s.beatT;
-    const early = CANCER.beat - s.beatT;
-    const k = s.elapsed >= 1 && late <= CANCER.window ? s.elapsed : early <= CANCER.window ? s.elapsed + 1 : 0;
+    const k = beatAt(s);
     if (k > s.hit) {
       s.hit = k;
       s.beats++;

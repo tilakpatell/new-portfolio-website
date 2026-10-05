@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HOBBIT, makeWalker, newWalker, pushOut, sightClear } from './walker';
+import { HOBBIT, behindYaw, cameraMove, makeWalker, newWalker, pushOut, sightClear } from './walker';
+import * as shire from '../shire/rules';
 
 // walk with a steady push for `s` seconds
 function walk(w, h, move, s, opts) {
@@ -89,5 +90,14 @@ describe('sight', () => {
     expect(sightClear(-6, 0, 6, 0, [{ kind: 'circle', x: 0, z: 0.5, r: 1 }], [])).toBe(false);
     expect(sightClear(-6, 0, 6, 0, [], [[0, -3, 0, 3]])).toBe(false);
     expect(sightClear(-6, 0, 6, 0, [{ ...house, low: true }], [[0, -3, 0, 3, 0.1, true]])).toBe(true);
+  });
+});
+
+describe('the camera’s helpers', () => {
+  it('are the Shire’s, to the bit', () => {
+    for (const a of [-3.1, -1.2, 0, 0.4, Math.PI / 2, 2.9]) {
+      expect(behindYaw(a)).toBe(shire.behindYaw(a));
+      for (const [f, r] of [[1, 0], [0, 1], [-0.6, 0.3], [0.25, -1]]) expect(cameraMove(a, f, r)).toEqual(shire.cameraMove(a, f, r));
+    }
   });
 });

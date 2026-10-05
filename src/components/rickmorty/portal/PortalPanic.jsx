@@ -563,7 +563,7 @@ function Game({ soft, fail }) {
   const picking = running && ui.offer.length > 0;
   const Face = FACE[hero];
   return (
-    <div className="pp">
+    <div className="pp" data-owns-escape={running || undefined}>
       <div
         ref={wrap}
         className="g3 pp-screen"
