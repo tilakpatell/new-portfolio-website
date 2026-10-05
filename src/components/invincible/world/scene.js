@@ -18,8 +18,10 @@ import { createFlightFx } from './fx';
 import { buildGround } from './ground';
 import { buildJet } from './jet';
 import { buildLandmarks } from './landmarks';
+import { buildLife } from './life';
 import { LINES, createNpcs } from './npcs';
 import { buildClouds } from './sky';
+import { createTraffic, stepTraffic } from './traffic';
 import { WORLD, buildWorld, groundAt, near } from './map';
 
 const FOV = 64;
@@ -87,6 +89,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   scene.add(clouds.mesh);
   const jet = buildJet();
   scene.add(jet.group);
+  // the traffic and the people on the pavements, always round the camera
+  let traffic = createTraffic({ cars: small ? 260 : 420, walkers: small ? 160 : 260 });
+  const life = buildLife(traffic);
+  scene.add(life.group);
   // (a shadow box this big wants more bias than the HQ games' rooms)
   engine.sun.shadow.normalBias = 0.12;
   engine.sun.shadow.bias = -0.0006;
@@ -213,8 +219,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     t += frameDt;
     const h = sim.h;
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
-    // what happened this frame
+    // what happened this frame (and what sends the people and the traffic running)
+    const scare = [];
     for (const e of sim.events) {
+      if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
+      else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
+      else if (e.type === 'boom' && e.at[1] - groundAt(e.at[0], e.at[2]) < 90) scare.push({ x: e.at[0], z: e.at[2], r: 60 });
       if (e.type === 'boom') {
         fx.boom(e.at, e.dir);
         feel.trauma(0.45);
@@ -257,6 +267,11 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       jet.update(frameDt, t);
     }
     if (sim.quests) challenges.update(sim.quests, frameDt, t);
+    // (no traffic to speak of from up where the clouds are)
+    if (h.p[1] < 2200 || scare.length) {
+      traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
+      life.update(traffic, frameDt, camera, look?.night ?? 0);
+    }
     clouds.update(t, scene.fog);
 
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
