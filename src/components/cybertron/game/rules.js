@@ -660,6 +660,9 @@ export function feedMission(ms, area, event) {
   const mission = (area.missions ?? []).find((m) => m.id === ms.active);
   if (!mission) return none; // (it belongs to another area: kept as it is)
   const step = mission.steps[ms.step];
+  // (something that happened somewhere other than where this step is played)
+  const where = step.area ?? mission.area;
+  if (event.area && where && event.area !== where && event.type !== 'tick') return { ...none, step };
   let advance = false;
   const out = { ...none, step };
   switch (event.type) {

@@ -23,6 +23,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { audioContext } from '../lib/audio';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import ScriptToggle from '../components/ScriptToggle';
+import ModelCredits from '../components/ModelCredits';
 import '../styles/lazy/cybertron.css';
 
 const SIDES = {
@@ -369,6 +370,10 @@ export default function Cybertron() {
           </div>
         </section>
       )}
+
+      <footer className="shell relative z-10 pb-16">
+        <ModelCredits where="cybertron" line className="text-xs text-muted" />
+      </footer>
     </div>
   );
 }

@@ -14,7 +14,7 @@
 //
 // The catalogue is src/components/cybertron/game/catalog.js (the game reads
 // it too). An entry: { uid, as, metres, along, yaw, up, tris, tex, maps,
-// gain, drop, rig, node, file, role, era }, as in sketchfab-surface.mjs,
+// gain, drop, colours, rig, node, file, role, era }, as in sketchfab-surface.mjs,
 // plus `node` (a RegExp source: keep only the scene's nodes whose name, or
 // an ancestor's, matches, for a file that holds several robots side by
 // side) and what the game wants to know (file, role, era).
@@ -33,7 +33,7 @@
 
 import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { compactPrimitive, dedup, dequantize, flatten, join, meshopt, metalRough, prune, textureCompress, weld } from '@gltf-transform/functions';
+import { compactPrimitive, dedup, dequantize, flatten, join, meshopt, metalRough, prune, resample, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -171,12 +171,21 @@ const unskinned = () => (doc) => {
 // Its materials made for daylight on a world: nothing more than half metal
 // (a fully metal hull, with nothing round it to reflect, comes out black),
 // its colours brightened by `gain`, and anything in `drop` left off.
-const relit = ({ gain = 1, drop = null }) => (doc) => {
+// (and `colours`: a model that came without maps painted here, a list of
+// [material name pattern, '#rrggbb', metalness, roughness])
+const relit = ({ gain = 1, drop = null, colours = null }) => (doc) => {
   for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) if (drop?.test(prim.getMaterial()?.getName() ?? '')) prim.dispose();
+  const paint = (colours ?? []).map(([pattern, hex, metal = 0.4, rough = 0.5]) => [new RegExp(pattern, 'i'), [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255) ** 2.2), metal, rough]);
   for (const m of doc.getRoot().listMaterials()) {
     m.setMetallicFactor(Math.min(m.getMetallicFactor(), 0.5));
     const [r, g, b, a] = m.getBaseColorFactor();
     m.setBaseColorFactor([...[r, g, b].map((c) => Math.min(1, c * gain)), a]);
+    const hit = paint.find(([re]) => re.test(m.getName()));
+    if (hit) {
+      m.setBaseColorFactor([...hit[1], a]);
+      m.setMetallicFactor(hit[2]);
+      m.setRoughnessFactor(hit[3]);
+    }
   }
 };
 
@@ -331,7 +340,9 @@ async function bring(io, kind, spec) {
   }
   // (lines and points: nothing a world shows)
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
-  if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld());
+  // (a rig's clips with the keyframes that change nothing taken out: a
+  // High Moon robot's transformation is thousands of them)
+  if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), resample({ tolerance: 1e-4 }));
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   await doc.transform(simplified(spec.tris));
   await doc.transform(grounded(spec));

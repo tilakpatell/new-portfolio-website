@@ -369,6 +369,17 @@ describe('missions', () => {
     expect(ms.count).toBe(1);
   });
 
+  it('counts only what happens where the step is played', () => {
+    const ms = newMissions();
+    const there = { ...MISSION, area: 'yard', steps: [{ type: 'collect', kind: 'energon', count: 2 }] };
+    startMission(ms, there);
+    const all = { missions: [there] };
+    feedMission(ms, all, { type: 'pickup', kind: 'energon', area: 'base' });
+    expect(ms.count).toBe(0);
+    feedMission(ms, all, { type: 'pickup', kind: 'energon', area: 'yard' });
+    expect(ms.count).toBe(1);
+  });
+
   it('offers a mission only once what it needs is done', () => {
     const ms = newMissions();
     expect(available(area, ms).map((m) => m.id)).toEqual(['run']);
