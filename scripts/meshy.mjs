@@ -17,7 +17,10 @@
 // Hulk, Chitauri, cars, chariot and wall pylon, and Thanos for Titan, into
 // public/hq/meshy/ with a manifest.json the games read.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq]
+// The C-137 world's set: the Smiths (rigged, with clips) go to public/games/meshy/
+// beside Rick and Morty; the house, school, arcade and cabinet to public/models/c137/.
+//
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137]
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), sit (a seated clip, 3), fetch (free: download and
@@ -42,6 +45,7 @@ const OUT = join(ROOT, 'public', 'games', 'meshy');
 const OFFICE_OUT = join(ROOT, 'public', 'models', 'office', 'cast');
 const ROLLOUT_OUT = join(OUT, 'rollout');
 const HQ_OUT = join(ROOT, 'public', 'hq', 'meshy');
+const C137_OUT = join(ROOT, 'public', 'models', 'c137');
 const REVIEW = join(ROOT, 'lab', 'meshy'); // concept images, for looking at (not shipped)
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -49,6 +53,7 @@ const API = 'https://api.meshy.ai/openapi';
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+const BUILDING = 'The whole building, three-quarter front view from slightly above, centred, no people.';
 const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
 const REAL = 'A photorealistic hard-surface 3D render in the style of the live-action Transformers films: painted metal armour plates with panel lines and light wear, chrome and dark steel mechanical detail, readable silhouette. Plain white background, no text, no shadow.';
 // the office's people: figures, not drawings, each as the show dresses them
@@ -96,6 +101,14 @@ export const ASSETS = {
   ryan: staff(1.76, 'Ryan Howard', 'a slim young man with dark tousled hair and stubble, a smug look, in a slim black suit, a white shirt, a thin black tie, black shoes'),
   toby: staff(1.78, 'Toby Flenderson', 'a meek sad-looking man with thinning sandy-brown hair parted to the side, in a grey suit jacket, a pale blue-grey shirt, a muted plum tie, grey trousers, brown shoes'),
   kelly: staff(1.6, 'Kelly Kapoor', 'a young Indian-American woman with long glossy black hair and a bright excited smile, in a hot pink knee-length dress with a thin dark belt, dark heels'),
+  // the C-137 world: the Smiths, their house, the school, Blips and Chitz, Roy's cabinet
+  summer: { rig: true, height: 1.6, poly: 12000, tex: 1024, set: 'c137', prompt: `Summer Smith from Rick and Morty: a 17-year-old girl with long red-orange hair held back by a pink headband, a pink top, blue jeans and white sneakers. ${BODY}` },
+  beth: { rig: true, height: 1.68, poly: 12000, tex: 1024, set: 'c137', prompt: `Beth Smith from Rick and Morty: a woman in her thirties with blonde hair in a short bob, a red long-sleeved top, white trousers and brown flat shoes. ${BODY}` },
+  jerry: { rig: true, height: 1.78, poly: 12000, tex: 1024, set: 'c137', prompt: `Jerry Smith from Rick and Morty: a man in his late thirties with short brown hair and a mild worried look, a light green polo shirt, grey trousers and brown shoes. ${BODY}` },
+  'smith-house': { rig: false, poly: 16000, tex: 1024, set: 'c137', prompt: `The Smith family's house from Rick and Morty: a two-storey suburban house with beige-cream siding, a brown-grey shingled roof, white trim, a front porch and an attached garage on the right with a white roll-up door. ${BUILDING}` },
+  school: { rig: false, poly: 16000, tex: 1024, set: 'c137', prompt: `Harry Herpson High School from Rick and Morty: a wide two-storey 1970s American high school of tan brick with rows of windows, glass double doors under a flat entrance canopy and a flat roof, no sign text. ${BUILDING}` },
+  arcade: { rig: false, poly: 14000, tex: 1024, set: 'c137', prompt: `Blips and Chitz from Rick and Morty: an alien arcade building on another planet with rounded purple and teal walls, glowing neon tubes, a big arched entrance and a blank sign board over the door. ${BUILDING}` },
+  'roy-cabinet': { rig: false, poly: 8000, tex: 1024, set: 'c137', prompt: `The Roy virtual reality arcade machine from Rick and Morty: a sci-fi VR arcade cabinet, a reclining padded chair under a hooded console with a VR headset hanging from a cable and a glowing green screen. ${PROP}` },
 };
 
 // Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
@@ -315,7 +328,7 @@ const steps = {
     for (const n of names) {
       const a = ASSETS[n];
       const files = []; // [url, file, texture size, clip only, posed in the browser]
-      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT }[a.set] ?? OUT;
+      const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT, c137: a.rig ? OUT : C137_OUT }[a.set] ?? OUT;
       if (a.rig && a.clips === false) {
         // the skinned figure on its skeleton, nothing else
         if (!s[n]?.rig) throw new Error(`${n}: rig first`);
@@ -344,7 +357,7 @@ const steps = {
       }
       if (a.set === 'rollout') fetched.add(n);
       if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };
-      credits[a.set === 'hq' ? `hq/meshy/${n}` : `meshy/${a.set === 'rollout' ? 'rollout/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[a.set === 'hq' ? `hq/meshy/${n}` : `meshy/${a.set === 'rollout' ? 'rollout/' : a.set === 'c137' && !a.rig ? 'c137/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
@@ -365,7 +378,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), c137: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'c137') };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
