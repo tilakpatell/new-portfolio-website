@@ -303,8 +303,8 @@ export const CREWS = [
         ['rick', 'You son of a bitch. I’m in.', 'imIn'],
       ],
       starwars: [
-        ['morty', 'Rick, is that… is that the Death Star?'],
-        ['rick', 'A moon-sized battle station with one exhaust port. Peak Empire engineering, Morty.'],
+        ['morty', 'Rick, there’s a whole galaxy in there! Behind a… a stargate?'],
+        ['rick', 'A galaxy far, far away, Morty. Hyperspace gate. Fly in and you’re there. Mind the Empire.'],
       ],
       music: [
         ['rick', 'Indian classical music, Morty. Ragas older than most galaxies.'],
@@ -616,8 +616,8 @@ export const CREWS = [
         ['r2', '[a smug, triumphant trill]'],
       ],
       starwars: [
-        ['luke', 'The Death Star. Stay on target, Artoo.'],
-        ['r2', '[a worried warble]'],
+        ['luke', 'There it is, Artoo. Our galaxy. Take us through the gate.'],
+        ['r2', '[an excited whistle: home!]'],
       ],
       music: [
         ['luke', 'Artoo, are you picking up that music?'],
@@ -913,8 +913,8 @@ export const CREWS = [
         ['chewie', '[an offended growl]'],
       ],
       starwars: [
-        ['han', 'The Death Star. I’m not going in there. Again.'],
-        ['chewie', '[a long groan]'],
+        ['han', 'That’s home, pal. The whole galaxy, behind one gate.'],
+        ['chewie', '[a happy roar: punch it]'],
       ],
       music: [
         ['han', 'Nice tune. Chewie, are you crying?'],
@@ -1256,8 +1256,8 @@ export const CREWS = [
         ['jesse', 'It’s all green letters, yo. Like a hacker movie.'],
       ],
       starwars: [
-        ['jesse', 'Yo, that moon has a giant laser on it!'],
-        ['walt', 'That’s no moon, Jesse. That’s an empire with a very poor security budget.'],
+        ['jesse', 'Yo, Mr. White, there’s a whole galaxy behind that ring!'],
+        ['walt', 'A galaxy far, far away, Jesse. We fly through the gate. Try not to touch anything.'],
       ],
       music: [
         ['walt', 'Indian classical music. A raga is a formula, Jesse. Every note in its place.'],

@@ -1401,7 +1401,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const begin = ({ id, ship, model, kind, light, near = null }) => {
     const planet = planetOf[id];
     const u = byId(id);
-    if (!planet || !u || u.kind === 'core' || !model) return false;
+    if (!planet || !u || u.kind === 'core' || u.portal || !model) return false; // (a station, or the gate into the galaxy: nowhere to walk)
     S.id = id;
     S.kind = kind;
     S.model = model;

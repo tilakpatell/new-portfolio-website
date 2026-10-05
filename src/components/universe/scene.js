@@ -673,6 +673,7 @@ export async function create(canvas, ctx) {
 
   const size = { w: 1, h: 1 };
   const state = {
+    through: null, // a gate flown into (galaxy/gateway.js): the page's taking you through
     yaw: 0,
     vel: 0, // radians per ms, after a flick
     sel: props.selected ?? null,
@@ -2214,6 +2215,13 @@ export async function create(canvas, ctx) {
     state.ship = ship;
     state.pull = g?.k ?? 0;
     for (const e of events) {
+      // into a gate (the way into a galaxy far, far away): not a crash nor a
+      // bump, but through (the page jumps you to lightspeed)
+      if ((e.type === 'crash' || e.type === 'bump') && byId(e.id)?.portal) {
+        if (state.through !== e.id) emit({ type: 'portal', id: e.id });
+        state.through = e.id;
+        continue;
+      }
       if (e.type !== 'crash') emit(e);
       else if (!state.crash) startCrash(e);
     }
@@ -2546,7 +2554,7 @@ export async function create(canvas, ctx) {
     else if (onFoot()) footFrame(0, t); // (frozen: held where it is)
     if (flying() && !state.dive && !onFoot()) follow(dt);
     // somewhere to land and step out: a planet you're at (not a station)
-    const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' ? state.at : null;
+    const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' && !byId(state.at)?.portal ? state.at : null; // (not a station, nor the gate into the galaxy)
     if (landable !== state.landable) {
       state.landable = landable;
       emit({ type: 'landable', id: landable });
