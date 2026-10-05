@@ -18,7 +18,7 @@
 // planet or you; and the ordinary ships come in to land there and launch
 // from it (laneDock: in from the open, down on to the body high on one
 // side, shrinking into it as they land, and the other way out), where it's
-// somewhere to land. Out in deep space between places it crosses the space
+// somewhere to land; in the home system, at the station you're by. Out in deep space between places it crosses the space
 // round you. With no ship picked it's the home system's.
 // Every so often while you fly, a group comes to you instead: from ahead,
 // at your height, past one side close enough to see and shoot, and away
@@ -39,7 +39,7 @@ import * as THREE from 'three';
 import { TRAFFIC } from './trafficModels';
 import { createFleet } from './glbFleet';
 import { bezier, convoyLane, dockScale, dockable, flybyLane, laneDepart, laneDock, laneLength, laneLocal, laneNear, tangent } from './lanes';
-import { DEEP, nearestPlace, openness } from './deep';
+import { DEEP, PLACES, nearestPlace, openness } from './deep';
 import { HOME_RADIUS } from './layout';
 
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
@@ -88,6 +88,20 @@ const smoothstep = (a, b, x) => {
 
 const between = (rand, a, b) => a + rand() * (b - a);
 const HOME = { id: 'home', at: [0, 0, 0], reach: HOME_RADIUS }; // the home system, as a place to fly round
+const STATIONS = PLACES.filter((p) => p.kind === 'station');
+// in the home system, the station you're by (ships come in to it and go), if you're by one
+const stationBy = (ship) => {
+  let best = null;
+  let gap = Infinity;
+  for (const p of STATIONS) {
+    const g = Math.hypot(ship.x - p.at[0], ship.y - p.at[1], ship.z - p.at[2]) - p.reach;
+    if (g < gap) {
+      gap = g;
+      best = p;
+    }
+  }
+  return gap < DEEP.near ? best : null;
+};
 
 export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
   const rand = Math.random;
@@ -271,9 +285,10 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         else {
           const near = ship ? nearestPlace(ship.x, ship.y, ship.z) : { place: null, gap: 0 };
           const place = near.gap < DEEP.near + 40 ? (near.place ?? HOME) : null;
-          if (place && TYPES[kind].civil && place !== HOME && dockable(place) && rand() < DOCKING) {
+          const port = place === HOME ? ship && stationBy(ship) : place;
+          if (port && TYPES[kind].civil && dockable(port) && rand() < DOCKING) {
             dock = rand() < 0.5 ? 'in' : 'out';
-            pts = laneDock(place, rand, { out: dock === 'out' });
+            pts = laneDock(port, rand, { out: dock === 'out' });
             if (!pts) dock = null;
           }
           if (place && !pts) pts = TYPES[kind].big || rand() < 0.7 ? laneLocal(place, rand, { high: TYPES[kind].big }) : laneDepart(place, rand);

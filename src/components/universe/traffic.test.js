@@ -91,6 +91,26 @@ describe('coming in to land, and launching', () => {
     expect(fleet.made.filter((m) => ['tie', 'interceptor', 'xwing', 'destroyer'].includes(m.kind) && seen.get(m.group.id)?.dock).length).toBe(0);
   });
 
+  it('docks at the station you are by, in the home system', () => {
+    const { fleet, traffic } = setup();
+    const station = PLACES.find((p) => p.kind === 'station');
+    const r = SOLIDS.find((o) => o.id === station.id).r;
+    const by = { x: station.at[0] + station.reach + 4, y: station.at[1], z: station.at[2], heading: 0, speed: 0 };
+    const near = (p) => Math.hypot(p.x - station.at[0], p.y - station.at[1], p.z - station.at[2]);
+    let landed = 0;
+    let t = 0;
+    for (let i = 0; i < 6000; i++) {
+      t += DT;
+      traffic.update(DT, t, by);
+      for (const g of traffic.groups) {
+        if (g.dock !== 'in' || g.t < 0.995) continue;
+        const m = leadOf(fleet, g);
+        if (m && near(m.group.position) < r * 1.1 + 1.5) landed += 1;
+      }
+    }
+    expect(landed).toBeGreaterThan(0);
+  });
+
   it('never has one on a dock lane while you are out in the open', () => {
     const { traffic } = setup();
     const open = { x: 0, y: 300, z: -3000, heading: 0, speed: 5 };
