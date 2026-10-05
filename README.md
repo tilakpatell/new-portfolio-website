@@ -88,9 +88,11 @@ Star Wars on the map isn't a planet but a universe of its own: the galaxy itself
 
 Every other system's star is up there in the sky, where it really is from where you are (Hoth's close by from Bespin, high above the galaxy's band; Coruscant's a bright star toward the core). Turn the nose toward one and its name comes up; put the nose on it and press `J` (or tap Jump), or just fly on out of the system toward it, and you jump.
 
+Keep jumping and the Empire notices. Somewhere between your tenth and fifteenth jump an Imperial Interdictor cruiser is waiting on the lane: its gravity-well projectors pull you out of hyperspace a long way short of where you were going, its TIEs launch, and the hyperdrive won't take again (nor the sublight drive open up) until you're clear of the well: shoot its fighters down, run for the well's edge, or ride it out. Then it jumps away, and the count starts over.
+
 | Key | Action |
 | --- | --- |
-| `J` | Jump to lightspeed, to the star your nose is on |
+| `J` | Jump to lightspeed, to the star your nose is on (every ten to fifteen jumps, an Interdictor pulls you out short) |
 | `M` | The galaxy map: plot a course, filter by era or film |
 | `E` | Land on the planet you're at (or board the Death Star) |
 
