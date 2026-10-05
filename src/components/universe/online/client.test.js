@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
 import { STOCK_LOADOUT } from '../outfit';
+import { PUNCH_MAX } from './protocol';
 
 // An in-memory room: what one client sends, the others get straight away.
 // room(id) on its own is a pilot with no client, sending whatever it likes.
@@ -193,7 +194,7 @@ describe('createClient', () => {
     b.hunterHit('A', 99, 1);
     expect(hits()).toHaveLength(1);
     b.hunterHit('A', 3, 500);
-    expect(hits()[1]).toMatchObject({ damage: 3 });
+    expect(hits()[1]).toMatchObject({ damage: PUNCH_MAX }); // (capped)
     // two in the same moment both count (they come in bundles)
     b.hunterHit('A', 3, 1);
     expect(hits()).toHaveLength(3);
@@ -237,6 +238,31 @@ describe('createClient', () => {
     a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
     a.hit('B');
     expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
+  });
+
+  it('a heavy round hits harder, and its shot carries the weapon', async () => {
+    const { a, b, seen } = await pair();
+    b.pose(ship(0));
+    a.pose(ship(3));
+    a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0], 2);
+    expect(b.takeShots().at(-1).w).toBe(2);
+    a.hit('B', 30);
+    expect(seen.b.filter((e) => e.type === 'hit').at(-1).damage).toBe(30);
+  });
+
+  it('passes the Citadel siege along, only to pilots in the same place', async () => {
+    const { a, b, seen } = await pair();
+    const msg = { e: 0, m: [3, 0, 0, 0, 0], t: [3, 0, 0, 0, 0], x: 0, l: Date.now() };
+    a.siege(msg);
+    const got = seen.b.filter((e) => e.type === 'siege');
+    expect(got).toHaveLength(1);
+    expect(got[0].from).toBe('A');
+    expect(got[0].msg.m[0]).toBe(3);
+    b.setProfile({ where: '/galaxy/hoth' });
+    a.siege(msg);
+    expect(seen.b.filter((e) => e.type === 'siege')).toHaveLength(1);
+    a.siege({ e: 'nope' });
+    expect(seen.b.filter((e) => e.type === 'siege')).toHaveLength(1);
   });
 
   it('a hit from someone somewhere else does nothing (another of the galaxy\'s systems)', async () => {

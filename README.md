@@ -56,6 +56,7 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `A` / `D` | Roll |
 | `←` `→` `↑` `↓` | Turn and pitch the nose |
 | `F` (hold) | Fire |
+| `R` / `1` `2` `3` | Change weapons: blaster, spread, heavy ordnance |
 | `T` / `Q` | Next / previous target |
 | `V` | Switch between the chase camera and the cockpit view |
 | `O` | Flight settings (steering, aim assist, inverted pitch and more) |
@@ -71,6 +72,10 @@ The hangar fits each ship out its own way, like a space sim's outfitting screen,
 Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension. Off the map, in Middle-earth's towns and on its map, at Avengers HQ and in Albuquerque, everyone else online shows up as a pale ghost from another world (a Frodo, a Spider-Man hologram, or a Walt's Aztek) with their name over them; nothing passes between you but where each of you is.
 
 The map is big: the planets are a hundred and more ship-lengths across, and the fandoms far out in deep space.
+
+Every ship carries three guns, each in its crew's own terms: its blaster, a spread that throws a fan of five shorter shots, and heavy ordnance (the X-wing's proton torpedoes, the Falcon's concussion missiles, the cruiser's portal grenades, the RV's fulminated mercury), a slow round that homes on whatever the guns have locked and hits ten times as hard, from a rack of four that refills one at a time. Other pilots see which you're firing.
+
+And the Citadel of Ricks can be brought down. A shield covers it while any of the four generators out on its arms' domes still runs; knock them all out with anything, then only heavy ordnance hurts the core, and the Council sends its hunters once you start. It goes up in fire and portal fluid and its wreckage drifts where it was, for everyone online, until the Ricks bring it back through a portal five minutes later (a siege nobody finishes is patched up four minutes after the last hit). The siege is shared without a server: each pilot speaks only for the damage they did, and every browser adds the shares up the same way (`universe/siege.js`).
 
 ### A galaxy far, far away
 

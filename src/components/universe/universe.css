@@ -310,6 +310,97 @@
   translate: 0 calc(var(--alt, 0) * -75px);
   filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
 }
+/* the weapon readout (weapons.js): its name, the heavy rounds left, the keys */
+.universe-arms {
+  position: absolute;
+  left: 16px;
+  top: calc(50% + var(--nav-h, 68px) / 2 + 132px);
+  display: grid;
+  gap: 5px;
+  width: 150px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-family: var(--font-mono);
+}
+.universe-arms[data-on] { opacity: 1; }
+.universe-arms-name {
+  color: #fff;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
+}
+.universe-arms[data-weapon='heavy'] .universe-arms-name { color: #ffc070; }
+.universe-arms[data-weapon='spread'] .universe-arms-name { color: #9fd8ff; }
+.universe-arms-rack { display: flex; gap: 4px; }
+.universe-arms-pip {
+  position: relative;
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.14);
+}
+.universe-arms-pip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffb347;
+  box-shadow: 0 0 6px #ffb347;
+  transform-origin: left;
+  transform: scaleX(var(--fill, 0));
+}
+.universe-arms-pip[data-full]::after { transform: none; }
+.universe-arms-keys { color: rgb(255 255 255 / 0.5); font-size: 0.55rem; }
+.universe-arms-keys kbd { font: inherit; padding: 0 3px; border: 1px solid rgb(255 255 255 / 0.25); border-radius: 3px; }
+/* the Citadel's siege (siege.js), while you're near it */
+.universe-siege {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h, 68px) + 16px);
+  display: grid;
+  gap: 2px;
+  max-width: min(440px, calc(100% - var(--panel-w, 0px) - 40px));
+  padding: 8px 14px;
+  border: 1px solid rgb(93 255 176 / 0.35);
+  border-radius: 10px;
+  background: rgb(3 8 10 / 0.7);
+  color: var(--text, #e8eefc);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-align: center;
+  pointer-events: none;
+  translate: calc(-50% - var(--panel-w, 0px) / 2) 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.universe-siege[data-on] { opacity: 1; }
+.universe-siege b { color: #5dffb0; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; }
+.universe-siege[data-phase='core'] { border-color: rgb(255 140 70 / 0.5); }
+.universe-siege[data-phase='core'] b { color: #ffb347; }
+.universe-siege[data-phase='down'] { border-color: rgb(255 90 60 / 0.5); }
+.universe-siege[data-phase='down'] b { color: #ff7a5a; }
+/* the phone's weapon button */
+.universe-weapon {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--panel-w) + 124px);
+  bottom: 104px;
+  display: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid rgb(255 179 71 / 0.5);
+  border-radius: 50%;
+  background: rgb(3 4 10 / 0.55);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  touch-action: none;
+  user-select: none;
+}
+.universe-weapon:active { background: rgb(255 179 71 / 0.25); }
 /* the shields: a slim bar under the height gauge, while there's trouble */
 .universe-shield {
   position: absolute;
@@ -689,8 +780,10 @@
 @media (pointer: coarse) {
   .universe-boost,
   .universe-fire,
+  .universe-weapon,
   .universe-view,
   .universe-out { display: grid; }
+  .universe-arms-keys { display: none; }
   .universe-climbs { display: flex; }
   .universe-hint-keys,
   .universe-keys-board { display: none; }
@@ -1033,6 +1126,9 @@
   .universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
+  .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }
+  .universe-arms { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 104px); width: 110px; }
+  .universe-siege { translate: -50% 0; max-width: calc(100% - 32px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-prompt { bottom: calc(var(--sheet-h) + 64px); translate: -50% 0; }
