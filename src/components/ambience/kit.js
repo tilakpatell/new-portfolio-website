@@ -22,7 +22,18 @@ import { device } from '../../lib/device';
 
 const FPS_GAP = 1000 / 30 - 2;
 
+// Colours: `rgb` reads a [r, g, b] as sRGB, which suits three's own
+// materials (silhouettes, labels), which convert back on the way out. The
+// kit's shaders (field, bursts, backdrop) write what they're given with no
+// sRGB step, so a colour through `rgb` shows a little deeper there than its
+// CSS self; the scenes are tuned by eye with that. `lift` a colour first
+// to have it come out exactly as written.
 export const rgb = (c, target = new THREE.Color()) => target.setRGB(c[0] / 255, c[1] / 255, c[2] / 255, THREE.SRGBColorSpace);
+export const lift = (c) =>
+  c.map((v) => {
+    const x = v / 255;
+    return Math.round(255 * (x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055));
+  });
 
 // Something you can click without it being a burst on the page.
 const ACTIVE = 'a, button, input, textarea, select, label, summary, video, iframe, canvas, [role="button"], [role="tab"], [contenteditable], .card, .panel';
