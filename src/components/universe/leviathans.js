@@ -3,7 +3,8 @@
 // - Purrgil, for the Star Wars crews: a pod of three to five space whales,
 //   each a long body with a pale belly, four tentacles trailing and a pair
 //   of flukes, swimming past at their own pace on a convoy's lane (lanes.js)
-//   with a slow wave down their bodies and their tentacles swaying.
+//   with a slow wave down their bodies and their tentacles swaying (or,
+//   where that lane would cut through a planet, across the space ahead).
 // - A Cromulon, for Rick's: a giant stone head drifts in from one side,
 //   stops facing you, and says what it always says (its jaw works while the
 //   crew's lines run), then drifts off.
@@ -15,7 +16,7 @@
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
-import { bezier, convoyLane, laneLength, tangent } from './lanes';
+import { bezier, convoyLane, flybyLane, laneLength, laneNear, tangent } from './lanes';
 import { forward } from './ship';
 
 const POD_MAX = 5;
@@ -132,7 +133,9 @@ export function createLeviathans(parent, { small = false } = {}) {
       if (pod.on || cromulon.on) return null;
       const kind = family === 'starwars' ? 'purrgil' : family === 'rickmorty' ? 'cromulon' : rand() < 0.5 ? 'purrgil' : 'cromulon';
       if (kind === 'purrgil') {
-        const pts = convoyLane(ship, rand);
+        // past you at a convoy's distance; beside a big planet, where that
+        // lane would cut through it, across the space ahead instead
+        const pts = convoyLane(ship, rand) ?? laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true });
         if (!pts) return null;
         pod.pts = pts;
         pod.len = laneLength(pts);

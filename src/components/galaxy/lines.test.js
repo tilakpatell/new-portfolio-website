@@ -81,7 +81,7 @@ describe('galaxyCrew', () => {
       for (const s of SYSTEMS) expect(linesFor(flying, 'arrive', s.id), `${crew.id} ${s.id}`).toBe(g.arrive[s.id]);
       // the galaxy's events, hunters and kills, over the crew's own
       for (const id of EVENTS) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(g.events[id]);
-      for (const [id, ex] of Object.entries(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(ex);
+      for (const id of Object.keys(crew.events ?? {})) if (!EVENTS.includes(id)) expect(linesFor(flying, 'event', id), `${crew.id} ${id}`).toBe(linesFor(crew, 'event', id)); // (what the crew would say: an event's lines may be keyed by what came)
       for (const id of HUNTED) expect(linesFor(flying, 'hunted', id)).toBe(g.hunted[id]);
       for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(ex);
       for (const id of KILLS) expect(linesFor(flying, 'kill', id)).toBe(g.kill[id]);

@@ -179,7 +179,8 @@ export default function Universe({ ask = false }) {
     else if (e.type === 'siege' && e.what === 'down' && e.mine) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
-    } else comms.current?.handle(e);
+    } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
+    else comms.current?.handle(e);
   };
 
   // off from the nav map: with a ship, it flies (or jumps) there, and a

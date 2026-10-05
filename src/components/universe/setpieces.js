@@ -25,7 +25,8 @@
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
-import { SOLIDS, forward } from './ship';
+import { forward } from './ship';
+import { RIFT_R, riftSpot } from './nav';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
 
 const STAR_DESTROYER = 16; // map units long
@@ -33,7 +34,7 @@ const STAY = 55; // seconds it stays before jumping away
 const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
 const FLARE_RISE = 3; // seconds the star swells before the shell leaves it
 const FLARE_SPEED = 150; // map units a second the shell runs out at
-const RIFT = { r: 4, ahead: 35, side: 12, open: 0.6, life: 20, clear: 6 }; // its radius, where it opens, how long it takes to open (and close), how long it holds, and how far from anything solid it must be
+const RIFT = { r: RIFT_R, open: 0.6, life: 20 }; // its radius (nav.js picks where it opens), how long it takes to open (and close), and how long it holds
 
 const PORTAL_FRAG = `
 uniform float uT;
@@ -296,21 +297,13 @@ export function createSetPieces(parent, { small = false, fleet = createFleet() }
     // already open)
     rift(ship) {
       if (rift.userData.age >= 0) return false;
-      const [fx, fz] = forward(ship.heading);
-      const rx = -fz;
-      const rz = fx;
-      for (const side of [Math.random() < 0.5 ? -1 : 1, 1, -1]) {
-        const x = ship.x + fx * RIFT.ahead + rx * side * RIFT.side;
-        const z = ship.z + fz * RIFT.ahead + rz * side * RIFT.side;
-        const y = ship.y;
-        if (SOLIDS.some((o) => Math.hypot(x - o.at[0], y - o.at[1], z - o.at[2]) < o.r + RIFT.r + RIFT.clear)) continue;
-        rift.position.set(x, y, z);
-        rift.userData.age = 0;
-        rift.scale.setScalar(0.01);
-        rift.visible = true;
-        return true;
-      }
-      return false;
+      const spot = riftSpot(ship);
+      if (!spot) return false;
+      rift.position.set(...spot);
+      rift.userData.age = 0;
+      rift.scale.setScalar(0.01);
+      rift.visible = true;
+      return true;
     },
     // where the rift is while it's open, or null
     get riftAt() {

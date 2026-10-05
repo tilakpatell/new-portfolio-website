@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, parkFor, parseDrive, riftExit, tripTime } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, parkFor, parseDrive, riftExit, riftSpot, tripTime } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, step } from './ship';
 import { ORDER } from './layout';
 import { WONDERS } from './deep';
@@ -197,6 +197,26 @@ function POS(id) {
 }
 
 describe('a rift', () => {
+  it('opens ahead of the ship and off to one side, clear of anything solid, from anywhere', () => {
+    let seed = 5;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const clear = (p) => SOLIDS.every((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) > o.r + 8);
+    const ahead = (s, p) => {
+      const [fx, fz] = [-Math.sin(s.heading), -Math.cos(s.heading)];
+      return (p[0] - s.x) * fx + (p[2] - s.z) * fz;
+    };
+    // parked at every place (facing it), and out in the open
+    const ships = [...ORDER.map((id) => ({ ...parkFor(id, [0, 0]), y: 0, speed: 0 })), { x: 0, y: 0.3, z: 400, heading: 0, speed: 0 }, { x: 2000, y: 100, z: -1500, heading: 2.2, speed: 0 }];
+    for (const s of ships) {
+      const p = riftSpot(s, rand);
+      expect(p, `${s.x},${s.z}`).not.toBeNull();
+      expect(clear(p), `${s.x},${s.z}: clear`).toBe(true);
+      expect(ahead(s, p)).toBeGreaterThan(20);
+      expect(ahead(s, p)).toBeLessThan(100);
+      expect(Math.abs(p[1] - s.y)).toBeLessThan(1e-9);
+    }
+  });
+
   it('comes out at a place or a wonder, never where you are and never the Maw', () => {
     const seen = new Set();
     let seed = 3;
