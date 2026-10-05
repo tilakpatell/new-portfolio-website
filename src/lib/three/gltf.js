@@ -28,9 +28,25 @@ let ktx2 = null; // the KTX2Loader, once something has needed it
 let ktx2Pending = null;
 let detectedWith = null; // the renderer the KTX2 support was read from
 
+// three's loader, with one change: a file that carries GPU-compressed
+// textures waits for the KTX2 loader (fetched then, not before) before it's
+// parsed, whichever way it was asked for (load, loadAsync or parseAsync).
+class SiteGLTFLoader extends GLTFLoader {
+  parse(data, path, onLoad, onError) {
+    if (!this.ktx2Loader && usesBasisu(data)) {
+      ktx2Loader().then(
+        () => super.parse(data, path, onLoad, onError),
+        (e) => onError?.(e),
+      );
+      return;
+    }
+    super.parse(data, path, onLoad, onError);
+  }
+}
+
 export function gltfLoader() {
   if (!loader) {
-    loader = new GLTFLoader();
+    loader = new SiteGLTFLoader();
     loader.setMeshoptDecoder(MeshoptDecoder);
   }
   return loader;
@@ -95,12 +111,13 @@ export function usesBasisu(data) {
 
 const parsed = new Map(); // url → Promise<gltf | null>
 
-// Fetch and parse, attaching the KTX2 loader first where the file needs it.
+// Fetch and parse, reading the KTX2 support from the scene's renderer where
+// one is given (the loader's own parse falls back to a probe context).
 function fetchGltf(url, renderer) {
   const files = new THREE.FileLoader();
   files.setResponseType('arraybuffer');
   return files.loadAsync(url).then(async (buffer) => {
-    if (usesBasisu(buffer)) await ktx2Loader({ renderer });
+    if (renderer && usesBasisu(buffer)) await ktx2Loader({ renderer });
     const path = THREE.LoaderUtils.extractUrlBase(url);
     return gltfLoader().parseAsync(buffer, path);
   });
