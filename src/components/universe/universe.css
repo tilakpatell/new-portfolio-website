@@ -160,7 +160,14 @@
 .universe-tuck:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
 .universe-tuck:focus-visible,
 .universe-untuck:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-.universe-panel[data-tucked] { overflow: hidden; padding: 0; }
+.universe-panel[data-tucked] { display: flex; overflow: hidden; padding: 0; }
+/* the guide's "?", beside the hide button (the corner one would sit over the panel) */
+.universe-guide { margin: -0.55rem 0 0.25rem 0.25rem; }
+.universe-guide-tucked { display: grid; flex: none; place-items: center; width: 48px; border-left: 1px solid var(--border); color: var(--muted); transition: color 0.15s, background-color 0.15s; }
+.universe-guide-tucked:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
+.universe-guide-tucked:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+body:has(.universe-panel) .guide-btn { display: none; }
+body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); right: auto; bottom: auto; left: 50%; translate: -50% 0; }
 .universe-untuck {
   display: flex;
   align-items: center;
