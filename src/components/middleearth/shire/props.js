@@ -1278,6 +1278,8 @@ function hole(K, { R = 4, door = 0x2e6b3a, doorD = 1.8, seed = 1, windows, grand
   dk.add(mats.brass, cylZ(0.025, 0.08, 8), { p: [doorR - 0.02, 0, 0.05] });
   dk.add(mats.brass, ball(0.075, 12, 8), { p: [doorR - 0.02, 0, 0.1] });
   dk.build(doorG, { receive: true });
+  // where a model of the leaf would go, in the door's own frame: its middle, its back, and its rim
+  doorG.userData.leaf = { x: doorR - 0.02, z: -0.09, r: doorR - 0.03 };
 
   // the windows
   wins.forEach(([x, y, rr], i) => roundWindow(bk, K, { x, y, z: zF, rw: rr, frame: paint, seed: seed * 5 + i }));
@@ -3254,6 +3256,7 @@ export function createShireKit(renderer) {
     mats,
     paint,
     setNight,
+    K,
     hobbitHole: ({ door = 0x2e6b3a, radius = 4, seed = 1, windows } = {}) => hole(K, { R: radius, door, seed, windows }),
     bagEnd: () => bagEnd(K),
     mill: () => mill(K),
@@ -3287,3 +3290,6 @@ export function createShireKit(renderer) {
     flower: flowerGeo(),
   };
 }
+
+// The helpers the other walkable towns (../towns) build their own houses with.
+export { parts, tf, B, cyl, ball, cylX, cylZ, lathe, tube, blob, roundBox, sector, roofGeo, gableGeo, underRidge, beam, squareWindow, timberWall, plankDoor, roundWindow, lanternParts, barrelParts, benchParts, lampParts, flowerBed, bush, boxUV, fillColor, mergeAll, rng };

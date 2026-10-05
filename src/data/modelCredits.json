@@ -1,4 +1,14 @@
 {
+  "bag-end-door": {
+    "title": "Bilbo's Doors ( Hobbit House Doors )",
+    "author": "MattMaksymowicz",
+    "authorUrl": "https://sketchfab.com/mattmaksymowicz",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bilbos-doors-hobbit-house-doors-ad5ee67dcd9540df92382ec4b3c3a378",
+    "where": "middle-earth",
+    "as": "Bag End’s door"
+  },
   "cr90": {
     "title": "Star Wars: CR-90",
     "author": "Daniel",

@@ -18,7 +18,8 @@ describe('the places on the map', () => {
     expect(chapter(undefined)).toBeNull();
   });
   it('goes along the road from the Shire to Mordor', () => {
-    expect(neighbours('shire')).toEqual({ prev: null, next: chapter('rivendell') });
+    expect(neighbours('shire')).toEqual({ prev: null, next: chapter('bree') });
+    expect(neighbours('bree')).toEqual({ prev: chapter('shire'), next: chapter('rivendell') });
     expect(neighbours('moria').prev.id).toBe('rivendell');
     expect(neighbours('mordor').next).toBeNull();
     expect(neighbours(undefined)).toEqual({ prev: null, next: null });

@@ -67,7 +67,7 @@ const PROMPT = {
   rings: { name: 'The bench at Bag End', act: 'Sit with Gandalf' },
   party: { name: 'Gandalf’s cart', act: 'Light the fireworks' },
   ring: { name: 'Bag End', act: 'Go in' },
-  leave: { name: 'The East Road', act: 'On to Rivendell' },
+  leave: { name: 'The East Road', act: 'On to Bree' },
 };
 const INSIDE_TEXT = {
   envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
