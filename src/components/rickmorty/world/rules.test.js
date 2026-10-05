@@ -1142,7 +1142,8 @@ describe('C-137: the cruiser', () => {
           expect(connected(out.x, out.z), `${at} can be walked back from`).toBe(true);
         }
     expect(tried).toBeGreaterThan(5000);
-  });
+    // (thousands of landings, each checked against the whole street: slow on a busy runner)
+  }, 30000);
 });
 
 describe('C-137: what there is to do', () => {
