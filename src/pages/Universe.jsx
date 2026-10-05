@@ -90,15 +90,33 @@ export default function Universe({ ask = false }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
-  // ship it was, with no question first
+  // ship it was, with no question first. Sat down in the cockpit with no
+  // ship yet (a first visit), that one's made under it as you sit there
+  // (tp:board, again if you change seats), so the flash comes out on a
+  // ship that's ready; a replay keeps the ship it's flying until the flash.
+  const boarding = useRef(false);
+  const flyingNow = useRef(ship);
+  flyingNow.current = ship;
   useEffect(() => {
     const arrive = (e) => {
+      boarding.current = false;
       const id = parseShip(e.detail?.ship);
       if (id) setShip(id);
       setAsking(false);
     };
+    const board = (e) => {
+      const id = parseShip(e.detail?.ship);
+      if (!id || (flyingNow.current && !boarding.current)) return;
+      boarding.current = true;
+      setShip(id);
+      setAsking(false);
+    };
     window.addEventListener('tp:arrive', arrive);
-    return () => window.removeEventListener('tp:arrive', arrive);
+    window.addEventListener('tp:board', board);
+    return () => {
+      window.removeEventListener('tp:arrive', arrive);
+      window.removeEventListener('tp:board', board);
+    };
   }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
