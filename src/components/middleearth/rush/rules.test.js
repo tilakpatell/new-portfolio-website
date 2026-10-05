@@ -309,3 +309,57 @@ describe('Rivendell’s kitchen', () => {
     expect(s.spots['5,3']).toBeUndefined(); // (the water's no station)
   });
 });
+
+describe('Moria’s forges', () => {
+  it('casts mithril in a mould, forges an axe (and ruins one left too long)', async () => {
+    const { MORIA } = await import('./levels/moria');
+    const s = newRush({ ...MORIA, orders: { ...MORIA.orders, first: 1e9 } });
+    s.orders.push({ id: 1, dish: 'mithril', t: 90, of: 90 }, { id: 2, dish: 'axe', t: 60, of: 60 });
+    const p = s.players[0];
+    for (let n = 0; n < 3; n++) {
+      stand(p, 1, 1, 'N');
+      grab(s, p); // ore
+      stand(p, 4, 1, 'N');
+      grab(s, p); // on the anvil
+      workFor(s, p, MORIA.times.chop + 0.1);
+      grab(s, p);
+      expect(p.held).toEqual({ k: 'ore', s: 'chopped' });
+      stand(p, 7, 1, 'N');
+      grab(s, p); // into the crucible
+    }
+    run(s, MORIA.times.cook + 0.1);
+    expect(s.spots['7,0'].s).toBe('done');
+    // a mould from the near side, over the bridge, under the crucible
+    stand(p, 1, 5, 'W');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'mould', s: 'clean' });
+    stand(p, 7, 1, 'N');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'mould', s: 'mithril' });
+    stand(p, 4, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'mithril' });
+    // iron to the forge: an axe, then (left) ruined
+    stand(p, 1, 1, 'W');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'iron', s: 'raw' });
+    stand(p, 10, 1, 'N');
+    grab(s, p);
+    run(s, MORIA.times.bake + 0.1);
+    expect(s.spots['10,0'].item).toEqual({ k: 'axe', s: 'forged' });
+    const ev = run(s, MORIA.times.char + 0.1);
+    expect(s.spots['10,0'].item).toEqual({ k: 'axe', s: 'ruined' });
+    expect(ev.some((e) => e.type === 'burnt' && e.k === 'axe')).toBe(true);
+  });
+
+  it('can’t be walked across the molten channel but on the bridges', async () => {
+    const { MORIA } = await import('./levels/moria');
+    const s = newRush(MORIA);
+    const p = s.players[0];
+    stand(p, 5, 2, 'S');
+    for (let i = 0; i < 60; i++) movePlayer(s, p, { x: 0, z: 1 }, 0.05);
+    expect(p.z).toBeLessThanOrEqual(3 - 0.3 + 1e-6);
+    stand(p, 3, 2, 'S');
+    for (let i = 0; i < 60; i++) movePlayer(s, p, { x: 0, z: 1 }, 0.05);
+    expect(p.z).toBeGreaterThan(5);
+  });
+});
