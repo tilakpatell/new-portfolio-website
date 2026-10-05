@@ -367,7 +367,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     tv?.pose(s.h);
     const others = tv ? tv.list() : null;
     try {
-      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();

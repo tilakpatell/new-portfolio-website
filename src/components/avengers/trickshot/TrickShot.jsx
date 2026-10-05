@@ -277,6 +277,8 @@ export default function TrickShot({ fallback }) {
     const stop = () => {
       letDown(game.current);
       aim.current.keys.clear();
+      aim.current.touch = null;
+      aim.current.keyDraw = false;
     };
     window.addEventListener('blur', stop);
     return () => window.removeEventListener('blur', stop);
