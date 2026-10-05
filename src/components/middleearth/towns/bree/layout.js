@@ -103,6 +103,12 @@ export const CLUTTER = [
   ['hay', 14, -12.2, -0.4],
   ['barrels', -27.2, -0.4, 0.2],
 ];
+// lamp posts at the street's edge: x, z, turn (the lantern hangs to +x)
+export const LAMPS = [
+  [-20, 1.15, -Math.PI / 2],
+  [-6.6, 6.5, Math.PI / 2],
+  [20.6, -4.1, -Math.PI / 2],
+];
 // puddles in the mud: x, z, the two radii, turn
 export const PUDDLES = [
   [-40, 4.4, 1.5, 0.8, 0.2],
@@ -191,6 +197,7 @@ export const COLLIDERS = [
   ...CLUTTER.map(([kind, x, z, turn], i) =>
     kind === 'cart' ? box(`cart${i}`, { x, z, w: 3, d: 1.8, turn }, { low: true, top: 1.6 }) : circle(`${kind}${i}`, x, z, kind === 'hay' ? 0.75 : 0.7, { low: true, top: 1.2 }),
   ),
+  ...LAMPS.map(([x, z], i) => circle(`lamp${i}`, x, z, 0.2, { low: true, top: 2.5 })),
   // the gateposts
   ...Object.entries(GATES).flatMap(([k, g]) => g.posts.map(([x, z], i) => circle(`${k}-post${i}`, x, z, 0.5, { top: 6 }))),
 ];
