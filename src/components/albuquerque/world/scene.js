@@ -14,10 +14,18 @@
 // Sky crystals, the lamps, the RV's smoke, the pizza on Walt's roof) in
 // ./life.js. Bright things bloom, and the picture is graded warm.
 //
+// Other drivers online in Albuquerque at the same time drive about in yours
+// as ghosts from another world: a pale Aztek each, lit at the edges, their
+// name over it and a ring of light under it (the Middle-earth towns' ghosts,
+// ../../middleearth/towns/ghosts.js). Nothing passes between you but where
+// each of you is: no one bumps into anyone, Hank doesn't see them, and your
+// career's your own.
+//
 // createAbqWorld(canvas) resolves to { render(state, ms), setPlaces(progress),
 // beam(id), setTime(tod), setBlue(ids), took(id), resize, info, dispose, lost }.
-// `state` is the component's: the car, Hank, the heat and the place you're
-// at (rules.js does the moving).
+// `state` is the component's: the car, Hank, the heat, the place you're at
+// (rules.js does the moving) and the other drivers (`travellers`, the
+// towns' travellers.js list()).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -35,6 +43,7 @@ import { budget } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { GRADE } from '../../../lib/stage3d';
+import { createGhosts } from '../../middleearth/towns/ghosts';
 import { splitWord } from '../elements';
 import { ABQ } from '../wardrobe';
 import { TOWN_MODELS, createTown } from './buildings';
@@ -657,6 +666,26 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     return s;
   });
   scene.add(hank);
+  // the other drivers: Walt's Aztek again (its geometry and materials, under
+  // the ghosts' own), rocking a little on its springs as it goes
+  const ghosts = createGhosts({
+    height: groundHeight,
+    make: () => {
+      const g = new THREE.Group();
+      const m = loaded.aztek ? loaded.aztek.clone(true) : standIn('aztek');
+      m.rotation.y = FACING.aztek;
+      g.add(m);
+      // (the real one's geometry and materials: left alone when a ghost goes)
+      return loaded.aztek ? { group: g, top: 2.1, shared: true, dispose: () => {} } : { group: g, top: 2.1 };
+    },
+    tag: 0.9,
+    halo: 6.5,
+    animate: (f, t, p) => {
+      f.group.position.y = p.moving ? Math.abs(Math.sin(t * 7)) * 0.05 : 0;
+    },
+    snap: 40, // (a car covers ground between steps)
+  });
+  scene.add(ghosts.group);
 
   // ── the Aztek's lights: two beams out front after dark, tail lights always ──
   const glow = own(glowTexture());
@@ -908,6 +937,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const lean = Math.atan2(groundHeight(c.x + cs * 0.9, c.z - sn * 0.9) - groundHeight(c.x - cs * 0.9, c.z + sn * 0.9), 1.8);
     car.position.set(c.x, gy, c.z);
     car.rotation.set(-slope, c.yaw, -lean, 'YXZ');
+    ghosts.update(state.travellers ?? [], clock, dt);
     const accel = (c.speed - lastSpeed) / Math.max(dt, 1e-3);
     lastSpeed = c.speed;
     roll += ((-(state.steer ?? 0) * Math.min(1, Math.abs(c.speed) / 18) * 0.06) - roll) * Math.min(1, dt * 6);
@@ -1119,6 +1149,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     dispose() {
       gone = true;
       people?.dispose();
+      ghosts.dispose();
       for (const o of owned) o.dispose?.();
       if (cloud) cloud.dispose();
       if (post) {

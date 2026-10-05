@@ -218,6 +218,43 @@ const BUILDERS = {
     p.orbits.push(o);
     p.tick.push((t) => (moon.rotation.y = t * 0.4));
 
+    // and the galaxy it's from, far, far away beside it: a little spiral of
+    // stars turning slowly, the way into it (the planet's own: picking Star
+    // Wars and going jumps you into it, galaxy/)
+    const swirl = new THREE.Mesh(
+      new THREE.PlaneGeometry(r * 1.25, r * 1.25),
+      new THREE.ShaderMaterial({
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `
+          uniform float uT;
+          varying vec2 vUv;
+          void main() {
+            vec2 p = vUv * 2.0 - 1.0;
+            float r = length(p);
+            if (r > 1.0) discard;
+            float a = atan(p.y, p.x);
+            float arm = cos(2.0 * (a - log(r + 0.05) * 2.8 + uT * 0.05));
+            float arms = arm > 0.0 ? arm * arm * arm : 0.0;
+            arms *= smoothstep(1.0, 0.25, r) * smoothstep(0.02, 0.18, r);
+            float core = exp(-r * r * 30.0);
+            float glow = exp(-r * 3.2);
+            float n = fract(sin(dot(floor(p * 90.0), vec2(12.9898, 78.233))) * 43758.5453);
+            float stars = step(0.985, n) * arms * 2.0;
+            vec3 col = vec3(1.0, 0.86, 0.6) * core * 3.0 + vec3(0.55, 0.7, 1.0) * arms * 0.9 + vec3(0.7, 0.75, 1.0) * glow * 0.25 + vec3(1.0) * stars;
+            gl_FragColor = vec4(col * smoothstep(1.0, 0.82, r), 1.0);
+          }`,
+        uniforms: { uT: { value: 0 } },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    swirl.position.set(-r * 1.55, r * 0.85, -r * 1.35);
+    swirl.rotation.set(-1.05, 0.4, 0.3);
+    p.group.add(swirl);
+    p.tick.push((t) => (swirl.material.uniforms.uT.value = t));
+
     // a Republic attack cruiser further out (the site owner's Meshy model,
     // when it comes; its nose is −x, so a quarter turn points it the way the
     // orbit goes). Slave I is about too, as traffic (traffic.js)
@@ -760,6 +797,68 @@ const BUILDERS = {
     p.slot = { holder: o.holder, size: r * 0.9, turn: [0.1, -Math.PI / 2, 0] }; // her bow is −x: along the orbit
   },
 
+  invincible(p, { u }) {
+    const r = u.size;
+    const P = u.palette;
+    const rand = rng('invincible');
+    // Viltrum: rust and ochre, dark old sea beds, bands of high cloud
+    const map = paint(
+      (g, w, h) => {
+        const ground = g.createLinearGradient(0, 0, 0, h);
+        ground.addColorStop(0, P.dark);
+        ground.addColorStop(0.3, P.base);
+        ground.addColorStop(0.7, P.base);
+        ground.addColorStop(1, P.dark);
+        g.fillStyle = ground;
+        g.fillRect(0, 0, w, h);
+        const blob = (x, y, rx, ry, fill) => {
+          for (const dx of [0, -w, w]) {
+            g.beginPath();
+            g.ellipse(x + dx, y, rx, ry, 0, 0, Math.PI * 2);
+            g.fillStyle = fill;
+            g.fill();
+          }
+        };
+        for (let i = 0; i < 90; i++) blob(rand() * w, h * (0.12 + rand() * 0.76), 10 + rand() * 60, 6 + rand() * 26, `rgba(40, 10, 6, ${(0.12 + rand() * 0.25).toFixed(3)})`);
+        for (let i = 0; i < 120; i++) blob(rand() * w, h * (0.1 + rand() * 0.8), 4 + rand() * 30, 3 + rand() * 12, `rgba(230, 160, 90, ${(0.08 + rand() * 0.2).toFixed(3)})`);
+        for (let i = 0; i < 26; i++) {
+          const y = rand() * h;
+          g.fillStyle = `rgba(255, 238, 220, ${(0.05 + rand() * 0.1).toFixed(3)})`;
+          g.fillRect(0, y, w, 2 + rand() * 9);
+        }
+      },
+      1024,
+      512,
+    );
+    p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85 });
+    // two flyers round it, each trailing light: the son in yellow and blue, the father in white and red
+    const fade = paint(
+      (g, w, h) => {
+        const k = g.createLinearGradient(0, 0, w, 0);
+        k.addColorStop(0, '#ffffff');
+        k.addColorStop(1, '#000000');
+        g.fillStyle = k;
+        g.fillRect(0, 0, w, h);
+      },
+      128,
+      4,
+    );
+    const flyer = (head, tail, { radius, tilt, yaw, speed, phase }) => {
+      const o = orbit(p.group, { radius, tilt, yaw, speed, phase });
+      p.orbits.push(o);
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(r * 0.03, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(head).multiplyScalar(2.2), toneMapped: false }));
+      o.holder.add(dot);
+      // the trail: an arc of the orbit just behind, fading
+      const trail = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, r * 0.011, 6, 48, 1.1).rotateX(Math.PI / 2),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(tail).multiplyScalar(1.8), alphaMap: fade, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }),
+      );
+      o.pivot.add(trail);
+    };
+    flyer('#ffd23a', '#3aa0ff', { radius: r * 1.32, tilt: 0.35, yaw: 0.4, speed: 0.55, phase: 0 });
+    flyer('#ffffff', '#ff3a2a', { radius: r * 1.42, tilt: -0.25, yaw: 1.9, speed: 0.48, phase: 2.1 });
+  },
+
   travel(p, { u, T }) {
     const r = u.size;
     // the oceans catch the sun (a roughness map), the cities light the night side (in airGlow)
@@ -824,7 +923,8 @@ export function buildPlanet(u, T = {}) {
     p.tick.push(facing(sign));
   }
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
-  const turn0 = body.rotation.y;
+  let turn0 = body.rotation.y;
+  let held = null; // the turn it's held at, while someone stands on it
   let selected = false;
   let t0 = 0;
 
@@ -835,6 +935,17 @@ export function buildPlanet(u, T = {}) {
     sign,
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
+    body,
+    air,
+    // held still (true) while the crew walk about on it, and turning on
+    // from there once they're gone
+    hold(on) {
+      if (on && held === null) held = body.rotation.y;
+      else if (!on && held !== null) {
+        turn0 = held - t0 * spin;
+        held = null;
+      }
+    },
     // the sign brightens and grows a little under the pointer
     setSignHover(on) {
       if (!sign) return;
@@ -846,7 +957,7 @@ export function buildPlanet(u, T = {}) {
     // where it should be the moment it's back in view)
     update(t, camera, live = true) {
       t0 = t;
-      body.rotation.y = turn0 + t * spin;
+      body.rotation.y = held ?? turn0 + t * spin;
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },

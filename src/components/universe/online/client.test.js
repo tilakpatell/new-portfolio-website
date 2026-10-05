@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
+import { STOCK_LOADOUT } from '../outfit';
 
 // An in-memory room: what one client sends, the others get straight away.
 // room(id) on its own is a pilot with no client, sending whatever it likes.
@@ -76,8 +77,25 @@ describe('createClient', () => {
   it('each sees the other, by name and ship', async () => {
     const { a, b } = await pair();
     expect(a.snapshot().status).toBe('online');
-    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', kills: 0, where: '/universe', ally: 'none', blocked: false }]);
+    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
     expect(b.snapshot().peers[0].name).toBe('Han');
+  });
+
+  it('shows each what the other has fitted, and any refit', async () => {
+    const { a, b, seen } = await pair();
+    const fit = { ...STOCK_LOADOUT, paint: 'aws', booster: 'srb', guns: 'twin' };
+    a.setProfile({ loadout: fit });
+    expect(b.peers.get('A').loadout).toEqual(fit);
+    expect(b.snapshot().peers[0].loadout).toEqual(fit);
+    expect(seen.b.some((e) => e.type === 'roster')).toBe(true);
+    // the same again is no news
+    const before = seen.b.length;
+    a.setProfile({ loadout: { ...fit } });
+    expect(seen.b.length).toBe(before);
+    // and their shots come with their guns and colours
+    a.pose(ship(3));
+    a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
+    expect(b.takeShots()[0]).toMatchObject({ paint: 'aws', guns: 'twin' });
   });
 
   it('passes poses along, read and timed', async () => {
@@ -87,6 +105,24 @@ describe('createClient', () => {
     expect(p.pose.x).toBe(4);
     expect(p.snaps).toHaveLength(1);
     expect(p.pose.at).toBe(1000);
+  });
+
+  it('passes a crew on foot along, and says when they are back in', async () => {
+    const { a, b, tick } = await pair();
+    const w = { who: 'han', n: [0, 1, 0], f: [0, 0, 1], h: 0, speed: 0, side: 0, aim: 0 };
+    a.foot({ planet: 'starwars', kind: 'falcon', ship: { n: [0, 1, 0], f: [1, 0, 0] }, lead: w, mate: null });
+    const p = b.peers.get('A');
+    expect(p.foot.planet).toBe('starwars');
+    expect(p.foot.lead.who).toBe('han');
+    expect(p.foot.at).toBe(1000);
+    // no more than ten a second
+    a.foot({ planet: 'starwars', kind: 'falcon', ship: { n: [0, 1, 0], f: [1, 0, 0] }, lead: { ...w, speed: 0.1 }, mate: null });
+    expect(p.foot.lead.speed).toBe(0);
+    tick(120);
+    a.foot(null);
+    expect(p.foot).toBeNull();
+    b.block('A', true);
+    expect(b.peers.get('A').foot).toBeNull();
   });
 
   it('makes an alliance only when both want one', async () => {
@@ -114,6 +150,29 @@ describe('createClient', () => {
     a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
     a.hit('B');
     expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
+  });
+
+  it('a hit from someone somewhere else does nothing (another of the galaxy\'s systems)', async () => {
+    const { a, b, seen } = await pair();
+    a.setProfile({ where: '/galaxy/hoth' });
+    b.setProfile({ where: '/galaxy/endor' });
+    lineUp(a, b);
+    a.hit('B');
+    expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(0);
+    a.setProfile({ where: '/galaxy/endor' });
+    lineUp(a, b);
+    a.hit('B');
+    expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
+  });
+
+  it('sends no pointer from a system in the galaxy, where you fly', async () => {
+    const { a, b } = await pair();
+    a.setProfile({ where: '/galaxy/hoth' });
+    a.cursor(10, 200);
+    expect(b.peers.get('A').cur).toBe(null);
+    a.setProfile({ where: '/galaxy/hoth/mission' });
+    a.cursor(10, 200);
+    expect(b.peers.get('A').cur?.y).toBe(200);
   });
 
   it('a hit from a shot fired the other way does nothing', async () => {

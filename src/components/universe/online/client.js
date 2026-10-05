@@ -1,11 +1,10 @@
 // The multiplayer link: everyone on the site who's gone online, in one
 // room (nostr.js: public Nostr relays carry everything, so it works from
 // any network, and no pilot sees another's IP address; the site is static,
-// so there's no server of its own). It
-// keeps who's here (their callsign, ship, kills, which page they're on, and
-// whether you're allies), where each was last seen on the universe map, the
-// shots they fire there, and their pointer on any other page, and sends
-// yours. The scene (scene.js, pilots.js) reads poses and shots from it each
+// so there's no server of its own). It keeps who's here (their callsign,
+// ship and what's fitted to it, kills, which page they're on, and whether you're
+// allies), where each was last seen on the universe map, the shots they
+// fire there, and their pointer on any other page, and sends yours. The scene (scene.js, pilots.js) reads poses and shots from it each
 // frame, Presence.jsx the pointers; the page (useOnline.js, Online.jsx)
 // shows the roster and what's happening. protocol.js has the wire and the
 // rules for what's believed.
@@ -18,9 +17,11 @@
 // can't be asked for again straight away, and anyone who goes quiet is
 // dropped. A heartbeat keeps you on everyone's list while you sit still.
 //
-// createClient({ name, kind, where }) → { selfId, on(fn) → off, snapshot(),
-//   setProfile({ name, kind, where }), pose(ship, { hidden, boost, safe,
-//   shield }), shot(at, v), hit(peerId), down(byId), cursor(x, y, touch),
+// createClient({ name, kind, loadout, where }) → { selfId, on(fn) → off, snapshot(),
+//   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
+//   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
+//   each pilot's comes in as peer.foot, with `at`), shot(at, v), hit(peerId),
+//   down(byId), cursor(x, y, touch),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
@@ -28,8 +29,9 @@
 // (someone was shot down: where they were, for the scene's pop; `by` is
 // whoever this browser believes did it).
 
-import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
-import { UNIVERSE, placeName } from './where';
+import { APP_ID, CURSOR_MS, DAMAGE, FOOT_MS, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readFoot, readHello, readHit, readPose, readShot, writeCursor, writeFoot, writePose, writeShot } from './protocol';
+import { UNIVERSE, isFlight, placeName } from './where';
+import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -41,8 +43,8 @@ const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinRoom }));
 
-export function createClient({ name, kind = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
-  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, kills: 0, where };
+export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
+  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), kills: 0, where };
   const peers = new Map();
   const listeners = new Set();
   let status = 'connecting'; // connecting | online | failed | left
@@ -50,6 +52,8 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
   let send = null; // the actions, once the room's there
   let me = null; // where you are, while a hit on you can count
   let lastPose = -Infinity;
+  let lastFoot = -Infinity;
+  let footDown = false; // whether the last foot sent had your crew down
   let lastShot = -Infinity;
   let lastCursor = -Infinity;
   let cursorLater = 0; // the last pointer of a quick move, sent once the gap's up
@@ -61,7 +65,8 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const hello = () => ({ n: self.name, k: self.kind, c: self.kills, w: self.where });
+  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), c: self.kills, w: self.where });
+  const same = (a, b) => Object.keys(STOCK_LOADOUT).every((slot) => a[slot] === b[slot]);
 
   const peerOf = (id) => {
     let p = peers.get(id);
@@ -70,12 +75,14 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
         id,
         name: null,
         kind: null,
+        loadout: STOCK_LOADOUT,
         kills: 0, // the ones this browser saw
         where: null,
         ally: 'none',
         blocked: false,
         snaps: [],
         pose: null,
+        foot: null, // their crew on foot, while they're down on a planet
         cur: null,
         shots: [], // their last few, for checking a hit on you
         shotAt: -Infinity,
@@ -110,6 +117,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     p.blocked = on;
     p.snaps.length = 0;
     p.pose = null;
+    p.foot = null;
     p.cur = null;
     p.shots.length = 0;
     roster();
@@ -149,6 +157,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     const action = (ns) => r.makeAction(ns);
     const hi = action('hi');
     const pose = action('pose');
+    const foot = action('foot');
     const shot = action('shot');
     const hit = action('hit');
     const down = action('down');
@@ -157,6 +166,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     send = {
       hi: (data, to) => hi.send(data, to ? { target: to } : undefined).catch(() => {}),
       pose: (data) => pose.send(data).catch(() => {}),
+      foot: (data) => foot.send(data).catch(() => {}),
       shot: (data) => shot.send(data).catch(() => {}),
       hit: (data, to) => hit.send(data, { target: to }).catch(() => {}),
       down: (data) => down.send(data).catch(() => {}),
@@ -182,10 +192,11 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       if (!p) return;
       const first = p.name === null;
       const was = p.where;
-      const changed = first || p.name !== h.name || p.kind !== h.kind || p.where !== h.where;
+      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || p.where !== h.where;
       // (their own count of their kills isn't taken: p.kills is what this browser saw)
       p.name = h.name;
       p.kind = h.kind;
+      p.loadout = h.loadout;
       p.where = h.where;
       if (was !== p.where) p.cur = null; // (a pointer is only good on the page it was on)
       if (first) feed(`${p.name} came online`, 'join');
@@ -205,6 +216,12 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       p.snaps.push(s);
       if (p.snaps.length > SNAPS) p.snaps.shift();
     };
+    foot.onMessage = (data, { peerId }) => {
+      const f = readFoot(data);
+      const p = f && admit('foot', peerId);
+      if (!p) return;
+      p.foot = f.off ? null : { ...f, at: now() };
+    };
     shot.onMessage = (data, { peerId }) => {
       const known = peers.get(peerId);
       const s = known && readShot(data, known.pose);
@@ -214,14 +231,16 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       p.shotAt = t;
       p.shots.push({ p: s.p, v: s.v, at: t });
       if (p.shots.length > AIMS) p.shots.shift();
-      shots.push({ id: peerId, kind: p.kind, ...s });
+      shots.push({ id: peerId, kind: p.kind, paint: p.loadout.paint, guns: p.loadout.guns, ...s });
       if (shots.length > SHOTS) shots.shift();
     };
     hit.onMessage = (data, { peerId }) => {
       const d = readHit(data);
       const p = d && admit('hit', peerId);
       const t = now();
-      if (!p || !hitCounts(p, me, t)) return;
+      // (from someone in the same place: the same numbers in another of the
+      // galaxy's systems, or on the universe map, are somewhere else entirely)
+      if (!p || p.where !== self.where || !hitCounts(p, me, t)) return;
       p.hitAt = t;
       emit({ type: 'hit', from: peerId, damage: d });
     };
@@ -254,7 +273,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     cur.onMessage = (data, { peerId }) => {
       const c = readCursor(data);
       const p = c && admit('cur', peerId);
-      if (!p || p.where === UNIVERSE) return;
+      if (!p || isFlight(p.where)) return;
       c.at = now();
       p.cur = c;
     };
@@ -312,15 +331,17 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     // for the page: who's here, as plain data
     snapshot() {
       const list = [];
-      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
+      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
+      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where }, peers: list };
     },
-    setProfile({ name: n = self.name, kind: k = self.kind, where: w = self.where } = {}) {
+    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, where: w = self.where } = {}) {
       const clean = cleanName(n) ?? self.name;
-      if (clean === self.name && k === self.kind && w === self.where) return;
+      const fit = readLoadout(l);
+      if (clean === self.name && k === self.kind && same(fit, self.loadout) && w === self.where) return;
       self.name = clean;
       self.kind = k;
+      self.loadout = fit;
       self.where = w;
       if (!k) me = null;
       send?.hi(hello());
@@ -336,6 +357,21 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       lastPose = t;
       send.pose(writePose(s, (hidden ? 1 : 0) | (boost ? 2 : 0), shield));
     },
+    // your crew on foot, each frame while they're down (sent ten times a
+    // second), and null once they're back in (sent once)
+    foot(crew) {
+      const t = now();
+      if (!send) return;
+      if (!crew) {
+        if (footDown) send.foot(writeFoot(null));
+        footDown = false;
+        return;
+      }
+      if (t - lastFoot < FOOT_MS) return;
+      lastFoot = t;
+      footDown = true;
+      send.foot(writeFoot(crew));
+    },
     shot(at, v) {
       const t = now();
       if (!send || t - lastShot < SHOT_GAP) return;
@@ -345,7 +381,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     // your pointer, off the universe map (x from the middle of the window,
     // y down the page, in px; with touch, where you're reading)
     cursor(x, y, touch = false) {
-      if (!send || self.where === UNIVERSE) return;
+      if (!send || isFlight(self.where)) return;
       clearTimeout(cursorLater);
       const wait = lastCursor + CURSOR_MS - now();
       if (wait > 0) {

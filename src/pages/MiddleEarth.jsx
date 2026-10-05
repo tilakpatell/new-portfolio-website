@@ -26,6 +26,14 @@ import ClipBoard from '../components/worlds/ClipBoard';
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
 const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
+const WeathertopWorld = lazy(() => import('../components/middleearth/towns/weathertop/WeathertopWorld'));
+const RivendellWorld = lazy(() => import('../components/middleearth/towns/rivendell/RivendellWorld'));
+const MoriaWorld = lazy(() => import('../components/middleearth/towns/moria/MoriaWorld'));
+const LorienWorld = lazy(() => import('../components/middleearth/towns/lorien/LorienWorld'));
+const AmonHenWorld = lazy(() => import('../components/middleearth/towns/amonhen/AmonHenWorld'));
+const MarshesWorld = lazy(() => import('../components/middleearth/towns/marshes/MarshesWorld'));
+const CirithUngolWorld = lazy(() => import('../components/middleearth/towns/cirithungol/CirithUngolWorld'));
+const DoomWorld = lazy(() => import('../components/middleearth/towns/doom/DoomWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -232,6 +240,12 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'moria' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <MoriaWorld onLeave={() => go('lorien')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'moria' && (
         <>
           <section data-theme-section="shire" className="shell relative z-10 grid items-center gap-10 pb-16 pt-10 md:pb-20 lg:min-h-[86svh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="doors-title">
             <figure className="me-scene" data-entering={entering || undefined}>
@@ -242,9 +256,9 @@ export default function MiddleEarth() {
             </figure>
             <div>
               <p className="eyebrow">Moria · The West-gate</p>
-              <h1 id="doors-title" className="display mt-6 text-[clamp(2.5rem,1.4rem+3.6vw,4.4rem)]">
+              <h2 id="doors-title" className="display mt-6 text-[clamp(2.5rem,1.4rem+3.6vw,4.4rem)]">
                 {open ? 'Mellon.' : 'Speak, friend, and enter.'}
-              </h1>
+              </h2>
               <p className="lead mt-6 max-w-[48ch]">{lead}</p>
               <form className="mt-8 flex max-w-md gap-2" onSubmit={speak}>
                 <label htmlFor="me-word" className="sr-only">
@@ -279,6 +293,12 @@ export default function MiddleEarth() {
         </>
       )}
 
+      {here?.id === 'moria' && (
+        <Suspense fallback={null}>
+          <Rush level="moria" />
+        </Suspense>
+      )}
+
       {here?.id === 'shire' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <ShireWorld onLeave={() => go('bree')} />
@@ -287,13 +307,19 @@ export default function MiddleEarth() {
 
       {here?.id === 'bree' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
-          <BreeWorld onLeave={() => go('rivendell')} />
+          <BreeWorld onLeave={() => go('weathertop')} />
         </Suspense>
       )}
 
       {here?.id === 'bree' && (
         <Suspense fallback={null}>
           <Rush />
+        </Suspense>
+      )}
+
+      {here?.id === 'weathertop' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <WeathertopWorld onLeave={() => go('rivendell')} />
         </Suspense>
       )}
 
@@ -327,6 +353,11 @@ export default function MiddleEarth() {
                     Go to Bree
                   </button>
                 )}
+                {STOPS[step].id === 'weathertop' && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('weathertop')}>
+                    Go to Weathertop
+                  </button>
+                )}
                 {STOPS[step].id === 'moria' && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('moria')}>
                     Go to Moria
@@ -353,6 +384,12 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'mordor' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <DoomWorld onLeave={() => jumpTo(null, 'ring')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'mordor' && (
         <div data-theme-section="mordor" className="mordor-band relative z-10">
           <section id="gorgoroth" className="shell relative scroll-mt-24 pb-14 pt-10 md:pb-20" aria-labelledby="gorgoroth-title">
             <Gorgoroth onArrive={() => setTimeout(() => jumpTo(null, 'ring'), 1200)} />
@@ -364,10 +401,22 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'rivendell' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <RivendellWorld onLeave={() => go('moria')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'rivendell' && (
+        <Suspense fallback={null}>
+          <Rush level="rivendell" />
+        </Suspense>
+      )}
+
+      {here?.id === 'rivendell' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-scenes-title">
-          <h1 id="me-scenes-title" className="title">
+          <h2 id="me-scenes-title" className="title">
             From the films
-          </h1>
+          </h2>
           <p className="lead mt-4 max-w-[54ch]">Elrond’s house keeps the old tales. A few of them, as the films told them, and the lines everyone remembers.</p>
           {hasScenes(SCENES) && (
             <div className="mt-8">
@@ -379,10 +428,22 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'lorien' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <LorienWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'lorien' && (
+        <Suspense fallback={null}>
+          <Rush level="lorien" />
+        </Suspense>
+      )}
+
+      {here?.id === 'lorien' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-places-title">
-          <h1 id="me-places-title" className="title">
+          <h2 id="me-places-title" className="title">
             The Mirror of Galadriel
-          </h1>
+          </h2>
           <p className="lead mt-4 max-w-[54ch]">It shows things that were, and things that are. Look in, and Middle-earth is New Zealand: a few of the places it was filmed, as they look today.</p>
           {hasPhotos(LOCATIONS) && (
             <div className="mt-8">
@@ -390,6 +451,30 @@ export default function MiddleEarth() {
             </div>
           )}
         </section>
+      )}
+
+      {here?.id === 'amon-hen' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <AmonHenWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'amon-hen' && (
+        <Suspense fallback={null}>
+          <Rush level="amonhen" />
+        </Suspense>
+      )}
+
+      {here?.id === 'dead-marshes' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <MarshesWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'cirith-ungol' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <CirithUngolWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
       )}
 
       {here && (

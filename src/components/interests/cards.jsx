@@ -81,6 +81,9 @@ function StarWars() {
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
         </button>
+        <Link to="/galaxy" className="btn btn-ghost btn-sm">
+          A galaxy far, far away
+        </Link>
         <Link to="/deathstar" className="btn btn-ghost btn-sm">
           Visit the Death Star
         </Link>
@@ -238,9 +241,14 @@ function Gaming() {
       <p className="mt-2 text-sm text-muted">
         Hint: ↑ ↑ ↓ ↓ ← → ← → B A. And there’s a hidden easter egg on every page: {eggsFound()} of {Object.keys(EGGS).length} found.
       </p>
-      <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm mt-auto self-start">
-        Press Start
-      </Link>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Link to="/dot-matrix" className="btn btn-primary btn-sm">
+          Visit Dot Matrix
+        </Link>
+        <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm">
+          Press Start
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -480,9 +488,14 @@ function Travel() {
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">
         {countWord(COUNTRY_COUNT)} countries and the Caribbean, mostly chasing mountains and lakes.
       </p>
-      <Link to="/travel" className="btn btn-ghost btn-sm mt-auto self-start">
-        See the travel page
-      </Link>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Link to="/earth" className="btn btn-primary btn-sm">
+          Fly the globe
+        </Link>
+        <Link to="/travel" className="btn btn-ghost btn-sm">
+          See the travel page
+        </Link>
+      </div>
     </Card>
   );
 }
@@ -493,6 +506,17 @@ function Caribbean() {
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">A black ship, the kraken, and a compass that doesn’t point north. There’s a sea to sail here: five chapters of it, in 3D.</p>
       <Link to="/caribbean" className="btn btn-ghost btn-sm mt-auto self-start">
         Sail the Caribbean
+      </Link>
+    </Card>
+  );
+}
+
+function InvincibleCard() {
+  return (
+    <Card title="Invincible" className="fun-invincible" visual={<img src={`${import.meta.env.BASE_URL}models/invincible/card.webp`} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}>
+      <p className="mt-2 text-[0.95rem] leading-relaxed text-body">A half-Viltrumite kid learning to fly, and a father who is something else. There’s a city to fight over here, in 3D: think, Mark.</p>
+      <Link to="/invincible" className="btn btn-ghost btn-sm mt-auto self-start">
+        Fly over the city
       </Link>
     </Card>
   );
@@ -511,4 +535,5 @@ export const CARDS = {
   gaming: Gaming,
   travel: Travel,
   caribbean: Caribbean,
+  invincible: InvincibleCard,
 };

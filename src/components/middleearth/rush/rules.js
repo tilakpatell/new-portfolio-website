@@ -9,30 +9,67 @@
 // tile (i, j) covers x i..i+1, z j..j+1. `face` turns +x to
 // (cos face, −sin face), as in the walkable towns.
 //
-// Tiles: '#' counter, 'B' chopping board, 'P' stew pot, 'O' oven, 'T' tap,
-// 'W' wash tub, 'X' bin, 'S' serving counter, 'R' where dirty dishes come
-// back, 'm' mug shelf, 'b' bowl shelf, 'c' carrot crate, 'p' potato crate,
-// 'd' dough tub, '.' floor (anything else is wall).
+// Tiles: '#' counter, 'B' chopping board, 'P' pot, 'O' oven, 'T' tap (or
+// cask), 'L' leaf table (to wrap things in), 'F' fishing line (held down
+// till something bites), 'W' wash tub, 'X' bin, 'S' serving counter, 'R'
+// where dirty dishes come back, '.' floor, '~' water (not to be walked on),
+// and the level's own crates and shelves (the Pony's: 'c' carrots, 'p'
+// potatoes, 'd' dough, 'm' mugs, 'b' bowls). Anything else is wall.
 //
-// Things are { k, s }: a mug (clean, dirty, ale), a bowl (clean, dirty,
-// stew), a carrot or potato (raw, chopped), dough (raw), a loaf (baked,
-// burnt). The dishes: a pint (a mug of ale), stew (a bowl of it), bread (a
-// baked loaf).
+// Things are { k, s }, of the kinds in KINDS. What a level's stations make
+// is the level's to say (`crates`, `shelves`, `pot`, `oven`, `tap`,
+// `dishes`); the Pony's are the defaults: stew of three chopped carrots or
+// potatoes in a bowl, dough baked to a loaf, a mug filled with ale.
 
-export const DISHES = {
+// every kind of thing, and what it can be (added to, never reordered: the
+// wire counts on the order)
+export const KINDS = {
+  mug: ['clean', 'dirty', 'ale'],
+  bowl: ['clean', 'dirty', 'stew', 'soup', 'chowder'],
+  carrot: ['raw', 'chopped'],
+  potato: ['raw', 'chopped'],
+  dough: ['raw'],
+  loaf: ['baked', 'burnt'],
+  goblet: ['clean', 'dirty', 'wine'],
+  mushroom: ['raw', 'chopped'],
+  herb: ['raw', 'chopped'],
+  ore: ['raw', 'chopped'], // (crushed, at the forge)
+  mould: ['clean', 'dirty', 'mithril'],
+  iron: ['raw'],
+  axe: ['forged', 'ruined'],
+  lembas: ['baked', 'burnt', 'wrapped'],
+  fibre: ['raw', 'chopped'], // (spun into rope, at the wheel)
+  phial: ['clean', 'dirty', 'light'],
+  fish: ['raw', 'chopped'],
+  skewer: ['grilled', 'charred'], // (a fish on a stick, over the campfire)
+  skin: ['clean', 'dirty', 'water'],
+};
+const CONTAINER = (k) => KINDS[k]?.includes('dirty');
+const CHOPS = (k) => KINDS[k]?.includes('chopped');
+const PONY_RECIPES = {
+  crates: { c: 'carrot', p: 'potato', d: 'dough' },
+  shelves: { m: 'mug', b: 'bowl' },
+  pot: { takes: ['carrot', 'potato'], need: 3, into: 'bowl', makes: 'stew' },
+  oven: { takes: 'dough', makes: 'loaf' },
+  tap: { into: 'mug', makes: 'ale' },
+};
+const PONY_DISHES = {
   pint: { k: 'mug', s: 'ale', back: 'mug' },
   stew: { k: 'bowl', s: 'stew', back: 'bowl' },
   bread: { k: 'loaf', s: 'baked', back: null },
 };
-const CRATES = { c: 'carrot', p: 'potato', d: 'dough' };
-const SHELVES = { m: 'mug', b: 'bowl' };
-const HOLDS = new Set(['#', 'B', 'O', 'T']); // stations that hold one thing
-const VEG = new Set(['carrot', 'potato']);
-const FOOD = new Set(['carrot', 'potato', 'dough', 'loaf']);
+// a level's recipes, with the Pony's where it doesn't say
+export const recipesOf = (level) => ({ ...PONY_RECIPES, ...level?.recipes, dishes: Object.fromEntries(Object.entries(level?.dishes ?? PONY_DISHES).map(([d, x]) => [d, { ...PONY_DISHES[d], ...x }])) });
+const HOLDS = new Set(['#', 'B', 'O', 'T', 'L', 'F']); // stations that hold one thing
+const OPEN = new Set(['.', 'x', '~']); // tiles with no station
 export const RADIUS = 0.3;
 
 const key = (i, j) => `${i},${j}`;
-export const dishOf = (item) => (item ? (Object.keys(DISHES).find((d) => DISHES[d].k === item.k && DISHES[d].s === item.s) ?? null) : null);
+export const dishOf = (item, level) => {
+  if (!item) return null;
+  const dishes = recipesOf(level).dishes;
+  return Object.keys(dishes).find((d) => dishes[d].k === item.k && dishes[d].s === item.s) ?? null;
+};
 
 // mulberry32: the host's dice, kept in the state so a round can be replayed
 function rand(s) {
@@ -53,24 +90,24 @@ export function parseLevel(level) {
   return { W, D, at };
 }
 
-const spotFor = (c, level) => {
+const spotFor = (c, level, R) => {
   if (HOLDS.has(c)) return { item: null, prog: 0 };
   if (c === 'P') return { n: 0, cook: 0, s: 'empty', prog: 0 };
   if (c === 'W') return { dirty: [], clean: [], prog: 0 };
-  if (SHELVES[c]) return { n: level.stock?.[SHELVES[c]] ?? 0 };
-  if (c === 'R') return { mug: 0, bowl: 0 };
+  if (R.shelves[c]) return { n: level.stock?.[R.shelves[c]] ?? 0 };
+  if (c === 'R') return Object.fromEntries([...new Set(Object.values(R.shelves))].map((k) => [k, 0]));
   return {};
 };
 
 // A new round: `players` hobbits at the level's spawn tiles.
 export function newRush(level, { players = 1, seed = 1 } = {}) {
   const g = parseLevel(level);
+  const R = recipesOf(level);
   const spots = {};
-  // each shelf's stock is split between that kind's shelves
   for (let j = 0; j < g.D; j++)
     for (let i = 0; i < g.W; i++) {
       const c = g.at(i, j);
-      if (c !== '.' && c !== 'x') spots[key(i, j)] = spotFor(c, level);
+      if (!OPEN.has(c)) spots[key(i, j)] = spotFor(c, level, R);
     }
   const n = Math.max(1, Math.min(4, players));
   return {
@@ -218,6 +255,7 @@ export function grab(s, p) {
   const c = s.level.tiles[j][i];
   const sp = s.spots[key(i, j)];
   const held = p.held;
+  const R = recipesOf(s.level);
   const say = (type, more = {}) => ev.push({ type, at, p: p.slot, ...more });
   const take = (item) => {
     p.held = item;
@@ -231,7 +269,7 @@ export function grab(s, p) {
       sp.item = null;
       sp.prog = 0;
     } else if (held && !sp.item) {
-      const fits = c === '#' || c === 'B' || (c === 'O' && held.k === 'dough') || (c === 'T' && held.k === 'mug' && held.s === 'clean');
+      const fits = c === '#' || c === 'B' || c === 'L' || (c === 'O' && held.k === R.oven.takes) || (c === 'T' && held.k === R.tap.into && held.s === 'clean');
       if (!fits) {
         nope();
         return ev;
@@ -241,14 +279,14 @@ export function grab(s, p) {
       p.held = null;
       say('put', { k: held.k });
     } else if (held && sp.item) nope();
-  } else if (CRATES[c]) {
-    if (!held) take({ k: CRATES[c], s: 'raw' });
-    else if (held.k === CRATES[c] && held.s === 'raw') {
+  } else if (R.crates[c]) {
+    if (!held) take({ k: R.crates[c], s: 'raw' });
+    else if (held.k === R.crates[c] && held.s === 'raw') {
       p.held = null;
       say('put', { k: held.k });
     } else nope();
-  } else if (SHELVES[c]) {
-    const k = SHELVES[c];
+  } else if (R.shelves[c]) {
+    const k = R.shelves[c];
     if (!held && sp.n > 0) {
       sp.n -= 1;
       take({ k, s: 'clean' });
@@ -258,40 +296,40 @@ export function grab(s, p) {
       say('put', { k });
     } else nope();
   } else if (c === 'P') {
-    if (held && VEG.has(held.k) && held.s === 'chopped' && sp.n < 3 && (sp.s === 'empty' || sp.s === 'part')) {
+    if (held && R.pot.takes.includes(held.k) && held.s === 'chopped' && sp.n < R.pot.need && (sp.s === 'empty' || sp.s === 'part')) {
       sp.n += 1;
-      sp.s = sp.n === 3 ? 'cooking' : 'part';
+      sp.s = sp.n === R.pot.need ? 'cooking' : 'part';
       sp.cook = 0;
       p.held = null;
       say('add', { k: held.k, n: sp.n });
-    } else if (held && held.k === 'bowl' && held.s === 'clean' && sp.s === 'done') {
-      held.s = 'stew';
+    } else if (held && held.k === R.pot.into && held.s === 'clean' && sp.s === 'done') {
+      held.s = R.pot.makes;
       Object.assign(sp, { n: 0, cook: 0, s: 'empty', prog: 0 });
       say('ladle');
     } else nope();
   } else if (c === 'W') {
-    if (held && (held.k === 'mug' || held.k === 'bowl') && held.s === 'dirty') {
+    if (held && CONTAINER(held.k) && held.s === 'dirty') {
       sp.dirty.push(held.k);
       p.held = null;
       say('put', { k: held.k });
     } else if (!held && sp.clean.length) take({ k: sp.clean.shift(), s: 'clean' });
     else nope();
   } else if (c === 'R') {
-    if (!held && (sp.mug > 0 || sp.bowl > 0)) {
-      const k = sp.mug > 0 ? 'mug' : 'bowl';
+    const k = Object.keys(sp).find((x) => sp[x] > 0);
+    if (!held && k) {
       sp[k] -= 1;
       take({ k, s: 'dirty' });
     } else nope();
   } else if (c === 'X') {
-    if (held && FOOD.has(held.k)) p.held = null;
-    else if (held && (held.s === 'ale' || held.s === 'stew')) held.s = 'dirty';
+    if (held && !CONTAINER(held.k)) p.held = null;
+    else if (held && held.s !== 'clean' && held.s !== 'dirty') held.s = 'dirty';
     else {
       nope();
       return ev;
     }
     say('bin', { k: held.k });
   } else if (c === 'S') {
-    const dish = dishOf(held);
+    const dish = dishOf(held, s.level);
     const o = dish && s.orders.find((x) => x.dish === dish);
     if (!o) {
       nope();
@@ -303,7 +341,7 @@ export function grab(s, p) {
     s.served += 1;
     s.orders = s.orders.filter((x) => x !== o);
     p.held = null;
-    if (DISHES[dish].back) s.returns.push({ at: s.t + L.times.back, k: DISHES[dish].back });
+    if (R.dishes[dish].back) s.returns.push({ at: s.t + L.times.back, k: R.dishes[dish].back });
     say('served', { dish, coins, order: o.id });
   }
   return ev;
@@ -320,7 +358,26 @@ export function work(s, p, dt) {
   const c = s.level.tiles[j][i];
   const sp = s.spots[key(i, j)];
   const T = s.level.times;
-  if (c === 'B' && sp.item && VEG.has(sp.item.k) && sp.item.s === 'raw') {
+  const R = recipesOf(s.level);
+  if (c === 'F' && !sp.item && R.line) {
+    // the fishing line: held till something bites
+    sp.prog += dt / T.fish;
+    ev.push({ type: 'reel', at, p: p.slot });
+    if (sp.prog >= 1) {
+      sp.item = { k: R.line.makes, s: 'raw' };
+      sp.prog = 0;
+      ev.push({ type: 'caught', at, p: p.slot, k: sp.item.k });
+    }
+  } else if (c === 'L' && sp.item && R.wrap && sp.item.k === R.wrap.takes.k && sp.item.s === R.wrap.takes.s) {
+    // the leaf table: wrapping (lembas in mallorn leaves), held down
+    sp.prog += dt / T.wrap;
+    ev.push({ type: 'chop', at, p: p.slot });
+    if (sp.prog >= 1) {
+      sp.item.s = R.wrap.makes;
+      sp.prog = 0;
+      ev.push({ type: 'chopped', at, p: p.slot, k: sp.item.k });
+    }
+  } else if (c === 'B' && sp.item && CHOPS(sp.item.k) && sp.item.s === 'raw') {
     sp.prog += dt / T.chop;
     ev.push({ type: 'chop', at, p: p.slot });
     if (sp.prog >= 1) {
@@ -362,6 +419,7 @@ export function stepRush(s, dt, grabs = []) {
   }
   for (const p of s.players) if (p.work) ev.push(...work(s, p, dt));
   const T = s.level.times;
+  const R = recipesOf(s.level);
   for (const [k, sp] of Object.entries(s.spots)) {
     const [i, j] = k.split(',').map(Number);
     const c = s.level.tiles[j][i];
@@ -377,21 +435,24 @@ export function stepRush(s, dt, grabs = []) {
       }
     } else if (c === 'O' && sp.item) {
       sp.prog += dt;
-      if (sp.item.k === 'dough' && sp.prog >= T.bake) {
-        sp.item = { k: 'loaf', s: 'baked' };
+      // (what the oven makes is done, then spoilt: a loaf baked then burnt,
+      // an axe forged then ruined)
+      const [done, spoilt] = KINDS[R.oven.makes];
+      if (sp.item.k === R.oven.takes && sp.prog >= T.bake) {
+        sp.item = { k: R.oven.makes, s: done };
         sp.prog = 0;
         ev.push({ type: 'baked', at });
-      } else if (sp.item.k === 'loaf' && sp.item.s === 'baked' && sp.prog >= T.char) {
-        sp.item.s = 'burnt';
-        ev.push({ type: 'burnt', at, k: 'loaf' });
+      } else if (sp.item.k === R.oven.makes && sp.item.s === done && sp.prog >= T.char) {
+        sp.item.s = spoilt;
+        ev.push({ type: 'burnt', at, k: R.oven.makes });
       }
-    } else if (c === 'T' && sp.item?.k === 'mug') {
+    } else if (c === 'T' && sp.item?.k === R.tap.into) {
       sp.prog += dt;
       if (sp.item.s === 'clean' && sp.prog >= T.fill) {
-        sp.item.s = 'ale';
+        sp.item.s = R.tap.makes;
         sp.prog = 0;
         ev.push({ type: 'filled', at });
-      } else if (sp.item.s === 'ale' && sp.prog >= T.spill) {
+      } else if (sp.item.s === R.tap.makes && sp.prog >= T.spill) {
         sp.item.s = 'dirty';
         sp.prog = 0;
         ev.push({ type: 'spilt', at });

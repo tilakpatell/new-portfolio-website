@@ -7,6 +7,9 @@
 //   label    as the map names it
 //   kind     'core' (a station) or 'fandom' (a planet)
 //   world    the world page's own name, or null when it isn't a world page
+//   pages    more world pages of its own, inside it ({ to, world })
+//   crashTo  where flying into it too fast takes you, if not `to`
+//   go       how going there reads with a ship ('Jump to'), if not landing
 //   place    what you land on or dock at, for the panel's button
 //   to       where it goes
 //   swatch   its colour on the mini-map and its label
@@ -18,9 +21,10 @@
 //   palette  the colours it's painted in
 
 // how much bigger than its size number each kind is drawn, in map units:
-// the planets big against the ship, the stations a little less so
-const STATION = 2;
-const PLANET = 16; // the fandoms are worlds: far bigger than the ship (0.26 long), as far-off planets are
+// the planets huge against the ship (0.26 long: a hundred and more of it
+// across, as far-off worlds are), the stations a good deal less so
+const STATION = 7;
+const PLANET = 28;
 
 const CORE = [
   {
@@ -95,15 +99,23 @@ const FANDOMS = [
   {
     id: 'starwars',
     label: 'Star Wars',
-    world: 'Death Star',
-    to: '/deathstar',
+    // a universe of its own: the jump goes to the whole galaxy (galaxy/),
+    // the Death Star its own page inside it (and flying into it here, at
+    // speed, still puts you aboard)
+    world: 'A galaxy far, far away',
+    place: 'a galaxy far, far away',
+    go: 'Jump to', // (not somewhere to land on)
+    to: '/galaxy',
+    pages: [{ to: '/deathstar', world: 'Death Star' }],
+    crashTo: '/deathstar',
     swatch: '#ffe81f',
     accent: '#ffe81f',
     rim: '#c9ced6', // the station's own grey, not the crawl's yellow
-    size: 3.75, // the Death Star itself (60 across the map, after PLANET), its trench run round its middle
+    size: 5.36, // the Death Star itself (150 in radius, after PLANET), its trench run round its middle
     reach: 1.45, // Alderaan orbits it close in
-    trench: { segments: 34 },
+    trench: { segments: 85 }, // (sections the size the ship flies down, all the way round)
     airless: true, // a station: no air glowing round it (from inside its trench it would wash the view out)
+    plated: true, // and on foot, its ground's hull plating, with blocks standing on it for rocks (footScene.js)
     palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
   },
   {
@@ -180,9 +192,9 @@ const FANDOMS = [
   {
     id: 'gaming',
     label: 'Gaming',
-    world: null,
-    place: 'the Game Boy',
-    to: '/projects/gameboy-emulator',
+    world: 'Dot Matrix',
+    place: 'Dot Matrix island',
+    to: '/dot-matrix',
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
     rim: '#6f9a1c', // the screen's lightest green would glare as air
@@ -192,9 +204,9 @@ const FANDOMS = [
   {
     id: 'travel',
     label: 'Travel',
-    world: null,
+    world: 'Earth',
     place: 'Earth',
-    to: '/travel',
+    to: '/earth',
     swatch: '#5cb8ff',
     accent: '#5cb8ff',
     size: 0.68,
@@ -210,6 +222,18 @@ const FANDOMS = [
     size: 0.62,
     palette: { base: '#0f6b70', dark: '#06323a', light: '#e9d9a6', glow: '#f2c45a' },
   },
+  {
+    id: 'invincible',
+    label: 'Invincible',
+    world: 'Invincible',
+    place: 'the Graysons’ city',
+    to: '/invincible',
+    swatch: '#ffd23a',
+    accent: '#ffd23a',
+    rim: '#e8743a', // Viltrum's own air, not the suit's yellow
+    size: 0.64,
+    palette: { base: '#a8482a', dark: '#4a1a10', light: '#e6a05a', glow: '#ffd23a' },
+  },
 ].map((u) => ({ ...u, size: u.size * PLANET, kind: 'fandom', place: u.place ?? u.world }));
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
@@ -218,8 +242,8 @@ const BY_ID = new Map(UNIVERSES.map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/deathstar' → starwars, '/universe/x' → none.
-export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname);
+// The universe a page belongs to: '/galaxy' and '/deathstar' → starwars, '/universe/x' → none.
+export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
 
 // WCAG contrast ratio between two '#rrggbb' colours.
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

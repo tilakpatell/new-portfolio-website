@@ -1,0 +1,133 @@
+/* The Avengers compound, the world: the compound to walk about, its HUD, and
+   the games that open over the page. Stark-HUD glass over a golden-hour
+   sky: brushed steel for the names, arc-reactor cyan for what you can do. */
+
+.cw-world {
+  --cw-ink: #f4f7fb;
+  --cw-glass: rgba(10, 16, 26, 0.7);
+  --cw-glass-hi: rgba(12, 20, 32, 0.9);
+  --cw-line: rgba(160, 210, 255, 0.32);
+  --cw-cyan: #8fe9ff;
+  position: relative;
+  z-index: 10;
+  padding-top: var(--nav-h);
+}
+
+.cw-stage {
+  position: relative;
+  height: clamp(30rem, calc(100svh - var(--nav-h)), 56rem);
+  overflow: hidden;
+  background: linear-gradient(180deg, #8fb2cf 0%, #cfd8d6 48%, #e9d9b8 60%, #6f8f4a 62%, #4f6f36 100%);
+  border-bottom: 1px solid rgba(120, 170, 220, 0.25);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cw-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.9s ease; touch-action: pan-y; cursor: grab; }
+.cw-canvas:active { cursor: grabbing; }
+.cw-canvas[data-on] { opacity: 1; }
+.cw-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #13202e; font: 600 0.82rem/1 var(--font-sans); font-stretch: 125%; letter-spacing: 0.16em; text-transform: uppercase; }
+
+/* the HUD sits over the compound; only its controls take the pointer */
+.cw-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.75rem, 2vw, 1.25rem); pointer-events: none; }
+.cw-hud > * { pointer-events: auto; }
+.cw-hud-top { top: 0; align-items: flex-start; }
+.cw-hud-bottom { bottom: 0; align-items: flex-end; padding-right: calc(16px + 42px + 0.9rem); } /* clear of the site's guide button */
+.cw-brand { display: grid; gap: 0.5rem; max-width: min(34rem, 60%); pointer-events: none; }
+.cw-eyebrow { margin: 0; color: var(--cw-ink); font: 600 0.7rem/1.2 var(--font-sans); font-stretch: 125%; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
+.cw-title {
+  margin: 0;
+  font: 400 clamp(2.4rem, 1.4rem + 3.4vw, 4.2rem)/0.92 'Bebas Neue', Impact, sans-serif;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #ffffff 0%, #dfe6ee 42%, #8d99a8 58%, #eef2f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.55));
+}
+.cw-objective { display: inline-flex; align-items: flex-start; gap: 0.5rem; justify-self: start; margin: 0; padding: 0.5rem 0.8rem; border: 1px solid var(--cw-line); border-radius: 6px; background: var(--cw-glass); color: var(--cw-ink); font: 500 clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem)/1.4 var(--font-sans); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.cw-objective span { color: var(--cw-cyan); font-size: 0.7em; line-height: 2; }
+.cw-side { display: grid; justify-items: end; gap: 0.5rem; }
+.cw-map { width: 150px; height: 150px; border-radius: 50%; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(160, 210, 255, 0.25); }
+.cw-chip { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.42rem 0.75rem; border: 1px solid var(--cw-line); border-radius: 6px; background: var(--cw-glass); color: var(--cw-ink); font: 600 0.82rem/1.2 var(--font-sans); white-space: nowrap; }
+button.cw-chip { cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+button.cw-chip:hover, button.cw-chip:focus-visible { background: var(--cw-glass-hi); border-color: var(--cw-cyan); }
+.cw-chip b { color: var(--cw-cyan); font-variant-numeric: tabular-nums; }
+.cw-stones .stone-dot { width: 0.62rem; height: 0.62rem; opacity: 0.28; box-shadow: none; }
+.cw-stones .stone-dot[data-on] { opacity: 1; box-shadow: 0 0 8px var(--glow); }
+.cw-world kbd, .cw-place kbd { margin-left: 0.4rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.75; }
+
+/* who's talking: a bubble over their head */
+.cw-bubble { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+.cw-bubble > div { position: absolute; left: 0; bottom: 10px; display: grid; gap: 0.2rem; width: max-content; max-width: min(18rem, 70vw); padding: 0.55rem 0.75rem; border: 1px solid var(--cw-line); border-radius: 10px; background: var(--cw-glass-hi); color: var(--cw-ink); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); transform: translateX(-50%); font: 500 0.88rem/1.35 var(--font-sans); }
+.cw-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; background: var(--cw-glass-hi); border-right: 1px solid var(--cw-line); border-bottom: 1px solid var(--cw-line); transform: translateX(-50%) rotate(45deg); }
+.cw-bubble b { color: var(--cw-cyan); font: 600 0.68rem/1.1 var(--font-sans); font-stretch: 125%; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* at a door: what it is, its stone, and the way in */
+.cw-door { --cw-accent: var(--cw-cyan); position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); z-index: 2; display: grid; justify-items: center; gap: 0.3rem; width: min(24rem, calc(100% - 2rem)); padding: 0.85rem 1rem 1rem; border: 1px solid color-mix(in srgb, var(--cw-accent) 60%, transparent); border-radius: 10px; background: var(--cw-glass-hi); color: var(--cw-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), 0 0 24px color-mix(in srgb, var(--cw-accent) 22%, transparent); animation: cw-up 0.2s ease-out both; }
+.cw-door-sub { margin: 0; color: var(--cw-accent); font: 600 0.68rem/1.2 var(--font-sans); font-stretch: 125%; letter-spacing: 0.14em; text-transform: uppercase; }
+.cw-door-name { margin: 0; font: 400 clamp(1.5rem, 1.2rem + 1vw, 2rem)/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.03em; }
+.cw-door-stone { display: inline-flex; align-items: center; gap: 0.45rem; margin: 0; color: #c9d4e0; font-size: 0.86rem; line-height: 1.35; }
+.cw-door-stone .stone-dot { width: 0.7rem; height: 0.7rem; opacity: 0.45; }
+.cw-door-stone .stone-dot[data-on] { opacity: 1; }
+.cw-door .btn { margin-top: 0.35rem; }
+.cw-world .btn-primary, .cw-place .btn-primary { background: var(--cw-accent, var(--cw-cyan)); color: #06121c; border-color: transparent; }
+.cw-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--cw-ink); border-color: rgba(255, 255, 255, 0.35); }
+.cw-cards-wrap .btn-ghost { background: transparent; color: inherit; border-color: var(--border); }
+.cw-cards-wrap .btn-primary { background: var(--accent); color: var(--accent-ink, #fff); }
+.cw-stage[data-touch] .cw-hint { bottom: 10rem; }
+.cw-hint { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.5rem 0.85rem; border-radius: 6px; background: var(--cw-glass); color: var(--cw-ink); font: 500 0.84rem/1.35 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
+@keyframes cw-up { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* touch: the stick and the jump */
+.cw-stick { position: relative; width: 116px; height: 116px; border: 2px solid rgba(160, 210, 255, 0.45); border-radius: 50%; background: rgba(10, 16, 26, 0.35); touch-action: none; }
+.cw-stick span { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(230, 245, 255, 0.85); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
+.cw-jump { width: 76px; height: 76px; border: 2px solid rgba(160, 210, 255, 0.55); border-radius: 50%; background: rgba(10, 16, 26, 0.55); color: var(--cw-ink); font: 700 0.78rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; touch-action: none; }
+.cw-jump:active { background: rgba(143, 233, 255, 0.35); }
+
+/* the buildings, as a list to go to */
+.cw-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: clamp(0.7rem, 2vw, 1.2rem); bottom: clamp(0.7rem, 2vw, 1.2rem); z-index: 4; display: flex; flex-direction: column; width: min(26rem, calc(100% - 1.4rem)); border: 1px solid var(--cw-line); border-radius: 12px; background: var(--cw-glass-hi); color: var(--cw-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); overflow: hidden; animation: cw-in 0.18s ease-out both; }
+.cw-list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; border-bottom: 1px solid var(--cw-line); }
+.cw-list-head p { margin: 0; font: 400 1.4rem/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.04em; }
+.cw-list ol { flex: 1; margin: 0; padding: 0.4rem 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.cw-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.35rem 0.75rem; padding: 0.6rem 1rem; border-left: 3px solid transparent; }
+.cw-list li[data-next] { border-left-color: var(--cw-accent); background: rgba(255, 255, 255, 0.04); }
+.cw-list-n { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 1px solid var(--cw-line); border-radius: 50%; font: 700 0.78rem/1 var(--font-mono); }
+.cw-list li[data-done] .cw-list-n { border-color: var(--glow); background: var(--glow); color: #0a0f16; box-shadow: 0 0 10px var(--glow); }
+.cw-list-name { margin: 0; font-weight: 600; }
+.cw-list-sub { margin: 0.15rem 0 0; color: #a9b8c8; font-size: 0.82rem; line-height: 1.35; }
+.cw-list-acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+@keyframes cw-in { from { opacity: 0; transform: translateY(-6px); } }
+
+/* a game, open over the page */
+.cw-place { --cw-accent: #8fe9ff; position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); animation: cw-place-in 0.25s ease-out both; }
+.cw-place-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem clamp(1rem, 3vw, 2rem); background: linear-gradient(90deg, #0c1420, #142233); color: #f4f7fb; border-bottom: 2px solid var(--cw-accent); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2); }
+.cw-place-head .btn { background: rgba(255, 255, 255, 0.1); color: #f4f7fb; border-color: rgba(255, 255, 255, 0.4); }
+.cw-place-sub { margin: 0; color: var(--cw-accent); font: 600 0.7rem/1.2 var(--font-sans); font-stretch: 125%; letter-spacing: 0.14em; text-transform: uppercase; }
+.cw-place-title { margin: 0.1rem 0 0; font: 400 clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem)/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.03em; }
+.cw-place-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.cw-place-intro { display: grid; gap: 0.75rem; }
+.cw-place-stone { display: inline-flex; align-items: center; gap: 0.5rem; justify-self: start; margin: 0; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; font-size: 0.88rem; }
+.cw-place-stone .stone-dot { width: 0.7rem; height: 0.7rem; }
+.cw-place-stone:not([data-won]) .stone-dot { opacity: 0.45; box-shadow: none; }
+@keyframes cw-place-in { from { opacity: 0; transform: translateY(10px); } }
+
+/* without 3D: the compound from the air, and the buildings as cards */
+.cw-cards-wrap { padding-top: 2.5rem; padding-bottom: 1.5rem; }
+.cw-cards-grid { display: grid; gap: 2rem; align-items: start; }
+@media (min-width: 1024px) { .cw-cards-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); } }
+.cw-cards { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
+.cw-cards li { display: flex; flex-direction: column; align-items: flex-start; padding: 0.9rem 1.1rem; border: 1px solid var(--border); border-left: 3px solid var(--glow); border-radius: 8px; background: var(--surface); }
+.cw-cards .cw-list-sub { color: var(--muted); }
+
+@media (max-width: 639px) {
+  .cw-stage { height: calc(100svh - var(--nav-h)); min-height: 30rem; }
+  .cw-brand { max-width: 62%; }
+  .cw-eyebrow { display: none; }
+  .cw-map { width: 96px; height: 96px; }
+  .cw-chip { font-size: 0.74rem; padding: 0.35rem 0.55rem; }
+  .cw-door { bottom: 9.2rem; }
+  .cw-place-head .btn kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cw-door, .cw-list, .cw-place { animation: none; }
+}

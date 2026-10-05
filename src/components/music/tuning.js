@@ -1,6 +1,8 @@
-// The music room's tuning: one Sa for every instrument, the raga, and the
-// tanpura's first string, kept between visits. Pitches are just intonation
-// against Sa. Nothing here makes a sound.
+// The music room's tuning: one Sa for every instrument, the raga, the
+// tanpura's first string and how the sitar is set up, kept between visits.
+// Pitches are just intonation against Sa. Nothing here makes a sound.
+
+import { RAGAS, customRaga } from './ragas';
 
 // ── Sa ─────────────────────────────────────────────────────────────────────
 // Sa can be any note from C3 to B3. The tanpura's middle strings sound it.
@@ -25,36 +27,96 @@ export const CHROMATIC = ['S', 'r', 'R', 'g', 'G', 'm', 'M', 'P', 'd', 'D', 'n',
 export const swaraMark = (s) => (s === 'r' || s === 'g' || s === 'd' || s === 'n' ? 'komal' : s === 'M' ? 'tivra' : null);
 
 // ── Ragas ──────────────────────────────────────────────────────────────────
-// A phrase is written in sargam: N. is mandra Ni, S' is taar Sa, X>Y is a meend
-// from X to Y, X~ is an andolan (a slow sway on the note), X^Y a krintan (the
-// left hand pulls off to Y without a new stroke), - holds, | strikes the chikari.
-export const RAGAS = {
-  yaman: { name: 'Yaman', time: 'Evening', notes: 'SRGMPDN', first: 'Pa', phrase: "N. R G - R G M>P - | M G R - N. R S - -", beat: 0.42 },
-  bhairav: { name: 'Bhairav', time: 'Dawn', notes: 'SrGmPdN', first: 'Pa', phrase: "S G m d~ - P - | G m r~ - S - -", beat: 0.45 },
-  kafi: { name: 'Kafi', time: 'Night', notes: 'SRgmPDn', first: 'Pa', phrase: "S R g m P - | m g R g>R S - -", beat: 0.4 },
-  bhupali: { name: 'Bhupali', time: 'Evening', notes: 'SRGPD', first: 'Pa', phrase: "S R G - P G - | D P G R S - -", beat: 0.4 },
-  malkauns: { name: 'Malkauns', time: 'Late night', notes: 'Sgmdn', first: 'Ma', phrase: "n. S g m - | g m d n d m - | g m g S - -", beat: 0.42 },
-  darbari: { name: 'Darbari', time: 'Late night', notes: 'SRgmPdn', first: 'Pa', phrase: "S R g~ - R S - | n. S R g~ - m P - | d~ - n P - -", beat: 0.5 },
-};
+// The database is in ./ragas.js. A raga's notes sit at their just ratios
+// (SWARA) unless it tunes one differently (Darbari's ati komal Ga and Dha,
+// Todi's low komal notes). The player can also make a raga of their own,
+// kept in the tuning as `customRaga` and picked as 'custom'.
+export { RAGAS, THAATS, TIMES, customRaga } from './ragas';
+
+// A raga by id, the player's own included.
+export function ragaOf(id, t = tuning) {
+  if (id === 'custom') return customRaga(t.customRaga?.notes || 'SRGmPDN', t.customRaga?.name);
+  return RAGAS[id] || RAGAS.yaman;
+}
+export const isRaga = (id) => id === 'custom' || Object.hasOwn(RAGAS, id);
+
+// The swara nearest a ratio over Sa, and its octave (0 is the middle one), for naming a note heard.
+export function swaraOf(ratio) {
+  const oct = Math.floor(Math.log2(ratio) + 1 / 48); // a hair under Sa still counts as Sa
+  const r = ratio / 2 ** oct;
+  let best = 'S';
+  let dist = Infinity;
+  for (const s of CHROMATIC) {
+    const d = Math.min(Math.abs(Math.log2(r / SWARA[s])), Math.abs(Math.log2(r / (SWARA[s] * 2))));
+    if (d < dist) {
+      dist = d;
+      best = s;
+    }
+  }
+  // close enough to the next Sa up is that Sa
+  return Math.abs(Math.log2(r / 2)) < Math.abs(Math.log2(r / SWARA[best])) ? { s: 'S', oct: oct + 1 } : { s: best, oct };
+}
+
+// Where a raga plays a swara, over Sa.
+export const swaraIn = (raga, s) => raga?.tune?.[s] ?? SWARA[s];
 
 // ── The sitar's frets ──────────────────────────────────────────────────────
-// The neck runs from mandra Pa to taar Ga, as a sitar's twenty-odd frets do
-// above its open Ma string. With `all`, every one of the twelve swaras has a
-// fret (a sitar with its moveable frets set chromatically); otherwise only
-// the raga's notes do, the way a player sets the frets for a raga. Each fret
-// says whether its note is in the raga.
+// A sitar's frets are tied on with thread and can be slid along the neck: a
+// player sets them before playing, for the raga or the kind of raga. The
+// neck runs from mandra Pa to taar Ga, as a sitar's twenty-odd frets do above
+// its open Ma string, except where a setting says otherwise.
+//   all       every one of the twelve swaras (moveable frets set chromatically)
+//   regular   a sitar as it usually comes: the shuddha notes and komal Ni, Sa to taar Sa
+//   darbari   set for Darbari: Ga and Dha moved low, ati komal, for its heavy, slow andolan
+//   bhairavi  set for Bhairavi: komal Re, Ga, Dha and Ni
+//   raga      only the raga's own notes
+//   custom    the frets the player chose
+// Each fret says whether its note is in the raga, and whether it sits lower
+// than komal (ati komal).
 export const NECK_LOW = 0.74; // mandra Pa (3/4), with room for just intonation
 export const NECK_HIGH = 2.51; // taar Ga (5/2)
 
-export function frets(ragaId, { all = false } = {}) {
-  const raga = new Set(RAGAS[ragaId].notes);
+// The lower Ga and Dha of the Kanada ragas, Darbari above all: a Pythagorean
+// minor third and sixth, a little under the just komal notes (294 and 792
+// cents against 316 and 814).
+export const ATI_KOMAL = { g: 32 / 27, d: 128 / 81 };
+
+export const FRET_SETS = {
+  all: { name: 'All twelve notes', notes: CHROMATIC.join('') },
+  regular: { name: 'Regular', notes: 'SRGmPDnN', lo: 0.99, hi: 2.01 },
+  darbari: { name: 'Darbari', notes: 'SRgmPdn', tune: ATI_KOMAL },
+  bhairavi: { name: 'Bhairavi', notes: 'SrgmPdn' },
+  raga: { name: 'The raga’s own' },
+  custom: { name: 'Custom' },
+};
+export const isFretSet = (id) => Object.hasOwn(FRET_SETS, id);
+
+// The notes a custom setting keeps, in order up the octave; at least Sa.
+export function customNotes(text = '') {
+  const kept = CHROMATIC.filter((s) => String(text).includes(s));
+  return kept.length ? kept.join('') : 'S';
+}
+
+// The frets for a raga under a setting, from the nut up: { s, oct, ratio, inRaga, ati }.
+// The old { all } form still works: all twelve, or the raga's own.
+export function frets(ragaId, { set, all, custom } = {}) {
+  const id = isFretSet(set) ? set : all ? 'all' : 'raga';
+  const kind = FRET_SETS[id];
+  const own = ragaOf(ragaId);
+  const notes = new Set(id === 'raga' ? own.notes : id === 'custom' ? customNotes(custom) : kind.notes);
+  const raga = new Set(own.notes);
+  // set for the raga, the frets sit where the raga tunes its notes
+  const tune = id === 'raga' ? own.tune : kind.tune;
+  const lo = kind.lo ?? NECK_LOW;
+  const hi = kind.hi ?? NECK_HIGH;
   const out = [];
-  for (const oct of [-1, 0, 1]) {
+  for (const oct of [-1, 0, 1, 2]) {
     for (const s of CHROMATIC) {
-      const ratio = SWARA[s] * 2 ** oct;
-      if (ratio < NECK_LOW || ratio > NECK_HIGH) continue;
-      const inRaga = raga.has(s);
-      if (all || inRaga) out.push({ s, oct, ratio, inRaga });
+      if (!notes.has(s)) continue;
+      const at = tune?.[s] ?? SWARA[s];
+      const ratio = at * 2 ** oct;
+      if (ratio < lo || ratio > hi) continue;
+      out.push({ s, oct, ratio, inRaga: raga.has(s), ati: at < SWARA[s] * 2 ** (-10 / 1200) });
     }
   }
   return out;
@@ -62,7 +124,8 @@ export function frets(ragaId, { all = false } = {}) {
 
 // The tarab are tuned to the raga's notes, eleven of them from Sa up.
 export function tarabRatios(ragaId) {
-  const notes = [...RAGAS[ragaId].notes].map((s) => SWARA[s]);
+  const raga = ragaOf(ragaId);
+  const notes = [...raga.notes].map((s) => swaraIn(raga, s));
   const out = [];
   for (let oct = 1; out.length < 11; oct *= 2) for (const r of notes) if (out.length < 11) out.push(r * oct);
   return out;
@@ -70,11 +133,18 @@ export function tarabRatios(ragaId) {
 
 // ── The shared tuning ──────────────────────────────────────────────────────
 const KEY = 'tp-music';
-const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', allFrets: true }; // Sa = D
+// the chikari: filling the rests by itself, following the music or at a set speed (strokes a minute), and how hard
+// the sitar's frets: a setting (FRET_SETS), and the notes of a custom one; a raga of the player's own
+const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', customRaga: { notes: '', name: '' }, frets: 'all', customFrets: '', autoChikari: true, chikariFollow: true, chikariSpeed: 240, chikariLevel: 1 }; // Sa = D
 let tuning = (() => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null');
-    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && RAGAS[saved.raga]) return { ...DEFAULT_TUNING, ...saved, allFrets: saved.allFrets !== false };
+    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && isRaga(saved.raga)) {
+      // a visit from before the fret settings kept only whether all twelve were set
+      const fretSet = isFretSet(saved.frets) ? saved.frets : saved.allFrets === false ? 'raga' : 'all';
+      const customRaga = { notes: String(saved.customRaga?.notes || ''), name: String(saved.customRaga?.name || '').slice(0, 32) };
+      return { ...DEFAULT_TUNING, ...saved, customRaga, frets: fretSet, autoChikari: saved.autoChikari !== false, chikariFollow: saved.chikariFollow !== false };
+    }
   } catch {
     /* storage unavailable */
   }

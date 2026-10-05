@@ -299,6 +299,12 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       v.project(camera);
       return { x: ((v.x + 1) / 2) * size.w, y: ((1 - v.y) / 2) * size.h, on: v.z < 1 };
     },
+    // the other travellers online on the map (towns/travellers.js), and where
+    // your Frodo is, to tell them
+    travellers: (list) => world.travellers(list),
+    get step() {
+      return world.step;
+    },
     get frodoSheet() {
       return { x: world.frodo.x * SCALE + SHEET.w / 2, y: world.frodo.z * SCALE + SHEET.h / 2 };
     },

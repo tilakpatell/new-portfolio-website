@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { local, storage } from '../lib/hooks';
 import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
+import { partsUnlockedBy } from './universe/outfit';
+import { paintsFor } from './universe/paint';
 import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -62,6 +64,42 @@ export const ACHIEVEMENTS = {
   council: { name: 'Rickest Rick', desc: 'Talked your way out of the Council of Ricks' },
   votemorty: { name: 'Vote Morty', desc: 'Voted in the Citadel’s election (Candidate Morty won anyway)' },
   citadelout: { name: 'Get to the cruiser', desc: 'Got past Evil Morty’s Cop Ricks to the cruiser' },
+  amonsul: { name: 'Amon Sûl', desc: 'Climbed the old stair to the ruined watchtower on Weathertop' },
+  putitout: { name: 'Put it out, you fools!', desc: 'Stamped out Sam’s supper fire before the Nazgûl saw it' },
+  weathertop: { name: 'Fire against the dark', desc: 'Held the summit of Weathertop with a brand until Strider came' },
+  kingsfoil: { name: 'Kingsfoil', desc: 'Found three plants of athelas by lantern, as Sam' },
+  bruinen: { name: 'If you want him, come and claim him', desc: 'Rode with Arwen to the Ford of Bruinen, and the river rose' },
+  elrond: { name: 'The house of Elrond', desc: 'Woke in Rivendell, with Gandalf at your bedside' },
+  narsil: { name: 'The blade that was broken', desc: 'Laid the shards of Narsil back in their order' },
+  iwilltakeit: { name: 'I will take it', desc: 'Stood up at the Council of Elrond, and were heard' },
+  oldring: { name: 'My old ring', desc: 'Kept the Ring from Bilbo, gently, in his pavilion' },
+  fellowship: { name: 'The Fellowship of the Ring', desc: 'Gathered the Nine and led them out of Rivendell' },
+  dwarrowdelf: { name: 'Dwarrowdelf', desc: 'Followed your nose through the dark of Moria, and Gandalf risked a little more light' },
+  fooloftook: { name: 'Fool of a Took!', desc: 'Caught what you could as it all went down the well in Balin’s tomb' },
+  mithril: { name: 'More to this hobbit', desc: 'Kept out of the cave troll’s sight, and the mithril took the spear' },
+  flyyoufools: { name: 'Fly, you fools', desc: 'Ran the broken stair and crossed the Bridge of Khazad-dûm ahead of the Balrog' },
+  goldenwood: { name: 'The golden wood', desc: 'Came into Lothlórien under the Galadhrim’s bows, and followed Haldir in' },
+  carasgaladhon: { name: 'Caras Galadhon', desc: 'Climbed the great mallorn to the Lord and Lady of the wood' },
+  ipassthetest: { name: 'I pass the test', desc: 'Kept the Ring from the Mirror’s water, then offered it to Galadriel' },
+  earendil: { name: 'The light of Eärendil', desc: 'Gave out the Lady’s gifts, and took the phial' },
+  argonath: { name: 'The Pillars of the Kings', desc: 'Took the boats down the Anduin to the Argonath' },
+  parthgalen: { name: 'Parth Galen', desc: 'Made camp under Amon Hen, and gathered the wood' },
+  wanderalone: { name: 'None of us should wander alone', desc: 'Got away from Boromir in the woods with the Ring on' },
+  seatofseeing: { name: 'The Seat of Seeing', desc: 'Took the Ring off on Amon Hen before the Eye found you' },
+  runfrodo: { name: 'Run, Frodo!', desc: 'Got down through the Uruk-hai to the lake unseen' },
+  promise: { name: 'I made a promise', desc: 'Pulled Sam out of the lake, and crossed it together' },
+  elvenrope: { name: 'Real elvish rope', desc: 'Got down the cliffs of the Emyn Muil on Sam’s rope' },
+  swearontheprecious: { name: 'Sméagol will swear on the precious', desc: 'Caught Gollum at the foot of the cliff, and spared him' },
+  deadmarshes: { name: 'Don’t follow the lights', desc: 'Followed Gollum across the Dead Marshes, and hid from the Nazgûl' },
+  anotherway: { name: 'There is another way', desc: 'Watched the Black Gate open from the slope, unseen under the elven cloak' },
+  minasmorgul: { name: 'Minas Morgul', desc: 'Kept your eyes off the dead city while the Witch-king’s host went by' },
+  stairs: { name: 'The endless stair', desc: 'Climbed the stairs of Cirith Ungol behind Gollum' },
+  aiyaearendil: { name: 'Aiya Eärendil Elenion Ancalima', desc: 'Got through Shelob’s lair by the light of the phial' },
+  samwisethebrave: { name: 'Samwise the Brave', desc: 'Fought Shelob off Frodo with Sting and the phial' },
+  tower: { name: 'I’m not going to leave you', desc: 'Got past the orcs and up the Tower of Cirith Ungol to Frodo' },
+  maggots: { name: 'Get in line, you maggots', desc: 'Kept your place in the orc column down into Gorgoroth' },
+  carryyou: { name: 'I can carry you', desc: 'Carried Frodo up the slopes of Mount Doom to the door' },
+  eagles: { name: 'The eagles are coming', desc: 'Flew out of the eruption with the eagles, at the end of all things' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
@@ -71,7 +109,12 @@ export const ACHIEVEMENTS = {
   hulk: { name: 'That’s my secret', desc: 'Ran 2,000 m through Midtown at Smash Run' },
   whatever: { name: 'Whatever it takes', desc: 'Won all six Infinity Stones back on the compound, and snapped' },
   quinjet: { name: 'Get this man a shield', desc: 'Flew the Tesseract into the hangar at Tesseract Run' },
+  spidey: { name: 'Your friendly neighbourhood', desc: 'Swung two kilometres down the avenue to school at Thwip!' },
+  thinkmark: { name: 'Think, Mark!', desc: 'Saw Omni-Man off over the city' },
+  regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
+  fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
+  passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 
@@ -83,6 +126,15 @@ const newThemes = (themeId) => {
   const names = FAN_THEMES.filter((f) => f.achievement === egg).map((f) => THEMES[f.id].company);
   if (names.length < 2) return `New theme: ${names[0] ?? THEMES[themeId].company}.`;
   return `New themes: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
+};
+// "New in the hangar: …": the paint jobs and ship parts an achievement opens
+// on the universe map (universe/outfit.js), or null.
+const list = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+const newInHangar = (id) => {
+  const paints = paintsFor(id).map((p) => p.name);
+  const parts = partsUnlockedBy(id).map((p) => p.name);
+  const said = [paints.length ? `${list(paints)} ${paints.length === 1 ? 'paint' : 'paints'}` : null, parts.length ? list(parts) : null].filter(Boolean);
+  return said.length ? `New in your ship’s hangar: ${said.join('; ')}.` : null;
 };
 const KEY = 'tp-achievements';
 
@@ -99,8 +151,8 @@ export function AchievementProvider({ children }) {
   const { pathname } = useLocation();
   const { seen } = useTheme();
 
-  const notify = useCallback((title, desc = '', kind = 'note', gif = null) => {
-    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc, gif }]);
+  const notify = useCallback((title, desc = '', kind = 'note', gif = null, hangar = null) => {
+    setQueue((q) => [...q, { key: `${Date.now()}-${Math.random()}`, kind, title, desc, gif, hangar }]);
   }, []);
 
   const unlock = useCallback(
@@ -111,7 +163,7 @@ export function AchievementProvider({ children }) {
       setUnlocked(next);
       local.set(KEY, next);
       const theme = FAN_THEMES.find((t) => t.achievement === id);
-      notify(ACHIEVEMENTS[id].name, ACHIEVEMENTS[id].desc, theme ? `theme:${theme.id}` : 'achievement');
+      notify(ACHIEVEMENTS[id].name, ACHIEVEMENTS[id].desc, theme ? `theme:${theme.id}` : 'achievement', null, newInHangar(id));
     },
     [notify],
   );
@@ -165,6 +217,7 @@ export function AchievementProvider({ children }) {
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
               {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colors.</p>}
+              {toast.hangar && <p className="mt-1 text-sm text-body">{toast.hangar}</p>}
               {toast.gif && <Gif name={toast.gif} eager />}
             </div>
           </div>

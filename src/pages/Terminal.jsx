@@ -86,7 +86,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Worlds: worlds · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · music', 'dim'),
+  L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · schwifty · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
@@ -428,6 +428,12 @@ export default function Terminal() {
         setTimeout(() => navigate('/deathstar'), 500);
         return [L('  Retrieving the Death Star plans…', 'ok')];
       },
+      galaxy: (arg) => {
+        // galaxy hoth: straight there, out of hyperspace
+        const at = arg && /^[a-z0-9-]+$/i.test(arg) ? `/galaxy/${arg.toLowerCase()}` : '/galaxy';
+        setTimeout(() => navigate(at), 500);
+        return [L('  A long time ago in a galaxy far, far away….', 'ok'), L('  Punch it.', 'dim')];
+      },
       moria: () => {
         setTimeout(() => navigate('/middle-earth'), 400);
         return [L('  Speak, friend, and enter…', 'ok')];
@@ -456,9 +462,18 @@ export default function Terminal() {
         setTimeout(() => navigate('/c-137'), 400);
         return [L('  Firing the portal gun at Dimension C-137…', 'ok')];
       },
+      dotmatrix: () => {
+        setTimeout(() => navigate('/dot-matrix'), 400);
+        return [L('  Inserting cartridge… DOT MATRIX', 'ok')];
+      },
+      earth: () => {
+        setTimeout(() => navigate('/earth'), 400);
+        return [L('  Cleared for departure from Syracuse…', 'ok')];
+      },
       worlds: () => [
         BLANK,
         L('  WORLDS', 'head'),
+        L(`  ${pad('galaxy', 13)}Star Wars: a galaxy far, far away, nineteen systems to fly and jump between (try galaxy hoth)`),
         L(`  ${pad('deathstar', 13)}Star Wars: the superlaser, the readout, the trench run`),
         L(`  ${pad('moria', 13)}The Lord of the Rings: the Doors of Durin, the road, the Bridge, Mordor, the Ring`),
         L(`  ${pad('avengers', 13)}Marvel: the Avengers compound building by building, the Tesseract, Thanos`),
@@ -466,6 +481,8 @@ export default function Terminal() {
         L(`  ${pad('cybertron', 13)}Transformers: Optimus and Megatron, Roll out, the ground bridge, the Iacon relics`),
         L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, Walt's Metherria, Hector's bell, Los Pollos Hermanos`),
         L(`  ${pad('c137', 13)}Rick and Morty: the portal gun, Portal panic, the Meeseeks box, interdimensional cable`),
+        L(`  ${pad('dotmatrix', 13)}Gaming: a Game Boy island in four greens, eight cartridges, the giant Game Boy`),
+        L(`  ${pad('earth', 13)}Travel: down from orbit onto the globe, then fly a plane to every place I've been`),
         L(`  ${pad('music', 13)}The music room: sitar, harmonium, tabla`),
       ],
       exit: () => {

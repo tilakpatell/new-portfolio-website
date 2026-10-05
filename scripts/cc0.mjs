@@ -41,6 +41,10 @@ export const TEXTURES = {
   'plate-deck': 'metal_plate',
   concrete: 'concrete_floor_worn_001',
   armour: 'blue_metal_plate',
+  // the music planet's courtyard: its paving, its parapet, the dunes beyond
+  'music-terrace': 'red_sandstone_pavement',
+  'music-wall': 'old_sandstone_02',
+  'music-dunes': 'aerial_sand',
 };
 
 // ambientCG materials (facades lit at night)
@@ -75,6 +79,7 @@ export const HDRIS = {
   jasper: 'rogland_sunset',
   mission: 'modern_buildings_night',
   kaon: 'abandoned_tank_farm_05',
+  'music-dusk': 'belfast_sunset_puresky',
 };
 
 // Poly Haven pure skies (no ground in them), one per stage: what you see

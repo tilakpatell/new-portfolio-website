@@ -115,6 +115,17 @@ function stroke(ac, part, t, vel, cents, dest) {
   return sound(ac, name, t, Math.min(1.2, vel * s.gain), rate, dest, s.ring ? s.drum : null);
 }
 
+// Listeners for each bol as it sounds (the music planet's tabla shows them).
+const bolListeners = new Set();
+export const onTablaBol = (fn) => {
+  bolListeners.add(fn);
+  return () => bolListeners.delete(fn);
+};
+function heard(ac, bol, at) {
+  if (!bolListeners.size) return;
+  setTimeout(() => bolListeners.forEach((fn) => fn(bol)), Math.max(0, (at - ac.currentTime) * 1000));
+}
+
 // Play a bol at `when` seconds from now. `gumki` plays the bayan's lifting Ge.
 // Returns a handle whose bend(semitones) pulls the bayan's pitch up as the
 // heel of the hand presses (the gumki), or null if there is no sound.
@@ -134,6 +145,7 @@ export function playBol(bol, { when = 0, vel = 0.9, gumki = false, human = true 
       const v = stroke(ac, part, at, vel * h.vel, h.cents, dest);
       if (STROKES[part].drum === 'bayan') bayan = v;
     }
+    heard(ac, bol, at);
     return bayan;
   };
   if (ready) {
@@ -189,6 +201,7 @@ export function startTheka(taalId, bpm, onBeat, { laya = 'thah', onTihai } = {})
     onTihai,
     wantTihai: false,
     tihai: null, // { cycle, plan }
+    last: null, // the last beat scheduled: { at, beat }
     interval: 0,
   };
   const n = () => state.taal.theka.length;
@@ -227,6 +240,7 @@ export function startTheka(taalId, bpm, onBeat, { laya = 'thah', onTihai } = {})
       }
       const at = state.next;
       notify(() => state.onBeat?.(i), at);
+      state.last = { at, beat: state.beat };
       state.next += len;
       state.beat++;
     }
@@ -235,6 +249,15 @@ export function startTheka(taalId, bpm, onBeat, { laya = 'thah', onTihai } = {})
   state.interval = setInterval(schedule, 25);
   theka = state;
   return true;
+}
+
+// The theka's beat, for playing along with it (the sitar's chikari): the last
+// beat scheduled (`beat`, counted from the first, sounding at `at` on the audio
+// clock), how long a beat is now, the laya and the taal. Null when it's quiet.
+export function thekaGrid() {
+  if (!theka?.last) return null;
+  const { last, next, laya, taal } = theka;
+  return { at: last.at, beat: last.beat, len: next - last.at, laya, taal };
 }
 
 export function setThekaTempo(bpm) {

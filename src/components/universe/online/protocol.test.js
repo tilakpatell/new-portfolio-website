@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE, FLOOD, GUARD, NAME_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, randomCallsign, readCursor, readHello, readHit, readPose, readShot, sample, writeCursor, writePose, writeShot } from './protocol';
+import { DAMAGE, FLOOD, GUARD, NAME_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readPose, readShot, sample, writeCursor, writeFoot, writePose, writeShot } from './protocol';
+import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -39,11 +40,18 @@ describe('randomCallsign', () => {
 
 describe('readHello', () => {
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, kills: 3, where: '/middle-earth' });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+  });
+  it('reads the paint job and parts fitted, and only ones it knows', () => {
+    const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
+    expect(readHello({ n: 'A', k: 'falcon', p: 'sith', o: writeOutfit(l) }).loadout).toEqual(l);
+    // a colour, a shape, a part in the wrong slot or too many: none of it's believed
+    expect(readHello({ n: 'A', k: 'falcon', p: '#ff0000', o: ['fusion', { r: 1 }, '<b>', 'portal', 'fins', 'srb', 'srb'] }).loadout).toEqual({ ...STOCK_LOADOUT, fins: 'fins' });
+    expect(readHello({ n: 'A', k: 'falcon', p: 'aws', o: 'srb' }).loadout).toEqual({ ...STOCK_LOADOUT, paint: 'aws' });
   });
   it('is null for anything that is not an object', () => {
     expect(readHello(null)).toBeNull();
@@ -72,10 +80,56 @@ describe('poses', () => {
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     expect(readPose([NaN, 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     const p = readPose([1e9, 0, 0, 0, 9, 0, 1e6, 0, 1]);
-    expect(p.x).toBe(6000);
+    expect(p.x).toBe(7500);
     expect(p.pitch).toBe(1.6);
-    expect(p.speed).toBe(300);
+    expect(p.speed).toBe(600);
     expect(p.hidden).toBe(true);
+  });
+});
+
+describe('crews on foot', () => {
+  const n = [0, 1, 0];
+  const walker = (who, extra = {}) => ({ who, n: [0.6, 0.8, 0], f: [0, 0, 1], h: 0.01, speed: 0.05, side: 0, aim: 1, ...extra });
+  const crew = { planet: 'breakingbad', kind: 'rv', ship: { n, f: [1, 0, 0] }, lead: walker('walt'), mate: walker('jesse') };
+
+  it('round-trips, through the wire as JSON', () => {
+    const f = readFoot(JSON.parse(JSON.stringify(writeFoot(crew))));
+    expect(f.planet).toBe('breakingbad');
+    expect(f.kind).toBe('rv');
+    expect(f.ship.n).toEqual([0, 1, 0]);
+    expect(f.lead.who).toBe('walt');
+    expect(f.lead.n[0]).toBeCloseTo(0.6, 4);
+    expect(f.lead.speed).toBeCloseTo(0.05, 4);
+    expect(f.lead.aim).toBe(1);
+    expect(f.mate.who).toBe('jesse');
+  });
+  it('says when the crew are back in, and takes a ship just landing with nobody out', () => {
+    expect(readFoot(writeFoot(null))).toEqual({ off: true });
+    const landing = readFoot(writeFoot({ ...crew, lead: null, mate: null }));
+    expect(landing.lead).toBeNull();
+    expect(landing.ship.n).toEqual([0, 1, 0]);
+  });
+  it('makes the directions unit ones, along the ground', () => {
+    const f = readFoot(writeFoot({ ...crew, lead: walker('walt', { n: [0, 2, 0], f: [0, 0.5, 1] }) }));
+    expect(Math.hypot(...f.lead.n)).toBeCloseTo(1, 6);
+    expect(Math.hypot(...f.lead.f)).toBeCloseTo(1, 6);
+    expect(f.lead.f[0] * f.lead.n[0] + f.lead.f[1] * f.lead.n[1] + f.lead.f[2] * f.lead.n[2]).toBeCloseTo(0, 6);
+  });
+  it('refuses a station, a stranger, junk numbers, and clamps the rest', () => {
+    expect(readFoot(writeFoot({ ...crew, planet: 'home' }))).toBeNull(); // (no landing on a station)
+    expect(readFoot(writeFoot({ ...crew, planet: 'nowhere' }))).toBeNull();
+    expect(readFoot(writeFoot({ ...crew, lead: walker('vader') }))).toBeNull();
+    expect(readFoot({ ...writeFoot(crew), s: [0, 0, 0, 1, 0, 0] })).toBeNull(); // (no way up)
+    expect(readFoot({ ...writeFoot(crew), a: ['walt', NaN, 1, 0, 0, 0, 1, 0, 0, 0, 0] })).toBeNull();
+    expect(readFoot([1, 2, 3])).toBeNull();
+    expect(readFoot(null)).toBeNull();
+    const fast = readFoot(writeFoot({ ...crew, lead: walker('walt', { speed: 99, h: 99 }), mate: walker('nobody') }));
+    expect(fast.lead.speed).toBeLessThan(1);
+    expect(fast.lead.h).toBeLessThan(0.1);
+    expect(fast.mate).toBeNull();
+  });
+  it('is rate-limited like a pose', () => {
+    expect(RATES.foot).toEqual(RATES.pose);
   });
 });
 

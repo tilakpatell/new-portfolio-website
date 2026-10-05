@@ -30,6 +30,16 @@ const PAGES = {
       ['The sitar string', 'Pluck it.'],
     ],
   },
+  '/galaxy': {
+    title: 'A galaxy far, far away',
+    tips: [
+      ['Flying', 'The same ship and the same controls as the universe map: W and S the throttle, A and D roll, the arrows swing the nose, Space boosts (out in the open the sublight drive opens up), hold F to fire, T and Q change target, V the cockpit, O the settings. Or drag anywhere like a stick.'],
+      ['Jumping to lightspeed', 'M (or Plot a course) opens the galaxy map. Pick a system, then Jump: the ship comes round onto the bearing for it, the stars stretch, and you’re in hyperspace. Filter the map by era or film to see the galaxy as it was then.'],
+      ['What’s there', 'Every system is a moment from the films: the Tantive IV over Tatooine, Death Squadron at Hoth, the Battle of Endor, the Death Star rounding Yavin (fly its trench), Starkiller Base drinking its sun, the Sith fleet at Exegol. Click a name to fly there.'],
+      ['Missions', 'Each system has one. Most are briefings for games still being built (with their own opening crawl); the trench run and boarding the Death Star are here now. Watch for its tractor beam at Alderaan.'],
+      ['Online', 'Go online and the other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
+    ],
+  },
   '/deathstar': {
     title: 'The Death Star',
     tips: [
@@ -48,6 +58,15 @@ const PAGES = {
       ['The code', 'Press an article to see what it comes to in practice.'],
     ],
   },
+  '/invincible': {
+    title: 'Invincible',
+    tips: [
+      ['Think, Mark!', 'You are Invincible, flying over the city. W, A, S and D fly the way the camera looks (so look down to dive), Space climbs, C drops and Shift goes flat out; drag the mouse or use the arrow keys to look round. J or a click throws a punch at whatever you’re locked on to (Tab picks another); K or a right-click dodges, and nothing can touch you for a moment. Four chapters: fly through your father’s rings in order; knock the Flaxans back through their portal (dodge their purple bolts); then Omni-Man and Thragg. A Viltrumite blocks a punch and hits back, unless he’s recovering from a charge: watch the ring close round him, dodge as it closes, then hit him while he’s open. A dodge just in time slows everything down and leaves him open for longer. On a touch screen, the left of the screen steers, a drag on the right looks, a tap punches. A controller works too.'],
+      ['The title card', 'Press it for the next episode. It has a rough season.'],
+      ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
+      ['Things your father said', 'Every card does something.'],
+    ],
+  },
   '/middle-earth': {
     title: 'Middle-earth',
     tips: [
@@ -62,8 +81,11 @@ const PAGES = {
   '/avengers': {
     title: 'Avengers HQ',
     tips: [
-      ['The map', 'Scroll to walk the compound, or pick a pin on the map (or a name under it). On a wide screen the map beside the tour shows where you are.'],
-      ['The buildings', 'Power up Stark’s reactor. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Throw Cap’s shield. Click anywhere on Hawkeye’s range. Tap Widow’s black bars. Make Banner angry three times.'],
+      ['The compound', 'You are Spider-Man. W A S D or the arrows walk, Shift runs, Space jumps, and dragging looks round (on a phone, the stick walks; push it all the way to run). Walk up to a door and press E (or the button) to go in: each building’s game opens over the page, and Escape or Back to the compound brings you out at its door. M lists the buildings, with Go there for each. Thor, Natasha, the Hulk and a training bot have something to say if you walk up to them.'],
+      ['Other players', 'See other players goes online (with your callsign, as the universe map does): everyone else walking the compound shows as a pale hologram with their name over them, and on the map in the corner as a dot. They can’t touch your games, nor you theirs; whoever goes into a building fades out until they come back.'],
+      ['The stones', 'Win a building’s game and its Infinity Stone hangs over the door (Clint’s range and Natasha’s operations room each give half the Soul Stone). The Space Stone, from the hangar, opens a portal over the helipad: walk under it to Titan.'],
+      ['Without 3D', 'The compound is drawn from the air, and its pins open the games, each in its simple version: power up Stark’s reactor, hold to lift Mjolnir (you are worthy once you have found ten easter eggs), throw Cap’s shield, click Hawkeye’s range, tap Widow’s black bars, make Banner angry three times.'],
+      ['The gate: Thwip!', 'Spider-Man, late for school. Hold Space (or the mouse, or a finger) to shoot a web at the wall ahead and swing; let go to fly. Let go on the upswing, past where the web caught, for a perfect release: faster, and a flip. A and D steer across the avenue (on a touch screen, hold on the left or right); W reels the web in to climb. Nothing to swing from over the cross streets, so carry your speed over them. Grab Peter’s backpacks on the way, beat the bell, and keep off the street: the traffic gets three chances.'],
       ['The hangar', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
     ],
   },
@@ -120,6 +142,25 @@ const PAGES = {
       ['Red alert', 'The Cop Ricks see in a cone and hear you running close by. The core, the kiosks and the planters hide you; the benches don’t. Get to the hangar.'],
     ],
   },
+  '/dot-matrix': {
+    title: 'Dot Matrix',
+    tips: [
+      ['Walk and jump', 'The arrows or W A S D walk, Space (or Z) jumps: hold it to jump higher. Q and E turn the camera an eighth of the way round, or drag the island. On a phone, the pad walks, A jumps and B acts. A controller works too.'],
+      ['B', 'X (or Enter) reads a sign, plays the giant Game Boy in the square when you stand in front of it, and takes you down a pipe you are standing on.'],
+      ['The cartridges', 'Eight of them, each one a project of mine: up the plateau, on top of Block Drop tower, in the snake’s pen, among the plants, on the cloud, out on the islet, on a roof and in the long grass. M lists them, with a hint for each you haven’t found.'],
+      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Wait for the gap in the snake. Three hearts, and a "?" block somewhere gives one back.'],
+      ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
+    ],
+  },
+  '/earth': {
+    title: 'Earth',
+    tips: [
+      ['From orbit', 'The Earth as it is right now: the sun is where it really is, so the night side is the real night. Drag to turn it, or pick a place to fly there. It comes down onto the globe on its own after a moment; M goes back up.'],
+      ['Fly', 'The arrows or W A S D: left and right turn, up and down climb and descend. Shift (or Space) goes faster. On a phone, the stick flies and the button goes faster. A controller works too.'],
+      ['The passport', 'Fly over a place to stamp your passport and get its postcard. P opens the passport; Fly here sets the autopilot, which follows the great circle there (Escape, or any turn, takes the controls back). The arrow at the bottom points at the next place, or wherever the autopilot is going.'],
+      ['Night', 'N keeps the sun over your shoulder, always day, if the real one has set where you are.'],
+    ],
+  },
   '/universe': {
     title: 'The universe',
     tips: [
@@ -139,8 +180,9 @@ const PAGES = {
   '/music': {
     title: 'The music room',
     tips: [
-      ['Tune up', 'Pick a Sa and a raga, then start the tanpura.'],
-      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa.'],
+      ['The music planet', 'The page opens on a courtyard at dusk: click it, then W A S D to walk, the arrows to turn, drag to look (on a phone, the stick and a swipe). Walk up to an instrument and press E to play it; whatever sounds glows, and its notes float up.'],
+      ['Tune up', 'Pick a Sa and a raga (forty of them, or one of your own), then start the tanpura.'],
+      ['Play', 'Click the sitar’s frets, the harmonium’s keys or the tabla. Everything tunes to the same Sa. Hold Space on the sitar for a chikari roll; Record the room keeps what you play.'],
     ],
   },
   '/terminal': {
@@ -172,6 +214,7 @@ export default function Guide() {
     (pathname.startsWith('/experience/') ? PAGES['/experience'] : null) ??
     (pathname === '/' || pathname.startsWith('/universe/') ? PAGES['/universe'] : null) ??
     (pathname.startsWith('/middle-earth/') ? PAGES['/middle-earth'] : null) ??
+    (pathname.startsWith('/galaxy/') && !pathname.endsWith('/mission') ? PAGES['/galaxy'] : null) ??
     (pathname.startsWith('/projects/') ? { title: 'This project', tips: [['The demo', 'The panel at the top is live: try it.']] } : null);
   const [tab, setTab] = useState('page');
   const panel = useRef(null);

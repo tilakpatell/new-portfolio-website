@@ -15,8 +15,9 @@ export const W = (x, y, z = 0) => new THREE.Vector3(x * U, z * U, y * U);
 
 // The walls of a prism standing on a footprint (plan units, either winding),
 // from z0 to z1 (units), with texture coordinates in metres along and up each
-// wall (over `tile`). Normals face out.
-export function prismWalls(foot, z0, z1, tile = 1) {
+// wall (over `tile`). Normals face out. `scale` is metres to a unit across
+// (`s`) and up (`v`): the walkable compound draws the plan at its own scale.
+export function prismWalls(foot, z0, z1, tile = 1, { s = U, v = U } = {}) {
   const pos = [];
   const nor = [];
   const uv = [];
@@ -31,13 +32,13 @@ export function prismWalls(foot, z0, z1, tile = 1) {
   const f = area > 0 ? foot : [...foot].reverse();
   let run = 0;
   for (let i = 0; i < f.length; i++) {
-    const a = W(f[i][0], f[i][1]);
-    const b = W(f[(i + 1) % f.length][0], f[(i + 1) % f.length][1]);
+    const a = new THREE.Vector3(f[i][0] * s, 0, f[i][1] * s);
+    const b = new THREE.Vector3(f[(i + 1) % f.length][0] * s, 0, f[(i + 1) % f.length][1] * s);
     const len = a.distanceTo(b);
     // outward, for a footprint counter-clockwise in (x, y)
     const n = new THREE.Vector3(b.z - a.z, 0, -(b.x - a.x)).normalize();
-    const y0 = z0 * U;
-    const y1 = z1 * U;
+    const y0 = z0 * v;
+    const y1 = z1 * v;
     const quad = [
       [a.x, y0, a.z, run, y0],
       [b.x, y0, b.z, run + len, y0],
@@ -80,19 +81,19 @@ export function prismWalls(foot, z0, z1, tile = 1) {
 }
 
 // A flat cap over a footprint at height z (units), uv in metres over `tile`.
-export function prismTop(foot, z, tile = 1) {
-  const shape = new THREE.Shape(foot.map(([x, y]) => new THREE.Vector2(x * U, -y * U)));
+export function prismTop(foot, z, tile = 1, { s = U, v = U } = {}) {
+  const shape = new THREE.Shape(foot.map(([x, y]) => new THREE.Vector2(x * s, -y * s)));
   const g = new THREE.ShapeGeometry(shape);
   g.rotateX(-Math.PI / 2);
-  g.translate(0, z * U, 0);
+  g.translate(0, z * v, 0);
   const uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / tile, uv.getY(i) / tile);
   return g;
 }
 
 // A flat shape on the ground at height y (metres), uv in metres.
-export function flatShape(foot, y = 0, tile = 1) {
-  const g = prismTop(foot, 0, tile);
+export function flatShape(foot, y = 0, tile = 1, scale) {
+  const g = prismTop(foot, 0, tile, scale);
   g.translate(0, y, 0);
   return g;
 }

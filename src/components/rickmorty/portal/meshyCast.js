@@ -44,10 +44,14 @@ export const MESHY = {
   bigcronenberg: { a: 'cronenberg', h: 3.9 },
   cromulon: { a: 'cromulon', h: 9.5 },
   evilmorty: { a: 'evilmorty', h: 1.95 },
+  summer: { a: 'summer', h: 1.6 },
+  beth: { a: 'beth', h: 1.68 },
+  jerry: { a: 'jerry', h: 1.78 },
 };
-const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty']);
-// and the set pieces round the arenas
-export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a)), 'cruiser', 'garage'];
+const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry']);
+const C137_PEOPLE = new Set(['summer', 'beth', 'jerry']);
+// and the set pieces round the arenas (the C-137 Smiths load with their own world)
+export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).filter((a) => !C137_PEOPLE.has(a))), 'cruiser', 'garage'];
 
 // a Morty clone's shirt: the yellow of Morty's texture swapped for another colour
 function shirted(map, shirt) {

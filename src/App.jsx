@@ -19,9 +19,12 @@ const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Travel = lazy(() => import('./pages/Travel'));
 const Caribbean = lazy(() => import('./pages/Caribbean'));
+const Invincible = lazy(() => import('./pages/Invincible'));
 const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
+const Galaxy = lazy(() => import('./pages/Galaxy'));
+const GalaxyMission = lazy(() => import('./pages/GalaxyMission'));
 const Music = lazy(() => import('./pages/Music'));
 const MiddleEarth = lazy(() => import('./pages/MiddleEarth'));
 const Scranton = lazy(() => import('./pages/Scranton'));
@@ -30,6 +33,8 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
+const DotMatrix = lazy(() => import('./pages/DotMatrix'));
+const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -211,8 +216,17 @@ function PaletteHost() {
 // element (Front, which holds the map), so React keeps the one map across
 // them: picking a planet at /, or the wordmark from /universe/marvel, moves
 // the camera instead of building the universe again. Middle-earth's places
-// (/middle-earth/moria) keep one page the same way, so its map stays up.
-const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname.startsWith('/middle-earth') ? '/middle-earth' : pathname);
+// (/middle-earth/moria) keep one page the same way, so its map stays up,
+// and so do the galaxy's systems (/galaxy/hoth), so a jump from one to the
+// next keeps the one scene (its missions' briefings are pages of their own).
+const pageKey = (pathname) =>
+  pathname === '/' || pathname.startsWith('/universe')
+    ? '/universe'
+    : pathname.startsWith('/middle-earth')
+      ? '/middle-earth'
+      : /^\/galaxy(\/[a-z0-9-]+)?$/.test(pathname)
+        ? '/galaxy'
+        : pathname;
 
 function Shell() {
   const { pathname } = useLocation();
@@ -250,9 +264,12 @@ function Shell() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/caribbean" element={<Caribbean />} />
+                <Route path="/invincible" element={<Invincible />} />
                 <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
+                <Route path="/galaxy/:system?" element={<Galaxy />} />
+                <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
@@ -261,6 +278,8 @@ function Shell() {
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
+                <Route path="/dot-matrix" element={<DotMatrix />} />
+                <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -269,7 +288,7 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />

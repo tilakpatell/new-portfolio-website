@@ -57,7 +57,8 @@ import { buildTraffic } from './trafficModels';
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
 
-const SKY_FAR = 2200; // how far off the background galaxies ride (inside the camera's far plane)
+const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
+const SKY_SIZE = SKY_FAR / 2200; // (their sizes below are at 2200)
 const LABEL_H = 0.15; // a name's height on screen, in clip units (about a thirteenth of the screen)
 const LABEL_W = 1024; // a name's row in the atlas, in px
 const LABEL_RH = 128;
@@ -408,7 +409,7 @@ void main() {
   col *= 0.45 + 0.55 * sqrt(mu);
   col *= mix(vec3(1.0, 0.62, 0.45), vec3(1.0), smoothstep(0.0, 0.55, mu));
   // from far off it burns brighter, so the whole disc blooms
-  float far = smoothstep(120.0, 700.0, length(cameraPosition - vW));
+  float far = smoothstep(600.0, 3500.0, length(cameraPosition - vW));
   col *= 1.0 + 1.3 * far;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
@@ -439,7 +440,7 @@ void main() {
     corona = inner * 1.15 + outer * (0.2 + 0.45 * smoothstep(-0.1, 0.8, rays));
     corona *= 1.0 - smoothstep(2.2, 3.0, d);
   }
-  float far = smoothstep(150.0, 900.0, vDist);
+  float far = smoothstep(750.0, 4500.0, vDist);
   float halo = (0.05 + 0.16 * far) / (1.0 + d * d * (0.9 - 0.6 * far)) + exp(-d * 0.9) * 0.12;
   halo *= 1.0 - smoothstep(uReach * 0.55, uReach, r);
   vec3 white = mix(uColor, vec3(1.0, 0.94, 0.86), 0.5);
@@ -719,6 +720,7 @@ const CITADEL_FRAG = `
 uniform vec3 uLight;
 uniform vec3 uLightColor;
 uniform float uTime;
+uniform float uK; // its size, against the radius of 18 its profile is drawn for
 varying vec3 vObj;
 varying vec3 vW;
 varying vec3 vNW;
@@ -728,7 +730,7 @@ void main() {
   vec3 N = nrm(vNW);
   vec3 V = nrm(cameraPosition - vW);
   vec3 L = nrm(uLight - vW);
-  vec3 p = vObj;
+  vec3 p = vObj / max(uK, 1e-3); // (its patterns are drawn at a radius of 18)
   float part = floor(vPart + 0.5);
   float ndl = dot(N, L);
   // the show's flat light: two steps and a dark side that isn't black
@@ -802,6 +804,7 @@ const CITADEL_GLASS_FRAG = `
 uniform vec3 uLight;
 uniform vec3 uLightColor;
 uniform float uTime;
+uniform float uK;
 varying vec3 vObj;
 varying vec3 vW;
 varying vec3 vNW;
@@ -815,7 +818,7 @@ void main() {
   vec3 H = nrm(L + V);
   float sp = pow(sat(dot(N, H)), 60.0);
   // the dome's panes: a faint diamond lattice
-  vec2 g = vec2(atan(vObj.z, vObj.x) * 9.0, vObj.y * 2.2);
+  vec2 g = vec2(atan(vObj.z, vObj.x) * 9.0, vObj.y / max(uK, 1e-3) * 2.2);
   vec2 gf = abs(fract(g) - 0.5);
   float lattice = (1.0 - smoothstep(0.0, 0.06, min(gf.x, gf.y))) * (1.0 - smoothstep(0.3, 0.8, max(fwidth(g).x, fwidth(g).y)));
   // lit like the rest: the side to the sun glows yellow-green, the far side
@@ -1736,10 +1739,10 @@ export function buildDeepSpace({ small = false } = {}) {
     }
     const geo = mergeGeometries(pieces);
     for (const p of pieces) p.dispose();
-    mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT } }), g);
+    mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }), g);
     const glassGeo = mergeGeometries(glass.map((d) => d.toNonIndexed()));
     for (const d of glass) d.dispose();
-    mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
+    mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
     // the warm haze it hangs in, as the show paints its sky: a soft glow
     // that always faces you, behind and round it
     const haze = mesh(
@@ -1879,8 +1882,8 @@ export function buildDeepSpace({ small = false } = {}) {
       const roll = rand() * TAU;
       const r2 = right.clone().multiplyScalar(cos(roll)).addScaledVector(up, sin(roll));
       const u2 = up.clone().multiplyScalar(cos(roll)).addScaledVector(right, -sin(roll));
-      const hw = size / 2;
-      const hh = (size / 2) * squash;
+      const hw = (size * SKY_SIZE) / 2;
+      const hh = ((size * SKY_SIZE) / 2) * squash;
       const cu = (cell % 2) * 0.5;
       const cv = cell < 2 ? 0.5 : 0;
       [
@@ -1913,10 +1916,10 @@ export function buildDeepSpace({ small = false } = {}) {
   {
     const rand = rng('deep-debris');
     const fields = [
-      { at: [360, 12, -300], dir: [0.62, 0.05, 0.78], len: 230, wide: 34, thick: 7 },
-      { at: [-215, -18, 330], dir: [0.9, 0.08, -0.42], len: 210, wide: 30, thick: 6 },
+      { at: [1800, 60, -1500], dir: [0.62, 0.05, 0.78], len: 700, wide: 90, thick: 20 },
+      { at: [-1075, -90, 1650], dir: [0.9, 0.08, -0.42], len: 640, wide: 80, thick: 18 },
     ];
-    const per = small ? 70 : 170;
+    const per = small ? 160 : 420;
     const rock = new THREE.IcosahedronGeometry(1, 1);
     {
       const p = rock.attributes.position;
@@ -1976,7 +1979,7 @@ mat3 tumble(float id) {
           .addScaledVector(dir, along)
           .addScaledVector(side, across * f.wide * thin + bend)
           .addScaledVector(upv, (rand() - 0.5) * f.thick * thin);
-        const size = 0.18 + rand() ** 5 * 3.6;
+        const size = 0.3 + rand() ** 5 * 7;
         sc.set(size, size * (0.7 + rand() * 0.5), size * (0.8 + rand() * 0.4));
         q.setFromEuler(e.set(rand() * 6.3, rand() * 6.3, rand() * 6.3));
         im.setMatrixAt(i, mm.compose(p, q, sc));
