@@ -77,7 +77,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; // for the dish rim's shadow in the bowl
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const big = renderer.capabilities.maxTextureSize >= 4096 && !coarse;
   let ratio = pixelRatio(1.5); // lib/device: lower on a phone or a weak device

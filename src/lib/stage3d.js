@@ -90,7 +90,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const full = Math.min(soft ? 1 : 1.75, fit.ratio, window.devicePixelRatio || 1);
   let ratio = full;
   renderer.setPixelRatio(ratio);

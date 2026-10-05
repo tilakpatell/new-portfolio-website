@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
@@ -11,12 +11,17 @@ import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { COLLIDERS, CRYSTALS, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, onRoad, progress, startRun, stepCar, stepHeat, stepRun, timeName } from './rules';
+import { COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, timeName } from './rules';
+import { carSound } from './sounds';
 import './world.css';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
-// ./scene.js; this is the wheel, the HUD and the doors. Each place opens over
+// ./scene.js; this is the wheel, the HUD and the doors. The car slides if
+// it's asked to: Space is the handbrake, which swings the tail round (a
+// handbrake turn, a drift, a J-turn out of reverse), and the wheel's speed,
+// how much the car catches its own slides and how tightly the camera follows
+// are the driver's to set (the Driving panel, or O). Each place opens over
 // the page (its game, or Walt's house, or Saul's office); leave and you're
 // back in the car at its door. Without 3D, the places are a grid of cards.
 // Online (the site's own switch), everyone else driving Albuquerque shows as
@@ -62,11 +67,17 @@ function honk() {
   }
 }
 const clockText = (s) => `${Math.floor(s / 60)}:${String(Math.ceil(s) % 60).padStart(2, '0')}`;
-const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
+const KEYS = { up: ['ArrowUp', 'w'], down: ['ArrowDown', 's'], left: ['ArrowLeft', 'a'], right: ['ArrowRight', 'd'] };
+// a key by one name whether or not Shift or Caps Lock is on (a W let go as
+// "w" would otherwise stay held, and the car would drive on by itself)
+const keyOf = (e) => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+// the keys a slider keeps for itself while it has the focus
+const SLIDER = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
 const BOUND = WORLD_RADIUS + 20; // (how far out a driver's step can be: the fence, and a bit)
 // where you are, for the other drivers (towns/travellers.js's step)
 const stepOf = (car, speed = car.speed) => ({ x: car.x, z: car.z, face: Math.atan2(Math.sin(car.yaw), Math.cos(car.yaw)), speed: Math.abs(speed) });
 const DRIVE = new Set(Object.values(KEYS).flat().concat(' '));
+const MPH = 2.23694;
 
 export default function AbqWorld() {
   const three = use3D();
@@ -155,7 +166,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   if (!sim.current) {
     const parked = local.get(PARKED, null);
     const ok = parked && Number.isFinite(parked.x) && Math.hypot(parked.x, parked.z) < WORLD_RADIUS;
-    sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id };
+    sim.current = { car: { ...(ok ? { x: parked.x, z: parked.z, yaw: Number.isFinite(parked.yaw) ? parked.yaw : SPAWN.yaw } : SPAWN), speed: 0, slide: 0, yawRate: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
   }
   const { unlock } = useAchievements();
   // the other drivers online, as ghosts (towns/useTravellers)
@@ -212,6 +223,17 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     sim.current.clock = next.id;
   }, [api]);
   const [list, setList] = useState(false);
+  // the driving settings: live (the frame loop reads them) and kept
+  const [driving, setDriving] = useState(() => readDriving(local.get(DRIVING_KEY, null)));
+  const drivingRef = useRef(driving);
+  drivingRef.current = driving;
+  const [tuning, setTuning] = useState(false);
+  const changeDriving = useCallback((next) => {
+    const d = readDriving(next);
+    setDriving(d);
+    local.set(DRIVING_KEY, d);
+  }, []);
+  const speedo = useRef(null);
   const progRef = useRef(prog);
   progRef.current = prog;
   const hudKey = useRef('');
@@ -246,6 +268,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       ro?.disconnect();
       const s = sim.current;
       local.set(PARKED, { x: s.car.x, z: s.car.z, yaw: s.car.yaw });
+      s.sound?.stop();
+      s.sound = null;
       api.current?.dispose();
       api.current = null;
     };
@@ -266,43 +290,82 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     return () => clearInterval(t);
   }, [inside, travRef]);
 
-  // keys: drive while the world's on screen and nothing's open over it
+  // keys: drive while the world's on screen and nothing's open over it. (The
+  // listeners read what they need through `acts`, so they stay put while
+  // you drive: put back on every render, they'd let go of every key held
+  // each time a toast came up or a door came near.)
   const live = gl === 'on' && inView && !inside;
   const near = hud.near;
+  const acts = useRef(null);
+  acts.current = { near, enter, nextTime, runDelivery, throwPizza, washCar };
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  // the engine starts with the first key or touch (a browser plays nothing before one)
+  const startSound = useCallback(() => {
+    const s = sim.current;
+    if (!liveRef.current || s.sound) return;
+    if (audioContext()) s.sound = carSound();
+  }, []);
   useEffect(() => {
     if (!live) return undefined;
     const s = sim.current;
     const down = (e) => {
-      if (typing(e.target)) return;
-      if (DRIVE.has(e.key)) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = keyOf(e);
+      // a slider in the Driving panel takes its own arrows; a text box, everything
+      const t = e.target;
+      const slider = t instanceof HTMLInputElement && t.type === 'range';
+      if (slider ? SLIDER.has(key) : typing(t)) return;
+      const a = acts.current;
+      if (DRIVE.has(key)) {
         e.preventDefault();
-        s.keys.add(e.key);
-        audioContext();
+        // (Space on a button that was clicked would press it again on the way up)
+        if (key === ' ' && t instanceof HTMLButtonElement) t.blur();
+        s.keys.add(key);
+        startSound();
         return;
       }
-      if ((e.key === 'e' || e.key === 'E' || e.key === 'Enter') && near && !(e.target instanceof HTMLButtonElement)) {
+      if ((key === 'e' || key === 'Enter') && a.near && !(t instanceof HTMLButtonElement)) {
         e.preventDefault();
-        enter(near);
+        a.enter(a.near);
       }
-      if (e.key === 'm' || e.key === 'M') setList((v) => !v);
-      if (e.key === 't' || e.key === 'T') nextTime();
-      if (e.key === 'r' || e.key === 'R') runDelivery();
-      if (e.key === 'p' || e.key === 'P') throwPizza();
-      if (e.key === 'h' || e.key === 'H') honk();
-      if ((e.key === 'e' || e.key === 'E') && !near) washCar();
+      if (key === 'm') {
+        setList((v) => !v);
+        setTuning(false);
+      }
+      if (key === 't') a.nextTime();
+      if (key === 'r') a.runDelivery();
+      if (key === 'p') a.throwPizza();
+      if (key === 'h') honk();
+      if (key === 'o') {
+        setTuning((v) => !v);
+        setList(false);
+      }
+      if (key === 'Escape') setTuning(false);
+      if (key === 'e' && !a.near) a.washCar();
     };
-    const up = (e) => s.keys.delete(e.key);
-    const blur = () => s.keys.clear();
+    const up = (e) => s.keys.delete(keyOf(e));
+    // away from the window (or the tab put behind another): hands off, engine off
+    const blur = () => {
+      s.keys.clear();
+      s.hand = false;
+      s.sound?.stop();
+      s.sound = null;
+    };
+    const hidden = () => document.hidden && blur();
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
-      s.keys.clear();
+      document.removeEventListener('visibilitychange', hidden);
+      // (nobody's driving: the engine stops with the frames)
+      blur();
     };
-  }, [live, near, enter, nextTime, runDelivery, throwPizza, washCar]);
+  }, [live, startSound]);
 
   useFrameLoop((ms) => {
     const a = api.current;
@@ -312,26 +375,47 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const k = s.keys;
     const held = (name) => KEYS[name].some((key) => k.has(key));
     const pad = readPad();
-    let throttle = (held('up') ? 1 : 0) - (held('down') || k.has(' ') ? 1 : 0) - s.stick.y;
-    let steer = (held('left') ? 1 : 0) - (held('right') ? 1 : 0) - s.stick.x;
+    const set = drivingRef.current;
+    let throttle = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
+    // the wheel: the keys turn it at a rate, a stick (a thumb's, or a pad's)
+    // says how far itself
+    const keyed = (held('left') ? 1 : 0) - (held('right') ? 1 : 0);
+    let stick = -s.stick.x;
+    let handbrake = k.has(' ') || s.hand;
     if (pad) {
-      throttle += (pad.rt ? 1 : 0) - (pad.lt ? 1 : 0) - pad.ly;
-      steer -= pad.lx;
+      // (the triggers by how far they're pulled, where the pad says)
+      throttle += Math.max(pad.rtv ?? 0, pad.rt ? 1 : 0) - Math.max(pad.ltv ?? 0, pad.lt ? 1 : 0) - pad.ly;
+      stick -= pad.lx;
+      handbrake ||= pad.x || pad.b || pad.rb;
       if (pad.a && !s.padA && s.near) enter(s.near);
+      // (a press of the pad's own is the nearest it has to a key: try the engine then, once)
+      if ((pad.a && !s.padA) || (pad.rt && !s.padRt)) startSound();
       s.padA = pad.a;
+      s.padRt = pad.rt;
     }
     throttle = Math.max(-1, Math.min(1, throttle));
-    s.steer += (Math.max(-1, Math.min(1, steer)) - s.steer) * Math.min(1, dt * 10);
-    const { car, bump } = stepCar(s.car, { throttle, steer: s.steer }, dt);
+    const analog = keyed === 0 && stick !== 0;
+    s.steer = stepSteer(s.steer, analog ? stick : keyed, s.car.speed, dt, { steer: set.steer, analog });
+    const { car, bump, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt);
     s.car = car;
+    if (s.frame % 2 === 0) s.sound?.set({ speed: Math.hypot(car.speed, car.slide), throttle, slip, road: surface === 'road' });
     if (Math.abs(throttle) > 0.1) s.moved = true;
+    // the speedometer, written straight to the page (not through React, a
+    // few times a second)
+    if (s.frame % 6 === 0 && speedo.current) {
+      const mph = Math.round(Math.hypot(car.speed, car.slide) * MPH);
+      if (mph !== s.mph) {
+        s.mph = mph;
+        speedo.current.textContent = String(mph);
+      }
+    }
     s.t += dt;
     const hank = hankAt(s.t);
     const h = stepHeat(s.heat, Math.hypot(hank.x - car.x, hank.z - car.z), dt);
     s.heat = h.heat;
     if (h.caught) {
       s.heat = 0;
-      s.car = { ...SPAWN, speed: 0 };
+      s.car = { ...SPAWN, speed: 0, slide: 0, yawRate: 0 };
       setToast({ text: s.run ? 'Hank pulled you over, and found the load. Back home.' : 'Hank pulled you over. Back home, and keep your distance.', at: Date.now(), bad: true });
       if (s.run) {
         s.run = null;
@@ -381,13 +465,13 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         setClock(now);
       }
     }
-    const asphalt = onRoad(car.x, car.z, ROADS.filter((r) => !r.dirt));
+    const asphalt = surface === 'road';
     // the other drivers: where you are to them, and where they are
     const tv = travRef.current;
     tv?.pose(stepOf(s.car));
     s.others = tv ? tv.list() : [];
     try {
-      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, onRoad: onRoad(car.x, car.z), asphalt, bump, travellers: s.others }, ms);
+      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, handbrake, slip, onRoad: surface !== 'sand', asphalt, bump, follow: set.camera, travellers: s.others }, ms);
     } catch {
       a.dispose();
       api.current = null;
@@ -413,6 +497,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       e.currentTarget.setPointerCapture(e.pointerId);
       stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
       audioContext();
+      startSound();
     }
     if (!stick.current || stick.current.id !== e.pointerId) return;
     if (e.type === 'pointerup' || e.type === 'pointercancel') {
@@ -428,6 +513,23 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
     e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
   };
+  // the handbrake, under the other thumb: on while it's held
+  const onHand = (e) => {
+    const down = e.type === 'pointerdown';
+    if (down) {
+      audioContext();
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId); // (a thumb that slides off it is still holding it)
+      } catch {
+        /* no such pointer any more */
+      }
+    }
+    sim.current.hand = down;
+    if (down) {
+      startSound();
+      e.currentTarget.dataset.on = '';
+    } else delete e.currentTarget.dataset.on;
+  };
 
   const here = near ? prog.places.find((p) => p.id === near) : null;
   const travel = (p) => {
@@ -437,12 +539,13 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const ox = p.door.x - p.at.x;
     const oz = p.door.z - p.at.z;
     const len = Math.hypot(ox, oz) || 1;
-    s.car = { x: p.door.x + (ox / len) * 2, z: p.door.z + (oz / len) * 2, yaw: Math.atan2(ox, oz) + Math.PI / 2, speed: 0 };
+    s.car = { x: p.door.x + (ox / len) * 2, z: p.door.z + (oz / len) * 2, yaw: Math.atan2(ox, oz) + Math.PI / 2, speed: 0, slide: 0, yawRate: 0 };
     s.heat = 0;
     api.current?.settle();
     setList(false);
   };
   const rank = rankFor(snap.points);
+  const tuneId = useId();
   return (
     <div ref={box} className="abq-world-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
@@ -458,6 +561,9 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         <div className="abq-hud-side">
           <p className="abq-hud-chip">
             <b>${snap.money}</b> · {rank.title}
+          </p>
+          <p className="abq-hud-chip abq-hud-speed" aria-hidden="true">
+            <b ref={speedo}>0</b> mph
           </p>
           <p className="abq-hud-chip abq-hud-blue" title="Blue Sky crystals found in the desert">
             <span aria-hidden="true">◆</span> Blue Sky <b>{blue}</b>/{CRYSTALS.length}
@@ -525,24 +631,51 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive.' : 'W A S D or the arrows to drive. Space brakes. E goes in. R runs a delivery. H is the horn.'}</p>}
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}</p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (
-          <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
-            <span />
+          <div className="abq-pads">
+            <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
+              <span />
+            </div>
+            <button type="button" className="abq-hand" onPointerDown={onHand} onPointerUp={onHand} onPointerCancel={onHand} onContextMenu={(e) => e.preventDefault()} aria-label="Handbrake: hold it into a corner to slide">
+              Slide
+            </button>
           </div>
         )}
-        <button type="button" className="btn btn-ghost abq-places-btn abq-clock-btn" onClick={runDelivery} disabled={!!hud.run}>
+        <button
+          type="button"
+          className="btn btn-ghost abq-places-btn abq-clock-btn"
+          onClick={() => {
+            setTuning((v) => !v);
+            setList(false);
+          }}
+          aria-expanded={tuning}
+          aria-controls={tuneId}
+        >
+          Driving {!touch && <kbd>O</kbd>}
+        </button>
+        <button type="button" className="btn btn-ghost abq-places-btn" onClick={runDelivery} disabled={!!hud.run}>
           {hud.run ? 'On a run' : 'Run a delivery'} {!touch && !hud.run && <kbd>R</kbd>}
         </button>
         <button type="button" className="btn btn-ghost abq-places-btn" onClick={nextTime} aria-label={`Time of day: ${clock.name}. Change it`}>
           {clock.name} {!touch && <kbd>T</kbd>}
         </button>
-        <button type="button" className="btn btn-ghost abq-places-btn" onClick={() => setList((v) => !v)} aria-expanded={list}>
+        <button
+          type="button"
+          className="btn btn-ghost abq-places-btn"
+          onClick={() => {
+            setList((v) => !v);
+            setTuning(false);
+          }}
+          aria-expanded={list}
+        >
           Places {!touch && <kbd>M</kbd>}
         </button>
       </div>
+
+      {tuning && <Driving id={tuneId} driving={driving} onChange={changeDriving} onClose={() => setTuning(false)} touch={touch} />}
 
       {list && (
         <div className="abq-list" role="dialog" aria-label="Places in Albuquerque">
@@ -572,6 +705,64 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
     </div>
+  );
+}
+
+// The driving settings (rules.js's DRIVING), from the Driving button (or O):
+// how quickly the wheel goes over, how much the car straightens itself out of
+// a slide, how tightly the camera follows. Every change is live and kept
+// between visits. Not modal: the town stays drivable behind it.
+const pct = (k, v) => (k === 'assist' && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
+function Driving({ id, driving, onChange, onClose, touch }) {
+  return (
+    <section id={id} className="abq-list abq-drive" role="dialog" aria-label="Driving settings">
+      <div className="abq-list-head">
+        <p>Driving</p>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      {Object.entries(DRIVING).map(([k, r]) => {
+        const v = driving[k];
+        return (
+          <label key={k} className="abq-drive-row">
+            <span className="abq-drive-top">
+              <span className="abq-list-name">{r.label}</span>
+              <output>{pct(k, v)}</output>
+            </span>
+            <input
+              type="range"
+              min={r.min}
+              max={r.max}
+              step={r.step}
+              value={v}
+              style={{ '--fill': `${((v - r.min) / (r.max - r.min)) * 100}%` }}
+              onChange={(e) => onChange({ ...driving, [k]: Number(e.target.value) })}
+              // (dragged with a mouse or a thumb, it lets go of the arrow keys again)
+              onPointerUp={(e) => e.currentTarget.blur()}
+              aria-describedby={`${id}-${k}`}
+            />
+            <span id={`${id}-${k}`} className="abq-list-sub">
+              {r.hint}
+            </span>
+          </label>
+        );
+      })}
+      <ul className="abq-drive-moves">
+        <li>
+          <b>Handbrake turn</b> {touch ? 'Hold Slide and steer' : 'Hold Space and steer'}: the tail swings round. Let go and it grips where it points.
+        </li>
+        <li>
+          <b>Drift</b> A dab of handbrake into a corner, then the throttle. Dirt and sand slide on their own.
+        </li>
+        <li>
+          <b>J-turn</b> Reverse flat out, then the handbrake and the wheel hard over.
+        </li>
+      </ul>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ ...DRIVING_DEFAULTS })}>
+        Back to how it came
+      </button>
+    </section>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAR, COLLIDERS, PLACES, ROADS, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, stepCar, stepHeat } from './rules';
+import { CAR, COLLIDERS, DRIVING, DRIVING_DEFAULTS, PLACES, ROADS, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, readDriving, slipOf, stepCar, stepHeat, stepSteer } from './rules';
 
 const fresh = { served: 0, points: 0, money: 0, upgrades: [], visited: [] };
 const drive = (car, input, seconds) => {
@@ -117,6 +117,270 @@ describe('Albuquerque, the world: driving', () => {
     const rv = PLACES.find((p) => p.id === 'rv');
     expect(nearPlace(rv.door.x, rv.door.z).id).toBe('rv');
     expect(nearPlace(rv.door.x + rv.radius + 1, rv.door.z)).toBe(null);
+  });
+});
+
+// Central Avenue runs east–west through (0, 0) with nothing on it: room to
+// throw the car about. East is yaw π/2.
+const EAST = Math.PI / 2;
+const onCentral = (speed = 0, x = -150) => ({ x, z: 0, yaw: EAST, speed });
+const run = (car, input, seconds, fps = 60) => {
+  let out = { car, bump: 0, slip: 0 };
+  let peak = 0;
+  for (let i = 0; i < Math.round(seconds * fps); i++) {
+    out = stepCar(out.car, input, 1 / fps);
+    peak = Math.max(peak, out.slip);
+  }
+  return { ...out, peak };
+};
+// how far the way it's going is from the way it's pointing (radians)
+const drift = (car) => Math.abs(Math.atan2(car.slide ?? 0, Math.abs(car.speed)));
+
+describe('Albuquerque, the world: the Aztek’s handling', () => {
+  it('steers tighter the slower it goes, and never quicker than its tyres can hold', () => {
+    const turned = (speed) => {
+      const a = run(onCentral(speed, 0), { throttle: 0.3, steer: 1 }, 0.5).car;
+      return a.yaw - EAST;
+    };
+    expect(turned(8)).toBeGreaterThan(turned(24));
+    expect(turned(24)).toBeGreaterThan(0.2); // still turns in at top speed
+    // flat out with the wheel hard over, it holds the road: no spin, little slide
+    const fast = run(onCentral(CAR.top, 0), { throttle: 1, steer: 1 }, 1.2);
+    expect(drift(fast.car)).toBeLessThan(0.2);
+  });
+
+  it('turns round inside a street at parking speed', () => {
+    // a slow half circle to the south: how far across it went
+    let car = { x: 0, z: 0, yaw: EAST, speed: 4 };
+    let far = 0;
+    for (let i = 0; i < 600 && car.yaw - EAST < Math.PI; i++) {
+      car = stepCar(car, { throttle: 0.1, steer: 1 }, 1 / 60).car;
+      far = Math.max(far, Math.abs(car.z));
+    }
+    expect(car.yaw - EAST).toBeGreaterThanOrEqual(Math.PI - 0.05);
+    expect(far).toBeLessThan(12); // Central is 12 m wide
+  });
+
+  it('steers the other way in reverse', () => {
+    const back = run({ x: 0, z: 0, yaw: EAST, speed: -5 }, { throttle: -1, steer: 1 }, 0.5).car;
+    expect(back.yaw).toBeLessThan(EAST - 0.1);
+  });
+
+  it('swings its tail out on the handbrake, and grips again when it’s let go', () => {
+    const plain = run(onCentral(20, -60), { throttle: 0, steer: 1 }, 0.7);
+    const pulled = run(onCentral(20, -60), { throttle: 0, steer: 1, handbrake: true }, 0.7);
+    // further round, and sliding: pointing well off the way it's going
+    expect(pulled.car.yaw).toBeGreaterThan(plain.car.yaw + 0.25);
+    expect(drift(pulled.car)).toBeGreaterThan(0.3);
+    expect(pulled.peak).toBeGreaterThan(0.5);
+    expect(drift(plain.car)).toBeLessThan(0.15);
+    // let go, wheel straight: the slide is over inside a second and a half
+    const after = run(pulled.car, { throttle: 0.4, steer: 0 }, 1.5);
+    expect(drift(after.car)).toBeLessThan(0.05);
+    expect(Math.abs(after.car.yawRate)).toBeLessThan(0.1);
+    expect(after.slip).toBeLessThan(0.1);
+  });
+
+  it('comes round in a handbrake turn without running off down the street', () => {
+    // 18 m/s east, wheel over and the handbrake on until it has come half round
+    let car = onCentral(18, -40);
+    let t = 0;
+    while (car.yaw - EAST < Math.PI * 0.75 && t < 4) {
+      car = stepCar(car, { throttle: 0, steer: 1, handbrake: true }, 1 / 60).car;
+      t += 1 / 60;
+    }
+    expect(t).toBeLessThan(2.5);
+    expect(car.x - -40).toBeLessThan(45);
+  });
+
+  it('slows on the handbrake, but less than on the brakes', () => {
+    const hand = run(onCentral(20), { throttle: 0, steer: 0, handbrake: true }, 0.5).car;
+    const foot = run(onCentral(20), { throttle: -1, steer: 0 }, 0.5).car;
+    const coast = run(onCentral(20), { throttle: 0, steer: 0 }, 0.5).car;
+    expect(hand.speed).toBeLessThan(coast.speed);
+    expect(foot.speed).toBeLessThan(hand.speed);
+    expect(foot.speed).toBeGreaterThanOrEqual(0);
+  });
+
+  it('slides wider on sand than on the road', () => {
+    const road = run(onCentral(11, 0), { throttle: 1, steer: 1 }, 0.8);
+    const sand = run({ x: 160, z: 140, yaw: EAST, speed: 11 }, { throttle: 1, steer: 1 }, 0.8);
+    expect(onRoad(160, 140)).toBe(false);
+    expect(sand.peak).toBeGreaterThan(road.peak);
+    expect(slipOf(sand.car)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('drives the same whatever the frame rate', () => {
+    const input = { throttle: 1, steer: 0.6 };
+    const a = run(onCentral(6, 0), input, 2, 30).car;
+    const b = run(onCentral(6, 0), input, 2, 144).car;
+    expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeLessThan(0.6);
+    expect(Math.abs(a.yaw - b.yaw)).toBeLessThan(0.05);
+    expect(Math.abs(a.speed - b.speed)).toBeLessThan(0.3);
+  });
+
+  it('scrapes along a wall it clips, and stops dead at one it hits square', () => {
+    const wall = COLLIDERS.find((c) => c.id === 'pollos');
+    const south = wall.z + wall.d / 2;
+    // along its south face, nosing in a little
+    let car = { x: wall.x - wall.w / 2 - 4, z: south + CAR.radius + 0.4, yaw: EAST + 0.12, speed: 14 };
+    let bump = 0;
+    for (let i = 0; i < 60; i++) {
+      const r = stepCar(car, { throttle: 1, steer: 0 }, 1 / 60);
+      car = r.car;
+      bump = Math.max(bump, r.bump);
+    }
+    expect(bump).toBeGreaterThan(0);
+    expect(bump).toBeLessThan(6); // a scrape, not a crash
+    expect(Math.hypot(car.speed, car.slide)).toBeGreaterThan(8);
+    expect(car.z).toBeGreaterThanOrEqual(south + CAR.radius - 1e-6);
+    // straight at it
+    let head = { x: wall.x, z: south + 8, yaw: Math.PI, speed: 14 };
+    let hard = 0;
+    for (let i = 0; i < 60; i++) {
+      const r = stepCar(head, { throttle: 0, steer: 0 }, 1 / 60);
+      head = r.car;
+      hard = Math.max(hard, r.bump);
+    }
+    expect(hard).toBeGreaterThan(8);
+    expect(Math.abs(head.speed)).toBeLessThan(4);
+  });
+
+  it('stops spinning when it stops moving, and the handbrake holds it there', () => {
+    const spun = run(onCentral(10, -60), { throttle: 0, steer: 1, handbrake: true }, 3).car;
+    expect(Math.hypot(spun.speed, spun.slide)).toBeLessThan(0.05);
+    expect(Math.abs(spun.yawRate)).toBeLessThan(0.05);
+    // on the handbrake, neither gear moves it off
+    for (const throttle of [1, -1]) {
+      const held = run(onCentral(0, -60), { throttle, steer: 0, handbrake: true }, 3).car;
+      expect(Math.abs(held.speed), `throttle ${throttle}`).toBeLessThan(0.05);
+    }
+  });
+
+  it('keeps its speed when a spin leaves it going backwards', () => {
+    // half round on the handbrake at speed: it's going backwards faster than reverse goes
+    let car = onCentral(22, -100);
+    let t = 0;
+    let before = 0;
+    let lost = 0;
+    while (car.yaw - EAST < Math.PI * 0.9 && t < 3) {
+      before = Math.hypot(car.speed, car.slide ?? 0);
+      car = stepCar(car, { throttle: 0, steer: 1, handbrake: true }, 1 / 60).car;
+      lost = Math.max(lost, before - Math.hypot(car.speed, car.slide));
+      t += 1 / 60;
+    }
+    expect(car.yaw - EAST).toBeGreaterThan(Math.PI * 0.85);
+    expect(lost).toBeLessThan(0.6); // no frame takes a bite out of it
+  });
+
+  it('shrugs off a stalled frame and inputs that aren’t numbers', () => {
+    const r = stepCar(onCentral(10), { throttle: NaN, steer: Infinity, assist: 'x' }, 60);
+    for (const k of ['x', 'z', 'yaw', 'speed', 'slide', 'yawRate']) expect(Number.isFinite(r.car[k]), k).toBe(true);
+    expect(r.car.x - -150).toBeLessThan(4); // a quarter of a second of it, at most
+    expect(Math.abs(stepCar(onCentral(5), { throttle: 50, steer: 0 }, 1 / 60).car.speed - 5)).toBeLessThan(0.3);
+    expect(stepSteer(0.5, NaN, 10, 1 / 60)).toBeLessThan(0.5);
+  });
+
+  it('runs wide onto the sand without stopping dead: the speed comes off over a second', () => {
+    // flat out along Central's edge, then off it
+    const off = run({ x: 90, z: 140, yaw: EAST, speed: CAR.top }, { throttle: 1, steer: 0 }, 0.5).car;
+    expect(onRoad(90, 140)).toBe(false);
+    expect(off.speed).toBeGreaterThan(CAR.sand + 4);
+    expect(off.speed).toBeLessThan(CAR.top - 3);
+    expect(run(off, { throttle: 1, steer: 0 }, 1).car.speed).toBeCloseTo(CAR.sand, 6);
+  });
+
+  it('stays in hand whatever is done to it: finite, inside the fence, out of the walls, no faster than it can go', () => {
+    let seed = 7;
+    const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+    let car = { ...SPAWN, speed: 0 };
+    let input = { throttle: 1, steer: 0, handbrake: false };
+    const worst = { finite: true, out: 0, fast: 0, wall: Infinity, slid: 0, bumped: 0 };
+    for (let i = 0; i < 60 * 240; i++) {
+      if (i % 20 === 0) input = { throttle: rand() < 0.75 ? 1 : rand() < 0.5 ? -1 : 0, steer: Math.round(rand() * 2 - 1), handbrake: rand() < 0.25 };
+      const r = stepCar(car, input, i % 7 === 0 ? 0.05 : 1 / 60);
+      car = r.car;
+      worst.finite &&= Number.isFinite(car.x + car.z + car.yaw + car.speed + car.slide + car.yawRate + r.bump + r.slip);
+      worst.out = Math.max(worst.out, Math.hypot(car.x, car.z));
+      worst.fast = Math.max(worst.fast, Math.hypot(car.speed, car.slide));
+      worst.slid = Math.max(worst.slid, Math.abs(car.slide));
+      worst.bumped = Math.max(worst.bumped, r.bump);
+      for (const c of COLLIDERS) worst.wall = Math.min(worst.wall, Math.hypot(Math.max(Math.abs(car.x - c.x) - c.w / 2, 0), Math.max(Math.abs(car.z - c.z) - c.d / 2, 0)));
+    }
+    expect(worst.finite).toBe(true);
+    expect(worst.out).toBeLessThanOrEqual(WORLD_RADIUS + 1e-6);
+    expect(worst.fast).toBeLessThanOrEqual(CAR.top + 1e-6);
+    expect(worst.wall).toBeGreaterThan(CAR.radius - 0.05);
+    // (and the four minutes did have slides and knocks in them)
+    expect(worst.slid).toBeGreaterThan(3);
+    expect(worst.bumped).toBeGreaterThan(3);
+  });
+
+  it('takes a car that was parked before any of this (no slide, no spin) as it is', () => {
+    const r = stepCar({ x: 0, z: 0, yaw: EAST, speed: 5 }, { throttle: 1, steer: 0 }, 1 / 60);
+    for (const k of ['x', 'z', 'yaw', 'speed', 'slide', 'yawRate']) expect(Number.isFinite(r.car[k]), k).toBe(true);
+    expect(Number.isFinite(r.slip)).toBe(true);
+  });
+});
+
+describe('Albuquerque, the world: the wheel in your hands', () => {
+  const turnFor = (seconds, from, to, speed, set) => {
+    let s = from;
+    for (let i = 0; i < Math.round(seconds * 60); i++) s = stepSteer(s, to, speed, 1 / 60, set);
+    return s;
+  };
+
+  it('goes over quicker at low speed than flat out, and comes back quicker than it went', () => {
+    const slow = turnFor(0.1, 0, 1, 3);
+    const fast = turnFor(0.1, 0, 1, CAR.top);
+    expect(slow).toBeGreaterThan(fast);
+    expect(fast).toBeGreaterThan(0.15);
+    const over = turnFor(0.1, 0, 1, 12);
+    const back = 1 - turnFor(0.1, 1, 0, 12);
+    expect(back).toBeGreaterThan(over);
+    expect(turnFor(1.5, 0, 1, CAR.top)).toBe(1);
+    expect(turnFor(1.5, 1, 0, CAR.top)).toBe(0);
+  });
+
+  it('makes a tap a small correction, and crosses from lock to lock quickest of all', () => {
+    const tap = turnFor(0.05, 0, 1, 12);
+    expect(tap).toBeGreaterThan(0.15);
+    expect(tap).toBeLessThan(0.5);
+    const letGo = 1 - turnFor(0.06, 1, 0, 12);
+    const crossed = 1 - turnFor(0.06, 1, -1, 12);
+    expect(crossed).toBeGreaterThan(letGo * 1.2);
+    // and never past where it's wanted
+    expect(turnFor(1, 0, 0.3, 12)).toBeCloseTo(0.3, 9);
+  });
+
+  it('turns faster the higher the steering is set, and never past full lock', () => {
+    const low = turnFor(0.1, 0, 1, 12, { steer: DRIVING.steer.min });
+    const high = turnFor(0.1, 0, 1, 12, { steer: DRIVING.steer.max });
+    expect(high).toBeGreaterThan(low * 1.5);
+    expect(turnFor(3, 0, 5, 12, { steer: DRIVING.steer.max })).toBe(1);
+    expect(turnFor(3, 0, -5, 12)).toBe(-1);
+  });
+
+  it('gives a stick fine control near its middle', () => {
+    // a third of the stick is well under a third of the lock; all of it is all of it
+    expect(turnFor(2, 0, 1 / 3, 12, { analog: true })).toBeLessThan(0.25);
+    expect(turnFor(2, 0, 1, 12, { analog: true })).toBe(1);
+    expect(turnFor(2, 0, -1 / 3, 12, { analog: true })).toBeCloseTo(-turnFor(2, 0, 1 / 3, 12, { analog: true }), 6);
+  });
+
+  it('reads the kept settings back inside their sliders', () => {
+    expect(readDriving(null)).toEqual(DRIVING_DEFAULTS);
+    expect(readDriving({ steer: 99, assist: -3, camera: 'x' })).toEqual({ ...DRIVING_DEFAULTS, steer: DRIVING.steer.max, assist: DRIVING.assist.min });
+    expect(readDriving({ steer: 1.25 }).steer).toBe(1.25);
+  });
+
+  it('straightens out of a slide sooner the more help it’s given', () => {
+    // a dab of the handbrake: the tail a little way out
+    const slid = run(onCentral(20, -60), { throttle: 0, steer: 1, handbrake: true }, 0.2).car;
+    expect(drift(slid)).toBeGreaterThan(0.1);
+    expect(drift(slid)).toBeLessThan(0.3);
+    const left = (assist) => drift(run(slid, { throttle: 0.3, steer: 0, assist }, 0.15).car);
+    expect(left(DRIVING.assist.max)).toBeLessThan(left(0));
   });
 });
 

@@ -8,8 +8,8 @@
 import * as THREE from 'three';
 import { between, box, cyl, dome, part, ring, rockGeometry, rod, upright } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
-import { buildGalaxyShip } from '../../fleet';
 import { rng } from '../noise';
+import { buildGalaxyShip } from '../../fleet';
 
 const { PI, cos, sin, max, min } = Math;
 const TAU = PI * 2;

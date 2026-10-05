@@ -25,15 +25,20 @@ import MiniMap from './MiniMap';
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
+// The map button (and M) opens the nav map (the page's: NavMap.jsx); `drive`
+// is the one picked there, how the ship goes anywhere it's sent, and
+// `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
   const hud = useRef(null);
+  const arms = useRef(null); // the weapon readout (weapons.js)
+  const siegeEl = useRef(null); // the Citadel's siege (siege.js)
   const prompt = useRef(null);
   const [flown, setFlown] = useState(false);
   // out of the ship on a planet (the controls change), and where you could land
@@ -77,10 +82,14 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       alt,
       shield,
       hud,
+      arms,
+      siege: siegeEl,
       net,
       tags,
       prompt,
       frozen,
+      drive,
+      charting,
       onPick: onSelect,
       onOpen,
       onLand,
@@ -118,6 +127,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       dive: (id) => view.current?.dive?.(id) ?? 0,
       escape: () => view.current?.escape?.() ?? false,
       whole: () => view.current?.whole?.() ?? false,
+      travel: (id, d) => view.current?.travel?.(id, d) ?? false,
+      where: () => view.current?.where?.() ?? null,
     };
   }, [handle, on, view]);
 
@@ -194,6 +205,16 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
             ))}
           </ul>
           <div ref={tags} className="universe-tags" aria-hidden="true" />
+          {on && onMap && (
+            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
+                <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" />
+              </svg>
+            </button>
+          )}
           {ship && on && (
             <>
               <div ref={stick} className="universe-stick" aria-hidden="true">
@@ -229,6 +250,22 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
+              <div ref={arms} className="universe-arms" aria-hidden="true">
+                <span className="universe-arms-name" />
+                <span className="universe-arms-rack">
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                </span>
+                <span className="universe-arms-keys">
+                  <kbd>R</kbd> or <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>
+                </span>
+              </div>
+              <div ref={siegeEl} className="universe-siege" role="status">
+                <b>The Citadel</b>
+                <span className="universe-siege-state" />
+              </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
               <div className="universe-climbs">
                 {climbButton(1, onFoot ? 'Jump' : 'Nose up')}
@@ -246,6 +283,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {(onFoot || landable) && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
                   {onFoot ? 'Ship' : 'Land'}
+                </button>
+              )}
+              {!onFoot && (
+                <button type="button" className="universe-weapon" onPointerDown={(e) => (e.preventDefault(), view.current?.weapon?.())} onContextMenu={(e) => e.preventDefault()}>
+                  Weapon
                 </button>
               )}
               <button
@@ -284,7 +326,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                   </span>
                   <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out</span>
                 </p>

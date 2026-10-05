@@ -149,8 +149,8 @@ export const LOOKS = {
   // Nevarro: mostly black lava flats under ash, a few rivers still glowing
   nevarro: {
     name: 'Nevarro', swatch: '#3a302c', family: 'lava', bump: 0.024,
-    pal: { crust: '#1b1817', ash: '#4c4642', hot: '#ffc070', lava: '#ff5a1a', ember: '#8a2410' },
-    p: { rivers: 0.55, lakes: 0.2, glow: 0.8, pulse: 0.5 },
+    pal: { crust: '#201d1c', ash: '#5e5752', hot: '#ffc070', lava: '#ff5a1a', ember: '#6a2010' },
+    p: { rivers: 0.28, lakes: 0.08, glow: 0.75, pulse: 0.4 },
     clouds: sky(0.18, '#6a605a', 1, 3, 0.003),
     atmo: air('#c09a84', 1.9, 1.05, '#ff8050'),
   },

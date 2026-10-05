@@ -293,3 +293,163 @@ spheres; tall diagonal neon pillars framed in yellow bulb chevrons; balconies
 on two or three levels lined with glowing screens and game cabinets; round
 teal-topped tables on the floor; magenta, purple, teal and gold neon. Roy's
 cabinet sits on the floor among the others.
+
+## Amendment 3 (2026-10-05, from the user): the house inside, as the show draws it, and the way down from the lab
+
+The user sent stills of the kitchen, Morty's room, the entry, the dining room
+and the living room, and asked for more things in the rooms, and for the lab's
+way down (they chose both: a hatch in the lab floor down to Rick's secret
+underground lab, and a clearer door between the garage and the kitchen).
+
+- **Kitchen:** olive-green walls, wood plank floor, a sloped ceiling with two
+  pendant lamps; tan cabinets with brown frames above and below the counters
+  (pale grey tops); the sink under a window, a paper-towel roll on the wall, a
+  knife block; a steel range hood over the stove; a white fridge with magnets
+  and notes; a breakfast nook: a small table and chairs by a window with yellow
+  curtains; arched doorways out.
+- **Living room:** cream walls under exposed wooden ceiling beams; a mint-green
+  couch (Jerry sits on it), a teal armchair, a wooden coffee table on an olive
+  rug, a bookcase, a table lamp, a mirror and a potted plant, a sliding glass
+  door to the back yard, Snuffles' red dog bed; the TV keeps playing cable.
+- **Entry:** pink walls, arched doorways, the red rug, a white staircase with
+  white balusters and wood treads, a grandfather clock, a wall sconce, a framed
+  grid of horse photos (Beth), the front door.
+- **Dining room:** cream walls, the table under a yellow-green checked cloth,
+  six blue upholstered chairs, salmon curtains, framed paintings (one of
+  sunflowers), a pendant lamp; the butter robot on the table.
+- **Morty's room:** pale walls with blue trim and cracked plaster, green
+  carpet, a round space rug (planets and a sun), the bed with a beige spread, a
+  blue nightstand with a red lamp and a little elephant, a bookshelf of books
+  and toys, a wall shelf with a robot toy and a gadget, posters (a magnet, a
+  small one, a beach with palm trees — no pin-up), a SCIENCE pennant, a
+  dartboard on the door, a green jacket on a hook, a red desk with a rocket
+  model and a chair, a ceiling light.
+- **More things:** mugs and a coffee maker on the counters, pictures on walls,
+  rugs, plants.
+- **The lab's ways out:** the door between the garage and the kitchen is a
+  clear, framed door on both sides; a floor hatch in the lab opens (it lifts as
+  Morty comes near) onto a ladder down to **Rick's secret lab**, a new walkable
+  room under the garage: concrete and riveted steel, pipes and cables along the
+  ceiling, glowing green vats (one with a floating pickle), a big humming
+  machine, consoles with green screens, a rack of gadgets, a containment cell,
+  a tank of portal fluid, warning signs; the ladder back up. A new thing to do:
+  find Rick's secret lab.
+
+## Amendment 4 (2026-10-05, from the user): the President, the Federation, the clone lab, Morty's Mind Blowers and a cruiser with a personality
+
+The user sent stills (a Federation agent in a diner booth; the President with
+his generals; the President full length; the Mind Blowers memory room; Rick's
+clone lab) and asked for the President and the Galactic Federation, the
+underground lab under the house as the clone lab, Morty's Mind Blowers, and a
+ship with a personality. Their choices: restyle the secret lab as the clone
+lab; the Mind Blowers room off it; the President and the Federation on the
+street **and** an Oval Office room **and** Shoney's; the cruiser with a voice
+and a face. They asked for the show's own pictures to be looked up first:
+those are in `lab/refs/c137/` (git-ignored; the fandom wiki's stills, by its
+API): `shoneys.jpg` (the diner outside), `diner-layout.jpg` (its inside, a
+layout drawing), `diner-booth.png`, `oval-office.jpg`, `whitehouse-hall.jpg`,
+`president-generals.jpg`, `president-*.{jpg,webp}`, `fedagent-diner.jpg`,
+`gromflomite-3.jpg`, `fedship-{1,2}.jpg`, `fedlogo.jpg`, `fed-oval.jpg`,
+`fed-whitehouse.png`, `mindblowers-{room,1,2}`, `clone-lab.jpg`.
+
+- **Rick's clone lab** (the `basement` area, restyled from the concrete secret
+  lab; the hatch and the ladder stay): a round, high, dark-navy room; big
+  blue and black pipes across the ceiling with red lamps; in the middle the
+  clone machine: a tall dark cylinder hung from the ceiling, a dozen black
+  hoses curving down from it to a round base with orange lights, and a glass
+  tube on the base glowing cyan with a Rick clone floating in it; grated
+  plates on the floor before it; the walls round the back covered in pale
+  blue screens (cells with red dots, DNA helices, panels with yellow rings,
+  one with Rick's face, waving); spot lamps over the screens; curved pale-blue
+  desks along both sides with an angle lamp, a pink cone flask, stacked radio
+  boxes, a laptop, a box of dials with two valves, books; Pickle Rick in a jar
+  on a desk; a dark floor of hexagon tiles with glowing cyan lines. A door in
+  its side wall leads on to Morty's Mind Blowers.
+- **Morty's Mind Blowers** (a new room, `mindblowers`, off the clone lab): a
+  round room, its walls shelves from floor to ceiling in four or five tiers,
+  dark teal with lit green strips, racked with glowing memory vials (most
+  cyan, many red, some purple and pink, a few green and yellow); a round
+  ceiling light with a radial pattern; the mint reclining chair in the middle
+  with the white memory helmet on a grey cart beside it; more vials standing
+  on the floor, glowing. Sitting in the chair plays memories one after another
+  (a flash in the vial's colour, then a one-line caption, the site's own
+  wording): blue for Morty's mistakes, purple for the family's, red for
+  Rick's, pink for the one from the liquor cabinet. A new thing to do: watch
+  Morty's Mind Blowers.
+- **The President's visit** (the street): outside the Smith house, the
+  President (navy suit, red tie, white shirt) with a Secret Service agent
+  (black suit, sunglasses, earpiece) by his black limousine with two small
+  flags. Talk to him: he wants Rick; he says he'll be in the Oval Office and
+  has had a way in put in Rick's garage, gets in the limo and the motorcade
+  drives off down the street. A new thing to do: meet the President.
+- **The Oval Office** (a new room, `oval`, through a second portal in the
+  garage, open only once Morty has met the President): the oval room in cream
+  with tall windows behind the desk hung with gold drapes, the big wooden desk
+  with a phone and folders, the US flag and a gold-fringed flag behind it, the
+  blue rug with the seal, two cream couches facing over a coffee table, a
+  fireplace with a painting over it, a grandfather clock, doors with
+  pediments, columns; the President behind the desk and two generals (green
+  uniforms, medals) standing by. A new thing to do: visit the Oval Office.
+- **Shoney's** (on the street, in place of the house on the north side at the
+  east end): the diner as the still has it, pale yellow walls, a brown roof
+  with red trim, red-striped awnings, glass doors and the tall yellow sign
+  framed in red, a parking lot in front with two cars. Inside (a new room,
+  `diner`): booths in deep red along the windows with blinds, round tables,
+  a counter with stools along the other side, a checked floor, ceiling fans
+  and pendant lamps, a door to the kitchen; a Federation agent in a black suit
+  sits in a booth over eggs, sausage, a mug of coffee and the ketchup; talk to
+  him. A new thing to do: have breakfast at Shoney's.
+- **The Galactic Federation** (the street): Federation agents in black suits
+  (green fly heads, red compound eyes) stand at posts along the sidewalks,
+  their heads turning to watch Morty; talk to them. A Federation patrol ship
+  (the show's: a dark green rounded hull, glowing green lights along its top,
+  round red lights, two pale green engine pods with green jets) circles over
+  the street; while Morty flies the cruiser it falls in behind and follows,
+  slower than the cruiser at full speed, and turns back to its loop when he's
+  far ahead or landed.
+- **The cruiser's personality**: the ship talks, in the browser's spoken voice
+  (calm, low, a little slow) with a caption, in its own manner: polite,
+  literal, quietly menacing and over-protective, with "Keep Summer safe" its
+  one catchphrase from the show; every other line is the site's own. It
+  speaks when Morty boards, takes off, flies fast, reaches the ceiling, has
+  the Federation ship on his tail, lands, gets out and walks off, tries to
+  land where he can't, and now and then when he's near it parked; never two
+  lines at once, never the same line twice running, each kind of line on its
+  own cooldown. It falls silent with the page's sound off, and a "Ship's
+  voice" switch in the panel turns the voice (not the captions) off; the
+  choice is kept in `tp-c137-shipvoice`. Its face: the headlights are eyes,
+  pale yellow with dark pupils; parked, they blink now and then and turn to
+  follow Morty; flying fast, they narrow.
+- **People's lines** (the President, the generals, the agents, the Secret
+  Service) are the site's own, in their manner; no quoted show dialogue.
+- New models (Meshy, `scripts/meshy.mjs`, set `c137`): `president`,
+  `fedagent`, `general`, `secretservice` (rigged, with clips; the agent also
+  seated), `limo`, `fedship`, `shoneys`; each with a code-drawn stand-in.
+- Also: walking onto the open hatch drops Morty down it, as E does.
+
+## Amendment 5 (2026-10-05, from the user): a show-sized garage, the school's people, jumping, and a bigger world to fly over
+
+Each part ships and merges on its own, as it's finished.
+
+- **Rick's garage, the show's size and layout**: one car wide (7.2 m across,
+  8 m deep, inside the street's 8 m wide garage), laid out from the show's
+  stills: the L-shaped workbench along the back wall and down the west wall
+  under a window, the pegboard and the corkboard over it, Rick at it; the
+  washer and dryer beside it under the clock; the plumbus machine in the
+  corner by the kitchen door; the wire shelving on the east wall past that
+  door; the long slate worktable in the middle (the Meeseeks box on it); the
+  portal and the Portal panic cabinet on the west wall; the President's portal
+  on the east wall by the garage door; bare joists overhead with three
+  fluorescent fittings; and the hatch in the corner opposite the kitchen door
+  (the south-west), as the show's wiki puts it.
+- **The school's people**: Mr. Goldenfold (his mustard sweater and moustache),
+  Principal Vagina, Jessica, Brad, Tammy, Ethan and Tiny Rick, as Meshy models
+  from their looks in the show, in a classroom laid out from the show's
+  stills. Coach Feratu is never seen in the show (only mentioned), so he
+  isn't drawn.
+- **Jumping**: Space jumps on foot. Morty lands on what's low enough to stand
+  on (the porch and its steps, beds, couches, tables, counters, desks, the
+  kerb) and falls off its edges; anything taller, and every ceiling, stops him.
+- **A bigger world, no invisible walls**: more streets of solid houses round
+  the Smiths'; the edges are things you can see (hedges, fences, a tree line)
+  rather than an invisible stop; the cruiser flies much further and higher.

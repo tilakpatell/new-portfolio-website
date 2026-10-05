@@ -6,6 +6,7 @@ import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf } from '../components/universe/deep';
+import { DRIVE_KEY, parseDrive } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { useAchievements } from '../components/Achievements';
@@ -16,6 +17,7 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
+import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 
@@ -32,7 +34,10 @@ const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put awa
 // into its page; fall into the black hole out in deep space and you're
 // through to a friend's universe, their own site (deep.js's `beyond`).
 // Gone online (online/), everyone else flying it right then is there too,
-// in their own ships: allies, or fair game.
+// in their own ships: allies, or fair game. The nav map (M, or its button:
+// NavMap.jsx) charts it all and sends you anywhere by the drive picked
+// there (nav.js: hyperspeed, super speed or cruise; kept between visits),
+// which is how picking a place anywhere else on the page goes too.
 export default function Universe({ ask = false }) {
   const atRoot = useLocation().pathname === '/';
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
@@ -40,7 +45,7 @@ export default function Universe({ ask = false }) {
   const selected = parseId(useParams().id);
   const universe = byId(selected);
   const reduced = useReducedMotion();
-  const map = useRef({ live: false, dive: () => 0, escape: () => false, whole: () => false }); // the 3D map, while it's drawing
+  const map = useRef({ live: false, dive: () => 0, escape: () => false, whole: () => false, travel: () => false, where: () => null }); // the 3D map, while it's drawing
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
@@ -49,11 +54,20 @@ export default function Universe({ ask = false }) {
   useEffect(() => setKind(ship), [setKind, ship]);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
-  const { unlocked } = useAchievements();
+  const { unlocked, unlock } = useAchievements();
   const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
   const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked), [loadouts, ship, unlocked]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   const [hangar, setHangar] = useState(false);
+  // the nav map, and the drive picked on it (kept between visits)
+  const [charting, setCharting] = useState(false);
+  const [drive, setDriveState] = useState(() => parseDrive(local.get(DRIVE_KEY)));
+  const setDrive = (d) => {
+    const next = parseDrive(d);
+    setDriveState(next);
+    local.set(DRIVE_KEY, next);
+  };
+  const jumped = useRef(false); // the crew's had their say about a jump this visit
   const fit = (slot, id) => {
     const r = equip(ship, loadout, slot, id, unlocked);
     if (r.ok) {
@@ -97,6 +111,7 @@ export default function Universe({ ask = false }) {
   // into a place: the selected one (Enter, E), or a station whose sign was clicked
   const go = (u) => {
     if (!u || leaving) return;
+    setCharting(false);
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
       navigate(u.to);
@@ -149,6 +164,38 @@ export default function Universe({ ask = false }) {
     if (!map.current.whole()) select(null);
   };
 
+  // what the scene says: the nav map (M), a jump to lightspeed (the site's
+  // own jump plays over the map: the scene has the ship out at the place
+  // under its flash), through a gate, or something for the crew to say
+  const onEvent = (e) => {
+    if (e.type === 'map') setCharting((o) => !o);
+    else if (e.type === 'jump') {
+      window.dispatchEvent(new Event('tp:hyperspace'));
+      if (!jumped.current) {
+        jumped.current = true;
+        comms.current?.handle({ type: 'event', id: 'hyperspeed' });
+      }
+    } else if (e.type === 'portal') go(byId(e.id));
+    else if (e.type === 'siege' && e.what === 'down' && e.mine) {
+      unlock('citadelfall'); // (you helped bring it down)
+      comms.current?.handle(e);
+    } else comms.current?.handle(e);
+  };
+
+  // off from the nav map: with a ship, it flies (or jumps) there, and a
+  // station or a world is picked too, so the panel shows it; without one
+  // (or with the 3D off), the camera takes you to a station or a world
+  const travel = (id, d) => {
+    setDrive(d);
+    setCharting(false);
+    audioContext(); // inside the press, so the jump and the engine can sound
+    const u = byId(id);
+    if (ship && map.current.live) {
+      map.current.travel(id, d);
+      select(u ? id : null); // (a wonder has no card: the panel goes back to the map's)
+    } else if (u) select(id);
+  };
+
   // Escape: back from the map view or the autopilot first, then out of the
   // universe; unless something took it already or a dialog is open. Heard on
   // the window, since a click on the map leaves the focus where it was.
@@ -190,7 +237,10 @@ export default function Universe({ ask = false }) {
         hangar={hangar}
         onHangar={setHangar}
         net={online.client}
-        onEvent={(e) => (e.type === 'portal' ? go(byId(e.id)) : comms.current?.handle(e))}
+        onEvent={onEvent}
+        drive={drive}
+        charting={charting}
+        onMap={() => setCharting((o) => !o)}
         onLand={enter}
         onCrash={crashInto}
       />
@@ -209,7 +259,24 @@ export default function Universe({ ask = false }) {
         onStartOn={startOn}
         tucked={tucked}
         onTuck={tuck}
+        onNav={() => setCharting(true)}
       />
+      {charting && !leaving && (
+        <NavMap
+          where={map.current.live ? map.current.where : null}
+          drive={drive}
+          onDrive={setDrive}
+          selected={selected}
+          live={map.current.live}
+          onTravel={travel}
+          onEnter={(id) => go(byId(id))}
+          onWhole={() => {
+            setCharting(false);
+            whole();
+          }}
+          onClose={() => setCharting(false)}
+        />
+      )}
       {asking && <StartChoice onPick={start} />}
       <div className="universe-fade" aria-hidden="true" style={{ background: fade }} />
       {leaving?.mode === 'beyond' && <Beyond far={beyondOf(leaving.id)} />}
