@@ -52,7 +52,7 @@ export default function Universe({ ask = false }) {
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
-  const { setKind, setLoadout } = online;
+  const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
@@ -70,6 +70,7 @@ export default function Universe({ ask = false }) {
   };
   const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
+  useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [hangar, setHangar] = useState(false);
   // the nav map, and the drive picked on it (kept between visits)
   const [charting, setCharting] = useState(false);

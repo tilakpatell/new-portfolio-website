@@ -32,6 +32,29 @@ export function useStamps() {
   return stamps;
 }
 
+// The distance flown over every visit, in km, kept between them.
+const FLOWN = 'tp-earth-flown';
+const FLOWN_EVENT = 'tp:earth-flown';
+export function readFlown() {
+  const n = Number(local.get(FLOWN, 0));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+export function addFlown(km) {
+  const total = readFlown() + Math.max(0, km);
+  local.set(FLOWN, Math.round(total));
+  window.dispatchEvent(new Event(FLOWN_EVENT));
+  return total;
+}
+export function useFlown() {
+  const [flown, setFlown] = useState(readFlown);
+  useEffect(() => {
+    const on = () => setFlown(readFlown());
+    window.addEventListener(FLOWN_EVENT, on);
+    return () => window.removeEventListener(FLOWN_EVENT, on);
+  }, []);
+  return flown;
+}
+
 // '2026-10-05' → '5 Oct 2026', as a stamp would print it
 export const stampDate = (iso) => {
   const d = new Date(`${iso}T12:00:00Z`);
