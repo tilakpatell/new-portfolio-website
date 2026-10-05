@@ -14,6 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { paintStation } from './plating';
 import { paintGiant, paintPlanet } from './planetPaint';
 import { pixelRatio } from '../../lib/device';
+import { precompile, precompilePasses, quiet, releaseContext } from '../../lib/three/renderer';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -71,7 +72,7 @@ function atmosphere(radius, color, sun) {
 
 export function createDeathStar3D(canvas, { onLost } = {}) {
   // opaque, in the page's own black: the canvas is the hero's whole backdrop
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -704,9 +705,11 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     env.dispose();
     composer.dispose?.();
     renderer.dispose();
-    renderer.forceContextLoss();
+    releaseContext(renderer); // (lib/three/renderer: given back once nothing is compiling)
   };
 
-  renderer.compile(scene, camera);
-  return { update, render, resize, dispose, get lost() { return lost; } };
+  // every shader (the scene's, into the composer's buffer, and the passes')
+  // linked in the background: the hero waits for this before its first frame
+  const ready = Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
+  return { update, render, resize, dispose, ready, get lost() { return lost; } };
 }

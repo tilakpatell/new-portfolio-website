@@ -801,7 +801,12 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     if (stage.lost || stage.disposed) return;
     const dt = Math.min(0.05, ms / 1000);
     time += dt;
-    if (dimIndex !== g.dim || builtFor !== g) buildDim(g);
+    if (dimIndex !== g.dim || builtFor !== g) {
+      buildDim(g);
+      // the new dimension's shaders (and the fog it brought) link in the
+      // background; the stage holds its last frame until they have
+      stage.precompile();
+    }
     events(g);
     sky.material.uniforms.t.value = time;
 
@@ -1055,6 +1060,9 @@ export async function createPortal3D(canvas, { soft = false, hero = 'rick', aliv
     meshy.dispose();
     for (const t of leafMaps.values()) t.dispose();
   };
+  // the passes' shaders (bloom, the ink), linked before the game is shown; the
+  // scene's wait for its first dimension (render, above)
+  await stage.precompile(null);
   progress(1, 'Ready');
   return {
     render,

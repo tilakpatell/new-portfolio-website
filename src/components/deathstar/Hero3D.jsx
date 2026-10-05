@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFrameLoop, useInView } from '../../lib/hooks';
+import { settle } from '../../lib/settle';
 
 // The Death Star page's hero in WebGL, over the SVG it replaces. It loads
 // Three.js and the scene only when it mounts, follows the page's state, and
@@ -48,11 +49,17 @@ export default function Hero3D({ onState, svgRef, ...state }) {
       .then(({ createDeathStar3D }) => {
         if (dead || !canvas.current) return;
         try {
-          api.current = createDeathStar3D(canvas.current, { onLost: () => fail('lost') });
-          api.current.update(latest.current);
+          const a = createDeathStar3D(canvas.current, { onLost: () => fail('lost') });
+          api.current = a;
+          a.update(latest.current);
           fit();
-          first.current = true;
-          setStatus('ready');
+          // its shaders link in the background: the first frame waits for them
+          // (the SVG meanwhile), so drawing it doesn't stop the page
+          settle(a.ready).then(() => {
+            if (dead || api.current !== a || a.lost) return;
+            first.current = true;
+            setStatus('ready');
+          });
         } catch {
           fail('failed');
         }

@@ -916,8 +916,7 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
   };
 
   await setWeather('airfield');
-  // a first frame's worth of compiling, so the first real one doesn't stall
-  renderer.compile(scene, camera);
+  // (its shaders are compiled before the first frame: hq/useStage waits for engine.precompile)
 
   return {
     engine,

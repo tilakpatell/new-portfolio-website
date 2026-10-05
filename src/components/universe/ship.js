@@ -5,14 +5,22 @@
 //
 // The ship flies over the map's disc (x, z) and up and down (y, as far as
 // SHIP.ceiling above or below it), pointing along `heading` (0 is −z, the
-// way the camera looks; it grows turning left). Input is { throttle: −1…1,
-// turn: −1…1 (right is +), climb: −1…1 (up is +), boost }. It turns on the
-// spot, coasts to a stop, climbs and dives (nose up or down as it does),
-// can't go through a planet (it bounces off) and is turned back at the edge
-// of the map, and eased back from the ceiling and the floor. The turn has a
-// little inertia (`rate`, radians a second, easing toward what the stick
-// asks), so it rolls into and out of a turn rather than snapping, and turns
-// wider the faster it goes.
+// way the camera looks; it grows turning left) and tipped up or down by
+// `pitch`. Input is { throttle: −1…1, turn: −1…1 (right is +), climb: −1…1
+// (nose up is +), boost, turnRate and pitchRate (the visitor's
+// sensitivity, 1 as it comes: controls.js) }. It turns on the
+// spot, coasts to a stop, can't go through a planet (it bounces off) and is
+// turned back at the edge of the map. The turn has a little inertia (`rate`,
+// radians a second, easing toward what the stick asks), so it rolls into
+// and out of a turn rather than snapping, and turns wider the faster it goes.
+//
+// Up and down is a fighter's: the stick tips the nose up or down (as far as
+// SHIP.pitchMax, eased, never faster than SHIP.pitchRate) and the ship flies
+// along its nose, so it climbs and dives faster the faster it goes, and
+// levels off by itself when let go. Slow or stopped, its thrusters lift it
+// straight up or down instead (`lift`), the nose only a little tipped. It
+// rounds out before the ceiling or the floor (the nose comes level in time
+// for the speed it has) and is eased back from past them.
 //
 // Between the places (deep.js) it opens up: the boost becomes a pulse drive
 // (up to SHIP.pulse, dropping back as it nears any place, hard enough that
@@ -46,8 +54,11 @@ export const SHIP = {
   yawEase: 9, // how quickly the turn gets to the rate asked for (a second, roughly a ninth of one)
   radius: 0.15,
   height: 0.3, // above a planet's middle, where it parks
-  climb: 4.5, // map units a second, up or down (more with boost)
-  lift: 7, // how quickly it gets to the climb it's asked for
+  climb: 4.5, // map units a second, up or down on the thrusters, stopped (more with boost)
+  lift: 7, // how quickly the thrusters get to the climb they're asked for
+  pitchMax: 0.85, // radians the nose tips up or down with the stick all the way (about 49°)
+  pitchEase: 6, // how quickly the nose gets to the angle asked for
+  pitchRate: 2.4, // and never faster than this, radians a second
   ceiling: 14, // how far above or below the disc it can go (the big ships' lanes start at 12)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
 };
@@ -145,7 +156,7 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
 // facing its middle.
 export function spawn(id) {
   const at = id && PLANET[id] ? parkAt(id) : { x: 0, y: SHIP.height, z: HOME_RADIUS + 1.5, heading: 0 };
-  return { ...at, speed: 0, vy: 0, rate: 0, pitch: 0, bank: 0, edge: false };
+  return { ...at, speed: 0, vy: 0, lift: 0, rate: 0, pitch: 0, bank: 0, edge: false };
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
@@ -161,6 +172,8 @@ export function step(s, input, dt, solids = SOLIDS) {
   const throttle = clamp(input.throttle || 0, -1, 1);
   const turn = clamp(input.turn || 0, -1, 1);
   const climb = clamp(input.climb || 0, -1, 1);
+  const turnK = clamp(input.turnRate ?? 1, 0.25, 3);
+  const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3);
   const open = input.interdicted ? 0 : openness(s.x, s.y, s.z);
   const limit = input.interdicted ? SHIP.boost : boostAt(s.x, s.y, s.z);
   const top = input.boost && throttle > 0 ? limit : SHIP.cruise;
@@ -176,8 +189,8 @@ export function step(s, input, dt, solids = SOLIDS) {
   const speed = s.speed + clamp((over ? Math.min(want, limit) : want) - s.speed, -accel * dt, accel * dt);
   // the turn: toward the rate the stick asks for (less of it the faster it
   // goes), with a little inertia either way
-  const wantRate = -turn * SHIP.turn * turnAt(speed);
-  const rate = (s.rate || 0) + (wantRate - (s.rate || 0)) * (1 - Math.exp(-SHIP.yawEase * dt));
+  const wantRate = -turn * SHIP.turn * turnK * turnAt(speed);
+  const rate = (s.rate || 0) + (wantRate - (s.rate || 0)) * (1 - Math.exp(-SHIP.yawEase * Math.sqrt(turnK) * dt));
   let heading = wrap(s.heading + rate * dt);
 
   // turned back at the edge: the nose comes round toward the middle
@@ -188,22 +201,44 @@ export function step(s, input, dt, solids = SOLIDS) {
     heading = wrap(heading + clamp(wrap(home - heading), -2.2 * dt * k, 2.2 * dt * k));
   }
 
-  // up and down: toward the climb it's asked for, easing off as it nears
-  // the ceiling (or the floor) and pushed back once past it
-  const vy0 = s.vy || 0;
+  // up and down: the nose toward the angle the stick asks for (a little,
+  // slow or stopped, where the thrusters do the lifting), never so steep it
+  // can't round out by the ceiling or the floor at the speed it has, and back
+  // toward them once past
+  const y0 = s.y;
   const ceiling = ceilingAt(s.x, s.z);
-  // (faster out in deep space, where there's further to go)
-  let rise = climb * SHIP.climb * (input.boost ? 1.35 : 1) * (1 + 3 * open);
-  const high = Math.abs(s.y) - (ceiling - 2);
-  if (high > 0 && rise * s.y > 0) rise *= clamp(1 - high / 2, 0, 1);
-  if (Math.abs(s.y) > ceiling) rise = -Math.sign(s.y) * Math.max(1.5, (Math.abs(s.y) - ceiling) * 1.2);
-  const lift = SHIP.lift * (1 + 3 * open) * dt;
-  let vy = vy0 + clamp(rise - vy0, -lift, lift);
+  const v0 = Math.abs(s.speed);
+  const flying = clamp(v0 / SHIP.cruise, 0, 1); // 0 stopped, 1 at cruise and over
+  const way = s.speed < -0.05 ? -1 : 1; // (backing up, nose up goes down)
+  let tip = climb * SHIP.pitchMax * (0.3 + 0.7 * flying);
+  const room = (dir) => ceiling - dir * y0; // how far to the ceiling (1) or the floor (−1)
+  if (tip * way !== 0) {
+    const dir = Math.sign(tip * way);
+    const need = 1.5 + v0 * 0.35; // room to round out in, more the faster it goes
+    tip *= clamp(room(dir) / need, 0, 1);
+  }
+  if (Math.abs(y0) > ceiling) tip = -Math.sign(y0) * way * 0.2;
+  const pitch0 = s.pitch || 0;
+  const turnTo = (tip - pitch0) * (1 - Math.exp(-SHIP.pitchEase * pitchK * dt));
+  const maxTurn = SHIP.pitchRate * pitchK * dt;
+  const pitch = pitch0 + clamp(turnTo, -maxTurn, maxTurn);
+  // the thrusters: straight up or down, all of it stopped, none by cruise
+  // (faster out in deep space, where there's further to go); easing off as
+  // it nears the ceiling (or the floor) and pushing back once past it
+  let rise = climb * SHIP.climb * (input.boost ? 1.35 : 1) * (1 + 3 * open) * (1 - flying);
+  const high = Math.abs(y0) - (ceiling - 2);
+  if (high > 0 && rise * y0 > 0) rise *= clamp(1 - high / 2, 0, 1);
+  if (Math.abs(y0) > ceiling) rise = -Math.sign(y0) * Math.max(1.5, (Math.abs(y0) - ceiling) * 1.2);
+  const lift0 = s.lift || 0;
+  const push = SHIP.lift * (1 + 3 * open) * dt;
+  let lift = lift0 + clamp(rise - lift0, -push, push);
+  let vy = speed * Math.sin(pitch) + lift;
+  const along = speed * Math.cos(pitch); // what's left going forward
 
   const [fx, fz] = forward(heading);
-  let x = s.x + fx * speed * dt;
+  let x = s.x + fx * along * dt;
   let y = s.y + vy * dt;
-  let z = s.z + fz * speed * dt;
+  let z = s.z + fz * along * dt;
   let v = speed;
   const r = Math.hypot(x, z);
   const ceil = ceilingAt(x, z);
@@ -233,7 +268,7 @@ export function step(s, input, dt, solids = SOLIDS) {
     y = p.at[1] + ny * min;
     z = p.at[2] + nz * min;
     const ahead = fx * nx + fz * nz;
-    const into = -(ahead * v + ny * vy); // speed toward the planet
+    const into = -(ahead * v * Math.cos(pitch) + ny * vy); // speed toward the planet
     if (p.swallow) {
       // the black hole: nothing bounces off it. Touching it at any speed
       // is the fall (the scene takes it from here)
@@ -247,6 +282,7 @@ export function step(s, input, dt, solids = SOLIDS) {
       // a little bounce back: what it had toward the planet, the other way
       // and smaller (what's left of the ship's speed that it can still fly)
       v += 1.3 * into * ahead;
+      lift += 1.3 * into * ny;
       vy += 1.3 * into * ny;
     }
   }
@@ -256,10 +292,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   const ease = 1 - Math.exp(-6 * dt);
   const steer = clamp(-rate / (SHIP.turn * turnAt(speed)), -1, 1);
   const bank = s.bank + (steer * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)) - s.bank) * ease;
-  // nose up climbing, down diving (steeper the slower it goes forward)
-  const pitch0 = s.pitch || 0;
-  const pitch = pitch0 + (clamp(Math.atan2(vy, Math.max(Math.abs(v), 3)), -0.55, 0.55) - pitch0) * ease;
-  return { ship: { x, y, z, heading, speed: v, vy, rate, pitch, bank, edge }, events };
+  return { ship: { x, y, z, heading, speed: v, vy, lift, rate, pitch, bank, edge }, events };
 }
 
 // The universe the ship is at, if any. Once at one, it stays at it until
