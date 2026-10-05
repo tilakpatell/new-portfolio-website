@@ -24,7 +24,10 @@
 // arcade, cabinet, Shoney's, the limo and the Federation's ship to
 // public/models/c137/.
 //
-//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137]
+//   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137 | hd]
+//
+// `hd`: Rick and Morty again at about 40,000 faces and 2k textures, from
+// their own concept images, over the originals.
 //
 // Steps, in order: images (9 credits each), models (30), rig (5), anim (an
 // idle clip, 3), sit (a seated clip, 3), fetch (free: download and
@@ -215,6 +218,17 @@ const CROWD_ONLY = {
 // (the lighter image model: as good for these, at a fraction of the cost)
 for (const [n, prompt] of Object.entries(CROWD_ONLY)) ASSETS[n] = { set: 'citadel', rig: false, poly: 9000, tex: 1024, image: 'nano-banana', prompt };
 
+// The HD set: Rick and Morty made again from their own concept images
+// (`from` lends its image, so none is paid for twice), at about 40,000 faces
+// and 2k textures, and written over the 14,000-face originals (`as`), so
+// everything that draws them gets them. (The cruiser was made again too, and
+// came out smudged round its exhaust cans: the original stays.)
+const HD = {
+  'rick-hd': { ...ASSETS.rick, set: 'hd', poly: 40000, tex: 2048, from: 'rick', as: 'rick' },
+  'morty-hd': { ...ASSETS.morty, set: 'hd', poly: 40000, tex: 2048, from: 'morty', as: 'morty' },
+};
+Object.assign(ASSETS, HD);
+
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -297,6 +311,7 @@ const steps = {
   async images(names, s) {
     await each(names, async (n) => {
       const a = ASSETS[n];
+      if (a.from) return; // (it has its original's)
       s[n] ??= {};
       if (!s[n].image) {
         const { result } = await api('POST', '/v1/text-to-image', { ai_model: a.image || 'nano-banana-pro', prompt: `${a.prompt} ${a.style ?? STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}), ...(a.aspect ? { aspect_ratio: a.aspect } : {}) });
@@ -311,6 +326,10 @@ const steps = {
   async models(names, s) {
     await each(names, async (n) => {
       const a = ASSETS[n];
+      if (!s[n]?.image && a.from && s[a.from]?.image) {
+        s[n] = { ...s[n], image: s[a.from].image };
+        await save(s);
+      }
       if (!s[n]?.image) throw new Error('no image yet');
       if (!s[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
@@ -394,27 +413,28 @@ const steps = {
     const made = existsSync(manifestFile) ? JSON.parse(await readFile(manifestFile, 'utf8')) : {};
     for (const n of names) {
       const a = ASSETS[n];
+      const as = a.as ?? n; // (the name it's written as)
       const files = []; // [url, file, texture size, clip only, posed in the browser]
       const out = { office: OFFICE_OUT, rollout: ROLLOUT_OUT, hq: HQ_OUT, c137: a.rig ? OUT : C137_OUT }[a.set] ?? OUT;
       if (a.rig && a.clips === false) {
         // the skinned figure on its skeleton, nothing else
         if (!s[n]?.rig) throw new Error(`${n}: rig first`);
         const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
-        files.push([r.rigged_character_glb_url, `${n}.glb`, a.tex, false, true]);
+        files.push([r.rigged_character_glb_url, `${as}.glb`, a.tex, false, true]);
       } else if (a.rig) {
         if (!s[n]?.rig || !s[n]?.idle) throw new Error(`${n}: rig and anim first`);
         const r = (await api('GET', `/v1/rigging/${s[n].rig}`)).result;
         const idle = (await api('GET', `/v1/animations/${s[n].idle}`)).result;
-        files.push([r.rigged_character_glb_url, `${n}.glb`, a.tex, false]);
+        files.push([r.rigged_character_glb_url, `${as}.glb`, a.tex, false]);
         // the clips on their own: the game plays them on the character
-        files.push([r.basic_animations.walking_armature_glb_url, `${n}-walk.glb`, 0, true]);
-        files.push([r.basic_animations.running_armature_glb_url, `${n}-run.glb`, 0, true]);
-        files.push([idle.animation_glb_url, `${n}-idle.glb`, 0, true]);
-        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${n}-sit.glb`, 0, true]);
+        files.push([r.basic_animations.walking_armature_glb_url, `${as}-walk.glb`, 0, true]);
+        files.push([r.basic_animations.running_armature_glb_url, `${as}-run.glb`, 0, true]);
+        files.push([idle.animation_glb_url, `${as}-idle.glb`, 0, true]);
+        if (s[n].sit) files.push([(await api('GET', `/v1/animations/${s[n].sit}`)).result.animation_glb_url, `${as}-sit.glb`, 0, true]);
       } else {
         if (!s[n]?.model) throw new Error(`${n}: no model yet`);
         const t = await api('GET', `/v1/image-to-3d/${s[n].model}`);
-        files.push([t.model_urls.glb, `${n}.glb`, a.tex, false]);
+        files.push([t.model_urls.glb, `${as}.glb`, a.tex, false]);
       }
       for (const [url, file, tex, clip, posed] of files) {
         const raw = join(tmp, `${s[n].rig ?? s[n].model}-${file}`);
@@ -424,7 +444,7 @@ const steps = {
       }
       if (a.set === 'rollout') fetched.add(n);
       if (a.set === 'hq') made[n] = { rig: !!a.rig, h: a.h };
-      credits[a.set === 'hq' ? `hq/meshy/${n}` : `meshy/${a.set === 'rollout' ? 'rollout/' : a.set === 'c137' && !a.rig ? 'c137/' : ''}${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      credits[a.set === 'hq' ? `hq/meshy/${as}` : `meshy/${a.set === 'rollout' ? 'rollout/' : a.set === 'c137' && !a.rig ? 'c137/' : ''}${as}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${as}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       console.log(`fetch    ${n.padEnd(12)} ${files.map((f) => f[1]).join(', ')}`);
     }
     await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
@@ -445,7 +465,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), c137: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'c137'), citadel: Object.keys(CITADEL), crowd: Object.keys(CROWD_ONLY) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), c137: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'c137'), citadel: Object.keys(CITADEL), crowd: Object.keys(CROWD_ONLY), hd: Object.keys(HD) };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();
