@@ -20,7 +20,7 @@ import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
 export const DEEP = {
-  system: HOME_RADIUS + 40, // inside this is the home system: boost tops out at SHIP.boost, the ceiling is SHIP.ceiling
+  system: HOME_RADIUS + 40, // inside this is the home system: the ceiling is SHIP.ceiling (and the drive opens only between its stations: ship.js driveAt)
   open: HOME_RADIUS + 440, // out past this (and this far from any place), the pulse drive's full speed and the full height
   near: 40, // how far past a place's reach you're still at it (the drive stays down)
   ramp: 400, // and how much further the drive takes to open all the way

@@ -97,19 +97,57 @@ export const GOALS = {
 };
 export const isGoal = (id) => Boolean(GOALS[id]);
 
+// How far the pulse drive has opened up at (x, y, z), 0 … 1. Out in deep
+// space, deep.js's openness: down at any place, so you arrive at the boost,
+// and open between them. The home system's stations are close together, so
+// there it opens as far as the ship could still brake from (at 0.8 of
+// SHIP.drop) before it reached the nearest station or the sun (or the
+// ceiling or the floor), and is down again close by one: a hop between two is quick, and still comes up
+// on the next at the boost. That gives way to deep space's once well out
+// past the home system (by then deep space's is open all the way anyway).
+// (each with how close to its surface the drive's all the way down: a
+// station's door, and well clear of the sun, which the autopilot goes round)
+const HOME_BODIES = [...PLANETS.filter((p) => byId(p.id).kind === 'core').map((p) => ({ at: p.at, r: p.r, room: 8 })), { at: SUN.at, r: SUN.r, room: 20 }];
+// how much of the home system's own handling there is at (x, z): 1 in it
+// and out past it till deep space's drive is open all the way, then easing
+// to 0. There the boost gets going harder, and the autopilot comes in to
+// park quicker, to match the hops between stations (step, autopilot)
+export function homeAt(x, z) {
+  const out = (Math.sqrt(x * x + z * z) - DEEP.open) / DEEP.ramp;
+  return out <= 0 ? 1 : out >= 1 ? 0 : 1 - out * out * (3 - 2 * out);
+}
+export function driveAt(x, y, z) {
+  const o = openness(x, y, z);
+  const w = homeAt(x, z);
+  if (w <= 0) return o;
+  // (the home system's ceiling and floor count too: it can't go faster than
+  // it could come level by them)
+  let gap = ceilingAt(x, z) - Math.abs(y) - 8;
+  for (const b of HOME_BODIES) {
+    const dx = x - b.at[0];
+    const dy = y - b.at[1];
+    const dz = z - b.at[2];
+    gap = Math.min(gap, Math.sqrt(dx * dx + dy * dy + dz * dz) - b.r - b.room);
+  }
+  const v = Math.sqrt(2 * SHIP.drop * 0.8 * Math.max(0, gap));
+  const k = clamp((v - SHIP.boost) / (SHIP.pulse - SHIP.boost), 0, 1) * w;
+  return 1 - (1 - o) * (1 - k);
+}
+
 // how high it can go at (x, z): the home system's ceiling, lifting to deep
 // space's out past it; how fast its boost goes at (x, y, z): the pulse
-// drive out in the open, the boost at any place; how hard it brakes and
-// coasts there (harder out in the open, to match the speeds)
+// drive as far as it's open there (driveAt), the boost where it's down; how
+// hard it brakes and coasts there (harder the more it's open, to match the
+// speeds)
 export function ceilingAt(x, z) {
   const k = clamp((Math.sqrt(x * x + z * z) - DEEP.system) / (DEEP.open - DEEP.system), 0, 1);
   return SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * k * k * (3 - 2 * k);
 }
 // (`boost`, a boost of its own: boosters fitted, which push the boost at home
 // harder; the pulse drive out in the open is the same for everyone)
-export const boostAt = (x, y, z, boost = SHIP.boost) => boost + (SHIP.pulse - boost) * openness(x, y, z);
-export const brakeAt = (x, y, z) => SHIP.brake * (1 + 14.5 * openness(x, y, z));
-const coastAt = (x, y, z) => SHIP.coast * (1 + 18.5 * openness(x, y, z));
+export const boostAt = (x, y, z, boost = SHIP.boost) => boost + (SHIP.pulse - boost) * driveAt(x, y, z);
+export const brakeAt = (x, y, z) => SHIP.brake * (1 + 14.5 * driveAt(x, y, z));
+const coastAt = (x, y, z) => SHIP.coast * (1 + 18.5 * driveAt(x, y, z));
 // how much of the full turn it has at a speed: all of it up to cruise,
 // SHIP.turnFast of it at boost, a little less again at pulse
 export const turnAt = (speed) => {
@@ -243,7 +281,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3) * agileK;
   const rollK = clamp(input.rollRate ?? 1, 0.25, 3) * agileK;
   const levelK = clamp(input.level ?? 1, 0, 3) * clamp(tune?.level ?? 1, 1, 1.8);
-  const open = input.interdicted ? 0 : openness(s.x, s.y, s.z);
+  const open = input.interdicted ? 0 : driveAt(s.x, s.y, s.z);
   const limit = input.interdicted ? boost : boostAt(s.x, s.y, s.z, boost);
   const top = input.boost && throttle > 0 ? limit : cruise;
   const want = throttle > 0 ? throttle * top : throttle * SHIP.reverse;
@@ -254,7 +292,10 @@ export function step(s, input, dt, solids = SOLIDS) {
   let accel = brakeAt(s.x, s.y, s.z);
   if (over) accel = SHIP.drop;
   else if (throttle === 0) accel = coastAt(s.x, s.y, s.z);
-  else if (faster) accel = (input.boost ? SHIP.accel * 1.8 + (s.speed > boost - 1 ? SHIP.pulseAccel * open : 0) : SHIP.accel) * accelK;
+  // (boosting toward more than the boost, the pulse drive pushes from the
+  // start, all of it once it's a third of the way open: a hop between two
+  // stations gets going straight away)
+  else if (faster) accel = (input.boost ? SHIP.accel * 1.8 * (1 + 2 * homeAt(s.x, s.z)) + (want > boost + 1 ? SHIP.pulseAccel * Math.min(1, open * 3) : 0) : SHIP.accel) * accelK;
   const speed = s.speed + clamp((over ? Math.min(want, limit) : want) - s.speed, -accel * dt, accel * dt);
 
   // the turns, about the ship's own axes, each toward the rate the stick
@@ -395,6 +436,21 @@ export function orbiting(s, current) {
   return best;
 }
 
+// How fast it can be going and still stop by `park`, `far` away, at 0.7 of
+// its brakes: the brakes all the way there count (harder where the drive's
+// open, between stations as out in deep space), not just where it is now
+function stopFrom(s, park, far) {
+  const N = 8;
+  const py = park.y ?? SHIP.height;
+  const step = Math.max(0, far - 0.3) / N;
+  let v2 = 0;
+  for (let i = 0; i < N; i++) {
+    const k = (i + 0.5) / N; // from the stop back toward the ship
+    v2 += 2 * 0.7 * brakeAt(park.x + (s.x - park.x) * k, py + (s.y - py) * k, park.z + (s.z - park.z) * k) * step;
+  }
+  return Math.sqrt(v2);
+}
+
 // Flying itself to a universe (or a wonder out in deep space): the input for
 // this step, and whether it's there (parked, facing it, level with it,
 // upright). It points the nose the way it wants to go with the stick, as a
@@ -458,11 +514,14 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z])) {
     const ox = o.at[0] - s.x;
     const oz = o.at[2] - s.z;
     const along = ox * ux + oz * uz;
-    if (along < -r || along > Math.min(dist, look) + r) continue; // behind, past the stop, or not yet
+    // (in its own radii, so a world counts like a moon: within one of it,
+    // it's minded however slowly the ship's going, or slowing for it would
+    // put it out of mind, and the nose straight back on it)
+    const gap = (Math.sqrt(ox * ox + oz * oz) - r) / Math.max(4, r);
+    if (along < -r || along > dist + r || (along > look + r && gap > 1)) continue; // behind, past the stop, or not yet
     const cross = ox * uz - oz * ux; // > 0: it's to the left of the line
     const clear = r + SHIP.radius + Math.max(1, r * 0.3);
     if (Math.abs(cross) > clear) continue;
-    const gap = (Math.sqrt(ox * ox + oz * oz) - r) / Math.max(4, r); // in its own radii (so a world counts like a moon)
     const k = ((clear - Math.abs(cross)) / clear) * (1.6 + 3 * clamp(1 - gap, 0, 1));
     const side = Math.sign(cross) || 1;
     dx += -side * uz * k;
@@ -503,7 +562,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z])) {
   // stopping distance (something merely in the way of the straight line is
   // steered round at speed)
   const far = Math.hypot(dist, ty);
-  const vmax = Math.min(Math.sqrt(2 * brakeAt(s.x, s.y, s.z) * 0.7 * Math.max(0, far - 0.3)), 0.9 * far + 0.3);
+  const vmax = Math.min(stopFrom(s, park, far), (0.9 + 1.5 * homeAt(s.x, s.z)) * far + 0.3);
   const brake = (off > 1.1 ? 0.15 : 1) * (danger ? 0.12 : 1);
   const limit = boostAt(s.x, s.y, s.z);
   const top = Math.min(vmax, limit) * brake;
