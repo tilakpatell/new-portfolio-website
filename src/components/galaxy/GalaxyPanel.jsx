@@ -6,6 +6,7 @@ import { audioContext } from '../../lib/audio';
 import { CREWS, crewById } from '../universe/crews';
 import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
+import GuideLink from '../guide/GuideLink';
 import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLabel } from './systems';
 
 // Beside the galaxy (a bottom sheet on a phone): the system you're in, as
@@ -99,6 +100,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
             <RiSideBarLine className="h-4 w-4" aria-hidden="true" /> Show the panel
           </span>
         </button>
+        <GuideLink className="universe-guide-tucked" />
       </aside>
     );
   }
@@ -109,6 +111,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       <button type="button" className="universe-tuck" onClick={() => toggle(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
         <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
       </button>
+      <GuideLink className="universe-tuck universe-guide" />
       <p className="eyebrow">A galaxy far, far away</p>
       {toward && (
         <p className="galaxy-jumping" role="status">

@@ -26,6 +26,9 @@ const CORE = ['/', '/home', '/experience', '/projects', '/travel', '/contact', '
 // file itself: that module imports without extensions, which Node can't)
 const WORLDS = [...(await readFile(join(ROOT, 'src/components/worlds/worlds.js'), 'utf8')).matchAll(/^\s*'(\/[^']+)':\s*\d+/gm)].map((m) => m[1]);
 const THREE_D = ['/', '/universe', ...WORLDS];
+// pages inside a world that are text, not 3D: the galaxy's mission briefings
+// (an opening crawl and the objectives; the live ones send you on to a world)
+const FLAT = [/^\/galaxy\/[^/]+\/mission$/];
 // console errors a sandbox or a software renderer always produces, and that mean nothing
 const NOISE = [
   /WebSocket|wss:\/\/|relay|nostr/i,
@@ -162,7 +165,7 @@ if (runs('smoke')) {
   if (shots) await mkdir(join(ROOT, 'public/changes'), { recursive: true });
   let letter = 0;
   for (const route of routes) {
-    const threeD = THREE_D.some((p) => route === p || route.startsWith(`${p}/`));
+    const threeD = THREE_D.some((p) => route === p || route.startsWith(`${p}/`)) && !FLAT.some((re) => re.test(route));
     const ctx = await browser.newContext({ viewport, hasTouch: phone, deviceScaleFactor: 1 });
     await ctx.addInitScript((q) => {
       window.localStorage.setItem('tp-intro', '1');

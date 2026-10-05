@@ -226,15 +226,18 @@ async function report(opts) {
 }
 
 // The spec's rule: worth it when GPU memory falls, the download stays within
-// 1.25× of today, and the encode keeps 34 dB; a normal map is worth it on
-// quality grounds alone when it's coming from JPEG; a big map seen close is
-// worth it for the GPU memory. Everything else: keep the WebP.
+// 1.25× of today, and the encode keeps 34 dB. A normal map that's a JPEG has
+// already lost what JPEG takes (its chroma, which is where a normal lives:
+// about 26 dB against its source); re-encoding it here can't bring that
+// back, so the answer is to make it again from its source as UASTC, not to
+// convert the JPEG. A big map seen close is worth considering for its GPU
+// memory alone. Everything else: keep the WebP.
 export function verdict({ role, mime = '', before, after, gpuBefore, gpuAfter, psnr, width = 0 } = {}) {
   const bytesOk = after <= before * 1.25;
   const gpuOk = gpuAfter < gpuBefore;
   const qualityOk = psnr == null || psnr >= 34;
   if (gpuOk && bytesOk && qualityOk) return 'convert';
-  if (role === 'normal' && /jpe?g/i.test(mime) && qualityOk) return 'convert (normals out of JPEG)';
+  if (role === 'normal' && /jpe?g/i.test(mime)) return 'regenerate from source as UASTC (JPEG normals)';
   if (width >= 2048 && gpuOk && qualityOk) return 'consider (GPU memory)';
   return 'keep';
 }
