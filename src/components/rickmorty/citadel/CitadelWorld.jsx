@@ -725,7 +725,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const travel = (q) => {
     const s = sim.current;
     const sp = spot({ daycare: 'daycare', wafers: 'factory', council: 'council', votemorty: 'ballot', citadelout: 'hangar' }[q.id]);
-    // a step in from the spot, toward the core, facing it
+    // a step in from the spot, toward the core, facing out to it (its door)
     const r = Math.hypot(sp.x, sp.z);
     const at = q.id === 'citadelout' ? ESCAPE_START : { x: sp.x - (sp.x / r) * 1.5, z: sp.z - (sp.z / r) * 1.5, face: Math.atan2(-sp.z, sp.x) };
     s.h = newWalker(at);
@@ -743,7 +743,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const objective = red && hud.chased ? 'Run! Get out of his sight: round the core, behind a kiosk or a planter.' : herding ? 'Herd the Mortys back through the gate, into the pen: come at them from the far side.' : prog.objective;
   return (
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
-      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a round concourse under a glass dome, white and cyan, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
 
       {walking && (
