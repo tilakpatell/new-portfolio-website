@@ -73,6 +73,9 @@ export const SCHOOL_PARTS = [part('bar', 25, 55, 16.5, 24, 6.3), part('entrance'
 
 // (the house next door to the west is pink, as in the show)
 const TINTS = [0xf0a0a8, 0xb7d3c6, 0xe9c9a1, 0xc2cfe6, 0xf0dd9a, 0xd9bfd8];
+// for the scene: each one's design (a two-storey colonial or a one-storey ranch) and its roof's colour
+const LOOKS = ['colonial', 'ranch', 'colonial', 'ranch', 'colonial', 'ranch'];
+const ROOF_TINTS = [0x5d5f6c, 0x6e4a36, 0x7a4038, 0x56606e, 0x6b4c3b, 0x4f5a52];
 export const NEIGHBOURS = [
   [-42, -20],
   [24, -20],
@@ -80,7 +83,7 @@ export const NEIGHBOURS = [
   [-42, 21],
   [-18, 21],
   [4, 21],
-].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: 5.5, roof: 8, tint: TINTS[i] }));
+].map(([x, z], i) => ({ id: `${z < 0 ? 'n' : 's'}${i % 3}`, x, z, w: 12, d: 10, h: 5.5, roof: 8, tint: TINTS[i], look: LOOKS[i], roofTint: ROOF_TINTS[i] }));
 export const BUILDINGS = [HOUSE, GARAGE, SCHOOL, ...NEIGHBOURS];
 
 // the driveway runs from the garage door to the sidewalk; the cruiser parks on it, nose south

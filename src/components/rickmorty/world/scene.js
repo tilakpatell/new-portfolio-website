@@ -20,12 +20,13 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { createStage, disposeTree } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
-import { InkPass, toon } from '../portal/toon';
+import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
+import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
 import { ARCADE, AREAS, BUILDINGS, CRUISER, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, wallsIn } from './rules';
-import { kitMaterials, toonModel } from './kit';
-import { ROAD_Y, buildStreet } from './street';
-import { STREET_SKY, makeSky } from './sky';
+import { gentleRamp, kitMaterials } from './kit';
+import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
+import { STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
 
 export { kitMaterials };
@@ -33,18 +34,22 @@ export { kitMaterials };
 // Each area's builder: (kit) → { group, update?(t, dt, state, camera),
 // noInk?: Object3D[], light?: { sun: [colour, intensity], hemi: [sky,
 // ground, intensity], fog: [colour, near, far] | null, background }, dispose? }
-// (or a promise of one). Its group is drawn at the area's own place in
+// (or a promise of one). noInk is for what never stands in front of
+// anything inked (a sky, glows, marks on the floor): what the ink can't see,
+// it outlines what's behind straight through. Its group is drawn at the area's own place in
 // rules.js's AREAS and shown only while Morty is there. An area with no
 // builder gets a plain lit room (or, outdoors, plain ground under a sky).
+// The kit: { renderer, models (the toon-painted GLBs by name), cast, need(names,
+// { clips }) (the cast loaded once each, however many ask), mats (kitMaterials),
+// tier, camera, fit (lib/device's budget), portal (the swirl's material) }.
 // The rooms and the annex add theirs here.
 export const AREA_BUILDERS = { street: buildStreet };
 
 // the models the world loads (public/models/c137/), shared with the builders by name
 const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];
 const MORTY_H = 1.7; // how tall Morty stands here
-const SAUCER = 2.4; // the cruiser's height (it's 3.8 m across)
-const SEAT = { x: 0.38, y: 1.16, z: 0.07, tall: 1.3 }; // Morty at the wheel, in the saucer's frame, sat
-const GLASS = 0.69; // where the saucer's hull stops and its dome starts, as a share of its height
+const SAUCER = 2.4; // the cruiser's height (it's 3.8 m across): cruiser3d.js's saucer, bigger
+const K = SAUCER / TALL; // and its measurements to match
 const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog: null, background: 0x15110d };
 const ANNEX_LIGHT = { sun: [0xffd6f0, 1.9], hemi: [0xd9b8ff, 0x553366, 1.3], fog: [0x8a5fb8, 60, 260] };
 const ANNEX_SKY = { top: 0x2a1250, mid: 0x7a3c9a, low: 0xf0a0c8, sun: 0xfff0c0, clouds: 0.6, moons: 1 };
@@ -56,7 +61,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.1, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
   const { renderer, scene, camera } = stage;
   // a tone map that keeps the show's flat bright colours bright
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -67,7 +72,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   // ── light ──
   const hemi = new THREE.HemisphereLight(0xd6f0ff, 0x6a9a4a, 1.3);
   const sun = new THREE.DirectionalLight(0xfff3df, 2.4);
-  const sunDir = new THREE.Vector3(-0.55, 0.78, 0.45).normalize();
+  const sunDir = SUN_DIR; // (the sky's sun is where the light comes from)
   sun.castShadow = renderer.shadowMap.enabled;
   sun.shadow.mapSize.set(fit.shadowMap, fit.shadowMap);
   Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 160 });
@@ -82,14 +87,24 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   // ── the models and the cast ──
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const cast = createMeshyCast();
+  // each of the cast loaded once, however many builders ask, at the same time
+  // or not (the clips of the first ask for a name are the ones it gets)
+  const asked = new Map();
+  const need = (names, { clips = ['idle', 'walk', 'run'] } = {}) =>
+    Promise.all(
+      names.map((n) => {
+        if (!asked.has(n)) asked.set(n, cast.load(null, [n], { clips }));
+        return asked.get(n);
+      }),
+    );
   const [loaded] = await Promise.all([
-    Promise.all(MODELS.map((n) => loader.loadAsync(`/models/c137/${n}.glb`).then((g) => [n, toonModel(g.scene, { aniso: fit.aniso })], () => [n, null]))),
-    cast.load(null, ['morty', 'saucer'], { clips: ['idle', 'walk', 'run', 'sit'] }),
+    Promise.all(MODELS.map((n) => loader.loadAsync(`/models/c137/${n}.glb`).then((g) => [n, toonify(g.scene, { gradientMap: gentleRamp(), aniso: fit.aniso, dispose: true })], () => [n, null]))),
+    need(['morty', 'saucer'], { clips: ['idle', 'walk', 'run', 'sit'] }),
   ]);
   const models = new Map(loaded);
 
   // ── the areas ──
-  const kit = { renderer, models, cast, mats, tier, camera, fit, portal: portalMaterial };
+  const kit = { renderer, models, cast, need, mats, tier, camera, fit, portal: portalMaterial };
   const areas = {};
   const building = {};
   const build = async (id) => {
@@ -99,7 +114,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       a = await make(kit, id);
     } catch (err) {
       if (import.meta.env.DEV) console.warn(`C-137: the ${id} builder failed`, err);
-      a = plainRoom(kit, id);
+      a = (OUTDOOR.includes(id) ? plainGround : plainRoom)(kit, id);
     }
     a.group.visible = false;
     scene.add(a.group);
@@ -120,27 +135,23 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   hull.position.y = -SAUCER / 2;
   cruiser.add(hull);
   const saucer = cast.prop('saucer', SAUCER);
-  const glassMats = [];
   if (saucer) {
     hull.add(saucer);
-    saucer.traverse((o) => {
-      if (!o.isMesh) return;
-      o.material = glass(o.material, o.geometry);
-      glassMats.push(o.material);
-    });
+    glassDome(saucer);
   } else hull.add(standInSaucer(mats));
+  // Morty at the wheel (where cruiser3d.js sits Rick), sat, as big as he'd be beside him
   const pilot = cast.make('morty');
   if (pilot) {
-    pilot.group.scale.setScalar(SEAT.tall / pilot.height);
-    pilot.group.position.set(SEAT.x, SEAT.y, SEAT.z);
+    pilot.group.scale.setScalar((CREW.morty[0] * K) / pilot.height);
+    pilot.group.position.set(CREW.rick[1] * K, CREW.y * K, CREW.z * K);
     for (const [n, a] of Object.entries(pilot.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
     hull.add(pilot.group);
   }
   // the exhaust cans' glow, at the back
   const glowMat = new THREE.SpriteMaterial({ map: fx.spot, color: new THREE.Color(0x9dff6a).multiplyScalar(2.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-  const glows = [-1, 1].map((s) => {
+  const glows = CANS.map(([x, y, z]) => {
     const g = new THREE.Sprite(glowMat);
-    g.position.set(s * 1.23, 1.41, -1.84);
+    g.position.set(x * K, y * K, z * K);
     hull.add(g);
     return g;
   });
@@ -149,17 +160,14 @@ export async function createRmWorld(canvas, { onLost } = {}) {
 
   // the doors' rings and where a hotspot is
   for (const l of LINKS) fx.markAt(l.id, l.x, l.area === 'street' && Math.abs(l.z) < ROAD.w / 2 ? ROAD_Y : 0, l.z).userData.area = l.area;
+  const marks = [...fx.marks];
   const hotspots = new Map(HOTSPOTS.map((h) => [h.id, h]));
 
-  // the street has a sky; the plain annex gets its own
-  const ink = new InkPass(scene, camera, { hide: () => [fx.group, ...glows, ...(areas[shown]?.noInk ?? [])], width: big ? 1.35 : 1.05 });
-  // thinning out into the distance, as the show draws its backgrounds (and
-  // with no line along the horizon)
-  const inkMat = ink.quad.material;
-  inkMat.uniforms.fade = { value: new THREE.Vector2(110, 300) };
-  inkMat.fragmentShader = inkMat.fragmentShader
-    .replace('uniform float near, far, width;', 'uniform float near, far, width;\nuniform vec2 fade;')
-    .replace('gl_FragColor = vec4(mix(c.rgb, ink, e * 0.92), c.a);', 'float nz = max(max(zc, max(zl, zr)), max(zd, zu));\ne *= 1.0 - smoothstep(fade.x, fade.y, nz > 0.0 ? 1.0 / nz : 1e6);\ngl_FragColor = vec4(mix(c.rgb, ink, e * 0.92), c.a);');
+  // the ink: none on the effects, the exhaust or what each area leaves out
+  // (its sky), and thinning out into the distance as the show draws its
+  // backgrounds, with no line along the horizon
+  const unInked = {};
+  const ink = new InkPass(scene, camera, { hide: () => unInked[shown] ?? glows, width: big ? 1.35 : 1.05, fade: [110, 300] });
   stage.composer.insertPass(ink, 1);
 
   // ── the camera ──
@@ -169,10 +177,16 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   // building or a tree (outdoors) or through a wall (indoors), as a share
   const solid = { street: BUILDINGS, annex: [ARCADE] };
   const parked = { x: 0, z: 0, on: false }; // the cruiser, while it stands in the street
-  const blocked = (area, x, y, z) =>
-    (solid[area] ?? []).some((b) => y < b.roof + 0.5 && Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35) ||
-    (area === 'street' && TREES.some((tr) => y < 8 * tr.s && Math.hypot(x - tr.x, z - tr.z) < 0.45 * tr.s + 0.35)) ||
-    (area === 'street' && parked.on && y < SAUCER + 0.6 && Math.hypot(x - parked.x, z - parked.z) < CRUISER.radius + 0.6);
+  // what's at (x, y, z): 0 nothing, 1 something, 2 the parked cruiser (which the camera can rise over)
+  const blocked = (area, x, y, z) => {
+    if ((solid[area] ?? []).some((b) => y < b.roof + 0.5 && Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35)) return 1;
+    if (area !== 'street') return 0;
+    if (TREES.some((tr) => y < 8 * tr.s && Math.hypot(x - tr.x, z - tr.z) < 0.45 * tr.s + 0.35)) return 1;
+    if (!parked.on) return 0;
+    // its hull, and the dome on it
+    const d = Math.hypot(x - parked.x, z - parked.z);
+    return (d < CRUISER.radius + 0.3 && y < SAUCER * 0.8) || (d < CRUISER.radius * 0.68 && y < SAUCER * 1.17) ? 2 : 0;
+  };
   const crossesWall = (area, ax, az, bx, bz) =>
     wallsIn(area).some(([x0, z0, x1, z1, , low]) => {
       if (low) return false;
@@ -182,14 +196,17 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const d4 = (x1 - x0) * (bz - z0) - (z1 - z0) * (bx - x0);
       return d1 * d2 < 0 && d3 * d4 < 0;
     });
+  let hitBy = 0; // what clearance() last stopped at
   const clearance = (area, from, to) => {
     const N = 16;
+    hitBy = 0;
     for (let i = 1; i <= N; i++) {
       const k = i / N;
       const x = from.x + (to.x - from.x) * k;
       const y = from.y + (to.y - from.y) * k;
       const z = from.z + (to.z - from.z) * k;
-      if (blocked(area, x, y, z) || (!OUTDOOR.includes(area) && crossesWall(area, from.x, from.z, x, z))) return Math.max(0.2, (i - 1) / N);
+      hitBy = blocked(area, x, y, z) || (!OUTDOOR.includes(area) && crossesWall(area, from.x, from.z, x, z) ? 1 : 0);
+      if (hitBy) return Math.max(0.2, (i - 1) / N);
     }
     return 1;
   };
@@ -204,6 +221,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       return false;
     }
     for (const [k, a] of Object.entries(areas)) a.group.visible = k === id;
+    unInked[id] ??= [fx.group, ...glows, ...(areas[id].noInk ?? [])];
     const L = areas[id].light ?? (OUTDOOR.includes(id) ? ANNEX_LIGHT : ROOM_LIGHT);
     sun.color.set(L.sun[0]);
     sun.intensity = L.sun[1];
@@ -279,10 +297,10 @@ export async function createRmWorld(canvas, { onLost } = {}) {
         pilot.mixer?.update(dt);
       }
       glowMat.opacity = 0.7 + Math.sin(t * 19) * 0.15;
-      glows.forEach((g, i) => {
-        g.visible = !!state.flying;
-        g.scale.setScalar(0.5 + Math.sin(t * 13 + i * 2) * 0.05);
-      });
+      for (let i = 0; i < glows.length; i++) {
+        glows[i].visible = !!state.flying;
+        glows[i].scale.setScalar(0.5 + Math.sin(t * 13 + i * 2) * 0.05);
+      }
       const hy = cruiser.position.y;
       cruiserShadow.visible = true;
       cruiserShadow.position.set(c.x, Math.abs(c.z - ROAD.z) < ROAD.w / 2 ? ROAD_Y + 0.03 : 0.03, c.z);
@@ -290,10 +308,14 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       cruiserShadow.material.opacity = clamp(0.4 - (hy - 1.4) / 60, 0.08, 0.4);
     } else cruiserShadow.visible = false;
     parked.on = !!c && outdoors && !state.flying;
-    if (parked.on) Object.assign(parked, { x: c.x, z: c.z });
+    if (parked.on) {
+      parked.x = c.x;
+      parked.z = c.z;
+    }
 
     // the rings at the doors, the marker over what you're next to
-    for (const [id, mk] of fx.marks) mk.userData.near = state.near?.link === id;
+    const link = state.near?.link;
+    for (let i = 0; i < marks.length; i++) marks[i][1].userData.near = marks[i][0] === link;
     const spot = state.near?.hotspot && hotspots.get(state.near.hotspot);
     fx.pin.visible = !!spot && spot.area === area && !state.flying;
     if (fx.pin.visible) {
@@ -315,7 +337,12 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       // (looking a little over his head, so more of the street is in view)
       want.look.set(m.x, mortyY + 1.75, m.z);
       want.at.set(m.x + Math.sin(yaw) * Math.cos(pitch) * dist, mortyY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(yaw) * Math.cos(pitch) * dist);
-      const k = clearance(area, want.look, want.at);
+      let k = clearance(area, want.look, want.at);
+      // only the parked cruiser in the way: up over it, rather than in close
+      for (let i = 0; i < 8 && hitBy === 2; i++) {
+        want.at.y += 0.75;
+        k = clearance(area, want.look, want.at);
+      }
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
       if (!OUTDOOR.includes(area)) {
         const a = AREAS[area];
@@ -340,7 +367,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     sun.castShadow = renderer.shadowMap.enabled;
 
     // effects asked for since the last frame, where everyone is now
-    for (const [type, d] of pending.splice(0)) fire(type, d);
+    for (let i = 0; i < pending.length; i++) fire(pending[i][0], pending[i][1]);
+    pending.length = 0;
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
@@ -394,7 +422,7 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       fx.dispose();
       ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
-      for (const g of glassMats) g.dispose();
+      saucer?.traverse((o) => o.userData.glass?.dispose());
       cast.dispose();
       mats.dispose();
       stage.dispose();
@@ -441,7 +469,7 @@ function plainGround(kit, id) {
   ground.position.set((a.x0 + a.x1) / 2, 0, (a.z0 + a.z1) / 2);
   ground.receiveShadow = true;
   group.add(ground);
-  return { group, noInk: [sky.dome], light: id === 'street' ? undefined : ANNEX_LIGHT, update: (t, dt, s, camera) => sky.update(t, camera) };
+  return { group, noInk: [sky.dome], light: id === 'street' ? STREET_LIGHT : ANNEX_LIGHT, update: (t, dt, s, camera) => sky.update(t, camera) };
 }
 
 // Morty in shapes, if his model won't load: yellow shirt, blue trousers.
@@ -494,23 +522,4 @@ function standInSaucer(mats) {
     g.add(o);
   }
   return g;
-}
-
-// The saucer's dome as glass: everything above its rim see-through face-on
-// and thicker towards its edges, so it reads as a bubble with Morty in it.
-function glass(src, geometry) {
-  geometry.computeBoundingBox();
-  const { min, max } = geometry.boundingBox;
-  const y = min.y + (max.y - min.y) * GLASS;
-  const m = src.clone();
-  m.transparent = true;
-  m.onBeforeCompile = (s) => {
-    s.vertexShader = s.vertexShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {\nvGlassY = position.y;');
-    s.fragmentShader = s.fragmentShader
-      .replace('void main() {', 'varying float vGlassY;\nvoid main() {\nfloat glass = 0.0;')
-      .replace('#include <map_fragment>', `#include <map_fragment>\nglass = smoothstep(${y.toFixed(5)} - 0.004, ${y.toFixed(5)} + 0.004, vGlassY);\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.95, 0.96), glass * 0.6);`)
-      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n{ float rim = 1.0 - abs(normal.z); diffuseColor.a *= mix(1.0, 0.18 + 0.6 * rim * rim, glass); }');
-  };
-  m.customProgramCacheKey = () => `c137-glass-${y.toFixed(4)}`;
-  return m;
 }

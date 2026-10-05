@@ -22,7 +22,10 @@ export const toon = (color, extra = {}) => new THREE.MeshToonMaterial({ color, g
 
 // A Kenney model's materials, in toon: same colours and palette texture,
 // optionally tinted (Cronenberg World's flesh, Gazorpazorp's rock).
-export function toonify(root, { tint = null, mix = 0.6, glow = null } = {}) {
+// `gradientMap` swaps the light steps (a textured model whose paint carries
+// its own shading wants gentler ones), `aniso` sharpens its textures, and
+// `dispose` frees the materials it replaces.
+export function toonify(root, { tint = null, mix = 0.6, glow = null, gradientMap = null, aniso = 0, dispose = false } = {}) {
   const made = new Map();
   root.traverse((o) => {
     if (!o.isMesh) return;
@@ -30,7 +33,9 @@ export function toonify(root, { tint = null, mix = 0.6, glow = null } = {}) {
       if (made.has(m)) return made.get(m);
       const c = (m.color ?? new THREE.Color(1, 1, 1)).clone();
       if (tint) c.lerp(new THREE.Color(tint), mix);
-      const t = toon(c, { map: m.map ?? null });
+      const t = toon(c, { map: m.map ?? null, ...(gradientMap ? { gradientMap } : {}) });
+      if (aniso && m.map) m.map.anisotropy = aniso;
+      if (dispose) m.dispose();
       if (glow && /light|glass|screen|window/i.test(m.name ?? '')) {
         t.emissive = new THREE.Color(glow);
         t.emissiveIntensity = 1.6;
@@ -103,9 +108,11 @@ export function releafMap(map, leaf) {
 
 // The ink: draws the scene once more as normals and depth, then darkens the
 // picture where either jumps. `hide` lists what has no line (the sky, glows,
-// decals on the ground).
+// decals on the ground). `fade` [near, far] thins the line out between those
+// distances (in the scene's units) and leaves none beyond, as a cartoon draws
+// its backgrounds (and so no line along a far horizon); without it, it never does.
 export class InkPass extends Pass {
-  constructor(scene, camera, { hide = () => [], color = 0x14101a, width = 1 } = {}) {
+  constructor(scene, camera, { hide = () => [], color = 0x14101a, width = 1, fade = null } = {}) {
     super();
     this.scene = scene;
     this.camera = camera;
@@ -123,6 +130,7 @@ export class InkPass extends Pass {
           far: { value: camera.far },
           ink: { value: new THREE.Color(color) },
           width: { value: width },
+          fade: { value: new THREE.Vector2(...(fade ?? [0, 0])) },
         },
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
         fragmentShader: `
@@ -130,6 +138,7 @@ export class InkPass extends Pass {
           uniform sampler2D tDiffuse, tNormal, tDepth;
           uniform vec2 px;
           uniform float near, far, width;
+          uniform vec2 fade;
           uniform vec3 ink;
           varying vec2 vUv;
           float invz(vec2 uv) {
@@ -156,6 +165,11 @@ export class InkPass extends Pass {
               crease = smoothstep(0.75, 0.45, k);
             }
             float e = max(edgeZ, crease * 0.85);
+            // thinner with distance, from the nearest of the five samples
+            if (fade.y > 0.0) {
+              float nz = max(max(zc, max(zl, zr)), max(zd, zu));
+              e *= 1.0 - smoothstep(fade.x, fade.y, nz > 0.0 ? 1.0 / nz : fade.y);
+            }
             gl_FragColor = vec4(mix(c.rgb, ink, e * 0.92), c.a);
           }`,
       }),

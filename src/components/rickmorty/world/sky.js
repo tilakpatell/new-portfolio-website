@@ -8,8 +8,11 @@ import * as THREE from 'three';
 
 export const STREET_SKY = { top: 0x3f9be0, mid: 0x86cbf2, low: 0xd8f3fb, sun: 0xfff6d8, clouds: 1, moons: 0 };
 
+// where the afternoon sun is: the sky draws it there and ./scene.js lights from there
+export const SUN_DIR = new THREE.Vector3(-0.55, 0.72, 0.5).normalize();
+
 export function makeSky(radius = 520, look = STREET_SKY) {
-  const sunDir = new THREE.Vector3(-0.55, 0.62, 0.55).normalize();
+  const sunDir = SUN_DIR;
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,

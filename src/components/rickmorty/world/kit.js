@@ -1,13 +1,20 @@
 // The C-137 world's shared kit, for the street (./street.js) and the rooms:
 // toon materials by role (walls, floors, wood, metal, glass, glows), each
-// made once and shared; canvas-painted textures; roof shapes; Meshy models
-// toon-painted; and a batch that merges the parts that never move by
-// material, so a whole street is a few dozen draw calls.
+// made once and shared; canvas-painted textures; roof shapes; the gentle
+// light steps for Meshy models; and a batch that merges the parts that never
+// move by material, so a whole street is a few dozen draw calls.
+//
+// The materials are shared by everything that asks for the same colour: never
+// change one you were given (its colour, side, map, a texture's repeat); ask
+// for another (toon() with `extra`, or painted() under a new name).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTexture, hot } from '../../../lib/stage3d';
+import { rng } from '../../../lib/texture';
 import { toon } from '../portal/toon';
+
+export { rng };
 
 const key = (c) => new THREE.Color(c).getHexString();
 
@@ -36,8 +43,13 @@ export function kitMaterials(renderer) {
     // bright enough for the bloom to catch
     glow: (color = 0x9dff5a, k = 2.4) => once(`g${key(color)}${k}`, () => new THREE.MeshBasicMaterial({ color: hot(color, k) })),
     // a toon material painted on a canvas: draw(ctx, w, h) once
-    painted: (name, w, h, draw, { repeat = [1, 1], color = 0xffffff, transparent = false } = {}) =>
-      once(`p${name}`, () => toon(color, { map: paint(renderer, w, h, draw, { repeat }), transparent, alphaTest: transparent ? 0.4 : 0 })),
+    // (`tile`: metres to a repeat, for batch()'s world-space uvs)
+    painted: (name, w, h, draw, { repeat = [1, 1], color = 0xffffff, transparent = false, side = THREE.FrontSide, tile = 0 } = {}) =>
+      once(`p${name}`, () => {
+        const m = toon(color, { map: paint(renderer, w, h, draw, { repeat }), transparent, alphaTest: transparent ? 0.4 : 0, side });
+        if (tile) m.userData.tile = tile;
+        return m;
+      }),
     dispose() {
       for (const m of made.values()) {
         m.map?.dispose();
@@ -55,17 +67,6 @@ export function paint(renderer, w, h, draw, opts = {}) {
   c.height = h;
   draw(c.getContext('2d'), w, h);
   return canvasTexture(c, renderer, opts);
-}
-
-// a little seeded random
-export function rng(seed) {
-  let s = seed | 0;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 // Specks over a flat colour (grass, asphalt, concrete): `n` dots of the
@@ -98,8 +99,9 @@ export function bricks(g, w, h, { base = '#8e2f25', mortar = '#5c1d18', rows = 8
   }
 }
 
-// A Meshy model's materials as toon, keeping its texture: its painted shading
-// stays, so the light steps are gentle (two thirds of the way down at most).
+// The light steps for a Meshy model toon-painted (portal/toon.js's toonify
+// with this as its gradientMap): its texture carries its own shading, so the
+// steps are gentle (two thirds of the way down at most).
 let gentle = null;
 export function gentleRamp() {
   if (gentle) return gentle;
@@ -108,24 +110,6 @@ export function gentleRamp() {
   gentle.generateMipmaps = false;
   gentle.needsUpdate = true;
   return gentle;
-}
-export function toonModel(root, { aniso = 4 } = {}) {
-  const made = new Map();
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const src = o.material;
-    if (!made.has(src)) {
-      const m = toon(0xffffff, { map: src.map ?? null, gradientMap: gentleRamp() });
-      if (!src.map) m.color.copy(src.color ?? new THREE.Color(1, 1, 1));
-      if (src.map) src.map.anisotropy = aniso;
-      made.set(src, m);
-      src.dispose();
-    }
-    o.material = made.get(src);
-    o.castShadow = true;
-    o.receiveShadow = true;
-  });
-  return root;
 }
 
 // Fit a model over a footprint: x0..x1 by z0..z1 on the ground, its height
@@ -244,7 +228,7 @@ export function batch() {
     let g = geo.index ? geo.toNonIndexed() : geo.clone();
     g.applyMatrix4(m);
     for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(name)) g.deleteAttribute(name);
-    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((g.attributes.position.count * 2)), 2));
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     if (!byMat.has(mat)) byMat.set(mat, []);
     byMat.get(mat).push(g);
     return g;

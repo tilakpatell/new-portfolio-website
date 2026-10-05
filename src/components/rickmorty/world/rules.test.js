@@ -424,6 +424,14 @@ describe('C-137: Harry Herpson High, the neighbours and the street’s small thi
     expect(new Set(NEIGHBOURS.map((n) => n.tint)).size).toBe(6);
   });
 
+  it('gives every neighbour a design and a roof colour for the scene', () => {
+    for (const n of NEIGHBOURS) {
+      expect(['colonial', 'ranch'], n.id).toContain(n.look);
+      expect(Number.isInteger(n.roofTint) && n.roofTint >= 0 && n.roofTint <= 0xffffff, n.id).toBe(true);
+    }
+    expect(new Set(NEIGHBOURS.map((n) => n.look))).toEqual(new Set(['colonial', 'ranch']));
+  });
+
   it('lists the street’s small things, each a thing in the way: the flagpole, the marquee, the school tree, poles, mailboxes, the hydrant', () => {
     const at = (id) => DECOR.find((d) => d.id === id);
     expect(at('flagpole')).toEqual({ id: 'flagpole', kind: 'pole', x: 47.5, z: 11.8, r: 0.15 });

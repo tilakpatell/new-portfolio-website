@@ -5,23 +5,8 @@
 
 import * as THREE from 'three';
 import { hot } from '../../../lib/stage3d';
+import { dotTexture } from '../../middleearth/towns/bake';
 import { SWIRL_GLSL } from '../swirl';
-
-// a soft round spot, white in the middle
-function spotTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  r.addColorStop(0, 'rgba(255,255,255,1)');
-  r.addColorStop(0.45, 'rgba(255,255,255,0.55)');
-  r.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = r;
-  g.fillRect(0, 0, 64, 64);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
 
 // The show's portal: a swirl disc w × h, standing, that opens (0…1).
 export function portalMaterial() {
@@ -48,7 +33,7 @@ export function portalMaterial() {
 export function createFx() {
   const group = new THREE.Group();
   group.name = 'fx';
-  const spot = spotTexture();
+  const spot = dotTexture();
 
   // ── sparks: points that fly up and fall, each with its own life ──
   const N = 240;
@@ -89,6 +74,7 @@ export function createFx() {
   sparks.frustumCulled = false;
   group.add(sparks);
   let next = 0;
+  let live = false; // any sparks in the air (or just landed, to clear them)
   const burst = (x, y, z, n = 90, speed = 4) => {
     for (let k = 0; k < n; k++) {
       const i = next;
@@ -101,6 +87,7 @@ export function createFx() {
       life[i] = 0.9 + Math.random() * 0.8;
       size[i] = 0.12 + Math.random() * 0.16;
     }
+    live = true;
   };
 
   // ── rings on the ground that grow and fade ──
@@ -152,15 +139,19 @@ export function createFx() {
   group.add(pin);
 
   const update = (dt, t) => {
-    for (let i = 0; i < N; i++) {
-      if (life[i] <= 0) continue;
-      life[i] -= dt;
-      vel[i * 3 + 1] -= 6 * dt;
-      for (let a = 0; a < 3; a++) pos[i * 3 + a] += vel[i * 3 + a] * dt;
+    if (live) {
+      live = false;
+      for (let i = 0; i < N; i++) {
+        if (life[i] <= 0) continue;
+        life[i] -= dt;
+        live = true;
+        vel[i * 3 + 1] -= 6 * dt;
+        for (let a = 0; a < 3; a++) pos[i * 3 + a] += vel[i * 3 + a] * dt;
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.aLife.needsUpdate = true;
+      geo.attributes.aSize.needsUpdate = true;
     }
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.aLife.needsUpdate = true;
-    geo.attributes.aSize.needsUpdate = true;
     for (let i = rings.length - 1; i >= 0; i--) {
       const r = rings[i];
       r.age += dt;
