@@ -93,6 +93,15 @@ function fit(root, spec) {
     if (o.isMesh) {
       o.castShadow = true;
       o.receiveShadow = true;
+      // a clock's glass came with real transmission, which has three draw
+      // every opaque thing in the scene a second time, every frame, to see
+      // through it: a sheen of plain clear glass looks the same at a clock's size
+      const m = o.material;
+      if (m?.transmission > 0) {
+        o.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.18, depthWrite: false, normalMap: m.normalMap ?? null, roughnessMap: m.roughnessMap ?? null });
+        o.castShadow = false;
+        m.dispose();
+      }
     }
   });
   const box = new THREE.Box3().setFromObject(root);
