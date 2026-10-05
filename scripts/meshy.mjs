@@ -18,9 +18,10 @@
 // public/hq/meshy/ with a manifest.json the games read.
 //
 // The C-137 world's set: the Smiths, the President, his general and Secret
-// Service agent and the Federation's agent (rigged, with clips; the agent
-// sits too) go to public/games/meshy/ beside Rick and Morty; the house,
-// school, arcade, cabinet, Shoney's, the limo and the Federation's ship to
+// Service agent, the Federation's agent (the agent sits too), Mr. Goldenfold,
+// the principal, the kids in Morty's class and Tiny Rick (rigged, with
+// clips) go to public/games/meshy/ beside Rick and Morty; the house, school,
+// arcade, cabinet, Shoney's, the limo and the Federation's ship to
 // public/models/c137/.
 //
 //   node --env-file=.env.local scripts/meshy.mjs <step> [name … | portal | office | rollout | hq | c137]
@@ -120,6 +121,14 @@ export const ASSETS = {
   limo: { rig: false, poly: 12000, tex: 1024, set: 'c137', prompt: `The US President's black armoured limousine as drawn in Rick and Morty: a long heavy glossy black stretch car with dark tinted windows, chrome grille and trim, and two small American flags on short poles above the front wheels. ${CAR}` },
   fedship: { rig: false, poly: 14000, tex: 1024, set: 'c137', prompt: `A Galactic Federation patrol ship from Rick and Morty: a big rounded dark green armoured capsule like an upright egg seen front-on, a tall glass canopy strip running up its middle, rows of round glowing green lights along its top, round red lights on each side, two bulging pale green engine pods low on the left and right with glowing green jets underneath, and a black mechanical insect-like snout with mandibles at the front bottom. ${PROP}` },
   shoneys: { rig: false, poly: 16000, tex: 1024, set: 'c137', prompt: `The Shoney's family restaurant from Rick and Morty: a single-storey American roadside diner with pale yellow stucco walls, a dark brown shingled hip roof with a red trim along the eaves and a front gable over the door, glass double doors in the middle, wide windows along the front each under a red and white striped awning, small green shrubs in red planters, and a tall pole sign with a yellow board framed in red. No text. ${BUILDING}` },
+  // Harry Herpson High: Morty's maths teacher, the principal, the kids in his class, and Tiny Rick
+  goldenfold: { rig: true, height: 1.8, poly: 12000, tex: 1024, set: 'c137', prompt: `Mr. Goldenfold from Rick and Morty, Morty's maths teacher: a heavyset Black man in his forties with a big bushy black moustache, black hair thinning on top and worn long and straight at the back down to his collar, wide startled eyes, a round belly, in a mustard-yellow V-neck sweater over a white collared shirt and a brown tie, navy blue trousers, pale blue socks and tan shoes. ${BODY}` },
+  principal: { rig: true, height: 1.7, poly: 12000, tex: 1024, set: 'c137', prompt: `Principal Gene Vagina from Rick and Morty: a short pale middle-aged man, nearly bald with a few stubbly dark hairs on top of his round head, droopy tired eyes with bags under them, a big round nose, a pot belly, in a pale blue short-sleeved collared shirt with a blue tie, grey-brown trousers and reddish-brown shoes. ${BODY}` },
+  jessica: { rig: true, height: 1.62, poly: 12000, tex: 1024, set: 'c137', prompt: `Jessica from Rick and Morty: a slim teenage girl with long straight bright orange hair with a side-swept fringe and a teal headband, long eyelashes, in a pale lavender short-sleeved blouse with a collar and buttons, a light purple pleated mini skirt and pink flat shoes. ${BODY}` },
+  brad: { rig: true, height: 1.85, poly: 12000, tex: 1024, set: 'c137', prompt: `Brad from Rick and Morty: a tall lanky Black teenage boy, the school jock, with very short black hair, heavy-lidded bored eyes and a thin moustache, in a green letterman jacket with cream sleeves over a red t-shirt, dark grey jeans and red and white sneakers. ${BODY}` },
+  tammy: { rig: true, height: 1.62, poly: 12000, tex: 1024, set: 'c137', prompt: `Tammy Guterman from Rick and Morty: a slim teenage girl with wavy shoulder-length brown hair, a light blue long-sleeved cropped top with a scoop neck showing her midriff, beige khaki trousers and dark olive flat shoes. ${BODY}` },
+  ethan: { rig: true, height: 1.72, poly: 12000, tex: 1024, set: 'c137', prompt: `Ethan from Rick and Morty: a skinny teenage boy with shaggy straight blond hair over his forehead and half-closed bored eyes, in an open grey-blue zip-up hoodie over a cream t-shirt, maroon skinny jeans and grey high-top sneakers. ${BODY}` },
+  tinyrick: { rig: true, height: 1.6, poly: 12000, tex: 1024, set: 'c137', prompt: `Tiny Rick from Rick and Morty: Rick Sanchez turned into a teenager, a skinny teenage boy with spiky light blue-grey hair standing up in points, a unibrow, wide eyes, in a long white lab coat a little too big for him, a light cyan shirt, brown trousers and dark grey shoes. ${BODY}` },
 };
 
 // Roll out (Transformers): each Autobot and Vehicon twice, as the vehicle and
