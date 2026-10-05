@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut } from '../walker';
-import { CAST, COLLIDERS, GALADHRIM, LEAD, MALLORNS, MIRROR, PATHS, SPOTS, START, TREE, WALLS, WOOD, castFor, groundHeight, moodFor, nearPath, validAt, woodHeight } from './layout';
+import { BOARDS, BUTTS, CAST, COLLIDERS, GALADHRIM, LEAD, MALLORNS, MIRROR, PATHS, RANGE, SPOTS, START, TREE, WALLS, WOOD, castFor, groundHeight, moodFor, nearPath, validAt, woodHeight } from './layout';
 import { QUESTS } from './story';
 
 const free = (x, z, r = 0.4) => {
@@ -51,6 +51,34 @@ describe('the wood', () => {
     expect(castFor('haldir').some((c) => c.look === 'galadriel')).toBe(false);
     expect(moodFor('mirror')).toBe('night');
     expect(moodFor('haldir')).toBe('day');
+  });
+});
+
+describe('Legolas’s targets', () => {
+  it('has a mark by the path to shoot from', () => {
+    expect(free(BUTTS.x, BUTTS.z)).toBe(true);
+    expect(nearPath(BUTTS.x, BUTTS.z)).toBeLessThan(3.5);
+  });
+  it('stands each board clear of the trees, off the paths, in sight of the mark', () => {
+    const trunks = COLLIDERS.filter((c) => c.kind === 'circle' && !c.low);
+    for (const b of BOARDS) {
+      const d = Math.hypot(b.x - BUTTS.x, b.z - BUTTS.z);
+      expect(d, `board ${b.id}`).toBeGreaterThan(9);
+      expect(d, `board ${b.id}`).toBeLessThan(35);
+      expect(nearPath(b.x, b.z), `board ${b.id}`).toBeGreaterThan(4);
+      for (const c of trunks) expect(Math.hypot(b.x - c.x, b.z - c.z), `board ${b.id} by ${c.id}`).toBeGreaterThan(c.r + 0.8);
+      // nothing between: the line from the mark passes every trunk by more than the board is wide
+      for (let k = 0.05; k < 1; k += 0.025) {
+        const x = BUTTS.x + (b.x - BUTTS.x) * k;
+        const z = BUTTS.z + (b.z - BUTTS.z) * k;
+        for (const c of trunks) expect(Math.hypot(x - c.x, z - c.z), `board ${b.id} behind ${c.id}`).toBeGreaterThan(c.r - 0.3 + b.r);
+      }
+    }
+  });
+  it('gives the archery its boards above the ground, and the bow at a hobbit’s height', () => {
+    expect(RANGE.targets).toHaveLength(BOARDS.length);
+    for (const t of RANGE.targets) expect(t.y - groundHeight(t.x, t.z)).toBeGreaterThan(1);
+    expect(RANGE.from.y - groundHeight(BUTTS.x, BUTTS.z)).toBeCloseTo(1.05);
   });
 });
 

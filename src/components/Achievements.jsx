@@ -83,6 +83,7 @@ export const ACHIEVEMENTS = {
   ipassthetest: { name: 'I pass the test', desc: 'Kept the Ring from the Mirror’s water, then offered it to Galadriel' },
   earendil: { name: 'The light of Eärendil', desc: 'Gave out the Lady’s gifts, and took the phial' },
   argonath: { name: 'The Pillars of the Kings', desc: 'Took the boats down the Anduin to the Argonath' },
+  galadhrim: { name: 'Worthy of the Galadhrim', desc: 'Struck all five of Legolas’s targets among the mallorns, with seven arrows' },
   parthgalen: { name: 'Parth Galen', desc: 'Made camp under Amon Hen, and gathered the wood' },
   wanderalone: { name: 'None of us should wander alone', desc: 'Got away from Boromir in the woods with the Ring on' },
   seatofseeing: { name: 'The Seat of Seeing', desc: 'Took the Ring off on Amon Hen before the Eye found you' },
