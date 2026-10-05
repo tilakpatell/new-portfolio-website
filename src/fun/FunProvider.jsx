@@ -216,6 +216,7 @@ export function FunProvider({ children }) {
   );
   const gandalf = useCallback(() => {
     import('../lib/sfx').then((s) => s.thunder());
+    import('../lib/clips').then((c) => c.playClip('youShallNotPass', { keep: true }));
     notify('You shall not pass!', 'Gandalf, on the Bridge of Khazad-dûm', 'note');
     const root = document.documentElement;
     root.classList.remove('stand-ground');
@@ -223,7 +224,10 @@ export function FunProvider({ children }) {
     root.classList.add('stand-ground');
     setTimeout(() => root.classList.remove('stand-ground'), 900);
   }, [notify]);
-  const gollum = useCallback(() => notify('My precious.', 'Gollum', 'note'), [notify]);
+  const gollum = useCallback(() => {
+    import('../lib/clips').then((c) => c.playClip('myPrecious', { keep: true }));
+    notify('My precious.', 'Gollum', 'note');
+  }, [notify]);
 
   // Rick and Morty: get schwifty, and the site goes portal green (or one of
   // the Smiths' colours)

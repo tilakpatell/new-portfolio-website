@@ -32,6 +32,12 @@ remove it.
 | bad-feeling-han.mp3 | Star Wars: The Force Awakens, from [Movie Sound Clips](https://www.moviesoundclips.net) |
 | fire-when-ready.mp3, thats-no-moon.mp3, short-for-a-stormtrooper.mp3, stay-on-target.mp3, dont-get-cocky.mp3, help-me-obi-wan-kenobi.mp3, force-is-strong.mp3, never-tell-me-the-odds.mp3, do-or-do-not.mp3, r2-scream.mp3, r2-whistle.mp3, lightsaber-on.mp3, tie-fighter.mp3 | Star Wars (A New Hope, The Empire Strikes Back), from [Myinstants](https://www.myinstants.com) |
 | imperial-march.mp3 (its opening bars) | The Empire Strikes Back, John Williams's score, from [Soundboard Guy](https://www.soundboardguy.com) |
+| you-shall-not-pass.mp3, my-precious.mp3 | The Lord of the Rings, from [Soundboard Guy](https://www.soundboardguy.com) |
+| fly-you-fools.mp3, wizard-is-never-late.mp3, this-foe-is-beyond-any-of-you.mp3, second-breakfast.mp3, one-ring.mp3, and-my-axe.mp3, the-world-is-changed.mp3, nazgul-scream.mp3 | The Lord of the Rings, from [Myinstants](https://www.myinstants.com) |
+| nobody-likes-you.mp3, find-you-a-box.mp3, meats-back-on-the-menu.mp3, task-appointed-to-you.mp3, i-can-carry-you.mp3, you-bow-to-no-one.mp3 | The Lord of the Rings, from [Movie Sound Clips](https://www.moviesoundclips.net) |
+| why-is-the-rum-always-gone.mp3, almost-caught-captain-jack-sparrow.mp3, but-you-have-heard-of-me.mp3, madness-or-brilliance.mp3, welcome-to-the-caribbean.mp3, take-what-you-can.mp3, do-you-fear-death.mp3, why-should-the-afterlife.mp3, jar-of-dirt.mp3, not-good.mp3, oh-bugger.mp3, drink-up-me-hearties.mp3 | Pirates of the Caribbean, from [Movie Sound Clips](https://www.moviesoundclips.net) |
+| did-everyone-see-that.mp3 | Pirates of the Caribbean, from [Myinstants](https://www.myinstants.com) |
+| without-a-drop-of-rum.mp3 | Pirates of the Caribbean, from [Soundboard Guy](https://www.soundboardguy.com) |
 | yeah-science.mp3, one-who-knocks.mp3, walter-hartwell-white.mp3, private-domicile.mp3, dont-drink-and-drive.mp3 | Breaking Bad, from [Myinstants](https://www.myinstants.com) |
 | killed-gus-fring.mp3, cant-keep-getting-away.mp3 | Breaking Bad, from [Soundboard Guy](https://www.soundboardguy.com) |
 | i-am-the-danger.mp3 | Breaking Bad, from [Meme Sound Effects](https://www.memesoundeffects.com) |
