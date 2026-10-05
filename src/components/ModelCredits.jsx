@@ -8,7 +8,8 @@ import MODELS from '../data/modelCredits.json';
 // it out of the downloads; the universe map's Star Wars models, which
 // scripts/build-universe.py makes, are in it by hand.
 //
-// `where`: the page ('universe', 'middle-earth'). As a list that opens, like
+// `where`: the page ('universe', 'middle-earth', 'galaxy': a model one page
+// shares with another says so in its `also`). As a list that opens, like
 // the photo credits; or with `line`, as one sentence for a page with no room
 // for a list.
 
@@ -17,7 +18,7 @@ const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const out = { target: '_blank', rel: 'noopener noreferrer' };
 
 export default memo(function ModelCredits({ where, line = false, className = '' }) {
-  const list = Object.values(MODELS).filter((m) => m.where === where);
+  const list = Object.values(MODELS).filter((m) => m.where === where || m.also?.includes(where));
   if (!list.length) return null;
   if (line) {
     // one licence between them all is said once, at the end

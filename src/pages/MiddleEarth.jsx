@@ -390,6 +390,12 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'rivendell' && (
+        <Suspense fallback={null}>
+          <Rush level="rivendell" />
+        </Suspense>
+      )}
+
+      {here?.id === 'rivendell' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-scenes-title">
           <h2 id="me-scenes-title" className="title">
             From the films

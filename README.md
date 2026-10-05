@@ -4,7 +4,7 @@
 
 **The code behind [tilakpatell.com](https://tilakpatell.com), Tilak Patel's personal site: a portfolio you can fly through.**
 
-A résumé on the surface. Underneath it, a 3D universe with a starfighter, twelve hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
+A résumé on the surface. Underneath it, a 3D universe with a starfighter, thirteen hidden fan-made worlds (one of them a whole Star Wars galaxy), playable games and online multiplayer, all running on a static site.
 
 [**Visit tilakpatell.com →**](https://tilakpatell.com)
 
@@ -62,13 +62,27 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 
-On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then.
+On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
 
 The hangar fits each ship out its own way, like a space sim's outfitting screen, and remembers it. Paint jobs are the site's own colour schemes: the six companies' come with the Cartographer achievement, and each fan scheme's with the easter egg that unlocks it. Parts bolt on and change how it flies and fights: strap-on boosters (solid rockets, an afterburner, repulsor pods, portal-fluid tanks), thrusters, twin or fusion guns, plating or fast-charge shields, and fins. Each draws power from the ship's plant and adds mass, so you can't fit the best of everything; the best parts are earned with achievements in the worlds. Other pilots see your paint and parts. The X-wing and the Falcon you fly are other people's models from Sketchfab (CC BY, credited on the map), brought to web size by `scripts/sketchfab-batch.mjs`; while they load, versions modelled in code (`universe/hulls.js`) stand in.
 
-Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension.
+Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension. Off the map, in Middle-earth's towns and on its map, at Avengers HQ and in Albuquerque, everyone else online shows up as a pale ghost from another world (a Frodo, a Spider-Man hologram, or a Walt's Aztek) with their name over them; nothing passes between you but where each of you is.
 
 The map is big: the planets are a hundred and more ship-lengths across, the fandoms far out in deep space, and the Death Star's trench run goes all the way round it.
+
+### A galaxy far, far away
+
+The Star Wars planet on the map is a universe of its own (there's a little spiral galaxy turning beside its Death Star). Pick it and go, and you jump to lightspeed into `/galaxy`: nineteen star systems from the films, from Tatooine, Hoth and Endor to Coruscant, Scarif and Exegol, each with its region and grid square from the films' atlas, its era and films, and the moment it's remembered for playing out round it (Death Squadron over Hoth, the Battle of Endor, the Death Star rounding Yavin with its trench to fly, Starkiller Base draining its sun). Every pilot online sees the same moment at the same time, and meets the other pilots in the same system.
+
+Every other system's star is up there in the sky, where it really is from where you are (Hoth's close by from Bespin, high above the galaxy's band; Coruscant's a bright star toward the core). Turn the nose toward one and its name comes up; put the nose on it and press `J` (or tap Jump), or just fly on out of the system toward it, and you jump.
+
+| Key | Action |
+| --- | --- |
+| `J` | Jump to lightspeed, to the star your nose is on |
+| `M` | The galaxy map: plot a course, filter by era or film |
+| `E` | Board the Death Star, or open the mission, when you're at it |
+
+The flying keys are the universe map's. Every system has a mission: the trench run and boarding the Death Star are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
 
 ### The hidden worlds
 
@@ -76,12 +90,13 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 | World | Route | Fandom | Highlights |
 | --- | --- | --- | --- |
+| A galaxy far, far away | `/galaxy` | Star Wars | Nineteen star systems to fly, jump between and fight over, each with a mission briefing |
 | Death Star | `/deathstar` | Star Wars | Fly the trench run before Yavin 4 comes into range |
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Cap. Each building opens its game (Spider-Man's *Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
-| Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, with everyone else online as holograms. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game. Other drivers online show up as ghost Azteks |
 | Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
 | Earth | `/earth` | Travel | Down from orbit onto the globe as it is right now (NASA's Blue Marble and Black Marble, the real sun), then fly a little plane to every place I've been: a passport stamp and a postcard at each |
@@ -159,6 +174,7 @@ The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.e
     ├── components/
     │   ├── universe/              # the universe map: flight, targeting, HUD
     │   │   └── online/            # multiplayer over Nostr
+    │   ├── galaxy/                # a galaxy far, far away: the systems, hyperspace, the galaxy map
     │   ├── cockpit/               # the welcome, the crawl and the launch
     │   ├── worlds/                # world registry and the download gate for phones
     │   ├── games/                 # shared game code: GPU check, gamepad, sounds

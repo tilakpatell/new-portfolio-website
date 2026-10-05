@@ -102,7 +102,7 @@ describe('the Overcooked loop', () => {
     expect(p.held).toEqual({ k: 'bowl', s: 'clean' });
     stand(p, 7, 1, 'N');
     grab(s, p);
-    expect(dishOf(p.held)).toBe('stew');
+    expect(dishOf(p.held, PONY)).toBe('stew');
     stand(p, 4, 6, 'S');
     const served = grab(s, p);
     expect(served[0].type).toBe('served');
@@ -248,5 +248,64 @@ describe('work', () => {
     p.held = null;
     work(s, p, 2);
     expect(s.spots['5,0'].item.s).toBe('chopped');
+  });
+});
+
+describe('Rivendell’s kitchen', () => {
+  // (imported here, so the Pony's tests above stand alone)
+  it('makes mushroom soup and pours wine, its own way', async () => {
+    const { RIVENDELL } = await import('./levels/rivendell');
+    const s = newRush({ ...RIVENDELL, orders: { ...RIVENDELL.orders, first: 1e9 } });
+    s.orders.push({ id: 1, dish: 'soup', t: 80, of: 80 }, { id: 2, dish: 'wine', t: 50, of: 50 });
+    const p = s.players[0];
+    // two mushrooms and a herb, chopped, into the cauldron (across the bridge)
+    for (const crate of [1, 1, 2]) {
+      stand(p, crate, 1, 'N');
+      grab(s, p);
+      expect(['mushroom', 'herb']).toContain(p.held.k);
+      stand(p, 3, 1, 'N');
+      grab(s, p);
+      workFor(s, p, 1.6);
+      grab(s, p);
+      expect(p.held.s).toBe('chopped');
+      stand(p, 8, 1, 'N');
+      grab(s, p);
+    }
+    expect(s.spots['8,0'].s).toBe('cooking');
+    run(s, RIVENDELL.times.cook + 0.1);
+    stand(p, 1, 6, 'W');
+    grab(s, p);
+    stand(p, 8, 1, 'N');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'bowl', s: 'soup' });
+    expect(dishOf(p.held, RIVENDELL)).toBe('soup');
+    stand(p, 3, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'soup' });
+    // a goblet of wine from the cask
+    stand(p, 1, 5, 'W');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'goblet', s: 'clean' });
+    stand(p, 10, 2, 'E');
+    grab(s, p);
+    run(s, RIVENDELL.times.fill + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'goblet', s: 'wine' });
+    stand(p, 7, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'wine' });
+    run(s, RIVENDELL.times.back + 0.1);
+    expect(s.spots['2,7']).toEqual({ goblet: 1, bowl: 1 });
+  });
+
+  it('can’t be waded across: only the bridges cross the stream', async () => {
+    const { RIVENDELL } = await import('./levels/rivendell');
+    const s = newRush(RIVENDELL);
+    const p = s.players[0];
+    stand(p, 3, 3, 'E'); // beside the stream, between the bridges
+    for (let i = 0; i < 60; i++) movePlayer(s, p, { x: 1, z: 0 }, 0.05);
+    expect(p.x).toBeLessThanOrEqual(5 - 0.3 + 1e-6);
+    stand(p, 3, 2, 'E'); // on the bridge's row
+    for (let i = 0; i < 60; i++) movePlayer(s, p, { x: 1, z: 0 }, 0.05);
+    expect(p.x).toBeGreaterThan(8);
+    expect(s.spots['5,3']).toBeUndefined(); // (the water's no station)
   });
 });

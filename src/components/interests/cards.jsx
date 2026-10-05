@@ -81,6 +81,9 @@ function StarWars() {
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
         </button>
+        <Link to="/galaxy" className="btn btn-ghost btn-sm">
+          A galaxy far, far away
+        </Link>
         <Link to="/deathstar" className="btn btn-ghost btn-sm">
           Visit the Death Star
         </Link>

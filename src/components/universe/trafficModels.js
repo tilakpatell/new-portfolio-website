@@ -983,7 +983,7 @@ export const BUILT_KINDS = Object.keys(BUILD);
 
 // A model's own things to free, and its own random numbers (the same every
 // time for the same kind, so a model always looks the same).
-function makeKit(kind) {
+export function makeKit(kind) {
   const owned = [];
   let s = [...kind].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
   return {
@@ -1007,8 +1007,15 @@ function makeKit(kind) {
 
 export function buildTraffic(kind) {
   if (!BUILD[kind]) kind = 'tie';
+  return buildModel(BUILD[kind], kind);
+}
+
+// A model from its builder (one of BUILD's, or another fleet's that's put
+// together the same way: the galaxy's, galaxy/fleet.js): built with a kit of
+// its own, centred on its box and exactly 1 long in z.
+export function buildModel(build, kind) {
   const k = makeKit(kind);
-  const made = BUILD[kind](k);
+  const made = build(k);
   const body = new THREE.Group();
   body.add(...made.root);
   // centred on its own box, and exactly 1 long in z

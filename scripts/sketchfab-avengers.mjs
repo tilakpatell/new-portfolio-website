@@ -95,7 +95,7 @@ const FAMILIES = {
 };
 // the bone each slot points at, for its direction
 const NEXT = { hips: 'spine', spine: 'chest', chest: 'upperChest', upperChest: 'neck', neck: 'head', shoulderL: 'armL', armL: 'elbowL', elbowL: 'handL', shoulderR: 'armR', armR: 'elbowR', elbowR: 'handR', thighL: 'kneeL', kneeL: 'footL', footL: 'toeL', thighR: 'kneeR', kneeR: 'footR', footR: 'toeR' };
-// Mixamo's fingers, when both rigs have them: thumbL1 … pinkyR3
+// The fingers (Mixamo's and Unreal's), when both rigs have them: thumbL1 … pinkyR3
 const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 for (const [side, Side] of [['L', 'Left'], ['R', 'Right']])
   for (const f of FINGERS)
@@ -103,6 +103,7 @@ for (const [side, Side] of [['L', 'Left'], ['R', 'Right']])
       const slot = `${f.toLowerCase()}${side}${i}`;
       SLOTS.push(slot);
       FAMILIES.mixamo.slots[slot] = `${Side}Hand${f}${i}`;
+      FAMILIES.unreal.slots[slot] = `${f.toLowerCase()}_0${i}_${side.toLowerCase()}`;
       if (i < 3) NEXT[slot] = `${f.toLowerCase()}${side}${i + 1}`;
     }
 const PREV = { spine: 'hips', chest: 'spine', upperChest: 'chest', neck: 'upperChest', head: 'neck', shoulderL: 'upperChest', armL: 'shoulderL', elbowL: 'armL', handL: 'elbowL', shoulderR: 'upperChest', armR: 'shoulderR', elbowR: 'armR', handR: 'elbowR', thighL: 'hips', kneeL: 'thighL', footL: 'kneeL', toeL: 'footL', thighR: 'hips', kneeR: 'thighR', footR: 'kneeR', toeR: 'footR' };
@@ -112,7 +113,7 @@ for (const side of ['L', 'R']) for (const f of FINGERS) PREV[`${f.toLowerCase()}
 const bare = (n) => n.replace(/_\d+$/, '');
 
 // slot -> joint node, for a skin's joints
-function mapBones(doc) {
+export function mapBones(doc) {
   const joints = doc.getRoot().listSkins().flatMap((s) => s.listJoints());
   const names = joints.map((j) => bare(j.getName()));
   const fam = Object.entries(FAMILIES).find(([, f]) => names.some((n) => f.test.test(n)));
@@ -129,13 +130,13 @@ function mapBones(doc) {
 // ---------------------------------------------------------------------------
 // Poses. A node's local TRS at time t (the clip's value, or its rest).
 
-function parents(doc) {
+export function parents(doc) {
   const p = new Map();
   for (const n of doc.getRoot().listNodes()) for (const c of n.listChildren()) p.set(c, n);
   return p;
 }
 
-function sample(sampler, t) {
+export function sample(sampler, t) {
   const input = sampler.getInput().getArray();
   const output = sampler.getOutput().getArray();
   const n = sampler.getOutput().getElementSize();
@@ -156,7 +157,7 @@ function sample(sampler, t) {
 }
 
 // node -> world Matrix4 at time t of a clip (null for the rest pose)
-function worlds(doc, clip, t, override) {
+export function worlds(doc, clip, t, override) {
   const anim = new Map();
   if (clip)
     for (const ch of clip.listChannels()) {
@@ -183,23 +184,75 @@ function worlds(doc, clip, t, override) {
   return out;
 }
 
-const rot = (m) => {
+// Each joint's local TRS in the skin's bind pose (from the inverse bind
+// matrices), for a download whose nodes were left posed partway through a
+// clip rather than at rest. The bind pose is in the mesh's own space, which
+// a converter may have left turned from the nodes' (Z up, say): it is turned
+// back by the quarter turns that stand it up facing +z (as a Mixamo or Unreal
+// figure is made to), its left on +x.
+export function bindPose(doc) {
+  const out = new Map();
+  const par = parents(doc);
+  const rest = worlds(doc, null, 0);
+  const { map } = mapBones(doc);
+  for (const skin of doc.getRoot().listSkins()) {
+    const ibm = skin.getInverseBindMatrices();
+    if (!ibm) continue;
+    const joints = skin.listJoints();
+    const bind = new Map(joints.map((j, i) => [j, new Matrix4().fromArray(ibm.getElement(i, [])).invert()]));
+    // the figure's frame in the mesh's space: across (right thigh to left), up (hips to head), ahead
+    const frame = (w) => {
+      const at = (slot) => pos(w.get(map[slot]));
+      const up = at('head').sub(at('hips')).normalize();
+      const across = at('thighL').sub(at('thighR'));
+      const len = across.length();
+      across.addScaledVector(up, -across.dot(up)).normalize();
+      return { basis: new Matrix4().makeBasis(across, up, new Vector3().crossVectors(across, up)), len };
+    };
+    const want = frame(rest);
+    const have = frame(bind);
+    const turn = have.basis.clone().invert();
+    const e = turn.elements;
+    for (let i = 0; i < 16; i++) if (i % 4 < 3 && i < 12) e[i] = Math.round(e[i]);
+    turn.multiplyScalar(want.len / have.len);
+    turn.elements[15] = 1;
+    // stood where the skin's top joint really is
+    const top = joints.find((j) => !bind.has(par.get(j)));
+    const moved = turn.clone().multiply(bind.get(top));
+    turn.premultiply(new Matrix4().makeTranslation(pos(rest.get(top)).sub(pos(moved))));
+    for (const j of joints) bind.set(j, turn.clone().multiply(bind.get(j)));
+    for (const j of joints) {
+      const p = par.get(j);
+      const parentW = bind.get(p) ?? rest.get(p) ?? new Matrix4();
+      const local = parentW.clone().invert().multiply(bind.get(j));
+      const t = new Vector3();
+      const q = new Quaternion();
+      const sc = new Vector3();
+      local.decompose(t, q, sc);
+      out.set(j, { translation: t.toArray(), rotation: q.toArray(), scale: sc.toArray() });
+    }
+  }
+  return out;
+}
+
+export const rot = (m) => {
   const p = new Vector3();
   const q = new Quaternion();
   const s = new Vector3();
   m.decompose(p, q, s);
   return q;
 };
-const pos = (m) => new Vector3().setFromMatrixPosition(m);
+export const pos = (m) => new Vector3().setFromMatrixPosition(m);
 
 // ---------------------------------------------------------------------------
 // Retargeting one clip from src onto dst.
 
-function retarget(src, srcClip, dst, name, { inPlace }) {
+export function retarget(src, srcClip, dst, name, { inPlace, bind = false }) {
   const S = mapBones(src);
   const D = mapBones(dst);
   const slots = SLOTS.filter((s) => S.map[s] && D.map[s]);
-  const srcRest = worlds(src, null, 0);
+  // (bind: the source's rest is its bind pose, not its nodes as they were left)
+  const srcRest = worlds(src, null, 0, bind ? bindPose(src) : undefined);
   const dstRest = worlds(dst, null, 0);
   const dstParent = parents(dst);
 
@@ -253,10 +306,11 @@ function retarget(src, srcClip, dst, name, { inPlace }) {
   }
   // walks and runs stay where they are: take out the drift over the clip
   if (inPlace) {
-    const drift = hipTrack[hipTrack.length - 1].clone().sub(hipTrack[0]);
+    const first = hipTrack[0].clone();
+    const drift = hipTrack[hipTrack.length - 1].clone().sub(first);
     hipTrack.forEach((d, i) => {
-      d.x -= drift.x * (i / (frames - 1)) + hipTrack[0].x;
-      d.z -= drift.z * (i / (frames - 1)) + hipTrack[0].z;
+      d.x -= drift.x * (i / (frames - 1)) + first.x;
+      d.z -= drift.z * (i / (frames - 1)) + first.z;
     });
   }
 
@@ -283,10 +337,11 @@ function retarget(src, srcClip, dst, name, { inPlace }) {
 }
 
 // ---------------------------------------------------------------------------
-// Placing: bounds of the skinned rest pose (vertices through their joints)
+// Placing: bounds of the skinned rest pose (vertices through their joints),
+// or of the pose at time t of a clip
 
-function bounds(doc) {
-  const w = worlds(doc, null, 0);
+export function bounds(doc, clip = null, t = 0) {
+  const w = worlds(doc, clip, t);
   const lo = new Vector3(Infinity, Infinity, Infinity);
   const hi = new Vector3(-Infinity, -Infinity, -Infinity);
   for (const node of doc.getRoot().listNodes()) {
@@ -321,7 +376,7 @@ function bounds(doc) {
 }
 
 // The extras Sketchfab writes into every download: "Name (https://sketchfab.com/user)"
-function credit(asset, as, file) {
+export function credit(asset, as, file) {
   const x = asset.extras ?? {};
   const [, author = x.author ?? 'unknown', authorUrl = ''] = /^(.*?)\s*\((https?:[^)]+)\)\s*$/.exec(x.author ?? '') ?? [];
   const [, license = x.license ?? '', licenseUrl = ''] = /^(.*?)\s*\((https?:[^)]+)\)\s*$/.exec(x.license ?? '') ?? [];
