@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOOT, METRE, TROOPS, aimAt, apart, at, bearing, bolt, byTrench, facingAlong, fly, inTrench, landingSpot, march, offset, person, rightOf, squad, vec, walk } from './foot';
+import { FOOT, METRE, TROOPS, aimAt, apart, at, bearing, bolt, byTrench, facingAlong, fly, inTrench, landingSpot, march, offset, person, place, rightOf, solidsOn, squad, vec, walk } from './foot';
 
 const R = 18;
 const seeded = (seed = 1) => () => {
@@ -244,6 +244,54 @@ describe('a bolt', () => {
     expect(aimAt(me, [ahead, behind], R).id).toBe(1);
     expect(aimAt(me, [behind], R)).toBeNull();
     expect(aimAt(me, [{ ...closer, alive: false }], R)).toBeNull();
+  });
+});
+
+describe("a landing's things", () => {
+  const frame = person([0, 1, 0], [0, 0, -1]); // facing −z, so +x (three.js's left of it) is −x here
+  const left = vec.cross([0, 1, 0], [0, 0, -1]); // n × f
+
+  it('stands a thing so many metres ahead and to the side, upright on the ground', () => {
+    const ahead = place(frame, 0, 10, R);
+    onGround(ahead);
+    expect(apart(frame, ahead, R)).toBeCloseTo(10 * METRE, 6);
+    expect(ahead.n[2]).toBeLessThan(0);
+    expect(vec.dot(ahead.f, frame.f)).toBeCloseTo(1, 3); // facing on, the way the frame does
+    const side = place(frame, 4, 0, R);
+    expect(apart(frame, side, R)).toBeCloseTo(4 * METRE, 6);
+    expect(vec.dot(vec.unit(vec.add(side.n, frame.n, -1)), left)).toBeGreaterThan(0.99); // +x: n × f
+  });
+
+  it('turns it as three.js turns a thing about its up: +z round toward +x', () => {
+    const turned = place(frame, 0, 0, R, Math.PI / 2);
+    onGround(turned);
+    expect(vec.dot(turned.f, left)).toBeCloseTo(1, 6);
+  });
+
+  it("makes a thing's solids circles along the ground, where they stand", () => {
+    const spot = place(frame, 0, 20, R);
+    const [c] = solidsOn(spot, [{ circle: [0, 0, 3] }], R);
+    expect(apart(c, spot, R)).toBeCloseTo(0, 6);
+    expect(c.r).toBeCloseTo(3 * METRE, 9);
+    // a box 8 m by 2 m: a row of circles down its length, covering it end to end
+    const row = solidsOn(spot, [{ box: [0, 0, 4, 1] }], R);
+    expect(row.length).toBeGreaterThan(2);
+    const ends = row.map((o) => apart(o, spot, R) + o.r);
+    expect(Math.max(...ends)).toBeGreaterThanOrEqual(4 * METRE - 1e-9);
+    expect(Math.max(...ends)).toBeLessThan(4.6 * METRE);
+    for (const o of row) expect(o.r).toBeCloseTo(1 * METRE, 9);
+    // turned a quarter round by its yaw, the row runs the other way
+    const along = (list) => vec.unit(vec.add(list[list.length - 1].n, list[0].n, -1));
+    expect(Math.abs(vec.dot(along(row), left))).toBeGreaterThan(0.99);
+    const turnedRow = solidsOn(spot, [{ box: [0, 0, 4, 1, Math.PI / 2] }], R);
+    expect(Math.abs(vec.dot(along(turnedRow), spot.f))).toBeGreaterThan(0.99);
+  });
+
+  it('keeps someone out of a solid placed on the ground', () => {
+    const spot = place(frame, 0, 6, R);
+    const solids = solidsOn(spot, [{ circle: [0, 0, 2] }], R);
+    const walked = run(frame, { move: 1 }, 6, solids);
+    expect(apart(walked, spot, R)).toBeGreaterThanOrEqual(2 * METRE + FOOT.radius - 1e-6);
   });
 });
 
