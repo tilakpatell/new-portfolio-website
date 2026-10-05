@@ -1,5 +1,5 @@
-// The music room's tuning: one Sa for every instrument, the raga, and the
-// tanpura's first string, kept between visits. Pitches are just intonation
+// The music room's tuning: one Sa for every instrument, the raga, the
+// tanpura's first string and how the sitar is set up, kept between visits. Pitches are just intonation
 // against Sa. Nothing here makes a sound.
 
 // ── Sa ─────────────────────────────────────────────────────────────────────
@@ -70,11 +70,11 @@ export function tarabRatios(ragaId) {
 
 // ── The shared tuning ──────────────────────────────────────────────────────
 const KEY = 'tp-music';
-const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', allFrets: true }; // Sa = D
+const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', allFrets: true, autoChikari: true }; // Sa = D
 let tuning = (() => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null');
-    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && RAGAS[saved.raga]) return { ...DEFAULT_TUNING, ...saved, allFrets: saved.allFrets !== false };
+    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && RAGAS[saved.raga]) return { ...DEFAULT_TUNING, ...saved, allFrets: saved.allFrets !== false, autoChikari: saved.autoChikari !== false };
   } catch {
     /* storage unavailable */
   }

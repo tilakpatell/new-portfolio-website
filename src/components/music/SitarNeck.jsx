@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
-import { chikari, damp, onSitarPluck, pluck, warmNeck } from './sitar';
+import { chikari, damp, onSitarChikari, onSitarPluck, pluck, warmNeck } from './sitar';
 import { fretForKey, fretOf, keyForFret, meendTarget, sameNote, tarabHz } from './sitarRules';
 import { frets, RAGAS } from './tuning';
 import SwaraLabel from './SwaraLabel';
@@ -18,6 +18,8 @@ import './music.css';
 // Keys: 1 to = then Q to ] play the frets in order; Shift with a fret key
 // moves to it without a new stroke (krintan); hold ↑ to pull the note to the
 // raga's next one (meend); Space strikes the chikari; Esc stops the string.
+// With auto chikari on (the default), the right hand strikes the chikari in
+// the rests between the notes played here, on the tabla's beat if it plays.
 
 const NECK = { x0: 44, x1: 836, top: 96, bottom: 204 };
 const MAIN_Y = 132;
@@ -44,6 +46,7 @@ function Inlay({ y, flip = false }) {
 export default function SitarNeck({ onPlay }) {
   const [tuning, setTuning] = useTuning();
   const all = tuning.allFrets !== false;
+  const auto = tuning.autoChikari !== false;
   const list = useMemo(() => frets(tuning.raga, { all }), [tuning.raga, all]);
   const vertical = useMediaQuery('(max-width: 639px)');
   // the stretch of the neck on screen, in neck units (along the strings)
@@ -55,6 +58,7 @@ export default function SitarNeck({ onPlay }) {
   const [lit, setLit] = useState(-1);
   const [pull, setPull] = useState(0);
   const [plucks, setPlucks] = useState(0);
+  const [chiks, setChiks] = useState(0); // a count, so the chikari's glow restarts each time it's struck
   const [played, setPlayed] = useState([]); // the last few notes, for the notation strip
   // a count per sympathetic string, so its glow restarts each time it's set ringing
   const [ring, setRing] = useState(() => new Array(11).fill(0));
@@ -82,6 +86,7 @@ export default function SitarNeck({ onPlay }) {
       }),
     [],
   );
+  useEffect(() => onSitarChikari(() => setChiks((k) => k + 1)), []);
   // the frets change with the raga; let go of whatever was held
   useEffect(() => {
     press.current = null;
@@ -118,7 +123,7 @@ export default function SitarNeck({ onPlay }) {
     setLit(i);
     setPull(0);
     onPlay?.('sitar');
-    return pluck(list[i].ratio, { vel: 0.9 });
+    return pluck(list[i].ratio, { vel: 0.9, byHand: true });
   };
 
   const across = (e) => (vertical ? e.clientX : e.clientY);
@@ -217,7 +222,15 @@ export default function SitarNeck({ onPlay }) {
             {RAGAS[tuning.raga].name}’s frets only
           </button>
         </div>
-        <p className="text-sm text-muted">{all ? `${n} frets, mandra Pa to taar Ga. ${RAGAS[tuning.raga].name}’s notes are lit.` : `${n} frets, set for ${RAGAS[tuning.raga].name}.`}</p>
+        <div className="seg">
+          <button type="button" aria-pressed={auto} onClick={() => setTuning({ autoChikari: !auto })}>
+            Auto chikari
+          </button>
+        </div>
+        <p className="text-sm text-muted">
+          {all ? `${n} frets, mandra Pa to taar Ga. ${RAGAS[tuning.raga].name}’s notes are lit.` : `${n} frets, set for ${RAGAS[tuning.raga].name}.`}
+          {auto ? ' The chikari fills the rests between your notes.' : ''}
+        </p>
       </div>
       <div className="sitar-neck" data-vertical={vertical || undefined} style={vertical ? { '--sn2-h': phoneHeight } : undefined}>
         <svg
@@ -302,7 +315,12 @@ export default function SitarNeck({ onPlay }) {
               <path key={`${i}-${count}`} d={`M${150 + i * 6} ${TARAB_Y(i)} L${BRIDGE} ${TARAB_Y(i)}`} className="sn-tarab" data-ring={count > 0 || undefined} />
             ))}
             {/* the chikari, the two high drones */}
-            <path d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`} stroke="#e6dcc2" strokeWidth="0.9" opacity="0.85" />
+            <path
+              key={`c${chiks}`}
+              d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`}
+              className="sn2-chikari"
+              data-ring={chiks > 0 || undefined}
+            />
             {/* the bridge (jawari), and the main string */}
             <rect x={BRIDGE - 5} y="106" width="11" height="90" rx="2.5" fill="url(#sn2-bone)" />
             <path key={`m${plucks}`} d={mainPath} stroke="#f6eedb" strokeWidth="2.2" fill="none" className={lit >= 0 ? 'sitar-ring' : undefined} />
