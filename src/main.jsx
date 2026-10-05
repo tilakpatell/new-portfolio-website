@@ -7,6 +7,11 @@ import './index.css';
 import './styles/extras.css';
 import './styles/caribbean-themes.css';
 import App from './App.jsx';
+import { cleanHref } from './lib/stale';
+
+// (back from a reload for the new build: the address as it was)
+const clean = cleanHref(window.location.href);
+if (clean) window.history.replaceState(window.history.state, '', clean);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

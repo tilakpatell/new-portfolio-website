@@ -10,6 +10,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { toon } from './toon';
+import { rimToon } from '../../../lib/three/ink';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -22,7 +23,16 @@ const lightRamp = () => {
   ramp.needsUpdate = true;
   return ramp;
 };
-const paint = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
+// and a soft rim of cool light round their edges, which lifts them off the
+// street and the sky as the show's back light does; their textures kept
+// sharp at a glancing angle
+const RIM = { color: 0xdff6ff, power: 3, strength: 0.3 };
+const lit = (m) => {
+  if (m.map) m.map.anisotropy = 8;
+  return rimToon(m, RIM);
+};
+const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
+const paint = (map, extra = {}) => lit(flat(map, extra));
 
 export const BASE = '/games/meshy';
 
@@ -67,7 +77,7 @@ export const MESHY_ASSETS = [...new Set(Object.values(MESHY).map((m) => m.a).fil
 
 // a Morty clone's shirt: the yellow of Morty's texture swapped for another colour
 function shirted(map, shirt) {
-  const m = paint(map);
+  const m = flat(map);
   m.userData.shirt = { value: new THREE.Color(shirt) };
   m.onBeforeCompile = (s) => {
     s.uniforms.shirt = m.userData.shirt;
@@ -80,7 +90,7 @@ function shirted(map, shirt) {
       }`).replace('void main() {', 'uniform vec3 shirt;\nvoid main() {');
   };
   m.customProgramCacheKey = () => 'shirted';
-  return m;
+  return lit(m);
 }
 
 // A skinned mesh's bounds don't follow its pose, so it's drawn whether

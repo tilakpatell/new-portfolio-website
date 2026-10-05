@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { createMeshyCast } from './portal/meshyCast';
+import { inkHull } from '../../lib/three/ink';
 import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
@@ -66,52 +67,6 @@ export function glassDome(body) {
   return glassY;
 }
 
-// an ink line round a mesh, skinned or not: its back faces drawn flat,
-// pushed out along the normals once posed, in view space (so `width` is in
-// the scene's units whatever scale the model or its skeleton has)
-// (none above `clipY`, in the mesh's own units: the cruiser's glass)
-function inkHull(root, width, clipY = null) {
-  const mat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
-  mat.onBeforeCompile = (s) => {
-    s.vertexShader = s.vertexShader
-      .replace('void main() {', 'varying float vInkY;\nvoid main() {')
-      .replace(
-        '#include <project_vertex>',
-        `#include <project_vertex>
-        {
-          vInkY = position.y;
-          #ifdef USE_SKINNING
-            vec3 inkN = normalize(transformedNormal);
-          #else
-            vec3 inkN = normalize(normalMatrix * normal);
-          #endif
-          mvPosition.xyz += inkN * ${width.toFixed(4)};
-          gl_Position = projectionMatrix * mvPosition;
-        }`,
-      );
-    s.fragmentShader = s.fragmentShader.replace('void main() {', `varying float vInkY;\nvoid main() {\n${clipY == null ? '' : `if (vInkY > ${clipY.toFixed(5)}) discard;`}`);
-  };
-  const meshes = [];
-  root.traverse((o) => {
-    if (o.isMesh && !o.userData.ink) meshes.push(o);
-  });
-  for (const o of meshes) {
-    let h;
-    if (o.isSkinnedMesh) {
-      h = new THREE.SkinnedMesh(o.geometry, mat);
-      h.bind(o.skeleton, o.bindMatrix);
-      h.bindMode = o.bindMode;
-    } else h = new THREE.Mesh(o.geometry, mat);
-    h.userData.ink = true;
-    h.frustumCulled = false;
-    h.position.copy(o.position);
-    h.quaternion.copy(o.quaternion);
-    h.scale.copy(o.scale);
-    o.parent.add(h);
-  }
-  return mat;
-}
-
 // a soft round glow, for the thruster
 function glowTexture() {
   const c = document.createElement('canvas');
@@ -163,7 +118,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
   }
   // the dome is glass: everything above the rim, in the mesh's own units
   const glassY = glassDome(body);
-  const inks = [inkHull(body, 0.036 * ink, glassY), ...crew.map((c) => inkHull(c.group, 0.026 * ink))];
+  const inks = [inkHull(body, 0.036 * ink, { clipY: glassY, color: INK }), ...crew.map((c) => inkHull(c.group, 0.026 * ink, { color: INK }))];
   // the exhaust cans' glow
   const glowTex = glowTexture();
   const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
