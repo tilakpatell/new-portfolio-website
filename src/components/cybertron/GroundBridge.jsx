@@ -4,6 +4,7 @@ import { prefersReducedMotion, useMediaQuery } from '../../lib/hooks';
 import { useAchievements } from '../Achievements';
 import Vehicle from './Vehicle';
 import { capturePointer } from '../../lib/pointer';
+import '../../styles/lazy/cybertron.css';
 
 // The ground bridge, Ratchet's way home for Team Prime. They drive in from the
 // left in vehicle mode with Vehicons in among them; hold the bridge open as an

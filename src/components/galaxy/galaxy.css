@@ -149,6 +149,16 @@
   font-size: 0.82rem;
 }
 .galaxy-jumping b { color: #fff; }
+/* under an Interdictor's hold (galaxy/interdiction.js): red, and a flash when the hyperdrive's asked for */
+.galaxy-jumping[data-held] {
+  border-color: rgb(255 110 100 / 0.55);
+  background: rgb(150 32 32 / 0.24);
+  color: #ffd6d2;
+  animation: galaxy-held-in 0.5s ease-out;
+}
+.galaxy-jumping[data-balked] { animation: galaxy-held-flash 0.5s ease-out; }
+@keyframes galaxy-held-in { from { background: rgb(255 70 60 / 0.55); } }
+@keyframes galaxy-held-flash { from { background: rgb(255 70 60 / 0.6); } }
 .galaxy-eras { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
 .galaxy-era {
   padding: 0.18rem 0.55rem;

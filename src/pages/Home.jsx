@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiRocket2Line } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
@@ -10,18 +10,24 @@ import { education, focusAreas, profile, skills } from '../data/profile';
 import { roles, fmtMonth } from '../data/roles';
 import { featuredProjects, projectById } from '../data/projects';
 import { ClaudeFeature, GameBoyFeature } from '../stages';
-import { ClaudeSpark } from '../stages/ClaudeStage';
+import { ClaudeSpark } from '../stages/ClaudeSpark';
 import ProjectThumb from '../components/ProjectThumb';
 import { useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes, useTheme } from '../theme/ThemeProvider';
 import { ThemeBackdrop } from '../components/worlds/Backdrops';
 import { useFun } from '../fun/FunProvider';
-import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
-import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
 import Egg from '../components/Egg';
 import ProgramManagement from '../components/ProgramManagement';
+import '../styles/lazy/home.css';
+
+// The globe and the interests row sit at the bottom of the page and bring the
+// most with them (the globe's WebGL check, the universe map's mini map and its
+// styles), so they load as they're scrolled near, not with the page.
+const PlacesExplorer = lazy(() => import('../components/travel/PlacesExplorer'));
+const Interests = lazy(() => import('../components/interests/Interests'));
+const narrow = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -362,7 +368,11 @@ export default function Home() {
             <Waypoint top="0.9rem" />
           </div>
         </div>
-        <PlacesExplorer />
+        <LazyMount minHeight={narrow() ? 1170 : 700}>
+          <Suspense fallback={<div style={{ minHeight: narrow() ? 1170 : 700 }} />}>
+            <PlacesExplorer />
+          </Suspense>
+        </LazyMount>
         <PhotoBand id="band" className="travel-teaser mt-16 md:mt-24">
           <div className="shell relative py-24">
             <h3 className="display max-w-2xl text-[clamp(2.1rem,1.2rem+3vw,3.8rem)] !text-white">Mountains, lakes and a little heritage.</h3>
@@ -374,7 +384,11 @@ export default function Home() {
         </PhotoBand>
       </section>
 
-      <Interests />
+      <LazyMount minHeight={narrow() ? 780 : 1160}>
+        <Suspense fallback={<div style={{ minHeight: narrow() ? 780 : 1160 }} />}>
+          <Interests />
+        </Suspense>
+      </LazyMount>
     </div>
   );
 }

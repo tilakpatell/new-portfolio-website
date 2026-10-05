@@ -10,13 +10,12 @@
 // changes neither.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createStage } from '../../../lib/stage3d';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, TIDE, bearing, fitted } from './rules';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const BASE = '/games/caribbean';
 const FIRST = ['pearl', 'navy', 'jack']; // what a game can't start without
@@ -73,8 +72,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   const wind = new THREE.Vector3();
 
   // ── the models ──
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const models = new Map();
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const loadModel = async (name) => {

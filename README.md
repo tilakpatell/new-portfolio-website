@@ -38,11 +38,14 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | --- | --- | --- |
 | Home | `/home` | Intro, focus areas and a live GitHub activity snapshot |
 | Experience | `/experience` | Every role, from AWS to SRC. The site's theme changes to each company's colours as its role scrolls past |
-| Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable |
+| Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable. It opens on a hand of 3D game cartridges, one per project: point at one to lift it, click to open it |
 | Résumé | `/resume` | The résumé on the page, plus a PDF download |
 | Travel | `/travel` | A 3D globe of places visited, with photos |
 | Contact | `/contact` | How to reach me |
 | Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+| Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
+
+The six pages are one feed: scroll to the end of any of them and the next begins under it, with a divider saying what comes next, and the address, the menu and the theme follow whichever page is on screen. After the sixth, an end card. Each page is still its own address, so every link works as before.
 
 All of the content (roles, projects, skills, education) lives in [`src/data/`](src/data). Every page and the terminal read from there.
 
@@ -59,19 +62,21 @@ The front door (`/`) is a map of the whole site as places in space. The **Univer
 | `R` / `1` `2` `3` | Change weapons: blaster, spread, heavy ordnance |
 | `T` / `Q` | Next / previous target |
 | `V` | Switch between the chase camera and the cockpit view |
-| `O` | Flight settings (steering, aim assist, inverted pitch and more) |
+| `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each |
 | `J` | Jump to the place picked at hyperspeed |
 
-On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
+On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. Every planet is its own place down there, under its own sky: Middle-earth's is the Shire on the day of the party (Bag End, the hobbit holes, the Party Tree, the Green Dragon), Breaking Bad's is the desert where the RV cooks, and Rick and Morty's is the Smiths' street, a portal open on the lawn. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
 
 The hangar fits each ship out its own way, like a space sim's outfitting screen, and remembers it. Paint jobs are the site's own colour schemes: the six companies' come with the Cartographer achievement, and each fan scheme's with the easter egg that unlocks it. Parts bolt on and change how it flies and fights: strap-on boosters (solid rockets, an afterburner, repulsor pods, portal-fluid tanks), thrusters, twin or fusion guns, plating or fast-charge shields, and fins. Each draws power from the ship's plant and adds mass, so you can't fit the best of everything; the best parts are earned with achievements in the worlds. Other pilots see your paint and parts. The X-wing and the Falcon you fly are other people's models from Sketchfab (CC BY, credited on the map), brought to web size by `scripts/sketchfab-batch.mjs`; while they load, versions modelled in code (`universe/hulls.js`) stand in.
 
 Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension. Off the map, in Middle-earth's towns and on its map, at Avengers HQ and in Albuquerque, everyone else online shows up as a pale ghost from another world (a Frodo, a Spider-Man hologram, or a Walt's Aztek) with their name over them; nothing passes between you but where each of you is.
 
-The map is big: the planets are a hundred and more ship-lengths across, and the fandoms far out in deep space.
+The map is big: the planets are a hundred and more ship-lengths across, the fandoms far out in deep space, and between them the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map.
+
+Things happen while you fly. Hunters come after you (the Empire, the Galactic Federation, the Council of Ricks), a Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a comet crosses the sky, a star blows far out. A star flares and its shockwave rattles the ship. A rift tears open ahead of you: fly into it and it takes you somewhere else on the map. Something enormous swims past: a pod of purrgil, or a Cromulon with something to say. A stream of rocks crosses your path: shoot them, or steer round them. And now and then a bounty hunter comes for you alone: Boba Fett in Slave I, or Phoenixperson (shoot one down for the Wanted achievement). The crew have a word about all of it.
 
 Every ship carries three guns, each in its crew's own terms: its blaster, a spread that throws a fan of five shorter shots, and heavy ordnance (the X-wing's proton torpedoes, the Falcon's concussion missiles, the cruiser's portal grenades, the RV's fulminated mercury), a slow round that homes on whatever the guns have locked and hits ten times as hard, from a rack of four that refills one at a time. Other pilots see which you're firing.
 
@@ -83,9 +88,11 @@ Star Wars on the map isn't a planet but a universe of its own: the galaxy itself
 
 Every other system's star is up there in the sky, where it really is from where you are (Hoth's close by from Bespin, high above the galaxy's band; Coruscant's a bright star toward the core). Turn the nose toward one and its name comes up; put the nose on it and press `J` (or tap Jump), or just fly on out of the system toward it, and you jump.
 
+Keep jumping and the Empire notices. Somewhere between your tenth and fifteenth jump an Imperial Interdictor cruiser is waiting on the lane: its gravity-well projectors pull you out of hyperspace a long way short of where you were going, its TIEs launch, and the hyperdrive won't take again (nor the sublight drive open up) until you're clear of the well: shoot its fighters down, run for the well's edge, or ride it out. Then it jumps away, and the count starts over.
+
 | Key | Action |
 | --- | --- |
-| `J` | Jump to lightspeed, to the star your nose is on |
+| `J` | Jump to lightspeed, to the star your nose is on (every ten to fifteen jumps, an Interdictor pulls you out short) |
 | `M` | The galaxy map: plot a course, filter by era or film |
 | `E` | Land on the planet you're at (or board the Death Star) |
 
@@ -112,22 +119,23 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | A galaxy far, far away | `/galaxy` | Star Wars | Eighteen star systems to fly, jump between and fight over, each with a mission briefing, and the films' worlds to land on and walk |
 | Death Star | `/deathstar` | Star Wars | Fly the trench run before Yavin 4 comes into range |
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
-| Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk every stop on the road in 3D as Frodo, from Hobbiton to Mount Doom; cook in co-op, Overcooked-style, in a kitchen at each one (Bilbo's party, the Prancing Pony, Weathertop, Elrond's table, the forges of Moria, Lórien's flets, Parth Galen, Ithilien, the orcs' mess in Cirith Ungol and the feast at Cormallen); open the Doors of Durin, cross Gorgoroth |
+| Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk every stop on the road in 3D as Frodo, from Hobbiton to Mount Doom, each with a game on the side (Bilbo's spoons, a song on the Pony's table, Gandalf's mark, riddles with Bilbo, the plank over the well, Legolas's targets, ducks and drakes, Sméagol's safe way, crumbs on Sam's cloak, remembering the Shire); cook in co-op, Overcooked-style, in a kitchen at each one (Bilbo's party, the Prancing Pony, Weathertop, Elrond's table, the forges of Moria, Lórien's flets, Parth Galen, Ithilien, the orcs' mess in Cirith Ungol and the feast at Cormallen); open the Doors of Durin, cross Gorgoroth; find Orthanc off the road; and read the road so far on the map (seals, side stars, kitchen stars) |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, or swing across it the way Insomniac's games do: hold the jump in the air to web a roof edge, a tree or a floodlight mast, steer the swing, let go on the upswing for a perfect release, zip with Shift, throw flips and twists in the air with `T` for style points that bank when you land (and are lost if you land mid-flip), run up any wall you hit and along the roofs, race the swing tour's rings round the compound, and find the twelve backpacks Peter webbed up round it (on the roofs, up the masts, under the bridge), each with something of his in it. Everyone else online shows as a hologram. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, or swing across it the way Insomniac's games do: hold the jump in the air to web a roof edge, a tree or a floodlight mast, steer the swing, let go on the upswing for a perfect release, zip with Shift, throw flips and twists in the air with `T` for style points that bank when you land (and are lost if you land mid-flip), run up any wall you hit and along the roofs, race the swing tour's rings round the compound (against a hologram of your best lap, once you have one), suit up in the Iron Man armour by Tony's workshop door (`E`) and fly it on its repulsors, stop time with `P` for a photo (the camera anywhere round him, a lens and a picture to save), and find the twelve backpacks Peter webbed up round it (on the roofs, up the masts, under the bridge), each with something of his in it. Everyone else online shows as a hologram. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town in Walt's Aztek, which slides if you ask it to: `Space` is the handbrake (handbrake turns, drifts, a J-turn out of reverse), and `O` opens the driving settings (steering, stability, camera). Places open up as Walt's career grows, each with its own game. Other drivers online show up as ghost Azteks |
 | Scranton | `/scranton` | The Office | Walk Dunder Mifflin in 3D as Jim, from the lift to the annex, and get through a week in seven jobs (cover reception, the stapler in Jell-O, Kevin's chili, paper toss, Dwight's fact check, his fire drill, a Dundie from Michael); then the office from above, Dwight's fact check and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | Walk the Smiths' street in 3D as Morty, fly Rick's cruiser (it talks, and the Federation's patrol ship flies alongside), meet the President at his limo and take his portal to the Oval Office, breakfast with a Federation agent at Shoney's, find Rick's clone lab under the garage and Morty's Mind Blowers past it, go through the garage portal to Blips and Chitz and play *Roy*; the portal gun, *Portal panic*, the Meeseeks box and interdimensional cable; and the Citadel of Ricks (`/c-137/citadel`, or fly into it on the map), walked in 3D as Rick C-137: a terrace over the show's city of Ricks, crowds of every Rick and Morty variant, a core of portal fluid with the Central Finite Curve turning round it, and five scenes from the show (Morty Day Care, Simple Rick's line, the Council, election day, the red alert) |
-| Earth | `/earth` | Travel | Down from orbit onto the globe as it is right now (NASA's Blue Marble and Black Marble, the real sun), then fly a little plane to every place I've been: a passport stamp and a postcard at each |
-| Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square |
+| Earth | `/earth` | Travel | Down from orbit onto the globe as it is right now (NASA's Blue Marble and Black Marble, the real sun), then fly a little plane to every place I've been: a passport stamp and a postcard at each. Fly it from the chase camera or the cockpit (`V`), drag to look round it, get down under the cloud deck or up to the edge of space, barrel roll with `R`, and let the autopilot take it (it slows down to turn). A flight log keeps the trail flown and draws the route home to every place stamped; the distance adds up over every visit, and once round the world is an achievement. Everyone else online flying the Earth shows as a pale plane with their name |
+| Dot Matrix | `/dot-matrix` | Gaming | A Game Boy island in its four greens (a Bayer-dithered last pass, outlines from the depth buffer): jump about, find the eight cartridges (each one a project) and play the giant Game Boy in the square. Four villagers walk their beats and stop to talk, each with a hint to a cartridge; every fifteen coins give a heart back, and the last coin is an achievement; a lighthouse sweeps the islet and a windmill turns on the plateau; the wheel, a pinch or `+` `−` zoom the camera. Everyone else online on the island walks about as a ghost with their name over them. The page has the island's map, with the cartridges marked as they're found |
 | The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
-| Invincible | `/invincible` | Invincible | Fly *Think, Mark!* over the city as Invincible: rings with your father, the Flaxans, Omni-Man and Thragg, with HD figures |
+| Invincible | `/invincible` | Invincible | Fly the Graysons' whole city in 3D as Mark: six kilometres of downtown, river, suburbs and coast, through the sound barrier, into the ground hard enough to crack it, and up out of the air into space, to the Moon and Mars. Dad's rings, eight hidden title cards, rescues, traffic and people, Atom Eve on patrol, Allen and Thragg out in space; then *Think, Mark!* below it, with HD figures |
 
 ### Easter eggs
 
 - **↑ ↑ ↓ ↓ ← → ← → B A** jumps to lightspeed.
 - **⌘K / Ctrl+K** opens a command palette that can go anywhere on the site and run its tricks.
 - There are dozens of achievements to unlock. Scranton's Dundies hand them out as awards.
+- The fan colour schemes the eggs unlock each bring a live background to the portfolio pages: a dogfight crossing the stars for the Jedi and the Sith, Heisenberg's blue crystals, Iron Man's HUD tracking the pointer, Dunder Mifflin's paper and paper airplanes, invaders marching over a synthwave grid, diyas and sky lanterns, a ship on the horizon at Tortuga, Cybertron's energon and insignia, the Shire's fireworks or the Eye of Sauron watching you, and portals. Click on empty page for a surprise. The company schemes get quieter ones drawn from the work (AWS's racks and smile, RTX's engineering drawing, Bose's sound, Pendar's spectra, Empowerreg's knowledge graph, SRC's radar). Either can be switched off under the colour picker.
 
 ## Tech stack
 
@@ -163,6 +171,7 @@ To try a lower graphics tier on a desktop, add `?quality=low` (or `mid` or `high
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest suite (game rules, flight model, multiplayer protocol and more) |
+| `node scripts/autopilot-check.mjs` | Everything the autopilot checks before a merge: lint, tests, build, bundle sizes, every page in headless Chromium |
 
 The asset pipeline scripts regenerate committed files. You don't need them to run the site.
 
@@ -174,14 +183,17 @@ The asset pipeline scripts regenerate committed files. You don't need them to ru
 | `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
 | `npm run globe` | Rebuild the dotted globe on the Travel page |
 | `python3 scripts/build-harmonium.py` | Rebuild the music room's harmonium from its CC0 recording (downloads it the first time) |
+| `node scripts/ktx2.mjs report <files>` | For each texture in the given GLBs or images: what it would cost and save as a GPU-compressed KTX2 (bytes, GPU memory, PSNR) and whether it's worth it. `convert` rewrites them; the site's loader reads KTX2 already |
 
 The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.env.local`. Sketchfab downloads are brought down to web size by `scripts/sketchfab-import.mjs` and `scripts/sketchfab-batch.mjs`.
 
 ## Project structure
 
 ```
+├── .github/workflows/ci.yml       # lint, test and build on every pull request
 ├── .github/workflows/deploy.yml   # lint, test, build and deploy on every push to main
 ├── docs/                          # architecture notes, research and design plans
+│   └── autopilot/                 # the self-improvement loop: its backlog and switches
 ├── public/                        # static files: models, textures, audio, photos, résumé PDF
 │   ├── cc0/                       # CC0 materials and HDRIs (credited in its README)
 │   ├── games/                     # game assets, credited in credits.json
@@ -234,6 +246,10 @@ Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows
 A deploy replaces every file in `/assets` (they're named by hash), so a page that's already open, or an `index.html` a cache still holds, can ask for files that are gone; behind the intro, that used to surface only at the cut to the universe, as "This page didn't load". A page that hits one reloads from the new build (`src/lib/stale.js`, through `ErrorBoundary`), past any cached `index.html`, playing the intro again if it was partway through; it won't reload twice within a minute, so an outage can't loop.
 
 > **Working with Claude Code?** Agent skills live in `.claude/skills` (their sources are pinned in `skills-lock.json`). Lint and tests skip them.
+
+## The autopilot
+
+The site improves itself. A scheduled Claude Code session comes round (every four hours), makes one improvement well (something faster or better-looking more often than something new), checks it with `node scripts/autopilot-check.mjs` (lint, the tests, the build, every page in a headless browser), opens a pull request, waits for CI, merges it, and logs it on [`/changes`](https://tilakpatell.com/#/changes), the ship's log, with a screenshot. Any change there can be taken out again by telling a Claude session `Revert change 12`. The protocol is [`.claude/skills/autopilot/SKILL.md`](.claude/skills/autopilot/SKILL.md), the queue is [`docs/autopilot/backlog.md`](docs/autopilot/backlog.md), and the switches (pause, runs a day, the plan's limit) are in [`docs/autopilot/budget.json`](docs/autopilot/budget.json). [`docs/autopilot/README.md`](docs/autopilot/README.md) has the details.
 
 ## Disclaimer
 

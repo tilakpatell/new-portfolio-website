@@ -7,7 +7,8 @@
 // The hero: { p: [x, y, z] (his feet), v (velocity), spd and dir (his air
 // speed and its direction), face (the way he faces, as a yaw: forward is
 // (sin, cos)), mode: 'ground' | 'air', crouch (seconds left of a hard
-// landing), stun (seconds left of a crash), boomed, ev }.
+// landing), stun (seconds left of a crash), boomed, exited (gone up
+// through the top of the sky), ev }.
 //
 // Input: { fwd, side (−1…1, from the camera), up, down (0…1), boost, run,
 // jump (this step only), look: the camera's forward, a unit vector }.
@@ -79,7 +80,7 @@ function wish(input, air) {
 }
 
 // turn unit vector a toward unit vector b by at most `max` radians
-function turn(a, b, max) {
+export function turn(a, b, max) {
   const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
   const ang = Math.acos(dot);
   if (ang <= max || ang < 1e-6) return [b[0], b[1], b[2]];
@@ -299,10 +300,15 @@ export function stepHero(hero, input, dt, world) {
         if (Math.sign(h.v[a]) === Math.sign(h.p[a])) h.v[a] = 0;
       }
     }
-    if (h.p[1] > WORLD.ceiling) {
+    if (h.p[1] >= WORLD.ceiling) {
+      // the top of the sky: going up through it fast, he's out ('exit': ./orbit.js takes over)
+      if (h.v[1] > 20 && !h.exited) {
+        h.exited = true;
+        h.ev.push({ type: 'exit', at: [...h.p], speed: Math.hypot(...h.v) });
+      }
       h.p[1] = WORLD.ceiling;
       if (h.v[1] > 0) h.v[1] = 0;
-    }
+    } else if (h.exited && h.p[1] < WORLD.ceiling - 600) h.exited = false;
     if (h.mode === 'air') {
       h.spd = len(h.v[0], h.v[1], h.v[2]);
       if (h.spd > 1e-6) h.dir = [h.v[0] / h.spd, h.v[1] / h.spd, h.v[2] / h.spd];

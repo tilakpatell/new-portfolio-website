@@ -30,6 +30,13 @@
 // the Death Star and you're aboard (the page goes to it); stray into its
 // tractor beam at Alderaan and it pulls you in.
 //
+// Keep jumping and the Empire counts (interdiction.js): the tenth to
+// fifteenth jump of a cycle is cut short, an Interdictor cruiser
+// (interdictor.js) dropping in across the bow where you fall out, a long
+// way short of the planet, its TIEs launching and its gravity well holding
+// the hyperdrive (and the sublight drive) down till you're clear of it: its
+// fighters gone, out past the well, or a minute ridden out.
+//
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { ready, resize, render, update, setVisible, lowerQuality, fire, boost,
 //   climb, seat, escape, jump, goTo, dispose }.
@@ -64,15 +71,18 @@ import { createTrail } from '../universe/trail';
 import { ENGINES, SHIP_MODELS, buildShip, BUILT } from '../universe/shipModels';
 import { loadModel } from '../universe/planets';
 import { lockSound, shipEngine } from '../universe/sounds';
-import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from '../universe/targeting';
+import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
 import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
+import { readBuildWire, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createJump } from './hyperspace';
+import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
+import { createInterdictor } from './interdictor';
 import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
@@ -96,6 +106,7 @@ const CABS = {
   rv: () => import('../cockpit/vehicles/rv'),
 };
 const SEAT_KEY = 'tp:universe-seat'; // (the universe map's: one seat, wherever you fly)
+const JUMPS_KEY = 'tp:galaxy-jumps'; // (session) the Empire's count of your jumps
 const EYE = { ahead: 0.035, up: 0.045 };
 const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
@@ -108,6 +119,7 @@ const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '])
 const DRAG = 6;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 // the wall clock, in seconds: every pilot's set pieces keep the same time
 const wall = () => Date.now() / 1000;
@@ -197,6 +209,11 @@ export async function create(canvas, ctx) {
   const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
   let hunts = 0; // packs sent this visit (the first is a small one)
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet });
+  // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
+  const interdiction = createInterdiction({
+    store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
+  });
+  const interdictor = reduced ? null : createInterdictor(scene, { models, small });
 
   // your guns
   const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6).rotateX(Math.PI / 2);
@@ -254,6 +271,7 @@ export async function create(canvas, ctx) {
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
     loadout: readLoadout(ctx.loadout ?? STOCK_LOADOUT), // what's fitted in the hangar
+    build: null, // the garage build flown in place of the stock hull (universe/shipyard), or null
     stats: statsOf(null, STOCK_LOADOUT), // and what it does to how it flies
     lock: null,
     lockTarget: null,
@@ -264,6 +282,8 @@ export async function create(canvas, ctx) {
     bias: [0, 0, 0],
     pull: 0, // the tractor beam's hold on you
     pullSaid: false,
+    held: null, // { at, hangar, since, pack, to, faction } while an Interdictor's gravity well holds you (interdiction.js)
+    heldSaid: -1e9,
     flare: 1,
     eclipse: 1,
   };
@@ -304,6 +324,8 @@ export async function create(canvas, ctx) {
     state.pull = 0;
     state.pullSaid = false;
     state.nextHunt = 30 + Math.random() * 30;
+    state.held = null;
+    interdictor?.hide();
     models.want(['destroyer', 'corvette', 'xwing', 'interceptor', 'deathstar']);
     return warm(world.group);
   };
@@ -352,7 +374,7 @@ export async function create(canvas, ctx) {
     boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout);
+    state.stats = statsOf(state.kind, state.loadout, state.build);
     if (state.kind && state.model) state.model.outfit?.(state.loadout);
   };
   const setLoadout = (raw) => {
@@ -365,8 +387,19 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  const setShip = (kind) => {
-    if (kind === state.kind) return;
+  // The garage build flown in place of the stock hull (or null): the ship
+  // built again when it changes, where it was.
+  const buildKey = (b) => (b ? writeBuild(b).join() : '');
+  const sameBuild = (b) => buildKey(b) === buildKey(state.build);
+  const setBuild = (raw) => {
+    if (sameBuild(raw)) return;
+    state.build = raw ? readBuildWire(writeBuild(raw)) : null;
+    if (state.kind) setShip(state.kind, true);
+  };
+
+  // (force: the same crew, built again: its garage build changed)
+  const setShip = (kind, force = false) => {
+    if (kind === state.kind && !force) return;
     engine?.stop();
     engine = null;
     if (state.model) {
@@ -388,11 +421,14 @@ export async function create(canvas, ctx) {
       hunters?.clear();
       return;
     }
-    state.model = buildShip(kind);
+    state.model = buildShip(kind, {}, { build: state.build });
     scene.add(state.model.group);
+    if (state.build) setPlumes(kind, state.model.engines); // (its own engines)
     refit();
     dress();
-    if (SHIP_MODELS[kind]) {
+    if (state.build) {
+      // a garage build is whole as it is: no model to load over it
+    } else if (SHIP_MODELS[kind]) {
       const model = state.model;
       loadModel(SHIP_MODELS[kind])
         .then((m) => m && warm(model.dress ? model.dress(m) : m).then(() => m)) // (in its paint before its shaders are made)
@@ -829,6 +865,13 @@ export async function create(canvas, ctx) {
       camQOn = false;
       state.shield = 100;
       state.lowSaid = false;
+      // an Interdictor's hold doesn't survive a crash: it's gone when you're
+      // back (and nothing's earned for getting clear that way)
+      if (state.held) {
+        state.held = null;
+        interdictor?.hide();
+        emit({ type: 'wellclear', why: 'crash' });
+      }
       m.group.visible = true;
       m.pivot.rotation.set(0, 0, 0);
       crashFx.arrive({ point: new THREE.Vector3(a.x, a.y, a.z), kind: state.kind, heading: a.heading });
@@ -882,6 +925,15 @@ export async function create(canvas, ctx) {
     const to = systemById(toId);
     if (!to || !state.sys || to.id === state.sys.id || state.crash) return false;
     if (state.jump && state.jump.phase !== 'align') return false;
+    // the Interdictor's well: no jump till you're clear of it
+    if (state.held) {
+      if (state.clock - state.heldSaid > 2.5) {
+        state.heldSaid = state.clock;
+        emit({ type: 'jump', phase: 'held', to: to.id });
+        import('../../lib/sfx').then((x) => x.buzz());
+      }
+      return false;
+    }
     const dir = courseTo(state.sys, to);
     jumpDir.set(...dir);
     state.auto = null;
@@ -897,6 +949,19 @@ export async function create(canvas, ctx) {
     state.jump = null;
     emit({ type: 'jump', phase: 'cancel', why });
   }
+  // the Interdictor's well bites: the jolt, the cruiser dropping in across
+  // the bow, and the hold (adventure() launches its TIEs and lets it go)
+  const bite = (j) => {
+    const place = interdictorPlace(state.ship, Math.random() < 0.5 ? -1 : 1);
+    interdictor.arrive(place);
+    state.held = { at: place.at, hangar: place.hangar, since: state.clock, pack: 'coming', to: j.to.id, faction: state.sys?.faction === 'remnant' ? 'remnant' : 'empire' };
+    state.heldSaid = -1e9;
+    state.flare = Math.max(state.flare, 2.2);
+    state.shake = Math.max(state.shake, 0.9);
+    state.kick = 1;
+    import('../../lib/sfx').then((x) => x.alarm());
+    emit({ type: 'interdicted', to: j.to.id, from: j.from.id });
+  };
   const jumpFrame = (dt) => {
     const j = state.jump;
     j.age += dt;
@@ -914,6 +979,15 @@ export async function create(canvas, ctx) {
       return;
     }
     if (j.phase === 'spool') {
+      if (!j.counted) {
+        // a jump that's spooling up is one the Empire counts: the one that's due is cut short
+        j.counted = true;
+        const verdict = interdiction.jumped();
+        if (verdict.interdicted && interdictor) {
+          j.interdicted = true;
+          j.cut = cutAt(j.dur);
+        }
+      }
       const k = clamp01(j.age / JUMP.spool);
       // pointing true, and away: faster and faster, the stars drawn out
       const q = orientOf(s, headQ);
@@ -945,9 +1019,11 @@ export async function create(canvas, ctx) {
         enter(j.to).then(() => (j.ready = true));
         if (state.world) state.world.group.visible = false;
       }
-      if (j.ready && j.age >= j.dur) {
-        // out: off the new system's planet, on the side you came in from
-        const a = arrival(j.to, j.from);
+      const bitten = Boolean(j.interdicted && j.age >= j.cut);
+      if (j.ready && (j.age >= j.dur || bitten)) {
+        // out: off the new system's planet, on the side you came in from;
+        // or, pulled out by the Interdictor's well, a long way short of it
+        const a = bitten ? dropPoint(arrival(j.to, j.from)) : arrival(j.to, j.from);
         state.ship = { ...spawn(null, a), speed: 46 };
         camQOn = false;
         state.world.group.visible = true;
@@ -956,6 +1032,7 @@ export async function create(canvas, ctx) {
         import('../../lib/clips').then((c) => c.playClip('hyperspaceExit', { keep: true }));
         props.onArrive?.(j.to.id, j.from.id);
         emit({ type: 'arrive', id: j.to.id, from: j.from.id });
+        if (bitten) bite(j);
       } else if (j.age > j.dur + 6 && !j.ready) j.ready = true; // (never stuck in there)
       return;
     }
@@ -993,9 +1070,19 @@ export async function create(canvas, ctx) {
         state.auto = null;
         emit({ type: 'parked' });
       }
-    } else input = steering();
+    } else {
+      input = steering();
+      // the nose follows the lock (targeting.js: a nudge toward the lead,
+      // as much as the lock-tracking setting allows, giving way to the stick)
+      if (state.trackable && state.lead && state.lead.t <= AIM.life) {
+        const n = trackNudge(state.ship, state.lead, controls().track, input);
+        input.turn = clamp(input.turn + n.turn, -1, 1);
+        input.climb = clamp(input.climb + n.climb, -1, 1);
+      }
+    }
     if (state.keys.fire || state.fireBtn) fire();
-    const { ship: stepped, events } = step(state.ship, input, dt, state.space.solids, state.space);
+    // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
+    const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
     // the tractor beam (Alderaan's Death Star): drawn in, and harder the nearer
     const tr = state.world.tractor;
@@ -1079,6 +1166,10 @@ export async function create(canvas, ctx) {
     state.cycle = 0;
     const tgt = state.lock ? (cands.find((c) => c.id === state.lock.id) ?? null) : null;
     state.lockTarget = tgt;
+    // (the nose follows only a lock on a hunter, one picked by hand, or one
+    // being shot at: not a passing pilot or a part of the Citadel the guns
+    // happened on)
+    state.trackable = Boolean(tgt && (hunters?.targets.includes(tgt) || state.lock?.manual || performance.now() - state.lastShot < TRACK_AFTER_SHOT));
     if (tgt && tgt.id !== was && state.shown && !document.hidden) lockSound();
     state.lead = tgt ? intercept(ship, AIM.bolt + Math.max(0, ship.speed), tgt.at, tgt.vel) : null;
     state.hot = Boolean(state.lead && state.lead.t <= AIM.life && assistAmount(nose(ship), dirTo(ship, state.lead), controls().assist) >= 1);
@@ -1140,6 +1231,7 @@ export async function create(canvas, ctx) {
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces ? pieces.update(dt, t, camera) : false;
+    if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (live) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
@@ -1147,7 +1239,7 @@ export async function create(canvas, ctx) {
       // now and then, whoever holds the system comes for you; the Empire (and
       // what's left of it) sometimes brings a Star Destroyer to launch them
       const faction = state.sys?.faction;
-      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere) {
+      if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere && !state.held) {
         if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
         if (state.nextHunt <= 0) {
           state.nextHunt = 50 + Math.random() * 45;
@@ -1160,6 +1252,26 @@ export async function create(canvas, ctx) {
             }
           } else hunters.pack(faction, live, { ahead: travelling, heat: state.heat, first: hunts++ === 0 });
         }
+      }
+      // the Interdictor's hold: its TIEs launch a moment after it's here, and
+      // it lets go once they're gone, once you're out past the well, or once
+      // it's had its go (interdiction.js); then it jumps away
+      const h = state.held;
+      if (h && hunters) {
+        if (h.pack === 'coming' && state.clock - h.since >= INTERDICTION.launch) {
+          h.pack = 'here';
+          hunters.pack(h.faction, live, { from: { x: h.hangar[0], y: h.hangar[1], z: h.hangar[2] }, size: INTERDICTION.pack, ace: Math.random() < INTERDICTION.ace, interdict: true });
+        } else if (h.pack === 'here' && !hunters.active) h.pack = 'gone';
+        const why = holdLifts({ since: h.since, now: state.clock, pack: h.pack, inWell: inWell(live, h.at) });
+        if (why) {
+          state.held = null;
+          state.nextHunt = 50 + Math.random() * 45;
+          emit({ type: 'wellclear', why });
+        }
+      }
+      if (interdictor?.here && !state.held && !hunters?.active) {
+        interdictor.leave();
+        emit({ type: 'event', id: 'leave' });
       }
       for (const l of [...later]) {
         if (state.clock < l.at) continue;
@@ -1745,12 +1857,15 @@ export async function create(canvas, ctx) {
       view: state.view,
       shield: +state.shield.toFixed(1),
       pull: +state.pull.toFixed(2),
+      held: state.held && { pack: state.held.pack, for: +(state.clock - state.held.since).toFixed(1), inWell: state.ship ? inWell(state.ship, state.held.at) : null },
+      jumps: interdiction.jumps,
+      due: interdiction.due,
       hunters: hunters?.packs ?? [],
       lock: state.lock?.id ?? null,
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
     });
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, interdiction, interdictor };
   }
 
   return {
@@ -1765,8 +1880,12 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
-      if ((next.ship ?? null) !== state.kind) state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
+      if ((next.ship ?? null) !== state.kind) {
+        state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
+        state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+      }
       setShip(next.ship ?? null);
+      setBuild(next.build ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
       // the page asking for another system (a link, the URL): jump there, but
@@ -1852,6 +1971,7 @@ export async function create(canvas, ctx) {
       pops.dispose();
       hunters?.dispose();
       pieces?.dispose();
+      interdictor?.dispose();
       netOff?.();
       pilots.dispose();
       fleet.dispose();

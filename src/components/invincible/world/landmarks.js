@@ -77,7 +77,6 @@ export async function buildLandmarks(world, uniforms) {
     tyre: new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.9 }),
     car: new THREE.MeshStandardMaterial({ color: 0x9a3b34, roughness: 0.35, metalness: 0.5 }),
     heli: new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.4, metalness: 0.5 }),
-    fence: new THREE.MeshStandardMaterial({ color: 0x7c8086, roughness: 0.6, metalness: 0.5, transparent: true, opacity: 0.55 }),
     lamp: new THREE.MeshBasicMaterial({ color: hot(0xfff1c8, 2.4), toneMapped: false }),
   };
 
@@ -159,16 +158,20 @@ export async function buildLandmarks(world, uniforms) {
     b.add('black', box(0.25, 0.12, 10), { p: [hx, 3.15, hz], r: [0, 0.6 + Math.PI / 2, 0] });
     b.add('black', cyl(0.18, 0.18, 0.9, 8), { p: [hx, 2.7, hz] });
     for (const sx of [-1, 1]) b.add('black', box(0.12, 0.12, 3.4), { p: [hx + sx * 1.1, 0.1, hz] });
-    // the fence round the block
+    // the fence round the block: posts and three wires
     const cx = Math.round(o.x / 80) * 80;
     const cz = Math.round(o.z / 80) * 80;
-    for (const [px, pz, w, d] of [
-      [cx, cz - 29, 58, 0.1],
-      [cx, cz + 29, 58, 0.1],
-      [cx - 29, cz, 0.1, 58],
-      [cx + 29, cz, 0.1, 58],
-    ])
-      b.add('fence', box(w, 2.6, d), { p: [px, 1.3, pz] });
+    for (const [x0, z0, x1, z1] of [
+      [cx - 29, cz - 29, cx + 29, cz - 29],
+      [cx - 29, cz + 29, cx + 29, cz + 29],
+      [cx - 29, cz - 29, cx - 29, cz + 29],
+      [cx + 29, cz - 29, cx + 29, cz + 29],
+    ]) {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const along = x1 !== x0;
+      for (let i = 0; i <= len / 4; i++) b.add('steel', cyl(0.05, 0.05, 2.6, 6), { p: [x0 + (along ? i * 4 : 0), 1.3, z0 + (along ? 0 : i * 4)] });
+      for (const y of [0.9, 1.7, 2.5]) b.add('steel', box(along ? len : 0.03, 0.03, along ? 0.03 : len), { p: [(x0 + x1) / 2, y, (z0 + z1) / 2] });
+    }
   }
 
   // ── the high school, its flag and its field ──
@@ -212,8 +215,8 @@ export async function buildLandmarks(world, uniforms) {
       b.add('yellow', cyl(0.1, 0.1, 5.6, 8), { p: [gx, 3, f.z], r: [Math.PI / 2, 0, 0] });
       for (const pz of [-2.8, 2.8]) b.add('yellow', cyl(0.08, 0.08, 6, 8), { p: [gx, 6, f.z + pz] });
     }
-    // the bleachers along the north side
-    for (let i = 0; i < 5; i++) b.add('steel', box(f.w * 0.6, 0.4, 1.2), { p: [f.x, 0.5 + i * 0.6, f.z - f.d / 2 - 2 - i * 1.1] });
+    // the bleachers along the far side, looking back at the school
+    for (let i = 0; i < 5; i++) b.add('steel', box(f.w * 0.6, 0.4, 1.2), { p: [f.x, 0.5 + i * 0.6, f.z + f.d / 2 + 1 + i * 1.1] });
   }
 
   // ── Burger Mart ──

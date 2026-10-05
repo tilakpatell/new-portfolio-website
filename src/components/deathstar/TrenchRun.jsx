@@ -8,6 +8,7 @@ import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleCo
 import { capturePointer } from '../../lib/pointer';
 import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
+import '../../styles/lazy/deathstar.css';
 
 const sfx = () => import('../../lib/sfx');
 // the films' own lines, where the run says one the site has a recording of

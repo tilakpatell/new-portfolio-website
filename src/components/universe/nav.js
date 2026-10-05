@@ -15,7 +15,7 @@
 // Picking a place anywhere on the map (its name, the panel, the nav map)
 // goes by the drive picked.
 
-import { EDGE, GOALS, OVERDRIVE, SHIP, autopilot, parkAt, step } from './ship';
+import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, parkAt, step } from './ship';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
@@ -65,7 +65,7 @@ export function hyperState({ last = null, now = 0, interdicted = false } = {}) {
 }
 
 // What each wonder is, in a line (they have no page: the crews have their say as you pass)
-const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station' };
+const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
 const WONDER_ABOUT = {
   aurelia: 'A ringed gas giant, bigger than any world on the map. Its rings go a long way out.',
   glacia: 'An ice giant: cold, blue and very quiet.',
@@ -75,6 +75,10 @@ const WONDER_ABOUT = {
   veil: 'A nebula, purple and rose. Not solid: fly right into it. Slow going inside.',
   cradle: 'A green and gold nebula. Not solid: fly right into it. Slow going inside.',
   citadel: 'The Citadel of Ricks. Fly into it too fast and you’re inside its world.',
+  lantern: 'A pulsar: a dead star the size of a city, spinning, two beams of light sweeping round it. Nobody goes near.',
+  twins: 'Two suns, one gold and one white, close enough to share a bridge of burning gas.',
+  wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. Far out, below the disc.',
+  graveyard: 'A white dwarf with a field of dead ships drifting round it, from every fleet and none. Quiet.',
 };
 const wonderColor = (w) => w.color ?? w.colors?.[0] ?? (w.kind === 'black-hole' ? '#ffb070' : '#7fd6ff');
 
@@ -136,6 +140,40 @@ export function findDestinations(kind = 'all', query = '') {
 export function parkFor(id, from) {
   if (id === MAW.id) return parkNear(from);
   return parkAt(id, from);
+}
+
+// Where a rift (director.js) comes out: any place or wonder on the map but
+// the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
+// thrown into a black hole), never a part of one (the Citadel's domes)
+const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
+export function riftExit(fromId = null, rand = Math.random) {
+  const exits = RIFT_EXITS.filter((id) => id !== fromId);
+  return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
+}
+
+// Where a rift opens: ahead of the ship and off to one side, at its height,
+// the nearest spot of a few (RIFT_AHEAD out, either side) that's clear of
+// anything solid by RIFT_CLEAR past its surface; null if none is (the ship
+// is in a crowd). `rand` picks which side comes first.
+export const RIFT_R = 4;
+const RIFT_AHEAD = [35, 55, 80];
+const RIFT_SIDE = 12;
+const RIFT_CLEAR = RIFT_R + 6;
+export function riftSpot(ship, rand = Math.random) {
+  const [fx, fz] = forward(ship.heading);
+  const rx = -fz;
+  const rz = fx;
+  const first = rand() < 0.5 ? -1 : 1;
+  for (const ahead of RIFT_AHEAD) {
+    for (const side of [first, -first]) {
+      const x = ship.x + fx * ahead + rx * side * RIFT_SIDE;
+      const z = ship.z + fz * ahead + rz * side * RIFT_SIDE;
+      const y = ship.y;
+      if (SOLIDS.some((o) => Math.hypot(x - o.at[0], y - o.at[1], z - o.at[2]) < o.r + RIFT_CLEAR)) continue;
+      return [x, y, z];
+    }
+  }
+  return null;
 }
 
 // how far it is from (x, y, z) to a place: to its parking spot's side of

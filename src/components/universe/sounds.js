@@ -584,6 +584,24 @@ export function interdictSound() {
   );
 }
 
+// A star flaring: a low rumble that rises, and a deep note under it
+export function flareSound() {
+  whoosh(2.4, 60, 220, 0.2);
+  tones([[48, 0, 1.6]], { type: 'sine', gain: 0.22 });
+}
+
+// A rift opening: a hum of two notes, and a rising rush
+export function riftSound() {
+  tones(
+    [
+      [110, 0, 2.5],
+      [165, 0, 2.5],
+    ],
+    { type: 'sine', gain: 0.05 },
+  );
+  whoosh(1.2, 400, 1600, 0.08);
+}
+
 // ── the weapons (weapons.js) and the Citadel's siege ──
 
 // changing weapons: a click and a rising chirp

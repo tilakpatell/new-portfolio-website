@@ -5,7 +5,9 @@
 // a crown band under the roof, a tall glass lobby at the street,
 // and the windows faded to their average where they'd be smaller than a
 // pixel, so the skyline doesn't crawl when seen from far off. The windows
-// reflect the sky by day and light up, floor by floor, at night.
+// reflect the sky by day and light up, floor by floor, at night. (Each
+// tower's numbers reach the fragments `flat`: a hash of a value that wobbles
+// across a wall, as an interpolated one can, comes out as noise.)
 
 import * as THREE from 'three';
 
@@ -17,7 +19,7 @@ export function towerMaterial(uniforms) {
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uNight = uniforms.uNight;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aStyle;\nvarying vec3 vCity;\nvarying vec3 vCityN;\nvarying vec4 vStyle;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aStyle;\nvarying vec3 vCity;\nvarying vec3 vCityN;\nflat varying vec4 vStyle;')
       .replace(
         '#include <project_vertex>',
         `#include <project_vertex>
@@ -38,7 +40,7 @@ export function towerMaterial(uniforms) {
         uniform float uNight;
         varying vec3 vCity;
         varying vec3 vCityN;
-        varying vec4 vStyle;
+        flat varying vec4 vStyle;
         float cityHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float box(vec2 f, vec4 r) { return step(r.x, f.x) * step(f.x, r.y) * step(r.z, f.y) * step(f.y, r.w); }
         vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
@@ -111,10 +113,10 @@ export function towerMaterial(uniforms) {
         {
           // a lit window, here and there: whole floors of an office, a few flats
           float floorOn = step(0.55, cityHash(vec2(wid.y, seed * 9.0)));
-          float lit = step(mix(0.8, 0.42, floorOn), cityHash(wid * 1.7 + seed * 5.0)) * cityWin * uNight;
+          float lit = step(mix(0.86, 0.55, floorOn), cityHash(wid * 1.7 + seed * 5.0)) * cityWin * uNight;
           vec3 warm = mix(vec3(1.0, 0.68, 0.36), vec3(0.72, 0.84, 1.0), step(0.72, cityHash(wid + seed)));
-          totalEmissiveRadiance += lit * warm * (0.4 + 0.5 * cityHash(wid * 3.1 + seed));
-          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * 0.9;
+          totalEmissiveRadiance += lit * warm * (0.22 + 0.4 * cityHash(wid * 3.1 + seed));
+          totalEmissiveRadiance += street * lobby * uNight * vec3(1.0, 0.85, 0.6) * 0.3;
           // the crown lit from below on the tall ones
           totalEmissiveRadiance += crown * step(90.0, top) * uNight * vec3(0.9, 0.85, 0.75) * 0.25;
           diffuseColor.rgb *= 1.0 - 0.5 * uNight * (1.0 - cityWin);

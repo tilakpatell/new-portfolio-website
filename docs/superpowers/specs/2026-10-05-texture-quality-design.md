@@ -93,6 +93,17 @@ work that follows from it, in slices that each ship on their own.
   about 20. Screenshots before and after through the preview harness in
   headless Chromium, on `high` and `low`.
 
+## Status (2026-10-05)
+
+All four slices shipped, each as its own pull request:
+
+1. `src/lib/three/textures.js`: `sharpen`, `loadTexture` (ImageBitmap decode, one texture per URL, `.ktx2` through the KTX2 loader), `warm` (idle-spread uploads), `variant`, `imageBitmapOk`. Tests for the pure parts.
+2. `src/lib/three/gltf.js`: `gltfLoader()` (a GLTFLoader subclass whose `parse` waits for the KTX2 loader only for a file that names `KHR_texture_basisu`), `loadGltf`, `prepare`, `tune`, `usesBasisu`. Every model and loose texture on the site goes through these two modules; no `new GLTFLoader()`, `new TextureLoader()` or hardcoded anisotropy is left in a world.
+3. `scripts/ktx2.mjs` (`report`, `convert`) on `basisu`; the report over the repo and the eight HQ models converted are in the research doc.
+4. `src/lib/three/surface.js`: `antiTile`, `detailNormal`, applied to the compound's floor, lawn and apron, Roll out's desert and the music courtyard's dunes.
+
+Also: the HQ games' `preload` warms its textures with the engine's renderer; the galaxy surfaces ask for `PCFShadowMap` (three r186 dropped `PCFSoftShadowMap`).
+
 ## Out of scope
 
 Tone-mapping changes on the core pages; new post-processing passes; regenerating

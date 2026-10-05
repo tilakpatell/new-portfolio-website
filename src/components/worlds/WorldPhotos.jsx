@@ -1,4 +1,5 @@
 import Photo, { photoCredit } from '../Photo';
+import '../../styles/lazy/worlds.css';
 
 // Real places and things behind a world, each a freely licensed photo with
 // its credit underneath. `items`: [{ id, title, note }], ids from photos.js.

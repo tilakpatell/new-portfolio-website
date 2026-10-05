@@ -12,7 +12,8 @@ import * as THREE from 'three';
 import { noiseAtlas } from '../../../lib/texture';
 import { BEACH, CITY, COAST, GRID, HILLS, LOT, RIVER, SUBURB, WATER_Y, WORLD, blockKind, groundAt, subBlock } from './map';
 
-export const LAND = 7000; // half the land mesh's width
+export const LAND = 7000; // how far the river runs north, off the edge of the world
+export const LAND_FAR = 40000; // how far the land goes
 const KIND_CODE = { built: 1, park: 2, plaza: 3, lot: 4, gda: 5 };
 
 // the land past the edge of the world: mountains, rising away from it
@@ -283,7 +284,7 @@ function landMaterial(kinds, subs, uniforms) {
           float lz = dz - 8.6;
           vec2 a = vec2(lx, lineD(p.y, 30.0, 0.0));
           vec2 b = vec2(lz, lineD(p.x, 30.0, 0.0));
-          lamp = exp(-dot(a, a) / 22.0) * step(d, 11.0) + exp(-dot(b, b) / 22.0) * step(d, 11.0);
+          lamp = exp(-dot(a, a) / 9.0) * step(d, 11.0) + exp(-dot(b, b) / 9.0) * step(d, 11.0);
         } else {
           // farmland east of town
           float f = step(0.5, fract(p.y / 9.0 + nz.r * 0.3));
@@ -298,7 +299,7 @@ function landMaterial(kinds, subs, uniforms) {
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.55;`,
+        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.16;`,
       );
   };
   m.customProgramCacheKey = () => 'inv-land';
@@ -341,11 +342,35 @@ export function buildGround(world, { small = false } = {}) {
   group.name = 'ground';
   const uniforms = { uNight: { value: 0 }, uTime: { value: 0 } };
 
-  // the land: finer in the middle (most of what's seen close up is flat)
-  const seg = small ? 220 : 340;
-  const geo = new THREE.PlaneGeometry(LAND * 2, LAND * 2, seg, seg).rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) pos.setY(i, landAt(pos.getX(i), pos.getZ(i)));
+  // the land: a disc of rings round the city, 45 m apart over the world and
+  // further apart beyond it, out to 40 km (the mountains round the basin,
+  // the sea to the south), so from high up there's no edge to it
+  const radii = [0];
+  while (radii[radii.length - 1] < WORLD.half * 2.4) radii.push(radii[radii.length - 1] + (small ? 70 : 45));
+  while (radii[radii.length - 1] < LAND_FAR) radii.push(radii[radii.length - 1] * 1.07);
+  const segs = small ? 220 : 320;
+  const pos = [];
+  for (const r of radii)
+    for (let k = 0; k < segs; k++) {
+      const a = (k / segs) * Math.PI * 2;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      pos.push(x, landAt(x, z), z);
+      if (r === 0) break;
+    }
+  const index = [];
+  for (let k = 0; k < segs; k++) index.push(0, 1 + ((k + 1) % segs), 1 + k);
+  for (let i = 1; i < radii.length - 1; i++) {
+    const a0 = 1 + (i - 1) * segs;
+    const a1 = 1 + i * segs;
+    for (let k = 0; k < segs; k++) {
+      const k1 = (k + 1) % segs;
+      index.push(a0 + k, a0 + k1, a1 + k, a0 + k1, a1 + k1, a1 + k);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(index);
   geo.computeVertexNormals();
   const land = new THREE.Mesh(geo, landMaterial(kindTexture(), subTexture(world.landmarks), uniforms));
   land.receiveShadow = true;

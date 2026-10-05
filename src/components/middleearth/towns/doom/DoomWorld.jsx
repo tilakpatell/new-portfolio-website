@@ -16,6 +16,8 @@ import { CARRY, FLIGHT, HANG, MARCH, RECALL, SHIRE, carryStep, newCarry, newFlig
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './doom.css';
+import '../../../../styles/lazy/middleearth.css';
+import GuideCue from '../../../guide/GuideCue';
 
 // Mordor and Mount Doom, the end of the road: the orc column, across
 // Gorgoroth under the Eye, Sam carrying Frodo up the mountain, the Crack of
@@ -813,7 +815,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           </div>
         </div>
       )}
-      {gl === 'on' && crossing && !hud.moved && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. M for the list.'}</p>}
+      {gl === 'on' && crossing && !hud.moved && <p className="shire-hint">{touch ? 'Drag the stick to walk. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. M for the list.'}<GuideCue touch={touch} /></p>}
 
       {node && <Convo title={title} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
 

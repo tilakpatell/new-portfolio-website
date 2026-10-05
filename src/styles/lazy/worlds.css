@@ -1,0 +1,34 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.backdrop-me[data-variant='shire'] { --me-sky-top: #fbfaf3; --me-sky-bottom: #f1edd6; --me-far: #dcdfca; --me-mid: #bccba0; --me-near: #93b065; --me-mist: #fbfaf3; }
+html[data-mode='dark'] .backdrop-me[data-variant='shire'] { --me-sky-top: #09090b; --me-sky-bottom: #11160c; --me-far: #1b2215; --me-mid: #233019; --me-near: #2c3f1e; --me-mist: #09090b; }
+.backdrop-me[data-variant='mordor'] { --me-sky-top: #fcfaf9; --me-sky-bottom: #f6e0d2; --me-far: #ddcdc6; --me-mid: #ad958d; --me-near: #3b2a26; --me-mist: #fcfaf9; }
+html[data-mode='dark'] .backdrop-me[data-variant='mordor'] { --me-sky-top: #09090b; --me-sky-bottom: #2c0e05; --me-far: #1d120e; --me-mid: #170d0a; --me-near: #0c0605; --me-mist: #09090b; }
+.me-eye, .me-lava { animation: me-flicker 3s ease-in-out infinite; }
+.backdrop-cy[data-faction='autobot'] { --cy-light: #2fb7e6; --cy-far: #e3e8ef; --cy-mid: #cfd7e2; --cy-near: #b9c4d3; }
+.backdrop-cy[data-faction='decepticon'] { --cy-light: #9a6cf0; --cy-far: #e6e3ee; --cy-mid: #d3cee0; --cy-near: #bdb6d0; }
+html[data-mode='dark'] .backdrop-cy[data-faction='autobot'] { --cy-light: #4fd8ff; --cy-far: #121a26; --cy-mid: #0e151f; --cy-near: #0a0f16; }
+html[data-mode='dark'] .backdrop-cy[data-faction='decepticon'] { --cy-light: #b48cff; --cy-far: #171326; --cy-mid: #120f1f; --cy-near: #0c0a15; }
+.cy-blink { animation: cy-blink 2.8s steps(2, jump-none) infinite; }
+@media (prefers-reduced-motion: reduce) { .me-eye, .me-lava, .cy-blink { animation: none; } }
+.world-switcher { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.world-switcher-label { margin-right: 0.3rem; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.world-photos { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .world-photos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .world-photo-lead { grid-column: 1 / -1; } }
+@media (min-width: 1024px) { .world-photos { grid-template-columns: repeat(3, minmax(0, 1fr)); } .world-photo-lead { grid-column: span 2; grid-row: span 2; } }
+.world-photo-frame { overflow: hidden; aspect-ratio: 3 / 2; border: 1px solid var(--border); border-radius: var(--r-photo, 16px); background: var(--surface-2); }
+.world-photo-lead .world-photo-frame { aspect-ratio: 16 / 10; }
+@media (min-width: 1024px) { .world-photo-lead .world-photo-frame { aspect-ratio: auto; height: calc(100% - 4.5rem); min-height: 320px; } }
+.world-scenes { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+@media (min-width: 1024px) { .world-scenes { grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); } }
+
+/* a world's soundboard: the line on each button, who says it under it */
+.clip-board { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.clip-board-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.3rem; width: 100%; height: 100%; min-height: 64px; padding: 0.75rem 1rem; border: 1px solid var(--border-strong); border-radius: var(--r-card); background: var(--surface); color: var(--text); text-align: left; cursor: pointer; transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+.clip-board-btn:hover { background: var(--surface-2); }
+.clip-board-btn:active { transform: scale(0.98); }
+.clip-board-btn[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.clip-board-line { font-size: 0.9375rem; font-weight: 600; line-height: 1.3; }
+.clip-board-by { font-size: 0.8125rem; color: var(--muted); }
+.clip-board-btn[aria-pressed='true'] .clip-board-by::after { content: ' · playing'; color: var(--accent-text); }
+@media (prefers-reduced-motion: reduce) { .clip-board-btn { transition: none; } .clip-board-btn:active { transform: none; } }

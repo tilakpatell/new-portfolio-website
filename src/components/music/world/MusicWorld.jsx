@@ -7,6 +7,8 @@ import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
 import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
+import '../../../styles/lazy/music.css';
+import GuideCue from '../../guide/GuideCue';
 
 // The music planet: land in a courtyard at dusk and walk about it, first
 // person. The instruments lie on a rug before a sandstone chhatri; walk up to
@@ -274,7 +276,7 @@ export default function MusicWorld({ panel }) {
             <p className="mw-eyebrow">The music planet</p>
             <h2 className="mw-title">A courtyard at dusk</h2>
             {gl === 'on' && !moved && !open && (
-              <p className="mw-help">{touch ? 'The stick walks, a swipe across turns. Walk up to an instrument to play it.' : 'Click the courtyard, then W A S D to walk, ← → to turn, drag to look. Walk up to an instrument and press E.'}</p>
+              <p className="mw-help">{touch ? 'The stick walks, a swipe across turns. Walk up to an instrument to play it.' : 'Click the courtyard, then W A S D to walk, ← → to turn, drag to look. Walk up to an instrument and press E.'}<GuideCue touch={touch} /></p>
             )}
             {gl === 'on' && !models && <p className="mw-help">Bringing in the instruments…</p>}
           </div>

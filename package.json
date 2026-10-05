@@ -17,7 +17,8 @@
     "globe": "node scripts/build-globe.mjs",
     "cc0": "node scripts/cc0.mjs",
     "kenney": "node scripts/kenney.mjs",
-    "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs"
+    "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs",
+    "ktx2:hq": "node scripts/ktx2.mjs convert public/hq/models/barrel.glb public/hq/models/barrier.glb public/hq/models/crate.glb public/hq/models/lamp.glb public/hq/models/rocks.glb public/hq/models/shelves.glb public/hq/models/toolchest.glb public/hq/models/tyre.glb --slots normal"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -48,6 +49,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.4.20",
+    "basisu": "^1.16.3",
     "d3-geo": "^3.1.1",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",

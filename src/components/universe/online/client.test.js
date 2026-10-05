@@ -78,7 +78,7 @@ describe('createClient', () => {
   it('each sees the other, by name and ship', async () => {
     const { a, b } = await pair();
     expect(a.snapshot().status).toBe('online');
-    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
+    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, build: null, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
     expect(b.snapshot().peers[0].name).toBe('Han');
   });
 
@@ -97,6 +97,19 @@ describe('createClient', () => {
     a.pose(ship(3));
     a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
     expect(b.takeShots()[0]).toMatchObject({ paint: 'aws', guns: 'twin' });
+  });
+
+  it('shows each the garage build the other flies, and a change of it', async () => {
+    const { a, b, seen } = await pair();
+    const build = { hull: 'saucer', cockpit: 'bubble', wings: 'stub', engines: 'twincans', tail: 'fin', extras: 'dish' };
+    a.setProfile({ build: { ...build, seed: 9 } });
+    expect(b.peers.get('A').build).toEqual(build);
+    expect(b.snapshot().peers[0].build).toEqual(build);
+    const before = seen.b.length;
+    a.setProfile({ build: { ...build, seed: 10 } }); // (the same ship: no news)
+    expect(seen.b.length).toBe(before);
+    a.setProfile({ build: null });
+    expect(b.peers.get('A').build).toBeNull();
   });
 
   it('passes poses along, read and timed', async () => {

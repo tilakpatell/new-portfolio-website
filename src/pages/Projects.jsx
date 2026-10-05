@@ -11,8 +11,10 @@ import { useSectionThemes } from '../theme/ThemeProvider';
 import { useDocumentTitle } from '../lib/hooks';
 import { usePageParams } from '../lib/page';
 import PeriodicStack from '../components/projects/PeriodicStack';
+import Cartridges from '../components/projects/Cartridges';
 import SitarDivider from '../components/SitarDivider';
 import Egg from '../components/Egg';
+import '../styles/lazy/projects.css';
 
 const CTA = {
   'gameboy-emulator': 'Play it and see how it works',
@@ -115,6 +117,7 @@ export default function Projects() {
               demos.
             </p>
           </div>
+          <Cartridges />
         </div>
       </header>
 

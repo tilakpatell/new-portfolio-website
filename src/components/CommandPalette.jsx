@@ -9,11 +9,13 @@ import {
   RiFileTextLine,
   RiGithubFill,
   RiGlobalLine,
+  RiHistoryLine,
   RiLayoutGridLine,
   RiLinkedinBoxFill,
   RiMailLine,
   RiMusic2Line,
   RiPaletteLine,
+  RiQuestionLine,
   RiRestartLine,
   RiRocket2Line,
   RiSearchLine,
@@ -32,6 +34,8 @@ import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
+import { openGuide } from '../lib/palette';
+import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 
@@ -80,6 +84,7 @@ export default function CommandPalette({ onClose }) {
       view === 'classic'
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
+      { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
       { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
@@ -89,6 +94,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-contact', group: 'Go to', label: 'Contact', icon: RiMailLine, run: go('/contact') },
       { id: 'p-music', group: 'Go to', label: 'Music room', keywords: 'sitar tanpura harmonium tabla raga indian classical', icon: RiMusic2Line, run: go('/music') },
       { id: 'p-term', group: 'Go to', label: 'Imperial terminal', keywords: 'terminal shell command line', icon: RiTerminalBoxLine, run: go('/terminal') },
+      { id: 'p-changes', group: 'Go to', label: 'What’s changed', hint: 'The ship’s log', keywords: 'changes changelog log autopilot new updates revert history', icon: RiHistoryLine, run: go('/changes') },
       ...projects.map((p) => ({ id: `pr-${p.id}`, group: 'Projects', label: p.title, hint: p.kind, keywords: p.stack.join(' '), icon: RiCodeBoxLine, run: go(`/projects/${p.id}`) })),
       ...roles.map((r) => ({ id: `ro-${r.id}`, group: 'Experience', label: r.company, hint: r.shortTitle, keywords: `${r.short} ${r.title} ${r.stack.join(' ')}`, icon: RiBriefcaseLine, run: go(`/experience/${r.id}`) })),
       ...PLACES.map((p) => ({ id: `pl-${p.id}`, group: 'Places', label: p.name, hint: p.photo, keywords: `travel ${p.region}`, icon: RiGlobalLine, run: go(`/travel?place=${p.id}`) })),

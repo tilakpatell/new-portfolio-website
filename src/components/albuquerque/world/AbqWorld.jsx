@@ -14,6 +14,8 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { CITY, COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
 import { carSound } from './sounds';
 import './world.css';
+import '../../../styles/lazy/albuquerque.css';
+import GuideCue from '../../guide/GuideCue';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
@@ -641,7 +643,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}</p>}
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round.' : 'W A S D or the arrows to drive. Space is the handbrake: hold it into a turn. E goes in, R runs a delivery, H is the horn.'}<GuideCue touch={touch} /></p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (

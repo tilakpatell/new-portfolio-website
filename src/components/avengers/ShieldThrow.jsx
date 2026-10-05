@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import '../../styles/lazy/avengers.css';
 
 const sfx = () => import('../../lib/sfx');
 

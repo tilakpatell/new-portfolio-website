@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, WONDERS, beyondOf, openness, planetAt, reachOf } from './deep';
+import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, nearestStar, openness, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
@@ -101,5 +101,33 @@ describe('deep space', () => {
     const mid = openness(Math.cos(clear) * half, 0, Math.sin(clear) * half);
     expect(mid).toBeGreaterThan(0.4);
     expect(mid).toBeLessThan(0.6);
+  });
+
+  it('has a pulsar, a binary star, a rogue planet and a wreck field among its wonders, each solid its own way', () => {
+    const ids = WONDERS.map((w) => w.id);
+    for (const id of ['lantern', 'twins', 'wanderer', 'graveyard']) expect(ids).toContain(id);
+    const solids = Object.fromEntries(DEEP_SOLIDS.map((s) => [s.id, s]));
+    // nobody flies anywhere near a pulsar: solid out to ten radii
+    expect(solids.lantern.r).toBe(wonderById('lantern').r * 10);
+    // two suns: two solids, the first the place itself, the second a part of it (hitting either is hitting the Twins)
+    expect(solids.twins).toBeTruthy();
+    expect(solids['twins-2']).toBeTruthy();
+    expect(solids['twins-2'].part).toBe(true);
+    expect(Math.hypot(...[0, 1, 2].map((i) => solids['twins-2'].at[i] - solids.twins.at[i]))).toBe(wonderById('twins').pair.apart);
+    expect(reachOf(wonderById('twins'))).toBe(wonderById('twins').pair.apart + wonderById('twins').pair.r);
+    // a rogue planet with a ring reaches like any ringed world; the wreck field's hulls are a sight, not solid
+    expect(reachOf(wonderById('wanderer'))).toBe(wonderById('wanderer').r * 2.3);
+    expect(reachOf(wonderById('graveyard'))).toBe(wonderById('graveyard').field);
+    expect(DEEP_SOLIDS.filter((s) => s.id.startsWith('graveyard'))).toHaveLength(1);
+    // and none of them is a star a flare comes from
+    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+  });
+
+  it('knows its stars, and which is nearest', () => {
+    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+    expect(nearestStar(10, 0, 0).star.id).toBe('sun');
+    const ember = WONDERS.find((w) => w.id === 'ember');
+    expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).star.id).toBe('ember');
+    expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).dist).toBeCloseTo(200, 3);
   });
 });

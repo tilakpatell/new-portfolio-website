@@ -1,4 +1,5 @@
 import { STONES, VIEW } from './stones';
+import '../../styles/lazy/interests.css';
 
 // The Infinity Gauntlet, back of the left hand, with each stone in its MCU
 // socket: Time on the thumb, Power, Space, Reality and Soul across the
