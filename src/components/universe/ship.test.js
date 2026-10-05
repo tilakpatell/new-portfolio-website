@@ -72,12 +72,12 @@ describe('flying the ship', () => {
     expect(Math.abs(level.pitch)).toBeLessThan(0.01);
   });
 
-  it('stops at the ceiling and the floor, and says so once', () => {
+  it('stops at the ceiling and the floor, without a word', () => {
     for (const way of [1, -1]) {
       const { ship, events } = fly({ ...spawn(null), x: 0, z: 0 }, { climb: way, boost: true }, 12, []);
       expect(Math.abs(ship.y)).toBeLessThan(SHIP.ceiling + 1);
       expect(Math.abs(ship.y)).toBeGreaterThan(SHIP.ceiling - 2.5);
-      expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
+      expect(events.filter((e) => e.type === 'edge')).toHaveLength(0);
     }
   });
 

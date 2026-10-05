@@ -174,10 +174,10 @@ export function step(s, input, dt, solids = SOLIDS) {
     x *= EDGE / r;
     z *= EDGE / r;
   }
-  if (r > EDGE || Math.abs(y) > ceil) {
+  if (r > EDGE) {
     if (!edge) events.push({ type: 'edge' });
     edge = true;
-  }
+  } else if (Math.abs(y) > ceil) edge = true; // (eased back from the ceiling or the floor without a word)
 
   // off a planet, never through it: out along the line from its middle,
   // whichever way the ship came at it (from the side, from above or below).
@@ -241,8 +241,10 @@ export function autopilot(s, id, park = PLANET[id] && parkAt(id, [s.x, s.z])) {
   const tx = park.x - s.x;
   const tz = park.z - s.z;
   const dist = Math.hypot(tx, tz);
-  // up or down to the planet's height, easing in
-  const ty = (park.y ?? SHIP.height) - s.y;
+  // up or down to the planet's height, easing in (and no lower or higher
+  // than it can go here: the home system's floor and ceiling are near)
+  const ceil = ceilingAt(s.x, s.z) - 2;
+  const ty = clamp(park.y ?? SHIP.height, -ceil, ceil) - s.y;
   const climb = clamp(ty * 0.8 - (s.vy || 0) * 0.35, -1, 1);
   if (dist < 0.4) {
     // there: stop, level off and turn to face it

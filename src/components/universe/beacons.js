@@ -1,7 +1,8 @@
 // Beacons: a glowing dot over each of the fandoms' planets, in the planet's
-// own colour (its swatch), the same size on screen however far off, so from
-// anywhere on the map the far worlds read as places to go (from across deep
-// space the planets themselves are a few dim pixels). One draw: a Points with
+// own colour (its swatch), and one over home (the sun, gold), the same size
+// on screen however far off, so from anywhere on the map the far worlds
+// read as places to go and home as the way back (from across deep space the
+// planets themselves are a few dim pixels). One draw: a Points with
 // its own shader, drawn over whatever is in front of it (a beacon marks
 // where a world is, it isn't a thing in the way). A beacon fades out as the
 // camera comes in to within FADE reaches of its planet, where the planet
@@ -11,7 +12,7 @@
 // position in the map's space (the points' parent's).
 
 import * as THREE from 'three';
-import { ORDER, POSITIONS, REACH } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
 const FADE = 5; // reaches from the planet at which its beacon starts to fade
@@ -47,16 +48,17 @@ void main() {
 }`;
 
 export function createBeacons() {
-  const worlds = ORDER.filter((id) => byId(id).kind !== 'core');
+  // the far worlds, and home (the sun, in its own gold: the way back)
+  const worlds = [...ORDER.filter((id) => byId(id).kind !== 'core').map((id) => ({ at: POSITIONS[id], colour: byId(id).swatch, fade: REACH[id] * FADE })), { at: [0, 0, 0], colour: '#ffb347', fade: HOME_RADIUS * 2.5 }];
   const pos = new Float32Array(worlds.length * 3);
   const col = new Float32Array(worlds.length * 3);
   const fade = new Float32Array(worlds.length);
   const c = new THREE.Color();
-  worlds.forEach((id, i) => {
-    pos.set(POSITIONS[id], i * 3);
-    c.set(byId(id).swatch);
+  worlds.forEach((w, i) => {
+    pos.set(w.at, i * 3);
+    c.set(w.colour);
     col.set([c.r, c.g, c.b], i * 3);
-    fade[i] = REACH[id] * FADE;
+    fade[i] = w.fade;
   });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));

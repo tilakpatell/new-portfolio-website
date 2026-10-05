@@ -103,6 +103,7 @@ const FANDOMS = [
     size: 3.75, // the Death Star itself (60 across the map, after PLANET), its trench run round its middle
     reach: 1.45, // Alderaan orbits it close in
     trench: { segments: 34 },
+    airless: true, // a station: no air glowing round it (from inside its trench it would wash the view out)
     palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
   },
   {

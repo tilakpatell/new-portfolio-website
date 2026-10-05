@@ -69,7 +69,8 @@ export const WONDERS = [
 // (the rim at y 5.4, the floor at −1.7). trench.js lays a stretch of it in
 // the Death Star's trench (the Star Wars planet's, universes.js), on the
 // side that faces home: `segments` sections would go all the way round.
-export const TRENCH_MODEL = { x: [-1.75, 22.96], z: [-15.0, -8.4], rim: 5.4, floor: -1.7 };
+// (sunk a little into the surface, so its city blocks don't stand proud)
+export const TRENCH_MODEL = { x: [-1.75, 22.96], z: [-15.0, -8.4], rim: 5.4, floor: -1.7, sink: 2.6 };
 export const TRENCH_STRETCH = 6; // sections laid
 
 // a place's trench, in map units: how many sections to the ring, scaled how
@@ -80,7 +81,7 @@ export function trenchOf(place) {
   const scale = (2 * Math.PI * place.r) / segments / (TRENCH_MODEL.x[1] - TRENCH_MODEL.x[0]);
   const home = Math.atan2(-place.at[2], -place.at[0]);
   const arc = (TRENCH_STRETCH / segments) * Math.PI;
-  return { segments, scale, width: (TRENCH_MODEL.z[1] - TRENCH_MODEL.z[0]) * scale, depth: (TRENCH_MODEL.rim - TRENCH_MODEL.floor) * scale, home, arc };
+  return { segments, scale, width: (TRENCH_MODEL.z[1] - TRENCH_MODEL.z[0]) * scale, depth: (TRENCH_MODEL.rim + TRENCH_MODEL.sink - TRENCH_MODEL.floor) * scale, home, arc };
 }
 
 // the band a trench lets the ship into (ship.js): how far above and below

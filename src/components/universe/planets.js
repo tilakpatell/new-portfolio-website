@@ -812,7 +812,7 @@ export function buildPlanet(u, T = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core ? null : halo(u.size, u.rim ?? u.swatch, seg);
+  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg); // (a station has no air round it)
   if (air) group.add(air);
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null };
   BUILDERS[u.id]?.(p, { u, T });

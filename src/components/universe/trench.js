@@ -42,7 +42,7 @@ export function createTrench(wonder) {
   const { segments, scale, home } = trenchOf(wonder);
   // where a section's middle is in the model: halfway along it, in the
   // middle of the trench, level with its rim
-  const mid = new THREE.Vector3((TRENCH_MODEL.x[0] + TRENCH_MODEL.x[1]) / 2, TRENCH_MODEL.rim, (TRENCH_MODEL.z[0] + TRENCH_MODEL.z[1]) / 2);
+  const mid = new THREE.Vector3((TRENCH_MODEL.x[0] + TRENCH_MODEL.x[1]) / 2, TRENCH_MODEL.rim + TRENCH_MODEL.sink, (TRENCH_MODEL.z[0] + TRENCH_MODEL.z[1]) / 2);
   const toMid = new THREE.Matrix4().makeTranslation(-mid.x, -mid.y, -mid.z);
   const scaled = new THREE.Matrix4().makeScale(scale, scale, scale);
   const basis = new THREE.Matrix4();

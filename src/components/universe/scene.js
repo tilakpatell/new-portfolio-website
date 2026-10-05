@@ -88,6 +88,7 @@ const CRASH = { impact: 0.32, through: 1.6, back: 2.7, done: 3.3 };
 const HOLE = { impact: 1.3, through: 2.2, back: 3.1, done: 3.7 };
 const DIVE = { impact: 0.55, through: 1.7, back: 2.8, done: 3.4 };
 const INTERDICT = 40; // seconds, at most, that a pack holds the pulse drive down
+const STREAK_SPEED = 36; // the streaks' speed tops out here: faster they'd be a wall
 const TURN = 0.0042; // radians of map per px dragged
 const DRAG = 6; // px a press may move and still be a click
 const STICK = 70; // px of drag for full throttle or a full turn
@@ -1013,13 +1014,14 @@ export async function create(canvas, ctx) {
     const normal = from.clone().sub(center).normalize();
     // into a wonder, it's a crash of its own kind
     const wonder = wonderById(e.id) ?? (e.id.includes('-') ? wonderById(e.id.split('-')[0]) : null);
-    const kind = !wonder || wonder.id !== e.id ? null : wonder.kind === 'black-hole' ? 'wormhole' : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? 'world' : null;
+    // (a wonder with a world of its own, the Citadel, crashes under its own name)
+    const kind = !wonder || wonder.id !== e.id ? null : wonder.kind === 'black-hole' ? 'wormhole' : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? wonder.id : null;
     state.crash = {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
       id: e.id,
       sun: e.id === 'sun' || kind === 'star',
       kind,
-      world: kind === 'world' ? wonder.world : null,
+      world: wonder?.world ?? null,
       colour: kind === 'giant' ? wonder.colors[0] : null,
       from,
       into: normal.clone().negate(),
@@ -1515,7 +1517,9 @@ export async function create(canvas, ctx) {
     }
     const adventuring = adventure(dt, t);
 
-    streak.update(dt, state.ship ? Math.abs(state.ship.speed) : 0, state.streak);
+    // (the streaks' speed tops out at the boost's: at the pulse drive's
+    // they'd be a wall; and none in the map view, which isn't the ship's)
+    streak.update(dt, state.ship ? Math.min(Math.abs(state.ship.speed), STREAK_SPEED) : 0, state.view === 'map' ? 0 : state.streak);
     const bursting = burst.update(dt);
     if (!reduced && flying() && state.view === 'chase' && state.streak > 0.001 && state.model) {
       // out from the ship, where it is on the canvas
