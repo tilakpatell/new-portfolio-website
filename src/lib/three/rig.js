@@ -11,32 +11,29 @@
 // place, with pose(targets, dt) to move it there smoothly.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from './gltf';
+import { sharpenMaterial } from './textures';
 
-let loader = null;
 const cache = new Map();
 
 // The figure as loaded (shared: `figure` makes copies).
 export function loadFigure(url) {
   if (!cache.has(url)) {
-    if (!loader) {
-      loader = new GLTFLoader();
-      loader.setMeshoptDecoder(MeshoptDecoder);
-    }
     cache.set(
       url,
-      loader.loadAsync(url).then((g) => {
-        g.scene.traverse((o) => {
-          if (!o.isMesh) return;
-          o.castShadow = true;
-          o.receiveShadow = true;
-          if (o.isSkinnedMesh) o.frustumCulled = false;
-          for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m.map) m.map.anisotropy = 8;
-        });
-        return { scene: g.scene, clips: g.animations };
-      }),
+      gltfLoader()
+        .loadAsync(url)
+        .then((g) => {
+          g.scene.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = true;
+            o.receiveShadow = true;
+            if (o.isSkinnedMesh) o.frustumCulled = false;
+            for (const m of Array.isArray(o.material) ? o.material : [o.material]) sharpenMaterial(m);
+          });
+          return { scene: g.scene, clips: g.animations };
+        }),
     );
   }
   return cache.get(url);

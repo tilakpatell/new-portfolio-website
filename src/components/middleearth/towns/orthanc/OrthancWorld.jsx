@@ -93,7 +93,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     const saved = local.get(AT, null);
     const at = zone === 'top' ? validAt(saved, 'top') : validAt(saved, 'hall');
     const h = newWalker(zone === 'stair' ? HALL_IN : at);
-    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: zone === 'top' ? 0.42 : 0.3, dragAt: -1e9, mode: zone === 'stair' ? 'climb' : 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, air: null, padBefore: null, gaze: null, duel: null, climb: zone === 'stair' ? newStair() : null, moth: null, leap: null, flight: null, busy: false, steer: 0, up: 0, hold: 0, colours: Boolean(local.get(COLOURS, false)), flashIn: 4 };
+    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: zone === 'top' ? 0.24 : 0.3, dragAt: -1e9, mode: zone === 'stair' ? 'climb' : 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, air: null, padBefore: null, gaze: null, duel: null, climb: zone === 'stair' ? newStair() : null, moth: null, leap: null, flight: null, busy: false, steer: 0, up: 0, hold: 0, colours: Boolean(local.get(COLOURS, false)), flashIn: 4 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -218,7 +218,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     s.climb = null;
     s.h = newWalker(PIN_IN);
     s.yaw = behindYaw(PIN_IN.face);
-    s.pitch = 0.42;
+    s.pitch = 0.24;
     s.busy = false;
     s.air?.place('top');
   }, []);
@@ -442,6 +442,11 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     const a = api.current;
     if (!a || a.lost) return;
     const s = sim.current;
+    // (the QA scripts hold the world still, and step it a frame at a time)
+    if (import.meta.env.DEV && s.paused) {
+      if (!(s.steps > 0)) return;
+      s.steps -= 1;
+    }
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
     const dt = Math.min(0.05, ms / 1000) * fast;
@@ -636,7 +641,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
           flight: s.flight,
           camYaw: s.yaw,
           camPitch: s.pitch,
-          camDist: s.zone === 'top' ? 5.2 : touch ? 7 : 6.2,
+          camDist: s.zone === 'top' ? 6.4 : touch ? 7 : 6.2,
           debugCam: s.debugCam,
         },
         ms * fast,
@@ -648,6 +653,11 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
       api.current = null;
       setGl('failed');
       return;
+    }
+    // (and read the picture straight back, while it's still there)
+    if (import.meta.env.DEV && s.wantSnap) {
+      s.wantSnap = false;
+      s.snap = canvas.current?.toDataURL('image/jpeg', 0.86) ?? null;
     }
 
     const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, g ? Math.round(g.seen * 30) : '', g ? Math.round(g.notice * 30) : '', g?.phase, g?.looking, du?.phase, du?.will, du?.pushes, du ? blockable(du) : '', c ? Math.round(c.s) : '', m ? Math.round(m.x * 40) : '', m ? Math.round(m.hand * 40) : '', m ? Math.round(m.settle * 20) : '', m?.warned, l?.under, l?.warned, p.done.length, s.h.x > LIB.x0].join('|');

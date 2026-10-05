@@ -42,12 +42,8 @@ break). State as of 2026-10-05.
 ## Agents stopped (org spend limit), 2026-10-05
 
 Their unfinished, uncommitted work was saved as patches in
-`docs/superpowers/handoff-patches/`:
-
-- `east-cirith-ungol-wip.patch`: applied and finished (see below).
-- `orthanc-gwaihir-wip.patch` (base 18aad80): fixing Gwaihir missing from
-  the pinnacle flight (Gandalf rides on nothing). Still to apply:
-  `git apply --3way docs/superpowers/handoff-patches/orthanc-gwaihir-wip.patch`.
+`docs/superpowers/handoff-patches/`; both are applied and finished now
+(see below), and the folder is gone.
 
 ## Done since (this session)
 
@@ -63,6 +59,12 @@ Their unfinished, uncommitted work was saved as patches in
   and Frodo says them back, two to six. Open once Gorgoroth is crossed.
 - Both keep `{ won, best }` under `tp-cirithungol-side` and
   `tp-doom-side` (`towns/side.js`), lower is better.
+- Orthanc: Gwaihir and the moth were children of the tower's group (at
+  AT.tower) but placed in world coordinates, so they drew 3 km off and
+  Gandalf flew on nothing. They hang off the scene now. The agent's
+  patch over it (the hall's hanging lamp, the shafts fading as the camera
+  comes into one, Saruman of Many Colours as a shader, the stair camera
+  ahead of you, the brighter tower moods) is in too.
 
 ## Still in flight when this was written (superseded above)
 
@@ -127,9 +129,7 @@ above.
 
 ## Steps left (in order)
 
-1. Orthanc: apply `orthanc-gwaihir-wip.patch` (base 18aad80) and finish
-   Gwaihir in the pinnacle flight; check the map click still finds it.
-2. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
+1. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
    and dress it like the others; re-shoot the dressed ones and fix
    anything off (`lab/rush-shots.mjs`, canvas readback).
-3. Then the ideas list above.
+2. Then the ideas list above.

@@ -1,5 +1,5 @@
 import { createContext, lazy, Suspense, useContext, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { RiFileTextLine, RiMovie2Line } from 'react-icons/ri';
 import Dundies from '../components/experience/Dundies';
 import RoleBanner from '../components/experience/RoleBanner';
@@ -17,6 +17,7 @@ import { roles, fmtRange, fmtMonth, monthIndex, nowMonth, roleLink, TRACKS } fro
 import { THEMES } from '../theme/themes';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import Egg from '../components/Egg';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -229,7 +230,7 @@ function Timeline() {
 export default function Experience() {
   // /experience/aws (and the older /experience?role=aws) opens on that role
   const { roleId } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = usePageParams();
   const linked = roles.find((r) => r.id === (roleId || params.get('role')));
   useDocumentTitle(linked ? `${linked.company} · Experience` : 'Experience');
   const page = useRef(null);
@@ -242,7 +243,7 @@ export default function Experience() {
     setParams(next, { replace: true });
   };
 
-  useSectionThemes();
+  useSectionThemes(page);
 
   useEffect(() => {
     const id = linked?.id;

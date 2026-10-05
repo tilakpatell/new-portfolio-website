@@ -7,6 +7,9 @@ import { WORLDS } from './worlds/worlds';
 // The guide's panel: what each page lets you do, and the site as a whole.
 // Loaded the first time the guide opens (components/Guide.jsx), not before.
 
+// the portfolio pages run into one another (components/feed)
+const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of this one and the next begins, and the address and the menu follow. After the sixth, the end.'];
+
 const PAGES = {
   '/home': {
     title: 'Home',
@@ -14,6 +17,7 @@ const PAGES = {
       ['The route line', 'It draws itself down the page as you scroll, lighting each stop.'],
       ['The Game Boy', 'It plays: arrow keys to move, Z (or Space) for A, X for B, Enter for Start and Shift for Select. On a phone, use its buttons. In Super Tilak Land a fire flower lets B throw fire, stomps in a row score more each time, and a king waits at the end of the castle. Each game keeps its best score.'],
       ['Off the clock', 'Every icon in the row does something, and every card has a toy in it.'],
+      FEED_TIP,
     ],
   },
   '/experience': {
@@ -21,6 +25,7 @@ const PAGES = {
     tips: [
       ['Company colors', 'Each role re-themes the site as you scroll past it.'],
       ['The crawl', 'Play the opening crawl for the whole story so far.'],
+      FEED_TIP,
     ],
   },
   '/projects': {
@@ -28,6 +33,7 @@ const PAGES = {
     tips: [
       ['The periodic table', 'Click a tile to light up the projects built with it. Click again to clear.'],
       ['The sitar string', 'Pluck it.'],
+      FEED_TIP,
     ],
   },
   '/galaxy': {
@@ -61,6 +67,7 @@ const PAGES = {
   '/invincible': {
     title: 'Invincible',
     tips: [
+      ['The city', 'The page opens on the Graysons’ city, to fly about as Mark: six kilometres of downtown, river, suburbs, coast and hills. W, A, S and D fly the way you’re looking (walk, on the ground), Space goes up (and takes off), C goes down (and lands), Shift goes flat out: past about 430 km/h the air breaks with a boom. Come down fast and the street cracks; hit a tower too fast and you bounce off it. Drag or the arrow keys look round, E at a place (the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA), T changes the time of day. On a phone, a stick on the left and Up, Down and Boost on the right.'],
       ['Think, Mark!', 'You are Invincible, flying over the city. W, A, S and D fly the way the camera looks (so look down to dive), Space climbs, C drops and Shift goes flat out; drag the mouse or use the arrow keys to look round. J or a click throws a punch at whatever you’re locked on to (Tab picks another); K or a right-click dodges, and nothing can touch you for a moment. Four chapters: fly through your father’s rings in order; knock the Flaxans back through their portal (dodge their purple bolts); then Omni-Man and Thragg. A Viltrumite blocks a punch and hits back, unless he’s recovering from a charge: watch the ring close round him, dodge as it closes, then hit him while he’s open. A dodge just in time slows everything down and leaves him open for longer. On a touch screen, the left of the screen steers, a drag on the right looks, a tap punches. A controller works too.'],
       ['The title card', 'Press it for the next episode. It has a rough season.'],
       ['The files', 'Drag a figure to turn him, or pick a pose: they’re the HD models the game uses.'],
@@ -193,9 +200,23 @@ const PAGES = {
       ['Keys', 'Tab completes, up and down walk the history, Ctrl+L clears.'],
     ],
   },
+  '/resume': {
+    title: 'Résumé',
+    tips: [
+      ['Skills', 'Click any skill on the résumé to light up every line that uses it; the PDF tab has the one-page version.'],
+      FEED_TIP,
+    ],
+  },
+  '/contact': {
+    title: 'Contact',
+    tips: [
+      ['The memo', 'The form opens your email app with the memo filled in. Nothing is sent from this page.'],
+      FEED_TIP,
+    ],
+  },
   '/travel': {
     title: 'Travel',
-    tips: [['The globe', 'Drag to spin it, and click a place to fly there.']],
+    tips: [['The globe', 'Drag to spin it, and click a place to fly there.'], FEED_TIP],
   },
 };
 

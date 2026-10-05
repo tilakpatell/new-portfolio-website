@@ -4,7 +4,7 @@
 // on the download, and a failed one just keeps the room.
 import * as THREE from 'three';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
-import { budget } from './device';
+import { loadTexture as loadShared } from './three/textures';
 
 export const cc0 = (file) => `${import.meta.env.BASE_URL}cc0/${file}`;
 
@@ -30,20 +30,11 @@ export function loadEnvironment(renderer, file) {
   });
 }
 
+// A texture from public/cc0: decoded off the main thread where the browser
+// can, sharp at a glancing angle (floors, benches, roads) as far as the
+// device's tier allows, and shared with any other scene that wants it.
 export function loadTexture(file, { srgb = true } = {}) {
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(
-      cc0(file),
-      (t) => {
-        if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-        // sharp at a glancing angle (floors, benches, roads), as far as the device's tier allows
-        t.anisotropy = budget().aniso;
-        resolve(t);
-      },
-      undefined,
-      reject,
-    );
-  });
+  return loadShared(cc0(file), { color: srgb });
 }
 
 // A CC0 PBR material set from public/cc0/materials/<name>: colour, an OpenGL

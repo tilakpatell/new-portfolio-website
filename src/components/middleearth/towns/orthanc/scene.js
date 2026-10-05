@@ -27,7 +27,7 @@ import { makeFolk } from '../bree/props';
 import { createGhosts } from '../ghosts';
 import { makeRain } from '../rain';
 import { createOrthancKit } from './props';
-import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, THRONE, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
+import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -41,9 +41,9 @@ const ROBE = new THREE.Color(SARUMAN.robe);
 const MOODS = {
   hall: { top: 0x020203, horizon: 0x050608, sun: [-0.4, 0.8, 0.5], sunColour: 0xa8bad8, sunPower: 1.2, hemiSky: 0x5a6478, hemiGround: 0x1a120c, hemi: 1.05, fog: 0x06070a, fogNear: 30, fogFar: 120, cloud: 0, cloudColour: 0x000000, stars: 0, exposure: 1.6 },
   vision: { top: 0x140302, horizon: 0x7a2208, sun: [0, 0.25, -1], sunColour: 0xff6a20, sunPower: 1.4, hemiSky: 0x8a3a20, hemiGround: 0x1a0402, hemi: 1.3, fog: 0x2a0804, fogNear: 300, fogFar: 2600, cloud: 0.85, cloudColour: 0x3a0a04, stars: 0, exposure: 1.4 },
-  army: { top: 0x0a0402, horizon: 0x5a1a08, sun: [0.3, 0.4, 0.6], sunColour: 0xff7a30, sunPower: 0.9, hemiSky: 0x6a3020, hemiGround: 0x6a1e06, hemi: 1.25, fog: 0x1a0804, fogNear: 30, fogFar: 380, cloud: 0.9, cloudColour: 0x2a0c06, stars: 0, exposure: 1.45 },
-  stair: { top: 0x08090c, horizon: 0x2a1e1c, sun: [0.3, 0.6, -0.4], sunColour: 0x9aa8c0, sunPower: 0.5, hemiSky: 0x4e5666, hemiGround: 0x3a1a0c, hemi: 0.85, fog: 0x14100e, fogNear: 60, fogFar: 650, cloud: 0.9, cloudColour: 0x2a2a30, stars: 0, exposure: 1.55 },
-  top: { top: 0x06080c, horizon: 0x3a2420, sun: [0.3, 0.7, -0.5], sunColour: 0xa8b4cc, sunPower: 0.95, hemiSky: 0x5a6478, hemiGround: 0x7a2a10, hemi: 1.2, fog: 0x1a1214, fogNear: 90, fogFar: 760, cloud: 0.95, cloudColour: 0x2c2e36, stars: 0.05, exposure: 1.45 },
+  army: { top: 0x140604, horizon: 0x8a2a0c, sun: [0.3, 0.35, 0.6], sunColour: 0xff8a40, sunPower: 2.2, hemiSky: 0xb06040, hemiGround: 0x8a2a08, hemi: 2.4, fog: 0x2a0c06, fogNear: 40, fogFar: 520, cloud: 0.9, cloudColour: 0x3a1208, stars: 0, exposure: 1.8 },
+  stair: { top: 0x10141c, horizon: 0x5a3020, sun: [0.3, 0.6, -0.4], sunColour: 0xb0c0dc, sunPower: 1.2, hemiSky: 0x6a7488, hemiGround: 0x6a2a10, hemi: 1.3, fog: 0x2a1e1c, fogNear: 80, fogFar: 900, cloud: 0.9, cloudColour: 0x40444e, stars: 0, exposure: 1.7 },
+  top: { top: 0x121824, horizon: 0x7a3a22, sun: [0.3, 0.7, -0.5], sunColour: 0xb8c8e8, sunPower: 2, hemiSky: 0x8890a8, hemiGround: 0xa04818, hemi: 2.1, fog: 0x2e2226, fogNear: 120, fogFar: 950, cloud: 0.95, cloudColour: 0x4a4e5a, stars: 0, exposure: 1.7 },
 };
 const COLOURS = ['top', 'horizon', 'sunColour', 'hemiSky', 'hemiGround', 'fog', 'cloudColour'];
 const NUMBERS = ['sunPower', 'hemi', 'fogNear', 'fogFar', 'cloud', 'stars', 'exposure'];
@@ -128,25 +128,30 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   stone.group.position.set(PALANTIR.x, 0, PALANTIR.z);
   zones.hall.add(stone.group);
   const stoneAt = wpos('hall', PALANTIR.x, 1.62, PALANTIR.z);
-  const throneLamp = wpos('hall', THRONE.x, 7, THRONE.z + 3);
+  const throneLamp = hall.lamp.clone().add(AT.hall);
   // the light from the windows, falling in shafts
+  // (each its own material, so one the camera is in can fade on its own)
+  const SHAFT = 26;
   const shafts = [];
   {
-    const geo = new THREE.PlaneGeometry(2.6, 30).translate(0, -15, 0);
+    const geo = new THREE.PlaneGeometry(2.4, SHAFT).translate(0, -SHAFT / 2, 0);
     const down = V(0, -1, 0);
     for (const w of hall.windows) {
       const dir = w.dir.clone().multiplyScalar(0.62).add(V(0, -1, 0)).normalize();
+      const mat = mats.shaftLight.clone();
       for (const turn of [0, Math.PI / 2]) {
-        const m = new THREE.Mesh(geo, mats.shaftLight);
+        const m = new THREE.Mesh(geo, mat);
         m.position.copy(w.at);
         m.quaternion.setFromUnitVectors(down, dir);
         m.rotateY(turn);
         m.renderOrder = 4;
         zones.hall.add(m);
-        shafts.push(m);
       }
+      shafts.push({ mat, from: w.at.clone().add(AT.hall), to: w.at.clone().add(AT.hall).addScaledVector(dir, SHAFT) });
     }
   }
+  const seg = new THREE.Line3();
+  const onSeg = V();
   // the braziers, the library's lanterns, and (last) the candle on its lectern
   const hallLamps = [...hall.fires, ...lib.lamps, lib.candle].map((p) => p.clone().add(AT.hall));
   const LANTERN = hall.fires.length;
@@ -257,13 +262,17 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const torches = shaft.torches.map((p) => p.clone().add(AT.tower));
   const torchCol = new THREE.Color(0xff8a40);
   const pitCol = new THREE.Color(0xff5a14);
+  // (Gwaihir and the moth are placed in world coordinates, by Gandalf and
+  // wpos, so they hang off the scene itself, not the tower's group, which
+  // is already at AT.tower: in it they'd draw 3 km off, and Gandalf would
+  // ride on nothing)
   const gwaihir = kit.eagle();
   gwaihir.group.scale.setScalar(1.35);
   gwaihir.group.visible = false;
-  zones.tower.add(gwaihir.group);
+  scene.add(gwaihir.group);
   const moth = kit.moth();
   moth.group.visible = false;
-  zones.tower.add(moth.group);
+  scene.add(moth.group);
   const rain = makeRain({ count: Math.round(2600 * Math.max(0.4, many)), size: [34, 26, 34], speed: 18, len: 0.9, splashes: Math.round(120 * many), height: () => TOWER_H });
   scene.add(rain.group);
 
@@ -306,6 +315,21 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     if (o.isMesh && o.material?.color && o.material.color.equals(ROBE)) robes.push([o, o.material]);
   });
   const manyColours = new THREE.MeshPhysicalMaterial({ color: 0xf4f0ff, roughness: 0.32, metalness: 0.15, iridescence: 1, iridescenceIOR: 1.9, iridescenceThicknessRange: [160, 900], sheen: 0.6, sheenColor: new THREE.Color(0xffd8f0), envMap: kit.tex.hallEnv, envMapIntensity: 2.4 });
+  // bands of every colour down the robe, moving, and turning with the angle
+  const robeTime = { value: 0 };
+  manyColours.onBeforeCompile = (sh) => {
+    sh.uniforms.uRobeTime = robeTime;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRobe;').replace('#include <project_vertex>', '#include <project_vertex>\nvRobe = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uRobeTime;\nvarying vec3 vRobe;\nvec3 robeHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }')
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        float robeAngle = 1.0 - abs(dot(normalize(vViewPosition), normalize(vNormal)));
+        diffuseColor.rgb *= mix(vec3(1.0), robeHue(fract(vRobe.y * 1.3 + robeAngle * 0.9 + uRobeTime * 0.2)), 0.6);`,
+      );
+  };
+  manyColours.customProgramCacheKey = () => 'orthanc-many-colours';
   const ghosts = createGhosts({ make: () => makePerson('gandalf'), tag: 0.42 });
   zones.hall.add(ghosts.group);
 
@@ -412,7 +436,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     const u = sky.uniforms;
     u.uTop.value.copy(cur.top).lerp(target.set(0xc8d4ff), flash * 0.6);
     u.uHorizon.value.copy(cur.horizon).lerp(target.set(0x8a8ca8), flash * 0.5);
-    u.uSunColour.value.copy(cur.sunColour);
+    // (no sun in the sky of the vision: the Eye is light enough)
+    u.uSunColour.value.copy(cur.sunColour).multiplyScalar(moodKey === 'vision' ? 0 : 1);
     u.uCloudColour.value.copy(cur.cloudColour).lerp(target.set(0xb0b8d8), flash * 0.7);
     u.uCloud.value = cur.cloud;
     u.uStars.value = cur.stars;
@@ -442,7 +467,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     }
     // Saruman of Many Colours
     for (const [o, m] of robes) o.material = s.colours ? manyColours : m;
-    if (s.colours) manyColours.color.setHSL((t * 0.12) % 1, 0.3, 0.82);
+    robeTime.value = t;
     if (gOrb) gOrb.scale.setScalar(1);
     if (sOrb) sOrb.scale.setScalar(1);
 
@@ -474,8 +499,11 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       if (A.wake > 0.05) lights.unshift([stoneAt, stoneCol, A.wake * 6 + A.eye * 6, 7]);
       // a pale light high over the throne, so the dark end of the hall shows
       if (cam.x < 13) lights.unshift([throneLamp, paleCol, 7, 20]);
-      // the shafts of light, faint when the camera is in close among them
-      mats.shaftLight.opacity = s.mode === 'walk' ? 1 : 0.3;
+      // the shafts of light, faint when the camera is in one, or close in on a scene
+      for (const sh of shafts) {
+        seg.set(sh.from, sh.to).closestPointToPoint(camera.position, true, onSeg);
+        sh.mat.opacity = smooth(1.6, 5, onSeg.distanceTo(camera.position)) * (s.mode === 'walk' ? 1 : 0.4);
+      }
 
       // Saruman, by the stone; Gandalf, walking or talking
       const duel = s.duel;
@@ -534,7 +562,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
             wave.visible = true;
             const sx = gandalf.group.position.x + (saruman.group.position.x - gandalf.group.position.x) * k;
             wave.position.set(sx, AT.hall.y + 1.3, gandalf.group.position.z);
-            wave.rotation.set(0, Math.PI / 2, 0);
+            wave.lookAt(camera.position);
             wave.scale.setScalar(0.4 + k * 1.6);
             waveMat.opacity = (1 - k) * 0.9;
           }
@@ -548,13 +576,23 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
         pose(saruman, t + 1, { moving: false, talk: s.speaker === 'saruman' ? 1 : 0 });
         if (s.mode === 'gaze') {
           // before the stone, bent to it
-          const fx = PALANTIR.x - 0.1;
-          const fz = PALANTIR.z + 1.15;
+          const fx = PALANTIR.x - 0.5;
+          const fz = PALANTIR.z + 1.1;
           stand(gandalf, 'hall', fx, 0, fz, Math.PI / 2);
           pose(gandalf, t, { moving: false });
           gandalf.body.rotation.z = -0.22 - (looking ? 0.1 : 0);
           gandalf.arms[0].rotation.z = 0.9;
           if (gz?.phase === 'turn' && looking) A.shake = Math.max(A.shake, 0.05);
+        } else if (s.talking === 'lore') {
+          // reading, at the lectern
+          stand(gandalf, 'hall', LECTERN.x - 0.95, 0, LECTERN.z, 0);
+          pose(gandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
+          gandalf.head.rotation.z = -0.25;
+        } else if (s.talking === 'leaf') {
+          // crouched by the case, the jar in his hand
+          stand(gandalf, 'hall', LEAF.x + 0.1, 0, LEAF.z + 0.8, faceTo(LEAF.x + 0.1, LEAF.z + 0.8, LEAF.jar[0], LEAF.jar[1]));
+          pose(gandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
+          gandalf.body.rotation.z = -0.2;
         } else {
           stand(gandalf, 'hall', h.x, 0, h.z, h.face);
           pose(gandalf, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1, talk: s.speaker === 'gandalf' ? 1 : 0 });
@@ -576,7 +614,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
 
     // ── the vision ──
     if (vision === 'vision') {
-      barad.doom?.copy(camera.position);
+      // when it turns, its beam swings round and comes down just in front of you
+      barad.doom?.set(camera.position.x + 30, AT.vision.y, camera.position.z - 90);
       const turning = gz.phase === 'turn' ? 1 : gz.phase === 'stir' ? 0.4 : 0;
       A.eyeLook += (turning - A.eyeLook) * Math.min(1, dt * 2.5);
       barad.aim?.(wpos('vision', Math.sin(t * 0.4) * 500, 0, 300 + Math.cos(t * 0.3) * 200, tmp));
@@ -665,13 +704,16 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
             const lx = m.x * 1.1;
             const y = 1.95 + (1 - settled) * (0.25 + Math.sin(t * 7) * 0.08);
             moth.group.position.set(gp.x + lx, gp.y + y, gp.z - 0.75 + Math.sin(t * 5.3) * 0.08 * (1 - settled));
+            moth.group.scale.setScalar(2.2);
             moth.group.rotation.set(0, Math.PI / 2 + Math.sin(t * 3) * 0.6 * (1 - settled), 0);
             moth.animate(t, { flap: 1 - settled * 0.8 });
           } else if (s.mode === 'talk') {
+            moth.group.scale.setScalar(2.2);
             moth.group.position.set(gp.x + 0.25, gp.y + 1.75 + (s.line === 'whisper' ? 0.15 : 0), gp.z - 0.55);
             moth.group.rotation.set(0, Math.PI / 2, 0);
             moth.animate(t, { flap: 0.15 });
           } else {
+            moth.group.scale.setScalar(2.2);
             wpos('tower', MOTH_AT.x + Math.sin(t * 1.3) * 1.2, TOWER_H + 1.6 + Math.sin(t * 2.1) * 0.4, MOTH_AT.z - 0.6 + Math.cos(t * 1.7) * 0.4, moth.group.position);
             moth.group.rotation.set(0, t * 2, 0);
             moth.animate(t, { flap: 1 });
@@ -690,11 +732,14 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
             gwaihir.animate?.(t, { flap: 0.6 + 0.4 * Math.abs(q.y), glide: 0.4 });
             // Gandalf on his back
             stand(gandalf, 'tower', 0, 0, 0, gwaihir.group.rotation.y);
-            gandalf.group.position.copy(gwaihir.group.position).add(V(0, 0.95 * 1.35, 0));
+            gandalf.group.position.copy(gwaihir.group.position).add(V(0, 0.5, 0));
             sit(gandalf, true);
             if (gandalf.blob) gandalf.blob.visible = false;
             pose(gandalf, t, { moving: false });
+            gandalf.body.rotation.z = -0.35;
             gandalf.arms[0].rotation.x = 0.6;
+            // the fires below light him, and the moon above
+            lights.unshift([V().copy(gwaihir.group.position).add(V(0, -8, 0)), pitCol, 40, 50], [V().copy(gwaihir.group.position).add(V(4, 10, 6)), paleCol, 36, 60]);
           } else {
             const k = s.leap ? s.leap.k : 0.05;
             const th = (k - 0.5) * TAU;
@@ -745,9 +790,9 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       fov = 46;
     } else if (shown === 'hall' && s.mode === 'gaze') {
       // over your shoulder, into the stone
-      camAt = tmp.copy(stoneAt).add(V(-0.7, 0.55, 1.6));
-      camLook = look.copy(stoneAt);
-      fov = 40;
+      camAt = tmp.copy(stoneAt).add(V(1.3, 1.0, 2.9));
+      camLook = look.copy(stoneAt).add(V(-0.2, 0, 0));
+      fov = 38;
     } else if (shown === 'hall' && (s.mode === 'duel' || s.talking === 'seen' || s.talking === 'staff')) {
       // side on: Gandalf left, Saruman right
       const mx = (gandalf.group.position.x + saruman.group.position.x) / 2;
@@ -755,13 +800,13 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       camLook = look.set(mx, 1.4, DUEL_AT.gandalf.z);
       fov = 48;
     } else if (shown === 'hall' && s.mode === 'talk' && s.talking === 'lore') {
-      camAt = tmp.set(LECTERN.x - 2.2, 2.3, LECTERN.z + 1.7);
-      camLook = look.set(LECTERN.x, 1.2, LECTERN.z);
+      camAt = tmp.set(LECTERN.x - 2.7, 2.4, LECTERN.z + 2.1);
+      camLook = look.set(LECTERN.x - 0.2, 1.25, LECTERN.z);
       fov = 44;
     } else if (shown === 'hall' && s.mode === 'talk' && s.talking === 'leaf') {
-      camAt = tmp.copy(gp).add(V(1.7, 1.9, 1.9));
-      camLook = look.set(LEAF.jar[0] + 0.4, 0.9, LEAF.jar[1] + 0.2);
-      fov = 46;
+      camAt = tmp.set(LEAF.x + 1.4, 1.6, LEAF.z - 0.4);
+      camLook = look.set(LEAF.jar[0] + 0.2, 0.7, LEAF.jar[1] + 0.3);
+      fov = 50;
     } else if (shown === 'hall' && s.mode === 'talk') {
       // the two of them, by the throne and the stone
       const sp = saruman.group.position;
@@ -775,19 +820,19 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       const sp = s.climb ? s.climb.s : 0;
       const a = stairAngle(sp);
       const [, y] = stairAt(sp);
-      camAt = wpos('tower', Math.cos(a) * (STAIR.wall + 0.6), y + 2.1, Math.sin(a) * (STAIR.wall + 0.6), tmp);
+      camAt = wpos('tower', Math.cos(a) * (STAIR.wall + 3.1), y + 2.2, Math.sin(a) * (STAIR.wall + 3.1), tmp);
       const sight = s.talking === 'host' ? [HOST.x, 0, HOST.z] : s.talking === 'pits' ? [Math.cos(a) * 120, 0, Math.sin(a) * 120] : [Math.cos(a) * 200, 4, Math.sin(a) * 200];
       camLook = wpos('tower', ...sight, look);
       fov = 46;
     } else if (shown === 'tower' && zone === 'stair') {
-      // behind and below on the stair, inside the shaft
+      // from further up the stair, looking back down at you, and him behind
       const sp = s.climb ? s.climb.s : 0;
-      const back = Math.max(0, sp - 5.5);
-      const a = stairAngle(back);
-      const [, y] = stairAt(back);
-      const r = s.talking === 'prison' ? 2 : 4.3;
-      camAt = wpos('tower', Math.cos(a) * r, y + 2.6, Math.sin(a) * r, tmp);
-      camLook = look.copy(gp).add(V(0, 1.3, 0));
+      const ahead = sp + 3.6;
+      const a = stairAngle(ahead);
+      const [, y] = stairAt(Math.min(ahead, STAIR_LEN));
+      const r = 4.3;
+      camAt = wpos('tower', Math.cos(a) * r, y + 2.3 + Math.max(0, ahead - STAIR_LEN) * 0.4, Math.sin(a) * r, tmp);
+      camLook = look.copy(gp).add(V(0, 1.1, 0));
       if (s.talking === 'prison') {
         camAt = wpos('tower', 2.4, TOWER_H + 2.4, STAIR.r + 3.4, tmp);
         camLook = look.copy(gp).add(V(0, 1.2, 0));
@@ -807,9 +852,9 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       fov = 54;
     } else if (shown === 'tower' && zone === 'top' && (s.mode === 'moth' || (s.mode === 'talk' && s.talking === 'moth' && s.line !== 'wait' && s.line !== 'jump'))) {
       // close by your hand, the moth before it
-      camAt = tmp.copy(gp).add(V(1.3, 2.25, 1.1));
-      camLook = look.copy(gp).add(V(0, 1.9, -1.0));
-      fov = 44;
+      camAt = tmp.copy(gp).add(V(2.1, 1.75, 0.5));
+      camLook = look.copy(gp).add(V(0.2, 1.95, -0.85));
+      fov = 46;
     } else if (shown === 'tower' && zone === 'top' && (s.mode === 'leap' || (s.mode === 'talk' && s.talking === 'moth'))) {
       // behind you, out over the edge, to where he comes round
       camAt = tmp.copy(gp).add(V(2.2, 2.6, 4.2));
@@ -823,14 +868,24 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       const full = s.camDist ?? 6;
       let dist = full;
       look.set(gp.x, gp.y + 1.5, gp.z);
+      let boxed = false;
       if (shown === 'hall') {
+        boxed = true;
         for (let d = dist; d > 1.6; d -= 0.3) {
           dist = d;
           const cx = look.x + Math.sin(yaw) * Math.cos(pitch) * d;
           const cz = look.z + Math.cos(yaw) * Math.cos(pitch) * d;
-          if (indoors(cx, cz, 0.6) && clearView(look.x, look.z, cx, cz)) break;
+          if (indoors(cx, cz, 0.6) && clearView(look.x, look.z, cx, cz)) {
+            boxed = false;
+            break;
+          }
         }
         pitch = Math.min(1, pitch + (full - dist) * 0.07);
+        // nowhere clear behind (into a corner, between the cases): from above
+        if (boxed) {
+          dist = 3.2;
+          pitch = 1.35;
+        }
       }
       camAt = tmp.set(look.x + Math.sin(yaw) * Math.cos(pitch) * dist, look.y + Math.sin(pitch) * dist, look.z + Math.cos(yaw) * Math.cos(pitch) * dist);
       if (shown === 'hall' && camAt.y < 0.4) camAt.y = 0.4;

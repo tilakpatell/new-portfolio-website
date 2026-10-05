@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { RiArrowDownLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Photo from '../components/Photo';
@@ -14,6 +14,7 @@ import { CONTINENT_COUNT, COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } f
 import { PHOTOS } from '../data/photos';
 import { useSectionThemes } from '../theme/ThemeProvider';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
+import { usePageParams } from '../lib/page';
 import { jumpTo } from '../lib/anchors';
 import Egg from '../components/Egg';
 import Mist from '../components/mist/Mist';
@@ -126,27 +127,29 @@ const Facts = memo(function Facts() {
 
 export default function Travel() {
   useDocumentTitle('Travel');
-  useSectionThemes();
   const page = useRef(null);
-  const [params] = useSearchParams();
-  const [selected, setSelected] = useState(() => (PLACES.some((p) => p.id === params.get('place')) ? params.get('place') : null));
+  useSectionThemes(page);
+  const [params] = usePageParams();
+  const place = params.get('place');
+  const section = params.get('section');
+  const [selected, setSelected] = useState(() => (PLACES.some((p) => p.id === place) ? place : null));
 
   // Deep links from the command palette: /travel?place=is flies to Iceland.
+  // (On the place itself, not the params: in the feed the address comes back
+  // with the page, and that mustn't fly there again.)
   useEffect(() => {
-    const id = params.get('place');
-    if (!PLACES.some((p) => p.id === id)) return undefined;
-    setSelected(id);
+    if (!PLACES.some((p) => p.id === place)) return undefined;
+    setSelected(place);
     const t = setTimeout(() => document.getElementById('globe')?.scrollIntoView({ block: 'start' }), 300);
     return () => clearTimeout(t);
-  }, [params]);
+  }, [place]);
 
   // /travel?section=heritage opens at that section (the hero's temple icon)
   useEffect(() => {
-    const id = params.get('section');
-    if (!id) return undefined;
-    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 350);
+    if (!section) return undefined;
+    const t = setTimeout(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }), 350);
     return () => clearTimeout(t);
-  }, [params]);
+  }, [section]);
 
   const flyTo = useCallback((id) => {
     setSelected(id);

@@ -16,6 +16,8 @@ import {
   PLANTERS,
   RING_R,
   ROOF_PLANT,
+  SETTINGS,
+  SETTINGS_DEFAULTS,
   TOUR,
   TOUR_GAP,
   CAST,
@@ -28,6 +30,7 @@ import {
   SOLIDS,
   START,
   SWING,
+  TRICK,
   aimWeb,
   behindYaw,
   camRoom,
@@ -44,6 +47,7 @@ import {
   outside,
   pastAnchor,
   progress,
+  readSettings,
   solidById,
   stepHero,
   stepTour,
@@ -984,5 +988,126 @@ describe('The compound, the world: Peter’s backpacks', () => {
     expect(h.mode).toBe('ground');
     h = walkTo(h, gate.x, gate.z, 5);
     expect(nearPack(h.x, h.y, h.z)?.id).toBe('gate');
+  });
+});
+
+describe('The compound, the world: the settings', () => {
+  it('come as they came, and read back within their ranges', () => {
+    expect(readSettings(null)).toEqual(SETTINGS_DEFAULTS);
+    expect(readSettings('junk')).toEqual(SETTINGS_DEFAULTS);
+    const r = readSettings({ look: 99, camera: -1, assist: 0.5, invert: 1, follow: 'no', shake: NaN });
+    expect(r.look).toBe(SETTINGS.look.max);
+    expect(r.camera).toBe(SETTINGS.camera.min);
+    expect(r.assist).toBe(0.5);
+    expect(r.invert).toBe(1);
+    expect(r.follow).toBe(SETTINGS_DEFAULTS.follow);
+    expect(r.shake).toBe(SETTINGS_DEFAULTS.shake);
+    for (const [k, v] of Object.entries(SETTINGS_DEFAULTS)) expect(readSettings({ [k]: v })[k]).toBe(v);
+  });
+
+  it('with the swing assist off, a swing is a rope and steering doesn’t bend it', () => {
+    const flying = () => ({ ...newHero(START), x: 60 * 1.6, z: 70 * 1.6, y: 12, vx: 0, vy: 0, vz: -18, mode: 'air', fly: true, face: Math.PI / 2 });
+    const heading = (h) => Math.atan2(h.vz, h.vx);
+    const run = (assist) => {
+      let h = stepHero(flying(), { web: true, assist }, DT);
+      const before = heading(h);
+      for (let t = 0; t < 0.6 && h.mode === 'swing'; t += DT) h = stepHero(h, { x: 1, z: 0, web: true, assist }, DT);
+      let d = heading(h) - before;
+      return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+    };
+    expect(run(0)).toBeLessThan(0.12);
+    expect(run(1)).toBeGreaterThan(0.4);
+    expect(run(2)).toBeGreaterThan(run(1));
+  });
+});
+
+describe('The compound, the world: air tricks', () => {
+  // flung off a web, high over the middle of the lawn, going north
+  const flung = (over = {}) => ({ ...newHero(START), x: 60 * 1.6, z: 52 * 1.6, y: 20, vx: 0, vy: 6, vz: -14, mode: 'air', fly: true, airT: 0.5, face: Math.PI / 2, ...over });
+
+  it('flips on a press in free flight, once at a time, and not on the ground, on a web, or in a hop', () => {
+    let h = stepHero(flung(), { trick: true }, DT);
+    expect(h.trick?.kind).toBe('flip');
+    expect(h.ev.map((e) => e.type)).toContain('trick');
+    expect(h.combo).toBe(1);
+    expect(h.style).toBe(TRICK.points.flip);
+    // another press mid-trick does nothing
+    h = stepHero(h, { trick: true }, DT);
+    expect(h.combo).toBe(1);
+    // on the ground: nothing
+    const ground = stepHero(newHero(START), { trick: true }, DT);
+    expect(ground.trick).toBe(null);
+    // on a web: nothing
+    const onWeb = stepHero(stepHero(flung({ vy: -4 }), { web: true }, DT), { web: true, trick: true }, DT);
+    expect(onWeb.mode).toBe('swing');
+    expect(onWeb.trick).toBe(null);
+    // a hop from the ground isn't a flight
+    const hop = stepHero(stepHero(newHero(START), { jump: true }, DT), { trick: true }, DT);
+    expect(hop.trick).toBe(null);
+  });
+
+  it('a backflip with the stick pulled back, a twist with it to a side', () => {
+    const back = stepHero(flung(), { trick: true, x: 0, z: 1 }, DT);
+    expect(back.trick?.kind).toBe('back');
+    const twist = stepHero(flung(), { trick: true, x: 1, z: 0 }, DT);
+    expect(twist.trick?.kind).toBe('twist');
+    const other = stepHero(flung(), { trick: true, x: -1, z: 0 }, DT);
+    expect(other.trick?.kind).toBe('twist');
+    expect(other.trick.dir).toBe(-twist.trick.dir);
+  });
+
+  it('counts tricks in a row for more each, with a perfect release among them, and banks them on landing', () => {
+    // east over the open lawn, from high up
+    let h = flung({ y: 40, vy: 10, vx: 14, vz: 0, face: 0 });
+    const kinds = [];
+    let banked = null;
+    for (let t = 0; t < 8 && !banked; t += DT) {
+      // a press whenever one can be done, while there's height to finish it
+      h = stepHero(h, { trick: h.y > 20 }, DT);
+      for (const e of h.ev) {
+        if (e.type === 'trick') kinds.push(e.combo);
+        if (e.type === 'bank') banked = e;
+        expect(e.type).not.toBe('bail');
+      }
+    }
+    expect(kinds.length).toBeGreaterThan(2);
+    expect(kinds).toEqual(kinds.map((_, i) => i + 1));
+    expect(banked).not.toBe(null);
+    expect(banked.style).toBe(kinds.reduce((s, c) => s + TRICK.points.flip * c, 0));
+    expect(h.style).toBe(0);
+    expect(h.combo).toBe(0);
+    // a perfect release adds to the flight's style, after a trick
+    const a = [START.x, 30, START.z - 40];
+    const swing = { ...newHero(START), x: a[0], z: a[2] - 6, y: 12, vx: 0, vy: 9, vz: -22, mode: 'swing', fly: true, style: 100, combo: 1, web: { a, at: a, len: 20 } };
+    const after = stepHero(swing, { web: false }, DT);
+    expect(after.style).toBe(100 + TRICK.points.perfect * 2);
+  });
+
+  it('landing mid-trick is a bail: the style is lost and he stumbles', () => {
+    // low, coming down fast: the trick won't be done before he lands
+    let h = flung({ y: 3, vy: -8 });
+    h = stepHero(h, { trick: true }, DT);
+    expect(h.trick).not.toBe(null);
+    let bail = null;
+    for (let t = 0; t < 2 && h.mode !== 'ground'; t += DT) {
+      h = stepHero(h, {}, DT);
+      bail ??= h.ev.find((e) => e.type === 'bail') ?? null;
+    }
+    expect(h.mode).toBe('ground');
+    expect(bail).not.toBe(null);
+    expect(bail.style).toBe(TRICK.points.flip);
+    expect(h.style).toBe(0);
+    expect(h.land).toBeGreaterThan(0);
+    expect(h.ev.map((e) => e.type)).not.toContain('bank');
+  });
+
+  it('a web caught mid-trick ends it without a bail, and the style carries on', () => {
+    // by the main building, where a web catches
+    let h = stepHero(flung({ z: 75, y: 18, vy: 2 }), { trick: true }, DT);
+    expect(h.trick).not.toBe(null);
+    h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    expect(h.trick).toBe(null);
+    expect(h.style).toBe(TRICK.points.flip);
   });
 });

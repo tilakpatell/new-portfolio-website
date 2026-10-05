@@ -16,9 +16,9 @@
 // its holder centred, nose along +z, +y up, its biggest side `size` long.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from '../../lib/three/gltf';
+import { sharpenTree } from '../../lib/three/textures';
 import { GLB } from '../universe/glbFleet';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
@@ -107,7 +107,7 @@ function tinted(root, color) {
 }
 
 export function createModels({ prepare = null } = {}) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const loaded = new Map(); // kind → { holder, size } (a loaded model, normalised)
   const loading = new Map(); // kind → Promise
   const built = new Map(); // kind → { model (buildGalaxyShip's), holder, size }
@@ -123,6 +123,7 @@ export function createModels({ prepare = null } = {}) {
       .then(async (gltf) => {
         if (dead) return;
         tune(gltf.scene);
+        sharpenTree(gltf.scene);
         const n = normalise(gltf.scene, def.nose);
         // (a skinned one's copies need bones of their own: SkeletonUtils)
         gltf.scene.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
