@@ -530,7 +530,7 @@ function Kitchen({ level, live, invite }) {
       {phase === 'lobby' && gl === 'on' && menu === 'menu' && (
         <div className="rush-card" role="dialog" aria-label={level.name}>
           <p className="rush-card-title">{level.name}</p>
-          <p className="rush-card-say">Three minutes, as many orders as you can. Things burn, mugs run out, and the customers don’t wait.</p>
+          <p className="rush-card-say">Three minutes, as many orders as you can. Things burn, the cups run out, and no one waits for long.</p>
           <Keys touch={touch} />
           <div className="shire-panel-row">
             <button type="button" className="btn btn-primary btn-sm" onClick={start}>
