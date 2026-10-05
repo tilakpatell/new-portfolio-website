@@ -742,6 +742,33 @@ export const SWING = {
   stick: 1.5, // how hard into a wall he has to be going to stick to it (m/s)
 };
 
+// ── the settings (O): how it feels, each live and kept between visits ──
+// `look` scales the drag and the pad's right stick; `invert` turns the pitch
+// over; `camera` scales how far back the camera sits; `assist` how much a
+// swing (and a flight) comes round toward where you steer; `follow` how
+// quickly the camera comes round behind him; `shake` the field-of-view
+// bumps and the speed lines.
+export const SETTINGS = {
+  look: { label: 'Look sensitivity', min: 0.4, max: 2, step: 0.05, value: 1, hint: 'How far a drag of the mouse, or the pad’s right stick, turns the view.' },
+  invert: { label: 'Invert the pitch', toggle: true, value: 0, hint: 'Drag up to look down, as a pilot would.' },
+  camera: { label: 'Camera distance', min: 0.7, max: 1.6, step: 0.05, value: 1, hint: 'How far behind him the camera sits. It pulls back on its own with speed.' },
+  assist: { label: 'Swing assist', min: 0, max: 2, step: 0.1, value: 1, hint: 'How much a swing comes round toward where you steer. Off, it’s a rope and nothing else.' },
+  follow: { label: 'Camera follow', min: 0, max: 2, step: 0.1, value: 1, hint: 'How quickly the camera drifts round behind him once you let the view go.' },
+  shake: { label: 'Camera kick', min: 0, max: 1, step: 0.05, value: 1, hint: 'The bump in the view with every web, and the lines at the edges when he’s fast.' },
+};
+export const SETTINGS_DEFAULTS = Object.fromEntries(Object.entries(SETTINGS).map(([k, r]) => [k, r.value]));
+// Settings as kept (or anything): each within its range, the rest as they came.
+export function readSettings(raw) {
+  const out = { ...SETTINGS_DEFAULTS };
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, r] of Object.entries(SETTINGS)) {
+    const v = raw[k];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    out[k] = r.toggle ? (v ? 1 : 0) : Math.max(r.min, Math.min(r.max, v));
+  }
+  return out;
+}
+
 export const newHero = (at = START) => ({
   x: at.x,
   z: at.z,
@@ -778,8 +805,9 @@ export const newHero = (at = START) => ({
 
 // One step. `move` is where the visitor wants to go, already turned to the
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
-// `jump` (a press, not a hold), `web` (the jump button, held) and `zip` (a press).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false } = {}, dt) {
+// `jump` (a press, not a hold), `web` (the jump button, held), `zip` and
+// `perch` (presses), and `assist` (the settings' swing assist, 1 as it comes).
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, assist = 1 } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -791,7 +819,7 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
-  const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip };
+  const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip, assist };
   h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
   // a point launch: to the perch ahead
   if (perch && h.mode !== 'zipto') pointLaunch(h, i);
@@ -1156,7 +1184,7 @@ function alongside(h) {
   return best;
 }
 
-function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
+function stepAir(h, { mx, mz, len, run, web, zip, assist = 1 }, dt) {
   h.airT = (h.airT ?? 0) + dt;
   const turn = len > 0.1 ? { x: mx, z: mz } : null;
   // the web: shot as the button goes down in the air (or after a moment, held
@@ -1176,9 +1204,10 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
   const w = h.web;
   if (h.fly && turn) {
     // he goes where you steer: the swing (or the flight) comes round toward it (fast, whipping round a corner)
-    steerToward(h, mx, mz, SWING.assist * (w ? 1 : 0.5) * (h.cornerT > 0 ? SWING.corner.whip : 1) * len * dt);
-    h.vx += mx * SWING.steer * dt;
-    h.vz += mz * SWING.steer * dt;
+    // (the assist is the settings', down to none: then it's a rope and nothing else)
+    steerToward(h, mx, mz, SWING.assist * assist * (w ? 1 : 0.5) * (h.cornerT > 0 ? SWING.corner.whip : 1) * len * dt);
+    h.vx += mx * SWING.steer * assist * dt;
+    h.vz += mz * SWING.steer * assist * dt;
   }
   let vx = h.vx;
   let vy = h.vy;

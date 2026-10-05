@@ -16,6 +16,8 @@ import {
   PLANTERS,
   RING_R,
   ROOF_PLANT,
+  SETTINGS,
+  SETTINGS_DEFAULTS,
   TOUR,
   TOUR_GAP,
   CAST,
@@ -44,6 +46,7 @@ import {
   outside,
   pastAnchor,
   progress,
+  readSettings,
   solidById,
   stepHero,
   stepTour,
@@ -984,5 +987,35 @@ describe('The compound, the world: Peter’s backpacks', () => {
     expect(h.mode).toBe('ground');
     h = walkTo(h, gate.x, gate.z, 5);
     expect(nearPack(h.x, h.y, h.z)?.id).toBe('gate');
+  });
+});
+
+describe('The compound, the world: the settings', () => {
+  it('come as they came, and read back within their ranges', () => {
+    expect(readSettings(null)).toEqual(SETTINGS_DEFAULTS);
+    expect(readSettings('junk')).toEqual(SETTINGS_DEFAULTS);
+    const r = readSettings({ look: 99, camera: -1, assist: 0.5, invert: 1, follow: 'no', shake: NaN });
+    expect(r.look).toBe(SETTINGS.look.max);
+    expect(r.camera).toBe(SETTINGS.camera.min);
+    expect(r.assist).toBe(0.5);
+    expect(r.invert).toBe(1);
+    expect(r.follow).toBe(SETTINGS_DEFAULTS.follow);
+    expect(r.shake).toBe(SETTINGS_DEFAULTS.shake);
+    for (const [k, v] of Object.entries(SETTINGS_DEFAULTS)) expect(readSettings({ [k]: v })[k]).toBe(v);
+  });
+
+  it('with the swing assist off, a swing is a rope and steering doesn’t bend it', () => {
+    const flying = () => ({ ...newHero(START), x: 60 * 1.6, z: 70 * 1.6, y: 12, vx: 0, vy: 0, vz: -18, mode: 'air', fly: true, face: Math.PI / 2 });
+    const heading = (h) => Math.atan2(h.vz, h.vx);
+    const run = (assist) => {
+      let h = stepHero(flying(), { web: true, assist }, DT);
+      const before = heading(h);
+      for (let t = 0; t < 0.6 && h.mode === 'swing'; t += DT) h = stepHero(h, { x: 1, z: 0, web: true, assist }, DT);
+      let d = heading(h) - before;
+      return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+    };
+    expect(run(0)).toBeLessThan(0.12);
+    expect(run(1)).toBeGreaterThan(0.4);
+    expect(run(2)).toBeGreaterThan(run(1));
   });
 });
