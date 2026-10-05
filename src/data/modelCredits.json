@@ -234,5 +234,27 @@
     "where": "avengers",
     "as": "Captain America’s jump",
     "file": "/models/sketchfab/avengers/cap.glb"
+  },
+  "avengers-anim-spiderman-advanced": {
+    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
+    "where": "avengers",
+    "as": "Spider-Man’s idle, walk and jump",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-anim-spiderman-symbiote": {
+    "title": "Spider-Man 2 Symbiote Suit (PS5)",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
+    "where": "avengers",
+    "as": "Spider-Man’s run",
+    "file": "/models/marvel/spiderman.glb"
   }
 }
