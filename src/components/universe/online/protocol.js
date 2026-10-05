@@ -1,7 +1,7 @@
 // Multiplayer on the universe map, as plain rules: what goes over the wire
 // between pilots and how anything that comes in is read. Pure (no three.js,
-// no network), so it's tested in Node; client.js does the talking and
-// pilots.js draws everyone else.
+// no network), so it's tested in Node; client.js does the talking (through
+// nostr.js's relays) and pilots.js draws everyone else.
 //
 // Everything a peer sends is untrusted: a name is cleaned before it's shown
 // (and only ever set as text), numbers are checked and clamped, each pilot

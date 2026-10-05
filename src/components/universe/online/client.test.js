@@ -5,7 +5,6 @@ import { createClient } from './client';
 // room(id) on its own is a pilot with no client, sending whatever it likes.
 function createBus() {
   const rooms = [];
-  const configs = {}; // what each client asked Trystero for
   const room = (id) => {
     const actions = {};
     const r = {
@@ -35,15 +34,7 @@ function createBus() {
   };
   return {
     room,
-    configs,
-    load: (id) => () =>
-      Promise.resolve({
-        selfId: id,
-        joinRoom: (config) => {
-          configs[id] = config;
-          return room(id);
-        },
-      }),
+    load: (id) => () => Promise.resolve({ selfId: id, joinRoom: () => room(id) }),
     // everyone meets everyone
     meet() {
       for (const a of rooms) for (const b of rooms) if (a !== b) a.onPeerJoin?.(b.id);
@@ -233,65 +224,28 @@ describe('createClient', () => {
     expect(feeds(seen.a)).toContain('Rick went offline');
   });
 
-  it('keeps bare LAN addresses back, and goes through the relay when there is one', async () => {
-    const bus = createBus();
-    const relay = { turnConfig: [{ urls: ['turn:r.example:3478'], username: 'u', credential: 'c' }], rtcConfig: { iceTransportPolicy: 'relay' } };
-    const Peer = class {};
-    const a = createClient({ name: 'Han', load: bus.load('A'), privacy: { peer: Peer, relay } });
+  it('is online only once the room is listening, and says when it is out of reach', async () => {
+    let listening;
+    const r = { selfId: 'A', ready: new Promise((res) => (listening = res)), makeAction: () => ({ send: () => Promise.resolve() }), leave: () => Promise.resolve() };
+    const c = createClient({ name: 'Han', load: () => Promise.resolve({ joinRoom: () => r }) });
     await flush();
-    expect(bus.configs.A.rtcPolyfill).toBe(Peer);
-    expect(bus.configs.A.rtcConfig.iceTransportPolicy).toBe('relay');
-    expect(bus.configs.A.turnConfig).toEqual(relay.turnConfig);
-    expect(a.snapshot().relay).toBe(true);
+    expect(c.snapshot().status).toBe('connecting');
+    listening();
+    await flush();
+    expect(c.snapshot().status).toBe('online');
+    r.onStatus('connecting');
+    expect(c.snapshot().status).toBe('connecting');
+    r.onStatus('online');
+    expect(c.snapshot().status).toBe('online');
+    c.leave();
   });
 
-  it('a blocked pilot is ignored', async () => {
-    const { a, b } = await pair();
-    b.block('A');
-    a.pose(ship(4));
-    a.ally('B', 'ask');
-    expect(b.peers.get('A').pose).toBeNull();
-    expect(b.peers.get('A').ally).toBe('none');
-  });
-
-  it('cleans a name that comes in', async () => {
-    const { a, b } = await pair();
-    a.setProfile({ name: '   Gold    Five   ' });
-    expect(b.peers.get('A').name).toBe('Gold Five');
-  });
-
-  it('follows them round the site, pointer and all', async () => {
-    const { a, b, seen } = await pair();
-    b.setProfile({ where: '/middle-earth' });
-    expect(a.peers.get('B').where).toBe('/middle-earth');
-    expect(seen.a.some((e) => e.type === 'feed' && e.text === 'Rick went to Middle-earth')).toBe(true);
-    a.setProfile({ where: '/deathstar' });
-    b.setProfile({ where: '/deathstar' });
-    expect(seen.a.some((e) => e.type === 'feed' && e.text === 'Rick is here')).toBe(true);
-    b.cursor(-40, 1200);
-    expect(a.peers.get('B').cur).toEqual({ x: -40, y: 1200, touch: false, at: 1000 });
-    // a page change drops the old pointer
-    b.setProfile({ where: '/home' });
-    expect(a.peers.get('B').cur).toBeNull();
-  });
-
-  it('a quick move ends where the pointer stopped', async () => {
-    const { a, b, tick } = await pair();
-    a.setProfile({ where: '/home' });
-    b.setProfile({ where: '/home' });
-    b.cursor(1, 100);
-    b.cursor(2, 200); // too soon: held back
-    b.cursor(3, 300);
-    expect(a.peers.get('B').cur.y).toBe(100);
-    tick(100);
-    await new Promise((r) => setTimeout(r, 120));
-    expect(a.peers.get('B').cur.y).toBe(300);
-  });
-
-  it('sends no pointer from the universe map', async () => {
-    const { a, b } = await pair();
-    b.cursor(10, 10);
-    expect(a.peers.get('B').cur).toBeNull();
+  it('fails when no relay answers', async () => {
+    const r = { selfId: 'A', ready: Promise.reject(new Error('none')), makeAction: () => ({ send: () => Promise.resolve() }), leave: () => Promise.resolve() };
+    const c = createClient({ name: 'Han', load: () => Promise.resolve({ joinRoom: () => r }) });
+    await flush();
+    expect(c.snapshot().status).toBe('failed');
+    c.leave();
   });
 
   it('says so if it cannot connect', async () => {

@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
-import { relayOnly } from './privacy';
 import { UNIVERSE, placeName } from './where';
 import { crewById } from '../crews';
 import Face from '../Faces';
@@ -17,11 +16,9 @@ import './online.css';
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
-// useOnline.js keeps the state; what the card says about your IP address
-// follows how the site was built (privacy.js).
+// useOnline.js keeps the state.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
-const RELAYED = Boolean(relayOnly()); // every connection through a TURN relay
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
@@ -106,9 +103,8 @@ function Join({ online, onClose }) {
           </button>
         </div>
         <p className="universe-online-fine">
-          {RELAYED
-            ? 'Browsers connect through a relay (WebRTC), with public Nostr relays to introduce them, so other pilots never see your IP address. Nothing is stored anywhere.'
-            : 'Browsers connect straight to each other (WebRTC), with public Nostr relays to introduce them, so other pilots can see your public IP address, as in most online games (your home network’s own addresses are kept back). Nothing is stored anywhere.'}
+          Everything goes through public Nostr relays (free servers run by others), so it works from any network and other pilots never see your IP address. Your callsign, ship and
+          moves pass through them as you play; nothing is stored.
         </p>
       </form>
     </Card>
@@ -172,7 +168,7 @@ function Roster({ online, ship, floating, onClose }) {
         <input type="checkbox" checked={online.pointers} onChange={(e) => online.showPointers(e.target.checked)} />
         Live pointers on pages, yours and theirs
       </label>
-      <p className="universe-online-fine">{RELAYED ? 'Connected through a relay: no one sees your IP address.' : 'Connected straight to each pilot: they can see your public IP address.'}</p>
+      <p className="universe-online-fine">Through public relays: other pilots never see your IP address.</p>
       <button type="button" className="universe-online-link universe-online-leave" onClick={online.goOffline}>
         Go offline
       </button>

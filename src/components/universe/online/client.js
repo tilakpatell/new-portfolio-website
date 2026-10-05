@@ -1,13 +1,14 @@
 // The multiplayer link: everyone on the site who's gone online, in one
-// room, browser to browser (WebRTC through Trystero; the site is static, so
-// there's no server: public Nostr relays only introduce the peers). It
+// room (nostr.js: public Nostr relays carry everything, so it works from
+// any network, and no pilot sees another's IP address; the site is static,
+// so there's no server of its own). It
 // keeps who's here (their callsign, ship, kills, which page they're on, and
 // whether you're allies), where each was last seen on the universe map, the
 // shots they fire there, and their pointer on any other page, and sends
 // yours. The scene (scene.js, pilots.js) reads poses and shots from it each
 // frame, Presence.jsx the pointers; the page (useOnline.js, Online.jsx)
 // shows the roster and what's happening. protocol.js has the wire and the
-// rules for what's believed; privacy.js what your connection gives away.
+// rules for what's believed.
 //
 // Defences, since anyone can join with a client of their own: each pilot
 // may send only so much of each kind of message (a flood gets them muted
@@ -28,25 +29,19 @@
 // whoever this browser believes did it).
 
 import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
-import { privatePeer, relayOnly } from './privacy';
 import { UNIVERSE, placeName } from './where';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
 const AIMS = 8; // each pilot's last shots, kept to check a hit against
 const SHOT_GAP = 150; // ms between shots sent (the guns fire every 220)
-const PILOTS = 32; // pilots kept track of, at most (a mesh of browsers gets heavy past this)
+const PILOTS = 32; // pilots kept track of, at most (each one flying sends ten bundles a second)
 const HEARTBEAT_MS = 15000; // a hello this often, so a pilot sitting still isn't dropped
 const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
-// The relays that introduce the pilots (every visitor must use the same
-// ones): from Trystero's own list, the ones answering when this was written
-// (its default pick for our app id had a dead one in it)
-const RELAYS = ['nos.lol', 'nostr-01.yakihonne.com', 'nostr-01.uid.ovh', 'purplerelay.com', 'relay.mostro.network', 'bucket.coracle.social'].map((h) => `wss://${h}`);
+const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinRoom }));
 
-const loadTrystero = () => import('trystero').then((m) => ({ joinRoom: m.joinRoom, selfId: m.selfId }));
-
-export function createClient({ name, kind = null, where = UNIVERSE, load = loadTrystero, now = () => performance.now(), privacy = { peer: privatePeer(), relay: relayOnly() } }) {
+export function createClient({ name, kind = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
   const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, kills: 0, where };
   const peers = new Map();
   const listeners = new Set();
@@ -281,29 +276,35 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     }, HEARTBEAT_MS);
   };
 
-  // into the room (three.js-free, but still a download: only once asked)
+  const setStatus = (s) => {
+    if (status === 'left' || status === s) return;
+    status = s;
+    emit({ type: 'status' });
+  };
+  const failed = (err) => {
+    if (import.meta.env?.DEV && import.meta.env?.MODE !== 'test') console.error('[online]', err);
+    setStatus('failed');
+  };
+
+  // into the room (three.js-free, but still a download: only once asked):
+  // online once a relay's listening (failed if none answer), and back to
+  // connecting while they're all out of reach
   load()
     .then(({ joinRoom, selfId }) => {
       if (status === 'left') return;
-      room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS }, rtcPolyfill: privacy.peer, ...(privacy.relay ?? {}) }, ROOM);
-      wire(room, selfId);
-      status = 'online';
-      emit({ type: 'status' });
+      room = joinRoom({ appId: APP_ID }, ROOM);
+      wire(room, room.selfId ?? selfId);
+      room.onStatus = setStatus;
+      if (room.ready) room.ready.then(() => setStatus('online'), failed);
+      else setStatus('online');
     })
-    .catch((err) => {
-      if (import.meta.env?.DEV && import.meta.env?.MODE !== 'test') console.error('[online]', err);
-      if (status === 'left') return;
-      status = 'failed';
-      emit({ type: 'status' });
-    });
+    .catch(failed);
 
   return {
     get selfId() {
       return self.id;
     },
     peers,
-    // does everything go through a relay (no one sees your IP address)?
-    relay: Boolean(privacy.relay),
     on(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
@@ -313,7 +314,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
       const list = [];
       for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, relay: Boolean(privacy.relay), self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
+      return { status, self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
     },
     setProfile({ name: n = self.name, kind: k = self.kind, where: w = self.where } = {}) {
       const clean = cleanName(n) ?? self.name;
