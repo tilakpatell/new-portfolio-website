@@ -25,7 +25,7 @@ The Citadel's main concourse: a round atrium under a glass dome. A walkable disc
 
 | Place | Where | What |
 | --- | --- | --- |
-| The core | column at (0, 0), radius 5 | white, ringed with cyan light; holo-ads round it at 8 m (Simple Rick's; on election day, Vote Morty) |
+| The core | column at (0, 0), radius 5 | a column of portal fluid (dark green, churning, veined with lightning) in a teal frame behind a railing, under a saucer cap at 22 m with holo-ads round its rim (Simple Rick's; on election day, Vote Morty); its stem runs on up into the dome. Round it at 4.3 m turns a hologram of the Central Finite Curve: a walled band of universes, open at one end, with its name on it |
 | Portal terminal | south, pad at (0, 35); customs desk at (5, 29) | the start, (0, 31) facing north; a Cop Rick at customs |
 | Morty Day Care | west, pen centred (−25, 0), 14 × 12, low fence | gate in the east side at x = −18, z −2 … 2; the Day Care Rick's desk at (−17, −7) |
 | Simple Rick's | east, shopfront door at (37, 0) facing west | the wafer factory, an inside scene |
@@ -34,7 +34,7 @@ The Citadel's main concourse: a round atrium under a glass dome. A walkable disc
 | Hangar | south-east, blast doors at (27, 27) facing the core | the cruiser, the finale's goal |
 | Cover | benches, planters and two kiosks round the concourse | low ones (benches) block walking only; tall ones (kiosks, planters, the core) block sight too |
 
-Overhead (drawn, not walkable): the glass dome on its ribs, deep blue space with stars, the Citadel's other spires outside, glass transport tubes crossing the dome with pods running through them, and a mezzanine ring with Ricks walking along it.
+The concourse is a terrace over a city, as in the show's city scenes: a lit balustrade at its edge (open where the four buildings stand), and beyond it a ring of pale green and teal towers (round, stepped, bladed, crowned; their windows lit), a teal glass dome among them, a lower city floor far below, an arched viaduct at 47.5 m with a three-car monorail going round (no pier behind the edge buildings, so the hangar's bay opens clear), and a far ring of towers into the haze. Over everything: the great dome's lattice against a warm golden sky, and the Central Finite Curve as a luminous arc across it. Simple Rick's and the Council's hall are buildings at the edge (cream and wafer-brown; teal with gold bands).
 
 Walking into the outer wall gets a line, not a silent stop ("The rest of the Citadel's four hundred levels can wait.").
 
@@ -64,15 +64,16 @@ People about the concourse, each with a few of their own lines (in the show's vo
 
 ## The look
 
-The show's cel look, as Portal panic already draws it: `MeshToonMaterial` with a three-step ramp (`portal/toon.js`), the `InkPass` outline, bloom for the cyan light strips. The Citadel's palette: off-white panels, pale grey, steel blue trim, cyan light, deep blue space through the dome; on red alert the light strips and holo-ring turn red and the key light dims. The floor uses the deck-plate pattern Portal panic paints for its Citadel (`portal/paint.js`).
+The show's cel look, as Portal panic already draws it: `MeshToonMaterial` with a three-step ramp (`portal/toon.js`), the `InkPass` outline, bloom for the light strips. The Citadel's palette, from the show's city scenes: mint and sage terrace, teal trim, pale green towers, a warm golden haze, cyan light, and the portal fluid's greens (`fluid.js`, shared by the core and the Council's tank). On red alert the light strips, holo-ring and Curve turn red and stutter, the haze reddens, the fluid churns faster and the key light dims. The Council's chamber is the show's green-core hall: dark teal, yellow light strips, the fluid tank behind three tall orange chairs. Outside, on the universe map, the Citadel is the show's: a ribbed glass dome with its city under it, arms out to smaller domes, hanging towers and a crystal, in an orange haze.
 
 ## Models (free first; Meshy where code can't be good enough)
 
 - **Already on disk** (`public/games/meshy/`, rigged with idle, walk and run): `rick` (you, the Day Care Rick, the crowd), `cop` (Cop Ricks), `morty` (the Day Care Mortys, in different shirt colours, and the crowd), `evilmorty`, `meeseeks` (the janitor), `saucer` (your cruiser in the hangar).
 - **New, with Meshy** (rigged, idle/walk/run, toon-textured like the rest; about 47 credits each, about 280 in all, balance 3001): `councilrick-a`, `councilrick-b`, `councilrick-c` (three distinct Council members), `cowboyrick`, `factoryrick` (a Simple Rick's worker in a jumpsuit and hairnet), `copmorty`. Added to `scripts/meshy.mjs` as a `citadel` set, written to `public/games/meshy/`, credited in `public/games/credits.json`. If one comes out badly, it's made again (only that one's step) before it's used.
 - **CC0, Kenney Space Station Kit**: chairs, tables, consoles, containers, rails and pipes for the factory and the Council chamber, recoloured to the Citadel's palette; added to `scripts/kenney.mjs`, written to `public/games/kenney/`, credited in `public/games/credits.json`.
-- **In code**: the concourse, the dome and its ribs, the core and its holo-ring, the shopfronts, the transport tubes, the Day Care pen and its toys, the factory line and the wafers, the Council's bench, the booth and ballot box, the hangar doors.
-- **How many people**: by device tier: the crowd is 10 walkers on `high`, 6 on `mid`, 3 on `low`, plus the named cast and the scenes' own (six Mortys, the Cop Ricks). Figures far from the camera update their animation less often.
+- **In code**: the terrace and its balustrade, the city round it (towers, viaduct and train, sky and dome lattice, the Curve), the core, its fluid, cap and holo-ring, the Curve's hologram, the edge buildings, the Day Care pen and its toys, the factory line and the wafers, the Council's hall, chairs and tank, the booth and ballot box, the hangar doors.
+- **More variants, for the crowd**: `constructionrick`, `sweaterrick`, `suitrick`, `detectiverick` (rigged; they walk and clerk), and 18 still variants made cheaply for the crowd only (`scripts/meshy.mjs`'s `crowd` set: wizard, hazmat, sheriff, retro, visor, doofus, mullet, chef, pilot and punk Ricks; Hobbit, beanie, sheriff, overalls, mask, glasses, astronaut and punk Mortys).
+- **How many people**: walking figures by device tier: 7 on `high`, 4 on `mid`, 2 on `low`, plus the named cast and the scenes' own (six Mortys, the Cop Ricks, the Council, the clerks, the line's workers). The standing crowds (at the terrace's edge, in the Council's queue, round the core, talking in groups; a 40-strong rally facing the booth on election day; nobody on red alert) are light still copies of every Rick and Morty kind (`scripts/crowd.mjs`: posed, de-skinned, simplified, 256 px textures), one instanced mesh a kind (`crowd.js`); `low` draws half of them from fewer kinds. Figures far from the camera update their animation less often.
 
 ## How it's built
 
@@ -87,7 +88,9 @@ Pure, tested:
 
 Drawing:
 
-- `concourse.js` — the concourse, dome, core, holo-ring (a canvas texture, redrawn per mood), shopfronts, tubes and pods, hangar.
+- `concourse.js` — the terrace, the edge buildings, the core and its holo-ring (a canvas texture, redrawn per mood), the pen, booth, kiosks and hangar.
+- `city.js` — the city round the terrace, its viaduct and train, the sky and dome lattice, the Curve's arc; `fluid.js` — the portal fluid's shader; `curve.js` — the Curve's hologram.
+- `crowd.js` — the standing crowds, by mood, as instanced still copies.
 - `rooms.js` — the factory and the Council chamber, built under the world (as the inn is), with a camera per beat.
 - `people.js` — the cast: loads the Meshy figures (`portal/meshyCast.js`'s `createMeshyCast`, with the new names in its table), makes the named cast, the crowd on its loops, the Mortys and the Cop Ricks, and poses them.
 - `scene.js` — `createCitadelWorld(canvas, { onLost })` → `{ render, fx, screenOf, resize, dispose, lost, info, suggestYaw }`, the same shape as Bree's; `lib/stage3d`'s `createStage` with the `InkPass` added, as Portal3D does.
