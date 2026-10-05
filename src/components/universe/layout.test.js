@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_RADIUS, ORDER, POSITIONS, REACH, SUN, keyStep, next, nextWorld, parseId, prev } from './layout';
+import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN, keyStep, next, nextWorld, parseId, prev } from './layout';
+import { byId } from './universes';
 
 describe('the map layout', () => {
   it('keeps every universe clear of the others, moons and all', () => {
@@ -15,6 +16,19 @@ describe('the map layout', () => {
 
   it('keeps every universe inside the map radius', () => {
     for (const id of ORDER) expect(Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]).toBeLessThanOrEqual(MAP_RADIUS + 1e-9);
+  });
+
+  it('keeps the stations in the home system and sends the fandoms far out, well apart, with a journey between any two', () => {
+    const fandoms = ORDER.filter((id) => byId(id).kind !== 'core');
+    for (const id of ORDER) {
+      const r = Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
+      if (byId(id).kind === 'core') expect(r + REACH[id], id).toBeLessThan(HOME_RADIUS);
+      else {
+        expect(r - REACH[id], id).toBeGreaterThan(HOME_RADIUS + 150); // out past the home system: a real trip
+        expect(Math.abs(POSITIONS[id][1]) + REACH[id], id).toBeLessThan(230); // under deep space's ceiling
+      }
+    }
+    for (const a of fandoms) for (const b of fandoms) if (a < b) expect(Math.hypot(...POSITIONS[a].map((v, i) => v - POSITIONS[b][i])) - REACH[a] - REACH[b], `${a} and ${b}`).toBeGreaterThan(150);
   });
 
   it('steps through the map in order and wraps', () => {

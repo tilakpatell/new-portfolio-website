@@ -121,6 +121,15 @@ describe('deep space', () => {
     expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
   });
 
+  it('is cut back to the boost while hunters have it interdicted', () => {
+    const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
+    expect(pulsing.speed).toBeGreaterThan(SHIP.pulse - 2);
+    const cut = fly(pulsing, { throttle: 1, boost: true, interdicted: true }, 2, []).ship;
+    expect(cut.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
+    expect(cut.speed).toBeGreaterThan(SHIP.cruise);
+    expect(fly(cut, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2); // and off again once they're gone
+  });
+
   it('can climb far higher out there than at home', () => {
     expect(ceilingAt(open.x, open.z)).toBe(DEEP.ceiling);
     expect(ceilingAt(0, 0)).toBe(SHIP.ceiling);
