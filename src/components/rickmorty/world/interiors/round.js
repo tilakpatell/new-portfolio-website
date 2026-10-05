@@ -38,12 +38,15 @@ export const ringCeiling = (r, y, holes = []) => new THREE.ShapeGeometry(shape(r
 
 // The wall, `h` high and `thick` thick, its inner face on the ring, as boxes
 // into frame `f` (one at the world's origin): every run but those `gaps`
-// (angles) fall in. Returns the runs drawn, [{ t (its middle's angle), a, b
-// (its ends), len, turn }], for what goes on it.
-export function ringWall(f, r, { h, color, thick = 0.2, gaps = [], skirt = null, skirtH = 0.12 }) {
+// (angles) fall in. `phase` turns the runs round (half a run puts a run's
+// middle where rules.js has a corner: the wall moves by a few centimetres at
+// most). Returns the runs drawn, [{ t (its middle's angle), a, b (its
+// ends), len, turn }], for what goes on it.
+export const RUN = TAU / RUNS;
+export function ringWall(f, r, { h, color, thick = 0.2, gaps = [], skirt = null, skirtH = 0.12, phase = 0 }) {
   const runs = [];
   for (let i = 0; i < RUNS; i++) {
-    const [t0, t1] = [(i / RUNS) * TAU, ((i + 1) / RUNS) * TAU];
+    const [t0, t1] = [phase + i * RUN, phase + (i + 1) * RUN];
     if (gaps.some((g) => angleIn(g, t0, t1))) continue;
     const a = ringAt(r, t0);
     const b = ringAt(r, t1);

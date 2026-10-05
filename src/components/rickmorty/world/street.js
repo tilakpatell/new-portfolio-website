@@ -20,6 +20,8 @@ import { AREAS, DECOR, DINER, DRIVEWAY, FENCES, FRONT_WALK, NEIGHBOURS, ROAD, SC
 import { at, batch, mergeParts, rng, speckle } from './kit';
 import { buildingMaterials, flagpole, marquee, neighbourHouses, school, smithHouse } from './buildings';
 import { STREET_SKY, makeSky } from './sky';
+import { shoneys } from './shoneys';
+import { buildVisitors } from './visitors';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const FAR = 1200; // how far the ground and the road go on
@@ -34,7 +36,7 @@ export const STREET_LIGHT = { sun: [0xfff3df, 2.4], hemi: [0xd6f0ff, 0x6a9a4a, 1
 const TINTS = [0xe9c9a1, 0xb7d3c6, 0xe7b8b0, 0xc2cfe6, 0xf0dd9a, 0xd9bfd8, 0xf2e6cf, 0xc9dfb0, 0xf0a0a8];
 const ROOFS = [0x5d5f6c, 0x6e4a36, 0x7a4038, 0x56606e, 0x4f5a52, 0x6b4c3b];
 
-export function buildStreet(kit) {
+export async function buildStreet(kit) {
   const { models, mats, tier = 'high' } = kit;
   const plan = SUBURB[tier] ?? SUBURB.high;
   const group = new THREE.Group();
@@ -116,6 +118,8 @@ export function buildStreet(kit) {
   if (smith.group) group.add(smith.group);
   const hhhs = school(b, m, mats, models.get('school'), bushes);
   if (hhhs.group) group.add(hhhs.group);
+  // Shoney's, in the north-east lot, and its parking lot
+  group.add(shoneys(b, mats, models.get('shoneys')).group);
   group.add(hhhs.plate);
   const front = SCHOOL.z - SCHOOL.d / 2;
   pad(SCHOOL.x - 1.6, SCHOOL.x + 1.6, WALK, front - 2.5);
@@ -283,17 +287,23 @@ export function buildStreet(kit) {
     group.add(mesh);
   }
 
+  // the President's motorcade, the Federation's agents and its patrol ship
+  const visitors = await buildVisitors(kit, { roadY: ROAD_Y });
+  group.add(visitors.group);
+
   b.build(group);
   flat.build(group, { cast: false });
   return {
     group,
     sky,
-    noInk: [sky.dome, wires],
+    noInk: [sky.dome, wires, ...visitors.noInk],
     light: STREET_LIGHT,
     update(t, dt, state, camera) {
       sky.update(t, camera);
       flag.update(t);
+      visitors.update(t, dt, state);
     },
+    dispose: visitors.dispose,
   };
 }
 

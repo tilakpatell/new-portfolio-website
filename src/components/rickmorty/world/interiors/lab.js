@@ -20,6 +20,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { AREAS, FURNITURE, HATCH, LINKS, PEOPLE } from '../rules';
 import { at, mergeParts, rng, speckle } from '../kit';
 import { BALL, BALL8, BOX, CYL, CYL8, DOOR_H, PLANE, TAU, casing, fitText, lathe, makeRoom, tiledPaint, tube, wallLine } from './shell';
+import { govPortal } from './govportal';
 import { needCast, person } from './people';
 import { LOOKS } from './furniture';
 import { PINS, paintCells, planks } from './labpaint';
@@ -469,6 +470,9 @@ export async function buildGarage(kit) {
   // the hatch down to the secret lab, and the door's and the hatch's paint
   hatch(R);
   paintDoor(R);
+  // the President's portal in the corner, open once he's been met
+  const gp = FURNITURE.find((f) => f.id === 'govportal');
+  govPortal(R, gp.x, gp.z - gp.d / 2, gp.turn, { open: (state) => !!state?.done?.includes('president') });
 
   // Rick at the bench
   const rick = PEOPLE.find((p) => p.id === 'rick');

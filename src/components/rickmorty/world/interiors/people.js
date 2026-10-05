@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { BASE } from '../../portal/meshyCast';
+import { BASE, faceForward, heading } from '../../portal/meshyCast';
 import { mergeParts } from '../kit';
 import { CYL } from './shell';
 
@@ -63,6 +63,22 @@ export function sitting() {
       return clip;
     });
   return sitClip;
+}
+
+// Rick's sat clip for someone else of the cast, turned (as meshyCast turns
+// every clip it loads) so its hips face the way the sitter's walk does: ahead
+export function facingAhead(c, clip) {
+  const own = clip.clone();
+  const hips = c.group.getObjectByName('Hips');
+  const ref = c.act.walk?.getClip();
+  if (!hips?.parent || !ref) return own;
+  c.group.updateMatrixWorld(true);
+  // up, in the hips' parent's frame within the model
+  const rel = c.body.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(hips.parent.getWorldQuaternion(new THREE.Quaternion()));
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rel.invert());
+  const ahead = heading(ref, up);
+  if (ahead != null) faceForward(own, up, ahead);
+  return own;
 }
 
 // A person in shapes, the show's way (a big round head, dot eyes), merged

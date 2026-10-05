@@ -14,11 +14,10 @@
 // ./upstairs.js.
 
 import * as THREE from 'three';
-import { faceForward, heading } from '../../portal/meshyCast';
 import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { at } from '../kit';
 import { ceilingLights, DOOR_H, doorAt, doorway, floors, framed, grainOf, innerWalls, makeRoom, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, win, windowIn, windowView } from './shell';
-import { needCast, person, sitting } from './people';
+import { facingAhead, needCast, person, sitting } from './people';
 import { BROWN, CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, butterRobot, carpet, computer, desk, deskLamp, dresser, shelf, tvStand, bed, woodFloor } from './furniture';
 import { armchair, bookcase, chair, clock, coffeeTable, couch, counter, curtains, diningTable, dogBed, fridge, nookTable, onCounter, P, pendant, plant, sconce, sink, stove } from './smiths';
 import { houseCells } from './smithpaint';
@@ -380,22 +379,6 @@ function pictures(R) {
     g.fillStyle = '#d8b48a';
     g.fillRect(0, h * 0.65, w, h * 0.35);
   }, { border: '#2b2b30', inner: 4 }));
-}
-
-// Rick's sat clip for someone else of the cast, turned (as meshyCast turns
-// every clip it loads) so its hips face the way the sitter's walk does: ahead
-function facingAhead(c, clip) {
-  const own = clip.clone();
-  const hips = c.group.getObjectByName('Hips');
-  const ref = c.act.walk?.getClip();
-  if (!hips?.parent || !ref) return own;
-  c.group.updateMatrixWorld(true);
-  // up, in the hips' parent's frame within the model
-  const rel = c.body.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(hips.parent.getWorldQuaternion(new THREE.Quaternion()));
-  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rel.invert());
-  const ahead = heading(ref, up);
-  if (ahead != null) faceForward(own, up, ahead);
-  return own;
 }
 
 // how far Jerry sits back from where he stands, and how low (the sat clip turns his bones only)
