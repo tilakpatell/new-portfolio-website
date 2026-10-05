@@ -414,27 +414,44 @@
   },
   "goldenfold": {
     "image": "01a10cb5-d40e-771c-8759-88eb51ea3785",
-    "model": "01a10cc4-817a-731e-a0dc-025a1efb6ade"
+    "model": "01a10cc4-817a-731e-a0dc-025a1efb6ade",
+    "rig": "01a10cca-4fea-716d-b109-10bca9de0162",
+    "idle": "01a10cca-ce73-7253-831a-3444207fcecb"
   },
   "principal": {
     "image": "01a10cb5-d3a8-772b-b7be-111b03670f98",
-    "model": "01a10cc4-8183-7159-ad46-1b260bd49753"
+    "model": "01a10cc4-8183-7159-ad46-1b260bd49753",
+    "rig": "01a10cca-504d-76b4-965b-8c4302177158",
+    "idle": "01a10cca-ce62-70a6-ac6c-aeb9870726dc"
   },
   "jessica": {
     "image": "01a10cb5-d3b4-71dd-b2ec-40cad4e99ee7",
-    "model": "01a10cc4-817b-767c-8172-18cb296ef1c8"
+    "model": "01a10cc4-817b-767c-8172-18cb296ef1c8",
+    "rig": "01a10cca-4ff0-7158-b1da-2d0a72add21e",
+    "idle": "01a10cca-ce78-722b-88ba-806fbaaa46b3"
   },
   "brad": {
     "image": "01a10cb5-d367-7260-8497-5d27de9ea21d",
-    "model": "01a10cc4-8182-71f2-8d01-77e72b01ef26"
+    "model": "01a10cc4-8182-71f2-8d01-77e72b01ef26",
+    "rig": "01a10cca-5002-757d-86d4-a0c7a2cddf2e",
+    "idle": "01a10cca-ce6e-7287-915d-e10605c252a4"
   },
   "tammy": {
-    "image": "01a10cb6-1bf5-773b-b79a-c1a38d5c1da0"
+    "image": "01a10cb6-1bf5-773b-b79a-c1a38d5c1da0",
+    "model": "01a10cc7-2db5-75a4-ad6b-14ce0100d50d",
+    "rig": "01a10cca-8af8-708f-a161-df3185f670cc",
+    "idle": "01a10cca-e602-71de-8ce8-34cae45f84d8"
   },
   "ethan": {
-    "image": "01a10cb6-5a29-70f7-bc36-1c9b804f8703"
+    "image": "01a10cb6-5a29-70f7-bc36-1c9b804f8703",
+    "model": "01a10cc7-2eb4-74cd-8a31-b08e1b015398",
+    "rig": "01a10cca-90f0-75fa-a98c-0d0f563369bc",
+    "idle": "01a10cca-fd89-75d0-ae26-d9fb46c7e03d"
   },
   "tinyrick": {
-    "image": "01a10cb6-7443-72de-989c-9110806b6d14"
+    "image": "01a10cb6-7443-72de-989c-9110806b6d14",
+    "model": "01a10cc7-3f9c-748d-881c-bef6e4c14ac8",
+    "rig": "01a10cca-938e-778b-b48d-45f6a8930bdc",
+    "idle": "01a10cca-fbf5-7214-b8e3-c01acb20f8aa"
   }
 }

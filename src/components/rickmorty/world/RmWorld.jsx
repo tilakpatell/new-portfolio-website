@@ -212,6 +212,7 @@ const newSim = () => ({
   keys: new Set(),
   stick: { x: 0, y: 0 },
   lift: 0,
+  jump: false, // asked to jump (Space, or the jump button), till the next step takes it
   near: null,
   moved: false,
   fading: false,
@@ -612,8 +613,9 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       const f = e.metaKey || e.ctrlKey || e.altKey ? null : FLY_KEYS[e.code];
       if (f) s.keys.add(f);
       if (m || f) {
-        // (Space is the cruiser's climb; walking, it's the page's)
-        if (m !== 'run' && !(m === 'space' && (onButton || !s.flying))) e.preventDefault();
+        // (Space is the cruiser's climb; walking, Morty's jump)
+        if (m !== 'run' && !(m === 'space' && onButton)) e.preventDefault();
+        if (m === 'space' && !onButton && !s.flying && !e.repeat) s.jump = true;
         audioContext();
         return;
       }
@@ -715,10 +717,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
+      s.jump = false;
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // out over the open hatch: down it
-      const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z);
+      const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z, s.m.y);
       if (drop) go(drop);
       // up out of the Mind Blowers chair: the memories stop; sat, they go on
       if (s.mind && (s.area !== 'mindblowers' || Math.hypot(s.m.x - s.mind.x, s.m.z - s.mind.z) > CHAIR_R)) {
@@ -848,6 +851,11 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
   };
   // up and down, held, while flying
+  const onJump = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    sim.current.jump = true;
+    audioContext();
+  };
   const onLift = (dir) => (e) => {
     const s = sim.current;
     if (e.type === 'pointerdown') {
@@ -951,7 +959,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       )}
 
       {gl === 'on' && !here && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E uses things, M lists what to do.'}</p>
+        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}</p>
       )}
       {gl === 'on' && hud.flying && !here && (
         <p className="rm-hint rm-keys">
@@ -988,6 +996,13 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
               <span />
             </div>
             <div className="rm-pad">
+              {!hud.flying && (
+                <div className="rm-lift">
+                  <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
+                    <RiArrowUpLine aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               {hud.flying && (
                 <div className="rm-lift">
                   <button type="button" aria-label="Climb" onPointerDown={onLift(1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
