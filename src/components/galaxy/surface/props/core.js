@@ -933,17 +933,23 @@ export const PROPS = {
     const parts = [
       part(new THREE.CapsuleGeometry(4, 12, 6, 16).rotateZ(PI / 2), { at: [0, 4, 0], scale: [1, 1, 1.2], color: '#d8c8a8', to: 'paint' }),
       part(box(20, 0.4, 10.4), { at: [0, 0, 0], color: '#6a6660', to: 'metal' }),
-      part(box(15, 2.2, 9.9), { at: [0, 2.3, 0], color: lit('#ffcf8a', 1.5), to: 'glow' }),
+      part(box(15, 2.2, 9.9), { at: [0, 2.3, 0], color: lit('#ffcf8a', 1.15), to: 'glow' }),
       part(box(20.4, 0.4, 10.2), { at: [0, 5.2, 0], color: '#e8e8ec', to: 'metal' }),
       part(box(20.4, 0.4, 10.2), { at: [0, 1.8, 0], color: '#3aa8a0', to: 'paint' }),
       part(box(2, 3, 0.4), { at: [0, 0.2, 4.95], color: '#2a2420', to: 'dark' }),
       part(box(0.4, 4.2, 0.4), { at: [-4, 8, 0], color: '#5a5650', to: 'metal' }),
       part(box(0.4, 4.2, 0.4), { at: [4, 8, 0], color: '#5a5650', to: 'metal' }),
     ];
+    for (let i = 0; i < 8; i++) parts.push(part(box(0.3, 2.3, 10.1), { at: [-7 + i * 2, 2.25, 0], color: '#4a4a50', to: 'metal' }));
     const object = k.build(parts, { name: 'dexdiner' });
-    const sign = new THREE.Mesh(k.own(new THREE.PlaneGeometry(10, 10)), k.own(new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, color: lit('#ffffff', 1.6), side: THREE.DoubleSide, depthWrite: false })));
-    sign.position.set(0, 12, 0.3);
-    object.add(sign);
+    // the sign, readable from both sides
+    const signMat = k.own(new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, color: lit('#ffffff', 1.6), depthWrite: false }));
+    for (const a of [0, PI]) {
+      const sign = new THREE.Mesh(k.own(new THREE.PlaneGeometry(10, 10)), signMat);
+      sign.position.set(0, 12, a ? -0.05 : 0.05);
+      sign.rotation.y = a;
+      object.add(sign);
+    }
     return { object, solids: [{ box: [0, 0, 10, 5.2, 0] }] };
   },
 
