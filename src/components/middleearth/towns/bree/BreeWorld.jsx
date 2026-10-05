@@ -771,6 +771,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
                 Who’s that, in the corner?
               </button>
             )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => document.getElementById('pony-rush')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              Help in the kitchen (co-op)
+            </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={leaveInn}>
               Back out into the rain {!touch && <kbd>Esc</kbd>}
             </button>

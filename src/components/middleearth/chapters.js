@@ -23,7 +23,7 @@ export const CHAPTERS = [
     lift: 2.4,
     name: 'Bree',
     title: 'The Prancing Pony, on a wet night',
-    blurb: 'In at the West Gate in the rain: Butterbur, pints for Pippin, a Ranger called Strider, and the Nazgûl in the lanes at night.',
+    blurb: 'In at the West Gate in the rain: Butterbur, pints for Pippin, a Ranger called Strider, and the Nazgûl in the lanes at night. Then the Pony’s kitchen, co-op with friends online.',
     at: [262, 200],
     theme: 'shire',
     seals: ['breegate', 'underhill', 'pints', 'strider', 'slipaway'],
