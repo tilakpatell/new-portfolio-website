@@ -233,7 +233,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
-  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small, renderer: engine.renderer });
 
   // ── light: the airfield's late-afternoon sky, the sun a little higher than it has it ──
   await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.1, sunColor: [1, 0.9, 0.76], fill: 0.1 });
