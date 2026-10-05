@@ -1,14 +1,14 @@
 <div align="center">
 
-# tilakpatell.com
+# tilakverse
 
-**The personal site of Tilak Patel: a portfolio you can fly through.**
+**The code behind [tilakpatell.com](https://tilakpatell.com), Tilak Patel's personal site: a portfolio you can fly through.**
 
 A résumé on the surface. Underneath it, a 3D universe with a starfighter, nine hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
 
 [**Visit tilakpatell.com →**](https://tilakpatell.com)
 
-[![Deploy](https://github.com/tilakpatell/tilakpatell.com/actions/workflows/deploy.yml/badge.svg)](https://github.com/tilakpatell/tilakpatell.com/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/tilakpatell/tilakverse/actions/workflows/deploy.yml/badge.svg)](https://github.com/tilakpatell/tilakverse/actions/workflows/deploy.yml)
 ![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite 5](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-r180-000000?logo=threedotjs&logoColor=white)
@@ -99,8 +99,8 @@ Each planet on the map that has a world gets a page of its own, with its own art
 You need **Node.js 22** (the version CI uses) and npm.
 
 ```bash
-git clone https://github.com/tilakpatell/tilakpatell.com.git
-cd tilakpatell.com
+git clone https://github.com/tilakpatell/tilakverse.git
+cd tilakverse
 npm install
 npm run dev
 ```
