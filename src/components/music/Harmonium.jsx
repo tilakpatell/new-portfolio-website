@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
-import { RAGAS, SA_NOTES, SWARA, harmoniumAllOff, harmoniumOff, harmoniumOn } from './engine';
+import { SA_NOTES, SWARA, harmoniumAllOff, harmoniumOff, harmoniumOn, ragaOf } from './engine';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import { capturePointer } from '../../lib/pointer';
@@ -26,7 +26,7 @@ export default function Harmonium({ onPlay }) {
   const span = phone ? 13 : 25;
   const first = phone ? octave * 12 : 0; // semitones above C3
   const keys = Array.from({ length: span }, (_, k) => first + k);
-  const ragaNotes = new Set(RAGAS[tuning.raga].notes);
+  const ragaNotes = new Set(ragaOf(tuning.raga).notes);
 
   const info = (k) => {
     const rel = k - tuning.sa; // semitones above Sa
