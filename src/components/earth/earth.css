@@ -47,6 +47,8 @@
 .earth-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.75rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.8rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: border-color 0.15s ease, background 0.15s ease; }
 .earth-chip:hover, .earth-chip:focus-visible { border-color: var(--earth-blue); background: var(--earth-glass-hi); }
 .earth-chip b { color: var(--earth-gold); font-variant-numeric: tabular-nums; }
+.earth-chip-online { border-style: dashed; }
+.earth-chip-online b { color: #c9dcff; }
 .earth-chip[aria-pressed='true'] { border-color: var(--earth-gold); }
 .earth-chip kbd, .earth-hint kbd { padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.65rem/1.4 var(--font-mono); opacity: 0.6; }
 .earth-chip-sm { padding: 0.3rem 0.6rem; font-size: 0.74rem; }
