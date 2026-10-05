@@ -31,6 +31,7 @@ const RivendellWorld = lazy(() => import('../components/middleearth/towns/rivend
 const MoriaWorld = lazy(() => import('../components/middleearth/towns/moria/MoriaWorld'));
 const LorienWorld = lazy(() => import('../components/middleearth/towns/lorien/LorienWorld'));
 const AmonHenWorld = lazy(() => import('../components/middleearth/towns/amonhen/AmonHenWorld'));
+const MarshesWorld = lazy(() => import('../components/middleearth/towns/marshes/MarshesWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -441,6 +442,12 @@ export default function MiddleEarth() {
       {here?.id === 'amon-hen' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <AmonHenWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'dead-marshes' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <MarshesWorld onLeave={() => next && go(next.id)} />
         </Suspense>
       )}
 
