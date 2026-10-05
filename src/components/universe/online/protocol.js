@@ -1,0 +1,195 @@
+// Multiplayer on the universe map, as plain rules: what goes over the wire
+// between pilots and how anything that comes in is read. Pure (no three.js,
+// no network), so it's tested in Node; client.js does the talking and
+// pilots.js draws everyone else.
+//
+// Everything a peer sends is untrusted: a name is cleaned before it's shown
+// (and only ever set as text), numbers are checked and clamped, and a hit is
+// believed only from someone who isn't an ally, shot at you a moment ago,
+// was close enough to, and isn't hitting faster than the guns fire.
+//
+// The wire, by action:
+//   hi    { n: name, k: ship kind or null, c: kills, w: where on the site }
+//                                                       on joining, and on any change
+//   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
+//   shot  [x, y, z, vx, vy, vz]                          a bolt fired (for drawing it)
+//   hit   { d: damage }                                  to the pilot a bolt of yours hit
+//   down  { b: who shot you down }                       to everyone, when your shields go
+//   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
+//   cur   [x, y, touch]                                  off the universe map: your pointer
+//                                                       (x from the middle of the window, y
+//                                                       down the page, in px), or with touch
+//                                                       where you're reading
+
+import { parseShip } from '../crews';
+import { cleanWhere } from './where';
+import { cleanName } from './names';
+
+export { NAME_MAX, cleanName, randomCallsign } from './names';
+
+export const APP_ID = 'tilakpatel-portfolio-universe';
+export const ROOM = 'universe-v1';
+export const POSE_MS = 100; // how often a pose goes out
+export const CURSOR_MS = 80; // and a pointer, off the map
+export const STALE_MS = 2500; // a ship with no pose this long is hidden
+export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
+export const GUARD = {
+  shotWindow: 1500, // ms: a hit counts only this soon after a shot from the same pilot
+  gap: 150, // ms between hits from one pilot (the guns fire every 220)
+  range: 70, // map units: further off than this, they couldn't have hit you
+};
+export const FLAG = { hidden: 1, boost: 2 };
+
+const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+// a hello: { name, kind, kills, where }, or null if it isn't one
+export function readHello(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+}
+
+export const writeCursor = (x, y, touch = false) => [Math.round(x), Math.round(y), touch ? 1 : 0];
+
+// a pointer as it came in: { x, y, touch }, or null
+export function readCursor(data) {
+  if (!Array.isArray(data) || data.length < 3) return null;
+  const x = num(data[0], -5000, 5000);
+  const y = num(data[1], 0, 500000);
+  if (x === null || y === null) return null;
+  return { x, y, touch: data[2] === 1 };
+}
+
+// what goes out as a pose, from ship.js's numbers (and the shields, 0 to 100)
+export function writePose(s, flags = 0, shield = 100) {
+  const r = (v, k = 1000) => Math.round((v || 0) * k) / k;
+  return [r(s.x, 100), r(s.y, 100), r(s.z, 100), r(s.heading), r(s.pitch), r(s.bank), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+}
+
+// a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
+// boost, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
+export function readPose(data) {
+  if (!Array.isArray(data) || data.length < 9) return null;
+  const x = num(data[0], -6000, 6000);
+  const y = num(data[1], -600, 600);
+  const z = num(data[2], -6000, 6000);
+  const heading = num(data[3], -100, 100);
+  if (x === null || y === null || z === null || heading === null) return null;
+  const flags = Math.floor(num(data[8], 0, 255) ?? 0);
+  return {
+    x,
+    y,
+    z,
+    heading: wrap(heading),
+    pitch: num(data[4], -1.6, 1.6) ?? 0,
+    bank: num(data[5], -1.6, 1.6) ?? 0,
+    speed: num(data[6], -300, 300) ?? 0,
+    vy: num(data[7], -300, 300) ?? 0,
+    hidden: Boolean(flags & FLAG.hidden),
+    boost: Boolean(flags & FLAG.boost),
+    shield: num(data[9], 0, 100) ?? 100,
+  };
+}
+
+export const writeShot = (p, v) => [p.x, p.y, p.z, v[0], v[1], v[2]].map((n) => Math.round(n * 1000) / 1000);
+
+// a shot as it came in: { p: [x, y, z], v: [vx, vy, vz] }, or null; it has
+// to start near where the pilot was last seen (`from`, a pose, if known)
+export function readShot(data, from = null) {
+  if (!Array.isArray(data) || data.length < 6) return null;
+  const n = data.slice(0, 6).map((v) => num(v, -6000, 6000));
+  if (n.some((v) => v === null)) return null;
+  if (Math.hypot(n[3], n[4], n[5]) > 400) return null;
+  if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6) return null;
+  return { p: n.slice(0, 3), v: n.slice(3) };
+}
+
+export function readHit(data) {
+  const d = num(data?.d, 0, DAMAGE);
+  return d === null || d <= 0 ? null : d;
+}
+
+// Should a hit from this pilot count? `peer` is what's known of them: { ally,
+// blocked, shotAt (ms, their last shot), hitAt (ms, their last hit that
+// counted), pose (where they were) }; `me` is where you are (or null, not
+// flying); `now` in ms.
+export function hitCounts(peer, me, now) {
+  if (!peer || !me || peer.blocked || peer.ally === 'ally') return false;
+  if (now - (peer.shotAt ?? -Infinity) > GUARD.shotWindow) return false;
+  if (now - (peer.hitAt ?? -Infinity) < GUARD.gap) return false;
+  const p = peer.pose;
+  if (!p || Math.hypot(p.x - me.x, p.y - me.y, p.z - me.z) > GUARD.range) return false;
+  return true;
+}
+
+// An alliance between you and one pilot, one step on. States: 'none',
+// 'sent' (you asked), 'got' (they asked), 'ally'. Events: what you do
+// ('ask', 'accept', 'decline', 'end') or what came in ({ in: 'ask' | 'yes' |
+// 'no' | 'end' }). Returns { state, send } (send: what to tell them, or
+// null). A 'yes' you never asked for is ignored, so no one can make you
+// their ally; asking someone who asked you is a yes.
+export function allyStep(state, event) {
+  const s = state ?? 'none';
+  const said = typeof event === 'object' && event ? event.in : null;
+  if (said) {
+    if (said === 'ask') {
+      if (s === 'sent' || s === 'ally') return { state: 'ally', send: 'yes' };
+      return { state: 'got', send: null };
+    }
+    if (said === 'yes') return s === 'sent' || s === 'ally' ? { state: 'ally', send: null } : { state: s, send: null };
+    if (said === 'no') return s === 'sent' ? { state: 'none', send: null } : { state: s, send: null };
+    if (said === 'end') return { state: 'none', send: null };
+    return { state: s, send: null };
+  }
+  if (event === 'ask') {
+    if (s === 'got') return { state: 'ally', send: 'yes' };
+    if (s === 'none') return { state: 'sent', send: 'ask' };
+    return { state: s, send: null };
+  }
+  if (event === 'accept') return s === 'got' ? { state: 'ally', send: 'yes' } : { state: s, send: null };
+  if (event === 'decline') return s === 'got' ? { state: 'none', send: 'no' } : { state: s, send: null };
+  if (event === 'end') return s === 'ally' || s === 'sent' ? { state: 'none', send: 'end' } : { state: s, send: null };
+  return { state: s, send: null };
+}
+
+// Where a pilot is now, from the poses that came in (oldest first, each
+// with `at`, the ms it arrived): drawn a little in the past (`delay`), between
+// the two poses either side, so the motion is smooth; past the newest, a
+// short guess ahead along its heading. null with nothing to go on, or once
+// it's gone quiet (STALE_MS).
+export function sample(snaps, now, delay = 140) {
+  if (!snaps.length) return null;
+  const newest = snaps[snaps.length - 1];
+  if (now - newest.at > STALE_MS) return null;
+  const t = now - delay;
+  for (let i = snaps.length - 1; i > 0; i--) {
+    const a = snaps[i - 1];
+    const b = snaps[i];
+    if (t < a.at || t > b.at) continue;
+    const k = b.at > a.at ? (t - a.at) / (b.at - a.at) : 1;
+    const lerp = (p, q) => p + (q - p) * k;
+    return {
+      x: lerp(a.x, b.x),
+      y: lerp(a.y, b.y),
+      z: lerp(a.z, b.z),
+      heading: a.heading + wrap(b.heading - a.heading) * k,
+      pitch: lerp(a.pitch, b.pitch),
+      bank: lerp(a.bank, b.bank),
+      speed: lerp(a.speed, b.speed),
+      vy: lerp(a.vy, b.vy),
+      hidden: b.hidden,
+      boost: b.boost,
+      shield: b.shield,
+    };
+  }
+  if (t < snaps[0].at) return { ...snaps[0] };
+  // ahead of the newest: on the way it was going a little way (no further
+  // than 250 ms; ship.js moves along the heading, and up and down by vy)
+  const ahead = Math.min(250, t - newest.at) / 1000;
+  return {
+    ...newest,
+    x: newest.x - Math.sin(newest.heading) * newest.speed * ahead,
+    y: newest.y + newest.vy * ahead,
+    z: newest.z - Math.cos(newest.heading) * newest.speed * ahead,
+  };
+}

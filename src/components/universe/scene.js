@@ -36,6 +36,10 @@
 //   point of no return (maw.js) you watch your ship spiral down it from a
 //   way off, then go in after it (infall.js draws the fall), and the page
 //   goes on to what's beyond.
+//   Gone online (online/), the other visitors flying it are here too
+//   (online/pilots.js): their ships and callsigns, and their shots; the guns
+//   lock on to anyone who isn't your ally, a hit comes off their shields
+//   (they're told, and take it themselves), and theirs off yours.
 //
 // A scene module for lib/three/useScene: create(canvas, ctx) returns
 // { resize, render, update, setVisible, lowerQuality, hover, dive, escape,
@@ -44,7 +48,8 @@
 // to { id: element }), stick (a ref to the steering ring), alt (a ref to the
 // height gauge), shield (a ref to the shields bar), hud (a ref to the
 // targeting HUD's box: the reticle, the lock, the lead and the nav bracket
-// are its children), frozen (the page
+// are its children), net (online/client.js's link to the other pilots, or
+// null), tags (a ref to the box their callsigns go in), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
 // clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
 // went into a planet or a station too fast and the impact has played, or
@@ -85,6 +90,7 @@ import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
 import { byId } from './universes';
+import { createPilots } from './online/pilots';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
 const STARS_LOW = 700;
@@ -100,6 +106,7 @@ const PLUME = {
   rv: { color: '#ff9a3c', core: '#fff0d8', width: 0.02, life: 0.4, length: 0.3, wobble: 0 },
 };
 const IDLE = 40000; // ms sitting still before the crew get bored
+const SAFE = 3; // seconds after coming back when other pilots' shots don't count
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
 // the intro's, framed for a wide horizontal view, kept within sane vertical limits
@@ -561,6 +568,10 @@ export async function create(canvas, ctx) {
   const director = createDirector();
   const pieces = createSetPieces(map, { small, fleet });
   const later = []; // { at, run }: what the director set going, a moment on
+  // the other pilots, once online (with reduced motion too: they're people)
+  const pilots = createPilots(map, { T, colors: BOLT_COLOR });
+  let net = null;
+  let netOff = null;
 
   // the models arrive after the map is up
   loadModels((id, model, spot) => {
@@ -616,6 +627,7 @@ export async function create(canvas, ctx) {
     clock: 0, // seconds of frames
     shield: 100, // the ship's shields: hunters' lasers take them down, and they come back
     hitAt: -1e9,
+    safeUntil: -1e9, // just back from being shot down or a crash: other pilots' hits don't count
     hurt: 0, // the red flash of a hit, 1 fading to 0
     lowSaid: false,
     heat: 0, // trouble made lately (ships shot down): the director sends more hunters
@@ -879,9 +891,9 @@ export async function create(canvas, ctx) {
   // a hunter under the point (a tap locks the guns on to it)
   const tapped = { x: 0, y: 0, z: 0 };
   const pickHunter = (px, py) => {
-    if (!flying() || !hunters) return null;
+    if (!flying()) return null;
     let best = null;
-    for (const c of hunters.targets) {
+    for (const c of [...(hunters?.targets ?? []), ...pilots.targets]) {
       toScreen(c.at.x, c.at.y, c.at.z, tapped);
       if (tapped.z > 0.3 && Math.hypot(px - tapped.x, py - tapped.y) <= 28 && (!best || tapped.z < best.z)) best = { id: c.id, z: tapped.z };
     }
@@ -1168,6 +1180,7 @@ export async function create(canvas, ctx) {
     const v = AIM.bolt + Math.max(0, s.speed);
     b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v] };
     b.visible = true;
+    net?.shot(b.position, b.userData.v);
     emit({ type: 'fire' });
     ctx.invalidate();
   };
@@ -1200,6 +1213,15 @@ export async function create(canvas, ctx) {
           state.heat += 1;
           if (!reduced) state.shake = Math.max(state.shake, 0.2);
         }
+        continue;
+      }
+      // another pilot: they're told, and it comes off their shields
+      const ph = pilots.hit(shotFrom, b.position);
+      if (ph) {
+        b.visible = false;
+        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: 0.2 });
+        state.hitMark = 1;
+        net?.hit(ph.id);
         continue;
       }
       const h = traffic?.hit(shotFrom, b.position);
@@ -1333,7 +1355,7 @@ export async function create(canvas, ctx) {
       const px = hudAt.z > 0 ? (tgt.size / (hudAt.z * tanHalf)) * (size.h / 2) * 2.6 : 0;
       placeMark(h.lock, hudAt, clamp(px, 30, 140));
       h.lock.toggleAttribute('data-hot', state.hot);
-      setText(h, h.lockName, NAMES[tgt.kind] ?? tgt.kind);
+      setText(h, h.lockName, tgt.name ?? NAMES[tgt.kind] ?? tgt.kind);
       setText(h, h.lockDist, range(Math.hypot(tgt.at.x - s.x, tgt.at.y - s.y, tgt.at.z - s.z)));
     }
     const lead = tgt && state.lead && state.lead.t <= AIM.life ? state.lead : null;
@@ -1418,8 +1440,9 @@ export async function create(canvas, ctx) {
       emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
     } else retarget(650); // the camera pulls back to watch it
   };
-  // ── Shot down: the hunters' lasers took the last of the shields ──
-  const startDestroyed = () => {
+  // ── Shot down: the hunters' lasers (or another pilot's, `by`) took the
+  // last of the shields ──
+  const startDestroyed = (by = null) => {
     const s = state.ship;
     const from = new THREE.Vector3(s.x, s.y, s.z);
     state.crash = {
@@ -1445,13 +1468,16 @@ export async function create(canvas, ctx) {
     burst.clear();
     hunters?.clear();
     engine?.set({ speed: 0, boost: false, on: false });
+    if (by) net?.down(by); // everyone hears who got you
     emit({ type: 'destroyed' });
     retarget(650);
   };
 
-  // a laser into the shields: down they go (shot down at nothing left)
-  const hurt = (damage) => {
+  // a laser into the shields: down they go (shot down at nothing left).
+  // `by`: the pilot whose shot it was, if it was one
+  const hurt = (damage, by = null) => {
     if (state.crash || !state.ship) return;
+    if (by && state.clock < state.safeUntil) return;
     state.shield = Math.max(0, state.shield - damage);
     state.hitAt = state.clock;
     state.hurt = 1;
@@ -1461,7 +1487,28 @@ export async function create(canvas, ctx) {
       state.lowSaid = true;
       emit({ type: 'shields' });
     }
-    if (state.shield <= 0) startDestroyed();
+    if (state.shield <= 0) startDestroyed(by);
+  };
+
+  // what the link to the other pilots reports: their hits on you, and
+  // someone going down (a pop where they were; yours, if it was your shot)
+  const onNet = (e) => {
+    if (e.type === 'hit') hurt(e.damage, e.from);
+    else if (e.type === 'downed') {
+      const at = pilots.at(e.id);
+      if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
+      if (e.by && e.by === net?.selfId) {
+        emit({ type: 'kill', kind: 'pilot' });
+        if (!reduced) state.shake = Math.max(state.shake, 0.2);
+      }
+    }
+    ctx.invalidate();
+  };
+  const setNet = (client) => {
+    if (client === net) return;
+    netOff?.();
+    net = client ?? null;
+    netOff = net?.on(onNet) ?? null;
   };
 
   // whose universe each ship flies in (Walt and Jesse's RV: both)
@@ -1773,6 +1820,7 @@ export async function create(canvas, ctx) {
     }
     if (age >= T.done) {
       state.crash = null;
+      state.safeUntil = state.clock + SAFE;
       m.group.scale.setScalar(1);
       m.group.visible = true;
       state.lastInput = performance.now();
@@ -1857,7 +1905,7 @@ export async function create(canvas, ctx) {
     // the guns: what they're locked on to (a tick as they pick one up),
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
-    const cands = hunters?.targets ?? [];
+    const cands = pilots.count ? [...(hunters?.targets ?? []), ...pilots.targets] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = false;
@@ -2082,6 +2130,12 @@ export async function create(canvas, ctx) {
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
+    // the other pilots: where you are, out to them; where they are, drawn
+    if (net) {
+      const s = flying() ? state.ship : null;
+      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+    }
+    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null });
     placeHud();
     // the sky and the far stars stay round the camera, wherever it flies;
     // the dust rides with it too, and shows while you fly (more, the faster)
@@ -2113,7 +2167,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -2279,11 +2333,12 @@ export async function create(canvas, ctx) {
   canvas.addEventListener('pointerleave', onLeave);
 
   setShip(props.ship ?? null);
+  setNet(props.net);
   paintStates();
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, state };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -2301,6 +2356,8 @@ export async function create(canvas, ctx) {
       heat: +state.heat.toFixed(2),
       hunters: hunters?.packs ?? [],
       lock: state.lock?.id ?? null,
+      pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, kind: p.kind, at: p.at.toArray().map((v) => +v.toFixed(2)) })),
+      online: net?.snapshot().status ?? null,
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
       last,
@@ -2320,6 +2377,7 @@ export async function create(canvas, ctx) {
     update(next) {
       props = next;
       setShip(next.ship ?? null);
+      setNet(next.net);
       select(next.selected ?? null);
       if (next.frozen) {
         endDrag();
@@ -2423,6 +2481,8 @@ export async function create(canvas, ctx) {
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();
+      netOff?.();
+      pilots.dispose();
       pieces.dispose();
       fleet.dispose();
       deep.dispose();

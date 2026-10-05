@@ -15,11 +15,13 @@ import MiniMap from './MiniMap';
 // Fire, View (the cockpit or behind the ship) and climb and dive buttons on
 // touch screens and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
-// if 3D is off, fails or is lost, the flat MiniMap takes the box.
+// if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
+// the other pilots' callsigns ride over their ships (the scene moves them).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, onEvent, onLand, onCrash }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, net = null, onEvent, onLand, onCrash }) {
   const labels = useRef({});
+  const tags = useRef(null);
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
@@ -38,6 +40,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       alt,
       shield,
       hud,
+      net,
+      tags,
       frozen,
       onPick: onSelect,
       onOpen,
@@ -132,6 +136,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               </li>
             ))}
           </ul>
+          <div ref={tags} className="universe-tags" aria-hidden="true" />
           {ship && on && (
             <>
               <div ref={stick} className="universe-stick" aria-hidden="true">

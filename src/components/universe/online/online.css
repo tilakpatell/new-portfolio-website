@@ -1,0 +1,247 @@
+/* Multiplayer on the universe map: the other pilots' callsigns over their
+   ships (moved by the scene), and the corner with who's online */
+
+.universe-tags {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.universe-page[data-leaving] .universe-tags { opacity: 0; transition: opacity 0.2s; }
+.universe-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -100%;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.6);
+  color: #ff9a85;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.universe-tag[data-on] { display: flex; }
+.universe-tag[data-ally] { color: #8dffad; }
+.universe-tag > b { font-weight: 500; }
+.universe-tag > i {
+  display: none;
+  width: 38px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, currentColor calc(var(--shield, 1) * 100%), rgb(255 255 255 / 0.15) 0);
+}
+.universe-tag[data-hurt] > i { display: block; }
+
+.universe-online {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(340px, calc(100% - var(--panel-w) - 64px));
+  pointer-events: none;
+}
+.universe-online > * { pointer-events: auto; }
+/* every other page, once online: fixed in the window's corner */
+.universe-online[data-floating] {
+  position: fixed;
+  z-index: 56;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 32px);
+}
+.universe-online[data-floating] .universe-online-card { max-height: calc(100vh - 170px); }
+.universe-online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0 0.95rem 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgb(6 8 16 / 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.universe-online-pill:hover { border-color: var(--muted); }
+.universe-online-pill:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.universe-online-short { display: none; }
+.universe-online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.universe-online-dot[data-status='online'] { background: #5cff8a; box-shadow: 0 0 8px rgb(92 255 138 / 0.7); }
+.universe-online-dot[data-status='connecting'] { background: #ffd35c; animation: universe-online-blink 1s steps(2) infinite; }
+.universe-online-dot[data-status='failed'] { background: #ff5c5c; }
+@keyframes universe-online-blink { 50% { opacity: 0.3; } }
+.universe-online-badge {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #8dffad;
+  color: #04120a;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.universe-online-feed { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.universe-online-feed:empty { display: none; }
+.universe-online-note {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border-left: 2px solid var(--muted);
+  border-radius: 8px;
+  background: rgb(6 8 16 / 0.82);
+  color: var(--text);
+  font-size: 0.8rem;
+  animation: universe-online-in 0.25s ease-out;
+}
+.universe-online-note[data-tone='join'] { border-color: #7cc8ff; }
+.universe-online-note[data-tone='ally'] { border-color: #8dffad; }
+.universe-online-note[data-tone='kill'] { border-color: #ff7a5c; }
+@keyframes universe-online-in { from { opacity: 0; translate: 0 6px; } }
+
+.universe-online-card {
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--nav-h, 68px) - 140px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: rgb(6 8 16 / 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.45);
+}
+.universe-online-head { display: flex; align-items: center; justify-content: space-between; margin: -0.25rem -0.4rem 0.35rem 0; }
+.universe-online-head .eyebrow { margin: 0; }
+.universe-online-x { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--muted); }
+.universe-online-x:hover { color: var(--text); background: rgb(255 255 255 / 0.06); }
+.universe-online-title { color: var(--text); font-size: 1.1rem; font-weight: 600; line-height: 1.3; }
+.universe-online-text { margin: 0.5rem 0 0; font-size: 0.86rem; line-height: 1.5; }
+.universe-online-fine { margin: 0.8rem 0 0; color: var(--muted); font-size: 0.72rem; line-height: 1.5; }
+.universe-online-label { display: block; margin-top: 0.9rem; color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.universe-online-input {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 0.35rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.universe-online-input:focus { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.universe-online-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+.universe-online-me { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.86rem; }
+.universe-online-me b { color: var(--text); font-weight: 600; }
+.universe-online-rename { display: flex; align-items: center; gap: 0.5rem; }
+.universe-online-rename .universe-online-input { margin-top: 0; }
+.universe-online-link { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; text-decoration: underline; text-underline-offset: 3px; }
+.universe-online-link:hover { color: var(--text); }
+.universe-online-link:focus-visible,
+.universe-online-act:focus-visible,
+.universe-online-x:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.universe-online-leave { display: block; margin-top: 1rem; }
+
+.universe-online-list { display: grid; gap: 0.4rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
+.universe-online-pilot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.universe-online-pilot[data-ally] { border-color: rgb(141 255 173 / 0.45); }
+.universe-online-pilot[data-blocked] { opacity: 0.6; }
+.universe-online-face { flex: none; width: 32px; height: 32px; border-radius: 50%; background: rgb(255 255 255 / 0.06); }
+.universe-online-who { display: grid; flex: 1; min-width: 0; }
+.universe-online-who b { overflow: hidden; color: var(--text); font-size: 0.86rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.universe-online-pilot[data-ally] .universe-online-who b { color: #8dffad; }
+.universe-online-who span { color: var(--muted); font-size: 0.72rem; line-height: 1.35; overflow-wrap: anywhere; }
+.universe-online-acts { display: flex; flex: none; align-items: center; gap: 0.4rem; }
+.universe-online-act {
+  min-height: 30px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.74rem;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.universe-online-act:hover { border-color: var(--muted); background: rgb(255 255 255 / 0.05); }
+.universe-online-act[data-yes] { border-color: rgb(141 255 173 / 0.6); color: #8dffad; }
+@media (pointer: coarse) {
+  .universe-online-act { min-height: 40px; }
+  .universe-online-pill { min-height: 44px; }
+}
+
+@media (max-width: 767px) {
+  .universe-online:not([data-floating]) { left: 12px; bottom: calc(var(--sheet-h) + 12px); max-width: calc(100% - 24px); }
+  /* just the count, clear of the View button */
+  .universe-online-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .universe-online-short { display: inline; }
+  .universe-online:not([data-floating]) .universe-online-card { max-height: calc(100vh - var(--nav-h, 68px) - var(--sheet-h) - 110px); }
+}
+/* the other pilots on your page, off the map: their pointers */
+.presence { position: fixed; inset: 0; z-index: 57; overflow: hidden; pointer-events: none; }
+.presence-pilot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  align-items: flex-start;
+  transition: transform 0.12s linear, opacity 0.3s;
+  will-change: transform;
+}
+.presence-pilot[data-on] { display: flex; }
+.presence-pilot[data-idle] { opacity: 0.45; }
+.presence-arrow { flex: none; fill: var(--who); stroke: #04060c; stroke-width: 1.2; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+.presence-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 12px 0 0 -2px;
+  padding: 2px 9px 2px 3px;
+  border: 1.5px solid var(--who);
+  border-radius: 999px;
+  background: #0b0f17;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+}
+.presence-tag b { font-weight: 500; }
+.presence-face { width: 20px; height: 20px; border-radius: 50%; }
+.presence-tag:not(:has(.presence-face)) { padding-left: 9px; }
+/* further up or down the page: at the edge, pointing the way */
+.presence-pilot[data-off] .presence-arrow { display: none; }
+.presence-pilot[data-off] .presence-tag { margin-top: 0; }
+.presence-pilot[data-off='up'] .presence-tag::before { content: '↑'; color: var(--who); }
+.presence-pilot[data-off='down'] .presence-tag::before { content: '↓'; color: var(--who); }
+/* reading on a phone: a marker at the left edge */
+.presence-pilot[data-touch] .presence-arrow { display: none; }
+.presence-pilot[data-touch] .presence-tag { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .presence-pilot { transition: none; }
+  .universe-online-note { animation: none; }
+  .universe-online-dot[data-status='connecting'] { animation: none; }
+}

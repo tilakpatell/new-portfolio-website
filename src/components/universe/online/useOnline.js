@@ -1,0 +1,116 @@
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { local } from '../../../lib/hooks';
+import { cleanName, randomCallsign } from './names';
+
+// Going online, for the whole site (OnlineProvider.jsx holds it, so the
+// link stays up from page to page): whether you are (asked once on the
+// universe map, then remembered for next time), your callsign and ship,
+// which page you're on, the link to the other pilots while you're on
+// (client.js, loaded only then; the universe scene and Presence.jsx read
+// it), who's here, and a short feed of what's happening (who came online or
+// came to your page, alliances, who shot down whom), each line gone after a
+// few seconds. Pages read it with useOnline().
+
+const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
+const NAME_KEY = 'tp-universe-callsign';
+const SHIP_KEY = 'tp-universe-ship'; // (crews.js's: the ship last flown)
+const FEED_MS = 6000;
+const FEED_MAX = 4;
+const OFF = { status: 'off', self: null, peers: [] };
+
+export const OnlineContext = createContext(null);
+export const useOnline = () => useContext(OnlineContext);
+
+export function useOnlineState(where) {
+  const [name, setName] = useState(() => cleanName(local.get(NAME_KEY)));
+  const [on, setOn] = useState(() => local.get(ONLINE_KEY) === 'on' && Boolean(name));
+  const [kind, setKind] = useState(() => (typeof local.get(SHIP_KEY) === 'string' ? local.get(SHIP_KEY) : null));
+  const [client, setClient] = useState(null);
+  const [room, setRoom] = useState(OFF);
+  const [feed, setFeed] = useState([]);
+  const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
+  const latest = useRef({ name, kind, where });
+  latest.current = { name, kind, where };
+
+  useEffect(() => {
+    if (!on) return undefined;
+    let c = null;
+    let off = null;
+    let gone = false;
+    const timers = new Set();
+    let n = 0;
+    setRoom({ ...OFF, status: 'connecting' });
+    import('./client')
+      .then(({ createClient }) => {
+        if (gone) return;
+        c = createClient(latest.current);
+        setClient(c);
+        setRoom(c.snapshot());
+        off = c.on((e) => {
+          if (e.type === 'status' || e.type === 'roster') setRoom(c.snapshot());
+          else if (e.type === 'feed') {
+            const item = { id: n++, text: e.text, tone: e.tone };
+            setFeed((f) => [...f.slice(1 - FEED_MAX), item]);
+            const t = setTimeout(() => {
+              timers.delete(t);
+              setFeed((f) => f.filter((x) => x !== item));
+            }, FEED_MS);
+            timers.add(t);
+          }
+        });
+      })
+      .catch(() => !gone && setRoom({ ...OFF, status: 'failed' }));
+    // closing the tab: out of the room at once, so no one's left waiting on a
+    // ghost; back again from the browser's back-forward cache: a fresh link
+    const bye = () => c?.leave();
+    const back = (e) => e.persisted && setAttempt((a) => a + 1);
+    window.addEventListener('pagehide', bye);
+    window.addEventListener('pageshow', back);
+    return () => {
+      gone = true;
+      window.removeEventListener('pagehide', bye);
+      window.removeEventListener('pageshow', back);
+      off?.();
+      c?.leave();
+      for (const t of timers) clearTimeout(t);
+      setClient(null);
+      setRoom(OFF);
+      setFeed([]);
+    };
+  }, [on, attempt]);
+
+  useEffect(() => {
+    client?.setProfile({ name, kind, where });
+  }, [client, name, kind, where]);
+
+  const keepName = (callsign) => {
+    const next = cleanName(callsign) ?? name ?? randomCallsign();
+    local.set(NAME_KEY, next);
+    setName(next);
+    return next;
+  };
+
+  return {
+    on,
+    name,
+    where,
+    client,
+    room,
+    feed,
+    setKind, // the universe page says which ship you fly
+    suggest: () => name ?? randomCallsign(),
+    goOnline(callsign) {
+      keepName(callsign);
+      local.set(ONLINE_KEY, 'on');
+      setOn(true);
+    },
+    goOffline() {
+      local.set(ONLINE_KEY, 'off');
+      setOn(false);
+    },
+    retry: () => setAttempt((a) => a + 1),
+    rename: keepName,
+    ally: (id, what) => client?.ally(id, what),
+    block: (id, yes) => client?.block(id, yes),
+  };
+}

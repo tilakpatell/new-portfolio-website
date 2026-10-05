@@ -14,6 +14,8 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
+import Online from '../components/universe/online/Online';
+import { useOnline } from '../components/universe/online/useOnline';
 
 const PORTAL = '#97ce4c';
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
@@ -26,6 +28,8 @@ const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put awa
 // recolours as you go. Fly into a planet too fast and the crash takes you
 // into its page; fall into the black hole out in deep space and you're
 // through to a friend's universe, their own site (deep.js's `beyond`).
+// Gone online (online/), everyone else flying it right then is there too,
+// in their own ships: allies, or fair game.
 export default function Universe({ ask = false }) {
   const atRoot = useLocation().pathname === '/';
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
@@ -37,6 +41,9 @@ export default function Universe({ ask = false }) {
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
+  const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
+  const { setKind } = online;
+  useEffect(() => setKind(ship), [setKind, ship]);
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   // the panel, put away to give the map the room (remembered between visits)
@@ -157,11 +164,13 @@ export default function Universe({ ask = false }) {
         handle={map}
         frozen={Boolean(leaving)}
         ship={ship}
+        net={online.client}
         onEvent={(e) => comms.current?.handle(e)}
         onLand={enter}
         onCrash={crashInto}
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel universe={universe} onSelect={select} onEnter={enter} onWhole={whole} leaving={Boolean(leaving)} ship={ship} onShip={pickShip} onStartOn={startOn} tucked={tucked} onTuck={tuck} />
       {asking && <StartChoice onPick={start} />}
       <div className="universe-fade" aria-hidden="true" style={{ background: fade }} />
