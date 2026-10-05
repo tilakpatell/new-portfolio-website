@@ -732,6 +732,8 @@ export const SWING = {
   letGo: 1.25, // that far past the anchor, the web would only pull him back: he lets go
   zip: { speed: 11, up: 3, cool: 0.6, charges: 2, max: 30, reach: 20 }, // a web zip: +11 m/s forward, two per flight
   corner: { turn: 1, reach: 28, out: 2.5, whip: 3, time: 0.6, cool: 1 }, // a corner swing: steer this hard (rad) near a corner, and the web goes to it
+  point: { reach: 45, speed: 32, accel: 70, launch: { out: 15, up: 11 }, window: 0.6 }, // a point launch: zip to a perch, jump off it
+  glide: { sink: 3, speed: 15, push: 6, turn: 0.9, above: 3 }, // web wings: held web, nothing to catch, falling
   climb: 4.2, // up a wall (m/s), and with Shift
   climbRun: 7,
   wallRun: { carry: 0.75, min: 8, max: 16, fade: 9 }, // the speed he hits a wall with, carried up it
@@ -751,7 +753,10 @@ export const newHero = (at = START) => ({
   speed: 0,
   running: false,
   air: false,
-  mode: 'ground', // ground | air | swing | wall
+  mode: 'ground', // ground | air | swing | wall | zipto | perch
+  to: null, // a point launch's perch: { x, y, z, roof }
+  perchT: 0, // after landing on a perch: a jump now is a point launch
+  glide: false, // web wings out
   web: null, // { a: the point he swings about, at: where it sticks, len, target, hand }
   wall: null, // { id, nx, nz }: the solid he's on, and the way out of it
   airT: 0,
@@ -774,7 +779,7 @@ export const newHero = (at = START) => ({
 // One step. `move` is where the visitor wants to go, already turned to the
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
 // `jump` (a press, not a hold), `web` (the jump button, held) and `zip` (a press).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false } = {}, dt) {
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -787,11 +792,17 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
   const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip };
-  if (h.mode === 'wall') stepWall(h, i, dt);
+  h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
+  // a point launch: to the perch ahead
+  if (perch && h.mode !== 'zipto') pointLaunch(h, i);
+  if (h.mode === 'zipto') stepZipTo(h, dt);
+  else if (h.mode === 'perch') stepPerch(h, i, dt);
+  else if (h.mode === 'wall') stepWall(h, i, dt);
   else if (h.mode === 'ground') stepGround(h, i, dt);
   else stepAir(h, i, dt);
   // on something solid again: the zips come back
-  if (h.mode === 'ground' || h.mode === 'wall') h.zips = SWING.zip.charges;
+  if (h.mode === 'ground' || h.mode === 'wall' || h.mode === 'perch') h.zips = SWING.zip.charges;
+  if (h.mode !== 'air') h.glide = false;
   h.held = Boolean(web);
   h.air = h.mode !== 'ground';
   return h;
@@ -844,6 +855,10 @@ function stepGround(h, { mx, mz, len, run, jump }, dt) {
   h.web = null;
   h.wall = null;
   h.runUp = 0;
+  if (jump && h.perchT > 0) {
+    launchOff(h, { mx, mz, len });
+    return;
+  }
   if (jump) {
     h.mode = 'air';
     h.vy = HERO.jump - HERO.gravity * dt;
@@ -951,6 +966,106 @@ export const CORNERS = (() => {
   return out;
 })();
 
+// Where a point launch can land him: the masts' and flagpoles' tops, and the
+// roofs' corners. { x, y, z, roof } (roof: it's a roof he can walk on from there)
+export const PERCHES = [
+  ...MASTS.map((m) => ({ x: m.x, y: MAST_H + 0.95, z: m.z, roof: false })),
+  ...FLAGS.map((f) => ({ x: f.x, y: FLAG_H + 0.5, z: f.z, roof: false })),
+  ...CORNERS.map((c) => ({ x: c.x - c.nx * 0.7, y: c.h, z: c.z - c.nz * 0.7, roof: true })),
+];
+
+// The perch a point launch would go to: ahead of him (where you steer, or he
+// faces), in reach, the nearer the straighter ahead, with nothing in the way.
+export function findPerch(h, { mx = 0, mz = 0, len = 0 } = {}) {
+  let fx = len > 0.1 ? mx : Math.cos(h.face);
+  let fz = len > 0.1 ? mz : -Math.sin(h.face);
+  const l = Math.hypot(fx, fz) || 1;
+  fx /= l;
+  fz /= l;
+  let best = null;
+  for (const p of PERCHES) {
+    const rx = p.x - h.x;
+    const rz = p.z - h.z;
+    const d = Math.hypot(rx, p.y - h.y, rz);
+    if (d < 4 || d > SWING.point.reach) continue;
+    const hd = Math.hypot(rx, rz) || 1;
+    const ahead = (rx * fx + rz * fz) / hd;
+    if (ahead < 0.55) continue;
+    const score = d * (2 - ahead);
+    if (best && score >= best.score) continue;
+    if (!clearLine(h.x, h.y + 1.2, h.z, p.x, p.y + 0.5, p.z)) continue;
+    best = { p, score };
+  }
+  return best?.p ?? null;
+}
+
+// A point launch: a web out to the perch, and he's pulled to it.
+function pointLaunch(h, i) {
+  const p = findPerch(h, i);
+  if (!p) return;
+  h.to = { ...p };
+  h.web = null;
+  h.wall = null;
+  h.glide = false;
+  h.mode = 'zipto';
+  h.fly = true;
+  h.ev.push({ type: 'point', at: [p.x, p.y + 0.3, p.z] });
+}
+
+function stepZipTo(h, dt) {
+  const P = SWING.point;
+  const t = h.to;
+  const dx = t.x - h.x;
+  const dy = t.y - h.y;
+  const dz = t.z - h.z;
+  const d = Math.hypot(dx, dy, dz);
+  const sp = Math.min(P.speed, Math.hypot(h.vx, h.vy, h.vz) + P.accel * dt);
+  if (d <= sp * dt + 0.3) {
+    // there: on top of it
+    Object.assign(h, { x: t.x, y: t.y, z: t.z, vx: 0, vy: 0, vz: 0, mode: t.roof ? 'ground' : 'perch', to: null, fly: false, perchT: P.window, speed: 0 });
+    h.ev.push({ type: 'perched' });
+    return;
+  }
+  h.vx = (dx / d) * sp;
+  h.vy = (dy / d) * sp;
+  h.vz = (dz / d) * sp;
+  h.x += h.vx * dt;
+  h.y += h.vy * dt;
+  h.z += h.vz * dt;
+  turnTo(h, dx, dz, 10, dt);
+  h.speed = sp;
+}
+
+// On a perch (a mast's or a flagpole's top): crouched there until he jumps
+// (a point launch, forward and up), webs off, or steps off.
+function stepPerch(h, { mx, mz, len, jump, web }, dt) {
+  h.airT = 0;
+  h.vx = h.vy = h.vz = 0;
+  h.speed = 0;
+  if (len > 0.05) turnTo(h, mx, mz, HERO.turn, dt);
+  if (jump) launchOff(h, { mx, mz, len });
+  else if (web && !h.held) {
+    h.mode = 'air';
+    h.fly = true;
+  } else if (len > 0.6 && h.perchT <= 0) {
+    // off the edge
+    h.mode = 'air';
+    h.vx = mx * 3;
+    h.vz = mz * 3;
+  }
+}
+
+// Off a perch with a jump: the point launch, out and up
+function launchOff(h, { mx, mz, len }) {
+  const L = SWING.point.launch;
+  const dx = len > 0.1 ? mx : Math.cos(h.face);
+  const dz = len > 0.1 ? mz : -Math.sin(h.face);
+  const l = Math.hypot(dx, dz) || 1;
+  Object.assign(h, { mode: 'air', fly: true, vx: (dx / l) * L.out, vz: (dz / l) * L.out, vy: L.up, perchT: 0, airT: 0 });
+  h.face = Math.atan2(-dz, dx);
+  h.ev.push({ type: 'launch' });
+}
+
 // A corner swing: steering hard (the stick well off the way he's going) with
 // a building's corner ahead on that side, the web goes to the top of the
 // corner and he whips round it, as Insomniac's corner swings do.
@@ -1049,6 +1164,13 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
   if (h.web && !web) letGo(h);
   else if (!h.web && web && h.rearm <= 0 && (!h.held || h.airT >= SWING.arm)) attach(h, turn);
   if (zip && !h.web && h.zips > 0 && h.zipT <= 0) webZip(h, { mx, mz, len });
+  // web wings: the web held, nothing in reach to catch, and a way down to fall
+  const wasGliding = h.glide;
+  h.glide = !h.web && web && (h.vy < -2.5 || h.glide) && h.y - floorAt(h.x, h.z, h.y) > SWING.glide.above;
+  if (h.glide) {
+    h.fly = true;
+    if (!wasGliding) h.ev.push({ type: 'glide' });
+  }
   // steering hard round a building's corner: the web goes to the corner, and he whips round it
   if (h.web && turn && h.cornerT <= -SWING.corner.cool) cornerSwing(h, turn);
   const w = h.web;
@@ -1068,8 +1190,21 @@ function stepAir(h, { mx, mz, len, run, web, zip }, dt) {
     vx += (mx * top - vx) * grip;
     vz += (mz * top - vz) * grip;
   }
-  // gravity, and a beat of hang time at the top of a flight
-  vy -= HERO.gravity * (h.fly && !w && Math.abs(vy) < 3 ? SWING.hang : 1) * dt;
+  if (h.glide) {
+    // web wings: the fall slowed to a glide, and on along the way he's going
+    const G = SWING.glide;
+    vy += (-G.sink - vy) * Math.min(1, 3 * dt);
+    const hs = Math.hypot(vx, vz) || 1;
+    const dx = hs > 1 ? vx / hs : Math.cos(h.face);
+    const dz = hs > 1 ? vz / hs : -Math.sin(h.face);
+    if (hs < G.speed) {
+      vx += dx * G.push * dt;
+      vz += dz * G.push * dt;
+    }
+  } else {
+    // gravity, and a beat of hang time at the top of a flight
+    vy -= HERO.gravity * (h.fly && !w && Math.abs(vy) < 3 ? SWING.hang : 1) * dt;
+  }
   let sp = Math.hypot(vx, vy, vz);
   // air resistance, more the faster he goes
   const drag = Math.exp(-SWING.drag * sp * dt);
@@ -1491,12 +1626,12 @@ export function outside(p) {
 export const RING_R = 3.2;
 export const TOUR = (() => {
   const at = [
-    [96, 8, 100],
+    [96, 5, 100],
     [84, 11, 66],
     [64, 8.5, 56],
     [64.5, 7, 41.5],
     [63, 11, 15],
-    [95, 15, 6],
+    [95, 12, 6],
     [127, 31.5, 27],
     [140, 13, 60],
     [178, 10, 66],

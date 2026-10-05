@@ -425,6 +425,20 @@
       "galaxy"
     ]
   },
+  "surface-ahsokafig": {
+    "title": "Ahsoka Tano",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ahsoka-tano-6979913cf90342ffa37b1151641babd2",
+    "where": "galaxy-surface",
+    "as": "Ahsoka Tano",
+    "file": "/models/galaxy/surface/ahsokafig.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-airspeeder": {
     "title": "Star Wars Galaxies - XJ-6 Airspeeder",
     "author": "Zorg_Sinister",
@@ -621,6 +635,20 @@
       "galaxy"
     ]
   },
+  "surface-dejarik": {
+    "title": "Star Wars Dejarik",
+    "author": "VikoizBeast",
+    "authorUrl": "https://sketchfab.com/VikoizBeast",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-dejarik-49790bf56ec74e5c82b8ef462ae7ab68",
+    "where": "galaxy-surface",
+    "as": "the dejarik tables",
+    "file": "/models/galaxy/surface/dejarik.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-dewback": {
     "title": "Dewback",
     "author": "michael50",
@@ -631,6 +659,20 @@
     "where": "galaxy-surface",
     "as": "the dewbacks",
     "file": "/models/galaxy/surface/dewback.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dindjarin": {
+    "title": "Star Wars The Mandalorian Din Djarin",
+    "author": "horuschild",
+    "authorUrl": "https://sketchfab.com/horuschild",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-the-mandalorian-din-djarin-e70db49d54f04cdfbdbbd2e36f84f0a6",
+    "where": "galaxy-surface",
+    "as": "the Mandalorian",
+    "file": "/models/galaxy/surface/dindjarin.glb",
     "also": [
       "galaxy"
     ]
@@ -691,6 +733,34 @@
       "galaxy"
     ]
   },
+  "surface-gonk": {
+    "title": "GNK Droid",
+    "author": "Alana G",
+    "authorUrl": "https://sketchfab.com/alanaguidry05",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/gnk-droid-99e5fe9631d74b0aaa3ff0b8223c72d3",
+    "where": "galaxy-surface",
+    "as": "the gonk droids",
+    "file": "/models/galaxy/surface/gonk.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-grogu": {
+    "title": "Baby Yoda (Grogu)",
+    "author": "mister dude",
+    "authorUrl": "https://sketchfab.com/misterdude",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/baby-yoda-grogu-485192995fea4845a92b3fd92b8b188e",
+    "where": "galaxy-surface",
+    "as": "Grogu",
+    "file": "/models/galaxy/surface/grogu.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-gungan": {
     "title": "Jar Jar Binks",
     "author": "Mind Mulch for The Masses",
@@ -705,6 +775,34 @@
       "galaxy"
     ]
   },
+  "surface-ig11": {
+    "title": "IG-88",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ig-88-a692ce1902b44511992b47b8f4672e61",
+    "where": "galaxy-surface",
+    "as": "IG-11",
+    "file": "/models/galaxy/surface/ig11.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jabba": {
+    "title": "Jabba",
+    "author": "Stym",
+    "authorUrl": "https://sketchfab.com/Stym",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/jabba-524e1fcf8c774573b5b15496efc4f572",
+    "where": "galaxy-surface",
+    "as": "Jabba the Hutt",
+    "file": "/models/galaxy/surface/jabba.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-jawa": {
     "title": "SM_jawa",
     "author": "michael50",
@@ -715,20 +813,6 @@
     "where": "galaxy-surface",
     "as": "the Jawas",
     "file": "/models/galaxy/surface/jawa.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-jedihut": {
-    "title": "Refectory, Skellig Michael, Co Kerry, Ireland",
-    "author": "amasinton",
-    "authorUrl": "https://sketchfab.com/amasinton",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/refectory-skellig-michael-co-kerry-ireland-3babf7e7bd1d4835aac1e118f1f2506b",
-    "where": "galaxy-surface",
-    "as": "the Jedi village huts",
-    "file": "/models/galaxy/surface/jedihut.glb",
     "also": [
       "galaxy"
     ]
@@ -757,6 +841,20 @@
     "where": "galaxy-surface",
     "as": "the Kaminoans",
     "file": "/models/galaxy/surface/kaminoan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-kuiil": {
+    "title": "Kuiil",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/kuiil-d9baac7f1b744086854b3cfd201497d1",
+    "where": "galaxy-surface",
+    "as": "Kuiil",
+    "file": "/models/galaxy/surface/kuiil.glb",
     "also": [
       "galaxy"
     ]
@@ -803,6 +901,20 @@
       "galaxy"
     ]
   },
+  "surface-mudhorn": {
+    "title": "Mudhorn",
+    "author": "NexusSpeedster",
+    "authorUrl": "https://sketchfab.com/nexusfnf",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mudhorn-4898a1f161a94bee9b73e86cfa088444",
+    "where": "galaxy-surface",
+    "as": "the mudhorn",
+    "file": "/models/galaxy/surface/mudhorn.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-palm": {
     "title": "Coconut Tree Low poly",
     "author": "Nodeaxis Interactive",
@@ -831,20 +943,6 @@
       "galaxy"
     ]
   },
-  "surface-porg": {
-    "title": "Porg",
-    "author": "Mind Mulch for The Masses",
-    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/porg-df73eb95169b4f3882bcde58dec58ae7",
-    "where": "galaxy-surface",
-    "as": "the porgs",
-    "file": "/models/galaxy/surface/porg.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-probe": {
     "title": "SWBF2 - Viper Droid",
     "author": "jay2307",
@@ -869,6 +967,62 @@
     "where": "galaxy-surface",
     "as": "R2-D2",
     "file": "/models/galaxy/surface/r2d2.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-rancor": {
+    "title": "Rancor star wars",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/rancor-star-wars-983d578002d74691a3da6a5aad700a6c",
+    "where": "galaxy-surface",
+    "as": "the rancor",
+    "file": "/models/galaxy/surface/rancor.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-razorcrest": {
+    "title": "Razor Crest - Star Wars",
+    "author": "Quiznos323",
+    "authorUrl": "https://sketchfab.com/quiznos323",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/razor-crest-star-wars-172cb62cc1e141cfae4c48440c348de0",
+    "where": "galaxy-surface",
+    "as": "the Razor Crest",
+    "file": "/models/galaxy/surface/razorcrest.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-sailbarge": {
+    "title": "The Khetanna (Jabba's party barge) diecast",
+    "author": "dandruffkielbasa",
+    "authorUrl": "https://sketchfab.com/dandruffkielbasa",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/the-khetanna-jabbas-party-barge-diecast-47acb5ba43f74bba9c904c9c3bd5d83b",
+    "where": "galaxy-surface",
+    "as": "Jabba's sail barge",
+    "file": "/models/galaxy/surface/sailbarge.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-salacious": {
+    "title": "Crumb",
+    "author": "Ian Sayers",
+    "authorUrl": "https://sketchfab.com/ians",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/crumb-60b4c93af8644d21992a5ee6bd60af31",
+    "where": "galaxy-surface",
+    "as": "Salacious B. Crumb",
+    "file": "/models/galaxy/surface/salacious.glb",
     "also": [
       "galaxy"
     ]
@@ -911,20 +1065,6 @@
     "where": "galaxy-surface",
     "as": "the snowspeeders",
     "file": "/models/galaxy/surface/snowspeeder.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-snowtrooper": {
-    "title": "Snow Trooper || Episode VIII: TLJ",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/snow-trooper-episode-viii-tlj-751b09d5b8aa49d4809a94676190ea2b",
-    "where": "galaxy-surface",
-    "as": "the snowtroopers",
-    "file": "/models/galaxy/surface/snowtrooper.glb",
     "also": [
       "galaxy"
     ]

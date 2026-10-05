@@ -6,7 +6,7 @@
 // light across it (wind-blown sand, wind-scoured snow) and grain close up.
 // It takes the scene's light, shadows and fog like anything else (it's a
 // MeshStandardMaterial underneath). `marks` is a texture over the walkable
-// square that tints where something's been (the red under Crait's salt,
+// square that tints where something's been (the dark under a footprint,
 // footprints in the snow): the scene paints into it.
 //
 // palette: { low, high, rock, accent, deep? } colours; hLow, hHigh: the
