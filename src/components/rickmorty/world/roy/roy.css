@@ -23,6 +23,8 @@
   touch-action: manipulation;
 }
 .roy-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* for a screen reader only */
+.roy-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* the headset: faint scan lines and the lens's dark edge */
 .roy-lens {
@@ -131,7 +133,8 @@
 .roy-slots i[data-state='hit'] { background: var(--roy-green); }
 .roy-slots i[data-state='miss'] { background: var(--roy-red); }
 .roy-timing { position: relative; height: 12px; border: 2px solid var(--roy-ink); border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
-.roy-timing-band { position: absolute; top: 0; bottom: 0; left: 36%; width: 28%; background: rgba(151, 206, 76, 0.35); }
+/* the hit band: |phase| < band, on a meter from -1 to 1 (--band is set from the rules) */
+.roy-timing-band { position: absolute; top: 0; bottom: 0; left: calc((1 - var(--band)) * 50%); width: calc(var(--band) * 100%); background: rgba(151, 206, 76, 0.35); }
 .roy-timing[data-hot='1'] .roy-timing-band { background: rgba(201, 255, 90, 0.85); box-shadow: 0 0 10px rgba(201, 255, 90, 0.8); }
 .roy-timing-dot { position: absolute; top: -4px; width: 6px; height: 16px; margin-left: -3px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 2px var(--roy-ink); }
 .roy-x { display: flex; gap: 0.2rem; }
@@ -230,7 +233,8 @@
 .roy-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; width: 100%; }
 .roy-choose { position: relative; display: grid; align-content: start; justify-items: start; gap: 0.35rem; min-height: 8.5rem; padding: 0.9rem 0.9rem 0.8rem; border: 3px solid var(--roy-ink); border-radius: 14px; background: #eef7e2; color: var(--roy-ink); text-align: left; box-shadow: 0 5px 0 var(--roy-ink); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
 .roy-choose[data-route='offgrid'] { background: #e6f0dc; }
-.roy-choose:hover, .roy-choose:focus-visible { transform: translateY(-3px) rotate(-0.6deg); box-shadow: 0 8px 0 var(--roy-ink); background: #d9ffb8; outline: none; }
+.roy-choose:hover, .roy-choose:focus-visible { transform: translateY(-3px) rotate(-0.6deg); box-shadow: 0 8px 0 var(--roy-ink); background: #d9ffb8; }
+.roy-choose:focus-visible { outline: 3px solid var(--roy-cyan); outline-offset: 3px; }
 .roy-choose kbd { position: absolute; top: 0.55rem; right: 0.6rem; margin: 0; border-color: var(--roy-ink); background: var(--roy-ink); }
 .roy-choose strong { padding-right: 1.8rem; font: 900 1rem/1.15 var(--font-sans, sans-serif); }
 .roy-choose span { font-size: 0.84rem; line-height: 1.35; color: #3a3346; }
@@ -252,6 +256,7 @@
 
 .roy-loading { gap: 0.8rem; align-content: center; font: 700 0.9rem/1.4 var(--font-sans, sans-serif); color: rgba(220, 255, 200, 0.85); background: #021006; }
 .roy-loading p { margin: 0; }
+.roy-loading-out { margin-top: 0.6rem; }
 .roy-loading-bar { display: block; width: min(240px, 60vw); height: 3px; overflow: hidden; border-radius: 2px; background: rgba(151, 206, 76, 0.18); }
 .roy-loading-bar::after { content: ''; display: block; width: 40%; height: 100%; background: var(--roy-green); animation: roy-load 1s ease-in-out infinite; }
 @keyframes roy-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }

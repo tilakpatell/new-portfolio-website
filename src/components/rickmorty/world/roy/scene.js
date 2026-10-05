@@ -16,16 +16,16 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../../lib/stage3d';
-import { budget } from '../../../../lib/device';
+import { budget, device } from '../../../../lib/device';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { InkPass, toon } from '../../portal/toon';
 import { at, batch, hipRoof, kitMaterials, paint, rng, speckle } from '../kit';
 import { makeSky } from '../sky';
-import { ageOf } from './rules';
+import { TUNING, ageOf, beatWindow, inBand } from './rules';
 
-// rules.js keeps these to itself; the drawing needs them to place things
-const SHOW = { band: 0.28, throws: 5, goal: 100, clock: 16, patience: 4, beat: 0.75, window: 0.16, need: 12, offbeats: 6, limit: 24, swing: 0.62 };
+const { kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER } = TUNING;
+const SWING = 0.62; // how far the tire swings either way at the end of its rope (radians)
 
 const INK = '#1b1424';
 // the three carpets (the aisles, the rolls, the swatches), told apart by pattern as well as colour
@@ -851,7 +851,7 @@ function eyes(f, { look = [0, 0], shut = 0 } = {}) {
     if (!e) continue;
     e.scale.y = e.userData.sy * (1 - 0.88 * shut);
     const p = f.pupils[i];
-    p.visible = shut < 0.6;
+    p.visible = f.faceOn && shut < 0.6;
     p.position.x = p.userData.x + look[0] * 0.014;
     p.position.y = p.userData.y + look[1] * 0.012;
   }
@@ -859,8 +859,8 @@ function eyes(f, { look = [0, 0], shut = 0 } = {}) {
 
 function mood(f, m) {
   if (!f.mouth) return;
-  f.mouth.visible = m !== 'o';
-  f.mouthO.visible = m === 'o';
+  f.mouth.visible = f.faceOn && m !== 'o';
+  f.mouthO.visible = f.faceOn && m === 'o';
   f.mouth.rotation.z = m === 'frown' ? 0 : Math.PI;
   f.mouth.position.y = m === 'frown' ? -0.085 : -0.06;
 }
@@ -886,6 +886,7 @@ function lookFor(i) {
 
 export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) {
   const fit = budget();
+  const tier = device().tier;
   const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, exposure: 1, bloom: { strength: 0.5, radius: 0.42, threshold: 1.05 }, onLost });
   const { renderer, scene, camera } = stage;
   // a tone map that keeps the show's flat bright colours bright
@@ -920,7 +921,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
   fx.name = 'fx';
   scene.add(fx);
   noInk.push(fx);
-  const ink = new InkPass(scene, camera, { hide: () => noInk, width: big ? 1.25 : 1 });
+  const inkSkip = []; // this frame's things too far off for a line (a stage fills it)
+  const ink = new InkPass(scene, camera, { hide: () => (inkSkip.length ? noInk.concat(inkSkip) : noInk), width: big ? 1.25 : 1 });
   stage.composer.insertPass(ink, 1);
   const over = new THREE.Scene();
   const overSun = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -951,7 +953,6 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     mouth: new THREE.TorusGeometry(0.034, 0.0075, 5, 12, Math.PI),
     horseshoe: new THREE.TorusGeometry(1, 0.2, 6, 18, Math.PI),
     rim: new THREE.TorusGeometry(0.044, 0.0065, 5, 16),
-    bar: new THREE.TorusGeometry(0.15, 0.011, 4, 14, Math.PI),
     box: new THREE.BoxGeometry(1, 1, 1),
     plane: new THREE.PlaneGeometry(1, 1),
     flat: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
@@ -963,6 +964,14 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     star: starGeometry(),
     heart: heartGeometry(),
     ring: new THREE.RingGeometry(0.82, 1, 48),
+    mask: (() => {
+      const bars = [-0.035, -0.08].map((y) => new THREE.TorusGeometry(0.15, 0.011, 4, 14, Math.PI).applyMatrix4(at(0, y, 0.02, 0, 1.02, 1.12, 1, Math.PI / 2)));
+      const upright = new THREE.BoxGeometry(1, 1, 1).applyMatrix4(at(0, -0.055, 0.185, 0, 0.014, 0.075, 0.014));
+      const g = mergeGeometries([...bars, upright]);
+      bars.forEach((x) => x.dispose());
+      upright.dispose();
+      return g;
+    })(),
   };
   owned.push(...Object.values(G));
   const shadowMat = new THREE.MeshBasicMaterial({ map: spot, color: 0x0b1410, transparent: true, depthWrite: false, opacity: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
@@ -975,7 +984,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     return m;
   };
 
-  const confetti = makeBits(fit.tier === 'low' ? 160 : 320, new THREE.PlaneGeometry(0.08, 0.13), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), { floor: 0.02 });
+  const confetti = makeBits(tier === 'low' ? 160 : 320, new THREE.PlaneGeometry(0.08, 0.13), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), { floor: 0.02 });
   const dust = makeBits(120, G.plane, new THREE.MeshBasicMaterial({ map: spot, transparent: true, depthWrite: false, opacity: 0.8 }), { billboard: true });
   const glow = makeBits(160, G.plane, new THREE.MeshBasicMaterial({ map: spot, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), { billboard: true, fade: true });
   fx.add(confetti.mesh, dust.mesh, glow.mesh);
@@ -1039,7 +1048,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     return g;
   }
 
-  function makeFigure({ face = true } = {}) {
+  function makeFigure({ face = true, shadows = true, lite = false } = {}) {
     const m = {
       skin: toon(SKIN),
       hair: toon(ROY_HAIR),
@@ -1051,11 +1060,12 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
       helmet: toon(0x1f4fa8),
       extra: toon(0xa0302c),
     };
-    const add = (geo, mat, parent, x = 0, y = 0, z = 0, sx = 1, sy = sx, sz = sx) => {
+    // `big` parts cast shadows; the small ones (hands, faces, hair, trim) don't
+    const add = (geo, mat, parent, x = 0, y = 0, z = 0, sx = 1, sy = sx, sz = sx, big = false) => {
       const o = new THREE.Mesh(geo, mat);
       o.position.set(x, y, z);
       o.scale.set(sx, sy, sz);
-      o.castShadow = true;
+      o.castShadow = shadows && big;
       parent.add(o);
       return o;
     };
@@ -1068,25 +1078,25 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     const root = new THREE.Group();
     const body = group(root);
     const hips = group(body, 0, 0.91, 0);
-    const pelvis = add(G.sph, m.trousers, hips, 0, 0.03, 0, 0.165, 0.11, 0.12);
+    const pelvis = add(G.sph, m.trousers, hips, 0, 0.03, 0, 0.165, 0.11, 0.12, true);
     const leg = (s) => {
       const hip = group(hips, s * 0.095, 0, 0);
-      add(G.thigh, m.trousers, hip, 0, -0.215, 0);
+      add(G.thigh, m.trousers, hip, 0, -0.215, 0, 1, 1, 1, true);
       const knee = group(hip, 0, -0.43, 0);
-      add(G.shin, m.shin, knee, 0, -0.22, 0);
+      add(G.shin, m.shin, knee, 0, -0.22, 0, 1, 1, 1, true);
       const foot = group(knee, 0, -0.43, 0);
-      add(G.sph, m.shoes, foot, 0, -0.005, 0.045, 0.072, 0.052, 0.125);
+      add(G.lo, m.shoes, foot, 0, -0.005, 0.045, 0.072, 0.052, 0.125);
       return { hip, knee, foot };
     };
     const legL = leg(1);
     const legR = leg(-1);
     const spine = group(hips);
-    const torso = add(G.torso, m.shirt, spine, 0, 0.3, 0, 1.08, 1, 0.74);
+    const torso = add(G.torso, m.shirt, spine, 0, 0.3, 0, 1.08, 1, 0.74, true);
     const chest = group(spine, 0, 0.5, 0);
     const arm = (s) => {
       const shoulder = group(chest, s * 0.2, 0, 0);
-      add(G.sph, m.shirt, shoulder, 0, -0.01, 0, 0.07);
-      add(G.upper, m.shirt, shoulder, 0, -0.15, 0);
+      if (!lite) add(G.lo, m.shirt, shoulder, 0, -0.01, 0, 0.07);
+      add(G.upper, m.shirt, shoulder, 0, -0.15, 0, 1, 1, 1, true);
       const elbow = group(shoulder, 0, -0.29, 0);
       add(G.fore, m.fore, elbow, 0, -0.13, 0);
       const hand = group(elbow, 0, -0.275, 0);
@@ -1095,14 +1105,14 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     };
     const armL = arm(1);
     const armR = arm(-1);
-    const pads = [1, -1].map((s) => add(G.sph, m.shirt, chest, s * 0.19, 0.02, 0, 0.13, 0.08, 0.14));
+    const pads = [1, -1].map((s) => add(G.lo, m.shirt, chest, s * 0.19, 0.02, 0, 0.13, 0.08, 0.14));
     const neck = group(chest, 0, 0.08, 0);
     add(G.neck, m.skin, neck, 0, 0.03, 0);
     const head = group(neck, 0, 0.07, 0);
     const H = 0.15;
     const hc = group(head, 0, H, 0);
-    add(G.sph, m.skin, hc, 0, 0, 0, H, H * 1.08, H * 0.98);
-    const f = { root, body, hips, spine, chest, neck, head, hc, legL, legR, armL, armR, torso, pelvis, pads, m, scale: 1, eyes: [], pupils: [], mouth: null, mouthO: null, parts: {} };
+    add(G.sph, m.skin, hc, 0, 0, 0, H, H * 1.08, H * 0.98, true);
+    const f = { root, body, hips, spine, chest, neck, head, hc, legL, legR, armL, armR, torso, pelvis, pads, m, scale: 1, eyes: [], pupils: [], mouth: null, mouthO: null, parts: {}, face: [], faceOn: true };
     const P = f.parts;
     if (face) {
       for (const s of [1, -1]) {
@@ -1111,14 +1121,15 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         const p = add(G.lo, pupilMat, hc, s * 0.046, 0.026, 0.158, 0.014, 0.014, 0.006);
         p.userData.x = s * 0.046;
         p.userData.y = 0.026;
-        p.castShadow = false;
         f.eyes.push(e);
         f.pupils.push(p);
-        add(G.box, m.hair, hc, s * 0.052, 0.098, 0.13, 0.05, 0.012, 0.012).rotation.z = s * -0.12;
-        add(G.sph, m.skin, hc, s * 0.148, 0, 0, 0.018, 0.035, 0.026);
+        const brow = add(G.box, m.hair, hc, s * 0.052, 0.098, 0.13, 0.05, 0.012, 0.012);
+        brow.rotation.z = s * -0.12;
+        f.face.push(e, brow, add(G.lo, m.skin, hc, s * 0.148, 0, 0, 0.018, 0.035, 0.026));
       }
-      add(G.sph, m.skin, hc, 0, -0.018, 0.15, 0.028, 0.026, 0.036);
+      f.face.push(add(G.lo, m.skin, hc, 0, -0.018, 0.15, 0.028, 0.026, 0.036));
       f.mouth = add(G.mouth, dark, hc, 0, -0.06, 0.135, 1, 1, 0.5);
+      f.face.push(f.mouth);
       f.mouth.rotation.z = Math.PI;
       f.mouthO = add(G.sph, dark, hc, 0, -0.07, 0.138, 0.022, 0.028, 0.01);
       f.mouthO.visible = false;
@@ -1161,24 +1172,16 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     const shell = new THREE.Mesh(G.helmet, m.helmet);
     shell.scale.set(0.182, 0.19, 0.192);
     shell.rotation.x = -0.28;
-    shell.castShadow = true;
+    shell.castShadow = shadows;
     P.helmet.add(shell);
-    const stripe = new THREE.Mesh(G.box, toon(0xffffff));
-    stripe.scale.set(0.03, 0.02, 0.3);
-    stripe.position.set(0, 0.175, -0.02);
-    stripe.rotation.x = -0.15;
-    P.helmet.add(stripe);
-    for (const y of [-0.035, -0.08]) {
-      const b = new THREE.Mesh(G.bar, metal);
-      b.position.set(0, y, 0.02);
-      b.rotation.x = Math.PI / 2;
-      b.scale.set(1.02, 1.12, 1);
-      P.helmet.add(b);
+    if (!lite) {
+      const stripe = new THREE.Mesh(G.box, toon(0xffffff));
+      stripe.scale.set(0.03, 0.02, 0.3);
+      stripe.position.set(0, 0.175, -0.02);
+      stripe.rotation.x = -0.15;
+      P.helmet.add(stripe);
     }
-    const vbar = new THREE.Mesh(G.box, metal);
-    vbar.scale.set(0.014, 0.075, 0.014);
-    vbar.position.set(0, -0.055, 0.185);
-    P.helmet.add(vbar);
+    P.helmet.add(new THREE.Mesh(G.mask, metal));
     hc.add(P.helmet);
     P.tie = add(G.box, m.extra, chest, 0, -0.17, 0.125, 0.045, 0.28, 0.02);
     P.tag = add(G.box, toon(0xffffff), chest, 0.085, -0.08, 0.122, 0.07, 0.035, 0.012);
@@ -1220,6 +1223,9 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     const vis = (k, on) => P[k] && (P[k].visible = Boolean(on));
     vis('helmet', o.helmet != null);
     const bare = o.helmet != null;
+    f.faceOn = !bare;
+    for (const x of [...f.face, ...f.pupils]) x.visible = !bare;
+    if (f.mouthO) f.mouthO.visible = false;
     vis('hairTop', !bare && !o.bald);
     vis('fringe', !bare && !o.bald);
     vis('sides', !bare);
@@ -1450,6 +1456,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     target.position.set(0, 0.03, TZ);
     target.scale.setScalar(0.7);
     g.add(target);
+    const targetOn = hot(0x9dff5a, 1.6);
+    const targetOff = new THREE.Color(0xffffff).multiplyScalar(0.35);
     noInk.push(target);
     // the bucket of balls, the balls thrown, the one in the air
     const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.19, 0.32, 14), mats.toon(0xc9a066));
@@ -1462,7 +1470,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
       f.rotation.set(0.6 + i, i * 1.3, 0.3);
       return f;
     });
-    const landed = Array.from({ length: SHOW.throws }, () => {
+    const landed = Array.from({ length: KID.throws }, () => {
       const f = football(g);
       f.visible = false;
       return f;
@@ -1513,13 +1521,13 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         const dreaming = life.t === 0;
         // the swing, the tire's jiggle when a ball goes through
         jiggle *= Math.exp(-dt * 3);
-        swing.rotation.z = s.phase * SHOW.swing;
+        swing.rotation.z = s.phase * SWING;
         tire.rotation.y = Math.sin(t * 18) * jiggle;
         tire.getWorldPosition(tirePos);
         tireShadow.position.set(tirePos.x, 0.02, tirePos.z);
-        const inBand = Math.abs(s.phase) < SHOW.band && s.throws < SHOW.throws && !dreaming;
-        target.material.color.copy(inBand ? hot(0x9dff5a, 1.6) : new THREE.Color(0xffffff).multiplyScalar(0.35));
-        target.scale.setScalar(inBand ? 0.78 : 0.7);
+        const lit = inBand(s.phase) && s.throws < KID.throws && !dreaming;
+        target.material.color.copy(lit ? targetOn : targetOff);
+        target.scale.setScalar(lit ? 0.78 : 0.7);
         // the ball in the air: out to the tire (through it, on a hit), then down
         if (fly.on) {
           fly.t += dt;
@@ -1590,7 +1598,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           thought.visible = false;
           roy.root.position.set(0, 0, 0);
           roy.root.rotation.y = Math.PI;
-          const left = SHOW.throws - s.throws;
+          const left = KID.throws - s.throws;
           // ready: the ball cocked back by his ear; a throw whips it forward
           const k = clamp(throwT / 0.32, 0, 1);
           const back = throwT < 0.32 ? lerp(2.5, -1.1, easeOut(k * 1.4)) : lerp(-1.1, 2.5, smooth(0.5, 1.1, throwT));
@@ -1653,7 +1661,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     b.add(G.box, tower, at(0, 8.6, -131, 0, 14.4, 7.4, 1));
     b.add(G.cyl, tower, at(-6, 3, -131.6, 0, 0.5, 6, 0.5));
     b.add(G.cyl, tower, at(6, 3, -131.6, 0, 0.5, 6, 0.5));
-    b.build(field);
+    b.build(field, { cast: false });
     // the light banks (glowing) and the cones of light under them
     const lamp = new THREE.MeshBasicMaterial({ color: hot(0xf6f8ff, 2.6) });
     const lampGeo = new THREE.PlaneGeometry(0.75, 0.55);
@@ -1700,12 +1708,20 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     nums.forEach((n) => n.dispose());
     field.add(numbers);
     noInk.push(numbers);
-    // the crowd: two halves bobbing out of step
-    const crowdGeo = new THREE.CapsuleGeometry(0.22, 0.35, 2, 6);
+    // the crowd: two halves bobbing out of step, each fan a few triangles (a body
+    // and a head), sat closer together the more the device can afford, and no ink
+    const crowdGeo = (() => {
+      const torsoGeo = new THREE.CylinderGeometry(0.19, 0.25, 0.6, 5, 1).translate(0, 0.3, 0).toNonIndexed();
+      const headGeo = new THREE.OctahedronGeometry(0.15).translate(0, 0.76, 0);
+      const merged = mergeGeometries([torsoGeo, headGeo]);
+      torsoGeo.dispose();
+      headGeo.dispose();
+      return merged;
+    })();
     owned.push(crowdGeo);
     const crowdMat = toon(0xffffff);
     const crowds = [0, 1].map(() => new THREE.InstancedMesh(crowdGeo, crowdMat, 1400));
-    const seat = fit.tier === 'low' ? 2 : 1.1;
+    const seat = { high: 1.1, mid: 1.6, low: 2 }[tier] ?? 1.1;
     const cr = rng(5);
     const counts = [0, 0];
     const cc = new THREE.Color();
@@ -1715,13 +1731,14 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         for (let f = -20; f < 128; f += seat) {
           const h = cr() < 0.5 ? 0 : 1;
           if (counts[h] >= 1400 || cr() < 0.12) continue;
-          crowds[h].setMatrixAt(counts[h], at(s * (29 + i * 1.4) + (cr() - 0.5) * 0.3, 0.7 + i * 1.4 + 0.42, -f - cr() * 0.5));
+          crowds[h].setMatrixAt(counts[h], at(s * (29 + i * 1.4) + (cr() - 0.5) * 0.3, 0.7 + i * 1.4, -f - cr() * 0.5, cr() * 6));
           crowds[h].setColorAt(counts[h], cc.set(crowdCols[Math.floor(cr() * crowdCols.length)]));
           counts[h] += 1;
         }
     crowds.forEach((m, i) => {
       m.count = counts[i];
       field.add(m);
+      noInk.push(m);
     });
     // the clock on the board
     const boardCanvas = document.createElement('canvas');
@@ -1745,7 +1762,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     // the other side: helmets, red shirts
     const red = lookFor(3);
     const tacklers = Array.from({ length: 7 }, () => {
-      const f = makeFigure({ face: false });
+      const f = makeFigure({ face: false, shadows: false, lite: true });
       wear(f, { skin: red.skin, shirt: 0xc0392b, trousers: 0xf0efe6, shoes: 0x1d1d22, helmet: 0xc0392b, pads: true, scale: 1.02 });
       f.root.visible = false;
       g.add(f.root);
@@ -1785,7 +1802,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
       update(dt, life, t) {
         const s = life.s;
         field.position.z = s.dist;
-        drawBoard(Math.ceil(Math.max(0, SHOW.clock - s.time)), scored || s.dist >= SHOW.goal ? 6 : 0);
+        drawBoard(Math.ceil(Math.max(0, FOOTBALL.limit - s.time)), scored || s.dist >= FOOTBALL.goal ? 6 : 0);
         const want = laneX(life.lane, LANE.field);
         const was = royX;
         royX += (want - royX) * damp(dt, 14);
@@ -1819,7 +1836,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
             st.rotation.set(t * 3, a, 0);
           });
         }
-        // the tacklers, by where the rules have them
+        // the tacklers, by where the rules have them (no ink on the far ones, too small for a line)
+        inkSkip.length = 0;
         tacklers.forEach((tk, i) => {
           const k = s.tacklers[i] && s.tacklers[i].z > -0.8 ? s.tacklers[i] : null;
           tk.f.root.visible = Boolean(k);
@@ -1827,6 +1845,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           tk.shadow.visible = Boolean(k);
           if (!k) return;
           const x = laneX(k.lane, LANE.field);
+          if (k.z > 18) inkSkip.push(tk.f.root);
           rest(tk.f);
           tk.f.root.position.set(x, 0, -k.z);
           tk.f.root.rotation.y = 0;
@@ -2138,7 +2157,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
             askBubble.material.map = bubbleMaps[c.want];
           }
           customerSpot.x = aspect < 0.9 ? 3.3 : 4.9;
-          const waited = SHOW.patience - c.patience;
+          const waited = CARPET.patience - c.patience;
           const k = smooth(0, 0.7, waited);
           rest(p0.f);
           p0.f.root.position.lerpVectors(door, customerSpot, k);
@@ -2161,7 +2180,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
           // the bubble over them: what they want, how long they'll wait
           ask.position.set(p0.f.root.position.x - 0.5, 3.05 + Math.sin(t * 3) * 0.04, p0.f.root.position.z);
           ask.quaternion.copy(camera.quaternion);
-          const left = clamp(c.patience / SHOW.patience, 0, 1);
+          const left = clamp(c.patience / CARPET.patience, 0, 1);
           bar.scale.set(0.92 * left, 0.09, 1);
           bar.position.x = -0.46 * (1 - left);
           bar.material.color.setHex(left > 0.5 ? 0x9dff5a : left > 0.25 ? 0xffd23a : 0xff4a3a);
@@ -2553,7 +2572,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
             askBubble.material.map = needMaps[c.want];
             ask.position.set(1.4, 4.6 + Math.sin(t * 3) * 0.05, -7.2);
             ask.quaternion.copy(camera.quaternion);
-            const left = clamp(c.patience / SHOW.patience, 0, 1);
+            const left = clamp(c.patience / CARPET.patience, 0, 1);
             bar.scale.set(1.24 * left, 0.11, 1);
             bar.position.x = -0.62 * (1 - left);
             bar.material.color.setHex(left > 0.5 ? 0x9dff5a : left > 0.25 ? 0xffd23a : 0xff4a3a);
@@ -2805,9 +2824,9 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     heartPivot.add(heart);
     const dotOn = new THREE.MeshBasicMaterial({ color: hot(0x6dff7a, 1.3) });
     const dotOff = new THREE.MeshBasicMaterial({ color: 0x3a4a5a });
-    const dots = Array.from({ length: SHOW.need }, (_, i) => {
+    const dots = Array.from({ length: CANCER.need }, (_, i) => {
       const d = new THREE.Mesh(G.lo, dotOff);
-      const a = Math.PI / 2 - (i / SHOW.need) * Math.PI * 2;
+      const a = Math.PI / 2 - (i / CANCER.need) * Math.PI * 2;
       d.position.set(Math.cos(a) * 0.78, Math.sin(a) * 0.78, 0);
       d.scale.setScalar(0.055);
       return d;
@@ -2875,11 +2894,12 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         }
         drawTrace(dead);
         // the ring
-        const inWindow = s.beatT <= SHOW.window || SHOW.beat - s.beatT <= SHOW.window;
+        // green only while a press would take a beat (the rules' own window)
+        const inWindow = beatWindow(life) === 'open';
         flash *= Math.exp(-dt * 7);
         targetMat.color.copy(hot(dead ? 0x662222 : inWindow ? 0x9dff5a : 0xffffff, inWindow && !dead ? 1.35 : 0.95));
         if (flash > 0.02) targetMat.color.lerp(hot(flashCol, 1.7), flash);
-        const k = (SHOW.beat - s.beatT) / SHOW.beat;
+        const k = (CANCER.beat - s.beatT) / CANCER.beat;
         closing.visible = !dead;
         closing.scale.setScalar(1 + 1.5 * k);
         closeMat.opacity = 0.35 + 0.65 * (1 - k);
@@ -2888,14 +2908,14 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
         heartPivot.rotation.z = jolt * Math.sin(t * 40) * 0.2;
         dots.forEach((d, i) => (d.material = i < s.beats ? dotOn : dotOff));
         // the outer arc: the time left to beat it
-        const left = Math.max(0, SHOW.limit - s.elapsed);
+        const left = Math.max(0, CANCER.limit - s.elapsed);
         if (left !== arcKey) {
           arcKey = left;
           if (arc) {
             ring.remove(arc);
             arc.geometry.dispose();
           }
-          arc = left > 0 ? new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.018, 4, 64, (left / SHOW.limit) * Math.PI * 2), arcMat) : null;
+          arc = left > 0 ? new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.018, 4, 64, (left / CANCER.limit) * Math.PI * 2), arcMat) : null;
           if (arc) {
             arc.rotation.z = Math.PI / 2;
             ring.add(arc);
@@ -3015,6 +3035,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     scene.fog.far = L.fog[2];
     renderer.toneMappingExposure = L.exposure ?? 1;
     lightKey = key;
+    inkSkip.length = 0;
     confetti.clear();
     dust.clear();
     glow.clear();
@@ -3107,6 +3128,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
 
   const dispose = () => {
     disposeTree(over);
+    ink.dispose();
     stage.dispose();
     mats.dispose();
     for (const o of owned) o.dispose?.();

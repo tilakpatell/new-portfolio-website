@@ -1063,7 +1063,7 @@ function Place({ id, onClose, onQuiz, onRoy }) {
     const was = html.style.overflow;
     html.style.overflow = 'hidden';
     // (Roy takes its own Esc, to end the life it's in first, once it's there)
-    const esc = (e) => e.key === 'Escape' && !e.defaultPrevented && !(p.full && shell.current?.querySelector('[role="application"]')) && onClose();
+    const esc = (e) => e.key === 'Escape' && !e.defaultPrevented && !(p.full && shell.current?.querySelector('[data-owns-escape]')) && onClose();
     window.addEventListener('keydown', esc);
     // B on a controller, for the ones that aren't games with their own buttons
     let raf = 0;

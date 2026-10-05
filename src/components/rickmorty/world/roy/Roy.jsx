@@ -5,7 +5,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext, output } from '../../../../lib/audio';
 import { local, useFrameLoop, useMediaQuery, useReducedMotion } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
-import { MORTY_BEST, OLD_AGE, STAGE_INFO, ageOf, beatMorty, epitaph, newLife, stageTitle, stepLife } from './rules';
+import { MORTY_BEST, OLD_AGE, STAGE_INFO, TUNING, ageOf, beatMorty, epitaph, inBand, newLife, stageTitle, stepLife } from './rules';
 import './roy.css';
 
 // Roy: A Life Well Lived, the VR game at Blips and Chitz: a whole life in
@@ -24,11 +24,15 @@ import './roy.css';
 
 const SAVE = 'tp-c137-roy';
 const STEP = 1 / 60;
+const MAX_STEPS = 6; // a frame takes at most a tenth of a second of the life, so a hitch can't end one
+const { kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER } = TUNING;
+const SETTLE_MS = 600; // the end card ignores a press still held from the game
 const HOLD_MS = 1500; // the end of a stage, played out before its card (longer when it earned grit)
 const HOLD_GRIT_MS = 2500;
 const CARD_MS = 2400;
 const WIPE_MS = 950;
 const DYING_MS = { cancer: 2600, carpet: 2700, log: 2700, old: 3800 };
+const SLOW_LOAD_MS = 1500; // how long before the loading screen offers a way out
 
 const KEYS = {
   left: ['ArrowLeft', 'a', 'A'],
@@ -46,6 +50,11 @@ const HOW_OFFGRID = { carpet: '← → and Space to fetch what’s needed' };
 const HOW_TOUCH = { kid: 'Tap Throw as the tire swings through', carpet: '← → and Pick the roll they want', cancer: 'Tap Beat on the beat' };
 const HOW_TOUCH_OFFGRID = { carpet: '← → and Pick what’s needed' };
 const ACT_LABEL = { kid: 'Throw', carpet: 'Pick', cancer: 'Beat' };
+// a stage's one line of how to play it, for the keyboard or a touch screen
+const howFor = ({ stage, route }, touch) => {
+  const off = route === 'offgrid';
+  return (touch ? (off && HOW_TOUCH_OFFGRID[stage]) || HOW_TOUCH[stage] : null) || (off && HOW_OFFGRID[stage]) || HOW[stage];
+};
 const LINES = {
   kid: 'A boy at the window, dreaming of the NFL.',
   football: 'Friday night under the lights, and the end zone a long way off.',
@@ -123,6 +132,8 @@ const cardFor = (l) => ({
 export default function Roy({ onLeave }) {
   const { unlock } = useAchievements();
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const touchRef = useRef(touch);
+  touchRef.current = touch;
   const calm = useReducedMotion();
   const wrap = useRef(null);
   const api = useRef(null);
@@ -142,6 +153,15 @@ export default function Roy({ onLeave }) {
   const said = useRef({ grit: 0, morty: false });
   const fast = useRef({}); // the HUD parts the loop writes straight to
   const hudKey = useRef('');
+  const lastNow = useRef(0);
+  const timers = useRef(new Set());
+  const later = (fn, ms) => {
+    const id = setTimeout(() => {
+      timers.current.delete(id);
+      fn();
+    }, ms);
+    timers.current.add(id);
+  };
   const [phase, setPhaseState] = useState('loading'); // loading | intro | wipe | card | choose | play | hold | dying | end | paused | failed
   const [hud, setHud] = useState(() => hudOf(newLife()));
   const [card, setCard] = useState(null);
@@ -149,6 +169,8 @@ export default function Roy({ onLeave }) {
   const [result, setResult] = useState(null);
   const [failed, setFailed] = useState(null);
   const [best, setBest] = useState(saved.current.best);
+  const [slowLoad, setSlowLoad] = useState(false);
+  const [announce, setAnnounce] = useState(''); // for a screen reader: each stage's card, and the end
 
   const setPhase = useCallback((p) => {
     phaseRef.current = p;
@@ -210,7 +232,12 @@ export default function Roy({ onLeave }) {
   useEffect(() => {
     const el = wrap.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => api.current?.resize(el.clientWidth, el.clientHeight));
+    const ro = new ResizeObserver(() => {
+      const a = api.current;
+      if (!a) return;
+      a.resize(el.clientWidth, el.clientHeight);
+      if (phaseRef.current === 'paused' && view.current) a.render(view.current, 0);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -273,11 +300,14 @@ export default function Roy({ onLeave }) {
           if (l.cause === 'cancer') beep(980, 1.8, 0.05);
           else if (l.cause === 'old') play('ring');
           else {
-            setTimeout(() => {
-              play('crumble');
-              playCue('splat');
-              buzz(200);
-            }, l.cause === 'carpet' ? 300 : 550);
+            later(
+              () => {
+                play('crumble');
+                playCue('splat');
+                buzz(200);
+              },
+              l.cause === 'carpet' ? 300 : 550,
+            );
           }
           break;
         default:
@@ -346,10 +376,13 @@ export default function Roy({ onLeave }) {
     view.current = { ...l, events: [] };
     playCue('gadget');
     if (l.stage === 'carpet' && l.s.choice) {
+      setAnnounce('Roy is 19. What now? 1: take the job at the carpet store. 2: go off the grid.');
       setPhase('choose');
       return;
     }
-    setCard(cardFor(l));
+    const c = cardFor(l);
+    setCard(c);
+    setAnnounce(`${c.title}, ${c.ages.toLowerCase()}. ${howFor(l, touchRef.current)}.`);
     setPhase('card');
   };
   const choose = (route) => {
@@ -387,6 +420,7 @@ export default function Roy({ onLeave }) {
     if (l.route === 'offgrid') unlock('offthegrid');
     const text = epitaph(l);
     setResult({ age, title: `Roy, 0–${age}`, body: text.replace(/^Roy, 0–\d+\.\s*/, ''), best: nextBest, prevBest, isBest: age > prevBest, beat: beatMorty(l), cause: l.cause });
+    setAnnounce(`${text} Morty made it to ${MORTY_BEST}. Your best: ${nextBest}${age > prevBest ? ', a new best' : ''}.`);
     setPhase('end');
     if (age > prevBest && prevBest > 0) play('victory');
   };
@@ -422,7 +456,7 @@ export default function Roy({ onLeave }) {
       if (edge('right')) input.current.right = true;
       if (edge('a')) input.current.act = true;
     } else if (p === 'card' && edge('a') && phaseT.current > 500) toPlay();
-    else if ((p === 'intro' || p === 'end') && edge('a')) start();
+    else if ((p === 'intro' || (p === 'end' && phaseT.current > SETTLE_MS)) && edge('a')) start();
     else if ((p === 'intro' || p === 'end') && edge('b')) leave();
     else if (p === 'paused' && edge('a')) pause(false);
     else if (p === 'choose') {
@@ -446,26 +480,30 @@ export default function Roy({ onLeave }) {
     const f = fast.current;
     if (l.stage === 'kid' && f.marker) {
       f.marker.style.left = `${((l.s.phase + 1) / 2) * 100}%`;
-      f.meter.dataset.hot = Math.abs(l.s.phase) < 0.28 ? '1' : '';
+      f.meter.dataset.hot = inBand(l.s.phase) ? '1' : '';
     }
     if (l.stage === 'football') {
-      if (f.yards) f.yards.style.transform = `scaleX(${Math.min(1, l.s.dist / 100).toFixed(3)})`;
-      if (f.clock) f.clock.textContent = `0:${String(Math.ceil(Math.max(0, 16 - (l.s.time ?? 0)))).padStart(2, '0')}`;
+      if (f.yards) f.yards.style.transform = `scaleX(${Math.min(1, l.s.dist / FOOTBALL.goal).toFixed(3)})`;
+      if (f.clock) f.clock.textContent = `0:${String(Math.ceil(Math.max(0, FOOTBALL.limit - (l.s.time ?? 0)))).padStart(2, '0')}`;
     }
   };
 
   // ── the loop ──
-  const tick = (ms) => {
+  const tick = (clamped, now) => {
     const a = api.current;
     if (!a) return;
+    // the time since the last frame, from the frame's own clock (not the loop's 50 ms clamp),
+    // to a tenth of a second at most
+    const ms = lastNow.current && now ? Math.min(100, Math.max(0, now - lastNow.current)) : clamped;
+    lastNow.current = now || 0;
     phaseT.current += ms;
     pollPad();
     const p = phaseRef.current;
     if (p === 'play' && auto.current) {
-      acc.current = Math.min(acc.current + ms / 1000, 0.25);
+      acc.current += ms / 1000;
       const evs = [];
       let n = 0;
-      while (acc.current >= STEP && phaseRef.current === 'play') {
+      while (acc.current >= STEP && n < MAX_STEPS && phaseRef.current === 'play') {
         const inp = n === 0 ? take() : {};
         acc.current -= STEP;
         n += 1;
@@ -500,12 +538,12 @@ export default function Roy({ onLeave }) {
       const F = fns.current;
       const p = phaseRef.current;
       const k = e.key;
-      if (p === 'loading') return;
       if (k === 'Escape') {
         e.preventDefault();
         F.leave();
         return;
       }
+      if (p === 'loading') return;
       const isL = KEYS.left.includes(k);
       const isR = KEYS.right.includes(k);
       const isAct = KEYS.act.includes(k);
@@ -549,13 +587,29 @@ export default function Roy({ onLeave }) {
         }
         return;
       }
-      if ((p === 'intro' || p === 'end') && isAct && !onButton && !e.repeat) {
+      if ((p === 'intro' || (p === 'end' && phaseT.current > SETTLE_MS)) && isAct && !onButton && !e.repeat) {
         e.preventDefault();
         F.start();
       }
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
+  }, []);
+
+  // the loading screen offers a way out if it takes a while
+  useEffect(() => {
+    if (phase !== 'loading') return undefined;
+    const t = setTimeout(() => setSlowLoad(true), SLOW_LOAD_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // timers still pending at the end (a sound after a death) go with the game
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach((id) => clearTimeout(id));
+      pending.clear();
+    };
   }, []);
 
   // the tab hidden: stop, and wait to be told to carry on
@@ -612,6 +666,7 @@ export default function Roy({ onLeave }) {
 
   // on-screen buttons for a touch screen
   const press = (k) => (e) => {
+    if (e.type === 'click' && e.detail !== 0) return; // a pointer press was handled on pointerdown
     e.preventDefault();
     const p = phaseRef.current;
     audioContext();
@@ -621,12 +676,15 @@ export default function Roy({ onLeave }) {
 
   const inGame = ['card', 'choose', 'play', 'hold', 'dying', 'paused'].includes(phase);
   const offgrid = hud.route === 'offgrid';
-  const how = (touch ? (offgrid && HOW_TOUCH_OFFGRID[hud.stage]) || HOW_TOUCH[hud.stage] : null) || (offgrid && HOW_OFFGRID[hud.stage]) || HOW[hud.stage];
+  const how = howFor(hud, touch);
   const actLabel = ACT_LABEL[hud.stage] ?? null;
   const r = result;
 
   return (
-    <div ref={wrap} className="roy" data-phase={phase} data-stage={hud.stage} role="application" aria-label="Roy: A Life Well Lived. Arrows or A and D move, Space or Enter acts, Escape takes the headset off.">
+    <div ref={wrap} className="roy" data-phase={phase} data-stage={hud.stage} role="group" data-owns-escape="" style={{ '--band': KID.band }} aria-label="Roy: A Life Well Lived. Arrows or A and D move, Space or Enter acts, Escape takes the headset off.">
+      <p className="roy-sr" aria-live="polite" aria-atomic="true">
+        {announce}
+      </p>
       <div className="roy-lens" aria-hidden="true" />
 
       {inGame && (
@@ -671,8 +729,8 @@ export default function Roy({ onLeave }) {
             </div>
             {hud.stage === 'kid' && (
               <div className="roy-meter">
-                <div className="roy-balls" aria-label={`${hud.hits} through the tire, ${hud.throws} of 5 thrown`}>
-                  {Array.from({ length: 5 }, (_, i) => (
+                <div className="roy-balls" aria-label={`${hud.hits} through the tire, ${hud.throws} of ${KID.throws} thrown`}>
+                  {Array.from({ length: KID.throws }, (_, i) => (
                     <i key={i} data-state={i < hud.hits ? 'hit' : i < hud.throws ? 'miss' : 'left'} />
                   ))}
                 </div>
@@ -699,8 +757,8 @@ export default function Roy({ onLeave }) {
                   <span>{offgrid ? 'Got' : 'Sold'}</span>
                   <b>{hud.sales}</b>
                 </div>
-                <div className="roy-slots" aria-label={`${hud.sales} ${offgrid ? 'got' : 'sold'}, ${hud.served - hud.sales} lost, ${8 - hud.served} to go`}>
-                  {Array.from({ length: 8 }, (_, i) => (
+                <div className="roy-slots" aria-label={`${hud.sales} ${offgrid ? 'got' : 'sold'}, ${hud.served - hud.sales} lost, ${CARPET.customers - hud.served} to go`}>
+                  {Array.from({ length: CARPET.customers }, (_, i) => (
                     <i key={i} data-state={i < hud.sales ? 'hit' : i < hud.served ? 'miss' : 'left'} />
                   ))}
                 </div>
@@ -710,12 +768,14 @@ export default function Roy({ onLeave }) {
               <div className="roy-meter">
                 <div className="roy-meter-row">
                   <span>On the beat</span>
-                  <b>{hud.beats} of 12</b>
+                  <b>
+                    {hud.beats} of {CANCER.need}
+                  </b>
                 </div>
-                <div className="roy-meter-row roy-strikes" aria-label={`${hud.offbeats} of 6 off the beat`}>
+                <div className="roy-meter-row roy-strikes" aria-label={`${hud.offbeats} of ${CANCER.offbeats} off the beat`}>
                   <span>Off</span>
                   <span className="roy-x">
-                    {Array.from({ length: 6 }, (_, i) => (
+                    {Array.from({ length: CANCER.offbeats }, (_, i) => (
                       <i key={i} data-on={i < hud.offbeats || undefined} />
                     ))}
                   </span>
@@ -748,13 +808,13 @@ export default function Roy({ onLeave }) {
 
       {touch && (phase === 'play' || phase === 'card') && (
         <div className="roy-touch">
-          <button type="button" data-roy className="roy-pad" onPointerDown={press('left')} disabled={!['football', 'carpet', 'finale'].includes(hud.stage)} aria-label="Left">
+          <button type="button" data-roy className="roy-pad" onPointerDown={press('left')} onClick={press('left')} disabled={!['football', 'carpet', 'finale'].includes(hud.stage)} aria-label="Left">
             ←
           </button>
-          <button type="button" data-roy className="roy-pad roy-pad-act" onPointerDown={press('act')} disabled={!actLabel && phase === 'play'} aria-label={actLabel ?? 'Act'}>
+          <button type="button" data-roy className="roy-pad roy-pad-act" onPointerDown={press('act')} onClick={press('act')} disabled={!actLabel && phase === 'play'} aria-label={actLabel ?? 'Act'}>
             {actLabel ?? '·'}
           </button>
-          <button type="button" data-roy className="roy-pad" onPointerDown={press('right')} disabled={!['football', 'carpet', 'finale'].includes(hud.stage)} aria-label="Right">
+          <button type="button" data-roy className="roy-pad" onPointerDown={press('right')} onClick={press('right')} disabled={!['football', 'carpet', 'finale'].includes(hud.stage)} aria-label="Right">
             →
           </button>
         </div>
@@ -764,6 +824,11 @@ export default function Roy({ onLeave }) {
         <div className="roy-overlay roy-loading">
           <p>Starting the headset…</p>
           <span className="roy-loading-bar" />
+          {slowLoad && (
+            <button type="button" className="roy-btn roy-btn-ghost roy-loading-out" onClick={leave}>
+              Take the headset off
+            </button>
+          )}
         </div>
       )}
 
@@ -880,10 +945,10 @@ export default function Roy({ onLeave }) {
             </p>
             {r.isBest && <p className="roy-newbest">{r.prevBest > 0 ? `New best, up from ${r.prevBest}` : 'Your first life, and your best so far'}</p>}
             <div className="roy-actions">
-              <button type="button" className="roy-btn roy-btn-go" onClick={start} autoFocus>
+              <button type="button" className="roy-btn roy-btn-go" onClick={() => phaseT.current > SETTLE_MS && start()} autoFocus>
                 Live again
               </button>
-              <button type="button" className="roy-btn roy-btn-ghost" onClick={leave}>
+              <button type="button" className="roy-btn roy-btn-ghost" onClick={() => phaseT.current > SETTLE_MS && leave()}>
                 Take the headset off
               </button>
             </div>
