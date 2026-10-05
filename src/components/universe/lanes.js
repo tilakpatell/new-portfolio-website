@@ -11,7 +11,9 @@
 // it through a planet. laneNear(ship, rand) is the traffic out in deep
 // space, where there are no places to go between: across the space ahead
 // of you, from one side to the other, near enough to see. convoyLane(ship,
-// rand) is a long straight run past you at a good distance, for a convoy.
+// rand) is a long straight run past you at a good distance, for a convoy;
+// meteorLane(ship, rand) a straight run across your path ahead, for a
+// stream of rocks.
 // Now that the places are far apart (a lane between two would run for
 // minutes out of sight), everyday traffic keeps to where you are:
 // laneLocal(place, rand) curves round the place you're at, from beside it
@@ -185,6 +187,27 @@ export function convoyLane(ship, rand) {
     const p2 = [ship.x - fx * 45 + rx * side * (off + 6), y, ship.z - fz * 45 + rz * side * (off + 6)];
     const pts = [p0, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p2];
     if (clearance(pts) > 1.5) return pts;
+  }
+  return null;
+}
+
+// A meteor stream's run (meteors.js): straight across the ship's path, well
+// ahead, from far out on one side to far out on the other, at the ship's
+// height or near it, clear of anything solid; [from, to], or null when
+// nothing fits (the ship's in among the planets)
+const METEORS = { ahead: [50, 75], side: 70, rise: 2, clear: 3 };
+export function meteorLane(ship, rand) {
+  const [fx, fz] = forward(ship.heading);
+  const rx = -fz;
+  const rz = fx;
+  for (let i = 0; i < 6; i++) {
+    const ahead = between(rand, METEORS.ahead);
+    const side = rand() < 0.5 ? -1 : 1;
+    const y = ship.y + (rand() * 2 - 1) * METEORS.rise;
+    const from = [ship.x + fx * ahead + rx * side * METEORS.side, y, ship.z + fz * ahead + rz * side * METEORS.side];
+    const to = [ship.x + fx * ahead - rx * side * METEORS.side, y, ship.z + fz * ahead - rz * side * METEORS.side];
+    const mid = [(from[0] + to[0]) / 2, y, (from[2] + to[2]) / 2];
+    if (clearance([from, mid, to]) > METEORS.clear) return [from, to];
   }
   return null;
 }
