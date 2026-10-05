@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, parkFor, parseDrive, tripTime } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, parkFor, parseDrive, riftExit, tripTime } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, step } from './ship';
 import { ORDER } from './layout';
 import { WONDERS } from './deep';
@@ -195,3 +195,22 @@ describe('in words', () => {
 function POS(id) {
   return destinationById(id).at;
 }
+
+describe('a rift', () => {
+  it('comes out at a place or a wonder, never where you are and never the Maw', () => {
+    const seen = new Set();
+    let seed = 3;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 300; i++) {
+      const from = i % 2 ? 'marvel' : null;
+      const id = riftExit(from, rand);
+      expect(GOALS[id], id).toBeTruthy();
+      expect(id).not.toBe(from);
+      expect(id).not.toBe(MAW.id);
+      expect(id.includes('-')).toBe(false);
+      seen.add(id);
+    }
+    expect(seen.has('aurelia')).toBe(true);
+    expect(seen.has('home')).toBe(true);
+  });
+});

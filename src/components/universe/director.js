@@ -14,6 +14,12 @@
 // - convoy: a line of freighters under escort goes by
 // - comet: a comet crosses the sky
 // - supernova: a star blows, far out, the flash seen from anywhere
+// - flare: the nearest star flares, and its shockwave reaches you a few
+//   seconds later (the shields take a knock, the HUD scrambles)
+// - rift: a rift tears open ahead of you; fly into it and it takes you
+//   somewhere else on the map (nav.js's riftExit)
+// - leviathan: something enormous passes: a pod of purrgil (Star Wars) or
+//   a Cromulon with something to say (Rick and Morty)
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
@@ -30,6 +36,9 @@ export const EVENTS = {
   convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
   comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
   supernova: { families: ['starwars', 'rickmorty', 'both'], weight: 0.8, heat: 0 },
+  flare: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
+  rift: { families: ['starwars', 'rickmorty', 'both'], weight: 1.1, heat: 0 },
+  leviathan: { families: ['starwars', 'rickmorty', 'both'], weight: 1.0, heat: 0 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 

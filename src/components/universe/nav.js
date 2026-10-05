@@ -138,6 +138,15 @@ export function parkFor(id, from) {
   return parkAt(id, from);
 }
 
+// Where a rift (director.js) comes out: any place or wonder on the map but
+// the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
+// thrown into a black hole), never a part of one (the Citadel's domes)
+const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
+export function riftExit(fromId = null, rand = Math.random) {
+  const exits = RIFT_EXITS.filter((id) => id !== fromId);
+  return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
+}
+
 // how far it is from (x, y, z) to a place: to its parking spot's side of
 // it, in map units (the edge of what's there, not its middle)
 export function distanceTo(ship, id) {
