@@ -20,7 +20,7 @@
 // over (`stock`), so the first of a kind to fly doesn't stall a frame being
 // built.
 //
-// createFleet({ prepare(object) → Promise, build(kind) → model }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
+// createFleet({ prepare(object) → Promise, build(kind) → model, glb }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -41,8 +41,10 @@ export const GLB = {
 };
 
 // (`build` makes a built one: the universe's own, unless another fleet's
-// builder is given, as the galaxy gives its own, galaxy/fleet.js)
-export function createFleet({ prepare = null, build = buildTraffic } = {}) {
+// builder is given, as the galaxy gives its own, galaxy/fleet.js; and `glb`
+// is which are models, GLB's unless another fleet has more, as the galaxy's
+// hunters are, galaxy/models.js)
+export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } = {}) {
   const templates = {};
   const stocked = {}; // kind → built ones made ahead, handed out first
   const loading = new Set();
@@ -52,7 +54,7 @@ export function createFleet({ prepare = null, build = buildTraffic } = {}) {
     // start loading these (the ones that are models), if they aren't yet
     want(list) {
       for (const kind of list) {
-        const def = GLB[kind];
+        const def = glb[kind];
         if (!def || loading.has(kind)) continue;
         loading.add(kind);
         loader
@@ -94,7 +96,7 @@ export function createFleet({ prepare = null, build = buildTraffic } = {}) {
     // its model is here
     loaded: (kind) => Boolean(templates[kind]),
     // it can fly now (it's here, or it has a built stand-in, or it was never a model)
-    has: (kind) => !GLB[kind] || Boolean(templates[kind]) || GLB[kind].built,
+    has: (kind) => !glb[kind] || Boolean(templates[kind]) || glb[kind].built,
     make(kind) {
       const t = templates[kind];
       let made;

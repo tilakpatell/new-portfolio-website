@@ -255,5 +255,243 @@
     "where": "avengers",
     "as": "Spider-Man’s run",
     "file": "/models/marvel/spiderman.glb"
+  },
+  "galaxy-acclamator": {
+    "title": "Acclamator-Class Assault Ship",
+    "author": "Kuat-Entralla 3D Engineering",
+    "authorUrl": "https://sketchfab.com/KuatEntralla3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/acclamator-class-assault-ship-e6a2171be5c34bb68a05aba657fd8fa8",
+    "where": "galaxy",
+    "as": "the Acclamators",
+    "file": "/models/galaxy/acclamator.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-arc170": {
+    "title": "ARC-170 Starfighter",
+    "author": "DrEgguin",
+    "authorUrl": "https://sketchfab.com/DrEgguin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/arc-170-starfighter-b9407262cdf34d37b0720ca6b70469be",
+    "where": "galaxy",
+    "as": "the ARC-170s",
+    "file": "/models/galaxy/arc170.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-awing": {
+    "title": "Star Wars: A- Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-a-wing-15d7370b56c04c2e86b16e50bf931a02",
+    "where": "galaxy",
+    "as": "the A-wings",
+    "file": "/models/galaxy/awing.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-bwing": {
+    "title": "Star Wars: B-Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-b-wing-08293253519a455483970295430b3a73",
+    "where": "galaxy",
+    "as": "the B-wings",
+    "file": "/models/galaxy/bwing.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-coreship": {
+    "title": "Star Wars Separatist Core Ship",
+    "author": "ThrillDaWill",
+    "authorUrl": "https://sketchfab.com/ThrillDaWill",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-separatist-core-ship-0d829115bb4d472da5d05cdf529b6694",
+    "where": "galaxy",
+    "as": "the Separatist core ships",
+    "file": "/models/galaxy/coreship.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-delta7": {
+    "title": "Delta-7 Aethersprite-class Light Interceptor",
+    "author": "DrEgguin",
+    "authorUrl": "https://sketchfab.com/DrEgguin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/delta-7-aethersprite-class-light-interceptor-b4a8ad8a1e8b4e5b961cf4726d8a8646",
+    "where": "galaxy",
+    "as": "the Jedi starfighters",
+    "file": "/models/galaxy/delta7.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-executor": {
+    "title": "Star Wars: Executor Class Star Destroyer",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-executor-class-star-destroyer-0e4cbb98a2ba43f2a11498061b3f21d8",
+    "where": "galaxy",
+    "as": "the Executor",
+    "file": "/models/galaxy/executor.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-lucrehulk": {
+    "title": "Lucrehulk",
+    "author": "photon (that one larry)",
+    "authorUrl": "https://sketchfab.com/Professor_E12",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/lucrehulk-8bb11e0ad31e4b23b1783e10242c5115",
+    "where": "galaxy",
+    "as": "the droid control ships",
+    "file": "/models/galaxy/lucrehulk.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-moncal": {
+    "title": "Star Wars: MC80 Home One Type Star Cruiser",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-mc80-home-one-type-star-cruiser-9b5e5e5192f64a7faad93a3bfd2efaf2",
+    "where": "galaxy",
+    "as": "the Mon Calamari cruisers",
+    "file": "/models/galaxy/moncal.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-n1": {
+    "title": "Naboo N-1 Starfighter - Star Wars",
+    "author": "Quiznos323",
+    "authorUrl": "https://sketchfab.com/quiznos323",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/naboo-n-1-starfighter-star-wars-3cf69f6c85234aac8844e845e74ac75b",
+    "where": "galaxy",
+    "as": "the Naboo N-1 starfighters",
+    "file": "/models/galaxy/n1.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-nebulon": {
+    "title": "Star Wars: Nebulon B Frigate",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-nebulon-b-frigate-1986f7b0dee647b3b2374eb80dbd1faf",
+    "where": "galaxy",
+    "as": "the Nebulon-B frigates",
+    "file": "/models/galaxy/nebulon.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-tiefo": {
+    "title": "First Order Tie Fighter",
+    "author": "ImWillows",
+    "authorUrl": "https://sketchfab.com/jcreadingtutor",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/first-order-tie-fighter-a6f29bb8f80149c5a83ca1341fc10093",
+    "where": "galaxy",
+    "as": "the First Order’s TIEs",
+    "file": "/models/galaxy/tiefo.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-trifighter": {
+    "title": "Trade Federation Droid Tri-Fighter",
+    "author": "scarlequin",
+    "authorUrl": "https://sketchfab.com/scarlequin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/trade-federation-droid-tri-fighter-9c06ba9b24144221aa80f56192f485b6",
+    "where": "galaxy",
+    "as": "the droid tri-fighters",
+    "file": "/models/galaxy/trifighter.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-uwing": {
+    "title": "Star Wars U-Wing UT-60d",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-u-wing-ut-60d-8d7539ceba7142c2ab5ce296659c026d",
+    "where": "galaxy",
+    "as": "the U-wings",
+    "file": "/models/galaxy/uwing.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-vulture": {
+    "title": "Vulture Droid",
+    "author": "DrEgguin",
+    "authorUrl": "https://sketchfab.com/DrEgguin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/vulture-droid-5542f951834e4032b229ebdee12d3310",
+    "where": "galaxy",
+    "as": "the vulture droids",
+    "file": "/models/galaxy/vulture.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-xyston": {
+    "title": "Xyston Overhaul",
+    "author": "Admiral_Forever",
+    "authorUrl": "https://sketchfab.com/Admiral_Forever",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/xyston-overhaul-8fe215c3b4154320b89ec60e6d0cd5ec",
+    "where": "galaxy",
+    "as": "the Sith Star Destroyers",
+    "file": "/models/galaxy/xyston.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-ywing": {
+    "title": "Star Wars: Y- Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-y-wing-b8bb6476b1b14ba48987c7efc7b7087a",
+    "where": "galaxy",
+    "as": "the Y-wings",
+    "file": "/models/galaxy/ywing.glb",
+    "also": [
+      "galaxy"
+    ]
   }
 }
