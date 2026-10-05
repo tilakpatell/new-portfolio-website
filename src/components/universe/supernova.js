@@ -19,13 +19,15 @@
 import * as THREE from 'three';
 import { NOISE_GLSL } from './sun';
 
-// five dying stars, out between the places (deep.test.js keeps them clear)
+// seven dying stars, out between the places (supernova.test.js keeps them clear)
 export const SUPERNOVA_SITES = [
   [-3855, -650, -2950],
   [5425, -360, 450],
   [580, -45, 5860],
   [2850, 550, 3955],
   [-5120, 255, -750],
+  [7600, 300, 2400],
+  [-2600, -800, -7000],
 ];
 
 // the stages, in seconds from the start
@@ -93,8 +95,9 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-// the pulsar: a point that blinks, two faint beams sweeping round it
-const PULSAR_FRAG = `
+// the pulsar: a point that blinks, two faint beams sweeping round it (the
+// Lantern out in deep space is drawn with it too, deepspace.js)
+export const PULSAR_FRAG = `
 uniform float uT;
 uniform float uK;
 varying vec2 vC;
