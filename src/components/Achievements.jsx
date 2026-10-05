@@ -58,6 +58,7 @@ export const ACHIEVEMENTS = {
   fireworks: { name: 'The big one', desc: 'Kept the party cheering until Merry and Pippin lit the dragon' },
   secretsafe: { name: 'Keep it secret', desc: 'Read the letters on the Ring in Bag End’s fire' },
   getoffroad: { name: 'Get off the road!', desc: 'Hid from a Black Rider under the roots, and kept the Ring off' },
+  spoons: { name: 'Sackville-Baggins proof', desc: 'Got Bilbo’s silver spoons home to Bag End before Lobelia could pocket them' },
   breegate: { name: 'What’s your business in Bree?', desc: 'Talked your way past the gatekeeper at Bree’s West Gate' },
   underhill: { name: 'Mr. Underhill', desc: 'Gave Butterbur the right name at the Prancing Pony' },
   pints: { name: 'It comes in pints?', desc: 'Poured Pippin three good pints at the Prancing Pony' },
