@@ -509,20 +509,6 @@
       "galaxy"
     ]
   },
-  "surface-atm6": {
-    "title": "AT-M6 First Order Walker",
-    "author": "_Vadim2020_",
-    "authorUrl": "https://sketchfab.com/Maha_Knox",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/at-m6-first-order-walker-d35fe6f380ac4054bbb6db857ee89051",
-    "where": "galaxy-surface",
-    "as": "the AT-M6 walkers",
-    "file": "/models/galaxy/surface/atm6.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-atrt": {
     "title": "AT-RT",
     "author": "Just Ryk",
@@ -589,20 +575,6 @@
     "where": "galaxy-surface",
     "as": "the battle droids",
     "file": "/models/galaxy/surface/battledroid.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-bb8": {
-    "title": "BB-8",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/bb-8-69c8b77c726e406c99ab0839baee3ce9",
-    "where": "galaxy-surface",
-    "as": "BB-8",
-    "file": "/models/galaxy/surface/bb8.glb",
     "also": [
       "galaxy"
     ]
@@ -733,20 +705,6 @@
       "galaxy"
     ]
   },
-  "surface-fotrooper": {
-    "title": "First Order Stormtrooper",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/first-order-stormtrooper-b7341f5280484497a72451c3f62cd0c1",
-    "where": "galaxy-surface",
-    "as": "the First Order stormtroopers",
-    "file": "/models/galaxy/surface/fotrooper.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-geonosian": {
     "title": "Geonosian Zombie",
     "author": "StrangeUsernames1",
@@ -771,20 +729,6 @@
     "where": "galaxy-surface",
     "as": "the Gungans",
     "file": "/models/galaxy/surface/gungan.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-han": {
-    "title": "Han Solo",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/han-solo-b904ffed264a45c7b90d8f032fb0a97a",
-    "where": "galaxy-surface",
-    "as": "Han Solo",
-    "file": "/models/galaxy/surface/han.glb",
     "also": [
       "galaxy"
     ]
@@ -887,20 +831,6 @@
       "galaxy"
     ]
   },
-  "surface-luke": {
-    "title": "Pilot Luke Skywalker",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/pilot-luke-skywalker-bedc584f3e8740c59e99320f8425147d",
-    "where": "galaxy-surface",
-    "as": "Luke Skywalker",
-    "file": "/models/galaxy/surface/luke.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-palm": {
     "title": "Coconut Tree Low poly",
     "author": "Nodeaxis Interactive",
@@ -995,20 +925,6 @@
     "where": "galaxy-surface",
     "as": "the shoretroopers",
     "file": "/models/galaxy/surface/shoretrooper.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-sithtrooper": {
-    "title": "Sith trooper || Episode IX: TROS",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/sith-trooper-episode-ix-tros-91f4fd40a92e4d05b3bbbe011e91d910",
-    "where": "galaxy-surface",
-    "as": "the Sith troopers",
-    "file": "/models/galaxy/surface/sithtrooper.glb",
     "also": [
       "galaxy"
     ]
