@@ -136,6 +136,10 @@ export function liftoff() {
 export function alarm() {
   const [ac, out] = ready();
   if (!ac) return { stop() {} };
+  return siren(ac, out);
+}
+// (the siren itself, into any context: tried out offline)
+export function siren(ac, out) {
   const g = ac.createGain();
   g.gain.value = 0.0001;
   g.gain.setTargetAtTime(0.045, ac.currentTime, 0.4);
@@ -146,13 +150,22 @@ export function alarm() {
   lp.type = 'lowpass';
   lp.frequency.value = 1400;
   o.connect(lp).connect(g);
-  const t0 = ac.currentTime;
-  for (let i = 0; i < 400; i++) o.frequency.setValueAtTime(i % 2 ? 560 : 740, t0 + i * 0.55);
+  // its two notes, 740 and 560 Hz, 0.55 s each, for as long as it goes:
+  // a slow square wave swinging the pitch either side of the middle
+  o.frequency.value = 650;
+  const swing = ac.createOscillator();
+  swing.type = 'square';
+  swing.frequency.value = 1 / 1.1;
+  const depth = ac.createGain();
+  depth.gain.value = 90 / 0.845; // (a built-in square's flats sit at 0.845: its ripple's peaks are 1)
+  swing.connect(depth).connect(o.frequency);
   o.start();
+  swing.start();
   return {
     stop() {
       g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.2);
       o.stop(ac.currentTime + 0.8);
+      swing.stop(ac.currentTime + 0.8);
     },
   };
 }

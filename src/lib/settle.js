@@ -13,3 +13,15 @@ export const settle = (promise, ms = 4000) =>
         resolve();
       });
   });
+
+// Several things made at once, all of them or none: their values, in
+// order, each one noted in `made` as it comes; if any fails, the first
+// failure, once every one has finished, so the caller can undo what was
+// made (a 3D world whose rooms load but whose cast doesn't).
+export async function allOrUndo(promises, made) {
+  const done = await Promise.allSettled(promises);
+  for (const d of done) if (d.status === 'fulfilled') made.push(d.value);
+  const bad = done.find((d) => d.status === 'rejected');
+  if (bad) throw bad.reason;
+  return done.map((d) => d.value);
+}

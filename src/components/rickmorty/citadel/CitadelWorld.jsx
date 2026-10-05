@@ -11,7 +11,7 @@ import { nearest } from '../../middleearth/towns/story';
 import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
 import { newWatchers, stepWatchers } from '../../middleearth/towns/watchers';
-import { HERD, calmHerd, newHerd, stepHerd } from './daycare';
+import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
 import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
@@ -347,6 +347,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     outside(FACTORY_DOOR);
   }, [outside]);
 
+  // walking out on the Council mid-hearing: back out through its doors,
+  // the hearing still to come
+  const leaveHearing = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'inside' || s.room !== 'council' || s.beat !== 'hearing') return;
+    setHud((h) => ({ ...h, line: null }));
+    sounds().then((x) => x.doors());
+    outside(COUNCIL_DOOR);
+    say('You walk out on the Council of Ricks. The guards let you go. They’ll hear you when you come back.');
+  }, [outside, say]);
+
   // the line: drop the next layer
   const drop = useCallback(() => {
     const s = sim.current;
@@ -443,7 +454,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           s.mode = 'walk';
           s.talking = null;
           s.talk = null;
-        }
+        } else if (k === 'Escape') leaveHearing();
         return;
       }
       if (s.mode === 'inside') {
@@ -455,7 +466,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, near, enter, talkOnward, drop, leaveRoom]);
+  }, [live, near, enter, talkOnward, drop, leaveRoom, leaveHearing]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -524,10 +535,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         complete('daycare');
         sounds().then((x) => x.jingle());
         say('All six back in. The Day Care Rick turns a page. He never knew.');
-      } else if (e.type === 'out') {
+      } else if (e.type === 'out' && stillHerding(s.h, s.mode === 'inside')) {
         say('The Day Care Rick looks up. “What’s going on out there?” They scatter again.', true);
         s.herd = newHerd(s.seed++);
         a.fx('scatter');
+      } else if (e.type === 'out') {
+        // left to it: the Day Care Rick calls them in and shuts the gate
+        s.herd = calmHerd();
       }
     }
 
@@ -711,7 +725,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const travel = (q) => {
     const s = sim.current;
     const sp = spot({ daycare: 'daycare', wafers: 'factory', council: 'council', votemorty: 'ballot', citadelout: 'hangar' }[q.id]);
-    // a step in from the spot, toward the core, facing it
+    // a step in from the spot, toward the core, facing out to it (its door)
     const r = Math.hypot(sp.x, sp.z);
     const at = q.id === 'citadelout' ? ESCAPE_START : { x: sp.x - (sp.x / r) * 1.5, z: sp.z - (sp.z / r) * 1.5, face: Math.atan2(-sp.z, sp.x) };
     s.h = newWalker(at);
@@ -729,7 +743,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const objective = red && hud.chased ? 'Run! Get out of his sight: round the core, behind a kiosk or a planter.' : herding ? 'Herd the Mortys back through the gate, into the pen: come at them from the far side.' : prog.objective;
   return (
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
-      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a round concourse under a glass dome, white and cyan, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
+      <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
 
       {walking && (
@@ -786,7 +800,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
 
-      {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
+      {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} onLeave={hud.talking === 'council' && hud.beat === 'hearing' ? leaveHearing : null} />}
 
       {inside && hud.room === 'factory' && hud.beat === 'line' && (
         <div className="shire-panel citadel-line">
@@ -806,7 +820,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           </ol>
           <p className="shire-panel-help">{touch ? 'Tap Drop as the dispenser passes over the stack.' : 'Space (or Drop) as the dispenser passes over the stack.'}</p>
           <div className="shire-panel-row">
-            <button type="button" className="btn btn-primary btn-sm citadel-drop" onPointerDown={(e) => (e.preventDefault(), drop())} onContextMenu={(e) => e.preventDefault()}>
+            <button type="button" className="btn btn-primary btn-sm citadel-drop" onPointerDown={(e) => (e.preventDefault(), drop())} onClick={(e) => e.detail === 0 && drop()} onContextMenu={(e) => e.preventDefault()}>
               Drop
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={leaveRoom}>

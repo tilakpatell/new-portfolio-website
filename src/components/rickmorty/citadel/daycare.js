@@ -2,13 +2,15 @@
 // concourse. They wander; come close and they run from you, so you herd
 // them, from behind, back through the gate into the pen, where they stay.
 // Get them all in before the clock runs out (the Day Care Rick looks up
-// from his magazine), or they scatter and it starts again.
+// from his magazine), or they scatter and it starts again (unless Rick's
+// gone off and left them: then they're called back in).
 
 import { PEN, WORLD, inPen } from './layout';
 
 // count, seconds on the clock, how close Rick scares them (m), how fast
-// they run from him and wander about (m/s), and how big a Morty is
-export const HERD = { count: 6, time: 75, scare: 4.5, flee: 3.1, wander: 0.9, radius: 0.35 };
+// they run from him and wander about (m/s), how big a Morty is, and how
+// far from the gate Rick has gone off and left them (m)
+export const HERD = { count: 6, time: 75, scare: 4.5, flee: 3.1, wander: 0.9, radius: 0.35, away: 24 };
 
 const GATE = { x: PEN.gate.x, z: (PEN.gate.z0 + PEN.gate.z1) / 2 };
 // a little way into the pen, past the gate: where the gate funnels them
@@ -63,6 +65,13 @@ export function newHerd(seed = 1) {
 }
 
 // Before the gate's left open: all six in the pen, pottering about.
+// Is Rick still at it when the clock runs out? Out on the concourse and
+// near the pen; gone off across it, or into a room, he's given up, and the
+// Mortys are called back in quietly rather than scattered again.
+export function stillHerding(rick, inside) {
+  return !inside && Math.hypot(rick.x - GATE.x, rick.z - GATE.z) < HERD.away;
+}
+
 export function calmHerd() {
   const h = newHerd();
   // (round the slide and the ball pit)
@@ -135,11 +144,11 @@ export function stepHerd(herd, rick, dt, { push }) {
     [x, z] = rim(x, z);
     const moved = Math.hypot(x - m.x, z - m.z);
     if (moved < step * 0.5 && !m.slide) {
-      // in the way: turn along it, the side that's more open
+      // in the way: turn along it, the side that's more open (and, as open, the one away from Rick)
       const sides = [m.face + Math.PI / 2, m.face - Math.PI / 2].map((f) => {
         const [sx, sz] = dirOf(f);
         const [px, pz] = rim(...push(m.x + sx * 0.6, m.z + sz * 0.6, HERD.radius));
-        return { f, room: Math.hypot(px - m.x, pz - m.z) - Math.hypot(px - rick.x, pz - rick.z) * 0.01 + (m.id % 2) * 1e-3 };
+        return { f, room: Math.hypot(px - m.x, pz - m.z) + Math.hypot(px - rick.x, pz - rick.z) * 0.01 + (m.id % 2) * 1e-3 };
       });
       const best = sides[0].room >= sides[1].room ? sides[0] : sides[1];
       // running: slide along it for a moment; wandering: just turn away

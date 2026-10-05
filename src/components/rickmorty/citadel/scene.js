@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
 import { createModels } from '../../../lib/models';
 import { device } from '../../../lib/device';
+import { allOrUndo } from '../../../lib/settle';
 import { createFx } from '../../middleearth/shire/fx';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
@@ -95,18 +96,31 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
   const fx = createFx(fxRoot, { scale: tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35 });
 
   // ── what's drawn ──
+  // (if any of it fails to load, what was made is undone, and the stage
+  // with it, before the failure goes on to the page)
   const models = createModels({ base: '/games/kenney' });
-  const [concourse, rooms] = await Promise.all([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })]);
-  scene.add(concourse.group, rooms.factory, rooms.council);
-  const [people, crowd] = await Promise.all([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier }), createCrowd(concourse.group, { tier })]);
-  // the cruiser, waiting in the hangar
-  const props = createMeshyCast();
-  await props.load(null, ['saucer']);
-  concourse.setCruiser(props.prop('saucer', 1.7));
+  const made = [];
+  let concourse, rooms, people, crowd, props;
+  try {
+    [concourse, rooms] = await allOrUndo([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })], made);
+    scene.add(concourse.group, rooms.factory, rooms.council);
+    [people, crowd] = await allOrUndo([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier }), createCrowd(concourse.group, { tier })], made);
+    // the cruiser, waiting in the hangar
+    props = createMeshyCast();
+    made.push(props);
+    await props.load(null, ['saucer']);
+    concourse.setCruiser(props.prop('saucer', 1.7));
+  } catch (e) {
+    for (const m of made) m.dispose?.();
+    models.dispose();
+    stage.dispose();
+    throw e;
+  }
 
   if (!soft) {
     const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
-    const ink = new InkPass(scene, camera, { hide: () => [...concourse.hide, fxRoot], width: big ? 1.15 : 1 });
+    const unlined = [...concourse.hide, fxRoot];
+    const ink = new InkPass(scene, camera, { hide: () => unlined, width: big ? 1.15 : 1 });
     stage.composer.insertPass(ink, 1);
   }
 
@@ -115,6 +129,8 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
   const tmp2 = V(0, 0, 0);
   const look = V(0, 0, 0);
 
+  // the grade each frame, changed in place (nothing new made a frame)
+  const graded = { vignette: 0.2, high: [0.006, 0.006, 0.014], shadow: [0, 0.008, 0.03] };
   const render = (s, ms, fast = 1) => {
     const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
@@ -130,7 +146,10 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
     hemi.color.setRGB(1, 0.91 - A.red * 0.3, 0.77 - A.red * 0.25);
     key.intensity = 1.35 * (1 - A.red * 0.45);
     alarm.intensity = inside ? 0 : pulse * 140;
-    stage.grade({ vignette: 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0), high: [0.006 + pulse * 0.05, 0.006, 0.014], shadow: [pulse * 0.025, 0.008, 0.03] });
+    graded.vignette = 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0);
+    graded.high[0] = 0.006 + pulse * 0.05;
+    graded.shadow[0] = pulse * 0.025;
+    stage.grade(graded);
 
     concourse.update(t, dt, { gateOpen: s.gateOpen, hangarOpen: s.hangarOpen, escapeT: s.escapeT });
     concourse.group.visible = !inside;

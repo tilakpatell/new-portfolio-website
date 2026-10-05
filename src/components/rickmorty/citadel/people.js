@@ -68,7 +68,7 @@ function along(loop, lengths, total, s) {
 // places: { council: [{ x, y, z, face }], workers: [...] } in their rooms'
 // own frames; parents: the concourse and the two rooms
 export async function createPeople({ outdoors, factory, council, places, tier = 'high' }) {
-  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED });
+  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED, cull: true });
   await Promise.all([meshy.load(null, SITTERS, { clips: ['idle', 'walk', 'run', 'sit'] }), meshy.load(null, ASSETS, { clips: ['idle', 'walk', 'run'] })]);
 
   const all = [];
@@ -157,6 +157,9 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
   }
 
   const tmp = new THREE.Vector3();
+  // who's about in each mood, and who's in the chamber (made once, not a frame)
+  const castHere = new Map();
+  const chamber = [...councilFigs, ...clerks];
   // step a figure's animation: every frame near the camera, every third far off
   const animate = (f, t, move, cam) => {
     f.group.getWorldPosition(tmp);
@@ -195,7 +198,8 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
         animate(rick, t, Math.min(1, h.speed / RICK.run), null);
       }
     }
-    const here = new Set(castFor(state.mood).map((c) => c.id));
+    let here = castHere.get(state.mood);
+    if (!here) castHere.set(state.mood, (here = new Set(castFor(state.mood).map((c) => c.id))));
     for (const [id, f] of cast) {
       f.group.visible = outside && here.has(id);
       if (!f.group.visible) continue;
@@ -227,15 +231,19 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
       f.group.rotation.y = yawOf(f.dir > 0 ? heading : heading + Math.PI);
       animate(f, t, f.pace / RICK.run, cam);
     }
-    if (!outside && state.room === 'council') for (const f of [...councilFigs, ...clerks]) animate(f, t, 0, null);
+    if (!outside && state.room === 'council') for (const f of chamber) animate(f, t, 0, null);
     if (!outside && state.room === 'factory') for (const f of workers) animate(f, t, 0, null);
   };
 
-  // where a person's head is, in the world (for the speech bubble)
+  // where a person's head is, in the world (for the speech bubble); the
+  // same vector each time, to use at once
+  const head = new THREE.Vector3();
   const headOf = (kind, id) => {
     const f = kind === 'cast' ? cast.get(id) : kind === 'council' ? councilFigs[id] : kind === 'rick' ? rick : null;
     if (!f || !f.group.visible) return null;
-    return f.group.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, f.height + 0.3, 0));
+    f.group.getWorldPosition(head);
+    head.y += f.height + 0.3;
+    return head;
   };
 
   const dispose = () => {

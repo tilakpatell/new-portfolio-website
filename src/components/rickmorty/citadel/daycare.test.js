@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { HERD, calmHerd, newHerd, stepHerd } from './daycare';
+import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { COLLIDERS, PEN, WALLS, WORLD, inPen } from './layout';
 
 const DT = 1 / 30;
@@ -66,6 +66,14 @@ describe('Morty Day Care', () => {
     const m = h.mortys[0];
     expect(Math.hypot(m.x - 38.5, m.z)).toBeGreaterThan(2);
   });
+  it('slides a cornered Morty away from Rick, when both ways are as open', () => {
+    // pinned against the outer wall, Rick right behind it and just to one side
+    for (const side of [1, -1]) {
+      const h = alone(39.2, 0);
+      run(h, { x: 36.5, z: 0.05 * side }, 0.6);
+      expect(Math.sign(h.mortys[0].z), `Rick ${side > 0 ? 'south' : 'north'}`).toBe(-side);
+    }
+  });
   it('slides round the core instead of freezing against it', () => {
     const h = alone(5.6, 0);
     run(h, { x: 8.5, z: 0.2 }, 3);
@@ -90,6 +98,14 @@ describe('Morty Day Care', () => {
     const ev = run(h, { x: 0, z: 30 }, 1);
     expect(ev.filter((e) => e.type === 'won')).toHaveLength(1);
     expect(h.state).toBe('won');
+  });
+  it('counts Rick as still herding only out on the concourse, near the pen', () => {
+    expect(stillHerding({ x: -15.5, z: 0 }, false)).toBe(true);
+    expect(stillHerding({ x: -4, z: 12 }, false)).toBe(true);
+    // gone off across the concourse, or into a room
+    expect(stillHerding({ x: 30, z: 0 }, false)).toBe(false);
+    expect(stillHerding({ x: 0, z: -36 }, false)).toBe(false);
+    expect(stillHerding({ x: -15.5, z: 0 }, true)).toBe(false);
   });
   it('runs out of time once, with Mortys still loose', () => {
     const h = newHerd();

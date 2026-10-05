@@ -49,9 +49,15 @@ export const Bubble = forwardRef(function Bubble({ name, line }, ref) {
 });
 
 // A conversation: who says it, what they say, and the replies to pick (with
-// their number keys), or a button to go on.
-export function Convo({ title, name, node, onPick, onNext, touch, className = '' }) {
+// their number keys), or a button to go on; and, given onLeave, a way out
+// of it (Esc).
+export function Convo({ title, name, node, onPick, onNext, onLeave = null, touch, className = '' }) {
   if (!node) return null;
+  const leave = onLeave && (
+    <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+      Leave {!touch && <kbd>Esc</kbd>}
+    </button>
+  );
   return (
     <div className={`shire-panel town-convo ${className}`} role="dialog" aria-label={title}>
       <p className="shire-panel-title">{name}</p>
@@ -59,18 +65,22 @@ export function Convo({ title, name, node, onPick, onNext, touch, className = ''
         {node.say}
       </p>
       {node.choices ? (
-        <div className="town-choices">
-          {node.choices.map((c, i) => (
-            <button key={c.text} type="button" className="btn btn-ghost btn-sm town-choice" onClick={() => onPick(i)}>
-              {!touch && <kbd>{i + 1}</kbd>} {c.text}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="town-choices">
+            {node.choices.map((c, i) => (
+              <button key={c.text} type="button" className="btn btn-ghost btn-sm town-choice" onClick={() => onPick(i)}>
+                {!touch && <kbd>{i + 1}</kbd>} {c.text}
+              </button>
+            ))}
+          </div>
+          {leave && <div className="shire-panel-row">{leave}</div>}
+        </>
       ) : (
         <div className="shire-panel-row">
           <button type="button" className="btn btn-primary btn-sm" onClick={onNext}>
             {node.end ? 'Go on' : 'Next'} {!touch && <kbd>Space</kbd>}
           </button>
+          {leave}
         </div>
       )}
     </div>

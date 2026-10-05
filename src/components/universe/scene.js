@@ -1757,7 +1757,7 @@ export async function create(canvas, ctx) {
     // into a wonder, it's a crash of its own kind
     const wonder = wonderById(e.id) ?? (e.id.includes('-') ? wonderById(e.id.split('-')[0]) : null);
     // (a wonder with a world of its own, the Citadel, crashes under its own name)
-    const kind = !wonder || wonder.id !== e.id ? null : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? wonder.id : null;
+    const kind = !wonder || (wonder.id !== e.id && !solid.part) ? null : wonder.kind === 'star' ? 'star' : wonder.kind.endsWith('giant') ? 'giant' : wonder.world ? wonder.id : null;
     const swallow = Boolean(e.swallowed);
     state.crash = {
       age: 0, // seconds of frames since the hit (a hidden tab pauses it)
