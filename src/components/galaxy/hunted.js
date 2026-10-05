@@ -5,9 +5,9 @@
 // tri-fighter or two, which take more stopping), the First Order's TIEs over
 // the sequels', and the Sith Eternal's at Exegol, in red. universe/hunters.js
 // flies them all; this is who they are, how they fly and what they're called
-// on the targeting bracket.
+// on the targeting bracket. (Plain data, from the rules: nothing here draws.)
 
-import { FACTIONS as HOME, HUNTER_KINDS, NAMES as HOME_NAMES } from '../universe/hunters';
+import { FACTIONS as HOME, HUNTER_KINDS, NAMES as HOME_NAMES } from '../universe/hunterRules';
 
 export const FACTIONS = {
   empire: HOME.empire,
@@ -19,7 +19,7 @@ export const FACTIONS = {
 export const KINDS = {
   ...HUNTER_KINDS,
   vulture: { size: 0.28, speed: 20, accel: 19, hp: 1, fire: [0.7, 1.4] },
-  trifighter: { size: 0.32, speed: 25, accel: 22, hp: 3, fire: [0.5, 0.95] },
+  trifighter: { size: 0.32, speed: 25, accel: 22, hp: 3, fire: [0.5, 0.95], tail: 0.3 },
   tiefo: { size: 0.3, speed: 22, accel: 19, hp: 1, fire: [0.7, 1.4] },
 };
 

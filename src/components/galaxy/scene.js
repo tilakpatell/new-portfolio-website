@@ -173,7 +173,8 @@ export async function create(canvas, ctx) {
   const pops = createCrash(scene);
   const fleet = createFleet({ build: buildGalaxyShip, glb: HUNTER_GLB });
   fleet.prepare = (o) => warm(o);
-  const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS });
+  const hunters = reduced ? null : createHunters(scene, { small, fleet, factions: FACTIONS, kinds: KINDS, solids: () => state.space?.solids ?? [] });
+  let hunts = 0; // packs sent this visit (the first is a small one)
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet });
 
   // your guns
@@ -248,7 +249,7 @@ export async function create(canvas, ctx) {
   let engine = null;
   let net = null;
   let netOff = null;
-  const pilots = createPilots(scene, { colors: BOLT_COLOR, here: () => (state.sys ? `/galaxy/${state.sys.id}` : '/galaxy') });
+  const pilots = createPilots(scene, { colors: BOLT_COLOR, here: () => (state.sys ? `/galaxy/${state.sys.id}` : '/galaxy'), fleet: reduced ? null : fleet, kinds: KINDS });
 
   const emit = (e) => props.onEvent?.(e);
   const controls = () => props.controls ?? CONTROL_DEFAULTS;
@@ -704,12 +705,19 @@ export async function create(canvas, ctx) {
         }
         continue;
       }
-      const ph = pilots.hit(shotFrom, b.position);
+      // another pilot, or one of the hunters after them (it's theirs, so they're told)
+      const ph = pilots.hit(shotFrom, b.position, d.punch ?? 1);
       if (ph) {
         b.visible = false;
-        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: 0.2 });
+        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: ph.down ? ph.size * 1.8 : 0.2 });
         state.hitMark = 1;
-        net?.hit(ph.id);
+        if (ph.hunter) {
+          net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
+          if (ph.down) {
+            emit({ type: 'kill', kind: ph.kind });
+            if (!reduced) state.shake = Math.max(state.shake, 0.2);
+          }
+        } else net?.hit(ph.id);
       }
     }
     return any;
@@ -1119,7 +1127,7 @@ export async function create(canvas, ctx) {
       // the First Order sometimes bring a Star Destroyer to launch them
       const faction = state.sys?.faction;
       if (hunters && faction && state.flown && !hunters.active && !pieces?.destroyerHere) {
-        state.nextHunt -= dt * (1 + state.heat * 0.4);
+        if (state.shield >= 50) state.nextHunt -= dt * (1 + state.heat * 0.4); // (not while your shields are low)
         if (state.nextHunt <= 0) {
           state.nextHunt = 50 + Math.random() * 45;
           const travelling = state.space.openness(live.x, live.y, live.z) > 0.5 && Math.abs(live.speed) > 30;
@@ -1129,7 +1137,7 @@ export async function create(canvas, ctx) {
               emit({ type: 'event', id: 'destroyer' });
               later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(faction, state.ship, { from: d.hangar, size: 3, ace: faction === 'empire' && Math.random() < 0.35 }) });
             }
-          } else hunters.pack(faction, live, travelling ? { ahead: true } : {});
+          } else hunters.pack(faction, live, { ahead: travelling, heat: state.heat, first: hunts++ === 0 });
         }
       }
       for (const l of [...later]) {
@@ -1243,9 +1251,11 @@ export async function create(canvas, ctx) {
       if (tough) h.lock.style.setProperty('--hp', (tgt.hp / tgt.hpMax).toFixed(3));
     }
     let n = 0;
-    if (on && hunters && h.threats.length) {
+    if (on && h.threats.length) {
       threatList.length = 0;
-      for (const c of hunters.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      for (const c of hunters?.targets ?? []) if (c.threat && c.id !== tgt?.id) threatList.push(c);
+      // (and a pilot whose shots have been landing on you)
+      if (pilots.count) for (const c of pilots.targets) if (c.threat && c.id !== tgt?.id) threatList.push(c);
       threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
       for (const c of threatList) {
         if (n >= h.threats.length) break;
@@ -1290,7 +1300,14 @@ export async function create(canvas, ctx) {
   // ── Being online ──
   const onNet = (e) => {
     if (e.type === 'hit') hurt(e.damage, e.from);
-    else if (e.type === 'downed') {
+    else if (e.type === 'hunterHit') {
+      // another pilot's bolt into one of the hunters after you
+      const r = hunters?.damage(e.id, e.damage);
+      if (r) {
+        pops.hit({ point: r.at, normal: new THREE.Vector3(0, 1, 0), radius: r.down ? r.size * 1.8 : 0.2 });
+        if (r.down) net?.helped?.(e.from, NAMES[r.kind] ?? 'hunter');
+      }
+    } else if (e.type === 'downed') {
       const at = pilots.at(e.id);
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
@@ -1464,6 +1481,7 @@ export async function create(canvas, ctx) {
       // the pilots there would see you where you are, in the wrong system)
       const elsewhere = Boolean(props.system && state.sys && props.system !== state.sys.id);
       net.pose(s, { hidden: Boolean(state.crash || (state.jump && state.jump.phase !== 'align') || props.frozen || elsewhere), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.pack?.(() => (s && !state.crash && !state.jump && !props.frozen && !elsewhere ? (hunters?.wire() ?? []) : []));
     }
     const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null });
     placeHud();
@@ -1708,7 +1726,7 @@ export async function create(canvas, ctx) {
       goals: state.world?.goals.map((g) => g.id),
       solids: state.space?.solids.length,
     });
-    window.__galaxyDebug = { THREE, scene, camera, renderer, state, models, startJump, goTo };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo };
   }
 
   return {

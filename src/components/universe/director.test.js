@@ -60,6 +60,12 @@ describe('the director', () => {
     expect(hunts(moving)).toBeGreaterThan(hunts(still));
   });
 
+  it('sends nobody after you while your shields are low', () => {
+    const got = run(createDirector({ rand: seeded(7) }), 6000, { family: 'starwars', heat: 6, travelling: true, calm: true });
+    expect(got.length).toBeGreaterThan(10);
+    expect(got.some((g) => g.e === 'hunt' || g.e === 'destroyer' || g.e === 'council')).toBe(false);
+  });
+
   it('brings on what it is asked for next', () => {
     const d = createDirector({ rand: seeded() });
     d.soon('comet');
