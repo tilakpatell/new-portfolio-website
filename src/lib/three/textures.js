@@ -133,13 +133,17 @@ const cache = new Map(); // url → Promise<Texture>
 export function loadTexture(url, { renderer = null, color = true, ...rest } = {}) {
   if (!cache.has(url)) {
     const { bitmap, plain } = loaders();
-    const p = bitmap
-      ? bitmap.loadAsync(url).then((img) => {
-          const t = new THREE.Texture(img);
-          t.flipY = false; // (the bitmap was flipped as it was decoded)
-          return t;
-        })
-      : plain.loadAsync(url);
+    // a GPU-compressed texture (KTX2) goes through the shared KTX2 loader,
+    // which is only fetched for one; it comes with its own mipmaps
+    const p = /\.ktx2(?:[?#]|$)/i.test(url)
+      ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(url))
+      : bitmap
+        ? bitmap.loadAsync(url).then((img) => {
+            const t = new THREE.Texture(img);
+            t.flipY = false; // (the bitmap was flipped as it was decoded)
+            return t;
+          })
+        : plain.loadAsync(url);
     cache.set(
       url,
       p.then((t) => sharpen(t, { renderer, color, ...rest })).catch((e) => {
@@ -156,15 +160,14 @@ export function forgetTexture(url) {
   cache.delete(url);
 }
 
-// Upload every texture under `root` (or in a list) now, in a quiet moment,
-// so the first frame that shows them doesn't pay for it.
-export function warm(renderer, what) {
-  if (!renderer?.initTexture) return 0;
-  const textures = new Set();
-  const add = (t) => t?.isTexture && textures.add(t);
-  if (Array.isArray(what)) what.forEach(add);
-  else if (what?.isTexture) add(what);
-  else if (what?.traverse) {
+// Every texture under a root, in a list, or in a material set ({ map,
+// normalMap, … } or a texture), each once.
+export function texturesOf(what, into = new Set()) {
+  const add = (t) => t?.isTexture && into.add(t);
+  if (!what) return into;
+  if (Array.isArray(what)) what.forEach((w) => texturesOf(w, into));
+  else if (what.isTexture) add(what);
+  else if (what.traverse) {
     what.traverse((o) => {
       const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       for (const m of mats) {
@@ -172,9 +175,26 @@ export function warm(renderer, what) {
         if (m.uniforms) for (const u of Object.values(m.uniforms)) add(u?.value);
       }
     });
+  } else if (what.isMaterial) {
+    for (const slot of MAP_SLOTS) add(what[slot]);
+  } else if (typeof what === 'object') {
+    for (const v of Object.values(what)) if (v?.isTexture) add(v);
   }
+  return into;
+}
+
+const whenIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1000 }) : setTimeout(() => fn({ timeRemaining: () => 8 }), 32));
+
+// Upload every texture under `root` (or in a list, or a set) ahead of the
+// first frame that shows them, so that frame doesn't pay for it. All at
+// once by default; with `idle`, a couple per idle callback, so a world's
+// forty maps arrive over a few quiet moments instead of one long one.
+// Resolves to how many were uploaded.
+export function warm(renderer, what, { idle = false, perSlice = 2 } = {}) {
+  if (!renderer?.initTexture) return Promise.resolve(0);
+  const list = [...texturesOf(what)];
   let n = 0;
-  for (const t of textures) {
+  const upload = (t) => {
     try {
       if (t.image || t.isCompressedTexture || t.isDataTexture) {
         renderer.initTexture(t);
@@ -183,6 +203,21 @@ export function warm(renderer, what) {
     } catch {
       // a texture that isn't ready yet uploads on its first frame instead
     }
+  };
+  if (!idle) {
+    list.forEach(upload);
+    return Promise.resolve(n);
   }
-  return n;
+  return new Promise((resolve) => {
+    const slice = (deadline) => {
+      let done = 0;
+      while (list.length && (done < perSlice || (deadline?.timeRemaining?.() ?? 0) > 4)) {
+        upload(list.shift());
+        done += 1;
+      }
+      if (list.length) whenIdle(slice);
+      else resolve(n);
+    };
+    whenIdle(slice);
+  });
 }

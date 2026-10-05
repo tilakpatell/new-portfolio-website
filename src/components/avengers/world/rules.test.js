@@ -24,11 +24,13 @@ import {
   DOOR_R,
   HERO,
   HERO_R,
+  LAP,
   LAWN_W,
   PLACES,
   PORTAL,
   SOLIDS,
   START,
+  SUIT,
   SWING,
   TRICK,
   aimWeb,
@@ -38,7 +40,9 @@ import {
   collide,
   findPerch,
   floorAt,
+  lapAt,
   linesFor,
+  nearArmour,
   nearCast,
   nearPack,
   nearestEdge,
@@ -47,7 +51,9 @@ import {
   outside,
   pastAnchor,
   progress,
+  readLap,
   readSettings,
+  recordLap,
   solidById,
   stepHero,
   stepTour,
@@ -1109,5 +1115,147 @@ describe('The compound, the world: air tricks', () => {
     expect(h.mode).toBe('swing');
     expect(h.trick).toBe(null);
     expect(h.style).toBe(TRICK.points.flip);
+  });
+});
+
+describe('The compound, the world: the Iron Man armour', () => {
+  const atPlinth = () => newHero({ x: ARMOUR.x + 1.5, z: ARMOUR.z + 1, face: 0 });
+
+  it('suits up at the plinth and nowhere else, and lifts off', () => {
+    expect(nearArmour(ARMOUR.x + 1, ARMOUR.z)).toBe(true);
+    expect(nearArmour(START.x, START.z)).toBe(false);
+    const far = stepHero(newHero(START), { suit: true }, DT);
+    expect(far.mode).toBe('ground');
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    expect(h.mode).toBe('suit');
+    expect(h.ev.map((e) => e.type)).toContain('suitup');
+    h = walk(h, { web: true }, 1.5);
+    expect(h.mode).toBe('suit');
+    expect(h.y).toBeGreaterThan(6);
+    // it coasts to a stop and holds its height idle, and comes down with Shift, never under the ground
+    const held = walk(h, {}, 1.5);
+    const held2 = walk(held, {}, 1);
+    expect(Math.abs(held2.y - held.y)).toBeLessThan(0.2);
+    const down = walk(h, { run: true }, 3);
+    expect(down.y).toBeGreaterThanOrEqual(0);
+    expect(down.mode).toBe('suit');
+  });
+
+  it('flies where the stick points, faster than he can swing, and no faster than it goes', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    // over the middle of the lawn, twenty metres up, then east over the open lawn
+    h = { ...h, x: 60 * 1.6, z: 52 * 1.6, y: 20, vy: 0 };
+    let top = 0;
+    for (let t = 0; t < 2.5; t += DT) {
+      h = stepHero(h, { x: 1, z: 0 }, DT);
+      top = Math.max(top, Math.hypot(h.vx, h.vz));
+    }
+    expect(top).toBeGreaterThan(SWING.maxSpeed * 0.9);
+    expect(top).toBeLessThanOrEqual(SUIT.top + 0.01);
+    expect(Math.cos(h.face)).toBeGreaterThan(0.9); // facing east
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+    // and stops when the stick is let go
+    h = walk(h, {}, 3);
+    expect(Math.hypot(h.vx, h.vz)).toBeLessThan(1);
+  });
+
+  it('can’t fly through a building, nor off the lawn, and rides up over a roof', () => {
+    const prow = solidById('prow');
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const inward = { x: -Math.cos(widow.face), z: Math.sin(widow.face) };
+    // in the suit at the main building's door, driven into it
+    let h = { ...stepHero(atPlinth(), { suit: true }, DT), x: widow.x, z: widow.z, y: 3, vx: 0, vz: 0, vy: 0 };
+    for (let t = 0; t < 3; t += DT) {
+      h = stepHero(h, inward, DT);
+      expect(inPoly(h.x, h.z, prow.foot)).toBe(false);
+    }
+    expect(h.mode).toBe('suit');
+    // up its face, in over it, and down onto its roof
+    h = walk(h, { web: true }, 3);
+    expect(h.y).toBeGreaterThan(prow.h + 2);
+    h = walk(h, inward, 0.5);
+    h = walk(h, { run: true }, 2.5);
+    expect(inPoly(h.x, h.z, prow.foot)).toBe(true);
+    expect(h.y).toBeGreaterThanOrEqual(prow.h - 0.01);
+    expect(h.mode).toBe('suit');
+    // and the lawn's edge holds
+    h = { ...h, x: 20, z: 20, y: 5 };
+    h = walk(h, { x: -1, z: -1 }, 4);
+    expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+  });
+
+  it('steps out of it anywhere, and he’s Spider-Man in the air, who can web', () => {
+    let h = stepHero(atPlinth(), { suit: true }, DT);
+    h = walk(h, { web: true }, 1.5);
+    const high = h.y;
+    h = stepHero(h, { suit: true }, DT);
+    expect(h.mode).toBe('air');
+    expect(h.ev.map((e) => e.type)).toContain('suitoff');
+    expect(h.y).toBeCloseTo(high, 0);
+    // falling, until he webs or lands
+    for (let t = 0; t < 8 && h.mode === 'air'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    // no web, no tricks, no zips in the armour
+    let s = walk(stepHero(atPlinth(), { suit: true }, DT), { web: true }, 1);
+    s = stepHero(s, { trick: true, zip: true, perch: true }, DT);
+    expect(s.mode).toBe('suit');
+    expect(s.trick).toBe(null);
+    expect(s.web).toBe(null);
+  });
+});
+
+describe('The compound, the world: the best lap, as a ghost', () => {
+  it('records him every tenth of a second, to a decimal, and no more than two minutes', () => {
+    let rec = [];
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let t = 0;
+    for (let i = 0; i < 180; i++) {
+      h = stepHero(h, pilot(h, t), DT);
+      t += DT;
+      rec = recordLap(rec, h, t);
+    }
+    expect(rec.length).toBeGreaterThanOrEqual(29);
+    expect(rec.length).toBeLessThanOrEqual(31);
+    for (const p of rec) {
+      expect(p.length).toBe(4);
+      for (const v of p) expect(Math.abs(v * 100 - Math.round(v * 100))).toBeLessThan(1e-6);
+    }
+    expect(Math.hypot(rec.at(-1)[0] - h.x, rec.at(-1)[2] - h.z)).toBeLessThan(0.1 + HERO.run * LAP.every);
+    // and the same recording back when it isn't time yet
+    const same = recordLap(rec, h, t);
+    expect(same).toBe(rec);
+    const full = Array.from({ length: LAP.max }, () => [0, 0, 0, 0]);
+    expect(recordLap(full, h, 999)).toBe(full);
+  });
+
+  it('plays the ghost back between the samples, held at the ends, with its speed', () => {
+    const rec = [
+      [0, 0, 0, 0],
+      [4, 1, 0, 0.5],
+      [8, 1, 0, 1],
+    ];
+    expect(lapAt(rec, -1)).toMatchObject({ x: 0, y: 0, z: 0, face: 0 });
+    const mid = lapAt(rec, 0.05);
+    expect(mid.x).toBeCloseTo(2, 5);
+    expect(mid.y).toBeCloseTo(0.5, 5);
+    expect(mid.face).toBeCloseTo(0.25, 5);
+    expect(mid.speed).toBeCloseTo(40, 5);
+    expect(lapAt(rec, 0.1)).toMatchObject({ x: 4, y: 1 });
+    expect(lapAt(rec, 5)).toMatchObject({ x: 8, y: 1, z: 0, face: 1 });
+    expect(lapAt(null, 1)).toBe(null);
+    expect(lapAt([], 1)).toBe(null);
+    // the face goes the short way round
+    const turn = lapAt([[0, 0, 0, 3], [0, 0, 0, -3]], 0.05);
+    expect(Math.abs(turn.face)).toBeGreaterThan(3);
+  });
+
+  it('reads a kept lap back, and nothing else', () => {
+    expect(readLap(null)).toBe(null);
+    expect(readLap([[1, 2, 3, 4]])).toBe(null);
+    expect(readLap([[1, 2, 3], [1, 2, 3]])).toBe(null);
+    expect(readLap([[1, 2, 3, 4], [1, 2, 'x', 4]])).toBe(null);
+    const ok = [[1, 2, 3, 4], [2, 3, 4, 5]];
+    expect(readLap(ok)).toEqual(ok);
+    expect(readLap(Array.from({ length: LAP.max + 5 }, () => [0, 0, 0, 0])).length).toBe(LAP.max);
   });
 });

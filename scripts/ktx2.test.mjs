@@ -44,9 +44,9 @@ describe('whether a map earns its bytes', () => {
     expect(verdict({ ...base, after: 600 * 1024 })).toBe('keep');
     expect(verdict({ ...base, after: 220 * 1024, psnr: 30 })).toBe('keep');
   });
-  it('takes a normal map out of JPEG whatever the bytes', () => {
-    expect(verdict({ ...base, role: 'normal', mime: 'image/jpeg', after: 1200 * 1024, psnr: 36 })).toBe('convert (normals out of JPEG)');
-    expect(verdict({ ...base, role: 'normal', mime: 'image/jpeg', after: 1200 * 1024, psnr: 30 })).toBe('keep');
+  it('sends a JPEG normal map back to its source rather than re-encoding what JPEG left', () => {
+    expect(verdict({ ...base, role: 'normal', mime: 'image/jpeg', after: 1200 * 1024, psnr: 36 })).toBe('regenerate from source as UASTC (JPEG normals)');
+    expect(verdict({ ...base, role: 'normal', mime: 'image/jpeg', after: 220 * 1024, psnr: 36 })).toBe('convert');
   });
   it('flags a big map for its GPU memory', () => {
     expect(verdict({ ...base, width: 2048, after: 1200 * 1024, gpuBefore: 21e6, gpuAfter: 5.3e6 })).toBe('consider (GPU memory)');

@@ -19,13 +19,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
 import { pixelRatio } from '../../../lib/device';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
@@ -814,8 +813,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   const lib = createLibrary(renderer);
   // the statues: Optimus Prime in Iacon's plaza, Megatron in Kaon's (null if
   // one can't load: the plaza stands empty)
-  const gltf = new GLTFLoader();
-  gltf.setMeshoptDecoder(MeshoptDecoder);
+  const gltf = gltfLoader();
   const statue = (name) =>
     gltf
       .loadAsync(`/models/meshy/${name}.glb`)

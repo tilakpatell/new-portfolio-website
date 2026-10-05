@@ -17,9 +17,8 @@
 // don't slide).
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const BASE = '/games/meshy/rollout';
 const TAU = Math.PI * 2;
@@ -101,8 +100,7 @@ function dissolving(src, edge, scale, frame) {
 }
 
 export function createRollOutCast() {
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const assets = new Map(); // name → { scene, size, offset, clips }
   const owned = [];
 

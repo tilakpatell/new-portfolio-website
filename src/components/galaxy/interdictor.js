@@ -1,0 +1,202 @@
+// The Imperial Interdictor as a set piece: the cruiser that pulled you out
+// of hyperspace (interdiction.js says when and where) dropping in across
+// your bow, smeared along its line of flight in a flash of blue-white the
+// way the universe map's Star Destroyers do (universe/setpieces.js), and
+// snapping to its own shape; its four gravity-well globes breathing (the
+// hull's own, fleetRebels.js); and the well itself, a faint violet shell
+// round it, rippling, the size of its hold. It drifts slowly across your
+// way while it stays, and jumps away the same way in reverse once scene.js
+// says its fighters are gone.
+//
+// createInterdictor(parent, { models, small }) → { arrive(place) → true | false, leave(), hide(),
+//   update(dt, t) → busy, here, at, dispose() }
+// `place` is interdiction.js's interdictorPlace(): { at, heading, drift }.
+// Everything's in `parent`'s space (the system's).
+
+import * as THREE from 'three';
+import { INTERDICTION } from './interdiction';
+
+const JUMP = 0.7; // seconds to come out of (or go into) hyperspace
+const LINGER = 240; // seconds at most it stays, fighters or no
+
+// the well: a shell seen from inside or out, brightest at its rim, with the
+// field's bands drawn slowly across it
+const WELL_VERT = /* glsl */ `
+varying vec3 vNormal;
+varying vec3 vView;
+varying vec3 vLocal;
+void main() {
+  vLocal = position;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vNormal = normalize(normalMatrix * normal);
+  vView = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}`;
+const WELL_FRAG = /* glsl */ `
+uniform float uTime;
+uniform float uAmount;
+uniform vec3 uColor;
+varying vec3 vNormal;
+varying vec3 vView;
+varying vec3 vLocal;
+void main() {
+  float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.6);
+  float lat = asin(clamp(vLocal.y, -1.0, 1.0));
+  float lon = atan(vLocal.z, vLocal.x);
+  float bands = 0.5 + 0.5 * sin(lat * 16.0 + uTime * 1.4) * sin(lon * 5.0 - uTime * 0.6);
+  float a = (rim * 0.85 + bands * 0.07) * uAmount;
+  gl_FragColor = vec4(uColor * a, 1.0);
+}`;
+
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(0.6, 'rgba(255,255,255,0.12)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+export function createInterdictor(parent, { models, small = false } = {}) {
+  const made = [];
+  const keep = (x) => (made.push(x), x);
+  const size = INTERDICTION.size;
+
+  // the cruiser, in its slot the first time it's wanted
+  let slot = null;
+  const flash = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: keep(glowTexture()), color: new THREE.Color(2.2, 2.6, 5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
+  flash.visible = false;
+  parent.add(flash);
+  const piece = { state: null, age: 0, heading: 0, at: new THREE.Vector3(), drift: new THREE.Vector3() };
+
+  // the well
+  const wellMat = keep(
+    new THREE.ShaderMaterial({
+      vertexShader: WELL_VERT,
+      fragmentShader: WELL_FRAG,
+      uniforms: { uTime: { value: 0 }, uAmount: { value: 0 }, uColor: { value: new THREE.Color(0.55, 0.32, 1.25) } },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    }),
+  );
+  const well = new THREE.Mesh(keep(new THREE.SphereGeometry(1, small ? 32 : 48, small ? 20 : 30)), wellMat);
+  well.scale.setScalar(INTERDICTION.well);
+  well.visible = false;
+  well.frustumCulled = false;
+  well.renderOrder = -4;
+  parent.add(well);
+  let wellWant = 0;
+
+  const hide = () => {
+    piece.state = null;
+    if (slot) slot.holder.visible = false;
+    flash.visible = false;
+    wellWant = 0;
+  };
+
+  return {
+    // it drops in: across your bow, broadside on (false if one's here already)
+    arrive(place) {
+      if (piece.state) return false;
+      if (!slot) {
+        slot = models.slot('interdictor', size);
+        parent.add(slot.holder);
+      }
+      piece.at.set(place.at[0], place.at[1], place.at[2]);
+      piece.heading = place.heading;
+      piece.drift.set(place.drift[0], place.drift[1], place.drift[2]);
+      piece.state = 'in';
+      piece.age = 0;
+      slot.holder.visible = true;
+      flash.visible = true;
+      flash.position.copy(piece.at);
+      well.position.copy(piece.at);
+      well.visible = true;
+      wellWant = 1;
+      return true;
+    },
+    // and it jumps away (its fighters gone, or it's had its go)
+    leave() {
+      if (piece.state !== 'here' && piece.state !== 'in') return;
+      piece.state = 'out';
+      piece.age = 0;
+      flash.visible = true;
+      flash.position.copy(piece.at);
+      wellWant = 0;
+    },
+    // gone at once (a new system)
+    hide,
+    get here() {
+      return piece.state === 'here' || piece.state === 'in';
+    },
+    get at() {
+      return piece.state ? [piece.at.x, piece.at.y, piece.at.z] : null;
+    },
+
+    update(dt, t) {
+      let busy = false;
+      if (piece.state) {
+        busy = true;
+        piece.age += dt;
+        const g = slot.holder;
+        piece.at.addScaledVector(piece.drift, dt);
+        g.position.copy(piece.at);
+        g.rotation.set(0, piece.heading + Math.PI, 0); // (its nose is +z; forward() is −z at heading 0)
+        // smeared along its line of flight while it comes out of hyperspace (or goes in)
+        let stretch = 1;
+        let shift = 0;
+        if (piece.state === 'in') {
+          const k = Math.min(1, piece.age / JUMP);
+          stretch = 1 + (1 - k) ** 3 * 14;
+          shift = -((1 - k) ** 3) * size * 4;
+          if (k >= 1) piece.state = 'here';
+        } else if (piece.state === 'here' && piece.age > LINGER) {
+          this.leave();
+        } else if (piece.state === 'out') {
+          const k = Math.min(1, piece.age / JUMP);
+          stretch = 1 + k * k * 18;
+          shift = k * k * size * 6;
+          if (k >= 1) hide();
+        }
+        g.scale.set(1, 1, stretch);
+        g.translateZ(shift);
+        well.position.copy(piece.at);
+        if (flash.visible) {
+          const a = piece.state === 'in' || piece.state === 'out' ? piece.age : JUMP + 1;
+          const k = a < 0.15 ? a / 0.15 : Math.exp(-(a - 0.15) * 4);
+          flash.scale.setScalar(size * (0.6 + k));
+          flash.material.opacity = k;
+          if (a > 1.2) flash.visible = false;
+        }
+      }
+      if (well.visible) {
+        busy = true;
+        const u = wellMat.uniforms;
+        u.uAmount.value += (wellWant - u.uAmount.value) * Math.min(1, dt * 1.6);
+        u.uTime.value = t % 1000;
+        if (wellWant === 0 && u.uAmount.value < 0.003) {
+          u.uAmount.value = 0;
+          well.visible = false;
+        }
+      }
+      return busy;
+    },
+
+    dispose() {
+      hide();
+      if (slot) models.drop(slot);
+      flash.removeFromParent();
+      well.removeFromParent();
+      for (const x of made) x.dispose();
+    },
+  };
+}

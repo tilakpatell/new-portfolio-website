@@ -50,6 +50,10 @@
 .iw-brand { display: grid; gap: 0.3rem; pointer-events: none; }
 .iw-eyebrow { margin: 0; color: var(--iw-ink); font: 600 0.7rem/1.2 var(--font-sans); font-stretch: 125%; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6); }
 .iw-title { margin: 0; font: 400 clamp(2.6rem, 1.6rem + 3.6vw, 4.6rem)/0.86 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.02em; color: var(--iw-yellow); transform: scaleY(1.12); transform-origin: left top; text-shadow: 3px 3px 0 var(--iw-blue), 0 6px 24px rgba(0, 0, 0, 0.45); }
+.iw-goal { justify-self: start; margin: 0.3rem 0 0; padding: 0.4rem 0.75rem; border: 2px solid #000; border-radius: 6px; background: var(--iw-yellow); color: #111; font: 700 0.82rem/1.25 var(--font-sans); box-shadow: 3px 3px 0 #000; }
+.iw-goal:not([data-on='1']) { display: none; }
+.iw-goal[data-red='1'] { background: #ff3b30; color: #fff; animation: iw-pulse 1s ease-in-out infinite; }
+@keyframes iw-pulse { 50% { transform: scale(1.03); } }
 .iw-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
 .iw-btn { display: inline-flex; align-items: center; padding: 0.45rem 0.8rem; border: 2px solid #000; border-radius: 6px; background: var(--iw-yellow); color: #111; font: 700 0.78rem/1 var(--font-sans); letter-spacing: 0.04em; box-shadow: 3px 3px 0 #000; cursor: pointer; transition: transform 0.1s ease, box-shadow 0.1s ease; }
 .iw-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
@@ -64,6 +68,12 @@
 .iw-help dt { color: var(--iw-yellow); font: 700 0.76rem/1.6 var(--font-mono); }
 .iw-help dd { margin: 0; }
 .iw-help p { margin: 0.7rem 0 0; color: #b9c6dc; font-size: 0.78rem; }
+
+/* who's talking: a speech balloon over their head */
+.iw-bubble { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; pointer-events: none; transition: opacity 0.2s ease; }
+.iw-bubble > div { position: absolute; left: 0; bottom: 14px; display: grid; gap: 0.15rem; width: max-content; max-width: min(17rem, 70vw); padding: 0.5rem 0.8rem 0.6rem; border: 2px solid #000; border-radius: 16px; background: #fff; color: #111; box-shadow: 3px 3px 0 var(--iw-yellow); transform: translateX(-50%); font: 600 0.88rem/1.3 var(--font-sans); animation: iw-pop 0.18s ease-out both; }
+.iw-bubble > div::after { content: ''; position: absolute; left: 50%; bottom: -10px; width: 14px; height: 14px; background: #fff; border-right: 2px solid #000; border-bottom: 2px solid #000; transform: translateX(-50%) rotate(45deg); }
+.iw-bubble b { color: var(--iw-blue); font: 400 0.95rem/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; }
 
 /* the gauge: speed, Mach, height */
 .iw-gauge { display: grid; gap: 0.25rem; min-width: 11rem; padding: 0.6rem 0.8rem 0.7rem; border: 2px solid #000; border-radius: 8px; background: var(--iw-glass); color: var(--iw-ink); box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none; }

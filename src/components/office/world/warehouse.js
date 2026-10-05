@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { merge } from '../kit';
 import { BALES, FORKLIFT, HOOP, RACKS, WAREHOUSE, WH_STAIRS } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 const H = 6.2; // to the roof's trusses
 
@@ -39,7 +40,7 @@ function floorTex() {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  sharpen(t);
   return t;
 }
 function signTex(lines, bg, fg, w = 512, h = 256) {

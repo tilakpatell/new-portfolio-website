@@ -12,9 +12,13 @@
 // hull and markings recoloured, its engines' glow too; and carry the parts
 // fitted in the hangar (outfit.js), bolted on by modules.js.
 //
-// buildShip(kind, textures) → { group, setThrottle(0…1), paint(paint),
-//   outfit(loadout) → modules, modules, drive(dt, motion), dress(model,
-//   { clone }), mount(model, extra), update(t), dispose() }
+// buildShip(kind, textures, { build }) → { group, setThrottle(0…1),
+//   paint(paint), outfit(loadout) → modules, modules, engines, drive(dt,
+//   motion), dress(model, { clone }), mount(model, extra), update(t),
+//   dispose() }
+// With a build (shipyard/build.js), the ship is that garage build, put
+// together from its modules (shipyard/modules3d.js), whatever crew flies it:
+// no model is mounted over it, and its engines are its own.
 // Every ship points along −z, centred, about LENGTH long (they're built at
 // BUILT long and scaled down as a whole).
 
@@ -24,7 +28,8 @@ import { sharpenMaterial } from '../../lib/three/textures';
 import { tiled } from './kit';
 import { createLivery } from './livery';
 import { buildModules } from './modules';
-import { FALCON_ENGINES, XWING_ENGINES, buildFalcon, buildXwing } from './hulls';
+import { FALCON_ENGINES, XWING_ENGINES, buildFalcon, buildXwing, panelMaps } from './hulls';
+import { assemble } from './shipyard/modules3d';
 
 export const LENGTH = 0.26; // small against the planets
 export const BUILT = 0.36; // the length the ships below are built at
@@ -167,6 +172,7 @@ const BUILD = { xwing: buildXwing, falcon: buildFalcon, cruiser, rv };
 // the RV's and the cruiser's stand-ins (and the parts bolted on: modules.js).
 const FIT = {
   built: { mid: 0.4, marks: [0.5, 0.7], keep: 0.04 },
+  build: { mid: 0.5, marks: [0.45, 0.65], keep: 0.03 }, // (a garage build: shipyard/modules3d.js's panel skin)
   xwing: { mid: 0.36, marks: [0.62, 0.76], keep: 0.04 },
   falcon: { mid: 0.12, marks: [0.6, 0.7], dark: [0.03, 0.05, 0.35], keep: 0.015 },
   rv: { mid: 0.32, marks: [0.58, 0.7], dark: [0.06, 0.1, 0.7], keep: 0.03 },
@@ -204,8 +210,12 @@ const finish = (kind, model) =>
 // credited in data/modelCredits.json), and their stand-ins are built whole (hulls.js)
 export const SHIP_MODELS = { xwing: '/models/sketchfab/xwing-hd.glb', falcon: '/models/sketchfab/falcon-hd.glb', rv: '/models/universe/rv-wings.glb' };
 
-export function buildShip(kind, T = {}) {
-  const ship = (BUILD[kind] ?? cruiser)(T);
+// the garage builds' panel skin (made once, in the browser)
+const buildMaps = () => (typeof document === 'undefined' ? null : panelMaps('build', { base: '#c4c8ce', seed: 11, cols: 5, rows: 9, grime: 0.18 }));
+
+export function buildShip(kind, T = {}, { build = null } = {}) {
+  const ship = build ? assemble(build, { maps: buildMaps() }) : (BUILD[kind] ?? cruiser)(T);
+  const engines = build ? ship.engines : (ENGINES[kind] ?? []);
   const pivot = new THREE.Group(); // banks and bobs inside the group the scene moves
   pivot.scale.setScalar(LENGTH / BUILT);
   pivot.add(ship.group);
@@ -214,7 +224,7 @@ export function buildShip(kind, T = {}) {
   let mounted = null;
   let ownGlow = false;
   const livery = createLivery();
-  livery.apply(ship.group, HULL_FIT[kind] ?? FIT.built);
+  livery.apply(ship.group, build ? FIT.build : (HULL_FIT[kind] ?? FIT.built));
   for (const g of ship.glow) g.own = g.color.clone();
   let throttle = 0;
   let coat = null; // the paint it wears
@@ -233,12 +243,16 @@ export function buildShip(kind, T = {}) {
   return {
     update(t) {
       mounted?.update?.(t);
+      ship.update?.(t);
     },
     dispose() {
       mounted?.dispose?.();
+      ship.dispose?.();
       modules?.dispose();
       livery.dispose();
     },
+    build, // (the garage build it is, or null)
+    engines, // (where its exhaust leaves, in BUILT units)
     group,
     pivot,
     setThrottle(k) {
@@ -255,7 +269,7 @@ export function buildShip(kind, T = {}) {
         modules.group.removeFromParent();
         modules.dispose();
       }
-      modules = buildModules(kind, loadout, ENGINES[kind] ?? [], { fresh });
+      modules = buildModules(kind, loadout, engines, { fresh, mounts: ship.mounts ?? null });
       livery.apply(modules.group, FIT.built);
       ship.group.add(modules.group);
       return modules;
@@ -294,7 +308,7 @@ export function buildShip(kind, T = {}) {
     // `extra` is what a built model brings: update(t) each frame, dispose(),
     // whether it has its own engine glow and tint(color) for it
     mount(model, extra = {}) {
-      if (!ship.stand || !model) return false;
+      if (!ship.stand || !model || build) return false; // (a garage build is its own model)
       mounted = extra;
       livery.apply(model, FIT[kind] ?? FIT.built, { only: PAINTABLE[kind] }); // (if it wasn't dressed already)
       finish(kind, model);
