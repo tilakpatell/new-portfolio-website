@@ -84,6 +84,17 @@ export const CHAPTERS = [
     seals: ['parthgalen', 'wanderalone', 'seatofseeing', 'runfrodo', 'promise'],
   },
   {
+    id: 'dead-marshes',
+    stop: 'dead-marshes',
+    lift: 2.6,
+    name: 'The Dead Marshes',
+    title: 'The Emyn Muil, the Dead Marshes and the Black Gate',
+    blurb: 'Down the cliffs on Sam’s elven rope, catching Gollum by night, across the marshes past the faces in the water, and the Black Gate, shut and watched.',
+    at: [566, 344],
+    theme: 'shire',
+    seals: ['elvenrope', 'swearontheprecious', 'deadmarshes', 'anotherway'],
+  },
+  {
     id: 'mordor',
     stop: 'mount-doom',
     lift: 4.2,

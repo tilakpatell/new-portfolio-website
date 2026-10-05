@@ -1,0 +1,30 @@
+/* The Emyn Muil, the Dead Marshes and the Black Gate: the Shire's HUD
+   (../../shire/shire.css) in storm-grey, marsh-green and ash, with the
+   panels for the rope, Sméagol, the lights, and the cloak. */
+
+.marshes-world { --shire-glass: rgba(14, 16, 14, 0.8); --shire-glass-hi: rgba(16, 18, 16, 0.92); }
+.marshes-stage { background: linear-gradient(180deg, #2a3038 0%, #6a7078 56%, #3a3a36 60%, #121410 100%); }
+.marshes-stage[data-zone='marsh'] { background: linear-gradient(180deg, #4a5448 0%, #8a9080 56%, #2a3022 60%, #0e120c 100%); }
+.marshes-stage[data-zone='gate'] { background: linear-gradient(180deg, #2a2420 0%, #6a5a4a 56%, #2a2622 60%, #0e0c0a 100%); }
+.marshes-stage .shire-loading { color: #d0d4cc; }
+.marshes-stage[data-mode='talk'] .shire-canvas, .marshes-stage[data-mode='rope'] .shire-canvas, .marshes-stage[data-mode='creep'] .shire-canvas, .marshes-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+.marshes-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.marshes-stage .shire-hud-top ~ .marshes-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
+.marshes-game .shire-meter { width: 100%; box-sizing: border-box; }
+.marshes-game[data-reach] { border-color: rgba(140, 220, 120, 0.8); animation: shire-tempt 0.4s ease-in-out infinite alternate; }
+.marshes-game[data-look] { border-color: rgba(255, 170, 80, 0.7); }
+.marshes-big { min-width: 7.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.marshes-meter-rope span { background: linear-gradient(90deg, #b8b0a0, #e8e0cc); }
+.marshes-meter-creep span { background: linear-gradient(90deg, #8a9a6a, #d8e8a8); }
+.marshes-meter-lure span { background: linear-gradient(90deg, #9ad8a8, #e8fff0); }
+.marshes-hide { position: absolute; right: 1rem; bottom: clamp(6rem, 18vh, 9rem); z-index: 6; }
+.marshes-stage[data-hiding] .shire-canvas { filter: saturate(0.6) brightness(0.85); }
+
+.marshes-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .marshes-stage[data-game] .shire-hud-top { display: none; }
+  .marshes-game, .marshes-stage .shire-hud-top ~ .marshes-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .marshes-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}
