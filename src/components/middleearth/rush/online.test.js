@@ -6,6 +6,7 @@ import { movePlayer, newRush, stepRush } from './rules';
 // A room in memory: what one member sends, the others get (as the relays do).
 function fakeRelay() {
   const members = new Set();
+  const muted = new Set(); // members whose messages go nowhere (a stalled page)
   let n = 0;
   const joinRoom = () => {
     const id = `peer${++n}`;
@@ -20,6 +21,7 @@ function fakeRelay() {
         const a = {
           onMessage: null,
           send(data) {
+            if (muted.has(id)) return;
             const wire = JSON.parse(JSON.stringify(data));
             for (const o of members) if (o !== m) o.deliver(ns, wire, id);
           },
@@ -38,7 +40,7 @@ function fakeRelay() {
     members.add(m);
     return m;
   };
-  return { load: () => Promise.resolve(joinRoom) };
+  return { load: () => Promise.resolve(joinRoom), mute: (id, on = true) => (on ? muted.add(id) : muted.delete(id)) };
 }
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
@@ -89,6 +91,8 @@ describe('a room', () => {
     guest.guestPump(local, (t += 16));
     expect(local.players.find((p) => p.slot === 0).x).toBe(9.5);
     expect(local.players.find((p) => p.slot === 1).x).toBeCloseTo(me.x); // still where the guest put it
+    host.leave();
+    guest.leave();
   });
 
   it('lets go of a guest who leaves, and a room’s over when its host goes', async () => {
@@ -123,6 +127,29 @@ describe('a room', () => {
     // and the host leaving ends it for the guest
     host.leave();
     expect(guest.state.hostGone).toBe(true);
+    guest.leave();
+  });
+
+  it('a host that only went quiet is welcomed back; one that left isn’t', async () => {
+    const relay = fakeRelay();
+    let t = 0;
+    const now = () => t;
+    const host = createSession({ level: PONY, code: 'QRST', host: true, load: relay.load, now });
+    const guest = createSession({ level: PONY, code: 'QRST', host: false, load: relay.load, now });
+    await settle();
+    await settle();
+    const gs = newRush(PONY);
+    guest.guestPump(gs, (t = 2000));
+    expect(guest.state.mine).toBe(1);
+    relay.mute(host.selfId); // nothing from the host for twelve seconds
+    guest.guestPump(gs, (t += 12000));
+    expect(guest.state.hostGone).toBe(true);
+    relay.mute(host.selfId, false);
+    host.hostSend(null, [], (t += 2500)); // and then the lobby again, when it's next due
+    expect(guest.state.hostGone).toBe(false);
+    host.leave();
+    expect(guest.state.hostGone).toBe(true);
+    guest.leave();
   });
 
   it('turns a fifth away', async () => {
@@ -137,5 +164,6 @@ describe('a room', () => {
     expect(host.state.slots.filter(Boolean)).toHaveLength(4);
     expect(guests.filter((g) => g.state.full)).toHaveLength(1);
     expect(guests.filter((g) => g.state.mine != null)).toHaveLength(3);
+    for (const x of [host, ...guests]) x.leave();
   });
 });

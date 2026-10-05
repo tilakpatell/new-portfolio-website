@@ -52,6 +52,8 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
   let lastLobby = -Infinity;
   let lastHello = -Infinity;
   let left = false;
+  let hostLeft = false; // (the host said goodbye, rather than going quiet)
+  let timer = 0;
   const changed = () => onChange({ ...state, slots: state.slots.slice() });
   const allow = (peerId, kind) => {
     if (!limits.has(peerId)) limits.set(peerId, createLimiter(RATES));
@@ -76,6 +78,26 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     changed();
   };
 
+  // the room's pulse: the host's lobby now and then, and letting go of quiet
+  // guests; a guest's hello till seated, and now and then after, and
+  // noticing a quiet host
+  const beat = (t) => {
+    if (left || state.status !== 'online') return;
+    if (state.role === 'host') {
+      for (const [peerId, at] of heard) if (t - at > QUIET_MS) unseat(peerId);
+      if (t - lastLobby >= LOBBY_MS) sendLobby();
+      return;
+    }
+    if (hostId && !state.hostGone && t - (heard.get(hostId) ?? t) > QUIET_MS) {
+      state.hostGone = true;
+      changed();
+    }
+    if (!state.full && t - lastHello >= (state.mine == null ? HELLO_MS : KEEP_MS)) {
+      lastHello = t;
+      send('hi', 1);
+    }
+  };
+
   load()
     .then((joinRoom) => {
       if (left) return;
@@ -87,6 +109,11 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
         if (!hostId) hostId = peerId;
         if (peerId !== hostId) return false;
         heard.set(peerId, now());
+        // only quiet, not gone: back again
+        if (state.hostGone && !hostLeft) {
+          state.hostGone = false;
+          changed();
+        }
         return true;
       };
       acts.lob.onMessage = (data, { peerId }) => {
@@ -126,6 +153,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
       room.onPeerLeave = (id) => {
         if (state.role === 'host') unseat(id);
         else if (id === hostId) {
+          hostLeft = true;
           state.hostGone = true;
           changed();
         }
@@ -141,6 +169,9 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
           state.status = 'online';
           changed();
           if (state.role === 'host') sendLobby();
+          // the lobby and the hellos go on a timer of their own, so a page
+          // that's busy (or in the background) doesn't drop out of the room
+          timer = setInterval(() => beat(now()), 1000);
         })
         .catch(() => {
           if (left) return;
@@ -176,7 +207,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     hostPump(s, t = now()) {
       for (const slot of dropped) s.players = s.players.filter((p) => p.slot !== slot);
       dropped = [];
-      for (const [peerId, at] of heard) if (t - at > QUIET_MS) unseat(peerId);
+      beat(t);
       const playing = state.phase === 'count' || state.phase === 'play';
       const hobbit = (peerId) => {
         const slot = state.slots.indexOf(peerId);
@@ -215,7 +246,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
         lastState = t;
         send('st', writeState(s));
       }
-      if (t - lastLobby >= LOBBY_MS) sendLobby();
+      beat(t);
     },
 
     // ── a guest ──
@@ -223,10 +254,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     // each frame: the host's round into `s` (keeping your own hobbit's
     // place), what's happened, your hobbit out, and hello till you're seated
     guestPump(s, t = now()) {
-      if (hostId && !state.hostGone && t - (heard.get(hostId) ?? t) > QUIET_MS) {
-        state.hostGone = true;
-        changed();
-      }
+      beat(t);
       let fresh = false;
       const mine = state.mine;
       let me = mine != null ? s.players.find((p) => p.slot === mine) : null;
@@ -243,11 +271,6 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
       me = mine != null ? s.players.find((p) => p.slot === mine) : null;
       const list = events;
       events = [];
-      // hello till you're seated, and now and then after (so a host doesn't think you've gone)
-      if (state.status === 'online' && !state.full && t - lastHello >= (state.mine == null ? HELLO_MS : KEEP_MS)) {
-        lastHello = t;
-        send('hi', 1);
-      }
       if (me && t - lastPose >= POSE_MS) {
         lastPose = t;
         send('pose', writePose(me));
@@ -261,6 +284,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     leave() {
       if (left) return;
       left = true;
+      clearInterval(timer);
       state.status = 'left';
       room?.leave();
     },

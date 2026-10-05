@@ -16,7 +16,8 @@
 .rush-title { margin: 0; font: 600 clamp(1.6rem, 1.1rem + 2vw, 2.6rem)/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.03em; }
 .rush-lead { margin: 0; max-width: 62ch; color: var(--color-muted, inherit); }
 .rush-no3d { padding-block: 2rem; }
-.rush-stage { background: radial-gradient(ellipse at 50% 40%, #3a2414 0%, #1a120c 70%); }
+.rush-stage { background: radial-gradient(ellipse at 50% 40%, #3a2414 0%, #1a120c 70%); scroll-margin-top: calc(var(--nav-h, 64px) + 4.5rem); }
+.rush { scroll-margin-top: calc(var(--nav-h, 64px) + 3.5rem); }
 .rush-stage .shire-canvas { cursor: default; touch-action: none; }
 .rush-stage[data-phase='lobby'] .shire-canvas, .rush-stage[data-phase='over'] .shire-canvas { filter: saturate(0.85) brightness(0.8); transition: filter 0.4s ease; }
 .rush-stage .shire-loading { color: #f2e2c0; }
