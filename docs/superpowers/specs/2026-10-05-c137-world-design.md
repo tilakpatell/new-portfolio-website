@@ -221,3 +221,35 @@ never calls Meshy at runtime.
 ## Out of scope
 
 Multiplayer, voiced dialogue, new soundboard clips, changes to other pages.
+
+## Amendment (2026-10-05, from the user): the Smith house, accurate
+
+The user asked for the Smith house to be accurate and sent the show's front
+elevation (and a rendered match), the ground- and first-floor plans, and
+references for Summer (orange ponytail, hot pink tank top, purple phone) and
+Jerry (olive-green polo tucked in with a brown belt, light blue jeans, dark
+shoes).
+
+**Outside**, seen from the street, left to right: a single-storey two-car
+garage wing standing forward, steep front gable, tan four-panel garage door,
+a white backboard with a red hoop on the gable; a single-storey middle
+section set back, a wide brown-framed window, a brown front door under a
+small pointed porch gable, a satellite dish on the roof; a two-storey wing
+on the right with a hipped roof, a wide upstairs window onto a little
+balcony with a wooden railing over a shingled lean-to above the wide
+downstairs window, a red-brick planter of bushes. Cream stucco walls on a
+dark red brick base, brown shingle roofs, a front walk edged in red brick,
+a garden hose reel right of the door, a potted plant left of it. So the
+garage is on the **west** (left from the street), the two-storey wing on the
+east. The Meshy model is remade from this description, and the code-built
+stand-in follows it too.
+
+**Inside**, ground floor (the street side is south): kitchen (west, full
+depth) with a door in its west wall to the garage (Rick's lab); living room
+(north middle: couch facing the TV on its east wall); a room north-east;
+dining room (yellow table) south of the living room; the entry way (red rug)
+with the front door in its south wall; a hallway east from the entry; the
+stairs up beside it; a room south-east. Upstairs: Summer's room and Morty's
+room along the north, a hallway, the stairs, Beth and Jerry's room to the
+south with the balcony off it. Where everyone is: Jerry on the couch, Beth
+in the kitchen, Summer in her room on her phone, Rick in the garage.
