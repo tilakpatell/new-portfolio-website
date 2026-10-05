@@ -9,7 +9,8 @@
 import * as THREE from 'three';
 import { AREAS, FURNITURE, LINKS, PEOPLE } from '../rules';
 import { paint, rng } from '../kit';
-import { BOX, CYL8, TAU, ceilings, doorAt, fitText, makeRoom, scribble, tiledPaint, toonPerson, wallLine, win, windowView } from './shell';
+import { BOX, CYL8, TAU, ceilings, doorAt, fitText, makeRoom, scribble, tiledPaint, wallLine, win, windowView } from './shell';
+import { toonPerson } from './people';
 
 const H = 2.9;
 const CREAM = 0xf1e7c6;

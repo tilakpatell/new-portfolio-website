@@ -4,18 +4,16 @@
 // casts shadows) and another (the walls and fixtures, which don't); glows in
 // one vertex-coloured unlit mesh; every painted picture (posters, windows,
 // the calendar, the map) is packed into one canvas and drawn as decals. Plus
-// walls with openings, the floors from rules.js's PLAN, people from the Meshy
-// cast with code-drawn stand-ins, and the cutaway that sinks a wall standing
-// between the camera and Morty.
+// walls with openings, doors and windows, the floors from rules.js's PLAN,
+// ceilings, the cutaway that sinks a wall standing between the camera and
+// Morty, and a few painting helpers. People are ./people.js.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hot } from '../../../../lib/stage3d';
 import { toon } from '../../portal/toon';
 import { at, batch, mergeParts, paint } from '../kit';
-import { AREAS, PLAN } from '../rules';
+import { PLAN } from '../rules';
 
 export const WALL_H = 2.6;
 export const DOOR_H = 2.1;
@@ -313,7 +311,7 @@ export function makeRoom(kit, id) {
 // colours the skirting on the room side (both sides if centred). Returns a
 // frame on the wall's room face (v out into the room; u along it, from a or
 // from b: u(s) says where s metres from a is).
-export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = WALL_H, color = 0xf1e6c8, mat = null, dado = null, skirt = 0xf6f2e8, skirtH = 0.11, holes = [] }) {
+export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = WALL_H, color = 0xf1e6c8, mat = null, dado = null, skirt = 0xf6f2e8, skirtH = 0.11, crown = null, holes = [] }) {
   let [x0, z0] = a;
   let [x1, z1] = b;
   let len = Math.hypot(x1 - x0, z1 - z0);
@@ -344,8 +342,13 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
     u = o.at + o.w / 2;
   }
   if (u < len) spans.push([u, len]);
-  const piece = (ua, ub, ya, yb) => {
-    if (ub - ua < 1e-3 || yb - ya < 1e-3) return;
+  const piece = (ua0, ub0, ya0, yb0) => {
+    if (ub0 - ua0 < 1e-3 || yb0 - ya0 < 1e-3) return;
+    // each a hair into the next, so no crack opens between them for the ink to find
+    const ua = ua0 - 0.003;
+    const ub = ub0 + 0.003;
+    const ya = ya0 > 0 ? ya0 - 0.003 : ya0;
+    const yb = yb0 < h ? yb0 + 0.003 : yb0;
     if (mat) R.tiled.add(BOX, mat, f.mat((ua + ub) / 2, (ya + yb) / 2, mid, 0, ub - ua, yb - ya, t));
     else if (dado) {
       const [dh, dc] = dado;
@@ -355,14 +358,20 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
   };
   for (const [ua, ub] of spans) {
     piece(ua, ub, 0, h);
+    // (trim stands well proud of the wall: a thin step leaves the ink a dotted line)
     if (skirt != null) {
-      f.box(skirt, (ua + ub) / 2, 0, v1 + 0.008, ub - ua, skirtH, 0.016);
-      if (centred) f.box(skirt, (ua + ub) / 2, 0, v0 - 0.008, ub - ua, skirtH, 0.016);
+      f.box(skirt, (ua + ub) / 2, 0, v1 + 0.016, ub - ua, skirtH, 0.032);
+      if (centred) f.box(skirt, (ua + ub) / 2, 0, v0 - 0.016, ub - ua, skirtH, 0.032);
     }
   }
   for (const o of list) {
     piece(o.at - o.w / 2, o.at + o.w / 2, 0, o.y0 ?? 0);
     piece(o.at - o.w / 2, o.at + o.w / 2, o.y1 ?? DOOR_H, h);
+  }
+  // a moulding where the wall meets the ceiling
+  if (crown != null) {
+    f.box(crown, len / 2, h - 0.08, v1 + 0.03, len, 0.08, 0.06);
+    if (centred) f.box(crown, len / 2, h - 0.08, v0 - 0.03, len, 0.08, 0.06);
   }
   // u(s): where s metres from a is along the frame
   return { f, len, thick: t, v0, v1, turn, u: (s) => (flip ? len - s : s) };
@@ -370,7 +379,7 @@ export function wallRun(R, f0, a, b, { into, thick = 0.2, centred = false, h = W
 
 // A straight wall on a line of x or z from a to b, with openings placed by
 // where they are in the world along it: { c, w, y0, y1, draw(f, u, wall) }
-// (see win(), doorAt(), opening()). `frames` makes its frames (R.fixed or a
+// (see win() and doorAt()). `frames` makes its frames (R.fixed or a
 // cutaway's).
 export function wallLine(R, frames, a, b, opts = {}, openings = []) {
   const alongX = Math.abs(b[1] - a[1]) < 1e-6;
@@ -381,29 +390,29 @@ export function wallLine(R, frames, a, b, opts = {}, openings = []) {
 }
 export const win = (c, w, y0, h, view, opts = {}) => ({ c, w, y0, y1: y0 + h, draw: (f, u, wl) => windowIn(f, u, y0, w, h, { view, v1: wl.v1, thick: wl.thick, ...opts }) });
 export const doorAt = (c, opts = {}) => ({ c, w: opts.w ?? 0.92, y0: 0, y1: opts.h ?? DOOR_H, draw: (f, u, wl) => door(f, u, { v1: wl.v1, thick: wl.thick, ...opts }) });
-// a hole with something of your own in it: draw(f, u, wall)
-export const opening = (c, w, y0, y1, draw) => ({ c, w, y0, y1, draw });
 
 // An open doorway in a wall between rooms, from a to b on the wall's line:
 // the wall over it and a casing round it.
-export function doorway(R, a, b, { thick = 0.24, color = 0xf1e6c8, trim = 0xf6f2e8, h = DOOR_H, top = WALL_H } = {}) {
+export function doorway(R, a, b, { thick = 0.24, color = 0xf1e6c8, trim = 0xf6f2e8, h = DOOR_H, top = WALL_H, crown = null } = {}) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   // the jambs stay; the wall over the door and the casing's head go with the camera under them
   const over = R.overhead(a[0], a[1], b[0], b[1]);
-  const w = wallRun(R, over, a, b, { centred: true, thick, color, skirt: null, h: top, holes: [{ at: len / 2, w: len, y0: 0, y1: h }] });
+  const w = wallRun(R, over, a, b, { centred: true, thick, color, skirt: null, crown, h: top, holes: [{ at: len / 2, w: len, y0: 0, y1: h }] });
   const jf = R.fixed(a[0], a[1], w.turn);
   const t = w.v1 - w.v0;
-  const width = 0.08;
-  for (const s of [-1, 1]) jf.box(trim, len / 2 + s * (len / 2 + width / 2 - 0.01), 0, 0, width, h + width - 0.01, t + 0.04);
-  w.f.box(trim, len / 2, h, 0, len + width * 2 - 0.02, width, t + 0.04);
+  const width = 0.09;
+  for (const s of [-1, 1]) jf.box(trim, len / 2 + s * (len / 2 + width / 2 - 0.01), 0, 0, width, h + width - 0.01, t + 0.08);
+  w.f.box(trim, len / 2, h, 0, len + width * 2 - 0.02, width, t + 0.08);
 }
 
 // A door's casing round a hole (in a wall run's frame): jambs and a head,
 // proud of both faces (or just the room's), `w` wide, `h` high, at `u`.
-export function casing(f, u, w, h, v0, v1, color = 0xf6f2e8, { both = true, width = 0.08 } = {}) {
+export function casing(f, u, w, h, v0, v1, color = 0xf6f2e8, { both = true, width = 0.09 } = {}) {
   const t = v1 - v0;
-  for (const s of [-1, 1]) f.box(color, u + s * (w / 2 + width / 2 - 0.01), 0, (v0 + v1) / 2 + (both ? 0 : 0.01), width, h + width - 0.01, t + (both ? 0.04 : 0.02));
-  f.box(color, u, h, (v0 + v1) / 2, w + width * 2 - 0.02, width, t + (both ? 0.04 : 0.02));
+  const d = t + (both ? 0.08 : 0.04);
+  const mid = (v0 + v1) / 2 + (both ? 0 : 0.02);
+  for (const s of [-1, 1]) f.box(color, u + s * (w / 2 + width / 2 - 0.01), 0, mid, width, h + width - 0.01, d);
+  f.box(color, u, h, mid, w + width * 2 - 0.02, width, d);
 }
 
 // A closed door in a hole: the slab a little in from the room face, panels,
@@ -430,11 +439,11 @@ export function windowIn(f, u, y0, w, h, { view, v1 = 0, thick = 0.2, frame = 0x
   const y1 = y0 + h;
   const vm = v1 - thick / 2;
   f.decal(view, u, (y0 + y1) / 2, vm, w, h, { bright: true });
-  const fw = 0.07;
-  // the frame, flush with the wall face on the room side
-  f.box(frame, u, y1 - 0.01, v1 - thick / 2, w + fw * 2, fw, thick + 0.03);
-  f.box(frame, u, y0 - fw + 0.01, v1 - thick / 2, w + fw * 2, fw, thick + 0.03);
-  for (const s of [-1, 1]) f.box(frame, u + s * (w / 2 + fw / 2), y0, v1 - thick / 2, fw, h, thick + 0.03);
+  const fw = 0.08;
+  // the frame, standing proud of the wall on the room side
+  f.box(frame, u, y1 - 0.01, v1 - thick / 2 + 0.02, w + fw * 2, fw, thick + 0.04);
+  f.box(frame, u, y0 - fw + 0.01, v1 - thick / 2 + 0.02, w + fw * 2, fw, thick + 0.04);
+  for (const s of [-1, 1]) f.box(frame, u + s * (w / 2 + fw / 2), y0, v1 - thick / 2 + 0.02, fw, h, thick + 0.04);
   // bars: columns and rows
   const [cx, cy] = bars;
   for (let i = 1; i < cx; i++) f.box(frame, u - w / 2 + (w * i) / cx, y0, vm + 0.02, 0.035, h, 0.035);
@@ -461,10 +470,15 @@ export function ceilings(R, rects, y = WALL_H, color = 0xe9e0cc, map = null, til
   return mat;
 }
 
-// a floor slab for an area that is one room
-export function floorSlab(R, area, mat) {
-  const a = AREAS[area];
-  R.tiled.add(BOX, mat, at((a.x0 + a.x1) / 2, -0.05, (a.z0 + a.z1) / 2, 0, a.x1 - a.x0 + 0.4, 0.1, a.z1 - a.z0 + 0.4));
+// a round light in the middle of each rect's ceiling
+export function ceilingLights(R, rects, y = WALL_H, color = 0xfff2d0) {
+  const f = R.frame(0, 0, 0, { list: 'fixed' });
+  for (const [x0, x1, z0, z1] of rects) {
+    const x = (x0 + x1) / 2;
+    const z = (z0 + z1) / 2;
+    f.cyl(0xf6f2e8, x, y - 0.03, z, 0.26, 0.03);
+    f.glow(new THREE.SphereGeometry(0.2, 16, 6, 0, TAU, Math.PI / 2, Math.PI / 2), color, 1.7, x, y - 0.03, z, 0, 1, 0.45, 1);
+  }
 }
 
 // a material with world-space uvs, `tile` metres to a repeat, painted once
@@ -472,143 +486,6 @@ export function tiledPaint(mats, name, px, tile, draw, opts) {
   const m = mats.painted(name, px, px, draw, opts);
   m.userData.tile = tile;
   return m;
-}
-
-// ── people ──
-
-// The cast (Rick and the Smiths), loaded once for every room that asks;
-// whoever doesn't load is drawn in shapes.
-export async function needCast(kit, names) {
-  const need = kit.need ?? ((n, o) => kit.cast.load(null, n, o));
-  try {
-    await need(names, { clips: ['idle', 'walk', 'run'] });
-  } catch {
-    /* stand-ins */
-  }
-}
-
-// A person standing at (x, z), facing `face` (rules.js's heading), `h` tall:
-// the Meshy figure for `kind`, or a code-drawn one to `look`. Its tick plays
-// the idle.
-export function person(R, kind, { x, z, face, h, look, y = 0 }) {
-  const c = R.kit.cast.make(kind);
-  let fig;
-  if (c) {
-    c.group.scale.setScalar(h / c.height);
-    fig = { group: c.group, cast: c, hand: c.hand, tick: (t) => c.update(t, 0, 0) };
-  } else fig = toonPerson(R, look, h);
-  fig.group.position.set(x, y, z);
-  fig.group.rotation.y = face + Math.PI / 2;
-  R.group.add(fig.group);
-  if (fig.tick) R.tick(fig.tick);
-  return fig;
-}
-
-// Rick's sat clip, for the Smiths who haven't one of their own (the same
-// skeleton): turns only, so it keeps the sitter's own proportions.
-let sitClip = null;
-export async function sitting() {
-  if (sitClip) return sitClip;
-  try {
-    const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/games/meshy/rick-sit.glb');
-    const clip = g.animations[0];
-    clip.tracks = clip.tracks.filter((t) => t.name.endsWith('.quaternion'));
-    sitClip = clip;
-  } catch {
-    sitClip = null;
-  }
-  return sitClip;
-}
-
-// A person in shapes, the show's way (a big round head, dot eyes), merged
-// into one mesh: { h, skin, shirt, pants, shoes, hair, style, moustache,
-// coat, sleeves, belt }. Faces +z; stands on y = 0.
-export function toonPerson(R, look, h = 1.8) {
-  const {
-    skin = 0xf2c9a0,
-    shirt = 0xf2d23c,
-    pants = 0x3b4a6b,
-    shoes = 0x2a221e,
-    hair = 0x3a2a1e,
-    style = 'short',
-    moustache = null,
-    coat = null,
-    sleeves = 'long',
-    belt = null,
-    tie = null,
-    glasses = false,
-  } = look ?? {};
-  const parts = [];
-  const f = R.frame(0, 0, 0, { list: parts });
-  // legs and shoes
-  for (const s of [-1, 1]) {
-    f.cyl(pants, s * 0.1, 0.07, 0, 0.075, 0.76);
-    f.box(shoes, s * 0.1, 0, 0.04, 0.13, 0.08, 0.27);
-  }
-  // body
-  f.part(new THREE.CapsuleGeometry(0.2, 0.42, 4, 12), shirt, 0, 1.06, 0, 0, 1, 1, 0.72);
-  if (belt != null) f.cyl(belt, 0, 0.8, 0, 0.205, 0.06, 0, 0, CYL).cyl(0xc9a64a, 0, 0.8, 0.15, 0.03, 0.06, Math.PI / 2);
-  if (coat != null) {
-    f.part(new THREE.CapsuleGeometry(0.215, 0.5, 4, 12), coat, 0, 0.98, -0.01, 0, 1, 1, 0.74);
-    f.box(coat, 0, 0.42, -0.02, 0.4, 0.42, 0.3);
-    f.box(shirt, 0, 1.0, 0.145, 0.14, 0.42, 0.02);
-  }
-  if (tie != null) f.box(tie, 0, 0.92, 0.152, 0.06, 0.42, 0.015);
-  f.cyl(skin, 0, 1.36, 0, 0.06, 0.12);
-  // arms: sleeves and hands
-  for (const s of [-1, 1]) {
-    const sl = coat ?? shirt;
-    if (sleeves === 'short' && coat == null) {
-      f.part(new THREE.CapsuleGeometry(0.068, 0.12, 4, 8), sl, s * 0.27, 1.26, 0, 0, 1, 1, 1, 0, s * 0.18);
-      f.part(new THREE.CapsuleGeometry(0.052, 0.36, 4, 8), skin, s * 0.31, 0.98, 0.02, 0, 1, 1, 1, 0, s * 0.12);
-    } else f.part(new THREE.CapsuleGeometry(0.062, 0.48, 4, 8), sl, s * 0.29, 1.06, 0.01, 0, 1, 1, 1, 0, s * 0.15);
-    f.ball(skin, s * 0.34, 0.77, 0.03, 0.06);
-  }
-  // the head: round, big, with dot eyes and a nose
-  const hy = 1.6;
-  f.ball(skin, 0, hy, 0, 0.18, 1.08);
-  f.ball(skin, 0, hy - 0.03, 0.17, 0.035);
-  for (const s of [-1, 1]) {
-    f.ball(0xffffff, s * 0.065, hy + 0.035, 0.15, 0.048);
-    f.ball(0x111111, s * 0.065, hy + 0.035, 0.193, 0.014);
-    f.ball(skin, s * 0.18, hy, 0, 0.035);
-    if (glasses) f.part(new THREE.TorusGeometry(0.05, 0.008, 6, 16), 0x222222, s * 0.065, hy + 0.035, 0.19);
-  }
-  f.box(0x6b3a2e, 0, hy - 0.1, 0.162, 0.07, 0.012, 0.01);
-  if (moustache != null) f.part(new THREE.CapsuleGeometry(0.022, 0.09, 4, 8), moustache, 0, hy - 0.066, 0.175, 0, 1, 1, 0.8, 0, Math.PI / 2);
-  // hair
-  if (style === 'short' || style === 'side') {
-    f.ball(hair, 0, hy + 0.06, -0.02, 0.19, 0.78);
-    f.box(hair, 0, hy + 0.08, 0.1, 0.3, 0.09, 0.1, 0, -0.35);
-    for (const s of [-1, 1]) f.box(hair, s * 0.165, hy - 0.04, -0.03, 0.05, 0.16, 0.22);
-  } else if (style === 'spiky') {
-    f.ball(hair, 0, hy + 0.04, -0.03, 0.185, 0.7);
-    for (let i = 0; i < 9; i++) {
-      const a = -1.2 + (i / 8) * 2.4;
-      f.part(new THREE.ConeGeometry(0.06, 0.24, 6), hair, Math.sin(a) * 0.17, hy + 0.1 + Math.cos(a) * 0.05, -0.08 - Math.cos(a) * 0.06, 0, 1, 1, 1, -0.9, -a * 0.9);
-    }
-  } else if (style === 'pony' || style === 'bob') {
-    f.ball(hair, 0, hy + 0.05, -0.02, 0.195, 0.85);
-    f.box(hair, 0, hy + 0.1, 0.11, 0.3, 0.08, 0.08, 0, -0.4);
-    if (style === 'pony') f.part(new THREE.CapsuleGeometry(0.06, 0.2, 4, 8), hair, 0, hy + 0.06, -0.24, 0, 1, 1, 1, 0.9);
-    else for (const s of [-1, 1]) f.box(hair, s * 0.17, hy - 0.1, -0.02, 0.06, 0.3, 0.26);
-  }
-  const geo = R.own(mergeParts(parts));
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(geo, R.kit.mats.toon(0xffffff, { vertexColors: true }));
-  body.castShadow = true;
-  body.receiveShadow = true;
-  body.scale.setScalar(h / 1.8);
-  group.add(body);
-  const seed = Math.random() * 10;
-  return {
-    group,
-    body,
-    tick(t) {
-      body.scale.y = (h / 1.8) * (1 + Math.sin(t * 2.1 + seed) * 0.008);
-      body.rotation.z = Math.sin(t * 0.7 + seed) * 0.015;
-    },
-  };
 }
 
 // ── painting ──
