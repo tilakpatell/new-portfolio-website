@@ -95,6 +95,17 @@ export const CHAPTERS = [
     seals: ['elvenrope', 'swearontheprecious', 'deadmarshes', 'anotherway'],
   },
   {
+    id: 'cirith-ungol',
+    stop: 'cirith-ungol',
+    lift: 3.4,
+    name: 'Cirith Ungol',
+    title: 'The stairs, the lair and the Tower',
+    blurb: 'Minas Morgul’s green light and the host pouring out, the endless stairs, Shelob in the dark and the phial of Galadriel, Sam’s fight, and the orcs’ Tower.',
+    at: [598, 430],
+    theme: 'shire',
+    seals: ['minasmorgul', 'stairs', 'aiyaearendil', 'samwisethebrave', 'tower'],
+  },
+  {
     id: 'mordor',
     stop: 'mount-doom',
     lift: 4.2,

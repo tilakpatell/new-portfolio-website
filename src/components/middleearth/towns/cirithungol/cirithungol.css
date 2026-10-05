@@ -1,0 +1,30 @@
+/* Cirith Ungol: the Shire's HUD (../../shire/shire.css) in Morgul green
+   and the black of the lair, with the panels for the city's pull, the
+   stairs, the phial, and Sam's fight. */
+
+.cirith-world { --shire-glass: rgba(10, 14, 12, 0.82); --shire-glass-hi: rgba(12, 16, 14, 0.94); }
+.cirith-stage { background: linear-gradient(180deg, #0a1410 0%, #2a4a3a 56%, #141a16 60%, #050706 100%); }
+.cirith-stage[data-zone='lair'] { background: radial-gradient(ellipse at 50% 40%, #121412 0%, #030403 70%); }
+.cirith-stage[data-zone='tower'] { background: linear-gradient(180deg, #1a1210 0%, #5a3a2a 56%, #1a1412 60%, #080606 100%); }
+.cirith-stage .shire-loading { color: #b8e0c8; }
+.cirith-stage[data-mode='talk'] .shire-canvas, .cirith-stage[data-mode='morgul'] .shire-canvas, .cirith-stage[data-mode='climb'] .shire-canvas, .cirith-stage[data-mode='duel'] .shire-canvas, .cirith-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+.cirith-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.cirith-stage .shire-hud-top ~ .cirith-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
+.cirith-game .shire-meter { width: 100%; box-sizing: border-box; }
+.cirith-game[data-pause], .cirith-game[data-hunted], .cirith-game[data-tell] { border-color: rgba(140, 255, 160, 0.7); animation: shire-tempt 0.45s ease-in-out infinite alternate; }
+.cirith-game[data-rear] { border-color: rgba(255, 220, 120, 0.85); animation: shire-tempt 0.3s ease-in-out infinite alternate; }
+.cirith-game[data-crumbling] { border-color: rgba(255, 140, 60, 0.75); }
+.cirith-big { min-width: 7.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cirith-meter-pull span { background: linear-gradient(90deg, #4a8a5a, #a8ffb8); }
+.cirith-meter-up span { background: linear-gradient(90deg, #6a6a6a, #d8d0c0); }
+.cirith-meter-legs span { background: linear-gradient(90deg, #c87a3a, #f8e0a0); }
+.cirith-meter-phial span { background: linear-gradient(90deg, #9ab8ff, #ffffff); }
+
+.cirith-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .cirith-stage[data-game] .shire-hud-top { display: none; }
+  .cirith-game, .cirith-stage .shire-hud-top ~ .cirith-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .cirith-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}

@@ -2216,6 +2216,22 @@ function elvenCloak(K) {
   return { group, mesh };
 }
 
+// ── Gollum on his own ──
+// For the towns further on, without building the rest of the kit.
+export function createGollum(renderer) {
+  const eye = canvasTexture(eyeCanvas(), renderer, { wrap: false });
+  const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
+  const mats = {
+    gollumSkin: M({ vertexColors: true, roughness: 0.42 }),
+    gollumEye: M({ map: eye, roughness: 0.08, emissive: new THREE.Color(0xffffff), emissiveMap: eye, emissiveIntensity: 0.3 }),
+    gollumHair: M({ color: 0x3a362e, roughness: 0.6 }),
+    mouth: M({ color: 0x1a0d0c, roughness: 0.6 }),
+    tooth: M({ color: 0xb4a472, roughness: 0.5 }),
+    loin: M({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
+  };
+  return gollum({ mats, tex: { eye }, renderer });
+}
+
 // ── the kit ──
 
 export function createMarshesKit(renderer) {
