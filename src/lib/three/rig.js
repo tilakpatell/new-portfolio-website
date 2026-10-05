@@ -341,4 +341,45 @@ export const POSES = {
     ...sym({ arm: [0.75, -0.75, -0.15], fore: [-0.6, -0.15, 0.35], thigh: [0.12, -1, 0.02], calf: [0.08, -1, -0.02], foot: [0.1, -0.35, 1] }),
     torso: { pitch: -0.05, yaw: 0, roll: 0 },
   }),
+  // walking or running on the spot: `phase` goes round once a stride (two
+  // steps; the left leg leads as sin(phase) rises), `amount` from 0 (standing)
+  // to 1, `run` from 0 (a walk) to 1 (flat out). Each leg swings from the hip
+  // and folds at the knee as it comes through; the arms swing against the
+  // legs, bent more the faster he goes, and he leans into a run.
+  stride: (phase = 0, amount = 1, run = 0) => {
+    const s = Math.sin(phase);
+    const c = Math.cos(phase);
+    const swing = (0.42 + run * 0.5) * amount;
+    const fold = (0.7 + run * 1.3) * amount;
+    const at = (a, x) => [x, -Math.cos(a), Math.sin(a)];
+    const leg = (side, sw, recover) => {
+      const a = sw * swing;
+      const knee = Math.max(0, recover) * fold + 0.06 + run * 0.12 * amount;
+      return { [`thigh${side}`]: at(a, side === 'L' ? 0.05 : -0.05), [`calf${side}`]: at(a - knee, side === 'L' ? 0.03 : -0.03), [`foot${side}`]: [0, -0.3 - Math.max(0, recover) * 0.4, 1] };
+    };
+    const arm = (side, sw) => {
+      const b = -sw * swing * (0.85 + run * 0.4);
+      const elbow = 0.25 + run * 1.15 * amount;
+      const out = side === 'L' ? 1 : -1;
+      return { [`arm${side}`]: at(b, out * (0.2 + run * 0.08)), [`fore${side}`]: at(b + elbow, out * 0.1) };
+    };
+    return {
+      ...leg('L', s, c),
+      ...leg('R', -s, -c),
+      ...arm('L', s),
+      ...arm('R', -s),
+      torso: { pitch: (0.04 + run * 0.28) * amount, yaw: -s * 0.14 * amount, roll: 0 },
+    };
+  },
+  // off the ground: knees up, arms out for balance (`rise` 1 going up, −1 coming down)
+  leap: (rise = 1) => ({
+    ...sym({ arm: [0.85, 0.15 + rise * 0.35, 0.25], fore: [0.6, 0.55 + rise * 0.2, 0.45] }),
+    thighL: [0.08, -0.55, 0.85],
+    calfL: [0.05, -1, -0.1],
+    thighR: [-0.08, -0.9, 0.35 - rise * 0.25],
+    calfR: [-0.05, -0.85, -0.6],
+    footL: [0, -0.6, 0.8],
+    footR: [0, -0.6, 0.8],
+    torso: { pitch: 0.12 - rise * 0.08, yaw: 0, roll: 0 },
+  }),
 };

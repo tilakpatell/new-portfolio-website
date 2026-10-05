@@ -5,8 +5,10 @@ import { useOnline } from '../../universe/online/useOnline';
 // (the site's own switch and callsign) and the town is up. Returns { on,
 // ref (the link, or null), join() (go online, as the universe's map does,
 // with your callsign or a new one) }. Each frame the town sends your step
-// with ref.current?.pose(h, flags) and draws ref.current?.list().
-export function useTravellers(town, up) {
+// with ref.current?.pose(h, flags) and draws ref.current?.list(). `opts`
+// go to the link (./travellers.js): `bound` for a town bigger than 200 m
+// from its middle, `motion` for one where people run and jump.
+export function useTravellers(town, up, { bound, motion } = {}) {
   const online = useOnline();
   const on = Boolean(online?.on && online.name);
   const name = online?.name ?? null;
@@ -23,7 +25,7 @@ export function useTravellers(town, up) {
       if (gone) return;
       // (the QA scripts can hand in a room of their own, in development only)
       const relay = import.meta.env.DEV && window.__TOWN_RELAY__ ? { load: window.__TOWN_RELAY__ } : {};
-      link = createTravellers({ town, name: nameRef.current, ...relay });
+      link = createTravellers({ town, name: nameRef.current, ...(bound ? { bound } : {}), motion: Boolean(motion), ...relay });
       ref.current = link;
     });
     // closing the tab: out of the room at once
@@ -38,7 +40,7 @@ export function useTravellers(town, up) {
       ref.current = null;
       setCount(0);
     };
-  }, [on, up, town]);
+  }, [on, up, town, bound, motion]);
 
   useEffect(() => {
     if (name) ref.current?.rename(name);

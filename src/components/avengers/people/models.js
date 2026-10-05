@@ -11,7 +11,6 @@ const DIR = '/models/sketchfab/avengers';
 export const AVENGERS_MANIFEST = `${DIR}/manifest.json`;
 
 export const AVENGERS_MODELS = {
-  cap: '/models/sketchfab/avengers/cap.glb',
   thor: '/models/sketchfab/avengers/thor.glb',
   hulk: '/models/sketchfab/avengers/hulk.glb',
   widow: '/models/sketchfab/avengers/widow.glb',
