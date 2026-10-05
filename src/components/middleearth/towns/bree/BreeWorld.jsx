@@ -35,7 +35,7 @@ const PROMPT = {
   gate: { name: 'The West Gate', act: 'Knock' },
   pony: { name: 'The Prancing Pony', act: 'Go in' },
   east: { name: 'Strider, by the East Gate', act: 'Go with him' },
-  leave: { name: 'The road to Weathertop', act: 'On to Rivendell' },
+  leave: { name: 'The road to Weathertop', act: 'On to Weathertop' },
 };
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
 const pushNazgul = (x, z) => walker.push(x, z, 0.45);

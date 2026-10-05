@@ -29,6 +29,17 @@ export const CHAPTERS = [
     seals: ['breegate', 'underhill', 'pints', 'strider', 'slipaway'],
   },
   {
+    id: 'weathertop',
+    stop: 'weathertop',
+    lift: 2.8,
+    name: 'Weathertop',
+    title: 'Amon Sûl, by night',
+    blurb: 'The ruined watchtower on its hill: Sam’s supper, five Nazgûl on the summit, kingsfoil by lantern, and the ride with Arwen to the Ford.',
+    at: [312, 192],
+    theme: 'shire',
+    seals: ['amonsul', 'putitout', 'weathertop', 'kingsfoil', 'bruinen'],
+  },
+  {
     id: 'rivendell',
     stop: 'rivendell',
     lift: 2.8,
