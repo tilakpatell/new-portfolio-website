@@ -46,6 +46,8 @@ import { createHunters } from './hunters';
 import { createFleet } from './glbFleet';
 import { createDirector } from './director';
 import { createSetPieces } from './setpieces';
+import { buildDeepSpace } from './deepspace';
+import { createTrench } from './trench';
 import { DEEP, WONDERS, openness, reachOf } from './deep';
 import { createCrash } from './crash';
 import { createTraffic } from './traffic';
@@ -346,7 +348,7 @@ export async function create(canvas, ctx) {
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 2600); // (out to the far side of deep space)
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 3200); // (out to the far side of deep space)
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -468,6 +470,13 @@ export async function create(canvas, ctx) {
     sky.renderOrder = -10;
     map.add(sky);
   }
+
+  // deep space, out past the home system: its wonders, and the trench run
+  // round the Death Star's middle
+  const deep = buildDeepSpace({ small });
+  map.add(deep.group);
+  const trenches = WONDERS.filter((w) => w.trench).map((w) => createTrench(w));
+  for (const tr of trenches) map.add(tr.group);
 
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
@@ -1088,6 +1097,19 @@ export async function create(canvas, ctx) {
     }
   };
 
+  // the light bending round the black hole: where it is on the canvas and
+  // how big its shadow looks there (none behind you, or too far to matter)
+  const lensAt = new THREE.Vector3();
+  const bend = () => {
+    const L = deep.lens?.();
+    if (!L || reduced) return post.lens(0, 0, 0);
+    map.localToWorld(lensAt.copy(L.at));
+    const d = lensAt.distanceTo(camera.position);
+    lensAt.project(camera);
+    if (d > 700 || d < L.r * 1.2 || lensAt.z > 1 || Math.abs(lensAt.x) > 1.6 || Math.abs(lensAt.y) > 1.6) return post.lens(0, 0, 0);
+    post.lens((lensAt.x + 1) / 2, (lensAt.y + 1) / 2, L.r / (d * tanHalf) / 2);
+  };
+
   // the shields bar: shown while there's trouble about or they're down at all
   let shieldOn = false;
   const placeShield = () => {
@@ -1436,6 +1458,9 @@ export async function create(canvas, ctx) {
     // the dust rides with it too, and shows while you fly (more, the faster)
     map.updateMatrixWorld();
     map.worldToLocal(camLocal.copy(camera.position));
+    deep.update(t, camera, camLocal);
+    for (const tr of trenches) if (camLocal.distanceTo(tr.group.position) < 700) tr.wake();
+    bend();
     if (sky) sky.position.copy(camLocal);
     stars.position.copy(camLocal);
     const dustWant = !reduced && flying() && state.view === 'chase' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
@@ -1720,6 +1745,8 @@ export async function create(canvas, ctx) {
       hunters?.dispose();
       pieces.dispose();
       fleet.dispose();
+      deep.dispose();
+      for (const tr of trenches) tr.dispose();
       burst.clear();
       burst.dispose();
       traffic?.dispose();

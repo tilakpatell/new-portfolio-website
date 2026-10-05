@@ -13,8 +13,9 @@
 // turns.
 // Shoot them down (the tougher ones take a few hits), or outrun them: get
 // far enough away for long enough (boosting, or best of all out in deep
-// space on the pulse drive) and they give up and peel away. Lasers that
-// hit you are the scene's to count against your shields.
+// space on the pulse drive) and they give up and peel away, flying off out
+// of sight (nobody just vanishes). Lasers that hit you are the scene's to
+// count against your shields.
 //
 // A hunter can also be sent after something else (`prey`, a distress call:
 // pirates on a freighter), and it shoots at that instead until you deal with
@@ -36,9 +37,9 @@ import { forward } from './ship';
 // who hunts for whom: which kinds come (and how often each), their ace (a
 // tougher one who joins now and then), their lasers' colour
 export const FACTIONS = {
-  empire: { family: 'starwars', kinds: [['tie', 3], ['interceptor', 2]], ace: 'tieadvanced', laser: [0.5, 5.5, 0.9], size: [2, 4] },
-  federation: { family: 'rickmorty', kinds: [['patrol', 1]], laser: [0.6, 2.2, 6.5], size: [2, 3] },
-  council: { family: 'rickmorty', kinds: [['councilship', 1]], laser: [0.6, 5.5, 4.2], size: [1, 3], portal: true },
+  empire: { family: 'starwars', kinds: [['tie', 3], ['interceptor', 2]], ace: 'tieadvanced', laser: [0.5, 5.5, 0.9], size: [3, 5] },
+  federation: { family: 'rickmorty', kinds: [['patrol', 1]], laser: [0.6, 2.2, 6.5], size: [3, 5] },
+  council: { family: 'rickmorty', kinds: [['councilship', 1]], laser: [0.6, 5.5, 4.2], size: [2, 4], portal: true },
   // pirates: what's after someone in distress
   bugs: { family: 'rickmorty', kinds: [['gromflomite', 1]], laser: [0.6, 2.2, 6.5], size: [2, 3] },
 };
@@ -249,10 +250,11 @@ export function createHunters(parent, { small = false, fleet = createFleet() } =
         g.position.copy(pos);
         if (vel.lengthSq() > 1e-6) g.lookAt(look.copy(pos).add(vel));
         g.rotateZ(-h.bank);
-        g.scale.setScalar(type.size * h.model.fit * Math.max(0.001, h.grow) * (gone ? Math.max(0.001, 1 - h.pack.fade / 2.5) : 1));
+        g.scale.setScalar(type.size * h.model.fit * Math.max(0.001, h.grow));
         h.model.update(t);
         if (gone) {
-          if (h.pack.fade > 2.5 || !ship) {
+          // they've flown off out of sight (or you've stopped flying)
+          if (!ship || (h.pack.fade > 2 && pos.distanceTo(you) > 110) || h.pack.fade > 30) {
             h.alive = false;
             give(h.kind, h.model);
             live.splice(live.indexOf(h), 1);

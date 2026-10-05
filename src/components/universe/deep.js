@@ -17,22 +17,23 @@ import { MAP_RADIUS } from './layout';
 export const DEEP = {
   system: MAP_RADIUS + 12, // inside this is the home system: boost tops out at SHIP.boost, the ceiling is SHIP.ceiling
   open: MAP_RADIUS + 72, // out past this, the pulse drive's full speed and the full height
-  edge: 1000, // turned back here
-  ceiling: 180, // how far above or below the disc it can go out in deep space
+  edge: 1400, // turned back here
+  ceiling: 230, // how far above or below the disc it can go out in deep space
 };
 
 // kind: what it is (deepspace.js draws each kind its own way); r: its radius
 // (a black hole's is its shadow); colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
-// universe it's from (it's there for everyone)
+// universe it's from (it's there for everyone); trench: the Death Star's,
+// the trench run round its middle (trench.js), deep enough to fly down
 export const WONDERS = [
-  { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-330, 40, -420], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
-  { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [520, -70, 140], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
+  { id: 'aurelia', kind: 'gas-giant', name: 'Aurelia', at: [-446, 54, -567], r: 52, ring: true, colors: ['#e9c592', '#b9814d', '#f5e6c8', '#8f5a35'] },
+  { id: 'glacia', kind: 'ice-giant', name: 'Glacia', at: [702, -94, 189], r: 30, colors: ['#8fd0ef', '#3f86c2', '#d8f2ff'] },
   {
     id: 'ember',
     kind: 'star',
     name: 'Ember',
-    at: [160, 90, 640],
+    at: [216, 122, 864],
     r: 26,
     color: '#ff7a3c',
     planets: [
@@ -44,7 +45,7 @@ export const WONDERS = [
     id: 'halcyon',
     kind: 'star',
     name: 'Halcyon',
-    at: [-660, -110, 280],
+    at: [-891, -148, 378],
     r: 20,
     color: '#9cc4ff',
     planets: [
@@ -52,11 +53,11 @@ export const WONDERS = [
       { r: 11, orbit: 90, angle: 5.1, color: '#c58fd8', kind: 'gas' },
     ],
   },
-  { id: 'maw', kind: 'black-hole', name: 'The Maw', at: [640, 60, -520], r: 12, disk: 72 },
-  { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-330, 150, 700], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
-  { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [740, -150, 330], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-560, 30, -180], r: 22, crew: 'starwars' },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [260, -40, -690], r: 18, crew: 'rickmorty' },
+  { id: 'maw', kind: 'black-hole', name: 'The Maw', at: [864, 81, -702], r: 12, disk: 72 },
+  { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-446, 202, 945], r: 160, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
+  { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [999, -202, 446], r: 130, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
+  { id: 'deathstar', kind: 'deathstar', name: 'Death Star', at: [-756, 40, -243], r: 60, crew: 'starwars', trench: { segments: 34 } },
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [351, -54, -932], r: 18, crew: 'rickmorty' },
 ];
 
 // The trench run model (public/models/universe/trench.glb), as measured:

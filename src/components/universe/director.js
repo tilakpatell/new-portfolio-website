@@ -27,7 +27,7 @@ export const EVENTS = {
   convoy: { families: ['starwars', 'rickmorty'], weight: 1.3, heat: 0 },
   comet: { families: ['starwars', 'rickmorty'], weight: 0.9, heat: 0 },
 };
-export const PACE = { first: [35, 55], gap: [55, 105] }; // seconds before the first, and between the rest
+export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 
 export function createDirector({ rand = Math.random } = {}) {
   const between = ([a, b]) => a + rand() * (b - a);

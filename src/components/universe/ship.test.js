@@ -127,6 +127,20 @@ describe('deep space', () => {
     expect(ship.y).toBeLessThan(DEEP.ceiling + 5);
   });
 
+  it('lets the ship down into the Death Star’s trench, and only there', () => {
+    const ds = SOLIDS.find((o) => o.id === 'deathstar');
+    expect(ds.band).toBeTruthy();
+    // level with the trench, heading straight in, slowly: it stops near the floor
+    const at = (dy) => ({ ...spawn(null), x: ds.at[0], y: ds.at[1] + dy, z: ds.at[2] + ds.r + 3, heading: 0, speed: 2 });
+    const into = fly(at(0), { throttle: 0.3 }, 6).ship;
+    const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
+    expect(d).toBeLessThan(ds.r - 1.5);
+    expect(d).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
+    // above the trench, it's the surface that stops it
+    const off = fly(at(ds.band.half + 2), { throttle: 0.3 }, 6).ship;
+    expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
+  });
+
   it('crashes into a wonder, never through it', () => {
     for (const w of WONDERS.filter((o) => o.solid !== false)) {
       // from 120 out, level with it, flat out at it

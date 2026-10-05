@@ -50,7 +50,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
-import { DEEP, WONDERS, planetAt, reachOf } from './deep';
+import { DEEP, WONDERS, planetAt, reachOf, trenchOf } from './deep';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
 import { buildTraffic } from './trafficModels';
@@ -390,19 +390,23 @@ void main() {
   vec3 p = nrm(vObj) * 2.4;
   float t = uTime * 0.05;
   float w = snoise(p * 0.9 + vec3(uSeed, t, 0.0));
-  vec3 q = p + vec3(w, -w, w * 0.5) * 0.5;
-  float cells = snoise(q * 1.8 + t * 1.3);
-  float gran = snoise(q * 7.5 - t * 3.0);
+  vec3 q = p + vec3(w, -w, w * 0.5) * 0.22;
+  float cells = snoise(q * 3.0 + t * 1.3);
+  // the granules, fine as rice: gone where they'd be smaller than a pixel
+  float gran = snoise(q * 17.0 - t * 4.0) * (1.0 - smoothstep(0.35, 0.9, length(fwidth(q)) * 17.0));
   // granules: bright cells in its own colour with dark lanes between them,
   // kept near 1 so the colour survives the tone map close up, and hot spots
   // where it boils over (they bloom); darker and redder toward the edge
   float mu = sat(dot(nrm(vNW), nrm(cameraPosition - vW)));
   float heat = sat(0.2 + 0.4 * (0.5 + 0.5 * cells) + 0.45 * smoothstep(-0.45, 0.55, gran));
   vec3 lanes = uColor * vec3(0.8, 0.55, 0.5) * 0.4;
-  vec3 granules = mix(uColor, vec3(1.0, 0.75, 0.4), 0.25) * 1.15;
+  // (a warm star's granules run toward yellow, a blue one's toward white)
+  vec3 toward = mix(vec3(1.0, 0.97, 0.95), vec3(1.0, 0.75, 0.4), step(uColor.b, uColor.r));
+  vec3 granules = mix(uColor, toward, 0.3) * 1.15;
   vec3 hot = mix(uColor, vec3(1.0, 0.95, 0.85), 0.6) * 2.6;
   vec3 col = mix(lanes, granules, heat);
-  col = mix(col, hot, smoothstep(0.62, 0.95, cells + gran * 0.35) * 0.75);
+  col = mix(col, hot, smoothstep(0.6, 1.05, cells + gran * 0.3) * 0.55);
+  col *= 0.82 + 0.3 * (w * 0.5 + 0.5);
   col *= 0.45 + 0.55 * sqrt(mu);
   col *= mix(vec3(1.0, 0.62, 0.45), vec3(1.0), smoothstep(0.0, 0.55, mu));
   // from far off it burns brighter, so the whole disc blooms
@@ -1413,7 +1417,7 @@ export function buildDeepSpace({ small = false } = {}) {
     );
   const halo = (parent, radius, color, light, { reach = 1.1, strength = 0.9 } = {}) => {
     const mat = shader(HALO_VERT, HALO_FRAG, { uColor: { value: new THREE.Color(color) }, uLight: light, uReach: { value: reach }, uRadius: { value: radius }, uStrength: { value: strength } }, { ...additive, side: THREE.BackSide });
-    return mesh(new THREE.SphereGeometry(radius * reach, seg(96, 48), seg(64, 32)), mat, parent, 2);
+    return mesh(new THREE.SphereGeometry(radius * reach, seg(80, 48), seg(48, 28)), mat, parent, 2);
   };
   const ring = (parent, radius, [inner, outer], tex, light, opacity = 1) => {
     const geo = new THREE.RingGeometry(radius * inner, radius * outer, seg(192, 112), 1).rotateX(-PI / 2);
@@ -1653,8 +1657,9 @@ export function buildDeepSpace({ small = false } = {}) {
     const mat = shader(PUFF_VERT, PUFF_FRAG, { uPuff: { value: puffTex } }, { ...premultiplied, side: THREE.DoubleSide });
     mesh(geo, mat, g, 1);
     const order = puffs.map((_, i) => i);
+    const written = order.slice();
     const dist = new Float32Array(N);
-    let last = '';
+    const byDistance = (a, b) => dist[b] - dist[a];
     const write = () => {
       order.forEach((src, i) => {
         const p = puffs[src];
@@ -1673,12 +1678,13 @@ export function buildDeepSpace({ small = false } = {}) {
         const p = puffs[i].at;
         dist[i] = hypot(cam.x - w.at[0] - p[0], cam.y - w.at[1] - p[1], cam.z - w.at[2] - p[2]);
       }
-      order.sort((a, b) => dist[b] - dist[a]);
-      const key = order.join(',');
-      if (key !== last) {
-        last = key;
-        write();
-      }
+      order.sort(byDistance);
+      // only sent again when the order has changed
+      let same = true;
+      for (let i = 0; i < N && same; i++) same = order[i] === written[i];
+      if (same) return;
+      for (let i = 0; i < N; i++) written[i] = order[i];
+      write();
     });
   };
 
@@ -1686,8 +1692,11 @@ export function buildDeepSpace({ small = false } = {}) {
   const deathStar = (w) => {
     const g = place(w);
     const r = w.r;
-    const TRENCH = 0.022; // the trench's half-height, as an angle
-    const DEPTH = 0.016; // how deep it's cut, in radii
+    // the trench: cut a little wider and deeper than the trench run model
+    // laid in it (trench.js), so its walls and floor are the model's
+    const run = w.trench ? trenchOf(w) : null;
+    const TRENCH = run ? (run.width / 2 + 0.5) / r : 0.022; // the trench's half-height, as an angle
+    const DEPTH = run ? (run.depth + 0.8) / r : 0.016; // how deep it's cut, in radii
     const dishAngle = 0.27;
     // the dish faces home (where visitors come from), tipped north and a little aside
     const toHome = new THREE.Vector3(-w.at[0], 0, -w.at[2]).normalize();

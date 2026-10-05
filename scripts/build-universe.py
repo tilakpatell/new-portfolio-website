@@ -32,8 +32,9 @@ what they're seen at:
                    came, mostly greebles, so gltfpack first, to 12k, 256 px
   death-star       the Death Star (the Star Wars planet, and the one out in deep
                    space): 19k triangles, its 4096 px maps at 2048
-  trench           the trench run (laid round the deep-space Death Star's
-                   middle): gltfpack first, keeping its names, to 13k, 512 px
+  trench           the trench run (a stretch of it laid in the deep-space
+                   Death Star's trench): gltfpack first, keeping its names (the
+                   map takes just the trench), its trench to 25k, 512 px
 
 and the Millennium Falcon you can fly, made by the site owner with Meshy
 (Meshy_AI_Millennium_Falcon_1004193913, 2M triangles, 11.7 MB as it came):
@@ -56,9 +57,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'public/models/universe'
 NAMES = ['gaming', 'marvel', 'breakingbad', 'music']
-# simplified by gltfpack first (aggressively: these are thousands of small
-# parts that glTF Transform's simplifier won't merge): name: (ratio, keep names)
-PACK = {'tie-interceptor': (0.2, False), 'cr90': (0.06, False), 'trench': (0.08, True)}
+# simplified by gltfpack first (aggressively, for the ships: they're
+# thousands of small parts that glTF Transform's simplifier won't merge):
+# name: (ratio, keep names, aggressively)
+PACK = {'tie-interceptor': (0.2, False, True), 'cr90': (0.06, False, True), 'trench': (0.25, True, False)}
 # name: (texture px, simplify ratio or None, how far the simplifier may move the surface)
 OPTIONS = {
     'star-destroyer': (512, 0.5, 0.005),
@@ -87,9 +89,9 @@ def main():
         out = OUT / f'{name}.glb'
         source = src / f'{name}.glb'
         if name in PACK:
-            ratio, names = PACK[name]
+            ratio, names, aggressive = PACK[name]
             packed = src / f'{name}.packed.glb'
-            subprocess.run(['npx', '--yes', 'gltfpack', '-i', str(source), '-o', str(packed), '-si', str(ratio), '-sa', '-noq', *(['-kn', '-km'] if names else [])], check=True, cwd=ROOT)
+            subprocess.run(['npx', '--yes', 'gltfpack', '-i', str(source), '-o', str(packed), '-si', str(ratio), '-noq', *(['-sa'] if aggressive else []), *(['-kn', '-km'] if names else [])], check=True, cwd=ROOT)
             source = packed
         size, ratio, error = (*OPTIONS.get(name, (256, None)), 0.02)[:3]
         simplify = ['--simplify-ratio', str(ratio), '--simplify-error', str(error)] if ratio else ['--simplify', 'false']

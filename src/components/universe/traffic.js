@@ -62,13 +62,17 @@ const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1', ...CIVIL.starwars], ri
 const ESCORT = { starwars: 'xwing', rickmorty: 'patrol' }; // who guards a convoy
 const DISTRESS = { starwars: 'transport', rickmorty: 'saucer' }; // who calls for help
 const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
-const FADE = 1.6; // map units over which a ship grows in at the start of its lane and goes at the end
+// how far a group flies straight in before its lane begins, and straight on
+// after it ends (ten seconds' worth, 30 to 90 map units): it comes from, and
+// goes to, well out of sight, so nobody pops into being or vanishes in front
+// of you
+const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 
 const between = (rand, a, b) => a + rand() * (b - a);
 
 export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
   const rand = Math.random;
-  const MAX = small ? 4 : 9; // groups at once
+  const MAX = small ? 6 : 14; // groups at once
   const pool = {}; // kind → models not in use
   const live = []; // groups in flight
   let crew = null;
@@ -122,7 +126,16 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       }
       return { kind: k, size: TYPES[k].size, model, offset, phase: rand() * 10, alive: true };
     });
-    const g = { kind, type, members, pts, len: laneLength(pts), t: 0, flyby, said: false, speed: speed ?? type.speed, event };
+    const len = laneLength(pts);
+    const run = runOf(speed ?? type.speed);
+    const g = { kind, type, members, pts, len, run, total: len + run * 2, t: 0, flyby, said: false, speed: speed ?? type.speed, event, in: [0, 0, 0], out: [0, 0, 0] };
+    // the way it's heading where the lane starts and where it ends
+    tangent(pts, 0, g.in);
+    tangent(pts, 1, g.out);
+    for (const v of [g.in, g.out]) {
+      const l = Math.hypot(v[0], v[1], v[2]) || 1;
+      for (let i = 0; i < 3; i++) v[i] /= l;
+    }
     live.push(g);
     return g;
   }
@@ -138,15 +151,28 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   const turn = new THREE.Quaternion();
 
   function place(g, t) {
-    bezier(g.pts, g.t, P);
-    tangent(g.pts, g.t, T);
+    // in straight, along the lane, and on out straight
+    const along = g.t * g.total;
+    if (along < g.run) {
+      for (let i = 0; i < 3; i++) {
+        P[i] = g.pts[0][i] - g.in[i] * (g.run - along);
+        T[i] = g.in[i];
+      }
+    } else if (along > g.run + g.len) {
+      for (let i = 0; i < 3; i++) {
+        P[i] = g.pts[2][i] + g.out[i] * (along - g.run - g.len);
+        T[i] = g.out[i];
+      }
+    } else {
+      const k = (along - g.run) / g.len;
+      bezier(g.pts, k, P);
+      tangent(g.pts, k, T);
+    }
     fwd.set(T[0], T[1], T[2]).normalize();
     right.crossVectors(fwd, up).normalize();
     lift.crossVectors(right, fwd);
     // nose (+z) along the lane, top (+y) up: in the parent's own space
     turn.setFromRotationMatrix(basis.makeBasis(side.crossVectors(lift, fwd), lift, fwd));
-    const along = g.t * g.len;
-    const grow = Math.min(1, along / FADE, (g.len - along) / FADE);
     for (const m of g.members) {
       if (!m.alive) continue;
       const o = m.offset;
@@ -154,7 +180,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       gr.position.set(P[0], P[1], P[2]).addScaledVector(right, o[0]).addScaledVector(lift, o[1]).addScaledVector(fwd, o[2]);
       // a little weave, each its own
       gr.position.addScaledVector(lift, Math.sin(t * 1.3 + m.phase) * m.size * 0.15);
-      gr.scale.setScalar(m.size * m.model.fit * Math.max(0.001, grow));
+      gr.scale.setScalar(m.size * m.model.fit);
       gr.quaternion.copy(turn);
       m.model.update(t + m.phase);
     }
@@ -186,7 +212,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       const events = [];
       const bigs = live.filter((g) => g.type.big).length;
       if (clock >= nextAt && live.length < MAX) {
-        nextAt = clock + between(rand, small ? 4 : 2.2, small ? 9 : 6);
+        nextAt = clock + between(rand, small ? 3 : 1.4, small ? 7 : 4);
         let kind = pick(kinds());
         if (TYPES[kind].big && bigs > 0) kind = pick(kinds().filter((k) => !TYPES[k].big));
         // out in deep space it crosses the space round you instead
@@ -195,7 +221,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       }
       // now and then, something comes to you (only while you're flying)
       if (ship && clock >= nextFlyby) {
-        nextFlyby = clock + between(rand, 22, 40);
+        nextFlyby = clock + between(rand, 14, 26);
         const kind = forced ?? pick(kinds().filter((k) => TYPES[k].flyby));
         const pts = flybyLane(ship, rand, forcedCross === undefined ? undefined : { cross: forcedCross });
         forced = null;
@@ -203,7 +229,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         if (pts) spawn(kind, pts, true);
       }
       for (const g of [...live]) {
-        g.t += (g.speed * dt) / g.len;
+        g.t += (g.speed * dt) / g.total;
         if (g.t >= 1 || g.members.every((m) => !m.alive)) {
           end(g);
           continue;
