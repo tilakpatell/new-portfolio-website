@@ -1024,7 +1024,8 @@ describe('C-137: walking about as Morty', () => {
     const west = walk(newMorty(), { x: -1, z: 0, run: true }, 20);
     expect(west.x).toBeCloseTo(AREAS.street.x0 + MORTY.radius, 1);
     const arrive = link('garage-door').arrive;
-    const east = walk(newMorty(arrive), { x: 1, z: 0, run: true }, 6, 'garage');
+    // (east down the clear lane between the washer and the worktable, to the kitchen door's wall)
+    const east = walk(newMorty({ x: arrive.x, z: 100.9 }), { x: 1, z: 0, run: true }, 6, 'garage');
     expect(east.x).toBeCloseTo(AREAS.garage.x1 - MORTY.radius, 1);
     const south = walk(newMorty(arrive), { x: 0, z: 1, run: true }, 3, 'garage');
     expect(south.z).toBeCloseTo(AREAS.garage.z1 - MORTY.radius, 1);
@@ -1134,8 +1135,8 @@ describe('C-137: doors, exits and portals', () => {
     expect(link('garage-kitchen')).toMatchObject({ area: 'garage', r: 0.9, to: 'house', kind: 'door' });
     expect(link('stairs-up')).toMatchObject({ area: 'house', x: -295.1, z: 2.6, to: 'upstairs' });
     expect(link('stairs-down')).toMatchObject({ area: 'upstairs', x: -303, z: 403.4, to: 'house' });
-    expect(link('garage-portal')).toMatchObject({ area: 'garage', x: -294.8, z: 100, to: 'annex', kind: 'portal', label: 'Through the portal', arrive: { x: 400, z: 9 } });
-    expect(link('annex-portal')).toMatchObject({ area: 'annex', x: 400, z: 13, to: 'garage', kind: 'portal', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } });
+    expect(link('garage-portal')).toMatchObject({ area: 'garage', x: -303, z: 101.4, to: 'annex', kind: 'portal', label: 'Through the portal', arrive: { x: 400, z: 9 } });
+    expect(link('annex-portal')).toMatchObject({ area: 'annex', x: 400, z: 13, to: 'garage', kind: 'portal', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } });
     for (const id of ['garage', 'school', 'arcade']) expect(link(`${id}-exit`)).toMatchObject({ area: id, kind: 'exit', label: 'Back outside' });
     for (const l of LINKS) expect(['door', 'exit', 'portal', 'stairs', 'hatch'], l.id).toContain(l.kind);
   });
@@ -1242,7 +1243,7 @@ describe('C-137: doors, exits and portals', () => {
     expect(nearLink('street', door.x + 1.7, door.z)).toBe(null);
     expect(nearLink('street', START.x, START.z)).toBe(null);
     expect(nearLink('house', door.x, door.z)).toBe(null);
-    expect(nearLink('garage', -295.4, 101).id).toBe('garage-portal');
+    expect(nearLink('garage', -302.4, 101.4).id).toBe('garage-portal');
     expect(nearLink('house', -297.6, 3).id).toBe('front');
     expect(nearLink('house', -295.1, 2.6).id).toBe('stairs-up');
   });
@@ -1319,10 +1320,10 @@ describe('C-137: the things to touch', () => {
     expect(at('butter')).toMatchObject({ area: 'house', label: 'The butter robot', verb: 'Switch on' });
     expect(at('summer')).toMatchObject({ area: 'upstairs', label: 'Summer', verb: 'Talk' });
     expect(at('mortyroom')).toMatchObject({ area: 'upstairs', label: 'Morty’s room', verb: 'Look round' });
-    expect(at('rick')).toMatchObject({ area: 'garage', x: -302, z: 95.6, label: 'Rick', verb: 'Talk' });
-    expect(at('meeseeks')).toMatchObject({ area: 'garage', x: -297.5, z: 95.6, label: 'Mr. Meeseeks box', verb: 'Press' });
-    expect(at('plumbus')).toMatchObject({ area: 'garage', x: -305.2, z: 99, label: 'The plumbus factory', verb: 'Watch' });
-    expect(at('portalpanic')).toMatchObject({ area: 'garage', x: -305.2, z: 103, label: 'Portal panic cabinet', verb: 'Play' });
+    expect(at('rick')).toMatchObject({ area: 'garage', x: -301.9, z: 99.2, label: 'Rick', verb: 'Talk' });
+    expect(at('meeseeks')).toMatchObject({ area: 'garage', x: -301.4, z: 102.4, label: 'Mr. Meeseeks box', verb: 'Press' });
+    expect(at('plumbus')).toMatchObject({ area: 'garage', x: -297.45, z: 99, label: 'The plumbus factory', verb: 'Watch' });
+    expect(at('portalpanic')).toMatchObject({ area: 'garage', x: -302.45, z: 103.1, label: 'Portal panic cabinet', verb: 'Play' });
     expect(at('quiz')).toMatchObject({ area: 'school', x: -300, z: 196.4, label: 'Mr. Goldenfold’s pop quiz', verb: 'Sit the quiz' });
     expect(at('roy')).toMatchObject({ area: 'arcade', x: -300, z: 293.6, label: 'Roy: A Life Well Lived', verb: 'Put the headset on' });
     for (const id of ['cabinet1', 'cabinet2', 'cabinet3']) expect(at(id)).toMatchObject({ area: 'arcade', verb: 'Play', r: 1.4 });
@@ -1545,12 +1546,13 @@ describe('C-137: the President, the Federation, the Oval Office and Shoney’s',
     expect(agents.some((a) => Math.abs(a.x - DINER.x) < DINER.w / 2 && a.z < 0)).toBe(true);
   });
 
-  it('puts the President’s portal in the garage’s south-east corner, facing in, lit only once he’s met', () => {
-    expect(piece('govportal')).toMatchObject({ area: 'garage', kind: 'govportal', x: GOV_PORTAL.x, z: GOV_PORTAL.z, turn: Math.PI });
-    expect(GOV_PORTAL.x).toBeGreaterThan(-300);
+  it('puts the President’s portal on the garage’s east wall by the garage door, facing in, lit only once he’s met', () => {
+    expect(piece('govportal')).toMatchObject({ area: 'garage', kind: 'govportal', x: GOV_PORTAL.x, z: GOV_PORTAL.z, turn: -Math.PI / 2 });
+    expect(GOV_PORTAL.x).toBeGreaterThan(AREAS.garage.x1 - 0.3);
     expect(GOV_PORTAL.z).toBeGreaterThan(104);
     const p = link('garage-oval');
-    expect(p.z).toBeLessThan(GOV_PORTAL.z);
+    expect(p.x).toBeLessThan(GOV_PORTAL.x - 1);
+    expect(p.z).toBe(GOV_PORTAL.z);
     expect(canWalk('garage', link('garage-door').arrive, p, p.r - 0.1)).toBe(true);
   });
 
