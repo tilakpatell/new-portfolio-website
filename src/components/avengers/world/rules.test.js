@@ -10,6 +10,8 @@ import {
   FLAGS,
   LAMPS,
   MAST_H,
+  PACKS,
+  PACK_R,
   PERCHES,
   PLANTERS,
   RING_R,
@@ -35,6 +37,7 @@ import {
   floorAt,
   linesFor,
   nearCast,
+  nearPack,
   nearestEdge,
   nearPlace,
   newHero,
@@ -928,5 +931,58 @@ describe('The compound, the world: the swing tour, played', () => {
     expect(done).not.toBe(null);
     expect(done.time).toBeLessThan(45);
     expect(done.best).toBe(true);
+  });
+});
+
+describe('The compound, the world: Peter’s backpacks', () => {
+  it('webs a dozen of them up round the compound, each somewhere he can stand or perch, none inside anything', () => {
+    expect(PACKS.length).toBe(12);
+    expect(new Set(PACKS.map((p) => p.id)).size).toBe(PACKS.length);
+    for (const p of PACKS) {
+      expect(inPoly(p.x, p.z, LAWN_W), p.id).toBe(true);
+      expect(solidAt(p.x, p.y + 0.1, p.z)?.id ?? null, p.id).toBe(null);
+      const standing = Math.abs(floorAt(p.x, p.z, p.y) - p.y) < 0.01 && walkable(p.x, p.z, HERO_R, p.y);
+      const perch = PERCHES.some((q) => Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.5);
+      expect(standing || perch, p.id).toBe(true);
+      expect(p.memento.length).toBeGreaterThan(3);
+      expect(p.line.length).toBeGreaterThan(10);
+      expect(p.where.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('keeps them apart, and off the doors', () => {
+    for (const a of PACKS) {
+      for (const b of PACKS) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.id}–${b.id}`).toBeGreaterThan(PACK_R * 2);
+      for (const d of PLACES) expect(Math.hypot(a.x - d.x, a.z - d.z), `${a.id}–${d.id}`).toBeGreaterThan(DOOR_R);
+    }
+  });
+
+  it('finds the one he walks up to, and not the ones he has found already', () => {
+    const p = PACKS.find((q) => q.id === 'underbridge');
+    expect(nearPack(p.x + PACK_R + 1, p.y, p.z)).toBe(null);
+    expect(nearPack(p.x + 0.8, p.y, p.z)?.id).toBe('underbridge');
+    expect(nearPack(p.x + 0.8, p.y, p.z, ['underbridge'])).toBe(null);
+    // the one on the mast's top is found from the perch
+    const m = PACKS.find((q) => q.id === 'mast');
+    expect(nearPack(m.x, m.y, m.z)?.id).toBe('mast');
+    // and not from the lawn under it
+    expect(nearPack(m.x, 0, m.z)).toBe(null);
+  });
+
+  it('can be walked to under the bridge, and climbed to on the gatehouse roof', () => {
+    const under = PACKS.find((q) => q.id === 'underbridge');
+    let h = walkTo(newHero(START), under.x, under.z, 30);
+    expect(nearPack(h.x, h.y, h.z)?.id).toBe('underbridge');
+    // the gatehouse: up its north wall from the lawn
+    const gate = PACKS.find((q) => q.id === 'gate');
+    h = newHero({ x: gate.x, z: gate.z - 6, face: -Math.PI / 2 });
+    h = walk(h, { x: 0, z: 1, run: true }, 1);
+    h = stepHero(h, { x: 0, z: 1, jump: true }, DT);
+    for (let t = 0; t < 1 && h.mode !== 'wall'; t += DT) h = stepHero(h, { x: 0, z: 1 }, DT);
+    expect(h.mode).toBe('wall');
+    for (let t = 0; t < 6 && h.mode === 'wall'; t += DT) h = stepHero(h, { x: 0, z: 1 }, DT);
+    expect(h.mode).toBe('ground');
+    h = walkTo(h, gate.x, gate.z, 5);
+    expect(nearPack(h.x, h.y, h.z)?.id).toBe('gate');
   });
 });

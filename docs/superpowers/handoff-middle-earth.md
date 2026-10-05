@@ -41,18 +41,28 @@ break). State as of 2026-10-05.
 
 ## Agents stopped (org spend limit), 2026-10-05
 
-Their unfinished, uncommitted work is saved as patches in
-`docs/superpowers/handoff-patches/` (apply on the base commit named):
+Their unfinished, uncommitted work was saved as patches in
+`docs/superpowers/handoff-patches/`:
 
-- `east-cirith-ungol-wip.patch` (base d513724, eastern branch): Cirith
-  Ungol side game, half done; Mount Doom not started.
+- `east-cirith-ungol-wip.patch`: applied and finished (see below).
 - `orthanc-gwaihir-wip.patch` (base 18aad80): fixing Gwaihir missing from
-  the pinnacle flight (Gandalf rides on nothing).
-- (west: Bree, Weathertop, Rivendell, Moria side games: applied and
-  merged; lint, 417 Middle-earth tests and the build green; Bree's page
-  loads clean in a browser; the other three not yet played in one.)
+  the pinnacle flight (Gandalf rides on nothing). Still to apply:
+  `git apply --3way docs/superpowers/handoff-patches/orthanc-gwaihir-wip.patch`.
 
-`git checkout <base> && git apply <patch>`, finish, check, merge.
+## Done since (this session)
+
+- All eleven places (the ten chapters and Orthanc) load clean headless
+  (`lab/world-errs.mjs`). The western side games (Bree's song, Gandalf's
+  mark, Bilbo's riddles, the plank) each start from the list's "Go there"
+  and run without page errors (`lab/side-smoke.mjs`).
+- Cirith Ungol's side game, "Crumbs on Sam's cloak" (`towns/cirithungol/`,
+  achievement `notacrumb`): the night on the stair; brush Gollum's lembas
+  crumbs off before Frodo wakes. Open once the stairs are climbed.
+- Mount Doom's side game, "Do you remember the Shire?" (`towns/doom/`,
+  achievement `remembertheshire`): Sam tells the Shire a thing at a time
+  and Frodo says them back, two to six. Open once Gorgoroth is crossed.
+- Both keep `{ won, best }` under `tp-cirithungol-side` and
+  `tp-doom-side` (`towns/side.js`), lower is better.
 
 ## Still in flight when this was written (superseded above)
 
@@ -92,6 +102,14 @@ above.
 - `lab/rush-shots.mjs <prefix> [ids]`: canvas read straight back
   (preserveDrawingBuffer); Playwright's own screenshot hangs on this
   page's fonts, so don't use it here.
+- `lab/world-errs.mjs <place ids>`: loads each Middle-earth place and
+  prints page errors. `lab/side-smoke.mjs <town ids> [--shot=prefix]
+  [--keys=a,b,W:800,none]`: finishes a town's story in localStorage, opens
+  the list, clicks the side game's "Go there", presses keys, shoots the
+  canvas before and after. Under SwiftShader the sim's dt is clamped to
+  0.05 s a frame, so everything runs in slow motion: a 1.5 s wait can
+  still show the frame before.
+- (`lab/` is git-ignored: recreate these from this note if they're gone.)
 - Under heavy load (several agents rendering) shots take minutes and long
   simulation tests elsewhere time out at 5 s; rerun with
   `--testTimeout=120000` before calling anything broken.
@@ -109,16 +127,9 @@ above.
 
 ## Steps left (in order)
 
-1. Play the western side games in a browser (Bree, Weathertop,
-   Rivendell, Moria): `node lab/world-errs.mjs weathertop rivendell
-   moria` for page errors (one at a time if the machine's busy), then by
-   hand. Fix what's broken.
-2. Finish Cirith Ungol's side game from `east-cirith-ungol-wip.patch`
-   (base d513724), then Mount Doom's (not started; idea: "Do you
-   remember the Shire?" memory game as Sam carries Frodo).
-3. Orthanc: apply `orthanc-gwaihir-wip.patch` (base 18aad80) and finish
+1. Orthanc: apply `orthanc-gwaihir-wip.patch` (base 18aad80) and finish
    Gwaihir in the pinnacle flight; check the map click still finds it.
-4. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
+2. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
    and dress it like the others; re-shoot the dressed ones and fix
    anything off (`lab/rush-shots.mjs`, canvas readback).
-5. Then the ideas list above.
+3. Then the ideas list above.
