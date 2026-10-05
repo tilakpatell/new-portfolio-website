@@ -1383,5 +1383,35 @@
     "also": [
       "galaxy"
     ]
+  },
+  "crew-luke": {
+    "title": "FB Luke Skywalker",
+    "author": "fhfhhf",
+    "authorUrl": "https://sketchfab.com/fhfhhf",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fb-luke-skywalker-84d5ed9497b5435b9a804f956ff74927",
+    "where": "galaxy-surface",
+    "as": "Luke Skywalker, walking on the worlds",
+    "file": "/models/galaxy/crew/luke.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-leia": {
+    "title": "FN Princess Leia",
+    "author": "fhfhhf",
+    "authorUrl": "https://sketchfab.com/fhfhhf",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fn-princess-leia-e5efdd35a5e4462cbc013db44e80d31e",
+    "where": "galaxy-surface",
+    "as": "Princess Leia, walking on the worlds",
+    "file": "/models/galaxy/crew/leia.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   }
 }
