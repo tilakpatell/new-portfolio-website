@@ -426,3 +426,30 @@ layout drawing), `diner-booth.png`, `oval-office.jpg`, `whitehouse-hall.jpg`,
   `fedagent`, `general`, `secretservice` (rigged, with clips; the agent also
   seated), `limo`, `fedship`, `shoneys`; each with a code-drawn stand-in.
 - Also: walking onto the open hatch drops Morty down it, as E does.
+
+## Amendment 5 (2026-10-05, from the user): a show-sized garage, the school's people, jumping, and a bigger world to fly over
+
+Each part ships and merges on its own, as it's finished.
+
+- **Rick's garage, the show's size and layout**: one car wide (7.2 m across,
+  8 m deep, inside the street's 8 m wide garage), laid out from the show's
+  stills: the L-shaped workbench along the back wall and down the west wall
+  under a window, the pegboard and the corkboard over it, Rick at it; the
+  washer and dryer beside it under the clock; the plumbus machine in the
+  corner by the kitchen door; the wire shelving on the east wall past that
+  door; the long slate worktable in the middle (the Meeseeks box on it); the
+  portal and the Portal panic cabinet on the west wall; the President's portal
+  on the east wall by the garage door; bare joists overhead with three
+  fluorescent fittings; and the hatch in the corner opposite the kitchen door
+  (the south-west), as the show's wiki puts it.
+- **The school's people**: Mr. Goldenfold (his mustard sweater and moustache),
+  Principal Vagina, Jessica, Brad, Tammy, Ethan and Tiny Rick, as Meshy models
+  from their looks in the show, in a classroom laid out from the show's
+  stills. Coach Feratu is never seen in the show (only mentioned), so he
+  isn't drawn.
+- **Jumping**: Space jumps on foot. Morty lands on what's low enough to stand
+  on (the porch and its steps, beds, couches, tables, counters, desks, the
+  kerb) and falls off its edges; anything taller, and every ceiling, stops him.
+- **A bigger world, no invisible walls**: more streets of solid houses round
+  the Smiths'; the edges are things you can see (hedges, fences, a tree line)
+  rather than an invisible stop; the cruiser flies much further and higher.

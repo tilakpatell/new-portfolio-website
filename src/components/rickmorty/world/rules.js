@@ -29,7 +29,8 @@ export const AREAS = {
   // outside corner south-west
   house: { x0: -312, x1: -288, z0: -8, z1: 8.5 },
   upstairs: { x0: -306, x1: -294.7, z0: 394, z1: 410.3 },
-  garage: { x0: -306, x1: -294, z0: 94, z1: 106 },
+  // (one car wide, as the show draws it: 7.2 m across, 8 m deep)
+  garage: { x0: -303.6, x1: -296.4, z0: 98, z1: 106 },
   school: { x0: -308, x1: -292, z0: 194, z1: 206 },
   arcade: { x0: -310, x1: -290, z0: 292, z1: 308 },
   // Rick's clone lab, under the garage floor, and Morty's Mind Blowers through its east door
@@ -136,13 +137,14 @@ const ARCADE_DOOR = { x: 400, z: -3.4 };
 const DINER_DOOR = { x: DINER.x, z: DINER.z + DINER.d / 2 + 0.6 };
 // where you come out by a door: `across` and `along` metres from it, facing straight away from it
 const beside = (door, across, along) => ({ x: door.x + across, z: door.z + along, face: Math.atan2(-along, across) });
-// The hatch in the garage lab's floor, 1.2 m square, in the alcove between the plumbus factory and the
-// Portal panic cabinet (off the bench, the doors, the portal and the shelves). Nothing stands over it
-// and it is floor to walk on: the link is what takes Morty down it.
-export const HATCH = { x: -303.8, z: 101, w: 1.2, d: 1.2 };
-// The President's portal: a steel frame against the garage's south wall in
-// its east corner, facing in; lit once he's put it there (`needs`).
-export const GOV_PORTAL = { x: -296, z: 105.6 };
+// The hatch in the garage lab's floor, 1.2 m square, in the corner opposite
+// the door to the kitchen, as the show has it: the south-west, by the garage
+// door and past the Portal panic cabinet. Nothing stands over it and it is
+// floor to walk on: the link is what takes Morty down it.
+export const HATCH = { x: -302.85, z: 104.85, w: 1.2, d: 1.2 };
+// The President's portal: a steel frame against the garage's east wall by
+// the garage door, facing in (west); lit once he's put it there (`needs`).
+export const GOV_PORTAL = { x: -296.55, z: 104.3 };
 const into = (room) => ({ x: ROOM_X, z: AREAS[room].z1 - 2, face: FACE_N });
 const exit = (room, to, arrive) => ({ id: `${room}-exit`, area: room, x: ROOM_X, z: AREAS[room].z1 - 0.6, r: 0.9, kind: 'exit', to, label: 'Back outside', arrive });
 
@@ -158,21 +160,22 @@ export const LINKS = [
   exit('school', 'street', beside(SCHOOL_DOOR, 0, -2.4)),
   exit('arcade', 'annex', beside(ARCADE_DOOR, 0, 2.4)),
   // the kitchen's west wall and the garage lab's east side
-  { id: 'kitchen-garage', area: 'house', x: -311.6, z: 1.1, r: 0.9, kind: 'door', to: 'garage', label: 'Rick’s garage', arrive: { x: -296.8, z: 97.5, face: Math.PI } },
-  { id: 'garage-kitchen', area: 'garage', x: -294.8, z: 97.5, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
+  { id: 'kitchen-garage', area: 'house', x: -311.6, z: 1.1, r: 0.9, kind: 'door', to: 'garage', label: 'Rick’s garage', arrive: { x: -298.1, z: 100.2, face: Math.PI } },
+  { id: 'garage-kitchen', area: 'garage', x: -296.85, z: 100.2, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
   { id: 'stairs-up', area: 'house', x: -295.1, z: 2.6, r: 0.9, kind: 'stairs', to: 'upstairs', label: 'Upstairs', arrive: { x: -303, z: 402, face: FACE_N } },
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
-  { id: 'garage-portal', area: 'garage', x: -294.8, z: 100, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
-  { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } },
+  // (the portal swirls on the garage's west wall, past the end of the bench)
+  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
+  { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } },
   // down the hatch to the foot of the ladder, and up it to beside the hatch
   { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
-  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.7, 0) },
+  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.25, -0.95) },
   // the clone lab's east door, on to Morty's Mind Blowers, and back
   { id: 'basement-mind', area: 'basement', x: -291.9, z: 505.6, r: 0.9, kind: 'door', to: 'mindblowers', label: 'Morty’s Mind Blowers', arrive: into('mindblowers') },
   { id: 'mind-door', area: 'mindblowers', x: ROOM_X, z: AREAS.mindblowers.z1 - 0.6, r: 0.9, kind: 'door', to: 'basement', label: 'Rick’s clone lab', arrive: { x: -293.5, z: 505.6, face: Math.PI } },
   // the President's portal to the Oval Office (shut till he's met), and its way back
-  { id: 'garage-oval', area: 'garage', x: GOV_PORTAL.x, z: GOV_PORTAL.z - 1.2, r: 1.2, kind: 'portal', to: 'oval', label: 'The Oval Office', needs: 'president', arrive: { x: ROOM_X, z: AREAS.oval.z1 - 2.7, face: FACE_N } },
-  { id: 'oval-portal', area: 'oval', x: ROOM_X, z: AREAS.oval.z1 - 0.6, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: GOV_PORTAL.x, z: GOV_PORTAL.z - 2.8, face: FACE_N } },
+  { id: 'garage-oval', area: 'garage', x: GOV_PORTAL.x - 1.2, z: GOV_PORTAL.z, r: 1.2, kind: 'portal', to: 'oval', label: 'The Oval Office', needs: 'president', arrive: { x: ROOM_X, z: AREAS.oval.z1 - 2.7, face: FACE_N } },
+  { id: 'oval-portal', area: 'oval', x: ROOM_X, z: AREAS.oval.z1 - 0.6, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: beside({ x: GOV_PORTAL.x - 1.2, z: GOV_PORTAL.z }, -1.25, -0.85) },
   // Shoney's
   { id: 'diner-door', area: 'street', ...DINER_DOOR, r: 1.6, kind: 'door', to: 'diner', label: 'Shoney’s', arrive: into('diner') },
   exit('diner', 'street', beside(DINER_DOOR, 0, 2.4)),
@@ -456,13 +459,18 @@ export const FURNITURE = [
   item('chair-morty', 'chair', 'upstairs', -297.6, 395.4, 0.5, 0.5, 0.9, N),
   item('bed-master', 'bed', 'upstairs', -295.8, 405.3, 1.8, 2.2, 0.6, W),
   item('dresser-master', 'dresser', 'upstairs', -302.15, 406.5, 2, 0.5, 0.9, E),
-  // Rick's garage lab
-  item('workbench', 'workbench', 'garage', -300, 94.6, 8, 1.2, 1),
-  item('shelf-garage', 'shelf', 'garage', -305.5, 96, 3, 1, 1.9, E),
-  item('plumbus', 'machine', 'garage', -305.75, 99, 2, 0.5, 1.6, E),
-  item('portalpanic', 'arcade', 'garage', -305.75, 103, 1.4, 0.5, 1.8, E),
-  // the washer and dryer, side by side by the garage door
-  item('laundry', 'laundry', 'garage', -304.6, 105.3, 1.4, 0.6, 1.1, N),
+  // Rick's garage lab, as the show lays it out: the bench along the back
+  // wall and round the corner in an L, the washer and dryer beside it, the
+  // plumbus factory in the corner by the kitchen door; the wire shelving
+  // past that door; the long worktable in the middle; the Portal panic
+  // cabinet on the west wall, before the hatch
+  item('workbench', 'workbench', 'garage', -301.9, 98.375, 3.4, 0.75, 0.95),
+  item('bench-arm', 'workbench', 'garage', -303.275, 99.475, 1.45, 0.65, 0.95, E),
+  item('laundry', 'laundry', 'garage', -299.3, 98.33, 1.4, 0.66, 1.1),
+  item('plumbus', 'machine', 'garage', -297.45, 98.3, 1.8, 0.55, 1.6),
+  item('shelf-garage', 'shelf', 'garage', -296.65, 102.2, 1.8, 0.5, 1.9, W),
+  item('worktable', 'worktable', 'garage', -299.9, 102.4, 2.2, 0.9, 0.92),
+  item('portalpanic', 'arcade', 'garage', -303.225, 103.1, 0.8, 0.75, 1.8, E),
   // Mr. Goldenfold's classroom: the chalkboard, his desk, six desks for the class
   item('chalkboard', 'chalkboard', 'school', -300, 194.1, 6, 0.2, 1.3),
   item('goldenfold-desk', 'goldenfold-desk', 'school', -300, 195.4, 3, 1.2, 0.8),
@@ -472,8 +480,8 @@ export const FURNITURE = [
   item('cabinet1', 'arcade', 'arcade', -309.5, 297, 1.4, 1, 1.8, E),
   item('cabinet2', 'arcade', 'arcade', -290.5, 300, 1.4, 1, 1.8, W),
   item('cabinet3', 'arcade', 'arcade', -309.5, 303, 1.4, 1, 1.8, E),
-  // the President's portal, against the south wall in the east corner, facing in
-  item('govportal', 'govportal', 'garage', GOV_PORTAL.x, GOV_PORTAL.z, 1.8, 0.3, 2.5, N),
+  // the President's portal, against the garage's east wall by the garage door, facing in
+  item('govportal', 'govportal', 'garage', GOV_PORTAL.x, GOV_PORTAL.z, 1.8, 0.3, 2.5, W),
   // Rick's clone lab: the clone machine in the middle of the back, curved
   // desks down both sides (two lengths each, stepped to the round wall), and
   // the ladder up on the south wall (its foot is the way up, and where the hatch puts Morty)
@@ -525,7 +533,7 @@ export const PEOPLE = [
   { id: 'jerry', area: 'house', x: -301.6, z: -3.5, face: 0, sits: true },
   { id: 'beth', area: 'house', x: -310.95, z: -3.4, face: Math.PI },
   { id: 'summer', area: 'upstairs', x: -302.4, z: 396.9, face: -Math.PI / 2 },
-  { id: 'rick', area: 'garage', x: -302, z: 95.55, face: Math.PI / 2 },
+  { id: 'rick', area: 'garage', x: -301.9, z: 99.15, face: Math.PI / 2 },
   { id: 'teacher', area: 'school', x: -300, z: 194.5, face: -Math.PI / 2 },
   // the motorcade, on the sidewalk by the limo, looking west along it to the Smiths'
   { id: 'president', area: 'street', x: LIMO.x - 1, z: -6.1, face: Math.PI, until: 'president' },
@@ -612,10 +620,10 @@ export const HOTSPOTS = [
   spot('butter', 'house', -302.6, 0.8, 'The butter robot', 'Switch on'),
   spot('summer', 'upstairs', -302.4, 397.2, 'Summer', 'Talk'),
   spot('mortyroom', 'upstairs', -297.2, 397, 'Morty’s room', 'Look round'),
-  spot('rick', 'garage', -302, 95.6, 'Rick', 'Talk'),
-  spot('meeseeks', 'garage', -297.5, 95.6, 'Mr. Meeseeks box', 'Press'),
-  spot('plumbus', 'garage', -305.2, 99, 'The plumbus factory', 'Watch'),
-  spot('portalpanic', 'garage', -305.2, 103, 'Portal panic cabinet', 'Play'),
+  spot('rick', 'garage', -301.9, 99.2, 'Rick', 'Talk'),
+  spot('meeseeks', 'garage', -301.4, 102.4, 'Mr. Meeseeks box', 'Press'),
+  spot('plumbus', 'garage', -297.45, 99, 'The plumbus factory', 'Watch'),
+  spot('portalpanic', 'garage', -302.45, 103.1, 'Portal panic cabinet', 'Play'),
   spot('quiz', 'school', -300, 196.4, 'Mr. Goldenfold’s pop quiz', 'Sit the quiz'),
   spot('roy', 'arcade', -300, 293.6, 'Roy: A Life Well Lived', 'Put the headset on'),
   spot('cabinet1', 'arcade', -308.4, 297, 'Arcade cabinet', 'Play'),
@@ -765,15 +773,15 @@ export function exitCruiser(c, { motorcade = false } = {}) {
 export const TASKS = [
   { id: 'cable', name: 'Watch interdimensional cable', hint: 'Go into the Smith house and put interdimensional cable on the TV.' },
   { id: 'butter', name: 'The butter robot', hint: 'Switch on the butter robot at the Smiths’ breakfast table.' },
-  { id: 'meeseeks', name: 'Summon a Meeseeks', hint: 'Press the Meeseeks box on Rick’s workbench, in the garage.' },
+  { id: 'meeseeks', name: 'Summon a Meeseeks', hint: 'Press the Meeseeks box on the worktable in Rick’s garage.' },
   { id: 'plumbus', name: 'See a plumbus made', hint: 'Watch the plumbus factory in Rick’s garage.' },
   { id: 'portalpanic', name: 'Play Portal panic', hint: 'Play the Portal panic cabinet in Rick’s garage.' },
   { id: 'quiz', name: 'Pass the pop quiz', hint: 'Sit Mr. Goldenfold’s pop quiz at Harry Herpson High, and get seven right.' },
   { id: 'fly', name: 'Fly the cruiser', hint: 'Board Rick’s space cruiser in the driveway and take it up over the neighbourhood.' },
   { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
-  { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal in the corner of Rick’s garage.' },
+  { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal by the garage door in Rick’s garage.' },
   { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
-  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal at the back of Rick’s garage.' },
+  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal on the west wall of Rick’s garage.' },
   { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
