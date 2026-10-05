@@ -32,8 +32,8 @@ export const MAW = {
   id: HOLE.id,
   at: HOLE.at,
   shadow: HOLE.r, // the radius of its shadow (the black sphere that draws it)
-  reach: 120, // where its pull starts, from its middle
-  capture: 56, // the point of no return
+  reach: HOLE.r * 10, // where its pull starts, from its middle (all of these in its shadows, should the map be scaled)
+  capture: HOLE.r * 4.65, // the point of no return
   pull: 8, // how fast it draws you in at the point of no return, map units a second
   swirl: 0.6, // and carries you round with the disk, as a share of that
   turns: 1.25, // round it on the way down
@@ -42,7 +42,7 @@ export const MAW = {
   horizon: 3.8, // held there, fading, till this
   plunge: 3.5, // the camera goes in after it from here
   through: 4.9, // and it's through: the page takes over
-  witness: 105, // how far off the camera watches the fall from
+  witness: HOLE.r * 8.75, // how far off the camera watches the fall from
   above: 0.14, // and how far above (or below) the disk's plane, radians
 };
 
