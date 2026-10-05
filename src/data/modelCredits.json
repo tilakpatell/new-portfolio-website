@@ -472,6 +472,61 @@
     "as": "the banthas",
     "file": "/models/galaxy/surface/bantha.glb"
   },
+  "surface-battledroid": {
+    "title": "Star Wars B1 Battle Droid",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-b1-battle-droid-ade3a1205cce449caf91f78e595e5676",
+    "where": "galaxy",
+    "as": "the battle droids",
+    "file": "/models/galaxy/surface/battledroid.glb"
+  },
+  "surface-bb8": {
+    "title": "BB-8",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bb-8-69c8b77c726e406c99ab0839baee3ce9",
+    "where": "galaxy",
+    "as": "BB-8",
+    "file": "/models/galaxy/surface/bb8.glb"
+  },
+  "surface-c3po": {
+    "title": "C-3PO Weight Shift",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
+    "where": "galaxy",
+    "as": "C-3PO",
+    "file": "/models/galaxy/surface/c3po.glb"
+  },
+  "surface-clone": {
+    "title": "phase-II-clone-trooper-dc-15s-rigged",
+    "author": "Ara_my45yt",
+    "authorUrl": "https://sketchfab.com/Ara_my45yt",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/phase-ii-clone-trooper-dc-15s-rigged-8519076c1bf24bcbb352f96930a29b55",
+    "where": "galaxy",
+    "as": "the clone troopers",
+    "file": "/models/galaxy/surface/clone.glb"
+  },
+  "surface-deathtrooper": {
+    "title": "Death trooper || Rogue One: A Star Wars Story",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-trooper-rogue-one-a-star-wars-story-503860c8c63b419daa391f296ab874f1",
+    "where": "galaxy",
+    "as": "the death troopers",
+    "file": "/models/galaxy/surface/deathtrooper.glb"
+  },
   "surface-ewok": {
     "title": "Ewok",
     "author": "Ulrik S. Selvik",
@@ -482,6 +537,17 @@
     "where": "galaxy",
     "as": "the Ewoks",
     "file": "/models/galaxy/surface/ewok.glb"
+  },
+  "surface-fotrooper": {
+    "title": "First Order Stormtrooper",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/first-order-stormtrooper-b7341f5280484497a72451c3f62cd0c1",
+    "where": "galaxy",
+    "as": "the First Order stormtroopers",
+    "file": "/models/galaxy/surface/fotrooper.glb"
   },
   "surface-jawa": {
     "title": "SM_jawa",
@@ -505,6 +571,50 @@
     "as": "Luke's landspeeder",
     "file": "/models/galaxy/surface/landspeeder.glb"
   },
+  "surface-scouttrooper": {
+    "title": "Scout Trooper",
+    "author": "malin.sandred",
+    "authorUrl": "https://sketchfab.com/malin.sandred",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/scout-trooper-bdcf732e6f374b6d87b02cd023991aae",
+    "where": "galaxy",
+    "as": "the scout troopers",
+    "file": "/models/galaxy/surface/scouttrooper.glb"
+  },
+  "surface-shoretrooper": {
+    "title": "Shore trooper || Rogue One: A Star Wars Story",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/shore-trooper-rogue-one-a-star-wars-story-67611b62211648b7805359ab148c949a",
+    "where": "galaxy",
+    "as": "the shoretroopers",
+    "file": "/models/galaxy/surface/shoretrooper.glb"
+  },
+  "surface-sithtrooper": {
+    "title": "Sith trooper || Episode IX: TROS",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sith-trooper-episode-ix-tros-91f4fd40a92e4d05b3bbbe011e91d910",
+    "where": "galaxy",
+    "as": "the Sith troopers",
+    "file": "/models/galaxy/surface/sithtrooper.glb"
+  },
+  "surface-snowtrooper": {
+    "title": "Snow Trooper || Episode VIII: TLJ",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/snow-trooper-episode-viii-tlj-751b09d5b8aa49d4809a94676190ea2b",
+    "where": "galaxy",
+    "as": "the snowtroopers",
+    "file": "/models/galaxy/surface/snowtrooper.glb"
+  },
   "surface-speederbike": {
     "title": "Star Wars Aratech 74z Speeder Bike",
     "author": "tegnemaskin",
@@ -515,6 +625,39 @@
     "where": "galaxy",
     "as": "the speeder bikes",
     "file": "/models/galaxy/surface/speederbike.glb"
+  },
+  "surface-stormtrooper": {
+    "title": "Stormtrooper Walk",
+    "author": "LostBoyz2078",
+    "authorUrl": "https://sketchfab.com/LostModels2025",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/stormtrooper-walk-dc7237f92c824cd78abc0f5bb4cb6290",
+    "where": "galaxy",
+    "as": "the stormtroopers",
+    "file": "/models/galaxy/surface/stormtrooper.glb"
+  },
+  "surface-superdroid": {
+    "title": "Super Battle Droid B2 Animated (Training)",
+    "author": "Suvalien",
+    "authorUrl": "https://sketchfab.com/Suvalien",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/super-battle-droid-b2-animated-training-a0f947934672450bad323d6438499812",
+    "where": "galaxy",
+    "as": "the super battle droids",
+    "file": "/models/galaxy/surface/superdroid.glb"
+  },
+  "surface-vader": {
+    "title": "Darth Vader",
+    "author": "HarrisonHag1",
+    "authorUrl": "https://sketchfab.com/HarrisonHag1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/darth-vader-15c6b612a5834924b0959261aa89e80f",
+    "where": "galaxy",
+    "as": "Darth Vader",
+    "file": "/models/galaxy/surface/vader.glb"
   },
   "surface-vaporator": {
     "title": "Star Wars Moisture Vaporator",
