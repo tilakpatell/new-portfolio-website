@@ -540,7 +540,8 @@ describe('autopilot', () => {
       const id = ORDER[i % ORDER.length];
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 60 && !done; t += 1 / 60) {
+      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 75 seconds)
+      for (let t = 0; t < 85 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;

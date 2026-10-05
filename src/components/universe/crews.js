@@ -347,6 +347,10 @@ export const CREWS = [
         ['morty', 'Rick, there’s a giant tentacle coming out of that ocean!'],
         ['rick', 'The Caribbean, Morty. Pirates. It’s just crime with better hats.'],
       ],
+      invincible: [
+        ['morty', 'Rick, a guy in a cape just flew past us. Really fast.'],
+        ['rick', 'Viltrumites, Morty. Don’t make eye contact. Don’t make any contact.'],
+      ],
     },
   },
   {
@@ -655,6 +659,10 @@ export const CREWS = [
         ['luke', 'A whole world of water, and one black ship on it.'],
         ['r2', '[a wary, bubbling whistle]'],
       ],
+      invincible: [
+        ['luke', 'Two of them, flying round it with no ships at all.'],
+        ['r2', '[an alarmed, rising whistle]'],
+      ],
     },
   },
   {
@@ -947,6 +955,10 @@ export const CREWS = [
       caribbean: [
         ['han', 'Pirates. Finally, some honest people.'],
         ['chewie', '[an approving growl]'],
+      ],
+      invincible: [
+        ['han', 'A guy who punches through starships with his bare hands. Let’s not, Chewie.'],
+        ['chewie', '[a worried moan]'],
       ],
     },
   },
@@ -1287,6 +1299,10 @@ export const CREWS = [
       caribbean: [
         ['jesse', 'Pirates! Mr. White, there are actual pirates down there!'],
         ['walt', 'Smugglers with a dress code, Jesse.'],
+      ],
+      invincible: [
+        ['jesse', 'Yo, that dude just flew through a building. Like, through it.'],
+        ['walt', 'Then we do not owe him money, Jesse. Keep it that way.'],
       ],
     },
   },
