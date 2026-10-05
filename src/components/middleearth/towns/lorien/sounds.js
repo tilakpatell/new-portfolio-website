@@ -2,7 +2,8 @@
 // birdsong in the golden wood by day, the elves' high singing at night,
 // the river under the boat; bows drawn, a chime for the Lady's things,
 // the Eye in the water and her temptation, a rock under the hull, and a
-// horn for the Kings. All through the site's master volume.
+// horn for the Kings; and at Legolas's targets, the bow drawn and let go,
+// and where the arrow ends. All through the site's master volume.
 
 import { audioContext, output } from '../../../../lib/audio';
 
@@ -206,4 +207,38 @@ export function horn() {
   if (!ac) return;
   const t = ac.currentTime + 0.05;
   for (const [f, at] of [[147, 0], [220, 0.05], [196, 1.6], [294, 1.65]]) tone(ac, out, t + at, { type: 'triangle', f, gain: 0.06, attack: 0.5, length: 3 });
+}
+
+// ── Legolas's targets ──
+// the bow drawn: a creak of wood and string
+export function creak() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  hiss(ac, out, t, { type: 'bandpass', f: 420, q: 9, gain: 0.07, attack: 0.25, length: 0.6, sweep: 760 });
+  tone(ac, out, t, { type: 'triangle', f: 140, to: 190, gain: 0.025, attack: 0.3, length: 0.6 });
+}
+// let go: the string's twang and the arrow's hiss away (k: how full the draw)
+export function twang(k = 1) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  tone(ac, out, t, { type: 'triangle', f: 98 + k * 40, to: 70, gain: 0.12 * (0.4 + k * 0.6), attack: 0.002, length: 0.35 });
+  hiss(ac, out, t, { type: 'highpass', f: 2600, q: 0.7, gain: 0.08 * k, attack: 0.01, length: 0.4, sweep: 900 });
+}
+// where it ends: 'board' (and in the gold), 'trunk' or 'ground'
+export function thock(into = 'board', gold = false) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  if (into === 'ground') {
+    hiss(ac, out, t, { type: 'lowpass', f: 500, gain: 0.12, attack: 0.002, length: 0.15 });
+    return;
+  }
+  const f = into === 'trunk' ? 150 : 230;
+  tone(ac, out, t, { f, to: f * 0.6, gain: 0.3, attack: 0.001, length: 0.18 });
+  hiss(ac, out, t, { type: 'bandpass', f: into === 'trunk' ? 700 : 1300, q: 1.4, gain: 0.18, attack: 0.001, length: 0.12 });
+  // and a ring of the string's quiver after it, in the board
+  if (into === 'board') tone(ac, out, t + 0.02, { type: 'triangle', f: 330, gain: 0.03, attack: 0.005, length: 0.4, vibrato: 0.05 });
+  if (gold) chime(2);
 }

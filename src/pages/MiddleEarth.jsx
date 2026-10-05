@@ -8,6 +8,7 @@ import Gorgoroth from '../components/middleearth/Gorgoroth';
 import MapBackdrop from '../components/middleearth/MapBackdrop';
 import MapHub from '../components/middleearth/MapHub';
 import { chapter as findChapter, neighbours, stopOf } from '../components/middleearth/chapters';
+import { hidden as hiddenPlace } from '../components/middleearth/hidden';
 import { shouldOpen } from '../components/middleearth/opening';
 import { STOPS } from '../components/middleearth/road';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -34,6 +35,7 @@ const AmonHenWorld = lazy(() => import('../components/middleearth/towns/amonhen/
 const MarshesWorld = lazy(() => import('../components/middleearth/towns/marshes/MarshesWorld'));
 const CirithUngolWorld = lazy(() => import('../components/middleearth/towns/cirithungol/CirithUngolWorld'));
 const DoomWorld = lazy(() => import('../components/middleearth/towns/doom/DoomWorld'));
+const OrthancWorld = lazy(() => import('../components/middleearth/towns/orthanc/OrthancWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -86,10 +88,12 @@ const WRONG = [
 // one button away. Reachable from the worlds menu, the terminal ('moria')
 // and the Off the clock dock.
 const FLY = 950;
+// a chapter on the road, or a place off it that someone found (./hidden.js)
+const placeOf = (id) => findChapter(id) ?? hiddenPlace(id);
 
 export default function MiddleEarth() {
   const { place } = useParams();
-  const here = findChapter(place);
+  const here = placeOf(place);
   const navigate = useNavigate();
   useDocumentTitle(here ? `${here.name} · Middle-earth` : 'Middle-earth');
   useSectionThemes();
@@ -165,7 +169,8 @@ export default function MiddleEarth() {
     if (flying) return;
     audioContext();
     // Frodo and Sam walk there first, the camera after them; then it dives
-    const walk = api.current?.travel?.(stopOf(id)) ?? 0;
+    // (a hidden place is off the road: no walk, straight down to it)
+    const walk = findChapter(id) ? (api.current?.travel?.(stopOf(id)) ?? 0) : 0;
     setFlying(id);
     setHover(null);
     clearTimeout(flight.current);
@@ -199,7 +204,7 @@ export default function MiddleEarth() {
       ? 'Ithildin, made by the Elves of Eregion: it shines only by starlight and moonlight. The doors open to a single word.'
       : 'Somewhere on this cliff are the Doors of Durin. They show only by moonlight, and open to a single word. Move your light over the rock, or call the moon.';
 
-  const spotAt = flying ? findChapter(flying).at : here?.at ?? null;
+  const spotAt = flying ? placeOf(flying).at : here?.at ?? null;
   const { prev, next } = neighbours(here?.id);
 
   return (
@@ -504,6 +509,12 @@ export default function MiddleEarth() {
       {here?.id === 'cirith-ungol' && (
         <Suspense fallback={null}>
           <Rush level="tower" />
+        </Suspense>
+      )}
+
+      {here?.id === 'orthanc' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <OrthancWorld onLeave={toMap} />
         </Suspense>
       )}
 

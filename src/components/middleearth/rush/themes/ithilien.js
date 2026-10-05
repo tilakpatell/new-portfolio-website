@@ -1,10 +1,12 @@
 // Ithilien, the garden of Gondor: a fern dell in green woods, bay and
 // cedar, herbs underfoot, an old carved stone among the trees, a spring in
-// a broken basin, and the fire with a coney on the spit.
+// a broken basin, and the fire with a coney on the spit. Butterflies; and
+// as the evening goes on, green-hooded men come out of the trees behind,
+// bows in hand (they saw the smoke).
 
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
-import { basin, campfire, fountain } from './common';
+import { V, basin, campfire, fountain, motes } from './common';
 
 export const ITHILIEN = {
   sky: { background: 0xb8c8a0, fog: [0xa8b890, 20, 55], hemi: [0xf0f4d8, 0x4a6a2a, 1.4], sun: [0xffe8b8, 2.4], sunAt: [-5, 10, 6] },
@@ -42,4 +44,33 @@ export const ITHILIEN = {
     W: basin,
   },
   flame: ['O'],
+  extras(ctx) {
+    const { scene, W, D, Z } = ctx;
+    // butterflies (well, motes of colour) over the herbs
+    const flutter = motes(ctx, { n: 14, colour: 0xffe080, size: 0.09, rise: 0.05, sway: 0.9, life: [4, 7], glow: 1.1, from: () => V((Math.random() - 0.5) * (W + 3), 0.4 + Math.random() * 0.8, Z(0) + Math.random() * D) });
+    // Faramir's rangers, coming out of the trees as the round goes on
+    const hood = new THREE.MeshStandardMaterial({ color: 0x3a5a2a, roughness: 1 });
+    const bowMat = new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.8 });
+    const men = [-3.5, -0.8, 1.6, 4].map((x, k) => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.6, 8), hood);
+      body.position.y = 0.8;
+      const head = new THREE.Mesh(ball(0.15, 8, 6), hood);
+      head.position.y = 1.65;
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.015, 4, 12, Math.PI), bowMat);
+      bow.position.set(0.3, 1.0, 0);
+      bow.rotation.z = Math.PI / 2;
+      g.add(body, head, bow);
+      g.position.set(x, -2, Z(0) - 1.6 - (k % 2) * 0.7);
+      scene.add(g);
+      return g;
+    });
+    return {
+      tick(dt, t, s) {
+        flutter.tick(dt, t);
+        const k = s.level.time ? 1 - s.left / s.level.time : 0;
+        men.forEach((g, i) => (g.position.y = -2 + 2 * Math.min(1, Math.max(0, (k - 0.55 - i * 0.08) * 4))));
+      },
+    };
+  },
 };

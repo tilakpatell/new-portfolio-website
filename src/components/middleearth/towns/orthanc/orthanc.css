@@ -1,0 +1,35 @@
+/* Orthanc: the Shire's HUD (../../shire/shire.css) in the tower's black and
+   cold silver, with Isengard's fire for warnings; the panels for the
+   palantír, the duel, the stair, the moth and the Windlord. */
+
+.orthanc-world { --shire-glass: rgba(8, 9, 12, 0.84); --shire-glass-hi: rgba(10, 11, 14, 0.95); --shire-gold: #c8d2e6; }
+.orthanc-stage { background: radial-gradient(ellipse at 50% 30%, #1a1c22 0%, #050608 72%); }
+.orthanc-stage[data-zone='top'], .orthanc-stage[data-zone='stair'] { background: linear-gradient(180deg, #0a0c12 0%, #2a2024 58%, #3a1a10 62%, #0a0604 100%); }
+.orthanc-stage .shire-loading { color: #c8d2e6; }
+.orthanc-stage[data-mode='talk'] .shire-canvas, .orthanc-stage[data-mode='gaze'] .shire-canvas, .orthanc-stage[data-mode='duel'] .shire-canvas, .orthanc-stage[data-mode='climb'] .shire-canvas, .orthanc-stage[data-mode='moth'] .shire-canvas, .orthanc-stage[data-mode='leap'] .shire-canvas, .orthanc-stage[data-mode='flight'] .shire-canvas, .orthanc-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+.orthanc-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.orthanc-game .shire-meter { width: 100%; box-sizing: border-box; }
+.orthanc-game[data-turn], .orthanc-game[data-rising] { border-color: rgba(255, 120, 40, 0.8); animation: shire-tempt 0.4s ease-in-out infinite alternate; }
+.orthanc-game[data-stir] { border-color: rgba(255, 160, 80, 0.55); }
+.orthanc-game[data-tell], .orthanc-game[data-open], .orthanc-game[data-under] { border-color: rgba(200, 214, 255, 0.85); animation: orthanc-glint 0.32s ease-in-out infinite alternate; }
+@keyframes orthanc-glint { to { box-shadow: 0 0 0 4px rgba(170, 196, 255, 0.4), 0 0 24px rgba(140, 170, 255, 0.45); } }
+.orthanc-big { min-width: 7.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.orthanc-big[data-next] { background: rgba(190, 206, 255, 0.2); border-color: rgba(200, 214, 255, 0.7); }
+.orthanc-meter-seen span { background: linear-gradient(90deg, #5a3a1a, #ff9a3a); }
+.orthanc-meter-up span { background: linear-gradient(90deg, #4a4e5a, #d8dce8); }
+.orthanc-meter-settle span { background: linear-gradient(90deg, #6a6458, #f0e8d8); }
+
+/* the moth over the front of the pinnacle, and your hand under it */
+.orthanc-line { position: relative; height: 1.4rem; border-radius: 999px; background: rgba(255, 255, 255, 0.08); }
+.orthanc-line-hand, .orthanc-line-moth { position: absolute; top: 50%; transform: translate(-50%, -50%); border-radius: 999px; transition: left 0.08s linear; }
+.orthanc-line-hand { width: 2.4rem; height: 0.5rem; background: rgba(200, 214, 255, 0.35); border: 1px solid rgba(200, 214, 255, 0.7); }
+.orthanc-line-moth { width: 0.7rem; height: 0.7rem; background: #f4eee0; box-shadow: 0 0 10px #dfe6ff; }
+
+.orthanc-end { left: 50%; transform: translateX(-50%); width: min(32rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .orthanc-stage[data-game] .shire-hud-top { display: none; }
+  .orthanc-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .orthanc-end { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); }
+}

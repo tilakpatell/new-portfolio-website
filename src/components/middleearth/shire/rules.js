@@ -401,6 +401,8 @@ export const SPOTS = [
   { id: 'party', x: CART.x - 0.5, z: CART.z + 2, r: 2.4 },
   { id: 'ring', x: BAG_END.x, z: BAG_END.z + BAG_END.r * 0.94 + 0.9, r: 1.9 },
   { id: 'leave', x: 60, z: 11.4, r: 5 },
+  // on the side: Lobelia, by the lane at the foot of Bag End's path (LOBELIA)
+  { id: 'spoons', x: -12, z: -5.3, r: 2 },
 ];
 export function nearSpot(x, z) {
   let best = null;
@@ -821,6 +823,127 @@ export function stepRider(r, h, wearing, dt) {
 }
 // where you're put back when the Rider finds you
 export const RIDER_RETRY = { x: 42, z: -4, face: 0 };
+
+// ── On the side: Bilbo's spoons ──
+// Bilbo never did forgive the Sackville-Bagginses for his spoons, so before
+// the party he hid the best of the silver about Hobbiton, and Lobelia has
+// guessed. She goes round the hiding places in her own order, umbrella and
+// all. Get to each one first, two spoons to a waistcoat pocket, and bring
+// them up to Bag End's gate. Five home and she's beaten; if she pockets
+// two, she's won. Optional: it opens nothing and nothing waits on it.
+
+// where Lobelia stands, at the foot of Bag End's path, when she isn't out
+export const LOBELIA = { x: -12, z: -6.7, face: -Math.PI / 2 };
+// the task, for the list (it isn't one of QUESTS, so the story never waits on it)
+export const SIDE = { id: 'spoons', name: 'Bilbo’s spoons', where: 'Lobelia, at the foot of Bag End’s path', at: { x: -12, z: -4.9 }, blurb: 'Beat Lobelia Sackville-Baggins to the silver spoons Bilbo hid about Hobbiton.' };
+export const LOBELIA_LINES = {
+  before: ['Bilbo Baggins has hidden the good silver about the place, I know he has. Well, I shall find it.', 'Bag End should have come to us, by rights. Otho says so.', 'Don’t you look at me like that, young Frodo. I’m only taking the air.'],
+  after: ['Hmph. Spoons! As if I wanted his old spoons.', 'You’re as bad as your cousin Bilbo, Frodo Baggins. Worse!'],
+};
+export const SPOONS = { pocket: 2, need: 5, lose: 2, reach: 1.3, take: 0.9, wait: 2.5, speed: 2.7, home: { x: BAG_END.x, z: BAG_END.z + 8.1, r: 2.5 } };
+export const SPOON_SPOTS = [
+  { id: 'hedge', where: 'where the lane turns off for Maggot’s', x: -29.4, z: -4.6 },
+  { id: 'mill', where: 'by the mill door', x: -18.2, z: 7.1 },
+  { id: 'reeds', where: 'in the reeds by the pond', x: -1.5, z: 5.3 },
+  { id: 'bridge', where: 'on the bridge', x: 12, z: 13.4 },
+  { id: 'dragon', where: 'on the Green Dragon’s step', x: 17.4, z: 29.4 },
+  { id: 'tree', where: 'in the roots of the Party Tree', x: 17.6, z: -16.8 },
+];
+// her round, along the lanes: west to the hedge, the mill, the pond, over
+// the bridge to the Green Dragon, back up to the Party Tree, and home
+export const LOBELIA_ROUTE = [
+  [LOBELIA.x, LOBELIA.z],
+  [-13.2, -4.6],
+  [-29.4, -4.6],
+  [-14.2, -3.6],
+  [-19.3, 7],
+  [-18.2, 7.1],
+  [-1.5, 5.3],
+  [11.4, 5.6],
+  [12, 13.4],
+  [12, 20.4],
+  [14, 28.8],
+  [17.4, 29.4],
+  [14, 28.8],
+  [12, 20.4],
+  [12, 10.4],
+  [11, -4],
+  [14.6, -10.4],
+  [17.6, -16.8],
+  [14.6, -10.4],
+  [8, -4.2],
+  [-10.4, -4.2],
+  [LOBELIA.x, LOBELIA.z],
+];
+
+// Where something walking a path of [x, z] points is, `s` metres along it.
+function along(path, s) {
+  let left = Math.max(0, s);
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (left <= len && len > 0) {
+      const k = left / len;
+      return { x: a[0] + (b[0] - a[0]) * k, z: a[1] + (b[1] - a[1]) * k, face: Math.atan2(-(b[1] - a[1]), b[0] - a[0]) };
+    }
+    left -= len;
+  }
+  const [a, b] = path.slice(-2);
+  return { x: b[0], z: b[1], face: Math.atan2(-(b[1] - a[1]), b[0] - a[0]) };
+}
+const pathLength = (path) => path.slice(1).reduce((n, b, i) => n + Math.hypot(b[0] - path[i][0], b[1] - path[i][1]), 0);
+export const LOBELIA_LEN = pathLength(LOBELIA_ROUTE);
+export const lobeliaAt = (s) => along(LOBELIA_ROUTE, s);
+
+export const newSpoons = () => ({ t: 0, s: 0, carried: [], home: [], hers: [], state: 'on', full: -9 });
+// whether spoon i is still where Bilbo hid it
+export const spoonLeft = (sp, i) => !sp.carried.includes(i) && !sp.home.includes(i) && !sp.hers.includes(i);
+// where she is, or at her post when she isn't out
+export const lobeliaNow = (sp) => (sp && sp.state === 'on' ? lobeliaAt(sp.s) : { x: LOBELIA.x, z: LOBELIA.z, face: LOBELIA.face });
+
+// One step: events 'found' { i, carried }, 'full' (your pockets are, and
+// there's one at your feet), 'pocketed' { i, hers } (she got there first),
+// 'home' { n, home }, 'won', 'lost'. h: the hobbit.
+export function stepSpoons(sp, h, dt) {
+  const ev = [];
+  if (sp.state !== 'on') return ev;
+  sp.t += dt;
+  if (sp.t > SPOONS.wait) sp.s = Math.min(LOBELIA_LEN, sp.s + SPOONS.speed * dt);
+  const her = lobeliaAt(sp.s);
+  SPOON_SPOTS.forEach((p, i) => {
+    if (!spoonLeft(sp, i)) return;
+    if (Math.hypot(h.x - p.x, h.z - p.z) < SPOONS.reach) {
+      if (sp.carried.length < SPOONS.pocket) {
+        sp.carried.push(i);
+        ev.push({ type: 'found', i, carried: sp.carried.length });
+        return;
+      }
+      if (sp.t - sp.full > 3) {
+        sp.full = sp.t;
+        ev.push({ type: 'full', i });
+      }
+    }
+    if (Math.hypot(her.x - p.x, her.z - p.z) < SPOONS.take) {
+      sp.hers.push(i);
+      ev.push({ type: 'pocketed', i, hers: sp.hers.length });
+    }
+  });
+  const home = SPOONS.home;
+  if (sp.carried.length && Math.hypot(h.x - home.x, h.z - home.z) < home.r) {
+    sp.home.push(...sp.carried);
+    ev.push({ type: 'home', n: sp.carried.length, home: sp.home.length });
+    sp.carried = [];
+  }
+  if (sp.home.length >= SPOONS.need) {
+    sp.state = 'won';
+    ev.push({ type: 'won' });
+  } else if (sp.hers.length >= SPOONS.lose) {
+    sp.state = 'lost';
+    ev.push({ type: 'lost' });
+  }
+  return ev;
+}
 
 // ── the camera ──
 // The camera sits at `yaw` round the hobbit (0 is due south of him, looking

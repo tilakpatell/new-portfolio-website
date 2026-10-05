@@ -1,6 +1,7 @@
 // The Field of Cormallen, the day of the feast: a bright meadow in
 // Ithilien, pavilions in a row behind with the banners of Gondor and Rohan,
-// tables under white cloths, carving tables, and the ovens.
+// tables under white cloths, carving tables, the ovens, and the Eagles that
+// brought Frodo and Sam out of the fire, wheeling high over it all.
 
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
@@ -49,7 +50,7 @@ function banner(gondor) {
 export const CORMALLEN = {
   sky: { background: 0xa8d0f0, fog: [0xc0d8e8, 26, 75], hemi: [0xf0f8ff, 0x5a8a3a, 1.55], sun: [0xfff4d8, 2.8] },
   setup({ mats }) {
-    return { cloth: mats.canvas, tent: mats.canvas, green: new THREE.MeshStandardMaterial({ color: 0x3a6a3a, roughness: 0.9, side: THREE.DoubleSide }), oven: mats.ashlar };
+    return { cloth: mats.canvas, sable: new THREE.MeshStandardMaterial({ color: 0x1c1c26, roughness: 0.8 }), tent: mats.canvas, green: new THREE.MeshStandardMaterial({ color: 0x3a6a3a, roughness: 0.9, side: THREE.DoubleSide }), oven: mats.ashlar };
   },
   room({ bk, mats, W, D, Z }, { tent, green }) {
     bk.add(mats.turf, B(W + 36, 0.1, D + 26), { p: [0, -0.05, -6], uv: 0.3, color: 0x9ac060 });
@@ -70,8 +71,15 @@ export const CORMALLEN = {
       bk.add(mats.foliage, ball(1.2, 9, 7), { p: [x, 3, z], color: 0x5a8a34 });
     }
   },
-  counter: (c, stone, { mats, m }, { cloth }) => [stone ? mats.dressed : m.paleWood, c === 'A' ? m.board : stone ? mats.dressed : c === 'S' || c === '#' ? cloth : m.board],
+  // (the King's tables, where the feast goes out, under Gondor's sable)
+  counter: (c, stone, { mats, m }, { cloth, sable }) => [stone ? mats.dressed : m.paleWood, c === 'A' ? m.board : stone ? mats.dressed : c === 'S' ? sable : c === '#' ? cloth : m.board],
   stations: {
+    S({ bk, mats }) {
+      // a silver candlestick on each of the King's tables
+      bk.add(mats.steel, cyl(0.05, 0.06, 0.02, 10), { p: [0.36, 0.01, -0.32] });
+      bk.add(mats.steel, cyl(0.012, 0.012, 0.18, 6), { p: [0.36, 0.1, -0.32] });
+      bk.add(mats.canvas, cyl(0.02, 0.02, 0.1, 8), { p: [0.36, 0.24, -0.32] });
+    },
     A({ bk, mats }) {
       // a carving table: the board, and a knife and fork laid by it
       bk.add(mats.steel, B(0.04, 0.01, 0.3), { p: [0.4, 0.01, 0.1] });
@@ -80,7 +88,7 @@ export const CORMALLEN = {
     W: basin,
   },
   shelf: ({ mats, m }) => [m.paleWood, mats.dressed],
-  extras({ room, W, Z }) {
+  extras({ room, scene, W, Z }) {
     // the banners of Gondor and Rohan, on tall poles, stirring
     const flags = [];
     for (let n = 0; n < 4; n++) {
@@ -92,6 +100,39 @@ export const CORMALLEN = {
       room.add(pole, flag);
       flags.push(flag);
     }
-    return { tick: (dt, t) => flags.forEach((f, k) => (f.rotation.y = Math.sin(t * 1.3 + k) * 0.25)) };
+    // the Eagles: Gwaihir and his kin, circling high, wings slow
+    const plume = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xc89a3a, roughness: 0.7 });
+    const eagles = [0, 1, 2].map((k) => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(ball(0.22, 10, 8), plume);
+      body.scale.set(2.2, 0.7, 0.8);
+      const head = new THREE.Mesh(ball(0.12, 8, 6), gold);
+      head.position.set(0.5, 0.05, 0);
+      const wings = [-1, 1].map((sz) => {
+        const w = new THREE.Group();
+        const feather = new THREE.Mesh(B(0.7, 0.03, 1.5), plume);
+        feather.position.z = sz * 0.75;
+        w.add(feather);
+        w.userData.sz = sz;
+        return w;
+      });
+      g.add(body, head, ...wings);
+      g.userData = { wings, r: 7 + k * 1.6, y: 6 + k * 0.8, speed: 0.22 - k * 0.04, phase: k * 2.1 };
+      scene.add(g);
+      return g;
+    });
+    return {
+      tick(dt, t) {
+        flags.forEach((f, k) => (f.rotation.y = Math.sin(t * 1.3 + k) * 0.25));
+        for (const g of eagles) {
+          const u = g.userData;
+          const a = t * u.speed + u.phase;
+          g.position.set(Math.cos(a) * u.r, u.y + Math.sin(t * 0.5 + u.phase) * 0.3, Z(0) - 2 + Math.sin(a) * u.r * 0.6);
+          g.rotation.set(0.25, -a - Math.PI / 2, 0);
+          for (const w of u.wings) w.rotation.x = w.userData.sz * (0.2 + Math.sin(t * 1.4 + u.phase) * 0.25);
+        }
+      },
+    };
   },
 };

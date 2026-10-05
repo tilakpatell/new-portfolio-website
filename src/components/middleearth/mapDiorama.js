@@ -280,19 +280,28 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     put(g, new THREE.IcosahedronGeometry(1.25, 1), mat(0xf2c64a), 0, 2.9, 0);
     put(g, new THREE.CylinderGeometry(0.9, 0.9, 0.08, 14), mat(0xe9dcc0), 0, 2.1, 0); // a flet
   }
-  // Isengard: Orthanc, black, in its ring
+  // Isengard: Orthanc, black, in its ring. The tower itself can be clicked,
+  // for whoever thinks to (the way in: ./hidden.js); its ring can't.
+  const orthanc = new THREE.Group();
+  orthanc.userData.who = 'orthanc';
   {
     const g = at(world, 378, 362);
     const ring = put(g, new THREE.TorusGeometry(1.3, 0.14, 6, 24), mat(0x4a4642), 0, 0.12, 0);
     ring.rotation.x = Math.PI / 2;
-    const built = [put(g, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0)];
+    g.add(orthanc);
+    const built = [put(orthanc, new THREE.CylinderGeometry(0.28, 0.42, 3, 6), black, 0, 1.5, 0)];
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
-      const h = put(g, new THREE.ConeGeometry(0.1, 0.7, 4), black, Math.cos(a) * 0.2, 3.25, Math.sin(a) * 0.2);
+      const h = put(orthanc, new THREE.ConeGeometry(0.1, 0.7, 4), black, Math.cos(a) * 0.2, 3.25, Math.sin(a) * 0.2);
       h.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3);
       built.push(h);
     }
-    takeOver(g, built, 'orthanc', orthancStone, { height: 3.9 });
+    // a little fatter than the tower, and never drawn, so a click near it counts
+    const reach = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 4, 8), new THREE.MeshBasicMaterial());
+    reach.position.y = 2;
+    reach.visible = false;
+    orthanc.add(reach);
+    takeOver(orthanc, built, 'orthanc', orthancStone, { height: 3.9 });
   }
   // Edoras: the golden hall on its hill
   {
@@ -449,7 +458,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
   scene.add(fire.mesh, bombs.mesh, smoke.mesh, wisps.mesh, motes.mesh);
 
   // ── Frodo and Sam, and the people they meet ──
-  const roots = []; // what a tap can land on
+  const roots = [orthanc]; // what a tap can land on
   const tag = (group, id) => {
     group.userData.who = id;
     roots.push(group);

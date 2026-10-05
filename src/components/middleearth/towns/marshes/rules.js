@@ -206,3 +206,93 @@ export function stepFell(f, dt, down) {
 // The Easterlings' scouts on the slope (../watchers.js): under the cloak
 // they notice nothing, but you can't move.
 export const SCOUTS = { sight: 10, cone: 0.7, smell: 1.2, hear: 3.2, ringSight: 0, alert: 0.6, chase: 4.2, patrol: 1.5, giveUp: 3.5, leash: 22, catch: 1.4, look: 1.6 };
+
+// ── On the side: Sméagol's safe way ──
+// A pool of the marsh with tussocks across it in rows, and only some of
+// them will bear a hobbit. Gollum hops across once, on the safe ones;
+// then you go, a row at a time, straight on or a step to either side, and
+// you must put your feet where he put his. A wrong one sinks, and you're
+// in among the faces till he drags you out onto the bank again. A light
+// hangs over a wrong one in every row: don't follow the lights. Slip
+// three times, and he shows you again.
+export const WAY = { rows: 7, cols: 5, wait: 1, hop: 0.62, after: 1.1, step: 0.32, sunk: 2.2, again: 3 };
+
+export function newWay(seed = 1, { rows = WAY.rows, cols = WAY.cols } = {}) {
+  const rand = seeded(seed);
+  const start = Math.floor(cols / 2);
+  const path = [];
+  const lures = [];
+  let c = start;
+  for (let r = 0; r < rows; r++) {
+    const opts = [c - 1, c, c + 1].filter((x) => x >= 0 && x < cols);
+    const next = opts[Math.floor(rand() * opts.length)];
+    const wrong = opts.filter((x) => x !== next);
+    lures.push(wrong[Math.floor(rand() * wrong.length)]);
+    path.push(next);
+    c = next;
+  }
+  return { rows, cols, start, path, lures, phase: 'show', t: 0, gollum: -1, row: -1, col: start, slips: 0, since: 0, hopT: 9, sankAt: null, state: 'on' };
+}
+// One step. Events: 'gollum' { row, col } as he lands on each tussock,
+// showing you the way (row = rows: up onto the island), 'shown' when it's
+// your turn, 'back' on the bank again after a slip, and 'again' when he
+// shows you once more.
+export function stepWay(w, dt) {
+  const ev = [];
+  if (w.state !== 'on') return ev;
+  w.t += dt;
+  w.hopT += dt;
+  if (w.phase === 'show') {
+    const at = Math.floor((w.t - WAY.wait) / WAY.hop);
+    while (w.gollum < Math.min(at, w.rows)) {
+      w.gollum += 1;
+      ev.push({ type: 'gollum', row: w.gollum, col: w.path[Math.min(w.gollum, w.rows - 1)] });
+    }
+    if (w.gollum >= w.rows && w.t >= WAY.wait + w.rows * WAY.hop + WAY.after) {
+      w.phase = 'play';
+      w.t = 0;
+      ev.push({ type: 'shown' });
+    }
+  } else if (w.phase === 'sunk' && w.t >= WAY.sunk) {
+    w.row = -1;
+    w.col = w.start;
+    w.sankAt = null;
+    w.t = 0;
+    if (w.since >= WAY.again) {
+      w.since = 0;
+      w.phase = 'show';
+      w.gollum = -1;
+      ev.push({ type: 'again' });
+    } else {
+      w.phase = 'play';
+      ev.push({ type: 'back' });
+    }
+  }
+  return ev;
+}
+// A hop onto the next row: `dir` -1 (to the left), 0 (straight on) or 1
+// (to the right). Returns 'safe', 'across' (the last row: you're over),
+// 'sank', or null when it isn't your turn or there's no tussock there.
+export function hopWay(w, dir) {
+  if (w.state !== 'on' || w.phase !== 'play' || w.hopT < WAY.step) return null;
+  const col = w.col + dir;
+  const row = w.row + 1;
+  if (col < 0 || col >= w.cols || row >= w.rows) return null;
+  w.row = row;
+  w.col = col;
+  w.hopT = 0;
+  if (w.path[row] !== col) {
+    w.slips += 1;
+    w.since += 1;
+    w.phase = 'sunk';
+    w.t = 0;
+    w.sankAt = { row, col, lit: w.lures[row] === col };
+    return 'sank';
+  }
+  if (row === w.rows - 1) {
+    w.state = 'across';
+    w.phase = 'across';
+    return 'across';
+  }
+  return 'safe';
+}

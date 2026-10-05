@@ -150,4 +150,35 @@ export const NOT_FOR = {
   boromir: '“Keep it for the one it was meant for, little one.”',
 };
 
+// ── on the side ──
+// Legolas's targets among the mallorns: nothing the story needs, open once
+// Haldir has let you into the wood. Its own record is kept apart from the
+// story's (../side.js), and its star is an achievement of its own, not one
+// of the chapter's seals.
+export const SIDE = {
+  id: 'targets',
+  name: 'Legolas’s targets',
+  where: 'The mark by the path, west of the city',
+  blurb: 'Five boards among the mallorns, and seven arrows to strike them all.',
+  locked: 'Once Haldir has brought you in.',
+  needs: 'haldir',
+  seal: 'galadhrim',
+};
+const pick = (list, n) => list[n % list.length];
+// what Legolas says at the targets
+export const ARCHERY = {
+  start: '“Five boards among the trees, and seven arrows. Draw it full, and aim above the far ones: an arrow falls, even an elven one.”',
+  gold: (n) => pick(['“In the gold!”', '“The gold. You have a good eye, Frodo.”', '“Gold again. Are you sure you are a hobbit?”'], n),
+  hit: (n) => pick(['“Struck. Near enough is enough, for a board.”', '“A fair shot.”', '“On the board. The gold next time.”'], n),
+  again: '“That board is struck already. The others, Frodo.”',
+  trunk: '“Mind the trees. They are older than both of us together.”',
+  short: '“It hardly left the bow. Draw it full, and let the bow do the work.”',
+  low: '“Under it. Aim higher: it falls on the way.”',
+  away: '“Over, and into the wood. Some elf will find that in a hundred years.”',
+  tired: '“Let it go, or let it down. No one can hold a bow drawn for ever.”',
+  won: (shot, golds) => (shot <= 5 && golds >= 5 ? '“Five arrows, five boards, and every one in the gold. I could not have done better myself.”' : `“All five, with ${shot} arrows. The Galadhrim would not be ashamed of that.”`),
+  out: '“No arrows left. Again? The boards are patient.”',
+  best: (n) => `Your best: all five with ${n} arrows. Legolas’s: five with five, all in the gold.`,
+};
+
 export const SPEAKERS = { galadriel: 'Galadriel', celeborn: 'Celeborn', haldir: 'Haldir', frodo: 'Frodo', aragorn: 'Aragorn', gimli: 'Gimli', narrator: '' };
