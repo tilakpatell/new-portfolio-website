@@ -13,7 +13,7 @@
 
 import * as THREE from 'three';
 import { canvasTexture, hot } from '../../../../lib/stage3d';
-import { makeCanvas, makeNoise } from '../../../../lib/paint';
+import { makeCanvas } from '../../../../lib/paint';
 import { makeToyFigure } from '../../mapFigures';
 import { LOOKS, compact } from '../../shire/people';
 import { B, ball, barrelParts, beam, benchParts, blob, createShireKit, cyl, cylX, cylZ, fillColor, gableGeo, lanternParts, lathe, parts, plankDoor, rng, roofGeo, roundBox, sector, squareWindow, tf, timberWall, tube, underRidge } from '../../shire/props';
@@ -680,60 +680,7 @@ function barrels(K) {
 
 // ── who's about ──
 
-// A Nazgûl on foot, facing +x: about 2.5 tall, hunched in a hooded robe
-// that drags in the mud, tattered at the hem; steel gauntlets, a long pale
-// sword, and nothing but dark in the hood. `body` leans to sniff, `head`
-// turns.
-function nazgul(K) {
-  const { mats } = K;
-  const g = new THREE.Group();
-  g.name = 'nazgul';
-  const n = makeNoise(31);
-  const body = new THREE.Group();
-  body.name = 'body';
-  g.add(body);
-  const bk = parts();
-  const robe = lathe([[0.62, 0.0], [0.56, 0.4], [0.46, 0.9], [0.36, 1.4], [0.34, 1.75], [0.36, 1.95], [0.26, 2.1], [0.001, 2.14]], 20);
-  const rp = robe.attributes.position;
-  for (let i = 0; i < rp.count; i++) {
-    const y = rp.getY(i);
-    if (y < 0.35) {
-      const a = Math.atan2(rp.getZ(i), rp.getX(i));
-      const seg = Math.round((a / TAU) * 20);
-      const k = (0.35 - y) / 0.35;
-      rp.setY(i, Math.max(0, y + k * ((seg % 2) * 0.14 + n(seg * 2.3, 1) * 0.12)));
-    }
-  }
-  robe.computeVertexNormals();
-  const R = mats.wraith ?? mats.robe;
-  bk.add(R, robe, { s: [0.8, 1, 1.05] });
-  // a cloak's fall over the shoulders, and the sleeves
-  bk.add(R, lathe([[0.5, 1.2], [0.46, 1.55], [0.38, 1.9], [0.2, 2.06]], 18), { s: [0.9, 1, 1.15] });
-  for (const s of [-1, 1]) {
-    bk.add(R, tube([[0.02, 1.88, s * 0.32], [0.2, 1.5, s * 0.4], [0.42, 1.2, s * 0.3]], 0.1, 0.15, { seg: 6, radial: 7 }));
-    bk.add(mats.steel, ball(0.08, 8, 6), { p: [0.48, 1.14, s * 0.28], s: [1.3, 0.9, 0.9] });
-  }
-  // the sword, held low and forward in the right hand
-  bk.add(mats.steel, B(0.05, 1.15, 0.012), { p: [0.82, 0.92, 0.3], r: [0, 0, -1.05] });
-  bk.add(mats.iron, B(0.06, 0.06, 0.3), { p: [0.52, 1.1, 0.3], r: [0, 0, -1.05] });
-  bk.build(body);
-  const head = new THREE.Group();
-  head.name = 'head';
-  head.position.set(0.08, 2.12, 0);
-  body.add(head);
-  const hood = new THREE.SphereGeometry(0.3, 12, 8, Math.PI + 0.75, TAU - 1.5, 0, Math.PI * 0.8);
-  const hp = hood.attributes.position;
-  for (let i = 0; i < hp.count; i++) {
-    const y = hp.getY(i);
-    if (y > 0.12) hp.setXYZ(i, hp.getX(i) - (y - 0.12) * 0.6, 0.12 + (y - 0.12) * 1.5, hp.getZ(i) * (1 - (y - 0.12) * 0.8));
-  }
-  hood.computeVertexNormals();
-  const hk = parts();
-  hk.add(R, hood, { s: [1, 1.1, 0.95] });
-  hk.add(mats.void, ball(0.24, 8, 6), { p: [0.02, -0.02, 0] });
-  hk.build(head);
-  return { group: g, body, head };
-}
+// (The Nazgûl on foot are ../wraiths.js.)
 
 // Bill the pony, facing +x: small, brown, a little thin, with his packs.
 function billPony(K) {
@@ -865,9 +812,6 @@ export function createBreeKit(renderer) {
   mats.trunk.color.set(0x8a7a66);
   mats.barnwood.color.set(0x6a5644);
   mats.window.emissive = hot(0xffa448, 2.8);
-  mats.wraith = mats.robe.clone();
-  mats.wraith.emissive = new THREE.Color(0x1c2840);
-  mats.wraith.emissiveIntensity = 0.7;
   return {
     ...kit,
     house: (o) => house(K, o),
@@ -880,7 +824,6 @@ export function createBreeKit(renderer) {
     stall: (o) => stall(K, o),
     crates: () => crates(K),
     barrels: () => barrels(K),
-    nazgul: () => nazgul(K),
     billPony: () => billPony(K),
   };
 }

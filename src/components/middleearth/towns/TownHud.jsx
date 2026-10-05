@@ -87,3 +87,20 @@ export function Stick({ onStick }) {
     </div>
   );
 }
+
+// Other travellers online in this town (./useTravellers.js): how many, or a
+// way to see them.
+export function Travellers({ trav }) {
+  if (!trav.available) return null;
+  if (!trav.on)
+    return (
+      <button type="button" className="shire-chip town-travellers" onClick={trav.join} title="Go online, and see everyone else walking this town as a ghost from another world">
+        See other travellers
+      </button>
+    );
+  return (
+    <span className="shire-chip town-travellers" data-on title="Everyone else online in this town shows as a pale ghost: they can’t touch your story, nor you theirs">
+      <b>{trav.count}</b> {trav.count === 1 ? 'traveller' : 'travellers'} here
+    </span>
+  );
+}

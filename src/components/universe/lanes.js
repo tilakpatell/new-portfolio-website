@@ -21,8 +21,11 @@
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
 
-const LOW = [5, 9]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
-const HIGH = [12, 20]; // and the big ships
+const LOW = [40, 60]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
+const HIGH = [75, 105]; // and the big ships
+const LOCAL = [9, 16]; // how far above or below a place's middle the traffic round it flies (more round a big one)
+const LOCAL_HIGH = [21, 35]; // and the big ships
+const BIG = 35; // a place reaching further than this is a big one
 const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
@@ -64,25 +67,25 @@ const between = (rand, [a, b]) => a + rand() * (b - a);
 function beside(id, rand, y) {
   const [x, , z] = POSITIONS[id];
   const a = rand() * Math.PI * 2;
-  const d = REACH[id] + 1.5 + rand() * 2;
+  const d = REACH[id] + 6 + rand() * 10;
   return [x + Math.cos(a) * d, y, z + Math.sin(a) * d];
 }
 
 // place: { at: [x, y, z], reach }
 export function laneLocal(place, rand, { high = false } = {}) {
   const side = rand() < 0.5 ? -1 : 1;
-  const y = place.at[1] + side * between(rand, high ? HIGH : LOW) * (place.reach > 20 ? 1.6 : 1);
+  const y = place.at[1] + side * between(rand, high ? LOCAL_HIGH : LOCAL) * (place.reach > BIG ? 1.6 : 1);
   for (let i = 0; i < 8; i++) {
     const a = rand() * Math.PI * 2;
     const b = a + (rand() < 0.5 ? -1 : 1) * (Math.PI / 3 + rand() * (Math.PI * 5) / 9); // 60–160° round
-    const d0 = place.reach + 2 + rand() * 6;
-    const d2 = place.reach + 2 + rand() * 6;
+    const d0 = place.reach + 3.5 + rand() * 10;
+    const d2 = place.reach + 3.5 + rand() * 10;
     const p0 = [place.at[0] + Math.cos(a) * d0, y, place.at[2] + Math.sin(a) * d0];
-    const p2 = [place.at[0] + Math.cos(b) * d2, y + (rand() - 0.5) * 2, place.at[2] + Math.sin(b) * d2];
+    const p2 = [place.at[0] + Math.cos(b) * d2, y + (rand() - 0.5) * 3.5, place.at[2] + Math.sin(b) * d2];
     // the middle bows out, away from the place, so the curve goes round it
     const m = (a + b) / 2;
-    const dm = Math.max(d0, d2) + place.reach * 0.35 + 2;
-    const pts = [p0, [place.at[0] + Math.cos(m) * dm, y + side * rand() * 1.5, place.at[2] + Math.sin(m) * dm], p2];
+    const dm = Math.max(d0, d2) + place.reach * 0.35 + 3.5;
+    const pts = [p0, [place.at[0] + Math.cos(m) * dm, y + side * rand() * 2.6, place.at[2] + Math.sin(m) * dm], p2];
     if (clearance(pts) > 0.6) return pts;
   }
   return null;
@@ -90,13 +93,13 @@ export function laneLocal(place, rand, { high = false } = {}) {
 
 export function laneDepart(place, rand) {
   const side = rand() < 0.5 ? -1 : 1;
-  const y = place.at[1] + side * between(rand, LOW);
+  const y = place.at[1] + side * between(rand, LOCAL);
   for (let i = 0; i < 8; i++) {
     const a = rand() * Math.PI * 2;
-    const d0 = place.reach + 2 + rand() * 4;
-    const far = d0 + 80 + rand() * 60;
+    const d0 = place.reach + 3.5 + rand() * 7;
+    const far = d0 + 400 + rand() * 300;
     const p0 = [place.at[0] + Math.cos(a) * d0, y, place.at[2] + Math.sin(a) * d0];
-    const p2 = [place.at[0] + Math.cos(a + 0.2) * far, y + (rand() - 0.5) * 12, place.at[2] + Math.sin(a + 0.2) * far];
+    const p2 = [place.at[0] + Math.cos(a + 0.2) * far, y + (rand() - 0.5) * 21, place.at[2] + Math.sin(a + 0.2) * far];
     const pts = rand() < 0.5 ? [p0, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p2] : [p2, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p0];
     if (clearance(pts) > 0.6) return pts;
   }
@@ -112,7 +115,7 @@ export function laneBetween(rand, { high = false } = {}) {
     const r = MAP_RADIUS * (0.75 + rand() * 0.35);
     const y = side * between(rand, HIGH);
     const p0 = [Math.cos(a) * r, y, Math.sin(a) * r];
-    const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 2, Math.sin(b) * r];
+    const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 8, Math.sin(b) * r];
     return [p0, [(p0[0] + p2[0]) * 0.3, y, (p0[2] + p2[2]) * 0.3], p2];
   }
   // between two places, bowed out to one side; with a dozen worlds out there
@@ -125,7 +128,7 @@ export function laneBetween(rand, { high = false } = {}) {
     if (j >= i) j += 1;
     const y = side * between(rand, LOW);
     const p0 = beside(ORDER[i], rand, y);
-    const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 1.5);
+    const p2 = beside(ORDER[j], rand, y + (rand() - 0.5) * 8);
     // the middle bows out to one side, and a little further from the disc
     const mx = (p0[0] + p2[0]) / 2;
     const mz = (p0[2] + p2[2]) / 2;
@@ -133,7 +136,7 @@ export function laneBetween(rand, { high = false } = {}) {
     const dz = p2[2] - p0[2];
     const len = Math.hypot(dx, dz) || 1;
     const bow = (rand() - 0.5) * 0.5 * len;
-    pts = [p0, [mx - (dz / len) * bow, y + side * rand() * 1.5, mz + (dx / len) * bow], p2];
+    pts = [p0, [mx - (dz / len) * bow, y + side * rand() * 8, mz + (dx / len) * bow], p2];
     if (clearance(pts) > 1) return pts;
   }
   return pts;

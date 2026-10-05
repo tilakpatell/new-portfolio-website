@@ -4,27 +4,27 @@
 // A sun sits in the middle of the disc (x, z) with the site's own pages as
 // stations on a ring round it: the home system, HOME_RADIUS across. The
 // fandoms are planets far out in deep space, scattered on a golden-angle
-// spiral that grows with their order, hundreds of map units apart, each at
+// spiral that grows with their order, a thousand and more map units apart, each at
 // its own height: getting between them is a journey (ship.js's pulse
 // drive), and a fight (hunters.js). deep.js keeps them clear of its wonders.
 
 import { UNIVERSES, byId } from './universes';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const FIRST = 350; // how far out the nearest fandom is
-const STEP = 55; // and how much further each one after it
-const HEIGHT = 95; // how far above or below the disc they go
-const RING = 15; // the stations' ring
+const FIRST = 1750; // how far out the nearest fandom is
+const STEP = 275; // and how much further each one after it
+const HEIGHT = 475; // how far above or below the disc they go
+const RING = 85; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
 
 // the sun in the middle: something to fly round, not somewhere to go
-export const SUN = { at: [0, 0, 0], r: 3.2 };
+export const SUN = { at: [0, 0, 0], r: 32 };
 
 // the asteroid belt, round the outside of the stations
-export const BELT = { inner: 21, outer: 28.5, height: 4.5 };
+export const BELT = { inner: 130, outer: 185, height: 16 };
 // the home system: the sun, the stations and the belt (what the overview shows)
-export const HOME_RADIUS = 36;
+export const HOME_RADIUS = 230;
 
 // how far a universe's moons, rings and orbiting things reach from its centre
 export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
@@ -34,7 +34,7 @@ const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
 export const POSITIONS = Object.fromEntries([
   ...core.map((u, i) => {
     const a = (i / core.length) * Math.PI * 2 + Math.PI / 2; // Home nearest the camera
-    return [u.id, [RING * Math.cos(a), 0.45 * Math.sin(i * 2.1), RING * Math.sin(a)]];
+    return [u.id, [RING * Math.cos(a), 3 * Math.sin(i * 2.1), RING * Math.sin(a)]];
   }),
   ...fandoms.map((u, i) => {
     const r = FIRST + STEP * i;

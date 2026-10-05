@@ -1,5 +1,5 @@
-// The music room's tuning: one Sa for every instrument, the raga, and the
-// tanpura's first string, kept between visits. Pitches are just intonation
+// The music room's tuning: one Sa for every instrument, the raga, the
+// tanpura's first string and how the sitar is set up, kept between visits. Pitches are just intonation
 // against Sa. Nothing here makes a sound.
 
 // ── Sa ─────────────────────────────────────────────────────────────────────
@@ -38,23 +38,59 @@ export const RAGAS = {
 };
 
 // ── The sitar's frets ──────────────────────────────────────────────────────
-// The neck runs from mandra Pa to taar Ga, as a sitar's twenty-odd frets do
-// above its open Ma string. With `all`, every one of the twelve swaras has a
-// fret (a sitar with its moveable frets set chromatically); otherwise only
-// the raga's notes do, the way a player sets the frets for a raga. Each fret
-// says whether its note is in the raga.
+// A sitar's frets are tied on with thread and can be slid along the neck: a
+// player sets them before playing, for the raga or the kind of raga. The
+// neck runs from mandra Pa to taar Ga, as a sitar's twenty-odd frets do above
+// its open Ma string, except where a setting says otherwise.
+//   all       every one of the twelve swaras (moveable frets set chromatically)
+//   regular   a sitar as it usually comes: the shuddha notes and komal Ni, Sa to taar Sa
+//   darbari   set for Darbari: Ga and Dha moved low, ati komal, for its heavy, slow andolan
+//   bhairavi  set for Bhairavi: komal Re, Ga, Dha and Ni
+//   raga      only the raga's own notes
+//   custom    the frets the player chose
+// Each fret says whether its note is in the raga, and whether it sits lower
+// than komal (ati komal).
 export const NECK_LOW = 0.74; // mandra Pa (3/4), with room for just intonation
 export const NECK_HIGH = 2.51; // taar Ga (5/2)
 
-export function frets(ragaId, { all = false } = {}) {
+// The lower Ga and Dha of the Kanada ragas, Darbari above all: a Pythagorean
+// minor third and sixth, a little under the just komal notes (294 and 792
+// cents against 316 and 814).
+export const ATI_KOMAL = { g: 32 / 27, d: 128 / 81 };
+
+export const FRET_SETS = {
+  all: { name: 'All twelve notes', notes: CHROMATIC.join('') },
+  regular: { name: 'Regular', notes: 'SRGmPDnN', lo: 0.99, hi: 2.01 },
+  darbari: { name: 'Darbari', notes: 'SRgmPdn', tune: ATI_KOMAL },
+  bhairavi: { name: 'Bhairavi', notes: 'SrgmPdn' },
+  raga: { name: 'The raga’s own' },
+  custom: { name: 'Custom' },
+};
+export const isFretSet = (id) => Object.hasOwn(FRET_SETS, id);
+
+// The notes a custom setting keeps, in order up the octave; at least Sa.
+export function customNotes(text = '') {
+  const kept = CHROMATIC.filter((s) => String(text).includes(s));
+  return kept.length ? kept.join('') : 'S';
+}
+
+// The frets for a raga under a setting, from the nut up: { s, oct, ratio, inRaga, ati }.
+// The old { all } form still works: all twelve, or the raga's own.
+export function frets(ragaId, { set, all, custom } = {}) {
+  const id = isFretSet(set) ? set : all ? 'all' : 'raga';
+  const kind = FRET_SETS[id];
+  const notes = new Set(id === 'raga' ? RAGAS[ragaId].notes : id === 'custom' ? customNotes(custom) : kind.notes);
   const raga = new Set(RAGAS[ragaId].notes);
+  const lo = kind.lo ?? NECK_LOW;
+  const hi = kind.hi ?? NECK_HIGH;
   const out = [];
-  for (const oct of [-1, 0, 1]) {
+  for (const oct of [-1, 0, 1, 2]) {
     for (const s of CHROMATIC) {
-      const ratio = SWARA[s] * 2 ** oct;
-      if (ratio < NECK_LOW || ratio > NECK_HIGH) continue;
-      const inRaga = raga.has(s);
-      if (all || inRaga) out.push({ s, oct, ratio, inRaga });
+      if (!notes.has(s)) continue;
+      const own = kind.tune?.[s] ?? SWARA[s];
+      const ratio = own * 2 ** oct;
+      if (ratio < lo || ratio > hi) continue;
+      out.push({ s, oct, ratio, inRaga: raga.has(s), ati: own < SWARA[s] * 2 ** (-10 / 1200) });
     }
   }
   return out;
@@ -70,11 +106,17 @@ export function tarabRatios(ragaId) {
 
 // ── The shared tuning ──────────────────────────────────────────────────────
 const KEY = 'tp-music';
-const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', allFrets: true }; // Sa = D
+// the chikari: filling the rests by itself, following the music or at a set speed (strokes a minute), and how hard
+// the sitar's frets: a setting (FRET_SETS), and the notes of a custom one
+const DEFAULT_TUNING = { sa: 2, first: 'Pa', raga: 'yaman', frets: 'all', customFrets: '', autoChikari: true, chikariFollow: true, chikariSpeed: 240, chikariLevel: 1 }; // Sa = D
 let tuning = (() => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null');
-    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && RAGAS[saved.raga]) return { ...DEFAULT_TUNING, ...saved, allFrets: saved.allFrets !== false };
+    if (saved && saved.sa >= 0 && saved.sa < 12 && FIRST_STRING[saved.first] && RAGAS[saved.raga]) {
+      // a visit from before the fret settings kept only whether all twelve were set
+      const fretSet = isFretSet(saved.frets) ? saved.frets : saved.allFrets === false ? 'raga' : 'all';
+      return { ...DEFAULT_TUNING, ...saved, frets: fretSet, autoChikari: saved.autoChikari !== false, chikariFollow: saved.chikariFollow !== false };
+    }
   } catch {
     /* storage unavailable */
   }

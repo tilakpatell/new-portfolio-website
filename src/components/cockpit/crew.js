@@ -123,7 +123,7 @@ export async function loadCrew(name, { clip = 'sit', height, hips = [0, 0.5, 0],
 
 // Normals averaged over every face that meets at a point, whatever seams
 // split the point's vertices (Meshy's UV islands are many).
-function smoothNormals(geo) {
+export function smoothNormals(geo) {
   const pos = geo.attributes.position;
   const idx = geo.index;
   const n = pos.count;

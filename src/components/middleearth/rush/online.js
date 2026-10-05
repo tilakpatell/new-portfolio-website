@@ -53,6 +53,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
   let lastHello = -Infinity;
   let left = false;
   let hostLeft = false; // (the host said goodbye, rather than going quiet)
+  let lastMine = null; // the slot you last had
   let timer = 0;
   const changed = () => onChange({ ...state, slots: state.slots.slice() });
   const allow = (peerId, kind) => {
@@ -256,14 +257,18 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
     guestPump(s, t = now()) {
       beat(t);
       let fresh = false;
-      const mine = state.mine;
+      // your hobbit is yours through a round, even if the host let go of you
+      // for a moment (a stalled page) and seats you again: its place stays yours
+      const playing = state.phase === 'count' || state.phase === 'play';
+      if (state.mine != null) lastMine = state.mine;
+      const mine = state.mine ?? (playing ? lastMine : null);
       let me = mine != null ? s.players.find((p) => p.slot === mine) : null;
       if (snap) {
         fresh = readState(s, snap, mine);
         snap = null;
       }
       // your own hobbit stays in your copy (the host adds it once it hears where it is)
-      if (mine != null && (state.phase === 'count' || state.phase === 'play') && !s.players.some((p) => p.slot === mine)) {
+      if (mine != null && playing && !s.players.some((p) => p.slot === mine)) {
         me ??= newPlayer(level, mine);
         s.players.push(me);
         s.players.sort((a, b) => a.slot - b.slot);
@@ -271,7 +276,7 @@ export function createSession({ level, code, host, load = loadRoom, now = () => 
       me = mine != null ? s.players.find((p) => p.slot === mine) : null;
       const list = events;
       events = [];
-      if (me && t - lastPose >= POSE_MS) {
+      if (me && state.mine != null && t - lastPose >= POSE_MS) {
         lastPose = t;
         send('pose', writePose(me));
       }
