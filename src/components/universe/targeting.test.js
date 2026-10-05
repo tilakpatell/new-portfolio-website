@@ -282,6 +282,12 @@ describe('the nose following the lock', () => {
     const far = trackNudge(s, [4, 0, -20]);
     expect(far.turn).toBeGreaterThan(near.turn);
     expect(far.turn).toBeLessThanOrEqual(AIM.trackMax + 1e-9);
+    // well off (past where the gain saturates, inside where it fades): the cap, and no more
+    const off = (AIM.trackCone * 0.6 + 1 / AIM.trackGain) / 2;
+    expect(1 / AIM.trackGain).toBeLessThan(AIM.trackCone * 0.6); // (the test's angle is in the flat part)
+    const capped = trackNudge(s, [Math.tan(off) * 20, 0, -20]);
+    expect(capped.turn).toBeCloseTo(AIM.trackMax, 9);
+    expect(trackNudge(s, [Math.tan(off) * 20, 0, -20], 1.6).turn).toBeCloseTo(AIM.trackMax * 1.6, 9);
     expect(trackNudge(s, [0, 0, -20])).toEqual({ turn: 0, climb: 0 });
   });
 
@@ -309,14 +315,19 @@ describe('the nose following the lock', () => {
     expect(Math.abs(ahead.turn) + Math.abs(ahead.climb)).toBeLessThan(1e-6);
   });
 
-  it('gives way to the pilot pushing the other way, and not to one pushing with it', () => {
+  it('lets go for the pilot pushing the other way, however lightly, and not for one pushing with it', () => {
     const n = trackNudge(s, [3, 1, -20]);
     const against = trackNudge(s, [3, 1, -20], 1, { turn: -1, climb: 0 });
     expect(against.turn).toBe(0);
     expect(against.climb).toBe(n.climb);
-    const half = trackNudge(s, [3, 1, -20], 1, { turn: -0.5, climb: -0.5 });
-    expect(half.turn).toBeCloseTo(n.turn * 0.5, 9);
-    expect(half.climb).toBeCloseTo(n.climb * 0.5, 9);
+    // a light push the other way is still the pilot's: the ship never turns against it
+    for (const push of [-0.05, -0.2, -0.5]) {
+      const light = trackNudge(s, [3, 1, -20], 1.6, { turn: push, climb: push });
+      expect(light).toEqual({ turn: 0, climb: 0 });
+      expect(push + light.turn).toBeLessThan(0);
+    }
+    // a hand resting a hair off centre isn't a push
+    expect(trackNudge(s, [3, 1, -20], 1, { turn: -0.01, climb: 0.01 })).toEqual(n);
     const withIt = trackNudge(s, [3, 1, -20], 1, { turn: 1, climb: 1 });
     expect(withIt).toEqual(n);
   });

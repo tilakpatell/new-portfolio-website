@@ -31,7 +31,8 @@
 // full stick, growing with the angle off (AIM.trackGain), fading to nothing
 // at the cone's edge, in the ship's own frame (a target above a ship rolled
 // on its side is a turn), and giving way to the pilot's own stick as far as
-// it pushes the other way; the visitor's lock-tracking setting scales it.
+// it pushes the other way at all; the visitor's lock-tracking setting
+// scales it.
 // The fighters' pace is hunterRules.js's (they fly the fight at a little
 // over your speed), so between the two a fight can be followed.
 //
@@ -50,6 +51,7 @@ export const AIM = {
   trackCone: 0.7, // radians off the nose within which the nose follows the lock (about 40°)
   trackGain: 3, // how quickly the nudge grows with the angle off (full at a third of a radian)
   trackMax: 0.5, // of full stick, at most: the pilot's own stick always wins
+  trackDead: 0.02, // a push the other way smaller than this is a resting hand, not a push
   threat: 0.25, // how much nearer the nose one coming at you counts (of the pick-up score)
   assist: 0.14, // radians: inside this, a shot bends fully onto the lead point (about 8°)
   assistEdge: 0.36, // radians: beyond this, no help at all
@@ -211,7 +213,7 @@ export function assist(dir, want, strength = 1) {
 // with the angle off (AIM.trackGain) and fading to nothing at AIM.trackCone;
 // `strength` is the visitor's setting (0: none). `stick` is what the pilot
 // is asking for already ({ turn, climb }): on an axis where they push the
-// other way, the nudge gives way as far as they push.
+// other way, the nudge lets go.
 export function trackNudge(s, lead, strength = 1, stick = null) {
   const none = { turn: 0, climb: 0 };
   if (!(strength > 0) || !lead) return none;
@@ -227,7 +229,9 @@ export function trackNudge(s, lead, strength = 1, stick = null) {
   let turn = clamp(yaw * AIM.trackGain, -1, 1) * k;
   let climb = clamp(pitch * AIM.trackGain, -1, 1) * k;
   if (stick) {
-    const against = (n, v) => (n * (v || 0) < 0 ? n * (1 - Math.min(1, Math.abs(v))) : n);
+    // (any push the other way and it lets go on that axis: a nudge that
+    // outweighed a light push would turn the ship against the pilot's hand)
+    const against = (n, v) => (n * (v || 0) < 0 && Math.abs(v) > AIM.trackDead ? 0 : n);
     turn = against(turn, stick.turn);
     climb = against(climb, stick.climb);
   }

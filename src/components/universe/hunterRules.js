@@ -109,6 +109,7 @@ export const FIGHT = {
   engageAt: 18, // inside this far from you it's wholly at the fight's speed
   closeFrom: 34, // past this it closes flat out (between, in between)
   stiff: 0.4, // of its nose rate gone at its top speed (as yours goes with speed)
+  hurry: 0.4, // swinging out, how much its station's distance counts toward closing flat out
 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -136,6 +137,11 @@ export function fightSpeed(type, yourSpeed, gap) {
   const k = clamp((gap - FIGHT.engageAt) / (FIGHT.closeFrom - FIGHT.engageAt), 0, 1);
   return match + (type.speed - match) * k;
 }
+
+// How near a shot must pass a kind's middle to hit it (a touch more than
+// its size: the guns are forgiving). Here, and for the hunters after
+// another pilot (online/pilots.js), so a shot counts the same either way
+export const hitRadius = (type) => type.size * 0.9 + 0.12;
 
 // How many of a pack of `n` may be on an attack run at once
 export const slotsFor = (n) => (n >= 5 ? 3 : Math.min(n, 2));
@@ -632,6 +638,12 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
             want[1] = c.y + h.off[1] - pos.y;
             want[2] = c.z + h.off[2] - pos.z;
             const d = Math.sqrt(want[0] * want[0] + want[1] * want[1] + want[2] * want[2]);
+            // (swinging out, it hurries the further its station is: it gets
+            // out ahead of you to turn in, and doesn't trail along behind)
+            if (!onPrey) {
+              fightPace = Math.max(fightPace, fightSpeed(type, yourSpeed, FIGHT.engageAt + d * FIGHT.hurry));
+              speed = fightPace;
+            }
             if (d < FIGHT.station || h.clock > FIGHT.setFor) {
               if (pack.attacking < pack.slots) {
                 // its turn: in it comes
@@ -818,7 +830,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       let first = Infinity;
       for (const o of live) {
         if (!o.alive || o.pack.gone) continue;
-        const k = sweptHit(from, to, o.prev, o.pos, o.type.size * 0.9 + 0.12);
+        const k = sweptHit(from, to, o.prev, o.pos, hitRadius(o.type));
         if (k !== null && k < first) {
           first = k;
           h = o;

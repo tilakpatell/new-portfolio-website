@@ -31,7 +31,9 @@ Made for the user, who asked for this to be done without checking in.
   than you (`FIGHT.match` times yours, plus `FIGHT.margin`), never under a
   floor of its own top speed (`FIGHT.floor`) and never over its top. Far
   off (past `FIGHT.closeFrom`) it closes at its top speed, so a pack still
-  arrives; inside `FIGHT.engageAt` it's wholly at the fight speed. So at
+  arrives; inside `FIGHT.engageAt` it's wholly at the fight speed. Swinging
+  out to its station it hurries the further the station is (`FIGHT.hurry`),
+  so it gets out ahead of you to turn in and a run comes from in front. So at
   cruise a TIE comes past at about 9, not 19, and a pass takes seconds; boost
   and it opens up with you, a TIE still a shade slower than your boost (you
   can outrun one), an interceptor not. A pack after prey flies at the floor.
@@ -41,12 +43,15 @@ Made for the user, who asked for this to be done without checking in.
   a straight one, and the turn-in is wide enough to follow.
 - **A lock that holds.** The pick-up cone widens to about 29°, the hold to
   60°, and a target slipping out of it gets two seconds' grace. The hit box
-  on a hunter is a touch bigger (`size * 0.9 + 0.12`).
+  on a hunter is a touch bigger (`hitRadius`: `size * 0.9 + 0.12`, shared
+  with the hunters seen in another pilot's sky).
 - **The nose follows the lock.** With a lock and its lead point inside
   `AIM.trackCone`, the stick gets a nudge toward the lead (`trackNudge`):
   up to `AIM.trackMax` of full stick, proportional to the angle off, fading
-  to nothing at the cone's edge, and giving way to the pilot's own stick
-  when it pushes the other way. A new slider, Lock tracking (`controls.js`
+  to nothing at the cone's edge, and letting go on any axis the pilot
+  pushes the other way. Only for a lock on a hunter, one picked by hand, or
+  one just fired at (not a passing pilot or a part of the Citadel the guns
+  happened on), and never in the whole-map view. A new slider, Lock tracking (`controls.js`
   `track`, 0 is off), scales it. The autopilot and a jump take no nudge.
 - **Traffic lives.** More groups and flybys; ships that come in to a place
   and dock (shrinking into it) and launch out of it; fighter wings that
