@@ -62,7 +62,6 @@ export const CREWS = [
         ['rick', 'Gromflomites, Morty. Shoot the bugs.'],
       ],
       kill: {
-      phoenixperson: [['rick', 'Sorry, Birdperson. Again. We’ll get you rebuilt. Again.']],
         gromflomite: [['rick', 'Bug splat! Ha!']],
         cop: [
           ['morty', 'I-I shot a cop, Rick!'],
@@ -158,6 +157,7 @@ export const CREWS = [
     },
     // shooting one down
     kill: {
+      phoenixperson: [['rick', 'Sorry, Birdperson. Again. We’ll get you rebuilt. Again.']],
       any: [
         ['morty', 'Oh geez, Rick, I hit one!'],
         ['rick', 'Relax, Morty. It’s the Federation. Nobody’s gonna miss ’em.'],
@@ -1170,7 +1170,6 @@ export const CREWS = [
         ['walt', 'Then we deal with them. Calmly.'],
       ],
       kill: {
-      phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
         gromflomite: [['jesse', 'Bug spray, yo!']],
         cop: [['walt', 'A cop, Jesse. That’s the second-worst thing you can shoot.']],
         gazorpian: [
@@ -1282,6 +1281,7 @@ export const CREWS = [
       ],
     },
     kill: {
+      phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
       any: [
         ['jesse', 'Yeah! Got one! That’s sick!'],
         ['walt', 'We don’t celebrate in the middle of the job, Jesse.'],

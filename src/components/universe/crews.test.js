@@ -72,6 +72,9 @@ describe('the crews', () => {
       said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
       said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
+      // the bounty hunters shot down, in flight (Slave I's line is the flyby's; Phoenixperson's is his own)
+      if (family !== 'rickmorty') expect(linesFor(crew, 'kill', 'slave1'), `${crew.id} kill slave1`).not.toBe(linesFor(crew, 'kill', 'any'));
+      if (family !== 'starwars') expect(linesFor(crew, 'kill', 'phoenixperson'), `${crew.id} kill phoenixperson`).not.toBe(linesFor(crew, 'kill', 'any'));
       // through a rift, a shot into a leviathan, and (the RV meets both) each kind of leviathan
       said(linesFor(crew, 'event', 'rifted'), crew, 'rifted');
       said(linesFor(crew, 'event', 'leviathanHit'), crew, 'leviathanHit');

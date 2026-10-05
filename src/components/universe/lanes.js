@@ -195,7 +195,7 @@ export function convoyLane(ship, rand) {
 // ahead, from far out on one side to far out on the other, at the ship's
 // height or near it, clear of anything solid; [from, to], or null when
 // nothing fits (the ship's in among the planets)
-const METEORS = { ahead: [50, 75], side: 70, rise: 2, clear: 3 };
+const METEORS = { ahead: [50, 75], side: 70, rise: 2, clear: 6 }; // (clear: the rocks scatter four across the lane, and up to 0.7 wide)
 export function meteorLane(ship, rand) {
   const [fx, fz] = forward(ship.heading);
   const rx = -fz;

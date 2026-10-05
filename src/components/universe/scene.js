@@ -1498,6 +1498,7 @@ export async function create(canvas, ctx) {
     dropCab();
     cabWanted = null;
     if (kind && state.seat === 'cockpit') buildCab(kind);
+    meteors.clear();
     setPlumes(kind, ENGINES[kind] ?? []);
     stockUp(); // (the hunters this ship's side meets)
     state.auto = null;
@@ -1807,7 +1808,7 @@ export async function create(canvas, ctx) {
         pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
         state.hitMark = 1; // the reticle flashes
         if (hh.down) {
-          emit({ type: 'kill', kind: hh.kind });
+          emit({ type: 'kill', kind: hh.kind, hunter: true });
           state.heat += 1;
           if (!reduced) state.shake = Math.max(state.shake, 0.2);
         }
@@ -1823,7 +1824,7 @@ export async function create(canvas, ctx) {
         if (ph.hunter) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
           if (ph.down) {
-            emit({ type: 'kill', kind: ph.kind });
+            emit({ type: 'kill', kind: ph.kind, hunter: true });
             if (!reduced) state.shake = Math.max(state.shake, 0.2);
           }
         } else net?.hit(ph.id, d.damage);
@@ -1907,7 +1908,7 @@ export async function create(canvas, ctx) {
       const hh = hunters?.hit(shotFrom, to, d.punch);
       if (hh) {
         if (hh.down) {
-          emit({ type: 'kill', kind: hh.kind });
+          emit({ type: 'kill', kind: hh.kind, hunter: true });
           state.heat += 1;
         }
         state.hitMark = 1;
@@ -1920,7 +1921,7 @@ export async function create(canvas, ctx) {
         if (ph.hunter) {
           // one of the hunters after another pilot: theirs to take down
           net?.hunterHit(ph.id, ph.hunter, d.punch);
-          if (ph.down) emit({ type: 'kill', kind: ph.kind });
+          if (ph.down) emit({ type: 'kill', kind: ph.kind, hunter: true });
         } else net?.hit(ph.id, d.damage);
         boom(m, ph.at, Boolean(ph.down));
         continue;
@@ -2223,6 +2224,7 @@ export async function create(canvas, ctx) {
       infall?.dispose();
       infall = createInfall(map, { color: plumeColor(), shadow: MAW.shadow, at: MAW.at });
       infall.start();
+      meteors.clear();
       retarget(reduced ? 0 : 1700);
       emit({ type: 'crash', id: e.id, swallowed: true }); // (said as the fall begins: there's no impact to wait for)
     } else retarget(650); // the camera pulls back to watch it
@@ -2257,6 +2259,7 @@ export async function create(canvas, ctx) {
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
     emit({ type: 'destroyed' });
+    meteors.clear();
     retarget(650);
   };
 
@@ -2489,7 +2492,7 @@ export async function create(canvas, ctx) {
       busy = true;
       for (const e of meteors.update(dt, live)) {
         pops.hit({ point: e.at, normal: popDir.set(0, 1, 0), radius: e.size * 1.6 });
-        hurt(e.damage);
+        if (state.clock >= state.safeUntil) hurt(e.damage); // (just back: not even the rocks count)
         if (!reduced) state.shake = Math.max(state.shake, 0.5);
       }
     }
@@ -2499,7 +2502,7 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
+        const id = director.update(dt, { family: FAMILY[state.kind] ?? null, heat: state.heat, busy: hunters.active || pieces.destroyerHere || leviathans.busy || meteors.count > 0 || state.view === 'map' || Boolean(props.charting), travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
         if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
@@ -2714,6 +2717,7 @@ export async function create(canvas, ctx) {
     state.interdicted = false;
     state.safeUntil = state.clock + SAFE;
     state.flare = Math.max(state.flare, 2.4);
+    meteors.clear();
     crashFx.arrive({ point: new THREE.Vector3(park.x, park.y, park.z), kind: state.kind, heading: park.heading });
     // (out at a wonder, nothing's picked: the panel goes back to the map's; at a place, arriving picks it)
     if (!isPlace(exit) && state.sel) {
@@ -2738,6 +2742,7 @@ export async function create(canvas, ctx) {
       state.interdicted = false;
       state.safeUntil = state.clock + SAFE;
       crashFx.arrive({ point: new THREE.Vector3(j.park.x, j.park.y, j.park.z), kind: state.kind, heading: j.park.heading });
+      meteors.clear();
       emit({ type: 'jumped', id: j.id });
     }
     if (!state.jump && pieces.riftAt && pieces.riftInside(state.ship)) riftThrough();
@@ -2830,7 +2835,9 @@ export async function create(canvas, ctx) {
     // where to shoot to hit it, and whether the nose is near enough to it
     // that a shot bends onto it
     const siegeCands = siegeTargets(ship);
-    const cands = pilots.count || siegeCands.length || meteors.count ? [...(hunters?.targets ?? []), ...pilots.targets, ...siegeCands, ...(meteors.count ? meteors.targets : [])] : (hunters?.targets ?? []);
+    // (the rocks only while nobody's after you: a hunter's the thing to lock on to)
+    const rocks = meteors.count && !hunters?.active ? meteors.targets : [];
+    const cands = pilots.count || siegeCands.length || rocks.length ? [...(hunters?.targets ?? []), ...pilots.targets, ...siegeCands, ...rocks] : (hunters?.targets ?? []);
     const was = state.lock?.id ?? null;
     state.lock = cands.length || state.lock ? track(ship, cands, state.lock, dt, { cycle: state.cycle }) : null;
     state.cycle = 0;

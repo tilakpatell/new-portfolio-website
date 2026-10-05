@@ -182,7 +182,7 @@ export default function Universe({ ask = false }) {
       comms.current?.handle(e);
     } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
     else {
-      if (e.type === 'kill' && (e.kind === 'slave1' || e.kind === 'phoenixperson')) unlock('wanted'); // (a bounty hunter shot down)
+      if (e.type === 'kill' && e.hunter && (e.kind === 'slave1' || e.kind === 'phoenixperson')) unlock('wanted'); // (a bounty hunter shot down: not Slave I going by as traffic)
       comms.current?.handle(e);
     }
   };

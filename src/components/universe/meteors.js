@@ -17,7 +17,7 @@ import { meteorLane } from './lanes';
 import { rock } from './belt';
 
 export const METEOR = { count: 24, speed: [12, 16], size: [0.25, 0.7], spread: 40, across: 4, up: 3, damage: 8, life: 30 };
-const SHIP_R = 0.3; // how close a rock must come to the ship to hit it, plus its size
+const SHIP_R = 0.3; // how close a rock must come to the ship's way to hit it, plus its size
 const BOLT_R = 0.12; // and a bolt to a rock, plus the rock's size
 
 // n rocks along the lane's first `spread` units from its start, scattered a
@@ -74,6 +74,9 @@ export function createMeteors(parent, { small = false } = {}) {
   let made = 0;
   let clock = 0;
   const targets = [];
+  const was = new THREE.Vector3(); // the ship a frame ago (a rock is tested against its whole way since: no tunnelling)
+  const now = new THREE.Vector3();
+  let seen = false;
 
   const draw = () => {
     mesh.count = live.length;
@@ -105,6 +108,11 @@ export function createMeteors(parent, { small = false } = {}) {
 
     update(dt, ship) {
       const events = [];
+      if (ship) {
+        now.set(ship.x, ship.y, ship.z);
+        if (!seen) was.copy(now);
+        seen = true;
+      } else seen = false;
       if (!live.length) return events;
       clock += dt;
       for (const r of [...live]) {
@@ -114,11 +122,12 @@ export function createMeteors(parent, { small = false } = {}) {
           drop(r);
           continue;
         }
-        if (ship && Math.hypot(r.at.x - ship.x, r.at.y - ship.y, r.at.z - ship.z) < SHIP_R + r.size) {
+        if (ship && segmentDistance(was, now, r.at) < SHIP_R + r.size) {
           drop(r);
           events.push({ type: 'meteor', damage: METEOR.damage, at: r.at.clone(), size: r.size });
         }
       }
+      if (ship) was.copy(now);
       draw();
       return events;
     },
@@ -152,6 +161,7 @@ export function createMeteors(parent, { small = false } = {}) {
 
     dispose() {
       mesh.removeFromParent();
+      mesh.dispose();
       geo.dispose();
       mat.dispose();
     },

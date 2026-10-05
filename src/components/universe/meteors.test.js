@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { stormPlan } from './meteors';
+import * as THREE from 'three';
+import { createMeteors, stormPlan } from './meteors';
 
 const seeded = (seed = 1) => () => {
   seed = (seed * 16807) % 2147483647;
@@ -29,5 +30,29 @@ describe('a meteor storm', () => {
       expect(r.size).toBeLessThanOrEqual(0.7);
     }
     for (const a of rocks) for (const b of rocks) if (a !== b) expect(Math.hypot(a.at[0] - b.at[0], a.at[1] - b.at[1], a.at[2] - b.at[2])).toBeGreaterThan(a.size + b.size);
+  });
+
+  it('hits the ship it tunnels through between two frames, and frees its draw when disposed', () => {
+    const parent = new THREE.Group();
+    const m = createMeteors(parent, { small: true });
+    // a stream across a ship's path far out in the open, so a lane is found
+    const ship = { x: 2000, y: 100, z: -1500, heading: 2.2, speed: 0 };
+    let seed = 8;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    expect(m.storm(ship, rand)).toBe(true);
+    const rock = m.targets[0];
+    // the ship a frame before: well short of the rock; a frame on: well past it, straight through
+    const before = { x: rock.at.x, y: rock.at.y, z: rock.at.z + 3 };
+    m.update(1 / 60, before);
+    const after = { x: rock.at.x, y: rock.at.y, z: rock.at.z - 3 };
+    const events = m.update(1 / 60, after);
+    expect(events.map((e) => e.type)).toContain('meteor');
+    expect(m.count).toBeLessThan(m.targets.length + 1);
+    const mesh = parent.children.find((o) => o.name === 'meteors');
+    let freed = false;
+    mesh.dispose = () => (freed = true);
+    m.dispose();
+    expect(freed).toBe(true);
+    expect(parent.children).toHaveLength(0);
   });
 });
