@@ -4,8 +4,7 @@
 // origin with the handle down +z). The scene keeps its own drums and hammer
 // for any model that doesn't load.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 // size: the longest side, metres; spout: the tap's mouth; band: the label
 // band's height and the body's radius there (all in the model's frame)
@@ -17,7 +16,7 @@ export const PROPS = {
 
 // Resolves to { [name]: THREE.Object3D | null }; a model that fails is null.
 export async function loadProps(renderer) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const aniso = renderer?.capabilities.getMaxAnisotropy() ?? 1;
   const loaded = await Promise.all(
     Object.entries(PROPS).map(([name, p]) =>

@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { featuredProjects } from '../../data/projects';
 import { roles } from '../../data/roles';
 import { glowMat, hull, paint, parts, rng, tileRing } from './kit';
+import { sharpen } from '../../lib/three/textures';
 
 // ── The kit the stations are built with ──
 
@@ -1407,7 +1408,7 @@ export const STATIONS = {
     const g = canvas.getContext('2d');
     const screenTex = new THREE.CanvasTexture(canvas);
     screenTex.colorSpace = THREE.SRGBColorSpace;
-    screenTex.anisotropy = 4;
+    sharpen(screenTex);
     const draw = (typed, cursor) => {
       const w = canvas.width;
       const h = canvas.height;

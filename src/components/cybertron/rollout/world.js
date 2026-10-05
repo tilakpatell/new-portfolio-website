@@ -25,6 +25,7 @@ import { ROLL } from './rules';
 import { createLand, cutFace, cutWiden, CUT_PAD } from './terrain';
 import { tuftGeometry, tuftMaterial } from './flora';
 import { gateGeometry, gateTrimGeometry, kaonMetal, megaGeometry } from './kaon';
+import { loadTexture } from '../../../lib/three/textures';
 
 // sky: the photographed sky (u and elevation: where its own sun is, as
 // `npm run cc0` prints it), how bright, its tint, the sun drawn over it, how
@@ -124,22 +125,15 @@ function loadSky(name, renderer) {
   if (!cache.has(name))
     cache.set(
       name,
-      new Promise((resolve) => {
-        new THREE.TextureLoader().load(
-          `/games/sky/${name}.webp`,
-          (tex) => {
-            tex.colorSpace = THREE.NoColorSpace;
-            tex.generateMipmaps = false;
-            tex.minFilter = THREE.LinearFilter;
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.ClampToEdgeWrapping;
-            tex.userData.shared = true;
-            resolve(tex);
-          },
-          undefined,
-          () => resolve(null),
-        );
-      }),
+      // (decoded off the main thread; always seen magnified, so no mipmaps)
+      loadTexture(`/games/sky/${name}.webp`, { renderer, color: false, mipmaps: false, aniso: 1 })
+        .then((tex) => {
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.ClampToEdgeWrapping;
+          tex.userData.shared = true;
+          return tex;
+        })
+        .catch(() => null),
     );
   return cache.get(name);
 }

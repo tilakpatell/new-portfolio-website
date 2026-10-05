@@ -6,11 +6,11 @@
 // update(t, move, hit), which ./cast.js's animate() hands it to.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { toon } from './toon';
 import { rimToon } from '../../../lib/three/ink';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpenMaterial } from '../../../lib/three/textures';
 
 // Meshy's textures carry their own shading, so the light steps stay lighter
 // than the shapes' (a third of the way down at most, not two thirds)
@@ -28,7 +28,7 @@ const lightRamp = () => {
 // sharp at a glancing angle
 const RIM = { color: 0xdff6ff, power: 3, strength: 0.3 };
 const lit = (m) => {
-  if (m.map) m.map.anisotropy = 8;
+  sharpenMaterial(m);
   return rimToon(m, RIM);
 };
 const flat = (map, extra = {}) => toon(0xffffff, { map, gradientMap: lightRamp(), ...extra });
@@ -111,8 +111,7 @@ export function cullWithin(mesh, frame, height) {
 // Citadel's, rickmorty/citadel/people.js); Portal panic's by default.
 // `cull`: figures out of view aren't drawn (a world with a lot of them)
 export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false } = {}) {
-  const loader = new GLTFLoader();
-  loader.setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const assets = new Map(); // name → { scene, height, offset, clips }
   const owned = [];
 

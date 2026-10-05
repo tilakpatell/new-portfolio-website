@@ -30,8 +30,6 @@
 // planet you're down on, if you are: the crews there have tags of their own) }
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { disposeTree } from '../../../lib/three/renderer';
 import { SHIP_MODELS, buildShip } from '../shipModels';
 import { paintById } from '../paint';
@@ -44,6 +42,7 @@ import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
 import { UNIVERSE } from './where';
+import { gltfLoader } from '../../../lib/three/gltf';
 
 const MODELS = { ...SHIP_MODELS, cruiser: '/games/meshy/saucer.glb' }; // (the cruiser the C-137 planet flies; your own is the page's, crew aboard)
 const SIZE = 0.3; // across, for the guns and for hits
@@ -56,7 +55,7 @@ const PACK_STALE = 1500; // ms: hunters not heard of for this long are gone
 const PACK_AHEAD = 0.4; // seconds, at most, a hunter's flown on from where it was last said to be
 const GONE_MS = 2500; // a hunter your shot should have finished stays off the sky this long, unless its pilot says it's down
 
-const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const loader = gltfLoader();
 
 // how far a ship's lowest point is below its middle, flying size (it sits
 // that much off the ground, parked, scaled up by PARKED)

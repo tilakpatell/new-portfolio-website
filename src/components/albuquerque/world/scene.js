@@ -31,8 +31,6 @@
 // towns' travellers.js list()).
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -57,6 +55,8 @@ import { CITY, GRID, HOUSES, LANDMARKS, PLACES, RAIL, ROADS, TIMES, WASH, WORLD_
 import { createSky, lightAt } from './sky';
 import { createMountains, groundMaterial } from './terrain';
 import { createFleet, paintFor } from './vehicles';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpen } from '../../../lib/three/textures';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
 // brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
@@ -431,7 +431,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     c.height = 512;
     const tex = own(new THREE.CanvasTexture(c));
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    sharpen(tex);
     const face = own(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25 }));
     const sign = new THREE.Group();
     const board = new THREE.Mesh(own(new THREE.PlaneGeometry(5.2, 2.6)), face);
@@ -556,7 +556,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   };
 
   // ── the models ──
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = gltfLoader();
   const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house', ...Object.values(TOWN_MODELS), 'tank', 'cactus', 'tumbleweed', 'bucket'];
   const [loaded, cloudTex] = await Promise.all([
     Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
