@@ -347,6 +347,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     outside(FACTORY_DOOR);
   }, [outside]);
 
+  // walking out on the Council mid-hearing: back out through its doors,
+  // the hearing still to come
+  const leaveHearing = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'inside' || s.room !== 'council' || s.beat !== 'hearing') return;
+    setHud((h) => ({ ...h, line: null }));
+    sounds().then((x) => x.doors());
+    outside(COUNCIL_DOOR);
+    say('You walk out on the Council of Ricks. The guards let you go. They’ll hear you when you come back.');
+  }, [outside, say]);
+
   // the line: drop the next layer
   const drop = useCallback(() => {
     const s = sim.current;
@@ -443,7 +454,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           s.mode = 'walk';
           s.talking = null;
           s.talk = null;
-        }
+        } else if (k === 'Escape') leaveHearing();
         return;
       }
       if (s.mode === 'inside') {
@@ -455,7 +466,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, near, enter, talkOnward, drop, leaveRoom]);
+  }, [live, near, enter, talkOnward, drop, leaveRoom, leaveHearing]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -789,7 +800,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {gl === 'on' && walking && !hud.moved && !here && <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}</p>}
 
-      {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} />}
+      {node && (mode === 'talk' || inside) && <Convo title={hud.talking === 'council' ? 'Before the Council of Ricks' : 'At Candidate Morty’s booth'} name={SPEAKERS[node.who] ?? ''} node={node} touch={touch} onPick={(i) => talkOnward(i)} onNext={() => talkOnward()} onLeave={hud.talking === 'council' && hud.beat === 'hearing' ? leaveHearing : null} />}
 
       {inside && hud.room === 'factory' && hud.beat === 'line' && (
         <div className="shire-panel citadel-line">
@@ -809,7 +820,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           </ol>
           <p className="shire-panel-help">{touch ? 'Tap Drop as the dispenser passes over the stack.' : 'Space (or Drop) as the dispenser passes over the stack.'}</p>
           <div className="shire-panel-row">
-            <button type="button" className="btn btn-primary btn-sm citadel-drop" onPointerDown={(e) => (e.preventDefault(), drop())} onContextMenu={(e) => e.preventDefault()}>
+            <button type="button" className="btn btn-primary btn-sm citadel-drop" onPointerDown={(e) => (e.preventDefault(), drop())} onClick={(e) => e.detail === 0 && drop()} onContextMenu={(e) => e.preventDefault()}>
               Drop
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={leaveRoom}>
