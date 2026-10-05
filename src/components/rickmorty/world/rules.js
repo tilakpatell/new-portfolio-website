@@ -1,9 +1,9 @@
 // Dimension C-137, the world: where everything stands (the Smiths' street,
-// the Smith house on two floors and the garage lab, the school, the alien
-// street with Blips and Chitz), how Morty walks about it, how Rick's cruiser
-// flies over it, the things to do there and the pop quiz. No drawing
-// (./scene.js draws it, ./RmWorld.jsx drives it), so it can be tested on its
-// own.
+// the Smith house on two floors and the garage lab with the hatch down to
+// Rick's secret lab, the school, the alien street with Blips and Chitz), how
+// Morty walks about it, how Rick's cruiser flies over it, the things to do
+// there and the pop quiz. No drawing (./scene.js draws it, ./RmWorld.jsx
+// drives it), so it can be tested on its own.
 //
 // Metres; +x is east, +z is south, so north is -z. A figure's heading (`face`)
 // is the angle that turns its +x round to face (cos face, -sin face), as in the
@@ -29,8 +29,10 @@ export const AREAS = {
   garage: { x0: -306, x1: -294, z0: 94, z1: 106 },
   school: { x0: -308, x1: -292, z0: 194, z1: 206 },
   arcade: { x0: -310, x1: -290, z0: 292, z1: 308 },
+  // Rick's secret lab, under the garage floor
+  basement: { x0: -310, x1: -290, z0: 494, z1: 510 },
 };
-export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade'];
+export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement'];
 export const OUTDOOR = ['street', 'annex'];
 
 // `pad` grows the area (shrinks it, below zero) all round
@@ -101,7 +103,7 @@ export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
 // a room's south wall (facing the far wall), or inside the house at the other
 // end of its door or stairs, and always clear of every link's reach so you
 // are never sent straight back. `kind` is 'door', 'exit' (back outside),
-// 'portal' or 'stairs'.
+// 'portal', 'stairs' or 'hatch' (the ladder down to the secret lab, and up).
 
 const ROOM_X = -300;
 const FACE_N = Math.PI / 2;
@@ -111,6 +113,10 @@ const SCHOOL_DOOR = { x: 40, z: 14.4 };
 const ARCADE_DOOR = { x: 400, z: -3.4 };
 // where you come out by a door: `across` and `along` metres from it, facing straight away from it
 const beside = (door, across, along) => ({ x: door.x + across, z: door.z + along, face: Math.atan2(-along, across) });
+// The hatch in the garage lab's floor, 1.2 m square, in the alcove between the plumbus factory and the
+// Portal panic cabinet (off the bench, the doors, the portal and the shelves). Nothing stands over it
+// and it is floor to walk on: the link is what takes Morty down it.
+export const HATCH = { x: -303.8, z: 101, w: 1.2, d: 1.2 };
 const into = (room) => ({ x: ROOM_X, z: AREAS[room].z1 - 2, face: FACE_N });
 const exit = (room, to, arrive) => ({ id: `${room}-exit`, area: room, x: ROOM_X, z: AREAS[room].z1 - 0.6, r: 0.9, kind: 'exit', to, label: 'Back outside', arrive });
 
@@ -132,6 +138,9 @@ export const LINKS = [
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
   { id: 'garage-portal', area: 'garage', x: -294.8, z: 100, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
   { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -296.8, z: 100, face: Math.PI } },
+  // down the hatch to the foot of the ladder, and up it to beside the hatch
+  { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
+  { id: 'basement-ladder', area: 'basement', x: ROOM_X, z: AREAS.basement.z1 - 0.6, r: 0.9, kind: 'hatch', to: 'garage', label: 'Up the ladder', arrive: beside(HATCH, 1.7, 0) },
 ];
 
 const nearest = (list, area, x, z) => {
@@ -238,7 +247,7 @@ export const TREES = (() => {
 const WOOD = 0xc4a77a;
 const room = (id, area, name, x0, x1, z0, z1, floor = WOOD) => ({ id, area, name, x0, x1, z0, z1, floor });
 export const PLAN = [
-  room('kitchen', 'house', 'The kitchen', -312, -306.7, -8, 3.4, 0xe6e1cf),
+  room('kitchen', 'house', 'The kitchen', -312, -306.7, -8, 3.4),
   room('living', 'house', 'The living room', -306.7, -296.9, -8, -1.9),
   room('den', 'house', 'The den', -296.9, -288, -8, -1.6),
   room('dining', 'house', 'The dining room', -306.7, -299.5, -1.9, 3.4),
@@ -247,16 +256,24 @@ export const PLAN = [
   room('stairs', 'house', 'The stairs', -295.7, -294.5, 0.5, 3.4),
   room('rickroom', 'house', 'The back room', -294.5, -288, 0.5, 8.5, 0x8d8aa3),
   room('summer', 'upstairs', 'Summer’s room', -306, -299.8, 394, 399.9, 0xd9a6b8),
-  room('morty', 'upstairs', 'Morty’s room', -299.8, -294.7, 394, 399.9, 0x9fb4c9),
+  room('morty', 'upstairs', 'Morty’s room', -299.8, -294.7, 394, 399.9, 0x7da06a),
   room('upHall', 'upstairs', 'The upstairs hall', -306, -294.7, 399.9, 401.7),
   room('master', 'upstairs', 'Beth and Jerry’s room', -302.4, -294.7, 401.7, 408.8, 0xb9a58f),
   room('balcony', 'upstairs', 'The balcony', -302.4, -294.7, 408.8, 410.3, 0x9a7650),
   // the top of the stairs, a notch in the void, open to the hall and the master bedroom
   room('stairTop', 'upstairs', 'Top of the stairs', -303.6, -302.4, 401.7, 404),
+  // Rick's secret lab, concrete and riveted steel
+  room('secret', 'basement', 'Rick’s secret lab', -310, -290, 494, 510, 0x6e7378),
 ];
 
-// The red rug in the entry
-export const RUGS = [{ id: 'entry', area: 'house', x: -297.6, z: 0.75, w: 2.6, d: 3.4, color: 0xa23a2e }];
+// The rugs, flat on the floor and no collider (each is in the room of its own name):
+// the red one in the entry, the olive one under the living room's coffee table,
+// and Morty's round space rug.
+export const RUGS = [
+  { id: 'entry', area: 'house', x: -297.6, z: 0.75, w: 2.6, d: 3.4, color: 0xa23a2e },
+  { id: 'living', area: 'house', x: -299.9, z: -3.5, w: 3, d: 3, color: 0x6b7a3a },
+  { id: 'morty', area: 'upstairs', x: -297.8, z: 397, w: 2.4, d: 2.4, color: 0x2f4a8a, round: true },
+];
 
 // The walls inside, between the rooms: [x0, z0, x1, z1, thick], 2.6 m high.
 // A gap in a line of wall is a door (1.8 m, or 3 m for the living room's wide
@@ -319,15 +336,41 @@ const STAIR_RUN = [-295.13, 1.355, 1.14, 1.59, 1.75];
 // and their banister, a low wall up the open side
 export const BANISTER = [-295.7, 0.56, -295.7, 2.15, 0.06, true];
 export const FURNITURE = [
-  // the kitchen
-  item('counter', 'counter', 'house', -311.4, -6, 4, 1.2, 0.95, E),
-  item('stove', 'stove', 'house', -311.4, -3.4, 1.2, 1.2, 0.95, E),
-  item('fridge', 'fridge', 'house', -307.5, -7.4, 1.2, 1.2, 1.9),
-  // the living room: the TV on the east wall, the couch facing it
+  // the kitchen: counters 0.7 m deep along the west wall (with the stove in
+  // them, Beth at it) and the back wall (the sink under its window, then the
+  // fridge in the corner), a short run on the east wall between the two
+  // doorways, and the breakfast nook by the front window
+  item('counter', 'counter', 'house', -311.65, -5.55, 3.5, 0.7, 0.95, E),
+  item('stove', 'stove', 'house', -311.65, -3.4, 0.8, 0.7, 0.95, E),
+  item('counter-w', 'counter', 'house', -311.65, -2, 2, 0.7, 0.95, E),
+  item('counter-nw', 'counter', 'house', -311.15, -7.65, 1.7, 0.7, 0.95),
+  item('sink', 'sink', 'house', -309.6, -7.65, 1.4, 0.7, 0.95),
+  item('counter-ne', 'counter', 'house', -308.375, -7.65, 1.05, 0.7, 0.95),
+  item('fridge', 'fridge', 'house', -307.375, -7.575, 0.95, 0.85, 1.85),
+  item('counter-e', 'counter', 'house', -307.085, -2.15, 3.1, 0.65, 0.95, W),
+  item('nook-table', 'nook-table', 'house', -309, 2.55, 0.9, 0.9, 0.75),
+  item('chair-nook1', 'chair', 'house', -309.95, 2.55, 0.45, 0.45, 0.85, E),
+  item('chair-nook2', 'chair', 'house', -308.05, 2.55, 0.45, 0.45, 0.85, W),
+  // the living room: the TV on the east wall, the couch facing it with the
+  // coffee table (on the olive rug) between, the armchair at the north of it,
+  // the bookcase on the west wall, and Snuffles' dog bed (low, and a collider
+  // like the rest) by the back wall's sliding door
   item('tv', 'tv', 'house', -297.4, -3.5, 2.6, 0.8, 1.4, W),
   item('couch', 'couch', 'house', -301.6, -3.5, 3, 1.1, 0.9, E),
-  // the dining room's table
-  item('table', 'table', 'house', -303.1, 0.8, 2.8, 1.4, 0.75),
+  item('coffee-table', 'coffee-table', 'house', -299.6, -3.5, 1.2, 0.5, 0.42, E),
+  item('armchair', 'armchair', 'house', -299.6, -6.1, 0.95, 0.95, 0.9),
+  item('bookcase-living', 'bookcase', 'house', -306.42, -7.1, 1.6, 0.4, 1.9, E),
+  item('dog-bed', 'dog-bed', 'house', -304.6, -7.5, 0.9, 0.6, 0.22),
+  // the dining room: the table and its six chairs (two a side, one at each end, each turned to it)
+  item('table', 'dining-table', 'house', -303.1, 0.8, 2.8, 1.3, 0.75),
+  item('chair-d1', 'chair', 'house', -304, -0.35, 0.5, 0.5, 0.95),
+  item('chair-d2', 'chair', 'house', -302.2, -0.35, 0.5, 0.5, 0.95),
+  item('chair-d3', 'chair', 'house', -304, 1.95, 0.5, 0.5, 0.95, N),
+  item('chair-d4', 'chair', 'house', -302.2, 1.95, 0.5, 0.5, 0.95, N),
+  item('chair-d5', 'chair', 'house', -305, 0.8, 0.5, 0.5, 0.95, E),
+  item('chair-d6', 'chair', 'house', -301.2, 0.8, 0.5, 0.5, 0.95, W),
+  // the entry: the grandfather clock against the north wall, off the doorways
+  item('clock', 'clock', 'house', -298.4, -1.62, 0.55, 0.4, 2.1),
   // the den
   item('desk-den', 'desk', 'house', -292.5, -7.5, 2.4, 1, 0.75),
   item('shelf-den', 'shelf', 'house', -288.3, -4.8, 3, 0.5, 1.9, W),
@@ -342,6 +385,10 @@ export const FURNITURE = [
   item('desk-summer', 'desk', 'upstairs', -302, 394.5, 1.6, 0.8, 0.75),
   item('bed-morty', 'bed', 'upstairs', -295.75, 397.5, 1.1, 2.1, 0.6, W),
   item('desk-morty', 'desk', 'upstairs', -297.6, 394.5, 1.4, 0.8, 0.75),
+  // Morty's nightstand at the head of his bed, his bookshelf by the desk, and the desk chair
+  item('nightstand', 'nightstand', 'upstairs', -294.95, 398.35, 0.5, 0.4, 0.55, W),
+  item('bookcase-morty', 'bookcase', 'upstairs', -295.8, 394.175, 1.4, 0.35, 1.5),
+  item('chair-morty', 'chair', 'upstairs', -297.6, 395.4, 0.5, 0.5, 0.9, N),
   item('bed-master', 'bed', 'upstairs', -295.8, 405.3, 1.8, 2.2, 0.6, W),
   item('dresser-master', 'dresser', 'upstairs', -302.15, 406.5, 2, 0.5, 0.9, E),
   // Rick's garage lab
@@ -360,6 +407,20 @@ export const FURNITURE = [
   item('cabinet1', 'arcade', 'arcade', -309.5, 297, 1.4, 1, 1.8, E),
   item('cabinet2', 'arcade', 'arcade', -290.5, 300, 1.4, 1, 1.8, W),
   item('cabinet3', 'arcade', 'arcade', -309.5, 303, 1.4, 1, 1.8, E),
+  // Rick's secret lab: three vats in a row across the back, the machine on the
+  // east wall, the consoles on the west, the gadget rack in the north-west
+  // corner, the containment cell and the portal-fluid tank in the south, and
+  // the ladder up on the south wall (its foot is the way up, and where the hatch puts Morty)
+  item('vat1', 'vat', 'basement', -305, 496, 1.6, 1.6, 2.6),
+  item('vat2', 'vat', 'basement', -300, 496, 1.6, 1.6, 2.6),
+  item('vat3', 'vat', 'basement', -295, 496, 1.6, 1.6, 2.6),
+  item('machine', 'machine', 'basement', -291.1, 500.5, 3.4, 2, 3.2, W),
+  item('console1', 'console', 'basement', -309.2, 499, 2, 0.8, 1.3, E),
+  item('console2', 'console', 'basement', -309.2, 503, 2, 0.8, 1.3, E),
+  item('rack', 'rack', 'basement', -308.9, 494.3, 2, 0.6, 2.2),
+  item('cell', 'cell', 'basement', -291.7, 506.2, 3.2, 3.2, 2.4),
+  item('tank', 'tank', 'basement', -307.6, 506.4, 2.2, 2.2, 3),
+  item('ladder', 'ladder', 'basement', -300, 509.94, 0.7, 0.12, 3.5, N),
 ];
 
 // ── the people ──
@@ -371,7 +432,7 @@ export const FURNITURE = [
 const PERSON = 0.3;
 export const PEOPLE = [
   { id: 'jerry', area: 'house', x: -301.6, z: -3.5, face: 0, sits: true },
-  { id: 'beth', area: 'house', x: -310.45, z: -3.4, face: Math.PI },
+  { id: 'beth', area: 'house', x: -310.95, z: -3.4, face: Math.PI },
   { id: 'summer', area: 'upstairs', x: -302.4, z: 396.9, face: -Math.PI / 2 },
   { id: 'rick', area: 'garage', x: -302, z: 95.55, face: Math.PI / 2 },
   { id: 'teacher', area: 'school', x: -300, z: 194.5, face: -Math.PI / 2 },
@@ -404,6 +465,7 @@ export const COLLIDERS = {
   garage: furnished('garage'),
   school: furnished('school'),
   arcade: furnished('arcade'),
+  basement: furnished('basement'),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -416,6 +478,7 @@ export const WALLS = {
   garage: [],
   school: [],
   arcade: [],
+  basement: [],
 };
 // The parked cruiser is not here: it moves, so whoever walks passes it in.
 export const collidersIn = (area) => COLLIDERS[area];
@@ -428,7 +491,7 @@ export const HOTSPOTS = [
   // the house: the TV is the east wall's, Jerry's on the couch facing it, Beth at the stove
   spot('cable', 'house', -298.1, -3.5, 'Watch interdimensional cable', 'Watch'),
   spot('jerry', 'house', -301.6, -3.5, 'Jerry', 'Talk'),
-  spot('beth', 'house', -310.3, -3.4, 'Beth', 'Talk'),
+  spot('beth', 'house', -310.8, -3.4, 'Beth', 'Talk'),
   spot('butter', 'house', -302.6, 0.8, 'The butter robot', 'Switch on'),
   spot('summer', 'upstairs', -302.4, 397.2, 'Summer', 'Talk'),
   spot('mortyroom', 'upstairs', -297.2, 397, 'Morty’s room', 'Look round'),
@@ -441,6 +504,9 @@ export const HOTSPOTS = [
   spot('cabinet1', 'arcade', -308.4, 297, 'Arcade cabinet', 'Play'),
   spot('cabinet2', 'arcade', -291.6, 300, 'Arcade cabinet', 'Play'),
   spot('cabinet3', 'arcade', -308.4, 303, 'Arcade cabinet', 'Play'),
+  // Rick's secret lab: the middle vat's, and the first console's
+  spot('vats', 'basement', -300, 497.4, 'The vats', 'Look'),
+  spot('console', 'basement', -308.2, 499, 'Rick’s console', 'Look'),
 ];
 export const nearHotspot = (area, x, z) => nearest(HOTSPOTS, area, x, z);
 
@@ -562,6 +628,7 @@ export const TASKS = [
   { id: 'quiz', name: 'Pass the pop quiz', hint: 'Sit Mr. Goldenfold’s pop quiz at Harry Herpson High, and get seven right.' },
   { id: 'fly', name: 'Fly the cruiser', hint: 'Board Rick’s space cruiser in the driveway and take it up over the neighbourhood.' },
   { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal at the back of Rick’s garage.' },
+  { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
 ];
