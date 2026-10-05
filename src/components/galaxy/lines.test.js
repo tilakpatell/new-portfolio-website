@@ -5,14 +5,14 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear'];
 const HUNTED = ['separatists', 'remnant'];
 const KILLS = ['vulture', 'trifighter'];
 const sorted = (a) => [...a].sort();
 const words = (p) => p.split(/\s+/).filter(Boolean).length;
 
 // every exchange a crew has in the galaxy, named for the test's messages
-const exchanges = (id) => ['arrive', 'events', 'hunted', 'kill'].flatMap((group) => Object.entries(GALAXY_LINES[id][group]).map(([key, ex]) => [`${id} ${group} ${key}`, ex]));
+const exchanges = (id) => [...['arrive', 'events', 'hunted', 'kill'].flatMap((group) => Object.entries(GALAXY_LINES[id][group]).map(([key, ex]) => [`${id} ${group} ${key}`, ex])), [`${id} interdicted`, GALAXY_LINES[id].interdicted]];
 
 describe('the crews in the galaxy', () => {
   it('are the four crews of the universe map', () => {
@@ -29,6 +29,8 @@ describe('the crews in the galaxy', () => {
       expect(sorted(Object.keys(g.events)), crew.id).toEqual(sorted(EVENTS));
       expect(sorted(Object.keys(g.hunted)), crew.id).toEqual(sorted(HUNTED));
       expect(sorted(Object.keys(g.kill)), crew.id).toEqual(sorted(KILLS));
+      // and for the Interdictor pulling them out of hyperspace
+      expect(Array.isArray(g.interdicted), crew.id).toBe(true);
     }
   });
 
@@ -86,6 +88,9 @@ describe('galaxyCrew', () => {
       for (const [id, ex] of Object.entries(crew.hunted)) expect(linesFor(flying, 'hunted', id), `${crew.id} hunted ${id}`).toBe(ex);
       for (const id of KILLS) expect(linesFor(flying, 'kill', id)).toBe(g.kill[id]);
       expect(linesFor(flying, 'kill', 'any')).toBe(crew.kill.any);
+      // and the Interdictor's own words over the universe map's
+      expect(linesFor(flying, 'interdicted')).toBe(g.interdicted);
+      expect(crew.interdicted).not.toBe(g.interdicted);
       expect(linesFor(flying, 'kill', 'nothing-like-it')).toBe(crew.kill.any);
     }
   });
