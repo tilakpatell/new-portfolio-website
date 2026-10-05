@@ -24,7 +24,7 @@ const BASE = '/textures/earth/';
 const CLOUDS_UP = CLOUD_ALT; // the cloud shell's height over the ground (the plane can get under it)
 const AIR = 1.085; // the top of the atmosphere
 const PLANE = 0.0075; // the plane's length, in Earth radii (a toy: you'd never see a real one from up here)
-const TRAIL_UP = 0.0015; // the trail flown is drawn this far under where the plane was
+const TRAIL_UP = 0.004; // the trail flown is drawn this far under where the plane was (about 25 km)
 const ROUTE_UP = 0.008; // the routes to the places stamped
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
