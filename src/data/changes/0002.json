@@ -1,0 +1,21 @@
+{
+  "id": 2,
+  "date": "2026-10-05",
+  "title": "Big grounds without the tiling: the music courtyard’s dunes and paving",
+  "kind": "graphics",
+  "summary": "A scanned material repeated a hundred times across a ground gives itself away: the same ripple, the same crack, over and over to the horizon. Grounds can now be blended with themselves at another scale, in soft patches laid out by the world position, so no two patches line up. The music courtyard’s dunes and its sandstone paving are the first to get it; the compound’s lawn and Roll out’s desert are next.",
+  "routes": [
+    "/music"
+  ],
+  "pr": 168,
+  "shots": [
+    "/changes/0002-a.webp",
+    "/changes/0002-before.webp"
+  ],
+  "measured": {
+    "js": 8829360,
+    "note": "One extra texture fetch per map per fragment, no extra pass. The dunes’ scan repeats 140 times; the blend is at 0.23× in patches of about 28 m."
+  },
+  "session": "session_01JfGSEHknQb3AfVDHunaKc2",
+  "reverted": null
+}
