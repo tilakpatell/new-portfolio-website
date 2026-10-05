@@ -339,16 +339,16 @@ const PALETTES = {
       edge: [0.5, 2, 3.5], bloom: 0.55, exposure: 1,
     },
     day: {
-      zenith: '#9db9d4', mid: '#c4d4e3', horizon: '#e3ebf1', haze: '#f2f6f9', glow: [0.3, 0.28, 0.24], glowDir: [0.5, 0.45, -1],
+      zenith: '#5f93cc', mid: '#a3c4e4', horizon: '#f0e2c6', haze: '#f3e8d4', glow: [0.55, 0.42, 0.24], glowDir: [0.5, 0.3, -1],
       smoke: 0.3, smokeCol: '#eef3f7', smokeLit: '#ffffff', stars: 0, moonTint: [0.85, 0.9, 1], moonK: 0.22, moonOcc: 1, sunDir: [0.6, 0.6, 0.4],
-      fogDen: 0.00048, lowHaze: 1.2,
-      hemiSky: '#e3edf8', hemiGround: '#6f7a88', hemiK: 1.6, keyCol: '#fff4e2', keyK: 2.6, keyDir: [0.55, 0.75, 0.45], rimCol: '#cfe6ff', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
-      envZ: '#93b5d6', envH: '#e6eef5', envG: '#69727e', envK: 1,
-      tintA: '#c8d1dc', tintB: '#93a6bc', tintC: '#5d6877', mapGain: 3,
-      winA: [0.4, 1, 1.4], winB: [0.3, 0.6, 1.3], winK: 0.18, winCut: 0.6, winBand: 0.07, winRow: 6, winSeg: 14,
-      stripA: [0.25, 0.9, 1.5], stripB: [0.25, 0.55, 1.4], stripK: 0.6, street: [0.02, 0.05, 0.08],
+      fogDen: 0.00036, lowHaze: 1.3,
+      hemiSky: '#cfe2f8', hemiGround: '#5f6b7c', hemiK: 1.35, keyCol: '#ffe6bd', keyK: 3.1, keyDir: [0.55, 0.75, 0.45], rimCol: '#cfe6ff', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
+      envZ: '#6f9fd2', envH: '#f0e4cc', envG: '#5d6877', envK: 1.1,
+      tintA: '#c2cedd', tintB: '#8399b4', tintC: '#4f5b6c', mapGain: 3,
+      winA: [0.4, 1, 1.4], winB: [0.3, 0.6, 1.3], winK: 0.42, winCut: 0.6, winBand: 0.07, winRow: 6, winSeg: 14,
+      stripA: [0.25, 1.1, 1.9], stripB: [0.25, 0.6, 1.7], stripK: 0.95, street: [0.02, 0.05, 0.08],
       trafA: [0.8, 1, 1.2], trafB: [0.4, 0.8, 1.3], trafK: 0.4, blink: [1.4, 0.3, 0.2], beacon: [0.5, 1.4, 2.2], beam: [0.03, 0.07, 0.11],
-      edge: [0.5, 1.6, 2.6], bloom: 0.2, exposure: 1,
+      edge: [0.5, 1.6, 2.6], bloom: 0.34, exposure: 1,
     },
   },
   kaon: {
@@ -365,16 +365,16 @@ const PALETTES = {
       edge: [3.5, 0.8, 0.2], bloom: 0.6, exposure: 1,
     },
     day: {
-      zenith: '#b3a29c', mid: '#d6bfb1', horizon: '#efd9c8', haze: '#f7e3d2', glow: [0.5, 0.28, 0.14], glowDir: [0.15, 0.1, -1],
+      zenith: '#8a6660', mid: '#c9987c', horizon: '#f2c49a', haze: '#f3d0ac', glow: [0.85, 0.4, 0.14], glowDir: [0.15, 0.1, -1],
       smoke: 0.7, smokeCol: '#a8948c', smokeLit: '#e8c0a0', stars: 0, moonTint: [1, 0.85, 0.78], moonK: 0.18, moonOcc: 1, sunDir: [-0.2, 0.4, -1],
-      fogDen: 0.0005, lowHaze: 1.4,
-      hemiSky: '#f2e2d6', hemiGround: '#8a6a5c', hemiK: 1.5, keyCol: '#ffe2c4', keyK: 2.2, keyDir: [0.4, 0.55, 0.6], rimCol: '#ffd0b0', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
+      fogDen: 0.00042, lowHaze: 1.5,
+      hemiSky: '#ecd2c0', hemiGround: '#7a5446', hemiK: 1.3, keyCol: '#ffcf9f', keyK: 2.7, keyDir: [0.4, 0.55, 0.6], rimCol: '#ffd0b0', rimK: 0.4, rimDir: [-0.6, 0.3, -0.7],
       envZ: '#b9a49a', envH: '#f0dccb', envG: '#77625a', envK: 1,
       tintA: '#b3adb3', tintB: '#8c858c', tintC: '#5a545a', mapGain: 3,
-      winA: [1.4, 0.5, 0.18], winB: [1.2, 0.3, 0.12], winK: 0.25, winCut: 0.76, winBand: 0.06, winRow: 9, winSeg: 3,
-      stripA: [1.5, 0.35, 0.22], stripB: [1, 0.4, 1.4], stripK: 0.55, street: [0.1, 0.04, 0.02],
+      winA: [1.4, 0.5, 0.18], winB: [1.2, 0.3, 0.12], winK: 0.5, winCut: 0.76, winBand: 0.06, winRow: 9, winSeg: 3,
+      stripA: [1.8, 0.4, 0.22], stripB: [1.1, 0.4, 1.6], stripK: 0.9, street: [0.1, 0.04, 0.02],
       trafA: [1.2, 0.55, 0.3], trafB: [0.9, 0.5, 1.2], trafK: 0.4, blink: [1.4, 0.3, 0.2], beacon: [2, 0.5, 0.25], beam: [0.1, 0.03, 0.02],
-      edge: [2.6, 0.8, 0.2], bloom: 0.2, exposure: 1,
+      edge: [2.6, 0.8, 0.2], bloom: 0.34, exposure: 1,
     },
   },
 };
@@ -689,7 +689,7 @@ const TRAFFIC = {
     varying float vSide;
     varying vec3 vCol;
     void main() {
-      float a = pow(vHead, 2.2) * (1.0 - vSide * vSide);
+      float a = pow(max(vHead, 0.0), 2.2) * max(0.0, 1.0 - vSide * vSide);
       gl_FragColor = vec4(vCol * a, 1.0);
     }`,
 };
@@ -757,7 +757,7 @@ const BEAM = {
     varying float vUp;
     varying float vRim;
     void main() {
-      float a = pow(1.0 - vUp, 2.0) * smoothstep(0.0, 0.03, vUp) * pow(vRim, 2.0);
+      float a = pow(max(1.0 - vUp, 0.0), 2.0) * smoothstep(0.0, 0.03, vUp) * vRim * vRim;
       gl_FragColor = vec4(uBeam * a, 1.0);
     }`,
 };

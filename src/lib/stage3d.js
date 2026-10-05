@@ -15,7 +15,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget } from './device';
 
 // The last step, on the display-ready picture: a film-like grade.
-const GRADE = {
+export const GRADE = {
   uniforms: {
     tDiffuse: { value: null },
     uContrast: { value: 0.12 },

@@ -9,13 +9,13 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).map((u) => ({ to: u.to, l
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
 export const WORLD_MB = {
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
-  '/cybertron': 14, // Roll out's cast, scanned ground, rocks and sky, and the statues
+  '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 9, // the compound's skies, scanned props and trees
   '/c-137': 6, // the cruiser and Portal panic's cast
-  '/albuquerque': 8, // the town's buildings and cars, and Metherria's cast and lab
+  '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
-  '/middle-earth': 1, // drawn in code too
+  '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 1,
 };
 

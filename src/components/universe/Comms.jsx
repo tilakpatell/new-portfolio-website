@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { linesFor } from './crews';
 import { playClip } from '../../lib/clips';
-import { arrivalSound, boostSound, bumpSound, crashSound, fireSound, flybySound, popSound, respawnSound, speak } from './sounds';
+import { alarmSound, arrivalSound, boostSound, bumpSound, crashSound, enemyFireSound, fireSound, flybySound, hitSound, jumpSound, popSound, portalSound, respawnSound, speak } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -11,10 +11,13 @@ import Face from './Faces';
 // launching, boosting, bumping into things and reaching the edge get a line
 // now and then (not every time); a crash (into a planet too fast), sitting
 // still a while and flying into the sun get one of their own, and so does
-// traffic going past and a ship shot down. Shots are just sound.
+// traffic going past and a ship shot down. Hunters coming after you, their
+// hits, your shields running low, being shot down, getting away or shooting
+// the lot down, the director's set pieces and the first sight of each of
+// deep space's wonders all get theirs too. Shots are just sound.
 // The page hands events over through `control.current.handle(event)`.
 
-const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, traffic: 18000, kill: 9000 }; // ms before the same kind of line again
+const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000 }; // ms before the same kind of line again
 const COMMS = { name: 'On the comms', color: '#9fb0d0', voice: null }; // a voice on the radio that isn't the crew's
 
 export default function Comms({ crew, reduced, control }) {
@@ -146,6 +149,34 @@ export default function Comms({ crew, reduced, control }) {
           say(linesFor(crew, 'idle'));
         } else if (e.type === 'fire') {
           if (soundOnce('fire', 150, now)) fireSound(crew?.id);
+        } else if (e.type === 'hunted') {
+          // a pack after you: Vader gets his own line, the first time
+          if (e.faction === 'council') portalSound();
+          const ace = e.ace && !said.current.has('ace');
+          if (ace) said.current.add('ace');
+          if (ace || often('hunted', now)) say(linesFor(crew, 'hunted', ace ? 'ace' : e.faction), { urgent: true });
+        } else if (e.type === 'shot') {
+          if (soundOnce('shot', 90, now)) enemyFireSound();
+        } else if (e.type === 'laser') {
+          if (soundOnce('hit', 120, now)) hitSound();
+          if (often('hit', now)) say(linesFor(crew, 'hit'));
+        } else if (e.type === 'shields') {
+          alarmSound();
+          say(linesFor(crew, 'shields'), { urgent: true });
+        } else if (e.type === 'destroyed') {
+          crashSound();
+          say(linesFor(crew, 'destroyed'), { urgent: true });
+        } else if (e.type === 'escaped' || e.type === 'cleared') {
+          say(linesFor(crew, e.type), { urgent: true });
+        } else if (e.type === 'event') {
+          if (e.id === 'destroyer') jumpSound();
+          if (e.id === 'leave') jumpSound(true);
+          else say(linesFor(crew, 'event', e.id), { urgent: e.id !== 'convoy' && e.id !== 'comet' });
+        } else if (e.type === 'wonder') {
+          const key = `wonder:${e.id}`;
+          if (said.current.has(key)) return;
+          said.current.add(key);
+          say(linesFor(crew, 'wonder', e.id), { urgent: true });
         }
       },
     }),

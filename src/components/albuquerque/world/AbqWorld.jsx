@@ -7,9 +7,10 @@ import { readPad, typing } from '../../games/pad';
 import Pollos from '../Pollos';
 import { splitWord } from '../elements';
 import { rankFor } from '../metherria/rules';
-import { readCareer } from './career';
+import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
-import { PLACES, ROADS, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, stepCar, stepHeat } from './rules';
+import { useAchievements } from '../../Achievements';
+import { COLLIDERS, CRYSTALS, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, onRoad, progress, startRun, stepCar, stepHeat, stepRun, timeName } from './rules';
 import './world.css';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
@@ -25,11 +26,37 @@ const clip = (id, opts) => import('../../../lib/clips').then((c) => c.playClip(i
 const VISITED = 'tp-abq-visited';
 const OPENED = 'tp-abq-opened'; // what was open last time, to light up what's new
 const PARKED = 'tp-abq-car';
+const BLUE = 'tp-abq-blue'; // the Blue Sky crystals found so far
+const readBlue = () => {
+  const b = local.get(BLUE, []);
+  return Array.isArray(b) ? b.filter((id) => CRYSTALS.some((c) => c.id === id)) : [];
+};
 const readSnap = () => {
   const c = readCareer();
   return { served: c.served, points: c.points, money: c.money, upgrades: c.upgrades, visited: local.get(VISITED, []) };
 };
 const ENTER_LINE = { rv: () => clip('jesseRing', { when: 0.3 }), saul: () => clip('saulHi', { when: 0.3 }), pollos: () => clip('gusHello', { when: 0.4 }) };
+const PIZZAS = 'tp-abq-pizzas'; // how many are on Walt's roof
+// the Aztek's horn: two reedy notes
+function honk() {
+  const ac = audioContext();
+  if (!ac) return;
+  const out = ac.createGain();
+  out.gain.setValueAtTime(0.0001, ac.currentTime);
+  out.gain.exponentialRampToValueAtTime(0.16, ac.currentTime + 0.02);
+  out.gain.setValueAtTime(0.16, ac.currentTime + 0.3);
+  out.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.42);
+  out.connect(ac.destination);
+  for (const f of [392, 494]) {
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = f;
+    o.connect(out);
+    o.start();
+    o.stop(ac.currentTime + 0.45);
+  }
+}
+const clockText = (s) => `${Math.floor(s / 60)}:${String(Math.ceil(s) % 60).padStart(2, '0')}`;
 const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
 const DRIVE = new Set(Object.values(KEYS).flat().concat(' '));
 
@@ -83,7 +110,7 @@ export default function AbqWorld() {
   return (
     <section className="abq-world" aria-labelledby="abq-title" data-mode={world ? '3d' : 'cards'}>
       {world ? (
-        <World api={api} prog={prog} snap={snap} inside={inside} enter={enter} gl={gl} setGl={setGl} announce={announce} toast={toast} setToast={setToast} />
+        <World api={api} prog={prog} snap={snap} inside={inside} enter={enter} gl={gl} setGl={setGl} announce={announce} toast={toast} setToast={setToast} refresh={() => setSnap(readSnap())} />
       ) : (
         <Cards prog={prog} enter={enter} three={three} gl={gl} retry={() => setGl('loading')} />
       )}
@@ -111,7 +138,7 @@ function Title() {
   );
 }
 
-function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, setToast }) {
+function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, setToast, refresh }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
@@ -120,9 +147,59 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   if (!sim.current) {
     const parked = local.get(PARKED, null);
     const ok = parked && Number.isFinite(parked.x) && Math.hypot(parked.x, parked.z) < WORLD_RADIUS;
-    sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, steer: 0, frame: 0, moved: false };
+    sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id };
   }
-  const [hud, setHud] = useState({ near: null, heat: 0, moved: false });
+  const { unlock } = useAchievements();
+  const [hud, setHud] = useState({ near: null, heat: 0, moved: false, wash: false, run: null });
+  const [blue, setBlue] = useState(() => sim.current.blue.length);
+  const [clock, setClock] = useState(TIMES[0]);
+  // a delivery: a drop out in the desert, and a clock
+  const runDelivery = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    if (!a || s.run) return;
+    audioContext();
+    const run = startRun(s.car, Math.floor(Math.random() * DROPS.length));
+    s.run = { ...run, left: run.time };
+    a.setDrop(run);
+    setToast({ text: `A buyer’s waiting at ${run.name}. ${Math.round(run.dist)} m, ${clockText(run.time)} on the clock.`, at: Date.now() });
+  }, [api, setToast]);
+  // a pizza, onto Walt's roof
+  const throwPizza = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    if (!a || s.near !== 'home') return;
+    audioContext();
+    if (!a.throwPizza(s.car)) return;
+    const n = (Number(local.get(PIZZAS, 0)) || 0) + 1;
+    local.set(PIZZAS, n);
+    setTimeout(() => import('../../../lib/sfx').then((x) => x.knock()).catch(() => {}), 850);
+    setToast({ text: n === 1 ? 'It’s on the roof.' : `${n} pizzas on the roof. Skyler’s going to love this.`, at: Date.now() });
+  }, [api, setToast]);
+  // the A1A: suds, then on your way
+  const washCar = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    if (!a || s.washing || !atWash(s.car.x, s.car.z)) return;
+    audioContext();
+    s.washing = true;
+    a.wash();
+    import('../../../lib/sfx').then((x) => x.sizzle()).catch(() => {});
+    setTimeout(() => {
+      s.washing = false;
+      setToast({ text: 'Have an A1 day!', at: Date.now() });
+    }, WASH.seconds * 1000);
+  }, [api, setToast]);
+  // on to the next time of day: the sun runs round to it
+  const nextTime = useCallback(() => {
+    const a = api.current;
+    if (!a) return;
+    const now = timeName(a.time);
+    const next = TIMES[(TIMES.findIndex((t) => t.id === now.id) + 1) % TIMES.length];
+    a.setTime(next.tod);
+    setClock(next);
+    sim.current.clock = next.id;
+  }, [api]);
   const [list, setList] = useState(false);
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -144,6 +221,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         api.current = a;
         if (import.meta.env.DEV) window.__ABQ__ = { api: a, sim: sim.current }; // for the QA scripts
         a.setPlaces(progRef.current);
+        a.setBlue(sim.current.blue, sim.current.blue.length === CRYSTALS.length);
+        a.setPizzas(Number(local.get(PIZZAS, 0)) || 0);
         fit();
         setGl('on');
         announce(progRef.current);
@@ -185,6 +264,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         enter(near);
       }
       if (e.key === 'm' || e.key === 'M') setList((v) => !v);
+      if (e.key === 't' || e.key === 'T') nextTime();
+      if (e.key === 'r' || e.key === 'R') runDelivery();
+      if (e.key === 'p' || e.key === 'P') throwPizza();
+      if (e.key === 'h' || e.key === 'H') honk();
+      if ((e.key === 'e' || e.key === 'E') && !near) washCar();
     };
     const up = (e) => s.keys.delete(e.key);
     const blur = () => s.keys.clear();
@@ -197,7 +281,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       window.removeEventListener('blur', blur);
       s.keys.clear();
     };
-  }, [live, near, enter]);
+  }, [live, near, enter, nextTime, runDelivery, throwPizza, washCar]);
 
   useFrameLoop((ms) => {
     const a = api.current;
@@ -227,14 +311,58 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     if (h.caught) {
       s.heat = 0;
       s.car = { ...SPAWN, speed: 0 };
-      setToast({ text: 'Hank pulled you over. Back home, and keep your distance.', at: Date.now(), bad: true });
+      setToast({ text: s.run ? 'Hank pulled you over, and found the load. Back home.' : 'Hank pulled you over. Back home, and keep your distance.', at: Date.now(), bad: true });
+      if (s.run) {
+        s.run = null;
+        a.setDrop(null);
+      }
       import('../../../lib/clips').then((c) => c.playClip('hankRing')).catch(() => {});
     }
     const at = nearPlace(car.x, car.z);
     s.near = at?.id ?? null;
+    // Blue Sky: drive over a crystal and it's yours
+    const gem = crystalAt(car.x, car.z, s.blue);
+    if (gem) {
+      s.blue = [...s.blue, gem.id];
+      local.set(BLUE, s.blue);
+      const all = s.blue.length === CRYSTALS.length;
+      a.took(gem.id);
+      a.setBlue(s.blue, all);
+      setBlue(s.blue.length);
+      import('../../../lib/sfx').then((x) => x.coin()).catch(() => {});
+      setToast({ text: all ? 'All twelve. 99.1% pure: look up tonight.' : `Blue Sky: ${s.blue.length} of ${CRYSTALS.length}.`, at: Date.now() });
+      if (all) {
+        unlock('purity');
+        a.setTime(TIMES[1].tod);
+      }
+    }
+    // a delivery on the clock
+    if (s.run) {
+      const r = stepRun(s.run, car, s.run.left, dt);
+      if (r.state === 'on') s.run.left = r.left;
+      else {
+        if (r.state === 'made') {
+          const c = readCareer();
+          local.set(CAREER, { ...c, money: c.money + r.pay });
+          refresh();
+          import('../../../lib/sfx').then((x) => x.coin()).catch(() => {});
+          setToast({ text: `Delivered. $${r.pay} in the bag.`, at: Date.now() });
+        } else setToast({ text: 'Too slow. The buyer walked.', at: Date.now(), bad: true });
+        s.run = null;
+        a.setDrop(null);
+      }
+    }
+    // the HUD's clock follows the day as it turns
+    if (s.frame % 30 === 0) {
+      const now = timeName(a.time);
+      if (now.id !== s.clock) {
+        s.clock = now.id;
+        setClock(now);
+      }
+    }
     const asphalt = onRoad(car.x, car.z, ROADS.filter((r) => !r.dirt));
     try {
-      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, onRoad: onRoad(car.x, car.z), asphalt, bump }, ms);
+      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, onRoad: onRoad(car.x, car.z), asphalt, bump }, ms);
     } catch {
       a.dispose();
       api.current = null;
@@ -242,12 +370,14 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       return;
     }
     // the HUD, when what it shows changes
-    const key = `${at ? `near:${at.id}|` : ''}${Math.round(s.heat * 10)}|${s.moved}`;
+    const wash = !at && atWash(car.x, car.z);
+    const away = s.run ? Math.round(Math.hypot(s.run.x - car.x, s.run.z - car.z) / 5) * 5 : 0;
+    const key = `${at ? `near:${at.id}|` : ''}${Math.round(s.heat * 10)}|${s.moved}|${wash}|${s.run ? `${s.run.id}:${Math.ceil(s.run.left)}:${away}` : ''}`;
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, moved: s.moved });
+      setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run);
   }, live);
 
   // the touch stick: drag from where you put your thumb
@@ -304,6 +434,9 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
           <p className="abq-hud-chip">
             <b>${snap.money}</b> · {rank.title}
           </p>
+          <p className="abq-hud-chip abq-hud-blue" title="Blue Sky crystals found in the desert">
+            <span aria-hidden="true">◆</span> Blue Sky <b>{blue}</b>/{CRYSTALS.length}
+          </p>
           <canvas ref={map} className="abq-map" width="150" height="150" aria-hidden="true" />
           {hud.heat > 0 && (
             <div className="abq-heat" role="meter" aria-label="Hank’s on you" aria-valuemin={0} aria-valuemax={1} aria-valuenow={hud.heat}>
@@ -316,6 +449,12 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         </div>
       </div>
 
+      {hud.run && (
+        <p className="abq-run" role="timer" aria-label={`Delivery to ${hud.run.name}`}>
+          <span aria-hidden="true">▣</span> {hud.run.name} · <b>{clockText(hud.run.left)}</b> · {hud.run.away} m
+        </p>
+      )}
+
       {toast && (
         <p className="abq-toast" data-bad={toast.bad || undefined} role="status" key={toast.at}>
           {toast.text}
@@ -327,14 +466,31 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
           <p className="abq-door-name">{here.name}</p>
           <p className="abq-door-sub">{here.open ? here.sub : here.hint}</p>
           {here.open && (
-            <button type="button" className="btn btn-primary" onClick={() => enter(here.id)}>
-              Go in {!touch && <kbd>E</kbd>}
-            </button>
+            <div className="abq-door-acts">
+              <button type="button" className="btn btn-primary" onClick={() => enter(here.id)}>
+                Go in {!touch && <kbd>E</kbd>}
+              </button>
+              {here.id === 'home' && (
+                <button type="button" className="btn btn-ghost abq-door-alt" onClick={throwPizza}>
+                  Throw a pizza {!touch && <kbd>P</kbd>}
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
 
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive.' : 'W A S D or the arrows to drive. Space brakes. E goes in.'}</p>}
+      {hud.wash && !here && !inside && (
+        <div className="abq-door" data-open>
+          <p className="abq-door-name">A1A Car Wash</p>
+          <p className="abq-door-sub">Have an A1 day</p>
+          <button type="button" className="btn btn-primary" onClick={washCar}>
+            Wash the Aztek {!touch && <kbd>E</kbd>}
+          </button>
+        </div>
+      )}
+
+      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive.' : 'W A S D or the arrows to drive. Space brakes. E goes in. R runs a delivery. H is the horn.'}</p>}
 
       <div className="abq-hud abq-hud-bottom">
         {touch && (
@@ -342,6 +498,12 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
             <span />
           </div>
         )}
+        <button type="button" className="btn btn-ghost abq-places-btn abq-clock-btn" onClick={runDelivery} disabled={!!hud.run}>
+          {hud.run ? 'On a run' : 'Run a delivery'} {!touch && !hud.run && <kbd>R</kbd>}
+        </button>
+        <button type="button" className="btn btn-ghost abq-places-btn" onClick={nextTime} aria-label={`Time of day: ${clock.name}. Change it`}>
+          {clock.name} {!touch && <kbd>T</kbd>}
+        </button>
         <button type="button" className="btn btn-ghost abq-places-btn" onClick={() => setList((v) => !v)} aria-expanded={list}>
           Places {!touch && <kbd>M</kbd>}
         </button>
@@ -379,8 +541,10 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
 }
 
 // The map in the corner: the roads, the places, Hank and you.
-const MAP_SCALE = 150 / (WORLD_RADIUS * 2 + 20);
-function drawMap(c, car, hank, prog) {
+// (the town fills it; out in the dunes the car's arrow rides the rim)
+const MAP_RADIUS = Math.min(WORLD_RADIUS, 250);
+const MAP_SCALE = 150 / (MAP_RADIUS * 2 + 20);
+function drawMap(c, car, hank, prog, blue = [], run = null) {
   const g = c?.getContext('2d');
   if (!g) return;
   const at = (x, z) => [75 + x * MAP_SCALE, 75 + z * MAP_SCALE];
@@ -398,6 +562,11 @@ function drawMap(c, car, hank, prog) {
     g.lineTo(...at(r.b.x, r.b.z));
     g.stroke();
   }
+  g.fillStyle = 'rgba(233, 225, 208, 0.34)';
+  for (const b of COLLIDERS) {
+    const [x, y] = at(b.x - b.w / 2, b.z - b.d / 2);
+    g.fillRect(x, y, Math.max(1.5, b.w * MAP_SCALE), Math.max(1.5, b.d * MAP_SCALE));
+  }
   for (const p of prog.places) {
     const [x, y] = at(p.door.x, p.door.z);
     g.fillStyle = p.open ? '#f0c330' : '#7c817e';
@@ -412,12 +581,34 @@ function drawMap(c, car, hank, prog) {
       g.stroke();
     }
   }
+  g.fillStyle = '#5fd0ff';
+  for (const k of CRYSTALS) {
+    if (blue.includes(k.id)) continue;
+    const [x, y] = at(k.x, k.z);
+    g.fillRect(x - 1.5, y - 1.5, 3, 3);
+  }
   const [hx, hy] = at(hank.x, hank.z);
   g.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#ff4a4a' : '#4a7bff';
   g.beginPath();
   g.arc(hx, hy, 3.5, 0, Math.PI * 2);
   g.fill();
-  const [cx, cy] = at(car.x, car.z);
+  // anything off the map's edge is drawn on its rim
+  const rim = (x, z) => {
+    const d = Math.hypot(x, z);
+    const k = d > MAP_RADIUS ? MAP_RADIUS / d : 1;
+    return at(x * k, z * k);
+  };
+  if (run) {
+    const [dx, dy] = rim(run.x, run.z);
+    g.fillStyle = '#58ff8a';
+    g.strokeStyle = '#0c2a14';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(dx, dy, 4.5, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
+  const [cx, cy] = rim(car.x, car.z);
   g.save();
   g.translate(cx, cy);
   g.rotate(-car.yaw + Math.PI);

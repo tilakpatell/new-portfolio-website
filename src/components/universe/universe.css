@@ -158,6 +158,8 @@
 .universe-back { text-align: left; }
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
 .universe-credit a { text-decoration: underline; text-underline-offset: 2px; }
+.universe-models { margin-top: 0.6rem; }
+.universe-models ul { display: grid; gap: 0.35rem; margin: 0.5rem 0 0; padding: 0 3.25rem 0 0; list-style: none; } /* clear of the guide's button in the corner */
 .universe-enter { width: 100%; justify-content: center; }
 .universe-card { margin: 0; padding: 0; list-style: none; }
 .universe-card .fun-card { min-height: 0; }
@@ -228,6 +230,45 @@
   translate: 0 calc(var(--alt, 0) * -75px);
   filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
 }
+/* the shields: a slim bar under the height gauge, while there's trouble */
+.universe-shield {
+  position: absolute;
+  left: 16px;
+  top: calc(50% + var(--nav-h, 68px) / 2 + 92px);
+  display: grid;
+  gap: 4px;
+  width: 92px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.universe-shield[data-on] { opacity: 1; }
+.universe-shield-label {
+  color: rgb(255 255 255 / 0.65);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.universe-shield-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 4px;
+  background: rgb(3 4 10 / 0.6);
+}
+.universe-shield-bar > span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #4fd2ff, #9ef3ff);
+  box-shadow: 0 0 8px rgb(120 220 255 / 0.6);
+  transform-origin: left;
+  scale: var(--shield, 1) 1;
+  transition: scale 0.15s;
+}
+.universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
+@keyframes universe-shield-blink { 50% { opacity: 0.45; } }
 .universe-map[data-ship='cruiser'] { --engine: #8dff6a; }
 .universe-map[data-ship='falcon'] { --engine: #7cc8ff; }
 .universe-map[data-ship='xwing'] { --engine: #ff8a5c; }
@@ -410,12 +451,14 @@
   .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
+  .universe-shield { left: 10px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2 + 72px); width: 76px; }
   .universe-hint { bottom: calc(var(--sheet-h) + 16px); translate: -50% 0; }
   .universe-comms { right: 16px; left: 16px; }
   .universe-face { width: 36px; height: 36px; }
   .universe-said { font-size: 0.85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .universe-shield-bar > span { animation: none; }
   .universe-labels,
   .universe-label,
   .universe-fade { transition: none; }
