@@ -25,6 +25,7 @@ import ClipBoard from '../components/worlds/ClipBoard';
 
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
+const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
 
 // New Zealand, standing in for Middle-earth.
 const LOCATIONS = [
@@ -68,7 +69,8 @@ const WRONG = [
 
 // Middle-earth is a map. The page opens on it, as the films do, and the map is
 // how you get about: pick a place and the camera flies down to it, and its
-// chapter opens over the map. The Shire has the road, Rivendell the films,
+// chapter opens over the map. The Shire has the road, Bree the Prancing
+// Pony on a wet night, Rivendell the films,
 // Moria the Doors of Durin and the Bridge of Khazad-dûm, Lothlórien the
 // places it was filmed, and Mordor the walk across Gorgoroth and the Ring.
 // Each chapter is its own address (#/middle-earth/moria), and the map is
@@ -278,7 +280,13 @@ export default function MiddleEarth() {
 
       {here?.id === 'shire' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
-          <ShireWorld onLeave={() => go('rivendell')} />
+          <ShireWorld onLeave={() => go('bree')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'bree' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <BreeWorld onLeave={() => go('rivendell')} />
         </Suspense>
       )}
 
@@ -307,6 +315,11 @@ export default function MiddleEarth() {
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep((n) => Math.min(STOPS.length - 1, n + 1))} disabled={step === STOPS.length - 1}>
                   On to {STOPS[Math.min(STOPS.length - 1, step + 1)].name}
                 </button>
+                {STOPS[step].id === 'bree' && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('bree')}>
+                    Go to Bree
+                  </button>
+                )}
                 {STOPS[step].id === 'moria' && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('moria')}>
                     Go to Moria
