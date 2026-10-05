@@ -188,7 +188,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const place = (p, x, z, face, walking, rate = 1) => {
     p.group.visible = true;
     p.group.position.set(x, 0, z);
-    p.group.rotation.y = Math.PI / 2 - face; // (face: 0 is +x, as the walker has it)
+    p.group.rotation.y = face + Math.PI / 2; // (face: 0 is +x, as the walker has it; a figure faces +z)
     p.walk(walking, rate);
     p.group.position.y = p.bob();
   };
@@ -236,7 +236,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       const target = carrying === 'chili' ? set.pot : set.carried;
       target.visible = true;
       target.position.set(h.x + fwdX * 0.42, 1.0 + (jim?.bob() ?? 0), h.z + fwdZ * 0.42);
-      target.rotation.set(tip, Math.PI / 2 - h.face, tip * 0.6);
+      target.rotation.set(tip, h.face + Math.PI / 2, tip * 0.6);
       if (jim) {
         const hand = target.position;
         jim.reach('left', tmp.set(hand.x - fwdZ * 0.16, hand.y + 0.08, hand.z + fwdX * 0.16));

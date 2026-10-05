@@ -544,8 +544,8 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     [['STAIRS'], 723, 175, 1.62, 0],
     [['CONFERENCE ROOM'], 360, 127, 2.0, 0],
     [['Michael Scott', 'Regional Manager'], 290, 127, 2.0, 0],
-    [['ANNEX'], 739, 190, 2.32, E],
-    [['Darryl Philbin', 'Warehouse Foreman'], 470, 288, 2.0, 0],
+    [['ANNEX'], 739, 190, 2.32, Wst],
+    [['Darryl Philbin', 'Warehouse Foreman'], 470, 288, 2.0, N],
     [['SUPPLIES'], 240, 384, 1.62, N],
     [['KITCHEN'], 514, 190, 2.32, Wst],
   ];
@@ -670,7 +670,7 @@ export async function buildSet(kit, props, { tier = 'high' } = {}) {
     add(counter);
     const ch = kit.chair();
     ch.position.set(RECEPTION.chair.x, 0, RECEPTION.chair.z);
-    ch.rotation.y = RECEPTION.face + Math.PI;
+    ch.rotation.y = RECEPTION.face;
     add(ch);
     seats.set('erin', { group, chair: ch, top: 1.07 });
     const mon = kit.monitor(1);

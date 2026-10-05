@@ -238,7 +238,7 @@ export const CAST = Object.keys(LINES).map(castAt).filter(Boolean);
 // Dwight, back from the men's room to his desk
 export const DWIGHT_BACK = [P(542, 244), P(522, 214), P(470, 160), P(352, 160), P(352, 224)];
 // Erin's break: to the break room's vending machines, and back
-export const ERIN_BREAK = { at: P(840, 70), face: -Math.PI / 2 };
+export const ERIN_BREAK = { at: P(842, 70), face: Math.PI }; // (facing the machines, west)
 // Dwight's fire: a bin in the conference room
 export const FIRE_BIN = P(486, 104);
 // where the panicking run, in the fire (each a line run back and forth)
