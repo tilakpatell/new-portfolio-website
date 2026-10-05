@@ -68,6 +68,9 @@ describe('the crews', () => {
       for (const [id, e] of Object.entries(EVENTS)) if (e.families.includes(family) && id !== 'hunt' && id !== 'council') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
+      // the nav map's drives: a jump to lightspeed, and super speed
+      said(linesFor(crew, 'event', 'hyperspeed'), crew, 'hyperspeed');
+      said(linesFor(crew, 'event', 'overdrive'), crew, 'overdrive');
       for (const w of WONDERS) said(linesFor(crew, 'wonder', w.id), crew, `wonder ${w.id}`);
     }
   });

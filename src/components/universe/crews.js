@@ -247,6 +247,15 @@ export const CREWS = [
         ['morty', 'Rick, why are we flying down a trench on the Death Star?'],
         ['rick', 'Because it’s there, Morty. Floor it.'],
       ],
+      // the nav map's drives: a jump to lightspeed (hyperspeed), and the pulse drive pushed past itself (super speed)
+      hyperspeed: [
+        ['morty', 'Rick, does the cruiser even do lightspeed?'],
+        ['rick', 'Lightspeed is for nerds, Morty. We’re taking a shortcut through a dimension where distance is more of a suggestion.'],
+      ],
+      overdrive: [
+        ['morty', 'Rick, this is way too fast!'],
+        ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
+      ],
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
@@ -568,6 +577,14 @@ export const CREWS = [
         ['luke', 'I’m in the trench! Artoo, watch our backs!'],
         ['r2', '[an alarmed shriek]'],
       ],
+      hyperspeed: [
+        ['luke', 'Navicomputer’s set. Hang on, Artoo!'],
+        ['r2', '[an excited whistle]'],
+      ],
+      overdrive: [
+        ['luke', 'I’ve never had her going this fast!'],
+        ['r2', '[a frantic string of beeps]'],
+      ],
     },
     wonders: {
       citadel: [
@@ -871,6 +888,14 @@ export const CREWS = [
       trench: [
         ['han', 'The trench? Chewie, we’re not an X-wing!'],
         ['chewie', '[a worried roar]'],
+      ],
+      hyperspeed: [
+        ['han', 'Coordinates are in. Hang on, Chewie.'],
+        ['chewie', '[an eager roar]'],
+      ],
+      overdrive: [
+        ['han', 'Pushing her past what she was built for. Just how I like it.'],
+        ['chewie', '[a doubtful growl]'],
       ],
     },
     wonders: {
@@ -1199,6 +1224,14 @@ export const CREWS = [
       trench: [
         ['jesse', 'Why are we flying down a trench on a giant death ball?!'],
         ['walt', 'Because we can, Jesse.'],
+      ],
+      hyperspeed: [
+        ['jesse', 'Yo, Mr. White, the RV does lightspeed now?!'],
+        ['walt', 'Apply yourself, Jesse. It’s just physics.'],
+      ],
+      overdrive: [
+        ['jesse', 'This is insane, yo! Everything’s a blur!'],
+        ['walt', 'Seatbelt, Jesse.'],
       ],
     },
     wonders: {
