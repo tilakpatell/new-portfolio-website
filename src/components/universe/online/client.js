@@ -20,7 +20,8 @@
 // createClient({ name, kind, loadout, where }) → { selfId, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
 //   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
-//   each pilot's comes in as peer.foot, with `at`), shot(at, v), hit(peerId),
+//   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
+//   same down on a world in the galaxy: peer.walk), shot(at, v), hit(peerId),
 //   down(byId), cursor(x, y, touch),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   peers, takeShots(), leave() }
@@ -29,7 +30,7 @@
 // (someone was shot down: where they were, for the scene's pop; `by` is
 // whoever this browser believes did it).
 
-import { APP_ID, CURSOR_MS, DAMAGE, FOOT_MS, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readFoot, readHello, readHit, readPose, readShot, writeCursor, writeFoot, writePose, writeShot } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, FOOT_MS, GUARD, POSE_MS, ROOM, WALK_MS, allyStep, cleanName, createLimiter, hitCounts, readCursor, readFoot, readHello, readHit, readPose, readShot, readWalk, writeCursor, writeFoot, writePose, writeShot, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 
@@ -54,6 +55,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
   let lastPose = -Infinity;
   let lastFoot = -Infinity;
   let footDown = false; // whether the last foot sent had your crew down
+  let lastWalk = -Infinity;
+  let walkDown = false; // and the last walk, down on a world in the galaxy
   let lastShot = -Infinity;
   let lastCursor = -Infinity;
   let cursorLater = 0; // the last pointer of a quick move, sent once the gap's up
@@ -83,6 +86,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
         snaps: [],
         pose: null,
         foot: null, // their crew on foot, while they're down on a planet
+        walk: null, // and down on a world in the galaxy
         cur: null,
         shots: [], // their last few, for checking a hit on you
         shotAt: -Infinity,
@@ -118,6 +122,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     p.snaps.length = 0;
     p.pose = null;
     p.foot = null;
+    p.walk = null;
     p.cur = null;
     p.shots.length = 0;
     roster();
@@ -158,6 +163,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     const hi = action('hi');
     const pose = action('pose');
     const foot = action('foot');
+    const walk = action('walk');
     const shot = action('shot');
     const hit = action('hit');
     const down = action('down');
@@ -167,6 +173,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       hi: (data, to) => hi.send(data, to ? { target: to } : undefined).catch(() => {}),
       pose: (data) => pose.send(data).catch(() => {}),
       foot: (data) => foot.send(data).catch(() => {}),
+      walk: (data) => walk.send(data).catch(() => {}),
       shot: (data) => shot.send(data).catch(() => {}),
       hit: (data, to) => hit.send(data, { target: to }).catch(() => {}),
       down: (data) => down.send(data).catch(() => {}),
@@ -221,6 +228,12 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       const p = f && admit('foot', peerId);
       if (!p) return;
       p.foot = f.off ? null : { ...f, at: now() };
+    };
+    walk.onMessage = (data, { peerId }) => {
+      const w = readWalk(data);
+      const p = w && admit('walk', peerId);
+      if (!p) return;
+      p.walk = w.off ? null : { ...w, at: now() };
     };
     shot.onMessage = (data, { peerId }) => {
       const known = peers.get(peerId);
@@ -371,6 +384,21 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       lastFoot = t;
       footDown = true;
       send.foot(writeFoot(crew));
+    },
+    // your crew down on a world in the galaxy (protocol.js's writeWalk),
+    // each frame while they're there, and null once you've taken off
+    walk(crew) {
+      const t = now();
+      if (!send) return;
+      if (!crew) {
+        if (walkDown) send.walk(writeWalk(null));
+        walkDown = false;
+        return;
+      }
+      if (t - lastWalk < WALK_MS) return;
+      lastWalk = t;
+      walkDown = true;
+      send.walk(writeWalk(crew));
     },
     shot(at, v) {
       const t = now();

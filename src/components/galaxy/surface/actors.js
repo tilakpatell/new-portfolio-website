@@ -137,12 +137,23 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
           model,
           tall,
           update(dt, move) {
-            if (mixer) {
+            if (mixer && act.idle && act.walk) {
               const walkW = Math.min(1, move * 3);
-              act.idle?.setEffectiveWeight(1 - walkW);
-              act.walk?.setEffectiveWeight(walkW * (act.run ? 1 - Math.max(0, move - 0.6) * 2.5 : 1));
+              act.idle.setEffectiveWeight(1 - walkW);
+              act.walk.setEffectiveWeight(walkW * (act.run ? 1 - Math.max(0, move - 0.6) * 2.5 : 1));
               act.run?.setEffectiveWeight(Math.max(0, move - 0.6) * 2.5);
               mixer.update(dt);
+            } else if (mixer && act.walk) {
+              // a walk and nothing else: it walks while it's going, and
+              // stands where its stride stopped
+              act.walk.setEffectiveWeight(1);
+              act.walk.timeScale = move > 0.05 ? 0.5 + move : 0;
+              mixer.update(dt);
+            } else if (mixer) {
+              // an idle and nothing else: it idles, and the bob walks it
+              mixer.update(dt);
+              t += dt * (2 + move * 7);
+              model.position.y = Math.abs(Math.sin(t)) * 0.03 * move * tall;
             } else {
               // a model that doesn't move its legs: a bob in its step, a sway
               t += dt * (2 + move * 7);

@@ -5,6 +5,8 @@ import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/cre
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
+import Online from '../components/universe/online/Online';
+import { useOnline } from '../components/universe/online/useOnline';
 import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { siteOf } from '../components/galaxy/surface/sites';
@@ -41,6 +43,11 @@ export default function GalaxySurface() {
   const crew = crewById(ship);
   const { unlocked } = useAchievements();
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
+  // online: the other pilots down here with you
+  const online = useOnline();
+  const { setKind, setLoadout } = online;
+  useEffect(() => setKind(ship), [setKind, ship]);
+  useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   const [found, setFound] = useState(() => readFound()[id] ?? []);
   const [phase, setPhase] = useState('landing');
   const [prompt, setPrompt] = useState(null);
@@ -130,7 +137,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView system={id} ship={ship} loadout={loadout} found={found} compass={compass} handle={view} onEvent={onEvent} />
+      <SurfaceView system={id} ship={ship} loadout={loadout} found={found} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -222,6 +229,7 @@ export default function GalaxySurface() {
         </div>
       )}
       {crew && talkCrew && <Comms control={comms} crew={talkCrew} reduced={reduced} />}
+      {!leaving && <Online online={online} ship={ship} />}
       <div className="surface-fade" aria-hidden="true" />
     </div>
   );

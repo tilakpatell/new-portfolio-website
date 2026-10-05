@@ -21,7 +21,9 @@
 // { ready, resize, render, update, setVisible, input, dispose }.
 // Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
-// marks by data-id), found (the places already found, by id).
+// marks by data-id), found (the places already found, by id), net (the
+// online client, universe/online/client.js: your crew goes out to the
+// others, and theirs, down on the same world, are drawn here: peers.js).
 // Events: { type: 'phase', phase } (landing, walk, ride, leaving),
 // { type: 'prompt', text } (what E does, or null), { type: 'found', id },
 // { type: 'here', id } (the place you're in, or null), { type: 'talk',
@@ -53,6 +55,7 @@ import { createKit } from './kit';
 import { createPlacer } from './placer';
 import { createActors } from './actors';
 import { RIDES } from './rides';
+import { createPeers } from './peers';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -354,6 +357,9 @@ export async function create(canvas, ctx) {
       }),
     );
   })();
+
+  // ── The other pilots down here (online) ──
+  const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast()) });
 
   // ── State ──
   const state = {
@@ -883,6 +889,7 @@ export async function create(canvas, ctx) {
     placer.update(t, dt);
     stepDust(dt);
     storm(dt);
+    online(dt);
     marks.flush();
     ship.update?.(t);
 
@@ -909,6 +916,17 @@ export async function create(canvas, ctx) {
         flights.splice(i, 1);
       }
     }
+  }
+
+  // what goes out to the others online: your two, where they are (or
+  // nothing, while the ship's coming down or going)
+  function online(dt) {
+    const net = props.net;
+    if (!net) return;
+    const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed });
+    net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
+    peers.update(net, site.id, dt);
   }
 
   // lightning (Kamino's storms, Exegol's): a flash across the sky now and
@@ -995,6 +1013,13 @@ export async function create(canvas, ctx) {
       for (let i = 0; i < secs * 30; i++) tick(1 / 30);
       ctx.invalidate();
     },
+    // (for tests: pretend others are down here: [{ id, name, walk }])
+    fakePeers(list) {
+      if (!import.meta.env.DEV) return;
+      const at = performance.now();
+      const net = { peers: new Map(list.map((p) => [p.id, { ...p, walk: { ...p.walk, at } }])) };
+      props = { ...props, net: { ...net, walk() {} } };
+    },
     // (for tests: put you somewhere, facing somewhere)
     teleport(x, z, yaw = null) {
       if (!import.meta.env.DEV) return;
@@ -1021,6 +1046,8 @@ export async function create(canvas, ctx) {
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('wheel', wheel);
       engine?.stop();
+      props.net?.walk?.(null);
+      peers.dispose();
       life.dispose();
       placer.dispose();
       for (const p of people) p.fig?.dispose?.();
