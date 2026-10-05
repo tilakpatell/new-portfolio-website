@@ -9,6 +9,10 @@ import {
   CORNERS,
   FLAGS,
   LAMPS,
+  MAST_H,
+  PACKS,
+  PACK_R,
+  PERCHES,
   PLANTERS,
   RING_R,
   ROOF_PLANT,
@@ -29,9 +33,11 @@ import {
   camRoom,
   cameraMove,
   collide,
+  findPerch,
   floorAt,
   linesFor,
   nearCast,
+  nearPack,
   nearestEdge,
   nearPlace,
   newHero,
@@ -724,5 +730,259 @@ describe('The compound, the world: corner swings', () => {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     expect(Math.abs(d)).toBeGreaterThan(1);
     expect(inPoly(h.x, h.z, prow.foot)).toBe(false);
+  });
+});
+
+describe('The compound, the world: point launches', () => {
+  it('has perches on the masts’ and flagpoles’ tops and the roofs’ corners, each somewhere he can stand', () => {
+    expect(PERCHES.length).toBeGreaterThan(20);
+    for (const p of PERCHES) {
+      expect(inPoly(p.x, p.z, LAWN_W)).toBe(true);
+      if (p.roof) {
+        expect(floorAt(p.x, p.z, p.y)).toBeCloseTo(p.y, 5);
+        expect(walkable(p.x, p.z, HERO_R, p.y)).toBe(true);
+      } else expect(p.y).toBeGreaterThan(FLAGS.some((f) => f.x === p.x && f.z === p.z) ? 10 : MAST_H);
+    }
+  });
+
+  it('finds a perch ahead of him and in reach, and none behind him', () => {
+    // on the lawn by a mast, facing it
+    const m = PERCHES.find((p) => !p.roof && p.y > MAST_H);
+    const h = { ...newHero(START), x: m.x - 20, z: m.z, face: 0 };
+    const found = findPerch(h);
+    expect(found).not.toBe(null);
+    expect(Math.hypot(found.x - h.x, found.y - h.y, found.z - h.z)).toBeLessThanOrEqual(SWING.point.reach);
+    expect(found.x).toBeGreaterThan(h.x);
+    // steering counts for more than where he faces
+    const back = findPerch(h, { mx: -1, mz: 0, len: 1 });
+    expect(back === null || back.x < h.x).toBe(true);
+    // nothing in reach out in the woods' corner of the lawn
+    expect(findPerch({ ...h, x: -200, z: -200 })).toBe(null);
+  });
+
+  it('zips him to the perch on Q, perches him there, and a jump off it launches him out and up', () => {
+    const m = PERCHES.find((p) => !p.roof && p.y > MAST_H);
+    let h = { ...newHero(START), x: m.x - 20, z: m.z, face: 0 };
+    h = stepHero(h, { perch: true }, DT);
+    expect(h.mode).toBe('zipto');
+    expect(h.ev.map((e) => e.type)).toContain('point');
+    let perched = false;
+    for (let t = 0; t < 4 && h.mode === 'zipto'; t += DT) {
+      h = stepHero(h, {}, DT);
+      perched ||= h.ev.some((e) => e.type === 'perched');
+    }
+    expect(perched).toBe(true);
+    expect(h.mode).toBe('perch');
+    expect(h.x).toBeCloseTo(m.x, 3);
+    expect(h.y).toBeCloseTo(m.y, 3);
+    // crouched there, going nowhere, until he jumps
+    h = walk(h, {}, 1);
+    expect(h.mode).toBe('perch');
+    h = stepHero(h, { jump: true }, DT);
+    expect(h.ev.map((e) => e.type)).toContain('launch');
+    expect(h.mode).toBe('air');
+    expect(h.vy).toBeGreaterThan(SWING.point.launch.up * 0.9);
+    expect(Math.hypot(h.vx, h.vz)).toBeGreaterThan(SWING.point.launch.out * 0.9);
+    for (let t = 0; t < 8 && h.mode !== 'ground'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+  });
+
+  it('lands him on a roof’s corner from a point launch, and lets him walk off it', () => {
+    const c = PERCHES.find((p) => p.roof);
+    let h = { ...newHero(START), x: c.x - 18, z: c.z, y: 0, face: 0 };
+    const to = findPerch(h, { mx: 1, mz: 0, len: 1 });
+    if (!to?.roof) return; // (another perch nearer: not this corner's test)
+    h = stepHero(h, { perch: true, x: 1, z: 0 }, DT);
+    for (let t = 0; t < 4 && h.mode === 'zipto'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBeCloseTo(to.y, 3);
+    expect(walkable(h.x, h.z, HERO_R, h.y)).toBe(true);
+  });
+
+  it('a jump within a moment of landing on a perch is a point launch too', () => {
+    const m = PERCHES.find((p) => !p.roof && p.y > MAST_H);
+    let h = { ...newHero(START), x: m.x - 20, z: m.z, face: 0 };
+    h = stepHero(h, { perch: true }, DT);
+    for (let t = 0; t < 4 && h.mode === 'zipto'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.perchT).toBeGreaterThan(0);
+    const late = walk(h, {}, SWING.point.window + 0.1);
+    expect(late.perchT).toBe(0);
+  });
+});
+
+describe('The compound, the world: web wings', () => {
+  // high over the middle of the lawn, falling, with nothing above him to catch
+  const falling = (over = {}) => ({ ...newHero(START), x: 60 * 1.6, z: 52 * 1.6, y: 60, vx: 0, vy: -6, vz: -6, mode: 'air', fly: true, face: Math.PI / 2, ...over });
+
+  it('opens his wings when the web is held with nothing to catch, and the fall becomes a glide', () => {
+    let h = stepHero(falling(), { web: true }, DT);
+    expect(h.web).toBe(null);
+    expect(h.glide).toBe(true);
+    expect(h.ev.map((e) => e.type)).toContain('glide');
+    for (let t = 0; t < 2; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.glide).toBe(true);
+    // sinking gently, and carried on
+    expect(h.vy).toBeGreaterThan(-SWING.glide.sink - 0.5);
+    expect(h.vy).toBeLessThan(0);
+    expect(Math.hypot(h.vx, h.vz)).toBeGreaterThan(10);
+  });
+
+  it('folds them when the web is let go, or near the ground', () => {
+    let h = stepHero(falling(), { web: true }, DT);
+    h = stepHero(h, { web: false }, DT);
+    expect(h.glide).toBe(false);
+    // and a long glide east over the open lawn comes down on it, wings folded for the landing
+    h = falling({ y: 12, vy: -12, vx: 6, vz: 0, face: 0 });
+    for (let t = 0; t < 10 && h.mode !== 'ground'; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('ground');
+    expect(h.glide).toBe(false);
+  });
+
+  it('doesn’t open them going up, nor while a web could catch', () => {
+    const up = stepHero(falling({ vy: 6 }), { web: true }, DT);
+    expect(up.glide).toBe(false);
+    // low over the lawn by the main building, a web catches first
+    const low = stepHero(falling({ y: 10, z: 70 * 1.6, vz: -14 }), { web: true }, DT);
+    expect(low.mode).toBe('swing');
+    expect(low.glide).toBe(false);
+  });
+});
+
+// A bot that plays the tour by looking ahead: every third of a second it
+// tries a handful of things it could do for the next second and a half
+// (hold the web or let go, steer at the ring or off to a side, zip, jump)
+// through the real rules, and does whichever brings him through the ring, or
+// nearest it.
+const PLAN = { every: 20, horizon: 90 };
+function tourMoves(h, ring) {
+  const dx = ring.x - h.x;
+  const dz = ring.z - h.z;
+  const d = Math.hypot(dx, dz) || 1;
+  const at = { x: dx / d, z: dz / d };
+  const turned = (a) => ({ x: at.x * Math.cos(a) - at.z * Math.sin(a), z: at.x * Math.sin(a) + at.z * Math.cos(a) });
+  const out = [];
+  for (const web of [true, false]) {
+    out.push({ ...at, run: true, web });
+    out.push({ ...turned(0.9), run: true, web });
+    out.push({ ...turned(-0.9), run: true, web });
+  }
+  out.push({ ...at, run: true, web: false, zip: true });
+  out.push({ ...at, run: true, web: true, zip: true });
+  out.push({ ...at, run: true, jump: true, web: true });
+  out.push({ ...at, run: true, jump: true, web: false });
+  return out;
+}
+// how a move goes over the horizon: through the ring (the sooner the better), or how near it comes
+function tourScore(h0, input, ring) {
+  let h = h0;
+  let best = Infinity;
+  for (let i = 0; i < PLAN.horizon; i++) {
+    const p0 = [h.x, h.y + 1, h.z];
+    h = stepHero(h, i ? { ...input, jump: false, zip: false } : input, DT);
+    if (throughRing(p0, [h.x, h.y + 1, h.z], ring)) return -1000 + i;
+    const along = (h.x - ring.x) * ring.n[0] + (h.y + 1 - ring.y) * ring.n[1] + (h.z - ring.z) * ring.n[2];
+    best = Math.min(best, Math.hypot(h.x - ring.x, h.y + 1 - ring.y, h.z - ring.z) + (along > 0 ? 20 : 0));
+  }
+  return best;
+}
+function tourBot() {
+  let plan = null;
+  let left = 0;
+  return (h, ring) => {
+    if (left <= 0) {
+      let bestS = Infinity;
+      for (const c of tourMoves(h, ring)) {
+        const s = tourScore(h, c, ring);
+        if (s < bestS) {
+          bestS = s;
+          plan = c;
+        }
+      }
+      left = PLAN.every;
+    }
+    left -= 1;
+    const out = plan;
+    plan = { ...plan, jump: false, zip: false };
+    return out;
+  };
+}
+
+describe('The compound, the world: the swing tour, played', () => {
+  it('can be swung right round, ring by ring, through the real rules, in well under a minute', () => {
+    const r0 = TOUR[0];
+    let h = newHero({ x: r0.x - r0.n[0] * 14, z: r0.z - r0.n[2] * 14, face: Math.atan2(-r0.n[2], r0.n[0]) });
+    let tour = newTour();
+    const bot = tourBot();
+    const rings = [];
+    let done = null;
+    for (let t = 0; t < 120 && !done; t += DT) {
+      const p0 = [h.x, h.y + 1, h.z];
+      h = stepHero(h, bot(h, TOUR[tour.next]), DT);
+      let ev;
+      [tour, ev] = stepTour(tour, p0, [h.x, h.y + 1, h.z], DT);
+      for (const e of ev) {
+        if (e.type === 'tour-ring') rings.push(e.n);
+        if (e.type === 'tour-lost') throw new Error(`tour lost at ring ${rings.length + 1}`);
+        if (e.type === 'tour-done') done = e;
+      }
+      expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+    }
+    expect(rings).toEqual(TOUR.slice(1).map((_, i) => i + 1));
+    expect(done).not.toBe(null);
+    expect(done.time).toBeLessThan(45);
+    expect(done.best).toBe(true);
+  });
+});
+
+describe('The compound, the world: Peter’s backpacks', () => {
+  it('webs a dozen of them up round the compound, each somewhere he can stand or perch, none inside anything', () => {
+    expect(PACKS.length).toBe(12);
+    expect(new Set(PACKS.map((p) => p.id)).size).toBe(PACKS.length);
+    for (const p of PACKS) {
+      expect(inPoly(p.x, p.z, LAWN_W), p.id).toBe(true);
+      expect(solidAt(p.x, p.y + 0.1, p.z)?.id ?? null, p.id).toBe(null);
+      const standing = Math.abs(floorAt(p.x, p.z, p.y) - p.y) < 0.01 && walkable(p.x, p.z, HERO_R, p.y);
+      const perch = PERCHES.some((q) => Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.5);
+      expect(standing || perch, p.id).toBe(true);
+      expect(p.memento.length).toBeGreaterThan(3);
+      expect(p.line.length).toBeGreaterThan(10);
+      expect(p.where.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('keeps them apart, and off the doors', () => {
+    for (const a of PACKS) {
+      for (const b of PACKS) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.id}–${b.id}`).toBeGreaterThan(PACK_R * 2);
+      for (const d of PLACES) expect(Math.hypot(a.x - d.x, a.z - d.z), `${a.id}–${d.id}`).toBeGreaterThan(DOOR_R);
+    }
+  });
+
+  it('finds the one he walks up to, and not the ones he has found already', () => {
+    const p = PACKS.find((q) => q.id === 'underbridge');
+    expect(nearPack(p.x + PACK_R + 1, p.y, p.z)).toBe(null);
+    expect(nearPack(p.x + 0.8, p.y, p.z)?.id).toBe('underbridge');
+    expect(nearPack(p.x + 0.8, p.y, p.z, ['underbridge'])).toBe(null);
+    // the one on the mast's top is found from the perch
+    const m = PACKS.find((q) => q.id === 'mast');
+    expect(nearPack(m.x, m.y, m.z)?.id).toBe('mast');
+    // and not from the lawn under it
+    expect(nearPack(m.x, 0, m.z)).toBe(null);
+  });
+
+  it('can be walked to under the bridge, and climbed to on the gatehouse roof', () => {
+    const under = PACKS.find((q) => q.id === 'underbridge');
+    let h = walkTo(newHero(START), under.x, under.z, 30);
+    expect(nearPack(h.x, h.y, h.z)?.id).toBe('underbridge');
+    // the gatehouse: up its north wall from the lawn
+    const gate = PACKS.find((q) => q.id === 'gate');
+    h = newHero({ x: gate.x, z: gate.z - 6, face: -Math.PI / 2 });
+    h = walk(h, { x: 0, z: 1, run: true }, 1);
+    h = stepHero(h, { x: 0, z: 1, jump: true }, DT);
+    for (let t = 0; t < 1 && h.mode !== 'wall'; t += DT) h = stepHero(h, { x: 0, z: 1 }, DT);
+    expect(h.mode).toBe('wall');
+    for (let t = 0; t < 6 && h.mode === 'wall'; t += DT) h = stepHero(h, { x: 0, z: 1 }, DT);
+    expect(h.mode).toBe('ground');
+    h = walkTo(h, gate.x, gate.z, 5);
+    expect(nearPack(h.x, h.y, h.z)?.id).toBe('gate');
   });
 });

@@ -1692,6 +1692,42 @@ export function stepTour(tour, p0, p1, dt) {
   return [t, ev];
 }
 
+// ── Peter's backpacks ──
+// He keeps losing them, and webs them up wherever he was when he noticed:
+// a dozen of them round the compound, on the roofs, up the masts and under
+// the bridge, each with something of his in it and a word about it. Walk
+// (or swing, or land) up to one to find it. `at` is [x, y, z] in metres,
+// where it sits (a roof, a mast's top, the ground); `where` is for the list.
+const packAt = (id, [px, py, pz], where, memento, line) => ({ id, x: px, y: py, z: pz, where, memento, line });
+const roofAt = (b, x, y) => [x * S, solidById(b).h, y * S];
+export const PACK_R = 1.7; // how near his middle has to come to one
+export const PACKS = [
+  packAt('hangar', roofAt('hangar', 18, 58), 'The hangar’s roof, by the A', 'The Stark Internship badge', 'Mr. Stark said it was a real internship. The badge doesn’t open any doors. I checked.'),
+  packAt('prow', roofAt('prow', 55, 22), 'The main building’s roof, by the comms mast', 'A Midtown Tech decathlon medal', 'Second place. Flash still says the Washington trip didn’t count.'),
+  packAt('wing', [(CRES.cx + 32 * Math.cos((44.75 * Math.PI) / 180)) * S, solidById('wing').h, (CRES.cy + 32 * Math.sin((44.75 * Math.PI) / 180)) * S], 'The glass wing’s roof, between the plant rooms', 'Happy’s business card', 'He’s not answering the number on it. He never answers the number on it.'),
+  packAt('clerestory', roofAt('clerestory', 110, 22.5), 'The top of the training center’s clerestory', 'A web-fluid cartridge, empty', 'Note to self: refill before patrol. Every time, Peter.'),
+  packAt('lab', roofAt('lab', 92, 75.8), 'The lab’s roof, between the roof lights', 'Ned’s Lego Emperor Palpatine', 'He wants it back. He’s wanted it back since sophomore year.'),
+  packAt('bridge', roofAt('bridge', 37, 26.2), 'On top of the bridge', 'Half a churro', 'A nice lady gave me this after I helped her with directions. I’m saving it.'),
+  packAt('underbridge', [41 * S, 0, 26.2 * S], 'Under the bridge', 'A Stark Expo ticket stub, 2010', 'I was eight. There was a guy in a helmet. It’s a long story.'),
+  packAt('mast', [MASTS[1].x, MAST_H + 0.95, MASTS[1].z], 'The top of a floodlight mast, by the helipad', 'Aunt May’s walnut date loaf, wrapped', 'Nobody eats it, but you take it. That’s the rule.'),
+  packAt('gate', roofAt('gate', 42, 100), 'The gatehouse roof', 'A library book, three years overdue', 'Midtown’s going to find out eventually.'),
+  packAt('berm', roofAt('berm', -12, 14.5), 'On the range’s berm', 'Clint’s practice arrow, snapped', 'He said keep it. He also said I can’t aim. Both true.'),
+  packAt('stalls', roofAt('stalls', -12, 66), 'The roof of the range’s stalls', 'A Sokovia Accords pamphlet', 'I was going to read it on the plane. Then there was an airport.'),
+  packAt('flag', [FLAGS[1].x, FLAG_H + 0.5, FLAGS[1].z], 'The top of the middle flagpole', 'MJ’s drawing of me in a crisis', 'She says it’s not a compliment. I’m keeping it anyway.'),
+];
+export const packById = (id) => PACKS.find((p) => p.id === id) ?? null;
+// The backpack within reach of someone whose feet are at (x, y, z) that isn't
+// among `found` (ids), nearest first; null if none.
+export function nearPack(x, y, z, found = []) {
+  let best = null;
+  for (const p of PACKS) {
+    if (found.includes(p.id)) continue;
+    const d = Math.hypot(p.x - x, p.y + 0.3 - (y + 1), p.z - z);
+    if (d < PACK_R && (!best || d < best.d)) best = { p, d };
+  }
+  return best?.p ?? null;
+}
+
 // ── the heist so far ──
 
 const WHOLE = ['space', 'mind', 'reality', 'power', 'time', 'soul'];

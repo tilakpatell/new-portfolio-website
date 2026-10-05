@@ -8,7 +8,7 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { BUILDINGS, HERO_R, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPlace, newHero, newTour, outside, placeById, progress, stepHero, stepTour, underPortal, walkable } from './rules';
+import { BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
@@ -27,6 +27,12 @@ const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).ca
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
 const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
+const FOUND = 'tp-hq-packs';
+// the backpacks found so far (ids), as kept between visits
+const readFound = () => {
+  const v = local.get(FOUND, []);
+  return Array.isArray(v) ? v.filter((id) => PACKS.some((p) => p.id === id)) : [];
+};
 // seconds as 0:41.3
 const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 // the lines the site has the films' own recordings of (lib/clips)
@@ -110,7 +116,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null) };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound() };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -130,6 +136,14 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const t = setTimeout(() => setTourMsg(null), 2600);
     return () => clearTimeout(t);
   }, [tourMsg]);
+  // Peter's backpacks: how many found, and the one just found
+  const [found, setFound] = useState(() => sim.current.found.length);
+  const [pack, setPack] = useState(null);
+  useEffect(() => {
+    if (!pack) return undefined;
+    const t = setTimeout(() => setPack(null), 5200);
+    return () => clearTimeout(t);
+  }, [pack]);
   // a perfect release: a word of it at the bottom of the screen
   const [trick, setTrick] = useState(null);
   const trickN = useRef(0);
@@ -323,6 +337,20 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     s.jump = false;
     s.zip = false;
     s.perch = false;
+    // a backpack within reach: found
+    const pk = nearPack(s.h.x, s.h.y, s.h.z, s.found);
+    if (pk) {
+      s.found = [...s.found, pk.id];
+      local.set(FOUND, s.found);
+      sfx('coin');
+      a.fx('pack', { id: pk.id });
+      setFound(s.found.length);
+      setPack({ n: s.found.length, ...pk });
+      if (s.found.length === PACKS.length) {
+        sfx('fanfare');
+        unlock('backpacks');
+      }
+    }
     for (const e of s.h.ev) {
       if (e.type === 'web' || e.type === 'zip' || e.type === 'corner' || e.type === 'point') sfx('zip');
       else if (e.type === 'perfect') {
@@ -368,7 +396,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     tv?.pose(s.h);
     const others = tv ? tv.list() : null;
     try {
-      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour }, ms * fast);
+      a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: touch ? 8.4 : 7.6, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -390,7 +418,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others, s.found);
     if (s.frame % 120 === 0 && s.h.mode === 'ground') local.set(AT, keep(s.h));
   }, live);
 
@@ -485,6 +513,15 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
           {tourMsg}
         </p>
       )}
+      {pack && (
+        <div key={pack.n} className="cw-pack" role="status">
+          <p className="cw-pack-n">
+            Backpack {pack.n} of {PACKS.length} · {pack.where}
+          </p>
+          <p className="cw-pack-what">{pack.memento}</p>
+          <p className="cw-pack-line">“{pack.line}”</p>
+        </div>
+      )}
       {trick && (
         <p key={trick.n} className="cw-trick" aria-live="polite">
           Perfect swing{trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
@@ -516,6 +553,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
             Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
           </button>
           <p ref={tourRef} className="cw-chip cw-tour-on" aria-live="off" />
+          <p className="cw-chip cw-packs" title="Peter’s backpacks, webbed up round the compound: on the roofs, up the masts, under the bridge. Walk up to one." aria-label={`${found} of ${PACKS.length} backpacks found`}>
+            <span aria-hidden="true">🎒</span> <b>{found}</b> of {PACKS.length}
+          </p>
           <Players trav={trav} />
         </div>
       </div>
@@ -661,9 +701,11 @@ function Players({ trav }) {
 }
 
 // The map in the corner: the river, the lawn and its drives, the buildings,
-// the doors (a stone over each one won back), the portal once it's open, and you.
+// the doors (a stone over each one won back), the portal once it's open, the
+// backpacks still to find near you, and you.
 const MAP = { x0: -60, z0: -20, size: 300 };
-function drawMap(c, h, prog, others) {
+const PACK_SHOWN = 42; // a backpack shows on the map this near (m)
+function drawMap(c, h, prog, others, found = []) {
   const g = c?.getContext('2d');
   if (!g) return;
   const k = 150 / MAP.size;
@@ -726,6 +768,17 @@ function drawMap(c, h, prog, others) {
     g.beginPath();
     g.arc(x, y, 4 + pulse * 0.4, 0, Math.PI * 2);
     g.stroke();
+  }
+  // the backpacks still to find, once you're near one: a white dot, blinking
+  if (Math.sin(performance.now() / 180) > -0.3) {
+    g.fillStyle = '#ffffff';
+    for (const p of PACKS) {
+      if (found.includes(p.id) || Math.hypot(p.x - h.x, p.z - h.z) > PACK_SHOWN) continue;
+      const [x, y] = at(p.x, p.z);
+      g.beginPath();
+      g.arc(x, y, 2, 0, Math.PI * 2);
+      g.fill();
+    }
   }
   // the others online, pale
   if (others?.length) {

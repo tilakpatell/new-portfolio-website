@@ -321,6 +321,54 @@ html[data-script] .toast-host { bottom: calc(88px + env(safe-area-inset-bottom))
 }
 .nav-search:hover { background: var(--surface-2); color: var(--text); }
 
+/* The view switch: the universe or the classic site, a pill of two beside the
+   name (ViewSwitch.jsx). The one you're in is filled; on a world page, the one
+   you picked. */
+.view-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.view-switch > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.view-switch > button:has(.sr-only) { padding: 0 0.45rem; }
+.view-switch > button:hover { color: var(--text); }
+.view-switch > button[aria-pressed='true'] {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15, 17, 17, 0.08), 0 0 0 1px var(--border);
+}
+.view-switch > button[aria-pressed='true'] svg { color: var(--accent-text); }
+.view-switch > button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+/* in the phone menu: full width, big enough for a thumb */
+.view-switch[data-size='menu'] { display: flex; width: 100%; padding: 3px; }
+.view-switch[data-size='menu'] > button { flex: 1; height: 44px; font-size: 0.95rem; }
+
+/* Home's way into the universe, under the hero's buttons */
+.hero-universe { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; color: var(--muted); font-size: 0.9rem; transition: color 0.15s ease; }
+.hero-universe:hover { color: var(--text); }
+.hero-universe svg:first-child { color: var(--accent-text); }
+.hero-universe-em { color: var(--text); font-weight: 600; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.hero-universe:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: 6px; }
+
 /* The phone menu: an opaque sheet under the bar, covering the page */
 .mobile-menu {
   position: fixed;

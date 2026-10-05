@@ -875,4 +875,7 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
     scroll-behavior: auto !important;
   }
   .reveal:not([data-in='true']) { opacity: 1; transform: none; }
+  /* cut short, the toast's animation would end on its faded-out last frame:
+     it just shows, for as long as it's up */
+  .toast { animation: none !important; }
 }
