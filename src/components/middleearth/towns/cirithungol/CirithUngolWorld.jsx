@@ -5,16 +5,19 @@ import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick } from '../TownHud';
+import { SideList } from '../SideList';
+import { readSide, recordSide } from '../side';
 import { keyDown, keyUp, moveOf } from '../keys';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { LAIR_IN, LAIR_OUT, ORC_ROUNDS, SHELOB_ROUNDS, SHELOB_START, TOWER_COLLIDERS, TOWER_DOOR, TOWER_IN, TOWER_WALLS, lairBlocked, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, cirithProgress } from './story';
-import { DUEL, MORGUL, ORCS, PHIAL, SHELOB, STAIRS, crumbling, dodge, newClimb, newDuel, newMorgul, newPhial, onLedge, recoils, stab, stepClimb, stepDuel, stepMorgul, stepPhial } from './rules';
+import { CONVOS, CRUMB_SAYS, QUESTS, SEAL, SIDE, SPEAKERS, cirithProgress } from './story';
+import { CRUMBS, DUEL, MORGUL, ORCS, PHIAL, SHELOB, STAIRS, brush, crumbling, crumbsLeft, dodge, moveHand, newClimb, newCrumbs, newDuel, newMorgul, newPhial, onLedge, recoils, stab, stepClimb, stepCrumbs, stepDuel, stepMorgul, stepPhial } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './cirithungol.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Cirith Ungol, the ninth stretch of the road: Minas Morgul, the stairs,
 // Shelob's lair, Sam's fight, and the Tower. The places are in
@@ -24,6 +27,8 @@ import './cirithungol.css';
 
 const DONE = 'tp-cirithungol-done';
 const AT = 'tp-cirithungol-at';
+// crumbs on Sam's cloak, on the side: { won, best } (best: fewest seconds)
+const SIDE_KEY = 'tp-cirithungol-side';
 const sounds = () => import('./sounds');
 const walkers = {
   lair: makeWalker({ radius: 400, colliders: [], walls: [], blocked: lairBlocked }),
@@ -55,15 +60,28 @@ export default function CirithUngolWorld({ onLeave }) {
     },
     [unlock],
   );
+  // the night on the stair, on the side: kept apart from the story's progress
+  const [side, setSide] = useState(() => readSide(local.get(SIDE_KEY, null)));
+  const recordGo = useCallback(
+    (go) => {
+      setSide((was) => {
+        const { won, best } = recordSide(was, go, { low: true });
+        local.set(SIDE_KEY, { won, best });
+        return { won, best };
+      });
+      if (go.won) unlock(SIDE.seal);
+    },
+    [unlock],
+  );
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world cirith-world" aria-labelledby="cirith-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} complete={complete} side={side} recordGo={recordGo} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, complete, gl, setGl, onLeave }) {
+function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -73,7 +91,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     const zone = prog.zone;
     const at = validAt(local.get(AT, null), zone === 'tower' ? 'tower' : 'lair');
     const h = newWalker(zone === 'tower' ? at : LAIR_IN);
-    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, morgul: null, climb: null, shelob: null, phial: null, duel: null, orcs: null, busy: false, steer: 0, up: 0, hold: 0, cKey: false };
+    sim.current = { zone, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, near: null, frame: 0, moved: false, t: 0, stepT: 0, air: null, padBefore: null, morgul: null, climb: null, shelob: null, phial: null, duel: null, orcs: null, busy: false, steer: 0, up: 0, hold: 0, cKey: false, crumbs: null, from: null, said: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -216,6 +234,50 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     s.orcs = newWatchers(ORC_ROUNDS);
   }, [toZone]);
 
+  // the night on the stair: Sam's cloak, and Gollum's crumbs on it
+  const startCrumbs = useCallback(() => {
+    const s = sim.current;
+    audioContext();
+    if (s.mode !== 'crumbs') s.from = { zone: s.zone, mode: s.mode, h: { ...s.h } };
+    s.zone = 'stairs';
+    s.mode = 'crumbs';
+    s.crumbs = newCrumbs(Math.floor(Math.random() * 1000) + 1);
+    s.said = CRUMB_SAYS.start;
+    s.air?.place('stairs');
+    setList(false);
+  }, []);
+  const leaveCrumbs = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'crumbs') return;
+    const from = s.from ?? { zone: 'tower', mode: 'walk', h: TOWER_IN };
+    s.crumbs = null;
+    s.from = null;
+    if (from.mode === 'end') {
+      s.zone = from.zone;
+      s.mode = 'end';
+      s.air?.place(from.zone);
+    } else if (from.zone === 'lair' || from.zone === 'tower') toZone(from.zone, from.h);
+    else toZone('tower', TOWER_IN);
+  }, [toZone]);
+  const doBrush = useCallback(
+    (u, v) => {
+      const s = sim.current;
+      const c = s.crumbs;
+      if (s.mode !== 'crumbs' || !c) return;
+      const got = brush(c, u, v);
+      if (got == null) return;
+      sounds().then((x) => x.whisk(got));
+      api.current?.fx('brush', { u: c.hand.u, v: c.hand.v, got });
+      if (!got && c.misses % 3 === 1) s.said = CRUMB_SAYS.rustle;
+      if (c.state === 'clean') {
+        const secs = Math.round(c.t + c.late);
+        s.said = CRUMB_SAYS.won(secs);
+        recordGo({ won: true, score: secs });
+      }
+    },
+    [recordGo],
+  );
+
   const enter = useCallback(
     (id) => {
       audioContext();
@@ -343,6 +405,14 @@ function World({ prog, complete, gl, setGl, onLeave }) {
         e.preventDefault();
         audioContext();
       }
+      if (s.mode === 'crumbs') {
+        if ((k === ' ' || k === 'e' || k === 'E' || k === 'Enter') && !onButton && !e.repeat) {
+          e.preventDefault();
+          doBrush();
+        } else if (k === 'Escape') leaveCrumbs();
+        else if ((k === 'r' || k === 'R') && s.crumbs && s.crumbs.state !== 'on') startCrumbs();
+        return;
+      }
       if (s.mode === 'duel' && !e.repeat) {
         if (k === ' ' || k === 'e' || k === 'E' || k === 'Enter') {
           e.preventDefault();
@@ -362,7 +432,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, talkOnward, doAct, doStab, doDodge]);
+  }, [live, talkOnward, doAct, doStab, doDodge, doBrush, leaveCrumbs, startCrumbs]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -532,6 +602,26 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     if (s.mode === 'walk' && p.next === 'samwise' && !s.duel) startTalk('sam');
     if (s.mode === 'walk' && p.next === 'tower' && !s.orcs) startTower();
 
+    // the night on the stair: your hand over the cloak, and Frodo waking
+    if (s.mode === 'crumbs' && s.crumbs) {
+      const c = s.crumbs;
+      const hx = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + (pad ? pad.lx : 0);
+      const hy = (held('down') ? 1 : 0) - (held('up') ? 1 : 0) + (pad ? pad.ly : 0);
+      if (c.state === 'on') moveHand(c, hx, hy, dt);
+      if (pad && pressed('a')) doBrush();
+      for (const e of stepCrumbs(c, dt)) {
+        if (e.type === 'stir') {
+          a.fx('stir');
+          sounds().then((x) => x.murmur());
+          s.said = CRUMB_SAYS.stir[e.i % CRUMB_SAYS.stir.length];
+        } else if (e.type === 'woke') {
+          sounds().then((x) => x.murmur());
+          s.said = CRUMB_SAYS.woke;
+          recordGo({ won: false, score: null });
+        }
+      }
+    }
+
     // what's here
     s.near = s.mode === 'walk' && p.next === 'morgul' ? 'morgul' : s.mode === 'walk' && p.next === 'stairs' ? 'stairs' : null;
 
@@ -558,6 +648,7 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           phial: ph ? { on: ph.on, charge: ph.charge } : null,
           duel: du ? { phase: du.phase, phaseT: du.phaseT, wounds: du.wounds, hearts: du.hearts, dodged: du.dodged } : null,
           orcs: s.orcs?.list ?? null,
+          crumbs: s.mode === 'crumbs' ? s.crumbs : null,
           stepT: s.stepT,
           camYaw: s.yaw,
           camPitch: s.pitch,
@@ -575,10 +666,11 @@ function World({ prog, complete, gl, setGl, onLeave }) {
       return;
     }
 
-    const key = [s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, m ? Math.round(m.pull * 20) : '', m?.pausing, m ? Math.round(m.gaze * 10) : '', c ? Math.round(c.s) : '', c ? Math.round(c.stamina * 20) : '', c?.spent, ph ? Math.round(ph.charge * 20) : '', ph?.on, du?.phase, du?.wounds, du?.hearts, s.shelob?.list?.[0]?.mode, s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase'), p.done.length].join('|');
+    const cr = s.mode === 'crumbs' ? s.crumbs : null;
+    const key = [cr ? [cr.state, cr.left, Math.round(crumbsLeft(cr)), cr.stirred, s.said].join(',') : '', s.zone, s.mode, s.near, s.moved, s.talking, s.talk?.at, m ? Math.round(m.pull * 20) : '', m?.pausing, m ? Math.round(m.gaze * 10) : '', c ? Math.round(c.s) : '', c ? Math.round(c.stamina * 20) : '', c?.spent, ph ? Math.round(ph.charge * 20) : '', ph?.on, du?.phase, du?.wounds, du?.hearts, s.shelob?.list?.[0]?.mode, s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase'), p.done.length].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, morgul: m ? { pull: m.pull, pausing: m.pausing, gaze: m.gaze } : null, climb: c ? { s: c.s, stamina: c.stamina, spent: c.spent, ledge: onLedge(c.s), crumbling: crumbling(c.s) } : null, phial: ph ? { charge: ph.charge, on: ph.on } : null, hunted: ['alert', 'chase'].includes(s.shelob?.list?.[0]?.mode), duel: du ? { phase: du.phase, wounds: du.wounds, hearts: du.hearts } : null, spotted: Boolean(s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase')) });
+      setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, morgul: m ? { pull: m.pull, pausing: m.pausing, gaze: m.gaze } : null, climb: c ? { s: c.s, stamina: c.stamina, spent: c.spent, ledge: onLedge(c.s), crumbling: crumbling(c.s) } : null, phial: ph ? { charge: ph.charge, on: ph.on } : null, hunted: ['alert', 'chase'].includes(s.shelob?.list?.[0]?.mode), duel: du ? { phase: du.phase, wounds: du.wounds, hearts: du.hearts } : null, spotted: Boolean(s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase')), crumbs: cr ? { state: cr.state, left: cr.left, time: crumbsLeft(cr), stirred: cr.stirred, say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'lair' || s.zone === 'tower')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
   }, live);
@@ -590,6 +682,12 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     if (e.type === 'pointerdown') {
       audioContext();
       if (s.mode === 'walk') drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      else if (s.mode === 'crumbs' && api.current?.cloakAt) {
+        // a tap on the cloak brushes there
+        const r = e.currentTarget.getBoundingClientRect();
+        const at = api.current.cloakAt(e.clientX - r.left, e.clientY - r.top);
+        if (at && Math.abs(at.u) < CRUMBS.w / 2 + 0.1 && Math.abs(at.v) < CRUMBS.d / 2 + 0.1) doBrush(at.u, at.v);
+      }
       return;
     }
     if (e.type === 'pointermove') {
@@ -639,6 +737,8 @@ function World({ prog, complete, gl, setGl, onLeave }) {
     onContextMenu: (e) => e.preventDefault(),
   });
   const stay = () => toZone('tower', TOWER_IN);
+  const sideTask = { ...SIDE, open: prog.done.includes(SIDE.needs), done: side.won, best: side.best != null ? CRUMB_SAYS.best(side.best) : null };
+  const sideOpen = sideTask.open;
 
   const here = hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
@@ -649,8 +749,9 @@ function World({ prog, complete, gl, setGl, onLeave }) {
   const M = hud.morgul;
   const Cl = hud.climb;
   const D = hud.duel;
+  const Cr = mode === 'crumbs' ? hud.crumbs : null;
   return (
-    <div ref={box} className="shire-stage cirith-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['morgul', 'climb', 'duel'].includes(mode) || (walking && hud.zone === 'lair') || undefined}>
+    <div ref={box} className="shire-stage cirith-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['morgul', 'climb', 'duel', 'crumbs'].includes(mode) || (walking && hud.zone === 'lair') || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Cirith Ungol in 3D: Minas Morgul's green light, the endless stairs, Shelob's lair, and the Tower" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To the Morgul vale…</p>}
 
@@ -788,6 +889,48 @@ function World({ prog, complete, gl, setGl, onLeave }) {
           <p className="shire-panel-title">An orc has seen you!</p>
         </div>
       )}
+      {Cr && (
+        <div className="shire-panel cirith-crumbs" role="group" aria-label="Crumbs on Sam’s cloak" data-stir={Cr.stirred > 0 || undefined}>
+          <p className="shire-panel-title">{Cr.state === 'clean' ? 'Not a crumb' : Cr.state === 'woke' ? 'Too late' : 'Crumbs on Sam’s cloak'}</p>
+          {Cr.say && (
+            <p className="shire-panel-say" aria-live="polite">
+              {Cr.say}
+            </p>
+          )}
+          {Cr.state === 'on' && (
+            <div className="shire-meter" role="meter" aria-label="Till Frodo wakes" aria-valuemin={0} aria-valuemax={CRUMBS.time} aria-valuenow={Math.round(Cr.time)}>
+              <span className="shire-meter-label">Till he wakes</span>
+              <span className="shire-meter-bar cirith-meter-dawn">
+                <span style={{ transform: `scaleX(${Cr.time / CRUMBS.time})` }} />
+              </span>
+            </div>
+          )}
+          <p className="shire-panel-stats">
+            <span>
+              Crumbs left <b>{Cr.left}</b> of {CRUMBS.n}
+            </span>
+          </p>
+          {Cr.state === 'on' ? (
+            <>
+              <p className="shire-panel-help">{touch ? 'Tap the crumbs on the cloak to brush them off. Tapping at nothing rustles, and he wakes the sooner.' : 'Click the crumbs, or move your hand with W A S D and brush with Space. Brushing at nothing rustles, and he wakes the sooner.'}</p>
+              <div className="shire-panel-row">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={leaveCrumbs}>
+                  Stop {!touch && <kbd>Esc</kbd>}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="shire-panel-row">
+              <button type="button" className="btn btn-primary btn-sm" onClick={startCrumbs}>
+                Again {!touch && <kbd>R</kbd>}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={leaveCrumbs}>
+                Back
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {mode === 'end' && (
         <div className="shire-panel cirith-end" role="dialog" aria-label="Into Mordor">
           <p className="shire-panel-title">Into Mordor</p>
@@ -800,10 +943,19 @@ function World({ prog, complete, gl, setGl, onLeave }) {
               Stay here
             </button>
           </div>
+          {sideOpen && (
+            <button type="button" className="btn btn-ghost btn-sm cirith-side-go" onClick={startCrumbs}>
+              On the side: {SIDE.name}
+            </button>
+          )}
         </div>
       )}
       {walking && touch && (hud.zone === 'lair' || hud.zone === 'tower') && <Stick onStick={onStick} />}
-      {list && <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} />}
+      {list && (
+        <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)}>
+          <SideList tasks={[sideTask]} onGo={startCrumbs} canGo={(t) => t.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />
+        </QuestList>
+      )}
     </div>
   );
 }

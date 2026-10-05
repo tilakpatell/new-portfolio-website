@@ -18,6 +18,7 @@ import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand,
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './weathertop.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Weathertop, the third town on the road: walk up the hill of Amon Sûl at
 // dusk as Frodo, and play the night there as the films tell it. The land

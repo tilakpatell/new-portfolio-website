@@ -22,8 +22,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { gltfLoader } from '../../../lib/three/gltf';
+import { loadTexture } from '../../../lib/three/textures';
 import { glassMat, glowSprite, glowTexture, painted, planarUV, rng, roundedBox, tubeAlong } from '../kit';
 import { sky as starField } from '../space';
 import { loadCrew, nudge, prefetchCrew } from '../crew';
@@ -94,16 +94,10 @@ function driveAt(p, lt) {
 
 // ── loading ──
 
-function loadTex(url, { srgb = true, repeat = true, aniso = 8 } = {}) {
-  return new THREE.TextureLoader()
-    .loadAsync(url)
-    .then((t) => {
-      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-      if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.anisotropy = aniso;
-      return t;
-    })
-    .catch(() => null);
+// (decoded off the main thread, as sharp at a slant as the device's tier
+// allows, and shared with the worlds that use the same scans)
+function loadTex(url, { srgb = true, repeat = true } = {}) {
+  return loadTexture(url, { color: srgb, wrap: repeat }).catch(() => null);
 }
 
 // a CC0 surface: its colour, and its normal and ARM maps where they're worth it
@@ -113,8 +107,7 @@ function loadSet(dir, { normal = true, arm = false } = {}) {
 
 // a crew member's clip on its own (the HTTP cache has it from loadCrew)
 function loadClip(name) {
-  const l = new GLTFLoader();
-  l.setMeshoptDecoder(MeshoptDecoder);
+  const l = gltfLoader();
   return l
     .loadAsync(`/models/cockpit/${name}.glb`)
     .then((g) => g.animations[0] ?? null)
@@ -681,7 +674,7 @@ function markingsMap(seed) {
         g.stroke();
       }
     },
-    { repeat: [1, 1], aniso: 8 },
+    { repeat: [1, 1] },
   );
 }
 
@@ -1537,8 +1530,7 @@ const FLYER_URL = '/models/universe/rv-wings.glb';
 const SUV_URL = '/models/albuquerque/world/suv.glb';
 
 function loadModel(url) {
-  const l = new GLTFLoader();
-  l.setMeshoptDecoder(MeshoptDecoder);
+  const l = gltfLoader();
   return l
     .loadAsync(url)
     .then((g) => g.scene)
@@ -1742,7 +1734,6 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   const inside = new THREE.Group();
   const outside = new THREE.Group();
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
-  const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const models = createModels({ base: '/games/models' });
 
   // Jesse, sat in the passenger's seat; Mr. White stood in the aisle behind,
@@ -1777,7 +1768,6 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
     loadClip('walt-idle'),
     extras,
   ]);
-  for (const set of [bench, panelling, lino, asphalt, dirt, rock]) for (const t of Object.values(set)) if (t) t.anisotropy = aniso;
 
   // ── materials ──
   const mould = mouldedMaps(3);
@@ -1979,8 +1969,8 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   cluster.updateMatrixWorld(true);
   const CL = cluster.matrixWorld.clone();
   const faceM = std({
-    map: painted(FACE.px, FACE.py, (g, W, H) => paintCluster(g, W, H, false), { aniso: 8 }),
-    emissiveMap: painted(FACE.px, FACE.py, (g, W, H) => paintCluster(g, W, H, true), { aniso: 8 }),
+    map: painted(FACE.px, FACE.py, (g, W, H) => paintCluster(g, W, H, false)),
+    emissiveMap: painted(FACE.px, FACE.py, (g, W, H) => paintCluster(g, W, H, true)),
     emissive: 0x7fe2c8,
     emissiveIntensity: 0,
     roughness: 0.45,

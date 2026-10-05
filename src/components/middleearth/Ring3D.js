@@ -12,6 +12,7 @@
 
 import * as THREE from 'three';
 import { createStage, canvasTexture, hot } from '../../lib/stage3d';
+import { sharpen } from '../../lib/three/textures';
 import { fbm, makeCanvas, makeNoise } from '../../lib/paint';
 import { EMBER, FIRE, createParticles, lavaMaterial, skyDome } from './kit';
 
@@ -140,7 +141,7 @@ function letters(renderer, band) {
   draw();
   // the inscription's face, once it has loaded
   document.fonts?.load?.('600 64px Cinzel').then(draw, () => {});
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  sharpen(tex, { renderer });
   return tex;
 }
 
@@ -203,7 +204,7 @@ export function createRing3D(canvas, { soft = false, reduced = false, onLost } =
     emissiveIntensity: 0,
     envMapIntensity: 1.25,
   });
-  gold.roughnessMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  sharpen(gold.roughnessMap, { renderer });
   const ring = new THREE.Mesh(geo, gold);
   const holder = new THREE.Group(); // tilts towards the pointer
   const spin = new THREE.Group(); // turns

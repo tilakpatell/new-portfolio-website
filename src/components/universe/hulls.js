@@ -21,6 +21,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { normalCanvas, rng } from '../../lib/texture';
+import { sharpen } from '../../lib/three/textures';
 
 // ── geometry helpers ──
 
@@ -281,7 +282,7 @@ function panelMaps(kind, { base, seed, cols, rows, grime = 0.25, accent = null }
     const t = new THREE.CanvasTexture(canvas);
     t.colorSpace = colourSpace;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.anisotropy = 8;
+    sharpen(t);
     t.generateMipmaps = true;
     return t;
   };
@@ -676,7 +677,7 @@ function falconMaps() {
   const tex = (canvas, colourSpace) => {
     const t = new THREE.CanvasTexture(canvas);
     t.colorSpace = colourSpace;
-    t.anisotropy = 8;
+    sharpen(t);
     return t;
   };
   const maps = { map: tex(colour, THREE.SRGBColorSpace), normalMap: tex(normalCanvas(height, 2.6), THREE.NoColorSpace), roughnessMap: tex(rough, THREE.NoColorSpace) };

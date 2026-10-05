@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { PLACES } from '../../../data/places';
 import { useScene } from '../../../lib/three/useScene';
 import './globe3d.css';
+import '../../../styles/lazy/travel.css';
 
 // The travel globe in WebGL, laid over the 2D one. It stays hidden until it
 // has drawn a frame, then fades in, and tells the page its status so the 2D

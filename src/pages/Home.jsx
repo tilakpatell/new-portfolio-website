@@ -1,6 +1,6 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine } from 'react-icons/ri';
+import { RiArrowRightLine, RiFileTextLine, RiGithubFill, RiLinkedinBoxFill, RiMailLine, RiRocket2Line } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
 import Portrait from '../components/Portrait';
 import CareerStrip from '../components/CareerStrip';
@@ -16,12 +16,18 @@ import { useDocumentTitle } from '../lib/hooks';
 import { useSectionThemes, useTheme } from '../theme/ThemeProvider';
 import { ThemeBackdrop } from '../components/worlds/Backdrops';
 import { useFun } from '../fun/FunProvider';
-import PlacesExplorer from '../components/travel/PlacesExplorer';
 import PhotoBand from '../components/travel/PhotoBand';
-import Interests from '../components/interests/Interests';
 import FindMeOnline from '../components/online/FindMeOnline';
 import Egg from '../components/Egg';
 import ProgramManagement from '../components/ProgramManagement';
+import '../styles/lazy/home.css';
+
+// The globe and the interests row sit at the bottom of the page and bring the
+// most with them (the globe's WebGL check, the universe map's mini map and its
+// styles), so they load as they're scrolled near, not with the page.
+const PlacesExplorer = lazy(() => import('../components/travel/PlacesExplorer'));
+const Interests = lazy(() => import('../components/interests/Interests'));
+const narrow = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
 const LABELS = { gameboy: 'Game Boy emulator' };
 const label = (id) => LABELS[id] ?? roles.find((r) => r.id === id)?.short ?? id;
@@ -94,8 +100,8 @@ function HeroName() {
 
 export default function Home() {
   useDocumentTitle(null);
-  useSectionThemes();
   const page = useRef(null);
+  useSectionThemes(page);
 
   // Load the two live demos while the browser is idle, so they don't stall a scroll later.
   useEffect(() => {
@@ -149,6 +155,16 @@ export default function Home() {
               </Link>
               <Link to="/resume" className="btn btn-ghost btn-lg">
                 <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
+              </Link>
+            </Reveal>
+            {/* the other way round the site, for anyone who came straight here */}
+            <Reveal delay={220} className="mt-5">
+              <Link to="/universe/home" className="hero-universe group">
+                <RiRocket2Line className="h-4 w-4 flex-none" aria-hidden="true" />
+                <span>
+                  Or fly through it: the whole site as a <span className="hero-universe-em">universe</span>
+                </span>
+                <RiArrowRightLine className="h-4 w-4 flex-none transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
             </Reveal>
           </div>
@@ -352,7 +368,11 @@ export default function Home() {
             <Waypoint top="0.9rem" />
           </div>
         </div>
-        <PlacesExplorer />
+        <LazyMount minHeight={narrow() ? 1170 : 700}>
+          <Suspense fallback={<div style={{ minHeight: narrow() ? 1170 : 700 }} />}>
+            <PlacesExplorer />
+          </Suspense>
+        </LazyMount>
         <PhotoBand id="band" className="travel-teaser mt-16 md:mt-24">
           <div className="shell relative py-24">
             <h3 className="display max-w-2xl text-[clamp(2.1rem,1.2rem+3vw,3.8rem)] !text-white">Mountains, lakes and a little heritage.</h3>
@@ -364,7 +384,11 @@ export default function Home() {
         </PhotoBand>
       </section>
 
-      <Interests />
+      <LazyMount minHeight={narrow() ? 780 : 1160}>
+        <Suspense fallback={<div style={{ minHeight: narrow() ? 780 : 1160 }} />}>
+          <Interests />
+        </Suspense>
+      </LazyMount>
     </div>
   );
 }

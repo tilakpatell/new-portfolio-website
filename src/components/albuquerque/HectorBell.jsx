@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import '../../styles/lazy/albuquerque.css';
 
 const sfx = () => import('../../lib/sfx');
 const clip = (id, opts) => import('../../lib/clips').then((c) => c.playClip(id, opts));

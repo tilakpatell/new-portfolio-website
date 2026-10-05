@@ -6,6 +6,7 @@
 .doom-stage { background: linear-gradient(180deg, #1a0e0a 0%, #6a2a14 56%, #241410 60%, #080504 100%); }
 .doom-stage[data-zone='crack'] { background: radial-gradient(ellipse at 50% 80%, #6a2008 0%, #140604 70%); }
 .doom-stage .shire-loading { color: #f0c8a0; }
+.doom-stage[data-mode='remember'] .shire-canvas,
 .doom-stage[data-mode='talk'] .shire-canvas, .doom-stage[data-mode='march'] .shire-canvas, .doom-stage[data-mode='carry'] .shire-canvas, .doom-stage[data-mode='hang'] .shire-canvas, .doom-stage[data-mode='flight'] .shire-canvas, .doom-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
 
 .doom-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
@@ -26,8 +27,31 @@
 
 .doom-end { left: 50%; transform: translateX(-50%); width: min(30rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
 
+/* on the side, do you remember the Shire? the things of the Shire as
+   cards, each its own colour, lit while Sam tells it */
+.doom-remember { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: auto; right: clamp(0.7rem, 2vw, 1.2rem); transform: none; width: min(25rem, calc(100% - 1.4rem)); }
+.doom-remember .shire-panel-say b { color: var(--shire-gold); }
+.doom-remember[data-wrong] { border-color: rgba(160, 170, 200, 0.7); }
+.doom-shire { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem; }
+.doom-memory { justify-content: flex-start; gap: 0.45rem; text-align: left; font-size: 0.8rem; transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.doom-memory:disabled { opacity: 0.85; cursor: default; }
+.doom-memory i { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--memory, #f0d090); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25); }
+.doom-memory[data-lit] { background: rgba(255, 216, 144, 0.22); border-color: rgba(255, 216, 144, 0.85); box-shadow: 0 0 18px rgba(255, 210, 130, 0.35); opacity: 1; }
+.doom-memory[data-memory='blossom'] { --memory: #f6c6d8; }
+.doom-memory[data-memory='birds'] { --memory: #9a7a5a; }
+.doom-memory[data-memory='barley'] { --memory: #e8d27a; }
+.doom-memory[data-memory='strawberries'] { --memory: #e0404a; }
+.doom-memory[data-memory='water'] { --memory: #6ab0e0; }
+.doom-memory[data-memory='grass'] { --memory: #7ac860; }
+.doom-memory[data-memory='bread'] { --memory: #d8a060; }
+.doom-memory[data-memory='rosie'] { --memory: #f0a0c0; }
+.doom-side-go { margin-top: 0.15rem; }
+
 @media (max-width: 639px) {
   .doom-stage[data-game] .shire-hud-top { display: none; }
   .doom-game, .doom-stage .shire-hud-top ~ .doom-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
   .doom-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+  .doom-remember { top: auto; bottom: 0.7rem; width: calc(100% - 5.4rem); }
+  .doom-memory { font-size: 0.74rem; padding-left: 0.45rem; padding-right: 0.45rem; }
+  .doom-memory kbd { display: none; }
 }

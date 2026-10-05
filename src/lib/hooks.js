@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePageActive } from './page';
 
 const matches = (query) => typeof window !== 'undefined' && (window.matchMedia?.(query).matches ?? false);
 
@@ -85,10 +86,13 @@ export function useRowEnds(row, earlier, more) {
   }, [row, earlier, more]);
 }
 
+// In the feed (components/feed) several pages are mounted at once; only the
+// one on the address sets the tab's title.
 export function useDocumentTitle(title) {
+  const active = usePageActive();
   useEffect(() => {
-    document.title = title ? `${title} | Tilak Patel` : 'Tilak Patel | TPM & Software Engineer';
-  }, [title]);
+    if (active) document.title = title ? `${title} | Tilak Patel` : 'Tilak Patel | TPM & Software Engineer';
+  }, [title, active]);
 }
 
 // Runs `tick(dt, now)` every animation frame while `active`; pauses when the tab is hidden.

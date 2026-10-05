@@ -10,7 +10,8 @@ import { DRIVE_KEY, parseDrive } from '../components/universe/nav';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, equip, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { useAchievements } from '../components/Achievements';
-import { START_KEY } from './Front';
+import { saveStart } from '../lib/view';
+import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
@@ -154,11 +155,11 @@ export default function Universe({ ask = false }) {
 
   // the front door's choice: fly, or the home page; kept if asked to
   const start = (where, remember) => {
-    if (remember) local.set(START_KEY, where);
+    if (remember) saveStart(where);
     if (where === 'home') navigate('/home');
     else setAsking(false);
   };
-  const startOn = (where) => local.set(START_KEY, where);
+  const { switchTo } = useView();
 
   const whole = () => {
     if (!map.current.whole()) select(null);
@@ -179,7 +180,8 @@ export default function Universe({ ask = false }) {
     else if (e.type === 'siege' && e.what === 'down' && e.mine) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
-    } else comms.current?.handle(e);
+    } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
+    else comms.current?.handle(e);
   };
 
   // off from the nav map: with a ship, it flies (or jumps) there, and a
@@ -256,7 +258,7 @@ export default function Universe({ ask = false }) {
         loadout={loadout}
         onShip={pickShip}
         onHangar={() => setHangar(true)}
-        onStartOn={startOn}
+        onClassic={() => switchTo('classic')}
         tucked={tucked}
         onTuck={tuck}
         onNav={() => setCharting(true)}

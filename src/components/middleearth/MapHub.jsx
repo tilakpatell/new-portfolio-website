@@ -5,6 +5,7 @@ import ModelCredits from '../ModelCredits';
 import { CHAPTERS } from './chapters';
 import { hidden as hiddenPlace, hiddenAt } from './hidden';
 import { useTravellers } from './towns/useTravellers';
+import '../../styles/lazy/middleearth.css';
 
 // how far from a place on the sheet (800 across) a click still means it
 const REACH = 44;

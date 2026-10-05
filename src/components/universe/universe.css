@@ -465,6 +465,16 @@
   will-change: transform;
 }
 .universe-hud > span[data-on] { opacity: 1; }
+/* scrambled: a flare's shockwave through the ship (a jitter, and a flicker) */
+.universe-hud[data-static] > span[data-on] { animation: universe-static 90ms steps(2) infinite; }
+@keyframes universe-static {
+  0% { opacity: 1; margin-left: 0; }
+  50% { opacity: 0.35; margin-left: 3px; }
+  100% { opacity: 0.8; margin-left: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .universe-hud[data-static] > span[data-on] { animation: none; opacity: 0.6; }
+}
 .universe-reticle {
   width: 24px;
   height: 24px;
@@ -1234,3 +1244,4 @@
 .start-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
 .start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
 .start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
+.start-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }

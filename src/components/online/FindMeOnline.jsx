@@ -6,6 +6,7 @@ import ResumeSheet from '../ResumeSheet';
 import { profile } from '../../data/profile';
 import { roles } from '../../data/roles';
 import { local } from '../../lib/hooks';
+import '../../styles/lazy/online.css';
 
 // GitHub, LinkedIn and the résumé side by side. GitHub numbers come from the
 // snapshot saved at build time (public/github.json) and are refreshed from the

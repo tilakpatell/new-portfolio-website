@@ -23,6 +23,7 @@ import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import '@fontsource/cinzel/600.css';
 import ScriptToggle from '../components/ScriptToggle';
 import ClipBoard from '../components/worlds/ClipBoard';
+import '../styles/lazy/middleearth.css';
 
 const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));

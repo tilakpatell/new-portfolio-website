@@ -6,6 +6,7 @@ import { use3D } from '../../lib/gpu';
 import { local, useFrameLoop } from '../../lib/hooks';
 import Scene3D from './Scene3D';
 import { DUEL, block, newDuel, stepDuel, strike } from './duel';
+import '../../styles/lazy/middleearth.css';
 
 const sfx = () => import('../../lib/sfx');
 const BEST = 'tp-balrog-best';

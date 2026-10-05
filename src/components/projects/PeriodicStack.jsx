@@ -1,5 +1,6 @@
 import { projects } from '../../data/projects';
 import { Waypoint } from '../ui';
+import '../../styles/lazy/projects.css';
 
 // Every technology across the projects as a periodic table (a nod to Breaking
 // Bad). Where a two-letter symbol happens to be a real element, the tile says so.

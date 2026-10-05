@@ -9,6 +9,7 @@ import { CHROMATIC, FRET_SETS, customNotes, frets, isFretSet, ragaOf } from './t
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import './music.css';
+import '../../styles/lazy/music.css';
 
 // The sitar, played on its frets, set the way a player sets them (tuning.js
 // FRET_SETS): every swara from mandra Pa to taar Ga, a regular sitar's Sa to

@@ -29,6 +29,7 @@ export default function StartChoice({ onPick }) {
         <label className="start-remember">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember my choice
         </label>
+        <p className="start-note">Change your mind any time: the Universe and Classic switch sits at the top of every page.</p>
       </div>
     </div>
   );

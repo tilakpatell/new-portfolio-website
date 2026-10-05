@@ -1,0 +1,84 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.fun-visual { position: relative; height: 176px; flex: none; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+
+/* Sitar: a teak neck, arched brass frets, the gourd and its bridge */
+.sitar-visual { height: 200px; background: radial-gradient(120% 90% at 30% 0%, #2a1a10, #120b06); }
+.sitar-svg { display: block; width: 100%; height: 100%; cursor: pointer; touch-action: none; outline: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sitar-svg:focus-visible { outline: 2px solid #ffd27a; outline-offset: -3px; }
+.sitar-slot { fill: transparent; transition: fill 0.2s ease; }
+.sitar-slot:hover { fill: rgba(255, 210, 122, 0.08); }
+.sitar-slot[data-lit] { fill: rgba(255, 210, 122, 0.16); }
+.sitar-label { font-family: var(--font-mono); font-size: 10px; fill: rgba(255, 244, 222, 0.7); pointer-events: none; }
+.sitar-label[data-lit] { fill: #ffd27a; font-weight: 600; }
+
+/* The Lord of the Rings: the Ring, cold until it meets the fire */
+.ring-panel { position: relative; height: 100%; display: grid; place-items: center; background: radial-gradient(90% 120% at 50% 120%, #4a1a07 0%, #1a0b05 50%, #070302 100%); transition: background 0.8s ease; }
+.ring-panel[data-heat] { background: radial-gradient(90% 120% at 50% 112%, #ff7a1a 0%, #6b1f05 38%, #120604 100%); }
+.ring-panel svg { width: 80%; height: auto; overflow: visible; }
+.card-ring-text { font-family: 'Cinzel', Georgia, serif; font-size: 11.5px; letter-spacing: 1.1px; fill: #ffb347; opacity: 0; transition: opacity 0.9s ease; }
+.ring-panel[data-heat] .card-ring-text { opacity: 1; filter: drop-shadow(0 0 3px #ff7a1a) drop-shadow(0 0 8px #ff4d00); }
+
+/* Transformers: Cybertronian over the insignia, which flips when you change sides */
+.cy-panel { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; padding: 0 1.25rem; background: radial-gradient(120% 100% at 50% 0%, #1c2636 0%, #0a0e15 72%); }
+.cy-panel[data-faction='decepticon'] { background: radial-gradient(120% 100% at 50% 0%, #251b36 0%, #0c0a13 72%); }
+.cy-panel-mark { position: absolute; inset: 12% 31%; display: grid; place-items: center; color: #d0142f; opacity: 0.3; animation: cy-flip 0.6s cubic-bezier(0.3, 1.3, 0.5, 1); }
+.cy-panel-mark svg { width: 100%; height: 100%; }
+.cy-panel[data-faction='decepticon'] .cy-panel-mark { color: #9a5cf0; }
+@keyframes cy-flip { 0% { transform: rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 0.3; } }
+.cy-panel-text { position: relative; font-family: 'Cybertron Script', var(--font-mono); font-size: 1.9rem; line-height: 1.35; text-align: center; color: #4fd8ff; overflow-wrap: anywhere; text-shadow: 0 0 14px rgba(79, 216, 255, 0.4); }
+.cy-panel[data-faction='decepticon'] .cy-panel-text { color: #c4a3ff; text-shadow: 0 0 14px rgba(180, 140, 255, 0.4); }
+.dock-btn[data-icon='ring']:hover .dock-ring-glow { stroke: #ff9a3c; }
+@media (prefers-reduced-motion: reduce) { .cy-panel-mark { animation: none; } .ring-panel { transition: none; } }
+
+/* Gaming: a scoreboard of pixels */
+.pixel-panel {
+  background-color: #0e130c;
+  background-image: linear-gradient(rgba(139, 193, 26, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 193, 26, 0.07) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.pixel-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 220px; }
+.pixel-row span { width: 10px; height: 10px; background: #243020; }
+.pixel-row span[data-on] { background: #8bc11a; box-shadow: 0 0 6px rgba(139, 193, 26, 0.6); }
+.ig-stone[data-on] { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 9px var(--glow)); animation: stone-set 0.45s cubic-bezier(0.16, 1, 0.3, 1); transform-box: fill-box; transform-origin: center; }
+@keyframes stone-set { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* The Office: a sheet of Dunder Mifflin paper */
+.memo-panel {
+  background-color: color-mix(in srgb, var(--surface) 92%, #fff6d6);
+  background-image: linear-gradient(90deg, transparent 2.2rem, rgba(214, 73, 73, 0.35) 2.2rem, rgba(214, 73, 73, 0.35) calc(2.2rem + 1px), transparent calc(2.2rem + 1px)), repeating-linear-gradient(transparent 0 23px, rgba(91, 141, 239, 0.28) 23px 24px);
+  padding-left: 2.9rem !important;
+}
+.memo-body { margin-top: 0.6rem; font-family: var(--font-mono); font-size: 0.9rem; line-height: 24px; color: var(--text); }
+
+/* Breaking Bad: the title card, smoke and all */
+.bb-card { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; background: radial-gradient(120% 120% at 30% 20%, #1d5a32 0%, #0b3018 45%, #04160a 100%); }
+.bb-line-2 { padding-left: 2.6rem; }
+.tanpura-strings line { stroke: rgba(244, 236, 214, 0.35); stroke-width: 1.4; }
+.tanpura-strings text { font-family: var(--font-mono); font-size: 8px; fill: rgba(255, 244, 222, 0.45); }
+.tanpura-strings[data-on] line { stroke: rgba(244, 236, 214, 0.6); }
+.tanpura-strings[data-on] text { fill: rgba(255, 244, 222, 0.75); }
+.tanpura-strings line[data-lit] { stroke: #ffd27a; stroke-width: 2; animation: tanpura-hum 1s ease-out; }
+@keyframes tanpura-hum { 0% { transform: translateX(0); } 15% { transform: translateX(1.5px); } 30% { transform: translateX(-1.2px); } 50% { transform: translateX(0.6px); } 100% { transform: translateX(0); } }
+.sitar-svg { touch-action: pan-y; }
+/* each icon hints at what it does */
+.dock-btn .dock-blade { stroke: var(--saber); transition: filter 0.2s ease; }
+.dock-btn[data-icon='saber']:hover .dock-blade { filter: drop-shadow(0 0 3px var(--saber)); }
+.dock-btn .dock-gem { color: #ffc400; }
+.dock-btn[data-icon='gauntlet']:hover .dock-gem { filter: drop-shadow(0 0 2px #ffc400); }
+.dock-btn .dock-string { opacity: 0.55; transform-box: fill-box; transform-origin: center; }
+.dock-btn .dock-autobot { width: 20px; height: 20px; color: #c8102e; }
+.dock-btn[data-icon='robot']:hover .dock-autobot { filter: drop-shadow(0 0 3px rgba(200, 16, 46, 0.6)); }
+.dock-btn[data-icon='sitar']:hover .dock-string { animation: dock-shiver 0.5s ease-out; }
+@keyframes dock-shiver { 0%, 100% { transform: none; } 25% { transform: translate(0.4px, -0.4px); } 50% { transform: translate(-0.4px, 0.4px); } 75% { transform: translate(0.2px, -0.2px); } }
+@media (prefers-reduced-motion: reduce) { .dock-btn[data-icon='sitar']:hover .dock-string { animation: none; } }
+
+/* the Rick and Morty card in Off the clock: a portal on a dark wall, its light on the floor */
+.rmc-panel { position: relative; height: 100%; overflow: hidden; background: radial-gradient(60% 40% at 50% 100%, rgba(120, 220, 60, 0.28), transparent 70%), radial-gradient(90% 120% at 50% 40%, #182a1a 0%, #070d08 75%); }
+.rmc-name { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #c3e88f; }
+.dock-btn .dock-swirl { stroke: #4fa82a; transform-box: fill-box; transform-origin: center; }
+.dock-btn[data-icon='portal']:hover .dock-swirl { animation: portal-spin 0.9s linear infinite; }
+
+/* Still in styles/extras.css too; repeated here because this file loads after it */
+@media (prefers-reduced-motion: reduce) { .gauntlet[data-all], .ig-stone[data-on] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .portal-css, .dock-btn[data-icon='portal']:hover .dock-swirl { animation: none; } }

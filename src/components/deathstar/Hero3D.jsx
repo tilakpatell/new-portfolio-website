@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFrameLoop, useInView } from '../../lib/hooks';
 import { settle } from '../../lib/settle';
+import '../../styles/lazy/deathstar.css';
 
 // The Death Star page's hero in WebGL, over the SVG it replaces. It loads
 // Three.js and the scene only when it mounts, follows the page's state, and

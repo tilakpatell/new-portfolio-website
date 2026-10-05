@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { CLIPS, playClip } from '../../lib/clips';
+import '../../styles/lazy/worlds.css';
 
 // A world's soundboard: the films' and shows' own lines (lib/clips.js), a
 // button each with the line on it and who says it. One plays at a time;

@@ -274,16 +274,18 @@ function troopsFrom(rand, w, R, count, dist, kinds) {
     const spot = offset(w, Math.cos(a) * d, Math.sin(a) * d, R);
     const kind = kinds[Math.floor(rand() * kinds.length)];
     const facing = facingAlong(spot.n, add(w.n, spot.n, -1)); // toward the player
-    out.push({ id: nextId++, kind, ...person(spot.n, facing), hp: TROOPS[kind].hp, cool: 1 + rand() * 1.5, hold: TROOPS[kind].range[0] + rand() * (TROOPS[kind].range[1] - TROOPS[kind].range[0]), alive: true, dead: 0, swing: 0 });
+    out.push({ id: nextId++, kind, ...person(spot.n, facing), hp: TROOPS[kind].hp, cool: 1 + rand() * 1.5, hold: TROOPS[kind].range[0] + rand() * (TROOPS[kind].range[1] - TROOPS[kind].range[0]), alive: true, dead: 0, swing: 0, aim: 0 });
   }
   return out;
 }
 
 // One step for a squad: each goes at the nearest of `targets` ([{ id, n,
 // h }], the player and whoever's with them), stops at its distance and
-// fires (or, without a gun, closes in and hits). Returns { troops, shots,
-// hits }: shots are new bolts ({ from, dir, owner: 'troop', kind }), hits
-// are blows landed ({ target, damage }).
+// fires (or, without a gun, closes in and hits). One with a gun brings it
+// up as a target comes within reach (`aim`, 0…1: up in a quarter of a
+// second, down in half of one once they've gone), for the drawing to read.
+// Returns { troops, shots, hits }: shots are new bolts ({ from, dir, owner:
+// 'troop', kind }), hits are blows landed ({ target, damage }).
 export function march(troops, targets, dt, R, rand, obstacles = []) {
   const shots = [];
   const hits = [];
@@ -309,6 +311,8 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
     const move = bd > hold ? 1 : bd < hold * 0.6 ? -0.6 : 0;
     const strafe = bd <= hold && spec.fire ? Math.sin(t.id * 1.7 + (t.swing += dt) * 0.9) * 0.8 : 0;
     const next = walk(t, { move, strafe, turn, speed: move > 0 ? spec.speed : FOOT.back }, dt, R, obstacles);
+    const engaged = Boolean(spec.fire) && bd <= hold * 1.5;
+    const aim = clamp((t.aim ?? 0) + (engaged ? dt / 0.25 : -dt / 0.6), 0, 1);
     let cool = t.cool - dt;
     if (cool <= 0 && aimed) {
       if (spec.fire && bd <= hold * 1.4) {
@@ -322,7 +326,7 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
         hits.push({ target: best.id, damage: spec.damage, from: t.id });
       }
     }
-    return { ...next, cool: Math.max(cool, -0.5), swing: t.swing };
+    return { ...next, cool: Math.max(cool, -0.5), swing: t.swing, aim };
   });
   return { troops: out, shots, hits };
 }

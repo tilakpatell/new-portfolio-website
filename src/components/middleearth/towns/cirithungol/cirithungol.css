@@ -8,6 +8,7 @@
 .cirith-stage[data-zone='tower'] { background: linear-gradient(180deg, #1a1210 0%, #5a3a2a 56%, #1a1412 60%, #080606 100%); }
 .cirith-stage .shire-loading { color: #b8e0c8; }
 .cirith-stage[data-mode='talk'] .shire-canvas, .cirith-stage[data-mode='morgul'] .shire-canvas, .cirith-stage[data-mode='climb'] .shire-canvas, .cirith-stage[data-mode='duel'] .shire-canvas, .cirith-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+.cirith-stage[data-mode='crumbs'] .shire-canvas { cursor: pointer; touch-action: none; }
 
 .cirith-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
 .cirith-stage .shire-hud-top ~ .cirith-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
@@ -21,10 +22,19 @@
 .cirith-meter-legs span { background: linear-gradient(90deg, #c87a3a, #f8e0a0); }
 .cirith-meter-phial span { background: linear-gradient(90deg, #9ab8ff, #ffffff); }
 
+/* on the side, crumbs on Sam's cloak: low on the left, the cloak in the middle */
+.cirith-crumbs { width: min(23rem, calc(100% - 1.4rem)); }
+.cirith-crumbs .shire-meter { width: 100%; box-sizing: border-box; }
+.cirith-crumbs[data-stir] { border-color: rgba(200, 212, 232, 0.75); }
+.cirith-side-go { margin-top: 0.15rem; }
+.cirith-meter-dawn span { background: linear-gradient(90deg, #c8d4e8, #4a5a70); }
+
 .cirith-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
 
 @media (max-width: 639px) {
   .cirith-stage[data-game] .shire-hud-top { display: none; }
   .cirith-game, .cirith-stage .shire-hud-top ~ .cirith-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
   .cirith-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+  .cirith-crumbs { width: calc(100% - 5.4rem); }
+  .cirith-crumbs .shire-panel-help { display: none; }
 }

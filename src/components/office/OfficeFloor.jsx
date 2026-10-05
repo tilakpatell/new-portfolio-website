@@ -8,6 +8,7 @@ import Gif from '../Gif';
 import OfficeTour3D from './OfficeTour3D';
 import './office.css';
 import { DOORS, FLOOR, GLASS, LABELS, LIFT, LOBBY, STAFF, SUPPLIES, WALLS_INNER, WALLS_INNER_2, WALLS_OUTER } from './layout';
+import '../../styles/lazy/office.css';
 
 const sfx = () => import('../../lib/sfx');
 const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id));
