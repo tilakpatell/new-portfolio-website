@@ -1203,6 +1203,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .swara[data-oct='-1']::after { bottom: -0.05em; }
 .swara[data-oct='1']::before { top: -0.05em; }
 .swara[data-mark='komal'] > span:first-child { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1.5px; }
+.swara[data-mark='ati'] > span:first-child { text-decoration: underline double; text-underline-offset: 0.16em; text-decoration-thickness: 1px; }
 .swara[data-mark='tivra'] > span:first-child::before { content: ''; position: absolute; left: 50%; top: -0.12em; width: 1.5px; height: 0.42em; background: currentColor; }
 
 /* the sitar neck */

@@ -21,7 +21,7 @@ import {
   tarabHz,
 } from './sitarRules';
 import { SITAR_VARIANTS } from './sitarSamples';
-import { CHROMATIC, NECK_HIGH, NECK_LOW, RAGAS, SWARA, frets, saHz } from './tuning';
+import { ATI_KOMAL, CHROMATIC, FRET_SETS, NECK_HIGH, NECK_LOW, RAGAS, SWARA, customNotes, frets, saHz } from './tuning';
 import { LAYA, TAALS } from './tablaRules';
 
 const semis = (r) => 12 * Math.log2(r);
@@ -50,6 +50,58 @@ describe('the frets', () => {
 
   it('stays on the neck', () => {
     for (const id of Object.keys(RAGAS)) for (const f of frets(id, { all: true })) expect(f.ratio >= NECK_LOW && f.ratio <= NECK_HIGH).toBe(true);
+  });
+
+  it('can be set as a regular sitar comes: the shuddha notes and komal Ni, Sa to taar Sa', () => {
+    const list = frets('yaman', { set: 'regular' });
+    expect(list.map((f) => f.s).join('')).toBe('SRGmPDnNS');
+    expect(list[0]).toMatchObject({ s: 'S', oct: 0, ratio: 1 });
+    expect(list[list.length - 1]).toMatchObject({ s: 'S', oct: 1, ratio: 2 });
+    expect(list.some((f) => f.ati)).toBe(false);
+  });
+
+  it('can be set for Darbari, Ga and Dha tied on lower: ati komal', () => {
+    const list = frets('darbari', { set: 'darbari' });
+    expect(new Set(list.map((f) => f.s))).toEqual(new Set('SRgmPdn'));
+    for (const f of list) {
+      expect(f.ati).toBe(f.s === 'g' || f.s === 'd');
+      if (f.ati) {
+        expect(f.ratio / 2 ** f.oct).toBe(ATI_KOMAL[f.s]);
+        expect(1200 * Math.log2(SWARA[f.s] / ATI_KOMAL[f.s])).toBeGreaterThan(15); // audibly lower than komal
+      }
+    }
+    // the low end Darbari dwells in: mandra komal Dha and Ni are there
+    expect(list.filter((f) => f.oct === -1).map((f) => f.s)).toEqual(['P', 'd', 'n']);
+    // a phrase's komal Ga still finds the lowered fret, to light it
+    expect(list[fretOf(SWARA.g, list)].s).toBe('g');
+  });
+
+  it('can be set for Bhairavi: komal Re, Ga, Dha and Ni', () => {
+    const list = frets('bhairav', { set: 'bhairavi' });
+    expect(new Set(list.map((f) => f.s))).toEqual(new Set('SrgmPdn'));
+    // lit where the raga shares them: Bhairav has komal Re and Dha, not komal Ga or Ni
+    expect(list.filter((f) => f.inRaga).map((f) => f.s)).not.toContain('g');
+    expect(list.find((f) => f.s === 'r').inRaga).toBe(true);
+  });
+
+  it('can be set as the player chooses, always keeping at least Sa', () => {
+    expect(customNotes('PSGgx')).toBe('SgGP');
+    expect(customNotes('')).toBe('S');
+    expect(frets('yaman', { set: 'custom', custom: 'SGP' }).map((f) => f.s).join('')).toBe('PSGPSG');
+    expect(frets('yaman', { set: 'custom', custom: '' }).every((f) => f.s === 'S')).toBe(true);
+  });
+
+  it('stays on the neck, rising, whatever it is set for', () => {
+    for (const set of Object.keys(FRET_SETS))
+      for (const id of Object.keys(RAGAS)) {
+        const list = frets(id, { set, custom: 'SrRgGmMPdDnN' });
+        expect(list.length).toBeGreaterThan(0);
+        expect(list.length).toBeLessThanOrEqual(FRET_KEYS.length);
+        for (let i = 1; i < list.length; i++) expect(list[i].ratio).toBeGreaterThan(list[i - 1].ratio);
+        for (const f of list) expect(f.ratio >= NECK_LOW && f.ratio <= NECK_HIGH).toBe(true);
+      }
+    // an unknown setting falls back to all twelve, as before
+    expect(frets('yaman', { set: 'nonsense', all: true }).length).toBe(22);
   });
 
   it('has a key for every fret', () => {

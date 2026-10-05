@@ -254,8 +254,9 @@ export default function Music() {
             Sitar
           </h2>
           <p className="lead mt-4 max-w-[60ch]">
-            Every swara has a fret, from mandra Pa to taar Ga, and the raga’s notes are lit. Tap a fret to pluck it. Hold and slide along the neck to glide
-            between frets, or pull the string across the fret to bend it: meend.
+            Set the frets the way a player ties them on: every swara from mandra Pa to taar Ga, a regular sitar’s Sa to taar Sa, set for Darbari (its Ga
+            and Dha lower, ati komal) or Bhairavi, the raga’s own, or your own. The raga’s notes are lit. Tap a fret to pluck it. Hold and slide along the
+            neck to glide between frets, or pull the string across the fret to bend it: meend.
           </p>
         </div>
         <div className="mt-8">
