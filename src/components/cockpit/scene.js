@@ -164,7 +164,9 @@ export function run(canvas, opts) {
   const flashColor = new THREE.Color();
   const shake = new THREE.Vector2();
 
+  if (import.meta.env.DEV) renderer.info.autoReset = false; // counted over the whole frame (`info`, below)
   const draw = () => {
+    if (import.meta.env.DEV) renderer.info.reset();
     if (composer) composer.render();
     else {
       renderer.clear();
@@ -289,6 +291,19 @@ export function run(canvas, opts) {
     v = null;
   };
 
+  // A part of a vehicle that arrives after the vehicle is on screen (a model
+  // still downloading when the rest was ready): its shaders are linked now,
+  // in the background, not on the frame that first shows it. (Anything there
+  // when the vehicle is built is compiled with it, in pick.)
+  function warm(root, where) {
+    if (stopped || failed) return;
+    const scene = where === 'inside' ? inside : outside;
+    let o = root;
+    while (o && o !== scene) o = o.parent;
+    if (!o) return; // not in the scene yet: pick's precompile will find it
+    precompile(renderer, root, where === 'inside' ? camIn : camOut, scene, composer ? composer.readBuffer : null);
+  }
+
   async function pick(id) {
     if (L.on || !BUILD[id]) return;
     if (id === vid && (v || building)) return;
@@ -303,7 +318,7 @@ export function run(canvas, opts) {
     try {
       const mod = await BUILD[id]();
       if (building !== mine || stopped) return;
-      const built = await mod.build({ renderer, pmrem, rich, reduced, coarse: coarse(), say: (line) => cb.onLine?.(line) });
+      const built = await mod.build({ renderer, pmrem, rich, reduced, coarse: coarse(), say: (line) => cb.onLine?.(line), warm });
       if (building !== mine || stopped) {
         built.dispose?.();
         disposeTree(built.inside);
@@ -403,6 +418,10 @@ export function run(canvas, opts) {
     },
     get launching() {
       return L.on;
+    },
+    // (development: what the renderer drew last frame, for the QA scripts)
+    get info() {
+      return import.meta.env.DEV ? { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries, ratio: gl.ratio, bloom: !!composer } : null;
     },
     // (development: jump to a moment of the launch, for screenshots)
     seek(ms) {

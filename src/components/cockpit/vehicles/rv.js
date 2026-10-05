@@ -236,6 +236,81 @@ function triUV(geo, size, swap = false) {
   return geo;
 }
 
+// Smooth normals for a triangle soup, except across edges sharper than
+// `crease` (radians): at each corner, the normals of the faces that meet
+// there within that angle of its own, each counted by its area. So a big
+// flat face keeps its own normal right to its rim (and stays flat) while the
+// little faces of a rounded edge or a curved profile take each other's and
+// read as one curve. Corners meet where they're within a tenth of a
+// millimetre (the cab's smallest parts are a couple of millimetres across).
+const CREASE = 0.7;
+function creased(geo, crease) {
+  const pos = geo.attributes.position;
+  const faces = pos.count / 3;
+  const fn = new Float32Array(faces * 3); // each face's normal, its length the face's area
+  const at = new Map();
+  const a = new V3();
+  const b = new V3();
+  const c = new V3();
+  const n = new V3();
+  const key = (i) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  const keys = new Array(pos.count);
+  for (let f = 0; f < faces; f++) {
+    a.fromBufferAttribute(pos, f * 3);
+    b.fromBufferAttribute(pos, f * 3 + 1);
+    c.fromBufferAttribute(pos, f * 3 + 2);
+    n.subVectors(c, b).cross(a.sub(b));
+    fn[f * 3] = n.x;
+    fn[f * 3 + 1] = n.y;
+    fn[f * 3 + 2] = n.z;
+    for (let k = 0; k < 3; k++) {
+      const h = (keys[f * 3 + k] = key(f * 3 + k));
+      const list = at.get(h);
+      if (list) list.push(f);
+      else at.set(h, [f]);
+    }
+  }
+  const cos = Math.cos(crease);
+  const out = new Float32Array(pos.count * 3);
+  for (let f = 0; f < faces; f++) {
+    const x = fn[f * 3];
+    const y = fn[f * 3 + 1];
+    const z = fn[f * 3 + 2];
+    const len = Math.hypot(x, y, z);
+    for (let k = 0; k < 3; k++) {
+      let sx = 0;
+      let sy = 0;
+      let sz = 0;
+      if (len > 0)
+        for (const o of at.get(keys[f * 3 + k])) {
+          const ox = fn[o * 3];
+          const oy = fn[o * 3 + 1];
+          const oz = fn[o * 3 + 2];
+          const ol = Math.hypot(ox, oy, oz);
+          if (ol > 0 && (x * ox + y * oy + z * oz) / (len * ol) > cos) {
+            sx += ox;
+            sy += oy;
+            sz += oz;
+          }
+        }
+      const sl = Math.hypot(sx, sy, sz);
+      const i = (f * 3 + k) * 3;
+      // (a sliver with no area keeps the normal it came with)
+      if (sl > 0) {
+        out[i] = sx / sl;
+        out[i + 1] = sy / sl;
+        out[i + 2] = sz / sl;
+      } else {
+        out[i] = geo.attributes.normal?.getX(f * 3 + k) ?? 0;
+        out[i + 1] = geo.attributes.normal?.getY(f * 3 + k) ?? 1;
+        out[i + 2] = geo.attributes.normal?.getZ(f * 3 + k) ?? 0;
+      }
+    }
+  }
+  geo.setAttribute('normal', new THREE.BufferAttribute(out, 3));
+  return geo;
+}
+
 // Static parts gathered by material and merged at the end, one draw each.
 // A material's userData.tri = { size, swap } gives its parts triUV's UVs.
 function partsBin() {
@@ -267,6 +342,10 @@ function partsBin() {
           const n = g.index ? g.toNonIndexed() : g;
           if (n !== g) g.dispose();
           for (const k of Object.keys(n.attributes)) if (!['position', 'normal', 'uv'].includes(k)) n.deleteAttribute(k);
+          // an extrusion comes with a normal per face, so its rounded corners
+          // and curved profiles show every facet: smooth across the gentle
+          // edges, keep the sharp ones
+          if (g.type === 'ExtrudeGeometry') creased(n, CREASE);
           if (mat.userData.tri) triUV(n, mat.userData.tri.size, mat.userData.tri.swap);
           return n;
         });
@@ -1061,7 +1140,8 @@ function roadMapMap() {
 // The sky: the photographed evening sky (range-compressed in the file, as
 // the games store it), sinking as the sun goes down; the dusk after it, the
 // night, the sun itself, far ranges along the horizon, and the haze the
-// land fades into. `uLift` is the RV rising: the horizon gives way to the dark.
+// land fades into. `uLift` is the RV rising: the far ranges go, and the
+// land's haze (LAND_FRAG, below the horizon) is all that's left of the ground.
 const SKY_VERT = /* glsl */ `
 varying vec3 vDir;
 void main() {
@@ -1112,10 +1192,27 @@ void main() {
   float a = atan(d.x, -d.z);
   float rh = ridge(a);
   float keep = 1.0 - uLift;
-  c = mix(c, uHaze * 0.8, smoothstep(rh + 0.0015, rh - 0.0015, h) * keep);
+  c = mix(c, uHaze * 0.8, (1.0 - smoothstep(rh - 0.0015, rh + 0.0015, h)) * keep);
   c = mix(c, uHaze, (1.0 - smoothstep(-0.004, 0.07, h)) * 0.55 * keep);
-  c *= 1.0 - uLift * smoothstep(0.08, -0.12, h);
   gl_FragColor = vec4(c, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+// Everything below the horizon, in the land's own haze: the colour the ground
+// fades to with distance. Drawn over the sky and its stars and under the
+// land, so wherever the ground ends (its edge, the far end of the view) there
+// is no seam, and no star shows through from under the world. As the RV
+// rises (`uLift`) the haze stands a little higher: the air along the horizon.
+const LAND_FRAG = /* glsl */ `
+uniform vec3 uHaze;
+uniform float uLift;
+varying vec3 vDir;
+void main() {
+  float h = normalize(vDir).y;
+  float a = 1.0 - smoothstep(-0.004 - 0.012 * uLift, 0.002 + 0.06 * uLift, h);
+  gl_FragColor = vec4(uHaze, a);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }
@@ -1156,14 +1253,20 @@ function horizonColour(img, shift, tint) {
 // ── the world outside ──
 
 // Distance haze over the land's materials, in linear light before the tone
-// mapping, the colour shared (it follows the time of day).
-function hazy(mat, haze, key, extra) {
+// mapping, the colour shared (it follows the time of day). `rush`: the
+// surface is one that scrolls under you (the ground, the road).
+function hazy(mat, haze, key, extra, { rush = false } = {}) {
   mat.onBeforeCompile = (s) => {
     s.uniforms.uHaze = haze.color;
     s.uniforms.uHazeK = haze.k;
+    s.uniforms.uRush = haze.rush;
     extra?.(s);
+    // what rushes by under the wheels is read from a coarser copy of its
+    // picture the faster it goes (the blur of speed), so its grain doesn't
+    // crawl or strobe from frame to frame in the time-lapse
+    if (rush) s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', '#ifdef USE_MAP\n  diffuseColor *= texture2D( map, vMapUv, uRush );\n#endif');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uHaze;\nuniform float uHazeK;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uHaze;\nuniform float uHazeK;\nuniform float uRush;')
       .replace(
         '#include <tonemapping_fragment>',
         `float hz = 1.0 - exp(-length(vViewPosition) * uHazeK);
@@ -1171,7 +1274,7 @@ function hazy(mat, haze, key, extra) {
         #include <tonemapping_fragment>`,
       );
   };
-  mat.customProgramCacheKey = () => `rv-haze-${key}`;
+  mat.customProgramCacheKey = () => `rv-haze-${key}${rush ? '-rush' : ''}`;
   return mat;
 }
 
@@ -1520,11 +1623,14 @@ function chaserOf(model) {
   model.position.y = -0.95;
   group.add(model);
   const mats = selfLit(model);
+  // (each lamp a hot core in a wide, faint halo: one big bright sprite reads
+  // as a ball of light sat on the roof, not as a lamp)
   const bar = [0xff2a2a, 0x2a6bff].map((c, i) => {
-    const s = glowSprite(c, 3.2, 0);
-    s.position.set(i ? 0.45 : -0.45, 1.05, 0.3);
-    group.add(s);
-    return s;
+    const core = glowSprite(c, 0.9, 0);
+    const halo = glowSprite(c, 4.2, 0);
+    for (const s of [core, halo]) s.position.set(i ? 0.45 : -0.45, 1.05, 0.3);
+    group.add(core, halo);
+    return { core, halo };
   });
   for (const sx of [-1, 1]) {
     const tail = glowSprite(0xff3020, 0.7, 0.8);
@@ -1536,8 +1642,11 @@ function chaserOf(model) {
     group,
     set(t) {
       const a = Math.sin(t * 19) > 0;
-      bar[0].material.opacity = a ? 1 : 0.1;
-      bar[1].material.opacity = a ? 0.1 : 1;
+      bar.forEach((lamp, i) => {
+        const on = (i === 0) === a;
+        lamp.core.material.opacity = on ? 1 : 0.12;
+        lamp.halo.material.opacity = on ? 0.3 : 0.03;
+      });
       for (const m of mats) m.emissiveIntensity = 0.12;
     },
   };
@@ -1626,7 +1735,7 @@ function flyerOf(model) {
   };
 }
 
-export async function build({ rich, coarse, renderer, pmrem, say }) {
+export async function build({ rich, coarse, renderer, pmrem, say, warm }) {
   const inside = new THREE.Group();
   const outside = new THREE.Group();
   const small = coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -2381,7 +2490,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   const dayHaze = horizonColour(photo?.image, shift, TINT).multiplyScalar(0.62).lerp(new THREE.Color(0.62, 0.38, 0.22), 0.45);
   const duskHaze = new THREE.Color(0.26, 0.13, 0.12);
   const nightHaze = new THREE.Color(0.018, 0.024, 0.05);
-  const haze = { color: { value: dayHaze.clone() }, k: { value: 1 / 3200 } };
+  const haze = { color: { value: dayHaze.clone() }, k: { value: 1 / 3200 }, rush: { value: 0 } };
 
   const skyU = {
     uPhoto: { value: photo },
@@ -2402,6 +2511,17 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   skyDome.renderOrder = -12;
   skyDome.frustumCulled = false;
   outer.add(skyDome);
+  // the land's haze below the horizon, over the sky and the stars
+  // (LAND_FRAG); nearer than the stars are, so the far ground is behind it
+  // and no star is ever drawn on the land
+  const landDome = new THREE.Mesh(
+    new THREE.SphereGeometry(4200, 48, 12, 0, TAU, Math.PI * 0.44, Math.PI * 0.56),
+    new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: LAND_FRAG, uniforms: { uHaze: haze.color, uLift: skyU.uLift }, side: THREE.BackSide, transparent: true, depthWrite: false }),
+  );
+  landDome.position.set(...EYE);
+  landDome.renderOrder = -8;
+  landDome.frustumCulled = false;
+  outer.add(landDome);
   // the stars, and the faint band of the galaxy, for the night (drawn far
   // out, behind everything, added over the sky)
   const stars = starField({ seed: 19, count: small ? 3400 : 6000, radius: 1800, nebula: ['#2c4282', '#5a3274'], deep: '#000000', band: [0.55, 1, -0.35] });
@@ -2458,7 +2578,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
         diffuseColor.rgb *= mix(0.74, 1.14, texture2D(uMacro, vMapUv * ${(GROUND_TILE / 280).toFixed(5)}).r) * mix(0.9, 1.06, texture2D(uMacro, vMapUv * ${(GROUND_TILE / 38).toFixed(5)}).g);
       #endif`,
     );
-  });
+  }, { rush: true });
   const ground = new THREE.Mesh(groundGeo, groundM);
   ground.receiveShadow = true;
   world.add(ground);
@@ -2468,7 +2588,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   const ROAD_LEN = 3200;
   const roadGeo = planarUV(new THREE.PlaneGeometry(ROAD_W, ROAD_LEN), { size: ROAD_TILE });
   roadGeo.rotateX(-Math.PI / 2).translate(LANE, ROAD_Y, -ROAD_LEN / 2 + 60);
-  const roadM = hazy(std({ map: asphalt.color, normalMap: asphalt.normal, roughness: 0.92, color: 0xd8d2cc, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), haze, 'road');
+  const roadM = hazy(std({ map: asphalt.color, normalMap: asphalt.normal, roughness: 0.92, color: 0xd8d2cc, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), haze, 'road', null, { rush: true });
   const road = new THREE.Mesh(roadGeo, roadM);
   road.receiveShadow = true;
   world.add(road);
@@ -2567,12 +2687,30 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
   let gone = false;
   let wings = null;
   let flyer = null;
+  // (none of these is seen until well into the drive: `ready` gets their
+  // pictures onto the graphics chip and their shaders linked as they arrive,
+  // so the frame that first shows one, the wings swinging out or the cut to
+  // outside, doesn't stall on it)
+  const ready = (root, where) => {
+    root.traverse((o) => {
+      for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : [])
+        for (const v of Object.values(m))
+          if (v?.isTexture && v.image)
+            try {
+              renderer.initTexture(v);
+            } catch {
+              /* it will go up on its first frame instead */
+            }
+    });
+    warm?.(root, where);
+  };
   wingP.then((m) => {
     if (!m) return;
     if (gone) disposeTree(m);
     else {
       wings = wingPair(m);
       inside.add(wings.group);
+      ready(wings.group, 'inside');
     }
   });
   flyerP.then((m) => {
@@ -2581,6 +2719,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     else {
       flyer = flyerOf(m);
       outside.add(flyer.group);
+      ready(flyer.group, 'outside');
     }
   });
   let hank = null;
@@ -2590,6 +2729,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
     else {
       hank = chaserOf(m);
       outside.add(hank.group);
+      ready(hank.group, 'outside');
     }
   });
   const blue = crystals(small ? Math.round(CRYSTALS * 0.6) : CRYSTALS);
@@ -2680,6 +2820,8 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       const lights = smooth((k - 0.3) / 0.04);
       const glow = smooth((k - 0.26) / 0.18);
       const lift = launching ? smooth((lt - p.lift) / (p.peak - p.lift)) : 0;
+      // from outside, at the last: how far through that shot (−1 before it)
+      const out = flyer && launching && lt >= p.cut ? clamp01((lt - p.cut) / (p.peak - p.cut)) : -1;
       const el = SUN_EL - sink;
       setSun(el);
       const up = clamp01((el + 1.5) / 6);
@@ -2691,7 +2833,15 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       skyU.uSunCol.value.setRGB(1, 0.72 - 0.3 * dusk, 0.42 - 0.25 * dusk);
       if (k < 0.55) haze.color.value.copy(dayHaze).lerp(duskHaze, dusk);
       else haze.color.value.copy(duskHaze).lerp(nightHaze, night);
-      haze.k.value = 1 / (3200 - 1600 * night);
+      // the higher you climb, the more air between you and the land: it
+      // sinks into its haze, darker, until only the towns' lights are left
+      haze.color.value.multiplyScalar(1 - 0.45 * lift);
+      haze.k.value = (1 + 5 * lift) / (3200 - 1600 * night);
+      // the blur of speed on the ground and the road (hazy's `rush`)
+      const rush = smooth((v - 15) / 110);
+      haze.rush.value = 8 * rush;
+      groundM.normalScale.setScalar(1.2 * (1 - rush));
+      roadM.normalScale.setScalar(1 - rush);
       stars.set({ fade: starsK });
       sunGlow.position.copy(sunDir).multiplyScalar(2400).add(skyDome.position);
       sunHalo.position.copy(sunGlow.position);
@@ -2699,12 +2849,18 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       sunHalo.material.opacity = 0.13 * up + 0.1 * dusk * (1 - night);
       sunLight.position.copy(sunDir).multiplyScalar(450).add(sunLight.target.position);
       sunLight.intensity = 2.6 * up;
+      // once the sun is down nothing casts a shadow (the sun outside and the
+      // key light in the cab both go with it): the shadow maps stop being
+      // redrawn, which is most of a frame's geometry for the rest of the drive
+      if (rich) renderer.shadowMap.autoUpdate = up > 0;
       sunLight.color.copy(sunCol[0]).lerp(sunCol[1], dusk);
       landHemi.color.copy(landSky[0]).lerp(landSky[2], dusk).lerp(landSky[1], night);
       landHemi.groundColor.copy(landGround[0]).lerp(landGround[1], night);
       landHemi.intensity = 1.0 - 0.3 * dusk - 0.45 * night;
       town.material.opacity = smooth((k - 0.42) / 0.3);
-      beams.intensity = 420 * lights * (1 - lift);
+      // (the headlights are the cab's: seen from outside, the RV is out in
+      // front of where they shine from, and would stand in its own beam)
+      beams.intensity = out < 0 ? 420 * lights * (1 - lift) : 0;
 
       // ── the road going by ──
       if (d !== lastD) {
@@ -2729,7 +2885,6 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       if (wings && open[1] > 0.92 && open[1] < 1) swing.v += (Math.random() - 0.5) * 2 * dt * 30; // the lock shakes the little tree
       // and from outside, at the last: the cab gone, the RV ahead of you
       // climbing away into the stars
-      const out = flyer && launching && lt >= p.cut ? clamp01((lt - p.cut) / (p.peak - p.cut)) : -1;
       inside.visible = out < 0;
       if (flyer) {
         flyer.group.visible = out >= 0;
@@ -2831,6 +2986,7 @@ export async function build({ rich, coarse, renderer, pmrem, say }) {
       walt?.dispose();
       models.dispose();
       renderer.shadowMap.enabled = false;
+      renderer.shadowMap.autoUpdate = true;
       env?.dispose();
     },
   };
