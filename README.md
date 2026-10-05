@@ -1,37 +1,190 @@
+<div align="center">
+
 # tilakpatell.com
 
-Personal site of Tilak Patel — React 18, Vite 5 and Tailwind 3. Every push to `main` is linted, built and deployed to GitHub Pages at https://tilakpatell.com by `.github/workflows/deploy.yml`.
+**The personal site of Tilak Patel: a portfolio you can fly through.**
+
+A résumé on the surface. Underneath it, a 3D universe with a starfighter, nine hidden fan-made worlds, playable games and online multiplayer, all running on a static site.
+
+[**Visit tilakpatell.com →**](https://tilakpatell.com)
+
+[![Deploy](https://github.com/tilakpatell/tilakpatell.com/actions/workflows/deploy.yml/badge.svg)](https://github.com/tilakpatell/tilakpatell.com/actions/workflows/deploy.yml)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![Vite 5](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![Three.js](https://img.shields.io/badge/Three.js-r180-000000?logo=threedotjs&logoColor=white)
+![Tailwind CSS 3](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)
+
+</div>
+
+---
+
+## Contents
+
+- [What's inside](#whats-inside)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Scripts](#scripts)
+- [Project structure](#project-structure)
+- [How it works](#how-it-works)
+- [Assets and credits](#assets-and-credits)
+- [Deployment](#deployment)
+- [Disclaimer](#disclaimer)
+
+## What's inside
+
+### The portfolio
+
+| Page | Route | What it shows |
+| --- | --- | --- |
+| Home | `/home` | Intro, focus areas and a live GitHub activity snapshot |
+| Experience | `/experience` | Every role, from AWS to SRC. The site's theme changes to each company's colours as its role scrolls past |
+| Projects | `/projects` | Case studies, each with a live demo. The Game Boy emulator one is playable |
+| Résumé | `/resume` | The résumé on the page, plus a PDF download |
+| Travel | `/travel` | A 3D globe of places visited, with photos |
+| Contact | `/contact` | How to reach me |
+| Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+
+All of the content (roles, projects, skills, education) lives in [`src/data/`](src/data). Every page and the terminal read from there.
+
+### The universe
+
+The front door (`/`) is a map of the whole site as places in space. A first visit opens with a crawl, then puts you in a cockpit (the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV) and launches you into the map. Fly to a planet to open its page.
+
+| Key | Action |
+| --- | --- |
+| `W` / `S` | Throttle |
+| `A` / `D` | Roll |
+| `←` `→` `↑` `↓` | Turn and pitch the nose |
+| `F` (hold) | Fire |
+| `T` / `Q` | Next / previous target |
+| `V` | Switch between the chase camera and the cockpit view |
+| `O` | Flight settings (steering, aim assist, inverted pitch and more) |
+
+Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down.
+
+### The hidden worlds
+
+Each planet on the map that has a world gets a page of its own, with its own art direction, soundboard and usually a game.
+
+| World | Route | Fandom | Highlights |
+| --- | --- | --- | --- |
+| Death Star | `/deathstar` | Star Wars | Fly the trench run before Yavin 4 comes into range |
+| Music room | `/music` | Indian classical music | A playable sitar, tabla and harmonium over a tanpura drone |
+| Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk Hobbiton in 3D as Frodo, run the Prancing Pony's kitchen in co-op, open the Doors of Durin, cross Gorgoroth |
+| Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
+| Avengers HQ | `/avengers` | Marvel | A building-by-building tour of the compound, collecting the Infinity Stones |
+| Albuquerque | `/albuquerque` | Breaking Bad | Drive around town. Places open up as Walt's career grows, each with its own game |
+| Scranton | `/scranton` | The Office | The office from above, Dwight's fact check, and the Dundies |
+| Dimension C-137 | `/c-137` | Rick and Morty | The portal gun, *Portal panic*, the Meeseeks box and interdimensional cable |
+| The Caribbean | `/caribbean` | Pirates of the Caribbean | Sail *Dead Man's Tide* at the Black Pearl's helm |
+
+### Easter eggs
+
+- **↑ ↑ ↓ ↓ ← → ← → B A** jumps to lightspeed.
+- **⌘K / Ctrl+K** opens a command palette that can go anywhere on the site and run its tricks.
+- There are dozens of achievements to unlock. Scranton's Dundies hand them out as awards.
+
+## Tech stack
+
+- **[React 18](https://react.dev/)** with [React Router 7](https://reactrouter.com/) (hash routing, so it works on static hosting)
+- **[Vite 5](https://vitejs.dev/)** for the dev server and build
+- **[Tailwind CSS 3](https://tailwindcss.com/)** plus per-company and per-world themes
+- **[Three.js](https://threejs.org/)** for every 3D scene and game, loaded only when needed
+- **[Nostr](https://nostr.com/)** public relays for multiplayer, with events signed using [`@noble/secp256k1`](https://github.com/paulmillr/noble-secp256k1). There's no backend.
+- **[Vitest](https://vitest.dev/)** for tests and **ESLint** for linting
+- **GitHub Actions** and **GitHub Pages** for deploys
+
+## Getting started
+
+You need **Node.js 22** (the version CI uses) and npm.
 
 ```bash
+git clone https://github.com/tilakpatell/tilakpatell.com.git
+cd tilakpatell.com
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production build in dist/
-npm run lint
+npm run dev
 ```
 
-## Where things live
+The site is then running at http://localhost:5173.
 
-- `src/data/` — the single source of truth for roles, projects, skills and education. Every page and the terminal read from here.
-- `src/theme/` and `src/index.css` — the company themes (AWS, RTX, Bose, Pendar, Empowerreg, SRC). AWS is the default; the Experience page switches theme as each role scrolls past, and the switcher in the nav pins one for the session.
-- `src/components/RouteLine.jsx` — the line that draws itself down each page as you scroll. Any `[data-waypoint]` element is a stop.
-- `src/stages/` — the live demo on each project page (the Game Boy one is playable).
-- `src/pages/Terminal.jsx`, `src/pages/DeathStar.jsx` — the easter eggs. Try ↑ ↑ ↓ ↓ ← → ← → B A.
-- `src/components/worlds/worlds.js` — the hidden worlds, one per fandom (Death Star, Middle-earth, Avengers HQ, Scranton, Cybertron, Albuquerque, Dimension C-137, the music room). Each is a page in `src/pages/` with its own folder under `src/components/`.
-- `src/components/middleearth/shire/` — Hobbiton, the world: the Shire chapter of Middle-earth (`#/middle-earth/shire`) opens on a Shire you walk about in 3D as Frodo on the day of Bilbo's party, with five things to do (Farmer Maggot's mushrooms, smoke rings with Gandalf, the fireworks and the dragon, the Ring in Bag End's fire, and hiding from a Black Rider). The rules are in a tested `rules.js`; the buildings, trees, animals and the Rider are made in code (`props.js`), so nothing is downloaded.
-- `src/components/universe/` — the universe map, the whole site as places to fly to (`universes.js`, `layout.js`), in a ship with a crew. `ship.js` is the flying, as plain tested numbers: it flies like a Battlefront starfighter, free all the way round (`orient.js` keeps which way round it is, as quaternions and the angles the rest of the map reads): W and S are the throttle, A and D roll, ← and → swing the nose and ↑ and ↓ pull it up and down, each about the ship's own axes with a little inertia and less of it at speed, so it loops, rolls and flies upside down, and lets go back to upright on its own (as quickly as the settings say, or never); it flies along its nose and rounds out before the ceiling or the floor, the chase camera rolls and swings round after it, the brakes bite harder out in deep space, and the autopilot flies you to any planet, station or wonder (click a wonder out in deep space) without going faster than it can stop from. A new ship starts somewhere different each time, unless a place is picked (`startAt`): at the edge of the home system, or out in deep space facing one of the fandoms' planets or a wonder (never by the Maw), so the pilots joining don't all turn up in one spot. `targeting.js` (tested too) is the guns: they lock on to a hunter ahead (the ones coming at you first, and the next one when it goes down), work out where to shoot to hit it, and bend a shot home when the nose is near enough, more forgiving up and down; hold `F` and they fire at the ship's own pace, `T` moves to the next target and `Q` back, and a tap on a hunter locks on. The HUD shows a tough one's hits left and an arrow at the edge for each one coming at you off the screen. `O` opens the flight settings (`controls.js`, `FlightSettings.jsx`, kept between visits): steering, pitch and roll speed, self-levelling, drag sensitivity, aim assist, camera follow, inverted up and down, whether A and D roll or turn, and what dragging up and down does. The HUD over the map (`UniverseMap.jsx`, placed by `scene.js`) shows the gun line, the lock with its name and range, the lead pip and the way to wherever you're going, as an arrow at the edge when it's off the screen. `V` (View on a phone) swaps the chase camera for the pilot's seat: the cockpit from the intro (`cockpit/vehicles`), drawn over the world with the horizon rolling with the ship, all the way round; the choice is remembered.
-- `src/components/cockpit/` — where a first visit lands after the opening crawl: you in the pilot's seat, first person, of the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV, and the launch (lightspeed, a portal, the long drive) that comes out in the universe, flying that vehicle's ship. The Falcon's, the X-wing's and the cruiser's cockpits are built in code; the crews are Meshy models (`scripts/meshy-cockpit.mjs`). On the RV's long drive a pair of wings swings out of its sides, the jets light and it climbs for space, spilling Walt's blue crystals with Hank's SUV after it; the wings, and the winged RV the universe map lets you fly with Walt and Jesse, are Meshy models made from Albuquerque's RV (`scripts/meshy-rv.mjs`). ⌘K's "Back to the cockpit" plays it again, and "Restart the site from the beginning" (also in the footer, the phone menu, the universe panel and the terminal's `restart`) forgets the visit and starts over at the welcome, keeping what's been unlocked and set (`src/lib/restart.js`). Before the crawl, `Welcome.jsx` says what the site is, what the intro does and how to drive it, with the fan-tribute disclaimer, and offers to skip straight to the site.
-- `src/components/games/` — what the WebGL-only games share: `GpuGate.jsx` (the hardware acceleration check), gamepad input and synthesised sounds. Roll out (`cybertron/rollout/`) and Portal panic (`rickmorty/portal/`) keep their rules in a tested `rules.js`, apart from the drawing.
+To try a lower graphics tier on a desktop, add `?quality=low` (or `mid` or `high`) to the address.
 
-Graphics: the site and its games are 3D first: they draw in WebGL (Three.js, loaded only when it's used) wherever the browser has it, a graphics chip or WebGL run in software, and lower their own resolution and effects when frames can't keep up (judged on real time, so a laptop's battery-saving 30 fps cap doesn't count). On the core pages that's the Experience diagrams, the travel globe, the mist over the Travel photos, the lamplight on the Peace section, the Akshardham day, the jump to lightspeed and the GPU project's demo; `src/lib/three/` holds their shared renderer, the theme-colour reader and the `useScene` hook that loads a scene only near the viewport and draws only while it's on screen. Every scene and game compiles its shaders in the background before its first frame (`renderer.js`'s `precompile`, with the browser's parallel compile where it has it), so something new coming into view doesn't stop the page while the graphics chip catches up; the first frame waits at most four seconds for it. `src/lib/gpu.js` checks once. Only a browser with no WebGL at all, or a GPU context that's lost or fails, gets the SVG and 2D versions. Visitors can switch 3D off under the trench run. The universe map goes further, since a dogfight or a boost can push any graphics chip: `src/lib/three/pace.js` watches every frame and draws the scene a step softer within a second of frames coming late, and sharp again once they don't (the names and the HUD over it stay crisp); hunters and traffic ships are built ahead while the page is idle, so a pack arriving doesn't stall the fight; and multiplayer's signing and checking run in a worker (`online/signer.worker.js`), off the frames.
+## Scripts
 
-Phones: `src/lib/device.js` decides once what a device can afford (`high` for a desktop with a graphics chip, `mid` for a phone or a small or low-memory computer, `low` for software WebGL, a budget phone or very little memory) and every renderer starts from its budget (pixel ratio, multisampling, shadows, bloom). Add `?quality=low` (or `mid`, `high`) to the address to try a tier on a desktop. A world that downloads a lot (`WORLD_MB` in `src/components/worlds/worlds.js`) asks first on a phone, with Data Saver on, on a weak device or when storage is short: until the visitor says, `components/worlds/WorldGate.jsx` holds its 3D (lib/gpu's `Hold3D`), so the page shows its 2D versions and downloads nothing. The WebGL-only games mount only once they're scrolled near. The 3D scenes use CC0 photo-scanned materials and HDRI lighting from Poly Haven and ambientCG, kept in `public/cc0` (see its README), with procedural textures as the fallback.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Production build into `dist/`. Takes a fresh GitHub snapshot first (`prebuild`) |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run the Vitest suite (game rules, flight model, multiplayer protocol and more) |
 
-Roll out and Portal panic are the exception: they need the graphics chip, so with hardware acceleration off they say so, with the steps for the visitor's browser, and offer to play anyway. Their assets are all CC0, in `public/games/` with each one credited in `public/games/credits.json`. Roll out is realistic (Poly Haven and ambientCG scans and skies, fetched by `npm run cc0`; behind a proxy, set `NODE_USE_ENV_PROXY=1`); Portal panic is stylised (Kenney's City Kit Suburban, Nature Kit and Space Kit, unzipped somewhere and converted with `KENNEY=/path/to/kits npm run kenney`). Both games' casts can also be modelled with Meshy (`scripts/meshy.mjs`, with `MESHY_API_KEY` in `.env.local`): Portal panic's is in `public/games/meshy/`; Roll out's goes to `public/games/meshy/rollout/` with `node --env-file=.env.local scripts/meshy.mjs <images|models|rig|anim|fetch> rollout`, and the game uses whatever its `index.json` lists, keeping its own shapes for the rest. The output is committed, so the site never calls these services at runtime.
+The asset pipeline scripts regenerate committed files. You don't need them to run the site.
 
-Albuquerque's town (`src/components/albuquerque/world/`) keeps what it is in a tested `rules.js` (the map, every wall the car stops at, the fence at the edge, deliveries, the Blue Sky crystals, the car wash) and draws from it: the sky and its day in `sky.js`, the desert floor, roads and mountains in `terrain.js`, the rest of town in `buildings.js`, and what moves and glows in `life.js`. Its buildings are Meshy models (`scripts/meshy-albuquerque.mjs`); the RV, Saul's car, the cacti and a few props, and Optimus's transformation on the Cybertron page, are CC Attribution models from Sketchfab, downloaded by hand, brought to web size by `scripts/sketchfab-import.mjs` and credited in `public/cc0/README.md` and on their pages. Surfaces that are painted in code share `src/lib/texture.js` (tiling noise, and colour, normal and roughness maps from one function).
+| Command | What it does |
+| --- | --- |
+| `npm run cc0` | Fetch the games' CC0 scans and skies from Poly Haven and ambientCG into `public/games/` (behind a proxy, set `NODE_USE_ENV_PROXY=1`) |
+| `npm run hq-assets` | Fetch and shrink the Avengers HQ games' CC0 assets into `public/hq/` |
+| `npm run kenney` | Convert Kenney's kits for *Portal panic* (`KENNEY=/path/to/kits npm run kenney`) |
+| `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
+| `npm run globe` | Rebuild the dotted globe on the Travel page |
 
-A few more models are other people's, from Sketchfab under Creative Commons attribution licences: the universe map's sitar, Minas Tirith and Orthanc on the Middle-earth map (`node scripts/sketchfab-batch.mjs <folder of downloads> [name …]` brings each down to what it's seen at, one mesh and one small texture or none, meshopt, into `public/models/sketchfab/`), and the universe map's Star Wars models (the Star Destroyers, TIE interceptors, corvettes, the Death Star and its trench: `scripts/build-universe.py`). Who made each, its licence and its source are in `src/data/modelCredits.json`, which `src/components/ModelCredits.jsx` shows on the page that uses it. The downloads themselves stay out of the repo.
+The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.env.local`. Sketchfab downloads are brought down to web size by `scripts/sketchfab-import.mjs` and `scripts/sketchfab-batch.mjs`.
 
-Tests: `npm test` runs the games' rules (Vitest); they run before every deploy.
+## Project structure
 
-Agent skills for Claude Code live in `.claude/skills` (superpowers, the three.js reference and game pack, caveman), with their sources in `skills-lock.json`; lint and tests skip them.
+```
+├── .github/workflows/deploy.yml   # lint, test, build and deploy on every push to main
+├── docs/                          # architecture notes, research and design plans
+├── public/                        # static files: models, textures, audio, photos, résumé PDF
+│   ├── cc0/                       # CC0 materials and HDRIs (credited in its README)
+│   ├── games/                     # game assets, credited in credits.json
+│   └── models/                    # glTF models (Meshy-generated and Sketchfab)
+├── scripts/                       # asset pipelines and the GitHub snapshot
+└── src/
+    ├── data/                      # the content: roles, projects, skills, education, places
+    ├── pages/                     # one file per route
+    ├── components/
+    │   ├── universe/              # the universe map: flight, targeting, HUD
+    │   │   └── online/            # multiplayer over Nostr
+    │   ├── cockpit/               # the welcome, the crawl and the launch
+    │   ├── worlds/                # world registry and the download gate for phones
+    │   ├── games/                 # shared game code: GPU check, gamepad, sounds
+    │   └── <world>/               # one folder per hidden world
+    ├── stages/                    # the live demos on project pages
+    ├── lib/                       # device tiers, GPU detection, audio, textures
+    │   └── three/                 # shared renderer, adaptive pacing, useScene hook
+    └── theme/                     # company themes and the theme provider
+```
+
+## How it works
+
+A few of the design decisions behind the site:
+
+- **Content is data.** Pages render from `src/data/`, so updating a role or project is a one-file change.
+- **3D first, with fallbacks.** Scenes render in WebGL wherever it's available, lower their own resolution and effects when frames run late, and fall back to SVG or 2D only when WebGL isn't there at all. Shaders compile in the background before the first frame, so a scene scrolling into view doesn't stall the page.
+- **Every device gets a budget.** `src/lib/device.js` sorts each device into a `high`, `mid` or `low` tier once, and every renderer starts from that tier's pixel ratio, antialiasing, shadows and bloom. On phones, heavy worlds ask before downloading anything.
+- **Game logic is plain, tested code.** The games keep their rules in a `rules.js` that's separate from the rendering and covered by Vitest. The same goes for the starfighter's flight model and targeting.
+- **Multiplayer without a server.** Pilots meet in a room on public Nostr relays over ordinary WebSockets. Every event is signed with a per-visit key and checked on arrival, and signing happens in a Web Worker so it stays off the render loop. Pilots never see each other's IP addresses.
+- **No runtime calls to asset services.** Every model and texture is generated or downloaded ahead of time and committed, so the deployed site only ever loads its own files.
+
+For the details of each subsystem, see [`docs/architecture.md`](docs/architecture.md).
+
+## Assets and credits
+
+- **CC0 materials and HDRIs** come from [Poly Haven](https://polyhaven.com/) and [ambientCG](https://ambientcg.com/). They live in [`public/cc0/`](public/cc0), which also lists what was made for this site and what's under other licences.
+- **Game assets** are CC0 and credited one by one in [`public/games/credits.json`](public/games/credits.json). *Portal panic* uses [Kenney](https://kenney.nl/)'s kits.
+- **Sketchfab models** are used under Creative Commons Attribution licences. Each one's author, licence and source are in [`src/data/modelCredits.json`](src/data/modelCredits.json), and they're credited on the pages that use them.
+- **Characters and buildings** in the worlds were generated for this site with [Meshy](https://www.meshy.ai/).
+
+## Deployment
+
+Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). It installs dependencies with `npm ci`, then lints, runs the tests and builds, and deploys `dist/` to GitHub Pages at the custom domain in `public/CNAME`. A failing lint or test stops the deploy.
+
+> **Working with Claude Code?** Agent skills live in `.claude/skills` (their sources are pinned in `skills-lock.json`). Lint and tests skip them.
+
+## Disclaimer
+
+This is a personal, non-commercial portfolio. The hidden worlds are fan-made tributes: Star Wars, The Lord of the Rings, Transformers, Marvel, Breaking Bad, The Office, Rick and Morty and Pirates of the Caribbean belong to their creators and studios. The site isn't affiliated with or endorsed by any of them.
+
+There's no open-source licence on this repository. The code and original content are © Tilak Patel. Third-party assets remain under their own licences, listed above.
