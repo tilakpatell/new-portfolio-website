@@ -13,7 +13,7 @@ export const WORLD_MB = {
   '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 18, // Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
   '/avengers': 11, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in)
-  '/c-137': 6, // the cruiser and Portal panic's cast
+  '/c-137': 12, // the cruiser and Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
   '/galaxy': 5, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon

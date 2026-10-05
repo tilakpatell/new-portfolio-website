@@ -1,0 +1,321 @@
+// The Citadel of Ricks in WebGL: the concourse (./concourse.js), the two
+// rooms under it (./rooms.js) and the people (./people.js), drawn in the
+// show's look (toon shading and the ink line from ../portal/toon.js, bloom
+// on the light strips), with the third-person camera the towns use and a
+// camera for each room's beat and for the cruiser getting away. The state
+// it draws comes from ./CitadelWorld.jsx each frame.
+//
+// createCitadelWorld(canvas, { onLost }) → Promise<{ render(state, ms),
+// fx(type, at?), screenOf(kind, id), resize, dispose, info, lost,
+// suggestYaw }>
+
+import * as THREE from 'three';
+import { createStage } from '../../../lib/stage3d';
+import { createModels } from '../../../lib/models';
+import { device } from '../../../lib/device';
+import { createFx } from '../../middleearth/shire/fx';
+import { createMeshyCast } from '../portal/meshyCast';
+import { InkPass } from '../portal/toon';
+import { EDGE_BUILDINGS, buildConcourse } from './concourse';
+import { createCrowd } from './crowd';
+import { createPeople } from './people';
+import { ROOMS, buildRooms } from './rooms';
+import { COLLIDERS, DOORS, PEN, spot } from './layout';
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+// the buildings at the terrace's edge, which the camera keeps out of
+const EDGE = { from: 40.6, to: 46.6 };
+
+// a box in its own frame: how far outside it (x, z) is (negative inside)
+function boxDist(b, x, z) {
+  const t = b.turn || 0;
+  const dx = x - b.x;
+  const dz = z - b.z;
+  const lx = dx * Math.cos(t) - dz * Math.sin(t);
+  const lz = dx * Math.sin(t) + dz * Math.cos(t);
+  return Math.max(Math.abs(lx) - b.w / 2, Math.abs(lz) - b.d / 2);
+}
+// what the camera can't go through
+const BLOCKERS = COLLIDERS.filter((c) => !c.low).map((c) => ({ ...c, y: c.top ?? 3 }));
+function insideAt(x, y, z) {
+  if (y < 0.5) return true;
+  const r = Math.hypot(x, z);
+  if (r > EDGE.from && r < EDGE.to) {
+    const a = Math.atan2(z, x);
+    for (const b of EDGE_BUILDINGS) if (y < b.top + 0.4 && Math.abs(Math.atan2(Math.sin(a - b.a), Math.cos(a - b.a))) < b.half + 0.02) return true;
+  }
+  for (const c of BLOCKERS) {
+    if (y > c.y) continue;
+    if (c.kind === 'circle') {
+      if (Math.hypot(x - c.x, z - c.z) < c.r + 0.3) return true;
+    } else if (boxDist(c, x, z) < 0.3) return true;
+  }
+  return false;
+}
+// how far from `from` to `to` the camera can go before it's inside
+// something, as a fraction
+function clearance(from, to) {
+  const N = 16;
+  for (let i = 1; i <= N; i++) {
+    const k = i / N;
+    if (insideAt(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k, from.z + (to.z - from.z) * k)) return Math.max(0.16, (i - 1) / N);
+  }
+  return 1;
+}
+
+export async function createCitadelWorld(canvas, { onLost } = {}) {
+  const tier = device().tier;
+  const soft = tier === 'low';
+  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
+  stage.grade({ contrast: 0.08, saturation: 1.08, vignette: 0.2, grain: 0.008, shadow: [0.0, 0.012, 0.02], high: [0.02, 0.012, 0.0] });
+  const { scene, camera, renderer } = stage;
+  renderer.info.autoReset = false;
+  // the city's golden haze
+  scene.fog = new THREE.Fog(0xe0b57a, 80, 360);
+
+  // ── light: a cool, even interior light, a key from the dome, and a pool
+  // of lamps lent to the concourse round Rick, or to the room he's in ──
+  const hemi = new THREE.HemisphereLight(0xffe9c4, 0x4d7a6c, 1.15);
+  const key = new THREE.DirectionalLight(0xffe2b4, 1.35);
+  key.position.set(-30, 60, 24);
+  scene.add(hemi, key, key.target);
+  const POOL = tier === 'high' ? 6 : tier === 'mid' ? 4 : 3;
+  const pool = Array.from({ length: POOL }, () => {
+    const l = new THREE.PointLight(0xffffff, 0, 16, 1.6);
+    scene.add(l);
+    return l;
+  });
+  const alarm = new THREE.PointLight(0xff3040, 0, 60, 1.2);
+  alarm.position.set(0, 14, 0);
+  scene.add(alarm);
+
+  // the sparks and puffs that say something happened (the Shire's, pooled)
+  const fxRoot = new THREE.Group();
+  scene.add(fxRoot);
+  const fx = createFx(fxRoot, { scale: tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35 });
+
+  // ── what's drawn ──
+  const models = createModels({ base: '/games/kenney' });
+  const [concourse, rooms] = await Promise.all([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })]);
+  scene.add(concourse.group, rooms.factory, rooms.council);
+  const [people, crowd] = await Promise.all([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier }), createCrowd(concourse.group, { tier })]);
+  // the cruiser, waiting in the hangar
+  const props = createMeshyCast();
+  await props.load(null, ['saucer']);
+  concourse.setCruiser(props.prop('saucer', 1.7));
+
+  if (!soft) {
+    const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
+    const ink = new InkPass(scene, camera, { hide: () => [...concourse.hide, fxRoot], width: big ? 1.15 : 1 });
+    stage.composer.insertPass(ink, 1);
+  }
+
+  const A = { t: 0, mode: null, beat: null, room: null, cam: { at: V(0, 6, 40), look: V(0, 2, 30) }, shake: 0, suggest: null, mood: 'day', red: 0, near: [], nearAt: -1 };
+  const tmp = V(0, 0, 0);
+  const tmp2 = V(0, 0, 0);
+  const look = V(0, 0, 0);
+
+  const render = (s, ms, fast = 1) => {
+    const dt = Math.min(0.05 * fast, ms / 1000);
+    A.t += dt;
+    const t = A.t;
+    const inside = s.mode === 'inside';
+    const h = s.rick;
+
+    // the mood: an ordinary day, election day, red alert
+    concourse.setMood(s.mood);
+    A.red += ((s.mood === 'red' ? 1 : 0) - A.red) * Math.min(1, dt * 1.5);
+    const pulse = A.red * (0.55 + 0.45 * Math.sin(t * 4.2));
+    hemi.intensity = 1.15 * (1 - A.red * 0.35);
+    hemi.color.setRGB(1, 0.91 - A.red * 0.3, 0.77 - A.red * 0.25);
+    key.intensity = 1.35 * (1 - A.red * 0.45);
+    alarm.intensity = inside ? 0 : pulse * 140;
+    stage.grade({ vignette: 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0), high: [0.006 + pulse * 0.05, 0.006, 0.014], shadow: [pulse * 0.025, 0.008, 0.03] });
+
+    concourse.update(t, dt, { gateOpen: s.gateOpen, hangarOpen: s.hangarOpen, escapeT: s.escapeT });
+    concourse.group.visible = !inside;
+    rooms.factory.visible = inside && s.room === 'factory';
+    rooms.council.visible = inside && s.room === 'council';
+
+    // ── the lamps ──
+    if (inside) {
+      const list = rooms.lights[s.room] ?? [];
+      pool.forEach((l, i) => {
+        const v = list[i];
+        if (!v) return (l.intensity = 0);
+        l.position.set(v[0], v[1], v[2]);
+        l.color.set(v[3]);
+        l.intensity = s.room === 'council' ? (i < 2 ? 22 : 12) : 14;
+        l.distance = 18;
+        return undefined;
+      });
+      key.intensity *= 0.25;
+      hemi.intensity *= s.room === 'council' ? 0.35 : 0.45;
+    } else {
+      // the nearest of the concourse's lamps to Rick, picked now and then
+      if (t - A.nearAt > 0.5) {
+        A.nearAt = t;
+        A.near = concourse.lights
+          .map((p) => [p, Math.hypot(p[0] - h.x, p[2] - h.z)])
+          .sort((a, b) => a[1] - b[1])
+          .slice(0, POOL)
+          .map((p) => p[0]);
+      }
+      pool.forEach((l, i) => {
+        const v = A.near[i];
+        if (!v) return (l.intensity = 0);
+        l.position.set(v[0], v[1], v[2]);
+        l.color.set(s.mood === 'red' ? 0xff6a70 : v[3]);
+        l.intensity = 8;
+        l.distance = 16;
+        return undefined;
+      });
+    }
+
+    // ── the people ──
+    people.update(s, t, camera.position);
+    crowd.setMood(s.mood);
+
+    // ── the camera ──
+    let camAt;
+    let camLook;
+    if (inside) {
+      const c = rooms.update(s.room, s.beat, t, dt, { line: s.line });
+      camAt = c?.at ?? tmp.copy(ROOMS[s.room] ?? ROOMS.factory).add(V(0, 3, 6));
+      camLook = c?.look ?? look.copy(ROOMS[s.room] ?? ROOMS.factory);
+    } else if (s.mode === 'escape') {
+      const c = concourse.escapeCam();
+      camAt = c.at;
+      camLook = c.look;
+    } else {
+      const yaw = s.camYaw ?? 0;
+      const pitch = s.camPitch ?? 0.34;
+      const dist = s.mode === 'talk' ? 4.6 : (s.camDist ?? 7);
+      look.set(h.x, 1.45, h.z);
+      camAt = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, 1.45 + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+      let k = clearance(look, camAt);
+      A.suggest = null;
+      if (k < 0.6) {
+        let best = k;
+        for (const dy of [0.7, -0.7, 1.4, -1.4, 2.2, -2.2]) {
+          const y2 = yaw + dy;
+          const kk = clearance(look, tmp2.set(h.x + Math.sin(y2) * Math.cos(pitch) * dist, 1.45 + Math.sin(pitch) * dist, h.z + Math.cos(y2) * Math.cos(pitch) * dist));
+          if (kk > best + 0.15) {
+            best = kk;
+            A.suggest = y2;
+          }
+        }
+      }
+      if (k < 0.55) {
+        // backed up against something: look down from higher instead
+        const high = tmp2.set(h.x + Math.sin(yaw) * Math.cos(0.85) * dist, 1.45 + Math.sin(0.85) * dist, h.z + Math.cos(yaw) * Math.cos(0.85) * dist);
+        const kh = clearance(look, high);
+        if (kh > k) {
+          camAt.copy(high);
+          k = kh;
+        }
+      }
+      if (k < 1) camAt.lerpVectors(look, camAt, k);
+      camLook = look;
+    }
+    if (import.meta.env.DEV && s.debugCam) {
+      camAt = tmp.set(...s.debugCam.at);
+      camLook = look.set(...s.debugCam.look);
+    }
+    const jump = A.mode !== s.mode || A.beat !== s.beat || A.room !== s.room;
+    A.mode = s.mode;
+    A.beat = s.beat;
+    A.room = s.room;
+    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 8 : 2.5));
+    A.cam.at.lerp(camAt, ease);
+    A.cam.look.lerp(camLook, ease);
+    camera.position.copy(A.cam.at);
+    if (A.shake > 0) {
+      camera.position.x += (Math.random() - 0.5) * A.shake;
+      camera.position.y += (Math.random() - 0.5) * A.shake;
+      A.shake = Math.max(0, A.shake - dt * 0.8);
+    }
+    camera.lookAt(A.cam.look);
+
+    fx.step(dt, t, { night: 0, day: 1 });
+    renderer.info.reset();
+    stage.render(ms / fast);
+  };
+
+  // ── events: a burst of sparks, a puff, a shake ──
+  const LINE_AT = (x = 0, y = 1.5) => V(ROOMS.factory.x + x * 1.2, ROOMS.factory.y + y, ROOMS.factory.z);
+  const fxEvent = (type, at = null) => {
+    const p = at ? V(at.x ?? 0, at.y ?? 1.2, at.z ?? 0) : null;
+    if (type === 'portal') fx.pop(V(DOORS.portal.x, 2.6, DOORS.portal.z - 1), 'green', 40, 3);
+    else if (type === 'penned') fx.pop(p ?? V(PEN.gate.x - 1, 1, 0), 'gold', 18, 1.8);
+    else if (type === 'scatter') {
+      fx.puff(V(PEN.gate.x + 0.5, 0.6, 0), V(1, 0.3, 0), 12);
+      A.shake = Math.max(A.shake, 0.05);
+    } else if (type === 'layer') fx.pop(LINE_AT(at?.x ?? 0, at?.y ?? 1.4), 'white', 8, 1.2);
+    else if (type === 'cut') rooms.drop(at ?? { x: 0, w: 0.1 });
+    else if (type === 'spoilt') {
+      rooms.drop({ ...(at ?? { x: 0, w: 1 }), y: 2.2, side: Math.sign(at?.x ?? 1) || 1 });
+      fx.pop(LINE_AT(at?.x ?? 0, 1.6), 'red', 14, 1.5);
+      A.shake = Math.max(A.shake, 0.06);
+    } else if (type === 'good') fx.pop(LINE_AT(0, 1.9), 'gold', 30, 2.2);
+    else if (type === 'contempt') {
+      fx.pop(V(ROOMS.council.x, ROOMS.council.y + 3.4, ROOMS.council.z - 6.6), 'red', 18, 2);
+      A.shake = Math.max(A.shake, 0.06);
+    } else if (type === 'vote') {
+      const b = spot('ballot');
+      fx.pop(V(b.x - 1.3, 2.2, b.z - 1.3), 'gold', 26, 2.2);
+      fx.pop(V(b.x - 1.3, 2.2, b.z - 1.3), 'blue', 18, 2);
+    } else if (type === 'red') {
+      for (let i = 0; i < 6; i++) fx.pop(V(Math.cos(i) * 7, 9, Math.sin(i) * 7), 'red', 16, 2.4);
+      A.shake = Math.max(A.shake, 0.25);
+    } else if (type === 'seen') A.shake = Math.max(A.shake, 0.08);
+    else if (type === 'caught') A.shake = 0.3;
+    else if (type === 'liftoff') {
+      fx.pop(V(DOORS.hangar.x, 1.5, DOORS.hangar.z), 'white', 30, 3);
+      A.shake = Math.max(A.shake, 0.15);
+    }
+  };
+
+  // Where someone is on screen, for the speech bubbles: { x, y } in CSS
+  // pixels of the canvas, or null when they're off it
+  const screenOf = (kind, id) => {
+    const p = people.headOf(kind, id);
+    if (!p) return null;
+    p.project(camera);
+    if (p.z > 1 || Math.abs(p.x) > 1.2 || Math.abs(p.y) > 1.2) return null;
+    const { w, h } = stage.size;
+    return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * h };
+  };
+
+  // every shader compiled before the first frame (everything's still
+  // visible here, the rooms too)
+  await stage.precompile();
+
+  return {
+    scene: import.meta.env.DEV ? scene : null, // for the QA scripts
+    render,
+    fx: fxEvent,
+    screenOf,
+    resize: stage.resize,
+    info() {
+      const i = renderer.info;
+      return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, quality: stage.quality, tier };
+    },
+    get lost() {
+      return stage.lost;
+    },
+    // a yaw with more room behind Rick, when the camera's boxed in
+    get suggestYaw() {
+      return A.suggest ?? null;
+    },
+    dispose() {
+      people.dispose();
+      crowd.dispose();
+      props.dispose();
+      concourse.dispose();
+      rooms.dispose();
+      models.dispose();
+      stage.dispose();
+    },
+  };
+}

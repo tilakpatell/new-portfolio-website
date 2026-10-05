@@ -71,10 +71,11 @@
 // are its children), net (online/client.js's link to the other pilots, or
 // null), tags (a ref to the box their callsigns go in), frozen (the page
 // is leaving: stop drawing), onPick(id), onOpen(id) (a station's sign was
-// clicked: go to its page), onEvent(event), onLand(), onCrash(id) (the ship
+// clicked: go to its page), onEvent(event), onLand(), onCrash(id, page) (the ship
 // went into a planet or a station too fast and the impact has played, or
 // fell into the black hole and is gone: true if the page goes on into its
-// page, or on through to what's beyond the hole, so the ship doesn't come back).
+// page, or on through to what's beyond the hole, so the ship doesn't come back;
+// `page`, where a wonder with a page of its own goes instead).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -1764,6 +1765,7 @@ export async function create(canvas, ctx) {
       sun: e.id === 'sun' || kind === 'star',
       kind,
       world: wonder?.world ?? null,
+      page: wonder?.page ?? null, // (the Citadel: its own world, inside)
       colour: kind === 'giant' ? wonder.colors[0] : null,
       swallow, // into the black hole: the fall, then on through to what's beyond it
       fall: swallow ? startFall([s.x, s.y, s.z], camLocal.toArray()) : null, // (maw.js)
@@ -2134,7 +2136,7 @@ export async function create(canvas, ctx) {
       // the place's page (a wonder with a world of its own, the Citadel,
       // takes you into that), or on through to what's beyond the hole
       c.asked = true;
-      c.through = Boolean(props.onCrash?.(c.world ?? c.id));
+      c.through = Boolean(props.onCrash?.(c.world ?? c.id, c.page));
     }
     if (c.through) return true; // the camera holds on the crater till the page goes
     if (age >= T.back && !c.back) {

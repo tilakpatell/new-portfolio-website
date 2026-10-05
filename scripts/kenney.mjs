@@ -6,8 +6,8 @@
 //
 //   KENNEY=/path/to/unzipped/kits npm run kenney
 //
-// where the folder holds kenney_city-kit-suburban_20, kenney_nature-kit and
-// kenney_space-kit. The output is committed, so the site never needs them.
+// where the folder holds kenney_city-kit-suburban_20, kenney_nature-kit,
+// kenney_space-kit and kenney_space-station-kit. The output is committed, so the site never needs them.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -22,6 +22,7 @@ const KITS = {
   suburban: { dir: 'kenney_city-kit-suburban_20/Models/GLB format', name: 'City Kit (Suburban)', url: 'https://kenney.nl/assets/city-kit-suburban' },
   nature: { dir: 'kenney_nature-kit/Models/GLTF format', name: 'Nature Kit', url: 'https://kenney.nl/assets/nature-kit' },
   space: { dir: 'kenney_space-kit/Models/GLTF format', name: 'Space Kit', url: 'https://kenney.nl/assets/space-kit' },
+  station: { dir: 'kenney_space-station-kit/Models/GLB format', name: 'Space Station Kit', url: 'https://kenney.nl/assets/space-station-kit' },
 };
 
 // name in the game → [kit, model]
@@ -58,6 +59,17 @@ export const MODELS = {
   dish: ['space', 'satelliteDish_detailed'],
   hangar: ['space', 'hangar_roundGlass'],
   turret: ['space', 'turret_double'],
+  // inside the Citadel (rickmorty/citadel): Simple Rick's and the Council's chamber
+  'station-chair': ['station', 'chair-cushion'],
+  'station-table': ['station', 'table-large'],
+  'station-computer': ['station', 'computer-system'],
+  'station-computer-wide': ['station', 'computer-wide'],
+  'station-container': ['station', 'container-flat'],
+  'station-container-tall': ['station', 'container-tall'],
+  'station-rail': ['station', 'rail'],
+  'station-pipe': ['station', 'pipe'],
+  'station-banner': ['station', 'wall-banner'],
+  'station-display': ['station', 'display-wall-wide'],
 };
 
 async function main() {

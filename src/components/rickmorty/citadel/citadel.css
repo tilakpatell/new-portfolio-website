@@ -1,0 +1,44 @@
+/* The Citadel of Ricks: the towns' HUD (../../middleearth/shire/shire.css,
+   ../../middleearth/towns/bree/bree.css) in the Citadel's colours: white
+   glass, cyan light, and red on red alert. */
+
+.citadel-world {
+  --shire-ink: #f4f8ff;
+  --shire-glass: rgba(18, 26, 44, 0.74);
+  --shire-glass-hi: rgba(20, 30, 52, 0.92);
+  --shire-gold: #6ff3ff;
+  --shire-green: #2e6fb8;
+  --shire-line: rgba(111, 243, 255, 0.38);
+}
+.citadel-world .btn-primary { background: #6ff3ff; color: #0c1626; }
+.citadel-stage { background: radial-gradient(120% 80% at 50% 20%, #33406a 0%, #141c34 55%, #070a14 100%); }
+.citadel-stage .shire-loading { color: #cfefff; font-family: 'Orbitron', var(--font-sans); font-size: 1rem; }
+.citadel-stage .shire-title,
+.citadel-stage .shire-door-name,
+.citadel-stage .shire-panel-title,
+.citadel-stage .shire-bubble b { font-family: 'Orbitron', var(--font-sans); letter-spacing: 0.02em; }
+.citadel-stage .shire-title { font-weight: 800; font-size: clamp(1.35rem, 0.9rem + 1.8vw, 2.4rem); text-shadow: 0 2px 18px rgba(8, 14, 30, 0.7), 0 0 2px rgba(8, 14, 30, 0.6); }
+.citadel-stage .shire-meter-bar span { background: linear-gradient(90deg, #f3d84b, #6ff3ff); }
+.citadel-stage[data-mood='red'] { --shire-gold: #ff5a68; --shire-line: rgba(255, 90, 104, 0.45); --shire-glass: rgba(40, 14, 22, 0.76); --shire-glass-hi: rgba(48, 16, 26, 0.92); }
+.citadel-stage[data-mode='inside'] .shire-canvas, .citadel-stage[data-mode='talk'] .shire-canvas, .citadel-stage[data-mode='escape'] .shire-canvas { cursor: default; touch-action: none; }
+
+.citadel-voters { cursor: default; }
+.citadel-wanted { cursor: default; border-color: rgba(255, 90, 104, 0.7); color: #ffd6da; animation: citadel-wanted 1.2s ease-in-out infinite; }
+@keyframes citadel-wanted { 50% { box-shadow: 0 0 0 3px rgba(255, 90, 104, 0.35); } }
+@media (prefers-reduced-motion: reduce) { .citadel-wanted { animation: none; } }
+
+/* Simple Rick's line: the five layers of this wafer, laid or to come */
+.citadel-line, .citadel-floor { left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.citadel-layers { display: flex; flex-direction: column-reverse; gap: 3px; width: 7rem; margin: 0; padding: 0; list-style: none; }
+.citadel-layers li { height: 0.55rem; border-radius: 2px; background: rgba(255, 255, 255, 0.1); border: 1px dashed rgba(255, 255, 255, 0.25); }
+.citadel-layers li[data-cream] { height: 0.32rem; }
+.citadel-layers li[data-laid] { border: 0; background: repeating-linear-gradient(90deg, #d9a35b 0 6px, #b37b37 6px 7px); }
+.citadel-layers li[data-laid][data-cream] { background: #fff3dc; }
+.citadel-drop { min-width: 6.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+@media (max-width: 639px) {
+  .citadel-line, .citadel-floor { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}
+
+/* no chapter bar over the top here, as Middle-earth has */
+.citadel-stage .shire-hud-top { padding-top: clamp(0.7rem, 2vw, 1.2rem); }

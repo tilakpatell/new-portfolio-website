@@ -32,6 +32,7 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
+const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
@@ -276,6 +277,7 @@ function Shell() {
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
+                <Route path="/c-137/citadel" element={<Citadel />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />

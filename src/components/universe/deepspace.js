@@ -26,10 +26,12 @@
 //   of lookups), glowing in their colours with dark lanes of dust across
 //   them and young stars inside. A puff fades out as you come close to it,
 //   so flying through is a drift through haze, not a wall.
-// - The Citadel of Ricks: a wide disc with a tall stepped spire above and a
-//   shorter one below, rings round it, rows of lit windows, masts with
-//   blinking beacons and a green band of light round its rim, a portal
-//   swirling beside it and council ships circling.
+// - The Citadel of Ricks, as the show draws it: a great glass dome with a
+//   city of pale green towers under it on a bronze saucer, four arms out to
+//   smaller domed cities (one riding higher than the rest), a cluster of
+//   tall blades hanging under it with cyan light down them and a crystal
+//   hanging lowest, beacons round the rim, a portal swirling beside it and
+//   council ships circling.
 // - Names: each wonder's in spaced capitals over a thin line, with what it is
 //   under it, at the same size on screen however far off. They show only out
 //   of the home system and well clear of the wonder, and fade in and out.
@@ -699,26 +701,27 @@ void main() {
 const CITADEL_VERT = `
 attribute float aPart;
 varying vec3 vObj;
-varying vec3 vNObj;
 varying vec3 vW;
 varying vec3 vNW;
 varying float vPart;
 void main() {
   vObj = position;
-  vNObj = normal;
   vPart = aPart;
   vec4 w = modelMatrix * vec4(position, 1.0);
   vW = w.xyz;
   vNW = mat3(modelMatrix) * normal;
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
+// The Citadel as the show draws it: bronze hulls, olive ribs, a city in
+// pale greens under the glass, cyan light strips, purple running lights and
+// blinking beacons. Parts (aPart): 0 hull, 1 ribs and trim, 2 beacons,
+// 3 cyan strips, 4 the city's towers, 5 purple lights, 6 the crystal.
 const CITADEL_FRAG = `
 uniform vec3 uLight;
 uniform vec3 uLightColor;
 uniform float uTime;
 uniform float uK; // its size, against the radius of 18 its profile is drawn for
 varying vec3 vObj;
-varying vec3 vNObj;
 varying vec3 vW;
 varying vec3 vNW;
 varying float vPart;
@@ -727,61 +730,104 @@ void main() {
   vec3 N = nrm(vNW);
   vec3 V = nrm(cameraPosition - vW);
   vec3 L = nrm(uLight - vW);
-  vec3 no = nrm(vNObj);
-  vec3 p = vObj;
-  float ang = atan(p.z, p.x + 1e-6);
-  float rad = length(p.xz);
-  float wall = 1.0 - smoothstep(0.35, 0.7, abs(no.y));
-  float hull = 1.0 - step(0.5, vPart);
-  // plating: a tone for each storey and each panel, with seams between
-  vec2 pc = vec2(ang * max(rad, 0.6) / 1.15, p.y / 0.6);
-  vec2 cell = floor(pc);
-  vec2 pf = fract(pc);
-  vec2 pw = fwidth(pc);
-  float seam = max(1.0 - smoothstep(0.0, pw.x * 1.5, min(pf.x, 1.0 - pf.x)), 1.0 - smoothstep(0.0, pw.y * 1.5, min(pf.y, 1.0 - pf.y)));
-  seam *= 1.0 - smoothstep(0.3, 0.6, max(pw.x, pw.y));
-  float tone = 0.52 + 0.14 * hash12(vec2(floor(p.y / 0.6), 3.1)) + 0.1 * hash12(cell);
-  // ribs up the walls, every few windows
-  float rib = wall * smoothstep(0.86, 0.94, fract(ang * rad / 1.9)) * (1.0 - smoothstep(0.3, 0.6, pw.x));
-  vec3 albedo = vec3(0.4, 0.42, 0.46) * tone * (1.0 - 0.3 * seam) * (1.0 - 0.35 * rib);
-  // terraces: darker decks with rings of light
-  float deck = 1.0 - wall;
-  albedo = mix(albedo, albedo * 0.7, deck * hull);
-  // windows on the walls, rows of them, some lit; too small to make out, their glow
-  vec2 wc = vec2(ang * rad / 0.34, p.y / 0.46);
-  vec2 wi = floor(wc);
-  vec2 wf = fract(wc);
-  vec2 ww = fwidth(wc);
-  float lit = step(0.48, hash12(wi + 17.0));
-  float shape = step(0.22, wf.x) * step(wf.x, 0.78) * step(0.3, wf.y) * step(wf.y, 0.72);
-  float tiny = smoothstep(0.25, 0.65, max(ww.x, ww.y));
-  float win = mix(lit * shape, 0.52 * 0.56 * 0.42, tiny) * wall * hull;
-  vec3 wcol = mix(vec3(1.0, 0.8, 0.52), vec3(0.78, 0.9, 1.0), step(0.72, hash12(wi + 3.0)));
-  wcol = mix(wcol, vec3(0.45, 1.0, 0.35), step(0.92, hash12(wi + 9.0)));
-  // the green band round the rim, and rings of deck lights
-  float band = hull * step(17.4 * uK, rad) * (1.0 - smoothstep(0.12 * uK, 0.3 * uK, abs(p.y)));
-  float deckRing = deck * hull * step(0.92, fract(rad * 0.9)) * (1.0 - tiny);
+  vec3 p = vObj / max(uK, 1e-3); // (its patterns are drawn at a radius of 18)
+  float part = floor(vPart + 0.5);
   float ndl = dot(N, L);
-  float light = smoothstep(-0.1, 0.3, ndl) * (0.06 + 0.94 * max(ndl, 0.0));
-  vec3 col = albedo * uLightColor * light + albedo * vec3(0.02, 0.024, 0.03);
-  vec3 H = nrm(L + V);
-  float sp = sat(dot(N, H));
-  sp *= sp;
-  sp *= sp;
-  sp *= sp;
-  sp *= sp;
-  sp *= sp;
-  col += uLightColor * sp * 0.1 * step(0.0, ndl) * hull;
-  col += wcol * win * 1.7 * (1.0 - rib);
-  col += vec3(0.25, 1.0, 0.22) * band * (0.7 + 0.3 * sin(ang * 24.0 - uTime * 2.0));
-  col += vec3(0.6, 1.0, 0.7) * deckRing * 0.6;
-  // the masts' beacons, blinking each on its own beat
-  if (vPart > 1.5) {
+  // the show's flat light: two steps and a dark side that isn't black
+  float light = mix(0.32, 1.0, smoothstep(0.0, 0.25, ndl)) * mix(0.82, 1.0, smoothstep(0.45, 0.6, ndl));
+  if (part > 5.5) {
+    // the crystal under it all: cyan, brightest at its edges
+    float f = pow(1.0 - abs(dot(N, V)), 2.0);
+    gl_FragColor = vec4(vec3(0.25, 0.95, 1.0) * (0.9 + f * 1.8 + 0.25 * sin(p.y * 1.4 - uTime * 2.0)), 1.0);
+    #include <colorspace_fragment>
+    return;
+  }
+  if (part > 4.5) {
+    gl_FragColor = vec4(vec3(0.85, 0.45, 1.6) * (0.8 + 0.4 * sin(uTime * 3.0 + p.x)), 1.0);
+    #include <colorspace_fragment>
+    return;
+  }
+  if (part > 2.5 && part < 3.5) {
+    float run = 0.75 + 0.25 * sin(p.y * 2.2 + p.x * 0.7 - uTime * 2.4);
+    gl_FragColor = vec4(vec3(0.3, 1.0, 0.95) * 1.7 * run, 1.0);
+    #include <colorspace_fragment>
+    return;
+  }
+  if (part > 1.5 && part < 2.5) {
+    // the beacons, blinking each on its own beat
     float beat = hash12(floor(p.xz * 3.0) + 0.5);
     float on = step(0.72, fract(uTime * 0.7 + beat));
-    col = mix(vec3(0.5, 0.06, 0.04), vec3(4.0, 0.55, 0.35), on);
+    gl_FragColor = vec4(mix(vec3(0.5, 0.06, 0.04), vec3(4.0, 0.55, 0.35), on), 1.0);
+    #include <colorspace_fragment>
+    return;
   }
+  vec3 albedo;
+  vec3 glow = vec3(0.0);
+  if (part > 3.5) {
+    // a tower of the city: pale green, yellow-green or teal, rows of windows
+    float id = hash12(floor(p.xz * 1.3) + 7.0);
+    albedo = mix(vec3(0.68, 0.82, 0.55), vec3(0.5, 0.74, 0.7), step(0.55, id));
+    albedo = mix(albedo, vec3(0.86, 0.84, 0.5), step(0.85, id));
+    vec2 wc = vec2((p.x + p.z) * 5.0, p.y * 6.0);
+    vec2 wf = fract(wc);
+    float tiny = smoothstep(0.3, 0.8, max(fwidth(wc).x, fwidth(wc).y));
+    float win = mix(step(0.25, wf.x) * step(wf.x, 0.75) * step(0.3, wf.y) * step(wf.y, 0.7) * step(0.45, hash12(floor(wc) + 3.0)), 0.25, tiny);
+    glow = mix(vec3(1.0, 0.85, 0.5), vec3(0.5, 1.0, 0.9), step(0.6, hash12(floor(wc)))) * win * 0.9 * (1.0 - step(0.6, abs(N.y)));
+  } else if (part > 0.5) {
+    albedo = vec3(0.46, 0.4, 0.2);
+  } else {
+    // bronze plating, a tone a panel, dark seams between
+    vec3 q = p * vec3(0.9, 1.6, 0.9);
+    vec3 cell = floor(q);
+    vec3 f = fract(q);
+    vec3 w = fwidth(q);
+    float seam = 1.0 - smoothstep(0.0, 1.5, min(min(min(f.x, 1.0 - f.x) / max(w.x, 1e-4), min(f.y, 1.0 - f.y) / max(w.y, 1e-4)), min(f.z, 1.0 - f.z) / max(w.z, 1e-4)));
+    seam *= 1.0 - smoothstep(0.3, 0.6, max(w.x, max(w.y, w.z)));
+    float tone = 0.86 + 0.18 * hash12(cell.xz + cell.y * 3.1);
+    albedo = mix(vec3(0.66, 0.5, 0.28), vec3(0.55, 0.47, 0.3), step(0.6, hash12(cell.yz + 1.3))) * tone * (1.0 - 0.35 * seam);
+    // small windows, lit
+    vec2 wc = vec2(atan(p.z, p.x + 1e-6) * length(p.xz) / 0.4, p.y / 0.5);
+    vec2 wf = fract(wc);
+    float tiny = smoothstep(0.25, 0.65, max(fwidth(wc).x, fwidth(wc).y));
+    float win = mix(step(0.3, wf.x) * step(wf.x, 0.7) * step(0.35, wf.y) * step(wf.y, 0.65) * step(0.62, hash12(floor(wc) + 11.0)), 0.12, tiny) * (1.0 - step(0.7, abs(N.y)));
+    glow = mix(vec3(1.0, 0.82, 0.5), vec3(0.45, 1.0, 0.95), step(0.6, hash12(floor(wc) + 4.0))) * win * 1.2;
+  }
+  vec3 col = albedo * uLightColor * light * 0.62 + albedo * vec3(0.05, 0.045, 0.035) + glow;
+  // a warm rim where it turns from the light
+  col += vec3(1.0, 0.7, 0.35) * pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.18 * step(0.0, ndl);
   gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+// the domes' glass: yellow-green, clear face on, bright at the edges, with
+// the home sun's glint
+const CITADEL_GLASS_FRAG = `
+uniform vec3 uLight;
+uniform vec3 uLightColor;
+uniform float uTime;
+uniform float uK;
+varying vec3 vObj;
+varying vec3 vW;
+varying vec3 vNW;
+varying float vPart;
+${COMMON}
+void main() {
+  vec3 N = nrm(vNW);
+  vec3 V = nrm(cameraPosition - vW);
+  vec3 L = nrm(uLight - vW);
+  float f = pow(1.0 - abs(dot(N, V)), 2.2);
+  vec3 H = nrm(L + V);
+  float sp = pow(sat(dot(N, H)), 60.0);
+  // the dome's panes: a faint diamond lattice
+  vec2 g = vec2(atan(vObj.z, vObj.x) * 9.0, vObj.y / max(uK, 1e-3) * 2.2);
+  vec2 gf = abs(fract(g) - 0.5);
+  float lattice = (1.0 - smoothstep(0.0, 0.06, min(gf.x, gf.y))) * (1.0 - smoothstep(0.3, 0.8, max(fwidth(g).x, fwidth(g).y)));
+  // lit like the rest: the side to the sun glows yellow-green, the far side
+  // stays dim, so the city reads through it
+  float lit = mix(0.25, 1.0, smoothstep(-0.1, 0.4, dot(N, L)));
+  vec3 tint = vec3(0.8, 0.92, 0.4);
+  float a = 0.3 + f * 0.5 + lattice * 0.2;
+  vec3 col = tint * (0.3 + f * 0.9) * lit * a + uLightColor * sp * 0.6;
+  gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>
 }`;
 
@@ -1554,55 +1600,179 @@ export function buildDeepSpace({ small = false } = {}) {
 
   const citadel = (w) => {
     const g = place(w);
-    const k = w.r / 18; // its profile is drawn for a radius of 18
-    // from the bottom spire's tip up to the top's: [radius, height], a step
-    // where a point repeats (so the edge stays sharp)
-    const profile = [
-      [0, -11.2], [0.35, -10.8], [0.6, -9.6], [1.1, -9.3], [1.1, -9.3], [1.1, -8.2], [1.1, -8.2], [1.9, -7.9], [1.9, -7.9], [1.9, -6.8], [1.9, -6.8],
-      [3.0, -6.4], [3.0, -6.4], [3.0, -5.3], [3.0, -5.3], [4.6, -4.8], [6.5, -3.9], [10.5, -2.9], [14.5, -2.0], [17.2, -1.1], [18, -0.5], [18, -0.5],
-      [18, 0.5], [18, 0.5], [17.2, 1.1], [15.0, 1.6], [15.0, 1.6], [15.0, 2.1], [15.0, 2.1], [12.0, 2.6], [12.0, 2.6], [12.0, 3.2], [12.0, 3.2],
-      [9.0, 3.6], [9.0, 3.6], [9.0, 4.4], [9.0, 4.4], [6.6, 4.9], [6.6, 4.9], [6.6, 6.0], [6.6, 6.0], [5.0, 6.4], [5.0, 6.4], [5.0, 7.6], [5.0, 7.6],
-      [3.8, 8.0], [3.8, 8.0], [3.8, 9.4], [3.8, 9.4], [2.8, 9.8], [2.8, 9.8], [2.8, 11.2], [2.8, 11.2], [2.0, 11.6], [2.0, 11.6], [2.0, 12.9], [2.0, 12.9],
-      [1.3, 13.3], [1.3, 13.3], [1.3, 14.6], [1.3, 14.6], [0.7, 15.0], [0.45, 16.6], [0.2, 17.6], [0, 17.8],
-    ].map(([x, y]) => new THREE.Vector2(x * k, y * k));
+    const k = w.r / 18; // drawn for a radius of 18
     const pieces = [];
     const add = (geo, part) => {
       const n = geo.attributes.position.count;
-      geo.setAttribute('aPart', new THREE.Float32BufferAttribute(new Float32Array(n).fill(part), 1));
-      pieces.push(geo);
+      const flat = geo.index ? geo : geo;
+      flat.setAttribute('aPart', new THREE.Float32BufferAttribute(new Float32Array(n).fill(part), 1));
+      for (const name of Object.keys(flat.attributes)) if (!['position', 'normal', 'aPart'].includes(name)) flat.deleteAttribute(name);
+      pieces.push(flat.index ? flat.toNonIndexed() : flat);
     };
-    add(new THREE.LatheGeometry(profile, seg(72, 40)), 0);
-    // rings round the spire and under the disc, on spokes
-    add(new THREE.TorusGeometry(8.6 * k, 0.32 * k, 8, seg(72, 40)).rotateX(PI / 2).translate(0, 7.0 * k, 0), 0);
-    add(new THREE.TorusGeometry(6.4 * k, 0.26 * k, 8, seg(64, 36)).rotateX(PI / 2).translate(0, -6.0 * k, 0), 0);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * TAU + PI / 4;
-      add(new THREE.CylinderGeometry(0.1 * k, 0.1 * k, 4.0 * k, 5).rotateZ(PI / 2).translate(6.6 * k, 7.0 * k, 0).rotateY(a), 1);
-      add(new THREE.CylinderGeometry(0.09 * k, 0.09 * k, 3.4 * k, 5).rotateZ(PI / 2).translate(4.8 * k, -6.0 * k, 0).rotateY(a + PI / 4), 1);
-    }
-    // masts round the rim and on the spires, each with a beacon
-    const masts = [
-      [16, 1.2, 3.4, 0.2], [16, 1.2, 4.2, 1.25], [16, 1.2, 3.0, 2.3], [16, 1.2, 4.6, 3.4], [16, 1.2, 3.6, 4.5], [16, 1.2, 3.2, 5.5],
-      [5.2, 7.6, 2.4, 0.8], [5.2, 7.6, 2.0, 3.9], [3.2, -6.4, -2.6, 2.0], [3.2, -6.4, -2.2, 5.1],
+    const glass = [];
+    const r = rng('citadel');
+    // A domed disc: a bronze saucer, a glass dome on it with ribs, a ring
+    // of light round its rim, and a city under the glass. at: its middle
+    // (in units of k), R its radius, H the dome's height.
+    const station = (at, R, H, { ribs = 8, towers = 60 } = {}) => {
+      const [cx, cy, cz] = at;
+      const base = [
+        [0, -R * 0.36],
+        [R * 0.3, -R * 0.34],
+        [R * 0.62, -R * 0.24],
+        [R * 0.9, -R * 0.1],
+        [R * 1.04, -R * 0.02],
+        [R * 1.05, R * 0.03],
+        [R * 0.98, R * 0.04],
+      ].map(([x, y]) => new THREE.Vector2(x * k, y * k));
+      add(new THREE.LatheGeometry(base, seg(48, 28)).translate(cx * k, cy * k, cz * k), 0);
+      add(new THREE.TorusGeometry(R * 1.05 * k, 0.09 * k * Math.max(1, R / 8), 6, seg(64, 32)).rotateX(PI / 2).translate(cx * k, (cy + R * 0.005) * k, cz * k), 3);
+      // the dome, its ribs and its crown ring
+      const dome = new THREE.SphereGeometry(1, seg(48, 28), seg(16, 10), 0, TAU, 0, PI / 2).scale(R * k, H * k, R * k).translate(cx * k, (cy + R * 0.04) * k, cz * k);
+      dome.setAttribute('aPart', new THREE.Float32BufferAttribute(new Float32Array(dome.attributes.position.count).fill(7), 1));
+      glass.push(dome);
+      const crown = 0.27;
+      for (let i = 0; i < ribs; i++) {
+        const a = (i / ribs) * TAU + 0.2;
+        const pts = [];
+        for (let j = 0; j <= 10; j++) {
+          const rr = R * (1 - (1 - crown) * (j / 10));
+          const y = H * Math.sqrt(Math.max(0, 1 - (rr / R) ** 2));
+          pts.push(new THREE.Vector3((cx + Math.cos(a) * rr) * k, (cy + R * 0.04 + y) * k, (cz + Math.sin(a) * rr) * k));
+        }
+        add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.11 * k * Math.max(1, R / 8), 5, false), 1);
+      }
+      for (const lat of [0.62, crown]) {
+        const rr = R * lat;
+        const y = H * Math.sqrt(1 - lat * lat);
+        add(new THREE.TorusGeometry(rr * k, 0.1 * k * Math.max(1, R / 8), 5, seg(48, 24)).rotateX(PI / 2).translate(cx * k, (cy + R * 0.04 + y) * k, cz * k), 1);
+      }
+      // the city under the glass: towers of pale green, kept inside the dome
+      for (let i = 0; i < towers; i++) {
+        const rr = Math.sqrt(r()) * R * 0.86;
+        const a = r() * TAU;
+        const top = H * Math.sqrt(Math.max(0, 1 - (rr / R) ** 2)) * (0.35 + r() * 0.55);
+        const w2 = (0.35 + r() * 0.5) * Math.max(0.6, R / 10);
+        const geo = r() < 0.35 ? new THREE.CylinderGeometry(w2 * 0.5 * k, w2 * 0.55 * k, top * k, 8) : new THREE.BoxGeometry(w2 * k, top * k, w2 * (0.6 + r() * 0.6) * k);
+        add(geo.translate((cx + Math.cos(a) * rr) * k, (cy + R * 0.04 + top / 2) * k, (cz + Math.sin(a) * rr) * k), 4);
+      }
+    };
+    // the great dome in the middle
+    station([0, 0, 0], 12.5, 5.4, { ribs: 10, towers: small ? 70 : 140 });
+    // under it, a deep bronze hull stepping down to the towers
+    const under = [
+      [0, -7.6],
+      [2.6, -7.4],
+      [4.4, -6.6],
+      [6.2, -5.4],
+      [7.4, -4.5],
+    ].map(([x, y]) => new THREE.Vector2(x * k, y * k));
+    add(new THREE.LatheGeometry(under, seg(40, 24)), 0);
+    // the arms, out to four smaller domes: one higher than the rest, as the show has it
+    const ARMS = [
+      { a: 0.25, len: 22, R: 5.6, H: 2.6, rise: -1.6 },
+      { a: 0.25 + PI / 2 + 0.15, len: 19, R: 4.4, H: 2.1, rise: 6.5 },
+      { a: 0.25 + PI + 0.05, len: 23, R: 6, H: 2.8, rise: -2.4 },
+      { a: 0.25 + PI * 1.5 - 0.1, len: 18, R: 4.2, H: 2, rise: 1.2 },
     ];
-    for (const [rr, y0, len, a] of masts) {
-      const x = rr * k;
-      add(new THREE.CylinderGeometry(0.05 * k, 0.11 * k, Math.abs(len) * k, 5).translate(x, (y0 + len / 2) * k, 0).rotateY(a), 1);
-      add(new THREE.SphereGeometry(0.2 * k, 6, 4).translate(x, (y0 + len) * k, 0).rotateY(a), 2);
+    for (const arm of ARMS) {
+      const dir = new THREE.Vector3(Math.cos(arm.a), 0, Math.sin(arm.a));
+      const from = dir.clone().multiplyScalar(11.4).setY(-0.6);
+      const to = dir.clone().multiplyScalar(arm.len).setY(arm.rise - arm.R * 0.2);
+      const mid = from.clone().lerp(to, 0.5);
+      const len = from.distanceTo(to);
+      const look = new THREE.Matrix4().lookAt(from, to, new THREE.Vector3(0, 1, 0));
+      const q = new THREE.Quaternion().setFromRotationMatrix(look);
+      const beam = (w2, h2, part, off = [0, 0]) => {
+        const geo = new THREE.BoxGeometry(w2 * k, h2 * k, len * k);
+        // tapered toward the station
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const t = pos.getZ(i) / (len * k) + 0.5; // 0 at the far end (lookAt faces -z)
+          pos.setX(i, pos.getX(i) * (0.65 + 0.35 * t));
+        }
+        geo.computeVertexNormals();
+        geo.translate(off[0] * k, off[1] * k, 0);
+        geo.applyQuaternion(q);
+        geo.translate(mid.x * k, mid.y * k, mid.z * k);
+        add(geo, part);
+      };
+      beam(2.2, 1.3, 0);
+      beam(0.9, 0.5, 1, [0, -1.2]);
+      beam(0.14, 0.14, 3, [0.7, 0.68]);
+      beam(0.14, 0.14, 3, [-0.7, 0.68]);
+      // running lights near the root
+      for (let i = 0; i < 3; i++) {
+        const at2 = from.clone().lerp(to, 0.12 + i * 0.07);
+        add(new THREE.SphereGeometry(0.22 * k, 6, 4).translate(at2.x * k, (at2.y + 0.8) * k, at2.z * k), 5);
+      }
+      station([to.x, to.y, to.z], arm.R, arm.H, { ribs: 6, towers: small ? 16 : 34 });
+    }
+    // the towers hanging under it, a cluster of tall tapered blades with cyan
+    // strips down them, and the crystal hanging lowest
+    const BLADES = [
+      [0, 0, 15, 1.5],
+      [2.6, 0.4, 12, 1.2],
+      [-2.2, 1.6, 13.5, 1.15],
+      [0.6, -2.6, 11, 1.1],
+      [-1.6, -1.9, 9.5, 1],
+      [1.9, 2.3, 10, 0.95],
+    ];
+    for (const [bx, bz, h, wd] of BLADES) {
+      const geo = new THREE.CylinderGeometry(wd * k, wd * 0.35 * k, h * k, 5);
+      add(geo.translate(bx * k, (-6 - h / 2) * k, bz * k), 0);
+      // a strip down the face toward the outside
+      const a = Math.atan2(bz, bx || 0.01);
+      const sx = bx + Math.cos(a) * wd * 0.72;
+      const sz = bz + Math.sin(a) * wd * 0.72;
+      add(new THREE.BoxGeometry(0.16 * k, h * 0.82 * k, 0.16 * k).translate(sx * k, (-6 - h * 0.45) * k, sz * k), 3);
+    }
+    add(new THREE.ConeGeometry(0.75 * k, 13 * k, 6).rotateX(PI).translate(0.3 * k, -27.5 * k, 0.2 * k), 6);
+    // masts with beacons round the great dome's rim
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + 0.6;
+      const x = Math.cos(a) * 12.8;
+      const z = Math.sin(a) * 12.8;
+      const len = 1.6 + (i % 3) * 0.7;
+      add(new THREE.CylinderGeometry(0.05 * k, 0.1 * k, len * k, 5).translate(x * k, (0.4 + len / 2) * k, z * k), 1);
+      add(new THREE.SphereGeometry(0.2 * k, 6, 4).translate(x * k, (0.4 + len) * k, z * k), 2);
     }
     const geo = mergeGeometries(pieces);
     for (const p of pieces) p.dispose();
     mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }), g);
+    const glassGeo = mergeGeometries(glass.map((d) => d.toNonIndexed()));
+    for (const d of glass) d.dispose();
+    mesh(glassGeo, shader(CITADEL_VERT, CITADEL_GLASS_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide }), g, 1);
+    // the warm haze it hangs in, as the show paints its sky: a soft glow
+    // that always faces you, behind and round it
+    const haze = mesh(
+      new THREE.PlaneGeometry(1, 1).scale(150 * k, 150 * k, 1),
+      shader(
+        BILLBOARD_VERT,
+        `uniform float uR;
+        varying vec2 vC;
+        void main() {
+          float r = length(vC);
+          float a = exp(-r * r * 3.2) * 0.42 + exp(-r * r * 12.0) * 0.18;
+          gl_FragColor = vec4(vec3(0.62, 0.32, 0.1) * a, a);
+        }`,
+        { uR: { value: 75 * k } },
+        { ...premultiplied },
+      ),
+      g,
+      -1,
+    );
+    haze.frustumCulled = false;
     // a portal beside it, the council's ships coming and going
-    const portalAt = new THREE.Vector3(27 * k, 1.5 * k, 9 * k);
+    const portalAt = new THREE.Vector3(30 * k, 6 * k, 22 * k);
     const portal = mesh(new THREE.PlaneGeometry(9 * k, 9 * k), shader('varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }', PORTAL_FRAG, {}, { ...premultiplied, side: THREE.DoubleSide }), g, 2);
     portal.position.copy(portalAt);
     portal.lookAt(portalAt.clone().add(new THREE.Vector3(-portalAt.z, 0, portalAt.x)).add(g.position));
-    // council ships circling
+    // council ships circling, clear of the arms
     const count = small ? 3 : 5;
     const fleet = instancedFleet('councilship', count, g);
     fleets.push(fleet);
-    const orbits = Array.from({ length: count }, (_, i) => ({ r: (25 + i * 2.2) * k, tilt: (i % 2 ? -1 : 1) * (0.12 + i * 0.05), speed: 0.11 - i * 0.008, phase: i * 1.37, size: 0.55 + (i % 3) * 0.1 }));
+    const orbits = Array.from({ length: count }, (_, i) => ({ r: (36 + i * 2.6) * k, tilt: (i % 2 ? -1 : 1) * (0.12 + i * 0.05), speed: 0.09 - i * 0.007, phase: i * 1.37, size: 0.55 + (i % 3) * 0.1 }));
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const e = new THREE.Euler();

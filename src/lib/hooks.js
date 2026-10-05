@@ -20,6 +20,20 @@ export function useMediaQuery(query) {
 
 export const useReducedMotion = () => useMediaQuery('(prefers-reduced-motion: reduce)');
 
+// Whether the page is showing (not in a hidden tab): onChange(showing) now
+// and on every change; returns the way to stop watching.
+export function watchVisible(doc, onChange) {
+  const update = () => onChange(!doc.hidden);
+  update();
+  doc.addEventListener('visibilitychange', update);
+  return () => doc.removeEventListener('visibilitychange', update);
+}
+export function usePageVisible() {
+  const [showing, setShowing] = useState(() => typeof document === 'undefined' || !document.hidden);
+  useEffect(() => watchVisible(document, setShowing), []);
+  return showing;
+}
+
 // Visible-in-viewport flag. `once` keeps it true after the first sighting.
 export function useInView({ once = false, rootMargin = '0px 0px -10% 0px', threshold = 0 } = {}) {
   const ref = useRef(null);
