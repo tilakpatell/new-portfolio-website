@@ -16,6 +16,7 @@ import { newWatchers, stepWatchers } from '../watchers';
 import { COLLIDERS, GATE_WALLS, INN_DOOR, ROADS, ROUNDS, SPOTS, START, TOWN, WALLS, WORLD, castFor, spot, validAt } from './layout';
 import { CONVOS, NAZGUL, QUESTS, SEAL, SLIP, SPEAKERS, breeProgress } from './story';
 import { POUR, newPour, nextMug, startPour, stepPour, stopPour } from './pints';
+import { LANES, NOTES, QUAVER, SIDE, SONG, VERSE, newSong, press as pressSong, stepSong } from './song';
 import '../../shire/shire.css';
 import './bree.css';
 
@@ -23,9 +24,11 @@ import './bree.css';
 // hobbits came to the Prancing Pony, and play the five scenes there. The
 // town is in ./layout.js, the story in ./story.js, the drawing in
 // ./scene.js; this is the walking, the HUD, the talk, the inn, the pints,
-// the Ring and the Nazgûl. Without 3D, the scenes are listed as cards.
+// the Ring and the Nazgûl, and on the side a song on the table (./song.js),
+// which the story never waits on. Without 3D, the scenes are listed as cards.
 
 const DONE = 'tp-bree-done';
+const SIDE_DONE = 'tp-bree-side'; // kept apart, so the story's count stays the story's
 const AT = 'tp-bree-at';
 const sounds = () => import('./sounds');
 const shireSounds = () => import('../../shire/sounds');
@@ -38,6 +41,9 @@ const PROMPT = {
   leave: { name: 'The road to Weathertop', act: 'On to Weathertop' },
 };
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
+// how far into the song (./song.js) it is, by the song's own clock (which
+// the QA scripts can hold where they like, in development only)
+const songTime = (s) => (import.meta.env.DEV && s.songClock != null ? s.songClock : (performance.now() - s.songAt) / 1000);
 const pushNazgul = (x, z) => walker.push(x, z, 0.45);
 const MAP_SCALE = 150 / (TOWN.r * 2 + 30);
 
@@ -48,8 +54,18 @@ export default function BreeWorld({ onLeave }) {
     return breeProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = breeProgress(done);
+  const [side, setSide] = useState(() => {
+    const d = local.get(SIDE_DONE, []);
+    return Array.isArray(d) && d.includes(SIDE.id);
+  });
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const { unlock } = useAchievements();
+  // the song, sung: on the side, with its own seal but none on the map
+  const winSide = useCallback(() => {
+    setSide(true);
+    local.set(SIDE_DONE, [SIDE.id]);
+    unlock(SIDE.seal);
+  }, [unlock]);
   const complete = useCallback(
     (id) => {
       setDone((d) => {
@@ -65,23 +81,24 @@ export default function BreeWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world bree-world" aria-labelledby="bree-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   // other travellers online in Bree, as ghosts (../useTravellers)
   const trav = useTravellers('bree', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
   const map = useRef(null);
+  const lanes = useRef(null);
   const api = useRef(null);
   const sim = useRef(null);
   if (!sim.current) {
     const h = newWalker(validAt(local.get(AT, null), done));
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, beat: 'room', stepT: 0, pour: newPour(), pourStop: null, wearing: false, gaze: 0, near: null, person: null, watchers: newWatchers(ROUNDS), chased: false, frame: 0, moved: false, t: 0, air: null, wraith: null, padBefore: null, edgeAt: -9, hidden: false };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.34, dragAt: -1e9, mode: 'walk', talking: null, talk: null, beat: 'room', stepT: 0, pour: newPour(), pourStop: null, song: null, songAt: null, songStop: null, flash: null, wearing: false, gaze: 0, near: null, person: null, watchers: newWatchers(ROUNDS), chased: false, frame: 0, moved: false, t: 0, air: null, wraith: null, padBefore: null, edgeAt: -9, hidden: false };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -155,6 +172,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const at = s.mode === 'inside' ? INN_DOOR : s.h;
       local.set(AT, { x: at.x, z: at.z, face: at.face });
       s.pourStop?.();
+      s.songStop?.();
       s.air?.stop();
       s.wraith?.();
       api.current?.dispose();
@@ -206,6 +224,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   // ── into and out of things ──
   const toBeat = useCallback((beat) => {
     const s = sim.current;
+    // the fiddle stops when you get down off the table
+    s.songStop?.();
+    s.songStop = null;
+    s.song = null;
+    s.songAt = null;
     s.beat = beat;
     s.stepT = 0;
     s.slipped = false;
@@ -219,6 +242,20 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       s.gaze = 0;
       sounds().then((x) => x.cheer());
     }
+    if (beat === 'song') {
+      const song = newSong();
+      s.song = song;
+      say('Up on the table! The fiddler strikes up. Stamp and clap as each beat comes down to the line.');
+      sounds().then((x) => {
+        if (sim.current?.song !== song) return;
+        const delay = 0.3;
+        s.songStop = x.jig(VERSE.map((v) => v.tune), { quaver: QUAVER, count: SONG.count, delay });
+        // the song's clock: when its first quaver sounds (and a little more
+        // for the speakers' own lag)
+        const lag = (audioContext()?.outputLatency || audioContext()?.baseLatency || 0) * 1000;
+        s.songAt = performance.now() + delay * 1000 + lag;
+      });
+    }
   }, [say]);
 
   const outside = useCallback(
@@ -226,6 +263,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const s = sim.current;
       s.pourStop?.();
       s.pourStop = null;
+      s.songStop?.();
+      s.songStop = null;
+      s.song = null;
       s.mode = 'walk';
       s.talking = null;
       s.talk = null;
@@ -255,7 +295,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           setTimeout(() => x.hatch(), 900);
         });
       } else if (id === 'pony') {
-        if (p.sky !== 'evening') return say('The door’s barred, and every window dark.');
+        // (shut at night; open again at dawn, for breakfast and a song before the road)
+        if (p.sky === 'night') return say('The door’s barred, and every window dark.');
         s.mode = 'inside';
         s.air?.inside(1);
         sounds().then((x) => x.door());
@@ -358,6 +399,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     [say, complete, later, toBeat],
   );
 
+  // a stamp (lane 0) or a clap (lane 1), on the table
+  const sing = useCallback((lane) => {
+    const s = sim.current;
+    if (s.mode !== 'inside' || s.beat !== 'song' || !s.song || s.songAt == null) return;
+    audioContext();
+    const r = pressSong(s.song, lane, songTime(s));
+    if (!r) return;
+    const good = r.how !== 'stray';
+    sounds().then((x) => (lane === 0 ? x.stamp(good) : x.clap(good)));
+    s.flash = { lane, how: r.how, at: performance.now() };
+  }, []);
+
   // the walking keys: held while the town's live, by their place on the
   // keyboard (../keys), and kept when the handlers below are re-made
   useEffect(() => {
@@ -413,6 +466,19 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         }
         return;
       }
+      if (s.mode === 'inside' && s.beat === 'song') {
+        // stamp on the left (A or ←), clap on the right (D or →)
+        if (e.repeat) return;
+        const c = e.code || '';
+        if (c === 'KeyA' || c === 'ArrowLeft' || k === 'ArrowLeft') {
+          e.preventDefault();
+          sing(0);
+        } else if (c === 'KeyD' || c === 'ArrowRight' || k === 'ArrowRight') {
+          e.preventDefault();
+          sing(1);
+        } else if (k === 'Escape') toBeat('room');
+        return;
+      }
       if (s.mode === 'inside') {
         if (s.beat === 'pints' && k === ' ' && !e.repeat && !onButton) {
           e.preventDefault();
@@ -435,7 +501,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
     };
-  }, [live, near, enter, putRing, talkOnward, pour, leaveInn]);
+  }, [live, near, enter, putRing, talkOnward, pour, leaveInn, sing, toBeat]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -557,13 +623,37 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         toBeat('strider');
       }
       if (s.beat !== 'slip') s.slipped = false;
+      // on the side: the song on the table, by the song's own clock
+      if (s.beat === 'song' && s.song && s.songAt != null) {
+        const st = songTime(s);
+        if (pressed('x')) sing(0);
+        if (pressed('b')) sing(1);
+        for (const e of stepSong(s.song, Math.max(0, st))) {
+          if (e.type === 'won') {
+            winSide();
+            sounds().then((x) => x.cheer());
+            say('The whole room roars for more, and bangs its tankards on the tables. Even the man in the corner smiles.');
+            later(() => sim.current?.beat === 'song' && toBeat('room'), 3200);
+          } else if (e.type === 'flat') {
+            say('The room goes back to its beer. Try again, and keep better time.', true);
+            later(() => sim.current?.beat === 'song' && toBeat('room'), 2600);
+          } else if (e.type === 'fell') {
+            s.songStop?.();
+            s.songStop = null;
+            sounds().then((x) => x.clunk());
+            say('Your foot catches a tankard, and down you come off the table with a bump. Pippin hauls you back up. Try again?', true);
+            later(() => sim.current?.beat === 'song' && toBeat('room'), 2600);
+          }
+        }
+        drawLanes(lanes.current, s.song, st, s.flash);
+      }
     }
 
     // what's here, and who's here
     let spotHere = null;
     if (s.mode === 'walk') {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
-      const ok = sp && ((sp.id === 'gate' && !p.gateOpen) || (sp.id === 'pony' && p.gateOpen && p.sky === 'evening') || (sp.id === 'east' && night && !s.chased) || (sp.id === 'leave' && p.finished));
+      const ok = sp && ((sp.id === 'gate' && !p.gateOpen) || (sp.id === 'pony' && p.gateOpen && p.sky !== 'night') || (sp.id === 'east' && night && !s.chased) || (sp.id === 'leave' && p.finished));
       spotHere = ok ? sp.id : null;
     }
     s.near = spotHere;
@@ -599,6 +689,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           beat: s.beat,
           stepT: s.stepT,
           pour: s.pour,
+          song: s.song && s.songAt != null ? { t: Math.max(0, songTime(s)), beat: QUAVER * 2 } : null,
           wearing: s.wearing,
           gaze: s.gaze,
           gateOpen: p.gateOpen,
@@ -627,10 +718,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     }
 
     // the HUD, when what it shows changes
-    const key = [s.mode, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.pour.state, s.pour.good, s.pour.tries, s.pour.pouring, Math.round(s.pour.level * 60), s.wearing, Math.round(s.gaze * 20), s.chased].join('|');
+    const key = [s.mode, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.pour.state, s.pour.good, s.pour.tries, s.pour.pouring, Math.round(s.pour.level * 60), s.wearing, Math.round(s.gaze * 20), s.chased, s.song?.state, s.song?.line, s.song && Math.round(s.song.cheer * 20)].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ mode: s.mode, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, pour: { ...s.pour }, wearing: s.wearing, gaze: s.gaze, chased: s.chased });
+      setHud({ mode: s.mode, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, pour: { ...s.pour }, wearing: s.wearing, gaze: s.gaze, chased: s.chased, song: s.song && { state: s.song.state, line: s.song.line, cheer: s.song.cheer } });
     }
     if (s.person && bubbleRef.current) {
       const at = a.screenOf('cast', s.person);
@@ -692,7 +783,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   // the list's "go there": straight to where each scene starts
   const travel = (q) => {
     const s = sim.current;
-    const at = q.id === 'gate' ? { x: -40, z: 4.2, face: 0 } : q.id === 'slip' ? INN_DOOR : { x: 4, z: 0.6, face: Math.PI / 2 };
+    const at = q.id === 'gate' ? { x: -40, z: 4.2, face: 0 } : q.id === 'slip' ? INN_DOOR : { x: 4, z: 0.6, face: Math.PI / 2 }; // (the song's in the Pony too)
     s.h = newWalker(at);
     s.yaw = behindYaw(s.h.face);
     setList(false);
@@ -767,7 +858,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       {inside && hud.beat === 'room' && (
         <div className="shire-panel bree-room">
           <p className="shire-panel-title">The Prancing Pony</p>
-          <p className="shire-panel-say">Smoke, firelight and a roomful of Big Folk. Pippin is eyeing the beer; in the dark corner, a hooded man is watching you.</p>
+          <p className="shire-panel-say">{prog.sky === 'dawn' ? 'Morning, and Butterbur is clearing up. The hobbits want one more song before the road.' : 'Smoke, firelight and a roomful of Big Folk. Pippin is eyeing the beer; in the dark corner, a hooded man is watching you.'}</p>
           <div className="shire-panel-row">
             {!done.includes('pints') && (
               <button type="button" className="btn btn-primary btn-sm" onClick={() => toBeat('pints')}>
@@ -779,6 +870,9 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
                 Who’s that, in the corner?
               </button>
             )}
+            <button type="button" className="btn btn-ghost btn-sm bree-side-btn" data-done={side || undefined} onClick={() => toBeat('song')}>
+              {side ? 'Sing it again' : 'A song on the table'} <small>on the side</small>
+            </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => document.getElementById('pony-rush')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
               Help in the kitchen (co-op)
             </button>
@@ -833,6 +927,42 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
+      {inside && hud.beat === 'song' && hud.song && (
+        <div className="shire-panel bree-song">
+          <p className="shire-panel-title">The Man in the Moon</p>
+          <p className="bree-song-words" aria-live="polite">
+            {hud.song.line < 0 ? 'The fiddler plays the tune through once…' : VERSE[hud.song.line].words}
+          </p>
+          <canvas ref={lanes} className="bree-lanes" width="320" height="130" aria-hidden="true" />
+          <div className="shire-meter" role="meter" aria-label="The room" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.song.cheer * 100) / 100}>
+            <span className="shire-meter-label">The room</span>
+            <span className="shire-meter-bar">
+              <span style={{ transform: `scaleX(${hud.song.cheer})` }} />
+            </span>
+          </div>
+          <div className="shire-panel-row bree-song-keys">
+            {LANES.map((name, lane) => (
+              <button
+                key={name}
+                type="button"
+                className="btn btn-primary btn-sm bree-beat"
+                disabled={hud.song.state !== 'on'}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  sing(lane);
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                {lane === 0 ? 'Stamp' : 'Clap'} {!touch && <kbd>{lane === 0 ? 'A ←' : 'D →'}</kbd>}
+              </button>
+            ))}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => toBeat('room')}>
+              Get down {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+
       {inside && hud.beat === 'slip' && (
         <div className="shire-panel bree-slip">
           <p className="shire-panel-title">{hud.wearing ? 'The Ring!' : 'Frodo Baggins!'}</p>
@@ -855,7 +985,17 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {walking && touch && <Stick onStick={onStick} />}
 
-      {list && <QuestList title="Things to do in Bree" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id === 'gate' || (q.id === 'slip' ? prog.sky === 'night' : prog.gateOpen && prog.sky === 'evening'))} />}
+      {list && (
+        <QuestList
+          title="Things to do in Bree"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => (q.id === SIDE.id ? done.includes('pony') && prog.sky !== 'night' : q.open && !q.done && (q.id === 'gate' || (q.id === 'slip' ? prog.sky === 'night' : prog.gateOpen && prog.sky === 'evening')))}
+        />
+      )}
     </div>
   );
 }
@@ -900,8 +1040,57 @@ const drawTown = (prog) => (g, at) => {
   }
 };
 
+// The song's two lanes, stamp and clap: each beat coming down to the line,
+// gone in a puff when it's hit, red when it's let go by.
+const LEAD = 1.7; // seconds a beat is in sight before it lands
+function drawLanes(c, song, t, flash) {
+  const g = c?.getContext('2d');
+  if (!g) return;
+  const W = c.width;
+  const H = c.height;
+  const hitY = H - 26;
+  const laneX = (lane) => W * (lane === 0 ? 0.3 : 0.7);
+  g.clearRect(0, 0, W, H);
+  for (const lane of [0, 1]) {
+    const x = laneX(lane);
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(1, 'rgba(255,255,255,0.08)');
+    g.fillStyle = grad;
+    g.fillRect(x - 34, 0, 68, H);
+    // the flash of the last stamp or clap in this lane
+    const f = flash && flash.lane === lane ? 1 - (performance.now() - flash.at) / 260 : 0;
+    g.strokeStyle = f > 0 ? (flash.how === 'stray' ? `rgba(255,110,80,${f})` : `rgba(255,236,170,${f})`) : 'rgba(240,192,64,0.55)';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(x, hitY, 17 + Math.max(0, f) * 5, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = 'rgba(251,244,226,0.7)';
+    g.font = '600 11px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.fillText(LANES[lane].toUpperCase(), x, H - 3);
+  }
+  NOTES.forEach((n, i) => {
+    const ahead = n.t - t;
+    if (ahead > LEAD || ahead < -0.4) return;
+    const hit = song.hit[i];
+    if (hit === 'good' || hit === 'ok') return;
+    const x = laneX(n.lane);
+    const y = hitY - (ahead / LEAD) * (hitY - 8);
+    g.globalAlpha = hit === 'miss' ? 0.45 : 1;
+    g.fillStyle = hit === 'miss' ? '#c8503a' : n.lane === 0 ? '#c8873a' : '#fbf4e2';
+    g.beginPath();
+    g.arc(x, y, 12, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(30,20,10,0.6)';
+    g.lineWidth = 2;
+    g.stroke();
+    g.globalAlpha = 1;
+  });
+}
+
 // Without 3D: the scenes, as cards.
-function Cards({ prog, three, gl, retry }) {
+function Cards({ prog, side, three, gl, retry }) {
   return (
     <div className="shell shire-cards-wrap">
       <h1 id="bree-title" className="title">
@@ -932,6 +1121,13 @@ function Cards({ prog, three, gl, retry }) {
             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
           </li>
         ))}
+        <li data-side>
+          <p className="shire-list-side">On the side</p>
+          <p className="shire-list-name">{SIDE.name}</p>
+          <p className="shire-list-sub">{SIDE.where}</p>
+          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
+          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
+        </li>
       </ul>
     </div>
   );

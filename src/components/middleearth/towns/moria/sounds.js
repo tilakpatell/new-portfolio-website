@@ -1,8 +1,9 @@
 // Moria's sounds, synthesised so nothing is downloaded: the still lake and
 // the night wind outside, the deep's hum and its drips within; the Watcher
 // rising and slamming, the Doors grinding and the gate coming down; the
-// dwarf down the well; the drums; the troll; the stair and the Balrog. All
-// through the site's master volume.
+// dwarf down the well; the drums; the troll; the stair and the Balrog; and
+// on the side, an old plank creaking over a shaft. All through the site's
+// master volume.
 
 import { audioContext, output } from '../../../../lib/audio';
 
@@ -185,6 +186,14 @@ export function clatter(k = 1) {
     hiss(ac, out, at, { type: 'bandpass', f: 1500 + Math.random() * 2500, q: 4, gain: (0.12 - i * 0.008) * Math.min(1, k + 0.3), attack: 0.001, length: 0.06 });
     tone(ac, out, at, { type: 'triangle', f: 600 + Math.random() * 900, gain: 0.03 * k, attack: 0.001, length: 0.2 });
   }
+}
+// an old plank, creaking under a hobbit
+export function creak() {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  tone(ac, out, t, { type: 'sawtooth', f: 140 + Math.random() * 40, to: 95, gain: 0.05, attack: 0.04, length: 0.35 });
+  hiss(ac, out, t, { type: 'bandpass', f: 700, q: 6, gain: 0.05, attack: 0.05, length: 0.3 });
 }
 // boom. Boom. Boom-boom: drums in the deep
 export function drums() {

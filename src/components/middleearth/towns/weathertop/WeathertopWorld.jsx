@@ -14,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { BED, COLLIDERS, DELL, GAPS, HILL, PATCHES, PLANTS, RUIN, SAM_START, SPOTS, START, STAIR, WALLS, WORLD, castFor, spot, validAt } from './layout';
 import { CONVOS, QUESTS, SEAL, SPEAKERS, weathertopProgress } from './story';
-import { ATHELAS, BRAND, FIRE, RIDE, newBrand, newFire, newHunt, newRide, pick, pickable, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
+import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './weathertop.css';
@@ -23,9 +23,11 @@ import './weathertop.css';
 // dusk as Frodo, and play the night there as the films tell it. The land
 // is in ./layout.js, the story in ./story.js, the games in ./rules.js, the
 // drawing in ./scene.js; this is the walking, the HUD, the talk and the
-// games. Without 3D, the scenes are listed as cards.
+// games, and on the side Gandalf's mark on the stone at the top, which the
+// story never waits on. Without 3D, the scenes are listed as cards.
 
 const DONE = 'tp-weathertop-done';
+const SIDE_DONE = 'tp-weathertop-side'; // kept apart, so the story's count stays the story's
 const AT = 'tp-weathertop-at';
 const sounds = () => import('./sounds');
 const shireSounds = () => import('../../shire/sounds');
@@ -37,6 +39,7 @@ const PROMPT = {
   camp: { name: 'The hobbits’ fire, in the dell', act: 'Wake up' },
   wounded: { name: 'Strider, by Frodo', act: 'Give him the kingsfoil' },
   leave: { name: 'The road to Rivendell', act: 'On to Rivendell' },
+  mark: { name: 'The broken plinth', act: 'Look at the stone' },
 };
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
@@ -49,8 +52,18 @@ export default function WeathertopWorld({ onLeave }) {
     return weathertopProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = weathertopProgress(done);
+  const [side, setSide] = useState(() => {
+    const d = local.get(SIDE_DONE, []);
+    return Array.isArray(d) && d.includes(SIDE.id);
+  });
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const { unlock } = useAchievements();
+  // the mark, read: on the side, with its own seal but none on the map
+  const winSide = useCallback(() => {
+    setSide(true);
+    local.set(SIDE_DONE, [SIDE.id]);
+    unlock(SIDE.seal);
+  }, [unlock]);
   const complete = useCallback(
     (id) => {
       setDone((d) => {
@@ -66,18 +79,19 @@ export default function WeathertopWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world wt-world" aria-labelledby="wt-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   // other travellers online on Weathertop, as ghosts (../useTravellers)
   const trav = useTravellers('weathertop', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
   const map = useRef(null);
+  const stone = useRef(null);
   const api = useRef(null);
   const sim = useRef(null);
   if (!sim.current) {
@@ -117,12 +131,16 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       stepT: 0,
       flood: 0,
       busy: false,
+      mark: null,
+      cursor: { u: 0.5, v: 0.5, at: -9 },
     };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
   const doneRef = useRef(done);
   doneRef.current = done;
+  const sideRef = useRef(side);
+  sideRef.current = side;
   const [hud, setHud] = useState({ mode: 'walk', near: null, moved: false });
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
@@ -289,12 +307,20 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       if (id === 'summit') {
         if (p.next === 'climb') startTalk('amonsul');
         else if (p.next === 'brand') startBrand();
+      } else if (id === 'mark') {
+        // on the side: up to the plinth, and the lichen on its east face
+        const s = sim.current;
+        s.mode = 'mark';
+        s.mark = newMark();
+        s.cursor = { u: 0.5, v: 0.5, at: -9 };
+        s.h = newWalker({ x: spot('mark').x, z: spot('mark').z, face: Math.atan2(spot('mark').z, -spot('mark').x) });
+        say('Lichen on the old stone, and under it… scratches? Scrape it away: drag across the stone, or steer with the arrows.');
       } else if (id === 'camp') startTalk('supper');
       else if (id === 'wounded') startTalk('arwen');
       setList(false);
       return undefined;
     },
-    [onLeave, startTalk, startBrand],
+    [onLeave, startTalk, startBrand, say],
   );
 
   // a reply picked, or on to the next line
@@ -406,6 +432,49 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     if (hit.length) api.current?.fx('thrust');
   }, []);
 
+  // ── on the side: Gandalf's mark ──
+  const leaveMark = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'mark') return;
+    s.mode = 'walk';
+    s.mark = null;
+    s.yaw = behindYaw(s.h.face) + 0.9;
+    s.dragAt = s.t;
+  }, []);
+  // scrape at (u, v) on the stone, as hard as `amount`
+  const scrapeAt = useCallback((u, v, amount) => {
+    const s = sim.current;
+    const m = s.mark;
+    if (s.mode !== 'mark' || !m || m.state !== 'scrub') return;
+    const off = scrape(m, u, v, amount);
+    if (off > 0.05 && s.t - (s.scrapeAt ?? -9) > 0.12) {
+      s.scrapeAt = s.t;
+      sounds().then((x) => x.scrape?.());
+    }
+    if (m.state === 'read') {
+      sounds().then((x) => x.found?.(1));
+      say('There: a rune, and strokes cut after it. Count them. What does it say?');
+    }
+  }, [say]);
+  const doRead = useCallback(
+    (i) => {
+      const s = sim.current;
+      const m = s.mark;
+      if (s.mode !== 'mark' || !m) return;
+      const r = readMark(m, i);
+      if (r == null) return;
+      if (!r) {
+        say('That’s not it. Count the strokes again.', true);
+        return;
+      }
+      winSide();
+      api.current?.fx('mark');
+      say('G, for Gandalf, and three strokes: he was here on the third of October, three days ahead of you. Something drove him on.');
+      later(() => sim.current?.mode === 'mark' && leaveMark(), 3800);
+    },
+    [say, later, winSide, leaveMark],
+  );
+
   const doAct = useCallback(() => {
     const s = sim.current;
     if (s.mode === 'brand') return doThrust();
@@ -466,6 +535,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         else if (k === 'm' || k === 'M') setList((v) => !v);
         return;
       }
+      if (s.mode === 'mark') {
+        if (k === 'Escape') leaveMark();
+        else if (/^[1-3]$/.test(k) && s.mark?.state === 'read') doRead(Number(k) - 1);
+        if (moveOf(e)) e.preventDefault();
+        return;
+      }
       if (s.mode === 'brand' && (k === ' ' || k === 'e' || k === 'E') && !onButton) {
         e.preventDefault();
         if (!e.repeat) doThrust();
@@ -476,7 +551,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, putRing, talkOnward, doAct, doThrust]);
+  }, [live, putRing, talkOnward, doAct, doThrust, leaveMark, doRead]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -665,11 +740,27 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       say('The Eye. You pull the Ring off, shaking.', true);
     }
 
+    // on the side: scraping at Gandalf's mark, the arrows (or a pad's
+    // stick) steering the scraper across the stone
+    if (s.mode === 'mark' && s.mark) {
+      const du = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + (pad?.lx ?? 0);
+      const dv = (held('down') ? 1 : 0) - (held('up') ? 1 : 0) + (pad?.ly ?? 0);
+      if (Math.hypot(du, dv) > 0.1) {
+        const c = s.cursor;
+        c.u = Math.max(0, Math.min(1, c.u + du * dt * 0.5));
+        c.v = Math.max(0, Math.min(1, c.v + dv * dt * 0.8));
+        c.at = s.t;
+        scrapeAt(c.u, c.v, dt * 2.6);
+      }
+      if (pressed('b')) leaveMark();
+      drawStone(stone.current, s.mark, s.t - s.cursor.at < 2 ? s.cursor : null);
+    }
+
     // what's here, and who's here
     let spotHere = null;
     if (s.mode === 'walk' && !s.fire) {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
-      const ok = sp && ((sp.id === 'summit' && (p.next === 'climb' || p.next === 'brand')) || (sp.id === 'camp' && p.next === 'supper') || (sp.id === 'wounded' && p.next === 'ford') || (sp.id === 'leave' && p.finished));
+      const ok = sp && ((sp.id === 'summit' && (p.next === 'climb' || p.next === 'brand')) || (sp.id === 'camp' && p.next === 'supper') || (sp.id === 'wounded' && p.next === 'ford') || (sp.id === 'leave' && p.finished) || (sp.id === 'mark' && p.as === 'frodo' && p.next !== 'brand'));
       spotHere = ok ? sp.id : null;
     }
     s.near = spotHere;
@@ -718,6 +809,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           brand: s.brand,
           ride: s.ride,
           flood: s.mode === 'end' ? 1 : s.flood,
+          markShown: s.mark ? Math.max(revealed(s.mark), sideRef.current ? 1 : 0) : sideRef.current ? 1 : 0,
           riders: p.riders,
           stepT: s.stepT,
           wearing: s.wearing,
@@ -746,7 +838,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const f = s.fire;
     const b = s.brand;
     const r = s.ride;
-    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), f ? f.heat.map((x) => Math.round(x * 8)).join() : '', f ? Math.ceil(f.left) : '', s.stampable, s.plant, s.hunt ? Math.round(s.hunt.cold * 40) : '', s.found.length, b ? Math.round(b.t * 2) : '', b ? Math.round(b.pull * 30) : '', b ? b.wraiths.map((w) => `${Math.round(w.a * 8)}.${Math.round(w.r * 2)}.${w.mode}`).join() : '', b ? Math.round(b.aim * 12) : '', b && b.cool > 0, r ? Math.round(r.s / 6) : '', r ? Math.round(r.gap) : '', r && r.spurCool > 0].join('|');
+    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), f ? f.heat.map((x) => Math.round(x * 8)).join() : '', f ? Math.ceil(f.left) : '', s.stampable, s.plant, s.hunt ? Math.round(s.hunt.cold * 40) : '', s.found.length, b ? Math.round(b.t * 2) : '', b ? Math.round(b.pull * 30) : '', b ? b.wraiths.map((w) => `${Math.round(w.a * 8)}.${Math.round(w.r * 2)}.${w.mode}`).join() : '', b ? Math.round(b.aim * 12) : '', b && b.cool > 0, r ? Math.round(r.s / 6) : '', r ? Math.round(r.gap) : '', r && r.spurCool > 0, s.mark?.state, s.mark ? Math.round(revealed(s.mark) * 40) : ''].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
       setHud({
@@ -763,6 +855,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         hunt: s.hunt ? { cold: s.hunt.cold, found: s.hunt.found.length } : null,
         brand: b ? { t: b.t, pull: b.pull, aim: b.aim, ready: b.cool <= 0, state: b.state, wraiths: b.wraiths.map((w) => ({ a: w.a, r: w.r, mode: w.mode })) } : null,
         ride: r ? { s: r.s, gap: r.gap, ready: r.spurCool <= 0, state: r.state } : null,
+        mark: s.mark ? { state: s.mark.state, shown: revealed(s.mark) } : null,
       });
     }
     if (s.person && bubbleRef.current) {
@@ -857,10 +950,40 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     else if (q.id === 'brand') {
       const [x, z] = STAIR.at(-3);
       s.h = newWalker({ x, z, face: -2.5 });
+    } else if (q.id === SIDE.id) {
+      // on the side: by the plinth, looking at its east face
+      const m = spot('mark');
+      s.h = newWalker({ x: m.x + 0.6, z: m.z, face: Math.atan2(m.z, -m.x) });
     }
     s.yaw = behindYaw(s.h.face);
     setList(false);
   };
+  // the stone, under the pointer: drag to scrape
+  const scraping = useRef(null);
+  const onStone = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const u = (e.clientX - r.left) / r.width;
+    const v = (e.clientY - r.top) / r.height;
+    if (e.type === 'pointerdown') {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      audioContext();
+      scraping.current = { u, v, id: e.pointerId };
+      scrapeAt(u, v, 0.25);
+      return;
+    }
+    const was = scraping.current;
+    if (!was || was.id !== e.pointerId) return;
+    if (e.type !== 'pointermove') {
+      scraping.current = null;
+      return;
+    }
+    // as hard as the stroke is long, a cell's width at a time
+    const cells = Math.hypot((u - was.u) * MARK.cols, (v - was.v) * MARK.rows);
+    for (let k = 1, n = Math.max(1, Math.ceil(cells)); k <= n; k++) scrapeAt(was.u + ((u - was.u) * k) / n, was.v + ((v - was.v) * k) / n, 0.3);
+    scraping.current = { u, v, id: e.pointerId };
+  };
+
   // after the ride: stay on Weathertop, at dawn
   const stay = () => {
     const s = sim.current;
@@ -1092,6 +1215,38 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
+      {/* On the side: Gandalf's mark */}
+      {mode === 'mark' && hud.mark && (
+        <div className="shire-panel wt-mark" role="group" aria-label="Gandalf’s mark">
+          <p className="shire-panel-title">The broken plinth</p>
+          <canvas ref={stone} className="wt-stone" width="300" height="180" aria-label="The stone’s face, under its lichen" onPointerDown={onStone} onPointerMove={onStone} onPointerUp={onStone} onPointerCancel={onStone} onLostPointerCapture={onStone} onContextMenu={(e) => e.preventDefault()} />
+          {hud.mark.state === 'scrub' ? (
+            <>
+              <div className="shire-meter" role="meter" aria-label="The mark, scraped clean" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(Math.min(1, hud.mark.shown / MARK.need) * 100) / 100}>
+                <span className="shire-meter-label">Scraped clean</span>
+                <span className="shire-meter-bar">
+                  <span style={{ transform: `scaleX(${Math.min(1, hud.mark.shown / MARK.need)})` }} />
+                </span>
+              </div>
+              <p className="shire-panel-help">{touch ? 'Drag across the stone to scrape the lichen off.' : 'Drag across the stone, or steer with the arrows, to scrape the lichen off.'}</p>
+            </>
+          ) : (
+            <div className="town-choices">
+              {READINGS.map((r, i) => (
+                <button key={r.text} type="button" className="btn btn-ghost btn-sm town-choice" disabled={hud.mark.state === 'done'} onClick={() => doRead(i)}>
+                  {!touch && <kbd>{i + 1}</kbd>} {r.text}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="shire-panel-row">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leaveMark}>
+              Leave it {!touch && <kbd>Esc</kbd>}
+            </button>
+          </div>
+        </div>
+      )}
+
       {walking && touch && <Stick onStick={onStick} />}
 
       {list && (
@@ -1099,9 +1254,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           title="Things to do on Weathertop"
           quests={prog.quests}
           next={prog.next}
+          side={[{ ...SIDE, done: side }]}
           onClose={() => setList(false)}
           onGo={(q) => (q.id === 'ford' && prog.finished ? rideAgain() : travel(q))}
-          canGo={(q) => (q.open && !q.done && q.id !== 'athelas' && sim.current.mode === 'walk' && !sim.current.fire) || (q.id === 'ford' && prog.finished)}
+          canGo={(q) => (q.id === SIDE.id ? done.includes('climb') && prog.as === 'frodo' && prog.next !== 'brand' && sim.current.mode === 'walk' && !sim.current.fire : (q.open && !q.done && q.id !== 'athelas' && sim.current.mode === 'walk' && !sim.current.fire) || (q.id === 'ford' && prog.finished))}
         />
       )}
     </div>
@@ -1140,8 +1296,69 @@ const drawHill = (prog) => (g, at) => {
   g.fill();
 };
 
+// The stone's face, for the side task: weathered grey, Gandalf's scratches
+// cut into it, and the lichen over them as thick as it still is.
+const speck = (i) => {
+  const x = Math.sin(i * 127.1) * 43758.5453;
+  return x - Math.floor(x);
+};
+function drawStone(c, m, cursor) {
+  const g = c?.getContext('2d');
+  if (!g || !m) return;
+  const W = c.width;
+  const H = c.height;
+  const cw = W / MARK.cols;
+  const ch = H / MARK.rows;
+  const grad = g.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#99938a');
+  grad.addColorStop(1, '#77726a');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 160; i++) {
+    g.fillStyle = i % 3 ? 'rgba(50, 46, 40, 0.2)' : 'rgba(230, 224, 210, 0.16)';
+    g.fillRect(speck(i) * W, speck(i + 500) * H, 1 + speck(i + 900) * 4, 1 + speck(i + 1300) * 2);
+  }
+  // the scratches: a dark groove with a pale cut edge
+  g.lineCap = 'round';
+  const cut = (dx, dy, colour, width) => {
+    g.strokeStyle = colour;
+    g.lineWidth = width;
+    for (const [u0, v0, u1, v1] of MARK_LINES) {
+      g.beginPath();
+      g.moveTo(u0 * W + dx, v0 * H + dy);
+      g.lineTo(u1 * W + dx, v1 * H + dy);
+      g.stroke();
+    }
+  };
+  cut(0, 0, 'rgba(28, 24, 20, 0.8)', 6);
+  cut(-1, -1, 'rgba(236, 228, 206, 0.85)', 2);
+  // the lichen
+  for (let r = 0; r < MARK.rows; r++) {
+    for (let col = 0; col < MARK.cols; col++) {
+      const i = r * MARK.cols + col;
+      const k = m.lichen[i];
+      if (k <= 0.02) continue;
+      const n = speck(i + 77);
+      g.fillStyle = `rgba(${Math.round(92 + n * 34)}, ${Math.round(108 + n * 26)}, ${Math.round(66 + n * 12)}, ${Math.min(1, k * 1.12)})`;
+      g.fillRect(col * cw - 0.5, r * ch - 0.5, cw + 1, ch + 1);
+      if (k > 0.45 && n > 0.62) {
+        g.fillStyle = `rgba(196, 200, 138, ${k * 0.7})`;
+        g.fillRect(col * cw + 2, r * ch + 2, 3, 3);
+      }
+    }
+  }
+  // the scraper, while the keys steer it
+  if (cursor) {
+    g.strokeStyle = 'rgba(255, 236, 170, 0.85)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.arc(cursor.u * W, cursor.v * H, MARK.brush * cw, 0, Math.PI * 2);
+    g.stroke();
+  }
+}
+
 // Without 3D: the scenes, as cards.
-function Cards({ prog, three, gl, retry }) {
+function Cards({ prog, side, three, gl, retry }) {
   return (
     <div className="shell shire-cards-wrap">
       <h1 id="wt-title" className="title">
@@ -1172,6 +1389,13 @@ function Cards({ prog, three, gl, retry }) {
             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
           </li>
         ))}
+        <li data-side>
+          <p className="shire-list-side">On the side</p>
+          <p className="shire-list-name">{SIDE.name}</p>
+          <p className="shire-list-sub">{SIDE.where}</p>
+          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
+          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
+        </li>
       </ul>
     </div>
   );

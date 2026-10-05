@@ -39,7 +39,22 @@ break). State as of 2026-10-05.
     way). Shared `towns/side.js`. Their achievements are NOT in any
     chapter's `seals` (a chapter is "won" when all its seals are).
 
-## Still in flight when this was written
+## Agents stopped (org spend limit), 2026-10-05
+
+Their unfinished, uncommitted work is saved as patches in
+`docs/superpowers/handoff-patches/` (apply on the base commit named):
+
+- `east-cirith-ungol-wip.patch` (base d513724, eastern branch): Cirith
+  Ungol side game, half done; Mount Doom not started.
+- `orthanc-gwaihir-wip.patch` (base 18aad80): fixing Gwaihir missing from
+  the pinnacle flight (Gandalf rides on nothing).
+- (west: Bree, Weathertop, Rivendell, Moria side games: applied and
+  merged; lint, 417 Middle-earth tests and the build green; Bree's page
+  loads clean in a browser; the other three not yet played in one.)
+
+`git checkout <base> && git apply <patch>`, finish, check, merge.
+
+## Still in flight when this was written (superseded above)
 
 Three background agents, each in its own worktree under
 `.claude/worktrees/agent-*` (git-ignored), committing one world at a time
@@ -91,3 +106,19 @@ above.
   merges, restart it from main before new work.
 - The towns session (another session) owns the walkable towns; tell it
   before large changes there.
+
+## Steps left (in order)
+
+1. Play the western side games in a browser (Bree, Weathertop,
+   Rivendell, Moria): `node lab/world-errs.mjs weathertop rivendell
+   moria` for page errors (one at a time if the machine's busy), then by
+   hand. Fix what's broken.
+2. Finish Cirith Ungol's side game from `east-cirith-ungol-wip.patch`
+   (base d513724), then Mount Doom's (not started; idea: "Do you
+   remember the Shire?" memory game as Sam carries Frodo).
+3. Orthanc: apply `orthanc-gwaihir-wip.patch` (base 18aad80) and finish
+   Gwaihir in the pinnacle flight; check the map click still finds it.
+4. Kitchens: shoot the orcs' mess (`node lab/rush-shots.mjs v3 tower`)
+   and dress it like the others; re-shoot the dressed ones and fix
+   anything off (`lab/rush-shots.mjs`, canvas readback).
+5. Then the ideas list above.

@@ -1,7 +1,9 @@
 // Bree's sounds, synthesised so nothing is downloaded: the rain and its
 // gusts (muffled once you're indoors, with the fire crackling), a knock on
 // the gate, its hatch and its bolts, the tap running and a pint set down,
-// and the Nazgûl. All through the site's master volume.
+// and the Nazgûl; and on the side, a fiddle for the song on the table, and
+// the stamps and claps that keep its time. All through the site's master
+// volume.
 
 import { audioContext, output } from '../../../../lib/audio';
 
@@ -137,6 +139,93 @@ export function cheer() {
   if (!ac) return;
   const t = ac.currentTime + 0.02;
   for (let i = 0; i < 6; i++) tone(ac, out, t + Math.random() * 0.2, { type: 'triangle', f: 300 + Math.random() * 300, to: 500 + Math.random() * 300, gain: 0.04, attack: 0.02, length: 0.4 });
+}
+
+// ── the song on the table (./song.js) ──
+// a hobbit's foot on the table top, and a clap from the hobbits' table
+export function stamp(good = true) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  tone(ac, out, t, { type: 'sine', f: good ? 150 : 110, to: 55, gain: 0.45, attack: 0.002, length: 0.14 });
+  hiss(ac, out, t, { type: 'lowpass', f: 700, gain: 0.18, attack: 0.002, length: 0.05 });
+}
+export function clap(good = true) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  for (const d of [0, 0.012, 0.024]) hiss(ac, out, t + d, { type: 'bandpass', f: good ? 1500 : 900, q: 1.1, gain: 0.32, attack: 0.001, length: 0.06 });
+}
+const hz = (m) => 440 * 2 ** ((m - 69) / 12);
+// The fiddle and the bodhrán for the whole song, laid down from `delay`
+// seconds on: the tune (MIDI notes, one a quaver), a drum on every beat, and
+// a drone under it. Returns stop().
+export function jig(lines, { quaver, count, delay = 0.15 }) {
+  const [ac, out] = ready();
+  if (!ac) return () => {};
+  const bus = ac.createGain();
+  bus.gain.value = 0.9;
+  bus.connect(out);
+  const t0 = ac.currentTime + delay;
+  const fiddle = (at, m, len) => {
+    const o = ac.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(hz(m), at);
+    const vib = ac.createOscillator();
+    vib.frequency.value = 5.5;
+    const depth = ac.createGain();
+    depth.gain.value = hz(m) * 0.006;
+    vib.connect(depth).connect(o.frequency);
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2600;
+    lp.Q.value = 2;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.02, 0.07], [len * 0.7, 0.05], [len, 0.0001]]);
+    o.connect(lp).connect(g).connect(bus);
+    o.start(at);
+    vib.start(at);
+    o.stop(at + len + 0.05);
+    vib.stop(at + len + 0.05);
+  };
+  const tune = lines.flatMap((l) => l);
+  const total = count + tune.length + 4;
+  for (let q = 0; q < total; q++) {
+    const at = t0 + q * quaver;
+    // the drum: every beat, a little louder on the one
+    if (q % 2 === 0) tone(ac, bus, at, { type: 'sine', f: q % 8 === 0 ? 120 : 95, to: 50, gain: q % 8 === 0 ? 0.32 : 0.2, attack: 0.003, length: 0.18 });
+    else hiss(ac, bus, at, { type: 'highpass', f: 5000, gain: 0.05, attack: 0.001, length: 0.04 });
+    const m = q >= count ? tune[q - count] : null;
+    if (m != null) {
+      // held through any rests after it
+      let len = 1;
+      while (q - count + len < tune.length && tune[q - count + len] == null && len < 4) len++;
+      fiddle(at, m, len * quaver * 0.95);
+    }
+  }
+  // a drone of D and A under it all, as a bagpipe might
+  const drone = [50, 57].map((m) => {
+    const o = ac.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = hz(m);
+    const g = ac.createGain();
+    env(g.gain, t0, [[0, 0.0001], [0.5, 0.035], [total * quaver - 0.3, 0.03], [total * quaver, 0.0001]]);
+    o.connect(g).connect(bus);
+    o.start(t0);
+    o.stop(t0 + total * quaver + 0.1);
+    return o;
+  });
+  return () => {
+    bus.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05);
+    drone.forEach((o) => {
+      try {
+        o.stop(ac.currentTime + 0.3);
+      } catch {
+        // already done
+      }
+    });
+    setTimeout(() => bus.disconnect(), 400);
+  };
 }
 
 // The weather: rain hissing, gusting now and then, and at the door's

@@ -14,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { BRIDGE, COLLIDERS, COMPANIONS, COURT, GATE, GORGE, HOUSE, HOUSE_DOOR, PATHS, SPOTS, WALLS, WORLD, blocked, castFor, riverX, spot, validAt } from './layout';
 import { CONVOS, QUESTS, SEAL, SPEAKERS, rivendellProgress } from './story';
-import { SHARDS, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newShards, placed, speak, stepCouncil, stepReach, tapShard } from './rules';
+import { RIDDLE, SHARDS, SIDE, answer, asked, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newRiddles, newShards, placed, speak, stepCouncil, stepReach, stepRiddles, tapShard } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './rivendell.css';
@@ -23,10 +23,12 @@ import './rivendell.css';
 // the Ford, and play the films' days there, from the shards of Narsil to
 // the Fellowship setting out. The valley is in ./layout.js, the story in
 // ./story.js, the games in ./rules.js, the drawing in ./scene.js; this is
-// the walking, the HUD, the talk and the games. Without 3D, the scenes are
+// the walking, the HUD, the talk and the games, and on the side riddles
+// with Bilbo, which the story never waits on. Without 3D, the scenes are
 // listed as cards.
 
 const DONE = 'tp-rivendell-done';
+const SIDE_DONE = 'tp-rivendell-side'; // kept apart, so the story's count stays the story's
 const AT = 'tp-rivendell-at';
 const sounds = () => import('./sounds');
 const sfx = () => import('../../../../lib/sfx');
@@ -35,6 +37,7 @@ const PROMPT = {
   council: { name: 'The Council of Elrond', act: 'Take your seat' },
   bilbo: { name: 'Bilbo’s pavilion', act: 'Go in' },
   gate: { name: 'The south gate', act: 'Set out' },
+  riddles: { name: 'Bilbo, by his fire', act: 'Riddles with Bilbo' },
 };
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS, blocked });
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
@@ -58,8 +61,18 @@ export default function RivendellWorld({ onLeave }) {
     return rivendellProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = rivendellProgress(done);
+  const [side, setSide] = useState(() => {
+    const d = local.get(SIDE_DONE, []);
+    return Array.isArray(d) && d.includes(SIDE.id);
+  });
   const [gl, setGl] = useState('loading');
   const { unlock } = useAchievements();
+  // the riddles, won: on the side, with their own seal but none on the map
+  const winSide = useCallback(() => {
+    setSide(true);
+    local.set(SIDE_DONE, [SIDE.id]);
+    unlock(SIDE.seal);
+  }, [unlock]);
   const complete = useCallback(
     (id) => {
       setDone((d) => {
@@ -75,12 +88,12 @@ export default function RivendellWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world riv-world" aria-labelledby="riv-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} side={side} winSide={winSide} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} side={side} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const trav = useTravellers('rivendell', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -122,6 +135,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       reach: null,
       party: newParty(),
       busy: false,
+      riddles: null,
     };
   }
   const progRef = useRef(prog);
@@ -267,7 +281,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         s.argued = 0;
         startTalk('council', 'council');
       } else if (id === 'bilbo') startTalk('bilbo', 'bilbo');
-      else if (id === 'gate') {
+      else if (id === 'riddles') {
+        // on the side: riddles by Bilbo's fire
+        s.mode = 'riddles';
+        s.riddles = newRiddles(Math.floor(Math.random() * 1e6) + 1);
+        sounds().then((x) => x.chime?.(1));
+        say('Bilbo lights a fresh candle. “Riddles, my lad! Answer before it burns down, mind.”');
+      } else if (id === 'gate') {
         if (p.finished) return onLeave?.();
         startTalk('gate', 'leaving');
       } else if (COMPANIONS.some((c) => c.id === id)) {
@@ -394,6 +414,52 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     [complete, say, later, outside],
   );
 
+  // ── on the side: riddles with Bilbo ──
+  const leaveRiddles = useCallback(() => {
+    const s = sim.current;
+    if (s.mode !== 'riddles') return;
+    s.riddles = null;
+    outside({ x: spot('bilbo').x + 0.8, z: spot('bilbo').z, face: 0 });
+  }, [outside]);
+  // (once, when a game's just ended)
+  const riddleOver = useCallback(
+    (g) => {
+      if (g.told || g.state === 'ask') return;
+      g.told = true;
+      if (g.state === 'won') {
+        winSide();
+        api.current?.fx('joined');
+        sounds().then((x) => x.chime?.(5));
+        say('“Well! You’d have beaten Gollum in half the time,” says Bilbo, and laughs till he coughs. “Don’t tell him I said so.”');
+        later(() => sim.current?.riddles === g && leaveRiddles(), 4200);
+      } else if (g.state === 'lost') {
+        say('“Ha! Two against you, and the game’s mine,” says Bilbo. “Another candle?”', true);
+        later(() => sim.current?.riddles === g && leaveRiddles(), 3400);
+      }
+    },
+    [winSide, say, later, leaveRiddles],
+  );
+  const doRiddle = useCallback(
+    (i) => {
+      const s = sim.current;
+      const g = s.riddles;
+      if (s.mode !== 'riddles' || !g || g.state !== 'ask') return;
+      const q = asked(g);
+      const r = answer(g, i);
+      if (!r) return;
+      if (r === 'right') {
+        sounds().then((x) => x.chime?.(Math.min(5, g.right)));
+        say(['“Right you are!”', '“Hm! Quite right.”', '“Bless me, you know that one.”', '“Right again!”', '“Right!”'][(g.right - 1) % 5]);
+      } else {
+        sounds().then((x) => x.clink?.(false));
+        say(`“No, no! ${q.a[0]}.”`, true);
+      }
+      riddleOver(g);
+      setHud((h) => ({ ...h, riddles: { at: g.at, right: g.right, wrong: g.wrong, state: g.state, candle: g.candle } }));
+    },
+    [say, riddleOver],
+  );
+
   const doAct = useCallback(() => {
     const s = sim.current;
     if (s.mode === 'council') return doStand();
@@ -437,6 +503,13 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         }
         return;
       }
+      if (s.mode === 'riddles') {
+        if (/^[1-4]$/.test(k)) {
+          e.preventDefault();
+          doRiddle(Number(k) - 1);
+        } else if (k === 'Escape') leaveRiddles();
+        return;
+      }
       if (s.mode === 'narsil' && /^[1-6]$/.test(k)) {
         e.preventDefault();
         doShard(Number(k) - 1);
@@ -462,7 +535,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [live, putRing, talkOnward, doAct, doShard]);
+  }, [live, putRing, talkOnward, doAct, doShard, doRiddle, leaveRiddles]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -562,6 +635,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
     }
 
+    // on the side: Bilbo's candle, burning down on each riddle
+    if (s.mode === 'riddles' && s.riddles) {
+      const g = s.riddles;
+      for (const e of stepRiddles(g, dt)) {
+        if (e.type === 'out') {
+          sounds().then((x) => x.clink?.(false));
+          say('The candle gutters out. “Time’s up!” says Bilbo, and lights another.', true);
+        }
+      }
+      riddleOver(g);
+    }
+
     // the Ring: the Eye comes nearer while it's on
     s.gaze = stepGaze(s.gaze, s.wearing, dt);
     if (s.wearing && s.gaze >= 1) {
@@ -576,6 +661,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
       const ok = sp && ((sp.id === 'narsil' && p.next === 'narsil') || (sp.id === 'council' && p.next === 'council') || (sp.id === 'bilbo' && p.next === 'bilbo') || (sp.id === 'gate' && ((gathering && gathered(s.party, COMPANIONS)) || p.finished)));
       spotHere = ok ? sp.id : null;
+      // on the side: Bilbo's always glad of a game of riddles
+      if (!spotHere && sp?.id === 'bilbo' && p.next !== 'awake' && p.next !== 'bilbo') spotHere = 'riddles';
       if (!spotHere && gathering) spotHere = nearest(COMPANIONS.filter((c) => !s.party.joined.includes(c.id)), s.h.x, s.h.z, 2.6)?.id ?? null;
     }
     s.near = spotHere;
@@ -625,6 +712,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           shards: s.shards,
           stood: s.stood,
           reach: s.reach,
+          riddles: s.riddles,
           stepT: s.stepT,
           wearing: s.wearing,
           gaze: s.gaze,
@@ -651,7 +739,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     const c = s.council;
     const r = s.reach;
     const sh = s.shards;
-    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), c ? Math.round(c.heat * 30) : '', c?.spoken, s.stood, r ? Math.round(r.hand * 20) : '', r?.state, sh ? sh.order.join() + sh.held : '', s.party.joined.length].join('|');
+    const key = [s.mode, s.near, s.moved, s.talking, s.talk?.at, s.wearing, Math.round(s.gaze * 20), c ? Math.round(c.heat * 30) : '', c?.spoken, s.stood, r ? Math.round(r.hand * 20) : '', r?.state, sh ? sh.order.join() + sh.held : '', s.party.joined.length, s.riddles ? `${s.riddles.at}.${s.riddles.state}.${Math.ceil(s.riddles.candle * 32)}` : ''].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
       setHud({
@@ -667,6 +755,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         reach: r ? { hand: r.hand, state: r.state } : null,
         shards: sh ? { order: [...sh.order], held: sh.held, solved: sh.solved } : null,
         joined: s.party.joined.length,
+        riddles: s.riddles ? { at: s.riddles.at, right: s.riddles.right, wrong: s.riddles.wrong, state: s.riddles.state, candle: s.riddles.candle } : null,
       });
     }
     if (s.person && bubbleRef.current) {
@@ -861,6 +950,11 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
+      {/* on the side: riddles with Bilbo */}
+      {mode === 'riddles' && hud.riddles && (
+        <RiddlePanel game={sim.current.riddles} hud={hud.riddles} touch={touch} onAnswer={doRiddle} onLeave={leaveRiddles} />
+      )}
+
       {mode === 'end' && (
         <div className="shire-panel riv-end" role="dialog" aria-label="The Fellowship sets out">
           <p className="shire-panel-title">The Fellowship sets out</p>
@@ -878,7 +972,56 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
       {walking && touch && <Stick onStick={onStick} />}
 
-      {list && <QuestList title="Things to do in Rivendell" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'awake' && sim.current.mode === 'walk'} />}
+      {list && (
+        <QuestList
+          title="Things to do in Rivendell"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => (q.id === SIDE.id ? prog.next !== 'awake' && prog.next !== 'bilbo' && sim.current.mode === 'walk' : q.open && !q.done && q.id !== 'awake' && sim.current.mode === 'walk')}
+        />
+      )}
+    </div>
+  );
+}
+
+// Bilbo's riddle, his candle, and the answers to pick from (1–4).
+function RiddlePanel({ game, hud, touch, onAnswer, onLeave }) {
+  const q = game ? asked(game) : null;
+  const over = hud.state !== 'ask';
+  return (
+    <div className="shire-panel riv-game riv-riddles" role="group" aria-label="Riddles with Bilbo">
+      <p className="shire-panel-title">
+        Riddle {Math.min(RIDDLE.ask, hud.at + 1)} of {RIDDLE.ask}
+      </p>
+      <p className="shire-panel-say riv-riddle" aria-live="polite">
+        {over ? (hud.state === 'won' ? '“Well played, my lad. Well played.”' : '“The game’s mine, I think!”') : q?.q}
+      </p>
+      <div className="shire-meter riv-meter-candle" role="meter" aria-label="Bilbo’s candle" aria-valuemin={0} aria-valuemax={1} aria-valuenow={Math.round(hud.candle * 100) / 100}>
+        <span className="shire-meter-label">The candle</span>
+        <span className="shire-meter-bar">
+          <span style={{ transform: `scaleX(${over ? 0 : hud.candle})` }} />
+        </span>
+        <span className="shire-meter-time">
+          {hud.right} right · {hud.wrong} of {RIDDLE.lose} against
+        </span>
+      </div>
+      {!over && q && (
+        <div className="town-choices riv-answers">
+          {q.shown.map((a, i) => (
+            <button key={a} type="button" className="btn btn-ghost btn-sm town-choice" onClick={() => onAnswer(i)}>
+              {!touch && <kbd>{i + 1}</kbd>} {a}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="shire-panel-row">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+          {over ? 'Back out' : 'Enough riddles'} {!touch && <kbd>Esc</kbd>}
+        </button>
+      </div>
     </div>
   );
 }
@@ -936,7 +1079,7 @@ function drawValley(g, at) {
 }
 
 // Without 3D: the scenes, as cards.
-function Cards({ prog, three, gl, retry }) {
+function Cards({ prog, side, three, gl, retry }) {
   return (
     <div className="shell shire-cards-wrap">
       <h1 id="riv-title" className="title">
@@ -967,6 +1110,13 @@ function Cards({ prog, three, gl, retry }) {
             {q.done && <p className="mt-2 text-sm font-semibold">Done</p>}
           </li>
         ))}
+        <li data-side>
+          <p className="shire-list-side">On the side</p>
+          <p className="shire-list-name">{SIDE.name}</p>
+          <p className="shire-list-sub">{SIDE.where}</p>
+          <p className="mt-2 text-sm text-muted">{SIDE.blurb}</p>
+          {side && <p className="mt-2 text-sm font-semibold">Done</p>}
+        </li>
       </ul>
     </div>
   );

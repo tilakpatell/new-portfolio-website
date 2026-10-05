@@ -28,7 +28,7 @@ import { makeFolk } from '../bree/props';
 import { createWraithKit } from '../wraiths';
 import { createWeathertopKit } from './props';
 import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCHES, PLANTS, ROCKS, RUIN, SPOTS, STAIR, STAIR_W, STAND, TREES, TROLLS, WALLS, WORLD, WOUNDED, height, pathAmount, stairNear } from './layout';
-import { BRAND, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
+import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -165,6 +165,35 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     if (Math.hypot(b.position.x, b.position.z) > RUIN.r) b.position.y = height(b.position.x, b.position.z) - HILL.top - 0.15;
   }
   statics.add(ruin.group);
+  // on the side: Gandalf's mark, cut in the broken column on the plinth, on
+  // its east side. It shows as the lichen comes off (and stays, once read).
+  const markTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 154;
+    const g = c.getContext('2d');
+    g.lineCap = 'round';
+    for (const [w, colour] of [[12, 'rgba(18, 14, 10, 0.9)'], [4, 'rgba(244, 236, 214, 1)']]) {
+      g.strokeStyle = colour;
+      g.lineWidth = w;
+      for (const [u0, v0, u1, v1] of MARK_LINES) {
+        g.beginPath();
+        g.moveTo(u0 * c.width, v0 * c.height);
+        g.lineTo(u1 * c.width, v1 * c.height);
+        g.stroke();
+      }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const markMat = new THREE.MeshBasicMaterial({ map: markTex, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  // a curved patch of the column's face (CylinderGeometry's theta 0 is +z,
+  // so π/2 is east)
+  const markFace = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.34, 12, 1, true, Math.PI / 2 - 0.42, 0.84), markMat);
+  markFace.position.set(RUIN.plinth.x, HILL.top + 0.92, RUIN.plinth.z);
+  markFace.renderOrder = 2;
+  hill.add(markFace);
   // the crags round the crown, two rocks deep, and boulders on the slopes
   const rocks = kit.rocks.map(() => []);
   CRAGS.forEach(([x, z, s, i]) => {
@@ -556,6 +585,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     }
     hill.visible = !riding;
     ride.visible = riding;
+    markMat.opacity += ((s.markShown ?? 0) * 0.92 - markMat.opacity) * Math.min(1, dt * 6);
+    markFace.visible = markMat.opacity > 0.01;
 
     const h = s.hobbit;
     const asSam = s.as === 'sam';
@@ -586,6 +617,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
         walker.group.rotation.y = h.face;
         pose(walker, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
         if (s.stamping > 0) walker.legs[0].rotation.z = -0.9 * s.stamping;
+        // at the stone, his hand on it, scraping at the lichen
+        if (s.mode === 'mark') walker.arms[1].rotation.z = 1.15 + Math.sin(t * 13) * 0.12;
         // asleep in the dell, before the smell of bacon wakes him
         if (s.mode === 'sleep') {
           frodo.group.position.set(BED.x, height(BED.x, BED.z) + 0.15, BED.z);
@@ -858,6 +891,10 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       camAt.y = rideHeight(RIDE.length + FORD[1] + 12, 6) + 2.4 + flood * 2.5;
       camLook = roadAt(RIDE.length + FORD[0] - 2 + flood * 4, -flood * 14, look);
       camLook.y = 1.8 + flood * 2;
+    } else if (s.mode === 'mark') {
+      // close on the column's east face, Frodo bent over it to one side
+      camAt = tmp.set(RUIN.plinth.x + 2.3, HILL.top + 1.55, RUIN.plinth.z - 1.35);
+      camLook = look.set(RUIN.plinth.x + 0.45, HILL.top + 0.95, RUIN.plinth.z + 0.1);
     } else if (s.mode === 'talk' && s.speakerAt) {
       // over the shoulder, at whoever's speaking
       const a = tmp2.set(h.x, hy + 1.3, h.z);
@@ -929,6 +966,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     else if (type === 'close' || type === 'seen') A.shake = Math.max(A.shake, 0.1);
     else if (type === 'found') fx.pop(tmp2.copy(sam.group.position).add(V(0, 0.6, 0)), 'green', 24, 1.6);
     else if (type === 'out') fx.puff(tmp2.copy(frodo.group.position).add(V(0, 0.3, 0)), V(0, 0.6, 0), 10);
+    else if (type === 'mark') fx.pop(tmp2.set(RUIN.plinth.x + 0.6, HILL.top + 0.95, RUIN.plinth.z), 'gold', 26, 1.4);
   };
 
   // Where someone is on screen, for the speech bubbles: { x, y } in CSS

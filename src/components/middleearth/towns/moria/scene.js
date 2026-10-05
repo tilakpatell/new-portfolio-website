@@ -27,8 +27,8 @@ import { createGhosts } from '../ghosts';
 import { makeTerrain } from '../ground';
 import { makeFolk } from '../bree/props';
 import { createMoriaKit } from './props';
-import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, TOMB, WELL, gateHeight, hallHeight } from './layout';
-import { TUMBLE } from './rules';
+import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
+import { PLANK, TUMBLE } from './rules';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -217,6 +217,41 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
         { shadow: false },
       ),
     );
+  // on the side: an old shaft in the floor of the hall with a plank across
+  // it, and Gandalf's pipe lying on the plank over the middle, where Pippin
+  // left it
+  const shaft = (() => {
+    const g = new THREE.Group();
+    g.position.set(SHAFT.x, 0, SHAFT.z);
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const grad = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, '#000000');
+    grad.addColorStop(0.7, '#020202');
+    grad.addColorStop(1, '#1c1a17');
+    x.fillStyle = grad;
+    x.fillRect(0, 0, 64, 64);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(SHAFT.r, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+    hole.position.y = 0.012;
+    const kerb = new THREE.Mesh(new THREE.TorusGeometry(SHAFT.r + 0.06, 0.15, 6, 30).rotateX(Math.PI / 2), darkStone);
+    kerb.scale.y = 0.55;
+    kerb.position.y = 0.05;
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(SHAFT.plank, 0.07, 0.36), new THREE.MeshStandardMaterial({ color: 0x5c4129, roughness: 0.85 }));
+    plank.position.y = 0.17;
+    const pipe = new THREE.Group();
+    const briar = new THREE.MeshStandardMaterial({ color: 0x4a2c18, roughness: 0.6 });
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.44, 6).rotateZ(Math.PI / 2), briar);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.08, 10), briar);
+    bowl.position.set(-0.22, 0.03, 0);
+    pipe.add(stem, bowl);
+    pipe.position.set(0.05, 0.22, 0.05);
+    pipe.rotation.y = 0.6;
+    g.add(hole, kerb, plank, pipe);
+    zones.halls.add(g);
+    return { plank, pipe };
+  })();
+
   // the falling dwarf at the well: his skull, his body, the bucket and chain
   const bone = new THREE.MeshStandardMaterial({ color: 0xd8d0b8, roughness: 0.8 });
   const iron = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.5, metalness: 0.7 });
@@ -391,6 +426,14 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
       if (s.held) frodo.body.rotation.z = -0.5;
       else frodo.body.rotation.z = 0;
+      // out on the plank: tipping as the balance goes, arms out to keep it
+      if (s.mode === 'plank' && s.plank) {
+        const lean = s.plank.lean;
+        frodo.group.position.y += 0.2;
+        frodo.group.rotation.set(lean * 0.55, h.face, 0);
+        frodo.arms[0].rotation.x = 1.2 + lean * 0.4;
+        frodo.arms[1].rotation.x = -1.2 + lean * 0.4;
+      } else frodo.arms[0].rotation.x = 0;
     }
     ghosts.update(zone === 'gate' ? (s.travellers ?? []) : [], t, dt, { ringOn: Boolean(s.wearing) });
 
@@ -523,6 +566,13 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       return undefined;
     });
 
+    // the plank over the old shaft sways with you, and the pipe lies on it
+    // till you have it (or it's gone down the shaft, or Gandalf has it back)
+    const pl = s.mode === 'plank' ? s.plank : null;
+    shaft.plank.rotation.x = pl ? pl.lean * 0.07 : 0;
+    shaft.pipe.visible = pl ? !pl.back : !s.pipeTaken;
+    shaft.pipe.rotation.x = pl ? pl.lean * 0.07 : 0;
+
     // ── the camera ──
     let camAt;
     let camLook;
@@ -539,6 +589,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     } else if (s.mode === 'talk' && s.camShot) {
       camAt = wpos(zone, ...s.camShot.at, tmp);
       camLook = wpos(zone, ...s.camShot.look, look);
+    } else if (s.mode === 'plank') {
+      // from the west end, along the plank: tipping shows left and right
+      camAt = wpos('halls', SHAFT.x - PLANK.half - 3.6, 2.3, SHAFT.z + 0.4, tmp);
+      camLook = wpos('halls', SHAFT.x + 0.4, 0.55, SHAFT.z, look);
     } else if (s.mode === 'tumble') {
       camAt = wpos('halls', WELL.x - 3.2, 2.4, WELL.z + 3.2, tmp);
       camLook = wpos('halls', WELL.x, 0.6, WELL.z, look);

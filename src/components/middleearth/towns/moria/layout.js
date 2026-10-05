@@ -95,6 +95,9 @@ export const WELL = { x: CHAMBER.x + 5, z: CHAMBER.z - 5, r: 1.05 };
 export const CHAMBER_COLUMNS = [-7, 7].flatMap((dx) => [-4.5, 0, 4.5].map((dz) => ({ x: CHAMBER.x + dx, z: CHAMBER.z + dz, r: 0.72 })));
 // the way out to the stair and the bridge
 export const EAST_DOOR = { x: HALL.w / 2, z: 0, w: 4 };
+// on the side: an old shaft in the floor between the pillars of the hall's
+// south-west, with a plank laid across it (`plank` long, east to west)
+export const SHAFT = { x: -10.5, z: 9, r: 1.45, plank: 3.9 };
 
 // the floor of the halls is level, but for steps up to the fork
 export const hallHeight = (x) => (x < FORK.x + 1 ? 0.6 * smooth(FORK.x + 1, FORK.x - 1, x) : 0);
@@ -145,6 +148,7 @@ export const HALL_COLLIDERS = [
   ...PILLARS.map((p, i) => box(`pillar${i}`, { x: p.x, z: p.z, w: p.w, d: p.w }, { top: 30 })),
   box('tomb', TOMB, { low: true, top: 1.2 }),
   circle('well', WELL.x, WELL.z, WELL.r, { low: true, top: 1 }),
+  circle('shaft', SHAFT.x, SHAFT.z, SHAFT.r, { low: true, top: 0.2 }),
   ...CHAMBER_COLUMNS.map((c, i) => circle(`column${i}`, c.x, c.z, c.r, { top: 10 })),
 ];
 // the chamber's doors, when they're barred
@@ -156,6 +160,8 @@ export const SPOTS = [
   { zone: 'gate', id: 'doors', x: 0, z: GATE.cliff + 3, r: 2.6 },
   { zone: 'halls', id: 'tomb', x: CHAMBER.x, z: -hd + 2, r: 2.8 },
   { zone: 'halls', id: 'east', x: EAST_DOOR.x - 2.5, z: EAST_DOOR.z, r: 2.6 },
+  // on the side: the west end of the plank over the old shaft
+  { zone: 'halls', id: 'plank', x: SHAFT.x - SHAFT.plank / 2 - 0.5, z: SHAFT.z, r: 1.3 },
 ];
 export const spot = (id) => SPOTS.find((s) => s.id === id);
 // in the chamber, where the troll comes in and walks; and where Frodo

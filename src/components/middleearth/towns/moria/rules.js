@@ -1,7 +1,7 @@
 // Moria's games, as rules with no drawing, so they can be tested: dodging
 // the Watcher's tentacles to the Doors, catching what falls down the well,
 // keeping out of the troll's sight, and the flight down the stair and over
-// the bridge. ./MoriaWorld.jsx steps them; ./scene.js draws them.
+// the bridge; and on the side, the plank over the old shaft. ./MoriaWorld.jsx steps them; ./scene.js draws them.
 
 export function seeded(seed = 1) {
   let s = seed % 2147483647 || 1;
@@ -195,6 +195,71 @@ export function stepFlight(f, dt, { steer = 0, jump = false } = {}, path) {
   if (f.s >= path.end) {
     f.state = 'safe';
     ev.push({ type: 'safe' });
+  }
+  return ev;
+}
+
+// ── On the side: mind the well ──
+// In the great hall an old shaft goes down through the floor, with a plank
+// across it, and Pippin (who was only looking) has left Gandalf's pipe lying
+// on the plank right over the middle. Walk out, pick it up, and walk back,
+// keeping your balance: the plank sways, a draught comes up the shaft in
+// gusts, and you lean against it, left or right. Lean too far and the pipe
+// goes down the shaft, and something far below wakes. "Fool of a Baggins!"
+// It's on the side: the story never waits on it.
+//
+// `at` is how far out along the plank you are (0 at the edge, `half` over
+// the middle); `lean` how far you're tipping (−1 left … 1 right, over at
+// either end) and `spin` how fast.
+export const PLANK = { half: 1.75, walk: 0.42, unstable: 1.3, gust: 0.75, step: 0.85, push: 3.2, damp: 1.5, wobble: 0.62 };
+// the task, for the list
+export const SIDE = { id: 'plank', name: 'Mind the well', where: 'An old shaft in the great hall', blurb: 'Pippin left Gandalf’s pipe on the plank across an old shaft. Fetch it back without dropping anything down.', seal: 'mindthewell' };
+
+export function newPlank(seed = 5) {
+  const rand = seeded(seed);
+  return { t: 0, at: 0, back: false, lean: (rand() - 0.5) * 0.1, spin: 0, state: 'on', phase: [0, 1, 2, 3].map(() => rand() * 6.28), shaky: false };
+}
+
+// the draught up the shaft, as a push: a few slow gusts on top of each
+// other, strongest out over the middle
+export const draught = (pl, t = pl.t) => PLANK.gust * (0.6 + 0.6 * (pl.at / PLANK.half)) * (0.55 * Math.sin(1.1 * t + pl.phase[0]) + 0.35 * Math.sin(2.3 * t + pl.phase[1]) + 0.3 * Math.sin(0.53 * t + pl.phase[2]));
+
+// One step. `walk` (on or off) moves you along: out to the pipe, then back;
+// `lean` (−1 … 1) throws your weight that way, so you lean left when you're
+// tipping right. Events: 'wobble' as you start to tip, 'pipe' when you have
+// it, 'won' back at the edge with it, 'fell' over.
+export function stepPlank(pl, dt, { walk = false, lean = 0 } = {}) {
+  const ev = [];
+  if (pl.state !== 'on') return ev;
+  pl.t += dt;
+  // each step rocks the plank a little
+  const steps = walk ? PLANK.step * Math.sin(7.4 * pl.t + pl.phase[3]) : 0;
+  const acc = PLANK.unstable * pl.lean + draught(pl) + steps + PLANK.push * Math.max(-1, Math.min(1, lean)) - PLANK.damp * pl.spin;
+  pl.spin += acc * dt;
+  pl.lean += pl.spin * dt;
+  const shaky = Math.abs(pl.lean) > PLANK.wobble;
+  if (shaky && !pl.shaky) ev.push({ type: 'wobble', side: Math.sign(pl.lean) });
+  pl.shaky = shaky;
+  if (Math.abs(pl.lean) >= 1) {
+    pl.lean = Math.sign(pl.lean);
+    pl.state = 'fell';
+    ev.push({ type: 'fell', pipe: pl.back });
+    return ev;
+  }
+  if (walk) {
+    if (!pl.back) {
+      pl.at = Math.min(PLANK.half, pl.at + PLANK.walk * dt);
+      if (pl.at >= PLANK.half) {
+        pl.back = true;
+        ev.push({ type: 'pipe' });
+      }
+    } else {
+      pl.at = Math.max(0, pl.at - PLANK.walk * dt);
+      if (pl.at <= 0) {
+        pl.state = 'won';
+        ev.push({ type: 'won' });
+      }
+    }
   }
   return ev;
 }

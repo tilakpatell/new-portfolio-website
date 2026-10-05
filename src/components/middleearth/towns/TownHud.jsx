@@ -5,8 +5,10 @@ import { forwardRef } from 'react';
 // a conversation, and the touch stick. The corner map is ./map.js.
 
 // The list of things to do: each with its seal, where it is, and a way there.
-// Anything more (the town's games on the side, ./SideList.jsx) comes after.
-export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false, children = null }) {
+// Under them, anything a town has on the side (`side`: the same shape, with
+// `done`), which the story never waits on; or a town's own list of them
+// (./SideList.jsx), as children.
+export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false, side = [], children = null }) {
   return (
     <div className="shire-list" role="dialog" aria-label={title}>
       <div className="shire-list-head">
@@ -34,6 +36,31 @@ export function QuestList({ title, quests, next, onClose, onGo, canGo = () => fa
         ))}
       </ul>
       {children}
+      {side.length > 0 && (
+        <>
+          <p className="shire-list-side">On the side</p>
+          <ul>
+            {side.map((q) => (
+              <li key={q.id} data-done={q.done || undefined} data-open data-side>
+                <span className="shire-seal" aria-hidden="true">
+                  {q.done ? '✓' : ''}
+                </span>
+                <div>
+                  <p className="shire-list-name">{q.name}</p>
+                  <p className="shire-list-sub">
+                    {q.where}. {q.blurb}
+                  </p>
+                </div>
+                {canGo(q) && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onGo(q)}>
+                    Go there
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
