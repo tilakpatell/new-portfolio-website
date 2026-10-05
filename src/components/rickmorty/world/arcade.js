@@ -12,15 +12,13 @@
 // cabinets, screens, bulbs, tables and the planet's spheres are instanced.
 //
 // buildArcade(kit) → { group, update, noInk, light, actions: { setBoard(best) } }.
-// Also shared with ./annex.js: logoText() (the arcade's lettering), the
-// screen shader and the neon copy of a model's material.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTexture, hot } from '../../../lib/stage3d';
 import { toon } from '../portal/toon';
 import { AREAS, FURNITURE } from './rules';
-import { at, batch, coloured, fitModel, mergeParts, paint, rng } from './kit';
+import { at, batch, coloured, fitModel, glowMaterial, logoText, mergeParts, neonCopy, paint, rng } from './kit';
 
 const A = AREAS.arcade;
 const CX = (A.x0 + A.x1) / 2; // the walkway's middle line, and the hall's
@@ -34,6 +32,14 @@ const DECKS = [STOREY, STOREY * 2, STOREY * 3]; // the balconies
 const TOP = STOREY * 4; // where the dome starts
 const CUT = Math.acos((SOUTH - CZ) / R_OUT); // where the outer wall meets the entrance wall
 const PLANET = { y: 5.5, r: 4.6, belt: 4.78 };
+// how much each tier draws: the cabinets' spacing round the rings (and which
+// rings have them), the bulbs' chevron spacing, the tables, the regulars, and
+// how finely the rings of neon are drawn
+const PLAN = {
+  high: { step: 1.9, rings: 4, chevron: 1.3, tables: 34, regulars: true, seg: 160, wallScreen: 0.21, planet: [64, 40] },
+  mid: { step: 3.8, rings: 4, chevron: 2.6, tables: 18, regulars: false, seg: 96, wallScreen: 0.3, planet: [48, 32] },
+  low: { step: 3.8, rings: 3, chevron: 3.9, tables: 10, regulars: false, seg: 64, wallScreen: 0.42, planet: [40, 26] },
+};
 const BOARD = { x: CX + 3.4, z: A.z0, w: 2.3, h: 1.45, y: 1.12 }; // the high-score board, on the rail right of Roy
 const NEON = { magenta: 0xff3fd0, pink: 0xff7ad9, teal: 0x2ff5e0, gold: 0xffc23a, purple: 0xa45bff, lime: 0x9dff5a, blue: 0x4f8bff, orange: 0xff8a2a };
 // dark, purple and neon-lit: little sun, a violet sky light, a deep haze far off
@@ -49,35 +55,10 @@ const P = (r, a) => [CX + r * Math.sin(a), CZ + r * Math.cos(a)];
 // the turn that faces something at angle a towards the middle
 const inward = (a) => a + Math.PI;
 
-// ── shared with the annex ──
-
-// Text in the arcade's lettering: fat capitals, yellow going orange at the
-// foot, a dark outline and a hard shadow; squeezed to `maxW` if it's wider.
-export function logoText(g, text, x, y, size, { maxW = Infinity, outline = '#2a0f4a', shadow = '#12061f', fill = ['#fff8b0', '#ffd21a', '#ff8a00'], weight = 900 } = {}) {
-  g.save();
-  g.font = `${weight} ${size}px 'Arial Black', 'Arial Bold', 'Helvetica Neue', Arial, sans-serif`;
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.lineJoin = 'round';
-  const w = g.measureText(text).width + size * 0.3;
-  g.translate(x, y);
-  g.scale(Math.min(1, maxW / w), 1);
-  g.lineWidth = size * 0.24;
-  g.strokeStyle = shadow;
-  g.strokeText(text, size * 0.05, size * 0.09);
-  g.strokeStyle = outline;
-  g.strokeText(text, 0, 0);
-  const gr = g.createLinearGradient(0, -size * 0.42, 0, size * 0.42);
-  fill.forEach((c, i) => gr.addColorStop(i / (fill.length - 1), c));
-  g.fillStyle = gr;
-  g.fillText(text, 0, 0);
-  g.restore();
-}
-
 // Arcade screens, all different, all moving: scrolling stripes, a game of
 // bat and ball, a grid of blocks flicking on and off, rings pulsing out (by
 // each one's `aSeed`; 9 and up is Roy's green). Instanced planes.
-export function screenMaterial() {
+function screenMaterial() {
   return new THREE.ShaderMaterial({
     fog: true,
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { t: { value: 0 } }]),
@@ -107,7 +88,7 @@ export function screenMaterial() {
         vec3 c;
         if (s >= 9.0) {
           // Roy's: green, a bar rolling down it
-          c = vec3(0.25, 1.0, 0.35) * (0.75 + 0.25 * smoothstep(0.1, 0.0, abs(fract(uv.y + t * 0.25) - 0.5)));
+          c = vec3(0.25, 1.0, 0.35) * (0.75 + 0.25 * (1.0 - smoothstep(0.0, 0.1, abs(fract(uv.y + t * 0.25) - 0.5))));
         } else {
           float m = floor(fract(s * 7.13) * 4.0);
           if (m < 1.0) {
@@ -139,27 +120,6 @@ export function screenMaterial() {
       }`,
   });
 }
-
-// A copy of a model's toon material that glows where its texture is neon:
-// bright saturated colour ('neon'), or bright green only ('green', Roy's
-// screen). The copy is the builder's to dispose.
-export function neonCopy(src, { k = 2.2, mode = 'neon' } = {}) {
-  const m = src.clone();
-  const test = mode === 'green' ? 'step(0.3, c.g) * step(c.r * 1.8, c.g) * step(c.b * 1.8, c.g)' : 'smoothstep(0.4, 0.55, hi) * smoothstep(0.55, 0.72, (hi - lo) / max(hi, 1e-3))';
-  m.onBeforeCompile = (s) => {
-    s.fragmentShader = s.fragmentShader.replace(
-      '#include <emissivemap_fragment>',
-      `#include <emissivemap_fragment>
-      { vec3 c = diffuseColor.rgb; float hi = max(c.r, max(c.g, c.b)); float lo = min(c.r, min(c.g, c.b));
-        totalEmissiveRadiance += c * (${test}) * ${k.toFixed(2)}; }`,
-    );
-  };
-  m.customProgramCacheKey = () => `c137-neon-${mode}-${k}`;
-  return m;
-}
-
-// Glow, one colour per vertex (so every neon tube in an area is one mesh)
-export const glowMaterial = (k = 2.2) => new THREE.MeshBasicMaterial({ color: hot(0xffffff, k), vertexColors: true });
 
 // geometry with its faces turned to face in (for walls seen from inside)
 function inside(geo) {
@@ -234,17 +194,18 @@ const SCREEN = at(0, 0.74, 0.135, 0, 0.78, 0.36, 1, -0.14);
 const MARQUEE = at(0, 0.94, 0.245, 0, 0.98, 0.11, 1);
 
 // a round teal-topped table on a chrome stem, three stools round it
+const CYL12 = new THREE.CylinderGeometry(0.5, 0.5, 1, 12);
 function tableGeometry() {
   const parts = [];
   const add = (geo, color, x, y, z, sx, sy, sz) => parts.push({ geo, color, matrix: at(x, y, z, 0, sx, sy, sz) });
-  add(CYL, 0x1fc8b8, 0, 0.76, 0, 1.15, 0.06, 1.15);
-  add(CYL, 0x0d6e70, 0, 0.71, 0, 1.05, 0.05, 1.05);
-  add(CYL, 0xc4c9d4, 0, 0.36, 0, 0.1, 0.72, 0.1);
-  add(CYL, 0x8d93a3, 0, 0.02, 0, 0.6, 0.04, 0.6);
+  add(CYL12, 0x1fc8b8, 0, 0.76, 0, 1.15, 0.06, 1.15);
+  add(CYL12, 0x0d6e70, 0, 0.71, 0, 1.05, 0.05, 1.05);
+  add(CYL12, 0xc4c9d4, 0, 0.36, 0, 0.1, 0.72, 0.1);
+  add(CYL12, 0x8d93a3, 0, 0.02, 0, 0.6, 0.04, 0.6);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * TAU + 0.4;
-    add(CYL, 0xff4fc8, Math.sin(a) * 0.95, 0.5, Math.cos(a) * 0.95, 0.42, 0.08, 0.42);
-    add(CYL, 0xc4c9d4, Math.sin(a) * 0.95, 0.25, Math.cos(a) * 0.95, 0.06, 0.5, 0.06);
+    add(CYL12, 0xff4fc8, Math.sin(a) * 0.95, 0.5, Math.cos(a) * 0.95, 0.42, 0.08, 0.42);
+    add(CYL12, 0xc4c9d4, Math.sin(a) * 0.95, 0.25, Math.cos(a) * 0.95, 0.06, 0.5, 0.06);
   }
   return mergeParts(parts);
 }
@@ -335,8 +296,8 @@ function domeMaterial() {
         vec2 o = vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5;
         vec2 q = f - o * 0.6;
         float d = length(q);
-        float cross = max(smoothstep(size * 0.35, 0.0, abs(q.x)) * smoothstep(size * 3.0, 0.0, abs(q.y)), smoothstep(size * 0.35, 0.0, abs(q.y)) * smoothstep(size * 3.0, 0.0, abs(q.x)));
-        float s = max(smoothstep(size, 0.0, d), cross * 0.8);
+        float cross = max((1.0 - smoothstep(0.0, size * 0.35, abs(q.x))) * (1.0 - smoothstep(0.0, size * 3.0, abs(q.y))), (1.0 - smoothstep(0.0, size * 0.35, abs(q.y))) * (1.0 - smoothstep(0.0, size * 3.0, abs(q.x))));
+        float s = max(1.0 - smoothstep(0.0, size, d), cross * 0.8);
         return s * step(1.0 - dens, r) * (0.55 + 0.45 * sin(t * (0.8 + r * 2.5) + r * 40.0));
       }
       void main() {
@@ -432,7 +393,7 @@ function drawBoard(g, w, h, best) {
 export async function buildArcade(kit) {
   const { renderer, models, mats, tier = 'high' } = kit;
   const need = kit.need ?? ((n, o) => kit.cast.load(null, n, o));
-  const lean = tier === 'low';
+  const plan = PLAN[tier] ?? PLAN.high;
   const group = new THREE.Group();
   group.name = 'arcade';
   const owned = []; // materials and textures made here, not the kit's
@@ -448,17 +409,16 @@ export async function buildArcade(kit) {
     if (!cache.has(k)) cache.set(k, coloured(geo, color));
     return cache.get(k);
   };
-  const tiled = (m, tile) => {
-    m.userData.tile = tile;
-    return m;
-  };
   const r = rng(42);
   const tmp = new THREE.Matrix4();
   const levels = [FLOOR, ...DECKS];
 
   // ── the shell: floor, walls, balconies, the dome ──
-  const floorMat = tiled(
-    mats.painted('arcade-floor', 256, 256, (g, w, h) => {
+  const floorMat = mats.painted(
+    'arcade-floor',
+    256,
+    256,
+    (g, w, h) => {
       g.fillStyle = '#251643';
       g.fillRect(0, 0, w, h);
       g.fillStyle = '#2e1b52';
@@ -472,8 +432,8 @@ export async function buildArcade(kit) {
       g.strokeStyle = '#140b28';
       g.lineWidth = 4;
       g.strokeRect(0, 0, w, h);
-    }),
-    3,
+    },
+    { tile: 3 },
   );
   deck.add(new THREE.ShapeGeometry(planShape(), 60).rotateX(-Math.PI / 2), floorMat, at(CX, FLOOR, CZ));
   // the outer wall, and the entrance wall across the south
@@ -486,7 +446,7 @@ export async function buildArcade(kit) {
   // wall under each one, and gold round the foot of the dome
   const deckColours = [NEON.magenta, NEON.teal, NEON.gold];
   const slab = new THREE.ExtrudeGeometry(planShape(R_IN), { depth: 0.45, bevelEnabled: false, curveSegments: 96 }).rotateX(-Math.PI / 2);
-  const ring = (rad, tube, y, color, mat = glow, buf = neon) => buf.add(C(new THREE.TorusGeometry(rad, tube, 6, 160).rotateX(Math.PI / 2), color), mat, at(CX, y, CZ));
+  const ring = (rad, tube, y, color, mat = glow, buf = neon) => buf.add(C(new THREE.TorusGeometry(rad, tube, 5, plan.seg).rotateX(Math.PI / 2), color), mat, at(CX, y, CZ));
   DECKS.forEach((y, i) => {
     deck.add(C(slab, 0x3a2160), VC, at(CX, y - 0.45, CZ));
     ring(R_IN - 0.02, 0.07, y - 0.15, deckColours[i]);
@@ -509,7 +469,7 @@ export async function buildArcade(kit) {
   group.add(dome);
 
   // ── the walkway: carpet, railing, lit edges, the doors behind ──
-  const carpet = tiled(mats.painted('arcade-carpet', 512, 512, drawCarpet), 2.6);
+  const carpet = mats.painted('arcade-carpet', 512, 512, drawCarpet, { tile: 2.6 });
   const W = A.x1 - A.x0;
   const D = A.z1 - A.z0;
   const mz = (A.z0 + A.z1) / 2;
@@ -595,7 +555,7 @@ export async function buildArcade(kit) {
   const PILLARS = [0.64, 1.05, 1.75, 2.5, Math.PI, -2.5, -1.75, -1.05, -0.64];
   const PILLAR_R = 21;
   const bulbs = []; // [x, y, z, phase]
-  const chevron = lean ? 2.6 : 1.3;
+  const chevron = plan.chevron;
   for (const a of PILLARS) {
     const [bx, bz] = P(PILLAR_R, a);
     const tang = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
@@ -659,7 +619,7 @@ export async function buildArcade(kit) {
     deck.add(C(CYL, 0x1a1028), VC, strut(from, to, new THREE.Vector3(0, 0, 1), 0.07, 0.07));
   }
   const planetTex = own(planetMap(renderer));
-  const planet = new THREE.Mesh(new THREE.SphereGeometry(PLANET.r, 64, 40), own(toon(0xffffff, { map: planetTex, emissiveMap: planetTex, emissive: hot(0xffffff, 0.4) })));
+  const planet = new THREE.Mesh(new THREE.SphereGeometry(PLANET.r, ...plan.planet), own(toon(0xffffff, { map: planetTex, emissiveMap: planetTex, emissive: hot(0xffffff, 0.4) })));
   planet.position.set(CX, PLANET.y, CZ);
   planet.rotation.set(0.08, 0, 0.06);
   group.add(planet);
@@ -686,7 +646,6 @@ export async function buildArcade(kit) {
 
   // ── Roy's chair, and the high-score board on the rail beside it ──
   const roySpot = FURNITURE.find((f) => f.id === 'roy');
-  const near = []; // [object, its FURNITURE spot]: hidden while the camera is inside it
   const roy = models.get('roy-cabinet');
   let royScreen = null;
   if (roy) {
@@ -702,7 +661,6 @@ export async function buildArcade(kit) {
       o.receiveShadow = true;
     });
     group.add(holder);
-    near.push([holder, { ...roySpot, z: front - 0.78, d: 1.55 }]);
   } else royScreen = royStandIn(props, C, VC, neon, glow, roySpot);
   const boardCanvas = document.createElement('canvas');
   boardCanvas.width = 768;
@@ -725,8 +683,8 @@ export async function buildArcade(kit) {
   const BODY = [0x7a3cff, 0x1fb5c2, 0xff3fa8, 0xff8a2a, 0x3d6bff, 0x9b2fd0, 0x22c47a];
   const LIT = [NEON.magenta, NEON.teal, NEON.gold, NEON.lime, NEON.pink, NEON.blue];
   const pick = (list) => list[Math.floor(r() * list.length)];
-  const step = (lean ? 3.2 : 1.9) / 28.6;
-  for (const y of levels)
+  const step = plan.step / 28.6;
+  for (const y of levels.slice(0, plan.rings))
     for (let a = 0.66; a < TAU - 0.66; a += step) {
       const [x, z] = P(28.6, a);
       const m = at(x, y, z, inward(a), 0.9, 1.8, 0.85);
@@ -736,7 +694,7 @@ export async function buildArcade(kit) {
     }
   // big screens on the wall above them (on the floor, a band at the walkway's eye level)
   for (const y of levels)
-    for (let a = 0.72; a < TAU - 0.72; a += y === FLOOR ? 0.27 : 0.21) {
+    for (let a = 0.72; a < TAU - 0.72; a += y === FLOOR ? 0.27 : plan.wallScreen) {
       const [x, z] = P(R_OUT - 0.1, a);
       screens.push([y === FLOOR ? at(x, 1.2, z, inward(a), 4.6, 2.6, 1) : at(x, y + 2.55, z, inward(a), 2.6, 1.4, 1), r() * 8.9]);
     }
@@ -766,10 +724,7 @@ export async function buildArcade(kit) {
   );
   const nameGeo = walkway.map((f, i) => {
     const m = at(f.x, 0, f.z, f.turn, f.w * 0.92, f.h, f.d);
-    const body = new THREE.Mesh(tinted(cabGeo, BODY[(i * 3) % BODY.length]).applyMatrix4(m), VC);
-    body.castShadow = body.receiveShadow = true;
-    group.add(body);
-    near.push([body, f]);
+    props.add(tinted(cabGeo, BODY[(i * 3) % BODY.length]), VC, m);
     screens.push([m.clone().multiply(SCREEN), 1.3 + i * 2.1]);
     const g = new THREE.PlaneGeometry(1, 1);
     const uv = g.attributes.uv;
@@ -805,7 +760,7 @@ export async function buildArcade(kit) {
 
   // ── the tables on the floor ──
   const spots = [];
-  for (let tries = 0; spots.length < (lean ? 16 : 34) && tries < 3000; tries++) {
+  for (let tries = 0; spots.length < plan.tables && tries < 3000; tries++) {
     const a = r() * TAU;
     const [x, z] = P(7 + r() * 13, a);
     if (Math.abs(x - CX) < 11.5 && z > A.z0 - 1.5) continue; // under the walkway
@@ -851,7 +806,7 @@ export async function buildArcade(kit) {
 
   // ── a few regulars, out over the hall ──
   const regulars = [];
-  if (!lean) {
+  if (plan.regulars) {
     await need(['gromflomite', 'gazorpian'], { clips: ['idle'] }).catch(() => {});
     const place = (kind, rad, a, y, turn) => {
       const c = kit.cast.make(kind);
@@ -881,28 +836,19 @@ export async function buildArcade(kit) {
         boardTex.needsUpdate = true;
       },
     },
-    update(t, dt, state, camera) {
-      // the indoor camera keeps to the walkway, so it can end up inside a
-      // cabinet by the rail: that one isn't drawn while it is
-      const c = camera.position;
-      for (const [o, f] of near) {
-        const dx = c.x - f.x;
-        const dz = c.z - f.z;
-        const u = Math.abs(dx * Math.cos(f.turn) - dz * Math.sin(f.turn));
-        const w = Math.abs(dx * Math.sin(f.turn) + dz * Math.cos(f.turn));
-        o.visible = !(u < f.w / 2 + 0.3 && w < f.d / 2 + 0.3 && c.y < f.h + 0.3);
-      }
+    update(t) {
       domeMat.uniforms.t.value = t;
       bulbMat.uniforms.t.value = t;
       screenMat.uniforms.t.value = t;
       planet.rotation.y = t * 0.1;
-      ORBITS.forEach((o, i) => {
+      for (let i = 0; i < ORBITS.length; i++) {
+        const o = ORBITS[i];
         const a = o.phase + t * o.speed;
         v.set(Math.cos(a) * o.r, 0, Math.sin(a) * o.r).applyQuaternion(o.q).add(planet.position);
         spheres.setMatrixAt(i, tmp.compose(v, q, s.setScalar(o.size)));
-      });
+      }
       spheres.instanceMatrix.needsUpdate = true;
-      for (const c of regulars) c.update?.(t, 0, 0);
+      for (let i = 0; i < regulars.length; i++) regulars[i].update?.(t, 0, 0);
     },
     dispose() {
       for (const o of owned) o.dispose?.();

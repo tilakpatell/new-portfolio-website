@@ -24,20 +24,22 @@ import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
 import { createMeshyCast } from '../portal/meshyCast';
 import { CANS, CREW, TALL, glassDome } from '../cruiser3d';
-import { ARCADE, AREAS, BUILDINGS, CRUISER, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, wallsIn } from './rules';
+import { ARCADE, AREAS, BUILDINGS, CRUISER, FURNITURE, HOTSPOTS, LINKS, MORTY, OUTDOOR, ROAD, TREES, behindYaw, wallsIn } from './rules';
 import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
-import { buildAnnex } from './annex';
+import { ANNEX_LIGHT, ANNEX_SKY, buildAnnex } from './annex';
 import { buildArcade } from './arcade';
 
 export { kitMaterials };
 
 // Each area's builder: (kit) → { group, update?(t, dt, state, camera),
 // noInk?: Object3D[], light?: { sun: [colour, intensity], hemi: [sky,
-// ground, intensity], fog: [colour, near, far] | null, background }, dispose? }
-// (or a promise of one). noInk is for what never stands in front of
+// ground, intensity], fog: [colour, near, far] | null, background }, dispose?,
+// actions?: { [name]: (...args) => any } } (or a promise of one). actions are
+// what the component can ask of an area once it's built, through
+// api.act(area, name, ...args) (the arcade's setBoard(best)). noInk is for what never stands in front of
 // anything inked (a sky, glows, marks on the floor): what the ink can't see,
 // it outlines what's behind straight through. Its group is drawn at the area's own place in
 // rules.js's AREAS and shown only while Morty is there. An area with no
@@ -53,9 +55,9 @@ const MODELS = ['smith-house', 'school', 'arcade', 'roy-cabinet'];
 const MORTY_H = 1.7; // how tall Morty stands here
 const SAUCER = 2.4; // the cruiser's height (it's 3.8 m across): cruiser3d.js's saucer, bigger
 const K = SAUCER / TALL; // and its measurements to match
+// how far round the camera may swing (radians) to get out from behind a piece of furniture
+const SWING = [0.5, 1, 1.5, 2, 2.6];
 const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog: null, background: 0x15110d };
-const ANNEX_LIGHT = { sun: [0xffd6f0, 1.9], hemi: [0xd9b8ff, 0x553366, 1.3], fog: [0x8a5fb8, 60, 260] };
-const ANNEX_SKY = { top: 0x2a1250, mid: 0x7a3c9a, low: 0xf0a0c8, sun: 0xfff0c0, clouds: 0.6, moons: 1 };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const V = new THREE.Vector3();
@@ -177,12 +179,31 @@ export async function createRmWorld(canvas, { onLost } = {}) {
   const cam = { at: new THREE.Vector3(), look: new THREE.Vector3(), area: null, flying: null };
   const want = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   // how far from the head to the camera it can go before it's inside a
-  // building or a tree (outdoors) or through a wall (indoors), as a share
+  // building or a tree (outdoors), or through a wall or into the furniture
+  // (indoors), as a share
   const solid = { street: BUILDINGS, annex: [ARCADE] };
   const parked = { x: 0, z: 0, on: false }; // the cruiser, while it stands in the street
-  // what's at (x, y, z): 0 nothing, 1 something, 2 the parked cruiser (which the camera can rise over)
+  // a room's furniture as boxes, turned as they stand (each a little bigger,
+  // but by less than Morty's radius, so where he stands is never inside one)
+  const pieces = {};
+  for (const f of FURNITURE) (pieces[f.area] ??= []).push({ x: f.x, z: f.z, hw: f.w / 2 + 0.3, hd: f.d / 2 + 0.3, top: f.h + 0.3, c: Math.cos(f.turn), s: Math.sin(f.turn) });
+  const inPiece = (area, x, y, z) => {
+    const list = pieces[area];
+    if (!list) return false;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (y > f.top) continue; // (over a table or a bed, the camera can look down past it)
+      const dx = x - f.x;
+      const dz = z - f.z;
+      if (Math.abs(dx * f.c - dz * f.s) < f.hw && Math.abs(dx * f.s + dz * f.c) < f.hd) return true;
+    }
+    return false;
+  };
+  // what's at (x, y, z): 0 nothing, 1 something, 2 the parked cruiser (which
+  // the camera can rise over), 3 a piece of furniture (which it can swing round)
   const blocked = (area, x, y, z) => {
     if ((solid[area] ?? []).some((b) => y < b.roof + 0.5 && Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35)) return 1;
+    if (inPiece(area, x, y, z)) return 3;
     if (area !== 'street') return 0;
     if (TREES.some((tr) => y < 8 * tr.s && Math.hypot(x - tr.x, z - tr.z) < 0.45 * tr.s + 0.35)) return 1;
     if (!parked.on) return 0;
@@ -199,6 +220,15 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const d4 = (x1 - x0) * (bz - z0) - (z1 - z0) * (bx - x0);
       return d1 * d2 < 0 && d3 * d4 < 0;
     });
+  // where the walking camera wants to be, `turn` round Morty (indoors, kept in the room)
+  const aim = (area, m, turn, pitch, dist) => {
+    want.at.set(m.x + Math.sin(turn) * Math.cos(pitch) * dist, mortyY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(turn) * Math.cos(pitch) * dist);
+    if (OUTDOOR.includes(area)) return;
+    const a = AREAS[area];
+    want.at.x = clamp(want.at.x, a.x0 + 0.3, a.x1 - 0.3);
+    want.at.z = clamp(want.at.z, a.z0 + 0.3, a.z1 - 0.3);
+    want.at.y = Math.min(want.at.y, 2.35);
+  };
   let hitBy = 0; // what clearance() last stopped at
   const clearance = (area, from, to) => {
     const N = 16;
@@ -339,20 +369,35 @@ export async function createRmWorld(canvas, { onLost } = {}) {
       const dist = outdoors || OUTDOOR.includes(area) ? 5.6 : 3.6;
       // (looking a little over his head, so more of the street is in view)
       want.look.set(m.x, mortyY + 1.75, m.z);
-      want.at.set(m.x + Math.sin(yaw) * Math.cos(pitch) * dist, mortyY + 1.5 + Math.sin(pitch) * dist, m.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+      // indoors: kept in the room first, then pulled in front of whatever's in the way
+      aim(area, m, yaw, pitch, dist);
       let k = clearance(area, want.look, want.at);
+      // backed up against a piece of furniture: round to the side that's clear
+      // (the side the camera is on now, first) rather than into it
+      if (hitBy === 3 && k < 0.5) {
+        const now = Math.atan2(cam.at.x - m.x, cam.at.z - m.z) - yaw;
+        const side = Math.sin(now) < 0 ? -1 : 1;
+        let best = k;
+        let bestYaw = yaw;
+        for (let i = 0; i < SWING.length && best < 0.5; i++)
+          for (let j = 0; j < 2; j++) {
+            const dir = j ? -side : side;
+            aim(area, m, yaw + dir * SWING[i], pitch, dist);
+            const k2 = clearance(area, want.look, want.at);
+            if (k2 > best + 1e-3) {
+              best = k2;
+              bestYaw = yaw + dir * SWING[i];
+            }
+          }
+        aim(area, m, bestYaw, pitch, dist);
+        k = clearance(area, want.look, want.at);
+      }
       // only the parked cruiser in the way: up over it, rather than in close
       for (let i = 0; i < 8 && hitBy === 2; i++) {
         want.at.y += 0.75;
         k = clearance(area, want.look, want.at);
       }
       if (k < 1) want.at.lerpVectors(want.look, want.at, k);
-      if (!OUTDOOR.includes(area)) {
-        const a = AREAS[area];
-        want.at.x = clamp(want.at.x, a.x0 + 0.3, a.x1 - 0.3);
-        want.at.z = clamp(want.at.z, a.z0 + 0.3, a.z1 - 0.3);
-        want.at.y = Math.min(want.at.y, 2.35);
-      }
       want.at.y = Math.max(want.at.y, mortyY + 0.4);
     }
     const ease = jump ? 1 : 1 - Math.exp(-dt * (state.flying ? 4.5 : 10));
@@ -412,7 +457,8 @@ export async function createRmWorld(canvas, { onLost } = {}) {
     fx: fxEvent,
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
-      return areas[area]?.actions?.[name]?.(...args);
+      const actions = areas[area]?.actions;
+      return actions && Object.hasOwn(actions, name) ? actions[name](...args) : undefined;
     },
     info() {
       const i = renderer.info;
@@ -470,7 +516,7 @@ function plainRoom(kit, id) {
 function plainGround(kit, id) {
   const a = AREAS[id];
   const group = new THREE.Group();
-  const sky = makeSky(560, id === 'street' ? STREET_SKY : ANNEX_SKY);
+  const sky = makeSky(560, id === 'street' ? STREET_SKY : { ...ANNEX_SKY, moons: 1 }); // (the annex's builder draws its own moons; this one borrows the sky's)
   group.add(sky.dome);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400).rotateX(-Math.PI / 2), kit.mats.floor(id === 'street' ? 0x62b347 : 0x7b5aa6));
   ground.position.set((a.x0 + a.x1) / 2, 0, (a.z0 + a.z1) / 2);

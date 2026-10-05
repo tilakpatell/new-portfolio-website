@@ -1,8 +1,9 @@
 // The C-137 world's shared kit, for the street (./street.js) and the rooms:
 // toon materials by role (walls, floors, wood, metal, glass, glows), each
 // made once and shared; canvas-painted textures; roof shapes; the gentle
-// light steps for Meshy models; and a batch that merges the parts that never
-// move by material, so a whole street is a few dozen draw calls.
+// light steps for Meshy models; a batch that merges the parts that never
+// move by material, so a whole street is a few dozen draw calls; and the
+// arcade's lettering and glows (Blips and Chitz and the street outside it).
 //
 // The materials are shared by everything that asks for the same colour: never
 // change one you were given (its colour, side, map, a texture's repeat); ask
@@ -312,3 +313,50 @@ export function at(x, y, z, ry = 0, sx = 1, sy = sx, sz = sx, rx = 0, rz = 0) {
   me.set(rx, ry, rz, 'YXZ');
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), mq.setFromEuler(me), new THREE.Vector3(sx, sy, sz));
 }
+
+// ── lettering and glows ──
+
+// Text in Blips and Chitz's lettering (its sign, its planet, its board): fat
+// capitals, yellow going orange at the foot, a dark outline and a hard
+// shadow; squeezed to `maxW` if it's wider.
+export function logoText(g, text, x, y, size, { maxW = Infinity, outline = '#2a0f4a', shadow = '#12061f', fill = ['#fff8b0', '#ffd21a', '#ff8a00'], weight = 900 } = {}) {
+  g.save();
+  g.font = `${weight} ${size}px 'Arial Black', 'Arial Bold', 'Helvetica Neue', Arial, sans-serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineJoin = 'round';
+  const w = g.measureText(text).width + size * 0.3;
+  g.translate(x, y);
+  g.scale(Math.min(1, maxW / w), 1);
+  g.lineWidth = size * 0.24;
+  g.strokeStyle = shadow;
+  g.strokeText(text, size * 0.05, size * 0.09);
+  g.strokeStyle = outline;
+  g.strokeText(text, 0, 0);
+  const gr = g.createLinearGradient(0, -size * 0.42, 0, size * 0.42);
+  fill.forEach((c, i) => gr.addColorStop(i / (fill.length - 1), c));
+  g.fillStyle = gr;
+  g.fillText(text, 0, 0);
+  g.restore();
+}
+
+// A copy of a model's toon material that glows where its texture is neon:
+// bright saturated colour ('neon'), or bright green only ('green', Roy's
+// screen). The copy is the builder's to dispose.
+export function neonCopy(src, { k = 2.2, mode = 'neon' } = {}) {
+  const m = src.clone();
+  const test = mode === 'green' ? 'step(0.3, c.g) * step(c.r * 1.8, c.g) * step(c.b * 1.8, c.g)' : 'smoothstep(0.4, 0.55, hi) * smoothstep(0.55, 0.72, (hi - lo) / max(hi, 1e-3))';
+  m.onBeforeCompile = (s) => {
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      { vec3 c = diffuseColor.rgb; float hi = max(c.r, max(c.g, c.b)); float lo = min(c.r, min(c.g, c.b));
+        totalEmissiveRadiance += c * (${test}) * ${k.toFixed(2)}; }`,
+    );
+  };
+  m.customProgramCacheKey = () => `c137-neon-${mode}-${k}`;
+  return m;
+}
+
+// Glow, one colour per vertex (so every neon tube in an area is one mesh)
+export const glowMaterial = (k = 2.2) => new THREE.MeshBasicMaterial({ color: hot(0xffffff, k), vertexColors: true });

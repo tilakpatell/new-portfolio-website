@@ -15,8 +15,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hot } from '../../../lib/stage3d';
 import { ARCADE, AREAS, LINKS } from './rules';
-import { at, batch, coloured, fitModel, paint, rng, speckle } from './kit';
-import { glowMaterial, logoText, neonCopy } from './arcade';
+import { at, batch, coloured, fitModel, glowMaterial, logoText, neonCopy, paint, rng, speckle } from './kit';
 import { makeSky } from './sky';
 
 const A = AREAS.annex;
@@ -27,11 +26,15 @@ const KERB = A.z1 + 2.4; // the kerb: a verge of beds and lamps past the plaza's
 const ROAD = { z0: KERB + 0.2, z1: KERB + 11.6 };
 const TAU = Math.PI * 2;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
-const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 18);
-const BALL = new THREE.SphereGeometry(0.5, 20, 14);
-const CONE = new THREE.ConeGeometry(0.5, 1, 14);
+// how much each tier draws: how round the round things are, the rocks, the
+// skyline's towers, the flying cars, and whether the locals come
+const PLAN = {
+  high: { ball: [20, 14], dome: [28, 14], cyl: 18, seg: 40, rocks: 22, skyline: 34, flyers: 5, locals: true },
+  mid: { ball: [14, 10], dome: [20, 10], cyl: 12, seg: 28, rocks: 16, skyline: 24, flyers: 4, locals: false },
+  low: { ball: [10, 7], dome: [16, 8], cyl: 10, seg: 20, rocks: 10, skyline: 14, flyers: 3, locals: false },
+};
 // a magenta dusk; the light and the fog to go with it
-const ANNEX_SKY = { top: 0x2b0f55, mid: 0x9b3fae, low: 0xff9bc8, sun: 0xffe6b0, clouds: 0, moons: 0 };
+export const ANNEX_SKY = { top: 0x2b0f55, mid: 0x9b3fae, low: 0xff9bc8, sun: 0xffe6b0, clouds: 0, moons: 0 };
 export const ANNEX_LIGHT = { sun: [0xffd2ec, 1.75], hemi: [0xd0a8ff, 0x4a2a66, 1.35], fog: [0xa465c4, 50, 260] };
 const PAL = { purple: 0x7b4bc4, violet: 0x5a2f99, teal: 0x23b5a8, sea: 0x3fd6c1, pink: 0xff6fc0, rose: 0xe2559c, orange: 0xff9a3c, lime: 0x9fe04a, cream: 0xf2e2c4, dark: 0x2a1745 };
 const LIT = [0xffe27a, 0x7af5ff, 0xff8ae0, 0xb6ff6a];
@@ -72,12 +75,12 @@ function heavensMaterial() {
           vec2 o = vec2(hash(vec2(seed, float(i))), hash(vec2(float(i), seed))) * 1.4 - 0.7;
           float s = 0.12 + hash(vec2(seed + float(i), 3.0)) * 0.16;
           float q = length(p - o) / s;
-          k = mix(k, pit, smoothstep(1.0, 0.9, q) * 0.7);
-          k = mix(k, col * 1.12, smoothstep(0.95, 1.0, q) * smoothstep(1.15, 1.0, q) * 0.6);
+          k = mix(k, pit, (1.0 - smoothstep(0.9, 1.0, q)) * 0.7);
+          k = mix(k, col * 1.12, smoothstep(0.95, 1.0, q) * (1.0 - smoothstep(1.0, 1.15, q)) * 0.6);
         }
         float lit = dot(n, normalize(vec3(-0.6, 0.3, 0.75)));
         k *= mix(0.55, 1.0, smoothstep(-0.1, 0.15, lit));
-        return vec4(k, smoothstep(1.0, 0.97, r));
+        return vec4(k, 1.0 - smoothstep(0.97, 1.0, r));
       }
       vec4 ringed(vec3 d, vec3 c, float rad) {
         vec2 p = onDisc(d, c, rad);
@@ -85,16 +88,16 @@ function heavensMaterial() {
         float r = length(p);
         vec2 e = vec2(p.x * cos(0.35) + p.y * sin(0.35), -p.x * sin(0.35) + p.y * cos(0.35));
         float er = length(e * vec2(1.0, 3.6));
-        float band = smoothstep(1.3, 1.34, er) * smoothstep(2.15, 2.1, er) * (0.75 + 0.25 * sin(er * 40.0));
+        float band = smoothstep(1.3, 1.34, er) * (1.0 - smoothstep(2.1, 2.15, er)) * (0.75 + 0.25 * sin(er * 40.0));
         vec4 ringC = vec4(vec3(0.95, 0.78, 0.92) * (0.8 + 0.2 * step(1.7, er)), band * 0.85);
         vec4 body = vec4(0.0);
         if (r < 1.0) {
           float lat = p.y * 0.9 + p.x * 0.25;
           vec3 k = mix(vec3(0.36, 0.78, 0.72), vec3(0.22, 0.55, 0.6), step(0.5, fract(lat * 3.5)));
-          k = mix(k, vec3(0.62, 0.9, 0.8), smoothstep(0.1, 0.0, abs(lat - 0.2)));
+          k = mix(k, vec3(0.62, 0.9, 0.8), 1.0 - smoothstep(0.0, 0.1, abs(lat - 0.2)));
           vec3 n = vec3(p, sqrt(1.0 - r * r));
           k *= mix(0.5, 1.0, smoothstep(-0.2, 0.3, dot(n, normalize(vec3(-0.7, 0.4, 0.6)))));
-          body = vec4(k, smoothstep(1.0, 0.97, r));
+          body = vec4(k, 1.0 - smoothstep(0.97, 1.0, r));
         }
         // the ring passes behind the planet on its upper side
         bool behind = e.y > 0.0;
@@ -106,7 +109,7 @@ function heavensMaterial() {
         vec4 c = vec4(0.0);
         vec2 sp = d.xz / (abs(d.y) + 0.2) * 40.0;
         vec2 id = floor(sp);
-        float star = step(0.985, hash(id)) * smoothstep(0.35, 0.0, length(fract(sp) - 0.5)) * smoothstep(0.35, 0.7, d.y);
+        float star = step(0.985, hash(id)) * (1.0 - smoothstep(0.0, 0.35, length(fract(sp) - 0.5))) * smoothstep(0.35, 0.7, d.y);
         c = vec4(vec3(1.0, 0.92, 0.98) * 1.6, star * (0.6 + 0.4 * sin(t * 2.0 + id.x * 13.0)));
         vec4 a = ringed(d, pl, 0.16);
         c = mix(c, vec4(a.rgb, 1.0), a.a);
@@ -118,7 +121,7 @@ function heavensMaterial() {
         if (d.y > 0.0) {
           vec2 cp = vec2(atan(d.x, d.z) * 4.0 + t * 0.01, d.y * 30.0);
           float n = noise(cp * vec2(1.1, 0.5)) * 0.62 + noise(cp * vec2(3.3, 1.4) + 4.0) * 0.38;
-          float band = smoothstep(0.025, 0.07, d.y) * smoothstep(0.3, 0.12, d.y);
+          float band = smoothstep(0.025, 0.07, d.y) * (1.0 - smoothstep(0.12, 0.3, d.y));
           float cl = smoothstep(0.56, 0.58, n) * band;
           vec3 cc = mix(vec3(0.93, 0.47, 0.72), vec3(1.0, 0.8, 0.68), smoothstep(0.64, 0.7, n));
           c = mix(c, vec4(cc, 1.0), cl);
@@ -207,7 +210,12 @@ function drawGlyphs(g, w, h) {
 export async function buildAnnex(kit) {
   const { renderer, models, mats, tier = 'high' } = kit;
   const need = kit.need ?? ((n, o) => kit.cast.load(null, n, o));
-  const lean = tier === 'low';
+  const plan = PLAN[tier] ?? PLAN.high;
+  const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, plan.cyl);
+  const BALL = new THREE.SphereGeometry(0.5, ...plan.ball);
+  const CONE = new THREE.ConeGeometry(0.5, 1, plan.cyl);
+  const FAR_BALL = new THREE.SphereGeometry(0.5, 10, 6);
+  const FAR_CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 8, 1, true);
   const group = new THREE.Group();
   group.name = 'annex';
   const owned = [];
@@ -258,7 +266,7 @@ export async function buildAnnex(kit) {
     return mergeGeometries([rock, top]);
   })();
   const ROCKS = [];
-  for (let i = 0; i < (lean ? 12 : 22); i++) {
+  for (let i = 0; i < plan.rocks; i++) {
     const a = r() * TAU;
     const near = i < 5;
     const d = near ? 60 + r() * 30 : 120 + r() * 150;
@@ -277,7 +285,11 @@ export async function buildAnnex(kit) {
   ground.position.set(MX, -0.16, 0);
   ground.receiveShadow = true;
   group.add(ground);
-  const tiles = mats.painted('annex-tiles', 256, 256, (g, w, h) => {
+  const tiles = mats.painted(
+    'annex-tiles',
+    256,
+    256,
+    (g, w, h) => {
     // hexagons, teal and purple, with pale grout
     g.fillStyle = '#7e68ad';
     g.fillRect(0, 0, w, h);
@@ -295,12 +307,12 @@ export async function buildAnnex(kit) {
         const cx = col * s * 1.5 + (row % 2 ? s * 0.75 : 0);
         hx(cx * 1.333, row * s * 0.866 * 1.155, cols[n++ % cols.length]);
       }
-  });
-  tiles.userData.tile = 3;
+    },
+    { tile: 3 },
+  );
   solid.add(BOX, tiles, at(MX, -0.05, (KERB - 70) / 2, 0, 160, 0.1, KERB + 70));
   solid.add(C(BOX, 0xd8c9ef), VC, at(MX, -0.02, KERB, 0, 320, 0.2, 0.42)); // the kerb
-  const asphalt = mats.painted('annex-road', 128, 128, (g, w, h) => speckle(g, w, h, { base: '#2e1f45', specks: ['#3a2a55', '#26193b', '#40305e'], n: 900, size: 2, seed: 8 }));
-  asphalt.userData.tile = 4;
+  const asphalt = mats.painted('annex-road', 128, 128, (g, w, h) => speckle(g, w, h, { base: '#2e1f45', specks: ['#3a2a55', '#26193b', '#40305e'], n: 900, size: 2, seed: 8 }), { tile: 4 });
   solid.add(BOX, asphalt, at(MX, -0.12, (ROAD.z0 + ROAD.z1) / 2, 0, 320, 0.06, ROAD.z1 - ROAD.z0));
   solid.add(BOX, tiles, at(MX, -0.05, ROAD.z1 + 4, 0, 320, 0.1, 8));
   for (let x = MX - 150; x < MX + 150; x += 7) neon.add(C(BOX, 0x4ff5e8), glow, at(x, -0.085, (ROAD.z0 + ROAD.z1) / 2, 0, 3, 0.02, 0.18));
@@ -463,8 +475,8 @@ export async function buildAnnex(kit) {
   const front3 = (x, z, turn, out, y = 0) => [x + Math.sin(turn) * out, y, z + Math.cos(turn) * out];
   // a dome with a round door, round windows lit
   const dome = (x, z, rad, color, turn) => {
-    solid.add(C(new THREE.SphereGeometry(1, 28, 14, 0, TAU, 0, Math.PI / 2), color), VC, at(x, 0, z, 0, rad, rad * 0.85, rad));
-    solid.add(C(new THREE.TorusGeometry(1, 0.08, 6, 40).rotateX(Math.PI / 2), PAL.cream), VC, at(x, 0.1, z, 0, rad, 1, rad));
+    solid.add(C(new THREE.SphereGeometry(1, plan.dome[0], plan.dome[1], 0, TAU, 0, Math.PI / 2), color), VC, at(x, 0, z, 0, rad, rad * 0.85, rad));
+    solid.add(C(new THREE.TorusGeometry(1, 0.08, 5, plan.seg).rotateX(Math.PI / 2), PAL.cream), VC, at(x, 0.1, z, 0, rad, 1, rad));
     const [dx, , dz] = front3(x, z, turn, rad - 0.35);
     solid.add(C(BOX, PAL.dark), VC, at(dx, 1.25, dz, turn, 2, 2.5, 1));
     solid.add(C(new THREE.TorusGeometry(1, 0.1, 6, 20, Math.PI), PAL.cream), VC, at(...front3(x, z, turn, rad + 0.17, 2.5), turn, 1.05, 0.6, 1));
@@ -478,8 +490,8 @@ export async function buildAnnex(kit) {
   // a mushroom: a fat stem with a band of windows, a broad spotted cap
   const mushroom = (x, z, h, color, cap, turn) => {
     solid.add(C(CYL, color), VC, at(x, h / 2, z, 0, 5.2, h, 5.2));
-    neon.add(C(new THREE.CylinderGeometry(2.62, 2.62, 0.5, 24, 1, true), pick(LIT)), glow, at(x, h * 0.55, z));
-    solid.add(C(new THREE.SphereGeometry(1, 28, 12, 0, TAU, 0, Math.PI / 2), cap), VC, at(x, h - 0.2, z, 0, 5.2, 2.6, 5.2));
+    neon.add(C(new THREE.CylinderGeometry(2.62, 2.62, 0.5, plan.cyl + 6, 1, true), pick(LIT)), glow, at(x, h * 0.55, z));
+    solid.add(C(new THREE.SphereGeometry(1, plan.dome[0], plan.dome[1], 0, TAU, 0, Math.PI / 2), cap), VC, at(x, h - 0.2, z, 0, 5.2, 2.6, 5.2));
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * TAU + 0.3;
       solid.add(C(BALL, PAL.cream), VC, at(x + Math.sin(a) * 3.3, h + 1.05, z + Math.cos(a) * 3.3, 0, 1.1, 0.5, 1.1));
@@ -496,7 +508,7 @@ export async function buildAnnex(kit) {
       [9.2, 2.1, 0.64],
     ].forEach(([y, rad], i) => {
       solid.add(C(BALL, i % 2 ? PAL.sea : color), VC, at(x, y, z, 0, rad * 2, rad * 1.4, rad * 2));
-      neon.add(C(new THREE.TorusGeometry(rad * 0.98, 0.07, 6, 40).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, y, z));
+      neon.add(C(new THREE.TorusGeometry(rad * 0.98, 0.07, 5, plan.seg).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, y, z));
     });
     solid.add(C(CYL, PAL.cream), VC, at(x, 11.2, z, 0, 0.12, 2, 0.12));
     neon.add(C(BALL, 0xff5f9a), glow, at(x, 12.3, z, 0, 0.4));
@@ -521,11 +533,12 @@ export async function buildAnnex(kit) {
   };
   // a tower: a stem and a ball on top, lit round its middle, an aerial
   const tower = (x, z, h, color, b = solid) => {
-    b.add(C(CYL, PAL.violet), VC, at(x, h / 2, z, 0, 2.6, h, 2.6));
-    b.add(C(BALL, color), VC, at(x, h + 2.2, z, 0, 6.4, 5.4, 6.4));
-    b.add(C(CYL, PAL.cream), VC, at(x, h + 6, z, 0, 0.14, 3, 0.14));
-    if (b === solid) {
-      neon.add(C(new THREE.TorusGeometry(3.22, 0.12, 6, 40).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, h + 2.2, z));
+    const near = b === solid;
+    b.add(C(near ? CYL : FAR_CYL, PAL.violet), VC, at(x, h / 2, z, 0, 2.6, h, 2.6));
+    b.add(C(near ? BALL : FAR_BALL, color), VC, at(x, h + 2.2, z, 0, 6.4, 5.4, 6.4));
+    if (near) b.add(C(CYL, PAL.cream), VC, at(x, h + 6, z, 0, 0.14, 3, 0.14));
+    if (near) {
+      neon.add(C(new THREE.TorusGeometry(3.22, 0.12, 5, plan.seg).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, h + 2.2, z));
       neon.add(C(BALL, 0xff5f9a), glow, at(x, h + 7.6, z, 0, 0.5));
     }
   };
@@ -534,7 +547,7 @@ export async function buildAnnex(kit) {
     solid.add(C(CONE, color), VC, at(x, h / 2, z, 0, 5, h, 5));
     for (let k = 1; k < 5; k++) {
       const y = (h * k) / 5.5;
-      neon.add(C(new THREE.TorusGeometry(1, 0.06, 6, 32).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, y, z, 0, 2.5 * (1 - y / h) + 0.05, 1, 2.5 * (1 - y / h) + 0.05));
+      neon.add(C(new THREE.TorusGeometry(1, 0.06, 5, plan.seg).rotateX(Math.PI / 2), pick(LIT)), glow, at(x, y, z, 0, 2.5 * (1 - y / h) + 0.05, 1, 2.5 * (1 - y / h) + 0.05));
     }
   };
   const N = A.z0;
@@ -563,8 +576,8 @@ export async function buildAnnex(kit) {
   tower(388, ROAD.z1 + 26, 21, PAL.teal);
   tower(414, ROAD.z1 + 30, 16, PAL.rose);
   // and the rest of the town, far off in the haze
-  for (let i = 0; i < (lean ? 16 : 34); i++) {
-    const a = (i / (lean ? 16 : 34)) * TAU + r() * 0.1;
+  for (let i = 0; i < plan.skyline; i++) {
+    const a = (i / plan.skyline) * TAU + r() * 0.1;
     const d = 110 + r() * 120;
     tower(MX + Math.sin(a) * d, Math.cos(a) * d, 14 + r() * 30, pick([PAL.pink, PAL.teal, PAL.orange, PAL.purple, PAL.sea]), far);
   }
@@ -694,7 +707,7 @@ export async function buildAnnex(kit) {
     { y: 13, z: -60, speed: 11, color: 0xffd21a, at: 190 },
     { y: 19, z: 75, speed: -10, color: 0x9fe04a, at: 40 },
     { y: 26, z: -130, speed: 6, color: 0xff8a2a, at: 140 },
-  ];
+  ].slice(0, plan.flyers);
   const flyerBody = new THREE.InstancedMesh(carGeo(0xffffff), VC, FLYERS.length);
   const flyerGlow = new THREE.InstancedMesh(coloured(new THREE.TorusGeometry(0.9, 0.12, 6, 24).rotateX(Math.PI / 2), 0xffffff).scale(1.5, 1, 0.85).translate(0, -0.5, 0), glow, FLYERS.length);
   FLYERS.forEach((f, i) => {
@@ -710,10 +723,10 @@ export async function buildAnnex(kit) {
   const PY = { x: A.x0 - 1.8, z: KERB - 1.6, h: 9 };
   solid.add(C(CYL, 0x3a2a55), VC, at(PY.x, PY.h / 2, PY.z, 0, 0.5, PY.h, 0.5));
   solid.add(C(CYL, PAL.cream), VC, at(PY.x, 0.2, PY.z, 0, 1.6, 0.4, 1.6));
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 20), mats.toon(0xff8b1f, { emissive: 0x5a2200 }));
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(1.5, ...plan.dome), mats.toon(0xff8b1f, { emissive: 0x5a2200 }));
   ball.position.set(PY.x, PY.h + 1.3, PY.z);
   group.add(ball);
-  neon.add(C(new THREE.TorusGeometry(2.1, 0.09, 6, 48).rotateX(Math.PI / 2 - 0.35), 0x2ff5e0), glow, at(PY.x, PY.h + 1.3, PY.z));
+  neon.add(C(new THREE.TorusGeometry(2.1, 0.09, 5, plan.seg + 8).rotateX(Math.PI / 2 - 0.35), 0x2ff5e0), glow, at(PY.x, PY.h + 1.3, PY.z));
   for (let k = 0; k < 3; k++) neon.add(C(BOX, 0xffd21a), glow, at(PY.x + 0.9 + k * 0.5, PY.h - 1.2, PY.z, 0, 0.3, 0.12, 0.08, 0, 0.6 * (k % 2 ? -1 : 1)));
 
   // ── the merged meshes ──
@@ -726,7 +739,7 @@ export async function buildAnnex(kit) {
 
   // ── a couple of locals, by the shops either side of the arcade ──
   const locals = [];
-  if (!lean) {
+  if (plan.locals) {
     await need(['gromflomite', 'gazorpian'], { clips: ['idle'] }).catch(() => {});
     for (const [kind, x, z, turn] of [
       ['gromflomite', 380.5, N - 0.7, 0.35],
@@ -760,24 +773,26 @@ export async function buildAnnex(kit) {
       heavens.position.copy(camera.position);
       heavensMat.uniforms.t.value = t;
       portalMat.uniforms.t.value = t;
-      ROCKS.forEach((k, i) => {
+      for (let i = 0; i < ROCKS.length; i++) {
+        const k = ROCKS[i];
         p.set(k.x, k.y + Math.sin(t * 0.4 + k.bob) * 0.8, k.z);
         q.setFromEuler(e.set(0, k.turn + t * 0.02, 0));
         rocks.setMatrixAt(i, tmp.compose(p, q, s.set(k.s, k.s * 0.8, k.s)));
-      });
+      }
       rocks.instanceMatrix.needsUpdate = true;
-      FLYERS.forEach((f, i) => {
+      for (let i = 0; i < FLYERS.length; i++) {
+        const f = FLYERS[i];
         const x = MX - 160 + ((((f.at + t * f.speed) % 320) + 320) % 320);
         p.set(x, f.y + Math.sin(t * 1.3 + i) * 0.3, f.z);
         q.setFromEuler(e.set(0, f.speed > 0 ? 0 : Math.PI, Math.sin(t * 0.9 + i) * 0.06));
         tmp.compose(p, q, s.set(1, 1, 1));
         flyerBody.setMatrixAt(i, tmp);
         flyerGlow.setMatrixAt(i, tmp);
-      });
+      }
       flyerBody.instanceMatrix.needsUpdate = true;
       flyerGlow.instanceMatrix.needsUpdate = true;
       ball.rotation.y = t * 0.5;
-      for (const c of locals) c.update?.(t, 0, 0);
+      for (let i = 0; i < locals.length; i++) locals[i].update?.(t, 0, 0);
     },
     dispose() {
       for (const o of owned) o.dispose?.();
