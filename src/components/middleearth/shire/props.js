@@ -3256,6 +3256,7 @@ export function createShireKit(renderer) {
     mats,
     paint,
     setNight,
+    K,
     hobbitHole: ({ door = 0x2e6b3a, radius = 4, seed = 1, windows } = {}) => hole(K, { R: radius, door, seed, windows }),
     bagEnd: () => bagEnd(K),
     mill: () => mill(K),
@@ -3289,3 +3290,6 @@ export function createShireKit(renderer) {
     flower: flowerGeo(),
   };
 }
+
+// The helpers the other walkable towns (../towns) build their own houses with.
+export { parts, tf, B, cyl, ball, cylX, cylZ, lathe, tube, blob, roundBox, sector, roofGeo, gableGeo, underRidge, beam, squareWindow, timberWall, plankDoor, roundWindow, lanternParts, barrelParts, benchParts, lampParts, flowerBed, bush, boxUV, fillColor, mergeAll, rng };

@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 
-const MOODS = {
+export const MOODS = {
   day: {
     top: 0x3f7ccc,
     horizon: 0xf6dfb0,
@@ -65,6 +65,7 @@ const MOODS = {
     deep: 0x3a3a50,
   },
 };
+const SHIRE_MOODS = MOODS;
 const KEYS = ['top', 'horizon', 'sunColour', 'hemiSky', 'hemiGround', 'fog', 'cloudColour', 'water', 'deep'];
 
 export function makeSky(radius) {
@@ -145,8 +146,9 @@ export function makeSky(radius) {
 }
 
 // Blends the moods: night 0…1 (the party), dawn 0…1 (leaving), and writes
-// them into the sky, the lights, the fog and the water.
-export function makeAtmosphere({ sky, sun, hemi, fog, water, stage }) {
+// them into the sky, the lights, the fog and the water. Another town passes
+// its own `moods`, with the same three keys and fields.
+export function makeAtmosphere({ sky, sun, hemi, fog, water, stage, moods: MOODS = SHIRE_MOODS }) {
   const mix = {};
   for (const k of KEYS) mix[k] = new THREE.Color();
   const tmp = new THREE.Color();
