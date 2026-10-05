@@ -28,6 +28,7 @@ import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
 import { buildGateway } from '../galaxy/gateway';
+import { SIDES, cybertronSkin } from '../cybertron/skin';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
@@ -35,8 +36,8 @@ const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's ke
 
 const BASE = '/textures/universe/';
 const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'invincible', 'invincible-clouds', 'invincible-night', 'sun', 'sky'];
-const FIXED = ['middleearth-glow', 'rickmorty-glow', 'transformers-glow', 'invincible-glow'];
-const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
+const FIXED = ['middleearth-glow', 'rickmorty-glow', 'invincible-glow'];
+const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal', 'transformers-glow', 'middleearth-normal', 'breakingbad-normal', 'invincible-normal', 'earth-rough'];
 const COLOUR = ['plates', 'hull'];
 
 export async function loadTextures({ small = false } = {}) {
@@ -327,23 +328,31 @@ const BUILDERS = {
 
   transformers(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({
+    // built over from pole to pole (scripts/build-cybertron-planet.mjs):
+    // tiers of plating, chasms with energon running in them, the city-states'
+    // discs, the Sea of Rust, the war's fires; cybertron/skin.js colours the
+    // energon, lights the cities on the night side and carries the plating
+    // on in the shader up close, where the maps run out
+    const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: tiled(T['cybertron-normal'], 24, 12),
-      normalScale: new THREE.Vector2(0.8, 0.8),
-      // the seams between its plates run with energon: violet-blue, bright
-      // enough to bloom, and pulsing slowly as if the planet breathes
-      emissive: '#7f6bff',
-      emissiveMap: T['transformers-glow'] ?? null,
-      emissiveIntensity: T['transformers-glow'] ? 3.2 : 0,
-      roughness: 0.5,
-      metalness: 0.6,
+      normalMap: T['transformers-normal'] ?? null,
+      normalScale: new THREE.Vector2(1.1, 1.1),
+      roughness: 0.55,
+      metalness: 0.45,
     });
-    const cyber = p.body.material;
-    p.tick.push((t) => {
-      if (T['transformers-glow']) cyber.emissiveIntensity = 2.4 + 1.4 * (0.5 + 0.5 * Math.sin(t * 0.9)) ** 2;
-    });
+    p.body.material = mat;
+    if (T.transformers && T['transformers-glow']) {
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow'], sun: LIGHT });
+      // the energon breathes, and turns from the Autobots' blue to the
+      // Decepticons' violet and back as the war goes one way and the other
+      const blue = SIDES.autobot.energon;
+      const violet = SIDES.decepticon.energon;
+      p.tick.push((t) => {
+        skin.uTime.value = t;
+        skin.uEnergon.value.copy(blue).lerp(violet, 0.5 + 0.5 * Math.sin(t * 0.05));
+      });
+    }
     // Optimus Prime and Megatron on one orbit, a little apart, facing off as
     // they go round
     const R = r * 1.55;
