@@ -20,6 +20,7 @@ import {
   MORTY,
   NEIGHBOURS,
   OUTDOOR,
+  PEOPLE,
   PLAN,
   QUIZ,
   ROAD,
@@ -30,6 +31,7 @@ import {
   TASKS,
   TREES,
   WALLS,
+  YARDS,
   areaAt,
   canLand,
   collidersIn,
@@ -99,6 +101,49 @@ const segDist = (px, pz, [x0, z0, x1, z1]) => {
   const t = Math.max(0, Math.min(1, ((px - x0) * dx + (pz - z0) * dz) / (dx * dx + dz * dz || 1)));
   return Math.hypot(px - (x0 + t * dx), pz - (z0 + t * dz));
 };
+// the line two rooms share, if they touch along one
+const shared = (a, b) => {
+  const ox = [Math.max(a.x0, b.x0), Math.min(a.x1, b.x1)];
+  const oz = [Math.max(a.z0, b.z0), Math.min(a.z1, b.z1)];
+  if (ox[0] === ox[1] && oz[0] < oz[1]) return { axis: 'x', at: ox[0], from: oz[0], to: oz[1] };
+  if (oz[0] === oz[1] && ox[0] < ox[1]) return { axis: 'z', at: oz[0], from: ox[0], to: ox[1] };
+  return null;
+};
+// the open stretches of a line, between the wall pieces laid on it
+const openings = (walls, { axis, at, from, to }) => {
+  const runs = walls
+    .filter(([x0, z0, x1, z1]) => (axis === 'x' ? x0 === at && x1 === at : z0 === at && z1 === at))
+    .map(([x0, z0, x1, z1]) => (axis === 'x' ? [Math.min(z0, z1), Math.max(z0, z1)] : [Math.min(x0, x1), Math.max(x0, x1)]))
+    .sort((p, q) => p[0] - q[0]);
+  const gaps = [];
+  let at0 = from;
+  for (const [a, b] of runs) {
+    if (at0 >= to) break;
+    if (a > at0) gaps.push(Math.min(a, to) - at0);
+    at0 = Math.max(at0, b);
+  }
+  if (to > at0) gaps.push(to - at0);
+  return gaps;
+};
+// can Morty stand somewhere on the line?
+const stands = (area, { axis, at, from, to }) => {
+  for (let t = from; t <= to; t += 0.05) if (free(area, axis === 'x' ? at : t, axis === 'x' ? t : at)) return true;
+  return false;
+};
+// how near a point is to a piece of furniture, turned as it is (0 inside it)
+const pieceDist = (f, x, z) => {
+  const dx = x - f.x;
+  const dz = z - f.z;
+  const lx = dx * Math.cos(f.turn) - dz * Math.sin(f.turn);
+  const lz = dx * Math.sin(f.turn) + dz * Math.cos(f.turn);
+  return Math.hypot(Math.max(Math.abs(lx) - f.w / 2, 0), Math.max(Math.abs(lz) - f.d / 2, 0));
+};
+// do the segments a-b and c-d cross?
+const crosses = (ax, az, bx, bz, [cx, cz, dx, dz]) => {
+  const side = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  return side(ax, az, bx, bz, cx, cz) * side(ax, az, bx, bz, dx, dz) < 0 && side(cx, cz, dx, dz, ax, az) * side(cx, cz, dx, dz, bx, bz) < 0;
+};
+
 const walk = (m, move, seconds, area = 'street', opts) => {
   for (let t = 0; t < seconds; t += DT) m = stepMorty(m, move, DT, area, opts);
   return m;
@@ -257,8 +302,7 @@ describe('C-137: the layout', () => {
     for (const id of ROOM_IDS) {
       const room = AREAS[id];
       expect(collidersIn(id).length, id).toBeGreaterThanOrEqual(3);
-      for (const c of collidersIn(id)) {
-        expect(c.kind).toBe('box');
+      for (const c of collidersIn(id).filter((o) => o.kind === 'box')) {
         // a box turned a quarter swaps its sides
         const quarter = Math.abs(Math.sin(c.turn)) > 0.5;
         const w = quarter ? c.d : c.w;
@@ -305,11 +349,22 @@ describe('C-137: the furniture', () => {
     expect(free('house', couch.x + couch.d / 2 + MORTY.radius - 0.05, couch.z)).toBe(false);
   });
 
+  it('keeps every piece of furniture clear of the walls inside the house: none stands on a wall line', () => {
+    for (const f of FURNITURE.filter((o) => INNER_WALLS[o.area])) {
+      for (const [x0, z0, x1, z1] of INNER_WALLS[f.area]) {
+        const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.05);
+        for (let k = 0; k <= n; k++) expect(pieceDist(f, x0 + ((x1 - x0) * k) / n, z0 + ((z1 - z0) * k) / n), `${f.id} on a wall at ${x0}, ${z0}`).toBeGreaterThanOrEqual(0.06 - 1e-9);
+      }
+    }
+  });
+
   it('has the TV on the living room’s east wall, the couch facing it, the dining table and the red rug where they belong', () => {
     const at = (id) => FURNITURE.find((f) => f.id === id);
     const living = PLAN.find((r) => r.id === 'living');
     const tv = at('tv');
-    expect(tv.x + tv.d / 2).toBeCloseTo(living.x1, 6);
+    // its back is against the wall but off the wall's own line (the wall is 0.12 thick)
+    expect(living.x1 - (tv.x + tv.d / 2)).toBeGreaterThanOrEqual(0.06);
+    expect(living.x1 - (tv.x + tv.d / 2)).toBeLessThan(0.3);
     expect(inRoom(living, tv.x, tv.z)).toBe(true);
     expect(at('couch').x).toBeLessThan(tv.x);
     expect(inRoom(living, at('couch').x, at('couch').z)).toBe(true);
@@ -359,6 +414,32 @@ describe('C-137: the Smith house, room by room', () => {
     }
   });
 
+  it('has no two rooms of a floor overlapping, but for the sliver where the den and the entry meet', () => {
+    const overlaps = [];
+    for (const a of PLAN)
+      for (const b of PLAN) {
+        if (a.id >= b.id || a.area !== b.area) continue;
+        const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+        const oz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0);
+        if (ox > 1e-9 && oz > 1e-9) overlaps.push({ rooms: [a.id, b.id], x0: Math.max(a.x0, b.x0), x1: Math.min(a.x1, b.x1), z0: Math.max(a.z0, b.z0), z1: Math.min(a.z1, b.z1) });
+      }
+    expect(overlaps).toHaveLength(1);
+    expect(overlaps[0].rooms).toEqual(['den', 'entry']);
+    expect([overlaps[0].x0, overlaps[0].x1, overlaps[0].z0, overlaps[0].z1].map((v) => +v.toFixed(6))).toEqual([-296.9, -295.7, -1.9, -1.6]);
+  });
+
+  it('gives the master bedroom a single door onto the hall, and keeps the top of the stairs open to the hall', () => {
+    const room = (id) => PLAN.find((r) => r.id === id);
+    const line = shared(room('master'), room('upHall'));
+    const gaps = openings(INNER_WALLS.upstairs, line);
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toBeGreaterThanOrEqual(1.1);
+    // the top of the stairs is the hall's: no wall across it
+    const top = shared(room('stairTop'), room('upHall'));
+    expect(openings(INNER_WALLS.upstairs, top)).toEqual([top.to - top.from]);
+    expect(stands('upstairs', top)).toBe(true);
+  });
+
   it('has nowhere to stand in the house or upstairs outside a room of the plan', () => {
     for (const area of ['house', 'upstairs']) {
       const a = AREAS[area];
@@ -378,33 +459,6 @@ describe('C-137: the Smith house, room by room', () => {
 
   it('walls the rooms off from each other, with a door where the plan has one and none where it has not', () => {
     const room = (id) => PLAN.find((r) => r.id === id);
-    // the line two rooms share, if they touch along one
-    const shared = (a, b) => {
-      const ox = [Math.max(a.x0, b.x0), Math.min(a.x1, b.x1)];
-      const oz = [Math.max(a.z0, b.z0), Math.min(a.z1, b.z1)];
-      if (ox[0] === ox[1] && oz[0] < oz[1]) return { axis: 'x', at: ox[0], from: oz[0], to: oz[1] };
-      if (oz[0] === oz[1] && ox[0] < ox[1]) return { axis: 'z', at: oz[0], from: ox[0], to: ox[1] };
-      return null;
-    };
-    // the open stretches of a line, between the wall pieces laid on it
-    const openings = (walls, { axis, at, from, to }) => {
-      const runs = walls
-        .filter(([x0, z0, x1, z1]) => (axis === 'x' ? x0 === at && x1 === at : z0 === at && z1 === at))
-        .map(([x0, z0, x1, z1]) => (axis === 'x' ? [Math.min(z0, z1), Math.max(z0, z1)] : [Math.min(x0, x1), Math.max(x0, x1)]))
-        .sort((p, q) => p[0] - q[0]);
-      const gaps = [];
-      let at0 = from;
-      for (const [a, b] of runs) {
-        if (a > at0) gaps.push(a - at0);
-        at0 = Math.max(at0, b);
-      }
-      if (to > at0) gaps.push(to - at0);
-      return gaps;
-    };
-    const stands = (area, { axis, at, from, to }) => {
-      for (let t = from; t <= to; t += 0.05) if (free(area, axis === 'x' ? at : t, axis === 'x' ? t : at)) return true;
-      return false;
-    };
     const doors = {
       house: [['kitchen', 'dining'], ['kitchen', 'living'], ['living', 'dining'], ['living', 'den'], ['dining', 'entry'], ['entry', 'hall'], ['hall', 'den'], ['hall', 'rickroom']],
       upstairs: [['summer', 'upHall'], ['morty', 'upHall'], ['master', 'upHall'], ['master', 'balcony']],
@@ -700,6 +754,15 @@ describe('C-137: doors, exits and portals', () => {
     expect(inRoom(PLAN.find((r) => r.id === 'stairTop'), link('stairs-up').arrive.x, link('stairs-up').arrive.z)).toBe(true);
   });
 
+  it('puts you at the top of the stairs with the hall straight ahead, and a walk north goes on into it', () => {
+    const top = link('stairs-up').arrive;
+    // a metre or so either way of where you land, the walls slide you into the hall
+    for (const dx of [-0.3, 0, 0.3]) {
+      const m = walk(newMorty({ ...top, x: top.x + dx }), { x: 0, z: -1 }, 1.5, 'upstairs');
+      expect(m.z, `from ${dx}`).toBeLessThan(PLAN.find((r) => r.id === 'upHall').z1);
+    }
+  });
+
   it('joins the kitchen to the garage lab both ways, on the kitchen’s west wall and the garage’s east side', () => {
     const k = link('kitchen-garage');
     const g = link('garage-kitchen');
@@ -774,6 +837,22 @@ describe('C-137: the things to touch', () => {
     expect(inRoom(room('morty'), at('mortyroom').x, at('mortyroom').z)).toBe(true);
   });
 
+  it('puts every hotspot in front of what it is for, not inside it, but for the two that sit on a piece', () => {
+    // Jerry is on the couch and the butter robot is on the dining table
+    const on = { jerry: 'couch', butter: 'table' };
+    for (const h of HOTSPOTS) {
+      const inside = FURNITURE.filter((f) => f.area === h.area && pieceDist(f, h.x, h.z) < 1e-9).map((f) => f.id);
+      expect(inside, h.id).toEqual(on[h.id] ? [on[h.id]] : []);
+    }
+    // the others stand clear in front, close enough to have been put there for it
+    for (const id of ['cable', 'beth', 'rick', 'meeseeks', 'plumbus', 'portalpanic', 'quiz', 'roy']) {
+      const h = HOTSPOTS.find((o) => o.id === id);
+      const nearest = Math.min(...FURNITURE.filter((f) => f.area === h.area).map((f) => pieceDist(f, h.x, h.z)));
+      expect(nearest, id).toBeGreaterThan(0.05);
+      expect(nearest, id).toBeLessThan(0.7);
+    }
+  });
+
   it('finds each at its own spot, and nothing out in the street', () => {
     for (const h of HOTSPOTS) {
       expect(areaAt(h.x, h.z), h.id).toBe(h.area);
@@ -808,6 +887,60 @@ describe('C-137: the things to touch', () => {
   });
 });
 
+describe('C-137: the people', () => {
+  // whose hotspot each is
+  const HOTSPOT_OF = { jerry: 'jerry', beth: 'beth', summer: 'summer', rick: 'rick', teacher: 'quiz' };
+
+  it('has Jerry, Beth, Summer, Rick and the teacher, each in their own room', () => {
+    expect(PEOPLE.map((p) => p.id)).toEqual(['jerry', 'beth', 'summer', 'rick', 'teacher']);
+    expect(PEOPLE.map((p) => p.area)).toEqual(['house', 'house', 'upstairs', 'garage', 'school']);
+    const room = (id) => PLAN.find((r) => r.id === id);
+    const at = (id) => PEOPLE.find((p) => p.id === id);
+    expect(inRoom(room('living'), at('jerry').x, at('jerry').z)).toBe(true);
+    expect(inRoom(room('kitchen'), at('beth').x, at('beth').z)).toBe(true);
+    expect(inRoom(room('summer'), at('summer').x, at('summer').z)).toBe(true);
+    for (const p of PEOPLE) {
+      expect(Number.isFinite(p.x) && Number.isFinite(p.z) && Number.isFinite(p.face), p.id).toBe(true);
+      expect(inArea(p.area, p.x, p.z, -0.3), p.id).toBe(true);
+    }
+    // Jerry is on the couch, facing the TV; the teacher stands behind Goldenfold's desk
+    expect(at('jerry').sits).toBe(true);
+    expect(pieceDist(FURNITURE.find((f) => f.id === 'couch'), at('jerry').x, at('jerry').z)).toBe(0);
+    expect(Math.cos(at('jerry').face)).toBeCloseTo(1, 6);
+    const desk = FURNITURE.find((f) => f.id === 'goldenfold-desk');
+    expect(at('teacher').z).toBeLessThan(desk.z - desk.d / 2);
+    expect(PEOPLE.filter((p) => p.sits).map((p) => p.id)).toEqual(['jerry']);
+  });
+
+  it('puts each one at the hotspot that talks to them: just behind it, or Jerry on the couch', () => {
+    for (const p of PEOPLE) {
+      const h = HOTSPOTS.find((o) => o.id === HOTSPOT_OF[p.id]);
+      expect(h, p.id).toBeTruthy();
+      expect(h.area, p.id).toBe(p.area);
+      // the teacher is across the desk from his, with the whole desk between
+      expect(Math.hypot(p.x - h.x, p.z - h.z), p.id).toBeLessThan(p.id === 'teacher' ? 2.2 : 0.4);
+      expect(nearHotspot(p.area, p.x, p.z)?.id, p.id).toBe(p.id === 'teacher' ? undefined : h.id);
+    }
+  });
+
+  it('makes each who stands a small round thing in the way, clear of the furniture, and Jerry none', () => {
+    for (const p of PEOPLE) {
+      const c = collidersIn(p.area).find((o) => o.id === p.id);
+      if (p.sits) {
+        expect(c, p.id).toBeUndefined();
+        continue;
+      }
+      expect(c, p.id).toMatchObject({ kind: 'circle', x: p.x, z: p.z });
+      expect(c.r, p.id).toBeCloseTo(0.3, 6);
+      for (const f of FURNITURE.filter((o) => o.area === p.area)) expect(pieceDist(f, p.x, p.z), `${p.id} in ${f.id}`).toBeGreaterThanOrEqual(c.r - 1e-9);
+    }
+    // Morty cannot walk through Rick
+    const rick = PEOPLE.find((p) => p.id === 'rick');
+    const m = walk(newMorty({ x: rick.x, z: rick.z + 3, face: Math.PI / 2 }), { x: 0, z: -1 }, 3, 'garage');
+    expect(m.z).toBeCloseTo(rick.z + 0.3 + MORTY.radius, 1);
+  });
+});
+
 describe('C-137: the cruiser', () => {
   const fly = (c, input, seconds, each) => {
     for (let t = 0; t < seconds; t += DT) {
@@ -823,13 +956,34 @@ describe('C-137: the cruiser', () => {
 
   it('reaches its top speed under full throttle, and never leaves the street', () => {
     const inside = (c) => expect(inArea('street', c.x, c.z, -2 + 1e-9)).toBe(true);
-    let c = fly(newCruiser(), { throttle: 1, steer: 0, lift: 0 }, 5, inside);
+    // along the whole length of the road, from the west end, with room to get there
+    let c = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2 }, { throttle: 1, steer: 0, lift: 0 }, 5, inside);
     expect(Math.abs(c.speed - CRUISER.top)).toBeLessThanOrEqual(1);
-    // east along the road, and across it, and on the diagonal
-    for (const yaw of [Math.PI / 2, -Math.PI / 2, Math.PI, 0.7, -2.4]) {
+    // and out in every direction from the driveway, into the edge and past it
+    for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI, 0.7, -2.4]) {
       c = fly({ ...newCruiser(), yaw }, { throttle: 1, steer: 0, lift: 1 }, 8, inside);
       expect(c.speed).toBeLessThanOrEqual(CRUISER.top + 1e-6);
     }
+  });
+
+  it('slows to nothing when nosed into the edge of the street, and slides on along it when it only skims it', () => {
+    const edge = AREAS.street.x1 - 2;
+    const head = fly({ ...newCruiser(), x: 50, z: 0, yaw: Math.PI / 2 }, { throttle: 1 }, 4);
+    expect(head.x).toBeCloseTo(edge, 6);
+    expect(head.z).toBeCloseTo(0, 6);
+    expect(head.speed).toBeLessThan(0.5);
+    // skimming: nose a little east of south along the east edge
+    const skim = fly({ ...newCruiser(), x: edge, z: -30, yaw: 0.15 }, { throttle: 1 }, 3);
+    expect(skim.x).toBeCloseTo(edge, 6);
+    expect(skim.z).toBeGreaterThan(-30 + 15);
+    expect(skim.speed).toBeGreaterThan(5);
+    expect(skim.speed).toBeLessThan(CRUISER.top);
+    // and when it flies free, nothing scales it
+    const free = fly({ ...newCruiser(), x: -57, z: 0, yaw: Math.PI / 2, speed: 10 }, { throttle: 1 }, 1);
+    expect(free.speed).toBeCloseTo(10 + CRUISER.accel, 0);
+    // the same at the other edges
+    expect(fly({ ...newCruiser(), z: 30, yaw: 0 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
+    expect(fly({ ...newCruiser(), x: -50, z: 0, yaw: -Math.PI / 2 }, { throttle: 1 }, 3).speed).toBeLessThan(0.5);
   });
 
   it('speeds up and slows down at its own pace, and can go back', () => {
@@ -918,6 +1072,32 @@ describe('C-137: the cruiser', () => {
     expect(canLand({ ...newCruiser(), x: 100, z: 0 })).toBe(false);
   });
 
+  it('never lands in a fenced back yard', () => {
+    expect(YARDS).toHaveLength(7);
+    for (const y of YARDS) {
+      // a fence runs along the back of each
+      expect(FENCES.some(([x0, z0, x1, z1]) => x0 === y.x0 && x1 === y.x1 && z0 === z1 && (z0 === y.z0 || z0 === y.z1)), `${y.x0}, ${y.z0}`).toBe(true);
+      for (let x = y.x0; x <= y.x1; x += 1) for (let z = y.z0; z <= y.z1; z += 1) expect(canLand({ ...newCruiser(), x, z }), `${x}, ${z}`).toBe(false);
+      // but it can land just outside the back fence
+      const out = y.z0 < 0 ? y.z0 - 2.5 : y.z1 + 2.5;
+      let landed = false;
+      for (let x = y.x0; x <= y.x1; x += 1) landed ||= canLand({ ...newCruiser(), x, z: out });
+      expect(landed, `behind ${y.x0}`).toBe(true);
+    }
+  });
+
+  it('never lands on a tree, but can land beside one', () => {
+    const sidewalk = TREES.filter((t) => Math.abs(t.z) < 10);
+    expect(sidewalk.length).toBeGreaterThan(5);
+    for (const t of sidewalk) {
+      expect(canLand({ ...newCruiser(), x: t.x, z: t.z }), 'on it').toBe(false);
+      const reach = CRUISER.radius + 0.45 * t.s;
+      const toward = -Math.sign(t.z);
+      expect(canLand({ ...newCruiser(), x: t.x, z: t.z + toward * (reach - 0.05) }), 'touching it').toBe(false);
+      expect(canLand({ ...newCruiser(), x: t.x, z: t.z + toward * (reach + 0.05) }), 'beside it').toBe(true);
+    }
+  });
+
   it('lets Morty out beside it, standing clear, wherever it can land', () => {
     const e = exitCruiser(newCruiser());
     expect(free('street', e.x, e.z)).toBe(true);
@@ -937,6 +1117,31 @@ describe('C-137: the cruiser', () => {
           expect(Math.hypot(out.x - x, out.z - z), `from ${x}, ${z}, ${yaw}`).toBeGreaterThanOrEqual(CRUISER.radius + MORTY.radius - 1e-6);
         }
     expect(tried).toBeGreaterThan(500);
+  });
+
+  it('lets Morty out on the cruiser’s own side of every fence, on ground he can walk back to the start from', () => {
+    // every spot the start can walk to, on half-metre squares
+    const S = 0.5;
+    const reach = new Set(flood('street', START).cells.map((c) => `${Math.round((c.x - START.x) / S)},${Math.round((c.z - START.z) / S)}`));
+    const connected = (x, z) => {
+      const i0 = Math.round((x - START.x) / S);
+      const j0 = Math.round((z - START.z) / S);
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) if (reach.has(`${i0 + di},${j0 + dj}`) && Math.hypot(START.x + (i0 + di) * S - x, START.z + (j0 + dj) * S - z) < 0.7) return true;
+      return false;
+    };
+    let tried = 0;
+    for (let x = -57; x <= 57; x += 1)
+      for (let z = -37; z <= 37; z += 1)
+        for (const yaw of [0, 1, 2.5, -2]) {
+          const c = { ...newCruiser(), x, z, yaw };
+          if (!canLand(c)) continue;
+          tried++;
+          const out = exitCruiser(c);
+          const at = `from ${x}, ${z}, ${yaw} to ${out.x.toFixed(2)}, ${out.z.toFixed(2)}`;
+          for (const f of FENCES) expect(crosses(x, z, out.x, out.z, f), `${at} across a fence`).toBe(false);
+          expect(connected(out.x, out.z), `${at} can be walked back from`).toBe(true);
+        }
+    expect(tried).toBeGreaterThan(5000);
   });
 });
 
