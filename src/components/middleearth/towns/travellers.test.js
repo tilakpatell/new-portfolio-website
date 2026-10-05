@@ -47,6 +47,17 @@ describe('steps', () => {
 });
 
 describe('travellers', () => {
+  it('in a bigger town, are seen out as far as it goes (Albuquerque’s, out to its fence)', async () => {
+    const load = fakeRelay();
+    const now = () => 1000;
+    const a = createTravellers({ town: 'abq', name: 'Heisenberg', load, now, bound: 440 });
+    const b = createTravellers({ town: 'abq', name: 'Cap’n Cook', load, now, bound: 440 });
+    await settle();
+    await settle();
+    a.pose({ x: 405.5, z: -390, face: -3, speed: 20 });
+    expect(b.list()[0]).toMatchObject({ name: 'Heisenberg', x: 405.5, z: -390, moving: true });
+  });
+
   it('see each other, by name, and lose those who go quiet or leave', async () => {
     const load = fakeRelay();
     let t = 1000;
