@@ -1,20 +1,30 @@
-// Albuquerque, the world: the map, what's open, the car and Hank, with no
-// drawing in them.
+// Albuquerque, the world: the map, what's open, the car, Hank and the town's
+// traffic, with no drawing in them.
 //
 // You start on Walt's driveway in his Aztek and drive between the places the
 // shows happen: the RV out in the desert, Saul's office, Los Pollos Hermanos,
 // the superlab under the laundry, Casa Tranquila. They open as Walt's career
 // grows (Metherria's, saved as tp-metherria): two orders and Saul will see
 // you, Cap'n Cook and Gus will, the superlab once it's bought, and Casa
-// Tranquila once you've met Gus. Hank cruises the middle of town in his SUV;
-// stay close to him for long and he pulls you over.
+// Tranquila once you've met Gus. Hank cruises the blocks round Walt's street
+// in his SUV; stay close to him for long and he pulls you over.
+//
+// The town is a city now: a grid of streets eight blocks across and six deep
+// (plan.js stands a building, a yard or a car park on every lot), downtown's
+// towers where Central crosses 4th, Route 66's motels and shops along
+// Central, houses either side, warehouses by the tracks. Central and 4th run
+// on out into the desert. The cars on the streets keep to their lanes, stop
+// at the lights on Central and the boulevards and at the stop signs
+// everywhere else, and wait for whatever's in front of them, you included.
 //
 // Metres; +x is east, +z is south. A heading (yaw) of 0 faces +z.
 
+import { CAR_TYPES, planCity } from './plan';
+
 // The edge of the world: a ranch fence right round, out in the dunes, where
-// you can see it. (The town itself is flat; the dunes start at DUNES.)
+// you can see it. (The city is flat; the dunes start at DUNES.)
 export const WORLD_RADIUS = 420;
-export const DUNES = 250;
+export const DUNES = 310;
 
 // How high the ground is at a point: flat through town, then low dunes that
 // level off before the mesas. The scene builds the desert from this, and the
@@ -26,23 +36,56 @@ export function groundHeight(x, z) {
   return out * out * (6 + 5 * Math.sin(x * 0.013) * Math.cos(z * 0.017) + 3 * Math.sin((x + z) * 0.031)) - 0.05;
 }
 
+// ── the streets ──
+
+// The grid: where its streets run (x for the ones running north–south, z
+// for east–west), how wide the sidewalks are and how high the kerbs.
+export const GRID = { xs: [-240, -180, -120, -60, 0, 60, 120, 180, 240], zs: [-180, -120, -60, 0, 60, 120, 180], sidewalk: 3, kerb: 0.14 };
+const [X0, X1] = [GRID.xs[0], GRID.xs[GRID.xs.length - 1]];
+const [Z0, Z1] = [GRID.zs[0], GRID.zs[GRID.zs.length - 1]];
+const ew = (id, name, z, w, a = X0, b = X1) => ({ id, name, a: { x: a, z }, b: { x: b, z }, w });
+const ns = (id, name, x, w, a = Z0, b = Z1) => ({ id, name, a: { x, z: a }, b: { x, z: b }, w });
+
 // Roads: a centre line from a to b, and a width. Dirt is slower than asphalt.
+// Central (Route 66) and 4th run out of town to the fence; the dirt track
+// heads off west from the end of Coal toward To'hajiilee and the RV.
 export const ROADS = [
-  { id: 'central', name: 'Central Avenue', a: { x: -190, z: 0 }, b: { x: 190, z: 0 }, w: 12 },
-  { id: 'fourth', name: '4th Street', a: { x: 0, z: -150 }, b: { x: 0, z: 150 }, w: 10 },
-  { id: 'negra', name: 'Negra Arroyo Lane', a: { x: -170, z: -60 }, b: { x: 0, z: -60 }, w: 9 },
-  { id: 'juan', name: 'Juan Tabo', a: { x: -120, z: -60 }, b: { x: -120, z: 0 }, w: 10 },
-  { id: 'dirt', name: 'the track to To’hajiilee', a: { x: -150, z: 0 }, b: { x: -150, z: 122 }, w: 7, dirt: true },
+  ew('lomas', 'Lomas Boulevard', -180, 12),
+  ew('marquette', 'Marquette Avenue', -120, 10),
+  ew('negra', 'Negra Arroyo Lane', -60, 10, X0, -60),
+  ew('copper', 'Copper Avenue', -60, 10, -60, X1),
+  ew('central', 'Central Avenue', 0, 16),
+  ew('route66w', 'Route 66', 0, 11, -414, X0),
+  ew('route66e', 'Route 66', 0, 11, X1, 414),
+  ew('gold', 'Gold Avenue', 60, 10),
+  ew('coal', 'Coal Avenue', 120, 10),
+  ew('bridge', 'Bridge Boulevard', 180, 12),
+  ns('coors', 'Coors Boulevard', -240, 12),
+  ns('riogrande', 'Rio Grande Boulevard', -180, 10),
+  ns('juan', 'Juan Tabo Boulevard', -120, 10),
+  ns('sixth', '6th Street', -60, 10),
+  ns('fourth', '4th Street', 0, 12),
+  ns('fourthn', '4th Street', 0, 10, -414, Z0),
+  ns('fourths', '4th Street', 0, 10, Z1, 414),
+  ns('second', '2nd Street', 60, 10),
+  ns('broadway', 'Broadway', 120, 12),
+  ns('university', 'University Boulevard', 180, 10),
+  ns('sanmateo', 'San Mateo Boulevard', 240, 12),
+  { id: 'dirt', name: 'the track to To’hajiilee', a: { x: X0, z: 120 }, b: { x: -336, z: 120 }, w: 7, dirt: true },
 ];
+// The wide ones: lights where two of them cross, and all along Central.
+const ARTERIAL = (r) => r.w >= 12;
+
+// ── the places ──
 
 // The places: where the building stands (at, facing yaw), its footprint
 // (w across its front, d deep), where you pull up (door), and how near is near.
 export const PLACES = [
   { id: 'home', name: 'Walt’s house', sub: '308 Negra Arroyo Lane', at: { x: -100, z: -78 }, yaw: 0, w: 16, d: 12, foot: { w: 15.4, d: 12 }, door: { x: -95, z: -63 }, radius: 8, model: 'house' },
-  { id: 'rv', name: 'The RV', sub: 'Out past To’hajiilee', at: { x: -150, z: 128 }, yaw: Math.PI / 2, w: 8.5, d: 3, foot: { w: 8.4, d: 2.7 }, door: { x: -150, z: 119 }, radius: 8, model: 'rv' },
-  { id: 'saul', name: 'Saul Goodman & Associates', sub: 'Attorney at law', at: { x: -60, z: 20 }, yaw: Math.PI, w: 16, d: 10, foot: { w: 15.4, d: 15.2 }, door: { x: -60, z: 4 }, radius: 8, model: 'office' },
-  { id: 'pollos', name: 'Los Pollos Hermanos', sub: 'The finest ingredients', at: { x: 60, z: -20 }, yaw: 0, w: 18, d: 12, foot: { w: 17.4, d: 17 }, door: { x: 60, z: -4 }, radius: 8, model: 'pollos' },
-  { id: 'superlab', name: 'Lavandería Brillante', sub: 'The superlab is underneath', at: { x: 155, z: -24 }, yaw: 0, w: 24, d: 14, foot: { w: 23.4, d: 12 }, door: { x: 155, z: -4 }, radius: 9, model: 'laundry' },
+  { id: 'rv', name: 'The RV', sub: 'Out past To’hajiilee', at: { x: -340, z: 128 }, yaw: Math.PI / 2, w: 8.5, d: 3, foot: { w: 8.4, d: 2.7 }, door: { x: -330, z: 120 }, radius: 8, model: 'rv' },
+  { id: 'saul', name: 'Saul Goodman & Associates', sub: 'Attorney at law', at: { x: -90, z: 22 }, yaw: Math.PI, w: 16, d: 10, foot: { w: 15.4, d: 15.2 }, door: { x: -90, z: 5 }, radius: 8, model: 'office' },
+  { id: 'pollos', name: 'Los Pollos Hermanos', sub: 'The finest ingredients', at: { x: 90, z: -24 }, yaw: 0, w: 18, d: 12, foot: { w: 17.4, d: 17 }, door: { x: 90, z: -5 }, radius: 8, model: 'pollos' },
+  { id: 'superlab', name: 'Lavandería Brillante', sub: 'The superlab is underneath', at: { x: 155, z: -24 }, yaw: 0, w: 24, d: 14, foot: { w: 23.4, d: 12 }, door: { x: 155, z: -5 }, radius: 9, model: 'laundry' },
   { id: 'casa', name: 'Casa Tranquila', sub: 'Hector has a visitor', at: { x: 24, z: 100 }, yaw: -Math.PI / 2, w: 20, d: 12, foot: { w: 17, d: 19.4 }, door: { x: 4, z: 100 }, radius: 8, model: 'casa' },
 ];
 // how each one opens, and what to do if it hasn't
@@ -61,19 +104,21 @@ const HINT = {
   casa: 'Meet Gus at Los Pollos Hermanos first.',
 };
 const GO = {
-  rv: 'Drive out to the RV in the desert. Jesse’s waiting.',
+  rv: 'Drive out to the RV in the desert, west past Coors along the dirt track. Jesse’s waiting.',
   saul: 'Saul will see you now. Drive to Saul Goodman & Associates, on Central.',
-  pollos: 'Gus will see you. Drive to Los Pollos Hermanos, on Central.',
-  superlab: 'The superlab’s yours. Drive to the laundry at the east end of Central.',
+  pollos: 'Gus will see you. Drive to Los Pollos Hermanos, on Central east of 2nd.',
+  superlab: 'The superlab’s yours. Drive to the laundry on Central, past Broadway.',
   casa: 'Drive to Casa Tranquila, down 4th Street. Hector has a visitor.',
 };
 const ORDER = ['rv', 'saul', 'pollos', 'superlab', 'casa'];
 
 // Landmarks you can't go into, and the neighbours' houses on Walt's street.
-export const LANDMARKS = [{ id: 'carwash', name: 'A1A Car Wash', at: { x: 100, z: 21 }, yaw: Math.PI, w: 18, d: 10, foot: { w: 14.8, d: 17.4 }, model: 'carwash' }];
-export const HOUSES = [-150, -125, -75, -50, -25].map((x, i) => ({ id: `n${i}`, at: { x, z: -78 }, yaw: 0, w: 13, d: 10 })).concat([-150, -125, -100, -75, -50, -25].map((x, i) => ({ id: `s${i}`, at: { x, z: -42 }, yaw: Math.PI, w: 13, d: 10 })));
+export const LANDMARKS = [{ id: 'carwash', name: 'A1A Car Wash', at: { x: 100, z: 26 }, yaw: Math.PI, w: 18, d: 10, foot: { w: 14.8, d: 17.4 }, model: 'carwash' }];
+export const HOUSES = [-220, -199, -161, -139, -78]
+  .map((x, i) => ({ id: `n${i}`, at: { x, z: -78 }, yaw: 0, w: 13, d: 10 }))
+  .concat([-220, -199, -161, -139, -101, -79].map((x, i) => ({ id: `s${i}`, at: { x, z: -42 }, yaw: Math.PI, w: 13, d: 10 })));
 
-// The rest of town: the buildings you drive past. Real Albuquerque (the KiMo
+// The rest of town the shows put somewhere: real Albuquerque (the KiMo
 // Theatre, the Dog House, Loyola's diner) and the shows' own (the DEA's field
 // office, the Crossroads Motel, a house under Vamonos Pest's tent, Jesse's
 // place, Hank and Marie's, Old Joe's junkyard). `w` runs east-west and `d`
@@ -82,39 +127,171 @@ export const HOUSES = [-150, -125, -75, -50, -25].map((x, i) => ({ id: `n${i}`, 
 // (the ones Meshy made have their model's own proportions here).
 export const TOWN = [
   { id: 'kimo', kind: 'deco', name: 'KiMo Theatre', at: { x: -24, z: -20 }, w: 16.5, d: 17, h: 16, face: 's' },
-  { id: 'doghouse', kind: 'hotdog', name: 'The Dog House', at: { x: -70, z: -18 }, w: 8.25, d: 7, h: 3.6, face: 's' },
+  { id: 'doghouse', kind: 'hotdog', name: 'The Dog House', at: { x: -80, z: -20 }, w: 8.25, d: 7, h: 3.6, face: 's' },
   { id: 'gas', kind: 'gas', name: 'Big Chief', at: { x: 25, z: -21 }, w: 12, d: 8, h: 4, face: 's' },
-  { id: 'motel', kind: 'motel', name: 'Crossroads Motel', at: { x: 105, z: -22 }, w: 34, d: 9.7, h: 4, face: 's' },
-  { id: 'diner', kind: 'diner', name: 'Loyola’s', at: { x: -105, z: 20 }, w: 16, d: 11, h: 4.2, face: 'n' },
+  { id: 'motel', kind: 'motel', name: 'Crossroads Motel', at: { x: 210, z: -22 }, w: 34, d: 9.7, h: 4, face: 's' },
+  { id: 'diner', kind: 'diner', name: 'Loyola’s', at: { x: 150, z: 20 }, w: 16, d: 11, h: 4.2, face: 'n' },
   { id: 'bank', kind: 'brick', name: 'Mesa Credit Union', at: { x: -25, z: 22 }, w: 18, d: 14, h: 9, face: 'n' },
-  { id: 'dea', kind: 'office', name: 'DEA', at: { x: 40, z: 25 }, w: 24.2, d: 18, h: 24, face: 'n' },
-  { id: 'pest', kind: 'tent', name: 'Vamonos Pest', at: { x: 150, z: 24 }, w: 11.2, d: 13, h: 6, face: 'n' },
-  { id: 'tuco', kind: 'brick', name: 'Tampico Furniture', at: { x: 22, z: -62 }, w: 14, d: 18, h: 8, face: 'w' },
-  { id: 'hank', kind: 'adobe', name: 'The Schraders’', at: { x: 26, z: -115 }, w: 12, d: 14.85, h: 4.4, face: 'w' },
-  { id: 'jesse', kind: 'spanish', name: 'Jesse’s house', at: { x: -22, z: 60 }, w: 13, d: 13.75, h: 7.4, face: 'e' },
-  { id: 'junkyard', kind: 'junkyard', name: 'Old Joe’s', at: { x: -40, z: 125 }, w: 26, d: 20, h: 3, face: 'e' },
-  { id: 'tower', kind: 'tower', name: 'the water tower', at: { x: 70, z: 82 }, w: 7, d: 7, h: 19, face: 'n' },
-  { id: 'beneke', kind: 'warehouse', name: 'Beneke Fabricators', at: { x: 122, z: 88 }, w: 30, d: 18, h: 8, face: 'n' },
+  { id: 'dea', kind: 'office', name: 'DEA', at: { x: 32, z: 24 }, w: 24.2, d: 18, h: 24, face: 'n' },
+  { id: 'pest', kind: 'tent', name: 'Vamonos Pest', at: { x: 150, z: 80 }, w: 11.2, d: 13, h: 6, face: 'n' },
+  { id: 'tuco', kind: 'brick', name: 'Tampico Furniture', at: { x: 20, z: 150 }, w: 14, d: 18, h: 8, face: 'w' },
+  { id: 'hank', kind: 'adobe', name: 'The Schraders’', at: { x: 200, z: -95 }, w: 12, d: 14.85, h: 4.4, face: 'w' },
+  { id: 'jesse', kind: 'spanish', name: 'Jesse’s house', at: { x: -20, z: 90 }, w: 13, d: 13.75, h: 7.4, face: 'e' },
+  { id: 'junkyard', kind: 'junkyard', name: 'Old Joe’s', at: { x: -31, z: 150 }, w: 26, d: 20, h: 3, face: 'e' },
+  { id: 'tower', kind: 'tower', name: 'the water tower', at: { x: 80, z: 85 }, w: 7, d: 7, h: 19, face: 'n' },
+  { id: 'beneke', kind: 'warehouse', name: 'Beneke Fabricators', at: { x: 90, z: -150 }, w: 30, d: 18, h: 8, face: 'n' },
   // Saul's yellow Suzuki Esteem, parked beside his office, and the water tank out where one of the drops is
-  { id: 'esteem', kind: 'car', name: 'Saul’s Esteem', at: { x: -74, z: 12 }, w: 1.94, d: 4.2, h: 1.47, face: 'n' },
-  { id: 'watertank', kind: 'tower', name: 'the water tank', at: { x: -246, z: -150 }, w: 7, d: 6.23, h: 13.6, face: 's' },
+  { id: 'esteem', kind: 'car', name: 'Saul’s Esteem', at: { x: -104, z: 18 }, w: 1.94, d: 4.2, h: 1.47, face: 'n' },
+  { id: 'watertank', kind: 'tower', name: 'the water tank', at: { x: -275, z: -150 }, w: 7, d: 6.23, h: 13.6, face: 's' },
 ];
 // The tracks north of town, and the freight that comes down them.
-export const RAIL = { z: -182, from: -700, to: 700 };
+export const RAIL = { z: -205, from: -700, to: 700 };
+
+// ── things out in the desert and round town ──
+
+// Blue Sky: twelve crystals left about, mostly out in the desert, a few
+// hidden in town (the park, the civic plaza, behind the junkyard, a yard by
+// the tracks), all off the roads. Drive over one and it's yours (kept as
+// tp-abq-blue); find all twelve and the night sky has something to say about it.
+export const CRYSTALS = [
+  { id: 'b1', x: -300, z: 170 },
+  { id: 'b2', x: -330, z: -60 },
+  { id: 'b3', x: 292, z: -40 },
+  { id: 'b4', x: 150, z: 272 },
+  { id: 'b5', x: -150, z: -262 },
+  { id: 'b6', x: 262, z: -230 },
+  { id: 'b7', x: -60, z: 300 },
+  { id: 'b8', x: 330, z: 200 },
+  { id: 'b9', x: -100, z: 101 },
+  { id: 'b10', x: 14, z: -74 },
+  { id: 'b11', x: -49, z: 166 },
+  { id: 'b12', x: 150, z: -140 },
+];
+export const CRYSTAL_REACH = 3.4;
+
+// Deliveries: a drop somewhere out in the desert and a clock.
+export const DROPS = [
+  { id: 'd1', name: 'the cow house', x: -300, z: 230 },
+  { id: 'd2', name: 'the wash under the mesa', x: 200, z: 300 },
+  { id: 'd3', name: 'the old drive-in', x: 330, z: -120 },
+  { id: 'd4', name: 'the water tank', x: -262, z: -150 },
+  { id: 'd5', name: 'the arroyo', x: 90, z: -300 },
+  { id: 'd6', name: 'the dunes past To’hajiilee', x: -360, z: 60 },
+  { id: 'd7', name: 'the old billboard', x: 340, z: 150 },
+  { id: 'd8', name: 'the dry lake', x: -100, z: 340 },
+];
+
+// The A1A Car Wash: pull up on its forecourt and the Aztek gets a wash.
+export const WASH = { x: 100, z: 12.5, radius: 6, seconds: 3.2 };
+export const atWash = (x, z) => Math.hypot(x - WASH.x, z - WASH.z) < WASH.radius;
+
+// Walt's car, parked on his driveway, nose to the garage.
+export const SPAWN = { x: -95, z: -68.8, yaw: Math.PI };
+
+// ── the city on the grid ──
+
+// What each block is: rows north to south (Lomas to Marquette first),
+// columns west to east (Coors to Rio Grande first).
+const ZONES = [
+  ['res', 'res', 'res', 'ind', 'ind', 'ind', 'ind', 'ind'],
+  ['res', 'res', 'res', 'core', 'civic', 'mid', 'res', 'res'],
+  ['strip-s', 'strip-s', 'strip-s', 'core', 'core', 'strip-s', 'strip-s', 'strip-s'],
+  ['strip-n', 'strip-n', 'strip-n', 'mid', 'mid', 'strip-n', 'strip-n', 'strip-n'],
+  ['res', 'res', 'park', 'res', 'res', 'res', 'res', 'res'],
+  ['res', 'res', 'res', 'ind', 'res', 'res', 'res', 'res'],
+];
+
+// What the shows have put somewhere, as land the city mustn't build on.
+const footOf = (o) => {
+  if (o.foot) return { w: o.foot.w, d: o.foot.d };
+  if (o.yaw !== undefined) {
+    const side = Math.abs(Math.sin(o.yaw)) > 0.5;
+    return { w: side ? o.d : o.w, d: side ? o.w : o.d };
+  }
+  return { w: o.w, d: o.d };
+};
+const RESERVED = [
+  ...[...PLACES, ...LANDMARKS].map((p) => ({ id: p.id, x: p.at.x, z: p.at.z, ...footOf(p), pad: 3 })),
+  ...HOUSES.map((h) => ({ id: h.id, x: h.at.x, z: h.at.z, ...footOf(h), pad: 1 })),
+  ...TOWN.map((t) => ({ id: t.id, x: t.at.x, z: t.at.z, w: t.w, d: t.d, pad: 3.4 })),
+];
+const KEEP = [
+  ...PLACES.map((p) => ({ x: p.door.x, z: p.door.z, r: p.radius + 2 })),
+  { x: WASH.x, z: WASH.z, r: WASH.radius + 2.5 },
+  ...CRYSTALS.map((c) => ({ x: c.x, z: c.z, r: 4.2 })),
+  ...DROPS.map((d) => ({ x: d.x, z: d.z, r: 9 })),
+  { x: SPAWN.x, z: SPAWN.z, r: 5 },
+];
+// (the parking in front of the shows' own shops and offices)
+const PADS = ['saul', 'pollos', 'superlab', 'carwash', 'dea', 'diner', 'gas', 'motel', 'bank', 'tuco'].map((id) => RESERVED.find((q) => q.id === id)).filter(Boolean);
+
+export const CITY = planCity({ xs: GRID.xs, zs: GRID.zs, roads: ROADS, zoneAt: (i, j) => ZONES[j]?.[i] ?? 'res', reserved: RESERVED, keep: KEEP, sidewalk: GRID.sidewalk });
+// Walt's drive
+CITY.lots.push({ x: -95, z: -69.6, w: 3.6, d: 6.2, surface: 'concrete' });
+for (const q of PADS) {
+  // a car park round each, out to the sidewalk on the street side
+  const b = CITY.blocks.find((k) => q.x > k.x0 && q.x < k.x1 && q.z > k.z0 && q.z < k.z1);
+  if (!b) continue;
+  const x0 = Math.max(b.x0, q.x - q.w / 2 - 6);
+  const x1 = Math.min(b.x1, q.x + q.w / 2 + 6);
+  const z0 = q.z < (b.z0 + b.z1) / 2 ? b.z0 : Math.max(b.z0, q.z - q.d / 2 - 6);
+  const z1 = q.z < (b.z0 + b.z1) / 2 ? Math.min(b.z1, q.z + q.d / 2 + 6) : b.z1;
+  CITY.lots.unshift({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0, surface: 'asphalt', bays: 'z' });
+}
+
+// The size a parked car takes up, turned the way it's parked.
+const CAR_BOX = { w: 2.05, d: 4.6 };
+const parkedBox = (p, i) => {
+  const across = Math.abs(Math.sin(p.yaw)) > 0.5;
+  return { id: `p${i}`, x: p.x, z: p.z, w: across ? CAR_BOX.d : CAR_BOX.w, d: across ? CAR_BOX.w : CAR_BOX.d, kind: 'car' };
+};
 
 // What you can drive into. A building's `foot` is what its model really
 // covers on the ground (across x, then z, as it stands, measured off the
 // model), so the car stops at the wall it can see and nowhere else; without
-// one, its w and d turned to its heading.
-const box = (o) => {
-  if (o.foot) return { id: o.id, x: o.at.x, z: o.at.z, w: o.foot.w, d: o.foot.d };
-  const side = Math.abs(Math.sin(o.yaw)) > 0.5;
-  return { id: o.id, x: o.at.x, z: o.at.z, w: side ? o.d : o.w, d: side ? o.w : o.d };
-};
-export const COLLIDERS = [...PLACES, ...LANDMARKS, ...HOUSES].map(box).concat(TOWN.map((t) => ({ id: t.id, x: t.at.x, z: t.at.z, w: t.w, d: t.d })));
+// one, its w and d turned to its heading. Then the city's own: its
+// buildings, the walls between back yards and the cars left parked.
+const box = (o) => ({ id: o.id, x: o.at.x, z: o.at.z, ...footOf(o) });
+export const COLLIDERS = [...PLACES, ...LANDMARKS, ...HOUSES]
+  .map(box)
+  .concat(TOWN.map((t) => ({ id: t.id, x: t.at.x, z: t.at.z, w: t.w, d: t.d })))
+  .concat(CITY.buildings.map((b) => ({ id: b.id, x: b.x, z: b.z, w: b.w, d: b.d, h: b.h })))
+  .concat(CITY.walls.map((w, i) => ({ id: `w${i}`, x: w.x, z: w.z, w: w.w, d: w.d, kind: 'wall' })))
+  .concat(CITY.parked.map(parkedBox));
 
-// Walt's car pulls out of his driveway, facing up the street.
-export const SPAWN = { x: -95, z: -62, yaw: Math.PI / 2 };
+// The colliders by where they are, so a step only looks at what's near.
+const CELL = 24;
+const SPAN = 4; // a collider counts in every cell it reaches into, and this far round it
+const HASH = new Map();
+for (const c of COLLIDERS) {
+  const [i0, i1] = [Math.floor((c.x - c.w / 2 - SPAN) / CELL), Math.floor((c.x + c.w / 2 + SPAN) / CELL)];
+  const [j0, j1] = [Math.floor((c.z - c.d / 2 - SPAN) / CELL), Math.floor((c.z + c.d / 2 + SPAN) / CELL)];
+  for (let i = i0; i <= i1; i++)
+    for (let j = j0; j <= j1; j++) {
+      const k = `${i},${j}`;
+      if (!HASH.has(k)) HASH.set(k, []);
+      HASH.get(k).push(c);
+    }
+}
+const NONE = [];
+// what the car (anything within SPAN of the point) could touch here
+export const collidersNear = (x, z) => HASH.get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? NONE;
+
+// The blocks stand a kerb's height above the street: the car rides up onto
+// a sidewalk, a car park or a yard, and down again.
+const ROWS = GRID.zs.length - 1;
+export function onBlock(x, z) {
+  if (x <= X0 || x >= X1 || z <= Z0 || z >= Z1) return false;
+  let i = 0;
+  while (GRID.xs[i + 1] < x) i++;
+  let j = 0;
+  while (GRID.zs[j + 1] < z) j++;
+  const b = CITY.blocks[i * ROWS + j];
+  return !!b && x > b.kerb.x0 && x < b.kerb.x1 && z > b.kerb.z0 && z < b.kerb.z1;
+}
+export const surfaceHeight = (x, z) => groundHeight(x, z) + (onBlock(x, z) ? GRID.kerb : 0);
+
+// ── driving ──
 
 // The Aztek: metres, seconds and radians. How fast it goes on each surface,
 // how hard it pulls, brakes and coasts down (`bog` is how fast speed it
@@ -176,7 +353,8 @@ export const onRoad = (x, z, roads = ROADS) => roadAt(x, z, roads) !== null;
 // what's under the wheels: 'road', 'dirt' or 'sand'
 export const surfaceAt = (x, z) => {
   const road = roadAt(x, z);
-  return road ? (road.dirt ? 'dirt' : 'road') : 'sand';
+  // (a block, a kerb up: sidewalk, car park or yard, all paved enough)
+  return road ? (road.dirt ? 'dirt' : 'road') : onBlock(x, z) ? 'road' : 'sand';
 };
 const TOP = { road: CAR.top, dirt: CAR.dirt, sand: CAR.sand };
 
@@ -192,7 +370,8 @@ export const slipOf = (car) => clamp(Math.abs(car.slide ?? 0) / SLIDING, 0, 1);
 // is how fast it's turning. A car without the last two is one that grips
 // and isn't turning (one parked before it could slide).
 //
-// One step of driving. input: { throttle −1…1, steer −1…1, handbrake,
+// One step of driving (`movers`: the traffic about, { x, z, r }, bumped off
+// like a wall). input: { throttle −1…1, steer −1…1, handbrake,
 // assist 0…2 (how much it straightens itself out of a slide; 1 as it comes) }.
 // Returns the car, how hard it bumped into something (m/s into it, 0 if it
 // didn't), how hard its tyres are sliding (0…1) and what it's on. However
@@ -201,7 +380,7 @@ export const slipOf = (car) => clamp(Math.abs(car.slide ?? 0) / SLIDING, 0, 1);
 const STEP = 1 / 120;
 const LONGEST = 0.25;
 const BOUNCE = 0.15;
-export function stepCar(car, input = {}, dt) {
+export function stepCar(car, input = {}, dt, movers = NONE) {
   const c = { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed ?? 0, slide: car.slide ?? 0, yawRate: car.yawRate ?? 0 };
   const out = { car: c, bump: 0, slip: 0, surface: surfaceAt(c.x, c.z) };
   if (!(dt > 0)) return out;
@@ -212,7 +391,7 @@ export function stepCar(car, input = {}, dt) {
   const ask = { throttle: num(input.throttle, -1, 1), steer: num(input.steer, -1, 1), handbrake: !!input.handbrake, assist: num(input.assist, 0, 2, 1) };
   const n = Math.max(1, Math.ceil(span / STEP - 1e-9));
   const h = span / n;
-  for (let i = 0; i < n; i++) slice(c, ask, h, out);
+  for (let i = 0; i < n; i++) slice(c, ask, h, out, movers);
   return out;
 }
 
@@ -233,7 +412,7 @@ function strike(vx, vz, nx, nz) {
   return -vn;
 }
 
-function slice(c, { throttle, steer, handbrake, assist }, h, out) {
+function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
   const surface = surfaceAt(c.x, c.z);
   const top = TOP[surface];
   let f = c.speed;
@@ -315,7 +494,7 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out) {
   let z = c.z + vz * h;
   let hit = 0;
   // the buildings: the car is a circle, pushed out of any footprint it's in
-  for (const b of COLLIDERS) {
+  for (const b of collidersNear(x, z)) {
     const px = Math.max(b.x - b.w / 2, Math.min(x, b.x + b.w / 2));
     const pz = Math.max(b.z - b.d / 2, Math.min(z, b.z + b.d / 2));
     const dx = x - px;
@@ -336,6 +515,19 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out) {
       vx *= -0.2;
       vz *= -0.2;
     }
+  }
+  // the traffic: circles, bumped off the same way
+  for (const m of movers) {
+    const dx = x - m.x;
+    const dz = z - m.z;
+    const d = Math.hypot(dx, dz);
+    const reach = CAR.radius + (m.r ?? 1.5);
+    if (d >= reach || d < 1e-6) continue;
+    x = m.x + (dx / d) * reach;
+    z = m.z + (dz / d) * reach;
+    hit = Math.max(hit, strike(vx, vz, dx / d, dz / d));
+    vx = hitV.x;
+    vz = hitV.z;
   }
   // the edge of the world
   const r = Math.hypot(x, z);
@@ -424,7 +616,395 @@ export function progress(snap) {
   return { places, next: null, objective: 'Albuquerque’s yours. Say my name.', done: true };
 }
 
-// Hank, in his SUV: round the block between Central, 4th, Negra Arroyo and Juan Tabo.
+// ── the streets as the traffic sees them ──
+
+// Every corner where two streets meet (a node), every stretch of street
+// between two of them (an edge), which have lights and which stop signs.
+export const NODES = [];
+export const EDGES = [];
+{
+  const road = (axis, line, mid) => ROADS.find((r) => !r.dirt && (axis === 'z' ? r.a.z === line && r.b.z === line && Math.min(r.a.x, r.b.x) <= mid && Math.max(r.a.x, r.b.x) >= mid : r.a.x === line && r.b.x === line && Math.min(r.a.z, r.b.z) <= mid && Math.max(r.a.z, r.b.z) >= mid));
+  const id = (i, j) => j * GRID.xs.length + i;
+  GRID.zs.forEach((z, j) =>
+    GRID.xs.forEach((x, i) => {
+      const e = road('z', z, x); // the street running east–west through it
+      const n = road('x', x, z); // and north–south
+      const signal = ARTERIAL(e) && ARTERIAL(n) ? true : e.id === 'central';
+      // without lights, whoever's on the narrower street stops (both, if they're alike)
+      const stop = signal ? null : ARTERIAL(e) === ARTERIAL(n) ? 'both' : ARTERIAL(e) ? 'ns' : 'ew';
+      NODES.push({ id: id(i, j), i, j, x, z, hw: n.w / 2, hd: e.w / 2, signal, stop, ew: e.id, ns: n.id });
+    }),
+  );
+  GRID.zs.forEach((z, j) => {
+    for (let i = 0; i + 1 < GRID.xs.length; i++) {
+      const r = road('z', z, (GRID.xs[i] + GRID.xs[i + 1]) / 2);
+      EDGES.push({ a: id(i, j), b: id(i + 1, j), axis: 'x', w: r.w, road: r.id, fast: ARTERIAL(r) });
+    }
+  });
+  GRID.xs.forEach((x, i) => {
+    for (let j = 0; j + 1 < GRID.zs.length; j++) {
+      const r = road('x', x, (GRID.zs[j] + GRID.zs[j + 1]) / 2);
+      EDGES.push({ a: id(i, j), b: id(i, j + 1), axis: 'z', w: r.w, road: r.id, fast: ARTERIAL(r) });
+    }
+  });
+}
+const OUT = NODES.map(() => []);
+EDGES.forEach((e, k) => {
+  OUT[e.a].push({ e: k, dir: 1, to: e.b });
+  OUT[e.b].push({ e: k, dir: -1, to: e.a });
+});
+
+// The lights: all of them on one cycle. East–west goes first, then north–south.
+export const SIGNAL = { cycle: 32, green: 13, amber: 3 };
+export function signalAt(t) {
+  const s = ((t % SIGNAL.cycle) + SIGNAL.cycle) % SIGNAL.cycle;
+  const half = SIGNAL.cycle / 2;
+  const own = (k) => (k < SIGNAL.green ? 'green' : 'amber');
+  return s < half ? { ew: own(s), ns: 'red' } : { ew: 'red', ns: own(s - half) };
+}
+
+// Where a lane runs along an edge, travelled one way: from where it leaves
+// the corner behind (past the crossing) to the stop line at the one ahead,
+// kept to the right of the centre line by `off`.
+const LANE = { stop: 4.2 }; // the stop line, this far back from the cross street's kerb
+export function lanePath(k, dir, off) {
+  const e = EDGES[k];
+  const [A, B] = dir > 0 ? [NODES[e.a], NODES[e.b]] : [NODES[e.b], NODES[e.a]];
+  const len = Math.hypot(B.x - A.x, B.z - A.z);
+  const fx = (B.x - A.x) / len;
+  const fz = (B.z - A.z) / len;
+  // (the cross street's half-width at each end)
+  const clear = (N) => (e.axis === 'x' ? N.hw : N.hd) + LANE.stop;
+  const rx = -fz * off;
+  const rz = fx * off;
+  return { ax: A.x + fx * clear(A) + rx, az: A.z + fz * clear(A) + rz, bx: B.x - fx * clear(B) + rx, bz: B.z - fz * clear(B) + rz, fx, fz, len: len - clear(A) - clear(B), node: dir > 0 ? e.b : e.a };
+}
+// a lane's offset on its edge: one lane each way, two on Central
+const laneOff = (e, lane) => (e.w >= 16 ? (lane ? 5.8 : 2.2) : e.w / 4);
+
+// A quadratic curve from one lane's stop line, through the corner, into the next.
+function turnPath(from, to) {
+  const p0 = { x: from.bx, z: from.bz };
+  const p2 = { x: to.ax, z: to.az };
+  const straight = Math.abs(from.fx * to.fx + from.fz * to.fz) > 0.9;
+  const p1 = straight ? { x: (p0.x + p2.x) / 2, z: (p0.z + p2.z) / 2 } : Math.abs(from.fx) > 0.5 ? { x: p2.x, z: p0.z } : { x: p0.x, z: p2.z };
+  let len = 0;
+  let px = p0.x;
+  let pz = p0.z;
+  for (let i = 1; i <= 10; i++) {
+    const t = i / 10;
+    const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+    const z = (1 - t) * (1 - t) * p0.z + 2 * (1 - t) * t * p1.z + t * t * p2.z;
+    len += Math.hypot(x - px, z - pz);
+    px = x;
+    pz = z;
+  }
+  return { p0, p1, p2, len: Math.max(0.5, len), straight };
+}
+
+// ── the traffic ──
+
+export const TRAFFIC = { fast: 13.5, slow: 9.5, corner: 6, accel: 3.6, brake: 9, gap: 6.6, wait: 1.1 };
+
+// A car's place on the map, from where it is on its lane or its turn.
+function place(c) {
+  if (c.seg === 'lane') {
+    const L = c.path;
+    // (sliding across from the lane it was in, after a lane change)
+    const k = c.shift ?? 0;
+    c.x = L.ax + L.fx * c.s - L.fz * k;
+    c.z = L.az + L.fz * c.s + L.fx * k;
+    c.yaw = Math.atan2(L.fx, L.fz) - k * 0.06;
+  } else {
+    const { p0, p1, p2, len } = c.turn;
+    const t = Math.min(1, c.s / len);
+    c.x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+    c.z = (1 - t) * (1 - t) * p0.z + 2 * (1 - t) * t * p1.z + t * t * p2.z;
+    const dx = 2 * (1 - t) * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
+    const dz = 2 * (1 - t) * (p1.z - p0.z) + 2 * t * (p2.z - p1.z);
+    if (dx * dx + dz * dz > 1e-8) c.yaw = Math.atan2(dx, dz);
+  }
+  return c;
+}
+
+// The way out of a corner a car takes next: straight on most often, never
+// back the way it came. A car with a `route` (Hank) keeps to it.
+function chooseNext(c, rand) {
+  const node = c.path.node;
+  const ways = OUT[node].filter((o) => !(o.e === c.e && o.dir === -c.dir));
+  if (c.route) {
+    const at = c.route.indexOf(node);
+    const want = c.route[(at + 1) % c.route.length];
+    return ways.find((o) => o.to === want) ?? ways[0];
+  }
+  const e = EDGES[c.e];
+  const weigh = (o) => (EDGES[o.e].axis === e.axis ? 2.2 : 1) * (EDGES[o.e].fast ? 1.4 : 1);
+  const total = ways.reduce((n, o) => n + weigh(o), 0);
+  let k = rand() * total;
+  for (const o of ways) if ((k -= weigh(o)) <= 0) return o;
+  return ways[ways.length - 1];
+}
+
+function enterLane(c, k, dir) {
+  c.e = k;
+  c.dir = dir;
+  c.seg = 'lane';
+  c.s = 0;
+  c.path = lanePath(k, dir, laneOff(EDGES[k], c.lane));
+  c.next = null;
+  c.go = false;
+  c.wait = 0;
+  c.shift = 0;
+  c.passing = null;
+  c.move = null;
+}
+
+/**
+ * createTraffic(n, { seed, route }) → the cars, spread over the streets.
+ * Each is { id, type, x, z, yaw, speed, … }; `route` (a list of node ids,
+ * round in a loop) makes one car that keeps to it (n is then 1).
+ */
+export function createTraffic(n, { seed = 66, route = null, at = 0, avoid = [], from = 0 } = {}) {
+  let s = seed | 0;
+  const rand = () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const cars = [];
+  for (let tries = 0; cars.length < n && tries < n * 40; tries++) {
+    let k;
+    let dir;
+    if (route) {
+      const a = route[at % route.length];
+      const b = route[(at + 1) % route.length];
+      const o = OUT[a].find((x) => x.to === b);
+      k = o.e;
+      dir = o.dir;
+    } else {
+      k = Math.floor(rand() * EDGES.length);
+      dir = rand() < 0.5 ? 1 : -1;
+    }
+    const c = { id: from + cars.length, type: route ? -1 : Math.floor(rand() * CAR_TYPES.length), lane: rand() < 0.5 ? 0 : 1, speed: 0, rand, route };
+    enterLane(c, k, dir);
+    c.s = route ? 0 : rand() * c.path.len;
+    place(c);
+    if (cars.some((o) => Math.hypot(o.x - c.x, o.z - c.z) < 12) || avoid.some((o) => Math.hypot(o.x - c.x, o.z - c.z) < 14)) continue;
+    c.speed = (EDGES[k].fast ? TRAFFIC.fast : TRAFFIC.slow) * 0.6;
+    c.tint = rand();
+    cars.push(c);
+  }
+  return cars;
+}
+
+let entered = 0; // (cars into a corner so far: who was first)
+
+// Which way a car comes into a corner and what it does there: L, R or S(traight).
+function moveOf(path, next) {
+  const g = lanePath(next.e, next.dir, 0);
+  const cross = path.fx * g.fz - path.fz * g.fx;
+  return { fx: path.fx, fz: path.fz, turn: cross > 0.5 ? 'R' : cross < -0.5 ? 'L' : 'S' };
+}
+// Whether two ways through a corner cross: from the same side never; from
+// opposite sides only if one of them turns left; from either side, always.
+function crosses(a, b) {
+  const dot = a.fx * b.fx + a.fz * b.fz;
+  if (dot > 0.5) return false;
+  if (dot < -0.5) return a.turn === 'L' || b.turn === 'L';
+  return true;
+}
+// The corner's clear for this car to go into: nothing in it on a way that
+// crosses, and (turning left) nothing coming the other way about to come through.
+function boxFree(c, cars) {
+  const node = c.path.node;
+  for (const o of cars) {
+    if (o === c) continue;
+    if (o.seg === 'turn' && o.turnNode === node && o.s < o.turn.len * 0.92 && crosses(c.move, o.move)) return false;
+    if (c.move.turn === 'L' && o.seg === 'lane' && o.path.node === node && o.move && o.move.fx * c.move.fx + o.move.fz * c.move.fz < -0.5 && !o.stopsAt && o.speed > 2 && o.path.len - o.s < 26) return false;
+  }
+  return true;
+}
+
+// How fast a car may go with whatever's in front of it (other cars, you,
+// Hank): it keeps a gap, closing it only as fast as it can stop.
+function clearAhead(c, others, own) {
+  const hx = Math.sin(c.yaw);
+  const hz = Math.cos(c.yaw);
+  let best = Infinity;
+  let what = null;
+  const reach = 9 + c.speed * 1.6;
+  for (const o of others) {
+    if (o === own) continue;
+    const dx = o.x - c.x;
+    const dz = o.z - c.z;
+    const along = dx * hx + dz * hz;
+    if (along <= 0.5 || along > reach) continue;
+    const side = Math.abs(dx * -hz + dz * hx);
+    if (side > 2.1) continue;
+    // something going the other way, already past the middle of the road, isn't in the way
+    if (o.yaw !== undefined && Math.cos(o.yaw - c.yaw) < -0.5 && side > 1.2) continue;
+    // in the corner, the car that got there first goes first: one crossing
+    // this one's path waits only if it came in later (or hasn't come in yet)
+    if (c.seg === 'turn' && o.seg !== undefined && Math.cos(o.yaw - c.yaw) < 0.5 && (o.seg !== 'turn' || o.order > c.order)) continue;
+    if (along < best) {
+      best = along;
+      what = o;
+    }
+  }
+  return { gap: best, what };
+}
+
+// Nothing's in the corner or about to come through it on the cross street
+// (for a car that's stopped at a sign and wants to go).
+function cornerClear(c, cars) {
+  const N = NODES[c.path.node];
+  for (const o of cars) {
+    if (o === c) continue;
+    if (Math.abs(o.x - N.x) < N.hw + 3 && Math.abs(o.z - N.z) < N.hd + 3 && o.speed > 0.5) return false;
+    if (o.seg !== 'lane' || o.path.node !== N.id) continue;
+    // coming through without stopping
+    if (!o.stopsAt && o.speed > 2 && o.path.len - o.s < 22) return false;
+    // or there first, waiting at its own sign
+    if (o.stopsAt && o.path.len - o.s < 1.2 && (o.wait > c.wait || (o.wait === c.wait && o.id < c.id))) return false;
+  }
+  return true;
+}
+
+/**
+ * stepTraffic(cars, dt, t, obstacles) moves every car on by dt seconds at
+ * time t (the lights' clock). obstacles: [{ x, z, yaw? }] the cars must not
+ * drive into (you, and Hank when he isn't one of `cars`).
+ */
+export function stepTraffic(cars, dt, t, obstacles = NONE) {
+  const light = signalAt(t);
+  const all = obstacles.length ? cars.concat(obstacles) : cars;
+  for (const c of cars) {
+    const e = EDGES[c.e];
+    let want = c.seg === 'turn' ? (c.turn.straight ? TRAFFIC.slow : TRAFFIC.corner) : e.fast ? TRAFFIC.fast : TRAFFIC.slow;
+    if (c.route) want *= 0.85;
+    // the corner ahead: a light, a sign, and the turn to slow for
+    c.stopsAt = false;
+    if (c.seg === 'lane') {
+      if (!c.next) {
+        c.next = chooseNext(c, c.rand);
+        c.move = moveOf(c.path, c.next);
+      }
+      const N = NODES[c.path.node];
+      const left = c.path.len - c.s;
+      let stop = false;
+      if (N.signal) {
+        const mine = e.axis === 'x' ? light.ew : light.ns;
+        // amber: stop if there's room to, go on if there isn't
+        stop = mine === 'red' || (mine === 'amber' && left > c.speed * 1.1 + 2);
+      } else if (N.stop === 'both' || N.stop === (e.axis === 'x' ? 'ew' : 'ns')) stop = !c.go;
+      if (stop) {
+        c.stopsAt = true;
+        want = Math.min(want, Math.max(0, (left - 0.4) * 1.1));
+        if (left < 1.2 && c.speed < 0.4) {
+          c.wait += dt;
+          // a stop sign: a moment, then on when the corner's clear
+          if (!N.signal && c.wait > TRAFFIC.wait && cornerClear(c, cars)) c.go = true;
+        }
+      }
+      // and nobody in the corner whose way crosses this one's
+      if (!stop && left < 10 + c.speed && !boxFree(c, cars)) {
+        stop = true;
+        c.stopsAt = true;
+        want = Math.min(want, Math.max(0, (left - 0.4) * 1.1));
+      }
+      // slow for a turn coming up
+      const turning = EDGES[c.next.e].axis !== e.axis;
+      if (turning) want = Math.min(want, TRAFFIC.corner + Math.max(0, left - 6) * 0.45);
+    }
+    // whatever's in front
+    const { gap, what } = clearAhead(c, all, c);
+    if (gap < Infinity) {
+      const room = Math.max(0, gap - TRAFFIC.gap);
+      want = Math.min(want, room * 1.15);
+      // stuck behind something that isn't moving: on Central, into the other
+      // lane; on a street with one lane each way, round it (you, stopped in
+      // the road), on the wrong side for a moment
+      if (what && (what.speed ?? 0) < 0.3 && c.speed < 0.3 && c.seg === 'lane') {
+        c.blocked = (c.blocked ?? 0) + dt;
+        if (c.blocked > 2 && e.w >= 16) {
+          const was = laneOff(e, c.lane);
+          c.lane = 1 - c.lane;
+          const s = c.s;
+          c.path = lanePath(c.e, c.dir, laneOff(e, c.lane));
+          c.s = Math.min(s, c.path.len);
+          c.shift = was - laneOff(e, c.lane);
+          c.blocked = 0;
+        } else if (c.blocked > 2.5 && what.seg === undefined && !c.passing) {
+          c.passing = what;
+          c.blocked = 0;
+        } else if (c.blocked > 2 && c.passing && what.seg !== undefined) {
+          // someone coming the other way: back in, and try again after
+          c.passing = null;
+          c.blocked = 0;
+        }
+      } else c.blocked = 0;
+    }
+    if (c.passing) {
+      // round it, until it's behind
+      const o = c.passing;
+      if ((o.x - c.x) * Math.sin(c.yaw) + (o.z - c.z) * Math.cos(c.yaw) < -5 || c.seg !== 'lane') c.passing = null;
+      else if (Math.abs((c.shift ?? 0) + 2 * laneOff(e, c.lane)) > 0.6) want = Math.min(want, 2.2);
+    }
+    c.speed = want > c.speed ? Math.min(want, c.speed + TRAFFIC.accel * dt) : Math.max(want, c.speed - TRAFFIC.brake * dt);
+    c.speed = Math.max(0, c.speed);
+    c.s += c.speed * dt;
+    {
+      const target = c.passing ? -2 * laneOff(e, c.lane) : 0;
+      const step = (c.passing ? 2.4 : 1 + c.speed * 0.25) * dt;
+      const k = c.shift ?? 0;
+      if (k !== target) c.shift = k < target ? Math.min(target, k + step) : Math.max(target, k - step);
+    }
+    // on into the corner, and out of it onto the next street
+    if (c.seg === 'lane' && c.s >= c.path.len) {
+      const over = c.s - c.path.len;
+      const nx = c.next ?? chooseNext(c, c.rand);
+      const ne = EDGES[nx.e];
+      // onto Central: the outside lane turning right, the inside one turning left
+      if (ne.w >= 16) {
+        const g = lanePath(nx.e, nx.dir, 0);
+        const cross = c.path.fx * g.fz - c.path.fz * g.fx;
+        if (Math.abs(cross) > 0.5) c.lane = cross > 0 ? 1 : 0;
+      }
+      const to = lanePath(nx.e, nx.dir, laneOff(ne, c.lane));
+      c.turn = turnPath(c.path, to);
+      c.seg = 'turn';
+      c.order = ++entered;
+      c.turnNode = c.path.node;
+      c.move = c.move ?? moveOf(c.path, nx);
+      c.s = over;
+      c.nextPath = { k: nx.e, dir: nx.dir };
+    }
+    if (c.seg === 'turn' && c.s >= c.turn.len) {
+      const over = c.s - c.turn.len;
+      enterLane(c, c.nextPath.k, c.nextPath.dir);
+      c.s = over;
+    }
+    place(c);
+  }
+  return cars;
+}
+
+// ── Hank ──
+
+// Hank, in his SUV: round the blocks between Central, 4th, Negra Arroyo
+// and Juan Tabo, in the traffic, stopping where it stops.
+const nodeAt = (x, z) => NODES.find((n) => n.x === x && n.z === z).id;
+export const HANK_ROUTE = [nodeAt(0, 0), nodeAt(-60, 0), nodeAt(-120, 0), nodeAt(-120, -60), nodeAt(-60, -60), nodeAt(0, -60)];
+export const createHank = () => createTraffic(1, { route: HANK_ROUTE })[0];
+// Hank first, then everyone else, none of them on top of each other or of `avoid` (you)
+export function createStreets(n, { avoid = [] } = {}) {
+  const hank = createHank();
+  return [hank, ...createTraffic(n, { avoid: [hank, ...avoid], from: 1 })];
+}
+
+// (Hank as he was before the traffic, by the clock alone: kept for anything
+// that only wants to know roughly where he is.)
 const LOOP = [
   { x: 0, z: 0 },
   { x: -120, z: 0 },
@@ -458,24 +1038,6 @@ export function stepHeat(heat, dist, dt) {
   return { heat: h, caught: h >= 1 };
 }
 
-// Blue Sky: twelve crystals left out in the desert, off the roads. Drive
-// over one and it's yours (kept as tp-abq-blue); find all twelve and the
-// night sky has something to say about it.
-export const CRYSTALS = [
-  { id: 'b1', x: -136, z: 140 },
-  { id: 'b2', x: -186, z: 62 },
-  { id: 'b3', x: -62, z: 72 },
-  { id: 'b4', x: 72, z: 60 },
-  { id: 'b5', x: 112, z: 132 },
-  { id: 'b6', x: 192, z: 70 },
-  { id: 'b7', x: 170, z: -112 },
-  { id: 'b8', x: 60, z: -112 },
-  { id: 'b9', x: -42, z: -126 },
-  { id: 'b10', x: -202, z: -40 },
-  { id: 'b11', x: 42, z: 152 },
-  { id: 'b12', x: 136, z: 46 },
-];
-export const CRYSTAL_REACH = 3.4;
 // the crystal the car is on, if it hasn't been taken
 export function crystalAt(x, z, got = []) {
   for (const c of CRYSTALS) if (!got.includes(c.id) && Math.hypot(x - c.x, z - c.z) < CRYSTAL_REACH) return c;
@@ -501,19 +1063,8 @@ export function timeName(tod) {
 
 // ── things to do ──
 
-// Deliveries: a drop somewhere out in the desert and a clock. Get there in
-// time and the buyer pays, more for a long run and for time left over; the
-// money is the career's (Saul's office spends it).
-export const DROPS = [
-  { id: 'd1', name: 'the cow house', x: -205, z: 150 },
-  { id: 'd2', name: 'the wash under the mesa', x: 160, z: 196 },
-  { id: 'd3', name: 'the junkyard gate', x: 232, z: -58 },
-  { id: 'd4', name: 'the water tank', x: -230, z: -150 },
-  { id: 'd5', name: 'the arroyo', x: 70, z: -214 },
-  { id: 'd6', name: 'the dunes past To’hajiilee', x: -300, z: 250 },
-  { id: 'd7', name: 'the old billboard', x: 310, z: 120 },
-  { id: 'd8', name: 'the dry lake', x: -80, z: 330 },
-];
+// Deliveries: get to the drop in time and the buyer pays, more for a long
+// run and for time left over; the money is the career's (Saul's office spends it).
 export const RUN = { reach: 6, pace: 12, slack: 9, far: 110 };
 // A run from where the car is: the `pick`th of the drops far enough away.
 export function startRun(car, pick = 0) {
@@ -530,7 +1081,3 @@ export function stepRun(run, car, left, dt) {
   return t <= 0 ? { state: 'late', left: 0 } : { state: 'on', left: t, away: d };
 }
 export const runPay = (run, left) => Math.round(15 + run.dist / 8 + Math.max(0, left) * 2);
-
-// The A1A Car Wash: pull up on its forecourt and the Aztek gets a wash.
-export const WASH = { x: 100, z: 7.5, radius: 6, seconds: 3.2 };
-export const atWash = (x, z) => Math.hypot(x - WASH.x, z - WASH.z) < WASH.radius;
