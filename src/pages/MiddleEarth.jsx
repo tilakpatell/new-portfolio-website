@@ -28,6 +28,7 @@ const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld
 const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
 const WeathertopWorld = lazy(() => import('../components/middleearth/towns/weathertop/WeathertopWorld'));
 const RivendellWorld = lazy(() => import('../components/middleearth/towns/rivendell/RivendellWorld'));
+const MoriaWorld = lazy(() => import('../components/middleearth/towns/moria/MoriaWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -234,6 +235,12 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'moria' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <MoriaWorld onLeave={() => go('lorien')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'moria' && (
         <>
           <section data-theme-section="shire" className="shell relative z-10 grid items-center gap-10 pb-16 pt-10 md:pb-20 lg:min-h-[86svh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="doors-title">
             <figure className="me-scene" data-entering={entering || undefined}>
@@ -244,9 +251,9 @@ export default function MiddleEarth() {
             </figure>
             <div>
               <p className="eyebrow">Moria · The West-gate</p>
-              <h1 id="doors-title" className="display mt-6 text-[clamp(2.5rem,1.4rem+3.6vw,4.4rem)]">
+              <h2 id="doors-title" className="display mt-6 text-[clamp(2.5rem,1.4rem+3.6vw,4.4rem)]">
                 {open ? 'Mellon.' : 'Speak, friend, and enter.'}
-              </h1>
+              </h2>
               <p className="lead mt-6 max-w-[48ch]">{lead}</p>
               <form className="mt-8 flex max-w-md gap-2" onSubmit={speak}>
                 <label htmlFor="me-word" className="sr-only">
