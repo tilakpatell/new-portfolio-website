@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOOT, METRE, TROOPS, aimAt, apart, at, bearing, bolt, facingAlong, fly, landingSpot, march, offset, person, squad, vec, walk } from './foot';
+import { FOOT, METRE, TROOPS, aimAt, apart, at, bearing, bolt, byTrench, facingAlong, fly, inTrench, landingSpot, march, offset, person, rightOf, squad, vec, walk } from './foot';
 
 const R = 18;
 const seeded = (seed = 1) => () => {
@@ -82,6 +82,60 @@ describe('on foot', () => {
     const f = facingAlong([0, 1, 0], [1, 1, 0]);
     expect(f[0]).toBeCloseTo(1, 6);
     expect(bearing([0, 1, 0], [0, 0, -1], [-1, 0, 0])).toBeCloseTo(Math.PI / 2, 6); // to the left is +
+  });
+});
+
+describe('by a trench', () => {
+  // (a big planet, the Death Star's size against a person, its trench round its middle)
+  const BIG = 150;
+  const band = { half: 1.48, home: 0.4, arc: Math.PI };
+
+  it('comes down beside it, on the side it was coming down on, its door toward it', () => {
+    for (const n of [vec.unit([1, 0.3, 0.2]), vec.unit([-0.2, -0.6, 0.7]), vec.unit([0.3, 0.001, -1])]) {
+      const back = 20 * METRE;
+      const spot = byTrench(n, band, BIG, back);
+      onGround({ ...spot, n: spot.n, f: spot.f });
+      expect(Math.sign(spot.n[1])).toBe(Math.sign(n[1]));
+      // `back` from the rim, along the ground
+      expect(Math.asin(Math.abs(spot.n[1])) * BIG - band.half).toBeCloseTo(back, 6);
+      expect(inTrench(spot.n, band, BIG)).toBe(false);
+      // as near where it was coming down as that is: the same way round
+      expect(Math.atan2(spot.n[2], spot.n[0])).toBeCloseTo(Math.atan2(n[2], n[0]), 6);
+      // facing along the trench, its right toward it
+      expect(spot.f[1]).toBeCloseTo(0, 2);
+      expect(-Math.sign(spot.n[1]) * rightOf(spot)[1]).toBeGreaterThan(0);
+    }
+  });
+
+  it('only comes down along the part of a trench there is', () => {
+    const part = { ...band, home: 0, arc: 0.5 };
+    const spot = byTrench([0, 0.1, -1], part, BIG, 0.5);
+    expect(Math.abs(Math.atan2(spot.n[2], spot.n[0]))).toBeLessThanOrEqual(0.5);
+  });
+
+  it('walks up to the rim and no further, and along it', () => {
+    const spot = byTrench([1, 0.2, 0], band, BIG, 2 * METRE);
+    let w = person(spot.n, [0, -1, 0]); // facing the trench
+    for (let t = 0; t < 3; t += 1 / 60) w = walk(w, { move: 1, run: true }, 1 / 60, BIG, [{ band }]);
+    onGround(w);
+    expect(inTrench(w.n, band, BIG)).toBe(false);
+    expect(Math.asin(w.n[1]) * BIG).toBeCloseTo(band.half + FOOT.radius, 4);
+    // and along it, as it was
+    let a = person(spot.n, spot.f);
+    for (let t = 0; t < 3; t += 1 / 60) a = walk(a, { move: 1 }, 1 / 60, BIG, [{ band }]);
+    expect(apart(a, { n: spot.n }, BIG)).toBeGreaterThan(FOOT.walk * 2.5);
+    expect(inTrench(a.n, band, BIG)).toBe(false);
+  });
+
+  it('sends squads from your side of it', () => {
+    const me = { id: 'me', ...person(byTrench([1, 0.2, 0], band, BIG, 10 * METRE).n, [0, 0, 1]) };
+    const rand = seeded(5);
+    for (let i = 0; i < 20; i++) {
+      for (const t of squad(rand, me, BIG, { band })) {
+        expect(inTrench(t.n, band, BIG, 2 * METRE)).toBe(false);
+        expect(Math.sign(t.n[1])).toBe(Math.sign(me.n[1]));
+      }
+    }
   });
 });
 
