@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
 import { SYSTEM_MARKS, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
+import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, wantsDeathStar, yearLabel } from './systems';
 
 const LOOKS = ['tatooine', 'geonosis', 'mandalore', 'hoth', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'lothal', 'sorgan', 'coruscant', 'mustafar', 'nevarro', 'kamino', 'scarif', 'bespin', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
 const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser'];
@@ -232,5 +232,19 @@ describe('the map', () => {
         expect(nose[0] * to[0] + nose[1] * to[1], s.id).toBeGreaterThan(0.999);
       }
     }
+  });
+});
+
+describe('wantsDeathStar', () => {
+  it('loads the Death Star only where there is one', () => {
+    expect(wantsDeathStar(systemById('yavin'))).toBe(true); // (the trench)
+    expect(wantsDeathStar(systemById('alderaan'))).toBe(true); // (the tractor beam)
+    expect(wantsDeathStar(systemById('scarif'))).toBe(true); // (it arrives and fires)
+    expect(wantsDeathStar(systemById('hoth'))).toBe(false);
+    expect(wantsDeathStar(systemById('endor'))).toBe(false); // (the second one is built in code)
+  });
+  it('is true for exactly the systems whose pieces make a Death Star slot', () => {
+    const wants = SYSTEMS.filter((s) => wantsDeathStar(s)).map((s) => s.id);
+    expect(wants.sort()).toEqual(['alderaan', 'scarif', 'yavin']);
   });
 });

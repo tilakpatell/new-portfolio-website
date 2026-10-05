@@ -1091,3 +1091,8 @@ export function goalsOf(s) {
   }
   return out;
 }
+
+// Whether the Death Star's model is wanted here: its own piece (Yavin's trench,
+// Alderaan's tractor beam), or Scarif's, where it arrives to fire. (Endor's second
+// is built in code, kind 'deathstar2', and loads nothing.)
+export const wantsDeathStar = (s) => s.pieces.some((p) => p.type === 'deathstar' || p.type === 'superlaser' || p.kind === 'deathstar');

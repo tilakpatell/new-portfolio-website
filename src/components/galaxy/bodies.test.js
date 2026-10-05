@@ -81,6 +81,14 @@ describe('buildBody', () => {
     expect(buildBody('scarif', { r: 32 }).reach).toBeCloseTo(32 * 1.12);
     expect(buildBody('hoth', { r: 36 }).reach).toBeLessThan(36 * 1.1);
   });
+
+  it('hands back the mesh a crash can mark', () => {
+    for (const small of [false, true]) {
+      const b = buildBody('hoth', { r: 20, small });
+      expect(b.surface.isMesh).toBe(true);
+      expect(b.group.children).toContain(b.surface);
+    }
+  });
 });
 
 describe('createRocks', () => {

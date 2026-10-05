@@ -289,6 +289,7 @@ export function buildBody(look, { r = 40, small = false } = {}) {
 
   return {
     group,
+    surface, // (the mesh a crash lays its shockwave over)
     radius: r,
     reach,
     // (the camera needn't be passed: the shaders know where it is)

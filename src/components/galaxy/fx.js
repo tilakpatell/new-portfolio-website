@@ -6,7 +6,7 @@
 // a ship jumps away (a bright core that swells and cools from white through
 // orange to nothing).
 //
-// createBolts(parent, { count }) → { fire(from, to, { color, speed, width, length, onHit }), update(dt), busy, dispose() }
+// createBolts(parent, { count }) → { mesh, fire(from, to, { color, speed, width, length, onHit }), update(dt), busy, dispose() }
 // createFlashes(parent, { count }) → { at(point, { size, color, life }), update(dt, camera), busy, dispose() }
 
 import * as THREE from 'three';
@@ -29,6 +29,9 @@ export function createBolts(parent, { count = 160 } = {}) {
   const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // (the instance colours made now, not at the first shot: the shader is built with them or without, and a first shot would build it again)
+  mesh.setColorAt(0, new THREE.Color(1, 1, 1));
+  mesh.instanceColor.needsUpdate = true;
   mesh.frustumCulled = false;
   mesh.count = 0;
   parent.add(mesh);
@@ -39,6 +42,7 @@ export function createBolts(parent, { count = 160 } = {}) {
   const p = new THREE.Vector3();
   const s = new THREE.Vector3();
   return {
+    mesh,
     // from and to: Vector3s (copied); onHit(point) when it gets there
     fire(from, to, { color = LASER.empire, speed = 60, width = 0.05, length = 2.4, onHit = null } = {}) {
       const b = free.pop();
@@ -86,7 +90,7 @@ export function createBolts(parent, { count = 160 } = {}) {
       }
       mesh.count = n;
       mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
     },
     dispose() {
       mesh.removeFromParent();

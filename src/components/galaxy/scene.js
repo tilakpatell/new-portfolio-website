@@ -79,7 +79,7 @@ import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
 import { asking } from './asking';
-import { arrival, courseTo, jumpSeconds, lightYears, starAhead, systemById } from './systems';
+import { arrival, courseTo, jumpSeconds, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -309,7 +309,7 @@ export async function create(canvas, ctx) {
     state.pull = 0;
     state.pullSaid = false;
     state.nextHunt = 30 + Math.random() * 30;
-    models.want(['destroyer', 'corvette', 'xwing', 'interceptor', 'deathstar']);
+    models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
   };
 
@@ -704,6 +704,12 @@ export async function create(canvas, ctx) {
   };
   const popDir = new THREE.Vector3();
   const shotFrom = new THREE.Vector3();
+  // where a shot landed on a hunter or a pilot (hit: { at, size, down }): a kill goes up in the one big burst; a hit that doesn't kill is a
+  // flash (the burst is shared, so each hit would cut off the one before it)
+  const landed = (hit, normal) => {
+    if (hit.down) pops.hit({ point: hit.at, normal, radius: hit.size * 1.8 });
+    else flashes.at(hit.at, { size: 0.4, life: 0.5 });
+  };
   const moveBolts = (dt) => {
     let any = false;
     for (const b of myBolts) {
@@ -722,7 +728,7 @@ export async function create(canvas, ctx) {
       const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1);
       if (hh) {
         b.visible = false;
-        pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
+        landed(hh, popDir.set(-d.v[0], 3, -d.v[2]).normalize());
         state.hitMark = 1;
         if (hh.down) {
           emit({ type: 'kill', kind: hh.kind });
@@ -735,7 +741,7 @@ export async function create(canvas, ctx) {
       const ph = pilots.hit(shotFrom, b.position, d.punch ?? 1);
       if (ph) {
         b.visible = false;
-        pops.hit({ point: ph.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: ph.down ? ph.size * 1.8 : 0.2 });
+        landed(ph, popDir.set(-d.v[0], 3, -d.v[2]).normalize());
         state.hitMark = 1;
         if (ph.hunter) {
           net?.hunterHit(ph.id, ph.hunter, d.punch ?? 1);
@@ -1330,7 +1336,7 @@ export async function create(canvas, ctx) {
       // another pilot's bolt into one of the hunters after you
       const r = hunters?.damage(e.id, e.damage);
       if (r) {
-        pops.hit({ point: r.at, normal: new THREE.Vector3(0, 1, 0), radius: r.down ? r.size * 1.8 : 0.2 });
+        landed(r, popDir.set(0, 1, 0));
         if (r.down) net?.helped?.(e.from, NAMES[r.kind] ?? 'hunter');
       }
     } else if (e.type === 'downed') {

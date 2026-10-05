@@ -7,8 +7,8 @@
 // copy kept as a template, and every ship of that kind after it is a copy
 // sharing its geometry and materials (so the four Star Destroyers over Hoth
 // cost one build). A kind that loads
-// flies as its built stand-in until it's here (where it has one), and a slot
-// swaps over the moment it is.
+// flies as its built stand-in until it's here (its own, or STAND_IN's where
+// it has none), and a slot swaps over the moment it is.
 //
 // createModels({ prepare(object) → Promise }) → { slot(kind, size, { tint }) → slot,
 //   want(kinds), update(t), dispose() }
@@ -48,6 +48,12 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
 };
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
+
+// a kind with no built version of its own flies as another's till its model
+// loads (else its slot would be empty, and the ship would pop in): the
+// Venator as a Star Destroyer, Slave I and the Falcon as a freighter. The
+// Death Star has none here: the world puts a sphere of its own in its place.
+export const STAND_IN = { venator: 'destroyer', slave1: 'freighter', falcon: 'freighter' };
 
 // the models the hunters fly (universe/glbFleet.js flies them, the
 // universe's TIEs and the galaxy's droids, each built until it's here)
@@ -152,10 +158,10 @@ export function createModels({ prepare = null } = {}) {
   };
 
   // a slot's model: the loaded one's copy if it's here, else a copy of the
-  // built stand-in (if there is one; else nothing yet)
+  // built stand-in (the kind's own built version, or STAND_IN's; else nothing yet)
   function fill(s) {
     const real = loaded.get(s.kind);
-    const src = real ?? template(s.kind);
+    const src = real ?? template(s.kind) ?? template(STAND_IN[s.kind]);
     if (!src) return;
     if (s.model) s.inner.remove(s.model);
     const copy = src.skinned ? cloneSkinned(src.holder) : src.holder.clone(true);
