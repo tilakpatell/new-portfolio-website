@@ -5,13 +5,15 @@ import { capturePointer } from '../../lib/pointer';
 import { damp, holdChikari, onSitarChikari, onSitarPluck, pluck, warmNeck } from './sitar';
 import { CHIKARI, chikariLevel, chikariSpeed } from './sitarRules';
 import { fretForKey, fretOf, keyForFret, meendTarget, sameNote, tarabHz } from './sitarRules';
-import { frets, RAGAS } from './tuning';
+import { CHROMATIC, FRET_SETS, customNotes, frets, isFretSet, RAGAS } from './tuning';
 import SwaraLabel from './SwaraLabel';
 import { useTuning } from './useTuning';
 import './music.css';
 
-// The sitar, played on its frets: every swara from mandra Pa to taar Ga, the
-// raga's own notes lit, or only the raga's frets, as a player sets them.
+// The sitar, played on its frets, set the way a player sets them (tuning.js
+// FRET_SETS): every swara from mandra Pa to taar Ga, a regular sitar's Sa to
+// taar Sa, set for Darbari or Bhairavi, the raga's own, or the player's own
+// choice. The raga's notes are lit.
 // Click or tap a fret to pluck it (Da and Ra in turn when you play quickly).
 // Hold and move along the neck to slide between frets without plucking again;
 // pull across it to bend the string over the fret: meend, up to a fourth.
@@ -48,12 +50,13 @@ function Inlay({ y, flip = false }) {
 
 export default function SitarNeck({ onPlay }) {
   const [tuning, setTuning] = useTuning();
-  const all = tuning.allFrets !== false;
+  const fretSet = isFretSet(tuning.frets) ? tuning.frets : 'all';
+  const custom = customNotes(tuning.customFrets || RAGAS[tuning.raga].notes);
   const auto = tuning.autoChikari !== false;
   const follow = tuning.chikariFollow !== false;
   const speed = chikariSpeed(tuning.chikariSpeed);
   const level = chikariLevel(tuning.chikariLevel);
-  const list = useMemo(() => frets(tuning.raga, { all }), [tuning.raga, all]);
+  const list = useMemo(() => frets(tuning.raga, { set: fretSet, custom }), [tuning.raga, fretSet, custom]);
   const vertical = useMediaQuery('(max-width: 639px)');
   // the stretch of the neck on screen, in neck units (along the strings)
   const view = vertical ? { x: NECK.x0 - 30, w: NECK.x1 - NECK.x0 + 100 } : { x: 0, w: 1040 };
@@ -88,7 +91,7 @@ export default function SitarNeck({ onPlay }) {
           setLit(i);
           setPlucks((k) => k + 1);
           const f = listRef.current[i];
-          setPlayed((p) => [...p.slice(-9), { s: f.s, oct: f.oct, id: Math.random() }]);
+          setPlayed((p) => [...p.slice(-9), { s: f.s, oct: f.oct, ati: f.ati, id: Math.random() }]);
         }
       }),
     [],
@@ -126,7 +129,7 @@ export default function SitarNeck({ onPlay }) {
     keyHeld.current = null;
     setLit(-1);
     setPull(0);
-  }, [tuning.raga, all]);
+  }, [list]);
   // the recordings for the whole neck, as the sitar comes into view
   useEffect(() => {
     const el = svg.current;
@@ -251,20 +254,47 @@ export default function SitarNeck({ onPlay }) {
   const x = lit >= 0 ? center(lit) : 0;
   const mainPath = lit >= 0 && pull > 0 ? `M8 ${MAIN_Y} L${x} ${MAIN_Y + pull * 26} L${BRIDGE} ${MAIN_Y}` : `M8 ${MAIN_Y} L${BRIDGE} ${MAIN_Y}`;
   const phoneHeight = `clamp(420px, ${n * 34}px, 92vh)`;
+  const ragaName = RAGAS[tuning.raga].name;
+  const lights = `${ragaName}’s notes are lit.`;
+  const about = {
+    all: `${n} frets, mandra Pa to taar Ga. ${lights}`,
+    regular: `${n} frets, Sa to taar Sa, as a sitar usually comes: the shuddha notes and komal Ni. ${lights}`,
+    darbari: `${n} frets set for Darbari: Ga and Dha tied on lower, ati komal (two lines under), for its slow andolan. ${lights}`,
+    bhairavi: `${n} frets set for Bhairavi: komal Re, Ga, Dha and Ni. ${lights}`,
+    raga: `${n} frets, set for ${ragaName}.`,
+    custom: `${n} frets of your own: tap a note to tie its fret on or take it off. ${lights}`,
+  };
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div className="seg" role="group" aria-label="Frets">
-          <button type="button" aria-pressed={all} onClick={() => setTuning({ allFrets: true })}>
-            All twelve notes
-          </button>
-          <button type="button" aria-pressed={!all} onClick={() => setTuning({ allFrets: false })}>
-            {RAGAS[tuning.raga].name}’s frets only
-          </button>
+        <div className="seg seg-wrap" role="group" aria-label="Frets set for">
+          {Object.entries(FRET_SETS).map(([id, set]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={fretSet === id}
+              // a custom setting starts from the raga's frets
+              onClick={() => setTuning(id === 'custom' ? { frets: id, customFrets: custom } : { frets: id })}
+            >
+              {id === 'raga' ? `${ragaName}’s own` : set.name}
+            </button>
+          ))}
         </div>
-        <p className="text-sm text-muted">{all ? `${n} frets, mandra Pa to taar Ga. ${RAGAS[tuning.raga].name}’s notes are lit.` : `${n} frets, set for ${RAGAS[tuning.raga].name}.`}</p>
+        <p className="text-sm text-muted">{about[fretSet]}</p>
       </div>
+      {fretSet === 'custom' && (
+        <div className="seg seg-wrap mb-4" role="group" aria-label="Your frets: tap a note to tie its fret on or take it off">
+          {CHROMATIC.map((s) => {
+            const on = custom.includes(s);
+            return (
+              <button key={s} type="button" aria-pressed={on} onClick={() => setTuning({ customFrets: customNotes(on ? custom.replace(s, '') : custom + s) })}>
+                <SwaraLabel s={s} />
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="sn2-chikari-bar mb-4" role="group" aria-label="Chikari">
         <span className="label">Chikari</span>
         <div className="seg">
@@ -405,7 +435,7 @@ export default function SitarNeck({ onPlay }) {
               data-lit={lit === i || undefined}
               data-out={!f.inRaga || undefined}
             >
-              <SwaraLabel s={f.s} oct={f.oct} />
+              <SwaraLabel s={f.s} oct={f.oct} ati={f.ati} />
               {!vertical && <kbd className="sn2-key">{keyForFret(i).toUpperCase()}</kbd>}
             </span>
           ))}
@@ -416,7 +446,7 @@ export default function SitarNeck({ onPlay }) {
         {played.length ? (
           played.map((p) => (
             <span key={p.id} className="sn2-strip-note">
-              <SwaraLabel s={p.s} oct={p.oct} />
+              <SwaraLabel s={p.s} oct={p.oct} ati={p.ati} />
             </span>
           ))
         ) : (
