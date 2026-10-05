@@ -241,7 +241,8 @@ describe('Earth: the flight log', () => {
   it('keeps a trail of where the plane has flown, a point every so often, up to a limit', () => {
     const f = newFlight();
     const trail = [];
-    expect(logTrail(trail, f.p)).toBe(true);
+    expect(logTrail(trail, f.p, f.alt)).toBe(true);
+    expect(trail[0][3]).toBe(f.alt); // each point keeps the height it was flown at
     expect(logTrail(trail, f.p)).toBe(false); // not moved: no new point
     let added = 0;
     for (let i = 0; i < 20 / DT; i++) {

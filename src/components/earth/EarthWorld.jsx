@@ -429,7 +429,7 @@ function World({ gl, setGl }) {
       if (f.rolling && !wasRolling) sounds().then((x) => x.roll());
       s.engine?.set(f.speed > 0.15 ? Math.min(1, (f.speed - 0.11) / 0.23) : 0);
       // the log: the trail, and the distance written down as it adds up
-      if (logTrail(s.trail, f.p)) s.trailV++;
+      if (logTrail(s.trail, f.p, f.alt)) s.trailV++;
       if (f.km - s.kmSaved > SAVE_KM) {
         s.flown = addFlown(f.km - s.kmSaved);
         s.kmSaved = f.km;

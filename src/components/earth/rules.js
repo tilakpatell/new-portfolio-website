@@ -207,13 +207,14 @@ export function easeLook(l, dt) {
 
 // ── the flight log ──
 
-// The trail flown: `trail` is a list of points on the sphere; `p` is added
-// when it's TRAIL.step or more from the last, and the oldest go once there
-// are TRAIL.max. Returns whether a point was added.
-export function logTrail(trail, p) {
+// The trail flown: `trail` is a list of points on the sphere, each with the
+// height it was flown at; `p` is added when it's TRAIL.step or more from
+// the last, and the oldest go once there are TRAIL.max. Returns whether a
+// point was added.
+export function logTrail(trail, p, alt = 0) {
   const last = trail[trail.length - 1];
   if (last && angle(last, p) < TRAIL.step) return false;
-  trail.push([p[0], p[1], p[2]]);
+  trail.push([p[0], p[1], p[2], alt]);
   if (trail.length > TRAIL.max) trail.splice(0, trail.length - TRAIL.max);
   return true;
 }

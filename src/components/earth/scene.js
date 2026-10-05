@@ -24,7 +24,7 @@ const BASE = '/textures/earth/';
 const CLOUDS_UP = CLOUD_ALT; // the cloud shell's height over the ground (the plane can get under it)
 const AIR = 1.085; // the top of the atmosphere
 const PLANE = 0.0075; // the plane's length, in Earth radii (a toy: you'd never see a real one from up here)
-const TRAIL_UP = 0.009; // the trail flown, just under the plane's lowest
+const TRAIL_UP = 0.0015; // the trail flown is drawn this far under where the plane was
 const ROUTE_UP = 0.008; // the routes to the places stamped
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -602,9 +602,10 @@ export function createEarth(canvas, { onLost, small = false } = {}) {
       const n = Math.min(trail.length, LOG.max);
       for (let i = 0; i < n; i++) {
         const pt = trail[trail.length - n + i];
-        trailPos[i * 3] = pt[0] * (1 + TRAIL_UP);
-        trailPos[i * 3 + 1] = pt[1] * (1 + TRAIL_UP);
-        trailPos[i * 3 + 2] = pt[2] * (1 + TRAIL_UP);
+        const r = 1 + Math.max(0.002, (pt[3] ?? 0.01) - TRAIL_UP);
+        trailPos[i * 3] = pt[0] * r;
+        trailPos[i * 3 + 1] = pt[1] * r;
+        trailPos[i * 3 + 2] = pt[2] * r;
       }
       trailGeo.setDrawRange(0, n);
       trailGeo.attributes.position.needsUpdate = true;
