@@ -10,12 +10,16 @@
 // metal shelving ("Time travel stuff", jars, a spiky ball, a green alien
 // head) under the orange floral wall lamp; the pinkish-tan machine on its
 // stand (the plumbus factory); the cream washer and dryer; the Portal panic
-// cabinet; and the portal, swirling green on the east wall.
+// cabinet; and the portal, swirling green on the east wall. In the floor by
+// the plumbus factory, the hatch down to Rick's secret lab (./basement.js),
+// which lifts as Morty comes near; on the east wall, the door to the kitchen,
+// pale in a white frame, a little window in it and a lamp over it.
 
 import * as THREE from 'three';
-import { AREAS, FURNITURE, LINKS, PEOPLE } from '../rules';
-import { rng, speckle } from '../kit';
-import { BALL, BALL8, BOX, CYL, CYL8, DOOR_H, TAU, door, lathe, makeRoom, tiledPaint, tube, wallLine } from './shell';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { AREAS, FURNITURE, HATCH, LINKS, PEOPLE } from '../rules';
+import { at, mergeParts, rng, speckle } from '../kit';
+import { BALL, BALL8, BOX, CYL, CYL8, DOOR_H, PLANE, TAU, casing, fitText, lathe, makeRoom, tiledPaint, tube, wallLine } from './shell';
 import { needCast, person } from './people';
 import { LOOKS } from './furniture';
 import { PINS, paintCells, planks } from './labpaint';
@@ -397,7 +401,8 @@ export async function buildGarage(kit) {
     g.fillRect(0, h - 2, w, 2);
     g.fillRect(w - 2, 0, 2, h);
   });
-  R.tiled.add(BOX, concrete, new THREE.Matrix4().compose(new THREE.Vector3((a.x0 + a.x1) / 2, -0.05, (a.z0 + a.z1) / 2), new THREE.Quaternion(), new THREE.Vector3(a.x1 - a.x0 + 0.4, 0.1, a.z1 - a.z0 + 0.4)));
+  // (one surface with the hatch's hole in it: slabs side by side leave hairline cracks the ink finds)
+  R.tiled.add(holed([a.x0 - 0.2, a.x1 + 0.2, a.z0 - 0.2, a.z1 + 0.2], [HATCH.x - HATCH.w / 2, HATCH.x + HATCH.w / 2, HATCH.z - HATCH.d / 2, HATCH.z + HATCH.d / 2]), concrete, at(0, 0, 0));
   const plank = tiledPaint(m, 'c137-lab-planks', 256, 2.2, planks('#5e3d26', 3));
   const ceiling = tiledPaint(m, 'c137-lab-ceiling', 256, 2.4, planks('#3e2a1c', 9, true));
   const wall = { mat: plank, skirt: 0x3a2618, h: H };
@@ -405,7 +410,7 @@ export async function buildGarage(kit) {
   wallLine(R, F, [a.x0 - 0.2, a.z0], [a.x1 + 0.2, a.z0], { ...wall, into: [0, 1] });
   wallLine(R, F, [a.x0, a.z0 - 0.2], [a.x0, a.z1 + 0.2], { ...wall, into: [1, 0] });
   const kd = LINKS.find((l) => l.id === 'garage-kitchen');
-  wallLine(R, F, [a.x1, a.z0 - 0.2], [a.x1, a.z1 + 0.2], { ...wall, into: [-1, 0] }, [{ c: kd.z, w: 0.92, y0: 0, y1: DOOR_H, draw: (f, u, wl) => door(f, u, { v1: wl.v1, thick: wl.thick, color: 0x8a5a34, trim: 0x4a2e1c }) }]);
+  wallLine(R, F, [a.x1, a.z0 - 0.2], [a.x1, a.z1 + 0.2], { ...wall, into: [-1, 0] }, [{ c: kd.z, w: 0.92, y0: 0, y1: DOOR_H, draw: (f, u, wl) => kitchenDoor(f, u, wl) }]);
   const exit = LINKS.find((l) => l.id === 'garage-exit');
   wallLine(R, F, [a.x0 - 0.2, a.z1], [a.x1 + 0.2, a.z1], { ...wall, into: [0, -1] }, [{ c: exit.x, w: 5.4, y0: 0, y1: 2.5, draw: (f, u, wl) => garageDoor(f, u, wl.v1, wl.thick) }]);
   const ceil = new THREE.Matrix4().compose(new THREE.Vector3((a.x0 + a.x1) / 2, H + 0.05, (a.z0 + a.z1) / 2), new THREE.Quaternion(), new THREE.Vector3(a.x1 - a.x0 + 0.4, 0.1, a.z1 - a.z0 + 0.4));
@@ -461,6 +466,10 @@ export async function buildGarage(kit) {
     spill.material.opacity = 0.55 + Math.sin(t * 2.3) * 0.12;
   });
 
+  // the hatch down to the secret lab, and the door's and the hatch's paint
+  hatch(R);
+  paintDoor(R);
+
   // Rick at the bench
   const rick = PEOPLE.find((p) => p.id === 'rick');
   person(R, 'rick', { ...rick, h: 2.0, look: LOOKS.rick });
@@ -468,8 +477,249 @@ export async function buildGarage(kit) {
   return R.build({ light: { sun: [0xffe9c8, 0.42], hemi: [0xf3ecdc, 0x5e5a4a, 1.6], fog: null, background: 0x0e0b09 } });
 }
 
+// ── the ways out: the kitchen door and the hatch ──
+
+// The door to the kitchen: pale in a broad white frame, proud of the dark
+// planks; a little window in it with the kitchen's light through it, a steel
+// kick plate, the sign over it and a caged lamp beside that. (v out of the
+// wall into the lab, u along it, southwards.)
+function kitchenDoor(f, u, wl) {
+  const w = 0.92;
+  const h = DOOR_H;
+  const v = wl.v1 - wl.thick / 2;
+  const trim = 0xf7f3ea;
+  f.box(0xefe6cf, u, 0, v, w, h, 0.05);
+  for (const s of [-1, 1]) f.box(0xdccfb0, u + s * w * 0.22, 0.2, v + 0.03, w * 0.32, 0.78, 0.012);
+  f.box(0xb9c0c7, u, 0.03, v + 0.032, w - 0.1, 0.14, 0.01);
+  // the window: the kitchen through it, a frame and a glazing bar
+  f.decal('kitchenview', u, 1.52, v + 0.034, 0.5, 0.6, { bright: true });
+  for (const [du, y, ww, hh] of [
+    [0, 1.2, 0.62, 0.06],
+    [0, 1.84, 0.62, 0.06],
+    [-0.28, 1.52, 0.06, 0.68],
+    [0.28, 1.52, 0.06, 0.68],
+    [0, 1.52, 0.5, 0.025],
+  ])
+    f.cbox(trim, u + du, y, v + 0.04, ww, hh, 0.03);
+  for (const s of [-1, 1]) f.ball(0xd8b25a, u - w * 0.38, 0.98, v + s * 0.06, 0.035);
+  casing(f, u, w, h, wl.v1 - wl.thick, wl.v1, trim, { both: false, width: 0.14 });
+  // the sign over the door, and a lamp in a cage beside it
+  f.cbox(0x2b2b30, u, h + 0.27, wl.v1 + 0.012, 0.6, 0.19, 0.024).decal('kitchensign', u, h + 0.27, wl.v1 + 0.025, 0.56, 0.15);
+  const lu = u + 0.72;
+  f.cbox(0x3a3d42, lu, 2.18, wl.v1 + 0.02, 0.12, 0.16, 0.04).cyl(0x3a3d42, lu, 2.18, wl.v1 + 0.1, 0.03, 0.14, Math.PI / 2);
+  f.glow(BALL, 0xffd890, 2.4, lu, 2.18, wl.v1 + 0.2, 0, 0.11);
+  for (const y of [2.12, 2.24]) f.part(new THREE.TorusGeometry(0.075, 0.006, 4, 16), 0x2b2b30, lu, y, wl.v1 + 0.2, 0, 1, 1, 1, Math.PI / 2);
+  for (let i = 0; i < 4; i++) f.cbox(0x2b2b30, lu + Math.cos((i * TAU) / 4) * 0.075, 2.18, wl.v1 + 0.2 + Math.sin((i * TAU) / 4) * 0.075, 0.008, 0.16, 0.008);
+  // a mat in front of it
+  f.decal('doormat', u, 0.004, wl.v1 + 0.42, 0.88, 0.56, { rx: -Math.PI / 2 });
+}
+
+// the door's pictures, and the hatch's warning stripe
+function paintDoor(R) {
+  R.cell('kitchenview', 80, 96, (g, w, h) => {
+    // the kitchen's olive wall in lamplight, a window with yellow curtains, the lamp
+    const gr = g.createRadialGradient(w * 0.55, h * 0.18, 4, w * 0.55, h * 0.3, h * 0.9);
+    gr.addColorStop(0, '#f6f0a8');
+    gr.addColorStop(0.35, '#a9b25a');
+    gr.addColorStop(1, '#5f6a2e');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#bfe6f4';
+    g.fillRect(w * 0.08, h * 0.3, w * 0.34, h * 0.32);
+    g.fillStyle = '#f2c84a';
+    g.fillRect(w * 0.02, h * 0.26, w * 0.12, h * 0.42);
+    g.fillRect(w * 0.36, h * 0.26, w * 0.12, h * 0.42);
+    g.fillStyle = '#d8c39a';
+    g.fillRect(0, h * 0.74, w, h * 0.26);
+    g.fillStyle = '#3a3d42';
+    g.fillRect(w * 0.55 - 1, 0, 2, h * 0.12);
+    g.fillStyle = '#fff6c8';
+    g.beginPath();
+    g.arc(w * 0.55, h * 0.16, 7, 0, TAU);
+    g.fill();
+  });
+  R.cell('kitchensign', 224, 60, (g, w, h) => {
+    g.fillStyle = '#f2ecd8';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#25503f';
+    g.fillRect(4, 4, w - 8, h - 8);
+    g.strokeStyle = '#f2ecd8';
+    g.lineWidth = 2;
+    g.strokeRect(9, 9, w - 18, h - 18);
+    fitText(g, 'KITCHEN', w / 2, h / 2 + 1, w - 40, 34, { color: '#f2ecd8' });
+  });
+  R.cell('doormat', 128, 80, (g, w, h) => {
+    speckle(g, w, h, { base: '#8a6238', specks: ['#76522c', '#9c7242', '#6a4826'], n: 1400, size: 1.6, seed: 41 });
+    g.strokeStyle = '#3a2614';
+    g.lineWidth = 6;
+    g.strokeRect(5, 5, w - 10, h - 10);
+  });
+  R.cell('hazard', 256, 32, hazardStripes);
+}
+
+// yellow and black, on the slant
+export function hazardStripes(g, w, h) {
+  g.fillStyle = '#f2c23c';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1e1e22';
+  for (let x = -h; x < w + h; x += h) {
+    g.beginPath();
+    g.moveTo(x, h);
+    g.lineTo(x + h / 2, h);
+    g.lineTo(x + h, 0);
+    g.lineTo(x + h / 2, 0);
+    g.fill();
+  }
+}
+
+// The hatch (rules' HATCH): a steel lid flush in the floor, hinged on its west
+// edge, in a steel rim with a warning stripe round it. It swings up as Morty
+// comes within OPEN_R of it and down once he's gone. Open, it shows the shaft
+// down, the top of the yellow ladder against its south side, and the secret
+// lab's green light coming up it.
+const OPEN_R = 2;
+const LID_OPEN = 1.86; // how far it swings (radians: a little past upright)
+const SHAFT = 2.4; // how deep the shaft is drawn
+export const LADDER = 0xe0b62c; // the ladder's yellow, here and at its foot
+function hatch(R) {
+  const kit = R.kit;
+  const [hx0, hx1, hz0, hz1] = [HATCH.x - HATCH.w / 2, HATCH.x + HATCH.w / 2, HATCH.z - HATCH.d / 2, HATCH.z + HATCH.d / 2];
+  const f = R.frame(0, 0, 0, { list: 'fixed' });
+  // the shaft's lining, under the floor slab: concrete, darker further down
+  for (const [x, z, w, d] of [
+    [hx0 - 0.05, HATCH.z, 0.1, HATCH.d + 0.2],
+    [hx1 + 0.05, HATCH.z, 0.1, HATCH.d + 0.2],
+    [HATCH.x, hz0 - 0.05, HATCH.w, 0.1],
+    [HATCH.x, hz1 + 0.05, HATCH.w, 0.1],
+  ])
+    f.box(0x4f5551, x, -0.7, z, w, 0.698, d).box(0x2a2f2c, x, -SHAFT, z, w, SHAFT - 0.7, d);
+  // the green light from below: on the shaft's foot and up its walls
+  f.glow(PLANE, 0x48ff6a, 0.95, HATCH.x, -SHAFT + 0.02, HATCH.z, 0, HATCH.w, HATCH.d, 1, -Math.PI / 2);
+  for (const [x, z, ry, ww] of [
+    [hx0 + 0.003, HATCH.z, Math.PI / 2, HATCH.d],
+    [hx1 - 0.003, HATCH.z, -Math.PI / 2, HATCH.d],
+    [HATCH.x, hz0 + 0.003, 0, HATCH.w],
+    [HATCH.x, hz1 - 0.003, Math.PI, HATCH.w],
+  ]) {
+    f.glow(PLANE, 0x3ae860, 0.62, x, -SHAFT + 0.22, z, ry, ww, 0.44);
+    f.glow(PLANE, 0x2cb04c, 0.34, x, -SHAFT + 0.66, z, ry, ww, 0.44);
+  }
+  // the top of the ladder, against the south side
+  const lz = hz1 - 0.07;
+  for (const s of [-1, 1]) {
+    f.box(LADDER, HATCH.x + s * 0.25, -SHAFT, lz, 0.05, SHAFT - 0.05, 0.04);
+    f.box(0x6f7880, HATCH.x + s * 0.25, -0.5, lz + 0.04, 0.04, 0.05, 0.06);
+  }
+  for (let y = -0.26; y > -SHAFT; y -= 0.28) f.cyl(0x9aa3ab, HATCH.x, y, lz, 0.017, 0.5, 0, Math.PI / 2);
+  // the rim, flush round the hole, and the stripe round that
+  const rim = 0x7d868c;
+  f.box(rim, HATCH.x, 0, hz0 - 0.035, HATCH.w + 0.14, 0.014, 0.07).box(rim, HATCH.x, 0, hz1 + 0.035, HATCH.w + 0.14, 0.014, 0.07);
+  f.box(rim, hx0 - 0.035, 0, HATCH.z, 0.07, 0.014, HATCH.d).box(rim, hx1 + 0.035, 0, HATCH.z, 0.07, 0.014, HATCH.d);
+  const sw = 0.14;
+  for (const s of [-1, 1]) {
+    f.decal('hazard', HATCH.x, 0.003, HATCH.z + s * (HATCH.d / 2 + 0.07 + sw / 2), HATCH.w + 0.14 + sw * 2, sw, { rx: -Math.PI / 2 });
+    f.decal('hazard', HATCH.x + s * (HATCH.w / 2 + 0.07 + sw / 2), 0.003, HATCH.z, HATCH.d + 0.14, sw, { rx: -Math.PI / 2, ry: Math.PI / 2 });
+  }
+
+  // the lid, on its own, hinged at the west edge (its pivot); +x across it
+  const L = HATCH.w - 0.02;
+  const parts = [];
+  const p = (geo, color, x, y, z, ry, sx, sy, sz, rx = 0, rz = 0) => parts.push({ geo, color, matrix: at(x, y, z, ry, sx, sy, sz, rx, rz) });
+  p(BOX, 0x8f989e, L / 2, -0.0175, 0, 0, L, 0.035, L);
+  // a raised lip round its top, rivets in it
+  for (const s of [-1, 1]) {
+    p(BOX, 0x7d868c, L / 2, 0.005, s * (L / 2 - 0.025), 0, L, 0.01, 0.05);
+    p(BOX, 0x7d868c, L / 2 + s * (L / 2 - 0.025), 0.005, 0, 0, 0.05, 0.01, L - 0.1);
+  }
+  for (let i = 0; i < 6; i++) for (const s of [-1, 1]) p(BALL8, 0xa9b1b7, 0.1 + i * 0.196, 0.01, s * (L / 2 - 0.025), 0, 0.02, 0.014, 0.02);
+  // the warning stripe along the free edge
+  for (let i = 0; i < 10; i++) p(BOX, i % 2 ? 0x1e1e22 : 0xf2c23c, L - 0.15, 0.0015, -L / 2 + 0.1 + i * 0.098 + 0.049, 0, 0.12, 0.003, 0.098);
+  // the ring to lift it by, in its dish
+  p(CYL, 0x4a5258, L - 0.42, 0.0005, 0, 0, 0.22, 0.002, 0.22);
+  p(new THREE.TorusGeometry(0.07, 0.013, 6, 18), 0xb9c0c7, L - 0.42, 0.013, 0, 0, 1, 1, 1, Math.PI / 2);
+  // the hinge's knuckles, and ribs under it (seen once it's up)
+  for (const z of [-0.42, 0, 0.42]) p(CYL, 0x5d666c, 0, -0.012, z, 0, 0.05, 0.16, 0.05, Math.PI / 2);
+  for (const z of [-0.3, 0.3]) p(BOX, 0x5a6268, L / 2, -0.06, z, 0, L - 0.12, 0.04, 0.04);
+  p(BOX, 0x5a6268, L / 2, -0.06, 0, 0, 0.04, 0.04, L - 0.12);
+  const lid = new THREE.Mesh(R.own(mergeParts(parts)), kit.mats.toon(0xffffff, { vertexColors: true }));
+  lid.castShadow = true;
+  lid.receiveShadow = true;
+  const pivot = new THREE.Group();
+  pivot.position.set(hx0 + 0.01, 0.012, HATCH.z);
+  pivot.add(lid);
+  R.add(pivot);
+
+  // the green haze coming up out of it, while it's open
+  const haze = new THREE.Mesh(
+    R.own(crossed(HATCH.w * 0.9, SHAFT + 0.9)),
+    R.own(new THREE.MeshBasicMaterial({ map: R.own(fadeUp()), color: new THREE.Color(0x5dff7a), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })),
+  );
+  haze.position.set(HATCH.x, (0.9 - SHAFT) / 2, HATCH.z);
+  haze.visible = false;
+  R.add(haze, { ink: false });
+
+  let k = 0;
+  let last = -1;
+  R.tick((t, dt, state) => {
+    const m = state.morty;
+    const want = m && Math.hypot(m.x - HATCH.x, m.z - HATCH.z) < OPEN_R ? 1 : 0;
+    // (back in the lab after a while: where it should be, straight away)
+    if (t - last > 0.25) k = want;
+    else k = want > k ? Math.min(1, k + dt * 1.7) : Math.max(0, k - dt * 1.4);
+    last = t;
+    const e = k * k * (3 - 2 * k);
+    pivot.rotation.z = e * LID_OPEN;
+    haze.visible = e > 0.01;
+    haze.material.opacity = e * 0.38;
+  });
+}
+
+// A flat surface over [x0, x1, z0, z1] at y = 0 with a rectangular hole
+// ([x0, x1, z0, z1]) in it, facing up (or down, `down`), in world space
+export function holed([X0, X1, Z0, Z1], [x0, x1, z0, z1], down = false) {
+  const v = (x, z) => new THREE.Vector2(x, down ? z : -z);
+  const s = new THREE.Shape([v(X0, Z0), v(X0, Z1), v(X1, Z1), v(X1, Z0)]);
+  s.holes.push(new THREE.Path([v(x0, z0), v(x1, z0), v(x1, z1), v(x0, z1)]));
+  return new THREE.ShapeGeometry(s).rotateX(down ? Math.PI / 2 : -Math.PI / 2);
+}
+
+// two planes crossed at right angles, standing, w × h, for a glow seen from anywhere round it
+export function crossed(w, h) {
+  const a = new THREE.PlaneGeometry(w, h);
+  const b = new THREE.PlaneGeometry(w, h).rotateY(Math.PI / 2);
+  const g = mergeGeometries([a, b], false);
+  a.dispose();
+  b.dispose();
+  return g;
+}
+
+// a soft glow, bright at the foot and gone by the top, faded at the sides
+// (`down` turns it over: bright at the top)
+export function fadeUp(down = false) {
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 128;
+  const g = c.getContext('2d');
+  const v = g.createLinearGradient(0, down ? 0 : 128, 0, down ? 128 : 0);
+  v.addColorStop(0, 'rgba(255,255,255,1)');
+  v.addColorStop(0.45, 'rgba(255,255,255,0.4)');
+  v.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = v;
+  g.fillRect(0, 0, 32, 128);
+  g.globalCompositeOperation = 'destination-in';
+  const s = g.createLinearGradient(0, 0, 32, 0);
+  s.addColorStop(0, 'rgba(0,0,0,0)');
+  s.addColorStop(0.5, 'rgba(0,0,0,1)');
+  s.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = s;
+  g.fillRect(0, 0, 32, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 // a soft round spot, for the portal's light
-function glowSpot() {
+export function glowSpot() {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d');
