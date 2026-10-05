@@ -3157,21 +3157,35 @@ export async function create(canvas, ctx) {
       setText(h, h.navDist, `${Math.round(back.dist)} m`);
     }
   };
+  // G at a landing's door (footScene's door()): into the planet's page
+  const intoDoor = () => {
+    const d = foot.door();
+    if (!d) return false;
+    props.onOpen?.(d.id);
+    return true;
+  };
   // the line over the map: what G does here
   let promptWas = null;
   const placePrompt = () => {
     const el = props.prompt?.current;
     if (!el) return;
     let text = '';
+    let say = false; // (a line someone says to you: nothing for G to do)
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
     else if (state.note && wall() < state.note.until && !onFoot()) text = state.note.text;
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
+    else if (info && foot.phase === 'walk' && info.near?.label) text = `Into ${info.near.label}`;
+    else if (info && foot.phase === 'walk' && info.near?.say) {
+      text = `${info.near.say.name}: “${info.near.say.line}”`;
+      say = true;
+    }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost) text = `Land on ${byId(state.landable).label} and step out`;
     if (text === promptWas) return;
     promptWas = text;
     el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
+    el.toggleAttribute('data-say', say);
   };
 
   // ── Frames ──
@@ -3469,7 +3483,7 @@ export async function create(canvas, ctx) {
       e.preventDefault();
       heard();
       if (onFoot()) {
-        if (!foot.board()) emit({ type: 'foot', id: 'far' });
+        if (!foot.board()) intoDoor() || emit({ type: 'foot', id: 'far' });
       } else startFoot();
       return;
     }
@@ -3915,7 +3929,7 @@ export async function create(canvas, ctx) {
     out() {
       heard();
       if (onFoot()) {
-        if (!foot.board()) emit({ type: 'foot', id: 'far' });
+        if (!foot.board()) intoDoor() || emit({ type: 'foot', id: 'far' });
       } else startFoot();
     },
     // the phone's Switch button, on foot: play the other one

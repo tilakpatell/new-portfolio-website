@@ -64,7 +64,9 @@ describe('planet landings', () => {
       expect(FILES[id], `${id} has a file`).toBeTruthy();
       const P = await FILES[id]();
       const models = l.models ?? {};
-      for (const t of l.things ?? []) expect(Boolean(models[t.kind] || P.PROPS?.[t.kind]), `${id}: ${t.kind}`).toBe(true);
+      // (a figure is built by furnish itself: landings/people.js)
+      for (const t of l.things ?? []) expect(Boolean(models[t.kind] || P.PROPS?.[t.kind] || (t.kind === 'figure' && (t.opts?.url || t.opts?.meshy))), `${id}: ${t.kind}`).toBe(true);
+      for (const t of l.things ?? []) if (t.kind === 'figure' && t.opts?.url) expect(existsSync(join(PUBLIC, t.opts.url)), `${id}: ${t.opts.url}`).toBe(true);
       for (const e of l.scatter ?? []) expect(Boolean(models[e.kind] || P.SCATTER?.[e.kind] || P.PROPS?.[e.kind]), `${id}: scattered ${e.kind}`).toBe(true);
     }
   });
@@ -104,6 +106,18 @@ describe('planet landings', () => {
         }
       }
       expect(total, `${id}'s scatter`).toBeLessThanOrEqual(1200);
+    }
+  });
+
+  it('give every planet a way into its page, and its doors and lines their words', () => {
+    for (const id of LANDABLE) {
+      const doors = (LANDINGS[id].things ?? []).filter((t) => t.door);
+      expect(doors.length, `${id} has a door`).toBeGreaterThanOrEqual(1);
+      for (const t of doors) expect(t.door.label.length).toBeGreaterThan(2);
+      for (const t of (LANDINGS[id].things ?? []).filter((x) => x.say)) {
+        expect(t.say.name.length).toBeGreaterThan(1);
+        expect(t.say.line.length).toBeGreaterThan(3);
+      }
     }
   });
 

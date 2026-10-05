@@ -800,6 +800,8 @@ body:has(.universe-panel) .guide-nudge { top: calc(var(--nav-h, 68px) + 14px); r
   text-align: center;
 }
 @media (pointer: coarse) { .universe-prompt::before { content: none; } }
+.universe-prompt[data-say]::before { content: none; }
+.universe-prompt[data-say] { font-style: italic; }
 /* the place's name, as you come down on a planet */
 .universe-arrive {
   position: absolute;
