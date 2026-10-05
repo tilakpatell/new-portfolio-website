@@ -41,6 +41,7 @@ import { createFleet } from './glbFleet';
 import { bezier, convoyLane, dockScale, dockable, flybyLane, laneDepart, laneDock, laneLength, laneLocal, laneNear, tangent } from './lanes';
 import { DEEP, PLACES, nearestPlace, openness } from './deep';
 import { HOME_RADIUS } from './layout';
+import { SOLIDS } from './ship';
 
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
 // wingspan, Meeseeks' height); speed: map units a second; crew: how many
@@ -81,6 +82,31 @@ const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 const DOCKING = 0.32; // how much of the everyday traffic at a place is coming in to land, or launching
 const FLEE = { near: 70, faster: 0.9, ease: 1.2 }; // how near you a civil ship runs from a fight, how much faster it goes, how quickly it gets going
 const PEEL = { from: 0.52, to: 0.88, roll: 0.95 }; // where along its lane a wing peels apart (past you), and how far each rolls
+const FADE_OVER = 8; // map units over which a ship whose run was cut short fades into sight (or out of it)
+
+// How far a straight run from `p` along the unit direction `u` can go, up to
+// `run`, before it would meet anything solid (and a unit short of it): the
+// runs before and after a lane aren't checked when the lane is, and from
+// beside a planet one could go straight through it
+function clearRun(p, u, run) {
+  let most = run;
+  for (const o of SOLIDS) {
+    const mx = p[0] - o.at[0];
+    const my = p[1] - o.at[1];
+    const mz = p[2] - o.at[2];
+    const R = o.r + 1;
+    const b = mx * u[0] + my * u[1] + mz * u[2];
+    const c = mx * mx + my * my + mz * mz - R * R;
+    if (c < 0) return 0; // (it starts inside one's margin)
+    if (b > 0) continue; // (going away from it)
+    const disc = b * b - c;
+    if (disc < 0) continue;
+    const t = -b - Math.sqrt(disc);
+    if (t < most) most = Math.max(0, t - 1);
+  }
+  return most;
+}
+const HIDDEN = 0.3; // a ship drawn smaller than this (landing, launching, fading) can't be hit
 const smoothstep = (a, b, x) => {
   const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return k * k * (3 - 2 * k);
@@ -140,10 +166,31 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   // kind (limping, in distress)
   function spawn(kind, pts, flyby = false, { kinds, column = false, speed, event, dock = null } = {}) {
     const type = TYPES[kind];
-    const n = kinds?.length ?? Math.round(between(rand, type.crew[0], type.crew[1] + 0.49));
+    // the way it's heading where the lane starts and where it ends, and the
+    // straight runs in and out, as far as they're clear (one coming in to
+    // land stops on the body, one launching starts on it); one cut short
+    // fades into sight there, or out of it
+    const dirIn = [0, 0, 0];
+    const dirOut = [0, 0, 0];
+    tangent(pts, 0, dirIn);
+    tangent(pts, 1, dirOut);
+    for (const v of [dirIn, dirOut]) {
+      const l = Math.hypot(v[0], v[1], v[2]) || 1;
+      for (let i = 0; i < 3; i++) v[i] /= l;
+    }
+    const run = runOf(speed ?? type.speed);
+    const runIn = dock === 'out' ? 0 : clearRun(pts[0], [-dirIn[0], -dirIn[1], -dirIn[2]], run);
+    const runOut = dock === 'in' ? 0 : clearRun(pts[2], dirOut, run);
+    const fadeIn = dock !== 'out' && runIn < run;
+    const fadeOut = dock !== 'in' && runOut < run;
+    // (one landing, launching or fading in by a planet comes alone: a wedge
+    // behind it would be inside the planet)
+    const alone = (dock || fadeIn || fadeOut) && !kinds;
+    const n = kinds?.length ?? (alone ? 1 : Math.round(between(rand, type.crew[0], type.crew[1] + 0.49)));
     // a wing of fighters come past you peels apart behind you
     const peel = flyby && !column && !type.civil && !type.big && n >= 2;
     let back = 0;
+    let escorts = 0;
     const members = Array.from({ length: n }, (_, i) => {
       const k = kinds?.[i] ?? kind;
       const model = take(k);
@@ -159,9 +206,11 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         roll = sign * PEEL.roll * (0.8 + rand() * 0.4);
       }
       if (column) {
-        // single file, a ship's length and a half apart, the escorts out to the sides
+        // single file, a ship's length and a half apart, the escorts out to
+        // the sides (each the other side from the last) where they are in it:
+        // at the front, in the middle and at the back
         const escort = !TYPES[k].civil;
-        offset = escort ? [(i % 2 ? 1 : -1) * 2.4, 0.6, -back * 0.5] : [0, 0, -back];
+        offset = escort ? [(escorts++ % 2 ? 1 : -1) * 2.4, 0.6, -Math.max(0, back - 0.6)] : [0, 0, -back];
         if (!escort) back += TYPES[k].size * 1.6 + 0.6;
       } else {
         // a loose wedge behind the leader: back, out to alternate sides, a little up or down
@@ -171,18 +220,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       return { kind: k, size: TYPES[k].size, model, offset, peelTo, roll, phase: rand() * 10, alive: true };
     });
     const len = laneLength(pts);
-    const run = runOf(speed ?? type.speed);
-    // (one coming in to land stops on the body: no run on past it; one launching starts on it)
-    const runIn = dock === 'out' ? 0 : run;
-    const runOut = dock === 'in' ? 0 : run;
-    const g = { kind, type, members, pts, len, runIn, runOut, total: len + runIn + runOut, t: 0, flyby, said: false, speed: speed ?? type.speed, event, dock, peel, flee: 0, k: 0, in: [0, 0, 0], out: [0, 0, 0] };
-    // the way it's heading where the lane starts and where it ends
-    tangent(pts, 0, g.in);
-    tangent(pts, 1, g.out);
-    for (const v of [g.in, g.out]) {
-      const l = Math.hypot(v[0], v[1], v[2]) || 1;
-      for (let i = 0; i < 3; i++) v[i] /= l;
-    }
+    const g = { kind, type, members, pts, len, runIn, runOut, total: len + runIn + runOut, t: 0, flyby, said: false, speed: speed ?? type.speed, event, dock, fadeIn, fadeOut, peel, flee: 0, weave: 0, k: 0, in: dirIn, out: dirOut };
     live.push(g);
     return g;
   }
@@ -225,7 +263,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     // nose (+z) along the lane, top (+y) up: in the parent's own space
     turn.setFromRotationMatrix(basis.makeBasis(side.crossVectors(lift, fwd), lift, fwd));
     // landing or launching: into the body, or out of it
-    const grow = dockScale(g.dock, g.k);
+    const grow = dockScale(g.dock, g.k) * (g.fadeIn ? smoothstep(0, FADE_OVER, along) : 1) * (g.fadeOut ? smoothstep(0, FADE_OVER, g.total - along) : 1);
+    g.grow = grow;
     // a wing past you peels apart; ships running from a fight weave harder
     const apart = g.peel ? smoothstep(PEEL.from, PEEL.to, g.k) : 0;
     const weave = 0.15 + g.flee * 0.5;
@@ -236,7 +275,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       gr.position.set(P[0], P[1], P[2]).addScaledVector(right, o[0]).addScaledVector(lift, o[1]).addScaledVector(fwd, o[2]);
       if (apart > 0 && m.peelTo) gr.position.addScaledVector(right, (m.peelTo[0] - o[0]) * apart).addScaledVector(lift, (m.peelTo[1] - o[1]) * apart).addScaledVector(fwd, (m.peelTo[2] - o[2]) * apart);
       // a little weave, each its own
-      gr.position.addScaledVector(lift, Math.sin(t * (1.3 + g.flee * 2) + m.phase) * m.size * weave);
+      gr.position.addScaledVector(lift, Math.sin(g.weave + m.phase) * m.size * weave);
       gr.scale.setScalar(m.size * m.model.fit * Math.max(1e-3, grow));
       gr.quaternion.copy(turn);
       // rolled into the peel (most of the way through it), and a jink while running
@@ -312,6 +351,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
           if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < FLEE.near * FLEE.near) run = 1;
         }
         g.flee += (run - g.flee) * Math.min(1, dt * FLEE.ease);
+        g.weave += dt * (1.3 + g.flee * 2); // (its own phase, run on at its own rate: a rate times the clock would jump)
         g.t += (g.speed * (1 + FLEE.faster * g.flee) * dt) / g.total;
         if (g.t >= 1 || g.members.every((m) => !m.alive)) {
           end(g);
@@ -339,6 +379,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       const sz = to.z - from.z;
       const ss = sx * sx + sy * sy + sz * sz || 1;
       for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue; // (landing, launching or fading: not there to hit)
         for (const m of g.members) {
           if (!m.alive) continue;
           const p = m.model.group.position;
@@ -401,7 +442,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     // what's flying, for checking from a browser
     get groups() {
-      return live.map((g) => ({ kind: g.kind, event: g.event, flyby: g.flyby, dock: g.dock, peel: g.peel, flee: +g.flee.toFixed(2), t: +g.t.toFixed(3), alive: g.members.filter((m) => m.alive).length, lead: g.members.find((m) => m.alive)?.model.group.position.toArray().map((v) => +v.toFixed(2)) }));
+      return live.map((g) => ({ kind: g.kind, event: g.event, flyby: g.flyby, dock: g.dock, fade: g.fadeIn || g.fadeOut, peel: g.peel, flee: +g.flee.toFixed(2), t: +g.t.toFixed(3), alive: g.members.filter((m) => m.alive).length, offsets: g.members.map((m) => m.offset), lead: g.members.find((m) => m.alive)?.model.group.position.toArray().map((v) => +v.toFixed(2)) }));
     },
 
     get count() {

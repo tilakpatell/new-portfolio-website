@@ -199,14 +199,14 @@ describe('a meteor stream', () => {
 });
 
 describe('coming in to land, and launching', () => {
-  it('knows where a ship can land: a planet, a station, a giant, the Citadel; not a star, the black hole, a nebula or a gate', async () => {
+  it('knows where a ship can land: a planet, a station, a giant; not a star, the black hole, a nebula, the Citadel or a gate', async () => {
     const { PLACES } = await import('./deep');
     const kinds = Object.fromEntries(PLACES.map((p) => [p.id, dockable(p)]));
     expect(kinds.maw).toBe(false);
     expect(kinds.ember).toBe(false);
     expect(kinds.veil).toBe(false);
     expect(kinds.aurelia).toBe(true);
-    expect(kinds.citadel).toBe(true);
+    expect(kinds.citadel).toBe(false); // (its solid is far rounder than the station drawn)
     expect(kinds.starwars).toBe(false); // (a gate, flown through)
     expect(PLACES.filter((p) => p.kind === 'planet' && p.id !== 'starwars').every((p) => dockable(p))).toBe(true);
     expect(dockable({ id: 'x', at: [0, 0, 0], reach: 5 })).toBe(true); // (a planet, as it comes)

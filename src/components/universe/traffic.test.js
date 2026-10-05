@@ -69,7 +69,7 @@ describe('coming in to land, and launching', () => {
         const m = leadOf(fleet, g);
         if (!m) continue;
         const key = m.group.id;
-        if (g.dock === 'in') seen.set(key, { dock: 'in', last: dist(m.group.position), scale: m.group.scale.x, t: g.t });
+        if (g.dock === 'in' && g.t > 0.985) seen.set(key, { dock: 'in', last: dist(m.group.position), scale: m.group.scale.x, t: g.t });
         else if (!seen.has(key)) seen.set(key, { dock: 'out', first: dist(m.group.position), scale: m.group.scale.x, kind: g.kind });
       }
     }
@@ -182,6 +182,75 @@ describe('a fight nearby', () => {
   });
 });
 
+describe('a ship near a planet', () => {
+  it('is never drawn inside it: landing, launching, leaving or coming in', () => {
+    const { fleet, traffic } = setup();
+    let seen = 0;
+    let t = 0;
+    for (let i = 0; i < 6000; i++) {
+      t += DT;
+      traffic.update(DT, t, parked);
+      for (const m of fleet.made) {
+        if (!m.group.parent || m.group.scale.x / Math.max(1e-6, m.group.scale.x) === 0) continue;
+        const shown = m.group.scale.x * (m.fit ?? 1) > 0; // (its scale is size × fit × how much of it shows)
+        if (!shown) continue;
+        const d = Math.hypot(m.group.position.x - planet.at[0], m.group.position.y - planet.at[1], m.group.position.z - planet.at[2]);
+        // a ship more than a sliver big is outside the body
+        const grown = m.group.scale.x / (m.fit ?? 1);
+        if (grown > 0.05) {
+          seen += 1;
+          expect(d).toBeGreaterThan(body * 0.98);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(1000);
+  });
+
+  it('can’t be shot while it’s too small to see', () => {
+    const { traffic } = setup();
+    let t = 0;
+    let tried = 0;
+    for (let i = 0; i < 6000 && tried < 20; i++) {
+      t += DT;
+      traffic.update(DT, t, parked);
+      for (const g of traffic.groups) {
+        if (!(g.dock === 'out' && g.t < 0.01) && !(g.dock === 'in' && g.t > 0.995)) continue;
+        const [x, y, z] = g.lead;
+        tried += 1;
+        expect(traffic.hit({ x: x - 2, y, z }, { x: x + 2, y, z })).toBeNull();
+      }
+    }
+    expect(tried).toBeGreaterThan(0);
+  });
+});
+
+describe('the weave', () => {
+  it('never jumps as a fight comes and goes, however long the map has been open', () => {
+    const { fleet, traffic } = setup();
+    traffic.soon('freighter', true);
+    let t = 900; // (a quarter of an hour in)
+    const step = (fight, n) => {
+      let most = 0;
+      const was = new Map();
+      for (let i = 0; i < n; i++) {
+        t += 1 / 60;
+        const near = traffic.groups.find((x) => x.kind === 'freighter')?.lead;
+        traffic.update(1 / 60, t, near ? { ...parked, x: near[0] + 2, y: near[1], z: near[2] } : parked, { fight });
+        for (const m of fleet.made) {
+          if (!m.group.parent) continue;
+          const p = was.get(m);
+          if (p) most = Math.max(most, Math.abs(m.group.position.y - p));
+          was.set(m, m.group.position.y);
+        }
+      }
+      return most;
+    };
+    step(false, 120);
+    expect(step(true, 240)).toBeLessThan(0.25); // (a freighter, flying and weaving, moves a fraction of a unit up or down in a frame)
+    expect(step(false, 240)).toBeLessThan(0.25);
+  });
+});
+
 describe('a convoy', () => {
   it('is a longer column now, with an escort at each end and one in the middle when it is long', () => {
     for (const seed of [1, 2, 3, 4, 5, 6]) {
@@ -196,6 +265,15 @@ describe('a convoy', () => {
       expect(escorts).toBe(freight >= 6 ? 3 : 2);
       expect(kinds[0]).toBe('xwing');
       expect(kinds[kinds.length - 1]).toBe('xwing');
+      // where they fly: one at the front and one at the back, on either side
+      const [g] = traffic.groups;
+      expect(Math.abs(g.offsets[0][2])).toBe(0);
+      const last = g.offsets[g.offsets.length - 1];
+      const tail = Math.min(...g.offsets.filter((o, i) => kinds[i] !== 'xwing').map((o) => o[2]));
+      expect(last[2]).toBeLessThanOrEqual(tail + 0.6 + 1e-9);
+      // each escort the other side from the one before it
+      const sides = g.offsets.filter((o, i) => kinds[i] === 'xwing').map((o) => Math.sign(o[0]));
+      for (let i = 1; i < sides.length; i++) expect(sides[i]).not.toBe(sides[i - 1]);
     }
   });
 });

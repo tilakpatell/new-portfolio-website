@@ -24,8 +24,8 @@
 // rand) comes in from the open and ends on the place itself, high on one
 // side of it (a ship coming in to land, which shrinks into it: dockScale),
 // or with `out`, launches from it; only at a place you could land on
-// (dockable: a planet, a station, a gas or ice giant, the Citadel; not a
-// star, the black hole, a nebula or a gate, as the Star Wars place is).
+// (dockable: a planet, a station, a gas or ice giant; not a star, the
+// black hole, a nebula, the Citadel or a gate, as the Star Wars place is).
 
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
@@ -38,7 +38,7 @@ const LOCAL_HIGH = [21, 35]; // and the big ships
 const BIG = 35; // a place reaching further than this is a big one
 const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
 const DOCK = { in: 1.06, lat: [0.5, 1.0], fade: 0.18 }; // where on the body a dock lane ends (of its radius; how high a latitude), and how much of the lane the ship shrinks over
-const DOCKABLE = new Set(['planet', 'station', 'gas-giant', 'ice-giant', 'citadel']);
+const DOCKABLE = new Set(['planet', 'station', 'gas-giant', 'ice-giant']); // (not the Citadel: its solid is far rounder than the station drawn, so a ship would land on air)
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
   const u = 1 - t;
