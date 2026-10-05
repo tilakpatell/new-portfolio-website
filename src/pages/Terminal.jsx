@@ -410,7 +410,7 @@ export default function Terminal() {
       ls: () => [L('  about.txt  experience/  projects/  resume.pdf  deathstar.plans')],
       neofetch: () => [
         BLANK,
-        ...box(['tilakpatell.com', 'React 18 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`], boxWidth()),
+        ...box(['tilakpatell.com', 'React 19 · Vite · Tailwind', `theme: ${THEMES[active].company}`, `uptime: ${Math.round((Date.now() - started.current) / 1000)}s`], boxWidth()),
       ],
       order66: () => {
         unlock('order66');
@@ -564,10 +564,13 @@ export default function Terminal() {
       const next = cursor - 1;
       setCursor(Math.max(-1, next));
       setInput(next >= 0 ? history[history.length - 1 - next] : '');
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
+    } else if (e.key === 'Tab' && !e.shiftKey && input.trim()) {
+      // completes a command; with nothing to complete (or Shift+Tab) it moves
+      // focus, as Tab does everywhere else, so a keyboard can leave the terminal
       const names = [...Object.keys(commands()), 'clear', 'echo', 'history', 'cat', 'open'];
       const hits = names.filter((n) => n.startsWith(input.toLowerCase()) && n !== input.toLowerCase());
+      if (!hits.length) return;
+      e.preventDefault();
       if (hits.length === 1) setInput(`${hits[0]} `);
       else if (hits.length > 1) print([L(`${PROMPT} ${input}`, 'cmd'), L(`  ${hits.sort().join('  ')}`, 'dim')]);
     } else if (e.key === 'l' && e.ctrlKey) {
