@@ -91,7 +91,7 @@ export const isPlace = (id) => Boolean(PLANET[id]);
 // deep space every wonder (a nebula, which isn't solid, is somewhere to fly
 // into: its goal is its middle)
 export const GOALS = {
-  ...Object.fromEntries(DEEP_SOLIDS.map((o) => [o.id, o])),
+  ...Object.fromEntries(DEEP_SOLIDS.filter((o) => !o.part).map((o) => [o.id, o])),
   ...Object.fromEntries(WONDERS.filter((w) => w.solid === false).map((w) => [w.id, { id: w.id, at: w.at, r: w.r, reach: 0, deep: true }])),
   ...PLANET,
 };

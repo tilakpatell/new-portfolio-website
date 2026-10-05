@@ -426,12 +426,16 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
       dismissed: { at: [0, 4.2, 10.4], look: [0, 3.6, -5] },
     },
   };
+  // (the same camera each time, to use at once)
+  const cam = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   const camOf = (room, beat, t) => {
     const c = CAMS[room]?.[beat] ?? Object.values(CAMS[room] ?? {})[0];
     if (!c) return null;
     // a slow drift, so the room breathes
     const drift = Math.sin(t * 0.3) * 0.12;
-    return { at: new THREE.Vector3(c.at[0] + drift, c.at[1], c.at[2]).add(ROOMS[room]), look: new THREE.Vector3(...c.look).add(ROOMS[room]) };
+    cam.at.set(c.at[0] + drift, c.at[1], c.at[2]).add(ROOMS[room]);
+    cam.look.set(c.look[0], c.look[1], c.look[2]).add(ROOMS[room]);
+    return cam;
   };
 
   const update = (room, beat, t, dt, { line = null } = {}) => {

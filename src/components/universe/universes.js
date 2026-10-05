@@ -99,24 +99,23 @@ const FANDOMS = [
   {
     id: 'starwars',
     label: 'Star Wars',
-    // a universe of its own: the jump goes to the whole galaxy (galaxy/),
-    // the Death Star its own page inside it (and flying into it here, at
-    // speed, still puts you aboard)
+    // a universe of its own: not a planet but the way into one, the galaxy
+    // itself in miniature behind a hyperspace gate (galaxy/gateway.js); fly
+    // into the gate, or pick it and go, and you jump to lightspeed into the
+    // whole galaxy (galaxy/), the Death Star a page of its own inside it
     world: 'A galaxy far, far away',
     place: 'a galaxy far, far away',
     go: 'Jump to', // (not somewhere to land on)
     to: '/galaxy',
     pages: [{ to: '/deathstar', world: 'Death Star' }],
-    crashTo: '/deathstar',
+    portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',
     accent: '#ffe81f',
-    rim: '#c9ced6', // the station's own grey, not the crawl's yellow
-    size: 5.36, // the Death Star itself (150 in radius, after PLANET), its trench run round its middle
-    reach: 1.45, // Alderaan orbits it close in
-    trench: { segments: 85 }, // (sections the size the ship flies down, all the way round)
-    airless: true, // a station: no air glowing round it (from inside its trench it would wash the view out)
-    plated: true, // and on foot, its ground's hull plating, with blocks standing on it for rocks (footScene.js)
-    palette: { base: '#8d939c', dark: '#3a3f47', light: '#c9ced6', glow: '#7dff7a' },
+    rim: '#7fc8ff', // the gate's blue
+    size: 5.36, // the gate's radius (the galaxy behind it a few times that)
+    reach: 1.45, // (where it counts as being at it: in front of the gate)
+    airless: true, // no air glowing round it: it's a gate
+    palette: { base: '#1a2440', dark: '#0a1020', light: '#bfe3ff', glow: '#7fc8ff' },
   },
   {
     id: 'music',

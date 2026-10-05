@@ -89,7 +89,8 @@ describe('Enter', () => {
   it('goes the way the ship would', () => {
     expect(enterPlan(byId('starwars'), { reduced: false, three: true, ship: 'falcon' })).toEqual({ mode: 'jump', delay: 1250 });
     expect(enterPlan(byId('starwars'), { reduced: false, three: true, ship: 'xwing' })).toEqual({ mode: 'jump', delay: 1250 });
-    expect(enterPlan(byId('starwars'), { reduced: false, three: true, ship: 'cruiser' })).toEqual({ mode: 'portal', delay: 600 });
+    // (through the gate into a galaxy far, far away, every ship jumps, the cruiser too)
+    expect(enterPlan(byId('starwars'), { reduced: false, three: true, ship: 'cruiser' })).toEqual({ mode: 'jump', delay: 1250 });
     expect(enterPlan(byId('office'), { reduced: false, three: true, ship: 'cruiser' })).toEqual({ mode: 'portal', delay: 600 });
     expect(enterPlan(byId('office'), { reduced: true, three: true, ship: 'cruiser' })).toEqual({ mode: 'now', delay: 0 });
     expect(enterPlan(byId('office'), { reduced: false, three: true, ship: 'rv' })).toEqual({ mode: 'dive', delay: 600 });

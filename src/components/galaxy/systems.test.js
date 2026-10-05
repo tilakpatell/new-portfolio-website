@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
-import { SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, FILMS, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
+import { SYSTEM_MARKS, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
+import { CORE, ERAS, RIM, FILMS, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
 
 const LOOKS = ['tatooine', 'jakku', 'geonosis', 'hoth', 'starkiller', 'crait', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'coruscant', 'mustafar', 'kamino', 'scarif', 'bespin', 'exegol', 'ahchto', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
 const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser', 'wrecks', 'starkiller', 'armada', 'lightning'];
@@ -98,6 +98,14 @@ describe('the systems', () => {
   it('keeps the multiplayer\'s names in step', () => {
     expect(Object.keys(SYSTEM_NAMES).sort()).toEqual(SYSTEMS.map((s) => s.id).sort());
     for (const s of SYSTEMS) expect(SYSTEM_NAMES[s.id]).toBe(s.name);
+    // (and the universe map's gateway's marks: where each is on the disc, its colour)
+    expect(Object.keys(SYSTEM_MARKS).sort()).toEqual(SYSTEMS.map((s) => s.id).sort());
+    for (const s of SYSTEMS) {
+      const [x, z, color] = SYSTEM_MARKS[s.id];
+      expect(x, s.id).toBeCloseTo((s.pos[0] - CORE[0]) / RIM, 2);
+      expect(z, s.id).toBeCloseTo((s.pos[1] - CORE[1]) / RIM, 2);
+      expect(color, s.id).toBe(s.accent);
+    }
     expect(systemOfPath('/galaxy/hoth/mission')).toBe('hoth');
     expect(systemOfPath('/galaxy/nope')).toBe(null);
     expect(inGalaxyFlight('/galaxy/hoth')).toBe(true);

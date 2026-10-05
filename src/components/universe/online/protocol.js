@@ -183,7 +183,7 @@ export function readFoot(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   if (data.p === null) return { off: true };
   const u = typeof data.p === 'string' ? byId(data.p) : null;
-  if (!u || u.kind === 'core' || !Array.isArray(data.s) || data.s.length < 6) return null;
+  if (!u || u.kind === 'core' || u.portal || !Array.isArray(data.s) || data.s.length < 6) return null;
   const n = unit3(data.s, 0);
   const f = n && unit3(data.s, 3) && along(unit3(data.s, 3), n);
   // (nobody out yet, while the ship's coming down: a = null)

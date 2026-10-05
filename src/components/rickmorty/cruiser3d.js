@@ -14,15 +14,57 @@ import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
 const INK = 0x1b1424;
-const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 across)
+// (the saucer's measurements are shared with the C-137 world, which draws it bigger: scale them by its height over TALL)
+export const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 across)
 const SPAN = 2.4; // half the canvas's width, in the same units
-const GLASS = 0.69; // the share of the saucer's height where the hull stops and the dome starts
+export const GLASS = 0.69; // the share of the saucer's height where the hull stops and the dome starts
 // how tall Rick and Morty would stand, and where they sit: across (Rick on
 // the right as you look at the nose, as in the show), forward, and the
 // height of their feet, sat (the saucer's units, nose +z)
-const CREW = { rick: [1.1, 0.27], morty: [0.92, -0.29], z: 0.05, y: 0.82 };
+export const CREW = { rick: [1.1, 0.27], morty: [0.92, -0.29], z: 0.05, y: 0.82 };
 // the backs of the two exhaust cans
-const CANS = [[0.87, 1.0, -1.3], [-0.87, 1.0, -1.3]];
+export const CANS = [[0.87, 1.0, -1.3], [-0.87, 1.0, -1.3]];
+
+// The saucer's dome as glass: everything above the rim (GLASS of the way up
+// each mesh, in its own units) see-through face-on and thicker towards its
+// edges, so it reads as a bubble with the crew in it. Each mesh gets its own
+// copy of its material (in userData.glass, to dispose); returns the rim's
+// height in the meshes' units.
+export function glassDome(body) {
+  let glassY = null;
+  body.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry.computeBoundingBox();
+    const { min, max } = o.geometry.boundingBox;
+    glassY = min.y + (max.y - min.y) * GLASS;
+    const m = o.material.clone();
+    m.transparent = true;
+    m.onBeforeCompile = (s) => {
+      s.vertexShader = s.vertexShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {\nvGlassY = position.y;');
+      // see-through face on, thicker towards its edges, so it reads as a bubble
+      s.fragmentShader = s.fragmentShader
+        .replace('void main() {', 'varying float vGlassY;\nvoid main() {\nfloat glass = 0.0;')
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+          glass = smoothstep(${glassY.toFixed(5)} - 0.004, ${glassY.toFixed(5)} + 0.004, vGlassY);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.95, 0.96), glass * 0.6);`,
+        )
+        .replace(
+          '#include <normal_fragment_maps>',
+          `#include <normal_fragment_maps>
+          {
+            float rim = 1.0 - abs(normal.z);
+            diffuseColor.a *= mix(1.0, 0.16 + 0.6 * rim * rim, glass);
+          }`,
+        );
+    };
+    m.customProgramCacheKey = () => `glass-${glassY}`;
+    o.material = m;
+    o.userData.glass = m;
+  });
+  return glassY;
+}
 
 // an ink line round a mesh, skinned or not: its back faces drawn flat,
 // pushed out along the normals once posed, in view space (so `width` is in
@@ -120,38 +162,7 @@ export async function buildCruiser({ ink = 1 } = {}) {
     crew.push(c);
   }
   // the dome is glass: everything above the rim, in the mesh's own units
-  let glassY = null;
-  body.traverse((o) => {
-    if (!o.isMesh) return;
-    o.geometry.computeBoundingBox();
-    const { min, max } = o.geometry.boundingBox;
-    glassY = min.y + (max.y - min.y) * GLASS;
-    const m = o.material.clone();
-    m.transparent = true;
-    m.onBeforeCompile = (s) => {
-      s.vertexShader = s.vertexShader.replace('void main() {', 'varying float vGlassY;\nvoid main() {\nvGlassY = position.y;');
-      // see-through face on, thicker towards its edges, so it reads as a bubble
-      s.fragmentShader = s.fragmentShader
-        .replace('void main() {', 'varying float vGlassY;\nvoid main() {\nfloat glass = 0.0;')
-        .replace(
-          '#include <map_fragment>',
-          `#include <map_fragment>
-          glass = smoothstep(${glassY.toFixed(5)} - 0.004, ${glassY.toFixed(5)} + 0.004, vGlassY);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.95, 0.96), glass * 0.6);`,
-        )
-        .replace(
-          '#include <normal_fragment_maps>',
-          `#include <normal_fragment_maps>
-          {
-            float rim = 1.0 - abs(normal.z);
-            diffuseColor.a *= mix(1.0, 0.16 + 0.6 * rim * rim, glass);
-          }`,
-        );
-    };
-    m.customProgramCacheKey = () => `glass-${glassY}`;
-    o.material = m;
-    o.userData.glass = m;
-  });
+  const glassY = glassDome(body);
   const inks = [inkHull(body, 0.036 * ink, glassY), ...crew.map((c) => inkHull(c.group, 0.026 * ink))];
   // the exhaust cans' glow
   const glowTex = glowTexture();
