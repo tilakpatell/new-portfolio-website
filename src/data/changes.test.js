@@ -31,7 +31,7 @@ describe("the ship's log", () => {
       expect(Array.isArray(c.shots), at).toBe(true);
       expect(c.shots.length, at).toBeLessThanOrEqual(2);
       for (const s of c.shots) {
-        expect(s, at).toMatch(new RegExp(`^/changes/${pad(c.id)}-[a-z]\\.webp$`));
+        expect(s, at).toMatch(new RegExp(`^/changes/${pad(c.id)}-(before|[a-z])\\.webp$`));
         expect(existsSync(`${PUBLIC}${s}`), `${at} ${s}`).toBe(true);
       }
       expect(c.measured === null || typeof c.measured === 'object', at).toBe(true);

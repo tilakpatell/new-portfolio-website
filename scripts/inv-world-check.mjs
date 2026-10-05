@@ -35,7 +35,9 @@ console.log('city up in', ((Date.now() - t0) / 1000).toFixed(1), 's');
 // shots: [name, hero { p, mode, v }, yaw, pitch, time]
 const SHOTS = {
   spawn: { at: null, time: 'noon' },
-  street: { p: [0, 1.5, 300], mode: 'air', yaw: Math.PI, pitch: 0.08 },
+  street: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22 },
+  curb: { p: [44, 3, 120], mode: 'air', yaw: Math.PI, pitch: -0.12 },
+  streetnight: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22, time: 'night' },
   downtown: { p: [-300, 140, 600], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.12 },
   high: { p: [-900, 1400, 1500], mode: 'air', yaw: Math.PI * 0.85, pitch: -0.45 },
   suburb: { p: [-2060, 30, 330], mode: 'air', yaw: Math.PI, pitch: -0.25 },
@@ -52,6 +54,14 @@ const SHOTS = {
   rings: { p: [-2060, 22, 262], mode: 'air', yaw: 2.2, pitch: 0.05 },
   card: { p: [0, 38, 30], mode: 'air', yaw: Math.PI, pitch: 0.1 },
   rescue: { rescue: true, back: 28 },
+  climb: { p: [0, 7600, 600], mode: 'air', yaw: Math.PI, pitch: 0.12 },
+  orbit: { space: 'earth' },
+  orbitnight: { space: 'earth', time: 'night' },
+  moon: { space: 'moon', back: 70 },
+  reentry: { space: 'reentry' },
+  allen: { space: 'allen', back: 14 },
+  mars: { space: 'mars', back: 90 },
+  thragg: { space: 'thragg', back: 18 },
   dusk: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'dusk' },
   night: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'night' },
 };
@@ -63,7 +73,43 @@ for (const [name, s] of Object.entries(SHOTS)) {
     const { api, sim } = window.__INVWORLD__;
     sim.snap = true;
     if (s.time) await api.setTime(s.time);
-    if (s.rescue) {
+    if (s.space) {
+      // up through the top of the sky, if he isn't out there already
+      if (api.zone !== 'space') {
+        sim.h = { ...sim.h, p: [0, 8990, 0], v: [0, 300, 0], spd: 300, dir: [0, 1, 0], mode: 'air', exited: false, crouch: 0, stun: 0 };
+        sim.yaw = Math.PI;
+        sim.pitch = 0.3;
+        for (let i = 0; i < 40 && api.zone !== 'space'; i++) await new Promise((r) => setTimeout(r, 250));
+      }
+      const { bodies, allen, thragg } = api.debug;
+      const RE = 60000;
+      let target;
+      if (s.space === 'reentry') {
+        // coming down fast over the city: the air burns
+        sim.h = { ...sim.h, p: [200, RE + 16000, 300], v: [0, -800, 0], spd: 800, dir: [0, -1, 0], mode: 'air', reentered: false };
+        sim.yaw = Math.PI;
+        sim.pitch = -0.35;
+      } else if (s.space === 'earth') {
+        sim.h = { ...sim.h, p: [0, RE + 30000, 9000], v: [0, 0, 0], spd: 0, mode: 'air' };
+        sim.yaw = Math.PI;
+        sim.pitch = -0.7;
+      } else {
+        const b = bodies.find((q) => q.id === s.space);
+        target = b ? b.c : s.space === 'allen' ? allen : thragg;
+        // stand off from it on the side toward the Earth, looking at it
+        const l = Math.hypot(...target);
+        const n = target.map((v) => -v / l);
+        const off = (b ? b.r : 0) + s.back;
+        // (and a little to one side, so he isn't in the way)
+        const p = target.map((v, i) => v + n[i] * off + (i === 0 ? off * 0.35 : 0));
+        const d = target.map((v, i) => v - p[i]);
+        const dl = Math.hypot(...d);
+        sim.h = { ...sim.h, p, v: [0, 0, 0], spd: 0, mode: 'air', perch: null };
+        sim.yaw = Math.atan2(d[0], d[2]) + 0.3;
+        sim.pitch = Math.asin(d[1] / dl);
+      }
+      sim.dragAt = 1e9;
+    } else if (s.rescue) {
       // call an emergency in now, and frame it
       sim.quests = { ...sim.quests, nextCall: 0 };
       await new Promise((r) => setTimeout(r, 2500));

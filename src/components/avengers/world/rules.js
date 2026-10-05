@@ -1800,6 +1800,31 @@ export function camRoom(lx, lz, cx, cy, cz) {
   return 1;
 }
 
+// ── photo mode: time stopped, a camera to put anywhere round him ──
+// { yaw, pitch, dist, fov }: round him, up over him (or a little under),
+// how far, and the lens. photoView puts the camera there, looking at his
+// chest, brought in rather than go into a building and never under the
+// ground or a roof.
+export const PHOTO = { dist: [1.6, 30], pitch: [-0.35, 1.45], fov: [18, 90] };
+export const newPhoto = (yaw = 0, pitch = 0.25) => ({ yaw, pitch: Math.max(PHOTO.pitch[0], Math.min(PHOTO.pitch[1], pitch)), dist: 5.5, fov: 50 });
+export function readPhoto(p) {
+  const c = (v, [a, b], d) => (Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
+  return { yaw: Number.isFinite(p?.yaw) ? p.yaw : 0, pitch: c(p?.pitch, PHOTO.pitch, 0.25), dist: c(p?.dist, PHOTO.dist, 5.5), fov: c(p?.fov, PHOTO.fov, 50) };
+}
+export function photoView(h, photo) {
+  const { yaw, pitch, dist } = readPhoto(photo);
+  const look = [h.x, h.y + 1.1, h.z];
+  let at = [h.x + Math.sin(yaw) * Math.cos(pitch) * dist, look[1] + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist];
+  const k = camRoom(look[0], look[2], at[0], at[1], at[2]);
+  if (k < 1) {
+    const kk = Math.max(0.12, k);
+    at = at.map((v, i) => look[i] + (v - look[i]) * kk);
+  }
+  const floor = floorAt(at[0], at[2], Math.max(at[1], h.y)) + 0.3;
+  if (at[1] < floor) at[1] = floor;
+  return { at, look };
+}
+
 // ── where you are ──
 
 export function nearPlace(x, z, r = DOOR_R) {

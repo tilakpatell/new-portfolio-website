@@ -157,6 +157,7 @@ export const CREWS = [
     },
     // shooting one down
     kill: {
+      phoenixperson: [['rick', 'Sorry, Birdperson. Again. We’ll get you rebuilt. Again.']],
       any: [
         ['morty', 'Oh geez, Rick, I hit one!'],
         ['rick', 'Relax, Morty. It’s the Federation. Nobody’s gonna miss ’em.'],
@@ -186,6 +187,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      phoenix: [
+        ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
+        ['morty', 'Can we talk to him, Rick?'],
+        ['rick', 'He talks in bullets now, Morty.'],
+      ],
       federation: [
         ['morty', 'Rick! The Federation’s on our tail!'],
         ['rick', 'Course they are, Morty. I’m the most wanted man in the galaxy. Shoot back!'],
@@ -277,6 +283,10 @@ export const CREWS = [
         ['morty', 'Rick, this is way too fast!'],
         ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
       ],
+      meteors: [
+        ['morty', 'Rick! Rocks! A lot of rocks!'],
+        ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (the Cromulon), a shot into it
       flare: [
@@ -303,6 +313,22 @@ export const CREWS = [
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
+      lantern: [
+        ['morty', 'Rick, that star’s blinking at us!'],
+        ['rick', 'Pulsar, Morty. A dead star spinning a thousand times a second. Get close and it cooks you. Don’t get close.'],
+      ],
+      twins: [
+        ['morty', 'Two suns, Rick! Like in that movie!'],
+        ['rick', 'Binary star, Morty. Every system’s got one. It’s not special. Okay, the gas bridge is a little special.'],
+      ],
+      wanderer: [
+        ['morty', 'It’s so dark out here, Rick. Where’s its sun?'],
+        ['rick', 'It doesn’t have one, Morty. A rogue planet. Kicked out of its system. I relate.'],
+      ],
+      graveyard: [
+        ['morty', 'Rick… those are all dead ships.'],
+        ['rick', 'Ship graveyard round a white dwarf, Morty. Somebody’s bad day, times a thousand. Don’t touch anything.'],
+      ],
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
@@ -556,6 +582,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['r2', '[A Firespray on an attack run. Boba Fett.]'],
+        ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
+      ],
       empire: [
         ['comms', 'Red Five, you’ve got TIEs on your tail!'],
         ['luke', 'I see them! Hang on, Artoo!'],
@@ -646,6 +676,10 @@ export const CREWS = [
         ['luke', 'I’ve never had her going this fast!'],
         ['r2', '[a frantic string of beeps]'],
       ],
+      meteors: [
+        ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
+        ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -667,6 +701,19 @@ export const CREWS = [
       leviathanHit: [['r2', '[Do not shoot the purrgil. They did nothing to you.]']],
     },
     wonders: {
+      lantern: [
+        ['r2', '[Warning: pulsar. Radiation past the safe line.]'],
+        ['luke', 'I see it, Artoo. We’re keeping our distance.'],
+      ],
+      twins: [['luke', 'Two suns. For a second there I thought I was home.']],
+      wanderer: [
+        ['luke', 'A planet with no sun. It’s so dark.'],
+        ['r2', '[A rogue planet. Surface temperature: very low.]'],
+      ],
+      graveyard: [
+        ['luke', 'Look at them all. A whole fleet, just… drifting.'],
+        ['r2', '[A low, sad whistle.]'],
+      ],
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
@@ -906,6 +953,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
+        ['chewie', '[A furious roar.]'],
+      ],
       empire: [
         ['han', 'Imperials on our tail. Chewie, get us some speed!'],
         ['chewie', '[a worried roar]'],
@@ -994,6 +1045,10 @@ export const CREWS = [
         ['han', 'Pushing her past what she was built for. Just how I like it.'],
         ['chewie', '[a doubtful growl]'],
       ],
+      meteors: [
+        ['chewie', '[A roar: rocks ahead!]'],
+        ['han', 'I see them. Never tell me the odds, Chewie.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1016,6 +1071,13 @@ export const CREWS = [
       leviathanHit: [['han', 'Don’t shoot the whales, Chewie. We don’t need that kind of trouble.']],
     },
     wonders: {
+      lantern: [['han', 'Pulsar. Chewie, give it a wide berth. I like my hair.']],
+      twins: [['han', 'Two suns. Reminds me of a job on Tatooine I’d rather forget.']],
+      wanderer: [['han', 'A planet out here on its own, no sun. Good place to hide, bad place to live.']],
+      graveyard: [
+        ['chewie', '[A low, uneasy growl.]'],
+        ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
+      ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -1255,6 +1317,7 @@ export const CREWS = [
       ],
     },
     kill: {
+      phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
       any: [
         ['jesse', 'Yeah! Got one! That’s sick!'],
         ['walt', 'We don’t celebrate in the middle of the job, Jesse.'],
@@ -1278,6 +1341,14 @@ export const CREWS = [
     },
     // hunted by whoever's out (the RV is wanted in both universes)
     hunted: {
+      fett: [
+        ['jesse', 'Mr. White, that ship’s got a bounty hunter in it!'],
+        ['walt', 'Then he’s made a very poor career decision.'],
+      ],
+      phoenix: [
+        ['jesse', 'Is that a bird? Is that a robot bird?'],
+        ['walt', 'Whatever it is, Jesse, it’s armed. Shoot it before it finishes deciding.'],
+      ],
       empire: [
         ['jesse', 'Mr. White! Those bug zappers are shooting at us!'],
         ['walt', 'Then shoot back, Jesse.'],
@@ -1367,6 +1438,10 @@ export const CREWS = [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
         ['walt', 'Seatbelt, Jesse.'],
       ],
+      meteors: [
+        ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
+        ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil or a Cromulon), a shot into it
       flare: [
@@ -1395,6 +1470,22 @@ export const CREWS = [
       leviathanHit: [['walt', 'Jesse. Stop shooting the enormous thing.']],
     },
     wonders: {
+      lantern: [
+        ['jesse', 'Yo, Mr. White, that star’s flashing.'],
+        ['walt', 'A pulsar, Jesse. A neutron star. A teaspoon of it weighs more than a mountain. We are not stopping.'],
+      ],
+      twins: [
+        ['jesse', 'Two suns, Mr. White!'],
+        ['walt', 'A binary pair. The smaller one is pulling gas off the larger. Chemistry, Jesse, on a scale you can see.'],
+      ],
+      wanderer: [
+        ['jesse', 'Where’s the sun for this one?'],
+        ['walt', 'There isn’t one. A rogue planet. It left, Jesse. Some things do.'],
+      ],
+      graveyard: [
+        ['jesse', 'Mr. White. Those are wrecks. Like, hundreds.'],
+        ['walt', 'A graveyard round a dead star. Whatever happened here, Jesse, it happened fast.'],
+      ],
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],

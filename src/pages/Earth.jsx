@@ -14,6 +14,20 @@ const fmt = new Intl.NumberFormat('en-US');
 // it, and the flight to every place I've been; then the passport, how the
 // globe is made, and the way to the travel page, which has the photos and
 // the stories.
+const KEYS = [
+  ['← → or A D', 'Turn'],
+  ['↑ ↓ or W S', 'Climb and descend: up to the edge of space, or down under the cloud deck'],
+  ['Shift or Space (A, RT)', 'Faster'],
+  ['R (B on a pad)', 'A barrel roll'],
+  ['Drag (the right stick)', 'Look round the plane; it settles back behind. In orbit, turn the globe'],
+  ['V (RB)', 'The chase camera, or the view from the cockpit'],
+  ['Click a place, or Enter', 'Fly there on the autopilot; fly down from orbit'],
+  ['Esc', 'Take the controls back from the autopilot'],
+  ['M (Start)', 'Up to orbit, and back down'],
+  ['P (Y)', 'The passport, with the flight log'],
+  ['N', 'The sun where it really is now, or always over your shoulder'],
+];
+
 export default function Earth() {
   useDocumentTitle('Earth');
   const stamps = useStamps();
@@ -74,6 +88,30 @@ export default function Earth() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="earth-keys-title">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+          <div>
+            <h2 id="earth-keys-title" className="title">
+              Flying it
+            </h2>
+            <p className="lead mt-4 max-w-[54ch]">A little plane, a long way up. It follows great circles, so the way to Europe heads north-east first; the autopilot does the same, and slows down to turn.</p>
+            <p className="mt-4 max-w-[60ch] leading-relaxed text-body">The flight log keeps the trail you’ve flown and draws the route home to every place you’ve stamped. The distance adds up over every visit, and once it comes to the Earth’s circumference, that’s an achievement.</p>
+          </div>
+          <table className="guide-keys earth-keys">
+            <tbody>
+              {KEYS.map(([k, what]) => (
+                <tr key={k}>
+                  <th scope="row">
+                    <kbd>{k}</kbd>
+                  </th>
+                  <td>{what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="shell relative z-10 py-12 md:py-16" aria-labelledby="earth-how-title">

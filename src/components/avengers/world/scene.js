@@ -38,7 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, photoView, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -1629,6 +1629,17 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       tmp2.set(h.x - 40, 95, h.z + 120);
       camera.position.lerp(tmp2, t);
       camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), t));
+    }
+
+    // photo mode: the camera where the photo puts it, and its lens
+    if (s.photo) {
+      const v = photoView(h, s.photo);
+      camera.position.set(v.at[0], v.at[1], v.at[2]);
+      camera.lookAt(v.look[0], v.look[1], v.look[2]);
+      if (Math.abs(camera.fov - s.photo.fov) > 0.05) {
+        camera.fov = s.photo.fov;
+        camera.updateProjectionMatrix();
+      }
     }
 
     // the sun's shadows follow him, snapped to the shadow map's texels so they don't crawl
