@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, autopilot, brakeAt, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, step, turnAt } from './ship';
+import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, STARTS, autopilot, brakeAt, ceilingAt, forward, inTrench, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS } from './deep';
+import { MAW } from './maw';
 import { ORDER, REACH } from './layout';
 import { byId } from './universes';
 
@@ -291,6 +292,55 @@ describe('being at a universe', () => {
     const at = parkAt(p.id);
     const nearEdge = { x: p.at[0] + (at.x - p.at[0]) * 1.5, z: p.at[2] + (at.z - p.at[2]) * 1.5 };
     expect(orbiting({ ...spawn(null), ...nearEdge }, p.id)).toBe(p.id);
+  });
+});
+
+describe('where a new ship starts', () => {
+  const draws = (...v) => () => v.shift(); // a rand that gives these, in turn
+  // each start, from sides all the way round it
+  const every = STARTS.flatMap((s, i) => Array.from({ length: 16 }, (_, k) => ({ s, at: startAt(draws((i + 0.5) / STARTS.length, k / 16)) })));
+
+  it('can be at the home system, or off any fandom planet or any wonder but the Maw', () => {
+    const ids = STARTS.map((s) => s.id);
+    expect(ids).toContain('sun');
+    for (const id of ORDER) expect(ids.includes(id), id).toBe(byId(id).kind !== 'core');
+    for (const w of WONDERS) expect(ids.includes(w.id), w.id).toBe(w.id !== MAW.id);
+  });
+
+  it('is clear of everything, at no universe yet, out of the Maw’s pull and facing what it starts by', () => {
+    for (const { s, at } of every) {
+      const ship = spawn(null, at);
+      const label = `${s.id} at ${at.x.toFixed(1)}, ${at.z.toFixed(1)}`;
+      expect(Math.hypot(at.x - s.at[0], at.z - s.at[2]), label).toBeCloseTo(s.d, 6);
+      expect(inside(ship), label).toBe(false);
+      expect(orbiting(ship, null), label).toBeNull();
+      expect(Math.hypot(at.x - MAW.at[0], at.y - MAW.at[1], at.z - MAW.at[2]), label).toBeGreaterThan(MAW.reach);
+      expect(Math.hypot(at.x, at.z), label).toBeLessThan(EDGE);
+      expect(Math.abs(at.y), label).toBeLessThan(ceilingAt(at.x, at.z));
+      const [fx, fz] = forward(at.heading);
+      const dx = s.at[0] - at.x;
+      const dz = s.at[2] - at.z;
+      expect((fx * dx + fz * dz) / Math.hypot(dx, dz), label).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('puts the pilots joining in different places, none on top of another', () => {
+    let seed = 7;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const picked = new Set();
+    const starts = Array.from({ length: 30 }, () => {
+      const which = rand();
+      picked.add(STARTS[Math.floor(which * STARTS.length)].id);
+      return startAt(draws(which, rand()));
+    });
+    expect(picked.size).toBeGreaterThan(STARTS.length / 2);
+    for (let i = 0; i < starts.length; i++) {
+      for (let j = i + 1; j < starts.length; j++) expect(Math.hypot(starts[i].x - starts[j].x, starts[i].y - starts[j].y, starts[i].z - starts[j].z)).toBeGreaterThan(1);
+    }
+  });
+
+  it('gives way to a universe that’s been picked', () => {
+    for (const id of ORDER) expect(spawn(id, startAt(draws(0.99, 0.5)))).toEqual(spawn(id));
   });
 });
 
