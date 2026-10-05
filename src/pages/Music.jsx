@@ -292,6 +292,11 @@ export default function Music() {
               note you play matches one, and you hear them bloom after it, a modelled string with its own jawari for each. They glow on the neck as they ring.
             </p>
             <p className="mt-3">
+              Above the main string run the chikari, two high strings tuned to Sa, struck for rhythm. With Auto chikari on, the right hand strikes them by
+              itself in the rests between your notes: in your own pulse when you play alone, on the tabla’s beat when it keeps a taal (hardest on sam), and
+              never on top of a note, a slide or a meend. When your notes come evenly, it leaves the next one its beat.
+            </p>
+            <p className="mt-3">
               On a keyboard, 1 to = and Q to ] play the frets in order. Shift with a fret’s key moves to it without a new stroke (krintan), holding ↑ pulls
               the note up to the raga’s next one (meend), Space strikes the chikari and Esc stops the string.
             </p>

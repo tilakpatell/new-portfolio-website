@@ -109,3 +109,125 @@ export function tarabHz(ragaId, sitarSa) {
   for (let oct = 1; out.length < 11; oct *= 2) for (const r of notes) if (out.length < 11) out.push(r * oct * sitarSa);
   return out;
 }
+
+// ── Auto chikari ───────────────────────────────────────────────────────────
+// A sitarist's right hand fills the rests in the melody with the chikari: a
+// note is struck, and while it rings the two drone strings keep the pulse
+// (Da chik chik chik) until the next note. With the tabla playing, the pulse
+// is the taal's, sam struck hardest and khali lightest; alone, it is the
+// player's own, heard in their last few notes. The chikari never crowds a
+// note: it waits a moment after a stroke or a slide, and when the notes have
+// been coming evenly, it leaves the beat the next one is due on to the player.
+// Times are seconds on the audio clock.
+export const CHIKARI = {
+  ring: 2.8, // how long a note rings, so how long the chikari fills after it
+  fills: 3, // alone, the most strokes after a note…
+  restFills: 4, // …or after Sa or Pa, the notes a phrase comes to rest on
+  pulse: 0.5, // the pulse alone, before the player's own is known
+  lo: 0.28, // a pulse heard in the notes is folded into lo…hi
+  hi: 0.75,
+  fastest: 0.2, // a faster laya may halve the pulse, down to this
+  near: 0.45, // of a pulse: too soon after a note or a slide to strike
+  gap: 0.6, // of a pulse: too soon after the last chikari
+};
+
+// How many chikari strokes to a beat of the taal: one, or more when the beat
+// is slow (so the rests never fall silent too long) or the laya is quick.
+export function chikariSub(beat, laya = 1) {
+  let sub = 1;
+  while (beat / sub > CHIKARI.hi && sub < 8) sub *= 2;
+  if (laya > 1 && beat / (sub * 2) >= CHIKARI.fastest) sub *= 2;
+  return sub;
+}
+
+// The player's rhythm, from the times of their last notes: the usual gap
+// between them (since the last pause), whether it has been even, and the
+// chikari's pulse, folded into a comfortable range.
+export function playerRhythm(onsets) {
+  const gaps = [];
+  for (let i = onsets.length - 1; i > 0 && gaps.length < 5; i--) {
+    const g = onsets[i] - onsets[i - 1];
+    if (g > 1.6) break; // a pause: what came before it was another phrase
+    if (g >= 0.1) gaps.push(g); // closer than that is a slip, not a rhythm
+  }
+  if (!gaps.length) return { ioi: 0, steady: false, pulse: CHIKARI.pulse };
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const ioi = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const steady = gaps.length >= 2 && gaps.every((g) => Math.abs(g / ioi - 1) <= 0.25);
+  let pulse = ioi;
+  while (pulse > CHIKARI.hi) pulse /= 2;
+  while (pulse < CHIKARI.lo) pulse *= 2;
+  return { ioi, steady, pulse };
+}
+
+// Sa and Pa, in any octave: where a phrase rests, and the chikari rings longest.
+export const restsOn = (ratio) => sameNote(ratio, 1) || sameNote(ratio, 1.5);
+
+const mod = (a, n) => ((a % n) + n) % n;
+
+// How hard the chikari falls on a beat of the taal: sam hardest, the start of
+// each vibhag firmer, khali lighter, and the strokes between beats lightest.
+export function chikariAccent(taal, beat, onBeat = true) {
+  if (!onBeat) return 0.36;
+  if (!taal) return 0.48;
+  const i = mod(beat, taal.theka.length);
+  if (i === 0) return 0.72;
+  let at = 0;
+  for (let v = 0; v < taal.vibhag.length; v++) {
+    const len = taal.vibhag[v];
+    if (i < at + len) {
+      const khali = taal.marks[v] === '0';
+      return (i === at ? 0.58 : 0.48) * (khali ? 0.82 : 1);
+    }
+    at += len;
+  }
+  return 0.48;
+}
+
+// The chikari strokes due in (from, to], as [{ t, vel }], given what the hand
+// has done: `onsets` (the times of the player's notes, oldest first), `ratio`
+// (the last note), `moved` (when the left hand last slid or bent the note),
+// `chik` (the last chikari) and `grid` (the tabla's beat while a theka plays:
+// { at, beat, len, laya, taal }, beat number `beat` sounding at `at`, or null).
+// Called again for the next stretch, it carries on where it left off: nothing
+// twice, nothing missed.
+export function chikariPlan(from, to, { onsets = [], ratio = 1, moved = -Infinity, chik = -Infinity, grid = null } = {}) {
+  const out = [];
+  if (!onsets.length || !(to > from)) return out;
+  const last = onsets[onsets.length - 1];
+  const rhythm = playerRhythm(onsets);
+  const due = rhythm.steady ? last + rhythm.ioi : null; // when the next note is expected
+  let prev = chik;
+  const fits = (t, pulse) =>
+    t - last <= CHIKARI.ring &&
+    t - last >= Math.max(0.14, CHIKARI.near * pulse) &&
+    t - moved >= Math.max(0.14, CHIKARI.near * pulse) &&
+    t - prev >= CHIKARI.gap * pulse &&
+    !(due !== null && Math.abs(t - due) < Math.max(0.06, 0.3 * pulse));
+  if (grid && grid.len > 0 && Number.isFinite(grid.at)) {
+    const sub = chikariSub(grid.len, grid.laya);
+    const pulse = grid.len / sub;
+    const first = Math.max(Math.floor((from - grid.at) / pulse), Math.floor((last - grid.at) / pulse));
+    for (let j = first; ; j++) {
+      const t = grid.at + j * pulse;
+      if (t > to || t - last > CHIKARI.ring) break;
+      if (t <= from || !fits(t, pulse)) continue;
+      out.push({ t, vel: chikariAccent(grid.taal, grid.beat + Math.floor(j / sub), mod(j, sub) === 0) });
+      prev = t;
+    }
+    return out;
+  }
+  // alone: the chikari counts the pulse from the last stroke, or from where the left hand last moved it
+  const { pulse } = rhythm;
+  const anchor = Math.max(last, moved);
+  const most = restsOn(ratio) ? CHIKARI.restFills : CHIKARI.fills;
+  for (let k = 1; k <= most; k++) {
+    const t = anchor + k * pulse;
+    if (t > to || t - last > CHIKARI.ring) break;
+    if (t <= from || !fits(t, pulse)) continue;
+    out.push({ t, vel: 0.6 * 0.86 ** (k - 1) });
+    prev = t;
+  }
+  return out;
+}
