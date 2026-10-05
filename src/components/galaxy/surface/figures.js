@@ -44,6 +44,7 @@ const PEOPLE = {
   mando: { tall: 1.85, body: '#b9bec6', legs: '#5a5048', joints: '#3a332c', helmet: 'mando', visor: '#c8ccd3', cape: '#6a5040', bulk: 1.05 },
   kenobi: { tall: 1.82, body: '#d8ccb0', legs: '#c8b896', skin: '#e0b8a0', robe: '#6a4a2a', hair: '#e8e4dc', beard: '#e8e4dc', bulk: 1 },
   farmer: { tall: 1.78, body: '#c8b8a0', legs: '#8a7a62', skin: '#d0a07a', hair: '#5a4a3a', robe: '#a89878', bulk: 1.05 },
+  ahsoka: { tall: 1.85, body: '#c8c6be', legs: '#8e8c86', skin: '#d8743a', alien: 'twilek', robe: '#a8a8a2', bulk: 0.9 },
   hutt: { tall: 1.9, creature: 'hutt' },
   droid: { tall: 1.09, creature: 'astromech' },
 };
