@@ -24,10 +24,13 @@ describe('C-137: the cruiser’s voice', () => {
     let r = shipSays(v, 'board', 10);
     expect(r.line).toBe(SHIP_LINES.board[0]);
     v = r.v;
-    // anything else straight after: quiet, and the voice is as it was
+    // anything else straight after: quiet (held, to ask again), and the voice is as it was
     r = shipSays(v, 'takeoff', 10 + GAP - 0.1);
     expect(r.line).toBe(null);
+    expect(r.held).toBe(true);
     expect(r.v).toBe(v);
+    // the same kind again so soon: quiet, and not worth asking again
+    expect(shipSays(v, 'board', 10 + GAP + 0.1)).toMatchObject({ line: null, held: false });
     r = shipSays(v, 'takeoff', 10 + GAP + 0.1);
     expect(r.line).toBe(SHIP_LINES.takeoff[0]);
   });
@@ -51,7 +54,7 @@ describe('C-137: the cruiser’s voice', () => {
 
   it('says nothing to something it doesn’t know', () => {
     const v = newShipVoice();
-    expect(shipSays(v, 'nonsense', 5)).toEqual({ v, line: null });
+    expect(shipSays(v, 'nonsense', 5)).toEqual({ v, line: null, held: false });
   });
 });
 
@@ -87,16 +90,18 @@ describe('C-137: the Federation’s patrol ship', () => {
     expect(box.z1).toBeGreaterThan(15);
   });
 
-  it('falls in behind a flying cruiser that comes near, and stays on its tail', () => {
+  it('falls in off the flank of a flying cruiser that comes near, and stays with it', () => {
     let f = newFedShip();
     const c = { x: f.x - 20, z: f.z, y: 10, yaw: Math.PI / 2 };
     f = fly(f, c, true, 6);
     expect(f.mode).toBe('tail');
-    // behind it (its nose is east, so behind is west), a little above
+    // its nose is east: so a little behind it (west), out on its right (south), and above
     expect(f.x).toBeCloseTo(c.x - FED.behind, 0);
-    expect(Math.abs(f.z - c.z)).toBeLessThan(0.5);
-    expect(f.y).toBeGreaterThan(c.y);
+    expect(f.z).toBeCloseTo(c.z + FED.side, 0);
+    expect(f.y).toBeCloseTo(c.y + FED.above, 0);
     expect(onTail(f, c)).toBe(true);
+    // and nowhere near where the chase camera sits, straight behind it
+    expect(Math.hypot(f.x - (c.x - 10), f.z - c.z)).toBeGreaterThan(6);
   });
 
   it('can be outrun: the cruiser flat out leaves it behind, and it gives up', () => {

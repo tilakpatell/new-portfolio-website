@@ -32,11 +32,13 @@ export const GAP = 3.5;
 export const newShipVoice = () => ({ last: -Infinity, at: {}, said: {} });
 
 // What it says to `event` at `t` seconds, if anything: { v (the voice's next
-// state), line (null if it keeps quiet) }. Each kind's lines come round in
-// turn, so it never says the same thing twice running.
+// state), line (null if it keeps quiet), held (true if it only kept quiet
+// because it's just said something else: worth asking again in a moment) }.
+// Each kind's lines come round in turn, so it never says the same thing twice running.
 export function shipSays(v, event, t) {
   const lines = SHIP_LINES[event];
-  if (!lines || t - v.last < GAP || t - (v.at[event] ?? -Infinity) < COOLDOWN[event]) return { v, line: null };
+  if (!lines || t - (v.at[event] ?? -Infinity) < COOLDOWN[event]) return { v, line: null, held: false };
+  if (t - v.last < GAP) return { v, line: null, held: true };
   const i = ((v.said[event] ?? -1) + 1) % lines.length;
   return { v: { last: t, at: { ...v.at, [event]: t }, said: { ...v.said, [event]: i } }, line: lines[i] };
 }
@@ -44,10 +46,12 @@ export function shipSays(v, event, t) {
 // ── the Federation's patrol ship ──
 
 // It circles an ellipse over the street at `y`, `speed` along it; it falls in
-// `behind` metres behind a flying cruiser that comes within `near`, flying at
-// up to `chase` (the cruiser's top is 22) and a little above it, and gives up
-// when the cruiser lands or gets `lose` away. It keeps over the street.
-export const FED = { y: 19, loop: { x: 0, z: 0, rx: 44, rz: 26 }, speed: 9, chase: 15, near: 38, behind: 9, lose: 60, turn: 2.2 };
+// off a flying cruiser's right flank (`behind` metres back, or ahead if it's
+// less than nought, `side` out and `above` up: where the chase camera sees
+// it, rather than in the camera's own place) once it comes within `near`,
+// flying at up to `chase` (the cruiser's top is 22), and gives up when the
+// cruiser lands or gets `lose` away. It keeps over the street.
+export const FED = { y: 19, loop: { x: 0, z: 0, rx: 44, rz: 26 }, speed: 9, chase: 15, near: 38, behind: -3, side: 9, above: 3, lose: 60, turn: 2.2 };
 const EDGE = 4;
 
 export const newFedShip = () => ({ x: FED.loop.x + FED.loop.rx, z: FED.loop.z, y: FED.y, yaw: Math.PI, a: 0, mode: 'loop' });
@@ -65,9 +69,10 @@ export function stepFedShip(f, cruiser, flying, dt) {
   let ty;
   let top;
   if (mode === 'tail') {
-    tx = cruiser.x - Math.sin(cruiser.yaw) * FED.behind;
-    tz = cruiser.z - Math.cos(cruiser.yaw) * FED.behind;
-    ty = Math.max(cruiser.y + 3, 8);
+    // (its right: the nose (sin yaw, cos yaw) turned a quarter clockwise, seen from above)
+    tx = cruiser.x - Math.sin(cruiser.yaw) * FED.behind - Math.cos(cruiser.yaw) * FED.side;
+    tz = cruiser.z - Math.cos(cruiser.yaw) * FED.behind + Math.sin(cruiser.yaw) * FED.side;
+    ty = Math.max(cruiser.y + FED.above, 8);
     top = FED.chase;
   } else {
     // on round the loop, aiming a little ahead of where it's got to
@@ -93,5 +98,5 @@ export function stepFedShip(f, cruiser, flying, dt) {
   return { x, z, y, yaw, a, mode };
 }
 
-// close enough behind the cruiser to say so
-export const onTail = (f, cruiser) => f.mode === 'tail' && Math.hypot(cruiser.x - f.x, cruiser.z - f.z) < FED.behind + 8;
+// close enough on the cruiser's tail to say so
+export const onTail = (f, cruiser) => f.mode === 'tail' && Math.hypot(cruiser.x - f.x, cruiser.z - f.z) < Math.hypot(FED.behind, FED.side) + 6;

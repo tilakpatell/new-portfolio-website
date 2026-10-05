@@ -21,6 +21,7 @@ import {
   ARCADE,
   AREAS,
   CRUISER,
+  DINER,
   DRIVEWAY,
   FRONT_WALK,
   FURNITURE,
@@ -29,9 +30,13 @@ import {
   HOTSPOTS,
   HOUSE_PARTS,
   INNER_WALLS,
+  LIMO,
   LINKS,
+  MEMORIES,
+  MEMORY_COLORS,
   NEIGHBOURS,
   PLAN,
+  RINGS,
   ROAD,
   SCHOOL_PARTS,
   START,
@@ -41,6 +46,7 @@ import {
   behindYaw,
   cameraMove,
   canLand,
+  dropAt,
   exitCruiser,
   floorAt,
   inArea,
@@ -52,6 +58,8 @@ import {
   stepCruiser,
   stepMorty,
 } from './rules';
+import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
+import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
 import './world.css';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
@@ -112,13 +120,42 @@ const SAY = {
   summer: { who: null, text: 'Summer doesn’t look up from her phone. “Get out of my room, Morty.”' },
   rick: { who: 'Rick', text: 'The portal’s on the wall, Morty. Blips and Chitz is through there. Don’t touch anything else.' },
   mortyroom: { who: null, text: 'Morty’s room: the bed, the desk, and the window Rick climbs in through at night.' },
-  vats: { who: null, text: 'Rick’s spare bodies? Pickles? Best not to ask.' },
-  console: { who: null, text: 'Readings from the vats, a map of other dimensions, and a big red button under a guard. Best leave that alone.' },
+  clone: { who: null, text: 'A Rick, floating in the tube, waiting till he’s needed. He’s breathing. Probably.' },
+  console: { who: null, text: 'Screens of cells and DNA, all of it Rick’s. One of them is Rick, waving at you.' },
+  pickle: { who: null, text: 'Pickle Rick, in a jar on the desk. He’s been through a lot.' },
+  president: { who: 'The President', text: 'Morty. Where’s your grandfather? I need him in the Oval Office. My people put a portal in his garage. Use it.' },
+  secretservice: { who: 'Secret Service', text: 'Step back from the vehicle, son. The President’s schedule is very full.' },
+  agent1: { who: 'Federation agent', text: 'Earth is a valued member of the Galactic Federation. Smile, citizen.' },
+  agent2: { who: 'Federation agent', text: 'Shoney’s is open. I recommend the eggs. I recommend not asking why.' },
+  agent3: { who: 'Federation agent', text: 'Your grandfather’s file is very thick, Morty. Very, very thick.' },
+  ovalpresident: { who: 'The President', text: 'Sit down, Morty. Not there, that’s Lincoln’s. Tell Rick the free world called, and it’s disappointed.' },
+  general1: { who: 'A general', text: 'Don’t touch the phone, son. The red one. Or the other one.' },
+  general2: { who: 'A general', text: 'Your grandfather is a national security risk and a national treasure. We haven’t decided which.' },
+  dineragent: { who: 'Federation agent', text: 'Sit, Morty. The coffee’s a hologram. The questions aren’t. Where does your grandfather keep the portal gun formula?' },
   cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
   cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
   cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
 };
-const AREA_NAME = { street: 'The Smiths’ street', house: 'The Smith house', upstairs: 'Upstairs', garage: 'Rick’s garage', school: 'Mr. Goldenfold’s classroom', annex: 'The alien street', arcade: 'Blips and Chitz', basement: 'Rick’s secret lab' };
+const AREA_NAME = {
+  street: 'The Smiths’ street',
+  house: 'The Smith house',
+  upstairs: 'Upstairs',
+  garage: 'Rick’s garage',
+  school: 'Mr. Goldenfold’s classroom',
+  annex: 'The alien street',
+  arcade: 'Blips and Chitz',
+  basement: 'Rick’s clone lab',
+  mindblowers: 'Morty’s Mind Blowers',
+  oval: 'The Oval Office',
+  diner: 'Shoney’s',
+};
+// what talking to someone does, beyond what they say: a thing to do, done
+const TALK_DONE = { president: 'president', dineragent: 'diner' };
+// a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
+const MEMORY_S = 5.5;
+const TALK_MS = 3200; // how long someone talks before what they've said counts
+const SHIP_WAIT = 6; // how long the cruiser keeps a line it was about to say, in seconds
+const CHAIR_R = 1.2;
 
 // the prompt for each thing Morty can be next to
 const linkVerb = (l) =>
@@ -133,14 +170,15 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'] };
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', school: 'school-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', school: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', school: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', annex: 'garage-door', arcade: 'garage-door' },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  basement: { mindblowers: 'basement-mind' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder' };
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit' };
 function goalOf(next, s) {
   if (!next || s.flying) return null;
   const [to, key] = GOAL[next.id];
@@ -180,6 +218,15 @@ const newSim = () => ({
   frame: 0,
   padBefore: {},
   view: { link: null, hotspot: null },
+  // the cruiser's voice and what it's noticed; the Federation's ship; a memory playing
+  voice: newShipVoice(),
+  tookOff: false,
+  fastT: 0,
+  landedAt: -1e9,
+  leftFrom: null,
+  shipNext: null,
+  fed: newFedShip(),
+  mind: null,
 });
 
 export default function RmWorld() {
@@ -326,6 +373,47 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
   const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
+  const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
+  // the cruiser says something, if it's the time for it (./ship.js decides)
+  // (held back only because it's just spoken: asked again for a few seconds)
+  const shipTalk = useCallback((event) => {
+    const s = sim.current;
+    const r = shipSays(s.voice, event, s.t);
+    s.voice = r.v;
+    if (r.held) s.shipNext = { event, until: s.shipNext?.event === event ? s.shipNext.until : s.t + SHIP_WAIT };
+    if (!r.line) return;
+    if (s.shipNext?.event === event) s.shipNext = null;
+    setShipLine({ text: r.line, at: performance.now() });
+    speak(r.line);
+  }, []);
+  // the ship goes quiet when the world does
+  useEffect(() => stopSpeaking, []);
+  useEffect(() => {
+    if (open) stopSpeaking();
+  }, [open]);
+  useEffect(() => {
+    if (!shipLine) return undefined;
+    const t = setTimeout(() => setShipLine(null), 2600 + shipLine.text.length * 55);
+    return () => clearTimeout(t);
+  }, [shipLine]);
+  // a memory, from the chair: the room flashes its colour
+  const playMemory = useCallback(
+    (i) => {
+      const s = sim.current;
+      if (i >= MEMORIES.length) {
+        s.mind = null;
+        setMemory(null);
+        return;
+      }
+      s.mind = { ...s.mind, i, next: s.t + MEMORY_S };
+      setMemory({ i, ...MEMORIES[i], at: performance.now() });
+      if (i === 1) complete('mindblowers');
+      api.current?.act?.('mindblowers', 'play', MEMORIES[i].color);
+      sound('zap');
+    },
+    [api, complete],
+  );
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -368,12 +456,14 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         s.fading = false;
         if (l.kind === 'portal') {
           // the portal on this side, swirling open behind him
-          const far = LINKS.find((x) => x.area === l.to && x.kind === 'portal');
+          const far = LINKS.find((x) => x.area === l.to && x.kind === 'portal' && x.to === l.area);
           api.current?.fx('portal', { at: far ? { x: far.x, z: far.z } : { x: l.arrive.x, z: l.arrive.z } });
           sound('portalHop');
-          complete('portal');
+          // (Rick's portal, to Blips and Chitz: the President's is a thing to do of its own)
+          if (l.id === 'garage-portal') complete('portal');
         }
         if (l.id === 'garage-hatch') complete('basement');
+        if (l.id === 'garage-oval') complete('oval');
         setFade(null);
       }, climb ? CLIMB_MS : FADE_MS);
     },
@@ -384,16 +474,20 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     s.flying = true;
     s.landing = false;
     s.boardAt = { x: s.c.x, z: s.c.z };
+    s.tookOff = false;
+    s.fastT = 0;
+    s.leftFrom = null;
     s.keys.clear();
     api.current?.fx('board');
     sound('boost');
-  }, [api]);
+    shipTalk('board');
+  }, [api, shipTalk]);
   const touchDown = useCallback(() => {
     const s = sim.current;
     s.flying = false;
     s.landing = false;
     s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
-    const out = exitCruiser(s.c);
+    const out = exitCruiser(s.c, { motorcade: !doneRef.current.includes('president') });
     s.m = newMorty(out);
     s.yaw = behindYaw(out.face);
     s.pitch = PITCH;
@@ -401,19 +495,25 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     s.keys.clear();
     api.current?.fx('land');
     sound('powerDown');
-  }, [api]);
+    s.landedAt = s.t;
+    s.leftFrom = { x: s.c.x, z: s.c.z };
+    shipTalk('land');
+  }, [api, shipTalk]);
   const act = useCallback(() => {
     const s = sim.current;
     if (!api.current || s.fading || s.landing) return;
     audioContext();
     if (s.flying) {
-      if (canLand(s.c)) {
+      if (canLand(s.c, { motorcade: !doneRef.current.includes('president') })) {
         // straight down from here: no drift into a roof's edge on the way
         s.landing = true;
         s.landT = 0;
         s.c = { ...s.c, speed: 0 };
         s.keys.clear();
-      } else say({ kind: 'note', bad: true, text: CANT_LAND });
+      } else {
+        say({ kind: 'note', bad: true, text: CANT_LAND });
+        shipTalk('refuse');
+      }
       return;
     }
     const n = s.near;
@@ -423,8 +523,21 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
     else if (PLACES[n.id]) {
       s.keys.clear();
       openPlace(n.id);
-    } else if (SAY[n.id]) say({ kind: 'say', ...SAY[n.id] });
-  }, [api, go, board, openPlace, say]);
+    } else if (n.id === 'chair') {
+      // sat in the chair, the helmet on: the memories, one after another, till
+      // he gets up (E again: the next one)
+      s.keys.clear();
+      if (s.mind) playMemory(s.mind.i + 1);
+      else {
+        s.mind = { x: s.m.x, z: s.m.z, i: 0, next: 0 };
+        playMemory(0);
+      }
+    } else if (SAY[n.id]) {
+      say({ kind: 'say', ...SAY[n.id] });
+      // (done once they've had their say: the President gets in his car then)
+      if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
+    }
+  }, [api, go, board, openPlace, say, complete, playMemory, shipTalk, later]);
   const fns = useRef({});
   fns.current = { act };
 
@@ -568,6 +681,7 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
         if (floorAt(s.c.x, s.c.z) > CRUISER.hover + 0.01 || !inArea('street', s.c.x, s.c.z) || s.landT > 6) {
           s.landing = false;
           say({ kind: 'note', bad: true, text: CANT_LAND });
+          shipTalk('refuse');
         } else {
           s.c.y = Math.max(CRUISER.hover, s.c.y - Math.max(4, (s.c.y - CRUISER.hover) * 2.6) * dt);
           s.c.vy = -2;
@@ -576,6 +690,17 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       }
       // the first take-off: up off the driveway, or away along the street
       if (s.flying && s.boardAt && !doneRef.current.includes('fly') && (s.c.y > CRUISER.hover + 1.5 || Math.hypot(s.c.x - s.boardAt.x, s.c.z - s.boardAt.z) > 5)) complete('fly');
+      // the cruiser has something to say: up, fast, at the ceiling, the Federation behind
+      if (s.flying && !s.landing) {
+        if (!s.tookOff && s.c.y > CRUISER.hover + 2) {
+          s.tookOff = true;
+          shipTalk('takeoff');
+        }
+        s.fastT = Math.abs(s.c.speed) > CRUISER.top * 0.85 ? s.fastT + dt : 0;
+        if (s.fastT > 1.2) shipTalk('fast');
+        if (s.c.y > CRUISER.ceiling - 0.5) shipTalk('ceiling');
+        if (onTail(s.fed, s.c)) shipTalk('tail');
+      }
     } else {
       let fwd = (k.has('up') ? 1 : 0) - (k.has('down') ? 1 : 0) - s.stick.y;
       let side = (k.has('right') ? 1 : 0) - (k.has('left') ? 1 : 0) + s.stick.x;
@@ -590,8 +715,25 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z } } : undefined);
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : undefined);
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
+      // out over the open hatch: down it
+      const drop = s.fading ? null : dropAt(s.area, s.m.x, s.m.z);
+      if (drop) go(drop);
+      // up out of the Mind Blowers chair: the memories stop; sat, they go on
+      if (s.mind && (s.area !== 'mindblowers' || Math.hypot(s.m.x - s.mind.x, s.m.z - s.mind.z) > CHAIR_R)) {
+        s.mind = null;
+        setMemory(null);
+      } else if (s.mind && s.t > s.mind.next) playMemory(s.mind.i + 1);
+      // the cruiser, parked: a word as he walks off, a hello as he comes back, and now and then a thought
+      if (s.area === 'street') {
+        const d = Math.hypot(s.m.x - s.c.x, s.m.z - s.c.z);
+        if (s.leftFrom && d > 7) {
+          s.leftFrom = null;
+          shipTalk('leave');
+        } else if (d < 4.5 && s.t - s.landedAt > 12 && s.t > 6) shipTalk('hello');
+        else if (d < 14 && s.t > 30) shipTalk('idle');
+      }
       // the camera drifts round behind him as he walks, unless it's just been turned
       if (s.m.speed > 0.5 && s.t - s.dragAt > 1.4) {
         const d = behindYaw(s.m.face) - s.yaw;
@@ -602,18 +744,27 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
 
     // what he's next to: a door, then a thing to touch, then the cruiser; or, flying, somewhere to land
     let near = null;
-    if (s.flying) near = !s.landing && canLand(s.c) ? 'land' : null;
+    const motorcade = !doneRef.current.includes('president');
+    s.motorcade = motorcade;
+    if (s.flying) near = !s.landing && canLand(s.c, { motorcade }) ? 'land' : null;
     else if (!s.fading) {
-      const l = nearLink(s.area, s.m.x, s.m.z);
-      const h = l ? null : nearHotspot(s.area, s.m.x, s.m.z);
+      const l = nearLink(s.area, s.m.x, s.m.z, doneRef.current);
+      const h = l ? null : nearHotspot(s.area, s.m.x, s.m.z, doneRef.current);
       near = l ? `link:${l.id}` : h ? `spot:${h.id}` : s.area === 'street' && Math.hypot(s.m.x - s.c.x, s.m.z - s.c.z) < BOARD_R ? 'cruiser' : null;
     }
     s.near = near ? PROMPT[near] : null;
     s.view.link = s.near?.kind === 'link' ? s.near.id : null;
     s.view.hotspot = s.near?.kind === 'spot' ? s.near.id : null;
+    // the Federation's patrol ship, round its loop or on the cruiser's tail
+    s.fed = stepFedShip(s.fed, s.c, s.flying, dt);
+    // what the cruiser was about to say when it'd only just spoken
+    if (s.shipNext) {
+      if (s.t > s.shipNext.until || s.area !== 'street') s.shipNext = null;
+      else shipTalk(s.shipNext.event);
+    }
 
     try {
-      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current }, ms);
+      a.render({ area: s.area, morty: s.m, flying: s.flying, cruiser: s.c, camYaw: s.yaw, camPitch: s.pitch, near: s.view, done: doneRef.current, fed: s.fed }, ms);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -766,6 +917,27 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
       </div>
 
       <Toast toast={toast} />
+      {shipLine && hud.area === 'street' && (
+        <p className="rm-shipline" role="status" key={shipLine.at}>
+          <span className="rm-shipline-eyes" aria-hidden="true">
+            <i />
+            <i />
+          </span>
+          <span>
+            <b>The ship</b> {shipLine.text}
+          </span>
+        </p>
+      )}
+      {memory && hud.area === 'mindblowers' && (
+        <div className="rm-memory" role="status" key={memory.at} style={{ '--vial': MEMORY_COLORS[memory.color] }}>
+          <p className="rm-memory-head">
+            <span className="rm-memory-vial" aria-hidden="true" />
+            Memory {memory.i + 1} of {MEMORIES.length}
+          </p>
+          <p className="rm-memory-text">{memory.caption}</p>
+          <p className="rm-memory-hint">{touch ? 'Tap for the next one; walk away to stop.' : 'E for the next one; walk away to stop.'}</p>
+        </div>
+      )}
 
       {gl === 'on' && here && (
         <div className="rm-prompt" data-kind={here.kind}>
@@ -843,8 +1015,10 @@ function World({ api, done, open, openPlace, complete, gl, setGl, toast, say }) 
   );
 }
 
-// The list (M): every thing to do, ticked when it's done, with where to go for the rest.
+// The list (M): every thing to do, ticked when it's done, with where to go
+// for the rest; and the switch for the cruiser's voice.
 function ThingsToDo({ box, prog, done, onClose }) {
+  const [voice, setVoice] = useState(shipVoiceOn);
   return (
     <div ref={box} className="rm-list" id="rm-list" role="region" aria-label="Things to do in Dimension C-137">
       <div className="rm-list-head">
@@ -874,6 +1048,18 @@ function ThingsToDo({ box, prog, done, onClose }) {
           );
         })}
       </ol>
+      <label className="rm-list-switch">
+        <input
+          type="checkbox"
+          checked={voice}
+          onChange={(e) => {
+            setShipVoice(e.target.checked);
+            setVoice(e.target.checked);
+            if (!e.target.checked) stopSpeaking();
+          }}
+        />
+        <span>The ship’s voice</span>
+      </label>
       <RouterLink to="/" className="rm-list-back">
         <RiArrowLeftLine aria-hidden="true" /> Back to the site
       </RouterLink>
@@ -950,7 +1136,11 @@ function drawMap(c, s, goal, t) {
     for (const tr of TREES) disc(tr.x, tr.z, Math.max(1.8 * u, 1.7 * tr.s * k), '#3f8a35');
     g.strokeStyle = INK;
     g.lineWidth = 1 * u;
-    for (const n of NEIGHBOURS) foot(n, css(n.tint));
+    // Shoney's, yellow, and its lot; the limo at the kerb while the President's there
+    g.fillStyle = '#7d8088';
+    rect(DINER.x - DINER.w / 2 - 1.5, DINER.x + DINER.w / 2 + 1.5, DINER.z + DINER.d / 2, -ROAD.w / 2 - ROAD.sidewalk);
+    for (const n of NEIGHBOURS) foot(n, n === DINER ? '#f0dc86' : css(n.tint));
+    if (s.motorcade) foot({ x: LIMO.x, z: LIMO.z, w: LIMO.d, d: LIMO.w }, '#16171b');
     for (const p of SCHOOL_PARTS) foot(p, '#c0603f');
     foot(GARAGE, '#f4e3b5');
     for (const p of HOUSE_PARTS) foot(p, '#f4e3b5');
@@ -966,9 +1156,17 @@ function drawMap(c, s, goal, t) {
     g.fillStyle = '#211a2b';
     g.fillRect(0, 0, W, H);
     const rooms = PLAN.filter((r) => r.area === s.area);
+    const ring = RINGS[s.area];
     g.strokeStyle = 'rgba(27, 20, 36, 0.55)';
     g.lineWidth = 0.75 * u;
-    if (rooms.length)
+    if (ring) {
+      // a round room: its ellipse
+      g.fillStyle = css(rooms[0]?.floor ?? 0xc4a77a);
+      g.beginPath();
+      g.ellipse(X(ring.x), Z(ring.z), ring.a * k, ring.b * k, 0, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    } else if (rooms.length)
       for (const r of rooms) {
         g.fillStyle = css(r.floor);
         rect(r.x0, r.x1, r.z0, r.z1);
