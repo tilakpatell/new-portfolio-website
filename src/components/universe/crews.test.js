@@ -79,3 +79,29 @@ describe('the crews', () => {
     expect(linesFor(null, 'boost')).toBeNull();
   });
 });
+
+describe('the crews on foot', () => {
+  it('have a word for each moment out of the ship, said by their own crew', async () => {
+    const { PARTY } = await import('./footScene');
+    const { TROOPS } = await import('./foot');
+    for (const crew of CREWS) {
+      const all = [
+        ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
+        ...Object.keys(TROOPS).map((kind) => linesFor(crew, 'foot', 'kill', kind)),
+        ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
+        // another pilot's crew down too, and anyone's double from another dimension
+        linesFor(crew, 'foot', 'friend'),
+        ...Object.values(PARTY)
+          .flat()
+          .map((p) => linesFor(crew, 'foot', 'alt', p.id)),
+      ];
+      for (const exchange of all) {
+        expect(exchange?.length, crew.id).toBeGreaterThan(0);
+        for (const [who, text] of exchange) {
+          expect(crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+          expect(text.length).toBeGreaterThan(2);
+        }
+      }
+    }
+  });
+});

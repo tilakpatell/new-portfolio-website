@@ -55,7 +55,8 @@ import { buildTraffic } from './trafficModels';
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
 
-const SKY_FAR = 2200; // how far off the background galaxies ride (inside the camera's far plane)
+const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
+const SKY_SIZE = SKY_FAR / 2200; // (their sizes below are at 2200)
 const LABEL_H = 0.15; // a name's height on screen, in clip units (about a thirteenth of the screen)
 const LABEL_W = 1024; // a name's row in the atlas, in px
 const LABEL_RH = 128;
@@ -406,7 +407,7 @@ void main() {
   col *= 0.45 + 0.55 * sqrt(mu);
   col *= mix(vec3(1.0, 0.62, 0.45), vec3(1.0), smoothstep(0.0, 0.55, mu));
   // from far off it burns brighter, so the whole disc blooms
-  float far = smoothstep(120.0, 700.0, length(cameraPosition - vW));
+  float far = smoothstep(600.0, 3500.0, length(cameraPosition - vW));
   col *= 1.0 + 1.3 * far;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
@@ -437,7 +438,7 @@ void main() {
     corona = inner * 1.15 + outer * (0.2 + 0.45 * smoothstep(-0.1, 0.8, rays));
     corona *= 1.0 - smoothstep(2.2, 3.0, d);
   }
-  float far = smoothstep(150.0, 900.0, vDist);
+  float far = smoothstep(750.0, 4500.0, vDist);
   float halo = (0.05 + 0.16 * far) / (1.0 + d * d * (0.9 - 0.6 * far)) + exp(-d * 0.9) * 0.12;
   halo *= 1.0 - smoothstep(uReach * 0.55, uReach, r);
   vec3 white = mix(uColor, vec3(1.0, 0.94, 0.86), 0.5);
@@ -715,6 +716,7 @@ const CITADEL_FRAG = `
 uniform vec3 uLight;
 uniform vec3 uLightColor;
 uniform float uTime;
+uniform float uK; // its size, against the radius of 18 its profile is drawn for
 varying vec3 vObj;
 varying vec3 vNObj;
 varying vec3 vW;
@@ -757,7 +759,7 @@ void main() {
   vec3 wcol = mix(vec3(1.0, 0.8, 0.52), vec3(0.78, 0.9, 1.0), step(0.72, hash12(wi + 3.0)));
   wcol = mix(wcol, vec3(0.45, 1.0, 0.35), step(0.92, hash12(wi + 9.0)));
   // the green band round the rim, and rings of deck lights
-  float band = hull * step(17.4, rad) * (1.0 - smoothstep(0.12, 0.3, abs(p.y)));
+  float band = hull * step(17.4 * uK, rad) * (1.0 - smoothstep(0.12 * uK, 0.3 * uK, abs(p.y)));
   float deckRing = deck * hull * step(0.92, fract(rad * 0.9)) * (1.0 - tiny);
   float ndl = dot(N, L);
   float light = smoothstep(-0.1, 0.3, ndl) * (0.06 + 0.94 * max(ndl, 0.0));
@@ -1590,7 +1592,7 @@ export function buildDeepSpace({ small = false } = {}) {
     }
     const geo = mergeGeometries(pieces);
     for (const p of pieces) p.dispose();
-    mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT } }), g);
+    mesh(geo, shader(CITADEL_VERT, CITADEL_FRAG, { uLight: homeW, uLightColor: { value: HOME_LIGHT }, uK: { value: k } }), g);
     // a portal beside it, the council's ships coming and going
     const portalAt = new THREE.Vector3(27 * k, 1.5 * k, 9 * k);
     const portal = mesh(new THREE.PlaneGeometry(9 * k, 9 * k), shader('varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }', PORTAL_FRAG, {}, { ...premultiplied, side: THREE.DoubleSide }), g, 2);
@@ -1710,8 +1712,8 @@ export function buildDeepSpace({ small = false } = {}) {
       const roll = rand() * TAU;
       const r2 = right.clone().multiplyScalar(cos(roll)).addScaledVector(up, sin(roll));
       const u2 = up.clone().multiplyScalar(cos(roll)).addScaledVector(right, -sin(roll));
-      const hw = size / 2;
-      const hh = (size / 2) * squash;
+      const hw = (size * SKY_SIZE) / 2;
+      const hh = ((size * SKY_SIZE) / 2) * squash;
       const cu = (cell % 2) * 0.5;
       const cv = cell < 2 ? 0.5 : 0;
       [
@@ -1744,10 +1746,10 @@ export function buildDeepSpace({ small = false } = {}) {
   {
     const rand = rng('deep-debris');
     const fields = [
-      { at: [360, 12, -300], dir: [0.62, 0.05, 0.78], len: 230, wide: 34, thick: 7 },
-      { at: [-215, -18, 330], dir: [0.9, 0.08, -0.42], len: 210, wide: 30, thick: 6 },
+      { at: [1800, 60, -1500], dir: [0.62, 0.05, 0.78], len: 700, wide: 90, thick: 20 },
+      { at: [-1075, -90, 1650], dir: [0.9, 0.08, -0.42], len: 640, wide: 80, thick: 18 },
     ];
-    const per = small ? 70 : 170;
+    const per = small ? 160 : 420;
     const rock = new THREE.IcosahedronGeometry(1, 1);
     {
       const p = rock.attributes.position;
@@ -1807,7 +1809,7 @@ mat3 tumble(float id) {
           .addScaledVector(dir, along)
           .addScaledVector(side, across * f.wide * thin + bend)
           .addScaledVector(upv, (rand() - 0.5) * f.thick * thin);
-        const size = 0.18 + rand() ** 5 * 3.6;
+        const size = 0.3 + rand() ** 5 * 7;
         sc.set(size, size * (0.7 + rand() * 0.5), size * (0.8 + rand() * 0.4));
         q.setFromEuler(e.set(rand() * 6.3, rand() * 6.3, rand() * 6.3));
         im.setMatrixAt(i, mm.compose(p, q, sc));

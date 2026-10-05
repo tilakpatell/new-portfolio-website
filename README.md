@@ -59,8 +59,13 @@ The front door (`/`) is a map of the whole site as places in space. A first visi
 | `T` / `Q` | Next / previous target |
 | `V` | Switch between the chase camera and the cockpit view |
 | `O` | Flight settings (steering, aim assist, inverted pitch and more) |
+| `G` | Land on the planet you're at and step out (and, on foot, get back in) |
 
-Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down.
+On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes. The Galactic Federation's squads come over the horizon now and then.
+
+Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension.
+
+The map is big: the planets are a hundred and more ship-lengths across, the fandoms far out in deep space, and the Death Star's trench run goes all the way round it.
 
 ### The hidden worlds
 

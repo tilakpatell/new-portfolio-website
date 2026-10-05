@@ -20,7 +20,9 @@
 //
 // createClient({ name, kind, where }) → { selfId, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, where }), pose(ship, { hidden, boost, safe,
-//   shield }), shot(at, v), hit(peerId), down(byId), cursor(x, y, touch),
+//   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
+//   each pilot's comes in as peer.foot, with `at`), shot(at, v), hit(peerId),
+//   down(byId), cursor(x, y, touch),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
@@ -28,7 +30,7 @@
 // (someone was shot down: where they were, for the scene's pop; `by` is
 // whoever this browser believes did it).
 
-import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, FOOT_MS, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readFoot, readHello, readHit, readPose, readShot, writeCursor, writeFoot, writePose, writeShot } from './protocol';
 import { UNIVERSE, placeName } from './where';
 
 const SNAPS = 12; // poses kept per pilot
@@ -50,6 +52,8 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
   let send = null; // the actions, once the room's there
   let me = null; // where you are, while a hit on you can count
   let lastPose = -Infinity;
+  let lastFoot = -Infinity;
+  let footDown = false; // whether the last foot sent had your crew down
   let lastShot = -Infinity;
   let lastCursor = -Infinity;
   let cursorLater = 0; // the last pointer of a quick move, sent once the gap's up
@@ -76,6 +80,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
         blocked: false,
         snaps: [],
         pose: null,
+        foot: null, // their crew on foot, while they're down on a planet
         cur: null,
         shots: [], // their last few, for checking a hit on you
         shotAt: -Infinity,
@@ -110,6 +115,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     p.blocked = on;
     p.snaps.length = 0;
     p.pose = null;
+    p.foot = null;
     p.cur = null;
     p.shots.length = 0;
     roster();
@@ -149,6 +155,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     const action = (ns) => r.makeAction(ns);
     const hi = action('hi');
     const pose = action('pose');
+    const foot = action('foot');
     const shot = action('shot');
     const hit = action('hit');
     const down = action('down');
@@ -157,6 +164,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     send = {
       hi: (data, to) => hi.send(data, to ? { target: to } : undefined).catch(() => {}),
       pose: (data) => pose.send(data).catch(() => {}),
+      foot: (data) => foot.send(data).catch(() => {}),
       shot: (data) => shot.send(data).catch(() => {}),
       hit: (data, to) => hit.send(data, { target: to }).catch(() => {}),
       down: (data) => down.send(data).catch(() => {}),
@@ -204,6 +212,12 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       p.pose = s;
       p.snaps.push(s);
       if (p.snaps.length > SNAPS) p.snaps.shift();
+    };
+    foot.onMessage = (data, { peerId }) => {
+      const f = readFoot(data);
+      const p = f && admit('foot', peerId);
+      if (!p) return;
+      p.foot = f.off ? null : { ...f, at: now() };
     };
     shot.onMessage = (data, { peerId }) => {
       const known = peers.get(peerId);
@@ -335,6 +349,21 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       if (!send || !s || t - lastPose < POSE_MS) return;
       lastPose = t;
       send.pose(writePose(s, (hidden ? 1 : 0) | (boost ? 2 : 0), shield));
+    },
+    // your crew on foot, each frame while they're down (sent ten times a
+    // second), and null once they're back in (sent once)
+    foot(crew) {
+      const t = now();
+      if (!send) return;
+      if (!crew) {
+        if (footDown) send.foot(writeFoot(null));
+        footDown = false;
+        return;
+      }
+      if (t - lastFoot < FOOT_MS) return;
+      lastFoot = t;
+      footDown = true;
+      send.foot(writeFoot(crew));
     },
     shot(at, v) {
       const t = now();
