@@ -8,9 +8,14 @@ import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
 import { PONY } from './levels/pony';
 import { AMON_HEN } from './levels/amonhen';
+import { CORMALLEN } from './levels/cormallen';
+import { ITHILIEN } from './levels/ithilien';
 import { LORIEN } from './levels/lorien';
 import { MORIA } from './levels/moria';
+import { PARTY } from './levels/party';
 import { RIVENDELL } from './levels/rivendell';
+import { TOWER } from './levels/tower';
+import { WEATHERTOP } from './levels/weathertop';
 import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
@@ -26,7 +31,7 @@ import './rush.css';
 // touch screen).
 
 const BEST = (id) => `tp-rush-best-${id}`;
-const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN, amonhen: AMON_HEN };
+const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN, amonhen: AMON_HEN, party: PARTY, weathertop: WEATHERTOP, ithilien: ITHILIEN, tower: TOWER, cormallen: CORMALLEN };
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
@@ -304,6 +309,8 @@ function Kitchen({ level, live, invite }) {
       else if (e.type === 'lapsed') say(pick(L.lapsed, sm.lines++));
       else if (e.type === 'burnt') say(pick(L.burnt, sm.lines++));
       else if (e.type === 'spilt') say(pick(L.spilt, sm.lines++));
+      // (a level's own: a fire out, a thief creeping, a thief away with it)
+      else if ((e.type === 'out' || e.type === 'sneak' || e.type === 'stolen') && L[e.type]) say(pick(L[e.type], sm.lines++));
       else if (e.type === 'end') {
         say(pick(L.end, 0));
         if (sm.phase !== 'over') go('over');

@@ -103,6 +103,28 @@ describe('the wire', () => {
     expect(ev[0]).toMatchObject({ type: 'caught', at: [1, 7], p: 2 });
   });
 
+  it('carries the fires’ fuel and the carving tables’ parts, and the new events', async () => {
+    const { WEATHERTOP } = await import('./levels/weathertop');
+    const { CORMALLEN } = await import('./levels/cormallen');
+    const host = newRush(WEATHERTOP, { players: 1 });
+    host.spots['4,2'].fuel = 0.25;
+    host.spots['7,0'].fuel = 0.5;
+    const guest = newRush(WEATHERTOP, { players: 1 });
+    expect(readState(guest, JSON.parse(JSON.stringify(writeState(host))), null)).toBe(true);
+    expect(guest.spots['4,2'].fuel).toBe(0.25);
+    expect(guest.spots['7,0'].fuel).toBe(0.5);
+    const feast = newRush(CORMALLEN, { players: 1 });
+    feast.spots['4,2'].parts = [{ k: 'roast', s: 'roasted' }, { k: 'herb', s: 'chopped' }];
+    feast.spots['5,2'].item = { k: 'platter', s: 'feast' };
+    const copy = newRush(CORMALLEN, { players: 1 });
+    expect(readState(copy, JSON.parse(JSON.stringify(writeState(feast))), null)).toBe(true);
+    expect(copy.spots['4,2'].parts).toEqual([{ k: 'roast', s: 'roasted' }, { k: 'herb', s: 'chopped' }]);
+    expect(copy.spots['5,2'].item).toEqual({ k: 'platter', s: 'feast' });
+    const types = ['grown', 'stoked', 'out', 'sneak', 'shooed', 'stolen', 'plated'];
+    const back = readEvents(JSON.parse(JSON.stringify(writeEvents(types.map((type) => ({ type, at: [4, 2] })), CORMALLEN))), CORMALLEN);
+    expect(back.map((e) => e.type)).toEqual(types);
+  });
+
   it('turns away nonsense', () => {
     const s = newRush(PONY);
     expect(readState(s, null)).toBe(false);

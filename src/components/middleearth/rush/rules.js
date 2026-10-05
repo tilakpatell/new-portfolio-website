@@ -11,20 +11,30 @@
 //
 // Tiles: '#' counter, 'B' chopping board, 'P' pot, 'O' oven, 'T' tap (or
 // cask), 'L' leaf table (to wrap things in), 'F' fishing line (held down
-// till something bites), 'W' wash tub, 'X' bin, 'S' serving counter, 'R'
-// where dirty dishes come back, '.' floor, '~' water (not to be walked on),
-// and the level's own crates and shelves (the Pony's: 'c' carrots, 'p'
-// potatoes, 'd' dough, 'm' mugs, 'b' bowls). Anything else is wall.
+// till something bites), 'G' a patch where something grows (pick it when
+// it's up), 'A' a carving table (a platter put together from its parts),
+// 'W' wash tub, 'X' bin, 'S' serving counter, 'R' where dirty dishes come
+// back, '.' floor, ',' floor that's webbed or mired (slow going), '~' water
+// (not to be walked on), and the level's own crates and shelves (the
+// Pony's: 'c' carrots, 'p' potatoes, 'd' dough, 'm' mugs, 'b' bowls).
+// Anything else is wall.
+//
+// A level can also have fires to keep fed (`fuel`: its pots and ovens burn
+// down, and cook nothing once they're out, till someone puts wood on), and
+// a thief (`thief`: now and then he creeps up to a counter with something
+// he likes on it, and takes it unless a hobbit gets there first).
 //
 // Things are { k, s }, of the kinds in KINDS. What a level's stations make
 // is the level's to say (`crates`, `shelves`, `pot`, `oven`, `tap`,
-// `dishes`); the Pony's are the defaults: stew of three chopped carrots or
-// potatoes in a bowl, dough baked to a loaf, a mug filled with ale.
+// `dishes`, and `patch`, `line`, `wrap`, `platter` for the stations that
+// need them); the Pony's are the defaults: stew of three chopped carrots or
+// potatoes in a bowl, dough baked to a loaf, a mug filled with ale. An oven
+// can have more than one recipe (a list), each by what goes in.
 
 // every kind of thing, and what it can be (added to, never reordered: the
 // wire counts on the order)
 export const KINDS = {
-  mug: ['clean', 'dirty', 'ale'],
+  mug: ['clean', 'dirty', 'ale', 'tea'],
   bowl: ['clean', 'dirty', 'stew', 'soup', 'chowder'],
   carrot: ['raw', 'chopped'],
   potato: ['raw', 'chopped'],
@@ -43,6 +53,17 @@ export const KINDS = {
   fish: ['raw', 'chopped'],
   skewer: ['grilled', 'charred'], // (a fish on a stick, over the campfire)
   skin: ['clean', 'dirty', 'water'],
+  cake: ['baked', 'burnt'],
+  skillet: ['fried', 'burnt'], // (mushrooms, in the pan)
+  wood: ['raw'],
+  tomato: ['raw', 'chopped'],
+  sausage: ['raw', 'chopped'],
+  banger: ['grilled', 'burnt'], // (sausages on a stick, over the fire)
+  plate: ['clean', 'dirty', 'fryup'],
+  coney: ['raw', 'chopped'],
+  roast: ['roasted', 'charred'],
+  meat: ['raw', 'chopped'],
+  platter: ['feast'],
 };
 const CONTAINER = (k) => KINDS[k]?.includes('dirty');
 const CHOPS = (k) => KINDS[k]?.includes('chopped');
@@ -60,8 +81,11 @@ const PONY_DISHES = {
 };
 // a level's recipes, with the Pony's where it doesn't say
 export const recipesOf = (level) => ({ ...PONY_RECIPES, ...level?.recipes, dishes: Object.fromEntries(Object.entries(level?.dishes ?? PONY_DISHES).map(([d, x]) => [d, { ...PONY_DISHES[d], ...x }])) });
-const HOLDS = new Set(['#', 'B', 'O', 'T', 'L', 'F']); // stations that hold one thing
-const OPEN = new Set(['.', 'x', '~']); // tiles with no station
+const HOLDS = new Set(['#', 'B', 'O', 'T', 'L', 'F', 'G', 'A']); // stations that hold one thing
+const OPEN = new Set(['.', ',', 'x', '~']); // tiles with no station
+const FLOOR = new Set(['.', ',']);
+// the oven's recipe for a thing that goes in, or comes out
+export const ovenFor = (R, k) => [R.oven].flat().find((o) => o.takes === k || o.makes === k) ?? null;
 export const RADIUS = 0.3;
 
 const key = (i, j) => `${i},${j}`;
@@ -91,8 +115,10 @@ export function parseLevel(level) {
 }
 
 const spotFor = (c, level, R) => {
-  if (HOLDS.has(c)) return { item: null, prog: 0 };
-  if (c === 'P') return { n: 0, cook: 0, s: 'empty', prog: 0 };
+  const fire = level.fuel && (c === 'P' || c === 'O') ? { fuel: 1 } : {};
+  if (c === 'A') return { item: null, prog: 0, parts: [] };
+  if (HOLDS.has(c)) return { item: null, prog: 0, ...fire };
+  if (c === 'P') return { n: 0, cook: 0, s: 'empty', prog: 0, ...fire };
   if (c === 'W') return { dirty: [], clean: [], prog: 0 };
   if (R.shelves[c]) return { n: level.stock?.[R.shelves[c]] ?? 0 };
   if (c === 'R') return Object.fromEntries([...new Set(Object.values(R.shelves))].map((k) => [k, 0]));
@@ -127,6 +153,8 @@ export function newRush(level, { players = 1, seed = 1 } = {}) {
     nextOrder: level.orders.first ?? 2,
     orderId: 0,
     returns: [],
+    // (the thief: when he next comes, and where he's creeping, if he is)
+    ...(level.thief ? { nextSteal: level.thief.first, sneak: null } : {}),
   };
 }
 
@@ -145,7 +173,7 @@ export const starsOf = (s) => starsFor(s).filter((c) => s.coins >= c).length;
 export const solid = (s, i, j) => {
   const g = s.level.tiles;
   if (i < 0 || j < 0 || i >= s.W || j >= s.D) return true;
-  return g[j][i] !== '.';
+  return !FLOOR.has(g[j][i]);
 };
 
 // push a circle out of the tiles round it
@@ -194,12 +222,14 @@ export function movePlayer(s, p, { x: mx = 0, z: mz = 0, dash = false } = {}, dt
     p.dash = L.dashTime;
     p.cool = L.dashCool;
   }
-  let speed = L.speed;
+  // (webs, or mire, underfoot: slow going, even at a dash)
+  const slow = s.level.tiles[Math.floor(p.z)]?.[Math.floor(p.x)] === ',' ? (L.web ?? 0.45) : 1;
+  let speed = L.speed * slow;
   let tx = mx * k;
   let tz = mz * k;
   if (p.dash > 0) {
     p.dash = Math.max(0, p.dash - dt);
-    speed = L.dashSpeed;
+    speed = L.dashSpeed * slow;
     if (len < 0.1) {
       tx = Math.cos(p.face);
       tz = -Math.sin(p.face);
@@ -262,14 +292,37 @@ export function grab(s, p) {
     say('pick', { k: item.k });
   };
   const nope = () => say('nope');
+  const F = s.level.fuel;
 
-  if (HOLDS.has(c)) {
+  if (F && held?.k === F.wood && (c === 'P' || c === 'O')) {
+    // wood on the fire
+    sp.fuel = Math.min(1, sp.fuel + F.load);
+    p.held = null;
+    say('stoked');
+  } else if (c === 'A' && R.platter) {
+    // the carving table: the platter's parts, one of each, then the platter
+    const parts = R.platter.parts;
+    if (held && !sp.item && parts.some((q) => q.k === held.k && q.s === held.s) && !sp.parts.some((q) => q.k === held.k)) {
+      sp.parts.push(held);
+      p.held = null;
+      say('put', { k: held.k });
+      if (sp.parts.length === parts.length) {
+        sp.item = { ...R.platter.makes };
+        sp.parts = [];
+        say('plated');
+      }
+    } else if (!held && sp.item) {
+      take(sp.item);
+      sp.item = null;
+    } else if (!held && sp.parts.length) take(sp.parts.pop());
+    else nope();
+  } else if (HOLDS.has(c)) {
     if (!held && sp.item) {
       take(sp.item);
       sp.item = null;
       sp.prog = 0;
     } else if (held && !sp.item) {
-      const fits = c === '#' || c === 'B' || c === 'L' || (c === 'O' && held.k === R.oven.takes) || (c === 'T' && held.k === R.tap.into && held.s === 'clean');
+      const fits = c === '#' || c === 'B' || c === 'L' || (c === 'O' && ovenFor(R, held.k)?.takes === held.k) || (c === 'T' && held.k === R.tap.into && held.s === 'clean');
       if (!fits) {
         nope();
         return ev;
@@ -404,6 +457,46 @@ export function work(s, p, dt) {
   return ev;
 }
 
+// ── the thief ──
+
+// Now and then he creeps up to a counter with something he likes on it
+// (`sneak`, for as long as `warn`), and takes it, unless a hobbit comes
+// within `guard` of it first. He never tries one a hobbit's already by.
+function stepThief(s, ev) {
+  const th = s.level.thief;
+  const near = (i, j) => s.players.some((p) => Math.hypot(p.x - (i + 0.5), p.z - (j + 0.5)) < th.guard);
+  const next = () => (s.nextSteal = s.t + th.every[0] + rand(s) * (th.every[1] - th.every[0]));
+  if (s.sneak) {
+    const [i, j] = s.sneak.at;
+    const sp = s.spots[key(i, j)];
+    if (near(i, j)) {
+      ev.push({ type: 'shooed', at: s.sneak.at });
+      s.sneak = null;
+      next();
+    } else if (s.t >= s.sneak.until) {
+      if (sp.item && th.steals.includes(sp.item.k)) {
+        ev.push({ type: 'stolen', at: s.sneak.at, k: sp.item.k });
+        sp.item = null;
+        sp.prog = 0;
+      }
+      s.sneak = null;
+      next();
+    }
+  } else if (s.t >= s.nextSteal) {
+    const likes = Object.keys(s.spots).filter((k) => {
+      const [i, j] = k.split(',').map(Number);
+      const c = s.level.tiles[j][i];
+      const it = s.spots[k].item;
+      return (c === '#' || c === 'B') && it && th.steals.includes(it.k) && !near(i, j);
+    });
+    if (likes.length) {
+      const at = likes[Math.floor(rand(s) * likes.length)].split(',').map(Number);
+      s.sneak = { at, until: s.t + th.warn };
+      ev.push({ type: 'sneak', at });
+    } else s.nextSteal = s.t + 3;
+  }
+}
+
 // ── the round ──
 
 // One step for the host: the grabs asked for this step (in the order they
@@ -420,10 +513,18 @@ export function stepRush(s, dt, grabs = []) {
   for (const p of s.players) if (p.work) ev.push(...work(s, p, dt));
   const T = s.level.times;
   const R = recipesOf(s.level);
+  const F = s.level.fuel;
   for (const [k, sp] of Object.entries(s.spots)) {
     const [i, j] = k.split(',').map(Number);
     const c = s.level.tiles[j][i];
     const at = [i, j];
+    // a fire burns down while something's on it, and what's over it waits
+    // while it's out
+    if (F && 'fuel' in sp && sp.fuel > 0 && (sp.item || sp.s === 'cooking' || sp.s === 'done')) {
+      sp.fuel = Math.max(0, sp.fuel - dt / F.burn);
+      if (sp.fuel === 0) ev.push({ type: 'out', at });
+    }
+    if (F && sp.fuel === 0) continue;
     if (c === 'P' && (sp.s === 'cooking' || sp.s === 'done')) {
       sp.cook += dt;
       if (sp.s === 'cooking' && sp.cook >= T.cook) {
@@ -437,14 +538,23 @@ export function stepRush(s, dt, grabs = []) {
       sp.prog += dt;
       // (what the oven makes is done, then spoilt: a loaf baked then burnt,
       // an axe forged then ruined)
-      const [done, spoilt] = KINDS[R.oven.makes];
-      if (sp.item.k === R.oven.takes && sp.prog >= T.bake) {
-        sp.item = { k: R.oven.makes, s: done };
+      const o = ovenFor(R, sp.item.k);
+      const [done, spoilt] = o ? KINDS[o.makes] : [];
+      if (o && sp.item.k === o.takes && sp.prog >= T.bake) {
+        sp.item = { k: o.makes, s: done };
         sp.prog = 0;
         ev.push({ type: 'baked', at });
-      } else if (sp.item.k === R.oven.makes && sp.item.s === done && sp.prog >= T.char) {
+      } else if (o && sp.item.k === o.makes && sp.item.s === done && sp.prog >= T.char) {
         sp.item.s = spoilt;
-        ev.push({ type: 'burnt', at, k: R.oven.makes });
+        ev.push({ type: 'burnt', at, k: o.makes });
+      }
+    } else if (c === 'G' && !sp.item && R.patch) {
+      // the patch: something comes up, given time
+      sp.prog += dt / T.grow;
+      if (sp.prog >= 1) {
+        sp.item = { k: R.patch.grows, s: 'raw' };
+        sp.prog = 0;
+        ev.push({ type: 'grown', at });
       }
     } else if (c === 'T' && sp.item?.k === R.tap.into) {
       sp.prog += dt;
@@ -459,6 +569,7 @@ export function stepRush(s, dt, grabs = []) {
       }
     }
   }
+  if (s.level.thief) stepThief(s, ev);
   // the dirty ones, back from the common room
   if (s.returns.length) {
     const back = s.returns.filter((r) => r.at <= s.t);

@@ -91,17 +91,39 @@ the Pony"), and a button in the Pony's common room panel. An invite link is
   `joinRoom`, messages, limits. `protocol.js` (pure, tested) for reading and
   writing them.
 - `middleearth/rush/scene.js`: three.js. The room from the level's tiles,
-  the stations, the hobbits, the items, progress rings, the camera.
+  the stations, the hobbits, the items, progress rings, the camera. Each
+  kitchen's look is a theme in `rush/themes/` (its sky and light, its room,
+  its counters, its own stations over the shared ones in `themes/common.js`,
+  its water, its moving extras); the things themselves are in `items.js`.
 - `middleearth/rush/Rush.jsx`, `rush.css`: lobby (alone / make a room /
   join), the HUD (orders, coins, clock), results, touch controls.
 - `middleearth/rush/levels/pony.js`: the Pony's tiles, recipes, timings,
   stars and lines.
 
-Later towns add a level file each (the Shire: Bilbo's party; Rivendell:
-Elrond's table; Moria, Lothlórien, Mordor, each their own) and reuse the
-rest.
+Later towns add a level file and a theme each, and reuse the rest.
+
+## Every chapter's kitchen
+
+Each kitchen adds one thing of its own to the rules, so no two play alike:
+
+| Chapter | Kitchen | Its own thing |
+| --- | --- | --- |
+| The Shire | The Long-expected Party (Bilbo) | Farmer Maggot's patch (`G`): mushrooms grow while you work; an oven with two recipes (seed-cake, mushrooms in the pan) |
+| Bree | A busy night at the Pony (Butterbur) | The basics: chop, cook, bake, pour, wash |
+| Weathertop | Supper on Weathertop (Strider) | Fires to feed (`fuel`): pans and spits burn down while they cook and stop when they're out; wood from the pile |
+| Rivendell | Elrond's table (Lindir) | A stream through the kitchen, bridges over it |
+| Moria | The forges of Khazad-dûm (Balin) | A channel of molten rock; crucibles and moulds |
+| Lothlórien | Gifts for the Fellowship (Haldir) | Two flets over a drop; the leaf table (`L`), to wrap lembas |
+| Amon Hen | Supper at Parth Galen (Aragorn) | The fishing line (`F`): hold Work till a fish bites; serving to the boats |
+| The Dead Marshes | Herbs and stewed rabbit (Sam) | A thief (`thief`): Sméagol creeps up to coneys left on a counter and takes them, unless a hobbit gets there first |
+| Cirith Ungol | The orcs' mess (Shagrat) | Webs on the floor (`,`): slow going, even at a dash |
+| Mordor | The feast at Cormallen (Gandalf) | Carving tables (`A`): a platter put together from a roast, bread and herbs |
+
+New kinds of thing go on the end of `KINDS` (and new states on the end of a
+kind's list), and new events on the end of the wire's list, so a guest on
+an older copy of the site can still play with a host on a newer one.
 
 ## Not in this round
 
-Throwing items, plates on plates, moving hazards, levels beyond the Pony,
-voice or chat, saved high scores across visitors.
+Throwing items, moving platforms, voice or chat, saved high scores across
+visitors.

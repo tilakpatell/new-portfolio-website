@@ -305,6 +305,12 @@ export default function MiddleEarth() {
         </Suspense>
       )}
 
+      {here?.id === 'shire' && (
+        <Suspense fallback={null}>
+          <Rush level="party" />
+        </Suspense>
+      )}
+
       {here?.id === 'bree' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <BreeWorld onLeave={() => go('weathertop')} />
@@ -320,6 +326,12 @@ export default function MiddleEarth() {
       {here?.id === 'weathertop' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <WeathertopWorld onLeave={() => go('rivendell')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'weathertop' && (
+        <Suspense fallback={null}>
+          <Rush level="weathertop" />
         </Suspense>
       )}
 
@@ -400,6 +412,12 @@ export default function MiddleEarth() {
         </div>
       )}
 
+      {here?.id === 'mordor' && (
+        <Suspense fallback={null}>
+          <Rush level="cormallen" />
+        </Suspense>
+      )}
+
       {here?.id === 'rivendell' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <RivendellWorld onLeave={() => go('moria')} />
@@ -471,9 +489,21 @@ export default function MiddleEarth() {
         </Suspense>
       )}
 
+      {here?.id === 'dead-marshes' && (
+        <Suspense fallback={null}>
+          <Rush level="ithilien" />
+        </Suspense>
+      )}
+
       {here?.id === 'cirith-ungol' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <CirithUngolWorld onLeave={() => next && go(next.id)} />
+        </Suspense>
+      )}
+
+      {here?.id === 'cirith-ungol' && (
+        <Suspense fallback={null}>
+          <Rush level="tower" />
         </Suspense>
       )}
 
