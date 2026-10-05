@@ -9,6 +9,9 @@ describe('the worlds', () => {
   it('are found from any address inside them', () => {
     expect(worldAt('/avengers')?.to).toBe('/avengers');
     expect(worldAt('/middle-earth/moria')?.to).toBe('/middle-earth');
+    expect(worldAt('/galaxy/hoth')?.to).toBe('/galaxy');
+    expect(worldAt('/galaxy/hoth/mission')?.to).toBe('/galaxy');
+    expect(worldAt('/deathstar')?.to).toBe('/deathstar');
     expect(worldAt('/middle-earthling')).toBeNull();
     expect(worldAt('/home')).toBeNull();
     expect(worldAt('/')).toBeNull();

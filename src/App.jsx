@@ -23,6 +23,8 @@ const Invincible = lazy(() => import('./pages/Invincible'));
 const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
+const Galaxy = lazy(() => import('./pages/Galaxy'));
+const GalaxyMission = lazy(() => import('./pages/GalaxyMission'));
 const Music = lazy(() => import('./pages/Music'));
 const MiddleEarth = lazy(() => import('./pages/MiddleEarth'));
 const Scranton = lazy(() => import('./pages/Scranton'));
@@ -213,8 +215,17 @@ function PaletteHost() {
 // element (Front, which holds the map), so React keeps the one map across
 // them: picking a planet at /, or the wordmark from /universe/marvel, moves
 // the camera instead of building the universe again. Middle-earth's places
-// (/middle-earth/moria) keep one page the same way, so its map stays up.
-const pageKey = (pathname) => (pathname === '/' || pathname.startsWith('/universe') ? '/universe' : pathname.startsWith('/middle-earth') ? '/middle-earth' : pathname);
+// (/middle-earth/moria) keep one page the same way, so its map stays up,
+// and so do the galaxy's systems (/galaxy/hoth), so a jump from one to the
+// next keeps the one scene (its missions' briefings are pages of their own).
+const pageKey = (pathname) =>
+  pathname === '/' || pathname.startsWith('/universe')
+    ? '/universe'
+    : pathname.startsWith('/middle-earth')
+      ? '/middle-earth'
+      : /^\/galaxy(\/[a-z0-9-]+)?$/.test(pathname)
+        ? '/galaxy'
+        : pathname;
 
 function Shell() {
   const { pathname } = useLocation();
@@ -256,6 +267,8 @@ function Shell() {
                 <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
+                <Route path="/galaxy/:system?" element={<Galaxy />} />
+                <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
@@ -273,7 +286,7 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />
