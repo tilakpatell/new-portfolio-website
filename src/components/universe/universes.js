@@ -181,9 +181,9 @@ const FANDOMS = [
   {
     id: 'gaming',
     label: 'Gaming',
-    world: null,
-    place: 'the Game Boy',
-    to: '/projects/gameboy-emulator',
+    world: 'Dot Matrix',
+    place: 'Dot Matrix island',
+    to: '/dot-matrix',
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
     rim: '#6f9a1c', // the screen's lightest green would glare as air
