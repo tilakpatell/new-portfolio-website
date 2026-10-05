@@ -339,6 +339,10 @@ The network was opened mid-phase. Ten ships came out better from Sketchfab than 
 - The header comment lists the new ones.
 - `STAND_IN` gains `tiebomber: 'tie'`, `lightcruiser: 'destroyer'`, `gozanti: 'freighter'`, `providence: 'munificent'` and `ghost: 'freighter'`, so none of them is ever invisible. Kinds that have a built version (`tie`, `tieadvanced`, `shuttle`, `munificent`, `nubian`, `razorcrest`) fly it until the GLB loads.
 
+- The branch also carries Luke and Leia (commit 35c9484): Sketchfab figures rigged by Meshy (Meshy's 24 joints, so Rick's borrowed clips drive them), in `public/models/galaxy/crew/{luke,leia}.glb`, with credits `crew-luke` and `crew-leia`. They're wired here too:
+  - `universe/footScene.js`'s `PARTY.xwing` Luke takes `src: { url: '/models/galaxy/crew/luke.glb' }`, as Han's does.
+  - `galaxy/surface/crew.js` gains `luke`, `leia` and `chewie`. Chewie uses the existing Meshy-rigged `/models/cockpit/chewie.glb`, which `PARTY.falcon` already walks.
+  - Each credit's `where` and `also` name every page that shows the figure, so `modelCredits.test.js` passes.
 - [ ] **Step 1: Merge** `git merge --no-ff claude/galaxy-assets-wip`. Resolve `modelCredits.json` by keeping both sides' entries.
 - [ ] **Step 2: Write the failing test.** `models.test.js`: every new kind is in `MODELS` with an existing file, and every kind in `MODELS` without a built version has a `STAND_IN` that is built. The existing test then covers the new ones too. `src/data/modelCredits.test.js` passes, so every new credit is referenced.
 - [ ] **Step 3: Implement.**
