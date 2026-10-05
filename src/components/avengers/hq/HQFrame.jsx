@@ -1,4 +1,5 @@
 import './hq.css';
+import '../../../styles/lazy/avengers.css';
 
 // The frame each HQ game sits in: the 3D screen, or (with no graphics chip, 3D
 // switched off, or a 3D view that failed) the building's old activity, plus

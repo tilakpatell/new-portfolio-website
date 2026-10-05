@@ -43,6 +43,9 @@ A résumé on the surface. Underneath it, a 3D universe with a starfighter, thir
 | Travel | `/travel` | A 3D globe of places visited, with photos |
 | Contact | `/contact` | How to reach me |
 | Terminal | `/terminal` | An Imperial terminal that takes commands (try `help`) |
+| Changes | `/changes` | The ship's log: every change the site's autopilot has made, with a picture, and how to undo it |
+
+The six pages are one feed: scroll to the end of any of them and the next begins under it, with a divider saying what comes next, and the address, the menu and the theme follow whichever page is on screen. After the sixth, an end card. Each page is still its own address, so every link works as before.
 
 All of the content (roles, projects, skills, education) lives in [`src/data/`](src/data). Every page and the terminal read from there.
 
@@ -114,7 +117,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk every stop on the road in 3D as Frodo, from Hobbiton to Mount Doom; cook in co-op, Overcooked-style, in a kitchen at each one (Bilbo's party, the Prancing Pony, Weathertop, Elrond's table, the forges of Moria, Lórien's flets, Parth Galen, Ithilien, the orcs' mess in Cirith Ungol and the feast at Cormallen); open the Doors of Durin, cross Gorgoroth |
 | Cybertron | `/cybertron` | Transformers | Pick a side, write in Cybertronian, play *Roll out* |
-| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, or swing across it the way Insomniac's games do: hold the jump in the air to web a roof edge, a tree or a floodlight mast, steer the swing, let go on the upswing for a perfect release, zip with Shift, run up any wall you hit and along the roofs, race the swing tour's rings round the compound, and find the twelve backpacks Peter webbed up round it (on the roofs, up the masts, under the bridge), each with something of his in it. Everyone else online shows as a hologram. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
+| Avengers HQ | `/avengers` | Marvel | Walk the compound in 3D as Spider-Man, or swing across it the way Insomniac's games do: hold the jump in the air to web a roof edge, a tree or a floodlight mast, steer the swing, let go on the upswing for a perfect release, zip with Shift, throw flips and twists in the air with `T` for style points that bank when you land (and are lost if you land mid-flip), run up any wall you hit and along the roofs, race the swing tour's rings round the compound, and find the twelve backpacks Peter webbed up round it (on the roofs, up the masts, under the bridge), each with something of his in it. Everyone else online shows as a hologram. Each building opens its game (*Thwip!* at the front gate), and each game wins an Infinity Stone back for Thanos's gauntlet |
 | Albuquerque | `/albuquerque` | Breaking Bad | Drive around town in Walt's Aztek, which slides if you ask it to: `Space` is the handbrake (handbrake turns, drifts, a J-turn out of reverse), and `O` opens the driving settings (steering, stability, camera). Places open up as Walt's career grows, each with its own game. Other drivers online show up as ghost Azteks |
 | Scranton | `/scranton` | The Office | Walk Dunder Mifflin in 3D as Jim, from the lift to the annex, and get through a week in seven jobs (cover reception, the stapler in Jell-O, Kevin's chili, paper toss, Dwight's fact check, his fire drill, a Dundie from Michael); then the office from above, Dwight's fact check and the Dundies |
 | Dimension C-137 | `/c-137` | Rick and Morty | Walk the Smiths' street in 3D as Morty, fly Rick's cruiser (it talks, and the Federation's patrol ship flies alongside), meet the President at his limo and take his portal to the Oval Office, breakfast with a Federation agent at Shoney's, find Rick's clone lab under the garage and Morty's Mind Blowers past it, go through the garage portal to Blips and Chitz and play *Roy*; the portal gun, *Portal panic*, the Meeseeks box and interdimensional cable; and the Citadel of Ricks (`/c-137/citadel`, or fly into it on the map), walked in 3D as Rick C-137: a terrace over the show's city of Ricks, crowds of every Rick and Morty variant, a core of portal fluid with the Central Finite Curve turning round it, and five scenes from the show (Morty Day Care, Simple Rick's line, the Council, election day, the red alert) |
@@ -163,6 +166,7 @@ To try a lower graphics tier on a desktop, add `?quality=low` (or `mid` or `high
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest suite (game rules, flight model, multiplayer protocol and more) |
+| `node scripts/autopilot-check.mjs` | Everything the autopilot checks before a merge: lint, tests, build, bundle sizes, every page in headless Chromium |
 
 The asset pipeline scripts regenerate committed files. You don't need them to run the site.
 
@@ -181,8 +185,10 @@ The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.e
 ## Project structure
 
 ```
+├── .github/workflows/ci.yml       # lint, test and build on every pull request
 ├── .github/workflows/deploy.yml   # lint, test, build and deploy on every push to main
 ├── docs/                          # architecture notes, research and design plans
+│   └── autopilot/                 # the self-improvement loop: its backlog and switches
 ├── public/                        # static files: models, textures, audio, photos, résumé PDF
 │   ├── cc0/                       # CC0 materials and HDRIs (credited in its README)
 │   ├── games/                     # game assets, credited in credits.json
@@ -235,6 +241,10 @@ Every push to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows
 A deploy replaces every file in `/assets` (they're named by hash), so a page that's already open, or an `index.html` a cache still holds, can ask for files that are gone; behind the intro, that used to surface only at the cut to the universe, as "This page didn't load". A page that hits one reloads from the new build (`src/lib/stale.js`, through `ErrorBoundary`), past any cached `index.html`, playing the intro again if it was partway through; it won't reload twice within a minute, so an outage can't loop.
 
 > **Working with Claude Code?** Agent skills live in `.claude/skills` (their sources are pinned in `skills-lock.json`). Lint and tests skip them.
+
+## The autopilot
+
+The site improves itself. A scheduled Claude Code session comes round (every four hours), makes one improvement well (something faster or better-looking more often than something new), checks it with `node scripts/autopilot-check.mjs` (lint, the tests, the build, every page in a headless browser), opens a pull request, waits for CI, merges it, and logs it on [`/changes`](https://tilakpatell.com/#/changes), the ship's log, with a screenshot. Any change there can be taken out again by telling a Claude session `Revert change 12`. The protocol is [`.claude/skills/autopilot/SKILL.md`](.claude/skills/autopilot/SKILL.md), the queue is [`docs/autopilot/backlog.md`](docs/autopilot/backlog.md), and the switches (pause, runs a day, the plan's limit) are in [`docs/autopilot/budget.json`](docs/autopilot/budget.json). [`docs/autopilot/README.md`](docs/autopilot/README.md) has the details.
 
 ## Disclaimer
 

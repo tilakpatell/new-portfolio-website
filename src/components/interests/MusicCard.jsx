@@ -4,6 +4,7 @@ import { RiArrowRightLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { capturePointer } from '../../lib/pointer';
+import '../../styles/lazy/interests.css';
 
 // Indian classical music: a sitar you can play (real recorded notes, retuned to
 // Raga Yaman's frets), a real tanpura pluck as the drone underneath, and a

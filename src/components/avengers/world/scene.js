@@ -38,7 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -1192,7 +1192,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const X = new THREE.Vector3(1, 0, 0);
   const Z = new THREE.Vector3(0, 0, 1);
   const UP = new THREE.Vector3(0, 1, 0);
-  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || h.mode === 'zipto' || h.mode === 'perch' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0;
+  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || h.mode === 'zipto' || h.mode === 'perch' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0 || Boolean(h.trick);
+  // web wings, and a twist's lay-out: arms out wide, legs together, flat to the air
+  const WINGS = { armL: [1, 0.12, -0.05], foreL: [1, 0.1, 0.02], armR: [-1, 0.12, -0.05], foreR: [-1, 0.1, 0.02], thighL: [0.06, -1, -0.12], calfL: [0.04, -1, -0.15], thighR: [-0.06, -1, -0.12], calfR: [-0.04, -1, -0.15], footL: [0, -1, -0.3], footR: [0, -1, -0.3], torso: { pitch: -0.15, yaw: 0, roll: 0 } };
   // the pose for where he is (the figure's frame: +z ahead, +y up, +x his left)
   const offPose = (h) => {
     if (h.mode === 'zipto') {
@@ -1203,10 +1205,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       // crouched on the top of it, hands between his feet
       return { thighL: [0.3, -0.3, 0.9], calfL: [0.12, -1, -0.3], thighR: [-0.3, -0.3, 0.9], calfR: [-0.12, -1, -0.3], footL: [0.1, -0.3, 1], footR: [-0.1, -0.3, 1], armL: [0.15, -0.85, 0.55], foreL: [0.05, -1, 0.3], armR: [-0.15, -0.85, 0.55], foreR: [-0.05, -1, 0.3], torso: { pitch: 0.6, yaw: 0, roll: 0 } };
     }
-    if (h.glide) {
-      // web wings: arms out wide, legs together, flat to the air
-      return { armL: [1, 0.12, -0.05], foreL: [1, 0.1, 0.02], armR: [-1, 0.12, -0.05], foreR: [-1, 0.1, 0.02], thighL: [0.06, -1, -0.12], calfL: [0.04, -1, -0.15], thighR: [-0.06, -1, -0.12], calfR: [-0.04, -1, -0.15], footL: [0, -1, -0.3], footR: [0, -1, -0.3], torso: { pitch: -0.15, yaw: 0, roll: 0 } };
-    }
+    if (h.glide) return WINGS;
+    // a trick: tucked for a flip, laid out for a twist
+    if (h.trick) return h.trick.kind === 'twist' ? WINGS : POSES.guard();
     if (h.land > 0) {
       // down on one knee, a hand to the ground
       return {
@@ -1355,8 +1356,16 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
     else hero.quaternion.slerp(q, Math.min(1, dt * 12));
     R.placed = true;
-    // a perfect release: a flip, forward, about his middle
-    spidey.body.rotation.x = h.flip > 0 ? Math.PI * 2 * ease(1 - h.flip / 0.7) : 0;
+    // a perfect release's flip, or a trick: a flip forward about his middle, a backflip, or a twist about his height
+    let rx = h.flip > 0 ? Math.PI * 2 * ease(1 - h.flip / 0.7) : 0;
+    let ry = 0;
+    if (h.trick) {
+      const k = ease(1 - Math.max(0, h.trick.t) / TRICK.time);
+      if (h.trick.kind === 'flip') rx = Math.PI * 2 * k;
+      else if (h.trick.kind === 'back') rx = -Math.PI * 2 * k;
+      else ry = h.trick.dir * Math.PI * 2 * k;
+    }
+    spidey.body.rotation.set(rx, ry, 0);
   };
 
   const placeHero = (h, dt) => {
@@ -1615,6 +1624,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'perfect') {
       A.punch = Math.max(A.punch, 5);
       vfx.ring(v3.copy(hero.position), { color: 0xff8a80, from: 0.4, to: 2.4, life: 0.35, opacity: 0.45, normal: v3b.set(d.vx ?? 0, d.vy ?? 0, d.vz ?? 1).normalize() });
+    } else if (type === 'trick') {
+      A.punch = Math.max(A.punch, 2);
+    } else if (type === 'bank') {
+      // the style banked: a gold ring out from where he landed
+      vfx.ring(v3.set(hero.position.x, (d.y ?? hero.position.y) + 0.2, hero.position.z), { color: 0xffd98a, from: 0.5, to: 3.5 + Math.min(4, (d.style ?? 0) / 800), life: 0.55, opacity: 0.6 });
+    } else if (type === 'bail') {
+      if (!calm) vfx.smoke(v3.copy(hero.position), { size: 1, count: 5, life: 0.6, rise: 0.3, opacity: 0.3, color: 0xb8b4a4, to: 0xd8d4c4, spread: 1.2 });
     } else if (type === 'point') {
       A.punch = Math.max(A.punch, 4);
       swing.webbed(d.at);

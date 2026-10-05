@@ -30,6 +30,7 @@ import {
   PIPES,
   SIGNS,
   TOWER,
+  VILLAGERS,
   W,
   WALKERS,
   WALKER_BACK,
@@ -541,8 +542,12 @@ function buildWalker() {
   return { group: g, feet };
 }
 
-// the hero: a little lad in a cap, all boxes, who swings his arms and legs
-function buildHero() {
+// An islander, all boxes, who swings his arms and legs: the hero in his cap,
+// or a villager in their own clothes. `look`: cap (a peaked cap, forwards or
+// backwards), hat (a brimmed one), bun (hair up), and the shades of body,
+// legs and skin; `scale` for a kid.
+function buildFigure(look = {}) {
+  const { cap = true, back = false, hat = false, bun = false, body: bodyShade = 0.55, legs = 0.16, skin = 0.93, scale = 1 } = look;
   const g = new THREE.Group();
   const part = (w, h, d, v, x, y, z) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lambert(v));
@@ -557,30 +562,149 @@ function buildHero() {
     pivot.add(m);
     return pivot;
   };
-  const legL = limb(0.14, 0.32, 0.16, 0.16, -0.1, 0.32);
-  const legR = limb(0.14, 0.32, 0.16, 0.16, 0.1, 0.32);
-  const body = part(0.4, 0.32, 0.28, 0.55, 0, 0.47, 0);
-  const armL = limb(0.1, 0.28, 0.12, 0.55, -0.26, 0.6);
-  const armR = limb(0.1, 0.28, 0.12, 0.55, 0.26, 0.6);
+  const legL = limb(0.14, 0.32, 0.16, legs, -0.1, 0.32);
+  const legR = limb(0.14, 0.32, 0.16, legs, 0.1, 0.32);
+  const body = part(0.4, 0.32, 0.28, bodyShade, 0, 0.47, 0);
+  const armL = limb(0.1, 0.28, 0.12, bodyShade, -0.26, 0.6);
+  const armR = limb(0.1, 0.28, 0.12, bodyShade, 0.26, 0.6);
   const head = new THREE.Group();
   head.position.y = 0.78;
-  head.add(part(0.36, 0.3, 0.32, 0.93, 0, 0, 0));
-  head.add(part(0.4, 0.11, 0.36, 0.1, 0, 0.17, -0.01)); // the cap
-  head.add(part(0.3, 0.04, 0.16, 0.1, 0, 0.13, 0.22)); // its peak
+  head.add(part(0.36, 0.3, 0.32, skin, 0, 0, 0));
+  if (cap) {
+    head.add(part(0.4, 0.11, 0.36, 0.1, 0, 0.17, -0.01)); // the cap
+    head.add(part(0.3, 0.04, 0.16, 0.1, 0, 0.13, back ? -0.22 : 0.22)); // its peak
+  } else if (hat) {
+    head.add(part(0.56, 0.04, 0.52, 0.3, 0, 0.14, 0)); // the brim
+    head.add(part(0.3, 0.14, 0.28, 0.3, 0, 0.22, 0)); // the crown
+  } else if (bun) {
+    head.add(part(0.38, 0.1, 0.34, 0.82, 0, 0.17, -0.01)); // the hair
+    head.add(part(0.16, 0.12, 0.16, 0.82, 0, 0.26, -0.08)); // the bun
+  } else {
+    head.add(part(0.38, 0.08, 0.34, 0.2, 0, 0.17, -0.01)); // hair
+  }
   head.add(part(0.05, 0.08, 0.02, 0.04, -0.08, 0.0, 0.165));
   head.add(part(0.05, 0.08, 0.02, 0.04, 0.08, 0.0, 0.165));
   g.add(legL, legR, body, armL, armR, head);
-  // seen through whatever's in front of him: the same shapes, drawn dark,
-  // only where they're hidden
+  g.scale.setScalar(scale);
+  return { group: g, legL, legR, armL, armR, head, body, scale };
+}
+
+// walking: legs and arms swung by `phase`, as far as `sp` (0 to 1) says;
+// standing: everything hanging, with a little breathing
+function poseWalk(f, phase, sp, now = 0) {
+  const swing = Math.sin(phase) * 0.75 * sp;
+  f.legL.rotation.x = swing;
+  f.legR.rotation.x = -swing;
+  f.armL.rotation.x = -swing * 0.9;
+  f.armR.rotation.x = swing * 0.9;
+  f.armR.rotation.z = 0;
+  f.body.position.y = 0.47 + Math.abs(Math.sin(phase)) * 0.03 * sp + (sp < 0.05 ? Math.sin(now * 2.2) * 0.008 : 0);
+}
+
+// the hero: the lad in the cap, seen through whatever's in front of him
+// (the same shapes, drawn dark, only where they're hidden)
+function buildHero() {
+  const f = buildFigure();
   const xray = new THREE.MeshBasicMaterial({ color: 0x000000, depthFunc: THREE.GreaterDepth, depthWrite: false });
   const solid = [];
-  g.traverse((o) => o.isMesh && solid.push(o));
+  f.group.traverse((o) => o.isMesh && solid.push(o));
   for (const o of solid) {
     const ghost = new THREE.Mesh(o.geometry, xray);
     ghost.renderOrder = 10;
     o.add(ghost);
   }
-  return { group: g, legL, legR, armL, armR, head, body };
+  return f;
+}
+
+// what each villager looks like
+const LOOKS = {
+  nana: { cap: false, bun: true, body: 0.74, legs: 0.74, skin: 0.9 },
+  fisher: { cap: false, hat: true, body: 0.3, legs: 0.36, skin: 0.88 },
+  gardener: { cap: true, body: 0.46, legs: 0.3, skin: 0.9 },
+  kid: { cap: true, back: true, body: 0.86, legs: 0.22, skin: 0.94, scale: 0.78 },
+};
+
+// gulls over the dock: three of them wheeling round, wings beating
+function buildGulls(rand) {
+  const group = new THREE.Group();
+  const white = lambert(0.97);
+  const dark = lambert(0.25);
+  const wingGeo = new THREE.BoxGeometry(0.5, 0.03, 0.16).translate(-0.25, 0, 0);
+  const list = [];
+  for (let i = 0; i < 3; i++) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.11, 0.4), white);
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.1), dark);
+    beak.position.set(0, 0, 0.24);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.1), dark);
+    tail.position.set(0, 0.02, -0.22);
+    const wL = new THREE.Group();
+    wL.position.x = -0.06;
+    wL.add(new THREE.Mesh(wingGeo, white));
+    const wR = new THREE.Group();
+    wR.position.x = 0.06;
+    wR.rotation.y = Math.PI;
+    wR.add(new THREE.Mesh(wingGeo, white));
+    g.add(body, beak, tail, wL, wR);
+    g.traverse((o) => o.isMesh && (o.castShadow = true));
+    g.userData = { cx: 27 + rand() * 4, cz: 35 + rand() * 3, r: 3 + rand() * 3.5, y: 3.2 + rand() * 2.2, speed: 0.45 + rand() * 0.3, phase: rand() * 6.3, wL, wR };
+    list.push(g);
+    group.add(g);
+  }
+  return {
+    group,
+    tick(now) {
+      for (const g of list) {
+        const { cx, cz, r, y, speed, phase, wL, wR } = g.userData;
+        const ang = phase + now * speed;
+        g.position.set(cx + Math.cos(ang) * r, y + Math.sin(now * 1.3 + phase) * 0.35, cz + Math.sin(ang) * r);
+        g.rotation.y = Math.atan2(-Math.sin(ang), Math.cos(ang));
+        g.rotation.z = -0.25; // banked into the turn
+        const flap = Math.sin(now * 6 + phase) * 0.55;
+        wL.rotation.z = flap;
+        wR.rotation.z = flap;
+      }
+    },
+  };
+}
+
+// butterflies over the long grass, wandering and fluttering
+function buildButterflies(rand) {
+  const spots = [];
+  for (let iz = 0; iz < H; iz++) for (let ix = 0; ix < W; ix++) if (legend(MAP[iz][ix]).kind === 'long') spots.push([ix + 0.5, iz + 0.5]);
+  const group = new THREE.Group();
+  const wingGeo = new THREE.PlaneGeometry(0.16, 0.13).rotateX(-Math.PI / 2).translate(-0.08, 0, 0);
+  const mat = new THREE.MeshBasicMaterial({ color: grey(0.98), side: THREE.DoubleSide });
+  const list = [];
+  for (let i = 0; i < 7; i++) {
+    const [ox, oz] = spots[Math.floor(rand() * spots.length)];
+    const g = new THREE.Group();
+    const wL = new THREE.Group();
+    wL.add(new THREE.Mesh(wingGeo, mat));
+    const wR = new THREE.Group();
+    wR.rotation.y = Math.PI;
+    wR.add(new THREE.Mesh(wingGeo, mat));
+    g.add(wL, wR);
+    g.userData = { ox, oz, ax: 1 + rand() * 1.5, az: 1 + rand() * 1.5, fx: 0.25 + rand() * 0.3, fz: 0.2 + rand() * 0.3, phase: rand() * 6.3, wL, wR };
+    list.push(g);
+    group.add(g);
+  }
+  return {
+    group,
+    tick(now) {
+      for (const g of list) {
+        const { ox, oz, ax, az, fx, fz, phase, wL, wR } = g.userData;
+        const x = ox + Math.sin(now * fx + phase) * ax;
+        const z = oz + Math.cos(now * fz + phase * 1.7) * az;
+        const y = 0.55 + Math.sin(now * 2.6 + phase) * 0.18 + Math.abs(Math.sin(now * 14 + phase)) * 0.05;
+        g.rotation.y = Math.atan2(x - g.position.x, z - g.position.z);
+        g.position.set(x, y, z);
+        const flap = 0.2 + Math.abs(Math.sin(now * 14 + phase)) * 1.1;
+        wL.rotation.z = flap;
+        wR.rotation.z = -flap;
+      }
+    },
+  };
 }
 
 // the giant Game Boy in the square, its screen the console's own demo
@@ -855,6 +979,16 @@ export function createDotMatrix(canvas, { onLost } = {}) {
 
   const hero = buildHero();
   scene.add(hero.group);
+  const folk = new Map();
+  for (const v of VILLAGERS) {
+    const f = buildFigure(LOOKS[v.id]);
+    scene.add(f.group);
+    folk.set(v.id, { ...f, phase: 0 });
+  }
+  const gulls = buildGulls(rand);
+  scene.add(gulls.group);
+  const flutter = buildButterflies(rand);
+  scene.add(flutter.group);
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
   scene.add(blob);
 
@@ -940,15 +1074,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     hero.group.rotation.y = h.face;
     const sp = Math.min(1, h.moving / 4.6);
     walkPhase += dt * (4 + sp * 8) * (h.ground ? sp : 0);
-    if (h.ground) {
-      const swing = Math.sin(walkPhase) * 0.75 * sp;
-      hero.legL.rotation.x = swing;
-      hero.legR.rotation.x = -swing;
-      hero.armL.rotation.x = -swing * 0.9;
-      hero.armR.rotation.x = swing * 0.9;
-      hero.armR.rotation.z = 0;
-      hero.body.position.y = 0.47 + Math.abs(Math.sin(walkPhase)) * 0.03 * sp;
-    } else {
+    if (h.ground) poseWalk(hero, walkPhase, sp, now);
+    else {
       hero.legL.rotation.x = 0.6;
       hero.legR.rotation.x = -0.35;
       hero.armL.rotation.x = 0.3;
@@ -983,7 +1110,20 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     sea.mat.uniforms.uTime.value = now;
     sea.mat.uniforms.uCam.value.copy(camera.position);
     skyClouds.tick(now);
+    gulls.tick(now);
+    flutter.tick(now);
     gameboy.tick(dt);
+
+    // the villagers, on their beats, or stood facing the hero
+    for (const v of VILLAGERS) {
+      const f = folk.get(v.id);
+      const st = game.folk[v.id];
+      const moving = !st.stopped && st.wait <= 0;
+      f.phase += dt * (4 + 8 * 0.6) * (moving ? 1 : 0);
+      f.group.position.set(st.x, 0, st.z);
+      f.group.rotation.y = st.face;
+      poseWalk(f, f.phase, moving ? Math.min(1, v.speed / 1.3) : 0, now + v.speed * 10);
+    }
 
     // coins spin; the ones taken are gone
     COINS.forEach((c, i) => {
@@ -1123,6 +1263,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       else if (type === 'land' && at) spray(at.x, at.y + 0.05, at.z, 6, { speed: 1.6, up: 0.8, g: 6, life: 0.3, shade: 0.6, size: 0.8 });
       else if (type === 'splash' && at) spray(at.x, WATER + 0.1, at.z, 18, { speed: 1.8, up: 5, g: 14, life: 0.7, shade: 1 });
       else if (type === 'hurt' && at) spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+      else if (type === 'coinheart' && at) spray(at.x, at.y + 0.9, at.z, 14, { speed: 1.6, up: 3.5, g: 5, life: 0.9, shade: 0.98 });
+      else if (type === 'allcoins' && at) spray(at.x, at.y + 0.7, at.z, 40, { speed: 3.4, up: 6, g: 7, life: 1.3, shade: 1 });
       else if (type === 'warp') {
         fx.warp = 1;
         fx.warpDir = data.dir ?? -1;

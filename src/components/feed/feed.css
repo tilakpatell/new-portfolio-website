@@ -1,0 +1,47 @@
+/* The portfolio as a feed (Feed.jsx): the pages one under the other, a
+   divider between them, and an end card after the sixth. */
+
+.feed-page { position: relative; }
+.feed-loading { min-height: 100svh; }
+.feed-sentinel { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none; }
+
+/* a page mounted ahead keeps its hero still until it is in sight */
+.feed-page[data-wait] .hero-in,
+.feed-page[data-wait] .aws-logo .aws-letters { animation-play-state: paused; }
+
+.feed-divider {
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-deep);
+}
+.feed-divider-inner { display: grid; gap: 0.6rem; padding-block: clamp(2.25rem, 5vw, 3.5rem); }
+.feed-divider-count {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: var(--eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.feed-divider-count svg { width: 1rem; height: 1rem; animation: feed-nudge 1.6s ease-in-out infinite; }
+@keyframes feed-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+.feed-divider-title { font-size: clamp(2rem, 1.2rem + 2.8vw, 3.4rem); }
+.feed-divider-blurb { max-width: 44ch; color: var(--text-body); }
+
+.feed-end { position: relative; z-index: 10; border-top: 1px solid var(--border); }
+.feed-end-inner { padding-block: clamp(4rem, 10vw, 7rem); }
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-divider-count svg { animation: none; }
+}
+
+/* the page on the address prints; the rest of the feed does not */
+@media print {
+  .feed-page:not([data-active]) { display: none !important; }
+  .feed-divider, .feed-end, .feed-sentinel { display: none !important; }
+}

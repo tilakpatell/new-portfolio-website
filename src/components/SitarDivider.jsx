@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useOnceVisible } from './ui';
 import { audioContext } from '../lib/audio';
 import { prefersReducedMotion } from '../lib/hooks';
+import '../styles/lazy/sitardivider.css';
 
 // A section break drawn as a sitar string. It shivers once when it scrolls into
 // view; click it and it plays a note.

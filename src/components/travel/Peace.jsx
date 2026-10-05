@@ -5,6 +5,7 @@ import Lamplight from '../peace/Lamplight';
 import { Reveal, Waypoint } from '../ui';
 import { jumpTo } from '../../lib/anchors';
 import { audioContext } from '../../lib/audio';
+import '../../styles/lazy/travel.css';
 
 const music = () => import('../music/engine');
 

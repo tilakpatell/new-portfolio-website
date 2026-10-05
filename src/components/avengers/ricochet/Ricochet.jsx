@@ -9,6 +9,7 @@ import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
 import { ROOMS, botsLeft, limitFor, newRoom, stepRoom, throwShield } from './rules';
 import './ricochet.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');

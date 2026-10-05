@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { useScene } from '../../lib/three/useScene';
+import '../../styles/lazy/cybertron.css';
 
 // Cybertron, turning slowly: a planet plated in metal, scored with glowing
 // circuitry and burning in places from the war. `side` sets the energon
