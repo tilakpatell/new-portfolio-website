@@ -358,7 +358,7 @@ it('never gives a tinted slot an LOD', () => { const m = createModels(); const s
 - [ ] **Step 3: Write and run the script** (`node scripts/galaxy-lod.mjs`). Check its log: one line per kind with the triangle count and bytes.
 - [ ] **Step 4: Implement** the LOD slot in `models.js`.
 - [ ] **Step 5: Run the tests and see them pass.** `npx vitest run src/components/galaxy`
-- [ ] **Step 6: Check it in the browser.** `space endor,coruscant,hoth,naboo`. Endor ≤ 90 calls and ≤ 200k triangles. In the screenshots, no fighter is visibly blockier at its usual range.
+- [ ] **Step 6: Check it in the browser.** `space endor,coruscant,hoth,naboo`. Endor ≤ 55 calls and ≤ 170k triangles (deterministic baseline 62 / 235,518). In the screenshots, no fighter is visibly blockier at its usual range.
 - [ ] **Step 7: Commit** the script, the LOD GLBs and the code: "Galaxy: LOD models for every ship, made offline from the models already here".
 
 ### Task 10: Surface render settings — no double MSAA, a real fallback, lamps indoors, steady shadows
