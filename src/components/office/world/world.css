@@ -1,0 +1,48 @@
+/* Dunder Mifflin Scranton, the world: the towns' HUD (../../middleearth/shire/shire.css,
+   ../../middleearth/towns/bree/bree.css) in the office's own colours: paper
+   white, Dunder Mifflin blue, a documentary's typewriter title card. */
+
+.dm-world {
+  --shire-ink: #f6f4ee;
+  --shire-glass: rgba(24, 30, 42, 0.74);
+  --shire-glass-hi: rgba(26, 34, 48, 0.92);
+  --shire-gold: #8fb6ff;
+  --shire-green: #1f4e8c;
+  --shire-line: rgba(143, 182, 255, 0.36);
+}
+.dm-world .btn-primary { background: #f4f2ec; color: #14243f; }
+.dm-stage { height: clamp(30rem, calc(100svh - var(--nav-h, 64px)), 56rem); background: radial-gradient(120% 80% at 50% 20%, #e6e1d4 0%, #b9b4a8 60%, #8b877d 100%); }
+.dm-loading { color: #2b2f37; font-family: 'Courier Prime', ui-monospace, monospace; font-weight: 700; font-size: 1.05rem; }
+.dm-stage .shire-title,
+.dm-stage .shire-door-name,
+.dm-stage .shire-panel-title,
+.dm-stage .shire-bubble b { font-family: 'Courier Prime', ui-monospace, monospace; font-weight: 700; letter-spacing: 0.01em; }
+.dm-stage .shire-title { font-size: clamp(1.5rem, 1rem + 2vw, 2.7rem); text-shadow: 0 2px 16px rgba(10, 14, 24, 0.6), 0 0 2px rgba(10, 14, 24, 0.7); }
+.dm-kicker { margin: 0 0 0.15rem; font: 600 0.72rem/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(246, 244, 238, 0.86); text-shadow: 0 1px 8px rgba(10, 14, 24, 0.7); }
+.dm-room { margin: 0; padding: 0.22rem 0.6rem; border-radius: 999px; background: var(--shire-glass); color: var(--shire-ink); font: 600 0.74rem/1.2 var(--font-sans, system-ui); text-align: center; }
+.dm-map { background: #ece8de; }
+.dm-stage .shire-meter-bar span { background: linear-gradient(90deg, #f3c74b, #d2462e); }
+.dm-alarm { cursor: default; border-color: rgba(255, 90, 72, 0.75); color: #ffe0da; animation: dm-alarm 0.8s ease-in-out infinite; }
+.dm-timer { cursor: default; }
+@keyframes dm-alarm { 50% { box-shadow: 0 0 0 3px rgba(255, 90, 72, 0.4); background: rgba(90, 20, 16, 0.85); } }
+@media (prefers-reduced-motion: reduce) { .dm-alarm { animation: none; } }
+.dm-stage[data-fire] { --shire-gold: #ff7a64; --shire-line: rgba(255, 122, 100, 0.45); }
+.dm-stage[data-mode='talk'] .shire-canvas { cursor: default; touch-action: none; }
+.dm-stage .shire-hud-top { padding-top: clamp(0.7rem, 2vw, 1.2rem); }
+
+/* the paper toss and the fact check, over the office */
+.dm-place { position: fixed; inset: 0; z-index: 80; overflow: auto; background: rgba(233, 230, 222, 0.97); color: var(--ink, #1b1f27); outline: none; }
+:root[data-theme='dark'] .dm-place { background: rgba(14, 16, 22, 0.97); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .dm-place { background: rgba(14, 16, 22, 0.97); } }
+.dm-place-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem clamp(1rem, 4vw, 2.4rem); background: inherit; border-bottom: 1px solid rgba(120, 120, 120, 0.25); }
+.dm-place-where { margin: 0; font: 600 0.7rem/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.7; }
+.dm-place-title { margin: 0.3rem 0 0; font: 700 clamp(1.3rem, 1rem + 1.2vw, 1.9rem)/1.1 'Courier Prime', ui-monospace, monospace; }
+.dm-place-wait { padding: 2rem 0; opacity: 0.7; }
+
+/* without 3D */
+.dm-cards { padding-block: 2.5rem 3rem; }
+.dm-card-list { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); margin: 0; padding: 0; list-style: none; }
+.dm-card { padding: 1rem 1.1rem; border: 1px solid rgba(120, 120, 120, 0.3); border-radius: 0.8rem; background: rgba(255, 255, 255, 0.04); }
+.dm-card[data-done] { border-color: rgba(31, 78, 140, 0.6); }
+.dm-card-name { margin: 0; font: 700 1.05rem/1.2 'Courier Prime', ui-monospace, monospace; }
+.dm-card-go { margin: 0.4rem 0 0; font-size: 0.92rem; opacity: 0.85; }

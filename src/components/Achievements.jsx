@@ -122,6 +122,14 @@ export const ACHIEVEMENTS = {
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
+  // Dunder Mifflin Scranton, the world (office/world)
+  switchboard: { name: 'Dunder Mifflin, this is Jim', desc: 'Covered reception and put five calls through to the right desks' },
+  jello: { name: 'Stapler in Jell-O', desc: 'Set Dwight’s stapler in Jell-O while he was in the men’s room' },
+  chili: { name: 'Kevin’s famous chili', desc: 'Carried Kevin’s chili from the lift to the kitchen without spilling a drop' },
+  olympics: { name: 'Office Olympics', desc: 'Played a round of paper toss at your desk' },
+  falsefact: { name: 'False', desc: 'Took Dwight’s fact check at his desk' },
+  stressrelief: { name: 'Stress relief', desc: 'Got out by the stairwell in Dwight’s fire drill' },
+  bestboss: { name: 'Best Week in the Office', desc: 'Won a Dundie from Michael, in his office' },
 };
 
 const PAGES = ['/', '/experience', '/projects', '/travel', '/contact', '/terminal'];

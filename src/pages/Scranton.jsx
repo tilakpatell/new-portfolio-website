@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Dundie from '../components/office/Dundie';
 import FactCheck from '../components/office/FactCheck';
@@ -17,6 +17,8 @@ import { useDocumentTitle } from '../lib/hooks';
 import '@fontsource/courier-prime/700.css';
 
 const sfx = () => import('../lib/sfx');
+// the office to walk about in, as Jim (components/office/world), on top of the page
+const OfficeWorld = lazy(() => import('../components/office/world/OfficeWorld'));
 
 const PLACES = [
   { id: 'office-electric-city', title: 'The Electric City sign', note: 'Scranton’s nickname, in lights, as the opening credits show it.' },
@@ -64,8 +66,9 @@ const fewWord = (text) =>
 // Everyone gets one. Michael insists.
 const OPENING = { title: 'The “Showed Up” Dundie', desc: 'For coming to the Dundies. Everyone gets one.' };
 
-// Scranton: the office from above (pick a desk), Dwight's fact check, scenes
-// from the show, and the Dundies, where every easter egg found is an award.
+// Scranton: the office to walk about in 3D first (a week's jobs as Jim),
+// then the office from above (pick a desk), Dwight's fact check, scenes from
+// the show, and the Dundies, where every easter egg found is an award.
 export default function Scranton() {
   useDocumentTitle('Scranton');
   const { unlocked } = useAchievements();
@@ -113,8 +116,13 @@ export default function Scranton() {
 
   return (
     <div className="relative" data-kevin={kevin || undefined}>
+      <div className="pt-[var(--nav-h)]">
+        <Suspense fallback={<div style={{ height: 'clamp(30rem, calc(100svh - var(--nav-h, 64px)), 56rem)', background: '#d8d4c8' }} aria-hidden="true" />}>
+          <OfficeWorld />
+        </Suspense>
+      </div>
       <PaperPlane />
-      <section className="shell relative z-10 pb-12 pt-[calc(var(--nav-h)+36px)] md:pb-16" aria-labelledby="office-title">
+      <section className="shell relative z-10 pb-12 pt-12 md:pb-16 md:pt-16" aria-labelledby="office-title">
         <div className="grid items-end gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12">
           <div>
             <p className="eyebrow">Dunder Mifflin · Scranton Branch</p>
