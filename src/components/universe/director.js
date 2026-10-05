@@ -13,6 +13,7 @@
 //   family saucer and Gromflomites), yours to save or not
 // - convoy: a line of freighters under escort goes by
 // - comet: a comet crosses the sky
+// - supernova: a star blows, far out, the flash seen from anywhere
 // Nothing happens in the first while, or while something else is going on;
 // then one comes along every minute or two, sooner the more trouble you've
 // been making (heat: what you've shot down lately), and never the same
@@ -27,6 +28,7 @@ export const EVENTS = {
   distress: { families: ['starwars', 'rickmorty', 'both'], weight: 1.2, heat: 0 },
   convoy: { families: ['starwars', 'rickmorty', 'both'], weight: 1.3, heat: 0 },
   comet: { families: ['starwars', 'rickmorty', 'both'], weight: 0.9, heat: 0 },
+  supernova: { families: ['starwars', 'rickmorty', 'both'], weight: 0.8, heat: 0 },
 };
 export const PACE = { first: [30, 50], gap: [45, 85] }; // seconds before the first, and between the rest
 

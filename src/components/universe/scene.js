@@ -56,6 +56,7 @@ import { createSetPieces } from './setpieces';
 import { buildDeepSpace } from './deepspace';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
+import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, WONDERS, openness, reachOf, wonderById } from './deep';
 import { createCrash } from './crash';
 import { createTraffic } from './traffic';
@@ -497,6 +498,9 @@ export async function create(canvas, ctx) {
   // and a beacon over each far world, so it reads as somewhere to go
   const beacons = createBeacons();
   map.add(beacons.points);
+  // the supernovas, when the director sets one off
+  const novae = createSupernovae({ small });
+  map.add(novae.group);
 
   // the sun in the middle, warming the stations round it
   const sun = buildSun(T);
@@ -1145,6 +1149,13 @@ export async function create(canvas, ctx) {
     else if (id === 'comet') {
       pieces.comet(ship);
       later.push({ at: state.clock + 5, run: () => emit({ type: 'event', id: 'comet' }) });
+    } else if (id === 'supernova') {
+      // the nearest site that's still a good way off (so it's a sight, not a blast)
+      const sites = SUPERNOVA_SITES.map((at) => ({ at, d: Math.hypot(at[0] - ship.x, at[1] - ship.y, at[2] - ship.z) })).filter((o) => o.d > 220).sort((a, b) => a.d - b.d);
+      const site = (sites[Math.floor(Math.random() * Math.min(2, sites.length))] ?? sites[0])?.at;
+      if (!site) return;
+      novae.explode(site, { color: ['#9fc6ff', '#ffd9a0', '#ffffff'][Math.floor(Math.random() * 3)] });
+      later.push({ at: state.clock + 2.2, run: () => emit({ type: 'event', id: 'supernova' }) });
     }
   };
 
@@ -1521,6 +1532,10 @@ export async function create(canvas, ctx) {
     // they'd be a wall; and none in the map view, which isn't the ship's)
     streak.update(dt, state.ship ? Math.min(Math.abs(state.ship.speed), STREAK_SPEED) : 0, state.view === 'map' ? 0 : state.streak);
     const bursting = burst.update(dt);
+    // a supernova going: its flash lights the whole sky a moment
+    const novaBusy = novae.update(t, dt, camera);
+    const nova = novaBusy ? novae.nova() : null;
+    if (nova && nova.k > 0.6 && !reduced) state.flare = Math.max(state.flare, 1 + nova.k * 0.6);
     if (!reduced && flying() && state.view === 'chase' && state.streak > 0.001 && state.model) {
       // out from the ship, where it is on the canvas
       state.model.group.getWorldPosition(v).project(camera);
@@ -1556,7 +1571,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || fxBusy || bursting || adventuring || state.kick > 0 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
+    return !still() || moving || shooting || fxBusy || bursting || novaBusy || adventuring || state.kick > 0 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null);
   }
 
   // ── Keys, while flying ──
@@ -1699,7 +1714,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, state };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, state };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -1830,6 +1845,7 @@ export async function create(canvas, ctx) {
       deep.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
+      novae.dispose();
       burst.clear();
       burst.dispose();
       traffic?.dispose();

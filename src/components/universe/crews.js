@@ -166,6 +166,10 @@ export const CREWS = [
         ['morty', 'Whoa, Rick, a comet!'],
         ['rick', 'It’s a dirty snowball, Morty. Don’t make a wish.'],
       ],
+      supernova: [
+        ['morty', 'Rick! The sky just went white!'],
+        ['rick', 'Supernova, Morty. A star just died so you could see something cool. Say thank you.'],
+      ],
       deep: [
         ['morty', 'Rick, where are we going? There’s nothing out here.'],
         ['rick', 'That’s the thing about space, Morty. It’s mostly space. Hit the boost.'],
@@ -419,6 +423,10 @@ export const CREWS = [
         ['luke', 'A comet! Back on Tatooine you’d see one every few years.'],
         ['r2', '[an unimpressed beep]'],
       ],
+      supernova: [
+        ['luke', 'Did you see that? A star just… went.'],
+        ['r2', '[a long, awed whistle]'],
+      ],
       deep: [
         ['luke', 'Nothing but stars out here, Artoo.'],
         ['r2', '[a nervous whistle]'],
@@ -663,6 +671,10 @@ export const CREWS = [
         ['han', 'I’m just saying.'],
       ],
       comet: [['han', 'A comet. Don’t get any ideas, Chewie. We’re not chasing it.']],
+      supernova: [
+        ['han', 'Whoa. That’s a whole star going up. Glad we weren’t parked there.'],
+        ['chewie', '[an awed growl]'],
+      ],
       deep: [
         ['han', 'Out here it’s just us and the stars, pal.'],
         ['chewie', '[a contented growl]'],
@@ -917,6 +929,10 @@ export const CREWS = [
       comet: [
         ['jesse', 'Mr. White, a comet!'],
         ['walt', 'Ice and dust, Jesse. Chemistry, frozen.'],
+      ],
+      supernova: [
+        ['jesse', 'Yo! Did a star just blow up?!'],
+        ['walt', 'A supernova, Jesse. Every element heavier than iron was made in one of those. Including what we cook with.'],
       ],
       deep: [
         ['jesse', 'Mr. White, where are we even going?'],
