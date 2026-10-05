@@ -1203,6 +1203,7 @@ html[data-mode='dark'][data-theme='github'] .gh-panel { --heat: #2ea043; }
 .swara[data-oct='-1']::after { bottom: -0.05em; }
 .swara[data-oct='1']::before { top: -0.05em; }
 .swara[data-mark='komal'] > span:first-child { text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1.5px; }
+.swara[data-mark='ati'] > span:first-child { text-decoration: underline double; text-underline-offset: 0.16em; text-decoration-thickness: 1px; }
 .swara[data-mark='tivra'] > span:first-child::before { content: ''; position: absolute; left: 50%; top: -0.12em; width: 1.5px; height: 0.42em; background: currentColor; }
 
 /* the sitar neck */
@@ -2707,6 +2708,9 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-route button:hover, .me-route button:focus-visible { border-color: var(--me-wax); color: var(--me-wax); }
 .me-route button[data-won]::after { content: ' ✦'; color: var(--me-wax); }
 .me-hub-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.me-travellers { border-color: rgba(154, 184, 255, 0.55); }
+.me-travellers[data-on] { cursor: default; }
+.me-travellers b { color: #c9a95a; font-variant-numeric: tabular-nums; }
 
 .me-bar { position: sticky; top: calc(var(--nav-h) + 10px); display: flex; align-items: center; gap: 0.75rem; margin-top: calc(var(--nav-h) + 18px); }
 .me-bar > * { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }

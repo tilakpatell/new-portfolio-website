@@ -18,6 +18,9 @@ import Titan from '../components/avengers/titan/Titan';
 import { earnedStones, hasEarned, useStones } from '../components/avengers/hq/stones';
 import { useAchievements } from '../components/Achievements';
 import TesseractRun from '../components/avengers/tesseract/TesseractRun';
+import Thwip from '../components/avengers/thwip/Thwip';
+import WebShooter from '../components/avengers/WebShooter';
+import ModelCredits from '../components/ModelCredits';
 import Gauntlet from '../components/interests/Gauntlet';
 import { STONES, VIEW } from '../components/interests/stones';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -42,6 +45,7 @@ const FLOORS = [
   { id: 'hawkeye', short: 'The range', where: 'The range', title: 'Clint Barton', text: 'A clearing in the pines past the fence, where Clint keeps his eye in: boards out to sixty metres, clays from the traps, and trick arrows for anyone who strings three together.' },
   { id: 'widow', short: 'Operations', where: 'Main building · operations', title: 'Black Widow', text: 'Natasha ran the compound from this room for five years. On the holotable: a HYDRA facility, eight levels deep, and her file at the bottom of it. Plan her way in a move at a time; every move she makes, the guards make one too. Each level cleared declassifies a line of the file.' },
   { id: 'banner', short: 'The lab', where: 'The lab', title: 'Bruce Banner’s lab', text: 'Gamma research, and a scientist who would rather you didn’t push him. Push him anyway: it’s 2012, the portal is open over Stark Tower, and Midtown is full of Chitauri.' },
+  { id: 'spidey', short: 'The gate', where: 'The front gate', title: 'Spider-Man', text: 'Happy dropped the kid off here. Inside, Tony had a new suit and a room full of reporters waiting; Peter turned both down and went back to Queens. Now he’s late for school, two kilometres away, and the quickest way there is between the buildings.' },
   { id: 'vault', short: 'Hangar', where: 'The hangar', title: 'The Tesseract', text: 'The Quinjets live here, and so did the quantum tunnel for the time heist. The Tesseract has to come home to it, slung in its case under a Quinjet: over the woods, under the gantry, over the ridge and, with a storm coming in, through the hangar doors. Set it down gently and the Space Stone opens a hole in the sky, as it did over New York.' },
 ];
 
@@ -348,6 +352,9 @@ export default function Avengers() {
             <SmashRun fallback={<HulkLab />} />
           </Floor>
           <Floor i={6} floor={FLOORS[6]}>
+            <Thwip fallback={<WebShooter />} />
+          </Floor>
+          <Floor i={7} floor={FLOORS[7]}>
             <TesseractRun
               onPortal={openPortal}
               fallback={
@@ -488,6 +495,10 @@ export default function Avengers() {
           </div>
         </section>
       )}
+
+      <section className="shell relative z-10 pb-6 pt-4">
+        <ModelCredits where="avengers" line className="text-xs text-muted" />
+      </section>
 
       {hasPhotos(ON_DISPLAY) && (
         <section className="shell relative z-10 pb-24 pt-10 md:pb-28" aria-labelledby="av-display-title">

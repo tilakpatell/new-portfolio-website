@@ -133,6 +133,15 @@
     "airfield": {
       "src": "evening_road_01_puresky",
       "sky": 4096
+    },
+    "noon": {
+      "src": "kloofendal_48d_partly_cloudy_puresky",
+      "sky": 4096
+    },
+    "night": {
+      "src": "kloppenheim_02_puresky",
+      "sky": 4096,
+      "noSun": true
     }
   },
   "models": {

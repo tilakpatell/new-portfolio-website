@@ -19,6 +19,7 @@ const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Travel = lazy(() => import('./pages/Travel'));
 const Caribbean = lazy(() => import('./pages/Caribbean'));
+const Invincible = lazy(() => import('./pages/Invincible'));
 const Resume = lazy(() => import('./pages/Resume'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
@@ -29,6 +30,7 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
+const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Front = lazy(() => import('./pages/Front'));
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -249,6 +251,7 @@ function Shell() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/caribbean" element={<Caribbean />} />
+                <Route path="/invincible" element={<Invincible />} />
                 <Route path="/resume" element={<Resume />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
@@ -259,6 +262,7 @@ function Shell() {
                 <Route path="/cybertron" element={<Cybertron />} />
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
+                <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -137,3 +137,7 @@
 @media (prefers-reduced-motion: reduce) {
   .shire-toast, .shire-tempt, .shire-ring-btn[data-tempt], .shire-stage[data-wearing]::after { animation: none; }
 }
+/* other travellers online (../towns/TownHud.jsx Travellers): pale blue, as their ghosts are */
+.town-travellers { border-color: rgba(154, 184, 255, 0.55); }
+.town-travellers[data-on] { cursor: default; }
+.town-travellers b { color: #b8ccff; }

@@ -50,6 +50,7 @@ export const SPOTS = {
   hawkeye: [-12, 40, 0.5],
   widow: [52, 26, 15],
   banner: [93, 78, 8],
+  spidey: [42, 100, 3],
   vault: [18, 40, 10.5],
 };
 

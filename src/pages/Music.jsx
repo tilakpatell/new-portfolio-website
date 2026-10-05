@@ -10,9 +10,12 @@ import {
   FIRST_STRING,
   LISTEN_URL,
   RAGAS,
+  ragaOf,
+  TIMES,
   SA_NOTES,
   chikari,
   dayanHz,
+  holdChikari,
   playPhrase,
   saHz,
   setTanpuraListener,
@@ -25,11 +28,16 @@ import {
 import { useTuning } from '../components/music/useTuning';
 import SitarNeck from '../components/music/SitarNeck';
 import Harmonium from '../components/music/Harmonium';
+import RagaBook from '../components/music/RagaBook';
 import Tabla from '../components/music/Tabla.jsx'; // tabla.js sits beside it, and a case-blind disk (macOS) would pick that
 import Egg from '../components/Egg';
+import { capturePointer } from '../lib/pointer';
+import { recordRoom, setRoom } from '../components/music/room';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 
 const CREDIT = 'https://commons.wikimedia.org/wiki/File:Sitar_clipping.ogg';
+// the ragas offered at the top; the rest are in the database further down
+const QUICK = ['yaman', 'bhupali', 'bhairav', 'bhairavi', 'kafi', 'malkauns', 'darbari'];
 const hz = (f) => `${f.toFixed(1)} Hz`;
 
 // The tanpura's drone, shared by the controls at the top and the floating one.
@@ -57,6 +65,8 @@ function useDrone() {
 
 function Tuning({ drone }) {
   const [tuning, setTuning] = useTuning();
+  const raga = ragaOf(tuning.raga);
+  const quick = QUICK.includes(tuning.raga) ? QUICK : [...QUICK, tuning.raga];
   return (
     <div className="music-tuning card">
       <div>
@@ -79,14 +89,18 @@ function Tuning({ drone }) {
           Raga
         </p>
         <div className="seg seg-wrap mt-2" role="group" aria-labelledby="raga-label">
-          {Object.entries(RAGAS).map(([id, r]) => (
-            <button key={id} type="button" aria-pressed={tuning.raga === id} onClick={() => setTuning({ raga: id, first: r.first })}>
-              {r.name}
+          {quick.map((id) => (
+            <button key={id} type="button" aria-pressed={tuning.raga === id} onClick={() => setTuning({ raga: id, first: ragaOf(id).first })}>
+              {ragaOf(id).name}
             </button>
           ))}
+          <button type="button" onClick={() => document.getElementById('ragas-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            All {Object.keys(RAGAS).length} ragas, or your own ↓
+          </button>
         </div>
         <p className="mt-2 text-sm text-muted">
-          {RAGAS[tuning.raga].name}, a raga for the {RAGAS[tuning.raga].time.toLowerCase()}. The sitar’s frets and sympathetic strings follow it.
+          {raga.name}
+          {raga.time ? `, sung ${TIMES[raga.time].when}` : ', a raga of your own'}. The sitar’s frets and sympathetic strings follow it.
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
@@ -107,6 +121,93 @@ function Tuning({ drone }) {
           {drone.on ? 'Stop the tanpura' : 'Start the tanpura'}
         </button>
       </div>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        <label className="sn2-slider max-w-[22rem]">
+          <span>Room</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={roomOf(tuning)}
+            onChange={(e) => setTuning({ room: Number(e.target.value) })}
+            aria-valuetext={`${Math.round(roomOf(tuning) * 100)} percent: ${roomOf(tuning) < 0.15 ? 'dry' : roomOf(tuning) > 0.7 ? 'a hall' : 'a room'}`}
+          />
+          <span className="mono tabular-nums">{roomOf(tuning) < 0.15 ? 'dry' : roomOf(tuning) > 0.7 ? 'a hall' : 'a room'}</span>
+        </label>
+        <Recorder />
+      </div>
+    </div>
+  );
+}
+
+// how much room the instruments sound in, as kept in the tuning (0 to 1)
+const roomOf = (t) => (Number.isFinite(t.room) ? Math.max(0, Math.min(1, t.room)) : 0.35);
+
+// Record everything the room plays, as it's heard, and save it as a file.
+const LONGEST = 10 * 60; // seconds; a recording stops itself after this
+function Recorder() {
+  const [rec, setRec] = useState(null); // { handle, at }
+  const [take, setTake] = useState(null); // { url, ext, seconds }
+  const [, tick] = useState(0);
+  const [cant, setCant] = useState(false);
+  const takeUrl = useRef(null);
+  const stop = useRef(null);
+  stop.current = async () => {
+    if (!rec) return;
+    const seconds = Math.round((Date.now() - rec.at) / 1000);
+    setRec(null);
+    const { blob, ext } = await rec.handle.stop();
+    if (takeUrl.current) URL.revokeObjectURL(takeUrl.current);
+    takeUrl.current = URL.createObjectURL(blob);
+    setTake({ url: takeUrl.current, ext, seconds });
+  };
+  useEffect(() => {
+    if (!rec) return undefined;
+    const id = setInterval(() => {
+      tick((n) => n + 1);
+      if (Date.now() - rec.at > LONGEST * 1000) stop.current();
+    }, 500);
+    return () => clearInterval(id);
+  }, [rec]);
+  // leaving the page ends a recording; its file goes when the page does
+  useEffect(
+    () => () => {
+      stop.current();
+      if (takeUrl.current) URL.revokeObjectURL(takeUrl.current);
+    },
+    [],
+  );
+  const start = () => {
+    const ac = audioContext(); // inside the click
+    const handle = ac && recordRoom(ac);
+    if (!handle) {
+      setCant(true);
+      return;
+    }
+    setTake(null);
+    setRec({ handle, at: Date.now() });
+  };
+  const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  if (cant) return <p className="text-sm text-muted">This browser can’t record here.</p>;
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {rec ? (
+        <button type="button" className="btn btn-ghost" aria-pressed="true" onClick={() => stop.current()}>
+          <span className="rec-dot" aria-hidden="true" />
+          Stop recording · {clock(Math.round((Date.now() - rec.at) / 1000))}
+        </button>
+      ) : (
+        <button type="button" className="btn btn-ghost" onClick={start}>
+          <span className="rec-dot" data-idle aria-hidden="true" />
+          Record the room
+        </button>
+      )}
+      {take && (
+        <a className="link text-sm" href={take.url} download={`riyaz-${new Date().toISOString().slice(0, 10)}.${take.ext}`}>
+          Save the recording ({clock(take.seconds)})
+        </a>
+      )}
     </div>
   );
 }
@@ -162,6 +263,7 @@ function Listen() {
 export default function Music() {
   useDocumentTitle('Indian classical music');
   const [tuning] = useTuning();
+  const raga = ragaOf(tuning.raga);
   const { unlock } = useAchievements();
   const drone = useDrone();
   const [phrase, setPhrase] = useState(false);
@@ -171,6 +273,7 @@ export default function Music() {
   const hero = useRef(null);
 
   useEffect(() => () => stopAll(), []);
+  useEffect(() => setRoom(roomOf(tuning)), [tuning]);
   useEffect(() => {
     const el = hero.current;
     if (!el || typeof IntersectionObserver === 'undefined') return undefined;
@@ -184,12 +287,13 @@ export default function Music() {
     if (used.current.size === 3) unlock('jugalbandi');
     if (instrument === 'sitar' && ++notes.current >= 8) unlock('raga');
   };
-  const play = async () => {
+  // the raga's phrase, or other sargam in it (`text`: its aroha and avaroha, say)
+  const play = async (text) => {
     if (!audioContext()) return;
     onPlay('sitar');
     notes.current += 8;
     unlock('raga');
-    const seconds = await playPhrase(tuning.raga);
+    const seconds = await playPhrase(tuning.raga, { text: typeof text === 'string' ? text : undefined });
     if (!seconds) return;
     setPhrase(true);
     setTimeout(() => setPhrase(false), seconds * 1000 + 400);
@@ -245,6 +349,22 @@ export default function Music() {
         </div>
       </section>
 
+      <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="ragas-title">
+        <div className="relative">
+          <Waypoint top="0.9rem" />
+          <h2 id="ragas-title" className="title scroll-mt-[calc(var(--nav-h)+24px)]">
+            Ragas
+          </h2>
+          <p className="lead mt-4 max-w-[62ch]">
+            A raga is more than its notes: a way up and a way down, a note it dwells on (vadi) and its companion (samvadi), a time of day, phrases that are
+            its own. Pick one and the whole room tunes to it, or make your own.
+          </p>
+        </div>
+        <div className="mt-8">
+          <RagaBook onPhrase={play} playing={phrase} />
+        </div>
+      </section>
+
       <section className="shell relative z-10 py-14 md:py-20" aria-labelledby="sitar-title">
         <div className="relative">
           <Waypoint top="0.9rem" />
@@ -252,22 +372,34 @@ export default function Music() {
             Sitar
           </h2>
           <p className="lead mt-4 max-w-[60ch]">
-            Every swara has a fret, from mandra Pa to taar Ga, and the raga’s notes are lit. Tap a fret to pluck it. Hold and slide along the neck to glide
-            between frets, or pull the string across the fret to bend it: meend.
+            Set the frets the way a player ties them on: every swara from mandra Pa to taar Ga, a regular sitar’s Sa to taar Sa, set for Darbari (its Ga
+            and Dha lower, ati komal) or Bhairavi, the raga’s own, or your own. The raga’s notes are lit. Tap a fret to pluck it. Hold and slide along the
+            neck to glide between frets, or pull the string across the fret to bend it: meend.
           </p>
         </div>
         <div className="mt-8">
           <SitarNeck onPlay={onPlay} />
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" className="btn btn-primary" onClick={play} disabled={phrase}>
-            {phrase ? 'Playing…' : `Play a phrase in ${RAGAS[tuning.raga].name}`}
+          <button type="button" className="btn btn-primary" onClick={() => play()} disabled={phrase}>
+            {phrase ? 'Playing…' : `Play a phrase in ${raga.name}`}
           </button>
+          {/* press and hold for a roll; from the keyboard, one stroke */}
           <button
             type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              if (!audioContext()) return;
+            className="btn btn-ghost chikari-btn"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              capturePointer(e);
+              holdChikari(true, 'button');
+              onPlay('sitar');
+            }}
+            onPointerUp={() => holdChikari(false, 'button')}
+            onPointerCancel={() => holdChikari(false, 'button')}
+            onLostPointerCapture={() => holdChikari(false, 'button')}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => {
+              if (e.detail !== 0 || !audioContext()) return;
               chikari();
               onPlay('sitar');
             }}
@@ -288,12 +420,19 @@ export default function Music() {
               and krintan move the note without a new stroke, the way the left hand pulls and lets go of the string.
             </p>
             <p className="mt-3">
-              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {RAGAS[tuning.raga].name}. Nobody plucks them; they ring when a
+              Under the frets run eleven sympathetic strings, the tarab, tuned to the notes of {raga.name}. Nobody plucks them; they ring when a
               note you play matches one, and you hear them bloom after it, a modelled string with its own jawari for each. They glow on the neck as they ring.
             </p>
             <p className="mt-3">
+              Above the main string run the chikari, two high strings tuned to Sa, struck for rhythm. With Auto chikari on, the right hand strikes them by
+              itself in the rests between your notes: in your own pulse when you play alone, on the tabla’s beat when it keeps a taal (hardest on sam), and
+              never on top of a note, a slide or a meend. When your notes come evenly, it leaves the next one its beat. Set a speed of your own under the
+              neck (with the tabla it keeps to the nearest division of the beat), and how hard it’s struck. Hold Space, or hold the Chikari button, and it
+              rolls on at that speed; play frets over it for a jhala.
+            </p>
+            <p className="mt-3">
               On a keyboard, 1 to = and Q to ] play the frets in order. Shift with a fret’s key moves to it without a new stroke (krintan), holding ↑ pulls
-              the note up to the raga’s next one (meend), Space strikes the chikari and Esc stops the string.
+              the note up to the raga’s next one (meend), Space strikes the chikari (hold it for a roll) and Esc stops the string.
             </p>
             <p className="mt-3 text-sm text-muted">
               Sitar strokes by{' '}
@@ -312,7 +451,11 @@ export default function Music() {
               <a className="link" href="https://github.com/sonic-pi-net/sonic-pi/blob/main/etc/samples/README.md" target="_blank" rel="noopener noreferrer">
                 dio_333
               </a>{' '}
-              (CC0, from Sonic Pi’s sample library). Rosewood texture from{' '}
+              (CC0, from Sonic Pi’s sample library). Harmonium keys by{' '}
+              <a className="link" href="https://freesound.org/s/330410/" target="_blank" rel="noopener noreferrer">
+                donyaquick
+              </a>{' '}
+              (CC0, recorded at the Euterpea Studio, Yale). Rosewood texture from{' '}
               <a className="link" href="https://polyhaven.com/a/rosewood_veneer1" target="_blank" rel="noopener noreferrer">
                 Poly Haven
               </a>{' '}
@@ -330,7 +473,8 @@ export default function Music() {
               Harmonium
             </h2>
             <p className="lead mt-4 max-w-[56ch]">
-              Pumped by hand, two reeds to every key. The labels show where each note falls from your Sa; the dotted ones are in {RAGAS[tuning.raga].name}.
+              A real harmonium’s keys, every one from E2 to D5, held as long as you hold them. Pull out its stops for the bass, male and female reeds,
+              and pump its bellows yourself if you like. The labels show where each note falls from your Sa; the dotted ones are in {raga.name}.
             </p>
           </div>
           <figure className="music-photo music-photo-wide m-0">
@@ -365,7 +509,7 @@ export default function Music() {
 
       <PhotoCredits
         ids={['music-sitar', 'music-tanpura', 'music-tarab', 'music-harmonium', 'music-tabla']}
-        note="Freely licensed photos from Wikimedia Commons. The sitar, tanpura and tabla play real recordings, credited above; the harmonium is synthesised in your browser."
+        note="Freely licensed photos from Wikimedia Commons. The sitar, tanpura, harmonium and tabla play real recordings, credited above."
       />
 
       {(pastHero || drone.on) && (
@@ -373,7 +517,7 @@ export default function Music() {
           <span className="drone-pill-dot" data-on={drone.on || undefined} aria-hidden="true" />
           <span className="text-sm">
             Tanpura · Sa {SA_NOTES[tuning.sa]}
-            <span className="drone-pill-raga text-muted"> · {RAGAS[tuning.raga].name}</span>
+            <span className="drone-pill-raga text-muted"> · {raga.name}</span>
           </span>
           <button type="button" className="drone-pill-btn" onClick={drone.toggle} aria-pressed={drone.on} aria-label={drone.on ? 'Stop the tanpura' : 'Start the tanpura'}>
             {drone.on ? <RiPauseFill className="h-4 w-4" aria-hidden="true" /> : <RiPlayFill className="h-4 w-4" aria-hidden="true" />}
