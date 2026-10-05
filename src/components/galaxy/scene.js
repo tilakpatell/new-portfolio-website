@@ -813,9 +813,18 @@ export async function create(canvas, ctx) {
   };
 
   // ── Hyperspace ──
+  // (the way the reticle is, from the eye: the star you see behind it, in
+  // the chase view as in the cockpit; the jump then comes round onto it)
+  const sight = new THREE.Vector3();
   const aimAt = (ship) => {
     const was = state.aim?.id ?? null;
-    state.aim = ship && state.sys ? starAhead(state.sys, nose(ship), { keep: was }) : null;
+    let dir = null;
+    if (ship && state.sys) {
+      const [nx, ny, nz] = nose(ship);
+      sight.set(ship.x + nx * 6, ship.y + ny * 6, ship.z + nz * 6).sub(camera.position);
+      dir = sight.lengthSq() > 1e-6 ? sight.normalize().toArray() : [nx, ny, nz];
+    }
+    state.aim = dir ? starAhead(state.sys, dir, { keep: was }) : null;
     const id = state.aim?.id ?? null;
     if (id === was) return;
     emit({ type: 'aim', id });
