@@ -148,7 +148,9 @@ export async function create(canvas, ctx) {
     solids: createSolids(),
     floors: [...(site.floors ?? [])],
     reach: site.reach,
-    water: site.water && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null,
+    // (water you wade in: not lava, not cloud, and not a sea far under a
+    // platform with nothing else under it, which you'd fall into)
+    water: site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
@@ -673,6 +675,17 @@ export async function create(canvas, ctx) {
     const p = me().st;
     const o = walk(p, { ...inp, jump: state.jumpQueued }, dt, world);
     life.shove(p, WALK.radius);
+    // (and out of whatever's parked: a speeder, a tauntaun)
+    for (const x of rides) {
+      const dx = p.x - x.state.x;
+      const dz = p.z - x.state.z;
+      const d = Math.hypot(dx, dz);
+      const min = x.spec.radius * 0.8 + WALK.radius;
+      if (d < min && d > 1e-6) {
+        p.x = x.state.x + (dx / d) * min;
+        p.z = x.state.z + (dz / d) * min;
+      }
+    }
     if (o.bumped && Math.hypot(p.x, p.z) > world.reach - 1 && state.t - state.edgeAt > 8) {
       state.edgeAt = state.t;
       emit({ type: 'edge' });
