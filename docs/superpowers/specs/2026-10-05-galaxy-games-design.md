@@ -1,6 +1,6 @@
 # The galaxy's missions: design for the games still to build
 
-The galaxy (`/galaxy`, `src/components/galaxy/`) gives every one of its nineteen Star Wars systems a mission. Two are live (Yavin's trench run and boarding the Death Star at Alderaan, both on `/deathstar`); the other seventeen are briefings (`/galaxy/:id/mission`: an opening crawl from `crawls.js`, three objectives, who you fly as, how it'll play). This is the plan for turning them into games, in a later session. Each mission's own data (`title`, `film`, `role`, `pitch`, `how`, `objectives`) is in `systems.js`; when one ships, flip its `status` to `'live'` and give it a `to`.
+The galaxy (`/galaxy`, `src/components/galaxy/`) gives every one of its eighteen Star Wars systems a mission. Two are live (Yavin's trench run and boarding the Death Star at Alderaan, both on `/deathstar`); the other sixteen are briefings (`/galaxy/:id/mission`: an opening crawl from `crawls.js`, three objectives, who you fly as, how it'll play). This is the plan for turning them into games, in a later session. Each mission's own data (`title`, `film`, `role`, `pitch`, `how`, `objectives`) is in `systems.js`; when one ships, flip its `status` to `'live'` and give it a `to`.
 
 ## One engine, many missions
 
@@ -69,26 +69,23 @@ For a shared fight (everyone sees the same walkers), drive the enemies from the 
 ### Scarif: Rogue One
 - Three acts: through the Shield Gate before it closes (a flight through the battle the galaxy already plays over Scarif), the beach (AT-ACTs, a U-wing gunner's view), then the Citadel tower climb against the clock, the Death Star's shot coming.
 
-### Jakku: The Garbage Will Do
-- You: the Falcon, Rey flying, Finn on the gun (the turret view and the pilot's view swap with a key, or one each online). Low through the Starship Graveyard (the galaxy's tilted Star Destroyer wrecks, now on the ground) and through a downed Star Destroyer's hull.
+### Nevarro: The Siege
+- You: the Razor Crest (the galaxy's own, built in `fleetExtras.js`), Din Djarin at the controls. First save the stolen trooper transport from the scout troopers on its tail, then up out of the lava canyons with the TIEs that scramble from the burning Imperial base behind you; flip her round (a quick-turn button) and take them on one at a time. The canyon walls are the cover: low enough and they can't line up a shot.
 
-### Crait: The Salt Flats
-- You: a V-4X-D ski speeder; red salt trails behind every speeder (a decal trail on the ground); AT-M6 walkers and the battering ram cannon advancing on the mine door; buy time (a clock) rather than win outright.
+### Mandalore: The Return
+- You: Bo-Katan's Gauntlet (`fleetExtras.js`), over the glassed plains in the battle the galaxy already plays there. Keep Moff Gideon's TIEs and interceptors off the Mandalorians' capital ship until it's evacuated (a bar that fills), then fly escort as Axe Woves takes it down onto the base, and pull up before it hits. A coda on foot (the surface engine): into the base after Mando.
 
-### Starkiller Base: The Oscillator
-- A trench run on Starkiller (the galaxy's `starkiller` look has the trench): get under the shield, down to the thermal oscillator, hit it before the sun's gone (the galaxy's sun-drain already dims the sky by the same clock).
+### Lothal: The Star Map
+- You: Sabine's speeder bike from the ceremony out across the grass plains (rock spires as the obstacles, loth-wolves running alongside), then the old tower: hold out against Shin Hati and her mercenaries while the map unlocks (a timer), with a lightsaber she hasn't practised with in years. Low stakes, a ride and a fight.
 
-### Exegol: The Navigation Tower
-- In the lightning (the galaxy's `lightning` piece), find the Steadfast among the Xystons (the `armada` piece), knock out its navigation tower (a weak point under fire), then survive until the citizens' fleet jumps in (a wave of friendly ships out of hyperspace).
-
-### Ahch-To: The Last Lesson
-- Third person on foot on the island: the climb to the temple, three short lessons (the Force: feel the island; the tree; the cave), porgs everywhere. Low stakes, a breather.
+### Sorgan: Sanctuary
+- On foot (the surface engine), with Cara Dune: train the krill farmers (a few short drills), dig and hide the trap in the pond, then the night the raiders come: draw the AT-ST's fire through the trees, light the trap when it's in the water, and put a shot into its cockpit when it stumbles. Online: one plays Mando, one Cara.
 
 ## Build order
 
 1. The surface engine with Hoth (it exercises everything: snow, walkers, a special mechanic, a defend clock).
 2. Endor (the engine's obstacle density and speed), Tatooine (racing, rivals, laps).
-3. The space missions on the galaxy's own scene (Naboo, Geonosis, Exegol, Starkiller): they need little new.
+3. The space missions on the galaxy's own scene (Naboo, Geonosis, Nevarro, Mandalore): they need little new.
 4. The rest, then shared online fights on the ones that suit it.
 
 ## Tests

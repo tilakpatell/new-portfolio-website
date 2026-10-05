@@ -13,16 +13,13 @@ Two pieces of work are on `main`: PR #108 (`claude/hq-web-swinging`, web-swingin
 
 ## Left to do
 
-1. **Grass on the lawn.** The biggest visual gain left. Plan: GPU-instanced blades around the hero (an `InstancedBufferGeometry` of one 5-triangle blade, offsets in a patch about 40 m across that wraps round the camera in the vertex shader), on a `MeshStandardMaterial` with `onBeforeCompile` so it keeps the sun, shadows, fog and the `cloudy` cloud shadows. A canvas mask of where grass grows (the lawn minus the drives, the apron, the painted areas and the buildings) sampled in the vertex shader to scale blades to nothing off the lawn. Budget: about 40k blades on `high`, 15k on `medium`, none on `low` (`engine.small`, `engine.tier`).
-2. **A lighting pass.** Sunlit white faces still bloom, the old white plant rooms most of all (the `box(...)` calls for the prow's and the wing's plant rooms in `scene.js`). Give them louvres like `grounds.js`'s air handlers and consider `sunIntensity` 3.3 → 3.0 in `setSky`. Then distant hills beyond the woods for depth.
-3. **Check by eye** (none of these were confirmed in the headless captures):
-   - the flags fly (they sit at 11 m, above the frame in every capture so far);
-   - the street lamps' arms point over the drives (if they point away, flip the `yaw` in `LAMPS`);
-   - the shrub model's origin is at one end (`hq/catalog.js`), so shrubs may sit off-centre in the planters: offset them by half their width.
-4. **Play the swing tour at full frame rate.** The rings were laid out by geometry and the tests only prove each is near something to swing from. Ring 6 (over the glass wing's roof, 31.5 m up) and ring 3 (under the bridge) most need a real run; move rings and retune `SWING` from what a player actually does.
-5. **Holograms of other players.** `scene.js`'s ghost `animate` treats anyone over 0.05 m up as jumping, so a player standing on a roof shows the jump clip. Send whether they're on the ground in the step (`writeStep`), or pose by vertical speed.
-6. **More Insomniac moves**, if wanted, in order of value: corner swings (bias `aimWeb` toward the street being turned into and swing the arc round), a point launch to a perch (needs a key: E is the doors), web wings.
-7. **Phones.** Check the Jump and Zip buttons' layout (`.cw-hud-bottom` in `world.css`) on a narrow screen, and the frame rate on `medium` with the new props.
+Done since the first note (PR from `claude/hq-world-pass`): grass blades on the lawn (`world/grass.js`, masked off the drives, apron, paint and buildings), the lighting pass (glass flare and bloom threshold, louvred grey plant rooms, sun 3.1), flags and lamps confirmed in captures, shrubs centred in planters, roof-standing holograms no longer play the jump clip, and corner swings (`CORNERS`, `cornerSwing` in `rules.js`, tested).
+
+1. **Phones.** A 390×844 capture is at the end of the last session but wasn't looked at: check the Jump and Zip buttons (`.cw-hud-bottom` in `world.css`), the hint text's fit, and the frame rate on `medium` with the grass (16k blades) and props.
+2. **Triangle budget.** About 720k at the start view on `high` (budget 750k). If it creeps over: fewer grass blades, or lamps without shadows.
+3. **Play the swing tour at full frame rate** and move rings or retune `SWING` from what a player actually does (ring 6 over the glass wing, ring 3 under the bridge most of all).
+4. **More Insomniac moves**, if wanted: a point launch to a perch (needs a key: E is the doors), web wings.
+5. **Grass polish**: blades read as spikes up close; denser and shorter, or clumps, would read more like a mown lawn.
 
 ## How to check it
 

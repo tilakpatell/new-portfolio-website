@@ -39,6 +39,7 @@ import { PARTS_SLOTS, STOCK, STOCK_LOADOUT, partById } from '../outfit';
 import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
 import { PARKED } from '../foot';
+import { WEAPONS, arsenalOf, fan } from '../weapons';
 import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
@@ -179,17 +180,32 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     parent.add(m);
     return m;
   });
-  const fireBolt = (s) => {
+  // their shot as it came in, as it is: a blaster bolt, a spread's fan of
+  // five, or a heavy round (big, slow, glowing in its ship's colour)
+  const one = (s, v, k, life, color) => {
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
-    b.material = matFor(boltColor(s.kind, s.paint));
-    const k = partById('guns', s.guns)?.bolt ?? 1; // (a fusion cannon's are bigger)
+    b.material = matFor(color);
     b.scale.set(k, k, 1 + (k - 1) * 0.4);
     b.position.set(...s.p);
-    b.userData.v.set(...s.v);
-    b.userData.life = BOLT_LIFE;
-    const [vx, vy, vz] = s.v;
+    b.userData.v.set(...v);
+    b.userData.life = life;
+    const [vx, vy, vz] = v;
     b.rotation.set(Math.atan2(vy, Math.hypot(vx, vz)), Math.atan2(-vx, -vz), 0);
     b.visible = true;
+  };
+  const fireBolt = (s) => {
+    const k = partById('guns', s.guns)?.bolt ?? 1; // (a fusion cannon's are bigger)
+    const color = boltColor(s.kind, s.paint);
+    if (s.w === WEAPONS.heavy.code) {
+      one(s, s.v, 4, BOLT_LIFE * WEAPONS.heavy.life, arsenalOf(s.kind).heavy);
+      return;
+    }
+    if (s.w === WEAPONS.spread.code) {
+      const speed = Math.hypot(...s.v) || 1;
+      for (const d of fan(s.v.map((x) => x / speed), WEAPONS.spread.count, WEAPONS.spread.cone)) one(s, [d[0] * speed, d[1] * speed, d[2] * speed], k * WEAPONS.spread.scale, BOLT_LIFE * WEAPONS.spread.life, color);
+      return;
+    }
+    one(s, s.v, k, BOLT_LIFE, color);
   };
 
   const spot = { x: 0, y: 0, z: 0 };

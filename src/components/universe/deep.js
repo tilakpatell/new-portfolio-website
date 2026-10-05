@@ -128,7 +128,7 @@ const solid = (id, at, r, swallow = false) => ({ id, at, r, reach: r * 1.4, deep
 // The Citadel reaches past its great dome: its four domes out on their
 // arms, the blades hanging under it and the crystal under them, as
 // deepspace.js draws it for a radius of 18 ([x, y, z, r] in those units)
-const CITADEL_PARTS = [
+export const CITADEL_PARTS = [
   [21.3, -2.2, 5.4, 6.4],
   [-7.4, 6.2, 17.5, 5],
   [-22, -3, -6.8, 6.8],

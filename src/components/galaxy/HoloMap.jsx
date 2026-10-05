@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
-import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
+import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
 // The galaxy map, the way a holotable shows it: the galaxy's disc (its
 // spiral arms, the glow of the Deep Core), the regions in rings out from the
@@ -12,7 +12,8 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // it shows where it is, its era and its films, how far it is and how long
 // the jump takes, and who's flying there now (online); Jump sends you. The
 // eras and the films filter what's lit (the rest dim), so it doubles as a
-// timeline: the prequels' worlds, the originals', the sequels'.
+// timeline: the prequels' worlds, the originals', the New Republic's (The
+// Mandalorian's and Ahsoka's).
 //
 // Drawn once into a canvas (the stars of the disc), with an SVG over it for
 // the lines and the names, and buttons over that for the systems (so the
@@ -21,7 +22,8 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // is its own stacking context).
 
 const SIZE = 21; // the map is GRID squares across, in its own units
-const LEFT = new Set(['mustafar', 'hoth', 'geonosis']); // names that go on the left of their dot (a neighbour's on the right)
+// names that go on the left of their dot (a neighbour's on the right, or the map's edge)
+const LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal']);
 const TAU = Math.PI * 2;
 
 // the disc's stars: two arms wound out from the core, a bulge, dust
@@ -170,7 +172,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
         <div className="holomap-films" role="group" aria-label="Film">
           {FILM_ORDER.map((id) => (
             <button key={id} type="button" aria-pressed={film === id} style={{ '--era': eraById(FILMS[id].era).color }} onClick={() => setFilm(film === id ? null : id)} title={`${filmLabel(id)} · ${yearLabel(FILMS[id].year)}`}>
-              {FILMS[id].episode ?? 'R1'}
+              {filmShort(id)}
             </button>
           ))}
         </div>
@@ -252,7 +254,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
                   {picked.region} · Grid {picked.grid ?? gridAt(picked.pos)}
                 </p>
                 <p className="holomap-meta">
-                  {eraById(eraOf(picked)).name} · {picked.films.map((f) => FILMS[f].episode ?? 'Rogue One').join(', ')}
+                  {eraById(eraOf(picked)).name} · {picked.films.map((f) => FILMS[f].episode ?? FILMS[f].title).join(', ')}
                 </p>
                 <dl className="holomap-stats">
                   <div>

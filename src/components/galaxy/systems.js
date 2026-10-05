@@ -19,32 +19,36 @@
 // `pieces`). `faction` is who comes after you there (galaxy/hunted.js), and
 // `traffic` what flies by on its own business.
 //
-// Each system is from one or more of the films (`films`, FILMS' ids); its
-// era is the era of the moment it's shown at. `game` is the mission you can
-// fly there: most are briefings for games still to be built (status
-// 'soon'), a couple go straight to one that's here already (`to`).
+// Each system is from one or more of the films (`films`, FILMS' ids: the
+// films, and the two shows of the years after the Empire's fall, The
+// Mandalorian and Ahsoka); its era is the era of the moment it's shown at.
+// `game` is the mission you can fly there: most are briefings for games
+// still to be built (status 'soon'), a couple go straight to one that's here
+// already (`to`).
 
-// ── The films, in the galaxy's own order of events ──
+// ── The films (and the shows), in the galaxy's own order of events ──
+// (a show has no episode: `show`, and `short`, its name on a small button)
 
 export const FILMS = {
   tpm: { title: 'The Phantom Menace', episode: 'I', year: -32, era: 'republic' },
   aotc: { title: 'Attack of the Clones', episode: 'II', year: -22, era: 'republic' },
   rots: { title: 'Revenge of the Sith', episode: 'III', year: -19, era: 'republic' },
-  rogue: { title: 'Rogue One', episode: null, year: 0, era: 'empire' },
+  rogue: { title: 'Rogue One', episode: null, short: 'R1', year: 0, era: 'empire' },
   anh: { title: 'A New Hope', episode: 'IV', year: 0, era: 'empire' },
   esb: { title: 'The Empire Strikes Back', episode: 'V', year: 3, era: 'empire' },
   rotj: { title: 'Return of the Jedi', episode: 'VI', year: 4, era: 'empire' },
-  tfa: { title: 'The Force Awakens', episode: 'VII', year: 34, era: 'firstorder' },
-  tlj: { title: 'The Last Jedi', episode: 'VIII', year: 34, era: 'firstorder' },
-  tros: { title: 'The Rise of Skywalker', episode: 'IX', year: 35, era: 'firstorder' },
+  mando: { title: 'The Mandalorian', episode: null, show: true, short: 'Mando', year: 9, era: 'newrepublic' },
+  ahsoka: { title: 'Ahsoka', episode: null, show: true, short: 'Ahsoka', year: 11, era: 'newrepublic' },
 };
 export const FILM_ORDER = Object.keys(FILMS);
 
-// The three eras, each a trilogy (and Rogue One, the moment before A New Hope)
+// The three eras: the prequels, the originals (and Rogue One, the moment
+// before A New Hope), and the New Republic's, after the Empire's fall, in
+// the shows: The Mandalorian and Ahsoka
 export const ERAS = [
   { id: 'republic', name: 'Fall of the Republic', short: 'Prequels', span: '32–19 BBY', color: '#7fc4ff', about: 'The Trade Federation, the clones and the droids, and the Jedi’s last days.' },
   { id: 'empire', name: 'Galactic Civil War', short: 'Originals', span: '0–4 ABY', color: '#ffd36a', about: 'The Rebel Alliance against the Empire and its Death Stars.' },
-  { id: 'firstorder', name: 'Rise of the First Order', short: 'Sequels', span: '34–35 ABY', color: '#ff7a6a', about: 'The Resistance, the First Order, and the Sith fleet on Exegol.' },
+  { id: 'newrepublic', name: 'The New Republic', short: 'Mandalorian & Ahsoka', span: '9–11 ABY', color: '#7fe8c8', about: 'The Empire’s fallen, but not its remnant: a Mandalorian and his foundling, the Mandalorians’ homeworld, and Ahsoka Tano on Thrawn’s trail.' },
 ];
 export const eraById = (id) => ERAS.find((e) => e.id === id) ?? null;
 
@@ -54,6 +58,8 @@ export const filmLabel = (id) => {
   const f = FILMS[id];
   return f ? (f.episode ? `Episode ${f.episode}: ${f.title}` : f.title) : '';
 };
+// a film's short name, for a small button: its episode, or (Rogue One, the shows) its own
+export const filmShort = (id) => FILMS[id]?.episode ?? FILMS[id]?.short ?? '';
 
 // ── The map ──
 
@@ -99,7 +105,7 @@ export const LANES = [
 // name       as the films name it; `system` when the star system has another name
 // region, sector, grid  where it is, as the atlas has it (grid null where it doesn't say)
 // pos        [x, z] on the map, in grid squares
-// films      the films it's in, in order
+// films      the films (and shows) it's in, in order
 // moment     { film, title, text }: the scene the system is shown at
 // about      a line or two for its card
 // facts      [label, value] for its card
@@ -122,7 +128,7 @@ export const SYSTEMS = [
     sector: 'Arkanis sector',
     grid: 'R-16',
     pos: [17.6, 15.4],
-    films: ['tpm', 'aotc', 'anh', 'rotj', 'tros'],
+    films: ['tpm', 'aotc', 'anh', 'rotj', 'mando'],
     moment: { film: 'anh', title: 'The Tantive IV is taken', text: 'A Rebel blockade runner flees the Star Destroyer Devastator over the desert world, carrying the stolen Death Star plans.' },
     about: 'A desert world under two suns, run by the Hutts and a long way from anywhere: moisture farms, Jawas, Tusken Raiders, Mos Eisley and the Boonta Eve podrace. Both Skywalkers grew up here.',
     facts: [
@@ -473,7 +479,7 @@ export const SYSTEMS = [
     sector: 'Corusca sector',
     grid: 'L-9',
     pos: [11.5, 8.5],
-    films: ['tpm', 'aotc', 'rots', 'rotj'],
+    films: ['tpm', 'aotc', 'rots', 'rotj', 'mando'],
     moment: { film: 'rots', title: 'The Battle of Coruscant', text: 'The Republic fleet fights General Grievous over the capital, and two Jedi fly in to rescue the Chancellor.' },
     about: 'The capital of the Republic and then of the Empire: a planet that is all one city, the Senate, the Jedi Temple and a trillion people. Its coordinates are zero, zero, zero.',
     facts: [
@@ -750,193 +756,170 @@ export const SYSTEMS = [
     },
   },
   {
-    id: 'jakku',
-    name: 'Jakku',
-    region: 'Western Reaches',
-    sector: 'Western Reaches',
-    grid: null,
-    pos: [5.4, 13.2],
-    films: ['tfa'],
-    moment: { film: 'tfa', title: 'The starship graveyard', text: 'Rey and Finn take off in a garbage ship that turns out to be the Millennium Falcon, with TIEs right behind them.' },
-    about: 'A desert junkyard of a world, littered with wrecks from the Empire’s last great battle, where a scavenger called Rey waited for a family that never came back.',
+    id: 'nevarro',
+    name: 'Nevarro',
+    region: 'Outer Rim Territories',
+    sector: 'Dalicron sector',
+    grid: 'J-19',
+    pos: [9.4, 18.98],
+    films: ['mando'],
+    moment: { film: 'mando', title: 'The Siege of Nevarro', text: 'The Razor Crest climbs out of the lava canyons with a TIE fighter on its tail, and Mando turns to take it on, while more TIEs circle the old Imperial base.' },
+    about: 'A volcanic world of black lava flats and ash, where the Bounty Hunters’ Guild paid out and the Mandalorians kept their covert under the city; Moff Gideon’s TIEs came here for the Child, and Greef Karga made it a city worth living in.',
     facts: [
-      ['Terrain', 'Desert, the Starship Graveyard'],
-      ['Settlement', 'Niima Outpost'],
-      ['Last battle', 'The Battle of Jakku, 5 ABY'],
-      ['Scavenger', 'Rey'],
+      ['Terrain', 'Lava flats, black canyons, ash'],
+      ['City', 'Nevarro City, the Guild’s town'],
+      ['Hidden', 'The Mandalorians’ covert'],
+      ['Magistrate', 'Greef Karga'],
     ],
-    quote: { text: 'The garbage will do!', by: 'Rey', film: 'tfa' },
-    accent: '#e8cf9a',
-    body: { look: 'jakku', r: 32 },
-    moons: [{ look: 'moon-dust', r: 2.4, orbit: 96, speed: 0.009, tilt: 0.2, phase: 0.6 }],
-    suns: [{ dir: [-0.56, 0.4, 0.73], color: '#fff0d6', size: 1.05 }],
+    quote: { text: 'This is the Way.', by: 'The Armorer', film: 'mando' },
+    accent: '#f4a27c',
+    body: { look: 'nevarro', r: 30 },
+    moons: [],
+    suns: [{ dir: [-0.42, 0.36, 0.83], color: '#ffe6cc', size: 1 }],
     pieces: [
-      {
-        type: 'wrecks',
-        ships: [
-          { kind: 'destroyer', at: [-60, 30, -40], yaw: 0.6, pitch: 0.5, roll: 1.2, size: 30 },
-          { kind: 'destroyer', at: [70, -20, -70], yaw: 2.1, pitch: -0.3, roll: -0.6, size: 30 },
-          { kind: 'moncal', at: [40, 44, 60], yaw: 1.2, pitch: 0.6, roll: 2.2, size: 22 },
-        ],
-      },
+      { type: 'chase', runner: { kind: 'razorcrest', size: 0.7 }, hunter: { kind: 'tie', size: 0.3 }, radius: 46, height: 5, tilt: 0.24, speed: 0.05, fire: 'small', side: 'remnant' },
+      { type: 'patrol', kind: 'tie', count: 3, at: [21, 30, -21], radius: 7, height: 2, speed: 0.2, size: 0.3 },
     ],
-    faction: 'firstorder',
-    traffic: ['freighter', 'tiefo'],
+    faction: 'remnant',
+    traffic: ['razorcrest', 'shuttle', 'xwing', 'freighter'],
     game: {
-      id: 'jakku',
-      objectives: ['Get the Falcon off the ground', 'Lose the TIEs in the Starship Graveyard', 'Fly through the downed Star Destroyer'],
-      title: 'The Garbage Will Do',
-      film: 'tfa',
-      role: 'Rey at the controls, Finn on the gun',
-      pitch: 'Two TIEs on your tail and a ship that hasn’t flown in years: dive into the graveyard and thread the Falcon through a dead Star Destroyer.',
-      how: 'Fly low and tight through the wreck; spin the Falcon so the gunner can line up the shot.',
+      id: 'nevarro',
+      objectives: ['Get the trooper transport clear of the scout troopers', 'Climb out of the lava canyons with the TIEs on your tail', 'Flip the Razor Crest round and take them on, one at a time'],
+      title: 'The Siege',
+      film: 'mando',
+      role: 'Din Djarin, at the Razor Crest’s controls',
+      pitch: 'The Imperial base is going up behind you and its TIE fighters are coming out after you: an old gunship against the Empire’s fastest, low through the lava canyons, then turn and fight.',
+      how: 'Hug the canyon floor where the TIEs can’t follow close, then bring her round and get the guns on them.',
       status: 'soon',
     },
   },
   {
-    id: 'crait',
-    name: 'Crait',
+    id: 'mandalore',
+    name: 'Mandalore',
+    region: 'Outer Rim Territories',
+    sector: 'Mandalore sector',
+    grid: null,
+    pos: [14.6, 5.2],
+    films: ['mando'],
+    moment: { film: 'mando', title: 'The Return', text: 'The Mandalorians come home: Bo-Katan’s Gauntlets and their fighters drop through the poisoned clouds on Moff Gideon’s TIEs, to take back their world.' },
+    about: 'The Mandalorians’ homeworld, glassed by the Empire in the Great Purge: a poisoned crust of fused glass over the broken dome of Sundari, the Living Waters still running in the mines beneath, and Moff Gideon’s base hidden under it all.',
+    facts: [
+      ['Terrain', 'Fused glass, crystal, ruins'],
+      ['Capital', 'Sundari, under its broken dome'],
+      ['Under the mines', 'The Living Waters'],
+      ['Purge', 'The Night of a Thousand Tears'],
+    ],
+    quote: { text: 'For Mandalore!', by: 'The Mandalorians', film: 'mando' },
+    accent: '#c3b8f0',
+    body: { look: 'mandalore', r: 32 },
+    moons: [
+      { look: 'moon-grey', r: 3, orbit: 96, speed: 0.009, tilt: 0.16, phase: 0.9 },
+      { look: 'moon-dust', r: 2, orbit: 128, speed: 0.006, tilt: -0.22, phase: 3.6 },
+    ],
+    suns: [{ dir: [0.55, 0.32, -0.77], color: '#fff0dc', size: 1 }],
+    pieces: [
+      {
+        type: 'battle',
+        at: [50, 60, 70],
+        radius: 80,
+        sides: {
+          mandalorian: [
+            { kind: 'gauntlet', at: [-40, 10, 50], yaw: 2.6, size: 1.6 },
+            { kind: 'gauntlet', at: [-20, -8, 64], yaw: 2.8, size: 1.6 },
+            { kind: 'gauntlet', at: [-58, 4, 30], yaw: 2.4, size: 1.6 },
+          ],
+          remnant: [],
+        },
+        fighters: { mandalorian: ['n1'], remnant: ['tie', 'interceptor'] },
+        count: 14,
+      },
+    ],
+    faction: 'remnant',
+    traffic: ['gauntlet', 'n1', 'razorcrest'],
+    game: {
+      id: 'mandalore',
+      objectives: ['Keep Gideon’s TIEs off the Mandalorians’ capital ship', 'Clear the sky for Axe Woves to take it down onto the base', 'Pull up before it hits, and go in after Mando'],
+      title: 'The Return',
+      film: 'mando',
+      role: 'Bo-Katan Kryze, in her Gauntlet',
+      pitch: 'Moff Gideon’s TIEs are all over the Mandalorians’ capital ship. Keep them off it till it’s empty, then clear the way for Axe Woves to fly it down into Gideon’s base under the glass.',
+      how: 'Dogfight the TIEs and interceptors over the glassed plains, stay with the capital ship on its way down, and pull up before it hits.',
+      status: 'soon',
+    },
+  },
+  {
+    id: 'lothal',
+    name: 'Lothal',
+    region: 'Outer Rim Territories',
+    sector: 'Lothal sector',
+    grid: null,
+    pos: [19.7, 8.8],
+    films: ['ahsoka'],
+    moment: { film: 'ahsoka', title: 'The anniversary', text: 'The capital marks the day Lothal was freed, and Ezra Bridger and Thrawn’s Chimaera vanished; Sabine skips her own speech, and Ahsoka comes to her with a map.' },
+    about: 'A grassland world of plains and great rock spires that the Empire dug up for its factories, freed by the Ghost’s crew; loth-cats in the grass, loth-wolves on the plains, and Sabine Wren in an old tower out among them.',
+    facts: [
+      ['Terrain', 'Grass plains, rock spires'],
+      ['Capital', 'Capital City, once the Empire’s'],
+      ['Natives', 'Loth-cats, loth-wolves'],
+      ['Lost here', 'Ezra Bridger, and Thrawn’s Chimaera'],
+    ],
+    quote: { text: 'I’m counting on you to see this through.', by: 'Ezra Bridger', film: 'ahsoka' },
+    accent: '#d8dc84',
+    body: { look: 'lothal', r: 34 },
+    moons: [
+      { look: 'moon-grey', r: 3.4, orbit: 100, speed: 0.008, tilt: 0.12, phase: 2.2 },
+      { look: 'moon-ice', r: 2, orbit: 132, speed: 0.006, tilt: -0.18, phase: 5 },
+    ],
+    suns: [{ dir: [0.62, 0.36, 0.7], color: '#fff3dc', size: 1 }],
+    pieces: [{ type: 'patrol', kind: 'xwing', count: 4, at: [28, 38, 18], radius: 10, height: 2.5, speed: 0.16, size: 0.3 }],
+    faction: 'remnant',
+    traffic: ['xwing', 'shuttle', 'freighter'],
+    game: {
+      id: 'lothal',
+      objectives: ['Leave the ceremony and race your speeder out across the plains', 'Unlock Ahsoka’s map in the old tower', 'Hold the tower against Shin Hati and her mercenaries'],
+      title: 'The Star Map',
+      film: 'ahsoka',
+      role: 'Sabine Wren, on her speeder bike',
+      pitch: 'Skip the speeches: race across the grass to the old Imperial tower, unlock the map that points the way to Ezra, and keep it out of Shin Hati’s hands.',
+      how: 'Full throttle between the rock spires, then a fight for the tower with a lightsaber you haven’t practised with in years.',
+      status: 'soon',
+    },
+  },
+  {
+    id: 'sorgan',
+    name: 'Sorgan',
     region: 'Outer Rim Territories',
     sector: null,
     grid: null,
-    pos: [6.4, 18.8],
-    films: ['tlj'],
-    moment: { film: 'tlj', title: 'The last stand', text: 'The last of the Resistance hide in an old Rebel mine while the First Order brings walkers and a battering ram cannon across the salt.' },
-    about: 'A small mineral world of white salt over red soil, where the Resistance made its last stand in an old Rebel base, and Luke Skywalker came back.',
+    pos: [5.1, 13.4],
+    films: ['mando'],
+    moment: { film: 'mando', title: 'Sanctuary', text: 'Mando sets the Razor Crest down in the forest to lie low with the Child, and stays to teach a krill-farming village to fight off raiders and their AT-ST.' },
+    about: 'A quiet forest world of meadows, ponds and wetlands, about as far out of the way as a hunted man can get: a village farming krill in its ponds, Klatooinian raiders in the woods, and Cara Dune in early retirement.',
     facts: [
-      ['Terrain', 'Salt flats over red soil'],
-      ['Natives', 'Vulptices, the crystal foxes'],
-      ['Base', 'An old Rebel outpost'],
-      ['Battle', 'Battle of Crait, 34 ABY'],
+      ['Terrain', 'Forests, meadows, wetlands'],
+      ['Village', 'Krill farmers, by their ponds'],
+      ['Raiders', 'Klatooinians, with an AT-ST'],
+      ['Moons', 'At least two'],
     ],
-    quote: { text: 'Amazing. Every word of what you just said was wrong.', by: 'Luke Skywalker', film: 'tlj' },
-    accent: '#ff8f8a',
-    body: { look: 'crait', r: 28 },
-    moons: [],
-    suns: [{ dir: [0.44, 0.3, -0.85], color: '#fff4ee', size: 1 }],
-    pieces: [{ type: 'fleet', side: 'firstorder', ships: [{ kind: 'destroyer', at: [-60, 40, -60], yaw: 0.8, size: 44, tint: '#5a5f68' }, { kind: 'destroyer', at: [20, 50, -90], yaw: 0.6, size: 44, tint: '#5a5f68' }] }],
-    faction: 'firstorder',
-    traffic: ['tiefo', 'upsilon'],
-    game: {
-      id: 'crait',
-      objectives: ['Kick up the salt and draw the walkers’ fire', 'Knock out the battering ram cannon', 'Buy Luke the time he needs'],
-      title: 'The Salt Flats',
-      film: 'tlj',
-      role: 'Poe Dameron, in a ski speeder',
-      pitch: 'Old speeders against AT-M6 walkers and a cannon that can break the mine door. Kick up red salt and buy Luke the time he needs.',
-      how: 'Skim the salt (the red trail shows where you’ve been), dodge the walkers’ fire, and go for the cannon.',
-      status: 'soon',
-    },
-  },
-  {
-    id: 'starkiller',
-    name: 'Starkiller Base',
-    system: 'Ilum',
-    region: 'Unknown Regions',
-    sector: null,
-    grid: null,
-    pos: [2.4, 6],
-    films: ['tfa'],
-    moment: { film: 'tfa', title: 'It drinks the sun', text: 'The First Order’s weapon drains its star, then fires through hyperspace to destroy the Hosnian system light-years away.' },
-    about: 'Once Ilum, the world the Jedi took their kyber crystals from; the First Order hollowed it into a weapon that drinks a sun to destroy whole star systems.',
-    facts: [
-      ['Formerly', 'Ilum, the kyber world'],
-      ['Weapon', 'Drains its star, fires through hyperspace'],
-      ['Target', 'The Hosnian system'],
-      ['Fate', 'Destroyed by the Resistance'],
+    quote: { text: 'Nice bedside manner.', by: 'Cara Dune', film: 'mando' },
+    accent: '#86d6a6',
+    body: { look: 'sorgan', r: 30 },
+    moons: [
+      { look: 'moon-grey', r: 2.6, orbit: 88, speed: 0.01, tilt: 0.2, phase: 1.4 },
+      { look: 'moon-rust', r: 1.8, orbit: 118, speed: 0.007, tilt: -0.12, phase: 4.1 },
     ],
-    quote: { text: 'So, it’s big.', by: 'Han Solo', film: 'tfa' },
-    accent: '#ff6a5a',
-    body: { look: 'starkiller', r: 40 },
-    moons: [],
-    suns: [{ dir: [-0.5, 0.18, -0.85], color: '#ffe6d0', size: 1.15 }],
-    pieces: [
-      { type: 'starkiller', every: 120 },
-      { type: 'fleet', side: 'firstorder', ships: [{ kind: 'destroyer', at: [70, 40, 80], yaw: 2.6, size: 44, tint: '#5a5f68' }] },
-    ],
-    faction: 'firstorder',
-    traffic: ['tiefo', 'upsilon'],
-    game: {
-      id: 'starkiller',
-      objectives: ['Get in under the shield', 'Fly the trench to the thermal oscillator', 'Hit it before the sun’s gone'],
-      title: 'The Oscillator',
-      film: 'tfa',
-      role: 'Poe Dameron, Black Leader',
-      pitch: 'The weapon’s charging. Get in under the shield, down into the trench round the thermal oscillator, and hit it before the sun’s gone.',
-      how: 'A trench run, the sequel way: TIEs on your tail, the light draining from the sky, one target.',
-      status: 'soon',
-    },
-  },
-  {
-    id: 'exegol',
-    name: 'Exegol',
-    region: 'Unknown Regions',
-    sector: null,
-    grid: null,
-    pos: [1.2, 9.2],
-    films: ['tros'],
-    moment: { film: 'tros', title: 'The Final Order rises', text: 'The Sith fleet climbs out of the storms with planet-killing cannons, and then the galaxy’s ordinary people come out of lightspeed to stop it.' },
-    about: 'The hidden world of the Sith, found only with a wayfinder, where Palpatine waited in the dark and built a fleet of Star Destroyers with planet-killing guns.',
-    facts: [
-      ['Reached by', 'A Sith wayfinder'],
-      ['Fleet', 'The Final Order'],
-      ['Weather', 'Endless lightning'],
-      ['Returned', 'Somehow, Palpatine'],
-    ],
-    quote: { text: 'Somehow, Palpatine returned.', by: 'Poe Dameron', film: 'tros' },
-    accent: '#c48aff',
-    body: { look: 'exegol', r: 34 },
-    moons: [],
-    suns: [{ dir: [0.3, 0.7, 0.64], color: '#c9c2ff', size: 0.55 }],
-    pieces: [
-      { type: 'armada', kind: 'xyston', count: 14, at: [0, 46, 0], radius: 110, size: 34, rise: 0.4 },
-      { type: 'lightning', every: 5 },
-    ],
-    faction: 'sith',
-    traffic: ['tiefo', 'upsilon'],
-    game: {
-      id: 'exegol',
-      objectives: ['Find the Steadfast in the storm', 'Knock out its navigation tower', 'Hold on till the citizens’ fleet arrives'],
-      title: 'The Navigation Tower',
-      film: 'tros',
-      role: 'Poe Dameron, leading the Resistance',
-      pitch: 'The Sith fleet can’t find its way out of the atmosphere without the Steadfast’s navigation signal. Knock out its tower, and hold on till the cavalry arrives.',
-      how: 'Run the gauntlet of the fleet’s guns in the lightning, light up the tower, then turn on the cannons.',
-      status: 'soon',
-    },
-  },
-  {
-    id: 'ahchto',
-    name: 'Ahch-To',
-    region: 'Unknown Regions',
-    sector: null,
-    grid: null,
-    pos: [2, 13.4],
-    films: ['tfa', 'tlj'],
-    moment: { film: 'tlj', title: 'The first Jedi temple', text: 'Rey holds out a lightsaber to an old man on an island, and he throws it over his shoulder.' },
-    about: 'An ocean world of rocky islands and the first Jedi Temple, where Luke Skywalker went to die, and where Rey found him. Mind the porgs.',
-    facts: [
-      ['Terrain', 'Oceans, rocky islands'],
-      ['Natives', 'Porgs, the Lanai caretakers'],
-      ['Landmark', 'The first Jedi Temple'],
-      ['Hermit', 'Luke Skywalker'],
-    ],
-    quote: { text: 'This is not going to go the way you think.', by: 'Luke Skywalker', film: 'tlj' },
-    accent: '#9fd0c0',
-    body: { look: 'ahchto', r: 28 },
-    moons: [{ look: 'moon-grey', r: 3, orbit: 86, speed: 0.008, tilt: 0.3, phase: 1 }],
-    suns: [{ dir: [-0.36, 0.3, 0.88], color: '#fff5e8', size: 0.95 }],
-    pieces: [{ type: 'patrol', kind: 'falcon', count: 1, at: [0, 0, 0], radius: 40, height: 6, speed: 0.06, size: 0.6 }],
+    suns: [{ dir: [-0.36, 0.44, 0.82], color: '#fff6e6', size: 0.95 }],
+    pieces: [{ type: 'depart', kind: 'razorcrest', from: [0, 31, 0], to: [210, 160, -180], size: 0.7, every: 44 }],
     faction: null,
-    traffic: [],
+    traffic: ['razorcrest', 'freighter'],
     game: {
-      id: 'ahchto',
-      objectives: ['Climb the island to the first Jedi temple', 'Learn the three lessons', 'Face the cave under the island'],
-      title: 'The Last Lesson',
-      film: 'tlj',
-      role: 'Rey',
-      pitch: 'Three lessons from a grumpy old Jedi on a windy island: the Force, the tree, and the cave under the sea, with porgs in the way at every step.',
-      how: 'Explore the island on foot, feel the Force in its rocks and waves, and don’t touch the sacred texts. Or do.',
+      id: 'sorgan',
+      objectives: ['Teach the krill farmers to hold a line', 'Lure the raiders’ AT-ST into the trap in the pond', 'Bring it down before it reaches the village'],
+      title: 'Sanctuary',
+      film: 'mando',
+      role: 'Din Djarin and Cara Dune, on foot',
+      pitch: 'Raiders with an AT-ST keep coming for a village of krill farmers. Train them, dig the trap, and bring the walker down in the pond when it comes at night.',
+      how: 'Draw its fire through the trees, light the trap when it’s in the water, and get a shot into its cockpit when it stumbles.',
       status: 'soon',
     },
   },
@@ -1017,11 +1000,10 @@ const LIFT = {
   kamino: 0.3,
   geonosis: -0.7,
   scarif: 0,
-  jakku: 0.6,
-  crait: -0.75,
-  starkiller: -0.1,
-  exegol: -0.7,
-  ahchto: -0.8,
+  nevarro: 0.9,
+  mandalore: 0.7,
+  lothal: 0.25,
+  sorgan: 0.2,
 };
 export const liftOf = (s) => LIFT[s.id] ?? 0;
 

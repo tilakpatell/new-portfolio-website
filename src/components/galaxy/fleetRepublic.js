@@ -1,7 +1,6 @@
-// The prequel era's ships and the sequel era's: the Separatists' droid
-// fleet, Naboo's, the Republic's and the Jedi's, and the First Order's and
-// the Sith Eternal's (see universe/trafficModels.js for how a model is put
-// together and what it returns).
+// The prequel era's ships: the Separatists' droid fleet, Naboo's, the
+// Republic's and the Jedi's (see universe/trafficModels.js for how a model is
+// put together and what it returns).
 //
 // vulture: a vulture droid starfighter in flight mode, the narrow head with
 // its orange eye lights out in front of a short core, and the four long
@@ -11,17 +10,11 @@
 // sensor eye in front, a slim body behind it and three long blade-like arms
 // at 120 degrees (one straight up), swept back, each with a cannon at its tip;
 // dark grey-blue.
-// tiefo: a First Order TIE fighter, the classic ball cockpit with a red
-// rim round its window between two hexagonal wings on short pylons; black
-// solar panels in light grey frames.
 // lucrehulk: a Trade Federation battleship (a droid control ship), the huge
 // flat ring open at the front between two arms that end in hangar mouths,
 // the core sphere in the middle joined to the ring at the back, towers and
 // antennas top and bottom of the sphere, lit hangar slits all along the
 // inside of the arms and engines round the back of the ring; tan-grey.
-// xyston: a Sith Eternal Xyston-class Star Destroyer, the Imperial dagger
-// in dark gunmetal, its trench and stern lit red, and under its belly the
-// long axial superlaser barrel, its muzzle glowing red near the bow.
 // n1: a Naboo N-1 starfighter, bright yellow with chrome trim, the long
 // chrome needle of a nose, the cockpit and the astromech behind it, two long
 // thin engines out on short wings, each ending in a long spike behind.
@@ -43,16 +36,13 @@
 // munificent: a Munificent-class frigate, a long thin hull standing on its
 // edge, tall at the bow, where the great comms array bulges above and below,
 // a spine all along and the engines astern; grey-blue.
-// upsilon: Kylo Ren's Upsilon command shuttle, a slim black body with the
-// cockpit forward and two tall wings rising far above it and falling far
-// below it, their edges white.
 //
 // Every model points its nose along +z with +y up, so starboard is -x.
 
 import * as THREE from 'three';
-import { part, place, mirror, rod, meshes, blinker, loft, box8, trap8, plateXZ, plateZY, turned, upright, ball, inset, panelTexture, solarTexture, standard, glowMaterial, flicker, pulse } from '../universe/trafficKit';
+import { part, place, mirror, rod, meshes, blinker, loft, box8, trap8, plateXZ, plateZY, turned, upright, ball, panelTexture, standard, glowMaterial, flicker, pulse } from '../universe/trafficKit';
 
-const { PI, sin, cos, atan2, hypot } = Math;
+const { PI, sin, cos, atan2 } = Math;
 
 // Turned about y through only part of a turn, from phi0 for span (phi 0 is
 // the nose, +z; PI / 2 is +x). The profile is [[r, y], …] bottom to top.
@@ -173,78 +163,6 @@ function trifighter(k) {
   return finish(k, L, mats, (t) => mats.glow.color.setScalar(flicker(t, 5)));
 }
 
-// ── The First Order ──
-
-// TIE/fo: the ball cockpit between two hexagonal wings.
-function tiefo(k) {
-  const BALL = '#c3c7cd';
-  const FRAME = '#d8dbdf';
-  const SPAR = '#8a9098';
-  const DARK = '#2a2d32';
-  const RED = '#b4282b';
-  const L = [];
-  const R = 0.19;
-  // the ball, its front cut away for the window, the red rim round that
-  const top = Math.asin(0.76);
-  const prof = [];
-  for (let i = 0; i <= 12; i++) {
-    const a = -PI / 2 + (i / 12) * (top + PI / 2);
-    prof.push([R * cos(a), R * sin(a)]);
-  }
-  const rim = R * cos(top);
-  L.push(part(turned(prof, 28), { color: BALL }));
-  L.push(part(turned([[rim, R * 0.76], [rim * 1.03, R * 0.8], [rim * 0.9, R * 0.835], [rim * 0.84, R * 0.78]], 28), { color: RED }));
-  const zw = R * 0.77;
-  L.push(part(new THREE.CircleGeometry(rim * 0.86, 28), { at: [0, 0, zw], to: 'glass' }));
-  L.push(part(turned([[rim * 0.3, zw - 0.002], [rim * 0.3, zw + R * 0.06], [rim * 0.19, zw + R * 0.06], [rim * 0.19, zw - 0.002]], 8), { color: DARK }));
-  for (let i = 0; i < 8; i++) {
-    const a = (i * PI) / 4;
-    const r = rim * 0.58;
-    L.push(part(new THREE.BoxGeometry(R * 0.05, rim * 0.56, R * 0.05), { at: [-sin(a) * r, cos(a) * r, zw + R * 0.03], rot: [0, 0, a], color: DARK }));
-  }
-  // the hatch on top, the pylons' collars and the twin engine vents
-  L.push(part(new THREE.CylinderGeometry(R * 0.33, R * 0.38, R * 0.14, 16), { at: [0, R * 0.95, -R * 0.24], rot: [-0.25, 0, 0], color: SPAR }));
-  L.push(part(new THREE.CylinderGeometry(R * 0.2, R * 0.24, R * 0.1, 12), { at: [0, R * 1.03, -R * 0.26], rot: [-0.25, 0, 0], color: BALL }));
-  for (const sx of [-1, 1]) {
-    L.push(part(new THREE.CylinderGeometry(R * 0.46, R * 0.5, R * 0.22, 14), { at: [sx * R * 0.92, 0, 0], rot: [0, 0, PI / 2], color: SPAR }));
-    L.push(part(new THREE.BoxGeometry(R * 0.3, R * 0.22, R * 0.12), { at: [sx * R * 0.2, -R * 0.12, -R * 0.95], color: DARK }));
-    L.push(part(new THREE.PlaneGeometry(R * 0.22, R * 0.14), { at: [sx * R * 0.2, -R * 0.12, -R * 1.012], rot: [0, PI, 0], to: 'glow', color: [2.4, 0.5, 0.3] }));
-  }
-  // a pylon, out along x, thicker as it nears the wing
-  const pylon = (x0, x1, w0, h0, w1, h1) =>
-    loft([
-      { z: x0, pts: box8(w0, h0, w0 * 0.22) },
-      { z: x0 + (x1 - x0) * 0.4, pts: box8(w0 * 1.06, h0 * 1.06, w0 * 0.22) },
-      { z: x1 - 0.035, pts: box8(w1, h1, w1 * 0.25) },
-      { z: x1, pts: box8(w1, h1, w1 * 0.25) },
-    ]).rotateY(PI / 2);
-  // a wing in its own plane (z, y): the frame, the black panel inside, spars
-  // from the hub to every corner and the hub
-  const hexagon = [[0, 0.6], [-0.5, 0.3], [-0.5, -0.3], [0, -0.6], [0.5, -0.3], [0.5, 0.3]];
-  const uv = (x, y, z) => [z + 0.5, (y + 0.6) / 1.2];
-  const frame = 0.04;
-  const thick = 0.042;
-  const inner = inset(hexagon, frame);
-  const wing = [part(plateZY(hexagon, thick, 0.008, [inner]), { color: FRAME }), part(plateZY(inset(hexagon, frame * 0.5), thick * 0.3), { to: 'panel', uv })];
-  for (const [z, y] of inner) {
-    const len = hypot(z, y);
-    const mid = (0.075 + len) / 2 / len;
-    wing.push(part(new THREE.BoxGeometry(thick * 0.8, frame * 0.45, len - 0.075), { at: [0, y * mid, z * mid], rot: [atan2(-y, z), 0, 0], color: SPAR }));
-  }
-  wing.push(part(new THREE.CylinderGeometry(0.075, 0.075, thick * 1.1, 6), { rot: [PI / 6, 0, PI / 2], color: FRAME }));
-  wing.push(part(new THREE.CylinderGeometry(0.03, 0.045, thick * 1.8, 10), { rot: [0, 0, PI / 2], color: DARK }));
-  const right = [part(pylon(0.17, 0.47, 0.075, 0.062, 0.13, 0.14), { color: SPAR }), ...place(wing, [0.485, 0, 0])];
-  L.push(...right, ...mirror(right));
-  const mats = {
-    paint: standard(k, { map: k.own(panelTexture(k.rand, { base: 226, spread: 8, seam: 0.7, detail: 0.2 })), metalness: 0.3, roughness: 0.45 }),
-    panel: standard(k, { map: k.own(solarTexture(k.rand, hexagon, [0, 0], uv)), color: '#9aa0a8', metalness: 0.4, roughness: 0.32 }),
-    glass: standard(k, { color: '#120d0e', metalness: 0.9, roughness: 0.08 }),
-    glow: glowMaterial(k),
-  };
-  mats.paint.userData.density = 5;
-  return finish(k, L, mats, (t) => mats.glow.color.setScalar(flicker(t, 1)));
-}
-
 // ── Trade Federation ──
 
 // Lucrehulk-class battleship (a droid control ship).
@@ -323,98 +241,6 @@ function lucrehulk(k) {
     blink ??= blinker(M.glow.geometry);
     blink('beacon', pulse(t, 2.4, 0, 0.15) ? 1.5 : 0.35);
     mats.glow.color.setScalar(1 + 0.04 * sin(t * 1.7));
-  });
-}
-
-// ── The Sith Eternal ──
-
-// Xyston-class Star Destroyer.
-function xyston(k) {
-  const HULL = '#4a4d53';
-  const RED = [2.3, 0.22, 0.16];
-  const L = [];
-  const W0 = 0.31;
-  const sec = (z) => {
-    const w = W0 * (0.5 - z);
-    const f = w / W0;
-    const [s, hU, hs, hL, b, tr, lip, tin] = [0.036, 0.052, 0.012, 0.042, 0.05, 0.016, 0.008, 0.0035].map((v) => v * f);
-    return {
-      z,
-      pts: [[w, -lip], [w - tr, -tin], [w - tr, tin], [w, lip], [s, hU], [s, hU + hs], [-s, hU + hs], [-s, hU], [-w, lip], [-w + tr, tin], [-w + tr, -tin], [-w, -lip], [-b, -hL], [b, -hL]],
-    };
-  };
-  L.push(part(loft([sec(-0.5), sec(0), sec(0.45), sec(0.497)]), { color: HULL }));
-  // the trench round the edge, lit red all the way along
-  const band = (z) => {
-    const f = 0.5 - z;
-    const x = W0 * f - 0.016 * f * 0.45;
-    return { z, pts: [[x, -0.0026 * f], [x, 0.0026 * f], [-x, 0.0026 * f], [-x, -0.0026 * f]] };
-  };
-  L.push(part(loft([band(-0.499), band(0.49)]), { to: 'glow', color: RED }));
-  // lines down the upper hull and the spine's edges, the inner ones red
-  const hullLine = (sx, phi, lift = 0.0012) => (z) => {
-    const f = 0.5 - z;
-    const [ex, ey, px, py] = [W0 * f, 0.008 * f, 0.036 * f, 0.052 * f];
-    return [sx * (ex + (px - ex) * phi), ey + (py - ey) * phi + lift, z];
-  };
-  for (const sx of [-1, 1]) {
-    for (const phi of [0.3, 0.62]) {
-      const at = hullLine(sx, phi);
-      L.push(rod(at(-0.497), at(0.43), 0.0017, 0.0017, { to: 'metal', color: '#2c2f34' }, 4));
-    }
-    const sp = hullLine(sx, 1, 0.012);
-    L.push(rod(sp(-0.497), sp(0.4), 0.0014, 0.0014, { to: 'glow', color: [1.6, 0.16, 0.12] }, 4));
-  }
-  // the decks stepping up astern, and the tower with the bridge across it
-  const deck = (zf, wf, wb, top) =>
-    loft([
-      { z: -0.497, pts: [[wb, 0], [wb * 0.93, top], [-wb * 0.93, top], [-wb, 0]] },
-      { z: zf - 0.03, pts: [[wf, 0], [wf * 0.93, top], [-wf * 0.93, top], [-wf, 0]] },
-      { z: zf, pts: [[wf * 0.9, 0], [wf * 0.8, top - 0.016], [-wf * 0.8, top - 0.016], [-wf * 0.9, 0]] },
-    ]);
-  const decks = [
-    [0.1, 0.06, 0.205, 0.08],
-    [-0.06, 0.06, 0.16, 0.098],
-    [-0.2, 0.055, 0.12, 0.116],
-    [-0.31, 0.05, 0.085, 0.134],
-  ];
-  decks.forEach(([zf, wf, wb, top], i) => L.push(part(deck(zf, wf, wb, top), { color: i % 2 ? '#43464c' : HULL })));
-  L.push(part(loft([{ z: -0.455, pts: box8(0.05, 0.08, 0.008, 0.17) }, { z: -0.39, pts: box8(0.044, 0.08, 0.008, 0.17) }]), { color: HULL }));
-  L.push(part(loft([{ z: -0.47, pts: box8(0.17, 0.03, 0.006, 0.217) }, { z: -0.4, pts: box8(0.17, 0.03, 0.006, 0.217) }, { z: -0.385, pts: box8(0.15, 0.016, 0.004, 0.212) }]), { color: HULL }));
-  for (const sx of [-1, 1]) {
-    L.push(part(new THREE.CylinderGeometry(0.007, 0.009, 0.016, 8), { at: [sx * 0.056, 0.237, -0.44], color: HULL }));
-    L.push(ball(0.019, [sx * 0.056, 0.252, -0.44], 1, { to: 'metal', color: '#5a5e65' }, 14));
-  }
-  L.push(part(new THREE.BoxGeometry(0.13, 0.004, 0.003), { at: [0, 0.214, -0.3865], rot: [0.5, 0, 0], to: 'glow', color: [2.6, 0.5, 0.4] }));
-  // greebles over the decks, a few lit red
-  for (let i = 0; i < 46; i++) {
-    const [zf, , wb, top] = decks[Math.floor(k.rand() * decks.length)];
-    const z = zf - 0.03 + (-0.49 - zf + 0.03) * k.rand();
-    const w = wb * 0.8 * k.rand() * (k.rand() < 0.5 ? -1 : 1);
-    const [sx, sy, sz] = [0.008 + 0.022 * k.rand(), 0.004 + 0.01 * k.rand(), 0.008 + 0.03 * k.rand()];
-    const lit = k.rand() < 0.12;
-    L.push(part(new THREE.BoxGeometry(sx, sy, sz), { at: [w, top + sy / 2, z], to: lit ? 'glow' : 'metal', color: lit ? [1.5, 0.14, 0.1] : k.rand() < 0.5 ? '#2b2e33' : '#3c4046' }));
-  }
-  // the superlaser: a keel under the belly, the barrel out of it with its
-  // coils, and the muzzle glowing red near the bow
-  L.push(part(loft([{ z: -0.42, pts: trap8(0.05, 0.11, 0.05, 0.01, -0.035) }, { z: -0.05, pts: trap8(0.07, 0.12, 0.06, 0.012, -0.04) }, { z: 0.08, pts: trap8(0.05, 0.06, 0.04, 0.01, -0.035) }]), { color: '#3a3d42' }));
-  L.push(part(turned([[0.026, -0.02], [0.028, 0.05], [0.022, 0.1], [0.02, 0.3], [0.024, 0.31], [0.034, 0.33], [0.036, 0.345], [0.03, 0.35]], 18), { at: [0, -0.052, 0], to: 'metal', color: '#2a2c30' }));
-  for (let i = 0; i < 6; i++) {
-    const z = 0.12 + i * 0.03;
-    L.push(part(turned([[0.0235, z], [0.0235, z + 0.008]], 18), { at: [0, -0.052, 0], to: 'glow', color: [2.2, 0.2, 0.14], mark: 'coil' }));
-  }
-  L.push(part(new THREE.CircleGeometry(0.03, 18), { at: [0, -0.052, 0.3465], to: 'glow', color: [5.5, 0.6, 0.4] }));
-  L.push(part(new THREE.CircleGeometry(0.013, 12), { at: [0, -0.052, 0.347], to: 'glow', color: [7, 2.6, 2] }));
-  // the engines: three great ones and four smaller, glowing red-orange
-  for (const [x, y, r] of [[0, 0.012, 0.034], [0.078, 0.006, 0.029], [-0.078, 0.006, 0.029], [0.142, 0.002, 0.016], [-0.142, 0.002, 0.016], [0.04, 0.094, 0.014], [-0.04, 0.094, 0.014]]) {
-    nozzle(L, x, y, -0.51, r, [5, 0.75, 0.5], { color: '#26282c', depth: 0.6 });
-  }
-  const mats = kitMats(k, { plating: { min: 6, base: 200, spread: 26, seam: 0.5, detail: 0.4 }, paint: { metalness: 0.55, roughness: 0.42 }, metal: { metalness: 0.75, roughness: 0.35 }, density: 7 });
-  let blink;
-  return finish(k, L, mats, (t, M) => {
-    blink ??= blinker(M.glow.geometry);
-    blink('coil', 0.75 + 0.25 * sin(t * 3));
-    mats.glow.color.setScalar(1 + 0.05 * sin(t * 2.3) + 0.03 * sin(t * 11));
   });
 }
 
@@ -785,56 +611,7 @@ function munificent(k) {
   return finish(k, L, mats, (t) => mats.glow.color.setScalar(1 + 0.05 * sin(t * 2.2) + 0.03 * sin(t * 17)));
 }
 
-// ── The First Order's ──
-
-// Upsilon-class command shuttle.
-function upsilon(k) {
-  const BLACK = '#34373d';
-  const WHITE = '#e2e4e7';
-  const DARK = '#1c1e22';
-  const L = [];
-  // the body: slim, angular, the cockpit's dark window in its blunt nose
-  L.push(
-    part(
-      loft([
-        { z: -0.5, pts: trap8(0.08, 0.06, 0.06, 0.012) },
-        { z: -0.2, pts: trap8(0.13, 0.09, 0.1, 0.02) },
-        { z: 0.15, pts: trap8(0.12, 0.08, 0.1, 0.02, -0.004) },
-        { z: 0.38, pts: trap8(0.09, 0.06, 0.07, 0.016, -0.012) },
-        { z: 0.47, pts: trap8(0.06, 0.035, 0.045, 0.01, -0.016) },
-        { z: 0.5, pts: trap8(0.03, 0.018, 0.024, 0.006, -0.018) },
-      ]),
-      { color: BLACK },
-    ),
-  );
-  L.push(part(loft([{ z: 0.36, pts: trap8(0.07, 0.04, 0.02, 0.004, 0.018) }, { z: 0.46, pts: trap8(0.04, 0.02, 0.016, 0.003, 0.002) }]), { to: 'glass' }));
-  // the spine the wings hang from, and a white line along each flank
-  L.push(part(loft([{ z: -0.4, pts: box8(0.05, 0.04, 0.01, 0.06) }, { z: 0.05, pts: box8(0.04, 0.03, 0.01, 0.056) }, { z: 0.15, pts: box8(0.02, 0.012, 0.004, 0.046) }]), { color: BLACK }));
-  for (const sx of [-1, 1]) L.push(rod([sx * 0.064, -0.01, -0.48], [sx * 0.058, -0.012, 0.36], 0.003, 0.003, { color: WHITE }, 4));
-  // a wing: very tall and narrow, white round its edge, a dark panel inside
-  const outline = [[-0.38, 0.95], [-0.2, 0.95], [0.08, 0.1], [0.08, -0.1], [-0.2, -0.95], [-0.38, -0.95]];
-  const wing = [
-    part(plateZY(outline, 0.016, 0.004), { color: WHITE }),
-    part(plateZY(inset(outline, 0.03), 0.02), { color: BLACK }),
-    part(plateZY(inset(outline, 0.07).map(([z, y]) => [z, y * 0.95]), 0.023), { color: DARK }),
-    part(plateZY([[-0.3, 0.06], [-0.04, 0.06], [-0.04, -0.06], [-0.3, -0.06]], 0.026), { color: BLACK }),
-  ];
-  const right = place(wing, [0.085, 0.03, -0.06], [0, 0, -0.035]);
-  L.push(...right, ...mirror(right));
-  for (const sx of [-1, 1]) L.push(part(new THREE.BoxGeometry(0.04, 0.03, 0.2), { at: [sx * 0.07, 0.035, -0.08], color: BLACK }));
-  // engines astern
-  for (const x of [-0.025, 0.025]) nozzle(L, x, 0.0, -0.52, 0.02, [1.5, 2.3, 4.6], { color: DARK, depth: 1 });
-  L.push(part(new THREE.BoxGeometry(0.004, 0.003, 0.003), { at: [0, 0.07, 0.17], to: 'glow', color: [3, 0.6, 0.4], mark: 'beacon' }));
-  const mats = kitMats(k, { plating: { base: 205, spread: 14, seam: 0.55, detail: 0.35, min: 10 }, paint: { metalness: 0.2, roughness: 0.55 }, glass: '#0a0c10', density: 7 });
-  let blink;
-  return finish(k, L, mats, (t, M) => {
-    blink ??= blinker(M.glow.geometry);
-    blink('beacon', pulse(t, 2, 0, 0.12) ? 1.3 : 0.2);
-    mats.glow.color.setScalar(flicker(t, 11));
-  });
-}
-
-export const FLEET = { lucrehulk, coreship, munificent, vulture, trifighter, n1, nubian, delta7, arc170, acclamator, xyston, upsilon, tiefo };
+export const FLEET = { lucrehulk, coreship, munificent, vulture, trifighter, n1, nubian, delta7, arc170, acclamator };
 export const INFO = {
   lucrehulk: { name: 'Droid control ship', meters: 3170, side: 'separatist' },
   coreship: { name: 'Separatist core ship', meters: 900, side: 'separatist' },
@@ -846,7 +623,4 @@ export const INFO = {
   delta7: { name: 'Delta-7 Jedi starfighter', meters: 8, side: 'republic' },
   arc170: { name: 'ARC-170 starfighter', meters: 12.7, side: 'republic' },
   acclamator: { name: 'Acclamator assault ship', meters: 752, side: 'republic' },
-  xyston: { name: 'Xyston-class Star Destroyer', meters: 2400, side: 'sith' },
-  upsilon: { name: 'Upsilon-class command shuttle', meters: 19, side: 'firstorder' },
-  tiefo: { name: 'TIE/fo fighter', meters: 6.7, side: 'firstorder' },
 };

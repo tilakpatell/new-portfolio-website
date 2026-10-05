@@ -69,6 +69,7 @@ export const ACHIEVEMENTS = {
   council: { name: 'Rickest Rick', desc: 'Talked your way out of the Council of Ricks' },
   votemorty: { name: 'Vote Morty', desc: 'Voted in the Citadel’s election (Candidate Morty won anyway)' },
   citadelout: { name: 'Get to the cruiser', desc: 'Got past Evil Morty’s Cop Ricks to the cruiser' },
+  citadelfall: { name: 'Wubba lubba dub dub', desc: 'Helped bring down the Citadel of Ricks from the universe map' },
   amonsul: { name: 'Amon Sûl', desc: 'Climbed the old stair to the ruined watchtower on Weathertop' },
   putitout: { name: 'Put it out, you fools!', desc: 'Stamped out Sam’s supper fire before the Nazgûl saw it' },
   weathertop: { name: 'Fire against the dark', desc: 'Held the summit of Weathertop with a brand until Strider came' },
@@ -126,7 +127,25 @@ export const ACHIEVEMENTS = {
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
   fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   passport: { name: 'Every stamp', desc: 'Flew to every place in the passport on Earth' },
+  groundside: { name: 'Boots on the ground', desc: 'Landed on a world in a galaxy far, far away' },
+  surveyor: { name: 'Surveyor', desc: 'Found every place on a world in a galaxy far, far away' },
+  wanderer: { name: 'Wanderer', desc: 'Set foot on every world you can land on in a galaxy far, far away' },
+  shotfirst: { name: 'Shot first', desc: 'Didn’t let Greedo shoot first in the Mos Eisley cantina' },
+  docking94: { name: 'Docking Bay 94', desc: 'Held off the stormtroopers at Docking Bay 94' },
+  rancor: { name: 'Rancor keeper', desc: 'Brought the gate down on Jabba’s rancor' },
+  bounty: { name: 'Jabba pays', desc: 'Collected a bounty from Boba Fett' },
+  womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
+  canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
+  tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
+  // Dunder Mifflin Scranton, the world (office/world)
+  switchboard: { name: 'Dunder Mifflin, this is Jim', desc: 'Covered reception and put five calls through to the right desks' },
+  jello: { name: 'Stapler in Jell-O', desc: 'Set Dwight’s stapler in Jell-O while he was in the men’s room' },
+  chili: { name: 'Kevin’s famous chili', desc: 'Carried Kevin’s chili from the lift to the kitchen without spilling a drop' },
+  olympics: { name: 'Office Olympics', desc: 'Played a round of paper toss at your desk' },
+  falsefact: { name: 'False', desc: 'Took Dwight’s fact check at his desk' },
+  stressrelief: { name: 'Stress relief', desc: 'Got out by the stairwell in Dwight’s fire drill' },
+  bestboss: { name: 'Best Week in the Office', desc: 'Won a Dundie from Michael, in his office' },
 };
 
 const PAGES = ['/', '/experience', '/projects', '/travel', '/contact', '/terminal'];

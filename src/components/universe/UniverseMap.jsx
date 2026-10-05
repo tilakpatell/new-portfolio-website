@@ -37,6 +37,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const alt = useRef(null);
   const shield = useRef(null);
   const hud = useRef(null);
+  const arms = useRef(null); // the weapon readout (weapons.js)
+  const siegeEl = useRef(null); // the Citadel's siege (siege.js)
   const prompt = useRef(null);
   const [flown, setFlown] = useState(false);
   // out of the ship on a planet (the controls change), and where you could land
@@ -80,6 +82,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       alt,
       shield,
       hud,
+      arms,
+      siege: siegeEl,
       net,
       tags,
       prompt,
@@ -246,6 +250,22 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
+              <div ref={arms} className="universe-arms" aria-hidden="true">
+                <span className="universe-arms-name" />
+                <span className="universe-arms-rack">
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                </span>
+                <span className="universe-arms-keys">
+                  <kbd>R</kbd> or <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>
+                </span>
+              </div>
+              <div ref={siegeEl} className="universe-siege" role="status">
+                <b>The Citadel</b>
+                <span className="universe-siege-state" />
+              </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
               <div className="universe-climbs">
                 {climbButton(1, onFoot ? 'Jump' : 'Nose up')}
@@ -263,6 +283,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {(onFoot || landable) && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
                   {onFoot ? 'Ship' : 'Land'}
+                </button>
+              )}
+              {!onFoot && (
+                <button type="button" className="universe-weapon" onPointerDown={(e) => (e.preventDefault(), view.current?.weapon?.())} onContextMenu={(e) => e.preventDefault()}>
+                  Weapon
                 </button>
               )}
               <button
@@ -301,7 +326,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, <kbd>G</kbd> to land and step out, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                   </span>
                   <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, Land at a planet to step out</span>
                 </p>

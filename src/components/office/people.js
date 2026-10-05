@@ -323,8 +323,9 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       },
       // walking (true) or still (false): the legs and arms swing; the scene
       // moves the figure along
-      walk(on) {
+      walk(on, rate = 1) {
         state.walk.on = !!on;
+        state.walk.rate = rate;
       },
       // how far up the stride lifts them, for the scene to add (metres)
       bob: () => Math.abs(Math.sin(state.walk.t)) * 0.018 * state.walk.amt,
@@ -353,7 +354,7 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
         if (wa !== w.amt || wa) moving = true;
         w.amt = wa;
         if (wa) {
-          w.t += dt * 7.2;
+          w.t += dt * 7.2 * (w.rate ?? 1);
           for (let s = 0; s < 2; s++) {
             const ph = w.t + s * Math.PI;
             turn(B.thigh[s], AX, -Math.sin(ph) * 0.4 * wa, frame);

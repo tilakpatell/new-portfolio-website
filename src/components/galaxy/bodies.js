@@ -13,9 +13,8 @@
 // buildBody(look, { r = 40, small = false }) → { group, radius, reach,
 //   update(t, camera), setSuns([{ dir, color }]), set(name, value), dispose() }
 //   look: an id (or a LOOKS entry); radius: the solid sphere, = r; reach:
-//   how far it shows (atmosphere, shield); set: 'charge' (Starkiller's
-//   trench, 0..1), 'shield' (Scarif's shield, 0..1), 'flash' (Exegol's
-//   lightning, 0..1); anything else is ignored
+//   how far it shows (atmosphere, shield); set: 'shield' (Scarif's shield,
+//   0..1); anything else is ignored
 
 import * as THREE from 'three';
 import { SHELL_FRAG, SHELL_VERT, SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
@@ -23,11 +22,10 @@ import { SHELL_FRAG, SHELL_VERT, SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surface
 // each family's colour slots (uPal, in order) and params (uP0, uP1)
 export const FAMILIES = {
   desert: { slots: ['sand', 'sand2', 'rock', 'dark', 'salt', 'crest'], params: ['dunes', 'rock', 'craters', 'salt', 'scars', 'duneFreq', 'canyons', 'mesas'] },
-  ice: { slots: ['snow', 'ice', 'rock', 'deep', 'accent', 'accent2', 'glow'], params: ['ice', 'mountains', 'crevasses', 'streaks', 'forest', 'trench'] },
+  ice: { slots: ['snow', 'ice', 'rock', 'deep'], params: ['ice', 'mountains', 'crevasses'] },
   lush: { slots: ['deep', 'shallow', 'forest', 'grass', 'rock', 'snow', 'beach', 'murk'], params: ['sea', 'forest', 'mountains', 'caps', 'islands', 'swamp', 'rivers', 'scale'] },
   city: { slots: ['steel', 'brown', 'dark', 'plaza', 'warm', 'white'], params: ['lights', 'grid', 'districts', 'plazas'] },
   lava: { slots: ['crust', 'ash', 'hot', 'lava', 'ember'], params: ['rivers', 'lakes', 'glow', 'pulse'] },
-  storm: { slots: ['dark', 'mid', 'light', 'bolt'], params: ['bolts', 'swirl', 'speed'] },
   gas: { slots: ['band1', 'band2', 'band3', 'band4', 'band5', 'storm'], params: ['bands', 'turb', 'flow', 'fine', 'stormSize', 'stormLat', 'stormLon'] },
   moon: { slots: ['base', 'dark', 'bright', 'crack'], params: ['craters', 'maria', 'cracks'] },
 };
@@ -45,39 +43,28 @@ export const LOOKS = {
     p: { dunes: 1, rock: 0.12, craters: 0, salt: 0.75, scars: 0, duneFreq: 48, canyons: 1, mesas: 0.85 },
     atmo: air('#ffe0b8', 1.3, 1.04, '#ffa060', 4),
   },
-  jakku: {
-    name: 'Jakku', swatch: '#cfc0a2', family: 'desert', bump: 0.018, flags: ['CRATERS', 'SCARS'],
-    pal: { sand: '#d8c8a8', sand2: '#bba686', rock: '#8e7c66', dark: '#3e352d', salt: '#ebe3d0', crest: '#eee2c4' },
-    p: { dunes: 0.9, rock: 0.22, craters: 0.35, salt: 0.35, scars: 1, duneFreq: 42, canyons: 0.6, mesas: 0.4 },
-    atmo: air('#f2e4cc', 1.2, 1.04, '#ffb070', 4),
-  },
   geonosis: {
     name: 'Geonosis', swatch: '#c0613a', family: 'desert', bump: 0.026, flags: ['CRATERS'],
     pal: { sand: '#c96a40', sand2: '#a9512d', rock: '#8c4024', dark: '#4a2016', salt: '#d99a6e', crest: '#da7e4e' },
     p: { dunes: 0.45, rock: -0.12, craters: 0.85, salt: 0.15, scars: 0, duneFreq: 40, canyons: 0.8, mesas: 1 },
     atmo: air('#ff9c5c', 2.2, 1.05, '#ff7040', 3),
   },
+  // Mandalore: glassed in the Purge, a pale crust of fused glass and ash,
+  // bomb scars and craters, a poisoned lilac haze
+  mandalore: {
+    name: 'Mandalore', swatch: '#a8a4b4', family: 'desert', bump: 0.02, flags: ['CRATERS', 'SCARS'],
+    pal: { sand: '#aaa6b4', sand2: '#8b8597', rock: '#5e5a68', dark: '#27232d', salt: '#dfe4f0', crest: '#c6c4d2' },
+    p: { dunes: 0.25, rock: 0.02, craters: 0.6, salt: 0.6, scars: 1, duneFreq: 30, canyons: 0.5, mesas: 0.3 },
+    clouds: sky(0.22, '#bdb4c8', 1.2, 2.8, 0.004),
+    atmo: air('#b4a4d6', 1.9, 1.05, '#d08ab0', 3.6),
+  },
   // ── Ice ──
   hoth: {
     name: 'Hoth', swatch: '#e6f0fa', family: 'ice', bump: 0.02,
-    pal: { snow: '#e6edf6', ice: '#94bae2', rock: '#40444c', deep: '#2c4c7c', accent: '#ffffff', accent2: '#ffffff', glow: '#000000' },
-    p: { ice: 0.75, mountains: 0.8, crevasses: 0.9, streaks: 0, forest: 0, trench: 0 },
+    pal: { snow: '#e6edf6', ice: '#94bae2', rock: '#40444c', deep: '#2c4c7c' },
+    p: { ice: 0.75, mountains: 0.8, crevasses: 0.9 },
     clouds: sky(0.26, '#ffffff', 1.4, 3.2, 0.005),
     atmo: air('#a6ccff', 2.2, 1.065),
-  },
-  crait: {
-    name: 'Crait', swatch: '#efe9e4', family: 'ice', bump: 0.02, flags: ['STREAKS'],
-    pal: { snow: '#f3efea', ice: '#e7e1dc', rock: '#5c3a30', deep: '#a8442e', accent: '#c0331c', accent2: '#8c2214', glow: '#000000' },
-    p: { ice: 0.15, mountains: 0.75, crevasses: 0, streaks: 1, forest: 0, trench: 0 },
-    clouds: sky(0.14, '#ffffff', 1.2, 2.6, 0.003),
-    atmo: air('#e8e2f2', 1.5, 1.05, '#ff9a80'),
-  },
-  starkiller: {
-    name: 'Starkiller Base', swatch: '#c9d4e0', family: 'ice', bump: 0.022, flags: ['FOREST', 'TRENCH'],
-    pal: { snow: '#e8eef5', ice: '#b4c6da', rock: '#383b42', deep: '#56708c', accent: '#3a4c40', accent2: '#18181c', glow: '#ff5a1c' },
-    p: { ice: 0.3, mountains: 0.9, crevasses: 0.4, streaks: 0, forest: 1, trench: 0.045 },
-    clouds: sky(0.28, '#f4f6fa', 1.5, 3.4, 0.004),
-    atmo: air('#b6caee', 2, 1.06),
   },
   // ── Living worlds ──
   endor: {
@@ -115,19 +102,26 @@ export const LOOKS = {
     clouds: sky(0.32),
     atmo: air('#78b2ff', 2.3, 1.065),
   },
+  lothal: {
+    name: 'Lothal', swatch: '#9aa85a', family: 'lush', bump: 0.022, flags: ['RIVERS'],
+    pal: { deep: '#1c4a6a', shallow: '#3a7f8e', forest: '#56763a', grass: '#a6b05c', rock: '#8a8272', snow: '#eef0ee', beach: '#c4b88a', murk: '#3a4a2a' },
+    p: { sea: -0.24, forest: 0.12, mountains: 0.75, caps: 0.04, islands: 0, swamp: 0, rivers: 0.35, scale: 2.2 },
+    clouds: sky(0.28),
+    atmo: air('#8ab8f0', 2.2, 1.065),
+  },
+  sorgan: {
+    name: 'Sorgan', swatch: '#3a6a3e', family: 'lush', bump: 0.02, flags: ['RIVERS', 'SWAMP'],
+    pal: { deep: '#163a4a', shallow: '#2e6a6a', forest: '#2a5230', grass: '#5a7a40', rock: '#5a5648', snow: '#e8ece8', beach: '#7a7458', murk: '#2c3c2c' },
+    p: { sea: -0.1, forest: 1, mountains: 0.4, caps: 0.02, islands: 0, swamp: 0.4, rivers: 0.6, scale: 2.6 },
+    clouds: sky(0.42, '#f2f4f2', 1.4),
+    atmo: air('#94c4d0', 2.4, 1.065),
+  },
   scarif: {
     name: 'Scarif', swatch: '#2fb8c0', family: 'lush', bump: 0.02, flags: ['ISLANDS'], shield: true,
     pal: { deep: '#0a3c7a', shallow: '#26cfc6', forest: '#2a8a34', grass: '#5ac04a', rock: '#6a7058', snow: '#ffffff', beach: '#f4ecd0', murk: '#2a3a2a' },
     p: { sea: 0.36, forest: 0.6, mountains: 0.3, caps: 0, islands: 1, swamp: 0, rivers: 0, scale: 2.0 },
     clouds: sky(0.26, '#ffffff', 2.4, 5),
     atmo: air('#86c6ff', 2.2, 1.065),
-  },
-  ahchto: {
-    name: 'Ahch-To', swatch: '#3e6a66', family: 'lush', bump: 0.024, flags: ['ISLANDS'],
-    pal: { deep: '#24485a', shallow: '#46786e', forest: '#4a6a3a', grass: '#6a7a4a', rock: '#5a5a52', snow: '#e0e4e0', beach: '#8a8a76', murk: '#2a3a2a' },
-    p: { sea: 0.16, forest: 0.6, mountains: 1, caps: 0, islands: 0.5, swamp: 0, rivers: 0, scale: 3.2 },
-    clouds: sky(0.36, '#f4f6f8'),
-    atmo: air('#9ab8c2', 2.3, 1.065),
   },
   kamino: {
     name: 'Kamino', swatch: '#4a6278', family: 'lush', bump: 0.015, flags: ['STORMS'],
@@ -152,12 +146,13 @@ export const LOOKS = {
     clouds: sky(0.25, '#3a2c2a', 1, 3, 0.003),
     atmo: air('#b0381e', 2.6, 1.06, '#ff5020'),
   },
-  // ── The Sith world ──
-  exegol: {
-    name: 'Exegol', swatch: '#2a2236', family: 'storm', bump: 0.012,
-    pal: { dark: '#241e2e', mid: '#564a6e', light: '#8e82a2', bolt: '#b4c2ff' },
-    p: { bolts: 0.5, swirl: 1, speed: 0.003 },
-    atmo: air('#5c4a86', 1.6, 1.05, '#8060a0'),
+  // Nevarro: mostly black lava flats under ash, a few rivers still glowing
+  nevarro: {
+    name: 'Nevarro', swatch: '#3a302c', family: 'lava', bump: 0.024,
+    pal: { crust: '#201d1c', ash: '#5e5752', hot: '#ffc070', lava: '#ff5a1a', ember: '#6a2010' },
+    p: { rivers: 0.28, lakes: 0.08, glow: 0.75, pulse: 0.4 },
+    clouds: sky(0.18, '#6a605a', 1, 3, 0.003),
+    atmo: air('#c09a84', 1.9, 1.05, '#ff8050'),
   },
   // ── Gas giants ──
   'endor-giant': {
@@ -243,7 +238,6 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     uAtmo: { value: new THREE.Color(atmo?.color ?? '#000000') },
     uAtmoP: { value: new THREE.Vector4(atmo?.top ?? 1.05, atmo?.falloff ?? 3.5, atmo?.density ?? 0, atmo?.glow ?? 0.8) },
     uSunset: { value: new THREE.Color(atmo ? atmo.sunset : '#ffffff') },
-    uFlash: { value: 0 },
   };
   const uniforms = {
     ...shared,
@@ -254,7 +248,6 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     uP1: { value: p1 },
     uCloud: { value: new THREE.Vector4(clouds?.cover ?? 0, clouds?.sharp ?? 1.5, clouds?.drift ?? 0.004, clouds?.scale ?? 3) },
     uCloudCol: { value: new THREE.Color(clouds?.color ?? '#ffffff') },
-    uCharge: { value: 0 },
     uDir: { value: DUNE_DIR.clone() },
     uSeed: { value: seedOf(L.name + L.family) },
   };
@@ -312,9 +305,7 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     },
     set(name, value) {
       const v = Math.min(1, Math.max(0, Number(value) || 0));
-      if (name === 'charge') uniforms.uCharge.value = v;
-      else if (name === 'flash') shared.uFlash.value = v;
-      else if (name === 'shield' && shield) {
+      if (name === 'shield' && shield) {
         shield.material.uniforms.uShield.value = v;
         shield.visible = v > 0.001;
       }

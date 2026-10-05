@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket2Line, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { RiArrowDownLine, RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket2Line, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { playClip } from '../../lib/clips';
 import { audioContext } from '../../lib/audio';
 import { CREWS, crewById } from '../universe/crews';
@@ -71,7 +71,7 @@ function Mission({ system }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, tucked, onTuck, jumping }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -131,7 +131,12 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="btn btn-primary" onClick={onMap}>
+        {crew && onLand && (
+          <button type="button" className="btn btn-primary" onClick={onLand}>
+            <RiArrowDownLine className="h-4 w-4" aria-hidden="true" /> Land on {system.id === 'bespin' ? 'Cloud City' : system.name}
+          </button>
+        )}
+        <button type="button" className={crew && onLand ? 'btn btn-ghost' : 'btn btn-primary'} onClick={onMap}>
           <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Plot a course
         </button>
         {goals

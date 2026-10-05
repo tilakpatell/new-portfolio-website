@@ -50,7 +50,10 @@ const pick = (list) => (Array.isArray(list) ? list[Math.floor(Math.random() * li
 // Michael, from the show (lib/clips.js)
 const clip = (id, when) => import('../../lib/clips').then((c) => c.playClip(id, { when }));
 
-export default function PaperToss() {
+export default function PaperToss({ onDone } = {}) {
+  // told when a round's over (the office world counts it as played)
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
   const three = use3D();
   // 3D first: on wherever WebGL works, unless the visitor turned it off
   const want3D = three.on;
@@ -154,6 +157,7 @@ export default function PaperToss() {
           setTimeout(() => speak(SAY.fan), 900);
         } else if (e.type === 'moved' && g?.desk) setTimeout(() => speak(SAY.desk), 900);
         else if (e.type === 'over') {
+          doneRef.current?.(e.score);
           const b = readBest();
           if (e.score > b) {
             saveBest(e.score);

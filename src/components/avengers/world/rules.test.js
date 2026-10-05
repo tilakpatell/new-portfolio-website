@@ -6,6 +6,7 @@ import {
   BENCHES,
   BODY,
   BUILDINGS,
+  CORNERS,
   FLAGS,
   LAMPS,
   PLANTERS,
@@ -693,5 +694,35 @@ describe('The compound, the world: the swing tour', () => {
     }
     expect(lost).toBe(true);
     expect(t.on).toBe(false);
+  });
+});
+
+describe('The compound, the world: corner swings', () => {
+  it('finds the buildings’ corners, sticking out of them', () => {
+    expect(CORNERS.length).toBeGreaterThan(12);
+    for (const c of CORNERS) {
+      const b = solidById(c.id);
+      expect(inPoly(c.x + c.nx * 0.5, c.z + c.nz * 0.5, b.foot)).toBe(false);
+    }
+  });
+
+  it('whips him round a corner he steers hard round, with the web on it', () => {
+    // swinging south down the training center's west side, steering east round its south-west corner
+    const prow = solidById('training');
+    const corner = CORNERS.filter((c) => c.id === 'training' && c.nx < 0 && c.nz > 0)[0];
+    const start = { ...newHero(START), x: corner.x - 5.5, z: corner.z - 12, y: 8, vx: 0, vy: 0, vz: 16, mode: 'swing', fly: true, face: -Math.PI / 2 };
+    start.web = { a: [corner.x - 8, 20, corner.z - 6], at: [corner.x - 8, 20, corner.z - 6], len: 12, target: 12, entry: 8, hand: 'R' };
+    let h = start;
+    let cornered = false;
+    const before = Math.atan2(h.vz, h.vx);
+    for (let t = 0; t < 1 && h.mode === 'swing'; t += DT) {
+      h = stepHero(h, { x: 1, z: 0, web: true }, DT);
+      cornered ||= h.ev.some((e) => e.type === 'corner');
+    }
+    expect(cornered).toBe(true);
+    let d = Math.atan2(h.vz, h.vx) - before;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    expect(Math.abs(d)).toBeGreaterThan(1);
+    expect(inPoly(h.x, h.z, prow.foot)).toBe(false);
   });
 });

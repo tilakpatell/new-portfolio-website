@@ -25,6 +25,7 @@ const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
 const Galaxy = lazy(() => import('./pages/Galaxy'));
 const GalaxyMission = lazy(() => import('./pages/GalaxyMission'));
+const GalaxySurface = lazy(() => import('./pages/GalaxySurface'));
 const Music = lazy(() => import('./pages/Music'));
 const MiddleEarth = lazy(() => import('./pages/MiddleEarth'));
 const Scranton = lazy(() => import('./pages/Scranton'));
@@ -270,6 +271,7 @@ function Shell() {
                 <Route path="/deathstar" element={<DeathStar />} />
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
                 <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
+                <Route path="/galaxy/:system/surface" element={<GalaxySurface />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
@@ -288,7 +290,7 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
       <ScrollSaber />
       <Guide />
       <Lightspeed />
