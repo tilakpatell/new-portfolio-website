@@ -36,7 +36,7 @@ A holotable-style map for the universe (like the galaxy's `galaxy/HoloMap.jsx`):
 
 ## Steps left
 
-1. **Re-run the browser check** on the last fixes, which haven't been seen in a browser: `npx vite --port 5173` in one shell, `OUT=/tmp/shots node scripts/navmap-check.mjs` in another. Headless Chrome draws in software here at about 5 fps, so allow minutes. Clicks go through `el.click()` in `page.evaluate`, since Playwright's own clicks stall on the slow frames. The fixes to check:
+1. **Done (desktop), 2026-10-05:** `node scripts/navmap-check.mjs desktop` passed every check: labels clear, list unsquashed, button wording, the overlay, the ship out on the first frame past the flash, the card cleared, the charging status, Escape. The only failures were the frames being too slow to hold the charge (the script now forces it). Originally: **re-run the browser check** on the last fixes, which haven't been seen in a browser: `npx vite --port 5173` in one shell, `OUT=/tmp/shots node scripts/navmap-check.mjs` in another. Headless Chrome draws in software here at about 5 fps, so allow minutes. Clicks go through `el.click()` in `page.evaluate`, since Playwright's own clicks stall on the slow frames. The fixes to check:
    - The jump is now timed on the wall clock (`wall()` in `scene.js`). Confirm the ship moves under the overlay's flash, and the `.hyperspace-canvas` overlay shows.
    - Going to a wonder now clears the page's selection, so the panel doesn't keep the last world's card. Deselecting no longer cancels a trip out to a wonder (`select()`: `isPlace(state.auto?.id)`).
    - Labels: The Maw and Glacia now sit under their dots (`UNDER` in `NavMap.jsx`), so they no longer overlap The Caribbean and the galaxy gate.
