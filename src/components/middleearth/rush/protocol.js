@@ -186,7 +186,7 @@ export function readState(s, d, me = null) {
 
 // What just happened, for a guest's sounds and lines: only the kinds that
 // make a sound, and only what they need.
-const EV_TYPES = ['pick', 'put', 'add', 'ladle', 'bin', 'nope', 'chopped', 'washed', 'scraped', 'cooked', 'burnt', 'baked', 'filled', 'spilt', 'served', 'lapsed', 'order', 'back', 'end'];
+const EV_TYPES = ['pick', 'put', 'add', 'ladle', 'bin', 'nope', 'chopped', 'washed', 'scraped', 'cooked', 'burnt', 'baked', 'filled', 'spilt', 'served', 'lapsed', 'order', 'back', 'end', 'caught'];
 export const writeEvents = (list, level) =>
   list
     .filter((e) => EV_TYPES.includes(e.type))

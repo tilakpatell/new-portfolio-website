@@ -459,6 +459,12 @@ export default function MiddleEarth() {
         </Suspense>
       )}
 
+      {here?.id === 'amon-hen' && (
+        <Suspense fallback={null}>
+          <Rush level="amonhen" />
+        </Suspense>
+      )}
+
       {here?.id === 'dead-marshes' && (
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
           <MarshesWorld onLeave={() => next && go(next.id)} />

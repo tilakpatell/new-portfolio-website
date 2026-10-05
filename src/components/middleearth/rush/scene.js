@@ -62,6 +62,12 @@ function itemMaker(K) {
     silk: m(0xe8ecf0, { roughness: 0.5, metalness: 0.2 }),
     glass: m(0xd8ecff, { roughness: 0.05, transparent: true, opacity: 0.55 }),
     starlight: new THREE.MeshBasicMaterial({ color: hot(0xe8f2ff, 3) }),
+    scale: m(0x8a9aa4, { roughness: 0.3, metalness: 0.45 }),
+    fillet: m(0xf2c8b0, { roughness: 0.7 }),
+    grilled: m(0xa8682a, { roughness: 0.6 }),
+    leather: m(0x8a5a32, { roughness: 0.8 }),
+    mud: m(0x5a4a36, { roughness: 1 }),
+    chowder: m(0xeadfc4, { roughness: 0.5 }),
   };
   const mesh = (geo, mat, p = [0, 0, 0], r = [0, 0, 0], s = 1) => {
     const o = new THREE.Mesh(geo, mat);
@@ -70,6 +76,14 @@ function itemMaker(K) {
     o.scale.setScalar(s);
     o.castShadow = true;
     return o;
+  };
+  // a fish: its body, and its tail (flat, upright)
+  const fishOf = (mat, y) => {
+    const body = mesh(G.fish, mat, [0, y, 0]);
+    body.scale.set(2.2, 0.8, 0.9);
+    const tail = mesh(G.fin, mat, [-0.16, y, 0], [0, 0, -Math.PI / 2]);
+    tail.scale.set(1, 1, 0.35);
+    return [body, tail];
   };
   const G = {
     mug: lathe([[0, 0], [0.085, 0], [0.09, 0.02], [0.09, 0.2], [0.078, 0.2], [0.078, 0.025], [0, 0.025]], 14),
@@ -103,6 +117,11 @@ function itemMaker(K) {
     strand: cyl(0.006, 0.006, 0.22, 4),
     vial: lathe([[0, 0], [0.04, 0], [0.045, 0.02], [0.045, 0.1], [0.018, 0.13], [0.016, 0.16], [0, 0.16]], 12),
     glow: ball(0.035, 8, 6),
+    fish: ball(0.06, 10, 6),
+    fin: new THREE.ConeGeometry(0.045, 0.07, 4),
+    fillet: B(0.11, 0.022, 0.05),
+    skin: ball(0.1, 10, 8),
+    neck: cyl(0.025, 0.03, 0.06, 8),
   };
   const build = {
     mug(s) {
@@ -123,6 +142,9 @@ function itemMaker(K) {
       if (s === 'soup') {
         g.add(mesh(G.bowlTop, M.soup, [0, 0.085, 0], [-Math.PI / 2, 0, 0]));
         for (let i = 0; i < 5; i++) g.add(mesh(G.leaf, i % 2 ? M.herb : M.cap, [Math.cos(i * 1.3) * 0.06, 0.09, Math.sin(i * 1.3) * 0.06], [0, i, 0], 0.7));
+      } else if (s === 'chowder') {
+        g.add(mesh(G.bowlTop, M.chowder, [0, 0.085, 0], [-Math.PI / 2, 0, 0]));
+        for (let i = 0; i < 5; i++) g.add(mesh(i % 2 ? G.leaf : G.cube, i % 2 ? M.herb : M.fillet, [Math.cos(i * 1.4) * 0.06, 0.09, Math.sin(i * 1.4) * 0.06], [i, i * 2, 0], 0.7));
       } else if (s === 'stew') {
         g.add(mesh(G.bowlTop, M.stew, [0, 0.085, 0], [-Math.PI / 2, 0, 0]));
         for (let i = 0; i < 4; i++) g.add(mesh(G.cube, i % 2 ? M.carrot : M.flesh, [Math.cos(i * 1.7) * 0.06, 0.09, Math.sin(i * 1.7) * 0.06], [i, i * 2, 0], 0.8));
@@ -234,6 +256,30 @@ function itemMaker(K) {
       if (s === 'light') g.add(mesh(G.glow, M.starlight, [0, 0.06, 0], [0, 0, 0], 1.1));
       return g;
     },
+    fish(s) {
+      const g = new THREE.Group();
+      if (s === 'chopped') for (let i = 0; i < 3; i++) g.add(mesh(G.fillet, M.fillet, [(i - 1) * 0.05, 0.012 + (i % 2) * 0.02, (i - 1) * 0.03], [0, 0.3 + i * 0.5, 0]));
+      else g.add(...fishOf(M.scale, 0.04));
+      return g;
+    },
+    // a fish on a stick, over the campfire
+    skewer(s) {
+      const g = new THREE.Group();
+      g.add(mesh(G.pole, M.haft, [0, 0.05, 0], [0, 0, Math.PI / 2]));
+      g.add(...fishOf(s === 'charred' ? M.burnt : M.grilled, 0.05));
+      return g;
+    },
+    skin(s) {
+      const g = new THREE.Group();
+      const full = s === 'water';
+      const hide = s === 'dirty' ? M.mud : M.leather;
+      const body = mesh(G.skin, hide, [0, full ? 0.075 : 0.05, 0]);
+      body.scale.set(1, full ? 0.75 : 0.45, 0.7);
+      g.add(body);
+      g.add(mesh(G.neck, hide, [0.09, full ? 0.11 : 0.07, 0], [0, 0, -0.9]));
+      if (full) g.add(mesh(G.disc, M.cap, [0.115, 0.13, 0], [0, 0, -0.9], 0.6)); // a cork
+      return g;
+    },
     loaf(s) {
       const g = new THREE.Group();
       const o = mesh(G.loaf, s === 'burnt' ? M.burnt : M.loaf, [0, 0.07, 0]);
@@ -303,13 +349,15 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const dwarf = level.theme === 'moria';
   // (or Lothlórien: flets high in the mallorns at night, rope bridges, the drop)
   const tree = level.theme === 'lorien';
-  const pick3 = (inn, rv, mo, lo = inn) => (elvish ? rv : dwarf ? mo : tree ? lo : inn);
+  // (or Amon Hen: the Fellowship's camp on the lawn at Parth Galen, by the lake)
+  const camp = level.theme === 'amonhen';
+  const pick3 = (inn, rv, mo, lo = inn, ah = inn) => (elvish ? rv : dwarf ? mo : tree ? lo : camp ? ah : inn);
 
-  scene.background = new THREE.Color(pick3(0x1a120c, 0x3a3448, 0x07070a, 0x0a1222));
-  scene.fog = new THREE.Fog(pick3(0x1a120c, 0x5a5060, 0x0c0a0a, 0x0e1a2a), dwarf ? 14 : 18, dwarf ? 34 : tree ? 30 : 44);
-  const hemi = new THREE.HemisphereLight(pick3(0xffe2b8, 0xfff0d8, 0x9aa8c8, 0xb8ccff), pick3(0x3a2414, 0x5a5040, 0x2a160c, 0x1a2a20), pick3(1.25, 1.45, 0.75, 1.05));
+  scene.background = new THREE.Color(pick3(0x1a120c, 0x3a3448, 0x07070a, 0x0a1222, 0x9ec4e0));
+  scene.fog = new THREE.Fog(pick3(0x1a120c, 0x5a5060, 0x0c0a0a, 0x0e1a2a, 0xb8ccd8), dwarf ? 14 : camp ? 24 : 18, dwarf ? 34 : tree ? 30 : camp ? 70 : 44);
+  const hemi = new THREE.HemisphereLight(pick3(0xffe2b8, 0xfff0d8, 0x9aa8c8, 0xb8ccff, 0xe8f2ff), pick3(0x3a2414, 0x5a5040, 0x2a160c, 0x1a2a20, 0x5a7a3a), pick3(1.25, 1.45, 0.75, 1.05, 1.5));
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(pick3(0xffe0b0, 0xffd8a0, 0xb8c8ff, 0xc8d8ff), pick3(2.2, 2.6, 1.0, 1.5));
+  const sun = new THREE.DirectionalLight(pick3(0xffe0b0, 0xffd8a0, 0xb8c8ff, 0xc8d8ff, 0xfff0d0), pick3(2.2, 2.6, 1.0, 1.5, 2.6));
   sun.position.set(elvish ? -7 : -4, 10, elvish ? 4 : 7);
   sun.target.position.set(0, 0, 0);
   sun.castShadow = true;
@@ -366,6 +414,23 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     }
     // braziers on the pillars
     for (let n = 0; n <= 4; n++) lamps.push(V(-W / 2 + n * (W / 4), 1.7, zb + 0.6));
+  } else if (camp) {
+    // the lawn, running back into the trees and down to the lake (the
+    // front row is the water's edge)
+    const shore = Z(D - 1);
+    const deepBack = 16;
+    bk.add(mats.turf, B(W + 36, 0.1, deepBack + D - 1), { p: [0, -0.05, shore - (deepBack + D - 1) / 2], uv: 0.3, color: 0x9ab860 });
+    // pebbles along the water
+    bk.add(mats.stone, B(W + 36, 0.06, 0.34), { p: [0, -0.06, shore + 0.1], uv: 1 });
+    // the woods behind, and down the sides
+    for (let n = 0; n < 34; n++) {
+      const side = n % 3 === 0 ? (n % 2 ? 1 : -1) : 0;
+      const x = side ? side * (W / 2 + 1.6 + (n % 4) * 1.1) : -W / 2 - 6 + ((n * 7.3) % (W + 12));
+      const z = side ? Z(0) + ((n * 2.7) % (D - 1)) : Z(0) - 1.4 - ((n * 3.1) % 6);
+      const h = 2.6 + ((n * 1.7) % 1.6);
+      bk.add(mats.trunk, cyl(0.12, 0.18, h, 7), { p: [x, h / 2, z] });
+      bk.add(mats.foliage, new THREE.ConeGeometry(0.9 + (n % 3) * 0.2, h * 0.9, 8), { p: [x, h * 0.85, z], color: n % 4 ? 0x4a7a3a : 0x6a8a3a });
+    }
   } else if (!elvish) {
     // flagstones underfoot, so the counters stand out from the floor
     bk.add(mats.ashlar, B(W + 2, 0.1, D + 2), { p: [0, -0.05, 0.5], uv: 0.45 });
@@ -417,6 +482,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const topWood = paint(0xd2a46c);
   const paleWood = paint(0xb89a70);
   const brick = mats.brick;
+  // the camp's: the boats' grey wood (seen from inside too), a fishing line, a spring
+  const hull = paint(0xa8a49a).clone();
+  hull.side = THREE.DoubleSide;
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xe8e8e0 });
+  const spring = new THREE.MeshStandardMaterial({ color: 0xcfeeff, transparent: true, opacity: 0.75, roughness: 0.1, emissive: 0x2a5a6a });
   for (let j = 0; j < D; j++)
     for (let i = 0; i < W; i++) {
       const c = at(i, j);
@@ -427,13 +497,33 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       const st = { c, x, z, front: f };
       stations[`${i},${j}`] = st;
       const stone = c === 'P' || c === 'O';
-      // the counter
-      bk.add(dwarf ? deep : tree ? (stone ? mats.dressed : fletSide) : stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
-      bk.add(c === 'S' ? darkWood : dwarf ? mats.ashlar : tree && !stone ? fletTop : stone || elvish || tree ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
-      // a dark lip round the top, so each counter reads as one
-      bk.add(darkWood, B(1.02, 0.05, 1.02), { p: [x, TOP - 0.085, z], uv: 1 });
+      // the counter (but the fishing rocks and the camp's boats are in the lake)
+      if (c !== 'F' && !(camp && c === 'S')) {
+        bk.add(dwarf ? deep : tree ? (stone ? mats.dressed : fletSide) : camp ? (stone ? mats.ashlar : mats.barnwood) : stone ? (elvish ? mats.ashlar : brick) : elvish ? paleWood : mats.timber, B(0.98, TOP - 0.06, 0.98), { p: [x, (TOP - 0.06) / 2, z], uv: 1 });
+        bk.add(c === 'S' ? darkWood : dwarf ? mats.ashlar : tree && !stone ? fletTop : camp && !stone ? board : stone || elvish || tree || camp ? mats.dressed : topWood, B(1.0, 0.06, 1.0), { p: [x, TOP - 0.03, z], uv: 1 });
+        // a dark lip round the top, so each counter reads as one
+        bk.add(darkWood, B(1.02, 0.05, 1.02), { p: [x, TOP - 0.085, z], uv: 1 });
+      }
       bk.at([x, TOP, z], f.turn, () => {
-        if (c === 'B' && tree) {
+        if (c === 'F') {
+          // a rock at the water's edge, and a rod out over the lake, to one side
+          bk.add(mats.stone, new THREE.IcosahedronGeometry(0.52, 0), { p: [0, -0.45, -0.05], r: [0.3, 0.5, 0.1], s: [1, 0.9, 1], uv: 1 });
+          bk.add(mats.timber, cyl(0.012, 0.022, 1.48, 5), { p: [0.325, 0.225, -0.15], r: [-0.519, 0, -0.612] });
+          bk.add(lineMat, cyl(0.004, 0.004, 1.74, 3), { p: [0.75, -0.12, -0.45] });
+        } else if (c === 'S' && camp) {
+          // an elven boat, its bow drawn up on the shore, packed for the morning
+          bk.add(hull, new THREE.SphereGeometry(0.5, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), { p: [0, -0.78, -0.45], s: [0.8, 0.55, 2.1] });
+          bk.add(hull, new THREE.TorusGeometry(0.5, 0.03, 4, 28), { p: [0, -0.78, -0.45], r: [Math.PI / 2, 0, 0], s: [0.8, 2.1, 1] });
+          for (const zz of [-0.35, 0.35]) bk.add(hull, B(0.7, 0.03, 0.1), { p: [0, -0.84, -0.45 + zz] });
+          bk.add(mats.sack, ball(0.13, 8, 6), { p: [0.08, -0.82, -1.05], s: [1, 0.7, 1.2] });
+          bk.add(mats.canvas, ball(0.11, 8, 6), { p: [-0.1, -0.84, 0.05], s: [1.2, 0.6, 1] });
+        } else if (c === 'O' && camp) {
+          // the campfire: stones round it, logs, and a spit on two forked sticks
+          for (let k = 0; k < 8; k++) bk.add(mats.stone, ball(0.07, 6, 4), { p: [Math.cos(k * 0.8) * 0.3, 0.03, Math.sin(k * 0.8) * 0.3] });
+          for (let k = 0; k < 3; k++) bk.add(darkWood, cyl(0.035, 0.035, 0.42, 6), { p: [0, 0.05, 0], r: [Math.PI / 2, 0, k * 1.05] });
+          for (const sx of [-1, 1]) bk.add(mats.timber, cyl(0.02, 0.02, 0.5, 5), { p: [sx * 0.34, 0.25, 0] });
+          bk.add(mats.timber, cyl(0.012, 0.012, 0.78, 5), { p: [0, 0.46, 0], r: [0, 0, Math.PI / 2] });
+        } else if (c === 'B' && tree) {
           // a spinning wheel
           bk.add(flet, new THREE.TorusGeometry(0.26, 0.025, 6, 20), { p: [0, 0.36, -0.1] });
           for (let k = 0; k < 6; k++) bk.add(flet, B(0.015, 0.5, 0.015), { p: [0, 0.36, -0.1], r: [0, 0, (k * Math.PI) / 6] });
@@ -442,11 +532,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         } else if (c === 'L') {
           // the leaf table: a pile of mallorn leaves to wrap the lembas in
           for (let k = 0; k < 7; k++) bk.add(items.M.mallorn, new THREE.SphereGeometry(0.1, 8, 4), { p: [Math.cos(k * 1.9) * 0.24, 0.02 + k * 0.006, Math.sin(k * 1.9) * 0.2 - 0.1], s: [1.4, 0.15, 0.8], r: [0, k, 0] });
-        } else if (c === 'T' && tree) {
-          // the fountain: a stone bowl, and a spout of light
+        } else if (c === 'T' && (tree || camp)) {
+          // the fountain (or the camp's spring): a stone bowl, and a spout of light (or water)
           bk.add(mats.dressed, lathe([[0.1, 0], [0.32, 0.12], [0.34, 0.2], [0.3, 0.2], [0.28, 0.14], [0, 0.1]], 16), { p: [0, 0, -0.1] });
           bk.add(mats.dressed, cyl(0.04, 0.05, 0.5, 8), { p: [0, 0.25, -0.38] });
-          bk.add(items.M.starlight, cyl(0.012, 0.012, 0.3, 6), { p: [0, 0.38, -0.25], r: [0.9, 0, 0] });
+          bk.add(tree ? items.M.starlight : spring, cyl(0.012, 0.012, 0.3, 6), { p: [0, 0.38, -0.25], r: [0.9, 0, 0] });
         } else if (c === 'B' && dwarf) {
           // an anvil to crush the ore on, and a hammer
           bk.add(mats.iron, B(0.5, 0.12, 0.24), { p: [0, 0.2, -0.02] });
@@ -519,11 +609,19 @@ export function createRushScene(canvas, level, { onLost } = {}) {
         heap.position.set(x, TOP, z);
         room.add(heap);
       }
+      if (c === 'F') {
+        // the float, out on the water (it bobs when someone's fishing)
+        const bob = new THREE.Mesh(ball(0.045, 8, 6), new THREE.MeshStandardMaterial({ color: 0xd83a2a, roughness: 0.5 }));
+        bob.position.set(x + 0.75 * Math.cos(f.turn) - 0.45 * Math.sin(f.turn), -0.05, z - 0.75 * Math.sin(f.turn) - 0.45 * Math.cos(f.turn));
+        room.add(bob);
+        st.bob = bob;
+      }
       if (c === 'P' || c === 'O') {
-        // the fire's glow
-        const glow = new THREE.Mesh(B(0.5, 0.18, 0.04), new THREE.MeshBasicMaterial({ color: hot(0xff7a2a, 2.4) }));
-        const out = c === 'P' ? 0.5 : 0.42;
-        glow.position.set(x + f.a * out, c === 'P' ? 0.32 : TOP + 0.1, z + f.b * out);
+        // the fire's glow (the campfire's, a flame)
+        const flame = camp && c === 'O';
+        const glow = new THREE.Mesh(flame ? new THREE.ConeGeometry(0.13, 0.34, 7) : B(0.5, 0.18, 0.04), new THREE.MeshBasicMaterial({ color: hot(0xff7a2a, 2.4) }));
+        const out = flame ? 0 : c === 'P' ? 0.5 : 0.42;
+        glow.position.set(x + f.a * out, flame ? TOP + 0.17 : c === 'P' ? 0.32 : TOP + 0.1, z + f.b * out);
         glow.rotation.y = f.turn;
         room.add(glow);
         st.glow = glow;
@@ -534,7 +632,40 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   // and a bridge wherever the floor crosses it
   let waterTex = null;
   const wet = (i, j) => at(i, j) === '~';
-  if (tree) {
+  if (camp) {
+    // Nen Hithoel: the lake, the whole width of the front, ruffled; and over
+    // the trees, Amon Hen and its Seat against the sky
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 128;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#4f7a92';
+    g.fillRect(0, 0, 128, 128);
+    for (let n = 0; n < 60; n++) {
+      g.strokeStyle = `rgba(220, 240, 250, ${0.08 + Math.random() * 0.22})`;
+      g.lineWidth = 1 + Math.random();
+      const x = Math.random() * 128;
+      const y = Math.random() * 128;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.quadraticCurveTo(x + 6, y - 2, x + 10 + Math.random() * 8, y);
+      g.stroke();
+    }
+    waterTex = new THREE.CanvasTexture(cv);
+    waterTex.colorSpace = THREE.SRGBColorSpace;
+    waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+    waterTex.repeat.set((W + 36) / 3, 8);
+    const lake = new THREE.Mesh(new THREE.PlaneGeometry(W + 36, 24), new THREE.MeshStandardMaterial({ map: waterTex, color: 0xcfe6f0, roughness: 0.15, metalness: 0.1, emissive: 0x0a2a36, emissiveIntensity: 0.4 }));
+    lake.rotation.x = -Math.PI / 2;
+    lake.position.set(0, -0.07, Z(D - 1) + 12);
+    room.add(lake);
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(W + 80, 26), new THREE.MeshBasicMaterial({ color: 0x9ec4e0, fog: false }));
+    sky.position.set(0, 9, Z(0) - 22);
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(9, 11, 9), new THREE.MeshStandardMaterial({ color: 0x55684a, roughness: 1, flatShading: true }));
+    hill.position.set(-5, 4.5, Z(0) - 16);
+    const seat = new THREE.Mesh(B(0.9, 0.7, 0.7), new THREE.MeshStandardMaterial({ color: 0xb8b4a8, roughness: 0.9 }));
+    seat.position.set(-5, 10.2, Z(0) - 16);
+    room.add(sky, hill, seat);
+  } else if (tree) {
     // the drop between the flets: the forest floor far below, and the
     // lights of Caras Galadhon among the trunks
     const below = new THREE.Mesh(new THREE.PlaneGeometry(W + 30, D + 30), new THREE.MeshBasicMaterial({ color: 0x0c1a14 }));
@@ -850,8 +981,14 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       if (st.c === '#' || st.c === 'B' || st.c === 'S') {
         if (sp.item) place(k, sp.item, x, TOP + (st.c === 'B' ? 0.05 : 0), z, front.turn);
         if (st.c === 'B' && sp.item?.s === 'raw' && sp.prog > 0) ring(x, TOP + 0.75, z, sp.prog, GREEN);
+      } else if (st.c === 'F') {
+        // the catch on the rock, and the float bobbing while someone holds the line
+        if (sp.item) place(k, sp.item, x + front.a * 0.15, TOP + 0.02, z + front.b * 0.15, front.turn);
+        if (sp.prog > 0) ring(x, TOP + 0.75, z, sp.prog, BLUE);
+        st.bob.position.y = -0.05 + (sp.prog > 0 ? Math.sin(t * 9) * 0.025 - sp.prog * 0.03 : Math.sin(t * 1.4 + x) * 0.008);
       } else if (st.c === 'O') {
-        if (sp.item) place(k, sp.item, x + front.a * 0.18, TOP + 0.02, z + front.b * 0.18, front.turn);
+        if (sp.item && camp) place(k, sp.item, x, TOP + 0.46 - 0.05 * BIG, z, front.turn);
+        else if (sp.item) place(k, sp.item, x + front.a * 0.18, TOP + 0.02, z + front.b * 0.18, front.turn);
         if (sp.item?.k === R.oven.takes) ring(x, TOP + 0.95, z, sp.prog / T.bake, GREEN);
         else if (sp.item?.k === R.oven.makes && sp.item.s === KINDS[R.oven.makes][0] && sp.prog > T.char * 0.35) ring(x, TOP + 0.95, z, sp.prog / T.char, RED, Math.sin(t * 14) > 0 ? 0.6 : 0);
         if (sp.item?.s === 'burnt' && Math.random() < dt * 6) puff(x, TOP + 0.6, z, { color: 0x222222, size: 0.5, life: 1.8, opacity: 0.5 });
@@ -879,7 +1016,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
           if (Math.random() < dt * 10) puff(x + (Math.random() - 0.5) * 0.3, TOP + 0.5, z, { color: 0x1a1a1a, size: 0.55, life: 2, opacity: 0.55 });
         } else if (sp.s === 'part' && sp.n) {
           // the pieces in, before it's full
-          for (let n = 0; n < sp.n; n++) place(`${k}:${n}`, { k: n % 2 ? 'potato' : 'carrot', s: 'chopped' }, x + Math.cos(n * 2.1) * 0.1, TOP + 0.22, z + Math.sin(n * 2.1) * 0.1, n, 0.8);
+          for (let n = 0; n < sp.n; n++) place(`${k}:${n}`, { k: R.pot.takes[n % R.pot.takes.length], s: 'chopped' }, x + Math.cos(n * 2.1) * 0.1, TOP + 0.22, z + Math.sin(n * 2.1) * 0.1, n, 0.8);
         }
       } else if (st.c === 'W') {
         sp.dirty.slice(0, 3).forEach((kind, n) => place(`${k}:d${n}`, { k: kind, s: 'dirty' }, x - 0.12 + n * 0.12, TOP + 0.12 + n * 0.02, z - 0.05, n, 0.9));
@@ -947,7 +1084,9 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     }
 
     // the stream runs
-    if (waterTex) waterTex.offset.y -= dt * 0.35;
+    // (the lake only ruffles)
+    if (waterTex && camp) waterTex.offset.x += dt * 0.03;
+    else if (waterTex) waterTex.offset.y -= dt * 0.35;
     // the fires flicker
     for (const st of fires) st.glow.material.color.copy(hot(0xff7a2a, 2 + Math.sin(t * 11 + st.x) * 0.4 + Math.sin(t * 17) * 0.2));
     fireLights.forEach((l, k) => (l.intensity = 2.6 + Math.sin(t * 9 + k * 2) * 0.5 + Math.sin(t * 23 + k) * 0.25));
@@ -977,7 +1116,10 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     if (e.type === 'served') for (let k = 0; k < 10; k++) puff(x, TOP + 0.4, z, { color: 0xffd060, size: 0.16, life: 0.9, v: [(Math.random() - 0.5) * 1.6, 1.2 + Math.random(), (Math.random() - 0.5) * 1.6], opacity: 1 });
     else if (e.type === 'spilt') for (let k = 0; k < 8; k++) puff(x, TOP + 0.1, z + 0.4, { color: 0xd09030, size: 0.14, life: 0.8, v: [(Math.random() - 0.5) * 1.2, 0.8, 0.6 + Math.random() * 0.6], opacity: 0.9 });
     else if (e.type === 'chopped' || e.type === 'washed') for (let k = 0; k < 5; k++) puff(x, TOP + 0.2, z, { color: e.type === 'washed' ? 0xeaf6ff : 0xffffff, size: 0.12, life: 0.5, v: [(Math.random() - 0.5), 1, (Math.random() - 0.5)], opacity: 0.9 });
-    else if (e.type === 'nope') for (let k = 0; k < 3; k++) puff(x, TOP + 0.4, z, { color: 0xff4030, size: 0.14, life: 0.4, v: [(Math.random() - 0.5) * 0.6, 0.6, 0], opacity: 0.9 });
+    else if (e.type === 'caught' && stations[`${e.at[0]},${e.at[1]}`]?.bob) {
+      const b = stations[`${e.at[0]},${e.at[1]}`].bob.position;
+      for (let k = 0; k < 10; k++) puff(b.x, 0.05, b.z, { color: 0xe8f6ff, size: 0.14, life: 0.7, v: [(Math.random() - 0.5) * 1.4, 1.2 + Math.random(), (Math.random() - 0.5) * 1.4], opacity: 0.9 });
+    } else if (e.type === 'nope') for (let k = 0; k < 3; k++) puff(x, TOP + 0.4, z, { color: 0xff4030, size: 0.14, life: 0.4, v: [(Math.random() - 0.5) * 0.6, 0.6, 0], opacity: 0.9 });
   };
 
   // where a point in tile units is on screen (CSS px), or null

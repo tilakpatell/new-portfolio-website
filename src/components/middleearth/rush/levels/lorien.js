@@ -13,6 +13,7 @@ export const LORIEN = {
   name: 'Gifts for the Fellowship',
   host: 'Haldir',
   lead: 'The Fellowship leaves at dawn, and the Lady would not send them empty-handed. Lembas baked and wrapped in mallorn leaves, rope of hithlain spun on the wheels, and phials filled with the fountain’s light, made ready across two flets with rope bridges between them.',
+  work: 'spin, wrap, wash',
   tiles: [
     '#fd#BB~~#OO#',
     '#.....~~...L',

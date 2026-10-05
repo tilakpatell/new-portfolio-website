@@ -12,6 +12,7 @@ export const MORIA = {
   name: 'The forges of Khazad-dûm',
   host: 'Balin',
   lead: 'Balin has come back to Moria and lit the forges again, and every Dwarf in the colony wants something: mithril cast in moulds, axes from the forge, and ale for the miners. Across a channel of molten rock, with two bridges over it.',
+  work: 'crush, wash, scrape',
   tiles: [
     '#oo#BB#PP#O#',
     'i..........O',
