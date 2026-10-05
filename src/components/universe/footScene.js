@@ -18,16 +18,24 @@
 // (grit, stones, rocks to walk round), and the air of the planet in its
 // colour along the horizon, by day.
 //
+// Other pilots' crews down on the same planet (multiplayer: the scene hands
+// them in each frame, guests()) walk about with yours, a tag over each with
+// who they are and whose crew; and where two of a person meet (your Rick
+// and theirs, or two pilots' Walts) the other one is that person from
+// another dimension: their dimension's code on the tag (dimensionOf, from
+// their pilot) and a tint of its own. crew() is yours, for sending.
+//
 // createFoot({ map, emit, reduced, small, planetOf }) → { phase, begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
-//   board(), look(dx, dy), first(), aimPoint(), info(), end(), dispose() }
+//   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
+//   guests(list), end(), dispose() }
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { smoothNormals } from '../cockpit/crew';
-import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bolt as makeBolt, facingAlong, fly as flyBolt, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, facingAlong, fly as flyBolt, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 
@@ -61,6 +69,19 @@ export const PARTY = {
   ],
 };
 const TROOP_BOLT = '#62c8ff';
+const SPEC = Object.fromEntries(Object.values(PARTY).flat().map((s) => [s.id, s])); // everyone, by id
+const GUEST_FAR = 90; // metres: no tag on someone further off than this
+
+// the dimension a pilot's crew come from: a code of its own, made from the
+// pilot's id (the same for everyone who meets them), and a hue to go with it
+const GREEK = 'αβγδεζηθκλμξπστφχψω';
+export function dimensionOf(id) {
+  let h = 2166136261;
+  for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  h >>>= 0;
+  const code = `${String.fromCharCode(65 + (h % 26))}-${10 + ((h >>> 5) % 290)}${GREEK[(h >>> 14) % GREEK.length]}${(h >>> 19) % 10}`;
+  return { code, hue: ((h >>> 9) % 360) / 360 };
+}
 const LAND = { down: 3.4, out: 1.3, board: 0.8, lift: 2.4, fall: 2.6 }; // seconds
 const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres, radians
 
@@ -860,6 +881,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     spot: null, // { n, f }
     rest: 0,
     hover: null,
+    arc: null, // the way round the planet, when the spot's a long way from where the ship came in
     // the people
     lead: 0, // which of the party you play
     me: null,
@@ -1014,7 +1036,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
 
   // ── begin: down onto the planet `id` from where the ship is ──
-  const begin = ({ id, ship, model, kind, light }) => {
+  // where to come down beside a friend's ship already down (`near`, its { n,
+  // f }): alongside it, a ship's length or so off its right, facing the same way
+  const beside = (near, kind) => {
+    const gap = 0.26 * 0.62 * ((PARKED[near.kind] ?? 1.5) + (PARKED[kind] ?? 1)) + 8 * METRE;
+    const o = offset(person(near.n, near.f), -2 * METRE, gap, S.R);
+    return { n: o.n, f: o.f };
+  };
+  const begin = ({ id, ship, model, kind, light, near = null }) => {
     const planet = planetOf[id];
     const u = byId(id);
     if (!planet || !u || u.kind === 'core' || !model) return false;
@@ -1024,10 +1053,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.R = u.size;
     S.c.set(...POSITIONS[id]);
     const from = [ship.x, ship.y, ship.z];
-    const n = landingSpot(from, arr(S.c), light);
     const fwd3 = [-Math.sin(ship.heading), 0, -Math.cos(ship.heading)];
-    const f = facingAlong(n, fwd3);
-    S.spot = { n, f };
+    // beside a friend already down here, or wherever's below, leaning to the day
+    const n0 = landingSpot(from, arr(S.c), light);
+    S.spot = near ? beside(near, kind) : { n: n0, f: facingAlong(n0, fwd3) };
+    const { n } = S.spot;
+    // a long way round the planet from where the ship is: it flies round over
+    // the surface to get there, rather than through the planet
+    const out = vec.unit(vec.add(from, arr(S.c), -1));
+    const round = Math.acos(Math.min(1, Math.max(-1, vec.dot(out, n))));
+    S.arc = round > 0.6 ? { n0: out, h0: vec.len(vec.add(from, arr(S.c), -1)) - S.R, a: round } : null;
     S.from = { p: model.group.position.clone(), q: model.group.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(model.pivot.rotation)) };
     model.pivot.rotation.set(0, 0, 0);
     model.group.quaternion.copy(S.from.q);
@@ -1073,6 +1108,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // the ship along its way down (k 0…1): over to above the spot, and down
   // onto it, turning to sit level on the ground, growing to its parked size
   const shipAt = (k, out = new V()) => {
+    if (S.arc) {
+      // round over the planet: along the great circle from above where it
+      // was to the spot, up over the curve and down
+      const { n0, h0, a } = S.arc;
+      const s0 = Math.sin(a) || 1;
+      const nk = vec.add(vec.scale(n0, Math.sin((1 - k) * a) / s0), S.spot.n, Math.sin(k * a) / s0);
+      const h = h0 + (S.rest - h0) * k + Math.sin(Math.PI * k) * (S.R * a * 0.25);
+      return out.set(...vec.scale(nk, S.R + h)).add(S.c);
+    }
     const P0 = S.from.p.clone().sub(S.c);
     const H = new V(...S.hover);
     const P1 = new V(...S.spot.n).multiplyScalar(S.R + S.rest);
@@ -1116,9 +1160,187 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const meP = () => party?.[S.lead] ?? null;
   const mateP = () => party?.[1 - S.lead] ?? null;
 
-  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? [])];
+  // (the other pilots' ships down here too)
+  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : []))];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
+
+  // ── other pilots' crews, down here too ──
+  const guests = new Map(); // pilot id → { name, ally, dim, walkers: [{ who, spec, fig, group, gun, label, w, to, alt }] }
+  const tagTexture = (text, colour) => {
+    const c = document.createElement('canvas');
+    c.width = 768;
+    c.height = 96;
+    const x = c.getContext('2d');
+    x.font = '600 38px system-ui, -apple-system, Segoe UI, sans-serif';
+    const w = Math.min(760, x.measureText(text).width + 44);
+    x.fillStyle = 'rgba(8, 10, 16, 0.72)';
+    x.beginPath();
+    x.roundRect?.((768 - w) / 2, 14, w, 68, 34);
+    if (!x.roundRect) x.rect((768 - w) / 2, 14, w, 68);
+    x.fill();
+    x.fillStyle = colour;
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText(text, 384, 49, 740);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  const tagFor = (text, colour) => {
+    const m = new THREE.SpriteMaterial({ map: tagTexture(text, colour), transparent: true, depthWrite: false, sizeAttenuation: false, toneMapped: false });
+    const sprite = new THREE.Sprite(m);
+    sprite.center.set(0.5, 0);
+    sprite.scale.set(0.27, 0.034, 1); // (a share of the view's height, whatever the distance)
+    sprite.renderOrder = 5;
+    return sprite;
+  };
+  const dropTag = (sprite) => {
+    root.remove(sprite);
+    sprite.material.map.dispose();
+    sprite.material.dispose();
+  };
+  // the same person from another dimension: everything they're made of in
+  // that dimension's light
+  const otherDimension = (group, hue, own) => {
+    const tint = new THREE.Color().setHSL(hue, 0.5, 0.9); // (a wash of it: still themselves)
+    const glow = new THREE.Color().setHSL(hue, 0.9, 0.4);
+    const remake = (m) => {
+      const c = m.clone();
+      c.color?.multiply(tint);
+      if (c.emissive) {
+        c.emissive.copy(glow);
+        c.emissiveIntensity = 0.12;
+      }
+      own.push(c);
+      return c;
+    };
+    group.traverse((o) => {
+      if (o.isMesh && o.material) o.material = Array.isArray(o.material) ? o.material.map(remake) : remake(o.material);
+    });
+  };
+  const guestWalker = (g, who, alt) => {
+    const spec = SPEC[who];
+    const wk = { who, spec, fig: null, group: new THREE.Group(), gun: null, label: null, w: null, to: null, alt, own: [] };
+    wk.group.visible = false;
+    root.add(wk.group);
+    (async () => {
+      if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
+      const fig = (cast && (await loadModel(spec, cast).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
+      if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
+      wk.fig = fig;
+      wk.group.add(fig.model);
+      if (wk.alt) otherDimension(fig.model, g.dim.hue, wk.own);
+      if (spec.gun) {
+        wk.gun = gunMesh(spec.gun, wk.own);
+        wk.gun.visible = false;
+        root.add(wk.gun);
+      }
+    })();
+    return wk;
+  };
+  const dropWalker = (g, wk, i) => {
+    root.remove(wk.group);
+    wk.fig?.dispose?.();
+    if (wk.gun) root.remove(wk.gun);
+    if (wk.label) dropTag(wk.label);
+    for (const o of wk.own) o?.dispose?.();
+    dropShadow(`guest:${g.id}:${i}`);
+  };
+  const dropGuest = (g) => {
+    g.walkers.forEach((wk, i) => wk && dropWalker(g, wk, i));
+    guests.delete(g.id);
+  };
+  // who's here already, as people: yours, and every guest's met so far
+  const here = (except) => {
+    const out = new Set((party ?? []).map((p) => p.spec.id));
+    for (const g of guests.values()) if (g !== except) for (const wk of g.walkers) if (wk) out.add(wk.who);
+    return out;
+  };
+  // each frame: the pilots down on this planet now ({ id, name, ally, foot }),
+  // their crews brought in, moved on, or gone
+  const setGuests = (list) => {
+    const want = new Map();
+    for (const o of list ?? []) if (o.foot?.planet === S.id && o.foot.lead) want.set(o.id, o);
+    for (const g of [...guests.values()]) if (!want.has(g.id)) dropGuest(g);
+    if (!S.phase || S.phase === 'lift' || !party) return; // (yours first, to know who's a double)
+    for (const o of want.values()) {
+      let g = guests.get(o.id);
+      if (!g) {
+        g = { id: o.id, name: o.name, ally: o.ally, dim: dimensionOf(o.id), walkers: [null, null], said: false };
+        guests.set(o.id, g);
+      }
+      g.name = o.name;
+      g.ally = o.ally;
+      g.ship = { n: o.foot.ship.n, r: 0.62 * 0.26 * (PARKED[o.foot.kind] ?? 1) * 0.55 };
+      [o.foot.lead, o.foot.mate].forEach((to, i) => {
+        let wk = g.walkers[i];
+        if (wk && (!to || to.who !== wk.who)) {
+          dropWalker(g, wk, i);
+          wk = g.walkers[i] = null;
+        }
+        if (!to || !SPEC[to.who]) return;
+        if (!wk) {
+          wk = g.walkers[i] = guestWalker(g, to.who, here(g).has(to.who));
+          const who = `${wk.spec.name}${wk.alt ? ` of ${g.dim.code}` : ''}`;
+          wk.label = tagFor(i === 0 ? `${who} · ${g.name ?? 'a pilot'}` : who, g.ally ? '#8dff9a' : wk.alt ? `hsl(${Math.round(g.dim.hue * 360)}, 90%, 72%)` : '#ffffff');
+          root.add(wk.label);
+        }
+        wk.to = to;
+      });
+      // your crew have something to say about who's turned up (once you're out)
+      const first = g.walkers[0];
+      if (!g.said && first && S.phase === 'walk') {
+        g.said = true;
+        const alt = g.walkers.find((wk) => wk?.alt);
+        emit({ type: 'foot', id: alt ? 'alt' : 'friend', who: (alt ?? first).who, name: g.name });
+      }
+    }
+  };
+  const guestsFrame = (dt) => {
+    const k = 1 - Math.exp(-dt * 10);
+    const mix = (a, b) => a + (b - a) * k;
+    for (const g of guests.values()) {
+      g.walkers.forEach((wk, i) => {
+        if (!wk?.to) return;
+        const to = wk.to;
+        // eased on toward where they last said they were (a jump, straight there)
+        if (!wk.w || apart(wk.w, to, S.R) > 6 * METRE) wk.w = { ...to };
+        else {
+          const n = vec.unit(vec.add(wk.w.n, vec.add(to.n, wk.w.n, -1), k));
+          const f0 = vec.add(wk.w.f, vec.add(to.f, wk.w.f, -1), k);
+          wk.w = { n, f: vec.unit(vec.add(f0, n, -vec.dot(f0, n))), h: mix(wk.w.h, to.h), speed: mix(wk.w.speed, to.speed), side: mix(wk.w.side, to.side), aim: mix(wk.w.aim, to.aim) };
+        }
+        const w = wk.w;
+        const show = Boolean(wk.fig);
+        wk.group.visible = show;
+        if (show) {
+          stand(wk.group, w);
+          wk.fig.update(dt, Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run), w.aim);
+          wk.group.updateMatrixWorld(true);
+          if (wk.gun) {
+            wk.gun.visible = true;
+            handAt({ fig: wk.fig, w, spec: wk.spec }, tmp);
+            wk.gun.position.copy(tmp).sub(S.c);
+            const n = new V(...w.n);
+            const f = new V(...w.f);
+            const look = w.aim > 0.05 ? f : f.clone().addScaledVector(n, -0.55).normalize();
+            basis.lookAt(new V(), look, n);
+            wk.gun.quaternion.setFromRotationMatrix(basis);
+            wk.gun.rotateY(Math.PI);
+          }
+        }
+        shadow(`guest:${g.id}:${i}`, w, wk.spec.tall * 0.55).visible = show;
+        // the tag over their head, near enough to read
+        if (wk.label) {
+          wk.label.position.set(...vec.add(at(w, S.R), w.n, wk.spec.tall * METRE * 1.12));
+          wk.label.visible = show && Boolean(S.me) && apart(S.me, w, S.R) < GUEST_FAR * METRE;
+        }
+      });
+    }
+  };
+  const walker = (w, p, aim) => (w && p ? { who: p.spec.id, n: w.n, f: w.f, h: w.h ?? 0, speed: w.speed ?? 0, side: w.side ?? 0, aim } : null);
+
 
   // ── each frame ──
   const update = (dt, t, input = {}) => {
@@ -1199,6 +1421,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the figures where the people are
     if (party && S.phase !== 'land' && S.phase !== 'lift') drawPeople(dt);
     drawTroops(dt, t);
+    guestsFrame(dt);
     moveBolts(dt);
     for (const s of puffs) {
       if (!s.visible) continue;
@@ -1568,6 +1791,30 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         first: S.cam.first,
       };
     },
+    // your crew as the other pilots see them (protocol.js's writeFoot):
+    // where the ship is down and where you both are; null once you're
+    // lifting off (or not down at all)
+    crew() {
+      if (!S.phase || S.phase === 'lift' || !S.spot) return null;
+      const out = S.phase !== 'land';
+      return {
+        planet: S.id,
+        kind: S.kind,
+        ship: S.spot,
+        lead: out ? walker(S.me, meP(), S.aim) : null,
+        mate: out ? walker(S.mate, mateP(), S.mateAim) : null,
+      };
+    },
+    guests: setGuests,
+    // (for checking from a browser: who's down here with you, and as who)
+    guestInfo() {
+      return [...guests.values()].map((g) => ({
+        id: g.id,
+        name: g.name,
+        dim: g.dim.code,
+        walkers: g.walkers.filter(Boolean).map((wk) => ({ who: wk.who, alt: wk.alt, shown: wk.group.visible, metres: wk.w && S.me ? Math.round(apart(S.me, wk.w, S.R) / METRE) : null, bearing: wk.w && S.me ? +bearing(S.me.n, S.me.f, vec.add(wk.w.n, S.me.n, -1)).toFixed(3) : null })),
+      }));
+    },
     // which way is up where the camera is, and where it is (the map's space): what's below the horizon
     horizon() {
       return S.cam.pos ? { at: S.cam.pos, up: S.cam.up } : null;
@@ -1587,6 +1834,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         if (p.gun) root.remove(p.gun);
       }
       party = null;
+      for (const g of [...guests.values()]) dropGuest(g);
       for (const id of [...troopFigs.keys()]) dropTroop(id);
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;

@@ -197,7 +197,7 @@ export default function Comms({ crew, reduced, control }) {
           } else if (e.id === 'swap') say(linesFor(crew, 'foot', 'swap', e.who), { urgent: true });
           else if (e.id === 'far' || e.id === 'nowhere') {
             if (often('edge', now)) say(linesFor(crew, 'foot', e.id));
-          } else if (e.id !== 'off') say(linesFor(crew, 'foot', e.id), { urgent: e.id === 'squad' || e.id === 'down' });
+          } else if (e.id !== 'off') say(linesFor(crew, 'foot', e.id, e.who), { urgent: e.id === 'squad' || e.id === 'down' || e.id === 'alt' });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;

@@ -167,3 +167,16 @@ describe('a bolt', () => {
     expect(aimAt(me, [{ ...closer, alive: false }], R)).toBeNull();
   });
 });
+
+describe('other dimensions', () => {
+  it('give every pilot the same code wherever they are met, and different pilots different ones', async () => {
+    const { dimensionOf } = await import('./footScene');
+    const a = dimensionOf('7f3a9c');
+    expect(dimensionOf('7f3a9c')).toEqual(a);
+    expect(a.code).toMatch(/^[A-Z]-\d{2,3}\S\d$/);
+    expect(a.hue).toBeGreaterThanOrEqual(0);
+    expect(a.hue).toBeLessThan(1);
+    const codes = new Set(Array.from({ length: 50 }, (_, i) => dimensionOf(`pilot-${i}`).code));
+    expect(codes.size).toBeGreaterThan(45);
+  });
+});

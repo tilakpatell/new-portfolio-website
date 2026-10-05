@@ -98,6 +98,7 @@ import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, o
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyClimb, stickInput } from './controls';
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
+import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 
 const STARS = 1800; // the near ones, over the Milky Way's own
@@ -582,6 +583,13 @@ export async function create(canvas, ctx) {
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf });
   const onFoot = () => Boolean(foot.phase);
+  // the other pilots whose crews are down on a planet now (the scene hands
+  // the ones on yours to the foot scene)
+  const guestsOnFoot = (now) => {
+    const out = [];
+    for (const p of net?.peers?.values() ?? []) if (!p.blocked && p.name && p.foot && now - p.foot.at < STALE_MS) out.push({ id: p.id, name: p.name, ally: p.ally === 'ally', foot: p.foot });
+    return out;
+  };
   // everyone else out here (none with reduced motion), and the pops when a shot hits one
   const fleet = createFleet(); // the ships that are models, shared
   const traffic = reduced ? null : createTraffic(map, { small, fleet });
@@ -2137,7 +2145,11 @@ export async function create(canvas, ctx) {
       return false;
     }
     handOff(1400);
-    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: lightInMap().toArray() })) return false;
+    // anyone already down on this planet: come down beside them (an ally first)
+    const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
+    const friend = down.find((g) => g.ally) ?? down[0] ?? null;
+    const near = friend && { ...friend.foot.ship, kind: friend.foot.kind };
+    if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: lightInMap().toArray(), near })) return false;
     state.auto = null;
     state.streak = 0;
     state.boosting = false;
@@ -2433,12 +2445,17 @@ export async function create(canvas, ctx) {
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
-    // the other pilots: where you are, out to them; where they are, drawn
+    // the other pilots: where you are, out to them; where they are, drawn.
+    // Down on a planet, it's your crew that go out (your ship's off the
+    // sky: parked, the others see it on the ground), and the crews of
+    // anyone down on the same planet walk about with yours
     if (net) {
       const s = flying() ? state.ship : null;
-      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.foot?.(onFoot() && !props.frozen ? foot.crew() : null);
+      if (onFoot()) foot.guests(guestsOnFoot(now));
     }
-    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null });
+    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null });
     placeHud();
     placePrompt();
     // the sky and the far stars stay round the camera, wherever it flies;
@@ -2742,7 +2759,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state, foot, planets, startFoot };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, director, pieces, novae, pilots, state, foot, planets, startFoot, net: () => net };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -2766,7 +2783,7 @@ export async function create(canvas, ctx) {
       online: net?.snapshot().status ?? null,
       lead: state.lead && { x: +state.lead.x.toFixed(2), y: +state.lead.y.toFixed(2), z: +state.lead.z.toFixed(2), t: +state.lead.t.toFixed(2), hot: state.hot },
       signs: signs.map(({ id, x0, y0, x1, y1, z }) => ({ id, x0, y0, x1, y1, z })),
-      foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }) },
+      foot: foot.phase && { phase: foot.phase, id: foot.id, ...(({ health, who, mate, troops, first }) => ({ health, who, mate, troops: troops.length, first }))(foot.info() ?? { troops: [] }), guests: foot.guestInfo(), spot: foot.crew()?.ship.n ?? null },
       landable: state.landable,
       last,
     });

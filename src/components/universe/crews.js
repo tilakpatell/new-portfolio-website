@@ -69,6 +69,22 @@ export const CREWS = [
         ['morty', 'Can we go home now?'],
         ['rick', 'We’re going somewhere, Morty.'],
       ],
+      // another pilot's crew down here too, and the same person from another dimension (by who)
+      friend: [
+        ['morty', 'Rick! Somebody else just landed!'],
+        ['rick', 'Great. Tourists.'],
+      ],
+      alt: {
+        rick: [
+          ['morty', 'Rick, there’s another you over there!'],
+          ['rick', 'A Rick from another dimension. Don’t trust him, Morty. I wouldn’t.'],
+        ],
+        morty: [
+          ['rick', 'Look, Morty, another Morty. Wave at yourself.'],
+          ['morty', 'H-hey, other me. You doing okay?'],
+        ],
+        any: [['rick', 'Somebody’s a long way from their own dimension, Morty.']],
+      },
     },
     launch: [
       ['rick', 'Wubba lubba dub dub!', 'wubba'],
@@ -380,6 +396,21 @@ export const CREWS = [
         ['luke', 'Back in the cockpit. Let’s go.'],
         ['r2', '[a happy whistle]'],
       ],
+      friend: [
+        ['luke', 'Another ship’s come down, Artoo.'],
+        ['r2', '[a curious whistle]'],
+      ],
+      alt: {
+        luke: [
+          ['luke', 'That’s… me? From somewhere else?'],
+          ['r2', '[beeps in total confusion]'],
+        ],
+        artoo: [
+          ['r2', '[an alarmed screech at the other R2 unit]'],
+          ['luke', 'Easy, Artoo. He’s you, from another dimension.'],
+        ],
+        any: [['luke', 'We’re not the only ones from somewhere else, Artoo.']],
+      },
     },
     launch: [
       ['luke', 'Red Five, standing by.'],
@@ -667,6 +698,21 @@ export const CREWS = [
         ['han', 'Back in the Falcon. Punch it.'],
         ['chewie', '[roars]'],
       ],
+      friend: [
+        ['han', 'Company. Keep a hand near your bowcaster, Chewie.'],
+        ['chewie', '[a low growl]'],
+      ],
+      alt: {
+        han: [
+          ['han', 'Is that me? Huh. I look good.'],
+          ['chewie', '[roars with laughter]'],
+        ],
+        chewie: [
+          ['chewie', '[a puzzled roar at the other Wookiee]'],
+          ['han', 'Yeah, pal, there’s two of you now. The galaxy’s in trouble.'],
+        ],
+        any: [['han', 'Another dimension, huh? Never heard of it.']],
+      },
     },
     launch: [
       ['han', 'Chewie, we’re home.'],
@@ -958,6 +1004,21 @@ export const CREWS = [
         ['walt', 'Back in the RV. We’re done here.'],
         ['jesse', 'Finally.'],
       ],
+      friend: [
+        ['jesse', 'Yo, somebody else just parked out here.'],
+        ['walt', 'Stay calm. Let them come to us.'],
+      ],
+      alt: {
+        walt: [
+          ['jesse', 'Mr. White, there’s… another you. Like, from another dimension.'],
+          ['walt', 'Then he knows exactly who he’s dealing with.'],
+        ],
+        jesse: [
+          ['jesse', 'Yo, that’s me! That’s literally me, yo!'],
+          ['walt', 'One of you is plenty, Jesse.'],
+        ],
+        any: [['walt', 'Another dimension. The same product, I hope.']],
+      },
     },
     launch: [
       ['walt', 'Jesse. The RV has wings now. Try to keep up.'],

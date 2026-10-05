@@ -89,6 +89,11 @@ describe('the crews on foot', () => {
         ...['land', 'out', 'squad', 'hurt', 'down', 'up', 'cleared', 'far', 'nowhere', 'in'].map((id) => linesFor(crew, 'foot', id)),
         ...Object.keys(TROOPS).map((kind) => linesFor(crew, 'foot', 'kill', kind)),
         ...PARTY[crew.id].map((p) => linesFor(crew, 'foot', 'swap', p.id)),
+        // another pilot's crew down too, and anyone's double from another dimension
+        linesFor(crew, 'foot', 'friend'),
+        ...Object.values(PARTY)
+          .flat()
+          .map((p) => linesFor(crew, 'foot', 'alt', p.id)),
       ];
       for (const exchange of all) {
         expect(exchange?.length, crew.id).toBeGreaterThan(0);

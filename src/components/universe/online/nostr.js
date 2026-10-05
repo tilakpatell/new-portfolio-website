@@ -37,8 +37,8 @@ const STALE_S = 30; // an event this much older than the pilot's others is a rep
 const QUIET_MS = 60000; // a pilot not heard from this long is forgotten (they'll be met again)
 const CONTENT_MAX = 16000; // characters of content taken from an event
 const QUEUE_MAX = 64; // messages waiting, at most
-const LATEST = new Set(['pose', 'cur']); // only the newest of these in a bundle
-const CHEAP = new Set(['pose', 'cur', 'shot']); // trusted to the relay's own check of the signature
+const LATEST = new Set(['pose', 'foot', 'cur']); // only the newest of these in a bundle
+const CHEAP = new Set(['pose', 'foot', 'cur', 'shot']); // trusted to the relay's own check of the signature
 
 const enc = new TextEncoder();
 export const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
