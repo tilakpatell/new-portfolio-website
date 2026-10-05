@@ -68,7 +68,7 @@ function along(loop, lengths, total, s) {
 // places: { council: [{ x, y, z, face }], workers: [...] } in their rooms'
 // own frames; parents: the concourse and the two rooms
 export async function createPeople({ outdoors, factory, council, places, tier = 'high' }) {
-  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED });
+  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED, cull: true });
   await Promise.all([meshy.load(null, SITTERS, { clips: ['idle', 'walk', 'run', 'sit'] }), meshy.load(null, ASSETS, { clips: ['idle', 'walk', 'run'] })]);
 
   const all = [];
