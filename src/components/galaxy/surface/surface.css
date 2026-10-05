@@ -119,8 +119,7 @@
   white-space: nowrap;
   animation: surface-in 0.25s ease-out;
 }
-.surface-prompt kbd,
-.surface-help kbd {
+.surface-prompt kbd {
   display: inline-grid;
   place-items: center;
   min-width: 1.5em;
@@ -207,22 +206,12 @@
   cursor: pointer;
 }
 .surface-help-btn:hover { border-color: var(--accent); color: var(--accent); }
-.surface-help {
-  position: absolute;
-  z-index: 3;
-  right: 16px;
-  top: calc(var(--nav-h, 64px) + 56px);
-  width: min(360px, calc(100vw - 32px));
-  padding: 0.9rem 1.1rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(6, 8, 14, 0.82);
-  backdrop-filter: blur(10px);
-  font-size: 0.85rem;
-}
-.surface-help ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
-.surface-credits { margin: 0.8rem 0 0; font-size: 0.7rem; line-height: 1.5; color: rgba(242, 239, 232, 0.6); }
-.surface-credits a { color: inherit; }
+/* the models' credits, under the corner's buttons */
+.surface-corner { flex-wrap: wrap; justify-content: flex-end; max-width: min(380px, calc(100vw - 32px)); }
+.surface-credits-corner { flex-basis: 100%; font-size: 0.7rem; line-height: 1.5; color: rgba(242, 239, 232, 0.6); text-align: right; }
+.surface-credits-corner[open] { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; background: rgba(6, 8, 14, 0.82); backdrop-filter: blur(10px); text-align: left; }
+.surface-credits-corner ul { margin: 0.4rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
+.surface-credits-corner a { color: inherit; }
 
 /* leaving: the screen goes */
 .surface-fade { position: absolute; z-index: 4; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.7s ease-in; }

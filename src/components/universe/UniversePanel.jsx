@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiLayoutGridLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { restartSite } from '../../lib/restart';
+import GuideLink from '../guide/GuideLink';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
@@ -64,12 +65,15 @@ function Fitted({ loadout, onHangar }) {
   );
 }
 
-// Put the panel away, from its top corner
+// Put the panel away, from its top corner (and the guide, beside it)
 function Tuck({ onTuck }) {
   return (
-    <button type="button" className="universe-tuck" onClick={() => onTuck(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
-      <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
-    </button>
+    <>
+      <button type="button" className="universe-tuck" onClick={() => onTuck(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
+        <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <GuideLink className="universe-tuck universe-guide" />
+    </>
   );
 }
 
@@ -101,6 +105,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
             <RiSideBarLine className="h-4 w-4" aria-hidden="true" /> Show the panel
           </span>
         </button>
+        <GuideLink className="universe-guide-tucked" />
       </aside>
     );
   }
