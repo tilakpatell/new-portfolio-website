@@ -110,7 +110,7 @@ export const PAGES = {
       ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting things up. The guns lock on to whoever’s coming: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
-      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say.'],
+      ['Happenings', 'A Star Destroyer drops out of hyperspace and launches its fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and its shockwave rattles the ship, a rift tears open ahead (fly into it and it takes you somewhere else on the map), and something enormous swims past: purrgil, or a Cromulon with something to say. A stream of rocks crosses your path (shoot them, or steer round them), and now and then a bounty hunter comes for you alone: Boba Fett in Slave I, or Phoenixperson.'],
       ['The black hole', 'The one thing out there you don’t come back from. On its far side is a friend’s universe; Back brings you home.'],
       ['Online', 'Multiplayer, bottom left: everyone else flying the map is there in their own ships. Fly together, or shoot each other down.'],
     ],

@@ -141,6 +141,45 @@ export function offset(w, d, s, R) {
   return { n: unit(rotate(w.n, axis, a)), f: unit(flat(rotate(w.f, axis, a), unit(rotate(w.n, axis, a)))) };
 }
 
+// ── A landing's things (landings/), round where the ship comes down ──
+// A thing at (x, z) metres on a flat frame laid at `frame` ({ n, f }: the
+// spot, and the way it faces), three.js's way round (+z ahead, +x to its
+// left, n × f, and up out of the ground), put on the sphere: where it
+// stands, and which way its own +z faces (`yaw`, turned as three.js turns
+// a thing about its up: +z round toward +x)
+export function place(frame, x, z, R, yaw = 0) {
+  const o = offset(frame, z * METRE, -x * METRE, R);
+  return { n: o.n, f: yaw ? unit(rotate(o.f, o.n, yaw)) : o.f };
+}
+
+// A thing's solids, in its own frame in metres (a builder's: { circle: [x,
+// z, r] } or { box: [x, z, hw, hd, yaw?] }), as circles along the ground
+// round where it stands (`spot`, as place gives): what walk() goes round. A
+// box is a row of circles down its length, each as wide as it is.
+export function solidsOn(spot, solids, R) {
+  const out = [];
+  const at = (x, z, r) => out.push({ n: place(spot, x, z, R).n, r: r * METRE });
+  for (const s of solids ?? []) {
+    if (s.circle) at(...s.circle);
+    else if (s.box) {
+      const [x, z, hw, hd, yaw = 0] = s.box;
+      const long = Math.max(hw, hd);
+      const r = Math.max(Math.min(hw, hd), 0.3);
+      const c = Math.cos(yaw);
+      const sn = Math.sin(yaw);
+      // down its long side (its x or its z, turned by its yaw)
+      const [ax, az] = hw >= hd ? [c, -sn] : [sn, c];
+      const reach = Math.max(0, long - r);
+      const count = Math.min(24, Math.max(1, Math.ceil(reach / r) + 1));
+      for (let i = 0; i < count; i++) {
+        const t = count > 1 ? -reach + (2 * reach * i) / (count - 1) : 0;
+        at(x + ax * t, z + az * t, r);
+      }
+    }
+  }
+  return out;
+}
+
 // the distance along the ground between two people (or spots), map units
 export const apart = (a, b, R) => Math.acos(clamp(dot(a.n, b.n), -1, 1)) * R;
 
