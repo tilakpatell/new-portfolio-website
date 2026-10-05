@@ -12,7 +12,9 @@
 // rolls and flies upside down, and "up" on the stick is always up on the
 // screen. Input is { throttle: −1…1, turn, climb, roll: −1…1, boost, and
 // the visitor's sensitivity: turnRate, pitchRate, rollRate and level (1 as
-// it comes: controls.js) }. Each turn has a little inertia (`rate`,
+// it comes: controls.js), and `tune`, what the parts fitted in the hangar
+// do (outfit.js's statsOf: boost, accel, cruise, agility and level, each 1
+// as it comes) }. Each turn has a little inertia (`rate`,
 // `tipRate`, `rollRate`, radians a second, easing toward what the stick
 // asks), so it rolls into and out of everything rather than snapping, and
 // all of it is slower the faster it goes. Let go of the roll and the nose
@@ -104,7 +106,9 @@ export function ceilingAt(x, z) {
   const k = clamp((Math.sqrt(x * x + z * z) - DEEP.system) / (DEEP.open - DEEP.system), 0, 1);
   return SHIP.ceiling + (DEEP.ceiling - SHIP.ceiling) * k * k * (3 - 2 * k);
 }
-export const boostAt = (x, y, z) => SHIP.boost + (SHIP.pulse - SHIP.boost) * openness(x, y, z);
+// (`boost`, a boost of its own: boosters fitted, which push the boost at home
+// harder; the pulse drive out in the open is the same for everyone)
+export const boostAt = (x, y, z, boost = SHIP.boost) => boost + (SHIP.pulse - boost) * openness(x, y, z);
 export const brakeAt = (x, y, z) => SHIP.brake * (1 + 3 * openness(x, y, z));
 const coastAt = (x, y, z) => SHIP.coast * (1 + 4 * openness(x, y, z));
 // how much of the full turn it has at a speed: all of it up to cruise,
@@ -229,13 +233,19 @@ export function step(s, input, dt, solids = SOLIDS) {
   const turn = clamp(input.turn || 0, -1, 1);
   const climb = clamp(input.climb || 0, -1, 1);
   const roll = clamp(input.roll || 0, -1, 1);
-  const turnK = clamp(input.turnRate ?? 1, 0.25, 3);
-  const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3);
-  const rollK = clamp(input.rollRate ?? 1, 0.25, 3);
-  const levelK = clamp(input.level ?? 1, 0, 3);
+  // what's fitted (held to what any fit can do)
+  const tune = input.tune;
+  const boost = SHIP.boost * clamp(tune?.boost ?? 1, 1, 1.6);
+  const cruise = SHIP.cruise * clamp(tune?.cruise ?? 1, 1, 1.2);
+  const accelK = clamp(tune?.accel ?? 1, 1, 1.8);
+  const agileK = clamp(tune?.agility ?? 1, 0.6, 1.4);
+  const turnK = clamp(input.turnRate ?? 1, 0.25, 3) * agileK;
+  const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3) * agileK;
+  const rollK = clamp(input.rollRate ?? 1, 0.25, 3) * agileK;
+  const levelK = clamp(input.level ?? 1, 0, 3) * clamp(tune?.level ?? 1, 1, 1.8);
   const open = input.interdicted ? 0 : openness(s.x, s.y, s.z);
-  const limit = input.interdicted ? SHIP.boost : boostAt(s.x, s.y, s.z);
-  const top = input.boost && throttle > 0 ? limit : SHIP.cruise;
+  const limit = input.interdicted ? boost : boostAt(s.x, s.y, s.z, boost);
+  const top = input.boost && throttle > 0 ? limit : cruise;
   const want = throttle > 0 ? throttle * top : throttle * SHIP.reverse;
   const faster = Math.abs(want) > Math.abs(s.speed) && Math.sign(want) !== -Math.sign(s.speed);
   // past what the boost allows where it is now (coming home at pulse speed),
@@ -244,7 +254,7 @@ export function step(s, input, dt, solids = SOLIDS) {
   let accel = brakeAt(s.x, s.y, s.z);
   if (over) accel = SHIP.drop;
   else if (throttle === 0) accel = coastAt(s.x, s.y, s.z);
-  else if (faster) accel = input.boost ? SHIP.accel * 1.8 + (s.speed > SHIP.boost - 1 ? SHIP.pulseAccel * open : 0) : SHIP.accel;
+  else if (faster) accel = (input.boost ? SHIP.accel * 1.8 + (s.speed > boost - 1 ? SHIP.pulseAccel * open : 0) : SHIP.accel) * accelK;
   const speed = s.speed + clamp((over ? Math.min(want, limit) : want) - s.speed, -accel * dt, accel * dt);
 
   // the turns, about the ship's own axes, each toward the rate the stick

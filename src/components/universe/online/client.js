@@ -1,11 +1,10 @@
 // The multiplayer link: everyone on the site who's gone online, in one
 // room (nostr.js: public Nostr relays carry everything, so it works from
 // any network, and no pilot sees another's IP address; the site is static,
-// so there's no server of its own). It
-// keeps who's here (their callsign, ship, kills, which page they're on, and
-// whether you're allies), where each was last seen on the universe map, the
-// shots they fire there, and their pointer on any other page, and sends
-// yours. The scene (scene.js, pilots.js) reads poses and shots from it each
+// so there's no server of its own). It keeps who's here (their callsign,
+// ship and what's fitted to it, kills, which page they're on, and whether you're
+// allies), where each was last seen on the universe map, the shots they
+// fire there, and their pointer on any other page, and sends yours. The scene (scene.js, pilots.js) reads poses and shots from it each
 // frame, Presence.jsx the pointers; the page (useOnline.js, Online.jsx)
 // shows the roster and what's happening. protocol.js has the wire and the
 // rules for what's believed.
@@ -18,8 +17,8 @@
 // can't be asked for again straight away, and anyone who goes quiet is
 // dropped. A heartbeat keeps you on everyone's list while you sit still.
 //
-// createClient({ name, kind, where }) → { selfId, on(fn) → off, snapshot(),
-//   setProfile({ name, kind, where }), pose(ship, { hidden, boost, safe,
+// createClient({ name, kind, loadout, where }) → { selfId, on(fn) → off, snapshot(),
+//   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
 //   shield }), shot(at, v), hit(peerId), down(byId), cursor(x, y, touch),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   peers, takeShots(), leave() }
@@ -30,6 +29,7 @@
 
 import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
 import { UNIVERSE, placeName } from './where';
+import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -41,8 +41,8 @@ const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinRoom }));
 
-export function createClient({ name, kind = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
-  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, kills: 0, where };
+export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
+  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), kills: 0, where };
   const peers = new Map();
   const listeners = new Set();
   let status = 'connecting'; // connecting | online | failed | left
@@ -61,7 +61,8 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const hello = () => ({ n: self.name, k: self.kind, c: self.kills, w: self.where });
+  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), c: self.kills, w: self.where });
+  const same = (a, b) => Object.keys(STOCK_LOADOUT).every((slot) => a[slot] === b[slot]);
 
   const peerOf = (id) => {
     let p = peers.get(id);
@@ -70,6 +71,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
         id,
         name: null,
         kind: null,
+        loadout: STOCK_LOADOUT,
         kills: 0, // the ones this browser saw
         where: null,
         ally: 'none',
@@ -182,10 +184,11 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       if (!p) return;
       const first = p.name === null;
       const was = p.where;
-      const changed = first || p.name !== h.name || p.kind !== h.kind || p.where !== h.where;
+      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || p.where !== h.where;
       // (their own count of their kills isn't taken: p.kills is what this browser saw)
       p.name = h.name;
       p.kind = h.kind;
+      p.loadout = h.loadout;
       p.where = h.where;
       if (was !== p.where) p.cur = null; // (a pointer is only good on the page it was on)
       if (first) feed(`${p.name} came online`, 'join');
@@ -214,7 +217,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
       p.shotAt = t;
       p.shots.push({ p: s.p, v: s.v, at: t });
       if (p.shots.length > AIMS) p.shots.shift();
-      shots.push({ id: peerId, kind: p.kind, ...s });
+      shots.push({ id: peerId, kind: p.kind, paint: p.loadout.paint, guns: p.loadout.guns, ...s });
       if (shots.length > SHOTS) shots.shift();
     };
     hit.onMessage = (data, { peerId }) => {
@@ -312,15 +315,17 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadR
     // for the page: who's here, as plain data
     snapshot() {
       const list = [];
-      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
+      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
+      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where }, peers: list };
     },
-    setProfile({ name: n = self.name, kind: k = self.kind, where: w = self.where } = {}) {
+    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, where: w = self.where } = {}) {
       const clean = cleanName(n) ?? self.name;
-      if (clean === self.name && k === self.kind && w === self.where) return;
+      const fit = readLoadout(l);
+      if (clean === self.name && k === self.kind && same(fit, self.loadout) && w === self.where) return;
       self.name = clean;
       self.kind = k;
+      self.loadout = fit;
       self.where = w;
       if (!k) me = null;
       send?.hi(hello());

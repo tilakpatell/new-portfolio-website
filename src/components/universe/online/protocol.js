@@ -12,8 +12,8 @@
 // than the guns fire.
 //
 // The wire, by action:
-//   hi    { n: name, k: ship kind or null, c: kills, w: where on the site }
-//                                                       on joining, and on any change
+//   hi    { n: name, k: ship kind or null, p: its paint job, o: its parts
+//           (outfit.js), c: kills, w: where on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
 //   shot  [x, y, z, vx, vy, vz]                          a bolt fired (for drawing it)
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit
@@ -25,6 +25,7 @@
 //                                                       where you're reading
 
 import { parseShip } from '../crews';
+import { readOutfit } from '../outfit';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
@@ -53,10 +54,13 @@ export const FLAG = { hidden: 1, boost: 2 };
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// a hello: { name, kind, kills, where }, or null if it isn't one
+// a hello: { name, kind, loadout, kills, where }, or null if it isn't one
+// (a loadout is only ever outfit.js's ids, never a colour or a shape: the
+// factory's for anything else, or from a pilot whose site is older than
+// the hangar)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
 }
 
 export const writeCursor = (x, y, touch = false) => [Math.round(x), Math.round(y), touch ? 1 : 0];

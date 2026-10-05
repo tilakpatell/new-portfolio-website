@@ -277,6 +277,24 @@ describe('deep space', () => {
     expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
   });
 
+  it('boosts harder at home with boosters fitted, and gets there sooner, but no faster out there', () => {
+    const tune = { boost: 1.55, accel: 1.3 };
+    expect(fly(spawn(null), { throttle: 1, boost: true, tune }, 3.5, []).ship.speed).toBeCloseTo(SHIP.boost * 1.55, 1); // (still in the home system)
+    const stock = fly(spawn(null), { throttle: 1, boost: true }, 1, []).ship.speed;
+    expect(fly(spawn(null), { throttle: 1, boost: true, tune }, 1, []).ship.speed).toBeGreaterThan(stock * 1.2);
+    expect(fly(open, { throttle: 1, boost: true, tune }, 6, []).ship.speed).toBeLessThanOrEqual(SHIP.pulse + 0.01);
+    // (and a tune that's out of reach of any fit is held to what one can do)
+    expect(fly(spawn(null), { throttle: 1, boost: true, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
+  });
+
+  it('turns quicker with thrusters fitted, and cruises faster with racing exhausts', () => {
+    const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
+    const stock = fly(s, { throttle: 1, turn: 1 }, 1, []).ship;
+    const agile = fly(s, { throttle: 1, turn: 1, tune: { agility: 1.3 } }, 1, []).ship;
+    expect(Math.abs(agile.rate)).toBeGreaterThan(Math.abs(stock.rate) * 1.25);
+    expect(fly(s, { throttle: 1, tune: { cruise: 1.15 } }, 4, []).ship.speed).toBeCloseTo(SHIP.cruise * 1.15, 1);
+  });
+
   it('is cut back to the boost while hunters have it interdicted', () => {
     const pulsing = fly(open, { throttle: 1, boost: true }, 6, []).ship;
     expect(pulsing.speed).toBeGreaterThan(SHIP.pulse - 2);

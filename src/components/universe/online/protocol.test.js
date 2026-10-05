@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DAMAGE, FLOOD, GUARD, NAME_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, randomCallsign, readCursor, readHello, readHit, readPose, readShot, sample, writeCursor, writePose, writeShot } from './protocol';
+import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -39,11 +40,18 @@ describe('randomCallsign', () => {
 
 describe('readHello', () => {
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, kills: 3, where: '/middle-earth' });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, kills: 0, where: null });
+  });
+  it('reads the paint job and parts fitted, and only ones it knows', () => {
+    const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
+    expect(readHello({ n: 'A', k: 'falcon', p: 'sith', o: writeOutfit(l) }).loadout).toEqual(l);
+    // a colour, a shape, a part in the wrong slot or too many: none of it's believed
+    expect(readHello({ n: 'A', k: 'falcon', p: '#ff0000', o: ['fusion', { r: 1 }, '<b>', 'portal', 'fins', 'srb', 'srb'] }).loadout).toEqual({ ...STOCK_LOADOUT, fins: 'fins' });
+    expect(readHello({ n: 'A', k: 'falcon', p: 'aws', o: 'srb' }).loadout).toEqual({ ...STOCK_LOADOUT, paint: 'aws' });
   });
   it('is null for anything that is not an object', () => {
     expect(readHello(null)).toBeNull();

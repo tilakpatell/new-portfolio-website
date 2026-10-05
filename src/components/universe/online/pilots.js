@@ -1,5 +1,6 @@
 // Everyone else flying the universe map, drawn: each pilot's ship (the one
-// they picked, the same models as your own), moved smoothly between the
+// they picked, the same models as your own, in the paint job and with the
+// parts they fitted in the hangar: outfit.js), moved smoothly between the
 // poses that come in (protocol.js's sample), with their callsign over it
 // (a DOM tag, like the planets' names, set as text only) and their shields
 // under it once they've taken a hit; and their shots, as bolts. Your own
@@ -17,6 +18,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { disposeTree } from '../../../lib/three/renderer';
 import { SHIP_MODELS, buildShip } from '../shipModels';
+import { paintById } from '../paint';
+import { PARTS_SLOTS, STOCK, STOCK_LOADOUT, partById } from '../outfit';
 import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
 import { sample } from './protocol';
@@ -32,7 +35,7 @@ const TAG_FAR = 140; // map units: no tag past this
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
 export function createPilots(parent, { T = {}, colors = {} } = {}) {
-  const ships = new Map(); // peer id → { kind, model, tag, at, vel, shown, ally }
+  const ships = new Map(); // peer id → { kind, loadout, model, tag, at, vel, shown, ally }
   const cache = new Map(); // url → Promise<scene | null>
   let disposed = false;
 
@@ -63,6 +66,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
         if (!scene || disposed || sh?.model !== model) return;
         const copy = scene.clone(true);
         copy.traverse((o) => (o.userData.shared = true));
+        model.dress(copy, { clone: true }); // (its own materials, for its own paint)
         if (!model.mount(copy)) copy.removeFromParent();
       });
     }
@@ -75,18 +79,19 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
       tag.append(name, bar);
       tags.append(tag);
     }
-    return { kind, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, ally: false, tagOn: null };
+    return { kind, loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, ally: false, tagOn: null };
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
   const boltGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.28, 6).rotateX(Math.PI / 2);
-  const boltMats = new Map();
-  const matFor = (kind) => {
-    if (!boltMats.has(kind)) boltMats.set(kind, new THREE.MeshBasicMaterial({ color: new THREE.Color(colors[kind] ?? '#ff4a3d').multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    return boltMats.get(kind);
+  const boltMats = new Map(); // by colour: the ship's own, or its paint job's
+  const matFor = (color) => {
+    if (!boltMats.has(color)) boltMats.set(color, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    return boltMats.get(color);
   };
+  const boltColor = (kind, paint) => paintById(paint).bolt ?? colors[kind] ?? '#ff4a3d';
   const bolts = Array.from({ length: BOLTS }, () => {
-    const m = new THREE.Mesh(boltGeo, matFor(null));
+    const m = new THREE.Mesh(boltGeo, matFor(boltColor(null, STOCK)));
     m.visible = false;
     m.rotation.order = 'YXZ';
     m.userData = { life: 0, v: new THREE.Vector3() };
@@ -95,7 +100,9 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
   });
   const fireBolt = (s) => {
     const b = bolts.find((m) => !m.visible) ?? bolts[0];
-    b.material = matFor(s.kind);
+    b.material = matFor(boltColor(s.kind, s.paint));
+    const k = partById('guns', s.guns)?.bolt ?? 1; // (a fusion cannon's are bigger)
+    b.scale.set(k, k, 1 + (k - 1) * 0.4);
     b.position.set(...s.p);
     b.userData.v.set(...s.v);
     b.userData.life = BOLT_LIFE;
@@ -132,6 +139,13 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
           sh = build(p.id, p.kind, view?.tags ?? null);
           ships.set(p.id, sh);
         }
+        if (sh.loadout !== p.loadout) {
+          // (what they fitted: a new loadout's a new object, so only then)
+          const was = sh.loadout;
+          sh.loadout = p.loadout;
+          if (was.paint !== p.loadout.paint) sh.model.paint(paintById(p.loadout.paint));
+          if (PARTS_SLOTS.some((slot) => was[slot] !== p.loadout[slot])) sh.model.outfit(p.loadout); // (in the paint it wears)
+        }
         const s = sample(p.snaps, now);
         const on = Boolean(s && !s.hidden);
         const was = sh.shown;
@@ -146,6 +160,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
           g.rotation.set(s.pitch, s.heading, -s.bank, 'YXZ'); // (any way round: loops, rolls, upside down)
           sh.model.setThrottle(Math.min(1, Math.abs(s.speed) / SHIP.cruise) * (s.boost ? 1 : 0.7));
           sh.model.update(now / 1000);
+          sh.model.drive(dt, { throttle: Math.min(1, Math.abs(s.speed) / SHIP.cruise), boost: s.boost });
           // where it was last frame too (just come into view, it hasn't come from anywhere)
           if (was) sh.prev.copy(sh.at);
           else sh.prev.set(s.x, s.y, s.z);
@@ -211,7 +226,7 @@ export function createPilots(parent, { T = {}, colors = {} } = {}) {
     // what the guns can lock on to: everyone in view who isn't an ally
     get targets() {
       const out = [];
-      for (const [id, sh] of ships) if (sh.shown && !sh.ally) out.push({ id: `p:${id}`, peer: id, at: sh.at, vel: sh.vel, size: SIZE, kind: sh.kind, name: sh.name });
+      for (const [id, sh] of ships) if (sh.shown && !sh.ally) out.push({ id: `p:${id}`, peer: id, at: sh.at, vel: sh.vel, size: SIZE, kind: sh.kind, loadout: sh.loadout, name: sh.name });
       return out;
     },
     get count() {

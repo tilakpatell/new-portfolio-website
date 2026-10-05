@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
+import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 
 // Going online, for the whole site (OnlineProvider.jsx holds it, so the
 // link stays up from page to page): whether you are (asked once on the
-// universe map, then remembered for next time), your callsign and ship,
+// universe map, then remembered for next time), your callsign and ship (and
+// what's fitted to it in the hangar),
 // which page you're on, the link to the other pilots while you're on
 // (client.js, loaded only then; the universe scene and Presence.jsx read
 // it), who's here, and a short feed of what's happening (who came online or
@@ -33,14 +35,16 @@ export function useOnlineState(where) {
   const [name, setName] = useState(() => cleanName(local.get(NAME_KEY)));
   const [on, setOn] = useState(() => local.get(ONLINE_KEY) === 'on' && Boolean(name));
   const [kind, setKind] = useState(() => (typeof local.get(SHIP_KEY) === 'string' ? local.get(SHIP_KEY) : null));
+  // (as it was last fitted; the universe page says what it flies with now)
+  const [loadout, setLoadout] = useState(() => (kind && readLoadouts(local.get(LOADOUT_KEY), [kind])[kind]) || STOCK_LOADOUT);
   const [client, setClient] = useState(null);
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
   const [away, setAway] = useState(false); // the tab's been in the background a while
   const [pointers, setPointers] = useState(() => local.get(POINTERS_KEY) !== 'off');
-  const latest = useRef({ name, kind, where });
-  latest.current = { name, kind, where };
+  const latest = useRef({ name, kind, loadout, where });
+  latest.current = { name, kind, loadout, where };
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -108,8 +112,8 @@ export function useOnlineState(where) {
   }, [on, attempt, away]);
 
   useEffect(() => {
-    client?.setProfile({ name, kind, where });
-  }, [client, name, kind, where]);
+    client?.setProfile({ name, kind, loadout, where });
+  }, [client, name, kind, loadout, where]);
 
   const keepName = (callsign) => {
     const next = cleanName(callsign) ?? name ?? randomCallsign();
@@ -127,6 +131,7 @@ export function useOnlineState(where) {
     feed,
     pointers, // live pointers off the map, yours and theirs
     setKind, // the universe page says which ship you fly
+    setLoadout, // and what's fitted to it
     suggest: () => name ?? randomCallsign(),
     goOnline(callsign) {
       keepName(callsign);

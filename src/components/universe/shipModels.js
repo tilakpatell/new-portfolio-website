@@ -9,13 +9,21 @@
 // Each part of one colour is merged into one mesh, so a ship is a handful of
 // draws.
 //
-// buildShip(kind, textures) → { group, setThrottle(0…1), mount(model, extra), update(t), dispose() }
+// Any of them can wear a paint job (paint.js, put on by livery.js): its
+// hull and markings recoloured, its engines' glow too; and carry the parts
+// fitted in the hangar (outfit.js), bolted on by modules.js.
+//
+// buildShip(kind, textures) → { group, setThrottle(0…1), paint(paint),
+//   outfit(loadout) → modules, modules, drive(dt, motion), dress(model,
+//   { clone }), mount(model, extra), update(t), dispose() }
 // Every ship points along −z, centred, about LENGTH long (they're built at
 // BUILT long and scaled down as a whole).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { tiled } from './kit';
+import { createLivery } from './livery';
+import { buildModules } from './modules';
 
 export const LENGTH = 0.26; // small against the planets
 export const BUILT = 0.36; // the length the ships below are built at
@@ -258,6 +266,19 @@ const FALCON_NOSE = Math.PI / 2;
 
 const BUILD = { xwing, falcon, cruiser, rv };
 
+// How a paint job sits on each ship's model (livery.js), read off its
+// texture: a plain panel's luminance, the saturation its markings stand out
+// by (the X-wing's stripes, the cruiser's lights), or the darkness (the
+// Falcon's darker plates, the RV's brown stripe and trim), and below what
+// it's glass or a vent and left alone. `built` is the shapes above.
+const FIT = {
+  built: { mid: 0.4, marks: [0.5, 0.7], keep: 0.04 },
+  xwing: { mid: 0.26, marks: [0.45, 0.65], keep: 0.05 },
+  falcon: { mid: 0.27, marks: [0.3, 0.5], dark: [0.15, 0.2, 1], keep: 0.06 },
+  rv: { mid: 0.32, marks: [0.58, 0.7], dark: [0.06, 0.1, 0.7], keep: 0.03 },
+  cruiser: { mid: 0.28, marks: [0.5, 0.7], keep: 0.05 },
+};
+
 // the models that take over from the built ships, when they load (the
 // cruiser is built by the C-137 page's own code instead; see scene.js)
 // (the X-wing is the trench run's own, so a visitor who's flown one has it already)
@@ -271,24 +292,71 @@ export function buildShip(kind, T = {}) {
   const group = new THREE.Group();
   group.add(pivot);
   let mounted = null;
+  const livery = createLivery();
+  livery.apply(ship.group, FIT.built);
+  for (const g of ship.glow) g.own = g.color.clone();
+  let throttle = 0;
+  let coat = null; // the paint it wears
+  let modules = null; // the parts bolted on
+  const glow = () => {
+    for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.5 + 2.8 * throttle); // past 1 at speed, so it blooms
+  };
   return {
     update(t) {
       mounted?.update?.(t);
     },
     dispose() {
       mounted?.dispose?.();
+      modules?.dispose();
+      livery.dispose();
     },
     group,
     pivot,
     setThrottle(k) {
-      for (const g of ship.glow) g.mat.color.copy(g.color).multiplyScalar(0.5 + 2.8 * k); // past 1 at speed, so it blooms
+      throttle = k;
+      glow();
+    },
+    // the parts fitted (outfit.js's loadout): the old ones off, these on, in
+    // the ship's paint
+    outfit(loadout) {
+      if (modules) {
+        modules.group.removeFromParent();
+        modules.dispose();
+      }
+      modules = buildModules(kind, loadout, ENGINES[kind] ?? []);
+      livery.apply(modules.group, FIT.built);
+      ship.group.add(modules.group);
+      return modules;
+    },
+    get modules() {
+      return modules;
+    },
+    // the parts' lights and vanes, as it flies: { throttle, boost, turn, climb }
+    drive(dt, motion) {
+      modules?.update(dt, motion);
+    },
+    // a paint job (paint.js), or the factory's
+    paint(p) {
+      coat = p?.hull ? p : null;
+      livery.set(coat);
+      for (const g of ship.glow) g.color.set(coat?.glow ?? g.own);
+      mounted?.tint?.(coat?.glow ?? null);
+      glow();
+    },
+    // the ship's model, taught the paint before it's mounted (and before its
+    // shaders are made, so mounting it doesn't stall); `clone` when its
+    // materials are shared with others
+    dress(model, { clone = false } = {}) {
+      return model ? livery.apply(model, FIT[kind] ?? FIT.built, { clone }) : model;
     },
     // the ship's model, when it comes: sized to the stand-in, which goes.
     // `extra` is what a built model brings: update(t) each frame, dispose(),
-    // and whether it has its own engine glow
+    // whether it has its own engine glow and tint(color) for it
     mount(model, extra = {}) {
       if (!ship.stand || !model) return false;
       mounted = extra;
+      livery.apply(model, FIT[kind] ?? FIT.built); // (if it wasn't dressed already)
+      if (coat) extra.tint?.(coat.glow);
       const box = new THREE.Box3().setFromObject(model);
       const dims = box.getSize(new THREE.Vector3());
       model.position.sub(box.getCenter(new THREE.Vector3()));
