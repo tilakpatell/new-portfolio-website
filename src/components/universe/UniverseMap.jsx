@@ -25,9 +25,12 @@ import MiniMap from './MiniMap';
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
+// The map button (and M) opens the nav map (the page's: NavMap.jsx); `drive`
+// is the one picked there, how the ship goes anywhere it's sent, and
+// `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -81,6 +84,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       tags,
       prompt,
       frozen,
+      drive,
+      charting,
       onPick: onSelect,
       onOpen,
       onLand,
@@ -118,6 +123,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       dive: (id) => view.current?.dive?.(id) ?? 0,
       escape: () => view.current?.escape?.() ?? false,
       whole: () => view.current?.whole?.() ?? false,
+      travel: (id, d) => view.current?.travel?.(id, d) ?? false,
+      where: () => view.current?.where?.() ?? null,
     };
   }, [handle, on, view]);
 
@@ -194,6 +201,16 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
             ))}
           </ul>
           <div ref={tags} className="universe-tags" aria-hidden="true" />
+          {on && onMap && (
+            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
+                <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" />
+              </svg>
+            </button>
+          )}
           {ship && on && (
             <>
               <div ref={stick} className="universe-stick" aria-hidden="true">

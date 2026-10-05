@@ -565,6 +565,57 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   }
   let dustNext = 0;
 
+  // ── rubber on the road: where the back tyres slid, a dark strip each, the
+  // oldest painted over when they run out (one draw) ──
+  const MARKS = mobile ? 160 : 360;
+  const markMat = own(new THREE.MeshBasicMaterial({ color: 0x15120f, transparent: true, opacity: 0.4, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+  const marks = new THREE.InstancedMesh(own(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), markMat, MARKS);
+  marks.frustumCulled = false;
+  marks.renderOrder = -1; // straight after the ground: under the smoke, the rings at the doors and the ghosts
+  {
+    const none = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (let i = 0; i < MARKS; i++) marks.setMatrixAt(i, none);
+  }
+  scene.add(marks);
+  owned.push(marks);
+  let markNext = 0;
+  const markFrom = [null, null]; // where each back tyre last left rubber (null: it wasn't sliding)
+  const markO = new THREE.Object3D();
+  const layMarks = (c, gy, on) => {
+    const sn = Math.sin(c.yaw);
+    const cs = Math.cos(c.yaw);
+    let laid = false;
+    for (let i = 0; i < 2; i++) {
+      if (!on) {
+        markFrom[i] = null;
+        continue;
+      }
+      const side = i ? 0.78 : -0.78;
+      const x = c.x - sn * 1.3 + cs * side;
+      const z = c.z - cs * 1.3 - sn * side;
+      const from = markFrom[i];
+      if (!from) {
+        markFrom[i] = { x, z };
+        continue;
+      }
+      const len = Math.hypot(x - from.x, z - from.z);
+      if (len < 0.4) continue;
+      // (a jump, back home or to a door: no strip across town)
+      if (len < 6) {
+        markO.position.set((x + from.x) / 2, gy + 0.068, (z + from.z) / 2);
+        markO.rotation.set(0, Math.atan2(x - from.x, z - from.z), 0);
+        markO.scale.set(0.24, 1, len + 0.08);
+        markO.updateMatrix();
+        marks.setMatrixAt(markNext, markO.matrix);
+        markNext = (markNext + 1) % MARKS;
+        laid = true;
+      }
+      from.x = x;
+      from.z = z;
+    }
+    if (laid) marks.instanceMatrix.needsUpdate = true;
+  };
+
   // ── the models ──
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const names = ['aztek', 'suv', ...new Set([...PLACES, ...LANDMARKS].map((p) => p.model)), 'house', ...Object.values(TOWN_MODELS), 'tank', 'cactus', 'tumbleweed', 'bucket'];
@@ -927,8 +978,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     town.update(dt, still ? 0 : clock, L.night);
     if (!still) for (const p of cast) p.update(clock, dt);
     smoke?.update(still ? 0 : dt, 0.3 + 0.7 * L.day);
-    tailMat.opacity = 0.16 + L.night * 0.34 + ((state.throttle ?? 0) < -0.1 ? 0.5 : 0);
-    // the car: where it is, leaning into the turn and back on the throttle
+    tailMat.opacity = 0.16 + L.night * 0.34 + ((state.throttle ?? 0) < -0.1 || state.handbrake ? 0.5 : 0);
+    // the car: where it is, its weight thrown out of the turn and back on the throttle
     const gy = groundHeight(c.x, c.z);
     const sn = Math.sin(c.yaw);
     const cs = Math.cos(c.yaw);
@@ -940,27 +991,39 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     ghosts.update(state.travellers ?? [], clock, dt);
     const accel = (c.speed - lastSpeed) / Math.max(dt, 1e-3);
     lastSpeed = c.speed;
-    roll += ((-(state.steer ?? 0) * Math.min(1, Math.abs(c.speed) / 18) * 0.06) - roll) * Math.min(1, dt * 6);
+    // its weight goes to the outside of a turn, by how hard it's cornering
+    // (a left turn is a positive yaw rate, and the left side comes up), and
+    // onto the side it's sliding toward
+    const slide = c.slide ?? 0;
+    const going = Math.hypot(c.speed, slide);
+    const cornering = THREE.MathUtils.clamp((c.speed * (c.yawRate ?? 0)) / 19, -1.2, 1.2);
+    roll += (cornering * 0.07 - THREE.MathUtils.clamp(slide * 0.008, -0.05, 0.05) - roll) * Math.min(1, dt * 6);
     pitch += ((-accel * 0.004) - pitch) * Math.min(1, dt * 5);
-    body.rotation.set(THREE.MathUtils.clamp(pitch, -0.05, 0.05), 0, roll);
+    body.rotation.set(THREE.MathUtils.clamp(pitch, -0.05, 0.05), 0, THREE.MathUtils.clamp(roll, -0.11, 0.11));
     body.position.y = Math.abs(c.speed) > 1 && !state.onRoad ? Math.sin(clock * 22) * 0.025 : 0;
     // Hank, and his lights when he's on you
     hank.position.set(state.hank.x, 0, state.hank.z);
     hank.rotation.y = state.hank.yaw;
     const flash = state.heat > 0.25 ? state.heat : 0;
     siren.forEach((s, i) => (s.material.opacity = flash * (Math.sin(clock * 14 + i * Math.PI) > 0 ? 1 : 0.15)));
-    // dust off the sand, the dirt, and a bump
-    if (state.bump > 4) shake = Math.min(1, state.bump / 20);
+    // dust off the sand, the dirt, and a bump; smoke off the tyres when
+    // they slide on the road, and the rubber they leave on it
+    if (state.bump > 4) shake = Math.max(shake, Math.min(1, state.bump / 20));
+    const slip = going > 2.5 ? (state.slip ?? 0) : 0;
+    const smoking = slip > 0.3;
+    layMarks(c, gy, smoking && state.onRoad && gy < 0.01);
     dustNext -= dt;
-    if ((Math.abs(c.speed) > 5 && !state.asphalt) || state.bump > 4) {
+    if ((going > 5 && !state.asphalt) || state.bump > 4 || smoking) {
       if (dustNext <= 0) {
-        dustNext = 0.05;
+        dustNext = smoking ? 0.03 : 0.05;
         const d = dust.find((p) => p.t >= 1);
         if (d) {
           d.t = 0;
           d.s.visible = true;
+          d.s.material.color.setHex(state.asphalt ? 0xe2ddd4 : 0xd9bf98);
           d.s.position.set(c.x - Math.sin(c.yaw) * 2.3 + (Math.random() - 0.5), gy + 0.5, c.z - Math.cos(c.yaw) * 2.3 + (Math.random() - 0.5));
-          d.v.set((Math.random() - 0.5) * 1.2, 0.8 + Math.random(), (Math.random() - 0.5) * 1.2);
+          // (a slide's smoke is left behind where the car was going, not where it points)
+          d.v.set((Math.random() - 0.5) * 1.2 + (smoking ? cs * slide * 0.12 : 0), 0.8 + Math.random(), (Math.random() - 0.5) * 1.2 - (smoking ? sn * slide * 0.12 : 0));
         }
       }
     }
@@ -1029,11 +1092,21 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       }
     }
 
-    // the camera: from over the town, down behind the car, and after it
-    const fwd = v.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+    // the camera: from over the town, down behind the car, and after it. In
+    // a slide it sits between where the car points and where it's going, so
+    // the tail is seen to come round; into a turn it looks a little ahead.
+    // (a blend of the two directions, by how much of its speed is sideways:
+    // none of it driving straight, forwards or back, and it comes and goes
+    // without a step however the car is turned)
+    const follow = state.follow ?? 1;
+    const drift = going > 0.5 ? 0.6 * Math.min(1, Math.abs(slide) / (0.35 * Math.abs(c.speed) + 2)) * Math.min(1, going / 5) : 0;
+    const fwd = v.set(sn + ((sn * c.speed + cs * slide) / Math.max(going, 0.5) - sn) * drift, 0, cs + ((cs * c.speed - sn * slide) / Math.max(going, 0.5) - cs) * drift);
+    if (fwd.lengthSq() > 1e-4) fwd.normalize();
+    else fwd.set(sn, 0, cs);
     const back = mobile ? 11 : 9.5;
     want.set(c.x - fwd.x * back, gy + (mobile ? 5.2 : 4.4) + Math.max(0, c.speed) * 0.04, c.z - fwd.z * back);
-    look.set(c.x + fwd.x * 5, gy + 2.3, c.z + fwd.z * 5); // a little up, for the sky
+    const lead = THREE.MathUtils.clamp((c.yawRate ?? 0) * 1.4, -2.2, 2.2) * Math.min(1, going / 8);
+    look.set(c.x + fwd.x * 5 + Math.cos(c.yaw) * lead, gy + 2.3, c.z + fwd.z * 5 - Math.sin(c.yaw) * lead); // a little up, for the sky
     if (intro < 1) {
       intro = Math.min(1, intro + dt / 2.8);
       const k = intro * intro * (3 - 2 * intro);
@@ -1045,7 +1118,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camLook.copy(look);
     } else {
       // parked for a while (and not at a door): the camera drifts out and round, for the view
-      idle = Math.abs(c.speed) < 0.4 && !state.near && !still ? idle + dt : 0;
+      idle = going < 0.4 && !state.near && !still ? idle + dt : 0;
       const wander = Math.min(1, Math.max(0, idle - 7) / 5);
       if (wander > 0) {
         orbit += dt * 0.11;
@@ -1053,9 +1126,9 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         want.set(c.x + Math.sin(a) * 24, gy + 7 + wander * 5, c.z + Math.cos(a) * 24);
         look.set(c.x, gy + 2.2 + wander * 3, c.z);
       } else orbit = 0;
-      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 4));
+      const k = 1 - Math.exp(-dt * (wander > 0 ? 0.9 : 4 * follow));
       camPos.lerp(want, k);
-      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 8)));
+      camLook.lerp(look, 1 - Math.exp(-dt * (wander > 0 ? 1.5 : 8 * follow)));
     }
     camera.position.copy(camPos);
     // never under a dune, and never inside a building: come in towards the car until it's out
@@ -1074,7 +1147,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       shake = Math.max(0, shake - dt * 2.5);
     }
     camera.lookAt(camLook);
-    const fovWant = 58 + Math.min(1, Math.max(0, c.speed) / 24) * 8;
+    const fovWant = 58 + Math.min(1, going / 24) * 8;
     if (Math.abs(fovWant - fov) > 0.05) {
       fov += (fovWant - fov) * Math.min(1, dt * 3);
       camera.fov = fov;

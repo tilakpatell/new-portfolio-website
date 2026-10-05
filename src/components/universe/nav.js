@@ -34,7 +34,7 @@ export const DRIVES = [
   {
     id: 'super',
     name: 'Super speed',
-    verb: 'Go',
+    verb: 'Super speed',
     od: OVERDRIVE,
     about: `The pulse drive pushed to ${OVERDRIVE}× its speed, about half the trip. You fly the whole way and can take the stick back any time.`,
   },

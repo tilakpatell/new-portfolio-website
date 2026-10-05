@@ -9,15 +9,22 @@
 // it's dropped, and a flood gets them muted), and a hit is believed only
 // from someone who isn't an ally, fired a shot that would have passed near
 // you a moment ago (aimedAt), was close enough, and isn't hitting faster
-// than the guns fire.
+// than the guns fire. The hunters after a pilot are theirs to fly: what they
+// say of them is only drawn, and a hit on one of yours by someone else is
+// believed only from a pilot who's here, has just fired and is close to it
+// (any pilot here can still clear your hunters for you: that's the point).
 //
 // The wire, by action:
 //   hi    { n: name, k: ship kind or null, p: its paint job, o: its parts
 //           (outfit.js), c: kills, w: where on the site }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
+//         (flags: hidden, boosting, and safe: just back, your hits don't count)
 //   shot  [x, y, z, vx, vy, vz]                          a bolt fired (for drawing it)
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit
 //   down  { b: who shot you down }                       to everyone, when your shields go
+//   pack  [[id, kind, x, y, z, vx, vy, vz, hits left], …] five times a second while hunters are
+//                                                       after you and someone's there to see ([]: gone)
+//   hhit  { i: hunter id, d: damage }                    to the pilot a hunter's after, when a bolt of yours hit it
 //   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
@@ -31,6 +38,7 @@ import { parseShip } from '../crews';
 import { FOOT, METRE } from '../foot';
 import { readOutfit } from '../outfit';
 import { byId } from '../universes';
+import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
@@ -42,6 +50,9 @@ export const ROOM = 'universe-v1';
 export const POSE_MS = 100; // how often a pose goes out
 export const CURSOR_MS = 80; // and a pointer, off the map
 export const STALE_MS = 2500; // a ship with no pose this long is hidden
+export const PACK_MS = 200; // how often the hunters after you go out
+export const PACK_MAX = 8; // hunters in one of those, at most
+export const PUNCH_MAX = 3; // hits one bolt is worth on a hunter, at most (outfit.js's fusion cannon)
 export const DAMAGE = 10; // a bolt from another pilot (a hunter's laser is 12)
 export const BOLT_LIFE = 1.1; // seconds a bolt flies, at the most (targeting.js's AIM.life, with room to spare)
 export const GUARD = {
@@ -50,11 +61,12 @@ export const GUARD = {
   range: 70, // map units: further off than this, they couldn't have hit you
   near: 2, // map units: how close a shot's path must pass you (more, the faster you go)
   killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit
+  reach: 95, // map units: further than this from one of your hunters, they couldn't have hit it (a bolt at the boost goes 85)
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], foot: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
-export const FLAG = { hidden: 1, boost: 2 };
+export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -87,7 +99,7 @@ export function writePose(s, flags = 0, shield = 100) {
 }
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
-// boost, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
+// boost, safe, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
   const x = num(data[0], -7500, 7500);
@@ -107,6 +119,7 @@ export function readPose(data) {
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
+    safe: Boolean(flags & FLAG.safe),
     shield: num(data[9], 0, 100) ?? 100,
   };
 }
@@ -128,6 +141,52 @@ export function readShot(data, from = null) {
 export function readHit(data) {
   const d = num(data?.d, 0, DAMAGE);
   return d === null || d <= 0 ? null : d;
+}
+
+// ── The hunters after a pilot: for the others to see, and to help with ──
+// what goes out, from hunters.js's wire(): [id, kind, x, y, z, vx, vy, vz,
+// hits left] each, rounded
+export function writePack(list) {
+  const r = (v, k) => Math.round((v || 0) * k) / k;
+  return list.slice(0, PACK_MAX).map((h) => [h[0], h[1], r(h[2], 100), r(h[3], 100), r(h[4], 100), r(h[5], 10), r(h[6], 10), r(h[7], 10), h[8]]);
+}
+
+// a pack as it came in: [{ id, kind, x, y, z, vx, vy, vz, hp }] (none: they're
+// gone), or null if it isn't one. A hunter of a kind there isn't, or that's
+// there twice, is left out; no more than PACK_MAX are taken.
+export function readPack(data) {
+  if (!Array.isArray(data)) return null;
+  const out = [];
+  for (const h of data.slice(0, PACK_MAX)) {
+    if (!Array.isArray(h) || h.length < 9) continue;
+    const id = num(h[0], 1, 1e9);
+    const kind = typeof h[1] === 'string' && Object.hasOwn(HUNTERS, h[1]) ? h[1] : null;
+    const x = num(h[2], -7500, 7500);
+    const y = num(h[3], -1300, 1300);
+    const z = num(h[4], -7500, 7500);
+    if (id === null || !Number.isInteger(id) || !kind || x === null || y === null || z === null || out.some((o) => o.id === id)) continue;
+    out.push({ id, kind, x, y, z, vx: num(h[5], -80, 80) ?? 0, vy: num(h[6], -80, 80) ?? 0, vz: num(h[7], -80, 80) ?? 0, hp: Math.max(1, Math.floor(num(h[8], 1, 99) ?? 1)) });
+  }
+  return out;
+}
+
+// a hit on one of your hunters as it came in: { id, damage }, or null
+export function readHunterHit(data) {
+  const id = num(data?.i, 1, 1e9);
+  // (whole hits only: a sliver of one would still make it flinch)
+  const d = Math.floor(num(data?.d, 0, PUNCH_MAX) ?? 0);
+  return id === null || !Number.isInteger(id) || d < 1 ? null : { id, damage: d };
+}
+
+// Should a hit on one of your hunters, from this pilot, count? They're not
+// blocked, fired a moment ago, and were close enough to it (`at`: where the
+// hunter was when you last said). (How often is the limiter's to say, RATES:
+// hits come in bundles, so two fair ones can arrive in the same moment.)
+export function hunterHitCounts(peer, at, now) {
+  if (!peer || !at || peer.blocked) return false;
+  if (now - (peer.shotAt ?? -Infinity) > GUARD.shotWindow) return false;
+  const p = peer.pose;
+  return Boolean(p) && Math.hypot(p.x - at.x, p.y - at.y, p.z - at.z) <= GUARD.reach;
 }
 
 // ── On foot: where a pilot's crew are, down on a planet ──
@@ -313,6 +372,7 @@ export function sample(snaps, now, delay = 140) {
       vy: lerp(a.vy, b.vy),
       hidden: b.hidden,
       boost: b.boost,
+      safe: b.safe,
       shield: b.shield,
     };
   }

@@ -42,7 +42,8 @@ describe('the lock', () => {
     const lock = track(ship, [hunter('a', [0, 0, -20])], null, 1 / 60);
     // out past the pick-up cone but inside the hold: kept
     const swung = hunter('a', [20 * Math.sin(0.6), 0, -20 * Math.cos(0.6)]);
-    expect(track(ship, [swung], lock, 1 / 60)).toEqual({ id: 'a', out: 0 });
+    expect(track(ship, [swung], lock, 1 / 60)).toMatchObject({ id: 'a', out: 0 });
+    expect(follow(ship, [swung], lock, 3)?.id).toBe('a'); // (for as long as there's nothing better ahead)
     expect(track(ship, [swung], null, 1 / 60)).toBeNull(); // (it would not be picked up from there)
     // behind: a moment's grace, then gone
     const behind = hunter('a', [0, 0, 20]);
@@ -85,6 +86,24 @@ describe('the lock', () => {
     expect(track(ship, [next], lock, 1 / 60)?.id).toBe('b');
     // (a fresh look from nothing would not have picked it up)
     expect(track(ship, [next], null, 1 / 60)).toBeNull();
+  });
+
+  it('gives up one that has swung wide for another squarely ahead, after a moment', () => {
+    const lock = track(ship, [hunter('a', [0, 0, -20])], null, 1 / 60);
+    const swung = hunter('a', [20 * Math.sin(0.6), 0, -20 * Math.cos(0.6)]); // inside the hold, off the nose
+    const ahead = hunter('b', [0.5, 0, -12]);
+    // not at once (a dogfight swings about)
+    expect(follow(ship, [swung, ahead], lock, AIM.swap * 0.5)?.id).toBe('a');
+    expect(follow(ship, [swung, ahead], lock, AIM.swap + 0.1)).toEqual({ id: 'b', out: 0 });
+    // and the same for one that's flown out of the bolts' reach, dead ahead
+    const far = hunter('a', [0, 0, -(AIM.range + 8)]);
+    expect(follow(ship, [far, ahead], lock, AIM.swap + 0.1)?.id).toBe('b');
+    // back onto the nose in time: the moment starts over
+    const nearly = follow(ship, [swung, ahead], lock, AIM.swap * 0.8);
+    const back = track(ship, [hunter('a', [0, 0, -20]), ahead], nearly, 1 / 60);
+    expect(back).toEqual({ id: 'a', out: 0 });
+    // one picked by hand stays, whatever else is ahead
+    expect(follow(ship, [swung, ahead], { id: 'a', out: 0, manual: true }, 3)).toEqual({ id: 'a', out: 0, manual: true });
   });
 
   it('holds a lock picked by hand for longer before letting it go', () => {
