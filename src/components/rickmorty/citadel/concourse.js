@@ -1,11 +1,12 @@
-// The Citadel's concourse, drawn: a round atrium of white panels and cyan
-// light under a glass dome, the core rising through the middle with its
-// ring of holo-ads, two floors of shopfronts round the edge (Simple Rick's,
-// the Council's doors, the hangar, the portal terminal among them), the
-// Morty Day Care pen, Candidate Morty's booth, kiosks, planters and
-// benches, glass transport tubes over it all, and, through the dome, space
-// and the Citadel's other spires. Built in code in the show's toon look;
-// every size comes from ./layout.js, so what you see is what you bump into.
+// The Citadel's concourse, drawn as the show draws the city: a round
+// terrace of pale paving with cyan light set in it, a balustrade at its
+// edge over the drop to the lower city, and round it Simple Rick's, the
+// Council of Ricks' hall, Hangar 7 and the portal terminal; in the middle
+// the core, a mint spire with its ring of holo-ads; the Morty Day Care pen,
+// Candidate Morty's booth, kiosks, planters and benches; and past the edge
+// the city itself (./city.js): towers, the monorail and the great dome's
+// lattice in a golden sky. Built in code in the show's toon look; every size
+// comes from ./layout.js, so what you see is what you bump into.
 
 import * as THREE from 'three';
 import { SWIRL_GLSL } from '../swirl';
@@ -14,25 +15,31 @@ import { bake } from '../../middleearth/towns/bake';
 import { makeCanvas } from '../../../lib/paint';
 import { hot } from '../../../lib/stage3d';
 import { ARCH, BALLPIT, BENCHES, BOOTH, BOOTH_BACK, CORE, DESKS, DOORS, KIOSKS, PEN, PLANTERS, PLANTER_R, SLIDE } from './layout';
+import { buildCity } from './city';
 
-const R = 40.6; // the shopfronts' face
-const UP = 7; // the mezzanine's floor
-const TOP = 16; // where the dome starts
-const DOME_H = 22; // and how high it rises
-const BAYS = 24;
+const R = 40.9; // the balustrade at the terrace's edge
 
-// the Citadel's colours
+// the Citadel's colours, the show's: mint and sage, teal, cyan light
 const C = {
-  panel: 0xeef1f6,
-  panel2: 0xc9d2de,
-  trim: 0x5b6f8f,
-  dark: 0x232b3b,
-  floor: 0x8d9ab0,
+  panel: 0xe4f1e6,
+  panel2: 0xb9d4c4,
+  trim: 0x2f8f86,
+  dark: 0x1f3f3a,
+  floor: 0xb9cdb4,
   glow: 0x6ff3ff,
   red: 0xff3b4a,
-  glass: 0x9fdcff,
+  glass: 0x7fe0d4,
+  gold: 0xc9a95a,
   pen: [0xe8483c, 0xf3c33b, 0x3e8ee0, 0x5cc06a],
 };
+// the buildings at the terrace's edge: the ring angle each stands at, how
+// far round either side it reaches, and how tall (the camera keeps out)
+export const EDGE_BUILDINGS = [
+  { id: 'factory', a: 0, half: 0.17, top: 10.5 },
+  { id: 'council', a: -Math.PI / 2, half: 0.25, top: 15 },
+  { id: 'hangar', a: Math.PI / 4, half: 0.14, top: 6.4 },
+  { id: 'portal', a: Math.PI / 2, half: 0.12, top: 7 },
+];
 
 // the angle round the ring of a point, and a ring point's inward turn
 const turnIn = (a) => Math.atan2(-Math.cos(a), -Math.sin(a));
@@ -47,7 +54,7 @@ function paintDeck(size) {
   const g = c.getContext('2d');
   const m = size / 2;
   const k = size / (R * 2 + 4); // pixels a metre
-  g.fillStyle = '#8f9cb3';
+  g.fillStyle = '#b3c8b0';
   g.fillRect(0, 0, size, size);
   // plates, ring by ring
   for (let ring = 0; ring * 2.6 < R + 2; ring++) {
@@ -59,21 +66,21 @@ function paintDeck(size) {
       const a1 = ((i + 1) / n) * Math.PI * 2;
       const shade = (ring + i) % 2 ? 0 : 10;
       const tint = (i * 37 + ring * 11) % 7;
-      g.fillStyle = `rgb(${138 + shade + tint}, ${151 + shade + tint}, ${172 + shade + tint})`;
+      g.fillStyle = `rgb(${170 + shade + tint}, ${194 + shade + tint}, ${172 + shade + tint})`;
       g.beginPath();
       g.arc(m, m, r1, a0, a1);
       g.arc(m, m, r0, a1, a0, true);
       g.closePath();
       g.fill();
       // a rivet at each plate's corner
-      g.fillStyle = 'rgba(40, 48, 66, 0.55)';
+      g.fillStyle = 'rgba(40, 70, 60, 0.45)';
       g.beginPath();
       g.arc(m + Math.cos(a0 + 0.02) * (r0 + 3), m + Math.sin(a0 + 0.02) * (r0 + 3), Math.max(1, k * 0.06), 0, Math.PI * 2);
       g.fill();
     }
   }
   // seams
-  g.strokeStyle = 'rgba(32, 40, 58, 0.75)';
+  g.strokeStyle = 'rgba(46, 84, 72, 0.6)';
   g.lineWidth = Math.max(1, k * 0.05);
   for (let ring = 0; ring * 2.6 < R + 2; ring++) {
     g.beginPath();
@@ -90,7 +97,7 @@ function paintDeck(size) {
   }
   // the inlaid light rings (drawn pale here; they glow from the glow map)
   for (const r of [7.2, 15.5, 33]) {
-    g.strokeStyle = '#d8f8ff';
+    g.strokeStyle = '#e4fffb';
     g.lineWidth = k * 0.35;
     g.beginPath();
     g.arc(m, m, r * k, 0, Math.PI * 2);
@@ -273,7 +280,9 @@ function paintHolo(c, mood) {
   const pw = HOLO.w / panels.length;
   panels.forEach(([big, small], i) => {
     const x = i * pw;
-    g.fillStyle = `rgba(${col}, 0.13)`;
+    g.fillStyle = 'rgba(8, 26, 30, 0.78)';
+    g.fillRect(x + 12, 16, pw - 24, HOLO.h - 32);
+    g.fillStyle = `rgba(${col}, 0.12)`;
     g.fillRect(x + 12, 16, pw - 24, HOLO.h - 32);
     g.strokeStyle = `rgba(${col}, 0.9)`;
     g.lineWidth = 5;
@@ -289,7 +298,7 @@ function paintHolo(c, mood) {
     g.fillText(small, x + pw / 2, 178);
   });
   // scan lines
-  g.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  g.fillStyle = 'rgba(0, 0, 0, 0.16)';
   for (let y = 0; y < HOLO.h; y += 6) g.fillRect(0, y, HOLO.w, 2);
 }
 
@@ -338,11 +347,11 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     panel2: toon(C.panel2),
     trim: toon(C.trim),
     dark: toon(C.dark),
-    floorEdge: toon(0x6d7a92),
+    floorEdge: toon(0x5f8a78),
+    gold: toon(C.gold),
     glow: new THREE.MeshBasicMaterial({ color: hot(C.glow, 2.2) }),
     glowSoft: new THREE.MeshBasicMaterial({ color: hot(C.glow, 1.2) }),
-    glass: new THREE.MeshBasicMaterial({ color: C.glass, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }),
-    rail: new THREE.MeshBasicMaterial({ color: C.glass, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }),
+    rail: new THREE.MeshBasicMaterial({ color: C.glass, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }),
     signs: null,
   };
   const mesh = (geo, mat, parent = statics) => {
@@ -357,106 +366,99 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     return m;
   };
 
-  // ── the floor ──
+  // the shop signs' sheet (the edge buildings' signs, the kiosks' screens)
+  const signsInit = () => {
+    if (M.signs) return;
+    const signsTex = tex(paintSigns());
+    M.signs = new THREE.MeshBasicMaterial({ map: signsTex });
+    M.windows = new THREE.MeshBasicMaterial({ map: signsTex, color: 0xdddddd });
+  };
+
+  // ── the terrace ──
   const deckSize = tier === 'low' ? 1024 : 2048;
-  const floorMat = toon(0xffffff, { map: tex(paintDeck(deckSize)), emissiveMap: tex(paintDeckGlow(512)), emissive: hot(C.glow, 0.9) });
-  const floor = mesh(new THREE.CircleGeometry(R + 2, 96), floorMat, group);
+  const floorMat = toon(0xffffff, { map: tex(paintDeck(deckSize)), emissiveMap: tex(paintDeckGlow(512)), emissive: hot(C.glow, 0.45) });
+  const floor = mesh(new THREE.CircleGeometry(R + 0.6, 96), floorMat, group);
   floor.rotation.x = -Math.PI / 2;
   floor.name = 'floor';
-  // the step up to the shopfronts
-  const kerb = mesh(new THREE.RingGeometry(R - 0.4, R + 0.1, 96), M.floorEdge);
-  kerb.rotation.x = -Math.PI / 2;
-  kerb.position.y = 0.02;
-
-  // ── the shopfronts: two floors of bays round the edge ──
-  const signsTex = tex(paintSigns());
-  M.signs = new THREE.MeshBasicMaterial({ map: signsTex });
-  M.windows = new THREE.MeshBasicMaterial({ map: signsTex, color: 0xdddddd });
-  // the solid wall behind it all, so nothing shows through a gap
-  // (with a gap for the hangar's bay: a cylinder's angle runs from +z, so a
-  // ring angle a is pi/2 - a)
-  const gap = 0.16;
-  const hangarTheta = Math.PI / 2 - angleOf(DOORS.hangar.x, DOORS.hangar.z);
-  const back = mesh(new THREE.CylinderGeometry(R + 1.5, R + 1.5, TOP + 1, 72, 1, true, hangarTheta + gap, Math.PI * 2 - gap * 2), M.panel2);
-  back.material = toon(0xb9c3d1, { side: THREE.BackSide });
-  back.position.y = (TOP + 1) / 2;
-  // which bays are which: the special ones by their angle
-  const special = { [Math.round(angleOf(DOORS.factory.x, DOORS.factory.z) / (Math.PI / 12))]: 0, [Math.round(angleOf(DOORS.council.x, DOORS.council.z) / (Math.PI / 12))]: 1, [Math.round(angleOf(DOORS.hangar.x, DOORS.hangar.z) / (Math.PI / 12))]: 2, [Math.round(angleOf(DOORS.portal.x, DOORS.portal.z) / (Math.PI / 12))]: 3 };
-  let shop = 4;
-  for (let i = 0; i < BAYS; i++) {
-    const a = (i / BAYS) * Math.PI * 2;
-    const key = Math.round(a / (Math.PI / 12)) > 12 ? Math.round(a / (Math.PI / 12)) - 24 : Math.round(a / (Math.PI / 12));
-    const sp = special[key];
+  // its edge: a deep fascia down toward the lower city, lit along its lip
+  const fascia = mesh(new THREE.CylinderGeometry(R + 0.6, R + 0.2, 3.2, 96, 1, true), M.panel2);
+  fascia.position.y = -1.6;
+  const lip = mesh(new THREE.TorusGeometry(R + 0.62, 0.08, 4, 120), M.glowSoft);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = -0.1;
+  // the balustrade: posts, a lit rail and teal glass, open where the buildings are
+  signsInit();
+  const open = (a) => EDGE_BUILDINGS.some((b) => Math.abs(Math.atan2(Math.sin(a - b.a), Math.cos(a - b.a))) < b.half);
+  const POSTS = 150;
+  for (let i = 0; i < POSTS; i++) {
+    const a = (i / POSTS) * Math.PI * 2;
+    if (open(a)) continue;
     const t = turnIn(a);
-    const at = (r, y = 0) => [Math.cos(a) * r, y, Math.sin(a) * r];
-    const chord = 2 * R * Math.sin(Math.PI / BAYS);
-    // the pilaster at the bay's edge, with its light strip
-    const pa = a + Math.PI / BAYS;
-    const pt = turnIn(pa);
-    box(1.3, TOP, 1.3, M.panel, Math.cos(pa) * (R - 0.3), TOP / 2, Math.sin(pa) * (R - 0.3), pt);
-    box(0.18, TOP - 1.2, 0.08, M.glow, Math.cos(pa) * (R - 0.98), TOP / 2, Math.sin(pa) * (R - 0.98), pt);
-    // the mezzanine's fascia and floor in front of this bay
-    box(chord + 0.1, 0.9, 0.5, M.panel, ...at(R - 3.8, UP - 0.1), t);
-    box(chord + 0.1, 0.12, 0.08, M.glow, ...at(R - 4.08, UP - 0.25), t);
-    box(chord + 0.1, 0.3, 4, M.panel2, ...at(R - 1.8, UP + 0.2), t);
-    // the balcony: glass, and a rail on top
-    const glass = box(chord, 1.1, 0.04, M.rail, ...at(R - 3.75, UP + 0.9), t);
-    hide.push(glass);
-    box(chord + 0.1, 0.1, 0.16, M.glowSoft, ...at(R - 3.75, UP + 1.5), t);
-    // the upper shop: a window and a sign
-    const upper = mesh(cellPlane(chord - 1.8, 3.6, 16 + ((i * 5) % 8)), M.windows);
-    upper.position.set(...at(R - 0.02, UP + 3.2));
-    upper.rotation.y = t;
-    const upSign = mesh(cellPlane(chord - 2.2, 1.2, 4 + ((i * 7) % 12)), M.signs);
-    upSign.position.set(...at(R - 0.25, UP + 5.8));
-    upSign.rotation.y = t;
-    // the cornice under the dome
-    box(chord + 0.2, 0.8, 1.6, M.trim, ...at(R - 0.6, TOP - 0.4), t);
-    if (sp != null) continue; // the special bays are built below
-    // the shop: a window, a door, a lit sign over it
-    const win = mesh(cellPlane(chord - 1.8, 4.2, 16 + (i % 8)), M.windows);
-    win.position.set(...at(R - 0.02, 2.4));
-    win.rotation.y = t;
-    box(chord - 1.4, 0.25, 0.3, M.trim, ...at(R - 0.12, 4.6), t);
-    const sign = mesh(cellPlane(chord - 2, 1.4, shop), M.signs);
-    sign.position.set(...at(R - 0.3, 5.5));
-    sign.rotation.y = t;
-    shop = shop >= SIGNS.length - 1 ? 4 : shop + 1;
-    if (i % 3 === 0) lights.push([...at(R - 4, 3.5), 0xcfefff]);
+    box(0.16, 1.15, 0.16, M.trim, Math.cos(a) * R, 0.58, Math.sin(a) * R, t);
+    const next = ((i + 1) / POSTS) * Math.PI * 2;
+    if (open(next)) continue;
+    const mid = (a + next) / 2;
+    const len = 2 * R * Math.sin(Math.PI / POSTS);
+    const glassPane = box(len, 0.9, 0.04, M.rail, Math.cos(mid) * R, 0.55, Math.sin(mid) * R, turnIn(mid));
+    void glassPane;
+    box(len + 0.02, 0.09, 0.14, M.glowSoft, Math.cos(mid) * R, 1.16, Math.sin(mid) * R, turnIn(mid));
   }
+  // the city past it
+  const city = buildCity(renderer, { tier, gaps: EDGE_BUILDINGS.map((b) => b.a) });
+  group.add(city.group);
+  hide.push(...city.hide);
 
-  // ── the special bays ──
-  // Simple Rick's: a big lit doorway with the wafer sign
+  // ── the buildings at the edge ──
+  // what the edge buildings stand on, past the terrace: a deck out to them
+  const facadeAt = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
+  // Simple Rick's: cream and wafer-brown, its sign over a lit doorway
   {
-    const a = angleOf(DOORS.factory.x, DOORS.factory.z);
+    const a = EDGE_BUILDINGS[0].a;
     const t = turnIn(a);
-    const at = (r, y = 0) => [Math.cos(a) * r, y, Math.sin(a) * r];
-    box(6.4, 0.6, 1, M.trim, ...at(R - 0.5, 5.1), t);
-    const door = mesh(new THREE.PlaneGeometry(4.6, 4.6), new THREE.MeshBasicMaterial({ color: hot(0xffd9a0, 1.1) }));
-    door.position.set(...at(R - 0.05, 2.3));
-    door.rotation.y = t;
-    for (const side of [-1, 1]) {
-      const p = box(0.5, 5.4, 1, M.trim, 0, 2.7, 0, t);
-      p.position.set(Math.cos(a) * (R - 0.5) + Math.cos(t) * side * 2.9, 2.7, Math.sin(a) * (R - 0.5) - Math.sin(t) * side * 2.9);
+    const cream = toon(0xf1e3c2);
+    const brown = toon(0x8a5a2a);
+    box(14, 10.5, 5, cream, ...facadeAt(a, R + 3.1).flatMap((v, i) => (i === 0 ? [v, 5.25] : [v])), t);
+    box(14.4, 0.6, 5.4, brown, ...facadeAt(a, R + 3.1).flatMap((v, i) => (i === 0 ? [v, 10.5] : [v])), t);
+    // pilasters like wafer stacks
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 6; k++) {
+        const p = box(1.1, 0.75, 0.5, k % 2 ? cream : toon(0xd9a35b), 0, 0.4 + k * 0.78, 0, t);
+        p.position.set(Math.cos(a) * (R + 0.55) + Math.cos(t) * s * 5.6, 0.4 + k * 0.78, Math.sin(a) * (R + 0.55) - Math.sin(t) * s * 5.6);
+      }
     }
-    const s = mesh(cellPlane(8, 2, 0), M.signs);
-    s.position.set(...at(R - 0.6, 6.2));
+    const door = mesh(new THREE.PlaneGeometry(4.6, 4.4), new THREE.MeshBasicMaterial({ color: hot(0xffd9a0, 1.05) }));
+    door.position.set(Math.cos(a) * (R + 0.58), 2.2, Math.sin(a) * (R + 0.58));
+    door.rotation.y = t;
+    const frame = box(5.4, 0.4, 0.6, brown, Math.cos(a) * (R + 0.6), 4.6, Math.sin(a) * (R + 0.6), t);
+    void frame;
+    const s = mesh(cellPlane(9, 2.25, 0), M.signs);
+    s.position.set(Math.cos(a) * (R + 0.52), 7.2, Math.sin(a) * (R + 0.52));
     s.rotation.y = t;
-    lights.push([...at(R - 3, 3), 0xffd9a0]);
+    lights.push([Math.cos(a) * (R - 3), 3, Math.sin(a) * (R - 3), 0xffd9a0]);
   }
-  // the Council's doors: tall, dark, with its sign and a light either side
+  // the Council of Ricks' hall: tall, dark teal and gold, columns before its doors
   {
-    const a = angleOf(DOORS.council.x, DOORS.council.z);
+    const a = EDGE_BUILDINGS[1].a;
     const t = turnIn(a);
-    const at = (r, y = 0) => [Math.cos(a) * r, y, Math.sin(a) * r];
-    const frame = box(7.2, 6.6, 1.2, M.trim, ...at(R - 0.4, 3.3), t);
-    frame.name = 'councilFrame';
-    box(5.6, 5.8, 0.4, M.dark, ...at(R - 1.0, 2.9), t);
-    box(0.08, 5.6, 0.42, M.glow, ...at(R - 1.02, 2.9), t);
+    const teal = toon(0x1f4a44);
+    box(20, 15, 5, teal, ...facadeAt(a, R + 3.1).flatMap((v, i) => (i === 0 ? [v, 7.5] : [v])), t);
+    box(20.6, 0.8, 5.6, M.gold, ...facadeAt(a, R + 3.1).flatMap((v, i) => (i === 0 ? [v, 15] : [v])), t);
+    box(20.4, 0.4, 5.4, M.gold, ...facadeAt(a, R + 3.1).flatMap((v, i) => (i === 0 ? [v, 9.4] : [v])), t);
+    // the yellow light strips up its face, as the Council's rooms have
+    for (const x of [-8.5, -6.5, 6.5, 8.5]) {
+      const st = box(0.22, 7.6, 0.1, new THREE.MeshBasicMaterial({ color: hot(0xf3e04a, 1.6) }), 0, 4.6, 0, t);
+      st.position.set(Math.cos(a) * (R + 0.55) + Math.cos(t) * x, 4.6, Math.sin(a) * (R + 0.55) - Math.sin(t) * x);
+    }
+    for (const x of [-4.8, -2.9, 2.9, 4.8]) {
+      const col = mesh(new THREE.CylinderGeometry(0.42, 0.5, 9, 16), M.panel);
+      col.position.set(Math.cos(a) * (R + 0.3) + Math.cos(t) * x, 4.5, Math.sin(a) * (R + 0.3) - Math.sin(t) * x);
+    }
+    box(5.6, 7, 0.3, M.dark, Math.cos(a) * (R + 0.6), 3.5, Math.sin(a) * (R + 0.6), t);
+    box(0.08, 6.8, 0.32, M.glow, Math.cos(a) * (R + 0.58), 3.5, Math.sin(a) * (R + 0.58), t);
     const s = mesh(cellPlane(9, 1.8, 1), M.signs);
-    s.position.set(...at(R - 1.1, 7.6));
+    s.position.set(Math.cos(a) * (R + 0.52), 11.6, Math.sin(a) * (R + 0.52));
     s.rotation.y = t;
-    lights.push([...at(R - 4, 4), 0xbfdcff]);
+    lights.push([Math.cos(a) * (R - 4), 4, Math.sin(a) * (R - 4), 0xf3e7b0]);
   }
   // the portal terminal: an arch and the swirl, a pad on the floor
   const swirl = { mat: portalMat() };
@@ -474,9 +476,13 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     const pad = mesh(new THREE.RingGeometry(1.6, 2.4, 48), M.glowSoft);
     pad.rotation.x = -Math.PI / 2;
     pad.position.set(0, 0.03, 35);
-    const s = mesh(cellPlane(8, 1.6, 3), M.signs);
+    // the terminal behind it: a canopy on two posts, and its sign
     const a = angleOf(DOORS.portal.x, DOORS.portal.z);
-    s.position.set(0, 6.0, R - 0.3);
+    for (const sx of [-4.2, 4.2]) box(0.5, 6.4, 0.5, M.trim, sx, 3.2, R + 1.2);
+    box(10, 0.5, 3, M.panel, 0, 6.6, R + 1.2);
+    box(10.1, 0.1, 3.05, M.glow, 0, 6.32, R + 1.2);
+    const s = mesh(cellPlane(8, 1.6, 3), M.signs);
+    s.position.set(0, 7.7, R - 0.25);
     s.rotation.y = turnIn(a);
     lights.push([0, 3, 35, 0x9effa0]);
   }
@@ -494,21 +500,21 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     const frameMat = toon(0x3a4256);
     const stripes = M.signs;
     for (const s of [-1, 1]) {
-      const post = mesh(new THREE.BoxGeometry(1, 7.2, 1.4), frameMat, hangar);
-      post.position.set(s * (w / 2 + 0.5), 3.6, 0);
+      const post = mesh(new THREE.BoxGeometry(1, 6.2, 1.4), frameMat, hangar);
+      post.position.set(s * (w / 2 + 0.5), 3.1, 0);
     }
-    const lintel = mesh(new THREE.BoxGeometry(w + 2, 1.2, 1.4), frameMat, hangar);
-    lintel.position.set(0, 7.2, 0);
-    const sign = mesh(cellPlane(w + 1.6, 1, 2), stripes, hangar);
-    sign.position.set(0, 7.2, -0.72);
+    const lintel = mesh(new THREE.BoxGeometry(w + 2, 0.8, 1.4), frameMat, hangar);
+    lintel.position.set(0, 6.2, 0);
+    const sign = mesh(cellPlane(w + 1.6, 0.75, 2), stripes, hangar);
+    sign.position.set(0, 6.2, -0.72);
     sign.rotation.y = Math.PI;
     for (const s of [-1, 1]) {
-      const d = mesh(new THREE.BoxGeometry(w / 2, 6.6, 0.4), toon(0x8892a6), hangar);
-      d.position.set((s * w) / 4, 3.3, 0.1);
+      const d = mesh(new THREE.BoxGeometry(w / 2, 5.8, 0.4), toon(0x8fb0a8), hangar);
+      d.position.set((s * w) / 4, 2.9, 0.1);
       const band = mesh(new THREE.BoxGeometry(w / 2 - 0.2, 0.5, 0.42), toon(0xffc93a), d);
       band.position.set(0, -1.2, 0);
       const lamp = mesh(new THREE.BoxGeometry(0.3, 0.3, 0.44), M.glow, d);
-      lamp.position.set(-s * (w / 4 - 0.4), 2.8, 0);
+      lamp.position.set(-s * (w / 4 - 0.4), 2.4, 0);
       d.userData.side = s;
       doors.push(d);
       moving.push(d);
@@ -518,23 +524,23 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     hangar.add(bay);
     const bw = 12;
     const bd = 16;
-    const floorB = mesh(new THREE.PlaneGeometry(bw, bd), toon(0x4c5468), bay);
+    const floorB = mesh(new THREE.PlaneGeometry(bw, bd), toon(0x52706a), bay);
     floorB.rotation.x = -Math.PI / 2;
     floorB.position.set(0, 0.01, bd / 2);
     for (const s of [-1, 1]) {
-      const wall = mesh(new THREE.BoxGeometry(0.4, 9, bd), toon(0x9aa4b8), bay);
-      wall.position.set((s * bw) / 2, 4.5, bd / 2);
+      const wall = mesh(new THREE.BoxGeometry(0.4, 6, bd), toon(0x8fb0a8), bay);
+      wall.position.set((s * bw) / 2, 3, bd / 2);
       const strip = mesh(new THREE.BoxGeometry(0.1, 0.2, bd), M.glow, bay);
-      strip.position.set(s * (bw / 2 - 0.25), 6.5, bd / 2);
+      strip.position.set(s * (bw / 2 - 0.25), 4.8, bd / 2);
     }
-    const roof = mesh(new THREE.BoxGeometry(bw, 0.4, bd), toon(0x6a7488), bay);
-    roof.position.set(0, 9, bd / 2);
+    const roof = mesh(new THREE.BoxGeometry(bw, 0.4, bd), toon(0x5f8a78), bay);
+    roof.position.set(0, 6.1, bd / 2);
     const padB = mesh(new THREE.RingGeometry(2.4, 3, 40), M.glowSoft, bay);
     padB.rotation.x = -Math.PI / 2;
     padB.position.set(0, 0.03, 6);
     // the far end, open to space through a shimmering field
-    const field = mesh(new THREE.PlaneGeometry(bw, 9), new THREE.MeshBasicMaterial({ color: 0x6fd6ff, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }), bay);
-    field.position.set(0, 4.5, bd);
+    const field = mesh(new THREE.PlaneGeometry(bw, 6), new THREE.MeshBasicMaterial({ color: 0x6fd6ff, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }), bay);
+    field.position.set(0, 3, bd);
     hide.push(field);
     lights.push([hangar.position.x + Math.cos(ha) * 6, 5, hangar.position.z + Math.sin(ha) * 6, 0xffd9a0]);
   }
@@ -548,36 +554,39 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
   };
   if (cruiser) setCruiser(cruiser);
 
-  // ── the core ──
+  // ── the core: a mint spire up into the haze, teal glass up its sides ──
   {
-    const core = mesh(new THREE.CylinderGeometry(CORE.r, CORE.r, 70, 64, 1, true), M.panel);
-    core.position.y = 35;
+    const core = mesh(new THREE.CylinderGeometry(CORE.r - 0.6, CORE.r, 90, 48, 1, true), M.panel);
+    core.position.y = 45;
     const plinth = mesh(new THREE.CylinderGeometry(CORE.r + 0.35, CORE.r + 0.6, 0.6, 64), M.trim);
     plinth.position.y = 0.3;
-    // grooves, and light rings up it
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      box(0.16, 24, 0.2, i % 3 ? M.panel2 : M.glowSoft, Math.cos(a) * (CORE.r + 0.04), 13, Math.sin(a) * (CORE.r + 0.04), turnIn(a));
+    const glassMat = toon(0x5fd0c8);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      box(1.1, 60, 0.25, glassMat, Math.cos(a) * (CORE.r - 0.2), 43, Math.sin(a) * (CORE.r - 0.2), turnIn(a));
+      box(0.12, 60, 0.28, M.glowSoft, Math.cos(a + 0.12) * (CORE.r - 0.15), 43, Math.sin(a + 0.12) * (CORE.r - 0.15), turnIn(a + 0.12));
     }
-    for (const y of [0.7, 3.4, 12.5, 17.5, 26]) {
-      const ring = mesh(new THREE.TorusGeometry(CORE.r + 0.12, 0.1, 6, 72), M.glow);
+    for (const y of [0.7, 3.4, 13.5, 30, 50]) {
+      const ring = mesh(new THREE.TorusGeometry(CORE.r + 0.12 - y * 0.006, 0.12, 6, 72), M.glow);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = y;
     }
-    // the bands that carry the holo-ring
-    for (const y of [6.6, 11.4]) {
+    for (const y of [6.8, 11.9]) {
       const band = mesh(new THREE.CylinderGeometry(CORE.r + 0.6, CORE.r + 0.6, 0.5, 64), M.trim);
       band.position.y = y;
     }
-    lights.push([0, 4, 8, 0xcff6ff], [8, 4, 0, 0xcff6ff], [-8, 4, 0, 0xcff6ff], [0, 4, -8, 0xcff6ff]);
+    // its crown, high over the terrace
+    const crown = mesh(new THREE.CylinderGeometry(CORE.r + 3, CORE.r - 0.6, 6, 32), M.panel2);
+    crown.position.y = 88;
+    lights.push([0, 4, 9, 0xe4fff6], [-9, 4, 0, 0xe4fff6]);
   }
   const holoCanvas = makeCanvas(HOLO.w, HOLO.h);
   paintHolo(holoCanvas, 'day');
   const holoTex = tex(holoCanvas);
   holoTex.wrapS = THREE.RepeatWrapping;
   holoTex.repeat.set(2, 1);
-  const holo = mesh(new THREE.CylinderGeometry(CORE.r + 1.3, CORE.r + 1.3, 4.2, 96, 1, true), new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false }), group);
-  holo.position.y = 9;
+  const holo = mesh(new THREE.CylinderGeometry(CORE.r + 1.3, CORE.r + 1.3, 4.2, 96, 1, true), new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, depthWrite: false, toneMapped: false }), group);
+  holo.position.y = 9.35;
   hide.push(holo);
 
   // ── Morty Day Care ──
@@ -858,8 +867,6 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
       scr.rotation.y = Math.PI;
       scr.rotation.x = -0.2;
     }
-    const pole = box(0.12, 4.2, 0.12, M.trim, d.x + 2, 2.1, d.z + 0.3);
-    void pole;
     const signCanvas = makeCanvas(512, 128);
     const g = signCanvas.getContext('2d');
     g.fillStyle = '#1f2b44';
@@ -869,156 +876,8 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText('CUSTOMS', 256, 68);
-    const s = mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: tex(signCanvas), side: THREE.DoubleSide }));
-    s.position.set(d.x + 2, 4.1, d.z + 0.3);
-  }
-
-  // ── the dome, its ribs, and the transport tubes ──
-  const domeGeo = new THREE.SphereGeometry(R + 0.4, 64, 18, 0, Math.PI * 2, 0, Math.PI / 2);
-  const dome = mesh(domeGeo, M.glass, group);
-  dome.scale.set(1, DOME_H / (R + 0.4), 1);
-  dome.position.y = TOP;
-  hide.push(dome);
-  const ribMat = M.panel;
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    const pts = [];
-    for (let k = 0; k <= 16; k++) {
-      const th = (k / 16) * (Math.PI / 2) * 0.93;
-      const r = (R + 0.2) * Math.cos(th);
-      pts.push(new THREE.Vector3(Math.cos(a) * r, TOP + DOME_H * Math.sin(th), Math.sin(a) * r));
-    }
-    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.32, 6, false), ribMat);
-  }
-  for (const th of [0.35, 0.8]) {
-    const ring = mesh(new THREE.TorusGeometry((R + 0.2) * Math.cos(th), 0.28, 6, 96), ribMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = TOP + DOME_H * Math.sin(th);
-  }
-  const tubes = [];
-  const tubeMat = new THREE.MeshBasicMaterial({ color: 0xbfe9ff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
-  const podMat = toon(0xf4f7fb, { emissive: hot(0x6ff3ff, 0.15) });
-  const podGeo = new THREE.CapsuleGeometry(0.62, 1.5, 6, 12);
-  const jointGeo = new THREE.TorusGeometry(1.02, 0.1, 6, 20);
-  const routes = [
-    [
-      [-38, 19, -10],
-      [-15, 23, -4],
-      [CORE.r + 0.5, 25, 0],
-    ],
-    [
-      [26, 21, -29],
-      [10, 27, -14],
-      [-12, 26, 12],
-      [-26, 22, 30],
-    ],
-    [
-      [37, 18, 14],
-      [18, 22, 8],
-      [0, 29, -CORE.r - 0.5],
-    ],
-  ];
-  for (const r of routes) {
-    const curve = new THREE.CatmullRomCurve3(r.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-    const tube = mesh(new THREE.TubeGeometry(curve, 64, 1, 12, false), tubeMat, group);
-    hide.push(tube);
-    const len = curve.getLength();
-    for (let s = 0; s <= len; s += 5) {
-      const p = curve.getPointAt(s / len);
-      const tan = curve.getTangentAt(s / len);
-      const j = mesh(jointGeo, M.glowSoft);
-      j.position.copy(p);
-      j.lookAt(p.clone().add(tan));
-    }
-    const pods = [0, 0.5].map(() => {
-      const p = new THREE.Mesh(podGeo, podMat);
-      group.add(p);
-      moving.push(p);
-      return p;
-    });
-    tubes.push({ curve, pods, speed: 9 / len });
-  }
-
-  // ── outside: space, the Citadel's other spires, a planet ──
-  const sky = new THREE.Group();
-  sky.name = 'sky';
-  group.add(sky);
-  hide.push(sky);
-  {
-    const n = tier === 'low' ? 1200 : 2600;
-    const pos = new Float32Array(n * 3);
-    const col = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const u = Math.random() * 2 - 1;
-      const th = Math.random() * Math.PI * 2;
-      const s = Math.sqrt(1 - u * u);
-      pos.set([Math.cos(th) * s * 420, Math.abs(u) * 420 - 40, Math.sin(th) * s * 420], i * 3);
-      const k = 0.6 + Math.random() * 0.4;
-      col.set([k, k * (0.9 + Math.random() * 0.1), k + Math.random() * 0.1], i * 3);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    sky.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.6, vertexColors: true, sizeAttenuation: false, fog: false, depthWrite: false })));
-    // a backdrop: deep blue to violet
-    const bg = new THREE.Mesh(
-      new THREE.SphereGeometry(450, 32, 16),
-      new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        depthWrite: false,
-        fog: false,
-        vertexShader: 'varying vec3 vP; void main() { vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-        fragmentShader: `varying vec3 vP;
-          void main() {
-            float h = vP.y;
-            vec3 low = vec3(0.07, 0.06, 0.16), mid = vec3(0.03, 0.05, 0.13), top = vec3(0.01, 0.015, 0.05);
-            vec3 c = mix(low, mid, smoothstep(-0.1, 0.3, h));
-            c = mix(c, top, smoothstep(0.3, 0.9, h));
-            float neb = smoothstep(0.55, 1.0, sin(vP.x * 3.1 + vP.z * 2.3) * 0.5 + 0.5) * smoothstep(0.0, 0.5, h);
-            c += vec3(0.16, 0.06, 0.22) * neb * 0.5;
-            gl_FragColor = vec4(c, 1.0);
-          }`,
-      }),
-    );
-    bg.renderOrder = -10;
-    sky.add(bg);
-    // the planet, low over the edge of the dome
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(90, 48, 32), toon(0x5a7ad0, { fog: false }));
-    planet.position.set(-220, 40, -330);
-    sky.add(planet);
-    const ringP = new THREE.Mesh(new THREE.RingGeometry(110, 150, 64), new THREE.MeshBasicMaterial({ color: 0x9ab0e8, transparent: true, opacity: 0.35, side: THREE.DoubleSide, fog: false, depthWrite: false }));
-    ringP.position.copy(planet.position);
-    ringP.rotation.set(1.2, 0.3, 0.2);
-    sky.add(ringP);
-    // the spires: tall white towers round about, lit in strips
-    const spireMat = toon(0xdfe5ee, { fog: false });
-    const windowMat = new THREE.MeshBasicMaterial({ color: hot(0x9feeff, 1.4), fog: false });
-    const win = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.5, 1), windowMat, 8 * 14);
-    const m4 = new THREE.Matrix4();
-    let w = 0;
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + 0.3;
-      const d = 130 + (i % 3) * 30;
-      const h = 70 + ((i * 37) % 60);
-      const prof = [
-        [0, -60],
-        [9, -60],
-        [7, h * 0.3],
-        [5, h * 0.7],
-        [2.5, h],
-        [0.3, h + 14],
-      ].map(([x, y]) => new THREE.Vector2(x, y));
-      const sp = new THREE.Mesh(new THREE.LatheGeometry(prof, 16), spireMat);
-      sp.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
-      sky.add(sp);
-      for (let k = 0; k < 14; k++) {
-        const y = -20 + k * (h / 14);
-        const rr = 7 - (k / 14) * 4;
-        m4.compose(new THREE.Vector3(sp.position.x - Math.cos(a) * rr, y, sp.position.z - Math.sin(a) * rr), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -a, 0)), new THREE.Vector3(0.4, 1, rr * 0.9));
-        win.setMatrixAt(w++, m4);
-      }
-    }
-    sky.add(win);
+    const s = mesh(new THREE.PlaneGeometry(2.2, 0.55), new THREE.MeshBasicMaterial({ map: tex(signCanvas) }));
+    s.position.set(d.x, 0.62, d.z + d.d / 2 + 0.02);
   }
 
   // what never moves, merged (and the merged glass kept out of the ink)
@@ -1037,7 +896,8 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     mood = m;
     M.glow.color.copy(glowCols[m] ?? glowCols.day);
     M.glowSoft.color.copy(softCols[m] ?? softCols.day);
-    floorMat.emissive.copy(m === 'red' ? hot(C.red, 0.8) : hot(C.glow, 0.9));
+    floorMat.emissive.copy(m === 'red' ? hot(C.red, 0.5) : hot(C.glow, 0.45));
+    city.setMood(m);
     paintHolo(holoCanvas, m);
     holoTex.needsUpdate = true;
     paintBanner(m === 'day' ? 'day' : 'vote');
@@ -1055,14 +915,7 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     for (const h of gate) h.rotation.y = -h.userData.side * gateK * 1.6; // out, to the east
     doorK += ((hangarOpen ? 1 : 0) - doorK) * Math.min(1, dt * 1.6);
     for (const d of doors) d.position.x = d.userData.side * (DOORS.hangar.w / 4 + doorK * (DOORS.hangar.w / 2 - 0.2));
-    for (const tb of tubes) {
-      tb.pods.forEach((p, i) => {
-        const u = (t * tb.speed + i * 0.5) % 1;
-        p.position.copy(tb.curve.getPointAt(u));
-        p.lookAt(tb.curve.getPointAt(Math.min(1, u + 0.01)));
-        p.rotateX(Math.PI / 2);
-      });
-    }
+    city.update(t);
     // the cruiser: up off its pad, round, and out through the far field
     if (escapeT != null) {
       const k = Math.max(0, escapeT - 1.2);
@@ -1093,6 +946,7 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
         m.dispose?.();
       }
     });
+    city.dispose();
   };
 
   return { group, hide, lights, setMood, update, escapeCam, setCruiser, swirl, dispose };

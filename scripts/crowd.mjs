@@ -1,10 +1,15 @@
 // The Citadel's crowds: each Meshy figure (scripts/meshy.mjs) made into a
-// light copy that stands in a crowd. Each is posed on a frame of its own
-// idle clip (so the arms come down from the rig's A-pose), turned to face
-// +z as the figures do, its skin taken off, its triangles cut to about
-// 2,400 and its texture to 256 pixels, then compressed for the web into
-// public/games/meshy/crowd/. Hundreds of them are drawn as a few instanced
-// meshes (src/components/rickmorty/citadel/crowd.js).
+// light copy that stands in a crowd. A rigged one is posed on a frame of
+// its own idle clip (so the arms come down from the rig's A-pose), turned
+// to face +z as the figures do and its skin taken off; one that only ever
+// stands in the crowd was modelled standing at ease and is taken as it is.
+// Then its triangles are cut to a few thousand and its texture to 256
+// pixels, and it's compressed for the web into public/games/meshy/crowd/.
+// Hundreds of them are drawn as a few instanced meshes
+// (src/components/rickmorty/citadel/crowd.js). The crowd-only figures'
+// full-size models aren't shipped: they're kept in
+// node_modules/.cache/meshy-full/ (or fetch them again with
+// scripts/meshy.mjs, for nothing, and move them there).
 //
 //   node scripts/crowd.mjs [name …]
 
@@ -14,6 +19,7 @@ import { meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import * as THREE from 'three';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,15 +27,33 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FROM = join(ROOT, 'public', 'games', 'meshy');
 const OUT = join(FROM, 'crowd');
-export const CROWD = ['rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'morty', 'copmorty'];
+const FULL = join(ROOT, 'node_modules', '.cache', 'meshy-full');
+export const CROWD = [
+  // rigged, posed on their idle
+  'rick', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'cop', 'morty', 'copmorty',
+  // modelled standing at ease
+  'wizardrick', 'hazmatrick', 'sheriffrick', 'retrorick', 'visorrick', 'doofusrick', 'mulletrick', 'chefrick', 'pilotrick', 'punkrick',
+  'hobbitmorty', 'beaniemorty', 'sheriffmorty', 'overallsmorty', 'maskmorty', 'glassesmorty', 'astronautmorty', 'punkmorty',
+];
 const TRIS = 2400;
 const AT = 0.6; // seconds into the idle
+
+// an accessor's values as floats (compressed ones are stored as normalised
+// integers: read through getElement, which scales them back)
+function floats(acc) {
+  if (!acc.getNormalized()) return acc.getArray();
+  const n = acc.getElementSize();
+  const out = new Float32Array(acc.getCount() * n);
+  const el = [];
+  for (let i = 0; i < acc.getCount(); i++) out.set(acc.getElement(i, el), i * n);
+  return out;
+}
 
 // one channel's value at time t (linear; rotations slerped)
 function sample(channel, t) {
   const s = channel.getSampler();
   const times = s.getInput().getArray();
-  const vals = s.getOutput().getArray();
+  const vals = floats(s.getOutput());
   const n = channel.getTargetPath() === 'rotation' ? 4 : 3;
   let i = 1;
   while (i < times.length - 1 && times[i] < t) i++;
@@ -44,7 +68,14 @@ function sample(channel, t) {
 }
 
 async function bake(io, name) {
-  const doc = await io.read(join(FROM, `${name}.glb`));
+  const doc = await io.read(existsSync(join(FROM, `${name}.glb`)) ? join(FROM, `${name}.glb`) : join(FULL, `${name}.glb`));
+  const root = doc.getRoot();
+  if (root.listSkins().length) await pose(io, doc, name);
+  await shrink(io, doc, name);
+}
+
+// a rigged figure: posed on its idle, turned to face +z, its skin taken off
+async function pose(io, doc, name) {
   const idle = await io.read(join(FROM, `${name}-idle.glb`));
   const root = doc.getRoot();
   // the idle's pose, by bone name
@@ -85,9 +116,9 @@ async function bake(io, name) {
     const pos = prim.getAttribute('POSITION');
     const nor = prim.getAttribute('NORMAL');
     const J = prim.getAttribute('JOINTS_0').getArray();
-    const W = prim.getAttribute('WEIGHTS_0').getArray();
-    const P = pos.getArray();
-    const N = nor?.getArray();
+    const W = floats(prim.getAttribute('WEIGHTS_0'));
+    const P = floats(pos);
+    const N = nor ? floats(nor) : null;
     const outP = new Float32Array(P.length);
     const outN = N ? new Float32Array(N.length) : null;
     const nAcc = new THREE.Vector3();
@@ -108,8 +139,8 @@ async function bake(io, name) {
         outN.set([nAcc.x, nAcc.y, nAcc.z], i * 3);
       }
     }
-    pos.setArray(outP);
-    if (N) nor.setArray(outN);
+    pos.setArray(outP).setNormalized(false);
+    if (N) nor.setArray(outN).setNormalized(false);
     prim.setAttribute('JOINTS_0', null);
     prim.setAttribute('WEIGHTS_0', null);
   }
@@ -121,7 +152,13 @@ async function bake(io, name) {
   for (const n of root.listNodes()) if (n !== meshNode) n.dispose();
   for (const s of root.listSkins()) s.dispose();
   for (const a of root.listAnimations()) a.dispose();
+}
 
+async function shrink(io, doc, name) {
+  const meshNode = doc
+    .getRoot()
+    .listNodes()
+    .find((n) => n.getMesh());
   const tris = meshNode
     .getMesh()
     .listPrimitives()

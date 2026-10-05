@@ -16,16 +16,15 @@ import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
-import { buildConcourse } from './concourse';
+import { EDGE_BUILDINGS, buildConcourse } from './concourse';
+import { createCrowd } from './crowd';
 import { createPeople } from './people';
 import { ROOMS, buildRooms } from './rooms';
 import { COLLIDERS, DOORS, PEN, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-// the room's sizes the camera has to stay inside (concourse.js's)
-const WALL = 39.2;
-const SLAB = { r: 36.4, lo: 6.3, hi: 8.8 };
-const DOME = { top: 16, h: 22, r: 40.6 };
+// the buildings at the terrace's edge, which the camera keeps out of
+const EDGE = { from: 40.6, to: 46.6 };
 
 // a box in its own frame: how far outside it (x, z) is (negative inside)
 function boxDist(b, x, z) {
@@ -41,9 +40,10 @@ const BLOCKERS = COLLIDERS.filter((c) => !c.low).map((c) => ({ ...c, y: c.top ??
 function insideAt(x, y, z) {
   if (y < 0.5) return true;
   const r = Math.hypot(x, z);
-  if (r > WALL && y < DOME.top + 1) return true;
-  if (r > SLAB.r && y > SLAB.lo && y < SLAB.hi) return true;
-  if (y > DOME.top + DOME.h * Math.sqrt(Math.max(0, 1 - (r / DOME.r) ** 2)) - 1.2) return true;
+  if (r > EDGE.from && r < EDGE.to) {
+    const a = Math.atan2(z, x);
+    for (const b of EDGE_BUILDINGS) if (y < b.top + 0.4 && Math.abs(Math.atan2(Math.sin(a - b.a), Math.cos(a - b.a))) < b.half + 0.02) return true;
+  }
   for (const c of BLOCKERS) {
     if (y > c.y) continue;
     if (c.kind === 'circle') {
@@ -66,17 +66,18 @@ function clearance(from, to) {
 export async function createCitadelWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.55, radius: 0.45, threshold: 0.86 }, onLost });
-  stage.grade({ contrast: 0.07, saturation: 1.06, vignette: 0.2, grain: 0.008, shadow: [0.0, 0.008, 0.03], high: [0.0, 0.006, 0.014] });
+  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
+  stage.grade({ contrast: 0.08, saturation: 1.08, vignette: 0.2, grain: 0.008, shadow: [0.0, 0.012, 0.02], high: [0.02, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false;
-  scene.fog = new THREE.Fog(0xb7c4da, 70, 260);
+  // the city's golden haze
+  scene.fog = new THREE.Fog(0xe0b57a, 80, 360);
 
   // ── light: a cool, even interior light, a key from the dome, and a pool
   // of lamps lent to the concourse round Rick, or to the room he's in ──
-  const hemi = new THREE.HemisphereLight(0xf2f6ff, 0x56627c, 1.25);
-  const key = new THREE.DirectionalLight(0xffffff, 1.5);
-  key.position.set(-14, 40, 18);
+  const hemi = new THREE.HemisphereLight(0xffe9c4, 0x4d7a6c, 1.15);
+  const key = new THREE.DirectionalLight(0xffe2b4, 1.35);
+  key.position.set(-30, 60, 24);
   scene.add(hemi, key, key.target);
   const POOL = tier === 'high' ? 6 : tier === 'mid' ? 4 : 3;
   const pool = Array.from({ length: POOL }, () => {
@@ -97,7 +98,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
   const models = createModels({ base: '/games/kenney' });
   const [concourse, rooms] = await Promise.all([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })]);
   scene.add(concourse.group, rooms.factory, rooms.council);
-  const people = await createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier });
+  const [people, crowd] = await Promise.all([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier }), createCrowd(concourse.group, { tier })]);
   // the cruiser, waiting in the hangar
   const props = createMeshyCast();
   await props.load(null, ['saucer']);
@@ -125,9 +126,9 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
     concourse.setMood(s.mood);
     A.red += ((s.mood === 'red' ? 1 : 0) - A.red) * Math.min(1, dt * 1.5);
     const pulse = A.red * (0.55 + 0.45 * Math.sin(t * 4.2));
-    hemi.intensity = 1.25 * (1 - A.red * 0.35);
-    hemi.color.setRGB(0.95, 0.97 - A.red * 0.25, 1 - A.red * 0.3);
-    key.intensity = 1.5 * (1 - A.red * 0.45);
+    hemi.intensity = 1.15 * (1 - A.red * 0.35);
+    hemi.color.setRGB(1, 0.91 - A.red * 0.3, 0.77 - A.red * 0.25);
+    key.intensity = 1.35 * (1 - A.red * 0.45);
     alarm.intensity = inside ? 0 : pulse * 140;
     stage.grade({ vignette: 0.2 + A.red * 0.18 + (s.chased ? 0.12 : 0), high: [0.006 + pulse * 0.05, 0.006, 0.014], shadow: [pulse * 0.025, 0.008, 0.03] });
 
@@ -144,7 +145,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
         if (!v) return (l.intensity = 0);
         l.position.set(v[0], v[1], v[2]);
         l.color.set(v[3]);
-        l.intensity = s.room === 'council' ? 26 : 30;
+        l.intensity = s.room === 'council' ? (i < 2 ? 34 : 18) : 30;
         l.distance = 18;
         return undefined;
       });
@@ -165,7 +166,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
         if (!v) return (l.intensity = 0);
         l.position.set(v[0], v[1], v[2]);
         l.color.set(s.mood === 'red' ? 0xff6a70 : v[3]);
-        l.intensity = 14;
+        l.intensity = 8;
         l.distance = 16;
         return undefined;
       });
@@ -173,6 +174,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
 
     // ── the people ──
     people.update(s, t, camera.position);
+    crowd.setMood(s.mood);
 
     // ── the camera ──
     let camAt;
@@ -308,6 +310,7 @@ export async function createCitadelWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       people.dispose();
+      crowd.dispose();
       props.dispose();
       concourse.dispose();
       rooms.dispose();

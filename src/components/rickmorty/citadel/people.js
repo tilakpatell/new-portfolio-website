@@ -21,14 +21,22 @@ export const KINDS = {
   meeseeks: { a: 'meeseeks', h: 1.95 },
   cowboyrick: { a: 'cowboyrick', h: 1.97 },
   factoryrick: { a: 'factoryrick', h: 1.85 },
+  constructionrick: { a: 'constructionrick', h: 1.9 },
+  sweaterrick: { a: 'sweaterrick', h: 1.85 },
+  suitrick: { a: 'suitrick', h: 1.85 },
+  detectiverick: { a: 'detectiverick', h: 1.92 },
   councila: { a: 'councilrick-a', h: 1.85 },
   councilb: { a: 'councilrick-b', h: 1.9 },
   councilc: { a: 'councilrick-c', h: 1.82 },
 };
-const RIGGED = new Set(['rick', 'cop', 'morty', 'evilmorty', 'copmorty', 'meeseeks', 'cowboyrick', 'factoryrick', 'councilrick-a', 'councilrick-b', 'councilrick-c']);
-const ASSETS = [...new Set(Object.values(KINDS).map((k) => k.a))].filter((a) => a !== 'rick');
+const RIGGED = new Set(['rick', 'cop', 'morty', 'evilmorty', 'copmorty', 'meeseeks', 'cowboyrick', 'factoryrick', 'constructionrick', 'sweaterrick', 'suitrick', 'detectiverick', 'councilrick-a', 'councilrick-b', 'councilrick-c']);
+// those that sit (the Day Care Rick at his desk, the Council in its chairs)
+const SITTERS = ['rick', 'councilrick-a', 'councilrick-b', 'councilrick-c'];
+const ASSETS = [...new Set(Object.values(KINDS).map((k) => k.a))].filter((a) => !SITTERS.includes(a));
+// the walking crowd's kinds, in turn
+const WALKERS = ['rick', 'constructionrick', 'daycare', 'suitrick', 'detectiverick', 'daycare', 'sweaterrick'];
 
-const CROWD = { high: 10, mid: 6, low: 3 };
+const CROWD = { high: 7, mid: 4, low: 2 };
 const CROWD_SPEED = 1.3;
 // past this far from the camera, a figure's animation steps every third frame
 const FAR = 30;
@@ -61,8 +69,7 @@ function along(loop, lengths, total, s) {
 // own frames; parents: the concourse and the two rooms
 export async function createPeople({ outdoors, factory, council, places, tier = 'high' }) {
   const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED });
-  // Rick sits too (the Day Care Rick, at his desk); the rest stand and walk
-  await Promise.all([meshy.load(null, ['rick'], { clips: ['idle', 'walk', 'run', 'sit'] }), meshy.load(null, ASSETS, { clips: ['idle', 'walk', 'run'] })]);
+  await Promise.all([meshy.load(null, SITTERS, { clips: ['idle', 'walk', 'run', 'sit'] }), meshy.load(null, ASSETS, { clips: ['idle', 'walk', 'run'] })]);
 
   const all = [];
   const make = (kind, parent, variant = 0) => {
@@ -104,6 +111,18 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
       if (f && p) {
         f.group.position.set(p.x, p.y, p.z);
         f.group.rotation.y = yawOf(p.face);
+        seat(f);
+      }
+      return f;
+    })
+    .filter(Boolean);
+  // the clerks at the chamber's consoles
+  const clerks = (places.clerks ?? [])
+    .map((p, i) => {
+      const f = make(i ? 'sweaterrick' : 'suitrick', council);
+      if (f) {
+        f.group.position.set(p.x, p.y, p.z);
+        f.group.rotation.y = yawOf(p.face);
       }
       return f;
     })
@@ -127,7 +146,7 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
   const n = CROWD[tier] ?? CROWD.high;
   const crowd = [];
   for (let i = 0; i < n; i++) {
-    const f = make(i % 2 ? 'daycare' : 'rick', outdoors, i);
+    const f = make(WALKERS[i % WALKERS.length], outdoors, i);
     if (!f) continue;
     const L = loops[i % loops.length];
     f.loop = L;
@@ -208,7 +227,7 @@ export async function createPeople({ outdoors, factory, council, places, tier = 
       f.group.rotation.y = yawOf(f.dir > 0 ? heading : heading + Math.PI);
       animate(f, t, f.pace / RICK.run, cam);
     }
-    if (!outside && state.room === 'council') for (const f of councilFigs) animate(f, t, 0, null);
+    if (!outside && state.room === 'council') for (const f of [...councilFigs, ...clerks]) animate(f, t, 0, null);
     if (!outside && state.room === 'factory') for (const f of workers) animate(f, t, 0, null);
   };
 

@@ -1353,5 +1353,167 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/wizardrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab8-8eac-7305-afb7-ea5c0185ec4d",
+    "name": "wizardrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/hazmatrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab8-8e9b-714e-b9d7-f8c5a27e577b",
+    "name": "hazmatrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/sheriffrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab8-8eba-749c-96df-24cb81a70639",
+    "name": "sheriffrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/retrorick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab8-8e9b-7773-a212-1b48c8a52fa8",
+    "name": "retrorick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/visorrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab9-8476-77f5-9158-6e7229a499c4",
+    "name": "visorrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/doofusrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab9-84f8-74e9-8cf5-737f11fb3c82",
+    "name": "doofusrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/mulletrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aba-b6bf-77ca-9eef-7694c0e3d7f3",
+    "name": "mulletrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/chefrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aba-c9eb-762c-a73e-7f797b21450b",
+    "name": "chefrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/pilotrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abb-97b2-725e-8492-29dfcbefb97e",
+    "name": "pilotrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/punkrick": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abb-97bd-72e1-bfb8-b3c2093bb240",
+    "name": "punkrick, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/hobbitmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab9-9869-7431-8507-324dc422dccc",
+    "name": "hobbitmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/beaniemorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10ab9-98a6-70dc-8fc9-d3cd39385246",
+    "name": "beaniemorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/sheriffmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aba-b64d-76db-a294-73eefcdfa2e9",
+    "name": "sheriffmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/overallsmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aba-b68a-7776-a750-47bc1d46a421",
+    "name": "overallsmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/maskmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abb-ab28-7339-9970-52ee9f3993d3",
+    "name": "maskmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/glassesmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abb-bfeb-7295-8f58-32e5f907a0ac",
+    "name": "glassesmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/astronautmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abc-78eb-763b-b0f2-03a282246c7c",
+    "name": "astronautmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/crowd/punkmorty": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10abc-78f3-7429-a9e6-af4a5e67d4ed",
+    "name": "punkmorty, for the Citadel's crowds (scripts/crowd.mjs)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

@@ -12,7 +12,7 @@ import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
 import { newWatchers, stepWatchers } from '../../middleearth/towns/watchers';
 import { HERD, calmHerd, newHerd, stepHerd } from './daycare';
-import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, spot, validAt } from './layout';
+import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
 import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import '../../middleearth/shire/shire.css';
@@ -40,9 +40,10 @@ const PROMPT = {
   portal: { name: 'The portal terminal', act: 'Portal home' },
 };
 const CONTEMPT = new Set(['grovel', 'alibi', 'lost']);
-const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS, body: RICK });
-const pushCop = (x, z) => walker.push(x, z, 0.45);
-const pushMorty = (x, z, r) => walker.push(x, z, r);
+// a walker for each mood: the crowds that are out are in the way too
+const walkers = Object.fromEntries(['day', 'election', 'red'].map((m) => [m, makeWalker({ radius: WORLD.radius, colliders: [...COLLIDERS, ...crowdColliders(m)], walls: WALLS, body: RICK })]));
+const walkerFor = (mood) => walkers[mood] ?? walkers.day;
+const pushCop = (x, z) => walkers.red.push(x, z, 0.45);
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const VOTERS = CAST.filter((c) => c.vote);
 
@@ -484,7 +485,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
-      s.h = walker.step(s.h, { x: mv.x, z: mv.z, run }, dt, { closed: HANGAR_WALLS });
+      s.h = walkerFor(p.mood).step(s.h, { x: mv.x, z: mv.z, run }, dt, { closed: HANGAR_WALLS });
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // boxed in: the camera slides round to where there's room
       const room = a.suggestYaw;
@@ -507,6 +508,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     }
 
     // Morty Day Care: the herd, loose or pottering in the pen
+    const pushMorty = (x, z, r) => walkerFor(p.mood).push(x, z, r);
     for (const e of stepHerd(s.herd, s.h, dt, { push: pushMorty })) {
       if (e.type === 'penned') {
         const m = s.herd.mortys[e.id];

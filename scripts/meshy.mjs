@@ -154,6 +154,34 @@ const CITADEL = {
 };
 for (const [n, a] of Object.entries(CITADEL)) ASSETS[n] = { ...a, set: 'citadel', rig: true, poly: 14000, tex: 1024 };
 
+// The rest of the crowd: variants that only ever stand in it, so they're
+// modelled standing at ease and never rigged (scripts/crowd.mjs takes them
+// as they are). Described, not named: Meshy turns down named characters.
+const AT_EASE = 'Full body, front view, standing at ease with the arms hanging down by the sides, empty hands, feet together.';
+const MORTY = 'Morty Smith from Rick and Morty, a nervous 14-year-old boy with short brown hair and a round head';
+const CROWD_ONLY = {
+  wizardrick: `A wizard Rick from the Citadel of Ricks: ${RICK}, with a long grey beard, in long flowing grey robes, a tall pointed grey wizard's hat with a wide brim, a grey scarf, holding nothing. ${AT_EASE}`,
+  hazmatrick: `A chemist Rick from the Citadel of Ricks: ${RICK}, in a yellow hazmat coat with a hood down, a small black pork-pie hat, thin glasses and a short grey goatee, dark trousers. ${AT_EASE}`,
+  sheriffrick: `A sheriff Rick from the Citadel of Ricks: ${RICK}, with stubble, in a tan sheriff's deputy shirt with a gold star badge, a brown belt with an empty holster, brown trousers and boots, dusty and tired. ${AT_EASE}`,
+  retrorick: `A retro-future Rick from the Citadel of Ricks: ${RICK}, with bright orange spiky hair, in a white space-age tunic with black stripes across the chest, blue trousers and white boots. ${AT_EASE}`,
+  visorrick: `A cyborg Rick from the Citadel of Ricks: ${RICK}, with a black and green electronic visor across his eyes, in a white high-collared jumpsuit with grey panels. ${AT_EASE}`,
+  doofusrick: `Doofus Rick from Rick and Morty: Rick Sanchez with spiky pale blue-grey hair, a goofy friendly smile and a slight underbite, in a white lab coat over a light blue shirt with a brown stain, brown trousers. ${AT_EASE}`,
+  hobbitmorty: `A Morty from the Citadel: ${MORTY}, dressed as a little hobbit in a dark green hooded cloak with a leaf brooch, a brown waistcoat over a white shirt, brown breeches, barefoot. ${AT_EASE}`,
+  beaniemorty: `A Morty from the Citadel: ${MORTY}, in a grey knitted beanie, a baggy black hoodie over a yellow T-shirt, loose blue jeans and white sneakers. ${AT_EASE}`,
+  sheriffmorty: `A Morty from the Citadel: ${MORTY}, in a brown wide-brimmed sheriff's hat, a khaki shirt, a brown vest, blue jeans and brown boots. ${AT_EASE}`,
+  overallsmorty: `A Morty from the Citadel: ${MORTY}, in green overalls over a yellow T-shirt, a small green flat cap, and green shoes. ${AT_EASE}`,
+  mulletrick: `A Rick from the Citadel of Ricks: ${RICK}, with his hair grown into a long spiky mullet at the back, aviator sunglasses, a sleeveless denim vest over a white tank top, ripped jeans and cowboy boots. ${AT_EASE}`,
+  chefrick: `A cook Rick from the Citadel of Ricks: ${RICK}, in white chef's whites with a double row of buttons, a tall white chef's hat, a checked neckerchief, black and white checked trousers. ${AT_EASE}`,
+  pilotrick: `A pilot Rick from the Citadel of Ricks: ${RICK}, in an olive green flight suit with patches and many zipped pockets, brown leather aviator goggles pushed up on his forehead, black boots. ${AT_EASE}`,
+  punkrick: `A punk Rick from the Citadel of Ricks: ${RICK}, his spiky hair dyed bright pink, in a black leather jacket with studs over a torn band T-shirt, black jeans with chains and heavy black boots. ${AT_EASE}`,
+  maskmorty: `A Morty from the Citadel: ${MORTY}, wearing a pale blue surgical face mask, a yellow T-shirt, blue jeans and white sneakers. ${AT_EASE}`,
+  glassesmorty: `A Morty from the Citadel: ${MORTY}, with big round thick glasses, in a short-sleeved white shirt with a pocket protector, a red tie, brown trousers and brown shoes. ${AT_EASE}`,
+  astronautmorty: `A Morty from the Citadel: ${MORTY}, in a white and orange astronaut suit with a round glass helmet tucked under one arm, white boots. Full body, front view, standing at ease, feet together.`,
+  punkmorty: `A Morty from the Citadel: ${MORTY}, his brown hair in a tall green mohawk, in a black sleeveless denim vest covered in badges over a yellow T-shirt, black jeans and red sneakers. ${AT_EASE}`,
+};
+// (the lighter image model: as good for these, at a fraction of the cost)
+for (const [n, prompt] of Object.entries(CROWD_ONLY)) ASSETS[n] = { set: 'citadel', rig: false, poly: 9000, tex: 1024, image: 'nano-banana', prompt };
+
 const key = process.env.MESHY_API_KEY;
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -238,7 +266,7 @@ const steps = {
       const a = ASSETS[n];
       s[n] ??= {};
       if (!s[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${a.style ?? STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}), ...(a.aspect ? { aspect_ratio: a.aspect } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: a.image || 'nano-banana-pro', prompt: `${a.prompt} ${a.style ?? STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}), ...(a.aspect ? { aspect_ratio: a.aspect } : {}) });
         s[n].image = result;
         await save(s);
       }
@@ -384,7 +412,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!steps[step]) throw new Error(`step: ${Object.keys(steps).join(' | ')}`);
   // a set's name stands for its assets
-  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), citadel: Object.keys(CITADEL) };
+  const sets = { portal: Object.keys(ASSETS).filter((n) => !ASSETS[n].set), office: Object.keys(ASSETS).filter((n) => ASSETS[n].set === 'office'), rollout: Object.keys(ROLLOUT), hq: Object.keys(HQ), citadel: Object.keys(CITADEL), crowd: Object.keys(CROWD_ONLY) };
   const names = only.length ? only.flatMap((n) => sets[n] ?? [n]) : Object.keys(ASSETS);
   for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
   const s = await load();

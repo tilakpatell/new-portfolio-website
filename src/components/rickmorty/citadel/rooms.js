@@ -6,11 +6,18 @@
 // says where they stand.
 
 import * as THREE from 'three';
+import { SWIRL_GLSL } from '../swirl';
 import { toon, toonify } from '../portal/toon';
 import { makeCanvas } from '../../../lib/paint';
 import { hot } from '../../../lib/stage3d';
 
 export const ROOMS = { factory: new THREE.Vector3(0, -60, 0), council: new THREE.Vector3(80, -60, 0) };
+// the Council's three chairs, in an arc before the tank, facing the stand
+const COUNCIL_SEATS = [
+  { x: -3.6, z: 0.1, face: -Math.PI / 2 + 0.35 },
+  { x: 0, z: -0.6, face: -Math.PI / 2 },
+  { x: 3.6, z: 0.1, face: -Math.PI / 2 - 0.35 },
+];
 
 // the line: a whole layer is W metres wide; wafer and cream thicknesses
 const W = 1.2;
@@ -277,105 +284,149 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
     bits.push({ mesh: m, v: [side * 1.4, 1.2, 0.6], spin: side * 6 || 3, life: 1.4 });
   };
 
-  // ── the Council's chamber ──
+  // ── the Council's chamber, as the show has it: a round hall of dark
+  // teal with yellow light up its pilasters and cyan triangles low down, a
+  // balcony round it, and in the middle the great tank of portal fluid,
+  // green and crackling, under its saucer of a cap; the Council in tall
+  // orange chairs before it, clerks at the consoles round the walls ──
   const council = new THREE.Group();
   council.name = 'council';
   council.position.copy(ROOMS.council);
+  const tankMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    toneMapped: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform float uTime;
+      varying vec2 vUv;
+      ${SWIRL_GLSL}
+      void main() {
+        vec2 p = vec2(vUv.x * 7.0, vUv.y * 3.0);
+        float flow = sw_fbm(p + vec2(0.0, -uTime * 0.35));
+        vec3 c = mix(vec3(0.12, 0.7, 0.12), vec3(0.6, 1.0, 0.32), flow) * 1.7;
+        // lightning: thin bright veins where the noise crosses a level
+        float v1 = 1.0 - smoothstep(0.0, 0.035, abs(sw_fbm(p * 1.3 + vec2(uTime * 0.25, uTime * 0.1)) - 0.5));
+        float v2 = 1.0 - smoothstep(0.0, 0.03, abs(sw_fbm(p * 2.1 - vec2(uTime * 0.4, 0.0)) - 0.52));
+        c += vec3(0.85, 1.0, 0.7) * (v1 + v2 * 0.7) * 1.6;
+        // orbs of fluid, drifting up
+        for (int i = 0; i < 5; i++) {
+          float fi = float(i);
+          vec2 o = vec2(fract(fi * 0.37 + 0.11), fract(uTime * 0.05 + fi * 0.29));
+          vec2 d = (vUv - o) * vec2(7.0, 3.0);
+          float r = length(d);
+          c += vec3(0.75, 1.0, 0.55) * (smoothstep(0.42, 0.3, r) * 0.6 + smoothstep(0.3, 0.0, r) * 0.9);
+        }
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
+  council.userData.tank = tankMat;
   {
     const floorTex = tex(
       textCanvas(1024, 1024, (g, w, h) => {
-        g.fillStyle = '#1b2236';
+        g.fillStyle = '#1d3a33';
         g.fillRect(0, 0, w, h);
-        g.strokeStyle = 'rgba(111, 243, 255, 0.35)';
-        g.lineWidth = 4;
-        for (let r = 60; r < w; r += 90) {
+        g.strokeStyle = 'rgba(120, 220, 170, 0.35)';
+        g.lineWidth = 5;
+        for (let r = 70; r < w; r += 80) {
           g.beginPath();
-          g.arc(w / 2, h * 0.2, r, 0, Math.PI * 2);
+          g.arc(w / 2, h * 0.3, r, 0, Math.PI * 2);
           g.stroke();
         }
-      }),
-    );
-    const floor = add(council, new THREE.CircleGeometry(12, 64), toon(0xffffff, { map: floorTex }), 0, 0, 0);
-    floor.rotation.x = -Math.PI / 2;
-    // the back wall, a half-round, and a flat front wall behind the stand
-    const wall = add(council, new THREE.CylinderGeometry(12, 12, 12, 48, 1, true, Math.PI / 2, Math.PI), toon(0x2a3550, { side: THREE.BackSide }), 0, 6, 0);
-    void wall;
-    add(council, new THREE.BoxGeometry(24, 12, 0.4), toon(0x2a3550), 0, 6, 9);
-    for (const s of [-1, 1]) add(council, new THREE.BoxGeometry(0.4, 12, 9), toon(0x2a3550), s * 12, 6, 4.5);
-    add(council, new THREE.CylinderGeometry(12.2, 12.2, 0.4, 48), toon(0x151b2b), 0, 12, 0);
-    // pilasters round the curve, each with a light strip
-    for (let i = 0; i <= 6; i++) {
-      const a = Math.PI + (i / 6) * Math.PI;
-      const x = Math.cos(a) * 11.6;
-      const z = Math.sin(a) * 11.6;
-      add(council, new THREE.BoxGeometry(0.8, 12, 0.8), toon(0x3a4868), x, 6, z, -a + Math.PI / 2);
-      add(council, new THREE.BoxGeometry(0.12, 10, 0.1), glow, Math.cos(a) * 11.15, 6, Math.sin(a) * 11.15, -a + Math.PI / 2);
-    }
-    // the dais and its steps, and the high bench on it
-    add(council, new THREE.BoxGeometry(13, 1.6, 4), toon(0x3a4868), 0, 0.8, -7);
-    // (the tallest step against the dais)
-    for (let s = 0; s < 3; s++) add(council, new THREE.BoxGeometry(13, (s + 1) * 0.53, 0.5), toon(0x46557a), 0, ((s + 1) * 0.53) / 2, -3.75 - s * 0.5);
-    const benchMat = toon(0xe6ecf5);
-    for (const [x, turn] of [
-      [-4.2, 0.35],
-      [0, 0],
-      [4.2, -0.35],
-    ]) {
-      add(council, new THREE.BoxGeometry(4.4, 1.35, 0.9), benchMat, x, 1.6 + 0.675, -5.9 + Math.abs(x) * 0.12, turn);
-      add(council, new THREE.BoxGeometry(4.5, 0.1, 1.1), toon(0xd8b25a), x, 1.6 + 1.38, -5.9 + Math.abs(x) * 0.12, turn);
-      add(council, new THREE.BoxGeometry(4.4, 0.07, 0.04), glow, x, 1.6 + 1.0, -5.43 + Math.abs(x) * 0.12, turn);
-    }
-    // the emblem over the bench
-    const emblem = tex(
-      textCanvas(1024, 512, (g, w, h) => {
-        g.clearRect(0, 0, w, h);
-        g.fillStyle = 'rgba(16, 22, 38, 0.92)';
+        g.strokeStyle = 'rgba(111, 243, 255, 0.5)';
+        g.lineWidth = 8;
         g.beginPath();
-        g.ellipse(w / 2, h * 0.42, w * 0.3, h * 0.3, 0, 0, Math.PI * 2);
-        g.fill();
-        g.strokeStyle = '#d8b25a';
-        g.lineWidth = 12;
+        g.arc(w / 2, h * 0.3, 190, 0, Math.PI * 2);
         g.stroke();
-        // the Council's eye
-        g.fillStyle = '#e6ecf5';
-        g.beginPath();
-        g.ellipse(w / 2, h * 0.42, w * 0.17, h * 0.12, 0, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = '#6ff3ff';
-        g.beginPath();
-        g.arc(w / 2, h * 0.42, h * 0.08, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = '#d8b25a';
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.font = '900 70px "Arial Black", Arial, sans-serif';
-        g.fillText('COUNCIL OF RICKS', w / 2, h * 0.88);
       }),
     );
-    add(council, new THREE.PlaneGeometry(7, 3.5), new THREE.MeshBasicMaterial({ map: emblem, transparent: true }), 0, 7.6, -11.4);
-    // the spotlights' beams on the three of them
-    const beamMat = new THREE.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    for (const x of [-3.2, 0, 3.2]) {
-      const beam = add(council, new THREE.ConeGeometry(1.2, 9, 24, 1, true), beamMat, x, 6.6, -6.8);
-      beam.name = 'beam';
+    const floor = add(council, new THREE.CircleGeometry(13, 64), toon(0xffffff, { map: floorTex }), 0, 0, 0);
+    floor.rotation.x = -Math.PI / 2;
+    const wallMat = toon(0x1f4a44, { side: THREE.BackSide });
+    add(council, new THREE.CylinderGeometry(13, 13, 14, 64, 1, true), wallMat, 0, 7, 0);
+    add(council, new THREE.CylinderGeometry(13.2, 13.2, 0.4, 64), toon(0x14302c), 0, 14, 0);
+    const yellow = new THREE.MeshBasicMaterial({ color: hot(0xf3e04a, 1.8) });
+    const cyan = new THREE.MeshBasicMaterial({ color: hot(0x6ff3e0, 1.8) });
+    const tri = new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(-0.32, 0), new THREE.Vector2(0.32, 0), new THREE.Vector2(0, 0.5)]));
+    // pilasters round the hall, each with its strip and its triangle
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const t = Math.atan2(-Math.cos(a), -Math.sin(a));
+      add(council, new THREE.BoxGeometry(1.4, 14, 0.7), toon(0x2a5a52), Math.cos(a) * 12.7, 7, Math.sin(a) * 12.7, t);
+      for (const [y, h] of [
+        [3.2, 3.2],
+        [9.2, 4.2],
+      ])
+        add(council, new THREE.BoxGeometry(0.2, h, 0.08), yellow, Math.cos(a) * 12.32, y, Math.sin(a) * 12.32, t);
+      const a2 = a + Math.PI / 20;
+      const tr = add(council, tri, cyan, Math.cos(a2) * 12.85, 0.9, Math.sin(a2) * 12.85, Math.atan2(-Math.cos(a2), -Math.sin(a2)));
+      void tr;
+      // a console in every other bay, low down
+      if (i % 2 === 0) add(council, new THREE.BoxGeometry(1.6, 1.1, 0.7), toon(0x2f6f66), Math.cos(a2) * 12.2, 0.55, Math.sin(a2) * 12.2, Math.atan2(-Math.cos(a2), -Math.sin(a2)));
+    }
+    // the balcony round the hall, its rail lit
+    const deck = add(council, new THREE.RingGeometry(10.6, 12.95, 64), toon(0x2a5a52, { side: THREE.DoubleSide }), 0, 6, 0);
+    deck.rotation.x = -Math.PI / 2;
+    add(council, new THREE.TorusGeometry(10.6, 0.1, 6, 96).rotateX(Math.PI / 2), cyan, 0, 7.05, 0);
+    add(council, new THREE.CylinderGeometry(10.62, 10.62, 0.6, 64, 1, true), toon(0x2f6f66, { side: THREE.DoubleSide }), 0, 6.3, 0);
+    // the tank: its plinth, the fluid, its rail, and the cap over it
+    const TANK = { x: 0, z: -5.2, r: 2.7 };
+    add(council, new THREE.CylinderGeometry(TANK.r + 0.8, TANK.r + 1.1, 1, 48), toon(0x24433d), TANK.x, 0.5, TANK.z);
+    add(council, new THREE.TorusGeometry(TANK.r + 0.85, 0.08, 6, 64).rotateX(Math.PI / 2), cyan, TANK.x, 1.02, TANK.z);
+    add(council, new THREE.CylinderGeometry(TANK.r, TANK.r, 8, 48, 1, true), tankMat, TANK.x, 5, TANK.z);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      add(council, new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6), toon(0x2f6f66), TANK.x + Math.cos(a) * (TANK.r + 1.5), 1.55, TANK.z + Math.sin(a) * (TANK.r + 1.5));
+    }
+    add(council, new THREE.TorusGeometry(TANK.r + 1.5, 0.07, 6, 64).rotateX(Math.PI / 2), cyan, TANK.x, 2.1, TANK.z);
+    const cap = [
+      [0.4, -0.6],
+      [TANK.r + 0.3, -0.5],
+      [TANK.r + 2.2, 0],
+      [TANK.r + 2.4, 0.35],
+      [TANK.r + 1.2, 0.8],
+      [1.2, 1.1],
+      [0.8, 4],
+    ].map(([x, y]) => new THREE.Vector2(x, y));
+    add(council, new THREE.LatheGeometry(cap, 48), toon(0x3d6a5e), TANK.x, 9.2, TANK.z);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      add(council, new THREE.BoxGeometry(0.4, 0.16, 0.12), i % 4 ? cyan : yellow, TANK.x + Math.cos(a) * (TANK.r + 2.26), 9.35, TANK.z + Math.sin(a) * (TANK.r + 2.26), Math.atan2(-Math.cos(a), -Math.sin(a)));
+    }
+    // the orange seat at the tank's foot, facing out
+    const orange = toon(0xe8822a);
+    const orangeDark = toon(0xb85a18);
+    add(council, new THREE.BoxGeometry(1.9, 0.7, 1.3), orangeDark, TANK.x, 1.35, TANK.z + TANK.r + 0.75);
+    add(council, new THREE.BoxGeometry(2.1, 1.2, 0.35), orange, TANK.x, 2.0, TANK.z + TANK.r + 0.35);
+    // the Council's chairs: tall, orange, winged, in an arc facing the stand
+    for (const p of COUNCIL_SEATS) {
+      const g = new THREE.Group();
+      g.position.set(p.x, 0, p.z);
+      g.rotation.y = p.face + Math.PI / 2;
+      council.add(g);
+      add(g, new THREE.BoxGeometry(1.1, 0.5, 1.0), orangeDark, 0, 0.25, 0);
+      add(g, new THREE.BoxGeometry(1.0, 0.16, 0.9), orange, 0, 0.55, 0.02);
+      add(g, new THREE.BoxGeometry(1.2, 2.3, 0.22), orange, 0, 1.6, -0.5);
+      for (const sx of [-1, 1]) add(g, new THREE.BoxGeometry(0.2, 1.5, 0.6), orange, sx * 0.62, 1.45, -0.3);
+      add(g, new THREE.CylinderGeometry(0.62, 0.62, 0.22, 20, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), orange, 0, 2.75, -0.5);
+      add(g, new THREE.BoxGeometry(0.9, 0.06, 0.05), yellow, 0, 2.3, -0.38);
     }
     // the stand C-137 answers from
-    add(council, new THREE.CylinderGeometry(0.55, 0.7, 1.15, 20), toon(0xe6ecf5), 0, 0.575, 3);
-    add(council, new THREE.CylinderGeometry(0.6, 0.6, 0.08, 20), toon(0xd8b25a), 0, 1.19, 3);
+    add(council, new THREE.CylinderGeometry(0.55, 0.7, 1.15, 20), toon(0x2f6f66), 0, 0.575, 4.2);
+    add(council, new THREE.TorusGeometry(0.6, 0.05, 6, 24).rotateX(Math.PI / 2), cyan, 0, 1.17, 4.2);
     await Promise.all([
-      kenney('station-computer', 1.2, council, [-8.5, 0, -1], Math.PI / 2 + 0.4, 0x3a4868),
-      kenney('station-computer', 1.2, council, [8.5, 0, -1], -Math.PI / 2 - 0.4, 0x3a4868),
-      kenney('station-banner', 2.2, council, [-10, 0, -6], Math.PI / 3, 0x6ff3ff),
-      kenney('station-banner', 2.2, council, [10, 0, -6], -Math.PI / 3, 0x6ff3ff),
+      kenney('station-computer', 1.2, council, [-8.6, 0, 3.4], Math.PI / 2 + 0.7, 0xe8822a),
+      kenney('station-computer', 1.2, council, [8.6, 0, 3.4], -Math.PI / 2 - 0.7, 0xe8822a),
+      kenney('station-computer-wide', 1.2, council, [-9.6, 0, -3.6], Math.PI / 2 - 0.4, 0x2f6f66),
+      kenney('station-computer-wide', 1.2, council, [9.6, 0, -3.6], -Math.PI / 2 + 0.4, 0x2f6f66),
     ]);
   }
 
-  // where people stand, in the rooms' own frames
+  // where people stand (or sit), in the rooms' own frames
   const places = {
-    council: [
-      { x: -3.2, y: 1.6, z: -6.9, face: -Math.PI / 2 + 0.25 },
-      { x: 0, y: 1.6, z: -7.3, face: -Math.PI / 2 },
-      { x: 3.2, y: 1.6, z: -6.9, face: -Math.PI / 2 - 0.25 },
+    council: COUNCIL_SEATS.map((p) => ({ ...p, y: 0.12 })),
+    clerks: [
+      { x: -7.6, y: 0, z: 2.6, face: Math.PI - 0.7 },
+      { x: 8.4, y: 0, z: -2.4, face: 0.4 },
     ],
     workers: [
       { x: -6, y: 0, z: -1.4, face: -Math.PI / 2 },
@@ -388,7 +439,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   const at = (room, x, y, z) => [ROOMS[room].x + x, ROOMS[room].y + y, ROOMS[room].z + z];
   const lightsOf = {
     factory: [at('factory', 0, 4.5, 1.5), at('factory', -6, 5, -2), at('factory', 6, 5, -2), at('factory', 0, 5, -5)].map((p) => [...p, 0xfff0d0]),
-    council: [at('council', -3.2, 8, -5.5), at('council', 0, 8, -6), at('council', 3.2, 8, -5.5), at('council', 0, 4, 4)].map((p, i) => [...p, i === 3 ? 0x6ff3ff : 0xdfeeff]),
+    council: [at('council', 0, 5, -5.2), at('council', 0, 3, -1.5), at('council', -6, 5, 2), at('council', 6, 5, 2)].map((p, i) => [...p, i < 2 ? 0x7dff6a : 0xf3e7a0]),
   };
 
   // the beats' cameras, in the rooms' frames
@@ -398,8 +449,8 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
       floor: { at: [9, 4.6, 7], look: [-2, 1.2, -3] },
     },
     council: {
-      hearing: { at: [0, 1.75, 4.4], look: [0, 3.1, -6.5] },
-      dismissed: { at: [0, 3.4, 7.8], look: [0, 2.4, -6] },
+      hearing: { at: [0, 1.85, 5.6], look: [0, 2.7, -3.5] },
+      dismissed: { at: [0, 4.2, 10.4], look: [0, 3.6, -5] },
     },
   };
   const camOf = (room, beat, t) => {
@@ -411,6 +462,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   };
 
   const update = (room, beat, t, dt, { line = null } = {}) => {
+    tankMat.uniforms.uTime.value = t;
     if (room === 'factory') {
       setLine(line, dt);
       if (factory.userData.belt) factory.userData.belt.offset.x = -t * 0.4;
