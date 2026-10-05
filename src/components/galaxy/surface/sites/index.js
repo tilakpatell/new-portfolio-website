@@ -55,8 +55,10 @@ import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
 import { SITES as core } from './core';
 import { SITES as edge } from './edge';
+import { SITES as outer } from './outer';
+import { EXTRA } from './quests';
 
-export const SITES = { ...desert, ...ice, ...forest, ...core, ...edge };
+export const SITES = { ...desert, ...ice, ...forest, ...core, ...edge, ...outer };
 
 // the systems with somewhere to land, in the galaxy's own order
 export const LANDABLE = SYSTEMS.filter((s) => SITES[s.id]).map((s) => s.id);
@@ -69,8 +71,11 @@ const plus = (a, b) => [a[0] + b[0], a[1] + b[1]];
 // are, its flats gathered (the landing spot's, each place's, each pit), and
 // what's left out filled in.
 export function siteOf(id) {
-  const raw = SITES[id];
-  if (!raw) return null;
+  const base = SITES[id];
+  if (!base) return null;
+  // (with what quests.js adds: things to do where the world has none of its own)
+  const more = EXTRA[id];
+  const raw = more ? { ...base, life: [...(base.life ?? []), ...more.life], quests: [...(base.quests ?? []), ...more.quests] } : base;
   const sys = SYSTEMS.find((s) => s.id === id);
   const places = (raw.places ?? []).map((p) => ({
     ...p,
