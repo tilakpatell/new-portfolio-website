@@ -200,9 +200,17 @@ function IntroGone() {
   return null;
 }
 
-// ⌘K / Ctrl+K anywhere, or the search button in the nav.
+// ⌘K / Ctrl+K anywhere, or the search button in the nav. Its file is
+// fetched the first time it opens: gone after a deploy, that reloads for the
+// new build (ErrorBoundary), and anything else wrong in it just closes it,
+// so ⌘K can try again, instead of blanking the page.
+function Shut({ onClose }) {
+  useEffect(() => onClose(), [onClose]);
+  return null;
+}
 function PaletteHost() {
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -220,9 +228,11 @@ function PaletteHost() {
   }, []);
   if (!open) return null;
   return (
-    <Suspense fallback={null}>
-      <CommandPalette onClose={() => setOpen(false)} />
-    </Suspense>
+    <ErrorBoundary fallback={<Shut onClose={close} />}>
+      <Suspense fallback={null}>
+        <CommandPalette onClose={close} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
