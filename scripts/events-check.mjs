@@ -32,28 +32,33 @@ await page.waitForTimeout(2500);
 const dbg = (fn) => page.evaluate(fn);
 
 // the director brings each on when asked: the scene must call happen() within a few frames
+// (software GL draws a frame or two a second: every wait here is long)
+const flags = () => dbg(() => { const d = window.__universeDebug; const s = d.state; return { clock: +s.clock.toFixed(2), view: s.view, kind: s.kind, at: s.at, note: s.note?.text ?? null, hunters: d.hunters?.active ?? null, leviathans: d.leviathans.busy, destroyer: d.pieces.destroyerHere, ship: s.ship && [s.ship.x, s.ship.y, s.ship.z].map((v) => +v.toFixed(0)) }; });
+console.log('start:', await flags());
 await dbg(() => window.__universeDebug.director.soon('rift'));
-await page.waitForFunction(() => Boolean(window.__universeDebug.pieces.riftAt), null, { timeout: 30000 }).catch(() => {});
+await page.waitForFunction(() => Boolean(window.__universeDebug.pieces.riftAt), null, { timeout: 90000 }).catch(() => {});
 const riftAt = await dbg(() => window.__universeDebug.pieces.riftAt?.toArray());
 check(Boolean(riftAt), `a rift opened at ${JSON.stringify(riftAt)}`);
-await page.waitForTimeout(1000);
-await page.screenshot({ path: `${out}/rift.png`, timeout: 120000 });
-// fly the ship into it: put the ship at the rift and let a frame run
-const before = await dbg(() => ({ ...window.__universe().ship }));
-await dbg(() => {
-  const d = window.__universeDebug;
-  const r = d.pieces.riftAt;
-  d.state.ship.x = r.x;
-  d.state.ship.y = r.y;
-  d.state.ship.z = r.z;
-});
-// (the rift takes 0.6 s of the scene's own clock to open, which is a while in software GL)
-await page.waitForFunction((b) => Math.hypot(window.__universe().ship.x - b.x, window.__universe().ship.z - b.z) > 100, before, { timeout: 90000 }).catch(() => {});
-const after = await dbg(() => ({ ship: { ...window.__universe().ship } }));
-const moved = Math.hypot(after.ship.x - before.x, after.ship.z - before.z);
-check(moved > 100, `through the rift: the ship is ${moved.toFixed(0)} units from where it was`);
-await page.waitForFunction(() => !window.__universeDebug.pieces.riftAt, null, { timeout: 90000 }).catch(() => {});
-check(await dbg(() => !window.__universeDebug.pieces.riftAt), 'the rift closed behind it');
+if (riftAt) {
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: `${out}/rift.png`, timeout: 120000 });
+  // fly the ship into it: put the ship at the rift and let a frame run
+  const before = await dbg(() => ({ ...window.__universe().ship }));
+  await dbg(() => {
+    const d = window.__universeDebug;
+    const r = d.pieces.riftAt;
+    d.state.ship.x = r.x;
+    d.state.ship.y = r.y;
+    d.state.ship.z = r.z;
+  });
+  // (the rift takes 0.6 s of the scene's own clock to open)
+  await page.waitForFunction((b) => Math.hypot(window.__universe().ship.x - b.x, window.__universe().ship.z - b.z) > 100, before, { timeout: 90000 }).catch(() => {});
+  const after = await dbg(() => ({ ship: { ...window.__universe().ship } }));
+  const moved = Math.hypot(after.ship.x - before.x, after.ship.z - before.z);
+  check(moved > 100, `through the rift: the ship is ${moved.toFixed(0)} units from where it was`);
+  await page.waitForFunction(() => !window.__universeDebug.pieces.riftAt, null, { timeout: 90000 }).catch(() => {});
+  check(await dbg(() => !window.__universeDebug.pieces.riftAt), 'the rift closed behind it');
+} else console.log('no rift:', await flags());
 
 await dbg(() => window.__universeDebug.director.soon('flare'));
 await page.waitForFunction(() => window.__universeDebug.pieces.flareGoing, null, { timeout: 30000 }).catch(() => {});
@@ -61,12 +66,6 @@ check(await dbg(() => window.__universeDebug.pieces.flareGoing), 'a flare is goi
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${out}/flare.png`, timeout: 120000 });
 
-await dbg(() => window.__universeDebug.director.soon('leviathan'));
-await page.waitForFunction(() => window.__universeDebug.leviathans.busy, null, { timeout: 30000 }).catch(() => {});
-check(await dbg(() => window.__universeDebug.leviathans.busy), 'leviathans are passing');
-await page.waitForTimeout(6000);
-await page.screenshot({ path: `${out}/leviathan.png`, timeout: 120000 });
-console.log('comms:', await dbg(() => document.querySelector('.universe-comms')?.textContent ?? ''));
 
 await dbg(() => window.__universeDebug.director.soon('meteors'));
 await page.waitForFunction(() => window.__universeDebug.meteors.count > 0, null, { timeout: 30000 }).catch(() => {});
@@ -87,6 +86,15 @@ await dbg(() => window.__universeDebug.director.soon('bounty'));
 await page.waitForFunction(() => window.__universeDebug.hunters.targets.length > 0, null, { timeout: 30000 }).catch(() => {});
 const hunter = await dbg(() => window.__universeDebug.hunters.targets.map((t) => t.kind));
 check(hunter.length === 1 && ['slave1', 'phoenixperson', 'tieadvanced'].includes(hunter[0]), `a bounty hunter alone: ${JSON.stringify(hunter)}`);
+await dbg(() => window.__universeDebug.hunters.clear()); // (the hunters hold the director busy: off with them before the last one)
+
+// (last: a pass holds the director busy for a good while)
+await dbg(() => window.__universeDebug.director.soon('leviathan'));
+await page.waitForFunction(() => window.__universeDebug.leviathans.busy, null, { timeout: 30000 }).catch(() => {});
+check(await dbg(() => window.__universeDebug.leviathans.busy), 'leviathans are passing');
+await page.waitForTimeout(6000);
+await page.screenshot({ path: `${out}/leviathan.png`, timeout: 120000 });
+console.log('comms:', await dbg(() => document.querySelector('.universe-comms')?.textContent ?? ''));
 
 console.log('errors:', errors);
 console.log(problems.length ? `FAILED: ${problems.length}` : 'ALL OK');
