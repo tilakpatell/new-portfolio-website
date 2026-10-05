@@ -400,39 +400,120 @@ export async function create(canvas, ctx) {
   });
   const lit = (map, color, o = {}) => new THREE.SpriteMaterial({ map, color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, ...o });
 
-  // the Matrix of Leadership, in Optimus's chest: found on the model itself
-  // (the front of his chest, by a ray from in front of him), so it sits on
-  // him and turns with him. A core, a halo, and rays that turn slowly.
+  // The Matrix of Leadership. Optimus's chest is the cab's front, and its two
+  // windscreen panes are parts of their own: they swing open like doors, on
+  // hinges at their outer edges, and the Matrix is there between them, comes
+  // forward and lights. (Where his chest is, is read off the model: the panes
+  // themselves, or failing that the first thing a ray from in front of him hits.)
   const chest = new THREE.Vector3(0, TALL * 0.7, 0.42);
+  const chamberSize = new THREE.Vector2(0, 0);
+  const doors = [];
   if (change) {
     change.at(change.duration);
     change.holder.position.copy(change.to);
     turntable.updateMatrixWorld(true);
-    const ray = new THREE.Raycaster();
-    let best = null;
-    for (const h of [0.66, 0.7, 0.74]) {
-      ray.set(new THREE.Vector3(0, TALL * h, 6), new THREE.Vector3(0, 0, -1));
-      const hit = ray.intersectObject(change.holder, true)[0];
-      if (hit && (!best || hit.point.z > best.z)) best = hit.point;
+    const door = (names, hand) => {
+      const nodes = names.map((n) => change.holder.getObjectByName(n)?.parent).filter(Boolean);
+      if (nodes.length < names.length) return null;
+      const box = new THREE.Box3();
+      for (const n of nodes) box.expandByObject(n);
+      return {
+        hand,
+        box,
+        hinge: new THREE.Vector3(hand < 0 ? box.min.x : box.max.x, 0, (box.min.z + box.max.z) / 2),
+        parts: nodes.map((n) => ({ n, world: n.matrixWorld.clone(), inv: n.parent.matrixWorld.clone().invert(), p: n.position.clone(), q: n.quaternion.clone(), s: n.scale.clone() })),
+      };
+    };
+    const left = door(['chetou_1957597768_chetou_0', 'boli007_boli_0'], -1);
+    const right = door(['chetou_002344444_chetou_0', 'boli04_boli_0'], 1);
+    if (left && right) {
+      doors.push(left, right);
+      chest.set((left.box.max.x + right.box.min.x) / 2, (left.box.min.y + left.box.max.y + right.box.min.y + right.box.max.y) / 4, Math.min(left.hinge.z, right.hinge.z) - 0.05);
+      // the chamber behind the doors: as wide as both panes and as tall, lit from within once they part
+      chamberSize.set(right.box.max.x - left.box.min.x, Math.max(left.box.max.y - left.box.min.y, right.box.max.y - right.box.min.y));
+    } else {
+      const ray = new THREE.Raycaster();
+      let best = null;
+      for (const h of [0.66, 0.7, 0.74]) {
+        ray.set(new THREE.Vector3(0, TALL * h, 6), new THREE.Vector3(0, 0, -1));
+        const hit = ray.intersectObject(change.holder, true)[0];
+        if (hit && (!best || hit.point.z > best.z)) best = hit.point;
+      }
+      if (best) chest.set(0, best.y, best.z + 0.05);
     }
-    if (best) chest.set(0, best.y, best.z + 0.05);
     change.at(0);
     change.holder.position.copy(change.from);
   }
+  const hingeM = new THREE.Matrix4();
+  const turnM = new THREE.Matrix4();
+  const swing = (angle) => {
+    for (const d of doors)
+      for (const part of d.parts) {
+        if (angle < 1e-4) {
+          part.n.position.copy(part.p);
+          part.n.quaternion.copy(part.q);
+          part.n.scale.copy(part.s);
+          continue;
+        }
+        // about the hinge, as he stood when the doors were found; then back into the part's own frame
+        hingeM.makeTranslation(d.hinge.x, d.hinge.y, d.hinge.z).multiply(turnM.makeRotationY(d.hand * angle)).multiply(turnM.makeTranslation(-d.hinge.x, -d.hinge.y, -d.hinge.z)).multiply(part.world);
+        turnM.copy(part.inv).multiply(hingeM).decompose(part.n.position, part.n.quaternion, part.n.scale);
+      }
+  };
+
+  // the Matrix itself: a crystal that holds the light, caged in gold rings, in a frame with a grip either side
   const matrixGroup = new THREE.Group();
   matrixGroup.position.copy(chest);
-  const spark = new THREE.PointLight(0xffd27a, 0, 4.5, 1.6);
-  spark.position.z = 0.25;
-  const core = new THREE.Sprite(lit(glowTex, new THREE.Color(0xfff3c4).multiplyScalar(1.6)));
-  const halo = new THREE.Sprite(lit(glowTex, 0xffb648));
-  const blue = new THREE.Sprite(lit(glowTex, 0x7fd4ff));
+  const relic = new THREE.Group();
+  {
+    const gold = metal(0xe2a93b, { metalness: 1, roughness: 0.22 });
+    const silver = metal(0xcfd4dc, { metalness: 1, roughness: 0.25 });
+    const crystal = new THREE.Mesh(new THREE.IcosahedronGeometry(0.072, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xbfe9ff).multiplyScalar(1.5) }));
+    relic.add(crystal);
+    for (const [rx, ry] of [[0, 0], [Math.PI / 2, 0], [Math.PI / 2, Math.PI / 2]]) {
+      const cage = new THREE.Mesh(new THREE.TorusGeometry(0.098, 0.011, 10, 40), gold);
+      cage.rotation.set(rx, ry, 0);
+      relic.add(cage);
+    }
+    const frame = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.02, 12, 48), gold);
+    frame.scale.set(1.18, 0.86, 1);
+    relic.add(frame);
+    for (const hand of [-1, 1]) {
+      const grip = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.017, 10, 24, Math.PI), silver);
+      grip.rotation.z = (-hand * Math.PI) / 2;
+      grip.position.x = hand * 0.165;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.15, 12), gold);
+      cap.position.x = hand * 0.165;
+      relic.add(grip, cap);
+    }
+    relic.userData.crystal = crystal;
+  }
+  const spark = new THREE.PointLight(0xbfe4ff, 0, 4.5, 1.6);
+  spark.position.z = 0.2;
+  const core = new THREE.Sprite(lit(glowTex, new THREE.Color(0xdff4ff).multiplyScalar(1.6)));
+  const halo = new THREE.Sprite(lit(glowTex, 0x6fc8ff));
+  const blue = new THREE.Sprite(lit(glowTex, 0xffc86a));
   const rays = [0, 1, 2].map((i) => {
-    const r = new THREE.Sprite(lit(rayTex, 0xffe0a0, { rotation: (i * Math.PI) / 3 }));
+    const r = new THREE.Sprite(lit(rayTex, 0xcfeeff, { rotation: (i * Math.PI) / 3 }));
     matrixGroup.add(r);
     return r;
   });
-  matrixGroup.add(spark, halo, blue, core);
+  matrixGroup.add(relic, spark, halo, blue, core);
   turntable.add(matrixGroup);
+  // the light in the open chamber: it stays in his chest while the Matrix comes forward
+  const chamberTex = paint(128, 64, (g) => {
+    const grad = g.createRadialGradient(64, 32, 2, 64, 32, 70);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.45, 'rgba(190,230,255,0.85)');
+    grad.addColorStop(1, 'rgba(70,150,255,0.25)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 64);
+  });
+  const chamberMat = new THREE.MeshBasicMaterial({ map: chamberTex, color: new THREE.Color(0xbfe6ff).multiplyScalar(1.4), transparent: true, opacity: 0, depthWrite: false });
+  const chamber = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.2, chamberSize.x * 0.94), Math.max(0.1, chamberSize.y * 0.9)), chamberMat);
+  chamber.position.set(chest.x, chest.y, chest.z - 0.02);
+  chamber.visible = false;
+  turntable.add(chamber);
 
   // the fusion cannon's fire: a charge gathering at the muzzle, then the beam
   // (a white-hot core in a sheath of violet) out along the barrel, and the flash
@@ -594,21 +675,40 @@ export async function create(canvas, ctx) {
       else if (t !== to) t = to > t ? Math.min(1, t + dt / span) : Math.max(0, t - dt / span);
       pose();
       // the Matrix, and the cannon
-      matrix += ((wantMatrix && t > 0.99 ? 1 : 0) - matrix) * Math.min(1, dt * 4);
+      // the Matrix: the chest opens first, then it comes forward, then it lights (and the other way to close)
+      const opening = wantMatrix && t > 0.99;
+      matrix = Math.max(0, Math.min(1, matrix + (opening ? dt / 1.5 : -dt / (t > 0.99 ? 1.0 : 0.3))));
+      const part = (a, b) => {
+        const u = Math.max(0, Math.min(1, (matrix - a) / (b - a)));
+        return u * u * (3 - 2 * u);
+      };
+      const beat0 = Math.sin(clock * 5.5);
+      const ajar = part(0, 0.45); // the doors
+      const out = part(0.3, 0.75); // the Matrix, forward out of his chest
+      const glow = part(0.6, 1); // its light
+      swing(ajar * 1.32); // open far enough to see in, not so far the doors turn edge-on
+      chamber.visible = doors.length > 0 && ajar > 0.02;
+      chamberMat.opacity = ajar * (0.55 + 0.45 * glow) * (0.9 + 0.1 * beat0);
       const beat = 0.85 + 0.15 * Math.sin(clock * 5.5);
-      spark.intensity = matrix * 7 * beat;
-      core.material.opacity = matrix;
-      core.scale.setScalar(0.34 * (0.5 + 0.5 * matrix) * beat);
-      halo.material.opacity = matrix * 0.7;
-      halo.scale.setScalar(1.25 * matrix * beat);
-      blue.material.opacity = matrix * 0.28;
-      blue.scale.setScalar(2.1 * matrix);
+      matrixGroup.visible = matrix > 0.002;
+      // from inside the chamber, forward into the open
+      matrixGroup.position.set(chest.x, chest.y + (ctx.reduced ? 0 : Math.sin(clock * 1.6) * 0.012 * out), chest.z - 0.08 + out * 0.42);
+      relic.scale.setScalar(0.6 + 0.42 * out);
+      relic.rotation.y = ctx.reduced ? 0 : Math.sin(clock * 0.9) * 0.22 * out;
+      relic.visible = ajar > 0.15;
+      relic.userData.crystal.rotation.y = clock * 1.2;
+      spark.intensity = glow * 8 * beat;
+      core.material.opacity = glow;
+      core.scale.setScalar(0.3 * (0.5 + 0.5 * glow) * beat);
+      halo.material.opacity = glow * 0.65;
+      halo.scale.setScalar(1.15 * glow * beat);
+      blue.material.opacity = glow * 0.22;
+      blue.scale.setScalar(2 * glow);
       rays.forEach((r, i) => {
-        r.material.opacity = matrix * (0.5 + 0.25 * Math.sin(clock * 3 + i * 2));
+        r.material.opacity = glow * (0.45 + 0.25 * Math.sin(clock * 3 + i * 2));
         r.material.rotation = (i * Math.PI) / 3 + clock * 0.22 * (i % 2 ? -1 : 1);
-        r.scale.set((1.5 + 0.35 * Math.sin(clock * 2.2 + i)) * matrix, 0.16, 1);
+        r.scale.set((1.4 + 0.35 * Math.sin(clock * 2.2 + i)) * glow, 0.15, 1);
       });
-      matrixGroup.visible = matrix > 0.005;
 
       // the cannon: the arm comes up, the muzzle charges, the beam goes, the arm kicks and comes down
       if (fire > 0) fire = Math.max(0, fire - dt / 1.5);
@@ -651,8 +751,15 @@ export async function create(canvas, ctx) {
       beam.visible = charge > 0 || going > 0;
       // turning: by hand, then back to a slow turn of its own
       if (!drag) {
-        vel += ((ctx.reduced ? 0 : 0.16) - vel) * Math.min(1, dt * 1.4);
-        yaw += vel * dt;
+        if (matrix > 0.001 || fire > 0) {
+          // showing the Matrix (or firing): he turns to face you and holds still (the cannon, a little side on)
+          const face = Math.round(yaw / (Math.PI * 2)) * Math.PI * 2 + (fire > 0 ? -0.5 : 0);
+          vel = 0;
+          yaw += (face - yaw) * Math.min(1, dt * 3.5);
+        } else {
+          vel += ((ctx.reduced ? 0 : 0.16) - vel) * Math.min(1, dt * 1.4);
+          yaw += vel * dt;
+        }
       }
       turntable.rotation.y = yaw;
       // the camera sits back for the vehicle and stands up for the robot
@@ -662,7 +769,7 @@ export async function create(canvas, ctx) {
       camera.lookAt(0, 0.85 + k * 0.45, 0);
       renderer.render(scene, camera);
       stage.watch(now);
-      const busy = t !== to || fire > 0 || Math.abs(matrix - (wantMatrix && t > 0.99 ? 1 : 0)) > 0.01 || !!drag;
+      const busy = t !== to || fire > 0 || Math.abs(matrix - (opening ? 1 : 0)) > 0.001 || !!drag;
       return visible && (!ctx.reduced || busy);
     },
     dispose() {
@@ -676,6 +783,7 @@ export async function create(canvas, ctx) {
       meg?.mixer?.stopAllAction();
       glowTex.dispose();
       rayTex.dispose();
+      chamberTex.dispose();
       disposeTree(scene);
       env.dispose();
       stage.dispose();
