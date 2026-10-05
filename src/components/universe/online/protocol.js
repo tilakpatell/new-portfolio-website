@@ -70,7 +70,7 @@ export const GUARD = {
   reach: 95, // map units: further than this from one of your hunters, they couldn't have hit it (a bolt at the boost goes 85)
 };
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], foot: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
 export const FLAG = { hidden: 1, boost: 2, safe: 4 };
 
@@ -260,6 +260,36 @@ export function readFoot(data) {
   const lead = data.a === null ? null : readWalker(data.a);
   if (!f || (data.a !== null && !lead)) return null;
   return { planet: u.id, kind: parseShip(data.k), ship: { n, f }, lead, mate: lead ? readWalker(data.b) : null };
+}
+
+// ── Down on a world in the galaxy (galaxy/surface/scene.js) ──
+// where a pilot's crew are, in that world's own metres: { world, kind,
+// lead, mate, ride }, each walker [who, x, y, z, yaw, speed], ride the
+// kind they're on (or null); or null once they've taken off again
+export const WALK_MS = 100;
+const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
+const r2 = (v) => Math.round((v || 0) * 100) / 100;
+const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed)] : null);
+export function writeWalk(w) {
+  if (!w) return { w: null };
+  return { w: w.world, k: w.kind, a: writeStroller(w.lead), b: writeStroller(w.mate), r: w.ride ?? null };
+}
+const readStroller = (data) => {
+  if (!Array.isArray(data) || data.length < 6 || !WALKERS.includes(data[0])) return null;
+  const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
+  const yaw = num(data[4], -7, 7);
+  if (x === null || y === null || z === null || yaw === null) return null;
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0 };
+};
+// a crew down on a world as it came in: { world, kind, lead, mate, ride },
+// { off: true } (back in their ship), or null if it isn't one
+export function readWalk(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  if (data.w === null) return { off: true };
+  if (typeof data.w !== 'string' || !/^[a-z0-9]{2,16}$/.test(data.w)) return null;
+  const lead = readStroller(data.a);
+  if (!lead) return null;
+  return { world: data.w, kind: parseShip(data.k), lead, mate: readStroller(data.b), ride: RIDES_SEEN.includes(data.r) ? data.r : null };
 }
 
 // Did one of these shots ({ p, v, at }, as they came in) pass near enough

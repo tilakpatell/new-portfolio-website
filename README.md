@@ -87,7 +87,19 @@ Every other system's star is up there in the sky, where it really is from where 
 | --- | --- |
 | `J` | Jump to lightspeed, to the star your nose is on |
 | `M` | The galaxy map: plot a course, filter by era or film |
-| `E` | Board the Death Star, or open the mission, when you're at it |
+| `E` | Land on the planet you're at (or board the Death Star) |
+
+#### Down on the worlds
+
+Every planet you can stand on (eighteen of them: Alderaan's gone) is a world of its own to land on and walk: `/galaxy/tatooine/surface`. Your ship comes down out of the sky and sets down, and you and your crewmate climb out onto the sand, the snow, the forest floor, a platform over Bespin's clouds or a Coruscant rooftop. Each world has the places from the films to find (the Lars homestead, Mos Eisley and the Sarlacc on Tatooine; Echo Base on Hoth; the Ewok village and the shield-generator bunker on Endor…), named on a compass until you've found them, with what the crew have to say about each; its people and creatures going about their business, who'll talk if you go up to them; speeders, speeder bikes and tauntauns to ride; walkers, ships going over, the weather and the sound of the place. Online, the other pilots down on the same world are there with you. Get back in the ship to take off, back up to the system.
+
+| Key | Action |
+| --- | --- |
+| `W` `A` `S` `D` | Walk (the way the camera faces); on a speeder, throttle and steer |
+| `Shift` / `Space` | Run (or boost) / jump |
+| Drag, scroll | Look round, zoom |
+| `E` | Talk, ride (and get off), get in the ship and take off |
+| `Tab` | Swap to your crewmate |
 
 The flying keys are the universe map's. Every system has a mission: the trench run and boarding the Death Star are playable now; the rest have briefings, with their own opening crawls, for games still being built ([the plan](docs/superpowers/specs/2026-10-05-galaxy-games-design.md)).
 
@@ -97,7 +109,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 | World | Route | Fandom | Highlights |
 | --- | --- | --- | --- |
-| A galaxy far, far away | `/galaxy` | Star Wars | Nineteen star systems to fly, jump between and fight over, each with a mission briefing |
+| A galaxy far, far away | `/galaxy` | Star Wars | Nineteen star systems to fly, jump between and fight over, each with a mission briefing, and eighteen worlds to land on and walk |
 | Death Star | `/deathstar` | Star Wars | Fly the trench run before Yavin 4 comes into range |
 | Music room | `/music` | Indian classical music | Land on the music planet and walk a dusk courtyard in 3D to its instruments; a sitar with fret settings and an auto chikari, a real harmonium, the tabla and the tanpura; forty ragas, or your own |
 | Middle-earth | `/middle-earth` | The Lord of the Rings | A map of chapters: walk every stop on the road in 3D as Frodo, from Hobbiton to Mount Doom; cook in co-op, Overcooked-style, in a kitchen at each one (Bilbo's party, the Prancing Pony, Weathertop, Elrond's table, the forges of Moria, Lórien's flets, Parth Galen, Ithilien, the orcs' mess in Cirith Ungol and the feast at Cormallen); open the Doors of Durin, cross Gorgoroth |
@@ -182,6 +194,7 @@ The scripts that call Meshy (`scripts/meshy*.mjs`) read `MESHY_API_KEY` from `.e
     │   ├── universe/              # the universe map: flight, targeting, HUD
     │   │   └── online/            # multiplayer over Nostr
     │   ├── galaxy/                # a galaxy far, far away: the systems, hyperspace, the galaxy map
+    │   │   └── surface/           # its worlds from the ground: land, terrain, sky, the places, people and rides
     │   ├── cockpit/               # the welcome, the crawl and the launch
     │   ├── worlds/                # world registry and the download gate for phones
     │   ├── games/                 # shared game code: GPU check, gamepad, sounds

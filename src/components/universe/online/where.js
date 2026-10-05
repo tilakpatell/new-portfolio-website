@@ -33,7 +33,7 @@ export function placeName(where) {
   if (!where) return 'somewhere';
   if (NAMES[where]) return NAMES[where];
   const sys = systemOfPath(where);
-  if (sys) return inGalaxyFlight(where) ? SYSTEM_NAMES[sys] : `the ${SYSTEM_NAMES[sys]} briefing`;
+  if (sys) return inGalaxyFlight(where) ? SYSTEM_NAMES[sys] : where.endsWith('/surface') ? `down on ${SYSTEM_NAMES[sys]}` : `the ${SYSTEM_NAMES[sys]} briefing`;
   const u = byPath(where);
   if (u) return u.world ?? u.place ?? u.label;
   if (where.startsWith('/projects/')) return 'a project';

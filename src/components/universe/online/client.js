@@ -27,7 +27,8 @@
 // createClient({ name, kind, loadout, where }) → { selfId, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, loadout, where }), pose(ship, { hidden, boost, safe,
 //   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
-//   each pilot's comes in as peer.foot, with `at`), shot(at, v, weapon),
+//   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
+//   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
 //   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
 //   down(byId), cursor(x, y, touch), pack(get) (get() → hunters.js's wire(),
 //   asked for only when it's time to send), hunterHit(peerId, hunterId,
@@ -42,7 +43,7 @@
 // 'siege', from, msg } (another pilot's word on the Citadel's siege, read
 // with siege.js's readSiege).
 
-import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
@@ -68,6 +69,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
   let lastPose = -Infinity;
   let lastFoot = -Infinity;
   let footDown = false; // whether the last foot sent had your crew down
+  let lastWalk = -Infinity;
+  let walkDown = false; // and the last walk, down on a world in the galaxy
   let lastShot = -Infinity;
   let lastPack = -Infinity;
   let packSent = []; // the hunters last told of (a hit on one is checked against where it was)
@@ -99,6 +102,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
         snaps: [],
         pose: null,
         foot: null, // their crew on foot, while they're down on a planet
+        walk: null, // and down on a world in the galaxy
         hunters: null, // the hunters after them: { at, list } (protocol.js's readPack)
         cur: null,
         shots: [], // their last few, for checking a hit on you
@@ -135,6 +139,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     p.snaps.length = 0;
     p.pose = null;
     p.foot = null;
+    p.walk = null;
     p.hunters = null;
     p.cur = null;
     p.shots.length = 0;
@@ -176,6 +181,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
     const hi = action('hi');
     const pose = action('pose');
     const foot = action('foot');
+    const walk = action('walk');
     const shot = action('shot');
     const hit = action('hit');
     const down = action('down');
@@ -190,6 +196,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       hi: (data, to) => hi.send(data, to ? { target: to } : undefined).catch(() => {}),
       pose: (data) => pose.send(data).catch(() => {}),
       foot: (data) => foot.send(data).catch(() => {}),
+      walk: (data) => walk.send(data).catch(() => {}),
       shot: (data) => shot.send(data).catch(() => {}),
       hit: (data, to) => hit.send(data, { target: to }).catch(() => {}),
       down: (data) => down.send(data).catch(() => {}),
@@ -245,6 +252,12 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       const p = f && admit('foot', peerId);
       if (!p) return;
       p.foot = f.off ? null : { ...f, at: now() };
+    };
+    walk.onMessage = (data, { peerId }) => {
+      const w = readWalk(data);
+      const p = w && admit('walk', peerId);
+      if (!p) return;
+      p.walk = w.off ? null : { ...w, at: now() };
     };
     siege.onMessage = (data, { peerId }) => {
       const msg = readSiege(data);
@@ -445,6 +458,21 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, where
       lastFoot = t;
       footDown = true;
       send.foot(writeFoot(crew));
+    },
+    // your crew down on a world in the galaxy (protocol.js's writeWalk),
+    // each frame while they're there, and null once you've taken off
+    walk(crew) {
+      const t = now();
+      if (!send) return;
+      if (!crew) {
+        if (walkDown) send.walk(writeWalk(null));
+        walkDown = false;
+        return;
+      }
+      if (t - lastWalk < WALK_MS) return;
+      lastWalk = t;
+      walkDown = true;
+      send.walk(writeWalk(crew));
     },
     shot(at, v, weapon = 0) {
       const t = now();

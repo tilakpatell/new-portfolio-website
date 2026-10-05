@@ -11,14 +11,14 @@ import MODELS from '../data/modelCredits.json';
 // `where`: the page ('universe', 'middle-earth', 'galaxy': a model one page
 // shares with another says so in its `also`). As a list that opens, like
 // the photo credits; or with `line`, as one sentence for a page with no room
-// for a list.
+// for a list. `only`: just the ones in these files (what's on screen now).
 
 const licence = (m) => m.license.replace(/^CC-/, 'CC ').replace(/-(\d)/, ' $1'); // 'CC-BY-NC-SA-4.0' → 'CC BY-NC-SA 4.0'
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const out = { target: '_blank', rel: 'noopener noreferrer' };
 
-export default memo(function ModelCredits({ where, line = false, className = '' }) {
-  const list = Object.values(MODELS).filter((m) => m.where === where || m.also?.includes(where));
+export default memo(function ModelCredits({ where, only = null, line = false, className = '' }) {
+  const list = Object.values(MODELS).filter((m) => (m.where === where || m.also?.includes(where)) && (!only || only.includes(m.file)));
   if (!list.length) return null;
   if (line) {
     // one licence between them all is said once, at the end

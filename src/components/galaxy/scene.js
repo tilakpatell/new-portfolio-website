@@ -133,6 +133,28 @@ function systemEnvironment(renderer, sys) {
 }
 const s3 = (d) => [d[0], -d[1] * 0.5, d[2]];
 
+// Just taken off from a system's planet (the surface page leaves its id in
+// the session as it goes): just off the planet on its sunny side, nose
+// out, climbing. Once only.
+const LAUNCH_KEY = 'tp-galaxy-launch';
+function takeOff(sys) {
+  let id = null;
+  try {
+    id = window.sessionStorage.getItem(LAUNCH_KEY);
+    if (id) window.sessionStorage.removeItem(LAUNCH_KEY);
+  } catch {
+    return null;
+  }
+  if (id !== sys.id || !sys.body) return null;
+  const r = sys.body.r;
+  const sun = sys.suns[0].dir;
+  const l = Math.hypot(sun[0], sun[2]) || 1;
+  const dx = sun[0] / l;
+  const dz = sun[2] / l;
+  const d = r * 1.18 + 4;
+  return { x: dx * d, y: r * 0.12, z: dz * d, heading: Math.atan2(-dx, -dz) };
+}
+
 export async function create(canvas, ctx) {
   const { reduced } = ctx;
   let props = ctx;
@@ -1359,11 +1381,15 @@ export async function create(canvas, ctx) {
     const wt = wall();
     if (!flying() && props.ship) setShip(props.ship);
     if (!state.ship && state.kind && state.sys) {
-      // a new pilot: out of hyperspace into the system you asked for
-      const a = arrival(state.sys, null);
-      state.ship = { ...spawn(null, a), speed: reduced ? 0 : 46 };
+      // a new pilot: out of hyperspace into the system you asked for, or,
+      // just taken off from its planet (pages/GalaxySurface.jsx), climbing
+      // away from it out of its air
+      const launched = takeOff(state.sys);
+      const a = launched ?? arrival(state.sys, null);
+      state.ship = { ...spawn(null, a), speed: reduced ? 0 : launched ? 30 : 46, pitch: launched ? 0.25 : 0 };
       camQOn = false;
-      if (!reduced) {
+      if (launched) emit({ type: 'launch' });
+      else if (!reduced) {
         state.jump = { to: state.sys, from: null, phase: 'exit', age: 0, dir: [0, 0, -1], dur: 0, built: true, ready: true };
         jumpFx.set({ stretch: 1, tunnel: 0, flash: 1, speed: 300 });
       }

@@ -354,3 +354,26 @@ describe('sample', () => {
     expect(sample([], 0)).toBeNull();
   });
 });
+
+describe('down on a world in the galaxy', () => {
+  it('sends where the crew are, and reads it back', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'tatooine', kind: 'xwing', lead: { who: 'luke', x: 12.345, y: 3.2, z: -40.1, yaw: 1.2, speed: 3.3 }, mate: { who: 'artoo', x: 11, y: 3.1, z: -41, yaw: 1.1, speed: 3 }, ride: 'landspeeder' });
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.world).toBe('tatooine');
+    expect(got.kind).toBe('xwing');
+    expect(got.lead).toMatchObject({ who: 'luke', x: 12.35, y: 3.2, z: -40.1, yaw: 1.2 });
+    expect(got.mate.who).toBe('artoo');
+    expect(got.ride).toBe('landspeeder');
+    expect(readWalk(writeWalk(null))).toEqual({ off: true });
+  });
+
+  it('turns away what isn’t a crew on a world', async () => {
+    const { readWalk } = await import('./protocol');
+    expect(readWalk(null)).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['vader', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: '../etc', a: ['luke', 0, 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 'x', 0, 0, 0, 0] })).toBeNull();
+    expect(readWalk({ w: 'tatooine', a: ['luke', 1, 2, 3, 0, 0], r: 'deathstar' }).ride).toBeNull();
+  });
+});

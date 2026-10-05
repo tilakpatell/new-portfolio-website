@@ -126,6 +126,24 @@ describe('createClient', () => {
     expect(b.peers.get('A').foot).toBeNull();
   });
 
+  it('passes a crew down on a world in the galaxy along, and says when they take off', async () => {
+    const { a, b, tick } = await pair();
+    const w = { who: 'han', x: 5, y: 3, z: -8, yaw: 0.5, speed: 3 };
+    a.walk({ world: 'tatooine', kind: 'falcon', lead: w, mate: { ...w, who: 'chewie' }, ride: null });
+    const p = b.peers.get('A');
+    expect(p.walk.world).toBe('tatooine');
+    expect(p.walk.lead).toMatchObject({ who: 'han', x: 5, z: -8 });
+    expect(p.walk.mate.who).toBe('chewie');
+    // no more than ten a second
+    a.walk({ world: 'tatooine', kind: 'falcon', lead: { ...w, x: 6 }, mate: null, ride: 'landspeeder' });
+    expect(p.walk.lead.x).toBe(5);
+    tick(120);
+    a.walk({ world: 'tatooine', kind: 'falcon', lead: { ...w, x: 6 }, mate: null, ride: 'landspeeder' });
+    expect(p.walk.ride).toBe('landspeeder');
+    a.walk(null);
+    expect(p.walk).toBeNull();
+  });
+
   it('says when you are just back, so nobody wastes a shot on you', async () => {
     const { a, b, tick } = await pair();
     a.pose(ship(4), { safe: true });

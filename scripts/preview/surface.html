@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Surface model sheet</title>
+    <!--
+      The galaxy's surface models, side by side, as scripts/sketchfab-surface.mjs
+      leaves them: on a metre grid, next to a person 1.8 m tall (the blue
+      post), each facing +z (towards the camera, a little to its left). Through
+      the dev server (npx vite):
+        /scripts/preview/surface.html?group=desert            the group
+        /scripts/preview/surface.html?group=desert&kind=bantha one of them
+        …&view=front | side | top | back                      from where
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #20242c;
+        color: #e9edf2;
+        font: 13px/1.3 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #labels div {
+        position: absolute;
+        transform: translate(-50%, 0);
+        padding: 2px 6px;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      #status {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="labels"></div>
+    <div id="status">loading…</div>
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+
+      const q = new URLSearchParams(location.search);
+      const group = q.get('group') ?? 'desert';
+      const only = q.get('kind');
+      const view = q.get('view') ?? 'three';
+      const status = document.getElementById('status');
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.prepend(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#20242c');
+      scene.add(new THREE.HemisphereLight('#dfe8ff', '#4a3f33', 1.4));
+      const sun = new THREE.DirectionalLight('#fff4e0', 2.6);
+      sun.position.set(-4, 8, 6);
+      scene.add(sun);
+
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const { MODELS } = await import(`/src/components/galaxy/surface/catalog/${group}.js`);
+      const kinds = Object.keys(MODELS).filter((k) => !only || k === only);
+      const loaded = [];
+      for (const kind of kinds) {
+        try {
+          const g = await loader.loadAsync(`/models/galaxy/surface/${kind}.glb`);
+          const box = new THREE.Box3().setFromObject(g.scene);
+          loaded.push({ kind, model: g.scene, box, clips: g.animations.map((a) => a.name) });
+        } catch {
+          loaded.push({ kind, model: null, box: null, clips: [] });
+        }
+      }
+
+      // in a row, biggest last, each with room round it
+      let x = 0;
+      const placed = [];
+      const person = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.8, 16), new THREE.MeshStandardMaterial({ color: '#3a8bff' }));
+      person.position.set(-1.2, 0.9, 0);
+      scene.add(person);
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 12), new THREE.MeshStandardMaterial({ color: '#3a8bff' }));
+      nose.rotation.x = Math.PI / 2;
+      nose.position.set(-1.2, 1.5, 0.3); // (the way a model's to face)
+      scene.add(nose);
+      for (const l of loaded.sort((a, b) => (a.box ? a.box.getSize(new THREE.Vector3()).x : 0) - (b.box ? b.box.getSize(new THREE.Vector3()).x : 0))) {
+        if (!l.model) {
+          placed.push({ ...l, at: new THREE.Vector3(x, 0, 0), top: 1 });
+          x += 3;
+          continue;
+        }
+        const size = l.box.getSize(new THREE.Vector3());
+        x += size.x / 2 + 0.6;
+        l.model.position.x = x;
+        scene.add(l.model);
+        placed.push({ ...l, at: new THREE.Vector3(x, 0, 0), top: size.y, size });
+        x += size.x / 2 + 0.6;
+      }
+      const span = Math.max(4, x + 1.2);
+      const tallest = Math.max(1.8, ...placed.map((p) => p.top));
+      const grid = new THREE.GridHelper(Math.ceil(span * 2 + 20), Math.ceil(span * 2 + 20), '#5a6270', '#363c46');
+      grid.position.x = span / 2 - 1.2;
+      scene.add(grid);
+
+      const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 5000);
+      const mid = new THREE.Vector3(span / 2 - 1.2, tallest * 0.35, 0);
+      const far = Math.max(span * 1.1, tallest * 2.6, 5);
+      const from = { three: [0.35, 0.45, 1], front: [0, 0.15, 1], back: [0, 0.15, -1], side: [1, 0.15, 0], top: [0, 1, 0.0001] }[view] ?? [0.35, 0.45, 1];
+      camera.position.copy(mid).add(new THREE.Vector3(...from).normalize().multiplyScalar(far));
+      camera.lookAt(mid);
+
+      renderer.render(scene, camera);
+      const labels = document.getElementById('labels');
+      for (const p of placed) {
+        const s = p.at.clone().setY(p.top + 0.15).project(camera);
+        const d = document.createElement('div');
+        d.style.left = `${((s.x + 1) / 2) * innerWidth}px`;
+        d.style.top = `${((1 - s.y) / 2) * innerHeight - 22}px`;
+        d.textContent = p.model ? `${p.kind} ${p.size.x.toFixed(1)}×${p.size.y.toFixed(1)}×${p.size.z.toFixed(1)} m${p.clips.length ? ` ▶ ${p.clips.join(', ')}` : ''}` : `${p.kind}: no glb`;
+        labels.append(d);
+      }
+      status.textContent = `${group}: ${loaded.filter((l) => l.model).length} of ${kinds.length} models (view: ${view})`;
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>

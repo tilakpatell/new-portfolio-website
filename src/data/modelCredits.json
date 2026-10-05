@@ -1,4 +1,81 @@
 {
+  "avengers-anim-basic": {
+    "title": "Basic Human Male",
+    "author": "enzinogenie",
+    "authorUrl": "https://sketchfab.com/enzinogenie",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
+    "where": "avengers",
+    "as": "the idle, walk and run Thor and Black Widow move with",
+    "file": "/models/sketchfab/avengers/thor.glb"
+  },
+  "avengers-anim-spiderman-advanced": {
+    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
+    "where": "avengers",
+    "as": "Spider-Man’s idle, walk and jump",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-anim-spiderman-symbiote": {
+    "title": "Spider-Man 2 Symbiote Suit (PS5)",
+    "author": "jerrylxia",
+    "authorUrl": "https://sketchfab.com/jerrylxia",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
+    "where": "avengers",
+    "as": "Spider-Man’s run",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "avengers-hulk": {
+    "title": "Hulk | Marvel Rivals",
+    "author": "King_45",
+    "authorUrl": "https://sketchfab.com/King_45",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/hulk-marvel-rivals-1379a9de81b7426ea4ee71ff4c126e80",
+    "where": "avengers",
+    "as": "Hulk, about the compound",
+    "file": "/models/sketchfab/avengers/hulk.glb"
+  },
+  "avengers-ironman": {
+    "title": "Iron Man MK7",
+    "author": "CHANG747",
+    "authorUrl": "https://sketchfab.com/CHANGP453",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/iron-man-mk7-ad4776eea8184283a3e49cf5487df754",
+    "where": "avengers",
+    "as": "an Iron Man armour at the workshop door",
+    "file": "/models/sketchfab/avengers/ironman.glb"
+  },
+  "avengers-thor": {
+    "title": "Thor",
+    "author": "Bhavlin",
+    "authorUrl": "https://sketchfab.com/thakurbhavmanyu5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thor-7cc5f55499cc4d67b7a1c92a6845c8a0",
+    "where": "avengers",
+    "as": "Thor, about the compound",
+    "file": "/models/sketchfab/avengers/thor.glb"
+  },
+  "avengers-widow": {
+    "title": "Black Widow – Animated 3D Character",
+    "author": "Kmirp99",
+    "authorUrl": "https://sketchfab.com/Kmirp99",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/black-widow-animated-3d-character-da36a24d113f49908459bf33e00a1f1e",
+    "where": "avengers",
+    "as": "Black Widow, about the compound",
+    "file": "/models/sketchfab/avengers/widow.glb"
+  },
   "bag-end-door": {
     "title": "Bilbo's Doors ( Hobbit House Doors )",
     "author": "MattMaksymowicz",
@@ -57,198 +134,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "minas-tirith": {
-    "title": "Minas Tirith Remake",
-    "author": "Mitro123",
-    "authorUrl": "https://sketchfab.com/Mitro123",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/minas-tirith-remake-5b2e96acbf5e4dfaa61996da9ff962ad",
-    "where": "middle-earth",
-    "as": "Minas Tirith"
-  },
-  "omni-man": {
-    "title": "Omni Man Fortnite",
-    "author": "Swimknot19",
-    "authorUrl": "https://sketchfab.com/RafaMario",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
-    "where": "invincible",
-    "as": "Omni-Man",
-    "file": "/models/invincible/omni-man.glb"
-  },
-  "orthanc": {
-    "title": "Isengard",
-    "author": "AndreOrla",
-    "authorUrl": "https://sketchfab.com/andreorla",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/isengard-7c674181195940e3a369018b52756bde",
-    "where": "middle-earth",
-    "as": "Orthanc"
-  },
-  "sitar": {
-    "title": "Classical musical Instrument - Sitar",
-    "author": "Amagi_Arts",
-    "authorUrl": "https://sketchfab.com/natsuboy304",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/classical-musical-instrument-sitar-deef326cddd04784be5d704c4fc44533",
-    "where": "universe",
-    "as": "the sitar by the music planet"
-  },
-  "spiderman": {
-    "title": "Spiderman Brand New Day",
-    "author": "mpolo0604",
-    "authorUrl": "https://sketchfab.com/mpolo0604",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
-    "where": "avengers",
-    "as": "Spider-Man",
-    "file": "/models/marvel/spiderman.glb"
-  },
-  "star-destroyer": {
-    "title": "Star Destroyer",
-    "author": "rubaun",
-    "authorUrl": "https://sketchfab.com/rubaun",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
-    "where": "universe",
-    "as": "the Star Destroyers",
-    "file": "/models/universe/star-destroyer.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "thragg": {
-    "title": "Thragg from invincible s4",
-    "author": "Gojiram",
-    "authorUrl": "https://sketchfab.com/geoffscool",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
-    "where": "invincible",
-    "as": "Thragg",
-    "file": "/models/invincible/thragg.glb"
-  },
-  "tie-interceptor": {
-    "title": "Star Wars: TIE/in Interceptor",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
-    "where": "universe",
-    "as": "the TIE interceptors",
-    "file": "/models/universe/tie-interceptor.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "trench": {
-    "title": "Death Star Trench Run",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
-    "where": "galaxy",
-    "as": "the Death Star’s trench",
-    "file": "/models/universe/trench.glb"
-  },
-  "xwing-hd": {
-    "title": "High Poly X-Wing Fighter",
-    "author": "charles.woods",
-    "authorUrl": "https://sketchfab.com/charles.woods",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
-    "where": "universe",
-    "as": "the X-wing you fly",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "avengers-thor": {
-    "title": "Thor",
-    "author": "Bhavlin",
-    "authorUrl": "https://sketchfab.com/thakurbhavmanyu5",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thor-7cc5f55499cc4d67b7a1c92a6845c8a0",
-    "where": "avengers",
-    "as": "Thor, about the compound",
-    "file": "/models/sketchfab/avengers/thor.glb"
-  },
-  "avengers-hulk": {
-    "title": "Hulk | Marvel Rivals",
-    "author": "King_45",
-    "authorUrl": "https://sketchfab.com/King_45",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/hulk-marvel-rivals-1379a9de81b7426ea4ee71ff4c126e80",
-    "where": "avengers",
-    "as": "Hulk, about the compound",
-    "file": "/models/sketchfab/avengers/hulk.glb"
-  },
-  "avengers-widow": {
-    "title": "Black Widow – Animated 3D Character",
-    "author": "Kmirp99",
-    "authorUrl": "https://sketchfab.com/Kmirp99",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/black-widow-animated-3d-character-da36a24d113f49908459bf33e00a1f1e",
-    "where": "avengers",
-    "as": "Black Widow, about the compound",
-    "file": "/models/sketchfab/avengers/widow.glb"
-  },
-  "avengers-ironman": {
-    "title": "Iron Man MK7",
-    "author": "CHANG747",
-    "authorUrl": "https://sketchfab.com/CHANGP453",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/iron-man-mk7-ad4776eea8184283a3e49cf5487df754",
-    "where": "avengers",
-    "as": "an Iron Man armour at the workshop door",
-    "file": "/models/sketchfab/avengers/ironman.glb"
-  },
-  "avengers-anim-basic": {
-    "title": "Basic Human Male",
-    "author": "enzinogenie",
-    "authorUrl": "https://sketchfab.com/enzinogenie",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/basic-human-male-f1775be7b1b94e4ea40d25287585ee69",
-    "where": "avengers",
-    "as": "the idle, walk and run Thor and Black Widow move with",
-    "file": "/models/sketchfab/avengers/thor.glb"
-  },
-  "avengers-anim-spiderman-advanced": {
-    "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
-    "author": "jerrylxia",
-    "authorUrl": "https://sketchfab.com/jerrylxia",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spider-man-2-advanced-suit-20-ps5-90907e9f6ad04e299239f306d22848f8",
-    "where": "avengers",
-    "as": "Spider-Man’s idle, walk and jump",
-    "file": "/models/marvel/spiderman.glb"
-  },
-  "avengers-anim-spiderman-symbiote": {
-    "title": "Spider-Man 2 Symbiote Suit (PS5)",
-    "author": "jerrylxia",
-    "authorUrl": "https://sketchfab.com/jerrylxia",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/spider-man-2-symbiote-suit-ps5-0845c06a538746c8a8111b241575bd9d",
-    "where": "avengers",
-    "as": "Spider-Man’s run",
-    "file": "/models/marvel/spiderman.glb"
   },
   "galaxy-acclamator": {
     "title": "Acclamator-Class Assault Ship",
@@ -484,6 +369,765 @@
     "where": "galaxy",
     "as": "the Y-wings",
     "file": "/models/galaxy/ywing.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "minas-tirith": {
+    "title": "Minas Tirith Remake",
+    "author": "Mitro123",
+    "authorUrl": "https://sketchfab.com/Mitro123",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/minas-tirith-remake-5b2e96acbf5e4dfaa61996da9ff962ad",
+    "where": "middle-earth",
+    "as": "Minas Tirith"
+  },
+  "omni-man": {
+    "title": "Omni Man Fortnite",
+    "author": "Swimknot19",
+    "authorUrl": "https://sketchfab.com/RafaMario",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
+    "where": "invincible",
+    "as": "Omni-Man",
+    "file": "/models/invincible/omni-man.glb"
+  },
+  "orthanc": {
+    "title": "Isengard",
+    "author": "AndreOrla",
+    "authorUrl": "https://sketchfab.com/andreorla",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/isengard-7c674181195940e3a369018b52756bde",
+    "where": "middle-earth",
+    "as": "Orthanc"
+  },
+  "sitar": {
+    "title": "Classical musical Instrument - Sitar",
+    "author": "Amagi_Arts",
+    "authorUrl": "https://sketchfab.com/natsuboy304",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/classical-musical-instrument-sitar-deef326cddd04784be5d704c4fc44533",
+    "where": "universe",
+    "as": "the sitar by the music planet"
+  },
+  "spiderman": {
+    "title": "Spiderman Brand New Day",
+    "author": "mpolo0604",
+    "authorUrl": "https://sketchfab.com/mpolo0604",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/spiderman-brand-new-day-ef54026773e14cffad16359fd771c5f8",
+    "where": "avengers",
+    "as": "Spider-Man",
+    "file": "/models/marvel/spiderman.glb"
+  },
+  "star-destroyer": {
+    "title": "Star Destroyer",
+    "author": "rubaun",
+    "authorUrl": "https://sketchfab.com/rubaun",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
+    "where": "universe",
+    "as": "the Star Destroyers",
+    "file": "/models/universe/star-destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-adobe": {
+    "title": "Tatooine Styled House V2",
+    "author": "haykal12321",
+    "authorUrl": "https://sketchfab.com/haykal12321",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tatooine-styled-house-v2-66893ef6ad5f434e9db954b1f5496dfc",
+    "where": "galaxy-surface",
+    "as": "the adobe houses",
+    "file": "/models/galaxy/surface/adobe.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-airspeeder": {
+    "title": "Star Wars Galaxies - XJ-6 Airspeeder",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-xj-6-airspeeder-7766ca8e7bd047f5ad4bdb86d11ec6d4",
+    "where": "galaxy-surface",
+    "as": "the airspeeders",
+    "file": "/models/galaxy/surface/airspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-arena": {
+    "title": "Geonosis Arena",
+    "author": "StrangeUsernames1",
+    "authorUrl": "https://sketchfab.com/StrangeUsernames1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/geonosis-arena-797d475ee192467399c0ee6ee15b41ed",
+    "where": "galaxy-surface",
+    "as": "the Geonosian arena",
+    "file": "/models/galaxy/surface/arena.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atap": {
+    "title": "-Star Wars- AT-AP Walker",
+    "author": "ARKON MAREK",
+    "authorUrl": "https://sketchfab.com/ARKON-83",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-at-ap-walker-c721bd590a6d465387895d56a2c8aa9a",
+    "where": "galaxy-surface",
+    "as": "the AT-AP walkers",
+    "file": "/models/galaxy/surface/atap.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atat": {
+    "title": "Imperial AT-AT Walker - Star Wars",
+    "author": "Quiznos323",
+    "authorUrl": "https://sketchfab.com/quiznos323",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/imperial-at-at-walker-star-wars-7eab3f41da9143d8975b9034e91f8920",
+    "where": "galaxy-surface",
+    "as": "the AT-AT walkers",
+    "file": "/models/galaxy/surface/atat.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atrt": {
+    "title": "AT-RT",
+    "author": "Just Ryk",
+    "authorUrl": "https://sketchfab.com/dryk4085",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-rt-6796698b4d564377838c06319ec96f90",
+    "where": "galaxy-surface",
+    "as": "the AT-RT walkers",
+    "file": "/models/galaxy/surface/atrt.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atst": {
+    "title": "Star Wars AT-ST [Rigged]",
+    "author": "smithson17",
+    "authorUrl": "https://sketchfab.com/smithson17",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-at-st-rigged-18164d3b3eb64ea1b8d3dc2ad5f4f9cf",
+    "where": "galaxy-surface",
+    "as": "the AT-ST walkers",
+    "file": "/models/galaxy/surface/atst.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-atte": {
+    "title": "AT-TE Walker",
+    "author": "HarukaS",
+    "authorUrl": "https://sketchfab.com/Haruka_S",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-te-walker-93890aa7a2c84102a4a28af05bd07c9b",
+    "where": "galaxy-surface",
+    "as": "the AT-TE walkers",
+    "file": "/models/galaxy/surface/atte.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-bantha": {
+    "title": "Star Wars Bantha Walk",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-bantha-walk-3581f3a312dc426d87af3031f5198edf",
+    "where": "galaxy-surface",
+    "as": "the banthas",
+    "file": "/models/galaxy/surface/bantha.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-battledroid": {
+    "title": "Star Wars B1 Battle Droid",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-b1-battle-droid-ade3a1205cce449caf91f78e595e5676",
+    "where": "galaxy-surface",
+    "as": "the battle droids",
+    "file": "/models/galaxy/surface/battledroid.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-bunker": {
+    "title": "Star Wars Endor Bunker",
+    "author": "aclarke064",
+    "authorUrl": "https://sketchfab.com/aclarke064",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-endor-bunker-1c54abb1c6824f26a0a087d2bd7a635a",
+    "where": "galaxy-surface",
+    "as": "the Imperial bunker",
+    "file": "/models/galaxy/surface/bunker.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-c3po": {
+    "title": "C-3PO Weight Shift",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
+    "where": "galaxy-surface",
+    "as": "C-3PO",
+    "file": "/models/galaxy/surface/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-clone": {
+    "title": "phase-II-clone-trooper-dc-15s-rigged",
+    "author": "Ara_my45yt",
+    "authorUrl": "https://sketchfab.com/Ara_my45yt",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/phase-ii-clone-trooper-dc-15s-rigged-8519076c1bf24bcbb352f96930a29b55",
+    "where": "galaxy-surface",
+    "as": "the clone troopers",
+    "file": "/models/galaxy/surface/clone.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-cloudcar": {
+    "title": "Star Wars Galaxies - Twin-pod cloud car",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-twin-pod-cloud-car-0ee339ff87a043a88a1a5d45bb229c49",
+    "where": "galaxy-surface",
+    "as": "the cloud cars",
+    "file": "/models/galaxy/surface/cloudcar.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-deathtrooper": {
+    "title": "Death trooper || Rogue One: A Star Wars Story",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-trooper-rogue-one-a-star-wars-story-503860c8c63b419daa391f296ab874f1",
+    "where": "galaxy-surface",
+    "as": "the death troopers",
+    "file": "/models/galaxy/surface/deathtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-dewback": {
+    "title": "Dewback",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/dewback-b84145ed48d143ff8746eda2623b3bd8",
+    "where": "galaxy-surface",
+    "as": "the dewbacks",
+    "file": "/models/galaxy/surface/dewback.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-droideka": {
+    "title": "Star Wars Battlefront - Droideka",
+    "author": "S🅾️Meme star wars",
+    "authorUrl": "https://sketchfab.com/dylantrooper7",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-battlefront-droideka-f3688d384b2042b6a8fc3360f64b9a48",
+    "where": "galaxy-surface",
+    "as": "the droidekas",
+    "file": "/models/galaxy/surface/droideka.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-ewok": {
+    "title": "Ewok",
+    "author": "Ulrik S. Selvik",
+    "authorUrl": "https://sketchfab.com/Nemi66",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ewok-77fb4fc353c64b8098bc2f71667f1062",
+    "where": "galaxy-surface",
+    "as": "the Ewoks",
+    "file": "/models/galaxy/surface/ewok.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-fortress": {
+    "title": "Vader's Castle",
+    "author": "art16c",
+    "authorUrl": "https://sketchfab.com/art16c",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
+    "where": "galaxy-surface",
+    "as": "Vader's castle",
+    "file": "/models/galaxy/surface/fortress.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-geonosian": {
+    "title": "Geonosian Zombie",
+    "author": "StrangeUsernames1",
+    "authorUrl": "https://sketchfab.com/StrangeUsernames1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/geonosian-zombie-021a5902e34c4742a828335c86bfe4cd",
+    "where": "galaxy-surface",
+    "as": "the Geonosians",
+    "file": "/models/galaxy/surface/geonosian.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-gungan": {
+    "title": "Jar Jar Binks",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jar-jar-binks-85aef3e496d44e9b95c7386035c0ef10",
+    "where": "galaxy-surface",
+    "as": "the Gungans",
+    "file": "/models/galaxy/surface/gungan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jawa": {
+    "title": "SM_jawa",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sm-jawa-08124df6beef4ca18b2d24a25f5fd6bf",
+    "where": "galaxy-surface",
+    "as": "the Jawas",
+    "file": "/models/galaxy/surface/jawa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jedihut": {
+    "title": "Refectory, Skellig Michael, Co Kerry, Ireland",
+    "author": "amasinton",
+    "authorUrl": "https://sketchfab.com/amasinton",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/refectory-skellig-michael-co-kerry-ireland-3babf7e7bd1d4835aac1e118f1f2506b",
+    "where": "galaxy-surface",
+    "as": "the Jedi village huts",
+    "file": "/models/galaxy/surface/jedihut.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-jeditemple": {
+    "title": "Jedi Temple",
+    "author": "Owen Cornelius",
+    "authorUrl": "https://sketchfab.com/omcstudios333",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jedi-temple-317dedec15a845cbb1abc8c90804b840",
+    "where": "galaxy-surface",
+    "as": "the Jedi Temple",
+    "file": "/models/galaxy/surface/jeditemple.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-kaminoan": {
+    "title": "Kaminoan Shrugging",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/kaminoan-shrugging-5d758c4455b24ac383b94d7a4e30bbce",
+    "where": "galaxy-surface",
+    "as": "the Kaminoans",
+    "file": "/models/galaxy/surface/kaminoan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-laat": {
+    "title": "LAAT - Low Altitude Assault Transport",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/laat-low-altitude-assault-transport-cf7f6043210a418abdd818d5e8dd0fd8",
+    "where": "galaxy-surface",
+    "as": "the Republic gunships",
+    "file": "/models/galaxy/surface/laat.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-lambda": {
+    "title": "Star Wars Lambda Shuttle",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-lambda-shuttle-ba88e6e431974dc2b920d43dccc750c6",
+    "where": "galaxy-surface",
+    "as": "the Imperial shuttles",
+    "file": "/models/galaxy/surface/lambda.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-landspeeder": {
+    "title": "Star Wars X-34 Landspeeder [FREE]",
+    "author": "VertexDon",
+    "authorUrl": "https://sketchfab.com/Don42",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-x-34-landspeeder-free-3adfdc41c67f4731910800404ba97b4e",
+    "where": "galaxy-surface",
+    "as": "Luke's landspeeder",
+    "file": "/models/galaxy/surface/landspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-palm": {
+    "title": "Coconut Tree Low poly",
+    "author": "Nodeaxis Interactive",
+    "authorUrl": "https://sketchfab.com/ar.jethin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/coconut-tree-low-poly-8c5d6b661b2f4c37834d87cd187eb907",
+    "where": "galaxy-surface",
+    "as": "the palms",
+    "file": "/models/galaxy/surface/palm.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-podracer": {
+    "title": "Anakins Pod Racer",
+    "author": "tutan09",
+    "authorUrl": "https://sketchfab.com/tutan09",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/anakins-pod-racer-dac6d14dcf914e88af8625b59f4020bc",
+    "where": "galaxy-surface",
+    "as": "the podracers",
+    "file": "/models/galaxy/surface/podracer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-porg": {
+    "title": "Porg",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/porg-df73eb95169b4f3882bcde58dec58ae7",
+    "where": "galaxy-surface",
+    "as": "the porgs",
+    "file": "/models/galaxy/surface/porg.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-probe": {
+    "title": "SWBF2 - Viper Droid",
+    "author": "jay2307",
+    "authorUrl": "https://sketchfab.com/jay2307",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/swbf2-viper-droid-d2de16581b574e2584ef75d87e358356",
+    "where": "galaxy-surface",
+    "as": "the probe droids",
+    "file": "/models/galaxy/surface/probe.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-r2d2": {
+    "title": "R2-D2",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
+    "where": "galaxy-surface",
+    "as": "R2-D2",
+    "file": "/models/galaxy/surface/r2d2.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-scouttrooper": {
+    "title": "Scout Trooper",
+    "author": "malin.sandred",
+    "authorUrl": "https://sketchfab.com/malin.sandred",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/scout-trooper-bdcf732e6f374b6d87b02cd023991aae",
+    "where": "galaxy-surface",
+    "as": "the scout troopers",
+    "file": "/models/galaxy/surface/scouttrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-shoretrooper": {
+    "title": "Shore trooper || Rogue One: A Star Wars Story",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/shore-trooper-rogue-one-a-star-wars-story-67611b62211648b7805359ab148c949a",
+    "where": "galaxy-surface",
+    "as": "the shoretroopers",
+    "file": "/models/galaxy/surface/shoretrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-snowspeeder": {
+    "title": "SnowSpeeder",
+    "author": "Cristianolop",
+    "authorUrl": "https://sketchfab.com/Cristianolop",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/snowspeeder-983d113a8414457d9a797b9fa7425507",
+    "where": "galaxy-surface",
+    "as": "the snowspeeders",
+    "file": "/models/galaxy/surface/snowspeeder.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-snowtrooper": {
+    "title": "Snow Trooper || Episode VIII: TLJ",
+    "author": "RC-KOA",
+    "authorUrl": "https://sketchfab.com/RC-Koa",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/snow-trooper-episode-viii-tlj-751b09d5b8aa49d4809a94676190ea2b",
+    "where": "galaxy-surface",
+    "as": "the snowtroopers",
+    "file": "/models/galaxy/surface/snowtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-speederbike": {
+    "title": "Star Wars Aratech 74z Speeder Bike",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-aratech-74z-speeder-bike-efbdcedb6f0a483b9046daa716d1ff6a",
+    "where": "galaxy-surface",
+    "as": "the speeder bikes",
+    "file": "/models/galaxy/surface/speederbike.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-stormtrooper": {
+    "title": "Stormtrooper Walk",
+    "author": "LostBoyz2078",
+    "authorUrl": "https://sketchfab.com/LostModels2025",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/stormtrooper-walk-dc7237f92c824cd78abc0f5bb4cb6290",
+    "where": "galaxy-surface",
+    "as": "the stormtroopers",
+    "file": "/models/galaxy/surface/stormtrooper.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-superdroid": {
+    "title": "Super Battle Droid B2 Animated (Training)",
+    "author": "Suvalien",
+    "authorUrl": "https://sketchfab.com/Suvalien",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/super-battle-droid-b2-animated-training-a0f947934672450bad323d6438499812",
+    "where": "galaxy-surface",
+    "as": "the super battle droids",
+    "file": "/models/galaxy/surface/superdroid.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-tipoca": {
+    "title": "Kamino Platform Simple 1",
+    "author": "svemun",
+    "authorUrl": "https://sketchfab.com/svemun",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/kamino-platform-simple-1-9c569d83df584c06b1c6ea1b496a4704",
+    "where": "galaxy-surface",
+    "as": "Tipoca City",
+    "file": "/models/galaxy/surface/tipoca.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-turret": {
+    "title": "Star Wars - DF.9 Turret Battle of Hoth",
+    "author": "judpro",
+    "authorUrl": "https://sketchfab.com/judpro",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-df9-turret-battle-of-hoth-e15d4f794ed24f8fb385695ce5255bbd",
+    "where": "galaxy-surface",
+    "as": "the DF.9 turrets",
+    "file": "/models/galaxy/surface/turret.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-vader": {
+    "title": "Darth Vader",
+    "author": "HarrisonHag1",
+    "authorUrl": "https://sketchfab.com/HarrisonHag1",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/darth-vader-15c6b612a5834924b0959261aa89e80f",
+    "where": "galaxy-surface",
+    "as": "Darth Vader",
+    "file": "/models/galaxy/surface/vader.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-vaporator": {
+    "title": "Star Wars Moisture Vaporator",
+    "author": "tegnemaskin",
+    "authorUrl": "https://sketchfab.com/tegnemaskin",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-moisture-vaporator-acf6211d84eb4a46bb38c9a321771826",
+    "where": "galaxy-surface",
+    "as": "the moisture vaporators",
+    "file": "/models/galaxy/surface/vaporator.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-wampa": {
+    "title": "Wampa",
+    "author": "toro ardido modelos 3d",
+    "authorUrl": "https://sketchfab.com/toro_ardido_modelos_3d",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/wampa-fbd7530481db420ab6b6ac29f63019c9",
+    "where": "galaxy-surface",
+    "as": "the wampas",
+    "file": "/models/galaxy/surface/wampa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-yoda": {
+    "title": "Yoda",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/yoda-04face8041ab4b108649093172c49af2",
+    "where": "galaxy-surface",
+    "as": "Yoda",
+    "file": "/models/galaxy/surface/yoda.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "thragg": {
+    "title": "Thragg from invincible s4",
+    "author": "Gojiram",
+    "authorUrl": "https://sketchfab.com/geoffscool",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
+    "where": "invincible",
+    "as": "Thragg",
+    "file": "/models/invincible/thragg.glb"
+  },
+  "tie-interceptor": {
+    "title": "Star Wars: TIE/in Interceptor",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
+    "where": "universe",
+    "as": "the TIE interceptors",
+    "file": "/models/universe/tie-interceptor.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "trench": {
+    "title": "Death Star Trench Run",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
+    "where": "galaxy",
+    "as": "the Death Star’s trench",
+    "file": "/models/universe/trench.glb"
+  },
+  "xwing-hd": {
+    "title": "High Poly X-Wing Fighter",
+    "author": "charles.woods",
+    "authorUrl": "https://sketchfab.com/charles.woods",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
+    "where": "universe",
+    "as": "the X-wing you fly",
     "also": [
       "galaxy"
     ]
