@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { HERD, newHerd, stepHerd } from './daycare';
+import { HERD, calmHerd, newHerd, stepHerd } from './daycare';
 import { COLLIDERS, PEN, WALLS, WORLD, inPen } from './layout';
 
 const DT = 1 / 30;
@@ -96,5 +96,22 @@ describe('Morty Day Care', () => {
     const ev = run(h, { x: 0, z: 30 }, HERD.time + 1);
     expect(ev.filter((e) => e.type === 'out')).toHaveLength(1);
     expect(h.state).toBe('out');
+  });
+  it('has the Mortys pottering about in the pen before the gate’s left open', () => {
+    const h = calmHerd();
+    expect(h.mortys).toHaveLength(HERD.count);
+    expect(h.state).toBe('calm');
+    const clearOfToys = (m) => {
+      const [px, pz] = pushOut(m.x, m.z, HERD.radius - 0.05, COLLIDERS, []);
+      return Math.hypot(px - m.x, pz - m.z) < 1e-6;
+    };
+    h.mortys.forEach((m) => expect(clearOfToys(m), `${m.x},${m.z}`).toBe(true));
+    const ev = run(h, { x: -15.5, z: 0 }, 10, (hh) =>
+      hh.mortys.forEach((m) => {
+        expect(inPen(m.x, m.z)).toBe(true);
+        expect(clearOfToys(m), `${m.x},${m.z}`).toBe(true);
+      }),
+    );
+    expect(ev).toEqual([]);
   });
 });

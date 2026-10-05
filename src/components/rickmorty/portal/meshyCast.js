@@ -67,7 +67,9 @@ function shirted(map, shirt) {
   return m;
 }
 
-export function createMeshyCast() {
+// `kinds` and `rigged`: another game's table and its skinned models (the
+// Citadel's, rickmorty/citadel/people.js); Portal panic's by default
+export function createMeshyCast({ kinds = MESHY, rigged = RIGGED } = {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const assets = new Map(); // name → { scene, height, offset, clips }
@@ -103,7 +105,7 @@ export function createMeshyCast() {
       const size = box.getSize(new THREE.Vector3());
       const offset = new THREE.Vector3(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
       const clips = {};
-      if (RIGGED.has(name)) {
+      if (rigged.has(name)) {
         const got = await Promise.all(want.map((c) => clipOf(`${BASE}/${name}-${c}.glb`)));
         want.forEach((c, i) => {
           clips[c] = got[i];
@@ -115,7 +117,7 @@ export function createMeshyCast() {
           if (ahead != null) for (const [n, c] of Object.entries(clips)) if (c && n !== 'walk') faceForward(c, up, ahead);
         }
       }
-      assets.set(name, { scene, height: size.y, offset, clips, rigged: RIGGED.has(name) });
+      assets.set(name, { scene, height: size.y, offset, clips, rigged: rigged.has(name) });
     } catch {
       /* this one stays as shapes */
     }
@@ -138,7 +140,7 @@ export function createMeshyCast() {
 
   // a figure for a game kind, or null to use the shapes
   const make = (kind, variant = 0) => {
-    const spec = MESHY[kind];
+    const spec = kinds[kind];
     const src = spec && assets.get(spec.a);
     if (!src) return null;
     const group = new THREE.Group();

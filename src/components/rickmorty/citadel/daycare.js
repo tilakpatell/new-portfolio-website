@@ -62,6 +62,17 @@ export function newHerd(seed = 1) {
   return { mortys, t: 0, state: 'loose', penned: 0, seed: seed + 1 };
 }
 
+// Before the gate's left open: all six in the pen, pottering about.
+export function calmHerd() {
+  const h = newHerd();
+  // (round the slide and the ball pit)
+  const at = [[-30.8, 2.5], [-30.8, -4.8], [-24.5, -3.5], [-22, 3.5], [-22, -3.5], [-20, 0]];
+  h.mortys.forEach((m, i) => Object.assign(m, { x: at[i][0], z: at[i][1], penned: true }));
+  h.penned = h.mortys.length;
+  h.state = 'calm';
+  return h;
+}
+
 const turnTo = (face, want, k) => {
   let d = want - face;
   d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -86,7 +97,7 @@ export function stepHerd(herd, rick, dt, { push }) {
   if (herd.state === 'loose') herd.t += dt;
   for (const m of herd.mortys) {
     if (m.penned) {
-      stepPenned(m, dt);
+      stepPenned(m, dt, push);
       continue;
     }
     const dx = m.x - rick.x;
@@ -158,8 +169,8 @@ export function stepHerd(herd, rick, dt, { push }) {
   return events;
 }
 
-// in the pen: pottering about, kept off the fence
-function stepPenned(m, dt) {
+// in the pen: pottering about, kept off the fence and out of the toys
+function stepPenned(m, dt, push) {
   m.drift += (Math.sin(m.id * 2.3 + m.x * 0.7) * 0.6 - m.drift * 0.3) * dt;
   m.face += m.drift * dt;
   const [ux, uz] = dirOf(m.face);
@@ -172,6 +183,10 @@ function stepPenned(m, dt) {
     x = Math.min(KEEP.x1, Math.max(KEEP.x0, x));
     z = Math.min(KEEP.z1, Math.max(KEEP.z0, z));
   }
+  const [px, pz] = push(x, z, HERD.radius);
+  if (Math.hypot(px - x, pz - z) > s * 0.5) m.face += Math.PI * 0.6; // bumped a toy: turn off it
+  x = Math.min(KEEP.x1, Math.max(KEEP.x0, px));
+  z = Math.min(KEEP.z1, Math.max(KEEP.z0, pz));
   m.speed = Math.hypot(x - m.x, z - m.z) / Math.max(dt, 1e-6);
   m.x = x;
   m.z = z;
