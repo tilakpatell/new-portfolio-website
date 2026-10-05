@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { gltfLoader } from '../../../lib/three/gltf';
-import { loadTexture, sharpen, sharpenMaterial } from '../../../lib/three/textures';
+import { loadTexture, sharpen, sharpenMaterial, warm } from '../../../lib/three/textures';
 import { IMPOSTORS, MODELS, SKIES, TEXTURES } from './catalog';
 
 const BASE = `${import.meta.env?.BASE_URL ?? '/'}hq/`;
@@ -205,5 +205,11 @@ export function loadImpostor(name) {
 
 // Start loading what a game needs while it's still being built.
 // (`backgrounds: false` for a game whose skies only light it)
-export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false, backgrounds = true } = {}) =>
-  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map((s) => loadSky(s, { background: backgrounds })), ...models.map(loadModel), ...impostors.map(loadImpostor)]);
+// With a `renderer`, everything that came is uploaded to the graphics chip
+// over the next idle moments (lib/three/textures' warm), so the first frames
+// of the game don't each stop for a texture.
+export const preload = ({ sets = [], skies = [], models = [], impostors = [], small = false, backgrounds = true, renderer = null } = {}) =>
+  Promise.all([...sets.map((s) => loadSet(s, { small })), ...skies.map((s) => loadSky(s, { background: backgrounds })), ...models.map(loadModel), ...impostors.map(loadImpostor)]).then((loaded) => {
+    if (renderer) warm(renderer, loaded.filter(Boolean), { idle: true });
+    return loaded;
+  });
