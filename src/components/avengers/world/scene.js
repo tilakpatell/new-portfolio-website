@@ -296,7 +296,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       ? null
       : createGrass(scene, {
           count: small ? 16000 : 44000,
-          patch: small ? 28 : 38,
+          patch: small ? 22 : 30,
           material: () => {
             const m = cloudy(new THREE.MeshStandardMaterial({ color: 0x739446, roughness: 0.95, metalness: 0 }), 'blades');
             const b = m.onBeforeCompile;
@@ -754,7 +754,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     for (const t of LAWN_TREES) woods.push([t.x, t.z, treeHeight(t), 3, t.tone * 97]);
     scene.add(await trees(woods));
     // street lamps down the drives (Poly Haven's, CC0), their arms out over the drive
-    scene.add(await scatter('lamp', LAMPS.map((l) => [l.x, l.z, 1.15, l.yaw]), { shadows: !small }));
+    // (no shadows of their own: within the triangle budget)
+    scene.add(await scatter('lamp', LAMPS.map((l) => [l.x, l.z, 1.15, l.yaw]), { shadows: false }));
     // shrubs in the planters by the doors
     const shrubs = [];
     PLANTERS.forEach((p, i) => {
@@ -1182,9 +1183,21 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const X = new THREE.Vector3(1, 0, 0);
   const Z = new THREE.Vector3(0, 0, 1);
   const UP = new THREE.Vector3(0, 1, 0);
-  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0;
+  const posedOff = (h) => h.mode === 'swing' || h.mode === 'wall' || h.mode === 'zipto' || h.mode === 'perch' || (h.mode === 'air' && h.fly) || h.land > 0 || h.flip > 0;
   // the pose for where he is (the figure's frame: +z ahead, +y up, +x his left)
   const offPose = (h) => {
+    if (h.mode === 'zipto') {
+      // pulled along his web: both hands up it, legs trailing
+      return { armL: [0.18, 0.55, 0.85], foreL: [0.1, 0.5, 0.9], armR: [-0.18, 0.55, 0.85], foreR: [-0.1, 0.5, 0.9], thighL: [0.06, -1, -0.25], calfL: [0.04, -1, -0.45], thighR: [-0.06, -1, -0.15], calfR: [-0.04, -1, -0.35], torso: { pitch: -0.1, yaw: 0, roll: 0 } };
+    }
+    if (h.mode === 'perch') {
+      // crouched on the top of it, hands between his feet
+      return { thighL: [0.3, -0.3, 0.9], calfL: [0.12, -1, -0.3], thighR: [-0.3, -0.3, 0.9], calfR: [-0.12, -1, -0.3], footL: [0.1, -0.3, 1], footR: [-0.1, -0.3, 1], armL: [0.15, -0.85, 0.55], foreL: [0.05, -1, 0.3], armR: [-0.15, -0.85, 0.55], foreR: [-0.05, -1, 0.3], torso: { pitch: 0.6, yaw: 0, roll: 0 } };
+    }
+    if (h.glide) {
+      // web wings: arms out wide, legs together, flat to the air
+      return { armL: [1, 0.12, -0.05], foreL: [1, 0.1, 0.02], armR: [-1, 0.12, -0.05], foreR: [-1, 0.1, 0.02], thighL: [0.06, -1, -0.12], calfL: [0.04, -1, -0.15], thighR: [-0.06, -1, -0.12], calfR: [-0.04, -1, -0.15], footL: [0, -1, -0.3], footR: [0, -1, -0.3], torso: { pitch: -0.15, yaw: 0, roll: 0 } };
+    }
     if (h.land > 0) {
       // down on one knee, a hand to the ground
       return {
@@ -1267,8 +1280,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       R.fwd.crossVectors(R.side, R.up);
       return R.q.setFromRotationMatrix(R.m.makeBasis(R.side, R.up, R.fwd)).multiply(R.bank.setFromAxisAngle(Z, R.roll * 0.6));
     }
+    if (h.mode === 'zipto' && h.to) {
+      // along the web toward the perch
+      const lean = THREE.MathUtils.clamp(Math.atan2(h.y - h.to.y, Math.hypot(h.to.x - h.x, h.to.z - h.z)), -0.9, 0.9);
+      return R.q.copy(R.yaw).multiply(R.tilt.setFromAxisAngle(X, lean * 0.6));
+    }
     if (h.mode === 'air' && h.fly) {
-      const dive = THREE.MathUtils.clamp(-h.vy / 26, -0.3, 0.95);
+      const dive = h.glide ? 1.25 : THREE.MathUtils.clamp(-h.vy / 26, -0.3, 0.95);
       return R.q.copy(R.yaw).multiply(R.tilt.setFromAxisAngle(X, dive)).multiply(R.bank.setFromAxisAngle(Z, R.roll));
     }
     return R.q.copy(R.yaw);
@@ -1322,7 +1340,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (h.mode === 'wall' && h.wall) {
       // in close to the wall
       hero.position.set(h.x - h.wall.nx * 0.16, h.y + spidey.hipHeight, h.z - h.wall.nz * 0.16);
-    } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 ? 0.62 : 1), h.z);
+    } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 || h.mode === 'perch' ? 0.62 : 1), h.z);
     bankFor(h, dt);
     const q = holderAt(h);
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
@@ -1450,6 +1468,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     flags.update(clock);
     // the grass's patch a little ahead of him, where the camera's looking
     if (grass) {
+      // thinned as the watchdog steps the graphics down when frames run late
+      grass.density(engine.tier === 'high' ? 1 : engine.tier === 'medium' ? (small ? 1 : 0.45) : 0);
       const fx = s.hero.x - camera.position.x;
       const fz = s.hero.z - camera.position.z;
       const fl = Math.hypot(fx, fz) || 1;
@@ -1490,7 +1510,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       if (bone) bone.getWorldPosition(A.hand);
       else A.hand.copy(hero.position);
     } else A.hand.set(h.x, h.y + 1.9, h.z);
-    swing.update(h, A.hand, A.aim, dt);
+    // (a point launch's web, to the perch, drawn as a swing's)
+    swing.update(h.mode === 'zipto' && h.to ? { ...h, web: { at: [h.to.x, h.to.y + 0.3, h.to.z] } } : h, A.hand, A.aim, dt);
 
     // the camera: behind him, brought in rather than go into a wall
     const yaw = s.camYaw ?? 0;
@@ -1581,6 +1602,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'perfect') {
       A.punch = Math.max(A.punch, 5);
       vfx.ring(v3.copy(hero.position), { color: 0xff8a80, from: 0.4, to: 2.4, life: 0.35, opacity: 0.45, normal: v3b.set(d.vx ?? 0, d.vy ?? 0, d.vz ?? 1).normalize() });
+    } else if (type === 'point') {
+      A.punch = Math.max(A.punch, 4);
+      swing.webbed(d.at);
+    } else if (type === 'launch') {
+      A.punch = Math.max(A.punch, 6);
+    } else if (type === 'glide') {
+      A.punch = Math.max(A.punch, 2.5);
     } else if (type === 'zip') {
       A.punch = Math.max(A.punch, 5);
       swing.zipped(d.at);

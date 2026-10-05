@@ -109,7 +109,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null) };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null) };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -232,6 +232,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         e.preventDefault();
         go();
       } else if (k === 'm' || k === 'M') setList((v) => !v);
+      else if ((k === 'q' || k === 'Q') && !e.repeat) s.perch = true;
       else if (k === 'Escape') setList(false);
     };
     const up = (e) => keyUp(s.keys, e);
@@ -288,6 +289,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       }
       if (pressed('b')) s.jump = true;
       if (pressed('x')) s.zip = true;
+      if (pressed('up')) s.perch = true;
       if (pressed('y')) setList((v) => !v);
     }
     const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
@@ -296,7 +298,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
     const p0 = [s.h.x, s.h.y + 1, s.h.z];
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip }, dt);
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch }, dt);
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
@@ -319,8 +321,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     if (tourRef.current && s.frame % 3 === 0) tourRef.current.textContent = s.tour.on ? `Ring ${s.tour.next} of ${TOUR.length - 1} · ${clock(s.tour.t)}` : '';
     s.jump = false;
     s.zip = false;
+    s.perch = false;
     for (const e of s.h.ev) {
-      if (e.type === 'web' || e.type === 'zip' || e.type === 'corner') sfx('zip');
+      if (e.type === 'web' || e.type === 'zip' || e.type === 'corner' || e.type === 'point') sfx('zip');
       else if (e.type === 'perfect') {
         sfx('ding');
         showTrick(e.combo);
@@ -550,7 +553,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       )}
 
       {gl === 'on' && !hud.moved && !here && !herePortal && (
-        <p className="cw-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Hold Jump in the air to swing on a web; let go on the upswing to fly. Zip for a burst. Jump at a wall to climb it.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, steer with W A S D, let go on the upswing to fly; Shift in the air zips. Jump at a wall to run up it. E at a door to go in.'}</p>
+        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch. Jump at a wall to run up it. E at a door.'}</p>
       )}
 
       {touch && (
@@ -575,17 +578,30 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
             Jump
             <small>hold: swing</small>
           </button>
-          <button
-            type="button"
-            className="cw-jump cw-zip"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              audioContext();
-              sim.current.zip = true;
-            }}
-          >
-            Zip
-          </button>
+          <div className="cw-acts">
+            <button
+              type="button"
+              className="cw-jump cw-zip"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                audioContext();
+                sim.current.zip = true;
+              }}
+            >
+              Zip
+            </button>
+            <button
+              type="button"
+              className="cw-jump cw-zip"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                audioContext();
+                sim.current.perch = true;
+              }}
+            >
+              Perch
+            </button>
+          </div>
         </div>
       )}
 
