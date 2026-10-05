@@ -8,12 +8,17 @@
 // to one side, the other side all but empty. A field of stars, thickest
 // along the band; a nebula or two; and the system's own star or stars,
 // glaring, the way the light comes from (they light the planet: bodies.js).
-// Everything rides with the camera, so it's always as far off.
+// And the other systems' stars, where they really are from here (systems.js
+// courseTo), brighter the nearer: point the nose at one and you can jump to
+// it (scene.js); the one picked pulses. Everything rides with the camera, so
+// it's always as far off.
 //
-// createSky({ small }) → { group, setSystem(system), update(camera), sunDirs, dispose() }
+// createSky({ small }) → { group, setSystem(system), update(camera, dim, t),
+//   focus(id), beacons, sunDirs, dispose() }; beacons: [{ id, dir }] (unit
+//   vectors), the other systems' stars
 
 import * as THREE from 'three';
-import { RIM, coreBearing } from './systems';
+import { RIM, SYSTEMS, coreBearing, courseTo, distance } from './systems';
 
 const SKY_R = 5200; // (inside the camera's far plane, outside everything else)
 const SUN_R = 4800;
@@ -121,6 +126,40 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// the other systems' stars: each a hot point in a glare with a cross of
+// spikes, a size on screen whatever the screen; the picked one pulses
+const BEACON_VERT = /* glsl */ `
+attribute float aSize;
+attribute vec3 aColor;
+attribute float aFocus;
+uniform float uDpr;
+uniform float uDim;
+uniform float uTime;
+varying vec3 vColor;
+varying float vFocus;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float pulse = 1.0 + aFocus * (0.45 + 0.2 * sin(uTime * 6.0));
+  gl_PointSize = aSize * uDpr * pulse;
+  vColor = aColor * uDim;
+  vFocus = aFocus;
+  vec4 p = projectionMatrix * mv;
+  gl_Position = vec4(p.xy, p.w * 0.99998, p.w);
+}`;
+const BEACON_FRAG = /* glsl */ `
+varying vec3 vColor;
+varying float vFocus;
+void main() {
+  vec2 q = gl_PointCoord * 2.0 - 1.0;
+  float r = length(q);
+  float core = smoothstep(0.2, 0.05, r);
+  float glow = exp(-r * 5.5) * 0.9;
+  float spikes = (exp(-abs(q.x) * 30.0) + exp(-abs(q.y) * 30.0)) * (1.0 - r) * (0.5 + vFocus * 0.8);
+  vec3 c = vColor * (glow + spikes) + vec3(1.6 + vFocus * 1.4) * core;
+  gl_FragColor = vec4(c * smoothstep(1.0, 0.75, r), 1.0);
+  #include <colorspace_fragment>
+}`;
+
 // a star of its own: a white-hot disc in a glare, with faint rays
 const SUN_VERT = /* glsl */ `
 varying vec2 vUv;
@@ -223,6 +262,23 @@ export function createSky({ small = false } = {}) {
   });
   const sunDirs = [];
 
+  // the other systems' stars (all but the one you're in)
+  const nb = SYSTEMS.length - 1;
+  const beaconGeo = new THREE.BufferGeometry();
+  beaconGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nb * 3), 3));
+  beaconGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(nb), 1));
+  beaconGeo.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(nb * 3), 3));
+  beaconGeo.setAttribute('aFocus', new THREE.BufferAttribute(new Float32Array(nb), 1));
+  const beaconMat = new THREE.ShaderMaterial({ vertexShader: BEACON_VERT, fragmentShader: BEACON_FRAG, uniforms: { uDpr: { value: 1 }, uDim: { value: 1 }, uTime: { value: 0 } }, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const beaconPoints = new THREE.Points(beaconGeo, beaconMat);
+  beaconPoints.frustumCulled = false;
+  beaconPoints.renderOrder = -17;
+  group.add(beaconPoints);
+  made.push(beaconGeo, beaconMat);
+  const beacons = [];
+  const beaconColor = new THREE.Color();
+  let focused = null;
+
   const tints = [
     [1, 1, 1],
     [0.78, 0.86, 1],
@@ -234,6 +290,7 @@ export function createSky({ small = false } = {}) {
     group,
     // the directions toward the system's suns, unit vectors (bodies.js lights by them)
     sunDirs,
+    beacons,
     setSystem(sys) {
       const rand = seeded(sys.id);
       const { dir, d } = coreBearing(sys);
@@ -293,17 +350,55 @@ export function createSky({ small = false } = {}) {
         m.scale.setScalar(SUN_R * 0.11 * s.size);
         m.material.uniforms.uColor.value.set(s.color).multiplyScalar(2.2);
       });
+      // the other systems: their stars where they are, the nearer the bigger
+      // and brighter (each in its own star's colour; two suns, a bit more)
+      beacons.length = 0;
+      focused = null;
+      const bp = beaconGeo.attributes.position.array;
+      const bs = beaconGeo.attributes.aSize.array;
+      const bc = beaconGeo.attributes.aColor.array;
+      const bf = beaconGeo.attributes.aFocus.array;
+      for (const o of SYSTEMS) {
+        if (o === sys) continue;
+        const i = beacons.length;
+        const dir = new THREE.Vector3(...courseTo(sys, o));
+        beacons.push({ id: o.id, dir });
+        bp[i * 3] = dir.x * SKY_R * 0.97;
+        bp[i * 3 + 1] = dir.y * SKY_R * 0.97;
+        bp[i * 3 + 2] = dir.z * SKY_R * 0.97;
+        const d = distance(sys, o);
+        const near = 1 / (1 + d * 0.35);
+        bs[i] = 9 + 16 * near + (o.suns.length > 1 ? 3 : 0);
+        beaconColor.set(o.suns[0].color).lerp(new THREE.Color('#ffffff'), 0.25).multiplyScalar(1.1 + 2.4 * near);
+        bc[i * 3] = beaconColor.r;
+        bc[i * 3 + 1] = beaconColor.g;
+        bc[i * 3 + 2] = beaconColor.b;
+        bf[i] = 0;
+      }
+      beaconGeo.setDrawRange(0, beacons.length);
+      for (const a of Object.values(beaconGeo.attributes)) a.needsUpdate = true;
+    },
+    // the star picked (an id, or null): it pulses
+    focus(id) {
+      if (id === focused) return;
+      focused = id;
+      const bf = beaconGeo.attributes.aFocus.array;
+      beacons.forEach((b, i) => (bf[i] = b.id === id ? 1 : 0));
+      beaconGeo.attributes.aFocus.needsUpdate = true;
     },
     // the sky and its stars round the camera, wherever it flies; `dim`, 0…1:
     // a star being drained (Starkiller Base), the sky going with it
-    update(camera, dim = 1) {
+    update(camera, dim = 1, t = 0) {
       group.position.copy(camera.position);
+      beaconMat.uniforms.uDim.value = 0.55 + 0.45 * dim;
+      beaconMat.uniforms.uTime.value = t;
       skyMat.uniforms.uDim.value = 0.6 + 0.4 * dim;
       starMat.uniforms.uDim.value = 0.5 + 0.5 * dim;
       for (const m of suns) m.material.uniforms.uDim.value = dim;
     },
     setRatio(dpr) {
       starMat.uniforms.uDpr.value = dpr;
+      beaconMat.uniforms.uDpr.value = dpr;
     },
     dispose() {
       for (const x of made) x.dispose();

@@ -32,7 +32,8 @@ export default function GalaxyMission() {
   const next = SYSTEMS[(i + 1) % SYSTEMS.length];
   const prev = SYSTEMS[(i - 1 + SYSTEMS.length) % SYSTEMS.length];
   const story = CRAWLS[sys.id];
-  const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent };
+  // (every system's colour is light, readable on the dark page: so dark on a button)
+  const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
 
   return (
     <div className="dark-scope mission-page" style={accent}>
@@ -106,7 +107,7 @@ export default function GalaxyMission() {
               You fly as
             </h2>
             <p className="mission-big">{g.role}</p>
-            <h2 className="mission-h mt-5">How it’ll play</h2>
+            <h2 className="mission-h">How it’ll play</h2>
             <p>{g.how}</p>
           </section>
           <section className="mission-card" aria-labelledby="mission-when">
@@ -119,7 +120,7 @@ export default function GalaxyMission() {
             <p>
               {FILMS[g.film].title}, {yearLabel(FILMS[g.film].year)}. {era.about}
             </p>
-            <h2 className="mission-h mt-5">Where</h2>
+            <h2 className="mission-h">Where</h2>
             <p>
               {sys.name}: {[sys.region, sys.sector, sys.grid && `grid ${sys.grid}`].filter(Boolean).join(', ')}.
             </p>

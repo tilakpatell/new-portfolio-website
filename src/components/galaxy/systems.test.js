@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
 import { SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, FILMS, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, eraOf, erasOf, filmLabel, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
+import { CORE, ERAS, FILMS, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmsOf, gridAt, inEra, jumpSeconds, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, yearLabel } from './systems';
 
 const LOOKS = ['tatooine', 'jakku', 'geonosis', 'hoth', 'starkiller', 'crait', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'coruscant', 'mustafar', 'kamino', 'scarif', 'bespin', 'exegol', 'ahchto', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
 const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser', 'wrecks', 'starkiller', 'armada', 'lightning'];
@@ -153,6 +153,44 @@ describe('the map', () => {
     expect(len(coreBearing(b).dir)).toBeCloseTo(1, 6);
     expect(coreBearing(b).d).toBeGreaterThan(coreBearing(a).d);
     expect(lightYears(a, b)).toBeGreaterThan(30000);
+  });
+  it("puts every other system's star in a sky of its own, none on top of another", () => {
+    for (const s of SYSTEMS) expect(Math.abs(liftOf(s)), s.id).toBeLessThan(1);
+    for (const from of SYSTEMS) {
+      const ways = SYSTEMS.filter((s) => s !== from).map((s) => [s.id, courseTo(from, s)]);
+      for (const [id, d] of ways) {
+        expect(len(d), id).toBeCloseTo(1, 6);
+        // (roughly the way the map has it, a little up or down)
+        const flat = bearing(from, systemById(id));
+        expect(d[0] * flat[0] + d[2] * flat[2], `${from.id} → ${id}`).toBeGreaterThan(0);
+      }
+      for (let i = 0; i < ways.length; i++)
+        for (let j = i + 1; j < ways.length; j++) {
+          const [a, u] = ways[i];
+          const [b, v] = ways[j];
+          const angle = Math.acos(Math.min(1, u[0] * v[0] + u[1] * v[1] + u[2] * v[2]));
+          expect(angle, `from ${from.id}: ${a} and ${b}`).toBeGreaterThan((2.3 * Math.PI) / 180);
+        }
+    }
+  });
+  it('picks the star the nose is on, and only when it is on one', () => {
+    for (const from of SYSTEMS)
+      for (const to of SYSTEMS) {
+        if (to === from) continue;
+        expect(starAhead(from, courseTo(from, to))?.id, `${from.id} → ${to.id}`).toBe(to.id);
+      }
+    const hoth = systemById('hoth');
+    expect(starAhead(hoth, [0, 1, 0])).toBeNull(); // (straight up out of the galaxy: nothing)
+    // between two stars, the one already picked stays picked
+    const from = systemById('tatooine');
+    const a = courseTo(from, systemById('naboo'));
+    const b = courseTo(from, systemById('geonosis'));
+    const mid = a.map((v, i) => v + b[i]);
+    const l = len(mid);
+    const half = mid.map((v) => v / l);
+    const wide = { within: 1 };
+    expect(starAhead(from, half, { ...wide, keep: 'naboo' })?.id).toBe('naboo');
+    expect(starAhead(from, half, { ...wide, keep: 'geonosis' })?.id).toBe('geonosis');
   });
   it('makes a jump take a few seconds, longer for longer ones', () => {
     const near = jumpSeconds(systemById('hoth'), systemById('bespin'));

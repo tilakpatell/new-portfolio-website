@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
@@ -16,9 +17,11 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // Drawn once into a canvas (the stars of the disc), with an SVG over it for
 // the lines and the names, and buttons over that for the systems (so the
 // keyboard and screen readers have them: Tab through, Enter to pick, Enter
-// again to jump).
+// again to jump). It renders into <body>, over the nav (the page's <main>
+// is its own stacking context).
 
 const SIZE = 21; // the map is GRID squares across, in its own units
+const LEFT = new Set(['mustafar', 'hoth', 'geonosis']); // names that go on the left of their dot (a neighbour's on the right)
 const TAU = Math.PI * 2;
 
 // the disc's stars: two arms wound out from the core, a bulge, dust
@@ -139,8 +142,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
   };
   const pct = (v) => `${(v / SIZE) * 100}%`;
 
-  return (
-    <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title">
+  return createPortal(
+    <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff' }}>
       <div className="holomap-frame">
         <header className="holomap-head">
           <div>
@@ -223,7 +226,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
             {/* the systems */}
             <ul className="holomap-systems" aria-label="Star systems">
               {SYSTEMS.map((s) => (
-                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent }} data-dim={!lit(s) || undefined}>
+                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent }} data-dim={!lit(s) || undefined} data-side={LEFT.has(s.id) ? 'left' : undefined}>
                   <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)}>
                     <span className="holomap-dot" aria-hidden="true" />
                     <span className="holomap-name">{s.name}</span>
@@ -295,7 +298,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
                 <p className="holomap-meta">
                   {here.region} · Grid {here.grid ?? gridAt(here.pos)}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Filter by era or film to see the galaxy as it was then.</p>
+                <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Or skip the map: every system’s star is out there in the sky, so point your nose at one and press J. Filter by era or film to see the galaxy as it was then.</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted">The grid squares and regions are the films’ own atlas, where it gives them; the Unknown Regions are, well, unknown.</p>
               </>
             )}
@@ -305,6 +308,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
           </aside>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

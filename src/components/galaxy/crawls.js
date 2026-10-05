@@ -1,0 +1,180 @@
+// The opening crawl for each system's mission (systems.js's `game`): the
+// briefing that rolls away into the stars before you fly it, the way the
+// films begin. Pure data, by system id: the episode line (the film's own,
+// or 'A Star Wars Story' for Rogue One), the mission's title, and three
+// paragraphs in the crawl's voice, the last trailing off into the mission
+// itself.
+
+export const CRAWLS = {
+  tatooine: {
+    episode: 'Episode I',
+    title: 'The Boonta Eve Classic',
+    paragraphs: [
+      'Turmoil has engulfed the Galactic Republic. The greedy Trade Federation has blockaded the peaceful planet of Naboo, and its young Queen Amidala has escaped through the blockade aboard her royal starship, guarded by two Jedi Knights.',
+      'Her damaged ship has limped to Tatooine, a desert world ruled by the Hutts, far beyond the reach of the Republic. No one there will take Republic credits for the hyperdrive parts it needs, and the Queen’s party is stranded.',
+      'Their only hope is a slave boy named Anakin Skywalker. With the parts and his own freedom riding on the race, Anakin must fly his podracer three laps of the Mos Espa circuit against the treacherous Sebulba in the BOONTA EVE CLASSIC…',
+    ],
+  },
+  hoth: {
+    episode: 'Episode V',
+    title: 'The Battle of Hoth',
+    paragraphs: [
+      'It is a dark time for the Rebellion. An Imperial probe droid has found Echo Base, the Rebels’ secret stronghold on the remote ice world of Hoth, and Darth Vader’s Death Squadron has come out of lightspeed to crush it.',
+      'The Imperial fleet cannot fire through the base’s energy shield. Instead, General Veers is leading a column of armored walkers across the snow to destroy the shield generator, while the Rebel transports slip past the blockade one by one.',
+      'Blasters cannot pierce a walker’s armor. Now Rogue Group, flying snowspeeders, must hold back the Imperial advance long enough for the last transports to escape, with nothing but harpoons, tow cables and nerve…',
+    ],
+  },
+  endor: {
+    episode: 'Episode VI',
+    title: 'The Speeder Bike Chase',
+    paragraphs: [
+      'The Galactic Empire is secretly building a second DEATH STAR above the forest moon of Endor. When it is complete, the battle station will spell the end of the small band of Rebels fighting to restore freedom to the galaxy.',
+      'The unfinished station is protected by an energy shield projected from a bunker on the moon below. A Rebel strike team led by General Han Solo has landed in a stolen Imperial shuttle to destroy the generator before the Rebel fleet arrives.',
+      'But Imperial scout troopers have spotted the intruders in the forest. Now Luke Skywalker and Princess Leia must chase them down on stolen speeder bikes, through the giant trees, before they can reach their base and raise the alarm…',
+    ],
+  },
+  yavin: {
+    episode: 'Episode IV',
+    title: 'The Trench Run',
+    paragraphs: [
+      'It is a desperate hour for the Rebellion. The stolen plans to the Empire’s DEATH STAR have reached the hidden Rebel base on Yavin 4, carried there by a princess, a farm boy, a smuggler, a Wookiee and a pair of droids.',
+      'The plans reveal a weakness: a small thermal exhaust port, only two meters wide, at the end of a trench, leading straight to the main reactor. But the battle station has followed the Falcon to Yavin, and is closing in.',
+      'As the Death Star rounds the gas giant, every fighter the Alliance has launches to meet it. Now one young pilot, Red Five, must fly the trench with Darth Vader on his tail and put two proton torpedoes into the port before Yavin 4 is destroyed…',
+    ],
+  },
+  alderaan: {
+    episode: 'Episode IV',
+    title: 'That’s No Moon',
+    paragraphs: [
+      'It is a period of civil war. Princess Leia Organa is a prisoner of the Empire, and her home planet of Alderaan, peaceful and unarmed, has been destroyed by the DEATH STAR to show the galaxy what the battle station can do.',
+      'Bound for Alderaan, Obi-Wan Kenobi, young Luke Skywalker and the smuggler Han Solo arrive aboard the Millennium Falcon, with R2-D2 and the stolen plans, to find only a field of rubble where a world once was.',
+      'A small moon lies ahead. But it is no moon. Caught in its tractor beam, the Falcon is pulled into the heart of the Empire’s ultimate weapon, a station that will soon turn its superlaser on the hidden Rebel base at Yavin…',
+    ],
+  },
+  bespin: {
+    episode: 'Episode V',
+    title: 'Escape from Cloud City',
+    paragraphs: [
+      'It is a dark time for the Rebellion. Fleeing the Battle of Hoth with a broken hyperdrive, Han Solo and Princess Leia have taken refuge on Cloud City, a mining colony above the gas giant Bespin, run by Han’s old friend Lando Calrissian.',
+      'But Darth Vader was there first. Betrayed to the Empire, Han Solo has been frozen in carbonite and handed to the bounty hunter Boba Fett, while young Luke Skywalker, drawn to the city by visions of his friends in pain, faces the Dark Lord alone.',
+      'Now Lando, Leia and Chewbacca must get the Millennium Falcon off Cloud City and up through the clouds with TIE fighters in pursuit, swing back for Luke beneath the city, and make the jump to lightspeed. If the hyperdrive works…',
+    ],
+  },
+  dagobah: {
+    episode: 'Episode V',
+    title: 'Do or Do Not',
+    paragraphs: [
+      'It is a dark time for the Rebellion. Escaping the Battle of Hoth, Luke Skywalker has turned away from the Rebel fleet’s rendezvous and set course for the Dagobah system, guided by the words of his old master, Obi-Wan Kenobi.',
+      'On a swamp world hidden in mist, he has crash-landed his X-wing in a bog and found the Jedi Master Yoda: not the great warrior he expected, but the only one left who can train him in the ways of the Force.',
+      'Now, with Yoda riding on his back, Luke must run the swamp, face his fear, and lift his sunken starfighter from the bog with nothing but the Force. Size matters not…',
+    ],
+  },
+  mustafar: {
+    episode: 'Episode III',
+    title: 'The High Ground',
+    paragraphs: [
+      'The Clone Wars are over. Chancellor Palpatine has revealed himself as a Sith Lord, the clones have turned on their Jedi generals, and the Republic has been reorganized into the first Galactic Empire.',
+      'Anakin Skywalker, now Darth Vader, has destroyed the Separatist council in its last hiding place on the volcanic world of Mustafar. His wife, Padmé Amidala, has followed him there, and so, unseen, has his old master, Obi-Wan Kenobi.',
+      'Now master and apprentice must face each other above a river of fire. From a collapsing mining platform to a droid skimming the lava, Obi-Wan Kenobi must duel the Chosen One all the way to the riverbank, and hold the high ground…',
+    ],
+  },
+  coruscant: {
+    episode: 'Episode II',
+    title: 'Chase Through Coruscant',
+    paragraphs: [
+      'Unrest grips the Galactic Republic. Thousands of solar systems have declared their intention to leave it, and the Senate is about to vote on whether to create an ARMY OF THE REPUBLIC to help the overwhelmed Jedi keep the peace.',
+      'Senator Padmé Amidala, who leads the opposition to the army, has survived one attempt on her life. Now two Jedi, Obi-Wan Kenobi and his apprentice Anakin Skywalker, guard her apartment, as an assassin makes a second attempt in the night.',
+      'Clinging to a droid, then flying a borrowed airspeeder, the two Jedi must chase the assassin down through the traffic lanes, the power couplings and the canyons between the towers of Coruscant, before she can escape into the night…',
+    ],
+  },
+  naboo: {
+    episode: 'Episode I',
+    title: 'Into the Droid Control Ship',
+    paragraphs: [
+      'The Trade Federation has invaded the peaceful planet of Naboo. Its droid army, commanded from a great battleship in orbit, has seized the capital city of Theed, and the people of Naboo are held in camps.',
+      'Queen Amidala has returned from Coruscant to take back her planet. While the Gungan army draws the droids out onto the grass plains, her pilots launch to attack the droid control ship, and her guards fight their way into the palace.',
+      'Hiding in the cockpit of an N-1 starfighter, young Anakin Skywalker has been carried into the battle on autopilot. Now he must fly into the control ship’s hangar, fire his torpedoes into its reactor, and get out before it blows…',
+    ],
+  },
+  kashyyyk: {
+    episode: 'Episode III',
+    title: 'The Battle of Kashyyyk',
+    paragraphs: [
+      'The Clone Wars are nearly over. Count Dooku is dead and General Grievous is on the run, but the Separatists have sent their droid army to seize Kashyyyk, the forest world of the Wookiees.',
+      'Master Yoda has come to help defend it, with the clones of Commander Gree and the Wookiee warriors of Tarfful and Chewbacca, gathered on the shore beneath the great trees at the city of Kachirho.',
+      'Now the droid army is coming across the lagoon. From a Wookiee catamaran, a gunner must hold the beach against tanks and spider droids, fighting beside the clones. But watch them closely. Something about them is not right…',
+    ],
+  },
+  kamino: {
+    episode: 'Episode II',
+    title: 'Storm over Tipoca',
+    paragraphs: [
+      'A second attempt on the life of Senator Padmé Amidala has failed, but the assassin was silenced before she could talk, killed by a poisoned dart made on a planet called Kamino.',
+      'Kamino is missing from the Jedi Archives. Obi-Wan Kenobi has found it anyway: an ocean world beyond the Outer Rim, where the Kaminoans have been growing a clone army for the Republic for ten years, ordered by a Jedi long dead.',
+      'The army’s template is the bounty hunter Jango Fett, and he is leaving. Now, on a landing platform in the storm, Obi-Wan must stop him, then follow his ship, Slave I, to a red planet called Geonosis…',
+    ],
+  },
+  geonosis: {
+    episode: 'Episode II',
+    title: 'Seismic Charges',
+    paragraphs: [
+      'A clone army has been found. On the storm world of Kamino, Obi-Wan Kenobi has learned that the bounty hunter Jango Fett is the template for the Republic’s secret clones, and the man who hired Senator Amidala’s assassin.',
+      'Jango Fett has fled with his son, Boba, aboard his starship, Slave I. Obi-Wan has followed in his Jedi starfighter, tracking a homing beacon he fixed to its hull, to Geonosis, a ringed red world of droid foundries.',
+      'But Jango knows he is being followed. Now Obi-Wan must chase Slave I into the asteroid ring, through laser fire and seismic charges, and make the bounty hunter believe he has won…',
+    ],
+  },
+  scarif: {
+    episode: 'A Star Wars Story',
+    title: 'Rogue One',
+    paragraphs: [
+      'The Empire’s ultimate weapon is complete. The DEATH STAR has destroyed the holy city of Jedha, but its designer, Galen Erso, has hidden a fatal flaw deep inside it. His daughter, Jyn, has learned where its plans are kept.',
+      'The plans are kept in the Imperial Citadel on Scarif, a tropical world sealed beneath a planetary shield. Defying the Alliance’s council, a band of rebels calling themselves ROGUE ONE has flown a stolen Imperial shuttle through the shield gate and landed at the Citadel.',
+      'Now the Rebel fleet has come to their aid. Blue Squadron must fly through the shield gate before it closes, the rebels must hold the beaches against the walkers, and Jyn Erso must climb the Citadel tower to send the plans to the fleet before the Death Star fires…',
+    ],
+  },
+  jakku: {
+    episode: 'Episode VII',
+    title: 'The Garbage Will Do',
+    paragraphs: [
+      'Thirty years after the fall of the Empire, the sinister FIRST ORDER has risen from its ashes. Luke Skywalker, the last Jedi, has vanished, and both the First Order and the Resistance are searching for him.',
+      'A map to Luke’s hiding place has been hidden inside a droid, BB-8, on the desert world of Jakku. Found by a scavenger named Rey and a runaway stormtrooper named Finn, the little droid is now the most wanted in the galaxy.',
+      'With First Order TIE fighters strafing Niima Outpost, the fugitives have run for the only ship in reach: a piece of garbage. Now they must outfly two TIEs through the Starship Graveyard, and thread the ship through the wreck of a fallen Star Destroyer…',
+    ],
+  },
+  crait: {
+    episode: 'Episode VIII',
+    title: 'The Salt Flats',
+    paragraphs: [
+      'The FIRST ORDER reigns. Hunted through hyperspace, the Resistance has been worn down to a handful of survivors, who have escaped in transports to an abandoned Rebel base on the remote mineral planet Crait.',
+      'Behind its great blast door, General Leia Organa has sent a call for help across the galaxy. No one has answered, and the First Order has landed walkers and a battering ram cannon, built from Death Star technology, to break the door down.',
+      'Now, in battered old ski speeders, Poe Dameron and the last pilots of the Resistance must race out across the salt flats, through the walkers’ fire, and stop the cannon, buying time for help that no one expects…',
+    ],
+  },
+  starkiller: {
+    episode: 'Episode VII',
+    title: 'The Oscillator',
+    paragraphs: [
+      'The FIRST ORDER has revealed its terrible new weapon. Hollowed out of an ice planet in the Unknown Regions, STARKILLER BASE has drained the light of its star and fired through hyperspace, destroying the Republic’s capital in the Hosnian system.',
+      'The Resistance is its next target. Han Solo, Chewbacca and Finn have slipped onto the base to bring down its shield, while the Resistance’s X-wings gather to strike at the weapon’s one weakness: its thermal oscillator.',
+      'The weapon is charging again, drinking its sun. Now Poe Dameron, Black Leader, must lead his squadron in under the shield, down into the trench around the oscillator, and hit it before the last light is gone…',
+    ],
+  },
+  exegol: {
+    episode: 'Episode IX',
+    title: 'The Navigation Tower',
+    paragraphs: [
+      'Somehow, Emperor Palpatine has returned. From Exegol, the hidden world of the Sith deep in the Unknown Regions, he has raised the FINAL ORDER, a fleet of Star Destroyers armed with planet-killing cannons.',
+      'Guided by a Sith wayfinder, Rey has gone to face him, and the Resistance has followed her. They have learned that the fleet cannot find its way out of the atmosphere without the navigation signal from its command ship, the Steadfast.',
+      'Outnumbered and outgunned, Poe Dameron must lead the Resistance through the lightning and the guns of the fleet, knock out the Steadfast’s navigation tower, and hold on until help arrives from across the galaxy…',
+    ],
+  },
+  ahchto: {
+    episode: 'Episode VIII',
+    title: 'The Last Lesson',
+    paragraphs: [
+      'Luke Skywalker has been found. Following the map from BB-8 and R2-D2, Rey has flown the Millennium Falcon with Chewbacca to Ahch-To, the remote ocean world of the first Jedi Temple, where Luke has hidden for years.',
+      'But the legendary Jedi Master threw away the lightsaber she brought him, and refuses to return to the fight. He has cut himself off from the Force, and come to this island, he says, to die.',
+      'Now Rey must earn her lessons from a grumpy old Jedi: the Force, the ancient tree that holds the sacred Jedi texts, and the dark cave beneath the island, with curious porgs in her way at every step…',
+    ],
+  },
+};

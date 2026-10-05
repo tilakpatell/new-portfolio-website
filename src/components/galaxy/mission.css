@@ -92,6 +92,7 @@
   line-height: 1.55;
 }
 .mission-h { margin: 0 0 0.5rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.mission-card > * + .mission-h { margin-top: 1.25rem; }
 .mission-big { margin: 0; color: var(--text); font-size: 1.15rem; font-weight: 600; line-height: 1.35; }
 .mission-objectives { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; counter-reset: obj; }
 .mission-objectives li { position: relative; padding-left: 2rem; color: var(--text); }

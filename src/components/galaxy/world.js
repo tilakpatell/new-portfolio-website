@@ -670,7 +670,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false }) {
             gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: `varying vec3 vColor; void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vColor * smoothstep(0.5, 0.15, d), 1.0); }`,
-        uniforms: { uTime: { value: 0 }, uDpr: { value: Math.min(2, window.devicePixelRatio || 1) } },
+        uniforms: { uTime: { value: 0 }, uDpr: { value: Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1) } },
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,

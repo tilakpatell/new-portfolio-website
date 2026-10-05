@@ -10,13 +10,16 @@
 // gun line, the lock and the lead, the threats you can't see, the way to
 // wherever you're going (the page's markup, UniverseMap.jsx's classes).
 //
-// Between systems you jump: plot a course on the galaxy map (the page's)
-// and the ship comes round onto the bearing for it (the way to it across the
-// galaxy, the same in every system's sky), spools up, the stars stretch into
-// lines, a flash, and you're in hyperspace (hyperspace.js) while the next
-// system's built behind it; then you drop out at its planet, on the side you
-// came in from. The page follows the system you're in (/galaxy/hoth), and a
-// link to another sends you jumping there.
+// Between systems you jump. Every other system's star is in the sky where
+// it really is from here (sky.js, systems.js courseTo), named as the nose
+// comes near it: point at one and press J (or the Jump button), or fly out
+// of the system with the nose on one, and you're away; or plot a course on
+// the galaxy map (the page's) and the ship comes round onto it. It spools
+// up, the stars stretch into lines, a flash, and you're in hyperspace
+// (hyperspace.js) while the next system's built behind it; then you drop
+// out at its planet, on the side you came in from. The page follows the
+// system you're in (/galaxy/hoth), and a link to another sends you jumping
+// there.
 //
 // Out there: hunters by who holds the system (galaxy/hunted.js through
 // universe/hunters.js), now and then a Star Destroyer dropping out of
@@ -31,9 +34,11 @@
 // { ready, resize, render, update, setVisible, lowerQuality, fire, boost,
 //   climb, seat, escape, jump, goTo, dispose }.
 // Props: system (an id), ship (a crew id), controls, net, stick,
-// shield, hud, tags, labels (refs, as the universe map's), frozen,
+// shield, hud, tags, labels (refs, as the universe map's), stars (a ref:
+// the other systems' names, by id, moved over their stars), frozen,
 // onArrive(id, from) (a jump's come out at a system), onAt(goal id or null),
-// onBoard(path) (into the Death Star), onEvent(e) (for the comms and the page).
+// onBoard(path) (into the Death Star), onEvent(e) (for the comms and the
+// page; { type: 'aim', id } as the nose comes onto a star or off it).
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -68,7 +73,7 @@ import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
-import { arrival, bearing, jumpSeconds, lightYears, systemById } from './systems';
+import { arrival, courseTo, jumpSeconds, lightYears, starAhead, systemById } from './systems';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -219,6 +224,7 @@ export async function create(canvas, ctx) {
     heat: 0,
     nextHunt: 35 + Math.random() * 25, // seconds of flying till they come
     jump: null, // { to, from, phase, age, dir, dur }
+    aim: null, // { id, angle }: the star the nose is on, if it's on one
     lock: null,
     lockTarget: null,
     lead: null,
@@ -544,6 +550,41 @@ export async function create(canvas, ctx) {
     }
   };
 
+  // ── The other systems' names, over their stars near the nose (the page's
+  // buttons), and the one it's on (or a jump's coming round to) bracketed ──
+  const starAt = { x: 0, y: 0, z: 0 };
+  const starPoint = new THREE.Vector3();
+  const shownStar = new Map();
+  const STAR_NEAR = Math.cos((30 * Math.PI) / 180);
+  const placeStars = () => {
+    const els = props.stars?.current;
+    if (!els) return;
+    const s = state.ship;
+    const on = flying() && !state.crash && !props.frozen && !(state.jump && state.jump.phase !== 'align');
+    const [nx, ny, nz] = on ? nose(s) : [0, 0, 0];
+    const target = state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null);
+    for (const b of sky.beacons) {
+      const el = els[b.id];
+      if (!el) continue;
+      let shown = on && (b.dir.x * nx + b.dir.y * ny + b.dir.z * nz > STAR_NEAR || b.id === target);
+      let tf = '';
+      if (shown) {
+        starPoint.copy(b.dir).multiplyScalar(1000).add(camera.position);
+        toScreen(starPoint.x, starPoint.y, starPoint.z, starAt);
+        shown = starAt.z > 0 && starAt.x > -40 && starAt.x < size.w + 40 && starAt.y > rect.y - 20 && starAt.y < size.h + 20;
+        if (shown) tf = `translate3d(${starAt.x.toFixed(1)}px, ${starAt.y.toFixed(1)}px, 0)`;
+      }
+      const lock = shown && b.id === target;
+      const flag = `${shown}${lock}`;
+      const was = shownStar.get(el);
+      if (was && was.tf === tf && was.flag === flag) continue;
+      shownStar.set(el, { tf, flag });
+      if (tf) el.style.transform = tf;
+      el.toggleAttribute('data-on', shown);
+      el.toggleAttribute('data-lock', lock);
+    }
+  };
+
   // ── Steering ──
   const takeover = () => {
     state.lastInput = performance.now();
@@ -740,13 +781,19 @@ export async function create(canvas, ctx) {
   };
 
   // ── Hyperspace ──
+  const aimAt = (ship) => {
+    const was = state.aim?.id ?? null;
+    state.aim = ship && state.sys ? starAhead(state.sys, nose(ship), { keep: was }) : null;
+    const id = state.aim?.id ?? null;
+    if (id !== was) emit({ type: 'aim', id });
+  };
   let pendingSystem = null; // the system the URL asks for, if a jump to it is waiting
   const jumpDir = new THREE.Vector3();
   const startJump = (toId, why = 'course') => {
     const to = systemById(toId);
     if (!to || !state.sys || to.id === state.sys.id || state.crash) return false;
     if (state.jump && state.jump.phase !== 'align') return false;
-    const dir = bearing(state.sys, to);
+    const dir = courseTo(state.sys, to);
     jumpDir.set(...dir);
     state.auto = null;
     state.jump = { to, from: state.sys, phase: state.ship ? 'align' : 'spool', age: 0, dir, dur: jumpSeconds(state.sys, to), built: false, why };
@@ -766,7 +813,7 @@ export async function create(canvas, ctx) {
     j.age += dt;
     const s = state.ship;
     if (j.phase === 'align') {
-      // come round onto the bearing, easing off to cruise
+      // come round onto the course, easing off to cruise
       const input = { throttle: s.speed > SHIP.cruise ? 0 : 0.35, ...steerToward(s, j.dir) };
       state.ship = step(s, input, dt, state.space.solids, state.space).ship;
       if (aligned(state.ship, j.dir) > 0.996 || j.age > JUMP.align) {
@@ -781,7 +828,7 @@ export async function create(canvas, ctx) {
       const k = clamp01(j.age / JUMP.spool);
       // pointing true, and away: faster and faster, the stars drawn out
       const q = orientOf(s, headQ);
-      const want = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), jumpDir, new THREE.Vector3(0, 1, 0))); // (the nose, −z, along the bearing)
+      const want = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), jumpDir, new THREE.Vector3(0, 1, 0))); // (the nose, −z, along the course)
       q.slerp(want, clamp01(dt * 6));
       const e = new THREE.Euler().setFromQuaternion(q, 'YXZ');
       state.ship = { ...s, heading: e.y, pitch: e.x, bank: -e.z, speed: s.speed + dt * (20 + k * 160), rate: 0, tipRate: 0, rollRate: 0 };
@@ -902,6 +949,13 @@ export async function create(canvas, ctx) {
       }
     }
     state.ship = ship;
+    // the star the nose is on, if it's on one; flying out of the system
+    // with it there, you're on your way to it
+    aimAt(ship);
+    if (state.aim && !state.auto && !state.pull && Math.hypot(ship.x, ship.z) > state.space.edge - 10 && ship.speed > 1) {
+      const [fx, fz] = forward(ship.heading);
+      if (fx * ship.x + fz * ship.z > 0) startJump(state.aim.id, 'edge');
+    }
     for (const e of events) {
       if (e.type === 'bump' && e.id === 'ds2-shield') state.world.shieldHit?.();
       if (e.type !== 'crash') emit(e);
@@ -1313,7 +1367,9 @@ export async function create(canvas, ctx) {
     }
     const inTunnel = state.jump?.phase === 'tunnel';
     sky.group.visible = !inTunnel;
-    sky.update(camera, world?.dim ?? 1);
+    if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
+    sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
+    sky.update(camera, world?.dim ?? 1, t);
     models.update(t);
     bolts.update(dt);
     flashes.update(dt);
@@ -1350,6 +1406,7 @@ export async function create(canvas, ctx) {
     const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null });
     placeHud();
     placeLabels();
+    placeStars();
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);
     if (showCab) cabFrame(dt, t);
     post.overlay(showCab ? cabScene : null, camIn);
@@ -1398,7 +1455,9 @@ export async function create(canvas, ctx) {
     if (key === 'j') {
       e.preventDefault();
       heard();
-      emit({ type: 'jumpKey' });
+      // to the star the nose is on; on none, the page opens the map
+      if (state.aim && !state.jump && startJump(state.aim.id, 'aim')) return;
+      if (!state.jump) emit({ type: 'jumpKey' });
       return;
     }
     if (key === 'v') {
@@ -1576,6 +1635,7 @@ export async function create(canvas, ctx) {
       system: state.sys?.id,
       ship: state.ship && { ...state.ship },
       jump: state.jump && { to: state.jump.to.id, phase: state.jump.phase, age: +state.jump.age.toFixed(2) },
+      aim: state.aim?.id ?? null,
       at: state.at,
       auto: state.auto?.id ?? null,
       view: state.view,

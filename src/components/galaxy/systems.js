@@ -997,6 +997,60 @@ export function bearing(from, to) {
   const l = Math.hypot(dx, dz) || 1;
   return [dx / l, 0, dz / l];
 }
+// How far above or below the galaxy's plane each system sits, in grid
+// squares: the disc's thickness, stretched a little, and the heights picked
+// so that from every system no two others' stars sit closer than about two
+// and a half degrees in its sky (systems.test.js), so pointing at one is
+// pointing at that one.
+const LIFT = {
+  tatooine: 0.65,
+  hoth: -0.8,
+  endor: -0.55,
+  yavin: 0.6,
+  alderaan: 0.65,
+  bespin: 0.1,
+  dagobah: -0.25,
+  mustafar: 0.8,
+  coruscant: 0,
+  naboo: -0.3,
+  kashyyyk: -0.65,
+  kamino: 0.3,
+  geonosis: -0.7,
+  scarif: 0,
+  jakku: 0.6,
+  crait: -0.75,
+  starkiller: -0.1,
+  exegol: -0.7,
+  ahchto: -0.8,
+};
+export const liftOf = (s) => LIFT[s.id] ?? 0;
+
+// The way to another system in 3D, out of the plane as much as their
+// heights say: where its star is in your sky, and the way you jump to it.
+export function courseTo(from, to) {
+  const dx = to.pos[0] - from.pos[0];
+  const dy = liftOf(to) - liftOf(from);
+  const dz = to.pos[1] - from.pos[1];
+  const l = Math.hypot(dx, dy, dz) || 1;
+  return [dx / l, dy / l, dz / l];
+}
+
+// The system whose star is nearest the way `dir` points (a unit vector, the
+// nose), from `from`, if one's within `within` radians of it: { id, angle }
+// or null. `keep` (the one already picked) wins ties of up to `stick`
+// radians, so the pick doesn't flicker between two close stars.
+export function starAhead(from, dir, { within = 0.06, keep = null, stick = 0.012 } = {}) {
+  let best = null;
+  for (const s of SYSTEMS) {
+    if (s === from) continue;
+    const c = courseTo(from, s);
+    const angle = Math.acos(Math.min(1, Math.max(-1, c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2])));
+    const score = s.id === keep ? angle - stick : angle;
+    if (angle <= within && (!best || score < best.score)) best = { id: s.id, angle, score };
+  }
+  return best && { id: best.id, angle: best.angle };
+}
+
 export function coreBearing(s) {
   const dx = CORE[0] - s.pos[0];
   const dz = CORE[1] - s.pos[1];

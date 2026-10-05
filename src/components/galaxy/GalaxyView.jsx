@@ -3,12 +3,14 @@ import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from '../universe/controls';
 import FlightSettings from '../universe/FlightSettings';
-import { goalsOf, systemById } from './systems';
+import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
 
 // The galaxy's 3D view (scene.js, through useScene) and everything over it:
 // the names of what's in the system you're in (buttons: a click flies you
-// there), the other pilots' callsigns, the targeting HUD and the stick ring
+// there), the other systems' names over their stars as the nose comes near
+// them (a click jumps you there) and, with the nose on one, the button to
+// jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
 // fly until you do. While the 3D loads the box says so; without 3D, a note
@@ -17,6 +19,8 @@ const load = () => import('./scene');
 
 export default function GalaxyView({ system, here, handle, ship, net = null, frozen, onEvent, onArrive, onAt, onBoard, onMap }) {
   const labels = useRef({});
+  const stars = useRef({});
+  const [aim, setAim] = useState(null); // the star the nose is on
   const tags = useRef(null);
   const stick = useRef(null);
   const shield = useRef(null);
@@ -40,6 +44,7 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
       ship,
       controls,
       labels,
+      stars,
       stick,
       shield,
       hud,
@@ -51,6 +56,10 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
       onBoard,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
+        if (e.type === 'aim') {
+          setAim(e.id);
+          return;
+        }
         events.current?.(e);
       },
     },
@@ -69,7 +78,11 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
 
   // the names of what's here, in the system the scene's in (`here`; `system`
   // is the one wanted, which a jump is on its way to)
-  const goals = goalsOf(systemById(here) ?? systemById('tatooine'));
+  const hereSys = systemById(here) ?? systemById('tatooine');
+  const goals = goalsOf(hereSys);
+  const others = SYSTEMS.filter((s) => s !== hereSys);
+  const aimed = aim && aim !== hereSys.id ? systemById(aim) : null;
+  const jump = (id) => view.current?.jump?.(id);
 
   const hold = (down) => (e) => (e.preventDefault(), view.current?.boost?.(down));
   const trigger = (down) => (e) => (e.preventDefault(), view.current?.fire?.(down));
@@ -110,6 +123,30 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
               </li>
             ))}
           </ul>
+          {ship && on && (
+            <ul className="galaxy-stars" aria-label="Other systems' stars">
+              {others.map((o) => (
+                <li key={o.id}>
+                  <button
+                    ref={(el) => {
+                      if (el) stars.current[o.id] = el;
+                      else delete stars.current[o.id];
+                    }}
+                    type="button"
+                    className="galaxy-star"
+                    style={{ '--star': o.accent }}
+                    onClick={() => jump(o.id)}
+                    title={`Jump to ${o.name}`}
+                  >
+                    <span className="galaxy-star-name">{o.name}</span>
+                    <span className="galaxy-star-more">
+                      {lightYears(hereSys, o).toLocaleString('en-US')} ly · <kbd>J</kbd> to jump
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <div ref={tags} className="universe-tags" aria-hidden="true" />
           {ship && on && (
             <>
@@ -159,13 +196,21 @@ export default function GalaxyView({ system, here, handle, ship, net = null, fro
               <button type="button" className="galaxy-mapbtn" onClick={onMap}>
                 Galaxy map
               </button>
+              {aimed && (
+                <button type="button" className="galaxy-jumpbtn" onClick={() => jump(aimed.id)} style={{ '--star': aimed.accent }}>
+                  <span className="galaxy-jumpbtn-k" aria-hidden="true">
+                    J
+                  </span>
+                  Jump to {aimed.name}
+                </button>
+              )}
               <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>M</kbd> galaxy map, <kbd>V</kbd> cockpit
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire, and open the galaxy map to jump to lightspeed</span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire; point at a star and tap Jump to go to lightspeed</span>
                 </p>
               )}
             </>

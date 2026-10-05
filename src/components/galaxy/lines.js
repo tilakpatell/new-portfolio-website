@@ -234,7 +234,7 @@ export const GALAXY_LINES = {
       ],
       kashyyyk: [
         ['luke', 'Kashyyyk. Chewie’s homeworld. Look at the size of those trees!'],
-        ['r2', '[a nervous beep: he still remembers losing to a Wookiee at holochess]'],
+        ['r2', '[a nervous beep: he once played a Wookiee at holochess, and was told to let him win]'],
       ],
       kamino: [
         ['luke', 'Artoo, this planet isn’t in the archives. Someone erased it.'],

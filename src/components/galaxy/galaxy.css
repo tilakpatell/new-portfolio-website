@@ -13,6 +13,108 @@
 .galaxy-label[data-kind='station'] { color: #ffd9a0; --swatch: #ffd9a0; }
 .galaxy-label[data-here] { color: var(--swatch); background: rgb(3 4 10 / 0.6); }
 
+/* the other systems' stars: their names as the nose comes near (under the
+   star, the scene moves them), the one it's on ringed, with the way to go */
+.galaxy-stars { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; transition: opacity 0.3s ease; }
+.galaxy-page:is([data-jumping='spool'], [data-jumping='tunnel'], [data-leaving]) .galaxy-stars { opacity: 0; transition-duration: 0.15s; }
+.galaxy-star {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% 14px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  color: rgb(214 232 255 / 0.62);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: auto;
+}
+.galaxy-star[data-on] { visibility: visible; }
+.galaxy-star:hover { color: #fff; }
+.galaxy-star:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+.galaxy-star::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  translate: -50% -50%;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid var(--star);
+  border-radius: 50%;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--star) 55%, transparent), inset 0 0 8px color-mix(in srgb, var(--star) 35%, transparent);
+  opacity: 0;
+  scale: 1.6;
+  transition: opacity 0.2s ease, scale 0.25s ease;
+}
+.galaxy-star[data-lock] { color: #fff; background: rgb(3 6 16 / 0.55); }
+.galaxy-star[data-lock]::before { opacity: 1; scale: 1; }
+.galaxy-star-more { display: none; color: var(--star); font-size: 0.58rem; letter-spacing: 0.06em; text-transform: none; }
+.galaxy-star[data-lock] .galaxy-star-more { display: block; }
+.galaxy-star kbd { padding: 0 0.3em; border: 1px solid currentColor; border-radius: 4px; font-family: inherit; }
+@media (pointer: coarse) {
+  .galaxy-star { min-height: 36px; align-content: center; }
+  .galaxy-star kbd { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .galaxy-star[data-lock]::before { animation: galaxy-star-ring 1.3s ease-in-out infinite; }
+}
+@keyframes galaxy-star-ring { 50% { box-shadow: 0 0 22px var(--star), inset 0 0 10px color-mix(in srgb, var(--star) 50%, transparent); } }
+
+/* with the nose on a star: the way to jump to it */
+.galaxy-jumpbtn {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 76px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1.05rem 0.45rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--star) 70%, transparent);
+  border-radius: 999px;
+  background: rgb(3 8 20 / 0.8);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--star) 28%, transparent);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.galaxy-jumpbtn:hover { background: rgb(14 30 60 / 0.85); }
+.galaxy-jumpbtn:focus-visible { outline: 2px solid var(--star); outline-offset: 3px; }
+.galaxy-jumpbtn-k {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--star);
+  color: #03040a;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.galaxy-page[data-jumping] .galaxy-jumpbtn { display: none; }
+@media (pointer: coarse) { .galaxy-jumpbtn-k { display: none; } .galaxy-jumpbtn { padding-left: 1.05rem; min-height: 44px; } }
+@media (prefers-reduced-motion: no-preference) { .galaxy-jumpbtn { animation: galaxy-jump-in 0.22s ease-out; } }
+@keyframes galaxy-jump-in { from { opacity: 0; scale: 0.92; } }
+/* (the line on how to fly wraps, clear of the corners; and gives way to the jump) */
+@media (min-width: 768px) {
+  .galaxy-page .universe-hint { width: min(620px, calc(100vw - var(--panel-w) - 400px)); border-radius: 14px; white-space: normal; text-align: center; line-height: 1.75; }
+}
+.galaxy-jumpbtn ~ .universe-hint { display: none; }
+@media (max-width: 767px) {
+  .galaxy-jumpbtn { left: auto; right: 12px; top: calc(var(--nav-h) + 12px); bottom: auto; translate: none; }
+}
+
 /* the galaxy map's button, over the map's top left */
 .galaxy-mapbtn {
   position: absolute;
@@ -128,7 +230,7 @@
 /* the galaxy map: a holotable's blue over the stars */
 .holomap {
   position: fixed;
-  z-index: 60;
+  z-index: 90;
   inset: 0;
   display: grid;
   place-items: center;
@@ -234,6 +336,7 @@
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0 3px, color-mix(in srgb, var(--c) 30%, transparent) 4px, transparent 7px);
 }
+.holomap-systems > li[data-side='left'] .holomap-system { flex-direction: row-reverse; translate: calc(-100% + 7px) -50%; padding: 0.1rem 0 0.1rem 0.3rem; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
 .holomap-system[aria-pressed='true'] { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }

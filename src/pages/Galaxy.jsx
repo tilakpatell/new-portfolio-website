@@ -156,7 +156,8 @@ export default function Galaxy() {
     return () => window.removeEventListener('keydown', onKey);
   }, [mapOpen, leaving]);
 
-  const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent };
+  // (every system's colour is light, readable on the dark page: so dark on a button)
+  const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
     <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? 'fade' : undefined} data-jumping={jumping?.phase}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
