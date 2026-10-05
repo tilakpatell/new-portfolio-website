@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bezier, clearance, flybyLane, laneBetween, laneLength, tangent } from './lanes';
+import { bezier, clearance, flybyLane, laneBetween, laneLength, meteorLane, tangent } from './lanes';
 import { SHIP, parkAt, spawn } from './ship';
 import { MAP_RADIUS, ORDER } from './layout';
 
@@ -163,5 +163,33 @@ describe('lanes out in deep space', () => {
       rand = seeded(5 + i);
     }
     expect(made).toBeGreaterThan(60);
+  });
+});
+
+describe('a meteor stream', () => {
+  it('runs straight across the ship’s path ahead, at its height, clear of everything, or not at all', () => {
+    const rand = seeded(29);
+    let made = 0;
+    const ships = [...ORDER.map((id) => ({ ...parkAt(id), y: 0, speed: 0 })), { x: 0, y: 0.3, z: 400, heading: 0, speed: 0 }, { x: -2500, y: 120, z: 3000, heading: 1.1, speed: 0 }];
+    for (const s of ships) {
+      for (let n = 0; n < 6; n++) {
+        const lane = meteorLane(s, rand);
+        if (!lane) continue;
+        made++;
+        const [from, to] = lane;
+        const pts = [from, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2], to];
+        expect(clearance(pts), `${s.x},${s.z}`).toBeGreaterThan(3);
+        // ahead of the nose, from one side to the other, level with the ship
+        const [fx, fz] = [-Math.sin(s.heading), -Math.cos(s.heading)];
+        for (const p of [from, to]) {
+          expect((p[0] - s.x) * fx + (p[2] - s.z) * fz).toBeGreaterThan(40);
+          expect(Math.abs(p[1] - s.y)).toBeLessThan(2.01);
+        }
+        const side = (p) => (p[0] - s.x) * -fz + (p[2] - s.z) * fx;
+        expect(Math.sign(side(from))).not.toBe(Math.sign(side(to)));
+        expect(Math.hypot(to[0] - from[0], to[2] - from[2])).toBeGreaterThan(100);
+      }
+    }
+    expect(made).toBeGreaterThan(ships.length * 3);
   });
 });

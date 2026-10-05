@@ -60,6 +60,9 @@ export const FACTIONS = {
   council: { family: 'rickmorty', kinds: [['councilship', 1]], laser: [0.6, 5.5, 4.2], size: [2, 4], portal: true },
   // pirates: what's after someone in distress
   bugs: { family: 'rickmorty', kinds: [['gromflomite', 1]], laser: [0.6, 2.2, 6.5], size: [2, 3] },
+  // bounty hunters: one at a time, tough and quick (director.js's bounty)
+  fett: { family: 'starwars', kinds: [['slave1', 1]], laser: [5.5, 0.9, 0.5], size: [1, 1] },
+  phoenix: { family: 'rickmorty', kinds: [['phoenixperson', 1]], laser: [6.0, 2.6, 0.8], size: [1, 1] },
 };
 // size: its biggest dimension in map units; speed: its top speed (a TIE, a
 // patrol fighter or a bug is a little slower than you boost, so you can
@@ -75,9 +78,11 @@ export const HUNTER_KINDS = {
   patrol: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
   councilship: { size: 0.42, speed: 24, accel: 19, hp: 3, fire: [0.6, 1.1], tail: 0.2 },
   gromflomite: { size: 0.3, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
+  slave1: { size: 0.55, speed: 24, accel: 20, hp: 6, fire: [0.5, 0.9], tail: 0.45, lead: 0.9, spread: 0.85 },
+  phoenixperson: { size: 0.42, speed: 25, accel: 21, hp: 5, fire: [0.55, 1.0], tail: 0.4, lead: 0.9 },
 };
 // what each kind is called on the targeting bracket
-export const NAMES = { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite' };
+export const NAMES = { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite', slave1: 'Slave I', phoenixperson: 'Phoenixperson' };
 
 export const LASER = { speed: 34, life: 1.1, damage: 12, length: 0.36 };
 export const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long

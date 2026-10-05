@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
@@ -14,6 +15,7 @@ import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import ModelCredits from '../components/ModelCredits';
+import { openGuide } from '../lib/palette';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
@@ -48,19 +50,20 @@ export default function GalaxySurface() {
   const [ship] = useState(() => parseShip(local.get(SHIP_KEY)) ?? 'xwing');
   const crew = crewById(ship);
   const { unlocked, unlock } = useAchievements();
-  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked), [ship, unlocked]);
+  const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
+  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   // online: the other pilots down here with you
   const online = useOnline();
-  const { setKind, setLoadout } = online;
+  const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
+  useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [found, setFound] = useState(() => readFound()[id] ?? []);
   const [phase, setPhase] = useState('landing');
   const [prompt, setPrompt] = useState(null);
   const [here, setHere] = useState(null);
   const [talk, setTalk] = useState(null); // { who, text, n }
   const [toast, setToast] = useState(null); // { title, text, n }
-  const [help, setHelp] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
   const [quest, setQuest] = useState(null); // { id, name, text, left, shoot }
@@ -182,17 +185,15 @@ export default function GalaxySurface() {
     setList(false);
   };
 
-  // H for the controls; Escape shuts them
+  // H (or ?, the site's own key) for the controls, in the site's guide; Q
+  // for the list of things to do, Escape shuts it
   useEffect(() => {
     const onKey = (e) => {
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'h' || e.key === 'H' || e.key === '?') setHelp((h) => !h);
+      if (e.key === 'h' || e.key === 'H') openGuide();
       if (e.key === 'q' || e.key === 'Q') setList((l) => !l);
-      if (e.key === 'Escape') {
-        setHelp(false);
-        setList(false);
-      }
+      if (e.key === 'Escape') setList(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -209,7 +210,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView system={id} ship={ship} loadout={loadout} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView system={id} ship={ship} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -318,39 +319,14 @@ export default function GalaxySurface() {
       )}
 
       <div className="surface-corner">
-        <button type="button" className="surface-help-btn" onClick={() => setHelp((h) => !h)} aria-expanded={help}>
+        <button type="button" className="surface-help-btn" onClick={openGuide} aria-keyshortcuts="H">
           Controls
         </button>
         <button type="button" className="surface-help-btn" onClick={takeOff}>
           Back to orbit
         </button>
+        <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
-      {help && (
-        <div className="surface-help" role="dialog" aria-label="Controls">
-          <ul>
-            <li>
-              <kbd>W</kbd>
-              <kbd>A</kbd>
-              <kbd>S</kbd>
-              <kbd>D</kbd> walk (the way the camera faces)
-            </li>
-            <li>
-              <kbd>Shift</kbd> run · <kbd>Space</kbd> jump
-            </li>
-            <li>Drag to look round · scroll to zoom</li>
-            <li>
-              <kbd>E</kbd> talk, ride, go in, get in the ship
-            </li>
-            <li>
-              <kbd>F</kbd> fire your blaster · <kbd>Q</kbd> things to do
-            </li>
-            <li>
-              <kbd>Tab</kbd> swap to {crew?.label?.split(' and ')[1] ?? 'your crewmate'}
-            </li>
-          </ul>
-          <ModelCredits where="galaxy-surface" only={kinds} line className="surface-credits" />
-        </div>
-      )}
       {crew && talkCrew && <Comms control={comms} crew={talkCrew} reduced={reduced} />}
       {!leaving && <Online online={online} ship={ship} />}
       <div className="surface-fade" aria-hidden="true" />

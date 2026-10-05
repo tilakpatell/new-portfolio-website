@@ -12,13 +12,13 @@
 // a plain stand-in, so the office is never missing a piece.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from '../../lib/texture';
 import { SCREENS, mugBand, nameplate, paper, paperBox, screens, sign, speckle } from './paint';
+import { gltfLoader } from '../../lib/three/gltf';
+import { loadTexture, sharpen } from '../../lib/three/textures';
 
 // The scanned models and how big they are in the office (metres, the larger
 // of width and depth unless `h` gives the height instead).
@@ -45,22 +45,9 @@ export function merge(list) {
 }
 
 export async function loadKit(renderer) {
-  const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const loader = new THREE.TextureLoader();
-  const tex = (url, srgb) =>
-    new Promise((resolve) =>
-      loader.load(
-        url,
-        (t) => {
-          t.wrapS = t.wrapT = THREE.RepeatWrapping;
-          t.anisotropy = aniso;
-          if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-          resolve(t);
-        },
-        undefined,
-        () => resolve(null),
-      ),
-    );
+  // (decoded off the main thread, as sharp at a slant as the device's tier
+  // allows, and shared between the office from above and the one you walk)
+  const tex = (url, srgb) => loadTexture(url, { renderer, color: srgb, wrap: true }).catch(() => null);
   const sets = {};
   await Promise.all(
     TEXTURES.map(async (name) => {
@@ -73,7 +60,7 @@ export async function loadKit(renderer) {
     }),
   );
 
-  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const gltf = gltfLoader();
   const models = {};
   await Promise.all(
     Object.keys(MODELS).map((name) =>
@@ -106,6 +93,15 @@ function fit(root, spec) {
     if (o.isMesh) {
       o.castShadow = true;
       o.receiveShadow = true;
+      // a clock's glass came with real transmission, which has three draw
+      // every opaque thing in the scene a second time, every frame, to see
+      // through it: a sheen of plain clear glass looks the same at a clock's size
+      const m = o.material;
+      if (m?.transmission > 0) {
+        o.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.18, depthWrite: false, normalMap: m.normalMap ?? null, roughnessMap: m.roughnessMap ?? null });
+        o.castShadow = false;
+        m.dispose();
+      }
     }
   });
   const box = new THREE.Box3().setFromObject(root);
@@ -222,7 +218,7 @@ function makeKit(sets, models, env) {
   // ── Monitor, keyboard, mouse ─────────────────────────────────────────────
   const screenSheet = keep(new THREE.CanvasTexture(screens()));
   screenSheet.colorSpace = THREE.SRGBColorSpace;
-  screenSheet.anisotropy = 4;
+  sharpen(screenSheet);
   const monitorGeo = (() => {
     const body = new RoundedBoxGeometry(0.46, 0.3, 0.035, 2, 0.008);
     body.translate(0, 0.33, 0);
@@ -459,7 +455,7 @@ function makeKit(sets, models, env) {
     if (!plates.has(name)) {
       const t = keep(new THREE.CanvasTexture(nameplate(name, title)));
       t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = 4;
+      sharpen(t);
       plates.set(name, keep(new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 })));
     }
     const g = new THREE.Group();

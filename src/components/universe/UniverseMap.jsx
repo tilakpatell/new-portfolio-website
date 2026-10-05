@@ -30,7 +30,7 @@ import MiniMap from './MiniMap';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, onBuild, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -76,6 +76,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       selected,
       ship,
       loadout,
+      build,
       controls,
       labels,
       stick,
@@ -314,7 +315,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 {onFoot ? 'Run' : 'Boost'}
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
-              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} onFit={onFit} open={hangar} onOpen={openHangar} />}
+              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} onBuild={onBuild} onFit={onFit} open={hangar} onOpen={openHangar} />}
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">

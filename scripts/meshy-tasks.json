@@ -453,5 +453,23 @@
     "model": "01a10cc7-3f9c-748d-881c-bef6e4c14ac8",
     "rig": "01a10cca-938e-778b-b48d-45f6a8930bdc",
     "idle": "01a10cca-fbf5-7214-b8e3-c01acb20f8aa"
+  },
+  "rick-hd": {
+    "image": "01a10814-a879-75b1-b4f0-8cf9a0b1d603",
+    "model": "01a10e50-ea29-77be-bf92-9137b43e2645",
+    "rig": "01a10e53-a9eb-7799-8da9-a0376d0dba3e",
+    "idle": "01a10e53-fb39-7463-aafe-a046e0013dd2",
+    "sit": "01a10e54-2bd8-7329-bbde-7e8c91f6214b"
+  },
+  "morty-hd": {
+    "image": "01a10816-5101-770d-825d-b5d79aec4fae",
+    "model": "01a10e50-ea89-71d5-8de8-ef2c624eed3e",
+    "rig": "01a10e53-aa0c-760e-a457-55ffe7b3c747",
+    "idle": "01a10e53-fb9f-73b7-b103-8be2764aa74f",
+    "sit": "01a10e54-2bae-768f-adf8-34aa676d55eb"
+  },
+  "saucer-hd": {
+    "image": "01a10862-d30e-758a-8f1f-fadcb55a0fda",
+    "model": "01a10e50-eadc-741f-a4e6-f020b943a078"
   }
 }

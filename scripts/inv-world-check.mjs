@@ -35,23 +35,71 @@ console.log('city up in', ((Date.now() - t0) / 1000).toFixed(1), 's');
 // shots: [name, hero { p, mode, v }, yaw, pitch, time]
 const SHOTS = {
   spawn: { at: null, time: 'noon' },
-  street: { p: [0, 1.5, 300], mode: 'air', yaw: Math.PI, pitch: 0.08 },
+  street: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22 },
+  curb: { p: [44, 3, 120], mode: 'air', yaw: Math.PI, pitch: -0.12 },
+  streetnight: { p: [40, 18, 200], mode: 'air', yaw: Math.PI, pitch: -0.22, time: 'night' },
   downtown: { p: [-300, 140, 600], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.12 },
   high: { p: [-900, 1400, 1500], mode: 'air', yaw: Math.PI * 0.85, pitch: -0.45 },
   suburb: { p: [-2060, 30, 330], mode: 'air', yaw: Math.PI, pitch: -0.25 },
   river: { p: [1150, 25, 600], mode: 'air', yaw: Math.PI, pitch: -0.05 },
   boost: { p: [0, 220, 900], mode: 'air', v: [0, 0, -250], yaw: Math.PI, pitch: -0.1 },
+  porch: { place: 'home', back: 9, up: 1.5 },
+  gda: { place: 'gda', back: 12, up: 2 },
+  burger: { place: 'burgermart', back: 12, up: 2 },
+  school: { place: 'school', back: 22, up: 4 },
+  plaza: { place: 'guardians', back: 26, up: 8 },
+  eve: { follow: 'eve', back: 16 },
+  jet: { follow: 'jet', back: 70 },
+  clouds: { p: [600, 1150, 900], mode: 'air', yaw: Math.PI * 0.8, pitch: 0.02 },
+  rings: { p: [-2060, 22, 262], mode: 'air', yaw: 2.2, pitch: 0.05 },
+  card: { p: [0, 38, 30], mode: 'air', yaw: Math.PI, pitch: 0.1 },
+  rescue: { rescue: true, back: 28 },
   dusk: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'dusk' },
   night: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'night' },
 };
 const want = process.argv.slice(2);
+await page.waitForTimeout(3000); // (a few frames first, so everyone's somewhere)
 for (const [name, s] of Object.entries(SHOTS)) {
   if (want.length && !want.includes(name)) continue;
   await page.evaluate(async (s) => {
     const { api, sim } = window.__INVWORLD__;
     sim.snap = true;
     if (s.time) await api.setTime(s.time);
-    if (s.p) {
+    if (s.rescue) {
+      // call an emergency in now, and frame it
+      sim.quests = { ...sim.quests, nextCall: 0 };
+      await new Promise((r) => setTimeout(r, 2500));
+      const q = sim.quests.rescue;
+      if (q) {
+        const face = 2.4;
+        sim.h = { ...sim.h, p: [q.p[0] - Math.sin(face) * s.back, q.p[1] + 2, q.p[2] - Math.cos(face) * s.back], v: [0, 0, 0], spd: 0, mode: 'air', crouch: 0, stun: 0, face };
+        sim.yaw = face;
+        sim.pitch = 0.05;
+        sim.dragAt = 1e9;
+      }
+    } else if (s.place || s.follow) {
+      // stand back from a place's door (or from someone flying), looking at it
+      const { debug } = api;
+      let at;
+      let face;
+      if (s.place) {
+        const pl = debug.world.places.find((q) => q.id === s.place);
+        at = [pl.door[0], 0, pl.door[1]];
+        face = Math.atan2(pl.x - pl.door[0], pl.z - pl.door[1]);
+      } else {
+        const q = s.follow === 'eve' ? debug.npcs.eve.p : debug.jet.position;
+        const v = s.follow === 'eve' ? debug.npcs.eve.v : debug.jet.velocity;
+        at = [q.x, q.y - 1, q.z];
+        face = Math.atan2(v.x, v.z) + 0.5;
+      }
+      const p = [at[0] - Math.sin(face) * s.back, at[1] + (s.up ?? 0), at[2] - Math.cos(face) * s.back];
+      sim.h = { ...sim.h, p, v: [0, 0, 0], spd: 0, mode: s.place && !s.up ? 'ground' : 'air', crouch: 0, stun: 0, face };
+      sim.hold = Boolean(s.follow);
+      sim.yaw = face;
+      sim.pitch = s.place ? 0.05 : -0.05;
+      sim.dragAt = 1e9;
+    } else if (s.p) {
+      sim.hold = false;
       sim.h = { ...sim.h, p: [...s.p], v: s.v ?? [0, 0, 0], spd: Math.hypot(...(s.v ?? [0, 0, 0])), dir: s.v ? s.v.map((x) => x / Math.hypot(...s.v)) : [0, 0, 1], mode: s.mode, crouch: 0, stun: 0, face: s.yaw };
       sim.yaw = s.yaw;
       sim.pitch = s.pitch;

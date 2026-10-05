@@ -11,6 +11,7 @@
 // in from the box's edges so it never shows. One draw, moved on the GPU.
 //
 // createBelt({ small }) → { group, update(t) }
+// rock(seed) → a lumpy rock's geometry, about a unit across (meteors.js uses it too)
 // createDust({ small }) → { points, update(cameraInParent, amount) }
 
 import * as THREE from 'three';
@@ -30,7 +31,7 @@ function rng(seed) {
 
 // a lumpy rock: an icosphere with its points pushed in and out by a few
 // waves, squashed a little
-function rock(seed) {
+export function rock(seed) {
   const rand = rng(seed);
   const g = new THREE.IcosahedronGeometry(1, 1);
   const pos = g.attributes.position;

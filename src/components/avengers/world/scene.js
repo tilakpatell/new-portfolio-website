@@ -38,7 +38,7 @@ import { createFlags, createRings, staticGrounds } from './grounds';
 import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, nearestEdge, photoView, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -233,7 +233,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
-  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
+  await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small, renderer: engine.renderer });
 
   // ── light: the airfield's late-afternoon sky, the sun a little higher than it has it ──
   await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.1, sunColor: [1, 0.9, 0.76], fill: 0.1 });
@@ -1109,7 +1109,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     }
   })();
 
-  // an Iron Man armour on a plinth by the workshop's door, lit from below
+  // an Iron Man armour on a plinth by the workshop's door, lit from below;
+  // suited up in, it's the hero (./rules.js SUIT), and goes home after
+  let armour = null;
+  const PLINTH = new THREE.Vector3(ARMOUR.x, 0.28, ARMOUR.z);
+  const plinthQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ARMOUR.face + Math.PI / 2);
+  const armourQ = new THREE.Quaternion();
+  const armourE = new THREE.Euler(0, 0, 0, 'YXZ');
+  const boot = new THREE.Vector3();
   {
     const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 0.28, 40), frameMat);
     plinth.position.set(ARMOUR.x, 0.14, ARMOUR.z);
@@ -1122,14 +1129,45 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       .then((t) => {
         if (gone) return;
         const m = person(t);
-        m.root.position.set(ARMOUR.x, 0.28, ARMOUR.z);
-        m.root.rotation.y = ARMOUR.face + Math.PI / 2;
+        m.root.position.copy(PLINTH);
+        m.root.quaternion.copy(plinthQ);
         scene.add(m.root);
+        armour = m;
       })
       .catch(() => {
         /* no armour: an empty plinth */
       });
   }
+  // The armour: on him while he's suited up, leaning into its speed and
+  // banking into its turns, its boots' repulsors lit; otherwise back to its
+  // plinth, flying there if it's away.
+  const placeArmour = (h, dt) => {
+    if (!armour) return;
+    const r = armour.root;
+    if (h.mode === 'suit') {
+      const speed = Math.hypot(h.vx, h.vz);
+      r.position.set(h.x, h.y, h.z);
+      armourE.set(Math.min(1.15, (speed / SUIT.top) * 1.3) - Math.max(-0.25, Math.min(0.25, h.vy * 0.015)), h.face + Math.PI / 2, -R.roll * 1.4);
+      armourQ.setFromEuler(armourE);
+      r.quaternion.slerp(armourQ, Math.min(1, dt * 8));
+      if (!calm) {
+        // the boots' repulsors: a flame from each, harder the harder it's pushing
+        const push = 0.5 + Math.min(1, speed / 12) + Math.max(0, h.vy) * 0.08;
+        for (const side of [-0.16, 0.16]) {
+          boot.set(side, 0.08, 0).applyQuaternion(r.quaternion).add(r.position);
+          vfx.trail(boot, { size: 0.26 * push, life: 0.2, color: 0xbfe8ff, to: 0x2a5fa8, a: 0.85 });
+        }
+      }
+    } else if (r.position.distanceToSquared(PLINTH) > 1e-4) {
+      // home to the plinth, and stood up straight on it
+      r.position.lerp(PLINTH, Math.min(1, dt * 2.2));
+      r.quaternion.slerp(plinthQ, Math.min(1, dt * 3));
+      if (r.position.distanceToSquared(PLINTH) < 1e-4) {
+        r.position.copy(PLINTH);
+        r.quaternion.copy(plinthQ);
+      }
+    }
+  };
 
   // ── the doors' beams and rings, and the stones won back over them ──
   const markers = {};
@@ -1369,6 +1407,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   };
 
   const placeHero = (h, dt) => {
+    // in the armour, it's him: Spider-Man is out of sight (and the armour's away from its plinth)
+    hero.visible = h.mode !== 'suit' || !armour;
+    placeArmour(h, dt);
     if (spidey) {
       placeSpidey(h, dt);
       return;
@@ -1526,7 +1567,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       A.aim = null;
       A.aimed = false;
     }
-    if (tick) A.perch = h.mode === 'zipto' ? null : findPerch(h, s.move);
+    if (tick) A.perch = h.mode === 'zipto' || h.mode === 'suit' ? null : findPerch(h, s.move);
     if (spidey) {
       const bone = h.web ? (R.arm === 'L' ? spidey.bones.handL : spidey.bones.handR) : spidey.bones.handR;
       if (bone) bone.getWorldPosition(A.hand);
@@ -1590,6 +1631,17 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       camera.lookAt(tmp.copy(A.look).lerp(P3(60, 40, 2), t));
     }
 
+    // photo mode: the camera where the photo puts it, and its lens
+    if (s.photo) {
+      const v = photoView(h, s.photo);
+      camera.position.set(v.at[0], v.at[1], v.at[2]);
+      camera.lookAt(v.look[0], v.look[1], v.look[2]);
+      if (Math.abs(camera.fov - s.photo.fov) > 0.05) {
+        camera.fov = s.photo.fov;
+        camera.updateProjectionMatrix();
+      }
+    }
+
     // the sun's shadows follow him, snapped to the shadow map's texels so they don't crawl
     const texel = (SHADOW * 2) / sun.shadow.mapSize.x;
     shadowAt.set(Math.round(h.x / texel) * texel, 0, Math.round(h.z / texel) * texel);
@@ -1624,6 +1676,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'perfect') {
       A.punch = Math.max(A.punch, 5);
       vfx.ring(v3.copy(hero.position), { color: 0xff8a80, from: 0.4, to: 2.4, life: 0.35, opacity: 0.45, normal: v3b.set(d.vx ?? 0, d.vy ?? 0, d.vz ?? 1).normalize() });
+    } else if (type === 'suitup') {
+      A.punch = Math.max(A.punch, 4);
+      vfx.ring(v3.set(ARMOUR.x, 0.4, ARMOUR.z), { color: 0x8fe9ff, from: 0.5, to: 5, life: 0.5, opacity: 0.7 });
+      if (!calm) vfx.smoke(v3.set(ARMOUR.x, 0.3, ARMOUR.z), { size: 1.4, count: 6, life: 0.8, rise: 0.6, opacity: 0.3, color: 0xd8e4f0, to: 0xffffff, spread: 1.2 });
+    } else if (type === 'suitoff') {
+      A.punch = Math.max(A.punch, 3);
+      if (!calm) vfx.smoke(v3.set(d.x ?? hero.position.x, (d.y ?? hero.position.y) + 1, d.z ?? hero.position.z), { size: 1, count: 5, life: 0.6, rise: 0.2, opacity: 0.3, color: 0xd8e4f0, to: 0xffffff, spread: 0.8 });
     } else if (type === 'trick') {
       A.punch = Math.max(A.punch, 2);
     } else if (type === 'bank') {

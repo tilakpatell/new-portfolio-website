@@ -1,31 +1,103 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { RiQuestionLine } from 'react-icons/ri';
+import { RiCloseLine, RiQuestionLine } from 'react-icons/ri';
+import { guideMeta } from './guide/routes';
+import { local } from '../lib/hooks';
 
 // A guide to the site, and to whatever the page you're on lets you play. The
-// "?" button in the corner (or the ? key) opens it. The panel and everything
-// it says load the first time it opens (or the button is pointed at).
+// "?" button in the corner (or the ? key, or a page's own Controls button,
+// by 'tp:guide') opens it. The panel and everything it says load the first
+// time it opens (or the button is pointed at). The first time you're on a
+// page with controls, a note by the button says they're in here.
 const loadPanel = () => import('./GuidePanel');
 const GuidePanel = lazy(loadPanel);
+
+const SEEN_KEY = 'tp-guide-seen'; // the pages whose note has been shown
+const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
 export default function Guide() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const button = useRef(null);
+  const meta = guideMeta(pathname);
+
+  // focus goes back to whatever opened the guide (a panel's own "?" where the
+  // corner button is hidden), else to the corner button if it's showing
+  const returnTo = useRef(null);
+  const refocus = () => {
+    const shown = (el) => el?.isConnected && el.getClientRects().length > 0;
+    const to = shown(returnTo.current) ? returnTo.current : shown(button.current) ? button.current : null;
+    to?.focus({ preventScroll: true });
+  };
+  const refocusRef = useRef(refocus);
+  useEffect(() => {
+    refocusRef.current = refocus;
+  });
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+    if (!open) return;
+    const at = document.activeElement;
+    returnTo.current = at instanceof HTMLElement && at !== document.body && !at.closest('#guide-panel') ? at : null;
+  }, [open]);
+  const close = () => {
+    setOpen(false);
+    refocus();
+  };
 
   useEffect(() => {
     const onKey = (e) => {
-      const t = e.target;
-      if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (typing(e.target)) return;
       if (e.key === '?') {
         e.preventDefault();
         setOpen((o) => !o);
-      } else if (e.key === 'Escape') setOpen(false);
+      } else if (e.key === 'Escape' && openRef.current) {
+        // the guide's Escape: not the page's too (the map would back out)
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setOpen(false);
+        refocusRef.current();
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const onOpen = () => setOpen(true);
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('tp:guide', onOpen);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('tp:guide', onOpen);
+    };
   }, []);
   useEffect(() => setOpen(false), [pathname]);
+
+  // The note, the first time on a page with controls: once the page is
+  // uncovered and nothing's asking a question over it. It goes after a while,
+  // on a press, or when the guide opens, and isn't shown on that page again.
+  const [nudge, setNudge] = useState(false);
+  const nudgeKey = meta?.nudge ? meta.key : null;
+  useEffect(() => {
+    setNudge(false);
+    if (!nudgeKey) return undefined;
+    const seen = local.get(SEEN_KEY, []);
+    const list = Array.isArray(seen) ? seen : [];
+    if (list.includes(nudgeKey)) return undefined;
+    let hide = 0;
+    const show = setInterval(() => {
+      const html = document.documentElement;
+      if ('covered' in html.dataset || 'intro' in html.dataset || 'menu' in html.dataset || document.querySelector('[aria-modal="true"]')) return;
+      clearInterval(show);
+      local.set(SEEN_KEY, [...list, nudgeKey].slice(-60));
+      loadPanel(); // (it's likely to be opened next)
+      setNudge(true);
+      hide = setTimeout(() => setNudge(false), 9000);
+    }, 1800);
+    return () => {
+      clearInterval(show);
+      clearTimeout(hide);
+    };
+  }, [nudgeKey]);
+  useEffect(() => {
+    if (open) setNudge(false);
+  }, [open]);
 
   // On a phone the button tucks away while you scroll down the page (so it
   // never sits over a game's controls) and comes back when you scroll up.
@@ -58,11 +130,6 @@ export default function Guide() {
     };
   }, []);
 
-  const close = () => {
-    setOpen(false);
-    button.current?.focus();
-  };
-
   return (
     <>
       <button
@@ -70,15 +137,31 @@ export default function Guide() {
         type="button"
         className="guide-btn"
         data-tucked={(tucked && !open) || undefined}
+        data-nudge={nudge || undefined}
         onClick={() => setOpen((o) => !o)}
         onPointerEnter={loadPanel}
         onFocus={loadPanel}
         aria-expanded={open}
-        aria-controls="guide-panel"
-        aria-label="Guide: how this site works"
+        aria-controls={open ? 'guide-panel' : undefined}
+        aria-keyshortcuts="?"
+        aria-label={meta ? `Guide: controls and tips for ${meta.title}` : 'Guide: how this site works'}
+        title="Guide (?)"
       >
         <RiQuestionLine className="h-5 w-5" aria-hidden="true" />
       </button>
+      {nudge && !open && meta && (
+        <div className="guide-nudge" role="status">
+          <button type="button" className="guide-nudge-open" onClick={() => setOpen(true)}>
+            <span className="guide-nudge-kicker">New here?</span>
+            <span>
+              The controls for {meta.title} are in the guide. Press <kbd className="guide-kbd">?</kbd> any time.
+            </span>
+          </button>
+          <button type="button" className="guide-nudge-close" onClick={() => setNudge(false)} aria-label="Dismiss">
+            <RiCloseLine className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {open && (
         <Suspense fallback={null}>
           <GuidePanel pathname={pathname} close={close} onLeave={() => setOpen(false)} />

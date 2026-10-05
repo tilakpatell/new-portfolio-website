@@ -157,6 +157,7 @@ export const CREWS = [
     },
     // shooting one down
     kill: {
+      phoenixperson: [['rick', 'Sorry, Birdperson. Again. We’ll get you rebuilt. Again.']],
       any: [
         ['morty', 'Oh geez, Rick, I hit one!'],
         ['rick', 'Relax, Morty. It’s the Federation. Nobody’s gonna miss ’em.'],
@@ -186,6 +187,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      phoenix: [
+        ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
+        ['morty', 'Can we talk to him, Rick?'],
+        ['rick', 'He talks in bullets now, Morty.'],
+      ],
       federation: [
         ['morty', 'Rick! The Federation’s on our tail!'],
         ['rick', 'Course they are, Morty. I’m the most wanted man in the galaxy. Shoot back!'],
@@ -276,6 +282,10 @@ export const CREWS = [
       overdrive: [
         ['morty', 'Rick, this is way too fast!'],
         ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
+      ],
+      meteors: [
+        ['morty', 'Rick! Rocks! A lot of rocks!'],
+        ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (the Cromulon), a shot into it
@@ -556,6 +566,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['r2', '[A Firespray on an attack run. Boba Fett.]'],
+        ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
+      ],
       empire: [
         ['comms', 'Red Five, you’ve got TIEs on your tail!'],
         ['luke', 'I see them! Hang on, Artoo!'],
@@ -645,6 +659,10 @@ export const CREWS = [
       overdrive: [
         ['luke', 'I’ve never had her going this fast!'],
         ['r2', '[a frantic string of beeps]'],
+      ],
+      meteors: [
+        ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
+        ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
@@ -906,6 +924,10 @@ export const CREWS = [
       ],
     },
     hunted: {
+      fett: [
+        ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
+        ['chewie', '[A furious roar.]'],
+      ],
       empire: [
         ['han', 'Imperials on our tail. Chewie, get us some speed!'],
         ['chewie', '[a worried roar]'],
@@ -993,6 +1015,10 @@ export const CREWS = [
       overdrive: [
         ['han', 'Pushing her past what she was built for. Just how I like it.'],
         ['chewie', '[a doubtful growl]'],
+      ],
+      meteors: [
+        ['chewie', '[A roar: rocks ahead!]'],
+        ['han', 'I see them. Never tell me the odds, Chewie.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
@@ -1255,6 +1281,7 @@ export const CREWS = [
       ],
     },
     kill: {
+      phoenixperson: [['jesse', 'Yo, I shot the robot bird. Was that bad? That felt bad.']],
       any: [
         ['jesse', 'Yeah! Got one! That’s sick!'],
         ['walt', 'We don’t celebrate in the middle of the job, Jesse.'],
@@ -1278,6 +1305,14 @@ export const CREWS = [
     },
     // hunted by whoever's out (the RV is wanted in both universes)
     hunted: {
+      fett: [
+        ['jesse', 'Mr. White, that ship’s got a bounty hunter in it!'],
+        ['walt', 'Then he’s made a very poor career decision.'],
+      ],
+      phoenix: [
+        ['jesse', 'Is that a bird? Is that a robot bird?'],
+        ['walt', 'Whatever it is, Jesse, it’s armed. Shoot it before it finishes deciding.'],
+      ],
       empire: [
         ['jesse', 'Mr. White! Those bug zappers are shooting at us!'],
         ['walt', 'Then shoot back, Jesse.'],
@@ -1366,6 +1401,10 @@ export const CREWS = [
       overdrive: [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
         ['walt', 'Seatbelt, Jesse.'],
+      ],
+      meteors: [
+        ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
+        ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
       ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil or a Cromulon), a shot into it

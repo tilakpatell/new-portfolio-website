@@ -283,7 +283,7 @@ function landMaterial(kinds, subs, uniforms) {
           float lz = dz - 8.6;
           vec2 a = vec2(lx, lineD(p.y, 30.0, 0.0));
           vec2 b = vec2(lz, lineD(p.x, 30.0, 0.0));
-          lamp = exp(-dot(a, a) / 22.0) * step(d, 11.0) + exp(-dot(b, b) / 22.0) * step(d, 11.0);
+          lamp = exp(-dot(a, a) / 9.0) * step(d, 11.0) + exp(-dot(b, b) / 9.0) * step(d, 11.0);
         } else {
           // farmland east of town
           float f = step(0.5, fract(p.y / 9.0 + nz.r * 0.3));
@@ -298,7 +298,7 @@ function landMaterial(kinds, subs, uniforms) {
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.55;`,
+        totalEmissiveRadiance += vec3(1.0, 0.72, 0.42) * landLamp * uNight * 0.16;`,
       );
   };
   m.customProgramCacheKey = () => 'inv-land';

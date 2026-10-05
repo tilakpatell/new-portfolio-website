@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -82,6 +82,27 @@ describe('who comes', () => {
       // (each turns quicker than you do, 2 radians a second, so you can't just out-turn one)
       for (const type of Object.values(kinds)) expect(turnRate(type)).toBeGreaterThan(2);
     }
+  });
+});
+
+describe('a bounty hunter', () => {
+  it('comes alone, tough and quick, for either universe', () => {
+    expect(packPlan(FACTIONS.fett, { size: 1, rand: seeded() })).toEqual(['slave1']);
+    expect(packPlan(FACTIONS.phoenix, { size: 1, rand: seeded() })).toEqual(['phoenixperson']);
+    expect(FACTIONS.fett.family).toBe('starwars');
+    expect(FACTIONS.phoenix.family).toBe('rickmorty');
+    for (const kind of ['slave1', 'phoenixperson']) {
+      expect(HUNTER_KINDS[kind].hp).toBeGreaterThanOrEqual(5);
+      expect(HUNTER_KINDS[kind].speed).toBeGreaterThan(20); // (faster than you boost: no outrunning one)
+      expect(NAMES[kind]).toBeTruthy();
+    }
+    // and Slave I lands shots, and takes its six hits
+    const seen = fight({ faction: 'fett', opts: { size: 1 }, seconds: 60 });
+    expect(seen.shots).toBeGreaterThan(5);
+    const h = seen.hunt.live[0];
+    const through = () => seen.hunt.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 1);
+    for (let i = 0; i < 5; i++) expect(through()?.down).toBeFalsy();
+    expect(through()?.down).toBe(true);
   });
 });
 
