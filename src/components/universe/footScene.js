@@ -69,7 +69,7 @@ export const PARTY = {
   ],
   falcon: [
     { id: 'chewie', name: 'Chewie', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, gun: 'bowcaster', bolt: '#ff4a3d' },
-    { id: 'han', name: 'Han', tall: 1.85, src: { built: 'han' }, gun: 'blaster', bolt: '#ff4a3d' },
+    { id: 'han', name: 'Han', tall: 1.85, src: { url: '/models/galaxy/crew/han.glb' }, gun: 'blaster', bolt: '#ff4a3d' },
   ],
   xwing: [
     { id: 'luke', name: 'Luke', tall: 1.72, src: { built: 'luke' }, gun: 'blaster', bolt: '#ff3b30' },
