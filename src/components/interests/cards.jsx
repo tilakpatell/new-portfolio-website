@@ -238,9 +238,14 @@ function Gaming() {
       <p className="mt-2 text-sm text-muted">
         Hint: ↑ ↑ ↓ ↓ ← → ← → B A. And there’s a hidden easter egg on every page: {eggsFound()} of {Object.keys(EGGS).length} found.
       </p>
-      <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm mt-auto self-start">
-        Press Start
-      </Link>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Link to="/dot-matrix" className="btn btn-primary btn-sm">
+          Visit Dot Matrix
+        </Link>
+        <Link to="/projects/gameboy-emulator" className="btn btn-ghost btn-sm">
+          Press Start
+        </Link>
+      </div>
     </Card>
   );
 }

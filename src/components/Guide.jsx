@@ -73,6 +73,7 @@ const PAGES = {
     tips: [
       ['The map', 'Scroll to walk the compound, or pick a pin on the map (or a name under it). On a wide screen the map beside the tour shows where you are.'],
       ['The buildings', 'Power up Stark’s reactor. Press and hold to lift Mjolnir: you are worthy once you have found ten easter eggs. Throw Cap’s shield. Click anywhere on Hawkeye’s range. Tap Widow’s black bars. Make Banner angry three times.'],
+      ['The gate: Thwip!', 'Spider-Man, late for school. Hold Space (or the mouse, or a finger) to shoot a web at the wall ahead and swing; let go to fly. Let go on the upswing, past where the web caught, for a perfect release: faster, and a flip. A and D steer across the avenue (on a touch screen, hold on the left or right); W reels the web in to climb. Nothing to swing from over the cross streets, so carry your speed over them. Grab Peter’s backpacks on the way, beat the bell, and keep off the street: the traffic gets three chances.'],
       ['The hangar', 'Space opens the portal. On the other side, set all six stones in the gauntlet and snap.'],
     ],
   },
@@ -116,6 +117,16 @@ const PAGES = {
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
+    ],
+  },
+  '/dot-matrix': {
+    title: 'Dot Matrix',
+    tips: [
+      ['Walk and jump', 'The arrows or W A S D walk, Space (or Z) jumps: hold it to jump higher. Q and E turn the camera an eighth of the way round, or drag the island. On a phone, the pad walks, A jumps and B acts. A controller works too.'],
+      ['B', 'X (or Enter) reads a sign, plays the giant Game Boy in the square when you stand in front of it, and takes you down a pipe you are standing on.'],
+      ['The cartridges', 'Eight of them, each one a project of mine: up the plateau, on top of Block Drop tower, in the snake’s pen, among the plants, on the cloud, out on the islet, on a roof and in the long grass. M lists them, with a hint for each you haven’t found.'],
+      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Wait for the gap in the snake. Three hearts, and a "?" block somewhere gives one back.'],
+      ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
   '/universe': {

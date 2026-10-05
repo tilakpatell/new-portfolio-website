@@ -73,9 +73,11 @@ export const ACHIEVEMENTS = {
   hulk: { name: 'That’s my secret', desc: 'Ran 2,000 m through Midtown at Smash Run' },
   whatever: { name: 'Whatever it takes', desc: 'Won all six Infinity Stones back on the compound, and snapped' },
   quinjet: { name: 'Get this man a shield', desc: 'Flew the Tesseract into the hangar at Tesseract Run' },
+  spidey: { name: 'Your friendly neighbourhood', desc: 'Swung two kilometres down the avenue to school at Thwip!' },
   thinkmark: { name: 'Think, Mark!', desc: 'Saw Omni-Man off over the city' },
   regent: { name: 'Invincible', desc: 'Brought down Thragg, the Grand Regent of the Viltrum Empire' },
   globetrotter: { name: 'Globetrotter', desc: 'Flew to every place on the globe' },
+  fullset: { name: 'Full set', desc: 'Found all eight cartridges on Dot Matrix island' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 

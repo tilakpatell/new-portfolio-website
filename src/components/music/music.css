@@ -81,3 +81,22 @@
 .raga-own-name { display: flex; align-items: center; gap: 0.75rem; }
 .raga-own-name input { flex: 0 1 18rem; min-width: 0; min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
 .raga-own .seg > button[disabled] { opacity: 1; cursor: default; }
+
+/* ── Harmonium ─────────────────────────────────────────────────────────── */
+.hm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.hm-octave { display: inline-flex; align-items: center; min-height: 38px; padding: 0 0.4rem; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.hm-bellows-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.hm-bellows-row > span[data-low] { color: var(--accent-text); font-weight: 600; }
+/* the bellows: pleated cloth between two boards, wider the more air they hold */
+.hm-bellows { position: relative; flex: 1 1 320px; max-width: 640px; height: 46px; border-radius: 10px; background: linear-gradient(#5a3418, #3a210f); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08); cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.hm-bellows:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.hm-bellows-folds { position: absolute; top: 6px; bottom: 6px; left: 8px; width: calc((100% - 16px) * (0.22 + 0.78 * var(--air, 1))); border-radius: 4px; background: repeating-linear-gradient(90deg, #8a2f22 0 7px, #5c1c14 7px 9px, #a33a2a 9px 14px, #5c1c14 14px 16px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); transition: width 0.12s linear; }
+.hm-bellows-folds::after { content: ''; position: absolute; top: -4px; bottom: -4px; right: -6px; width: 8px; border-radius: 3px; background: linear-gradient(90deg, #c8a36a, #8c6a3a); }
+.hk-name { font-size: 0.7rem; letter-spacing: 0.01em; }
+.harmonium-keys[data-span='37'] .hk { font-size: 0.6rem; }
+.harmonium-keys[data-span='37'] .hk-black { font-size: 0.5rem; }
+@media (prefers-reduced-motion: reduce) { .hm-bellows-folds { transition: none; } }
+.rec-dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 999px; background: #d64032; box-shadow: 0 0 0 3px rgba(214, 64, 50, 0.22); animation: rec-pulse 1.2s ease-in-out infinite; }
+.rec-dot[data-idle] { animation: none; box-shadow: none; }
+@keyframes rec-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
