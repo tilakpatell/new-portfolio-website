@@ -122,6 +122,13 @@ export const ACHIEVEMENTS = {
   groundside: { name: 'Boots on the ground', desc: 'Landed on a world in a galaxy far, far away' },
   surveyor: { name: 'Surveyor', desc: 'Found every place on a world in a galaxy far, far away' },
   wanderer: { name: 'Wanderer', desc: 'Set foot on every world you can land on in a galaxy far, far away' },
+  shotfirst: { name: 'Shot first', desc: 'Didn’t let Greedo shoot first in the Mos Eisley cantina' },
+  docking94: { name: 'Docking Bay 94', desc: 'Held off the stormtroopers at Docking Bay 94' },
+  rancor: { name: 'Rancor keeper', desc: 'Brought the gate down on Jabba’s rancor' },
+  bounty: { name: 'Jabba pays', desc: 'Collected a bounty from Boba Fett' },
+  womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
+  canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
+  tosche: { name: 'Power converters', desc: 'Picked up power converters at Tosche Station' },
   palette: { name: 'Power user', desc: 'Opened the command palette' },
 };
 

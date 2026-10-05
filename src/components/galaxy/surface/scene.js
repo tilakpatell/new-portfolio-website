@@ -59,7 +59,7 @@ import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
 import { createBlaster } from './blaster';
-import { feed, start as startQuest, stepText } from './quests';
+import { feed, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -632,22 +632,61 @@ export async function create(canvas, ctx) {
       }
     }
     if (best) return best;
-    const a = life.talker(p.x, p.z, REACH);
+    const a = life.talker(p.x, p.z, REACH, p.y);
     if (a) return { kind: 'talk', actor: a, text: `Talk to ${a.spec.named ? '' : 'the '}${a.spec.name ?? a.spec.kind}` };
     return null;
   };
 
   // ── Quests ──
-  const say = (lines) => lines?.length && emit({ type: 'say', lines: lines.map((l) => (Array.isArray(l) ? { who: l[0], text: l[1] } : { who: null, text: l })) });
+  // the door into somewhere a step's inside of, when you're not in it
+  const doorFor = (step) => {
+    const zid = step?.zone ?? (step?.type === 'talk' ? life.find(step.actor)?.spec.zone : null);
+    if (!zid || state.zone?.id === zid) return null;
+    return site.zones.find((z) => z.id === zid)?.door.at ?? null;
+  };
+  // where someone is (for a talk step's marker)
+  const actorAt = (id) => {
+    const a = life.find(id);
+    return a ? [a.b.x, a.b.z] : null;
+  };
+  // lines: a list, or a list for each ship's crew ({ xwing, falcon, …, all })
+  const linesFor = (lines) => (Array.isArray(lines) ? lines : lines ? [...(lines.all ?? []), ...(lines[shipKind] ?? [])] : null);
+  const say = (raw) => {
+    const lines = linesFor(raw);
+    if (lines?.length) emit({ type: 'say', lines: lines.map((l) => (Array.isArray(l) ? { who: l[0], text: l[1] } : { who: null, text: l })) });
+  };
   const announce = () => {
     const q = state.quest && questOf(state.quest.id);
     const step = q?.steps[state.quest.step];
     emit({ type: 'quest', id: q?.id ?? null, name: q?.name ?? null, text: q ? stepText(q, state.quest) : null, left: step?.time ? Math.max(0, Math.ceil(step.time - state.quest.time)) : null, shoot: step?.type === 'shoot' });
   };
+  // what a step does as it starts or ends: a trapdoor opens, a gate comes
+  // down, the band strikes up, someone's gone, you're thrown out
+  function effects(list) {
+    for (const e of list ?? []) {
+      if (e.signal) placer.signal(e.signal, e.on ?? true);
+      if (e.floor) for (const f of world.floors) if (f.tag === e.floor) f.off = Boolean(e.off);
+      if (e.solid) for (const x of world.solids.all) if (x.tag === e.solid) x.off = Boolean(e.off);
+      if (e.kill) activity.kill(e.kill);
+      if (e.hide) life.hide(e.hide, true);
+      if (e.show) life.hide(e.show, false);
+      if (e.music !== undefined) sounds.music?.(e.music);
+      if (e.sound) sounds[e.sound]?.();
+      if (e.shake) state.shake = Math.min(1, state.shake + e.shake);
+      if (e.say) say(e.say);
+      if (e.leave) leaveZone();
+      if (e.to) {
+        const p = me().st;
+        putAt(p, e.to[0], e.to[1], e.yaw);
+        camInit = false;
+      }
+    }
+  }
   function beginQuest(q) {
     if (!q || state.done.has(q.id) || state.quest) return;
     state.quest = startQuest(q);
     say(q.intro);
+    effects(q.steps[0].start);
     say(q.steps[0].lines);
     activity.show(q, state.quest);
     announce();
@@ -660,8 +699,14 @@ export async function create(canvas, ctx) {
     const { progress, out } = feed(state.quest, q, ev);
     state.quest = progress;
     for (const o of out) {
-      if (o.type === 'step') say(q.steps[o.step].lines);
+      if (o.type === 'step') {
+        effects(q.steps[o.step - 1].end);
+        effects(q.steps[o.step].start);
+        say(q.steps[o.step].lines);
+      }
       if (o.type === 'done') {
+        effects(q.steps.at(-1).end);
+        effects(q.end);
         state.done.add(q.id);
         say(q.done);
         emit({ type: 'questDone', id: q.id, achievement: q.achievement ?? null });
@@ -761,6 +806,7 @@ export async function create(canvas, ctx) {
     state.cam.dist = Math.min(state.cam.dist, 3.4);
     camInit = false;
     lighting(z);
+    sounds.music(z.music ?? null);
     emit({ type: 'zone', id: z.id, name: z.name });
     questEvent({ type: 'enter', zone: z.id });
   }
@@ -777,6 +823,7 @@ export async function create(canvas, ctx) {
     state.cam.dist = CAM.dist;
     camInit = false;
     lighting(null);
+    sounds.music(site.music ?? null);
     emit({ type: 'zone', id: null });
   }
 
@@ -813,7 +860,9 @@ export async function create(canvas, ctx) {
       announce();
     }
     const p = me().st;
-    if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
+    const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
+    if (step?.respawn) putAt(p, step.respawn[0], step.respawn[1]);
+    else if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
   }
 
   // ── Each frame ──
@@ -1006,20 +1055,36 @@ export async function create(canvas, ctx) {
     const back = new V(-Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
     const want = focus.clone().addScaledVector(back, dist);
     // never under the ground
-    const floor = groundAt(world, want.x, want.z, want.y + 2, 4) + 0.5;
+    const floor = (state.zone ? groundAt(world, want.x, want.z, p.y + 0.6, 0) : groundAt(world, want.x, want.z, want.y + 2, 4)) + 0.5;
     if (want.y < floor) want.y = floor;
     if (!camInit) {
       camPos.copy(want);
       camLook.copy(focus);
       camInit = true;
     }
-    // inside, the camera keeps inside the walls
+    // inside, the camera keeps inside the walls (of the room you're in,
+    // where it has rooms: [x, z, hw, hd, floor, ceiling], relative to it)
     if (state.zone?.inside.bounds) {
-      const [hw, hd, h] = state.zone.inside.bounds;
       const o = state.zone.origin;
-      want.x = clamp(want.x, o[0] - hw + 0.4, o[0] + hw - 0.4);
-      want.z = clamp(want.z, o[2] - hd + 0.4, o[2] + hd - 0.4);
-      want.y = clamp(want.y, o[1] + 0.4, o[1] + h - 0.4);
+      const lx = p.x - o[0];
+      const lz = p.z - o[2];
+      const ly = p.y - o[1];
+      const room = state.zone.inside.rooms?.find(([x, z, hw, hd, y0, y1]) => Math.abs(lx - x) <= hw && Math.abs(lz - z) <= hd && ly >= y0 - 0.5 && ly < y1);
+      const [cx, cz, hw, hd, y0, y1, round] = room ?? [0, 0, ...state.zone.inside.bounds.slice(0, 2), 0, state.zone.inside.bounds[2]];
+      if (round) {
+        // (a round room: inside its circle)
+        const dx = want.x - o[0] - cx;
+        const dz = want.z - o[2] - cz;
+        const d = Math.hypot(dx, dz);
+        if (d > hw - 0.5) {
+          want.x = o[0] + cx + (dx / d) * (hw - 0.5);
+          want.z = o[2] + cz + (dz / d) * (hw - 0.5);
+        }
+      } else {
+        want.x = clamp(want.x, o[0] + cx - hw + 0.4, o[0] + cx + hw - 0.4);
+        want.z = clamp(want.z, o[2] + cz - hd + 0.4, o[2] + cz + hd - 0.4);
+      }
+      want.y = clamp(want.y, o[1] + y0 + 0.4, o[1] + y1 - 0.4);
     }
     camPos.lerp(want, 1 - Math.exp(-dt * (riding ? 9 : 12)));
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
@@ -1084,7 +1149,8 @@ export async function create(canvas, ctx) {
       if (id === 'quest') {
         const q = state.quest && questOf(state.quest.id);
         const step = q?.steps[state.quest.step];
-        at = step ? (step.type === 'talk' ? ((a) => a && [a.b.x, a.b.z])(life.find(step.actor)) : step.type === 'race' ? step.gates[state.quest.count] : step.at) : state.tracked ? ((a) => a && [a.b.x, a.b.z])(life.actors.find((x) => x.spec.quest === state.tracked)) : null;
+        const giver = !step && state.tracked ? life.actors.find((x) => x.spec.quest === state.tracked) : null;
+        at = step ? (doorFor(step) ?? stepTarget(step, state.quest, actorAt)) : giver ? (giver.spec.zone && state.zone?.id !== giver.spec.zone ? site.zones.find((z) => z.id === giver.spec.zone)?.door.at : [giver.b.x, giver.b.z]) : null;
         if (!at || state.zone) {
           m.style.opacity = '0';
           continue;
@@ -1160,8 +1226,22 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'tick', dt });
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
-    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: (id) => { const a = life.find(id); return a ? [a.b.x, a.b.z] : null; } })) questEvent(ev);
-    if (state.phase === 'walk' || state.phase === 'ride') for (const s of activity.shooters(dt, me().st)) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
+    if (state.phase === 'walk' || state.phase === 'ride')
+      for (const s of activity.shooters(dt, me().st)) {
+        if (s.melee) {
+          // a swipe: knocked back, away from it
+          const p = me().st;
+          const away = Math.atan2(p.x - s.from[0], p.z - s.from[2]);
+          p.vx += Math.sin(away) * 6;
+          p.vz += Math.cos(away) * 6;
+          p.vy = 3;
+          p.grounded = false;
+          state.shake = 1;
+          sounds.roar?.();
+          hurt(s.damage);
+        } else blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage);
+      }
     const hit = blaster.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null);
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {

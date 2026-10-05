@@ -31,11 +31,19 @@
 //   zones          places you go into: { id, name, door: { at, r, prompt },
 //                  back: [x, z] (where you come out), inside: { build (a
 //                  props kind), spawn, yaw, exit: { at, r }, bounds: [hw,
-//                  hd, h], light: { sky, ground, ambient, fog, density },
+//                  hd, h], rooms?: [[x, z, hw, hd, floor, ceiling]…] (the
+//                  camera keeps in the one you're in), light: { sky,
+//                  ground, ambient, fog, density },
 //                  lamps: [[x, y, z, color, intensity, distance]] }, life
 //                  (as the site's, placed relative to the inside) }
 //   quests         quests.js's: things to do (talk to someone, get
-//                  somewhere, pick things up, race, shoot, ride, use)
+//                  somewhere, pick things up, race, shoot, ride, use); a
+//                  step's start and end: what happens then ({ signal (to
+//                  what's built), floor / solid (a tag) + off, kill (a
+//                  tag), hide / show (an actor's id), music, sound, shake,
+//                  say, to: [x, z], leave }); respawn: where you're put if
+//                  you go down in it; steps in a zone say `zone`, and their
+//                  spots are its
 //   reach          how far you can go (terrain.js's REACH unless said)
 //   fall           a world with nothing under its floors (Bespin, Coruscant,
 //                  Kamino): how far down counts as falling off
@@ -84,13 +92,15 @@ export function siteOf(id) {
     const z = zones.find((q) => q.id === id);
     return z && xz ? [z.origin[0] + xz[0], z.origin[2] + xz[1]] : xz;
   };
-  const zoneLife = zones.flatMap((z) => (z.life ?? []).map((a) => ({ ...a, zone: z.id, at: a.at && inZone(z.id, a.at), path: a.path?.map((q) => inZone(z.id, q)) })));
+  const zoneLife = zones.flatMap((z) => (z.life ?? []).map((a) => ({ ...a, zone: z.id, at: a.at && inZone(z.id, a.at), path: a.path?.map((q) => inZone(z.id, q)), level: a.level != null ? z.origin[1] + a.level : undefined })));
+  const levelIn = (id, y) => (y == null ? undefined : zones.find((q) => q.id === id).origin[1] + y);
   const quests = (raw.quests ?? []).map((q) => ({
     ...q,
     steps: q.steps.map((st) => {
       const zid = st.zone && st.type !== 'enter' ? st.zone : null;
       if (!zid) return st;
-      return { ...st, at: st.at && inZone(zid, st.at), gates: st.gates?.map((g) => inZone(zid, g)), spots: st.spots?.map((g) => inZone(zid, g)), spawn: st.spawn && [].concat(st.spawn).map((sp) => ({ ...sp, at: inZone(zid, sp.at) })) };
+      const fx = (list) => list?.map((e) => (e.to ? { ...e, to: inZone(zid, e.to) } : e));
+      return { ...st, at: st.at && inZone(zid, st.at), gates: st.gates?.map((g) => inZone(zid, g)), spots: st.spots?.map((g) => inZone(zid, g)), spawn: st.spawn && [].concat(st.spawn).map((sp) => ({ ...sp, at: inZone(zid, sp.at), level: levelIn(zid, sp.level ?? st.level) })), respawn: st.respawn && inZone(zid, st.respawn), start: fx(st.start), end: fx(st.end), level: levelIn(zid, st.level) };
     }),
   }));
   return {

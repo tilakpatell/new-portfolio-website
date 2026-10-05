@@ -7,8 +7,9 @@
 // for all of them.
 //
 // createPlacer({ parent, kit, world, warm }) → { put(spec), scatter(kind,
-// items, opts), update(t, dt), ready (a promise: everything asked for so far
-// is in), dispose() }
+// items, opts), update(t, dt), signal(name, on) (to the built things that
+// move when something happens: a trapdoor, a gate), ready (a promise:
+// everything asked for so far is in), dispose() }
 //   spec: { kind, at: [x, z], yaw, pitch, roll (radians: a walker on its
 //   side), scale, y (over the ground), sink (into it), abs (y is the height
 //   itself, not over the ground), solid (false: walk through it; or { r } /
@@ -66,7 +67,7 @@ function addSolid(world, s, at, yaw, scale, top) {
   const c = Math.cos(yaw);
   const sn = Math.sin(yaw);
   const tx = (x, z) => [at[0] + (x * c + z * sn) * scale, at[2] + (-x * sn + z * c) * scale];
-  const opt = { top: s.top != null ? at[1] + s.top * scale : top };
+  const opt = { top: s.top != null ? at[1] + s.top * scale : top, base: s.base != null ? at[1] + s.base * scale : null, tag: s.tag ?? null };
   if (s.circle) {
     const [x, z] = tx(s.circle[0], s.circle[1]);
     world.solids.circle(x, z, s.circle[2] * scale, opt);
@@ -81,6 +82,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   group.name = 'things';
   parent.add(group);
   const updates = [];
+  const signals = [];
   const pending = [];
   let dead = false;
 
@@ -110,6 +112,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
     }
     if (made.update) updates.push(made.update);
+    if (made.signal) signals.push(made.signal);
     return o;
   };
 
@@ -207,6 +210,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     update(t, dt) {
       for (const u of updates) u(t, dt);
+    },
+    // something happening to what's built (a trapdoor opening, a gate
+    // coming down, a band starting up): each built thing that answers to
+    // `name` does it
+    signal(name, on = true) {
+      for (const s of signals) s(name, on);
     },
     dispose() {
       dead = true;

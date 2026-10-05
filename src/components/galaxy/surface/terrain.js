@@ -108,9 +108,10 @@ export function levelled(raw, flats = []) {
 
 // Pits dug into it: each { at: [x, z], r, depth, cone } (cone: sloping all
 // the way to the middle, as the Sarlacc's; otherwise steep-sided with a
-// flat floor, as the Lars homestead's courtyard)
+// flat floor, as the Lars homestead's courtyard); or { at, r, floor }: down
+// to that height, whatever's there (a run of them, a canyon through a mesa)
 export function dug(height, pits = []) {
-  const holes = pits.map((p) => ({ x: p.at[0], z: p.at[1], r: p.r, depth: p.depth, cone: p.cone, floor: height(p.at[0], p.at[1]) - p.depth }));
+  const holes = pits.map((p) => ({ x: p.at[0], z: p.at[1], r: p.r, depth: p.depth, cone: p.cone, floor: p.floor ?? height(p.at[0], p.at[1]) - p.depth }));
   if (!holes.length) return height;
   return (x, z) => {
     let h = height(x, z);

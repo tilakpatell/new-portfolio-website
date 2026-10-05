@@ -13,7 +13,9 @@
 // site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
 //   or [who, text]), scale, solid, id (a quest's name for them), quest (the
-//   quest they give: quests.js's) }]
+//   quest they give: quests.js's), reach (talked to from this far: a Hutt
+//   on his dais), level (the height of the floor they're on, where there
+//   are floors over floors), hidden (not there till a quest says) }]
 
 import * as THREE from 'three';
 import { SURFACE_MODELS, surfaceUrl } from './catalog';
@@ -186,7 +188,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
       const holder = new THREE.Group();
       holder.visible = false;
       group.add(holder);
-      const actor = { spec, b, holder, fig: null, said: 0, near: false, i };
+      const actor = { spec, b, holder, fig: null, said: 0, near: false, i, hidden: Boolean(spec.hidden) };
       actors.push(actor);
       figureOf(spec.kind, spec)
         .then((fig) => {
@@ -194,14 +196,14 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
           fig.model.scale.multiplyScalar(spec.scale ?? 1);
           holder.add(fig.model);
           actor.fig = fig;
-          return warm(holder).then(() => (holder.visible = true));
+          return warm(holder).then(() => (holder.visible = !actor.hidden));
         })
         .catch(() => {});
     }
   }
   // not into each other, or walls and trees
   const avoider = (self) => (x, z) => {
-    if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
+    if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (!s.off && s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
     for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
     // (inside somewhere, the floor's flat and the world's edge is far off)
     if (self.spec.zone) return false;
@@ -215,13 +217,15 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     update(dt, you) {
       for (const a of actors) {
         const { b, spec } = a;
-        const near = you && Math.hypot(you.x - b.x, you.z - b.z) < TALK && (spec.says?.length || spec.turn || spec.quest || spec.id);
+        if (a.hidden) continue;
+        const near = you && Math.hypot(you.x - b.x, you.z - b.z) < Math.max(TALK, spec.reach ?? 0) && Math.abs(you.y - a.holder.position.y) < 4 && (spec.says?.length || spec.turn || spec.quest || spec.id);
         if (near) {
           b.speed = Math.max(0, b.speed - dt * 4);
           b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), 4 * dt);
         } else think(b, spec, dt, r, { avoid: avoider(a) });
         a.near = Boolean(near);
-        const y = spec.y != null ? groundAt(world, b.x, b.z) + spec.y + Math.sin(performance.now() / 700 + a.i) * 0.15 : groundAt(world, b.x, b.z);
+        const g = groundAt(world, b.x, b.z, spec.level ?? Infinity);
+        const y = spec.y != null ? g + spec.y + Math.sin(performance.now() / 700 + a.i) * 0.15 : g;
         a.holder.position.set(b.x, y, b.z);
         a.holder.rotation.y = b.yaw;
         // (far ones are left still: nobody sees their legs)
@@ -230,16 +234,27 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     },
     // one by its id (a quest's), where it is now
     find(id) {
-      return actors.find((a) => a.spec.id === id) ?? null;
+      return actors.find((a) => a.spec.id === id && !a.hidden) ?? null;
+    },
+    // gone for now (someone a quest takes away: Greedo, out of his booth
+    // and at you), or back
+    hide(id, hidden = true) {
+      for (const a of actors)
+        if (a.spec.id === id) {
+          a.hidden = hidden;
+          a.holder.visible = !hidden && Boolean(a.fig);
+        }
     },
     // the nearest one with something to say, within reach of (x, z)
-    talker(x, z, reach = 3) {
+    talker(x, z, reach = 3, y = null) {
       let best = null;
-      let bestD = reach;
+      let bestD = Infinity;
       for (const a of actors) {
-        if (!(a.spec.says?.length || a.spec.quest || a.spec.id) || !a.fig) continue;
+        if (!(a.spec.says?.length || a.spec.quest || a.spec.id) || !a.fig || a.hidden) continue;
+        if (y != null && Math.abs(y - a.holder.position.y) > 3) continue;
+        // (someone big, a Hutt on his dais, can be talked to from further off)
         const d = Math.hypot(x - a.b.x, z - a.b.z);
-        if (d < bestD) {
+        if (d < (a.spec.reach ?? reach) && d < bestD) {
           best = a;
           bestD = d;
         }
@@ -256,7 +271,7 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
     // keep `you` out of everyone (they're solid, but they move)
     shove(you, radius) {
       for (const a of actors) {
-        if (a.spec.solid === false || !a.fig) continue;
+        if (a.spec.solid === false || !a.fig || a.hidden) continue;
         const rr = (a.spec.r ?? 0.4) * (a.spec.scale ?? 1) + radius;
         const dx = you.x - a.b.x;
         const dz = you.z - a.b.z;

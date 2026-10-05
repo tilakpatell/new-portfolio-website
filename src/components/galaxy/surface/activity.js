@@ -7,7 +7,14 @@
 // createActivity({ parent, world, warm, beam color }) → { show(quest,
 // progress), update(dt, you, t) → events (pickups and kills, for the
 // quest), targets (what the blaster can hit: { x, y, z, r, hit(damage) }),
-// shooters (who fire back: { x, y, z, ready }), clear(), dispose() }
+// kill(tag), shooters (who fire back, or swipe: { from, spread, damage,
+// melee }), clear(), dispose() }
+//
+// A step's spawn: { kind, n, at, spread, roam, speed, hp, tag, scale,
+// model, still, face, y, level (the height it's on, where there are
+// floors over floors: a pit under a throne room), leash, hostile: { range, every, spread, damage,
+// delay (before its first shot), chase (m/s: it comes for you), melee,
+// reach (how close it has to be to hit) } }
 
 import * as THREE from 'three';
 import { buildFigure } from './figures';
@@ -167,7 +174,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (step.type === 'collect')
       pickups = step.spots.map((at) => {
         const mesh = pickupMesh(step.color ?? color);
-        mesh.position.set(at[0], groundAt(world, at[0], at[1]), at[1]);
+        mesh.position.set(at[0], groundAt(world, at[0], at[1], step.level ?? Infinity), at[1]);
         group.add(mesh);
         return { mesh, at, item: step.item, taken: false };
       });
@@ -191,7 +198,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: 1 + r() * 2 };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0 };
           targets.push(t);
           figure(s.kind, s).then((fig) => {
             if (!fig || dead || !holder.parent) return;
@@ -221,17 +228,24 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     hit(t, damage = 1) {
       t.hp -= damage;
+      t.flinch = 0.25;
       if (t.hp <= 0 && !t.down) t.down = 0.001;
     },
-    update(dt, you, time, { actors } = {}) {
+    // everything tagged so, down at once (a gate dropped on it)
+    kill(tag) {
+      for (const t of targets) if (t.tag === tag && !t.down) t.down = 0.001;
+    },
+    update(dt, you, time, { actors, door } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
-      // the beam, on where it wants you
-      const at = stepTarget(step, progress, actors);
+      // the beam, on where it wants you (or on the door in, for a step
+      // inside somewhere you aren't)
+      const into = door?.(step) ?? null;
+      const at = into ?? stepTarget(step, progress, actors);
       marker.visible = Boolean(at) && step.type !== 'race';
       if (at) {
-        marker.position.set(at[0], groundAt(world, at[0], at[1]), at[1]);
+        marker.position.set(at[0], groundAt(world, at[0], at[1], into ? Infinity : (step.level ?? Infinity)), at[1]);
         marker.userData.mat.uniforms.uTime.value = time;
         marker.userData.ring.scale.setScalar(1 + 0.12 * Math.sin(time * 4));
       }
@@ -240,7 +254,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         if (p.taken) continue;
         p.mesh.rotation.y += dt * 1.5;
         p.mesh.children[0].position.y = 0.6 + Math.sin(time * 2 + p.at[0]) * 0.12;
-        if (you && Math.hypot(you.x - p.at[0], you.z - p.at[1]) < 1.6) {
+        if (you && Math.hypot(you.x - p.at[0], you.z - p.at[1]) < 1.6 && Math.abs(you.y - p.mesh.position.y) < 2.5) {
           p.taken = true;
           p.mesh.visible = false;
           events.push({ type: 'pickup', item: p.item });
@@ -269,8 +283,25 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         }
         const s = t.spec;
         const pace = s.speed ?? 1.4;
-        const near = you && Math.hypot(you.x - b.x, you.z - b.z) < (t.hostile?.range ?? 0);
-        if (near) {
+        const dYou = you ? Math.hypot(you.x - b.x, you.z - b.z) : Infinity;
+        const near = dYou < (t.hostile?.range ?? 0);
+        let moving = 0;
+        if (near && t.hostile.chase) {
+          // one that comes for you (a rancor): after you, up to arm's
+          // length, but never far from its den
+          b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 2.2);
+          if (dYou > (t.hostile.reach ?? 2) * 0.8) {
+            const step = t.hostile.chase * dt;
+            const nx = b.x + Math.sin(b.yaw) * step;
+            const nz = b.z + Math.cos(b.yaw) * step;
+            const leash = s.leash ?? s.roam ?? 8;
+            if (Math.hypot(nx - t.home[0], nz - t.home[1]) < leash) {
+              b.x = nx;
+              b.z = nz;
+              moving = 1;
+            }
+          }
+        } else if (near) {
           // a hostile one turns on you
           b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 3);
         } else if (!s.still) {
@@ -295,9 +326,14 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           }
         }
         const hover = t.fig?.hover ?? s.y ?? 0;
-        t.holder.position.set(b.x, groundAt(world, b.x, b.z) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0), b.z);
+        t.holder.position.set(b.x, groundAt(world, b.x, b.z, s.level ?? Infinity) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0), b.z);
         t.holder.rotation.y = b.yaw;
-        t.fig?.update(dt, b.to && !near ? 0.6 : 0);
+        // (a flinch where it's hit and doesn't go down)
+        if (t.flinch > 0) {
+          t.flinch -= dt;
+          t.holder.rotation.z = Math.sin(t.flinch * 60) * t.flinch * 0.3;
+        } else t.holder.rotation.z = 0;
+        t.fig?.update(dt, moving || (b.to && !near) ? 0.6 : 0);
       }
       return events;
     },
@@ -307,11 +343,16 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       for (const t of targets) {
         if (t.down || !t.hostile || !t.fig || !you) continue;
         const d = Math.hypot(you.x - t.b.x, you.z - t.b.z);
-        if (d > t.hostile.range) continue;
+        if (d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
+          if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
+          continue;
+        }
         t.cool -= dt;
         if (t.cool > 0) continue;
         t.cool = t.hostile.every * (0.7 + r() * 0.6);
-        out.push({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8 });
+        // in arm's reach, a swipe (a rancor's), or a shot from where it stands
+        if (t.hostile.melee) out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z] });
+        else out.push({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8 });
       }
       return out;
     },

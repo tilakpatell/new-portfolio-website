@@ -15,7 +15,8 @@
 // into its turns, and bounces off what it hits, slowed.
 //
 // world: { heightAt(x, z), normalAt(x, z), solids (createSolids), floors
-// (a list: { x, z, r } discs or { x, z, hw, hd, yaw } boxes, each at `y`),
+// (a list: { x, z, r } discs or { x, z, hw, hd, yaw } boxes, each at `y`;
+// `tag`ged ones can be taken away, `off`: a trapdoor that's opened),
 // reach (how far from the middle you can go), water? (a level you wade
 // in and can't go under) }
 
@@ -31,7 +32,8 @@ export const turnToward = (from, to, max) => from + clamp(wrapAngle(to - from), 
 // Circles (a trunk, a rock, a leg) and boxes turned about the vertical (a
 // wall, a hut), in a grid of cells for finding the ones near you. `top`:
 // how high it stands (you can jump onto something low; null for as high as
-// you like).
+// you like); `base`: where it starts (something over your head, on the
+// floor above: a throne over a rancor's pit).
 export function createSolids(cell = 16) {
   const cells = new Map();
   const all = [];
@@ -49,17 +51,17 @@ export function createSolids(cell = 16) {
   const found = [];
   return {
     all,
-    circle(x, z, r, { top = null, tag = null } = {}) {
-      return put({ type: 'circle', x, z, r, top, tag }, x - r, z - r, x + r, z + r);
+    circle(x, z, r, { top = null, base = null, tag = null } = {}) {
+      return put({ type: 'circle', x, z, r, top, base, tag }, x - r, z - r, x + r, z + r);
     },
     // a box hw × hd half-size, turned by yaw (as three.js turns a thing
     // about y: its own x along (cos yaw, −sin yaw))
-    box(x, z, hw, hd, yaw = 0, { top = null, tag = null } = {}) {
+    box(x, z, hw, hd, yaw = 0, { top = null, base = null, tag = null } = {}) {
       const c = Math.cos(yaw);
       const s = Math.sin(yaw);
       const ex = Math.abs(hw * c) + Math.abs(hd * s);
       const ez = Math.abs(hw * s) + Math.abs(hd * c);
-      return put({ type: 'box', x, z, hw, hd, c, s, top, tag }, x - ex, z - ez, x + ex, z + ez);
+      return put({ type: 'box', x, z, hw, hd, c, s, top, base, tag }, x - ex, z - ez, x + ex, z + ez);
     },
     // those whose cells reach within r of (x, z)
     near(x, z, r) {
@@ -81,8 +83,10 @@ export function createSolids(cell = 16) {
 }
 
 // Push a circle at (x, z) of radius r out of a solid; returns the push
-// [dx, dz] or null if it wasn't in it
+// [dx, dz] or null if it wasn't in it (or the solid's gone: `off`, a gate
+// that's up)
 export function pushOut(s, x, z, r) {
+  if (s.off) return null;
   if (s.type === 'circle') {
     const dx = x - s.x;
     const dz = z - s.z;
@@ -140,7 +144,7 @@ const onFloor = (f, x, z) => {
 export function groundAt(world, x, z, y = Infinity, step = WALK.step) {
   let g = world.heightAt(x, z);
   if (world.floors)
-    for (const f of world.floors) if (f.y <= y + step && f.y > g && onFloor(f, x, z)) g = f.y;
+    for (const f of world.floors) if (!f.off && f.y <= y + step && f.y > g && onFloor(f, x, z)) g = f.y;
   return g;
 }
 
@@ -209,6 +213,7 @@ export function walk(s, input, dt, world, rules = WALK) {
     for (let pass = 0; pass < 2; pass++)
       for (const sol of world.solids.near(nx, nz, rules.radius + 1)) {
         if (sol.top != null && s.y >= sol.top - 0.05) continue; // stood on it, or over it
+        if (sol.base != null && s.y + 1.7 < sol.base) continue; // under it
         const p = pushOut(sol, nx, nz, rules.radius);
         if (!p) continue;
         nx += p[0];

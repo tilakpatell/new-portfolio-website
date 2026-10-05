@@ -4,7 +4,7 @@
 // Mos Eisley's docking bay).
 
 import * as THREE from 'three';
-import { box, cyl, dome, part, ring, rod } from '../kit';
+import { box, cyl, dome, part, ring, rockGeometry, rod } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
 
 const { PI, cos, sin } = Math;
@@ -287,7 +287,9 @@ export const PROPS = {
     };
   },
 
-  // Jabba's palace, far off on its mesa: drum, dome, tower
+  // Jabba's palace: the great drum and its dome, the tall tower, a smaller
+  // one, the gatehouse at +z with its iron gate, and the gate's eye (a
+  // droid on a stalk that asks who's knocking)
   palace(k) {
     const stone = '#c8b08a';
     const parts = [
@@ -298,8 +300,23 @@ export const PROPS = {
       part(cyl(10, 12, 26, 24), { at: [-42, 0, 22], color: stone, to: 'adobe' }),
       part(box(20, 22, 14), { at: [0, 0, 44], color: '#b89e78', to: 'adobe' }),
       part(box(9, 12, 2), { at: [0, 0, 51], color: '#2a1e14', to: 'dark' }),
+      // the gate's ribs, and the eye over it
+      part(box(9.6, 0.6, 0.6), { at: [0, 12, 51.4], color: '#4a3a2a', to: 'metal' }),
+      rod([2.6, 9, 51.2], [2.2, 7.4, 52.6], 0.08, 0.06, { color: '#3a3a36', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.32, 12, 10), { at: [2.2, 7.3, 52.7], color: '#5a5a54', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.12, 8, 6), { at: [2.2, 7.3, 53.0], color: '#ff2a1a', to: 'glow' }),
     ];
-    return { object: k.build(parts, { name: 'palace', shadows: false }) };
+    for (let i = 0; i < 5; i++) parts.push(part(box(0.3, 12, 0.4), { at: [-3.6 + i * 1.8, 0, 52], color: '#3e3022', to: 'metal' }));
+    return {
+      object: k.build(parts, { name: 'palace', shadows: false }),
+      solids: [{ circle: [0, 0, 41] }, { circle: [44, 10, 17] }, { circle: [-42, 22, 12] }, { box: [0, 44, 10, 7, 0] }],
+    };
+  },
+
+  // the Stone Needle: a spire of rock standing up out of a canyon floor
+  needle(k) {
+    const parts = [part(rockGeometry(31, { sharp: 0.25, flat: 1 }), { scale: [5, 22, 5], color: '#9a6a44', to: 'stone' }), part(rockGeometry(37, { sharp: 0.4 }), { scale: [9, 4, 8], color: '#8e6240', to: 'stone' })];
+    return { object: k.build(parts, { name: 'needle' }), solids: [{ circle: [0, 0, 2.6] }] };
   },
 
 };
