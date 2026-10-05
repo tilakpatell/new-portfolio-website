@@ -77,6 +77,9 @@ export function shipEngine(kind) {
   return {
     set({ speed = 0, boost = false, on = true }) {
       if (!alive) return;
+      // (only when it's changed enough to hear: three new targets for the
+      // audio thread every frame pile up for nothing)
+      if (Math.abs(speed - last.speed) < 0.05 && boost === last.boost && on === last.on) return;
       last = { speed, boost, on };
       apply(last);
     },

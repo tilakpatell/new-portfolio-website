@@ -15,7 +15,12 @@
 // ready, and each ship made keeps out of sight until they are (a frame or
 // so, after the first of its kind).
 //
-// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, prepare (settable), dispose() }
+// The built ones are made in code, which takes a moment: the scene builds
+// one of each kind ahead, as it starts (for their shaders), and hands them
+// over (`stock`), so the first of a kind to fly doesn't stall a frame being
+// built.
+//
+// createFleet({ prepare(object) → Promise }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -37,6 +42,7 @@ export const GLB = {
 
 export function createFleet({ prepare = null } = {}) {
   const templates = {};
+  const stocked = {}; // kind → built ones made ahead, handed out first
   const loading = new Set();
   let dead = false;
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -73,7 +79,10 @@ export function createFleet({ prepare = null } = {}) {
               } else if (m.emissiveMap) m.emissiveIntensity = 2.4;
             });
             const ready = () => {
-              if (!dead) templates[kind] = { holder, size: size.divideScalar(Math.max(size.x, size.y, size.z)) };
+              if (dead) return;
+              templates[kind] = { holder, size: size.divideScalar(Math.max(size.x, size.y, size.z)) };
+              // (the model's here: built stand-ins made ahead won't be wanted)
+              for (const m of stocked[kind]?.splice(0) ?? []) m.dispose();
             };
             return prepare ? prepare(holder).then(ready) : ready();
           })
@@ -91,7 +100,8 @@ export function createFleet({ prepare = null } = {}) {
         const group = new THREE.Group();
         group.add(t.holder.clone());
         made = { group, size: t.size.clone(), model: true, update() {}, dispose() {} }; // shares its template's geometry and textures
-      } else made = buildTraffic(kind);
+      } else if (stocked[kind]?.length) return stocked[kind].pop(); // (made ahead, its shaders with it)
+      else made = buildTraffic(kind);
       // out of sight until its shaders are made
       const inner = made.group.children[0];
       if (prepare && inner) {
@@ -102,6 +112,12 @@ export function createFleet({ prepare = null } = {}) {
       }
       return made;
     },
+    // a built one made ahead, its shaders made too: the next make(kind) has it
+    stock(kind, model) {
+      if (dead || templates[kind]) model.dispose();
+      else (stocked[kind] ??= []).push(model);
+    },
+    stocked: (kind) => stocked[kind]?.length ?? 0,
     // what makes a model's shaders (it can be set after the fleet is, before
     // any model is made)
     set prepare(fn) {
@@ -109,6 +125,7 @@ export function createFleet({ prepare = null } = {}) {
     },
     dispose() {
       dead = true;
+      for (const list of Object.values(stocked)) for (const m of list.splice(0)) m.dispose();
       // the models' own geometry and textures (the copies only shared them)
       for (const t of Object.values(templates)) {
         t.holder.traverse((o) => {

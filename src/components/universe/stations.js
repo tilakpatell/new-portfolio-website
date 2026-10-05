@@ -857,7 +857,10 @@ export const STATIONS = {
         }
         const live = sp.age < sp.life;
         const a = Math.min(sp.age, sp.life);
-        sparkPos.set(live ? [torch.position.x + sp.v.x * a, torch.position.y + sp.v.y * a - a * a * s * 0.25, torch.position.z + sp.v.z * a] : [0, -1e3, 0], i * 3);
+        // (written in place: nothing made each frame)
+        sparkPos[i * 3] = live ? torch.position.x + sp.v.x * a : 0;
+        sparkPos[i * 3 + 1] = live ? torch.position.y + sp.v.y * a - a * a * s * 0.25 : -1e3;
+        sparkPos[i * 3 + 2] = live ? torch.position.z + sp.v.z * a : 0;
       });
       sparkGeo.attributes.position.needsUpdate = true;
     });
@@ -1071,9 +1074,14 @@ export const STATIONS = {
       motes.forEach((m, i) => {
         const y = (m.y + t * m.v) % 1;
         const a = m.a + t * 0.15;
-        motePos.set(xyz(Math.cos(a) * m.r, Y0 + 0.08 + y * 1.55, Math.sin(a) * m.r), i * 3);
+        // (written in place: nothing made each frame)
+        motePos[i * 3] = Math.cos(a) * m.r * s;
+        motePos[i * 3 + 1] = (Y0 + 0.08 + y * 1.55) * s;
+        motePos[i * 3 + 2] = Math.sin(a) * m.r * s;
         const k = Math.min(1, y * 6) * (1 - y) ** 1.5;
-        moteCol.set([glow.r * k, glow.g * k, glow.b * k], i * 3);
+        moteCol[i * 3] = glow.r * k;
+        moteCol[i * 3 + 1] = glow.g * k;
+        moteCol[i * 3 + 2] = glow.b * k;
       });
       moteGeo.attributes.position.needsUpdate = true;
       moteGeo.attributes.color.needsUpdate = true;
@@ -1503,9 +1511,14 @@ export const STATIONS = {
       drops.forEach((d, i) => {
         const y = (d.y + t * d.v) % 1;
         const a = d.a + Math.sin(t * 0.2 + i) * 0.02;
-        rainPos.set(xyz(Math.cos(a) * d.r, -0.72 + y * 1.85, Math.sin(a) * d.r), i * 3);
+        // (written in place: nothing made each frame)
+        rainPos[i * 3] = Math.cos(a) * d.r * s;
+        rainPos[i * 3 + 1] = (-0.72 + y * 1.85) * s;
+        rainPos[i * 3 + 2] = Math.sin(a) * d.r * s;
         const f = Math.min(1, y * 5) * (1 - y) ** 1.2;
-        rainCol.set([green.r * f, green.g * f, green.b * f], i * 3);
+        rainCol[i * 3] = green.r * f;
+        rainCol[i * 3 + 1] = green.g * f;
+        rainCol[i * 3 + 2] = green.b * f;
         if (rand() < 0.01) glyph[i] = Math.floor(rand() * 16);
       });
       rainGeo.attributes.position.needsUpdate = true;

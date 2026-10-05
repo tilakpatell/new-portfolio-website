@@ -74,8 +74,9 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
-import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
+import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { ORDER, POSITIONS, REACH, SUN } from './layout';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
@@ -158,6 +159,9 @@ const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright
 const ARROWS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ']);
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// how far apart, in three dimensions (a square root: Math.hypot makes garbage
+// of its arguments, and these run every frame)
+const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 const STAR_VERT = `
@@ -376,6 +380,7 @@ function boostBurst() {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
+    forceSinglePass: true, // (added light on a flat plane: one pass draws the same)
   });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
   mesh.visible = false;
@@ -586,7 +591,9 @@ export async function create(canvas, ctx) {
   // (KHR_parallel_shader_compile), so nothing new stalls a frame: a ship
   // arriving, a loaded model, the cockpit
   // (drawn into the passes' buffer while they're on, so made for it)
-  const warm = (root, cam = camera, target = scene) => precompile(renderer, root, cam, target, post.on ? post.composer.readBuffer : undefined);
+  // (one pass for what can be drawn in one, renderer.js's singlePass, first:
+  // that's part of the shader made)
+  const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
@@ -599,14 +606,17 @@ export async function create(canvas, ctx) {
   let net = null;
   let netOff = null;
 
-  // the models arrive after the map is up
+  // the models arrive after the map is up (their shaders made first, off
+  // the main thread, so one coming into view doesn't stall a frame)
   loadModels((id, model, spot) => {
     if (disposed) {
       disposeTree(model);
       return;
     }
-    if (!planetOf[id]?.mount(model, spot)) disposeTree(model);
-    ctx.invalidate();
+    warm(model).then(() => {
+      if (disposed || !planetOf[id]?.mount(model, spot)) disposeTree(model);
+      ctx.invalidate();
+    });
   });
 
   const size = { w: 1, h: 1 };
@@ -881,10 +891,20 @@ export async function create(canvas, ctx) {
   // the stations' signs on screen, as boxes: { id, x0, y0, x1, y1, z }
   const signs = planets.filter((p) => p.sign).map((p) => ({ id: p.id, p, x0: 0, y0: 0, x1: 0, y1: 0, z: -1 }));
   const corner = new THREE.Vector3();
+  const CORNERS = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ];
   const shown = new Map(); // what each name element was last given
   const v = new THREE.Vector3();
   const w = new THREE.Vector3();
   let tanHalf = Math.tan((FOV * Math.PI) / 360); // follows the lens (it widens boosting)
+  // what's in view, for which places' own motion is worth working out
+  const viewFrustum = new THREE.Frustum();
+  const viewProj = new THREE.Matrix4();
+  const placeBound = new THREE.Sphere();
 
   const locate = () => {
     planets.forEach((p, i) => {
@@ -910,12 +930,7 @@ export async function create(canvas, ctx) {
       g.x1 = g.y1 = -Infinity;
       m.getWorldPosition(w);
       g.z = -w.applyMatrix4(camera.matrixWorldInverse).z;
-      for (const [cx, cy] of [
-        [-1, -1],
-        [1, -1],
-        [1, 1],
-        [-1, 1],
-      ]) {
+      for (const [cx, cy] of CORNERS) {
         corner.set((cx * sw) / 2, (cy * sh) / 2, 0);
         m.localToWorld(corner).project(camera);
         const px = ((corner.x + 1) / 2) * size.w;
@@ -938,9 +953,18 @@ export async function create(canvas, ctx) {
       const off = Boolean(state.crash?.swallow) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60;
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
-      const behind =
-        screen.some((o) => o !== s && o.z > 0 && o.z < s.z && Math.hypot(o.x - s.x, o.y - s.y) < o.r * 0.9) ||
-        signs.some((g) => g.id !== s.id && g.z > 0 && g.z < s.z && s.x > g.x0 && s.x < g.x1 && ly > g.y0 && ly < g.y1);
+      let behind = false;
+      // (plain loops and squares: this runs for every name, every frame)
+      for (let i = 0; i < screen.length && !behind; i++) {
+        const o = screen[i];
+        const dx = o.x - s.x;
+        const dy = o.y - s.y;
+        behind = o !== s && o.z > 0 && o.z < s.z && dx * dx + dy * dy < o.r * o.r * 0.81;
+      }
+      for (let i = 0; i < signs.length && !behind; i++) {
+        const g = signs[i];
+        behind = g.id !== s.id && g.z > 0 && g.z < s.z && s.x > g.x0 && s.x < g.x1 && ly > g.y0 && ly < g.y1;
+      }
       const tf = off ? '' : `translate3d(${s.x.toFixed(1)}px, ${(s.y + s.r + 4).toFixed(1)}px, 0)`;
       const was = shown.get(el);
       const flag = `${off ? 'off' : ''}${behind ? 'behind' : ''}`;
@@ -1194,6 +1218,7 @@ export async function create(canvas, ctx) {
     cabWanted = null;
     if (kind && state.seat === 'cockpit') buildCab(kind);
     setPlumes(kind, ENGINES[kind] ?? []);
+    stockUp(); // (the hunters this ship's side meets)
     state.auto = null;
     state.flown = false;
     if (kind) boltMat.color.set(BOLT_COLOR[kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
@@ -1246,6 +1271,32 @@ export async function create(canvas, ctx) {
     state.view = state.seat;
     if (!was) retarget(state.pose ? 1600 : 0);
     if (state.pose && engine === null && navigator.userActivation?.hasBeenActive) heard();
+  };
+
+  // A pack of hunters comes in four or five at once, and a built ship takes
+  // a few milliseconds to make: made then, they'd stall the fight's first
+  // frames. So a few of the ones your side meets (FAMILY) are made ahead,
+  // one at a time while the page has nothing else to do.
+  const AHEAD = { starwars: { tie: 3, tieadvanced: 1 }, rickmorty: { patrol: 4, councilship: 3, gromflomite: 2 } };
+  const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 60));
+  const stockedFor = new Set();
+  let warmed = false; // (none made ahead before the map's own shaders are)
+  const stockUp = () => {
+    if (reduced || !warmed) return;
+    const fam = FAMILY[state.kind];
+    if (!fam || stockedFor.has(fam)) return;
+    stockedFor.add(fam);
+    const want = fam === 'both' ? [...Object.entries(AHEAD.starwars), ...Object.entries(AHEAD.rickmorty)] : Object.entries(AHEAD[fam]);
+    const next = () => {
+      if (disposed) return;
+      const job = want.find(([k, n]) => fleet.stocked(k) < n && !fleet.loaded(k));
+      if (!job) return;
+      const model = buildTraffic(job[0]);
+      singlePass(model.group); // (as the ones made with the map were: the same shaders)
+      fleet.stock(job[0], model);
+      idle(next);
+    };
+    idle(next);
   };
 
   const takeover = () => {
@@ -1451,7 +1502,7 @@ export async function create(canvas, ctx) {
     if (openness(s.x, s.y, s.z) < 0.25) return null;
     let best = null;
     for (const wd of WONDERS) {
-      const d = Math.hypot(s.x - wd.at[0], s.y - wd.at[1], s.z - wd.at[2]);
+      const d = apart(s.x, s.y, s.z, wd.at[0], wd.at[1], wd.at[2]);
       if (d > 1300 || d < reachOf(wd) * 1.3) continue;
       const [nx, ny, nz] = nose(s);
       const ahead = ((wd.at[0] - s.x) * nx + (wd.at[1] - s.y) * ny + (wd.at[2] - s.z) * nz) / d;
@@ -1486,7 +1537,7 @@ export async function create(canvas, ctx) {
       placeMark(h.lock, hudAt, clamp(px, 30, 140));
       h.lock.toggleAttribute('data-hot', state.hot);
       setText(h, h.lockName, tgt.name ?? NAMES[tgt.kind] ?? tgt.kind);
-      setText(h, h.lockDist, range(Math.hypot(tgt.at.x - s.x, tgt.at.y - s.y, tgt.at.z - s.z)));
+      setText(h, h.lockDist, range(apart(tgt.at.x, tgt.at.y, tgt.at.z, s.x, s.y, s.z)));
       // what it has left, for the ones that take a few hits
       const tough = (tgt.hpMax ?? 1) > 1;
       h.lock.toggleAttribute('data-tough', tough);
@@ -1499,7 +1550,7 @@ export async function create(canvas, ctx) {
       const cands = hunters.targets;
       threatList.length = 0;
       for (const c of cands) if (c.threat && c.id !== tgt?.id) threatList.push(c);
-      threatList.sort((a, b) => Math.hypot(a.at.x - s.x, a.at.y - s.y, a.at.z - s.z) - Math.hypot(b.at.x - s.x, b.at.y - s.y, b.at.z - s.z));
+      threatList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
       for (const c of threatList) {
         if (n >= h.threats.length) break;
         toScreen(c.at.x, c.at.y, c.at.z, hudAt);
@@ -1534,7 +1585,7 @@ export async function create(canvas, ctx) {
       placeMark(h.nav, hudAt, clamp(px, 34, 260));
       h.nav.toggleAttribute('data-way', goal.way);
       setText(h, h.navName, place ? place.label : wd.name);
-      setText(h, h.navDist, range(Math.hypot(at[0] - s.x, at[1] - s.y, at[2] - s.z)));
+      setText(h, h.navDist, range(apart(at[0], at[1], at[2], s.x, s.y, s.z)));
     }
   };
 
@@ -1806,13 +1857,13 @@ export async function create(canvas, ctx) {
         emit({ type: 'event', id: 'deep' });
       }
       for (const w of WONDERS) {
-        if (state.saw.has(w.id) || Math.hypot(live.x - w.at[0], live.y - w.at[1], live.z - w.at[2]) > reachOf(w) * 1.6 + 60) continue;
+        if (state.saw.has(w.id) || apart(live.x, live.y, live.z, w.at[0], w.at[1], w.at[2]) > reachOf(w) * 1.6 + 60) continue;
         state.saw.add(w.id);
         emit({ type: 'wonder', id: w.id });
       }
       // down in the Death Star's trench a moment: the trench run (with Luke
       // or Han, Vader comes down it after you), now and then
-      const ds = TRENCHED.find((o) => Math.abs(live.y - o.at[1]) < o.band.half && Math.hypot(live.x - o.at[0], live.y - o.at[1], live.z - o.at[2]) < o.r - 0.4);
+      const ds = TRENCHED.find((o) => Math.abs(live.y - o.at[1]) < o.band.half && apart(live.x, live.y, live.z, o.at[0], o.at[1], o.at[2]) < o.r - 0.4);
       state.trench = ds ? state.trench + dt : 0;
       if (state.trench > 1.2 && state.clock - state.trenchAt > 120) {
         state.trenchAt = state.clock;
@@ -2072,7 +2123,7 @@ export async function create(canvas, ctx) {
       const vx = tgt.at.x - ship.x;
       const vy = tgt.at.y - ship.y;
       const vz = tgt.at.z - ship.z;
-      const l = Math.hypot(vx, vy, vz) || 1;
+      const l = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1;
       const k = Math.min(0.3, l * 0.08) / l;
       bx = vx * k;
       by = vy * k;
@@ -2115,16 +2166,21 @@ export async function create(canvas, ctx) {
         state.streak > 0.01 ||
         state.lock ||
         camQ.angleTo(shipQ) > 0.002 ||
-        Math.hypot(...state.bias) > 0.001,
+        apart(state.bias[0], state.bias[1], state.bias[2], 0, 0, 0) > 0.001,
     );
   };
 
   // ── Frames ──
   const still = () => reduced || state.low;
   let last = 0;
+  // drawn less sharp, at once, while frames come late (a fight, a boost),
+  // and sharp again once they don't (lib/three/pace)
+  const pace = createPace();
 
   function render(ms, now) {
     gl.watch(now);
+    const sharp = pace.frame(now);
+    if (sharp !== null) post.sharpness = sharp;
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     if (!state.pose && !flying()) {
@@ -2295,7 +2351,16 @@ export async function create(canvas, ctx) {
     const shooting = moveBolts(dt);
     sun.update(t, camera);
     stars.material.uniforms.uTime.value = t;
-    for (const p of planets) p.update(t, camera);
+    // each place's own motion (a station's lights, particles, its screen)
+    // only while it's in view and more than a speck
+    viewFrustum.setFromProjectionMatrix(viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    for (const p of planets) {
+      p.group.getWorldPosition(placeBound.center);
+      placeBound.radius = p.radius * 2.6; // (out past its moons and what orbits it)
+      const d = camera.position.distanceTo(placeBound.center);
+      const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
+      p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
+    }
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
@@ -2308,7 +2373,9 @@ export async function create(canvas, ctx) {
     placeHud();
     // the sky and the far stars stay round the camera, wherever it flies;
     // the dust rides with it too, and shows while you fly (more, the faster)
-    map.updateMatrixWorld();
+    // (only the map's own turn is wanted here: the drawing brings everything
+    // inside it up to date, once)
+    map.updateWorldMatrix(true, false);
     map.worldToLocal(camLocal.copy(camera.position));
     deep.update(t, camera, camLocal);
     beacons.update(camLocal);
@@ -2517,15 +2584,28 @@ export async function create(canvas, ctx) {
   // page waits for them, so the first look round doesn't stall)
   const spares = new THREE.Group();
   spares.visible = false;
+  const stock = []; // [kind, model]: the fleet's, once their shaders are made
   if (!reduced) {
     const kinds = new Set([...Object.values(FACTIONS).flatMap((f) => [...f.kinds.map(([k]) => k), f.ace].filter(Boolean)), ...BUILT_KINDS, ...Object.keys(GLB).filter((k) => GLB[k].built)]);
-    for (const k of kinds) spares.add(buildTraffic(k).group);
+    for (const k of kinds) {
+      const made = buildTraffic(k);
+      spares.add(made.group);
+      stock.push([k, made]);
+    }
+    // and the boost's burst, which only joins the ship as it lights (so
+    // isn't in the scene: its shader would otherwise be made on the first boost)
+    spares.add(burst.mesh);
   }
   map.add(spares);
   const ready = Promise.all([warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
-    // made: out of the scene (so nothing walks them each frame), but kept
-    // till the end, so their shaders are kept too
+    // made: out of the scene (so nothing walks them each frame), and the
+    // ships on to the fleet, ready to fly (the first of each kind isn't
+    // built in the middle of a frame)
     map.remove(spares);
+    if (disposed) return;
+    for (const [k, model] of stock) fleet.stock(k, model);
+    warmed = true;
+    stockUp();
   });
 
   // in development, renderer counts and the ship, for checking from a browser
@@ -2537,6 +2617,7 @@ export async function create(canvas, ctx) {
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
       ratio: gl.ratio,
+      sharpness: post.sharpness,
       ship: state.ship && { ...state.ship },
       at: state.at,
       auto: state.auto?.id ?? null,
