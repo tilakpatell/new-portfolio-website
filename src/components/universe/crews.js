@@ -40,6 +40,12 @@ export const CREWS = [
       ['morty', 'Rick! We crashed into a planet, Rick!'],
       ['rick', 'Relax, Morty. I backed us up. Portal’s open.'],
     ],
+    // into the black hole: no coming back from this one (on its far side is
+    // a friend's universe, deep.js's `beyond`, and the page goes on to it)
+    swallowed: [
+      ['morty', 'Rick! It’s got us! We’re going in!'],
+      ['rick', 'Relax, Morty. It’s not spaghetti. It’s somebody’s Matrix.'],
+    ],
     // sitting still a while
     idle: [['rick', 'Lick, lick, lick my balls! Ha ha! Yeah! Say that all the time!', 'lickLick']],
     // something flying past you (traffic.js)
@@ -280,6 +286,10 @@ export const CREWS = [
       ['r2', '[a long, falling scream]', 'r2Scream'],
       ['luke', 'We’re okay, Artoo. Get the spare and let’s get back up there.'],
     ],
+    swallowed: [
+      ['luke', 'It’s pulling us in! Artoo, there’s something on the other side…'],
+      ['r2', '[a long, falling scream]', 'r2Scream'],
+    ],
     traffic: {
       tie: [
         ['luke', 'TIE fighters! Artoo, lock them down!'],
@@ -507,6 +517,10 @@ export const CREWS = [
       ['chewie', '[a horrified roar]'],
       ['han', 'Hold together, baby. Hold together!'],
     ],
+    swallowed: [
+      ['han', 'Told you, Chewie. Nothing outruns that. Hang on, we’re going through.'],
+      ['chewie', '[a long, falling roar]'],
+    ],
     traffic: {
       tie: [
         ['han', 'Here they come!'],
@@ -725,6 +739,10 @@ export const CREWS = [
     crash: [
       ['jesse', 'Mr. White! We hit a planet! The RV is totally totalled!'],
       ['walt', 'Relax, Jesse. I’ve rebuilt this RV before.'],
+    ],
+    swallowed: [
+      ['jesse', 'Mr. White! It’s got the RV!'],
+      ['walt', 'Not even light gets out, Jesse. Let’s see where it goes.'],
     ],
     idle: [
       ['walt', 'Say my name.', 'sayMyName'],
@@ -968,8 +986,9 @@ export const crewById = (id) => BY_ID.get(id) ?? null;
 export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id : null);
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
-// 'edge', 'crash', 'idle', 'hit', 'shields', 'destroyed', 'escaped' or
-// 'cleared' (where a crew has those), 'arrive' at a place, 'traffic' going
+// 'edge', 'crash', 'swallowed' (by the black hole), 'idle', 'hit',
+// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
+// 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
 // its id). An exchange, or null.

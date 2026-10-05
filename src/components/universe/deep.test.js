@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, WONDERS, openness, planetAt, reachOf } from './deep';
+import { DEEP, DEEP_SOLIDS, WONDERS, beyondOf, openness, planetAt, reachOf } from './deep';
 import { MAP_RADIUS } from './layout';
 
 describe('deep space', () => {
@@ -30,6 +30,13 @@ describe('deep space', () => {
     expect(ids).not.toContain('veil');
     const ember = WONDERS.find((w) => w.id === 'ember');
     expect(DEEP_SOLIDS.find((s) => s.id === 'ember-2').at).toEqual(planetAt(ember, ember.planets[1]));
+  });
+
+  it('has one black hole, which swallows, with a friend’s universe on its far side', () => {
+    expect(DEEP_SOLIDS.filter((s) => s.swallow).map((s) => s.id)).toEqual(['maw']);
+    expect(beyondOf('maw')).toMatchObject({ name: expect.any(String), what: expect.any(String), url: expect.stringMatching(/^https:\/\/\S+$/) });
+    for (const w of WONDERS) if (w.kind !== 'black-hole') expect(beyondOf(w.id), w.id).toBeNull();
+    expect(beyondOf('nope')).toBeNull();
   });
 
   it('opens up smoothly from the home system out to open space', () => {
