@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom';
 import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiRestartLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
 import { openPalette, shortcutLabel } from '../lib/palette';
 import { jumpTo } from '../lib/anchors';
@@ -13,6 +13,7 @@ import Wordmark from './Wordmark';
 import { CUSTOM_PRESETS } from '../theme/custom';
 import { DROPS, dropped, nextFit } from './navFit';
 import { restartSite } from '../lib/restart';
+import { isFeedMove } from './feed/feed';
 
 const LINKS = [
   { to: '/universe', label: 'Universe' },
@@ -194,7 +195,9 @@ export function ThemePicker({ nameless = false }) {
 }
 
 export default function Nav() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const navType = useNavigationType();
+  const { pathname } = location;
   const [open, setOpen] = useState(false);
   const [hidden, setHiddenState] = useState(false);
   // the scroll handler calls this every few pixels; it only sets state on a change
@@ -288,7 +291,10 @@ export default function Nav() {
     };
   }, [setHidden]);
 
-  useEffect(() => setHidden(false), [pathname, setHidden]);
+  // a new page brings it back; the feed moving the address as you read does not
+  useEffect(() => {
+    if (!isFeedMove(location, navType)) setHidden(false);
+  }, [location, navType, setHidden]);
 
   // The phone menu covers the page: Escape closes it, and the page under it stays put.
   useEffect(() => {
