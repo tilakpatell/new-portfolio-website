@@ -3,6 +3,7 @@ import { RiArrowRightLine } from 'react-icons/ri';
 import { WORLDS } from './worlds';
 import { byPath } from '../universe/universes';
 import { nextWorld } from '../universe/layout';
+import '../../styles/lazy/worlds.css';
 
 // A way between the hidden worlds, on each of them: back to this world's
 // place on the universe map, on to the next world, or straight to any.

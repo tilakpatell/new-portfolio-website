@@ -10,6 +10,7 @@ import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
 import { EYE, LANES, RANGE, WAVES, aimAt, newRange, rayHit, startRange, stepRange, strafe, unibeam } from './rules';
 import './repulsor.css';
+import '../../../styles/lazy/avengers.css';
 
 const load = () => import('./scene');
 const sfx = () => import('../../../lib/sfx');

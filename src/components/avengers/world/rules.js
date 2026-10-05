@@ -741,6 +741,18 @@ export const SWING = {
   restick: 0.4, // seconds before the wall he kicked off will hold him again
   stick: 1.5, // how hard into a wall he has to be going to stick to it (m/s)
 };
+// Air tricks, as Insomniac's: in free flight (off a web, a wall or a perch,
+// not on a web), a press turns a flip (forward, or back with the stick
+// pulled back) or a twist (with the stick to a side). Each is worth style
+// points, more for each in a row without touching down; a perfect release
+// counts too; landing banks the lot, landing mid-trick loses it (a bail).
+export const TRICK = {
+  time: 0.75, // seconds a trick takes
+  gap: 0.1, // between one and the next
+  points: { flip: 100, back: 120, twist: 110, perfect: 150 },
+  minAir: 0.15, // seconds off the ground before a trick counts (not a hop)
+  bail: 0.45, // the crouch a bail lands in (s)
+};
 
 // ── the settings (O): how it feels, each live and kept between visits ──
 // `look` scales the drag and the pad's right stick; `invert` turns the pitch
@@ -798,6 +810,9 @@ export const newHero = (at = START) => ({
   fly: false, // off a web or a wall: his own momentum, not a jump's
   flip: 0, // a perfect release's flip, seconds left
   combo: 0,
+  trick: null, // an air trick going: { kind: 'flip' | 'back' | 'twist', dir, t: seconds left }
+  trickGap: 0,
+  style: 0, // style points this flight, banked on landing
   land: 0, // a hard landing's crouch, seconds left
   climb: 0, // metres climbed, for his hands and feet
   ev: [], // what happened this step
@@ -807,7 +822,7 @@ export const newHero = (at = START) => ({
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
 // `jump` (a press, not a hold), `web` (the jump button, held), `zip` and
 // `perch` (presses), and `assist` (the settings' swing assist, 1 as it comes).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, assist = 1 } = {}, dt) {
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, trick = false, assist = 1 } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -821,8 +836,19 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   const k = len > 1 ? 1 / len : 1;
   const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip, assist };
   h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
+  h.trickGap = Math.max(0, (h.trickGap ?? 0) - dt);
+  h.style ??= 0;
   // a point launch: to the perch ahead
   if (perch && h.mode !== 'zipto') pointLaunch(h, i);
+  // an air trick: in free flight, and only one at a time
+  if (trick && h.mode === 'air' && h.fly && !h.web && !h.glide && !h.trick && h.trickGap <= 0 && h.airT >= TRICK.minAir) startTrick(h, i);
+  if (h.trick) {
+    h.trick = { ...h.trick, t: h.trick.t - dt };
+    if (h.trick.t <= 0) {
+      h.trick = null;
+      h.trickGap = TRICK.gap;
+    }
+  }
   if (h.mode === 'zipto') stepZipTo(h, dt);
   else if (h.mode === 'perch') stepPerch(h, i, dt);
   else if (h.mode === 'wall') stepWall(h, i, dt);
@@ -937,6 +963,7 @@ function attach(h, turn) {
   h.web = { a: w.a, at: w.at, len: w.len, target: ropeFor(w.a, w.len, h.y, floorAt(h.x, h.z, h.y)), hand: w.hand, entry: h.y };
   h.mode = 'swing';
   h.fly = true;
+  h.trick = null;
   h.zips = SWING.zip.charges;
   h.ev.push({ type: 'web', at: w.at, hand: w.hand, kind: w.kind });
   return true;
@@ -963,7 +990,8 @@ function letGo(h) {
     h.vz *= P.boost;
     h.combo = (h.combo ?? 0) + 1;
     h.flip = 0.7;
-    h.ev.push({ type: 'perfect', combo: h.combo });
+    h.style = (h.style ?? 0) + TRICK.points.perfect * h.combo;
+    h.ev.push({ type: 'perfect', combo: h.combo, style: h.style });
   } else h.ev.push({ type: 'release' });
 }
 
@@ -1050,7 +1078,7 @@ function stepZipTo(h, dt) {
   const sp = Math.min(P.speed, Math.hypot(h.vx, h.vy, h.vz) + P.accel * dt);
   if (d <= sp * dt + 0.3) {
     // there: on top of it
-    Object.assign(h, { x: t.x, y: t.y, z: t.z, vx: 0, vy: 0, vz: 0, mode: t.roof ? 'ground' : 'perch', to: null, fly: false, perchT: P.window, speed: 0 });
+    Object.assign(h, { x: t.x, y: t.y, z: t.z, vx: 0, vy: 0, vz: 0, mode: t.roof ? 'ground' : 'perch', to: null, fly: false, trick: null, perchT: P.window, speed: 0 });
     h.ev.push({ type: 'perched' });
     return;
   }
@@ -1092,6 +1120,29 @@ function launchOff(h, { mx, mz, len }) {
   Object.assign(h, { mode: 'air', fly: true, vx: (dx / l) * L.out, vz: (dz / l) * L.out, vy: L.up, perchT: 0, airT: 0 });
   h.face = Math.atan2(-dz, dx);
   h.ev.push({ type: 'launch' });
+}
+
+// A trick: a flip forward, a backflip with the stick pulled back, a twist
+// with it to a side (against the way he's going), worth more for each in a row
+function startTrick(h, { mx, mz, len }) {
+  let kind = 'flip';
+  let dir = 1;
+  if (len > 0.3) {
+    const hs = Math.hypot(h.vx, h.vz);
+    const fx = hs > 1 ? h.vx / hs : Math.cos(h.face);
+    const fz = hs > 1 ? h.vz / hs : -Math.sin(h.face);
+    const along = mx * fx + mz * fz;
+    const side = fx * mz - fz * mx;
+    if (along < -0.5) kind = 'back';
+    else if (Math.abs(side) > 0.5) {
+      kind = 'twist';
+      dir = side > 0 ? 1 : -1;
+    }
+  }
+  h.trick = { kind, dir, t: TRICK.time };
+  h.combo = (h.combo ?? 0) + 1;
+  h.style = (h.style ?? 0) + TRICK.points[kind] * h.combo;
+  h.ev.push({ type: 'trick', kind, dir, combo: h.combo, style: h.style });
 }
 
 // A corner swing: steering hard (the stick well off the way he's going) with
@@ -1331,7 +1382,7 @@ function stepAir(h, { mx, mz, len, run, web, zip, assist = 1 }, dt) {
         // a spider: he sticks to it, and the speed he hit it with carries him up it
         const hit = Math.hypot(vx, vy, vz);
         const R = SWING.wallRun;
-        Object.assign(h, { x, y, z, vx: 0, vy: 0, vz: 0, mode: 'wall', web: null, fly: false, wall: { id: c.wall.s.id, nx: c.wall.nx, nz: c.wall.nz } });
+        Object.assign(h, { x, y, z, vx: 0, vy: 0, vz: 0, mode: 'wall', web: null, fly: false, trick: null, wall: { id: c.wall.s.id, nx: c.wall.nx, nz: c.wall.nz } });
         h.runUp = hit > R.min ? Math.min(R.max, hit * R.carry) : 0;
         h.face = Math.atan2(c.wall.nz, -c.wall.nx);
         h.speed = 0;
@@ -1363,9 +1414,18 @@ function land(h, impact) {
   h.web = null;
   h.fly = false;
   h.airT = 0;
-  h.combo = 0;
   h.speed = Math.hypot(h.vx, h.vz);
   h.running = false;
+  // the flight's style: banked, unless he's still mid-trick, which is a bail
+  if (h.trick) {
+    h.ev.push({ type: 'bail', style: h.style, combo: h.combo });
+    h.trick = null;
+    h.land = Math.max(h.land, TRICK.bail);
+    h.vx *= 0.3;
+    h.vz *= 0.3;
+  } else if (h.style > 0) h.ev.push({ type: 'bank', style: h.style, combo: h.combo });
+  h.style = 0;
+  h.combo = 0;
   // a long way down: down on one knee, the way he does, and the run taken out of him
   if (impact > 14) {
     h.land = 0.45;

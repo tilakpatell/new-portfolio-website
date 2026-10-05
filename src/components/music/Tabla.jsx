@@ -7,6 +7,7 @@ import { BOLS, LAYA, STROKES, TAALS, beatBols, bolLabel, planTihai } from './tab
 import { playBol, setThekaLaya, setThekaTempo, startTheka, stopTheka, thekaPlaying, tihai, warmTabla } from './tabla';
 import { surface } from './drumSkins';
 import './music.css';
+import '../../styles/lazy/music.css';
 
 // The tabla: strike the drums yourself, or let it keep a taal. The dayan
 // (right) is tuned to Sa; the bayan (left) is the bass.

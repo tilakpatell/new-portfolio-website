@@ -5,6 +5,7 @@ import { audioContext } from '../../lib/audio';
 import AutobotMark from '../AutobotMark';
 import { BACK, SCRIPTS, scriptFor } from '../../fun/scripts';
 import { useTheme } from '../../theme/ThemeProvider';
+import '../../styles/lazy/interests.css';
 
 // The "Off the clock" row: one small line icon for each thing I'm into, and
 // each one does something. Drawn on a 24-unit grid with one stroke weight so

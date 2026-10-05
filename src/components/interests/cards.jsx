@@ -19,6 +19,7 @@ import { DIMENSIONS } from '../rickmorty/dimensions';
 import PortalSwirl from '../rickmorty/PortalSwirl';
 import { EGGS, EGG_KEY } from '../../fun/eggs';
 import { local } from '../../lib/hooks';
+import '../../styles/lazy/interests.css';
 
 const eggsFound = () => {
   const saved = local.get(EGG_KEY, []);

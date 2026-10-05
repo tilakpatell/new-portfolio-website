@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, WONDERS, beyondOf, openness, planetAt, reachOf } from './deep';
+import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, nearestStar, openness, planetAt, reachOf } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
@@ -101,5 +101,13 @@ describe('deep space', () => {
     const mid = openness(Math.cos(clear) * half, 0, Math.sin(clear) * half);
     expect(mid).toBeGreaterThan(0.4);
     expect(mid).toBeLessThan(0.6);
+  });
+
+  it('knows its stars, and which is nearest', () => {
+    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+    expect(nearestStar(10, 0, 0).star.id).toBe('sun');
+    const ember = WONDERS.find((w) => w.id === 'ember');
+    expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).star.id).toBe('ember');
+    expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).dist).toBeCloseTo(200, 3);
   });
 });

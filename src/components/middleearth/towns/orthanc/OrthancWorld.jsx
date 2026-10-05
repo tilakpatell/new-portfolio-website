@@ -15,6 +15,7 @@ import { DUEL, MOTH, block, blockable, lapOf, leap, newDuel, newGaze, newLeap, n
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './orthanc.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Orthanc, found off the road: Gandalf's visit to Isengard. Saruman in his
 // hall, the library of lore, the palantír, the duel of the wizards, the

@@ -1,0 +1,29 @@
+/* Split out of styles/extras.css so it loads with the components that use it
+   (each imports it), not with every page. */
+.sitar-divider { display: flex; align-items: center; gap: 0.6rem; max-width: 760px; }
+.sd-peg { width: 10px; height: 10px; flex: none; border-radius: 3px; background: linear-gradient(#e7cf8f, #a8853f); }
+.sd-string { flex: 1; height: 26px; cursor: pointer; border-radius: 4px; }
+.sd-string:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.sd-string svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.sd-wave {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text) 45%, transparent);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+  /* not 0: a transform that flattens to nothing isn't drawn at all */
+  transform: scaleY(0.002);
+}
+.sd-string:hover .sd-wave { stroke: var(--accent); }
+.sitar-divider[data-seen='true'] .sd-wave { animation: sd-shiver 1.6s cubic-bezier(0.2, 0.6, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) { .sitar-divider[data-seen='true'] .sd-wave { animation: none; } }
+@keyframes sd-shiver {
+  0% { transform: scaleY(1); }
+  10% { transform: scaleY(-0.85); }
+  22% { transform: scaleY(0.6); }
+  36% { transform: scaleY(-0.4); }
+  52% { transform: scaleY(0.22); }
+  70% { transform: scaleY(-0.1); }
+  100% { transform: scaleY(0.002); }
+}

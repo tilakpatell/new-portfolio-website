@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import { COUNTRY_COUNT, HOME, HOME_CITY, PLACES, distanceKm } from '../../data/places';
 import { use3D } from '../../lib/gpu';
 import { useAchievements } from '../Achievements';
+import '../../styles/lazy/travel.css';
 
 // The globe and its data load only when this section is near the screen.
 // With 3D on, the WebGL globe is laid over the 2D one and takes over once it
