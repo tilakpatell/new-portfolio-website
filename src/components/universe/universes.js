@@ -7,6 +7,9 @@
 //   label    as the map names it
 //   kind     'core' (a station) or 'fandom' (a planet)
 //   world    the world page's own name, or null when it isn't a world page
+//   pages    more world pages of its own, inside it ({ to, world })
+//   crashTo  where flying into it too fast takes you, if not `to`
+//   go       how going there reads with a ship ('Jump to'), if not landing
 //   place    what you land on or dock at, for the panel's button
 //   to       where it goes
 //   swatch   its colour on the mini-map and its label
@@ -96,8 +99,15 @@ const FANDOMS = [
   {
     id: 'starwars',
     label: 'Star Wars',
-    world: 'Death Star',
-    to: '/deathstar',
+    // a universe of its own: the jump goes to the whole galaxy (galaxy/),
+    // the Death Star its own page inside it (and flying into it here, at
+    // speed, still puts you aboard)
+    world: 'A galaxy far, far away',
+    place: 'a galaxy far, far away',
+    go: 'Jump to', // (not somewhere to land on)
+    to: '/galaxy',
+    pages: [{ to: '/deathstar', world: 'Death Star' }],
+    crashTo: '/deathstar',
     swatch: '#ffe81f',
     accent: '#ffe81f',
     rim: '#c9ced6', // the station's own grey, not the crawl's yellow
@@ -232,8 +242,8 @@ const BY_ID = new Map(UNIVERSES.map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/deathstar' → starwars, '/universe/x' → none.
-export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname);
+// The universe a page belongs to: '/galaxy' and '/deathstar' → starwars, '/universe/x' → none.
+export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
 
 // WCAG contrast ratio between two '#rrggbb' colours.
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

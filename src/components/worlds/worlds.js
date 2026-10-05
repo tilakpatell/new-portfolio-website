@@ -1,8 +1,9 @@
 import { UNIVERSES } from '../universe/universes';
 
 // The hidden worlds, one per fandom, each a page of its own (the universes
-// on the map that have one), in map order.
-export const WORLDS = UNIVERSES.filter((u) => u.world).map((u) => ({ to: u.to, label: u.world, from: u.label }));
+// on the map that have one, and the pages inside them: Star Wars has the
+// galaxy, and the Death Star in it), in map order.
+export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.to, label: u.world, from: u.label }, ...(u.pages ?? []).map((p) => ({ to: p.to, label: p.world, from: u.label }))]);
 
 // What each world downloads when it opens (models, textures, skies,
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
@@ -15,6 +16,7 @@ export const WORLD_MB = {
   '/c-137': 6, // the cruiser and Portal panic's cast
   '/albuquerque': 15, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
   '/scranton': 5, // the office cast and set
+  '/galaxy': 5, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky

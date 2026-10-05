@@ -18,7 +18,10 @@
     "source": "https://sketchfab.com/3d-models/star-wars-cr-90-60e26a508ca84126b30f01461f60086e",
     "where": "universe",
     "as": "the Corellian corvettes",
-    "file": "/models/universe/cr90.glb"
+    "file": "/models/universe/cr90.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "death-star": {
     "title": "Death Star - Star Wars",
@@ -29,7 +32,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
     "where": "universe",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb"
+    "file": "/models/universe/death-star.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "earth-plane": {
     "title": "737 MAX Lion Air",
@@ -50,7 +56,10 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/millennium-falcon-2c0783d083e44b959c691682b4cb1f16",
     "where": "universe",
-    "as": "the Millennium Falcon you fly"
+    "as": "the Millennium Falcon you fly",
+    "also": [
+      "galaxy"
+    ]
   },
   "minas-tirith": {
     "title": "Minas Tirith Remake",
@@ -113,7 +122,10 @@
     "source": "https://sketchfab.com/3d-models/star-destroyer-aaa18e14129a461c839877389bd28504",
     "where": "universe",
     "as": "the Star Destroyers",
-    "file": "/models/universe/star-destroyer.glb"
+    "file": "/models/universe/star-destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "thragg": {
     "title": "Thragg from invincible s4",
@@ -135,7 +147,10 @@
     "source": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41",
     "where": "universe",
     "as": "the TIE interceptors",
-    "file": "/models/universe/tie-interceptor.glb"
+    "file": "/models/universe/tie-interceptor.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "trench": {
     "title": "Death Star Trench Run",
@@ -146,7 +161,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
     "where": "universe",
     "as": "the Death Star’s trench",
-    "file": "/models/universe/trench.glb"
+    "file": "/models/universe/trench.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",
@@ -156,7 +174,10 @@
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/high-poly-x-wing-fighter-f2170d4a3ee04e8588c0ad29d4f91767",
     "where": "universe",
-    "as": "the X-wing you fly"
+    "as": "the X-wing you fly",
+    "also": [
+      "galaxy"
+    ]
   },
   "avengers-thor": {
     "title": "Thor",

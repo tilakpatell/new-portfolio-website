@@ -224,7 +224,7 @@ export default function UniversePanel({ universe, onSelect, onEnter, onWhole, le
         </button>
       </div>
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
-        {crew ? (core ? 'Dock at' : 'Land on') : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+        {crew ? (universe.go ?? (core ? 'Dock at' : 'Land on')) : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
       <ul className="universe-card mt-4" key={universe.id}>
         <Card />
