@@ -40,6 +40,10 @@ export const CLIPS = {
   thankYou: { src: '/audio/clips/thank-you.mp3', line: 'Thank you.', by: 'Michael Scott' },
   noGod: { src: '/audio/clips/no-god.mp3', line: 'No, God! No, God, please, no!', by: 'Michael Scott' },
   tanpura: { src: '/audio/tanpura-pluck.mp3' }, // the music room's own (freely licensed, credited there)
+  // the universe map's boosts (public/audio/engines, credited there)
+  xwingPass: { src: '/audio/engines/xwing-pass.mp3' },
+  falconPass: { src: '/audio/engines/falcon-pass.mp3' },
+  thruster: { src: '/audio/engines/thruster.mp3' },
   // the universe map's crews and ships
   wubba: { src: '/audio/clips/wubba-lubba-dub-dub.mp3', line: 'Wubba lubba dub dub!', by: 'Rick Sanchez' },
   pickleRick: { src: '/audio/clips/pickle-rick.mp3', line: 'I’m Pickle Rick!', by: 'Rick Sanchez' },
