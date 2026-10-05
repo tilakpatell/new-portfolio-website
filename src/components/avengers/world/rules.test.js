@@ -24,6 +24,7 @@ import {
   DOOR_R,
   HERO,
   HERO_R,
+  LAP,
   LAWN_W,
   PLACES,
   PORTAL,
@@ -39,6 +40,7 @@ import {
   collide,
   findPerch,
   floorAt,
+  lapAt,
   linesFor,
   nearArmour,
   nearCast,
@@ -49,7 +51,9 @@ import {
   outside,
   pastAnchor,
   progress,
+  readLap,
   readSettings,
+  recordLap,
   solidById,
   stepHero,
   stepTour,
@@ -1197,5 +1201,61 @@ describe('The compound, the world: the Iron Man armour', () => {
     expect(s.mode).toBe('suit');
     expect(s.trick).toBe(null);
     expect(s.web).toBe(null);
+  });
+});
+
+describe('The compound, the world: the best lap, as a ghost', () => {
+  it('records him every tenth of a second, to a decimal, and no more than two minutes', () => {
+    let rec = [];
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let t = 0;
+    for (let i = 0; i < 180; i++) {
+      h = stepHero(h, pilot(h, t), DT);
+      t += DT;
+      rec = recordLap(rec, h, t);
+    }
+    expect(rec.length).toBeGreaterThanOrEqual(29);
+    expect(rec.length).toBeLessThanOrEqual(31);
+    for (const p of rec) {
+      expect(p.length).toBe(4);
+      for (const v of p) expect(Math.abs(v * 100 - Math.round(v * 100))).toBeLessThan(1e-6);
+    }
+    expect(Math.hypot(rec.at(-1)[0] - h.x, rec.at(-1)[2] - h.z)).toBeLessThan(0.1 + HERO.run * LAP.every);
+    // and the same recording back when it isn't time yet
+    const same = recordLap(rec, h, t);
+    expect(same).toBe(rec);
+    const full = Array.from({ length: LAP.max }, () => [0, 0, 0, 0]);
+    expect(recordLap(full, h, 999)).toBe(full);
+  });
+
+  it('plays the ghost back between the samples, held at the ends, with its speed', () => {
+    const rec = [
+      [0, 0, 0, 0],
+      [4, 1, 0, 0.5],
+      [8, 1, 0, 1],
+    ];
+    expect(lapAt(rec, -1)).toMatchObject({ x: 0, y: 0, z: 0, face: 0 });
+    const mid = lapAt(rec, 0.05);
+    expect(mid.x).toBeCloseTo(2, 5);
+    expect(mid.y).toBeCloseTo(0.5, 5);
+    expect(mid.face).toBeCloseTo(0.25, 5);
+    expect(mid.speed).toBeCloseTo(40, 5);
+    expect(lapAt(rec, 0.1)).toMatchObject({ x: 4, y: 1 });
+    expect(lapAt(rec, 5)).toMatchObject({ x: 8, y: 1, z: 0, face: 1 });
+    expect(lapAt(null, 1)).toBe(null);
+    expect(lapAt([], 1)).toBe(null);
+    // the face goes the short way round
+    const turn = lapAt([[0, 0, 0, 3], [0, 0, 0, -3]], 0.05);
+    expect(Math.abs(turn.face)).toBeGreaterThan(3);
+  });
+
+  it('reads a kept lap back, and nothing else', () => {
+    expect(readLap(null)).toBe(null);
+    expect(readLap([[1, 2, 3, 4]])).toBe(null);
+    expect(readLap([[1, 2, 3], [1, 2, 3]])).toBe(null);
+    expect(readLap([[1, 2, 3, 4], [1, 2, 'x', 4]])).toBe(null);
+    const ok = [[1, 2, 3, 4], [2, 3, 4, 5]];
+    expect(readLap(ok)).toEqual(ok);
+    expect(readLap(Array.from({ length: LAP.max + 5 }, () => [0, 0, 0, 0])).length).toBe(LAP.max);
   });
 });

@@ -8,7 +8,7 @@ import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readSettings, stepHero, stepTour, underPortal, walkable } from './rules';
+import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
@@ -27,6 +27,7 @@ const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).ca
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
 const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
+const TOUR_LAP = 'tp-hq-swing-lap'; // the best lap's recording, raced as a ghost
 const FOUND = 'tp-hq-packs';
 const SET = 'tp-hq-settings';
 const STYLE_BEST = 'tp-hq-style-best';
@@ -121,7 +122,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound() };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -353,19 +354,30 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
+    // the lap, recorded as it goes, to race as a ghost next time if it's the best
+    if (s.tour.on && s.rec) s.rec = recordLap(s.rec, s.h, s.tour.t);
     for (const e of tev) {
       if (e.type === 'tour-start') {
         sfx('ding');
-        setTourMsg('The tour’s on: through the red rings');
+        s.rec = recordLap([], s.h, 0);
+        setTourMsg(s.lap ? 'The tour’s on: race your best lap, through the red rings' : 'The tour’s on: through the red rings');
       } else if (e.type === 'tour-ring') sfx('coin');
-      else if (e.type === 'tour-lost') setTourMsg('Tour lost: back to the first ring to try again');
-      else if (e.type === 'tour-done') {
+      else if (e.type === 'tour-lost') {
+        s.rec = null;
+        setTourMsg('Tour lost: back to the first ring to try again');
+      } else if (e.type === 'tour-done') {
         sfx('fanfare');
         unlock('swingtour');
         if (e.best) {
           local.set(TOUR_BEST, e.time);
           setTourBest(e.time);
+          if (s.rec?.length > 1) {
+            s.rec = recordLap(s.rec, s.h, e.time);
+            s.lap = s.rec;
+            local.set(TOUR_LAP, s.lap);
+          }
         }
+        s.rec = null;
         setTourMsg(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}`);
       }
     }
@@ -452,10 +464,13 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
       } else setBubble(null);
     }
 
-    // other players: where you are to them, and where they are
+    // other players: where you are to them, and where they are; and, while
+    // a tour's on, the ghost of your best lap, drawn as they are
     const tv = trav.ref.current;
     tv?.pose(s.h);
-    const others = tv ? tv.list() : null;
+    let others = tv ? tv.list() : null;
+    const ghost = s.tour.on && s.lap ? lapAt(s.lap, s.tour.t) : null;
+    if (ghost) others = [...(others ?? []), { id: 'best-lap', name: `Your best · ${clock(s.tour.best ?? 0)}`, ...ghost, moving: ghost.speed > 0.4, inside: false, ring: false }];
     try {
       a.render({ hero: s.h, travellers: others, camYaw: s.yaw, camPitch: s.pitch, camDist: (touch ? 8.4 : 7.6) * set.camera, shake: set.shake, near: s.near, done: p.done, next: p.next, portal: p.portal, tour: s.tour, found: s.found, move: { mx: mv.x, mz: mv.z, len: Math.hypot(mv.x, mv.z) } }, ms * fast);
     } catch (err) {
@@ -550,6 +565,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     s.yaw = behindYaw(face);
     s.dragAt = s.t;
     s.tour = newTour(s.tour.best);
+    s.rec = null;
     setList(false);
   };
 
