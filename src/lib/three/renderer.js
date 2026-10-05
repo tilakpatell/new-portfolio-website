@@ -145,7 +145,12 @@ export function precompile(renderer, root, camera, scene = null, target) {
     if (import.meta.env.DEV) console.warn('precompile failed', err);
     return Promise.resolve();
   } finally {
-    if (target !== undefined) renderer.setRenderTarget(keep);
+    // (a renderer disposed meanwhile can throw here too, and this never throws)
+    try {
+      if (target !== undefined) renderer.setRenderTarget(keep);
+    } catch {
+      // gone with its renderer
+    }
   }
   return linked(renderer, materials);
 }
