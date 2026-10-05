@@ -1,0 +1,33 @@
+/* Lothlórien: the Shire's HUD (../../shire/shire.css) in the gold of the
+   wood by day and the blue of its lanterns by night, with the panels for
+   the stair, the Mirror, the gifts and the river. */
+
+.lorien-world { --shire-glass: rgba(26, 24, 14, 0.72); --shire-glass-hi: rgba(30, 28, 16, 0.9); }
+.lorien-stage { background: linear-gradient(180deg, #c8b870 0%, #f2e2a8 55%, #6a6a2a 60%, #2a2a14 100%); }
+.lorien-stage[data-sky='night'] { background: linear-gradient(180deg, #050a1a 0%, #142446 58%, #0e1a22 60%, #060a0c 100%); }
+.lorien-stage[data-sky='night'] .shire-loading { color: #c8daf0; }
+.lorien-stage[data-sky='dawn'] { background: linear-gradient(180deg, #8aa8c8 0%, #f2ead8 58%, #5a5a3a 60%, #2a2a1a 100%); }
+.lorien-stage .shire-loading { color: #3a2e10; }
+.lorien-stage[data-mode='talk'] .shire-canvas, .lorien-stage[data-mode='climb'] .shire-canvas, .lorien-stage[data-mode='mirror'] .shire-canvas, .lorien-stage[data-mode='river'] .shire-canvas, .lorien-stage[data-mode='table'] .shire-canvas, .lorien-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+/* a game's panel, up top in the middle */
+.lorien-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.lorien-game .shire-meter { width: 100%; box-sizing: border-box; }
+.lorien-game[data-eye] { border-color: rgba(255, 110, 30, 0.8); animation: shire-tempt 0.45s ease-in-out infinite alternate; }
+.lorien-game[data-soon] { border-color: rgba(255, 170, 80, 0.55); }
+.lorien-big { min-width: 8rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.lorien-meter-climb span { background: linear-gradient(90deg, #c8d8f0, #f2e6b0); }
+.lorien-meter-pull span { background: linear-gradient(90deg, #9ab8ff, #ffb040 70%, #ff3a10); }
+.lorien-meter-strength span { background: linear-gradient(90deg, #d8c070, #f8f0c8); }
+.lorien-meter-river span { background: linear-gradient(90deg, #6a9ab8, #d8eef8); }
+.lorien-gifts { display: grid; gap: 0.4rem; margin: 0.4rem 0 0.6rem; }
+.lorien-gifts .btn { justify-content: flex-start; text-align: left; }
+
+/* the end: past the Kings */
+.lorien-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .lorien-stage[data-game] .shire-hud-top { display: none; }
+  .lorien-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
+  .lorien-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}

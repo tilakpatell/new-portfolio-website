@@ -15,7 +15,8 @@
 // markings take its trim; glass, the dark metal and the engines' insides
 // stay as they are.
 //
-// buildXwing(T), buildFalcon(T) → { group, glow: [{ mat, color }], stand, nose }
+// buildXwing(T), buildFalcon(T) → { group, glow: [{ mat, color }], stand,
+//   glowMesh, glowFixed }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -312,9 +313,9 @@ const mesh = (geo, mat, name) => {
 // ── the X-wing ──
 
 const XW = {
-  engine: [0.043, 0.031], // x, y of an engine's middle (each quarter)
+  engine: [0.044, 0.0225], // x, y of an engine's middle (each quarter: where the Sketchfab model's are)
   engineR: 0.0165,
-  engineZ: [0.035, 0.168], // intake to nozzle
+  engineZ: [0.035, 0.166], // intake to nozzle
   span: 0.172, // a wingtip's x
   dihedral: 0.2, // each S-foil's angle off level, radians
 };
@@ -477,7 +478,7 @@ export function buildXwing() {
   const glowM = glowMat('#ff7a4a');
   const glow = mesh(merge(glows), glowM, 'exhaust');
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, glowMesh: glow, nose: 0 };
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#ff7a4a') }], stand, glowMesh: glow, glowFixed: true }; // (its glow is at its engines, the model's too)
 }
 // a geometry mirrored across x (for the port wings; flipped() puts its winding back)
 function mirrorX(g) {
@@ -865,5 +866,5 @@ export function buildFalcon() {
   const glowM = glowMat('#8fd8ff');
   const glow = mesh(merge([[band]]), glowM, 'sublight');
   group.add(stand, glow);
-  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, glowMesh: glow, nose: 0 };
+  return { group, glow: [{ mat: glowM, color: new THREE.Color('#8fd8ff') }], stand, glowMesh: glow, glowFixed: true }; // (its glow is at its engines, the model's too)
 }

@@ -115,6 +115,17 @@ function stroke(ac, part, t, vel, cents, dest) {
   return sound(ac, name, t, Math.min(1.2, vel * s.gain), rate, dest, s.ring ? s.drum : null);
 }
 
+// Listeners for each bol as it sounds (the music planet's tabla shows them).
+const bolListeners = new Set();
+export const onTablaBol = (fn) => {
+  bolListeners.add(fn);
+  return () => bolListeners.delete(fn);
+};
+function heard(ac, bol, at) {
+  if (!bolListeners.size) return;
+  setTimeout(() => bolListeners.forEach((fn) => fn(bol)), Math.max(0, (at - ac.currentTime) * 1000));
+}
+
 // Play a bol at `when` seconds from now. `gumki` plays the bayan's lifting Ge.
 // Returns a handle whose bend(semitones) pulls the bayan's pitch up as the
 // heel of the hand presses (the gumki), or null if there is no sound.
@@ -134,6 +145,7 @@ export function playBol(bol, { when = 0, vel = 0.9, gumki = false, human = true 
       const v = stroke(ac, part, at, vel * h.vel, h.cents, dest);
       if (STROKES[part].drum === 'bayan') bayan = v;
     }
+    heard(ac, bol, at);
     return bayan;
   };
   if (ready) {

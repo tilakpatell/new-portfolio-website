@@ -81,6 +81,9 @@ function StarWars() {
         <button type="button" className="btn btn-ghost btn-sm" aria-pressed={obiWan} onClick={() => setObiWan((v) => !v)}>
           Hello there
         </button>
+        <Link to="/galaxy" className="btn btn-ghost btn-sm">
+          A galaxy far, far away
+        </Link>
         <Link to="/deathstar" className="btn btn-ghost btn-sm">
           Visit the Death Star
         </Link>
@@ -485,9 +488,14 @@ function Travel() {
       <p className="mt-2 text-[0.95rem] leading-relaxed text-body">
         {countWord(COUNTRY_COUNT)} countries and the Caribbean, mostly chasing mountains and lakes.
       </p>
-      <Link to="/travel" className="btn btn-ghost btn-sm mt-auto self-start">
-        See the travel page
-      </Link>
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Link to="/earth" className="btn btn-primary btn-sm">
+          Fly the globe
+        </Link>
+        <Link to="/travel" className="btn btn-ghost btn-sm">
+          See the travel page
+        </Link>
+      </div>
     </Card>
   );
 }

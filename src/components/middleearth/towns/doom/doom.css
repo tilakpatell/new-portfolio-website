@@ -1,0 +1,33 @@
+/* Mordor: the Shire's HUD (../../shire/shire.css) in ash and fire, with the
+   panels for the column, the Eye, carrying Frodo, his hand over the fire,
+   and the eagles. */
+
+.doom-world { --shire-glass: rgba(18, 10, 8, 0.84); --shire-glass-hi: rgba(22, 12, 10, 0.95); }
+.doom-stage { background: linear-gradient(180deg, #1a0e0a 0%, #6a2a14 56%, #241410 60%, #080504 100%); }
+.doom-stage[data-zone='crack'] { background: radial-gradient(ellipse at 50% 80%, #6a2008 0%, #140604 70%); }
+.doom-stage .shire-loading { color: #f0c8a0; }
+.doom-stage[data-mode='talk'] .shire-canvas, .doom-stage[data-mode='march'] .shire-canvas, .doom-stage[data-mode='carry'] .shire-canvas, .doom-stage[data-mode='hang'] .shire-canvas, .doom-stage[data-mode='flight'] .shire-canvas, .doom-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+.doom-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.doom-stage .shire-hud-top ~ .doom-game { top: auto; bottom: clamp(5rem, 12vh, 7rem); }
+.doom-game .shire-meter { width: 100%; box-sizing: border-box; }
+.doom-game[data-seen], .doom-game[data-drift], .doom-game[data-tremor] { border-color: rgba(255, 140, 60, 0.8); animation: shire-tempt 0.4s ease-in-out infinite alternate; }
+.doom-game[data-reach] { border-color: rgba(255, 230, 150, 0.9); animation: shire-tempt 0.3s ease-in-out infinite alternate; }
+.doom-big { min-width: 7.5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.doom-big[data-next] { background: rgba(255, 200, 120, 0.18); border-color: rgba(255, 200, 120, 0.6); }
+.doom-meter-up span { background: linear-gradient(90deg, #8a4a2a, #f8c890); }
+.doom-meter-grip span { background: linear-gradient(90deg, #c83a1a, #f8b060); }
+.doom-meter-reach span { background: linear-gradient(90deg, #6a8aa8, #e8f0ff); }
+
+/* your place in the column: the band you should be in, and you */
+.doom-line { flex: 1; min-width: 6rem; position: relative; height: 0.6rem; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.doom-line-ok { position: absolute; top: 0; bottom: 0; background: rgba(255, 210, 140, 0.25); }
+.doom-line-you { position: absolute; top: -0.1rem; bottom: -0.1rem; width: 0.5rem; margin-left: -0.25rem; border-radius: 999px; background: #ffd890; box-shadow: 0 0 8px #ff9a40; }
+
+.doom-end { left: 50%; transform: translateX(-50%); width: min(30rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .doom-stage[data-game] .shire-hud-top { display: none; }
+  .doom-game, .doom-stage .shire-hud-top ~ .doom-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; bottom: auto; }
+  .doom-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}

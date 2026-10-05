@@ -4,11 +4,17 @@
 // not in your story: nothing bumps into them and nothing sees them. One
 // wearing the Ring shows only while you wear it too.
 //
-// createGhosts({ height, make, tag, halo }) → { group, update(list, t, dt,
-// { ringOn }), dispose() }; add `group` to the town (the scene's layer()).
-// `make` builds the figure ({ group, top }: a Shire Frodo unless it says;
-// the map's are its own big-headed toys), `tag` is the name card's height
-// and `halo` the size of the ring of light, in the scene's units.
+// createGhosts({ height, make, animate, tag, halo, snap }) → { group,
+// update(list, t, dt, { ringOn }), dispose() }; add `group` to the town (the
+// scene's layer()). `make` builds the figure ({ group, top }: a Shire Frodo
+// unless it says; the map's are its own big-headed toys; a figure whose
+// geometry is shared with others brings its own `dispose`, and one whose
+// materials are, `shared`, so they're left alone: Albuquerque's copy of
+// Walt's Aztek), `animate(f, t, p, dt)` moves it (a Frodo's walk unless it
+// says), `tag` is the name card's height and `halo` the size of the ring of
+// light, in the scene's units, and `snap` how far behind it can be before
+// it's put straight there (further for a car). A traveller who jumps (`y`,
+// from a world that sends it) leaves the ground.
 
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
@@ -57,7 +63,7 @@ function nameTag(name, size = 0.42) {
   return sp;
 }
 
-export function createGhosts({ height = () => 0, make: build = () => makePerson('frodo'), tag: tagSize = 0.42, halo: haloSize = 1 } = {}) {
+export function createGhosts({ height = () => 0, make: build = () => makePerson('frodo'), animate = (f, t, p) => pose(f, t, { moving: p.moving }), tag: tagSize = 0.42, halo: haloSize = 1, snap = 8 } = {}) {
   const group = new THREE.Group();
   group.name = 'travellers';
   const ringGeo = new THREE.RingGeometry(0.28, 0.44, 28).rotateX(-Math.PI / 2);
@@ -74,7 +80,7 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
       o.castShadow = false;
       o.receiveShadow = false;
     });
-    for (const m of old) m.dispose();
+    if (!f.shared) for (const m of old) m.dispose();
     if (f.ringMesh) f.ringMesh.visible = false;
     const root = new THREE.Group();
     const halo = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9ab8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -84,12 +90,13 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
     tag.position.y = (f.top ?? 1.6) + tagSize * 0.85;
     root.add(f.group, halo, tag);
     group.add(root);
-    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, face: p.face, fade: 0 };
+    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: 0, face: p.face, fade: 0 };
   };
 
   const drop = (id, g) => {
     group.remove(g.root);
-    g.f.group.traverse((o) => o.geometry?.dispose());
+    if (g.f.dispose) g.f.dispose();
+    else g.f.group.traverse((o) => o.geometry?.dispose());
     g.mat.dispose();
     g.halo.material.dispose();
     g.tag.material.map.dispose();
@@ -122,7 +129,7 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         const want = !p.inside && (!p.ring || ringOn) ? 1 : 0;
         g.fade += (want - g.fade) * Math.min(1, dt * 4);
         // a jump (a new place, or a long gap): straight there
-        if (Math.hypot(p.x - g.x, p.z - g.z) > 8) {
+        if (Math.hypot(p.x - g.x, p.z - g.z) > snap) {
           g.x = p.x;
           g.z = p.z;
         }
@@ -131,9 +138,11 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         let df = p.face - g.face;
         df = Math.atan2(Math.sin(df), Math.cos(df));
         g.face += df * k;
+        g.y += ((p.y ?? 0) - g.y) * k;
         g.root.position.set(g.x, height(g.x, g.z), g.z);
+        g.f.group.position.y = g.y;
         g.f.group.rotation.y = g.face;
-        pose(g.f, t + g.x, { moving: p.moving });
+        animate(g.f, t + g.x, p, dt);
         const shimmer = 0.85 + Math.sin(t * 2.6 + g.x) * 0.08 + Math.sin(t * 7.1 + g.z) * 0.04;
         g.mat.opacity = 0.42 * g.fade * shimmer;
         g.halo.material.opacity = 0.5 * g.fade * (0.7 + Math.sin(t * 3 + g.z) * 0.3);

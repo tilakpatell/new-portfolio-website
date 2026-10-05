@@ -16,7 +16,14 @@
 // a blur. Round where you are, a patch of ground takes over: the same map,
 // with the planet's turn held while you're down, and fine detail over it
 // (grit, stones, rocks to walk round), and the air of the planet in its
-// colour along the horizon, by day.
+// colour along the horizon, by day. A station (the Death Star: `plated` in
+// universes.js) is hull plating instead, panels and seams and vents and the
+// odd lit window, with blocks and towers standing on it for rocks, and no
+// air; and where it has a trench round its middle, the ship comes down by
+// it (foot.js byTrench), the ground stops at its rim, and its walls go down
+// to where the trench run's own (trench.js) take over. Down there the
+// station's own model, which has its trench painted on rather than cut
+// into it, isn't drawn: the patch reaches past the horizon.
 //
 // Other pilots' crews down on the same planet (multiplayer: the scene hands
 // them in each frame, guests()) walk about with yours, a tag over each with
@@ -35,7 +42,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { smoothNormals } from '../cockpit/crew';
-import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, facingAlong, fly as flyBolt, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 
@@ -549,22 +557,164 @@ function noiseTexture() {
   return noiseTex;
 }
 
-const PATCH = { radius: 110 * METRE, rings: 46, segs: 72, lift: 0.025 * METRE, tile: 9 }; // the patch reaches past the horizon
+// A station's hull plating, tiling: panels of a few sizes packed on a grid
+// (seams between them), some with a plate inset, some vents, some greebles,
+// and here and there a lit window. r: height (for the bump), g: shade, b:
+// light
+const PLATE_N = 512;
+let plateTex = null;
+function platingTexture() {
+  if (plateTex) return plateTex;
+  const N = PLATE_N;
+  const CELLS = 16;
+  const C = N / CELLS;
+  let seed = 17;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const hgt = new Float32Array(N * N);
+  const shade = new Float32Array(N * N);
+  const glow = new Float32Array(N * N);
+  const fill = (x0, y0, w, h, f) => {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) f(y * N + x, x - x0, y - y0);
+  };
+  const used = new Uint8Array(CELLS * CELLS);
+  const sizes = [
+    [1, 1],
+    [2, 1],
+    [1, 2],
+    [2, 2],
+    [3, 2],
+    [2, 3],
+    [4, 2],
+    [4, 4],
+  ];
+  for (let cy = 0; cy < CELLS; cy++) {
+    for (let cx = 0; cx < CELLS; cx++) {
+      if (used[cy * CELLS + cx]) continue;
+      // the biggest of a random pick that fits here
+      let [w, h] = sizes[Math.floor(rand() ** 1.4 * sizes.length)];
+      const fits = (w, h) => {
+        if (cx + w > CELLS || cy + h > CELLS) return false;
+        for (let y = cy; y < cy + h; y++) for (let x = cx; x < cx + w; x++) if (used[y * CELLS + x]) return false;
+        return true;
+      };
+      while (!fits(w, h)) {
+        if (w >= h && w > 1) w--;
+        else h--;
+      }
+      for (let y = cy; y < cy + h; y++) for (let x = cx; x < cx + w; x++) used[y * CELLS + x] = 1;
+      const X = cx * C;
+      const Y = cy * C;
+      const W = w * C;
+      const H = h * C;
+      const base = 0.5 + rand() * 0.18;
+      const tone = rand() < 0.12 ? 0.62 + rand() * 0.1 : 0.84 + rand() * 0.24;
+      fill(X, Y, W, H, (i) => {
+        hgt[i] = base;
+        shade[i] = tone;
+      });
+      const kind = rand();
+      if (kind < 0.16) {
+        // a plate inset, raised, with its own seam
+        const m = Math.round(C * 0.18);
+        fill(X + m, Y + m, W - 2 * m, H - 2 * m, (i, x, y) => {
+          const edge = x < 2 || y < 2 || x >= W - 2 * m - 2 || y >= H - 2 * m - 2;
+          hgt[i] = edge ? base - 0.12 : base + 0.1;
+          shade[i] = edge ? tone * 0.7 : tone * 1.04;
+        });
+      } else if (kind < 0.3) {
+        // a vent: grooves across it
+        const across = W >= H;
+        const m = Math.round(C * 0.22);
+        fill(X + m, Y + m, W - 2 * m, H - 2 * m, (i, x, y) => {
+          const k = (across ? x : y) % 6 < 2;
+          hgt[i] = k ? base - 0.2 : base;
+          shade[i] = tone * (k ? 0.55 : 0.92);
+        });
+      } else if (kind < 0.4) {
+        // greebles: little boxes standing on it
+        const n = 2 + Math.floor(rand() * 5);
+        for (let j = 0; j < n; j++) {
+          const bw = 3 + Math.floor(rand() * C * 0.4);
+          const bh = 3 + Math.floor(rand() * C * 0.4);
+          const bx = X + 3 + Math.floor(rand() * Math.max(1, W - bw - 6));
+          const by = Y + 3 + Math.floor(rand() * Math.max(1, H - bh - 6));
+          const up = base + 0.1 + rand() * 0.25;
+          const t2 = tone * (0.75 + rand() * 0.35);
+          fill(bx, by, bw, bh, (i) => {
+            hgt[i] = up;
+            shade[i] = t2;
+          });
+        }
+      } else if (kind < 0.46) {
+        // a lit window or two: a strip, dark round it
+        const lw = Math.max(4, Math.round(W * (0.3 + rand() * 0.4)));
+        const lh = 3 + Math.floor(rand() * 3);
+        const lx = X + Math.floor((W - lw) / 2);
+        const ly = Y + Math.floor(H * (0.25 + rand() * 0.5));
+        fill(lx - 2, ly - 2, lw + 4, lh + 4, (i) => {
+          hgt[i] = base - 0.08;
+          shade[i] = 0.3;
+        });
+        if (rand() < 0.7) fill(lx, ly, lw, lh, (i) => (glow[i] = 1));
+      }
+      // the seams round it
+      fill(X, Y, W, H, (i, x, y) => {
+        if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) {
+          hgt[i] = 0.12;
+          shade[i] = 0.45;
+        } else if (x < 2 || y < 2) shade[i] *= 1.08; // (a lit edge)
+      });
+    }
+  }
+  const data = new Uint8Array(N * N * 4);
+  const to8 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 255);
+  for (let i = 0; i < N * N; i++) data.set([to8(hgt[i]), to8(shade[i] * 0.8), to8(glow[i]), 255], i * 4);
+  plateTex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  plateTex.wrapS = plateTex.wrapT = THREE.RepeatWrapping;
+  plateTex.magFilter = THREE.LinearFilter;
+  plateTex.minFilter = THREE.LinearMipmapLinearFilter;
+  plateTex.generateMipmaps = true;
+  plateTex.anisotropy = 8;
+  plateTex.needsUpdate = true;
+  return plateTex;
+}
 
-function createGround(planet, u, R) {
+// (in a shader with the plating as its bumpMap: its shade on diffuseColor,
+// a second, bigger lay of it for blocks of a different grey, and its lit
+// windows, brighter by night)
+const PLATE_DETAIL = `
+          vec4 pl = texture2D(bumpMap, vBumpMapUv);
+          float blocks = texture2D(bumpMap, vBumpMapUv * 0.137 + 0.29).g;
+          float detail = pl.g * 1.25 * (0.86 + 0.28 * blocks);`;
+const PLATE_GLOW = `
+          totalEmissiveRadiance += vec3(1.0, 0.86, 0.62) * texture2D(bumpMap, vBumpMapUv).b * 1.4;`;
+
+// The patch reaches past the horizon (on a station, much further: its model
+// isn't drawn while you're down, so there's nothing past the patch's edge)
+const PATCH = { radius: 110 * METRE, rings: 46, segs: 72, lift: 0.025 * METRE, tile: 9 };
+const HULL_PATCH = { ...PATCH, radius: 900 * METRE, rings: 64, segs: 96, tile: 32 };
+
+// `trench`: the trench's rim (footScene's band: { half, home, arc }), if the
+// ground stops at one
+function createGround(planet, u, R, trench = null) {
+  const plated = Boolean(u.plated);
+  const P = plated ? HULL_PATCH : PATCH;
   const g = new THREE.BufferGeometry();
-  const count = (PATCH.rings + 1) * PATCH.segs;
+  const count = (P.rings + 1) * P.segs;
   const pos = new Float32Array(count * 3);
   const nor = new Float32Array(count * 3);
   const uv = new Float32Array(count * 2);
   const edge = new Float32Array(count);
   const idx = [];
-  for (let i = 0; i < PATCH.rings; i++) {
-    for (let j = 0; j < PATCH.segs; j++) {
-      const a = i * PATCH.segs + j;
-      const b = i * PATCH.segs + ((j + 1) % PATCH.segs);
-      const c = a + PATCH.segs;
-      const d = b + PATCH.segs;
+  for (let i = 0; i < P.rings; i++) {
+    for (let j = 0; j < P.segs; j++) {
+      const a = i * P.segs + j;
+      const b = i * P.segs + ((j + 1) % P.segs);
+      const c = a + P.segs;
+      const d = b + P.segs;
       idx.push(a, c, b, b, c, d);
     }
   }
@@ -573,22 +723,37 @@ function createGround(planet, u, R) {
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setAttribute('aEdge', new THREE.BufferAttribute(edge, 1));
-  const body = planet.body?.material ?? null;
-  const tint = new THREE.Color(body?.color ?? u.palette?.base ?? '#888888');
+  // (a station's own grey, not its map: up close the map's a blur of its
+  // painted trench and dish)
+  const body = plated ? null : (planet.body?.material ?? null);
+  const tint = new THREE.Color(plated ? (u.palette?.base ?? '#8d939c') : (body?.color ?? u.palette?.base ?? '#888888'));
+  if (plated) tint.lerp(new THREE.Color(u.palette?.light ?? '#c9ced6'), 0.25);
   const uniforms = {
     uPlanet: { value: body?.map ?? null },
     uHasMap: { value: body?.map ? 1 : 0 },
     uToBody: { value: new THREE.Matrix3() },
     uTint: { value: tint },
+    // the trench: sin of its rim's angle off the middle (0: none), and its arc
+    uBand: { value: trench ? Math.sin(trench.half / R) : 0 },
+    uHome: { value: trench?.home ?? 0 },
+    uArc: { value: trench?.arc ?? Math.PI },
   };
-  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.96, metalness: 0, bumpMap: noiseTexture(), bumpScale: 1.6, envMapIntensity: 0.35 });
+  const mat = plated
+    ? new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.35, bumpMap: platingTexture(), bumpScale: 2.2, envMapIntensity: 0.5 })
+    : new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.96, metalness: 0, bumpMap: noiseTexture(), bumpScale: 1.6, envMapIntensity: 0.35 });
   mat.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, uniforms);
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aEdge;\nvarying vec3 vDir;\nvarying float vEdge;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDir = normalize(position);\nvEdge = aEdge;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nvarying vec3 vDir;\nvarying float vEdge;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uPlanet;\nuniform float uHasMap;\nuniform mat3 uToBody;\nuniform vec3 uTint;\nuniform float uBand;\nuniform float uHome;\nuniform float uArc;\nvarying vec3 vDir;\nvarying float vEdge;')
+      .replace(
+        '#include <clipping_planes_fragment>',
+        `#include <clipping_planes_fragment>
+        // none over the trench: it stops at the rim
+        if (abs(vDir.y) < uBand && (uArc >= 3.14159 || abs(mod(atan(vDir.z, vDir.x) - uHome + 3.1415927, 6.2831853) - 3.1415927) <= uArc)) discard;`,
+      )
       .replace(
         '#include <map_fragment>',
         `{
@@ -601,16 +766,23 @@ function createGround(planet, u, R) {
           if (dot(dxB, dxB) + dot(dyB, dyB) < dot(dx, dx) + dot(dy, dy)) { dx = dxB; dy = dyB; }
           vec3 base = uTint;
           if (uHasMap > 0.5) base *= textureGrad(uPlanet, uvA, dx, dy).rgb;
-          // grit, stones and patches over it, fading out toward the patch's edge
+          ${
+            plated
+              ? `// the plating, out to the patch's edge (its far side's past the horizon)
+          ${PLATE_DETAIL}
+          diffuseColor.rgb *= base * detail;`
+              : `// grit, stones and patches over it, fading out toward the patch's edge
           float n1 = texture2D(bumpMap, vBumpMapUv).r;
           float n2 = texture2D(bumpMap, vBumpMapUv * 7.31 + 0.37).r;
           float n3 = texture2D(bumpMap, vBumpMapUv * 0.117 + 0.71).r;
           float detail = (0.55 + 0.6 * n2) * (0.78 + 0.44 * n1) * (0.8 + 0.4 * n3);
-          diffuseColor.rgb *= base * mix(1.0, detail, 1.0 - vEdge);
+          diffuseColor.rgb *= base * mix(1.0, detail, 1.0 - vEdge);`
+          }
         }`,
-      );
+      )
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${plated ? PLATE_GLOW : ''}`);
   };
-  mat.customProgramCacheKey = () => 'foot-ground';
+  mat.customProgramCacheKey = () => (plated ? 'foot-ground-plated' : 'foot-ground');
   const mesh = new THREE.Mesh(g, mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = -1;
@@ -631,21 +803,21 @@ function createGround(planet, u, R) {
       g2.copy(t2);
     }
     let v = 0;
-    for (let i = 0; i <= PATCH.rings; i++) {
-      const rho = PATCH.radius * (i / PATCH.rings) ** 1.7;
+    for (let i = 0; i <= P.rings; i++) {
+      const rho = P.radius * (i / P.rings) ** 1.7;
       const ang = rho / R;
-      for (let j = 0; j < PATCH.segs; j++, v++) {
-        const th = (j / PATCH.segs) * Math.PI * 2;
+      for (let j = 0; j < P.segs; j++, v++) {
+        const th = (j / P.segs) * Math.PI * 2;
         const c = Math.cos(th);
         const s = Math.sin(th);
         dir.copy(t1).multiplyScalar(c).addScaledVector(t2, s).multiplyScalar(Math.sin(ang)).addScaledVector(centre, Math.cos(ang)).normalize();
-        const r = R + PATCH.lift * (1 - smooth(0.85, 1, i / PATCH.rings));
+        const r = R + P.lift * (1 - smooth(0.85, 1, i / P.rings));
         pos.set([dir.x * r, dir.y * r, dir.z * r], v * 3);
         nor.set([dir.x, dir.y, dir.z], v * 3);
         // the ground's own tiling, in metres along it (on axes that stay
         // put, so the grit doesn't slide as the patch moves on)
-        uv.set([(dir.dot(g1) * R) / (PATCH.tile * METRE), (dir.dot(g2) * R) / (PATCH.tile * METRE)], v * 2);
-        edge[v] = smooth(0.55, 1, i / PATCH.rings);
+        uv.set([(dir.dot(g1) * R) / (P.tile * METRE), (dir.dot(g2) * R) / (P.tile * METRE)], v * 2);
+        edge[v] = smooth(0.55, 1, i / P.rings);
       }
     }
     g.attributes.position.needsUpdate = true;
@@ -659,7 +831,7 @@ function createGround(planet, u, R) {
     mesh,
     // round n, if it's moved far enough from where the patch was laid
     follow(n) {
-      if (laidAt && vec.dot(laidAt, n) > Math.cos((PATCH.radius * 0.3) / R)) return;
+      if (laidAt && vec.dot(laidAt, n) > Math.cos((P.radius * 0.3) / R)) return;
       lay(n);
       laidAt = [...n];
     },
@@ -717,6 +889,184 @@ function createRocks(n0, R, u, small) {
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.instanceColor.needsUpdate = true;
+  mesh.computeBoundingSphere();
+  return {
+    mesh,
+    solids,
+    dispose() {
+      geo.dispose();
+      mat.dispose();
+      mesh.dispose();
+    },
+  };
+}
+
+// a plated material of its own (the walls of the trench, the blocks on a
+// station): `color` times the plating's shade, and its lit windows. Its uvs
+// are in plating tiles, or (`boxes`, for instanced boxes) laid on each face
+// from the box's own size, so a big one's plates are the size a small one's are
+function platedMaterial(color, { lights = true, vertexColors = false, boxes = false, flatShading = false } = {}) {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: boxes ? 0.12 : 0.3, bumpMap: platingTexture(), bumpScale: 2.2, envMapIntensity: 0.5, vertexColors, flatShading });
+  const tile = (HULL_PATCH.tile * METRE).toFixed(5);
+  mat.onBeforeCompile = (sh) => {
+    if (boxes)
+      sh.vertexShader = sh.vertexShader.replace(
+        '#include <uv_vertex>',
+        `#include <uv_vertex>
+        {
+          vec3 sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+          vec3 lp = position * sc;
+          vec3 an = abs(normal);
+          vec2 fuv = an.y > 0.5 ? lp.xz : an.x > 0.5 ? lp.zy : lp.xy;
+          vBumpMapUv = fuv / ${tile} + vec2(instanceMatrix[3].x, instanceMatrix[3].z) * 3.1;
+        }`,
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <map_fragment>', `#include <map_fragment>\n{${PLATE_DETAIL}\n          diffuseColor.rgb *= detail;\n}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${lights ? PLATE_GLOW : ''}`);
+  };
+  mat.customProgramCacheKey = () => `foot-plated-${lights ? 1 : 0}${boxes ? 'b' : ''}${flatShading ? 'f' : ''}`;
+  return mat;
+}
+
+// The trench's walls by you, from the rim down to where the trench run's
+// own walls (trench.js) are (its model's laid sunk below the surface, its
+// rim some way down), both sides of it and as far along as the patch goes;
+// and a row of lights along each rim. band: { half (the rim), deep (how far
+// down the trench run's rim is) }
+function createTrenchSides(n0, R, band) {
+  const group = new THREE.Group();
+  const lon0 = Math.atan2(n0[2], n0[0]);
+  const L = HULL_PATCH.radius / R; // (radians along, either way)
+  const ALONG = 128;
+  const DOWN = 6;
+  const deep = band.deep + 0.25 * band.deep + 2 * METRE; // (a little past the trench run's rim)
+  const pos = [];
+  const nor = [];
+  const uv = [];
+  const col = [];
+  const idx = [];
+  const tile = HULL_PATCH.tile * METRE;
+  for (const side of [-1, 1]) {
+    const first = pos.length / 3;
+    for (let i = 0; i <= ALONG; i++) {
+      const lon = lon0 - L + (2 * L * i) / ALONG;
+      for (let j = 0; j <= DOWN; j++) {
+        const d = (deep * j) / DOWN;
+        const rho = Math.sqrt(Math.max(0, (R - d) ** 2 - band.half ** 2));
+        pos.push(Math.cos(lon) * rho, side * band.half, Math.sin(lon) * rho);
+        nor.push(0, -side, 0); // facing across the trench
+        uv.push(((lon - lon0) * R) / tile, d / tile);
+        const k = 1 - 0.55 * (j / DOWN); // darker further down
+        col.push(k, k, k);
+      }
+    }
+    for (let i = 0; i < ALONG; i++) {
+      for (let j = 0; j < DOWN; j++) {
+        const a = first + i * (DOWN + 1) + j;
+        const b = a + DOWN + 1;
+        // (wound so its face is toward the trench's middle)
+        if (side > 0) idx.push(a, b, a + 1, b, b + 1, a + 1);
+        else idx.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setIndex(idx);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mat = platedMaterial('#9aa0a8', { vertexColors: true });
+  const walls = new THREE.Mesh(geo, mat);
+  walls.frustumCulled = false;
+  group.add(walls);
+  // the lights along each rim, every few metres
+  const EVERY = 9 * METRE;
+  const count = Math.floor((2 * L * R) / EVERY);
+  const lampGeo = new THREE.BoxGeometry(0.28 * METRE, 0.1 * METRE, 0.28 * METRE).translate(0, 0.05 * METRE, 0);
+  const lampMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff0d2').multiplyScalar(1.6), toneMapped: false });
+  const lamps = new THREE.InstancedMesh(lampGeo, lampMat, count * 2);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const one = new V(1, 1, 1);
+  const up = new V();
+  let k = 0;
+  for (const side of [-1, 1]) {
+    const lat = (band.half + 0.6 * METRE) / R;
+    for (let i = 0; i < count; i++, k++) {
+      const lon = lon0 - L + (2 * L * (i + 0.5)) / count;
+      up.set(Math.cos(lon) * Math.cos(lat), side * Math.sin(lat), Math.sin(lon) * Math.cos(lat));
+      q.setFromUnitVectors(new V(0, 1, 0), up);
+      lamps.setMatrixAt(k, m.compose(up.clone().multiplyScalar(R), q, one));
+    }
+  }
+  lamps.instanceMatrix.needsUpdate = true;
+  lamps.computeBoundingSphere();
+  group.add(lamps);
+  return {
+    mesh: group,
+    dispose() {
+      geo.dispose();
+      mat.dispose();
+      lampGeo.dispose();
+      lampMat.dispose();
+      lamps.dispose();
+    },
+  };
+}
+
+// On a station, for rocks: blocks of the hull standing on it, low ones and
+// big ones and the odd tower, square to the plating (and none in the
+// trench, or where the ship comes down: `clear` round n0)
+function createHullBits(n0, R, u, small, band, clear) {
+  const N = small ? 90 : 220;
+  let seed = 47;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const geo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+  const mat = platedMaterial('#ffffff', { boxes: true, flatShading: true });
+  const mesh = new THREE.InstancedMesh(geo, mat, N);
+  const tones = [u.palette?.base, u.palette?.light, u.palette?.base, '#9aa0a8', '#7a8089'].filter(Boolean);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const sc = new V();
+  const c = new THREE.Color();
+  const solids = [];
+  // (square to the trench, as the plating is laid)
+  const base = person(n0, band ? [-n0[2], 0, n0[0]] : Math.abs(n0[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]);
+  let placed = 0;
+  for (let tries = 0; placed < N && tries < N * 4; tries++) {
+    const d = clear + (4 + rand() ** 1.3 * 560) * METRE;
+    const a = rand() * Math.PI * 2;
+    const spot = offset(base, Math.cos(a) * d, Math.sin(a) * d, R);
+    const r = rand();
+    const [w, h, l] =
+      r < 0.05
+        ? [3 + rand() * 4, 9 + rand() * 18, 3 + rand() * 4] // a tower
+        : r < 0.2
+          ? [4 + rand() * 8, 1.5 + rand() * 4, 4 + rand() * 10] // a big block
+          : [0.6 + rand() * 2.6, 0.3 + rand() ** 2 * 2.2, 0.6 + rand() * 2.6];
+    const half = (Math.hypot(w, l) / 2) * METRE;
+    if (inTrench(spot.n, band, R, half + 2 * METRE)) continue;
+    const up = new V(...spot.n);
+    const along = new V(...spot.f);
+    const turn = Math.floor(rand() * 4) * (Math.PI / 2);
+    // y up from the ground, z along the plating, turned by a quarter now and then
+    const zAxis = along.clone().applyAxisAngle(up, turn);
+    const xAxis = new V().crossVectors(up, zAxis);
+    q.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, up, zAxis));
+    sc.set(w * METRE, h * METRE, l * METRE);
+    mesh.setMatrixAt(placed, m.compose(up.clone().multiplyScalar(R - 0.05 * METRE), q, sc));
+    mesh.setColorAt(placed, c.set(tones[Math.floor(rand() * tones.length)]).multiplyScalar(0.8 + rand() * 0.3));
+    if (Math.max(w, l) > 0.9) solids.push({ n: spot.n, r: (Math.max(w, l) / 2) * METRE });
+    placed++;
+  }
+  mesh.count = placed;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.computeBoundingSphere();
   return {
     mesh,
@@ -797,6 +1147,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let ground = null;
   let rocks = null;
   let haze = null;
+  let sides = null; // a trench's walls by you
   const owned = [];
   const rand = Math.random;
 
@@ -882,6 +1233,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     rest: 0,
     hover: null,
     arc: null, // the way round the planet, when the spot's a long way from where the ship came in
+    band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
+    hideBody: 0, // a station: how low the camera's to be for its own model to go (0: it stays)
+    bodyShown: true,
     // the people
     lead: 0, // which of the party you play
     me: null,
@@ -1038,10 +1392,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // ── begin: down onto the planet `id` from where the ship is ──
   // where to come down beside a friend's ship already down (`near`, its { n,
   // f }): alongside it, a ship's length or so off its right, facing the same way
+  // (by a trench, their right's toward it: behind them along it instead)
   const beside = (near, kind) => {
     const gap = 0.26 * 0.62 * ((PARKED[near.kind] ?? 1.5) + (PARKED[kind] ?? 1)) + 8 * METRE;
-    const o = offset(person(near.n, near.f), -2 * METRE, gap, S.R);
-    return { n: o.n, f: o.f };
+    const o = S.band ? offset(person(near.n, near.f), -gap * 1.6, 0, S.R) : offset(person(near.n, near.f), -2 * METRE, gap, S.R);
+    return { n: o.n, f: S.band ? near.f : o.f };
   };
   const begin = ({ id, ship, model, kind, light, near = null }) => {
     const planet = planetOf[id];
@@ -1052,11 +1407,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.model = model;
     S.R = u.size;
     S.c.set(...POSITIONS[id]);
+    // a trench round its middle: its rim (a little out from the trench run's
+    // own walls, so the two don't fight), and how far down they start
+    const tr = u.trench ? trenchOf({ at: POSITIONS[id], r: S.R, trench: u.trench }) : null;
+    S.band = tr ? { half: tr.width / 2 + 0.03, home: tr.home, arc: tr.arc, deep: TRENCH_MODEL.sink * tr.scale } : null;
     const from = [ship.x, ship.y, ship.z];
     const fwd3 = [-Math.sin(ship.heading), 0, -Math.cos(ship.heading)];
-    // beside a friend already down here, or wherever's below, leaning to the day
+    // beside a friend already down here, or wherever's below, leaning to the
+    // day (by a trench: beside it, the door toward it)
     const n0 = landingSpot(from, arr(S.c), light);
-    S.spot = near ? beside(near, kind) : { n: n0, f: facingAlong(n0, fwd3) };
+    const clear = 0.62 * 0.26 * (PARKED[kind] ?? 1);
+    S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : { n: n0, f: facingAlong(n0, fwd3) };
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
     // the surface to get there, rather than through the planet
@@ -1080,14 +1441,21 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the planet holds still under you, and its air goes (you're in it)
     planet.hold?.(true);
     if (planet.air) planet.air.visible = false;
-    // the ground, the rocks and the air
-    ground = createGround(planet, u, S.R);
+    // the ground, the rocks and the air (a station's hull, its blocks and
+    // none; and a trench's walls)
+    ground = createGround(planet, u, S.R, S.band);
     ground.follow(n);
     root.add(ground.mesh);
-    rocks = createRocks(n, S.R, u, small);
+    rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
-    haze = createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
-    root.add(haze.mesh);
+    haze = u.airless ? null : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    if (haze) root.add(haze.mesh);
+    sides = S.band ? createTrenchSides(n, S.R, S.band) : null;
+    if (sides) root.add(sides.mesh);
+    // (a station's own model goes once the camera's low enough that the
+    // patch reaches past the horizon)
+    S.bodyShown = planet.body?.visible ?? true;
+    S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : 0;
     root.position.copy(S.c);
     root.visible = true;
     party = null;
@@ -1161,7 +1529,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const mateP = () => party?.[1 - S.lead] ?? null;
 
   // (the other pilots' ships down here too)
-  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : []))];
+  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
 
@@ -1474,7 +1842,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.cleared && S.clock > S.nextSquad) {
       const kinds = S.squads < 1 ? ['gromflomite'] : S.squads < 3 ? ['gromflomite', 'gromflomite', 'cop'] : ['gromflomite', 'cop', 'cop', 'gazorpian'];
       const count = Math.min(5, 2 + S.squads + Math.floor(rand() * 2));
-      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds })];
+      S.troops = [...S.troops.filter((o) => o.alive || o.dead < 3), ...squad(rand, S.me, S.R, { count, kinds, band: S.band })];
       S.squads++;
       S.cleared = false;
       emit({ type: 'foot', id: 'squad' });
@@ -1692,6 +2060,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.look.lerp(out.look, k);
       S.cam.up.lerp(out.up, k).normalize();
     } else S.cam = { ...S.cam, pos: out.pos.clone(), look: out.look.clone(), up: out.up.clone() };
+    // a station's own model: not while the camera's down by the ground
+    const body = planetOf[S.id]?.body;
+    if (body && S.hideBody) body.visible = S.bodyShown && S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
     // the air: round the camera, by day
     if (haze) {
       haze.mesh.position.copy(S.cam.pos).sub(S.c);
@@ -1828,6 +2199,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const planet = planetOf[S.id];
       planet?.hold?.(false);
       if (planet?.air) planet.air.visible = true;
+      if (planet?.body && S.hideBody) planet.body.visible = S.bodyShown;
+      S.hideBody = 0;
+      S.band = null;
       for (const p of party ?? []) {
         root.remove(p.group);
         p.fig.dispose?.();
@@ -1839,12 +2213,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
-      for (const x of [ground, rocks, haze]) {
+      for (const x of [ground, rocks, haze, sides]) {
         if (!x) continue;
         root.remove(x.mesh);
         x.dispose();
       }
-      ground = rocks = haze = null;
+      ground = rocks = haze = sides = null;
       cast?.dispose();
       cast = null;
       for (const o of owned) o?.dispose?.();

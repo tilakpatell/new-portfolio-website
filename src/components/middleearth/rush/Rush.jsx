@@ -7,6 +7,10 @@ import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
 import { PONY } from './levels/pony';
+import { AMON_HEN } from './levels/amonhen';
+import { LORIEN } from './levels/lorien';
+import { MORIA } from './levels/moria';
+import { RIVENDELL } from './levels/rivendell';
 import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
@@ -22,8 +26,7 @@ import './rush.css';
 // touch screen).
 
 const BEST = (id) => `tp-rush-best-${id}`;
-const ICON = { pint: '🍺', stew: '🍲', bread: '🍞' };
-const STEPS = { pint: ['mug', 'tap'], stew: ['chop 3', 'pot', 'bowl'], bread: ['dough', 'oven'] };
+const LEVELS = { pony: PONY, rivendell: RIVENDELL, moria: MORIA, lorien: LORIEN, amonhen: AMON_HEN };
 const GRAB = new Set(['KeyE', 'Space', 'Enter']);
 const WORK = new Set(['KeyF', 'KeyQ']);
 const NO_HOST_MS = 15000; // a room with no host answering by now: say so
@@ -33,7 +36,8 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 const relay = () => (import.meta.env.DEV && typeof window !== 'undefined' && window.__RUSH_RELAY__ ? { load: window.__RUSH_RELAY__ } : {});
 const inviteLink = (level, code) => `${window.location.origin}${window.location.pathname}#/middle-earth/${level.town}?rush=${code}`;
 
-export default function Rush({ level = PONY }) {
+export default function Rush({ level: which = 'pony' }) {
+  const level = typeof which === 'string' ? (LEVELS[which] ?? PONY) : which;
   const three = use3D();
   const { search } = useLocation();
   const invite = cleanCode(new URLSearchParams(search).get('rush'));
@@ -55,16 +59,14 @@ export default function Rush({ level = PONY }) {
         <h2 id={`${level.id}-rush-title`} className="rush-title">
           {level.name}
         </h2>
-        <p className="rush-lead">
-          The common room’s full, Nob and Bob are nowhere, and {level.host} wants pints, stew and bread out through the hatch. Fetch, chop, cook, pour, serve, and wash up before the mugs run out. Alone, or with friends anywhere: make a room and send them the code.
-        </p>
+        <p className="rush-lead">{level.lead} Alone, or with friends anywhere: make a room and send them the code.</p>
       </div>
       {three.on ? seen && <Kitchen level={level} live={inView} invite={invite} /> : <p className="shell rush-no3d">This one needs 3D. {three.can ? 'Switch 3D on in the settings to play it.' : 'This browser can’t draw it.'}</p>}
       <ul className="rush-recipes shell">
         {Object.entries(level.dishes).map(([d, r]) => (
           <li key={d}>
             <span className="rush-recipe-icon" aria-hidden="true">
-              {ICON[d]}
+              {r.icon}
             </span>
             <b>{r.name}</b> <span>{r.note}</span>
           </li>
@@ -290,7 +292,7 @@ function Kitchen({ level, live, invite }) {
     let chopped = false;
     for (const e of ev) {
       a.fx(e);
-      if (e.type === 'chop' || e.type === 'scrub') {
+      if (e.type === 'chop' || e.type === 'scrub' || e.type === 'reel') {
         if (!chopped && Math.floor(sm.t * 7) !== Math.floor((sm.t - 0.016) * 7)) sound(e.type);
         chopped = true;
         continue;
@@ -496,11 +498,11 @@ function Kitchen({ level, live, invite }) {
               return (
                 <li key={o.id} className="rush-ticket" data-late={k < 0.3 || undefined}>
                   <span className="rush-ticket-icon" aria-hidden="true">
-                    {ICON[o.dish]}
+                    {level.dishes[o.dish].icon}
                   </span>
                   <span className="rush-ticket-name">{level.dishes[o.dish].name}</span>
                   <span className="rush-ticket-steps" aria-hidden="true">
-                    {STEPS[o.dish].join(' › ')}
+                    {level.dishes[o.dish].steps.join(' › ')}
                   </span>
                   <span className="rush-ticket-bar" aria-hidden="true">
                     <span style={{ transform: `scaleX(${Math.max(0, k)})`, background: `hsl(${Math.round(k * 110)} 70% 48%)` }} />
@@ -531,8 +533,8 @@ function Kitchen({ level, live, invite }) {
       {phase === 'lobby' && gl === 'on' && menu === 'menu' && (
         <div className="rush-card" role="dialog" aria-label={level.name}>
           <p className="rush-card-title">{level.name}</p>
-          <p className="rush-card-say">Three minutes, as many orders as you can. Things burn, mugs run out, and the customers don’t wait.</p>
-          <Keys touch={touch} />
+          <p className="rush-card-say">Three minutes, as many orders as you can. Things burn, the cups run out, and no one waits for long.</p>
+          <Keys touch={touch} work={level.work} />
           <div className="shire-panel-row">
             <button type="button" className="btn btn-primary btn-sm" onClick={start}>
               Play alone
@@ -602,7 +604,7 @@ function Kitchen({ level, live, invite }) {
               </li>
             ))}
           </ol>
-          <Keys touch={touch} />
+          <Keys touch={touch} work={level.work} />
           <div className="shire-panel-row">
             {isHost && (
               <>
@@ -712,14 +714,15 @@ function Kitchen({ level, live, invite }) {
   );
 }
 
-function Keys({ touch }) {
+// (what holding Work does: a level can say, if it's more than chopping)
+function Keys({ touch, work = 'chop, wash, scrape' }) {
   return (
     <ul className="rush-keys">
       {touch ? (
         <>
           <li>Stick: walk</li>
           <li>Grab: pick up, put down, serve</li>
-          <li>Hold Work: chop, wash, scrape</li>
+          <li>Hold Work: {work}</li>
           <li>Dash: a quick dash</li>
         </>
       ) : (
@@ -734,7 +737,7 @@ function Keys({ touch }) {
             <kbd>E</kbd> or <kbd>Space</kbd> pick up, put down, serve
           </li>
           <li>
-            hold <kbd>F</kbd> chop, wash, scrape
+            hold <kbd>F</kbd> {work}
           </li>
           <li>
             <kbd>Shift</kbd> dash

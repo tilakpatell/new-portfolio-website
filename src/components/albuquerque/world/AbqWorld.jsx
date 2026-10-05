@@ -10,6 +10,7 @@ import { rankFor } from '../metherria/rules';
 import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
+import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { COLLIDERS, CRYSTALS, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, crystalAt, hankAt, nearPlace, onRoad, progress, startRun, stepCar, stepHeat, stepRun, timeName } from './rules';
 import './world.css';
 
@@ -18,6 +19,10 @@ import './world.css';
 // ./scene.js; this is the wheel, the HUD and the doors. Each place opens over
 // the page (its game, or Walt's house, or Saul's office); leave and you're
 // back in the car at its door. Without 3D, the places are a grid of cards.
+// Online (the site's own switch), everyone else driving Albuquerque shows as
+// a ghost Aztek, and you in theirs (the Middle-earth towns' travellers, a
+// room of its own: ../../middleearth/towns/useTravellers.js); in a place,
+// you're out of their sight till you're back in the car.
 
 const Metherria = lazy(() => import('../metherria/Metherria'));
 const CasaTranquila = lazy(() => import('../casa/CasaTranquila'));
@@ -58,6 +63,9 @@ function honk() {
 }
 const clockText = (s) => `${Math.floor(s / 60)}:${String(Math.ceil(s) % 60).padStart(2, '0')}`;
 const KEYS = { up: ['ArrowUp', 'w', 'W'], down: ['ArrowDown', 's', 'S'], left: ['ArrowLeft', 'a', 'A'], right: ['ArrowRight', 'd', 'D'] };
+const BOUND = WORLD_RADIUS + 20; // (how far out a driver's step can be: the fence, and a bit)
+// where you are, for the other drivers (towns/travellers.js's step)
+const stepOf = (car, speed = car.speed) => ({ x: car.x, z: car.z, face: Math.atan2(Math.sin(car.yaw), Math.cos(car.yaw)), speed: Math.abs(speed) });
 const DRIVE = new Set(Object.values(KEYS).flat().concat(' '));
 
 export default function AbqWorld() {
@@ -150,6 +158,9 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     sim.current = { car: { ...(ok ? parked : SPAWN), speed: 0 }, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id };
   }
   const { unlock } = useAchievements();
+  // the other drivers online, as ghosts (towns/useTravellers)
+  const trav = useTravellers('abq', gl === 'on', { bound: BOUND });
+  const travRef = trav.ref;
   const [hud, setHud] = useState({ near: null, heat: 0, moved: false, wash: false, run: null });
   const [blue, setBlue] = useState(() => sim.current.blue.length);
   const [clock, setClock] = useState(TIMES[0]);
@@ -244,6 +255,16 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   useEffect(() => {
     api.current?.setPlaces(prog);
   }, [api, prog]);
+
+  // in a place: out of the other drivers' sight (said every second, as the
+  // frame loop that'd say where you are is stopped)
+  useEffect(() => {
+    if (!inside) return undefined;
+    const say = () => travRef.current?.pose(stepOf(sim.current.car, 0), { inside: true });
+    say();
+    const t = setInterval(say, 1000);
+    return () => clearInterval(t);
+  }, [inside, travRef]);
 
   // keys: drive while the world's on screen and nothing's open over it
   const live = gl === 'on' && inView && !inside;
@@ -361,8 +382,12 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       }
     }
     const asphalt = onRoad(car.x, car.z, ROADS.filter((r) => !r.dirt));
+    // the other drivers: where you are to them, and where they are
+    const tv = travRef.current;
+    tv?.pose(stepOf(s.car));
+    s.others = tv ? tv.list() : [];
     try {
-      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, onRoad: onRoad(car.x, car.z), asphalt, bump }, ms);
+      a.render({ car: s.car, hank, heat: s.heat, near: at?.id ?? null, steer: s.steer, throttle, onRoad: onRoad(car.x, car.z), asphalt, bump, travellers: s.others }, ms);
     } catch {
       a.dispose();
       api.current = null;
@@ -377,7 +402,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       hudKey.current = key;
       setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run);
+    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others);
   }, live);
 
   // the touch stick: drag from where you put your thumb
@@ -437,6 +462,16 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
           <p className="abq-hud-chip abq-hud-blue" title="Blue Sky crystals found in the desert">
             <span aria-hidden="true">◆</span> Blue Sky <b>{blue}</b>/{CRYSTALS.length}
           </p>
+          {trav.available &&
+            (trav.on ? (
+              <p className="abq-hud-chip abq-hud-online" data-on="" title="Everyone else online in Albuquerque drives about as a ghost Aztek from another world: they can’t touch your career, nor you theirs">
+                <b>{trav.count}</b> {trav.count === 1 ? 'other driver' : 'other drivers'} in town
+              </p>
+            ) : (
+              <button type="button" className="abq-hud-chip abq-hud-online" onClick={trav.join} title="Go online, and see everyone else driving Albuquerque as a ghost from another world">
+                See other drivers
+              </button>
+            ))}
           <canvas ref={map} className="abq-map" width="150" height="150" aria-hidden="true" />
           {hud.heat > 0 && (
             <div className="abq-heat" role="meter" aria-label="Hank’s on you" aria-valuemin={0} aria-valuemax={1} aria-valuenow={hud.heat}>
@@ -540,11 +575,12 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   );
 }
 
-// The map in the corner: the roads, the places, Hank and you.
+// The map in the corner: the roads, the places, Hank, the other drivers
+// online (pale, out of any place) and you.
 // (the town fills it; out in the dunes the car's arrow rides the rim)
 const MAP_RADIUS = Math.min(WORLD_RADIUS, 250);
 const MAP_SCALE = 150 / (MAP_RADIUS * 2 + 20);
-function drawMap(c, car, hank, prog, blue = [], run = null) {
+function drawMap(c, car, hank, prog, blue = [], run = null, others = []) {
   const g = c?.getContext('2d');
   if (!g) return;
   const at = (x, z) => [75 + x * MAP_SCALE, 75 + z * MAP_SCALE];
@@ -598,6 +634,14 @@ function drawMap(c, car, hank, prog, blue = [], run = null) {
     const k = d > MAP_RADIUS ? MAP_RADIUS / d : 1;
     return at(x * k, z * k);
   };
+  g.fillStyle = 'rgba(190, 210, 255, 0.85)';
+  for (const o of others ?? []) {
+    if (o.inside) continue;
+    const [ox, oy] = rim(o.x, o.z);
+    g.beginPath();
+    g.arc(ox, oy, 3, 0, Math.PI * 2);
+    g.fill();
+  }
   if (run) {
     const [dx, dy] = rim(run.x, run.z);
     g.fillStyle = '#58ff8a';

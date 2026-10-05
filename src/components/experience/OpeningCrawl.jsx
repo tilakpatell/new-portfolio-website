@@ -6,7 +6,9 @@ import { audioContext } from '../../lib/audio';
 
 // An opening crawl. `variant="career"` (the Experience page) tells the career
 // so far, every line from the roles there; `variant="intro"` is the site's
-// welcome on a first visit, shorter, before the jump to lightspeed. Plain CSS
+// welcome on a first visit, shorter, before the jump to lightspeed; or a
+// `story` of its own ({ episode, title, paragraphs, seconds? }: a mission's
+// briefing in the galaxy, galaxy/crawls.js). Plain CSS
 // 3D, so it plays without a GPU too. It renders into <body> so it covers the
 // nav (the page's <main> is its own stacking context).
 
@@ -33,10 +35,10 @@ const STORIES = {
   },
 };
 
-export default function OpeningCrawl({ onClose, variant = 'career' }) {
+export default function OpeningCrawl({ onClose, variant = 'career', story: own = null }) {
   const close = useRef(null);
   const reduced = prefersReducedMotion();
-  const story = STORIES[variant] ?? STORIES.career;
+  const story = own ? { seconds: 40, ...own } : (STORIES[variant] ?? STORIES.career);
   const started = useRef(performance.now());
   const music = useRef(null);
   // before a first click the browser holds sound back; then a button offers it
@@ -100,7 +102,7 @@ export default function OpeningCrawl({ onClose, variant = 'career' }) {
           {variant === 'intro' ? 'Skip intro' : 'Skip'}
         </button>
       </div>
-      {!reduced && <p className="crawl-intro">A long time ago, in a dorm room at Northeastern…</p>}
+      {!reduced && <p className="crawl-intro">{own ? 'A long time ago in a galaxy far, far away….' : 'A long time ago, in a dorm room at Northeastern…'}</p>}
       <div className={reduced ? 'crawl-static' : 'crawl-stage'}>
         <div className="crawl-text">
           <p className="crawl-episode">{story.episode}</p>

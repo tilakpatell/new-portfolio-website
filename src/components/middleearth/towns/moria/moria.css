@@ -1,0 +1,29 @@
+/* Moria: the Shire's HUD (../../shire/shire.css) under the moon at the
+   West-gate and in the dark of the halls, with the panels for the Watcher,
+   the falling dwarf, the troll and the bridge. */
+
+.moria-world { --shire-glass: rgba(10, 12, 18, 0.8); --shire-glass-hi: rgba(12, 14, 22, 0.92); }
+.moria-stage { background: linear-gradient(180deg, #050812 0%, #18223a 58%, #10141a 60%, #06070a 100%); }
+.moria-stage[data-zone='halls'], .moria-stage[data-zone='flight'] { background: radial-gradient(ellipse at 50% 40%, #1a1a20 0%, #060608 70%); }
+.moria-stage .shire-loading { color: #c8cce0; }
+.moria-stage[data-mode='talk'] .shire-canvas, .moria-stage[data-mode='cut'] .shire-canvas, .moria-stage[data-mode='tumble'] .shire-canvas, .moria-stage[data-mode='flight'] .shire-canvas, .moria-stage[data-mode='bridge'] .shire-canvas, .moria-stage[data-mode='end'] .shire-canvas { cursor: default; touch-action: none; }
+
+/* a game's panel, up top in the middle, out of the way of the action */
+.moria-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(26rem, calc(100% - 1.4rem)); }
+.moria-game .shire-meter { width: 100%; box-sizing: border-box; }
+.moria-game[data-hunting] { border-color: rgba(255, 90, 40, 0.75); animation: shire-tempt 0.5s ease-in-out infinite alternate; }
+.moria-meter-hold span { background: linear-gradient(90deg, #6a8cff, #e8f0ff); }
+.moria-meter-run span { background: linear-gradient(90deg, #8a8a9a, #f0e0c0); }
+.moria-meter-fire span { background: linear-gradient(90deg, #ffd06a, #ff4a1a 60%, #8a1404); }
+.moria-warn { color: #ffb070; font-weight: 600; }
+.moria-big { min-width: 7rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* the end: out into the light */
+.moria-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  /* a game's panel takes the top of a phone's screen */
+  .moria-stage[data-game] .shire-hud-top { display: none; }
+  .moria-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
+  .moria-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+}

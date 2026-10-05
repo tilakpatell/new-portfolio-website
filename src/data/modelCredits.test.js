@@ -24,7 +24,7 @@ describe('the 3D models that are other people’s', () => {
 
   it('are each in the site, and each used by a page that shows its credit', () => {
     const code = sources().join('\n');
-    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx' };
+    const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
       // where it is: its own `file`, or under its name with the rest from Sketchfab
       const file = m.file ?? `/models/sketchfab/${name}.glb`;
@@ -33,6 +33,11 @@ describe('the 3D models that are other people’s', () => {
       expect(code.includes(file) || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
+      // and every other page that shows it, its credit too
+      for (const page of m.also ?? []) {
+        expect(shown[page], `${name}: also ${page}`).toBeTruthy();
+        expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
+      }
     }
   });
 });

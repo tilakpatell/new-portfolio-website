@@ -106,12 +106,15 @@ export default function RickMorty() {
             Wubba lubba dub dub.
           </h1>
           <p className="lead mt-6 max-w-[48ch]">
-            Rick and Morty, every season of it. Fire the portal gun to see another dimension, play Portal panic across four of them, press the Meeseeks box, see what’s on interdimensional cable, watch a plumbus get made and give the butter robot its purpose.
+            Rick and Morty, every season of it. Fire the portal gun to see another dimension, walk about the Citadel of Ricks, play Portal panic across four of them, press the Meeseeks box, see what’s on interdimensional cable, watch a plumbus get made and give the butter robot its purpose.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" className="btn btn-primary" onClick={fire}>
               Fire the portal gun
             </button>
+            <Link to="/c-137/citadel" className="btn btn-ghost">
+              Enter the Citadel
+            </Link>
             <a href="#portal-panic" className="btn btn-ghost">
               Play Portal panic
             </a>
