@@ -6,10 +6,11 @@
 // behind them, all in the map's space.
 //
 // The people: Rick, Morty and the Federation's troops are the Portal panic
-// cast (rickmorty/portal/meshyCast.js), with their own clips; Walt, Jesse
-// and Chewie are the site's Meshy figures (Albuquerque's, the cockpits'),
-// walking and running on Rick's clips (one skeleton for every Meshy figure);
-// Han, Luke and Artoo, who have no figures, are built here from shapes. Each
+// cast (rickmorty/portal/meshyCast.js), with their own clips; Walt, Jesse,
+// Chewie, Han and Luke are the site's Meshy figures (Albuquerque's, the
+// cockpits', the galaxy's: scripts/meshy-galaxy.mjs), walking and running on
+// Rick's clips (one skeleton for every Meshy figure); Artoo, who has no
+// figure here, is built from shapes (and anyone whose model won't load). Each
 // holds the gun they'd carry (gunplay.js: built in code, set in the hand,
 // brought up and aimed with the arms, chest and head, kicking when fired).
 //
@@ -87,7 +88,7 @@ export const PARTY = {
     { id: 'han', name: 'Han', tall: 1.85, src: { url: '/models/galaxy/crew/han.glb' }, gun: 'blaster', bolt: '#ff4a3d' },
   ],
   xwing: [
-    { id: 'luke', name: 'Luke', tall: 1.72, src: { built: 'luke' }, gun: 'blaster', bolt: '#ff3b30' },
+    { id: 'luke', name: 'Luke', tall: 1.72, src: { url: '/models/galaxy/crew/luke.glb' }, gun: 'blaster', bolt: '#ff3b30' },
     { id: 'artoo', name: 'Artoo', tall: 1.09, src: { built: 'artoo' }, gun: null, bolt: null },
   ],
 };
