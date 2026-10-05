@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, PLANETS, SHIP, SOLIDS, autopilot, forward, orbiting, parkAt, spawn, step } from './ship';
+import { EDGE, PLANETS, SHIP, SOLIDS, autopilot, ceilingAt, forward, orbiting, parkAt, spawn, step } from './ship';
+import { DEEP, WONDERS } from './deep';
 import { ORDER } from './layout';
 
 const fly = (s, input, seconds, solids = SOLIDS) => {
@@ -94,12 +95,60 @@ describe('flying the ship', () => {
   });
 
   it('is turned back at the edge of the map', () => {
-    const s = { ...spawn(null), heading: Math.PI }; // facing out, past the edge
+    const s = { ...spawn(null), z: EDGE - 3, heading: Math.PI }; // facing out, near the edge
     const { ship, events } = fly(s, { throttle: 1 }, 3, []);
     expect(Math.hypot(ship.x, ship.z)).toBeLessThanOrEqual(EDGE + 1e-9);
     expect(events.filter((e) => e.type === 'edge')).toHaveLength(1);
     const [fx, fz] = forward(ship.heading);
     expect((-fx * ship.x - fz * ship.z) / Math.hypot(ship.x, ship.z)).toBeGreaterThan(0.5); // nose back toward the middle
+  });
+});
+
+describe('deep space', () => {
+  const open = { ...spawn(null), x: 0, z: DEEP.open + 200, heading: Math.PI }; // out past the system, facing further out
+
+  it('boosts up to the pulse drive out there, and only to the boost at home', () => {
+    expect(fly(open, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2);
+    expect(fly(spawn(null), { throttle: 1, boost: true }, 6, []).ship.speed).toBeCloseTo(SHIP.boost, 1);
+  });
+
+  it('falls back to the home system’s speeds by the time it comes home at pulse speed', () => {
+    let s = { ...open, heading: 0, speed: SHIP.pulse }; // facing home, flat out
+    for (let t = 0; t < 30 && Math.hypot(s.x, s.z) > DEEP.system; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship;
+    expect(Math.hypot(s.x, s.z)).toBeLessThanOrEqual(DEEP.system);
+    expect(s.speed).toBeLessThanOrEqual(SHIP.boost + 0.5);
+  });
+
+  it('can climb far higher out there than at home', () => {
+    expect(ceilingAt(open.x, open.z)).toBe(DEEP.ceiling);
+    expect(ceilingAt(0, 0)).toBe(SHIP.ceiling);
+    const { ship } = fly(open, { climb: 1 }, 20, []);
+    expect(ship.y).toBeGreaterThan(DEEP.ceiling - 25);
+    expect(ship.y).toBeLessThan(DEEP.ceiling + 5);
+  });
+
+  it('lets the ship down into the Death Star’s trench, and only there', () => {
+    const ds = SOLIDS.find((o) => o.id === 'deathstar');
+    expect(ds.band).toBeTruthy();
+    // level with the trench, heading straight in, slowly: it stops near the floor
+    const at = (dy) => ({ ...spawn(null), x: ds.at[0], y: ds.at[1] + dy, z: ds.at[2] + ds.r + 3, heading: 0, speed: 2 });
+    const into = fly(at(0), { throttle: 0.3 }, 6).ship;
+    const d = Math.hypot(into.x - ds.at[0], into.y - ds.at[1], into.z - ds.at[2]);
+    expect(d).toBeLessThan(ds.r - 1.5);
+    expect(d).toBeGreaterThanOrEqual(ds.band.floor + SHIP.radius - 1e-6);
+    // above the trench, it's the surface that stops it
+    const off = fly(at(ds.band.half + 2), { throttle: 0.3 }, 6).ship;
+    expect(Math.hypot(off.x - ds.at[0], off.y - ds.at[1], off.z - ds.at[2])).toBeGreaterThanOrEqual(ds.r + SHIP.radius - 1e-6);
+  });
+
+  it('crashes into a wonder, never through it', () => {
+    for (const w of WONDERS.filter((o) => o.solid !== false)) {
+      // from 120 out, level with it, flat out at it
+      const s = { ...spawn(null), x: w.at[0], y: w.at[1], z: w.at[2] + w.r + 120, heading: 0, speed: SHIP.pulse };
+      const { ship, events } = fly(s, { throttle: 1, boost: true }, 4);
+      expect(inside(ship), w.id).toBe(false);
+      expect(events.some((e) => e.type === 'crash' && e.id === w.id), w.id).toBe(true);
+    }
   });
 });
 

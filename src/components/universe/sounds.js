@@ -423,3 +423,39 @@ export const bumpSound = () => {
   tones([[140, 0, 0.18]], { type: 'sawtooth', gain: 0.08 });
   whoosh(0.2, 300, 120, 0.12);
 };
+
+// A laser hitting your shields: a crackle and a thump
+export function hitSound() {
+  whoosh(0.35, 3000, 600, 0.2);
+  tones([[70, 0, 0.18]], { type: 'sine', gain: 0.2 });
+  tones(
+    [
+      [880, 0, 0.04],
+      [660, 0.05, 0.05],
+    ],
+    { type: 'sawtooth', gain: 0.025 },
+  );
+}
+
+// Shields nearly gone: two falling alarm tones
+export function alarmSound() {
+  tones(
+    [
+      [740, 0, 0.16],
+      [520, 0.2, 0.22],
+      [740, 0.5, 0.16],
+      [520, 0.7, 0.22],
+    ],
+    { type: 'square', gain: 0.035 },
+  );
+}
+
+// A hunter's shot going past: a short, thin zap
+export function enemyFireSound() {
+  tones([[1400, 0, 0.07]], { type: 'sawtooth', gain: 0.012 });
+}
+
+// Something big dropping out of hyperspace (or into it)
+export function jumpSound(out = false) {
+  playClip(out ? 'hyperspaceEnter' : 'hyperspaceExit', { duration: 2.2 });
+}
