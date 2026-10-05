@@ -70,7 +70,7 @@ button.abq-hud-online:hover, button.abq-hud-online:focus-visible { border-color:
 .abq-door .btn { margin-top: 0.4rem; }
 .abq-world .btn-primary { background: var(--abq-gold); color: #16130a; }
 .abq-world kbd, .abq-place kbd { margin-left: 0.4rem; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.4 var(--font-mono); opacity: 0.75; }
-.abq-hint { position: absolute; left: 50%; bottom: clamp(5.5rem, 12%, 6.5rem); margin: 0; padding: 0.45rem 0.8rem; border-radius: 6px; background: var(--abq-glass); color: var(--abq-ink); font: 600 0.82rem/1.3 var(--font-mono); transform: translateX(-50%); white-space: nowrap; }
+.abq-hint { position: absolute; left: 50%; bottom: clamp(5.5rem, 12%, 6.5rem); width: max-content; max-width: min(46rem, calc(100% - 1.5rem)); margin: 0; padding: 0.45rem 0.8rem; border-radius: 6px; background: var(--abq-glass); color: var(--abq-ink); font: 600 0.82rem/1.45 var(--font-mono); text-align: center; transform: translateX(-50%); pointer-events: none; }
 .abq-places-btn + .abq-places-btn { margin-left: 0.5rem; }
 .abq-places-btn:disabled { opacity: 0.7; }
 .abq-places-btn { margin-left: auto; background: var(--abq-glass) !important; color: var(--abq-ink) !important; border-color: rgba(255, 255, 255, 0.35) !important; }
@@ -112,10 +112,38 @@ button.abq-hud-online:hover, button.abq-hud-online:focus-visible { border-color:
 /* without 3D: the places as cards */
 .abq-cards-wrap { padding-top: 2.5rem; padding-bottom: 1rem; }
 .abq-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.9rem; margin: 2rem 0 0; padding: 0; list-style: none; }
+/* the handbrake, under the other thumb, and the speedometer */
+.abq-hand { position: absolute; right: clamp(0.75rem, 2vw, 1.25rem); bottom: 4.9rem; width: 76px; height: 76px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(15, 18, 14, 0.45); color: var(--abq-ink); font: 700 1.05rem/1 var(--font-mono); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.abq-hand[data-on] { background: rgba(214, 60, 44, 0.85); border-color: #ffd9d2; }
+.abq-hud-speed b { display: inline-block; min-width: 2ch; color: var(--abq-ink); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* the driving settings: the Places list's panel, with sliders */
+.abq-drive { display: grid; gap: 0.8rem; }
+.abq-drive .abq-list-head { margin-bottom: 0; }
+.abq-drive-row { display: grid; gap: 0.3rem; margin: 0; }
+.abq-drive-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.abq-drive-top output { min-width: 3.4em; color: var(--abq-gold); font: 600 0.78rem/1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.abq-drive input[type='range'] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0; background: transparent; cursor: pointer; touch-action: pan-y; }
+.abq-drive input[type='range']::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--abq-gold) var(--fill, 50%), rgba(255, 255, 255, 0.18) var(--fill, 50%)); }
+.abq-drive input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); }
+.abq-drive input[type='range']::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--abq-gold); }
+.abq-drive input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border: 2px solid #10140f; border-radius: 50%; background: var(--abq-gold); }
+.abq-drive input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border: 2px solid #10140f; border-radius: 50%; background: var(--abq-gold); }
+.abq-drive input[type='range']:focus-visible { outline: 2px solid var(--abq-gold); outline-offset: 3px; border-radius: 4px; }
+.abq-drive .abq-drive-moves { display: grid; gap: 0.35rem; margin: 0; padding: 0.7rem 0 0; border-top: 1px solid rgba(255, 255, 255, 0.12); list-style: none; color: #b9c2b4; font-size: 0.8rem; line-height: 1.4; }
+.abq-drive .abq-drive-moves li { display: block; padding: 0; background: none; }
+.abq-drive-moves b { margin-right: 0.3rem; color: var(--abq-ink); }
+.abq-drive > .btn { justify-self: start; }
+
 .abq-cards li { display: flex; flex-direction: column; align-items: flex-start; padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 .abq-cards .abq-list-sub { color: var(--muted); }
 .abq-cards li:not([data-open]) { opacity: 0.75; }
 
+@media (max-width: 767px) {
+  /* four buttons along the foot: onto a second row before they run off the side */
+  .abq-hud-bottom { flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
+  .abq-hud-bottom .abq-places-btn { margin-left: 0 !important; }
+}
 @media (max-width: 639px) {
   /* three buttons along the foot: smaller, without their keys, and onto a second row if they must */
   .abq-hud-bottom { flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
@@ -129,6 +157,11 @@ button.abq-hud-online:hover, button.abq-hud-online:focus-visible { border-color:
   .abq-hud-chip { font-size: 0.72rem; }
   .abq-heat-bar { width: 4.5rem; }
   .abq-door { bottom: 9.5rem; }
+  /* the handbrake over the buttons' end, the door's prompt over the handbrake, the hint over the stick */
+  .abq-hand { bottom: 7.4rem; width: 70px; height: 70px; }
+  .abq-stick { margin-right: auto; }
+  .abq-world-stage[data-touch] .abq-door { bottom: 12.8rem; }
+  .abq-world-stage[data-touch] .abq-hint { bottom: 13rem; }
   .abq-place-head .btn kbd { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
