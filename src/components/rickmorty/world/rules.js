@@ -104,6 +104,14 @@ export const DRIVEWAY = { x0: -23, x1: -15, z0: -14, z1: -7 };
 export const BOARD = { x: -19, z: -10.5, yaw: 0 };
 // the red-brick front walk, from the porch step (and the front door) to the sidewalk
 export const FRONT_WALK = { x0: -7.8, x1: -6.6, z0: -17.4, z1: -7 };
+// The concrete stoop at the front door, raised off the lawn on a brick face,
+// the width of the porch over it, and its two steps down to the front walk:
+// things Morty stands on (their `top`), walks up, and jumps off the edges of.
+export const STOOP = [
+  { id: 'stoop', x: -7.2, z: -17.1, w: 3, d: 1.4, top: 0.45 },
+  { id: 'stoop-step1', x: -7.2, z: -16.2, w: 1.6, d: 0.4, top: 0.3 },
+  { id: 'stoop-step2', x: -7.2, z: -15.8, w: 1.6, d: 0.4, top: 0.15 },
+];
 
 // on the sidewalk at the foot of the front walk, looking up at the house
 export const START = { area: 'street', x: -8, z: -6, face: Math.PI / 2 };
@@ -555,11 +563,12 @@ export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && 
 
 // ── what's in the way ──
 
-const box = (id, x, z, w, d, turn = 0) => ({ id, kind: 'box', x, z, w, d, turn });
+// (`top`: how high it is, for what Morty can climb or jump onto; left out, it's too tall to)
+const box = (id, x, z, w, d, turn = 0, top = null) => ({ id, kind: 'box', x, z, w, d, turn, ...(top != null && { top }) });
 const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0);
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
-  ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn)),
+  ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
   ...PEOPLE.filter((p) => p.area === area && !p.sits).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
@@ -571,6 +580,7 @@ export const COLLIDERS = {
     ...BUILDINGS.filter((b) => b !== HOUSE && b !== SCHOOL).map((b) => box(b.id, b.x, b.z, b.w, b.d)),
     ...HOUSE_PARTS.map((p) => box(`house-${p.id}`, p.x, p.z, p.w, p.d)),
     ...SCHOOL_PARTS.map((p) => box(`school-${p.id}`, p.x, p.z, p.w, p.d)),
+    ...STOOP.map((p) => box(p.id, p.x, p.z, p.w, p.d, 0, p.top)),
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
     ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
@@ -653,34 +663,101 @@ export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter(
 
 // ── walking ──
 
-export const MORTY = { radius: 0.4, walk: 3.6, run: 7, accel: 18, turn: 12 };
-export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false });
+// `step`: as high as he walks up without jumping; `jump`, how fast he leaves
+// the ground (m/s) and `gravity` brings him down; `height`, to the top of his hair
+export const MORTY = { radius: 0.4, walk: 3.6, run: 7, accel: 18, turn: 12, step: 0.3, jump: 5.4, gravity: 18, height: 1.6 };
+export const newMorty = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false, edge: false, y: 0, vy: 0, air: false });
+// as high as he gets onto anything: the top of a jump, and a step over it
+export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
+// each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
+export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3 };
 
-// Morty can't stand within a body's width of the edge of where he is
-const walkerFor = (area, extra = []) =>
-  makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra], walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
-const WALKERS = Object.fromEntries(Object.keys(AREAS).map((id) => [id, walkerFor(id)]));
-const MOTORCADE_WALKER = walkerFor('street', MOTORCADE);
-// and one for the street with the cruiser parked in it, kept while it stays put
-let parked = { x: NaN, z: NaN, motorcade: false, walker: null };
+// What Morty can stand on in an area: what's low enough to get onto, with
+// room for him under the ceiling once he's up. Everything else is solid,
+// however high he jumps.
+const standable = (area, c) => c.top != null && c.top <= CLIMB + 1e-9 && c.top + MORTY.height <= CEILING[area] + 1e-9;
+const LOW = Object.fromEntries(Object.keys(AREAS).map((id) => [id, collidersIn(id).filter((c) => standable(id, c))]));
+const TOPS = Object.fromEntries(Object.keys(LOW).map((id) => [id, [...new Set(LOW[id].map((c) => c.top))].sort((a, b) => a - b)]));
+// what's in his way wherever he stands or jumps: the colliders he can't get onto
+export const solidIn = (area, opts) => collidersIn(area, opts).filter((c) => !standable(area, c));
 
-// One step of walking. `move` is where the visitor wants to go, already turned
-// to the world (the camera does that): { x, z } up to length 1, and `run`.
-// `cruiser` is where the cruiser is parked, if it is: it stands in the street;
-// `motorcade`, whether the President's limo and his people stand there too.
-export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
-  let walker = WALKERS[area];
-  if (area === 'street' && cruiser) {
-    if (parked.x !== cruiser.x || parked.z !== cruiser.z || parked.motorcade !== motorcade)
-      parked = { x: cruiser.x, z: cruiser.z, motorcade, walker: walkerFor('street', [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius), ...(motorcade ? MOTORCADE : [])]) };
-    walker = parked.walker;
-  } else if (area === 'street' && motorcade) walker = MOTORCADE_WALKER;
-  return walker.step(m, move, dt);
+// Is (x, z) over collider c, a little way in from its edge or out past it?
+function over(c, x, z, m) {
+  if (c.kind === 'circle') return Math.hypot(x - c.x, z - c.z) < c.r + m;
+  const t = c.turn || 0;
+  const dx = x - c.x;
+  const dz = z - c.z;
+  const lx = dx * Math.cos(t) - dz * Math.sin(t);
+  const lz = dx * Math.sin(t) + dz * Math.cos(t);
+  return Math.abs(lx) < c.w / 2 + m && Math.abs(lz) < c.d / 2 + m;
+}
+// What he'd stand on at (x, z), at height y: the floor, or the top of the
+// highest thing under him that he's up on (or can step up onto)
+export function supportAt(area, x, z, y = 0) {
+  let s = 0;
+  for (const c of LOW[area]) if (c.top > s && c.top <= y + MORTY.step + 1e-6 && over(c, x, z, MORTY.radius * 0.25)) s = c.top;
+  return s;
 }
 
-// Over the open hatch in the garage floor (it's open whenever he's this near):
+// Morty can't stand within a body's width of the edge of where he is. At a
+// height, what's low enough under him is no longer in his way.
+const walkerFor = (area, extra = [], reach = 0) =>
+  makeWalker({ radius: 1e4, colliders: [...collidersIn(area), ...extra].filter((c) => !(standable(area, c) && c.top <= reach)), walls: wallsIn(area), blocked: (x, z) => !inArea(area, x, z, -MORTY.radius), body: MORTY });
+// kept by area, how many of its tops he's above, the motorcade, and where the cruiser's parked
+const WALKERS = new Map();
+function walkerAt(area, y, cruiser, motorcade) {
+  const reach = y + MORTY.step + 1e-6;
+  const tops = TOPS[area];
+  let n = 0;
+  while (n < tops.length && tops[n] <= reach) n++;
+  const street = area === 'street';
+  const key = `${area}|${n}|${street && motorcade ? 1 : 0}|${street && cruiser ? `${cruiser.x},${cruiser.z}` : ''}`;
+  let w = WALKERS.get(key);
+  if (!w) {
+    if (WALKERS.size > 64) WALKERS.clear();
+    const extra = street ? [...(cruiser ? [circle('cruiser', cruiser.x, cruiser.z, CRUISER.radius)] : []), ...(motorcade ? MOTORCADE : [])] : [];
+    w = walkerFor(area, extra, n ? tops[n - 1] : -1);
+    WALKERS.set(key, w);
+  }
+  return w;
+}
+
+// One step of walking. `move` is where the visitor wants to go, already turned
+// to the world (the camera does that): { x, z } up to length 1, `run`, and
+// `jump` (on his feet, he jumps). `cruiser` is where the cruiser is parked, if
+// it is: it stands in the street; `motorcade`, whether the President's limo
+// and his people stand there too. He walks up what's a step high, falls off
+// edges, lands on what's under him, and a ceiling stops his head.
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false } = {}) {
+  const y0 = m.y ?? 0;
+  const n = walkerAt(area, y0, cruiser, motorcade).step(m, move, dt);
+  let y = y0;
+  let vy = m.vy ?? 0;
+  const ground = supportAt(area, n.x, n.z, y0);
+  // on his feet (or a step below where he's going): up onto it, and off again if he jumps
+  if (y <= ground + 1e-3 && vy <= 0) {
+    y = ground;
+    vy = move.jump ? MORTY.jump : 0;
+  }
+  if (vy !== 0 || y > ground) {
+    vy -= MORTY.gravity * dt;
+    y += vy * dt;
+    if (y <= ground) {
+      y = ground;
+      vy = 0;
+    }
+    const head = CEILING[area] - MORTY.height;
+    if (y > head) {
+      y = head;
+      vy = Math.min(vy, 0);
+    }
+  }
+  return { ...n, y, vy, air: y > ground + 1e-3 };
+}
+
+// Over the open hatch in the garage floor (it's open whenever he's this near), on his feet:
 // the way down, as if he'd taken it
-export const dropAt = (area, x, z) => (area === 'garage' && Math.abs(x - HATCH.x) < HATCH.w / 2 - 0.15 && Math.abs(z - HATCH.z) < HATCH.d / 2 - 0.15 ? LINKS.find((l) => l.id === 'garage-hatch') : null);
+export const dropAt = (area, x, z, y = 0) => (area === 'garage' && y < 0.2 && Math.abs(x - HATCH.x) < HATCH.w / 2 - 0.15 && Math.abs(z - HATCH.z) < HATCH.d / 2 - 0.15 ? LINKS.find((l) => l.id === 'garage-hatch') : null);
 
 // ── the cruiser ──
 

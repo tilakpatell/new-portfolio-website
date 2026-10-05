@@ -11,6 +11,11 @@ The user's asks:
 - Keep output terse.
 
 ## Done
+- **Jumping and the stoop** (PR #127, merged).
+  - `MORTY.step`/`jump`/`gravity`/`height` in `rules.js`, plus CLIMB, CEILING, `supportAt` and `solidIn`.
+  - Colliders carry `top`. `stepMorty` takes `move.jump`.
+  - STOOP is in the rules, drawn in `street.js`.
+- **School cast models** are fetched to `public/games/meshy/` (PR #127). They still need to be added to `portal/meshyCast.js` and placed in the school.
 - **Rick's garage, the show's size** (PR #117, merged). It is 7.2 × 8 m:
   `AREAS.garage` is x -303.6..-296.4, z 98..106. The layout is in the rules
   FURNITURE (workbench, bench-arm, laundry, plumbus, shelf-garage, worktable,
@@ -18,8 +23,8 @@ The user's asks:
   east wall facing west.
 
 ## In progress
-- **The school's Meshy cast:** goldenfold, principal, jessica, brad, tammy,
-  ethan and tinyrick.
+- **The school's Meshy cast (models DONE):** goldenfold, principal, jessica,
+  brad, tammy, ethan and tinyrick.
   - Their entries are in `scripts/meshy.mjs` (set `c137`, rigged).
   - The concept images are done; they are gitignored, in `lab/meshy/c137/`.
   - Each finished step's task id is kept in `scripts/meshy-tasks.json`, so
@@ -38,18 +43,6 @@ The user's asks:
   - The kids need PEOPLE, HOTSPOTS and SAY lines (the site's own words).
 
 ## To do
-- **Jumping** (Space on foot):
-  - Add `y` and `vy` to the Morty state in `stepMorty`.
-  - Colliders get `top` (the furniture's `h`). A collider blocks only while
-    `top > y + STEP` (STEP about 0.3). Morty stands on the highest top under
-    him; gravity applies otherwise.
-  - Give each room area a ceiling: house and upstairs 2.6, garage and school
-    2.9 (check the other rooms).
-  - Add a raised porch and steps at the house door in the rules, drawn in
-    `street.js`.
-  - The scene's Morty y comes from `scene.js:326`. The camera follows it.
-  - `RmWorld.jsx:615`: Space walking is currently the page's; make it jump.
-    Add a jump button for touch.
 - **A bigger world:**
   - `AREAS.street` is x -60..60, z -40..40. Grow it with more streets and
     houses in the rules (NEIGHBOURS, TREES, FENCES and DECOR are data).
