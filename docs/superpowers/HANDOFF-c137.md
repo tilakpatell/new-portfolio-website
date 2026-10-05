@@ -11,6 +11,13 @@ The user's asks:
 - Keep output terse.
 
 ## Done
+- **A bigger world** (merged):
+  - The street is x ±150, z ±55.
+  - OUTSKIRTS houses are solid in the rules and drawn in `street.js`.
+  - The edge is a hedge all round, with red and white barriers across the road.
+  - The cruiser flies in FLY (±400 / ±260) up to a ceiling of 120, and lands only in the street.
+- **The school's class** (PR #131, merged): Goldenfold, the principal, and
+  Jessica, Brad, Tammy, Ethan and Tiny Rick sitting, all to talk to.
 - **Jumping and the stoop** (PR #127, merged).
   - `MORTY.step`/`jump`/`gravity`/`height` in `rules.js`, plus CLIMB, CEILING, `supportAt` and `solidIn`.
   - Colliders carry `top`. `stepMorty` takes `move.jump`.
@@ -22,7 +29,7 @@ The user's asks:
   portalpanic, govportal). HATCH is in the SW corner and GOV_PORTAL is on the
   east wall facing west.
 
-## In progress
+## In progress (all done; kept for reference)
 - **The school's Meshy cast (models DONE):** goldenfold, principal, jessica,
   brad, tammy, ethan and tinyrick.
   - Their entries are in `scripts/meshy.mjs` (set `c137`, rigged).
@@ -43,13 +50,10 @@ The user's asks:
   - The kids need PEOPLE, HOTSPOTS and SAY lines (the site's own words).
 
 ## To do
-- **A bigger world:**
-  - `AREAS.street` is x -60..60, z -40..40. Grow it with more streets and
-    houses in the rules (NEIGHBOURS, TREES, FENCES and DECOR are data).
-  - The edges should be things you can see (hedges, a tree line).
-  - CRUISER: ceiling 40 → much higher. stepCruiser clamps to the street with
-    EDGE; widen the flying bounds past the walkable ones. FED loop
-    (`ship.js`) and its EDGE clamp too.
+- Nothing open. Ideas for later:
+  - More streets off the main road (side roads).
+  - A gym and hallway for the school.
+  - Morty's walking animation pausing while he's in the air.
 
 ## How to check
 - `npm run lint`, `npx vitest run` and `npm run build` must all be clean.
