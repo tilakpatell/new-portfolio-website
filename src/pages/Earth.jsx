@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import EarthWorld from '../components/earth/EarthWorld';
-import { HOME_V, STAMPS, kmBetween } from '../components/earth/rules';
-import { stampDate, useStamps } from '../components/earth/stamps';
+import { HOME_V, STAMPS, aroundWorld, kmBetween } from '../components/earth/rules';
+import { stampDate, useFlown, useStamps } from '../components/earth/stamps';
 import Photo from '../components/Photo';
 import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
@@ -17,6 +17,7 @@ const fmt = new Intl.NumberFormat('en-US');
 export default function Earth() {
   useDocumentTitle('Earth');
   const stamps = useStamps();
+  const flown = useFlown();
   const count = Object.keys(stamps).length;
 
   return (
@@ -48,6 +49,11 @@ export default function Earth() {
           The passport
         </h2>
         <p className="lead mt-4 max-w-[58ch]">{count === STAMPS.length ? 'Every stamp. You’ve been everywhere I have.' : `${count} of ${STAMPS.length} stamped so far.`} Each postcard opens on the travel page.</p>
+        {flown > 0 && (
+          <p className="mt-3 text-sm text-muted">
+            Flight log: {fmt.format(Math.round(flown / 10) * 10)} km flown over every flight, {aroundWorld(flown) >= 1 ? 'the whole way round the world and more' : `${Math.round(aroundWorld(flown) * 100)}% of the way round the world`}.
+          </p>
+        )}
         <ul className="earth-shelf mt-8">
           {STAMPS.map((st) => (
             <li key={st.id} data-got={stamps[st.id] ? '' : undefined}>

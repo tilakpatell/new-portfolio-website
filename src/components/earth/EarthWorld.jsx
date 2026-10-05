@@ -10,14 +10,16 @@ import { capturePointer } from '../../lib/pointer';
 import { readPad, typing } from '../games/pad';
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { HOME_V, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, fly, kmBetween, newFlight, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, unit } from './rules';
-import { addStamp, readStamps, stampDate, useStamps } from './stamps';
+import { AROUND_KM, HOME_V, STAMPS, add, angle, aroundWorld, arrivals, autopilot, bearingOf, bearingTo, cross, fly, kmBetween, logTrail, newFlight, nextStamp, placeById, rotate, scale, seaName, sunVec, toLonLat, unit } from './rules';
+import { addFlown, addStamp, readFlown, readStamps, stampDate, useFlown, useStamps } from './stamps';
 import './earth.css';
 
 // Earth, the world: it opens in orbit, over the globe as it is right now
 // (the sun where it really is), and flies you down onto it, into the seat
 // behind a little plane over Syracuse. Fly it (or let the autopilot) to the
 // places I've been: each one is a stamp in your passport and a postcard.
+// The flight log keeps the trail flown and the distance, over every visit,
+// and the way round the world adds up to an achievement.
 // The rules are in ./rules.js, the drawing in ./scene.js; this is the keys,
 // the camera's dive, the HUD and the postcards. Without 3D, the passport is
 // a page of postcards.
@@ -43,7 +45,9 @@ const CODES = {
   ShiftLeft: 'boost',
   ShiftRight: 'boost',
   Space: 'boost',
+  KeyR: 'roll',
 };
+const SAVE_KM = 25; // the distance flown is written down every so many km
 
 // what's under the plane: a country (from the travel globe's dots), or a sea
 let land = null;
@@ -97,14 +101,15 @@ function World({ gl, setGl }) {
   if (!sim.current) {
     const f = newFlight();
     const sun = sunVec();
-    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null };
+    sim.current = { f, sun, sunMode: local.get(SUN, 'day') === 'real' ? 'real' : 'day', mode: 'orbit', view: 0, orbit: orbitOver(f.p, sun), keys: new Set(), pressed: new Set(), stick: { x: 0, y: 0 }, boostTouch: false, padBefore: {}, stamped: new Set(Object.keys(readStamps())), away: false, target: null, touched: false, engine: null, overT: 0, hudT: 0, drag: null, trail: [], trailV: 0, flown: readFlown(), kmSaved: 0 };
   }
   const [mode, setMode] = useState('orbit');
   const [sunMode, setSunMode] = useState(sim.current.sunMode);
-  const [hud, setHud] = useState({ over: '', heading: 0, next: null, target: null, night: false });
+  const [hud, setHud] = useState({ over: '', heading: 0, next: null, target: null, night: false, km: 0 });
   const [postcard, setPostcard] = useState(null);
   const [passport, setPassport] = useState(false);
   const stamps = useStamps();
+  const flown = useFlown();
   const paused = useRef(false);
   paused.current = Boolean(postcard) || passport;
 
@@ -149,6 +154,10 @@ function World({ gl, setGl }) {
       ro?.disconnect();
       s.engine?.stop();
       s.engine = null;
+      if (s.f.km - s.kmSaved > 0.5) {
+        addFlown(s.f.km - s.kmSaved);
+        s.kmSaved = s.f.km;
+      }
       api.current?.dispose();
       api.current = null;
     };
@@ -264,7 +273,8 @@ function World({ gl, setGl }) {
       e.preventDefault();
       audioContext();
       s.touched = true;
-      if ((s.mode === 'orbit' || s.mode === 'rise') && k !== 'boost') dive();
+      if ((s.mode === 'orbit' || s.mode === 'rise') && k !== 'boost' && k !== 'roll') dive();
+      if (!e.repeat) s.pressed.add(k);
       s.keys.add(k);
     };
     const up = (e) => {
@@ -349,6 +359,8 @@ function World({ gl, setGl }) {
     s.padBefore = pad ?? {};
     if (tapped('y')) setPassport((v) => !v);
     if (tapped('start') || tapped('x')) (s.mode === 'fly' || s.mode === 'dive' ? rise : dive)();
+    const roll = s.pressed.has('roll') || tapped('b');
+    s.pressed.clear();
 
     // the camera's dive and climb
     if (s.mode === 'dive') {
@@ -384,9 +396,18 @@ function World({ gl, setGl }) {
       if (manual && s.mode === 'fly') s.target = null; // taking the controls back
       const boost = held('boost') || s.boostTouch || Boolean(pad?.a || pad?.rt);
       const goal = s.target === 'home' ? HOME_V : s.target ? placeById(s.target)?.v : null;
-      const input = goal ? autopilot(f, goal) : { turn, climb, boost };
+      const input = goal ? { ...autopilot(f, goal), roll } : { turn, climb, boost, roll };
+      const wasRolling = f.rolling;
       fly(f, input, dt);
+      if (f.rolling && !wasRolling) sounds().then((x) => x.roll());
       s.engine?.set(f.speed > 0.15 ? Math.min(1, (f.speed - 0.11) / 0.23) : 0);
+      // the log: the trail, and the distance written down as it adds up
+      if (logTrail(s.trail, f.p)) s.trailV++;
+      if (f.km - s.kmSaved > SAVE_KM) {
+        s.flown = addFlown(f.km - s.kmSaved);
+        s.kmSaved = f.km;
+        if (s.flown >= AROUND_KM) unlock('roundtheworld');
+      }
       const r = arrivals(f, s.stamped, s.away);
       s.away = r.away;
       for (const e of r.ev) {
@@ -407,7 +428,7 @@ function World({ gl, setGl }) {
       }
     }
 
-    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit }, ms);
+    a.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV }, ms);
 
     // the labels over the places on screen
     const close = s.mode === 'fly' || s.mode === 'dive';
@@ -448,8 +469,9 @@ function World({ gl, setGl }) {
           next: goal ? { name: goal.name, km: kmBetween(f.p, goal.v) } : n ? { name: n.name, km: n.km } : null,
           target: goal?.name ?? null,
           night: f.p[0] * s.sun[0] + f.p[1] * s.sun[1] + f.p[2] * s.sun[2] < -0.05,
+          km: Math.round(f.km / 10) * 10,
         };
-        return h.over === next.over && h.heading === next.heading && h.target === next.target && h.night === next.night && Math.round(h.next?.km ?? -1) === Math.round(next.next?.km ?? -1) ? h : next;
+        return h.over === next.over && h.heading === next.heading && h.target === next.target && h.night === next.night && h.km === next.km && Math.round(h.next?.km ?? -1) === Math.round(next.next?.km ?? -1) ? h : next;
       });
     }
   }, live);
@@ -457,11 +479,13 @@ function World({ gl, setGl }) {
   const count = Object.keys(stamps).length;
   const card = postcard && postcard.id !== 'home' ? STAMPS.find((x) => x.id === postcard.id) : null;
   const flyingNow = mode === 'fly' || mode === 'dive';
+  // the distance flown over every visit, with this flight's since it was last written down
+  const flownAll = flown + Math.max(0, hud.km - Math.round(sim.current.kmSaved / 10) * 10);
 
   return (
     <div ref={box}>
       <div className="earth-stage" data-mode={mode}>
-        <canvas ref={canvas} className="earth-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => (sim.current.drag = null)} role="img" aria-label="The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, M for orbit, P for the passport." />
+        <canvas ref={canvas} className="earth-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => (sim.current.drag = null)} role="img" aria-label="The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, M for orbit, P for the passport." />
         {gl !== 'on' && <p className="earth-loading">Coming in from orbit…</p>}
 
         <div className="earth-labels" aria-hidden={mode !== 'orbit' || undefined}>
@@ -524,6 +548,9 @@ function World({ gl, setGl }) {
                 <b>{hud.next.name}</b> · {km(hud.next.km)}
               </span>
             )}
+            <span className="earth-flown" title="Flown this flight">
+              {km(hud.km)} flown
+            </span>
             {hud.target && (
               <button type="button" className="earth-chip earth-chip-sm" onClick={() => (sim.current.target = null)}>
                 Take the controls <kbd>Esc</kbd>
@@ -531,7 +558,7 @@ function World({ gl, setGl }) {
             )}
           </div>
         )}
-        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · P passport</p>}
+        {flyingNow && gl === 'on' && !touch && !hud.target && <p className="earth-hint">← → turn · ↑ ↓ climb and descend · Shift faster · R barrel roll · P passport</p>}
 
         {touch && flyingNow && gl === 'on' && (
           <div className="earth-touch">
@@ -564,6 +591,16 @@ function World({ gl, setGl }) {
             >
               Faster
             </button>
+            <button
+              type="button"
+              className="earth-roll"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                sim.current.pressed.add('roll');
+              }}
+            >
+              Roll
+            </button>
           </div>
         )}
 
@@ -577,6 +614,15 @@ function World({ gl, setGl }) {
                 ×
               </button>
             </div>
+            <p className="earth-log">
+              <span>
+                <b>{km(flownAll)}</b> flown over every flight
+              </span>
+              <span className="earth-log-bar" aria-hidden="true">
+                <i style={{ width: `${(aroundWorld(flownAll) * 100).toFixed(1)}%` }} />
+              </span>
+              <span>{aroundWorld(flownAll) >= 1 ? 'Round the world' : `${Math.round(aroundWorld(flownAll) * 100)}% of the way round the world`}</span>
+            </p>
             <ol className="earth-pages">
               {STAMPS.map((st) => (
                 <li key={st.id} data-got={stamps[st.id] ? '' : undefined}>
