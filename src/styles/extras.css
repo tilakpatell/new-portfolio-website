@@ -2718,6 +2718,27 @@ html[data-mode='dark'] .me-hub { --me-veil: rgba(10, 7, 5, 0.78); --me-ink: #f1e
 .me-route button:hover, .me-route button:focus-visible { border-color: var(--me-wax); color: var(--me-wax); }
 .me-route button[data-won]::after { content: ' ✦'; color: var(--me-wax); }
 .me-hub-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+/* the road so far: seals, side stars and kitchen stars, chapter by chapter */
+.me-record-btn[data-on] { border-color: var(--me-wax); color: var(--me-wax); }
+.me-record { order: 8; width: 100%; display: grid; gap: 0.6rem; padding: 0.9rem 1rem 1rem; border: 1px solid color-mix(in srgb, var(--me-ink) 20%, transparent); border-radius: 14px; background: var(--me-veil); color: var(--me-ink); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: me-record-in 0.3s ease both; }
+@keyframes me-record-in { from { opacity: 0; translate: 0 6px; } }
+.me-record-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.me-record-head .eyebrow { margin: 0; }
+.me-record-totals { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0 auto 0 0; font-size: 0.82rem; color: var(--me-ink-soft); }
+.me-record-totals b { color: var(--me-ink); font-variant-numeric: tabular-nums; }
+.me-record-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.1rem 1.4rem; margin: 0; padding: 0; list-style: none; counter-reset: none; }
+.me-record-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px dashed color-mix(in srgb, var(--me-ink) 18%, transparent); }
+.me-record-name { padding: 0; border: 0; background: none; text-align: left; font: 600 0.86rem/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.04em; color: var(--me-ink); cursor: pointer; }
+.me-record-name:hover, .me-record-name:focus-visible { color: var(--me-wax); }
+.me-record-list li[data-won] .me-record-name::after { content: ' ✦'; color: var(--me-wax); }
+.me-record-seals { display: flex; gap: 3px; }
+.me-record-seals i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--me-wax); opacity: 0.45; }
+.me-record-seals i[data-on] { background: var(--me-wax); opacity: 1; }
+.me-record-side, .me-record-kitchen b { font-size: 0.95rem; font-weight: 400; color: var(--me-ink); opacity: 0.25; }
+.me-record-side[data-on], .me-record-kitchen b[data-on] { opacity: 1; color: #c9a95a; text-shadow: 0 0 6px rgba(240, 192, 64, 0.5); }
+.me-record-kitchen { display: flex; align-items: center; gap: 0.1rem; }
+.me-record-kitchen small { margin-left: 0.45rem; font-size: 0.72rem; color: var(--me-ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 639px) { .me-record-kitchen small { display: none; } .me-record { padding: 0.75rem 0.8rem 0.8rem; } }
 .me-travellers { border-color: rgba(154, 184, 255, 0.55); }
 .me-travellers[data-on] { cursor: default; }
 .me-travellers b { color: #c9a95a; font-variant-numeric: tabular-nums; }
