@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { CAR, COLLIDERS, DRIVING, DRIVING_DEFAULTS, PLACES, ROADS, SPAWN, WORLD_RADIUS, hankAt, nearPlace, onRoad, progress, readDriving, slipOf, stepCar, stepHeat, stepSteer } from './rules';
+import { CAR, CITY, COLLIDERS, DRIVING, DRIVING_DEFAULTS, EDGES, GRID, HANK_ROUTE, NODES, PLACES, ROADS, SIGNAL, SPAWN, WORLD_RADIUS, collidersNear, createStreets, nearPlace, onBlock, onRoad, progress, readDriving, signalAt, slipOf, stepCar, stepHeat, stepSteer, stepTraffic, surfaceHeight } from './rules';
 
 const fresh = { served: 0, points: 0, money: 0, upgrades: [], visited: [] };
 const drive = (car, input, seconds) => {
   for (let t = 0; t < seconds; t += 1 / 60) car = stepCar(car, input, 1 / 60).car;
   return car;
 };
+const gap = (a, b) => Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.z - b.z) - (a.d + b.d) / 2);
+const reach = (c, x, z) => Math.hypot(Math.max(Math.abs(x - c.x) - c.w / 2, 0), Math.max(Math.abs(z - c.z) - c.d / 2, 0));
 
 describe('Albuquerque, the world: the map', () => {
-  it('starts you on Walt’s driveway, on the road network', () => {
-    expect(onRoad(SPAWN.x, SPAWN.z)).toBe(true);
+  it('starts you on Walt’s driveway, by his door, clear of everything', () => {
     const home = PLACES.find((p) => p.id === 'home');
     expect(Math.hypot(SPAWN.x - home.door.x, SPAWN.z - home.door.z)).toBeLessThan(home.radius);
+    expect(onRoad(SPAWN.x, SPAWN.z)).toBe(false);
+    for (const c of COLLIDERS) expect(reach(c, SPAWN.x, SPAWN.z), c.id).toBeGreaterThan(CAR.radius);
   });
 
   it('puts every place’s door on a road you can drive to, inside the world', () => {
@@ -36,6 +39,65 @@ describe('Albuquerque, the world: the map', () => {
       const meets = ROADS.some((o) => o !== r && along.some((p) => onRoad(p.x, p.z, [o])));
       expect(meets, r.id).toBe(true);
     }
+  });
+
+  it('is a grid: every street line runs the city’s width, and the blocks sit a kerb above it', () => {
+    for (const z of GRID.zs) expect(onRoad(GRID.xs[0] + 1, z) && onRoad(GRID.xs.at(-1) - 1, z), `z=${z}`).toBe(true);
+    for (const x of GRID.xs) expect(onRoad(x, GRID.zs[0] + 1) && onRoad(x, GRID.zs.at(-1) - 1), `x=${x}`).toBe(true);
+    expect(CITY.blocks).toHaveLength((GRID.xs.length - 1) * (GRID.zs.length - 1));
+    for (const b of CITY.blocks) {
+      const mx = (b.x0 + b.x1) / 2;
+      const mz = (b.z0 + b.z1) / 2;
+      expect(onBlock(mx, mz)).toBe(true);
+      expect(onRoad(mx, mz)).toBe(false);
+      expect(surfaceHeight(mx, mz)).toBeCloseTo(GRID.kerb, 5);
+    }
+    expect(surfaceHeight(0, 0)).toBe(0);
+  });
+});
+
+describe('Albuquerque, the city', () => {
+  it('builds a city: houses, shops, towers downtown, warehouses by the tracks', () => {
+    const kinds = new Set(CITY.buildings.map((b) => b.kind));
+    expect(CITY.buildings.length).toBeGreaterThan(140);
+    expect(kinds.size).toBeGreaterThanOrEqual(7);
+    // downtown stands tall
+    const tall = CITY.buildings.filter((b) => b.h > 40);
+    expect(tall.length).toBeGreaterThan(2);
+    for (const b of tall) expect(Math.hypot(b.x - 10, b.z + 50), b.id).toBeLessThan(130);
+    expect(CITY.trees.length).toBeGreaterThan(150);
+    expect(CITY.parked.length).toBeGreaterThan(50);
+  });
+
+  it('stands every building inside its block, off every road and sidewalk, clear of the others', () => {
+    const built = CITY.buildings;
+    for (const b of built) {
+      const k = CITY.blocks.find((q) => b.x > q.x0 && b.x < q.x1 && b.z > q.z0 && b.z < q.z1);
+      expect(k, b.id).toBeTruthy();
+      expect(b.x - b.w / 2, b.id).toBeGreaterThanOrEqual(k.x0 - 1e-6);
+      expect(b.x + b.w / 2, b.id).toBeLessThanOrEqual(k.x1 + 1e-6);
+      expect(b.z - b.d / 2, b.id).toBeGreaterThanOrEqual(k.z0 - 1e-6);
+      expect(b.z + b.d / 2, b.id).toBeLessThanOrEqual(k.z1 + 1e-6);
+    }
+    // shops on the strip may share a wall (just), the city's cars and walls
+    // may sit close; nothing else comes near anything
+    const city = (c) => /^c\d/.test(c.id) || c.kind;
+    const bad = [];
+    for (const c of COLLIDERS)
+      for (const o of COLLIDERS) {
+        if (o === c) continue;
+        const need = city(c) && city(o) ? 0.15 : 0.9;
+        if (gap(c, o) <= need) bad.push(`${c.id} and ${o.id}: ${gap(c, o).toFixed(2)}`);
+      }
+    expect(bad).toEqual([]);
+  });
+
+  it('finds what’s near a point: everything the car could touch there', () => {
+    for (let x = -260; x <= 260; x += 7)
+      for (let z = -200; z <= 200; z += 7) {
+        const near = new Set(collidersNear(x, z));
+        for (const c of COLLIDERS) if (reach(c, x, z) < 3) expect(near.has(c), `${c.id} at ${x},${z}`).toBe(true);
+      }
   });
 });
 
@@ -75,16 +137,16 @@ describe('Albuquerque, the world: what’s open', () => {
 
 describe('Albuquerque, the world: driving', () => {
   it('pulls away, and goes no faster than the road allows', () => {
-    const car = drive({ ...SPAWN, speed: 0 }, { throttle: 1, steer: 0 }, 1);
+    const car = drive({ x: -95, z: -62.5, yaw: Math.PI / 2, speed: 0 }, { throttle: 1, steer: 0 }, 1);
     expect(car.speed).toBeGreaterThan(5);
-    const flat = drive({ x: 0, z: 0, yaw: Math.PI / 2, speed: 0 }, { throttle: 1, steer: 0 }, 6);
+    const flat = drive({ x: -230, z: 2, yaw: Math.PI / 2, speed: 0 }, { throttle: 1, steer: 0 }, 6);
     expect(flat.speed).toBeLessThanOrEqual(CAR.top + 1e-6);
   });
 
   it('is slower off the road', () => {
     // well out in the sand
-    const sand = drive({ x: 160, z: 140, yaw: -Math.PI / 2, speed: 0 }, { throttle: 1, steer: 0 }, 6);
-    expect(onRoad(160, 140)).toBe(false);
+    const sand = drive({ x: 330, z: 60, yaw: -Math.PI / 2, speed: 0 }, { throttle: 1, steer: 0 }, 6);
+    expect(onRoad(330, 60)).toBe(false);
     expect(sand.speed).toBeLessThanOrEqual(CAR.sand + 1e-6);
   });
 
@@ -96,8 +158,8 @@ describe('Albuquerque, the world: driving', () => {
   });
 
   it('stops at a building instead of driving through it, and says it bumped', () => {
-    const wall = COLLIDERS[0];
-    let car = { x: wall.x, z: wall.z - wall.d / 2 - 6, yaw: 0, speed: 15 };
+    const wall = COLLIDERS.find((c) => c.id === 'pollos');
+    let car = { x: wall.x, z: wall.z + wall.d / 2 + 9, yaw: Math.PI, speed: 15 };
     let bumped = false;
     for (let i = 0; i < 120; i++) {
       const r = stepCar(car, { throttle: 1, steer: 0 }, 1 / 60);
@@ -105,7 +167,19 @@ describe('Albuquerque, the world: driving', () => {
       bumped ||= r.bump > 0;
     }
     expect(bumped).toBe(true);
-    expect(car.z).toBeLessThan(wall.z - wall.d / 2);
+    expect(car.z).toBeGreaterThan(wall.z + wall.d / 2);
+  });
+
+  it('bumps off the traffic', () => {
+    let car = { x: 0, z: -30, yaw: 0, speed: 12 };
+    let bumped = false;
+    for (let i = 0; i < 90; i++) {
+      const r = stepCar(car, { throttle: 1, steer: 0 }, 1 / 60, [{ x: 0, z: -20, r: 1.5 }]);
+      car = r.car;
+      bumped ||= r.bump > 0;
+    }
+    expect(bumped).toBe(true);
+    expect(car.z).toBeLessThan(-20 - 1.5 - CAR.radius + 0.01);
   });
 
   it('keeps you inside the world', () => {
@@ -120,8 +194,8 @@ describe('Albuquerque, the world: driving', () => {
   });
 });
 
-// Central Avenue runs east–west through (0, 0) with nothing on it: room to
-// throw the car about. East is yaw π/2.
+// Central Avenue runs east–west through (0, 0), four lanes and nothing parked
+// on it (the traffic isn't in these): room to throw the car about. East is yaw π/2.
 const EAST = Math.PI / 2;
 const onCentral = (speed = 0, x = -150) => ({ x, z: 0, yaw: EAST, speed });
 const run = (car, input, seconds, fps = 60) => {
@@ -158,7 +232,7 @@ describe('Albuquerque, the world: the Aztek’s handling', () => {
       far = Math.max(far, Math.abs(car.z));
     }
     expect(car.yaw - EAST).toBeGreaterThanOrEqual(Math.PI - 0.05);
-    expect(far).toBeLessThan(12); // Central is 12 m wide
+    expect(far).toBeLessThan(12); // inside Central's 16 m
   });
 
   it('steers the other way in reverse', () => {
@@ -204,8 +278,8 @@ describe('Albuquerque, the world: the Aztek’s handling', () => {
 
   it('slides wider on sand than on the road', () => {
     const road = run(onCentral(11, 0), { throttle: 1, steer: 1 }, 0.8);
-    const sand = run({ x: 160, z: 140, yaw: EAST, speed: 11 }, { throttle: 1, steer: 1 }, 0.8);
-    expect(onRoad(160, 140)).toBe(false);
+    const sand = run({ x: 330, z: 60, yaw: EAST, speed: 11 }, { throttle: 1, steer: 1 }, 0.8);
+    expect(onRoad(330, 60)).toBe(false);
     expect(sand.peak).toBeGreaterThan(road.peak);
     expect(slipOf(sand.car)).toBeGreaterThanOrEqual(0);
   });
@@ -223,7 +297,7 @@ describe('Albuquerque, the world: the Aztek’s handling', () => {
     const wall = COLLIDERS.find((c) => c.id === 'pollos');
     const south = wall.z + wall.d / 2;
     // along its south face, nosing in a little
-    let car = { x: wall.x - wall.w / 2 - 4, z: south + CAR.radius + 0.4, yaw: EAST + 0.12, speed: 14 };
+    let car = { x: wall.x - wall.w / 2 - 2, z: south + CAR.radius + 0.4, yaw: EAST + 0.12, speed: 14 };
     let bump = 0;
     for (let i = 0; i < 60; i++) {
       const r = stepCar(car, { throttle: 1, steer: 0 }, 1 / 60);
@@ -282,9 +356,9 @@ describe('Albuquerque, the world: the Aztek’s handling', () => {
   });
 
   it('runs wide onto the sand without stopping dead: the speed comes off over a second', () => {
-    // flat out along Central's edge, then off it
-    const off = run({ x: 90, z: 140, yaw: EAST, speed: CAR.top }, { throttle: 1, steer: 0 }, 0.5).car;
-    expect(onRoad(90, 140)).toBe(false);
+    // flat out off the end of town, into the sand
+    const off = run({ x: 290, z: 40, yaw: EAST, speed: CAR.top }, { throttle: 1, steer: 0 }, 0.5).car;
+    expect(onRoad(290, 40)).toBe(false);
     expect(off.speed).toBeGreaterThan(CAR.sand + 4);
     expect(off.speed).toBeLessThan(CAR.top - 3);
     expect(run(off, { throttle: 1, steer: 0 }, 1).car.speed).toBeCloseTo(CAR.sand, 6);
@@ -384,17 +458,86 @@ describe('Albuquerque, the world: the wheel in your hands', () => {
   });
 });
 
-describe('Albuquerque, the world: Hank', () => {
-  it('drives his loop on the roads', () => {
-    for (let t = 0; t < 120; t += 3.7) {
-      const h = hankAt(t);
-      expect(onRoad(h.x, h.z), `t=${t}`).toBe(true);
-    }
-    const a = hankAt(0);
-    const b = hankAt(1);
-    expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeGreaterThan(5);
+describe('the traffic', () => {
+  it('has a corner wherever two streets cross, and a stretch of street between each pair', () => {
+    expect(NODES).toHaveLength(GRID.xs.length * GRID.zs.length);
+    expect(EDGES).toHaveLength((GRID.xs.length - 1) * GRID.zs.length + (GRID.zs.length - 1) * GRID.xs.length);
+    // lights all along Central
+    for (const x of GRID.xs) expect(NODES.find((n) => n.x === x && n.z === 0).signal).toBe(true);
   });
 
+  it('runs the lights east–west then north–south, never both green', () => {
+    for (let t = 0; t < SIGNAL.cycle * 2; t += 0.25) {
+      const s = signalAt(t);
+      expect(s.ew === 'red' || s.ns === 'red').toBe(true);
+    }
+    expect(signalAt(1).ew).toBe('green');
+    expect(signalAt(SIGNAL.cycle / 2 + 1).ns).toBe('green');
+  });
+
+  it('keeps every car on the streets, apart, and moving, for five minutes', () => {
+    const cars = createStreets(36);
+    let t = 0;
+    let closest = Infinity;
+    const still = new Map();
+    for (let i = 0; i < 60 * 300; i++) {
+      t += 1 / 60;
+      stepTraffic(cars, 1 / 60, t);
+      if (i % 20) continue;
+      for (const c of cars) {
+        expect(onRoad(c.x, c.z), `${c.id} at ${c.x.toFixed(1)},${c.z.toFixed(1)}`).toBe(true);
+        still.set(c.id, c.speed < 0.2 ? (still.get(c.id) ?? 0) + 1 / 3 : 0);
+        expect(still.get(c.id), `${c.id} stuck`).toBeLessThan(60);
+      }
+      for (let a = 0; a < cars.length; a++) for (let b = a + 1; b < cars.length; b++) closest = Math.min(closest, Math.hypot(cars[a].x - cars[b].x, cars[a].z - cars[b].z));
+    }
+    expect(closest).toBeGreaterThan(2.4);
+  });
+
+  it('stops at a red light', () => {
+    const cars = createStreets(24);
+    let t = 0;
+    for (let i = 0; i < 60 * 120; i++) {
+      t += 1 / 60;
+      const before = cars.map((c) => ({ seg: c.seg, node: c.path.node, axis: EDGES[c.e].axis }));
+      stepTraffic(cars, 1 / 60, t);
+      const light = signalAt(t);
+      cars.forEach((c, k) => {
+        const b = before[k];
+        // into a corner with lights, only on green or amber
+        if (b.seg === 'lane' && c.seg === 'turn' && NODES[b.node].signal) expect(b.axis === 'x' ? light.ew : light.ns).not.toBe('red');
+      });
+    }
+  });
+
+  it('takes Hank round his blocks, in the traffic and on the road', () => {
+    const cars = createStreets(20);
+    const hank = cars[0];
+    const seen = new Set();
+    let t = 0;
+    for (let i = 0; i < 60 * 150; i++) {
+      t += 1 / 60;
+      stepTraffic(cars, 1 / 60, t);
+      if (i % 30 === 0) expect(onRoad(hank.x, hank.z)).toBe(true);
+      if (hank.seg === 'turn') seen.add(hank.turnNode);
+    }
+    for (const n of HANK_ROUTE) expect(seen.has(n), `node ${n}`).toBe(true);
+    expect([...seen].every((n) => HANK_ROUTE.includes(n))).toBe(true);
+  });
+
+  it('waits behind you when you stop in its lane', () => {
+    const cars = createStreets(30);
+    const you = { x: 0, z: 0, yaw: 0, speed: 0 };
+    let t = 0;
+    for (let i = 0; i < 60 * 60; i++) {
+      t += 1 / 60;
+      stepTraffic(cars, 1 / 60, t, [you]);
+      for (const c of cars) expect(Math.hypot(c.x - you.x, c.z - you.z), c.id).toBeGreaterThan(2.6);
+    }
+  });
+});
+
+describe('Hank’s heat', () => {
   it('heats up while he’s close, cools off when you get away, and catches you at the top', () => {
     let heat = 0;
     for (let i = 0; i < 60; i++) heat = stepHeat(heat, 8, 1 / 30).heat;
@@ -409,17 +552,13 @@ describe('Albuquerque, the world: Hank', () => {
 
 describe('Blue Sky', () => {
   it('leaves every crystal where the car can get to it', async () => {
-    const { CAR, COLLIDERS, CRYSTALS, WORLD_RADIUS, onRoad } = await import('./rules');
+    const { CRYSTALS } = await import('./rules');
     expect(CRYSTALS).toHaveLength(12);
     expect(new Set(CRYSTALS.map((c) => c.id)).size).toBe(12);
     for (const c of CRYSTALS) {
       expect(Math.hypot(c.x, c.z)).toBeLessThan(WORLD_RADIUS - 5);
       expect(onRoad(c.x, c.z)).toBe(false);
-      for (const b of COLLIDERS) {
-        const dx = Math.max(Math.abs(c.x - b.x) - b.w / 2, 0);
-        const dz = Math.max(Math.abs(c.z - b.z) - b.d / 2, 0);
-        expect(Math.hypot(dx, dz)).toBeGreaterThan(CAR.radius + 1);
-      }
+      for (const b of COLLIDERS) expect(reach(b, c.x, c.z), `${c.id} by ${b.id}`).toBeGreaterThan(CAR.radius + 1);
     }
   });
 
@@ -434,9 +573,11 @@ describe('Blue Sky', () => {
 
 describe('the ground, the walls and the fence', () => {
   it('is flat through town and rolls gently out to the fence', async () => {
-    const { DUNES, WORLD_RADIUS, groundHeight } = await import('./rules');
+    const { DUNES, groundHeight } = await import('./rules');
     expect(groundHeight(0, 0)).toBe(0);
     expect(groundHeight(DUNES - 1, 0)).toBe(0);
+    // the whole city is on the flat
+    for (const x of [GRID.xs[0], GRID.xs.at(-1)]) for (const z of [GRID.zs[0], GRID.zs.at(-1)]) expect(groundHeight(x, z)).toBe(0);
     for (let a = 0; a < 6.28; a += 0.2) {
       const y = groundHeight(Math.cos(a) * WORLD_RADIUS, Math.sin(a) * WORLD_RADIUS);
       expect(y).toBeGreaterThan(-2);
@@ -447,7 +588,7 @@ describe('the ground, the walls and the fence', () => {
   });
 
   it('stops the car at each building where its walls are, not short of them', async () => {
-    const { COLLIDERS, LANDMARKS, PLACES } = await import('./rules');
+    const { LANDMARKS } = await import('./rules');
     for (const p of [...PLACES, ...LANDMARKS]) {
       const c = COLLIDERS.find((x) => x.id === p.id);
       expect(c.w, p.id).toBeCloseTo(p.foot.w, 5);
@@ -460,10 +601,10 @@ describe('the ground, the walls and the fence', () => {
 
 describe('things to do', () => {
   it('sends a run somewhere far off, on open ground inside the fence, with time to make it', async () => {
-    const { CAR, COLLIDERS, DROPS, RUN, SPAWN, WORLD_RADIUS, startRun } = await import('./rules');
+    const { DROPS, RUN, startRun } = await import('./rules');
     for (const d of DROPS) {
       expect(Math.hypot(d.x, d.z), d.id).toBeLessThan(WORLD_RADIUS - 10);
-      for (const b of COLLIDERS) expect(Math.hypot(Math.max(Math.abs(d.x - b.x) - b.w / 2, 0), Math.max(Math.abs(d.z - b.z) - b.d / 2, 0))).toBeGreaterThan(CAR.radius + 2);
+      for (const b of COLLIDERS) expect(reach(b, d.x, d.z)).toBeGreaterThan(CAR.radius + 2);
     }
     for (let pick = 0; pick < 12; pick++) {
       const run = startRun(SPAWN, pick);
@@ -486,19 +627,18 @@ describe('things to do', () => {
   });
 
   it('washes the car on the forecourt of the A1A, which is clear of its walls', async () => {
-    const { CAR, COLLIDERS, WASH, atWash } = await import('./rules');
+    const { WASH, atWash } = await import('./rules');
     expect(atWash(WASH.x + 1, WASH.z)).toBe(true);
     expect(atWash(WASH.x + 20, WASH.z)).toBe(false);
     const b = COLLIDERS.find((c) => c.id === 'carwash');
-    expect(Math.hypot(Math.max(Math.abs(WASH.x - b.x) - b.w / 2, 0), Math.max(Math.abs(WASH.z - b.z) - b.d / 2, 0))).toBeGreaterThan(CAR.radius);
+    expect(reach(b, WASH.x, WASH.z)).toBeGreaterThan(CAR.radius);
+    for (const c of COLLIDERS) expect(reach(c, WASH.x, WASH.z), c.id).toBeGreaterThan(CAR.radius);
   });
 });
 
 describe('the rest of town', () => {
   it('stands every building clear of the roads, the doors, the wash, and each other', async () => {
-    const { COLLIDERS, DROPS, PLACES, ROADS, TOWN, WASH, WORLD_RADIUS } = await import('./rules');
-    const gap = (a, b) => Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.z - b.z) - (a.d + b.d) / 2);
-    const reach = (c, x, z) => Math.hypot(Math.max(Math.abs(x - c.x) - c.w / 2, 0), Math.max(Math.abs(z - c.z) - c.d / 2, 0));
+    const { DROPS, TOWN, WASH } = await import('./rules');
     expect(new Set(TOWN.map((t) => t.id)).size).toBe(TOWN.length);
     for (const t of TOWN) {
       const c = COLLIDERS.find((x) => x.id === t.id);
@@ -516,5 +656,19 @@ describe('the rest of town', () => {
       expect(reach(c, WASH.x, WASH.z), t.id).toBeGreaterThan(WASH.radius + 2);
       for (const d of DROPS) expect(reach(c, d.x, d.z), t.id).toBeGreaterThan(8);
     }
+  });
+
+  it('keeps the city’s buildings, walls and parked cars off every road', () => {
+    const bad = [];
+    for (const b of COLLIDERS)
+      for (const r of ROADS) {
+        // (every road runs along x or along z)
+        const [lo, hi] = r.a.z === r.b.z ? [Math.min(r.a.x, r.b.x), Math.max(r.a.x, r.b.x)] : [Math.min(r.a.z, r.b.z), Math.max(r.a.z, r.b.z)];
+        const along = r.a.z === r.b.z ? [b.x - b.w / 2, b.x + b.w / 2] : [b.z - b.d / 2, b.z + b.d / 2];
+        const apart = Math.max(0, lo - along[1], along[0] - hi);
+        const across = r.a.z === r.b.z ? Math.max(0, Math.abs(b.z - r.a.z) - b.d / 2) : Math.max(0, Math.abs(b.x - r.a.x) - b.w / 2);
+        if (Math.hypot(apart, across) <= r.w / 2 + 0.5) bad.push(`${b.id} on ${r.id}`);
+      }
+    expect(bad).toEqual([]);
   });
 });
