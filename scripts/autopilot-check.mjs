@@ -56,6 +56,8 @@ const shots = typeof args.shots === 'string' ? args.shots.padStart(4, '0') : nul
 const phone = Boolean(args.phone);
 const quality = ['high', 'mid', 'low'].includes(args.quality) ? args.quality : 'high';
 const settle = Number(args.settle) || 8000;
+if (shots && !toShoot.length) console.log('note: --shots without --routes photographs nothing; say which routes changed');
+if (args.routes === true || args.shots === true) console.log('note: --routes and --shots take a value (--routes /a,/b --shots 0012)');
 
 const problems = [];
 const t0 = Date.now();
@@ -131,6 +133,9 @@ if (runs('smoke')) {
     });
   });
   const server = spawn(process.execPath, [join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
+  let serverDown = null;
+  server.on('error', (e) => (serverDown = e.message));
+  server.on('exit', (code) => (serverDown ??= `vite preview exited with ${code}`));
   const base = `http://127.0.0.1:${port}`;
   const up = Date.now();
   for (;;) {
@@ -139,9 +144,9 @@ if (runs('smoke')) {
     } catch {
       /* not yet */
     }
-    if (Date.now() - up > 30000) {
+    if (serverDown || Date.now() - up > 30000) {
       server.kill();
-      problems.push('vite preview never answered');
+      problems.push(serverDown ?? 'vite preview never answered');
       finish();
     }
     await new Promise((r) => setTimeout(r, 300));

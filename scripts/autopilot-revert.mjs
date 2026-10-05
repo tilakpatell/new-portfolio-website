@@ -43,8 +43,9 @@ if (git('status', '--porcelain').out) fail('the working tree has changes; commit
 
 // the merge commit: "Merge pull request #N from …", or a squash's "(#N)"
 const log = git('log', '--first-parent', '--format=%H%x09%P%x09%s', 'main').out || git('log', '--first-parent', '--format=%H%x09%P%x09%s').out;
+const subject = (l) => l.split('\t').slice(2).join('\t');
 const line = log.split('\n').find((l) => {
-  const s = l.split('\t')[2] ?? '';
+  const s = subject(l);
   return s.startsWith(`Merge pull request #${entry.pr} `) || s.endsWith(`(#${entry.pr})`);
 });
 if (!line) fail(`no merge of pull request #${entry.pr} on main; fetch main first (git fetch origin main && git branch -f main origin/main)`);
@@ -59,9 +60,9 @@ if (!revert.ok) {
   // which later changes touched them
   const later = [];
   for (const l of log.split('\n')) {
-    const [h, p, s] = l.split('\t');
+    const [h, p] = l.split('\t');
     if (h === sha) break;
-    const m = s.match(/Merge pull request #(\d+) |\(#(\d+)\)$/);
+    const m = subject(l).match(/Merge pull request #(\d+) |\(#(\d+)\)$/);
     if (!m) continue;
     const pr = Number(m[1] ?? m[2]);
     const touched = git('diff', '--name-only', p.split(' ').length > 1 ? `${h}^1` : `${h}^`, h).out.split('\n');
@@ -77,8 +78,12 @@ if (!revert.ok) {
 await mkdir(DIR, { recursive: true });
 entry.reverted = { date: new Date().toISOString().slice(0, 10), why };
 await writeFile(file, `${JSON.stringify(entry, null, 2)}\n`);
-for (const s of entry.shots ?? []) git('checkout', sha, '--', `public${s}`);
-git('add', file, 'public/changes');
+const added = git('add', file);
+if (!added.ok) fail(added.err);
+for (const s of entry.shots ?? []) {
+  const back = git('checkout', sha, '--', `public${s}`);
+  if (!back.ok) console.warn(`couldn't bring back ${s}: ${back.err}`);
+}
 const commit = git('commit', '-q', '--amend', '--no-edit');
 if (!commit.ok) fail(commit.err);
 console.log(`reverted change ${id}; the entry stays in the log, marked reverted. Now push, open the pull request and merge it.`);
