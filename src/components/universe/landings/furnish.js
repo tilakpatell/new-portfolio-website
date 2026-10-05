@@ -18,6 +18,7 @@
 // meshes), with `renderer` and `models` (./models.js) on it.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createKit } from '../../galaxy/surface/kit';
 import { rng } from '../../galaxy/surface/noise';
 import { METRE, facingAlong, place, solidsOn, vec } from '../foot';
@@ -125,6 +126,39 @@ function release(root) {
   walk(root, false);
 }
 
+// A thing built of many small meshes (a parking lot's cars and poles) as a
+// few: its plain meshes merged into one per material, in its own frame;
+// anything skinned, instanced or many-materialled is left as it is.
+export function mergeStatic(object) {
+  object.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(object.matrixWorld).invert();
+  const by = new Map(); // material → [geometry in object space]
+  const drop = [];
+  object.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || Array.isArray(o.material)) return;
+    const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!by.has(o.material)) by.set(o.material, []);
+    by.get(o.material).push(g);
+    drop.push(o);
+  });
+  for (const o of drop) {
+    o.removeFromParent();
+    o.geometry.dispose();
+  }
+  for (const [material, geos] of by) {
+    const merged = mergeGeometries(geos);
+    for (const g of geos) g.dispose();
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, material);
+    mesh.castShadow = mesh.receiveShadow = true;
+    object.add(mesh);
+  }
+  return object;
+}
+
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
 function partsOf(object) {
   const out = [];
@@ -148,7 +182,7 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
   // bent down to the curve of the ground under it)
   const specs = landing.models ?? {};
   // (specs: the landing's models, for a builder that stands one on something of its own)
-  Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE) });
+  Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE), merge: mergeStatic });
   // the curve of the ground under something r metres across: how far to sink it so its edges don't float
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
   const add = async (object) => {
@@ -240,9 +274,10 @@ export function furnish({ id, landing, frame, R, small = false, renderer = null,
     .then(async (planet) => {
       if (dead) return;
       planet.prepare?.(kit);
-      // (phones: not the furthest things; each scatter its own seed, so the
-      // layout doesn't hang on which model loads first)
-      const things = (landing.things ?? []).filter((t) => !small || Math.hypot(...t.at) < 75);
+      // (every thing, on any device: they're few, and the landmarks are the
+      // place; `small` only thins the scatter. Each scatter its own seed, so
+      // the layout doesn't hang on which model loads first)
+      const things = landing.things ?? [];
       await Promise.all([...things.map((t) => thing(planet, t).catch(oops(t.kind))), ...(landing.scatter ?? []).map((e, i) => scatter(planet, e, rng(seedOf(id) + i * 7919)).catch(oops(e.kind)))]);
     })
     .catch(oops(id));

@@ -13,7 +13,7 @@ import { CARS, DUMPSTER, LIGHT_POLES, LOT, PARK_SIGN, TREES } from '../../office
 export const PROPS = {
   // the lot, its middle at the origin: the building along its back (−x),
   // the cars in their bays, the sign at its front (+x)
-  lot() {
+  lot(k) {
     const made = buildOutside();
     const cx = LOT.x + LOT.w / 2;
     const cz = LOT.z + LOT.d / 2;
@@ -37,7 +37,8 @@ export const PROPS = {
       { box: [...at(DUMPSTER.x, DUMPSTER.z), DUMPSTER.w / 2, DUMPSTER.d / 2] },
       { box: [...at(PARK_SIGN.x, PARK_SIGN.z), 1.8, 0.4, PARK_SIGN.turn] },
     ];
-    return { object, solids };
+    // (a hundred and more little meshes as one a material)
+    return { object: k.merge(object), solids };
   },
 };
 
