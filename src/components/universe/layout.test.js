@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN, keyStep, next, nextWorld, parseId, prev } from './layout';
+import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, RIM, SUN, keyStep, next, nextWorld, parseId, prev } from './layout';
 import { byId } from './universes';
 import { DEEP } from './deep';
 
@@ -30,6 +30,12 @@ describe('the map layout', () => {
       }
     }
     for (const a of fandoms) for (const b of fandoms) if (a < b) expect(Math.hypot(...POSITIONS[a].map((v, i) => v - POSITIONS[b][i])) - REACH[a] - REACH[b], `${a} and ${b}`).toBeGreaterThan(750);
+  });
+
+  it('rings the map with a rim of ice, out past everything and inside the edge', () => {
+    expect(RIM.inner).toBeGreaterThan(MAP_RADIUS + 200);
+    expect(RIM.outer).toBeLessThan(DEEP.edge - 300);
+    expect(RIM.outer).toBeGreaterThan(RIM.inner + 300);
   });
 
   it('steps through the map in order and wraps', () => {

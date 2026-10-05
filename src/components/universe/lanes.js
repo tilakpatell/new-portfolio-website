@@ -111,20 +111,25 @@ export function laneDepart(place, rand) {
 export function laneBetween(rand, { high = false } = {}) {
   const side = rand() < 0.5 ? -1 : 1;
   if (high) {
-    // the big ships: right across the map, high up, slowly
-    const a = rand() * Math.PI * 2;
-    const b = a + Math.PI * (0.65 + rand() * 0.7);
-    const r = MAP_RADIUS * (0.75 + rand() * 0.35);
-    const y = side * between(rand, HIGH);
-    const p0 = [Math.cos(a) * r, y, Math.sin(a) * r];
-    const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 8, Math.sin(b) * r];
-    return [p0, [(p0[0] + p2[0]) * 0.3, y, (p0[2] + p2[2]) * 0.3], p2];
+    // the big ships: right across the map, high up, slowly (and clear of
+    // the giants out there, whose tops reach that high: a few chords tried)
+    for (let tries = 0; tries < 24; tries++) {
+      const a = rand() * Math.PI * 2;
+      const b = a + Math.PI * (0.65 + rand() * 0.7);
+      const r = MAP_RADIUS * (0.75 + rand() * 0.35);
+      const y = side * between(rand, HIGH);
+      const p0 = [Math.cos(a) * r, y, Math.sin(a) * r];
+      const p2 = [Math.cos(b) * r, y + (rand() - 0.5) * 8, Math.sin(b) * r];
+      const pts = [p0, [(p0[0] + p2[0]) * 0.3, y, (p0[2] + p2[2]) * 0.3], p2];
+      if (clearance(pts) > 1) return pts;
+    }
+    return null;
   }
-  // between two places, bowed out to one side; with a dozen worlds out there
-  // the straight way between two of them can run through a third, so a few
-  // pairs are tried, and the first that's clear of everything flies
-  let pts = null;
-  for (let tries = 0; tries < 8; tries++) {
+  // between two places, bowed out to one side; with a dozen worlds and the
+  // wonders out there the straight way between two of them can run through
+  // a third, so a few pairs are tried, and the first that's clear of
+  // everything flies (none clear: null, and nothing flies)
+  for (let tries = 0; tries < 24; tries++) {
     const i = Math.floor(rand() * ORDER.length);
     let j = Math.floor(rand() * (ORDER.length - 1));
     if (j >= i) j += 1;
@@ -138,10 +143,10 @@ export function laneBetween(rand, { high = false } = {}) {
     const dz = p2[2] - p0[2];
     const len = Math.hypot(dx, dz) || 1;
     const bow = (rand() - 0.5) * 0.5 * len;
-    pts = [p0, [mx - (dz / len) * bow, y + side * rand() * 8, mz + (dx / len) * bow], p2];
+    const pts = [p0, [mx - (dz / len) * bow, y + side * rand() * 8, mz + (dx / len) * bow], p2];
     if (clearance(pts) > 1) return pts;
   }
-  return pts;
+  return null;
 }
 
 // ship: { x, y, z, heading }. Half the time it crosses in front of the

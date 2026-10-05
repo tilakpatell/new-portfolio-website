@@ -24,12 +24,15 @@ export const DEEP = {
   open: HOME_RADIUS + 440, // out past this (and this far from any place), the pulse drive's full speed and the full height
   near: 40, // how far past a place's reach you're still at it (the drive stays down)
   ramp: 400, // and how much further the drive takes to open all the way
-  edge: 7000, // turned back here
-  ceiling: 1150, // how far above or below the disc it can go out in deep space
+  edge: 9000, // turned back here
+  ceiling: 1400, // how far above or below the disc it can go out in deep space
 };
 
 // kind: what it is (deepspace.js draws each kind its own way); r: its radius
-// (a black hole's is its shadow); colors: its own palette; planets (a sun's):
+// (a black hole's is its shadow; a pulsar's its tiny star, solid to ten times
+// that; a binary's its first sun, its second `pair` { r, color, apart }
+// along +x; a wreck field's its white dwarf, the hulls out to `field`);
+// colors: its own palette; planets (a sun's):
 // each { r, orbit, angle, color, kind } round it, level with it; crew: whose
 // universe it's from (it's there for everyone); world: the universe whose
 // page a crash into it leads to (and `page`, a page of its own there, if it
@@ -75,6 +78,10 @@ export const WONDERS = [
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-2230, 505, 4725], r: 700, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
   { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 45, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' },
+  { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
+  { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230 } },
+  { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, colors: ['#1a2238', '#3a4a70', '#7fd8c8'] },
+  { id: 'graveyard', kind: 'graveyard', name: 'The Graveyard', at: [-6400, 160, -1600], r: 14, color: '#dfe8ff', field: 190 },
 ];
 
 // The trench run model (public/models/universe/trench.glb), as measured:
@@ -116,6 +123,9 @@ export function planetAt(star, p) {
 export function reachOf(w) {
   if (w.kind === 'star') return Math.max(w.r, ...w.planets.map((p) => p.orbit + p.r));
   if (w.kind === 'black-hole') return w.disk;
+  if (w.kind === 'pulsar') return w.r * 10; // (its glare, and its beams: nobody goes near)
+  if (w.kind === 'binary') return w.pair.apart + w.pair.r; // (its second sun)
+  if (w.kind === 'graveyard') return w.field; // (the hulls)
   if (w.ring) return w.r * 2.3;
   if (w.kind === 'citadel') return w.r * 1.9; // (its arms and its crystal: CITADEL_PARTS)
   return w.r;
@@ -141,11 +151,12 @@ export const CITADEL_PARTS = [
 // (each a part of it: hitting one is hitting the Citadel, and none is
 // somewhere of its own to fly to)
 const partsOf = (w) => (w.kind === 'citadel' ? CITADEL_PARTS.map(([x, y, z, r], i) => ({ ...solid(`${w.id}-part${i + 1}`, [w.at[0] + (x * w.r) / 18, w.at[1] + (y * w.r) / 18, w.at[2] + (z * w.r) / 18], (r * w.r) / 18), part: true })) : []);
-export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [
-  solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.r, w.kind === 'black-hole'),
-  ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)),
-  ...partsOf(w),
-]);
+// (a binary's two suns are two solids: the first is the Twins, the place to
+// fly to; the second a part of it, as the Citadel's domes are, so hitting
+// either is hitting the Twins; a pulsar is solid to ten radii; a wreck
+// field's dwarf alone is solid, its hulls are drifting scenery)
+const sunsOf = (w) => (w.kind === 'binary' ? [solid(w.id, w.at, w.r), { ...solid(`${w.id}-2`, [w.at[0] + w.pair.apart, w.at[1], w.at[2]], w.pair.r), part: true }] : [solid(w.id, w.at, w.kind === 'black-hole' ? w.r * 1.5 : w.kind === 'pulsar' ? w.r * 10 : w.r, w.kind === 'black-hole')]);
+export const DEEP_SOLIDS = WONDERS.filter((w) => w.solid !== false).flatMap((w) => [...sunsOf(w), ...(w.planets ?? []).map((p, i) => solid(`${w.id}-${i + 1}`, planetAt(w, p), p.r)), ...partsOf(w)]);
 
 export const wonderById = (id) => WONDERS.find((w) => w.id === id) ?? null;
 
