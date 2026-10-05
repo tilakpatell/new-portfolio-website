@@ -16,7 +16,8 @@ import { loadKit } from '../kit';
 import { CAST as STAFF_HEIGHTS, loadPeople } from '../people';
 import { makeProps } from '../props';
 import { buildSet } from './set';
-import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, seatOf, spot } from './layout';
+import { buildWarehouse } from './warehouse';
+import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -77,16 +78,21 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   let props;
   let set;
   let cast;
+  let wh;
   try {
     kit = await loadKit(renderer);
     props = makeProps(kit);
     set = await buildSet(kit, props, { tier });
+    wh = buildWarehouse(kit);
   } catch (e) {
+    set?.dispose();
     kit?.dispose();
     stage.dispose();
     throw e;
   }
-  scene.add(set.group);
+  scene.add(set.group, wh.group);
+  const LAMPS = [...set.lights, ...wh.lights];
+  const ballHome = wh.ball.position.clone();
 
   // ── light: the HDRI's office for the fill and reflections, the troffers'
   // cool overhead light, a soft daylight from the windows, and a pool of
@@ -323,19 +329,26 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     // ── light: the nearest troffers to Jim, picked now and then ──
     if (t - A.nearAt > 0.4) {
       A.nearAt = t;
-      A.near = set.lights
+      A.near = LAMPS
         .map((p) => [p, Math.hypot(p[0] - h.x, p[2] - h.z)])
         .sort((a, b) => a[1] - b[1])
         .slice(0, POOL)
         .map((p) => p[0]);
     }
+    // the warehouse: its lamps are higher and brighter
+    const down = inWarehouse(h.x, h.z);
+    // the basketball
+    if (s.ballAt) wh.ball.position.set(s.ballAt.x, s.ballAt.y, s.ballAt.z);
+    else wh.ball.position.copy(ballHome);
+    if (s.ballAt?.spin) wh.ball.rotation.z += dt * 9;
     const red = s.fire ? 0.5 + 0.5 * Math.sin(t * 7) : 0;
     A.fire += ((s.fire ? 1 : 0) - A.fire) * Math.min(1, dt * 2);
     pool.forEach((l, i) => {
       const v = A.near[i];
       if (!v) return (l.intensity = 0);
       l.position.set(v[0], v[1], v[2]);
-      l.intensity = 3.2 * (1 - A.fire * 0.4);
+      l.intensity = (down ? 26 : 3.2) * (1 - A.fire * 0.4);
+      l.distance = down ? 14 : 7;
       return undefined;
     });
     alarm.intensity = A.fire * red * 60;
@@ -355,7 +368,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     // ── the camera: behind Jim, kept inside the walls and under the ceiling ──
     let camAt;
     let camLook;
-    if (s.mode === 'desk' && s.deskCam) {
+    if (s.deskCam && s.mode !== 'walk') {
       camAt = tmp.set(...s.deskCam.at);
       camLook = look.set(...s.deskCam.look);
     } else {
@@ -470,6 +483,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       gone = true;
       fx.dispose?.();
       set.dispose();
+      wh.dispose();
       props.dispose();
       loading.then((c) => c?.dispose());
       kit.dispose();

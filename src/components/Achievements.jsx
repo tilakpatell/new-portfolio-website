@@ -139,6 +139,7 @@ export const ACHIEVEMENTS = {
   olympics: { name: 'Office Olympics', desc: 'Played a round of paper toss at your desk' },
   falsefact: { name: 'False', desc: 'Took Dwight’s fact check at his desk' },
   stressrelief: { name: 'Stress relief', desc: 'Got out by the stairwell in Dwight’s fire drill' },
+  hoops: { name: 'Office vs. warehouse', desc: 'Sank three free throws out of five in the warehouse' },
   bestboss: { name: 'Best Week in the Office', desc: 'Won a Dundie from Michael, in his office' },
 };
 
