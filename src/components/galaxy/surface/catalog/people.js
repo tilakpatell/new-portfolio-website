@@ -10,8 +10,6 @@ export const MODELS = {
   battledroid: { uid: 'ade3a1205cce449caf91f78e595e5676', as: 'the battle droids', metres: 1.91, yaw: 0, tris: 8000, tex: 512 },
   // a Phase II clone trooper
   clone: { uid: '8519076c1bf24bcbb352f96930a29b55', as: 'the clone troopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512, drop: /dc-15s/, rig: true, anim: { idle: 'Armature|Armature.001|mixamo.com|Layer0', walk: 'Armature|Armature|mixamo.com|Layer0' } },
-  // a snowtrooper (the First Order's, from The Last Jedi)
-  snowtrooper: { uid: '751b09d5b8aa49d4809a94676190ea2b', as: 'the snowtroopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // a scout trooper, as on Endor
   scouttrooper: { uid: 'bdcf732e6f374b6d87b02cd023991aae', as: 'the scout troopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // a B2 super battle droid

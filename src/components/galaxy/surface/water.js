@@ -1,5 +1,5 @@
 // A world's water, out to the horizon: a sea (Kamino's storm-grey, Scarif's
-// lagoons, Ahch-To's cold Atlantic), a swamp (Dagobah's black water), lava
+// lagoons, Naboo's lakes), a swamp (Dagobah's black water), lava
 // (Mustafar's rivers, glowing, crusting over), or a sea of cloud (Bespin,
 // far below the city). One plane at the site's level, its waves in the
 // light (a shader: the scene's sun and fog, a sheen toward the sun, foam

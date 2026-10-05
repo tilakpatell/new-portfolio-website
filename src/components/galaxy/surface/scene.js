@@ -1311,7 +1311,7 @@ export async function create(canvas, ctx) {
     peers.update(net, site.id, dt);
   }
 
-  // lightning (Kamino's storms, Exegol's): a flash across the sky now and
+  // lightning (Kamino's storms): a flash across the sky now and
   // then, lighting everything up for a moment
   let nextBolt = 4 + r() * 6;
   function storm(dt) {

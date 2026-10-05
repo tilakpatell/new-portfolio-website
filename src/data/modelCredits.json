@@ -719,20 +719,6 @@
       "galaxy"
     ]
   },
-  "surface-jedihut": {
-    "title": "Refectory, Skellig Michael, Co Kerry, Ireland",
-    "author": "amasinton",
-    "authorUrl": "https://sketchfab.com/amasinton",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/refectory-skellig-michael-co-kerry-ireland-3babf7e7bd1d4835aac1e118f1f2506b",
-    "where": "galaxy-surface",
-    "as": "the Jedi village huts",
-    "file": "/models/galaxy/surface/jedihut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-jeditemple": {
     "title": "Jedi Temple",
     "author": "Owen Cornelius",
@@ -831,20 +817,6 @@
       "galaxy"
     ]
   },
-  "surface-porg": {
-    "title": "Porg",
-    "author": "Mind Mulch for The Masses",
-    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/porg-df73eb95169b4f3882bcde58dec58ae7",
-    "where": "galaxy-surface",
-    "as": "the porgs",
-    "file": "/models/galaxy/surface/porg.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-probe": {
     "title": "SWBF2 - Viper Droid",
     "author": "jay2307",
@@ -911,20 +883,6 @@
     "where": "galaxy-surface",
     "as": "the snowspeeders",
     "file": "/models/galaxy/surface/snowspeeder.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-snowtrooper": {
-    "title": "Snow Trooper || Episode VIII: TLJ",
-    "author": "RC-KOA",
-    "authorUrl": "https://sketchfab.com/RC-Koa",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/snow-trooper-episode-viii-tlj-751b09d5b8aa49d4809a94676190ea2b",
-    "where": "galaxy-surface",
-    "as": "the snowtroopers",
-    "file": "/models/galaxy/surface/snowtrooper.glb",
     "also": [
       "galaxy"
     ]
