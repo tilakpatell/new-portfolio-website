@@ -790,6 +790,7 @@ export async function create(canvas, ctx) {
     jump: null, // { id, park, at }: a jump to lightspeed under way (out at the place at `at`, wall()'s seconds)
     hyperAt: null, // when it last jumped, wall()'s seconds (the hyperdrive charges again: nav.js)
     odSaid: false, // the crew's said their piece about super speed
+    note: null, // { text, until }: a word on the HUD a moment (why a jump didn't happen)
     at: null, // the universe it's at
     keys: {},
     stick: null, // { id, x, y, dx, dy, on }
@@ -1289,7 +1290,11 @@ export async function create(canvas, ctx) {
       state.hyperAt = wall();
       emit({ type: 'jump', id });
     } else {
-      if (hyper) emit({ type: 'hyper', why: hyper.why, wait: hyper.wait }); // (not yet: on super speed instead)
+      if (hyper) {
+        // (not yet: on super speed instead, and the HUD says why)
+        emit({ type: 'hyper', why: hyper.why, wait: hyper.wait });
+        state.note = { text: hyper.why === 'interdicted' ? 'Interdicted: no jump till the hunters are gone' : `Hyperdrive charging (${Math.ceil(hyper.wait)} s): super speed instead`, until: wall() + 3.5 };
+      }
       state.auto = { id, park, od: driveById(hyper ? 'super' : drive).od };
     }
     retarget(700);
@@ -2940,6 +2945,7 @@ export async function create(canvas, ctx) {
     let text = '';
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
+    else if (state.note && wall() < state.note.until && !onFoot()) text = state.note.text;
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost) text = `Land on ${byId(state.landable).label} and step out`;
     if (text === promptWas) return;

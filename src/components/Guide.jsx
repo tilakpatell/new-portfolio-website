@@ -92,7 +92,8 @@ const PAGES = {
   '/scranton': {
     title: 'Scranton',
     tips: [
-      ['The office', 'Pick a desk to visit someone (on a phone, tap a name under the plan). Each of them has something to do.'],
+      ['Walk the office', 'You’re Jim. W A S D or the arrows walk, Shift runs, drag to look round, E does things, M lists the week’s seven jobs: reception, the stapler in Jell-O, Kevin’s chili, paper toss, the fact check, Dwight’s fire drill and the Dundies. Everyone has something to say as you pass.'],
+      ['The office from above', 'Further down: pick a desk to visit someone (on a phone, tap a name under the plan). Each of them has something to do.'],
       ['The paper airplane', 'It glides down the page with you as you scroll.'],
       ['Kevin mode', 'Why waste time say lot word.'],
       ['Dwight’s fact check', 'Fact or false, seven times.'],

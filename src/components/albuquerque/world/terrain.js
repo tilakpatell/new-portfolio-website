@@ -10,7 +10,7 @@
 // (lib/texture) with their own normal and roughness maps.
 
 import * as THREE from 'three';
-import { bufferCanvas, surfaceMaps, tileCells, tileFbm, tileNoise } from '../../../lib/texture';
+import { bufferCanvas, rng, surfaceMaps, tileCells, tileFbm, tileNoise } from '../../../lib/texture';
 
 const lin = (hex) => new THREE.Color(hex);
 
@@ -114,7 +114,7 @@ export function groundMaterial({ noise, roads, bump = true }) {
 }
 
 // One painted surface as three textures.
-function maps(size, surface, { repeat = [1, 1], strength = 3, aniso = 8 } = {}) {
+export function maps(size, surface, { repeat = [1, 1], strength = 3, aniso = 8 } = {}) {
   const m = surfaceMaps(size, surface, { strength });
   const tex = (data, srgb) => {
     const t = new THREE.CanvasTexture(bufferCanvas(data, size));
@@ -174,6 +174,68 @@ export function dirtMaps(size = 512, aniso = 8) {
       return { r: 176 * k, g: 136 * k, b: 96 * k, h: 0.5 + t * 0.2 + fine(u, v) * 0.1 - rut * 0.34 + pebble * 0.3, rough: 0.96 - rut * 0.12 };
     },
     { strength: 3.4, aniso },
+  );
+}
+
+// Sidewalk concrete: one slab a tile (a metre and a half), its joints cut
+// in, broom-finished, with the odd stain and patch.
+export function concreteMaps(size = 256, aniso = 8) {
+  const tone = tileFbm(51, { base: 2, octaves: 4 });
+  const fine = tileFbm(53, { base: 64, octaves: 2 });
+  const stain = tileFbm(57, { base: 3, octaves: 3 });
+  return maps(
+    size,
+    (u, v) => {
+      const joint = Math.min(u, 1 - u, v, 1 - v);
+      const groove = joint < 0.014 ? 1 : 0;
+      const broom = Math.sin(v * size * 1.7) * 0.5 + 0.5;
+      const t = tone(u, v);
+      const dirty = Math.max(0, (stain(u, v) - 0.62) * 3);
+      let g = 172 + t * 26 + fine(u, v) * 14 + broom * 4 - dirty * 30 - groove * 70;
+      return { r: g * 1.02, g, b: g * 0.95, h: 0.6 + fine(u, v) * 0.05 + broom * 0.02 - groove * 0.5, rough: 0.9 - dirty * 0.1 };
+    },
+    { strength: 2, aniso },
+  );
+}
+
+// Pavers, in a running bond: terracotta and sand, a plaza's floor. A tile is 2.4 m.
+export function paverMaps(size = 256, aniso = 8) {
+  const tone = tileFbm(61, { base: 4, octaves: 3 });
+  const rnd = rng(67);
+  const shade = Array.from({ length: 16 * 8 }, () => rnd());
+  return maps(
+    size,
+    (u, v) => {
+      const row = Math.floor(v * 16);
+      const x = u * 8 + (row % 2) * 0.5;
+      const col = Math.floor(x) % 8;
+      const fx = x - Math.floor(x);
+      const fy = v * 16 - row;
+      const joint = Math.min(fx, 1 - fx) < 0.05 || Math.min(fy, 1 - fy) < 0.09;
+      const k = shade[row * 8 + col];
+      const base = k < 0.55 ? [178, 112, 78] : k < 0.85 ? [196, 160, 118] : [150, 92, 66];
+      const t = 0.86 + tone(u, v) * 0.22;
+      return joint ? { r: 110, g: 100, b: 90, h: 0.3, rough: 1 } : { r: base[0] * t, g: base[1] * t, b: base[2] * t, h: 0.62, rough: 0.85 };
+    },
+    { strength: 2.4, aniso },
+  );
+}
+
+// Gravel, the yard kind: pale crushed stone with rust and grey in it. A tile is 2 m.
+export function gravelMaps(size = 256, aniso = 8) {
+  const cells = tileCells(71, 46);
+  const rnd = tileNoise(73, 46);
+  return maps(
+    size,
+    (u, v) => {
+      const c = cells(u, v);
+      const k = rnd(u * 46, v * 46);
+      const stone = c.near < 0.42 ? 1 - c.near / 0.42 : 0;
+      const base = k < 0.33 ? [196, 170, 138] : k < 0.66 ? [150, 146, 140] : [172, 120, 86];
+      const sh = 0.55 + stone * 0.55;
+      return { r: base[0] * sh, g: base[1] * sh, b: base[2] * sh, h: 0.3 + stone * 0.6, rough: 0.95 };
+    },
+    { strength: 3, aniso },
   );
 }
 

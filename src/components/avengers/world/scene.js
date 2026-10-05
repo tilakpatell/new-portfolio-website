@@ -34,8 +34,9 @@ import { AVENGERS_MODELS } from '../people/models';
 import { clipsFor, loadClips, loadPerson, person } from './people';
 import { createSwing } from './swing';
 import { createFlags, createRings, staticGrounds } from './grounds';
+import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, nearestEdge, samplePath, treeHeight } from './rules';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, V, aimWeb, camRoom, floorAt, nearestEdge, samplePath, treeHeight } from './rules';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -226,14 +227,14 @@ function beamMaterial(color) {
 }
 
 export async function createCompoundWorld(canvas, { onLost, calm = false } = {}) {
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.32, radius: 0.5, threshold: 1.05 }, onLost });
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.32, radius: 0.5, threshold: 1.2 }, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
   await preload({ sets, skies: ['airfield'], models: ['lamp', 'shrub'], impostors: ['fir-a', 'fir-b', 'fir-c', 'broadleaf'], small });
 
   // ── light: the airfield's late-afternoon sky, the sun a little higher than it has it ──
-  await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.3, sunColor: [1, 0.9, 0.76], fill: 0.1 });
+  await engine.setSky('airfield', { background: true, envIntensity: 0.8, bgIntensity: 0.95, sunDir: [0.79, 0.66, 0.57], sunIntensity: 3.1, sunColor: [1, 0.9, 0.76], fill: 0.1 });
   scene.fog = new THREE.Fog(0xcdd3cf, 200, 1000);
   const env = scene.environment;
   const sunDir = sun.userData.dir.clone();
@@ -287,6 +288,34 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const lawn = new THREE.Mesh(flatShape(LAWN, 0, 1, SC), lawnMat);
   lawn.receiveShadow = true;
   scene.add(lawn);
+
+  // grass blades on the lawn round him (./grass.js), lit and striped as the
+  // lawn is; fewer on a phone, none on the lowest tier
+  const grass =
+    engine.tier === 'low'
+      ? null
+      : createGrass(scene, {
+          count: small ? 16000 : 44000,
+          patch: small ? 28 : 38,
+          material: () => {
+            const m = cloudy(new THREE.MeshStandardMaterial({ color: 0x739446, roughness: 0.95, metalness: 0 }), 'blades');
+            const b = m.onBeforeCompile;
+            m.onBeforeCompile = (sh, r) => {
+              b(sh, r);
+              sh.fragmentShader = sh.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
+                {
+                  float s = smoothstep(0.42, 0.58, abs(fract(vCloudPos.z / 10.0) - 0.5) * 2.0);
+                  diffuseColor.rgb *= mix(0.9, 1.07, s);
+                  float n = cNoise(vCloudPos.xz * 0.03) * 0.6 + cNoise(vCloudPos.xz * 0.11 + 7.0) * 0.4;
+                  diffuseColor.rgb *= mix(vec3(1.08, 1.03, 0.84), vec3(0.88, 1.03, 0.92), n);
+                }`,
+              );
+            };
+            return m;
+          },
+        });
 
   // the river, and its bank
   const waterN = waterNormal();
@@ -392,8 +421,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const glassOf = (cols, rows, seed, lit, w, h) => {
     const c = curtainTexture({ cols, rows, seed, lit });
     for (const t of [c.map, c.emissiveMap]) t.repeat.set(1 / w, 1 / h);
-    // (the sky it reflects is brighter than white: kept under the bloom's threshold)
-    return cloudy(new THREE.MeshPhysicalMaterial({ envMap: env, map: c.map, emissiveMap: c.emissiveMap, emissive: 0xfff0d8, emissiveIntensity: 0.18, color: 0xa9c2dc, roughness: 0.08, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.08, envMapIntensity: 0.62 }), 'glass');
+    // (the sky it reflects is brighter than white, the low sun most of all:
+    // kept under the bloom's threshold, so a pane catching it doesn't flare)
+    return cloudy(new THREE.MeshPhysicalMaterial({ envMap: env, map: c.map, emissiveMap: c.emissiveMap, emissive: 0xfff0d8, emissiveIntensity: 0.18, color: 0xa9c2dc, roughness: 0.12, metalness: 0.1, clearcoat: 0.35, clearcoatRoughness: 0.12, envMapIntensity: 0.42 }), 'glass');
   };
   const glass = glassOf(8, 4, 5, 0.12, 12.8, 12);
   const glassBand = glassOf(12, 1, 9, 0.1, 19.2, 3);
@@ -472,11 +502,21 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     logo.position.z += 0.12;
     scene.add(logo);
   }
+  // the plant rooms on its roof: grey metal, louvred all round (white ones flared in the sun)
+  const plantMat = cloudy(new THREE.MeshStandardMaterial({ color: 0xbfc5cb, roughness: 0.5, metalness: 0.55 }), 'plant');
+  const plantRoom = (x0, y0, x1, y1, z0, z1) => {
+    box(x0, y0, x1, y1, z0, z1, plantMat);
+    for (let k = 1; k < 5; k++) {
+      const z = z0 + ((z1 - z0) * k) / 5;
+      box(x0 - 0.03, y0 - 0.03, x1 + 0.03, y1 + 0.03, z - 0.012, z + 0.012, darkMetal, { cast: false });
+    }
+    box(x0 - 0.08, y0 - 0.08, x1 + 0.08, y1 + 0.08, z1, z1 + 0.06, white);
+  };
   for (const [x, y] of [
     [48, 23],
     [55, 27],
   ])
-    box(x, y, x + 3, y + 2.4, 13, 14.1, white);
+    plantRoom(x, y, x + 3, y + 2.4, 13, 14.1);
 
   // the curved glass wing, banded with white slabs a little proud of the glass
   {
@@ -523,7 +563,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     for (const k of [0.25, 0.5, 0.75]) {
       const a = CRES.a0 + (CRES.a1 - CRES.a0) * k;
       const [x, y] = arcPt((CRES.rIn + CRES.rOut) / 2, a);
-      box(x - 1.6, y - 1.2, x + 1.6, y + 1.2, CRES.h + 0.6, CRES.h + 1.7, white);
+      plantRoom(x - 1.6, y - 1.2, x + 1.6, y + 1.2, CRES.h + 0.6, CRES.h + 1.7);
     }
   }
 
@@ -720,7 +760,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     PLANTERS.forEach((p, i) => {
       for (let k = 0; k < (small ? 1 : 2); k++) {
         const a = i * 1.7 + k * 1.57;
-        shrubs.push([p.x + Math.cos(a) * 0.22, p.z + Math.sin(a) * 0.22, 2.6 + ((i + k) % 3) * 0.3, a * 2.1 + k * 3.1]);
+        const sc = 2.6 + ((i + k) % 3) * 0.3;
+        const r = a * 2.1 + k * 3.1;
+        // (the shrub model's middle is 0.27 m along its x from its origin: brought back over the pot)
+        const cx = 0.27 * sc;
+        shrubs.push([p.x + Math.cos(a) * 0.18 - Math.cos(r) * cx, p.z + Math.sin(a) * 0.18 + Math.sin(r) * cx, sc, r]);
       }
     });
     const shrubGroup = await scatter('shrub', shrubs, { heightAt: () => 0.58, shadows: false });
@@ -966,9 +1010,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       const run = Math.min(1, Math.max(0, (speed - HERO.walk) / (HERO.run - HERO.walk)));
       f.gait += (speed * dt * Math.PI * 2) / (1.5 + run * 1.7);
       if (f.clips) {
-        drive(f.clips, speed, (p.y ?? 0) > 0.05, true);
+        // (off the ground: above the lawn or the roof under them)
+        drive(f.clips, speed, (p.y ?? 0) > floorAt(p.x, p.z, p.y ?? 0) + 0.05, true);
         f.clips.update(dt);
-      } else if (f.fig) f.fig.pose((p.y ?? 0) > 0.05 ? POSES.leap(0) : POSES.stride(f.gait, Math.min(1, speed / 1.2), run), dt, 30);
+      } else if (f.fig) f.fig.pose((p.y ?? 0) > floorAt(p.x, p.z, p.y ?? 0) + 0.05 ? POSES.leap(0) : POSES.stride(f.gait, Math.min(1, speed / 1.2), run), dt, 30);
       else poseHumanoid(f.hum, { t: f.gait / 5, mode: speed < 0.35 ? 'idle' : run > 0.3 ? 'run' : 'walk' });
     },
     tag: 0.42,
@@ -1403,6 +1448,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
     flags.update(clock);
+    // the grass's patch a little ahead of him, where the camera's looking
+    if (grass) {
+      const fx = s.hero.x - camera.position.x;
+      const fz = s.hero.z - camera.position.z;
+      const fl = Math.hypot(fx, fz) || 1;
+      grass.update(s.hero.x + (fx / fl) * 6, s.hero.z + (fz / fl) * 6, clock);
+    }
     rings.update(s.tour ?? { on: false, next: 0 }, clock);
 
     // Mjolnir hums a little when the worthy come near it
@@ -1521,7 +1573,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
         vfx.ring(v3.set(d.x, (d.y ?? 0) + 0.15, d.z), { color: 0xfff1d8, from: 0.4, to: 3 + hard * 4, life: 0.45, opacity: 0.5 * hard });
         A.punch = Math.max(A.punch, 3 * hard);
       }
-    } else if (type === 'web') {
+    } else if (type === 'web' || type === 'corner') {
       // every web out: a bump in the field of view, Insomniac's heartbeat of a swing
       A.punch = Math.max(A.punch, 3.5);
       swing.webbed(d.at);
@@ -1581,6 +1633,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       spidey?.dispose();
       swing.dispose();
       flags.dispose();
+      grass?.dispose();
       rings.dispose();
       vfx.dispose();
       engine.dispose();
