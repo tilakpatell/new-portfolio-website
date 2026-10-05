@@ -15,6 +15,7 @@ import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 
 const PORTAL = '#97ce4c';
+const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits) or
@@ -37,6 +38,12 @@ export default function Universe({ ask = false }) {
   const crew = crewById(ship);
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
+  // the panel, put away to give the map the room (remembered between visits)
+  const [tucked, setTucked] = useState(() => local.get(PANEL_KEY) === 'tucked');
+  const tuck = (on) => {
+    setTucked(on);
+    local.set(PANEL_KEY, on ? 'tucked' : 'open');
+  };
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -137,7 +144,7 @@ export default function Universe({ ask = false }) {
   const fade = leaving?.mode === 'portal' ? PORTAL : leaving?.mode === 'beyond' ? '#000' : leaving?.mode === 'dive' || leaving?.mode === 'crash' ? byId(leaving.id).palette.base : undefined;
 
   return (
-    <div className="dark-scope universe-page" style={accent} data-leaving={leaving?.mode} data-card={universe ? '' : undefined}>
+    <div className="dark-scope universe-page" style={accent} data-leaving={leaving?.mode} data-card={universe ? '' : undefined} data-tucked={tucked ? '' : undefined}>
       <h1 className="sr-only">Tilak Patel: the whole site as a universe</h1>
       <p className="sr-only" aria-live="polite">
         {universe ? `${universe.label}: selected` : ''}
@@ -154,7 +161,7 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
       />
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
-      <UniversePanel universe={universe} onSelect={select} onEnter={enter} onWhole={whole} leaving={Boolean(leaving)} ship={ship} onShip={pickShip} onStartOn={startOn} />
+      <UniversePanel universe={universe} onSelect={select} onEnter={enter} onWhole={whole} leaving={Boolean(leaving)} ship={ship} onShip={pickShip} onStartOn={startOn} tucked={tucked} onTuck={tuck} />
       {asking && <StartChoice onPick={start} />}
       <div className="universe-fade" aria-hidden="true" style={{ background: fade }} />
       {leaving?.mode === 'beyond' && <Beyond far={beyondOf(leaving.id)} />}
