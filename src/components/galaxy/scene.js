@@ -68,7 +68,7 @@ import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, o
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, keyAxes, stickInput } from '../universe/controls';
 import { createPilots } from '../universe/online/pilots';
 import { paintById } from '../universe/paint';
-import { STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
+import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { createModels } from './models';
 import { createSky } from './sky';
@@ -384,7 +384,7 @@ export async function create(canvas, ctx) {
         .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
         .then((c) => {
           if (!c) return;
-          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true })) {
+          if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint })) {
             c.dispose();
             disposeTree(c.group);
             return;
@@ -646,19 +646,29 @@ export async function create(canvas, ctx) {
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < (CADENCE[state.kind] ?? 0.18) * 1000) return;
+    const g = state.stats; // (the guns fitted in the hangar: how fast, how hard)
+    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence) * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = myBolts.find((m) => !m.visible) ?? myBolts[0];
     const [fx, fz] = forward(s.heading);
-    const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
     let dir = nose(s);
     if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), controls().assist);
     const { heading, pitch } = aimAngles(dir);
-    b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
+    // from the guns fitted, their barrels in turn; or the ship's own
+    const mods = state.model?.modules;
+    if (mods?.muzzles.length) {
+      state.barrel = ((state.barrel ?? 0) + 1) % mods.muzzles.length;
+      state.model.pivot.localToWorld(b.position.set(...mods.muzzles[state.barrel]));
+      mods.fire();
+    } else {
+      const side = state.kind === 'xwing' ? (state.side = -state.side) * 0.12 : 0;
+      b.position.set(s.x + dir[0] * 0.16 - fz * side, s.y + dir[1] * 0.16, s.z + dir[2] * 0.16 + fx * side);
+    }
     b.rotation.set(pitch, heading, 0);
+    b.scale.set(g.bolt, g.bolt, 1 + (g.bolt - 1) * 0.4);
     const v = AIM.bolt + Math.max(0, s.speed);
-    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v] };
+    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch };
     b.visible = true;
     net?.shot(b.position, b.userData.v);
     emit({ type: 'fire' });
@@ -681,7 +691,7 @@ export async function create(canvas, ctx) {
       b.position.x += d.v[0] * dt;
       b.position.y += d.v[1] * dt;
       b.position.z += d.v[2] * dt;
-      const hh = hunters?.hit(shotFrom, b.position);
+      const hh = hunters?.hit(shotFrom, b.position, d.punch ?? 1);
       if (hh) {
         b.visible = false;
         pops.hit({ point: hh.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: hh.down ? hh.size * 1.8 : 0.2 });
@@ -745,7 +755,7 @@ export async function create(canvas, ctx) {
   const hurt = (damage, by = null) => {
     if (state.crash || !state.ship || state.jump?.phase === 'tunnel') return;
     if (by && state.clock < state.safeUntil) return;
-    state.shield = Math.max(0, state.shield - damage);
+    state.shield = Math.max(0, state.shield - damage * state.stats.armor); // (less, with plating fitted)
     state.hitAt = state.clock;
     state.hurt = 1;
     if (!reduced) state.shake = Math.max(state.shake, 0.3);
@@ -761,6 +771,7 @@ export async function create(canvas, ctx) {
     c.age += dt;
     const m = state.model;
     updatePlumes(dt, performance.now() / 1000, 0);
+    m.drive?.(dt, {}); // (the engines are out)
     if (c.age < CRASH.impact) {
       const k = c.age / CRASH.impact;
       m.group.position.copy(c.from).addScaledVector(c.normal, -k * k * (SHIP.radius + 0.25));
@@ -1076,6 +1087,8 @@ export async function create(canvas, ctx) {
     const spooling = state.jump && state.jump.phase !== 'align' ? 1 : 0;
     m.setThrottle(Math.max(spooling, clamp01(Math.abs(ship.speed) / SHIP.cruise) * (0.7 + state.streak * 0.3)));
     updatePlumes(dt, t, Math.max(spooling, clamp01((ship.speed - 0.5) / SHIP.cruise) * (0.7 + 0.3 * state.streak)), 1 + state.streak * 1.3 + spooling * 2);
+    // the parts fitted in the hangar: their vanes and glows with the throttle and the stick
+    m.drive?.(dt, { throttle: Math.max(spooling, clamp01(Math.abs(ship.speed) / SHIP.cruise)), boost: state.streak > 0.3 || spooling > 0, turn: input.turn || 0, climb: input.climb || 0 });
     engine?.set({ speed: Math.min(ship.speed, SHIP.boost * 1.2), boost: state.streak > 0.3 || spooling > 0, on: state.shown && !props.frozen && !document.hidden });
   };
 
@@ -1097,7 +1110,7 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (live) {
-      if (state.clock - state.hitAt > 5 && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       // now and then, whoever holds the system comes for you; the Empire and
@@ -1464,7 +1477,7 @@ export async function create(canvas, ctx) {
       emit({ type: 'ready' });
     }
     if (props.frozen) return Boolean(state.crash?.through);
-    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
+    return !reduced || moving || shooting || fxBusy || worldBusy || adventuring || piloting || jumpFx.busy || bolts.busy || flashes.busy || net?.peers.size > 0 || Boolean(state.model?.modules?.easing) || cabWas !== state.cabK || state.kick > 0 || state.flare > 1 || Boolean(state.stick?.on || state.jump);
   }
   let dustAmount = 0;
   const cabFrame = (dt, t) => {

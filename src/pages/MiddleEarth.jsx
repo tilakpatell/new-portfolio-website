@@ -27,6 +27,7 @@ const sfx = () => import('../lib/sfx');
 const ShireWorld = lazy(() => import('../components/middleearth/shire/ShireWorld'));
 const BreeWorld = lazy(() => import('../components/middleearth/towns/bree/BreeWorld'));
 const WeathertopWorld = lazy(() => import('../components/middleearth/towns/weathertop/WeathertopWorld'));
+const RivendellWorld = lazy(() => import('../components/middleearth/towns/rivendell/RivendellWorld'));
 const Rush = lazy(() => import('../components/middleearth/rush/Rush'));
 
 // New Zealand, standing in for Middle-earth.
@@ -376,10 +377,16 @@ export default function MiddleEarth() {
       )}
 
       {here?.id === 'rivendell' && (
+        <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
+          <RivendellWorld onLeave={() => go('moria')} />
+        </Suspense>
+      )}
+
+      {here?.id === 'rivendell' && (
         <section data-theme-section="shire" className="shell relative z-10 pb-14 pt-10" aria-labelledby="me-scenes-title">
-          <h1 id="me-scenes-title" className="title">
+          <h2 id="me-scenes-title" className="title">
             From the films
-          </h1>
+          </h2>
           <p className="lead mt-4 max-w-[54ch]">Elrond’s house keeps the old tales. A few of them, as the films told them, and the lines everyone remembers.</p>
           {hasScenes(SCENES) && (
             <div className="mt-8">

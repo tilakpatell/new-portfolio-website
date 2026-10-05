@@ -10,7 +10,7 @@
 // the sublight drive (up to PULSE), so crossing the system doesn't drag, and
 // drops back as you come up on anything (so you never arrive at it flat out).
 //
-// makeSpace(solids) → { edge, ceilingAt, openness, boostAt, brakeAt, coastAt, solids, goals }
+// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
 // bumps into (the planet, its moons, the Death Star, the big rocks…); the
 // ones with `goal` are somewhere the autopilot can take you.
@@ -48,6 +48,8 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
     edge,
     ceilingAt: () => ceiling,
     openness,
+    driveAt: openness, // (how far the sublight drive's open: all of how open it is)
+    homeAt: () => 0, // (none of the universe map's home-system handling)
     boostAt: (x, y, z, boost = SHIP.boost) => boost + (PULSE - boost) * openness(x, y, z),
     brakeAt: (x, y, z) => SHIP.brake * (1 + 2.5 * openness(x, y, z)),
     coastAt: (x, y, z) => SHIP.coast * (1 + 3.5 * openness(x, y, z)),

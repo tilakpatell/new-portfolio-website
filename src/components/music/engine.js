@@ -20,7 +20,7 @@ import { harmoniumAllOff } from './harmonium';
 import { dayanTarget } from './tablaRules';
 
 export * from './tuning';
-export { BOLS, LAYA, TAALS, playBol, setThekaLaya, setThekaTempo, startTheka, stopTheka, thekaGrid, thekaPlaying, tihai, warmTabla } from './tabla';
+export { BOLS, LAYA, TAALS, onTablaBol, playBol, setThekaLaya, setThekaTempo, startTheka, stopTheka, thekaGrid, thekaPlaying, tihai, warmTabla } from './tabla';
 export { bolLabel } from './tablaRules';
 
 // ── Sitar ──────────────────────────────────────────────────────────────────
@@ -59,6 +59,12 @@ function stringBuffer(ac, hz) {
 
 let drone = null;
 export const tanpuraPlaying = () => Boolean(drone);
+// everyone else who wants to know as each string sounds (the music planet's tanpura)
+const tanpuraListeners = new Set();
+export const onTanpuraPluck = (fn) => {
+  tanpuraListeners.add(fn);
+  return () => tanpuraListeners.delete(fn);
+};
 
 // Starts the drone. `onPluck(i)` is called as each string sounds, for the visual.
 // It follows the tuning as it changes: the next pluck of each string is in tune.
@@ -93,7 +99,12 @@ export function startTanpura(onPluck) {
       src.connect(g).connect(level);
       src.start(Math.max(at, ac.currentTime + 0.01));
       const delay = Math.max(0, (at - ac.currentTime) * 1000);
-      timers.push(setTimeout(() => drone?.onPluck?.(i), delay));
+      timers.push(
+        setTimeout(() => {
+          drone?.onPluck?.(i);
+          tanpuraListeners.forEach((fn) => fn(i, str));
+        }, delay),
+      );
       at += (i === 3 ? 1.55 : 1.05) + (Math.random() - 0.5) * 0.06;
       n++;
     }
@@ -126,7 +137,7 @@ export function stopTanpura() {
 // ── Harmonium ──────────────────────────────────────────────────────────────
 // A real harmonium's keys, looped as they're held, on its reed banks and
 // through its bellows (./harmonium.js).
-export { bellowsAir, harmoniumOff, harmoniumOn, harmoniumReady, onBellows, pumpBellows, setBellowsMode, setHarmoniumSustain, warmHarmonium } from './harmonium';
+export { bellowsAir, harmoniumOff, harmoniumOn, harmoniumReady, onBellows, onHarmoniumNote, pumpBellows, setBellowsMode, setHarmoniumSustain, warmHarmonium } from './harmonium';
 export { harmoniumAllOff };
 
 // The dayan's pitch for the current Sa, for the tuning readout.

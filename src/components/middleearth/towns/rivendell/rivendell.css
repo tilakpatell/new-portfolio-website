@@ -1,0 +1,34 @@
+/* Rivendell: the Shire's HUD (../../shire/shire.css) in golden autumn
+   light, with the panels for the shards, the Council and Bilbo's hand. */
+
+.riv-world { --shire-glass: rgba(24, 20, 14, 0.74); --shire-glass-hi: rgba(28, 22, 16, 0.9); }
+.riv-stage { background: linear-gradient(180deg, #4a7ac0 0%, #f2d6a0 58%, #6a6a3a 60%, #3a3220 100%); }
+.riv-stage[data-sky='dusk'] { background: linear-gradient(180deg, #1a2448 0%, #d88a6a 58%, #3a2e2a 60%, #1a1612 100%); }
+.riv-stage[data-sky='dawn'] { background: linear-gradient(180deg, #6a9ad8 0%, #e8eef4 58%, #5a5a4a 60%, #2a2a22 100%); }
+.riv-stage .shire-loading { color: #3a2a14; }
+.riv-stage[data-mode='inside'] .shire-canvas, .riv-stage[data-mode='council'] .shire-canvas, .riv-stage[data-mode='narsil'] .shire-canvas, .riv-stage[data-mode='bilbo'] .shire-canvas, .riv-stage[data-mode='leaving'] .shire-canvas { cursor: default; touch-action: none; }
+
+/* a game's panel, up top in the middle */
+.riv-game { top: clamp(0.7rem, 2vw, 1.2rem); bottom: auto; left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); }
+.riv-game .shire-meter { width: 100%; box-sizing: border-box; }
+.riv-big { min-width: 9rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.riv-meter-heat .shire-meter-bar span { background: linear-gradient(90deg, #f6d36a, #ff4a1a); }
+.riv-meter-hand .shire-meter-bar span { background: linear-gradient(90deg, #c8b890, #d8280a); }
+.riv-game[data-lunge] { border-color: rgba(255, 90, 40, 0.75); animation: shire-tempt 0.5s ease-in-out infinite alternate; }
+
+/* the sword in pieces, laid end to end: tap one, then where it goes */
+.riv-blade { display: flex; gap: 0.25rem; align-items: stretch; }
+.riv-shard { position: relative; flex: 1 1 0; min-width: 0; height: 3rem; padding: 0.35rem 0.2rem; border: 1px solid var(--shire-line); border-radius: 6px; background: rgba(255, 255, 255, 0.04); cursor: pointer; }
+.riv-shard svg { width: 100%; height: 100%; display: block; }
+.riv-shard kbd { position: absolute; left: 0.2rem; bottom: 0.1rem; font-size: 0.6rem; opacity: 0.7; }
+.riv-shard[data-held] { border-color: var(--shire-gold); box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.5); transform: translateY(-3px); }
+.riv-shard[data-right] { background: rgba(240, 192, 64, 0.12); }
+.riv-shard:focus-visible { outline: 2px solid var(--shire-gold); outline-offset: 2px; }
+
+.riv-end { left: 50%; transform: translateX(-50%); width: min(28rem, calc(100% - 1.4rem)); text-align: center; justify-items: center; }
+
+@media (max-width: 639px) {
+  .riv-game { left: 0.7rem; transform: none; width: calc(100% - 1.4rem); top: 0.7rem; }
+  .riv-end { left: 0.7rem; transform: none; width: calc(100% - 5.4rem); }
+  .riv-shard { height: 2.6rem; }
+}

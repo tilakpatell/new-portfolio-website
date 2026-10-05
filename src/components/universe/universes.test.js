@@ -28,7 +28,7 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/galaxy', '/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/caribbean', '/invincible']);
+    expect(WORLDS.map((w) => w.to)).toEqual(['/galaxy', '/deathstar', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/earth', '/caribbean', '/invincible']);
     expect(WORLDS[0]).toMatchObject({ to: '/galaxy', label: 'A galaxy far, far away', from: 'Star Wars' });
     expect(WORLDS[1]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
   });

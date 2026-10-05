@@ -1,0 +1,135 @@
+{
+  "cap": {
+    "h": 1.9,
+    "rig": true,
+    "clips": [
+      "idle",
+      "walk",
+      "run",
+      "jump"
+    ],
+    "bones": {
+      "hips": "Hips",
+      "spine": "Spine",
+      "chest": "Spine2",
+      "neck": "Neck",
+      "head": "Head",
+      "shoulderL": "LeftArm",
+      "elbowL": "LeftForeArm",
+      "handL": "LeftHand",
+      "shoulderR": "RightArm",
+      "elbowR": "RightForeArm",
+      "handR": "RightHand",
+      "thighL": "LeftUpLeg",
+      "kneeL": "LeftLeg",
+      "footL": "LeftFoot",
+      "thighR": "RightUpLeg",
+      "kneeR": "RightLeg",
+      "footR": "RightFoot"
+    },
+    "tris": 12929,
+    "bytes": 774944,
+    "credit": "avengers-cap"
+  },
+  "thor": {
+    "h": 1.98,
+    "rig": true,
+    "clips": [
+      "idle",
+      "walk",
+      "run"
+    ],
+    "bones": {
+      "hips": "Hips",
+      "spine": "Spine",
+      "chest": "Spine2",
+      "neck": "Neck",
+      "head": "Head",
+      "shoulderL": "LeftArm",
+      "elbowL": "LeftForeArm",
+      "handL": "LeftHand",
+      "shoulderR": "RightArm",
+      "elbowR": "RightForeArm",
+      "handR": "RightHand",
+      "thighL": "LeftUpLeg",
+      "kneeL": "LeftLeg",
+      "footL": "LeftFoot",
+      "thighR": "RightUpLeg",
+      "kneeR": "RightLeg",
+      "footR": "RightFoot"
+    },
+    "tris": 19580,
+    "bytes": 584728,
+    "credit": "avengers-thor"
+  },
+  "hulk": {
+    "h": 2.55,
+    "rig": true,
+    "clips": [
+      "idle",
+      "walk",
+      "run"
+    ],
+    "bones": {
+      "hips": "pelvis",
+      "spine": "spine_01",
+      "chest": "spine_05",
+      "neck": "neck_01",
+      "head": "head",
+      "shoulderL": "upperarm_l",
+      "elbowL": "lowerarm_l",
+      "handL": "hand_l",
+      "shoulderR": "upperarm_r",
+      "elbowR": "lowerarm_r",
+      "handR": "hand_r",
+      "thighL": "thigh_l",
+      "kneeL": "calf_l",
+      "footL": "foot_l",
+      "thighR": "thigh_r",
+      "kneeR": "calf_r",
+      "footR": "foot_r"
+    },
+    "tris": 32527,
+    "bytes": 2063856,
+    "credit": "avengers-hulk"
+  },
+  "widow": {
+    "h": 1.7,
+    "rig": true,
+    "clips": [
+      "idle",
+      "walk",
+      "run"
+    ],
+    "bones": {
+      "hips": "root_x",
+      "spine": "spine_01_x",
+      "chest": "spine_03_x",
+      "neck": "neck_x",
+      "head": "head_x",
+      "shoulderL": "arm_stretch_l",
+      "elbowL": "forearm_stretch_l",
+      "handL": "hand_l",
+      "shoulderR": "arm_stretch_r",
+      "elbowR": "forearm_stretch_r",
+      "handR": "hand_r",
+      "thighL": "thigh_stretch_l",
+      "kneeL": "leg_stretch_l",
+      "footL": "foot_l",
+      "thighR": "thigh_stretch_r",
+      "kneeR": "leg_stretch_r",
+      "footR": "foot_r"
+    },
+    "tris": 28072,
+    "bytes": 934508,
+    "credit": "avengers-widow"
+  },
+  "ironman": {
+    "h": 1.98,
+    "rig": false,
+    "clips": [],
+    "tris": 7734,
+    "bytes": 452820,
+    "credit": "avengers-ironman"
+  }
+}

@@ -86,7 +86,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · music', 'dim'),
+  L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · schwifty · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
@@ -466,6 +466,10 @@ export default function Terminal() {
         setTimeout(() => navigate('/dot-matrix'), 400);
         return [L('  Inserting cartridge… DOT MATRIX', 'ok')];
       },
+      earth: () => {
+        setTimeout(() => navigate('/earth'), 400);
+        return [L('  Cleared for departure from Syracuse…', 'ok')];
+      },
       worlds: () => [
         BLANK,
         L('  WORLDS', 'head'),
@@ -478,6 +482,7 @@ export default function Terminal() {
         L(`  ${pad('albuquerque', 13)}Breaking Bad: the cast, Walt's Metherria, Hector's bell, Los Pollos Hermanos`),
         L(`  ${pad('c137', 13)}Rick and Morty: the portal gun, Portal panic, the Meeseeks box, interdimensional cable`),
         L(`  ${pad('dotmatrix', 13)}Gaming: a Game Boy island in four greens, eight cartridges, the giant Game Boy`),
+        L(`  ${pad('earth', 13)}Travel: down from orbit onto the globe, then fly a plane to every place I've been`),
         L(`  ${pad('music', 13)}The music room: sitar, harmonium, tabla`),
       ],
       exit: () => {

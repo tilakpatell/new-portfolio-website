@@ -100,4 +100,5 @@ export const ROUTE_THEMES = {
   '/albuquerque': 'heisenberg',
   '/c-137': 'portal',
   '/dot-matrix': 'gameboy',
+  '/earth': 'travel',
 };
