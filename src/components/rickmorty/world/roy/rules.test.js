@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOf, beatMorty, epitaph, MORTY_BEST, newLife, OLD_AGE, rand, STAGE_INFO, STAGES, stageTitle, stepLife } from './rules';
+import { ageOf, beatMorty, beatWindow, epitaph, inBand, MORTY_BEST, newLife, OLD_AGE, rand, STAGE_INFO, STAGES, stageTitle, stepLife, TUNING } from './rules';
 
 const DT = 1 / 60;
 const idle = () => ({});
@@ -527,5 +527,95 @@ describe('purity and determinism', () => {
     expect(v).toBeLessThan(1);
     expect(Number.isInteger(next) && next >= 0 && next < 2 ** 32).toBe(true);
     expect(rand(next)[0]).not.toBe(v);
+  });
+});
+
+// what the scene and the HUD read: the numbers, and the two windows, pinned to what a press does
+describe('what the drawing reads', () => {
+  const at = (life, s) => ({ ...life, s: { ...life.s, ...s } });
+
+  it('gives the numbers, read only', () => {
+    expect(TUNING.kid).toMatchObject({ band: 0.28, throws: 5 });
+    expect(TUNING.football).toMatchObject({ goal: 100, limit: 16 });
+    expect(TUNING.carpet).toMatchObject({ customers: 8, patience: 4 });
+    expect(TUNING.cancer).toMatchObject({ beat: 0.75, window: 0.16, need: 12, offbeats: 6, limit: 24 });
+    expect(TUNING.finale).toMatchObject({ ahead: 30, from: 46 });
+    expect(TUNING.grit).toMatchObject({ hits: 4, sales: 6 });
+    expect(Object.isFrozen(TUNING)).toBe(true);
+    for (const k of Object.keys(TUNING)) expect(Object.isFrozen(TUNING[k]), k).toBe(true);
+    expect(() => {
+      TUNING.kid.band = 1;
+    }).toThrow();
+  });
+
+  it('inBand says when a throw goes through the tire, as stepLife does', () => {
+    let life = newLife();
+    let hits = 0;
+    let misses = 0;
+    for (let i = 0; i < 400; i++) {
+      const thrown = stepLife(life, { act: true }, DT);
+      const hit = thrown.events.includes('hit');
+      expect(hit, `phase ${life.s.phase}`).toBe(inBand(life.s.phase));
+      hits += hit ? 1 : 0;
+      misses += hit ? 0 : 1;
+      life = stepLife(life, {}, DT);
+    }
+    expect(hits).toBeGreaterThan(0);
+    expect(misses).toBeGreaterThan(0);
+    const { band } = TUNING.kid;
+    for (const [phase, hit] of [
+      [band - 1e-6, true],
+      [-band + 1e-6, true],
+      [band, false],
+      [-band, false],
+      [0, true],
+    ]) {
+      expect(inBand(phase)).toBe(hit);
+      expect(stepLife(at(newLife(), { phase }), { act: true }, DT).events).toContain(hit ? 'hit' : 'miss');
+    }
+  });
+
+  it("beatWindow is 'open' exactly when a press would take a beat", () => {
+    let life = playTo('cancer');
+    const seen = { open: 0, taken: 0, closed: 0 };
+    let n = 0;
+    while (life.stage === 'cancer' && !life.over && n++ < 5000) {
+      const w = beatWindow(life);
+      seen[w]++;
+      const pressed = stepLife(life, { act: true }, DT);
+      expect(pressed.events, `${w} at beatT ${life.s.beatT}, beat ${life.s.elapsed}, last ${life.s.hit}`).toContain(w === 'open' ? 'beat' : 'offbeat');
+      // take every other beat early in its window, so the window is also seen 'taken'
+      const take = w === 'open' && life.s.elapsed % 2 === 0;
+      life = stepLife(life, { act: take }, DT);
+    }
+    expect(seen.open).toBeGreaterThan(0);
+    expect(seen.taken).toBeGreaterThan(0);
+    expect(seen.closed).toBeGreaterThan(0);
+  });
+
+  it('beatWindow is shut for the first moments of the stage, and after its beat is taken', () => {
+    const start = playTo('cancer');
+    expect(start.s).toMatchObject({ beatT: 0, elapsed: 0, hit: 0 });
+    expect(beatWindow(start)).toBe('closed');
+    expect(stepLife(start, { act: true }, DT).events).toEqual(['offbeat']);
+    const { beat, window } = TUNING.cancer;
+    // the late edge (after beat 3) and the early edge (before beat 4)
+    for (const [beatT, w] of [
+      [window - 1e-6, 'open'],
+      [window + 1e-6, 'closed'],
+      [beat - window + 1e-6, 'open'],
+      [beat - window - 1e-6, 'closed'],
+    ]) {
+      const life = at(start, { beatT, elapsed: 3, hit: 2 });
+      expect(beatWindow(life), `beatT ${beatT}`).toBe(w);
+      expect(stepLife(life, { act: true }, DT).events).toContain(w === 'open' ? 'beat' : 'offbeat');
+    }
+    const open = at(start, { beatT: 0.05, elapsed: 3, hit: 2 });
+    const took = stepLife(open, { act: true }, DT);
+    expect(took.events).toContain('beat');
+    expect(beatWindow(took)).toBe('taken');
+    expect(stepLife(took, { act: true }, DT).events).toContain('offbeat');
+    expect(beatWindow(newLife())).toBe('closed');
+    expect(beatWindow({ ...open, over: true })).toBe('closed');
   });
 });
