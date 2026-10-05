@@ -108,7 +108,21 @@ export default function Albuquerque() {
           </div>
         </section>
       )}
-      <div className="pb-16" />
+      <p className="shell relative z-10 pb-16 text-xs leading-relaxed text-muted">
+        In the town: the RV is{' '}
+        <a className="underline" href="https://sketchfab.com/models/85ea7208651a47f6a3b2924dadaeb955" target="_blank" rel="noreferrer">
+          Fleetwood Bounder
+        </a>{' '}
+        by Zack_Hawley, Saul’s car{' '}
+        <a className="underline" href="https://sketchfab.com/models/72f36689982a4066b4382a7c2b5ecaa4" target="_blank" rel="noreferrer">
+          Suzuki Esteem 1998
+        </a>{' '}
+        by temp0.crazy, the tank cars{' '}
+        <a className="underline" href="https://sketchfab.com/models/c87b96181fd249ae8de1ac14575ec475" target="_blank" rel="noreferrer">
+          Railway tank
+        </a>{' '}
+        by dmitriev_nd, with cacti by yadrogames, a tumbleweed by biggreenorange, a water tower by Lora_o and a bucket by Batuhan13, all from Sketchfab (CC BY 4.0), reduced for the web.
+      </p>
     </div>
   );
 }

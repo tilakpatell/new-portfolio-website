@@ -22,6 +22,7 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   scene.background = new THREE.Color(0xe9e6df);
   const camera = new THREE.PerspectiveCamera(fov, 1, 0.05, 120);
   const size = { w: 1, h: 1 };
+  let api = null;
 
   const resize = (w, h) => {
     size.w = Math.max(1, Math.round(w));
@@ -30,6 +31,7 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
     renderer.setSize(size.w, size.h, false);
     camera.aspect = size.w / size.h;
     camera.updateProjectionMatrix();
+    api.onResize?.(size.w, size.h, ratio);
   };
 
   let lost = false;
@@ -72,9 +74,12 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
     return { x: ((tmp.x + 1) / 2) * size.w, y: ((1 - tmp.y) / 2) * size.h, front: tmp.z < 1 };
   };
 
+  // a scene with its own passes (bloom, a grade) sets api.draw to draw them,
+  // and api.onResize to size them; without either, the scene draws straight
   const render = (ms = 16) => {
     if (lost) return;
-    renderer.render(scene, camera);
+    if (api.draw) api.draw(ms);
+    else renderer.render(scene, camera);
     watch(ms);
   };
 
@@ -91,7 +96,8 @@ export function createStage(canvas, { onLost, onSlow, fov = 50 } = {}) {
   // renderer counts, for checking the scene against its budget
   const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: ratio, shadows: renderer.shadowMap.enabled });
 
-  return { renderer, scene, camera, size, resize, project, render, dispose, info, coarse, get lost() { return lost; } };
+  api = { renderer, scene, camera, size, resize, project, render, dispose, info, coarse, draw: null, onResize: null, get lost() { return lost; } };
+  return api;
 }
 
 // The office's light: the HDRI for ambient and reflections, a cool overhead

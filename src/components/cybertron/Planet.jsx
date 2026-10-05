@@ -1,10 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { useScene } from '../../lib/three/useScene';
 
 // Cybertron, turning slowly: a planet plated in metal, scored with glowing
-// circuitry and burning in places from the war. Drawn on a 2D canvas: a
-// metal texture is painted once, then each frame wraps it round a lit sphere,
-// pixel by pixel, and adds the glow on top. `side` sets the energon colour.
+// circuitry and burning in places from the war. `side` sets the energon
+// colour.
+//
+// In WebGL it's a real globe (./planet3d.js): plates, energon, city rings and
+// fires from one shader, with its moons and a ring of wreckage, and you can
+// turn it by hand. Without WebGL it's drawn on a 2D canvas: a metal texture
+// is painted once, then each frame wraps it round a lit sphere, pixel by
+// pixel, and adds the glow on top.
+
+const load = () => import('./planet3d');
+const LABEL = 'The planet Cybertron, plated in metal and burning in places, turning slowly';
+
+export default function Planet({ side = 'autobot', className = '' }) {
+  const { wrap, meant } = useScene(load, { id: 'cy-planet', props: { side } });
+  return (
+    <div ref={wrap} className={className} role="img" aria-label={`${LABEL}. Drag to turn it.`}>
+      {!meant && <Planet2D side={side} className="cy-planet-flat" />}
+    </div>
+  );
+}
 
 const TW = 1024;
 const TH = 512;
@@ -114,7 +132,7 @@ function paint(side) {
   };
 }
 
-export default function Planet({ side = 'autobot', className = '' }) {
+function Planet2D({ side = 'autobot', className = '' }) {
   const canvas = useRef(null);
   useEffect(() => {
     const cv = canvas.current;
@@ -217,5 +235,5 @@ export default function Planet({ side = 'autobot', className = '' }) {
       ro?.disconnect();
     };
   }, [side]);
-  return <canvas ref={canvas} className={className} role="img" aria-label="The planet Cybertron, plated in metal and burning in places, turning slowly" />;
+  return <canvas ref={canvas} className={className} aria-hidden="true" />;
 }
