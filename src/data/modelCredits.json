@@ -30,12 +30,9 @@
     "license": "CC-BY-NC-SA-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
-    "where": "universe",
+    "where": "galaxy",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb",
-    "also": [
-      "galaxy"
-    ]
+    "file": "/models/universe/death-star.glb"
   },
   "earth-plane": {
     "title": "737 MAX Lion Air",
@@ -159,12 +156,9 @@
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
     "source": "https://sketchfab.com/3d-models/death-star-trench-run-9f2a107b73e44941b4978444ff65593a",
-    "where": "universe",
+    "where": "galaxy",
     "as": "the Death Star’s trench",
-    "file": "/models/universe/trench.glb",
-    "also": [
-      "galaxy"
-    ]
+    "file": "/models/universe/trench.glb"
   },
   "xwing-hd": {
     "title": "High Poly X-Wing Fighter",

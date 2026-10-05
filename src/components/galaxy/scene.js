@@ -77,6 +77,7 @@ import { createBolts, createFlashes } from './fx';
 import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { asking } from './asking';
 import { arrival, courseTo, jumpSeconds, lightYears, starAhead, systemById } from './systems';
 
 const BOLTS = 16;
@@ -846,6 +847,7 @@ export async function create(canvas, ctx) {
     }
   };
   let pendingSystem = null; // the system the URL asks for, if a jump to it is waiting
+  let asked = props.system ?? null; // the system the page last asked for
   const jumpDir = new THREE.Vector3();
   const startJump = (toId, why = 'course') => {
     const to = systemById(toId);
@@ -1725,11 +1727,12 @@ export async function create(canvas, ctx) {
       setShip(next.ship ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
-      // the page asked for another system (a link, the URL): jump there
-      if (next.system && state.sys && next.system !== state.sys.id && next.system !== state.jump?.to.id) {
-        if (state.jump && state.jump.phase !== 'align') pendingSystem = next.system;
-        else startJump(next.system, 'link');
-      }
+      // the page asking for another system (a link, the URL): jump there, but
+      // only when it asks anew (asking.js)
+      const ask = asking(asked, next.system, { here: state.sys?.id, to: state.jump?.to.id, midJump: Boolean(state.jump && state.jump.phase !== 'align') });
+      asked = ask.asked;
+      if (ask.act === 'queue') pendingSystem = next.system;
+      else if (ask.act === 'jump') startJump(next.system, 'link');
       if (next.frozen) {
         endDrag();
         state.keys = {};

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { inPoly } from '../compound/plan';
 import {
+  ANCHORS,
   ARMOUR,
+  BODY,
   BUILDINGS,
   CAST,
   DOOR_R,
@@ -10,21 +12,29 @@ import {
   LAWN_W,
   PLACES,
   PORTAL,
+  SOLIDS,
   START,
+  SWING,
+  aimWeb,
   behindYaw,
   camRoom,
   cameraMove,
   collide,
+  floorAt,
   linesFor,
   nearCast,
+  nearestEdge,
   nearPlace,
   newHero,
   outside,
+  pastAnchor,
   progress,
+  solidById,
   stepHero,
   underPortal,
   walkable,
 } from './rules';
+import { LAWN_TREES } from './rules';
 
 const DT = 1 / 60;
 const walk = (h, move, seconds) => {
@@ -257,5 +267,329 @@ describe('The compound, the world: the heist', () => {
     expect(all.stones).toBe(6);
     expect(all.next).toBe(null);
     expect(all.objective).toMatch(/Thanos/);
+  });
+});
+
+// ── swinging, climbing and the roofs ──
+
+const solidAt = (x, y, z) => SOLIDS.find((s) => y < s.h - 0.05 && y + 0.05 > s.y0 && inPoly(x, z, s.foot));
+// The tests' own swinger: holds the web while he's coming down (or low),
+// lets go on the upswing past the anchor, and steers round the lawn.
+const MID = { x: 60 * 1.6, z: 52 * 1.6 };
+function pilot(h, t) {
+  const a = t * 0.12;
+  const tx = MID.x + Math.cos(a) * 55 - h.x;
+  const tz = MID.z + Math.sin(a) * 45 - h.z;
+  const d = Math.hypot(tx, tz) || 1;
+  let web;
+  if (h.mode === 'ground') web = true;
+  else if (h.mode === 'swing') web = !(pastAnchor(h) > 0.45 && h.vy > 0);
+  else web = h.vy < -1 || h.y < 3;
+  return { x: tx / d, z: tz / d, run: true, jump: h.mode === 'ground' || h.mode === 'wall', web };
+}
+
+describe('The compound, the world: what a web can catch', () => {
+  it('has roof edges to swing from on every tall building, and firs round the lawn', () => {
+    for (const id of ['hangar', 'prow', 'wing', 'training', 'lab', 'bridge']) expect(ANCHORS.filter((a) => a.id === id).length, id).toBeGreaterThan(6);
+    expect(ANCHORS.filter((a) => a.kind === 'tree').length).toBeGreaterThan(LAWN_TREES.length + 20);
+  });
+
+  it('swings him about points over the lawn, clear of the buildings, under where the web sticks', () => {
+    for (const an of ANCHORS) {
+      expect(inPoly(an.a[0], an.a[2], LAWN_W)).toBe(true);
+      expect(inBuilding(an.a[0], an.a[2])).toBe(false);
+      expect(an.at[1]).toBeGreaterThanOrEqual(an.a[1] - 0.01);
+    }
+  });
+
+  it('finds an anchor ahead of him and over him, in reach, with nothing in the way', () => {
+    // running at the main building from the start
+    const h = { ...newHero(START), vx: 0, vz: -9.5, y: 1.5 };
+    const w = aimWeb(h);
+    expect(w).not.toBe(null);
+    expect(w.a[1] - h.y).toBeGreaterThanOrEqual(SWING.minUp);
+    expect(w.len).toBeLessThanOrEqual(SWING.reach);
+    // ahead: up the drive, not behind him
+    expect(w.a[2]).toBeLessThan(h.z);
+  });
+});
+
+describe('The compound, the world: swinging', () => {
+  it('turns a jump held from the ground into a web, after a moment', () => {
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    h = stepHero(h, { jump: true, web: true }, DT);
+    expect(h.mode).toBe('air');
+    for (let t = 0; t < SWING.arm - 0.05; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('air');
+    for (let t = 0; t < 0.2; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    expect(h.ev.length + 1).toBeGreaterThan(0);
+  });
+
+  it('is a rope: never longer than it is, and off the ground while he hangs on', () => {
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    h = stepHero(h, { jump: true, web: true, run: true, z: -1 }, DT);
+    let swung = 0;
+    for (let t = 0; t < 4; t += DT) {
+      h = stepHero(h, { web: true, z: -1 }, DT);
+      if (h.mode !== 'swing') continue;
+      swung += DT;
+      const a = h.web.a;
+      expect(Math.hypot(h.x - a[0], h.y - a[1], h.z - a[2])).toBeLessThan(h.web.len + 0.01);
+      expect(h.y).toBeGreaterThan(0.3);
+    }
+    expect(swung).toBeGreaterThan(0.5);
+  });
+
+  it('flies on when he lets go, faster than he can run, and comes down on his feet', () => {
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let top = 0;
+    let best = 0;
+    let released = null;
+    for (let t = 0; t < 10 && !released; t += DT) {
+      h = stepHero(h, pilot(h, t), DT);
+      top = Math.max(top, Math.hypot(h.vx, h.vy, h.vz));
+      if (h.ev.some((e) => e.type === 'release' || e.type === 'perfect')) released = { ...h };
+    }
+    expect(released).not.toBe(null);
+    for (let t = 0; t < 8 && h.mode !== 'ground'; t += DT) {
+      h = stepHero(h, {}, DT);
+      best = Math.max(best, Math.hypot(h.vx, h.vz));
+    }
+    expect(best).toBeGreaterThan(HERO.run);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBe(floorAt(h.x, h.z, h.y));
+  });
+
+  it('a perfect release, on the upswing past the anchor: faster, higher, and a flip', () => {
+    const a = [START.x, 30, START.z - 40];
+    // under and a little past the anchor, going up and on
+    const h = { ...newHero(START), x: a[0], z: a[2] - 6, y: 12, vx: 0, vy: 9, vz: -22, mode: 'swing', fly: true, web: { a, at: a, len: 20 } };
+    expect(pastAnchor(h)).toBeGreaterThan(SWING.perfect.from);
+    const after = stepHero(h, { web: false }, DT);
+    expect(after.ev.map((e) => e.type)).toContain('perfect');
+    expect(after.flip).toBeGreaterThan(0);
+    expect(Math.hypot(after.vx, after.vy, after.vz)).toBeGreaterThan(Math.hypot(h.vx, h.vy, h.vz));
+    // too early, coming down: just a release
+    const early = stepHero({ ...h, z: a[2] + 6, vy: -6 }, { web: false }, DT);
+    expect(early.ev.map((e) => e.type)).toContain('release');
+  });
+
+  it('swings round the compound for half a minute without going through a wall or off the lawn', () => {
+    let h = newHero({ ...START, face: Math.PI / 2 });
+    let webs = 0;
+    let fastest = 0;
+    let highest = 0;
+    for (let t = 0; t < 30; t += DT) {
+      h = stepHero(h, pilot(h, t), DT);
+      webs += h.ev.filter((e) => e.type === 'web').length;
+      fastest = Math.max(fastest, Math.hypot(h.vx, h.vy, h.vz));
+      highest = Math.max(highest, h.y);
+      expect(Number.isFinite(h.x) && Number.isFinite(h.y) && Number.isFinite(h.z)).toBe(true);
+      expect(inPoly(h.x, h.z, LAWN_W)).toBe(true);
+      expect(solidAt(h.x, h.y + 0.1, h.z)?.id ?? null).toBe(null);
+    }
+    expect(webs).toBeGreaterThan(5);
+    expect(fastest).toBeGreaterThan(16);
+    expect(fastest).toBeLessThanOrEqual(SWING.maxSpeed + 0.01);
+    expect(highest).toBeGreaterThan(8);
+  });
+});
+
+describe('The compound, the world: climbing and the roofs', () => {
+  const widow = PLACES.find((p) => p.id === 'widow');
+  const prow = solidById('prow');
+  const inward = { x: -Math.cos(widow.face), z: Math.sin(widow.face) };
+
+  it('sticks to a wall he jumps at, climbs it, and comes out on the roof', () => {
+    let h = newHero(widow);
+    h = walk(h, { ...inward, run: true }, 1.5);
+    h = stepHero(h, { ...inward, jump: true }, DT);
+    for (let t = 0; t < 1 && h.mode !== 'wall'; t += DT) h = stepHero(h, inward, DT);
+    expect(h.mode).toBe('wall');
+    // facing it
+    expect(Math.cos(h.face - widow.face)).toBeLessThan(-0.9);
+    const y0 = h.y;
+    h = walk(h, inward, 1);
+    expect(h.y).toBeGreaterThan(y0 + 3);
+    expect(inBuilding(h.x, h.z)).toBe(false);
+    let mantled = false;
+    for (let t = 0; t < 20 && h.mode === 'wall'; t += DT) {
+      h = stepHero(h, { ...inward, run: true }, DT);
+      mantled ||= h.ev.some((e) => e.type === 'mantle');
+    }
+    expect(mantled).toBe(true);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBeCloseTo(prow.h, 5);
+    expect(inPoly(h.x, h.z, prow.foot)).toBe(true);
+    // and walks about up there
+    const on = walk(h, inward, 1);
+    expect(on.y).toBeCloseTo(prow.h, 5);
+    expect(on.mode).toBe('ground');
+  });
+
+  it('kicks off a wall with a jump, and doesn’t stick straight back to it', () => {
+    let h = newHero(widow);
+    h = walk(h, { ...inward, run: true }, 1.5);
+    h = stepHero(h, { ...inward, jump: true }, DT);
+    for (let t = 0; t < 1 && h.mode !== 'wall'; t += DT) h = stepHero(h, inward, DT);
+    h = walk(h, inward, 1.5);
+    const high = h.y;
+    h = stepHero(h, { jump: true }, DT);
+    expect(h.mode).toBe('air');
+    for (let t = 0; t < 0.3; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('air');
+    expect(nearestEdge(h.x, h.z, prow.foot).d).toBeGreaterThan(1.5);
+    for (let t = 0; t < 6 && h.mode !== 'ground'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    expect(high).toBeGreaterThan(5);
+  });
+
+  it('climbs back down a wall to the lawn', () => {
+    let h = newHero(widow);
+    h = walk(h, { ...inward, run: true }, 1.5);
+    h = stepHero(h, { ...inward, jump: true }, DT);
+    for (let t = 0; t < 1 && h.mode !== 'wall'; t += DT) h = stepHero(h, inward, DT);
+    h = walk(h, inward, 0.6);
+    h = walk(h, { x: -inward.x, z: -inward.z }, 4);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBe(0);
+  });
+
+  it('lands on a roof he comes down on, and falls off its edge', () => {
+    const hangar = solidById('hangar');
+    // over the hangar's roof, by the A, coming down
+    let h = { ...newHero(START), x: 18 * 1.6, z: 58 * 1.6, y: hangar.h + 6, mode: 'air', fly: true };
+    for (let t = 0; t < 3 && h.mode !== 'ground'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBeCloseTo(hangar.h, 5);
+    expect(walkable(h.x, h.z, HERO_R, h.y)).toBe(true);
+    // walk off its south end
+    for (let t = 0; t < 6 && h.y > 1; t += DT) h = stepHero(h, { x: 0, z: 1, run: true }, DT);
+    for (let t = 0; t < 4 && h.mode !== 'ground'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('ground');
+    expect(h.y).toBe(0);
+  });
+
+  it('can’t come up through the bridge', () => {
+    const bridge = solidById('bridge');
+    const [x0, z0, x1, z1] = bridge.box;
+    let h = { ...newHero(START), x: (x0 + x1) / 2, z: (z0 + z1) / 2, y: 6, vy: 18, mode: 'air', fly: true };
+    let top = 0;
+    for (let t = 0; t < 2 && h.mode !== 'ground'; t += DT) {
+      h = stepHero(h, {}, DT);
+      top = Math.max(top, h.y);
+    }
+    expect(top + BODY).toBeLessThanOrEqual(bridge.y0 + 0.01);
+  });
+
+  it('knows a roof from the lawn', () => {
+    const prowC = prow.foot.reduce((s, p) => [s[0] + p[0] / 4, s[1] + p[1] / 4], [0, 0]);
+    expect(floorAt(prowC[0], prowC[1], prow.h + 1)).toBeCloseTo(prow.h, 5);
+    expect(floorAt(prowC[0], prowC[1], 0)).toBe(0);
+    expect(floorAt(START.x, START.z, 50)).toBe(0);
+    // what's on the lawn doesn't stop him once he's over it
+    expect(collide(widow.x, widow.z, HERO_R, 0)).toEqual(collide(widow.x, widow.z, HERO_R, 0));
+  });
+});
+
+describe('The compound, the world: swinging, the way Insomniac do it', () => {
+  // swinging at 18 m/s, 12 m up, northward through the middle of the lawn
+  const flying = (over = {}) => ({ ...newHero(START), x: 60 * 1.6, z: 70 * 1.6, y: 12, vx: 0, vy: 0, vz: -18, mode: 'air', fly: true, face: Math.PI / 2, ...over });
+  const heading = (h) => Math.atan2(h.vz, h.vx);
+
+  it('swings where you steer: the swing comes round toward it, keeping its speed', () => {
+    let h = stepHero(flying(), { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    const before = heading(h);
+    const speed0 = Math.hypot(h.vx, h.vy, h.vz);
+    // steer east (+x)
+    for (let t = 0; t < 0.6 && h.mode === 'swing'; t += DT) h = stepHero(h, { x: 1, z: 0, web: true }, DT);
+    let d = heading(h) - before;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    expect(Math.abs(d)).toBeGreaterThan(0.4);
+    expect(Math.cos(heading(h))).toBeGreaterThan(Math.cos(before));
+    expect(Math.hypot(h.vx, h.vy, h.vz)).toBeGreaterThan(speed0 * 0.6);
+  });
+
+  it('pushes him off a wall he swings alongside, rather than letting him grind along it', () => {
+    const hangar = solidById('hangar');
+    // beside the hangar's east wall (x = 30 units), going north along it, a metre and a half off it
+    const x = 30 * 1.6 + 1.5;
+    let h = { ...flying({ x, z: 50 * 1.6, y: 8, vz: -16 }) };
+    const w = { a: [x + 2, 20, 40 * 1.6], at: [x + 2, 20, 40 * 1.6], len: 15, target: 15, entry: 8, hand: 'R' };
+    h = { ...h, mode: 'swing', web: w };
+    for (let t = 0; t < 0.5; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    expect(nearestEdge(h.x, h.z, hangar.foot).d).toBeGreaterThan(1.5 - HERO_R);
+    expect(h.x).toBeGreaterThan(x);
+  });
+
+  it('keeps a chain of swings at its height: the bottom of a swing is never far under where it caught', () => {
+    // (up by the main building, where there are roofs over him to swing from)
+    let h = stepHero(flying({ y: 18, z: 75 }), { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    let low = h.y;
+    for (let t = 0; t < 1.6 && h.mode === 'swing'; t += DT) {
+      h = stepHero(h, { web: true }, DT);
+      low = Math.min(low, h.y);
+    }
+    expect(low).toBeGreaterThan(18 - SWING.dip - 1);
+  });
+
+  it('turns a dive into speed when a web catches it', () => {
+    const h0 = flying({ y: 22, z: 75, vz: -6, vy: -22 });
+    const h = stepHero(h0, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+    expect(h.ev.map((e) => e.type)).toContain('dive');
+    expect(-h.vz).toBeGreaterThan(6 + (22 - 8) * SWING.dive * 0.8);
+  });
+
+  it('zips: a burst along the way he’s going, twice a flight, and back once he’s on something', () => {
+    let h = flying({ vz: -10 });
+    h = stepHero(h, { zip: true }, DT);
+    expect(h.ev.map((e) => e.type)).toContain('zip');
+    expect(-h.vz).toBeGreaterThan(10 + SWING.zip.speed * 0.9);
+    for (let t = 0; t < SWING.zip.cool + 0.05; t += DT) h = stepHero(h, {}, DT);
+    h = stepHero(h, { zip: true }, DT);
+    expect(h.zips).toBe(0);
+    for (let t = 0; t < SWING.zip.cool + 0.05; t += DT) h = stepHero(h, {}, DT);
+    const third = stepHero(h, { zip: true }, DT);
+    expect(third.ev.map((e) => e.type)).not.toContain('zip');
+    for (let t = 0; t < 8 && h.mode !== 'ground'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.zips).toBe(SWING.zip.charges);
+  });
+
+  it('waits a beat after letting go before a held button webs again', () => {
+    let h = stepHero(flying(), { web: true }, DT);
+    for (let t = 0; t < 0.3; t += DT) h = stepHero(h, { web: true }, DT);
+    h = stepHero(h, { web: false }, DT);
+    expect(h.web).toBe(null);
+    h = stepHero(h, { web: true }, DT);
+    expect(h.web).toBe(null);
+    for (let t = 0; t < SWING.rearm + 0.05; t += DT) h = stepHero(h, { web: true }, DT);
+    expect(h.mode).toBe('swing');
+  });
+
+  it('flings him on and up when he lets go on the way up, and drops him on the way down', () => {
+    const a = [START.x, 30, START.z - 40];
+    const up = { ...newHero(START), x: a[0], z: a[2] + 8, y: 12, vx: 0, vy: 6, vz: -20, mode: 'swing', fly: true, web: { a, at: a, len: 20, target: 20, entry: 12 } };
+    const out = stepHero(up, { web: false }, DT);
+    expect(out.vy).toBeGreaterThan(6);
+    const down = stepHero({ ...up, vy: -6 }, { web: false }, DT);
+    expect(down.vy).toBeLessThan(-6);
+  });
+
+  it('runs up a wall he hits fast, with the speed he hit it with', () => {
+    const widow = PLACES.find((p) => p.id === 'widow');
+    const inward = { x: -Math.cos(widow.face), z: Math.sin(widow.face) };
+    let h = { ...newHero(widow), y: 3, vx: inward.x * 20, vz: inward.z * 20, vy: 0, mode: 'air', fly: true };
+    for (let t = 0; t < 0.5 && h.mode !== 'wall'; t += DT) h = stepHero(h, {}, DT);
+    expect(h.mode).toBe('wall');
+    expect(h.runUp).toBeGreaterThan(SWING.climb);
+    const y0 = h.y;
+    for (let t = 0; t < 0.5; t += DT) h = stepHero(h, {}, DT);
+    // up it with no keys held, faster than he climbs
+    expect(h.y - y0).toBeGreaterThan(SWING.climb * 0.5 * 1.5);
   });
 });

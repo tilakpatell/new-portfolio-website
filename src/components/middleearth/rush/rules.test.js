@@ -498,3 +498,214 @@ describe('Supper at Parth Galen', () => {
     expect(p.held).toBe(null);
   });
 });
+
+describe('the Long-expected Party', () => {
+  it('grows mushrooms in the patch, fries them, and bakes seed-cake in the same ovens', async () => {
+    const { PARTY } = await import('./levels/party');
+    const T = PARTY.times;
+    const s = newRush(quiet(PARTY));
+    s.orders.push({ id: 1, dish: 'mushrooms', t: 55, of: 55 }, { id: 2, dish: 'cake', t: 70, of: 70 });
+    const p = s.players[0];
+    // the patch: nothing to pick till it's up, and nothing goes back in it
+    stand(p, 1, 1, 'W');
+    expect(grab(s, p)).toEqual([]);
+    expect(run(s, T.grow + 0.1).filter((e) => e.type === 'grown').length).toBeGreaterThanOrEqual(1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'mushroom', s: 'raw' });
+    expect(grab(s, p)[0].type).toBe('nope');
+    // the pan, then out
+    stand(p, 4, 1, 'N');
+    grab(s, p);
+    run(s, T.bake + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'skillet', s: 'fried' });
+    stand(p, 3, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'mushrooms' });
+    // the same ovens bake the cake
+    stand(p, 1, 1, 'N');
+    grab(s, p);
+    stand(p, 5, 1, 'N');
+    grab(s, p);
+    run(s, T.bake + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'cake', s: 'baked' });
+    stand(p, 8, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'cake' });
+    // and a cake left in burns
+    s.spots['6,0'].item = { k: 'cake', s: 'baked' };
+    run(s, T.char + 0.1);
+    expect(s.spots['6,0'].item.s).toBe('burnt');
+  });
+});
+
+describe('Supper on Weathertop', () => {
+  it('cooks only while the fire is fed, and wood brings it back', async () => {
+    const { WEATHERTOP } = await import('./levels/weathertop');
+    const T = WEATHERTOP.times;
+    const F = WEATHERTOP.fuel;
+    const s = newRush(quiet(WEATHERTOP));
+    const p = s.players[0];
+    // a sausage on the spit: it cooks while the fire burns, and the fire burns down
+    expect(s.spots['4,2'].fuel).toBe(1);
+    s.spots['4,2'].item = { k: 'sausage', s: 'raw' };
+    run(s, T.bake + 0.1);
+    expect(s.spots['4,2'].item).toEqual({ k: 'banger', s: 'grilled' });
+    expect(s.spots['4,2'].fuel).toBeLessThan(1);
+    // an idle fire doesn't burn down
+    const idle = s.spots['7,2'].fuel;
+    run(s, 5);
+    expect(s.spots['7,2'].fuel).toBe(idle);
+    // let one go out: what's on it stops, and says so
+    s.spots['4,2'].item = { k: 'sausage', s: 'raw' };
+    s.spots['4,2'].fuel = 0.01;
+    const ev = run(s, 1);
+    expect(ev.filter((e) => e.type === 'out')).toHaveLength(1);
+    const was = s.spots['4,2'].prog;
+    run(s, T.bake + 1);
+    expect(s.spots['4,2'].item).toEqual({ k: 'sausage', s: 'raw' });
+    expect(s.spots['4,2'].prog).toBe(was);
+    // wood on it, and it's back
+    stand(p, 1, 1, 'W');
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'wood', s: 'raw' });
+    stand(p, 4, 1, 'S');
+    expect(grab(s, p)[0].type).toBe('stoked');
+    expect(s.spots['4,2'].fuel).toBeCloseTo(F.load);
+    expect(p.held).toBe(null);
+    run(s, T.bake + 0.1);
+    expect(s.spots['4,2'].item.k).toBe('banger');
+    // the pans too: a fry-up of three, chopped, on a plate
+    for (const k of ['tomato', 'sausage', 'tomato']) {
+      p.held = { k, s: 'chopped' };
+      stand(p, 7, 1, 'N');
+      grab(s, p);
+    }
+    expect(s.spots['7,0'].s).toBe('cooking');
+    run(s, T.cook + 0.1);
+    p.held = { k: 'plate', s: 'clean' };
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'plate', s: 'fryup' });
+    // tea from the kettle
+    p.held = { k: 'mug', s: 'clean' };
+    stand(p, 10, 1, 'E');
+    grab(s, p);
+    run(s, T.fill + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'mug', s: 'tea' });
+  });
+});
+
+describe('Herbs and stewed rabbit', () => {
+  it('Sméagol creeps up for a coney, is shooed off by a hobbit, or takes it', async () => {
+    const { ITHILIEN } = await import('./levels/ithilien');
+    const th = ITHILIEN.thief;
+    const s = newRush(quiet(ITHILIEN));
+    const p = s.players[0];
+    stand(p, 9, 6, 'S'); // well away
+    s.spots['4,2'].item = { k: 'coney', s: 'raw' };
+    s.spots['7,3'].item = { k: 'potato', s: 'raw' }; // (he doesn't want taters)
+    // nothing till he's due
+    expect(run(s, th.first - 1).some((e) => e.type === 'sneak')).toBe(false);
+    const ev = run(s, 1.2);
+    expect(ev.filter((e) => e.type === 'sneak')).toEqual([expect.objectContaining({ at: [4, 2] })]);
+    // left alone, it's gone
+    const gone = run(s, th.warn + 0.1);
+    expect(gone.filter((e) => e.type === 'stolen')).toEqual([expect.objectContaining({ at: [4, 2], k: 'coney' })]);
+    expect(s.spots['4,2'].item).toBe(null);
+    expect(s.spots['7,3'].item).toEqual({ k: 'potato', s: 'raw' });
+    // next time a hobbit gets there first
+    s.spots['4,3'].item = { k: 'coney', s: 'chopped' };
+    let creep = [];
+    for (let n = 0; n < 40 && !creep.length; n++) creep = run(s, 1).filter((e) => e.type === 'sneak');
+    expect(creep[0].at).toEqual([4, 3]);
+    stand(p, 3, 3, 'E');
+    expect(run(s, 0.1).filter((e) => e.type === 'shooed')).toHaveLength(1);
+    expect(s.spots['4,3'].item).toEqual({ k: 'coney', s: 'chopped' });
+    // and he never tries one with a hobbit standing by it
+    s.sneak = null;
+    s.nextSteal = s.t;
+    expect(run(s, 1).some((e) => e.type === 'sneak')).toBe(false);
+  });
+
+  it('stews coney with herbs and taters, and roasts it', async () => {
+    const { ITHILIEN } = await import('./levels/ithilien');
+    const T = ITHILIEN.times;
+    const s = newRush(quiet({ ...ITHILIEN, thief: null }));
+    const p = s.players[0];
+    for (const k of ['coney', 'herb', 'potato']) {
+      p.held = { k, s: 'chopped' };
+      stand(p, 7, 1, 'N');
+      grab(s, p);
+    }
+    run(s, T.cook + 0.1);
+    p.held = { k: 'bowl', s: 'clean' };
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'bowl', s: 'stew' });
+    p.held = { k: 'coney', s: 'raw' };
+    stand(p, 1, 3, 'W');
+    grab(s, p);
+    run(s, T.bake + 0.1);
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'roast', s: 'roasted' });
+  });
+});
+
+describe('the orcs’ mess', () => {
+  it('webs underfoot slow a hobbit down, dash and all', async () => {
+    const { TOWER } = await import('./levels/tower');
+    const s = newRush(quiet(TOWER));
+    const p = s.players[0];
+    const pace = (x, z) => {
+      Object.assign(p, { x, z, vx: 0, vz: 0, dash: 0, cool: 0 });
+      for (let n = 0; n < 10; n++) movePlayer(s, p, { x: 1, z: 0 }, 0.05);
+      return p.x - x;
+    };
+    const clear = pace(6.2, 4.5); // along row 4's clear floor
+    const webbed = pace(3.2, 2.5); // into row 2's webs
+    expect(webbed).toBeLessThan(clear * 0.6);
+    // and you can walk on them (they're floor, not counters)
+    expect(parseLevel(TOWER).at(4, 2)).toBe(',');
+    expect(facingTile(s, Object.assign(p, { x: 3.5, z: 2.5, face: 0 }))).toBe(null);
+  });
+});
+
+describe('the feast at Cormallen', () => {
+  it('puts a platter together on the carving table, one of each part', async () => {
+    const { CORMALLEN } = await import('./levels/cormallen');
+    const T = CORMALLEN.times;
+    const s = newRush(quiet(CORMALLEN));
+    s.orders.push({ id: 1, dish: 'feast', t: 95, of: 95 });
+    const p = s.players[0];
+    // the ovens: a roast, and bread
+    s.spots['4,0'].item = { k: 'meat', s: 'raw' };
+    s.spots['5,0'].item = { k: 'dough', s: 'raw' };
+    run(s, T.bake + 0.1);
+    expect(s.spots['4,0'].item).toEqual({ k: 'roast', s: 'roasted' });
+    expect(s.spots['5,0'].item).toEqual({ k: 'loaf', s: 'baked' });
+    stand(p, 3, 2, 'E');
+    p.held = { k: 'roast', s: 'roasted' };
+    expect(grab(s, p)[0]).toMatchObject({ type: 'put', k: 'roast' });
+    // not two of the same, nor something raw, nor anything not on the list
+    p.held = { k: 'roast', s: 'roasted' };
+    expect(grab(s, p)[0].type).toBe('nope');
+    p.held = { k: 'herb', s: 'raw' };
+    expect(grab(s, p)[0].type).toBe('nope');
+    p.held = { k: 'goblet', s: 'wine' };
+    expect(grab(s, p)[0].type).toBe('nope');
+    // a part taken back off, and put on again
+    p.held = { k: 'loaf', s: 'baked' };
+    grab(s, p);
+    p.held = null;
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'loaf', s: 'baked' });
+    grab(s, p);
+    p.held = { k: 'herb', s: 'chopped' };
+    const ev = grab(s, p);
+    expect(ev.map((e) => e.type)).toEqual(['put', 'plated']);
+    expect(s.spots['4,2']).toMatchObject({ item: { k: 'platter', s: 'feast' }, parts: [] });
+    grab(s, p);
+    expect(p.held).toEqual({ k: 'platter', s: 'feast' });
+    stand(p, 3, 6, 'S');
+    expect(grab(s, p)[0]).toMatchObject({ type: 'served', dish: 'feast' });
+  });
+});

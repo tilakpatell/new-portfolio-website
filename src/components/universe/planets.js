@@ -4,16 +4,17 @@
 // (scripts/build-universe-textures.py makes them, from Solar System Scope's
 // maps and ambientCG's materials), or are painted here (the Game Boy world in
 // pixels, the Caribbean's islands); each has air round it in its colour and
-// the things that make it that place, in orbit or on it: the Death Star's dish
-// and Alderaan, the sitar's strings, the One Ring, Cybertron's energon seams,
-// the Infinity Stones, the crystals and element tiles, the mug, the portal,
-// the travel routes. The models (the site owner's, from Meshy: the sitar,
-// Optimus Prime and Megatron, the gauntlet, the motorhome, the Game Boy,
-// Mario and a Piranha Plant, a Republic attack cruiser; the Death Star they
-// sent; plus Rick's cruiser from the C-137 page and the Black Pearl) load
-// after the map is up and are parked on orbits or stood on the ground (the
-// Death Star takes the painted sphere's place); a planet whose model never
-// arrives simply goes without. The sun is sun.js's.
+// the things that make it that place, in orbit or on it: the sitar's strings,
+// the One Ring, Cybertron's energon seams, the Infinity Stones, the crystals
+// and element tiles, the mug, the portal, the travel routes. Star Wars isn't
+// a planet but the way into a galaxy far, far away: the galaxy in miniature
+// behind a hyperspace gate (galaxy/gateway.js), Star Destroyers on guard.
+// The models (the site owner's, from Meshy: the sitar, Optimus Prime and
+// Megatron, the gauntlet, the motorhome, the Game Boy, Mario and a Piranha
+// Plant, a Republic attack cruiser; plus Rick's cruiser from the C-137 page
+// and the Black Pearl) load after the map is up and are parked on orbits or
+// stood on the ground (a model can take the painted sphere's place, `skin`);
+// a planet whose model never arrives simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
@@ -26,14 +27,15 @@ import { SWIRL_GLSL } from '../rickmorty/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
+import { buildGateway } from '../galaxy/gateway';
 
 const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
 
 // ── Textures ──
 
 const BASE = '/textures/universe/';
-const PLANET_MAPS = ['starwars', 'music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'sun', 'sky'];
-const FIXED = ['alderaan', 'middleearth-glow', 'rickmorty-glow', 'starwars-glow', 'transformers-glow'];
+const PLANET_MAPS = ['music', 'middleearth', 'transformers', 'marvel', 'breakingbad', 'office', 'rickmorty', 'earth', 'earth-clouds', 'earth-night', 'sun', 'sky'];
+const FIXED = ['middleearth-glow', 'rickmorty-glow', 'transformers-glow'];
 const DATA = ['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'cybertron-normal', 'middleearth-normal', 'breakingbad-normal', 'earth-rough'];
 const COLOUR = ['plates', 'hull'];
 
@@ -198,62 +200,13 @@ function bigSign(u) {
 const BUILDERS = {
   starwars(p, { u, T }) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({
-      map: T.starwars ?? null,
-      color: T.starwars ? '#ffffff' : u.palette.base,
-      normalMap: tiled(T['plates-normal'], 32, 16),
-      normalScale: new THREE.Vector2(0.6, 0.6),
-      emissive: '#ffffff',
-      emissiveMap: T['starwars-glow'] ?? null,
-      emissiveIntensity: T['starwars-glow'] ? 1 : 0,
-      roughness: 0.75,
-      metalness: 0.2,
-    });
-    p.body.rotation.y = -0.6; // the dish starts toward the camera
-
-    // Alderaan, while it lasts
-    const moon = new THREE.Mesh(new THREE.SphereGeometry(r * 0.2, 32, 20), new THREE.MeshStandardMaterial({ map: T.alderaan ?? null, color: T.alderaan ? '#ffffff' : '#2b6aa3', roughness: 1 }));
-    const o = orbit(p.group, { radius: r * 1.25, tilt: 0.28, speed: 0.32, phase: 2.2 });
-    o.holder.add(moon);
-    p.orbits.push(o);
-    p.tick.push((t) => (moon.rotation.y = t * 0.4));
-
-    // and the galaxy it's from, far, far away beside it: a little spiral of
-    // stars turning slowly, the way into it (the planet's own: picking Star
-    // Wars and going jumps you into it, galaxy/)
-    const swirl = new THREE.Mesh(
-      new THREE.PlaneGeometry(r * 1.25, r * 1.25),
-      new THREE.ShaderMaterial({
-        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-        fragmentShader: `
-          uniform float uT;
-          varying vec2 vUv;
-          void main() {
-            vec2 p = vUv * 2.0 - 1.0;
-            float r = length(p);
-            if (r > 1.0) discard;
-            float a = atan(p.y, p.x);
-            float arm = cos(2.0 * (a - log(r + 0.05) * 2.8 + uT * 0.05));
-            float arms = arm > 0.0 ? arm * arm * arm : 0.0;
-            arms *= smoothstep(1.0, 0.25, r) * smoothstep(0.02, 0.18, r);
-            float core = exp(-r * r * 30.0);
-            float glow = exp(-r * 3.2);
-            float n = fract(sin(dot(floor(p * 90.0), vec2(12.9898, 78.233))) * 43758.5453);
-            float stars = step(0.985, n) * arms * 2.0;
-            vec3 col = vec3(1.0, 0.86, 0.6) * core * 3.0 + vec3(0.55, 0.7, 1.0) * arms * 0.9 + vec3(0.7, 0.75, 1.0) * glow * 0.25 + vec3(1.0) * stars;
-            gl_FragColor = vec4(col * smoothstep(1.0, 0.82, r), 1.0);
-          }`,
-        uniforms: { uT: { value: 0 } },
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    );
-    swirl.position.set(-r * 1.55, r * 0.85, -r * 1.35);
-    swirl.rotation.set(-1.05, 0.4, 0.3);
-    p.group.add(swirl);
-    p.tick.push((t) => (swirl.material.uniforms.uT.value = t));
+    // not a planet: the way into a galaxy far, far away (galaxy/gateway.js),
+    // the galaxy itself in miniature behind a hyperspace gate; the painted
+    // sphere stays, unseen, for what a place needs one for
+    p.body.material.visible = false;
+    const gate = buildGateway(r, { small: T.small });
+    p.group.add(gate.group);
+    p.tick.push((t, camera) => gate.update(t, camera));
 
     // a Republic attack cruiser further out (the site owner's Meshy model,
     // when it comes; its nose is −x, so a quarter turn points it the way the
@@ -268,10 +221,6 @@ const BUILDERS = {
       cruiser: { holder: far.holder, size: r * 0.14, turn: [0, -Math.PI / 2, -0.1], sway: 0.08 },
       escort1: { holder: guard[0].holder, size: r * 0.26, turn: [0, 0, 0.05], sway: 0.04 },
       escort2: { holder: guard[1].holder, size: r * 0.24, turn: [0, 0, -0.06], sway: 0.04 },
-      // the Death Star itself, the site owner's model, when it comes: it
-      // takes the painted sphere's place (turning with it), its dish and
-      // trench and lit windows its own
-      skin: { holder: p.body, size: r * 2, turn: [0, 0.6, 0], sway: 0, skin: true },
     };
   },
 
@@ -1027,7 +976,6 @@ const MODELS = [
   ['gaming', '/models/universe/piranha.glb', 'plant'],
   ['caribbean', '/games/caribbean/pearl-far.glb'],
   ['starwars', '/models/universe/venator.glb', 'cruiser'],
-  ['starwars', '/models/universe/death-star.glb', 'skin'],
   ['starwars', '/models/universe/star-destroyer.glb', 'escort1'],
   ['starwars', '/models/universe/star-destroyer.glb', 'escort2'],
 ];

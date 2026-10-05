@@ -69,6 +69,20 @@ export default function Galaxy() {
   useEffect(() => {
     if (!param) navigate(`/galaxy/${current}`, { replace: true });
   }, [param, current, navigate]);
+  // The system the scene's to be in: where its jumps have taken you, or the
+  // URL's when that changes under the page (a link, the back button). Not
+  // the URL as it stands: the router puts the page's own URL changes through
+  // as transitions, so for a render or two after an arrival it still names
+  // the system just left, and the scene would jump straight back there.
+  const [wanted, setWanted] = useState(current);
+  const seen = useRef(param);
+  useEffect(() => {
+    if (!param || param === seen.current) return;
+    seen.current = param;
+    setWanted(param);
+    // (with no 3D to fly there in, you're there)
+    if (!view.current.live) setCurrent(param);
+  }, [param]);
   useEffect(() => {
     local.set(LAST_KEY, current);
   }, [current]);
@@ -133,6 +147,8 @@ export default function Galaxy() {
       setJumping(null);
       setAt(null);
       setCurrent(id);
+      setWanted(id);
+      seen.current = id;
       navigate(`/galaxy/${id}`, { replace: true });
     },
     [navigate],
@@ -171,7 +187,7 @@ export default function Galaxy() {
         {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : `In the ${sys.system ?? sys.name} system`}
       </p>
       <GalaxyView
-        system={param ?? current}
+        system={wanted}
         here={current}
         handle={view}
         ship={ship}

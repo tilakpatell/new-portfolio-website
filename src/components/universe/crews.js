@@ -247,6 +247,15 @@ export const CREWS = [
         ['morty', 'Rick, why are we flying down a trench on the Death Star?'],
         ['rick', 'Because it’s there, Morty. Floor it.'],
       ],
+      // the nav map's drives: a jump to lightspeed (hyperspeed), and the pulse drive pushed past itself (super speed)
+      hyperspeed: [
+        ['morty', 'Rick, does the cruiser even do lightspeed?'],
+        ['rick', 'Lightspeed is for nerds, Morty. We’re taking a shortcut through a dimension where distance is more of a suggestion.'],
+      ],
+      overdrive: [
+        ['morty', 'Rick, this is way too fast!'],
+        ['rick', 'It’s exactly fast enough, Morty. Hold on to something that isn’t me.'],
+      ],
     },
     // the first time you come up on one of deep space's wonders (deep.js)
     wonders: {
@@ -303,8 +312,8 @@ export const CREWS = [
         ['rick', 'You son of a bitch. I’m in.', 'imIn'],
       ],
       starwars: [
-        ['morty', 'Rick, is that… is that the Death Star?'],
-        ['rick', 'A moon-sized battle station with one exhaust port. Peak Empire engineering, Morty.'],
+        ['morty', 'Rick, there’s a whole galaxy in there! Behind a… a stargate?'],
+        ['rick', 'A galaxy far, far away, Morty. Hyperspace gate. Fly in and you’re there. Mind the Empire.'],
       ],
       music: [
         ['rick', 'Indian classical music, Morty. Ragas older than most galaxies.'],
@@ -568,6 +577,14 @@ export const CREWS = [
         ['luke', 'I’m in the trench! Artoo, watch our backs!'],
         ['r2', '[an alarmed shriek]'],
       ],
+      hyperspeed: [
+        ['luke', 'Navicomputer’s set. Hang on, Artoo!'],
+        ['r2', '[an excited whistle]'],
+      ],
+      overdrive: [
+        ['luke', 'I’ve never had her going this fast!'],
+        ['r2', '[a frantic string of beeps]'],
+      ],
     },
     wonders: {
       citadel: [
@@ -616,8 +633,8 @@ export const CREWS = [
         ['r2', '[a smug, triumphant trill]'],
       ],
       starwars: [
-        ['luke', 'The Death Star. Stay on target, Artoo.'],
-        ['r2', '[a worried warble]'],
+        ['luke', 'There it is, Artoo. Our galaxy. Take us through the gate.'],
+        ['r2', '[an excited whistle: home!]'],
       ],
       music: [
         ['luke', 'Artoo, are you picking up that music?'],
@@ -872,6 +889,14 @@ export const CREWS = [
         ['han', 'The trench? Chewie, we’re not an X-wing!'],
         ['chewie', '[a worried roar]'],
       ],
+      hyperspeed: [
+        ['han', 'Coordinates are in. Hang on, Chewie.'],
+        ['chewie', '[an eager roar]'],
+      ],
+      overdrive: [
+        ['han', 'Pushing her past what she was built for. Just how I like it.'],
+        ['chewie', '[a doubtful growl]'],
+      ],
     },
     wonders: {
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
@@ -913,8 +938,8 @@ export const CREWS = [
         ['chewie', '[an offended growl]'],
       ],
       starwars: [
-        ['han', 'The Death Star. I’m not going in there. Again.'],
-        ['chewie', '[a long groan]'],
+        ['han', 'That’s home, pal. The whole galaxy, behind one gate.'],
+        ['chewie', '[a happy roar: punch it]'],
       ],
       music: [
         ['han', 'Nice tune. Chewie, are you crying?'],
@@ -1200,6 +1225,14 @@ export const CREWS = [
         ['jesse', 'Why are we flying down a trench on a giant death ball?!'],
         ['walt', 'Because we can, Jesse.'],
       ],
+      hyperspeed: [
+        ['jesse', 'Yo, Mr. White, the RV does lightspeed now?!'],
+        ['walt', 'Apply yourself, Jesse. It’s just physics.'],
+      ],
+      overdrive: [
+        ['jesse', 'This is insane, yo! Everything’s a blur!'],
+        ['walt', 'Seatbelt, Jesse.'],
+      ],
     },
     wonders: {
       citadel: [
@@ -1256,8 +1289,8 @@ export const CREWS = [
         ['jesse', 'It’s all green letters, yo. Like a hacker movie.'],
       ],
       starwars: [
-        ['jesse', 'Yo, that moon has a giant laser on it!'],
-        ['walt', 'That’s no moon, Jesse. That’s an empire with a very poor security budget.'],
+        ['jesse', 'Yo, Mr. White, there’s a whole galaxy behind that ring!'],
+        ['walt', 'A galaxy far, far away, Jesse. We fly through the gate. Try not to touch anything.'],
       ],
       music: [
         ['walt', 'Indian classical music. A raga is a formula, Jesse. Every note in its place.'],

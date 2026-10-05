@@ -21,17 +21,17 @@ Player **walks** to **a scene on the list** while **loose Mortys, a speeding waf
 
 ## The place (metres; +x east, +z south; north is −z)
 
-The Citadel's main concourse: a round atrium under a glass dome. A walkable disc of radius 40, with the outer wall of shopfront bays as its visible edge. The floor is flat (height 0), so `height()` is 0 everywhere and the walker needs no terrain.
+The Citadel's main concourse: a round terrace under the great dome, high over its city. A walkable disc of radius 40, with its balustrade and the buildings at its edge as its visible edge. The floor is flat (height 0), so `height()` is 0 everywhere and the walker needs no terrain.
 
 | Place | Where | What |
 | --- | --- | --- |
 | The core | column at (0, 0), radius 5 | a column of portal fluid (dark green, churning, veined with lightning) in a teal frame behind a railing, under a saucer cap at 22 m with holo-ads round its rim (Simple Rick's; on election day, Vote Morty); its stem runs on up into the dome. Round it at 4.3 m turns a hologram of the Central Finite Curve: a walled band of universes, open at one end, with its name on it |
 | Portal terminal | south, pad at (0, 35); customs desk at (5, 29) | the start, (0, 31) facing north; a Cop Rick at customs |
-| Morty Day Care | west, pen centred (−25, 0), 14 × 12, low fence | gate in the east side at x = −18, z −2 … 2; the Day Care Rick's desk at (−17, −7) |
-| Simple Rick's | east, shopfront door at (37, 0) facing west | the wafer factory, an inside scene |
-| Council chamber | north, doors at (0, −37) facing south | two Cop Rick guards at (±3, −34); the chamber, an inside scene |
-| Vote Morty booth | north-west, (−21, −21) | Evil Morty's campaign booth and the ballot box, from election day |
-| Hangar | south-east, blast doors at (27, 27) facing the core | the cruiser, the finale's goal |
+| Morty Day Care | west, pen centred (−25, 0), 14 × 12, low fence | gate in the east side at x = −18, z −2 … 2; the Day Care Rick's desk at (−15, −9) |
+| Simple Rick's | east, its door at (40, 0) facing west | the wafer factory, an inside scene |
+| Council chamber | north, doors at (0, −40) facing south | two Cop Rick guards at (±3.2, −35.5); the chamber, an inside scene |
+| Vote Morty booth | north-west, (−21.5, −21.5) | Evil Morty's campaign booth and the ballot box, from election day |
+| Hangar | south-east, blast doors at (27.6, 27.6) facing the core | the cruiser, the finale's goal |
 | Cover | benches, planters and two kiosks round the concourse | low ones (benches) block walking only; tall ones (kiosks, planters, the core) block sight too |
 
 The concourse is a terrace over a city, as in the show's city scenes: a lit balustrade at its edge (open where the four buildings stand), and beyond it a ring of pale green and teal towers (round, stepped, bladed, crowned; their windows lit), a teal glass dome among them, a lower city floor far below, an arched viaduct at 47.5 m with a three-car monorail going round (no pier behind the edge buildings, so the hangar's bay opens clear), and a far ring of towers into the haze. Over everything: the great dome's lattice against a warm golden sky, and the Central Finite Curve as a luminous arc across it. Simple Rick's and the Council's hall are buildings at the edge (cream and wafer-brown; teal with gold bands).
@@ -41,7 +41,7 @@ Walking into the outer wall gets a line, not a silent stop ("The rest of the Cit
 ## Scenes
 
 1. **Morty Day Care** (`daycare`, open). The gate's open and six Mortys are loose on the concourse. They wander; walk within 4.5 m and they run away from you (a little slower than you run, a little faster than you walk). A Morty that goes through the gate into the pen stays in. Get all six back in within 75 s, or the Day Care Rick looks up from his magazine and they scatter again. Seal `daycare`.
-2. **Simple Rick's** (`wafers`, open). Inside the factory, at the line, among Ricks in hairnets. A wafer is five layers: wafer, cream, wafer, cream, wafer. The dispenser slides back and forth over the belt; drop (Space / tap) to lay the next layer. Whatever overhangs the layer below is cut off, so the stack narrows (as in the arcade game Stacker); miss it entirely and the wafer's spoilt. The dispenser speeds up with each layer. Three good wafers (the top layer at least 70% of the full width) out of six. On the third, the jingle: "Come home to the impossible flavor of your own completion. Come home to Simple Rick's." Seal `wafers`.
+2. **Simple Rick's** (`wafers`, open). Inside the factory, at the line, among Ricks in hairnets. A wafer is five layers: wafer, cream, wafer, cream, wafer. The dispenser slides back and forth over the belt; drop (Space / tap) to lay the next layer. Whatever overhangs the layer below is cut off, so the stack narrows (as in the arcade game Stacker); miss it entirely and the wafer's spoilt. The dispenser speeds up with each layer. A drop is judged where the dispenser is at the moment of the press, and one all but square on the stack (within 6% of a width) is laid square. Three good wafers (the top layer at least 60% of the full width) out of six. On the third, the jingle: "Come home to the impossible flavor of your own completion. Come home to Simple Rick's." Seal `wafers`.
 3. **The Council of Ricks** (`council`, open). Through the north doors into the chamber: a dark half-round room, the Council on a high bench under spotlights. They accuse C-137; answer from the choices. Pure C-137 attitude gets you dismissed; grovelling or lying gets contempt and the question again. Seal `council`.
 4. **Vote Morty** (`votemorty`, after the first three). Election day: Vote Morty posters on the holo-ring and Evil Morty's booth in the north-west. Talk to three voters round the concourse (Cowboy Rick, a Simple Rick's worker, Cop Morty), then cast your ballot at the booth. Whatever you vote, Candidate Morty wins. The lights go red. Seal `votemorty`.
 5. **Get to the cruiser** (`citadelout`, after the vote). Evil Morty's Cop Ricks are hunting Rick C-137. From Evil Morty's booth, get across the concourse to the hangar unseen. They see in a cone, can't see through the core, kiosks or planters, and hear you running close by. Caught: back to the booth. Reach the hangar, and the cruiser lifts off through the opening doors as the Citadel shakes. Seal `citadelout`.

@@ -16,7 +16,7 @@ export const WORLD = { radius: 40 };
 // Rick C-137: a little taller and quicker than a hobbit
 export const RICK = { radius: 0.42, walk: 3.6, run: 6.8, accel: 16, turn: 11 };
 
-// the Citadel's core: a white column up through the dome
+// the Citadel's core: a column of portal fluid up through the dome
 export const CORE = { x: 0, z: 0, r: 5 };
 
 // Through the portal from C-137, at the south end, facing up the concourse.

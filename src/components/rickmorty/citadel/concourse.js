@@ -982,12 +982,12 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     }
   };
   // the escape's camera: in the hangar's doorway, watching the cruiser go
+  // (the same camera each time, to use at once)
+  const escapeView = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   const escapeCam = () => {
-    const at = new THREE.Vector3(0, 3.2, -3.5);
-    const look = new THREE.Vector3(0, 1.6, 0).add(cruiserAt.position);
-    hangar.localToWorld(at);
-    hangar.localToWorld(look);
-    return { at, look };
+    hangar.localToWorld(escapeView.at.set(0, 3.2, -3.5));
+    hangar.localToWorld(escapeView.look.set(0, 1.6, 0).add(cruiserAt.position));
+    return escapeView;
   };
 
   const dispose = () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEEP, DEEP_SOLIDS, WONDERS, beyondOf, openness, planetAt, reachOf } from './deep';
+import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { byId } from './universes';
 
@@ -23,6 +24,38 @@ describe('deep space', () => {
     }
   });
 
+  it('makes the Citadel solid out to its domes and down its crystal, not in the space between', () => {
+    const w = WONDERS.find((x) => x.id === 'citadel');
+    const k = w.r / 18; // (deepspace.js draws it for a radius of 18)
+    const at = (x, y, z) => [w.at[0] + x * k, w.at[1] + y * k, w.at[2] + z * k];
+    const solidAt = (p) => DEEP_SOLIDS.some((o) => Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) < o.r);
+    // the four domes out on its arms, and the crystal's tip
+    for (const [x, y, z] of [
+      [21.3, -2.2, 5.4],
+      [-7.4, 6.2, 17.5],
+      [-22, -3, -6.8],
+      [2.7, 0.9, -17.8],
+      [0.3, -33, 0.2],
+    ])
+      expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
+    // between its arms, out past the great dome: open space
+    for (const [x, y, z] of [
+      [17, 0, -17],
+      [-17, 0, 17],
+      [12, -24, 12],
+    ])
+      expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(false);
+    // and crashing into any of it is crashing into the Citadel
+    const parts = DEEP_SOLIDS.filter((o) => o.id.startsWith('citadel-'));
+    expect(parts.length).toBeGreaterThan(4);
+    for (const o of parts) {
+      expect(o.id.split('-')[0]).toBe('citadel');
+      expect(o.part).toBe(true);
+      // and not somewhere to fly to: the autopilot takes you to the Citadel
+      expect(GOALS[o.id]).toBeUndefined();
+    }
+    expect(GOALS.citadel).toBeTruthy();
+  });
   it('makes everything but the nebulae solid, a sun with its planets', () => {
     const ids = DEEP_SOLIDS.map((s) => s.id);
     expect(ids).toContain('aurelia');

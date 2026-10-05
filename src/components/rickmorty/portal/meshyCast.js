@@ -75,9 +75,24 @@ function shirted(map, shirt) {
   return m;
 }
 
+// A skinned mesh's bounds don't follow its pose, so it's drawn whether
+// it's in view or not. This culls it within a sphere round the whole
+// figure, standing `height` tall in `frame` (its feet at frame's origin):
+// centred half way up, four fifths of its height across, room for any pose
+// its clips put it in. The sphere is set in the mesh's own space, whatever
+// the rig's units (its node is often scaled to centimetres, and its
+// positions quantized, so the geometry's own bounds are no guide).
+export function cullWithin(mesh, frame, height) {
+  frame.updateMatrixWorld(true);
+  const toMesh = mesh.matrixWorld.clone().invert().multiply(frame.matrixWorld);
+  mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, height / 2, 0), height * 0.8).applyMatrix4(toMesh);
+  mesh.frustumCulled = true;
+}
+
 // `kinds` and `rigged`: another game's table and its skinned models (the
-// Citadel's, rickmorty/citadel/people.js); Portal panic's by default
-export function createMeshyCast({ kinds = MESHY, rigged = RIGGED } = {}) {
+// Citadel's, rickmorty/citadel/people.js); Portal panic's by default.
+// `cull`: figures out of view aren't drawn (a world with a lot of them)
+export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false } = {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const assets = new Map(); // name → { scene, height, offset, clips }
@@ -159,6 +174,11 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED } = {}) {
     model.scale.setScalar(k);
     model.position.copy(src.offset).multiplyScalar(k);
     body.add(model);
+    if (cull)
+      model.traverse((o) => {
+        if (o.isSkinnedMesh) cullWithin(o, group, spec.h);
+        else if (o.isMesh) o.frustumCulled = true;
+      });
     if (spec.shirts) {
       const shirt = spec.shirts[variant % spec.shirts.length];
       model.traverse((o) => {
