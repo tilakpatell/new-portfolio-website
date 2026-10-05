@@ -15,6 +15,7 @@ import { DUEL, MORGUL, ORCS, PHIAL, SHELOB, STAIRS, crumbling, dodge, newClimb, 
 import '../../shire/shire.css';
 import '../bree/bree.css';
 import './cirithungol.css';
+import '../../../../styles/lazy/middleearth.css';
 
 // Cirith Ungol, the ninth stretch of the road: Minas Morgul, the stairs,
 // Shelob's lair, Sam's fight, and the Tower. The places are in

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import '../../styles/lazy/avengers.css';
 
 // Natasha Romanoff's S.H.I.E.L.D. file, partly redacted. Hover, tap or focus a
 // black bar to declassify it.

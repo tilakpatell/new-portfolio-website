@@ -30,6 +30,7 @@ import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { local } from '../lib/hooks';
 import { restartSite } from '../lib/restart';
+import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
 

@@ -6,6 +6,7 @@ import { profile } from '../data/profile';
 import { skillCount, skillFromSlug, skillSlug } from '../data/resume';
 import { useDocumentTitle } from '../lib/hooks';
 import Egg from '../components/Egg';
+import '../styles/lazy/resume.css';
 
 const VIEWS = [
   { id: 'interactive', label: 'Interactive' },

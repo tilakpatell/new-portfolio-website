@@ -1,4 +1,5 @@
 import { useScene } from '../../lib/three/useScene';
+import '../../styles/lazy/cybertron.css';
 
 // The transformation's stage. In WebGL (./transform3d.js) the vehicle is
 // built from parts that fly apart as the robot stands up through a ring of

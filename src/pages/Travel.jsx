@@ -17,6 +17,7 @@ import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import { jumpTo } from '../lib/anchors';
 import Egg from '../components/Egg';
 import Mist from '../components/mist/Mist';
+import '../styles/lazy/travel.css';
 
 const num = new Intl.NumberFormat('en-US');
 const away = PLACES.filter((p) => !p.home);

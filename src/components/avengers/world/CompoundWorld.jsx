@@ -11,6 +11,7 @@ import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
 import { BUILDINGS, HERO_R, LAWN_W, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, START, TOUR, behindYaw, cameraMove, floorAt, linesFor, nearCast, nearPlace, newHero, newTour, outside, placeById, progress, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
+import '../../../styles/lazy/avengers.css';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here

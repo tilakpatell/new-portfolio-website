@@ -9,7 +9,8 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
-import Hyperspace from './components/Hyperspace';
+// fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
+import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
 import WorldGate from './components/worlds/WorldGate';
 
@@ -40,6 +41,7 @@ const Front = lazy(() => import('./pages/Front'));
 const Home = lazy(() => import('./pages/Home'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const Hyperspace = lazy(() => import('./components/Hyperspace'));
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -84,7 +86,11 @@ function Lightspeed() {
     };
   }, [unlock]);
   if (!on) return null;
-  return <Hyperspace key={on} sound onDone={() => setOn(0)} />;
+  return (
+    <Suspense fallback={null}>
+      <Hyperspace key={on} sound onDone={() => setOn(0)} />
+    </Suspense>
+  );
 }
 
 // A first visit to the site opens on a welcome (what the site is, what the
@@ -241,6 +247,7 @@ function Shell() {
       import('./pages/Projects');
       import('./pages/Contact');
       import('./pages/Travel');
+      import('./components/Hyperspace');
     });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
