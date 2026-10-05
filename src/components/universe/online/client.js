@@ -7,7 +7,15 @@
 // yours. The scene (scene.js, pilots.js) reads poses and shots from it each
 // frame, Presence.jsx the pointers; the page (useOnline.js, Online.jsx)
 // shows the roster and what's happening. protocol.js has the wire and the
-// rules for what's believed.
+// rules for what's believed; privacy.js what your connection gives away.
+//
+// Defences, since anyone can join with a client of their own: each pilot
+// may send only so much of each kind of message (a flood gets them muted
+// for the visit), hits must come from a shot aimed your way, kills are
+// counted from what this browser saw (a shot or a hit just before, close
+// by), not from what a pilot says of themselves, an alliance turned down
+// can't be asked for again straight away, and anyone who goes quiet is
+// dropped. A heartbeat keeps you on everyone's list while you sit still.
 //
 // createClient({ name, kind, where }) → { selfId, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, where }), pose(ship, { hidden, boost, safe,
@@ -16,15 +24,21 @@
 //   peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
 // text, tone }, { type: 'hit', from, damage }, { type: 'downed', id, by }
-// (someone was shot down: where they were, for the scene's pop).
+// (someone was shot down: where they were, for the scene's pop; `by` is
+// whoever this browser believes did it).
 
-import { APP_ID, CURSOR_MS, DAMAGE, POSE_MS, ROOM, allyStep, cleanName, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, GUARD, POSE_MS, ROOM, allyStep, cleanName, createLimiter, hitCounts, readCursor, readHello, readHit, readPose, readShot, writeCursor, writePose, writeShot } from './protocol';
+import { privatePeer, relayOnly } from './privacy';
 import { UNIVERSE, placeName } from './where';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
+const AIMS = 8; // each pilot's last shots, kept to check a hit against
 const SHOT_GAP = 150; // ms between shots sent (the guns fire every 220)
 const PILOTS = 32; // pilots kept track of, at most (a mesh of browsers gets heavy past this)
+const HEARTBEAT_MS = 15000; // a hello this often, so a pilot sitting still isn't dropped
+const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
+const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
 // The relays that introduce the pilots (every visitor must use the same
 // ones): from Trystero's own list, the ones answering when this was written
 // (its default pick for our app id had a dead one in it)
@@ -32,7 +46,7 @@ const RELAYS = ['nos.lol', 'nostr-01.yakihonne.com', 'nostr-01.uid.ovh', 'purple
 
 const loadTrystero = () => import('trystero').then((m) => ({ joinRoom: m.joinRoom, selfId: m.selfId }));
 
-export function createClient({ name, kind = null, where = UNIVERSE, load = loadTrystero, now = () => performance.now() }) {
+export function createClient({ name, kind = null, where = UNIVERSE, load = loadTrystero, now = () => performance.now(), privacy = { peer: privatePeer(), relay: relayOnly() } }) {
   const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, kills: 0, where };
   const peers = new Map();
   const listeners = new Set();
@@ -44,6 +58,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
   let lastShot = -Infinity;
   let lastCursor = -Infinity;
   let cursorLater = 0; // the last pointer of a quick move, sent once the gap's up
+  let heartbeat = 0;
   let shots = [];
 
   const emit = (e) => {
@@ -51,13 +66,30 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const nameOf = (id) => (id === self.id ? 'you' : (peers.get(id)?.name ?? 'Someone'));
   const hello = () => ({ n: self.name, k: self.kind, c: self.kills, w: self.where });
 
   const peerOf = (id) => {
     let p = peers.get(id);
     if (!p && peers.size < PILOTS) {
-      p = { id, name: null, kind: null, kills: 0, where: null, ally: 'none', blocked: false, snaps: [], pose: null, cur: null, shotAt: -Infinity, hitAt: -Infinity };
+      p = {
+        id,
+        name: null,
+        kind: null,
+        kills: 0, // the ones this browser saw
+        where: null,
+        ally: 'none',
+        blocked: false,
+        snaps: [],
+        pose: null,
+        cur: null,
+        shots: [], // their last few, for checking a hit on you
+        shotAt: -Infinity,
+        hitAt: -Infinity, // their last hit on you that counted
+        hitByMeAt: -Infinity, // your last hit on them
+        declinedAt: -Infinity,
+        seen: now(),
+        limit: createLimiter(),
+      };
       peers.set(id, p);
     }
     return p ?? null;
@@ -68,6 +100,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     const { state, send: say } = allyStep(was, event);
     p.ally = state;
     if (say) send?.ally({ t: say }, p.id);
+    if (event === 'decline') p.declinedAt = now();
     if (state === was) return;
     const who = p.name ?? 'Someone';
     if (state === 'got') feed(`${who} wants to be allies`, 'ally');
@@ -76,6 +109,45 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     else if (state === 'none' && was === 'sent' && typeof event === 'object') feed(`${who} turned down the alliance`, 'info');
     roster();
   };
+
+  const block = (p, on) => {
+    if (on && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
+    p.blocked = on;
+    p.snaps.length = 0;
+    p.pose = null;
+    p.cur = null;
+    p.shots.length = 0;
+    roster();
+  };
+
+  // A message from a pilot, let in or not: known (or, for a hello, new), not
+  // blocked, and within what they may send. Too much, and they're muted.
+  const admit = (kind, id, create = false) => {
+    const p = create ? peerOf(id) : peers.get(id);
+    if (!p) return null;
+    const t = now();
+    p.seen = t;
+    if (p.blocked) return null;
+    if (p.limit.allow(kind, t)) return p;
+    if (p.limit.flooding(t)) {
+      block(p, true);
+      feed(`Muted ${p.name ?? 'a pilot'}: too many messages`, 'info');
+    }
+    return null;
+  };
+
+  // anyone gone quiet is gone (a missed goodbye, or a tab that froze)
+  const sweep = () => {
+    const t = now();
+    for (const p of [...peers.values()]) {
+      if (t - p.seen <= QUIET_MS) continue;
+      peers.delete(p.id);
+      if (p.name && !p.blocked) feed(`${p.name} went offline`, 'info');
+      roster();
+    }
+  };
+
+  const near = (a, b) => Boolean(a && b) && Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) <= GUARD.range * 1.5;
 
   const wire = (r, selfId) => {
     self.id = selfId;
@@ -111,15 +183,18 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
 
     hi.onMessage = (data, { peerId }) => {
       const h = readHello(data);
-      const p = h && peerOf(peerId);
+      const p = h && admit('hi', peerId, true);
       if (!p) return;
       const first = p.name === null;
       const was = p.where;
-      const changed = first || p.name !== h.name || p.kind !== h.kind || p.kills !== h.kills || p.where !== h.where;
-      Object.assign(p, h);
+      const changed = first || p.name !== h.name || p.kind !== h.kind || p.where !== h.where;
+      // (their own count of their kills isn't taken: p.kills is what this browser saw)
+      p.name = h.name;
+      p.kind = h.kind;
+      p.where = h.where;
       if (was !== p.where) p.cur = null; // (a pointer is only good on the page it was on)
-      if (first && !p.blocked) feed(`${p.name} came online`, 'join');
-      else if (!first && was !== p.where && !p.blocked) {
+      if (first) feed(`${p.name} came online`, 'join');
+      else if (was !== p.where) {
         // coming to your page, or leaving it
         if (p.where === self.where) feed(`${p.name} is here`, 'join');
         else if (was === self.where) feed(`${p.name} went to ${placeName(p.where)}`, 'info');
@@ -128,67 +203,95 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     };
     pose.onMessage = (data, { peerId }) => {
       const s = readPose(data);
-      const p = s && peers.get(peerId);
-      if (!p || p.blocked) return;
+      const p = s && admit('pose', peerId);
+      if (!p) return;
       s.at = now();
       p.pose = s;
       p.snaps.push(s);
       if (p.snaps.length > SNAPS) p.snaps.shift();
     };
     shot.onMessage = (data, { peerId }) => {
-      const p = peers.get(peerId);
-      const s = p && !p.blocked && readShot(data, p.pose);
-      if (!s) return;
-      p.shotAt = now();
+      const known = peers.get(peerId);
+      const s = known && readShot(data, known.pose);
+      const p = s && admit('shot', peerId);
+      if (!p) return;
+      const t = now();
+      p.shotAt = t;
+      p.shots.push({ p: s.p, v: s.v, at: t });
+      if (p.shots.length > AIMS) p.shots.shift();
       shots.push({ id: peerId, kind: p.kind, ...s });
       if (shots.length > SHOTS) shots.shift();
     };
     hit.onMessage = (data, { peerId }) => {
       const d = readHit(data);
-      const p = peers.get(peerId);
+      const p = d && admit('hit', peerId);
       const t = now();
-      if (!d || !hitCounts(p, me, t)) return;
+      if (!p || !hitCounts(p, me, t)) return;
       p.hitAt = t;
       emit({ type: 'hit', from: peerId, damage: d });
     };
     down.onMessage = (data, { peerId }) => {
-      const p = peers.get(peerId);
-      if (!p || !data || typeof data !== 'object') return;
-      const by = typeof data.b === 'string' ? data.b : null;
-      if (by === self.id) {
-        self.kills += 1;
-        send.hi(hello());
-        if (!p.blocked) feed(`You shot down ${p.name ?? 'someone'}`, 'kill');
-        roster();
-      } else if (!p.blocked && by && peers.has(by) && !peers.get(by).blocked) feed(`${nameOf(by)} shot down ${p.name ?? 'someone'}`, 'kill');
-      p.snaps.length = 0; // they're gone till they're back
+      const p = data && typeof data === 'object' && admit('down', peerId);
+      if (!p) return;
+      const said = typeof data.b === 'string' && data.b.length <= 64 ? data.b : null;
+      const t = now();
+      let by = null;
+      if (said && said === self.id) {
+        // yours, if you'd just hit them
+        if (t - p.hitByMeAt <= GUARD.killWindow) {
+          by = said;
+          self.kills += 1;
+          feed(`You shot down ${p.name ?? 'someone'}`, 'kill');
+        }
+      } else if (said) {
+        // someone else's, if they'd just fired and were close by
+        const q = peers.get(said);
+        if (q && !q.blocked && t - q.shotAt <= GUARD.killWindow && near(q.pose, p.pose)) {
+          by = said;
+          q.kills += 1;
+          feed(`${q.name ?? 'Someone'} shot down ${p.name ?? 'someone'}`, 'kill');
+        }
+      }
+      if (by) roster();
       emit({ type: 'downed', id: peerId, by, at: p.pose });
+      p.snaps.length = 0; // they're gone till they're back
     };
     cur.onMessage = (data, { peerId }) => {
-      const p = peers.get(peerId);
-      const c = p && !p.blocked && p.where !== UNIVERSE && readCursor(data);
-      if (!c) return;
+      const c = readCursor(data);
+      const p = c && admit('cur', peerId);
+      if (!p || p.where === UNIVERSE) return;
       c.at = now();
       p.cur = c;
     };
     ally.onMessage = (data, { peerId }) => {
-      const p = peers.get(peerId);
-      if (!p || p.blocked || !data || !['ask', 'yes', 'no', 'end'].includes(data.t)) return;
-      setAlly(p, { in: data.t });
+      const t = data && typeof data === 'object' && ['ask', 'yes', 'no', 'end'].includes(data.t) ? data.t : null;
+      const p = t && admit('ally', peerId);
+      if (!p) return;
+      // turned down a moment ago: not again yet
+      if (t === 'ask' && p.ally === 'none' && now() - p.declinedAt < ALLY_AGAIN_MS) {
+        send.ally({ t: 'no' }, p.id);
+        return;
+      }
+      setAlly(p, { in: t });
     };
+
+    heartbeat = setInterval(() => {
+      send?.hi(hello());
+      sweep();
+    }, HEARTBEAT_MS);
   };
 
   // into the room (three.js-free, but still a download: only once asked)
   load()
     .then(({ joinRoom, selfId }) => {
       if (status === 'left') return;
-      room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS } }, ROOM);
+      room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS }, rtcPolyfill: privacy.peer, ...(privacy.relay ?? {}) }, ROOM);
       wire(room, selfId);
       status = 'online';
       emit({ type: 'status' });
     })
     .catch((err) => {
-      if (import.meta.env?.DEV) console.error('[online]', err);
+      if (import.meta.env?.DEV && import.meta.env?.MODE !== 'test') console.error('[online]', err);
       if (status === 'left') return;
       status = 'failed';
       emit({ type: 'status' });
@@ -199,6 +302,8 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
       return self.id;
     },
     peers,
+    // does everything go through a relay (no one sees your IP address)?
+    relay: Boolean(privacy.relay),
     on(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
@@ -208,7 +313,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
       const list = [];
       for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
+      return { status, relay: Boolean(privacy.relay), self: { name: self.name, kind: self.kind, kills: self.kills, where: self.where }, peers: list };
     },
     setProfile({ name: n = self.name, kind: k = self.kind, where: w = self.where } = {}) {
       const clean = cleanName(n) ?? self.name;
@@ -253,6 +358,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     hit(id) {
       const p = peers.get(id);
       if (!send || !p || p.blocked || p.ally === 'ally') return;
+      p.hitByMeAt = now();
       send.hit({ d: DAMAGE }, id);
     },
     // your shields are gone: everyone hears who did it
@@ -267,12 +373,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     },
     block(id, on = true) {
       const p = peers.get(id);
-      if (!p) return;
-      if (on && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
-      p.blocked = on;
-      p.snaps.length = 0;
-      p.pose = null;
-      roster();
+      if (p) block(p, on);
     },
     // the shots that came in since last asked
     takeShots() {
@@ -284,6 +385,7 @@ export function createClient({ name, kind = null, where = UNIVERSE, load = loadT
     leave() {
       status = 'left';
       clearTimeout(cursorLater);
+      clearInterval(heartbeat);
       listeners.clear();
       peers.clear();
       shots = [];
