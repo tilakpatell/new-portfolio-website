@@ -35,6 +35,7 @@ const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
+const Changes = lazy(() => import('./pages/Changes'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 
@@ -317,6 +318,7 @@ function Shell() {
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
+                <Route path="/changes" element={<Changes />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </WorldGate>
