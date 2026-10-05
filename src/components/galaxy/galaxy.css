@@ -108,7 +108,7 @@
 @keyframes galaxy-jump-in { from { opacity: 0; scale: 0.92; } }
 /* (the line on how to fly wraps, clear of the corners; and gives way to the jump) */
 @media (min-width: 768px) {
-  .galaxy-page .universe-hint { width: min(620px, calc(100vw - var(--panel-w) - 400px)); border-radius: 14px; white-space: normal; text-align: center; line-height: 1.75; }
+  .galaxy-page .universe-hint { left: 184px; right: calc(var(--panel-w) + 36px); max-width: 620px; margin-inline: auto; translate: none; border-radius: 14px; white-space: normal; text-align: center; line-height: 1.75; }
 }
 .galaxy-jumpbtn ~ .universe-hint { display: none; }
 @media (max-width: 767px) {
