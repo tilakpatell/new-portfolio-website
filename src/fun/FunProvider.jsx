@@ -194,6 +194,7 @@ export function FunProvider({ children }) {
   const parkour = useCallback(async () => {
     const { parkourPage } = await import('./effects');
     parkourPage();
+    import('../lib/clips').then((c) => c.playClip('parkour', { keep: true }));
     notify('Parkour!', 'Hardcore parkour.', 'note', 'parkour');
   }, [notify]);
 

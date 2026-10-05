@@ -38,6 +38,9 @@ remove it.
 | why-is-the-rum-always-gone.mp3, almost-caught-captain-jack-sparrow.mp3, but-you-have-heard-of-me.mp3, madness-or-brilliance.mp3, welcome-to-the-caribbean.mp3, take-what-you-can.mp3, do-you-fear-death.mp3, why-should-the-afterlife.mp3, jar-of-dirt.mp3, not-good.mp3, oh-bugger.mp3, drink-up-me-hearties.mp3 | Pirates of the Caribbean, from [Movie Sound Clips](https://www.moviesoundclips.net) |
 | did-everyone-see-that.mp3 | Pirates of the Caribbean, from [Myinstants](https://www.myinstants.com) |
 | without-a-drop-of-rum.mp3 | Pirates of the Caribbean, from [Soundboard Guy](https://www.soundboardguy.com) |
+| parkour.mp3, undercook-the-onions.mp3, did-i-stutter.mp3, bears-beets-battlestar-galactica.mp3, why-are-you-the-way-that-you-are.mp3, beyonce-always.mp3, inside-jokes.mp3, prison-mike.mp3, dwight-you-ignorant-slut.mp3 | The Office, from [Myinstants](https://www.myinstants.com) |
+| dwight-punish.mp3, pam-gamble.mp3 | The Office, from [Movie Sound Clips](https://www.moviesoundclips.net) |
+| identity-theft.mp3, i-declare-bankruptcy.mp3, boom-roasted.mp3, little-stitious.mp3, fire-drill.mp3, like-to-be-liked.mp3 | The Office, from [Soundboard Guy](https://www.soundboardguy.com) |
 | yeah-science.mp3, one-who-knocks.mp3, walter-hartwell-white.mp3, private-domicile.mp3, dont-drink-and-drive.mp3 | Breaking Bad, from [Myinstants](https://www.myinstants.com) |
 | killed-gus-fring.mp3, cant-keep-getting-away.mp3 | Breaking Bad, from [Soundboard Guy](https://www.soundboardguy.com) |
 | i-am-the-danger.mp3 | Breaking Bad, from [Meme Sound Effects](https://www.memesoundeffects.com) |
