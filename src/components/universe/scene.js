@@ -121,6 +121,7 @@ import { createTrail } from './trail';
 import { BUILT, ENGINES, SHIP_MODELS, buildShip } from './shipModels';
 import { paintById } from './paint';
 import { FASTEST, PARTS_SLOTS, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
+import { readBuildWire, writeBuild } from './shipyard/build';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { lockSound, shipEngine, wellSound } from './sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track } from './targeting';
@@ -807,6 +808,7 @@ export async function create(canvas, ctx) {
     side: 1, // which wing the X-wing fires from next
     barrel: 0, // and which of the fitted guns' barrels
     loadout: STOCK_LOADOUT, // what's fitted in the hangar (outfit.js)
+    build: null, // the garage build flown in place of the stock hull (shipyard/), or null
     stats: statsOf(null, STOCK_LOADOUT), // and what it does
     lastShot: 0,
     crash: null, // { age, id, … } while a crash plays out (startCrash)
@@ -1456,7 +1458,7 @@ export async function create(canvas, ctx) {
     for (const pl of plumes) pl.trail.setColors(plumeColor(), look.core);
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout);
+    state.stats = statsOf(state.kind, state.loadout, state.build);
     if (!state.kind || !state.model) return setBoosterPlumes();
     const mods = state.model.outfit(state.loadout);
     state.barrel = 0;
@@ -1471,8 +1473,19 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  const setShip = (kind) => {
-    if (kind === state.kind) return;
+  // The garage build flown in place of the stock hull (or null): the ship
+  // built again when it changes, where it was.
+  const buildKey = (b) => (b ? writeBuild(b).join() : '');
+  const sameBuild = (b) => buildKey(b) === buildKey(state.build);
+  const setBuild = (raw) => {
+    if (sameBuild(raw)) return;
+    state.build = raw ? readBuildWire(writeBuild(raw)) : null;
+    if (state.kind) setShip(state.kind, true);
+  };
+
+  // (force: the same crew, built again: its garage build changed)
+  const setShip = (kind, force = false) => {
+    if (kind === state.kind && !force) return;
     if (onFoot()) foot.end();
     seatCrew = null;
     engine?.stop();
@@ -1504,11 +1517,14 @@ export async function create(canvas, ctx) {
       retarget();
       return;
     }
-    state.model = buildShip(kind, T);
+    state.model = buildShip(kind, T, { build: state.build });
     map.add(state.model.group);
+    if (state.build) setPlumes(kind, state.model.engines); // (its own engines)
     refit();
     dress();
-    if (SHIP_MODELS[kind]) {
+    if (state.build) {
+      // a garage build is whole as it is: no model to load over it
+    } else if (SHIP_MODELS[kind]) {
       const model = state.model;
       loadModel(SHIP_MODELS[kind])
         .then((m) => m && warm(model.dress(m)).then(() => m)) // (in its paint before its shaders are made)
@@ -3603,8 +3619,12 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
-      if ((next.ship ?? null) !== state.kind) state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
+      if ((next.ship ?? null) !== state.kind) {
+        state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
+        state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+      }
       setShip(next.ship ?? null);
+      setBuild(next.build ?? null);
       setLoadout(next.loadout);
       setNet(next.net);
       select(next.selected ?? null);
