@@ -94,6 +94,7 @@ export const ACHIEVEMENTS = {
   swearontheprecious: { name: 'Sméagol will swear on the precious', desc: 'Caught Gollum at the foot of the cliff, and spared him' },
   deadmarshes: { name: 'Don’t follow the lights', desc: 'Followed Gollum across the Dead Marshes, and hid from the Nazgûl' },
   anotherway: { name: 'There is another way', desc: 'Watched the Black Gate open from the slope, unseen under the elven cloak' },
+  safeway: { name: 'Sméagol knows the way', desc: 'Crossed a pool of the Dead Marshes on the tussocks Gollum showed you' },
   minasmorgul: { name: 'Minas Morgul', desc: 'Kept your eyes off the dead city while the Witch-king’s host went by' },
   stairs: { name: 'The endless stair', desc: 'Climbed the stairs of Cirith Ungol behind Gollum' },
   aiyaearendil: { name: 'Aiya Eärendil Elenion Ancalima', desc: 'Got through Shelob’s lair by the light of the phial' },

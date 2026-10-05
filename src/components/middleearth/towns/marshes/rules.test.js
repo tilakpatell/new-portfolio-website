@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CREEP, FELL, ROPE, newCreep, newDescent, newFell, newLure, pounce, stepCreep, stepDescent, stepFell, stepLure } from './rules';
+import { CREEP, FELL, ROPE, WAY, hopWay, newCreep, newDescent, newFell, newLure, newWay, pounce, stepCreep, stepDescent, stepFell, stepLure, stepWay } from './rules';
 
 const run = (n, fn) => {
   for (let i = 0; i < n; i++) if (fn(i) === false) break;
@@ -117,5 +117,85 @@ describe('the Nazgûl overhead', () => {
       return f.state === 'on';
     });
     expect(f.state).toBe('spotted');
+  });
+});
+
+describe('Sméagol’s safe way', () => {
+  // let Gollum show the way, and say where he trod
+  const watch = (w) => {
+    const trod = [];
+    for (let i = 0; i < 400 && w.phase === 'show'; i++) for (const e of stepWay(w, 0.05)) if (e.type === 'gollum') trod.push(e);
+    return trod;
+  };
+  it('lays a way across, a tussock a row, each next to the last, with a light over a wrong one', () => {
+    for (let seed = 1; seed < 40; seed++) {
+      const w = newWay(seed);
+      expect(w.path).toHaveLength(WAY.rows);
+      let c = w.start;
+      w.path.forEach((col, r) => {
+        expect(Math.abs(col - c), `seed ${seed} row ${r}`).toBeLessThanOrEqual(1);
+        expect(col).toBeGreaterThanOrEqual(0);
+        expect(col).toBeLessThan(WAY.cols);
+        expect(w.lures[r]).not.toBe(col);
+        expect(Math.abs(w.lures[r] - c)).toBeLessThanOrEqual(1);
+        c = col;
+      });
+    }
+  });
+  it('has Gollum show it once, row by row, before it’s your turn', () => {
+    const w = newWay(5);
+    expect(hopWay(w, 0)).toBeNull();
+    const trod = watch(w);
+    expect(trod.slice(0, WAY.rows).map((e) => e.col)).toEqual(w.path);
+    expect(trod.map((e) => e.row)).toEqual([...Array(WAY.rows + 1).keys()]);
+    expect(w.phase).toBe('play');
+  });
+  it('gets you across, putting your feet where he put his', () => {
+    const w = newWay(7);
+    watch(w);
+    let last = null;
+    for (let r = 0; r < WAY.rows; r++) {
+      stepWay(w, WAY.step);
+      last = hopWay(w, w.path[r] - w.col);
+      if (r < WAY.rows - 1) expect(last).toBe('safe');
+    }
+    expect(last).toBe('across');
+    expect(w.slips).toBe(0);
+    expect(hopWay(w, 0)).toBeNull();
+  });
+  it('sinks a wrong step, and puts you back on the bank to go again', () => {
+    const w = newWay(7);
+    watch(w);
+    const wrong = w.lures[0] - w.col;
+    expect(hopWay(w, wrong)).toBe('sank');
+    expect(w.sankAt).toEqual({ row: 0, col: w.lures[0], lit: true });
+    expect(hopWay(w, 0)).toBeNull();
+    const ev = [];
+    for (let i = 0; i < 100 && w.phase === 'sunk'; i++) ev.push(...stepWay(w, 0.05));
+    expect(ev.map((e) => e.type)).toEqual(['back']);
+    expect([w.row, w.col, w.phase]).toEqual([-1, w.start, 'play']);
+  });
+  it('shows you again after three slips', () => {
+    const w = newWay(11);
+    watch(w);
+    const ev = [];
+    for (let n = 0; n < WAY.again; n++) {
+      stepWay(w, WAY.step);
+      expect(hopWay(w, w.lures[0] - w.col)).toBe('sank');
+      for (let i = 0; i < 100 && w.phase === 'sunk'; i++) ev.push(...stepWay(w, 0.05));
+    }
+    expect(ev.map((e) => e.type)).toEqual(['back', 'back', 'again']);
+    expect(w.phase).toBe('show');
+    expect(w.slips).toBe(WAY.again);
+    expect(watch(w)).toHaveLength(WAY.rows + 1);
+  });
+  it('won’t hop off the edge of the tussocks, or twice at once', () => {
+    const w = newWay(3, { rows: 3, cols: 3 });
+    watch(w);
+    w.col = 0;
+    expect(hopWay(w, -1)).toBeNull();
+    w.col = w.start;
+    expect(hopWay(w, w.path[0] - w.col)).toBe('safe');
+    expect(hopWay(w, w.path[1] - w.col)).toBeNull();
   });
 });
