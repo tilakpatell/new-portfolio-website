@@ -8,7 +8,10 @@
 // higher still, across the whole map. flybyLane(ship, rand) is traffic that
 // comes to you: from ahead of the ship, at its height, past one side of it
 // close enough to see (and shoot), and on behind; none when that would take
-// it through a planet.
+// it through a planet. laneNear(ship, rand) is the traffic out in deep
+// space, where there are no places to go between: across the space ahead
+// of you, from one side to the other, near enough to see. convoyLane(ship,
+// rand) is a long straight run past you at a good distance, for a convoy.
 
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
@@ -100,6 +103,41 @@ const SHAPES = [
   { behind: 5, sweep: 10, rise: 2.5 },
 ];
 const CROSS = [4.5, 7, 10]; // how far ahead of the nose a crossing passes
+export function laneNear(ship, rand) {
+  const [fx, fz] = forward(ship.heading);
+  const rx = -fz;
+  const rz = fx;
+  for (let i = 0; i < 6; i++) {
+    const side = rand() < 0.5 ? -1 : 1;
+    const ahead = 30 + rand() * 70;
+    const off = 18 + rand() * 30;
+    const y = ship.y + (rand() - 0.5) * 16;
+    const p0 = [ship.x + fx * ahead + rx * side * off, y, ship.z + fz * ahead + rz * side * off];
+    const p2 = [ship.x + fx * (ahead * 0.4 - 25) - rx * side * off, y + (rand() - 0.5) * 6, ship.z + fz * (ahead * 0.4 - 25) - rz * side * off];
+    const p1 = [(p0[0] + p2[0]) / 2 + fx * 10, (p0[1] + p2[1]) / 2, (p0[2] + p2[2]) / 2 + fz * 10];
+    const pts = [p0, p1, p2];
+    if (clearance(pts) > 2) return pts;
+  }
+  return null;
+}
+
+export function convoyLane(ship, rand) {
+  const [fx, fz] = forward(ship.heading);
+  const rx = -fz;
+  const rz = fx;
+  for (let i = 0; i < 8; i++) {
+    const side = rand() < 0.5 ? -1 : 1;
+    const off = 7 + rand() * 6; // to one side of you
+    const y = ship.y - 0.6 + rand() * 1.4;
+    // from well ahead to well behind, past you
+    const p0 = [ship.x + fx * 55 + rx * side * off, y, ship.z + fz * 55 + rz * side * off];
+    const p2 = [ship.x - fx * 45 + rx * side * (off + 6), y, ship.z - fz * 45 + rz * side * (off + 6)];
+    const pts = [p0, [(p0[0] + p2[0]) / 2, y, (p0[2] + p2[2]) / 2], p2];
+    if (clearance(pts) > 1.5) return pts;
+  }
+  return null;
+}
+
 export function flybyLane(ship, rand, { cross = rand() < 0.5 } = {}) {
   const [fx, fz] = forward(ship.heading);
   const rx = -fz; // the ship's right
