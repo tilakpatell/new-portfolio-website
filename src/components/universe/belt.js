@@ -53,7 +53,7 @@ export function rock(seed) {
 
 export function createBelt({ small = false } = {}) {
   const rand = rng(1977);
-  const N = small ? 900 : 2400;
+  const N = small ? 1100 : 3200;
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 });
   const shapes = [rock(11), rock(23), rock(37)];
@@ -120,7 +120,7 @@ void main() {
 
 export function createDust({ small = false } = {}) {
   const rand = rng(42);
-  const N = small ? 260 : 600;
+  const N = small ? 320 : 800;
   const BOX = 14;
   const pos = new Float32Array(N * 3);
   const size = new Float32Array(N);

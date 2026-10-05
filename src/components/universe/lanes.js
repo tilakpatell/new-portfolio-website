@@ -18,10 +18,16 @@
 // minutes out of sight), everyday traffic keeps to where you are:
 // laneLocal(place, rand) curves round the place you're at, from beside it
 // to beside it further round; laneDepart(place, rand) leaves it (or comes
-// in to it, flown backwards) straight out into the open.
+// in to it, flown backwards) straight out into the open. laneDock(place,
+// rand) comes in from the open and ends on the place itself, high on one
+// side of it (a ship coming in to land, which shrinks into it: dockScale),
+// or with `out`, launches from it; only at a place you could land on
+// (dockable: a planet, a station, a gas or ice giant, the Citadel; not a
+// star, the black hole, a nebula or a gate, as the Star Wars place is).
 
 import { MAP_RADIUS, ORDER, POSITIONS, REACH } from './layout';
 import { SOLIDS, forward } from './ship';
+import { byId } from './universes';
 
 const LOW = [40, 60]; // how far above or below the disc everyday traffic flies (clear of the tallest planet and its moons)
 const HIGH = [75, 105]; // and the big ships
@@ -29,6 +35,8 @@ const LOCAL = [9, 16]; // how far above or below a place's middle the traffic ro
 const LOCAL_HIGH = [21, 35]; // and the big ships
 const BIG = 35; // a place reaching further than this is a big one
 const FLYBY = { ahead: [20, 30], side: [0.9, 1.8] };
+const DOCK = { in: 1.06, lat: [0.5, 1.0], fade: 0.18 }; // where on the body a dock lane ends (of its radius; how high a latitude), and how much of the lane the ship shrinks over
+const DOCKABLE = new Set(['planet', 'station', 'gas-giant', 'ice-giant', 'citadel']);
 
 export function bezier([a, b, c], t, out = [0, 0, 0]) {
   const u = 1 - t;
@@ -241,6 +249,67 @@ export function flybyLane(ship, rand, { cross = rand() < 0.5 } = {}) {
       const pts = through(p0, p1, p2);
       if (clearance(pts) > 0.6) return pts;
     }
+  }
+  return null;
+}
+
+// whether ships come in to land at a place (and launch from it)
+export const dockable = (place) => DOCKABLE.has(place?.kind ?? 'planet') && !byId(place?.id)?.portal;
+
+// the radius of the place's own body (not its moons): its solid, or half its reach
+const bodyOf = (place) => SOLIDS.find((o) => o.id === place.id)?.r ?? place.reach * 0.5;
+
+// how big a ship on a dock lane is drawn, at `k` along it (0…1): one coming
+// in shrinks into the body over the last stretch, one launching grows out
+// of it over the first; anything else is full size
+export function dockScale(dock, k) {
+  const ramp = (a, b) => {
+    const x = Math.min(1, Math.max(0, (k - a) / (b - a)));
+    return x * x * (3 - 2 * x);
+  };
+  if (dock === 'in') return 1 - ramp(1 - DOCK.fade, 1);
+  if (dock === 'out') return ramp(0, DOCK.fade);
+  return 1;
+}
+
+// how close the lane comes to anything solid over part of it (t from `a` to `b`)
+function clearanceOver(pts, solids, a, b, steps = 32) {
+  let min = Infinity;
+  for (let i = 0; i <= steps; i++) {
+    const p = bezier(pts, a + ((b - a) * i) / steps);
+    for (const o of solids) min = Math.min(min, Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) - o.r);
+  }
+  return min;
+}
+
+// A lane in to `place` from the open, ending on its body high on one side
+// (north or south, clear of the moons' plane): from well out beside it,
+// above or below the disc, curving in and down on to it. With `out`, the
+// same flown the other way: a launch. Clear of everything else all the way,
+// and of the place itself until the last stretch (the first, launching).
+// Null when nothing clear can be found, or the place isn't one to land on.
+export function laneDock(place, rand, { out = false } = {}) {
+  if (!dockable(place)) return null;
+  const r = bodyOf(place);
+  const side = rand() < 0.5 ? -1 : 1;
+  const others = SOLIDS.filter((o) => o.id !== place.id && !o.id.startsWith(`${place.id}-`));
+  const own = SOLIDS.filter((o) => o.id === place.id);
+  for (let i = 0; i < 8; i++) {
+    const a = rand() * Math.PI * 2;
+    const b = a + (rand() - 0.5) * 1.2;
+    const d0 = place.reach + 8 + rand() * 14;
+    const y0 = place.at[1] + side * between(rand, LOCAL) * (place.reach > BIG ? 1.6 : 1);
+    const p0 = [place.at[0] + Math.cos(a) * d0, y0, place.at[2] + Math.sin(a) * d0];
+    const lat = side * between(rand, DOCK.lat);
+    const p2 = [place.at[0] + Math.cos(b) * r * DOCK.in * Math.cos(lat), place.at[1] + Math.sin(lat) * r * DOCK.in, place.at[2] + Math.sin(b) * r * DOCK.in * Math.cos(lat)];
+    // the middle: half way in, and still well above (or below) the body
+    const m = (a + b) / 2;
+    const dm = r + (d0 - r) * 0.5;
+    const p1 = [place.at[0] + Math.cos(m) * dm, (y0 + p2[1]) / 2 + side * (r * 0.3 + 1.5), place.at[2] + Math.sin(m) * dm];
+    const pts = out ? [p2, p1, p0] : [p0, p1, p2];
+    if (clearance(pts, others) < 0.6) continue;
+    if (own.length && clearanceOver(pts, own, out ? 0.3 : 0, out ? 1 : 0.7) < 0.3) continue;
+    return pts;
   }
   return null;
 }
