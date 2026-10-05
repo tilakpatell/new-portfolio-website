@@ -13,10 +13,11 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createStage } from '../../../lib/stage3d';
+import { createStage, disposeTree } from '../../../lib/stage3d';
 import { budget, device } from '../../../lib/device';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
+import { loadDoorLeaf } from './models';
 import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, swaying } from './ground';
 import { makeAtmosphere, makeSky } from './sky';
 import { createFx } from './fx';
@@ -124,6 +125,20 @@ export function createShireWorld(canvas, { onLost } = {}) {
     return part;
   };
   const bagEnd = placed(kit.bagEnd(), BAG_END.x, BAG_END.z);
+  // Bag End's door is a model (./models.js): the built leaf stands until it's come
+  const doorModel = tier !== 'low' && !dev.saveData && bagEnd.door?.userData.leaf ? bagEnd.door : null;
+  let gone = false;
+  if (doorModel)
+    loadDoorLeaf(doorModel.userData.leaf.r, { anisotropy: fit.aniso }).then((leaf) => {
+      if (!leaf) return;
+      if (gone) return disposeTree(leaf);
+      for (const built of [...doorModel.children]) {
+        built.removeFromParent();
+        built.geometry?.dispose();
+      }
+      leaf.position.set(doorModel.userData.leaf.x, 0, doorModel.userData.leaf.z);
+      doorModel.add(leaf);
+    });
   const benchAt = bagEnd.bench ? bagEnd.bench.clone().applyMatrix4(bagEnd.group.matrixWorld) : V(BAG_END.x + 4.4, height(BAG_END.x + 4.4, BAG_END.z + 5.4) + 0.45, BAG_END.z + 5.4);
   for (const h of HOLES) placed(kit.hobbitHole({ door: h.door, radius: h.r, seed: h.seed }), h.x, h.z);
   const mill = placed(kit.mill(), MILL.x, MILL.z, { y: height(MILL.x, MILL.z), sink: 0.05 });
@@ -262,7 +277,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
 
   // the buildings and props that never move, merged by material: a few
   // dozen draws instead of several hundred
-  outdoors.add(bake(statics, [mill.wheel]));
+  outdoors.add(bake(statics, [mill.wheel, doorModel])); // the door's built leaf stays its own, to be taken away
 
   // ── the mushrooms, glinting so they can be found ──
   const mushrooms = MUSHROOMS.map((m) => {
@@ -777,6 +792,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      gone = true;
       stage.dispose();
     },
   };

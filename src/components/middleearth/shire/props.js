@@ -1278,6 +1278,8 @@ function hole(K, { R = 4, door = 0x2e6b3a, doorD = 1.8, seed = 1, windows, grand
   dk.add(mats.brass, cylZ(0.025, 0.08, 8), { p: [doorR - 0.02, 0, 0.05] });
   dk.add(mats.brass, ball(0.075, 12, 8), { p: [doorR - 0.02, 0, 0.1] });
   dk.build(doorG, { receive: true });
+  // where a model of the leaf would go, in the door's own frame: its middle, its back, and its rim
+  doorG.userData.leaf = { x: doorR - 0.02, z: -0.09, r: doorR - 0.03 };
 
   // the windows
   wins.forEach(([x, y, rr], i) => roundWindow(bk, K, { x, y, z: zF, rw: rr, frame: paint, seed: seed * 5 + i }));
