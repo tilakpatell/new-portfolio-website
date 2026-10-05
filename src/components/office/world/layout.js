@@ -237,6 +237,34 @@ const LOT_COLLIDERS = [
 ];
 export const inWarehouse = (x, z) => x >= WAREHOUSE.x && x <= WAREHOUSE.x + WAREHOUSE.w && z >= WAREHOUSE.z && z <= WAREHOUSE.z + WAREHOUSE.d;
 
+// The doors, standing open: hinged at one end of their doorway and swung
+// into the room to rest beside the wall, or (Ryan's closet's) folded right
+// back flat against the hallway wall. [the doorway's run, the hinge's end,
+// the way it swings in plan y (+1 south, -1 north), what it's made of, flat]
+const LEAF_SPEC = [
+  ['M300 127 H322', 'end', -1, 'wood'], // Michael's office
+  ['M328 127 H352', 'start', -1, 'wood'], // the conference room
+  ['M480 288 H504', 'end', 1, 'wood'], // Darryl's office
+  ['M870 141 H896', 'end', -1, 'wood'], // the break room
+  ['M250 384 H276', 'start', 1, 'steel'], // the supply room
+  ['M530 252 H554', 'start', 1, 'wood'], // the men's room
+  ['M700 252 H724', 'end', 1, 'wood'], // the women's room
+  ['M590 252 H612', 'start', -1, 'wood', 'flat'], // Ryan's closet
+  ['M690 175 H716', 'start', -1, 'steel'], // the stairwell
+];
+export const LEAVES = LEAF_SPEC.map(([run, hinge, swing, kind, flat]) => {
+  const [x0, y0, x1] = run.match(/-?\d+(\.\d+)?/g).map(Number);
+  const at = hinge === 'start' ? x0 : x1;
+  const away = hinge === 'start' ? 1 : -1; // from the hinge across the opening
+  const h = P(at, y0);
+  const w = Math.abs(x1 - x0) * U - 0.04;
+  const face = 0.06 + 0.024; // off the wall's line: half the wall, half the door
+  const leaf = flat
+    ? { x: h.x - away * (w / 2), z: h.z + swing * face, w, d: 0.048 }
+    : { x: h.x + away * 0.03, z: h.z + swing * (0.06 + w / 2), w: 0.048, d: w };
+  return { ...leaf, kind, hinge: { x: h.x, z: h.z }, swing, away, flat: !!flat, width: w };
+});
+
 export const COLLIDERS = [
   ...WH_COLLIDERS,
   ...LOT_COLLIDERS,
@@ -259,6 +287,7 @@ export const COLLIDERS = [
   ...MICHAEL_CHAIRS,
   CABINET,
   STAIRWELL.flight,
+  ...LEAVES.map((l) => ({ kind: 'box', x: l.x, z: l.z, w: l.w, d: l.d, turn: 0, top: 2.1 })),
 ];
 
 // Jim's body: an office's walk, not a hobbit's
