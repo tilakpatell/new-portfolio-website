@@ -858,12 +858,13 @@ function meeseeks(k) {
 // Birdperson in flight: a man's body in brown feathers with a tan breast,
 // a bird's head with a hooked yellow beak and a crest, his belt and
 // loincloth, legs trailing, great brown wings spread and beating.
-function birdperson(k) {
-  const BROWN = '#6b4a2c';
-  const TAN = '#c9a274';
-  const DARKB = '#3b2716';
-  const BEAK = '#e2b450';
-  const RED = '#7b2b1d';
+// (`paint`: another look in the same shape: Phoenixperson, below)
+function birdperson(k, paint = {}) {
+  const BROWN = paint.feathers ?? '#6b4a2c';
+  const TAN = paint.front ?? '#c9a274';
+  const DARKB = paint.dark ?? '#3b2716';
+  const BEAK = paint.beak ?? '#e2b450';
+  const RED = paint.cloth ?? '#7b2b1d';
   const L = [];
   L.push(ball(0.115, [0, 0, 0.17], [1, 0.78, 1.7], { color: BROWN }, 14));
   L.push(ball(0.1, [0, -0.03, 0.22], [0.88, 0.62, 1.35], { color: TAN }, 12));
@@ -977,7 +978,11 @@ function birdperson(k) {
   };
 }
 
-const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
+// Phoenixperson: Birdperson rebuilt by the Federation, in red feathers and
+// chrome, with the same shape (hunterRules.js's bounty hunter)
+const phoenixperson = (k) => birdperson(k, { feathers: '#8a2a20', front: '#d4d7df', dark: '#2a1a16', beak: '#cfd3dc', cloth: '#2b2b33' });
+
+const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, phoenixperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
 // every kind there's a built model of
 export const BUILT_KINDS = Object.keys(BUILD);
 
