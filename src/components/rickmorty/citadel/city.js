@@ -2,7 +2,8 @@
 // pale greens, yellow-greens and teals with rows of lit windows and cyan
 // light up their edges, rising out of the lower city into a golden haze;
 // a teal glass dome among them; an arched viaduct with a monorail going
-// round; and over everything the great dome's lattice against a warm sky.
+// round; and over everything the great dome's lattice against a warm sky,
+// with the Central Finite Curve arcing across it.
 // Nothing here is walked on, so none of it is in ./layout.js; it starts
 // past the terrace's edge (radius 41) and keeps out of the doors' way.
 
@@ -26,40 +27,42 @@ function rng(seed) {
   };
 }
 
-// the windows: rows of them, some lit warm, some cool, in dark frames;
-// one sheet for every tower (its colour comes from the tower)
+// the windows: bands of them, big panes, most dark, some lit warm or cool,
+// in the tower's own colour between; one sheet for every tower (its
+// colour comes from the tower)
+const PANES = (() => {
+  const r = rng(7);
+  return Array.from({ length: 24 }, () => r());
+})();
 function paintWindows() {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   g.fillStyle = '#ffffff';
   g.fillRect(0, 0, 256, 256);
-  const r = rng(7);
-  for (let y = 0; y < 8; y++) {
-    // a band of wall between the rows, a little darker
-    g.fillStyle = 'rgba(40, 70, 60, 0.12)';
-    g.fillRect(0, y * 32 + 24, 256, 8);
-    for (let x = 0; x < 8; x++) {
-      const lit = r();
-      g.fillStyle = lit > 0.62 ? '#fff1b8' : lit > 0.45 ? '#c8fff4' : '#3c5a58';
-      g.fillRect(x * 32 + 5, y * 32 + 5, 22, 17);
+  for (let y = 0; y < 6; y++) {
+    // a sill line under each row
+    g.fillStyle = 'rgba(40, 80, 70, 0.22)';
+    g.fillRect(0, y * 42 + 34, 256, 5);
+    for (let x = 0; x < 4; x++) {
+      const lit = PANES[y * 4 + x];
+      g.fillStyle = lit > 0.74 ? '#fff0c4' : lit > 0.64 ? '#d2fff6' : '#86aaa0';
+      g.fillRect(x * 64 + 8, y * 42 + 7, 48, 25);
     }
   }
   return c;
 }
-// what of that glows: just the lit windows
+// what of that glows: just the lit panes
 function paintWindowGlow() {
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d');
   g.fillStyle = '#000';
   g.fillRect(0, 0, 256, 256);
-  const r = rng(7);
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      const lit = r();
-      if (lit > 0.45) {
-        g.fillStyle = lit > 0.62 ? '#ffe6a0' : '#a8fff0';
-        g.fillRect(x * 32 + 5, y * 32 + 5, 22, 17);
-      }
+  for (let y = 0; y < 6; y++) {
+    for (let x = 0; x < 4; x++) {
+      const lit = PANES[y * 4 + x];
+      if (lit <= 0.64) continue;
+      g.fillStyle = lit > 0.74 ? '#ffe2a0' : '#a0fff0';
+      g.fillRect(x * 64 + 8, y * 42 + 7, 48, 25);
     }
   }
   return c;
@@ -110,14 +113,14 @@ export function buildCity(renderer, { tier = 'high', gaps = [] }) {
   const winMap = tex(paintWindows());
   const winGlow = tex(paintWindowGlow());
   // every tower in one material: the windows' sheet, coloured by the tower
-  const towerMat = toon(0xffffff, { map: winMap, emissiveMap: winGlow, emissive: hot(0xffffff, 0.55), vertexColors: true });
+  const towerMat = toon(0xffffff, { map: winMap, emissiveMap: winGlow, emissive: hot(0xffffff, 0.4), vertexColors: true });
   const plainMat = toon(0xffffff, { vertexColors: true });
   const glow = new THREE.MeshBasicMaterial({ color: hot(0x6ff3ff, 2.0), fog: false });
   const glowWarm = new THREE.MeshBasicMaterial({ color: hot(0xffe08a, 1.8), fog: false });
 
   // a piece of a tower: its geometry, coloured, its windows sized to it
   const colour = new THREE.Color();
-  const paint = (geo, hex, { win = true, scale = 4 } = {}) => {
+  const paint = (geo, hex, { win = true, scale = 11 } = {}) => {
     const pos = geo.attributes.position;
     colour.set(hex);
     const cols = new Float32Array(pos.count * 3);
@@ -303,6 +306,42 @@ export function buildCity(renderer, { tier = 'high', gaps = [] }) {
   group.add(sky);
   hide.push(sky);
 
+  // the Central Finite Curve: a vast arc of light over the city, from one
+  // horizon to the other, white-gold at its heart and rainbow at its edges
+  const curveMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+    toneMapped: false,
+    uniforms: { uTime: { value: 0 }, uRed: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalMatrix * normal; vV = -mv.xyz; gl_Position = projectionMatrix * mv; }',
+    fragmentShader: `
+      uniform float uTime, uRed;
+      varying vec2 vUv;
+      varying vec3 vN;
+      varying vec3 vV;
+      void main() {
+        // across the tube as you see it: its heart down the middle, where
+        // the tube faces you, and a rainbow fringe at its edges
+        float across = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+        float core = exp(-across * across * 14.0);
+        float edge = exp(-pow(across - 0.6, 2.0) * 40.0);
+        vec3 bow = 0.5 + 0.5 * cos(6.28318 * (vec3(0.0, 0.33, 0.67) + vUv.x * 6.0 + uTime * 0.05));
+        float shimmer = 0.8 + 0.2 * sin(vUv.x * 300.0 + uTime * 1.5);
+        // breaking on red alert: it stutters
+        float flick = mix(1.0, step(0.3, fract(sin(floor(uTime * 8.0 + vUv.x * 20.0) * 12.9898) * 43758.5453)), uRed);
+        vec3 c = (vec3(1.0, 0.95, 0.78) * core * 1.3 + bow * edge * 0.7) * shimmer * flick;
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
+  const curve = new THREE.Mesh(new THREE.TorusGeometry(400, 9, 12, 160, Math.PI), curveMat);
+  curve.rotation.set(-0.45, 0.6, 0);
+  curve.position.y = -40;
+  curve.renderOrder = -5;
+  group.add(curve);
+  hide.push(curve);
+
   const baked = bake(statics);
   statics.add(baked);
 
@@ -310,10 +349,12 @@ export function buildCity(renderer, { tier = 'high', gaps = [] }) {
   const setMood = (m) => {
     red = m === 'red' ? 1 : 0;
     sky.material.uniforms.uRed.value = red;
+    curveMat.uniforms.uRed.value = red;
     glow.color.copy(red ? hot(0xff4050, 2.2) : hot(0x6ff3ff, 2.0));
   };
   // the train, round and round (anticlockwise seen from above)
   const update = (t) => {
+    curveMat.uniforms.uTime.value = t;
     const speed = 9 / RAIL.r;
     cars.forEach((car, i) => {
       const a = t * speed - i * (9.2 / RAIL.r);

@@ -6,8 +6,8 @@
 // says where they stand.
 
 import * as THREE from 'three';
-import { SWIRL_GLSL } from '../swirl';
 import { toon, toonify } from '../portal/toon';
+import { fluidMaterial } from './fluid';
 import { makeCanvas } from '../../../lib/paint';
 import { hot } from '../../../lib/stage3d';
 
@@ -292,34 +292,7 @@ export async function buildRooms(renderer, { models, tier = 'high' }) {
   const council = new THREE.Group();
   council.name = 'council';
   council.position.copy(ROOMS.council);
-  const tankMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
-    toneMapped: false,
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `
-      uniform float uTime;
-      varying vec2 vUv;
-      ${SWIRL_GLSL}
-      void main() {
-        vec2 p = vec2(vUv.x * 7.0, vUv.y * 3.0);
-        float flow = sw_fbm(p + vec2(0.0, -uTime * 0.35));
-        vec3 c = mix(vec3(0.12, 0.7, 0.12), vec3(0.6, 1.0, 0.32), flow) * 1.7;
-        // lightning: thin bright veins where the noise crosses a level
-        float v1 = 1.0 - smoothstep(0.0, 0.035, abs(sw_fbm(p * 1.3 + vec2(uTime * 0.25, uTime * 0.1)) - 0.5));
-        float v2 = 1.0 - smoothstep(0.0, 0.03, abs(sw_fbm(p * 2.1 - vec2(uTime * 0.4, 0.0)) - 0.52));
-        c += vec3(0.85, 1.0, 0.7) * (v1 + v2 * 0.7) * 1.6;
-        // orbs of fluid, drifting up
-        for (int i = 0; i < 5; i++) {
-          float fi = float(i);
-          vec2 o = vec2(fract(fi * 0.37 + 0.11), fract(uTime * 0.05 + fi * 0.29));
-          vec2 d = (vUv - o) * vec2(7.0, 3.0);
-          float r = length(d);
-          c += vec3(0.75, 1.0, 0.55) * (smoothstep(0.42, 0.3, r) * 0.6 + smoothstep(0.3, 0.0, r) * 0.9);
-        }
-        gl_FragColor = vec4(c, 1.0);
-      }`,
-  });
-  council.userData.tank = tankMat;
+  const tankMat = fluidMaterial({ dark: 0.35, scale: [7, 3] });
   {
     const floorTex = tex(
       textCanvas(1024, 1024, (g, w, h) => {

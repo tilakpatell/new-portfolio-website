@@ -2,7 +2,8 @@
 // terrace of pale paving with cyan light set in it, a balustrade at its
 // edge over the drop to the lower city, and round it Simple Rick's, the
 // Council of Ricks' hall, Hangar 7 and the portal terminal; in the middle
-// the core, a mint spire with its ring of holo-ads; the Morty Day Care pen,
+// the core, a great column of dark green portal fluid under a saucer cap
+// with the holo-ads round its rim; the Morty Day Care pen,
 // Candidate Morty's booth, kiosks, planters and benches; and past the edge
 // the city itself (./city.js): towers, the monorail and the great dome's
 // lattice in a golden sky. Built in code in the show's toon look; every size
@@ -16,6 +17,8 @@ import { makeCanvas } from '../../../lib/paint';
 import { hot } from '../../../lib/stage3d';
 import { ARCH, BALLPIT, BENCHES, BOOTH, BOOTH_BACK, CORE, DESKS, DOORS, KIOSKS, PEN, PLANTERS, PLANTER_R, SLIDE } from './layout';
 import { buildCity } from './city';
+import { fluidMaterial } from './fluid';
+import { curveHologram } from './curve';
 
 const R = 40.9; // the balustrade at the terrace's edge
 
@@ -98,7 +101,7 @@ function paintDeck(size) {
   // the inlaid light rings (drawn pale here; they glow from the glow map)
   for (const r of [7.2, 15.5, 33]) {
     g.strokeStyle = '#e4fffb';
-    g.lineWidth = k * 0.35;
+    g.lineWidth = k * 0.22;
     g.beginPath();
     g.arc(m, m, r * k, 0, Math.PI * 2);
     g.stroke();
@@ -117,7 +120,7 @@ function paintDeckGlow(size) {
   g.fillRect(0, 0, size, size);
   for (const r of [7.2, 15.5, 33]) {
     g.strokeStyle = '#fff';
-    g.lineWidth = k * 0.3;
+    g.lineWidth = k * 0.16;
     g.beginPath();
     g.arc(m, m, r * k, 0, Math.PI * 2);
     g.stroke();
@@ -376,7 +379,7 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
 
   // ── the terrace ──
   const deckSize = tier === 'low' ? 1024 : 2048;
-  const floorMat = toon(0xffffff, { map: tex(paintDeck(deckSize)), emissiveMap: tex(paintDeckGlow(512)), emissive: hot(C.glow, 0.45) });
+  const floorMat = toon(0xffffff, { map: tex(paintDeck(deckSize)), emissiveMap: tex(paintDeckGlow(1024)), emissive: hot(C.glow, 0.32) });
   const floor = mesh(new THREE.CircleGeometry(R + 0.6, 96), floorMat, group);
   floor.rotation.x = -Math.PI / 2;
   floor.name = 'floor';
@@ -473,7 +476,7 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     const disc = mesh(new THREE.CircleGeometry(PR - 0.12, 48), swirl.mat, group);
     disc.position.set(ARCH.x, PR + 0.45, ARCH.z - 0.02);
     hide.push(disc);
-    const pad = mesh(new THREE.RingGeometry(1.6, 2.4, 48), M.glowSoft);
+    const pad = mesh(new THREE.RingGeometry(2.1, 2.35, 48), M.glowSoft);
     pad.rotation.x = -Math.PI / 2;
     pad.position.set(0, 0.03, 35);
     // the terminal behind it: a canopy on two posts, and its sign
@@ -554,40 +557,86 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
   };
   if (cruiser) setCruiser(cruiser);
 
-  // ── the core: a mint spire up into the haze, teal glass up its sides ──
+  // ── the core: the Citadel's portal fluid, a great column of it, dark
+  // green and churning, in a teal frame behind a railing, under a saucer
+  // of a cap; a thin stem of it goes on up to the top of the dome ──
+  const fluid = fluidMaterial({ dark: 0.8, scale: [9, 11] });
+  const stemFluid = fluidMaterial({ dark: 0.7, scale: [3, 26] });
+  const CAP_Y = 22;
   {
-    const core = mesh(new THREE.CylinderGeometry(CORE.r - 0.6, CORE.r, 90, 48, 1, true), M.panel);
-    core.position.y = 45;
-    const plinth = mesh(new THREE.CylinderGeometry(CORE.r + 0.35, CORE.r + 0.6, 0.6, 64), M.trim);
-    plinth.position.y = 0.3;
-    const glassMat = toon(0x5fd0c8);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      box(1.1, 60, 0.25, glassMat, Math.cos(a) * (CORE.r - 0.2), 43, Math.sin(a) * (CORE.r - 0.2), turnIn(a));
-      box(0.12, 60, 0.28, M.glowSoft, Math.cos(a + 0.12) * (CORE.r - 0.15), 43, Math.sin(a + 0.12) * (CORE.r - 0.15), turnIn(a + 0.12));
+    const frame = toon(0x1f4a44);
+    const plinth = mesh(new THREE.CylinderGeometry(CORE.r - 0.05, CORE.r + 0.05, 1.2, 64), frame);
+    plinth.position.y = 0.6;
+    const lip = mesh(new THREE.TorusGeometry(CORE.r - 0.05, 0.08, 6, 96), M.glow);
+    lip.rotation.x = Math.PI / 2;
+    lip.position.y = 1.2;
+    // the railing round it
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      const post = mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.05, 6), M.trim);
+      post.position.set(Math.cos(a) * (CORE.r - 0.25), 1.72, Math.sin(a) * (CORE.r - 0.25));
     }
-    for (const y of [0.7, 3.4, 13.5, 30, 50]) {
-      const ring = mesh(new THREE.TorusGeometry(CORE.r + 0.12 - y * 0.006, 0.12, 6, 72), M.glow);
+    const rail = mesh(new THREE.TorusGeometry(CORE.r - 0.25, 0.06, 6, 96), M.glowSoft);
+    rail.rotation.x = Math.PI / 2;
+    rail.position.y = 2.25;
+    // the fluid itself
+    const col = mesh(new THREE.CylinderGeometry(3.6, 3.6, CAP_Y - 1.2, 64, 1, true), fluid, group);
+    col.position.y = 1.2 + (CAP_Y - 1.2) / 2;
+    // its frame: ribs up it and rings round it
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.26;
+      box(0.45, CAP_Y - 1.2, 0.5, frame, Math.cos(a) * 3.72, 1.2 + (CAP_Y - 1.2) / 2, Math.sin(a) * 3.72, turnIn(a));
+    }
+    for (const y of [1.6, 7, 12.5, 18]) {
+      const ring = mesh(new THREE.TorusGeometry(3.78, 0.2, 8, 72), frame);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = y;
+      const glowRing = mesh(new THREE.TorusGeometry(3.72, 0.06, 6, 72), M.glow);
+      glowRing.rotation.x = Math.PI / 2;
+      glowRing.position.y = y - 0.24;
     }
-    for (const y of [6.8, 11.9]) {
-      const band = mesh(new THREE.CylinderGeometry(CORE.r + 0.6, CORE.r + 0.6, 0.5, 64), M.trim);
-      band.position.y = y;
+    // the cap, a saucer over it with lights round its rim
+    const capProfile = [
+      [0.5, -1.4],
+      [3.9, -1.1],
+      [8.8, -0.15],
+      [9.3, 0.3],
+      [8.7, 0.95],
+      [4.2, 1.5],
+      [1.6, 2.6],
+      [1.5, 3.4],
+    ].map(([x, y]) => new THREE.Vector2(x, y));
+    const cap = mesh(new THREE.LatheGeometry(capProfile, 64), toon(0x2f5f57));
+    cap.position.y = CAP_Y;
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      box(0.55, 0.16, 0.12, i % 4 ? M.glow : new THREE.MeshBasicMaterial({ color: hot(0xf3e04a, 1.8) }), Math.cos(a) * 9.02, CAP_Y - 0.25, Math.sin(a) * 9.02, turnIn(a));
     }
-    // its crown, high over the terrace
-    const crown = mesh(new THREE.CylinderGeometry(CORE.r + 3, CORE.r - 0.6, 6, 32), M.panel2);
-    crown.position.y = 88;
-    lights.push([0, 4, 9, 0xe4fff6], [-9, 4, 0, 0xe4fff6]);
+    // the stem, on up into the dome
+    const stem = mesh(new THREE.CylinderGeometry(1.3, 1.3, 70, 24, 1, true), stemFluid, group);
+    stem.position.y = CAP_Y + 3.4 + 35;
+    for (let y = CAP_Y + 8; y < CAP_Y + 70; y += 9) {
+      const sleeve = mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.8, 24), frame);
+      sleeve.position.y = y;
+    }
+    // its green light on the terrace round it
+    lights.push([0, 3.5, 7, 0x7dff6a], [-7, 3.5, 0, 0x7dff6a], [6, 3.5, -4, 0x7dff6a]);
   }
   const holoCanvas = makeCanvas(HOLO.w, HOLO.h);
   paintHolo(holoCanvas, 'day');
   const holoTex = tex(holoCanvas);
   holoTex.wrapS = THREE.RepeatWrapping;
-  holoTex.repeat.set(2, 1);
-  const holo = mesh(new THREE.CylinderGeometry(CORE.r + 1.3, CORE.r + 1.3, 4.2, 96, 1, true), new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, depthWrite: false, toneMapped: false }), group);
-  holo.position.y = 9.35;
+  // the holo-ads: a ticker round the cap's rim
+  holoTex.repeat.set(4, 1);
+  const holo = mesh(new THREE.CylinderGeometry(9.45, 9.45, 1.5, 128, 1, true), new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, depthWrite: false, toneMapped: false }), group);
+  holo.position.y = CAP_Y + 0.55;
   hide.push(holo);
+  // and the Central Finite Curve, a hologram turning round the core over
+  // everyone's heads
+  const curve = curveHologram({ radius: 7.4, height: 2.4 });
+  curve.group.position.y = 4.3;
+  group.add(curve.group);
+  hide.push(curve.group);
 
   // ── Morty Day Care ──
   const gate = [];
@@ -896,8 +945,9 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     mood = m;
     M.glow.color.copy(glowCols[m] ?? glowCols.day);
     M.glowSoft.color.copy(softCols[m] ?? softCols.day);
-    floorMat.emissive.copy(m === 'red' ? hot(C.red, 0.5) : hot(C.glow, 0.45));
+    floorMat.emissive.copy(m === 'red' ? hot(C.red, 0.5) : hot(C.glow, 0.32));
     city.setMood(m);
+    curve.setMood(m);
     paintHolo(holoCanvas, m);
     holoTex.needsUpdate = true;
     paintBanner(m === 'day' ? 'day' : 'vote');
@@ -910,6 +960,10 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
   let doorK = 0;
   const update = (t, dt, { gateOpen = false, hangarOpen = false, escapeT = null } = {}) => {
     holo.rotation.y = t * 0.06;
+    curve.update(t);
+    fluid.uniforms.uTime.value = t;
+    stemFluid.uniforms.uTime.value = t;
+    fluid.uniforms.uAgitate.value = mood === 'red' ? 1 : 0;
     swirl.mat.uniforms.t.value = t;
     gateK += ((gateOpen ? 1 : 0) - gateK) * Math.min(1, dt * 3);
     for (const h of gate) h.rotation.y = -h.userData.side * gateK * 1.6; // out, to the east
@@ -947,6 +1001,7 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
       }
     });
     city.dispose();
+    curve.dispose();
   };
 
   return { group, hide, lights, setMood, update, escapeCam, setCruiser, swirl, dispose };
