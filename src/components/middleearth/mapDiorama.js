@@ -87,10 +87,12 @@ const ROAD = STOPS.map((s) => {
 // turned by `turn`, and `stretch` times taller than it came (a toy's
 // proportions: the built places are all taller than they are wide).
 // Resolves to its mesh, or null if it doesn't come.
-const loaders = () => Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/libs/meshopt_decoder.module.js')]);
+// (the site's shared loader, fetched only when a model is wanted, so the
+// map's own chunk stays without it)
+const loaders = () => import('../../lib/three/gltf');
 function placeModel(name, material, { height, width, turn = 0, stretch = 1 }) {
   return loaders()
-    .then(([{ GLTFLoader }, { MeshoptDecoder }]) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`/models/sketchfab/${name}.glb`))
+    .then(({ gltfLoader }) => gltfLoader().loadAsync(`/models/sketchfab/${name}.glb`))
     .then((gltf) => {
       let mesh = null;
       gltf.scene.updateMatrixWorld(true);

@@ -24,6 +24,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { seeded } from '../../../lib/seeded';
 import { FRONT, KIND, SIGNS } from './plan';
 import { CITY, EDGES, GRID, NODES, ROADS, groundHeight, signalAt } from './rules';
+import { sharpen } from '../../../lib/three/textures';
 
 const K = GRID.kerb;
 
@@ -391,7 +392,7 @@ function atlas(names, draw) {
   });
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  sharpen(tex);
   const glow = new THREE.CanvasTexture(e);
   glow.colorSpace = THREE.SRGBColorSpace;
   return { tex, glow, rects };
