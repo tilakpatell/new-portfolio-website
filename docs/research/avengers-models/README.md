@@ -1,5 +1,7 @@
 # Avengers compound: character models from Sketchfab
 
+> **Update:** in the world, Cap didn't hold up (Tilak: "horrible"), so the player is now the HD Spider-Man from *Thwip!* and `cap.glb` has been taken out of the site. A wider search for a much better Cap is in `cap-hd/` once it's done. Thor, Hulk, Widow and the armour stay.
+
 These are the real character models for the walkable Avengers compound (`src/components/avengers/world/`), to replace the procedural figures from `hq/kit/humanoid.js`. Every pick is **CC BY 4.0**, and nothing here is NC or ND. I found them through the Sketchfab Data API v3 (`/v3/search?type=models&downloadable=true`, `/v3/models/{uid}/download`). I downloaded about 45 candidates and judged each one from renders made with three.js in headless Chromium, not from Sketchfab's thumbnails.
 
 The output is in `public/models/sketchfab/avengers/`. `scripts/sketchfab-avengers.mjs` builds all of it from the downloads, and `src/components/avengers/people/models.js` exports the paths.

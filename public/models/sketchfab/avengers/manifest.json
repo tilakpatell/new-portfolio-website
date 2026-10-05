@@ -1,36 +1,4 @@
 {
-  "cap": {
-    "h": 1.9,
-    "rig": true,
-    "clips": [
-      "idle",
-      "walk",
-      "run",
-      "jump"
-    ],
-    "bones": {
-      "hips": "Hips",
-      "spine": "Spine",
-      "chest": "Spine2",
-      "neck": "Neck",
-      "head": "Head",
-      "shoulderL": "LeftArm",
-      "elbowL": "LeftForeArm",
-      "handL": "LeftHand",
-      "shoulderR": "RightArm",
-      "elbowR": "RightForeArm",
-      "handR": "RightHand",
-      "thighL": "LeftUpLeg",
-      "kneeL": "LeftLeg",
-      "footL": "LeftFoot",
-      "thighR": "RightUpLeg",
-      "kneeR": "RightLeg",
-      "footR": "RightFoot"
-    },
-    "tris": 12929,
-    "bytes": 774944,
-    "credit": "avengers-cap"
-  },
   "thor": {
     "h": 1.98,
     "rig": true,
