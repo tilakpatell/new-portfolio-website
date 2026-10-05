@@ -100,6 +100,8 @@ export const ACHIEVEMENTS = {
   maggots: { name: 'Get in line, you maggots', desc: 'Kept your place in the orc column down into Gorgoroth' },
   carryyou: { name: 'I can carry you', desc: 'Carried Frodo up the slopes of Mount Doom to the door' },
   eagles: { name: 'The eagles are coming', desc: 'Flew out of the eruption with the eagles, at the end of all things' },
+  orthanc: { name: 'Seeking my counsel', desc: 'Found the hidden way into Orthanc' },
+  windlord: { name: 'Gwaihir the Windlord', desc: 'Whispered to a moth on the pinnacle of Orthanc, and flew from it on the Windlord' },
   worthy: { name: 'Worthy', desc: 'Lifted Mjolnir' },
   ironman: { name: 'I am Iron Man', desc: 'Brought down Ultron Prime at the Repulsor Range' },
   captain: { name: 'I can do this all day', desc: 'Cleared all twelve rooms of Ricochet' },
