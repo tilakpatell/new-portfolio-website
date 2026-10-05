@@ -176,7 +176,10 @@ export function FunProvider({ children }) {
     const clips = import('../lib/clips');
     const { snapPage } = await import('./effects');
     if (!snapPage()) return;
-    clips.then((c) => c.playClip('snap', { keep: true }));
+    clips.then((c) => {
+      c.playClip('snap', { keep: true });
+      c.playClip('mrStark', { when: 1.4, keep: true }); // as the page turns to dust
+    });
     unlock('snap');
     notify('Perfectly balanced.', 'As all things should be. Everything comes back in a few seconds.', 'note', 'snap');
   }, [notify, unlock]);

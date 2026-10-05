@@ -126,7 +126,7 @@ export default function SmashRun({ fallback }) {
             }
             break;
           case 'rage':
-            play('roar');
+            import('../../../lib/clips').then((c) => c.playClip('hulkSmash')).then((h) => h || play('roar'));
             buzz(120);
             f.flash = 1;
             important = { message: 'HULK SMASH. Nothing stops you now.' };

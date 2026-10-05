@@ -4,7 +4,8 @@ Short clips for the site's big moments, supplied by the site owner or found
 on free soundboard sites (each row says where). They are
 excerpts from films and shows whose rights belong to their studios
 (Lucasfilm, Hasbro and Paramount, Sony Pictures Television and AMC, NBC and
-Universal Television, Marvel Studios, New Line Cinema, Walt Disney Pictures).
+Universal Television, Marvel Studios, New Line Cinema, Walt Disney Pictures,
+Adult Swim).
 Each is listed in `src/lib/clips.js`; delete a file and its line there to
 remove it.
 
@@ -41,6 +42,13 @@ remove it.
 | parkour.mp3, undercook-the-onions.mp3, did-i-stutter.mp3, bears-beets-battlestar-galactica.mp3, why-are-you-the-way-that-you-are.mp3, beyonce-always.mp3, inside-jokes.mp3, prison-mike.mp3, dwight-you-ignorant-slut.mp3 | The Office, from [Myinstants](https://www.myinstants.com) |
 | dwight-punish.mp3, pam-gamble.mp3 | The Office, from [Movie Sound Clips](https://www.moviesoundclips.net) |
 | identity-theft.mp3, i-declare-bankruptcy.mp3, boom-roasted.mp3, little-stitious.mp3, fire-drill.mp3, like-to-be-liked.mp3 | The Office, from [Soundboard Guy](https://www.soundboardguy.com) |
+| autobots-roll-out.mp3, one-shall-stand.mp3, soundwave-superior.mp3, my-name-is-optimus-prime.mp3, autobots-relieve-them-of-their-weapons.mp3 | Transformers (the films and the 1986 movie and cartoon), from [Myinstants](https://www.myinstants.com) |
+| i-am-iron-man.mp3, i-am-groot.mp3, hulk-smash.mp3, puny-god.mp3, hes-adopted.mp3, hulk-roar.mp3 | Marvel Studios films, from [Movie Sound Clips](https://www.moviesoundclips.net) |
+| avengers-assemble.mp3, i-can-do-this-all-day.mp3, we-have-a-hulk.mp3, mr-stark-i-dont-feel-so-good.mp3, wakanda-forever.mp3 | Marvel Studios films, from [Myinstants](https://www.myinstants.com) |
+| i-am-optimus-prime.mp3, its-you-and-me-megatron.mp3, bumblebee-brave-soldier.mp3 | Transformers (the films and the 1986 movie and cartoon), from [Realm of Darkness](https://www.realmofdarkness.net) |
+| i-am-inevitable.mp3 | Marvel Studios films, from [Meme Sound Effects](https://www.memesoundeffects.com) |
+| megatron-prime.mp3, more-than-meets-the-eye.mp3, we-are-here-we-are-waiting.mp3 | Transformers (the films and the 1986 movie and cartoon), from [Movie Sound Clips](https://www.moviesoundclips.net) |
+| small-price-to-pay-for-salvation.mp3, fine-ill-do-it-myself.mp3 | Marvel Studios films, from [Soundboard Guy](https://www.soundboardguy.com) |
 | yeah-science.mp3, one-who-knocks.mp3, walter-hartwell-white.mp3, private-domicile.mp3, dont-drink-and-drive.mp3 | Breaking Bad, from [Myinstants](https://www.myinstants.com) |
 | killed-gus-fring.mp3, cant-keep-getting-away.mp3 | Breaking Bad, from [Soundboard Guy](https://www.soundboardguy.com) |
 | i-am-the-danger.mp3 | Breaking Bad, from [Meme Sound Effects](https://www.memesoundeffects.com) |
