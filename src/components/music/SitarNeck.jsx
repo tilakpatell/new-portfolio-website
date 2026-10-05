@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
@@ -49,6 +49,10 @@ function Inlay({ y, flip = false }) {
 }
 
 export default function SitarNeck({ onPlay }) {
+  // its SVG's ids, its own: the music planet's courtyard opens a second neck, and a
+  // gradient found in a hidden copy wouldn't paint
+  const idBase = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const uid = (name) => `${name}-${idBase}`;
   const [tuning, setTuning] = useTuning();
   const fretSet = isFretSet(tuning.frets) ? tuning.frets : 'all';
   const custom = customNotes(tuning.customFrets || ragaOf(tuning.raga).notes);
@@ -354,29 +358,29 @@ export default function SitarNeck({ onPlay }) {
           onPointerCancel={onUp}
         >
           <defs>
-            <clipPath id="sn2-neck">
+            <clipPath id={uid('sn2-neck')}>
               <rect x="0" y={NECK.top} width="890" height={NECK.bottom - NECK.top} rx="9" />
             </clipPath>
-            <clipPath id="sn2-gourd">
+            <clipPath id={uid('sn2-gourd')}>
               <circle cx="950" cy="150" r="116" />
             </clipPath>
-            <linearGradient id="sn2-lacquer" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={uid('sn2-lacquer')} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="#fff" stopOpacity="0.16" />
               <stop offset="0.18" stopColor="#fff" stopOpacity="0.04" />
               <stop offset="0.6" stopColor="#000" stopOpacity="0.06" />
               <stop offset="1" stopColor="#000" stopOpacity="0.38" />
             </linearGradient>
-            <radialGradient id="sn2-gourd-shade" cx="38%" cy="32%" r="72%">
+            <radialGradient id={uid('sn2-gourd-shade')} cx="38%" cy="32%" r="72%">
               <stop offset="0" stopColor="#fff" stopOpacity="0.18" />
               <stop offset="0.45" stopColor="#fff" stopOpacity="0" />
               <stop offset="1" stopColor="#000" stopOpacity="0.55" />
             </radialGradient>
-            <linearGradient id="sn2-fret" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={uid('sn2-fret')} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#8c7a52" />
               <stop offset="0.45" stopColor="#f6ecc8" />
               <stop offset="1" stopColor="#a48a4e" />
             </linearGradient>
-            <linearGradient id="sn2-bone" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={uid('sn2-bone')} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#e9dfc6" />
               <stop offset="1" stopColor="#cbbd9b" />
             </linearGradient>
@@ -384,9 +388,9 @@ export default function SitarNeck({ onPlay }) {
           {/* upright on a phone: neck units (x along, y across) turn so x runs down the screen */}
           <g transform={vertical ? 'matrix(0 1 -1 0 300 0)' : undefined}>
             {/* the gourd (tumba), rosewood with an inlaid ring */}
-            <g clipPath="url(#sn2-gourd)">
+            <g clipPath={`url(#${uid('sn2-gourd')})`}>
               <image href="/textures/music/rosewood.webp" x="834" y="34" width="232" height="232" preserveAspectRatio="xMidYMid slice" />
-              <circle cx="950" cy="150" r="116" fill="url(#sn2-gourd-shade)" />
+              <circle cx="950" cy="150" r="116" fill={`url(#${uid('sn2-gourd-shade')})`} />
             </g>
             <circle cx="950" cy="150" r="98" fill="none" className="sn2-inlay-line" />
             {Array.from({ length: 36 }, (_, k) => {
@@ -394,14 +398,14 @@ export default function SitarNeck({ onPlay }) {
               return <circle key={k} cx={950 + Math.cos(a) * 106} cy={150 + Math.sin(a) * 106} r="2.2" className="sn2-inlay-dot" />;
             })}
             {/* the neck (dand) */}
-            <g clipPath="url(#sn2-neck)">
+            <g clipPath={`url(#${uid('sn2-neck')})`}>
               <image href="/textures/music/rosewood-neck.webp" x="0" y={NECK.top} width="890" height={NECK.bottom - NECK.top} preserveAspectRatio="none" />
-              <rect x="0" y={NECK.top} width="890" height={NECK.bottom - NECK.top} fill="url(#sn2-lacquer)" />
+              <rect x="0" y={NECK.top} width="890" height={NECK.bottom - NECK.top} fill={`url(#${uid('sn2-lacquer')})`} />
             </g>
             <Inlay y={NECK.top + 7} />
             <Inlay y={NECK.bottom - 7} flip />
             {/* the nut */}
-            <rect x={NECK.x0 - 10} y={NECK.top + 2} width="7" height={NECK.bottom - NECK.top - 4} rx="2" fill="url(#sn2-bone)" />
+            <rect x={NECK.x0 - 10} y={NECK.top + 2} width="7" height={NECK.bottom - NECK.top - 4} rx="2" fill={`url(#${uid('sn2-bone')})`} />
 
             {/* frets, one per note; the raga's notes are bright */}
             {list.map((f, i) => {
@@ -409,7 +413,7 @@ export default function SitarNeck({ onPlay }) {
               return (
                 <g key={`${f.s}${f.oct}`} data-out={!f.inRaga || undefined} className="sn2-fret">
                   <rect x={NECK.x0 + slot * i} y={NECK.top} width={slot} height={NECK.bottom - NECK.top} className="sn-slot" data-lit={lit === i || undefined} />
-                  <path d={`M${fx - 3} ${NECK.top + 4} Q${fx + 6} 150 ${fx - 3} ${NECK.bottom - 4}`} stroke="url(#sn2-fret)" strokeWidth="3.2" fill="none" />
+                  <path d={`M${fx - 3} ${NECK.top + 4} Q${fx + 6} 150 ${fx - 3} ${NECK.bottom - 4}`} stroke={`url(#${uid('sn2-fret')})`} strokeWidth="3.2" fill="none" />
                   {/* the silk thread that ties each fret on */}
                   <path d={`M${fx - 4} ${NECK.top + 3} v4 M${fx - 4} ${NECK.bottom - 7} v4`} stroke="#d9cdb0" strokeWidth="2" opacity="0.7" />
                 </g>
@@ -423,7 +427,7 @@ export default function SitarNeck({ onPlay }) {
             {/* the chikari, the two high drones */}
             <path ref={chikPath} d={`M8 ${MAIN_Y - 16} L${BRIDGE} ${MAIN_Y - 16} M8 ${MAIN_Y - 10} L${BRIDGE} ${MAIN_Y - 10}`} className="sn2-chikari" />
             {/* the bridge (jawari), and the main string */}
-            <rect x={BRIDGE - 5} y="106" width="11" height="90" rx="2.5" fill="url(#sn2-bone)" />
+            <rect x={BRIDGE - 5} y="106" width="11" height="90" rx="2.5" fill={`url(#${uid('sn2-bone')})`} />
             <path key={`m${plucks}`} d={mainPath} stroke="#f6eedb" strokeWidth="2.2" fill="none" className={lit >= 0 ? 'sitar-ring' : undefined} />
           </g>
         </svg>

@@ -1146,5 +1146,110 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "tex/music-terrace": {
+    "source": "https://polyhaven.com/a/red_sandstone_pavement",
+    "id": "red_sandstone_pavement",
+    "name": "Red Sandstone Pavement",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/music-wall": {
+    "source": "https://polyhaven.com/a/old_sandstone_02",
+    "id": "old_sandstone_02",
+    "name": "Old Sandstone 02",
+    "authors": [
+      "Dimitrios Savva"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "tex/music-dunes": {
+    "source": "https://polyhaven.com/a/aerial_sand",
+    "id": "aerial_sand",
+    "name": "Aerial Sand",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "size": "1K"
+  },
+  "hdri/music-dusk": {
+    "source": "https://polyhaven.com/a/belfast_sunset_puresky",
+    "id": "belfast_sunset_puresky",
+    "name": "Belfast Sunset (Pure Sky)",
+    "authors": [
+      "Greg Zaal",
+      "Dimitrios Savva",
+      "Jarod Guest"
+    ],
+    "license": "CC0 1.0",
+    "size": "512 × 256"
+  },
+  "meshy/music/sitar": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-bf62-7693-b875-9951bd17872e",
+    "name": "the music planet's sitar, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/tabla": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-c1eb-758d-96fc-b4d66c8e3bbd",
+    "name": "the music planet's tabla, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/tanpura": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-c465-768d-9333-93d0de5de727",
+    "name": "the music planet's tanpura, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/harmonium": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-c69e-70ca-ae65-6ab7ed8bced5",
+    "name": "the music planet's harmonium, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/pavilion": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-c93c-778d-8c8d-a07ea9001cfc",
+    "name": "the music planet's pavilion, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/lamp": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-cbbe-727b-853a-7525912ab892",
+    "name": "the music planet's lamp, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/music/gaddi": {
+    "source": "https://www.meshy.ai",
+    "id": "01a10aa0-ce10-7726-944f-1ac5a655a0fa",
+    "name": "the music planet's gaddi, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

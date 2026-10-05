@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { audioContext } from '../../lib/audio';
 import { capturePointer } from '../../lib/pointer';
@@ -71,6 +71,9 @@ function Lacing({ cx, cy, r0, r1, n, color }) {
 }
 
 function Drums({ struck, ripples, hover, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, svgRef }) {
+  // its SVG's ids, its own (the music planet opens a second tabla)
+  const idBase = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const uid = (name) => `${name}-${idBase}`;
   const s = useMemo(() => ({ dayanSkin: surface('dayanSkin'), bayanSkin: surface('bayanSkin'), syahi: surface('syahi'), copper: surface('copper') }), []);
   const B = BAYAN;
   const D = DAYAN;
@@ -87,62 +90,62 @@ function Drums({ struck, ripples, hover, onPointerDown, onPointerMove, onPointer
       aria-hidden="true"
     >
       <defs>
-        <clipPath id="tb2-bayan-shell">
+        <clipPath id={uid('tb2-bayan-shell')}>
           <circle cx={B.cx} cy={B.cy} r={B.shell} />
         </clipPath>
-        <clipPath id="tb2-bayan-skin">
+        <clipPath id={uid('tb2-bayan-skin')}>
           <circle cx={B.cx} cy={B.cy} r={B.skin} />
         </clipPath>
-        <clipPath id="tb2-bayan-syahi">
+        <clipPath id={uid('tb2-bayan-syahi')}>
           <circle cx={B.syahi.cx} cy={B.syahi.cy} r={B.syahi.r} />
         </clipPath>
-        <clipPath id="tb2-dayan-shell">
+        <clipPath id={uid('tb2-dayan-shell')}>
           <circle cx={D.cx} cy={D.cy} r={D.shell} />
         </clipPath>
-        <clipPath id="tb2-dayan-skin">
+        <clipPath id={uid('tb2-dayan-skin')}>
           <circle cx={D.cx} cy={D.cy} r={D.skin} />
         </clipPath>
-        <clipPath id="tb2-dayan-syahi">
+        <clipPath id={uid('tb2-dayan-syahi')}>
           <circle cx={D.cx} cy={D.cy} r={D.syahi} />
         </clipPath>
-        <radialGradient id="tb2-shade" cx="50%" cy="50%" r="50%">
+        <radialGradient id={uid('tb2-shade')} cx="50%" cy="50%" r="50%">
           <stop offset="0.82" stopColor="#000" stopOpacity="0" />
           <stop offset="1" stopColor="#000" stopOpacity="0.32" />
         </radialGradient>
-        <radialGradient id="tb2-floor" cx="50%" cy="50%" r="50%">
+        <radialGradient id={uid('tb2-floor')} cx="50%" cy="50%" r="50%">
           <stop offset="0" stopColor="#000" stopOpacity="0.28" />
           <stop offset="1" stopColor="#000" stopOpacity="0" />
         </radialGradient>
       </defs>
 
       {/* shadows on the floor cloth */}
-      <ellipse cx={B.cx + 8} cy={B.cy + 14} rx={B.shell + 12} ry={B.shell + 6} fill="url(#tb2-floor)" />
-      <ellipse cx={D.cx + 6} cy={D.cy + 12} rx={D.shell + 10} ry={D.shell + 6} fill="url(#tb2-floor)" />
+      <ellipse cx={B.cx + 8} cy={B.cy + 14} rx={B.shell + 12} ry={B.shell + 6} fill={`url(#${uid('tb2-floor')})`} />
+      <ellipse cx={D.cx + 6} cy={D.cy + 12} rx={D.shell + 10} ry={D.shell + 6} fill={`url(#${uid('tb2-floor')})`} />
 
       {/* bayan: hammered copper shell, leather lacing, the skin and its off-centre syahi */}
       <g className="tb2-drum" data-struck={struck.bayan || undefined} key={`b${struck.bayanN}`}>
-        <image href={s.copper} x={B.cx - B.shell} y={B.cy - B.shell} width={B.shell * 2} height={B.shell * 2} clipPath="url(#tb2-bayan-shell)" preserveAspectRatio="none" />
-        <circle cx={B.cx} cy={B.cy} r={B.shell} fill="url(#tb2-shade)" />
+        <image href={s.copper} x={B.cx - B.shell} y={B.cy - B.shell} width={B.shell * 2} height={B.shell * 2} clipPath={`url(#${uid('tb2-bayan-shell')})`} preserveAspectRatio="none" />
+        <circle cx={B.cx} cy={B.cy} r={B.shell} fill={`url(#${uid('tb2-shade')})`} />
         <circle cx={B.cx} cy={B.cy} r={B.skin + 9} fill="#2d1a10" />
         <Lacing cx={B.cx} cy={B.cy} r0={B.skin + 2} r1={B.skin + 8} n={28} color="#6a4426" />
-        <image href={s.bayanSkin} x={B.cx - B.skin} y={B.cy - B.skin} width={B.skin * 2} height={B.skin * 2} clipPath="url(#tb2-bayan-skin)" preserveAspectRatio="none" />
+        <image href={s.bayanSkin} x={B.cx - B.skin} y={B.cy - B.skin} width={B.skin * 2} height={B.skin * 2} clipPath={`url(#${uid('tb2-bayan-skin')})`} preserveAspectRatio="none" />
         <circle cx={B.cx} cy={B.cy} r={B.skin - 7} fill="none" stroke="#8a6a44" strokeOpacity="0.35" strokeWidth="1" />
-        <image href={s.syahi} x={B.syahi.cx - B.syahi.r} y={B.syahi.cy - B.syahi.r} width={B.syahi.r * 2} height={B.syahi.r * 2} clipPath="url(#tb2-bayan-syahi)" preserveAspectRatio="none" />
+        <image href={s.syahi} x={B.syahi.cx - B.syahi.r} y={B.syahi.cy - B.syahi.r} width={B.syahi.r * 2} height={B.syahi.r * 2} clipPath={`url(#${uid('tb2-bayan-syahi')})`} preserveAspectRatio="none" />
         <circle cx={B.cx} cy={B.cy} r={B.skin} className="tb2-zone" data-on={hover === 'Ge' || undefined} />
         <circle cx={B.cx} cy={B.cy} r={B.skin * 0.82} fill="none" className="tb2-zone-line" data-on={hover === 'Ge' || hover === 'Ke' || undefined} />
       </g>
 
       {/* dayan: rosewood shell, braided gajra, kinar, sur and syahi */}
       <g className="tb2-drum" data-struck={struck.dayan || undefined} key={`d${struck.dayanN}`}>
-        <image href="/textures/music/rosewood.webp" x={D.cx - D.shell} y={D.cy - D.shell} width={D.shell * 2} height={D.shell * 2} clipPath="url(#tb2-dayan-shell)" preserveAspectRatio="none" />
-        <circle cx={D.cx} cy={D.cy} r={D.shell} fill="url(#tb2-shade)" />
+        <image href="/textures/music/rosewood.webp" x={D.cx - D.shell} y={D.cy - D.shell} width={D.shell * 2} height={D.shell * 2} clipPath={`url(#${uid('tb2-dayan-shell')})`} preserveAspectRatio="none" />
+        <circle cx={D.cx} cy={D.cy} r={D.shell} fill={`url(#${uid('tb2-shade')})`} />
         <circle cx={D.cx} cy={D.cy} r={D.skin + 8} fill="#2a150b" />
         <Lacing cx={D.cx} cy={D.cy} r0={D.skin + 1} r1={D.skin + 7} n={32} color="#8a6a48" />
-        <image href={s.dayanSkin} x={D.cx - D.skin} y={D.cy - D.skin} width={D.skin * 2} height={D.skin * 2} clipPath="url(#tb2-dayan-skin)" preserveAspectRatio="none" />
+        <image href={s.dayanSkin} x={D.cx - D.skin} y={D.cy - D.skin} width={D.skin * 2} height={D.skin * 2} clipPath={`url(#${uid('tb2-dayan-skin')})`} preserveAspectRatio="none" />
         {/* the kinar is a separate ring of skin, laid over the main one */}
         <circle cx={D.cx} cy={D.cy} r={(D.skin + D.kinar) / 2} fill="none" stroke="#e9dcbc" strokeOpacity="0.55" strokeWidth={D.skin - D.kinar} />
         <circle cx={D.cx} cy={D.cy} r={D.kinar} fill="none" stroke="#7a5a3a" strokeOpacity="0.45" strokeWidth="1" />
-        <image href={s.syahi} x={D.cx - D.syahi} y={D.cy - D.syahi} width={D.syahi * 2} height={D.syahi * 2} clipPath="url(#tb2-dayan-syahi)" preserveAspectRatio="none" />
+        <image href={s.syahi} x={D.cx - D.syahi} y={D.cy - D.syahi} width={D.syahi * 2} height={D.syahi * 2} clipPath={`url(#${uid('tb2-dayan-syahi')})`} preserveAspectRatio="none" />
         <circle cx={D.cx} cy={D.cy} r={D.syahi} className="tb2-zone" data-on={hover === 'Tun' || undefined} />
         <circle cx={D.cx} cy={D.cy} r={(D.kinar + D.syahi) / 2} fill="none" className="tb2-zone-band" strokeWidth={D.kinar - D.syahi} data-on={hover === 'Tin' || undefined} />
         <circle cx={D.cx} cy={D.cy} r={(D.skin + D.kinar) / 2} fill="none" className="tb2-zone-band" strokeWidth={D.skin - D.kinar} data-on={hover === 'Na' || undefined} />
