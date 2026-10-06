@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { check } from './budget.mjs';
 import { command, wslPath } from './generate.mjs';
@@ -93,7 +94,10 @@ describe('baking in Blender', () => {
     const cmd = command('C:/m/raw.glb', 'C:/m/low.glb', { where: { kind: 'wsl', exe: '/home/me/blender/blender-4.5.9-linux-x64/blender' } });
     expect(cmd.slice(0, 4)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e']);
     const run = cmd.at(-1);
-    expect(run).toContain("'/home/me/blender/blender-4.5.9-linux-x64/blender' '--background' '--python' '/mnt/c/");
+    // (bake.py's own path, as WSL sees it: /mnt/c/… where the repo is on a
+    // Windows drive, as it is when this runs for real; as it is anywhere else)
+    const script = wslPath(fileURLToPath(new URL('./bake.py', import.meta.url)));
+    expect(run).toContain(`'/home/me/blender/blender-4.5.9-linux-x64/blender' '--background' '--python' '${script}'`);
     expect(run).toContain("'/mnt/c/m/raw.glb' '/mnt/c/m/low.glb' '--faces' '24000' '--tex' '2048'");
     expect(run).toMatch(/^export LD_LIBRARY_PATH=~\/miniforge3\/envs\/x11libs\/lib/);
   });

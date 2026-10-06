@@ -44,18 +44,24 @@ describe("Albuquerque's people", () => {
     }
   });
 
+  // Walt and Jesse are the wardrobe's own bodies too, the crew's on foot and
+  // in the hangar, so they're made in HD as Rick and Morty are (about
+  // 40,000 faces, 2k maps, which lib/detail halves on a phone); the town's
+  // other people, many at once, stay light
+  const HD = new Set(Object.values(BODIES).flat().map((b) => b.asset));
   it('ships no animations (the browser poses them), and stays small enough to send', () => {
     for (const { id, model } of Object.values(ABQ)) {
       expect(glb(model).animations ?? [], id).toHaveLength(0);
-      expect(statSync(file(model)).size, id).toBeLessThan(220 * 1024);
+      expect(statSync(file(model)).size, id).toBeLessThan((HD.has(model) ? 560 : 220) * 1024);
     }
   });
 
   it('is welded and on its own atlas (scripts/reatlas.mjs), which a mipmap can be made of', () => {
     for (const { id, model } of Object.values(ABQ)) {
       const g = glb(model);
-      // (as Meshy cuts a figure, 12,000 to 15,000 vertices)
-      expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(9000);
+      // (as Meshy cuts a figure, 12,000 to 15,000 vertices, welded to under
+      // 9,000; an HD one of about 40,000 faces to about 25,000)
+      expect(g.accessors[g.meshes[0].primitives[0].attributes.POSITION].count, id).toBeLessThan(HD.has(model) ? 26000 : 9000);
       expect(g.samplers[g.textures[0].sampler], id).toMatchObject({ minFilter: 9987, wrapS: 33071, wrapT: 33071 });
     }
   });
