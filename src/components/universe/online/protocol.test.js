@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
+import { defaultLook, readLook, writeLook } from '../../rickmorty/wardrobe/looks';
 
 describe('cleanName', () => {
   it('keeps an ordinary name', () => {
@@ -41,11 +42,11 @@ describe('randomCallsign', () => {
 
 describe('readHello', () => {
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth' });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
   });
   it('reads the paint job and parts fitted, and only ones it knows', () => {
     const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
@@ -62,6 +63,18 @@ describe('readHello', () => {
       const h = readHello({ n: 'A', k: 'rv', b: junk });
       expect(h.build).toBeNull();
       expect(h.kind).toBe('rv');
+    }
+  });
+  it('reads the looks of their Rick and Morty, by the wardrobe’s ids alone', () => {
+    const rick = readLook('rick', { body: 'cowboyrick', colors: { outer: 'unitypurple' }, gear: { face: 'shades', hand: 'portalgun' } });
+    const morty = readLook('morty', { body: 'evilmorty', gear: { head: 'crown' } });
+    expect(readHello({ n: 'A', k: 'cruiser', l: [writeLook(rick), writeLook(morty)] }).looks).toEqual({ rick, morty });
+    // one of them garbage: that one as the show has him
+    expect(readHello({ n: 'A', k: 'cruiser', l: [writeLook(rick), [[1]]] }).looks).toEqual({ rick, morty: defaultLook('morty') });
+    for (const junk of [7, 'x'.repeat(400), [[1, 2, 3], [{}]], [], null]) {
+      const h = readHello({ n: 'A', k: 'cruiser', l: junk });
+      expect(h.looks).toBeNull();
+      expect(h.kind).toBe('cruiser');
     }
   });
   it('is null for anything that is not an object', () => {

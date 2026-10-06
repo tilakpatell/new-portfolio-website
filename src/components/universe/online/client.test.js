@@ -78,7 +78,7 @@ describe('createClient', () => {
   it('each sees the other, by name and ship', async () => {
     const { a, b } = await pair();
     expect(a.snapshot().status).toBe('online');
-    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, build: null, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
+    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
     expect(b.snapshot().peers[0].name).toBe('Han');
   });
 
@@ -110,6 +110,17 @@ describe('createClient', () => {
     expect(seen.b.length).toBe(before);
     a.setProfile({ build: null });
     expect(b.peers.get('A').build).toBeNull();
+  });
+
+  it('shows each how the other dresses their Rick and Morty', async () => {
+    const { a, b, seen } = await pair();
+    const looks = { rick: { body: 'suitrick', colors: { hair: 'voidblack' }, gear: { head: 'none', face: 'shades', hand: 'none' } }, morty: { body: 'morty', colors: {}, gear: { head: 'crown', face: 'none', hand: 'plumbus' } } };
+    a.setProfile({ looks });
+    expect(b.peers.get('A').looks).toEqual(looks);
+    expect(b.snapshot().peers[0].looks).toEqual(looks);
+    const before = seen.b.length;
+    a.setProfile({ looks: JSON.parse(JSON.stringify(looks)) }); // (the same again: no news)
+    expect(seen.b.length).toBe(before);
   });
 
   it('passes poses along, read and timed', async () => {
