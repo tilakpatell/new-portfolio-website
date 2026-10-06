@@ -1,6 +1,6 @@
 # Handoff: Galactic Assault (a Battlefront battle on the galaxy's worlds)
 
-Branch `claude/galactic-assault`. Design: `docs/superpowers/specs/2026-10-06-galactic-assault-design.md`. Plan: `docs/superpowers/plans/2026-10-06-galactic-assault.md`. Routes: `/galaxy/hoth/surface?mission=assault`, `/galaxy/geonosis/surface?mission=assault` (from each system's mission page: *The Battle of Hoth*, *The Battle of Geonosis*, "Fight it now").
+Branch `claude/galactic-assault`. Design: `docs/superpowers/specs/2026-10-06-galactic-assault-design.md`. Plan: `docs/superpowers/plans/2026-10-06-galactic-assault.md`. Routes: `/galaxy/hoth/surface?mission=assault`, `/galaxy/geonosis/surface?mission=assault` (from each system's mission page and the galaxy's panel: *The Battle of Geonosis* is Geonosis's game; *The Battle of Hoth* sits beside Hoth's own game, *The First Transport*, as its `game.also`, a second mission on one world, which `pages/GalaxyMission.jsx` and `GalaxyPanel.jsx` draw as a line and a second button).
 
 ## Done
 
@@ -11,7 +11,7 @@ Branch `claude/galactic-assault`. Design: `docs/superpowers/specs/2026-10-06-gal
 - `surface/AssaultHud.jsx` and the `.assault-*` styles in `surface.css`; `pages/GalaxySurface.jsx` mounts it for the kind, keeps the best and unlocks `galacticassault`.
 - `blaster.js`: `tracer(from, to, color)` and a `pool` option; `actors.js`: `anyFigure(kind, spec, kit)` exported, `hideKinds(kinds)`.
 - A snowtrooper (CC BY, mrpanini.yt) brought in with `scripts/sketchfab-surface.mjs people snowtrooper` (`catalog/people.js`, 8000 triangles, 51 KB, untextured as it comes: white, as a snowtrooper is), credited in `src/data/modelCredits.json`.
-- `systems.js`: Hoth's and Geonosis's games live; `Achievements.jsx`'s `galacticassault`; `guide/pages.js` tips; README, `docs/architecture.md`, the backlog.
+- `systems.js`: Geonosis's game live; Hoth's game (main's *The First Transport*) carries the assault as `game.also`, and `systems.test.js` checks an `also`'s shape; `Achievements.jsx`'s `galacticassault`; `guide/pages.js` tips; README, `docs/architecture.md`, the backlog.
 - `scripts/assault-check.mjs`: plays a battle through its dev hooks in headless Chromium with a screenshot a step.
 
 ## The models, and the ones that aren't here
@@ -25,7 +25,7 @@ The original Battlefront II's models (and the fan remaster's) are LucasArts' and
 3. **More maps**, each a `missions/assaults.js` entry: Kashyyyk's beach at Kachirho (clones and Wookiees against the droids coming out of the lagoon: posts on `sites/forest.js`'s beach, Kachirho and the command flats; the water's level is 0, so keep posts above it), Endor's bunker (Rebels against the stormtroopers and scouts), Scarif's beach. The test in `index.test.js` covers a new map as it is.
 4. **Vehicles and heroes.** An AT-ST to board, a snowspeeder on Hoth, an AT-TE's guns on Geonosis; Vader or a Jedi for a streak. The games design's Hoth snowspeeder mission folds into this battle as its vehicle.
 5. **Online.** One battle for everyone in the system from the wall clock (the rules are deterministic from a seed and a clock), with only what changes it sent, as the galaxy games design says.
-6. **Geonosis's *Seismic Charges***, the flight through the rings, needs a second slot on the system's game once a system can carry two missions.
+6. **Geonosis's *Seismic Charges***, the flight through the rings, can come back as Geonosis's `game.also` once it's built.
 
 ## Checking it
 
