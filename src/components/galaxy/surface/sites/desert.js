@@ -37,12 +37,15 @@ export const SITES = {
     line: 'Two suns, and sand to the edge of the world.',
     sky: {
       zenith: '#4f86c6',
-      horizon: '#e8d3ac',
+      // (the colours checked against the films' daylight stills: white suns,
+      // a pale blue-grey horizon, neutral haze, sand-coloured below)
+      horizon: '#c8d3db',
+      below: '#b8a68c',
       haze: 0.8,
-      hazeColor: '#f3ddb5',
+      hazeColor: '#dddfdd',
       suns: [
-        { az: 0.5, el: 0.3, color: '#fff3dc', size: 0.017, glow: 1.3 },
-        { az: 0.66, el: 0.37, color: '#ffc68c', size: 0.012, glow: 0.9 },
+        { az: 0.5, el: 0.3, color: '#fff6e8', size: 0.017, glow: 1.3 },
+        { az: 0.66, el: 0.37, color: '#ffe4c4', size: 0.012, glow: 0.9 },
       ],
       clouds: { cover: 0.12, color: '#fffaf0', shade: '#e2d2b4', scale: 0.55, speed: 0.004 },
       bodies: [
@@ -50,8 +53,9 @@ export const SITES = {
         { az: -0.62, el: 0.7, size: 0.011, color: '#cfc6b6' },
       ],
     },
-    fog: { color: '#e9d4ab', density: 0.00055 },
-    light: { sun: 3.2, second: 1.0, sky: '#b9d2f2', ground: '#c89e6a', ambient: 0.7 },
+    fog: { color: '#d9dcdb', density: 0.00055 },
+    // (the second sun casts no shadow: kept soft, so the shade stays neutral as the films')
+    light: { sun: 3.2, second: 0.6, sky: '#b9d2f2', ground: '#b49a7a', ambient: 0.7 },
     ground: {
       seed: 3,
       wind: 0.5,
@@ -64,9 +68,9 @@ export const SITES = {
       palette: {
         low: '#d2b083',
         high: '#ebd4a6',
-        rock: '#a46c42',
-        accent: '#c3925f',
-        deep: '#b4875a',
+        rock: '#a46a4e',
+        accent: '#c69a6c',
+        deep: '#b38e66',
         hLow: -4,
         hHigh: 12,
         rockAt: 0.36,
@@ -94,14 +98,16 @@ export const SITES = {
         },
         things: [
           { kind: 'homestead', at: [0, 0], yaw: 0.4 },
+          { kind: 'homesteadring', at: [0, 0], yaw: 0.4 },
           { kind: 'vaporator', at: [16, -6] },
-          { kind: 'vaporator', at: [-14, -12] },
+          { kind: 'vaporator', at: [-17, -6] },
           { kind: 'vaporator', at: [22, 12] },
           { kind: 'vaporator', at: [-20, 14] },
           { kind: 'vaporator', at: [4, 22] },
         ],
         // (the courtyard: a pit beside the hut)
-        pits: [{ at: [-1.5, -4.4], r: 9, depth: 6 }],
+        // (behind the hut, 15 m off along its back: the ring's middle)
+        pits: [{ at: [-5.8, -13.8], r: 6.5, depth: 6 }],
       },
       {
         id: 'moseisley',
@@ -132,6 +138,19 @@ export const SITES = {
           { kind: 'stall', at: [22, -6], yaw: 1.4 },
           { kind: 'crates', at: [-20, 8] },
           { kind: 'crates', at: [30, 2] },
+          // (the town round about: towers, spires, arches over the lanes,
+          // houses and huts)
+          { kind: 'mostower', at: [-48, -32], yaw: 0.5 },
+          { kind: 'mostower', at: [58, 8], yaw: -0.9 },
+          { kind: 'mosspire', at: [34, -46], yaw: 0.3 },
+          { kind: 'mosspire', at: [-46, 38], yaw: 2.1 },
+          { kind: 'mosarch', at: [2, -46], yaw: 0.1 },
+          { kind: 'mosarch', at: [26, 52], yaw: 0.45 },
+          { kind: 'moshouse', at: [-52, -2], yaw: 1.4 },
+          { kind: 'moshouse', at: [46, -40], yaw: -0.5 },
+          { kind: 'moshut', at: [-28, -50], yaw: 0.8 },
+          { kind: 'moshut', at: [56, 26], yaw: -1.9 },
+          { kind: 'mosblock', at: [-6, 58], yaw: 3.0 },
           { kind: 'vaporator', at: [-46, 4] },
           { kind: 'vaporator', at: [40, -46] },
           { kind: 'landspeeder', at: [6, 12], yaw: 1.9, y: 0.7, solid: { r: 1.4 } },
@@ -231,7 +250,11 @@ export const SITES = {
           falcon: [['han', 'I spent a year on that guy’s wall. Let’s make this quick.'], ['chewie', '(A low, unhappy growl.)']],
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
-        things: [{ kind: 'palace', at: [0, 0], model: false }],
+        things: [
+          { kind: 'palace', at: [0, 0] },
+          // (the gate in front of the keep)
+          { kind: 'palacegate', at: [0, 22] },
+        ],
       },
       {
         id: 'tosche',
@@ -344,8 +367,8 @@ export const SITES = {
         id: 'palace',
         name: 'Jabba’s palace',
         music: 'palace',
-        door: { at: from(PALACE, [0, 53]), r: 3.4, prompt: 'Knock on the gate' },
-        back: from(PALACE, [0, 58]),
+        door: { at: from(PALACE, [0, 28.5]), r: 3.4, prompt: 'Knock on the gate' },
+        back: from(PALACE, [0, 33]),
         inside: {
           build: 'palaceinside',
           spawn: [0, 27.5],

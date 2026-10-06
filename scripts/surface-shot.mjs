@@ -42,6 +42,12 @@ await page.waitForTimeout(4000);
 // (past the landing: out of the ship and walking)
 await page.evaluate(() => window.__surfaceDo('advance', 40));
 await page.waitForTimeout(3000);
+// (still landing: on a world with a long way down, more of it)
+for (let i = 0; i < 4 && (await page.evaluate(() => window.__surface?.()?.phase)) !== 'walk'; i++) {
+  await page.evaluate(() => window.__surfaceDo('advance', 30));
+  await page.waitForTimeout(2000);
+}
+console.log('phase', await page.evaluate(() => window.__surface?.()?.phase));
 for (const v of views) {
   const [x, z, dist = 40, deg = 0, label] = v.split(',');
   const a = (Number(deg) * Math.PI) / 180;
@@ -51,7 +57,7 @@ for (const v of views) {
   await page.evaluate(([sx, sz, yaw]) => window.__surfaceDo('teleport', sx, sz, yaw), [sx, sz, yaw]);
   await page.waitForTimeout(7000);
   const file = `${out}/${world}-${label ?? `${x}_${z}_${deg}`}-${quality}.png`;
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, timeout: 180000 });
   console.log(file);
 }
 if (errors.length) console.log('errors:', errors.slice(0, 3).join(' | '));
