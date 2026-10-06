@@ -623,15 +623,15 @@ export function nearby(p, area, state = {}) {
     const d = Math.hypot(x.x - p.x, x.z - p.z);
     if (d <= x.r || (p.mode === 'robot' && d <= x.r + 4)) return { type: 'exit', id: x.id, label: x.label, to: x.to };
   }
-  if (p.mode !== 'robot') return null;
   let best = null;
-  let bestD = 10;
+  // (pulled up beside someone in the truck: he gets out to talk, so say so)
+  let bestD = p.mode === 'robot' ? 10 : 14;
   for (const person of area.people ?? []) {
     if (!person.lines?.length || state.hidden?.includes(person.id)) continue;
     const d = Math.hypot(person.x - p.x, person.z - p.z);
     if (d <= bestD && Math.abs((person.y ?? 0) - p.y) < 6) {
       bestD = d;
-      best = { type: 'talk', id: person.id, label: person.name };
+      best = { type: p.mode === 'robot' ? 'talk' : 'shift', id: person.id, label: person.name };
     }
   }
   return best;

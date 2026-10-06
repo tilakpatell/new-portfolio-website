@@ -355,7 +355,7 @@ function World({ gl, setGl }) {
   const bearing = hud.target ? Math.atan2(hud.target.x - hud.px, hud.target.z - hud.pz) : null;
   const rel = bearing === null ? 0 : Math.atan2(Math.sin(bearing - (loop.current?.yaw ?? hud.yaw)), Math.cos(bearing - (loop.current?.yaw ?? hud.yaw)));
   const dist = hud.target ? Math.round(Math.hypot(hud.target.x - hud.px, hud.target.z - hud.pz)) : 0;
-  const prompt = hud.near ? (hud.near.type === 'talk' ? `E  Talk to ${hud.near.label}` : `E  ${hud.near.label}`) : null;
+  const prompt = hud.near ? (hud.near.type === 'talk' ? `E  Talk to ${hud.near.label}` : hud.near.type === 'shift' ? `Q  Transform to talk to ${hud.near.label}` : `E  ${hud.near.label}`) : null;
 
   // a phone's thumbs: a stick on the left, looking on the right
   const stickRef = useRef(null);

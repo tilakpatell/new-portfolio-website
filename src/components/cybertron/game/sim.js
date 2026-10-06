@@ -184,7 +184,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
   sim.use = () => {
     const out = [];
     const n = nearby(sim.player, sim.area);
-    if (!n) return out;
+    if (!n || n.type === 'shift') return out;
     if (n.type === 'exit') {
       const x = sim.area.exits.find((e) => e.id === n.id);
       sim.exit = { to: x.to, at: x.at };

@@ -294,14 +294,14 @@ describe('pickups and using things', () => {
     expect(stepPickups(pickups, p)).toEqual([]);
   });
 
-  it('talks to someone close, on foot only', () => {
+  it('talks to someone close on foot; in the truck, says to get out first', () => {
     const world = buildWorld(AREA);
     const p = newPlayer(AREA);
     expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'talk', id: 'bee' }));
     settle(p, world);
     stepPlayer(p, { ...still, transform: true }, 1 / 60, world);
     run(p, {}, TRANSFORM.time + 0.1, world);
-    expect(nearby(p, AREA)).toBe(null);
+    expect(nearby(p, AREA)).toEqual(expect.objectContaining({ type: 'shift', id: 'bee' }));
   });
 
   it('drives into an exit', () => {
