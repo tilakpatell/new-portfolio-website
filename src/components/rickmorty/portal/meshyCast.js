@@ -103,7 +103,9 @@ const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
-export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS].map((a) => [a, '/models/c137/rm']));
+// (and Mortytown's two shopfronts, rickmorty/citadel/district.js)
+const MORTYTOWN_PROPS = ['mortymart', 'creepymorty'];
+export const FOLDERS = Object.fromEntries([...RICKALL_PROPS, ...FAMILY_PROPS, ...MORTYTOWN_PROPS].map((a) => [a, '/models/c137/rm']));
 const SCHOOL = ['goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick'];
 const C137_PEOPLE = new Set(['summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', ...SCHOOL, ...RICKALL_FIGURES, ...RICKALL_PROPS, ...FAMILY_FIGURES, ...FAMILY_PROPS]);
 // and the set pieces round the arenas (the C-137 world's people load with their own world)

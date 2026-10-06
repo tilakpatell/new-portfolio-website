@@ -42,6 +42,7 @@ export const EDGE_BUILDINGS = [
   { id: 'council', a: -Math.PI / 2, half: 0.25, top: 15 },
   { id: 'hangar', a: Math.PI / 4, half: 0.14, top: 6.4 },
   { id: 'portal', a: Math.PI / 2, half: 0.12, top: 7 },
+  { id: 'mortytown', a: (Math.PI * 3) / 4, half: 0.12, top: 7.4 },
 ];
 
 // the angle round the ring of a point, and a ring point's inward turn
@@ -146,7 +147,7 @@ const SIGNS = [
   ['SZECHUAN SAUCE', '#ffe4c8', '#6a2c10'],
   ['LAB COATS', '#f2f6fa', '#2a3a4c'],
   ['MEGA SEEDS', '#e4ffd8', '#2a5a1c'],
-  ['RICK’S GARAGE', '#ffeacc', '#4a3218'],
+  ['MORTYTOWN ↓', '#ffd9f0', '#4a1640'],
   ['ANATOMY PARK', '#d8fff4', '#145248'],
   ['SCHMECKLES EXCHANGE', '#fff8d8', '#4c4414'],
 ];
@@ -556,6 +557,44 @@ export async function buildConcourse(renderer, { models, tier = 'high', cruiser 
     if (c) cruiserAt.add(c);
   };
   if (cruiser) setCruiser(cruiser);
+
+  // the lift down to Mortytown (./mortytown.js): a striped frame in the
+  // shopfronts across from the hangar, its doors shut, its sign over them,
+  // and the shaft dropping away under the terrace's edge
+  {
+    const a = angleOf(DOORS.mortytown.x, DOORS.mortytown.z);
+    const lift = new THREE.Group();
+    statics.add(lift);
+    lift.position.set(Math.cos(a) * R, 0, Math.sin(a) * R);
+    lift.rotation.y = turnIn(a) + Math.PI; // its own +z points out, away from the core
+    const w = DOORS.mortytown.w;
+    const frameMat = toon(0x4a3a52);
+    for (const e of [-1, 1]) {
+      const post = mesh(new THREE.BoxGeometry(0.9, 6.6, 1.4), frameMat, lift);
+      post.position.set(e * (w / 2 + 0.45), 3.3, 0);
+      const strip = mesh(new THREE.BoxGeometry(0.12, 5.6, 0.1), M.glow, lift);
+      strip.position.set(e * (w / 2 - 0.05), 3, -0.72);
+    }
+    const lintel = mesh(new THREE.BoxGeometry(w + 1.8, 1.4, 1.4), frameMat, lift);
+    lintel.position.set(0, 6.6, 0);
+    const sign = mesh(cellPlane(w + 1, 1.1, 13), M.signs, lift);
+    sign.position.set(0, 6.6, -0.72);
+    sign.rotation.y = Math.PI;
+    // the doors, shut: a strip of pink light down the seam between them
+    for (const e of [-1, 1]) {
+      const door = mesh(new THREE.BoxGeometry(w / 2, 5.6, 0.3), toon(0x8a7a96), lift);
+      door.position.set((e * w) / 4, 2.8, 0.2);
+    }
+    const seam = mesh(new THREE.BoxGeometry(0.1, 5.4, 0.34), new THREE.MeshBasicMaterial({ color: hot(0xff5ad2, 1.8) }), lift);
+    seam.position.set(0, 2.8, 0.2);
+    // the call panel by the doors, lit
+    const panel = mesh(new THREE.BoxGeometry(0.4, 0.7, 0.12), M.glow, lift);
+    panel.position.set(w / 2 + 0.45, 1.5, -0.76);
+    // the shaft, on down past the terrace's fascia
+    const shaft = mesh(new THREE.BoxGeometry(w + 1.4, 40, 4), toon(0x3a3046), lift);
+    shaft.position.set(0, -20, 2.4);
+    lights.push([Math.cos(a) * (R - 3), 3, Math.sin(a) * (R - 3), 0xffb0ec]);
+  }
 
   // ── the core: the Citadel's portal fluid, a great column of it, dark
   // green and churning, in a teal frame behind a railing, under a saucer

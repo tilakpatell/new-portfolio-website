@@ -13,7 +13,9 @@ import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/
 import { newWatchers, stepWatchers } from '../../middleearth/towns/watchers';
 import { HERD, calmHerd, newHerd, stepHerd, stillHerding } from './daycare';
 import { BOOTH, CAST, COLLIDERS, COUNCIL_DOOR, CORE, ESCAPE_START, FACTORY_DOOR, HANGAR_WALLS, KIOSKS, PEN, PLANTERS, RICK, ROUNDS, SPOTS, WALLS, WORLD, castFor, crowdColliders, spot, validAt } from './layout';
-import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress } from './story';
+import { CONVOS, COPS, QUESTS, SEAL, SPEAKERS, citadelProgress, moodOf } from './story';
+import { HUNT, leaveHunt, newHunt, stepHunt } from './locos';
+import { BLOCKS as TOWN_BLOCKS, CAST as TOWN_CAST, COLLIDERS as TOWN_COLLIDERS, COP, EXIT as TOWN_EXIT, MORTYTOWN, START as TOWN_START, WALKS as TOWN_WALKS, WALLS as TOWN_WALLS } from './mortytown';
 import { LINE, dropLayer, newLine, stepLine } from './wafers';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
@@ -42,6 +44,8 @@ const PROMPT = {
   hangar: { name: 'Hangar 7', act: 'Get in the cruiser' },
   leave: { name: 'Hangar 7', act: 'Back to C-137' },
   portal: { name: 'The portal terminal', act: 'Portal home' },
+  mortytown: { name: 'The lift to Mortytown', act: 'Go down' },
+  up: { name: 'The lift', act: 'Back up to the concourse' },
 };
 const CONTEMPT = new Set(['grovel', 'alibi', 'lost']);
 // a walker for each mood: the crowds that are out are in the way too
@@ -50,6 +54,20 @@ const walkerFor = (mood) => walkers[mood] ?? walkers.day;
 const pushCop = (x, z) => walkers.red.push(x, z, 0.45);
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const VOTERS = CAST.filter((c) => c.vote);
+// Mortytown: its own walker (walled all round), its map, and where the lift
+// leaves you on the concourse when you come back up (a step in from its
+// doors, facing the core)
+const townWalker = makeWalker({ radius: 500, colliders: TOWN_COLLIDERS, walls: TOWN_WALLS, body: RICK });
+const TOWN_MAP = 150 / (MORTYTOWN.x1 - MORTYTOWN.x0 + 6);
+const LIFT_AT = (() => {
+  const sp = spot('mortytown');
+  const r = Math.hypot(sp.x, sp.z);
+  return { x: sp.x - (sp.x / r) * 1.6, z: sp.z - (sp.z / r) * 1.6, face: Math.atan2(sp.z, -sp.x) };
+})();
+const TOWN_PEOPLE = [...TOWN_CAST, ...TOWN_WALKS];
+const LOCO_NAMES = { 'loco-a': 'The Loco with the face tattoo', 'loco-b': 'The Loco in the white T-shirt', 'loco-c': 'The Loco in the vest' };
+// the Locos are out once their quest's open, and until it's done
+const huntOpen = (p) => p.quests.some((q) => q.id === 'locos' && q.open && !q.done);
 
 export default function CitadelWorld({ onLeave }) {
   const three = use3D();
@@ -93,8 +111,10 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const sim = useRef(null);
   if (!sim.current) {
     const saved = local.get(AT, null);
-    const h = newWalker(validAt(saved, done));
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2 };
+    // (left in Mortytown: back by the lift, and down it once the world's up)
+    const down = saved?.where === 'mortytown' && moodOf(done) !== 'red';
+    const h = newWalker(down ? LIFT_AT : validAt(saved, done));
+    sim.current = { where: 'concourse', autoDown: down, hunt: newHunt(1), townSeen: false, h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.32, dragAt: -1e9, mode: 'walk', room: null, beat: null, talking: null, talk: null, herd: calmHerd(), line: newLine(), laid: null, watchers: newWatchers(ROUNDS), chased: false, near: null, person: null, canvassed: new Set(), escapeT: null, frame: 0, moved: false, t: 0, air: null, siren: null, padBefore: null, edgeAt: -9, fresh: !saved && done.length === 0, seed: 2 };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -162,9 +182,14 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         }
         api.current = a;
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
-        if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete }; // for the QA scripts
+        if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up() }; // for the QA scripts
         fit();
         setGl('on');
+        // left in Mortytown last time: back down the lift
+        if (sim.current.autoDown) {
+          sim.current.autoDown = false;
+          liftRef.current?.down(true);
+        }
         // a first visit: through the portal
         if (sim.current.fresh) {
           sim.current.fresh = false;
@@ -184,8 +209,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       dead = true;
       ro?.disconnect();
       // out of a room (or the hangar) on to the concourse
-      const at = s.mode === 'inside' ? (s.room === 'factory' ? FACTORY_DOOR : COUNCIL_DOOR) : s.h;
-      local.set(AT, { x: at.x, z: at.z, face: at.face });
+      const at = s.mode === 'inside' ? (s.room === 'factory' ? FACTORY_DOOR : COUNCIL_DOOR) : s.mode === 'lift' ? LIFT_AT : s.h;
+      local.set(AT, { x: at.x, z: at.z, face: at.face, where: s.mode === 'lift' ? 'concourse' : s.where });
       s.air?.stop();
       s.siren?.stop();
       api.current?.dispose();
@@ -254,6 +279,57 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     s.watchers = newWatchers(ROUNDS);
   }, []);
 
+  // ── the lift down to Mortytown, and back up ──
+  // (Mortytown is built the first time: the lift waits for it)
+  const liftRef = useRef(null);
+  const [townLoading, setTownLoading] = useState(false);
+  const goDown = useCallback(
+    async () => {
+      const s = sim.current;
+      const a = api.current;
+      if (!a || s.where === 'mortytown' || s.mode === 'lift') return;
+      if (progRef.current.mood === 'red') return say('The lift’s locked down on red alert.', true);
+      if (s.herd.state === 'loose') return say('The Day Care’s Mortys are loose. Round them up first.', true);
+      s.mode = 'lift';
+      s.keys.clear();
+      sounds().then((x) => x.doors());
+      if (!a.townReady) setTownLoading(true);
+      const ok = await a.enterTown();
+      setTownLoading(false);
+      const ss = sim.current;
+      if (!ss || api.current !== a) return;
+      if (!ok) {
+        ss.mode = 'walk';
+        return say('The lift’s stuck. Try it again in a bit.', true);
+      }
+      ss.where = 'mortytown';
+      ss.mode = 'walk';
+      ss.h = newWalker(TOWN_START);
+      ss.yaw = behindYaw(ss.h.face);
+      ss.dragAt = ss.t;
+      if (ss.hunt.state === 'won') ss.hunt = newHunt(ss.seed++);
+      a.fx('liftdown');
+      if (!ss.townSeen) say(`Mortytown, under the city. No Ricks live down here: the Mortys run it.${huntOpen(progRef.current) ? ' Cop Morty’s outside Morty Mart, at the far end.' : ''}`);
+      ss.townSeen = true;
+      return undefined;
+    },
+    [say],
+  );
+  const goUp = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    if (!a || s.where !== 'mortytown' || s.mode !== 'walk') return;
+    const sent = leaveHunt(s.hunt);
+    s.where = 'concourse';
+    s.h = newWalker(LIFT_AT);
+    s.yaw = behindYaw(s.h.face);
+    s.dragAt = s.t;
+    a.fx('liftup');
+    sounds().then((x) => x.doors());
+    if (sent.length) say(sent.length === 1 ? 'The Loco who was following you slinks back to his alley.' : 'The Locos who were following you slink back to their alleys.', true);
+  }, [say]);
+  liftRef.current = { down: goDown, up: goUp };
+
   const enter = useCallback(
     (id) => {
       const s = sim.current;
@@ -261,6 +337,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       const has = (q) => doneRef.current.includes(q);
       audioContext();
       setList(false);
+      if (id === 'mortytown') return goDown();
+      if (id === 'up') return goUp();
       if (id === 'portal' || id === 'leave') {
         sounds().then((x) => x.portal());
         clip('portalGun');
@@ -316,7 +394,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
       return undefined;
     },
-    [onLeave, say, later, complete, outside],
+    [onLeave, say, later, complete, outside, goDown, goUp],
   );
 
   // a reply picked, or on to the next line
@@ -526,7 +604,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       }
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
-      s.h = walkerFor(p.mood).step(s.h, { x: mv.x, z: mv.z, run }, dt, { closed: HANGAR_WALLS });
+      s.h = s.where === 'mortytown' ? townWalker.step(s.h, { x: mv.x, z: mv.z, run }, dt) : walkerFor(p.mood).step(s.h, { x: mv.x, z: mv.z, run }, dt, { closed: HANGAR_WALLS });
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // boxed in: the camera slides round to where there's room
       const room = a.suggestYaw;
@@ -550,7 +628,8 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // Morty Day Care: the herd, loose or pottering in the pen
     const pushMorty = (x, z, r) => walkerFor(p.mood).push(x, z, r);
-    for (const e of stepHerd(s.herd, s.h, dt, { push: pushMorty })) {
+    // (not while Rick's in Mortytown: his spot there is in its own frame)
+    for (const e of s.where === 'mortytown' ? [] : stepHerd(s.herd, s.h, dt, { push: pushMorty })) {
       if (e.type === 'penned') {
         const m = s.herd.mortys[e.id];
         a.fx('penned', { x: m.x, y: 1.6, z: m.z });
@@ -598,9 +677,34 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     }
     if (s.escapeT != null) s.escapeT += dt;
 
+    // the Locos, down in Mortytown
+    if (s.where === 'mortytown' && s.mode === 'walk' && huntOpen(p)) {
+      const pushLoco = (x, z, r) => townWalker.push(x, z, r);
+      for (const e of stepHunt(s.hunt, s.h, dt, { push: pushLoco })) {
+        if (e.type === 'found') {
+          const l = s.hunt.locos.find((x) => x.id === e.id);
+          a.fx('found', { x: l.x, z: l.z });
+          sounds().then((x) => x.blip());
+          say(`${LOCO_NAMES[e.id]} gives himself up. Walk him to Cop Morty, outside Morty Mart. Don’t run.`);
+        } else if (e.type === 'lost') say('Too quick for him: he’s slunk back to his alley. Walk, don’t run.', true);
+        else if (e.type === 'delivered') {
+          a.fx('delivered');
+          sounds().then((x) => x.chime());
+          const n = s.hunt.locos.filter((x) => x.state === 'delivered').length;
+          if (n < HUNT.count) say(`Cop Morty cuffs him. ${n} of ${HUNT.count} Locos handed over.`);
+        } else if (e.type === 'won') {
+          a.fx('locos');
+          sounds().then((x) => x.jingle());
+          complete('locos');
+          say('All three Locos handed over. Cop Morty says Morty Mart’s safe. For tonight.');
+        }
+      }
+    }
+
     // what's here, and who's here
     let spotHere = null;
-    if (s.mode === 'walk') {
+    if (s.mode === 'walk' && s.where === 'mortytown') spotHere = nearest([TOWN_EXIT], s.h.x, s.h.z) ? 'up' : null;
+    else if (s.mode === 'walk') {
       const sp = nearest(SPOTS, s.h.x, s.h.z);
       const has = (q) => doneRef.current.includes(q);
       const ok =
@@ -610,18 +714,29 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           (sp.id === 'council' && !has('council')) ||
           (sp.id === 'ballot' && p.mood === 'election') ||
           (sp.id === 'hangar' && ((red && !s.chased) || p.finished)) ||
+          (sp.id === 'mortytown' && !red) ||
           sp.id === 'portal');
       spotHere = ok ? (sp.id === 'hangar' && p.finished ? 'leave' : sp.id) : null;
     }
     s.near = spotHere;
     let person = null;
-    if (s.mode === 'walk') {
+    if (s.mode === 'walk' && s.where === 'mortytown') {
+      // (Evil Rick walks the road: wherever he is now)
+      const evil = a.townAt?.('evilrick');
+      const c = nearest(evil ? [...TOWN_CAST, { id: 'evilrick', x: evil.x, z: evil.z }] : TOWN_CAST, s.h.x, s.h.z, 3);
+      person = c ? `town:${c.id}` : null;
+    } else if (s.mode === 'walk') {
       const c = nearest(castFor(p.mood), s.h.x, s.h.z, 3);
       person = c?.id ?? null;
     }
     if (person !== s.person) {
       s.person = person;
-      if (person) {
+      if (person?.startsWith('town:')) {
+        const c = TOWN_PEOPLE.find((x) => x.id === person.slice(5));
+        const n = lines.current[person] ?? 0;
+        lines.current[person] = n + 1;
+        setBubble({ id: person, name: c.name, line: c.lines[n % c.lines.length] });
+      } else if (person) {
         const c = CAST.find((x) => x.id === person);
         let line;
         if (p.mood === 'election' && c.vote) {
@@ -641,7 +756,16 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // the markers: where to go next
     const has = (q) => doneRef.current.includes(q);
-    const markers = p.finished
+    const locosOut = huntOpen(p) && !red;
+    const following = s.hunt.locos.filter((l) => l.state === 'following').length;
+    const handed = s.hunt.locos.filter((l) => l.state === 'delivered').length;
+    const markers = s.where === 'mortytown'
+      ? following
+        ? [COP]
+        : locosOut
+          ? []
+          : [TOWN_EXIT]
+      : p.finished
       ? [spot('hangar'), spot('portal')]
       : red
         ? [spot('hangar')]
@@ -649,16 +773,18 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
           ? s.canvassed.size < VOTERS.length
             ? VOTERS.filter((v) => !s.canvassed.has(v.id))
             : [spot('ballot')]
-          : ['daycare', 'factory', 'council'].filter((q) => !has(q)).map((q) => spot(q));
+          : [...['daycare', 'factory', 'council'].filter((q) => !has(q)).map((q) => spot(q)), ...(locosOut ? [spot('mortytown')] : [])];
 
     // others online: where you are to them (out on the concourse), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape' });
+    tv?.pose(s.h, { inside: s.mode === 'inside' || s.mode === 'escape' || s.mode === 'lift' || s.where === 'mortytown' });
 
     try {
       a.render(
         {
           rick: s.h,
+          where: s.where,
+          locos: s.where === 'mortytown' && huntOpen(p) ? s.hunt.locos : null,
           travellers: tv ? tv.list() : null,
           mood: p.mood,
           mode: s.mode,
@@ -690,20 +816,20 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
 
     // the HUD, when what it shows changes
     const penned = s.herd.mortys.filter((m) => m.penned).length;
-    const key = [s.mode, s.room, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.herd.state, penned, Math.ceil(HERD.time - s.herd.t), s.line.good, s.line.made, s.line.layer, s.chased, s.canvassed.size].join('|');
+    const key = [s.mode, s.room, s.near, s.moved, s.beat, s.talking, s.talk?.at, s.herd.state, penned, Math.ceil(HERD.time - s.herd.t), s.line.good, s.line.made, s.line.layer, s.chased, s.canvassed.size, s.where, following, handed].join('|');
     if (key !== hudKey.current) {
       hudKey.current = key;
-      setHud({ mode: s.mode, room: s.room, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, herd: { state: s.herd.state, penned, left: Math.max(0, Math.ceil(HERD.time - s.herd.t)) }, wafers: { good: s.line.good, made: s.line.made, layer: s.line.layer }, chased: s.chased, canvassed: s.canvassed.size });
+      setHud({ mode: s.mode, room: s.room, near: s.near, moved: s.moved, beat: s.beat, talking: s.talking, line: s.talk?.at ?? null, herd: { state: s.herd.state, penned, left: Math.max(0, Math.ceil(HERD.time - s.herd.t)) }, wafers: { good: s.line.good, made: s.line.made, layer: s.line.layer }, chased: s.chased, canvassed: s.canvassed.size, where: s.where, following, handed });
     }
     if (s.person && bubbleRef.current) {
-      const at = a.screenOf('cast', s.person);
+      const at = s.person.startsWith('town:') ? a.screenOf('town', s.person.slice(5)) : a.screenOf('cast', s.person);
       if (at) {
         bubbleRef.current.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, { scale: MAP_SCALE, h: s.h, markers, night: red, base: drawConcourse(p) });
-    if (s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
+    if (++s.frame % 4 === 0) drawMap(map.current, s.where === 'mortytown' ? { scale: TOWN_MAP, h: s.h, markers, base: drawTown } : { scale: MAP_SCALE, h: s.h, markers, night: red, base: drawConcourse(p) });
+    if (s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face, where: s.where });
   }, live);
 
   // the world's own pointer: drag to look round
@@ -755,7 +881,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   // the list's "go there": straight to where each scene starts
   const travel = (q) => {
     const s = sim.current;
-    const sp = spot({ daycare: 'daycare', wafers: 'factory', council: 'council', votemorty: 'ballot', citadelout: 'hangar' }[q.id]);
+    const sp = spot({ daycare: 'daycare', wafers: 'factory', council: 'council', votemorty: 'ballot', citadelout: 'hangar', locos: 'mortytown' }[q.id]);
+    // (from Mortytown: back up first; whoever was following goes home)
+    if (s.where === 'mortytown') {
+      leaveHunt(s.hunt);
+      s.where = 'concourse';
+    }
     // a step in from the spot, toward the core, facing out to it (its door)
     const r = Math.hypot(sp.x, sp.z);
     const at = q.id === 'citadelout' ? ESCAPE_START : { x: sp.x - (sp.x / r) * 1.5, z: sp.z - (sp.z / r) * 1.5, face: Math.atan2(-sp.z, sp.x) };
@@ -771,17 +902,21 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   const convo = hud.talking ? CONVOS[hud.talking] : null;
   const node = convo && hud.line ? convo.nodes[hud.line] : convo ? convo.nodes[convo.start] : null;
   const herding = hud.herd?.state === 'loose';
-  const objective = red && hud.chased ? 'Run! Get out of his sight: round the core, behind a kiosk or a planter.' : herding ? 'Herd the Mortys back through the gate, into the pen: come at them from the far side.' : prog.objective;
+  const inTown = hud.where === 'mortytown';
+  const locosNow = huntOpen(prog);
+  const townObjective = !locosNow ? (done.includes('locos') ? 'Mortytown’s quiet, for tonight. The lift up is at the west end.' : 'Mortytown. Cop Morty will have a job for you once the day care’s sorted. The lift up is at the west end.') : hud.following ? 'Walk them to Cop Morty, outside Morty Mart. At a walk: run, and they’ll slink off.' : 'Find the Locos. They hide where a Morty hides: down an alley, behind a bin.';
+  const objective = inTown ? townObjective : red && hud.chased ? 'Run! Get out of his sight: round the core, behind a kiosk or a planter.' : herding ? 'Herd the Mortys back through the gate, into the pen: come at them from the far side.' : prog.objective;
   return (
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
+      {townLoading && <p className="shire-loading">Taking the lift down to Mortytown…</p>}
 
       {walking && (
         <div className="shire-hud shire-hud-top">
           <div className="shire-brand">
             <h1 id="citadel-title" className="shire-title">
-              The Citadel of Ricks
+              {inTown ? 'Mortytown' : 'The Citadel of Ricks'}
             </h1>
             <p className="shire-objective" aria-live="polite">
               <span aria-hidden="true">◆</span> {objective}
@@ -811,6 +946,12 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
               </p>
             )}
             {red && <p className="shire-chip citadel-wanted">{hud.chased ? 'Seen!' : 'Wanted: Rick C-137'}</p>}
+            {inTown && locosNow && (
+              <p className="shire-chip citadel-locos">
+                Locos handed over <b>{hud.handed ?? 0}</b> of {HUNT.count}
+                {hud.following ? ` · ${hud.following} following` : ''}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -879,7 +1020,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
       {walking && touch && <Stick onStick={onStick} />}
 
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
-      {list && <QuestList title="Things to do in the Citadel" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id !== 'citadelout' || red)} />}
+      {list && <QuestList title="Things to do in the Citadel" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id !== 'citadelout' || red) && (q.id !== 'locos' || !red)} />}
     </div>
   );
 }
@@ -920,6 +1061,26 @@ const drawConcourse = (prog) => (g, at) => {
   const [bx, bz] = at(BOOTH.x, BOOTH.z);
   g.fillStyle = prog.mood === 'day' ? '#7d8798' : '#c8262e';
   g.fillRect(bx - 2, bz - 2, 4, 4);
+};
+
+// Mortytown on the corner map: the street, its blocks dark either side
+const drawTown = (g, at) => {
+  const [x0, z0] = at(MORTYTOWN.x0, MORTYTOWN.z0);
+  const [x1, z1] = at(MORTYTOWN.x1, MORTYTOWN.z1);
+  g.fillStyle = '#4a5450';
+  g.fillRect(x0, z0, x1 - x0, z1 - z0);
+  g.fillStyle = '#8a8676';
+  g.fillRect(x0, at(0, -10)[1], x1 - x0, at(0, 10)[1] - at(0, -10)[1]);
+  g.fillStyle = '#3a4044';
+  g.fillRect(x0, at(0, -6)[1], x1 - x0, at(0, 6)[1] - at(0, -6)[1]);
+  for (const b of TOWN_BLOCKS) {
+    const [bx, bz] = at(b.x - b.w / 2, b.z - b.d / 2);
+    g.fillStyle = b.id === 'mortymart' ? '#8a3a3a' : b.id === 'creepymorty' ? '#6a3a7a' : '#2a3230';
+    g.fillRect(bx, bz, b.w * TOWN_MAP, b.d * TOWN_MAP);
+  }
+  const [lx, lz] = at(TOWN_EXIT.x, TOWN_EXIT.z);
+  g.fillStyle = '#6ff3ff';
+  g.fillRect(lx - 3, lz - 3, 6, 6);
 };
 
 // Without 3D: the scenes, as cards.

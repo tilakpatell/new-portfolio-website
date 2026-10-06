@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pushOut, sightClear } from '../../middleearth/towns/walker';
-import { CAST, COLLIDERS, CROWD_LOOPS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, crowdColliders, crowdFor, inPen, spot, validAt } from './layout';
+import { CAST, COLLIDERS, CROWD_LOOPS, DOORS, ESCAPE_START, HANGAR_WALLS, PEN, ROUNDS, SPOTS, START, WALLS, WORLD, castFor, crowdColliders, crowdFor, inPen, spot, validAt } from './layout';
 
 const clear = (x, z, rad = 0.45, walls = WALLS) => {
   const [px, pz] = pushOut(x, z, rad, COLLIDERS, walls);
@@ -116,6 +116,9 @@ describe('the Citadel’s concourse', () => {
 
 describe('the Citadel’s crowds', () => {
   const MOODS = ['day', 'election'];
+  it('leave the doors in the shopfronts clear', () => {
+    for (const mood of MOODS) for (const c of crowdFor(mood)) for (const [id, d] of Object.entries(DOORS)) expect(Math.hypot(c.x - d.x, c.z - d.z), `${mood} ${id} ${c.x},${c.z}`).toBeGreaterThan(4.5);
+  });
   it('stand clear of everything, of each other and of the places to stop', () => {
     for (const mood of MOODS) {
       const crowd = crowdFor(mood);

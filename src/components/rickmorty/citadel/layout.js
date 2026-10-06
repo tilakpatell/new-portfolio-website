@@ -190,7 +190,9 @@ function crowdGroups() {
   // at the edge, looking out
   for (const [a0, a1, n] of [
     [-2.75, -2.05, 8],
-    [2.1, 2.62, 6],
+    // (either side of the lift down to Mortytown, not in front of it)
+    [1.92, 2.18, 4],
+    [2.54, 2.72, 3],
     [0.32, 0.6, 5],
   ]) {
     for (let i = 0; i < n; i++) {
