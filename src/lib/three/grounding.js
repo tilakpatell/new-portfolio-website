@@ -130,6 +130,7 @@ uniform vec4 uMaskRect[${n}];
 uniform vec3 uMaskMix;
 uniform vec3 uShadeTint;
 uniform float uShadeMix;
+uniform float uSunFloor;
 float gPick(vec4 m, float c) { return c < 0.5 ? m.r : c < 1.5 ? m.g : c < 2.5 ? m.b : 1.0; }
 // the sun's and the sky's share of a point on the floor (1 and 1 outside every mask)
 vec2 gRead(vec3 p) {
@@ -141,7 +142,9 @@ vec2 gRead(vec3 p) {
   // (a mover in shade keeps some of the sun: a figure that goes black in a
   // hill's shadow at dusk is lost to the player, and a shadow map wouldn't
   // have caught all of it either, its own lit side facing the sky)
-  const cut = mover ? 'mix(0.45, 1.0, gSun)' : 'gSun';
+  // (and a floor keeps uSunFloor of it: under a wood's canopy the mask's sun
+  // is nought everywhere, and a floor lit by the sky's term alone goes black)
+  const cut = mover ? 'mix(0.45, 1.0, gSun)' : 'mix(uSunFloor, 1.0, gSun)';
   const sun = typeof lights === 'string' && lights.includes(SUN_LINE) ? lights.replace(SUN_LINE, `${SUN_LINE}\n\t\tdirectLight.color *= ${cut};`) : null;
   const swapped = { sun: false, sky: false, shade: false };
   let fs = fragmentShader.replace('#include <common>', `#include <common>\n${pars}`).replace(
@@ -185,6 +188,7 @@ function floorUniforms(bake) {
       uMaskMix: { value: new THREE.Vector3(3, 3, 0) },
       uShadeTint: { value: shadeTint(shade, bake.shadeLuminance ?? SHADE_TINT.luminance, SHADE_TINT.saturation) },
       uShadeMix: { value: bake.shadeMix ?? SHADE_TINT.mix },
+      uSunFloor: { value: bake.sunFloor ?? 0 },
     };
     shared.set(bake, u);
   }
@@ -211,7 +215,9 @@ export function shadeTint(color, luminance = SHADE_TINT.luminance, saturation = 
 
 // The floor of a world (a lit material: the ground, the roads, a car park)
 // shadowed by its baked masks. `bake` is { areas: [{ texture, x0, z0, w, d }],
-// times: [{ tod, channel }], shade } (loadFloorShadow's). Call it last on a
+// times: [{ tod, channel }], shade, sunFloor } (loadFloorShadow's; `sunFloor`,
+// 0 to 1, how much of the sun the floor keeps where the mask has none: a
+// woodland floor under its canopy, lit by nothing else, would go black). Call it last on a
 // material other hooks change too; the mesh should stop receiving the shadow
 // map (its `receiveShadow` off), or the shadow is counted twice.
 export function floorShadow(material, bake) {
@@ -258,7 +264,7 @@ export function standIn(material, bake) {
   // lowest to 8 m over its highest: one in an interior far below, or high
   // above in the air, isn't under the floor's shadows)
   const [lo, hi] = bake.range ?? [-1e9, 1e9];
-  const uniforms = { uMask: f.uMask, uMaskRect: f.uMaskRect, uMaskMix: f.uMaskMix, uShadeTint: { value: new THREE.Color(1, 1, 1) }, uShadeMix: { value: 0 }, uMoverRange: { value: new THREE.Vector2(lo - 2, hi + 8) } };
+  const uniforms = { uMask: f.uMask, uMaskRect: f.uMaskRect, uMaskMix: f.uMaskMix, uShadeTint: { value: new THREE.Color(1, 1, 1) }, uShadeMix: { value: 0 }, uSunFloor: { value: 0 }, uMoverRange: { value: new THREE.Vector2(lo - 2, hi + 8) } };
   const areas = bake.areas.length;
   const before = material.onBeforeCompile;
   material.onBeforeCompile = (sh, r) => {
