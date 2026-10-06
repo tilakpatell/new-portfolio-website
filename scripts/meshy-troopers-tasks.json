@@ -1,0 +1,40 @@
+{
+  "clone": {
+    "rig": "01a11394-00e0-7280-9338-c4c8bc30e3d4"
+  },
+  "clips": {
+    "hit": "01a11394-d2f2-7742-b9f2-db434e568a2a",
+    "die": "01a11394-ea15-77c0-a519-941a1cef9c8a",
+    "dieFwd": "01a11395-0157-7269-b4ca-22c02992f57c",
+    "dieBlown": "01a11395-1897-7449-9dd0-63c0854429b1",
+    "kneel": "01a11395-30a0-7766-89ef-cf6d2441e6c9",
+    "taunt": "01a11395-5c67-7364-875a-104bd1116a36"
+  },
+  "battledroid": {
+    "rig": "01a11395-79df-779f-b316-6ed935fe63a4"
+  },
+  "superdroid": {
+    "rig": "01a11395-b2da-7456-bd3e-ba545b5e4f9d"
+  },
+  "stormtrooper": {
+    "rig": "01a11395-ebd1-7267-bf8e-6ac70f685cfd"
+  },
+  "snowtrooper": {
+    "rig": "01a11396-2750-70de-8379-acb7f93fb32b"
+  },
+  "hothtrooper": {
+    "rig": "01a11396-6320-77de-90f0-58bd1f3ec5a8"
+  },
+  "sandtrooper": {
+    "rig": "01a11396-a49e-7786-8618-81c92e3c565f"
+  },
+  "scouttrooper": {
+    "rig": "01a11396-d49b-7184-85d6-809a971c601d"
+  },
+  "shoretrooper": {
+    "rig": "01a11397-1494-74a5-929d-3e02c03be346"
+  },
+  "deathtrooper": {
+    "rig": "01a11397-5096-7458-86b7-3993ad3dc9d0"
+  }
+}
