@@ -37,12 +37,15 @@ export const SITES = {
     line: 'Two suns, and sand to the edge of the world.',
     sky: {
       zenith: '#4f86c6',
-      horizon: '#e8d3ac',
+      // (the colours checked against the films' daylight stills: white suns,
+      // a pale blue-grey horizon, neutral haze, sand-coloured below)
+      horizon: '#c8d3db',
+      below: '#b8a68c',
       haze: 0.8,
-      hazeColor: '#f3ddb5',
+      hazeColor: '#dddfdd',
       suns: [
-        { az: 0.5, el: 0.3, color: '#fff3dc', size: 0.017, glow: 1.3 },
-        { az: 0.66, el: 0.37, color: '#ffc68c', size: 0.012, glow: 0.9 },
+        { az: 0.5, el: 0.3, color: '#fff6e8', size: 0.017, glow: 1.3 },
+        { az: 0.66, el: 0.37, color: '#ffe4c4', size: 0.012, glow: 0.9 },
       ],
       clouds: { cover: 0.12, color: '#fffaf0', shade: '#e2d2b4', scale: 0.55, speed: 0.004 },
       bodies: [
@@ -50,9 +53,10 @@ export const SITES = {
         { az: -0.62, el: 0.7, size: 0.011, color: '#cfc6b6' },
       ],
     },
-    fog: { color: '#e9d4ab', density: 0.00055 },
-    light: { sun: 3.2, second: 1.0, sky: '#b9d2f2', ground: '#c89e6a', ambient: 0.7 },
-    ground: {
+    fog: { color: '#d9dcdb', density: 0.00055 },
+    // (the second sun casts no shadow: kept soft, so the shade stays neutral as the films')
+    light: { sun: 3.2, second: 0.6, sky: '#b9d2f2', ground: '#b49a7a', ambient: 0.7 },
+    ground: { detail: 'sand', detailLook: { color: 0.7, normal: 0.8, metres: 6 },
       seed: 3,
       wind: 0.5,
       layers: [
@@ -64,9 +68,9 @@ export const SITES = {
       palette: {
         low: '#d2b083',
         high: '#ebd4a6',
-        rock: '#a46c42',
-        accent: '#c3925f',
-        deep: '#b4875a',
+        rock: '#a46a4e',
+        accent: '#c69a6c',
+        deep: '#b38e66',
         hLow: -4,
         hHigh: 12,
         rockAt: 0.36,
@@ -94,14 +98,16 @@ export const SITES = {
         },
         things: [
           { kind: 'homestead', at: [0, 0], yaw: 0.4 },
+          { kind: 'homesteadring', at: [0, 0], yaw: 0.4 },
           { kind: 'vaporator', at: [16, -6] },
-          { kind: 'vaporator', at: [-14, -12] },
+          { kind: 'vaporator', at: [-17, -6] },
           { kind: 'vaporator', at: [22, 12] },
           { kind: 'vaporator', at: [-20, 14] },
           { kind: 'vaporator', at: [4, 22] },
         ],
         // (the courtyard: a pit beside the hut)
-        pits: [{ at: [-1.5, -4.4], r: 9, depth: 6 }],
+        // (behind the hut, 15 m off along its back: the ring's middle)
+        pits: [{ at: [-5.8, -13.8], r: 6.5, depth: 6 }],
       },
       {
         id: 'moseisley',
@@ -132,6 +138,19 @@ export const SITES = {
           { kind: 'stall', at: [22, -6], yaw: 1.4 },
           { kind: 'crates', at: [-20, 8] },
           { kind: 'crates', at: [30, 2] },
+          // (the town round about: towers, spires, arches over the lanes,
+          // houses and huts)
+          { kind: 'mostower', at: [-48, -32], yaw: 0.5 },
+          { kind: 'mostower', at: [58, 8], yaw: -0.9 },
+          { kind: 'mosspire', at: [34, -46], yaw: 0.3 },
+          { kind: 'mosspire', at: [-46, 38], yaw: 2.1 },
+          { kind: 'mosarch', at: [2, -46], yaw: 0.1 },
+          { kind: 'mosarch', at: [26, 52], yaw: 0.45 },
+          { kind: 'moshouse', at: [-52, -2], yaw: 1.4 },
+          { kind: 'moshouse', at: [46, -40], yaw: -0.5 },
+          { kind: 'moshut', at: [-28, -50], yaw: 0.8 },
+          { kind: 'moshut', at: [56, 26], yaw: -1.9 },
+          { kind: 'mosblock', at: [-6, 58], yaw: 3.0 },
           { kind: 'vaporator', at: [-46, 4] },
           { kind: 'vaporator', at: [40, -46] },
           { kind: 'landspeeder', at: [6, 12], yaw: 1.9, y: 0.7, solid: { r: 1.4 } },
@@ -231,7 +250,11 @@ export const SITES = {
           falcon: [['han', 'I spent a year on that guy’s wall. Let’s make this quick.'], ['chewie', '(A low, unhappy growl.)']],
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
-        things: [{ kind: 'palace', at: [0, 0], model: false }],
+        things: [
+          { kind: 'palace', at: [0, 0] },
+          // (the gate in front of the keep)
+          { kind: 'palacegate', at: [0, 22] },
+        ],
       },
       {
         id: 'tosche',
@@ -274,18 +297,40 @@ export const SITES = {
       { kind: 'vaporator', at: [-120, 110] },
       { kind: 'vaporator', at: [-130, 190] },
       { kind: 'vaporator', at: [-210, 110] },
+      // where you set down: the farm's edge, a landspeeder pulled up by its
+      // vaporator and the cargo it brought, a Jawa's stall
+      { kind: 'vaporator', at: [-34, 22] },
+      { kind: 'landspeeder', at: [24, -14], yaw: 2.1, y: 0.7, solid: { r: 1.4 } },
+      { kind: 'barrel', at: [20, -9], yaw: 0.4 },
+      { kind: 'barrel', at: [21.2, -9.6], yaw: 1.3 },
+      { kind: 'bevelcrate', at: [18.6, -10.2], yaw: 0.2 },
+      { kind: 'cooler', at: [27, -8], yaw: 2.2 },
+      { kind: 'stall', at: [-16, 26], yaw: 2.2 },
+      { kind: 'crates', at: [-21, 23] },
+      { kind: 'lamp', at: [-12, 30], opts: { h: 3.6 } },
+      // the Jawas' beasts, tethered by the sandcrawler's ramp
+      { kind: 'ronto', at: [152, 236], yaw: 1.9 },
+      { kind: 'eopie', at: [126, 262], yaw: 0.6 },
+      { kind: 'eopie', at: [130, 258], yaw: 0.9, scale: 0.9 },
     ],
     scatter: [
       { kind: 'rock', n: 140, within: [30, 560], scale: [0.6, 3.2], opts: { color: '#9e7a56', sharp: 0.5 } },
       { kind: 'stones', n: 260, within: [10, 400], scale: [0.25, 0.7], solid: false, opts: { color: '#a68462' } },
     ],
     life: [
+      // at the landing: a Jawa at its stall, a haulier, an eopie at the trough
+      { kind: 'jawa', n: 2, at: [-16, 24], spread: 3, roam: 3, speed: 0.8, name: 'Jawa trader', says: ['Utinni!', '(It holds up a droid motivator. Slightly used. Very slightly.)', 'M’um m’aloo!'] },
+      { kind: 'farmer', n: 1, at: [20, -4], roam: 6, speed: 0.8, name: 'Haulier', says: ['Water run to Anchorhead. Two more stops, then the suns are down.', 'Mind the eopie. She spits.', 'That speeder’s not for sale. Everything else is.'] },
+      { kind: 'eopie', n: 1, at: [12, 12], roam: 8, speed: 0.5, r: 0.9 },
+      { kind: 'mousedroid', n: 1, at: [26, -2], roam: 6, speed: 1.4, r: 0.2, solid: false },
       { kind: 'jawa', n: 7, at: [140, 268], spread: 14, roam: 16, speed: 0.9, name: 'Jawa', says: ['Utinni!', 'Utinni! (It holds up a power converter, and names a price you don’t understand.)', 'M’um m’aloo!', '(It counts your credits, then counts them again.)'] },
       { kind: 'bantha', n: 4, at: [-400, 230], spread: 20, roam: 20, speed: 0.8, r: 1.5 },
       { kind: 'tusken', id: 'tuskencamp', n: 3, at: [-420, 250], spread: 10, roam: 10, speed: 1.0, name: 'Tusken Raider', says: ['(A long, rising howl, and the gaffi stick held high.)', '(It stares. It doesn’t move. You get the message.)'] },
       { kind: 'stormtrooper', n: 4, path: [[290, -200], [330, -230], [300, -270], [262, -236]], speed: 1.4, name: 'Stormtrooper', says: ['Move along.', 'Let me see your identification.', 'How long have you had these droids?', 'These aren’t the droids we’re looking for.'] },
       { kind: 'sandtrooper', n: 2, at: [-60, -320], spread: 8, roam: 12, speed: 1.1, name: 'Sandtrooper', says: ['Look, sir: droids. Someone was in the pod.', 'The tracks go off in this direction.'] },
       { kind: 'dewback', n: 2, at: [-80, -300], spread: 10, roam: 14, speed: 0.7, r: 1.2 },
+      { kind: 'sullustan', n: 1, at: [284, -244], roam: 8, speed: 1.0, name: 'A Sullustan pilot', says: ['(A string of chattering Sullustese, and a grin.)', 'Freighter’s in Bay 86. Cargo? Don’t ask.'] },
+      { kind: 'ronto', n: 1, at: [330, -250], roam: 10, speed: 0.4, r: 1.3 },
       { kind: 'villager', n: 5, at: [300, -230], spread: 40, roam: 25, speed: 1.1, name: 'Mos Eisley local', says: ['Watch yourself. This place can be a little rough.', 'Chalmun’s got a band in tonight. No droids, though.', 'If you’re looking for a pilot, try the cantina.', 'Hutt business. Don’t ask.'] },
       { kind: 'droid', n: 1, at: [-160, 140], roam: 10, speed: 0.6, name: 'An R5 unit', says: ['(A cheerful whistle. Its motivator sounds fine… for now.)'] },
       // who has something for you to do
@@ -344,8 +389,8 @@ export const SITES = {
         id: 'palace',
         name: 'Jabba’s palace',
         music: 'palace',
-        door: { at: from(PALACE, [0, 53]), r: 3.4, prompt: 'Knock on the gate' },
-        back: from(PALACE, [0, 58]),
+        door: { at: from(PALACE, [0, 28.5]), r: 3.4, prompt: 'Knock on the gate' },
+        back: from(PALACE, [0, 33]),
         inside: {
           build: 'palaceinside',
           spawn: [0, 27.5],

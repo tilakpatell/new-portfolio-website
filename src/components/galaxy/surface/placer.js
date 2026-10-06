@@ -63,10 +63,29 @@ export function loadModel(kind, url = surfaceUrl(kind)) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
   return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
-    if (gltf && got && !gltf.scene.userData.detailed) {
-      const { metres = 2 } = scanOf(role) ?? {};
+    // (a model whose own finish reads wrong in the world: `look`, its
+    // materials' metalness, roughness, ambient occlusion and reflections set)
+    const look = SURFACE_MODELS[kind]?.look;
+    if (gltf && look && !gltf.scene.userData.looked) {
       gltf.scene.traverse((o) => {
-        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, ...SURFACE_MODELS[kind].detailLook });
+        if (o.isMesh) for (const m of [o.material].flat()) for (const [k, v] of Object.entries(look)) if (k in m) m[k] = v;
+      });
+      gltf.scene.userData.looked = true;
+    }
+    // (a model that comes bare, its colour given here: `tint`)
+    const tint = SURFACE_MODELS[kind]?.tint;
+    if (gltf && tint && !gltf.scene.userData.tinted) {
+      const c = new THREE.Color(tint);
+      gltf.scene.traverse((o) => {
+        if (o.isMesh) for (const m of [o.material].flat()) m.color?.multiply(c);
+      });
+      gltf.scene.userData.tinted = true;
+    }
+    if (gltf && got && !gltf.scene.userData.detailed) {
+      // (the scan's real size, and the brightness its detail map is centred on)
+      const { metres = 2, mean = 0.8 } = scanOf(role) ?? {};
+      gltf.scene.traverse((o) => {
+        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, mean, ...SURFACE_MODELS[kind].detailLook });
       });
       gltf.scene.userData.detailed = true;
     }
@@ -190,6 +209,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     group,
     // one thing; resolves to its object (or null)
     put(spec) {
+      // (a cluster: its members put each in its place, turned with it)
+      const cluster = !spec.zone && spec.model !== false && SURFACE_MODELS[spec.kind]?.cluster;
+      if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
       if (usesModel(spec)) {
         const p = loadModel(spec.kind)
@@ -355,6 +377,17 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     for (const f of sp.full) copyInstances(f.mesh, f.src, near);
     for (const l of sp.low) copyInstances(l.mesh, l.src, far);
   }
+}
+
+// A cluster's members (a catalogue entry's `cluster`: [kind, x, z, yaw, y]
+// in its own frame, metres) as things to put: where the cluster stands,
+// turned by its yaw and scaled by its scale
+export function clusterSpecs(spec, members) {
+  const yaw = spec.yaw ?? 0;
+  const k = spec.scale ?? 1;
+  const c = Math.cos(yaw);
+  const sn = Math.sin(yaw);
+  return members.map(([kind, x, z, turn = 0, y = 0]) => ({ ...spec, kind, at: [spec.at[0] + (x * c + z * sn) * k, spec.at[1] + (-x * sn + z * c) * k], yaw: yaw + turn, y: (spec.y ?? 0) + y * k, opts: undefined }));
 }
 
 // Far away, a model's light copy (<kind>.lod1.glb: a quarter of its

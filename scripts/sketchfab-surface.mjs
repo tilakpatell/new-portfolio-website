@@ -34,6 +34,8 @@
 //           its materials to leave off, by name (a RegExp)
 //   rig     true to keep its skeleton and animations (a figure that walks):
 //           it isn't merged or baked, only simplified and compressed
+//   pick    a RegExp on its parts' names: only those are kept (one piece of
+//           a kitbash: a tower out of a whole town), stood up on its own
 //
 // The downloads stay out of the repo, in /tmp/sketchfab-surface/ (fetched
 // once, kept for the next run). Look at what came out on the model sheet
@@ -45,9 +47,10 @@ import { compactPrimitive, dedup, dequantize, flatten, join, meshopt, metalRough
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { recolorDoc } from './recolor.mjs';
 
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -69,8 +72,22 @@ const json = async (url, headers = {}) => {
 async function download(kind, uid) {
   const file = path(CACHE, `${kind}-${uid}.glb`);
   if (existsSync(file)) return file;
+  // (fetched already for another kind: the pieces of one kitbash)
+  const had = existsSync(CACHE) && readdirSync(CACHE).find((f) => f.endsWith(`-${uid}.glb`));
+  if (had) return path(CACHE, had);
   if (!token) throw new Error('SKETCHFAB_API_TOKEN is not set');
-  const { glb } = await json(`${API}/${uid}/download`, { Authorization: `Token ${token}` });
+  // (the download API is rate-limited: a 429 is waited out, a minute at a time)
+  let glb;
+  for (let tries = 0; ; tries++) {
+    const r = await fetch(`${API}/${uid}/download`, { headers: { Authorization: `Token ${token}` } });
+    if (r.ok) {
+      ({ glb } = await r.json());
+      break;
+    }
+    if (r.status !== 429 || tries >= 8) throw new Error(`${API}/${uid}/download: ${r.status}`);
+    console.log(`${kind}: rate-limited, waiting a minute`);
+    await new Promise((res) => setTimeout(res, 60000));
+  }
   if (!glb?.url) throw new Error(`${kind}: no .glb to download`);
   const r = await fetch(glb.url);
   if (!r.ok) throw new Error(`${kind}: download ${r.status}`);
@@ -331,15 +348,21 @@ async function bring(io, kind, spec) {
   const before = triangles(doc);
   // (lines and points: nothing a world shows)
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
+  // (one piece of a kitbash: the parts it's named by, the rest let go)
+  if (spec.pick) for (const node of root.listNodes()) if (node.getMesh() && !spec.pick.test(node.getName())) node.setMesh(null);
   if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld());
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit(spec), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   await doc.transform(simplified(spec.tris));
   await doc.transform(grounded(spec));
   // (a still model: its turn and scale baked into its parts)
   if (!spec.rig) await doc.transform(flatten());
+  await doc.transform(dedup(), prune());
+  // (its colours to the films', on its maps at the size they'll be)
+  if (spec.recolor) {
+    await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [spec.tex, spec.tex] }));
+    for (const r of await recolorDoc(doc, spec.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
+  }
   await doc.transform(
-    dedup(),
-    prune(),
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: 82 }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps ?? spec.tex / 2, spec.maps ?? spec.tex / 2], quality: 80 }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
@@ -371,13 +394,15 @@ async function main() {
   await mkdir(OUT, { recursive: true });
   await mkdir(CACHE, { recursive: true });
   const credits = JSON.parse(await readFile(CREDITS, 'utf8'));
+  // (the credits are written after each model, so a run that stops short
+  // keeps what it brought in; SKIP_DONE=1 leaves a model that's already in)
   for (const kind of only.length ? only : Object.keys(MODELS)) {
     const spec = MODELS[kind];
-    await bring(io, kind, spec);
+    if (!(process.env.SKIP_DONE && existsSync(path(OUT, `${kind}.glb`)))) await bring(io, kind, spec);
     credits[`surface-${kind}`] = await credit(kind, spec.uid, spec.as);
+    const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
+    await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
-  await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
 }
 
 main().catch((e) => {

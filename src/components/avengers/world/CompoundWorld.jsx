@@ -13,6 +13,7 @@ import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
 import GuideCue from '../../guide/GuideCue';
+import { useVoiced } from '../../../lib/useVoiced';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here
@@ -130,6 +131,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const [hud, setHud] = useState({ near: null, portal: false, moved: false, armour: false, suit: false });
   const hudKey = useRef('');
   const [bubble, setBubble] = useState(null);
+  // what they say, in their own voice where it's been made (the lines with a clip of their own play that)
+  useVoiced(bubble?.id, bubble && !SPOKEN[bubble.line] ? bubble.line : null);
   const bubbleRef = useRef(null);
   const lines = useRef({});
   const [list, setList] = useState(false);

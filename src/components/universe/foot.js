@@ -41,11 +41,15 @@ export const FOOT = {
   heal: 9, // health a second, once out of trouble a while
 };
 
-// who comes after a crew on the ground: the Federation's troops
+// who comes after a crew on the ground: the Federation's troops (which
+// side's come is sides.js's `squads`)
 export const TROOPS = {
   gromflomite: { tall: 1.95 * METRE, hp: 2, speed: 2.2 * METRE, fire: [1.3, 2.4], range: [9, 14], spread: 0.09, damage: 9 },
   cop: { tall: 1.9 * METRE, hp: 3, speed: 2.6 * METRE, fire: [1.1, 2.0], range: [8, 12], spread: 0.07, damage: 11 },
   gazorpian: { tall: 2.6 * METRE, hp: 6, speed: 3.4 * METRE, fire: null, range: [0, 1.2], spread: 0, damage: 18 }, // no gun: it charges, and hits
+  // and Albuquerque's (sides.js): DEA agents, steady, and the cartel's gunmen, who come close
+  dea: { tall: 1.85 * METRE, hp: 3, speed: 2.5 * METRE, fire: [1.0, 1.9], range: [9, 13], spread: 0.06, damage: 11 },
+  cartel: { tall: 1.8 * METRE, hp: 2, speed: 2.9 * METRE, fire: [0.9, 1.6], range: [6, 10], spread: 0.11, damage: 9 },
 };
 
 // how big each ship is parked, against the people who fly it (in flight

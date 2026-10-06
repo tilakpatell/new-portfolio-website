@@ -21,11 +21,13 @@
 import * as THREE from 'three';
 import { FLEET as STARWARS_FLEET } from './fleetStarwars';
 import { FLEET as RICKMORTY_FLEET } from './fleetRickmorty';
+import { FLEET as BREAKINGBAD_FLEET } from './fleetBreakingbad';
 import { part, place, mirror, rod, bake, meshes, blinker, flapper, loft, box8, trap8, hex6, scaled, plateXZ, plateZY, turned, upright, ball, inset, canvasTexture, grey, panelTexture, solarTexture, standard, glowMaterial, flicker, pulse } from './trafficKit';
 
 export const TRAFFIC = {
   starwars: ['tie', 'interceptor', 'xwing', 'shuttle', 'destroyer'],
   rickmorty: ['patrol', 'federation', 'gromflomite', 'meeseeks', 'birdperson'],
+  breakingbad: ['suv', 'lowrider', 'pollostruck', 'madrigal', 'pestvan'],
 };
 
 const { PI, sin, cos, atan2, hypot } = Math;
@@ -983,7 +985,7 @@ function birdperson(k, paint = {}) {
 // chrome, with the same shape (hunterRules.js's bounty hunter)
 const phoenixperson = (k) => birdperson(k, { feathers: '#8a2a20', front: '#d4d7df', dark: '#2a1a16', beak: '#cfd3dc', cloth: '#2b2b33', wing: { base: '#c9ccd4', feather: ['#d8dbe3', '#aeb3bd', '#6a6f78'], rows: ['#e2e5ec', '#cfd3db', '#bfc4cc'] } });
 
-const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, phoenixperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET };
+const BUILD = { tie, interceptor, xwing, shuttle, destroyer, patrol, federation, gromflomite, meeseeks, birdperson, phoenixperson, ...STARWARS_FLEET, ...RICKMORTY_FLEET, ...BREAKINGBAD_FLEET };
 // every kind there's a built model of
 export const BUILT_KINDS = Object.keys(BUILD);
 

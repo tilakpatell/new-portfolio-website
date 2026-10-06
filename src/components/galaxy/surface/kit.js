@@ -45,6 +45,148 @@ function grimeTexture(seed = 7) {
   });
 }
 
+// a spray of conifer needles on its twigs, alpha-cut (the foliage cards of
+// the forest worlds' trees: a twig up the middle, side twigs off it, short
+// needles all along them), pale, so a part's colour gives it its green
+function needleTexture(seed = 5) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    c.lineCap = 'round';
+    const shade = () => {
+      const v = 190 + r() * 60;
+      return `rgb(${v * 0.92},${v},${v * 0.86})`;
+    };
+    const twig = (x0, y0, x1, y1, needle, w) => {
+      c.strokeStyle = '#9a8c78';
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const [dx, dy] = [(x1 - x0) / len, (y1 - y0) / len];
+      for (let d = 0; d < len; d += 2.2) {
+        const px = x0 + dx * d;
+        const py = y0 + dy * d;
+        const l = needle * (0.7 + r() * 0.5) * (1 - (d / len) * 0.45);
+        for (const side of [-1, 1]) {
+          const a = Math.atan2(dy, dx) + side * (0.75 + r() * 0.35);
+          c.strokeStyle = shade();
+          c.lineWidth = 1.6 + r() * 0.8;
+          c.beginPath();
+          c.moveTo(px, py);
+          c.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l);
+          c.stroke();
+        }
+      }
+    };
+    // the main twig, bottom middle to near the top, and its side twigs
+    const bend = (r() - 0.5) * 20;
+    twig(n / 2, n * 0.99, n / 2 + bend, n * 0.06, 15, 3);
+    for (let i = 0; i < 7; i++) {
+      const f = 0.15 + i * 0.11;
+      const y = n * (0.99 - f * 0.93);
+      const x = n / 2 + bend * f;
+      for (const side of [-1, 1]) {
+        const reach = n * (0.36 - f * 0.28) * (0.8 + r() * 0.4);
+        twig(x, y, x + side * reach, y - reach * (0.55 + r() * 0.3), 11, 2);
+      }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return keepCoverage(t);
+}
+
+// a spray of broad leaves on a twig, alpha-cut (the jungle's and the
+// wroshyrs' canopies, Naboo's groves): leaves alternating up a twig and
+// its side shoots, each a pointed oval with its midrib, pale for the part's
+// green to tint
+function leafTexture(seed = 6) {
+  const r = rng(seed);
+  const t = canvasTexture(256, (c, n) => {
+    c.clearRect(0, 0, n, n);
+    const leafAt = (x, y, a, l) => {
+      c.save();
+      c.translate(x, y);
+      c.rotate(a);
+      const v = 175 + r() * 70;
+      c.fillStyle = `rgb(${v * 0.9},${v},${v * 0.82})`;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(l * 0.32, -l * 0.42, 0, -l);
+      c.quadraticCurveTo(-l * 0.32, -l * 0.42, 0, 0);
+      c.fill();
+      c.strokeStyle = `rgba(120,130,100,0.6)`;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.lineTo(0, -l * 0.92);
+      c.stroke();
+      c.restore();
+    };
+    const twig = (x0, y0, x1, y1, leaves, size) => {
+      c.strokeStyle = '#8a7a62';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+      const base = Math.atan2(y1 - y0, x1 - x0) + Math.PI / 2;
+      for (let i = 0; i < leaves; i++) {
+        const f = (i + 0.5) / leaves;
+        const side = i % 2 ? 1 : -1;
+        leafAt(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, base + side * (0.7 + r() * 0.4), size * (0.75 + r() * 0.4) * (1 - f * 0.3));
+      }
+      leafAt(x1, y1, base, size);
+    };
+    twig(n / 2, n * 0.98, n / 2 + (r() - 0.5) * 30, n * 0.18, 9, n * 0.24);
+    for (const side of [-1, 1]) twig(n / 2, n * 0.62, n / 2 + side * n * 0.3, n * 0.36, 5, n * 0.18);
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return keepCoverage(t);
+}
+
+// A cut-out texture's mip levels made by hand, each level's alpha scaled so
+// as much of it is over the cut as at full size: far-off foliage stays as
+// thick as near (left to the graphics chip, averaging thins it away)
+function keepCoverage(t, cut = 0.3) {
+  const src = t.image;
+  const levels = [src];
+  const coverage = (ctx, n) => {
+    const d = ctx.getImageData(0, 0, n, n).data;
+    let on = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > cut * 255) on++;
+    return on / (n * n);
+  };
+  const want = coverage(src.getContext('2d'), src.width);
+  for (let n = src.width / 2; n >= 1; n /= 2) {
+    const c = document.createElement('canvas');
+    c.width = c.height = n;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(src, 0, 0, n, n);
+    // (scale alpha up till the coverage matches: a few tries)
+    const img = ctx.getImageData(0, 0, n, n);
+    let lo = 1;
+    let hi = 4;
+    for (let k = 0; k < 8; k++) {
+      const m = (lo + hi) / 2;
+      let on = 0;
+      for (let i = 3; i < img.data.length; i += 4) if (img.data[i] * m > cut * 255) on++;
+      if (on / (n * n) < want) lo = m;
+      else hi = m;
+    }
+    for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.min(255, img.data[i] * hi);
+    ctx.putImageData(img, 0, 0);
+    levels.push(c);
+  }
+  t.mipmaps = levels;
+  t.generateMipmaps = false;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
 // The scanned surfaces, each loaded once for the page (every world's kit
 // shares them; a new renderer uploads them again by itself): role →
 // { map, normalMap, arm } textures, or a promise of them
@@ -120,6 +262,11 @@ export function createKit({ seed = 11, scans = true } = {}) {
     cloth: std({ roughness: 1, side: THREE.DoubleSide }, 0.5),
     bark: std({ roughness: 0.95, map: grime }, 0.6, 'bark'),
     leaf: std({ roughness: 0.82, side: THREE.DoubleSide }, 0.5),
+    // (foliage cards: needles on twigs, cut out of the light behind them)
+    // (cut out by alpha to coverage, where the frame is multisampled: soft
+    // edges, and leaves that don't thin away in the smaller mip levels)
+    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(needleTexture(seed)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(leafTexture(seed + 1)), alphaTest: 0.3, alphaToCoverage: true }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
     glow: own(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })),

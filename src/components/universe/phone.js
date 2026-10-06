@@ -9,10 +9,13 @@
 // near flies you into it. createPhone() → { group, update(t, camera), radius, dispose }.
 
 import { build } from '../dickansh/galaxyPhone';
+import { HOME_SPREAD } from './scale';
 
 // (out past Resume, beyond the belt and above the disc: clear of every route
-// the autopilot flies between the places, and outside the sun's glow)
-export const PHONE = { at: [0, 48, -210], scale: 9, reach: 40, touch: 9 };
+// the autopilot flies between the places, and outside the sun's glow; out
+// as far as the belt went when the home system grew, scale.js, but no higher:
+// it stays under the ship's ceiling)
+export const PHONE = { at: [0, 48, -210 * HOME_SPREAD], scale: 9, reach: 40, touch: 9 };
 
 export function createPhone() {
   const phone = build();

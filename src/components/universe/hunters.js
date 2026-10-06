@@ -79,6 +79,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
   const give = (h) => {
     if (!h.view) return;
     h.view.group.removeFromParent();
+    h.view.group.visible = true; // (one hidden as it went, shown when it's next out)
     (pool[h.kind] ??= []).push(h.view);
     h.view = null;
     shown.delete(h);
@@ -133,6 +134,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         if (x * x + y * y + z * z > 1e-6) g.lookAt(parent.localToWorld(look.set(h.pos.x + x, h.pos.y + y, h.pos.z + z)));
         g.rotateZ(-h.bank);
         g.scale.setScalar(h.type.size * h.view.fit * Math.max(0.001, h.grow));
+        g.visible = !(h.hidden > 0); // (a flicker, hit: gone from sight a moment)
         h.view.update(t);
       }
       hunt.lasers.forEach((l, i) => {
@@ -141,6 +143,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         if (!l.on) return;
         m.position.set(l.x, l.y, l.z);
         m.material = laserMats[l.faction] ?? firstMat;
+        // (a bomb is a fat slow ball of light, not a bolt)
+        m.scale.set(l.bomb ? 9 : 1, l.bomb ? 9 : 1, l.bomb ? 0.5 : 1);
         m.lookAt(parent.localToWorld(look.set(l.x + l.vx, l.y + l.vy, l.z + l.vz)));
       });
       return events;

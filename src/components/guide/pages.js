@@ -91,8 +91,8 @@ export const PAGES = {
   '/universe': {
     about: 'The whole site as places in space: the stations round the sun are its pages, the planets in deep space its worlds. Fly a ship to any of them, or pick one.',
     keys: [
-      { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['G', 'Land and step out (G again to get back in)'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
-      { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['V', 'Out of their eyes'], ['Enter', 'Into the planet’s page']] },
+      { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
+      { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
       {
@@ -109,7 +109,7 @@ export const PAGES = {
       ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
       ['Links', 'Every place has a link that opens the map there (/universe/aurelia, say): Copy a link here on the nav map. The terminal’s fly <place> and ⌘K’s Fly to do the same.'],
       ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with their own worlds, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet and a wreck field round a white dwarf, with a rim of ice round the edge of the map. The crew have a word about each.'],
-      ['Mind the planets', 'Brush one and you bounce off; fly into one at speed and you crash into its page.'],
+      ['Mind the planets', 'Fly down into a planet’s air and you land on it; come in boosting and you crash into its page. Brush a station and you bounce off.'],
       ['Hunted', 'Now and then someone comes after you, sooner if you’ve been shooting. The guns lock on: shoot at the pip ahead of them and the shots bend home. Lose your shields and you’re back at the nearest place.'],
       ['The Citadel of Ricks', 'Knock out the four shield generators, then only heavy ordnance hurts the core. Everyone online shares the siege.'],
       ['Happenings', 'A Star Destroyer drops out of hyperspace and launches fighters, someone calls for help with pirates on their tail, a convoy goes by, a star flares and rattles the ship, a rift opens ahead (fly in and it drops you elsewhere on the map), and something enormous swims past: purrgil, or a Cromulon. Rocks cross your path (shoot or steer round them), and now and then a bounty hunter comes for you: Boba Fett in Slave I, or Phoenixperson.'],
@@ -411,6 +411,19 @@ export const PAGES = {
   '/dot-matrix/64': {
     keys: [
       {
+        label: 'The N64 (your own ROM)',
+        rows: [
+          ['W A S D', 'Control Stick'],
+          ['Space', 'A (jump)'],
+          ['J', 'B (punch)'],
+          ['Shift', 'Z (crouch)'],
+          ['← ↑ ↓ →', 'C buttons (the camera)'],
+          ['Enter', 'Start'],
+          ['Q E', 'L and R'],
+        ],
+      },
+      {
+        label: 'The fan tribute',
         rows: [
           ['W A S D / ← ↑ ↓ →', 'Run (Mario goes the way you push, from the camera)'],
           ['Space / K', 'Jump (A): again on landing for a double, a third for the triple'],
@@ -422,9 +435,13 @@ export const PAGES = {
         ],
       },
     ],
-    touch: [{ rows: [['Stick', 'Run'], ['A', 'Jump'], ['B', 'Punch, pick up, talk'], ['Z', 'Crouch, ground pound'], ['Drag', 'Turn the camera']] }],
+    touch: [
+      { label: 'The N64 (your own ROM)', rows: [['On-screen pad', 'The emulator’s own N64 controller']] },
+      { label: 'The fan tribute', rows: [['Stick', 'Run'], ['A', 'Jump'], ['B', 'Punch, pick up, talk'], ['Z', 'Crouch, ground pound'], ['Drag', 'Turn the camera']] },
+    ],
     tips: [
-      ['The paintings', 'Jump into one to go to its world. Each world has three Power Stars; a star sends you back to the castle.'],
+      ['The N64', 'It plays a real N64 game: give it your own Super Mario 64 ROM (.z64, .n64 or .v64) and it boots in the browser. The file stays on your device, kept for next time until you forget it. A controller works; the emulator’s menu along its bottom edge has its controls, save states and full screen.'],
+      ['The paintings', 'In the tribute: jump into one to go to its world. Each world has three Power Stars; a star sends you back to the castle.'],
       ['The star doors', 'They open at so many stars. The number is on the door.'],
       ['Moves', 'Run and turn hard to side flip; crouch and jump to backflip; run, crouch and jump to long jump. Jump into a wall and jump again as you touch it to wall kick.'],
       ['Health', 'Eight wedges. A coin gives one back, and fifty coins are a life. Under water the meter is your air: come up before it runs out.'],

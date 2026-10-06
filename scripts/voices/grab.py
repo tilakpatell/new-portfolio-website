@@ -225,6 +225,7 @@ def main():
     ap.add_argument("--pick", action="append", default=[], help="who=source@start[,source@start]: use these segments (names from the report)")
     ap.add_argument("--per-query", type=int, default=3, help="search results fetched per search in sources.json")
     ap.add_argument("--refresh", action="store_true", help="replace references you made yourself too")
+    ap.add_argument("--fetch-only", action="store_true", help="just search and download the sources (no GPU), to process them later")
     args = ap.parse_args()
 
     cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
@@ -250,6 +251,9 @@ def main():
             every.setdefault(s["id"], s)
     print(f"{len(every)} sources for {', '.join(voices)}; fetching, separating and listening (cached after the first time)")
     raw = {s["id"]: f for s in every.values() if (f := fetch(s))}
+    if args.fetch_only:
+        print(f"Fetched {len(raw)} of {len(every)} sources")
+        return
     # the separator first and on its own: it and the judge's models together outgrow the card
     sep, vocals, segments = Vocals(), {}, {}
     for sid, f in raw.items():
@@ -289,6 +293,11 @@ def main():
     report = ["# The crews' references", "", "Made by `python scripts/voices/grab.py`. Listen to the candidates in `cache/grab/listen/<who>/`; put a wrong source or segment in the voice's `exclude` in sources.json, or choose your own with `--pick who=source@start`.", ""]
     for w in wanted:
         report += [f"## {w}", ""]
+        if w not in cents and w in picks:  # segments named by hand need no voiceprint to find them by
+            want = [(p.rpartition("@")[0], float(p.rpartition("@")[2])) for p in picks[w]]
+            named = [g for s, g in pool[w] if any(s["id"] == sid and abs(g["start"] - t) < 0.05 for sid, t in want)]
+            if named:
+                cents[w] = pick.centre([np.array(g["vp"]) for g in named])
         if w not in cents:
             msg = f"{w}: nothing to start from: no site clip of them and no utterance says one of their quotes. Add a clip, a quote or a search to sources.json."
             print(msg)

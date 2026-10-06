@@ -601,5 +601,207 @@
     "avoid": [
       "ellie kemper interview"
     ]
+  },
+  "badger": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "Kirk and Spock",
+      "Star Trek",
+      "pie eating contest",
+      "This is Badger"
+    ],
+    "search": [
+      "Breaking Bad Badger Star Trek pie eating contest scene",
+      "Breaking Bad Badger best moments"
+    ]
+  },
+  "pete": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "It's all just math",
+      "Skinny Pete",
+      "I'm not even supposed to be here"
+    ],
+    "search": [
+      "Breaking Bad Skinny Pete piano scene",
+      "Breaking Bad Skinny Pete best moments"
+    ]
+  },
+  "tuco": {
+    "show": "breaking-bad",
+    "clips": [
+      "public/audio/clips/tuco-tight.mp3"
+    ],
+    "quotes": [
+      "Tight, tight, tight",
+      "Blue, yellow, pink, whatever, man",
+      "Tread lightly"
+    ],
+    "search": [
+      "Breaking Bad Tuco Salamanca scenes",
+      "Breaking Bad Tuco tight tight tight scene"
+    ]
+  },
+  "mike": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "No more half measures",
+      "Just because you shot Jesse James, don't make you Jesse James",
+      "Let me die in peace"
+    ],
+    "search": [
+      "Breaking Bad Mike Ehrmantraut no more half measures scene",
+      "Breaking Bad Mike Ehrmantraut best scenes"
+    ]
+  },
+  "gus": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "I hide in plain sight, same as you",
+      "I will kill your wife",
+      "Never make the same mistake twice"
+    ],
+    "search": [
+      "Breaking Bad Gus Fring I hide in plain sight scene",
+      "Breaking Bad Gus Fring threatens Walt desert scene"
+    ]
+  },
+  "lydia": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "Stevia",
+      "I can't be seen with you",
+      "Please don't kill me"
+    ],
+    "search": [
+      "Breaking Bad Lydia Rodarte-Quayle scenes",
+      "Breaking Bad Lydia and Mike diner scene"
+    ]
+  },
+  "declan": {
+    "show": "breaking-bad",
+    "clips": [],
+    "quotes": [
+      "I don't have a damn clue who the hell you are",
+      "You're Heisenberg"
+    ],
+    "search": [
+      "Breaking Bad Say My Name Declan scene"
+    ]
+  },
+  "saul": {
+    "show": "breaking-bad",
+    "clips": [
+      "public/audio/clips/hi-im-saul.mp3",
+      "public/audio/clips/better-call-saul.mp3"
+    ],
+    "quotes": [
+      "Did you know that you have rights",
+      "Better call Saul",
+      "It's all good, man"
+    ],
+    "search": [
+      "Breaking Bad Saul Goodman best moments",
+      "Breaking Bad Saul Goodman first appearance scene"
+    ]
+  },
+  "thor": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "Bring me Thanos",
+      "Another!",
+      "I'm still worthy",
+      "Whosoever holds this hammer"
+    ],
+    "search": [
+      "Thor Ragnarok Thor best scenes",
+      "Avengers Endgame Thor I'm still worthy scene",
+      "Thor another coffee mug scene"
+    ]
+  },
+  "natasha": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "I've got red in my ledger",
+      "Shut up and put your coat on",
+      "Doesn't look like anything to me"
+    ],
+    "search": [
+      "Avengers Natasha Romanoff Loki interrogation scene red in my ledger",
+      "Black Widow Natasha Romanoff best scenes",
+      "Avengers Endgame Natasha and Clint Vormir scene"
+    ]
+  },
+  "hulk": {
+    "show": "mcu",
+    "clips": [],
+    "quotes": [
+      "That's my secret, Cap. I'm always angry",
+      "I'm always angry",
+      "Best of both worlds"
+    ],
+    "search": [
+      "Avengers Bruce Banner that's my secret I'm always angry scene",
+      "Avengers Endgame Smart Hulk scenes"
+    ]
+  },
+  "soundwave": {
+    "show": "transformers",
+    "clips": [
+      "public/audio/clips/soundwave-superior.mp3"
+    ],
+    "quotes": [
+      "Soundwave superior",
+      "Autobots inferior"
+    ],
+    "search": [
+      "War for Cybertron Soundwave cutscenes",
+      "Fall of Cybertron Soundwave voice"
+    ]
+  },
+  "grimlock": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Me Grimlock",
+      "Me Grimlock king"
+    ],
+    "search": [
+      "Fall of Cybertron Grimlock cutscenes",
+      "Fall of Cybertron Grimlock all dialogue"
+    ]
+  },
+  "starscream": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Lord Megatron",
+      "I am Starscream",
+      "Starscream"
+    ],
+    "search": [
+      "War for Cybertron Starscream cutscenes",
+      "Fall of Cybertron Starscream scenes"
+    ]
+  },
+  "jazz": {
+    "show": "transformers",
+    "clips": [],
+    "quotes": [
+      "Do it with style",
+      "Jazz here",
+      "Ain't nothing"
+    ],
+    "search": [
+      "War for Cybertron Jazz cutscenes",
+      "Fall of Cybertron Jazz dialogue"
+    ]
   }
 }

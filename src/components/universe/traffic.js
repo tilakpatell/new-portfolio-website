@@ -1,13 +1,15 @@
 // Traffic: everyone else out here. Which traffic depends on who you fly
-// with: Star Wars for Luke's X-wing and Han's Falcon (ordinary freighters,
+// with (the crew's side, sides.js; Albuquerque's for Walt and Jesse's RV:
+// DEA SUVs, the cartel's lowriders, Pollos trucks, Madrigal freighters and
+// the pest van, fleetBreakingbad.js): Star Wars for Luke's X-wing and Han's Falcon (ordinary freighters,
 // Rebel transports and Corellian corvettes going about their business, TIE
 // fighters in twos and threes, interceptors, X-wings in formation, an
 // Imperial shuttle, Boba Fett's Slave I, and now and then a Star Destroyer
 // high over the whole map), Rick and Morty for the cruiser (families in
 // their saucers, junk haulers, Gear People in their gear, Galactic
 // Federation patrols and a Federation cruiser, Gromflomite bugs, Mr.
-// Meeseeks floating by, Birdperson); both for Walt and Jesse's RV, which
-// belongs to neither; with no ship picked, a quieter mix of both.
+// Meeseeks floating by, Birdperson); with no ship picked, a quieter mix of
+// every side's.
 // fleetStarwars.js and fleetRickmorty.js build the ordinary ships.
 // trafficModels.js builds most of them; the X-wings, Slave I, the TIE
 // interceptors, the Star Destroyers and the corvettes are models
@@ -31,24 +33,24 @@
 // for it: faster, and weaving.
 //
 // createTraffic(parent, { small }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
-//   hit(from, to) → hit or null, convoy(ship), distress(ship) → the one in
+//   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
 // Points are in `parent`'s space (the map's).
 
 import * as THREE from 'three';
-import { TRAFFIC } from './trafficModels';
 import { createFleet } from './glbFleet';
 import { bezier, convoyLane, dockScale, dockable, flybyLane, laneDepart, laneDock, laneLength, laneLocal, laneNear, tangent } from './lanes';
 import { DEEP, PLACES, nearestPlace, openness } from './deep';
 import { HOME_RADIUS } from './layout';
 import { SOLIDS } from './ship';
+import { SIDES, sideFor } from './sides';
 
 // size: its biggest dimension in map units (a TIE's height, Birdperson's
 // wingspan, Meeseeks' height); speed: map units a second; crew: how many
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
-const TYPES = {
+export const TYPES = {
   freighter: { size: 0.7, speed: 7.5, crew: [1, 2], weight: 3, flyby: true, civil: true },
   transport: { size: 1.8, speed: 4.2, crew: [1, 2], weight: 2, civil: true },
   corvette: { size: 3.2, speed: 5, crew: [1, 1], weight: 1.2, civil: true },
@@ -66,14 +68,19 @@ const TYPES = {
   meeseeks: { size: 0.3, speed: 1.8, crew: [1, 3], weight: 1.4, flyby: true },
   birdperson: { size: 0.4, speed: 5.9, crew: [1, 1], weight: 1, flyby: true },
   slave1: { size: 0.55, speed: 8.4, crew: [1, 1], weight: 0.9, flyby: true },
+  // Albuquerque's (fleetBreakingbad.js)
+  suv: { size: 0.34, speed: 9, crew: [2, 3], weight: 3, flyby: true },
+  lowrider: { size: 0.34, speed: 10, crew: [1, 2], weight: 2, flyby: true },
+  pollostruck: { size: 0.5, speed: 5, crew: [1, 2], weight: 2.4, flyby: true, civil: true },
+  madrigal: { size: 1.6, speed: 3.8, crew: [1, 1], weight: 1.6, civil: true },
+  pestvan: { size: 0.4, speed: 5.5, crew: [1, 1], weight: 1.6, flyby: true, civil: true },
+  mikesedan: { size: 0.36, speed: 8, crew: [1, 1], weight: 0, flyby: false },
 };
-const CIVIL = { starwars: ['freighter', 'transport', 'corvette'], rickmorty: ['saucer', 'hauler', 'gearship'] };
-const KINDS = { starwars: [...TRAFFIC.starwars, 'slave1', ...CIVIL.starwars], rickmorty: [...TRAFFIC.rickmorty, ...CIVIL.rickmorty] };
-const ESCORT = { starwars: 'xwing', rickmorty: 'patrol' }; // who guards a convoy
-const DISTRESS = { starwars: 'transport', rickmorty: 'saucer' }; // who calls for help
-const BOTH = [...KINDS.starwars, ...KINDS.rickmorty];
-// whose traffic each ship meets (a ship that isn't here meets both)
-const FAMILY = { cruiser: 'rickmorty', xwing: 'starwars', falcon: 'starwars' };
+// whose traffic each crew meets (sides.js: the side's everyday ships and
+// its civilians, who guards a convoy, who calls for help); with no ship
+// picked, every side's
+const kindsFor = (side) => (side ? [...side.traffic, ...side.civil] : Object.values(SIDES).flatMap((s) => [...s.traffic, ...s.civil]));
+const ALL = [...new Set(kindsFor(null))];
 // how far a group flies straight in before its lane begins, and straight on
 // after it ends (ten seconds' worth, 30 to 90 map units): it comes from, and
 // goes to, well out of sight, so nobody pops into being or vanishes in front
@@ -143,7 +150,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   let forcedCross; // and how it should come
 
   const ready = (kind) => fleet.has(kind);
-  const kinds = () => (FAMILY[crew] ? KINDS[FAMILY[crew]] : BOTH).filter(ready);
+  const kinds = () => kindsFor(sideFor(crew)).filter(ready);
   const pick = (list) => {
     const total = list.reduce((s, k) => s + TYPES[k].weight, 0);
     let r = rand() * total;
@@ -295,8 +302,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     // the crew picked (or null): changes what flies, from now
     setCrew(id) {
       // any ship's traffic is worth its models (looking round without one isn't)
-      if (id) fleet.want(FAMILY[id] ? KINDS[FAMILY[id]] : BOTH);
-      if ((FAMILY[id] ?? null) === (FAMILY[crew] ?? null)) {
+      if (id) fleet.want(sideFor(id) ? kindsFor(sideFor(id)) : ALL);
+      if ((sideFor(id)?.id ?? null) === (sideFor(crew)?.id ?? null)) {
         crew = id;
         return;
       }
@@ -406,25 +413,25 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     // a convoy past you: a column of the ordinary ships of your universe
     // (or of `family`'s) with an escort to either side. False when there's
     // no clear way past
-    convoy(ship, family = FAMILY[crew]) {
-      const pts = family && ship && convoyLane(ship, rand);
+    convoy(ship, side = sideFor(crew)) {
+      const pts = side && ship && convoyLane(ship, rand);
       if (!pts) return false;
-      const civil = CIVIL[family];
+      const civil = side.civil;
       const n = 4 + Math.floor(rand() * 4);
       const freight = Array.from({ length: n }, () => civil[Math.floor(rand() * civil.length)]);
       // (a long one has an escort in the middle too)
-      if (n >= 6) freight.splice(3, 0, ESCORT[family]);
-      const kinds = [ESCORT[family], ...freight, ESCORT[family]];
+      if (n >= 6) freight.splice(3, 0, side.convoy.escort);
+      const kinds = [side.convoy.escort, ...freight, side.convoy.escort];
       spawn(kinds[1], pts, true, { kinds, column: true, speed: 3.6, event: 'convoy' });
       return true;
     },
 
     // someone in distress across your bows (from your universe, or from
     // `family`'s), slow (they're hit): the ship the pirates are after, or null
-    distress(ship, family = FAMILY[crew]) {
-      const pts = family && ship && (laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true }));
+    distress(ship, side = sideFor(crew)) {
+      const pts = side && ship && (laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true }));
       if (!pts) return null;
-      const g = spawn(DISTRESS[family], pts, true, { kinds: [DISTRESS[family]], speed: 2.6, event: 'distress' });
+      const g = spawn(side.distress.civil, pts, true, { kinds: [side.distress.civil], speed: 2.6, event: 'distress' });
       return g.members[0].model.group;
     },
 

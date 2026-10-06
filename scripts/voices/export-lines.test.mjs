@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineId, spoken, voiceOf } from '../../src/lib/voiced';
-import { conversationLines } from './export-lines.mjs';
+import { conversationLines, peopleLines } from './export-lines.mjs';
 
 const convo = {
   start: 'a',
@@ -23,5 +23,25 @@ describe('the worlds’ conversation lines for scripts/voices', () => {
 
   it('leave out the narrator, voices not made here, and the same line twice', () => {
     expect(lines).toHaveLength(2);
+  });
+});
+
+describe('the worlds’ people, in their own formats', () => {
+  const v = { lineId, voiceOf, spoken };
+  it('take each person’s lines, and the lines they say after', () => {
+    const cast = [{ id: 'thor', lines: ['Worthy!'], after: { place: 'thor', lines: ['I knew it!'] } }, { id: 'bot', lines: ['Beep.'] }];
+    const got = peopleLines([cast], v, ['thor']);
+    expect(got.map((l) => l.text).sort()).toEqual(['I knew it!', 'Worthy!']);
+  });
+  it('take a mission giver’s offer', () => {
+    const got = peopleLines([[{ id: 'x', giver: 'starscream', say: 'Lord Megatron!' }]], v, ['starscream']);
+    expect(got).toEqual([{ id: lineId('starscream', 'Lord Megatron!'), who: 'starscream', text: 'Lord Megatron!' }]);
+  });
+  it('take a customer’s reactions by their key', () => {
+    const got = peopleLines([{ badger: { name: 'Badger', lines: { great: 'Star Trek-level stuff, yo.', bad: 'Dude. No.' } } }], v, ['badger']);
+    expect(got.map((l) => l.who)).toEqual(['badger', 'badger']);
+  });
+  it('leave out a line that’s only an aside', () => {
+    expect(peopleLines([[{ id: 'starscream', lines: ['(He sneers.)'] }]], v, ['starscream'])).toEqual([]);
   });
 });

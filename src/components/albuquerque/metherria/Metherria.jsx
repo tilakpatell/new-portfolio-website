@@ -26,6 +26,7 @@ import Ticket from './Ticket';
 import View3D from './View3D';
 import { BreakStation, BuildStation, CookStation, PackStation } from './Stations';
 import { buzz, useKeys } from './keys';
+import { useVoiced } from '../../../lib/useVoiced';
 import '../../../styles/lazy/albuquerque.css';
 
 // Walt's Metherria: a Papa's Freezeria for the show's blue, in 3D. Customers
@@ -86,6 +87,8 @@ export default function Metherria({ at } = {}) {
   const [activeId, setActiveId] = useState(null);
   const [fresh, setFresh] = useState(null); // the ticket just taken, shown big
   const [result, setResult] = useState(null);
+  // the customer's word on it, in their own voice where it's been made (lib/voiced.js)
+  useVoiced(result?.order.customer, result ? CUSTOMERS[result.order.customer].lines[result.mood] : null);
   const [raid, setRaid] = useState(null); // { left, ticket } while Hank is at the door
   const [rankUp, setRankUp] = useState(null);
   const [slip, setSlip] = useState(null); // the pinned ticket: open on wide screens unless closed
