@@ -13,8 +13,9 @@ export default defineConfig({
   // (the icons' modules import react-icons' own GenIcon: bundled up front in dev)
   optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',
-  // the skills and the other branches' worktrees under .claude bring their own tests
-  test: { exclude: [...configDefaults.exclude, '.claude/**'] },
+  // the skills and the other branches' worktrees under .claude, and the
+  // scratch checkouts under lab/, bring their own tests
+  test: { exclude: [...configDefaults.exclude, '.claude/**', 'lab/**'] },
   build: {
     rolldownOptions: {
       output: {
